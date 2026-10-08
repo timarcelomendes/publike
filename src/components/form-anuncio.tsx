@@ -316,7 +316,7 @@ export function FormAnuncio({ inicial }: { inicial: ValoresAnuncio }) {
           {enviando ? "Salvando…" : editando ? "Salvar alterações" : vaga ? "Publicar vaga" : "Publicar serviço"}
         </Botao>
         <p className="text-body-sm text-ink-muted">
-          Grátis. Fica no ar por 30 dias. Ao publicar, você concorda com as{" "}
+          Grátis. Fica 30 dias no ar e pode ser renovado de 30 em 30 dias. Ao publicar, você concorda com as{" "}
           <Link href="/privacidade#regras" className="underline">
             regras do Publike
           </Link>

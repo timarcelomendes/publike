@@ -14,7 +14,7 @@ const CONTRATA = [
   "Publique vaga com carteira, temporária, diária, bico ou um serviço que você precisa.",
   "Diga o bairro e marque a região no mapa: quem mora perto vê primeiro.",
   "Veja quem curtiu e o que cada pessoa faz. Curta de volta quem combina com você.",
-  "O anúncio fica 30 dias no ar. Dá para pausar, encerrar ou renovar quando quiser.",
+  "O anúncio fica 30 dias no ar e pode ser renovado de 30 em 30 dias. Dá para pausar ou encerrar quando quiser.",
 ];
 
 const TRABALHA = [
@@ -52,7 +52,7 @@ const PERGUNTAS = [
   },
   {
     p: "Quanto tempo o anúncio fica no ar?",
-    r: "30 dias. Depois ele expira, e você renova com um toque no seu painel.",
+    r: "30 dias, e pode ser renovado de 30 em 30 dias. Quando estiver perto de vencer, ou depois que vencer, é só tocar em “Renovar por 30 dias” no seu painel.",
   },
   {
     p: "Como denunciar?",

@@ -176,7 +176,8 @@ async function DetalheAnuncio({
 
       {primeiro(sp.publicado) === "1" && (
         <Aviso tipo="sucesso" className="mt-4" titulo="Seu anúncio está no ar!">
-          Ele fica 30 dias publicado. Quando alguém curtir, você recebe um aviso e vê a pessoa no seu painel.
+          Ele fica 30 dias publicado e pode ser renovado de 30 em 30 dias. Quando alguém curtir, você recebe um aviso e
+          vê a pessoa no seu painel.
         </Aviso>
       )}
       {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" className="mt-4" titulo="Alterações salvas." />}
