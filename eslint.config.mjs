@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // worker do mapa copiado de node_modules
+    "public/vendor/**",
   ]),
 ]);
 

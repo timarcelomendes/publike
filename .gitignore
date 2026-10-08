@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+!.env.example
+
+# worker do mapa (copiado de node_modules por scripts/copiar-worker-mapa.mjs)
+/public/vendor/

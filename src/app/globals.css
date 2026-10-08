@@ -1,26 +1,204 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------
+   Publike · tokens do Design System (tema claro e escuro)
+   Os nomes seguem o Design System: surface, ink, like, terra, ipe,
+   cerrado. Regras de uso:
+   - like: só curtida (coração, botão Curtido)
+   - terra: ação principal, no máximo um botão terra por tela
+   - ipe: acento (selos NOVO e GRÁTIS); texto sobre ele em on-ipe
+   - cerrado: deu certo (match, publicação no ar)
+   - danger: só erro e denúncia
+------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --pk-surface-100: #fbf7ef;
+  --pk-surface-200: #ffffff;
+  --pk-surface-300: #f2ebdf;
+  --pk-line: #e3d9c8;
+  --pk-line-strong: #8f8273;
+  --pk-ink: #1f1a14;
+  --pk-ink-muted: #6b6052;
+  --pk-like: #e0192d;
+  --pk-on-like: #ffffff;
+  --pk-like-text: #b3121f;
+  --pk-like-soft: #fde4e7;
+  --pk-terra: #c2410c;
+  --pk-terra-hover: #a8380a;
+  --pk-on-terra: #ffffff;
+  --pk-terra-text: #a8380a;
+  --pk-terra-soft: #fbe3d4;
+  --pk-ipe: #f5b301;
+  --pk-on-ipe: #1f1a14;
+  --pk-cerrado: #1f6f4a;
+  --pk-on-cerrado: #ffffff;
+  --pk-cerrado-text: #1f6f4a;
+  --pk-danger: #b42318;
+  --pk-focus: #1f6f4a;
+  --pk-shadow-card: 0 1px 2px rgba(31, 26, 20, 0.06), 0 6px 20px rgba(31, 26, 20, 0.06);
+  --pk-shadow-raised: 0 2px 4px rgba(31, 26, 20, 0.08), 0 14px 36px rgba(31, 26, 20, 0.12);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --pk-surface-100: #17130f;
+    --pk-surface-200: #221d18;
+    --pk-surface-300: #2e2721;
+    --pk-line: #3b332b;
+    --pk-line-strong: #7d7062;
+    --pk-ink: #f5efe6;
+    --pk-ink-muted: #b5a998;
+    --pk-like: #ff4d5a;
+    --pk-on-like: #1f1a14;
+    --pk-like-text: #ff7a85;
+    --pk-like-soft: #3a1418;
+    --pk-terra-hover: #d4501a;
+    --pk-terra-text: #f08a4b;
+    --pk-terra-soft: #3d2216;
+    --pk-cerrado-text: #5cc493;
+    --pk-danger: #f97066;
+    --pk-focus: #f5b301;
+    --pk-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --pk-shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-surface-100: var(--pk-surface-100);
+  --color-surface-200: var(--pk-surface-200);
+  --color-surface-300: var(--pk-surface-300);
+  --color-line: var(--pk-line);
+  --color-line-strong: var(--pk-line-strong);
+  --color-ink: var(--pk-ink);
+  --color-ink-muted: var(--pk-ink-muted);
+  --color-like: var(--pk-like);
+  --color-on-like: var(--pk-on-like);
+  --color-like-text: var(--pk-like-text);
+  --color-like-soft: var(--pk-like-soft);
+  --color-terra: var(--pk-terra);
+  --color-terra-hover: var(--pk-terra-hover);
+  --color-on-terra: var(--pk-on-terra);
+  --color-terra-text: var(--pk-terra-text);
+  --color-terra-soft: var(--pk-terra-soft);
+  --color-ipe: var(--pk-ipe);
+  --color-on-ipe: var(--pk-on-ipe);
+  --color-cerrado: var(--pk-cerrado);
+  --color-on-cerrado: var(--pk-on-cerrado);
+  --color-cerrado-text: var(--pk-cerrado-text);
+  --color-danger: var(--pk-danger);
+  --color-focus: var(--pk-focus);
+
+  --font-sans: var(--font-figtree), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-bricolage), var(--font-figtree), system-ui, sans-serif;
+
+  --shadow-card: var(--pk-shadow-card);
+  --shadow-raised: var(--pk-shadow-raised);
+}
+
+@theme {
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  /* Estilos de texto do Design System */
+  --text-display: 56px;
+  --text-display--line-height: 60px;
+  --text-display--letter-spacing: -1.5px;
+  --text-display--font-weight: 800;
+  --text-h1: 36px;
+  --text-h1--line-height: 42px;
+  --text-h1--letter-spacing: -0.8px;
+  --text-h1--font-weight: 700;
+  --text-h2: 24px;
+  --text-h2--line-height: 30px;
+  --text-h2--letter-spacing: -0.3px;
+  --text-h2--font-weight: 700;
+  --text-h3: 18px;
+  --text-h3--line-height: 24px;
+  --text-h3--font-weight: 700;
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body: 16px;
+  --text-body--line-height: 24px;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 20px;
+  --text-label: 14px;
+  --text-label--line-height: 20px;
+  --text-label--font-weight: 600;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--letter-spacing: 0.4px;
+  --text-caption--font-weight: 700;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--pk-surface-100);
+    color: var(--pk-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--pk-focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--pk-ipe);
+    color: var(--pk-on-ipe);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Linha de chips com rolagem lateral, sem barra visível */
+@utility sem-barra {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Ajustes do mapa (MapLibre) para combinar com a marca */
+.maplibregl-map {
+  font-family: var(--font-sans);
+}
+.maplibregl-popup-content {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--pk-shadow-raised);
+  background: var(--pk-surface-200);
+  color: var(--pk-ink);
+}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--pk-surface-200);
+}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--pk-surface-200);
+}
+.maplibregl-popup-close-button {
+  font-size: 18px;
+  padding: 2px 8px;
+  color: var(--pk-ink-muted);
+}
+.maplibregl-ctrl-attrib {
+  font-size: 11px;
 }

@@ -1,0 +1,146 @@
+import { Heart, Lock, Megaphone, ShieldAlert } from "lucide-react";
+import type { Metadata } from "next";
+import { PassosComoFunciona } from "@/components/inicio";
+import { Container } from "@/components/ui/basicos";
+import { BotaoLink } from "@/components/ui/botao";
+
+export const metadata: Metadata = {
+  title: "Como funciona",
+  description:
+    "Quem precisa publica, quem faz curte. Quando dá match, o WhatsApp aparece. Veja como usar o Publike e as dicas de segurança.",
+};
+
+const CONTRATA = [
+  "Publique vaga com carteira, temporária, diária, bico ou um serviço que você precisa.",
+  "Diga o bairro e marque a região no mapa: quem mora perto vê primeiro.",
+  "Veja quem curtiu e o que cada pessoa faz. Curta de volta quem combina com você.",
+  "O anúncio fica 30 dias no ar. Dá para pausar, encerrar ou renovar quando quiser.",
+];
+
+const TRABALHA = [
+  "Veja vagas, bicos e serviços perto de você, no mapa ou em lista.",
+  "Curta o que combina. Se quiser, mande uma mensagem curta junto.",
+  "Quando der match, o WhatsApp de quem publicou aparece no seu painel.",
+  "Seu número nunca fica público no site.",
+];
+
+const SEGURANCA = [
+  "Ninguém pode cobrar para você conseguir trabalho: nada de taxa de cadastro, curso, uniforme ou exame pago antes de contratar.",
+  "Desconfie de salário muito acima do normal ou de pressa para fechar negócio.",
+  "Não mande foto de documento, senha ou códigos que chegam por SMS.",
+  "Na entrevista ou no primeiro serviço, prefira lugares movimentados e avise alguém de confiança.",
+  "Combinou um serviço? Deixe valor e prazo por escrito no WhatsApp.",
+  "Viu algo estranho? Denuncie. Três denúncias tiram o anúncio do ar até a moderação analisar.",
+];
+
+const PERGUNTAS = [
+  {
+    p: "É grátis mesmo?",
+    r: "Sim. Publicar, curtir e conversar é de graça para quem trabalha, para o comércio do bairro e para quem presta serviço.",
+  },
+  {
+    p: "O que é match?",
+    r: "É quando os dois lados se curtem: você curte um anúncio e quem publicou curte você de volta. Aí o WhatsApp dos dois aparece.",
+  },
+  {
+    p: "Por que o telefone não aparece no anúncio?",
+    r: "Para evitar golpes e spam. O contato só aparece quando dá match, e só para as duas pessoas.",
+  },
+  {
+    p: "Quem pode publicar?",
+    r: "Qualquer pessoa, comércio ou empresa de Goiânia e região, com um WhatsApp no perfil.",
+  },
+  {
+    p: "Quanto tempo o anúncio fica no ar?",
+    r: "30 dias. Depois ele expira, e você renova com um toque no seu painel.",
+  },
+  {
+    p: "Como denunciar?",
+    r: "Abra o anúncio e toque em “Denunciar anúncio”. Quem publicou não fica sabendo quem denunciou.",
+  },
+];
+
+export default function ComoFunciona() {
+  return (
+    <>
+      <section className="border-b border-line">
+        <Container className="py-10 sm:py-14">
+          <h1 className="max-w-3xl text-h1 sm:text-display">Quem precisa publica. Quem faz curte.</h1>
+          <p className="mt-4 max-w-2xl text-body-lg text-ink-muted">
+            O Publike é um mural de oportunidades de Goiânia e região: vagas com carteira, diárias, bicos e serviços,
+            organizados por bairro e distância. De graça.
+          </p>
+        </Container>
+      </section>
+
+      <Container className="py-10">
+        <PassosComoFunciona />
+
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
+          {[
+            { titulo: "Para quem contrata", icone: Megaphone, itens: CONTRATA },
+            { titulo: "Para quem trabalha", icone: Heart, itens: TRABALHA },
+          ].map(({ titulo, icone: Icone, itens }) => (
+            <section key={titulo} className="rounded-lg border border-line bg-surface-200 p-6">
+              <h2 className="flex items-center gap-3 text-h2">
+                <Icone aria-hidden className="size-6 text-terra-text" />
+                {titulo}
+              </h2>
+              <ul className="mt-4 flex flex-col gap-3 text-body">
+                {itens.map((i) => (
+                  <li key={i} className="flex gap-3">
+                    <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-pill bg-ink" />
+                    {i}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+
+        <section id="seguranca" className="mt-12 scroll-mt-24 rounded-lg bg-terra-soft p-6 sm:p-8">
+          <h2 className="flex items-center gap-3 text-h2">
+            <ShieldAlert aria-hidden className="size-6 text-terra-text" />
+            Dicas de segurança
+          </h2>
+          <ul className="mt-4 flex flex-col gap-3 text-body">
+            {SEGURANCA.map((s) => (
+              <li key={s} className="flex gap-3">
+                <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-pill bg-terra-text" />
+                {s}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 flex gap-3 text-body-sm">
+            <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
+            Os anúncios mostram só a região, uma área de uns 500 metros. O endereço exato nunca é publicado.
+          </p>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-h2">Perguntas frequentes</h2>
+          <div className="mt-4 flex flex-col gap-2">
+            {PERGUNTAS.map(({ p, r }) => (
+              <details key={p} className="group rounded-md border border-line bg-surface-200 px-5 py-4">
+                <summary className="cursor-pointer list-none text-label marker:hidden">
+                  <span className="flex items-center justify-between gap-4">
+                    {p}
+                    <span aria-hidden className="text-h3 text-ink-muted transition-transform group-open:rotate-45">
+                      +
+                    </span>
+                  </span>
+                </summary>
+                <p className="mt-3 text-body text-ink-muted">{r}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <div className="mt-12 flex flex-wrap gap-3">
+          <BotaoLink href="/">Ver oportunidades</BotaoLink>
+          <BotaoLink href="/publicar">Publicar grátis</BotaoLink>
+        </div>
+      </Container>
+    </>
+  );
+}
