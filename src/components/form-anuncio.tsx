@@ -148,7 +148,7 @@ export function FormAnuncio({
                   <Check aria-hidden className="size-4" />
                 </span>
                 <span className="block text-body-sm text-ink-muted">
-                  Contratar alguém: com carteira, temporário, diária ou bico (um pedreiro para um reboco, uma faxina…).
+                  Contratar alguém: com carteira, temporário, diária ou freelance (um pedreiro para um reboco, uma faxina…).
                 </span>
               </span>
             </div>

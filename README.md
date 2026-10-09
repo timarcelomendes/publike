@@ -1,6 +1,6 @@
 # Publike
 
-**Vagas, bicos e serviços perto de você. De graça.**
+**Vagas, freelances e serviços perto de você. De graça.**
 
 Site do Publike, um mural de oportunidades de Goiânia e região: quem precisa publica, quem faz curte, e quando os dois se curtem (match) o WhatsApp aparece.
 
@@ -11,7 +11,7 @@ Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real)
 ## O que já funciona
 
 - **Busca por perto**: mapa e lista, filtros (vaga ou serviço, categoria, contratação, distância, ordem) e "Perto de mim".
-- **Publicar** vaga (CLT, temporário, diária, bico, estágio, PJ) ou serviço, com a região marcada no mapa. O endereço exato nunca é salvo: o ponto vira uma área de uns 500 m.
+- **Publicar** vaga (CLT, temporário, diária, freelance, estágio, PJ) ou serviço, com a região marcada no mapa. O endereço exato nunca é salvo: o ponto vira uma área de uns 500 m.
 - **Curtir e dar match**: quem trabalha curte (com mensagem opcional), quem publicou curte de volta, e o WhatsApp dos dois aparece só aí.
 - **Desfazer match**: qualquer lado desiste com motivo e justificativa obrigatórios, e responde se toparia negociar em outro momento. O contato some para os dois; a outra pessoa vê o motivo, a equipe vê a justificativa na ficha da pessoa (e recebe aviso quando o motivo é comportamento). "Sim" deixa curtir e dar match de novo; "Não" bloqueia os dois de curtir os anúncios um do outro.
 - **Painel**: meus anúncios (pausar, encerrar, renovar, editar, excluir), quem curtiu, minhas curtidas e matches, mais o sino de avisos em tempo real.

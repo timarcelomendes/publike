@@ -52,7 +52,7 @@ function descreverAnuncio(a: AnuncioParaIA) {
 
 // ------------------------------------------------------------------ moderação
 
-const SISTEMA_MODERACAO = `Você é a moderação automática do Publike, um mural gratuito de vagas de emprego, bicos e serviços em Goiânia (GO), Brasil.
+const SISTEMA_MODERACAO = `Você é a moderação automática do Publike, um mural gratuito de vagas de emprego, trabalhos freelance e serviços em Goiânia (GO), Brasil.
 
 Leia o anúncio e decida se ele pode continuar no ar ("aprovar") ou se deve sair do ar até uma pessoa da equipe olhar ("reter").
 
@@ -186,7 +186,7 @@ export async function revisarAvaliacao(a: TextoDeAvaliacao, modeloEscolhido: str
 
 // ------------------------------------------------------------------ melhorar texto
 
-const SISTEMA_TEXTO = `Você ajuda pessoas de Goiânia a escrever anúncios para o Publike, um mural gratuito de vagas, bicos e serviços.
+const SISTEMA_TEXTO = `Você ajuda pessoas de Goiânia a escrever anúncios para o Publike, um mural gratuito de vagas, freelances e serviços.
 
 Reescreva o título e a descrição em português do Brasil claro, direto e simpático, como quem fala com um vizinho.
 - Mantenha todos os fatos: valores, horários, requisitos, local, quantidade de vagas.
@@ -229,7 +229,7 @@ export async function sugerirTexto(a: AnuncioParaIA, modelo: string): Promise<{ 
 
 // ------------------------------------------------------------------ resumo do painel
 
-const SISTEMA_RESUMO = `Você é analista do Publike, um mural gratuito de vagas, bicos e serviços em Goiânia (GO).
+const SISTEMA_RESUMO = `Você é analista do Publike, um mural gratuito de vagas, freelances e serviços em Goiânia (GO).
 Com os números do período, escreva para o dono do site um resumo curto em português do Brasil:
 - até 8 tópicos começando com "- ";
 - primeiro o que aconteceu (cadastros, anúncios, curtidas, matches), comparando com o período anterior quando houver;

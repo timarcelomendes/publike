@@ -21,7 +21,7 @@ export function Rodape() {
         <div className="max-w-sm">
           <Logo altura={28} />
           <p className="mt-3 text-body-sm text-ink-muted">
-            Vagas, bicos e serviços perto de você. De graça, em Goiânia e região.
+            Vagas, freelances e serviços perto de você. De graça, em Goiânia e região.
           </p>
           <p className="mt-3 font-display text-h3">Publicou, curtiu, trabalhou.</p>
         </div>

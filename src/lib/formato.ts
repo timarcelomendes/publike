@@ -84,7 +84,7 @@ export function formatarMesAno(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: FUSO }).format(new Date(iso));
 }
 
-/** Selo do card: CLT, Diária, Bico… ou Serviço. */
+/** Selo do card: CLT, Diária, Freelance… ou Serviço. */
 export function rotuloModalidade(tipo: string, regime: string | null) {
   if (tipo === "vaga" && regime && regime in REGIMES) return REGIMES[regime as Regime].selo;
   return TIPOS_ANUNCIO[(tipo as TipoAnuncio) in TIPOS_ANUNCIO ? (tipo as TipoAnuncio) : "servico"].selo;

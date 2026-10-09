@@ -23,11 +23,11 @@ const bricolage = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Publike · Vagas, bicos e serviços perto de você",
+    default: "Publike · Vagas, freelances e serviços perto de você",
     template: "%s · Publike",
   },
   description:
-    "Vagas com carteira, diárias, bicos e profissionais do bairro em Goiânia e região. Curtiu, deu match, vocês conversam. De graça.",
+    "Vagas com carteira, diárias, freelances e profissionais do bairro em Goiânia e região. Curtiu, deu match, vocês conversam. De graça.",
   applicationName: "Publike",
   openGraph: {
     type: "website",

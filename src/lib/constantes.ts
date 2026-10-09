@@ -197,7 +197,7 @@ export const REGIMES: Record<Regime, { nome: string; selo: string; ajuda: string
   clt: { nome: "Com carteira (CLT)", selo: "CLT", ajuda: "Emprego com carteira assinada" },
   temporario: { nome: "Temporário", selo: "Temporário", ajuda: "Contrato por um período" },
   diaria: { nome: "Diária", selo: "Diária", ajuda: "Paga por dia de trabalho" },
-  freelance: { nome: "Bico / freelance", selo: "Bico", ajuda: "Trabalho pontual, por tarefa" },
+  freelance: { nome: "Freelance", selo: "Freelance", ajuda: "Trabalho pontual, por tarefa ou projeto" },
   estagio: { nome: "Estágio", selo: "Estágio", ajuda: "Para estudantes" },
   pj: { nome: "PJ / MEI", selo: "PJ", ajuda: "Contrato com CNPJ ou MEI" },
   outro: { nome: "Outro", selo: "Outro", ajuda: "Outra forma de contratação" },

@@ -245,7 +245,7 @@ export function FormCurriculo({
 
       <Secao
         titulo="Onde você já trabalhou"
-        descricao="Do mais recente para o mais antigo. Bico e trabalho sem carteira também contam. Primeiro emprego? Pode deixar vazio e contar dos cursos."
+        descricao="Do mais recente para o mais antigo. Freelance e trabalho sem carteira também contam. Primeiro emprego? Pode deixar vazio e contar dos cursos."
       >
         {experiencias.map((x, i) => {
           const id = (c: string) => `exp-${x.chave}-${c}`;

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 const CONTRATA = [
-  "Publique a vaga: com carteira, temporária, diária ou bico (um reboco, uma faxina, um conserto).",
+  "Publique a vaga: com carteira, temporária, diária ou freelance (um reboco, uma faxina, um conserto).",
   "Ou procure um profissional: pedreiro, diarista, eletricista… Veja fotos dos trabalhos e o preço, e peça para contratar.",
   "Diga o bairro e marque a região no mapa: quem mora perto vê primeiro.",
   "Veja quem curtiu a vaga e o que cada pessoa faz. Curta de volta quem combina com você.",
@@ -19,7 +19,7 @@ const CONTRATA = [
 ];
 
 const TRABALHA = [
-  "Veja vagas e bicos perto de você, no mapa ou em lista. Curta o que combina.",
+  "Veja vagas e freelances perto de você, no mapa ou em lista. Curta o que combina.",
   "Vai atrás de vaga com carteira ou estágio? Preencha “Meu currículo” uma vez: quem anunciou a vaga que você curtiu vê junto com seu perfil.",
   "Oferece serviços? Monte sua vitrine em “Meus serviços”: o que você faz, o preço, fotos e onde atende.",
   "Quando alguém quiser contratar você, chega um aviso. Aceitou, deu match: o WhatsApp aparece no painel.",
@@ -81,7 +81,7 @@ export default function ComoFunciona() {
         <Container className="py-10 sm:py-14">
           <h1 className="max-w-3xl text-h1 sm:text-display">Quem precisa publica. Quem faz curte.</h1>
           <p className="mt-4 max-w-2xl text-body-lg text-ink-muted">
-            O Publike é um mural de oportunidades de Goiânia e região: vagas com carteira, diárias, bicos e serviços,
+            O Publike é um mural de oportunidades de Goiânia e região: vagas com carteira, diárias, freelances e serviços,
             organizados por bairro e distância. De graça.
           </p>
         </Container>
