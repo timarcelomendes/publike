@@ -146,7 +146,7 @@ export function Vazio({
 
 /** A assinatura em SVG, com a versão escura no tema escuro. */
 export function Logo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
-  const largura = Math.round((altura * 822) / 217);
+  const largura = Math.round((altura * 806) / 217);
   return (
     <picture className={className}>
       <source media="(prefers-color-scheme: dark)" srcSet="/logo/publike-logo-escuro.svg" />
@@ -156,7 +156,7 @@ export function Logo({ altura = 32, className = "" }: { altura?: number; classNa
 }
 
 export function Simbolo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
-  const largura = Math.round((altura * 147) / 183);
+  const largura = Math.round((altura * 131) / 183);
   return (
     <picture className={className}>
       <source media="(prefers-color-scheme: dark)" srcSet="/logo/publike-simbolo-branco.svg" />
