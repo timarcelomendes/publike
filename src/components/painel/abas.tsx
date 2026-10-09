@@ -13,7 +13,7 @@ const ABAS = [
 function abaAtiva(caminho: string | null) {
   if (!caminho) return null;
   if (caminho.startsWith("/painel/curtidas")) return "/painel/curtidas";
-  if (caminho.startsWith("/painel/servicos")) return "/painel/servicos";
+  if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "/painel/servicos";
   if (caminho.startsWith("/painel/matches")) return "/painel/matches";
   return "/painel";
 }

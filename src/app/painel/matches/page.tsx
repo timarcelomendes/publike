@@ -1,4 +1,4 @@
-import { MessageCircleHeart } from "lucide-react";
+import { MessageCircleHeart, Star } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { BotoesContato } from "@/components/contato";
@@ -66,12 +66,27 @@ async function Conteudo() {
                 </p>
               </div>
               <p className="text-body-sm">
-                {m.papel === "publiquei" ? "Curtiu o seu anúncio " : "Você curtiu "}
+                {m.papel === "publiquei"
+                  ? m.anuncio_tipo === "servico"
+                    ? "Pediu o seu serviço "
+                    : "Curtiu o seu anúncio "
+                  : m.anuncio_tipo === "servico"
+                    ? "Você pediu "
+                    : "Você curtiu "}
                 <Link href={`/anuncio/${m.anuncio_id}`} className="font-semibold underline-offset-2 hover:underline">
                   “{m.anuncio_titulo}”
                 </Link>
               </p>
               <BotoesContato whatsapp={m.outro_whatsapp} email={m.outro_email} mensagem={mensagem} />
+              {m.papel === "curti" && m.anuncio_tipo === "servico" && (
+                <Link
+                  href={`/anuncio/${m.anuncio_id}/avaliar`}
+                  className="inline-flex min-h-11 items-center gap-2 self-start text-label text-terra-text underline-offset-2 hover:underline"
+                >
+                  <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
+                  Avaliar o serviço
+                </Link>
+              )}
             </div>
           </li>
         );

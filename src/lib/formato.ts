@@ -183,6 +183,11 @@ export function nomeDoProvedor(provedor: string | null | undefined) {
   return (provedor && PROVEDORES[provedor]) || provedor || "E-mail";
 }
 
+/** 4.8 → "4,8" */
+export function formatarNota(media: number) {
+  return media.toFixed(1).replace(".", ",");
+}
+
 /** 1234 → "1.234" */
 export function formatarNumero(n: number) {
   return new Intl.NumberFormat("pt-BR").format(n);

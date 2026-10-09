@@ -1,7 +1,7 @@
 import "server-only";
 import type { Filtros } from "./filtros";
 import { chaveBairro, chavesDaRegiao, type Local } from "./regioes";
-import type { AnuncioCompleto, AnuncioDoPerfil, AnuncioResumo, Perfil } from "./tipos";
+import type { AnuncioCompleto, AnuncioDoPerfil, AnuncioResumo, AvaliacaoPublica, Perfil } from "./tipos";
 
 // Dados de exemplo para o modo demonstração (sem Supabase configurado).
 // Pessoas e empresas fictícias, só para ver o site funcionando.
@@ -198,6 +198,42 @@ const BASE: Base[] = [
   },
 ];
 
+/** Avaliações de exemplo (só de serviços). */
+const AVALIACOES: { profissional: string; anuncio: string; nota: number; quem: string; dias: number; comentario?: string; resposta?: string }[] = [
+  { profissional: "demo-antonio", anuncio: "demo-08", nota: 5, quem: "Rita", dias: 3, comentario: "Rebocou o muro em dois dias e deixou tudo limpo. Recomendo.", resposta: "Obrigado, Rita! Foi um prazer." },
+  { profissional: "demo-antonio", anuncio: "demo-19", nota: 5, quem: "Maria", dias: 12, comentario: "Pintura caprichada, cumpriu o prazo." },
+  { profissional: "demo-antonio", anuncio: "demo-08", nota: 4, quem: "Diego", dias: 30, comentario: "Bom serviço. Atrasou meio dia, mas avisou antes." },
+  { profissional: "demo-joana", anuncio: "demo-17", nota: 5, quem: "Luciana", dias: 2, comentario: "A casa ficou brilhando. Já marquei de novo." },
+  { profissional: "demo-joana", anuncio: "demo-17", nota: 5, quem: "Patrícia", dias: 9 },
+  { profissional: "demo-joana", anuncio: "demo-17", nota: 4, quem: "Ricardo", dias: 20, comentario: "Muito educada e rápida." },
+  { profissional: "demo-joana", anuncio: "demo-17", nota: 5, quem: "Antônio", dias: 41, comentario: "Pontual e de confiança." },
+  { profissional: "demo-marcos", anuncio: "demo-18", nota: 5, quem: "Joana", dias: 6, comentario: "Resolveu o chuveiro em meia hora." },
+];
+
+export function notaDemo(profissional: string) {
+  const lista = AVALIACOES.filter((a) => a.profissional === profissional);
+  if (!lista.length) return { media: null, total: 0 };
+  const media = Math.round((lista.reduce((t, a) => t + a.nota, 0) / lista.length) * 10) / 10;
+  return { media, total: lista.length };
+}
+
+export function avaliacoesDemo(profissional: string, agora: number): AvaliacaoPublica[] {
+  return AVALIACOES.map((a, i) => ({ ...a, i }))
+    .filter((a) => a.profissional === profissional)
+    .map((a) => ({
+      id: a.i + 1,
+      nota: a.nota,
+      comentario: a.comentario ?? null,
+      titulo_servico: BASE.find((b) => b.id === a.anuncio)?.titulo ?? "",
+      anuncio_id: a.anuncio,
+      criado_em: new Date(agora - a.dias * DIA).toISOString(),
+      autor_nome: a.quem,
+      autor_foto: null,
+      resposta: a.resposta ?? null,
+      respondida_em: a.resposta ? new Date(agora - (a.dias - 1) * DIA).toISOString() : null,
+    }));
+}
+
 function aproximar(n: number) {
   return Math.round(n / 0.005) * 0.005;
 }
@@ -281,6 +317,8 @@ function resumo(c: AnuncioCompleto, lat: number, lng: number): AnuncioResumo {
     prioridade: 3,
     oficio: c.oficio,
     foto: c.fotos[0] ?? null,
+    autor_nota: c.tipo === "servico" ? notaDemo(c.autor_id).media : null,
+    autor_avaliacoes: c.tipo === "servico" ? notaDemo(c.autor_id).total : 0,
   };
 }
 

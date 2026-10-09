@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, PartyPopper } from "lucide-react";
+import { Heart, PartyPopper, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -71,6 +71,15 @@ export function PainelCurtir({ idCampo, anuncioId, titulo, tipo, status, mensage
             mensagem={`Olá! Deu match no Publike em “${titulo}”. Podemos conversar?`}
           />
         </div>
+        {servico && (
+          <Link
+            href={`/anuncio/${anuncioId}/avaliar`}
+            className="inline-flex min-h-11 items-center gap-2 self-start rounded-pill bg-surface-200 px-4 text-label text-ink hover:bg-surface-300"
+          >
+            <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
+            Avaliar o serviço
+          </Link>
+        )}
       </div>
     );
   }

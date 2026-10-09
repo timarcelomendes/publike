@@ -11,12 +11,15 @@ import type {
   AnuncioCompleto,
   AnuncioDoPerfil,
   AnuncioResumo,
+  AvaliacaoPublica,
+  AvaliacaoRecebida,
   Interessado,
   ItemModeracao,
   Match,
   MeuAnuncio,
-  MeuServico,
   MeuPerfil,
+  MeuServico,
+  MinhaAvaliacao,
   MinhaCurtida,
   Perfil,
   Usuario,
@@ -209,6 +212,45 @@ export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Pe
     })),
   };
 });
+
+/** Avaliações publicadas de um profissional (perfil e página do serviço). */
+export const listarAvaliacoesPublicas = cache(async (profissionalId: string): Promise<AvaliacaoPublica[]> => {
+  if (MODO_DEMO) return demo.avaliacoesDemo(profissionalId, await agoraDaRequisicao());
+  if (!UUID.test(profissionalId)) return [];
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("avaliacoes_publicas", { p_profissional: profissionalId });
+  if (error) falha("avaliações", error);
+  return data ?? [];
+});
+
+/** Média e total das avaliações publicadas de um profissional. */
+export const obterNotaDoProfissional = cache(
+  async (profissionalId: string): Promise<{ media: number | null; total: number }> => {
+    if (MODO_DEMO) return demo.notaDemo(profissionalId);
+    if (!UUID.test(profissionalId)) return { media: null, total: 0 };
+    const supabase = await criarClienteServidor();
+    const { data, error } = await supabase.rpc("nota_do_profissional", { p_profissional: profissionalId }).maybeSingle();
+    if (error) falha("nota do profissional", error);
+    return { media: data?.media ?? null, total: data?.total ?? 0 };
+  },
+);
+
+/** A avaliação que eu dei a um serviço (ou null). */
+export async function obterMinhaAvaliacao(anuncioId: string): Promise<MinhaAvaliacao | null> {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return null;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("minha_avaliacao", { p_anuncio: anuncioId }).maybeSingle();
+  if (error) falha("sua avaliação", error);
+  return data ?? null;
+}
+
+/** As avaliações que o profissional logado recebeu (para responder). */
+export async function listarAvaliacoesRecebidas(): Promise<AvaliacaoRecebida[]> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("minhas_avaliacoes_recebidas");
+  if (error) falha("avaliações recebidas", error);
+  return data ?? [];
+}
 
 export async function filaModeracao(): Promise<ItemModeracao[]> {
   const supabase = await criarClienteServidor();

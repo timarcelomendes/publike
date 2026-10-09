@@ -120,6 +120,8 @@ export function oficio(slug: string | null | undefined) {
 export const MAX_SERVICOS = 8;
 /** Fotos de trabalhos por serviço. */
 export const MAX_FOTOS = 6;
+/** A média das avaliações só aparece a partir deste total (uma nota isolada pesa demais). */
+export const MIN_AVALIACOES = 3;
 
 export const REGIMES: Record<Regime, { nome: string; selo: string; ajuda: string }> = {
   clt: { nome: "Com carteira (CLT)", selo: "CLT", ajuda: "Emprego com carteira assinada" },

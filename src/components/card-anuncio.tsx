@@ -11,6 +11,7 @@ import {
   valorDoAnuncio,
 } from "@/lib/formato";
 import type { DadosCard } from "@/lib/tipos";
+import { NotaDoProfissional } from "./avaliacoes";
 import { BotaoCurtir } from "./botao-curtir";
 import { Selo } from "./ui/basicos";
 
@@ -67,6 +68,7 @@ export function CardAnuncio({
               <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
             )}
           </p>
+          {servico && <NotaDoProfissional media={anuncio.autor_nota} total={anuncio.autor_avaliacoes} compacto />}
         </div>
         {foto && (
           <Image

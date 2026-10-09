@@ -152,6 +152,8 @@ Depois, do mesmo jeito, rode `supabase/migrations/20261009120000_prioridade_loca
 
 Por último, rode `supabase/migrations/20261009150000_servicos.sql`. Ela transforma "serviço" em oferta: o profissional monta a vitrine em **Meu painel > Meus serviços** (o que faz, preço ou "a combinar", fotos de trabalhos e onde atende), e cada serviço aparece separado na busca. Quem precisa contratar toca em "Quero contratar"; o profissional aceita e dá match. Ela também cria a pasta de fotos `trabalhos` no Storage. Os anúncios de serviço antigos (pedidos, do tempo de teste) são apagados.
 
+Depois, rode `supabase/migrations/20261009180000_avaliacoes.sql`. Ela cria as avaliações: só avalia quem deu match com o serviço, com nota de 1 a 5 e comentário opcional; a média aparece a partir de 3 avaliações e o profissional responde uma vez. Com a moderação por IA ligada, todo comentário e toda resposta passam por ela antes de aparecer: texto com ofensa, ameaça, discriminação ou dados pessoais fica retido, quem escreveu leva uma advertência e o texto vai para **Admin > Denúncias > Avaliações**. De lá, a equipe publica ou remove; suspender ou banir continua na ficha da pessoa.
+
 ### 4.2 Abrir o admin (só no seu computador)
 
 O admin não tem login: ele só existe no seu computador, com o site rodando em `npm run dev`. No site publicado, `/admin` não abre para ninguém além dos moderadores (veja 4.6).
@@ -320,7 +322,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` e `20261009150000_servicos.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql` e `20261009180000_avaliacoes.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

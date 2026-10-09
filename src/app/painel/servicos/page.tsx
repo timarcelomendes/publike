@@ -1,11 +1,13 @@
-import { Store } from "lucide-react";
+import { ChevronRight, Store } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { FormServicos, type ValoresServicos } from "@/components/form-servicos";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { listarMeusServicos } from "@/lib/dados";
+import { NotaDoProfissional } from "@/components/avaliacoes";
+import { listarMeusServicos, obterNotaDoProfissional } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { regiaoDoBairro } from "@/lib/regioes";
 import { exigirPerfilCompleto } from "@/lib/sessao";
@@ -57,7 +59,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
   }
 
   const { usuario, perfil } = await exigirPerfilCompleto("/painel/servicos");
-  const servicos = await listarMeusServicos();
+  const [servicos, nota] = await Promise.all([listarMeusServicos(), obterNotaDoProfissional(usuario.id)]);
   // o que é igual para todos (onde fica, onde atende, quando) vem do primeiro serviço
   const base = servicos.find((s) => s.status !== "em_analise" && s.status !== "removido") ?? servicos[0];
   const inicial: ValoresServicos = {
@@ -95,6 +97,22 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
             </BotaoLink>
           </p>
         </Aviso>
+      )}
+      {servicos.length > 0 && (
+        <Link
+          href="/painel/avaliacoes"
+          className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-200 p-4 transition-colors hover:bg-surface-300"
+        >
+          <span className="flex flex-col gap-0.5">
+            <span className="text-label">Avaliações recebidas</span>
+            {nota.total > 0 ? (
+              <NotaDoProfissional media={nota.media} total={nota.total} />
+            ) : (
+              <span className="text-body-sm text-ink-muted">Ainda nenhuma. Quem contratar você pode avaliar.</span>
+            )}
+          </span>
+          <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />
+        </Link>
       )}
       <FormServicos inicial={inicial} usuarioId={usuario.id} />
     </>

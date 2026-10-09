@@ -14,7 +14,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Dado, Secao } from "@/components/admin/ui";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
-import { fichaUsuario, listarAnuncios, registroDaEquipe } from "@/lib/admin/dados";
+import { advertenciasDe, fichaUsuario, listarAnuncios, registroDaEquipe } from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
 import {
   ehParaSempre,
@@ -44,10 +44,11 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
   const c = await exigirAdminLocal();
   const { id } = await params;
   if (!UUID.test(id)) notFound();
-  const [u, anuncios, registro, agora] = await Promise.all([
+  const [u, anuncios, registro, advertencias, agora] = await Promise.all([
     fichaUsuario(c, id),
     listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
     registroDaEquipe(c, 20, id),
+    advertenciasDe(c, id),
     agoraDaRequisicao(),
   ]);
   if (!u) notFound();
@@ -177,6 +178,24 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
           </ul>
         )}
       </Secao>
+
+      {advertencias.length > 0 && (
+        <Secao
+          titulo={`Advertências (${advertencias.length})`}
+          descricao="Textos de avaliação retidos pela IA ou removidos pela equipe. Use para decidir uma suspensão."
+        >
+          <ul className="flex flex-col divide-y divide-line">
+            {advertencias.map((a) => (
+              <li key={a.id} className="flex flex-col gap-0.5 py-2.5 text-body-sm">
+                <span>{a.motivo}</span>
+                <span className="text-ink-muted">
+                  {formatarDataHora(a.criado_em)} · {a.origem === "ia" ? "IA" : "Equipe"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      )}
 
       {u.historico.length > 0 && (
         <Secao titulo="Suspensões">

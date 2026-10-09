@@ -173,6 +173,20 @@ export async function fichaAnuncio(c: ClienteBanco, id: string) {
   return (data as unknown as FichaAnuncio | null) ?? null;
 }
 
+/** Advertências da pessoa (textos de avaliação retidos ou removidos). */
+export async function advertenciasDe(c: ClienteBanco, usuarioId: string) {
+  const { data, error } = await c.rpc("admin_advertencias", { p_usuario: usuarioId });
+  if (error) falha("as advertências", error);
+  return data ?? [];
+}
+
+/** Avaliações retidas pela IA, sem revisão ou denunciadas pelo profissional. */
+export async function filaDeAvaliacoes(c: ClienteBanco) {
+  const { data, error } = await c.rpc("fila_avaliacoes");
+  if (error) falha("a fila de avaliações", error);
+  return data ?? [];
+}
+
 export async function filaDaModeracao(c: ClienteBanco) {
   const { data, error } = await c.rpc("fila_moderacao");
   if (error) falha("a fila da moderação", error);

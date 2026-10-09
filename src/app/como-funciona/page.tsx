@@ -40,6 +40,10 @@ const PERGUNTAS = [
     r: "Sim. Publicar, curtir e conversar é de graça para quem trabalha, para o comércio do bairro e para quem presta serviço.",
   },
   {
+    p: "Como funcionam as avaliações?",
+    r: "Quem contratou um profissional pelo Publike avalia depois do match, com nota de 1 a 5 e um comentário. A nota média aparece a partir de 3 avaliações, e o profissional pode responder uma vez. Os textos passam por uma revisão automática: crítica honesta é publicada; ofensa, ameaça ou dados pessoais, não.",
+  },
+  {
     p: "O que é match?",
     r: "É quando os dois lados topam: você curte uma vaga e quem publicou curte você de volta, ou você pede um serviço e o profissional aceita. Aí o WhatsApp dos dois aparece.",
   },

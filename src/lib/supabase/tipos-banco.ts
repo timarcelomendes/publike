@@ -288,6 +288,9 @@ export type Database = {
           oficio: string | null;
           /** primeira foto de trabalho (serviço) */
           foto: string | null;
+          /** média das avaliações publicadas do profissional (só serviço) */
+          autor_nota: number | null;
+          autor_avaliacoes: number;
         }[];
       };
       obter_anuncio: {
@@ -439,6 +442,112 @@ export type Database = {
           status: string;
           expira_em: string;
         }[];
+      };
+      avaliar: {
+        Args: { p_anuncio: string; p_nota: number; p_comentario?: string | null };
+        /** "publicada" ou "pendente" (esperando a IA) */
+        Returns: string;
+      };
+      responder_avaliacao: {
+        Args: { p_avaliacao: number; p_resposta: string };
+        Returns: string;
+      };
+      denunciar_avaliacao: {
+        Args: { p_avaliacao: number; p_motivo: string };
+        Returns: undefined;
+      };
+      avaliacoes_publicas: {
+        Args: { p_profissional: string; p_limite?: number };
+        Returns: {
+          id: number;
+          nota: number;
+          comentario: string | null;
+          titulo_servico: string;
+          anuncio_id: string | null;
+          criado_em: string;
+          autor_nome: string;
+          autor_foto: string | null;
+          resposta: string | null;
+          respondida_em: string | null;
+        }[];
+      };
+      minhas_avaliacoes_recebidas: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: number;
+          nota: number;
+          comentario: string | null;
+          titulo_servico: string;
+          anuncio_id: string | null;
+          criado_em: string;
+          autor_nome: string;
+          autor_foto: string | null;
+          resposta: string | null;
+          resposta_status: string | null;
+          denunciada: boolean;
+        }[];
+      };
+      minha_avaliacao: {
+        Args: { p_anuncio: string };
+        Returns: { id: number; nota: number; comentario: string | null; status: string; criado_em: string }[];
+      };
+      nota_do_profissional: {
+        Args: { p_profissional: string };
+        Returns: { media: number | null; total: number }[];
+      };
+      fila_avaliacoes: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          avaliacao_id: number;
+          parte: string;
+          situacao: string;
+          texto: string | null;
+          nota: number;
+          titulo_servico: string;
+          anuncio_id: string | null;
+          escritor_id: string;
+          escritor_nome: string;
+          escritor_advertencias: number;
+          profissional_id: string;
+          profissional_nome: string;
+          ia_categorias: string[];
+          ia_explicacao: string | null;
+          motivo_denuncia: string | null;
+          criado_em: string;
+        }[];
+      };
+      moderar_avaliacao: {
+        Args: { p_avaliacao: number; p_parte: string; p_decisao: string };
+        Returns: undefined;
+      };
+      admin_advertencias: {
+        Args: { p_usuario: string };
+        Returns: { id: number; origem: string; motivo: string; avaliacao_id: number | null; criado_em: string }[];
+      };
+      servidor_pegar_avaliacoes_ia: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: {
+          avaliacao_id: number;
+          parte: string;
+          versao: string;
+          texto: string | null;
+          nota: number;
+          titulo_servico: string;
+          modelo: string;
+        }[];
+      };
+      servidor_resultado_avaliacao: {
+        Args: {
+          p_chave: string;
+          p_avaliacao: number;
+          p_parte: string;
+          p_versao: string;
+          p_decisao: string;
+          p_categorias?: string[];
+          p_explicacao?: string | null;
+          p_modelo?: string | null;
+        };
+        Returns: string;
       };
       salvar_meus_servicos: {
         Args: {

@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { CardAnuncio } from "@/components/card-anuncio";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TIPOS_CONTA } from "@/lib/constantes";
-import { obterPerfilPublico, obterUsuario } from "@/lib/dados";
+import { listarAvaliacoesPublicas, obterNotaDoProfissional, obterPerfilPublico, obterUsuario } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
@@ -35,7 +36,12 @@ export default function PerfilPublico({ params }: PageProps<"/perfil/[id]">) {
 
 async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"] }) {
   const { id } = await params;
-  const [dados, usuario] = await Promise.all([obterPerfilPublico(id), obterUsuario()]);
+  const [dados, usuario, avaliacoes, nota] = await Promise.all([
+    obterPerfilPublico(id),
+    obterUsuario(),
+    listarAvaliacoesPublicas(id),
+    obterNotaDoProfissional(id),
+  ]);
   if (!dados) notFound();
   const { perfil, anuncios } = dados;
   const agora = await agoraDaRequisicao();
@@ -69,6 +75,13 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           <p className="mt-1 text-body text-ink-muted">
             {tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} · no Publike desde {formatarMesAno(perfil.criado_em)}
           </p>
+          {nota.total > 0 && (
+            <p className="mt-1">
+              <a href="#avaliacoes" className="hover:underline">
+                <NotaDoProfissional media={nota.media} total={nota.total} />
+              </a>
+            </p>
+          )}
         </div>
         {meu && (
           <BotaoLink href="/perfil" tamanho="sm" className="self-start sm:self-center">
@@ -130,6 +143,26 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
                 ))}
               </ul>
             </>
+          )}
+        </section>
+      )}
+
+      {(servicos.length > 0 || avaliacoes.length > 0) && (
+        <section id="avaliacoes" className="mt-10 scroll-mt-24">
+          <h2 className="text-h2">Avaliações</h2>
+          {avaliacoes.length ? (
+            <>
+              {nota.total < 3 && (
+                <p className="mt-1 text-body-sm text-ink-muted">A nota média aparece a partir de 3 avaliações.</p>
+              )}
+              <div className="mt-4 max-w-3xl rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+                <ListaAvaliacoes avaliacoes={avaliacoes} agora={agora} nomeProfissional={perfil.nome} />
+              </div>
+            </>
+          ) : (
+            <p className="mt-2 text-body-sm text-ink-muted">
+              Ainda sem avaliações. Quem contrata pelo Publike pode avaliar depois do match.
+            </p>
           )}
         </section>
       )}

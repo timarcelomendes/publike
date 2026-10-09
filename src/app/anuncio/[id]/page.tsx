@@ -19,12 +19,19 @@ import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
+import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { MapaArea } from "@/components/mapa/mapa-area";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
 import { categoria, descreverAtendimento, REGIMES, STATUS_ANUNCIO } from "@/lib/constantes";
-import { contatoDoMatch, obterAnuncio, obterUsuario } from "@/lib/dados";
+import {
+  contatoDoMatch,
+  listarAvaliacoesPublicas,
+  obterAnuncio,
+  obterNotaDoProfissional,
+  obterUsuario,
+} from "@/lib/dados";
 import {
   formatarData,
   formatarLugar,
@@ -139,6 +146,10 @@ async function DetalheAnuncio({
   const novo = agora - new Date(anuncio.criado_em).getTime() < 48 * 3600 * 1000;
   const status = anuncio.status as StatusAnuncio;
   const fotos = anuncio.fotos.map((f) => urlDaFotoTrabalho(f)).filter((u): u is string => Boolean(u));
+  const [nota, avaliacoes] = vaga
+    ? [null, []]
+    : await Promise.all([obterNotaDoProfissional(anuncio.autor_id), listarAvaliacoesPublicas(anuncio.autor_id)]);
+  const primeiroNome = anuncio.autor_nome.split(" ")[0];
 
   const quadroAcao = (sufixo: string) =>
     proprio ? (
@@ -213,6 +224,13 @@ async function DetalheAnuncio({
               <BadgeCheck aria-label="Perfil verificado" className="size-4 text-cerrado-text" />
             )}
           </p>
+          {nota && nota.total > 0 && (
+            <p className="mt-1">
+              <a href="#avaliacoes" className="hover:underline">
+                <NotaDoProfissional media={nota.media} total={nota.total} />
+              </a>
+            </p>
+          )}
 
           <dl className="mt-6 grid gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:grid-cols-2 sm:p-6">
             <Fato icone={MapPin} rotulo={vaga ? "Onde é" : "Onde fica"}>
@@ -275,6 +293,35 @@ async function DetalheAnuncio({
                 ))}
               </ul>
             </>
+          )}
+
+          {!vaga && (
+            <section id="avaliacoes" className="scroll-mt-24">
+              <h2 className="mt-8 text-h2">Avaliações de {primeiroNome}</h2>
+              {avaliacoes.length ? (
+                <>
+                  <div className="mt-4">
+                    <ListaAvaliacoes
+                      avaliacoes={avaliacoes.slice(0, 3)}
+                      agora={agora}
+                      nomeProfissional={anuncio.autor_nome}
+                    />
+                  </div>
+                  {avaliacoes.length > 3 && (
+                    <Link
+                      href={`/perfil/${anuncio.autor_id}#avaliacoes`}
+                      className="mt-4 inline-flex min-h-11 items-center text-label text-terra-text underline-offset-2 hover:underline"
+                    >
+                      Ver as {avaliacoes.length} avaliações
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <p className="mt-2 text-body-sm text-ink-muted">
+                  Ainda sem avaliações. Quem contrata pelo Publike pode avaliar depois do match.
+                </p>
+              )}
+            </section>
           )}
 
           <h2 className="mt-8 text-h2">{vaga ? "Onde é" : "Onde fica"}</h2>

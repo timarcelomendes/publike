@@ -15,6 +15,10 @@ export type AnuncioResumo = LinhaDe<"buscar_anuncios">;
 export type AnuncioCompleto = LinhaDe<"obter_anuncio">;
 export type MeuAnuncio = LinhaDe<"meus_anuncios">;
 export type MeuServico = LinhaDe<"meus_servicos">;
+export type AvaliacaoPublica = LinhaDe<"avaliacoes_publicas">;
+export type AvaliacaoRecebida = LinhaDe<"minhas_avaliacoes_recebidas">;
+export type MinhaAvaliacao = LinhaDe<"minha_avaliacao">;
+export type ItemFilaAvaliacao = LinhaDe<"fila_avaliacoes">;
 export type Interessado = LinhaDe<"interessados">;
 export type MinhaCurtida = LinhaDe<"minhas_curtidas">;
 export type Match = LinhaDe<"meus_matches">;
@@ -45,6 +49,9 @@ export type DadosCard = Pick<
   oficio?: string | null;
   /** serviço: a primeira foto de trabalho (caminho no Storage) */
   foto?: string | null;
+  /** serviço: média e total das avaliações do profissional (a média só aparece com 3 ou mais) */
+  autor_nota?: number | null;
+  autor_avaliacoes?: number;
 };
 
 /** Anúncio na página de perfil: o serviço traz as fotos e onde atende (vitrine). */

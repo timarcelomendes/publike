@@ -18,6 +18,8 @@ const ACOES: Record<string, string> = {
   restaurar_modelo: "voltou ao original o texto do e-mail",
   criar_chave: "criou a chave do servidor",
   apagar_chave: "apagou a chave do servidor",
+  publicar_avaliacao: "publicou a avaliação de",
+  remover_avaliacao: "removeu um texto da avaliação de",
 };
 
 // Na ficha da própria conta ou do próprio anúncio, o alvo já está na tela.
@@ -51,6 +53,9 @@ export const CATEGORIAS_IA: Record<string, string> = {
   conteudo_improprio: "Conteúdo impróprio",
   spam: "Spam ou propaganda",
   contato: "Contato à mostra",
+  ofensa: "Ofensa",
+  ameaca: "Ameaça",
+  dados_pessoais: "Dados pessoais",
   outro: "Outro",
 };
 
@@ -66,6 +71,9 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   aviso_denuncia: "Nova denúncia",
   aviso_cadastro: "Novo cadastro",
   aviso_retirado: "Anúncio tirado do ar",
+  avaliacao: "Avaliação nova",
+  avaliacao_retida: "Avaliação não publicada",
+  aviso_avaliacao: "Avaliação para revisar",
   teste: "Teste",
 };
 
