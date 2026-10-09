@@ -1,4 +1,4 @@
-import { nomeDaReceita } from "@/lib/cnpj";
+import { bairroDaReceita, nomeDaReceita } from "@/lib/cnpj";
 import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { Aviso } from "../ui/basicos";
 import { Dado } from "./ui";
@@ -24,7 +24,7 @@ export async function DadosDaReceita({ cnpj, agencia }: { cnpj: string; agencia:
   const d = consulta.dados;
   return (
     <div className="flex flex-col gap-3 rounded-md border border-line p-4">
-      <p className="text-label">Na Receita (BrasilAPI)</p>
+      <p className="text-label">Na Receita (dados abertos)</p>
       <dl className="flex flex-col gap-3">
         <Dado rotulo="Razão social">{nomeDaReceita(d.razaoSocial)}</Dado>
         {d.nomeFantasia && <Dado rotulo="Nome fantasia">{nomeDaReceita(d.nomeFantasia)}</Dado>}
@@ -36,7 +36,7 @@ export async function DadosDaReceita({ cnpj, agencia }: { cnpj: string; agencia:
         <Dado rotulo="Atividade principal">{[d.cnae, d.atividade].filter(Boolean).join(" · ") || "—"}</Dado>
         <Dado rotulo="Município">
           {d.municipio ? `${nomeDaReceita(d.municipio)}${d.uf ? `/${d.uf}` : ""}` : "—"}
-          {d.bairro && ` · ${nomeDaReceita(d.bairro)}`}
+          {d.bairro && ` · ${bairroDaReceita(d.bairro)}`}
         </Dado>
       </dl>
       {!d.ativa && <Aviso tipo="erro">O CNPJ não está ativo na Receita.</Aviso>}

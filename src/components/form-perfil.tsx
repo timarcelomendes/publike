@@ -13,7 +13,7 @@ import {
 } from "react";
 import { excluirConta, salvarPerfil } from "@/lib/acoes/perfil";
 import { BAIRROS } from "@/lib/bairros";
-import { formatarCnpj, limparCnpj, nomeDaReceita, type DadosCnpj } from "@/lib/cnpj";
+import { bairroDaReceita, formatarCnpj, limparCnpj, nomeDaReceita, type DadosCnpj } from "@/lib/cnpj";
 import { CIDADES, LIMITES_CONTA, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarTelefone } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
@@ -122,7 +122,7 @@ export function FormPerfil({
     const cidadeDaReceita = d.uf === "GO" ? CIDADES.find((c) => chave(c) === chave(d.municipio ?? "")) : undefined;
     if (!cidadeDaReceita || (soVazios && bairro.trim())) return;
     setCidade(cidadeDaReceita);
-    if (d.bairro) setBairro(nomeDaReceita(d.bairro).slice(0, 80));
+    if (d.bairro) setBairro(bairroDaReceita(d.bairro).slice(0, 80));
   }
 
   function adicionar(valor: string) {

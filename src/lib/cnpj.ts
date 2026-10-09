@@ -68,6 +68,26 @@ export function nomeDaReceita(texto: string | null | undefined) {
     .join(" ");
 }
 
+const ABREVIACOES: [RegExp, string][] = [
+  [/^SET\.? /, "SETOR "],
+  [/^ST\.? /, "SETOR "],
+  [/^JD\.? /, "JARDIM "],
+  [/^JARD\.? /, "JARDIM "],
+  [/^VL\.? /, "VILA "],
+  [/^PQ\.? /, "PARQUE "],
+  [/^PRQ\.? /, "PARQUE "],
+  [/^RES\.? /, "RESIDENCIAL "],
+  [/^CJ\.? /, "CONJUNTO "],
+  [/^CONJ\.? /, "CONJUNTO "],
+];
+
+/** Bairro da Receita: "SET OESTE" vira "Setor Oeste", "JD AMERICA" vira "Jardim America". */
+export function bairroDaReceita(texto: string | null | undefined) {
+  let b = (texto ?? "").trim().toUpperCase().replace(/\s+/g, " ");
+  for (const [de, para] of ABREVIACOES) b = b.replace(de, para);
+  return nomeDaReceita(b);
+}
+
 /** Dados públicos do CNPJ que o Publike usa (vêm da BrasilAPI, que lê os dados abertos da Receita). */
 export type DadosCnpj = {
   cnpj: string;
