@@ -1,9 +1,11 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
+import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { temContato, UUID } from "@/lib/validacao";
@@ -39,6 +41,7 @@ export async function curtirAnuncio(anuncioId: string, mensagem: string | null =
     return { ok: false, erro: mensagemDeErro(error) };
   }
 
+  after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Curtido! Se quem publicou curtir você de volta, o contato aparece no seu painel." };
 }
@@ -85,6 +88,7 @@ export async function responderCurtida(
   });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
 
+  if (decisao === "match") after(processarFilas);
   refresh();
   if (decisao === "match") return { ok: true, mensagem: "Deu match! Agora é só conversar." };
   return { ok: true };

@@ -16,6 +16,9 @@ Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real)
 - **Painel**: meus anúncios (pausar, encerrar, renovar, editar, excluir), quem curtiu, minhas curtidas e matches, mais o sino de avisos em tempo real.
 - **Login sem senha**: e-mail (link mágico), Google, Facebook, LinkedIn e celular (SMS). Só o e-mail vem ligado; os outros você ativa quando quiser.
 - **Perfil** com foto, "o que eu faço" e contato privado, e um **perfil público**.
+- **Admin** (só no seu computador): números do site, contas (suspender por 7 ou 30 dias, banir, reativar, selo de verificado), anúncios (corrigir, remover com motivo, apagar), denúncias, e-mails do site com textos editáveis, IA, moderadores e chaves.
+- **E-mails do site** pelo Zoho: curtida, match, moderação e conta para quem usa o site; nova denúncia, novo cadastro e anúncio tirado do ar para a equipe.
+- **IA (OpenAI)**: revisa cada anúncio novo e tira do ar o que parece golpe, cobrança, discriminação ou trabalho infantil; botão "Melhorar texto" ao publicar; resumo da semana no admin.
 - **Segurança**:
   - denúncias e moderação: 3 denúncias de pessoas diferentes tiram o anúncio do ar;
   - limites contra abuso: 10 anúncios por dia, 20 no ar, 60 curtidas por dia;
@@ -103,14 +106,15 @@ Ele aparece no Supabase em **Authentication → Sign In / Providers**, dentro de
 1. No [Google Cloud Console](https://console.cloud.google.com), crie um projeto e configure a **tela de consentimento OAuth**: nome Publike, e-mail de suporte e o link da política de privacidade (`https://SEU-DOMINIO/privacidade`).
 2. Em **Credenciais → Criar credencial → ID do cliente OAuth**, escolha **Aplicativo da Web** e cole o endereço de volta em **URIs de redirecionamento autorizados**.
 3. No Supabase, em **Authentication → Sign In / Providers → Google**, ative e cole o **Client ID** e o **Client Secret**.
-4. No `.env.local`: `NEXT_PUBLIC_LOGIN_GOOGLE=true`.
+4. Para a janela do Google mostrar o Publike, e não o endereço do Supabase: no mesmo ID do cliente, em **Origens JavaScript autorizadas**, adicione `http://localhost:3000`, `http://localhost` e o endereço do site (`https://SEU-DOMINIO`). Copie o **ID do cliente** para o `.env.local` em `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Com ele, o site usa o botão oficial do Google e o login acontece no próprio Publike.
+5. No `.env.local`: `NEXT_PUBLIC_LOGIN_GOOGLE=true`.
 
 **Facebook**
 
 1. Em [developers.facebook.com](https://developers.facebook.com), vá em **Meus apps → Criar app** e escolha o caso de uso **Autenticar e solicitar dados de usuários com o Login do Facebook**.
 2. Em **Login do Facebook → Configurações**, cole o endereço de volta em **URIs de redirecionamento do OAuth válidos** e salve.
 3. Em **Casos de uso → Autenticação e criação de conta → Editar**, confira se `public_profile` e `email` estão lá. Sem o `email`, o login falha.
-4. Em **Configurações do app → Básico**, copie o **ID do app** e a **Chave secreta do app**. Preencha também: URL da política de privacidade (`https://SEU-DOMINIO/privacidade`), URL de exclusão de dados (`https://SEU-DOMINIO/privacidade#apagar-dados`), ícone (o `publike-icone-app-1024.png` do kit da logo) e categoria.
+4. Em **Configurações do app → Básico**, copie o **ID do app** e a **Chave secreta do app**. Preencha também: URL da política de privacidade (`https://SEU-DOMINIO/privacidade`), URL de exclusão de dados (`https://SEU-DOMINIO/apagar-dados`; o Facebook abre o link para conferir, então só aceita depois que o site estiver no ar), ícone de 1024 × 1024 com **fundo transparente** (o Facebook recusa fundo branco) e categoria.
 5. No Supabase, em **Facebook**, ative e cole o ID do app (Client ID) e a chave secreta (Client Secret).
 6. No `.env.local`: `NEXT_PUBLIC_LOGIN_FACEBOOK=true`.
 
@@ -128,7 +132,7 @@ Depois de mudar o `.env.local`, pare o `npm run dev` (Ctrl+C) e rode de novo. O 
 
 > **Uma conta só.** Se a pessoa entra com o Google e depois pelo link mágico do mesmo e-mail, o Supabase junta as duas formas na mesma conta. No primeiro acesso, o nome da rede social já vem preenchido no perfil; a foto, não (a pessoa escolhe a dela).
 >
-> **Logos nos botões.** As marcas exigem o logo oficial, sem alteração. Baixe nas páginas de marca do [Google](https://developers.google.com/identity/branding-guidelines), do [Facebook](https://about.meta.com/brand/resources/facebook/logo/) e do [LinkedIn](https://brand.linkedin.com/downloads) e salve em `public/marcas/` como `google.svg`, `facebook.svg` e `linkedin.svg` (PNG também serve). Com o arquivo lá, o logo aparece sozinho no botão; sem ele, o botão mostra só o texto.
+> **Logos nos botões.** As marcas exigem o logo oficial, sem alteração. Os três já estão em `public/marcas/` (`google.png`, `facebook.png` e `linkedin.png`), tirados das páginas de marca do [Google](https://developers.google.com/identity/branding-guidelines), do [Facebook](https://www.meta.com/brand/resources/facebook/logo/) e do [LinkedIn](https://brand.linkedin.com/downloads) e só reduzidos de tamanho. O botão do Google usa o logo do próprio Google; o `google.png` aparece só no botão reserva, quando o script do Google não carrega. Para trocar um logo, salve o novo arquivo com o mesmo nome (SVG também serve).
 
 ### Celular por SMS (pago por mensagem)
 
@@ -138,30 +142,105 @@ Depois de mudar o `.env.local`, pare o `npm run dev` (Ctrl+C) e rode de novo. O 
 
 ---
 
-## 4. Virar moderador
+## 4. Admin, e-mails e IA
 
-Entre no site e complete seu perfil. Depois, no **SQL Editor** do Supabase, troque o e-mail e rode:
+### 4.1 Rodar a migração do admin
 
-```sql
-insert into moderadores (perfil_id)
-select id from auth.users where email = 'seu@email.com';
+No **SQL Editor** do Supabase, cole `supabase/migrations/20261008120000_admin.sql` inteiro e clique em **Run**. Ela cria a suspensão de contas, a fila de e-mails, os textos dos e-mails, a moderação por IA e as funções do admin.
+
+### 4.2 Abrir o admin (só no seu computador)
+
+O admin não tem login: ele só existe no seu computador, com o site rodando em `npm run dev`. No site publicado, `/admin` não abre para ninguém além dos moderadores (veja 4.6).
+
+1. No Supabase, em **Project Settings → API Keys → Secret keys**, crie uma chave secreta chamada `admin-mac` e copie.
+2. No `.env.local` do seu computador, acrescente:
+
+   ```bash
+   PUBLIKE_ADMIN=1
+   SUPABASE_SECRET_KEY=sb_secret_...
+   ```
+
+3. Pare o `npm run dev` (Ctrl+C) e rode de novo. No terminal aparece:
+
+   ```
+   Admin do Publike (abra neste computador):
+     http://localhost:3000/admin/entrar?chave=...
+   ```
+
+4. Abra esse link no navegador. Ele guarda um cookie que vale 30 dias neste navegador; depois disso, é só abrir **http://localhost:3000/admin** (o link **Admin** também aparece no topo do site). Se o cookie sumir ou vencer, o admin pede para abrir o link do terminal de novo.
+
+Como fica protegido:
+
+- As funções de admin do banco só aceitam a chave secreta. Nenhum login consegue chamá-las, nem o seu: quem invadir um e-mail não vira admin.
+- O `npm run dev` só aceita conexões do próprio computador (ninguém na mesma rede Wi-Fi abre). Para testar o site no celular pela rede, use `npm run dev:rede`, que desliga o admin.
+- O admin só liga em modo de desenvolvimento, com endereço local (localhost ou 127.0.0.1) e com o cookie do link do terminal. O link é feito a partir da chave secreta: se você trocar a chave, o link muda e o cookie antigo para de valer.
+- **Nunca** coloque `SUPABASE_SECRET_KEY` ou `PUBLIKE_ADMIN` na hospedagem, nem mande a chave por chat ou e-mail. Se ela vazar, apague no Supabase e crie outra.
+
+### 4.3 E-mails do site pelo Zoho
+
+Os e-mails de login (link mágico) saem pelo Supabase, com o SMTP configurado em **Authentication → Emails → SMTP Settings**. Os avisos do site (curtida, match, moderação, conta e avisos da equipe) saem pelo próprio site, com a mesma conta do Zoho:
+
+```bash
+SMTP_SERVIDOR=smtppro.zoho.com   # conta com domínio próprio; contas @zoho.com usam smtp.zoho.com
+SMTP_PORTA=465
+SMTP_USUARIO=development@publike.org
+SMTP_SENHA=...                   # com verificação em duas etapas, use uma senha de aplicativo
 ```
 
-Se você entrou pelo celular, use `where phone = '5562999999999'`. Pronto: o item **Moderação** aparece no menu da sua conta.
+Coloque no `.env.local` e, no site publicado, nas variáveis de ambiente da hospedagem. Depois, no admin, em **E-mails**:
+
+- escolha quem recebe os avisos da equipe e clique em **Salvar configurações**;
+- use **Enviar teste** para conferir. Se o Zoho recusar o login, confira a senha e se o acesso IMAP/SMTP está liberado no plano e nas configurações da conta (o plano grátis do Zoho pode não ter).
+
+Os textos de cada e-mail são editados no próprio admin, com prévia. Quem não quiser os avisos desmarca a opção no perfil (avisos de suspensão da conta vão mesmo assim). Os avisos só vão para o e-mail de login confirmado da pessoa (quem entra só pelo celular não recebe e-mail).
+
+Os links dos e-mails usam o endereço do site no ar. No seu computador o site é `localhost`, que não abre no celular de ninguém; por isso, enquanto você não disser o endereço público, o admin daqui só manda o e-mail de teste, e os avisos para as pessoas esperam o site publicado mandar (aviso parado há mais de 3 dias é cancelado). Quando o site estiver no ar, acrescente no `.env.local`:
+
+```bash
+PUBLIKE_URL_PUBLICA=https://publike.org   # o endereço do site no ar
+```
+
+No site publicado não precisa: lá o `NEXT_PUBLIC_SITE_URL` já é o endereço público (https).
+
+### 4.4 Chave do servidor (para o site publicado)
+
+O site publicado não guarda a chave secreta do Supabase. Para mandar os e-mails e rodar a IA, ele usa uma **chave do servidor**, que só serve para isso: não abre o admin nem lê os dados das pessoas.
+
+1. No admin, em **Chaves**, dê um nome (por exemplo, `Vercel`) e clique em **Gerar chave**. Ela aparece uma vez só; o banco guarda só uma impressão dela.
+2. Na hospedagem, crie a variável `PUBLIKE_CHAVE_SERVIDOR` com a chave e publique de novo.
+
+No seu computador ela não é necessária: o site local usa a chave secreta.
+
+### 4.5 IA (OpenAI)
+
+1. Em [platform.openai.com](https://platform.openai.com), crie a conta, ponha créditos (em **Billing**) e, em **API keys**, crie uma chave.
+2. Coloque `OPENAI_API_KEY=...` no `.env.local` e na hospedagem.
+3. No admin, em **IA**, ligue o que quiser: moderação automática, botão "Melhorar texto" e resumo no painel. O modelo padrão é o GPT-6 Luna, o mais barato.
+
+Custo aproximado com o GPT-6 Luna (US$ 0,10 por milhão de tokens de entrada e US$ 0,50 de saída, em outubro de 2026): US$ 0,15 para revisar mil anúncios e US$ 0,35 para mil pedidos de "Melhorar texto". O GPT-6.1 Sol escreve melhor e custa de 20 a 40 vezes mais (ele raciocina antes de responder).
+
+O site pede à OpenAI para não guardar o texto dos anúncios (`store: false`) e manda só o texto, nunca o contato de ninguém.
+
+Anúncio que a IA acha suspeito sai do ar e vai para **Denúncias**, com o motivo. Quem publicou recebe um aviso de que o anúncio está em análise; você decide se remove (com o motivo, que vai para a pessoa) ou libera.
+
+### 4.6 Moderadores
+
+No admin, em **Moderadores**, ponha o e-mail de quem vai ajudar. A pessoa precisa já ter entrado no site e criado o perfil. Moderadores entram com o login deles, em **Moderação** no menu da conta, e veem só **Denúncias** e **Anúncios**: corrigem, removem com motivo e liberam. Contas, e-mails, IA e chaves ficam só com você.
 
 ---
 
 ## 5. Colocar no ar
 
-**Render (Web Service Starter, US$ 7/mês)**
+**Vercel, com o servidor em São Paulo** (o mesmo lugar do banco no Supabase). O plano grátis (Hobby) é só para uso não comercial; o Pro custa US$ 20/mês.
 
-1. Envie o projeto para um repositório no GitHub e crie um **Web Service** no Render ligado a ele:
-   - Build command: `npm install && npm run build`
-   - Start command: `npm run start`
-2. Em **Environment**, crie as mesmas variáveis do `.env.local`, com `NEXT_PUBLIC_SITE_URL=https://SEU-DOMINIO`. As variáveis `NEXT_PUBLIC_…` entram no site na hora do build: depois de mudar uma delas, faça um novo deploy.
-3. No Supabase, troque a **Site URL** pelo domínio e adicione `https://SEU-DOMINIO/**` nas Redirect URLs. Se usa Google, Facebook ou LinkedIn, confira também o domínio e os links de privacidade nos apps de cada um.
+1. Envie o projeto para o GitHub. Na Vercel, em **Add New → Project**, importe o repositório. Ela reconhece o Next.js sozinha; não mude os comandos.
+2. Em **Environment Variables**, crie as mesmas variáveis do `.env.local`, com `NEXT_PUBLIC_SITE_URL=https://publike.org`, **menos** `SUPABASE_SECRET_KEY`, `PUBLIKE_ADMIN` e `PUBLIKE_URL_PUBLICA` (essas ficam só no seu computador). Acrescente `PUBLIKE_CHAVE_SERVIDOR` (veja 4.4). Marque senhas e chaves como **Sensitive**. As variáveis `NEXT_PUBLIC_…` entram no site na hora do build: depois de mudar uma delas, publique de novo (**Deployments → Redeploy**).
+3. A região do servidor vem do `vercel.json` (`gru1`, São Paulo). Cada push na branch `main` publica o site de novo.
+4. Em **Settings → Domains**, adicione `publike.org` (o `www` passa a levar para ele). No DNS do domínio (GoDaddy), troque o registro **A** de `@` e o **CNAME** de `www` pelos valores que a Vercel mostrar. Não mexa nos registros de e-mail (MX e TXT).
+5. No Supabase, em **Authentication → URL Configuration**, troque a **Site URL** por `https://publike.org` e adicione `https://publike.org/**` nas Redirect URLs (deixe o `http://localhost:3000/**`, que é do seu computador).
+6. Nos apps de login: no Google, `https://publike.org` entra em **Origens JavaScript autorizadas** (sem isso, o botão do Google falha no site publicado); no Facebook, o domínio entra em **Domínios do app**, junto com a URL de exclusão de dados (`/apagar-dados`). Depois, tire os dois do modo de teste.
 
-> A Vercel também serve, mas o plano grátis dela (Hobby) é só para uso não comercial. O Pro custa US$ 20/mês.
+**E-mail do domínio.** Os e-mails saem pelo Zoho com o endereço @publike.org. Para não caírem no spam, o DNS precisa autorizar o Zoho: o registro SPF (TXT de `@`) inclui `include:zohomail.com`, e a chave DKIM gerada no Zoho (**Admin Console → Domínios → publike.org → DKIM**) entra como TXT em `zmail._domainkey`.
 
 ---
 
@@ -169,7 +248,8 @@ Se você entrou pelo celular, use `where phone = '5562999999999'`. Pronto: o ite
 
 | Comando | O que faz |
 | --- | --- |
-| `npm run dev` | Abre o site em http://localhost:3000 e atualiza sozinho enquanto você edita |
+| `npm run dev` | Abre o site em http://localhost:3000 e atualiza sozinho enquanto você edita. Só aceita conexões do próprio computador; com `PUBLIKE_ADMIN=1`, abre o admin em /admin |
+| `npm run dev:rede` | Igual, mas aceita conexões da rede (para testar no celular). O admin fica desligado |
 | `npm run build` | Gera a versão de produção (também confere os tipos) |
 | `npm run start` | Roda a versão de produção |
 | `npm run lint` | Procura problemas no código |
@@ -189,7 +269,7 @@ src/app/               as páginas (cada pasta é um endereço do site)
   painel/                meus anúncios, quem curtiu, curtidas, matches, editar
   perfil/                meu perfil e perfil público
   entrar/, auth/         login (e-mail, Google, Facebook, LinkedIn, celular)
-  moderacao/             fila de denúncias
+  admin/                 admin (só no seu computador) e moderação (moderadores com login)
   como-funciona/, privacidade/
 src/components/        peças da interface (cards, mapa, formulários, botões)
 src/lib/
@@ -198,10 +278,14 @@ src/lib/
   constantes.ts          categorias, tipos de contratação, cidades e bairros sugeridos
   validacao.ts           regras dos formulários
   login-social.ts        Google, Facebook e LinkedIn: nomes, provedores do Supabase e quais estão ligados
-  supabase/              conexão com o Supabase e tipos do banco
+  admin/                 leituras e textos do admin
+  email/                 monta os e-mails a partir dos textos editados no admin
+  ia/                    conversa com a OpenAI: moderação, melhorar texto, resumo
+  servidor/              variáveis do servidor e filas de e-mails e da IA
+  supabase/              conexão com o Supabase (com login, pública e a do admin) e tipos do banco
 src/app/globals.css    cores, fontes e estilos do Design System
 public/logo/           a logo em SVG
-public/marcas/         (você cria) logos oficiais do Google, Facebook e LinkedIn para os botões de login
+public/marcas/         logos oficiais do Google, Facebook e LinkedIn para os botões de login
 ```
 
 **Design System.** As cores (terra, ipê, cerrado, like), as fontes (Bricolage Grotesque e Figtree) e os componentes seguem o Design System do Publike. Os tokens ficam em `src/app/globals.css`.
@@ -217,16 +301,24 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 - O contato (WhatsApp e e-mail) fica numa tabela que só o dono lê. Ele só sai pelas funções de match.
 - O local do anúncio é arredondado para uma grade de ~500 m antes de ser salvo, e só vale dentro da região metropolitana.
 - Anúncio fica 30 dias no ar. A limpeza diária usa o `pg_cron`; se ele não estiver ativo, os vencidos somem da busca do mesmo jeito.
+- Conta suspensa ou banida não entra, não publica nem curte; os anúncios dela somem e o contato dela sai dos matches. Quando a suspensão vence, tudo volta sozinho.
+- E-mails e revisões da IA entram em filas no banco (pelos gatilhos) e o site esvazia as filas logo depois de cada ação, tentando de novo quando falha.
+- Tudo o que o admin e os moderadores fazem fica no registro da equipe.
 
 ---
 
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
+- [ ] Migração do admin rodada (`20261008120000_admin.sql`)
+- [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
+- [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
+- [ ] IA ligada no admin, se for usar, com créditos na OpenAI
+- [ ] Verificação em duas etapas no seu e-mail, no Supabase, no GitHub e na hospedagem
 - [ ] Modelos de e-mail traduzidos
-- [ ] Domínio próprio no Render e no Supabase (Site URL e Redirect URLs)
+- [ ] Domínio próprio na Vercel e no Supabase (Site URL e Redirect URLs)
+- [ ] SPF e DKIM do Zoho no DNS do domínio (sem isso, o link de login cai no spam)
 - [ ] `NEXT_PUBLIC_CONTATO_EMAIL` preenchido (aparece na página de privacidade)
 - [ ] Textos de privacidade e regras revisados por um advogado
 - [ ] Números de teste do SMS removidos
-- [ ] Apps do Google, Facebook e LinkedIn publicados (fora do modo de teste), com os logos oficiais em `public/marcas/`
-- [ ] Você cadastrado como moderador
+- [ ] Apps do Google, Facebook e LinkedIn publicados (fora do modo de teste); no Facebook, preencher a URL de exclusão de dados (`/apagar-dados`) depois que o site estiver no ar

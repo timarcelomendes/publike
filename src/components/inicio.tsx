@@ -1,55 +1,35 @@
-import { Heart, Megaphone, MessageCircle, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { ComoFuncionaAnimado } from "./como-funciona-animado";
+import { PASSOS } from "./passos";
 import { Container, Selo } from "./ui/basicos";
 
+/** Título da página inicial. A busca entra logo abaixo, no mesmo bloco (app/page.tsx). */
 export function HeroInicio() {
   return (
-    <section className="border-b border-line">
-      <Container className="py-8 sm:py-12">
-        <div className="flex flex-wrap items-center gap-2">
-          <Selo variante="novo">Grátis</Selo>
-          <span className="text-body-sm text-ink-muted">Goiânia e região</span>
-        </div>
-        <h1 className="mt-3 max-w-3xl text-h1 sm:text-display">Trabalho perto de você.</h1>
-        <p className="mt-3 max-w-2xl text-body-lg text-ink-muted">
-          Vagas com carteira, diárias, bicos e serviços. Quem precisa publica, quem faz curte. Deu match, vocês
-          conversam.
-        </p>
-      </Container>
-    </section>
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <Selo variante="novo">Grátis</Selo>
+        <span className="text-body-sm text-ink-muted">Goiânia e região</span>
+      </div>
+      <h1 className="mt-3 max-w-3xl text-h1 sm:text-display">Trabalho perto de você.</h1>
+      <p className="mt-2 max-w-2xl text-body text-ink-muted sm:mt-3 sm:text-body-lg">
+        Vagas com carteira, diárias, bicos e serviços.
+        <span className="hidden sm:inline"> Quem precisa publica, quem faz curte. Deu match, vocês conversam.</span>
+      </p>
+    </>
   );
 }
 
-export const PASSOS = [
-  {
-    icone: Megaphone,
-    titulo: "Quem precisa publica",
-    texto: "Empresa, comércio do bairro ou família: publique a vaga ou o serviço em dois minutos. De graça.",
-  },
-  {
-    icone: Heart,
-    titulo: "Quem faz curte",
-    texto: "Viu algo que combina com você? Curta. Quem publicou vê seu perfil e o que você faz.",
-  },
-  {
-    icone: MessageCircle,
-    titulo: "Deu match, vocês conversam",
-    texto: "Se quem publicou curtir você de volta, o WhatsApp dos dois aparece. Antes disso, ninguém vê seu número.",
-  },
-] as const;
-
+/** Os três passos em cartões (página Como funciona). */
 export function PassosComoFunciona() {
   return (
     <ol className="grid gap-4 md:grid-cols-3">
-      {PASSOS.map(({ icone: Icone, titulo, texto }, i) => (
+      {PASSOS.map(({ icone: Icone, titulo, texto, cor, cheio }, i) => (
         <li key={titulo} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:p-6">
           <span className="flex items-center gap-3">
-            <span
-              className={`flex size-11 items-center justify-center rounded-pill ${
-                i === 1 ? "bg-like-soft text-like" : i === 2 ? "bg-cerrado text-on-cerrado" : "bg-terra-soft text-terra-text"
-              }`}
-            >
-              <Icone aria-hidden className="size-5" fill={i === 1 ? "currentColor" : "none"} />
+            <span className={`flex size-11 items-center justify-center rounded-pill ${cor}`}>
+              <Icone aria-hidden className="size-5" fill={cheio ? "currentColor" : "none"} />
             </span>
             <span className="text-caption text-ink-muted uppercase">Passo {i + 1}</span>
           </span>
@@ -63,17 +43,19 @@ export function PassosComoFunciona() {
 
 export function ComoFuncionaResumo() {
   return (
-    <section className="mt-12 border-t border-line pt-12">
+    <section aria-labelledby="como-funciona" className="mt-16 border-t border-line pt-12 pb-4 sm:pt-16">
       <Container>
-        <h2 className="text-h2">Como funciona</h2>
-        <p className="mt-2 max-w-2xl text-body text-ink-muted">
+        <h2 id="como-funciona" className="text-h2 sm:text-h1">
+          Como funciona
+        </h2>
+        <p className="mt-2 max-w-2xl text-body text-ink-muted sm:text-body-lg">
           Simples como uma rede social. Vaga com carteira, diária de pedreiro e serviço de diarista têm o mesmo peso
           aqui: todo trabalho conta.
         </p>
-        <div className="mt-6">
-          <PassosComoFunciona />
+        <div className="mt-8">
+          <ComoFuncionaAnimado />
         </div>
-        <div className="mt-6 flex gap-3 rounded-lg bg-terra-soft p-5 text-ink">
+        <div className="mt-10 flex gap-3 rounded-lg bg-terra-soft p-5 text-ink">
           <ShieldAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-terra-text" />
           <p className="text-body-sm">
             <strong>Ninguém pode cobrar para você conseguir trabalho.</strong> Pediram dinheiro para curso, uniforme ou

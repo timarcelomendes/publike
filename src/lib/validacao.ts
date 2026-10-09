@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
 import {
   CIDADES,
@@ -13,24 +14,42 @@ import {
 const TELEFONE = /(\(?\d{2}\)?[ .-]?)?9?\d{4}[ .-]?\d{4}/;
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 const LINK_WHATSAPP = /(wa\.me|whatsapp\.com|api\.whatsapp)/i;
+const LINK = /(https?:\/\/|www\.)/i;
+const SITE = /\b[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|net|org|br|io|app|xyz|info|site|online|store|shop|link|ly|biz|tv|top|vip|club|dev)\b/i;
 
 const FAIXA_DE_ANO = /(19|20)\d{2} ?[-/] ?(19|20)\d{2}/g;
 
-export function temContato(texto: string | null | undefined) {
+// Para achar site: gov.br é do governo (ninguém registra nome lá). No texto
+// livre, ".Com palavra" é frase grudada ("no centro.Com carteira"), não site.
+const GOV_BR = /\bgov\.br\b/gi;
+const COM_GRUDADO = /([a-z])\.(Com\s+[a-zà-ú])/g;
+
+function procurarContato(texto: string | null | undefined, textoLivre: boolean) {
   if (!texto) return false;
   const t = texto.replace(FAIXA_DE_ANO, "");
-  return TELEFONE.test(t) || EMAIL.test(t) || LINK_WHATSAPP.test(t);
+  const s = (textoLivre ? t.replace(COM_GRUDADO, "$1. $2") : t).replace(GOV_BR, "gov br");
+  return TELEFONE.test(t) || EMAIL.test(t) || LINK_WHATSAPP.test(t) || LINK.test(t) || SITE.test(s);
+}
+
+/** Nome, título, bairro, mensagem: sem nenhuma folga. */
+export function temContato(texto: string | null | undefined) {
+  return procurarContato(texto, false);
+}
+
+/** Descrição, sobre, benefícios e horário (texto livre). */
+export function temContatoNoTexto(texto: string | null | undefined) {
+  return procurarContato(texto, true);
 }
 
 const SEM_CONTATO = "Tire o telefone, e-mail ou link. O contato aparece sozinho quando der match.";
 
-function texto(min: number, max: number, nome: string) {
+function texto(min: number, max: number, nome: string, textoLivre = false) {
   return z
     .string({ error: `Preencha ${nome}.` })
     .trim()
     .min(min, { error: min <= 1 ? `Preencha ${nome}.` : `Use pelo menos ${min} letras.` })
     .max(max, { error: `Use no máximo ${max} letras.` })
-    .refine((t) => !temContato(t), { error: SEM_CONTATO });
+    .refine((t) => !procurarContato(t, textoLivre), { error: SEM_CONTATO });
 }
 
 function opcional(max: number) {
@@ -38,22 +57,12 @@ function opcional(max: number) {
     .string()
     .trim()
     .max(max, { error: `Use no máximo ${max} letras.` })
-    .refine((t) => !temContato(t), { error: SEM_CONTATO })
+    .refine((t) => !temContatoNoTexto(t), { error: SEM_CONTATO })
     .transform((t) => t || null)
     .nullable();
 }
 
-/** Lê "1.900", "1.900,50", "1900.5" ou "R$ 120" como número. */
-export function lerNumeroBR(valor: FormDataEntryValue | null): number | null {
-  if (typeof valor !== "string") return null;
-  const limpo = valor.replace(/[^\d,.]/g, "");
-  if (!limpo) return null;
-  let normal = limpo;
-  if (limpo.includes(",")) normal = limpo.replace(/\./g, "").replace(",", ".");
-  else if (/^\d{1,3}(\.\d{3})+$/.test(limpo)) normal = limpo.replace(/\./g, "");
-  const n = Number(normal);
-  return Number.isFinite(n) ? n : Number.NaN;
-}
+export { lerNumeroBR };
 
 function campo(formData: FormData, nome: string) {
   const v = formData.get(nome);
@@ -76,7 +85,7 @@ export const esquemaAnuncio = z
   .object({
     tipo: z.enum(["vaga", "servico"], { error: "Escolha se é uma vaga ou um serviço." }),
     titulo: texto(5, 90, "o título"),
-    descricao: texto(20, 3000, "a descrição"),
+    descricao: texto(20, 3000, "a descrição", true),
     categoria: z.enum(SLUGS_CATEGORIAS, { error: "Escolha uma categoria." }),
     regime: z.enum(LISTA_REGIMES).nullable(),
     combinar: z.boolean(),
@@ -199,7 +208,7 @@ export const esquemaPerfil = z.object({
     .string()
     .trim()
     .max(600, { error: "Use no máximo 600 letras." })
-    .refine((t) => !temContato(t), { error: SEM_CONTATO_PERFIL })
+    .refine((t) => !temContatoNoTexto(t), { error: SEM_CONTATO_PERFIL })
     .transform((t) => t || null)
     .nullable(),
   servicos: z
@@ -220,6 +229,7 @@ export const esquemaPerfil = z.object({
     .toLowerCase()
     .refine((t) => !t || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t), { error: "Confira o e-mail." })
     .transform((t) => t || null),
+  receber_emails: z.boolean(),
 });
 
 export type DadosPerfil = z.output<typeof esquemaPerfil>;
@@ -240,6 +250,7 @@ export function lerPerfil(formData: FormData) {
     foto: campo(formData, "foto") || null,
     whatsapp: campo(formData, "whatsapp") ?? "",
     email: campo(formData, "email") ?? "",
+    receber_emails: campo(formData, "receber_emails") === "on",
   });
 }
 

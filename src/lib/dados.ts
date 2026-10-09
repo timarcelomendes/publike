@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { MODO_DEMO } from "./config";
 import * as demo from "./demo";
+import { iaConfigurada } from "./ia/openai";
 import type { Filtros } from "./filtros";
 import { criarClienteServidor } from "./supabase/servidor";
 import { agoraDaRequisicao } from "./tempo";
@@ -59,13 +60,20 @@ export const obterMeuPerfil = cache(async (): Promise<MeuPerfil | null> => {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("perfis")
-    .select("id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em, contatos(whatsapp, email)")
+    .select(
+      "id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em, suspenso_ate, contatos(whatsapp, email, receber_emails)",
+    )
     .eq("id", usuario.id)
     .maybeSingle();
   if (error) falha("perfil", error);
   if (!data) return null;
   const { contatos, ...perfil } = data;
-  return { ...perfil, whatsapp: contatos?.whatsapp ?? null, email: contatos?.email ?? null };
+  return {
+    ...perfil,
+    whatsapp: contatos?.whatsapp ?? null,
+    email: contatos?.email ?? null,
+    receber_emails: contatos?.receber_emails ?? true,
+  };
 });
 
 /** Perfil pronto para publicar e curtir: tem nome e um WhatsApp. */
@@ -80,6 +88,14 @@ export const ehModerador = cache(async () => {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.rpc("eh_moderador");
   return data === true;
+});
+
+/** Botão "Melhorar texto": ligado no admin e com a chave da IA no servidor. */
+export const ajudaDaIADisponivel = cache(async () => {
+  if (MODO_DEMO || !iaConfigurada()) return false;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.rpc("config_publica");
+  return Boolean(data?.[0]?.ia_melhorar_texto);
 });
 
 export async function buscarAnuncios(f: Filtros, agora: number): Promise<AnuncioResumo[]> {
@@ -148,7 +164,7 @@ export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Pe
   const [{ data: perfil, error }, { data: anuncios }] = await Promise.all([
     supabase
       .from("perfis")
-      .select("id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em")
+      .select("id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em, suspenso_ate")
       .eq("id", id)
       .maybeSingle(),
     supabase

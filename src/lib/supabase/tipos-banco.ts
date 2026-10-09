@@ -22,6 +22,8 @@ export type Database = {
           verificado: boolean;
           criado_em: string;
           atualizado_em: string;
+          /** conta suspensa até esta data (banimento = daqui a 100 anos) */
+          suspenso_ate: string | null;
         };
         Insert: {
           id: string;
@@ -49,16 +51,19 @@ export type Database = {
           perfil_id: string;
           whatsapp: string | null;
           email: string | null;
+          receber_emails: boolean;
           atualizado_em: string;
         };
         Insert: {
           perfil_id: string;
           whatsapp?: string | null;
           email?: string | null;
+          receber_emails?: boolean;
         };
         Update: {
           whatsapp?: string | null;
           email?: string | null;
+          receber_emails?: boolean;
         };
         Relationships: [
           {
@@ -98,6 +103,7 @@ export type Database = {
           atualizado_em: string;
           expira_em: string;
           busca: unknown;
+          nota_moderacao: string | null;
         };
         Insert: {
           tipo: string;
@@ -186,6 +192,31 @@ export type Database = {
           motivo: string;
           detalhes?: string | null;
         };
+        Update: SemTabela;
+        Relationships: [];
+      };
+      config_site: {
+        Row: {
+          id: boolean;
+          emails_ativos: boolean;
+          remetente_nome: string;
+          responder_para: string | null;
+          email_curtida: boolean;
+          email_match: boolean;
+          email_moderacao: boolean;
+          email_conta: boolean;
+          avisos_para: string[];
+          aviso_denuncia: boolean;
+          aviso_cadastro: boolean;
+          aviso_retirado: boolean;
+          ia_moderacao: boolean;
+          ia_melhorar_texto: boolean;
+          ia_resumo: boolean;
+          ia_modelo: string;
+          atualizado_em: string;
+          atualizado_por: string | null;
+        };
+        Insert: SemTabela;
         Update: SemTabela;
         Relationships: [];
       };
@@ -378,6 +409,7 @@ export type Database = {
           p_foto: string | null;
           p_whatsapp: string | null;
           p_email: string | null;
+          p_receber_emails?: boolean;
         };
         Returns: undefined;
       };
@@ -400,15 +432,310 @@ export type Database = {
           denuncias_abertas: number;
           motivos: string[];
           detalhes: string[];
+          ia_retido: boolean;
+          ia_falhou: boolean;
+          ia_categorias: string[];
+          ia_explicacao: string | null;
         }[];
       };
       moderar_anuncio: {
-        Args: { p_anuncio: string; p_decisao: string };
+        Args: { p_anuncio: string; p_decisao: string; p_nota?: string | null };
         Returns: undefined;
       };
       eh_moderador: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
+      };
+      config_publica: {
+        Args: Record<PropertyKey, never>;
+        Returns: { ia_melhorar_texto: boolean; ia_modelo: string }[];
+      };
+      minha_conta_suspensa: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      usar_ia_texto: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+
+      // ---------------------------------------------------- painel (admin e moderação)
+      admin_resumo: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      admin_listar_usuarios: {
+        Args: { p_busca?: string | null; p_filtro?: string; p_limite?: number; p_deslocamento?: number };
+        Returns: {
+          id: string;
+          email: string | null;
+          telefone: string | null;
+          provedor: string;
+          criado_em: string;
+          ultimo_acesso: string | null;
+          nome: string | null;
+          tipo: string | null;
+          cidade: string | null;
+          bairro: string | null;
+          foto: string | null;
+          verificado: boolean;
+          whatsapp: string | null;
+          moderador: boolean;
+          suspenso_ate: string | null;
+          suspensao_tipo: string | null;
+          anuncios_total: number;
+          anuncios_no_ar: number;
+          denuncias_recebidas: number;
+          total: number;
+        }[];
+      };
+      admin_usuario: {
+        Args: { p_id: string };
+        Returns: Json;
+      };
+      admin_listar_anuncios: {
+        Args: {
+          p_busca?: string | null;
+          p_status?: string;
+          p_tipo?: string | null;
+          p_autor?: string | null;
+          p_limite?: number;
+          p_deslocamento?: number;
+        };
+        Returns: {
+          id: string;
+          tipo: string;
+          titulo: string;
+          categoria: string;
+          regime: string | null;
+          cidade: string;
+          bairro: string;
+          status: string;
+          criado_em: string;
+          atualizado_em: string;
+          expira_em: string;
+          autor_id: string;
+          autor_nome: string;
+          autor_suspenso: boolean;
+          curtidas: number;
+          matches: number;
+          denuncias_abertas: number;
+          ia_decisao: string | null;
+          total: number;
+        }[];
+      };
+      admin_anuncio: {
+        Args: { p_id: string };
+        Returns: Json;
+      };
+      admin_excluir_anuncio: {
+        Args: { p_id: string; p_motivo?: string | null };
+        Returns: undefined;
+      };
+      admin_suspender: {
+        Args: { p_usuario: string; p_dias: number | null; p_motivo: string };
+        Returns: string;
+      };
+      admin_reativar: {
+        Args: { p_usuario: string };
+        Returns: undefined;
+      };
+      admin_verificar: {
+        Args: { p_usuario: string; p_verificado: boolean };
+        Returns: undefined;
+      };
+      admin_excluir_conta: {
+        Args: { p_usuario: string; p_motivo: string };
+        Returns: undefined;
+      };
+      admin_listar_moderadores: {
+        Args: Record<PropertyKey, never>;
+        Returns: { perfil_id: string; email: string | null; nome: string; foto: string | null; criado_em: string }[];
+      };
+      admin_adicionar_moderador: {
+        Args: { p_email: string };
+        Returns: string;
+      };
+      admin_remover_moderador: {
+        Args: { p_perfil: string };
+        Returns: undefined;
+      };
+      admin_config: {
+        Args: Record<PropertyKey, never>;
+        Returns: Database["public"]["Tables"]["config_site"]["Row"][];
+      };
+      admin_salvar_config_emails: {
+        Args: {
+          p_emails_ativos: boolean;
+          p_remetente_nome: string;
+          p_responder_para: string | null;
+          p_email_curtida: boolean;
+          p_email_match: boolean;
+          p_email_moderacao: boolean;
+          p_email_conta: boolean;
+          p_avisos_para: string[];
+          p_aviso_denuncia: boolean;
+          p_aviso_cadastro: boolean;
+          p_aviso_retirado: boolean;
+        };
+        Returns: undefined;
+      };
+      admin_salvar_config_ia: {
+        Args: { p_moderacao: boolean; p_melhorar_texto: boolean; p_resumo: boolean; p_modelo: string };
+        Returns: undefined;
+      };
+      admin_modelos_email: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          chave: string;
+          grupo: string;
+          nome: string;
+          descricao: string;
+          variaveis: string[];
+          assunto: string;
+          corpo: string;
+          botao: string | null;
+          alterado: boolean;
+          atualizado_em: string | null;
+        }[];
+      };
+      admin_salvar_modelo_email: {
+        Args: { p_chave: string; p_assunto: string; p_corpo: string; p_botao: string | null };
+        Returns: undefined;
+      };
+      admin_restaurar_modelo_email: {
+        Args: { p_chave: string };
+        Returns: undefined;
+      };
+      admin_fila_emails: {
+        Args: { p_limite?: number };
+        Returns: {
+          id: number;
+          modelo: string;
+          para: string;
+          status: string;
+          tentativas: number;
+          erro: string | null;
+          criado_em: string;
+          enviado_em: string | null;
+        }[];
+      };
+      admin_reenviar_emails: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      admin_email_teste: {
+        Args: { p_para: string };
+        Returns: number;
+      };
+      admin_status_email: {
+        Args: { p_id: number };
+        Returns: { status: string; erro: string | null; enviado_em: string | null }[];
+      };
+      admin_decisoes_ia: {
+        Args: { p_limite?: number };
+        Returns: {
+          id: number;
+          anuncio_id: string;
+          titulo: string;
+          status: string;
+          decisao: string;
+          categorias: string[];
+          explicacao: string | null;
+          modelo: string | null;
+          criado_em: string;
+        }[];
+      };
+      admin_dados_para_resumo: {
+        Args: { p_dias?: number };
+        Returns: Json;
+      };
+      admin_salvar_resumo: {
+        Args: { p_texto: string; p_dias: number; p_modelo: string | null };
+        Returns: number;
+      };
+      admin_ultimo_resumo: {
+        Args: Record<PropertyKey, never>;
+        Returns: { id: number; texto: string; dias: number; modelo: string | null; criado_em: string; criado_por: string }[];
+      };
+      admin_registro: {
+        Args: { p_limite?: number; p_alvo?: string | null };
+        Returns: {
+          id: number;
+          quem: string;
+          acao: string;
+          alvo_tipo: string;
+          alvo_id: string | null;
+          rotulo: string | null;
+          detalhes: Json;
+          criado_em: string;
+        }[];
+      };
+      admin_listar_chaves_servidor: {
+        Args: Record<PropertyKey, never>;
+        Returns: { id: number; nome: string; criada_em: string; usada_em: string | null }[];
+      };
+      admin_criar_chave_servidor: {
+        Args: { p_nome: string; p_hash: string };
+        Returns: number;
+      };
+      admin_apagar_chave_servidor: {
+        Args: { p_id: number };
+        Returns: undefined;
+      };
+
+      // ---------------------------------------------------- servidor do site (chave do servidor)
+      servidor_pegar_emails: {
+        Args: { p_chave: string; p_limite?: number; p_so_teste?: boolean };
+        Returns: {
+          id: number;
+          modelo: string;
+          grupo: string;
+          para: string;
+          dados: Json;
+          assunto: string;
+          corpo: string;
+          botao: string | null;
+          remetente_nome: string;
+          responder_para: string | null;
+        }[];
+      };
+      servidor_marcar_email: {
+        Args: { p_chave: string; p_id: number; p_ok: boolean; p_erro?: string | null };
+        Returns: undefined;
+      };
+      servidor_pegar_revisoes_ia: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: {
+          anuncio_id: string;
+          versao: string;
+          tipo: string;
+          titulo: string;
+          descricao: string;
+          categoria: string;
+          regime: string | null;
+          pagamento_valor: number | null;
+          pagamento_unidade: string | null;
+          beneficios: string | null;
+          horario: string | null;
+          vagas: number;
+          cidade: string;
+          bairro: string;
+          autor_tipo: string;
+          modelo: string;
+        }[];
+      };
+      servidor_resultado_ia: {
+        Args: {
+          p_chave: string;
+          p_anuncio: string;
+          p_versao: string;
+          p_decisao: string;
+          p_categorias?: string[];
+          p_explicacao?: string | null;
+          p_modelo?: string | null;
+        };
+        Returns: string;
       };
     };
     Enums: SemTabela;

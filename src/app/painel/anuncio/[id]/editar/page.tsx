@@ -7,7 +7,7 @@ import { FormAnuncio } from "@/components/form-anuncio";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { obterAnuncio } from "@/lib/dados";
+import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
 import type { TipoAnuncio } from "@/lib/tipos";
 
@@ -27,7 +27,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
   if (MODO_DEMO) return <SoComSupabase />;
   const { id } = await params;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/editar`);
-  const anuncio = await obterAnuncio(id);
+  const [anuncio, ia] = await Promise.all([obterAnuncio(id), ajudaDaIADisponivel()]);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
 
   return (
@@ -46,6 +46,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
         </Aviso>
       ) : (
         <FormAnuncio
+          ia={ia}
           inicial={{
             id: anuncio.id,
             tipo: anuncio.tipo as TipoAnuncio,

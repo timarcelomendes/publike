@@ -1,40 +1,11 @@
 "use client";
 
 import { CircleCheckBig, Heart, Pause, Pencil, Play, RefreshCw, Trash, Undo2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { excluirAnuncio, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
-import { moderarAnuncio } from "@/lib/acoes/moderacao";
-import type { Resultado } from "@/lib/tipos";
 import { Botao, BotaoLink } from "../ui/botao";
-
-function useAcao() {
-  const router = useRouter();
-  const [pendente, iniciar] = useTransition();
-  const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
-
-  function rodar(acao: () => Promise<Resultado>) {
-    setAviso(null);
-    iniciar(async () => {
-      const r = await acao();
-      if (!r.ok) {
-        if (r.ir) router.push(r.ir);
-        else setAviso({ ok: false, texto: r.erro });
-      } else if (r.mensagem) {
-        setAviso({ ok: true, texto: r.mensagem });
-      }
-    });
-  }
-
-  const mensagem = aviso ? (
-    <p role="status" className={`text-body-sm ${aviso.ok ? "text-cerrado-text" : "text-danger"}`}>
-      {aviso.texto}
-    </p>
-  ) : null;
-
-  return { rodar, pendente, mensagem };
-}
+import { useAcao } from "../ui/usar-acao";
 
 /** Botões de cada anúncio em "Meus anúncios". */
 export function AcoesAnuncio({ id, status, podeRenovar }: { id: string; status: string; podeRenovar: boolean }) {
@@ -150,24 +121,6 @@ export function AcoesInteressado({
             Desfazer
           </Botao>
         )}
-      </div>
-      {mensagem}
-    </div>
-  );
-}
-
-/** Decisão da moderação sobre um anúncio denunciado. */
-export function AcoesModeracao({ anuncioId }: { anuncioId: string }) {
-  const { rodar, pendente, mensagem } = useAcao();
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
-        <Botao variante="perigo" tamanho="sm" disabled={pendente} onClick={() => rodar(() => moderarAnuncio(anuncioId, "remover"))}>
-          Remover anúncio
-        </Botao>
-        <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => moderarAnuncio(anuncioId, "liberar"))}>
-          Está tudo certo, liberar
-        </Botao>
       </div>
       {mensagem}
     </div>

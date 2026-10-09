@@ -73,7 +73,19 @@ export default function Privacidade() {
           </p>
           <p>
             Usamos serviços de terceiros só para isso: o Supabase (banco de dados, login e fotos), o OpenFreeMap, com
-            dados do OpenStreetMap (mapas), e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
+            dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a OpenAI (a IA que revisa o texto
+            dos anúncios e ajuda a escrever) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
+          </p>
+          <p>
+            A IA recebe só o texto do anúncio (título, descrição, valor, horário e bairro), nunca seu contato. Quando ela
+            acha um anúncio suspeito, ele sai do ar até uma pessoa da moderação olhar.
+          </p>
+          <p>
+            Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}
+            <Link href="/perfil" className="underline">
+              Meu perfil
+            </Link>
+            . Avisos sobre suspensão da conta são enviados mesmo assim.
           </p>
         </Secao>
 
@@ -81,8 +93,9 @@ export default function Privacidade() {
           <Lista
             itens={[
               "Anúncios saem das buscas depois de 30 dias, a não ser que você renove.",
-              "Avisos (curtidas e matches) são apagados depois de 90 dias.",
+              "Avisos (curtidas e matches) são apagados depois de 90 dias. O registro dos e-mails enviados, depois de 30 dias.",
               "Quando você exclui a conta, apagamos na hora seu perfil, contato, foto, anúncios, curtidas e matches.",
+              "O registro do que a moderação fez (por exemplo, a remoção de um anúncio ou a suspensão de uma conta) fica guardado para a segurança do site, mesmo depois que a conta é excluída.",
             ]}
           />
         </Secao>
@@ -131,7 +144,7 @@ export default function Privacidade() {
               "Não escreva telefone, e-mail ou links no anúncio: o contato aparece no match.",
               "Nada de conteúdo ofensivo, spam ou anúncio repetido.",
               "Trabalho de menores de 16 anos é proibido, exceto como aprendiz a partir dos 14. Trabalho noturno, perigoso ou insalubre, só a partir dos 18.",
-              "Quem não seguir as regras pode ter anúncios removidos e a conta suspensa.",
+              "Quem não seguir as regras pode ter anúncios removidos e a conta suspensa por um tempo ou de vez. A pessoa recebe o motivo por e-mail.",
             ]}
           />
           <p className="text-body-sm text-ink-muted">

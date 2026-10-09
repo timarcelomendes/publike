@@ -89,7 +89,7 @@ export function MenuUsuario({
               </Item>
             )}
             {moderador && (
-              <Item href="/moderacao" icone={ShieldCheck}>
+              <Item href="/admin/denuncias" icone={ShieldCheck}>
                 Moderação
               </Item>
             )}

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CardAnuncio } from "@/components/card-anuncio";
-import { Avatar, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
+import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { TIPOS_CONTA } from "@/lib/constantes";
 import { obterPerfilPublico, obterUsuario } from "@/lib/dados";
@@ -39,9 +39,15 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
   const agora = await agoraDaRequisicao();
   const meu = usuario?.id === perfil.id;
   const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
+  const suspensa = Boolean(perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
 
   return (
     <>
+      {suspensa && (
+        <Aviso tipo="alerta" titulo="Esta conta está suspensa" className="mb-6">
+          A moderação do Publike suspendeu esta conta. Os anúncios dela estão fora do ar.
+        </Aviso>
+      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <Avatar nome={perfil.nome} foto={perfil.foto} tamanho={88} />
         <div className="min-w-0 flex-1">

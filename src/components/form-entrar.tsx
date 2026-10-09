@@ -1,13 +1,15 @@
 "use client";
 
-import { ArrowLeft, Mail, Smartphone } from "lucide-react";
+import { ArrowLeft, Mail, MailCheck, Smartphone } from "lucide-react";
 import Image from "next/image";
-import { startTransition, useEffect, useMemo, useState, type FormEvent } from "react";
+import { startTransition, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { irDepoisDoLogin } from "@/lib/acoes/perfil";
+import { GOOGLE_CLIENT_ID } from "@/lib/config";
 import { REDES, type BotaoRede, type RedeSocial } from "@/lib/login-social";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { BotaoGoogle } from "./botao-google";
 import { Aviso } from "./ui/basicos";
-import { Botao } from "./ui/botao";
+import { Botao, classesBotaoRede } from "./ui/botao";
 import { classesEntrada } from "./ui/campo";
 
 type ErroAuth = { code?: string; message?: string; status?: number } | null;
@@ -16,6 +18,9 @@ type ErroAuth = { code?: string; message?: string; status?: number } | null;
 function traduzir(erro: ErroAuth) {
   const codigo = erro?.code ?? "";
   const msg = (erro?.message ?? "").toLowerCase();
+  if (codigo === "user_banned" || msg.includes("banned")) {
+    return "Esta conta está suspensa e não pode entrar agora. Se achar que é um engano, responda o e-mail de aviso que você recebeu.";
+  }
   if (erro?.status === 429 || codigo.includes("rate_limit") || msg.includes("rate limit") || msg.includes("security purposes")) {
     return "Muitas tentativas seguidas. Espere um minuto e tente de novo.";
   }
@@ -47,11 +52,14 @@ export function FormEntrar({
   erroInicial,
   redes,
   celular: comCelular,
+  cabecalho,
 }: {
   proximo: string;
   erroInicial?: string;
   redes: BotaoRede[];
   celular: boolean;
+  /** Título do cartão: aparece só enquanto a pessoa escolhe como entrar. */
+  cabecalho?: ReactNode;
 }) {
   const supabase = useMemo(() => criarClienteNavegador(), []);
   const [modo, setModo] = useState<"celular" | "email">(comCelular ? "celular" : "email");
@@ -62,6 +70,8 @@ export function FormEntrar({
   const [erro, setErro] = useState<string | null>(erroInicial ?? null);
   const [carregando, setCarregando] = useState(false);
   const [abrindo, setAbrindo] = useState<RedeSocial | null>(null);
+  // botão oficial do Google; se o script dele não carregar, volta o botão comum
+  const [googleOficial, setGoogleOficial] = useState(Boolean(GOOGLE_CLIENT_ID));
 
   const digitos = celular.replace(/\D/g, "");
   const telefone = `+55${digitos}`;
@@ -99,6 +109,19 @@ export function FormEntrar({
       setErro(traduzir(error));
       setAbrindo(null);
     }
+  }
+
+  /** Botão oficial do Google: o Supabase confere o token e abre a sessão aqui mesmo. */
+  async function entrarComGoogle(token: string, nonce: string) {
+    setErro(null);
+    setAbrindo("google");
+    const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token, nonce });
+    if (error) {
+      setErro(traduzir(error));
+      setAbrindo(null);
+      return;
+    }
+    continuar();
   }
 
   async function pedirCodigo(e: FormEvent) {
@@ -153,12 +176,18 @@ export function FormEntrar({
 
   if (etapa === "email-enviado") {
     return (
-      <div className="flex flex-col gap-4">
-        <Aviso tipo="sucesso" titulo="Confira seu e-mail">
-          Mandamos um link para <strong>{email}</strong>. Abra o link neste mesmo navegador para entrar. Não chegou? Veja
-          a caixa de spam.
-        </Aviso>
-        <Botao variante="fantasma" onClick={() => setEtapa("pedir")}>
+      <div role="status" className="flex flex-col items-start gap-4">
+        <span className="flex size-12 items-center justify-center rounded-pill bg-surface-300">
+          <MailCheck aria-hidden className="size-6 text-cerrado-text" />
+        </span>
+        <div>
+          <p className="font-display text-h3">Confira seu e-mail</p>
+          <p className="mt-1 text-body text-ink-muted">
+            Mandamos um link para <strong className="text-ink">{email}</strong>. Abra o link neste mesmo navegador para
+            entrar. Não chegou em alguns minutos? Veja a caixa de spam.
+          </p>
+        </div>
+        <Botao variante="fantasma" onClick={() => setEtapa("pedir")} className="-ml-3">
           <ArrowLeft aria-hidden />
           Usar outro e-mail
         </Botao>
@@ -207,24 +236,41 @@ export function FormEntrar({
 
   return (
     <div className="flex flex-col gap-5">
+      {cabecalho && <div className="-mb-5">{cabecalho}</div>}
       {redes.length > 0 && (
         <>
           <div role="group" aria-label="Entrar com uma rede social" className="flex flex-col gap-3">
-            {redes.map(({ rede, nome, logo }) => (
-              <Botao
-                key={rede}
-                onClick={() => entrarCom(rede)}
-                disabled={abrindo !== null || carregando}
-                className="min-h-12 w-full"
-              >
-                {logo && <Image src={logo} alt="" width={20} height={20} unoptimized className="size-5 shrink-0" />}
-                {abrindo === rede ? `Abrindo o ${nome}…` : `Continuar com o ${nome}`}
-              </Botao>
-            ))}
+            {redes.map(({ rede, nome, logo }) =>
+              rede === "google" && googleOficial ? (
+                <div key={rede} className="flex flex-col gap-1">
+                  <BotaoGoogle
+                    clientId={GOOGLE_CLIENT_ID}
+                    aoEntrar={entrarComGoogle}
+                    aoFalhar={() => setGoogleOficial(false)}
+                  />
+                  {abrindo === "google" && (
+                    <p role="status" className="text-center text-body-sm text-ink-muted">
+                      Entrando com o Google…
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <button
+                  key={rede}
+                  type="button"
+                  onClick={() => entrarCom(rede)}
+                  disabled={abrindo !== null || carregando}
+                  className={classesBotaoRede}
+                >
+                  {logo && <Image src={logo} alt="" width={20} height={20} unoptimized className="size-5 shrink-0" />}
+                  {abrindo === rede ? `Abrindo o ${nome}…` : `Continuar com o ${nome}`}
+                </button>
+              ),
+            )}
           </div>
           <div className="flex items-center gap-3 text-body-sm text-ink-muted">
             <span className="h-px flex-1 bg-line" />
-            ou
+            {modo === "celular" ? "ou use seu celular" : "ou use seu e-mail"}
             <span className="h-px flex-1 bg-line" />
           </div>
         </>
@@ -279,12 +325,12 @@ export function FormEntrar({
               placeholder="voce@exemplo.com"
               className={classesEntrada}
             />
-            <p className="text-body-sm text-ink-muted">Você recebe um link para entrar, sem senha.</p>
+            <p className="text-body-sm text-ink-muted">Mandamos um link para este e-mail. É só abrir para entrar.</p>
           </div>
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
           <Botao type="submit" variante="primario" disabled={carregando} className="min-h-12">
             <Mail aria-hidden />
-            {carregando ? "Enviando…" : "Receber link"}
+            {carregando ? "Enviando…" : "Receber link de acesso"}
           </Botao>
           {comCelular && (
             <button

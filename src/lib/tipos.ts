@@ -52,9 +52,11 @@ export type Perfil = {
   servicos: string[];
   verificado: boolean;
   criado_em: string;
+  /** conta suspensa ou banida até esta data */
+  suspenso_ate?: string | null;
 };
 
-export type MeuPerfil = Perfil & { whatsapp: string | null; email: string | null };
+export type MeuPerfil = Perfil & { whatsapp: string | null; email: string | null; receber_emails: boolean };
 
 /** `nome` vem da conta Google, Facebook ou LinkedIn (quando houver) e só serve de sugestão no perfil. */
 export type Usuario = { id: string; email: string | null; telefone: string | null; nome: string | null };

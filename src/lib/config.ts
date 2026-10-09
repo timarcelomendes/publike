@@ -19,6 +19,12 @@ export const LOGIN_GOOGLE = process.env.NEXT_PUBLIC_LOGIN_GOOGLE === "true";
 export const LOGIN_FACEBOOK = process.env.NEXT_PUBLIC_LOGIN_FACEBOOK === "true";
 export const LOGIN_LINKEDIN = process.env.NEXT_PUBLIC_LOGIN_LINKEDIN === "true";
 export const LOGIN_CELULAR = process.env.NEXT_PUBLIC_LOGIN_CELULAR === "true";
+/**
+ * ID do cliente OAuth do Google (é público). Com ele, o login do Google usa o
+ * botão oficial no próprio site, e a janela do Google mostra o Publike em vez
+ * do endereço do Supabase. Sem ele, o botão leva para a página do Google.
+ */
+export const GOOGLE_CLIENT_ID = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "").trim();
 
 /** Praça Cívica, centro de Goiânia: ponto de partida das buscas. */
 export const CENTRO_GOIANIA = { lat: -16.6806, lng: -49.2563 } as const;

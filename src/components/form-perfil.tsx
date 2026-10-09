@@ -260,6 +260,20 @@ export function FormPerfil({
             className={classesEntrada}
           />
         </Campo>
+        <label className="flex min-h-11 cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            name="receber_emails"
+            defaultChecked={perfil?.receber_emails ?? true}
+            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+          />
+          <span>
+            <span className="block text-label">Receber avisos por e-mail</span>
+            <span className="block text-body-sm text-ink-muted">
+              Curtidas, matches e avisos da moderação, no e-mail da sua conta.
+            </span>
+          </span>
+        </label>
       </section>
 
       <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">

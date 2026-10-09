@@ -14,6 +14,19 @@ const nextConfig: NextConfig = {
   images: {
     qualities: [75],
   },
+  // A tela de entrar procura os logos das redes no disco (login-social-servidor.ts).
+  // Na Vercel, a pasta public não vai junto com o servidor; isto leva os logos.
+  outputFileTracingIncludes: {
+    "/entrar": ["./public/marcas/**/*"],
+  },
+  async redirects() {
+    return [
+      // a moderação agora fica dentro do admin
+      { source: "/moderacao", destination: "/admin/denuncias", permanent: true },
+      // endereço curto das instruções para apagar os dados (pedido no app do Facebook)
+      { source: "/apagar-dados", destination: "/privacidade#apagar-dados", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

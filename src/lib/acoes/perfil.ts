@@ -2,10 +2,12 @@
 
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
+import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
 import { errosPorCampo, lerPerfil } from "@/lib/validacao";
@@ -37,8 +39,11 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     p_foto: d.foto,
     p_whatsapp: d.whatsapp,
     p_email: d.email,
+    p_receber_emails: d.receber_emails,
   });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar o perfil agora.") };
+  // perfil novo avisa a equipe por e-mail
+  after(processarFilas);
 
   // Apaga fotos antigas que ficaram na pasta da pessoa
   const atual = d.foto?.split("/")[1] ?? null;
@@ -65,6 +70,10 @@ export async function excluirConta(_anterior: EstadoForm, formData: FormData): P
   if (!usuario) redirect("/entrar");
 
   const supabase = await criarClienteServidor();
+  // Conta suspensa não se exclui (não dá para fugir da suspensão); confere
+  // antes de mexer na foto.
+  const { data: suspensa } = await supabase.rpc("minha_conta_suspensa");
+  if (suspensa) return { ok: false, erro: "Sua conta está suspensa. Se achar que é um engano, fale com a gente." };
   for (let lote = 0; lote < 20; lote++) {
     const { data: arquivos, error: erroLista } = await supabase.storage.from("avatars").list(usuario.id, { limit: 100 });
     if (erroLista) return { ok: false, erro: "Não foi possível apagar sua foto agora. Tente de novo." };

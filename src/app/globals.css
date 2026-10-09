@@ -9,6 +9,8 @@
    - ipe: acento (selos NOVO e GRÁTIS); texto sobre ele em on-ipe
    - cerrado: deu certo (match, publicação no ar)
    - danger: só erro e denúncia
+   - social: só nos botões de login social (Google, Facebook, LinkedIn),
+     que seguem o padrão do botão oficial do Google no claro e no escuro
 ------------------------------------------------------------------- */
 :root {
   --pk-surface-100: #fbf7ef;
@@ -36,6 +38,11 @@
   --pk-focus: #1f6f4a;
   --pk-shadow-card: 0 1px 2px rgba(31, 26, 20, 0.06), 0 6px 20px rgba(31, 26, 20, 0.06);
   --pk-shadow-raised: 0 2px 4px rgba(31, 26, 20, 0.08), 0 14px 36px rgba(31, 26, 20, 0.12);
+  /* Botões de login social: as mesmas cores que o botão oficial do Google desenha */
+  --pk-social-surface: #ffffff;
+  --pk-social-hover: #f8f9fa;
+  --pk-social-line: #dadce0;
+  --pk-social-ink: #3c4043;
   color-scheme: light;
 }
 
@@ -60,6 +67,10 @@
     --pk-focus: #f5b301;
     --pk-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
     --pk-shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.55);
+    --pk-social-surface: #202124;
+    --pk-social-hover: #303134;
+    --pk-social-line: #202124;
+    --pk-social-ink: #e8eaed;
     color-scheme: dark;
   }
 }
@@ -88,6 +99,10 @@
   --color-cerrado-text: var(--pk-cerrado-text);
   --color-danger: var(--pk-danger);
   --color-focus: var(--pk-focus);
+  --color-social-surface: var(--pk-social-surface);
+  --color-social-hover: var(--pk-social-hover);
+  --color-social-line: var(--pk-social-line);
+  --color-social-ink: var(--pk-social-ink);
 
   --font-sans: var(--font-figtree), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-bricolage), var(--font-figtree), system-ui, sans-serif;
@@ -166,6 +181,30 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+/* Tela de entrar: o anúncio de exemplo curte e dá match (src/components/demo-match.tsx) */
+@keyframes pk-pulsa {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pk-surge {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

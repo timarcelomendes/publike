@@ -4,8 +4,11 @@ import { Briefcase, Wrench } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
+import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS_SUGERIDOS, CATEGORIAS, CIDADES, REGIMES, UNIDADES } from "@/lib/constantes";
 import type { EstadoForm, TipoAnuncio } from "@/lib/tipos";
+import { lerNumeroBR } from "@/lib/numero";
+import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { SeletorLocal } from "./mapa/seletor-local";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
@@ -43,9 +46,22 @@ function Secao({ numero, titulo, children }: { numero: number; titulo: string; c
   );
 }
 
-export function FormAnuncio({ inicial }: { inicial: ValoresAnuncio }) {
+export function FormAnuncio({
+  inicial,
+  acaoSalvar = salvarAnuncio,
+  equipe = false,
+  ia = false,
+}: {
+  inicial: ValoresAnuncio;
+  /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
+  acaoSalvar?: (anterior: EstadoForm, formData: FormData) => Promise<EstadoForm>;
+  /** Correção feita pela moderação no anúncio de outra pessoa. */
+  equipe?: boolean;
+  /** Mostra o botão "Melhorar texto com IA". */
+  ia?: boolean;
+}) {
   const editando = Boolean(inicial.id);
-  const [estado, acao, enviando] = useActionState(salvarAnuncio, ESTADO_INICIAL);
+  const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
   const [tipo, setTipo] = useState<TipoAnuncio>(inicial.tipo);
   const [combinar, setCombinar] = useState(editando ? inicial.pagamento_valor == null : false);
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
@@ -73,6 +89,36 @@ export function FormAnuncio({ inicial }: { inicial: ValoresAnuncio }) {
   }
 
   const valor = inicial.pagamento_valor != null ? String(inicial.pagamento_valor).replace(".", ",") : "";
+
+  // O que já está escrito no formulário vai para a IA como rascunho.
+  function lerRascunho(): RascunhoAnuncio {
+    const f = formulario.current ? new FormData(formulario.current) : new FormData();
+    const texto = (nome: string) => {
+      const v = f.get(nome);
+      return typeof v === "string" ? v : "";
+    };
+    const valorDigitado = combinar ? null : lerNumeroBR(f.get("pagamento_valor"));
+    return {
+      tipo,
+      titulo: texto("titulo"),
+      descricao,
+      categoria: texto("categoria"),
+      regime: vaga ? texto("regime") || null : null,
+      pagamento_valor: valorDigitado != null && Number.isFinite(valorDigitado) ? valorDigitado : null,
+      pagamento_unidade: combinar ? null : unidade,
+      beneficios: texto("beneficios") || null,
+      horario: texto("horario") || null,
+      vagas: Number(texto("vagas")) || 1,
+      cidade: texto("cidade"),
+      bairro: texto("bairro"),
+    };
+  }
+
+  function aplicarSugestao(titulo: string, novaDescricao: string) {
+    const campoTitulo = formulario.current?.elements.namedItem("titulo");
+    if (campoTitulo instanceof HTMLInputElement) campoTitulo.value = titulo;
+    setDescricao(novaDescricao);
+  }
 
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
@@ -187,6 +233,7 @@ export function FormAnuncio({ inicial }: { inicial: ValoresAnuncio }) {
           />
           <span className="self-end text-body-sm text-ink-muted">{descricao.length}/3000</span>
         </Campo>
+        {ia && <MelhorarTexto lerRascunho={lerRascunho} aplicar={aplicarSugestao} />}
       </Secao>
 
       <Secao numero={3} titulo="Valor e horário">
@@ -313,15 +360,29 @@ export function FormAnuncio({ inicial }: { inicial: ValoresAnuncio }) {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando} className="sm:min-w-56">
-          {enviando ? "Salvando…" : editando ? "Salvar alterações" : vaga ? "Publicar vaga" : "Publicar serviço"}
+          {enviando
+            ? "Salvando…"
+            : equipe
+              ? "Salvar correção"
+              : editando
+                ? "Salvar alterações"
+                : vaga
+                  ? "Publicar vaga"
+                  : "Publicar serviço"}
         </Botao>
-        <p className="text-body-sm text-ink-muted">
-          Grátis. Fica 30 dias no ar e pode ser renovado de 30 em 30 dias. Ao publicar, você concorda com as{" "}
-          <Link href="/privacidade#regras" className="underline">
-            regras do Publike
-          </Link>
-          .
-        </p>
+        {equipe ? (
+          <p className="text-body-sm text-ink-muted">
+            Quem publicou não recebe aviso da correção. A mudança fica no registro da equipe.
+          </p>
+        ) : (
+          <p className="text-body-sm text-ink-muted">
+            Grátis. Fica 30 dias no ar e pode ser renovado de 30 em 30 dias. Ao publicar, você concorda com as{" "}
+            <Link href="/privacidade#regras" className="underline">
+              regras do Publike
+            </Link>
+            .
+          </p>
+        )}
       </div>
     </form>
   );

@@ -117,3 +117,49 @@ export function urlDaFoto(caminho: string | null | undefined) {
 export function primeiro(valor: string | string[] | undefined) {
   return Array.isArray(valor) ? valor[0] : valor;
 }
+
+/** "8 de out. de 2026, 13:05" */
+export function formatarDataHora(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: FUSO,
+  }).format(new Date(iso));
+}
+
+/** "08/10/2026" */
+export function formatarDataCurta(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: FUSO }).format(
+    new Date(iso),
+  );
+}
+
+/** Banimento é uma suspensão de 100 anos: daqui a mais de 10 anos, chamamos de "para sempre". */
+export function ehParaSempre(iso: string | null | undefined, agora: number) {
+  return Boolean(iso && new Date(iso).getTime() - agora > 10 * 365 * 24 * 3600 * 1000);
+}
+
+const PROVEDORES: Record<string, string> = {
+  email: "E-mail",
+  google: "Google",
+  facebook: "Facebook",
+  linkedin_oidc: "LinkedIn",
+  phone: "Celular",
+};
+
+export function nomeDoProvedor(provedor: string | null | undefined) {
+  return (provedor && PROVEDORES[provedor]) || provedor || "E-mail";
+}
+
+/** 1234 → "1.234" */
+export function formatarNumero(n: number) {
+  return new Intl.NumberFormat("pt-BR").format(n);
+}
+
+/** plural(1, "vaga", "vagas") → "1 vaga"; plural(3, …) → "3 vagas" */
+export function plural(n: number, singular: string, varios: string) {
+  return `${formatarNumero(n)} ${n === 1 ? singular : varios}`;
+}

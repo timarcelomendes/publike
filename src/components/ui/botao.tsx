@@ -30,6 +30,17 @@ export function classesBotao(variante: VarianteBotao = "secundario", tamanho: Ta
   ].join(" ");
 }
 
+/**
+ * Botões de login social (Google, Facebook e LinkedIn). Seguem o padrão do botão
+ * oficial do Google, que o site não consegue mudar: pílula de 40 px, borda fina,
+ * claro no tema claro e escuro no tema escuro (tokens social-* do globals.css).
+ */
+export const classesBotaoRede = [
+  "inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-pill border px-3 whitespace-nowrap",
+  "border-social-line bg-social-surface text-body-sm font-medium text-social-ink",
+  "transition-colors hover:bg-social-hover disabled:cursor-not-allowed disabled:opacity-60",
+].join(" ");
+
 type Estilo = { variante?: VarianteBotao; tamanho?: TamanhoBotao };
 
 export function Botao({ variante, tamanho, className, type = "button", ...props }: ComponentProps<"button"> & Estilo) {

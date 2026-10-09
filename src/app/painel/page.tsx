@@ -8,7 +8,7 @@ import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { STATUS_ANUNCIO } from "@/lib/constantes";
-import { listarMeusAnuncios } from "@/lib/dados";
+import { listarMeusAnuncios, obterMeuPerfil } from "@/lib/dados";
 import { formatarData, formatarLugar, primeiro, rotuloModalidade, tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -28,11 +28,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel">["
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   await exigirUsuario("/painel");
-  const anuncios = await listarMeusAnuncios();
+  const [anuncios, perfil] = await Promise.all([listarMeusAnuncios(), obterMeuPerfil()]);
   const agora = await agoraDaRequisicao();
+  const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
 
   return (
     <div className="flex flex-col gap-4">
+      {suspensa && (
+        <Aviso tipo="alerta" titulo="Sua conta está suspensa">
+          Seus anúncios estão fora do ar e não dá para publicar, curtir ou editar. Veja o motivo no e-mail que enviamos.
+        </Aviso>
+      )}
       {primeiro(sp.excluido) === "1" && <Aviso tipo="sucesso" titulo="Anúncio excluído." />}
       {anuncios.length === 0 ? (
         <Vazio

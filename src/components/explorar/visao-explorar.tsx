@@ -19,12 +19,21 @@ function useTelaGrande() {
   );
 }
 
-/** Lista e mapa lado a lado no computador; no celular, alterna entre os dois. */
+/**
+ * Lista e mapa lado a lado no computador; no celular, um botão alterna entre os dois.
+ * Cabeçalho: contagem e origem à esquerda; filtros da lista à direita (embaixo, no celular).
+ */
 export function VisaoExplorar({
+  titulo,
+  subtitulo,
+  filtrosLista,
   lista,
   pontos,
   filtros,
 }: {
+  titulo: ReactNode;
+  subtitulo: ReactNode;
+  filtrosLista: ReactNode;
   lista: ReactNode;
   pontos: PontoMapa[];
   filtros: Filtros;
@@ -32,23 +41,25 @@ export function VisaoExplorar({
   const telaGrande = useTelaGrande();
   const [modo, setModo] = useState<"lista" | "mapa">("lista");
   const mostrarMapa = telaGrande || modo === "mapa";
-
-  const aba = (ativo: boolean) =>
-    `inline-flex min-h-10 items-center gap-2 rounded-pill px-4 text-label transition-colors ${
-      ativo ? "bg-ink text-surface-100" : "text-ink hover:bg-surface-300"
-    }`;
+  const naLista = modo === "lista";
 
   return (
     <div>
-      <div role="group" aria-label="Ver como" className="mb-4 inline-flex rounded-pill border border-line bg-surface-200 p-1 lg:hidden">
-        <button type="button" aria-pressed={modo === "lista"} onClick={() => setModo("lista")} className={aba(modo === "lista")}>
-          <List aria-hidden className="size-4" />
-          Lista
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:gap-x-6">
+        <div className="col-start-1 row-start-1">{titulo}</div>
+        <button
+          type="button"
+          onClick={() => setModo(naLista ? "mapa" : "lista")}
+          className="col-start-2 row-start-1 inline-flex min-h-10 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-surface-300 lg:hidden"
+        >
+          {naLista ? <IconeMapa aria-hidden className="size-4" /> : <List aria-hidden className="size-4" />}
+          {naLista ? "Ver mapa" : "Ver lista"}
         </button>
-        <button type="button" aria-pressed={modo === "mapa"} onClick={() => setModo("mapa")} className={aba(modo === "mapa")}>
-          <IconeMapa aria-hidden className="size-4" />
-          Mapa
-        </button>
+        <div className="col-span-2 row-start-2 lg:col-span-1">{subtitulo}</div>
+        {/* a faixa dos filtros tem 4px de folga (contorno do foco): -mb-1 alinha com a linha de baixo */}
+        <div className="col-span-2 row-start-3 mt-2 lg:col-span-1 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:-mb-1 lg:mt-0 lg:self-end">
+          {filtrosLista}
+        </div>
       </div>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start lg:gap-6">

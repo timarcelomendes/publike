@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const erroDaRede = url.searchParams.get("error");
   if (erroDaRede) {
     const detalhe = `${url.searchParams.get("error_code") ?? ""} ${url.searchParams.get("error_description") ?? ""}`.toLowerCase();
+    if (detalhe.includes("banned")) return voltarComErro("suspensa");
     if (erroDaRede === "access_denied" && !detalhe.includes("email")) return voltarComErro("cancelado");
     if (detalhe.includes("email")) return voltarComErro("sem-email");
     return voltarComErro(viaRede ? "social" : "link");
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       return NextResponse.redirect(`${base}/auth/continuar?next=${encodeURIComponent(proximo)}`);
     }
+    if (error.code === "user_banned" || error.message.toLowerCase().includes("banned")) return voltarComErro("suspensa");
   }
   return voltarComErro(viaRede ? "social" : "link");
 }

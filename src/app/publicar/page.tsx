@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { FormAnuncio } from "@/components/form-anuncio";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
+import { ajudaDaIADisponivel } from "@/lib/dados";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 
 export const metadata: Metadata = {
@@ -36,7 +37,8 @@ async function Conteudo() {
     );
   }
   const { perfil } = await exigirPerfilCompleto("/publicar");
-  return <FormAnuncio inicial={vazio(perfil.cidade, perfil.bairro ?? "")} />;
+  const ia = await ajudaDaIADisponivel();
+  return <FormAnuncio inicial={vazio(perfil.cidade, perfil.bairro ?? "")} ia={ia} />;
 }
 
 function vazio(cidade: string, bairro: string) {
