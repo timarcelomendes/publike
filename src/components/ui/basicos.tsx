@@ -2,7 +2,7 @@ import { CircleAlert, CircleCheck, Info, TriangleAlert, type LucideIcon } from "
 import Image from "next/image";
 import type { ComponentProps, ReactNode } from "react";
 import { iniciais, urlDaFoto } from "@/lib/formato";
-import { LOGO } from "./logo-caminhos";
+import { LOGO, LOGO_LARGURA } from "./logo-caminhos";
 
 export function Container({ className = "", ...props }: ComponentProps<"div">) {
   return <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 ${className}`} {...props} />;
@@ -159,14 +159,14 @@ const ESTILO_LOGO =
   "@media (prefers-reduced-motion:reduce){.lk-anim{display:none}.lk-meio{display:inline}}";
 
 /**
- * A assinatura, desenhada aqui mesmo (sem arquivo) para o "li" poder se mexer:
+ * A assinatura (o p é o pino, com o coração vermelho), desenhada aqui mesmo para o "li" poder se mexer:
  * ele troca entre ink (lê-se publi) e vermelho (lê-se like), 1,8 s em cada
  * leitura e 0,6 s de troca. Parado (`animado={false}`) e para quem pede menos
  * movimento, o li fica meio a meio. No tema escuro, o ink vira branco.
  * Regras e arquivos: guia da marca (public/logo/).
  */
 export function Logo({ altura = 32, className = "", animado = true }: { altura?: number; className?: string; animado?: boolean }) {
-  const largura = Math.round((altura * 777) / 217);
+  const largura = Math.round((altura * LOGO_LARGURA) / 217);
   const meio = (
     <>
       <path d={LOGO.liBaixo} fill="#e0192d" />
@@ -175,7 +175,7 @@ export function Logo({ altura = 32, className = "", animado = true }: { altura?:
   );
   return (
     <svg
-      viewBox="0 0 777 217"
+      viewBox={`0 0 ${LOGO_LARGURA} 217`}
       width={largura}
       height={altura}
       role="img"
@@ -183,8 +183,10 @@ export function Logo({ altura = 32, className = "", animado = true }: { altura?:
       className={`logo-publike block ${className}`}
     >
       <style>{ESTILO_LOGO}</style>
-      <path d={LOGO.simbolo} fill="#e0192d" />
-      <path d={LOGO.pub} className="lk-i" />
+      {/* o p é o pino, na cor do texto, com o coração vermelho */}
+      <path d={LOGO.pino} className="lk-i" fillRule="evenodd" />
+      <path d={LOGO.coracao} fill="#e0192d" />
+      <path d={LOGO.ub} className="lk-i" />
       {animado ? (
         <>
           <g className="lk-meio">{meio}</g>

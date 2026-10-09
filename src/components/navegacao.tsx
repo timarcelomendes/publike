@@ -19,7 +19,7 @@ export function Rodape() {
     <footer className="mt-16 border-t border-line bg-surface-200">
       <Container className="flex flex-col gap-8 py-10 md:flex-row md:items-start md:justify-between">
         <div className="max-w-sm">
-          <Logo altura={28} />
+          <Logo altura={32} />
           <p className="mt-3 text-body-sm text-ink-muted">
             Uma ferramenta do povo para gerar emprego em Goiânia e região: trabalho perto de casa, de graça.
           </p>

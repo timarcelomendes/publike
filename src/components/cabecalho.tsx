@@ -22,7 +22,7 @@ export function Cabecalho() {
     <header className="sticky top-0 z-40 border-b border-line bg-surface-100/90 backdrop-blur-md">
       <Container className="flex h-16 items-center gap-2">
         <Link href="/" aria-label="Publike, página inicial" className="mr-3 shrink-0 rounded-sm">
-          <Logo altura={30} />
+          <Logo altura={34} />
         </Link>
         <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
           <LinkNav href="/descobrir">Descobrir</LinkNav>
