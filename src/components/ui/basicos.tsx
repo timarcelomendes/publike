@@ -166,7 +166,7 @@ const ESTILO_LOGO =
  * Regras e arquivos: guia da marca (public/logo/).
  */
 export function Logo({ altura = 32, className = "", animado = true }: { altura?: number; className?: string; animado?: boolean }) {
-  const largura = Math.round((altura * 806) / 217);
+  const largura = Math.round((altura * 777) / 217);
   const meio = (
     <>
       <path d={LOGO.liBaixo} fill="#e0192d" />
@@ -175,7 +175,7 @@ export function Logo({ altura = 32, className = "", animado = true }: { altura?:
   );
   return (
     <svg
-      viewBox="0 0 806 217"
+      viewBox="0 0 777 217"
       width={largura}
       height={altura}
       role="img"
