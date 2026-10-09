@@ -136,6 +136,17 @@ Depois de mudar o `.env.local`, pare o `npm run dev` (Ctrl+C) e rode de novo. O 
 >
 > **Logos nos botões.** As marcas exigem o logo oficial, sem alteração. Os três já estão em `public/marcas/` (`google.png`, `facebook.png` e `linkedin.png`), tirados das páginas de marca do [Google](https://developers.google.com/identity/branding-guidelines), do [Facebook](https://www.meta.com/brand/resources/facebook/logo/) e do [LinkedIn](https://brand.linkedin.com/downloads) e só reduzidos de tamanho. O botão do Google usa o logo do próprio Google; o `google.png` aparece só no botão reserva, quando o script do Google não carrega. Para trocar um logo, salve o novo arquivo com o mesmo nome (SVG também serve).
 
+### Proteção contra robôs (Cloudflare Turnstile, grátis)
+
+Sem ela, um robô pode pedir milhares de links de acesso: gasta os créditos do Zoho e suja a reputação do domínio (os e-mails passam a cair no spam). O site já está pronto; falta ligar, **nesta ordem** (ligar no Supabase antes do site deixa ninguém entrar por e-mail):
+
+1. No [Cloudflare](https://dash.cloudflare.com/) (conta grátis), abra **Turnstile → Add widget**. Nome: `Publike`. Hostnames: `publike.org` e `localhost` (o site no seu computador usa o mesmo Supabase). Modo: **Managed**. Guarde a **Site key** (pública) e a **Secret key** (secreta).
+2. Ponha a Site key em `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, no `.env.local` e na Vercel (Production). Faça um deploy e confira que o login por e-mail continua funcionando.
+3. No Supabase, em **Authentication → Attack Protection**, ligue **Enable Captcha protection**, escolha **Turnstile by Cloudflare** e cole a Secret key. Salve.
+4. Teste de novo pedir o link de acesso no publike.org e no `localhost`.
+
+O que muda para quem usa: quase nada. A verificação fica invisível e só mostra uma caixinha quando o Cloudflare desconfia. Ela vale para o link por e-mail e o código por SMS; Google, Facebook e LinkedIn não passam por ela (o próprio provedor já confere). Se der problema, desligue no Supabase (passo 3) e o login volta ao normal na hora.
+
 ### Celular por SMS (pago por mensagem)
 
 1. Em **Authentication → Sign In / Providers → Phone**, ative e escolha o provedor: Twilio, Twilio Verify, MessageBird, Vonage ou Textlocal. Cada SMS tem custo. Para provedores brasileiros, o Supabase aceita um "Send SMS Hook".
@@ -341,4 +352,5 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 - [ ] `NEXT_PUBLIC_CONTATO_EMAIL` preenchido (aparece na página de privacidade)
 - [ ] Textos de privacidade e regras revisados por um advogado
 - [ ] Números de teste do SMS removidos
+- [ ] Proteção contra robôs ligada (Turnstile: site key na Vercel, secret key no Supabase, nessa ordem)
 - [ ] Apps do Google, Facebook e LinkedIn publicados (fora do modo de teste); no Facebook, preencher a URL de exclusão de dados (`/apagar-dados`) depois que o site estiver no ar

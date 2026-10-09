@@ -2,15 +2,16 @@
 
 import { ArrowLeft, Mail, MailCheck, Smartphone } from "lucide-react";
 import Image from "next/image";
-import { startTransition, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { irDepoisDoLogin } from "@/lib/acoes/perfil";
-import { GOOGLE_CLIENT_ID } from "@/lib/config";
+import { GOOGLE_CLIENT_ID, TURNSTILE_SITE_KEY } from "@/lib/config";
 import { REDES, type BotaoRede, type RedeSocial } from "@/lib/login-social";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { BotaoGoogle } from "./botao-google";
 import { Aviso } from "./ui/basicos";
 import { Botao, classesBotaoRede } from "./ui/botao";
 import { classesEntrada } from "./ui/campo";
+import { VerificacaoRobo } from "./verificacao-robo";
 
 type ErroAuth = { code?: string; message?: string; status?: number } | null;
 
@@ -18,6 +19,9 @@ type ErroAuth = { code?: string; message?: string; status?: number } | null;
 function traduzir(erro: ErroAuth) {
   const codigo = erro?.code ?? "";
   const msg = (erro?.message ?? "").toLowerCase();
+  if (codigo === "captcha_failed" || msg.includes("captcha")) {
+    return "Não conseguimos confirmar que você não é um robô. Tente de novo; se continuar, recarregue a página.";
+  }
   if (codigo === "user_banned" || msg.includes("banned")) {
     return "Esta conta está suspensa e não pode entrar agora. Se achar que é um engano, responda o e-mail de aviso que você recebeu.";
   }
@@ -72,6 +76,14 @@ export function FormEntrar({
   const [abrindo, setAbrindo] = useState<RedeSocial | null>(null);
   // botão oficial do Google; se o script dele não carregar, volta o botão comum
   const [googleOficial, setGoogleOficial] = useState(Boolean(GOOGLE_CLIENT_ID));
+  // Verificação contra robôs: o token vale uma vez só. Depois de cada pedido,
+  // `rodada` muda e a verificação recomeça. Se a pessoa enviar antes de o token
+  // chegar, o pedido espera por ele (`aguardando`).
+  const comVerificacao = Boolean(TURNSTILE_SITE_KEY);
+  const [tokenRobo, setTokenRobo] = useState<string | null>(null);
+  const [rodada, setRodada] = useState(0);
+  const [verificando, setVerificando] = useState(false);
+  const aguardando = useRef<"email" | "celular" | null>(null);
 
   const digitos = celular.replace(/\D/g, "");
   const telefone = `+55${digitos}`;
@@ -124,6 +136,46 @@ export function FormEntrar({
     continuar();
   }
 
+  /** Token usado: a verificação recomeça para o próximo pedido. */
+  function novaVerificacao() {
+    if (!comVerificacao) return;
+    setTokenRobo(null);
+    setRodada((n) => n + 1);
+  }
+
+  /** O Turnstile entregou um token; se havia pedido esperando, ele segue agora. */
+  function aoVerificar(token: string) {
+    setTokenRobo(token);
+    setVerificando(false);
+    const qual = aguardando.current;
+    aguardando.current = null;
+    if (qual === "email") void enviarLink(token);
+    else if (qual === "celular") void enviarCodigo(token);
+  }
+
+  /** Sem token ainda: o pedido espera a verificação terminar. */
+  function esperarVerificacao(qual: "email" | "celular") {
+    if (!comVerificacao || tokenRobo) return false;
+    aguardando.current = qual;
+    setVerificando(true);
+    return true;
+  }
+
+  async function enviarCodigo(token: string | null) {
+    setCarregando(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: telefone,
+      options: token ? { captchaToken: token } : undefined,
+    });
+    setCarregando(false);
+    novaVerificacao();
+    if (error) {
+      setErro(traduzir(error));
+      return;
+    }
+    setEtapa("codigo");
+  }
+
   async function pedirCodigo(e: FormEvent) {
     e.preventDefault();
     setErro(null);
@@ -131,14 +183,8 @@ export function FormEntrar({
       setErro("Digite o celular com DDD. Ex.: (62) 99999-0000.");
       return;
     }
-    setCarregando(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: telefone });
-    setCarregando(false);
-    if (error) {
-      setErro(traduzir(error));
-      return;
-    }
-    setEtapa("codigo");
+    if (esperarVerificacao("celular")) return;
+    await enviarCodigo(tokenRobo);
   }
 
   async function confirmarCodigo(e: FormEvent) {
@@ -158,20 +204,26 @@ export function FormEntrar({
     continuar();
   }
 
-  async function pedirLink(e: FormEvent) {
-    e.preventDefault();
-    setErro(null);
+  async function enviarLink(token: string | null) {
     setCarregando(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: urlDeRetorno() },
+      options: { emailRedirectTo: urlDeRetorno(), ...(token ? { captchaToken: token } : {}) },
     });
     setCarregando(false);
+    novaVerificacao();
     if (error) {
       setErro(traduzir(error));
       return;
     }
     setEtapa("email-enviado");
+  }
+
+  async function pedirLink(e: FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    if (esperarVerificacao("email")) return;
+    await enviarLink(tokenRobo);
   }
 
   if (etapa === "email-enviado") {
@@ -294,9 +346,9 @@ export function FormEntrar({
             <p className="text-body-sm text-ink-muted">Você recebe um código por SMS.</p>
           </div>
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
-          <Botao type="submit" variante="primario" disabled={carregando} className="min-h-12">
+          <Botao type="submit" variante="primario" disabled={carregando || verificando} className="min-h-12">
             <Smartphone aria-hidden />
-            {carregando ? "Enviando…" : "Receber código"}
+            {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber código"}
           </Botao>
           <button
             type="button"
@@ -328,9 +380,9 @@ export function FormEntrar({
             <p className="text-body-sm text-ink-muted">Mandamos um link para este e-mail. É só abrir para entrar.</p>
           </div>
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
-          <Botao type="submit" variante="primario" disabled={carregando} className="min-h-12">
+          <Botao type="submit" variante="primario" disabled={carregando || verificando} className="min-h-12">
             <Mail aria-hidden />
-            {carregando ? "Enviando…" : "Receber link de acesso"}
+            {verificando ? "Confirmando que você não é um robô…" : carregando ? "Enviando…" : "Receber link de acesso"}
           </Botao>
           {comCelular && (
             <button
@@ -345,6 +397,14 @@ export function FormEntrar({
             </button>
           )}
         </form>
+      )}
+      {comVerificacao && (
+        <VerificacaoRobo
+          key={rodada}
+          siteKey={TURNSTILE_SITE_KEY}
+          aoVerificar={aoVerificar}
+          aoExpirar={() => setTokenRobo(null)}
+        />
       )}
     </div>
   );

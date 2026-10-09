@@ -87,7 +87,8 @@ export default function Privacidade() {
           <p>
             Usamos serviços de terceiros só para isso: o Supabase (banco de dados, login e fotos), o OpenFreeMap, com
             dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a OpenAI (a IA que revisa o texto
-            dos anúncios e ajuda a escrever) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
+            dos anúncios e ajuda a escrever), a Cloudflare (a verificação contra robôs na hora de entrar) e, se você
+            escolher entrar com eles, Google, Facebook ou LinkedIn.
           </p>
           <p>
             A IA recebe só o texto do anúncio (título, descrição, valor, horário e bairro), nunca seu contato. Quando ela

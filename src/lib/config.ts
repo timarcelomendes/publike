@@ -26,6 +26,11 @@ export const LOGIN_CELULAR = process.env.NEXT_PUBLIC_LOGIN_CELULAR === "true";
  */
 export const GOOGLE_CLIENT_ID = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "").trim();
 
+// Chave pública do Cloudflare Turnstile (verificação contra robôs no pedido do
+// link de acesso e do código por SMS). Vazia: o formulário funciona sem ela.
+// A chave secreta fica só no Supabase (Authentication > Attack Protection).
+export const TURNSTILE_SITE_KEY = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "").trim();
+
 /** Praça Cívica, centro de Goiânia: ponto de partida das buscas. */
 export const CENTRO_GOIANIA = { lat: -16.6806, lng: -49.2563 } as const;
 
