@@ -145,6 +145,19 @@ export function Vazio({
 
 // ------------------------------------------------------------------ Logo
 
+// O estilo vai dentro do próprio SVG: não depende do globals.css e não usa
+// variável dentro da animação (o Safari não atualiza var() em @keyframes).
+// Em vez de mudar a cor, o li ink e o li vermelho trocam de opacidade.
+const ESTILO_LOGO =
+  ".lk-i{fill:#1f1a14}" +
+  "@media (prefers-color-scheme:dark){.lk-i{fill:#ffffff}}" +
+  ".lk-li-i{animation:lk-sai 4.8s ease-in-out infinite}" +
+  ".lk-li-r{opacity:0;animation:lk-entra 4.8s ease-in-out infinite}" +
+  "@keyframes lk-sai{0%,37.5%{opacity:1}50%,87.5%{opacity:0}100%{opacity:1}}" +
+  "@keyframes lk-entra{0%,37.5%{opacity:0}50%,87.5%{opacity:1}100%{opacity:0}}" +
+  ".lk-meio{display:none}" +
+  "@media (prefers-reduced-motion:reduce){.lk-anim{display:none}.lk-meio{display:inline}}";
+
 /**
  * A assinatura, desenhada aqui mesmo (sem arquivo) para o "li" poder se mexer:
  * ele troca entre ink (lê-se publi) e vermelho (lê-se like), 1,8 s em cada
@@ -157,7 +170,7 @@ export function Logo({ altura = 32, className = "", animado = true }: { altura?:
   const meio = (
     <>
       <path d={LOGO.liBaixo} fill="#e0192d" />
-      <path d={LOGO.liCima} className="logo-ink" />
+      <path d={LOGO.liCima} className="lk-i" />
     </>
   );
   return (
@@ -169,12 +182,16 @@ export function Logo({ altura = 32, className = "", animado = true }: { altura?:
       aria-label="Publike"
       className={`logo-publike block ${className}`}
     >
+      <style>{ESTILO_LOGO}</style>
       <path d={LOGO.simbolo} fill="#e0192d" />
-      <path d={LOGO.pub} className="logo-ink" />
+      <path d={LOGO.pub} className="lk-i" />
       {animado ? (
         <>
-          <g className="logo-meio">{meio}</g>
-          <path d={LOGO.li} className="logo-li" />
+          <g className="lk-meio">{meio}</g>
+          <g className="lk-anim">
+            <path d={LOGO.li} className="lk-i lk-li-i" />
+            <path d={LOGO.li} fill="#e0192d" className="lk-li-r" />
+          </g>
         </>
       ) : (
         meio
