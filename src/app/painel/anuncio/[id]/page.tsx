@@ -32,6 +32,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
   const interessados = await listarInteressados(id);
   const agora = await agoraDaRequisicao();
   const status = anuncio.status as StatusAnuncio;
+  const servico = anuncio.tipo === "servico";
 
   return (
     <div className="flex flex-col gap-6">
@@ -49,7 +50,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
             Ver anúncio
           </Link>{" "}
           ·{" "}
-          <Link href={`/painel/anuncio/${anuncio.id}/editar`} className="underline">
+          <Link href={servico ? "/painel/servicos" : `/painel/anuncio/${anuncio.id}/editar`} className="underline">
             Editar
           </Link>
         </p>
@@ -57,19 +58,22 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
 
       {(status === "em_analise" || status === "removido") && (
         <Aviso tipo="alerta" titulo="Este anúncio está com a moderação">
-          Enquanto isso, não dá para curtir de volta e os contatos ficam escondidos.
+          Enquanto isso, não dá para {servico ? "aceitar pedidos" : "curtir de volta"} e os contatos ficam escondidos.
         </Aviso>
       )}
 
       {interessados.length === 0 ? (
-        <Vazio icone={Heart} titulo="Ninguém curtiu ainda">
-          Quando alguém curtir, você recebe um aviso e a pessoa aparece aqui. Compartilhar o anúncio no WhatsApp ajuda a
-          chegar em mais gente.
+        <Vazio icone={Heart} titulo={servico ? "Ninguém pediu ainda" : "Ninguém curtiu ainda"}>
+          {servico
+            ? "Quando alguém quiser contratar você, chega um aviso e a pessoa aparece aqui. Fotos de trabalhos e preço ajudam a ser escolhido."
+            : "Quando alguém curtir, você recebe um aviso e a pessoa aparece aqui. Compartilhar o anúncio no WhatsApp ajuda a chegar em mais gente."}
         </Vazio>
       ) : (
         <>
           <p className="text-body text-ink-muted">
-            Curta de volta quem combina com o que você precisa. Na hora do match, o WhatsApp dos dois aparece.
+            {servico
+              ? "Quem quer contratar você. Aceite quem você pode atender: na hora do match, o WhatsApp dos dois aparece."
+              : "Curta de volta quem combina com o que você precisa. Na hora do match, o WhatsApp dos dois aparece."}
           </p>
           <ul className="flex flex-col gap-4">
             {interessados.map((p) => {
@@ -94,10 +98,12 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                         {rotuloConta(p.tipo)} · {formatarLugar(p.bairro, p.cidade)} · no Publike desde{" "}
                         {formatarMesAno(p.membro_desde)}
                       </p>
-                      <p className="text-body-sm text-ink-muted">Curtiu {tempoRelativo(p.curtido_em, agora)}</p>
+                      <p className="text-body-sm text-ink-muted">
+                        {servico ? "Pediu" : "Curtiu"} {tempoRelativo(p.curtido_em, agora)}
+                      </p>
                     </div>
                     {p.status === "match" && <Selo variante="match">Deu match</Selo>}
-                    {p.status === "dispensada" && <Selo variante="contorno">Dispensado</Selo>}
+                    {p.status === "dispensada" && <Selo variante="contorno">{servico ? "Recusado" : "Dispensado"}</Selo>}
                   </div>
                   {p.mensagem && <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{p.mensagem}”</blockquote>}
                   {p.servicos.length > 0 && (
@@ -115,10 +121,14 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                       <BotoesContato
                         whatsapp={p.whatsapp}
                         email={p.email}
-                        mensagem={`Olá, ${primeiroNome}! Vi que você curtiu “${anuncio.titulo}” no Publike. Vamos conversar?`}
+                        mensagem={
+                          servico
+                            ? `Olá, ${primeiroNome}! Aceitei seu pedido para “${anuncio.titulo}” no Publike. Vamos combinar?`
+                            : `Olá, ${primeiroNome}! Vi que você curtiu “${anuncio.titulo}” no Publike. Vamos conversar?`
+                        }
                       />
                     ) : (
-                      <AcoesInteressado anuncioId={anuncio.id} perfilId={p.perfil_id} status={p.status} />
+                      <AcoesInteressado anuncioId={anuncio.id} perfilId={p.perfil_id} status={p.status} servico={servico} />
                     )}
                   </div>
                 </li>

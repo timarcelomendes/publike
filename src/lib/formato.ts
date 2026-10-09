@@ -13,8 +13,16 @@ export function formatarMoeda(valor: number) {
   }).format(valor);
 }
 
-/** "R$ 1.900 / mês + vale-transporte", "R$ 120 a diária", "Valor a combinar". */
-export function formatarValor(valor: number | null, unidade: string | null, beneficios?: string | null) {
+/**
+ * "R$ 1.900 / mês + vale-transporte", "R$ 120 a diária", "Valor a combinar".
+ * No serviço, o preço é de referência: "A partir de R$ 180 a diária".
+ */
+export function formatarValor(
+  valor: number | null,
+  unidade: string | null,
+  beneficios?: string | null,
+  aPartirDe = false,
+) {
   let texto = "Valor a combinar";
   if (valor != null && unidade) {
     const v = formatarMoeda(valor);
@@ -24,10 +32,25 @@ export function formatarValor(valor: number | null, unidade: string | null, bene
       semana: `${v} / semana`,
       mes: `${v} / mês`,
       servico: `${v} pelo serviço`,
+      m2: `${v} / m²`,
+      visita: `${v} a visita`,
     };
     texto = porUnidade[unidade as Unidade] ?? v;
+    if (aPartirDe) texto = `A partir de ${texto}`;
   }
   return beneficios ? `${texto} + ${beneficios}` : texto;
+}
+
+/** Valor de um anúncio: vaga com benefícios; serviço com "a partir de". */
+export function valorDoAnuncio(a: {
+  tipo: string;
+  pagamento_valor: number | null;
+  pagamento_unidade: string | null;
+  beneficios: string | null;
+}) {
+  return a.tipo === "servico"
+    ? formatarValor(a.pagamento_valor, a.pagamento_unidade, null, true)
+    : formatarValor(a.pagamento_valor, a.pagamento_unidade, a.beneficios);
 }
 
 /** Os locais são aproximados (~500 m), então não mostramos metros. */
@@ -112,6 +135,12 @@ export function caminhoSeguro(valor: unknown, padrao = "/") {
 export function urlDaFoto(caminho: string | null | undefined) {
   if (!caminho || !SUPABASE_URL) return null;
   return `${SUPABASE_URL}/storage/v1/object/public/avatars/${caminho}`;
+}
+
+/** Endereço público de uma foto de trabalho (serviços). */
+export function urlDaFotoTrabalho(caminho: string | null | undefined) {
+  if (!caminho || !SUPABASE_URL) return null;
+  return `${SUPABASE_URL}/storage/v1/object/public/trabalhos/${caminho}`;
 }
 
 export function primeiro(valor: string | string[] | undefined) {

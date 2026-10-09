@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const ABAS = [
   { href: "/painel", nome: "Meus anúncios" },
+  { href: "/painel/servicos", nome: "Meus serviços" },
   { href: "/painel/curtidas", nome: "Minhas curtidas" },
   { href: "/painel/matches", nome: "Matches" },
 ] as const;
@@ -12,6 +13,7 @@ const ABAS = [
 function abaAtiva(caminho: string | null) {
   if (!caminho) return null;
   if (caminho.startsWith("/painel/curtidas")) return "/painel/curtidas";
+  if (caminho.startsWith("/painel/servicos")) return "/painel/servicos";
   if (caminho.startsWith("/painel/matches")) return "/painel/matches";
   return "/painel";
 }

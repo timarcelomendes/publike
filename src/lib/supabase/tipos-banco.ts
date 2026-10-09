@@ -104,6 +104,9 @@ export type Database = {
           expira_em: string;
           busca: unknown;
           nota_moderacao: string | null;
+          oficio: string | null;
+          fotos: string[];
+          atende: string[];
         };
         Insert: {
           tipo: string;
@@ -120,6 +123,9 @@ export type Database = {
           bairro: string;
           /** EWKT, por exemplo: SRID=4326;POINT(-49.25 -16.68) */
           local: string;
+          oficio?: string | null;
+          fotos?: string[];
+          atende?: string[];
         };
         Update: {
           titulo?: string;
@@ -135,6 +141,9 @@ export type Database = {
           bairro?: string;
           local?: string;
           status?: string;
+          oficio?: string | null;
+          fotos?: string[];
+          atende?: string[];
         };
         Relationships: [
           {
@@ -252,6 +261,7 @@ export type Database = {
           p_cidade?: string | null;
           p_bairro?: string | null;
           p_bairros_regiao?: string[] | null;
+          p_regiao?: string | null;
         };
         Returns: {
           id: string;
@@ -273,8 +283,11 @@ export type Database = {
           autor_tipo: string;
           autor_verificado: boolean;
           minha_curtida: string | null;
-          /** 0 = no bairro de quem busca, 1 = na região, 2 = na cidade, 3 = o resto */
+          /** 0 = no bairro de quem busca, 1 = na região (ou atende a região), 2 = na cidade, 3 = o resto */
           prioridade: number;
+          oficio: string | null;
+          /** primeira foto de trabalho (serviço) */
+          foto: string | null;
         }[];
       };
       obter_anuncio: {
@@ -307,6 +320,9 @@ export type Database = {
           autor_desde: string;
           minha_curtida: string | null;
           minha_mensagem: string | null;
+          oficio: string | null;
+          fotos: string[];
+          atende: string[];
         }[];
       };
       meus_anuncios: {
@@ -402,6 +418,48 @@ export type Database = {
       renovar_anuncio: {
         Args: { p_id: string };
         Returns: string;
+      };
+      meus_servicos: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          oficio: string | null;
+          categoria: string;
+          titulo: string;
+          descricao: string;
+          pagamento_valor: number | null;
+          pagamento_unidade: string | null;
+          fotos: string[];
+          atende: string[];
+          horario: string | null;
+          cidade: string;
+          bairro: string;
+          lat: number;
+          lng: number;
+          status: string;
+          expira_em: string;
+        }[];
+      };
+      salvar_meus_servicos: {
+        Args: {
+          p_servicos: {
+            id?: string;
+            oficio: string | null;
+            categoria: string;
+            titulo: string;
+            descricao: string;
+            pagamento_valor: number | null;
+            pagamento_unidade: string | null;
+            fotos: string[];
+          }[];
+          p_cidade: string;
+          p_bairro: string;
+          p_lat: number;
+          p_lng: number;
+          p_atende: string[];
+          p_horario: string | null;
+        };
+        Returns: number;
       };
       salvar_perfil: {
         Args: {
@@ -728,6 +786,8 @@ export type Database = {
           bairro: string;
           autor_tipo: string;
           modelo: string;
+          oficio: string | null;
+          fotos: string[];
         }[];
       };
       servidor_resultado_ia: {

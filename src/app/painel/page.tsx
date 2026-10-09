@@ -46,7 +46,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel">["
           titulo="Você ainda não publicou nada"
           acao={<BotaoLink href="/publicar">Publicar grátis</BotaoLink>}
         >
-          Precisa de alguém para trabalhar ou para um serviço? Publique de graça e veja quem curte.
+          Precisa de alguém para trabalhar? Publique a vaga de graça e veja quem curte. Se você oferece serviços, monte
+          sua vitrine em “Meus serviços”.
         </Vazio>
       ) : (
         <ul className="flex flex-col gap-4">
@@ -80,7 +81,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel">["
                 <div className="flex flex-wrap items-center gap-3">
                   <Link href={`/painel/anuncio/${a.id}`} className={classesBotao("secundario", "sm")}>
                     <Heart aria-hidden className="text-like" fill={a.curtidas_total ? "currentColor" : "none"} />
-                    {a.curtidas_total} {a.curtidas_total === 1 ? "curtida" : "curtidas"}
+                    {a.curtidas_total}{" "}
+                    {a.tipo === "servico"
+                      ? a.curtidas_total === 1
+                        ? "pedido"
+                        : "pedidos"
+                      : a.curtidas_total === 1
+                        ? "curtida"
+                        : "curtidas"}
                     {a.curtidas_novas > 0 && (
                       <Selo variante="like">
                         {a.curtidas_novas} {a.curtidas_novas === 1 ? "nova" : "novas"}
@@ -95,7 +103,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel">["
                   )}
                 </div>
                 <div className="border-t border-line pt-3">
-                  <AcoesAnuncio id={a.id} status={status} podeRenovar={podeRenovar} />
+                  <AcoesAnuncio id={a.id} tipo={a.tipo} status={status} podeRenovar={podeRenovar} />
                 </div>
               </li>
             );

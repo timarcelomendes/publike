@@ -1,7 +1,7 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { buscarAnuncios, obterUsuario } from "@/lib/dados";
 import { descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
-import { formatarLugar, formatarValor, primeiro } from "@/lib/formato";
+import { formatarLugar, primeiro, valorDoAnuncio } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
 import { passosDaPrioridade, pontoDoLocal, type Local } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -61,7 +61,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     titulo: a.titulo,
     tipo: a.tipo,
     lugar: formatarLugar(a.bairro, a.cidade),
-    valor: formatarValor(a.pagamento_valor, a.pagamento_unidade, a.beneficios),
+    valor: valorDoAnuncio(a),
   }));
 
   const n = anuncios.length;
@@ -93,13 +93,19 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
                 Buscar até {maiorRaio} km
               </BotaoLink>
             )}
-            <BotaoLink href="/publicar">Publicar grátis</BotaoLink>
+            {filtros.tipo === "servico" ? (
+              <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink>
+            ) : (
+              <BotaoLink href="/publicar">Publicar grátis</BotaoLink>
+            )}
           </>
         }
       >
         {filtros.q || filtros.categoria
           ? "Tente outra palavra, outra categoria ou uma distância maior."
-          : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
+          : filtros.tipo === "servico"
+            ? "Ainda não há profissionais nesta área. Você faz algum serviço? Mostre aqui."
+            : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );
 

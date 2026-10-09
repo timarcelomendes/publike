@@ -104,9 +104,9 @@ const LEGENDAS: Record<"quem-faz" | "quem-publica", Record<Etapa, string>> = {
     match: "Deu match: o WhatsApp dos dois aparece.",
   },
   "quem-publica": {
-    curtir: "Você publica a vaga ou o serviço.",
-    curtido: "Quem tem interesse curte, e você vê o perfil da pessoa.",
-    match: "Curtiu de volta? Deu match: o WhatsApp dos dois aparece.",
+    curtir: "Você publica a vaga ou mostra seus serviços.",
+    curtido: "Quem tem interesse curte ou pede, e você vê o perfil da pessoa.",
+    match: "Aceitou? Deu match: o WhatsApp dos dois aparece.",
   },
 };
 

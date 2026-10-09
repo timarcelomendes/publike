@@ -1,12 +1,14 @@
 import { BadgeCheck, MapPin } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   formatarDistancia,
   formatarLugar,
-  formatarValor,
   rotuloConta,
   rotuloModalidade,
   tempoRelativo,
+  urlDaFotoTrabalho,
+  valorDoAnuncio,
 } from "@/lib/formato";
 import type { DadosCard } from "@/lib/tipos";
 import { BotaoCurtir } from "./botao-curtir";
@@ -14,7 +16,7 @@ import { Selo } from "./ui/basicos";
 
 const DOIS_DIAS = 48 * 3600 * 1000;
 
-/** CardVaga do Design System: serve para vaga e para serviço. */
+/** CardVaga do Design System: serve para vaga e para serviço (com a primeira foto de trabalho). */
 export function CardAnuncio({
   anuncio,
   agora,
@@ -30,6 +32,8 @@ export function CardAnuncio({
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
   const proprio = usuarioId !== null && usuarioId === anuncio.autor_id;
+  const servico = anuncio.tipo === "servico";
+  const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
 
   return (
     <article
@@ -45,36 +49,51 @@ export function CardAnuncio({
         {proprio && <Selo variante="contorno">Seu anúncio</Selo>}
       </div>
 
-      <div>
-        <h3 className="text-h3">
-          <Link
-            href={`/anuncio/${anuncio.id}`}
-            className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
-          >
-            {anuncio.titulo}
-          </Link>
-        </h3>
-        <p className="mt-0.5 flex items-center gap-1 text-body-sm text-ink-muted">
-          <span className="truncate">
-            {anuncio.autor_nome} · {rotuloConta(anuncio.autor_tipo)}
-          </span>
-          {anuncio.autor_verificado && (
-            <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
-          )}
-        </p>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-h3">
+            <Link
+              href={`/anuncio/${anuncio.id}`}
+              className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
+            >
+              {anuncio.titulo}
+            </Link>
+          </h3>
+          <p className="mt-0.5 flex items-center gap-1 text-body-sm text-ink-muted">
+            <span className="truncate">
+              {anuncio.autor_nome} · {rotuloConta(anuncio.autor_tipo)}
+            </span>
+            {anuncio.autor_verificado && (
+              <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
+            )}
+          </p>
+        </div>
+        {foto && (
+          <Image
+            src={foto}
+            alt=""
+            width={72}
+            height={72}
+            unoptimized
+            className="size-18 shrink-0 rounded-md bg-surface-300 object-cover"
+          />
+        )}
       </div>
 
       <p className="flex items-center gap-1.5 text-body-sm text-ink-muted">
-        <MapPin aria-hidden className="size-4 shrink-0 text-terra-text" fill="currentColor" stroke="var(--pk-surface-200)" />
+        <MapPin
+          aria-hidden
+          className="size-4 shrink-0 text-terra-text"
+          fill="currentColor"
+          stroke="var(--pk-surface-200)"
+        />
         <span>
           {formatarLugar(anuncio.bairro, anuncio.cidade)}
           {distancia && ` · ${distancia}`}
         </span>
       </p>
 
-      <p className="text-label">
-        {formatarValor(anuncio.pagamento_valor, anuncio.pagamento_unidade, anuncio.beneficios)}
-      </p>
+      <p className="text-label">{valorDoAnuncio(anuncio)}</p>
 
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3 text-body-sm text-ink-muted">
         <span>{tempoRelativo(anuncio.criado_em, agora)}</span>
@@ -84,6 +103,7 @@ export function CardAnuncio({
             anuncioId={anuncio.id}
             status={anuncio.minha_curtida}
             logado={usuarioId !== null}
+            servico={servico}
           />
         )}
       </div>

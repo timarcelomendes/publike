@@ -140,7 +140,7 @@ export default function Privacidade() {
             itens={[
               "É proibido cobrar qualquer valor de quem vai trabalhar para conseguir a vaga.",
               "Nada de discriminação por cor, gênero, idade, religião, orientação sexual, deficiência ou origem.",
-              "Vagas e serviços precisam ser reais, legais e com informação verdadeira.",
+              "Vagas e serviços precisam ser reais, legais e com informação verdadeira. As fotos de trabalhos precisam ser de serviços que a pessoa fez.",
               "Não escreva telefone, e-mail ou links no anúncio: o contato aparece no match.",
               "Nada de conteúdo ofensivo, spam ou anúncio repetido.",
               "Trabalho de menores de 16 anos é proibido, exceto como aprendiz a partir dos 14. Trabalho noturno, perigoso ou insalubre, só a partir dos 18.",

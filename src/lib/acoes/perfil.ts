@@ -7,6 +7,7 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
+import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
@@ -74,14 +75,8 @@ export async function excluirConta(_anterior: EstadoForm, formData: FormData): P
   // antes de mexer na foto.
   const { data: suspensa } = await supabase.rpc("minha_conta_suspensa");
   if (suspensa) return { ok: false, erro: "Sua conta está suspensa. Se achar que é um engano, fale com a gente." };
-  for (let lote = 0; lote < 20; lote++) {
-    const { data: arquivos, error: erroLista } = await supabase.storage.from("avatars").list(usuario.id, { limit: 100 });
-    if (erroLista) return { ok: false, erro: "Não foi possível apagar sua foto agora. Tente de novo." };
-    if (!arquivos?.length) break;
-    const { error: erroFoto } = await supabase.storage
-      .from("avatars")
-      .remove(arquivos.map((a) => `${usuario.id}/${a.name}`));
-    if (erroFoto) return { ok: false, erro: "Não foi possível apagar sua foto agora. Tente de novo." };
+  if (!(await apagarArquivosDaPessoa(supabase, usuario.id))) {
+    return { ok: false, erro: "Não foi possível apagar suas fotos agora. Tente de novo." };
   }
   const { error } = await supabase.rpc("excluir_minha_conta");
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível excluir agora. Tente de novo.") };

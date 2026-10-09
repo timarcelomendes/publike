@@ -8,10 +8,9 @@
  * Fora de Goiânia, a cidade inteira conta como uma região só.
  */
 import { CENTRO_GOIANIA } from "./config";
-import { CIDADES, type Cidade } from "./constantes";
+import { CIDADES, REGIOES, type Cidade, type Regiao } from "./constantes";
 
-export const REGIOES = ["Centro", "Norte", "Sul", "Leste", "Oeste", "Noroeste", "Sudoeste"] as const;
-export type Regiao = (typeof REGIOES)[number];
+export { REGIOES, type Regiao };
 
 /**
  * Chave de comparação de um bairro: sem acento, minúscula, sem "Setor",

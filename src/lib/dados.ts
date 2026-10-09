@@ -9,12 +9,13 @@ import { criarClienteServidor } from "./supabase/servidor";
 import { agoraDaRequisicao } from "./tempo";
 import type {
   AnuncioCompleto,
+  AnuncioDoPerfil,
   AnuncioResumo,
-  DadosCard,
   Interessado,
   ItemModeracao,
   Match,
   MeuAnuncio,
+  MeuServico,
   MeuPerfil,
   MinhaCurtida,
   Perfil,
@@ -116,6 +117,7 @@ export async function buscarAnuncios(f: Filtros, agora: number, local: Local | n
     p_cidade: local?.cidade ?? null,
     p_bairro: local?.bairro || null,
     p_bairros_regiao: local?.regiao ? chavesDaRegiao(local.regiao) : null,
+    p_regiao: local?.regiao ?? null,
   });
   if (error) falha("anúncios", error);
   return data ?? [];
@@ -134,6 +136,14 @@ export async function listarMeusAnuncios(): Promise<MeuAnuncio[]> {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("meus_anuncios");
   if (error) falha("seus anúncios", error);
+  return data ?? [];
+}
+
+/** Os serviços de quem está logado, para o cadastro "Meus serviços". */
+export async function listarMeusServicos(): Promise<MeuServico[]> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("meus_servicos");
+  if (error) falha("seus serviços", error);
   return data ?? [];
 }
 
@@ -158,7 +168,7 @@ export async function listarMatches(): Promise<Match[]> {
   return data ?? [];
 }
 
-export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Perfil; anuncios: DadosCard[] } | null> => {
+export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Perfil; anuncios: AnuncioDoPerfil[] } | null> => {
   const agora = await agoraDaRequisicao();
   if (MODO_DEMO) {
     const perfil = demo.perfilDemo(id, agora);
@@ -175,7 +185,7 @@ export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Pe
     supabase
       .from("anuncios")
       .select(
-        "id, tipo, titulo, categoria, regime, pagamento_valor, pagamento_unidade, beneficios, cidade, bairro, criado_em",
+        "id, tipo, titulo, categoria, regime, pagamento_valor, pagamento_unidade, beneficios, cidade, bairro, criado_em, oficio, fotos, atende",
       )
       .eq("autor_id", id)
       .eq("status", "ativo")
@@ -195,6 +205,7 @@ export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Pe
       autor_verificado: perfil.verificado,
       minha_curtida: null,
       distancia_km: null,
+      foto: a.fotos[0] ?? null,
     })),
   };
 });

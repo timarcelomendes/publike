@@ -8,7 +8,17 @@ import { Botao, BotaoLink } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
 
 /** Botões de cada anúncio em "Meus anúncios". */
-export function AcoesAnuncio({ id, status, podeRenovar }: { id: string; status: string; podeRenovar: boolean }) {
+export function AcoesAnuncio({
+  id,
+  tipo,
+  status,
+  podeRenovar,
+}: {
+  id: string;
+  tipo: string;
+  status: string;
+  podeRenovar: boolean;
+}) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
   const comModeracao = status === "em_analise" || status === "removido";
@@ -31,7 +41,7 @@ export function AcoesAnuncio({ id, status, podeRenovar }: { id: string; status: 
         {podeRenovar && (
           <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => renovarAnuncio(id))}>
             <RefreshCw aria-hidden />
-            Renovar por 30 dias
+            Renovar por {tipo === "servico" ? 90 : 30} dias
           </Botao>
         )}
         {(status === "ativo" || status === "pausado") && (
@@ -46,7 +56,11 @@ export function AcoesAnuncio({ id, status, podeRenovar }: { id: string; status: 
           </Botao>
         )}
         {!comModeracao && (
-          <BotaoLink tamanho="sm" variante="fantasma" href={`/painel/anuncio/${id}/editar`}>
+          <BotaoLink
+            tamanho="sm"
+            variante="fantasma"
+            href={tipo === "servico" ? "/painel/servicos" : `/painel/anuncio/${id}/editar`}
+          >
             <Pencil aria-hidden />
             Editar
           </BotaoLink>
@@ -73,15 +87,17 @@ export function AcoesAnuncio({ id, status, podeRenovar }: { id: string; status: 
   );
 }
 
-/** Curtir de volta (dar match), dispensar ou desfazer. */
+/** Curtir de volta (dar match), dispensar ou desfazer. No serviço: aceitar ou recusar o pedido. */
 export function AcoesInteressado({
   anuncioId,
   perfilId,
   status,
+  servico = false,
 }: {
   anuncioId: string;
   perfilId: string;
   status: string;
+  servico?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
 
@@ -97,7 +113,7 @@ export function AcoesInteressado({
               className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
             >
               <Heart aria-hidden className="size-[18px] text-like" />
-              Curtir de volta
+              {servico ? "Aceitar" : "Curtir de volta"}
             </button>
             <Botao
               variante="fantasma"
@@ -106,7 +122,7 @@ export function AcoesInteressado({
               onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "dispensada"))}
             >
               <X aria-hidden />
-              Dispensar
+              {servico ? "Recusar" : "Dispensar"}
             </Botao>
           </>
         )}

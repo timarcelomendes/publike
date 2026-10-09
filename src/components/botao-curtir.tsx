@@ -14,11 +14,14 @@ export function BotaoCurtir({
   anuncioId,
   status,
   logado,
+  servico = false,
   className = "",
 }: {
   anuncioId: string;
   status: string | null;
   logado: boolean;
+  /** No serviço, curtir é pedir para contratar. */
+  servico?: boolean;
   className?: string;
 }) {
   const router = useRouter();
@@ -76,7 +79,7 @@ export function BotaoCurtir({
           className={`size-4 ${curtido && atual !== "match" ? "text-like" : ""}`}
           fill={curtido ? "currentColor" : "none"}
         />
-        {atual === "match" ? "Deu match" : curtido ? "Curtido" : "Curtir"}
+        {atual === "match" ? "Deu match" : curtido ? (servico ? "Pedido enviado" : "Curtido") : servico ? "Contratar" : "Curtir"}
       </button>
       {erro && (
         <p

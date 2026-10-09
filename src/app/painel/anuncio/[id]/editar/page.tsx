@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { FormAnuncio } from "@/components/form-anuncio";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -29,6 +29,8 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/editar`);
   const [anuncio, ia] = await Promise.all([obterAnuncio(id), ajudaDaIADisponivel()]);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
+  // os serviços são editados juntos, no cadastro "Meus serviços"
+  if (anuncio.tipo === "servico") redirect("/painel/servicos");
 
   return (
     <>

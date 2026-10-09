@@ -10,7 +10,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { STATUS_ANUNCIO } from "@/lib/constantes";
 import { listarMinhasCurtidas } from "@/lib/dados";
-import { formatarLugar, formatarValor, rotuloConta, rotuloModalidade, tempoRelativo } from "@/lib/formato";
+import { formatarLugar, rotuloConta, rotuloModalidade, tempoRelativo, valorDoAnuncio } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio } from "@/lib/tipos";
@@ -32,7 +32,7 @@ async function Conteudo() {
   if (curtidas.length === 0) {
     return (
       <Vazio icone={Heart} titulo="Você ainda não curtiu nada" acao={<BotaoLink href="/">Ver oportunidades</BotaoLink>}>
-        Curta as vagas e os serviços que combinam com você. Se quem publicou curtir de volta, dá match.
+        Curta as vagas que combinam com você ou peça um serviço a um profissional. Se a outra pessoa aceitar, dá match.
       </Vazio>
     );
   }
@@ -64,7 +64,7 @@ async function Conteudo() {
             <p className="text-body-sm text-ink-muted">
               {c.autor_nome} · {rotuloConta(c.autor_tipo)} · {formatarLugar(c.bairro, c.cidade)}
             </p>
-            <p className="text-label">{formatarValor(c.pagamento_valor, c.pagamento_unidade, c.beneficios)}</p>
+            <p className="text-label">{valorDoAnuncio(c)}</p>
             {c.mensagem && <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">Sua mensagem: “{c.mensagem}”</p>}
             {c.status === "match" && (
               <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">

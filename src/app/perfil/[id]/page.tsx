@@ -1,13 +1,15 @@
-import { BadgeCheck, Megaphone, Pencil } from "lucide-react";
+import { BadgeCheck, MapPinned, Megaphone, Pencil, Wrench } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CardAnuncio } from "@/components/card-anuncio";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { TIPOS_CONTA } from "@/lib/constantes";
+import { descreverAtendimento, TIPOS_CONTA } from "@/lib/constantes";
 import { obterPerfilPublico, obterUsuario } from "@/lib/dados";
-import { formatarLugar, formatarMesAno } from "@/lib/formato";
+import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
 
@@ -40,6 +42,15 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
   const meu = usuario?.id === perfil.id;
   const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
   const suspensa = Boolean(perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
+  const servicos = anuncios.filter((a) => a.tipo === "servico");
+  const vagas = anuncios.filter((a) => a.tipo !== "servico");
+  // onde atende: junta o de todos os serviços, sem repetir
+  const atende = [...new Set(servicos.flatMap((s) => s.atende))];
+  // vitrine: as fotos de todos os serviços, cada uma levando ao seu serviço
+  const trabalhos = servicos
+    .flatMap((s) => s.fotos.map((f) => ({ url: urlDaFotoTrabalho(f), servico: s })))
+    .filter((t): t is { url: string; servico: (typeof servicos)[number] } => Boolean(t.url))
+    .slice(0, 12);
 
   return (
     <>
@@ -82,20 +93,67 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         </section>
       )}
 
-      <section className="mt-10">
-        <h2 className="text-h2">Anúncios no ar</h2>
-        <div className="mt-4">
-          {anuncios.length ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {anuncios.map((a) => (
-                <CardAnuncio key={a.id} anuncio={a} agora={agora} usuarioId={usuario?.id ?? null} />
-              ))}
-            </div>
-          ) : (
-            <Vazio icone={Megaphone} titulo="Nenhum anúncio no ar agora" />
+      {servicos.length > 0 && (
+        <section className="mt-10">
+          <h2 className="flex items-center gap-2 text-h2">
+            <Wrench aria-hidden className="size-6" />
+            Serviços
+          </h2>
+          {atende.length > 0 && (
+            <p className="mt-1 flex items-center gap-1.5 text-body text-ink-muted">
+              <MapPinned aria-hidden className="size-4 shrink-0" />
+              Atende {descreverAtendimento(atende)}
+            </p>
           )}
-        </div>
-      </section>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {servicos.map((a) => (
+              <CardAnuncio key={a.id} anuncio={a} agora={agora} usuarioId={usuario?.id ?? null} />
+            ))}
+          </div>
+          {trabalhos.length > 0 && (
+            <>
+              <h3 className="mt-8 text-h3">Trabalhos feitos</h3>
+              <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {trabalhos.map((t, n) => (
+                  <li key={t.url} className="relative aspect-square overflow-hidden rounded-md bg-surface-300">
+                    <Link href={`/anuncio/${t.servico.id}`} className="block size-full">
+                      <Image
+                        src={t.url}
+                        alt={`Trabalho ${n + 1}: ${t.servico.titulo}`}
+                        fill
+                        unoptimized
+                        sizes="(min-width: 1024px) 16vw, (min-width: 640px) 25vw, 33vw"
+                        className="object-cover"
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
+      {(vagas.length > 0 || servicos.length === 0) && (
+        <section className="mt-10">
+          <h2 className="text-h2">{servicos.length ? "Vagas abertas" : "Anúncios no ar"}</h2>
+          <div className="mt-4">
+            {vagas.length ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {vagas.map((a) => (
+                  <CardAnuncio key={a.id} anuncio={a} agora={agora} usuarioId={usuario?.id ?? null} />
+                ))}
+              </div>
+            ) : (
+              <Vazio
+                icone={Megaphone}
+                titulo="Nenhum anúncio no ar agora"
+                acao={meu ? <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink> : undefined}
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       <p className="mt-8 text-body-sm text-ink-muted">
         O contato de {perfil.tipo === "pessoa" ? perfil.nome.split(" ")[0] : perfil.nome} aparece só depois de um

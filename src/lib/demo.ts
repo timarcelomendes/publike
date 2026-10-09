@@ -1,7 +1,7 @@
 import "server-only";
 import type { Filtros } from "./filtros";
 import { chaveBairro, chavesDaRegiao, type Local } from "./regioes";
-import type { AnuncioCompleto, AnuncioResumo, DadosCard, Perfil } from "./tipos";
+import type { AnuncioCompleto, AnuncioDoPerfil, AnuncioResumo, Perfil } from "./tipos";
 
 // Dados de exemplo para o modo demonstração (sem Supabase configurado).
 // Pessoas e empresas fictícias, só para ver o site funcionando.
@@ -27,7 +27,9 @@ const AUTORES: AutorDemo[] = [
   { id: "demo-salao", nome: "Salão Flor do Cerrado", tipo: "comercio", verificado: false, cidade: "Goiânia", bairro: "Setor Universitário", sobre: "Cabelo, unhas e sobrancelha.", servicos: [], foto: null, diasNoPublike: 70 },
   { id: "demo-diego", nome: "Diego F.", tipo: "pessoa", verificado: false, cidade: "Goiânia", bairro: "Jardim Novo Mundo", sobre: null, servicos: [], foto: null, diasNoPublike: 8 },
   { id: "demo-condominio", nome: "Condomínio Parque das Flores", tipo: "empresa", verificado: false, cidade: "Goiânia", bairro: "Setor Bueno", sobre: null, servicos: [], foto: null, diasNoPublike: 150 },
-  { id: "demo-patricia", nome: "Patrícia L.", tipo: "pessoa", verificado: false, cidade: "Trindade", bairro: "Centro", sobre: null, servicos: [], foto: null, diasNoPublike: 15 },
+  { id: "demo-patricia", nome: "Patrícia L.", tipo: "pessoa", verificado: false, cidade: "Trindade", bairro: "Centro", sobre: "DJ há 8 anos em festas de 15 anos, casamentos e formaturas.", servicos: [], foto: null, diasNoPublike: 15 },
+  { id: "demo-joana", nome: "Joana S.", tipo: "pessoa", verificado: true, cidade: "Goiânia", bairro: "Setor Bela Vista", sobre: "Diarista há 12 anos. Caprichosa e pontual.", servicos: [], foto: null, diasNoPublike: 40 },
+  { id: "demo-marcos", nome: "Marcos Eletricista", tipo: "pessoa", verificado: false, cidade: "Goiânia", bairro: "Jardim América", sobre: null, servicos: [], foto: null, diasNoPublike: 25 },
 ];
 
 type Base = {
@@ -43,6 +45,9 @@ type Base = {
   beneficios?: string;
   horario?: string;
   vagas?: number;
+  /** serviço */
+  oficio?: string;
+  atende?: string[];
   cidade: string;
   bairro: string;
   lat: number;
@@ -66,7 +71,7 @@ const BASE: Base[] = [
     cidade: "Goiânia", bairro: "Jardim Goiás", lat: -16.705, lng: -49.237, horasAtras: 5,
   },
   {
-    id: "demo-03", autor: "demo-luciana", tipo: "servico", categoria: "limpeza", regime: null,
+    id: "demo-03", autor: "demo-luciana", tipo: "vaga", categoria: "limpeza", regime: "freelance",
     titulo: "Faxina em apartamento de 2 quartos",
     descricao: "Preciso de faxina completa no apartamento: cozinha, dois banheiros, janelas e área de serviço. O material de limpeza fica por minha conta.",
     valor: 200, unidade: "servico", horario: "Qualquer dia desta semana, de manhã",
@@ -80,7 +85,7 @@ const BASE: Base[] = [
     cidade: "Goiânia", bairro: "Setor Central", lat: -16.675, lng: -49.255, horasAtras: 30,
   },
   {
-    id: "demo-05", autor: "demo-maria", tipo: "servico", categoria: "eletrica-hidraulica", regime: null,
+    id: "demo-05", autor: "demo-maria", tipo: "vaga", categoria: "eletrica-hidraulica", regime: "freelance",
     titulo: "Eletricista para trocar a fiação da cozinha",
     descricao: "A tomada da cozinha esquenta e o disjuntor cai quando ligo o micro-ondas. Preciso de alguém para olhar, trocar a fiação e instalar mais duas tomadas.",
     valor: null, unidade: null, horario: "Pode ser no fim de semana",
@@ -101,10 +106,11 @@ const BASE: Base[] = [
     cidade: "Goiânia", bairro: "Setor Marista", lat: -16.695, lng: -49.26, horasAtras: 75,
   },
   {
-    id: "demo-08", autor: "demo-antonio", tipo: "servico", categoria: "construcao", regime: null,
-    titulo: "Pedreiro para rebocar muro de 12 metros",
-    descricao: "Muro de 12 metros por 2,5 de altura, só um lado. Já tenho cimento e areia. Preciso de orçamento e de alguém que possa começar logo.",
-    valor: 1200, unidade: "servico",
+    id: "demo-08", autor: "demo-antonio", tipo: "servico", categoria: "construcao", regime: null, oficio: "pedreiro",
+    titulo: "Pedreiro: reboco, contrapiso e muro",
+    descricao: "Faço reboco, contrapiso, assentamento de piso e muro. Trabalho há 15 anos com obra e reforma pequena.\n\nVou até o local para ver o serviço e passar o orçamento sem compromisso. Levo as minhas ferramentas.",
+    valor: 180, unidade: "dia", horario: "Seg a sáb, das 7h às 17h",
+    atende: ["Goiânia: Sul", "Goiânia: Sudoeste", "Aparecida de Goiânia"],
     cidade: "Goiânia", bairro: "Parque Amazônia", lat: -16.74, lng: -49.28, horasAtras: 6,
   },
   {
@@ -115,7 +121,7 @@ const BASE: Base[] = [
     cidade: "Goiânia", bairro: "Setor Pedro Ludovico", lat: -16.715, lng: -49.25, horasAtras: 98,
   },
   {
-    id: "demo-10", autor: "demo-rita", tipo: "servico", categoria: "cuidados", regime: null,
+    id: "demo-10", autor: "demo-rita", tipo: "vaga", categoria: "cuidados", regime: "diaria",
     titulo: "Cuidadora para idosa, três noites por semana",
     descricao: "Minha mãe tem 84 anos e precisa de companhia à noite, ajuda para ir ao banheiro e para tomar os remédios. Ela é tranquila e dorme bem.",
     valor: 150, unidade: "dia", horario: "Seg, qua e sex, das 20h às 7h",
@@ -129,10 +135,11 @@ const BASE: Base[] = [
     cidade: "Aparecida de Goiânia", bairro: "Setor Garavelo", lat: -16.79, lng: -49.3, horasAtras: 8,
   },
   {
-    id: "demo-12", autor: "demo-ricardo", tipo: "servico", categoria: "jardinagem", regime: null,
-    titulo: "Limpeza de piscina e corte de grama",
-    descricao: "Chácara pequena com piscina de 6x3 e um gramado. Quero alguém para limpar a piscina e cortar a grama a cada 15 dias.",
-    valor: 250, unidade: "servico",
+    id: "demo-12", autor: "demo-ricardo", tipo: "servico", categoria: "jardinagem", regime: null, oficio: "piscineiro",
+    titulo: "Limpeza de piscina e jardim",
+    descricao: "Limpo e trato piscina, corto grama e faço a manutenção do jardim em casas e chácaras. Atendo por visita ou com contrato mensal (a cada 15 dias).",
+    valor: 120, unidade: "visita", horario: "Seg a sáb",
+    atende: ["Senador Canedo", "Goiânia: Leste"],
     cidade: "Senador Canedo", bairro: "Centro", lat: -16.705, lng: -49.095, horasAtras: 52,
   },
   {
@@ -143,10 +150,11 @@ const BASE: Base[] = [
     cidade: "Goiânia", bairro: "Setor Universitário", lat: -16.68, lng: -49.24, horasAtras: 31,
   },
   {
-    id: "demo-14", autor: "demo-diego", tipo: "servico", categoria: "auto", regime: null,
-    titulo: "Consertar o freio da moto",
-    descricao: "O freio traseiro da minha moto está fazendo barulho e pegando pouco. Pode ser mecânico que vá até em casa ou oficina perto.",
-    valor: null, unidade: null,
+    id: "demo-14", autor: "demo-diego", tipo: "servico", categoria: "auto", regime: null, oficio: "mecanico",
+    titulo: "Mecânico de motos, vou até você",
+    descricao: "Freio, embreagem, troca de óleo, corrente e revisão de moto. Atendo em casa ou no trabalho, com as ferramentas. Peças com nota.",
+    valor: 80, unidade: "visita",
+    atende: ["Goiânia: Leste", "Goiânia: Centro"],
     cidade: "Goiânia", bairro: "Jardim Novo Mundo", lat: -16.675, lng: -49.205, horasAtras: 12,
   },
   {
@@ -157,11 +165,36 @@ const BASE: Base[] = [
     cidade: "Goiânia", bairro: "Setor Bueno", lat: -16.71, lng: -49.265, horasAtras: 100,
   },
   {
-    id: "demo-16", autor: "demo-patricia", tipo: "servico", categoria: "eventos", regime: null,
-    titulo: "DJ para festa de 15 anos",
-    descricao: "Festa para 120 pessoas num salão em Trindade. Preciso de DJ com som e iluminação, das 20h às 2h.",
-    valor: 600, unidade: "servico", horario: "Sábado, 22 de novembro",
+    id: "demo-16", autor: "demo-patricia", tipo: "servico", categoria: "eventos", regime: null, oficio: "dj",
+    titulo: "DJ com som e iluminação",
+    descricao: "Som, iluminação e playlist do jeito da festa: 15 anos, casamento, formatura e aniversário. Levo todo o equipamento e monto antes dos convidados chegarem.",
+    valor: 600, unidade: "servico", horario: "Sexta, sábado e domingo",
+    atende: ["Trindade", "Goiânia"],
     cidade: "Trindade", bairro: "Centro", lat: -16.65, lng: -49.49, horasAtras: 120,
+  },
+  {
+    id: "demo-17", autor: "demo-joana", tipo: "servico", categoria: "limpeza", regime: null, oficio: "diarista",
+    titulo: "Diarista: faxina completa",
+    descricao: "Faxina completa em casa e apartamento: cozinha, banheiros, janelas e passar roupa. Levo os produtos se você preferir (combinamos antes).",
+    valor: 160, unidade: "dia", horario: "Seg a sex, das 8h às 17h",
+    atende: ["Goiânia: Sul", "Goiânia: Centro"],
+    cidade: "Goiânia", bairro: "Setor Bela Vista", lat: -16.714, lng: -49.262, horasAtras: 4,
+  },
+  {
+    id: "demo-18", autor: "demo-marcos", tipo: "servico", categoria: "eletrica-hidraulica", regime: null, oficio: "eletricista",
+    titulo: "Eletricista residencial",
+    descricao: "Troca de fiação, tomadas, disjuntores, chuveiro e instalação de ventilador de teto. Vejo o problema e passo o orçamento na hora.",
+    valor: 100, unidade: "visita",
+    atende: ["Goiânia: Sul", "Goiânia: Oeste"],
+    cidade: "Goiânia", bairro: "Jardim América", lat: -16.712, lng: -49.287, horasAtras: 9,
+  },
+  {
+    id: "demo-19", autor: "demo-antonio", tipo: "servico", categoria: "construcao", regime: null, oficio: "pintor",
+    titulo: "Pintura de casas e muros",
+    descricao: "Pinto paredes internas e externas, muros, grades e portões. Faço a massa corrida e deixo tudo limpo no fim do serviço.",
+    valor: 25, unidade: "m2", horario: "Seg a sáb, das 7h às 17h",
+    atende: ["Goiânia: Sul", "Goiânia: Sudoeste", "Aparecida de Goiânia"],
+    cidade: "Goiânia", bairro: "Parque Amazônia", lat: -16.74, lng: -49.28, horasAtras: 6,
   },
 ];
 
@@ -210,7 +243,7 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     status: "ativo",
     criado_em: criado,
     atualizado_em: criado,
-    expira_em: new Date(agora - b.horasAtras * HORA + 30 * DIA).toISOString(),
+    expira_em: new Date(agora - b.horasAtras * HORA + (b.tipo === "servico" ? 90 : 30) * DIA).toISOString(),
     autor_nome: a.nome,
     autor_tipo: a.tipo,
     autor_foto: a.foto,
@@ -218,6 +251,9 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     autor_desde: new Date(agora - a.diasNoPublike * DIA).toISOString(),
     minha_curtida: null,
     minha_mensagem: null,
+    oficio: b.oficio ?? null,
+    fotos: [],
+    atende: b.atende ?? [],
   };
 }
 
@@ -243,23 +279,41 @@ function resumo(c: AnuncioCompleto, lat: number, lng: number): AnuncioResumo {
     autor_verificado: c.autor_verificado,
     minha_curtida: null,
     prioridade: 3,
+    oficio: c.oficio,
+    foto: c.fotos[0] ?? null,
   };
 }
 
 /** A mesma regra do banco: 0 no bairro, 1 na região, 2 na cidade, 3 o resto. */
+/** Serviço que atende onde a pessoa mora: a região ("Goiânia: Sul") ou a cidade inteira. */
+function atendeOnde(atende: readonly string[], local: Local) {
+  const area = local.regiao ? `Goiânia: ${local.regiao}` : null;
+  return { regiao: area !== null && atende.includes(area), cidade: atende.includes(local.cidade) };
+}
+
 function prioridade(a: AnuncioResumo, local: Local | null) {
-  if (!local || a.cidade !== local.cidade) return 3;
+  if (!local) return 3;
+  const atende = atendeOnde(BASE.find((x) => x.id === a.id)?.atende ?? [], local);
+  const mesmaCidade = a.cidade === local.cidade;
   const chave = chaveBairro(a.bairro);
-  if (local.bairro && chave === chaveBairro(local.bairro)) return 0;
-  if (local.regiao && chavesDaRegiao(local.regiao).includes(chave)) return 1;
-  return 2;
+  if (mesmaCidade && local.bairro && chave === chaveBairro(local.bairro)) return 0;
+  if (mesmaCidade && local.regiao && chavesDaRegiao(local.regiao).includes(chave)) return 1;
+  if (a.tipo === "servico" && atende.regiao) return 1;
+  if (mesmaCidade || (a.tipo === "servico" && atende.cidade)) return 2;
+  return 3;
+}
+
+function atendeQuemMora(a: AnuncioResumo, local: Local | null) {
+  if (!local || a.tipo !== "servico") return false;
+  const atende = atendeOnde(BASE.find((x) => x.id === a.id)?.atende ?? [], local);
+  return atende.regiao || atende.cidade;
 }
 
 export function buscarDemo(f: Filtros, agora: number, local: Local | null = null): AnuncioResumo[] {
   const termo = semAcento(f.q.trim());
   const lista = BASE.map((b) => resumo(completo(b, agora), f.lat, f.lng))
     .map((a) => ({ ...a, prioridade: prioridade(a, local) }))
-    .filter((a) => a.distancia_km <= f.raio)
+    .filter((a) => a.distancia_km <= f.raio || atendeQuemMora(a, local))
     .filter((a) => !f.tipo || a.tipo === f.tipo)
     .filter((a) => !f.categoria || a.categoria === f.categoria)
     .filter((a) => !f.regime || a.regime === f.regime)
@@ -289,8 +343,11 @@ export function perfilDemo(id: string, agora: number): Perfil | null {
   return { ...perfil, criado_em: new Date(agora - diasNoPublike * DIA).toISOString() };
 }
 
-export function anunciosDoPerfilDemo(id: string, agora: number): DadosCard[] {
-  return BASE.filter((b) => b.autor === id).map((b) => ({ ...resumo(completo(b, agora), 0, 0), distancia_km: null }));
+export function anunciosDoPerfilDemo(id: string, agora: number): AnuncioDoPerfil[] {
+  return BASE.filter((b) => b.autor === id).map((b) => {
+    const c = completo(b, agora);
+    return { ...resumo(c, 0, 0), distancia_km: null, fotos: c.fotos, atende: c.atende };
+  });
 }
 
 export function idsDemo() {

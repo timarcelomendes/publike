@@ -6,7 +6,7 @@ type LinhaDe<F extends keyof Funcoes> = Funcoes[F]["Returns"] extends (infer L)[
 
 export type TipoAnuncio = "vaga" | "servico";
 export type Regime = "clt" | "temporario" | "diaria" | "freelance" | "estagio" | "pj" | "outro";
-export type Unidade = "hora" | "dia" | "semana" | "mes" | "servico";
+export type Unidade = "hora" | "dia" | "semana" | "mes" | "servico" | "m2" | "visita";
 export type TipoConta = "pessoa" | "comercio" | "empresa";
 export type StatusAnuncio = "ativo" | "pausado" | "encerrado" | "expirado" | "em_analise" | "removido";
 export type StatusCurtida = "pendente" | "match" | "dispensada";
@@ -14,6 +14,7 @@ export type StatusCurtida = "pendente" | "match" | "dispensada";
 export type AnuncioResumo = LinhaDe<"buscar_anuncios">;
 export type AnuncioCompleto = LinhaDe<"obter_anuncio">;
 export type MeuAnuncio = LinhaDe<"meus_anuncios">;
+export type MeuServico = LinhaDe<"meus_servicos">;
 export type Interessado = LinhaDe<"interessados">;
 export type MinhaCurtida = LinhaDe<"minhas_curtidas">;
 export type Match = LinhaDe<"meus_matches">;
@@ -38,7 +39,16 @@ export type DadosCard = Pick<
   | "autor_tipo"
   | "autor_verificado"
   | "minha_curtida"
-> & { distancia_km: number | null };
+> & {
+  distancia_km: number | null;
+  /** serviço: o que a pessoa faz (pedreiro, diarista...) */
+  oficio?: string | null;
+  /** serviço: a primeira foto de trabalho (caminho no Storage) */
+  foto?: string | null;
+};
+
+/** Anúncio na página de perfil: o serviço traz as fotos e onde atende (vitrine). */
+export type AnuncioDoPerfil = DadosCard & { fotos: string[]; atende: string[] };
 
 export type Perfil = {
   id: string;

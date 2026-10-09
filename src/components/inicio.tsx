@@ -14,8 +14,8 @@ export function HeroInicio() {
       </div>
       <h1 className="mt-3 max-w-3xl text-h1 sm:text-display">Trabalho perto de você.</h1>
       <p className="mt-2 max-w-2xl text-body text-ink-muted sm:mt-3 sm:text-body-lg">
-        Vagas com carteira, diárias, bicos e serviços.
-        <span className="hidden sm:inline"> Quem precisa publica, quem faz curte. Deu match, vocês conversam.</span>
+        Vagas com carteira, diárias, bicos e profissionais do bairro.
+        <span className="hidden sm:inline"> Curtiu, deu match, vocês conversam.</span>
       </p>
     </>
   );
@@ -49,8 +49,8 @@ export function ComoFuncionaResumo() {
           Como funciona
         </h2>
         <p className="mt-2 max-w-2xl text-body text-ink-muted sm:text-body-lg">
-          Simples como uma rede social. Vaga com carteira, diária de pedreiro e serviço de diarista têm o mesmo peso
-          aqui: todo trabalho conta.
+          Simples como uma rede social. Vaga com carteira, diária de obra e a vitrine da diarista do bairro têm o mesmo
+          peso aqui: todo trabalho conta.
         </p>
         <div className="mt-8">
           <ComoFuncionaAnimado />

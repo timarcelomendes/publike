@@ -50,6 +50,7 @@ export const CATEGORIAS_IA: Record<string, string> = {
   trabalho_degradante: "Trabalho degradante",
   conteudo_improprio: "Conteúdo impróprio",
   spam: "Spam ou propaganda",
+  contato: "Contato à mostra",
   outro: "Outro",
 };
 

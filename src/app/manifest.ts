@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Publike · Vagas, bicos e serviços perto de você",
     short_name: "Publike",
-    description: "Vagas, bicos e serviços em Goiânia e região. Quem precisa publica, quem faz curte. De graça.",
+    description: "Vagas, bicos e profissionais do bairro em Goiânia e região. Curtiu, deu match, vocês conversam. De graça.",
     start_url: "/",
     display: "standalone",
     background_color: "#fbf7ef",

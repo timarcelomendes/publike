@@ -15,11 +15,11 @@ import {
   formatarDataCurta,
   formatarDataHora,
   formatarLugar,
-  formatarValor,
   primeiro,
   rotuloConta,
   rotuloModalidade,
   tempoRelativo,
+  valorDoAnuncio,
 } from "@/lib/formato";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -109,7 +109,7 @@ async function Conteudo({
 
       <Secao titulo="O anúncio">
         <dl className="flex flex-col gap-3">
-          <Dado rotulo="Valor">{formatarValor(anuncio.pagamento_valor, anuncio.pagamento_unidade, anuncio.beneficios)}</Dado>
+          <Dado rotulo="Valor">{valorDoAnuncio(anuncio)}</Dado>
           {anuncio.horario && <Dado rotulo="Horário">{anuncio.horario}</Dado>}
           {anuncio.tipo === "vaga" && <Dado rotulo="Vagas">{anuncio.vagas}</Dado>}
           <Dado rotulo="No ar até">{formatarDataCurta(anuncio.expira_em)}</Dado>

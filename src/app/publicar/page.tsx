@@ -8,7 +8,7 @@ import { exigirPerfilCompleto } from "@/lib/sessao";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
-  description: "Publique uma vaga ou um serviço em Goiânia e região. De graça.",
+  description: "Publique uma vaga ou ofereça seus serviços em Goiânia e região. De graça.",
 };
 
 export default function Publicar() {

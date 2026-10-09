@@ -12,6 +12,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import Image from "next/image";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,17 +23,18 @@ import { MapaArea } from "@/components/mapa/mapa-area";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
-import { categoria, REGIMES, STATUS_ANUNCIO } from "@/lib/constantes";
+import { categoria, descreverAtendimento, REGIMES, STATUS_ANUNCIO } from "@/lib/constantes";
 import { contatoDoMatch, obterAnuncio, obterUsuario } from "@/lib/dados";
 import {
   formatarData,
   formatarLugar,
   formatarMesAno,
-  formatarValor,
   primeiro,
   rotuloConta,
   rotuloModalidade,
   tempoRelativo,
+  urlDaFotoTrabalho,
+  valorDoAnuncio,
 } from "@/lib/formato";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
@@ -41,7 +43,7 @@ export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): 
   const { id } = await params;
   const anuncio = await obterAnuncio(id);
   if (!anuncio) return { title: "Anúncio não encontrado", robots: { index: false } };
-  const descricao = `${rotuloModalidade(anuncio.tipo, anuncio.regime)} em ${formatarLugar(anuncio.bairro, anuncio.cidade)}. ${formatarValor(anuncio.pagamento_valor, anuncio.pagamento_unidade, anuncio.beneficios)}. ${anuncio.descricao.slice(0, 120)}`;
+  const descricao = `${rotuloModalidade(anuncio.tipo, anuncio.regime)} em ${formatarLugar(anuncio.bairro, anuncio.cidade)}. ${valorDoAnuncio(anuncio)}. ${anuncio.descricao.slice(0, 120)}`;
   return {
     title: anuncio.titulo,
     description: descricao,
@@ -132,20 +134,27 @@ async function DetalheAnuncio({
   const proprio = usuario?.id === anuncio.autor_id;
   const contato = anuncio.minha_curtida === "match" ? await contatoDoMatch(anuncio.id) : null;
   const lugar = formatarLugar(anuncio.bairro, anuncio.cidade);
-  const valor = formatarValor(anuncio.pagamento_valor, anuncio.pagamento_unidade, anuncio.beneficios);
+  const valor = valorDoAnuncio(anuncio);
   const vaga = anuncio.tipo === "vaga";
   const novo = agora - new Date(anuncio.criado_em).getTime() < 48 * 3600 * 1000;
   const status = anuncio.status as StatusAnuncio;
+  const fotos = anuncio.fotos.map((f) => urlDaFotoTrabalho(f)).filter((u): u is string => Boolean(u));
 
   const quadroAcao = (sufixo: string) =>
     proprio ? (
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
-        <p className="font-display text-h3">Este anúncio é seu</p>
-        <p className="text-body-sm text-ink-muted">Veja quem curtiu e curta de volta para dar match.</p>
+        <p className="font-display text-h3">{vaga ? "Este anúncio é seu" : "Este serviço é seu"}</p>
+        <p className="text-body-sm text-ink-muted">
+          {vaga
+            ? "Veja quem curtiu e curta de volta para dar match."
+            : "Veja quem quer contratar você e aceite para dar match."}
+        </p>
         <BotaoLink href={`/painel/anuncio/${anuncio.id}`} variante="sucesso">
-          Ver quem curtiu
+          {vaga ? "Ver quem curtiu" : "Ver pedidos"}
         </BotaoLink>
-        <BotaoLink href={`/painel/anuncio/${anuncio.id}/editar`}>Editar anúncio</BotaoLink>
+        <BotaoLink href={vaga ? `/painel/anuncio/${anuncio.id}/editar` : "/painel/servicos"}>
+          {vaga ? "Editar anúncio" : "Editar meus serviços"}
+        </BotaoLink>
       </div>
     ) : (
       <PainelCurtir
@@ -206,18 +215,24 @@ async function DetalheAnuncio({
           </p>
 
           <dl className="mt-6 grid gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:grid-cols-2 sm:p-6">
-            <Fato icone={MapPin} rotulo="Onde é">
+            <Fato icone={MapPin} rotulo={vaga ? "Onde é" : "Onde fica"}>
               {lugar}
               <span className="block text-body-sm font-normal text-ink-muted">região aproximada</span>
             </Fato>
-            <Fato icone={Banknote} rotulo="Valor">
+            <Fato icone={Banknote} rotulo={vaga ? "Valor" : "Preço"}>
               {valor}
             </Fato>
-            <Fato icone={vaga ? Briefcase : Wrench} rotulo={vaga ? "Contratação" : "Tipo"}>
-              {vaga && anuncio.regime ? REGIMES[anuncio.regime as Regime]?.nome : "Serviço"}
-            </Fato>
+            {vaga ? (
+              <Fato icone={Briefcase} rotulo="Contratação">
+                {anuncio.regime ? REGIMES[anuncio.regime as Regime]?.nome : "Vaga"}
+              </Fato>
+            ) : (
+              <Fato icone={Wrench} rotulo="Atende">
+                {anuncio.atende.length ? descreverAtendimento(anuncio.atende) : lugar}
+              </Fato>
+            )}
             {anuncio.horario && (
-              <Fato icone={Clock} rotulo="Quando">
+              <Fato icone={Clock} rotulo={vaga ? "Quando" : "Quando atende"}>
                 {anuncio.horario}
               </Fato>
             )}
@@ -240,7 +255,29 @@ async function DetalheAnuncio({
           <h2 className="mt-8 text-h2">{vaga ? "Sobre a vaga" : "Sobre o serviço"}</h2>
           <div className="mt-3 text-body whitespace-pre-line text-ink">{anuncio.descricao}</div>
 
-          <h2 className="mt-8 text-h2">Onde é</h2>
+          {fotos.length > 0 && (
+            <>
+              <h2 className="mt-8 text-h2">Trabalhos feitos</h2>
+              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {fotos.map((url, n) => (
+                  <li key={url} className="relative aspect-square overflow-hidden rounded-md bg-surface-300">
+                    <a href={url} target="_blank" rel="noopener" className="block size-full">
+                      <Image
+                        src={url}
+                        alt={`Trabalho ${n + 1} de ${anuncio.autor_nome}`}
+                        fill
+                        unoptimized
+                        sizes="(min-width: 640px) 33vw, 50vw"
+                        className="object-cover"
+                      />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          <h2 className="mt-8 text-h2">{vaga ? "Onde é" : "Onde fica"}</h2>
           <p className="mt-1 mb-3 text-body-sm text-ink-muted">
             Mostramos só uma área de uns 500 metros em {lugar}. O endereço vocês combinam depois do match.
           </p>
@@ -271,11 +308,19 @@ async function DetalheAnuncio({
             <ShieldAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-terra-text" />
             <div>
               <p className="text-label">Fique de olho</p>
-              <ul className="mt-1 list-disc space-y-1 pl-4">
-                <li>Ninguém pode cobrar para você conseguir trabalho.</li>
-                <li>Não mande Pix adiantado nem senhas.</li>
-                <li>No primeiro encontro, prefira um lugar movimentado.</li>
-              </ul>
+              {vaga ? (
+                <ul className="mt-1 list-disc space-y-1 pl-4">
+                  <li>Ninguém pode cobrar para você conseguir trabalho.</li>
+                  <li>Não mande Pix adiantado nem senhas.</li>
+                  <li>No primeiro encontro, prefira um lugar movimentado.</li>
+                </ul>
+              ) : (
+                <ul className="mt-1 list-disc space-y-1 pl-4">
+                  <li>Combine o preço e o prazo por escrito no WhatsApp.</li>
+                  <li>Não pague o serviço inteiro adiantado.</li>
+                  <li>Na primeira visita, se puder, tenha alguém por perto.</li>
+                </ul>
+              )}
             </div>
           </div>
 
@@ -285,7 +330,7 @@ async function DetalheAnuncio({
               className="inline-flex min-h-11 items-center gap-2 self-start text-label text-danger underline-offset-2 hover:underline"
             >
               <Flag aria-hidden className="size-4" />
-              Denunciar anúncio
+              {vaga ? "Denunciar anúncio" : "Denunciar serviço"}
             </Link>
           )}
         </aside>

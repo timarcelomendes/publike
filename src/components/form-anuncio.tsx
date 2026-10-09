@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, Wrench } from "lucide-react";
+import { ArrowRight, Briefcase, Check, Wrench } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
@@ -63,7 +63,8 @@ export function FormAnuncio({
 }) {
   const editando = Boolean(inicial.id);
   const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
-  const [tipo, setTipo] = useState<TipoAnuncio>(inicial.tipo);
+  // anúncio novo é sempre vaga; serviço tem cadastro próprio ("Meus serviços")
+  const tipo: TipoAnuncio = editando ? inicial.tipo : "vaga";
   const [combinar, setCombinar] = useState(editando ? inicial.pagamento_valor == null : false);
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
   const [descricao, setDescricao] = useState(inicial.descricao);
@@ -83,11 +84,6 @@ export function FormAnuncio({
     e.preventDefault();
     const dados = new FormData(e.currentTarget);
     startTransition(() => acao(dados));
-  }
-
-  function escolherTipo(novo: TipoAnuncio) {
-    setTipo(novo);
-    setUnidade((u) => (novo === "vaga" ? (u === "servico" ? "mes" : u) : u === "mes" ? "servico" : u));
   }
 
   const valor = inicial.pagamento_valor != null ? String(inicial.pagamento_valor).replace(".", ",") : "";
@@ -131,42 +127,44 @@ export function FormAnuncio({
           <>
             <input type="hidden" name="tipo" value={tipo} />
             <p className="text-body text-ink-muted">
-              {vaga ? "Uma vaga de trabalho." : "Um serviço que você precisa."} O tipo não muda depois de publicado.
+              {vaga ? "Uma vaga de trabalho." : "Um serviço oferecido."} O tipo não muda depois de publicado.
             </p>
           </>
         ) : (
-          <fieldset>
-            <legend className="sr-only">Tipo de anúncio</legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(
-                [
-                  { valor: "vaga", icone: Briefcase, nome: "Uma vaga", ajuda: "Contratar alguém: com carteira, temporário, diária ou bico." },
-                  { valor: "servico", icone: Wrench, nome: "Um serviço", ajuda: "Preciso de alguém para um serviço: reforma, faxina, frete…" },
-                ] as const
-              ).map(({ valor: v, icone: Icone, nome, ajuda }) => (
-                <label
-                  key={v}
-                  className="flex cursor-pointer gap-3 rounded-md border border-line-strong bg-surface-200 p-4 transition-colors has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
-                >
-                  <input
-                    type="radio"
-                    name="tipo"
-                    value={v}
-                    checked={tipo === v}
-                    onChange={() => escolherTipo(v)}
-                    className="sr-only"
-                  />
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-ink">
-                    <Icone aria-hidden className="size-5" />
-                  </span>
-                  <span>
-                    <span className="block text-label">{nome}</span>
-                    <span className="block text-body-sm text-ink-muted">{ajuda}</span>
-                  </span>
-                </label>
-              ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input type="hidden" name="tipo" value="vaga" />
+            <div className="flex gap-3 rounded-md border border-ink bg-surface-300 p-4">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-200 text-ink">
+                <Briefcase aria-hidden className="size-5" />
+              </span>
+              <span>
+                <span className="flex items-center gap-1.5 text-label">
+                  Uma vaga
+                  <Check aria-hidden className="size-4" />
+                </span>
+                <span className="block text-body-sm text-ink-muted">
+                  Contratar alguém: com carteira, temporário, diária ou bico (um pedreiro para um reboco, uma faxina…).
+                </span>
+              </span>
             </div>
-          </fieldset>
+            <Link
+              href="/painel/servicos"
+              className="flex gap-3 rounded-md border border-line-strong bg-surface-200 p-4 transition-colors hover:bg-surface-300"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-ink">
+                <Wrench aria-hidden className="size-5" />
+              </span>
+              <span>
+                <span className="flex items-center gap-1 text-label">
+                  Ofereço serviços
+                  <ArrowRight aria-hidden className="size-4" />
+                </span>
+                <span className="block text-body-sm text-ink-muted">
+                  Sou pedreiro, diarista, manicure… Monte sua vitrine com fotos e preço.
+                </span>
+              </span>
+            </Link>
+          </div>
         )}
       </Secao>
 
@@ -177,7 +175,7 @@ export function FormAnuncio({
             defaultValue={inicial.titulo}
             maxLength={90}
             required
-            placeholder={vaga ? "Ex.: Auxiliar de cozinha para o turno da noite" : "Ex.: Pintar apartamento de 2 quartos"}
+            placeholder={vaga ? "Ex.: Auxiliar de cozinha para o turno da noite" : "Ex.: Pedreiro: reboco e contrapiso"}
             className={classesEntrada}
           />
         </Campo>
@@ -221,7 +219,7 @@ export function FormAnuncio({
           ajuda={
             vaga
               ? "O que a pessoa vai fazer, o que precisa saber e o que você oferece. Sem telefone: o contato aparece no match."
-              : "O que precisa ser feito, o tamanho do serviço e quando. Sem telefone: o contato aparece no match."
+              : "O que você faz, há quanto tempo e o que está incluído. Sem telefone: o contato aparece no match."
           }
         >
           <textarea

@@ -41,6 +41,8 @@ type Pedido = {
   sistema: string;
   mensagem: string;
   maxTokens: number;
+  /** Fotos para a IA olhar junto com o texto (endereços públicos). */
+  imagens?: string[];
   /** Saída estruturada: nome e esquema JSON da resposta. Sem esquema, a resposta é texto livre. */
   esquema?: { nome: string; schema: Record<string, unknown> };
 };
@@ -88,7 +90,18 @@ export async function chamarIA(p: Pedido): Promise<{ texto: string; parada: Para
       body: JSON.stringify({
         model: modelo.id,
         instructions: p.sistema,
-        input: p.mensagem,
+        input: p.imagens?.length
+          ? [
+              {
+                role: "user",
+                content: [
+                  { type: "input_text", text: p.mensagem },
+                  // "low" basta para ver telefone, rosto ou conteúdo impróprio, e custa bem menos
+                  ...p.imagens.map((url) => ({ type: "input_image", image_url: url, detail: "low" })),
+                ],
+              },
+            ]
+          : p.mensagem,
         max_output_tokens: maxTokens,
         reasoning: { effort: modelo.esforco },
         // o texto dos anúncios não fica guardado na conta da OpenAI

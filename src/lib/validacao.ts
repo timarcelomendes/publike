@@ -2,12 +2,17 @@ import { z } from "zod";
 import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
 import {
+  AREAS_ATENDIMENTO,
   CIDADES,
   LISTA_REGIMES,
   LISTA_TIPOS_CONTA,
   LISTA_UNIDADES,
+  MAX_FOTOS,
+  MAX_SERVICOS,
   MOTIVOS_DENUNCIA,
   SLUGS_CATEGORIAS,
+  SLUGS_OFICIOS,
+  UNIDADES_SERVICO,
 } from "./constantes";
 
 // A mesma regra do banco (public.tem_contato): contato só aparece no match.
@@ -40,6 +45,8 @@ export function temContato(texto: string | null | undefined) {
 export function temContatoNoTexto(texto: string | null | undefined) {
   return procurarContato(texto, true);
 }
+
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const SEM_CONTATO = "Tire o telefone, e-mail ou link. O contato aparece sozinho quando der match.";
 
@@ -84,7 +91,7 @@ export function errosPorCampo(erro: z.ZodError) {
 export const esquemaAnuncio = z
   .object({
     tipo: z.enum(["vaga", "servico"], { error: "Escolha se é uma vaga ou um serviço." }),
-    titulo: texto(5, 90, "o título"),
+    titulo: texto(2, 90, "o título"),
     descricao: texto(20, 3000, "a descrição", true),
     categoria: z.enum(SLUGS_CATEGORIAS, { error: "Escolha uma categoria." }),
     regime: z.enum(LISTA_REGIMES).nullable(),
@@ -110,6 +117,9 @@ export const esquemaAnuncio = z
       .max(REGIAO.lngMax, { error: "Marque um ponto em Goiânia e região." }),
   })
   .superRefine((d, ctx) => {
+    if (d.tipo === "vaga" && d.titulo.length < 5) {
+      ctx.addIssue({ code: "custom", path: ["titulo"], message: "Use pelo menos 5 letras." });
+    }
     if (d.tipo === "vaga" && !d.regime) {
       ctx.addIssue({ code: "custom", path: ["regime"], message: "Escolha o tipo de contratação." });
     }
@@ -176,6 +186,112 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
   const leitura = esquemaAnuncio.safeParse(bruto);
   if (leitura.success) return { ok: true, dados: leitura.data };
   return { ok: false, erros: { ...errosCruzados(bruto), ...errosPorCampo(leitura.error) } };
+}
+
+// ---------------------------------------------------------------- serviços
+
+/** Caminho de uma foto de trabalho: "<id-da-pessoa>/<data><sorteio>.jpg". */
+export const CAMINHO_FOTO_TRABALHO = /^[0-9a-f-]{36}\/\d{10,20}\.jpg$/;
+
+const esquemaServico = z
+  .object({
+    id: z.string().regex(UUID).nullable(),
+    oficio: z.enum(SLUGS_OFICIOS).nullable(),
+    categoria: z.enum(SLUGS_CATEGORIAS, { error: "Escolha a categoria." }),
+    titulo: texto(2, 90, "o nome do serviço"),
+    descricao: texto(20, 3000, "a descrição", true),
+    combinar: z.boolean(),
+    pagamento_valor: z.number().nullable(),
+    pagamento_unidade: z.enum(UNIDADES_SERVICO).nullable(),
+    fotos: z
+      .array(z.string().regex(CAMINHO_FOTO_TRABALHO, { error: "Envie as fotos de novo." }))
+      .max(MAX_FOTOS, { error: `No máximo ${MAX_FOTOS} fotos por serviço.` }),
+  })
+  .superRefine((d, ctx) => {
+    if (d.combinar) return;
+    if (d.pagamento_valor == null || Number.isNaN(d.pagamento_valor)) {
+      ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Informe o preço ou marque “A combinar”." });
+    } else if (d.pagamento_valor <= 0 || d.pagamento_valor > 1_000_000) {
+      ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Confira o valor." });
+    }
+    if (!d.pagamento_unidade) {
+      ctx.addIssue({ code: "custom", path: ["pagamento_unidade"], message: "Diga se é por hora, dia, m²…" });
+    }
+  })
+  .transform((d) => ({
+    ...d,
+    pagamento_valor: d.combinar ? null : d.pagamento_valor,
+    pagamento_unidade: d.combinar ? null : d.pagamento_unidade,
+  }));
+
+export const esquemaServicos = z.object({
+  servicos: z
+    .array(esquemaServico)
+    .min(1, { error: "Escolha pelo menos um serviço." })
+    .max(MAX_SERVICOS, { error: `Escolha no máximo ${MAX_SERVICOS} serviços.` }),
+  atende: z
+    .array(z.enum(AREAS_ATENDIMENTO as [string, ...string[]], { error: "Confira os lugares marcados." }))
+    .min(1, { error: "Marque pelo menos um lugar onde você atende." })
+    .max(30),
+  horario: opcional(120),
+  cidade: z.enum(CIDADES, { error: "Escolha a cidade." }),
+  bairro: texto(2, 80, "o bairro"),
+  lat: z
+    .number({ error: "Marque no mapa a região onde você fica." })
+    .min(REGIAO.latMin, { error: "Marque um ponto em Goiânia e região." })
+    .max(REGIAO.latMax, { error: "Marque um ponto em Goiânia e região." }),
+  lng: z
+    .number({ error: "Marque no mapa a região onde você fica." })
+    .min(REGIAO.lngMin, { error: "Marque um ponto em Goiânia e região." })
+    .max(REGIAO.lngMax, { error: "Marque um ponto em Goiânia e região." }),
+});
+
+export type DadosServicos = z.output<typeof esquemaServicos>;
+
+export type LeituraServicos = { ok: true; dados: DadosServicos } | { ok: false; erros: Record<string, string> };
+
+/**
+ * O formulário manda a lista de serviços em JSON (campo "servicos") e o resto
+ * em campos comuns. Erros de um serviço voltam como "servicos.0.descricao".
+ */
+export function lerServicos(formData: FormData): LeituraServicos {
+  let lista: unknown = [];
+  try {
+    lista = JSON.parse(campo(formData, "servicos") ?? "[]");
+  } catch {
+    return { ok: false, erros: { servicos: "Algo deu errado com a lista de serviços. Recarregue a página." } };
+  }
+  const servicos = (Array.isArray(lista) ? lista : []).map((x) => {
+    const o = (x ?? {}) as Record<string, unknown>;
+    const textoDe = (v: unknown) => (typeof v === "string" ? v : "");
+    return {
+      id: typeof o.id === "string" && o.id ? o.id : null,
+      oficio: typeof o.oficio === "string" && o.oficio ? o.oficio : null,
+      categoria: textoDe(o.categoria),
+      titulo: textoDe(o.titulo),
+      descricao: textoDe(o.descricao),
+      combinar: o.combinar === true,
+      pagamento_valor: lerNumeroBR(textoDe(o.valor)),
+      pagamento_unidade: typeof o.unidade === "string" && o.unidade ? o.unidade : null,
+      fotos: Array.isArray(o.fotos) ? o.fotos.filter((f): f is string => typeof f === "string") : [],
+    };
+  });
+  const leitura = esquemaServicos.safeParse({
+    servicos,
+    atende: formData.getAll("atende").filter((v): v is string => typeof v === "string"),
+    horario: campo(formData, "horario") ?? "",
+    cidade: campo(formData, "cidade"),
+    bairro: campo(formData, "bairro") ?? "",
+    lat: coordenada(campo(formData, "lat")),
+    lng: coordenada(campo(formData, "lng")),
+  });
+  if (leitura.success) return { ok: true, dados: leitura.data };
+  const erros: Record<string, string> = {};
+  for (const problema of leitura.error.issues) {
+    const chave = problema.path[0] === "servicos" && problema.path.length > 1 ? problema.path.join(".") : String(problema.path[0] ?? "geral");
+    if (!erros[chave]) erros[chave] = problema.message;
+  }
+  return { ok: false, erros };
 }
 
 // ---------------------------------------------------------------- perfil
@@ -276,4 +392,4 @@ export function lerDenuncia(formData: FormData) {
   });
 }
 
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+

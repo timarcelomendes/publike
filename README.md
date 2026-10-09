@@ -150,6 +150,8 @@ No **SQL Editor** do Supabase, cole `supabase/migrations/20261008120000_admin.sq
 
 Depois, do mesmo jeito, rode `supabase/migrations/20261009120000_prioridade_local.sql`. Ela faz a busca mostrar primeiro os anúncios do bairro de quem procura, depois os da região (em Goiânia) e os da cidade. A pessoa escolhe onde mora em "Onde você mora?", na busca; quem tem conta já usa o bairro do perfil. As regiões de Goiânia ficam em `src/lib/regioes.ts`.
 
+Por último, rode `supabase/migrations/20261009150000_servicos.sql`. Ela transforma "serviço" em oferta: o profissional monta a vitrine em **Meu painel > Meus serviços** (o que faz, preço ou "a combinar", fotos de trabalhos e onde atende), e cada serviço aparece separado na busca. Quem precisa contratar toca em "Quero contratar"; o profissional aceita e dá match. Ela também cria a pasta de fotos `trabalhos` no Storage. Os anúncios de serviço antigos (pedidos, do tempo de teste) são apagados.
+
 ### 4.2 Abrir o admin (só no seu computador)
 
 O admin não tem login: ele só existe no seu computador, com o site rodando em `npm run dev`. No site publicado, `/admin` não abre para ninguém além dos moderadores (veja 4.6).
@@ -318,7 +320,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin e da prioridade por bairro rodadas (`20261008120000_admin.sql` e `20261009120000_prioridade_local.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` e `20261009150000_servicos.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

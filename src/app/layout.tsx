@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     template: "%s · Publike",
   },
   description:
-    "Vagas com carteira, diárias, bicos e serviços em Goiânia e região. Quem precisa publica, quem faz curte. De graça.",
+    "Vagas com carteira, diárias, bicos e profissionais do bairro em Goiânia e região. Curtiu, deu match, vocês conversam. De graça.",
   applicationName: "Publike",
   openGraph: {
     type: "website",

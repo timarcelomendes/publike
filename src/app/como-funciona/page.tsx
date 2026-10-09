@@ -7,21 +7,22 @@ import { BotaoLink } from "@/components/ui/botao";
 export const metadata: Metadata = {
   title: "Como funciona",
   description:
-    "Quem precisa publica, quem faz curte. Quando dá match, o WhatsApp aparece. Veja como usar o Publike e as dicas de segurança.",
+    "Quem contrata publica a vaga, quem trabalha mostra os serviços. Quando dá match, o WhatsApp aparece. Veja como usar o Publike e as dicas de segurança.",
 };
 
 const CONTRATA = [
-  "Publique vaga com carteira, temporária, diária, bico ou um serviço que você precisa.",
+  "Publique a vaga: com carteira, temporária, diária ou bico (um reboco, uma faxina, um conserto).",
+  "Ou procure um profissional: pedreiro, diarista, eletricista… Veja fotos dos trabalhos e o preço, e peça para contratar.",
   "Diga o bairro e marque a região no mapa: quem mora perto vê primeiro.",
-  "Veja quem curtiu e o que cada pessoa faz. Curta de volta quem combina com você.",
-  "O anúncio fica 30 dias no ar e pode ser renovado de 30 em 30 dias. Dá para pausar ou encerrar quando quiser.",
+  "Veja quem curtiu a vaga e o que cada pessoa faz. Curta de volta quem combina com você.",
+  "A vaga fica 30 dias no ar e pode ser renovada. Dá para pausar ou encerrar quando quiser.",
 ];
 
 const TRABALHA = [
-  "Veja vagas, bicos e serviços perto de você, no mapa ou em lista.",
-  "Curta o que combina. Se quiser, mande uma mensagem curta junto.",
-  "Quando der match, o WhatsApp de quem publicou aparece no seu painel.",
-  "Seu número nunca fica público no site.",
+  "Veja vagas e bicos perto de você, no mapa ou em lista. Curta o que combina.",
+  "Oferece serviços? Monte sua vitrine em “Meus serviços”: o que você faz, o preço, fotos e onde atende.",
+  "Quando alguém quiser contratar você, chega um aviso. Aceitou, deu match: o WhatsApp aparece no painel.",
+  "Seu número nunca fica público no site. Os serviços ficam 90 dias no ar, e salvar de novo renova.",
 ];
 
 const SEGURANCA = [
@@ -40,7 +41,7 @@ const PERGUNTAS = [
   },
   {
     p: "O que é match?",
-    r: "É quando os dois lados se curtem: você curte um anúncio e quem publicou curte você de volta. Aí o WhatsApp dos dois aparece.",
+    r: "É quando os dois lados topam: você curte uma vaga e quem publicou curte você de volta, ou você pede um serviço e o profissional aceita. Aí o WhatsApp dos dois aparece.",
   },
   {
     p: "Por que o telefone não aparece no anúncio?",

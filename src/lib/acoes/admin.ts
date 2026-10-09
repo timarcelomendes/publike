@@ -7,6 +7,7 @@ import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada, MODELOS_IA, modeloDaIA } from "@/lib/ia/openai";
 import { escreverResumo } from "@/lib/ia/tarefas";
+import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { enviarEmailsPendentes, processarFilas, revisarAnunciosPendentes } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -120,13 +121,9 @@ export async function excluirContaPeloAdmin(usuarioId: string, motivo: string): 
   const ficha = data as { moderador?: boolean } | null;
   if (!ficha) return { ok: false, erro: "Conta não encontrada." };
   if (ficha.moderador) return { ok: false, erro: "Essa pessoa é moderadora. Tire ela da moderação antes." };
-  // A foto sai antes da conta: o Supabase não apaga uma conta que ainda tem arquivos.
-  for (let lote = 0; lote < 20; lote++) {
-    const { data: arquivos, error: erroLista } = await c.storage.from("avatars").list(usuarioId, { limit: 100 });
-    if (erroLista) return { ok: false, erro: "Não foi possível apagar a foto agora. Tente de novo." };
-    if (!arquivos?.length) break;
-    const { error: erroFoto } = await c.storage.from("avatars").remove(arquivos.map((a) => `${usuarioId}/${a.name}`));
-    if (erroFoto) return { ok: false, erro: "Não foi possível apagar a foto agora. Tente de novo." };
+  // As fotos saem antes da conta: o Supabase não apaga uma conta que ainda tem arquivos.
+  if (!(await apagarArquivosDaPessoa(c, usuarioId))) {
+    return { ok: false, erro: "Não foi possível apagar as fotos agora. Tente de novo." };
   }
   const { error } = await c.rpc("admin_excluir_conta", { p_usuario: usuarioId, p_motivo: motivo });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
