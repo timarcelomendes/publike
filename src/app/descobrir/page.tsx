@@ -39,8 +39,8 @@ type Aba = (typeof ABAS)[number]["valor"];
 
 export default function Descobrir({ searchParams }: PageProps<"/descobrir">) {
   return (
-    <Container className="max-w-6xl py-6 sm:py-8">
-      <h1 className="text-h2 sm:text-h1">Descobrir</h1>
+    <Container className="max-w-6xl py-4 sm:py-8">
+      <h1 className="sr-only sm:not-sr-only sm:text-h1">Descobrir</h1>
       <p className="mt-1 hidden text-body text-ink-muted sm:block">
         Vagas que combinam com você, uma de cada vez. Gostou, curta. Não é para você, passe.
       </p>
@@ -185,9 +185,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
   );
 
   return (
-    <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <div className="grid gap-5 sm:mt-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       {lateral}
-      <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1">
+      <div className="flex min-w-0 flex-col gap-4 sm:gap-5 lg:col-start-1 lg:row-start-1">
       <nav aria-label="Seções do Descobrir" className="-mx-4 overflow-x-auto px-4">
         <ul className="flex gap-2">
           {ABAS.map(({ valor, nome, icone: Icone }) => {

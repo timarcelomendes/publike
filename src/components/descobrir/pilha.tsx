@@ -101,7 +101,7 @@ function Carimbo({ texto, classe, visivel }: { texto: string; classe: string; vi
 
 function Cartao({ c, topo }: { c: CartaVaga; topo: boolean }) {
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-lg border border-line bg-surface-200 p-5 shadow-raised select-none sm:p-6">
+    <div className="flex h-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-surface-200 p-5 pb-24 shadow-raised select-none sm:gap-4 sm:p-6">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap gap-1.5">
@@ -347,7 +347,9 @@ export function PilhaDeVagas({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="relative mx-auto h-[27rem] w-full max-w-md sm:h-[32rem]" aria-live="polite">
+      {/* No celular os botões ficam por cima do pé do cartão, e o cartão ocupa a altura da tela que sobra */}
+      <div className="relative mx-auto w-full max-w-md">
+      <div className="relative h-[calc(100dvh-17.5rem)] max-h-[34rem] min-h-[18rem] w-full sm:h-[32rem] sm:max-h-none" aria-live="polite">
         {proxima && (
           <div aria-hidden className="absolute inset-0 scale-[0.96] opacity-70 transition-transform" style={{ transform: `translateY(14px) scale(${0.96 + Math.min(Math.abs(arrasto.x), 160) / 4000})` }}>
             <Cartao c={proxima} topo={false} />
@@ -376,14 +378,14 @@ export function PilhaDeVagas({
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4">
+      <div className="absolute inset-x-0 bottom-4 z-20 flex items-center justify-center gap-3 sm:static sm:mt-4 sm:gap-4">
         <button
           type="button"
           onClick={voltar}
           disabled={!podeVoltar}
           aria-label="Voltar a última vaga"
           title="Voltar"
-          className="flex size-11 items-center justify-center rounded-pill border border-line-strong bg-surface-200 text-ink-muted transition-colors hover:text-ink disabled:opacity-40"
+          className="flex size-10 items-center justify-center rounded-pill border border-line-strong bg-surface-200 text-ink-muted shadow-card transition-colors hover:text-ink disabled:opacity-40 sm:size-11"
         >
           <Undo2 aria-hidden className="size-5" />
         </button>
@@ -392,16 +394,16 @@ export function PilhaDeVagas({
           onClick={() => decidir("passar")}
           aria-label="Passar (seta para a esquerda)"
           title="Passar"
-          className="flex size-16 items-center justify-center rounded-pill border-2 border-line-strong bg-surface-200 text-ink shadow-card transition-transform hover:scale-105 active:scale-95"
+          className="flex size-14 items-center justify-center rounded-pill border-2 border-line-strong bg-surface-200 text-ink shadow-card transition-transform hover:scale-105 active:scale-95 sm:size-16"
         >
-          <X aria-hidden className="size-8" />
+          <X aria-hidden className="size-7 sm:size-8" />
         </button>
         <button
           type="button"
           onClick={() => decidir("salvar")}
           aria-label="Salvar para depois (seta para cima)"
           title="Salvar"
-          className="flex size-13 items-center justify-center rounded-pill bg-ipe text-on-ipe shadow-card transition-transform hover:scale-105 active:scale-95"
+          className="flex size-12 items-center justify-center rounded-pill bg-ipe text-on-ipe shadow-card transition-transform hover:scale-105 active:scale-95 sm:size-13"
         >
           <Star aria-hidden className="size-6" fill="currentColor" />
         </button>
@@ -410,13 +412,14 @@ export function PilhaDeVagas({
           onClick={() => decidir("curtir")}
           aria-label="Curtir (seta para a direita)"
           title="Curtir"
-          className="flex size-16 items-center justify-center rounded-pill bg-like text-on-like shadow-card transition-transform hover:scale-105 active:scale-95"
+          className="flex size-14 items-center justify-center rounded-pill bg-like text-on-like shadow-card transition-transform hover:scale-105 active:scale-95 sm:size-16"
         >
-          <Heart aria-hidden className="size-8" fill="currentColor" />
+          <Heart aria-hidden className="size-7 sm:size-8" fill="currentColor" />
         </button>
       </div>
+      </div>
 
-      <p className="text-center text-body-sm text-ink-muted">
+      <p className="hidden text-center text-body-sm text-ink-muted sm:block">
         {indice + 1} de {cartas.length} · deslize ou use as setas do teclado
       </p>
 
