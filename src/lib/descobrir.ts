@@ -1,4 +1,5 @@
 import { categoria } from "./constantes";
+import { deslocamentoCurto } from "./deslocamento";
 import { chaveBairro, chavesDaRegiao, type Local } from "./regioes";
 import type { VagaDescobrir } from "./tipos";
 
@@ -105,7 +106,7 @@ export function pontuar(v: VagaDescobrir, q: QuemProcura | null, local: Local | 
     if (porDistancia > pontosPerto) {
       pontosPerto = porDistancia;
       if (perto > 0 && distancia <= 8) {
-        motivos.push({ tipo: "perto", texto: `A ${distancia.toLocaleString("pt-BR")} km de você` });
+        motivos.push({ tipo: "perto", texto: `A ${distancia.toLocaleString("pt-BR")} km · ${deslocamentoCurto(distancia)}` });
       }
     }
   }

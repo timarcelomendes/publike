@@ -49,7 +49,8 @@ export default function Privacidade() {
               "Contato: seu WhatsApp e, se quiser, um e-mail.",
               "O que você faz no site: anúncios, curtidas, matches, denúncias e, no Descobrir, as vagas que salvou ou passou e o que escreveu em “O que você procura?” (só você vê).",
               "Se você preencher: o currículo (estudos, experiências, cursos, CNH, quando pode trabalhar) e o PDF que anexar.",
-              "Localização dos anúncios: só a região, uma área de uns 500 metros. O endereço exato nunca é guardado.",
+              "Localização dos anúncios: comércio, empresa e agência podem informar o CEP e o endereço, que aparecem na vaga com o ponto exato, como uma fachada. Vaga de pessoa física e de empresa confidencial guardam só a região, uma área de uns 500 metros, sem endereço.",
+              "CEP de casa (opcional, em “Onde você mora?”): guardamos o CEP e um ponto arredondado, de uns 300 metros, só para medir a distância e o tempo de ônibus até as vagas. Ninguém mais vê. Sem conta, fica só no seu navegador. “Esquecer onde moro” apaga.",
               "Quando você usa “Perto de mim”, a localização serve só para a busca e não fica salva no seu perfil.",
             ]}
           />
@@ -63,6 +64,8 @@ export default function Privacidade() {
               "Seu WhatsApp e seu e-mail de contato só aparecem para a outra pessoa de um match.",
               "O CNPJ de agência, comércio ou empresa aparece no perfil e nos anúncios, para quem usa o site conferir na Receita.",
               "Denúncias só a moderação vê. Quem publicou não sabe quem denunciou.",
+              "Seu CEP de casa ninguém vê: nem quem publica, nem a moderação pelo site.",
+              "Para achar o CEP no mapa, o site consulta a BrasilAPI, o ViaCEP e o OpenStreetMap só com o CEP e o número, sem seu nome.",
               "Não vendemos seus dados.",
             ]}
           />

@@ -1,4 +1,4 @@
-import { BadgeCheck, MapPin } from "lucide-react";
+import { BadgeCheck, Bus, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -10,6 +10,7 @@ import {
   urlDaFotoTrabalho,
   valorDoAnuncio,
 } from "@/lib/formato";
+import { deslocamentoCurto } from "@/lib/deslocamento";
 import type { DadosCard } from "@/lib/tipos";
 import { NotaDoProfissional } from "./avaliacoes";
 import { BotaoCurtir } from "./botao-curtir";
@@ -23,15 +24,19 @@ export function CardAnuncio({
   agora,
   usuarioId,
   pertoDeCasa = null,
+  tempoDe = null,
 }: {
   anuncio: DadosCard;
   agora: number;
   usuarioId: string | null;
   /** Da busca com "Onde você mora?": 0 = no bairro da pessoa, 1 = na região dela. */
   pertoDeCasa?: number | null;
+  /** Mostra o tempo de ônibus (ou a pé) a partir da casa da pessoa (CEP) ou de onde ela está (GPS). */
+  tempoDe?: "casa" | "voce" | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
+  const tempo = tempoDe && anuncio.tipo === "vaga" ? deslocamentoCurto(anuncio.distancia_km) : null;
   const proprio = usuarioId !== null && usuarioId === anuncio.autor_id;
   const servico = anuncio.tipo === "servico";
   const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
@@ -94,6 +99,14 @@ export function CardAnuncio({
           {distancia && ` · ${distancia}`}
         </span>
       </p>
+      {tempo && (
+        <p className="-mt-2 flex items-center gap-1.5 text-body-sm text-ink-muted">
+          <Bus aria-hidden className="size-4 shrink-0 text-ink-muted" />
+          <span>
+            {tempo} {tempoDe === "casa" ? "da sua casa" : "de onde você está"}
+          </span>
+        </p>
+      )}
 
       <p className="text-label">{valorDoAnuncio(anuncio)}</p>
 

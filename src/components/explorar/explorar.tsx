@@ -1,5 +1,6 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { buscarAnuncios, obterUsuario } from "@/lib/dados";
+import { nomeDoTempo } from "@/lib/deslocamento";
 import { descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { formatarLugar, primeiro, valorDoAnuncio } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
@@ -15,9 +16,10 @@ type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
 export async function BuscaExplorar({ searchParams }: { searchParams: Parametros }) {
-  const filtros = lerFiltros(await searchParams);
+  const sp = await searchParams;
+  const filtros = lerFiltros(sp);
   const local = await obterLocal();
-  return <BarraBusca filtros={filtros} local={local} />;
+  return <BarraBusca filtros={filtros} local={local} abrirOndeMora={primeiro(sp.casa) === "1"} />;
 }
 
 /** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
@@ -28,7 +30,15 @@ function partirDoLocal(filtros: Filtros, local: Local | null): Filtros {
 
 function textoDaOrigem(filtros: Filtros, local: Local | null) {
   if (!local || filtros.origem !== "centro") return descreverOrigem(filtros.origem);
+  if (local.ponto) return "da sua casa";
   return local.regiao ? `da Região ${local.regiao} de Goiânia` : `do centro de ${local.cidade}`;
+}
+
+/** De onde sai o tempo de ônibus dos cards: da casa (CEP) ou do GPS. */
+function origemDoTempo(filtros: Filtros, local: Local | null): "casa" | "voce" | null {
+  if (filtros.origem === "gps") return "voce";
+  if (filtros.origem === "centro" && local?.ponto) return "casa";
+  return null;
 }
 
 export function BuscaEsqueleto() {
@@ -79,6 +89,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
             agora={agora}
             usuarioId={usuario?.id ?? null}
             pertoDeCasa={local ? a.prioridade : null}
+            tempoDe={origemDoTempo(filtros, local)}
           />
         ))}
       </div>
@@ -88,8 +99,8 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         titulo="Nada por aqui ainda"
         acao={
           <>
-            {filtros.raio < maiorRaio && (
-              <BotaoLink href={hrefFiltros(filtros, { raio: maiorRaio })} scroll={false}>
+            {(filtros.tempo || filtros.raio < maiorRaio) && (
+              <BotaoLink href={hrefFiltros(filtros, { raio: maiorRaio, tempo: null })} scroll={false}>
                 Buscar até {maiorRaio} km
               </BotaoLink>
             )}
@@ -124,8 +135,9 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         }
         subtitulo={
           <p className="text-body-sm text-ink-muted">
-            {local && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
-            em até {filtros.raio} km {textoDaOrigem(filtros, local)}
+            {local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
+            {local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
+            {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`} {textoDaOrigem(filtros, local)}
           </p>
         }
         filtrosLista={<FiltrosLista filtros={filtros} />}

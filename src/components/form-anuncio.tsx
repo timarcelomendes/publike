@@ -10,7 +10,7 @@ import { CATEGORIAS, CIDADES, REGIMES, REGIMES_COM_CURRICULO, UNIDADES, type Cid
 import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
-import { SeletorLocal } from "./mapa/seletor-local";
+import { LocalComCep } from "./mapa/local-com-cep";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
@@ -34,6 +34,9 @@ export type ValoresAnuncio = {
   contratante_confidencial?: boolean;
   cidade: string;
   bairro: string;
+  /** comércio, empresa e agência: o endereço que aparece na vaga */
+  cep?: string | null;
+  endereco?: string | null;
   lat: number | null;
   lng: number | null;
 };
@@ -58,6 +61,7 @@ export function FormAnuncio({
   equipe = false,
   ia = false,
   agencia = false,
+  enderecoPublico = false,
 }: {
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
@@ -68,6 +72,8 @@ export function FormAnuncio({
   ia?: boolean;
   /** Quem publica é agência de emprego / RH: a vaga diz para qual empresa é. */
   agencia?: boolean;
+  /** Comércio, empresa e agência: o endereço aparece na vaga (pessoa física: só a região). */
+  enderecoPublico?: boolean;
 }) {
   const editando = Boolean(inicial.id);
   const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
@@ -397,47 +403,54 @@ export function FormAnuncio({
       </Secao>
 
       <Secao numero={4} titulo="Onde é">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
-            <Seletor
-              {...ligarCampo("cidade", erros.cidade)}
-              value={cidade}
-              onChange={(e) => setCidade(e.target.value)}
-              className={classesEntrada}
-            >
-              {CIDADES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Seletor>
-          </Campo>
-          <Campo rotulo="Bairro ou setor" nome="bairro" erro={erros.bairro}>
-            <input
-              {...ligarCampo("bairro", erros.bairro)}
-              defaultValue={inicial.bairro}
-              list="bairros"
-              maxLength={80}
-              required
-              placeholder="Ex.: Setor Bueno"
-              autoComplete="off"
-              className={classesEntrada}
-            />
-            <datalist id="bairros">
-              {(BAIRROS[cidade as Cidade] ?? []).map((b) => (
-                <option key={b} value={b} />
-              ))}
-            </datalist>
-          </Campo>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <p className="text-label">Marque a região no mapa</p>
-          <SeletorLocal
-            inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
-            erro={erros.lat ?? erros.lng}
-          />
-          {(erros.lat || erros.lng) && <MensagemErro>{erros.lat ?? erros.lng}</MensagemErro>}
-        </div>
+        <LocalComCep
+          inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
+          inicialCep={inicial.cep}
+          inicialEndereco={inicial.endereco}
+          publico={enderecoPublico && !confidencial}
+          erro={erros.lat ?? erros.lng}
+          aoAchar={({ cidade: c, bairro: b }) => {
+            if ((CIDADES as readonly string[]).includes(c)) setCidade(c);
+            const campoBairro = formulario.current?.elements.namedItem("bairro");
+            if (b && campoBairro instanceof HTMLInputElement) campoBairro.value = b;
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
+              <Seletor
+                {...ligarCampo("cidade", erros.cidade)}
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+                className={classesEntrada}
+              >
+                {CIDADES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Seletor>
+            </Campo>
+            <Campo rotulo="Bairro ou setor" nome="bairro" erro={erros.bairro}>
+              <input
+                {...ligarCampo("bairro", erros.bairro)}
+                defaultValue={inicial.bairro}
+                list="bairros"
+                maxLength={80}
+                required
+                placeholder="Ex.: Setor Bueno"
+                autoComplete="off"
+                className={classesEntrada}
+              />
+              <datalist id="bairros">
+                {(BAIRROS[cidade as Cidade] ?? []).map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+            </Campo>
+          </div>
+        </LocalComCep>
+        {(erros.lat || erros.lng) && <MensagemErro>{erros.lat ?? erros.lng}</MensagemErro>}
+        {(erros.cep || erros.endereco) && <MensagemErro>{erros.cep ?? erros.endereco}</MensagemErro>}
       </Secao>
 
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}

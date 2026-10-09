@@ -6,7 +6,7 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { REGIAO } from "@/lib/config";
-import { hrefFiltros, type Filtros } from "@/lib/filtros";
+import { hrefFiltros, raioDaBusca, type Filtros } from "@/lib/filtros";
 import { caixaDoRaio, carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA } from "./maplibre";
 
 export type PontoMapa = {
@@ -50,7 +50,7 @@ export function MapaAnuncios({ pontos, filtros }: { pontos: PontoMapa[]; filtros
         instancia = new ml.Map({
           container: caixa.current,
           style: ESTILO_MAPA,
-          bounds: caixaDoRaio(filtros.lat, filtros.lng, filtros.raio),
+          bounds: caixaDoRaio(filtros.lat, filtros.lng, raioDaBusca(filtros)),
           fitBoundsOptions: { padding: 24 },
           attributionControl: { compact: true },
           maxBounds: [
@@ -63,7 +63,7 @@ export function MapaAnuncios({ pontos, filtros }: { pontos: PontoMapa[]; filtros
 
         instancia.on("load", () => {
           const m = instancia!;
-          m.addSource("raio", { type: "geojson", data: circulo(filtros.lat, filtros.lng, filtros.raio) });
+          m.addSource("raio", { type: "geojson", data: circulo(filtros.lat, filtros.lng, raioDaBusca(filtros)) });
           m.addLayer({
             id: "raio-fundo",
             type: "fill",
@@ -190,14 +190,15 @@ export function MapaAnuncios({ pontos, filtros }: { pontos: PontoMapa[]; filtros
     (m.getSource("anuncios") as GeoJSONSource | undefined)?.setData(paraGeoJSON(pontos));
   }, [pronto, pontos]);
 
-  // Reenquadra quando o centro ou o raio mudam
+  // Reenquadra quando o centro ou o raio (ou o tempo de ônibus) mudam
+  const raioKm = raioDaBusca(filtros);
   useEffect(() => {
     const m = mapa.current;
     if (!pronto || !m) return;
-    (m.getSource("raio") as GeoJSONSource | undefined)?.setData(circulo(filtros.lat, filtros.lng, filtros.raio));
-    m.fitBounds(caixaDoRaio(filtros.lat, filtros.lng, filtros.raio), { padding: 24, duration: 600 });
+    (m.getSource("raio") as GeoJSONSource | undefined)?.setData(circulo(filtros.lat, filtros.lng, raioKm));
+    m.fitBounds(caixaDoRaio(filtros.lat, filtros.lng, raioKm), { padding: 24, duration: 600 });
     setMovido(false);
-  }, [pronto, filtros.lat, filtros.lng, filtros.raio]);
+  }, [pronto, filtros.lat, filtros.lng, raioKm]);
 
   function buscarAqui() {
     const m = mapa.current;

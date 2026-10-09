@@ -87,6 +87,8 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
       contratante_confidencial: d.contratante_confidencial,
       cidade: d.cidade,
       bairro: d.bairro,
+      cep: d.endereco ? d.cep : null,
+      endereco: d.endereco,
       local: `SRID=4326;POINT(${d.lng} ${d.lat})`,
     })
     .eq("id", id)

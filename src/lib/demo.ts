@@ -1,5 +1,5 @@
 import "server-only";
-import type { Filtros } from "./filtros";
+import { raioDaBusca, type Filtros } from "./filtros";
 import { chaveBairro, chavesDaRegiao, type Local } from "./regioes";
 import type { AnuncioCompleto, AnuncioDoPerfil, AnuncioResumo, AvaliacaoPublica, Perfil, VagaDescobrir } from "./tipos";
 
@@ -52,6 +52,9 @@ type Base = {
   /** vaga de agência */
   contratante?: string;
   confidencial?: boolean;
+  /** endereço público (só comércio, empresa e agência) */
+  endereco?: string;
+  cep?: string;
   cidade: string;
   bairro: string;
   lat: number;
@@ -65,7 +68,7 @@ const BASE: Base[] = [
     titulo: "Auxiliar de cozinha para o turno da noite",
     descricao: "Procuramos auxiliar de cozinha para ajudar no preparo e na organização da cozinha no jantar.\n\nNão precisa ter experiência em restaurante, mas é importante gostar de cozinhar e ser caprichoso com a limpeza. Ensinamos tudo por aqui.\n\nOferecemos refeição no local, vale-transporte e folga semanal.",
     valor: 1900, unidade: "mes", beneficios: "vale-transporte", horario: "Ter a dom, das 16h à meia-noite", vagas: 2,
-    cidade: "Goiânia", bairro: "Setor Bueno", lat: -16.7075, lng: -49.27, horasAtras: 2,
+    cidade: "Goiânia", bairro: "Setor Bueno", endereco: "Rua T-36, 1200", cep: "74223052", lat: -16.70712, lng: -49.27093, horasAtras: 2,
   },
   {
     id: "demo-02", autor: "demo-buffet-ipe", tipo: "vaga", categoria: "eventos", regime: "diaria",
@@ -86,7 +89,7 @@ const BASE: Base[] = [
     titulo: "Vendedor ou vendedora de loja de calçados",
     descricao: "Vaga para atendimento no balcão e no estoque da loja. Buscamos alguém comunicativo, que goste de vender e tenha disponibilidade aos sábados.",
     valor: 1750, unidade: "mes", beneficios: "comissão", horario: "Seg a sáb, horário comercial", vagas: 1,
-    cidade: "Goiânia", bairro: "Setor Central", lat: -16.675, lng: -49.255, horasAtras: 30,
+    cidade: "Goiânia", bairro: "Setor Central", endereco: "Avenida Goiás, 410", cep: "74005010", lat: -16.67688, lng: -49.25451, horasAtras: 30,
   },
   {
     id: "demo-05", autor: "demo-maria", tipo: "vaga", categoria: "eletrica-hidraulica", regime: "freelance",
@@ -100,14 +103,14 @@ const BASE: Base[] = [
     titulo: "Ajudante de entregas para o fim de ano",
     descricao: "Contrato temporário de dezembro a fevereiro para ajudar o motorista nas entregas em mercados e bares. Carregar e descarregar caixas, conferir notas.\n\nPrecisa ter mais de 18 anos.",
     valor: 1600, unidade: "mes", beneficios: "café da manhã", horario: "Seg a sáb, das 6h às 14h", vagas: 4,
-    cidade: "Goiânia", bairro: "Campinas", lat: -16.67, lng: -49.29, horasAtras: 50,
+    cidade: "Goiânia", bairro: "Campinas", endereco: "Avenida 24 de Outubro, 1500", cep: "74505010", lat: -16.66972, lng: -49.28766, horasAtras: 50,
   },
   {
     id: "demo-07", autor: "demo-clinica", tipo: "vaga", categoria: "administrativo", regime: "estagio",
     titulo: "Estágio em recepção de clínica",
     descricao: "Para estudantes de administração, secretariado ou cursos da saúde. Atendimento ao paciente, agenda e organização da recepção.",
     valor: 900, unidade: "mes", beneficios: "vale-transporte", horario: "Seg a sex, das 7h às 13h", vagas: 1,
-    cidade: "Goiânia", bairro: "Setor Marista", lat: -16.695, lng: -49.26, horasAtras: 75,
+    cidade: "Goiânia", bairro: "Setor Marista", endereco: "Rua 1137, 85", cep: "74180160", lat: -16.69741, lng: -49.26218, horasAtras: 75,
   },
   {
     id: "demo-08", autor: "demo-antonio", tipo: "servico", categoria: "construcao", regime: null, oficio: "pedreiro",
@@ -277,6 +280,8 @@ function autor(id: string) {
 
 function completo(b: Base, agora: number): AnuncioCompleto {
   const a = autor(b.autor);
+  // como no banco: endereço só de comércio, empresa e agência (e não confidencial)
+  const exato = Boolean(b.endereco) && a.tipo !== "pessoa" && !b.confidencial;
   const criado = new Date(agora - b.horasAtras * HORA).toISOString();
   return {
     id: b.id,
@@ -293,8 +298,8 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     vagas: b.vagas ?? 1,
     cidade: b.cidade,
     bairro: b.bairro,
-    lat: aproximar(b.lat),
-    lng: aproximar(b.lng),
+    lat: exato ? Math.round(b.lat * 1e5) / 1e5 : aproximar(b.lat),
+    lng: exato ? Math.round(b.lng * 1e5) / 1e5 : aproximar(b.lng),
     status: "ativo",
     criado_em: criado,
     atualizado_em: criado,
@@ -314,6 +319,9 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     contratante: b.contratante ?? null,
     contratante_confidencial: b.confidencial ?? false,
     autor_cnpj: a.cnpj ?? null,
+    cep: exato ? (b.cep ?? null) : null,
+    endereco: exato ? (b.endereco ?? null) : null,
+    local_exato: exato,
   };
 }
 
@@ -374,8 +382,8 @@ function atendeQuemMora(a: AnuncioResumo, local: Local | null) {
 export function buscarDemo(f: Filtros, agora: number, local: Local | null = null): AnuncioResumo[] {
   const termo = semAcento(f.q.trim());
   const lista = BASE.map((b) => resumo(completo(b, agora), f.lat, f.lng))
-    .map((a) => ({ ...a, prioridade: prioridade(a, local) }))
-    .filter((a) => a.distancia_km <= f.raio || atendeQuemMora(a, local))
+    .map((a) => ({ ...a, prioridade: local?.ponto && f.lat === local.ponto.lat && f.lng === local.ponto.lng ? 2 : prioridade(a, local) }))
+    .filter((a) => a.distancia_km <= raioDaBusca(f) || atendeQuemMora(a, local))
     .filter((a) => !f.tipo || a.tipo === f.tipo)
     .filter((a) => !f.categoria || a.categoria === f.categoria)
     .filter((a) => !f.regime || a.regime === f.regime)

@@ -42,6 +42,8 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
     contratante_confidencial: d.contratante_confidencial,
     cidade: d.cidade,
     bairro: d.bairro,
+    cep: d.endereco ? d.cep : null,
+    endereco: d.endereco,
     local: `SRID=4326;POINT(${d.lng} ${d.lat})`,
   };
 

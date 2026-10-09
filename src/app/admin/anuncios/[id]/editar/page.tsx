@@ -49,6 +49,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
         ia={acesso.admin && iaConfigurada()}
         acaoSalvar={salvarAnuncioDaEquipe}
         agencia={a.autor_tipo === "agencia"}
+        enderecoPublico={a.autor_tipo !== "pessoa"}
         inicial={{
           id: a.id,
           tipo: a.tipo as TipoAnuncio,
@@ -66,6 +67,8 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
           contratante_confidencial: a.contratante_confidencial,
           cidade: a.cidade,
           bairro: a.bairro,
+          cep: a.cep,
+          endereco: a.endereco,
           lat: a.lat,
           lng: a.lng,
         }}

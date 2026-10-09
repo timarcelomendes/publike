@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
 import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
@@ -125,6 +126,12 @@ export const esquemaAnuncio = z
       .max(999, { error: "No máximo 999." }),
     cidade: z.enum(CIDADES, { error: "Escolha a cidade." }),
     bairro: texto(2, 80, "o bairro"),
+    /** comércio, empresa e agência: o endereço aparece na vaga (pessoa física: o banco descarta) */
+    cep: z
+      .string()
+      .transform((t) => limparCep(t) || null)
+      .refine((c) => c === null || cepValido(c), { error: "O CEP tem 8 números." }),
+    endereco: opcional(120),
     lat: z
       .number({ error: "Marque no mapa a região do trabalho." })
       .min(REGIAO.latMin, { error: "Marque um ponto em Goiânia e região." })
@@ -216,6 +223,8 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     vagas: Number(campo(formData, "vagas") || "1"),
     cidade: campo(formData, "cidade"),
     bairro: campo(formData, "bairro") ?? "",
+    cep: campo(formData, "cep") ?? "",
+    endereco: campo(formData, "endereco") ?? "",
     lat: coordenada(campo(formData, "lat")),
     lng: coordenada(campo(formData, "lng")),
   };

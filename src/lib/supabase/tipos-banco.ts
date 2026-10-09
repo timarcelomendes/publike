@@ -91,6 +91,13 @@ export type Database = {
         Update: Record<PropertyKey, never>;
         Relationships: [];
       };
+      /** CEP de casa de quem procura: só a própria pessoa lê; ponto arredondado (~300 m) */
+      casas: {
+        Row: { perfil_id: string; cep: string; cidade: string; bairro: string; local: unknown; atualizado_em: string };
+        Insert: { cep: string; cidade: string; bairro?: string; local: string };
+        Update: { cep?: string; cidade?: string; bairro?: string; local?: string };
+        Relationships: [];
+      };
       preferencias: {
         Row: { perfil_id: string; procuro: string | null; atualizado_em: string };
         Insert: { procuro?: string | null };
@@ -133,6 +140,11 @@ export type Database = {
           /** vaga de agência: a empresa que contrata (null se confidencial) */
           contratante: string | null;
           contratante_confidencial: boolean;
+          /** CEP e endereço (só comércio, empresa e agência; senão null) */
+          cep: string | null;
+          endereco: string | null;
+          /** o ponto é o endereço exato (senão é uma área de ~500 m) */
+          local_exato: boolean;
         };
         Insert: {
           tipo: string;
@@ -155,6 +167,8 @@ export type Database = {
           pede_curriculo?: boolean;
           contratante?: string | null;
           contratante_confidencial?: boolean;
+          cep?: string | null;
+          endereco?: string | null;
         };
         Update: {
           titulo?: string;
@@ -176,6 +190,8 @@ export type Database = {
           pede_curriculo?: boolean;
           contratante?: string | null;
           contratante_confidencial?: boolean;
+          cep?: string | null;
+          endereco?: string | null;
         };
         Relationships: [
           {
@@ -332,6 +348,7 @@ export type Database = {
           p_bairro?: string | null;
           p_bairros_regiao?: string[] | null;
           p_regiao?: string | null;
+          p_por_distancia?: boolean;
         };
         Returns: {
           id: string;
@@ -401,6 +418,9 @@ export type Database = {
           contratante_confidencial: boolean;
           /** CNPJ de quem publicou, quando é agência */
           autor_cnpj: string | null;
+          cep: string | null;
+          endereco: string | null;
+          local_exato: boolean;
         }[];
       };
       meus_anuncios: {
@@ -741,6 +761,14 @@ export type Database = {
       usar_ia_indicacoes: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
+      };
+      minha_casa: {
+        Args: Record<PropertyKey, never>;
+        Returns: { cep: string; cidade: string; bairro: string; lat: number; lng: number }[];
+      };
+      meu_ultimo_endereco: {
+        Args: Record<PropertyKey, never>;
+        Returns: { cep: string | null; endereco: string | null; cidade: string; bairro: string; lat: number; lng: number }[];
       };
       cnpj_valido: {
         Args: { p_cnpj: string };

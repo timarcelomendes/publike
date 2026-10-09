@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 const CONTRATA = [
   "Publique a vaga: com carteira, temporária, diária ou freelance (um reboco, uma faxina, um conserto).",
   "Ou procure um profissional: pedreiro, diarista, eletricista… Veja fotos dos trabalhos e o preço, e peça para contratar.",
-  "Diga o bairro e marque a região no mapa: quem mora perto vê primeiro.",
+  "Informe o CEP e o número: o pino fica na porta e quem mora perto vê primeiro, com o tempo de ônibus até aí. (Vaga de pessoa física mostra só uma área de uns 500 m.)",
+  "Empresa de qualquer tamanho pode publicar: do MEI e do comércio do bairro à indústria. Contratar gente que mora perto ajuda a oferecer melhores condições e a manter a equipe.",
   "Veja quem curtiu a vaga e o que cada pessoa faz. Curta de volta quem combina com você.",
   "A vaga fica 30 dias no ar e pode ser renovada. Dá para pausar ou encerrar quando quiser.",
   "É agência de emprego ou RH? Crie a conta como “Agência / RH”, com o CNPJ, e publique as vagas das empresas que você atende. Também é grátis.",
@@ -22,6 +23,7 @@ const CONTRATA = [
 
 const TRABALHA = [
   "Veja vagas e freelances perto de você, no mapa ou em lista. Curta o que combina.",
+  "Informe o CEP de casa em “Onde você mora?”: cada vaga mostra a distância e o tempo de ônibus, e dá para buscar só o que fica a até 30 minutos. Ninguém vê seu CEP.",
   "Vai atrás de vaga com carteira ou estágio? Preencha “Meu currículo” uma vez: quem anunciou a vaga que você curtiu vê junto com seu perfil.",
   "Oferece serviços? Monte sua vitrine em “Meus serviços”: o que você faz, o preço, fotos e onde atende.",
   "Quando alguém quiser contratar você, chega um aviso. Aceitou, deu match: o WhatsApp aparece no painel.",
@@ -87,8 +89,9 @@ export default function ComoFunciona() {
         <Container className="py-10 sm:py-14">
           <h1 className="max-w-3xl text-h1 sm:text-display">Quem precisa publica. Quem faz curte.</h1>
           <p className="mt-4 max-w-2xl text-body-lg text-ink-muted">
-            O Publike é um mural de oportunidades de Goiânia e região: vagas com carteira, diárias, freelances e serviços,
-            organizados por bairro e distância. De graça.
+            O Publike é uma ferramenta do povo para gerar emprego em Goiânia e região: vagas com carteira, diárias,
+            freelances e serviços, organizados pela distância e pelo tempo de ônibus de casa. De graça para quem procura e
+            para empresas de qualquer tamanho.
           </p>
         </Container>
       </section>
@@ -133,7 +136,8 @@ export default function ComoFunciona() {
           </ul>
           <p className="mt-6 flex gap-3 text-body-sm">
             <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Os anúncios mostram só a região, uma área de uns 500 metros. O endereço exato nunca é publicado.
+            Vaga de pessoa física mostra só a região, uma área de uns 500 metros, sem endereço. Comércio e empresa podem
+            mostrar o endereço, como uma fachada. Seu CEP de casa ninguém vê.
           </p>
         </section>
 

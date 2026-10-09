@@ -53,7 +53,7 @@ export function valorDoAnuncio(a: {
     : formatarValor(a.pagamento_valor, a.pagamento_unidade, a.beneficios);
 }
 
-/** Os locais são aproximados (~500 m), então não mostramos metros. */
+/** Muitos locais são aproximados (~300 a 500 m), então não mostramos metros. */
 export function formatarDistancia(km: number | null | undefined) {
   if (km == null) return null;
   if (km < 1) return "menos de 1 km";

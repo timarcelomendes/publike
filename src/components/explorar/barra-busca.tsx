@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { REGIAO } from "@/lib/config";
 import { CATEGORIAS, REGIMES } from "@/lib/constantes";
+import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
 import { hrefFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
@@ -144,9 +145,18 @@ function BotaoPerto({ ativo, onClick, className }: { ativo: boolean; onClick: ()
 }
 
 /** A busca do topo da página: tipo, onde mora, texto, perto de mim e categorias. */
-export function BarraBusca({ filtros, local }: { filtros: Filtros; local: Local | null }) {
+export function BarraBusca({
+  filtros,
+  local,
+  abrirOndeMora = false,
+}: {
+  filtros: Filtros;
+  local: Local | null;
+  /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
+  abrirOndeMora?: boolean;
+}) {
   const [ir, pendente] = useIrPara(filtros);
-  const [ondeMora, setOndeMora] = useState(false);
+  const [ondeMora, setOndeMora] = useState(abrirOndeMora);
   const painel = useId();
   const [avisoGps, setAvisoGps] = useState<string | null>(null);
   const [texto, setTexto] = useState(filtros.q);
@@ -301,17 +311,30 @@ export function FiltrosLista({ filtros }: { filtros: Filtros }) {
         </Seletor>
       )}
       <Seletor
-        aria-label="Distância"
-        value={filtros.raio}
-        onChange={(e) => ir({ raio: Number(e.target.value) })}
+        aria-label="Distância ou tempo de ônibus"
+        value={filtros.tempo ? `t${filtros.tempo}` : String(filtros.raio)}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v.startsWith("t")) ir({ tempo: Number(v.slice(1)) });
+          else ir({ raio: Number(v), tempo: null });
+        }}
         className={seletor}
         envoltorio="shrink-0"
       >
-        {RAIOS.map((r) => (
-          <option key={r} value={r}>
-            Até {r} km
-          </option>
-        ))}
+        <optgroup label="Tempo de ônibus">
+          {TEMPOS.map((t) => (
+            <option key={t} value={`t${t}`}>
+              {nomeDoTempo(t)}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Distância">
+          {RAIOS.map((r) => (
+            <option key={r} value={r}>
+              Até {r} km
+            </option>
+          ))}
+        </optgroup>
       </Seletor>
       <Seletor
         aria-label="Ordem"

@@ -23,11 +23,11 @@ const bricolage = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Publike · Vagas, freelances e serviços perto de você",
+    default: "Publike · Trabalho perto de casa em Goiânia e região",
     template: "%s · Publike",
   },
   description:
-    "Vagas com carteira, diárias, freelances e profissionais do bairro em Goiânia e região. Curtiu, deu match, vocês conversam. De graça.",
+    "Ferramenta gratuita para gerar emprego em Goiânia e região: vagas, diárias e freelances perto de casa, com a distância e o tempo de ônibus, e empresas de todos os tamanhos achando profissionais do bairro.",
   applicationName: "Publike",
   openGraph: {
     type: "website",

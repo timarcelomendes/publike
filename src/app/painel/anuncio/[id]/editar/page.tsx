@@ -50,6 +50,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
         <FormAnuncio
           ia={ia}
           agencia={anuncio.autor_tipo === "agencia"}
+          enderecoPublico={anuncio.autor_tipo !== "pessoa"}
           inicial={{
             id: anuncio.id,
             tipo: anuncio.tipo as TipoAnuncio,
@@ -67,6 +68,8 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
             contratante_confidencial: anuncio.contratante_confidencial,
             cidade: anuncio.cidade,
             bairro: anuncio.bairro,
+            cep: anuncio.cep,
+            endereco: anuncio.endereco,
             lat: anuncio.lat,
             lng: anuncio.lng,
           }}

@@ -98,18 +98,46 @@ const CENTRO_CIDADE: Record<Cidade, { lat: number; lng: number }> = {
   "Terezópolis de Goiás": { lat: -16.3945, lng: -49.0797 },
 };
 
-/** Onde a pessoa mora: escolhido na busca ou vindo do perfil. */
-export type Local = { cidade: Cidade; bairro: string; regiao: Regiao | null; fonte: "busca" | "perfil" };
+/**
+ * Onde a pessoa mora: o CEP de casa (guardado na conta), o que ela escolheu na
+ * busca (guardado no navegador) ou o bairro do perfil. Com CEP há um ponto
+ * (arredondado, ~300 m) e as distâncias saem da rua dela.
+ */
+export type Local = {
+  cidade: Cidade;
+  bairro: string;
+  regiao: Regiao | null;
+  fonte: "casa" | "busca" | "perfil";
+  cep?: string | null;
+  ponto?: { lat: number; lng: number } | null;
+};
 
-export function criarLocal(cidade: string, bairro: string, fonte: Local["fonte"]): Local | null {
+export function criarLocal(
+  cidade: string,
+  bairro: string,
+  fonte: Local["fonte"],
+  extra: { cep?: string | null; ponto?: { lat: number; lng: number } | null } = {},
+): Local | null {
   if (!(CIDADES as readonly string[]).includes(cidade)) return null;
   const b = bairro.replace(/\s+/g, " ").trim().slice(0, 60);
-  return { cidade: cidade as Cidade, bairro: b, regiao: regiaoDoBairro(cidade, b), fonte };
+  return { cidade: cidade as Cidade, bairro: b, regiao: regiaoDoBairro(cidade, b), fonte, cep: extra.cep ?? null, ponto: extra.ponto ?? null };
 }
 
-/** Ponto de partida das distâncias para quem escolheu onde mora. */
+/** Arredonda o ponto de casa para uma grade de ~300 m (nunca guardamos a porta). */
+export function arredondarCasa(p: { lat: number; lng: number }) {
+  const r = (n: number) => Math.round(Math.round(n / 0.003) * 0.003 * 1e5) / 1e5;
+  return { lat: r(p.lat), lng: r(p.lng) };
+}
+
+/** Ponto de partida das distâncias: a casa (pelo CEP) ou o centro da região/cidade. */
 export function pontoDoLocal(local: Local) {
+  if (local.ponto) return local.ponto;
   return local.regiao ? CENTRO_REGIAO[local.regiao] : CENTRO_CIDADE[local.cidade];
+}
+
+/** As distâncias saem da rua da pessoa (CEP), e não do centro do bairro? */
+export function localPreciso(local: Local | null) {
+  return Boolean(local?.ponto);
 }
 
 /** "Região Sul de Goiânia", "Trindade". */

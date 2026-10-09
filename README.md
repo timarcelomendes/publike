@@ -1,8 +1,8 @@
 # Publike
 
-**Vagas, freelances e serviços perto de você. De graça.**
+**Trabalho perto de casa. De graça.**
 
-Site do Publike, um mural de oportunidades de Goiânia e região: quem precisa publica, quem faz curte, e quando os dois se curtem (match) o WhatsApp aparece.
+Site do Publike, uma ferramenta do povo para gerar emprego em Goiânia e região: quem procura acha vaga, diária ou freelance perto de casa (com a distância e o tempo de ônibus), e empresas de qualquer tamanho, do MEI à indústria, acham profissionais que moram perto. Quem precisa publica, quem faz curte, e quando os dois se curtem (match) o WhatsApp aparece. A missão está em `/missao`.
 
 Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real) e MapLibre com mapas do OpenFreeMap.
 
@@ -11,7 +11,8 @@ Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real)
 ## O que já funciona
 
 - **Busca por perto**: mapa e lista, filtros (vaga ou serviço, categoria, contratação, distância, ordem) e "Perto de mim".
-- **Publicar** vaga (CLT, temporário, diária, freelance, estágio, PJ) ou serviço, com a região marcada no mapa. O endereço exato nunca é salvo: o ponto vira uma área de uns 500 m.
+- **Publicar** vaga (CLT, temporário, diária, freelance, estágio, PJ) ou serviço. Na vaga, o CEP e o número levam o pino até a porta (BrasilAPI ou ViaCEP para o endereço, OpenStreetMap/Nominatim para o ponto) e preenchem cidade e bairro; a pessoa confere no mapa. Comércio, empresa e agência mostram o endereço na vaga, com o ponto exato e o link "Como chegar de ônibus". Vaga de pessoa física e de empresa confidencial guardam só uma área de uns 500 m, sem endereço. A próxima vaga já vem com o último endereço. Para testes, `VIACEP_URL` e `NOMINATIM_URL` trocam os endereços.
+- **CEP de casa** em "Onde você mora?": o servidor acha o ponto do CEP (sem número) e guarda só uma grade de ~300 m (tabela `casas`, que só a própria pessoa lê; sem conta, fica num cookie). Com ele, a busca vai do mais perto ao mais longe a partir de casa, cada vaga mostra o tempo estimado de ônibus (ou a pé), e dá para filtrar "Até 30 min de ônibus". O tempo é uma estimativa pela distância (`src/lib/deslocamento.ts`), sem serviço pago de rotas.
 - **Curtir e dar match**: quem trabalha curte (com mensagem opcional), quem publicou curte de volta, e o WhatsApp dos dois aparece só aí.
 - **Desfazer match**: qualquer lado desiste com motivo e justificativa obrigatórios, e responde se toparia negociar em outro momento. O contato some para os dois; a outra pessoa vê o motivo, a equipe vê a justificativa na ficha da pessoa (e recebe aviso quando o motivo é comportamento). "Sim" deixa curtir e dar match de novo; "Não" bloqueia os dois de curtir os anúncios um do outro.
 - **Painel**: meus anúncios (pausar, encerrar, renovar, editar, excluir), quem curtiu, minhas curtidas e matches, mais o sino de avisos em tempo real.
@@ -175,7 +176,7 @@ Depois, `supabase/migrations/20261009210000_config_where.sql`: corrige o **Salva
 
 E `supabase/migrations/20261009230000_desfazer_match.sql`: o "Desfazer match", com motivo e justificativa (a justificativa só a equipe vê, em Admin > Usuários > ficha da pessoa). Depois dela, `20261009240000_negociar_depois.sql` (a pergunta "toparia negociar em outro momento?" e a regra de que vaga que pede currículo só dá match com quem preencheu).
 
-Por último, `supabase/migrations/20261009250000_agencias.sql`: a conta de agência de emprego / RH, com CNPJ, a empresa contratante na vaga e os limites maiores para agência verificada. Rode **antes** de publicar o código novo: o site passa a ler a coluna `cnpj` e a chamar `salvar_perfil` com o CNPJ. O código antigo continua funcionando com o banco novo. Depois, `20261009260000_cnpj_empresas.sql` deixa comércio e empresa informarem o CNPJ, e `20261009270000_descobrir.sql` cria o Descobrir (salvas, vagas passadas, "O que você procura?" e o limite da IA).
+Por último, `supabase/migrations/20261009250000_agencias.sql`: a conta de agência de emprego / RH, com CNPJ, a empresa contratante na vaga e os limites maiores para agência verificada. Rode **antes** de publicar o código novo: o site passa a ler a coluna `cnpj` e a chamar `salvar_perfil` com o CNPJ. O código antigo continua funcionando com o banco novo. Depois, `20261009260000_cnpj_empresas.sql` deixa comércio e empresa informarem o CNPJ, e `20261009270000_descobrir.sql` cria o Descobrir (salvas, vagas passadas, "O que você procura?" e o limite da IA). Por fim, `20261009280000_enderecos.sql`: endereço (CEP + número) nas vagas de comércio, empresa e agência, o CEP de casa (`casas`) e a busca do mais perto ao mais longe a partir de casa. Rode **antes** de publicar o código novo.
 
 ### 4.2 Abrir o admin (só no seu computador)
 
@@ -334,7 +335,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 **Regras importantes do banco**
 
 - O contato (WhatsApp e e-mail) fica numa tabela que só o dono lê. Ele só sai pelas funções de match.
-- O local do anúncio é arredondado para uma grade de ~500 m antes de ser salvo, e só vale dentro da região metropolitana.
+- O local do anúncio é arredondado para uma grade de ~500 m antes de ser salvo (menos o de comércio, empresa e agência com endereço, que é público), e só vale dentro da região metropolitana. O CEP de casa vira uma grade de ~300 m e só a própria pessoa lê.
 - Anúncio fica 30 dias no ar. A limpeza diária usa o `pg_cron`; se ele não estiver ativo, os vencidos somem da busca do mesmo jeito.
 - Conta suspensa ou banida não entra, não publica nem curte; os anúncios dela somem e o contato dela sai dos matches. Quando a suspensão vence, tudo volta sozinho.
 - E-mails e revisões da IA entram em filas no banco (pelos gatilhos) e o site esvazia as filas logo depois de cada ação, tentando de novo quando falha.
@@ -345,7 +346,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql`, `20261009230000_desfazer_match.sql`, `20261009240000_negociar_depois.sql`, `20261009250000_agencias.sql`, `20261009260000_cnpj_empresas.sql` e `20261009270000_descobrir.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql`, `20261009230000_desfazer_match.sql`, `20261009240000_negociar_depois.sql`, `20261009250000_agencias.sql`, `20261009260000_cnpj_empresas.sql`, `20261009270000_descobrir.sql` e `20261009280000_enderecos.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

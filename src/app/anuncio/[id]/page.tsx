@@ -4,11 +4,13 @@ import {
   Banknote,
   Briefcase,
   Building2,
+  Bus,
   CalendarClock,
   Clock,
   FileText,
   Flag,
   MapPin,
+  Navigation,
   ShieldAlert,
   Users,
   Wrench,
@@ -50,6 +52,10 @@ import {
   urlDaFotoTrabalho,
   valorDoAnuncio,
 } from "@/lib/formato";
+import { formatarCep } from "@/lib/cep";
+import { distanciaKm } from "@/lib/descobrir";
+import { deslocamentos, formatarMinutos, minutosAte } from "@/lib/deslocamento";
+import { obterLocal } from "@/lib/local";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 
@@ -118,6 +124,8 @@ function dadosVaga(a: AnuncioCompleto) {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
+        ...(a.local_exato && a.endereco ? { streetAddress: a.endereco } : {}),
+        ...(a.local_exato && a.cep ? { postalCode: a.cep } : {}),
         addressLocality: a.cidade,
         addressRegion: "GO",
         addressCountry: "BR",
@@ -166,6 +174,10 @@ async function DetalheAnuncio({
   const primeiroNome = anuncio.autor_nome.split(" ")[0];
   const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
   const agencia = anuncio.autor_tipo === "agencia";
+  // tempo de casa até o trabalho (só com o CEP de casa: o ponto da pessoa)
+  const local = vaga && !proprio ? await obterLocal() : null;
+  const kmDeCasa = local?.ponto ? distanciaKm(local.ponto.lat, local.ponto.lng, anuncio.lat, anuncio.lng) : null;
+  const comoChegar = `https://www.google.com/maps/dir/?api=1&destination=${anuncio.lat},${anuncio.lng}&travelmode=transit`;
   const temContratante = vaga && (anuncio.contratante !== null || anuncio.contratante_confidencial);
 
   const quadroAcao = (sufixo: string) =>
@@ -262,9 +274,26 @@ async function DetalheAnuncio({
 
           <dl className="mt-6 grid gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:grid-cols-2 sm:p-6">
             <Fato icone={MapPin} rotulo={vaga ? "Onde é" : "Onde fica"}>
-              {lugar}
-              <span className="block text-body-sm font-normal text-ink-muted">região aproximada</span>
+              {anuncio.local_exato && anuncio.endereco ? (
+                <>
+                  {anuncio.endereco}
+                  <span className="block text-body-sm font-normal text-ink-muted">{lugar}</span>
+                </>
+              ) : (
+                <>
+                  {lugar}
+                  <span className="block text-body-sm font-normal text-ink-muted">região aproximada</span>
+                </>
+              )}
             </Fato>
+            {kmDeCasa != null && (
+              <Fato icone={Bus} rotulo="Da sua casa">
+                {formatarMinutos(minutosAte(kmDeCasa, "onibus"))} de ônibus
+                <span className="block text-body-sm font-normal text-ink-muted">
+                  {kmDeCasa < 1 ? "menos de 1 km" : `${kmDeCasa.toFixed(1).replace(".", ",")} km`} em linha reta · estimativa
+                </span>
+              </Fato>
+            )}
             <Fato icone={Banknote} rotulo={vaga ? "Valor" : "Preço"}>
               {valor}
             </Fato>
@@ -363,10 +392,46 @@ async function DetalheAnuncio({
           )}
 
           <h2 className="mt-8 text-h2">{vaga ? "Onde é" : "Onde fica"}</h2>
-          <p className="mt-1 mb-3 text-body-sm text-ink-muted">
-            Mostramos só uma área de uns 500 metros em {lugar}. O endereço vocês combinam depois do match.
-          </p>
-          <MapaArea lat={anuncio.lat} lng={anuncio.lng} />
+          {anuncio.local_exato && anuncio.endereco ? (
+            <p className="mt-1 mb-3 text-body-sm text-ink-muted">
+              {anuncio.endereco} · {lugar}
+              {anuncio.cep && <> · CEP {formatarCep(anuncio.cep)}</>}
+            </p>
+          ) : (
+            <p className="mt-1 mb-3 text-body-sm text-ink-muted">
+              Mostramos só uma área de uns 500 metros em {lugar}. O endereço vocês combinam depois do match.
+            </p>
+          )}
+          {kmDeCasa != null && (
+            <ul className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-ink-muted" aria-label="Tempo estimado da sua casa">
+              {deslocamentos(kmDeCasa).map((d) => (
+                <li key={d.jeito}>
+                  <span className="text-ink">{formatarMinutos(d.minutos)}</span> {d.nome}
+                </li>
+              ))}
+            </ul>
+          )}
+          <MapaArea lat={anuncio.lat} lng={anuncio.lng} exato={anuncio.local_exato} />
+          {anuncio.local_exato && (
+            <a
+              href={comoChegar}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex min-h-11 items-center gap-2 text-label text-terra-text underline-offset-2 hover:underline"
+            >
+              <Navigation aria-hidden className="size-4" />
+              Como chegar de ônibus
+            </a>
+          )}
+          {vaga && !proprio && !local?.ponto && (
+            <p className="mt-3 text-body-sm text-ink-muted">
+              Quer saber quanto tempo leva da sua casa?{" "}
+              <Link href="/?casa=1#busca" className="text-terra-text underline underline-offset-2">
+                Informe seu CEP
+              </Link>
+              .
+            </p>
+          )}
         </article>
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">

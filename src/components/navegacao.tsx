@@ -21,7 +21,7 @@ export function Rodape() {
         <div className="max-w-sm">
           <Logo altura={28} />
           <p className="mt-3 text-body-sm text-ink-muted">
-            Vagas, freelances e serviços perto de você. De graça, em Goiânia e região.
+            Uma ferramenta do povo para gerar emprego em Goiânia e região: trabalho perto de casa, de graça.
           </p>
           <p className="mt-3 font-display text-h3">Publicou, curtiu, trabalhou.</p>
         </div>
@@ -31,6 +31,9 @@ export function Rodape() {
           </Link>
           <Link href="/como-funciona" className={link}>
             Como funciona
+          </Link>
+          <Link href="/missao" className={link}>
+            Nossa missão
           </Link>
           <Link href="/?tipo=servico" className={link}>
             Serviços
@@ -50,7 +53,7 @@ export function Rodape() {
         </nav>
       </Container>
       <Container className="border-t border-line py-4 text-body-sm text-ink-muted">
-        Feito em Goiânia. Grátis para quem trabalha, para o comércio e para quem presta serviço.
+        Feito em Goiânia. Grátis para quem trabalha, para quem presta serviço e para empresas de qualquer tamanho.
       </Container>
     </footer>
   );

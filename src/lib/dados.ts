@@ -3,7 +3,7 @@ import { cache } from "react";
 import { MODO_DEMO } from "./config";
 import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
-import type { Filtros } from "./filtros";
+import { raioDaBusca, type Filtros } from "./filtros";
 import { chavesDaRegiao, type Local } from "./regioes";
 import { criarClienteServidor } from "./supabase/servidor";
 import { agoraDaRequisicao } from "./tempo";
@@ -108,13 +108,18 @@ export const ajudaDaIADisponivel = cache(async () => {
 });
 
 /** Busca da página inicial. Com `local`, os anúncios do bairro, da região e da cidade vêm primeiro. */
+/** Com o CEP de casa e medindo a partir de casa, a ordem é só pela distância. */
+function porDistancia(f: Filtros, local: Local | null) {
+  return Boolean(local?.ponto) && f.lat === local!.ponto!.lat && f.lng === local!.ponto!.lng;
+}
+
 export async function buscarAnuncios(f: Filtros, agora: number, local: Local | null = null): Promise<AnuncioResumo[]> {
   if (MODO_DEMO) return demo.buscarDemo(f, agora, local);
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("buscar_anuncios", {
     p_lat: f.lat,
     p_lng: f.lng,
-    p_raio_km: f.raio,
+    p_raio_km: raioDaBusca(f),
     p_tipo: f.tipo,
     p_categoria: f.categoria,
     p_regime: f.regime,
@@ -125,6 +130,8 @@ export async function buscarAnuncios(f: Filtros, agora: number, local: Local | n
     p_bairro: local?.bairro || null,
     p_bairros_regiao: local?.regiao ? chavesDaRegiao(local.regiao) : null,
     p_regiao: local?.regiao ?? null,
+    // com o CEP de casa (e medindo de casa), vale só a distância
+    p_por_distancia: porDistancia(f, local),
   });
   if (error) falha("anúncios", error);
   return data ?? [];
@@ -397,6 +404,24 @@ export async function obterProcuro(): Promise<string | null> {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.from("preferencias").select("procuro").eq("perfil_id", usuario.id).maybeSingle();
   return data?.procuro ?? null;
+}
+
+/** O CEP de casa de quem está logado (ponto arredondado, ~300 m). */
+export const obterMinhaCasa = cache(async () => {
+  if (MODO_DEMO) return null;
+  const usuario = await obterUsuario();
+  if (!usuario) return null;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.rpc("minha_casa").maybeSingle();
+  return data ?? null;
+});
+
+/** O último endereço que a pessoa pôs numa vaga, para a próxima já vir preenchida. */
+export async function obterMeuUltimoEndereco() {
+  if (MODO_DEMO) return null;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.rpc("meu_ultimo_endereco").maybeSingle();
+  return data ?? null;
 }
 
 /** Esta vaga está salva por quem está logado? */
