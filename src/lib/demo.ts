@@ -1,5 +1,6 @@
 import "server-only";
 import type { Filtros } from "./filtros";
+import { chaveBairro, chavesDaRegiao, type Local } from "./regioes";
 import type { AnuncioCompleto, AnuncioResumo, DadosCard, Perfil } from "./tipos";
 
 // Dados de exemplo para o modo demonstração (sem Supabase configurado).
@@ -241,12 +242,23 @@ function resumo(c: AnuncioCompleto, lat: number, lng: number): AnuncioResumo {
     autor_tipo: c.autor_tipo,
     autor_verificado: c.autor_verificado,
     minha_curtida: null,
+    prioridade: 3,
   };
 }
 
-export function buscarDemo(f: Filtros, agora: number): AnuncioResumo[] {
+/** A mesma regra do banco: 0 no bairro, 1 na região, 2 na cidade, 3 o resto. */
+function prioridade(a: AnuncioResumo, local: Local | null) {
+  if (!local || a.cidade !== local.cidade) return 3;
+  const chave = chaveBairro(a.bairro);
+  if (local.bairro && chave === chaveBairro(local.bairro)) return 0;
+  if (local.regiao && chavesDaRegiao(local.regiao).includes(chave)) return 1;
+  return 2;
+}
+
+export function buscarDemo(f: Filtros, agora: number, local: Local | null = null): AnuncioResumo[] {
   const termo = semAcento(f.q.trim());
   const lista = BASE.map((b) => resumo(completo(b, agora), f.lat, f.lng))
+    .map((a) => ({ ...a, prioridade: prioridade(a, local) }))
     .filter((a) => a.distancia_km <= f.raio)
     .filter((a) => !f.tipo || a.tipo === f.tipo)
     .filter((a) => !f.categoria || a.categoria === f.categoria)
@@ -257,9 +269,10 @@ export function buscarDemo(f: Filtros, agora: number): AnuncioResumo[] {
       return semAcento(`${a.titulo} ${b?.descricao ?? ""} ${a.bairro}`).includes(termo);
     });
   lista.sort((x, y) =>
-    f.ordem === "recentes"
+    x.prioridade - y.prioridade ||
+    (f.ordem === "recentes"
       ? y.criado_em.localeCompare(x.criado_em)
-      : x.distancia_km - y.distancia_km || y.criado_em.localeCompare(x.criado_em),
+      : x.distancia_km - y.distancia_km || y.criado_em.localeCompare(x.criado_em)),
   );
   return lista.slice(0, 60);
 }

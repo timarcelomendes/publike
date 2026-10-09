@@ -249,6 +249,9 @@ export type Database = {
           p_texto?: string | null;
           p_ordem?: string;
           p_limite?: number;
+          p_cidade?: string | null;
+          p_bairro?: string | null;
+          p_bairros_regiao?: string[] | null;
         };
         Returns: {
           id: string;
@@ -270,6 +273,8 @@ export type Database = {
           autor_tipo: string;
           autor_verificado: boolean;
           minha_curtida: string | null;
+          /** 0 = no bairro de quem busca, 1 = na região, 2 = na cidade, 3 = o resto */
+          prioridade: number;
         }[];
       };
       obter_anuncio: {

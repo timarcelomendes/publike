@@ -1,7 +1,9 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { buscarAnuncios, obterUsuario } from "@/lib/dados";
-import { descreverOrigem, hrefFiltros, lerFiltros, RAIOS } from "@/lib/filtros";
+import { descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { formatarLugar, formatarValor, primeiro } from "@/lib/formato";
+import { obterLocal } from "@/lib/local";
+import { passosDaPrioridade, pontoDoLocal, type Local } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
@@ -14,7 +16,19 @@ type Parametros = Promise<Record<string, string | string[] | undefined>>;
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
 export async function BuscaExplorar({ searchParams }: { searchParams: Parametros }) {
   const filtros = lerFiltros(await searchParams);
-  return <BarraBusca filtros={filtros} />;
+  const local = await obterLocal();
+  return <BarraBusca filtros={filtros} local={local} />;
+}
+
+/** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
+function partirDoLocal(filtros: Filtros, local: Local | null): Filtros {
+  if (!local || filtros.origem !== "centro") return filtros;
+  return { ...filtros, ...pontoDoLocal(local) };
+}
+
+function textoDaOrigem(filtros: Filtros, local: Local | null) {
+  if (!local || filtros.origem !== "centro") return descreverOrigem(filtros.origem);
+  return local.regiao ? `da Região ${local.regiao} de Goiânia` : `do centro de ${local.cidade}`;
 }
 
 export function BuscaEsqueleto() {
@@ -36,9 +50,9 @@ export function BuscaEsqueleto() {
 
 export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   const parametros = await searchParams;
-  const filtros = lerFiltros(parametros);
-  const agora = await agoraDaRequisicao();
-  const [anuncios, usuario] = await Promise.all([buscarAnuncios(filtros, agora), obterUsuario()]);
+  const [agora, local] = await Promise.all([agoraDaRequisicao(), obterLocal()]);
+  const filtros = partirDoLocal(lerFiltros(parametros), local);
+  const [anuncios, usuario] = await Promise.all([buscarAnuncios(filtros, agora, local), obterUsuario()]);
 
   const pontos = anuncios.map((a) => ({
     id: a.id,
@@ -59,7 +73,13 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     n > 0 ? (
       <div className="grid gap-4 sm:grid-cols-2">
         {anuncios.map((a) => (
-          <CardAnuncio key={a.id} anuncio={a} agora={agora} usuarioId={usuario?.id ?? null} />
+          <CardAnuncio
+            key={a.id}
+            anuncio={a}
+            agora={agora}
+            usuarioId={usuario?.id ?? null}
+            pertoDeCasa={local ? a.prioridade : null}
+          />
         ))}
       </div>
     ) : (
@@ -98,7 +118,8 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         }
         subtitulo={
           <p className="text-body-sm text-ink-muted">
-            em até {filtros.raio} km {descreverOrigem(filtros.origem)}
+            {local && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
+            em até {filtros.raio} km {textoDaOrigem(filtros, local)}
           </p>
         }
         filtrosLista={<FiltrosLista filtros={filtros} />}

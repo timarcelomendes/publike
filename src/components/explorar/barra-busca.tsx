@@ -2,12 +2,14 @@
 
 import { ChevronLeft, ChevronRight, LocateFixed, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { REGIAO } from "@/lib/config";
 import { CATEGORIAS, REGIMES } from "@/lib/constantes";
 import { hrefFiltros, RAIOS, type Filtros } from "@/lib/filtros";
+import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
+import { BotaoOndeMora, PainelOndeMora } from "./onde-mora";
 
 const TIPOS: { valor: TipoAnuncio | null; nome: string }[] = [
   { valor: null, nome: "Tudo" },
@@ -22,7 +24,7 @@ const chip = (ativo: boolean) =>
 
 /** Abas do tipo de anúncio: pílula com a opção escolhida em ink. */
 const aba = (ativo: boolean) =>
-  `inline-flex min-h-10 items-center rounded-pill px-4 text-label transition-colors ${
+  `inline-flex min-h-10 items-center rounded-pill px-3.5 text-label transition-colors sm:px-4 ${
     ativo ? "bg-ink text-surface-100" : "text-ink hover:bg-surface-300"
   }`;
 
@@ -141,9 +143,11 @@ function BotaoPerto({ ativo, onClick, className }: { ativo: boolean; onClick: ()
   );
 }
 
-/** A busca do topo da página: tipo, texto, perto de mim e categorias. */
-export function BarraBusca({ filtros }: { filtros: Filtros }) {
+/** A busca do topo da página: tipo, onde mora, texto, perto de mim e categorias. */
+export function BarraBusca({ filtros, local }: { filtros: Filtros; local: Local | null }) {
   const [ir, pendente] = useIrPara(filtros);
+  const [ondeMora, setOndeMora] = useState(false);
+  const painel = useId();
   const [avisoGps, setAvisoGps] = useState<string | null>(null);
   const [texto, setTexto] = useState(filtros.q);
 
@@ -180,7 +184,7 @@ export function BarraBusca({ filtros }: { filtros: Filtros }) {
       {pendente && <Carregando />}
 
       <div className="flex items-center justify-between gap-2">
-        <div role="group" aria-label="Tipo de anúncio" className="inline-flex rounded-pill border border-line bg-surface-200 p-1">
+        <div role="group" aria-label="Tipo de anúncio" className="inline-flex shrink-0 rounded-pill border border-line bg-surface-200 p-1">
           {TIPOS.map((t) => (
             <button
               key={t.nome}
@@ -193,9 +197,14 @@ export function BarraBusca({ filtros }: { filtros: Filtros }) {
             </button>
           ))}
         </div>
-        {/* no celular, "Perto de mim" vai para o começo das categorias (falta espaço aqui) */}
-        <BotaoPerto ativo={perto} onClick={pertoDeMim} className="hidden sm:inline-flex" />
+        <div className="flex min-w-0 items-center gap-2">
+          <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
+          {/* no celular, "Perto de mim" vai para o começo das categorias (falta espaço aqui) */}
+          <BotaoPerto ativo={perto} onClick={pertoDeMim} className="hidden sm:inline-flex" />
+        </div>
       </div>
+
+      {ondeMora && <PainelOndeMora id={painel} local={local} fechar={() => setOndeMora(false)} />}
 
       <form
         role="search"

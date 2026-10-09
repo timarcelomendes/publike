@@ -19,10 +19,13 @@ export function CardAnuncio({
   anuncio,
   agora,
   usuarioId,
+  pertoDeCasa = null,
 }: {
   anuncio: DadosCard;
   agora: number;
   usuarioId: string | null;
+  /** Da busca com "Onde você mora?": 0 = no bairro da pessoa, 1 = na região dela. */
+  pertoDeCasa?: number | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -36,6 +39,8 @@ export function CardAnuncio({
       <div className="flex flex-wrap gap-2">
         {novo && <Selo variante="novo">Novo</Selo>}
         <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
+        {pertoDeCasa === 0 && <Selo variante="aviso">No seu bairro</Selo>}
+        {pertoDeCasa === 1 && <Selo variante="contorno">Na sua região</Selo>}
         {anuncio.minha_curtida === "match" && <Selo variante="match">Deu match</Selo>}
         {proprio && <Selo variante="contorno">Seu anúncio</Selo>}
       </div>

@@ -4,6 +4,7 @@ import { MODO_DEMO } from "./config";
 import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
 import type { Filtros } from "./filtros";
+import { chavesDaRegiao, type Local } from "./regioes";
 import { criarClienteServidor } from "./supabase/servidor";
 import { agoraDaRequisicao } from "./tempo";
 import type {
@@ -98,8 +99,9 @@ export const ajudaDaIADisponivel = cache(async () => {
   return Boolean(data?.[0]?.ia_melhorar_texto);
 });
 
-export async function buscarAnuncios(f: Filtros, agora: number): Promise<AnuncioResumo[]> {
-  if (MODO_DEMO) return demo.buscarDemo(f, agora);
+/** Busca da página inicial. Com `local`, os anúncios do bairro, da região e da cidade vêm primeiro. */
+export async function buscarAnuncios(f: Filtros, agora: number, local: Local | null = null): Promise<AnuncioResumo[]> {
+  if (MODO_DEMO) return demo.buscarDemo(f, agora, local);
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("buscar_anuncios", {
     p_lat: f.lat,
@@ -111,6 +113,9 @@ export async function buscarAnuncios(f: Filtros, agora: number): Promise<Anuncio
     p_texto: f.q || null,
     p_ordem: f.ordem,
     p_limite: 60,
+    p_cidade: local?.cidade ?? null,
+    p_bairro: local?.bairro || null,
+    p_bairros_regiao: local?.regiao ? chavesDaRegiao(local.regiao) : null,
   });
   if (error) falha("anúncios", error);
   return data ?? [];
