@@ -1,8 +1,23 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { buscarAnuncios, obterUsuario } from "@/lib/dados";
-import { nomeDoTempo } from "@/lib/deslocamento";
-import { descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
-import { formatarLugar, primeiro, valorDoAnuncio } from "@/lib/formato";
+import {
+  descreverOrigem,
+  hrefFiltros,
+  lerFiltros,
+  RAIOS,
+  type Filtros,
+} from "@/lib/filtros";
+import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
+import {
+  formatarDistancia,
+  formatarLugar,
+  primeiro,
+  rotuloConta,
+  rotuloModalidade,
+  valorCurto,
+  valorDoAnuncio,
+} from "@/lib/formato";
+import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
 import { obterLocal } from "@/lib/local";
 import { passosDaPrioridade, pontoDoLocal, type Local } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -15,11 +30,21 @@ import { VisaoExplorar } from "./visao-explorar";
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
-export async function BuscaExplorar({ searchParams }: { searchParams: Parametros }) {
+export async function BuscaExplorar({
+  searchParams,
+}: {
+  searchParams: Parametros;
+}) {
   const sp = await searchParams;
   const filtros = lerFiltros(sp);
   const local = await obterLocal();
-  return <BarraBusca filtros={filtros} local={local} abrirOndeMora={primeiro(sp.casa) === "1"} />;
+  return (
+    <BarraBusca
+      filtros={filtros}
+      local={local}
+      abrirOndeMora={primeiro(sp.casa) === "1"}
+    />
+  );
 }
 
 /** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
@@ -29,14 +54,20 @@ function partirDoLocal(filtros: Filtros, local: Local | null): Filtros {
 }
 
 function textoDaOrigem(filtros: Filtros, local: Local | null) {
-  if (!local || filtros.origem !== "centro") return descreverOrigem(filtros.origem);
+  if (!local || filtros.origem !== "centro")
+    return descreverOrigem(filtros.origem);
   if (local.ponto) return "da sua casa";
   if (local.centro) return `do meio de ${local.bairro}`;
-  return local.regiao ? `da Região ${local.regiao} de Goiânia` : `do centro de ${local.cidade}`;
+  return local.regiao
+    ? `da Região ${local.regiao} de Goiânia`
+    : `do centro de ${local.cidade}`;
 }
 
 /** De onde sai o tempo de ônibus dos cards: da casa (CEP) ou do GPS. */
-function origemDoTempo(filtros: Filtros, local: Local | null): "casa" | "voce" | null {
+function origemDoTempo(
+  filtros: Filtros,
+  local: Local | null,
+): "casa" | "voce" | null {
   if (filtros.origem === "gps") return "voce";
   if (filtros.origem === "centro" && local?.ponto) return "casa";
   return null;
@@ -63,27 +94,60 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   const parametros = await searchParams;
   const [agora, local] = await Promise.all([agoraDaRequisicao(), obterLocal()]);
   const filtros = partirDoLocal(lerFiltros(parametros), local);
-  const [anuncios, usuario] = await Promise.all([buscarAnuncios(filtros, agora, local), obterUsuario()]);
+  const [anuncios, usuario] = await Promise.all([
+    buscarAnuncios(filtros, agora, local),
+    obterUsuario(),
+  ]);
 
-  const pontos = anuncios.map((a) => ({
-    id: a.id,
-    lat: a.lat,
-    lng: a.lng,
-    titulo: a.titulo,
-    tipo: a.tipo,
-    lugar: formatarLugar(a.bairro, a.cidade),
-    valor: valorDoAnuncio(a),
-  }));
+  const tempoDe = origemDoTempo(filtros, local);
+  const pontos: PontoMapa[] = anuncios.map((a) => {
+    const tempo =
+      tempoDe && a.tipo === "vaga" ? deslocamentoCurto(a.distancia_km) : null;
+    return {
+      id: a.id,
+      lat: a.lat,
+      lng: a.lng,
+      titulo: a.titulo,
+      tipo: a.tipo,
+      lugar: formatarLugar(a.bairro, a.cidade),
+      valor: valorDoAnuncio(a),
+      curto:
+        a.tipo === "servico" && a.pagamento_valor != null
+          ? `a partir de ${valorCurto(a.pagamento_valor, a.pagamento_unidade)}`
+          : valorCurto(a.pagamento_valor, a.pagamento_unidade),
+      modalidade: rotuloModalidade(a.tipo, a.regime),
+      distancia: formatarDistancia(a.distancia_km),
+      tempo: tempo
+        ? `${tempo} ${tempoDe === "casa" ? "da sua casa" : "de onde você está"}`
+        : null,
+      autor: `${a.autor_nome} · ${rotuloConta(a.autor_tipo)}`,
+    };
+  });
+  // a casa (CEP) ou o GPS aparecem no mapa
+  const origem: OrigemMapa =
+    tempoDe === "casa"
+      ? { lat: filtros.lat, lng: filtros.lng, rotulo: "Sua casa" }
+      : tempoDe === "voce"
+        ? { lat: filtros.lat, lng: filtros.lng, rotulo: "Você" }
+        : null;
 
   const n = anuncios.length;
-  const nome = filtros.tipo === "vaga" ? ["vaga", "vagas"] : filtros.tipo === "servico" ? ["serviço", "serviços"] : ["oportunidade", "oportunidades"];
-  const contagem = n === 0 ? `Nenhum resultado` : `${n >= 60 ? "60+" : n} ${n === 1 ? nome[0] : nome[1]}`;
+  const nome =
+    filtros.tipo === "vaga"
+      ? ["vaga", "vagas"]
+      : filtros.tipo === "servico"
+        ? ["serviço", "serviços"]
+        : ["oportunidade", "oportunidades"];
+  const contagem =
+    n === 0
+      ? `Nenhum resultado`
+      : `${n >= 60 ? "60+" : n} ${n === 1 ? nome[0] : nome[1]}`;
   const maiorRaio = RAIOS[RAIOS.length - 1];
 
   const lista =
     n > 0 ? (
-      // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas (ver VisaoExplorar)
-      <div className="grid gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4">
+      // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar)
+      <div className="grid gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2">
         {anuncios.map((a) => (
           <CardAnuncio
             key={a.id}
@@ -91,7 +155,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
             agora={agora}
             usuarioId={usuario?.id ?? null}
             pertoDeCasa={local ? a.prioridade : null}
-            tempoDe={origemDoTempo(filtros, local)}
+            tempoDe={tempoDe}
           />
         ))}
       </div>
@@ -102,12 +166,17 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         acao={
           <>
             {(filtros.tempo || filtros.raio < maiorRaio) && (
-              <BotaoLink href={hrefFiltros(filtros, { raio: maiorRaio, tempo: null })} scroll={false}>
+              <BotaoLink
+                href={hrefFiltros(filtros, { raio: maiorRaio, tempo: null })}
+                scroll={false}
+              >
                 Buscar até {maiorRaio} km
               </BotaoLink>
             )}
             {filtros.tipo === "servico" ? (
-              <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink>
+              <BotaoLink href="/painel/servicos">
+                Oferecer meus serviços
+              </BotaoLink>
             ) : (
               <BotaoLink href="/publicar">Publicar grátis</BotaoLink>
             )}
@@ -126,7 +195,8 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     <Container className="pt-6 sm:pt-8">
       {primeiro(parametros.conta) === "excluida" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Sua conta foi excluída.">
-          Apagamos seu perfil, seus anúncios e suas curtidas. Obrigado por ter usado o Publike.
+          Apagamos seu perfil, seus anúncios e suas curtidas. Obrigado por ter
+          usado o Publike.
         </Aviso>
       )}
       <VisaoExplorar
@@ -137,14 +207,22 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         }
         subtitulo={
           <p className="text-body-sm text-ink-muted">
-            {local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
-            {local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
-            {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`} {textoDaOrigem(filtros, local)}
+            {local && !local.ponto && (
+              <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>
+            )}
+            {local?.ponto && filtros.origem === "centro" && (
+              <>Do mais perto ao mais longe · </>
+            )}
+            {filtros.tempo
+              ? nomeDoTempo(filtros.tempo).toLowerCase()
+              : `em até ${filtros.raio} km`}{" "}
+            {textoDaOrigem(filtros, local)}
           </p>
         }
         filtrosLista={<FiltrosLista filtros={filtros} />}
         lista={lista}
         pontos={pontos}
+        origem={origem}
         filtros={filtros}
       />
     </Container>
@@ -161,7 +239,10 @@ export function ExplorarEsqueleto() {
         <Esqueleto className="col-span-2 mt-1 h-4 w-56 lg:col-span-1" />
         <div className="col-span-2 mt-2 flex gap-2 overflow-hidden lg:col-span-1 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:self-end">
           {["w-44", "w-28", "w-32"].map((largura) => (
-            <Esqueleto key={largura} className={`h-10 shrink-0 rounded-md ${largura}`} />
+            <Esqueleto
+              key={largura}
+              className={`h-10 shrink-0 rounded-md ${largura}`}
+            />
           ))}
         </div>
       </div>

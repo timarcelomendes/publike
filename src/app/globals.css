@@ -220,9 +220,10 @@
 .maplibregl-map {
   font-family: var(--font-sans);
 }
-.maplibregl-popup-content {
+/* .maplibregl-map na frente: o CSS do MapLibre carrega depois e venceria */
+.maplibregl-map .maplibregl-popup-content {
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: 14px 16px;
   box-shadow: var(--pk-shadow-raised);
   background: var(--pk-surface-200);
   color: var(--pk-ink);
