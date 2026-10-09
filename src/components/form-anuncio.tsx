@@ -5,7 +5,8 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
-import { BAIRROS_SUGERIDOS, CATEGORIAS, CIDADES, REGIMES, UNIDADES } from "@/lib/constantes";
+import { BAIRROS } from "@/lib/bairros";
+import { CATEGORIAS, CIDADES, REGIMES, UNIDADES, type Cidade } from "@/lib/constantes";
 import type { EstadoForm, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
@@ -66,6 +67,7 @@ export function FormAnuncio({
   const [combinar, setCombinar] = useState(editando ? inicial.pagamento_valor == null : false);
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
   const [descricao, setDescricao] = useState(inicial.descricao);
+  const [cidade, setCidade] = useState(inicial.cidade);
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const vaga = tipo === "vaga";
@@ -320,7 +322,12 @@ export function FormAnuncio({
       <Secao numero={4} titulo="Onde é">
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
-            <Seletor {...ligarCampo("cidade", erros.cidade)} defaultValue={inicial.cidade} className={classesEntrada}>
+            <Seletor
+              {...ligarCampo("cidade", erros.cidade)}
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
+              className={classesEntrada}
+            >
               {CIDADES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -340,7 +347,7 @@ export function FormAnuncio({
               className={classesEntrada}
             />
             <datalist id="bairros">
-              {BAIRROS_SUGERIDOS.map((b) => (
+              {(BAIRROS[cidade as Cidade] ?? []).map((b) => (
                 <option key={b} value={b} />
               ))}
             </datalist>

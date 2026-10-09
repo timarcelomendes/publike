@@ -12,7 +12,8 @@ import {
   type KeyboardEvent,
 } from "react";
 import { excluirConta, salvarPerfil } from "@/lib/acoes/perfil";
-import { BAIRROS_SUGERIDOS, CIDADES, TIPOS_CONTA } from "@/lib/constantes";
+import { BAIRROS } from "@/lib/bairros";
+import { CIDADES, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarTelefone } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, MeuPerfil, TipoConta } from "@/lib/tipos";
@@ -84,6 +85,7 @@ export function FormPerfil({
   const [foto, setFoto] = useState<string | null>(perfil?.foto ?? null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
+  const [cidade, setCidade] = useState(perfil?.cidade ?? "Goiânia");
   const [servicos, setServicos] = useState<string[]>(perfil?.servicos ?? []);
   const [novo, setNovo] = useState("");
   const [whatsapp, setWhatsapp] = useState(
@@ -207,7 +209,12 @@ export function FormPerfil({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
-            <Seletor {...ligarCampo("cidade", erros.cidade)} defaultValue={perfil?.cidade ?? "Goiânia"} className={classesEntrada}>
+            <Seletor
+              {...ligarCampo("cidade", erros.cidade)}
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
+              className={classesEntrada}
+            >
               {CIDADES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -225,7 +232,7 @@ export function FormPerfil({
               className={classesEntrada}
             />
             <datalist id="bairros-perfil">
-              {BAIRROS_SUGERIDOS.map((b) => (
+              {(BAIRROS[cidade as Cidade] ?? []).map((b) => (
                 <option key={b} value={b} />
               ))}
             </datalist>
