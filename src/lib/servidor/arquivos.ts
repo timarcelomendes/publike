@@ -1,12 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Pastas de cada pessoa no Storage: avatars/<id>/ (foto de perfil) e
-// trabalhos/<id>/ (fotos dos serviços).
+// Pastas de cada pessoa no Storage: avatars/<id>/ (foto de perfil),
+// trabalhos/<id>/ (fotos dos serviços) e curriculos/<id>/ (PDF do currículo, privado).
 
 type ComStorage = Pick<SupabaseClient, "storage">;
 
-export const PASTAS_DA_PESSOA = ["avatars", "trabalhos"] as const;
+export const PASTAS_DA_PESSOA = ["avatars", "trabalhos", "curriculos"] as const;
 
 /**
  * Apaga tudo o que a pessoa guardou no Storage. Vem antes de excluir a conta:
@@ -31,4 +31,12 @@ export async function limparFotosDeTrabalho(cliente: ComStorage, usuarioId: stri
   const { data: arquivos } = await cliente.storage.from("trabalhos").list(usuarioId, { limit: 200 });
   const sobras = (arquivos ?? []).filter((a) => !usadas.has(a.name)).map((a) => `${usuarioId}/${a.name}`);
   if (sobras.length) await cliente.storage.from("trabalhos").remove(sobras);
+}
+
+/** Tira do Storage os PDFs de currículo que não são o atual (ou todos, se `atual` for null). */
+export async function limparCurriculos(cliente: ComStorage, usuarioId: string, atual: string | null) {
+  const manter = atual?.split("/")[1];
+  const { data: arquivos } = await cliente.storage.from("curriculos").list(usuarioId, { limit: 50 });
+  const sobras = (arquivos ?? []).filter((a) => a.name !== manter).map((a) => `${usuarioId}/${a.name}`);
+  if (sobras.length) await cliente.storage.from("curriculos").remove(sobras);
 }

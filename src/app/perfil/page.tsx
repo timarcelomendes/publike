@@ -1,4 +1,6 @@
+import { ChevronRight, FileText } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { ExcluirConta, FormPerfil } from "@/components/form-perfil";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -45,6 +47,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         completar={primeiro(sp.completar) === "1" || !perfil}
         proximo={proximo}
       />
+      {perfil && (
+        <Link
+          href="/perfil/curriculo"
+          className="mt-8 flex items-center gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card hover:border-line-strong"
+        >
+          <FileText aria-hidden className="size-6 shrink-0 text-terra-text" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-h3">Meu currículo</span>
+            <span className="block text-body-sm text-ink-muted">
+              Para vagas com carteira e estágio. Só vê quem anunciou uma vaga que você curtiu.
+            </span>
+          </span>
+          <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />
+        </Link>
+      )}
       {perfil && <ExcluirConta />}
     </>
   );

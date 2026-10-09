@@ -13,6 +13,9 @@ import type {
   AnuncioResumo,
   AvaliacaoPublica,
   AvaliacaoRecebida,
+  Curriculo,
+  CurriculoDoInteressado,
+  Experiencia,
   Interessado,
   ItemModeracao,
   Match,
@@ -155,6 +158,62 @@ export async function listarInteressados(anuncioId: string): Promise<Interessado
   const { data, error } = await supabase.rpc("interessados", { p_anuncio: anuncioId });
   if (error) falha("interessados", error);
   return data ?? [];
+}
+
+/** Experiências vindas do banco (jsonb), já no formato das telas. */
+function lerExperiencias(valor: unknown): Experiencia[] {
+  if (!Array.isArray(valor)) return [];
+  const t = (v: unknown) => (typeof v === "string" ? v : "");
+  return valor.map((x) => {
+    const o = (x ?? {}) as Record<string, unknown>;
+    return { cargo: t(o.cargo), onde: t(o.onde), inicio: t(o.inicio), fim: t(o.fim) || null, descricao: t(o.descricao) };
+  });
+}
+
+/** O currículo de quem está logado (ou null se ainda não preencheu). */
+export async function obterMeuCurriculo(): Promise<Curriculo | null> {
+  if (MODO_DEMO) return null;
+  const usuario = await obterUsuario();
+  if (!usuario) return null;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("curriculos")
+    .select("escolaridade, curso, experiencias, cursos, cnh, disponibilidade, arquivo, atualizado_em")
+    .eq("perfil_id", usuario.id)
+    .maybeSingle();
+  if (error) falha("seu currículo", error);
+  return data ? { ...data, experiencias: lerExperiencias(data.experiencias) } : null;
+}
+
+/** Link temporário (1 hora) para abrir o PDF de um currículo. */
+const VALIDADE_LINK_PDF = 60 * 60;
+
+/** O PDF do próprio currículo, para conferir o que foi enviado. */
+export async function linkDoMeuPdf(arquivo: string | null): Promise<string | null> {
+  if (!arquivo || MODO_DEMO) return null;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.storage.from("curriculos").createSignedUrl(arquivo, VALIDADE_LINK_PDF);
+  return data?.signedUrl ?? null;
+}
+
+/** Currículos de quem curtiu uma vaga minha (o banco confere se a vaga é minha). */
+export async function listarCurriculosDosInteressados(anuncioId: string): Promise<Map<string, CurriculoDoInteressado>> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("curriculos_dos_interessados", { p_anuncio: anuncioId });
+  if (error) falha("currículos", error);
+  const linhas = data ?? [];
+  const arquivos = linhas.map((l) => l.arquivo).filter((a): a is string => !!a);
+  const links = new Map<string, string>();
+  if (arquivos.length) {
+    const { data: assinados } = await supabase.storage.from("curriculos").createSignedUrls(arquivos, VALIDADE_LINK_PDF);
+    for (const a of assinados ?? []) if (a.path && a.signedUrl) links.set(a.path, a.signedUrl);
+  }
+  return new Map(
+    linhas.map((l) => [
+      l.perfil_id,
+      { ...l, experiencias: lerExperiencias(l.experiencias), link_pdf: l.arquivo ? (links.get(l.arquivo) ?? null) : null },
+    ]),
+  );
 }
 
 export async function listarMinhasCurtidas(): Promise<MinhaCurtida[]> {

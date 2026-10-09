@@ -82,6 +82,7 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
       beneficios: d.beneficios,
       horario: d.horario,
       vagas: d.vagas,
+      pede_curriculo: d.pede_curriculo,
       cidade: d.cidade,
       bairro: d.bairro,
       local: `SRID=4326;POINT(${d.lng} ${d.lat})`,

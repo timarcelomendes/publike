@@ -24,6 +24,22 @@ export type MinhaCurtida = LinhaDe<"minhas_curtidas">;
 export type Match = LinhaDe<"meus_matches">;
 export type ItemModeracao = LinhaDe<"fila_moderacao">;
 
+/** Uma experiência no currículo. Datas no formato "2024-03"; fim null = trabalho atual. */
+export type Experiencia = { cargo: string; onde: string; inicio: string; fim: string | null; descricao: string };
+/** O currículo como as telas usam (experiências já tipadas). */
+export type Curriculo = {
+  escolaridade: string | null;
+  curso: string | null;
+  experiencias: Experiencia[];
+  cursos: string[];
+  cnh: string | null;
+  disponibilidade: string[];
+  arquivo: string | null;
+  atualizado_em: string;
+};
+/** Currículo de quem curtiu a vaga, com o link temporário do PDF. */
+export type CurriculoDoInteressado = Curriculo & { perfil_id: string; link_pdf: string | null };
+
 /** O mínimo que um card de anúncio precisa mostrar. */
 export type DadosCard = Pick<
   AnuncioResumo,

@@ -290,6 +290,8 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     oficio: b.oficio ?? null,
     fotos: [],
     atende: b.atende ?? [],
+    // na demonstração, CLT e estágio pedem currículo
+    pede_curriculo: b.tipo === "vaga" && (b.regime === "clt" || b.regime === "estagio"),
   };
 }
 

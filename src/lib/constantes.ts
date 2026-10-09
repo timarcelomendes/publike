@@ -123,6 +123,49 @@ export const MAX_FOTOS = 6;
 /** A média das avaliações só aparece a partir deste total (uma nota isolada pesa demais). */
 export const MIN_AVALIACOES = 3;
 
+// ---- Currículo ------------------------------------------------------------
+
+export const ESCOLARIDADES = [
+  { valor: "fundamental_incompleto", nome: "Fundamental incompleto" },
+  { valor: "fundamental", nome: "Fundamental completo" },
+  { valor: "medio_incompleto", nome: "Ensino médio incompleto" },
+  { valor: "medio", nome: "Ensino médio completo" },
+  { valor: "tecnico", nome: "Técnico" },
+  { valor: "superior_incompleto", nome: "Superior incompleto (cursando)" },
+  { valor: "superior", nome: "Superior completo" },
+  { valor: "pos", nome: "Pós-graduação" },
+] as const;
+export type Escolaridade = (typeof ESCOLARIDADES)[number]["valor"];
+export const VALORES_ESCOLARIDADE = ESCOLARIDADES.map((e) => e.valor) as [Escolaridade, ...Escolaridade[]];
+export function nomeEscolaridade(valor: string | null | undefined) {
+  return ESCOLARIDADES.find((e) => e.valor === valor)?.nome ?? null;
+}
+/** Escolaridades em que faz sentido dizer o curso. */
+export const ESCOLARIDADES_COM_CURSO: readonly string[] = ["tecnico", "superior_incompleto", "superior", "pos"];
+
+export const CNHS = ["A", "B", "AB", "C", "D", "E"] as const;
+export type Cnh = (typeof CNHS)[number];
+
+export const DISPONIBILIDADES = [
+  { valor: "manha", nome: "Manhã" },
+  { valor: "tarde", nome: "Tarde" },
+  { valor: "noite", nome: "Noite" },
+  { valor: "fim_de_semana", nome: "Fim de semana" },
+  { valor: "escala", nome: "Escala (12x36, 6x1…)" },
+] as const;
+export type Disponibilidade = (typeof DISPONIBILIDADES)[number]["valor"];
+export const VALORES_DISPONIBILIDADE = DISPONIBILIDADES.map((d) => d.valor) as [Disponibilidade, ...Disponibilidade[]];
+export function nomeDisponibilidade(valor: string) {
+  return DISPONIBILIDADES.find((d) => d.valor === valor)?.nome ?? valor;
+}
+
+export const MAX_EXPERIENCIAS = 10;
+export const MAX_CURSOS = 12;
+/** Tamanho máximo do PDF do currículo (o Storage também barra). */
+export const MAX_PDF_MB = 5;
+/** Regimes em que a vaga já vem marcada para pedir currículo. */
+export const REGIMES_COM_CURRICULO: readonly Regime[] = ["clt", "estagio", "temporario"];
+
 export const REGIMES: Record<Regime, { nome: string; selo: string; ajuda: string }> = {
   clt: { nome: "Com carteira (CLT)", selo: "CLT", ajuda: "Emprego com carteira assinada" },
   temporario: { nome: "Temporário", selo: "Temporário", ajuda: "Contrato por um período" },

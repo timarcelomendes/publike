@@ -6,8 +6,8 @@ import { startTransition, useActionState, useEffect, useRef, useState, type Form
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
-import { CATEGORIAS, CIDADES, REGIMES, UNIDADES, type Cidade } from "@/lib/constantes";
-import type { EstadoForm, TipoAnuncio } from "@/lib/tipos";
+import { CATEGORIAS, CIDADES, REGIMES, REGIMES_COM_CURRICULO, UNIDADES, type Cidade } from "@/lib/constantes";
+import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { SeletorLocal } from "./mapa/seletor-local";
@@ -27,6 +27,8 @@ export type ValoresAnuncio = {
   beneficios: string | null;
   horario: string | null;
   vagas: number;
+  /** vaga: quem curtir é convidado a preencher o currículo, e você vê o currículo de cada um */
+  pede_curriculo?: boolean;
   cidade: string;
   bairro: string;
   lat: number | null;
@@ -69,6 +71,9 @@ export function FormAnuncio({
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
   const [descricao, setDescricao] = useState(inicial.descricao);
   const [cidade, setCidade] = useState(inicial.cidade);
+  const [pedeCurriculo, setPedeCurriculo] = useState(inicial.pede_curriculo ?? false);
+  // Em vaga nova, CLT, estágio e temporário já marcam "pedir currículo" (até a pessoa mexer na caixa)
+  const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(editando);
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const vaga = tipo === "vaga";
@@ -203,13 +208,44 @@ export function FormAnuncio({
                   title={r.ajuda}
                   className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label transition-colors has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
                 >
-                  <input type="radio" name="regime" value={v} defaultChecked={inicial.regime === v} className="sr-only" />
+                  <input
+                    type="radio"
+                    name="regime"
+                    value={v}
+                    defaultChecked={inicial.regime === v}
+                    onChange={() => {
+                      if (!mexeuNoCurriculo) setPedeCurriculo(REGIMES_COM_CURRICULO.includes(v as Regime));
+                    }}
+                    className="sr-only"
+                  />
                   {r.nome}
                 </label>
               ))}
             </div>
             {erros.regime && <MensagemErro>{erros.regime}</MensagemErro>}
           </fieldset>
+        )}
+
+        {vaga && (
+          <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
+            <input
+              type="checkbox"
+              name="pede_curriculo"
+              checked={pedeCurriculo}
+              onChange={(e) => {
+                setMexeuNoCurriculo(true);
+                setPedeCurriculo(e.target.checked);
+              }}
+              className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+            />
+            <span>
+              <span className="block text-label">Pedir currículo</span>
+              <span className="block text-body-sm text-ink-muted">
+                Quem curtir é convidado a preencher o currículo: estudos, experiências, cursos e CNH. Você vê na lista
+                de interessados.
+              </span>
+            </span>
+          </label>
         )}
 
         <Campo

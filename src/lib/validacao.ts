@@ -4,15 +4,20 @@ import { REGIAO } from "./config";
 import {
   AREAS_ATENDIMENTO,
   CIDADES,
+  CNHS,
   LISTA_REGIMES,
   LISTA_TIPOS_CONTA,
   LISTA_UNIDADES,
+  MAX_CURSOS,
+  MAX_EXPERIENCIAS,
   MAX_FOTOS,
   MAX_SERVICOS,
   MOTIVOS_DENUNCIA,
   SLUGS_CATEGORIAS,
   SLUGS_OFICIOS,
   UNIDADES_SERVICO,
+  VALORES_DISPONIBILIDADE,
+  VALORES_ESCOLARIDADE,
 } from "./constantes";
 
 // A mesma regra do banco (public.tem_contato): contato só aparece no match.
@@ -100,6 +105,7 @@ export const esquemaAnuncio = z
     pagamento_unidade: z.enum(LISTA_UNIDADES).nullable(),
     beneficios: opcional(120),
     horario: opcional(120),
+    pede_curriculo: z.boolean(),
     vagas: z
       .number({ error: "Informe quantas pessoas." })
       .int({ error: "Use um número inteiro." })
@@ -140,6 +146,7 @@ export const esquemaAnuncio = z
     pagamento_valor: d.combinar ? null : d.pagamento_valor,
     pagamento_unidade: d.combinar ? null : d.pagamento_unidade,
     vagas: d.tipo === "vaga" ? d.vagas : 1,
+    pede_curriculo: d.tipo === "vaga" && d.pede_curriculo,
   }));
 
 export type DadosAnuncio = z.output<typeof esquemaAnuncio>;
@@ -177,6 +184,7 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     pagamento_unidade: campo(formData, "pagamento_unidade") || null,
     beneficios: campo(formData, "beneficios") ?? "",
     horario: campo(formData, "horario") ?? "",
+    pede_curriculo: campo(formData, "pede_curriculo") === "on",
     vagas: Number(campo(formData, "vagas") || "1"),
     cidade: campo(formData, "cidade"),
     bairro: campo(formData, "bairro") ?? "",
@@ -289,6 +297,103 @@ export function lerServicos(formData: FormData): LeituraServicos {
   const erros: Record<string, string> = {};
   for (const problema of leitura.error.issues) {
     const chave = problema.path[0] === "servicos" && problema.path.length > 1 ? problema.path.join(".") : String(problema.path[0] ?? "geral");
+    if (!erros[chave]) erros[chave] = problema.message;
+  }
+  return { ok: false, erros };
+}
+
+// ---------------------------------------------------------------- currículo
+
+/** Caminho do PDF do currículo: "<id-da-pessoa>/<data>.pdf". */
+export const CAMINHO_CURRICULO = /^[0-9a-f-]{36}\/\d{10,20}\.pdf$/;
+const MES = /^(19|20)\d{2}-(0[1-9]|1[0-2])$/;
+
+const esquemaExperiencia = z
+  .object({
+    cargo: texto(2, 80, "o cargo"),
+    onde: z
+      .string()
+      .trim()
+      .max(80, { error: "Use no máximo 80 letras." })
+      .refine((t) => !temContato(t), { error: SEM_CONTATO }),
+    inicio: z.string().regex(MES, { error: "Diga o mês em que começou." }),
+    atual: z.boolean(),
+    fim: z.string().regex(MES, { error: "Diga o mês em que saiu." }).nullable(),
+    descricao: z
+      .string()
+      .trim()
+      .max(300, { error: "Use no máximo 300 letras." })
+      .refine((t) => !temContatoNoTexto(t), { error: SEM_CONTATO }),
+  })
+  .superRefine((d, ctx) => {
+    if (!d.atual && !d.fim) ctx.addIssue({ code: "custom", path: ["fim"], message: "Diga o mês em que saiu ou marque “Trabalho aqui”." });
+    if (!d.atual && d.fim && d.fim < d.inicio) ctx.addIssue({ code: "custom", path: ["fim"], message: "A saída vem depois da entrada." });
+  })
+  .transform(({ atual, ...d }) => ({ ...d, fim: atual ? null : d.fim }));
+
+export const esquemaCurriculo = z
+  .object({
+    escolaridade: z.enum(VALORES_ESCOLARIDADE, { error: "Escolha até onde você estudou." }),
+    curso: z
+      .string()
+      .trim()
+      .max(80, { error: "Use no máximo 80 letras." })
+      .refine((t) => !temContato(t), { error: SEM_CONTATO })
+      .transform((t) => t || null),
+    experiencias: z.array(esquemaExperiencia).max(MAX_EXPERIENCIAS, { error: `No máximo ${MAX_EXPERIENCIAS} experiências.` }),
+    cursos: z
+      .array(z.string().trim().min(2, { error: "Use pelo menos 2 letras." }).max(80, { error: "Use no máximo 80 letras." }))
+      .max(MAX_CURSOS, { error: `No máximo ${MAX_CURSOS} cursos.` })
+      .refine((l) => !l.some((t) => temContatoNoTexto(t)), { error: SEM_CONTATO }),
+    cnh: z.enum(CNHS).nullable(),
+    disponibilidade: z.array(z.enum(VALORES_DISPONIBILIDADE)),
+    arquivo: z.string().regex(CAMINHO_CURRICULO, { error: "Envie o PDF de novo." }).nullable(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.curso && d.curso.length < 2) ctx.addIssue({ code: "custom", path: ["curso"], message: "Use pelo menos 2 letras." });
+  });
+
+export type DadosCurriculo = z.output<typeof esquemaCurriculo>;
+export type LeituraCurriculo = { ok: true; dados: DadosCurriculo } | { ok: false; erros: Record<string, string> };
+
+/**
+ * O formulário manda as experiências e os cursos em JSON e o resto em campos
+ * comuns. Erros de uma experiência voltam como "experiencias.0.cargo".
+ */
+export function lerCurriculo(formData: FormData): LeituraCurriculo {
+  let experiencias: unknown = [];
+  let cursos: unknown = [];
+  try {
+    experiencias = JSON.parse(campo(formData, "experiencias") ?? "[]");
+    cursos = JSON.parse(campo(formData, "cursos") ?? "[]");
+  } catch {
+    return { ok: false, erros: { geral: "Algo deu errado com o formulário. Recarregue a página." } };
+  }
+  const textoDe = (v: unknown) => (typeof v === "string" ? v : "");
+  const leitura = esquemaCurriculo.safeParse({
+    escolaridade: campo(formData, "escolaridade"),
+    curso: campo(formData, "curso") ?? "",
+    experiencias: (Array.isArray(experiencias) ? experiencias : []).map((x) => {
+      const o = (x ?? {}) as Record<string, unknown>;
+      return {
+        cargo: textoDe(o.cargo),
+        onde: textoDe(o.onde),
+        inicio: textoDe(o.inicio),
+        atual: o.atual === true,
+        fim: textoDe(o.fim) || null,
+        descricao: textoDe(o.descricao),
+      };
+    }),
+    cursos: (Array.isArray(cursos) ? cursos : []).map(textoDe).filter((c) => c.trim()),
+    cnh: campo(formData, "cnh") || null,
+    disponibilidade: formData.getAll("disponibilidade").filter((v): v is string => typeof v === "string"),
+    arquivo: campo(formData, "arquivo") || null,
+  });
+  if (leitura.success) return { ok: true, dados: leitura.data };
+  const erros: Record<string, string> = {};
+  for (const problema of leitura.error.issues) {
+    const chave =
+      problema.path[0] === "experiencias" && problema.path.length > 1 ? problema.path.join(".") : String(problema.path[0] ?? "geral");
     if (!erros[chave]) erros[chave] = problema.message;
   }
   return { ok: false, erros };

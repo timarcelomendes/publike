@@ -16,6 +16,7 @@ Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real)
 - **Painel**: meus anúncios (pausar, encerrar, renovar, editar, excluir), quem curtiu, minhas curtidas e matches, mais o sino de avisos em tempo real.
 - **Login sem senha**: e-mail (link mágico), Google, Facebook, LinkedIn e celular (SMS). Só o e-mail vem ligado; os outros você ativa quando quiser.
 - **Perfil** com foto, "o que eu faço" e contato privado, e um **perfil público**.
+- **Currículo** para vagas CLT, estágio e temporárias: estudos, experiências, cursos, CNH, disponibilidade e PDF opcional (Storage privado). Só vê quem anunciou uma vaga que a pessoa curtiu; a vaga pode marcar "Pedir currículo".
 - **Admin** (só no seu computador): números do site, contas (suspender por 7 ou 30 dias, banir, reativar, selo de verificado), anúncios (corrigir, remover com motivo, apagar), denúncias, e-mails do site com textos editáveis, IA, moderadores e chaves.
 - **E-mails do site** pelo Zoho: curtida, match, moderação e conta para quem usa o site; nova denúncia, novo cadastro e anúncio tirado do ar para a equipe.
 - **IA (OpenAI)**: revisa cada anúncio novo e tira do ar o que parece golpe, cobrança, discriminação ou trabalho infantil; botão "Melhorar texto" ao publicar; resumo da semana no admin.
@@ -153,6 +154,8 @@ Depois, do mesmo jeito, rode `supabase/migrations/20261009120000_prioridade_loca
 Por último, rode `supabase/migrations/20261009150000_servicos.sql`. Ela transforma "serviço" em oferta: o profissional monta a vitrine em **Meu painel > Meus serviços** (o que faz, preço ou "a combinar", fotos de trabalhos e onde atende), e cada serviço aparece separado na busca. Quem precisa contratar toca em "Quero contratar"; o profissional aceita e dá match. Ela também cria a pasta de fotos `trabalhos` no Storage. Os anúncios de serviço antigos (pedidos, do tempo de teste) são apagados.
 
 Depois, rode `supabase/migrations/20261009180000_avaliacoes.sql`. Ela cria as avaliações: só avalia quem deu match com o serviço, com nota de 1 a 5 e comentário opcional; a média aparece a partir de 3 avaliações e o profissional responde uma vez. Com a moderação por IA ligada, todo comentário e toda resposta passam por ela antes de aparecer: texto com ofensa, ameaça, discriminação ou dados pessoais fica retido, quem escreveu leva uma advertência e o texto vai para **Admin > Denúncias > Avaliações**. De lá, a equipe publica ou remove; suspender ou banir continua na ficha da pessoa.
+
+Por fim, rode `supabase/migrations/20261009200000_curriculos.sql`. Ela cria o currículo (tabela `curriculos` e a pasta privada `curriculos` no Storage, só PDF, até 5 MB) e a opção "Pedir currículo" na vaga. Quem vê: a própria pessoa e quem anunciou uma vaga que ela curtiu, enquanto a curtida existir. O PDF abre por link temporário de uma hora.
 
 ### 4.2 Abrir o admin (só no seu computador)
 
@@ -322,7 +325,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql` e `20261009180000_avaliacoes.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql` e `20261009200000_curriculos.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

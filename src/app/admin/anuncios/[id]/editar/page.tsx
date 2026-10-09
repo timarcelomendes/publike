@@ -60,6 +60,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
           beneficios: a.beneficios,
           horario: a.horario,
           vagas: a.vagas,
+          pede_curriculo: a.pede_curriculo,
           cidade: a.cidade,
           bairro: a.bairro,
           lat: a.lat,

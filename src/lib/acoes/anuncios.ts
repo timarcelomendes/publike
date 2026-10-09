@@ -30,6 +30,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
     beneficios: d.beneficios,
     horario: d.horario,
     vagas: d.vagas,
+    pede_curriculo: d.pede_curriculo,
     cidade: d.cidade,
     bairro: d.bairro,
     local: `SRID=4326;POINT(${d.lng} ${d.lat})`,

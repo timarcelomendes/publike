@@ -1,19 +1,20 @@
-import { ArrowLeft, BadgeCheck, Heart } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronDown, FileText, Heart } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BotoesContato } from "@/components/contato";
+import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { STATUS_ANUNCIO } from "@/lib/constantes";
-import { listarInteressados, obterAnuncio } from "@/lib/dados";
+import { listarCurriculosDosInteressados, listarInteressados, obterAnuncio } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import type { StatusAnuncio } from "@/lib/tipos";
+import type { CurriculoDoInteressado, StatusAnuncio } from "@/lib/tipos";
 
 export default function Interessados({ params }: PageProps<"/painel/anuncio/[id]">) {
   return (
@@ -29,10 +30,14 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
   const usuario = await exigirUsuario(`/painel/anuncio/${id}`);
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
-  const interessados = await listarInteressados(id);
-  const agora = await agoraDaRequisicao();
-  const status = anuncio.status as StatusAnuncio;
   const servico = anuncio.tipo === "servico";
+  const [interessados, curriculos] = await Promise.all([
+    listarInteressados(id),
+    servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
+  ]);
+  const agora = await agoraDaRequisicao();
+  const hoje = new Date(agora).toISOString().slice(0, 7);
+  const status = anuncio.status as StatusAnuncio;
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,6 +83,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
           <ul className="flex flex-col gap-4">
             {interessados.map((p) => {
               const primeiroNome = p.nome.split(" ")[0];
+              const curriculo = curriculos.get(p.perfil_id);
               return (
                 <li
                   key={p.perfil_id}
@@ -116,6 +122,26 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                     </div>
                   )}
                   {p.sobre && <p className="line-clamp-3 text-body-sm text-ink-muted">{p.sobre}</p>}
+                  {!servico &&
+                    (curriculo ? (
+                      <details className="group rounded-md border border-line bg-surface-100">
+                        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-label [&::-webkit-details-marker]:hidden">
+                          <FileText aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                          Ver currículo
+                          <ChevronDown aria-hidden className="ml-auto size-4 text-ink-muted transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div className="border-t border-line p-3">
+                          <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} />
+                        </div>
+                      </details>
+                    ) : (
+                      anuncio.pede_curriculo && (
+                        <p className="flex items-center gap-2 text-body-sm text-ink-muted">
+                          <FileText aria-hidden className="size-4 shrink-0" />
+                          {primeiroNome} ainda não preencheu o currículo.
+                        </p>
+                      )
+                    ))}
                   <div className="border-t border-line pt-3">
                     {p.status === "match" ? (
                       <BotoesContato

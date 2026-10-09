@@ -107,6 +107,7 @@ export type Database = {
           oficio: string | null;
           fotos: string[];
           atende: string[];
+          pede_curriculo: boolean;
         };
         Insert: {
           tipo: string;
@@ -126,6 +127,7 @@ export type Database = {
           oficio?: string | null;
           fotos?: string[];
           atende?: string[];
+          pede_curriculo?: boolean;
         };
         Update: {
           titulo?: string;
@@ -144,6 +146,7 @@ export type Database = {
           oficio?: string | null;
           fotos?: string[];
           atende?: string[];
+          pede_curriculo?: boolean;
         };
         Relationships: [
           {
@@ -154,6 +157,40 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      curriculos: {
+        Row: {
+          perfil_id: string;
+          escolaridade: string | null;
+          curso: string | null;
+          experiencias: Json;
+          cursos: string[];
+          cnh: string | null;
+          disponibilidade: string[];
+          arquivo: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          perfil_id: string;
+          escolaridade?: string | null;
+          curso?: string | null;
+          experiencias?: Json;
+          cursos?: string[];
+          cnh?: string | null;
+          disponibilidade?: string[];
+          arquivo?: string | null;
+        };
+        Update: {
+          escolaridade?: string | null;
+          curso?: string | null;
+          experiencias?: Json;
+          cursos?: string[];
+          cnh?: string | null;
+          disponibilidade?: string[];
+          arquivo?: string | null;
+        };
+        Relationships: [];
       };
       curtidas: {
         Row: {
@@ -326,6 +363,7 @@ export type Database = {
           oficio: string | null;
           fotos: string[];
           atende: string[];
+          pede_curriculo: boolean;
         }[];
       };
       meus_anuncios: {
@@ -368,6 +406,24 @@ export type Database = {
           whatsapp: string | null;
           email: string | null;
         }[];
+      };
+      curriculos_dos_interessados: {
+        Args: { p_anuncio: string };
+        Returns: {
+          perfil_id: string;
+          escolaridade: string | null;
+          curso: string | null;
+          experiencias: Json;
+          cursos: string[];
+          cnh: string | null;
+          disponibilidade: string[];
+          arquivo: string | null;
+          atualizado_em: string;
+        }[];
+      };
+      pode_ver_curriculo: {
+        Args: { p_perfil: string };
+        Returns: boolean;
       };
       minhas_curtidas: {
         Args: Record<PropertyKey, never>;

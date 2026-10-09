@@ -48,6 +48,7 @@ export default function Privacidade() {
               "No perfil: nome, se você é pessoa, comércio ou empresa, cidade, bairro, foto (opcional), o que você faz e uma apresentação.",
               "Contato: seu WhatsApp e, se quiser, um e-mail.",
               "O que você faz no site: anúncios, curtidas, matches e denúncias.",
+              "Se você preencher: o currículo (estudos, experiências, cursos, CNH, quando pode trabalhar) e o PDF que anexar.",
               "Localização dos anúncios: só a região, uma área de uns 500 metros. O endereço exato nunca é guardado.",
               "Quando você usa “Perto de mim”, a localização serve só para a busca e não fica salva no seu perfil.",
             ]}
@@ -58,10 +59,22 @@ export default function Privacidade() {
           <Lista
             itens={[
               "Qualquer pessoa vê seu perfil público e seus anúncios no ar.",
-              "Quem publicou vê quem curtiu o anúncio, com o perfil e a mensagem.",
+              "Quem publicou vê quem curtiu o anúncio, com o perfil e a mensagem. Numa vaga, vê também o currículo de quem preencheu.",
               "Seu WhatsApp e seu e-mail de contato só aparecem para a outra pessoa de um match.",
               "Denúncias só a moderação vê. Quem publicou não sabe quem denunciou.",
               "Não vendemos seus dados.",
+            ]}
+          />
+        </Secao>
+
+        <Secao id="curriculo" titulo="Seu currículo">
+          <Lista
+            itens={[
+              "Não é público: não aparece no seu perfil, na busca nem no Google.",
+              "Só vê quem anunciou uma vaga que você curtiu, e só enquanto a curtida existir. Desfez a curtida, deixou de ver.",
+              "O PDF fica guardado num lugar fechado e só abre com um link que vale por uma hora.",
+              "O PDF vai do jeito que você enviar. Se tiver telefone, e-mail ou endereço, quem anunciou a vaga vê esses dados.",
+              "Você corrige ou apaga o currículo quando quiser, em Meu perfil > Meu currículo. Excluir a conta apaga junto.",
             ]}
           />
         </Secao>
@@ -94,7 +107,7 @@ export default function Privacidade() {
             itens={[
               "Anúncios saem das buscas depois de 30 dias, a não ser que você renove.",
               "Avisos (curtidas e matches) são apagados depois de 90 dias. O registro dos e-mails enviados, depois de 30 dias.",
-              "Quando você exclui a conta, apagamos na hora seu perfil, contato, foto, anúncios, curtidas e matches.",
+              "Quando você exclui a conta, apagamos na hora seu perfil, contato, foto, currículo, anúncios, curtidas e matches.",
               "O registro do que a moderação fez (por exemplo, a remoção de um anúncio ou a suspensão de uma conta) fica guardado para a segurança do site, mesmo depois que a conta é excluída.",
             ]}
           />

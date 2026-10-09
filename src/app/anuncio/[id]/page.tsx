@@ -5,6 +5,7 @@ import {
   Briefcase,
   CalendarClock,
   Clock,
+  FileText,
   Flag,
   MapPin,
   ShieldAlert,
@@ -29,6 +30,7 @@ import {
   contatoDoMatch,
   listarAvaliacoesPublicas,
   obterAnuncio,
+  obterMeuCurriculo,
   obterNotaDoProfissional,
   obterUsuario,
 } from "@/lib/dados";
@@ -140,6 +142,8 @@ async function DetalheAnuncio({
   const agora = await agoraDaRequisicao();
   const proprio = usuario?.id === anuncio.autor_id;
   const contato = anuncio.minha_curtida === "match" ? await contatoDoMatch(anuncio.id) : null;
+  const temCurriculo =
+    usuario && !proprio && anuncio.tipo === "vaga" ? (await obterMeuCurriculo()) !== null : null;
   const lugar = formatarLugar(anuncio.bairro, anuncio.cidade);
   const valor = valorDoAnuncio(anuncio);
   const vaga = anuncio.tipo === "vaga";
@@ -177,6 +181,8 @@ async function DetalheAnuncio({
         mensagem={anuncio.minha_mensagem}
         logado={usuario !== null}
         contato={contato}
+        pedeCurriculo={anuncio.pede_curriculo}
+        temCurriculo={temCurriculo}
       />
     );
 
@@ -213,6 +219,12 @@ async function DetalheAnuncio({
             {novo && <Selo variante="novo">Novo</Selo>}
             <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
             <Selo variante="contorno">{categoria(anuncio.categoria).nome}</Selo>
+            {vaga && anuncio.pede_curriculo && (
+              <Selo variante="contorno">
+                <FileText aria-hidden />
+                Pede currículo
+              </Selo>
+            )}
           </div>
           <h1 className="mt-3 text-h2 sm:text-h1">{anuncio.titulo}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-1 text-body text-ink-muted">

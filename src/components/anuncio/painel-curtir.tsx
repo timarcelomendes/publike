@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, PartyPopper, Star } from "lucide-react";
+import { FileText, Heart, PartyPopper, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -19,10 +19,56 @@ type Props = {
   mensagem: string | null;
   logado: boolean;
   contato: { whatsapp: string | null; email: string | null } | null;
+  /** vaga que pede currículo */
+  pedeCurriculo?: boolean;
+  /** a pessoa logada já preencheu o currículo (null: não logada) */
+  temCurriculo?: boolean | null;
 };
 
+/** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
+function ConviteCurriculo({ anuncioId, forte }: { anuncioId: string; forte: boolean }) {
+  const href = `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`;
+  if (!forte) {
+    return (
+      <p className="text-body-sm">
+        Dica: com{" "}
+        <Link href={href} className="underline">
+          currículo preenchido
+        </Link>{" "}
+        você chama mais atenção.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-md bg-surface-200 p-3">
+      <p className="flex items-center gap-2 text-label">
+        <FileText aria-hidden className="size-4 shrink-0" />
+        Esta vaga pede currículo
+      </p>
+      <p className="text-body-sm">Preencha o seu: leva uns 3 minutos e quem publicou vê junto com o seu perfil.</p>
+      <Link
+        href={href}
+        className="inline-flex min-h-11 items-center justify-center rounded-md bg-terra px-4 text-label text-on-terra hover:bg-terra-hover"
+      >
+        Preencher meu currículo
+      </Link>
+    </div>
+  );
+}
+
 /** O quadro "Curtir" da página do anúncio, com mensagem opcional. */
-export function PainelCurtir({ idCampo, anuncioId, titulo, tipo, status, mensagem, logado, contato }: Props) {
+export function PainelCurtir({
+  idCampo,
+  anuncioId,
+  titulo,
+  tipo,
+  status,
+  mensagem,
+  logado,
+  contato,
+  pedeCurriculo = false,
+  temCurriculo = null,
+}: Props) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -113,6 +159,8 @@ export function PainelCurtir({ idCampo, anuncioId, titulo, tipo, status, mensage
             : "Agora é com quem publicou. Se curtir você de volta, dá match e o contato aparece aqui e no seu painel."}
         </p>
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
+        {!servico && temCurriculo === false && <ConviteCurriculo anuncioId={anuncioId} forte={pedeCurriculo} />}
+        {!servico && temCurriculo && <p className="text-body-sm">Seu currículo foi junto com a curtida.</p>}
         <div>
           <Botao variante="fantasma" tamanho="sm" onClick={desfazer} disabled={pendente}>
             {servico ? "Desfazer pedido" : "Desfazer curtida"}
@@ -132,6 +180,25 @@ export function PainelCurtir({ idCampo, anuncioId, titulo, tipo, status, mensage
             ? "Mande um pedido. Se o profissional aceitar, dá match e o WhatsApp dos dois aparece."
             : "Curta a vaga. Se quem publicou curtir você de volta, dá match e o WhatsApp dos dois aparece."}
         </p>
+        {!servico && pedeCurriculo && (
+          <p className="mt-2 flex items-start gap-2 text-body-sm">
+            <FileText aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+            <span>
+              Esta vaga pede currículo.{" "}
+              {temCurriculo ? (
+                "O seu vai junto quando você curtir."
+              ) : (
+                <>
+                  Dá para{" "}
+                  <Link href={`/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`} className="underline">
+                    preencher o seu
+                  </Link>{" "}
+                  antes ou depois de curtir.
+                </>
+              )}
+            </span>
+          </p>
+        )}
       </div>
       {logado && (
         <div className="flex flex-col gap-1.5">

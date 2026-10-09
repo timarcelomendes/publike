@@ -20,6 +20,7 @@ const CONTRATA = [
 
 const TRABALHA = [
   "Veja vagas e bicos perto de você, no mapa ou em lista. Curta o que combina.",
+  "Vai atrás de vaga com carteira ou estágio? Preencha “Meu currículo” uma vez: quem anunciou a vaga que você curtiu vê junto com seu perfil.",
   "Oferece serviços? Monte sua vitrine em “Meus serviços”: o que você faz, o preço, fotos e onde atende.",
   "Quando alguém quiser contratar você, chega um aviso. Aceitou, deu match: o WhatsApp aparece no painel.",
   "Seu número nunca fica público no site. Os serviços ficam 90 dias no ar, e salvar de novo renova.",
@@ -42,6 +43,10 @@ const PERGUNTAS = [
   {
     p: "Como funcionam as avaliações?",
     r: "Quem contratou um profissional pelo Publike avalia depois do match, com nota de 1 a 5 e um comentário. A nota média aparece a partir de 3 avaliações, e o profissional pode responder uma vez. Os textos passam por uma revisão automática: crítica honesta é publicada; ofensa, ameaça ou dados pessoais, não.",
+  },
+  {
+    p: "Quem vê meu currículo?",
+    r: "Só quem anunciou uma vaga que você curtiu, enquanto a curtida existir. Ele não aparece no seu perfil público nem na busca. Você corrige ou apaga quando quiser, em Meu perfil.",
   },
   {
     p: "O que é match?",
