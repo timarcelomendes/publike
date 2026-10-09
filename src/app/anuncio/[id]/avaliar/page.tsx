@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { FormAvaliacao } from "@/components/form-avaliacao";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { obterAnuncio, obterMinhaAvaliacao } from "@/lib/dados";
+import { listarMeusDesfeitos, obterAnuncio, obterMinhaAvaliacao } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = {
@@ -30,6 +30,9 @@ async function Conteudo({ params }: { params: PageProps<"/anuncio/[id]/avaliar">
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.tipo !== "servico") notFound();
   const minha = await obterMinhaAvaliacao(id);
+  // vale também quando foi o profissional quem desfez o match (ex.: não apareceu)
+  const desfeito = anuncio.minha_curtida === "desfeito" ? (await listarMeusDesfeitos()).get(id) : undefined;
+  const podeAvaliar = anuncio.minha_curtida === "match" || (desfeito !== undefined && !desfeito.porMim);
   const primeiroNome = anuncio.autor_nome.split(" ")[0];
 
   let conteudo;
@@ -42,7 +45,7 @@ async function Conteudo({ params }: { params: PageProps<"/anuncio/[id]/avaliar">
         <FormAvaliacao anuncioId={anuncio.id} perfilProfissional={`/perfil/${anuncio.autor_id}`} inicial={null} />
       </>
     );
-  } else if (anuncio.minha_curtida !== "match") {
+  } else if (!podeAvaliar) {
     conteudo = (
       <Aviso tipo="alerta" titulo="Só avalia quem deu match">
         Peça o serviço a {primeiroNome}. Depois do match e do trabalho feito, você pode avaliar aqui.

@@ -7,8 +7,8 @@ import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
-import type { Resultado } from "@/lib/tipos";
-import { temContato, UUID } from "@/lib/validacao";
+import type { EstadoForm, Resultado } from "@/lib/tipos";
+import { lerDesfazerMatch, temContato, UUID } from "@/lib/validacao";
 
 /** Curtir = "tenho interesse". */
 export async function curtirAnuncio(anuncioId: string, mensagem: string | null = null): Promise<Resultado> {
@@ -92,4 +92,35 @@ export async function responderCurtida(
   refresh();
   if (decisao === "match") return { ok: true, mensagem: "Deu match! Agora é só conversar." };
   return { ok: true };
+}
+
+/**
+ * Um dos lados desiste do match. Precisa de motivo e justificativa: a outra
+ * pessoa vê o motivo; a justificativa fica só para a equipe. O contato some
+ * para os dois na hora.
+ */
+export async function desfazerMatch(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const leitura = lerDesfazerMatch(formData);
+  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  const d = leitura.dados;
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta para continuar." };
+
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("desfazer_match", {
+    p_anuncio: d.anuncio,
+    p_perfil: d.perfil,
+    p_motivo: d.motivo,
+    p_justificativa: d.justificativa,
+  });
+  if (error) {
+    const campo = error.hint === "motivo" || error.hint === "justificativa" ? error.hint : null;
+    const erro = mensagemDeErro(error, "Não foi possível desfazer o match agora.");
+    return campo ? { ok: false, erro, erros: { [campo]: erro } } : { ok: false, erro };
+  }
+
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Match desfeito. O contato não aparece mais para nenhum dos dois." };
 }

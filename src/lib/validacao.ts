@@ -17,6 +17,7 @@ import {
   SLUGS_OFICIOS,
   UNIDADES_SERVICO,
   VALORES_DISPONIBILIDADE,
+  VALORES_MOTIVO_DESFAZER,
   VALORES_ESCOLARIDADE,
 } from "./constantes";
 
@@ -397,6 +398,34 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
     if (!erros[chave]) erros[chave] = problema.message;
   }
   return { ok: false, erros };
+}
+
+// ---------------------------------------------------------------- desfazer match
+
+export const esquemaDesfazerMatch = z.object({
+  anuncio: z.string().regex(UUID, { error: "Match não encontrado." }),
+  perfil: z.string().regex(UUID, { error: "Match não encontrado." }),
+  motivo: z.enum(VALORES_MOTIVO_DESFAZER, { error: "Escolha o motivo." }),
+  justificativa: z
+    .string({ error: "Explique por que está desfazendo." })
+    .transform((t) => t.replace(/\s+/g, " ").trim())
+    .pipe(
+      z
+        .string()
+        .min(10, { error: "Explique em poucas palavras (pelo menos 10 letras)." })
+        .max(500, { error: "Use no máximo 500 letras." }),
+    ),
+});
+
+export function lerDesfazerMatch(formData: FormData) {
+  const leitura = esquemaDesfazerMatch.safeParse({
+    anuncio: campo(formData, "anuncio") ?? "",
+    perfil: campo(formData, "perfil") ?? "",
+    motivo: campo(formData, "motivo"),
+    justificativa: campo(formData, "justificativa") ?? "",
+  });
+  if (leitura.success) return { ok: true as const, dados: leitura.data };
+  return { ok: false as const, erros: errosPorCampo(leitura.error) };
 }
 
 // ---------------------------------------------------------------- perfil

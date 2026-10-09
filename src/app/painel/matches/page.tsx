@@ -2,6 +2,7 @@ import { MessageCircleHeart, Star } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { BotoesContato } from "@/components/contato";
+import { DesfazerMatch } from "@/components/desfazer-match";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Avatar, Vazio } from "@/components/ui/basicos";
@@ -22,7 +23,7 @@ export default function Matches() {
 
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
-  await exigirUsuario("/painel/matches");
+  const usuario = await exigirUsuario("/painel/matches");
   const matches = await listarMatches();
   const agora = await agoraDaRequisicao();
 
@@ -87,6 +88,12 @@ async function Conteudo() {
                   Avaliar o serviço
                 </Link>
               )}
+              <DesfazerMatch
+                anuncioId={m.anuncio_id}
+                perfilId={m.papel === "publiquei" ? m.outro_id : usuario.id}
+                outroNome={m.outro_nome}
+                autorDaVaga={m.papel === "publiquei" && m.anuncio_tipo === "vaga"}
+              />
             </div>
           </li>
         );

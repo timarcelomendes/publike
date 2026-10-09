@@ -13,6 +13,7 @@ Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real)
 - **Busca por perto**: mapa e lista, filtros (vaga ou serviço, categoria, contratação, distância, ordem) e "Perto de mim".
 - **Publicar** vaga (CLT, temporário, diária, bico, estágio, PJ) ou serviço, com a região marcada no mapa. O endereço exato nunca é salvo: o ponto vira uma área de uns 500 m.
 - **Curtir e dar match**: quem trabalha curte (com mensagem opcional), quem publicou curte de volta, e o WhatsApp dos dois aparece só aí.
+- **Desfazer match**: qualquer lado desiste com motivo e justificativa obrigatórios. O contato some para os dois; a outra pessoa vê o motivo, a equipe vê a justificativa na ficha da pessoa (e recebe aviso quando o motivo é comportamento).
 - **Painel**: meus anúncios (pausar, encerrar, renovar, editar, excluir), quem curtiu, minhas curtidas e matches, mais o sino de avisos em tempo real.
 - **Login sem senha**: e-mail (link mágico), Google, Facebook, LinkedIn e celular (SMS). Só o e-mail vem ligado; os outros você ativa quando quiser.
 - **Perfil** com foto, "o que eu faço" e contato privado, e um **perfil público**.
@@ -158,6 +159,8 @@ Depois, rode `supabase/migrations/20261009180000_avaliacoes.sql`. Ela cria as av
 Por fim, rode `supabase/migrations/20261009200000_curriculos.sql`. Ela cria o currículo (tabela `curriculos` e a pasta privada `curriculos` no Storage, só PDF, até 5 MB) e a opção "Pedir currículo" na vaga. Quem vê: a própria pessoa e quem anunciou uma vaga que ela curtiu, enquanto a curtida existir. O PDF abre por link temporário de uma hora.
 
 Depois, `supabase/migrations/20261009210000_config_where.sql`: corrige o **Salvar configurações** de E-mails e de IA no admin (o Supabase barra `UPDATE` sem `WHERE` pela API).
+
+E `supabase/migrations/20261009230000_desfazer_match.sql`: o "Desfazer match", com motivo e justificativa (a justificativa só a equipe vê, em Admin > Usuários > ficha da pessoa).
 
 ### 4.2 Abrir o admin (só no seu computador)
 
@@ -327,7 +330,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql` e `20261009210000_config_where.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql` e `20261009230000_desfazer_match.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

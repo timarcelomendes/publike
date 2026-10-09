@@ -4,13 +4,19 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BotoesContato } from "@/components/contato";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
+import { DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { STATUS_ANUNCIO } from "@/lib/constantes";
-import { listarCurriculosDosInteressados, listarInteressados, obterAnuncio } from "@/lib/dados";
+import { motivoParaOutro, nomeMotivoDesfazer, STATUS_ANUNCIO } from "@/lib/constantes";
+import {
+  listarCurriculosDosInteressados,
+  listarDesfeitosDoAnuncio,
+  listarInteressados,
+  obterAnuncio,
+} from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -31,9 +37,10 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
-  const [interessados, curriculos] = await Promise.all([
+  const [interessados, curriculos, desfeitos] = await Promise.all([
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
+    listarDesfeitosDoAnuncio(id),
   ]);
   const agora = await agoraDaRequisicao();
   const hoje = new Date(agora).toISOString().slice(0, 7);
@@ -84,12 +91,13 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
             {interessados.map((p) => {
               const primeiroNome = p.nome.split(" ")[0];
               const curriculo = curriculos.get(p.perfil_id);
+              const desfeito = p.status === "desfeito" ? desfeitos.get(p.perfil_id) : undefined;
               return (
                 <li
                   key={p.perfil_id}
                   className={`flex flex-col gap-3 rounded-lg border bg-surface-200 p-4 shadow-card sm:p-5 ${
                     p.status === "match" ? "border-cerrado" : "border-line"
-                  } ${p.status === "dispensada" ? "opacity-70" : ""}`}
+                  } ${p.status === "dispensada" || p.status === "desfeito" ? "opacity-70" : ""}`}
                 >
                   <div className="flex gap-3">
                     <Avatar nome={p.nome} foto={p.foto} tamanho={56} />
@@ -110,6 +118,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                     </div>
                     {p.status === "match" && <Selo variante="match">Deu match</Selo>}
                     {p.status === "dispensada" && <Selo variante="contorno">{servico ? "Recusado" : "Dispensado"}</Selo>}
+                    {p.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
                   </div>
                   {p.mensagem && <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{p.mensagem}”</blockquote>}
                   {p.servicos.length > 0 && (
@@ -143,7 +152,14 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                       )
                     ))}
                   <div className="border-t border-line pt-3">
-                    {p.status === "match" ? (
+                    {p.status === "desfeito" ? (
+                      <p className="text-body-sm text-ink-muted">
+                        {desfeito?.porMim
+                          ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeito.motivo).toLowerCase()}.`
+                          : `${primeiroNome} desfez o match. Motivo: ${motivoParaOutro(desfeito?.motivo)}.`}
+                      </p>
+                    ) : p.status === "match" ? (
+                      <div className="flex flex-col gap-2">
                       <BotoesContato
                         whatsapp={p.whatsapp}
                         email={p.email}
@@ -153,6 +169,13 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                             : `Olá, ${primeiroNome}! Vi que você curtiu “${anuncio.titulo}” no Publike. Vamos conversar?`
                         }
                       />
+                      <DesfazerMatch
+                        anuncioId={anuncio.id}
+                        perfilId={p.perfil_id}
+                        outroNome={p.nome}
+                        autorDaVaga={!servico}
+                      />
+                      </div>
                     ) : (
                       <AcoesInteressado anuncioId={anuncio.id} perfilId={p.perfil_id} status={p.status} servico={servico} />
                     )}

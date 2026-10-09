@@ -74,6 +74,8 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   avaliacao: "Avaliação nova",
   avaliacao_retida: "Avaliação não publicada",
   aviso_avaliacao: "Avaliação para revisar",
+  match_desfeito: "Match desfeito",
+  aviso_match_desfeito: "Match desfeito por comportamento",
   teste: "Teste",
 };
 

@@ -123,6 +123,33 @@ export const MAX_FOTOS = 6;
 /** A média das avaliações só aparece a partir deste total (uma nota isolada pesa demais). */
 export const MIN_AVALIACOES = 3;
 
+// ---- Desfazer match ------------------------------------------------------
+
+/** Motivos para desfazer um match. `outro` é como a outra pessoa lê o motivo. */
+export const MOTIVOS_DESFAZER = [
+  { valor: "vaga_preenchida", nome: "A vaga já foi preenchida", outro: "a vaga já foi preenchida", soAutorVaga: true },
+  { valor: "nao_combinou", nome: "Não chegamos a um acordo (valor, horário, local)", outro: "vocês não chegaram a um acordo" },
+  { valor: "sem_resposta", nome: "A outra pessoa não respondeu", outro: "não teve resposta" },
+  { valor: "nao_compareceu", nome: "A outra pessoa não apareceu no combinado", outro: "não compareceu ao combinado" },
+  { valor: "desistiu", nome: "Desisti ou não preciso mais", outro: "desistiu ou não precisa mais" },
+  {
+    valor: "comportamento",
+    nome: "Comportamento inadequado ou suspeito",
+    outro: "relatou um problema para a equipe do Publike",
+  },
+  { valor: "outro", nome: "Outro motivo", outro: "outro motivo" },
+] as const;
+export type MotivoDesfazer = (typeof MOTIVOS_DESFAZER)[number]["valor"];
+export const VALORES_MOTIVO_DESFAZER = MOTIVOS_DESFAZER.map((m) => m.valor) as [MotivoDesfazer, ...MotivoDesfazer[]];
+/** Como a outra pessoa lê o motivo ("Motivo: não teve resposta"). */
+export function motivoParaOutro(valor: string | null | undefined) {
+  return MOTIVOS_DESFAZER.find((m) => m.valor === valor)?.outro ?? "outro motivo";
+}
+/** O motivo como quem desfez escolheu. */
+export function nomeMotivoDesfazer(valor: string | null | undefined) {
+  return MOTIVOS_DESFAZER.find((m) => m.valor === valor)?.nome ?? "Outro motivo";
+}
+
 // ---- Currículo ------------------------------------------------------------
 
 export const ESCOLARIDADES = [

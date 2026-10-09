@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Heart, MessageCircleHeart, ShieldCheck, Star } from "lucide-react";
+import { Bell, Heart, HeartCrack, MessageCircleHeart, ShieldCheck, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { tempoRelativo } from "@/lib/formato";
@@ -18,6 +18,7 @@ type Notificacao = {
 function destino(n: Notificacao) {
   if (n.tipo === "curtida" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}`;
   if (n.tipo === "match") return "/painel/matches";
+  if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "avaliacao") return "/painel/avaliacoes";
   if (n.tipo === "avaliacao_retida") return "/privacidade#regras";
   return "/painel";
@@ -113,7 +114,15 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
             <ul className="flex max-h-96 flex-col overflow-y-auto">
               {itens.map((n) => {
                 const Icone =
-                  n.tipo === "match" ? MessageCircleHeart : n.tipo === "curtida" ? Heart : n.tipo === "avaliacao" ? Star : ShieldCheck;
+                  n.tipo === "match"
+                    ? MessageCircleHeart
+                    : n.tipo === "match_desfeito"
+                      ? HeartCrack
+                      : n.tipo === "curtida"
+                        ? Heart
+                        : n.tipo === "avaliacao"
+                          ? Star
+                          : ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link

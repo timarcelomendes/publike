@@ -180,6 +180,13 @@ export async function advertenciasDe(c: ClienteBanco, usuarioId: string) {
   return data ?? [];
 }
 
+/** Matches que a pessoa desfez e que desfizeram com ela, com a justificativa. */
+export async function matchesDesfeitosDe(c: ClienteBanco, usuarioId: string) {
+  const { data, error } = await c.rpc("admin_matches_desfeitos", { p_perfil: usuarioId });
+  if (error) falha("os matches desfeitos", error);
+  return data ?? [];
+}
+
 /** Avaliações retidas pela IA, sem revisão ou denunciadas pelo profissional. */
 export async function filaDeAvaliacoes(c: ClienteBanco) {
   const { data, error } = await c.rpc("fila_avaliacoes");

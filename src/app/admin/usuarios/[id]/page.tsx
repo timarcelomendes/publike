@@ -14,7 +14,8 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Dado, Secao } from "@/components/admin/ui";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
-import { advertenciasDe, fichaUsuario, listarAnuncios, registroDaEquipe } from "@/lib/admin/dados";
+import { advertenciasDe, fichaUsuario, listarAnuncios, matchesDesfeitosDe, registroDaEquipe } from "@/lib/admin/dados";
+import { nomeMotivoDesfazer } from "@/lib/constantes";
 import { descreverAcao } from "@/lib/admin/textos";
 import {
   ehParaSempre,
@@ -44,11 +45,12 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
   const c = await exigirAdminLocal();
   const { id } = await params;
   if (!UUID.test(id)) notFound();
-  const [u, anuncios, registro, advertencias, agora] = await Promise.all([
+  const [u, anuncios, registro, advertencias, desfeitos, agora] = await Promise.all([
     fichaUsuario(c, id),
     listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
     registroDaEquipe(c, 20, id),
     advertenciasDe(c, id),
+    matchesDesfeitosDe(c, id),
     agoraDaRequisicao(),
   ]);
   if (!u) notFound();
@@ -190,6 +192,35 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
                 <span>{a.motivo}</span>
                 <span className="text-ink-muted">
                   {formatarDataHora(a.criado_em)} · {a.origem === "ia" ? "IA" : "Equipe"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      )}
+
+      {desfeitos.length > 0 && (
+        <Secao
+          titulo={`Matches desfeitos (${desfeitos.length})`}
+          descricao="Os que a pessoa desfez e os que desfizeram com ela, com a justificativa escrita (a outra pessoa só vê o motivo)."
+        >
+          <ul className="flex flex-col divide-y divide-line">
+            {desfeitos.map((d) => (
+              <li key={d.id} className="flex flex-col gap-0.5 py-2.5 text-body-sm">
+                <span className="text-label">
+                  {d.fez ? "Desfez com " : "Desfeito por "}
+                  {d.outro_id ? (
+                    <Link href={`/admin/usuarios/${d.outro_id}`} className="underline">
+                      {d.outro_nome ?? "conta apagada"}
+                    </Link>
+                  ) : (
+                    "conta apagada"
+                  )}{" "}
+                  · {nomeMotivoDesfazer(d.motivo)}
+                </span>
+                <span>“{d.justificativa}”</span>
+                <span className="text-ink-muted">
+                  {formatarDataHora(d.criado_em)} · {d.tipo_anuncio === "servico" ? "serviço" : "vaga"} “{d.titulo}”
                 </span>
               </li>
             ))}

@@ -216,6 +216,47 @@ export async function listarCurriculosDosInteressados(anuncioId: string): Promis
   );
 }
 
+/** Match desfeito: quem desfez (eu ou a outra pessoa) e o motivo. */
+export type Desfeito = { porMim: boolean; motivo: string | null; em: string | null };
+
+/** Para quem publicou: os matches desfeitos de um anúncio, por pessoa que curtiu. */
+export async function listarDesfeitosDoAnuncio(anuncioId: string): Promise<Map<string, Desfeito>> {
+  const usuario = await obterUsuario();
+  if (!usuario || !UUID.test(anuncioId)) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("curtidas")
+    .select("perfil_id, desfeito_por, desfeito_motivo, desfeito_em")
+    .eq("anuncio_id", anuncioId)
+    .eq("status", "desfeito");
+  if (error) falha("matches desfeitos", error);
+  return new Map(
+    (data ?? []).map((c) => [
+      c.perfil_id,
+      { porMim: c.desfeito_por === usuario.id, motivo: c.desfeito_motivo, em: c.desfeito_em },
+    ]),
+  );
+}
+
+/** Para quem curtiu: as curtidas que viraram match desfeito, por anúncio. */
+export async function listarMeusDesfeitos(): Promise<Map<string, Desfeito>> {
+  const usuario = await obterUsuario();
+  if (!usuario) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("curtidas")
+    .select("anuncio_id, desfeito_por, desfeito_motivo, desfeito_em")
+    .eq("perfil_id", usuario.id)
+    .eq("status", "desfeito");
+  if (error) falha("matches desfeitos", error);
+  return new Map(
+    (data ?? []).map((c) => [
+      c.anuncio_id,
+      { porMim: c.desfeito_por === usuario.id, motivo: c.desfeito_motivo, em: c.desfeito_em },
+    ]),
+  );
+}
+
 export async function listarMinhasCurtidas(): Promise<MinhaCurtida[]> {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("minhas_curtidas");

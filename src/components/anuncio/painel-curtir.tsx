@@ -1,11 +1,13 @@
 "use client";
 
-import { FileText, Heart, PartyPopper, Star } from "lucide-react";
+import { FileText, Heart, HeartCrack, PartyPopper, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
+import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import { BotoesContato } from "../contato";
+import { DesfazerMatch } from "../desfazer-match";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
@@ -23,6 +25,12 @@ type Props = {
   pedeCurriculo?: boolean;
   /** a pessoa logada já preencheu o currículo (null: não logada) */
   temCurriculo?: boolean | null;
+  /** quem está vendo (para desfazer o match) */
+  usuarioId?: string | null;
+  /** nome de quem publicou */
+  autorNome?: string;
+  /** match desfeito: por quem e por quê */
+  desfeito?: { porMim: boolean; motivo: string | null } | null;
 };
 
 /** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
@@ -68,6 +76,9 @@ export function PainelCurtir({
   contato,
   pedeCurriculo = false,
   temCurriculo = null,
+  usuarioId = null,
+  autorNome = "",
+  desfeito = null,
 }: Props) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -126,6 +137,40 @@ export function PainelCurtir({
             Avaliar o serviço
           </Link>
         )}
+        {usuarioId && (
+          <DesfazerMatch anuncioId={anuncioId} perfilId={usuarioId} outroNome={autorNome || "quem publicou"} claro />
+        )}
+      </div>
+    );
+  }
+
+  if (status === "desfeito") {
+    // o cliente ainda pode avaliar quando foi o profissional quem desfez
+    const podeAvaliar = servico && desfeito && !desfeito.porMim;
+    return (
+      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5">
+        <p className="flex items-center gap-2 font-display text-h3">
+          <HeartCrack aria-hidden className="size-5 text-ink-muted" />
+          Match desfeito
+        </p>
+        <p className="text-body-sm text-ink-muted">
+          {desfeito?.porMim
+            ? `Você desfez este match. Motivo: ${nomeMotivoDesfazer(desfeito.motivo).toLowerCase()}.`
+            : `${servico ? "O profissional" : "Quem publicou"} desfez o match. Motivo: ${motivoParaOutro(desfeito?.motivo)}.`}{" "}
+          O contato não aparece mais.
+        </p>
+        {podeAvaliar && (
+          <Link
+            href={`/anuncio/${anuncioId}/avaliar`}
+            className="inline-flex min-h-11 items-center gap-2 self-start text-label text-terra-text underline-offset-2 hover:underline"
+          >
+            <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
+            Avaliar o serviço
+          </Link>
+        )}
+        <Link href={servico ? "/?tipo=servico" : "/"} className="text-label text-terra-text underline">
+          {servico ? "Ver outros profissionais" : "Ver outras oportunidades"}
+        </Link>
       </div>
     );
   }

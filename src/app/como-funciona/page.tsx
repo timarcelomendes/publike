@@ -53,6 +53,10 @@ const PERGUNTAS = [
     r: "É quando os dois lados topam: você curte uma vaga e quem publicou curte você de volta, ou você pede um serviço e o profissional aceita. Aí o WhatsApp dos dois aparece.",
   },
   {
+    p: "E se eu quiser desistir de um match?",
+    r: "Toque em “Desfazer match” no painel ou no anúncio. Escolha o motivo e escreva uma justificativa: a outra pessoa recebe um aviso só com o motivo, e a justificativa vai para a equipe do Publike. O WhatsApp some para os dois e o match não volta.",
+  },
+  {
     p: "Por que o telefone não aparece no anúncio?",
     r: "Para evitar golpes e spam. O contato só aparece quando dá match, e só para as duas pessoas.",
   },

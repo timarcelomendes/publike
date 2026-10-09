@@ -29,6 +29,7 @@ import { categoria, descreverAtendimento, REGIMES, STATUS_ANUNCIO } from "@/lib/
 import {
   contatoDoMatch,
   listarAvaliacoesPublicas,
+  listarMeusDesfeitos,
   obterAnuncio,
   obterMeuCurriculo,
   obterNotaDoProfissional,
@@ -142,6 +143,7 @@ async function DetalheAnuncio({
   const agora = await agoraDaRequisicao();
   const proprio = usuario?.id === anuncio.autor_id;
   const contato = anuncio.minha_curtida === "match" ? await contatoDoMatch(anuncio.id) : null;
+  const desfeito = anuncio.minha_curtida === "desfeito" ? ((await listarMeusDesfeitos()).get(anuncio.id) ?? null) : null;
   const temCurriculo =
     usuario && !proprio && anuncio.tipo === "vaga" ? (await obterMeuCurriculo()) !== null : null;
   const lugar = formatarLugar(anuncio.bairro, anuncio.cidade);
@@ -183,6 +185,9 @@ async function DetalheAnuncio({
         contato={contato}
         pedeCurriculo={anuncio.pede_curriculo}
         temCurriculo={temCurriculo}
+        usuarioId={usuario?.id ?? null}
+        autorNome={anuncio.autor_nome}
+        desfeito={desfeito}
       />
     );
 

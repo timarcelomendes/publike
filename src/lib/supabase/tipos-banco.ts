@@ -200,6 +200,9 @@ export type Database = {
           status: string;
           criado_em: string;
           respondida_em: string | null;
+          desfeito_por: string | null;
+          desfeito_motivo: string | null;
+          desfeito_em: string | null;
         };
         Insert: {
           anuncio_id: string;
@@ -419,6 +422,26 @@ export type Database = {
           disponibilidade: string[];
           arquivo: string | null;
           atualizado_em: string;
+        }[];
+      };
+      desfazer_match: {
+        Args: { p_anuncio: string; p_perfil: string; p_motivo: string; p_justificativa: string };
+        Returns: undefined;
+      };
+      admin_matches_desfeitos: {
+        Args: { p_perfil: string };
+        Returns: {
+          id: number;
+          anuncio_id: string | null;
+          titulo: string;
+          tipo_anuncio: string;
+          fez: boolean;
+          outro_id: string | null;
+          outro_nome: string | null;
+          motivo: string;
+          justificativa: string;
+          match_em: string | null;
+          criado_em: string;
         }[];
       };
       pode_ver_curriculo: {

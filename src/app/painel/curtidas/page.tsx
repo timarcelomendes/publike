@@ -3,13 +3,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
+import { DesfazerMatch } from "@/components/desfazer-match";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { STATUS_ANUNCIO } from "@/lib/constantes";
-import { listarMinhasCurtidas } from "@/lib/dados";
+import { motivoParaOutro, nomeMotivoDesfazer, STATUS_ANUNCIO } from "@/lib/constantes";
+import { listarMeusDesfeitos, listarMinhasCurtidas } from "@/lib/dados";
 import { formatarLugar, rotuloConta, rotuloModalidade, tempoRelativo, valorDoAnuncio } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -25,8 +26,8 @@ export default function MinhasCurtidas() {
 
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
-  await exigirUsuario("/painel/curtidas");
-  const curtidas = await listarMinhasCurtidas();
+  const usuario = await exigirUsuario("/painel/curtidas");
+  const [curtidas, desfeitos] = await Promise.all([listarMinhasCurtidas(), listarMeusDesfeitos()]);
   const agora = await agoraDaRequisicao();
 
   if (curtidas.length === 0) {
@@ -47,6 +48,7 @@ async function Conteudo() {
               {c.status === "match" && <Selo variante="match">Deu match</Selo>}
               {c.status === "pendente" && <Selo variante="like">Aguardando resposta</Selo>}
               {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
+              {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
               <Selo>{rotuloModalidade(c.tipo, c.regime)}</Selo>
               {!noAr && (
                 <Selo variante="contorno">{STATUS_ANUNCIO[c.anuncio_status as StatusAnuncio]?.nome ?? "Fora do ar"}</Selo>
@@ -74,7 +76,15 @@ async function Conteudo() {
                   email={c.autor_email}
                   mensagem={`Olá! Deu match no Publike em “${c.titulo}”. Podemos conversar?`}
                 />
+                <DesfazerMatch anuncioId={c.anuncio_id} perfilId={usuario.id} outroNome={c.autor_nome} />
               </div>
+            )}
+            {c.status === "desfeito" && (
+              <p className="text-body-sm text-ink-muted">
+                {desfeitos.get(c.anuncio_id)?.porMim
+                  ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeitos.get(c.anuncio_id)?.motivo).toLowerCase()}.`
+                  : `${c.autor_nome.split(" ")[0]} desfez o match. Motivo: ${motivoParaOutro(desfeitos.get(c.anuncio_id)?.motivo)}.`}
+              </p>
             )}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-body-sm text-ink-muted">
               <span>Você curtiu {tempoRelativo(c.curtido_em, agora)}</span>
