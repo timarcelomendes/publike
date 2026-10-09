@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
-import { DesfazerMatch } from "@/components/desfazer-match";
+import { CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
@@ -80,11 +80,15 @@ async function Conteudo() {
               </div>
             )}
             {c.status === "desfeito" && (
-              <p className="text-body-sm text-ink-muted">
-                {desfeitos.get(c.anuncio_id)?.porMim
-                  ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeitos.get(c.anuncio_id)?.motivo).toLowerCase()}.`
-                  : `${c.autor_nome.split(" ")[0]} desfez o match. Motivo: ${motivoParaOutro(desfeitos.get(c.anuncio_id)?.motivo)}.`}
-              </p>
+              <div className="flex flex-col gap-2">
+                <p className="text-body-sm text-ink-muted">
+                  {desfeitos.get(c.anuncio_id)?.porMim
+                    ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeitos.get(c.anuncio_id)?.motivo).toLowerCase()}.`
+                    : `${c.autor_nome.split(" ")[0]} desfez o match. Motivo: ${motivoParaOutro(desfeitos.get(c.anuncio_id)?.motivo)}.`}
+                  {desfeitos.get(c.anuncio_id)?.futuro && " Dá para curtir de novo quando quiser."}
+                </p>
+                {desfeitos.get(c.anuncio_id)?.futuro && noAr && <CurtirDeNovo anuncioId={c.anuncio_id} />}
+              </div>
             )}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-body-sm text-ink-muted">
               <span>Você curtiu {tempoRelativo(c.curtido_em, agora)}</span>

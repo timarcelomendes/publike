@@ -242,7 +242,7 @@ export function FormAnuncio({
               <span className="block text-label">Pedir currículo</span>
               <span className="block text-body-sm text-ink-muted">
                 Quem curtir é convidado a preencher o currículo: estudos, experiências, cursos e CNH. Você vê na lista
-                de interessados.
+                de interessados, e só dá match com quem preencheu.
               </span>
             </span>
           </label>

@@ -49,7 +49,10 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/painel" className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink">
+        <Link
+          href="/painel"
+          className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
+        >
           <ArrowLeft aria-hidden className="size-4" />
           Meus anúncios
         </Link>
@@ -91,6 +94,8 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
             {interessados.map((p) => {
               const primeiroNome = p.nome.split(" ")[0];
               const curriculo = curriculos.get(p.perfil_id);
+              // vaga que pede currículo: o match espera a pessoa preencher
+              const semCurriculo = !servico && anuncio.pede_curriculo && !curriculo ? primeiroNome : null;
               const desfeito = p.status === "desfeito" ? desfeitos.get(p.perfil_id) : undefined;
               return (
                 <li
@@ -106,7 +111,9 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                         <Link href={`/perfil/${p.perfil_id}`} className="truncate underline-offset-2 hover:underline">
                           {p.nome}
                         </Link>
-                        {p.verificado && <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />}
+                        {p.verificado && (
+                          <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
+                        )}
                       </p>
                       <p className="text-body-sm text-ink-muted">
                         {rotuloConta(p.tipo)} · {formatarLugar(p.bairro, p.cidade)} · no Publike desde{" "}
@@ -117,10 +124,14 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                       </p>
                     </div>
                     {p.status === "match" && <Selo variante="match">Deu match</Selo>}
-                    {p.status === "dispensada" && <Selo variante="contorno">{servico ? "Recusado" : "Dispensado"}</Selo>}
+                    {p.status === "dispensada" && (
+                      <Selo variante="contorno">{servico ? "Recusado" : "Dispensado"}</Selo>
+                    )}
                     {p.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
                   </div>
-                  {p.mensagem && <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{p.mensagem}”</blockquote>}
+                  {p.mensagem && (
+                    <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{p.mensagem}”</blockquote>
+                  )}
                   {p.servicos.length > 0 && (
                     <div className="flex flex-wrap gap-1.5" aria-label="O que faz">
                       {p.servicos.map((s) => (
@@ -137,14 +148,18 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-label [&::-webkit-details-marker]:hidden">
                           <FileText aria-hidden className="size-4 shrink-0 text-ink-muted" />
                           Ver currículo
-                          <ChevronDown aria-hidden className="ml-auto size-4 text-ink-muted transition-transform group-open:rotate-180" />
+                          <ChevronDown
+                            aria-hidden
+                            className="ml-auto size-4 text-ink-muted transition-transform group-open:rotate-180"
+                          />
                         </summary>
                         <div className="border-t border-line p-3">
                           <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} />
                         </div>
                       </details>
                     ) : (
-                      anuncio.pede_curriculo && (
+                      anuncio.pede_curriculo &&
+                      p.status !== "pendente" && (
                         <p className="flex items-center gap-2 text-body-sm text-ink-muted">
                           <FileText aria-hidden className="size-4 shrink-0" />
                           {primeiroNome} ainda não preencheu o currículo.
@@ -153,31 +168,53 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                     ))}
                   <div className="border-t border-line pt-3">
                     {p.status === "desfeito" ? (
-                      <p className="text-body-sm text-ink-muted">
-                        {desfeito?.porMim
-                          ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeito.motivo).toLowerCase()}.`
-                          : `${primeiroNome} desfez o match. Motivo: ${motivoParaOutro(desfeito?.motivo)}.`}
-                      </p>
+                      <div className="flex flex-col gap-2">
+                        <p className="text-body-sm text-ink-muted">
+                          {desfeito?.porMim
+                            ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeito.motivo).toLowerCase()}.`
+                            : `${primeiroNome} desfez o match. Motivo: ${motivoParaOutro(desfeito?.motivo)}.`}{" "}
+                          {desfeito?.futuro
+                            ? desfeito.porMim
+                              ? "Você disse que topa negociar de novo."
+                              : `${primeiroNome} topa negociar em outro momento.`
+                            : ""}
+                        </p>
+                        {desfeito?.futuro && (
+                          <AcoesInteressado
+                            anuncioId={anuncio.id}
+                            perfilId={p.perfil_id}
+                            status="desfeito"
+                            servico={servico}
+                            semCurriculo={semCurriculo}
+                          />
+                        )}
+                      </div>
                     ) : p.status === "match" ? (
                       <div className="flex flex-col gap-2">
-                      <BotoesContato
-                        whatsapp={p.whatsapp}
-                        email={p.email}
-                        mensagem={
-                          servico
-                            ? `Olá, ${primeiroNome}! Aceitei seu pedido para “${anuncio.titulo}” no Publike. Vamos combinar?`
-                            : `Olá, ${primeiroNome}! Vi que você curtiu “${anuncio.titulo}” no Publike. Vamos conversar?`
-                        }
-                      />
-                      <DesfazerMatch
-                        anuncioId={anuncio.id}
-                        perfilId={p.perfil_id}
-                        outroNome={p.nome}
-                        autorDaVaga={!servico}
-                      />
+                        <BotoesContato
+                          whatsapp={p.whatsapp}
+                          email={p.email}
+                          mensagem={
+                            servico
+                              ? `Olá, ${primeiroNome}! Aceitei seu pedido para “${anuncio.titulo}” no Publike. Vamos combinar?`
+                              : `Olá, ${primeiroNome}! Vi que você curtiu “${anuncio.titulo}” no Publike. Vamos conversar?`
+                          }
+                        />
+                        <DesfazerMatch
+                          anuncioId={anuncio.id}
+                          perfilId={p.perfil_id}
+                          outroNome={p.nome}
+                          autorDaVaga={!servico}
+                        />
                       </div>
                     ) : (
-                      <AcoesInteressado anuncioId={anuncio.id} perfilId={p.perfil_id} status={p.status} servico={servico} />
+                      <AcoesInteressado
+                        anuncioId={anuncio.id}
+                        perfilId={p.perfil_id}
+                        status={p.status}
+                        servico={servico}
+                        semCurriculo={semCurriculo}
+                      />
                     )}
                   </div>
                 </li>

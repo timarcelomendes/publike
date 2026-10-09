@@ -46,7 +46,7 @@ const PERGUNTAS = [
   },
   {
     p: "Quem vê meu currículo?",
-    r: "Só quem anunciou uma vaga que você curtiu, enquanto a curtida existir. Ele não aparece no seu perfil público nem na busca. Você corrige ou apaga quando quiser, em Meu perfil.",
+    r: "Só quem anunciou uma vaga que você curtiu, enquanto a curtida existir. Se a vaga pede currículo, o match só acontece depois que você preencher o seu. Ele não aparece no seu perfil público nem na busca. Você corrige ou apaga quando quiser, em Meu perfil.",
   },
   {
     p: "O que é match?",
@@ -54,7 +54,7 @@ const PERGUNTAS = [
   },
   {
     p: "E se eu quiser desistir de um match?",
-    r: "Toque em “Desfazer match” no painel ou no anúncio. Escolha o motivo e escreva uma justificativa: a outra pessoa recebe um aviso só com o motivo, e a justificativa vai para a equipe do Publike. O WhatsApp some para os dois e o match não volta.",
+    r: "Toque em “Desfazer match” no painel ou no anúncio. Escolha o motivo e escreva uma justificativa: a outra pessoa recebe um aviso só com o motivo, e a justificativa vai para a equipe do Publike. O WhatsApp some para os dois. Você também diz se toparia negociar em outro momento: se sim, dá para dar match de novo mais para frente; se não, vocês não conseguem mais curtir os anúncios um do outro.",
   },
   {
     p: "Por que o telefone não aparece no anúncio?",

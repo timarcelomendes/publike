@@ -203,6 +203,7 @@ export type Database = {
           desfeito_por: string | null;
           desfeito_motivo: string | null;
           desfeito_em: string | null;
+          desfeito_futuro: boolean | null;
         };
         Insert: {
           anuncio_id: string;
@@ -425,7 +426,11 @@ export type Database = {
         }[];
       };
       desfazer_match: {
-        Args: { p_anuncio: string; p_perfil: string; p_motivo: string; p_justificativa: string };
+        Args: { p_anuncio: string; p_perfil: string; p_motivo: string; p_justificativa: string; p_futuro: boolean };
+        Returns: undefined;
+      };
+      curtir_de_novo: {
+        Args: { p_anuncio: string; p_mensagem?: string | null };
         Returns: undefined;
       };
       admin_matches_desfeitos: {
@@ -440,6 +445,7 @@ export type Database = {
           outro_nome: string | null;
           motivo: string;
           justificativa: string;
+          futuro: boolean;
           match_em: string | null;
           criado_em: string;
         }[];

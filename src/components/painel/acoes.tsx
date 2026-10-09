@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheckBig, Heart, Pause, Pencil, Play, RefreshCw, Trash, Undo2, X } from "lucide-react";
+import { CircleCheckBig, FileText, Heart, Pause, Pencil, Play, RefreshCw, Trash, Undo2, X } from "lucide-react";
 import { useState } from "react";
 import { excluirAnuncio, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
@@ -93,28 +93,40 @@ export function AcoesInteressado({
   perfilId,
   status,
   servico = false,
+  semCurriculo = null,
 }: {
   anuncioId: string;
   perfilId: string;
   status: string;
   servico?: boolean;
+  /** vaga pede currículo e a pessoa ainda não preencheu: nome dela (o match espera) */
+  semCurriculo?: string | null;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
+  const aguardando = semCurriculo !== null && (status === "pendente" || status === "desfeito");
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
+        {aguardando && (
+          <p className="flex min-h-11 items-center gap-2 rounded-pill bg-surface-300 px-4 text-label text-ink-muted">
+            <FileText aria-hidden className="size-[18px]" />
+            Aguardando o currículo
+          </p>
+        )}
         {status === "pendente" && (
           <>
-            <button
-              type="button"
-              disabled={pendente}
-              onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "match"))}
-              className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
-            >
-              <Heart aria-hidden className="size-[18px] text-like" />
-              {servico ? "Aceitar" : "Curtir de volta"}
-            </button>
+            {!aguardando && (
+              <button
+                type="button"
+                disabled={pendente}
+                onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "match"))}
+                className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
+              >
+                <Heart aria-hidden className="size-[18px] text-like" />
+                {servico ? "Aceitar" : "Curtir de volta"}
+              </button>
+            )}
             <Botao
               variante="fantasma"
               tamanho="sm"
@@ -125,6 +137,17 @@ export function AcoesInteressado({
               {servico ? "Recusar" : "Dispensar"}
             </Botao>
           </>
+        )}
+        {status === "desfeito" && !aguardando && (
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "match"))}
+            className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
+          >
+            <Heart aria-hidden className="size-[18px] text-like" />
+            Dar match de novo
+          </button>
         )}
         {status === "dispensada" && (
           <Botao
@@ -138,6 +161,12 @@ export function AcoesInteressado({
           </Botao>
         )}
       </div>
+      {aguardando && (
+        <p className="text-body-sm text-ink-muted">
+          Esta vaga pede currículo: o match fica liberado quando {semCurriculo} preencher o currículo. O convite para
+          preencher já aparece para a pessoa.
+        </p>
+      )}
       {mensagem}
     </div>
   );

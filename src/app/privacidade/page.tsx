@@ -155,7 +155,7 @@ export default function Privacidade() {
               "Nada de discriminação por cor, gênero, idade, religião, orientação sexual, deficiência ou origem.",
               "Vagas e serviços precisam ser reais, legais e com informação verdadeira. As fotos de trabalhos precisam ser de serviços que a pessoa fez.",
               "Não escreva telefone, e-mail ou links no anúncio: o contato aparece no match.",
-              "Desfazer match: qualquer um dos dois pode desistir, dizendo o motivo e escrevendo uma justificativa. A outra pessoa vê só o motivo; a justificativa fica com a equipe, que pode usá-la para avaliar uma conta. O contato some para os dois na hora.",
+              "Desfazer match: qualquer um dos dois pode desistir, dizendo o motivo e escrevendo uma justificativa. A outra pessoa vê só o motivo; a justificativa fica com a equipe, que pode usá-la para avaliar uma conta. O contato some para os dois na hora. Quem desfaz diz se toparia negociar de novo: se não, os dois deixam de conseguir curtir os anúncios um do outro.",
               "Avaliações: só avalia quem deu match com o serviço. Crítica honesta é bem-vinda, mesmo negativa. Ofensa, ameaça, discriminação ou dados pessoais de alguém não são publicados, e quem escreveu leva uma advertência.",
               "Nada de conteúdo ofensivo, spam ou anúncio repetido.",
               "Trabalho de menores de 16 anos é proibido, exceto como aprendiz a partir dos 14. Trabalho noturno, perigoso ou insalubre, só a partir dos 18.",

@@ -113,9 +113,10 @@ export async function desfazerMatch(_anterior: EstadoForm, formData: FormData): 
     p_perfil: d.perfil,
     p_motivo: d.motivo,
     p_justificativa: d.justificativa,
+    p_futuro: d.futuro === "sim",
   });
   if (error) {
-    const campo = error.hint === "motivo" || error.hint === "justificativa" ? error.hint : null;
+    const campo = error.hint === "motivo" || error.hint === "justificativa" || error.hint === "futuro" ? error.hint : null;
     const erro = mensagemDeErro(error, "Não foi possível desfazer o match agora.");
     return campo ? { ok: false, erro, erros: { [campo]: erro } } : { ok: false, erro };
   }
@@ -123,4 +124,22 @@ export async function desfazerMatch(_anterior: EstadoForm, formData: FormData): 
   after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Match desfeito. O contato não aparece mais para nenhum dos dois." };
+}
+
+/** Curtir de novo um anúncio cujo match foi desfeito com "topo negociar depois". */
+export async function curtirDeNovo(anuncioId: string, mensagem: string | null = null): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Anúncio não encontrado." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: `/entrar?next=/anuncio/${anuncioId}` };
+  const texto = (mensagem ?? "").trim().slice(0, 280) || null;
+  if (temContato(texto)) {
+    return { ok: false, erro: "Tire o telefone ou e-mail da mensagem. O contato aparece sozinho quando der match." };
+  }
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("curtir_de_novo", { p_anuncio: anuncioId, p_mensagem: texto });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível curtir de novo agora.") };
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Pronto! Se a outra pessoa topar, dá match de novo." };
 }

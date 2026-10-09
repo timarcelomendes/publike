@@ -7,7 +7,7 @@ import { useState, useTransition } from "react";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import { BotoesContato } from "../contato";
-import { DesfazerMatch } from "../desfazer-match";
+import { CurtirDeNovo, DesfazerMatch } from "../desfazer-match";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
@@ -30,7 +30,7 @@ type Props = {
   /** nome de quem publicou */
   autorNome?: string;
   /** match desfeito: por quem e por quê */
-  desfeito?: { porMim: boolean; motivo: string | null } | null;
+  desfeito?: { porMim: boolean; motivo: string | null; futuro: boolean } | null;
 };
 
 /** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
@@ -53,7 +53,9 @@ function ConviteCurriculo({ anuncioId, forte }: { anuncioId: string; forte: bool
         <FileText aria-hidden className="size-4 shrink-0" />
         Esta vaga pede currículo
       </p>
-      <p className="text-body-sm">Preencha o seu: leva uns 3 minutos e quem publicou vê junto com o seu perfil.</p>
+      <p className="text-body-sm">
+        Quem publicou só consegue dar match depois que você preencher o seu. Leva uns 3 minutos.
+      </p>
       <Link
         href={href}
         className="inline-flex min-h-11 items-center justify-center rounded-md bg-terra px-4 text-label text-on-terra hover:bg-terra-hover"
@@ -158,7 +160,12 @@ export function PainelCurtir({
             ? `Você desfez este match. Motivo: ${nomeMotivoDesfazer(desfeito.motivo).toLowerCase()}.`
             : `${servico ? "O profissional" : "Quem publicou"} desfez o match. Motivo: ${motivoParaOutro(desfeito?.motivo)}.`}{" "}
           O contato não aparece mais.
+          {desfeito?.futuro &&
+            (desfeito.porMim
+              ? " Você disse que topa negociar de novo: se mudar de ideia, curta outra vez."
+              : " Mas topa negociar em outro momento: se ainda tiver interesse, curta de novo.")}
         </p>
+        {desfeito?.futuro && <CurtirDeNovo anuncioId={anuncioId} />}
         {podeAvaliar && (
           <Link
             href={`/anuncio/${anuncioId}/avaliar`}
@@ -234,9 +241,9 @@ export function PainelCurtir({
                 "O seu vai junto quando você curtir."
               ) : (
                 <>
-                  Dá para{" "}
+                  O match só acontece com currículo preenchido:{" "}
                   <Link href={`/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`} className="underline">
-                    preencher o seu
+                    preencha o seu
                   </Link>{" "}
                   antes ou depois de curtir.
                 </>

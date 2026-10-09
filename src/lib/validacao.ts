@@ -406,6 +406,7 @@ export const esquemaDesfazerMatch = z.object({
   anuncio: z.string().regex(UUID, { error: "Match não encontrado." }),
   perfil: z.string().regex(UUID, { error: "Match não encontrado." }),
   motivo: z.enum(VALORES_MOTIVO_DESFAZER, { error: "Escolha o motivo." }),
+  futuro: z.enum(["sim", "nao"], { error: "Responda se toparia negociar em outro momento." }),
   justificativa: z
     .string({ error: "Explique por que está desfazendo." })
     .transform((t) => t.replace(/\s+/g, " ").trim())
@@ -422,6 +423,7 @@ export function lerDesfazerMatch(formData: FormData) {
     anuncio: campo(formData, "anuncio") ?? "",
     perfil: campo(formData, "perfil") ?? "",
     motivo: campo(formData, "motivo"),
+    futuro: campo(formData, "futuro"),
     justificativa: campo(formData, "justificativa") ?? "",
   });
   if (leitura.success) return { ok: true as const, dados: leitura.data };

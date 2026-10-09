@@ -13,11 +13,11 @@ Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real)
 - **Busca por perto**: mapa e lista, filtros (vaga ou serviço, categoria, contratação, distância, ordem) e "Perto de mim".
 - **Publicar** vaga (CLT, temporário, diária, bico, estágio, PJ) ou serviço, com a região marcada no mapa. O endereço exato nunca é salvo: o ponto vira uma área de uns 500 m.
 - **Curtir e dar match**: quem trabalha curte (com mensagem opcional), quem publicou curte de volta, e o WhatsApp dos dois aparece só aí.
-- **Desfazer match**: qualquer lado desiste com motivo e justificativa obrigatórios. O contato some para os dois; a outra pessoa vê o motivo, a equipe vê a justificativa na ficha da pessoa (e recebe aviso quando o motivo é comportamento).
+- **Desfazer match**: qualquer lado desiste com motivo e justificativa obrigatórios, e responde se toparia negociar em outro momento. O contato some para os dois; a outra pessoa vê o motivo, a equipe vê a justificativa na ficha da pessoa (e recebe aviso quando o motivo é comportamento). "Sim" deixa curtir e dar match de novo; "Não" bloqueia os dois de curtir os anúncios um do outro.
 - **Painel**: meus anúncios (pausar, encerrar, renovar, editar, excluir), quem curtiu, minhas curtidas e matches, mais o sino de avisos em tempo real.
 - **Login sem senha**: e-mail (link mágico), Google, Facebook, LinkedIn e celular (SMS). Só o e-mail vem ligado; os outros você ativa quando quiser.
 - **Perfil** com foto, "o que eu faço" e contato privado, e um **perfil público**.
-- **Currículo** para vagas CLT, estágio e temporárias: estudos, experiências, cursos, CNH, disponibilidade e PDF opcional (Storage privado). Só vê quem anunciou uma vaga que a pessoa curtiu; a vaga pode marcar "Pedir currículo".
+- **Currículo** para vagas CLT, estágio e temporárias: estudos, experiências, cursos, CNH, disponibilidade e PDF opcional (Storage privado). Só vê quem anunciou uma vaga que a pessoa curtiu; a vaga pode marcar "Pedir currículo", e aí só dá match com quem preencheu o currículo.
 - **Admin** (só no seu computador): números do site, contas (suspender por 7 ou 30 dias, banir, reativar, selo de verificado), anúncios (corrigir, remover com motivo, apagar), denúncias, e-mails do site com textos editáveis, IA, moderadores e chaves.
 - **E-mails do site** pelo Zoho: curtida, match, moderação e conta para quem usa o site; nova denúncia, novo cadastro e anúncio tirado do ar para a equipe.
 - **IA (OpenAI)**: revisa cada anúncio novo e tira do ar o que parece golpe, cobrança, discriminação ou trabalho infantil; botão "Melhorar texto" ao publicar; resumo da semana no admin.
@@ -160,7 +160,7 @@ Por fim, rode `supabase/migrations/20261009200000_curriculos.sql`. Ela cria o cu
 
 Depois, `supabase/migrations/20261009210000_config_where.sql`: corrige o **Salvar configurações** de E-mails e de IA no admin (o Supabase barra `UPDATE` sem `WHERE` pela API).
 
-E `supabase/migrations/20261009230000_desfazer_match.sql`: o "Desfazer match", com motivo e justificativa (a justificativa só a equipe vê, em Admin > Usuários > ficha da pessoa).
+E `supabase/migrations/20261009230000_desfazer_match.sql`: o "Desfazer match", com motivo e justificativa (a justificativa só a equipe vê, em Admin > Usuários > ficha da pessoa). Depois dela, `20261009240000_negociar_depois.sql` (a pergunta "toparia negociar em outro momento?" e a regra de que vaga que pede currículo só dá match com quem preencheu).
 
 ### 4.2 Abrir o admin (só no seu computador)
 
@@ -330,7 +330,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql` e `20261009230000_desfazer_match.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql`, `20261009230000_desfazer_match.sql` e `20261009240000_negociar_depois.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

@@ -218,6 +218,15 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
                   )}{" "}
                   · {nomeMotivoDesfazer(d.motivo)}
                 </span>
+                <span className="text-ink-muted">
+                  {d.fez
+                    ? d.futuro
+                      ? "Disse que topa negociar de novo."
+                      : "Disse que não quer negociar de novo (os dois ficaram bloqueados)."
+                    : d.futuro
+                      ? "Quem desfez topa negociar de novo."
+                      : "Quem desfez não quer negociar de novo (os dois ficaram bloqueados)."}
+                </span>
                 <span>“{d.justificativa}”</span>
                 <span className="text-ink-muted">
                   {formatarDataHora(d.criado_em)} · {d.tipo_anuncio === "servico" ? "serviço" : "vaga"} “{d.titulo}”
