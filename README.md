@@ -1,6 +1,6 @@
 # Publike
 
-**Trabalho perto de casa. De graça.**
+**Vagas, freelances e serviços perto de você. De graça.**
 
 Site do Publike, uma ferramenta do povo para gerar emprego em Goiânia e região: quem procura acha vaga, diária ou freelance perto de casa (com a distância e o tempo de ônibus), e empresas de qualquer tamanho, do MEI à indústria, acham profissionais que moram perto. Quem precisa publica, quem faz curte, e quando os dois se curtem (match) o WhatsApp aparece. A missão está em `/missao`.
 

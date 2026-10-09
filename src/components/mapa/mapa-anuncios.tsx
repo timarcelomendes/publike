@@ -230,7 +230,7 @@ export function MapaAnuncios({ pontos, filtros }: { pontos: PontoMapa[]; filtros
       )}
       {falhou && (
         <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md bg-surface-200 p-4 text-center text-body-sm text-ink-muted shadow-card">
-          Não foi possível carregar o mapa agora. A lista ao lado continua funcionando.
+          Não foi possível carregar o mapa agora. A lista continua funcionando: escolha Grade ou Blocos.
         </p>
       )}
       <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex gap-3 rounded-pill bg-surface-200/95 px-3 py-1.5 text-caption text-ink shadow-card">

@@ -227,3 +227,11 @@ export async function consultarCep(valor: string, num?: string | null): Promise<
     precisao: achou?.precisao ?? null,
   };
 }
+
+/** Ponto do meio de um bairro (para medir a distância de quem não deu o CEP). */
+export async function centroDoBairro(bairro: string, cidade: string): Promise<Ponto | null> {
+  const b = texto(bairro);
+  if (!b || !cidadeDaLista(cidade)) return null;
+  const r = await procurarNoMapa({ q: `${b}, ${cidade}, Goiás, Brasil` });
+  return r ? { lat: Math.round(r.ponto.lat * 1e4) / 1e4, lng: Math.round(r.ponto.lng * 1e4) / 1e4 } : null;
+}

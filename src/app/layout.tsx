@@ -23,7 +23,7 @@ const bricolage = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Publike · Trabalho perto de casa em Goiânia e região",
+    default: "Publike · Vagas, freelances e serviços perto de você",
     template: "%s · Publike",
   },
   description:

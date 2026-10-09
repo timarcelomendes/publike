@@ -14,7 +14,9 @@ export function lerCookieLocal(valor: string | undefined): Local | null {
     const [lat, lng] = (p.get("p") ?? "").split(",").map(Number);
     const ponto = Number.isFinite(lat) && Number.isFinite(lng) && p.get("p") ? arredondarCasa({ lat, lng }) : null;
     const cep = /^\d{8}$/.test(p.get("z") ?? "") ? p.get("z") : null;
-    return criarLocal(p.get("c") ?? "", p.get("b") ?? "", "busca", { cep, ponto });
+    const [clat, clng] = (p.get("m") ?? "").split(",").map(Number);
+    const centro = p.get("m") && Number.isFinite(clat) && Number.isFinite(clng) ? { lat: clat, lng: clng } : null;
+    return criarLocal(p.get("c") ?? "", p.get("b") ?? "", "busca", { cep: ponto ? cep : null, ponto: cep ? ponto : null, centro });
   } catch {
     return null;
   }
@@ -26,6 +28,8 @@ export function valorCookieLocal(local: Local) {
     const r = arredondarCasa(local.ponto);
     p.set("p", `${r.lat},${r.lng}`);
     p.set("z", local.cep);
+  } else if (local.centro) {
+    p.set("m", `${local.centro.lat},${local.centro.lng}`);
   }
   return encodeURIComponent(p.toString());
 }

@@ -31,6 +31,7 @@ function partirDoLocal(filtros: Filtros, local: Local | null): Filtros {
 function textoDaOrigem(filtros: Filtros, local: Local | null) {
   if (!local || filtros.origem !== "centro") return descreverOrigem(filtros.origem);
   if (local.ponto) return "da sua casa";
+  if (local.centro) return `do meio de ${local.bairro}`;
   return local.regiao ? `da Região ${local.regiao} de Goiânia` : `do centro de ${local.cidade}`;
 }
 
@@ -81,7 +82,8 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
 
   const lista =
     n > 0 ? (
-      <div className="grid gap-4 sm:grid-cols-2">
+      // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas (ver VisaoExplorar)
+      <div className="grid gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4">
         {anuncios.map((a) => (
           <CardAnuncio
             key={a.id}

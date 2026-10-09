@@ -12,16 +12,13 @@ export function HeroInicio() {
         <Selo variante="novo">Grátis</Selo>
         <span className="text-body-sm text-ink-muted">Goiânia e região</span>
       </div>
-      <h1 className="mt-3 max-w-3xl text-h1 sm:text-display">Trabalho perto de casa.</h1>
+      <h1 className="mt-3 max-w-3xl text-h1 sm:text-display">Trabalho perto de você.</h1>
       <p className="mt-2 max-w-2xl text-body text-ink-muted sm:mt-3 sm:text-body-lg">
-        Vagas, diárias e freelances no seu bairro, e empresas de todos os tamanhos achando gente que mora perto.
-        <span className="hidden sm:inline">
-          {" "}
-          Menos tempo no ônibus, mais emprego em Goiânia.{" "}
-          <Link href="/missao" className="text-ink underline underline-offset-2 hover:text-terra-text">
-            Nossa missão
-          </Link>
-        </span>
+        Vagas com carteira, diárias, freelances e profissionais do bairro.
+        <span className="hidden sm:inline"> Curtiu, deu match, vocês conversam.</span>{" "}
+        <Link href="/missao" className="text-ink underline underline-offset-2 hover:text-terra-text">
+          Nossa missão
+        </Link>
       </p>
     </>
   );

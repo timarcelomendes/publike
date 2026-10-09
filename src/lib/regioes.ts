@@ -110,17 +110,27 @@ export type Local = {
   fonte: "casa" | "busca" | "perfil";
   cep?: string | null;
   ponto?: { lat: number; lng: number } | null;
+  /** sem CEP: o meio do bairro, achado no mapa quando a pessoa escolheu o bairro */
+  centro?: { lat: number; lng: number } | null;
 };
 
 export function criarLocal(
   cidade: string,
   bairro: string,
   fonte: Local["fonte"],
-  extra: { cep?: string | null; ponto?: { lat: number; lng: number } | null } = {},
+  extra: { cep?: string | null; ponto?: { lat: number; lng: number } | null; centro?: { lat: number; lng: number } | null } = {},
 ): Local | null {
   if (!(CIDADES as readonly string[]).includes(cidade)) return null;
   const b = bairro.replace(/\s+/g, " ").trim().slice(0, 60);
-  return { cidade: cidade as Cidade, bairro: b, regiao: regiaoDoBairro(cidade, b), fonte, cep: extra.cep ?? null, ponto: extra.ponto ?? null };
+  return {
+    cidade: cidade as Cidade,
+    bairro: b,
+    regiao: regiaoDoBairro(cidade, b),
+    fonte,
+    cep: extra.cep ?? null,
+    ponto: extra.ponto ?? null,
+    centro: extra.ponto ? null : (extra.centro ?? null),
+  };
 }
 
 /** Arredonda o ponto de casa para uma grade de ~300 m (nunca guardamos a porta). */
@@ -129,9 +139,10 @@ export function arredondarCasa(p: { lat: number; lng: number }) {
   return { lat: r(p.lat), lng: r(p.lng) };
 }
 
-/** Ponto de partida das distâncias: a casa (pelo CEP) ou o centro da região/cidade. */
+/** Ponto de partida das distâncias: a casa (pelo CEP), o meio do bairro ou o centro da região/cidade. */
 export function pontoDoLocal(local: Local) {
   if (local.ponto) return local.ponto;
+  if (local.centro) return local.centro;
   return local.regiao ? CENTRO_REGIAO[local.regiao] : CENTRO_CIDADE[local.cidade];
 }
 

@@ -7,7 +7,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { COOKIE_LOCAL, valorCookieLocal } from "@/lib/local";
 import { arredondarCasa, criarLocal } from "@/lib/regioes";
-import { consultarCep } from "@/lib/servidor/cep";
+import { centroDoBairro, consultarCep } from "@/lib/servidor/cep";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
@@ -70,6 +70,11 @@ export async function salvarLocal(cidade: string, bairro: string, cep?: string |
     await supabase.from("casas").delete().not("perfil_id", "is", null);
   }
 
+  // sem CEP: acha o meio do bairro, para as distâncias não saírem do centro da região
+  if (!local.ponto && local.bairro) {
+    const centro = await centroDoBairro(local.bairro, local.cidade).catch(() => null);
+    if (centro) local = { ...local, centro };
+  }
   await guardarNoNavegador(valorCookieLocal(local));
   refresh();
   return { ok: true };
