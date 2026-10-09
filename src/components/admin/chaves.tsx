@@ -28,7 +28,7 @@ export function FormNovaChave() {
           <input
             {...ligarCampo("nome", estado.erros?.nome, true)}
             maxLength={60}
-            placeholder="Ex.: Render"
+            placeholder="Ex.: Vercel"
             className={classesEntrada}
           />
         </Campo>
@@ -41,7 +41,7 @@ export function FormNovaChave() {
       {estado.chave && (
         <Aviso tipo="alerta" titulo={`Chave “${estado.nome}” criada. Copie agora: ela não aparece de novo.`}>
           <p>
-            Cole esta linha nas variáveis de ambiente da hospedagem (no Render: Environment) e
+            Cole esta linha nas variáveis de ambiente da hospedagem (na Vercel: Settings › Environment Variables) e
             publique o site de novo. Não mande a chave por chat nem e-mail.
           </p>
           <code className="mt-2 block rounded-sm bg-surface-200 p-3 font-mono text-body-sm break-all select-all">{linha}</code>

@@ -317,7 +317,7 @@ export async function criarChaveServidor(_anterior: EstadoChave, formData: FormD
   if (!c) return { ok: false, erro: FORA };
   const nome = texto(formData, "nome");
   if (nome.length < 2 || nome.length > 60) {
-    return { ok: false, erro: "Dê um nome para a chave.", erros: { nome: "Por exemplo: Render." } };
+    return { ok: false, erro: "Dê um nome para a chave.", erros: { nome: "Por exemplo: Vercel." } };
   }
   const chave = `publike_${randomBytes(32).toString("base64url")}`;
   const hash = createHash("sha256").update(chave, "utf8").digest("hex");
