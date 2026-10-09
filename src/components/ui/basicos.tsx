@@ -149,8 +149,9 @@ export function Vazio({
 // variável dentro da animação (o Safari não atualiza var() em @keyframes).
 // Em vez de mudar a cor, o li ink e o li vermelho trocam de opacidade.
 const ESTILO_LOGO =
-  ".lk-i{fill:#1f1a14}" +
-  "@media (prefers-color-scheme:dark){.lk-i{fill:#ffffff}}" +
+  ".lk-i{fill:#1f1a14}.lk-c{fill:#ffffff}" +
+  // no escuro o pino fica branco e o coração vazado mostra o fundo
+  "@media (prefers-color-scheme:dark){.lk-i{fill:#ffffff}.lk-c{fill:none}}" +
   ".lk-li-i{animation:lk-sai 4.8s ease-in-out infinite}" +
   ".lk-li-r{opacity:0;animation:lk-entra 4.8s ease-in-out infinite}" +
   "@keyframes lk-sai{0%,37.5%{opacity:1}50%,87.5%{opacity:0}100%{opacity:1}}" +
@@ -159,7 +160,7 @@ const ESTILO_LOGO =
   "@media (prefers-reduced-motion:reduce){.lk-anim{display:none}.lk-meio{display:inline}}";
 
 /**
- * A assinatura (o p é o pino, com o coração vermelho), desenhada aqui mesmo para o "li" poder se mexer:
+ * A assinatura (o p é o pino, com o coração branco), desenhada aqui mesmo para o "li" poder se mexer:
  * ele troca entre ink (lê-se publi) e vermelho (lê-se like), 1,8 s em cada
  * leitura e 0,6 s de troca. Parado (`animado={false}`) e para quem pede menos
  * movimento, o li fica meio a meio. No tema escuro, o ink vira branco.
@@ -183,9 +184,9 @@ export function Logo({ altura = 32, className = "", animado = true }: { altura?:
       className={`logo-publike block ${className}`}
     >
       <style>{ESTILO_LOGO}</style>
-      {/* o p é o pino, na cor do texto, com o coração vermelho */}
+      {/* o p é o pino, na cor do texto, com o coração branco (vazado no escuro) */}
       <path d={LOGO.pino} className="lk-i" fillRule="evenodd" />
-      <path d={LOGO.coracao} fill="#e0192d" />
+      <path d={LOGO.coracao} className="lk-c" />
       <path d={LOGO.ub} className="lk-i" />
       {animado ? (
         <>

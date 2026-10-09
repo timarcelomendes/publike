@@ -1,6 +1,6 @@
 /**
  * Caminhos da assinatura (viewBox 0 0 659 217): o pino é o p de publike.
- * pino = contorno com o coração vazado; coracao = o coração (vermelho, por cima);
+ * pino = contorno com o coração vazado; coracao = o coração (branco, por cima; no escuro fica vazado);
  * ub = "ub"; li = o li inteiro; liCima/liBaixo = o li cortado na metade da altura do x; ke = "ke".
  */
 export const LOGO_LARGURA = 659;
