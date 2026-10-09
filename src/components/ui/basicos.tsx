@@ -2,6 +2,7 @@ import { CircleAlert, CircleCheck, Info, TriangleAlert, type LucideIcon } from "
 import Image from "next/image";
 import type { ComponentProps, ReactNode } from "react";
 import { iniciais, urlDaFoto } from "@/lib/formato";
+import { LOGO } from "./logo-caminhos";
 
 export function Container({ className = "", ...props }: ComponentProps<"div">) {
   return <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 ${className}`} {...props} />;
@@ -144,14 +145,42 @@ export function Vazio({
 
 // ------------------------------------------------------------------ Logo
 
-/** A assinatura em SVG, com a versão escura no tema escuro. */
-export function Logo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
+/**
+ * A assinatura, desenhada aqui mesmo (sem arquivo) para o "li" poder se mexer:
+ * ele troca entre ink (lê-se publi) e vermelho (lê-se like), 1,8 s em cada
+ * leitura e 0,6 s de troca. Parado (`animado={false}`) e para quem pede menos
+ * movimento, o li fica meio a meio. No tema escuro, o ink vira branco.
+ * Regras e arquivos: guia da marca (public/logo/).
+ */
+export function Logo({ altura = 32, className = "", animado = true }: { altura?: number; className?: string; animado?: boolean }) {
   const largura = Math.round((altura * 806) / 217);
+  const meio = (
+    <>
+      <path d={LOGO.liBaixo} fill="#e0192d" />
+      <path d={LOGO.liCima} className="logo-ink" />
+    </>
+  );
   return (
-    <picture className={className}>
-      <source media="(prefers-color-scheme: dark)" srcSet="/logo/publike-logo-escuro.svg" />
-      <img src="/logo/publike-logo.svg" alt="Publike" width={largura} height={altura} className="block" />
-    </picture>
+    <svg
+      viewBox="0 0 806 217"
+      width={largura}
+      height={altura}
+      role="img"
+      aria-label="Publike"
+      className={`logo-publike block ${className}`}
+    >
+      <path d={LOGO.simbolo} fill="#e0192d" />
+      <path d={LOGO.pub} className="logo-ink" />
+      {animado ? (
+        <>
+          <g className="logo-meio">{meio}</g>
+          <path d={LOGO.li} className="logo-li" />
+        </>
+      ) : (
+        meio
+      )}
+      <path d={LOGO.ke} fill="#e0192d" />
+    </svg>
   );
 }
 
