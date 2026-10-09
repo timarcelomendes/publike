@@ -49,6 +49,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
       ) : (
         <FormAnuncio
           ia={ia}
+          agencia={anuncio.autor_tipo === "agencia"}
           inicial={{
             id: anuncio.id,
             tipo: anuncio.tipo as TipoAnuncio,
@@ -62,6 +63,8 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
             horario: anuncio.horario,
             vagas: anuncio.vagas,
             pede_curriculo: anuncio.pede_curriculo,
+            contratante: anuncio.contratante,
+            contratante_confidencial: anuncio.contratante_confidencial,
             cidade: anuncio.cidade,
             bairro: anuncio.bairro,
             lat: anuncio.lat,

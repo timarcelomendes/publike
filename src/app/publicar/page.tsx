@@ -38,7 +38,9 @@ async function Conteudo() {
   }
   const { perfil } = await exigirPerfilCompleto("/publicar");
   const ia = await ajudaDaIADisponivel();
-  return <FormAnuncio inicial={vazio(perfil.cidade, perfil.bairro ?? "")} ia={ia} />;
+  return (
+    <FormAnuncio inicial={vazio(perfil.cidade, perfil.bairro ?? "")} ia={ia} agencia={perfil.tipo === "agencia"} />
+  );
 }
 
 function vazio(cidade: string, bairro: string) {

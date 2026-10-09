@@ -109,6 +109,9 @@ async function Conteudo({
 
       <Secao titulo="O anúncio">
         <dl className="flex flex-col gap-3">
+          {(anuncio.contratante || anuncio.contratante_confidencial) && (
+            <Dado rotulo="Empresa contratante">{anuncio.contratante ?? "Confidencial"}</Dado>
+          )}
           <Dado rotulo="Valor">{valorDoAnuncio(anuncio)}</Dado>
           {anuncio.horario && <Dado rotulo="Horário">{anuncio.horario}</Dado>}
           {anuncio.tipo === "vaga" && <Dado rotulo="Vagas">{anuncio.vagas}</Dado>}

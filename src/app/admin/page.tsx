@@ -7,6 +7,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { GraficoDias, Ranking } from "@/components/admin/grafico";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
+import { Aviso } from "@/components/ui/basicos";
 import { categoria } from "@/lib/constantes";
 import { configDoSite, listarChavesServidor, numerosDoPainel, registroDaEquipe, ultimoResumo } from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
@@ -73,6 +74,18 @@ async function Conteudo() {
             )}
           </div>
         </Secao>
+      )}
+
+      {n.perfis.agencias_a_verificar > 0 && (
+        <Aviso
+          tipo="info"
+          titulo={`${plural(n.perfis.agencias_a_verificar, "agência espera", "agências esperam")} a conferência do CNPJ`}
+        >
+          Verificada, a agência pode ter mais vagas no ar.{" "}
+          <Link href="/admin/usuarios?filtro=agencias_a_verificar" className="underline">
+            Conferir agora
+          </Link>
+        </Aviso>
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -171,11 +184,12 @@ async function Conteudo() {
       </div>
 
       <Secao titulo="Contas">
-        <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-4 lg:grid-cols-7">
           {[
             ["Pessoas", n.perfis.pessoa],
             ["Comércios", n.perfis.comercio],
             ["Empresas", n.perfis.empresa],
+            ["Agências", n.perfis.agencia ?? 0],
             ["Verificadas", n.perfis.verificados],
             ["Sem perfil", n.sem_perfil],
             ["Entraram em 7 dias", n.acessos_7d],

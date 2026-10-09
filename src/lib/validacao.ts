@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cnpjValido, limparCnpj } from "./cnpj";
 import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
 import {
@@ -94,6 +95,8 @@ export function errosPorCampo(erro: z.ZodError) {
 
 // ---------------------------------------------------------------- anúncio
 
+const SEM_CONTRATANTE = "Diga para qual empresa é a vaga ou marque “Empresa confidencial”.";
+
 export const esquemaAnuncio = z
   .object({
     tipo: z.enum(["vaga", "servico"], { error: "Escolha se é uma vaga ou um serviço." }),
@@ -107,6 +110,14 @@ export const esquemaAnuncio = z
     beneficios: opcional(120),
     horario: opcional(120),
     pede_curriculo: z.boolean(),
+    /** quem publica é agência de emprego: a vaga diz a empresa contratante (ou que é confidencial) */
+    agencia: z.boolean(),
+    contratante: z
+      .string()
+      .trim()
+      .max(80, { error: "Use no máximo 80 letras." })
+      .refine((t) => !temContato(t), { error: "Tire o telefone, e-mail ou site do nome da empresa." }),
+    contratante_confidencial: z.boolean(),
     vagas: z
       .number({ error: "Informe quantas pessoas." })
       .int({ error: "Use um número inteiro." })
@@ -130,6 +141,13 @@ export const esquemaAnuncio = z
     if (d.tipo === "vaga" && !d.regime) {
       ctx.addIssue({ code: "custom", path: ["regime"], message: "Escolha o tipo de contratação." });
     }
+    if (d.tipo === "vaga" && d.agencia && !d.contratante_confidencial && d.contratante.length < 2) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["contratante"],
+        message: d.contratante ? "Use pelo menos 2 letras." : SEM_CONTRATANTE,
+      });
+    }
     if (!d.combinar) {
       if (d.pagamento_valor == null || Number.isNaN(d.pagamento_valor)) {
         ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Informe o valor ou marque “A combinar”." });
@@ -148,6 +166,9 @@ export const esquemaAnuncio = z
     pagamento_unidade: d.combinar ? null : d.pagamento_unidade,
     vagas: d.tipo === "vaga" ? d.vagas : 1,
     pede_curriculo: d.tipo === "vaga" && d.pede_curriculo,
+    contratante:
+      d.tipo === "vaga" && d.agencia && !d.contratante_confidencial ? d.contratante.replace(/\s+/g, " ") : null,
+    contratante_confidencial: d.tipo === "vaga" && d.agencia && d.contratante_confidencial,
   }));
 
 export type DadosAnuncio = z.output<typeof esquemaAnuncio>;
@@ -162,6 +183,9 @@ function coordenada(valor: string | null) {
 function errosCruzados(bruto: Record<string, unknown>) {
   const erros: Record<string, string> = {};
   if (bruto.tipo === "vaga" && !bruto.regime) erros.regime = "Escolha o tipo de contratação.";
+  if (bruto.tipo === "vaga" && bruto.agencia && !bruto.contratante_confidencial && !String(bruto.contratante).trim()) {
+    erros.contratante = SEM_CONTRATANTE;
+  }
   if (!bruto.combinar) {
     const valor = bruto.pagamento_valor as number | null;
     if (valor == null || Number.isNaN(valor)) erros.pagamento_valor = "Informe o valor ou marque “A combinar”.";
@@ -186,6 +210,9 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     beneficios: campo(formData, "beneficios") ?? "",
     horario: campo(formData, "horario") ?? "",
     pede_curriculo: campo(formData, "pede_curriculo") === "on",
+    agencia: campo(formData, "agencia") === "1",
+    contratante: campo(formData, "contratante") ?? "",
+    contratante_confidencial: campo(formData, "contratante_confidencial") === "on",
     vagas: Number(campo(formData, "vagas") || "1"),
     cidade: campo(formData, "cidade"),
     bairro: campo(formData, "bairro") ?? "",
@@ -440,49 +467,60 @@ export function normalizarWhatsapp(valor: string) {
 
 const SEM_CONTATO_PERFIL = "Tire o telefone, e-mail ou link. O contato aparece sozinho quando der match.";
 
-export const esquemaPerfil = z.object({
-  nome: z
-    .string()
-    .trim()
-    .min(2, { error: "Escreva seu nome (ou o nome do comércio)." })
-    .max(80, { error: "Use no máximo 80 letras." })
-    .refine((t) => !temContato(t), { error: SEM_CONTATO_PERFIL }),
-  tipo: z.enum(LISTA_TIPOS_CONTA, { error: "Escolha uma opção." }),
-  cidade: z.enum(CIDADES, { error: "Escolha a cidade." }),
-  bairro: z
-    .string()
-    .trim()
-    .max(80, { error: "Use no máximo 80 letras." })
-    .refine((t) => !temContato(t), { error: SEM_CONTATO_PERFIL })
-    .transform((t) => t || null)
-    .nullable(),
-  sobre: z
-    .string()
-    .trim()
-    .max(600, { error: "Use no máximo 600 letras." })
-    .refine((t) => !temContatoNoTexto(t), { error: SEM_CONTATO_PERFIL })
-    .transform((t) => t || null)
-    .nullable(),
-  servicos: z
-    .array(z.string().trim().min(2).max(40))
-    .max(12, { error: "Escolha até 12 itens." })
-    .refine((lista) => !temContato(lista.join(" ")), { error: SEM_CONTATO_PERFIL }),
-  foto: z
-    .string()
-    .regex(/^[0-9a-f-]{36}\/\d{10,16}\.jpg$/, { error: "Envie a foto de novo." })
-    .nullable(),
-  whatsapp: z
-    .string()
-    .transform(normalizarWhatsapp)
-    .refine((d) => /^55[1-9]\d\d{8,9}$/.test(d), { error: "Confira o número: DDD + número, como (62) 99999-0000." }),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .refine((t) => !t || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t), { error: "Confira o e-mail." })
-    .transform((t) => t || null),
-  receber_emails: z.boolean(),
-});
+export const esquemaPerfil = z
+  .object({
+    nome: z
+      .string()
+      .trim()
+      .min(2, { error: "Escreva seu nome (ou o nome do comércio)." })
+      .max(80, { error: "Use no máximo 80 letras." })
+      .refine((t) => !temContato(t), { error: SEM_CONTATO_PERFIL }),
+    tipo: z.enum(LISTA_TIPOS_CONTA, { error: "Escolha uma opção." }),
+    cidade: z.enum(CIDADES, { error: "Escolha a cidade." }),
+    bairro: z
+      .string()
+      .trim()
+      .max(80, { error: "Use no máximo 80 letras." })
+      .refine((t) => !temContato(t), { error: SEM_CONTATO_PERFIL })
+      .transform((t) => t || null)
+      .nullable(),
+    sobre: z
+      .string()
+      .trim()
+      .max(600, { error: "Use no máximo 600 letras." })
+      .refine((t) => !temContatoNoTexto(t), { error: SEM_CONTATO_PERFIL })
+      .transform((t) => t || null)
+      .nullable(),
+    servicos: z
+      .array(z.string().trim().min(2).max(40))
+      .max(12, { error: "Escolha até 12 itens." })
+      .refine((lista) => !temContato(lista.join(" ")), { error: SEM_CONTATO_PERFIL }),
+    foto: z
+      .string()
+      .regex(/^[0-9a-f-]{36}\/\d{10,16}\.jpg$/, { error: "Envie a foto de novo." })
+      .nullable(),
+    whatsapp: z
+      .string()
+      .transform(normalizarWhatsapp)
+      .refine((d) => /^55[1-9]\d\d{8,9}$/.test(d), { error: "Confira o número: DDD + número, como (62) 99999-0000." }),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .refine((t) => !t || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t), { error: "Confira o e-mail." })
+      .transform((t) => t || null),
+    receber_emails: z.boolean(),
+    /** só agências (o banco confere de novo e apaga o das outras contas) */
+    cnpj: z.string().transform(limparCnpj),
+  })
+  .superRefine((d, ctx) => {
+    if (d.tipo !== "agencia") return;
+    if (!d.cnpj) ctx.addIssue({ code: "custom", path: ["cnpj"], message: "Informe o CNPJ da agência." });
+    else if (!cnpjValido(d.cnpj)) {
+      ctx.addIssue({ code: "custom", path: ["cnpj"], message: "Confira o CNPJ: algum número ou letra não bate." });
+    }
+  })
+  .transform((d) => ({ ...d, cnpj: d.tipo === "agencia" ? d.cnpj : null }));
 
 export type DadosPerfil = z.output<typeof esquemaPerfil>;
 
@@ -503,6 +541,7 @@ export function lerPerfil(formData: FormData) {
     whatsapp: campo(formData, "whatsapp") ?? "",
     email: campo(formData, "email") ?? "",
     receber_emails: campo(formData, "receber_emails") === "on",
+    cnpj: campo(formData, "cnpj") ?? "",
   });
 }
 

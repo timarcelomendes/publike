@@ -28,6 +28,8 @@ const FILTROS = [
   { valor: "banidos", nome: "Banidos" },
   { valor: "moderadores", nome: "Moderadores" },
   { valor: "verificados", nome: "Verificados" },
+  { valor: "agencias_a_verificar", nome: "Agências a verificar" },
+  { valor: "agencias", nome: "Agências" },
   { valor: "sem_perfil", nome: "Sem perfil" },
 ];
 

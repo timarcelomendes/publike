@@ -27,7 +27,16 @@ export type NumerosPainel = {
   contas_30d: number;
   acessos_7d: number;
   sem_perfil: number;
-  perfis: { total: number; pessoa: number; comercio: number; empresa: number; verificados: number };
+  perfis: {
+    total: number;
+    pessoa: number;
+    comercio: number;
+    empresa: number;
+    agencia: number;
+    /** agências com o CNPJ ainda não conferido pela equipe */
+    agencias_a_verificar: number;
+    verificados: number;
+  };
   anuncios: {
     total: number;
     no_ar: number;
@@ -83,6 +92,8 @@ export type FichaUsuario = {
     servicos: string[];
     verificado: boolean;
     criado_em: string;
+    /** só agências */
+    cnpj: string | null;
   } | null;
   contato: { whatsapp: string | null; email: string | null; receber_emails: boolean };
   moderador: boolean;

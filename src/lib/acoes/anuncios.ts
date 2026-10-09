@@ -11,6 +11,13 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerAnuncio, UUID } from "@/lib/validacao";
 
+/** Erro do banco no formulário: o da empresa contratante fica marcado no campo. */
+function erroDoBanco(error: { code?: string; message?: string; hint?: string | null }): EstadoForm {
+  const erro = mensagemDeErro(error);
+  if (error.hint === "contratante") return { ok: false, erro: "Confira os campos marcados.", erros: { contratante: erro } };
+  return { ok: false, erro };
+}
+
 /** Publica um anúncio novo ou salva a edição de um existente. */
 export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -31,6 +38,8 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
     horario: d.horario,
     vagas: d.vagas,
     pede_curriculo: d.pede_curriculo,
+    contratante: d.contratante,
+    contratante_confidencial: d.contratante_confidencial,
     cidade: d.cidade,
     bairro: d.bairro,
     local: `SRID=4326;POINT(${d.lng} ${d.lat})`,
@@ -43,7 +52,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
   if (typeof id === "string" && id) {
     if (!UUID.test(id)) return { ok: false, erro: "Anúncio não encontrado." };
     const { data, error } = await supabase.from("anuncios").update(registro).eq("id", id).select("id");
-    if (error) return { ok: false, erro: mensagemDeErro(error) };
+    if (error) return erroDoBanco(error);
     if (!data?.length) return { ok: false, erro: "Não encontramos esse anúncio entre os seus." };
     destino = `/anuncio/${id}?salvo=1`;
   } else {
@@ -54,7 +63,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
       .single();
     if (error) {
       if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/publicar");
-      return { ok: false, erro: mensagemDeErro(error) };
+      return erroDoBanco(error);
     }
     destino = `/anuncio/${data.id}?publicado=1`;
   }

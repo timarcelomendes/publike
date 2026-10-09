@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   Banknote,
   Briefcase,
+  Building2,
   CalendarClock,
   Clock,
   FileText,
@@ -19,6 +20,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
+import { CnpjDaAgencia } from "@/components/cnpj-agencia";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { MapaArea } from "@/components/mapa/mapa-area";
@@ -105,7 +107,11 @@ function dadosVaga(a: AnuncioCompleto) {
     datePosted: a.criado_em,
     validThrough: a.expira_em,
     employmentType: tipos[a.regime ?? "outro"] ?? "OTHER",
-    hiringOrganization: { "@type": "Organization", name: a.autor_nome },
+    // vaga de agência: quem contrata é a empresa (ou "confidencial"), não a agência
+    hiringOrganization: {
+      "@type": "Organization",
+      name: a.contratante ?? (a.contratante_confidencial ? "Confidencial" : a.autor_nome),
+    },
     jobLocation: {
       "@type": "Place",
       address: {
@@ -156,6 +162,8 @@ async function DetalheAnuncio({
     ? [null, []]
     : await Promise.all([obterNotaDoProfissional(anuncio.autor_id), listarAvaliacoesPublicas(anuncio.autor_id)]);
   const primeiroNome = anuncio.autor_nome.split(" ")[0];
+  const agencia = anuncio.autor_tipo === "agencia";
+  const temContratante = vaga && (anuncio.contratante !== null || anuncio.contratante_confidencial);
 
   const quadroAcao = (sufixo: string) =>
     proprio ? (
@@ -257,6 +265,16 @@ async function DetalheAnuncio({
             <Fato icone={Banknote} rotulo={vaga ? "Valor" : "Preço"}>
               {valor}
             </Fato>
+            {temContratante && (
+              <Fato icone={Building2} rotulo="Empresa contratante">
+                {anuncio.contratante ?? "Confidencial"}
+                <span className="block text-body-sm font-normal text-ink-muted">
+                  {anuncio.contratante
+                    ? `seleção feita por ${anuncio.autor_nome}`
+                    : "a agência conta o nome no processo seletivo"}
+                </span>
+              </Fato>
+            )}
             {vaga ? (
               <Fato icone={Briefcase} rotulo="Contratação">
                 {anuncio.regime ? REGIMES[anuncio.regime as Regime]?.nome : "Vaga"}
@@ -351,17 +369,29 @@ async function DetalheAnuncio({
         <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
           <div className="hidden lg:block">{quadroAcao("lateral")}</div>
 
-          <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-200 p-4">
-            <Avatar nome={anuncio.autor_nome} foto={anuncio.autor_foto} tamanho={48} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-label">{anuncio.autor_nome}</p>
-              <p className="text-body-sm text-ink-muted">
-                {rotuloConta(anuncio.autor_tipo)} · no Publike desde {formatarMesAno(anuncio.autor_desde)}
-              </p>
+          <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4">
+            <div className="flex items-center gap-3">
+              <Avatar nome={anuncio.autor_nome} foto={anuncio.autor_foto} tamanho={48} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-label">{anuncio.autor_nome}</p>
+                <p className="text-body-sm text-ink-muted">
+                  {rotuloConta(anuncio.autor_tipo)} · no Publike desde {formatarMesAno(anuncio.autor_desde)}
+                </p>
+              </div>
+              <Link
+                href={`/perfil/${anuncio.autor_id}`}
+                className="text-label text-terra-text underline-offset-2 hover:underline"
+              >
+                Ver perfil
+              </Link>
             </div>
-            <Link href={`/perfil/${anuncio.autor_id}`} className="text-label text-terra-text underline-offset-2 hover:underline">
-              Ver perfil
-            </Link>
+            {agencia && anuncio.autor_cnpj && (
+              <CnpjDaAgencia
+                cnpj={anuncio.autor_cnpj}
+                verificada={anuncio.autor_verificado}
+                className="border-t border-line pt-3"
+              />
+            )}
           </div>
 
           <div className="flex justify-start">
@@ -374,7 +404,11 @@ async function DetalheAnuncio({
               <p className="text-label">Fique de olho</p>
               {vaga ? (
                 <ul className="mt-1 list-disc space-y-1 pl-4">
-                  <li>Ninguém pode cobrar para você conseguir trabalho.</li>
+                  <li>
+                    {agencia
+                      ? "A agência não pode cobrar nada de você: nem cadastro, nem taxa, nem curso."
+                      : "Ninguém pode cobrar para você conseguir trabalho."}
+                  </li>
                   <li>Não mande Pix adiantado nem senhas.</li>
                   <li>No primeiro encontro, prefira um lugar movimentado.</li>
                 </ul>

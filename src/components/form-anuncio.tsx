@@ -29,6 +29,9 @@ export type ValoresAnuncio = {
   vagas: number;
   /** vaga: quem curtir é convidado a preencher o currículo, e você vê o currículo de cada um */
   pede_curriculo?: boolean;
+  /** vaga de agência: a empresa que contrata (vazio quando é confidencial) */
+  contratante?: string | null;
+  contratante_confidencial?: boolean;
   cidade: string;
   bairro: string;
   lat: number | null;
@@ -54,6 +57,7 @@ export function FormAnuncio({
   acaoSalvar = salvarAnuncio,
   equipe = false,
   ia = false,
+  agencia = false,
 }: {
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
@@ -62,6 +66,8 @@ export function FormAnuncio({
   equipe?: boolean;
   /** Mostra o botão "Melhorar texto com IA". */
   ia?: boolean;
+  /** Quem publica é agência de emprego / RH: a vaga diz para qual empresa é. */
+  agencia?: boolean;
 }) {
   const editando = Boolean(inicial.id);
   const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
@@ -74,6 +80,7 @@ export function FormAnuncio({
   const [pedeCurriculo, setPedeCurriculo] = useState(inicial.pede_curriculo ?? false);
   // Em vaga nova, CLT, estágio e temporário já marcam "pedir currículo" (até a pessoa mexer na caixa)
   const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(editando);
+  const [confidencial, setConfidencial] = useState(inicial.contratante_confidencial ?? false);
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const vaga = tipo === "vaga";
@@ -184,6 +191,42 @@ export function FormAnuncio({
             className={classesEntrada}
           />
         </Campo>
+
+        {vaga && agencia && (
+          <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-4">
+            <input type="hidden" name="agencia" value="1" />
+            <Campo
+              rotulo="Para qual empresa é a vaga?"
+              nome="contratante"
+              erro={erros.contratante}
+              ajuda={
+                confidencial
+                  ? "Quem procura vaga vê “Empresa confidencial”. Conte o ramo na descrição, como “indústria de alimentos”."
+                  : "O nome aparece na vaga, junto com o da agência. Sem telefone, e-mail ou site."
+              }
+            >
+              <input
+                {...ligarCampo("contratante", erros.contratante, true)}
+                defaultValue={inicial.contratante ?? ""}
+                disabled={confidencial}
+                maxLength={80}
+                autoComplete="off"
+                placeholder="Ex.: Distribuidora Cerrado"
+                className={classesEntrada}
+              />
+            </Campo>
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 self-start text-label">
+              <input
+                type="checkbox"
+                name="contratante_confidencial"
+                checked={confidencial}
+                onChange={(e) => setConfidencial(e.target.checked)}
+                className="size-5 accent-[var(--pk-ink)]"
+              />
+              Empresa confidencial
+            </label>
+          </div>
+        )}
 
         <Campo rotulo="Categoria" nome="categoria" erro={erros.categoria}>
           <Seletor {...ligarCampo("categoria", erros.categoria)} defaultValue={inicial.categoria} required className={classesEntrada}>

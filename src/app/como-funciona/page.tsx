@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PassosComoFunciona } from "@/components/inicio";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { LIMITES_CONTA } from "@/lib/constantes";
 
 export const metadata: Metadata = {
   title: "Como funciona",
@@ -16,6 +17,7 @@ const CONTRATA = [
   "Diga o bairro e marque a região no mapa: quem mora perto vê primeiro.",
   "Veja quem curtiu a vaga e o que cada pessoa faz. Curta de volta quem combina com você.",
   "A vaga fica 30 dias no ar e pode ser renovada. Dá para pausar ou encerrar quando quiser.",
+  "É agência de emprego ou RH? Crie a conta como “Agência / RH”, com o CNPJ, e publique as vagas das empresas que você atende. Também é grátis.",
 ];
 
 const TRABALHA = [
@@ -27,7 +29,7 @@ const TRABALHA = [
 ];
 
 const SEGURANCA = [
-  "Ninguém pode cobrar para você conseguir trabalho: nada de taxa de cadastro, curso, uniforme ou exame pago antes de contratar.",
+  "Ninguém pode cobrar para você conseguir trabalho: nada de taxa de cadastro, curso, uniforme ou exame pago antes de contratar. Vale também para agência de emprego.",
   "Desconfie de salário muito acima do normal ou de pressa para fechar negócio.",
   "Não mande foto de documento, senha ou códigos que chegam por SMS.",
   "Na entrevista ou no primeiro serviço, prefira lugares movimentados e avise alguém de confiança.",
@@ -62,7 +64,11 @@ const PERGUNTAS = [
   },
   {
     p: "Quem pode publicar?",
-    r: "Qualquer pessoa, comércio ou empresa de Goiânia e região, com um WhatsApp no perfil.",
+    r: "Qualquer pessoa, comércio, empresa ou agência de emprego de Goiânia e região, com um WhatsApp no perfil.",
+  },
+  {
+    p: "Sou agência de emprego ou RH. Posso usar?",
+    r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ: ele aparece no seu perfil e nas suas vagas, para os candidatos conferirem na Receita. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. Depois que a equipe do Publike confere o CNPJ, a agência pode ter até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
   },
   {
     p: "Quanto tempo o anúncio fica no ar?",

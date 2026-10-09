@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { CardAnuncio } from "@/components/card-anuncio";
+import { CnpjDaAgencia } from "@/components/cnpj-agencia";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TIPOS_CONTA } from "@/lib/constantes";
@@ -48,6 +49,7 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
   const meu = usuario?.id === perfil.id;
   const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
   const suspensa = Boolean(perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
+  const agencia = perfil.tipo === "agencia";
   const servicos = anuncios.filter((a) => a.tipo === "servico");
   const vagas = anuncios.filter((a) => a.tipo !== "servico");
   // onde atende: junta o de todos os serviços, sem repetir
@@ -75,6 +77,9 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           <p className="mt-1 text-body text-ink-muted">
             {tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} · no Publike desde {formatarMesAno(perfil.criado_em)}
           </p>
+          {agencia && perfil.cnpj && (
+            <CnpjDaAgencia cnpj={perfil.cnpj} verificada={perfil.verificado} className="mt-1" />
+          )}
           {nota.total > 0 && (
             <p className="mt-1">
               <a href="#avaliacoes" className="hover:underline">
@@ -169,7 +174,7 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
 
       {(vagas.length > 0 || servicos.length === 0) && (
         <section className="mt-10">
-          <h2 className="text-h2">{servicos.length ? "Vagas abertas" : "Anúncios no ar"}</h2>
+          <h2 className="text-h2">{servicos.length || agencia ? "Vagas abertas" : "Anúncios no ar"}</h2>
           <div className="mt-4">
             {vagas.length ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -180,8 +185,16 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             ) : (
               <Vazio
                 icone={Megaphone}
-                titulo="Nenhum anúncio no ar agora"
-                acao={meu ? <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink> : undefined}
+                titulo={agencia ? "Nenhuma vaga aberta agora" : "Nenhum anúncio no ar agora"}
+                acao={
+                  meu ? (
+                    agencia ? (
+                      <BotaoLink href="/publicar">Publicar vaga</BotaoLink>
+                    ) : (
+                      <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink>
+                    )
+                  ) : undefined
+                }
               />
             )}
           </div>

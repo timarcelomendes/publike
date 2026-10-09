@@ -7,7 +7,7 @@ type LinhaDe<F extends keyof Funcoes> = Funcoes[F]["Returns"] extends (infer L)[
 export type TipoAnuncio = "vaga" | "servico";
 export type Regime = "clt" | "temporario" | "diaria" | "freelance" | "estagio" | "pj" | "outro";
 export type Unidade = "hora" | "dia" | "semana" | "mes" | "servico" | "m2" | "visita";
-export type TipoConta = "pessoa" | "comercio" | "empresa";
+export type TipoConta = "pessoa" | "comercio" | "empresa" | "agencia";
 export type StatusAnuncio = "ativo" | "pausado" | "encerrado" | "expirado" | "em_analise" | "removido";
 export type StatusCurtida = "pendente" | "match" | "dispensada";
 
@@ -87,6 +87,8 @@ export type Perfil = {
   criado_em: string;
   /** conta suspensa ou banida até esta data */
   suspenso_ate?: string | null;
+  /** só agências: 14 caracteres, sem pontuação */
+  cnpj?: string | null;
 };
 
 export type MeuPerfil = Perfil & { whatsapp: string | null; email: string | null; receber_emails: boolean };

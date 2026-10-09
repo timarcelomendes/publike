@@ -26,6 +26,9 @@ export type AnuncioParaIA = {
   oficio?: string | null;
   /** serviço: fotos de trabalhos (caminhos no Storage) */
   fotos?: string[];
+  /** vaga de agência: a empresa que contrata */
+  contratante?: string | null;
+  contratante_confidencial?: boolean;
 };
 
 function descreverAnuncio(a: AnuncioParaIA) {
@@ -33,6 +36,11 @@ function descreverAnuncio(a: AnuncioParaIA) {
   const linhas = [
     `Tipo: ${a.tipo === "vaga" ? "vaga de trabalho" : "serviço oferecido pela própria pessoa (profissional)"}`,
     a.autor_tipo ? `Quem publicou: ${TIPOS_CONTA[a.autor_tipo as TipoConta]?.minusculo ?? a.autor_tipo}` : null,
+    a.contratante
+      ? `Empresa contratante: ${a.contratante}`
+      : a.contratante_confidencial
+        ? "Empresa contratante: confidencial"
+        : null,
     `Categoria: ${categoria}`,
     a.oficio ? `Serviço: ${oficio(a.oficio)?.nome ?? a.oficio}` : null,
     a.regime ? `Contratação: ${REGIMES[a.regime as Regime]?.nome ?? a.regime}` : null,
@@ -65,6 +73,7 @@ Retenha só quando houver sinal claro de:
 - conteúdo sexual, ofensivo ou ilegal (drogas, armas), ou spam e propaganda que não é vaga nem serviço.
 
 Num serviço, quem publica é o próprio profissional mostrando o que faz (pedreiro, diarista, manicure...). Isso é normal.
+Numa vaga de agência de emprego ou RH, é normal recrutar para outra empresa e dizer o nome dela ou que ela é confidencial. Mas a agência não pode cobrar nada de quem se candidata (cadastro, entrevista, currículo, teste, curso ou exame): se cobrar, retenha como cobrança.
 Se vierem fotos, olhe também:
 - telefone, e-mail, @ de rede social, QR code ou link à mostra (o contato só aparece depois do match): categoria "contato";
 - nudez, conteúdo sexual, violência ou armas;

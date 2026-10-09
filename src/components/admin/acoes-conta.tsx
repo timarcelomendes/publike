@@ -130,13 +130,28 @@ export function TirarDaModeracao({ usuarioId, curto = false }: { usuarioId: stri
   );
 }
 
-export function SeloVerificado({ usuarioId, verificado }: { usuarioId: string; verificado: boolean }) {
+export function SeloVerificado({
+  usuarioId,
+  verificado,
+  agencia = false,
+}: {
+  usuarioId: string;
+  verificado: boolean;
+  /** agência de emprego: o selo também libera os limites maiores */
+  agencia?: boolean;
+}) {
   const { rodar, pendente, mensagem } = useAcao();
   return (
     <div className="flex flex-col items-start gap-2">
       <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => mudarVerificado(usuarioId, !verificado))}>
         {verificado ? <ShieldOff aria-hidden /> : <BadgeCheck aria-hidden />}
-        {verificado ? "Tirar o selo de verificado" : "Dar o selo de verificado"}
+        {agencia
+          ? verificado
+            ? "Tirar a verificação da agência"
+            : "Verificar a agência (CNPJ conferido)"
+          : verificado
+            ? "Tirar o selo de verificado"
+            : "Dar o selo de verificado"}
       </Botao>
       {mensagem}
     </div>

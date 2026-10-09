@@ -69,7 +69,7 @@ export const obterMeuPerfil = cache(async (): Promise<MeuPerfil | null> => {
   const { data, error } = await supabase
     .from("perfis")
     .select(
-      "id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em, suspenso_ate, contatos(whatsapp, email, receber_emails)",
+      "id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em, suspenso_ate, cnpj, contatos(whatsapp, email, receber_emails)",
     )
     .eq("id", usuario.id)
     .maybeSingle();
@@ -292,7 +292,7 @@ export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Pe
   const [{ data: perfil, error }, { data: anuncios }] = await Promise.all([
     supabase
       .from("perfis")
-      .select("id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em, suspenso_ate")
+      .select("id, nome, tipo, foto, cidade, bairro, sobre, servicos, verificado, criado_em, suspenso_ate, cnpj")
       .eq("id", id)
       .maybeSingle(),
     supabase

@@ -24,6 +24,8 @@ export type Database = {
           atualizado_em: string;
           /** conta suspensa até esta data (banimento = daqui a 100 anos) */
           suspenso_ate: string | null;
+          /** só agências: 14 caracteres, sem pontuação (aceita o CNPJ com letras) */
+          cnpj: string | null;
         };
         Insert: {
           id: string;
@@ -34,6 +36,7 @@ export type Database = {
           bairro?: string | null;
           sobre?: string | null;
           servicos?: string[];
+          cnpj?: string | null;
         };
         Update: {
           nome?: string;
@@ -43,6 +46,7 @@ export type Database = {
           bairro?: string | null;
           sobre?: string | null;
           servicos?: string[];
+          cnpj?: string | null;
         };
         Relationships: [];
       };
@@ -108,6 +112,9 @@ export type Database = {
           fotos: string[];
           atende: string[];
           pede_curriculo: boolean;
+          /** vaga de agência: a empresa que contrata (null se confidencial) */
+          contratante: string | null;
+          contratante_confidencial: boolean;
         };
         Insert: {
           tipo: string;
@@ -128,6 +135,8 @@ export type Database = {
           fotos?: string[];
           atende?: string[];
           pede_curriculo?: boolean;
+          contratante?: string | null;
+          contratante_confidencial?: boolean;
         };
         Update: {
           titulo?: string;
@@ -147,6 +156,8 @@ export type Database = {
           fotos?: string[];
           atende?: string[];
           pede_curriculo?: boolean;
+          contratante?: string | null;
+          contratante_confidencial?: boolean;
         };
         Relationships: [
           {
@@ -368,6 +379,10 @@ export type Database = {
           fotos: string[];
           atende: string[];
           pede_curriculo: boolean;
+          contratante: string | null;
+          contratante_confidencial: boolean;
+          /** CNPJ de quem publicou, quando é agência */
+          autor_cnpj: string | null;
         }[];
       };
       meus_anuncios: {
@@ -667,8 +682,14 @@ export type Database = {
           p_whatsapp: string | null;
           p_email: string | null;
           p_receber_emails?: boolean;
+          /** só agências; aceita com ou sem pontuação */
+          p_cnpj?: string | null;
         };
         Returns: undefined;
+      };
+      cnpj_valido: {
+        Args: { p_cnpj: string };
+        Returns: boolean;
       };
       excluir_minha_conta: {
         Args: Record<PropertyKey, never>;
@@ -982,6 +1003,8 @@ export type Database = {
           modelo: string;
           oficio: string | null;
           fotos: string[];
+          contratante: string | null;
+          contratante_confidencial: boolean;
         }[];
       };
       servidor_resultado_ia: {

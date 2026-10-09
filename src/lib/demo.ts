@@ -30,6 +30,7 @@ const AUTORES: AutorDemo[] = [
   { id: "demo-patricia", nome: "Patrícia L.", tipo: "pessoa", verificado: false, cidade: "Trindade", bairro: "Centro", sobre: "DJ há 8 anos em festas de 15 anos, casamentos e formaturas.", servicos: [], foto: null, diasNoPublike: 15 },
   { id: "demo-joana", nome: "Joana S.", tipo: "pessoa", verificado: true, cidade: "Goiânia", bairro: "Setor Bela Vista", sobre: "Diarista há 12 anos. Caprichosa e pontual.", servicos: [], foto: null, diasNoPublike: 40 },
   { id: "demo-marcos", nome: "Marcos Eletricista", tipo: "pessoa", verificado: false, cidade: "Goiânia", bairro: "Jardim América", sobre: null, servicos: [], foto: null, diasNoPublike: 25 },
+  { id: "demo-rh-goias", nome: "RH Goiás Seleção", tipo: "agencia", verificado: true, cidade: "Goiânia", bairro: "Setor Oeste", sobre: "Recrutamento e seleção para comércio, indústria e escritórios de Goiânia e região.", servicos: ["Recrutamento", "Seleção", "Temporários"], foto: null, diasNoPublike: 180, cnpj: "12ABC34501DE35" },
 ];
 
 type Base = {
@@ -48,6 +49,9 @@ type Base = {
   /** serviço */
   oficio?: string;
   atende?: string[];
+  /** vaga de agência */
+  contratante?: string;
+  confidencial?: boolean;
   cidade: string;
   bairro: string;
   lat: number;
@@ -196,6 +200,21 @@ const BASE: Base[] = [
     atende: ["Goiânia: Sul", "Goiânia: Sudoeste", "Aparecida de Goiânia"],
     cidade: "Goiânia", bairro: "Parque Amazônia", lat: -16.74, lng: -49.28, horasAtras: 6,
   },
+  {
+    id: "demo-20", autor: "demo-rh-goias", tipo: "vaga", categoria: "industria", regime: "clt",
+    contratante: "Laticínios Serra Dourada",
+    titulo: "Operador de produção em laticínio",
+    descricao: "Selecionamos operadores de produção para laticínio na região norte de Goiânia. Abastecer e acompanhar as máquinas de envase, conferir lotes e manter a área limpa.\n\nNão precisa de experiência: a empresa treina. Ensino fundamental completo.",
+    valor: 1850, unidade: "mes", beneficios: "vale-transporte, refeição e plano de saúde", horario: "Escala 6x1, das 6h às 14h20", vagas: 6,
+    cidade: "Goiânia", bairro: "Setor Perimetral Norte", lat: -16.625, lng: -49.27, horasAtras: 7,
+  },
+  {
+    id: "demo-21", autor: "demo-rh-goias", tipo: "vaga", categoria: "comercio", regime: "clt", confidencial: true,
+    titulo: "Vendedor externo com moto",
+    descricao: "Para empresa do ramo de alimentos, com carteira de clientes em mercados e padarias de Goiânia e Aparecida.\n\nPrecisa ter moto e CNH A. Salário fixo mais comissão e ajuda de custo para o combustível.",
+    valor: 2200, unidade: "mes", beneficios: "comissão e ajuda de combustível", horario: "Seg a sex, horário comercial", vagas: 2,
+    cidade: "Goiânia", bairro: "Setor Oeste", lat: -16.68, lng: -49.27, horasAtras: 28,
+  },
 ];
 
 /** Avaliações de exemplo (só de serviços). */
@@ -292,6 +311,9 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     atende: b.atende ?? [],
     // na demonstração, CLT e estágio pedem currículo
     pede_curriculo: b.tipo === "vaga" && (b.regime === "clt" || b.regime === "estagio"),
+    contratante: b.contratante ?? null,
+    contratante_confidencial: b.confidencial ?? false,
+    autor_cnpj: a.cnpj ?? null,
   };
 }
 

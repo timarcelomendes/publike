@@ -45,7 +45,7 @@ export default function Privacidade() {
           <Lista
             itens={[
               "Para entrar: seu e-mail, seu celular ou sua conta Google, Facebook ou LinkedIn. Dessas contas recebemos só o nome e o e-mail. Não publicamos nada nelas e não vemos seus amigos ou contatos.",
-              "No perfil: nome, se você é pessoa, comércio ou empresa, cidade, bairro, foto (opcional), o que você faz e uma apresentação.",
+              "No perfil: nome, se você é pessoa, comércio, empresa ou agência de emprego, cidade, bairro, foto (opcional), o que você faz e uma apresentação. Agência informa também o CNPJ.",
               "Contato: seu WhatsApp e, se quiser, um e-mail.",
               "O que você faz no site: anúncios, curtidas, matches e denúncias.",
               "Se você preencher: o currículo (estudos, experiências, cursos, CNH, quando pode trabalhar) e o PDF que anexar.",
@@ -61,6 +61,7 @@ export default function Privacidade() {
               "Qualquer pessoa vê seu perfil público e seus anúncios no ar.",
               "Quem publicou vê quem curtiu o anúncio, com o perfil e a mensagem. Numa vaga, vê também o currículo de quem preencheu.",
               "Seu WhatsApp e seu e-mail de contato só aparecem para a outra pessoa de um match.",
+              "O CNPJ de uma agência de emprego aparece no perfil e nas vagas dela, para quem procura trabalho conferir na Receita.",
               "Denúncias só a moderação vê. Quem publicou não sabe quem denunciou.",
               "Não vendemos seus dados.",
             ]}
@@ -72,6 +73,7 @@ export default function Privacidade() {
             itens={[
               "Não é público: não aparece no seu perfil, na busca nem no Google.",
               "Só vê quem anunciou uma vaga que você curtiu, e só enquanto a curtida existir. Desfez a curtida, deixou de ver.",
+              "Se a vaga é de uma agência de emprego, a agência pode mostrar seu currículo à empresa contratante daquela vaga, só para a seleção.",
               "O PDF fica guardado num lugar fechado e só abre com um link que vale por uma hora.",
               "O PDF vai do jeito que você enviar. Se tiver telefone, e-mail ou endereço, quem anunciou a vaga vê esses dados.",
               "Você corrige ou apaga o currículo quando quiser, em Meu perfil > Meu currículo. Excluir a conta apaga junto.",
@@ -91,8 +93,9 @@ export default function Privacidade() {
             escolher entrar com eles, Google, Facebook ou LinkedIn.
           </p>
           <p>
-            A IA recebe só o texto do anúncio (título, descrição, valor, horário e bairro), nunca seu contato. Quando ela
-            acha um anúncio suspeito, ele sai do ar até uma pessoa da moderação olhar.
+            A IA recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome
+            da empresa contratante), nunca seu contato. Quando ela acha um anúncio suspeito, ele sai do ar até uma
+            pessoa da moderação olhar.
           </p>
           <p>
             Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}
@@ -153,6 +156,7 @@ export default function Privacidade() {
           <Lista
             itens={[
               "É proibido cobrar qualquer valor de quem vai trabalhar para conseguir a vaga.",
+              "Agências de emprego e RH publicam de graça, dizem para qual empresa é a vaga (ou que ela é confidencial) e não podem cobrar nada de quem se candidata: nem cadastro, nem entrevista, nem curso, nem exame. O currículo recebido serve só para a seleção daquela vaga.",
               "Nada de discriminação por cor, gênero, idade, religião, orientação sexual, deficiência ou origem.",
               "Vagas e serviços precisam ser reais, legais e com informação verdadeira. As fotos de trabalhos precisam ser de serviços que a pessoa fez.",
               "Não escreva telefone, e-mail ou links no anúncio: o contato aparece no match.",

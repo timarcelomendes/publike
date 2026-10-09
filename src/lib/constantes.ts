@@ -221,8 +221,16 @@ export const TIPOS_CONTA: Record<TipoConta, { nome: string; minusculo: string; a
   pessoa: { nome: "Pessoa", minusculo: "pessoa", ajuda: "Procuro trabalho ou contrato para casa" },
   comercio: { nome: "Comércio", minusculo: "comércio", ajuda: "Loja, bar, salão, oficina, padaria…" },
   empresa: { nome: "Empresa", minusculo: "empresa", ajuda: "Empresa, indústria, condomínio, ONG…" },
+  agencia: { nome: "Agência / RH", minusculo: "agência de emprego", ajuda: "Recruto para outras empresas" },
 };
 export const LISTA_TIPOS_CONTA = Object.keys(TIPOS_CONTA) as [TipoConta, ...TipoConta[]];
+
+/** Anúncios no ar ao mesmo tempo e publicações por dia (o banco confere). */
+export const LIMITES_CONTA = {
+  comum: { noAr: 20, porDia: 10 },
+  /** agência de emprego / RH com o CNPJ conferido pela equipe */
+  agenciaVerificada: { noAr: 200, porDia: 50 },
+} as const;
 
 export const STATUS_ANUNCIO: Record<StatusAnuncio, { nome: string; ajuda: string }> = {
   ativo: { nome: "No ar", ajuda: "Aparece nas buscas" },

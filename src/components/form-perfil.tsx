@@ -13,7 +13,8 @@ import {
 } from "react";
 import { excluirConta, salvarPerfil } from "@/lib/acoes/perfil";
 import { BAIRROS } from "@/lib/bairros";
-import { CIDADES, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
+import { formatarCnpj, limparCnpj } from "@/lib/cnpj";
+import { CIDADES, LIMITES_CONTA, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarTelefone } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, MeuPerfil, TipoConta } from "@/lib/tipos";
@@ -91,8 +92,14 @@ export function FormPerfil({
   const [whatsapp, setWhatsapp] = useState(
     perfil?.whatsapp ? formatarTelefone(perfil.whatsapp) : telefone ? mascararCelular(telefone) : "",
   );
+  const [cnpj, setCnpj] = useState(formatarCnpj(perfil?.cnpj));
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
+  const agencia = tipo === "agencia";
+  // o selo de verificado vale para aquele tipo de conta e aquele CNPJ
+  const perdeSelo =
+    Boolean(perfil?.verificado) &&
+    (agencia !== (perfil?.tipo === "agencia") || (agencia && limparCnpj(cnpj) !== (perfil?.cnpj ?? "")));
 
   useEffect(() => {
     if (!estado.erros) return;
@@ -172,7 +179,11 @@ export function FormPerfil({
           </div>
         </div>
 
-        <Campo rotulo={tipo === "pessoa" ? "Seu nome" : "Nome do comércio ou da empresa"} nome="nome" erro={erros.nome}>
+        <Campo
+          rotulo={tipo === "pessoa" ? "Seu nome" : agencia ? "Nome da agência" : "Nome do comércio ou da empresa"}
+          nome="nome"
+          erro={erros.nome}
+        >
           <input
             {...ligarCampo("nome", erros.nome)}
             value={nome}
@@ -185,7 +196,7 @@ export function FormPerfil({
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-label">Você é</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             {Object.entries(TIPOS_CONTA).map(([valor, t]) => (
               <label
                 key={valor}
@@ -206,6 +217,40 @@ export function FormPerfil({
           </div>
           {erros.tipo && <MensagemErro>{erros.tipo}</MensagemErro>}
         </fieldset>
+
+        {agencia && (
+          <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-4">
+            <Campo
+              rotulo="CNPJ da agência"
+              nome="cnpj"
+              erro={erros.cnpj}
+              ajuda="Aparece no seu perfil e nas suas vagas, para quem procura trabalho conferir na Receita. Vale o CNPJ com letras."
+            >
+              <input
+                {...ligarCampo("cnpj", erros.cnpj, true)}
+                value={cnpj}
+                onChange={(e) => setCnpj(formatarCnpj(e.target.value))}
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={18}
+                placeholder="00.000.000/0000-00"
+                className={`${classesEntrada} font-mono tracking-wide`}
+              />
+            </Campo>
+            <p className="text-body-sm text-ink-muted">
+              Publicar vagas é grátis. Depois que a equipe do Publike confere o CNPJ, a agência ganha o selo de
+              verificada e pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar{" "}
+              {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Antes disso, vale o limite de todas as contas:{" "}
+              {LIMITES_CONTA.comum.noAr} no ar e {LIMITES_CONTA.comum.porDia} por dia.
+            </p>
+          </div>
+        )}
+        {perdeSelo && (
+          <Aviso tipo="alerta">
+            Trocar o tipo da conta ou o CNPJ tira o selo de verificado até a equipe do Publike conferir de novo.
+          </Aviso>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
@@ -284,7 +329,7 @@ export function FormPerfil({
       </section>
 
       <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
-        <h2 className="text-h3">{tipo === "pessoa" ? "Sobre você" : "Sobre o negócio"}</h2>
+        <h2 className="text-h3">{tipo === "pessoa" ? "Sobre você" : agencia ? "Sobre a agência" : "Sobre o negócio"}</h2>
         <Campo
           rotulo={tipo === "pessoa" ? "O que você faz" : "Área de atuação"}
           nome="novo-servico"
@@ -349,7 +394,9 @@ export function FormPerfil({
             placeholder={
               tipo === "pessoa"
                 ? "Ex.: Trabalho com cozinha há 3 anos. Tenho disponibilidade à noite e moro no Jardim América."
-                : "Ex.: Restaurante de comida caseira no Setor Bueno, aberto desde 2015."
+                : agencia
+                  ? "Ex.: Recrutamento e seleção desde 2012. Atendemos comércio, indústria e escritórios de Goiânia."
+                  : "Ex.: Restaurante de comida caseira no Setor Bueno, aberto desde 2015."
             }
             className={`${classesEntrada} resize-y`}
           />

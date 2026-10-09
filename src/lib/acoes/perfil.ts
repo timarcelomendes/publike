@@ -41,7 +41,11 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     p_whatsapp: d.whatsapp,
     p_email: d.email,
     p_receber_emails: d.receber_emails,
+    p_cnpj: d.cnpj,
   });
+  if (error?.hint === "cnpj") {
+    return { ok: false, erro: "Confira os campos marcados.", erros: { cnpj: mensagemDeErro(error) } };
+  }
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar o perfil agora.") };
   // perfil novo avisa a equipe por e-mail
   after(processarFilas);

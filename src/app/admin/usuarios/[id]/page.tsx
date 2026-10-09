@@ -14,8 +14,9 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Dado, Secao } from "@/components/admin/ui";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
+import { formatarCnpj, linkReceita } from "@/lib/cnpj";
 import { advertenciasDe, fichaUsuario, listarAnuncios, matchesDesfeitosDe, registroDaEquipe } from "@/lib/admin/dados";
-import { nomeMotivoDesfazer } from "@/lib/constantes";
+import { LIMITES_CONTA, nomeMotivoDesfazer } from "@/lib/constantes";
 import { descreverAcao } from "@/lib/admin/textos";
 import {
   ehParaSempre,
@@ -144,8 +145,36 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
             <Dado rotulo="No Publike desde">{formatarDataCurta(u.perfil.criado_em)}</Dado>
             {u.perfil.servicos.length > 0 && <Dado rotulo="Faz">{u.perfil.servicos.join(", ")}</Dado>}
             {u.perfil.sobre && <Dado rotulo="Apresentação">{u.perfil.sobre}</Dado>}
+            {u.perfil.tipo === "agencia" && (
+              <Dado rotulo="CNPJ">
+                {u.perfil.cnpj ? (
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-mono">{formatarCnpj(u.perfil.cnpj)}</span>
+                    <a
+                      href={linkReceita(u.perfil.cnpj)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-10 items-center gap-1.5 text-label underline"
+                    >
+                      Conferir na Receita
+                      <ExternalLink aria-hidden className="size-4" />
+                    </a>
+                  </span>
+                ) : (
+                  "—"
+                )}
+              </Dado>
+            )}
           </dl>
-          <SeloVerificado usuarioId={u.id} verificado={u.perfil.verificado} />
+          {u.perfil.tipo === "agencia" && !u.perfil.verificado && (
+            <Aviso tipo="info" titulo="Agência esperando verificação">
+              Confira na Receita se o CNPJ está ativo, se o nome bate com o do perfil e se a atividade é de seleção,
+              agenciamento ou locação de mão de obra (CNAE do grupo 78) ou de consultoria em RH. Verificada, a agência
+              pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar{" "}
+              {LIMITES_CONTA.agenciaVerificada.porDia} por dia.
+            </Aviso>
+          )}
+          <SeloVerificado usuarioId={u.id} verificado={u.perfil.verificado} agencia={u.perfil.tipo === "agencia"} />
         </Secao>
       )}
 

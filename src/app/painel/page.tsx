@@ -7,7 +7,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { STATUS_ANUNCIO } from "@/lib/constantes";
+import { LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
 import { listarMeusAnuncios, obterMeuPerfil } from "@/lib/dados";
 import { formatarData, formatarLugar, primeiro, rotuloModalidade, tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
@@ -31,6 +31,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel">["
   const [anuncios, perfil] = await Promise.all([listarMeusAnuncios(), obterMeuPerfil()]);
   const agora = await agoraDaRequisicao();
   const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
+  // o banco conta no limite o que está no ar, pausado ou em análise
+  const noAr = anuncios.filter((a) => ["ativo", "pausado", "em_analise"].includes(a.status)).length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,6 +42,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel">["
         </Aviso>
       )}
       {primeiro(sp.excluido) === "1" && <Aviso tipo="sucesso" titulo="Anúncio excluído." />}
+      {perfil?.tipo === "agencia" &&
+        (perfil.verificado ? (
+          <Aviso tipo="info" titulo="Agência verificada">
+            Você pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar até{" "}
+            {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora: {noAr} no ar.
+          </Aviso>
+        ) : (
+          <Aviso tipo="info" titulo="Agência aguardando verificação">
+            A equipe do Publike está conferindo o CNPJ. Até lá, vale o limite de todas as contas:{" "}
+            {LIMITES_CONTA.comum.noAr} vagas no ar e {LIMITES_CONTA.comum.porDia} por dia. Depois, até{" "}
+            {LIMITES_CONTA.agenciaVerificada.noAr} no ar e {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora:{" "}
+            {noAr} no ar.
+          </Aviso>
+        ))}
       {anuncios.length === 0 ? (
         <Vazio
           icone={Megaphone}
