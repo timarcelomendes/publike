@@ -17,7 +17,7 @@ Feito com Next.js 16, Supabase (Postgres com PostGIS, login, fotos e tempo real)
 - **Painel**: meus anúncios (pausar, encerrar, renovar, editar, excluir), quem curtiu, minhas curtidas e matches, mais o sino de avisos em tempo real.
 - **Login sem senha**: e-mail (link mágico), Google, Facebook, LinkedIn e celular (SMS). Só o e-mail vem ligado; os outros você ativa quando quiser.
 - **Perfil** com foto, "o que eu faço" e contato privado, e um **perfil público**.
-- **Agências de emprego e RH**: conta do tipo "Agência / RH", com CNPJ (aceita o CNPJ com letras). Cada vaga diz a empresa contratante ou "Empresa confidencial", e o CNPJ aparece no perfil e nas vagas com o link para conferir na Receita. A equipe confere o CNPJ e dá o selo de verificado (Admin > Usuários > "Agências a verificar"); verificada, a agência pode ter 200 vagas no ar e publicar 50 por dia. Trocar o CNPJ tira o selo.
+- **Agências de emprego e RH**: conta do tipo "Agência / RH", com CNPJ (aceita o CNPJ com letras). Cada vaga diz a empresa contratante ou "Empresa confidencial", e o CNPJ aparece no perfil e nas vagas com o link para conferir na Receita. A equipe confere o CNPJ e dá o selo de verificado (Admin > Usuários > "Agências a verificar"); verificada, a agência pode ter 200 vagas no ar e publicar 50 por dia. Trocar o CNPJ tira o selo. Comércio e empresa também podem informar o CNPJ (opcional). Com o número completo, o site busca os dados públicos na [BrasilAPI](https://brasilapi.com.br) (razão social, nome fantasia, situação, atividade, município e bairro) e oferece preencher o perfil; CNPJ baixado, inapto ou suspenso não é aceito. A ficha da conta no admin mostra os mesmos dados para a equipe comparar. Sem chave e sem custo; para testes, `BRASILAPI_URL` troca o endereço.
 - **Currículo** para vagas CLT, estágio e temporárias: estudos, experiências, cursos, CNH, disponibilidade e PDF opcional (Storage privado). Só vê quem anunciou uma vaga que a pessoa curtiu; a vaga pode marcar "Pedir currículo", e aí só dá match com quem preencheu o currículo.
 - **Admin** (só no seu computador): números do site, contas (suspender por 7 ou 30 dias, banir, reativar, selo de verificado), anúncios (corrigir, remover com motivo, apagar), denúncias, e-mails do site com textos editáveis, IA, moderadores e chaves.
 - **E-mails do site** pelo Zoho: curtida, match, moderação e conta para quem usa o site; nova denúncia, novo cadastro e anúncio tirado do ar para a equipe.
@@ -174,7 +174,7 @@ Depois, `supabase/migrations/20261009210000_config_where.sql`: corrige o **Salva
 
 E `supabase/migrations/20261009230000_desfazer_match.sql`: o "Desfazer match", com motivo e justificativa (a justificativa só a equipe vê, em Admin > Usuários > ficha da pessoa). Depois dela, `20261009240000_negociar_depois.sql` (a pergunta "toparia negociar em outro momento?" e a regra de que vaga que pede currículo só dá match com quem preencheu).
 
-Por último, `supabase/migrations/20261009250000_agencias.sql`: a conta de agência de emprego / RH, com CNPJ, a empresa contratante na vaga e os limites maiores para agência verificada. Rode **antes** de publicar o código novo: o site passa a ler a coluna `cnpj` e a chamar `salvar_perfil` com o CNPJ. O código antigo continua funcionando com o banco novo.
+Por último, `supabase/migrations/20261009250000_agencias.sql`: a conta de agência de emprego / RH, com CNPJ, a empresa contratante na vaga e os limites maiores para agência verificada. Rode **antes** de publicar o código novo: o site passa a ler a coluna `cnpj` e a chamar `salvar_perfil` com o CNPJ. O código antigo continua funcionando com o banco novo. Depois, `20261009260000_cnpj_empresas.sql` deixa comércio e empresa informarem o CNPJ.
 
 ### 4.2 Abrir o admin (só no seu computador)
 
@@ -344,7 +344,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql`, `20261009230000_desfazer_match.sql`, `20261009240000_negociar_depois.sql` e `20261009250000_agencias.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql`, `20261009230000_desfazer_match.sql`, `20261009240000_negociar_depois.sql`, `20261009250000_agencias.sql` e `20261009260000_cnpj_empresas.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

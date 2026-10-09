@@ -1,13 +1,14 @@
 import { ExternalLink } from "lucide-react";
 import { formatarCnpj, linkReceita } from "@/lib/cnpj";
 
-/** CNPJ da agência, com o link para conferir na Receita Federal. */
-export function CnpjDaAgencia({
+/** CNPJ do perfil (agência, comércio ou empresa), com o link para conferir na Receita Federal. */
+export function CnpjDoPerfil({
   cnpj,
   verificada,
   className = "",
 }: {
   cnpj: string;
+  /** agência com o CNPJ conferido pela equipe */
   verificada: boolean;
   className?: string;
 }) {

@@ -45,7 +45,7 @@ export default function Privacidade() {
           <Lista
             itens={[
               "Para entrar: seu e-mail, seu celular ou sua conta Google, Facebook ou LinkedIn. Dessas contas recebemos só o nome e o e-mail. Não publicamos nada nelas e não vemos seus amigos ou contatos.",
-              "No perfil: nome, se você é pessoa, comércio, empresa ou agência de emprego, cidade, bairro, foto (opcional), o que você faz e uma apresentação. Agência informa também o CNPJ.",
+              "No perfil: nome, se você é pessoa, comércio, empresa ou agência de emprego, cidade, bairro, foto (opcional), o que você faz e uma apresentação. Agência informa também o CNPJ; comércio e empresa podem informar.",
               "Contato: seu WhatsApp e, se quiser, um e-mail.",
               "O que você faz no site: anúncios, curtidas, matches e denúncias.",
               "Se você preencher: o currículo (estudos, experiências, cursos, CNH, quando pode trabalhar) e o PDF que anexar.",
@@ -61,7 +61,7 @@ export default function Privacidade() {
               "Qualquer pessoa vê seu perfil público e seus anúncios no ar.",
               "Quem publicou vê quem curtiu o anúncio, com o perfil e a mensagem. Numa vaga, vê também o currículo de quem preencheu.",
               "Seu WhatsApp e seu e-mail de contato só aparecem para a outra pessoa de um match.",
-              "O CNPJ de uma agência de emprego aparece no perfil e nas vagas dela, para quem procura trabalho conferir na Receita.",
+              "O CNPJ de agência, comércio ou empresa aparece no perfil e nos anúncios, para quem usa o site conferir na Receita.",
               "Denúncias só a moderação vê. Quem publicou não sabe quem denunciou.",
               "Não vendemos seus dados.",
             ]}
@@ -89,8 +89,9 @@ export default function Privacidade() {
           <p>
             Usamos serviços de terceiros só para isso: o Supabase (banco de dados, login e fotos), o OpenFreeMap, com
             dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a OpenAI (a IA que revisa o texto
-            dos anúncios e ajuda a escrever), a Cloudflare (a verificação contra robôs na hora de entrar) e, se você
-            escolher entrar com eles, Google, Facebook ou LinkedIn.
+            dos anúncios e ajuda a escrever), a Cloudflare (a verificação contra robôs na hora de entrar), a
+            BrasilAPI (que traz os dados públicos do CNPJ na Receita para preencher o perfil; só enviamos o número do
+            CNPJ) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
           </p>
           <p>
             A IA recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome

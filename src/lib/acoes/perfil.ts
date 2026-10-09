@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
+import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
@@ -27,6 +28,16 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
   // A foto precisa estar na pasta da própria pessoa no Storage (o banco confere de novo).
   if (d.foto && !d.foto.startsWith(`${usuario.id}/`)) {
     return { ok: false, erro: "Envie a foto de novo.", erros: { foto: "Envie a foto de novo." } };
+  }
+
+  // CNPJ novo: confere na Receita (BrasilAPI). Baixado, inapto ou suspenso não entra.
+  // Se não achar (empresa aberta há pouco) ou a consulta falhar, segue: a equipe confere.
+  if (d.cnpj && d.cnpj !== (await obterMeuPerfil())?.cnpj) {
+    const consulta = await consultarCnpj(d.cnpj);
+    if (consulta.ok && !consulta.dados.ativa) {
+      const erro = `Este CNPJ está com a situação ${consulta.dados.situacao.toLowerCase()} na Receita. Use um CNPJ ativo.`;
+      return { ok: false, erro: "Confira os campos marcados.", erros: { cnpj: erro } };
+    }
   }
 
   const supabase = await criarClienteServidor();

@@ -10,6 +10,7 @@ import {
   SeloVerificado,
   SuspenderConta,
 } from "@/components/admin/acoes-conta";
+import { DadosDaReceita } from "@/components/admin/dados-receita";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Dado, Secao } from "@/components/admin/ui";
@@ -145,7 +146,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
             <Dado rotulo="No Publike desde">{formatarDataCurta(u.perfil.criado_em)}</Dado>
             {u.perfil.servicos.length > 0 && <Dado rotulo="Faz">{u.perfil.servicos.join(", ")}</Dado>}
             {u.perfil.sobre && <Dado rotulo="Apresentação">{u.perfil.sobre}</Dado>}
-            {u.perfil.tipo === "agencia" && (
+            {(u.perfil.tipo === "agencia" || u.perfil.cnpj) && (
               <Dado rotulo="CNPJ">
                 {u.perfil.cnpj ? (
                   <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -166,6 +167,11 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
               </Dado>
             )}
           </dl>
+          {u.perfil.cnpj && (
+            <Suspense fallback={<p className="text-body-sm text-ink-muted">Consultando a Receita…</p>}>
+              <DadosDaReceita cnpj={u.perfil.cnpj} agencia={u.perfil.tipo === "agencia"} />
+            </Suspense>
+          )}
           {u.perfil.tipo === "agencia" && !u.perfil.verificado && (
             <Aviso tipo="info" titulo="Agência esperando verificação">
               Confira na Receita se o CNPJ está ativo, se o nome bate com o do perfil e se a atividade é de seleção,

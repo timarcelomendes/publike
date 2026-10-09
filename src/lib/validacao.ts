@@ -510,17 +510,18 @@ export const esquemaPerfil = z
       .refine((t) => !t || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t), { error: "Confira o e-mail." })
       .transform((t) => t || null),
     receber_emails: z.boolean(),
-    /** só agências (o banco confere de novo e apaga o das outras contas) */
+    /** agência: obrigatório; comércio e empresa: opcional; pessoa: não guarda (o banco confere de novo) */
     cnpj: z.string().transform(limparCnpj),
   })
   .superRefine((d, ctx) => {
-    if (d.tipo !== "agencia") return;
-    if (!d.cnpj) ctx.addIssue({ code: "custom", path: ["cnpj"], message: "Informe o CNPJ da agência." });
-    else if (!cnpjValido(d.cnpj)) {
+    if (d.tipo === "pessoa") return;
+    if (!d.cnpj) {
+      if (d.tipo === "agencia") ctx.addIssue({ code: "custom", path: ["cnpj"], message: "Informe o CNPJ da agência." });
+    } else if (!cnpjValido(d.cnpj)) {
       ctx.addIssue({ code: "custom", path: ["cnpj"], message: "Confira o CNPJ: algum número ou letra não bate." });
     }
   })
-  .transform((d) => ({ ...d, cnpj: d.tipo === "agencia" ? d.cnpj : null }));
+  .transform((d) => ({ ...d, cnpj: d.tipo === "pessoa" ? null : d.cnpj || null }));
 
 export type DadosPerfil = z.output<typeof esquemaPerfil>;
 

@@ -13,11 +13,12 @@ import {
 } from "react";
 import { excluirConta, salvarPerfil } from "@/lib/acoes/perfil";
 import { BAIRROS } from "@/lib/bairros";
-import { formatarCnpj, limparCnpj } from "@/lib/cnpj";
+import { formatarCnpj, limparCnpj, nomeDaReceita, type DadosCnpj } from "@/lib/cnpj";
 import { CIDADES, LIMITES_CONTA, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarTelefone } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, MeuPerfil, TipoConta } from "@/lib/tipos";
+import { CampoCnpj } from "./campo-cnpj";
 import { Aviso, Avatar } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
@@ -93,6 +94,7 @@ export function FormPerfil({
     perfil?.whatsapp ? formatarTelefone(perfil.whatsapp) : telefone ? mascararCelular(telefone) : "",
   );
   const [cnpj, setCnpj] = useState(formatarCnpj(perfil?.cnpj));
+  const [bairro, setBairro] = useState(perfil?.bairro ?? "");
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const agencia = tipo === "agencia";
@@ -110,6 +112,17 @@ export function FormPerfil({
     e.preventDefault();
     const dados = new FormData(e.currentTarget);
     startTransition(() => acao(dados));
+  }
+
+  /** Dados da Receita: no automático só preenche o que está vazio; no botão, troca nome, cidade e bairro. */
+  function usarReceita(d: DadosCnpj, soVazios: boolean) {
+    const novoNome = nomeDaReceita(d.nomeFantasia || d.razaoSocial).slice(0, 80);
+    if (novoNome && (!soVazios || !nome.trim())) setNome(novoNome);
+    const chave = (t: string) => t.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
+    const cidadeDaReceita = d.uf === "GO" ? CIDADES.find((c) => chave(c) === chave(d.municipio ?? "")) : undefined;
+    if (!cidadeDaReceita || (soVazios && bairro.trim())) return;
+    setCidade(cidadeDaReceita);
+    if (d.bairro) setBairro(nomeDaReceita(d.bairro).slice(0, 80));
   }
 
   function adicionar(valor: string) {
@@ -218,33 +231,23 @@ export function FormPerfil({
           {erros.tipo && <MensagemErro>{erros.tipo}</MensagemErro>}
         </fieldset>
 
+        {tipo !== "pessoa" && (
+          <CampoCnpj
+            valor={cnpj}
+            aoMudar={setCnpj}
+            erro={erros.cnpj}
+            agencia={agencia}
+            aoAchar={(d) => usarReceita(d, true)}
+            aoUsar={(d) => usarReceita(d, false)}
+          />
+        )}
         {agencia && (
-          <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-4">
-            <Campo
-              rotulo="CNPJ da agência"
-              nome="cnpj"
-              erro={erros.cnpj}
-              ajuda="Aparece no seu perfil e nas suas vagas, para quem procura trabalho conferir na Receita. Vale o CNPJ com letras."
-            >
-              <input
-                {...ligarCampo("cnpj", erros.cnpj, true)}
-                value={cnpj}
-                onChange={(e) => setCnpj(formatarCnpj(e.target.value))}
-                autoCapitalize="characters"
-                autoComplete="off"
-                spellCheck={false}
-                maxLength={18}
-                placeholder="00.000.000/0000-00"
-                className={`${classesEntrada} font-mono tracking-wide`}
-              />
-            </Campo>
-            <p className="text-body-sm text-ink-muted">
-              Publicar vagas é grátis. Depois que a equipe do Publike confere o CNPJ, a agência ganha o selo de
-              verificada e pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar{" "}
-              {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Antes disso, vale o limite de todas as contas:{" "}
-              {LIMITES_CONTA.comum.noAr} no ar e {LIMITES_CONTA.comum.porDia} por dia.
-            </p>
-          </div>
+          <p className="text-body-sm text-ink-muted">
+            Publicar vagas é grátis. Depois que a equipe do Publike confere o CNPJ, a agência ganha o selo de verificada
+            e pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar{" "}
+            {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Antes disso, vale o limite de todas as contas:{" "}
+            {LIMITES_CONTA.comum.noAr} no ar e {LIMITES_CONTA.comum.porDia} por dia.
+          </p>
         )}
         {perdeSelo && (
           <Aviso tipo="alerta">
@@ -270,7 +273,8 @@ export function FormPerfil({
           <Campo rotulo="Bairro" nome="bairro" opcional erro={erros.bairro} ajuda="Aparece no perfil. Não coloque o endereço.">
             <input
               {...ligarCampo("bairro", erros.bairro, true)}
-              defaultValue={perfil?.bairro ?? ""}
+              value={bairro}
+              onChange={(e) => setBairro(e.target.value)}
               list="bairros-perfil"
               maxLength={80}
               autoComplete="off"

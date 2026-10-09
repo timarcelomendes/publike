@@ -20,7 +20,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
-import { CnpjDaAgencia } from "@/components/cnpj-agencia";
+import { CnpjDoPerfil } from "@/components/cnpj-agencia";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { MapaArea } from "@/components/mapa/mapa-area";
@@ -385,10 +385,10 @@ async function DetalheAnuncio({
                 Ver perfil
               </Link>
             </div>
-            {agencia && anuncio.autor_cnpj && (
-              <CnpjDaAgencia
+            {anuncio.autor_cnpj && (
+              <CnpjDoPerfil
                 cnpj={anuncio.autor_cnpj}
-                verificada={anuncio.autor_verificado}
+                verificada={agencia && anuncio.autor_verificado}
                 className="border-t border-line pt-3"
               />
             )}

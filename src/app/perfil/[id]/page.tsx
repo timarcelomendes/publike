@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { CardAnuncio } from "@/components/card-anuncio";
-import { CnpjDaAgencia } from "@/components/cnpj-agencia";
+import { CnpjDoPerfil } from "@/components/cnpj-agencia";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TIPOS_CONTA } from "@/lib/constantes";
@@ -77,8 +77,8 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           <p className="mt-1 text-body text-ink-muted">
             {tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} · no Publike desde {formatarMesAno(perfil.criado_em)}
           </p>
-          {agencia && perfil.cnpj && (
-            <CnpjDaAgencia cnpj={perfil.cnpj} verificada={perfil.verificado} className="mt-1" />
+          {perfil.cnpj && (
+            <CnpjDoPerfil cnpj={perfil.cnpj} verificada={agencia && perfil.verificado} className="mt-1" />
           )}
           {nota.total > 0 && (
             <p className="mt-1">

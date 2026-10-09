@@ -42,3 +42,52 @@ export function formatarCnpj(valor: string | null | undefined) {
 export function linkReceita(valor: string) {
   return `https://solucoes.receita.fazenda.gov.br/servicos/cnpjreva/cnpjreva_solicitacao.asp?cnpj=${limparCnpj(valor)}`;
 }
+
+/** "7810800" vira "7810-8/00", como aparece no cartão CNPJ. */
+export function formatarCnae(codigo: string | number | null | undefined) {
+  const c = String(codigo ?? "").replace(/\D/g, "").padStart(7, "0");
+  return c === "0000000" ? null : `${c.slice(0, 4)}-${c[4]}/${c.slice(5)}`;
+}
+
+const MINUSCULAS = new Set(["de", "da", "do", "das", "dos", "e", "em", "na", "no", "a", "o"]);
+const SIGLAS = new Set(["LTDA", "ME", "EPP", "EIRELI", "SA", "S/A", "MEI", "RH", "SS", "CIA"]);
+
+/** A Receita escreve tudo em maiúsculas: "PADARIA PAO QUENTE LTDA" vira "Padaria Pao Quente Ltda". */
+export function nomeDaReceita(texto: string | null | undefined) {
+  return (texto ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map((p, i) => {
+      const maiuscula = p.toUpperCase();
+      if (SIGLAS.has(maiuscula)) return maiuscula === "LTDA" ? "Ltda" : maiuscula;
+      const minuscula = p.toLocaleLowerCase("pt-BR");
+      if (i > 0 && MINUSCULAS.has(minuscula)) return minuscula;
+      return minuscula.charAt(0).toLocaleUpperCase("pt-BR") + minuscula.slice(1);
+    })
+    .join(" ");
+}
+
+/** Dados públicos do CNPJ que o Publike usa (vêm da BrasilAPI, que lê os dados abertos da Receita). */
+export type DadosCnpj = {
+  cnpj: string;
+  razaoSocial: string;
+  nomeFantasia: string | null;
+  /** ATIVA, BAIXADA, INAPTA, SUSPENSA ou NULA */
+  situacao: string;
+  ativa: boolean;
+  atividade: string | null;
+  cnae: string | null;
+  /** atividade principal ou secundária de seleção e agenciamento de mão de obra (CNAE 78) */
+  agenciaDeEmprego: boolean;
+  municipio: string | null;
+  uf: string | null;
+  bairro: string | null;
+  /** AAAA-MM-DD */
+  abertura: string | null;
+  mei: boolean;
+};
+
+export type ConsultaCnpj =
+  | { ok: true; dados: DadosCnpj }
+  | { ok: false; motivo: "invalido" | "nao_encontrado" | "indisponivel" };
