@@ -51,7 +51,8 @@ async function Conteudo() {
         <Secao titulo="Falta configurar" descricao="O site funciona sem isso, mas os e-mails e a IA só rodam com tudo pronto.">
           <div className="flex flex-col gap-2">
             <Situacao ok={Boolean(filas.smtp)}>
-              E-mail do Zoho no servidor (SMTP_SERVIDOR, SMTP_USUARIO e SMTP_SENHA). <Link href="/admin/emails" className="underline">Ver e-mails</Link>
+              E-mail no servidor (SMTP_SERVIDOR, SMTP_USUARIO, SMTP_SENHA e SMTP_REMETENTE).{" "}
+              <Link href="/admin/emails" className="underline">Ver e-mails</Link>
             </Situacao>
             <Situacao ok={Boolean(filas.enderecoEmails)}>
               Endereço do site no ar para os links dos e-mails (PUBLIKE_URL_PUBLICA no seu computador).{" "}

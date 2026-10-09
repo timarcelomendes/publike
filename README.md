@@ -176,21 +176,27 @@ Como fica protegido:
 - O admin só liga em modo de desenvolvimento, com endereço local (localhost ou 127.0.0.1) e com o cookie do link do terminal. O link é feito a partir da chave secreta: se você trocar a chave, o link muda e o cookie antigo para de valer.
 - **Nunca** coloque `SUPABASE_SECRET_KEY` ou `PUBLIKE_ADMIN` na hospedagem, nem mande a chave por chat ou e-mail. Se ela vazar, apague no Supabase e crie outra.
 
-### 4.3 E-mails do site pelo Zoho
+### 4.3 E-mails do site pelo Zoho CPaaS
 
-Os e-mails de login (link mágico) saem pelo Supabase, com o SMTP configurado em **Authentication → Emails → SMTP Settings**. Os avisos do site (curtida, match, moderação, conta e avisos da equipe) saem pelo próprio site, com a mesma conta do Zoho:
+Os e-mails saem pelo **Zoho CPaaS** (o antigo ZeptoMail), feito para e-mails automáticos. O domínio `publike.org` já está verificado lá: a chave DKIM (`8123133._domainkey`) e o CNAME de devolução (`bounce-zem`) estão no DNS. Em **Validação do cliente**, no menu da esquerda, responda o questionário: o Zoho revisa a conta para liberar todo o envio.
+
+Usuário e senha ficam em **Agents → publike → SMTP/API**. O usuário é sempre `emailapikey`; a senha é a do Agent (botão de copiar ao lado de **Palavra-passe 1**).
+
+- **Link de login (link mágico):** sai pelo Supabase. Em **Authentication → Emails → SMTP Settings**: servidor `smtp.zeptomail.com`, porta `465`, usuário `emailapikey`, a senha do Agent, remetente `nao-responda@publike.org` e nome `Publike`.
+- **Avisos do site** (curtida, match, moderação, conta e avisos da equipe): saem pelo próprio site, com as mesmas credenciais:
 
 ```bash
-SMTP_SERVIDOR=smtppro.zoho.com   # conta com domínio próprio; contas @zoho.com usam smtp.zoho.com
+SMTP_SERVIDOR=smtp.zeptomail.com
 SMTP_PORTA=465
-SMTP_USUARIO=development@publike.org
-SMTP_SENHA=...                   # com verificação em duas etapas, use uma senha de aplicativo
+SMTP_USUARIO=emailapikey
+SMTP_SENHA=...                            # a senha do Agent
+SMTP_REMETENTE=nao-responda@publike.org   # quem aparece como remetente
 ```
 
 Coloque no `.env.local` e, no site publicado, nas variáveis de ambiente da hospedagem. Depois, no admin, em **E-mails**:
 
 - escolha quem recebe os avisos da equipe e clique em **Salvar configurações**;
-- use **Enviar teste** para conferir. Se o Zoho recusar o login, confira a senha e se o acesso IMAP/SMTP está liberado no plano e nas configurações da conta (o plano grátis do Zoho pode não ter).
+- use **Enviar teste** para conferir. Se o Zoho recusar, confira a senha do Agent e se o remetente é do domínio verificado.
 
 Os textos de cada e-mail são editados no próprio admin, com prévia. Quem não quiser os avisos desmarca a opção no perfil (avisos de suspensão da conta vão mesmo assim). Os avisos só vão para o e-mail de login confirmado da pessoa (quem entra só pelo celular não recebe e-mail).
 
@@ -240,7 +246,7 @@ No admin, em **Moderadores**, ponha o e-mail de quem vai ajudar. A pessoa precis
 5. No Supabase, em **Authentication → URL Configuration**, troque a **Site URL** por `https://publike.org` e adicione `https://publike.org/**` nas Redirect URLs (deixe o `http://localhost:3000/**`, que é do seu computador).
 6. Nos apps de login: no Google, `https://publike.org` entra em **Origens JavaScript autorizadas** (sem isso, o botão do Google falha no site publicado); no Facebook, o domínio entra em **Domínios do app**, junto com a URL de exclusão de dados (`/apagar-dados`). Depois, tire os dois do modo de teste.
 
-**E-mail do domínio.** Os e-mails saem pelo Zoho com o endereço @publike.org. Para não caírem no spam, o DNS precisa autorizar o Zoho: o registro SPF (TXT de `@`) inclui `include:zohomail.com`, e a chave DKIM gerada no Zoho (**Admin Console → Domínios → publike.org → DKIM**) entra como TXT em `zmail._domainkey`.
+**E-mail do domínio.** Os e-mails saem pelo Zoho CPaaS com o endereço `nao-responda@publike.org` (veja 4.3). Para não caírem no spam, o DNS precisa ter os dois registros que o Zoho CPaaS pede ao verificar o domínio: a chave DKIM (TXT em `8123133._domainkey`) e o CNAME de devolução (`bounce-zem`). Os dois já estão lá; não apague.
 
 ---
 
@@ -317,7 +323,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 - [ ] Verificação em duas etapas no seu e-mail, no Supabase, no GitHub e na hospedagem
 - [ ] Modelos de e-mail traduzidos
 - [ ] Domínio próprio na Vercel e no Supabase (Site URL e Redirect URLs)
-- [ ] SPF e DKIM do Zoho no DNS do domínio (sem isso, o link de login cai no spam)
+- [ ] Domínio verificado no Zoho CPaaS (DKIM e CNAME de devolução no DNS) e o questionário de **Validação do cliente** enviado
 - [ ] `NEXT_PUBLIC_CONTATO_EMAIL` preenchido (aparece na página de privacidade)
 - [ ] Textos de privacidade e regras revisados por um advogado
 - [ ] Números de teste do SMS removidos

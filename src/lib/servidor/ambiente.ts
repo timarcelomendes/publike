@@ -15,25 +15,46 @@ export function chaveDoServidor() {
   return (process.env.PUBLIKE_CHAVE_SERVIDOR || "").trim();
 }
 
-export type ConfigSmtp = { servidor: string; porta: number; seguro: boolean; usuario: string; senha: string };
+export type ConfigSmtp = {
+  servidor: string;
+  porta: number;
+  seguro: boolean;
+  usuario: string;
+  senha: string;
+  remetente: string;
+};
 
-/** Conta do Zoho que manda os avisos do site. */
+/**
+ * Quem aparece como remetente. No Zoho CPaaS (ZeptoMail) o usuário do SMTP é
+ * "emailapikey", então o endereço vem de SMTP_REMETENTE; sem ele, vale o
+ * usuário quando é um e-mail (contas comuns, como a do Zoho Mail).
+ */
+function remetenteSmtp(usuario: string) {
+  const explicito = (process.env.SMTP_REMETENTE || "").trim();
+  if (explicito) return explicito;
+  return usuario.includes("@") ? usuario : "";
+}
+
+/** Serviço que manda os avisos do site (Zoho CPaaS). */
 export function configSmtp(): ConfigSmtp | null {
   const servidor = (process.env.SMTP_SERVIDOR || "").trim();
   const usuario = (process.env.SMTP_USUARIO || "").trim();
   const senha = process.env.SMTP_SENHA || "";
-  if (!servidor || !usuario || !senha) return null;
+  const remetente = remetenteSmtp(usuario);
+  if (!servidor || !usuario || !senha || !remetente) return null;
   const porta = Number(process.env.SMTP_PORTA || 465) || 465;
   // 465: conexão já começa protegida (SSL). 587: começa aberta e sobe para TLS.
-  return { servidor, porta, seguro: porta === 465, usuario, senha };
+  return { servidor, porta, seguro: porta === 465, usuario, senha, remetente };
 }
 
 /** O que o admin pode mostrar sobre o e-mail (sem a senha). */
 export function situacaoSmtp() {
+  const usuario = (process.env.SMTP_USUARIO || "").trim();
   return {
     servidor: (process.env.SMTP_SERVIDOR || "").trim() || null,
     porta: Number(process.env.SMTP_PORTA || 465) || 465,
-    usuario: (process.env.SMTP_USUARIO || "").trim() || null,
+    usuario: usuario || null,
+    remetente: remetenteSmtp(usuario) || null,
     temSenha: Boolean(process.env.SMTP_SENHA),
   };
 }

@@ -40,23 +40,27 @@ async function Conteudo() {
   return (
     <div className="flex flex-col gap-6">
       <Secao
-        titulo="Envio pelo Zoho"
+        titulo="Envio pelo Zoho CPaaS"
         descricao={
           <>
-            A conta e a senha do Zoho ficam só nas variáveis de ambiente do servidor, nunca aqui. No seu Mac é o{" "}
+            O usuário e a senha do SMTP ficam só nas variáveis de ambiente do servidor, nunca aqui. No seu Mac é o{" "}
             <code>.env.local</code>; no site publicado, o painel da hospedagem.
           </>
         }
       >
         <div className="flex flex-col gap-2">
           <Situacao ok={Boolean(smtp.servidor)}>
-            Servidor: {smtp.servidor ? <strong>{smtp.servidor}:{smtp.porta}</strong> : "falta SMTP_SERVIDOR (smtp.zoho.com ou smtppro.zoho.com)"}
+            Servidor: {smtp.servidor ? <strong>{smtp.servidor}:{smtp.porta}</strong> : "falta SMTP_SERVIDOR (smtp.zeptomail.com)"}
           </Situacao>
           <Situacao ok={Boolean(smtp.usuario)}>
-            Conta: {smtp.usuario ? <strong>{smtp.usuario}</strong> : "falta SMTP_USUARIO (o e-mail do Zoho)"}
+            Usuário: {smtp.usuario ? <strong>{smtp.usuario}</strong> : "falta SMTP_USUARIO (emailapikey)"}
           </Situacao>
           <Situacao ok={smtp.temSenha}>
-            Senha: {smtp.temSenha ? "configurada" : "falta SMTP_SENHA (com verificação em duas etapas, use uma senha de aplicativo)"}
+            Senha: {smtp.temSenha ? "configurada" : "falta SMTP_SENHA (a senha do Agent, em SMTP/API no Zoho CPaaS)"}
+          </Situacao>
+          <Situacao ok={Boolean(smtp.remetente)}>
+            Remetente:{" "}
+            {smtp.remetente ? <strong>{smtp.remetente}</strong> : "falta SMTP_REMETENTE (por exemplo, nao-responda@publike.org)"}
           </Situacao>
           <Situacao ok={Boolean(filas.acesso)}>
             Acesso à fila:{" "}
@@ -86,7 +90,7 @@ async function Conteudo() {
             )}
           </Situacao>
         </div>
-        <FormEmailTeste sugestao={config.avisos_para[0] ?? smtp.usuario ?? ""} />
+        <FormEmailTeste sugestao={config.avisos_para[0] ?? ""} />
       </Secao>
 
       <Secao id="configuracoes" titulo="O que é enviado">

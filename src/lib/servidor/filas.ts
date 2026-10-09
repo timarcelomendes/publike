@@ -55,7 +55,12 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
   const acesso = acessoFila();
   if (!acesso) return { ...resultado, motivo: "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR)." };
   const smtp = configSmtp();
-  if (!smtp) return { ...resultado, motivo: "Falta configurar o e-mail no servidor (SMTP_SERVIDOR, SMTP_USUARIO e SMTP_SENHA)." };
+  if (!smtp) {
+    return {
+      ...resultado,
+      motivo: "Falta configurar o e-mail no servidor (SMTP_SERVIDOR, SMTP_USUARIO, SMTP_SENHA e SMTP_REMETENTE).",
+    };
+  }
   const { cliente, chave } = acesso;
   // Sem o endereço público do site, os links sairiam para localhost: aqui só
   // vai o e-mail de teste; o resto espera o site publicado (ou PUBLIKE_URL_PUBLICA).
@@ -105,7 +110,7 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
           base ?? SITE_URL,
         );
         await transporte.sendMail({
-          from: { name: item.remetente_nome, address: smtp.usuario },
+          from: { name: item.remetente_nome, address: smtp.remetente },
           to: item.para,
           replyTo: item.responder_para || undefined,
           subject: email.assunto,
