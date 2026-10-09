@@ -157,6 +157,8 @@ Depois, rode `supabase/migrations/20261009180000_avaliacoes.sql`. Ela cria as av
 
 Por fim, rode `supabase/migrations/20261009200000_curriculos.sql`. Ela cria o currículo (tabela `curriculos` e a pasta privada `curriculos` no Storage, só PDF, até 5 MB) e a opção "Pedir currículo" na vaga. Quem vê: a própria pessoa e quem anunciou uma vaga que ela curtiu, enquanto a curtida existir. O PDF abre por link temporário de uma hora.
 
+Depois, `supabase/migrations/20261009210000_config_where.sql`: corrige o **Salvar configurações** de E-mails e de IA no admin (o Supabase barra `UPDATE` sem `WHERE` pela API).
+
 ### 4.2 Abrir o admin (só no seu computador)
 
 O admin não tem login: ele só existe no seu computador, com o site rodando em `npm run dev`. No site publicado, `/admin` não abre para ninguém além dos moderadores (veja 4.6).
@@ -325,7 +327,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql` e `20261009200000_curriculos.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql` e `20261009210000_config_where.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI
