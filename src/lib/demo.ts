@@ -1,7 +1,7 @@
 import "server-only";
 import type { Filtros } from "./filtros";
 import { chaveBairro, chavesDaRegiao, type Local } from "./regioes";
-import type { AnuncioCompleto, AnuncioDoPerfil, AnuncioResumo, AvaliacaoPublica, Perfil } from "./tipos";
+import type { AnuncioCompleto, AnuncioDoPerfil, AnuncioResumo, AvaliacaoPublica, Perfil, VagaDescobrir } from "./tipos";
 
 // Dados de exemplo para o modo demonstração (sem Supabase configurado).
 // Pessoas e empresas fictícias, só para ver o site funcionando.
@@ -414,4 +414,40 @@ export function anunciosDoPerfilDemo(id: string, agora: number): AnuncioDoPerfil
 
 export function idsDemo() {
   return BASE.map((b) => b.id);
+}
+
+/** Vagas do Descobrir na demonstração (com curtidas e salvas de mentira para o "Em alta"). */
+export function vagasDescobrirDemo(agora: number): VagaDescobrir[] {
+  return BASE.filter((b) => b.tipo === "vaga").map((b, i) => {
+    const c = completo(b, agora);
+    return {
+      id: c.id,
+      titulo: c.titulo,
+      descricao: c.descricao.slice(0, 600),
+      categoria: c.categoria,
+      regime: c.regime,
+      pagamento_valor: c.pagamento_valor,
+      pagamento_unidade: c.pagamento_unidade,
+      beneficios: c.beneficios,
+      horario: c.horario,
+      vagas: c.vagas,
+      cidade: c.cidade,
+      bairro: c.bairro,
+      lat: c.lat,
+      lng: c.lng,
+      criado_em: c.criado_em,
+      autor_id: c.autor_id,
+      autor_nome: c.autor_tipo === "pessoa" ? c.autor_nome.split(" ")[0] : c.autor_nome,
+      autor_tipo: c.autor_tipo,
+      autor_verificado: c.autor_verificado,
+      contratante: c.contratante,
+      contratante_confidencial: c.contratante_confidencial,
+      pede_curriculo: c.pede_curriculo,
+      curtidas_7d: [7, 12, 2, 5, 1, 9, 3, 0, 4, 6, 8, 2, 1][i % 13],
+      salvas_7d: [3, 4, 0, 2, 1, 5, 0, 1, 2, 2, 3, 0, 1][i % 13],
+      minha_curtida: null,
+      salva: false,
+      dispensada: false,
+    };
+  });
 }

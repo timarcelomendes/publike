@@ -47,7 +47,7 @@ export default function Privacidade() {
               "Para entrar: seu e-mail, seu celular ou sua conta Google, Facebook ou LinkedIn. Dessas contas recebemos só o nome e o e-mail. Não publicamos nada nelas e não vemos seus amigos ou contatos.",
               "No perfil: nome, se você é pessoa, comércio, empresa ou agência de emprego, cidade, bairro, foto (opcional), o que você faz e uma apresentação. Agência informa também o CNPJ; comércio e empresa podem informar.",
               "Contato: seu WhatsApp e, se quiser, um e-mail.",
-              "O que você faz no site: anúncios, curtidas, matches e denúncias.",
+              "O que você faz no site: anúncios, curtidas, matches, denúncias e, no Descobrir, as vagas que salvou ou passou e o que escreveu em “O que você procura?” (só você vê).",
               "Se você preencher: o currículo (estudos, experiências, cursos, CNH, quando pode trabalhar) e o PDF que anexar.",
               "Localização dos anúncios: só a região, uma área de uns 500 metros. O endereço exato nunca é guardado.",
               "Quando você usa “Perto de mim”, a localização serve só para a busca e não fica salva no seu perfil.",
@@ -96,7 +96,9 @@ export default function Privacidade() {
           <p>
             A IA recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome
             da empresa contratante), nunca seu contato. Quando ela acha um anúncio suspeito, ele sai do ar até uma
-            pessoa da moderação olhar.
+            pessoa da moderação olhar. No Descobrir, a IA recebe o que você escreveu em “O que você procura?”, o
+            que você faz, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para
+            pôr primeiro as que combinam com você; nunca seu nome ou contato.
           </p>
           <p>
             Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}

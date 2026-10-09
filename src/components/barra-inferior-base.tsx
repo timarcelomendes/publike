@@ -1,10 +1,11 @@
-import { CircleUserRound, House, LayoutDashboard, Plus } from "lucide-react";
+import { CircleUserRound, House, LayoutDashboard, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-export type AbaInferior = "inicio" | "publicar" | "painel" | "perfil" | null;
+export type AbaInferior = "inicio" | "descobrir" | "publicar" | "painel" | "perfil" | null;
 
 const ITENS = [
   { id: "inicio", href: "/", nome: "Início", icone: House },
+  { id: "descobrir", href: "/descobrir", nome: "Descobrir", icone: Sparkles },
   { id: "publicar", href: "/publicar", nome: "Publicar", icone: Plus },
   { id: "painel", href: "/painel", nome: "Painel", icone: LayoutDashboard },
   { id: "perfil", href: "/perfil", nome: "Perfil", icone: CircleUserRound },
@@ -17,7 +18,7 @@ export function BarraInferiorBase({ ativo }: { ativo: AbaInferior }) {
       aria-label="Navegação"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface-200/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
     >
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {ITENS.map(({ id, href, nome, icone: Icone }) => {
           const atual = ativo === id;
           const publicar = id === "publicar";

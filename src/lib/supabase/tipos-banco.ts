@@ -79,6 +79,24 @@ export type Database = {
           },
         ];
       };
+      salvas: {
+        Row: { perfil_id: string; anuncio_id: string; criado_em: string };
+        Insert: { anuncio_id: string };
+        Update: Record<PropertyKey, never>;
+        Relationships: [];
+      };
+      dispensas: {
+        Row: { perfil_id: string; anuncio_id: string; criado_em: string };
+        Insert: { anuncio_id: string };
+        Update: Record<PropertyKey, never>;
+        Relationships: [];
+      };
+      preferencias: {
+        Row: { perfil_id: string; procuro: string | null; atualizado_em: string };
+        Insert: { procuro?: string | null };
+        Update: { procuro?: string | null };
+        Relationships: [];
+      };
       moderadores: {
         Row: { perfil_id: string; criado_em: string };
         Insert: { perfil_id: string };
@@ -686,6 +704,43 @@ export type Database = {
           p_cnpj?: string | null;
         };
         Returns: undefined;
+      };
+      vagas_para_descobrir: {
+        Args: { p_limite?: number };
+        Returns: {
+          id: string;
+          titulo: string;
+          /** até 600 letras */
+          descricao: string;
+          categoria: string;
+          regime: string | null;
+          pagamento_valor: number | null;
+          pagamento_unidade: string | null;
+          beneficios: string | null;
+          horario: string | null;
+          vagas: number;
+          cidade: string;
+          bairro: string;
+          lat: number;
+          lng: number;
+          criado_em: string;
+          autor_id: string;
+          autor_nome: string;
+          autor_tipo: string;
+          autor_verificado: boolean;
+          contratante: string | null;
+          contratante_confidencial: boolean;
+          pede_curriculo: boolean;
+          curtidas_7d: number;
+          salvas_7d: number;
+          minha_curtida: string | null;
+          salva: boolean;
+          dispensada: boolean;
+        }[];
+      };
+      usar_ia_indicacoes: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
       };
       cnpj_valido: {
         Args: { p_cnpj: string };

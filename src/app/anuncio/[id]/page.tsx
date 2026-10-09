@@ -20,6 +20,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
+import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
@@ -36,6 +37,7 @@ import {
   obterMeuCurriculo,
   obterNotaDoProfissional,
   obterUsuario,
+  vagaSalva,
 } from "@/lib/dados";
 import {
   formatarData,
@@ -162,6 +164,7 @@ async function DetalheAnuncio({
     ? [null, []]
     : await Promise.all([obterNotaDoProfissional(anuncio.autor_id), listarAvaliacoesPublicas(anuncio.autor_id)]);
   const primeiroNome = anuncio.autor_nome.split(" ")[0];
+  const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
   const agencia = anuncio.autor_tipo === "agencia";
   const temContratante = vaga && (anuncio.contratante !== null || anuncio.contratante_confidencial);
 
@@ -394,7 +397,8 @@ async function DetalheAnuncio({
             )}
           </div>
 
-          <div className="flex justify-start">
+          <div className="flex flex-wrap justify-start gap-2">
+            {vaga && !proprio && <BotaoSalvarVaga anuncioId={anuncio.id} salva={salva} logado={usuario !== null} />}
             <BotaoCompartilhar titulo={anuncio.titulo} texto={`${anuncio.titulo} · ${lugar} · Publike`} />
           </div>
 

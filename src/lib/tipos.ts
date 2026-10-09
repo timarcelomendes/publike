@@ -12,6 +12,7 @@ export type StatusAnuncio = "ativo" | "pausado" | "encerrado" | "expirado" | "em
 export type StatusCurtida = "pendente" | "match" | "dispensada";
 
 export type AnuncioResumo = LinhaDe<"buscar_anuncios">;
+export type VagaDescobrir = LinhaDe<"vagas_para_descobrir">;
 export type AnuncioCompleto = LinhaDe<"obter_anuncio">;
 export type MeuAnuncio = LinhaDe<"meus_anuncios">;
 export type MeuServico = LinhaDe<"meus_servicos">;

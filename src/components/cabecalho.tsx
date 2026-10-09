@@ -25,6 +25,7 @@ export function Cabecalho() {
           <Logo altura={30} />
         </Link>
         <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
+          <LinkNav href="/descobrir">Descobrir</LinkNav>
           <LinkNav href="/?tipo=vaga">Vagas</LinkNav>
           <LinkNav href="/?tipo=servico">Serviços</LinkNav>
           <LinkNav href="/como-funciona">Como funciona</LinkNav>

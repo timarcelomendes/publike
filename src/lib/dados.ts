@@ -26,6 +26,7 @@ import type {
   MinhaCurtida,
   Perfil,
   Usuario,
+  VagaDescobrir,
 } from "./tipos";
 import { UUID } from "./validacao";
 
@@ -375,4 +376,40 @@ export async function contatoDoMatch(anuncioId: string) {
   const curtidas = await listarMinhasCurtidas();
   const c = curtidas.find((x) => x.anuncio_id === anuncioId && x.status === "match");
   return c ? { whatsapp: c.autor_whatsapp, email: c.autor_email } : null;
+}
+
+// ---------------------------------------------------------------- Descobrir
+
+/** Vagas no ar para o Descobrir, com as marcas de quem está logado (salva, passou, curtiu). */
+export async function listarVagasParaDescobrir(): Promise<VagaDescobrir[]> {
+  if (MODO_DEMO) return demo.vagasDescobrirDemo(await agoraDaRequisicao());
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("vagas_para_descobrir", { p_limite: 300 });
+  if (error) falha("vagas do Descobrir", error);
+  return data ?? [];
+}
+
+/** "O que você procura?" de quem está logado. */
+export async function obterProcuro(): Promise<string | null> {
+  if (MODO_DEMO) return null;
+  const usuario = await obterUsuario();
+  if (!usuario) return null;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.from("preferencias").select("procuro").eq("perfil_id", usuario.id).maybeSingle();
+  return data?.procuro ?? null;
+}
+
+/** Esta vaga está salva por quem está logado? */
+export async function vagaSalva(anuncioId: string): Promise<boolean> {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return false;
+  const usuario = await obterUsuario();
+  if (!usuario) return false;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("salvas")
+    .select("anuncio_id")
+    .eq("perfil_id", usuario.id)
+    .eq("anuncio_id", anuncioId)
+    .maybeSingle();
+  return Boolean(data);
 }
