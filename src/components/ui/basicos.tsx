@@ -172,12 +172,11 @@ export function Logo({ altura = 32, className = "" }: { altura?: number; classNa
   );
 }
 
+/** O símbolo sozinho: o pino vermelho com o check vazado (vermelho também no tema escuro). */
 export function Simbolo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
   const largura = Math.round((altura * 131) / 183);
   return (
-    <picture className={className}>
-      <source media="(prefers-color-scheme: dark)" srcSet="/logo/publike-simbolo-branco.svg" />
-      <img src="/logo/publike-simbolo.svg" alt="" width={largura} height={altura} className="block" />
-    </picture>
+    // eslint-disable-next-line @next/next/no-img-element -- SVG pequeno e fixo, não precisa do otimizador
+    <img src="/logo/publike-simbolo.svg" alt="" width={largura} height={altura} className={`block ${className}`} />
   );
 }
