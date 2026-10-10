@@ -145,35 +145,16 @@ export function Vazio({
 
 // ------------------------------------------------------------------ Logo
 
-// O estilo vai dentro do próprio SVG: não depende do globals.css e não usa
-// variável dentro da animação (o Safari não atualiza var() em @keyframes).
-// Em vez de mudar a cor, o li ink e o li vermelho trocam de opacidade.
-const ESTILO_LOGO =
-  ".lk-i{fill:#1f1a14}.lk-c{fill:#ffffff}" +
-  // no escuro o pino fica branco e o coração vazado mostra o fundo
-  "@media (prefers-color-scheme:dark){.lk-i{fill:#ffffff}.lk-c{fill:none}}" +
-  ".lk-li-i{animation:lk-sai 4.8s ease-in-out infinite}" +
-  ".lk-li-r{opacity:0;animation:lk-entra 4.8s ease-in-out infinite}" +
-  "@keyframes lk-sai{0%,37.5%{opacity:1}50%,87.5%{opacity:0}100%{opacity:1}}" +
-  "@keyframes lk-entra{0%,37.5%{opacity:0}50%,87.5%{opacity:1}100%{opacity:0}}" +
-  ".lk-meio{display:none}" +
-  "@media (prefers-reduced-motion:reduce){.lk-anim{display:none}.lk-meio{display:inline}}";
+// O estilo vai dentro do próprio SVG: não depende do globals.css.
+const ESTILO_LOGO = ".lk-i{fill:#1f1a14}@media (prefers-color-scheme:dark){.lk-i{fill:#ffffff}}";
 
 /**
- * A assinatura (o p é o pino, com o coração branco), desenhada aqui mesmo para o "li" poder se mexer:
- * ele troca entre ink (lê-se publi) e vermelho (lê-se like), 1,8 s em cada
- * leitura e 0,6 s de troca. Parado (`animado={false}`) e para quem pede menos
- * movimento, o li fica meio a meio. No tema escuro, o ink vira branco.
+ * A assinatura: o p de publike é o pino, com um check vermelho dentro (deu match).
+ * A palavra fica inteira numa cor só (ink; branca no tema escuro); o vermelho é só o check.
  * Regras e arquivos: guia da marca (public/logo/).
  */
-export function Logo({ altura = 32, className = "", animado = true }: { altura?: number; className?: string; animado?: boolean }) {
+export function Logo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
   const largura = Math.round((altura * LOGO_LARGURA) / 217);
-  const meio = (
-    <>
-      <path d={LOGO.liBaixo} fill="#e0192d" />
-      <path d={LOGO.liCima} className="lk-i" />
-    </>
-  );
   return (
     <svg
       viewBox={`0 0 ${LOGO_LARGURA} 217`}
@@ -184,22 +165,9 @@ export function Logo({ altura = 32, className = "", animado = true }: { altura?:
       className={`logo-publike block ${className}`}
     >
       <style>{ESTILO_LOGO}</style>
-      {/* o p é o pino, na cor do texto, com o coração branco (vazado no escuro) */}
-      <path d={LOGO.pino} className="lk-i" fillRule="evenodd" />
-      <path d={LOGO.coracao} className="lk-c" />
-      <path d={LOGO.ub} className="lk-i" />
-      {animado ? (
-        <>
-          <g className="lk-meio">{meio}</g>
-          <g className="lk-anim">
-            <path d={LOGO.li} className="lk-i lk-li-i" />
-            <path d={LOGO.li} fill="#e0192d" className="lk-li-r" />
-          </g>
-        </>
-      ) : (
-        meio
-      )}
-      <path d={LOGO.ke} fill="#e0192d" />
+      <path d={LOGO.pino} className="lk-i" />
+      <path d={LOGO.check} fill="#e0192d" />
+      <path d={LOGO.palavra} className="lk-i" />
     </svg>
   );
 }

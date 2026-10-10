@@ -320,7 +320,7 @@ src/lib/
   servidor/              variáveis do servidor e filas de e-mails e da IA
   supabase/              conexão com o Supabase (com login, pública e a do admin) e tipos do banco
 src/app/globals.css    cores, fontes e estilos do Design System
-public/logo/           a logo em SVG (o p é o pino com o coração; li meio a meio, escura, preta, branca e animada); no site, o componente Logo desenha a versão animada
+public/logo/           a logo em SVG (o p é o pino com um check vermelho: colorida, escura, preta e branca) e o símbolo; no site, o componente Logo desenha a mesma logo
 public/marcas/         logos oficiais do Google, Facebook e LinkedIn para os botões de login
 ```
 

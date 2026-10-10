@@ -36,10 +36,7 @@ export function CardAnuncio({
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
-  const tempo =
-    tempoDe && anuncio.tipo === "vaga"
-      ? deslocamentoCurto(anuncio.distancia_km)
-      : null;
+  const tempo = tempoDe && anuncio.tipo === "vaga" ? deslocamentoCurto(anuncio.distancia_km) : null;
   const proprio = usuarioId !== null && usuarioId === anuncio.autor_id;
   const servico = anuncio.tipo === "servico";
   const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
@@ -53,29 +50,18 @@ export function CardAnuncio({
         {novo && <Selo variante="novo">Novo</Selo>}
         <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
         {pertoDeCasa === 0 && (
-          <Selo
-            variante="aviso"
-            className="group-data-[visao=grade]/visao:hidden"
-          >
+          <Selo variante="aviso" className="group-data-[visao=grade]/visao:hidden">
             No seu bairro
           </Selo>
         )}
         {pertoDeCasa === 1 && (
-          <Selo
-            variante="contorno"
-            className="group-data-[visao=grade]/visao:hidden"
-          >
+          <Selo variante="contorno" className="group-data-[visao=grade]/visao:hidden">
             Na sua região
           </Selo>
         )}
-        {anuncio.minha_curtida === "match" && (
-          <Selo variante="match">Deu match</Selo>
-        )}
+        {anuncio.minha_curtida === "match" && <Selo variante="match">Deu match</Selo>}
         {proprio && (
-          <Selo
-            variante="contorno"
-            className="group-data-[visao=grade]/visao:hidden"
-          >
+          <Selo variante="contorno" className="group-data-[visao=grade]/visao:hidden">
             Seu anúncio
           </Selo>
         )}
@@ -96,19 +82,10 @@ export function CardAnuncio({
               {anuncio.autor_nome} · {rotuloConta(anuncio.autor_tipo)}
             </span>
             {anuncio.autor_verificado && (
-              <BadgeCheck
-                aria-label="Perfil verificado"
-                className="size-4 shrink-0 text-cerrado-text"
-              />
+              <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
             )}
           </p>
-          {servico && (
-            <NotaDoProfissional
-              media={anuncio.autor_nota}
-              total={anuncio.autor_avaliacoes}
-              compacto
-            />
-          )}
+          {servico && <NotaDoProfissional media={anuncio.autor_nota} total={anuncio.autor_avaliacoes} compacto />}
         </div>
         {foto && (
           <Image
@@ -140,10 +117,7 @@ export function CardAnuncio({
       {tempo && (
         <p className="-mt-2 flex items-center gap-1.5 text-body-sm text-ink-muted group-data-[visao=lista]/visao:col-start-1 group-data-[visao=lista]/visao:mt-0">
           {tempo.includes("a pé") ? (
-            <Footprints
-              aria-hidden
-              className="size-4 shrink-0 text-ink-muted"
-            />
+            <Footprints aria-hidden className="size-4 shrink-0 text-ink-muted" />
           ) : (
             <Bus aria-hidden className="size-4 shrink-0 text-ink-muted" />
           )}
@@ -158,9 +132,7 @@ export function CardAnuncio({
       </p>
 
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
-        <span className="group-data-[visao=lista]/visao:hidden">
-          {tempoRelativo(anuncio.criado_em, agora)}
-        </span>
+        <span className="group-data-[visao=lista]/visao:hidden">{tempoRelativo(anuncio.criado_em, agora)}</span>
         {!proprio && (
           <BotaoCurtir
             className="relative z-10"
@@ -179,10 +151,7 @@ export function EsqueletoCards({ quantos = 4 }: { quantos?: number }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {Array.from({ length: quantos }, (_, i) => (
-        <div
-          key={i}
-          className="flex h-60 flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5"
-        >
+        <div key={i} className="flex h-60 flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5">
           <div className="h-6 w-28 animate-pulse rounded-pill bg-surface-300" />
           <div className="h-6 w-3/4 animate-pulse rounded-md bg-surface-300" />
           <div className="h-4 w-1/2 animate-pulse rounded-md bg-surface-300" />

@@ -1,20 +1,9 @@
 "use client";
 
-import {
-  Columns2,
-  LayoutGrid,
-  List,
-  Map as IconeMapa,
-  Rows3,
-  type LucideIcon,
-} from "lucide-react";
+import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, type LucideIcon } from "lucide-react";
 import { useSyncExternalStore, type ReactNode } from "react";
 import type { Filtros } from "@/lib/filtros";
-import {
-  MapaAnuncios,
-  type OrigemMapa,
-  type PontoMapa,
-} from "../mapa/mapa-anuncios";
+import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 
 const TELA_GRANDE = "(min-width: 1024px)";
 
@@ -78,10 +67,7 @@ function useVisao(): Visao {
         window.removeEventListener("storage", avisar);
       };
     },
-    () =>
-      escolhidaAgora ??
-      lerGuardada() ??
-      (window.matchMedia(TELA_GRANDE).matches ? "blocos-mapa" : "blocos"),
+    () => escolhidaAgora ?? lerGuardada() ?? (window.matchMedia(TELA_GRANDE).matches ? "blocos-mapa" : "blocos"),
     () => "blocos",
   );
 }
@@ -104,15 +90,11 @@ function SeletorVisao({ visao }: { visao: Visao }) {
             title={nome}
             onClick={() => guardar(valor)}
             className={`inline-flex min-h-9 min-w-8 items-center justify-center gap-1.5 rounded-pill px-2 sm:min-w-9 sm:px-2.5 text-label transition-colors ${
-              ativo
-                ? "bg-ink text-surface-100"
-                : "text-ink-muted hover:bg-surface-300 hover:text-ink"
+              ativo ? "bg-ink text-surface-100" : "text-ink-muted hover:bg-surface-300 hover:text-ink"
             }`}
           >
             <Icone aria-hidden className="size-4" />
-            <span className={ativo ? "hidden xl:inline" : "sr-only"}>
-              {nome}
-            </span>
+            <span className={ativo ? "hidden xl:inline" : "sr-only"}>{nome}</span>
           </button>
         );
       })}
@@ -180,11 +162,7 @@ export function VisaoExplorar({
             </div>
           </div>
         )}
-        {comLista && (
-          <div className={visao === "blocos-mapa" ? "lg:order-1" : ""}>
-            {lista}
-          </div>
-        )}
+        {comLista && <div className={visao === "blocos-mapa" ? "lg:order-1" : ""}>{lista}</div>}
       </div>
     </div>
   );

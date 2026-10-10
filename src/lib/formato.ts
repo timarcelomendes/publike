@@ -86,8 +86,7 @@ export function tempoRelativo(iso: string, agora: number) {
   if (abs < 3600) return rtf.format(Math.round(segundos / 60), "minute");
   if (abs < 86400) return rtf.format(Math.round(segundos / 3600), "hour");
   if (abs < 86400 * 30) return rtf.format(Math.round(segundos / 86400), "day");
-  if (abs < 86400 * 365)
-    return rtf.format(Math.round(segundos / (86400 * 30)), "month");
+  if (abs < 86400 * 365) return rtf.format(Math.round(segundos / (86400 * 30)), "month");
   return rtf.format(Math.round(segundos / (86400 * 365)), "year");
 }
 
@@ -111,17 +110,12 @@ export function formatarMesAno(iso: string) {
 
 /** Selo do card: CLT, Diária, Freelance… ou Serviço. */
 export function rotuloModalidade(tipo: string, regime: string | null) {
-  if (tipo === "vaga" && regime && regime in REGIMES)
-    return REGIMES[regime as Regime].selo;
-  return TIPOS_ANUNCIO[
-    (tipo as TipoAnuncio) in TIPOS_ANUNCIO ? (tipo as TipoAnuncio) : "servico"
-  ].selo;
+  if (tipo === "vaga" && regime && regime in REGIMES) return REGIMES[regime as Regime].selo;
+  return TIPOS_ANUNCIO[(tipo as TipoAnuncio) in TIPOS_ANUNCIO ? (tipo as TipoAnuncio) : "servico"].selo;
 }
 
 export function rotuloConta(tipo: string) {
-  return TIPOS_CONTA[
-    (tipo as TipoConta) in TIPOS_CONTA ? (tipo as TipoConta) : "pessoa"
-  ].minusculo;
+  return TIPOS_CONTA[(tipo as TipoConta) in TIPOS_CONTA ? (tipo as TipoConta) : "pessoa"].minusculo;
 }
 
 /** "Setor Bueno" ou "Setor Garavelo, Aparecida de Goiânia". */
@@ -133,10 +127,8 @@ export function formatarLugar(bairro: string | null, cidade: string) {
 /** 5562999990001 → (62) 99999-0001 */
 export function formatarTelefone(numero: string) {
   const d = numero.replace(/\D/g, "").replace(/^55/, "");
-  if (d.length === 11)
-    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  if (d.length === 10)
-    return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return numero;
 }
 
@@ -147,20 +139,13 @@ export function linkWhatsApp(numero: string, texto: string) {
 /** Iniciais para o avatar sem foto: "Ana Cozinha" → "AC". */
 export function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
-  const letras =
-    (partes[0]?.[0] ?? "") +
-    (partes.length > 1 ? partes[partes.length - 1][0] : "");
+  const letras = (partes[0]?.[0] ?? "") + (partes.length > 1 ? partes[partes.length - 1][0] : "");
   return letras.toUpperCase() || "?";
 }
 
 /** Só aceita caminhos internos ("/painel"), nunca outro site. */
 export function caminhoSeguro(valor: unknown, padrao = "/") {
-  if (
-    typeof valor !== "string" ||
-    !valor.startsWith("/") ||
-    valor.startsWith("//")
-  )
-    return padrao;
+  if (typeof valor !== "string" || !valor.startsWith("/") || valor.startsWith("//")) return padrao;
   // Sem barra invertida nem caracteres de controle (tab, quebra de linha…):
   // o navegador ignora alguns deles e "/\t/site.com" viraria "//site.com".
   for (let i = 0; i < valor.length; i++) {
@@ -210,9 +195,7 @@ export function formatarDataCurta(iso: string) {
 
 /** Banimento é uma suspensão de 100 anos: daqui a mais de 10 anos, chamamos de "para sempre". */
 export function ehParaSempre(iso: string | null | undefined, agora: number) {
-  return Boolean(
-    iso && new Date(iso).getTime() - agora > 10 * 365 * 24 * 3600 * 1000,
-  );
+  return Boolean(iso && new Date(iso).getTime() - agora > 10 * 365 * 24 * 3600 * 1000);
 }
 
 const PROVEDORES: Record<string, string> = {

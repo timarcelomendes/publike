@@ -7,13 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { REGIAO } from "@/lib/config";
 import { hrefFiltros, raioDaBusca, type Filtros } from "@/lib/filtros";
-import {
-  caixaDoRaio,
-  carregarMapLibre,
-  circulo,
-  CORES_MAPA,
-  ESTILO_MAPA,
-} from "./maplibre";
+import { caixaDoRaio, carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA } from "./maplibre";
 
 export type PontoMapa = {
   id: string;
@@ -39,9 +33,7 @@ export type OrigemMapa = { lat: number; lng: number; rotulo: string } | null;
 
 type Props = Omit<PontoMapa, "lat" | "lng">;
 
-function paraGeoJSON(
-  pontos: PontoMapa[],
-): GeoJSON.FeatureCollection<GeoJSON.Point> {
+function paraGeoJSON(pontos: PontoMapa[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: "FeatureCollection",
     features: pontos.map(({ lat, lng, ...p }) => ({
@@ -96,12 +88,10 @@ function criarGrupo(quantos: number, abrir: () => void) {
   const botao = document.createElement("button");
   botao.type = "button";
   botao.setAttribute("aria-label", `${quantos} anúncios aqui. Aproximar`);
-  const tamanho =
-    quantos >= 30 ? "size-12" : quantos >= 10 ? "size-10" : "size-9";
+  const tamanho = quantos >= 30 ? "size-12" : quantos >= 10 ? "size-10" : "size-9";
   // o MapLibre posiciona o marcador com transform: o efeito de aumentar fica num filho
   // (um scale no próprio marcador o tiraria de baixo do cursor)
-  botao.className =
-    "group/grupo rounded-pill outline-none focus-visible:outline-2 focus-visible:outline-focus";
+  botao.className = "group/grupo rounded-pill outline-none focus-visible:outline-2 focus-visible:outline-focus";
   const circulo = document.createElement("span");
   circulo.className = `flex ${tamanho} items-center justify-center rounded-pill border-[3px] border-surface-200 bg-ink text-label text-surface-100 shadow-raised transition-transform group-hover/grupo:scale-110`;
   circulo.textContent = String(quantos);
@@ -131,17 +121,14 @@ function conteudoDoCartao(p: Props, ir: (href: string) => void) {
   const caixa = document.createElement("div");
   caixa.className = "flex w-60 flex-col gap-1 pr-4";
   const topo = document.createElement("p");
-  topo.className =
-    "flex items-center gap-1.5 text-caption text-ink-muted uppercase";
+  topo.className = "flex items-center gap-1.5 text-caption text-ink-muted uppercase";
   const marca = document.createElement("span");
-  marca.className =
-    "flex size-4 items-center justify-center text-ink [&>svg]:size-3.5";
+  marca.className = "flex size-4 items-center justify-center text-ink [&>svg]:size-3.5";
   marca.innerHTML = p.tipo === "vaga" ? ICONE.vaga : ICONE.servico;
   topo.append(marca, document.createTextNode(p.modalidade));
   const titulo = document.createElement("a");
   titulo.href = `/anuncio/${p.id}`;
-  titulo.className =
-    "font-display text-label leading-snug text-ink hover:underline";
+  titulo.className = "font-display text-label leading-snug text-ink hover:underline";
   titulo.textContent = p.titulo;
   const autor = document.createElement("p");
   autor.className = "truncate text-body-sm text-ink-muted";
@@ -161,8 +148,7 @@ function conteudoDoCartao(p: Props, ir: (href: string) => void) {
   valor.textContent = p.valor;
   const ver = document.createElement("a");
   ver.href = `/anuncio/${p.id}`;
-  ver.className =
-    "mt-1 text-label text-terra-text underline-offset-2 hover:underline";
+  ver.className = "mt-1 text-label text-terra-text underline-offset-2 hover:underline";
   ver.textContent = p.tipo === "vaga" ? "Ver a vaga →" : "Ver o serviço →";
   caixa.append(valor, ver);
   for (const link of [titulo, ver]) {
@@ -218,10 +204,7 @@ export function MapaAnuncios({
           ],
         });
         mapa.current = instancia;
-        instancia.addControl(
-          new ml.NavigationControl({ showCompass: false }),
-          "top-right",
-        );
+        instancia.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
 
         const desmarcar = () => {
           marcadoAgora?.setAttribute("aria-pressed", "false");
@@ -231,17 +214,14 @@ export function MapaAnuncios({
         // Etiquetas em HTML para o que está na tela (os grupos vêm do próprio mapa)
         atualizar.current = () => {
           const m = instancia;
-          if (!m || !m.getSource("anuncios") || !m.isSourceLoaded("anuncios"))
-            return;
+          if (!m || !m.getSource("anuncios") || !m.isSourceLoaded("anuncios")) return;
           const agora = new Map<string, Marker>();
           for (const f of m.querySourceFeatures("anuncios")) {
             if (f.geometry.type !== "Point") continue;
             const coords = f.geometry.coordinates as [number, number];
             const props = f.properties as Record<string, unknown>;
             const grupo = Boolean(props.cluster);
-            const chave = grupo
-              ? `grupo-${props.cluster_id}`
-              : String(props.id);
+            const chave = grupo ? `grupo-${props.cluster_id}` : String(props.id);
             if (agora.has(chave)) continue;
             let marcador = todos.get(chave);
             if (!marcador) {
@@ -270,9 +250,7 @@ export function MapaAnuncios({
                     focusAfterOpen: false,
                   })
                     .setLngLat(coords)
-                    .setDOMContent(
-                      conteudoDoCartao(p, (href) => router.push(href)),
-                    )
+                    .setDOMContent(conteudoDoCartao(p, (href) => router.push(href)))
                     .addTo(m);
                   cartao.on("close", desmarcar);
                 });
@@ -286,8 +264,7 @@ export function MapaAnuncios({
             agora.set(chave, marcador);
             if (!visiveis.has(chave)) marcador.addTo(m);
           }
-          for (const [chave, marcador] of visiveis)
-            if (!agora.has(chave)) marcador.remove();
+          for (const [chave, marcador] of visiveis) if (!agora.has(chave)) marcador.remove();
           visiveis.clear();
           for (const [chave, marcador] of agora) visiveis.set(chave, marcador);
         };
@@ -339,16 +316,14 @@ export function MapaAnuncios({
           // no meio de um toque a etiqueta sumiria e o clique cairia no mapa)
           m.on("moveend", () => atualizar.current());
           m.on("sourcedata", (e) => {
-            if (e.sourceId === "anuncios" && e.isSourceLoaded)
-              atualizar.current();
+            if (e.sourceId === "anuncios" && e.isSourceLoaded) atualizar.current();
           });
           m.on("click", () => {
             cartao?.remove();
             desmarcar();
           });
           m.on("moveend", (e) => {
-            if ((e as { originalEvent?: unknown }).originalEvent)
-              setMovido(true);
+            if ((e as { originalEvent?: unknown }).originalEvent) setMovido(true);
           });
 
           setPronto(true);
@@ -378,9 +353,7 @@ export function MapaAnuncios({
     for (const marcador of marcadores.current.values()) marcador.remove();
     marcadores.current.clear();
     naTela.current.clear();
-    (m.getSource("anuncios") as GeoJSONSource | undefined)?.setData(
-      paraGeoJSON(pontos),
-    );
+    (m.getSource("anuncios") as GeoJSONSource | undefined)?.setData(paraGeoJSON(pontos));
   }, [pronto, pontos]);
 
   // A casa (ou o GPS) no mapa
@@ -409,9 +382,7 @@ export function MapaAnuncios({
   useEffect(() => {
     const m = mapa.current;
     if (!pronto || !m) return;
-    (m.getSource("raio") as GeoJSONSource | undefined)?.setData(
-      circulo(filtros.lat, filtros.lng, raioKm),
-    );
+    (m.getSource("raio") as GeoJSONSource | undefined)?.setData(circulo(filtros.lat, filtros.lng, raioKm));
     m.fitBounds(caixaDoRaio(filtros.lat, filtros.lng, raioKm), {
       padding: 24,
       duration: 600,
@@ -439,12 +410,7 @@ export function MapaAnuncios({
       {/* O MapLibre põe position: relative no próprio container (e o CSS dele vence o do Tailwind):
           por isso o container fica dentro de uma caixa absoluta e só ocupa 100% dela. */}
       <div className="absolute inset-0">
-        <div
-          ref={caixa}
-          className="h-full w-full"
-          aria-label="Mapa dos anúncios"
-          role="region"
-        />
+        <div ref={caixa} className="h-full w-full" aria-label="Mapa dos anúncios" role="region" />
       </div>
       {movido && (
         <button
@@ -458,8 +424,7 @@ export function MapaAnuncios({
       )}
       {falhou && (
         <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md bg-surface-200 p-4 text-center text-body-sm text-ink-muted shadow-card">
-          Não foi possível carregar o mapa agora. A lista continua funcionando:
-          escolha Lista, Grade ou Blocos.
+          Não foi possível carregar o mapa agora. A lista continua funcionando: escolha Lista, Grade ou Blocos.
         </p>
       )}
       <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex items-center gap-3 rounded-pill bg-surface-200/95 px-3 py-1.5 text-caption text-ink shadow-card">
