@@ -4,10 +4,12 @@ import { createHash, randomBytes } from "node:crypto";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
+import { LOGO_EMAIL } from "@/lib/email/montar";
 import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada, MODELOS_IA, modeloDaIA } from "@/lib/ia/openai";
 import { escreverResumo } from "@/lib/ia/tarefas";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
+import { prepararLogoEmail } from "@/lib/servidor/logo-email";
 import { enviarEmailsPendentes, processarFilas, revisarAnunciosPendentes } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -50,7 +52,11 @@ async function confirmarLogin(c: ClienteBanco, usuarioId: string, fim: string | 
 const LOGIN_FALHOU =
   "O Supabase não confirmou o login. Recarregue a página: se aparecer o aviso do login, use o botão de lá.";
 
-export async function suspenderConta(usuarioId: string, prazo: "7" | "30" | "sempre", motivo: string): Promise<Resultado> {
+export async function suspenderConta(
+  usuarioId: string,
+  prazo: "7" | "30" | "sempre",
+  motivo: string,
+): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(usuarioId) || !["7", "30", "sempre"].includes(prazo)) return { ok: false, erro: "Pedido inválido." };
@@ -95,7 +101,8 @@ export async function acertarLogin(usuarioId: string): Promise<Resultado> {
   const ficha = data as { suspensao?: { fim?: string } | null } | null;
   if (!ficha) return { ok: false, erro: "Conta não encontrada." };
   const fim = ficha.suspensao?.fim ?? null;
-  if (!(await confirmarLogin(c, usuarioId, fim))) return { ok: false, erro: "O Supabase não respondeu. Tente de novo daqui a pouco." };
+  if (!(await confirmarLogin(c, usuarioId, fim)))
+    return { ok: false, erro: "O Supabase não respondeu. Tente de novo daqui a pouco." };
   refresh();
   return { ok: true, mensagem: fim ? "Login bloqueado." : "Login liberado." };
 }
@@ -193,6 +200,54 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
   return { ok: true, mensagem: "Configurações salvas." };
 }
 
+const SEM_MIGRACAO_LOGO = "Confira se a migração 20261009290000_logo_emails.sql já rodou no Supabase.";
+
+/**
+ * Logo do topo dos e-mails. A imagem enviada vira a plaquinha dos e-mails e
+ * fica no Storage (pasta "marca") com um nome novo a cada troca: e-mails que já
+ * saíram continuam mostrando a imagem deles. "voltar" = logo do Publike.
+ */
+export async function salvarLogoEmails(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const voltar = formData.get("voltar") === "1";
+  const mostrar = voltar || marcado(formData, "mostrar");
+  const arquivo = formData.get("arquivo");
+  const novo = !voltar && arquivo instanceof File && arquivo.size > 0 ? arquivo : null;
+
+  const { data: config, error: erroConfig } = await c.rpc("admin_config");
+  if (erroConfig) return { ok: false, erro: mensagemDeErro(erroConfig) };
+  let url = voltar ? null : (config?.[0]?.email_logo_url ?? null);
+
+  if (novo) {
+    if (novo.size > LOGO_EMAIL.arquivoMaximo) {
+      return { ok: false, erro: "A imagem passa de 800 KB. Envie uma menor.", erros: { arquivo: "Até 800 KB." } };
+    }
+    const pronta = await prepararLogoEmail(Buffer.from(await novo.arrayBuffer()));
+    if (!pronta.ok) return { ok: false, erro: pronta.erro, erros: { arquivo: pronta.erro } };
+    const caminho = `emails/logo-${Date.now()}.png`;
+    const pasta = c.storage.from("marca");
+    const { error: erroEnvio } = await pasta.upload(caminho, pronta.png, {
+      contentType: "image/png",
+      cacheControl: "31536000",
+      upsert: false,
+    });
+    if (erroEnvio) {
+      console.error("Publike: não deu para guardar a logo dos e-mails:", erroEnvio.message);
+      return { ok: false, erro: `Não deu para guardar a imagem no Supabase. ${SEM_MIGRACAO_LOGO}` };
+    }
+    url = pasta.getPublicUrl(caminho).data.publicUrl;
+  }
+
+  const { error } = await c.rpc("admin_salvar_logo_emails", { p_mostrar: mostrar, p_url: url });
+  if (error?.code === "PGRST202") return { ok: false, erro: SEM_MIGRACAO_LOGO };
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  if (voltar) return { ok: true, mensagem: "A logo do Publike voltou para os e-mails." };
+  if (novo) return { ok: true, mensagem: "Logo nova salva. Os próximos e-mails já saem com ela." };
+  return { ok: true, mensagem: mostrar ? "Os e-mails saem com a logo." : "Os e-mails saem sem a logo, só com o nome." };
+}
+
 export async function salvarModeloEmail(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
@@ -229,7 +284,8 @@ export async function enviarEmailDeTeste(_anterior: EstadoForm, formData: FormDa
   const { data: estado } = await c.rpc("admin_status_email", { p_id: id });
   const s = estado?.[0];
   refresh();
-  if (s?.status === "enviado") return { ok: true, mensagem: `E-mail enviado para ${para}. Confira a caixa de entrada (e o spam).` };
+  if (s?.status === "enviado")
+    return { ok: true, mensagem: `E-mail enviado para ${para}. Confira a caixa de entrada (e o spam).` };
   return {
     ok: false,
     erro: `O Zoho recusou o envio: ${s?.erro ?? envio.erros.find((e) => e.id === id)?.erro ?? "erro desconhecido"}`,
@@ -243,7 +299,10 @@ export async function reenviarEmailsComFalha(): Promise<Resultado> {
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   after(processarFilas);
   refresh();
-  return { ok: true, mensagem: data ? `${data} e-mail(s) voltaram para a fila.` : "Nenhum e-mail com falha nos últimos 7 dias." };
+  return {
+    ok: true,
+    mensagem: data ? `${data} e-mail(s) voltaram para a fila.` : "Nenhum e-mail com falha nos últimos 7 dias.",
+  };
 }
 
 export async function processarFilasAgora(): Promise<Resultado> {

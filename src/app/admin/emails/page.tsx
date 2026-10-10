@@ -2,13 +2,20 @@ import { MailWarning } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { BotoesFila, FormConfigEmails, FormEmailTeste, TextosDosEmails } from "@/components/admin/emails";
+import {
+  BotoesFila,
+  FormConfigEmails,
+  FormEmailTeste,
+  FormLogoEmails,
+  TextosDosEmails,
+} from "@/components/admin/emails";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
 import { configDoSite, modelosDeEmail, ultimosEmails } from "@/lib/admin/dados";
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
+import { logoPadraoDoEmail } from "@/lib/email/montar";
 import { tempoRelativo } from "@/lib/formato";
 import { situacaoSmtp } from "@/lib/servidor/ambiente";
 import { situacaoFilas } from "@/lib/servidor/filas";
@@ -36,6 +43,10 @@ async function Conteudo() {
   const smtp = situacaoSmtp();
   const filas = situacaoFilas();
   const temFalhas = fila.some((e) => e.status === "falhou");
+  // Antes da migração da logo, as colunas novas não existem: vale a logo do Publike, ligada.
+  const logoLigada = config.email_logo ?? true;
+  const logoPropria = config.email_logo_url ?? null;
+  const logoPadrao = logoPadraoDoEmail(SITE_URL);
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,7 +61,14 @@ async function Conteudo() {
       >
         <div className="flex flex-col gap-2">
           <Situacao ok={Boolean(smtp.servidor)}>
-            Servidor: {smtp.servidor ? <strong>{smtp.servidor}:{smtp.porta}</strong> : "falta SMTP_SERVIDOR (smtp.zeptomail.com)"}
+            Servidor:{" "}
+            {smtp.servidor ? (
+              <strong>
+                {smtp.servidor}:{smtp.porta}
+              </strong>
+            ) : (
+              "falta SMTP_SERVIDOR (smtp.zeptomail.com)"
+            )}
           </Situacao>
           <Situacao ok={Boolean(smtp.usuario)}>
             Usuário: {smtp.usuario ? <strong>{smtp.usuario}</strong> : "falta SMTP_USUARIO (emailapikey)"}
@@ -60,7 +78,11 @@ async function Conteudo() {
           </Situacao>
           <Situacao ok={Boolean(smtp.remetente)}>
             Remetente:{" "}
-            {smtp.remetente ? <strong>{smtp.remetente}</strong> : "falta SMTP_REMETENTE (por exemplo, nao-responda@publike.org)"}
+            {smtp.remetente ? (
+              <strong>{smtp.remetente}</strong>
+            ) : (
+              "falta SMTP_REMETENTE (por exemplo, nao-responda@publike.org)"
+            )}
           </Situacao>
           <Situacao ok={Boolean(filas.acesso)}>
             Acesso à fila:{" "}
@@ -84,8 +106,8 @@ async function Conteudo() {
               <strong>{filas.enderecoEmails}</strong>
             ) : (
               <>
-                falta <code>PUBLIKE_URL_PUBLICA</code> (o endereço do site no ar). Até lá, daqui só sai o e-mail de teste; os
-                avisos para as pessoas esperam o site publicado.
+                falta <code>PUBLIKE_URL_PUBLICA</code> (o endereço do site no ar). Até lá, daqui só sai o e-mail de
+                teste; os avisos para as pessoas esperam o site publicado.
               </>
             )}
           </Situacao>
@@ -98,10 +120,18 @@ async function Conteudo() {
       </Secao>
 
       <Secao
+        id="logo"
+        titulo="Logo nos e-mails"
+        descricao="Vai no topo de todos os e-mails do Publike. Os e-mails de entrar e de confirmar o cadastro, que saem pelo Supabase, usam a mesma imagem (eles mostram a logo mesmo com a opção desligada)."
+      >
+        <FormLogoEmails mostrar={logoLigada} propria={logoPropria} padrao={logoPadrao} />
+      </Secao>
+
+      <Secao
         titulo="Textos dos e-mails"
         descricao="Mude o assunto, o texto e o botão de cada aviso. Os próximos e-mails já saem com o texto novo."
       >
-        <TextosDosEmails modelos={modelos} siteUrl={SITE_URL} />
+        <TextosDosEmails modelos={modelos} siteUrl={SITE_URL} logo={logoLigada ? (logoPropria ?? logoPadrao) : null} />
       </Secao>
 
       <Secao
@@ -119,10 +149,18 @@ async function Conteudo() {
             <table className="w-full min-w-[40rem] text-left text-body-sm">
               <thead className="text-ink-muted">
                 <tr className="border-b border-line">
-                  <th scope="col" className="px-5 py-2 font-semibold sm:px-2">Aviso</th>
-                  <th scope="col" className="px-2 py-2 font-semibold">Para</th>
-                  <th scope="col" className="px-2 py-2 font-semibold">Situação</th>
-                  <th scope="col" className="px-2 py-2 font-semibold">Quando</th>
+                  <th scope="col" className="px-5 py-2 font-semibold sm:px-2">
+                    Aviso
+                  </th>
+                  <th scope="col" className="px-2 py-2 font-semibold">
+                    Para
+                  </th>
+                  <th scope="col" className="px-2 py-2 font-semibold">
+                    Situação
+                  </th>
+                  <th scope="col" className="px-2 py-2 font-semibold">
+                    Quando
+                  </th>
                 </tr>
               </thead>
               <tbody>

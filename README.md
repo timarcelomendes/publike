@@ -81,18 +81,15 @@ Abra **http://localhost:3000**. Uma faixa amarela avisa que é o modo demonstra�
 1. Em **Authentication → URL Configuration**:
    - **Site URL**: `http://localhost:3000`
    - **Redirect URLs**: adicione `http://localhost:3000/**` e, quando o site estiver no ar, `https://SEU-DOMINIO/**`.
-2. Os modelos de e-mail (**Authentication → Emails**) só podem ser editados depois de configurar um SMTP próprio (veja a nota abaixo). Até lá, os e-mails saem no modelo padrão do Supabase, em inglês, e funcionam do mesmo jeito. Com o SMTP pronto, traduza os modelos **Magic link** e **Confirm signup**. Sugestão:
+2. Os modelos de e-mail (**Authentication → Emails**) só podem ser editados depois de configurar um SMTP próprio (veja a nota abaixo). Com o SMTP pronto, cole os modelos do Publike:
+   - **Magic link**: o conteúdo de `supabase/emails/entrar.html`, assunto "Seu link para entrar no Publike".
+   - **Confirm signup**: o conteúdo de `supabase/emails/confirmar-cadastro.html`, assunto "Confirme seu e-mail no Publike".
 
-   ```html
-   <h2>Seu link para entrar no Publike</h2>
-   <p>Toque no botão abaixo para entrar. O link vale por 1 hora e funciona uma vez só.</p>
-   <p><a href="{{ .ConfirmationURL }}">Entrar no Publike</a></p>
-   <p>Se não foi você quem pediu, é só ignorar este e-mail.</p>
-   ```
+   Com esses modelos, o botão do e-mail leva para o próprio site (`/auth/callback` e depois `/auth/confirmar`), e o link funciona **em qualquer navegador ou celular**, não só no que pediu. A entrada só acontece quando a página abre num navegador de verdade: antivírus de e-mail e prévias de mensagem que apenas abrem o link não gastam a entrada. O texto pode ser mudado no Supabase à vontade; só mantenha o endereço do botão (`{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email`).
 
-   Assuntos sugeridos: "Seu link para entrar no Publike" e "Confirme seu e-mail no Publike".
+   A logo no topo vem de `https://publike.org/email/logo.png`, que segue a logo escolhida no admin (**E-mails → Logo nos e-mails**). Se o domínio mudar, troque o endereço nos dois modelos. Para tirar a logo desses e-mails, apague a linha do `<img>`.
 
-> O link precisa ser aberto **no mesmo navegador** em que a pessoa pediu.
+> Publique o site antes de colar os modelos: o site no ar precisa já ter a página `/auth/confirmar`. E-mails enviados antes da troca continuam funcionando, do jeito antigo (só no mesmo navegador).
 >
 > O envio de e-mail que vem com o Supabase é bem limitado (poucos e-mails por hora) e serve para testar. Antes de lançar, configure um SMTP próprio em **Authentication → Emails → SMTP Settings**. Resend e Brevo, por exemplo, têm faixas gratuitas.
 

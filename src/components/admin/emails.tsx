@@ -1,21 +1,22 @@
 "use client";
 
-import { RefreshCw, RotateCcw, Send } from "lucide-react";
-import { useActionState, useMemo, useRef, useState } from "react";
+import { ImageUp, RefreshCw, RotateCcw, Send } from "lucide-react";
+import { useActionState, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   enviarEmailDeTeste,
   processarFilasAgora,
   reenviarEmailsComFalha,
   restaurarModeloEmail,
   salvarConfigEmails,
+  salvarLogoEmails,
   salvarModeloEmail,
 } from "@/lib/acoes/admin";
 import type { ConfigSite, ModeloEmailAdmin } from "@/lib/admin/dados";
-import { EXEMPLOS_EMAIL, montarEmail } from "@/lib/email/montar";
+import { EXEMPLOS_EMAIL, LOGO_EMAIL, montarEmail } from "@/lib/email/montar";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
-import { Campo, classesEntrada, ligarCampo } from "../ui/campo";
+import { Campo, classesEntrada, ligarCampo, MensagemErro } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
 const INICIAL: EstadoForm = { ok: false };
@@ -29,7 +30,12 @@ function Resultado({ estado }: { estado: EstadoForm }) {
 function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string; ajuda?: string; inicial: boolean }) {
   return (
     <label className="flex min-h-11 cursor-pointer items-start gap-3">
-      <input type="checkbox" name={nome} defaultChecked={inicial} className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]" />
+      <input
+        type="checkbox"
+        name={nome}
+        defaultChecked={inicial}
+        className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+      />
       <span>
         <span className="block text-label">{rotulo}</span>
         {ajuda && <span className="block text-body-sm text-ink-muted">{ajuda}</span>}
@@ -105,10 +111,25 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
 
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-2 text-label">Avisos para quem usa o site</legend>
-        <Opcao nome="email_curtida" rotulo="Curtida" ajuda="No máximo um e-mail a cada 30 minutos por pessoa." inicial={config.email_curtida} />
+        <Opcao
+          nome="email_curtida"
+          rotulo="Curtida"
+          ajuda="No máximo um e-mail a cada 30 minutos por pessoa."
+          inicial={config.email_curtida}
+        />
         <Opcao nome="email_match" rotulo="Match" inicial={config.email_match} />
-        <Opcao nome="email_moderacao" rotulo="Moderação" ajuda="Anúncio em análise, removido ou liberado." inicial={config.email_moderacao} />
-        <Opcao nome="email_conta" rotulo="Conta" ajuda="Suspensão, banimento e reativação. Vai mesmo para quem desligou os avisos." inicial={config.email_conta} />
+        <Opcao
+          nome="email_moderacao"
+          rotulo="Moderação"
+          ajuda="Anúncio em análise, removido ou liberado."
+          inicial={config.email_moderacao}
+        />
+        <Opcao
+          nome="email_conta"
+          rotulo="Conta"
+          ajuda="Suspensão, banimento e reativação. Vai mesmo para quem desligou os avisos."
+          inicial={config.email_conta}
+        />
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">
@@ -127,8 +148,18 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
           />
         </Campo>
         <div className="flex flex-col gap-1">
-          <Opcao nome="aviso_denuncia" rotulo="Nova denúncia" ajuda="No máximo um por anúncio a cada hora." inicial={config.aviso_denuncia} />
-          <Opcao nome="aviso_cadastro" rotulo="Novo cadastro" ajuda="Quando alguém cria o perfil." inicial={config.aviso_cadastro} />
+          <Opcao
+            nome="aviso_denuncia"
+            rotulo="Nova denúncia"
+            ajuda="No máximo um por anúncio a cada hora."
+            inicial={config.aviso_denuncia}
+          />
+          <Opcao
+            nome="aviso_cadastro"
+            rotulo="Novo cadastro"
+            ajuda="Quando alguém cria o perfil."
+            inicial={config.aviso_cadastro}
+          />
           <Opcao
             nome="aviso_retirado"
             rotulo="Anúncio tirado do ar"
@@ -148,9 +179,137 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
   );
 }
 
+// ------------------------------------------------------------------ logo
+
+/** Como o topo do e-mail fica no fundo creme e no modo escuro (que escurece o fundo, mas não a imagem). */
+function PreviaLogo({ src, crua }: { src: string; crua: boolean }) {
+  const imagem = crua ? (
+    // arquivo ainda não enviado: a plaquinha creme é feita ao salvar; aqui ela é imitada
+    <span className="inline-flex h-11 items-center rounded-[8px] bg-[#fbf7ef] px-[9px] py-[7px]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" className="block h-[30px] w-auto max-w-[222px] object-contain" />
+    </span>
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" height={LOGO_EMAIL.altura} className="block h-11 w-auto max-w-[240px]" />
+  );
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <figure className="flex flex-col gap-1.5">
+        <div className="flex min-h-20 items-center rounded-md border border-line bg-[#fbf7ef] px-4">{imagem}</div>
+        <figcaption className="text-body-sm text-ink-muted">No e-mail</figcaption>
+      </figure>
+      <figure className="flex flex-col gap-1.5">
+        <div className="flex min-h-20 items-center rounded-md border border-line bg-[#1b1b1b] px-4">{imagem}</div>
+        <figcaption className="text-body-sm text-ink-muted">No modo escuro do celular</figcaption>
+      </figure>
+    </div>
+  );
+}
+
+export function FormLogoEmails({
+  mostrar,
+  propria,
+  padrao,
+}: {
+  mostrar: boolean;
+  propria: string | null;
+  padrao: string;
+}) {
+  const [estado, acao, enviando] = useActionState(salvarLogoEmails, INICIAL);
+  // A prévia do arquivo escolhido vale até o próximo envio (depois a página mostra a logo salva).
+  const [escolhida, setEscolhida] = useState<{ url: string; estado: EstadoForm } | null>(null);
+  const [erroArquivo, setErroArquivo] = useState<string | null>(null);
+  const previa = escolhida && escolhida.estado === estado ? escolhida.url : null;
+
+  function escolher(e: ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    if (escolhida) URL.revokeObjectURL(escolhida.url);
+    setEscolhida(null);
+    setErroArquivo(null);
+    if (!arquivo) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(arquivo.type)) {
+      setErroArquivo("Escolha uma imagem PNG, JPG ou WebP.");
+      e.target.value = "";
+      return;
+    }
+    if (arquivo.size > LOGO_EMAIL.arquivoMaximo) {
+      setErroArquivo("A imagem passa de 800 KB. Escolha uma menor.");
+      e.target.value = "";
+      return;
+    }
+    setEscolhida({ url: URL.createObjectURL(arquivo), estado });
+  }
+
+  const erro = erroArquivo ?? estado.erros?.arquivo;
+  return (
+    <form action={acao} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <span className="text-label">
+          {previa
+            ? "Prévia da imagem escolhida"
+            : propria
+              ? "Logo atual (imagem enviada aqui)"
+              : "Logo atual (a do Publike)"}
+        </span>
+        <PreviaLogo src={previa ?? propria ?? padrao} crua={Boolean(previa)} />
+      </div>
+
+      <Opcao
+        nome="mostrar"
+        rotulo="Mostrar a logo no topo dos e-mails"
+        ajuda="Desligado, os e-mails do site mostram só o nome Publike, em texto."
+        inicial={mostrar}
+      />
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-label">
+          Trocar a imagem <span className="font-normal text-ink-muted">(opcional)</span>
+        </span>
+        <label
+          className={`inline-flex min-h-10 cursor-pointer items-center gap-2 self-start rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${enviando ? "opacity-60" : ""}`}
+        >
+          <ImageUp aria-hidden className="size-[18px]" />
+          {previa ? "Escolher outra" : "Escolher imagem"}
+          <input
+            type="file"
+            name="arquivo"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={escolher}
+            disabled={enviando}
+            aria-describedby="logo-arquivo-ajuda"
+            className="sr-only"
+          />
+        </label>
+        {erro ? (
+          <MensagemErro>{erro}</MensagemErro>
+        ) : (
+          <p id="logo-arquivo-ajuda" className="text-body-sm text-ink-muted">
+            PNG, JPG ou WebP, até 800 KB. Use a logo deitada, mais larga que alta. Ao salvar, o site corta as sobras,
+            ajusta o tamanho e põe o fundo creme dos e-mails, que deixa a logo legível também no modo escuro.
+          </p>
+        )}
+      </div>
+
+      <Resultado estado={estado} />
+      <div className="flex flex-wrap gap-2">
+        <Botao type="submit" disabled={enviando}>
+          {enviando ? "Salvando…" : "Salvar logo"}
+        </Botao>
+        {propria && (
+          <Botao type="submit" name="voltar" value="1" variante="fantasma" disabled={enviando}>
+            <RotateCcw aria-hidden />
+            Voltar para a logo do Publike
+          </Botao>
+        )}
+      </div>
+    </form>
+  );
+}
+
 // ------------------------------------------------------------------ textos
 
-function EditorModelo({ m, siteUrl }: { m: ModeloEmailAdmin; siteUrl: string }) {
+function EditorModelo({ m, siteUrl, logo }: { m: ModeloEmailAdmin; siteUrl: string; logo: string | null }) {
   const [estado, acao, enviando] = useActionState(salvarModeloEmail, INICIAL);
   const restaurar = useAcao();
   const [assunto, setAssunto] = useState(m.assunto);
@@ -159,8 +318,14 @@ function EditorModelo({ m, siteUrl }: { m: ModeloEmailAdmin; siteUrl: string }) 
   const caixaCorpo = useRef<HTMLTextAreaElement>(null);
 
   const previa = useMemo(
-    () => montarEmail({ modelo: m.chave, grupo: m.grupo, assunto, corpo, botao: botao || null }, EXEMPLOS_EMAIL, siteUrl),
-    [m.chave, m.grupo, assunto, corpo, botao, siteUrl],
+    () =>
+      montarEmail(
+        { modelo: m.chave, grupo: m.grupo, assunto, corpo, botao: botao || null },
+        EXEMPLOS_EMAIL,
+        siteUrl,
+        logo,
+      ),
+    [m.chave, m.grupo, assunto, corpo, botao, siteUrl, logo],
   );
 
   function inserir(variavel: string) {
@@ -224,7 +389,12 @@ function EditorModelo({ m, siteUrl }: { m: ModeloEmailAdmin; siteUrl: string }) 
             ))}
           </div>
         </div>
-        <Campo rotulo="Texto do botão" nome={`botao-${m.chave}`} opcional ajuda="O botão leva para a página certa do site.">
+        <Campo
+          rotulo="Texto do botão"
+          nome={`botao-${m.chave}`}
+          opcional
+          ajuda="O botão leva para a página certa do site."
+        >
           <input
             id={`botao-${m.chave}`}
             name="botao"
@@ -276,7 +446,16 @@ function EditorModelo({ m, siteUrl }: { m: ModeloEmailAdmin; siteUrl: string }) 
   );
 }
 
-export function TextosDosEmails({ modelos, siteUrl }: { modelos: ModeloEmailAdmin[]; siteUrl: string }) {
+export function TextosDosEmails({
+  modelos,
+  siteUrl,
+  logo,
+}: {
+  modelos: ModeloEmailAdmin[];
+  siteUrl: string;
+  /** Imagem do topo da prévia (null = sem logo). */
+  logo: string | null;
+}) {
   const grupos = [
     { chave: "usuarios", titulo: "Para quem usa o site" },
     { chave: "equipe", titulo: "Para a equipe" },
@@ -305,7 +484,7 @@ export function TextosDosEmails({ modelos, siteUrl }: { modelos: ModeloEmailAdmi
                   </span>
                 </summary>
                 <div className="border-t border-line p-4">
-                  <EditorModelo m={m} siteUrl={siteUrl} />
+                  <EditorModelo m={m} siteUrl={siteUrl} logo={logo} />
                 </div>
               </details>
             ))}

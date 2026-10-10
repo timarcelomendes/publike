@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { montarEmail } from "@/lib/email/montar";
+import { logoPadraoDoEmail, montarEmail } from "@/lib/email/montar";
 import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { revisarAnuncio, revisarAvaliacao, type DecisaoIA } from "@/lib/ia/tarefas";
 import { criarClienteAdmin, type ClienteBanco } from "@/lib/supabase/admin";
@@ -40,6 +40,21 @@ function textoDoErro(e: unknown) {
 }
 
 // ------------------------------------------------------------------ e-mails
+
+/**
+ * Logo do topo dos e-mails: a escolhida no admin ou a do Publike. Se não der
+ * para ler a escolha (banco sem a migração da logo, por exemplo), vai a do Publike.
+ */
+export async function logoDosEmails(cliente: ClienteBanco, site: string): Promise<string | null> {
+  const { data, error } = await cliente.rpc("logo_emails");
+  if (error) {
+    console.error("Publike: não deu para ler a logo dos e-mails:", error.message);
+    return logoPadraoDoEmail(site);
+  }
+  const escolha = data?.[0];
+  if (escolha && !escolha.mostrar) return null;
+  return escolha?.url || logoPadraoDoEmail(site);
+}
 
 export type ResultadoEmails = {
   enviados: number;
@@ -82,11 +97,19 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
   // e-mail volta para a fila em 15 minutos e pode sair repetido.
   async function marcar(id: number, ok: boolean, erro?: string) {
     for (let tentativa = 1; tentativa <= 2; tentativa++) {
-      const { error: e } = await cliente.rpc("servidor_marcar_email", { p_chave: chave, p_id: id, p_ok: ok, p_erro: erro });
+      const { error: e } = await cliente.rpc("servidor_marcar_email", {
+        p_chave: chave,
+        p_id: id,
+        p_ok: ok,
+        p_erro: erro,
+      });
       if (!e) return;
       console.error(`Publike: não deu para marcar o e-mail ${id} (tentativa ${tentativa}):`, e.message);
     }
   }
+
+  const site = base ?? SITE_URL;
+  const logo = await logoDosEmails(cliente, site);
 
   const transporte = nodemailer.createTransport({
     host: smtp.servidor,
@@ -107,7 +130,8 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
         const email = montarEmail(
           { modelo: item.modelo, grupo: item.grupo, assunto: item.assunto, corpo: item.corpo, botao: item.botao },
           item.dados,
-          base ?? SITE_URL,
+          site,
+          logo,
         );
         await transporte.sendMail({
           from: { name: item.remetente_nome, address: smtp.remetente },
@@ -195,7 +219,10 @@ export async function revisarAvaliacoesPendentes(limite = 5): Promise<ResultadoI
   if (!iaConfigurada()) return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY)." };
   const { cliente, chave } = acesso;
 
-  const { data: itens, error } = await cliente.rpc("servidor_pegar_avaliacoes_ia", { p_chave: chave, p_limite: limite });
+  const { data: itens, error } = await cliente.rpc("servidor_pegar_avaliacoes_ia", {
+    p_chave: chave,
+    p_limite: limite,
+  });
   if (error) {
     console.error("Publike: falha ao ler a fila de avaliações da IA:", error.message);
     return { ...resultado, motivo: "Não foi possível ler a fila de avaliações." };

@@ -22,6 +22,25 @@ const CORES = {
   terra: "#c2410c",
 };
 
+/**
+ * Logo no topo dos e-mails: uma plaquinha creme (a cor do fundo do e-mail),
+ * sempre com 44 px de altura; a imagem tem 3x esse tamanho, para ficar nítida
+ * no celular. Sem imagem própria escolhida no admin, vale a do Publike.
+ */
+export const LOGO_EMAIL = {
+  altura: 44,
+  larguraMaxima: 240,
+  escala: 3,
+  caminhoPadrao: "/logo/publike-logo-email.png",
+  /** Imagem enviada no admin: até 800 KB (o limite das ações do servidor é 1 MB). */
+  arquivoMaximo: 800 * 1024,
+} as const;
+
+/** A logo do Publike, servida pelo próprio site. */
+export function logoPadraoDoEmail(siteUrl: string) {
+  return `${siteUrl.replace(/\/+$/, "")}${LOGO_EMAIL.caminhoPadrao}`;
+}
+
 export function escaparHtml(texto: string) {
   return texto
     .replace(/&/g, "&amp;")
@@ -40,7 +59,8 @@ export function valoresDoEmail(dados: unknown, siteUrl: string): Record<string, 
       valores[chave] = typeof valor === "string" ? valor : String(valor);
     }
   }
-  const caminho = valores.caminho && valores.caminho.startsWith("/") && !valores.caminho.startsWith("//") ? valores.caminho : "/";
+  const caminho =
+    valores.caminho && valores.caminho.startsWith("/") && !valores.caminho.startsWith("//") ? valores.caminho : "/";
   valores.link = `${siteUrl.replace(/\/+$/, "")}${caminho}`;
   return valores;
 }
@@ -65,13 +85,23 @@ function paragrafos(corpo: string, valores: Record<string, string>) {
 
 function rodape(modelo: ModeloEmail, siteUrl: string) {
   const site = siteUrl.replace(/\/+$/, "");
-  if (modelo.grupo === "equipe") return "Aviso para a equipe do Publike. Quem recebe estes avisos é escolhido no admin.";
+  if (modelo.grupo === "equipe")
+    return "Aviso para a equipe do Publike. Quem recebe estes avisos é escolhido no admin.";
   if (modelo.grupo === "sistema") return "Mensagem de teste enviada pelo admin do Publike.";
   if (modelo.modelo.startsWith("conta_")) return "Este é um aviso sobre a sua conta no Publike.";
   return `Você recebeu este aviso porque tem uma conta no Publike. Para não receber mais avisos por e-mail, desmarque a opção no seu perfil: ${site}/perfil`;
 }
 
-export function montarEmail(modelo: ModeloEmail, dados: unknown, siteUrl: string): EmailMontado {
+/**
+ * `logo`: endereço da imagem do topo (null = só o nome, em texto). Precisa ser
+ * um endereço público: o e-mail é aberto no celular de quem recebe.
+ */
+export function montarEmail(
+  modelo: ModeloEmail,
+  dados: unknown,
+  siteUrl: string,
+  logo: string | null = null,
+): EmailMontado {
   const valores = valoresDoEmail(dados, siteUrl);
   // assunto numa linha só (nada de quebra de linha no cabeçalho)
   const assunto = preencher(modelo.assunto, valores).replace(/\s+/g, " ").trim().slice(0, 200);
@@ -80,9 +110,7 @@ export function montarEmail(modelo: ModeloEmail, dados: unknown, siteUrl: string
   const link = valores.link;
   const textoRodape = rodape(modelo, siteUrl);
 
-  const texto = [...partes, botao ? `${botao}: ${link}` : null, "—", textoRodape]
-    .filter(Boolean)
-    .join("\n\n");
+  const texto = [...partes, botao ? `${botao}: ${link}` : null, "—", textoRodape].filter(Boolean).join("\n\n");
 
   const htmlParagrafos = partes
     .map(
@@ -96,6 +124,13 @@ export function montarEmail(modelo: ModeloEmail, dados: unknown, siteUrl: string
       `</td></tr></table>`
     : "";
 
+  // Com a imagem bloqueada (Outlook no computador), aparece o texto "Publike".
+  const cabecalho =
+    logo && /^https?:\/\/[^\s"'<>\\]+$/.test(logo)
+      ? `<tr><td style="padding:0 0 14px;"><img src="${escaparHtml(logo)}" alt="Publike" height="${LOGO_EMAIL.altura}" ` +
+        `style="display:block;height:${LOGO_EMAIL.altura}px;width:auto;max-width:${LOGO_EMAIL.larguraMaxima}px;border:0;outline:none;text-decoration:none;font-size:22px;font-weight:800;color:${CORES.tinta};"></td></tr>`
+      : `<tr><td style="padding:0 4px 16px;font-size:22px;font-weight:800;letter-spacing:-0.5px;color:${CORES.tinta};">Publike<span style="color:${CORES.terra};">.</span></td></tr>`;
+
   const html = `<!doctype html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escaparHtml(assunto)}</title></head>
@@ -103,7 +138,7 @@ export function montarEmail(modelo: ModeloEmail, dados: unknown, siteUrl: string
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CORES.fundo};padding:24px 12px;">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-<tr><td style="padding:0 4px 16px;font-size:22px;font-weight:800;letter-spacing:-0.5px;color:${CORES.tinta};">Publike<span style="color:${CORES.terra};">.</span></td></tr>
+${cabecalho}
 <tr><td style="background:${CORES.cartao};border:1px solid ${CORES.linha};border-radius:12px;padding:28px 24px;">
 ${htmlParagrafos}${htmlBotao}
 </td></tr>

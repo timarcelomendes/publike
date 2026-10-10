@@ -308,6 +308,8 @@ export type Database = {
           ia_melhorar_texto: boolean;
           ia_resumo: boolean;
           ia_modelo: string;
+          email_logo: boolean;
+          email_logo_url: string | null;
           atualizado_em: string;
           atualizado_por: string | null;
         };
@@ -768,7 +770,14 @@ export type Database = {
       };
       meu_ultimo_endereco: {
         Args: Record<PropertyKey, never>;
-        Returns: { cep: string | null; endereco: string | null; cidade: string; bairro: string; lat: number; lng: number }[];
+        Returns: {
+          cep: string | null;
+          endereco: string | null;
+          cidade: string;
+          bairro: string;
+          lat: number;
+          lng: number;
+        }[];
       };
       cnpj_valido: {
         Args: { p_cnpj: string };
@@ -810,6 +819,10 @@ export type Database = {
       config_publica: {
         Args: Record<PropertyKey, never>;
         Returns: { ia_melhorar_texto: boolean; ia_modelo: string }[];
+      };
+      logo_emails: {
+        Args: Record<PropertyKey, never>;
+        Returns: { mostrar: boolean; url: string | null }[];
       };
       minha_conta_suspensa: {
         Args: Record<PropertyKey, never>;
@@ -925,6 +938,10 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Database["public"]["Tables"]["config_site"]["Row"][];
       };
+      admin_salvar_logo_emails: {
+        Args: { p_mostrar: boolean; p_url: string | null };
+        Returns: undefined;
+      };
       admin_salvar_config_emails: {
         Args: {
           p_emails_ativos: boolean;
@@ -1017,7 +1034,14 @@ export type Database = {
       };
       admin_ultimo_resumo: {
         Args: Record<PropertyKey, never>;
-        Returns: { id: number; texto: string; dias: number; modelo: string | null; criado_em: string; criado_por: string }[];
+        Returns: {
+          id: number;
+          texto: string;
+          dias: number;
+          modelo: string | null;
+          criado_em: string;
+          criado_por: string;
+        }[];
       };
       admin_registro: {
         Args: { p_limite?: number; p_alvo?: string | null };
