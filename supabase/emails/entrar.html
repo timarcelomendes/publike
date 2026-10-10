@@ -10,10 +10,10 @@
 <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:800;color:#1f1a14;">Seu link para entrar</h1>
 <p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f1a14;">Toque no botão para entrar no Publike. Não precisa de senha.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;"><tr><td style="border-radius:8px;background:#c2410c;">
-<a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:12px 20px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Entrar no Publike</a>
+<a href="{{ if eq .RedirectTo .SiteURL }}{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email{{ else }}{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email{{ end }}" style="display:inline-block;padding:12px 20px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Entrar no Publike</a>
 </td></tr></table>
 <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#6b6052;">O link vale por pouco tempo e funciona uma vez só, em qualquer navegador ou celular. Se você não pediu para entrar, é só ignorar: ninguém entra na sua conta sem este link.</p>
-<p style="margin:0;font-size:13px;line-height:1.5;color:#6b6052;">Se o botão não abrir, copie este endereço no navegador:<br><span style="word-break:break-all;">{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email</span></p>
+<p style="margin:0;font-size:13px;line-height:1.5;color:#6b6052;">Se o botão não abrir, copie este endereço no navegador:<br><span style="word-break:break-all;">{{ if eq .RedirectTo .SiteURL }}{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email{{ else }}{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email{{ end }}</span></p>
 </td></tr>
 <tr><td style="padding:16px 4px 0;font-size:13px;line-height:1.5;color:#6b6052;">Publike · vagas, bicos e serviços em Goiânia e região</td></tr>
 </table>
