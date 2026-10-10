@@ -1,6 +1,16 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, LocateFixed, Search, X } from "lucide-react";
+import {
+  Briefcase,
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  LocateFixed,
+  Search,
+  Wrench,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -19,23 +29,21 @@ import { hrefFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
-import { BotaoOndeMora, PainelOndeMora } from "./onde-mora";
+import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 
-const TIPOS: { valor: TipoAnuncio | null; nome: string }[] = [
-  { valor: null, nome: "Tudo" },
-  { valor: "vaga", nome: "Vagas" },
-  { valor: "servico", nome: "Serviços" },
+// Três jeitos de olhar, cada um com a sua cara:
+//   O QUE (tipo) ...... abas sublinhadas, em cima da busca
+//   ONDE (local) ...... botões de contorno com ícone de lugar
+//   CATEGORIA ......... pílulas de filtro (a escolhida fica escura e ganha um ×)
+const TIPOS: { valor: TipoAnuncio | null; nome: string; ajuda: string; icone: LucideIcon }[] = [
+  { valor: null, nome: "Tudo", ajuda: "Vagas e serviços", icone: LayoutGrid },
+  { valor: "vaga", nome: "Vagas", ajuda: "Para trabalhar", icone: Briefcase },
+  { valor: "servico", nome: "Serviços", ajuda: "Para contratar", icone: Wrench },
 ];
 
 const chip = (ativo: boolean) =>
   `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
     ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-300 text-ink hover:border-line-strong"
-  }`;
-
-/** Abas do tipo de anúncio: pílula com a opção escolhida em ink. */
-const aba = (ativo: boolean) =>
-  `inline-flex min-h-10 items-center rounded-pill px-3.5 text-label transition-colors sm:px-4 ${
-    ativo ? "bg-ink text-surface-100" : "text-ink hover:bg-surface-300"
   }`;
 
 // Os filtros da lista têm a cara de botão secundário pequeno.
@@ -170,19 +178,12 @@ function FaixaRolavel({
   );
 }
 
-function BotaoPerto({ ativo, onClick, className }: { ativo: boolean; onClick: () => void; className: string }) {
+function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={ativo}
-      className={`${className} min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
-        ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-      }`}
-    >
-      <LocateFixed aria-hidden className="size-4" />
+    <button type="button" onClick={onClick} aria-pressed={ativo} className={`${botaoLugar(ativo)} shrink-0`}>
+      <LocateFixed aria-hidden className={`size-4 shrink-0 ${ativo ? "text-terra-text" : ""}`} />
       Perto de mim
-      {ativo && <X aria-hidden className="-mr-1 size-3.5" />}
+      {ativo && <X aria-hidden className="-mr-1 size-3.5 shrink-0" />}
     </button>
   );
 }
@@ -248,101 +249,121 @@ export function BarraBusca({
     <div className="relative mt-6 flex flex-col gap-3 sm:mt-8">
       {pendente && <Carregando />}
 
-      <div className="flex items-center justify-between gap-2">
+      {/* No celular: abas, busca, lugar. No computador: abas e lugar na mesma linha, busca embaixo. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
         <div
           role="group"
-          aria-label="Tipo de anúncio"
-          className="inline-flex shrink-0 rounded-pill border border-line bg-surface-200 p-1"
+          aria-label="O que você procura"
+          className="order-1 grid grid-cols-3 border-b border-line sm:flex sm:flex-1 sm:gap-1"
         >
-          {TIPOS.map((t) => (
-            <button
-              key={t.nome}
-              type="button"
-              aria-pressed={filtros.tipo === t.valor}
-              onClick={() => ir({ tipo: t.valor, regime: t.valor === "servico" ? null : filtros.regime })}
-              className={aba(filtros.tipo === t.valor)}
-            >
-              {t.nome}
-            </button>
-          ))}
+          {TIPOS.map((t) => {
+            const ativo = filtros.tipo === t.valor;
+            const Icone = t.icone;
+            return (
+              <button
+                key={t.nome}
+                type="button"
+                aria-pressed={ativo}
+                onClick={() => ir({ tipo: t.valor, regime: t.valor === "servico" ? null : filtros.regime })}
+                className={`-mb-px flex min-h-12 items-center justify-center gap-2 border-b-[3px] px-2 pb-2.5 pt-1 transition-colors sm:justify-start sm:px-3 ${
+                  ativo
+                    ? "border-ink text-ink"
+                    : "border-transparent text-ink-muted hover:border-line-strong hover:text-ink"
+                }`}
+              >
+                <Icone aria-hidden className={`size-5 shrink-0 ${ativo ? "text-terra-text" : ""}`} />
+                <span className="flex flex-col text-left leading-tight">
+                  <span className="text-label sm:text-body sm:font-semibold">{t.nome}</span>
+                  <span className="hidden text-caption text-ink-muted sm:block">{t.ajuda}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
-        <div className="flex min-w-0 items-center gap-2">
+
+        <div role="group" aria-label="Onde" className="order-3 flex min-w-0 items-center gap-2 sm:order-2 sm:mb-1.5">
           <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
-          {/* no celular, "Perto de mim" vai para o começo das categorias (falta espaço aqui) */}
-          <BotaoPerto ativo={perto} onClick={alternarPerto} className="hidden sm:inline-flex" />
+          <BotaoPerto ativo={perto} onClick={alternarPerto} />
         </div>
+
+        {ondeMora && (
+          <div className="order-4 sm:order-3 sm:basis-full">
+            <PainelOndeMora id={painel} local={local} fechar={() => setOndeMora(false)} />
+          </div>
+        )}
+
+        <form
+          role="search"
+          onSubmit={buscar}
+          className="order-2 flex items-center gap-1 rounded-lg border border-line-strong bg-surface-200 p-1.5 pl-3 shadow-card has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus sm:order-4 sm:basis-full"
+        >
+          <label htmlFor="busca" className="sr-only">
+            O que você procura?
+          </label>
+          <Search aria-hidden className="size-5 shrink-0 text-ink-muted" />
+          <input
+            id="busca"
+            type="search"
+            enterKeyHint="search"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder={
+              filtros.tipo === "vaga"
+                ? "Garçom, vendedor, auxiliar…"
+                : filtros.tipo === "servico"
+                  ? "Diarista, pedreiro, eletricista…"
+                  : "Diarista, garçom, pedreiro…"
+            }
+            maxLength={80}
+            className="min-h-11 min-w-0 flex-1 bg-transparent px-2 text-body text-ink outline-none placeholder:text-ink-muted/80 [&::-webkit-search-cancel-button]:appearance-none"
+          />
+          {texto && (
+            <button
+              type="button"
+              onClick={() => {
+                setTexto("");
+                ir({ q: "" });
+              }}
+              className="flex size-9 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300"
+            >
+              <X aria-hidden className="size-4" />
+              <span className="sr-only">Limpar busca</span>
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={pendente}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-ink px-5 text-label text-surface-100 transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            Buscar
+          </button>
+        </form>
+
+        {avisoGps && (
+          <p role="status" className="order-5 text-body-sm text-terra-text sm:basis-full">
+            {avisoGps}
+          </p>
+        )}
       </div>
 
-      {ondeMora && <PainelOndeMora id={painel} local={local} fechar={() => setOndeMora(false)} />}
-
-      <form
-        role="search"
-        onSubmit={buscar}
-        className="flex items-center gap-1 rounded-lg border border-line-strong bg-surface-200 p-1.5 pl-3 shadow-card has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus"
-      >
-        <label htmlFor="busca" className="sr-only">
-          O que você procura?
-        </label>
-        <Search aria-hidden className="size-5 shrink-0 text-ink-muted" />
-        <input
-          id="busca"
-          type="search"
-          enterKeyHint="search"
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder="Diarista, garçom, pedreiro…"
-          maxLength={80}
-          className="min-h-11 min-w-0 flex-1 bg-transparent px-2 text-body text-ink outline-none placeholder:text-ink-muted/80 [&::-webkit-search-cancel-button]:appearance-none"
-        />
-        {texto && (
-          <button
-            type="button"
-            onClick={() => {
-              setTexto("");
-              ir({ q: "" });
-            }}
-            className="flex size-9 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300"
-          >
-            <X aria-hidden className="size-4" />
-            <span className="sr-only">Limpar busca</span>
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={pendente}
-          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-ink px-5 text-label text-surface-100 transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
-          Buscar
-        </button>
-      </form>
-      {avisoGps && (
-        <p role="status" className="text-body-sm text-terra-text">
-          {avisoGps}
-        </p>
-      )}
-
       <FaixaRolavel rotulo="Categoria">
-        <BotaoPerto ativo={perto} onClick={alternarPerto} className="inline-flex sm:hidden" />
-        <button
-          type="button"
-          aria-pressed={filtros.categoria === null}
-          onClick={() => ir({ categoria: null })}
-          className={chip(filtros.categoria === null)}
-        >
-          Todas
-        </button>
-        {CATEGORIAS.map(({ slug, nome, icone: Icone }) => (
-          <button
-            key={slug}
-            type="button"
-            aria-pressed={filtros.categoria === slug}
-            onClick={() => ir({ categoria: filtros.categoria === slug ? null : slug })}
-            className={chip(filtros.categoria === slug)}
-          >
-            <Icone aria-hidden className="size-4" />
-            {nome}
-          </button>
-        ))}
+        {CATEGORIAS.map(({ slug, nome, icone: Icone }) => {
+          const ativa = filtros.categoria === slug;
+          return (
+            <button
+              key={slug}
+              type="button"
+              aria-pressed={ativa}
+              // tocar de novo tira o filtro
+              onClick={() => ir({ categoria: ativa ? null : slug })}
+              className={chip(ativa)}
+            >
+              <Icone aria-hidden className="size-4" />
+              {nome}
+              {ativa && <X aria-hidden className="-mr-1 size-3.5" />}
+            </button>
+          );
+        })}
       </FaixaRolavel>
     </div>
   );

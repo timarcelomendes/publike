@@ -1,6 +1,6 @@
 "use client";
 
-import { House, X } from "lucide-react";
+import { ChevronDown, House, X } from "lucide-react";
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { buscarCep } from "@/lib/acoes/cep";
 import { esquecerLocal, salvarLocal } from "@/lib/acoes/local";
@@ -12,6 +12,12 @@ import { classesBotao } from "../ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "../ui/campo";
 
 /** Botão "Onde você mora?" da busca. Fica no topo, ao lado do "Perto de mim". */
+/** Botão de lugar (onde mora, perto de mim): contorno; escolhido, ganha borda escura e fundo leve. */
+export const botaoLugar = (ativo: boolean) =>
+  `inline-flex min-h-10 min-w-0 shrink items-center gap-1.5 rounded-md border px-3 text-label transition-colors ${
+    ativo ? "border-ink bg-surface-300 text-ink" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+  }`;
+
 export function BotaoOndeMora({
   local,
   aberto,
@@ -31,11 +37,9 @@ export function BotaoOndeMora({
       aria-expanded={aberto}
       aria-controls={controla}
       title={local ? `${[local.bairro, local.cidade].filter(Boolean).join(", ")}: mudar onde você mora` : undefined}
-      className={`inline-flex min-h-10 max-w-40 min-w-0 shrink items-center gap-1.5 rounded-pill border px-3 text-label transition-colors sm:max-w-60 sm:px-3.5 ${
-        local ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-      }`}
+      className={`${botaoLugar(Boolean(local))} max-w-52 sm:max-w-64`}
     >
-      <House aria-hidden className="size-4 shrink-0" />
+      <House aria-hidden className={`size-4 shrink-0 ${local ? "text-terra-text" : ""}`} />
       <span className="truncate">
         {nome ? (
           <>
@@ -49,6 +53,10 @@ export function BotaoOndeMora({
           </>
         )}
       </span>
+      <ChevronDown
+        aria-hidden
+        className={`-mr-0.5 size-4 shrink-0 text-ink-muted transition-transform ${aberto ? "rotate-180" : ""}`}
+      />
     </button>
   );
 }
