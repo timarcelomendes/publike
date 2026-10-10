@@ -1,7 +1,9 @@
 // CEP e endereço: o que vale no navegador e no servidor.
 
 export function limparCep(valor: string | null | undefined) {
-  return String(valor ?? "").replace(/\D/g, "").slice(0, 8);
+  return String(valor ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 8);
 }
 
 export function cepValido(valor: string | null | undefined) {
@@ -16,8 +18,12 @@ export function formatarCep(valor: string | null | undefined) {
 
 /** Rua e número numa linha só: "Rua 90, 1200". Sem número: só a rua. */
 export function montarEndereco(rua: string | null | undefined, numero: string | null | undefined) {
-  const r = String(rua ?? "").replace(/\s+/g, " ").trim();
-  const n = String(numero ?? "").replace(/\s+/g, " ").trim();
+  const r = String(rua ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const n = String(numero ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!r) return null;
   return (n ? `${r}, ${n}` : r).slice(0, 120);
 }
@@ -44,6 +50,8 @@ export type ConsultaCep =
       endereco: EnderecoDoCep;
       ponto: { lat: number; lng: number } | null;
       precisao: Precisao | null;
+      /** sem ponto: onde abrir o mapa (o meio da cidade) para a pessoa marcar */
+      centro?: { lat: number; lng: number } | null;
     }
   | { ok: false; erro: string; motivo: "invalido" | "nao_achado" | "fora_da_regiao" | "indisponivel" };
 

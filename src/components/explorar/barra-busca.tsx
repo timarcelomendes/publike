@@ -226,7 +226,8 @@ export function BarraBusca({
   // bairro ou área do mapa): dá para trocar depois em "Onde você mora?",
   // "Perto de mim" ou no mapa.
   const irAoEntrar = useEffectEvent((ponto: { lat: number; lng: number }) => irParaPosicao(ponto, true));
-  const podePedir = !local && filtros.origem === "centro";
+  // (nem quando a pessoa veio de "Informe seu CEP": ela quer dizer onde mora)
+  const podePedir = !local && filtros.origem === "centro" && !abrirOndeMora;
   useEffect(() => {
     if (!podePedir) return;
     try {
@@ -288,7 +289,15 @@ export function BarraBusca({
 
         {ondeMora && (
           <div className="order-4 sm:order-3 sm:basis-full">
-            <PainelOndeMora id={painel} local={local} fechar={() => setOndeMora(false)} />
+            <PainelOndeMora
+              id={painel}
+              local={local}
+              fechar={() => setOndeMora(false)}
+              // quem acabou de dizer onde mora quer ver a partir de casa, não de onde está agora
+              aoSalvar={() => {
+                if (filtros.origem !== "centro") ir({ origem: "centro" }, true);
+              }}
+            />
           </div>
         )}
 

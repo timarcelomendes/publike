@@ -67,7 +67,18 @@ export function BotaoOndeMora({
  * primeiro o que é do bairro, depois da região (em Goiânia) e da cidade.
  * O CEP fica na conta (ou neste navegador) e ninguém mais vê.
  */
-export function PainelOndeMora({ id, local, fechar }: { id: string; local: Local | null; fechar: () => void }) {
+export function PainelOndeMora({
+  id,
+  local,
+  fechar,
+  aoSalvar,
+}: {
+  id: string;
+  local: Local | null;
+  fechar: () => void;
+  /** depois de salvar (a busca passa a contar de casa) */
+  aoSalvar?: () => void;
+}) {
   const [cep, setCep] = useState(formatarCep(local?.cep));
   const [cepConferido, setCepConferido] = useState<string | null>(local?.cep ?? null);
   const [cidade, setCidade] = useState<string>(local?.cidade ?? "Goiânia");
@@ -98,8 +109,9 @@ export function PainelOndeMora({ id, local, fechar }: { id: string; local: Local
     setErro(null);
     iniciar(async () => {
       const r = await salvarLocal(cidade, bairro, limparCep(cep) || null);
-      if (r.ok) fechar();
-      else setErro(r.erro);
+      if (!r.ok) return setErro(r.erro);
+      fechar();
+      aoSalvar?.();
     });
   }
 

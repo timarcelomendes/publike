@@ -43,7 +43,7 @@ export function LocalComCep({
   const [rua, setRua] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
-  const [irPara, setIrPara] = useState<(Ponto & { vez: number; zoom?: number }) | null>(null);
+  const [irPara, setIrPara] = useState<(Ponto & { vez: number; zoom?: number; marcar?: boolean }) | null>(null);
   const [buscando, iniciar] = useTransition();
 
   function buscar() {
@@ -61,8 +61,16 @@ export function LocalComCep({
       aoAchar({ cidade: r.endereco.cidade, bairro: r.endereco.bairro });
       if (r.ponto) {
         setIrPara({ ...r.ponto, vez: Date.now(), zoom: r.precisao === "bairro" ? 15 : 17 });
-        setAviso(r.precisao ? TEXTO_PRECISAO[r.precisao] : null);
+        setAviso(
+          r.precisao === "rua" && !numero.trim()
+            ? "Achamos a rua. Ponha o número para chegar mais perto, ou toque no mapa na porta certa."
+            : r.precisao
+              ? TEXTO_PRECISAO[r.precisao]
+              : null,
+        );
       } else {
+        // abre o mapa na cidade, sem marcar: a pessoa toca no lugar
+        if (r.centro) setIrPara({ ...r.centro, vez: Date.now(), zoom: 13, marcar: false });
         setAviso("Achamos o endereço, mas não o ponto no mapa. Toque no mapa para marcar o local.");
       }
     });
@@ -74,7 +82,11 @@ export function LocalComCep({
         <p className="text-label" id={`${id}-titulo`}>
           Ache pelo CEP
         </p>
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 sm:grid-cols-[10rem_8rem_auto]" role="group" aria-labelledby={`${id}-titulo`}>
+        <div
+          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 sm:grid-cols-[10rem_8rem_auto]"
+          role="group"
+          aria-labelledby={`${id}-titulo`}
+        >
           <label className="sr-only" htmlFor={`${id}-cep`}>
             CEP
           </label>
@@ -157,7 +169,9 @@ export function LocalComCep({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-label">{publico && endereco.trim() ? "Confira o pino no mapa" : "Marque a região no mapa"}</p>
+        <p className="text-label">
+          {publico && endereco.trim() ? "Confira o pino no mapa" : "Marque a região no mapa"}
+        </p>
         <SeletorLocal inicial={inicial} erro={erro} exato={publico && endereco.trim() !== ""} irPara={irPara} />
       </div>
     </div>

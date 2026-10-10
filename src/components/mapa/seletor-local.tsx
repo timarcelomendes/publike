@@ -29,8 +29,8 @@ export function SeletorLocal({
   erro?: string;
   /** o ponto é o endereço exato (comércio, empresa ou agência com endereço) */
   exato?: boolean;
-  /** leva o mapa (e o pino) até este ponto; `vez` muda a cada busca */
-  irPara?: (Ponto & { vez: number; zoom?: number }) | null;
+  /** leva o mapa (e o pino, a não ser com `marcar: false`) até este ponto; `vez` muda a cada busca */
+  irPara?: (Ponto & { vez: number; zoom?: number; marcar?: boolean }) | null;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaML | null>(null);
@@ -45,60 +45,60 @@ export function SeletorLocal({
     let instancia: MapaML | null = null;
     carregarMapLibre()
       .then((ml) => {
-      if (cancelado || !caixa.current) return;
-      const centro = inicial ?? CENTRO_GOIANIA;
-      instancia = new ml.Map({
-        container: caixa.current,
-        style: ESTILO_MAPA,
-        center: [centro.lng, centro.lat],
-        zoom: inicial ? 14 : 11,
-        cooperativeGestures: true,
-        attributionControl: { compact: true },
-      });
-      mapa.current = instancia;
-      instancia.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
-      instancia.on("error", (e) => {
-        if (!instancia?.isStyleLoaded() && e.error) setFalhou(true);
-      });
-      instancia.on("load", () => {
-        const m = instancia!;
-        m.addSource("escolha", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-        m.addLayer({
-          id: "escolha-fundo",
-          type: "fill",
-          source: "escolha",
-          paint: { "fill-color": CORES_MAPA.terra, "fill-opacity": 0.18 },
+        if (cancelado || !caixa.current) return;
+        const centro = inicial ?? CENTRO_GOIANIA;
+        instancia = new ml.Map({
+          container: caixa.current,
+          style: ESTILO_MAPA,
+          center: [centro.lng, centro.lat],
+          zoom: inicial ? 14 : 11,
+          cooperativeGestures: true,
+          attributionControl: { compact: true },
         });
-        m.addLayer({
-          id: "escolha-borda",
-          type: "line",
-          source: "escolha",
-          paint: { "line-color": CORES_MAPA.terra, "line-width": 2 },
+        mapa.current = instancia;
+        instancia.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
+        instancia.on("error", (e) => {
+          if (!instancia?.isStyleLoaded() && e.error) setFalhou(true);
         });
-        m.addSource("pino", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-        m.addLayer({
-          id: "pino",
-          type: "circle",
-          source: "pino",
-          paint: {
-            "circle-radius": 9,
-            "circle-color": CORES_MAPA.terra,
-            "circle-stroke-color": "#ffffff",
-            "circle-stroke-width": 3,
-          },
+        instancia.on("load", () => {
+          const m = instancia!;
+          m.addSource("escolha", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+          m.addLayer({
+            id: "escolha-fundo",
+            type: "fill",
+            source: "escolha",
+            paint: { "fill-color": CORES_MAPA.terra, "fill-opacity": 0.18 },
+          });
+          m.addLayer({
+            id: "escolha-borda",
+            type: "line",
+            source: "escolha",
+            paint: { "line-color": CORES_MAPA.terra, "line-width": 2 },
+          });
+          m.addSource("pino", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+          m.addLayer({
+            id: "pino",
+            type: "circle",
+            source: "pino",
+            paint: {
+              "circle-radius": 9,
+              "circle-color": CORES_MAPA.terra,
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 3,
+            },
+          });
+          m.on("click", (e) => {
+            const p = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+            if (!dentroDaRegiao(p)) {
+              setAviso("Por enquanto o Publike funciona em Goiânia e região.");
+              return;
+            }
+            setAviso(null);
+            setPonto(p);
+          });
+          setPronto(true);
         });
-        m.on("click", (e) => {
-          const p = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-          if (!dentroDaRegiao(p)) {
-            setAviso("Por enquanto o Publike funciona em Goiânia e região.");
-            return;
-          }
-          setAviso(null);
-          setPonto(p);
-        });
-        setPronto(true);
-      });
-    })
+      })
       .catch(() => setFalhou(true));
     return () => {
       cancelado = true;
@@ -126,7 +126,7 @@ export function SeletorLocal({
   const [vezAtendida, setVezAtendida] = useState<number | null>(null);
   if (irPara && irPara.vez !== vezAtendida) {
     setVezAtendida(irPara.vez);
-    setPonto({ lat: irPara.lat, lng: irPara.lng });
+    if (irPara.marcar !== false) setPonto({ lat: irPara.lat, lng: irPara.lng });
     setAviso(null);
   }
   useEffect(() => {

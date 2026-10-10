@@ -7,8 +7,15 @@ import { CIDADES } from "@/lib/constantes";
 // Do CEP (e do número) para um ponto no mapa, de graça e sem chave:
 //   1. o endereço vem da BrasilAPI (CEP v2, que às vezes já traz o ponto) ou,
 //      se ela falhar, do ViaCEP;
-//   2. o ponto vem do OpenStreetMap (Nominatim): primeiro com o número, depois
-//      só a rua, depois o bairro. Quem publica confere e ajusta o pino no mapa.
+//   2. o ponto vem do OpenStreetMap (Nominatim): primeiro a rua com o número,
+//      depois o ponto do CEP, depois só a rua, depois o bairro. Quem publica
+//      confere e ajusta o pino no mapa.
+// Cuidados que a vida real pediu:
+//   * Para muitos CEPs a BrasilAPI devolve o meio da cidade (o mesmo ponto
+//     para CEPs de bairros diferentes). Ponto do CEP colado no centro da
+//     cidade não vale.
+//   * "Rua JCA7" no CEP é "Rua JCA 7" no mapa: tentamos as duas.
+//   * Há "Rua 1" em vários bairros: a rua achada só vale perto do bairro do CEP.
 // O Nominatim pede no máximo uma consulta por segundo e um nome de aplicativo:
 // a fila abaixo espaça as consultas e as respostas ficam guardadas por um dia.
 
@@ -39,7 +46,18 @@ type RespostaViaCep = {
   erro?: boolean | string;
 };
 
-type RespostaNominatim = { lat?: string; lon?: string; address?: { house_number?: string; road?: string } }[];
+type RespostaNominatim = {
+  lat?: string;
+  lon?: string;
+  address?: {
+    house_number?: string;
+    road?: string;
+    suburb?: string;
+    neighbourhood?: string;
+    quarter?: string;
+    city_district?: string;
+  };
+}[];
 
 function texto(v: unknown) {
   return typeof v === "string" && v.trim() ? v.trim().replace(/\s+/g, " ") : null;
@@ -48,6 +66,34 @@ function texto(v: unknown) {
 function numero(v: unknown) {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+/** Distância em km entre dois pontos (fórmula de haversine). */
+function distanciaKm(a: Ponto, b: Ponto) {
+  const rad = (g: number) => (g * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
+/** Para comparar nomes: sem acento, minúsculo, sem espaços repetidos. */
+function chave(s: string) {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** "Rua JCA7" → ["Rua JCA7", "Rua JCA 7"]: o OpenStreetMap separa letras e números. */
+function variantesDaRua(rua: string) {
+  const separada = rua
+    .replace(/([A-Za-zÀ-ÿ])(?=\d)|(\d)(?=[A-Za-zÀ-ÿ])/g, "$1$2 ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [...new Set([rua, separada])];
 }
 
 function naRegiao(p: Ponto | null): p is Ponto {
@@ -62,7 +108,10 @@ function cidadeDaLista(nome: string) {
   return CIDADES.find((c) => chave(c) === chave(nome)) ?? null;
 }
 
-async function buscarJson<T>(url: string, cabecalhos: Record<string, string> = {}): Promise<{ status: number; corpo: T | null }> {
+async function buscarJson<T>(
+  url: string,
+  cabecalhos: Record<string, string> = {},
+): Promise<{ status: number; corpo: T | null }> {
   try {
     const r = await fetch(url, {
       headers: { accept: "application/json", ...cabecalhos },
@@ -79,7 +128,9 @@ async function buscarJson<T>(url: string, cabecalhos: Record<string, string> = {
 
 const CEPS = new Map<string, { quando: number; r: { endereco: EnderecoDoCep; ponto: Ponto | null } | "nao_achado" }>();
 
-async function enderecoDoCep(cep: string): Promise<{ endereco: EnderecoDoCep; ponto: Ponto | null } | "nao_achado" | "indisponivel"> {
+async function enderecoDoCep(
+  cep: string,
+): Promise<{ endereco: EnderecoDoCep; ponto: Ponto | null } | "nao_achado" | "indisponivel"> {
   const guardado = CEPS.get(cep);
   if (guardado && Date.now() - guardado.quando < UM_DIA) return guardado.r;
 
@@ -128,7 +179,8 @@ async function enderecoDoCep(cep: string): Promise<{ endereco: EnderecoDoCep; po
 
 // ------------------------------------------------------------------ mapa
 
-const PONTOS = new Map<string, { quando: number; r: { ponto: Ponto; comNumero: boolean } | null }>();
+type Achado = { ponto: Ponto; comNumero: boolean; bairro: string | null };
+const PONTOS = new Map<string, { quando: number; r: Achado | null }>();
 let fila: Promise<unknown> = Promise.resolve();
 let ultima = 0;
 
@@ -147,7 +199,7 @@ function naFila<T>(tarefa: () => Promise<T>): Promise<T> {
   return vez;
 }
 
-async function procurarNoMapa(params: Record<string, string>): Promise<{ ponto: Ponto; comNumero: boolean } | null> {
+async function procurarNoMapa(params: Record<string, string>): Promise<Achado | null> {
   const q = new URLSearchParams({
     format: "jsonv2",
     addressdetails: "1",
@@ -163,33 +215,89 @@ async function procurarNoMapa(params: Record<string, string>): Promise<{ ponto: 
   if (guardado && Date.now() - guardado.quando < UM_DIA) return guardado.r;
 
   const resposta = await naFila(() =>
-    buscarJson<RespostaNominatim>(`${NOMINATIM}/search?${chave}`, { "user-agent": APLICATIVO, referer: "https://publike.org" }),
+    buscarJson<RespostaNominatim>(`${NOMINATIM}/search?${chave}`, {
+      "user-agent": APLICATIVO,
+      referer: "https://publike.org",
+    }),
   );
   if (!resposta.corpo) return null; // fora do ar: não guarda
   const primeiro = resposta.corpo[0];
   const ponto = primeiro ? { lat: Number(primeiro.lat), lng: Number(primeiro.lon) } : null;
-  const r = naRegiao(ponto) ? { ponto, comNumero: Boolean(primeiro?.address?.house_number) } : null;
+  const end = primeiro?.address;
+  const r: Achado | null = naRegiao(ponto)
+    ? {
+        ponto,
+        comNumero: Boolean(end?.house_number),
+        bairro: end?.suburb ?? end?.neighbourhood ?? end?.quarter ?? end?.city_district ?? null,
+      }
+    : null;
   if (PONTOS.size > 5000) PONTOS.clear();
   PONTOS.set(chave, { quando: Date.now(), r });
   return r;
 }
 
-async function pontoDoEndereco(e: EnderecoDoCep, num: string | null, doCep: Ponto | null): Promise<{ ponto: Ponto; precisao: Precisao } | null> {
+/** O ponto que o mapa dá para a cidade inteira (o "meio" dela). */
+function pontoDaCidade(cidade: string) {
+  return procurarNoMapa({ q: `${cidade}, Goiás, Brasil` });
+}
+
+type Lugar = { ponto: Ponto; precisao: Precisao };
+
+async function pontoDoEndereco(
+  e: EnderecoDoCep,
+  num: string | null,
+  doCep: Ponto | null,
+): Promise<{ lugar: Lugar | null; cidade: Ponto | null }> {
   const base = { city: e.cidade, state: "Goiás", country: "Brasil" };
-  if (e.rua && num) {
-    const r = await procurarNoMapa({ ...base, street: `${num} ${e.rua}` });
-    if (r) return { ponto: r.ponto, precisao: r.comNumero ? "numero" : "rua" };
+  const cidade = (await pontoDaCidade(e.cidade))?.ponto ?? null;
+  // O ponto do CEP colado no meio da cidade é o "não sei" da BrasilAPI: não serve.
+  const cepBom = naRegiao(doCep) && !(cidade && distanciaKm(doCep, cidade) < 2) ? doCep : null;
+
+  // Referência para conferir a rua achada (há ruas com o mesmo nome em vários bairros).
+  let bairro: Achado | null | undefined;
+  const pontoDoBairro = async () => {
+    if (bairro === undefined)
+      bairro = e.bairro ? await procurarNoMapa({ q: `${e.bairro}, ${e.cidade}, Goiás, Brasil` }) : null;
+    return bairro;
+  };
+  const daRegiaoCerta = async (r: Achado) => {
+    if (
+      e.bairro &&
+      r.bairro &&
+      (chave(r.bairro).includes(chave(e.bairro)) || chave(e.bairro).includes(chave(r.bairro)))
+    ) {
+      return true;
+    }
+    const referencia = cepBom ?? (await pontoDoBairro())?.ponto ?? null;
+    return !referencia || distanciaKm(r.ponto, referencia) <= 3;
+  };
+
+  let rua: Achado | null = null;
+  const ruas = e.rua ? variantesDaRua(e.rua) : [];
+  if (num) {
+    for (const nome of ruas) {
+      const r = await procurarNoMapa({ ...base, street: `${num} ${nome}` });
+      if (!r || !(await daRegiaoCerta(r))) continue;
+      if (r.comNumero) return { lugar: { ponto: r.ponto, precisao: "numero" }, cidade };
+      // sem o número no mapa, o resultado é a rua
+      rua = r;
+      break;
+    }
   }
-  if (naRegiao(doCep)) return { ponto: doCep, precisao: "cep" };
-  if (e.rua) {
-    const r = await procurarNoMapa({ ...base, street: e.rua });
-    if (r) return { ponto: r.ponto, precisao: "rua" };
+  if (cepBom) return { lugar: { ponto: cepBom, precisao: "cep" }, cidade };
+  if (!rua && !num) {
+    for (const nome of ruas) {
+      const r = await procurarNoMapa({ ...base, street: nome });
+      if (r && (await daRegiaoCerta(r))) {
+        rua = r;
+        break;
+      }
+    }
   }
-  if (e.bairro) {
-    const r = await procurarNoMapa({ q: `${e.bairro}, ${e.cidade}, Goiás, Brasil` });
-    if (r) return { ponto: r.ponto, precisao: "bairro" };
-  }
-  return null;
+  if (rua) return { lugar: { ponto: rua.ponto, precisao: "rua" }, cidade };
+  const b = await pontoDoBairro();
+  if (b) return { lugar: { ponto: b.ponto, precisao: "bairro" }, cidade };
+  return { lugar: null, cidade };
 }
 
 /**
@@ -201,7 +309,8 @@ export async function consultarCep(valor: string, num?: string | null): Promise<
   const cep = limparCep(valor);
   if (!cepValido(cep)) return { ok: false, motivo: "invalido", erro: "O CEP tem 8 números." };
   const achado = await enderecoDoCep(cep);
-  if (achado === "nao_achado") return { ok: false, motivo: "nao_achado", erro: "Não achamos esse CEP. Confira os números." };
+  if (achado === "nao_achado")
+    return { ok: false, motivo: "nao_achado", erro: "Não achamos esse CEP. Confira os números." };
   if (achado === "indisponivel") {
     return {
       ok: false,
@@ -218,13 +327,19 @@ export async function consultarCep(valor: string, num?: string | null): Promise<
       erro: `Esse CEP é de ${endereco.cidade}${endereco.uf ? ` (${endereco.uf})` : ""}. Por enquanto o Publike funciona em Goiânia e região.`,
     };
   }
-  const n = texto(num)?.replace(/[^\dA-Za-z -]/g, "").slice(0, 10) || null;
-  const achou = await pontoDoEndereco({ ...endereco, cidade }, n, achado.ponto);
+  const n =
+    texto(num)
+      ?.replace(/[^\dA-Za-z -]/g, "")
+      .slice(0, 10) || null;
+  const { lugar, cidade: meio } = await pontoDoEndereco({ ...endereco, cidade }, n, achado.ponto);
+  const arredondar = (p: Ponto) => ({ lat: Math.round(p.lat * 1e5) / 1e5, lng: Math.round(p.lng * 1e5) / 1e5 });
   return {
     ok: true,
     endereco: { ...endereco, cidade },
-    ponto: achou ? { lat: Math.round(achou.ponto.lat * 1e5) / 1e5, lng: Math.round(achou.ponto.lng * 1e5) / 1e5 } : null,
-    precisao: achou?.precisao ?? null,
+    ponto: lugar ? arredondar(lugar.ponto) : null,
+    precisao: lugar?.precisao ?? null,
+    // sem ponto: onde abrir o mapa para a pessoa marcar
+    centro: !lugar && meio ? arredondar(meio) : null,
   };
 }
 
