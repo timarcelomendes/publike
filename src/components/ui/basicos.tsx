@@ -149,8 +149,9 @@ export function Vazio({
 const ESTILO_LOGO = ".lk-i{fill:#1f1a14}@media (prefers-color-scheme:dark){.lk-i{fill:#ffffff}}";
 
 /**
- * A assinatura: o p de publike é o pino, com um check vermelho dentro (deu match).
- * A palavra fica inteira numa cor só (ink; branca no tema escuro); o vermelho é só o check.
+ * A assinatura no site: o p de publike é o pino, com o check vazado (deu match).
+ * Tudo numa cor só (ink; branca no tema escuro), e o fundo aparece pelo check.
+ * A versão com o check vermelho fica para e-mail e arquivos (public/logo/publike-logo.svg).
  * Regras e arquivos: guia da marca (public/logo/).
  */
 export function Logo({ altura = 32, className = "" }: { altura?: number; className?: string }) {
@@ -165,8 +166,7 @@ export function Logo({ altura = 32, className = "" }: { altura?: number; classNa
       className={`logo-publike block ${className}`}
     >
       <style>{ESTILO_LOGO}</style>
-      <path d={LOGO.pino} className="lk-i" />
-      <path d={LOGO.check} fill="#e0192d" />
+      <path d={`${LOGO.pino}${LOGO.check}`} fillRule="evenodd" className="lk-i" />
       <path d={LOGO.palavra} className="lk-i" />
     </svg>
   );

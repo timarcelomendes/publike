@@ -6,7 +6,7 @@ import { LocateFixed } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CENTRO_GOIANIA, REGIAO } from "@/lib/config";
 import { Botao } from "../ui/botao";
-import { carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA } from "./maplibre";
+import { carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA, recolherCreditos } from "./maplibre";
 
 type Ponto = { lat: number; lng: number };
 
@@ -60,6 +60,7 @@ export function SeletorLocal({
         instancia.on("error", (e) => {
           if (!instancia?.isStyleLoaded() && e.error) setFalhou(true);
         });
+        recolherCreditos(instancia);
         instancia.on("load", () => {
           const m = instancia!;
           m.addSource("escolha", { type: "geojson", data: { type: "FeatureCollection", features: [] } });

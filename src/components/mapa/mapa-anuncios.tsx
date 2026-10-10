@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { REGIAO } from "@/lib/config";
 import { hrefFiltros, raioDaBusca, type Filtros } from "@/lib/filtros";
-import { caixaDoRaio, carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA } from "./maplibre";
+import { caixaDoRaio, carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA, recolherCreditos } from "./maplibre";
 
 export type PontoMapa = {
   id: string;
@@ -290,6 +290,7 @@ export function MapaAnuncios({
           for (const [chave, marcador] of agora) visiveis.set(chave, marcador);
         };
 
+        recolherCreditos(instancia);
         instancia.on("load", () => {
           const m = instancia!;
           m.addSource("raio", {
@@ -431,7 +432,7 @@ export function MapaAnuncios({
   }
 
   return (
-    <div className="relative h-full min-h-[320px] overflow-hidden rounded-lg border border-line bg-surface-300">
+    <div className="group/mapa relative h-full min-h-[320px] overflow-hidden rounded-lg border border-line bg-surface-300">
       {/* O MapLibre põe position: relative no próprio container (e o CSS dele vence o do Tailwind):
           por isso o container fica dentro de uma caixa absoluta e só ocupa 100% dela. */}
       <div className="absolute inset-0">
@@ -452,7 +453,8 @@ export function MapaAnuncios({
           Não foi possível carregar o mapa agora. A lista continua funcionando: escolha Lista, Grade ou Blocos.
         </p>
       )}
-      <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex items-center gap-3 rounded-pill bg-surface-200/95 px-3 py-1.5 text-caption text-ink shadow-card">
+      {/* A legenda some enquanto os créditos do mapa estão abertos (botão "i"), para não cobrir o texto. */}
+      <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex items-center gap-3 rounded-pill bg-surface-200/95 px-3 py-1.5 text-caption text-ink shadow-card transition-opacity group-has-[.maplibregl-compact-show]/mapa:opacity-0">
         <span className="flex items-center gap-1.5">
           <span
             className="flex size-4 items-center justify-center rounded-pill bg-surface-300 text-ink [&>svg]:size-2.5"

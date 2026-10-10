@@ -3,7 +3,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Map as MapaML } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import { carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA } from "./maplibre";
+import { carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA, recolherCreditos } from "./maplibre";
 
 /**
  * Onde é o trabalho: uma área aproximada ou, quando o endereço é público
@@ -31,6 +31,7 @@ export function MapaArea({ lat, lng, raioKm = 0.6, exato = false }: { lat: numbe
       instancia.on("error", (e) => {
         if (!instancia?.isStyleLoaded() && e.error) setFalhou(true);
       });
+      recolherCreditos(instancia);
       instancia.on("load", () => {
         const m = instancia!;
         if (exato) {

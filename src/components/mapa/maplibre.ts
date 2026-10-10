@@ -4,6 +4,7 @@ import { MAPA_ESTILO } from "@/lib/config";
 // O "worker" do mapa é copiado para public/vendor por scripts/copiar-worker-mapa.mjs.
 
 type MapLibre = typeof import("maplibre-gl");
+type MapaML = import("maplibre-gl").Map;
 
 let carregando: Promise<MapLibre> | null = null;
 
@@ -18,6 +19,22 @@ export function carregarMapLibre() {
 }
 
 export const ESTILO_MAPA = MAPA_ESTILO;
+
+/**
+ * Os créditos do mapa (OpenFreeMap, OpenMapTiles, OpenStreetMap) começam recolhidos no
+ * botão "i" do canto; tocar nele mostra o texto (a licença pede o crédito, não que fique aberto).
+ * O MapLibre abre o texto ao carregar e só fecha quando a pessoa arrasta o mapa.
+ */
+export function recolherCreditos(mapa: MapaML) {
+  const recolher = () => {
+    const caixa = mapa.getContainer().querySelector(".maplibregl-ctrl-attrib.maplibregl-compact-show");
+    if (!caixa) return;
+    caixa.classList.remove("maplibregl-compact-show");
+    caixa.setAttribute("open", "");
+  };
+  mapa.once("load", recolher);
+  mapa.once("idle", recolher);
+}
 
 export const CORES_MAPA = {
   terra: "#c2410c",
