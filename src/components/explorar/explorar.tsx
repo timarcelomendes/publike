@@ -98,9 +98,9 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   // a casa (CEP) ou o GPS aparecem no mapa
   const origem: OrigemMapa =
     tempoDe === "casa"
-      ? { lat: filtros.lat, lng: filtros.lng, rotulo: "Sua casa" }
+      ? { lat: filtros.lat, lng: filtros.lng, rotulo: "Sua casa", tipo: "casa" }
       : tempoDe === "voce"
-        ? { lat: filtros.lat, lng: filtros.lng, rotulo: "Você" }
+        ? { lat: filtros.lat, lng: filtros.lng, rotulo: "Você está aqui", tipo: "voce" }
         : null;
 
   const n = anuncios.length;

@@ -50,6 +50,12 @@ export function Rodape() {
           <Link href="/privacidade" className={link}>
             Privacidade e regras
           </Link>
+          <Link href="/ajuda" className={link}>
+            Ajuda
+          </Link>
+          <Link href="/sugerir" className={link}>
+            Sugestões e erros
+          </Link>
         </nav>
       </Container>
       <Container className="border-t border-line py-4 text-body-sm text-ink-muted">

@@ -15,7 +15,7 @@ import { chaveDoServidor, chaveSecretaSupabase, configSmtp, urlDosEmails } from 
 
 type AcessoFila = { cliente: ClienteBanco; chave: string };
 
-function acessoFila(): AcessoFila | null {
+export function acessoFila(): AcessoFila | null {
   if (MODO_DEMO) return null;
   const chave = chaveDoServidor();
   if (chave) return { cliente: criarClientePublico(), chave };

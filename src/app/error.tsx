@@ -1,10 +1,12 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Container, Simbolo } from "@/components/ui/basicos";
 import { Botao, BotaoLink } from "@/components/ui/botao";
 
 export default function Erro({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
+  const caminho = usePathname();
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -21,6 +23,9 @@ export default function Erro({ error, retry }: { error: Error & { digest?: strin
         <Botao onClick={() => retry()}>Tentar de novo</Botao>
         <BotaoLink href="/" variante="fantasma">
           Ir para o início
+        </BotaoLink>
+        <BotaoLink href={`/sugerir?tipo=erro&de=${encodeURIComponent(caminho ?? "/")}`} variante="fantasma">
+          Avisar este erro
         </BotaoLink>
       </div>
     </Container>

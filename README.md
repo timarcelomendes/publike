@@ -175,6 +175,8 @@ E `supabase/migrations/20261009230000_desfazer_match.sql`: o "Desfazer match", c
 
 Por último, `supabase/migrations/20261009250000_agencias.sql`: a conta de agência de emprego / RH, com CNPJ, a empresa contratante na vaga e os limites maiores para agência verificada. Rode **antes** de publicar o código novo: o site passa a ler a coluna `cnpj` e a chamar `salvar_perfil` com o CNPJ. O código antigo continua funcionando com o banco novo. Depois, `20261009260000_cnpj_empresas.sql` deixa comércio e empresa informarem o CNPJ, e `20261009270000_descobrir.sql` cria o Descobrir (salvas, vagas passadas, "O que você procura?" e o limite da IA). Por fim, `20261009280000_enderecos.sql`: endereço (CEP + número) nas vagas de comércio, empresa e agência, o CEP de casa (`casas`) e a busca do mais perto ao mais longe a partir de casa. Rode **antes** de publicar o código novo.
 
+Depois, `20261009290000_logo_emails.sql`: a logo no topo dos e-mails (**Admin > E-mails > Logo nos e-mails**) e a pasta pública `marca` no Storage. E `20261010120000_sugestoes_assistente.sql`: a página **Sugestões e erros** (`/sugerir`, para qualquer pessoa, com ou sem conta), o quadro **Admin > Sugestões** (Novo, Em análise, Fazendo, Feito e Descartado) e o assistente de ajuda. As duas podem rodar antes ou depois de publicar o código: sem elas, o site usa a logo do Publike e esconde o assistente.
+
 ### 4.2 Abrir o admin (só no seu computador)
 
 O admin não tem login: ele só existe no seu computador, com o site rodando em `npm run dev`. No site publicado, `/admin` não abre para ninguém além dos moderadores (veja 4.6).
@@ -256,7 +258,13 @@ O site pede à OpenAI para não guardar o texto dos anúncios (`store: false`) e
 
 Anúncio que a IA acha suspeito sai do ar e vai para **Denúncias**, com o motivo. Quem publicou recebe um aviso de que o anúncio está em análise; você decide se remove (com o motivo, que vai para a pessoa) ou libera.
 
-### 4.6 Moderadores
+### 4.6 Ajuda, assistente e sugestões
+
+- **Página de ajuda** (`/ajuda`): as perguntas e respostas ficam em `src/lib/ajuda.ts`. Mudou alguma regra do site? Mude lá: a página e o assistente leem do mesmo lugar.
+- **Assistente** (botão "Ajuda" no canto do site e a conversa na página de ajuda): usa a mesma chave da OpenAI e o modelo escolhido em **Admin > IA**, onde também dá para desligar. Sem conta, só tira dúvidas (até 15 perguntas por hora); com conta, também procura vagas, serviços e empresas no banco (até 40 por hora). A IA só diz o que procurar: as vagas e empresas da resposta vêm do banco, nunca inventadas. A conversa não fica guardada no servidor. No site publicado, a contagem por hora usa a chave do servidor (`PUBLIKE_CHAVE_SERVIDOR`).
+- **Sugestões e erros** (`/sugerir`, link no rodapé, na ajuda e na página de erro): qualquer pessoa manda um erro, uma sugestão, um elogio ou uma melhoria. Tudo cai em **Admin > Sugestões**, um quadro em que você arrasta os cartões entre as colunas e anota o que foi feito.
+
+### 4.7 Moderadores
 
 No admin, em **Moderadores**, ponha o e-mail de quem vai ajudar. A pessoa precisa já ter entrado no site e criado o perfil. Moderadores entram com o login deles, em **Moderação** no menu da conta, e veem só **Denúncias** e **Anúncios**: corrigem, removem com motivo e liberam. Contas, e-mails, IA e chaves ficam só com você.
 
@@ -343,7 +351,7 @@ npx supabase gen types typescript --project-id SEU_ID > src/lib/supabase/tipos-b
 ## Antes de lançar
 
 - [ ] Supabase no plano Pro e SMTP próprio para os e-mails
-- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql`, `20261009230000_desfazer_match.sql`, `20261009240000_negociar_depois.sql`, `20261009250000_agencias.sql`, `20261009260000_cnpj_empresas.sql`, `20261009270000_descobrir.sql` e `20261009280000_enderecos.sql`)
+- [ ] Migrações do admin, da prioridade por bairro e dos serviços rodadas (`20261008120000_admin.sql`, `20261009120000_prioridade_local.sql` `20261009150000_servicos.sql`, `20261009180000_avaliacoes.sql`, `20261009200000_curriculos.sql`, `20261009210000_config_where.sql`, `20261009230000_desfazer_match.sql`, `20261009240000_negociar_depois.sql`, `20261009250000_agencias.sql`, `20261009260000_cnpj_empresas.sql`, `20261009270000_descobrir.sql`, `20261009280000_enderecos.sql`, `20261009290000_logo_emails.sql` e `20261010120000_sugestoes_assistente.sql`)
 - [ ] Zoho no servidor (`SMTP_…`), e-mail de teste chegando e "quem recebe os avisos" preenchido
 - [ ] `PUBLIKE_CHAVE_SERVIDOR` na hospedagem (e `SUPABASE_SECRET_KEY` só no seu computador)
 - [ ] IA ligada no admin, se for usar, com créditos na OpenAI

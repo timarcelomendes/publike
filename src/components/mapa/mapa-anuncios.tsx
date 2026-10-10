@@ -29,7 +29,8 @@ export type PontoMapa = {
 };
 
 /** De onde a busca mede: a casa (CEP), o GPS ou nenhum marcador. */
-export type OrigemMapa = { lat: number; lng: number; rotulo: string } | null;
+/** De onde contam as distâncias: a casa (CEP) ou onde a pessoa está agora (localização do navegador). */
+export type OrigemMapa = { lat: number; lng: number; rotulo: string; tipo: "casa" | "voce" } | null;
 
 type Props = Omit<PontoMapa, "lat" | "lng">;
 
@@ -105,14 +106,34 @@ function criarGrupo(quantos: number, abrir: () => void) {
 }
 
 /** Marcador de onde a busca mede (casa ou GPS): só o ícone, para não cobrir os anúncios. */
-function criarOrigem(rotulo: string) {
+function criarOrigem(origem: NonNullable<OrigemMapa>) {
   const el = document.createElement("div");
+  el.setAttribute("role", "img");
+  el.setAttribute("aria-label", origem.rotulo);
+  el.style.zIndex = "1"; // fica embaixo das etiquetas
+  if (origem.tipo === "voce") {
+    // o ponto, com uma onda em volta (parada para quem pede menos movimento); fica embaixo dos anúncios
+    el.className = "pointer-events-none relative flex size-3.5 items-center justify-center";
+    el.innerHTML =
+      '<span class="absolute inset-[-7px] rounded-pill bg-ink/25 animate-ping motion-reduce:animate-none"></span>' +
+      '<span class="relative size-3.5 rounded-pill border-2 border-surface-200 bg-ink shadow-raised"></span>';
+    return el;
+  }
   el.className =
     "pointer-events-none flex size-8 items-center justify-center rounded-pill border-[3px] border-surface-200 bg-ink text-surface-100 shadow-raised [&>svg]:size-4";
-  el.setAttribute("role", "img");
-  el.setAttribute("aria-label", rotulo);
   el.innerHTML = ICONE.casa;
-  el.style.zIndex = "1"; // fica embaixo das etiquetas
+  return el;
+}
+
+/** A etiqueta "Você", acima do ponto e por cima de tudo: aparece mesmo quando há anúncios no mesmo lugar. */
+function criarEtiquetaVoce() {
+  const el = document.createElement("div");
+  el.className = "pointer-events-none flex flex-col items-center";
+  el.style.zIndex = "3";
+  el.setAttribute("aria-hidden", "true");
+  el.innerHTML =
+    '<span class="rounded-pill bg-ink px-2 py-0.5 text-caption font-semibold text-surface-100 shadow-raised">Você</span>' +
+    '<span class="-mt-px size-0 border-x-[5px] border-t-[6px] border-x-transparent border-t-ink"></span>';
   return el;
 }
 
@@ -360,20 +381,24 @@ export function MapaAnuncios({
   useEffect(() => {
     const m = mapa.current;
     if (!pronto || !m || !origem) return;
-    let marcador: Marker | null = null;
+    let marcadores: Marker[] = [];
     let cancelado = false;
     carregarMapLibre().then((ml) => {
       if (cancelado) return;
-      marcador = new ml.Marker({
-        element: criarOrigem(origem.rotulo),
-        anchor: "center",
-      })
-        .setLngLat([origem.lng, origem.lat])
-        .addTo(m);
+      marcadores = [
+        new ml.Marker({ element: criarOrigem(origem), anchor: "center" }).setLngLat([origem.lng, origem.lat]).addTo(m),
+      ];
+      if (origem.tipo === "voce") {
+        marcadores.push(
+          new ml.Marker({ element: criarEtiquetaVoce(), anchor: "bottom", offset: [0, -9] })
+            .setLngLat([origem.lng, origem.lat])
+            .addTo(m),
+        );
+      }
     });
     return () => {
       cancelado = true;
-      marcador?.remove();
+      for (const x of marcadores) x.remove();
     };
   }, [pronto, origem]);
 
@@ -444,10 +469,16 @@ export function MapaAnuncios({
         </span>
         {origem && (
           <span className="flex items-center gap-1.5">
-            <span
-              className="flex size-4 items-center justify-center rounded-pill bg-ink text-surface-100 [&>svg]:size-2.5"
-              dangerouslySetInnerHTML={{ __html: ICONE.casa }}
-            />
+            {origem.tipo === "voce" ? (
+              <span className="flex size-4 items-center justify-center rounded-pill bg-ink/20">
+                <span className="size-2.5 rounded-pill border-2 border-surface-200 bg-ink" />
+              </span>
+            ) : (
+              <span
+                className="flex size-4 items-center justify-center rounded-pill bg-ink text-surface-100 [&>svg]:size-2.5"
+                dangerouslySetInnerHTML={{ __html: ICONE.casa }}
+              />
+            )}
             {origem.rotulo}
           </span>
         )}

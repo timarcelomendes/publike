@@ -10,6 +10,7 @@ const ABAS_ADMIN = [
   { href: "/admin/usuarios", nome: "Usuários" },
   { href: "/admin/anuncios", nome: "Anúncios" },
   { href: "/admin/denuncias", nome: "Denúncias" },
+  { href: "/admin/sugestoes", nome: "Sugestões" },
   { href: "/admin/emails", nome: "E-mails" },
   { href: "/admin/ia", nome: "IA" },
   { href: "/admin/moderadores", nome: "Moderadores" },
@@ -26,7 +27,9 @@ function abaAtiva(caminho: string | null, abas: { href: string }[]) {
   // a aba com o caminho mais longo que combina (o Painel só combina exato)
   return (
     abas
-      .filter((a) => (a.href === "/admin" ? caminho === "/admin" : caminho === a.href || caminho.startsWith(`${a.href}/`)))
+      .filter((a) =>
+        a.href === "/admin" ? caminho === "/admin" : caminho === a.href || caminho.startsWith(`${a.href}/`),
+      )
       .sort((x, y) => y.href.length - x.href.length)[0]?.href ?? null
   );
 }

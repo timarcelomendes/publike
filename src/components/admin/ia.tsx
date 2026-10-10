@@ -14,7 +14,12 @@ type Modelo = { id: string; nome: string; ajuda: string };
 function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string; ajuda: string; inicial: boolean }) {
   return (
     <label className="flex min-h-11 cursor-pointer items-start gap-3">
-      <input type="checkbox" name={nome} defaultChecked={inicial} className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]" />
+      <input
+        type="checkbox"
+        name={nome}
+        defaultChecked={inicial}
+        className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+      />
       <span>
         <span className="block text-label">{rotulo}</span>
         <span className="block text-body-sm text-ink-muted">{ajuda}</span>
@@ -41,6 +46,12 @@ export function FormConfigIA({ config, modelos }: { config: ConfigSite; modelos:
           rotulo="Ajuda da IA para quem usa o site"
           ajuda="“Melhorar texto” ao publicar (até 20 vezes por dia por pessoa) e a ordem das vagas no Descobrir (até 12 por dia, guardadas por 6 horas)."
           inicial={config.ia_melhorar_texto}
+        />
+        <Opcao
+          nome="chat_ativo"
+          rotulo="Assistente de ajuda"
+          ajuda="O botão “Ajuda” no canto do site e a conversa na página /ajuda. Sem conta, só tira dúvidas (até 15 perguntas por hora); com conta, também procura vagas e empresas (até 40 por hora)."
+          inicial={config.chat_ativo ?? true}
         />
         <Opcao
           nome="ia_resumo"

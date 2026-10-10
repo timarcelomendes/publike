@@ -91,17 +91,20 @@ export default function Privacidade() {
           </p>
           <p>
             Usamos serviços de terceiros só para isso: o Supabase (banco de dados, login e fotos), o OpenFreeMap, com
-            dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a OpenAI (a IA que revisa o texto
-            dos anúncios e ajuda a escrever), a Cloudflare (a verificação contra robôs na hora de entrar), a
-            BrasilAPI (que traz os dados públicos do CNPJ na Receita para preencher o perfil; só enviamos o número do
-            CNPJ) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
+            dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a OpenAI (a IA que revisa o texto dos
+            anúncios e ajuda a escrever), a Cloudflare (a verificação contra robôs na hora de entrar), a BrasilAPI (que
+            traz os dados públicos do CNPJ na Receita para preencher o perfil; só enviamos o número do CNPJ) e, se você
+            escolher entrar com eles, Google, Facebook ou LinkedIn.
           </p>
           <p>
             A IA recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome
             da empresa contratante), nunca seu contato. Quando ela acha um anúncio suspeito, ele sai do ar até uma
-            pessoa da moderação olhar. No Descobrir, a IA recebe o que você escreveu em “O que você procura?”, o
-            que você faz, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para
-            pôr primeiro as que combinam com você; nunca seu nome ou contato.
+            pessoa da moderação olhar. No Descobrir, a IA recebe o que você escreveu em “O que você procura?”, o que
+            você faz, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para pôr
+            primeiro as que combinam com você; nunca seu nome ou contato. No assistente de ajuda, a IA recebe as
+            mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que você escolheu; nunca seu contato.
+            A conversa fica só no seu navegador, não no Publike. O que você manda em Sugestões e erros fica guardado
+            para a equipe ler, com o e-mail, se você informar.
           </p>
           <p>
             Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}
@@ -133,7 +136,11 @@ export default function Privacidade() {
             {CONTATO_EMAIL && (
               <>
                 {" "}
-                Dúvidas ou pedidos: <a href={`mailto:${CONTATO_EMAIL}`} className="underline">{CONTATO_EMAIL}</a>.
+                Dúvidas ou pedidos:{" "}
+                <a href={`mailto:${CONTATO_EMAIL}`} className="underline">
+                  {CONTATO_EMAIL}
+                </a>
+                .
               </>
             )}
           </p>

@@ -11,6 +11,7 @@ import { escreverResumo } from "@/lib/ia/tarefas";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { prepararLogoEmail } from "@/lib/servidor/logo-email";
 import { enviarEmailsPendentes, processarFilas, revisarAnunciosPendentes } from "@/lib/servidor/filas";
+import { ehStatusSugestao } from "@/lib/sugestoes";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
@@ -323,6 +324,39 @@ export async function processarFilasAgora(): Promise<Resultado> {
   return { ok: true, mensagem: `${partes.join(", ")}.${espera}` };
 }
 
+// ------------------------------------------------------------------ sugestões
+
+export async function moverSugestao(id: number, status: string, posicao: number): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!Number.isSafeInteger(id) || !ehStatusSugestao(status) || !Number.isFinite(posicao)) {
+    return { ok: false, erro: "Pedido inválido." };
+  }
+  const { error } = await c.rpc("admin_mover_sugestao", { p_id: id, p_status: status, p_posicao: posicao });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  return { ok: true };
+}
+
+export async function anotarSugestao(id: number, nota: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!Number.isSafeInteger(id) || typeof nota !== "string") return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_anotar_sugestao", { p_id: id, p_nota: nota.trim() || null });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return { ok: true, mensagem: "Anotação salva." };
+}
+
+export async function apagarSugestao(id: number): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!Number.isSafeInteger(id)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_apagar_sugestao", { p_id: id });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return { ok: true, mensagem: "Apagada." };
+}
+
 // ------------------------------------------------------------------ IA
 
 export async function salvarConfigIA(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
@@ -337,9 +371,19 @@ export async function salvarConfigIA(_anterior: EstadoForm, formData: FormData):
     p_modelo: modelo,
   });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
+  const { error: erroAssistente } = await c.rpc("admin_salvar_config_assistente", {
+    p_ativo: marcado(formData, "chat_ativo"),
+  });
   revalidatePath("/publicar");
   refresh();
-  return { ok: true, mensagem: "Configurações da IA salvas." };
+  if (erroAssistente?.code === "PGRST202") {
+    return {
+      ok: false,
+      erro: "O resto foi salvo. Para ligar ou desligar o assistente, rode a migração 20261010120000_sugestoes_assistente.sql no Supabase.",
+    };
+  }
+  if (erroAssistente) return { ok: false, erro: mensagemDeErro(erroAssistente) };
+  return { ok: true, mensagem: "Configurações da IA salvas. O botão do assistente muda em alguns minutos." };
 }
 
 export async function gerarResumoIA(): Promise<Resultado> {

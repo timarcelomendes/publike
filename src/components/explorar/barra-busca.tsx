@@ -2,7 +2,16 @@
 
 import { ChevronLeft, ChevronRight, LocateFixed, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { REGIAO } from "@/lib/config";
 import { CATEGORIAS, REGIMES } from "@/lib/constantes";
 import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
@@ -37,9 +46,41 @@ const seletor =
 function useIrPara(filtros: Filtros) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
-  const ir = (mudancas: Partial<Filtros>) =>
-    iniciar(() => router.push(hrefFiltros(filtros, mudancas), { scroll: false }));
+  /** `substituir`: troca a URL sem criar um passo a mais no "voltar". */
+  const ir = (mudancas: Partial<Filtros>, substituir = false) =>
+    iniciar(() => {
+      const href = hrefFiltros(filtros, mudancas);
+      if (substituir) router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
+    });
   return [ir, pendente] as const;
+}
+
+/** Já pedimos a localização nesta visita (não pede de novo a cada página). */
+const LOCALIZACAO_PEDIDA = "publike_localizacao_pedida";
+
+const AVISOS_GPS = {
+  sem: "Seu navegador não informa a localização.",
+  fora: "Você parece estar fora de Goiânia e região. Mostrando a partir do centro de Goiânia.",
+  negado: "Não conseguimos sua localização. Confira a permissão do navegador.",
+} as const;
+
+/** Pede a posição ao navegador. Arredonda (~100 m): bom para o mapa e a distância, sem a posição exata na URL. */
+function pedirPosicao(
+  achou: (ponto: { lat: number; lng: number }) => void,
+  falhou: (motivo: keyof typeof AVISOS_GPS) => void,
+) {
+  if (!("geolocation" in navigator)) return falhou("sem");
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      const { latitude: lat, longitude: lng } = coords;
+      if (lat < REGIAO.latMin || lat > REGIAO.latMax || lng < REGIAO.lngMin || lng > REGIAO.lngMax)
+        return falhou("fora");
+      achou({ lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 });
+    },
+    () => falhou("negado"),
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+  );
 }
 
 function Carregando() {
@@ -100,7 +141,8 @@ function FaixaRolavel({
   const borda = (tem: boolean) => (tem ? "4rem" : "0px");
   const mascara = `linear-gradient(to right, transparent, #000 ${borda(mais.antes)}, #000 calc(100% - ${borda(mais.depois)}), transparent)`;
   // as setas só ajudam quem usa mouse; no toque e no teclado a faixa já rola
-  const seta = "absolute top-1/2 hidden size-9 -translate-y-1/2 items-center justify-center rounded-pill border border-line-strong bg-surface-200 text-ink shadow-card transition-colors hover:bg-surface-300 pointer-fine:flex";
+  const seta =
+    "absolute top-1/2 hidden size-9 -translate-y-1/2 items-center justify-center rounded-pill border border-line-strong bg-surface-200 text-ink shadow-card transition-colors hover:bg-surface-300 pointer-fine:flex";
 
   return (
     <div className="relative">
@@ -140,6 +182,7 @@ function BotaoPerto({ ativo, onClick, className }: { ativo: boolean; onClick: ()
     >
       <LocateFixed aria-hidden className="size-4" />
       Perto de mim
+      {ativo && <X aria-hidden className="-mr-1 size-3.5" />}
     </button>
   );
 }
@@ -166,35 +209,51 @@ export function BarraBusca({
     ir({ q: texto.trim() });
   }
 
+  function irParaPosicao({ lat, lng }: { lat: number; lng: number }, substituir = false) {
+    ir({ lat, lng, origem: "gps", ordem: "perto" }, substituir);
+  }
+
   function pertoDeMim() {
     setAvisoGps(null);
-    if (!("geolocation" in navigator)) {
-      setAvisoGps("Seu navegador não informa a localização.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const { latitude: lat, longitude: lng } = coords;
-        if (lat < REGIAO.latMin || lat > REGIAO.latMax || lng < REGIAO.lngMin || lng > REGIAO.lngMax) {
-          setAvisoGps("Você parece estar fora de Goiânia e região. Mostrando a partir do centro de Goiânia.");
-          return;
-        }
-        // arredonda (~1 km): a busca não precisa da posição exata
-        ir({ lat: Math.round(lat * 100) / 100, lng: Math.round(lng * 100) / 100, origem: "gps", ordem: "perto" });
-      },
-      () => setAvisoGps("Não conseguimos sua localização. Confira a permissão do navegador."),
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
-    );
+    pedirPosicao(irParaPosicao, (motivo) => setAvisoGps(AVISOS_GPS[motivo]));
   }
 
   const perto = filtros.origem === "gps";
+
+  // Ao entrar, pede a localização uma vez por visita, para mostrar os anúncios
+  // a partir de onde a pessoa está. Não pede se ela já escolheu um local (casa,
+  // bairro ou área do mapa): dá para trocar depois em "Onde você mora?",
+  // "Perto de mim" ou no mapa.
+  const irAoEntrar = useEffectEvent((ponto: { lat: number; lng: number }) => irParaPosicao(ponto, true));
+  const podePedir = !local && filtros.origem === "centro";
+  useEffect(() => {
+    if (!podePedir) return;
+    try {
+      if (window.sessionStorage.getItem(LOCALIZACAO_PEDIDA)) return;
+      window.sessionStorage.setItem(LOCALIZACAO_PEDIDA, "1");
+    } catch {
+      // sem armazenamento: pede só desta vez
+    }
+    // negou ou está longe: fica tudo como está, sem aviso (ninguém tocou em nada)
+    pedirPosicao(irAoEntrar, () => {});
+  }, [podePedir]);
+
+  function alternarPerto() {
+    // tocar de novo desliga: volta a contar do centro (ou da casa)
+    if (perto) ir({ origem: "centro" });
+    else pertoDeMim();
+  }
 
   return (
     <div className="relative mt-6 flex flex-col gap-3 sm:mt-8">
       {pendente && <Carregando />}
 
       <div className="flex items-center justify-between gap-2">
-        <div role="group" aria-label="Tipo de anúncio" className="inline-flex shrink-0 rounded-pill border border-line bg-surface-200 p-1">
+        <div
+          role="group"
+          aria-label="Tipo de anúncio"
+          className="inline-flex shrink-0 rounded-pill border border-line bg-surface-200 p-1"
+        >
           {TIPOS.map((t) => (
             <button
               key={t.nome}
@@ -210,7 +269,7 @@ export function BarraBusca({
         <div className="flex min-w-0 items-center gap-2">
           <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
           {/* no celular, "Perto de mim" vai para o começo das categorias (falta espaço aqui) */}
-          <BotaoPerto ativo={perto} onClick={pertoDeMim} className="hidden sm:inline-flex" />
+          <BotaoPerto ativo={perto} onClick={alternarPerto} className="hidden sm:inline-flex" />
         </div>
       </div>
 
@@ -263,7 +322,7 @@ export function BarraBusca({
       )}
 
       <FaixaRolavel rotulo="Categoria">
-        <BotaoPerto ativo={perto} onClick={pertoDeMim} className="inline-flex sm:hidden" />
+        <BotaoPerto ativo={perto} onClick={alternarPerto} className="inline-flex sm:hidden" />
         <button
           type="button"
           aria-pressed={filtros.categoria === null}

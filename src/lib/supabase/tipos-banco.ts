@@ -310,6 +310,7 @@ export type Database = {
           ia_modelo: string;
           email_logo: boolean;
           email_logo_url: string | null;
+          chat_ativo: boolean;
           atualizado_em: string;
           atualizado_por: string | null;
         };
@@ -824,6 +825,18 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: { mostrar: boolean; url: string | null }[];
       };
+      enviar_sugestao: {
+        Args: { p_tipo: string; p_texto: string; p_pagina: string | null; p_email: string | null };
+        Returns: number;
+      };
+      assistente_ligado: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      servidor_usar_assistente: {
+        Args: { p_chave: string; p_quem: string; p_limite: number };
+        Returns: boolean;
+      };
       minha_conta_suspensa: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
@@ -940,6 +953,40 @@ export type Database = {
       };
       admin_salvar_logo_emails: {
         Args: { p_mostrar: boolean; p_url: string | null };
+        Returns: undefined;
+      };
+      admin_listar_sugestoes: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: number;
+          tipo: string;
+          texto: string;
+          pagina: string | null;
+          email: string | null;
+          autor_id: string | null;
+          autor_nome: string | null;
+          autor_email: string | null;
+          status: string;
+          posicao: number;
+          nota: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        }[];
+      };
+      admin_mover_sugestao: {
+        Args: { p_id: number; p_status: string; p_posicao: number };
+        Returns: undefined;
+      };
+      admin_anotar_sugestao: {
+        Args: { p_id: number; p_nota: string | null };
+        Returns: undefined;
+      };
+      admin_apagar_sugestao: {
+        Args: { p_id: number };
+        Returns: undefined;
+      };
+      admin_salvar_config_assistente: {
+        Args: { p_ativo: boolean };
         Returns: undefined;
       };
       admin_salvar_config_emails: {
