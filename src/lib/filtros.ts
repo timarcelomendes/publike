@@ -22,6 +22,8 @@ export type Filtros = {
   lat: number;
   lng: number;
   origem: Origem;
+  /** "Só os meus": só os anúncios de quem está logado */
+  meus: boolean;
 };
 
 export const FILTROS_PADRAO: Filtros = {
@@ -35,6 +37,7 @@ export const FILTROS_PADRAO: Filtros = {
   lat: CENTRO_GOIANIA.lat,
   lng: CENTRO_GOIANIA.lng,
   origem: "centro",
+  meus: false,
 };
 
 type Parametros = Record<string, string | string[] | undefined>;
@@ -75,6 +78,7 @@ export function lerFiltros(sp: Parametros): Filtros {
     lat: temPonto ? Math.round(lat * 10000) / 10000 : CENTRO_GOIANIA.lat,
     lng: temPonto ? Math.round(lng * 10000) / 10000 : CENTRO_GOIANIA.lng,
     origem: temPonto ? (origem === "gps" ? "gps" : "mapa") : "centro",
+    meus: primeiro(sp.meus) === "1",
   };
 }
 
@@ -89,6 +93,7 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
   if (f.tempo) p.set("tempo", String(f.tempo));
   else if (f.raio !== RAIO_PADRAO) p.set("raio", String(f.raio));
   if (f.ordem !== "perto") p.set("ordem", f.ordem);
+  if (f.meus) p.set("meus", "1");
   if (f.origem !== "centro") {
     p.set("lat", String(f.lat));
     p.set("lng", String(f.lng));

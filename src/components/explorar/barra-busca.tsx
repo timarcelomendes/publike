@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   LocateFixed,
   Search,
+  UserRound,
   Wrench,
   X,
   type LucideIcon,
@@ -423,5 +424,23 @@ export function FiltrosLista({ filtros }: { filtros: Filtros }) {
         <option value="recentes">Mais recentes</option>
       </Seletor>
     </FaixaRolavel>
+  );
+}
+
+/** "Só os meus": quem publicou vê na busca (lista e mapa) só os próprios anúncios. Fica embaixo da contagem. */
+export function BotaoSoMeus({ filtros }: { filtros: Filtros }) {
+  const [ir, pendente] = useIrPara(filtros);
+  return (
+    <button
+      type="button"
+      aria-pressed={filtros.meus}
+      disabled={pendente}
+      onClick={() => ir({ meus: !filtros.meus })}
+      className={`${chip(filtros.meus)} mt-2 min-h-9 px-3 disabled:opacity-60`}
+    >
+      <UserRound aria-hidden className="size-4" />
+      Só os meus
+      {filtros.meus && <X aria-hidden className="-mr-1 size-3.5" />}
+    </button>
   );
 }

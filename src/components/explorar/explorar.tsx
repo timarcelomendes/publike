@@ -18,7 +18,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
-import { BarraBusca, FiltrosLista } from "./barra-busca";
+import { BarraBusca, BotaoSoMeus, FiltrosLista } from "./barra-busca";
 import { VisaoExplorar } from "./visao-explorar";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
@@ -70,9 +70,9 @@ export function BuscaEsqueleto() {
 
 export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   const parametros = await searchParams;
-  const [agora, local] = await Promise.all([agoraDaRequisicao(), obterLocal()]);
+  const [agora, local, usuario] = await Promise.all([agoraDaRequisicao(), obterLocal(), obterUsuario()]);
   const filtros = partirDoLocal(lerFiltros(parametros), local);
-  const [anuncios, usuario] = await Promise.all([buscarAnuncios(filtros, agora, local), obterUsuario()]);
+  const anuncios = await buscarAnuncios(filtros, agora, local, usuario?.id ?? null);
 
   const tempoDe = origemDoTempo(filtros, local);
   const pontos: PontoMapa[] = anuncios.map((a) => {
@@ -110,7 +110,12 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       : filtros.tipo === "servico"
         ? ["serviço", "serviços"]
         : ["oportunidade", "oportunidades"];
-  const contagem = n === 0 ? `Nenhum resultado` : `${n >= 60 ? "60+" : n} ${n === 1 ? nome[0] : nome[1]}`;
+  const contagem =
+    n === 0
+      ? `Nenhum resultado`
+      : filtros.meus
+        ? `${n} ${n === 1 ? "anúncio seu" : "anúncios seus"}`
+        : `${n >= 60 ? "60+" : n} ${n === 1 ? nome[0] : nome[1]}`;
   const maiorRaio = RAIOS[RAIOS.length - 1];
 
   const lista =
@@ -128,6 +133,27 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
           />
         ))}
       </div>
+    ) : filtros.meus ? (
+      <Vazio
+        icone={SearchX}
+        titulo={usuario ? "Nenhum anúncio seu nesta busca" : "Entre para ver os seus anúncios"}
+        acao={
+          usuario ? (
+            <>
+              <BotaoLink href={hrefFiltros(filtros, { meus: false })} scroll={false}>
+                Ver todos
+              </BotaoLink>
+              <BotaoLink href="/painel">Meus anúncios</BotaoLink>
+            </>
+          ) : (
+            <BotaoLink href="/entrar?next=%2F%3Fmeus%3D1">Entrar</BotaoLink>
+          )
+        }
+      >
+        {usuario
+          ? "Aqui aparecem só os seus anúncios que estão no ar. Os pausados, encerrados e em análise ficam em Meus anúncios."
+          : "Com a conta, dá para ver na busca só o que você publicou."}
+      </Vazio>
     ) : (
       <Vazio
         icone={filtros.q || filtros.categoria ? SearchX : MapPinned}
@@ -169,12 +195,21 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
           </h2>
         }
         subtitulo={
-          <p className="text-body-sm text-ink-muted">
-            {local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
-            {local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
-            {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-            {textoDaOrigem(filtros, local)}
-          </p>
+          <>
+            <p className="text-body-sm text-ink-muted">
+              {!filtros.meus && local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
+              {!filtros.meus && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
+              {filtros.meus ? (
+                <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
+              ) : (
+                <>
+                  {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
+                  {textoDaOrigem(filtros, local)}
+                </>
+              )}
+            </p>
+            {(usuario || filtros.meus) && <BotaoSoMeus filtros={filtros} />}
+          </>
         }
         filtrosLista={<FiltrosLista filtros={filtros} />}
         lista={lista}

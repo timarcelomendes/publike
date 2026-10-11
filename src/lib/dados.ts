@@ -114,19 +114,30 @@ function porDistancia(f: Filtros, local: Local | null) {
   return Boolean(local?.ponto) && f.lat === local!.ponto!.lat && f.lng === local!.ponto!.lng;
 }
 
-export async function buscarAnuncios(f: Filtros, agora: number, local: Local | null = null): Promise<AnuncioResumo[]> {
-  if (MODO_DEMO) return demo.buscarDemo(f, agora, local);
+export async function buscarAnuncios(
+  f: Filtros,
+  agora: number,
+  local: Local | null = null,
+  /** com `f.meus`: só os anúncios desta conta */
+  autorId: string | null = null,
+): Promise<AnuncioResumo[]> {
+  if (f.meus && !autorId) return [];
+  if (MODO_DEMO) {
+    const lista = demo.buscarDemo(f, agora, local);
+    return f.meus ? lista.filter((a) => a.autor_id === autorId) : lista;
+  }
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("buscar_anuncios", {
     p_lat: f.lat,
     p_lng: f.lng,
-    p_raio_km: raioDaBusca(f),
+    // "Só os meus": a região toda (o banco limita a 100 km e 200 anúncios), e o filtro vem depois
+    p_raio_km: f.meus ? 100 : raioDaBusca(f),
     p_tipo: f.tipo,
     p_categoria: f.categoria,
     p_regime: f.regime,
     p_texto: f.q || null,
     p_ordem: f.ordem,
-    p_limite: 60,
+    p_limite: f.meus ? 200 : 60,
     p_cidade: local?.cidade ?? null,
     p_bairro: local?.bairro || null,
     p_bairros_regiao: local?.regiao ? chavesDaRegiao(local.regiao) : null,
@@ -135,7 +146,7 @@ export async function buscarAnuncios(f: Filtros, agora: number, local: Local | n
     p_por_distancia: porDistancia(f, local),
   });
   if (error) falha("anúncios", error);
-  return data ?? [];
+  return f.meus ? (data ?? []).filter((a) => a.autor_id === autorId) : (data ?? []);
 }
 
 export const obterAnuncio = cache(async (id: string): Promise<AnuncioCompleto | null> => {
