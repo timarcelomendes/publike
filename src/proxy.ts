@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { areaDoSlug, cidadeDoSlug } from "@/lib/paginas-busca";
 
 // Roda antes de cada página: renova a sessão do Supabase (cookies) e
 // manda para /entrar quem tenta abrir uma página que exige login.
@@ -17,7 +18,20 @@ const ADMIN_LOCAL =
   process.env.NODE_ENV === "development" && process.env.PUBLIKE_ADMIN === "1" && Boolean(process.env.SUPABASE_SECRET_KEY);
 const ENDERECO_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d{2,5})?$/i;
 
+// Páginas de busca (/vagas/goiania/limpeza): cidade ou área que não existe responde 404
+// de verdade (a página lê o endereço dentro de um Suspense e não consegue mudar o status).
+const BUSCA = /^\/(?:vagas|servicos)\/([^/]+)(?:\/([^/]+))?\/?$/;
+function buscaInexistente(pathname: string) {
+  const m = BUSCA.exec(pathname);
+  if (!m) return false;
+  const area = m[2] ? areaDoSlug(m[2]) : null;
+  return !cidadeDoSlug(m[1]) || (m[2] !== undefined && (!area || area.slug === "outros"));
+}
+
 export async function proxy(request: NextRequest) {
+  if (buscaInexistente(request.nextUrl.pathname)) {
+    return NextResponse.rewrite(new URL("/pagina-que-nao-existe", request.url), { status: 404 });
+  }
   if (!URL_SUPABASE || !CHAVE) return NextResponse.next(); // modo demonstração
 
   let resposta = NextResponse.next({ request });
@@ -57,6 +71,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|opengraph-image|manifest.webmanifest|sw.js|offline.html|robots.txt|sitemap.xml|logo/|icons/|vendor/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mjs|woff2)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|opengraph-image|manifest.webmanifest|sw.js|offline.html|googleb0f816f2a734c818.html|robots.txt|sitemap.xml|logo/|icons/|vendor/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mjs|woff2)$).*)",
   ],
 };

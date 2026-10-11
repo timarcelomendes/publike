@@ -25,6 +25,9 @@ const nextConfig: NextConfig = {
       { source: "/moderacao", destination: "/admin/denuncias", permanent: true },
       // endereço curto das instruções para apagar os dados (pedido no app do Facebook)
       { source: "/apagar-dados", destination: "/privacidade#apagar-dados", permanent: false },
+      // endereços curtos das páginas de busca
+      { source: "/vagas", destination: "/vagas/goiania", permanent: false },
+      { source: "/servicos", destination: "/servicos/goiania", permanent: false },
     ];
   },
   async headers() {

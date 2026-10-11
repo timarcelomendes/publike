@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BarraInferiorAtiva } from "./barra-inferior-ativa";
 import { BarraInferiorBase } from "./barra-inferior-base";
 import { BotaoInstalarApp } from "./instalar-app";
+import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { Container, Logo } from "./ui/basicos";
 
 export function BarraInferior() {
@@ -59,6 +60,22 @@ export function Rodape() {
           </Link>
           <BotaoInstalarApp className={`${link} text-left`} />
         </nav>
+      </Container>
+      {/* links das páginas de busca por cidade (ajudam quem procura e o Google) */}
+      <Container className="flex flex-col gap-2 border-t border-line py-5 text-body-sm">
+        {(["vaga", "servico"] as const).map((tipo) => (
+          <nav key={tipo} aria-label={tipo === "vaga" ? "Vagas por cidade" : "Serviços por cidade"}>
+            <span className="text-ink">{tipo === "vaga" ? "Vagas de emprego em" : "Profissionais em"}</span>{" "}
+            {CIDADES_PRINCIPAIS.map((c, i) => (
+              <span key={c}>
+                {i > 0 && <span className="text-ink-muted"> · </span>}
+                <Link href={caminhoDaBusca(tipo, c)} className={link}>
+                  {c}
+                </Link>
+              </span>
+            ))}
+          </nav>
+        ))}
       </Container>
       <Container className="border-t border-line py-4 text-body-sm text-ink-muted">
         Feito em Goiânia. Grátis para quem trabalha, para quem presta serviço e para empresas de qualquer tamanho.

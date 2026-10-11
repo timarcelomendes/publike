@@ -15,7 +15,7 @@ export function HeroInicio() {
       </div>
       <h1 className="mt-3 max-w-3xl text-h1 sm:text-display">Trabalho perto de você.</h1>
       <p className="mt-2 max-w-2xl text-body text-ink-muted sm:mt-3 sm:text-body-lg">
-        Vagas com carteira, diárias, freelances e profissionais do bairro.
+        Vagas de emprego em Goiânia e região: carteira assinada, diárias, freelances e profissionais do bairro.
         <span className="hidden sm:inline"> Curtiu, deu match, vocês conversam.</span>{" "}
         <a href="#o-que-da-para-fazer" className="text-ink underline underline-offset-2 hover:text-terra-text">
           Veja o que dá para fazer

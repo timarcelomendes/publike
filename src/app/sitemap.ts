@@ -1,13 +1,45 @@
 import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
+import { CATEGORIAS } from "@/lib/constantes";
+import { caminhoDaBusca, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
+import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { criarClientePublico } from "@/lib/supabase/servidor";
+import type { TipoAnuncio } from "@/lib/tipos";
+
+/** Páginas de busca por cidade e área: as cidades principais sempre; o resto, se tiver anúncio. */
+async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
+  const lista: MetadataRoute.Sitemap = [];
+  for (const tipo of ["vaga", "servico"] as TipoAnuncio[]) {
+    const anuncios = await anunciosNoAr(tipo);
+    const cidades = new Set(CIDADES_PRINCIPAIS);
+    for (const a of anuncios) if (cidadeDoSlug(slugDaCidade(a.cidade))) cidades.add(a.cidade);
+    for (const cidade of cidades) {
+      const daCidade = anuncios.filter((a) => a.cidade === cidade);
+      lista.push({
+        url: `${SITE_URL}${caminhoDaBusca(tipo, cidade)}`,
+        changeFrequency: "hourly",
+        priority: cidade === "Goiânia" ? 0.9 : 0.8,
+      });
+      for (const c of CATEGORIAS) {
+        if (c.slug === "outros" || !daCidade.some((a) => a.categoria === c.slug)) continue;
+        lista.push({
+          url: `${SITE_URL}${caminhoDaBusca(tipo, cidade, c.slug)}`,
+          changeFrequency: "daily",
+          priority: 0.7,
+        });
+      }
+    }
+  }
+  return lista;
+}
 
 // Lista as páginas para o Google, incluindo os anúncios no ar.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();
   const paginas: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: "hourly", priority: 1 },
+    { url: `${SITE_URL}/descobrir`, changeFrequency: "hourly", priority: 0.7 },
     { url: `${SITE_URL}/como-funciona`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/missao`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/privacidade`, changeFrequency: "yearly", priority: 0.3 },
@@ -24,6 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...paginas,
+    ...(await paginasDeBusca()),
     ...(data ?? []).map((a) => ({
       url: `${SITE_URL}/anuncio/${a.id}`,
       lastModified: a.atualizado_em,

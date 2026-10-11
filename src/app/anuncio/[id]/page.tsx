@@ -120,7 +120,12 @@ function dadosVaga(a: AnuncioCompleto) {
     hiringOrganization: {
       "@type": "Organization",
       name: a.contratante ?? (a.contratante_confidencial ? "Confidencial" : a.autor_nome),
+      // quem publicou é quem contrata: o perfil público dele no Publike
+      ...(!a.contratante && !a.contratante_confidencial ? { sameAs: `${SITE_URL}/perfil/${a.autor_id}` } : {}),
     },
+    identifier: { "@type": "PropertyValue", name: "Publike", value: a.id },
+    occupationalCategory: categoria(a.categoria).nome,
+    industry: categoria(a.categoria).nome,
     jobLocation: {
       "@type": "Place",
       address: {
