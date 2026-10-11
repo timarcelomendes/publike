@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BarraInferiorAtiva } from "./barra-inferior-ativa";
 import { BarraInferiorBase } from "./barra-inferior-base";
+import { BotaoInstalarApp } from "./instalar-app";
 import { Container, Logo } from "./ui/basicos";
 
 export function BarraInferior() {
@@ -56,6 +57,7 @@ export function Rodape() {
           <Link href="/sugerir" className={link}>
             Sugestões e erros
           </Link>
+          <BotaoInstalarApp className={`${link} text-left`} />
         </nav>
       </Container>
       <Container className="border-t border-line py-4 text-body-sm text-ink-muted">

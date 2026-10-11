@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Assistente } from "@/components/assistente/assistente";
 import { Cabecalho } from "@/components/cabecalho";
+import { ConviteInstalar } from "@/components/instalar-app";
 import { AvisoDemo, BarraInferior, Rodape } from "@/components/navegacao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import "./globals.css";
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Rodape />
         <BarraInferior />
         <Assistente />
+        <ConviteInstalar />
       </body>
     </html>
   );
