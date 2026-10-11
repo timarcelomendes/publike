@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useId, useState, useTransition, type ReactNode } from "react";
-import { buscarCep } from "@/lib/acoes/cep";
+import { buscarCep, buscarEnderecoDoPonto } from "@/lib/acoes/cep";
 import { formatarCep, limparCep, montarEndereco, TEXTO_PRECISAO } from "@/lib/cep";
 import { Botao } from "../ui/botao";
 import { classesEntrada, MensagemErro } from "../ui/campo";
@@ -45,6 +45,34 @@ export function LocalComCep({
   const [falha, setFalha] = useState<string | null>(null);
   const [irPara, setIrPara] = useState<(Ponto & { vez: number; zoom?: number; marcar?: boolean }) | null>(null);
   const [buscando, iniciar] = useTransition();
+  const [preenchendo, iniciarPreencher] = useTransition();
+
+  // "Usar minha localização": o pino já foi para onde a pessoa está; agora o endereço
+  // acompanha (rua, bairro, cidade e o CEP, quando o mapa tem). O número quase nunca vem.
+  function preencherPeloPonto(p: Ponto) {
+    setFalha(null);
+    setAviso(null);
+    iniciarPreencher(async () => {
+      const r = await buscarEnderecoDoPonto(p.lat, p.lng);
+      if (!r.ok) {
+        setAviso(r.erro);
+        return;
+      }
+      const e = r.endereco;
+      if (e.cep) setCep(formatarCep(e.cep));
+      setNumero(e.numero ?? "");
+      setRua(e.rua);
+      if (publico) setEndereco(montarEndereco(e.rua, e.numero) ?? "");
+      aoAchar({ cidade: e.cidade, bairro: e.bairro });
+      setAviso(
+        !e.rua
+          ? "Preenchemos a cidade e o bairro pela sua localização. Confira."
+          : e.numero || !publico
+            ? "Preenchemos o endereço pela sua localização. Confira se está certo."
+            : "Preenchemos a rua pela sua localização. Ponha o número no endereço.",
+      );
+    });
+  }
 
   function buscar() {
     setFalha(null);
@@ -138,10 +166,12 @@ export function LocalComCep({
           <MensagemErro>{falha}</MensagemErro>
         ) : (
           <p className="text-body-sm text-ink-muted" aria-live="polite">
-            {aviso ??
-              (publico
-                ? "Com o endereço certo, quem mora perto acha sua vaga e sabe quanto tempo leva para chegar."
-                : "O CEP só ajuda a achar o lugar. Na vaga aparece uma área de uns 500 m, sem o endereço.")}
+            {preenchendo
+              ? "Procurando o endereço deste lugar…"
+              : (aviso ??
+                (publico
+                  ? "Com o endereço certo, quem mora perto acha sua vaga e sabe quanto tempo leva para chegar."
+                  : "O CEP só ajuda a achar o lugar. Na vaga aparece uma área de uns 500 m, sem o endereço."))}
           </p>
         )}
       </div>
@@ -172,7 +202,13 @@ export function LocalComCep({
         <p className="text-label">
           {publico && endereco.trim() ? "Confira o pino no mapa" : "Marque a região no mapa"}
         </p>
-        <SeletorLocal inicial={inicial} erro={erro} exato={publico && endereco.trim() !== ""} irPara={irPara} />
+        <SeletorLocal
+          inicial={inicial}
+          erro={erro}
+          exato={publico && endereco.trim() !== ""}
+          irPara={irPara}
+          aoUsarLocalizacao={preencherPeloPonto}
+        />
       </div>
     </div>
   );

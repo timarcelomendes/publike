@@ -37,6 +37,17 @@ export type EnderecoDoCep = {
   uf: string;
 };
 
+/** O endereço de um ponto do mapa (o caminho contrário do CEP). */
+export type EnderecoDoPonto = {
+  rua: string | null;
+  numero: string | null;
+  bairro: string | null;
+  cidade: string;
+  cep: string | null;
+};
+
+export type ConsultaPonto = { ok: true; endereco: EnderecoDoPonto } | { ok: false; erro: string };
+
 /**
  * Quão perto do lugar certo o ponto ficou:
  * numero = na porta; rua = em algum ponto da rua; cep = no centro do CEP;

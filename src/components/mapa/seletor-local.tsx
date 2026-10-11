@@ -24,6 +24,7 @@ export function SeletorLocal({
   erro,
   exato = false,
   irPara = null,
+  aoUsarLocalizacao,
 }: {
   inicial: Ponto | null;
   erro?: string;
@@ -31,6 +32,8 @@ export function SeletorLocal({
   exato?: boolean;
   /** leva o mapa (e o pino, a não ser com `marcar: false`) até este ponto; `vez` muda a cada busca */
   irPara?: (Ponto & { vez: number; zoom?: number; marcar?: boolean }) | null;
+  /** depois de marcar o ponto pela localização do aparelho (para preencher o endereço) */
+  aoUsarLocalizacao?: (p: Ponto) => void;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaML | null>(null);
@@ -152,6 +155,7 @@ export function SeletorLocal({
         setAviso(null);
         setPonto(p);
         mapa.current?.flyTo({ center: [p.lng, p.lat], zoom: exato ? 17 : 14 });
+        aoUsarLocalizacao?.(p);
       },
       () => {
         setBuscandoGps(false);

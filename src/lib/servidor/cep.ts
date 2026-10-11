@@ -1,6 +1,13 @@
 import "server-only";
 import { bairroDaReceita } from "@/lib/cnpj";
-import { cepValido, limparCep, type ConsultaCep, type EnderecoDoCep, type Precisao } from "@/lib/cep";
+import {
+  cepValido,
+  limparCep,
+  type ConsultaCep,
+  type ConsultaPonto,
+  type EnderecoDoCep,
+  type Precisao,
+} from "@/lib/cep";
 import { REGIAO } from "@/lib/config";
 import { CIDADES } from "@/lib/constantes";
 
@@ -349,4 +356,77 @@ export async function centroDoBairro(bairro: string, cidade: string): Promise<Po
   if (!b || !cidadeDaLista(cidade)) return null;
   const r = await procurarNoMapa({ q: `${b}, ${cidade}, Goiás, Brasil` });
   return r ? { lat: Math.round(r.ponto.lat * 1e4) / 1e4, lng: Math.round(r.ponto.lng * 1e4) / 1e4 } : null;
+}
+
+// ------------------------------------------------------------------ do ponto ao endereço
+
+type RespostaReversa = {
+  error?: string;
+  address?: {
+    house_number?: string;
+    road?: string;
+    pedestrian?: string;
+    suburb?: string;
+    neighbourhood?: string;
+    quarter?: string;
+    city_district?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    postcode?: string;
+  };
+};
+
+const ENDERECOS = new Map<string, { quando: number; r: ConsultaPonto }>();
+
+/**
+ * O endereço de um ponto ("Usar minha localização" ao publicar), pelo OpenStreetMap.
+ * Grátis, na mesma fila de uma consulta por segundo. Pontos a menos de ~10 m um do
+ * outro dão a mesma resposta guardada. O número da casa quase nunca está no mapa:
+ * a rua vem sem ele, e a pessoa completa.
+ */
+export async function enderecoDoPonto(lat: number, lng: number): Promise<ConsultaPonto> {
+  const ponto = { lat, lng };
+  if (!naRegiao(ponto)) return { ok: false, erro: "Esse lugar fica fora de Goiânia e região." };
+  const chave = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  const guardado = ENDERECOS.get(chave);
+  if (guardado && Date.now() - guardado.quando < UM_DIA) return guardado.r;
+
+  const q = new URLSearchParams({
+    format: "jsonv2",
+    addressdetails: "1",
+    zoom: "18",
+    lat: lat.toFixed(6),
+    lon: lng.toFixed(6),
+    "accept-language": "pt-BR",
+  });
+  const resposta = await naFila(() =>
+    buscarJson<RespostaReversa>(`${NOMINATIM}/reverse?${q}`, {
+      "user-agent": APLICATIVO,
+      referer: "https://publike.org",
+    }),
+  );
+  if (!resposta.corpo) return { ok: false, erro: "Não conseguimos o endereço agora. Preencha pelo CEP." };
+  const a = resposta.corpo.address ?? {};
+  const cidade = cidadeDaLista(texto(a.city ?? a.town ?? a.municipality ?? a.village) ?? "");
+  let r: ConsultaPonto;
+  if (resposta.corpo.error || !cidade) {
+    r = { ok: false, erro: "Não achamos o endereço desse ponto. Preencha pelo CEP." };
+  } else {
+    const cep = limparCep(a.postcode ?? "");
+    r = {
+      ok: true,
+      endereco: {
+        rua: texto(a.road ?? a.pedestrian),
+        numero: texto(a.house_number),
+        bairro: texto(a.suburb ?? a.neighbourhood ?? a.quarter ?? a.city_district),
+        cidade,
+        cep: cepValido(cep) ? cep : null,
+      },
+    };
+  }
+  if (ENDERECOS.size > 5000) ENDERECOS.clear();
+  ENDERECOS.set(chave, { quando: Date.now(), r });
+  return r;
 }
