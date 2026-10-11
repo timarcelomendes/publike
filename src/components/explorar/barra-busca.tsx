@@ -23,6 +23,7 @@ import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import {
+  BotaoIntencao,
   BotaoOndeMora,
   botaoLugar,
   PainelOndeMora,
@@ -231,8 +232,12 @@ export function BarraBusca({
   // pergunta de um passo só: o CEP de casa, ou a localização, ou o bairro. Ela fica no
   // lugar dos botões de lugar até a pessoa responder ou tocar em "Agora não".
   const [adiada, adiar] = usePerguntaAdiada();
-  // o cartão só da pergunta fica até a pessoa fechar (para ver o próximo passo depois de responder)
-  const [cartaoIntencao, setCartaoIntencao] = useState(!intencao);
+  // O cartão só da pergunta: abre sozinho para quem ainda não respondeu (até "Agora não")
+  // e pelo botão com a resposta, ao lado do bairro. Fica aberto até a pessoa fechar,
+  // para ver o próximo passo depois de responder.
+  const [cartao, setCartao] = useState<"auto" | "aberto" | "fechado">("auto");
+  const cartaoIntencao = cartao === "aberto" || (cartao === "auto" && !intencao && !adiada);
+  const idCartao = useId();
   const perguntar = !local && filtros.origem === "centro" && !ondeMora && !adiada;
 
   function alternarPerto() {
@@ -292,19 +297,51 @@ export function BarraBusca({
             />
           </div>
         ) : (
-          <div role="group" aria-label="Onde" className="order-3 flex min-w-0 items-center gap-2 sm:order-2 sm:mb-1.5">
-            <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
-            <BotaoPerto ativo={perto} onClick={alternarPerto} />
+          <div className="order-3 flex min-w-0 flex-wrap items-center gap-2 sm:order-2 sm:mb-1.5">
+            <BotaoIntencao
+              intencao={intencao}
+              aberto={cartaoIntencao && !ondeMora}
+              controla={idCartao}
+              onClick={() => {
+                setOndeMora(false);
+                setCartao(cartaoIntencao && !ondeMora ? "fechado" : "aberto");
+              }}
+            />
+            <div role="group" aria-label="Onde" className="flex min-w-0 items-center gap-2">
+              <BotaoOndeMora
+                local={local}
+                aberto={ondeMora}
+                onClick={() => {
+                  if (!ondeMora && cartao === "aberto") setCartao("fechado");
+                  setOndeMora((a) => !a);
+                }}
+                controla={painel}
+              />
+              <BotaoPerto ativo={perto} onClick={alternarPerto} />
+            </div>
           </div>
         )}
 
         {/* Já disse onde mora, mas não o que quer fazer: só essa pergunta, no mesmo lugar */}
-        {!perguntar && cartaoIntencao && !adiada && !ondeMora && (
-          <div className="order-4 flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card sm:order-5 sm:basis-full sm:p-5">
-            <PerguntaIntencao intencao={null} aoEscolher={escolherIntencao} />
+        {!perguntar && cartaoIntencao && !ondeMora && (
+          <div
+            id={idCartao}
+            className="order-4 flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card sm:order-5 sm:basis-full sm:p-5"
+          >
+            <PerguntaIntencao
+              intencao={intencao}
+              aoEscolher={(i) => {
+                // fica aberto para mostrar a escolha e o próximo passo
+                setCartao("aberto");
+                escolherIntencao(i);
+              }}
+            />
             <button
               type="button"
-              onClick={() => (intencao ? setCartaoIntencao(false) : adiar())}
+              onClick={() => {
+                if (!intencao && cartao === "auto") adiar();
+                setCartao("fechado");
+              }}
               className="self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
             >
               {intencao ? "Fechar" : "Agora não"}

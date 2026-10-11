@@ -3,6 +3,7 @@
 import {
   Briefcase,
   ChevronDown,
+  Compass,
   HandHelping,
   House,
   LocateFixed,
@@ -23,6 +24,48 @@ import { CIDADES, type Cidade } from "@/lib/constantes";
 import type { Local } from "@/lib/regioes";
 import { classesBotao } from "../ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "../ui/campo";
+
+/** Botão com a resposta de "O que você quer fazer no Publike?", ao lado do bairro. Abre o "Mudar". */
+export function BotaoIntencao({
+  intencao,
+  aberto,
+  onClick,
+  controla,
+}: {
+  intencao: Intencao | null;
+  aberto: boolean;
+  onClick: () => void;
+  controla: string;
+}) {
+  const atual = INTENCOES.find((op) => op.valor === intencao);
+  const Icone = atual ? ICONES_INTENCAO[atual.valor] : Compass;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={aberto}
+      aria-controls={controla}
+      title={atual ? `${atual.nome}: mudar` : "O que você quer fazer no Publike?"}
+      className={`${botaoLugar(Boolean(atual))} max-w-52 sm:max-w-64`}
+    >
+      <Icone aria-hidden className={`size-4 shrink-0 ${atual ? "text-terra-text" : ""}`} />
+      <span className="truncate">
+        {atual ? (
+          <>
+            <span className="sr-only">Você quer: </span>
+            {atual.curto}
+          </>
+        ) : (
+          "O que você quer?"
+        )}
+      </span>
+      <ChevronDown
+        aria-hidden
+        className={`-mr-1 size-3.5 shrink-0 text-ink-muted transition-transform ${aberto ? "rotate-180" : ""}`}
+      />
+    </button>
+  );
+}
 
 /** Botão "Onde você mora?" da busca. Fica no topo, ao lado do "Perto de mim". */
 /** Botão de lugar (onde mora, perto de mim): contorno; escolhido, ganha borda escura e fundo leve. */

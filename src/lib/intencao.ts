@@ -6,13 +6,34 @@ import type { TipoAnuncio } from "./tipos";
  *   contratar_servico ... a busca abre em Serviços
  *   oferecer_servico .... convite para montar a vitrine em "Meus serviços"
  *   contratar_pessoa .... convite para publicar a vaga
- * Fica num cookie deste navegador (dá para trocar no "Onde você mora?").
+ * Logado: fica na conta. Sem login: só nesta visita. O botão ao lado do bairro
+ * mostra a resposta e abre o "Mudar".
  */
 export const INTENCOES = [
-  { valor: "trabalho", nome: "Procuro trabalho", ajuda: "Vagas com carteira, diárias e freelances" },
-  { valor: "contratar_servico", nome: "Quero contratar um serviço", ajuda: "Diarista, pedreiro, eletricista…" },
-  { valor: "oferecer_servico", nome: "Ofereço serviços", ajuda: "Mostre o que você faz e ache clientes" },
-  { valor: "contratar_pessoa", nome: "Quero contratar alguém", ajuda: "Publique a vaga de graça" },
+  {
+    valor: "trabalho",
+    nome: "Procuro trabalho",
+    curto: "Procuro trabalho",
+    ajuda: "Vagas com carteira, diárias e freelances",
+  },
+  {
+    valor: "contratar_servico",
+    nome: "Quero contratar um serviço",
+    curto: "Contratar serviço",
+    ajuda: "Diarista, pedreiro, eletricista…",
+  },
+  {
+    valor: "oferecer_servico",
+    nome: "Ofereço serviços",
+    curto: "Ofereço serviços",
+    ajuda: "Mostre o que você faz e ache clientes",
+  },
+  {
+    valor: "contratar_pessoa",
+    nome: "Quero contratar alguém",
+    curto: "Contratar alguém",
+    ajuda: "Publique a vaga de graça",
+  },
 ] as const;
 
 export type Intencao = (typeof INTENCOES)[number]["valor"];
