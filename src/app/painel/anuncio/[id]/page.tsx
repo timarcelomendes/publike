@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
-import { DesfazerMatch } from "@/components/desfazer-match";
+import { BotaoBloquear, DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -25,6 +25,7 @@ import {
   listarDesfeitosDoAnuncio,
   listarEtapasDosCandidatos,
   listarInteressados,
+  listarMeusBloqueios,
   obterAnuncio,
 } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
@@ -55,11 +56,12 @@ async function Conteudo({
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
-  const [todos, curriculos, desfeitos, etapas] = await Promise.all([
+  const [todos, curriculos, desfeitos, etapas, bloqueios] = await Promise.all([
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
     listarDesfeitosDoAnuncio(id),
     listarEtapasDosCandidatos(id),
+    listarMeusBloqueios(),
   ]);
   // Vagas: cada interessado tem uma etapa (só quem publicou vê); dá para filtrar por ela.
   const etapaDe = (perfilId: string): EtapaCandidato => etapas.get(perfilId)?.etapa ?? "novo";
@@ -259,13 +261,11 @@ async function Conteudo({
                           {desfeito?.porMim
                             ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeito.motivo).toLowerCase()}.`
                             : `${primeiroNome} desfez o match. Motivo: ${motivoParaOutro(desfeito?.motivo)}.`}{" "}
-                          {desfeito?.futuro
-                            ? desfeito.porMim
-                              ? "Você disse que topa negociar de novo."
-                              : `${primeiroNome} topa negociar em outro momento.`
-                            : ""}
+                          {bloqueios.get(p.perfil_id)?.ele
+                            ? `${primeiroNome} preferiu não negociar de novo.`
+                            : "Se quiserem, dá para dar match de novo."}
                         </p>
-                        {desfeito?.futuro && (
+                        {!bloqueios.get(p.perfil_id)?.ele && (
                           <AcoesInteressado
                             anuncioId={anuncio.id}
                             perfilId={p.perfil_id}
@@ -274,6 +274,11 @@ async function Conteudo({
                             semCurriculo={semCurriculo}
                           />
                         )}
+                        <BotaoBloquear
+                          outroId={p.perfil_id}
+                          outroNome={p.nome}
+                          bloqueado={Boolean(bloqueios.get(p.perfil_id)?.eu)}
+                        />
                       </div>
                     ) : p.status === "match" ? (
                       <div className="flex flex-col gap-2">

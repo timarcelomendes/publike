@@ -129,7 +129,25 @@ export async function desfazerMatch(_anterior: EstadoForm, formData: FormData): 
   return { ok: true, mensagem: "Match desfeito. O contato não aparece mais para nenhum dos dois." };
 }
 
-/** Curtir de novo um anúncio cujo match foi desfeito com "topo negociar depois". */
+/** "Não quero mais negociar com X" (ou desfazer isso). Só com quem já houve curtida. */
+export async function bloquearPessoa(outroId: string, bloquear: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(outroId)) return { ok: false, erro: "Pessoa não encontrada." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("bloquear_pessoa", { p_outro: outroId, p_bloquear: bloquear });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return {
+    ok: true,
+    mensagem: bloquear
+      ? "Pronto. Essa pessoa não consegue mais procurar você."
+      : "Desbloqueado. Vocês podem negociar de novo.",
+  };
+}
+
+/** Curtir de novo um anúncio cujo match foi desfeito (se quem publicou não bloqueou). */
 export async function curtirDeNovo(anuncioId: string, mensagem: string | null = null): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncioId)) return { ok: false, erro: "Anúncio não encontrado." };

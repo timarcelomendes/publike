@@ -353,6 +353,17 @@ export async function listarCurriculosDosInteressados(anuncioId: string): Promis
 export type Desfeito = { porMim: boolean; motivo: string | null; em: string | null; futuro: boolean };
 
 /** Para quem publicou: os matches desfeitos de um anúncio, por pessoa que curtiu. */
+/** Bloqueios que me envolvem: quem eu bloqueei (`eu`) e quem me bloqueou (`ele`). */
+export async function listarMeusBloqueios(): Promise<Map<string, { eu: boolean; ele: boolean }>> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("meus_bloqueios");
+  if (error) {
+    console.error(`Publike: falha ao ler bloqueios: ${error.message}`);
+    return new Map();
+  }
+  return new Map((data ?? []).map((b) => [b.outro_id, { eu: b.eu_bloqueei, ele: b.me_bloqueou }]));
+}
+
 export async function listarDesfeitosDoAnuncio(anuncioId: string): Promise<Map<string, Desfeito>> {
   const usuario = await obterUsuario();
   if (!usuario || !UUID.test(anuncioId)) return new Map();

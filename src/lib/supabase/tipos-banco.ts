@@ -485,6 +485,14 @@ export type Database = {
         Args: { p_anuncio: string };
         Returns: { perfil_id: string; etapa: string; nota: string | null; atualizado_em: string }[];
       };
+      bloquear_pessoa: {
+        Args: { p_outro: string; p_bloquear: boolean };
+        Returns: undefined;
+      };
+      meus_bloqueios: {
+        Args: Record<PropertyKey, never>;
+        Returns: { outro_id: string; eu_bloqueei: boolean; me_bloqueou: boolean }[];
+      };
       minhas_etapas: {
         Args: Record<PropertyKey, never>;
         Returns: { anuncio_id: string; etapa: string; atualizado_em: string }[];

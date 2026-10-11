@@ -30,7 +30,7 @@ type Props = {
   /** nome de quem publicou */
   autorNome?: string;
   /** match desfeito: por quem e por quê */
-  desfeito?: { porMim: boolean; motivo: string | null; futuro: boolean } | null;
+  desfeito?: { porMim: boolean; motivo: string | null; futuro: boolean; bloqueadoPeloOutro?: boolean } | null;
 };
 
 /** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
@@ -160,12 +160,11 @@ export function PainelCurtir({
             ? `Você desfez este match. Motivo: ${nomeMotivoDesfazer(desfeito.motivo).toLowerCase()}.`
             : `${servico ? "O profissional" : "Quem publicou"} desfez o match. Motivo: ${motivoParaOutro(desfeito?.motivo)}.`}{" "}
           O contato não aparece mais.
-          {desfeito?.futuro &&
-            (desfeito.porMim
-              ? " Você disse que topa negociar de novo: se mudar de ideia, curta outra vez."
-              : " Mas topa negociar em outro momento: se ainda tiver interesse, curta de novo.")}
+          {desfeito?.bloqueadoPeloOutro
+            ? ` ${servico ? "O profissional" : "Quem publicou"} preferiu não negociar de novo.`
+            : ` Se ainda tiver interesse, ${servico ? "peça" : "curta"} de novo.`}
         </p>
-        {desfeito?.futuro && <CurtirDeNovo anuncioId={anuncioId} />}
+        {!desfeito?.bloqueadoPeloOutro && <CurtirDeNovo anuncioId={anuncioId} servico={servico} />}
         {podeAvaliar && (
           <Link
             href={`/anuncio/${anuncioId}/avaliar`}

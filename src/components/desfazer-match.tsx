@@ -1,8 +1,8 @@
 "use client";
 
-import { Heart, HeartCrack } from "lucide-react";
+import { Ban, Heart, HeartCrack, Undo2 } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
-import { curtirDeNovo, desfazerMatch } from "@/lib/acoes/curtidas";
+import { bloquearPessoa, curtirDeNovo, desfazerMatch } from "@/lib/acoes/curtidas";
 import { MOTIVOS_DESFAZER } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
@@ -99,13 +99,17 @@ export function DesfazerMatch({
           </Aviso>
         )}
         <fieldset className="flex flex-col gap-1">
-          <legend className="mb-2 text-label">Toparia fazer negócio com {primeiroNome} em outro momento?</legend>
+          <legend className="mb-2 text-label">Depois, {primeiroNome} pode tentar de novo?</legend>
           {[
-            { valor: "sim", nome: "Sim", ajuda: "Vocês podem dar match de novo neste anúncio mais para frente." },
+            {
+              valor: "sim",
+              nome: "Sim, pode",
+              ajuda: "Enquanto o anúncio estiver no ar, dá para curtir e dar match de novo.",
+            },
             {
               valor: "nao",
-              nome: "Não",
-              ajuda: "Vocês não conseguem mais curtir os anúncios um do outro.",
+              nome: `Não quero mais negociar com ${primeiroNome}`,
+              ajuda: `${primeiroNome} não consegue mais curtir seus anúncios nem dar match com você. Dá para desbloquear depois.`,
             },
           ].map((o) => (
             <label key={o.valor} className="flex min-h-10 cursor-pointer items-start gap-3 py-1 text-body-sm">
@@ -163,8 +167,8 @@ export function DesfazerMatch({
   );
 }
 
-/** Match desfeito com "topo negociar depois": quem curtiu pode curtir de novo. */
-export function CurtirDeNovo({ anuncioId }: { anuncioId: string }) {
+/** Match desfeito: quem curtiu pode curtir de novo (se quem publicou não bloqueou). */
+export function CurtirDeNovo({ anuncioId, servico = false }: { anuncioId: string; servico?: boolean }) {
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -185,8 +189,74 @@ export function CurtirDeNovo({ anuncioId }: { anuncioId: string }) {
         className="inline-flex min-h-11 items-center gap-2 self-start rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
       >
         <Heart aria-hidden className="size-[18px] text-like" />
-        {pendente ? "Enviando…" : "Curtir de novo"}
+        {pendente ? "Enviando…" : servico ? "Pedir de novo" : "Curtir de novo"}
       </button>
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+    </div>
+  );
+}
+
+/**
+ * "Não quero mais negociar com X": X não consegue mais curtir os anúncios de quem
+ * bloqueou nem dar match com ele. Dá para desfazer.
+ */
+export function BotaoBloquear({
+  outroId,
+  outroNome,
+  bloqueado,
+}: {
+  outroId: string;
+  outroNome: string;
+  bloqueado: boolean;
+}) {
+  const [pendente, iniciar] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
+  const [confirmar, setConfirmar] = useState(false);
+  const primeiroNome = outroNome.split(" ")[0];
+
+  function trocar(bloquear: boolean) {
+    setErro(null);
+    iniciar(async () => {
+      const r = await bloquearPessoa(outroId, bloquear);
+      if (!r.ok) setErro(r.erro);
+      setConfirmar(false);
+    });
+  }
+
+  const link =
+    "inline-flex min-h-10 items-center gap-2 self-start text-body-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-60";
+
+  return (
+    <div className="flex flex-col gap-2">
+      {bloqueado ? (
+        <p className="flex flex-wrap items-center gap-x-3 text-body-sm text-ink-muted">
+          <span>Você não quer mais negociar com {primeiroNome}.</span>
+          <button type="button" disabled={pendente} onClick={() => trocar(false)} className={link}>
+            <Undo2 aria-hidden className="size-4" />
+            Desbloquear
+          </button>
+        </p>
+      ) : confirmar ? (
+        <div className="flex flex-col gap-2 rounded-md border border-line-strong bg-surface-200 p-3">
+          <p className="text-body-sm">
+            {primeiroNome} não vai conseguir mais curtir seus anúncios nem dar match com você. Dá para desbloquear
+            depois.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Botao tamanho="sm" variante="perigo" disabled={pendente} onClick={() => trocar(true)}>
+              Não quero mais negociar
+            </Botao>
+            <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => setConfirmar(false)}>
+              Cancelar
+            </Botao>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setConfirmar(true)} className={link}>
+          <Ban aria-hidden className="size-4" />
+          Não quero mais negociar com {primeiroNome}
+        </button>
+      )}
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
     </div>
   );

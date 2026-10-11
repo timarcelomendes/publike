@@ -58,7 +58,7 @@ const PERGUNTAS = [
   },
   {
     p: "E se eu quiser desistir de um match?",
-    r: "Toque em “Desfazer match” no painel ou no anúncio. Escolha o motivo e escreva uma justificativa: a outra pessoa recebe um aviso só com o motivo, e a justificativa vai para a equipe do Publike. O WhatsApp some para os dois. Você também diz se toparia negociar em outro momento: se sim, dá para dar match de novo mais para frente; se não, vocês não conseguem mais curtir os anúncios um do outro.",
+    r: "Toque em “Desfazer match” no painel ou no anúncio. Escolha o motivo e escreva uma justificativa: a outra pessoa recebe um aviso só com o motivo, e a justificativa vai para a equipe do Publike. O WhatsApp some para os dois. Depois, dá para curtir e dar match de novo enquanto o anúncio estiver no ar. Se não quiser mais negociar com a pessoa, diga isso ao desfazer (ou depois, no painel): ela não consegue mais curtir seus anúncios nem dar match com você. Dá para desbloquear quando quiser.",
   },
   {
     p: "Por que o telefone não aparece no anúncio?",

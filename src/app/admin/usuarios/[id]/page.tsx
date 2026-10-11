@@ -257,10 +257,10 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
                   {d.fez
                     ? d.futuro
                       ? "Disse que topa negociar de novo."
-                      : "Disse que não quer negociar de novo (os dois ficaram bloqueados)."
+                      : "Disse que não quer negociar de novo (a outra pessoa não consegue mais procurar)."
                     : d.futuro
                       ? "Quem desfez topa negociar de novo."
-                      : "Quem desfez não quer negociar de novo (os dois ficaram bloqueados)."}
+                      : "Quem desfez não quer negociar de novo (esta pessoa não consegue mais procurar)."}
                 </span>
                 <span>“{d.justificativa}”</span>
                 <span className="text-ink-muted">

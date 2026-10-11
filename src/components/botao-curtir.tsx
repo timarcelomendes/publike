@@ -3,7 +3,7 @@
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useOptimistic, useState, useTransition } from "react";
-import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
+import { curtirAnuncio, curtirDeNovo, descurtirAnuncio } from "@/lib/acoes/curtidas";
 
 /**
  * Botão de curtir do card (Design System: pill; "Curtido" com fundo like-soft
@@ -35,7 +35,9 @@ export function BotaoCurtir({
     return () => clearTimeout(t);
   }, [erro]);
 
-  const curtido = atual !== null;
+  // match desfeito: dá para curtir de novo (o servidor recusa se a outra pessoa bloqueou)
+  const desfeito = atual === "desfeito";
+  const curtido = atual !== null && !desfeito;
   const respondido = atual === "match" || atual === "dispensada";
 
   function clicar() {
@@ -50,7 +52,11 @@ export function BotaoCurtir({
     }
     iniciar(async () => {
       setAtual(curtido ? null : "pendente");
-      const r = curtido ? await descurtirAnuncio(anuncioId) : await curtirAnuncio(anuncioId);
+      const r = desfeito
+        ? await curtirDeNovo(anuncioId)
+        : curtido
+          ? await descurtirAnuncio(anuncioId)
+          : await curtirAnuncio(anuncioId);
       if (!r.ok) {
         if (r.ir) router.push(r.ir);
         else setErro(r.erro);
@@ -79,7 +85,19 @@ export function BotaoCurtir({
           className={`size-4 ${curtido && atual !== "match" ? "text-like" : ""}`}
           fill={curtido ? "currentColor" : "none"}
         />
-        {atual === "match" ? "Deu match" : curtido ? (servico ? "Pedido enviado" : "Curtido") : servico ? "Contratar" : "Curtir"}
+        {atual === "match"
+          ? "Deu match"
+          : desfeito
+            ? servico
+              ? "Pedir de novo"
+              : "Curtir de novo"
+            : curtido
+              ? servico
+                ? "Pedido enviado"
+                : "Curtido"
+              : servico
+                ? "Contratar"
+                : "Curtir"}
       </button>
       {erro && (
         <p

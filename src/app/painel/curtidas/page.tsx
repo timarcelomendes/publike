@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
-import { CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
+import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { ETAPAS_CANDIDATO, motivoParaOutro, nomeMotivoDesfazer, STATUS_ANUNCIO } from "@/lib/constantes";
-import { listarMeusDesfeitos, listarMinhasCurtidas, listarMinhasEtapas } from "@/lib/dados";
+import { listarMeusBloqueios, listarMeusDesfeitos, listarMinhasCurtidas, listarMinhasEtapas } from "@/lib/dados";
 import { formatarLugar, rotuloConta, rotuloModalidade, tempoRelativo, valorDoAnuncio } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -28,10 +28,11 @@ export default function MinhasCurtidas() {
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/curtidas");
-  const [curtidas, desfeitos, etapas] = await Promise.all([
+  const [curtidas, desfeitos, etapas, bloqueios] = await Promise.all([
     listarMinhasCurtidas(),
     listarMeusDesfeitos(),
     listarMinhasEtapas(),
+    listarMeusBloqueios(),
   ]);
   const agora = await agoraDaRequisicao();
 
@@ -121,9 +122,20 @@ async function Conteudo() {
                   {desfeitos.get(c.anuncio_id)?.porMim
                     ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeitos.get(c.anuncio_id)?.motivo).toLowerCase()}.`
                     : `${c.autor_nome.split(" ")[0]} desfez o match. Motivo: ${motivoParaOutro(desfeitos.get(c.anuncio_id)?.motivo)}.`}
-                  {desfeitos.get(c.anuncio_id)?.futuro && " Dá para curtir de novo quando quiser."}
+                  {bloqueios.get(c.autor_id)?.ele
+                    ? ` ${c.autor_nome.split(" ")[0]} preferiu não negociar de novo.`
+                    : noAr
+                      ? ` Se quiser, dá para ${c.tipo === "servico" ? "pedir" : "curtir"} de novo.`
+                      : ""}
                 </p>
-                {desfeitos.get(c.anuncio_id)?.futuro && noAr && <CurtirDeNovo anuncioId={c.anuncio_id} />}
+                {!bloqueios.get(c.autor_id)?.ele && noAr && (
+                  <CurtirDeNovo anuncioId={c.anuncio_id} servico={c.tipo === "servico"} />
+                )}
+                <BotaoBloquear
+                  outroId={c.autor_id}
+                  outroNome={c.autor_nome}
+                  bloqueado={Boolean(bloqueios.get(c.autor_id)?.eu)}
+                />
               </div>
             )}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-body-sm text-ink-muted">

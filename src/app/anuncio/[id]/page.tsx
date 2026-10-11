@@ -34,6 +34,7 @@ import { categoria, descreverAtendimento, REGIMES, STATUS_ANUNCIO } from "@/lib/
 import {
   contatoDoMatch,
   listarAvaliacoesPublicas,
+  listarMeusBloqueios,
   listarMeusDesfeitos,
   obterAnuncio,
   obterMeuCurriculo,
@@ -159,7 +160,14 @@ async function DetalheAnuncio({
   const agora = await agoraDaRequisicao();
   const proprio = usuario?.id === anuncio.autor_id;
   const contato = anuncio.minha_curtida === "match" ? await contatoDoMatch(anuncio.id) : null;
-  const desfeito = anuncio.minha_curtida === "desfeito" ? ((await listarMeusDesfeitos()).get(anuncio.id) ?? null) : null;
+  // match desfeito: dá para curtir de novo, a não ser que quem publicou tenha bloqueado
+  const desfeito =
+    anuncio.minha_curtida === "desfeito"
+      ? await Promise.all([listarMeusDesfeitos(), listarMeusBloqueios()]).then(([d, b]) => {
+          const item = d.get(anuncio.id);
+          return item ? { ...item, bloqueadoPeloOutro: Boolean(b.get(anuncio.autor_id)?.ele) } : null;
+        })
+      : null;
   const temCurriculo =
     usuario && !proprio && anuncio.tipo === "vaga" ? (await obterMeuCurriculo()) !== null : null;
   const lugar = formatarLugar(anuncio.bairro, anuncio.cidade);
