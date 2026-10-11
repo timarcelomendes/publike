@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { MODO_DEMO } from "./config";
+import { ETAPAS_CANDIDATO, type EtapaCandidato } from "./constantes";
 import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
 import { raioDaBusca, type Filtros } from "./filtros";
@@ -166,6 +167,29 @@ export async function listarInteressados(anuncioId: string): Promise<Interessado
   const { data, error } = await supabase.rpc("interessados", { p_anuncio: anuncioId });
   if (error) falha("interessados", error);
   return data ?? [];
+}
+
+/** Etapa e anotação de cada interessado de uma vaga minha (só eu vejo). */
+export async function listarEtapasDosCandidatos(
+  anuncioId: string,
+): Promise<Map<string, { etapa: EtapaCandidato; nota: string | null; atualizado_em: string }>> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("etapas_dos_candidatos", { p_anuncio: anuncioId });
+  // sem a migração das etapas, a lista dos interessados continua funcionando (todos em "Novo")
+  if (error) {
+    console.error(`Publike: falha ao ler etapas dos candidatos: ${error.message}`);
+    return new Map();
+  }
+  return new Map(
+    (data ?? []).map((l) => [
+      l.perfil_id,
+      {
+        etapa: (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato,
+        nota: l.nota,
+        atualizado_em: l.atualizado_em,
+      },
+    ]),
+  );
 }
 
 /** Experiências vindas do banco (jsonb), já no formato das telas. */

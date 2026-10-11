@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
+import { ETAPAS_CANDIDATO } from "@/lib/constantes";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -37,7 +38,8 @@ export async function curtirAnuncio(anuncioId: string, mensagem: string | null =
       refresh();
       return { ok: true };
     }
-    if (error.code === "42501") return { ok: false, erro: "Este anúncio não pode ser curtido (é seu ou já saiu do ar)." };
+    if (error.code === "42501")
+      return { ok: false, erro: "Este anúncio não pode ser curtido (é seu ou já saiu do ar)." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
 
@@ -116,7 +118,8 @@ export async function desfazerMatch(_anterior: EstadoForm, formData: FormData): 
     p_futuro: d.futuro === "sim",
   });
   if (error) {
-    const campo = error.hint === "motivo" || error.hint === "justificativa" || error.hint === "futuro" ? error.hint : null;
+    const campo =
+      error.hint === "motivo" || error.hint === "justificativa" || error.hint === "futuro" ? error.hint : null;
     const erro = mensagemDeErro(error, "Não foi possível desfazer o match agora.");
     return campo ? { ok: false, erro, erros: { [campo]: erro } } : { ok: false, erro };
   }
@@ -142,4 +145,32 @@ export async function curtirDeNovo(anuncioId: string, mensagem: string | null = 
   after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Pronto! Se a outra pessoa topar, dá match de novo." };
+}
+
+/** Quem publicou a vaga muda a etapa e a anotação de um interessado (só ele vê). */
+export async function salvarEtapaCandidato(
+  anuncioId: string,
+  perfilId: string,
+  etapa: string,
+  nota: string | null,
+): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId) || !UUID.test(perfilId) || !(etapa in ETAPAS_CANDIDATO)) {
+    return { ok: false, erro: "Pedido inválido." };
+  }
+  const texto = typeof nota === "string" ? nota.trim() : "";
+  if (texto.length > 1000) return { ok: false, erro: "A anotação passa de 1000 letras." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: `/entrar?next=/painel/anuncio/${anuncioId}` };
+
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("salvar_etapa_candidato", {
+    p_anuncio: anuncioId,
+    p_perfil: perfilId,
+    p_etapa: etapa,
+    p_nota: texto || null,
+  });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return { ok: true, mensagem: "Salvo." };
 }

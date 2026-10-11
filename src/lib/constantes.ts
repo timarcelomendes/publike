@@ -232,6 +232,19 @@ export const LIMITES_CONTA = {
   agenciaVerificada: { noAr: 200, porDia: 50 },
 } as const;
 
+/**
+ * Etapas de quem curtiu uma vaga, para quem contrata se organizar. Só quem
+ * publicou vê; a pessoa que curtiu, não.
+ */
+export const ETAPAS_CANDIDATO = {
+  novo: { nome: "Novo", ajuda: "Ainda não olhei" },
+  analise: { nome: "Em análise", ajuda: "Estou avaliando" },
+  entrevista: { nome: "Entrevista", ajuda: "Marquei ou fiz a entrevista" },
+  contratado: { nome: "Contratado", ajuda: "Deu certo" },
+  nao_seguiu: { nome: "Não seguiu", ajuda: "Não vai seguir no processo" },
+} as const;
+export type EtapaCandidato = keyof typeof ETAPAS_CANDIDATO;
+
 export const STATUS_ANUNCIO: Record<StatusAnuncio, { nome: string; ajuda: string }> = {
   ativo: { nome: "No ar", ajuda: "Aparece nas buscas" },
   pausado: { nome: "Pausado", ajuda: "Escondido até você reativar" },

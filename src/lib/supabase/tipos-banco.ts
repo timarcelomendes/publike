@@ -467,6 +467,14 @@ export type Database = {
           email: string | null;
         }[];
       };
+      etapas_dos_candidatos: {
+        Args: { p_anuncio: string };
+        Returns: { perfil_id: string; etapa: string; nota: string | null; atualizado_em: string }[];
+      };
+      salvar_etapa_candidato: {
+        Args: { p_anuncio: string; p_perfil: string; p_etapa: string; p_nota: string | null };
+        Returns: undefined;
+      };
       curriculos_dos_interessados: {
         Args: { p_anuncio: string };
         Returns: {

@@ -1,4 +1,4 @@
-import { ArrowLeft, BadgeCheck, ChevronDown, FileText, Heart } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronDown, Download, FileText, Heart } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -6,14 +6,22 @@ import { BotoesContato } from "@/components/contato";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
+import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { motivoParaOutro, nomeMotivoDesfazer, STATUS_ANUNCIO } from "@/lib/constantes";
+import {
+  ETAPAS_CANDIDATO,
+  motivoParaOutro,
+  nomeMotivoDesfazer,
+  STATUS_ANUNCIO,
+  type EtapaCandidato,
+} from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
   listarDesfeitosDoAnuncio,
+  listarEtapasDosCandidatos,
   listarInteressados,
   obterAnuncio,
 } from "@/lib/dados";
@@ -22,26 +30,40 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado, StatusAnuncio } from "@/lib/tipos";
 
-export default function Interessados({ params }: PageProps<"/painel/anuncio/[id]">) {
+export default function Interessados({ params, searchParams }: PageProps<"/painel/anuncio/[id]">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo params={params} />
+      <Conteudo params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">["params"] }) {
+async function Conteudo({
+  params,
+  searchParams,
+}: {
+  params: PageProps<"/painel/anuncio/[id]">["params"];
+  searchParams: PageProps<"/painel/anuncio/[id]">["searchParams"];
+}) {
   if (MODO_DEMO) return <SoComSupabase />;
   const { id } = await params;
+  const pedida = (await searchParams).etapa;
+  const filtro = typeof pedida === "string" && pedida in ETAPAS_CANDIDATO ? (pedida as EtapaCandidato) : null;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}`);
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
-  const [interessados, curriculos, desfeitos] = await Promise.all([
+  const [todos, curriculos, desfeitos, etapas] = await Promise.all([
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
     listarDesfeitosDoAnuncio(id),
+    servico ? Promise.resolve(new Map<string, never>()) : listarEtapasDosCandidatos(id),
   ]);
+  // Vagas: cada interessado tem uma etapa (só quem publicou vê); dá para filtrar por ela.
+  const etapaDe = (perfilId: string): EtapaCandidato => etapas.get(perfilId)?.etapa ?? "novo";
+  const contagem = new Map<EtapaCandidato, number>();
+  for (const p of todos) contagem.set(etapaDe(p.perfil_id), (contagem.get(etapaDe(p.perfil_id)) ?? 0) + 1);
+  const interessados = filtro ? todos.filter((p) => etapaDe(p.perfil_id) === filtro) : todos;
   const agora = await agoraDaRequisicao();
   const hoje = new Date(agora).toISOString().slice(0, 7);
   const status = anuncio.status as StatusAnuncio;
@@ -77,7 +99,46 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
         </Aviso>
       )}
 
-      {interessados.length === 0 ? (
+      {!servico && todos.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <nav aria-label="Filtrar por etapa" className="flex flex-wrap gap-2">
+            {[null, ...(Object.keys(ETAPAS_CANDIDATO) as EtapaCandidato[])].map((e) => {
+              const ativo = filtro === e;
+              const total = e ? (contagem.get(e) ?? 0) : todos.length;
+              return (
+                <Link
+                  key={e ?? "todos"}
+                  href={e ? `/painel/anuncio/${anuncio.id}?etapa=${e}` : `/painel/anuncio/${anuncio.id}`}
+                  aria-current={ativo ? "page" : undefined}
+                  scroll={false}
+                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+                    ativo
+                      ? "border-ink bg-ink text-surface-100"
+                      : "border-line bg-surface-300 text-ink hover:border-line-strong"
+                  }`}
+                >
+                  {e ? ETAPAS_CANDIDATO[e].nome : "Todos"}
+                  <span className={ativo ? "text-surface-100/80" : "text-ink-muted"}>{total}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-ink-muted">
+            <span>A etapa e a anotação de cada pessoa são só suas: quem curtiu não vê.</span>
+            <a
+              href={`/painel/anuncio/${anuncio.id}/planilha`}
+              className="inline-flex min-h-10 items-center gap-1.5 text-label text-ink underline underline-offset-2"
+            >
+              <Download aria-hidden className="size-4" />
+              Baixar planilha
+            </a>
+          </p>
+        </div>
+      )}
+
+      {!servico && todos.length > 0 && interessados.length === 0 ? (
+        <p className="text-body text-ink-muted">Ninguém nesta etapa.</p>
+      ) : interessados.length === 0 ? (
         <Vazio icone={Heart} titulo={servico ? "Ninguém pediu ainda" : "Ninguém curtiu ainda"}>
           {servico
             ? "Quando alguém quiser contratar você, chega um aviso e a pessoa aparece aqui. Fotos de trabalhos e preço ajudam a ser escolhido."
@@ -166,6 +227,14 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]">[
                         </p>
                       )
                     ))}
+                  {!servico && (
+                    <EtapaDoCandidato
+                      anuncioId={anuncio.id}
+                      perfilId={p.perfil_id}
+                      etapa={etapaDe(p.perfil_id)}
+                      nota={etapas.get(p.perfil_id)?.nota ?? null}
+                    />
+                  )}
                   <div className="border-t border-line pt-3">
                     {p.status === "desfeito" ? (
                       <div className="flex flex-col gap-2">
