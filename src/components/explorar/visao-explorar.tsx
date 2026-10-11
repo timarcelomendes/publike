@@ -147,15 +147,18 @@ export function VisaoExplorar({
 
       <div
         data-visao={visao}
-        className={`group/visao ${visao === "blocos-mapa" ? "flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start lg:gap-6" : ""}`}
+        className={`group/visao ${visao === "blocos-mapa" ? "flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6" : ""}`}
       >
+        {/* Blocos + mapa no computador: a coluna do mapa estica até a altura dos cartões, e o mapa
+            ocupa essa altura (no máximo a da tela, preso no topo ao rolar). Assim a borda de baixo
+            do mapa bate com a dos cartões quando a lista é curta. */}
         {comMapa && (
           <div className={visao === "blocos-mapa" ? "lg:order-2" : ""}>
             <div
               className={
                 visao === "mapa"
                   ? "h-[calc(100dvh-14rem)] min-h-96"
-                  : "h-80 lg:sticky lg:top-20 lg:h-[calc(100dvh-7rem)]"
+                  : "h-80 lg:sticky lg:top-20 lg:h-full lg:max-h-[calc(100dvh-7rem)] lg:min-h-80"
               }
             >
               <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} />
