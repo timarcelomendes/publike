@@ -24,6 +24,8 @@ export type Filtros = {
   origem: Origem;
   /** "Só os meus": só os anúncios de quem está logado */
   meus: boolean;
+  /** a pessoa escolheu "Tudo" (vale mesmo se o que ela procura abre em Vagas ou Serviços) */
+  tudo?: boolean;
 };
 
 export const FILTROS_PADRAO: Filtros = {
@@ -79,7 +81,17 @@ export function lerFiltros(sp: Parametros): Filtros {
     lng: temPonto ? Math.round(lng * 10000) / 10000 : CENTRO_GOIANIA.lng,
     origem: temPonto ? (origem === "gps" ? "gps" : "mapa") : "centro",
     meus: primeiro(sp.meus) === "1",
+    tudo: tipo === "tudo",
   };
+}
+
+/**
+ * Sem tipo na URL, a busca abre na aba do que a pessoa disse que quer
+ * (Procuro trabalho → Vagas; Quero contratar um serviço → Serviços).
+ */
+export function aplicarIntencao(f: Filtros, tipoPadrao: TipoAnuncio | null): Filtros {
+  if (f.tipo || f.tudo || !tipoPadrao) return f;
+  return { ...f, tipo: tipoPadrao, regime: tipoPadrao === "servico" ? null : f.regime };
 }
 
 /** Monta a URL só com o que difere do padrão: "/?tipo=vaga&raio=10". */
@@ -88,6 +100,7 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
   const p = new URLSearchParams();
   if (f.q) p.set("q", f.q);
   if (f.tipo) p.set("tipo", f.tipo);
+  else if (f.tudo) p.set("tipo", "tudo");
   if (f.categoria) p.set("categoria", f.categoria);
   if (f.regime && f.tipo !== "servico") p.set("regime", f.regime);
   if (f.tempo) p.set("tempo", String(f.tempo));

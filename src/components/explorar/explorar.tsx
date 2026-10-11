@@ -1,6 +1,8 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { buscarAnuncios, obterUsuario } from "@/lib/dados";
-import { descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
+import { aplicarIntencao, descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
+import { tipoDaIntencao } from "@/lib/intencao";
+import { obterIntencao } from "@/lib/servidor/intencao";
 import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
 import {
   formatarDistancia,
@@ -26,9 +28,9 @@ type Parametros = Promise<Record<string, string | string[] | undefined>>;
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
 export async function BuscaExplorar({ searchParams }: { searchParams: Parametros }) {
   const sp = await searchParams;
-  const filtros = lerFiltros(sp);
-  const local = await obterLocal();
-  return <BarraBusca filtros={filtros} local={local} abrirOndeMora={primeiro(sp.casa) === "1"} />;
+  const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
+  const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
+  return <BarraBusca filtros={filtros} local={local} intencao={intencao} abrirOndeMora={primeiro(sp.casa) === "1"} />;
 }
 
 /** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
@@ -70,8 +72,13 @@ export function BuscaEsqueleto() {
 
 export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   const parametros = await searchParams;
-  const [agora, local, usuario] = await Promise.all([agoraDaRequisicao(), obterLocal(), obterUsuario()]);
-  const filtros = partirDoLocal(lerFiltros(parametros), local);
+  const [agora, local, usuario, intencao] = await Promise.all([
+    agoraDaRequisicao(),
+    obterLocal(),
+    obterUsuario(),
+    obterIntencao(),
+  ]);
+  const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
   const anuncios = await buscarAnuncios(filtros, agora, local, usuario?.id ?? null);
 
   const tempoDe = origemDoTempo(filtros, local);

@@ -21,7 +21,15 @@ import { hrefFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
-import { BotaoOndeMora, botaoLugar, PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
+import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
+import {
+  BotaoOndeMora,
+  botaoLugar,
+  PainelOndeMora,
+  PerguntaIntencao,
+  PerguntaOndeMora,
+  usePerguntaAdiada,
+} from "./onde-mora";
 
 // Três jeitos de olhar, cada um com a sua cara:
 //   O QUE (tipo) ...... abas sublinhadas, em cima da busca
@@ -181,10 +189,13 @@ function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void })
 export function BarraBusca({
   filtros,
   local,
+  intencao = null,
   abrirOndeMora = false,
 }: {
   filtros: Filtros;
   local: Local | null;
+  /** o que a pessoa disse que quer fazer no Publike */
+  intencao?: Intencao | null;
   /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
   abrirOndeMora?: boolean;
 }) {
@@ -203,6 +214,12 @@ export function BarraBusca({
     ir({ lat, lng, origem: "gps", ordem: "perto" }, substituir);
   }
 
+  // Procuro trabalho → Vagas; Quero contratar um serviço → Serviços (as outras ficam em Tudo)
+  function escolherIntencao(i: Intencao) {
+    const tipo = tipoDaIntencao(i);
+    ir({ tipo, tudo: !tipo, regime: tipo === "servico" ? null : filtros.regime }, true);
+  }
+
   function pertoDeMim() {
     setAvisoGps(null);
     pedirPosicao(irParaPosicao, (motivo) => setAvisoGps(AVISOS_GPS[motivo]));
@@ -213,7 +230,9 @@ export function BarraBusca({
   // Quem chega sem dizer onde mora (nem casa, nem bairro, nem "Perto de mim") vê a
   // pergunta de um passo só: o CEP de casa, ou a localização, ou o bairro. Ela fica no
   // lugar dos botões de lugar até a pessoa responder ou tocar em "Agora não".
-  const [adiada] = usePerguntaAdiada();
+  const [adiada, adiar] = usePerguntaAdiada();
+  // o cartão só da pergunta fica até a pessoa fechar (para ver o próximo passo depois de responder)
+  const [cartaoIntencao, setCartaoIntencao] = useState(!intencao);
   const perguntar = !local && filtros.origem === "centro" && !ondeMora && !adiada;
 
   function alternarPerto() {
@@ -241,7 +260,9 @@ export function BarraBusca({
                 key={t.nome}
                 type="button"
                 aria-pressed={ativo}
-                onClick={() => ir({ tipo: t.valor, regime: t.valor === "servico" ? null : filtros.regime })}
+                onClick={() =>
+                  ir({ tipo: t.valor, tudo: t.valor === null, regime: t.valor === "servico" ? null : filtros.regime })
+                }
                 className={`-mb-px flex min-h-12 items-center justify-center gap-2 border-b-[3px] px-2 pb-2.5 pt-1 transition-colors sm:justify-start sm:px-3 ${
                   ativo
                     ? "border-ink text-ink"
@@ -261,6 +282,8 @@ export function BarraBusca({
         {perguntar ? (
           <div className="order-3 sm:order-5 sm:basis-full">
             <PerguntaOndeMora
+              intencao={intencao}
+              aoEscolherIntencao={escolherIntencao}
               usarLocalizacao={pertoDeMim}
               escolherBairro={() => setOndeMora(true)}
               aoSalvar={() => {
@@ -275,10 +298,26 @@ export function BarraBusca({
           </div>
         )}
 
+        {/* Já disse onde mora, mas não o que quer fazer: só essa pergunta, no mesmo lugar */}
+        {!perguntar && cartaoIntencao && !adiada && !ondeMora && (
+          <div className="order-4 flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card sm:order-5 sm:basis-full sm:p-5">
+            <PerguntaIntencao intencao={null} aoEscolher={escolherIntencao} />
+            <button
+              type="button"
+              onClick={() => (intencao ? setCartaoIntencao(false) : adiar())}
+              className="self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
+            >
+              {intencao ? "Fechar" : "Agora não"}
+            </button>
+          </div>
+        )}
+
         {ondeMora && (
           <div className="order-4 sm:order-3 sm:basis-full">
             <PainelOndeMora
               id={painel}
+              intencao={intencao}
+              aoEscolherIntencao={escolherIntencao}
               local={local}
               fechar={() => setOndeMora(false)}
               // quem acabou de dizer onde mora quer ver a partir de casa, não de onde está agora
