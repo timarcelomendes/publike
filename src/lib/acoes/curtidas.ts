@@ -171,6 +171,8 @@ export async function salvarEtapaCandidato(
     p_nota: texto || null,
   });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
+  // etapa nova: o aviso por e-mail para quem curtiu sai pela fila
+  after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Salvo." };
 }

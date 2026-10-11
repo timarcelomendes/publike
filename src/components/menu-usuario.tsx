@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageCircleHeart,
+  MessagesSquare,
   ShieldCheck,
   UserRound,
   Users,
@@ -91,6 +92,9 @@ export function MenuUsuario({
             )}
             <Item href="/painel/matches" icone={MessageCircleHeart}>
               Matches
+            </Item>
+            <Item href="/painel/conversas" icone={MessagesSquare}>
+              Conversas
             </Item>
             <Item href="/perfil" icone={UserRound}>
               Editar perfil

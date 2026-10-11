@@ -1,6 +1,7 @@
 import { Heart } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotaoConversar } from "@/components/botao-conversar";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
 import { CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
@@ -9,8 +10,8 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { motivoParaOutro, nomeMotivoDesfazer, STATUS_ANUNCIO } from "@/lib/constantes";
-import { listarMeusDesfeitos, listarMinhasCurtidas } from "@/lib/dados";
+import { ETAPAS_CANDIDATO, motivoParaOutro, nomeMotivoDesfazer, STATUS_ANUNCIO } from "@/lib/constantes";
+import { listarMeusDesfeitos, listarMinhasCurtidas, listarMinhasEtapas } from "@/lib/dados";
 import { formatarLugar, rotuloConta, rotuloModalidade, tempoRelativo, valorDoAnuncio } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -27,7 +28,11 @@ export default function MinhasCurtidas() {
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/curtidas");
-  const [curtidas, desfeitos] = await Promise.all([listarMinhasCurtidas(), listarMeusDesfeitos()]);
+  const [curtidas, desfeitos, etapas] = await Promise.all([
+    listarMinhasCurtidas(),
+    listarMeusDesfeitos(),
+    listarMinhasEtapas(),
+  ]);
   const agora = await agoraDaRequisicao();
 
   if (curtidas.length === 0) {
@@ -42,16 +47,37 @@ async function Conteudo() {
     <ul className="flex flex-col gap-4">
       {curtidas.map((c) => {
         const noAr = c.anuncio_status === "ativo";
+        // a etapa que quem publicou marcou (Em análise, Entrevista, Agendado…)
+        const etapa = etapas.get(c.anuncio_id);
+        const etapaVisivel = etapa && etapa.etapa !== "novo" && c.status !== "desfeito" ? etapa : null;
         return (
-          <li key={c.anuncio_id} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5">
+          <li
+            key={c.anuncio_id}
+            className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+          >
             <div className="flex flex-wrap items-center gap-2">
               {c.status === "match" && <Selo variante="match">Deu match</Selo>}
               {c.status === "pendente" && <Selo variante="like">Aguardando resposta</Selo>}
               {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
               {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
+              {etapaVisivel && (
+                <Selo
+                  variante={
+                    etapaVisivel.etapa === "contratado" || etapaVisivel.etapa === "concluido"
+                      ? "match"
+                      : etapaVisivel.etapa === "nao_seguiu"
+                        ? "contorno"
+                        : "aviso"
+                  }
+                >
+                  {ETAPAS_CANDIDATO[etapaVisivel.etapa].paraQuemCurtiu}
+                </Selo>
+              )}
               <Selo>{rotuloModalidade(c.tipo, c.regime)}</Selo>
               {!noAr && (
-                <Selo variante="contorno">{STATUS_ANUNCIO[c.anuncio_status as StatusAnuncio]?.nome ?? "Fora do ar"}</Selo>
+                <Selo variante="contorno">
+                  {STATUS_ANUNCIO[c.anuncio_status as StatusAnuncio]?.nome ?? "Fora do ar"}
+                </Selo>
               )}
             </div>
             <h2 className="text-h3">
@@ -67,10 +93,20 @@ async function Conteudo() {
               {c.autor_nome} · {rotuloConta(c.autor_tipo)} · {formatarLugar(c.bairro, c.cidade)}
             </p>
             <p className="text-label">{valorDoAnuncio(c)}</p>
-            {c.mensagem && <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">Sua mensagem: “{c.mensagem}”</p>}
+            {c.mensagem && (
+              <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">Sua mensagem: “{c.mensagem}”</p>
+            )}
+            {etapaVisivel && (
+              <p className="text-body-sm text-ink-muted">
+                {c.autor_nome.split(" ")[0]}{" "}
+                {etapaVisivel.etapa === "nao_seguiu" ? "encerrou o processo" : "atualizou a etapa"}{" "}
+                {tempoRelativo(etapaVisivel.atualizado_em, agora)}.
+              </p>
+            )}
             {c.status === "match" && (
               <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
                 <p className="text-label text-cerrado-text">Deu match! Agora é só conversar.</p>
+                <BotaoConversar anuncioId={c.anuncio_id} outroId={c.autor_id} />
                 <BotoesContato
                   whatsapp={c.autor_whatsapp}
                   email={c.autor_email}

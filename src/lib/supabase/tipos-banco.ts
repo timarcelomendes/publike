@@ -333,6 +333,20 @@ export type Database = {
         Update: { lida?: boolean };
         Relationships: [];
       };
+      mensagens: {
+        Row: {
+          id: number;
+          anuncio_id: string;
+          perfil_id: string;
+          autor_id: string;
+          texto: string;
+          criado_em: string;
+          lida_em: string | null;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
     };
     Views: SemTabela;
     Functions: {
@@ -470,6 +484,37 @@ export type Database = {
       etapas_dos_candidatos: {
         Args: { p_anuncio: string };
         Returns: { perfil_id: string; etapa: string; nota: string | null; atualizado_em: string }[];
+      };
+      minhas_etapas: {
+        Args: Record<PropertyKey, never>;
+        Returns: { anuncio_id: string; etapa: string; atualizado_em: string }[];
+      };
+      enviar_mensagem: {
+        Args: { p_anuncio: string; p_perfil: string; p_texto: string };
+        Returns: number;
+      };
+      marcar_conversa_lida: {
+        Args: { p_anuncio: string; p_perfil: string };
+        Returns: undefined;
+      };
+      minhas_conversas: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          anuncio_id: string;
+          perfil_id: string;
+          anuncio_titulo: string;
+          anuncio_tipo: string;
+          papel: string;
+          outro_id: string;
+          outro_nome: string;
+          outro_foto: string | null;
+          etapa: string;
+          ultima_texto: string | null;
+          ultima_em: string | null;
+          ultima_minha: boolean | null;
+          nao_lidas: number;
+          match_em: string | null;
+        }[];
       };
       meus_candidatos: {
         Args: Record<PropertyKey, never>;

@@ -61,7 +61,8 @@ export default function Privacidade() {
             itens={[
               "Qualquer pessoa vê seu perfil público e seus anúncios no ar.",
               "Quem publicou vê quem curtiu o anúncio, com o perfil e a mensagem. Numa vaga, vê também o currículo de quem preencheu.",
-              "Numa vaga, quem publicou pode marcar em que etapa cada pessoa está (novo, em análise, entrevista, contratado, não seguiu), escrever uma anotação e baixar a lista numa planilha, só para organizar a seleção. A etapa e a anotação ficam só com quem publicou. Na planilha, o WhatsApp e o e-mail só aparecem depois do match, como na tela.",
+              "Quem publicou pode marcar em que etapa cada pessoa está (numa vaga: em análise, entrevista, contratado, não seguiu; num serviço: orçamento enviado, agendado, concluído, não seguiu). Quem curtiu vê a etapa e recebe um aviso quando ela muda. Quem publicou também pode escrever uma anotação, que fica só com ele, e baixar a lista de uma vaga numa planilha, só para organizar a seleção. Na planilha, o WhatsApp e o e-mail só aparecem depois do match, como na tela.",
+              "Depois do match, os dois podem conversar pelo Publike. Só vocês dois leem a conversa; ela some para os dois se o match for desfeito e é apagada junto com a conta. O aviso de mensagem nova (no site e por e-mail) não leva o texto da mensagem.",
               "Seu WhatsApp e seu e-mail de contato só aparecem para a outra pessoa de um match.",
               "O CNPJ de agência, comércio ou empresa aparece no perfil e nos anúncios, para quem usa o site conferir na Receita.",
               "Denúncias só a moderação vê. Quem publicou não sabe quem denunciou.",

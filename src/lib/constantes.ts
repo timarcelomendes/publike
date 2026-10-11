@@ -233,17 +233,27 @@ export const LIMITES_CONTA = {
 } as const;
 
 /**
- * Etapas de quem curtiu uma vaga, para quem contrata se organizar. Só quem
- * publicou vê; a pessoa que curtiu, não.
+ * Etapas de quem curtiu um anúncio, marcadas por quem publicou. Quem curtiu vê a
+ * etapa (com o nome `paraQuemCurtiu`); a anotação fica só com quem publicou.
+ * Vagas e serviços têm etapas próprias (ver `etapasDoTipo`).
  */
 export const ETAPAS_CANDIDATO = {
-  novo: { nome: "Novo", ajuda: "Ainda não olhei" },
-  analise: { nome: "Em análise", ajuda: "Estou avaliando" },
-  entrevista: { nome: "Entrevista", ajuda: "Marquei ou fiz a entrevista" },
-  contratado: { nome: "Contratado", ajuda: "Deu certo" },
-  nao_seguiu: { nome: "Não seguiu", ajuda: "Não vai seguir no processo" },
+  novo: { nome: "Novo", paraQuemCurtiu: "Recebido", vaga: true, servico: true },
+  analise: { nome: "Em análise", paraQuemCurtiu: "Em análise", vaga: true, servico: false },
+  entrevista: { nome: "Entrevista", paraQuemCurtiu: "Entrevista", vaga: true, servico: false },
+  contratado: { nome: "Contratado", paraQuemCurtiu: "Contratado", vaga: true, servico: false },
+  orcamento: { nome: "Orçamento enviado", paraQuemCurtiu: "Orçamento enviado", vaga: false, servico: true },
+  agendado: { nome: "Agendado", paraQuemCurtiu: "Agendado", vaga: false, servico: true },
+  concluido: { nome: "Concluído", paraQuemCurtiu: "Concluído", vaga: false, servico: true },
+  nao_seguiu: { nome: "Não seguiu", paraQuemCurtiu: "Encerrado", vaga: true, servico: true },
 } as const;
 export type EtapaCandidato = keyof typeof ETAPAS_CANDIDATO;
+
+/** As etapas de uma vaga ou de um serviço, na ordem. */
+export function etapasDoTipo(tipo: string): EtapaCandidato[] {
+  const chave = tipo === "servico" ? "servico" : "vaga";
+  return (Object.keys(ETAPAS_CANDIDATO) as EtapaCandidato[]).filter((e) => ETAPAS_CANDIDATO[e][chave]);
+}
 
 export const STATUS_ANUNCIO: Record<StatusAnuncio, { nome: string; ajuda: string }> = {
   ativo: { nome: "No ar", ajuda: "Aparece nas buscas" },

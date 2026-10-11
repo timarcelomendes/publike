@@ -1,6 +1,7 @@
 import { MessageCircleHeart, Star } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { DesfazerMatch } from "@/components/desfazer-match";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -78,6 +79,7 @@ async function Conteudo() {
                   “{m.anuncio_titulo}”
                 </Link>
               </p>
+              <BotaoConversar anuncioId={m.anuncio_id} outroId={m.outro_id} />
               <BotoesContato whatsapp={m.outro_whatsapp} email={m.outro_email} mensagem={mensagem} />
               {m.papel === "curti" && m.anuncio_tipo === "servico" && (
                 <Link

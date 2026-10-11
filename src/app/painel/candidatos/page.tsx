@@ -2,6 +2,7 @@ import { BadgeCheck, Download, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
@@ -10,7 +11,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
+import { ETAPAS_CANDIDATO, etapasDoTipo, type EtapaCandidato } from "@/lib/constantes";
 import { listarMeusCandidatos } from "@/lib/dados";
 import { formatarLugar, primeiro, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
@@ -97,15 +98,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
       <div>
         <h2 className="text-h2">Candidatos</h2>
         <p className="mt-1 max-w-2xl text-body text-ink-muted">
-          Quem curtiu suas vagas, todas juntas. Marque a etapa de cada pessoa e anote o que combinou: só você vê. Para
-          ver o currículo ou dar match, abra a pessoa na vaga.
+          Quem curtiu suas vagas, todas juntas. Marque a etapa de cada pessoa: ela vê a etapa e recebe um aviso quando
+          muda. A anotação é só sua. Para ver o currículo ou dar match, abra a pessoa na vaga.
         </p>
       </div>
 
       <div className="flex flex-col gap-3">
         {vagas.size > 1 && <FiltroVaga vagas={[...vagas.values()]} vaga={vaga} etapa={etapa} />}
         <nav aria-label="Filtrar por etapa" className="flex flex-wrap gap-2">
-          {[null, ...(Object.keys(ETAPAS_CANDIDATO) as EtapaCandidato[])].map((e) => {
+          {[null, ...etapasDoTipo("vaga")].map((e) => {
             const ativo = etapa === e;
             return (
               <Link
@@ -184,8 +185,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
                     “{c.mensagem}”
                   </blockquote>
                 )}
-                <EtapaDoCandidato anuncioId={c.anuncio_id} perfilId={c.perfil_id} etapa={c.etapa} nota={c.nota} />
+                <EtapaDoCandidato
+                  tipo="vaga"
+                  anuncioId={c.anuncio_id}
+                  perfilId={c.perfil_id}
+                  etapa={c.etapa}
+                  nota={c.nota}
+                />
                 <div className="flex flex-wrap items-center gap-3">
+                  {c.status === "match" && <BotaoConversar anuncioId={c.anuncio_id} outroId={c.perfil_id} />}
                   {c.status === "match" && (
                     <BotoesContato
                       whatsapp={c.whatsapp}

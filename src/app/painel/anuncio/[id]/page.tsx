@@ -2,6 +2,7 @@ import { ArrowLeft, BadgeCheck, ChevronDown, Download, FileText, Heart } from "l
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { DesfazerMatch } from "@/components/desfazer-match";
@@ -13,6 +14,7 @@ import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
+  etapasDoTipo,
   motivoParaOutro,
   nomeMotivoDesfazer,
   STATUS_ANUNCIO,
@@ -57,7 +59,7 @@ async function Conteudo({
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
     listarDesfeitosDoAnuncio(id),
-    servico ? Promise.resolve(new Map<string, never>()) : listarEtapasDosCandidatos(id),
+    listarEtapasDosCandidatos(id),
   ]);
   // Vagas: cada interessado tem uma etapa (só quem publicou vê); dá para filtrar por ela.
   const etapaDe = (perfilId: string): EtapaCandidato => etapas.get(perfilId)?.etapa ?? "novo";
@@ -108,10 +110,10 @@ async function Conteudo({
         </Aviso>
       )}
 
-      {!servico && todos.length > 0 && (
+      {todos.length > 0 && (
         <div className="flex flex-col gap-3">
           <nav aria-label="Filtrar por etapa" className="flex flex-wrap gap-2">
-            {[null, ...(Object.keys(ETAPAS_CANDIDATO) as EtapaCandidato[])].map((e) => {
+            {[null, ...etapasDoTipo(anuncio.tipo)].map((e) => {
               const ativo = filtro === e;
               const total = e ? (contagem.get(e) ?? 0) : todos.length;
               return (
@@ -133,19 +135,24 @@ async function Conteudo({
             })}
           </nav>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-ink-muted">
-            <span>A etapa e a anotação de cada pessoa são só suas: quem curtiu não vê.</span>
-            <a
-              href={`/painel/anuncio/${anuncio.id}/planilha`}
-              className="inline-flex min-h-10 items-center gap-1.5 text-label text-ink underline underline-offset-2"
-            >
-              <Download aria-hidden className="size-4" />
-              Baixar planilha
-            </a>
+            <span>
+              {servico ? "Quem pediu" : "Quem curtiu"} vê a etapa e recebe um aviso quando ela muda. A anotação é só
+              sua.
+            </span>
+            {!servico && (
+              <a
+                href={`/painel/anuncio/${anuncio.id}/planilha`}
+                className="inline-flex min-h-10 items-center gap-1.5 text-label text-ink underline underline-offset-2"
+              >
+                <Download aria-hidden className="size-4" />
+                Baixar planilha
+              </a>
+            )}
           </p>
         </div>
       )}
 
-      {!servico && todos.length > 0 && interessados.length === 0 ? (
+      {todos.length > 0 && interessados.length === 0 ? (
         <p className="text-body text-ink-muted">Ninguém nesta etapa.</p>
       ) : interessados.length === 0 ? (
         <Vazio icone={Heart} titulo={servico ? "Ninguém pediu ainda" : "Ninguém curtiu ainda"}>
@@ -236,14 +243,15 @@ async function Conteudo({
                         </p>
                       )
                     ))}
-                  {!servico && (
+                  {
                     <EtapaDoCandidato
+                      tipo={anuncio.tipo}
                       anuncioId={anuncio.id}
                       perfilId={p.perfil_id}
                       etapa={etapaDe(p.perfil_id)}
                       nota={etapas.get(p.perfil_id)?.nota ?? null}
                     />
-                  )}
+                  }
                   <div className="border-t border-line pt-3">
                     {p.status === "desfeito" ? (
                       <div className="flex flex-col gap-2">
@@ -269,6 +277,7 @@ async function Conteudo({
                       </div>
                     ) : p.status === "match" ? (
                       <div className="flex flex-col gap-2">
+                        <BotaoConversar anuncioId={anuncio.id} outroId={p.perfil_id} />
                         <BotoesContato
                           whatsapp={p.whatsapp}
                           email={p.email}

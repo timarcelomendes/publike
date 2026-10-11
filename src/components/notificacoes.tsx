@@ -1,6 +1,15 @@
 "use client";
 
-import { Bell, Heart, HeartCrack, MessageCircleHeart, ShieldCheck, Star } from "lucide-react";
+import {
+  Bell,
+  Heart,
+  HeartCrack,
+  ListChecks,
+  MessageCircleHeart,
+  MessagesSquare,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { tempoRelativo } from "@/lib/formato";
@@ -10,6 +19,7 @@ type Notificacao = {
   id: number;
   tipo: string;
   anuncio_id: string | null;
+  ator_id: string | null;
   texto: string;
   lida: boolean;
   criado_em: string;
@@ -21,6 +31,8 @@ function destino(n: Notificacao) {
   if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "avaliacao") return "/painel/avaliacoes";
   if (n.tipo === "avaliacao_retida") return "/privacidade#regras";
+  if (n.tipo === "etapa") return "/painel/curtidas";
+  if (n.tipo === "mensagem" && n.anuncio_id && n.ator_id) return `/painel/conversas/${n.anuncio_id}/${n.ator_id}`;
   return "/painel";
 }
 
@@ -37,7 +49,7 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
     let ativo = true;
     supabase
       .from("notificacoes")
-      .select("id, tipo, anuncio_id, texto, lida, criado_em")
+      .select("id, tipo, anuncio_id, ator_id, texto, lida, criado_em")
       .order("criado_em", { ascending: false })
       .limit(20)
       .then(({ data }) => {
@@ -77,7 +89,11 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
     setAgora(Date.now());
     if (abrir && naoLidas > 0) {
       setItens((atual) => atual.map((i) => ({ ...i, lida: true })));
-      criarClienteNavegador().from("notificacoes").update({ lida: true }).eq("lida", false).then(() => undefined);
+      criarClienteNavegador()
+        .from("notificacoes")
+        .update({ lida: true })
+        .eq("lida", false)
+        .then(() => undefined);
     }
   }
 
@@ -108,7 +124,7 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
           <p className="px-3 pt-1 pb-2 text-label">Avisos</p>
           {itens.length === 0 ? (
             <p className="px-3 pb-3 text-body-sm text-ink-muted">
-              Nada por enquanto. Quando alguém curtir seu anúncio ou der match, aparece aqui.
+              Nada por enquanto. Curtidas, matches, mensagens e novidades das suas candidaturas aparecem aqui.
             </p>
           ) : (
             <ul className="flex max-h-96 flex-col overflow-y-auto">
@@ -122,7 +138,11 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                         ? Heart
                         : n.tipo === "avaliacao"
                           ? Star
-                          : ShieldCheck;
+                          : n.tipo === "mensagem"
+                            ? MessagesSquare
+                            : n.tipo === "etapa"
+                              ? ListChecks
+                              : ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link

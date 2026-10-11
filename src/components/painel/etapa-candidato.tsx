@@ -3,21 +3,24 @@
 import { ChevronDown, NotebookPen } from "lucide-react";
 import { useId, useState } from "react";
 import { salvarEtapaCandidato } from "@/lib/acoes/curtidas";
-import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
+import { ETAPAS_CANDIDATO, etapasDoTipo, type EtapaCandidato } from "@/lib/constantes";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
 /**
- * Etapa e anotação de um interessado, para quem contrata se organizar.
- * Só quem publicou vê: a pessoa que curtiu não fica sabendo.
+ * Etapa e anotação de um interessado. A pessoa que curtiu vê a etapa (e recebe um
+ * aviso quando ela muda); a anotação é só de quem publicou.
  */
 export function EtapaDoCandidato({
+  tipo = "vaga",
   anuncioId,
   perfilId,
   etapa: etapaInicial,
   nota: notaInicial,
 }: {
+  /** vaga ou serviço: cada um tem as suas etapas */
+  tipo?: string;
   anuncioId: string;
   perfilId: string;
   etapa: EtapaCandidato;
@@ -50,9 +53,9 @@ export function EtapaDoCandidato({
           className={`${classesEntrada} min-h-10 py-1.5`}
           envoltorio="w-44"
         >
-          {Object.entries(ETAPAS_CANDIDATO).map(([valor, e]) => (
+          {etapasDoTipo(tipo).map((valor) => (
             <option key={valor} value={valor}>
-              {e.nome}
+              {ETAPAS_CANDIDATO[valor].nome}
             </option>
           ))}
         </Seletor>
@@ -67,7 +70,7 @@ export function EtapaDoCandidato({
           {notaInicial ? "Anotação" : "Anotar"}
           <ChevronDown aria-hidden className={`size-4 transition-transform ${anotar ? "rotate-180" : ""}`} />
         </button>
-        <span className="text-caption text-ink-muted normal-case">Só você vê</span>
+        <span className="text-body-sm text-ink-muted">A pessoa vê a etapa; a anotação é só sua.</span>
       </div>
       {anotar && (
         <div id={`${id}-nota`} className="flex flex-col gap-2">

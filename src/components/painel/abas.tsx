@@ -10,6 +10,7 @@ const ABAS = [
   { href: "/painel/servicos", nome: "Meus serviços" },
   { href: "/painel/curtidas", nome: "Minhas curtidas" },
   { href: "/painel/matches", nome: "Matches" },
+  { href: "/painel/conversas", nome: "Conversas" },
 ] as const;
 
 function abaAtiva(caminho: string | null) {
@@ -18,6 +19,7 @@ function abaAtiva(caminho: string | null) {
   if (caminho.startsWith("/painel/candidatos")) return "/painel/candidatos";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "/painel/servicos";
   if (caminho.startsWith("/painel/matches")) return "/painel/matches";
+  if (caminho.startsWith("/painel/conversas")) return "/painel/conversas";
   return "/painel";
 }
 
