@@ -37,6 +37,55 @@ as $$
      and a.autor_id = (select auth.uid())
 $$;
 
+-- Todos os candidatos das minhas vagas (a página "Candidatos" do painel), com a etapa.
+-- Mesmas regras de "interessados": contato só depois do match e com a vaga fora da
+-- moderação; conta suspensa não aparece.
+create or replace function public.meus_candidatos()
+returns table (
+  anuncio_id uuid,
+  anuncio_titulo text,
+  anuncio_status text,
+  perfil_id uuid,
+  nome text,
+  tipo text,
+  foto text,
+  cidade text,
+  bairro text,
+  verificado boolean,
+  mensagem text,
+  status text,
+  curtido_em timestamptz,
+  whatsapp text,
+  email text,
+  tem_curriculo boolean,
+  etapa text,
+  nota text,
+  etapa_em timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select a.id, a.titulo, a.status, p.id, p.nome, p.tipo, p.foto, p.cidade, p.bairro, p.verificado,
+         c.mensagem, c.status, c.criado_em,
+         case when c.status = 'match' and a.status not in ('em_analise', 'removido') then ct.whatsapp end,
+         case when c.status = 'match' and a.status not in ('em_analise', 'removido') then ct.email end,
+         exists (select 1 from public.curriculos cv where cv.perfil_id = p.id),
+         coalesce(e.etapa, 'novo'), e.nota, e.atualizado_em
+    from public.curtidas c
+    join public.anuncios a on a.id = c.anuncio_id
+    join public.perfis p on p.id = c.perfil_id
+    left join public.contatos ct on ct.perfil_id = p.id
+    left join public.etapas_candidatos e on e.anuncio_id = c.anuncio_id and e.perfil_id = c.perfil_id
+   where a.autor_id = (select auth.uid())
+     and a.tipo = 'vaga'
+     and (p.suspenso_ate is null or p.suspenso_ate <= now())
+     and not (select public.minha_conta_suspensa())
+   order by c.criado_em desc
+   limit 2000
+$$;
+
 -- Muda a etapa e a anotação de alguém que curtiu uma vaga minha.
 create or replace function public.salvar_etapa_candidato(p_anuncio uuid, p_perfil uuid, p_etapa text, p_nota text)
 returns void
@@ -80,5 +129,7 @@ $$;
 
 revoke execute on function public.etapas_dos_candidatos(uuid) from public, anon;
 grant execute on function public.etapas_dos_candidatos(uuid) to authenticated;
+revoke execute on function public.meus_candidatos() from public, anon;
+grant execute on function public.meus_candidatos() to authenticated;
 revoke execute on function public.salvar_etapa_candidato(uuid, uuid, text, text) from public, anon;
 grant execute on function public.salvar_etapa_candidato(uuid, uuid, text, text) to authenticated;

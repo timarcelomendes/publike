@@ -90,6 +90,15 @@ async function Conteudo({
           <Link href={servico ? "/painel/servicos" : `/painel/anuncio/${anuncio.id}/editar`} className="underline">
             Editar
           </Link>
+          {!servico && (
+            <>
+              {" "}
+              ·{" "}
+              <Link href="/painel/candidatos" className="underline">
+                Candidatos de todas as vagas
+              </Link>
+            </>
+          )}
         </p>
       </div>
 

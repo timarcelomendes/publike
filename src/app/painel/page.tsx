@@ -103,8 +103,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel">["
                         ? "pedido"
                         : "pedidos"
                       : a.curtidas_total === 1
-                        ? "curtida"
-                        : "curtidas"}
+                        ? "candidato"
+                        : "candidatos"}
                     {a.curtidas_novas > 0 && (
                       <Selo variante="like">
                         {a.curtidas_novas} {a.curtidas_novas === 1 ? "nova" : "novas"}

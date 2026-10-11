@@ -471,6 +471,30 @@ export type Database = {
         Args: { p_anuncio: string };
         Returns: { perfil_id: string; etapa: string; nota: string | null; atualizado_em: string }[];
       };
+      meus_candidatos: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          anuncio_id: string;
+          anuncio_titulo: string;
+          anuncio_status: string;
+          perfil_id: string;
+          nome: string;
+          tipo: string;
+          foto: string | null;
+          cidade: string;
+          bairro: string | null;
+          verificado: boolean;
+          mensagem: string | null;
+          status: string;
+          curtido_em: string;
+          whatsapp: string | null;
+          email: string | null;
+          tem_curriculo: boolean;
+          etapa: string;
+          nota: string | null;
+          etapa_em: string | null;
+        }[];
+      };
       salvar_etapa_candidato: {
         Args: { p_anuncio: string; p_perfil: string; p_etapa: string; p_nota: string | null };
         Returns: undefined;

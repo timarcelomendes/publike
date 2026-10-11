@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { dataHora, nomeDoArquivo, respostaCsv, SITUACAO_CURTIDA } from "@/lib/planilha";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { DISPONIBILIDADES, ETAPAS_CANDIDATO, nomeEscolaridade, TIPOS_CONTA } from "@/lib/constantes";
 import {
@@ -14,43 +15,6 @@ import { UUID } from "@/lib/validacao";
 // A lista de quem curtiu uma vaga, para abrir no Excel ou no Google Planilhas.
 // Só quem publicou baixa. O WhatsApp e o e-mail só vêm de quem deu match (o banco
 // já esconde os outros), como na tela.
-
-const SITUACAO: Record<string, string> = {
-  pendente: "Aguardando sua resposta",
-  match: "Deu match",
-  dispensada: "Dispensado",
-  desfeito: "Match desfeito",
-};
-
-/** Uma célula do CSV: entre aspas, e sem virar fórmula no Excel. */
-function celula(valor: string | null | undefined) {
-  let v = String(valor ?? "")
-    .replace(/\r?\n/g, " ")
-    .trim();
-  if (/^[=+\-@\t]/.test(v)) v = `'${v}`;
-  return `"${v.replace(/"/g, '""')}"`;
-}
-
-function data(iso: string | null | undefined) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
-
-/** Nome do arquivo sem acento nem espaço: "candidatos-auxiliar-de-padaria.csv". */
-function nomeDoArquivo(titulo: string) {
-  const base = titulo
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60);
-  return `candidatos-${base || "vaga"}.csv`;
-}
 
 export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/anuncio/[id]/planilha">) {
   const { id } = await params;
@@ -99,9 +63,9 @@ export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/a
       tipo,
       p.bairro,
       p.cidade,
-      data(p.curtido_em),
+      dataHora(p.curtido_em),
       p.mensagem,
-      SITUACAO[p.status] ?? p.status,
+      SITUACAO_CURTIDA[p.status] ?? p.status,
       ETAPAS_CANDIDATO[e?.etapa ?? "novo"].nome,
       e?.nota,
       p.whatsapp ? formatarTelefone(p.whatsapp) : "",
@@ -112,18 +76,8 @@ export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/a
       (c?.disponibilidade ?? []).map((d) => DISPONIBILIDADES.find((x) => x.valor === d)?.nome ?? d).join(", "),
       ultima ? [ultima.cargo, ultima.onde].filter(Boolean).join(" em ") : "",
       `${SITE_URL}/perfil/${p.perfil_id}`,
-    ]
-      .map(celula)
-      .join(";");
+    ];
   });
 
-  // BOM + ponto e vírgula: o Excel em português abre com acentos e colunas certas.
-  const corpo = "﻿" + [cabecalho.map(celula).join(";"), ...linhas].join("\r\n") + "\r\n";
-  return new NextResponse(corpo, {
-    headers: {
-      "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="${nomeDoArquivo(anuncio.titulo)}"`,
-      "cache-control": "private, no-store",
-    },
-  });
+  return respostaCsv(cabecalho, linhas, nomeDoArquivo(anuncio.titulo));
 }

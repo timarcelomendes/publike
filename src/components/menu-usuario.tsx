@@ -8,6 +8,7 @@ import {
   MessageCircleHeart,
   ShieldCheck,
   UserRound,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -17,7 +18,10 @@ import { Avatar } from "./ui/basicos";
 
 function Item({ href, icone: Icone, children }: { href: string; icone: LucideIcon; children: ReactNode }) {
   return (
-    <Link href={href} className="flex min-h-11 items-center gap-3 rounded-sm px-3 text-body-sm text-ink hover:bg-surface-300">
+    <Link
+      href={href}
+      className="flex min-h-11 items-center gap-3 rounded-sm px-3 text-body-sm text-ink hover:bg-surface-300"
+    >
       <Icone aria-hidden className="size-[18px] text-ink-muted" />
       {children}
     </Link>
@@ -30,12 +34,15 @@ export function MenuUsuario({
   perfilId,
   temPerfil,
   moderador,
+  candidatos = false,
 }: {
   nome: string;
   foto: string | null;
   perfilId: string;
   temPerfil: boolean;
   moderador: boolean;
+  /** quem contrata (comércio, empresa, agência) vê o atalho para os candidatos */
+  candidatos?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -77,6 +84,11 @@ export function MenuUsuario({
             <Item href="/painel" icone={LayoutDashboard}>
               Meu painel
             </Item>
+            {candidatos && (
+              <Item href="/painel/candidatos" icone={Users}>
+                Candidatos
+              </Item>
+            )}
             <Item href="/painel/matches" icone={MessageCircleHeart}>
               Matches
             </Item>

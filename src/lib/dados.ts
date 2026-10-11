@@ -192,6 +192,21 @@ export async function listarEtapasDosCandidatos(
   );
 }
 
+/** Todos os candidatos das minhas vagas, com a etapa (página "Candidatos" do painel). */
+export async function listarMeusCandidatos() {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("meus_candidatos");
+  // sem a migração das etapas a página avisa, em vez de quebrar
+  if (error) {
+    console.error(`Publike: falha ao ler seus candidatos: ${error.message}`);
+    return null;
+  }
+  return (data ?? []).map((l) => ({
+    ...l,
+    etapa: (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato,
+  }));
+}
+
 /** Experiências vindas do banco (jsonb), já no formato das telas. */
 function lerExperiencias(valor: unknown): Experiencia[] {
   if (!Array.isArray(valor)) return [];
