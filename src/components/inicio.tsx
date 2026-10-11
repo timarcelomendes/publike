@@ -2,6 +2,7 @@ import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { ComoFuncionaAnimado } from "./como-funciona-animado";
 import { PASSOS } from "./passos";
+import { RecursosDoPublike } from "./secao-recursos";
 import { Container, Selo } from "./ui/basicos";
 
 /** Título da página inicial. A busca entra logo abaixo, no mesmo bloco (app/page.tsx). */
@@ -16,9 +17,9 @@ export function HeroInicio() {
       <p className="mt-2 max-w-2xl text-body text-ink-muted sm:mt-3 sm:text-body-lg">
         Vagas com carteira, diárias, freelances e profissionais do bairro.
         <span className="hidden sm:inline"> Curtiu, deu match, vocês conversam.</span>{" "}
-        <Link href="/missao" className="text-ink underline underline-offset-2 hover:text-terra-text">
-          Nossa missão
-        </Link>
+        <a href="#o-que-da-para-fazer" className="text-ink underline underline-offset-2 hover:text-terra-text">
+          Veja o que dá para fazer
+        </a>
       </p>
     </>
   );
@@ -41,6 +42,27 @@ export function PassosComoFunciona() {
         </li>
       ))}
     </ol>
+  );
+}
+
+/** Página inicial: o que o Publike entrega, por perfil, logo depois dos anúncios. */
+export function RecursosInicio() {
+  return (
+    <section
+      id="o-que-da-para-fazer"
+      aria-labelledby="titulo-recursos"
+      className="mt-16 scroll-mt-20 border-t border-line pt-12 sm:pt-16"
+    >
+      <Container>
+        <h2 id="titulo-recursos" className="text-h2 sm:text-h1">
+          O que dá para fazer no Publike
+        </h2>
+        <p className="mt-2 mb-6 max-w-2xl text-body text-ink-muted sm:text-body-lg">
+          Escolha o seu caso e veja, em poucas palavras, como o Publike ajuda. Tudo de graça.
+        </p>
+        <RecursosDoPublike linkDetalhes />
+      </Container>
+    </section>
   );
 }
 

@@ -1,6 +1,7 @@
 import { Heart, Lock, Megaphone, ShieldAlert } from "lucide-react";
 import type { Metadata } from "next";
 import { PassosComoFunciona } from "@/components/inicio";
+import { RecursosDoPublike } from "@/components/secao-recursos";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { LIMITES_CONTA } from "@/lib/constantes";
@@ -97,29 +98,52 @@ export default function ComoFunciona() {
       </section>
 
       <Container className="py-10">
-        <PassosComoFunciona />
+        <section aria-labelledby="titulo-recursos">
+          <h2 id="titulo-recursos" className="text-h2">
+            O que dá para fazer
+          </h2>
+          <p className="mt-2 mb-6 max-w-2xl text-body text-ink-muted">Escolha o seu caso.</p>
+          <RecursosDoPublike />
+        </section>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {[
-            { titulo: "Para quem contrata", icone: Megaphone, itens: CONTRATA },
-            { titulo: "Para quem trabalha", icone: Heart, itens: TRABALHA },
-          ].map(({ titulo, icone: Icone, itens }) => (
-            <section key={titulo} className="rounded-lg border border-line bg-surface-200 p-6">
-              <h2 className="flex items-center gap-3 text-h2">
-                <Icone aria-hidden className="size-6 text-terra-text" />
-                {titulo}
-              </h2>
-              <ul className="mt-4 flex flex-col gap-3 text-body">
-                {itens.map((i) => (
-                  <li key={i} className="flex gap-3">
-                    <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-pill bg-ink" />
-                    {i}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <section aria-labelledby="titulo-passos" className="mt-12">
+          <h2 id="titulo-passos" className="mb-4 text-h2">
+            Em três passos
+          </h2>
+          <PassosComoFunciona />
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-h2">Todos os detalhes</h2>
+          <div className="mt-4 flex flex-col gap-2">
+            {[
+              { titulo: "Para quem contrata", icone: Megaphone, itens: CONTRATA },
+              { titulo: "Para quem trabalha", icone: Heart, itens: TRABALHA },
+            ].map(({ titulo, icone: Icone, itens }) => (
+              <details key={titulo} className="group rounded-md border border-line bg-surface-200 px-5 py-4">
+                <summary className="cursor-pointer list-none text-label marker:hidden">
+                  <span className="flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-3">
+                      <Icone aria-hidden className="size-5 text-terra-text" />
+                      {titulo}
+                    </span>
+                    <span aria-hidden className="text-h3 text-ink-muted transition-transform group-open:rotate-45">
+                      +
+                    </span>
+                  </span>
+                </summary>
+                <ul className="mt-4 flex flex-col gap-3 text-body">
+                  {itens.map((i) => (
+                    <li key={i} className="flex gap-3">
+                      <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-pill bg-ink" />
+                      {i}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
+        </section>
 
         <section id="seguranca" className="mt-12 scroll-mt-24 rounded-lg bg-terra-soft p-6 sm:p-8">
           <h2 className="flex items-center gap-3 text-h2">

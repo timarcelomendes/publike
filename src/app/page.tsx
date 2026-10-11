@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
-import { ComoFuncionaResumo, HeroInicio } from "@/components/inicio";
+import { ComoFuncionaResumo, HeroInicio, RecursosInicio } from "@/components/inicio";
 import { Container } from "@/components/ui/basicos";
 
 export default function Inicio({ searchParams }: PageProps<"/">) {
@@ -18,6 +18,7 @@ export default function Inicio({ searchParams }: PageProps<"/">) {
       <Suspense fallback={<ExplorarEsqueleto />}>
         <Explorar searchParams={searchParams} />
       </Suspense>
+      <RecursosInicio />
       <ComoFuncionaResumo />
     </>
   );
