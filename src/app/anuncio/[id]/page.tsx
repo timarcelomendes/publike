@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   BadgeCheck,
   Banknote,
   Briefcase,
@@ -23,6 +22,7 @@ import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
+import { VerMaisPerto } from "@/components/anuncio/ver-mais";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
@@ -236,10 +236,7 @@ async function DetalheAnuncio({
         />
       )}
 
-      <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink">
-        <ArrowLeft aria-hidden className="size-4" />
-        Voltar para a busca
-      </Link>
+      <VerMaisPerto tipo={vaga ? "vaga" : "servico"} />
 
       {primeiro(sp.publicado) === "1" && (
         <Aviso tipo="sucesso" className="mt-4" titulo="Seu anúncio está no ar!">

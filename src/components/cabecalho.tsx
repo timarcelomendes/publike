@@ -26,9 +26,8 @@ export function Cabecalho() {
           <Logo altura={34} />
         </Link>
         <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
+          {/* Vagas e Serviços ficam nas abas da busca, na home (não repetimos aqui) */}
           <LinkNav href="/descobrir">Descobrir</LinkNav>
-          <LinkNav href="/?tipo=vaga">Vagas</LinkNav>
-          <LinkNav href="/?tipo=servico">Serviços</LinkNav>
           <LinkNav href="/como-funciona">Como funciona</LinkNav>
         </nav>
         <div className="ml-auto flex items-center gap-2">

@@ -1,71 +1,16 @@
 "use client";
 
-import {
-  Briefcase,
-  ChevronDown,
-  Compass,
-  HandHelping,
-  House,
-  LocateFixed,
-  UserPlus,
-  Wrench,
-  X,
-  type LucideIcon,
-} from "lucide-react";
-import Link from "next/link";
+import { ChevronDown, House, LocateFixed, X } from "lucide-react";
 import { useId, useState, useSyncExternalStore, useTransition, type FormEvent } from "react";
 import { buscarCep } from "@/lib/acoes/cep";
-import { salvarIntencao } from "@/lib/acoes/intencao";
 import { esquecerLocal, salvarLocal } from "@/lib/acoes/local";
-import { INTENCOES, type Intencao } from "@/lib/intencao";
 import { formatarCep, limparCep } from "@/lib/cep";
 import { BAIRROS } from "@/lib/bairros";
 import { CIDADES, type Cidade } from "@/lib/constantes";
 import type { Local } from "@/lib/regioes";
 import { classesBotao } from "../ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "../ui/campo";
-
-/** Botão com a resposta de "O que você quer fazer no Publike?", ao lado do bairro. Abre o "Mudar". */
-export function BotaoIntencao({
-  intencao,
-  aberto,
-  onClick,
-  controla,
-}: {
-  intencao: Intencao | null;
-  aberto: boolean;
-  onClick: () => void;
-  controla: string;
-}) {
-  const atual = INTENCOES.find((op) => op.valor === intencao);
-  const Icone = atual ? ICONES_INTENCAO[atual.valor] : Compass;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-expanded={aberto}
-      aria-controls={controla}
-      title={atual ? `${atual.nome}: mudar` : "O que você quer fazer no Publike?"}
-      className={`${botaoLugar(Boolean(atual))} max-w-52 sm:max-w-64`}
-    >
-      <Icone aria-hidden className={`size-4 shrink-0 ${atual ? "text-terra-text" : ""}`} />
-      <span className="truncate">
-        {atual ? (
-          <>
-            <span className="sr-only">Você quer: </span>
-            {atual.curto}
-          </>
-        ) : (
-          "O que você quer?"
-        )}
-      </span>
-      <ChevronDown
-        aria-hidden
-        className={`-mr-1 size-3.5 shrink-0 text-ink-muted transition-transform ${aberto ? "rotate-180" : ""}`}
-      />
-    </button>
-  );
-}
+import { Passo } from "./intencao";
 
 /** Botão "Onde você mora?" da busca. Fica no topo, ao lado do "Perto de mim". */
 /** Botão de lugar (onde mora, perto de mim): contorno; escolhido, ganha borda escura e fundo leve. */
@@ -128,17 +73,12 @@ export function PainelOndeMora({
   local,
   fechar,
   aoSalvar,
-  intencao = null,
-  aoEscolherIntencao,
 }: {
   id: string;
   local: Local | null;
   fechar: () => void;
   /** depois de salvar (a busca passa a contar de casa) */
   aoSalvar?: () => void;
-  /** o que a pessoa quer fazer no Publike (fica junto de onde mora) */
-  intencao?: Intencao | null;
-  aoEscolherIntencao?: (i: Intencao) => void;
 }) {
   const [cep, setCep] = useState(formatarCep(local?.cep));
   const [cepConferido, setCepConferido] = useState<string | null>(local?.cep ?? null);
@@ -200,10 +140,6 @@ export function PainelOndeMora({
         <span className="sr-only">Fechar</span>
       </button>
       <div className="pr-10">
-        <PerguntaIntencao intencao={intencao} aoEscolher={aoEscolherIntencao} />
-      </div>
-
-      <div className="border-t border-line pt-4">
         <h2 id={`${campo}-titulo`} className="text-label">
           Onde você mora?
         </h2>
@@ -331,14 +267,13 @@ export function PerguntaOndeMora({
   usarLocalizacao,
   escolherBairro,
   aoSalvar,
-  intencao = null,
-  aoEscolherIntencao,
+  passo = null,
 }: {
   usarLocalizacao: () => void;
   escolherBairro: () => void;
   aoSalvar?: () => void;
-  intencao?: Intencao | null;
-  aoEscolherIntencao?: (i: Intencao) => void;
+  /** "Passo 2 de 2", quando vem logo depois de "O que você quer fazer no Publike?" */
+  passo?: { n: number; de: number } | null;
 }) {
   const [cep, setCep] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -366,9 +301,6 @@ export function PerguntaOndeMora({
       aria-labelledby={`${campo}-titulo`}
       className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card sm:p-5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-6 lg:gap-y-4"
     >
-      <div className="lg:basis-full">
-        <PerguntaIntencao intencao={intencao} aoEscolher={aoEscolherIntencao} />
-      </div>
       <div className="flex items-start gap-3 lg:flex-1">
         <span
           aria-hidden
@@ -377,7 +309,8 @@ export function PerguntaOndeMora({
           <House className="size-5" />
         </span>
         <div>
-          <h2 id={`${campo}-titulo`} className="text-label">
+          {passo && <Passo n={passo.n} de={passo.de} />}
+          <h2 id={`${campo}-titulo`} className="text-h3">
             Onde você mora?
           </h2>
           <p className="mt-0.5 text-body-sm text-ink-muted">
@@ -434,146 +367,5 @@ export function PerguntaOndeMora({
         </div>
       </div>
     </form>
-  );
-}
-
-const ICONES_INTENCAO: Record<Intencao, LucideIcon> = {
-  trabalho: Briefcase,
-  contratar_servico: Wrench,
-  oferecer_servico: HandHelping,
-  contratar_pessoa: UserPlus,
-};
-
-/** O próximo passo para quem oferece serviço ou quer contratar alguém. */
-const CONVITE: Partial<Record<Intencao, { texto: string; botao: string; href: string }>> = {
-  oferecer_servico: {
-    texto: "Monte sua vitrine: o que você faz, fotos e preço. Quem mora perto acha você.",
-    botao: "Mostrar meus serviços",
-    href: "/painel/servicos",
-  },
-  contratar_pessoa: {
-    texto: "Publique a vaga de graça: quem mora perto vê primeiro e você escolhe quem curtir de volta.",
-    botao: "Publicar vaga grátis",
-    href: "/publicar",
-  },
-};
-
-/**
- * "O que você quer fazer no Publike?": quatro respostas que guiam a home.
- * Procuro trabalho abre a busca em Vagas; Quero contratar um serviço, em Serviços;
- * as outras duas mostram o próximo passo. Fica guardado neste navegador.
- */
-export function PerguntaIntencao({
-  intencao,
-  aoEscolher,
-}: {
-  intencao: Intencao | null;
-  /** depois de guardar (para a busca ir para a aba certa) */
-  aoEscolher?: (i: Intencao) => void;
-}) {
-  const [escolhida, setEscolhida] = useState<Intencao | null>(intencao);
-  // com uma resposta, mostra só ela e o "Mudar"; as quatro opções voltam ao tocar nele
-  const [mudando, setMudando] = useState(false);
-  const [pendente, iniciar] = useTransition();
-  const titulo = useId();
-  const convite = escolhida && !mudando ? CONVITE[escolhida] : undefined;
-  const atual = INTENCOES.find((op) => op.valor === escolhida);
-
-  function escolher(i: Intencao) {
-    setEscolhida(i);
-    setMudando(false);
-    iniciar(async () => {
-      const r = await salvarIntencao(i);
-      if (r.ok) aoEscolher?.(i);
-    });
-  }
-
-  if (atual && !mudando) {
-    const Icone = ICONES_INTENCAO[atual.valor];
-    return (
-      <div className="flex flex-col gap-2">
-        <p id={titulo} className="text-label">
-          O que você quer fazer no Publike?
-        </p>
-        <div
-          role="group"
-          aria-labelledby={titulo}
-          className="flex min-h-14 items-center gap-3 rounded-md border border-ink bg-surface-300 py-2 pl-3 pr-2"
-        >
-          <Icone aria-hidden className="size-5 shrink-0 text-terra-text" />
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-label">{atual.nome}</span>
-            <span className="text-body-sm text-ink-muted">{atual.ajuda}</span>
-          </span>
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => setMudando(true)}
-            aria-label={`Mudar: ${atual.nome}`}
-            className={`${classesBotao("secundario", "sm")} shrink-0`}
-          >
-            Mudar
-          </button>
-        </div>
-        {convite && (
-          <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-body-sm">{convite.texto}</p>
-            <Link href={convite.href} className={`${classesBotao("secundario", "sm")} shrink-0`}>
-              {convite.botao}
-            </Link>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p id={titulo} className="text-label">
-        O que você quer fazer no Publike?
-      </p>
-      <div role="radiogroup" aria-labelledby={titulo} className="grid gap-2 sm:grid-cols-2">
-        {INTENCOES.map((op) => {
-          const Icone = ICONES_INTENCAO[op.valor];
-          const ativa = escolhida === op.valor;
-          return (
-            <button
-              key={op.valor}
-              type="button"
-              role="radio"
-              aria-checked={ativa}
-              disabled={pendente}
-              onClick={() => escolher(op.valor)}
-              className={`flex min-h-14 items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors disabled:opacity-70 ${
-                ativa ? "border-ink bg-surface-300" : "border-line-strong bg-surface-200 hover:bg-surface-300"
-              }`}
-            >
-              <Icone aria-hidden className={`size-5 shrink-0 ${ativa ? "text-terra-text" : "text-ink-muted"}`} />
-              <span className="flex flex-col">
-                <span className="text-label">{op.nome}</span>
-                <span className="text-body-sm text-ink-muted">{op.ajuda}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {mudando && atual && (
-        <button
-          type="button"
-          onClick={() => setMudando(false)}
-          className="self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
-        >
-          Manter “{atual.nome}”
-        </button>
-      )}
-      {convite && (
-        <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-body-sm">{convite.texto}</p>
-          <Link href={convite.href} className={`${classesBotao("secundario", "sm")} shrink-0`}>
-            {convite.botao}
-          </Link>
-        </div>
-      )}
-    </div>
   );
 }

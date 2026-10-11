@@ -18,19 +18,13 @@ import { REGIAO } from "@/lib/config";
 import { CATEGORIAS, REGIMES } from "@/lib/constantes";
 import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
 import { hrefFiltros, RAIOS, type Filtros } from "@/lib/filtros";
+import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
-import {
-  BotaoIntencao,
-  BotaoOndeMora,
-  botaoLugar,
-  PainelOndeMora,
-  PerguntaIntencao,
-  PerguntaOndeMora,
-  usePerguntaAdiada,
-} from "./onde-mora";
+import { CartaoIntencao, FaixaIntencao, type ProximoPasso } from "./intencao";
+import { BotaoOndeMora, botaoLugar, PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
 
 // Três jeitos de olhar, cada um com a sua cara:
 //   O QUE (tipo) ...... abas sublinhadas, em cima da busca
@@ -191,17 +185,25 @@ export function BarraBusca({
   filtros,
   local,
   intencao = null,
+  proximoPasso = null,
   abrirOndeMora = false,
 }: {
   filtros: Filtros;
   local: Local | null;
   /** o que a pessoa disse que quer fazer no Publike */
   intencao?: Intencao | null;
+  /** o próximo passo para essa resposta (currículo, vitrine, publicar) */
+  proximoPasso?: ProximoPasso;
   /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
   abrirOndeMora?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const [ondeMora, setOndeMora] = useState(abrirOndeMora);
+  // para o "Voltar para a busca" da página do anúncio
+  const enderecoDaBusca = hrefFiltros(filtros);
+  useEffect(() => {
+    lembrarBusca(window.location.pathname + window.location.search);
+  }, [enderecoDaBusca]);
   const painel = useId();
   const [avisoGps, setAvisoGps] = useState<string | null>(null);
   const [texto, setTexto] = useState(filtros.q);
@@ -228,16 +230,16 @@ export function BarraBusca({
 
   const perto = filtros.origem === "gps";
 
-  // Quem chega sem dizer onde mora (nem casa, nem bairro, nem "Perto de mim") vê a
-  // pergunta de um passo só: o CEP de casa, ou a localização, ou o bairro. Ela fica no
-  // lugar dos botões de lugar até a pessoa responder ou tocar em "Agora não".
+  // Primeira visita: uma pergunta por vez, acima da busca (a resposta já arruma o que vem
+  // embaixo). 1) "O que você quer fazer no Publike?"; 2) "Onde você mora?" (o CEP de casa,
+  // a localização ou o bairro), no lugar dos botões de lugar. "Agora não" deixa as duas
+  // para a próxima visita.
   const [adiada, adiar] = usePerguntaAdiada();
-  // O cartão só da pergunta: abre sozinho para quem ainda não respondeu (até "Agora não")
-  // e pelo botão com a resposta, ao lado do bairro. Fica aberto até a pessoa fechar,
-  // para ver o próximo passo depois de responder.
-  const [cartao, setCartao] = useState<"auto" | "aberto" | "fechado">("auto");
-  const cartaoIntencao = cartao === "aberto" || (cartao === "auto" && !intencao && !adiada);
-  const idCartao = useId();
+  // a resposta tocada nesta visita vale na hora, antes de o servidor devolver a página
+  const [escolhidaAgora, setEscolhidaAgora] = useState<Intencao | null>(null);
+  const [respondeuNoCartao, setRespondeuNoCartao] = useState(false);
+  const intencaoAtual = escolhidaAgora ?? intencao;
+  const perguntarIntencao = !intencaoAtual && !adiada;
   const perguntar = !local && filtros.origem === "centro" && !ondeMora && !adiada;
 
   function alternarPerto() {
@@ -247,8 +249,40 @@ export function BarraBusca({
   }
 
   return (
-    <div className="relative mt-6 flex flex-col gap-3 sm:mt-8">
+    <div className="relative mt-5 flex flex-col gap-3 sm:mt-6">
       {pendente && <Carregando />}
+
+      {perguntarIntencao ? (
+        <CartaoIntencao
+          passos={perguntar ? 2 : 1}
+          aoEscolher={(i) => {
+            setRespondeuNoCartao(true);
+            setEscolhidaAgora(i);
+            escolherIntencao(i);
+          }}
+          aoAdiar={adiar}
+        />
+      ) : (
+        <FaixaIntencao
+          intencao={intencaoAtual}
+          proximoPasso={escolhidaAgora && escolhidaAgora !== intencao ? null : proximoPasso}
+          aoEscolher={(i) => {
+            setEscolhidaAgora(i);
+            escolherIntencao(i);
+          }}
+        />
+      )}
+
+      {!perguntarIntencao && perguntar && (
+        <PerguntaOndeMora
+          passo={respondeuNoCartao ? { n: 2, de: 2 } : null}
+          usarLocalizacao={pertoDeMim}
+          escolherBairro={() => setOndeMora(true)}
+          aoSalvar={() => {
+            if (filtros.origem !== "centro") ir({ origem: "centro" }, true);
+          }}
+        />
+      )}
 
       {/* No celular: abas, busca, lugar. No computador: abas e lugar na mesma linha, busca embaixo. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
@@ -284,68 +318,10 @@ export function BarraBusca({
           })}
         </div>
 
-        {perguntar ? (
-          <div className="order-3 sm:order-5 sm:basis-full">
-            <PerguntaOndeMora
-              intencao={intencao}
-              aoEscolherIntencao={escolherIntencao}
-              usarLocalizacao={pertoDeMim}
-              escolherBairro={() => setOndeMora(true)}
-              aoSalvar={() => {
-                if (filtros.origem !== "centro") ir({ origem: "centro" }, true);
-              }}
-            />
-          </div>
-        ) : (
-          <div className="order-3 flex min-w-0 flex-wrap items-center gap-2 sm:order-2 sm:mb-1.5">
-            <BotaoIntencao
-              intencao={intencao}
-              aberto={cartaoIntencao && !ondeMora}
-              controla={idCartao}
-              onClick={() => {
-                setOndeMora(false);
-                setCartao(cartaoIntencao && !ondeMora ? "fechado" : "aberto");
-              }}
-            />
-            <div role="group" aria-label="Onde" className="flex min-w-0 items-center gap-2">
-              <BotaoOndeMora
-                local={local}
-                aberto={ondeMora}
-                onClick={() => {
-                  if (!ondeMora && cartao === "aberto") setCartao("fechado");
-                  setOndeMora((a) => !a);
-                }}
-                controla={painel}
-              />
-              <BotaoPerto ativo={perto} onClick={alternarPerto} />
-            </div>
-          </div>
-        )}
-
-        {/* Já disse onde mora, mas não o que quer fazer: só essa pergunta, no mesmo lugar */}
-        {!perguntar && cartaoIntencao && !ondeMora && (
-          <div
-            id={idCartao}
-            className="order-4 flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card sm:order-5 sm:basis-full sm:p-5"
-          >
-            <PerguntaIntencao
-              intencao={intencao}
-              aoEscolher={(i) => {
-                // fica aberto para mostrar a escolha e o próximo passo
-                setCartao("aberto");
-                escolherIntencao(i);
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (!intencao && cartao === "auto") adiar();
-                setCartao("fechado");
-              }}
-              className="self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
-            >
-              {intencao ? "Fechar" : "Agora não"}
-            </button>
+        {!perguntar && (
+          <div role="group" aria-label="Onde" className="order-3 flex min-w-0 items-center gap-2 sm:order-2 sm:mb-1.5">
+            <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
+            <BotaoPerto ativo={perto} onClick={alternarPerto} />
           </div>
         )}
 
@@ -353,8 +329,6 @@ export function BarraBusca({
           <div className="order-4 sm:order-3 sm:basis-full">
             <PainelOndeMora
               id={painel}
-              intencao={intencao}
-              aoEscolherIntencao={escolherIntencao}
               local={local}
               fechar={() => setOndeMora(false)}
               // quem acabou de dizer onde mora quer ver a partir de casa, não de onde está agora

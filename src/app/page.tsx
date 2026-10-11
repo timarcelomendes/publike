@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
-import { ComoFuncionaResumo, HeroInicio, RecursosInicio } from "@/components/inicio";
+import { EntendaOPublike, HeroInicio } from "@/components/inicio";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 
@@ -32,7 +32,7 @@ export default function Inicio({ searchParams }: PageProps<"/">) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(DADOS_SITE) }} />
       {/* Título e busca no mesmo bloco: no celular, os anúncios começam logo abaixo */}
       <section className="border-b border-line pb-5 sm:pb-6">
-        <Container className="pt-6 sm:pt-12">
+        <Container className="pt-5 sm:pt-8">
           <HeroInicio />
           <Suspense fallback={<BuscaEsqueleto />}>
             <BuscaExplorar searchParams={searchParams} />
@@ -42,8 +42,7 @@ export default function Inicio({ searchParams }: PageProps<"/">) {
       <Suspense fallback={<ExplorarEsqueleto />}>
         <Explorar searchParams={searchParams} />
       </Suspense>
-      <RecursosInicio />
-      <ComoFuncionaResumo />
+      <EntendaOPublike />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { MapPinned, SearchX } from "lucide-react";
-import { buscarAnuncios, obterUsuario } from "@/lib/dados";
+import { buscarAnuncios, listarMeusServicos, obterMeuCurriculo, obterUsuario } from "@/lib/dados";
 import { aplicarIntencao, descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
-import { tipoDaIntencao } from "@/lib/intencao";
+import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
 import {
@@ -21,16 +21,52 @@ import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
 import { BarraBusca, BotaoSoMeus, FiltrosLista } from "./barra-busca";
+import type { ProximoPasso } from "./intencao";
 import { VisaoExplorar } from "./visao-explorar";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
+/**
+ * O próximo passo de quem respondeu "O que você quer fazer no Publike?", ao lado da
+ * resposta. Com conta, leva em conta o que já fez (currículo pronto, vitrine montada).
+ */
+async function proximoPassoDa(intencao: Intencao | null, logado: boolean): Promise<ProximoPasso> {
+  try {
+    switch (intencao) {
+      case "trabalho":
+        return logado && (await obterMeuCurriculo())
+          ? { texto: "Acompanhar minhas curtidas", href: "/painel/curtidas" }
+          : { texto: "Preencher meu currículo", href: "/perfil/curriculo" };
+      case "oferecer_servico":
+        return logado && (await listarMeusServicos()).length > 0
+          ? { texto: "Ver quem quer me contratar", href: "/painel" }
+          : { texto: "Montar minha vitrine", href: "/painel/servicos" };
+      case "contratar_pessoa":
+        return { texto: "Publicar vaga grátis", href: "/publicar" };
+      default:
+        return null;
+    }
+  } catch {
+    // o atalho é um extra: se a leitura falhar, a busca segue sem ele
+    return null;
+  }
+}
+
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
 export async function BuscaExplorar({ searchParams }: { searchParams: Parametros }) {
   const sp = await searchParams;
-  const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
+  const [local, intencao, usuario] = await Promise.all([obterLocal(), obterIntencao(), obterUsuario()]);
   const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
-  return <BarraBusca filtros={filtros} local={local} intencao={intencao} abrirOndeMora={primeiro(sp.casa) === "1"} />;
+  const proximoPasso = await proximoPassoDa(intencao, Boolean(usuario));
+  return (
+    <BarraBusca
+      filtros={filtros}
+      local={local}
+      intencao={intencao}
+      proximoPasso={proximoPasso}
+      abrirOndeMora={primeiro(sp.casa) === "1"}
+    />
+  );
 }
 
 /** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */

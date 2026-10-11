@@ -1,24 +1,48 @@
 import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
+import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { ComoFuncionaAnimado } from "./como-funciona-animado";
 import { PASSOS } from "./passos";
 import { RecursosDoPublike } from "./secao-recursos";
 import { Container, Selo } from "./ui/basicos";
 
-/** Título da página inicial. A busca entra logo abaixo, no mesmo bloco (app/page.tsx). */
+/** Quantas vagas e quantos serviços estão no ar (só aparece quando já são muitos, para não parecer vazio). */
+async function NoAr() {
+  const [vagas, servicos] = await Promise.all([anunciosNoAr("vaga"), anunciosNoAr("servico")]);
+  if (vagas.length + servicos.length < 20) return null;
+  // a leitura traz até 200 de cada
+  const n = (x: number) => (x >= 200 ? "200+" : String(x));
+  return (
+    <span className="text-body-sm text-ink-muted">
+      <span aria-hidden>· </span>
+      {n(vagas.length)} vagas e {n(servicos.length)} serviços no ar
+    </span>
+  );
+}
+
+/**
+ * Título da página inicial, enxuto para a busca e os anúncios aparecerem logo.
+ * A busca entra logo abaixo, no mesmo bloco (app/page.tsx).
+ */
 export function HeroInicio() {
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <Selo variante="novo">Grátis</Selo>
         <span className="text-body-sm text-ink-muted">Goiânia e região</span>
+        <Suspense fallback={null}>
+          <NoAr />
+        </Suspense>
       </div>
-      <h1 className="mt-3 max-w-3xl text-h1 sm:text-display">Trabalho perto de você.</h1>
-      <p className="mt-2 max-w-2xl text-body text-ink-muted sm:mt-3 sm:text-body-lg">
-        Vagas de emprego em Goiânia e região: carteira assinada, diárias, freelances e profissionais do bairro.
-        <span className="hidden sm:inline"> Curtiu, deu match, vocês conversam.</span>{" "}
-        <a href="#o-que-da-para-fazer" className="text-ink underline underline-offset-2 hover:text-terra-text">
-          Veja o que dá para fazer
+      <h1 className="mt-2 max-w-3xl text-h1 sm:text-display">Trabalho perto de você.</h1>
+      <p className="mt-1.5 max-w-4xl text-body text-ink-muted sm:mt-2 sm:text-body-lg">
+        {/* no celular, a pergunta logo abaixo já explica as opções: fica só o link */}
+        <span className="hidden sm:inline">
+          Vagas de emprego, diárias, freelances e profissionais do bairro em Goiânia e região.{" "}
+        </span>
+        <a href="#entenda" className="whitespace-nowrap text-ink underline underline-offset-2 hover:text-terra-text">
+          Entenda como funciona
         </a>
       </p>
     </>
@@ -45,30 +69,13 @@ export function PassosComoFunciona() {
   );
 }
 
-/** Página inicial: o que o Publike entrega, por perfil, logo depois dos anúncios. */
-export function RecursosInicio() {
+/**
+ * Página inicial, depois dos anúncios: como funciona (3 passos), o que dá para fazer
+ * no seu caso e o aviso de segurança. Uma seção só, na ordem de quem está conhecendo.
+ */
+export function EntendaOPublike() {
   return (
-    <section
-      id="o-que-da-para-fazer"
-      aria-labelledby="titulo-recursos"
-      className="mt-16 scroll-mt-20 border-t border-line pt-12 sm:pt-16"
-    >
-      <Container>
-        <h2 id="titulo-recursos" className="text-h2 sm:text-h1">
-          O que dá para fazer no Publike
-        </h2>
-        <p className="mt-2 mb-6 max-w-2xl text-body text-ink-muted sm:text-body-lg">
-          Escolha o seu caso e veja, em poucas palavras, como o Publike ajuda. Tudo de graça.
-        </p>
-        <RecursosDoPublike linkDetalhes />
-      </Container>
-    </section>
-  );
-}
-
-export function ComoFuncionaResumo() {
-  return (
-    <section aria-labelledby="como-funciona" className="mt-16 border-t border-line pt-12 pb-4 sm:pt-16">
+    <section id="entenda" aria-label="Entenda o Publike" className="mt-16 scroll-mt-20 border-t border-line pt-12 pb-4 sm:pt-16">
       <Container>
         <h2 id="como-funciona" className="text-h2 sm:text-h1">
           Como funciona
@@ -80,7 +87,16 @@ export function ComoFuncionaResumo() {
         <div className="mt-8">
           <ComoFuncionaAnimado />
         </div>
-        <div className="mt-10 flex gap-3 rounded-lg bg-terra-soft p-5 text-ink">
+
+        <h2 id="o-que-da-para-fazer" className="mt-16 scroll-mt-20 text-h2 sm:mt-20 sm:text-h1">
+          O que dá para fazer no Publike
+        </h2>
+        <p className="mt-2 mb-6 max-w-2xl text-body text-ink-muted sm:text-body-lg">
+          Escolha o seu caso e veja, em poucas palavras, como o Publike ajuda. Tudo de graça.
+        </p>
+        <RecursosDoPublike linkDetalhes />
+
+        <div className="mt-12 flex gap-3 rounded-lg bg-terra-soft p-5 text-ink">
           <ShieldAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-terra-text" />
           <p className="text-body-sm">
             <strong>Ninguém pode cobrar para você conseguir trabalho.</strong> Pediram dinheiro para curso, uniforme ou

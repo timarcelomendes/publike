@@ -38,6 +38,14 @@ export const INTENCOES = [
 
 export type Intencao = (typeof INTENCOES)[number]["valor"];
 
+/** A resposta dita para a própria pessoa, na linha acima da busca. */
+export const VOCE: Record<Intencao, string> = {
+  trabalho: "Você procura trabalho",
+  contratar_servico: "Você quer contratar um serviço",
+  oferecer_servico: "Você oferece serviços",
+  contratar_pessoa: "Você quer contratar alguém",
+};
+
 export const COOKIE_INTENCAO = "publike_intencao";
 
 export function lerIntencao(valor: string | undefined | null): Intencao | null {
