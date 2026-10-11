@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { classesBotao } from "./ui/botao";
+import { EVENTO_PEDIDO } from "@/lib/instalar";
 
 // "Instale o app do Publike" (PWA).
 //   Android e computador (Chrome, Edge, Samsung): o navegador oferece instalar e o
@@ -29,7 +30,9 @@ const EVENTO_ABRIR = "publike:instalar";
 // páginas onde o convite atrapalha
 const SEM_CONVITE = ["/entrar", "/auth", "/admin", "/perfil", "/publicar", "/painel/conversas/"];
 
-// o pedido do navegador chega uma vez só, em qualquer página: guardado fora do React
+// O pedido do navegador chega uma vez só, logo no começo do carregamento (antes do
+// React). O SCRIPT_PEDIDO (lib/instalar.ts), no <head>, guarda ele em window.__publikePedido.
+type ComPedido = Window & { __publikePedido?: EventoInstalar | null };
 let pedido: EventoInstalar | null = null;
 const ouvintes = new Set<() => void>();
 const avisar = () => ouvintes.forEach((f) => f());
@@ -47,6 +50,7 @@ function emTelaCheia() {
 
 function jeitoDeInstalar(): Jeito {
   if (emTelaCheia()) return "instalado";
+  lerPedidoAntecipado();
   if (pedido) return "botao";
   const ua = navigator.userAgent;
   if (/FBAN|FBAV|Instagram|Line\/|TikTok/i.test(ua)) return "app-de-rede";
@@ -79,7 +83,17 @@ function dispensar() {
  * Instalar agora: onde o navegador deixa (Android, Chrome e Edge no computador), abre
  * direto a janela de instalação; nos outros (iPhone, Safari), abre o passo a passo.
  */
+function lerPedidoAntecipado() {
+  const w = window as ComPedido;
+  if (w.__publikePedido) {
+    pedido = w.__publikePedido;
+    w.__publikePedido = null;
+    avisar();
+  }
+}
+
 async function instalarAgora() {
+  lerPedidoAntecipado();
   const p = pedido;
   if (!p) {
     window.dispatchEvent(new Event(EVENTO_ABRIR));
@@ -177,10 +191,13 @@ export function ConviteInstalar() {
       setAberto("pedido");
     };
     window.addEventListener("beforeinstallprompt", aoPedir);
+    window.addEventListener(EVENTO_PEDIDO, lerPedidoAntecipado);
+    lerPedidoAntecipado(); // chegou antes desta tela ficar pronta
     window.addEventListener("appinstalled", aoInstalar);
     window.addEventListener(EVENTO_ABRIR, aoAbrir);
     return () => {
       window.removeEventListener("beforeinstallprompt", aoPedir);
+      window.removeEventListener(EVENTO_PEDIDO, lerPedidoAntecipado);
       window.removeEventListener("appinstalled", aoInstalar);
       window.removeEventListener(EVENTO_ABRIR, aoAbrir);
     };

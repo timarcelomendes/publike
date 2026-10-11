@@ -6,6 +6,7 @@ import { Cabecalho } from "@/components/cabecalho";
 import { ConviteInstalar } from "@/components/instalar-app";
 import { AvisoDemo, BarraInferior, Rodape } from "@/components/navegacao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
+import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import "./globals.css";
 
 // Fontes da interface (Design System), servidas pelo próprio site.
@@ -55,6 +56,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${figtree.variable} ${bricolage.variable}`}>
+      <head>
+        {/* guarda o "pode instalar" do navegador, que chega antes do React (instalar-app.tsx) */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_PEDIDO }} />
+      </head>
       <body className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <a
           href="#conteudo"
