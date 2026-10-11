@@ -5,6 +5,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { ehModerador, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { ehAdminLocal } from "@/lib/supabase/admin";
 import { BotaoEntrarCabecalho, BotaoPublicar, BotaoPublicarCabecalho } from "./botao-publicar";
+import { BotaoInstalarApp } from "./instalar-app";
 import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
 import { Container, Logo } from "./ui/basicos";
@@ -31,6 +32,7 @@ export function Cabecalho() {
           <LinkNav href="/como-funciona">Como funciona</LinkNav>
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <BotaoInstalarApp variante="cabecalho" />
           {/* No celular, "Publicar" fica na barra de baixo */}
           <Suspense fallback={<BotaoPublicar />}>
             <BotaoPublicarCabecalho />

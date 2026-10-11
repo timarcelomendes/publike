@@ -75,16 +75,72 @@ function dispensar() {
   }
 }
 
-/** Botão "Instalar o app" (rodapé): abre o convite com o jeito de instalar deste aparelho. */
-export function BotaoInstalarApp({ className }: { className?: string }) {
+/**
+ * Instalar agora: onde o navegador deixa (Android, Chrome e Edge no computador), abre
+ * direto a janela de instalação; nos outros (iPhone, Safari), abre o passo a passo.
+ */
+async function instalarAgora() {
+  const p = pedido;
+  if (!p) {
+    window.dispatchEvent(new Event(EVENTO_ABRIR));
+    return;
+  }
+  await p.prompt();
+  await p.userChoice.catch(() => undefined);
+  pedido = null; // o navegador só deixa usar uma vez
+  avisar();
+}
+
+/**
+ * Botão "Instalar app": no cabeçalho (ícone no celular, texto no computador), no menu
+ * da conta e no rodapé. Some dentro do app instalado.
+ */
+export function BotaoInstalarApp({
+  variante = "link",
+  className,
+  aoClicar,
+}: {
+  variante?: "link" | "cabecalho" | "menu";
+  className?: string;
+  aoClicar?: () => void;
+}) {
   const instalado = useSyncExternalStore(
     assinar,
     () => emTelaCheia(),
     () => false,
   );
   if (instalado) return null;
+  const clicar = () => {
+    aoClicar?.();
+    void instalarAgora();
+  };
+  if (variante === "cabecalho") {
+    return (
+      <button
+        type="button"
+        onClick={clicar}
+        title="Instalar o app do Publike"
+        className="inline-flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-md px-2 text-label text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink lg:px-2.5"
+      >
+        <Download aria-hidden className="size-[18px] shrink-0" />
+        <span className="sr-only lg:not-sr-only">Instalar app</span>
+      </button>
+    );
+  }
+  if (variante === "menu") {
+    return (
+      <button
+        type="button"
+        onClick={clicar}
+        className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-body-sm text-ink hover:bg-surface-300"
+      >
+        <Download aria-hidden className="size-[18px] text-ink-muted" />
+        Instalar o app
+      </button>
+    );
+  }
   return (
-    <button type="button" onClick={() => window.dispatchEvent(new Event(EVENTO_ABRIR))} className={className}>
+    <button type="button" onClick={clicar} className={className}>
       Instalar o app
     </button>
   );
@@ -151,13 +207,9 @@ export function ConviteInstalar() {
   }
 
   async function instalar() {
-    const p = pedido;
-    if (!p) return;
-    await p.prompt();
-    const { outcome } = await p.userChoice;
-    pedido = null; // o navegador só deixa usar uma vez
-    avisar();
-    if (outcome === "dismissed") dispensar();
+    const tinha = pedido;
+    await instalarAgora();
+    if (tinha && !emTelaCheia() && aberto === "auto") dispensar();
     setAberto(null);
   }
 

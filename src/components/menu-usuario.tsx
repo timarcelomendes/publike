@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { sair } from "@/lib/acoes/perfil";
+import { BotaoInstalarApp } from "./instalar-app";
 import { Avatar } from "./ui/basicos";
 
 function Item({ href, icone: Icone, children }: { href: string; icone: LucideIcon; children: ReactNode }) {
@@ -110,6 +111,9 @@ export function MenuUsuario({
               </Item>
             )}
           </nav>
+          <div className="mt-1 border-t border-line pt-1">
+            <BotaoInstalarApp variante="menu" aoClicar={() => setAberto(false)} />
+          </div>
           <form action={sair} className="mt-1 border-t border-line pt-1">
             <button
               type="submit"
