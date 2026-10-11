@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Suspense } from "react";
 import { Assistente } from "@/components/assistente/assistente";
 import { Cabecalho } from "@/components/cabecalho";
 import { ConviteInstalar } from "@/components/instalar-app";
@@ -69,7 +70,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Rodape />
         <BarraInferior />
         <Assistente />
-        <ConviteInstalar />
+        {/* lê o endereço da página: no build, precisa estar num Suspense */}
+        <Suspense fallback={null}>
+          <ConviteInstalar />
+        </Suspense>
       </body>
     </html>
   );
