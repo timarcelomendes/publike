@@ -489,6 +489,14 @@ export type Database = {
         Args: { p_outro: string; p_bloquear: boolean };
         Returns: undefined;
       };
+      minha_intencao: {
+        Args: Record<PropertyKey, never>;
+        Returns: string | null;
+      };
+      salvar_intencao: {
+        Args: { p_intencao: string };
+        Returns: undefined;
+      };
       meus_bloqueios: {
         Args: Record<PropertyKey, never>;
         Returns: { outro_id: string; eu_bloqueei: boolean; me_bloqueou: boolean }[];

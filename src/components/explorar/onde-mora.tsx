@@ -429,16 +429,59 @@ export function PerguntaIntencao({
   aoEscolher?: (i: Intencao) => void;
 }) {
   const [escolhida, setEscolhida] = useState<Intencao | null>(intencao);
+  // com uma resposta, mostra só ela e o "Mudar"; as quatro opções voltam ao tocar nele
+  const [mudando, setMudando] = useState(false);
   const [pendente, iniciar] = useTransition();
   const titulo = useId();
-  const convite = escolhida ? CONVITE[escolhida] : undefined;
+  const convite = escolhida && !mudando ? CONVITE[escolhida] : undefined;
+  const atual = INTENCOES.find((op) => op.valor === escolhida);
 
   function escolher(i: Intencao) {
     setEscolhida(i);
+    setMudando(false);
     iniciar(async () => {
       const r = await salvarIntencao(i);
       if (r.ok) aoEscolher?.(i);
     });
+  }
+
+  if (atual && !mudando) {
+    const Icone = ICONES_INTENCAO[atual.valor];
+    return (
+      <div className="flex flex-col gap-2">
+        <p id={titulo} className="text-label">
+          O que você quer fazer no Publike?
+        </p>
+        <div
+          role="group"
+          aria-labelledby={titulo}
+          className="flex min-h-14 items-center gap-3 rounded-md border border-ink bg-surface-300 py-2 pl-3 pr-2"
+        >
+          <Icone aria-hidden className="size-5 shrink-0 text-terra-text" />
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-label">{atual.nome}</span>
+            <span className="text-body-sm text-ink-muted">{atual.ajuda}</span>
+          </span>
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => setMudando(true)}
+            aria-label={`Mudar: ${atual.nome}`}
+            className={`${classesBotao("secundario", "sm")} shrink-0`}
+          >
+            Mudar
+          </button>
+        </div>
+        {convite && (
+          <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-body-sm">{convite.texto}</p>
+            <Link href={convite.href} className={`${classesBotao("secundario", "sm")} shrink-0`}>
+              {convite.botao}
+            </Link>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -471,6 +514,15 @@ export function PerguntaIntencao({
           );
         })}
       </div>
+      {mudando && atual && (
+        <button
+          type="button"
+          onClick={() => setMudando(false)}
+          className="self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
+        >
+          Manter “{atual.nome}”
+        </button>
+      )}
       {convite && (
         <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-body-sm">{convite.texto}</p>

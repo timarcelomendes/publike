@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
@@ -8,6 +9,7 @@ import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
+import { COOKIE_INTENCAO } from "@/lib/intencao";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -97,6 +99,7 @@ export async function excluirConta(_anterior: EstadoForm, formData: FormData): P
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível excluir agora. Tente de novo.") };
 
   await supabase.auth.signOut().catch(() => undefined);
+  (await cookies()).delete(COOKIE_INTENCAO);
   revalidatePath("/", "layout");
   redirect("/?conta=excluida");
 }
@@ -106,6 +109,8 @@ export async function sair() {
     const supabase = await criarClienteServidor();
     await supabase.auth.signOut();
   }
+  // a resposta fica na conta; sem login, a pergunta volta
+  (await cookies()).delete(COOKIE_INTENCAO);
   revalidatePath("/", "layout");
   redirect("/");
 }
