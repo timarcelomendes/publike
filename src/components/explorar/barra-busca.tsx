@@ -12,16 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import {
-  useEffect,
-  useEffectEvent,
-  useId,
-  useRef,
-  useState,
-  useTransition,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { REGIAO } from "@/lib/config";
 import { CATEGORIAS, REGIMES } from "@/lib/constantes";
 import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
@@ -29,7 +20,7 @@ import { hrefFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
-import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
+import { BotaoOndeMora, botaoLugar, PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
 
 // Três jeitos de olhar, cada um com a sua cara:
 //   O QUE (tipo) ...... abas sublinhadas, em cima da busca
@@ -63,9 +54,6 @@ function useIrPara(filtros: Filtros) {
     });
   return [ir, pendente] as const;
 }
-
-/** Já pedimos a localização nesta visita (não pede de novo a cada página). */
-const LOCALIZACAO_PEDIDA = "publike_localizacao_pedida";
 
 const AVISOS_GPS = {
   sem: "Seu navegador não informa a localização.",
@@ -221,24 +209,11 @@ export function BarraBusca({
 
   const perto = filtros.origem === "gps";
 
-  // Ao entrar, pede a localização uma vez por visita, para mostrar os anúncios
-  // a partir de onde a pessoa está. Não pede se ela já escolheu um local (casa,
-  // bairro ou área do mapa): dá para trocar depois em "Onde você mora?",
-  // "Perto de mim" ou no mapa.
-  const irAoEntrar = useEffectEvent((ponto: { lat: number; lng: number }) => irParaPosicao(ponto, true));
-  // (nem quando a pessoa veio de "Informe seu CEP": ela quer dizer onde mora)
-  const podePedir = !local && filtros.origem === "centro" && !abrirOndeMora;
-  useEffect(() => {
-    if (!podePedir) return;
-    try {
-      if (window.sessionStorage.getItem(LOCALIZACAO_PEDIDA)) return;
-      window.sessionStorage.setItem(LOCALIZACAO_PEDIDA, "1");
-    } catch {
-      // sem armazenamento: pede só desta vez
-    }
-    // negou ou está longe: fica tudo como está, sem aviso (ninguém tocou em nada)
-    pedirPosicao(irAoEntrar, () => {});
-  }, [podePedir]);
+  // Quem chega sem dizer onde mora (nem casa, nem bairro, nem "Perto de mim") vê a
+  // pergunta de um passo só: o CEP de casa, ou a localização, ou o bairro. Ela fica no
+  // lugar dos botões de lugar até a pessoa responder ou tocar em "Agora não".
+  const [adiada] = usePerguntaAdiada();
+  const perguntar = !local && filtros.origem === "centro" && !ondeMora && !adiada;
 
   function alternarPerto() {
     // tocar de novo desliga: volta a contar do centro (ou da casa)
@@ -282,10 +257,22 @@ export function BarraBusca({
           })}
         </div>
 
-        <div role="group" aria-label="Onde" className="order-3 flex min-w-0 items-center gap-2 sm:order-2 sm:mb-1.5">
-          <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
-          <BotaoPerto ativo={perto} onClick={alternarPerto} />
-        </div>
+        {perguntar ? (
+          <div className="order-3 sm:order-5 sm:basis-full">
+            <PerguntaOndeMora
+              usarLocalizacao={pertoDeMim}
+              escolherBairro={() => setOndeMora(true)}
+              aoSalvar={() => {
+                if (filtros.origem !== "centro") ir({ origem: "centro" }, true);
+              }}
+            />
+          </div>
+        ) : (
+          <div role="group" aria-label="Onde" className="order-3 flex min-w-0 items-center gap-2 sm:order-2 sm:mb-1.5">
+            <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
+            <BotaoPerto ativo={perto} onClick={alternarPerto} />
+          </div>
+        )}
 
         {ondeMora && (
           <div className="order-4 sm:order-3 sm:basis-full">
@@ -349,7 +336,7 @@ export function BarraBusca({
         </form>
 
         {avisoGps && (
-          <p role="status" className="order-5 text-body-sm text-terra-text sm:basis-full">
+          <p role="status" className="order-5 text-body-sm text-terra-text sm:order-6 sm:basis-full">
             {avisoGps}
           </p>
         )}

@@ -13,8 +13,10 @@ const TELA_GRANDE = "(min-width: 1024px)";
  *   grade ........ cartões pequenos, muitos por linha (só título, lugar e valor)
  *   blocos ....... os cartões completos, sem mapa
  *   mapa ......... só o mapa, grande
- *   blocos-mapa .. cartões e mapa juntos (lado a lado no computador; no celular, o mapa em cima)
- * A escolha fica guardada neste navegador.
+ *   blocos-mapa .. cartões e mapa lado a lado (só no computador)
+ * A escolha fica guardada neste navegador. No celular só há Blocos e Mapa: lista e grade
+ * apertam demais os cartões numa tela pequena, e o mapa em cima dos blocos empurra a lista
+ * para baixo. Quem escolheu outra no computador vê Blocos no celular.
  */
 export type Visao = "lista" | "grade" | "blocos" | "mapa" | "blocos-mapa";
 
@@ -25,6 +27,9 @@ const VISOES: { valor: Visao; nome: string; icone: LucideIcon }[] = [
   { valor: "mapa", nome: "Mapa", icone: IconeMapa },
   { valor: "blocos-mapa", nome: "Blocos + mapa", icone: Columns2 },
 ];
+
+/** As visões do celular (tela menor que a do computador). */
+const VISOES_CELULAR: Visao[] = ["blocos", "mapa"];
 
 const CHAVE = "publike_visao";
 const EVENTO = "publike-visao";
@@ -67,19 +72,23 @@ function useVisao(): Visao {
         window.removeEventListener("storage", avisar);
       };
     },
-    () => escolhidaAgora ?? lerGuardada() ?? (window.matchMedia(TELA_GRANDE).matches ? "blocos-mapa" : "blocos"),
+    () => {
+      const grande = window.matchMedia(TELA_GRANDE).matches;
+      const v = escolhidaAgora ?? lerGuardada() ?? (grande ? "blocos-mapa" : "blocos");
+      return grande || VISOES_CELULAR.includes(v) ? v : "blocos";
+    },
     () => "blocos",
   );
 }
 
-function SeletorVisao({ visao }: { visao: Visao }) {
+function SeletorVisao({ visao, celular = false }: { visao: Visao; celular?: boolean }) {
   return (
     <div
       role="radiogroup"
       aria-label="Como ver"
       className="inline-flex shrink-0 rounded-pill border border-line-strong bg-surface-200 p-0.5"
     >
-      {VISOES.map(({ valor, nome, icone: Icone }) => {
+      {VISOES.filter((v) => !celular || VISOES_CELULAR.includes(v.valor)).map(({ valor, nome, icone: Icone }) => {
         const ativo = valor === visao;
         return (
           <button
@@ -94,7 +103,8 @@ function SeletorVisao({ visao }: { visao: Visao }) {
             }`}
           >
             <Icone aria-hidden className="size-4" />
-            <span className={ativo ? "hidden xl:inline" : "sr-only"}>{nome}</span>
+            {/* no celular são só duas: os nomes cabem e explicam melhor que o ícone */}
+            <span className={celular ? "" : ativo ? "hidden xl:inline" : "sr-only"}>{nome}</span>
           </button>
         );
       })}
@@ -133,7 +143,7 @@ export function VisaoExplorar({
       <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:gap-x-6">
         <div className="col-start-1 row-start-1">{titulo}</div>
         <div className="col-start-2 row-start-1 lg:hidden">
-          <SeletorVisao visao={visao} />
+          <SeletorVisao visao={visao} celular />
         </div>
         <div className="col-span-2 row-start-2 lg:col-span-1">{subtitulo}</div>
         {/* a faixa dos filtros tem 4px de folga (contorno do foco): -mb-1 alinha com a linha de baixo */}

@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronDown, House, X } from "lucide-react";
-import { useId, useState, useTransition, type FormEvent } from "react";
+import { ChevronDown, House, LocateFixed, X } from "lucide-react";
+import { useId, useState, useSyncExternalStore, useTransition, type FormEvent } from "react";
 import { buscarCep } from "@/lib/acoes/cep";
 import { esquecerLocal, salvarLocal } from "@/lib/acoes/local";
 import { formatarCep, limparCep } from "@/lib/cep";
@@ -223,6 +223,144 @@ export function PainelOndeMora({
           Esquecer onde moro
         </button>
       )}
+    </form>
+  );
+}
+
+const ADIADO = "publike_onde_mora_depois";
+const EVENTO_ADIADO = "publike-onde-mora-depois";
+
+/** A pessoa tocou em "Agora não" nesta visita: a pergunta some até ela fechar o navegador. */
+export function usePerguntaAdiada(): [boolean, () => void] {
+  const adiada = useSyncExternalStore(
+    (avisar) => {
+      window.addEventListener(EVENTO_ADIADO, avisar);
+      return () => window.removeEventListener(EVENTO_ADIADO, avisar);
+    },
+    () => {
+      try {
+        return window.sessionStorage.getItem(ADIADO) === "1";
+      } catch {
+        return false;
+      }
+    },
+    () => false,
+  );
+  const adiar = () => {
+    try {
+      window.sessionStorage.setItem(ADIADO, "1");
+    } catch {
+      // sem armazenamento: some só até recarregar
+    }
+    window.dispatchEvent(new Event(EVENTO_ADIADO));
+  };
+  return [adiada, adiar];
+}
+
+/**
+ * A pergunta de quem chega sem dizer onde mora: um campo de CEP e um botão. Um passo só,
+ * no lugar dos botões "Onde você mora?" e "Perto de mim" e do pedido de localização do
+ * navegador. A localização e o bairro (para quem não sabe o CEP) ficam como links.
+ */
+export function PerguntaOndeMora({
+  usarLocalizacao,
+  escolherBairro,
+  aoSalvar,
+}: {
+  usarLocalizacao: () => void;
+  escolherBairro: () => void;
+  aoSalvar?: () => void;
+}) {
+  const [cep, setCep] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [pendente, iniciar] = useTransition();
+  const [, adiar] = usePerguntaAdiada();
+  const campo = useId();
+
+  function salvar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (limparCep(cep).length !== 8) return setErro("Digite os 8 números do CEP da sua casa.");
+    setErro(null);
+    iniciar(async () => {
+      // a cidade e o bairro saem do próprio CEP
+      const r = await salvarLocal("Goiânia", "", limparCep(cep));
+      if (!r.ok) return setErro(r.erro);
+      aoSalvar?.();
+    });
+  }
+
+  const link = "text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60";
+
+  return (
+    <form
+      onSubmit={salvar}
+      aria-labelledby={`${campo}-titulo`}
+      className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card sm:p-5 lg:flex-row lg:items-center lg:gap-6"
+    >
+      <div className="flex items-start gap-3 lg:flex-1">
+        <span
+          aria-hidden
+          className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft text-terra-text"
+        >
+          <House className="size-5" />
+        </span>
+        <div>
+          <h2 id={`${campo}-titulo`} className="text-label">
+            Onde você mora?
+          </h2>
+          <p className="mt-0.5 text-body-sm text-ink-muted">
+            Com o CEP de casa, mostramos primeiro o que é perto e quanto tempo leva de ônibus. Ninguém vê o seu CEP.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 lg:w-[26rem]">
+        <div className="flex gap-2">
+          <label htmlFor={`${campo}-cep`} className="sr-only">
+            CEP da sua casa
+          </label>
+          <input
+            id={`${campo}-cep`}
+            value={cep}
+            onChange={(e) => {
+              setCep(formatarCep(e.target.value));
+              if (erro) setErro(null);
+            }}
+            inputMode="numeric"
+            autoComplete="postal-code"
+            placeholder="CEP: 74000-000"
+            maxLength={9}
+            aria-invalid={Boolean(erro)}
+            aria-describedby={erro ? `${campo}-erro` : undefined}
+            className={`${classesEntrada} min-w-0 flex-1`}
+          />
+          <button type="submit" disabled={pendente} className={`${classesBotao("primario", "md")} shrink-0`}>
+            {pendente ? "Procurando…" : "Ver o que é perto"}
+          </button>
+        </div>
+        {erro && (
+          <div id={`${campo}-erro`}>
+            <MensagemErro>{erro}</MensagemErro>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <button
+            type="button"
+            onClick={usarLocalizacao}
+            disabled={pendente}
+            className={`${link} inline-flex items-center gap-1`}
+          >
+            <LocateFixed aria-hidden className="size-3.5" />
+            Usar minha localização
+          </button>
+          <button type="button" onClick={escolherBairro} disabled={pendente} className={link}>
+            Não sei o CEP
+          </button>
+          <button type="button" onClick={adiar} disabled={pendente} className={link}>
+            Agora não
+          </button>
+        </div>
+      </div>
     </form>
   );
 }

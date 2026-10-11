@@ -450,7 +450,7 @@ export function MapaAnuncios({
       )}
       {falhou && (
         <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md bg-surface-200 p-4 text-center text-body-sm text-ink-muted shadow-card">
-          Não foi possível carregar o mapa agora. A lista continua funcionando: escolha Lista, Grade ou Blocos.
+          Não foi possível carregar o mapa agora. A lista continua funcionando: escolha Blocos.
         </p>
       )}
       {/* A legenda some enquanto os créditos do mapa estão abertos (botão "i"), para não cobrir o texto. */}
