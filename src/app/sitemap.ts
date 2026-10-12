@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { CATEGORIAS } from "@/lib/constantes";
+import { CONTEUDOS } from "@/lib/conteudos";
 import { caminhoDaBusca, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { criarClientePublico } from "@/lib/supabase/servidor";
@@ -43,6 +44,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/como-funciona`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/missao`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/privacidade`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE_URL}/conteudos`, changeFrequency: "weekly", priority: 0.6 },
+    ...CONTEUDOS.map((c) => ({
+      url: `${SITE_URL}/conteudos/${c.slug}`,
+      lastModified: c.publicado,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
   ];
   if (MODO_DEMO) return paginas;
 

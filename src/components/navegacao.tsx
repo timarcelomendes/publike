@@ -37,6 +37,9 @@ export function Rodape() {
           <Link href="/missao" className={link}>
             Nossa missão
           </Link>
+          <Link href="/conteudos" className={link}>
+            Conteúdos sobre trabalho
+          </Link>
           <Link href="/?tipo=servico" className={link}>
             Serviços
           </Link>
