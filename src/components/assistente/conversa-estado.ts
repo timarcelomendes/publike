@@ -45,3 +45,51 @@ export function useConversa() {
     () => VAZIA,
   );
 }
+
+// Perguntas que vêm de fora da conversa: a busca da página de ajuda, quando não
+// acha a resposta, manda o que a pessoa digitou para a conversa que está na tela.
+
+let naTela = 0;
+let pedida: string | null = null;
+const ouvintesDaTela = new Set<() => void>();
+
+function avisarTela() {
+  for (const o of ouvintesDaTela) o();
+}
+
+/** A conversa avisa que está na tela e passa a receber as perguntas mandadas (devolve a função que desliga). */
+export function conversaNaTela(aoPedir: () => void) {
+  naTela++;
+  ouvintesDaTela.add(aoPedir);
+  avisarTela();
+  return () => {
+    naTela--;
+    ouvintesDaTela.delete(aoPedir);
+    avisarTela();
+  };
+}
+
+/** Tem uma conversa na tela para receber a pergunta? */
+export function useTemConversaNaTela() {
+  return useSyncExternalStore(
+    (avisar) => {
+      ouvintesDaTela.add(avisar);
+      return () => ouvintesDaTela.delete(avisar);
+    },
+    () => naTela > 0,
+    () => false,
+  );
+}
+
+/** Manda uma pergunta para a conversa da tela, como se a pessoa tivesse escrito lá. */
+export function perguntarNaConversa(texto: string) {
+  pedida = texto;
+  avisarTela();
+}
+
+/** A conversa pega a pergunta mandada (uma vez só). */
+export function tirarPerguntaPedida() {
+  const p = pedida;
+  pedida = null;
+  return p;
+}

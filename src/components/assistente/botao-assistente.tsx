@@ -41,12 +41,34 @@ function useAreaVisivel(ativo: boolean) {
   return area;
 }
 
-/** Botão "Ajuda" no canto da tela, que abre a conversa com o assistente. */
+/**
+ * No celular, o botão mostra "Tirar dúvidas" no topo da página e vira só o
+ * ícone depois que a pessoa rola (assim tapa menos os cartões); volta a mostrar
+ * o texto quando ela sobe de novo. No computador, o texto fica sempre.
+ */
+function useSoIcone() {
+  const [soIcone, setSoIcone] = useState(false);
+  useEffect(() => {
+    const celular = window.matchMedia("(max-width: 639px)");
+    const medir = () => setSoIcone(celular.matches && window.scrollY > 120);
+    medir();
+    window.addEventListener("scroll", medir, { passive: true });
+    celular.addEventListener("change", medir);
+    return () => {
+      window.removeEventListener("scroll", medir);
+      celular.removeEventListener("change", medir);
+    };
+  }, []);
+  return soIcone;
+}
+
+/** Botão "Tirar dúvidas" no canto da tela, que abre a conversa com o assistente. */
 export function BotaoAssistente() {
   const caminho = usePathname() ?? "/";
   const [aberto, setAberto] = useState(false);
   const botao = useRef<HTMLButtonElement>(null);
   const area = useAreaVisivel(aberto);
+  const soIcone = useSoIcone();
   const conversa = useConversa();
 
   function abrir() {
@@ -106,11 +128,19 @@ export function BotaoAssistente() {
           type="button"
           onClick={abrir}
           aria-haspopup="dialog"
-          className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex size-12 items-center justify-center gap-2 rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-transform hover:scale-[1.03] sm:size-auto sm:min-h-12 sm:px-4 md:right-6 md:bottom-6"
+          className={`fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
+            soIcone ? "px-3.5" : "px-4"
+          }`}
         >
-          <MessageCircleQuestion aria-hidden className="size-5" />
-          {/* no celular, só o ícone (tapa menos os cartões) */}
-          <span className="sr-only sm:not-sr-only">Ajuda</span>
+          <MessageCircleQuestion aria-hidden className="size-5 shrink-0" />
+          {/* recolhido, o texto some da tela mas continua sendo o nome do botão */}
+          <span
+            className={`overflow-hidden whitespace-nowrap transition-[max-width,margin-left,opacity] duration-200 motion-reduce:transition-none ${
+              soIcone ? "ml-0 max-w-0 opacity-0" : "ml-2 max-w-36 opacity-100"
+            }`}
+          >
+            Tirar dúvidas
+          </span>
         </button>
       )}
       {aberto && (
@@ -136,7 +166,7 @@ export function BotaoAssistente() {
                   <p className="font-display text-label leading-tight">Assistente do Publike</p>
                   <p className="flex items-center gap-1.5 text-body-sm text-ink-muted">
                     <span aria-hidden className="size-2 rounded-pill bg-cerrado" />
-                    Responde na hora
+                    Tira dúvidas na hora
                   </p>
                 </div>
                 {conversa.length > 0 && (

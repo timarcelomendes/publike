@@ -19,6 +19,9 @@ export const LIMITES_CHAT = { visitante: 15, conta: 40 } as const;
 export const TAMANHO_MENSAGEM_CHAT = 600;
 export const HISTORICO_CHAT = 12;
 
+/** Onde fica a conversa na página de ajuda (a busca da ajuda leva até ela). */
+export const ID_CONVERSA_AJUDA = "conversa-ajuda";
+
 export const PERGUNTAS_INICIAIS = [
   "Como funciona o match?",
   "É grátis mesmo?",

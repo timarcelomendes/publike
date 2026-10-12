@@ -2,11 +2,12 @@ import { MessageSquareText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Conversa } from "@/components/assistente/conversa";
+import { AvatarAssistente, Conversa } from "@/components/assistente/conversa";
 import { ListaAjuda } from "@/components/assistente/lista-ajuda";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { TEMAS_AJUDA } from "@/lib/ajuda";
+import { ID_CONVERSA_AJUDA } from "@/lib/assistente";
 import { assistenteDisponivel } from "@/lib/servidor/assistente";
 
 export const metadata: Metadata = {
@@ -22,8 +23,10 @@ export default function Ajuda() {
         <Container className="py-10 sm:py-14">
           <h1 className="text-h1 sm:text-display">Como podemos ajudar?</h1>
           <p className="mt-3 max-w-2xl text-body-lg text-ink-muted">
-            As dúvidas mais comuns sobre achar trabalho, contratar e cuidar da conta no Publike. Não achou? Pergunte ao
-            assistente ou fale com a equipe.
+            As dúvidas mais comuns sobre achar trabalho, contratar e cuidar da conta no Publike.{" "}
+            <Suspense fallback="Não achou a sua? Fale com a equipe.">
+              <NaoAchou />
+            </Suspense>
           </p>
           <nav aria-label="Temas" className="mt-6 flex flex-wrap gap-2">
             {TEMAS_AJUDA.map((t) => (
@@ -81,20 +84,35 @@ export default function Ajuda() {
   );
 }
 
+/** O que fazer quando a pergunta não está na lista: o assistente, quando está ligado, ou a equipe. */
+async function NaoAchou() {
+  return (await assistenteDisponivel())
+    ? "Não achou a sua? Pergunte ao assistente, que responde na hora, ou fale com a equipe."
+    : "Não achou a sua? Fale com a equipe.";
+}
+
 async function ConversaSeDisponivel() {
   if (!(await assistenteDisponivel())) return null;
   return (
     <section
+      id={ID_CONVERSA_AJUDA}
       aria-labelledby="titulo-assistente"
-      className="flex h-[32rem] flex-col overflow-hidden rounded-lg border border-line bg-surface-100 shadow-card"
+      className="flex h-[32rem] scroll-mt-24 flex-col overflow-hidden rounded-lg border border-line bg-surface-100 shadow-card"
     >
-      <div className="border-b border-line bg-surface-200 px-4 py-3">
-        <h2 id="titulo-assistente" className="font-display text-label">
-          Pergunte ao assistente
-        </h2>
-        <p className="text-body-sm text-ink-muted">Tira dúvidas na hora. Com conta, procura vagas e empresas.</p>
+      <div className="flex items-center gap-3 border-b border-line bg-surface-200 px-4 py-3">
+        <AvatarAssistente />
+        <div className="min-w-0">
+          <h2 id="titulo-assistente" className="font-display text-label">
+            Pergunte ao assistente
+          </h2>
+          <p className="text-body-sm text-ink-muted">
+            Ele responde suas dúvidas e encontra a resposta na hora. Com conta, também procura vagas, serviços e
+            empresas.
+          </p>
+        </div>
       </div>
-      <Conversa className="flex-1" />
+      {/* o título já explica o que ele faz: a conversa começa direto nas perguntas comuns */}
+      <Conversa boasVindas={false} className="flex-1" />
     </section>
   );
 }

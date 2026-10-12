@@ -15,11 +15,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { perguntarAoAssistente } from "@/lib/acoes/assistente";
 import { PERGUNTAS_INICIAIS, TAMANHO_MENSAGEM_CHAT, type CartaoChat } from "@/lib/assistente";
 import { Simbolo } from "../ui/basicos";
-import { mudarConversa, useConversa, type ItemConversa } from "./conversa-estado";
+import { conversaNaTela, mudarConversa, tirarPerguntaPedida, useConversa, type ItemConversa } from "./conversa-estado";
 
 const ICONES_PERGUNTAS: LucideIcon[] = [HeartHandshake, BadgeCheck, MapPin, Building2];
 
@@ -121,10 +130,13 @@ function Mensagem({ m, caminho }: { m: ItemConversa; caminho: string }) {
 /** A conversa com o assistente (no botão flutuante e na página de ajuda). */
 export function Conversa({
   autoFoco = false,
+  boasVindas = true,
   className = "",
 }: {
   /** põe o cursor na caixa de texto ao abrir (só no computador: no celular o teclado tapa a tela) */
   autoFoco?: boolean;
+  /** o "Oi!" que explica o que o assistente faz (na página de ajuda, o título da seção já explica) */
+  boasVindas?: boolean;
   className?: string;
 }) {
   const conversa = useConversa();
@@ -134,6 +146,17 @@ export function Conversa({
   const [pensando, iniciar] = useTransition();
   const lista = useRef<HTMLDivElement>(null);
   const campo = useRef<HTMLTextAreaElement>(null);
+  const idPerguntas = useId();
+
+  // pergunta mandada de fora (a busca da página de ajuda): pergunta na hora, ou
+  // deixa escrita na caixa se o assistente ainda está respondendo a anterior
+  const aoPedir = useEffectEvent(() => {
+    const p = tirarPerguntaPedida();
+    if (!p) return;
+    if (pensando) setTexto(p);
+    else perguntar(p);
+  });
+  useEffect(() => conversaNaTela(() => aoPedir()), []);
 
   useEffect(() => {
     if (autoFoco && window.matchMedia("(pointer: fine)").matches) campo.current?.focus();
@@ -187,40 +210,48 @@ export function Conversa({
         aria-label="Conversa com o assistente"
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-5"
       >
-        <div className="flex flex-col items-center gap-2 px-2 pb-1 text-center">
-          <AvatarAssistente grande />
-          <p className="font-display text-h3">Oi! Como posso ajudar?</p>
-          <p className="max-w-xs text-body-sm text-ink-muted">
-            Tiro dúvidas sobre o Publike. Se você entrar na sua conta, também procuro vagas e empresas para você.
-          </p>
-          {caminho !== "/ajuda" && (
-            <Link href="/ajuda" className="text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink">
-              Ver todas as perguntas da ajuda
-            </Link>
-          )}
-        </div>
+        {boasVindas && (
+          <div className="flex flex-col items-center gap-2 px-2 pb-1 text-center">
+            <AvatarAssistente grande />
+            <p className="font-display text-h3">Oi! Qual é a sua dúvida?</p>
+            <p className="max-w-xs text-body-sm text-ink-muted">
+              Pergunte do seu jeito: respondo suas dúvidas sobre o Publike e encontro a resposta na hora. Se você
+              entrar, também procuro vagas, serviços e empresas para você.
+            </p>
+            {caminho !== "/ajuda" && (
+              <Link href="/ajuda" className="text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink">
+                Ver todas as perguntas da ajuda
+              </Link>
+            )}
+          </div>
+        )}
         {conversa.length === 0 && (
-          <ul className="flex flex-col gap-2" aria-label="Perguntas comuns">
-            {PERGUNTAS_INICIAIS.map((p, i) => {
-              const Icone = ICONES_PERGUNTAS[i] ?? MessageSquareText;
-              return (
-                <li key={p}>
-                  <button
-                    type="button"
-                    onClick={() => perguntar(p)}
-                    className="group flex min-h-12 w-full items-center gap-3 rounded-lg border border-line bg-surface-200 px-3 text-left text-label shadow-card transition-colors hover:border-line-strong"
-                  >
-                    <Icone aria-hidden className="size-[18px] shrink-0 text-terra-text" />
-                    <span className="flex-1">{p}</span>
-                    <ChevronRight
-                      aria-hidden
-                      className="size-4 text-ink-muted transition-transform group-hover:translate-x-0.5"
-                    />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="flex flex-col gap-2">
+            <p id={idPerguntas} className="px-1 text-caption text-ink-muted uppercase">
+              Perguntas comuns
+            </p>
+            <ul className="flex flex-col gap-2" aria-labelledby={idPerguntas}>
+              {PERGUNTAS_INICIAIS.map((p, i) => {
+                const Icone = ICONES_PERGUNTAS[i] ?? MessageSquareText;
+                return (
+                  <li key={p}>
+                    <button
+                      type="button"
+                      onClick={() => perguntar(p)}
+                      className="group flex min-h-12 w-full items-center gap-3 rounded-lg border border-line bg-surface-200 px-3 text-left text-label shadow-card transition-colors hover:border-line-strong"
+                    >
+                      <Icone aria-hidden className="size-[18px] shrink-0 text-terra-text" />
+                      <span className="flex-1">{p}</span>
+                      <ChevronRight
+                        aria-hidden
+                        className="size-4 text-ink-muted transition-transform group-hover:translate-x-0.5"
+                      />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
         {conversa.map((m, i) => (
           <Mensagem key={i} m={m} caminho={caminho} />
@@ -269,7 +300,7 @@ export function Conversa({
       >
         <div className="flex items-end gap-2 rounded-[1.5rem] border border-line-strong bg-surface-200 p-1.5 pl-4 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-focus">
           <label htmlFor="pergunta-assistente" className="sr-only">
-            Sua pergunta
+            Sua dúvida
           </label>
           {/* 16 px: com menos que isso, o iPhone dá zoom na página ao tocar na caixa */}
           <textarea
@@ -281,7 +312,7 @@ export function Conversa({
             rows={1}
             maxLength={TAMANHO_MENSAGEM_CHAT}
             enterKeyHint="send"
-            placeholder="Escreva sua pergunta…"
+            placeholder="Escreva sua dúvida…"
             className="max-h-32 min-h-10 flex-1 resize-none bg-transparent py-2 text-body text-ink outline-none [field-sizing:content] placeholder:text-ink-muted/80"
           />
           <button

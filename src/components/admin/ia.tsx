@@ -50,7 +50,7 @@ export function FormConfigIA({ config, modelos }: { config: ConfigSite; modelos:
         <Opcao
           nome="chat_ativo"
           rotulo="Assistente de ajuda"
-          ajuda="O botão “Ajuda” no canto do site e a conversa na página /ajuda. Sem conta, só tira dúvidas (até 15 perguntas por hora); com conta, também procura vagas e empresas (até 40 por hora)."
+          ajuda="O botão “Tirar dúvidas” no canto do site e a conversa na página /ajuda. Sem conta, só tira dúvidas (até 15 perguntas por hora); com conta, também procura vagas e empresas (até 40 por hora)."
           inicial={config.chat_ativo ?? true}
         />
         <Opcao
