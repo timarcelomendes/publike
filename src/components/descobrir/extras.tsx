@@ -11,14 +11,22 @@ import { classesEntrada, MensagemErro } from "../ui/campo";
 const IDEIAS = ["Cozinha, de manhã", "Vendas perto de casa", "Primeiro emprego", "Freelance no fim de semana"];
 
 /** "O que você procura?": a ordem do "Para você" leva isso em conta. */
-export function EditorProcuro({ inicial }: { inicial: string | null }) {
+export function EditorProcuro({
+  inicial,
+  comecarFechado = false,
+}: {
+  inicial: string | null;
+  /** sem resposta, começa como uma linha (painel); no Descobrir já abre o campo */
+  comecarFechado?: boolean;
+}) {
   const [texto, setTexto] = useState(inicial ?? "");
-  const [aberto, setAberto] = useState(!inicial);
+  const [aberto, setAberto] = useState(!inicial && !comecarFechado);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, iniciar] = useTransition();
   const id = useId();
 
   if (!aberto) {
+    const vazio = !texto.trim();
     return (
       <button
         type="button"
@@ -27,10 +35,12 @@ export function EditorProcuro({ inicial }: { inicial: string | null }) {
       >
         <Search aria-hidden className="size-5 shrink-0 text-ink-muted" />
         <span className="min-w-0 flex-1">
-          <span className="block text-body-sm text-ink-muted">Você procura</span>
-          <span className="block truncate text-label text-ink">{texto}</span>
+          <span className="block text-body-sm text-ink-muted">{vazio ? "O que você procura?" : "Você procura"}</span>
+          <span className={`block truncate text-label ${vazio ? "text-ink-muted" : "text-ink"}`}>
+            {vazio ? "Ex.: cozinha, de manhã, perto de casa" : texto}
+          </span>
         </span>
-        <span className="text-label text-terra-text">Mudar</span>
+        <span className="text-label text-terra-text">{vazio ? "Responder" : "Mudar"}</span>
       </button>
     );
   }

@@ -186,7 +186,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               <BotaoLink href={hrefFiltros(filtros, { meus: false })} scroll={false}>
                 Ver todos
               </BotaoLink>
-              <BotaoLink href="/painel">Meus anúncios</BotaoLink>
+              <BotaoLink href="/painel/anuncios">Meus anúncios</BotaoLink>
             </>
           ) : (
             <BotaoLink href="/entrar?next=%2F%3Fmeus%3D1">Entrar</BotaoLink>

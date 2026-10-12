@@ -82,7 +82,7 @@ export async function mudarStatusAnuncio(id: string, status: "ativo" | "pausado"
     return { ok: false, erro: "Pedido inválido." };
   }
   const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel" };
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel/anuncios" };
 
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.from("anuncios").update({ status }).eq("id", id).select("id");
@@ -98,7 +98,7 @@ export async function renovarAnuncio(id: string): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
   const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel" };
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel/anuncios" };
 
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("renovar_anuncio", { p_id: id });
@@ -112,7 +112,7 @@ export async function excluirAnuncio(id: string): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
   const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel" };
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel/anuncios" };
 
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.from("anuncios").delete().eq("id", id).select("id");
@@ -120,5 +120,5 @@ export async function excluirAnuncio(id: string): Promise<Resultado> {
   if (!data?.length) return { ok: false, erro: "Não encontramos esse anúncio entre os seus." };
 
   revalidatePath("/");
-  redirect("/painel?excluido=1");
+  redirect("/painel/anuncios?excluido=1");
 }

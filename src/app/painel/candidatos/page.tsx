@@ -10,6 +10,7 @@ import { AcoesInteressado } from "@/components/painel/acoes";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
+import { classesChip } from "@/components/painel/fluxo";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
@@ -151,14 +152,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
     const s = q.toString();
     return `/painel/candidatos/planilha${s ? `?${s}` : ""}`;
   })();
-  const chip = (ativo: boolean, destaque = false) =>
-    `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
-      ativo
-        ? "border-ink bg-ink text-surface-100"
-        : destaque
-          ? "border-transparent bg-terra-soft text-terra-text hover:border-terra-text"
-          : "border-line bg-surface-300 text-ink hover:border-line-strong"
-    }`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -223,7 +216,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
             href={link({ responder: true })}
             scroll={false}
             aria-current={responder ? "page" : undefined}
-            className={chip(responder, paraResponder > 0)}
+            className={classesChip(responder, paraResponder > 0)}
           >
             Para responder
             <span className={responder ? "text-surface-100/80" : paraResponder > 0 ? "" : "text-ink-muted"}>
@@ -238,7 +231,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
                 href={link({ etapa: e })}
                 scroll={false}
                 aria-current={ativo ? "page" : undefined}
-                className={chip(ativo)}
+                className={classesChip(ativo)}
               >
                 {e ? ETAPAS_CANDIDATO[e].nome : "Todos"}
                 <span className={ativo ? "text-surface-100/80" : "text-ink-muted"}>

@@ -76,7 +76,7 @@ async function Conteudo({
     <div className="flex flex-col gap-6">
       <div>
         <Link
-          href="/painel"
+          href="/painel/anuncios"
           className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
         >
           <ArrowLeft aria-hidden className="size-4" />

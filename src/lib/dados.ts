@@ -542,6 +542,43 @@ export async function obterProcuro(): Promise<string | null> {
   return data?.procuro ?? null;
 }
 
+/**
+ * Quantas vagas no ar a pessoa salvou (as mesmas da aba "Salvas" do Descobrir).
+ * null se não deu para contar.
+ */
+export async function contarMinhasSalvas(): Promise<number | null> {
+  if (MODO_DEMO) return 0;
+  const usuario = await obterUsuario();
+  if (!usuario) return 0;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("salvas")
+    .select("anuncio_id")
+    .eq("perfil_id", usuario.id)
+    .order("criado_em", { ascending: false })
+    .limit(150);
+  if (error) {
+    console.error(`Publike: falha ao contar as vagas salvas: ${error.message}`);
+    return null;
+  }
+  const ids = (data ?? []).map((s) => s.anuncio_id);
+  if (ids.length === 0) return 0;
+  // só as que ainda estão no ar
+  const agora = await agoraDaRequisicao();
+  const { count, error: erroNoAr } = await supabase
+    .from("anuncios")
+    .select("id", { count: "exact", head: true })
+    .in("id", ids)
+    .eq("tipo", "vaga")
+    .eq("status", "ativo")
+    .gt("expira_em", new Date(agora).toISOString());
+  if (erroNoAr) {
+    console.error(`Publike: falha ao contar as vagas salvas: ${erroNoAr.message}`);
+    return null;
+  }
+  return count ?? 0;
+}
+
 /** O CEP de casa de quem está logado (ponto arredondado, ~300 m). */
 export const obterMinhaCasa = cache(async () => {
   if (MODO_DEMO) return null;
