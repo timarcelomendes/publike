@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { ComoFuncionaAnimado } from "./como-funciona-animado";
+import { ConteudosNaHome } from "./conteudo/na-home";
 import { PASSOS } from "./passos";
 import { RecursosDoPublike } from "./secao-recursos";
 import { Container, Selo } from "./ui/basicos";
@@ -95,6 +96,8 @@ export function EntendaOPublike() {
           Escolha o seu caso e veja, em poucas palavras, como o Publike ajuda. Tudo de graça.
         </p>
         <RecursosDoPublike linkDetalhes />
+
+        <ConteudosNaHome />
 
         <div className="mt-12 flex gap-3 rounded-lg bg-terra-soft p-5 text-ink">
           <ShieldAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-terra-text" />

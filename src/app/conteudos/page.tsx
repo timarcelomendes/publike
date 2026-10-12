@@ -1,9 +1,8 @@
-import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { CaminhosGratis } from "@/components/conteudo/blocos";
+import { CartaoConteudo } from "@/components/conteudo/cartao";
 import { Container, Selo } from "@/components/ui/basicos";
-import { conteudosDoTema, minutosDeLeitura, TEMAS_CONTEUDO, type TemaConteudo } from "@/lib/conteudos";
+import { CONTEUDOS, conteudosDoTema, TEMAS_CONTEUDO, type TemaConteudo } from "@/lib/conteudos";
 
 export const metadata: Metadata = {
   title: "Conteúdos sobre trabalho em Goiânia e região",
@@ -11,6 +10,9 @@ export const metadata: Metadata = {
     "Números do emprego em Goiânia e Goiás, dicas para achar vaga perto de casa, contratar de graça, oferecer serviços e conhecer seus direitos.",
   alternates: { canonical: "/conteudos" },
 };
+
+/** O artigo em destaque no topo. */
+const DESTAQUE = CONTEUDOS[0];
 
 const ORDEM: TemaConteudo[] = ["mercado", "procurar", "contratar", "servicos", "direitos"];
 
@@ -39,6 +41,7 @@ export default function Conteudos() {
         </Container>
       </section>
       <Container className="flex flex-col gap-12 py-10">
+        <CartaoConteudo c={DESTAQUE} destaque />
         {ORDEM.map((t) => (
           <section key={t} id={t} aria-labelledby={`tema-${t}`} className="scroll-mt-24">
             <h2 id={`tema-${t}`} className="text-h2">
@@ -46,19 +49,11 @@ export default function Conteudos() {
             </h2>
             <p className="mt-1 text-body text-ink-muted">{TEMAS_CONTEUDO[t].descricao}</p>
             <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {conteudosDoTema(t).map((c) => (
+              {conteudosDoTema(t)
+                .filter((c) => c.slug !== DESTAQUE.slug)
+                .map((c) => (
                 <li key={c.slug}>
-                  <Link
-                    href={`/conteudos/${c.slug}`}
-                    className="group flex h-full flex-col gap-2 rounded-lg border border-line bg-surface-200 p-5 shadow-card transition-shadow hover:shadow-raised"
-                  >
-                    <span className="text-h3">{c.titulo}</span>
-                    <span className="line-clamp-3 flex-1 text-body-sm text-ink-muted">{c.descricao}</span>
-                    <span className="mt-1 flex items-center justify-between text-body-sm text-ink-muted">
-                      {minutosDeLeitura(c)} min de leitura
-                      <ArrowRight aria-hidden className="size-4 text-terra-text transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </Link>
+                  <CartaoConteudo c={c} />
                 </li>
               ))}
             </ul>

@@ -2,7 +2,10 @@ import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { CaminhosGratis, CorpoDoConteudo } from "@/components/conteudo/blocos";
+import { CapaConteudo } from "@/components/conteudo/capa";
+import { CartaoConteudo } from "@/components/conteudo/cartao";
 import { Container, Selo } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { CONTEUDOS, conteudoDoSlug, minutosDeLeitura, relacionados, TEMAS_CONTEUDO } from "@/lib/conteudos";
@@ -28,8 +31,18 @@ function dataPorExtenso(iso: string) {
   return `${d} de ${MESES[m - 1]} de ${a}`;
 }
 
-export default async function Artigo({ params }: PageProps<"/conteudos/[slug]">) {
-  const c = conteudoDoSlug((await params).slug);
+export default function Pagina({ params }: PageProps<"/conteudos/[slug]">) {
+  return (
+    <Suspense fallback={<Container className="min-h-screen py-8 sm:py-12" />}>
+      {params.then(({ slug }) => (
+        <Artigo slug={slug} />
+      ))}
+    </Suspense>
+  );
+}
+
+function Artigo({ slug }: { slug: string }) {
+  const c = conteudoDoSlug(slug);
   if (!c) notFound();
   const dados = {
     "@context": "https://schema.org",
@@ -58,6 +71,7 @@ export default async function Artigo({ params }: PageProps<"/conteudos/[slug]">)
         <p className="mt-3 text-body-sm text-ink-muted">
           Publike · {dataPorExtenso(c.publicado)} · {minutosDeLeitura(c)} min de leitura
         </p>
+        <CapaConteudo c={c} tamanho="grande" className="mt-6 aspect-video rounded-lg border border-line" />
         <div className="mt-8">
           <CorpoDoConteudo c={c} />
         </div>
@@ -84,22 +98,19 @@ export default async function Artigo({ params }: PageProps<"/conteudos/[slug]">)
         <div className="mt-10">
           <CaminhosGratis />
         </div>
-        <section aria-labelledby="leia-tambem" className="mt-10">
+      </article>
+        <section aria-labelledby="leia-tambem" className="mx-auto mt-12 max-w-5xl">
           <h2 id="leia-tambem" className="text-h3">
             Leia também
           </h2>
-          <ul className="mt-3 flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+          <ul className="mt-4 grid gap-4 sm:grid-cols-3">
             {relacionados(c).map((o) => (
               <li key={o.slug}>
-                <Link href={`/conteudos/${o.slug}`} className="flex flex-col gap-1 px-4 py-3 hover:bg-surface-300">
-                  <span className="text-label">{o.titulo}</span>
-                  <span className="text-body-sm text-ink-muted">{minutosDeLeitura(o)} min de leitura</span>
-                </Link>
+                <CartaoConteudo c={o} />
               </li>
             ))}
           </ul>
         </section>
-      </article>
     </Container>
   );
 }
