@@ -33,6 +33,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
+import { etapaParaQuemCurtiu } from "@/lib/constantes";
 import {
   contarMinhasSalvas,
   listarMeusAnuncios,
@@ -133,8 +134,8 @@ async function Conteudo() {
   // ------------------------------------------------------------ o que procura
   const vagasCurtidas = curtidas?.filter((c) => c.tipo === "vaga") ?? null;
   const servicosPedidos = curtidas?.filter((c) => c.tipo === "servico") ?? null;
-  // a etapa que quem publicou marcou (como em "Minhas curtidas": some no match desfeito)
-  const etapaDe = (c: MinhaCurtida) => (c.status === "desfeito" ? null : (etapas.get(c.anuncio_id)?.etapa ?? null));
+  // a etapa que quem publicou marcou, com a mesma regra de "Minhas curtidas"
+  const etapaDe = (c: MinhaCurtida) => etapaParaQuemCurtiu(c.tipo, c.status, etapas.get(c.anuncio_id)?.etapa);
 
   // ------------------------------------------------------------ contatos
   const novas = conversas ? soma(conversas.map((c) => c.nao_lidas)) : 0;

@@ -255,6 +255,41 @@ export function etapasDoTipo(tipo: string): EtapaCandidato[] {
   return (Object.keys(ETAPAS_CANDIDATO) as EtapaCandidato[]).filter((e) => ETAPAS_CANDIDATO[e][chave]);
 }
 
+/**
+ * As etapas que quem publicou pode marcar agora, pelo pé em que está a curtida.
+ * Entrevista e Contratado (no serviço, Orçamento, Agendado e Concluído) só depois
+ * do match, que é o que libera a conversa: antes dele, vaga vai só até "Em análise"
+ * e serviço fica em "Novo" (para não seguir, há Dispensar e Recusar). Quem foi
+ * dispensado ou desfez o match não muda mais de etapa.
+ */
+export function etapasPermitidas(tipo: string, status: string): EtapaCandidato[] {
+  if (status === "match") return etapasDoTipo(tipo);
+  if (status === "pendente") return tipo === "servico" ? ["novo"] : ["novo", "analise"];
+  return [];
+}
+
+/**
+ * A etapa que vale para a curtida. Esperando resposta, uma etapa mais adiante
+ * (marcada quando o site ainda deixava) conta como "Novo".
+ */
+export function etapaQueVale(tipo: string, status: string, etapa: EtapaCandidato): EtapaCandidato {
+  return status === "pendente" && !etapasPermitidas(tipo, status).includes(etapa) ? "novo" : etapa;
+}
+
+/**
+ * A etapa que quem curtiu vê (null: nenhuma). Só enquanto espera resposta ou depois do
+ * match; "Novo" não aparece, e quem foi dispensado ou desfez o match não vê etapa.
+ */
+export function etapaParaQuemCurtiu(
+  tipo: string,
+  status: string,
+  etapa: EtapaCandidato | null | undefined,
+): EtapaCandidato | null {
+  if (!etapa || (status !== "pendente" && status !== "match")) return null;
+  const vale = etapaQueVale(tipo, status, etapa);
+  return vale === "novo" ? null : vale;
+}
+
 export const STATUS_ANUNCIO: Record<StatusAnuncio, { nome: string; ajuda: string }> = {
   ativo: { nome: "No ar", ajuda: "Aparece nas buscas" },
   pausado: { nome: "Pausado", ajuda: "Escondido até você reativar" },

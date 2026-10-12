@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { ETAPAS_CANDIDATO } from "@/lib/constantes";
+import { ETAPAS_CANDIDATO, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -182,6 +182,29 @@ export async function salvarEtapaCandidato(
   if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: `/entrar?next=/painel/anuncio/${anuncioId}` };
 
   const supabase = await criarClienteServidor();
+  // Entrevista e Contratado (no serviço, Orçamento, Agendado e Concluído) só depois do
+  // match; dispensado ou match desfeito não muda de etapa. Só a anotação continua livre.
+  const [{ data: curtida }, { data: anuncio }] = await Promise.all([
+    supabase.from("curtidas").select("status").eq("anuncio_id", anuncioId).eq("perfil_id", perfilId).maybeSingle(),
+    supabase.from("anuncios").select("tipo").eq("id", anuncioId).maybeSingle(),
+  ]);
+  if (!curtida || !anuncio) return { ok: false, erro: "Essa pessoa não curtiu um anúncio seu." };
+  if (!etapasPermitidas(anuncio.tipo, curtida.status).includes(etapa as EtapaCandidato)) {
+    const { data: atuais } = await supabase.rpc("etapas_dos_candidatos", { p_anuncio: anuncioId });
+    const atual = atuais?.find((l) => l.perfil_id === perfilId)?.etapa ?? "novo";
+    if (atual !== etapa) {
+      const servico = anuncio.tipo === "servico";
+      return {
+        ok: false,
+        erro:
+          curtida.status === "pendente"
+            ? servico
+              ? "Aceite o pedido primeiro: orçamento, agendamento e conclusão vêm depois."
+              : "Curta de volta primeiro: entrevista e contratação vêm depois do match."
+            : `Essa pessoa não está mais no processo ${servico ? "deste serviço" : "desta vaga"}.`,
+      };
+    }
+  }
   const { error } = await supabase.rpc("salvar_etapa_candidato", {
     p_anuncio: anuncioId,
     p_perfil: perfilId,

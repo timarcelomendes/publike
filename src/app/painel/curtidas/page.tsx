@@ -14,6 +14,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
+  etapaParaQuemCurtiu,
   motivoParaOutro,
   nomeMotivoDesfazer,
   STATUS_ANUNCIO,
@@ -79,10 +80,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   const etapa =
     pedidaEtapa && pedidaEtapa !== "novo" && pedidaEtapa in ETAPAS_CANDIDATO ? (pedidaEtapa as EtapaCandidato) : null;
 
-  // a etapa que quem publicou marcou (Em análise, Entrevista, Agendado…); some no match desfeito
-  const etapaDe = (anuncioId: string, status: string) => {
-    const e = etapas.get(anuncioId);
-    return e && e.etapa !== "novo" && status !== "desfeito" ? e : null;
+  // a etapa que quem publicou marcou (Em análise, Entrevista, Agendado…): só esperando
+  // resposta (até "Em análise") ou depois do match; some se foi dispensada ou desfeita
+  const etapaDe = (c: { anuncio_id: string; tipo: string; status: string }) => {
+    const e = etapas.get(c.anuncio_id);
+    const vale = etapaParaQuemCurtiu(c.tipo, c.status, e?.etapa);
+    return e && vale ? { etapa: vale, atualizado_em: e.atualizado_em } : null;
   };
 
   const vagas = curtidas.filter((c) => c.tipo === "vaga").length;
@@ -90,7 +93,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   const doTipo = tipo ? curtidas.filter((c) => c.tipo === tipo) : curtidas;
   const lista = doTipo
     .filter((c) => !situacao || naSituacao(situacao, c.status))
-    .filter((c) => !etapa || etapaDe(c.anuncio_id, c.status)?.etapa === etapa);
+    .filter((c) => !etapa || etapaDe(c)?.etapa === etapa);
 
   const link = (mudar: { tipo?: TipoAnuncio | null; situacao?: Situacao | null; etapa?: EtapaCandidato | null }) => {
     const q = new URLSearchParams();
@@ -163,7 +166,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
         <ul aria-label="Lista de curtidas" className="flex flex-col gap-4">
           {lista.map((c) => {
             const noAr = c.anuncio_status === "ativo";
-            const etapaVisivel = etapaDe(c.anuncio_id, c.status);
+            const etapaVisivel = etapaDe(c);
             return (
               <li
                 key={c.anuncio_id}

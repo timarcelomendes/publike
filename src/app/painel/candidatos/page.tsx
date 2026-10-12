@@ -417,6 +417,7 @@ function CartaoCandidato({
           <EtapaDoCandidato
             compacto
             tipo="vaga"
+            status={c.status}
             anuncioId={c.anuncio_id}
             perfilId={c.perfil_id}
             etapa={c.etapa}

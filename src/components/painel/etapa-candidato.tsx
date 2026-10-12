@@ -3,7 +3,7 @@
 import { ChevronDown, NotebookPen } from "lucide-react";
 import { useId, useState } from "react";
 import { salvarEtapaCandidato } from "@/lib/acoes/curtidas";
-import { ETAPAS_CANDIDATO, etapasDoTipo, type EtapaCandidato } from "@/lib/constantes";
+import { ETAPAS_CANDIDATO, etapasDoTipo, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -12,9 +12,12 @@ import { useAcao } from "../ui/usar-acao";
  * Etapa e anotação de um interessado. A pessoa que curtiu vê a etapa (e recebe um
  * aviso quando ela muda); a anotação é só de quem publicou. O aviso disso fica no
  * topo da lista (Candidatos e a página da vaga), não em cada cartão.
+ * As etapas seguem o pé da curtida (`etapasPermitidas`): Entrevista e Contratado só
+ * depois do match; antes, elas aparecem apagadas na lista, dizendo quando liberam.
  */
 export function EtapaDoCandidato({
   tipo = "vaga",
+  status,
   anuncioId,
   perfilId,
   etapa: etapaInicial,
@@ -23,6 +26,8 @@ export function EtapaDoCandidato({
 }: {
   /** vaga ou serviço: cada um tem as suas etapas */
   tipo?: string;
+  /** pé da curtida: pendente, match, dispensada ou desfeito */
+  status: string;
   anuncioId: string;
   perfilId: string;
   etapa: EtapaCandidato;
@@ -39,33 +44,52 @@ export function EtapaDoCandidato({
   const [anotar, setAnotar] = useState(Boolean(notaInicial));
   const id = useId();
   const mudouNota = nota.trim() !== (notaInicial ?? "").trim();
+  const servico = tipo === "servico";
+  // dispensado ou match desfeito: a etapa para; a anotação continua
+  const permitidas = etapasPermitidas(tipo, status);
+  const rotulo = (valor: EtapaCandidato) => {
+    const nome = ETAPAS_CANDIDATO[valor].nome;
+    if (permitidas.includes(valor)) return nome;
+    if (valor === "nao_seguiu") return `${nome} (use ${servico ? "Recusar" : "Dispensar"})`;
+    return `${nome} (depois ${servico ? "de aceitar" : "do match"})`;
+  };
 
   function trocarEtapa(nova: EtapaCandidato) {
+    const antes = etapa;
     setEtapa(nova);
-    // a etapa salva na hora; a anotação vai junto como está salva
-    rodar(() => salvarEtapaCandidato(anuncioId, perfilId, nova, notaInicial));
+    // a etapa salva na hora; a anotação vai junto como está salva. Se não salvar, volta.
+    rodar(
+      () => salvarEtapaCandidato(anuncioId, perfilId, nova, notaInicial),
+      (r) => {
+        if (!r.ok) setEtapa(antes);
+      },
+    );
   }
 
   return (
     <div className={compacto ? "contents" : "flex flex-col gap-2 rounded-md bg-surface-100 p-3"}>
       <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 ${compacto ? "sm:ml-auto" : ""}`}>
-        <label htmlFor={`${id}-etapa`} className="text-label">
-          Etapa
-        </label>
-        <Seletor
-          id={`${id}-etapa`}
-          value={etapa}
-          disabled={pendente}
-          onChange={(e) => trocarEtapa(e.target.value as EtapaCandidato)}
-          className={`${classesEntrada} min-h-10 py-1.5`}
-          envoltorio="w-44"
-        >
-          {etapasDoTipo(tipo).map((valor) => (
-            <option key={valor} value={valor}>
-              {ETAPAS_CANDIDATO[valor].nome}
-            </option>
-          ))}
-        </Seletor>
+        {permitidas.length > 0 && (
+          <>
+            <label htmlFor={`${id}-etapa`} className="text-label">
+              Etapa
+            </label>
+            <Seletor
+              id={`${id}-etapa`}
+              value={etapa}
+              disabled={pendente}
+              onChange={(e) => trocarEtapa(e.target.value as EtapaCandidato)}
+              className={`${classesEntrada} min-h-10 py-1.5`}
+              envoltorio="w-44"
+            >
+              {etapasDoTipo(tipo).map((valor) => (
+                <option key={valor} value={valor} disabled={!permitidas.includes(valor)}>
+                  {rotulo(valor)}
+                </option>
+              ))}
+            </Seletor>
+          </>
+        )}
         <button
           type="button"
           onClick={() => setAnotar((a) => !a)}

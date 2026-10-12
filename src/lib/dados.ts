@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { MODO_DEMO } from "./config";
-import { ETAPAS_CANDIDATO, type EtapaCandidato } from "./constantes";
+import { ETAPAS_CANDIDATO, etapaQueVale, type EtapaCandidato } from "./constantes";
 import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
 import { raioDaBusca, type Filtros } from "./filtros";
@@ -214,7 +214,8 @@ export async function listarMeusCandidatos() {
   }
   return (data ?? []).map((l) => ({
     ...l,
-    etapa: (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato,
+    // esperando resposta, etapa adiante de "Em análise" não vale (ver etapaQueVale)
+    etapa: etapaQueVale("vaga", l.status, (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato),
   }));
 }
 

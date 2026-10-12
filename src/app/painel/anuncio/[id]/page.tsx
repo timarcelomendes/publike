@@ -14,6 +14,7 @@ import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
+  etapaQueVale,
   etapasDoTipo,
   motivoParaOutro,
   nomeMotivoDesfazer,
@@ -63,11 +64,13 @@ async function Conteudo({
     listarEtapasDosCandidatos(id),
     listarMeusBloqueios(),
   ]);
-  // Vagas: cada interessado tem uma etapa (só quem publicou vê); dá para filtrar por ela.
-  const etapaDe = (perfilId: string): EtapaCandidato => etapas.get(perfilId)?.etapa ?? "novo";
+  // Cada interessado tem uma etapa (só quem publicou anota; quem curtiu vê a etapa); dá
+  // para filtrar por ela. Esperando resposta, etapa adiante de "Em análise" não vale.
+  const etapaDe = (p: { perfil_id: string; status: string }): EtapaCandidato =>
+    etapaQueVale(anuncio.tipo, p.status, etapas.get(p.perfil_id)?.etapa ?? "novo");
   const contagem = new Map<EtapaCandidato, number>();
-  for (const p of todos) contagem.set(etapaDe(p.perfil_id), (contagem.get(etapaDe(p.perfil_id)) ?? 0) + 1);
-  const interessados = filtro ? todos.filter((p) => etapaDe(p.perfil_id) === filtro) : todos;
+  for (const p of todos) contagem.set(etapaDe(p), (contagem.get(etapaDe(p)) ?? 0) + 1);
+  const interessados = filtro ? todos.filter((p) => etapaDe(p) === filtro) : todos;
   const agora = await agoraDaRequisicao();
   const hoje = new Date(agora).toISOString().slice(0, 7);
   const status = anuncio.status as StatusAnuncio;
@@ -248,9 +251,10 @@ async function Conteudo({
                   {
                     <EtapaDoCandidato
                       tipo={anuncio.tipo}
+                      status={p.status}
                       anuncioId={anuncio.id}
                       perfilId={p.perfil_id}
-                      etapa={etapaDe(p.perfil_id)}
+                      etapa={etapaDe(p)}
                       nota={etapas.get(p.perfil_id)?.nota ?? null}
                     />
                   }
