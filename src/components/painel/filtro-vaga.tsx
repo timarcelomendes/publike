@@ -4,20 +4,22 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { classesEntrada, Seletor } from "../ui/campo";
 
-/** Escolhe de qual vaga ver os candidatos (troca a URL, mantendo a etapa). */
+/** Escolhe de qual vaga ver os candidatos (troca a URL, mantendo a etapa ou o "Para responder"). */
 export function FiltroVaga({
   vagas,
   vaga,
   etapa,
+  situacao = null,
 }: {
   vagas: { id: string; titulo: string; total: number }[];
   vaga: string | null;
   etapa: string | null;
+  situacao?: string | null;
 }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   return (
-    <div className="flex flex-col gap-1.5 sm:max-w-md">
+    <div className="flex flex-col gap-1.5 sm:w-full sm:max-w-md">
       <label htmlFor="filtro-vaga" className="text-label">
         Vaga
       </label>
@@ -28,7 +30,8 @@ export function FiltroVaga({
         onChange={(e) => {
           const q = new URLSearchParams();
           if (e.target.value) q.set("vaga", e.target.value);
-          if (etapa) q.set("etapa", etapa);
+          if (situacao) q.set("situacao", situacao);
+          else if (etapa) q.set("etapa", etapa);
           const s = q.toString();
           iniciar(() => router.push(`/painel/candidatos${s ? `?${s}` : ""}`, { scroll: false }));
         }}

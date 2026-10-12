@@ -7,7 +7,8 @@ import { dataHora, nomeDoArquivo, respostaCsv, SITUACAO_CURTIDA } from "@/lib/pl
 import { UUID } from "@/lib/validacao";
 
 // Todos os candidatos das minhas vagas numa planilha (ou só de uma vaga: ?vaga=id;
-// só de uma etapa: ?etapa=entrevista). Contato só de quem deu match, como na tela.
+// só de uma etapa: ?etapa=entrevista; só quem espera resposta: ?situacao=responder).
+// Contato só de quem deu match, como na tela.
 export async function GET(req: Request) {
   if (MODO_DEMO) return new NextResponse("Não encontrado.", { status: 404 });
   const usuario = await obterUsuario();
@@ -15,10 +16,13 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const vaga = url.searchParams.get("vaga");
   const etapa = url.searchParams.get("etapa");
+  const responder = url.searchParams.get("situacao") === "responder";
   const todos = await listarMeusCandidatos();
   if (!todos) return new NextResponse("Não deu para montar a planilha agora.", { status: 503 });
   const lista = todos.filter(
-    (c) => (!vaga || !UUID.test(vaga) || c.anuncio_id === vaga) && (!etapa || c.etapa === etapa),
+    (c) =>
+      (!vaga || !UUID.test(vaga) || c.anuncio_id === vaga) &&
+      (responder ? c.status === "pendente" : !etapa || c.etapa === etapa),
   );
 
   const cabecalho = [

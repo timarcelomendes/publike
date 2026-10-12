@@ -10,7 +10,8 @@ import { useAcao } from "../ui/usar-acao";
 
 /**
  * Etapa e anotação de um interessado. A pessoa que curtiu vê a etapa (e recebe um
- * aviso quando ela muda); a anotação é só de quem publicou.
+ * aviso quando ela muda); a anotação é só de quem publicou. O aviso disso fica no
+ * topo da lista (Candidatos e a página da vaga), não em cada cartão.
  */
 export function EtapaDoCandidato({
   tipo = "vaga",
@@ -18,6 +19,7 @@ export function EtapaDoCandidato({
   perfilId,
   etapa: etapaInicial,
   nota: notaInicial,
+  compacto = false,
 }: {
   /** vaga ou serviço: cada um tem as suas etapas */
   tipo?: string;
@@ -25,6 +27,11 @@ export function EtapaDoCandidato({
   perfilId: string;
   etapa: EtapaCandidato;
   nota: string | null;
+  /**
+   * Na mesma linha das ações do cartão (Candidatos): sem caixa própria. A etapa vai
+   * para a direita e a anotação, quando aberta, ocupa a linha inteira embaixo.
+   */
+  compacto?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [etapa, setEtapa] = useState<EtapaCandidato>(etapaInicial);
@@ -40,8 +47,8 @@ export function EtapaDoCandidato({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-md bg-surface-100 p-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className={compacto ? "contents" : "flex flex-col gap-2 rounded-md bg-surface-100 p-3"}>
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 ${compacto ? "sm:ml-auto" : ""}`}>
         <label htmlFor={`${id}-etapa`} className="text-label">
           Etapa
         </label>
@@ -70,10 +77,9 @@ export function EtapaDoCandidato({
           {notaInicial ? "Anotação" : "Anotar"}
           <ChevronDown aria-hidden className={`size-4 transition-transform ${anotar ? "rotate-180" : ""}`} />
         </button>
-        <span className="text-body-sm text-ink-muted">A pessoa vê a etapa; a anotação é só sua.</span>
       </div>
       {anotar && (
-        <div id={`${id}-nota`} className="flex flex-col gap-2">
+        <div id={`${id}-nota`} className={`flex flex-col gap-2 ${compacto ? "basis-full" : ""}`}>
           <label htmlFor={`${id}-texto`} className="sr-only">
             Anotação sobre esta pessoa
           </label>
@@ -97,7 +103,7 @@ export function EtapaDoCandidato({
           </div>
         </div>
       )}
-      {mensagem}
+      {compacto ? <div className="basis-full empty:hidden">{mensagem}</div> : mensagem}
     </div>
   );
 }
