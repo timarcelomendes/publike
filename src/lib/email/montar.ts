@@ -31,7 +31,8 @@ export const LOGO_EMAIL = {
   altura: 44,
   larguraMaxima: 240,
   escala: 3,
-  caminhoPadrao: "/logo/publike-logo-email.png",
+  // ?v= muda quando a imagem muda: o Gmail guarda a imagem pelo endereço (v=2: check branco)
+  caminhoPadrao: "/logo/publike-logo-email.png?v=2",
   /** Imagem enviada no admin: até 800 KB (o limite das ações do servidor é 1 MB). */
   arquivoMaximo: 800 * 1024,
 } as const;

@@ -6,7 +6,8 @@ import { LOGO_EMAIL } from "@/lib/email/montar";
 // modo claro a plaquinha some no fundo. No modo escuro do Gmail e do Outlook,
 // que escurecem o fundo do e-mail mas não mexem nas imagens, a logo continua
 // legível, mesmo quando a original tem fundo transparente e letra escura.
-// A logo padrão (public/logo/publike-logo-email.png) foi feita do mesmo jeito.
+// A logo padrão (public/logo/publike-logo-email.png) foi feita do mesmo jeito, a
+// partir de public/logo/publike-logo.svg com o check em branco.
 
 const FUNDO = { r: 251, g: 247, b: 239, alpha: 1 }; // #fbf7ef, o fundo dos e-mails
 const FOLGA_V = 7; // px, em cima e embaixo da logo
