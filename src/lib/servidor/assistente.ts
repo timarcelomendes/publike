@@ -74,7 +74,7 @@ Assunto fora de trabalho e do Publike: diga, com gentileza, que você só ajuda 
 ${quem}
 
 Escolha a ação:
-- buscar_anuncios: a pessoa quer achar vagas, bicos, freelances ou um profissional/serviço. Preencha "busca" (texto: as palavras do que ela procura, como "padeiro" ou "diarista", ou vazio; tipo: vaga, servico ou todos; categoria: a que combina, ou "todas"). A resposta é uma frase curta apresentando o resultado, como "Veja o que achei:"; o site mostra a lista logo abaixo.
+- buscar_anuncios: a pessoa quer achar vagas, bicos, freelances ou um profissional/serviço, ou conta o que ela faz ("sou engenheiro", "trabalho de garçom") querendo trabalho. Busque na hora, sem perguntar antes se pode buscar. Se ela só confirma ("sim", "pode"), busque o que foi falado antes na conversa. Preencha "busca" (texto: a profissão ou a palavra principal do jeito que a pessoa falou, no singular, como "engenheiro", "padeiro" ou "diarista", ou vazio; tipo: vaga, servico ou todos; categoria: só quando tiver certeza de qual combina, senão "todas"). A resposta é uma frase curta apresentando o resultado, como "Veja o que achei:"; o site mostra a lista logo abaixo.
 - buscar_empresas: a pessoa quer conhecer empresas ou comércios que usam o Publike (quem está contratando). Preencha "busca.texto" com o ramo ou o nome, ou vazio.
 - pedir_login: só quando a pessoa não está logada e pede algo que precisa de conta. Explique que é só entrar ou criar a conta, de graça e sem senha.
 - sugerir: a pessoa conta um erro, dá uma ideia, um elogio ou pede uma melhoria. Agradeça e diga que ela pode mandar na página Sugestões e erros.
@@ -91,7 +91,34 @@ function transcricao(historico: MensagemChat[]) {
     .join("\n")}\n\nResponda à última mensagem da Pessoa.`;
 }
 
+/** O começo da palavra principal: "engenharia" e "engenheiro" viram "engenh" (a busca do título acha os dois). */
+function raiz(texto: string) {
+  const maior = texto
+    .split(/\s+/)
+    .filter((p) => p.length > 3)
+    .sort((a, b) => b.length - a.length)[0];
+  return maior && maior.length > 6 ? maior.slice(0, 6) : (maior ?? "");
+}
+
+/**
+ * Procura do jeito que a IA pediu e, se não achar, afrouxa: sem a categoria
+ * (a IA pode escolher uma que o anúncio não usa) e depois só pelo começo da
+ * palavra (quem diz "engenharia" quer ver "Engenheiro de dados").
+ */
 async function buscarVagas(busca: Plano["busca"], local: Local | null) {
+  const tentativas: Plano["busca"][] = [busca];
+  if (busca.categoria !== "todas") tentativas.push({ ...busca, categoria: "todas" });
+  const r = raiz(busca.texto);
+  if (r && r !== busca.texto) tentativas.push({ ...busca, texto: r, categoria: "todas" });
+  let achado = await buscarVagasUmaVez(tentativas[0], local);
+  for (const t of tentativas.slice(1)) {
+    if (achado.cartoes.length) break;
+    achado = await buscarVagasUmaVez(t, local);
+  }
+  return achado;
+}
+
+async function buscarVagasUmaVez(busca: Plano["busca"], local: Local | null) {
   const filtros = lerFiltros({
     q: busca.texto,
     tipo: busca.tipo === "todos" ? undefined : busca.tipo,
