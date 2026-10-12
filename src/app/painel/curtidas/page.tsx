@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
+import { CaminhoDaCurtida } from "@/components/caminho-curtida";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
 import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
@@ -30,7 +31,7 @@ export const metadata: Metadata = { title: "Minhas curtidas" };
 
 /** Em que pé está cada curtida (os filtros da página; a visão geral do painel usa os mesmos). */
 const SITUACOES = {
-  aguardando: { nome: "Aguardando resposta", status: ["pendente"] },
+  aguardando: { nome: "Aguardando aceite", status: ["pendente"] },
   match: { nome: "Deu match", status: ["match"] },
   encerradas: { nome: "Encerradas", status: ["dispensada", "desfeito"] },
 } as const satisfies Record<string, { nome: string; status: readonly string[] }>;
@@ -113,8 +114,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
         <h2 className="text-h2">{TITULOS[tipo ?? "todos"]}</h2>
         <p className="mt-1 text-body text-ink-muted">
           {tipo === "servico"
-            ? "Você pede, o profissional responde. Se ele aceitar, dá match e vocês conversam aqui mesmo."
-            : "Quem publicou responde. Se aceitar, dá match e vocês conversam aqui mesmo."}
+            ? "Você pede e o profissional decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."
+            : "Quem publicou decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."}
         </p>
       </div>
 
@@ -174,7 +175,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
               >
                 <div className="flex flex-wrap items-center gap-2">
                   {c.status === "match" && <Selo variante="match">Deu match</Selo>}
-                  {c.status === "pendente" && <Selo variante="like">Aguardando resposta</Selo>}
+                  {c.status === "pendente" && <Selo variante="like">Aguardando aceite</Selo>}
                   {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
                   {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
                   {etapaVisivel && (
@@ -210,6 +211,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                   {c.autor_nome} · {rotuloConta(c.autor_tipo)} · {formatarLugar(c.bairro, c.cidade)}
                 </p>
                 <p className="text-label">{valorDoAnuncio(c)}</p>
+                {/* quem publicou decide se aceita; só com o aceite vocês se conectam */}
+                {(c.status === "pendente" || c.status === "dispensada") && (
+                  <CaminhoDaCurtida
+                    situacao={c.status as "pendente" | "dispensada"}
+                    quem={c.autor_nome}
+                    servico={c.tipo === "servico"}
+                    className="rounded-md border border-line bg-surface-100 p-3"
+                  />
+                )}
                 {c.mensagem && (
                   <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">Sua mensagem: “{c.mensagem}”</p>
                 )}
@@ -223,6 +233,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                 {c.status === "match" && (
                   <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
                     <p className="text-label text-cerrado-text">Deu match! Agora é só conversar.</p>
+                    <p className="text-body-sm">{c.autor_nome} aceitou e vocês estão conectados.</p>
                     <BotaoConversar anuncioId={c.anuncio_id} outroId={c.autor_id} />
                     <BotoesContato
                       whatsapp={c.autor_whatsapp}

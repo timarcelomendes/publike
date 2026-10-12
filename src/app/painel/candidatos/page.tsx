@@ -159,8 +159,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
         <div className="max-w-2xl">
           <h2 className="text-h2">Candidatos</h2>
           <p className="mt-1 text-body text-ink-muted">
-            Quem curtiu suas vagas, todas juntas. Responda aqui mesmo, marque a etapa e anote: a pessoa vê a etapa e
-            recebe um aviso quando ela muda; a anotação é só sua.
+            Quem curtiu suas vagas, todas juntas. Você decide quem aceitar: curtir de volta conecta vocês (a conversa
+            e o WhatsApp aparecem para os dois). Depois, marque a etapa e anote: a pessoa vê a etapa; a anotação é só
+            sua.
           </p>
         </div>
         <a href={planilha} className={classesBotao("secundario", "sm")}>

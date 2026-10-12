@@ -140,6 +140,7 @@ export function CardAnuncio({
             status={anuncio.minha_curtida}
             logado={usuarioId !== null}
             servico={servico}
+            quem={anuncio.autor_nome}
           />
         )}
       </div>

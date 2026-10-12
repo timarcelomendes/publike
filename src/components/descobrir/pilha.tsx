@@ -229,7 +229,9 @@ export function PilhaDeVagas({
                   texto: `Você curtiu “${carta.titulo}”. Esta vaga pede currículo: o match só acontece depois que você preencher o seu.`,
                   link: { href: "/perfil/curriculo", nome: "Preencher currículo" },
                 }
-              : { texto: `Você curtiu “${carta.titulo}”. Se gostarem de você também, dá match e o WhatsApp aparece.` },
+              : {
+                  texto: `Você curtiu “${carta.titulo}”. Agora ${carta.quem} decide se aceita. Se aceitar, vocês se conectam e o WhatsApp aparece no seu painel.`,
+                },
           );
         } else if (gesto === "salvar") {
           setAviso({ texto: `“${carta.titulo}” está nas suas salvas.`, link: { href: "/descobrir?aba=salvas", nome: "Ver salvas" } });

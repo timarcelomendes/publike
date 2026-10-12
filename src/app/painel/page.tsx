@@ -222,7 +222,7 @@ async function Conteudo() {
       id="ofereco-vagas"
       icone={Megaphone}
       titulo="Vagas que você publicou"
-      texto="Quem curte a vaga vira candidato. Você responde, chama para a entrevista e contrata."
+      texto="Quem curte a vaga vira candidato. Você decide quem aceitar: o aceite conecta vocês. Depois vêm a entrevista e a contratação."
       acao={
         <BotaoLink href="/publicar" tamanho="sm">
           <Plus aria-hidden />
@@ -268,7 +268,7 @@ async function Conteudo() {
       id="ofereco-servicos"
       icone={Store}
       titulo="Seus serviços"
-      texto="Quem precisa pede o serviço na sua vitrine. Você responde e, se aceitar, vocês conversam."
+      texto="Quem precisa pede o serviço na sua vitrine. Você decide se aceita: o aceite conecta vocês para combinar o serviço."
       acao={
         <BotaoLink href="/painel/servicos" tamanho="sm">
           <Store aria-hidden />
@@ -315,7 +315,7 @@ async function Conteudo() {
       id="procuro-vagas"
       icone={Briefcase}
       titulo="Vagas que você curtiu"
-      texto="Você curte, quem publicou responde. Se der match, vocês conversam e combinam a entrevista."
+      texto="Você curte e quem publicou decide se aceita. Se aceitar, vocês se conectam e combinam a entrevista."
       acao={
         <BotaoLink href="/descobrir" tamanho="sm">
           <Search aria-hidden />
@@ -329,7 +329,7 @@ async function Conteudo() {
         passos={[
           { nome: "Curtidas", numero: vagasCurtidas?.length ?? null, href: "/painel/curtidas?tipo=vaga" },
           {
-            nome: "Aguardando resposta",
+            nome: "Aguardando aceite",
             numero: contar(vagasCurtidas, (c) => c.status === "pendente"),
             href: "/painel/curtidas?tipo=vaga&situacao=aguardando",
           },
@@ -367,7 +367,7 @@ async function Conteudo() {
       id="procuro-servicos"
       icone={Wrench}
       titulo="Profissionais que você chamou"
-      texto="Você pede o serviço, o profissional responde. Se aceitar, vocês conversam e combinam o dia."
+      texto="Você pede e o profissional decide se aceita. Se aceitar, vocês se conectam e combinam o dia."
       acao={
         <BotaoLink href="/?tipo=servico" tamanho="sm">
           <Search aria-hidden />
@@ -380,7 +380,7 @@ async function Conteudo() {
         passos={[
           { nome: "Pedidos", numero: servicosPedidos?.length ?? null, href: "/painel/curtidas?tipo=servico" },
           {
-            nome: "Aguardando resposta",
+            nome: "Aguardando aceite",
             numero: contar(servicosPedidos, (c) => c.status === "pendente"),
             href: "/painel/curtidas?tipo=servico&situacao=aguardando",
           },
@@ -473,7 +473,7 @@ async function Conteudo() {
       id="ofereco"
       icone={HandHelping}
       titulo="O que você oferece"
-      texto="O que você publicou ou mostra. Quem se interessa curte, e você responde."
+      texto="O que você publicou ou mostra. Quem se interessa curte, e você decide se aceita: o aceite conecta vocês."
     >
       {blocosOfereco}
       <Sugestoes itens={sugestoesOfereco} />
@@ -485,7 +485,7 @@ async function Conteudo() {
       id="procuro"
       icone={Search}
       titulo="O que você procura"
-      texto="O que você curtiu ou pediu. Quem publicou responde, e o match libera a conversa."
+      texto="O que você curtiu ou pediu. Quem publicou decide se aceita: só com o aceite vocês se conectam."
     >
       {blocosProcuro}
       <Sugestoes itens={sugestoesProcuro} />

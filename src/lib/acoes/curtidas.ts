@@ -45,7 +45,10 @@ export async function curtirAnuncio(anuncioId: string, mensagem: string | null =
 
   after(processarFilas);
   refresh();
-  return { ok: true, mensagem: "Curtido! Se quem publicou curtir você de volta, o contato aparece no seu painel." };
+  return {
+    ok: true,
+    mensagem: "Pronto! Agora quem publicou decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu painel.",
+  };
 }
 
 /** Desfaz a curtida enquanto ainda não houve resposta. */

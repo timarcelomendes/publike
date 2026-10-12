@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
+import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
 import { CurtirDeNovo, DesfazerMatch } from "../desfazer-match";
 import { Aviso } from "../ui/basicos";
@@ -87,6 +88,8 @@ export function PainelCurtir({
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const servico = tipo === "servico";
+  // quem decide se aceita (e, com o aceite, vocês se conectam)
+  const quem = autorNome || (servico ? "O profissional" : "Quem publicou");
 
   function curtir() {
     setErro(null);
@@ -119,9 +122,10 @@ export function PainelCurtir({
           Deu match! Agora é só conversar.
         </p>
         <p className="text-body-sm opacity-90">
+          {quem} aceitou e vocês estão conectados.{" "}
           {servico
-            ? "Combinem o serviço, o endereço, o preço e o melhor dia direto com o profissional."
-            : "Combinem os detalhes, o endereço e o melhor horário direto com quem publicou."}
+            ? "Combinem o serviço, o endereço, o preço e o melhor dia."
+            : "Combinem os detalhes, o endereço e o melhor horário."}
         </p>
         <div className="rounded-md bg-surface-200 p-3">
           <BotoesContato
@@ -185,6 +189,7 @@ export function PainelCurtir({
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5">
         <p className="font-display text-h3">Não foi dessa vez</p>
+        <CaminhoDaCurtida situacao="dispensada" quem={quem} servico={servico} />
         <p className="text-body-sm text-ink-muted">
           {servico
             ? "O profissional não pode atender agora. Tem outros perto de você."
@@ -204,10 +209,11 @@ export function PainelCurtir({
           <Heart aria-hidden className="size-5 text-like" fill="currentColor" />
           {servico ? "Pedido enviado" : "Você curtiu"}
         </p>
+        <div className="rounded-md bg-surface-200 p-3">
+          <CaminhoDaCurtida situacao="pendente" quem={quem} servico={servico} />
+        </div>
         <p className="text-body-sm">
-          {servico
-            ? "Agora é com o profissional. Se ele aceitar, dá match e o contato aparece aqui e no seu painel."
-            : "Agora é com quem publicou. Se curtir você de volta, dá match e o contato aparece aqui e no seu painel."}
+          Quando {quem} responder, você recebe um aviso e o contato aparece aqui e no seu painel.
         </p>
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
         {!servico && temCurriculo === false && <ConviteCurriculo anuncioId={anuncioId} forte={pedeCurriculo} />}
@@ -226,11 +232,7 @@ export function PainelCurtir({
     <div className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
       <div>
         <p className="font-display text-h3">{servico ? "Quer contratar?" : "Tem interesse?"}</p>
-        <p className="mt-1 text-body-sm text-ink-muted">
-          {servico
-            ? "Mande um pedido. Se o profissional aceitar, dá match e o WhatsApp dos dois aparece."
-            : "Curta a vaga. Se quem publicou curtir você de volta, dá match e o WhatsApp dos dois aparece."}
-        </p>
+        <CaminhoDaCurtida situacao="antes" quem={quem} servico={servico} className="mt-3" />
         {!servico && pedeCurriculo && (
           <p className="mt-2 flex items-start gap-2 text-body-sm">
             <FileText aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />

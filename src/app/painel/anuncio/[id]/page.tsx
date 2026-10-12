@@ -169,8 +169,8 @@ async function Conteudo({
         <>
           <p className="text-body text-ink-muted">
             {servico
-              ? "Quem quer contratar você. Aceite quem você pode atender: na hora do match, o WhatsApp dos dois aparece."
-              : "Curta de volta quem combina com o que você precisa. Na hora do match, o WhatsApp dos dois aparece."}
+              ? "Quem quer contratar você. Você decide se aceita: o aceite conecta vocês, e a conversa e o WhatsApp aparecem para os dois."
+              : "Você decide quem aceitar. Curtir de volta conecta vocês: a conversa e o WhatsApp aparecem para os dois."}
           </p>
           <ul className="flex flex-col gap-4">
             {interessados.map((p) => {
