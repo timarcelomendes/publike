@@ -67,7 +67,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(await paginasDeBusca()),
     ...(data ?? []).map((a) => ({
       url: `${SITE_URL}/anuncio/${a.id}`,
-      lastModified: a.atualizado_em,
+      // data no formato curto e padrão (o Google lê melhor que microssegundos com fuso)
+      lastModified: new Date(a.atualizado_em).toISOString(),
       changeFrequency: "daily" as const,
       priority: 0.7,
     })),
