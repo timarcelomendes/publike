@@ -14,6 +14,8 @@ export type Seguido = {
   alvo_nome: string | null;
   cidade: string | null;
   bairro: string | null;
+  /** chave de comparação do bairro (como chaveBairro) */
+  bairro_chave: string | null;
 };
 
 /** O que eu sigo (perfis com o nome, e bairros). */
@@ -22,7 +24,7 @@ export const meusSeguidos = cache(async (): Promise<Seguido[]> => {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("seguindo")
-    .select("id, alvo_perfil, cidade, bairro")
+    .select("id, alvo_perfil, cidade, bairro, bairro_chave")
     .order("criado_em", { ascending: false })
     .limit(200);
   if (error || !data) return [];

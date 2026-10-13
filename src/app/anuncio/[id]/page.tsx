@@ -32,7 +32,7 @@ import { MapaArea } from "@/components/mapa/mapa-area";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
-import { categoria, descreverAtendimento, REGIMES, STATUS_ANUNCIO } from "@/lib/constantes";
+import { categoria, descreverAtendimento, REGIMES, STATUS_ANUNCIO, TEXTO_SEGUIR } from "@/lib/constantes";
 import {
   contatoDoMatch,
   listarAvaliacoesPublicas,
@@ -60,6 +60,7 @@ import { distanciaKm } from "@/lib/descobrir";
 import { deslocamentos, formatarMinutos, minutosAte } from "@/lib/deslocamento";
 import { meusSeguidos } from "@/lib/dados-social";
 import { obterLocal } from "@/lib/local";
+import { chaveBairro } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 
@@ -188,6 +189,8 @@ async function DetalheAnuncio({
     ? [null, []]
     : await Promise.all([obterNotaDoProfissional(anuncio.autor_id), listarAvaliacoesPublicas(anuncio.autor_id)]);
   const primeiroNome = anuncio.autor_nome.split(" ")[0];
+  // pessoa pelo primeiro nome; comércio, empresa e agência pelo nome inteiro
+  const nomeParaSeguir = anuncio.autor_tipo === "pessoa" ? primeiroNome : anuncio.autor_nome;
   const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
   const agencia = anuncio.autor_tipo === "agencia";
   // tempo de casa até o trabalho (só com o CEP de casa: o ponto da pessoa)
@@ -467,13 +470,14 @@ async function DetalheAnuncio({
               </Link>
             </div>
             {!proprio && (
-              <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+              <div className="flex flex-col items-start gap-2 border-t border-line pt-3">
                 <BotaoSeguir
                   alvo={{ perfil: anuncio.autor_id }}
                   seguidoId={seguidos.find((s) => s.alvo_perfil === anuncio.autor_id)?.id ?? null}
                   logado={usuario !== null}
                   voltar={`/anuncio/${anuncio.id}`}
-                  rotulo={vaga ? "Avisar de vagas novas daqui" : "Seguir"}
+                  rotulo={`Seguir ${nomeParaSeguir}`}
+                  rotuloSeguindo={`Seguindo ${nomeParaSeguir}`}
                 />
                 {anuncio.bairro && (
                   <BotaoSeguir
@@ -481,15 +485,18 @@ async function DetalheAnuncio({
                     seguidoId={
                       seguidos.find(
                         (s) =>
+                          !s.alvo_perfil &&
                           s.cidade === anuncio.cidade &&
-                          s.bairro?.localeCompare(anuncio.bairro ?? "", "pt-BR", { sensitivity: "base" }) === 0,
+                          s.bairro_chave === chaveBairro(anuncio.bairro ?? ""),
                       )?.id ?? null
                     }
                     logado={usuario !== null}
                     voltar={`/anuncio/${anuncio.id}`}
-                    rotulo={`Avisar de anúncios em ${anuncio.bairro}`}
+                    rotulo={`Seguir o bairro ${anuncio.bairro}`}
+                    rotuloSeguindo={`Seguindo o bairro ${anuncio.bairro}`}
                   />
                 )}
+                <p className="text-body-sm text-ink-muted">{TEXTO_SEGUIR}</p>
               </div>
             )}
             {anuncio.autor_cnpj && (

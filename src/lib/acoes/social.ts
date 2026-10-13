@@ -9,6 +9,7 @@ import { mensagemDeErro } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
+import { chaveBairro } from "@/lib/regioes";
 import { temContatoNoTexto, UUID } from "@/lib/validacao";
 
 // Social a serviço do emprego: seguir, recomendar e mostrar contratações.
@@ -22,20 +23,26 @@ async function precisaEntrar(voltar: string): Promise<Resultado | null> {
   return null;
 }
 
+/** Resultado de seguir: o id serve para deixar de seguir sem recarregar a página. */
+type ResultadoSeguir = Resultado & { id?: number };
+
 /** Seguir um comércio, empresa, agência ou profissional: aviso quando publicar. */
-export async function seguirPerfil(perfilId: string, voltar: string): Promise<Resultado> {
+export async function seguirPerfil(perfilId: string, voltar: string): Promise<ResultadoSeguir> {
   const barrado = await precisaEntrar(voltar);
   if (barrado) return barrado;
   if (!UUID.test(perfilId)) return { ok: false, erro: "Perfil não encontrado." };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("seguir_perfil", { p_perfil: perfilId });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para seguir agora.") };
+  // a tabela só mostra o que eu sigo (RLS)
+  const { data } = await supabase.from("seguindo").select("id").eq("alvo_perfil", perfilId).maybeSingle();
   revalidatePath(`/perfil/${perfilId}`);
-  return { ok: true, mensagem: "Pronto! Você recebe um aviso quando sair anúncio novo." };
+  // sem aviso: o botão vira "Seguindo ..." e a frase embaixo explica
+  return { ok: true, id: data?.id };
 }
 
 /** Seguir um bairro: aviso de vaga ou serviço novo ali. */
-export async function seguirBairro(cidade: string, bairro: string, voltar: string): Promise<Resultado> {
+export async function seguirBairro(cidade: string, bairro: string, voltar: string): Promise<ResultadoSeguir> {
   const barrado = await precisaEntrar(voltar);
   if (barrado) return barrado;
   const c = cidade.trim().slice(0, 80);
@@ -44,7 +51,14 @@ export async function seguirBairro(cidade: string, bairro: string, voltar: strin
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("seguir_bairro", { p_cidade: c, p_bairro: b });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para seguir agora.") };
-  return { ok: true, mensagem: `Pronto! Você recebe um aviso quando sair anúncio novo em ${b}.` };
+  const { data } = await supabase
+    .from("seguindo")
+    .select("id")
+    .is("alvo_perfil", null)
+    .eq("cidade", c)
+    .eq("bairro_chave", chaveBairro(b))
+    .maybeSingle();
+  return { ok: true, id: data?.id };
 }
 
 /** Deixar de seguir (um perfil ou um bairro). */
@@ -56,7 +70,8 @@ export async function deixarDeSeguir(id: number, voltar: string): Promise<Result
   const { error } = await supabase.from("seguindo").delete().eq("id", id);
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para deixar de seguir agora.") };
   revalidatePath("/painel/seguindo");
-  return { ok: true, mensagem: "Você deixou de seguir." };
+  // sem aviso: o próprio botão volta para "Seguir ..."
+  return { ok: true };
 }
 
 /** Recomendar quem presta serviço (ou mudar a recomendação que já fez). */

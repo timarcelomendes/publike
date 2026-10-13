@@ -11,7 +11,7 @@ import { BotaoSeguir } from "@/components/social/botoes";
 import { SecaoContratacoes, SecaoRecomendacoes } from "@/components/social/secoes";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { descreverAtendimento, TIPOS_CONTA } from "@/lib/constantes";
+import { descreverAtendimento, TEXTO_SEGUIR, TIPOS_CONTA } from "@/lib/constantes";
 import { listarAvaliacoesPublicas, obterNotaDoProfissional, obterPerfilPublico, obterUsuario } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
@@ -98,14 +98,15 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             Editar perfil
           </BotaoLink>
         ) : (
-          <div className="self-start sm:self-center">
+          <div className="flex max-w-60 flex-col items-start gap-1 self-start sm:items-end sm:self-center sm:text-right">
             <BotaoSeguir
               alvo={{ perfil: perfil.id }}
               seguidoId={seguidos.find((s) => s.alvo_perfil === perfil.id)?.id ?? null}
               logado={usuario !== null}
               voltar={`/perfil/${perfil.id}`}
-              rotulo={perfil.tipo === "pessoa" ? "Seguir" : "Avisar de vagas novas"}
+              rotulo="Seguir"
             />
+            <p className="text-body-sm text-ink-muted">{TEXTO_SEGUIR}</p>
           </div>
         )}
       </div>

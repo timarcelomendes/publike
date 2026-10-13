@@ -366,6 +366,9 @@ export function descreverAtendimento(areas: readonly string[]) {
 }
 
 /** De onde quem recomenda conhece o profissional ("Eu recomendo"). */
+/** Explica o que é seguir: vai uma vez, embaixo dos botões de seguir. */
+export const TEXTO_SEGUIR = "Quem segue recebe um aviso quando sair anúncio novo.";
+
 export const RELACOES_RECOMENDACAO = {
   vizinho: "Vizinho",
   cliente: "Cliente",

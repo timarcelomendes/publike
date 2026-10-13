@@ -27,7 +27,7 @@ async function Conteudo() {
     return (
       <Vazio icone={BellRing} titulo="Você ainda não segue ninguém" acao={<BotaoLink href="/">Ver oportunidades</BotaoLink>}>
         Siga um comércio, uma empresa ou um bairro e receba um aviso quando sair vaga ou serviço novo ali. É só tocar em
-        “Avisar de vagas novas” na página do anúncio ou do perfil.
+        “Seguir” na página do anúncio ou do perfil.
       </Vazio>
     );
   }
@@ -37,7 +37,7 @@ async function Conteudo() {
       <div>
         <h2 className="text-h2">O que você segue</h2>
         <p className="mt-1 text-body text-ink-muted">
-          Quando sair anúncio novo, chega um aviso (no máximo 5 por dia). Para parar, toque em “Seguindo”.
+          Quando sair anúncio novo, chega um aviso (no máximo 5 por dia). Para parar, toque em “Deixar de seguir”.
         </p>
       </div>
       <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
@@ -68,6 +68,7 @@ async function Conteudo() {
               logado
               voltar="/painel/seguindo"
               rotulo="Seguir de novo"
+              lista
             />
           </li>
         ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { BellPlus, BellRing, PartyPopper } from "lucide-react";
+import { BellOff, BellPlus, BellRing, PartyPopper } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { autorizarContratacao, deixarDeSeguir, seguirBairro, seguirPerfil } from "@/lib/acoes/social";
@@ -10,7 +10,9 @@ import { useAcao } from "../ui/usar-acao";
 /**
  * Seguir um perfil (comércio, empresa, agência ou profissional) ou um bairro:
  * aviso quando sair anúncio novo. Sem contagem de seguidores: não é vaidade,
- * é para não perder a vaga.
+ * é para não perder a vaga. O texto diz o que se segue ("Seguindo o bairro
+ * Centro"), para dois botões lado a lado nunca ficarem iguais. Embaixo vai
+ * uma vez só a frase TEXTO_SEGUIR, em vez de um aviso por botão.
  */
 export function BotaoSeguir({
   alvo,
@@ -18,6 +20,8 @@ export function BotaoSeguir({
   logado,
   voltar,
   rotulo,
+  rotuloSeguindo = "Seguindo",
+  lista = false,
 }: {
   alvo: { perfil: string } | { cidade: string; bairro: string };
   /** id do que já sigo (para deixar de seguir) */
@@ -26,49 +30,61 @@ export function BotaoSeguir({
   voltar: string;
   /** texto do botão quando ainda não segue */
   rotulo: string;
+  /** texto do botão quando já segue */
+  rotuloSeguindo?: string;
+  /** na lista do painel o botão é a ação de parar: "Deixar de seguir" */
+  lista?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [id, setId] = useState<number | null>(seguidoId);
-  const [seguindo, setSeguindo] = useState(seguidoId !== null);
+  const seguindo = id !== null;
 
   if (!logado) {
     return (
-      <Link href={`/entrar?next=${encodeURIComponent(voltar)}`} className={classesBotao("secundario", "sm")}>
+      <Link
+        href={`/entrar?next=${encodeURIComponent(voltar)}`}
+        className={classesBotao("secundario", "sm", "max-w-full")}
+      >
         <BellPlus aria-hidden />
-        {rotulo}
+        <span className="truncate">{rotulo}</span>
       </Link>
     );
   }
 
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className="flex max-w-full flex-col items-start gap-1">
       <Botao
         tamanho="sm"
+        className="max-w-full"
         disabled={pendente}
-        aria-pressed={seguindo}
         onClick={() => {
-          if (seguindo && id !== null) {
+          if (id !== null) {
             rodar(
               () => deixarDeSeguir(id, voltar),
               (r) => {
-                if (r.ok) {
-                  setSeguindo(false);
-                  setId(null);
-                }
+                if (r.ok) setId(null);
               },
             );
           } else {
             rodar(
               () => ("perfil" in alvo ? seguirPerfil(alvo.perfil, voltar) : seguirBairro(alvo.cidade, alvo.bairro, voltar)),
               (r) => {
-                if (r.ok) setSeguindo(true);
+                if (r.ok && "id" in r && typeof r.id === "number") setId(r.id);
               },
             );
           }
         }}
       >
-        {seguindo ? <BellRing aria-hidden className="text-cerrado-text" /> : <BellPlus aria-hidden />}
-        {seguindo ? "Seguindo" : rotulo}
+        {seguindo ? (
+          lista ? (
+            <BellOff aria-hidden />
+          ) : (
+            <BellRing aria-hidden className="text-cerrado-text" />
+          )
+        ) : (
+          <BellPlus aria-hidden />
+        )}
+        <span className="truncate">{seguindo ? (lista ? "Deixar de seguir" : rotuloSeguindo) : rotulo}</span>
       </Botao>
       {mensagem}
     </div>
