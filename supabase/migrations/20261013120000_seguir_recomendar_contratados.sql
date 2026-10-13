@@ -289,6 +289,8 @@ end
 $$;
 
 -- as recomendações de um perfil, com o nome de quem recomendou
+-- (a de segurança e LGPD troca as colunas: sem o drop, rodar esta de novo depois dela dá erro)
+drop function if exists public.recomendacoes_do_perfil(uuid);
 create or replace function public.recomendacoes_do_perfil(p_perfil uuid)
 returns table (
   id bigint,
