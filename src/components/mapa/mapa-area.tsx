@@ -3,13 +3,36 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Map as MapaML } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import { carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA, recolherCreditos } from "./maplibre";
+import {
+  carregarMapLibre,
+  circulo,
+  CORES_MAPA,
+  ESTILO_MAPA,
+  mostrarNomesDasRuas,
+  recolherCreditos,
+} from "./maplibre";
 
 /**
  * Onde é o trabalho: uma área aproximada ou, quando o endereço é público
  * (comércio, empresa e agência), o pino na porta.
+ *
+ * Área: o ponto salvo é arredondado numa grade de 0,005° (uns 500 m), então o
+ * endereço fica a no máximo ~385 m dele; o círculo de 400 m cobre isso. O mapa
+ * abre no zoom 14, com os nomes das ruas, para a pessoa reconhecer onde é. O
+ * bairro do anúncio não vai escrito no mapa: ele é digitado à parte e pode não
+ * bater com o ponto; os nomes do próprio mapa nunca contradizem o lugar.
  */
-export function MapaArea({ lat, lng, raioKm = 0.6, exato = false }: { lat: number; lng: number; raioKm?: number; exato?: boolean }) {
+export function MapaArea({
+  lat,
+  lng,
+  raioKm = 0.4,
+  exato = false,
+}: {
+  lat: number;
+  lng: number;
+  raioKm?: number;
+  exato?: boolean;
+}) {
   const caixa = useRef<HTMLDivElement>(null);
   const [falhou, setFalhou] = useState(false);
 
@@ -23,7 +46,7 @@ export function MapaArea({ lat, lng, raioKm = 0.6, exato = false }: { lat: numbe
         container: caixa.current,
         style: ESTILO_MAPA,
         center: [lng, lat],
-        zoom: exato ? 15.5 : 13.5,
+        zoom: exato ? 15.5 : 14,
         cooperativeGestures: true,
         attributionControl: { compact: true },
       });
@@ -34,6 +57,7 @@ export function MapaArea({ lat, lng, raioKm = 0.6, exato = false }: { lat: numbe
       recolherCreditos(instancia);
       instancia.on("load", () => {
         const m = instancia!;
+        mostrarNomesDasRuas(m);
         if (exato) {
           m.addSource("pino", {
             type: "geojson",

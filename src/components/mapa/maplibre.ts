@@ -43,6 +43,20 @@ export const CORES_MAPA = {
   branco: "#ffffff",
 } as const;
 
+/**
+ * No estilo do mapa (positron), rua comum só ganha nome a partir do zoom 15, e o
+ * mapa da área abre no 14: sem isto ele fica sem nome nenhum. Liga os nomes das
+ * ruas a partir de `aPartirDe` (os blocos do mapa trazem esses nomes a partir do 14).
+ */
+export function mostrarNomesDasRuas(mapa: MapaML, aPartirDe = 14) {
+  for (const camada of mapa.getStyle().layers ?? []) {
+    const fonte = (camada as { "source-layer"?: string })["source-layer"];
+    if (camada.type !== "symbol" || fonte !== "transportation_name") continue;
+    if (/path|shield/.test(camada.id)) continue;
+    if ((camada.minzoom ?? 0) > aPartirDe) mapa.setLayerZoomRange(camada.id, aPartirDe, camada.maxzoom ?? 24);
+  }
+}
+
 /** Polígono aproximado de um círculo (para mostrar raio e área aproximada). */
 export function circulo(lat: number, lng: number, raioKm: number, lados = 64): GeoJSON.Feature<GeoJSON.Polygon> {
   const dLat = (raioKm / 6371) * (180 / Math.PI);
