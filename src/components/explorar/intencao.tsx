@@ -2,7 +2,7 @@
 
 import { ArrowRight, Briefcase, HandHelping, UserPlus, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { salvarIntencao } from "@/lib/acoes/intencao";
 import { INTENCOES, VOCE, type Intencao } from "@/lib/intencao";
 
@@ -98,7 +98,14 @@ export const classesAgoraNao =
   "inline-flex min-h-10 shrink-0 items-center text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60";
 
 /** Primeira visita: a pergunta, num quadro no meio dos anúncios. */
-export function CartaoIntencao({ aoEscolher, aoAdiar }: { aoEscolher: (i: Intencao) => void; aoAdiar: () => void }) {
+export function CartaoIntencao({
+  aoEscolher,
+  aoAdiar,
+}: {
+  aoEscolher: (i: Intencao) => void;
+  /** sem "Agora não": a pergunta fica no meio dos anúncios até a pessoa responder */
+  aoAdiar?: () => void;
+}) {
   const titulo = useId();
   const { tocada: escolhida, escolher, pendente } = useEscolher(aoEscolher);
   return (
@@ -113,12 +120,79 @@ export function CartaoIntencao({ aoEscolher, aoAdiar }: { aoEscolher: (i: Intenc
           </h2>
           <p className="text-body-sm text-ink-muted">Assim a busca já abre no que interessa a você.</p>
         </div>
-        <button type="button" onClick={aoAdiar} className={classesAgoraNao}>
-          Agora não
-        </button>
+        {aoAdiar && (
+          <button type="button" onClick={aoAdiar} className={classesAgoraNao}>
+            Agora não
+          </button>
+        )}
       </div>
       <OpcoesIntencao rotuladoPor={titulo} escolhida={escolhida} pendente={pendente} escolher={escolher} />
     </section>
+  );
+}
+
+const noCliente = () => () => {};
+
+/**
+ * Primeira visita: a pergunta numa janela por cima da página (folha de baixo no celular,
+ * caixa no meio no computador), para ninguém deixar de ver. O topo da página continua leve.
+ * "Agora não" (ou Esc, ou tocar fora) fecha; aí a pergunta fica no meio dos anúncios.
+ */
+export function FolhaIntencao({ aoEscolher, aoAdiar }: { aoEscolher: (i: Intencao) => void; aoAdiar: () => void }) {
+  const titulo = useId();
+  const { tocada: escolhida, escolher, pendente } = useEscolher(aoEscolher);
+  const caixa = useRef<HTMLDivElement>(null);
+  const fechar = useRef(aoAdiar);
+  useEffect(() => {
+    fechar.current = aoAdiar;
+  });
+  // só no navegador: no servidor não se sabe se a pessoa já fechou nesta visita
+  const montado = useSyncExternalStore(
+    noCliente,
+    () => true,
+    () => false,
+  );
+
+  useEffect(() => {
+    if (!montado) return;
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    // o foco vai para a janela (não para uma opção, que pareceria já escolhida)
+    caixa.current?.focus();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && fechar.current();
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.body.style.overflow = antes;
+      document.removeEventListener("keydown", esc);
+    };
+  }, [montado]);
+
+  if (!montado) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 sm:items-center sm:p-6"
+      onClick={(e) => e.target === e.currentTarget && aoAdiar()}
+    >
+      <div
+        ref={caixa}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titulo}
+        tabIndex={-1}
+        className="flex w-full flex-col gap-3 rounded-t-lg outline-none bg-surface-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-raised sm:max-w-2xl sm:rounded-lg sm:p-6"
+      >
+        <div>
+          <h2 id={titulo} className="text-h3">
+            O que você quer fazer no Publike?
+          </h2>
+          <p className="mt-0.5 text-body-sm text-ink-muted">Assim a busca já abre no que interessa a você.</p>
+        </div>
+        <OpcoesIntencao rotuladoPor={titulo} escolhida={escolhida} pendente={pendente} escolher={escolher} />
+        <button type="button" onClick={aoAdiar} className={`${classesAgoraNao} self-center`}>
+          Agora não
+        </button>
+      </div>
+    </div>
   );
 }
 

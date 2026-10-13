@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import type { Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { AVISOS_GPS, pedirPosicao, useIrPara } from "./barra-busca";
-import { CartaoIntencao, FaixaIntencao, type ProximoPasso } from "./intencao";
+import { CartaoIntencao, FaixaIntencao, FolhaIntencao, type ProximoPasso } from "./intencao";
 import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
 
 /**
@@ -12,7 +12,8 @@ import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora
  * por vez: "O que você quer fazer no Publike?", depois "Onde você mora?" e, respondidas,
  * o próximo passo para a resposta (currículo, vitrine, publicar), com o "Mudar".
  * Em cima da lista ficam só a busca e os filtros: os anúncios aparecem logo na primeira tela.
- * "Agora não" deixa as duas perguntas para a próxima visita.
+ * Sem resposta, "O que você quer fazer" abre numa janela por cima ao chegar; fechada ("Agora
+ * não"), continua aqui, no meio dos anúncios. "Agora não" também deixa o "Onde você mora?" para depois.
  */
 export function PerguntasNaLista({
   filtros,
@@ -55,8 +56,9 @@ export function PerguntasNaLista({
     );
   }
 
+  // a pergunta não some: na chegada, numa janela por cima; fechada, fica aqui no meio dos anúncios
   if (!intencaoAtual) {
-    return adiada ? null : <CartaoIntencao aoEscolher={escolher} aoAdiar={adiar} />;
+    return adiada ? <CartaoIntencao aoEscolher={escolher} /> : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} />;
   }
 
   if (!temLocal && filtros.origem === "centro" && !adiada) {

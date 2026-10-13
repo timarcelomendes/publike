@@ -104,7 +104,7 @@ function SeletorVisao({ visao, celular = false }: { visao: Visao; celular?: bool
           >
             <Icone aria-hidden className="size-4" />
             {/* no celular são só duas: os nomes cabem e explicam melhor que o ícone */}
-            <span className={celular ? "" : ativo ? "hidden xl:inline" : "sr-only"}>{nome}</span>
+            <span className={celular ? "" : ativo ? "hidden 2xl:inline" : "sr-only"}>{nome}</span>
           </button>
         );
       })}

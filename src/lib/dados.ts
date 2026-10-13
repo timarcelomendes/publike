@@ -165,6 +165,17 @@ export async function listarMeusAnuncios(): Promise<MeuAnuncio[]> {
   return data ?? [];
 }
 
+/** Se quem está logado tem anúncio no ar (para mostrar o filtro "Só os meus" só a quem publica). */
+export async function temAnuncioNoAr(usuarioId: string): Promise<boolean> {
+  const supabase = await criarClienteServidor();
+  const { count, error } = await supabase
+    .from("anuncios")
+    .select("id", { count: "exact", head: true })
+    .eq("autor_id", usuarioId)
+    .eq("status", "ativo");
+  return !error && (count ?? 0) > 0;
+}
+
 /** Os serviços de quem está logado, para o cadastro "Meus serviços". */
 export async function listarMeusServicos(): Promise<MeuServico[]> {
   const supabase = await criarClienteServidor();

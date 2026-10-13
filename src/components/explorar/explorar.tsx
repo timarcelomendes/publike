@@ -1,6 +1,6 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { Fragment } from "react";
-import { buscarAnuncios, listarMeusServicos, obterMeuCurriculo, obterUsuario } from "@/lib/dados";
+import { buscarAnuncios, listarMeusServicos, obterMeuCurriculo, obterUsuario, temAnuncioNoAr } from "@/lib/dados";
 import { aplicarIntencao, descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
@@ -21,7 +21,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
-import { BarraBusca, BotaoSoMeus, FiltrosLista } from "./barra-busca";
+import { BarraBusca, FiltrosLista } from "./barra-busca";
 import type { ProximoPasso } from "./intencao";
 import { PerguntasNaLista } from "./perguntas-na-lista";
 import { VisaoExplorar } from "./visao-explorar";
@@ -111,9 +111,11 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     obterIntencao(),
   ]);
   const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
-  const [anuncios, proximoPasso] = await Promise.all([
+  const [anuncios, proximoPasso, publica] = await Promise.all([
     buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
     proximoPassoDa(intencao, Boolean(usuario)),
+    // "Só os meus" só para quem tem anúncio no ar (quem só procura não precisa dele)
+    usuario && !filtros.meus ? temAnuncioNoAr(usuario.id).catch(() => false) : Promise.resolve(filtros.meus),
   ]);
 
   const tempoDe = origemDoTempo(filtros, local);
@@ -257,28 +259,20 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
           </h2>
         }
         subtitulo={
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-body-sm text-ink-muted">
-              {!filtros.meus && local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
-              {!filtros.meus && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
-              {filtros.meus ? (
-                <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
-              ) : (
-                <>
-                  {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                  {textoDaOrigem(filtros, local)}
-                </>
-              )}
-            </p>
-            {/* no celular, "Só os meus" fica dentro de "Filtros" */}
-            {(usuario || filtros.meus) && (
-              <span className="hidden lg:block">
-                <BotaoSoMeus filtros={filtros} />
-              </span>
+          <p className="text-body-sm text-ink-muted">
+            {!filtros.meus && local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
+            {!filtros.meus && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
+            {filtros.meus ? (
+              <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
+            ) : (
+              <>
+                {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
+                {textoDaOrigem(filtros, local)}
+              </>
             )}
-          </div>
+          </p>
         }
-        filtrosLista={<FiltrosLista filtros={filtros} soMeus={Boolean(usuario) || filtros.meus} />}
+        filtrosLista={<FiltrosLista filtros={filtros} soMeus={publica} />}
         lista={listaComPerguntas}
         pontos={pontos}
         origem={origem}

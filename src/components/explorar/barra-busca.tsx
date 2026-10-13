@@ -376,6 +376,13 @@ export function FiltrosLista({ filtros, soMeus = false }: { filtros: Filtros; so
   const [ir, pendente] = useIrPara(filtros);
   return (
     <FaixaRolavel rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end lg:px-0">
+      {/* quem publica: ver na busca (lista e mapa) só os próprios anúncios; vem primeiro, porque muda o que a lista mostra */}
+      {soMeus && (
+        <>
+          <BotaoSoMeus filtros={filtros} />
+          <span aria-hidden className="my-1.5 w-px shrink-0 bg-line-strong" />
+        </>
+      )}
       {filtros.tipo !== "servico" && (
         <Seletor
           aria-label="Tipo de contratação"
@@ -428,14 +435,12 @@ export function FiltrosLista({ filtros, soMeus = false }: { filtros: Filtros; so
         <option value="perto">Mais perto</option>
         <option value="recentes">Mais recentes</option>
       </Seletor>
-      {/* no computador, "Só os meus" fica na linha de baixo, na ponta (ao lado da origem) */}
-      {soMeus && <BotaoSoMeus filtros={filtros} className="lg:hidden" />}
     </FaixaRolavel>
   );
 }
 
 /** "Só os meus": quem publicou vê na busca (lista e mapa) só os próprios anúncios. Fica junto dos filtros. */
-export function BotaoSoMeus({ filtros, className = "" }: { filtros: Filtros; className?: string }) {
+function BotaoSoMeus({ filtros }: { filtros: Filtros }) {
   const [ir, pendente] = useIrPara(filtros);
   return (
     <button
@@ -443,7 +448,7 @@ export function BotaoSoMeus({ filtros, className = "" }: { filtros: Filtros; cla
       aria-pressed={filtros.meus}
       disabled={pendente}
       onClick={() => ir({ meus: !filtros.meus })}
-      className={`${botaoLugar(filtros.meus)} shrink-0 disabled:opacity-60 ${className}`}
+      className={`${botaoLugar(filtros.meus)} shrink-0 disabled:opacity-60`}
     >
       <UserRound aria-hidden className={`size-4 shrink-0 ${filtros.meus ? "text-terra-text" : ""}`} />
       Só os meus
