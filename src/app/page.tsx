@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
 import { EntendaOPublike, HeroInicio } from "@/components/inicio";
+import { ContratacoesNaHome } from "@/components/social/secoes";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
+import { agoraDaRequisicao } from "@/lib/tempo";
 
 // Quem é o Publike, para o Google (nome do site e da organização nos resultados).
 const DADOS_SITE = [
@@ -42,7 +44,15 @@ export default function Inicio({ searchParams }: PageProps<"/">) {
       <Suspense fallback={<ExplorarEsqueleto />}>
         <Explorar searchParams={searchParams} />
       </Suspense>
+      <Suspense fallback={null}>
+        <Contratados />
+      </Suspense>
       <EntendaOPublike />
     </>
   );
+}
+
+/** Gente contratada pelo Publike (com o sim dos dois lados): aparece com 3 ou mais. */
+async function Contratados() {
+  return <ContratacoesNaHome agora={await agoraDaRequisicao()} />;
 }

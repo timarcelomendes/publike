@@ -21,6 +21,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
+import { QuadroIndicar } from "@/components/anuncio/indicar";
+import { BotaoSeguir } from "@/components/social/botoes";
 import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
 import { VerMaisPerto } from "@/components/anuncio/ver-mais";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
@@ -56,6 +58,7 @@ import {
 import { formatarCep } from "@/lib/cep";
 import { distanciaKm } from "@/lib/descobrir";
 import { deslocamentos, formatarMinutos, minutosAte } from "@/lib/deslocamento";
+import { meusSeguidos } from "@/lib/dados-social";
 import { obterLocal } from "@/lib/local";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
@@ -159,7 +162,7 @@ async function DetalheAnuncio({
   searchParams: PageProps<"/anuncio/[id]">["searchParams"];
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const [anuncio, usuario] = await Promise.all([obterAnuncio(id), obterUsuario()]);
+  const [anuncio, usuario, seguidos] = await Promise.all([obterAnuncio(id), obterUsuario(), meusSeguidos()]);
   if (!anuncio) notFound();
 
   const agora = await agoraDaRequisicao();
@@ -463,6 +466,32 @@ async function DetalheAnuncio({
                 Ver perfil
               </Link>
             </div>
+            {!proprio && (
+              <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+                <BotaoSeguir
+                  alvo={{ perfil: anuncio.autor_id }}
+                  seguidoId={seguidos.find((s) => s.alvo_perfil === anuncio.autor_id)?.id ?? null}
+                  logado={usuario !== null}
+                  voltar={`/anuncio/${anuncio.id}`}
+                  rotulo={vaga ? "Avisar de vagas novas daqui" : "Seguir"}
+                />
+                {anuncio.bairro && (
+                  <BotaoSeguir
+                    alvo={{ cidade: anuncio.cidade, bairro: anuncio.bairro }}
+                    seguidoId={
+                      seguidos.find(
+                        (s) =>
+                          s.cidade === anuncio.cidade &&
+                          s.bairro?.localeCompare(anuncio.bairro ?? "", "pt-BR", { sensitivity: "base" }) === 0,
+                      )?.id ?? null
+                    }
+                    logado={usuario !== null}
+                    voltar={`/anuncio/${anuncio.id}`}
+                    rotulo={`Avisar de anúncios em ${anuncio.bairro}`}
+                  />
+                )}
+              </div>
+            )}
             {anuncio.autor_cnpj && (
               <CnpjDoPerfil
                 cnpj={anuncio.autor_cnpj}
@@ -471,6 +500,16 @@ async function DetalheAnuncio({
               />
             )}
           </div>
+
+          {anuncio.status === "ativo" && (
+            <QuadroIndicar
+              url={`${SITE_URL}/anuncio/${anuncio.id}`}
+              titulo={anuncio.titulo}
+              lugar={lugar}
+              vaga={vaga}
+              proprio={proprio}
+            />
+          )}
 
           <div className="flex flex-wrap justify-start gap-2">
             {vaga && !proprio && <BotaoSalvarVaga anuncioId={anuncio.id} salva={salva} logado={usuario !== null} />}

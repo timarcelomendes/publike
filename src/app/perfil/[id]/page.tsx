@@ -7,10 +7,13 @@ import { Suspense } from "react";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { CardAnuncio } from "@/components/card-anuncio";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
+import { BotaoSeguir } from "@/components/social/botoes";
+import { SecaoContratacoes, SecaoRecomendacoes } from "@/components/social/secoes";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TIPOS_CONTA } from "@/lib/constantes";
 import { listarAvaliacoesPublicas, obterNotaDoProfissional, obterPerfilPublico, obterUsuario } from "@/lib/dados";
+import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
@@ -37,11 +40,12 @@ export default function PerfilPublico({ params }: PageProps<"/perfil/[id]">) {
 
 async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"] }) {
   const { id } = await params;
-  const [dados, usuario, avaliacoes, nota] = await Promise.all([
+  const [dados, usuario, avaliacoes, nota, seguidos] = await Promise.all([
     obterPerfilPublico(id),
     obterUsuario(),
     listarAvaliacoesPublicas(id),
     obterNotaDoProfissional(id),
+    meusSeguidos(),
   ]);
   if (!dados) notFound();
   const { perfil, anuncios } = dados;
@@ -88,11 +92,21 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             </p>
           )}
         </div>
-        {meu && (
+        {meu ? (
           <BotaoLink href="/perfil" tamanho="sm" className="self-start sm:self-center">
             <Pencil aria-hidden />
             Editar perfil
           </BotaoLink>
+        ) : (
+          <div className="self-start sm:self-center">
+            <BotaoSeguir
+              alvo={{ perfil: perfil.id }}
+              seguidoId={seguidos.find((s) => s.alvo_perfil === perfil.id)?.id ?? null}
+              logado={usuario !== null}
+              voltar={`/perfil/${perfil.id}`}
+              rotulo={perfil.tipo === "pessoa" ? "Seguir" : "Avisar de vagas novas"}
+            />
+          </div>
         )}
       </div>
 
@@ -170,6 +184,16 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             </p>
           )}
         </section>
+      )}
+
+      {perfil.tipo === "pessoa" && (
+        <SecaoRecomendacoes perfilId={perfil.id} nome={perfil.nome} usuarioId={usuario?.id ?? null} agora={agora} />
+      )}
+
+      {perfil.tipo === "pessoa" ? (
+        <SecaoContratacoes pessoa={perfil.id} agora={agora} />
+      ) : (
+        <SecaoContratacoes empresa={perfil.id} agora={agora} />
       )}
 
       {(vagas.length > 0 || servicos.length === 0) && (

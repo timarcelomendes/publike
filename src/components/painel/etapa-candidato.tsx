@@ -4,6 +4,7 @@ import { ChevronDown, NotebookPen } from "lucide-react";
 import { useId, useState } from "react";
 import { salvarEtapaCandidato } from "@/lib/acoes/curtidas";
 import { ETAPAS_CANDIDATO, etapasDoTipo, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
+import { ContratacaoPublica } from "../social/botoes";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -23,6 +24,7 @@ export function EtapaDoCandidato({
   etapa: etapaInicial,
   nota: notaInicial,
   compacto = false,
+  publico = null,
 }: {
   /** vaga ou serviço: cada um tem as suas etapas */
   tipo?: string;
@@ -37,6 +39,8 @@ export function EtapaDoCandidato({
    * para a direita e a anotação, quando aberta, ocupa a linha inteira embaixo.
    */
   compacto?: boolean;
+  /** contratado: se cada lado topou mostrar no Publike, e o nome da pessoa */
+  publico?: { okEmpresa: boolean; okPessoa: boolean; nome: string } | null;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [etapa, setEtapa] = useState<EtapaCandidato>(etapaInicial);
@@ -126,6 +130,16 @@ export function EtapaDoCandidato({
             <span className="text-caption text-ink-muted normal-case">{nota.length}/1000</span>
           </div>
         </div>
+      )}
+      {tipo === "vaga" && status === "match" && etapa === "contratado" && publico && (
+        <ContratacaoPublica
+          anuncioId={anuncioId}
+          perfilId={perfilId}
+          lado="empresa"
+          okEmpresa={publico.okEmpresa}
+          okPessoa={publico.okPessoa}
+          outro={publico.nome.split(" ")[0]}
+        />
       )}
       {compacto ? <div className="basis-full empty:hidden">{mensagem}</div> : mensagem}
     </div>

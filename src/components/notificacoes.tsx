@@ -9,6 +9,9 @@ import {
   MessagesSquare,
   ShieldCheck,
   Star,
+  BellRing,
+  PartyPopper,
+  ThumbsUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -25,13 +28,16 @@ type Notificacao = {
   criado_em: string;
 };
 
-function destino(n: Notificacao) {
+function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "curtida" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}`;
   if (n.tipo === "match") return "/painel/matches";
   if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "avaliacao") return "/painel/avaliacoes";
   if (n.tipo === "avaliacao_retida") return "/privacidade#regras";
   if (n.tipo === "etapa") return "/painel/curtidas";
+  if (n.tipo === "seguindo" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
+  if (n.tipo === "recomendacao") return `/perfil/${usuarioId}#recomendacoes`;
+  if (n.tipo === "contratacao" && n.anuncio_id) return `/painel/contratacao/${n.anuncio_id}`;
   if (n.tipo === "mensagem" && n.anuncio_id && n.ator_id) return `/painel/conversas/${n.anuncio_id}/${n.ator_id}`;
   return "/painel";
 }
@@ -142,11 +148,17 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                             ? MessagesSquare
                             : n.tipo === "etapa"
                               ? ListChecks
-                              : ShieldCheck;
+                              : n.tipo === "seguindo"
+                                ? BellRing
+                                : n.tipo === "recomendacao"
+                                  ? ThumbsUp
+                                  : n.tipo === "contratacao"
+                                    ? PartyPopper
+                                    : ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link
-                      href={destino(n)}
+                      href={destino(n, usuarioId)}
                       onClick={() => setAberto(false)}
                       className="flex gap-3 rounded-sm px-3 py-2.5 hover:bg-surface-300"
                     >

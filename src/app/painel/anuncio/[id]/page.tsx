@@ -2,6 +2,7 @@ import { ArrowLeft, BadgeCheck, ChevronDown, Download, FileText, Heart } from "l
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { QuadroIndicar } from "@/components/anuncio/indicar";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
@@ -11,7 +12,7 @@ import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
-import { MODO_DEMO } from "@/lib/config";
+import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
   etapaQueVale,
@@ -30,6 +31,7 @@ import {
   obterAnuncio,
 } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
+import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado, StatusAnuncio } from "@/lib/tipos";
@@ -57,12 +59,13 @@ async function Conteudo({
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
-  const [todos, curriculos, desfeitos, etapas, bloqueios] = await Promise.all([
+  const [todos, curriculos, desfeitos, etapas, bloqueios, publicas] = await Promise.all([
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
     listarDesfeitosDoAnuncio(id),
     listarEtapasDosCandidatos(id),
     listarMeusBloqueios(),
+    minhasContratacoesPublicas(),
   ]);
   // Cada interessado tem uma etapa (só quem publicou anota; quem curtiu vê a etapa); dá
   // para filtrar por ela. Esperando resposta, etapa adiante de "Em análise" não vale.
@@ -165,7 +168,17 @@ async function Conteudo({
             ? "Quando alguém quiser contratar você, chega um aviso e a pessoa aparece aqui. Fotos de trabalhos e preço ajudam a ser escolhido."
             : "Quando alguém curtir, você recebe um aviso e a pessoa aparece aqui. Compartilhar o anúncio no WhatsApp ajuda a chegar em mais gente."}
         </Vazio>
-      ) : (
+      ) : null}
+      {status === "ativo" && interessados.length < 3 && todos.length === interessados.length && (
+        <QuadroIndicar
+          url={`${SITE_URL}/anuncio/${anuncio.id}`}
+          titulo={anuncio.titulo}
+          lugar={formatarLugar(anuncio.bairro, anuncio.cidade)}
+          vaga={!servico}
+          proprio
+        />
+      )}
+      {interessados.length > 0 && (
         <>
           <p className="text-body text-ink-muted">
             {servico
@@ -256,6 +269,11 @@ async function Conteudo({
                       perfilId={p.perfil_id}
                       etapa={etapaDe(p)}
                       nota={etapas.get(p.perfil_id)?.nota ?? null}
+                      publico={{
+                        okEmpresa: publicas.get(`${anuncio.id}:${p.perfil_id}`)?.ok_empresa ?? false,
+                        okPessoa: publicas.get(`${anuncio.id}:${p.perfil_id}`)?.ok_pessoa ?? false,
+                        nome: p.nome,
+                      }}
                     />
                   }
                   <div className="border-t border-line pt-3">

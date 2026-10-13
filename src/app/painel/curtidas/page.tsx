@@ -23,6 +23,8 @@ import {
 } from "@/lib/constantes";
 import { listarMeusBloqueios, listarMeusDesfeitos, listarMinhasCurtidas, listarMinhasEtapas } from "@/lib/dados";
 import { formatarLugar, primeiro, rotuloConta, rotuloModalidade, tempoRelativo, valorDoAnuncio } from "@/lib/formato";
+import { ContratacaoPublica } from "@/components/social/botoes";
+import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
@@ -56,11 +58,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/curtidas");
   const sp = await searchParams;
-  const [curtidas, desfeitos, etapas, bloqueios] = await Promise.all([
+  const [curtidas, desfeitos, etapas, bloqueios, publicas] = await Promise.all([
     listarMinhasCurtidas(),
     listarMeusDesfeitos(),
     listarMinhasEtapas(),
     listarMeusBloqueios(),
+    minhasContratacoesPublicas(),
   ]);
   const agora = await agoraDaRequisicao();
 
@@ -242,6 +245,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                     />
                     <DesfazerMatch anuncioId={c.anuncio_id} perfilId={usuario.id} outroNome={c.autor_nome} />
                   </div>
+                )}
+                {c.status === "match" && c.tipo === "vaga" && etapaVisivel?.etapa === "contratado" && (
+                  <ContratacaoPublica
+                    anuncioId={c.anuncio_id}
+                    perfilId={usuario.id}
+                    lado="pessoa"
+                    okEmpresa={publicas.get(`${c.anuncio_id}:${usuario.id}`)?.ok_empresa ?? false}
+                    okPessoa={publicas.get(`${c.anuncio_id}:${usuario.id}`)?.ok_pessoa ?? false}
+                    outro={c.autor_nome}
+                  />
                 )}
                 {c.status === "desfeito" && (
                   <div className="flex flex-col gap-2">

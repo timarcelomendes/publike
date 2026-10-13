@@ -21,7 +21,13 @@ const GRUPOS: { nome: string | null; abas: Aba[] }[] = [
       { href: "/painel/servicos", nome: "Meus serviços" },
     ],
   },
-  { nome: "Procuro", abas: [{ href: "/painel/curtidas", nome: "Minhas curtidas" }] },
+  {
+    nome: "Procuro",
+    abas: [
+      { href: "/painel/curtidas", nome: "Minhas curtidas" },
+      { href: "/painel/seguindo", nome: "Seguindo" },
+    ],
+  },
   {
     nome: "Contatos",
     abas: [
@@ -39,6 +45,7 @@ function abaAtiva(caminho: string | null, candidatos: boolean) {
   if (caminho.startsWith("/painel/candidatos")) return candidatos ? "/painel/candidatos" : "/painel/anuncios";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "/painel/servicos";
   if (caminho.startsWith("/painel/curtidas")) return "/painel/curtidas";
+  if (caminho.startsWith("/painel/seguindo")) return "/painel/seguindo";
   if (caminho.startsWith("/painel/matches")) return "/painel/matches";
   if (caminho.startsWith("/painel/conversas")) return "/painel/conversas";
   return null;

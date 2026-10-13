@@ -79,6 +79,36 @@ export type Database = {
           },
         ];
       };
+      /** quem a pessoa segue: um perfil ou um bairro (para receber aviso de anúncio novo) */
+      recomendacoes: {
+        Row: {
+          id: number;
+          profissional_id: string;
+          autor_id: string;
+          relacao: string;
+          texto: string;
+          oculta: boolean;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: Record<PropertyKey, never>;
+        Update: Record<PropertyKey, never>;
+        Relationships: [];
+      };
+      seguindo: {
+        Row: {
+          id: number;
+          perfil_id: string;
+          alvo_perfil: string | null;
+          cidade: string | null;
+          bairro: string | null;
+          bairro_chave: string | null;
+          criado_em: string;
+        };
+        Insert: Record<PropertyKey, never>;
+        Update: Record<PropertyKey, never>;
+        Relationships: [];
+      };
       salvas: {
         Row: { perfil_id: string; anuncio_id: string; criado_em: string };
         Insert: { anuncio_id: string };
@@ -500,6 +530,45 @@ export type Database = {
       meus_bloqueios: {
         Args: Record<PropertyKey, never>;
         Returns: { outro_id: string; eu_bloqueei: boolean; me_bloqueou: boolean }[];
+      };
+      seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
+      seguir_bairro: { Args: { p_cidade: string; p_bairro: string }; Returns: undefined };
+      recomendar: { Args: { p_profissional: string; p_relacao: string; p_texto: string }; Returns: undefined };
+      mostrar_recomendacao: { Args: { p_id: number; p_mostrar: boolean }; Returns: undefined };
+      recomendacoes_do_perfil: {
+        Args: { p_perfil: string };
+        Returns: {
+          id: number;
+          autor_id: string;
+          autor_nome: string;
+          autor_foto: string | null;
+          relacao: string;
+          texto: string;
+          oculta: boolean;
+          criado_em: string;
+        }[];
+      };
+      autorizar_contratacao_publica: {
+        Args: { p_anuncio: string; p_perfil: string; p_sim: boolean };
+        Returns: undefined;
+      };
+      minhas_contratacoes_publicas: {
+        Args: Record<PropertyKey, never>;
+        Returns: { anuncio_id: string; perfil_id: string; ok_empresa: boolean; ok_pessoa: boolean }[];
+      };
+      contratacoes_recentes: {
+        Args: { p_empresa?: string | null; p_pessoa?: string | null; p_limite?: number };
+        Returns: {
+          anuncio_id: string;
+          titulo: string;
+          pessoa_id: string;
+          pessoa_nome: string;
+          empresa_id: string;
+          empresa_nome: string;
+          bairro: string | null;
+          cidade: string;
+          publicado_em: string;
+        }[];
       };
       minhas_etapas: {
         Args: Record<PropertyKey, never>;

@@ -364,3 +364,12 @@ export function descreverAtendimento(areas: readonly string[]) {
   if (partes.length <= 1) return partes[0] ?? "";
   return `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`;
 }
+
+/** De onde quem recomenda conhece o profissional ("Eu recomendo"). */
+export const RELACOES_RECOMENDACAO = {
+  vizinho: "Vizinho",
+  cliente: "Cliente",
+  ex_patrao: "Ex-patrão ou ex-patroa",
+  colega: "Colega de trabalho",
+} as const;
+export type RelacaoRecomendacao = keyof typeof RELACOES_RECOMENDACAO;
