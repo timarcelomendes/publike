@@ -18,6 +18,7 @@ export type DecisaoIA = Linha<"admin_decisoes_ia">;
 export type ItemRegistro = Linha<"admin_registro">;
 export type Moderador = Linha<"admin_listar_moderadores">;
 export type ChaveServidor = Linha<"admin_listar_chaves_servidor">;
+export type OrigemContas = Linha<"admin_origens">;
 export type ConfigSite = Database["public"]["Tables"]["config_site"]["Row"];
 export type ResumoIA = Linha<"admin_ultimo_resumo">;
 
@@ -258,5 +259,12 @@ export async function listarModeradores(c: ClienteBanco) {
 export async function listarChavesServidor(c: ClienteBanco) {
   const { data, error } = await c.rpc("admin_listar_chaves_servidor");
   if (error) falha("as chaves do servidor", error);
+  return data ?? [];
+}
+
+/** Contas novas por campanha (o utm do link do anúncio) e quantas publicaram; "direto" são as sem campanha. */
+export async function origensDasContas(c: ClienteBanco, desde: string | null) {
+  const { data, error } = await c.rpc("admin_origens", desde ? { p_desde: desde } : {});
+  if (error) falha("as campanhas", error);
   return data ?? [];
 }

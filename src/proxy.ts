@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIES_DA_SESSAO } from "@/lib/config";
+import { COOKIE_ORIGEM, DURACAO_ORIGEM, origemDoLink } from "@/lib/origem";
 import { areaDoSlug, cidadeDoSlug } from "@/lib/paginas-busca";
 
 // Roda antes de cada página: renova a sessão do Supabase (cookies) e
@@ -29,6 +30,21 @@ function buscaInexistente(pathname: string) {
   return !cidadeDoSlug(m[1]) || (m[2] !== undefined && (!area || area.slug === "outros"));
 }
 
+// Chegou pelo link de uma campanha (?utm_source=google&utm_campaign=servicos): guarda só
+// "google:servicos" por 7 dias; vale a primeira. /auth/continuar grava quando a conta é nova.
+function marcarOrigem(request: NextRequest, resposta: NextResponse) {
+  if (request.method !== "GET" || request.cookies.has(COOKIE_ORIGEM)) return;
+  const origem = origemDoLink(request.nextUrl.searchParams);
+  if (!origem) return;
+  resposta.cookies.set(COOKIE_ORIGEM, origem, {
+    maxAge: DURACAO_ORIGEM,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: COOKIES_DA_SESSAO.secure,
+    path: "/",
+  });
+}
+
 export async function proxy(request: NextRequest) {
   if (buscaInexistente(request.nextUrl.pathname)) {
     return NextResponse.rewrite(new URL("/pagina-que-nao-existe", request.url), { status: 404 });
@@ -55,6 +71,8 @@ export async function proxy(request: NextRequest) {
   // Não coloque código entre createServerClient e getClaims (recomendação do Supabase).
   const { data } = await supabase.auth.getClaims();
   const logado = Boolean(data?.claims?.sub);
+
+  marcarOrigem(request, resposta);
 
   const { pathname, search } = request.nextUrl;
   const adminLocal =

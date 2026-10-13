@@ -551,6 +551,19 @@ export type Database = {
         }[];
       };
       registrar_aceite: { Args: { p_versao: string }; Returns: undefined };
+      registrar_origem: { Args: { p_origem: string }; Returns: undefined };
+      admin_origens: {
+        Args: { p_desde?: string };
+        Returns: {
+          origem: string;
+          contas: number;
+          publicaram_vaga: number;
+          publicaram_servico: number;
+          anuncios_no_ar: number;
+          primeira: string;
+          ultima: string;
+        }[];
+      };
       autorizar_contratacao_publica: {
         Args: { p_anuncio: string; p_perfil: string; p_sim: boolean };
         Returns: undefined;
