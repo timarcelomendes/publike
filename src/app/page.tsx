@@ -32,9 +32,9 @@ export default function Inicio({ searchParams }: PageProps<"/">) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(DADOS_SITE) }} />
-      {/* Título e busca no mesmo bloco: no celular, os anúncios começam logo abaixo */}
-      <section className="border-b border-line pb-5 sm:pb-6">
-        <Container className="pt-5 sm:pt-8">
+      {/* Título e busca no mesmo bloco, baixo: os anúncios começam logo abaixo */}
+      <section className="border-b border-line pb-4 sm:pb-5">
+        <Container className="pt-4 sm:pt-6 lg:pt-8">
           <HeroInicio />
           <Suspense fallback={<BuscaEsqueleto />}>
             <BuscaExplorar searchParams={searchParams} />

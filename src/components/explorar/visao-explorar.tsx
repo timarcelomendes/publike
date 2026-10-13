@@ -1,8 +1,8 @@
 "use client";
 
-import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, type LucideIcon } from "lucide-react";
-import { useSyncExternalStore, type ReactNode } from "react";
-import type { Filtros } from "@/lib/filtros";
+import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { RAIO_PADRAO, type Filtros } from "@/lib/filtros";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 
 const TELA_GRANDE = "(min-width: 1024px)";
@@ -112,9 +112,16 @@ function SeletorVisao({ visao, celular = false }: { visao: Visao; celular?: bool
   );
 }
 
+/** Quantos filtros da lista fogem do padrão (contratação, distância ou tempo, ordem, só os meus). */
+function filtrosMudados(f: Filtros) {
+  return [f.regime, f.tempo || f.raio !== RAIO_PADRAO, f.ordem !== "perto", f.meus].filter(Boolean).length;
+}
+
 /**
  * A busca em grade, blocos, mapa ou blocos + mapa.
- * Cabeçalho: contagem, jeito de ver e origem; filtros da lista à direita (embaixo, no celular).
+ * Cabeçalho: contagem, jeito de ver e origem; filtros da lista à direita. No celular, os
+ * filtros ficam atrás do botão "Filtros" (abertos quando algum foge do padrão): uma linha
+ * a menos antes dos anúncios.
  * Os cartões leem `data-visao` (grupo `visao`) para ficarem compactos na grade.
  */
 export function VisaoExplorar({
@@ -137,18 +144,50 @@ export function VisaoExplorar({
   const visao = useVisao();
   const comMapa = visao === "mapa" || visao === "blocos-mapa";
   const comLista = visao !== "mapa";
+  const mudados = filtrosMudados(filtros);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(mudados > 0);
+  const idFiltros = useId();
 
   return (
     <div>
-      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:gap-x-6">
+      {/* Celular: contagem e jeito de ver; a origem e o botão "Filtros"; os filtros, se abertos.
+          Computador: contagem à esquerda (nunca espremida) e, na mesma linha, os filtros e o jeito
+          de ver; a origem embaixo, na largura toda. */}
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-x-6">
         <div className="col-start-1 row-start-1">{titulo}</div>
         <div className="col-start-2 row-start-1 lg:hidden">
           <SeletorVisao visao={visao} celular />
         </div>
-        <div className="col-span-2 row-start-2 lg:col-span-1">{subtitulo}</div>
-        {/* a faixa dos filtros tem 4px de folga (contorno do foco): -mb-1 alinha com a linha de baixo */}
-        <div className="col-span-2 row-start-3 mt-2 flex items-center gap-3 lg:col-span-1 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:-mb-1 lg:mt-0 lg:self-end">
-          <div className="min-w-0 flex-1">{filtrosLista}</div>
+        <div className="col-span-2 row-start-2 flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">{subtitulo}</div>
+          <button
+            type="button"
+            aria-expanded={filtrosAbertos}
+            aria-controls={idFiltros}
+            onClick={() => setFiltrosAbertos((a) => !a)}
+            className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-label transition-colors lg:hidden ${
+              filtrosAbertos
+                ? "border-ink bg-surface-300 text-ink"
+                : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+            }`}
+          >
+            <SlidersHorizontal aria-hidden className="size-4" />
+            Filtros
+            {mudados > 0 && (
+              <span className="rounded-pill bg-ink px-1.5 text-caption text-surface-100">
+                {mudados}
+                <span className="sr-only"> {mudados === 1 ? "mudado" : "mudados"}</span>
+              </span>
+            )}
+          </button>
+        </div>
+        <div
+          id={idFiltros}
+          className={`col-span-2 row-start-3 mt-2 items-center gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:mt-0 lg:flex lg:justify-end ${
+            filtrosAbertos ? "flex" : "hidden"
+          }`}
+        >
+          <div className="min-w-0 flex-1 lg:flex-initial">{filtrosLista}</div>
           <div className="hidden shrink-0 lg:block">
             <SeletorVisao visao={visao} />
           </div>

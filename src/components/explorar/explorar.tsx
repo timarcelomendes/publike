@@ -1,4 +1,5 @@
 import { MapPinned, SearchX } from "lucide-react";
+import { Fragment } from "react";
 import { buscarAnuncios, listarMeusServicos, obterMeuCurriculo, obterUsuario } from "@/lib/dados";
 import { aplicarIntencao, descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
@@ -22,6 +23,7 @@ import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
 import { BarraBusca, BotaoSoMeus, FiltrosLista } from "./barra-busca";
 import type { ProximoPasso } from "./intencao";
+import { PerguntasNaLista } from "./perguntas-na-lista";
 import { VisaoExplorar } from "./visao-explorar";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
@@ -41,6 +43,9 @@ async function proximoPassoDa(intencao: Intencao | null, logado: boolean): Promi
         return logado && (await listarMeusServicos()).length > 0
           ? { texto: "Ver quem quer me contratar", href: "/painel" }
           : { texto: "Montar minha vitrine", href: "/painel/servicos" };
+      case "contratar_servico":
+        // os pedidos ficam em Minhas curtidas (sem conta, não há o que acompanhar)
+        return logado ? { texto: "Acompanhar meus pedidos", href: "/painel/curtidas" } : null;
       case "contratar_pessoa":
         return { texto: "Publicar vaga grátis", href: "/publicar" };
       default:
@@ -55,18 +60,9 @@ async function proximoPassoDa(intencao: Intencao | null, logado: boolean): Promi
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
 export async function BuscaExplorar({ searchParams }: { searchParams: Parametros }) {
   const sp = await searchParams;
-  const [local, intencao, usuario] = await Promise.all([obterLocal(), obterIntencao(), obterUsuario()]);
+  const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
   const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
-  const proximoPasso = await proximoPassoDa(intencao, Boolean(usuario));
-  return (
-    <BarraBusca
-      filtros={filtros}
-      local={local}
-      intencao={intencao}
-      proximoPasso={proximoPasso}
-      abrirOndeMora={primeiro(sp.casa) === "1"}
-    />
-  );
+  return <BarraBusca filtros={filtros} local={local} abrirOndeMora={primeiro(sp.casa) === "1"} />;
 }
 
 /** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
@@ -91,10 +87,10 @@ function origemDoTempo(filtros: Filtros, local: Local | null): "casa" | "voce" |
 
 export function BuscaEsqueleto() {
   return (
-    <div className="mt-6 flex flex-col gap-3 sm:mt-8" aria-busy="true">
+    <div className="mt-3 flex flex-col gap-3 sm:mt-5" aria-busy="true">
       <div className="flex justify-between gap-2">
-        <Esqueleto className="h-12 w-64 rounded-pill" />
-        <Esqueleto className="hidden h-10 w-36 rounded-pill sm:block" />
+        <Esqueleto className="h-12 w-full rounded-md sm:w-80" />
+        <Esqueleto className="hidden h-10 w-72 rounded-md sm:block" />
       </div>
       <Esqueleto className="h-14 w-full rounded-lg" />
       <div className="flex gap-2 overflow-hidden py-1">
@@ -115,7 +111,10 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     obterIntencao(),
   ]);
   const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
-  const anuncios = await buscarAnuncios(filtros, agora, local, usuario?.id ?? null);
+  const [anuncios, proximoPasso] = await Promise.all([
+    buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
+    proximoPassoDa(intencao, Boolean(usuario)),
+  ]);
 
   const tempoDe = origemDoTempo(filtros, local);
   const pontos: PontoMapa[] = anuncios.map((a) => {
@@ -161,19 +160,29 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         : `${n >= 60 ? "60+" : n} ${n === 1 ? nome[0] : nome[1]}`;
   const maiorRaio = RAIOS[RAIOS.length - 1];
 
+  // As perguntas da primeira visita (e depois o próximo passo) entram no meio da lista, depois
+  // dos dois primeiros anúncios: em cima fica só a busca. Sem nada a perguntar, o espaço some.
+  const perguntas = filtros.meus ? null : (
+    <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
+  );
+  const lugarDasPerguntas = <div className="col-span-full empty:hidden">{perguntas}</div>;
+
   const lista =
     n > 0 ? (
-      // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar)
-      <div className="grid gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2">
-        {anuncios.map((a) => (
-          <CardAnuncio
-            key={a.id}
-            anuncio={a}
-            agora={agora}
-            usuarioId={usuario?.id ?? null}
-            pertoDeCasa={local ? a.prioridade : null}
-            tempoDe={tempoDe}
-          />
+      // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar).
+      // "dense": com 3 colunas, o terceiro anúncio sobe para o lado dos dois primeiros, antes das perguntas.
+      <div className="grid grid-flow-row-dense gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2">
+        {anuncios.map((a, i) => (
+          <Fragment key={a.id}>
+            <CardAnuncio
+              anuncio={a}
+              agora={agora}
+              usuarioId={usuario?.id ?? null}
+              pertoDeCasa={local ? a.prioridade : null}
+              tempoDe={tempoDe}
+            />
+            {(i === 1 || (n === 1 && i === 0)) && lugarDasPerguntas}
+          </Fragment>
         ))}
       </div>
     ) : filtros.meus ? (
@@ -223,9 +232,19 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
             : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );
+  // sem anúncios, as perguntas vêm depois do aviso (dizer onde mora pode trazer o que é perto)
+  const listaComPerguntas =
+    n === 0 && perguntas ? (
+      <div className="flex flex-col gap-4">
+        {lista}
+        <div className="empty:hidden">{perguntas}</div>
+      </div>
+    ) : (
+      lista
+    );
 
   return (
-    <Container className="pt-6 sm:pt-8">
+    <Container className="pt-4 sm:pt-6">
       {primeiro(parametros.conta) === "excluida" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Sua conta foi excluída.">
           Apagamos seu perfil, seus anúncios e suas curtidas. Obrigado por ter usado o Publike.
@@ -233,12 +252,12 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       )}
       <VisaoExplorar
         titulo={
-          <h2 className="text-h2" aria-live="polite">
+          <h2 className="text-h3 sm:text-h2" aria-live="polite">
             {contagem}
           </h2>
         }
         subtitulo={
-          <>
+          <div className="flex items-center justify-between gap-3">
             <p className="text-body-sm text-ink-muted">
               {!filtros.meus && local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
               {!filtros.meus && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
@@ -251,11 +270,16 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
                 </>
               )}
             </p>
-            {(usuario || filtros.meus) && <BotaoSoMeus filtros={filtros} />}
-          </>
+            {/* no celular, "Só os meus" fica dentro de "Filtros" */}
+            {(usuario || filtros.meus) && (
+              <span className="hidden lg:block">
+                <BotaoSoMeus filtros={filtros} />
+              </span>
+            )}
+          </div>
         }
-        filtrosLista={<FiltrosLista filtros={filtros} />}
-        lista={lista}
+        filtrosLista={<FiltrosLista filtros={filtros} soMeus={Boolean(usuario) || filtros.meus} />}
+        lista={listaComPerguntas}
         pontos={pontos}
         origem={origem}
         filtros={filtros}
@@ -266,14 +290,18 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
 
 export function ExplorarEsqueleto() {
   return (
-    <Container className="pt-6 sm:pt-8" aria-busy="true">
+    <Container className="pt-4 sm:pt-6" aria-busy="true">
       {/* mesma grade do cabeçalho de VisaoExplorar */}
-      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:gap-x-6">
-        <Esqueleto className="h-8 w-48" />
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-x-6">
+        <Esqueleto className="h-6 w-40 sm:h-8 sm:w-48" />
         <Esqueleto className="h-10 w-28 rounded-pill lg:hidden" />
-        <Esqueleto className="col-span-2 mt-1 h-4 w-56 lg:col-span-1" />
-        <div className="col-span-2 mt-2 flex gap-2 overflow-hidden lg:col-span-1 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:self-end">
-          {["w-44", "w-28", "w-32"].map((largura) => (
+        <div className="col-span-2 row-start-2 mt-1 flex items-center justify-between gap-3">
+          <Esqueleto className="h-4 w-56" />
+          {/* no celular, os filtros ficam atrás do botão "Filtros" */}
+          <Esqueleto className="h-9 w-24 rounded-md lg:hidden" />
+        </div>
+        <div className="hidden justify-end gap-2 overflow-hidden lg:col-start-2 lg:row-start-1 lg:flex">
+          {["w-44", "w-28", "w-32", "w-72"].map((largura) => (
             <Esqueleto key={largura} className={`h-10 shrink-0 rounded-md ${largura}`} />
           ))}
         </div>

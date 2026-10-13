@@ -6,15 +6,15 @@ import type { TipoAnuncio } from "./tipos";
  *   contratar_servico ... a busca abre em Serviços
  *   oferecer_servico .... convite para montar a vitrine em "Meus serviços"
  *   contratar_pessoa .... convite para publicar a vaga
- * Logado: fica na conta. Sem login: só nesta visita. O botão ao lado do bairro
- * mostra a resposta e abre o "Mudar".
+ * Logado: fica na conta. Sem login: só nesta visita. A pergunta e a resposta (com o
+ * "Mudar" e o próximo passo) ficam no meio dos anúncios da home (PerguntasNaLista).
  */
 export const INTENCOES = [
   {
     valor: "trabalho",
     nome: "Procuro trabalho",
     curto: "Procuro trabalho",
-    ajuda: "Vagas com carteira, diárias e freelances",
+    ajuda: "Carteira, diária ou freelance",
   },
   {
     valor: "contratar_servico",
@@ -26,7 +26,7 @@ export const INTENCOES = [
     valor: "oferecer_servico",
     nome: "Ofereço serviços",
     curto: "Ofereço serviços",
-    ajuda: "Mostre o que você faz e ache clientes",
+    ajuda: "Mostre o que faz e ache clientes",
   },
   {
     valor: "contratar_pessoa",
@@ -38,7 +38,7 @@ export const INTENCOES = [
 
 export type Intencao = (typeof INTENCOES)[number]["valor"];
 
-/** A resposta dita para a própria pessoa, na linha acima da busca. */
+/** A resposta dita para a própria pessoa, na linha do próximo passo. */
 export const VOCE: Record<Intencao, string> = {
   trabalho: "Você procura trabalho",
   contratar_servico: "Você quer contratar um serviço",

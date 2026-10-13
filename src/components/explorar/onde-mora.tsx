@@ -10,15 +10,14 @@ import { CIDADES, type Cidade } from "@/lib/constantes";
 import type { Local } from "@/lib/regioes";
 import { classesBotao } from "../ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "../ui/campo";
-import { Passo } from "./intencao";
 
-/** Botão "Onde você mora?" da busca. Fica no topo, ao lado do "Perto de mim". */
-/** Botão de lugar (onde mora, perto de mim): contorno; escolhido, ganha borda escura e fundo leve. */
+/** Botão de lugar (onde mora, perto de mim, só os meus): contorno; escolhido, ganha borda escura e fundo leve. */
 export const botaoLugar = (ativo: boolean) =>
   `inline-flex min-h-10 min-w-0 shrink items-center gap-1.5 rounded-md border px-3 text-label transition-colors ${
     ativo ? "border-ink bg-surface-300 text-ink" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
   }`;
 
+/** Botão "Onde você mora?" da busca. Fica no topo, ao lado do "Perto de mim". */
 export function BotaoOndeMora({
   local,
   aberto,
@@ -259,21 +258,18 @@ export function usePerguntaAdiada(): [boolean, () => void] {
 }
 
 /**
- * A pergunta de quem chega sem dizer onde mora: um campo de CEP e um botão. Um passo só,
- * no lugar dos botões "Onde você mora?" e "Perto de mim" e do pedido de localização do
- * navegador. A localização e o bairro (para quem não sabe o CEP) ficam como links.
+ * A pergunta de quem chega sem dizer onde mora: um campo de CEP e um botão, num quadro no
+ * meio dos anúncios (PerguntasNaLista), no lugar do pedido de localização do navegador.
+ * A localização e o bairro (para quem não sabe o CEP) ficam como links, com "Agora não".
  */
 export function PerguntaOndeMora({
   usarLocalizacao,
   escolherBairro,
   aoSalvar,
-  passo = null,
 }: {
   usarLocalizacao: () => void;
   escolherBairro: () => void;
   aoSalvar?: () => void;
-  /** "Passo 2 de 2", quando vem logo depois de "O que você quer fazer no Publike?" */
-  passo?: { n: number; de: number } | null;
 }) {
   const [cep, setCep] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -293,33 +289,26 @@ export function PerguntaOndeMora({
     });
   }
 
-  const link = "text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60";
+  const link =
+    "inline-flex min-h-9 items-center text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60";
 
   return (
     <form
       onSubmit={salvar}
       aria-labelledby={`${campo}-titulo`}
-      className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card sm:p-5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-6 lg:gap-y-4"
+      className="flex flex-col gap-2 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-card sm:p-4 lg:flex-row lg:items-start lg:gap-6"
     >
-      <div className="flex items-start gap-3 lg:flex-1">
-        <span
-          aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft text-terra-text"
-        >
-          <House className="size-5" />
-        </span>
-        <div>
-          {passo && <Passo n={passo.n} de={passo.de} />}
-          <h2 id={`${campo}-titulo`} className="text-h3">
-            Onde você mora?
-          </h2>
-          <p className="mt-0.5 text-body-sm text-ink-muted">
-            Com o CEP de casa, mostramos primeiro o que é perto e quanto tempo leva de ônibus. Ninguém vê o seu CEP.
-          </p>
-        </div>
+      <div className="min-w-0 lg:flex-1">
+        <h2 id={`${campo}-titulo`} className="flex items-center gap-2 text-label sm:text-h3">
+          <House aria-hidden className="size-4 shrink-0 text-terra-text sm:size-5" />
+          Onde você mora?
+        </h2>
+        <p className="text-body-sm text-pretty text-ink-muted sm:mt-0.5">
+          Com o CEP de casa, a busca mostra primeiro o que é perto e o tempo de ônibus. Ninguém vê o seu CEP.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-2 lg:w-[26rem]">
+      <div className="flex flex-col gap-1.5 pt-1 lg:w-[26rem] lg:pt-0">
         <div className="flex gap-2">
           <label htmlFor={`${campo}-cep`} className="sr-only">
             CEP da sua casa
@@ -349,12 +338,7 @@ export function PerguntaOndeMora({
           </div>
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <button
-            type="button"
-            onClick={usarLocalizacao}
-            disabled={pendente}
-            className={`${link} inline-flex items-center gap-1`}
-          >
+          <button type="button" onClick={usarLocalizacao} disabled={pendente} className={`${link} gap-1`}>
             <LocateFixed aria-hidden className="size-3.5" />
             Usar minha localização
           </button>

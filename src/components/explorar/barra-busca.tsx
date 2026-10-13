@@ -22,9 +22,7 @@ import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
-import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
-import { CartaoIntencao, FaixaIntencao, type ProximoPasso } from "./intencao";
-import { BotaoOndeMora, botaoLugar, PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
+import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 
 // Três jeitos de olhar, cada um com a sua cara:
 //   O QUE (tipo) ...... abas sublinhadas, em cima da busca
@@ -46,7 +44,7 @@ const seletor =
   "min-h-10 rounded-md border border-line-strong bg-surface-200 pl-3.5 text-label text-ink transition-colors hover:bg-surface-300";
 
 /** Muda a URL com os filtros novos, sem pular para o topo. */
-function useIrPara(filtros: Filtros) {
+export function useIrPara(filtros: Filtros) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   /** `substituir`: troca a URL sem criar um passo a mais no "voltar". */
@@ -59,14 +57,14 @@ function useIrPara(filtros: Filtros) {
   return [ir, pendente] as const;
 }
 
-const AVISOS_GPS = {
+export const AVISOS_GPS = {
   sem: "Seu navegador não informa a localização.",
   fora: "Você parece estar fora de Goiânia e região. Mostrando a partir do centro de Goiânia.",
   negado: "Não conseguimos sua localização. Confira a permissão do navegador.",
 } as const;
 
 /** Pede a posição ao navegador. Arredonda (~100 m): bom para o mapa e a distância, sem a posição exata na URL. */
-function pedirPosicao(
+export function pedirPosicao(
   achou: (ponto: { lat: number; lng: number }) => void,
   falhou: (motivo: keyof typeof AVISOS_GPS) => void,
 ) {
@@ -180,20 +178,18 @@ function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void })
   );
 }
 
-/** A busca do topo da página: tipo, onde mora, texto, perto de mim e categorias. */
+/**
+ * A busca do topo da página: tipo, texto, onde mora, perto de mim e categorias. Só isso:
+ * as perguntas da primeira visita ficam no meio dos anúncios (PerguntasNaLista), para os
+ * anúncios aparecerem logo na primeira tela.
+ */
 export function BarraBusca({
   filtros,
   local,
-  intencao = null,
-  proximoPasso = null,
   abrirOndeMora = false,
 }: {
   filtros: Filtros;
   local: Local | null;
-  /** o que a pessoa disse que quer fazer no Publike */
-  intencao?: Intencao | null;
-  /** o próximo passo para essa resposta (currículo, vitrine, publicar) */
-  proximoPasso?: ProximoPasso;
   /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
   abrirOndeMora?: boolean;
 }) {
@@ -213,78 +209,33 @@ export function BarraBusca({
     ir({ q: texto.trim() });
   }
 
-  function irParaPosicao({ lat, lng }: { lat: number; lng: number }, substituir = false) {
-    ir({ lat, lng, origem: "gps", ordem: "perto" }, substituir);
-  }
-
-  // Procuro trabalho → Vagas; Quero contratar um serviço → Serviços (as outras ficam em Tudo)
-  function escolherIntencao(i: Intencao) {
-    const tipo = tipoDaIntencao(i);
-    ir({ tipo, tudo: !tipo, regime: tipo === "servico" ? null : filtros.regime }, true);
-  }
-
-  function pertoDeMim() {
-    setAvisoGps(null);
-    pedirPosicao(irParaPosicao, (motivo) => setAvisoGps(AVISOS_GPS[motivo]));
-  }
-
   const perto = filtros.origem === "gps";
-
-  // Primeira visita: uma pergunta por vez, acima da busca (a resposta já arruma o que vem
-  // embaixo). 1) "O que você quer fazer no Publike?"; 2) "Onde você mora?" (o CEP de casa,
-  // a localização ou o bairro), no lugar dos botões de lugar. "Agora não" deixa as duas
-  // para a próxima visita.
-  const [adiada, adiar] = usePerguntaAdiada();
-  // a resposta tocada nesta visita vale na hora, antes de o servidor devolver a página
-  const [escolhidaAgora, setEscolhidaAgora] = useState<Intencao | null>(null);
-  const [respondeuNoCartao, setRespondeuNoCartao] = useState(false);
-  const intencaoAtual = escolhidaAgora ?? intencao;
-  const perguntarIntencao = !intencaoAtual && !adiada;
-  const perguntar = !local && filtros.origem === "centro" && !ondeMora && !adiada;
 
   function alternarPerto() {
     // tocar de novo desliga: volta a contar do centro (ou da casa)
-    if (perto) ir({ origem: "centro" });
-    else pertoDeMim();
+    if (perto) return ir({ origem: "centro" });
+    setAvisoGps(null);
+    pedirPosicao(
+      ({ lat, lng }) => ir({ lat, lng, origem: "gps", ordem: "perto" }),
+      (motivo) => setAvisoGps(AVISOS_GPS[motivo]),
+    );
   }
 
+  // "Onde você mora?" e "Perto de mim": no computador, na linha das abas; no celular, no
+  // começo da faixa das categorias (uma linha a menos antes dos anúncios)
+  const botoesDeLugar = (classes: string) => (
+    <div role="group" aria-label="Onde" className={`items-center gap-2 ${classes}`}>
+      <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
+      <BotaoPerto ativo={perto} onClick={alternarPerto} />
+    </div>
+  );
+
   return (
-    <div className="relative mt-5 flex flex-col gap-3 sm:mt-6">
+    <div className="relative mt-3 flex flex-col gap-3 sm:mt-5">
       {pendente && <Carregando />}
 
-      {perguntarIntencao ? (
-        <CartaoIntencao
-          passos={perguntar ? 2 : 1}
-          aoEscolher={(i) => {
-            setRespondeuNoCartao(true);
-            setEscolhidaAgora(i);
-            escolherIntencao(i);
-          }}
-          aoAdiar={adiar}
-        />
-      ) : (
-        <FaixaIntencao
-          intencao={intencaoAtual}
-          proximoPasso={escolhidaAgora && escolhidaAgora !== intencao ? null : proximoPasso}
-          aoEscolher={(i) => {
-            setEscolhidaAgora(i);
-            escolherIntencao(i);
-          }}
-        />
-      )}
-
-      {!perguntarIntencao && perguntar && (
-        <PerguntaOndeMora
-          passo={respondeuNoCartao ? { n: 2, de: 2 } : null}
-          usarLocalizacao={pertoDeMim}
-          escolherBairro={() => setOndeMora(true)}
-          aoSalvar={() => {
-            if (filtros.origem !== "centro") ir({ origem: "centro" }, true);
-          }}
-        />
-      )}
-
-      {/* No celular: abas, busca, lugar. No computador: abas e lugar na mesma linha, busca embaixo. */}
+      {/* No celular: abas, busca e uma faixa só com o lugar e as categorias (e o painel do bairro).
+          No computador: abas e lugar na mesma linha, o painel do bairro, a busca e as categorias. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
         <div
           role="group"
@@ -302,13 +253,13 @@ export function BarraBusca({
                 onClick={() =>
                   ir({ tipo: t.valor, tudo: t.valor === null, regime: t.valor === "servico" ? null : filtros.regime })
                 }
-                className={`-mb-px flex min-h-12 items-center justify-center gap-2 border-b-[3px] px-2 pb-2.5 pt-1 transition-colors sm:justify-start sm:px-3 ${
+                className={`-mb-px flex min-h-11 items-center justify-center gap-2 border-b-[3px] px-2 pb-2 pt-0.5 transition-colors sm:min-h-12 sm:justify-start sm:px-3 sm:pb-2.5 sm:pt-1 ${
                   ativo
                     ? "border-ink text-ink"
                     : "border-transparent text-ink-muted hover:border-line-strong hover:text-ink"
                 }`}
               >
-                <Icone aria-hidden className={`size-5 shrink-0 ${ativo ? "text-terra-text" : ""}`} />
+                <Icone aria-hidden className={`size-4 shrink-0 sm:size-5 ${ativo ? "text-terra-text" : ""}`} />
                 <span className="flex flex-col text-left leading-tight">
                   <span className="text-label sm:text-body sm:font-semibold">{t.nome}</span>
                   <span className="hidden text-caption text-ink-muted sm:block">{t.ajuda}</span>
@@ -318,12 +269,7 @@ export function BarraBusca({
           })}
         </div>
 
-        {!perguntar && (
-          <div role="group" aria-label="Onde" className="order-3 flex min-w-0 items-center gap-2 sm:order-2 sm:mb-1.5">
-            <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
-            <BotaoPerto ativo={perto} onClick={alternarPerto} />
-          </div>
-        )}
+        {botoesDeLugar("hidden min-w-0 sm:order-2 sm:mb-1.5 sm:flex")}
 
         {ondeMora && (
           <div className="order-4 sm:order-3 sm:basis-full">
@@ -342,7 +288,7 @@ export function BarraBusca({
         <form
           role="search"
           onSubmit={buscar}
-          className="order-2 flex items-center gap-1 rounded-lg border border-line-strong bg-surface-200 p-1.5 pl-3 shadow-card has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus sm:order-4 sm:basis-full"
+          className="order-2 flex items-center gap-1 rounded-lg border border-line-strong bg-surface-200 p-1 pl-3 shadow-card has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus sm:order-4 sm:basis-full sm:p-1.5 sm:pl-3"
         >
           <label htmlFor="busca" className="sr-only">
             O que você procura?
@@ -386,38 +332,47 @@ export function BarraBusca({
           </button>
         </form>
 
+        <div className="order-3 min-w-0 sm:order-5 sm:basis-full">
+          <FaixaRolavel rotulo="Lugar e categoria">
+            {botoesDeLugar("flex shrink-0 sm:hidden")}
+            <span aria-hidden className="my-1.5 w-px shrink-0 bg-line-strong sm:hidden" />
+            <div role="group" aria-label="Categoria" className="flex shrink-0 gap-2">
+              {CATEGORIAS.map(({ slug, nome, icone: Icone }) => {
+                const ativa = filtros.categoria === slug;
+                return (
+                  <button
+                    key={slug}
+                    type="button"
+                    aria-pressed={ativa}
+                    // tocar de novo tira o filtro
+                    onClick={() => ir({ categoria: ativa ? null : slug })}
+                    className={chip(ativa)}
+                  >
+                    <Icone aria-hidden className="size-4" />
+                    {nome}
+                    {ativa && <X aria-hidden className="-mr-1 size-3.5" />}
+                  </button>
+                );
+              })}
+            </div>
+          </FaixaRolavel>
+        </div>
+
         {avisoGps && (
           <p role="status" className="order-5 text-body-sm text-terra-text sm:order-6 sm:basis-full">
             {avisoGps}
           </p>
         )}
       </div>
-
-      <FaixaRolavel rotulo="Categoria">
-        {CATEGORIAS.map(({ slug, nome, icone: Icone }) => {
-          const ativa = filtros.categoria === slug;
-          return (
-            <button
-              key={slug}
-              type="button"
-              aria-pressed={ativa}
-              // tocar de novo tira o filtro
-              onClick={() => ir({ categoria: ativa ? null : slug })}
-              className={chip(ativa)}
-            >
-              <Icone aria-hidden className="size-4" />
-              {nome}
-              {ativa && <X aria-hidden className="-mr-1 size-3.5" />}
-            </button>
-          );
-        })}
-      </FaixaRolavel>
     </div>
   );
 }
 
-/** Contratação, distância e ordem: ficam junto da contagem de resultados. */
-export function FiltrosLista({ filtros }: { filtros: Filtros }) {
+/**
+ * Contratação, distância e ordem (e "Só os meus", para quem publica): ficam junto da
+ * contagem de resultados. No celular, aparecem ao tocar em "Filtros" (VisaoExplorar).
+ */
+export function FiltrosLista({ filtros, soMeus = false }: { filtros: Filtros; soMeus?: boolean }) {
   const [ir, pendente] = useIrPara(filtros);
   return (
     <FaixaRolavel rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end lg:px-0">
@@ -473,12 +428,14 @@ export function FiltrosLista({ filtros }: { filtros: Filtros }) {
         <option value="perto">Mais perto</option>
         <option value="recentes">Mais recentes</option>
       </Seletor>
+      {/* no computador, "Só os meus" fica na linha de baixo, na ponta (ao lado da origem) */}
+      {soMeus && <BotaoSoMeus filtros={filtros} className="lg:hidden" />}
     </FaixaRolavel>
   );
 }
 
-/** "Só os meus": quem publicou vê na busca (lista e mapa) só os próprios anúncios. Fica embaixo da contagem. */
-export function BotaoSoMeus({ filtros }: { filtros: Filtros }) {
+/** "Só os meus": quem publicou vê na busca (lista e mapa) só os próprios anúncios. Fica junto dos filtros. */
+export function BotaoSoMeus({ filtros, className = "" }: { filtros: Filtros; className?: string }) {
   const [ir, pendente] = useIrPara(filtros);
   return (
     <button
@@ -486,11 +443,11 @@ export function BotaoSoMeus({ filtros }: { filtros: Filtros }) {
       aria-pressed={filtros.meus}
       disabled={pendente}
       onClick={() => ir({ meus: !filtros.meus })}
-      className={`${chip(filtros.meus)} mt-2 min-h-9 px-3 disabled:opacity-60`}
+      className={`${botaoLugar(filtros.meus)} shrink-0 disabled:opacity-60 ${className}`}
     >
-      <UserRound aria-hidden className="size-4" />
+      <UserRound aria-hidden className={`size-4 shrink-0 ${filtros.meus ? "text-terra-text" : ""}`} />
       Só os meus
-      {filtros.meus && <X aria-hidden className="-mr-1 size-3.5" />}
+      {filtros.meus && <X aria-hidden className="-mr-1 size-3.5 shrink-0" />}
     </button>
   );
 }
