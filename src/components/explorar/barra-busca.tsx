@@ -22,6 +22,8 @@ import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
+import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
+import { BotaoIntencao } from "./intencao";
 import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 
 // Três jeitos de olhar, cada um com a sua cara:
@@ -30,8 +32,8 @@ import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 //   CATEGORIA ......... pílulas de filtro (a escolhida fica escura e ganha um ×)
 const TIPOS: { valor: TipoAnuncio | null; nome: string; ajuda: string; icone: LucideIcon }[] = [
   { valor: null, nome: "Tudo", ajuda: "Vagas e serviços", icone: LayoutGrid },
-  { valor: "vaga", nome: "Vagas", ajuda: "Para trabalhar", icone: Briefcase },
-  { valor: "servico", nome: "Serviços", ajuda: "Para contratar", icone: Wrench },
+  { valor: "vaga", nome: "Vagas", ajuda: "Quero trabalhar", icone: Briefcase },
+  { valor: "servico", nome: "Serviços", ajuda: "Quero contratar", icone: Wrench },
 ];
 
 const chip = (ativo: boolean) =>
@@ -186,10 +188,13 @@ function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void })
 export function BarraBusca({
   filtros,
   local,
+  intencao = null,
   abrirOndeMora = false,
 }: {
   filtros: Filtros;
   local: Local | null;
+  /** o que a pessoa disse que quer fazer no Publike (o botão ao lado do lugar mostra e muda) */
+  intencao?: Intencao | null;
   /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
   abrirOndeMora?: boolean;
 }) {
@@ -223,8 +228,15 @@ export function BarraBusca({
 
   // "Onde você mora?" e "Perto de mim": no computador, na linha das abas; no celular, no
   // começo da faixa das categorias (uma linha a menos antes dos anúncios)
+  // mudar a resposta troca a aba: Procuro trabalho → Vagas; Quero contratar um serviço → Serviços
+  function escolherIntencao(i: Intencao) {
+    const tipo = tipoDaIntencao(i);
+    ir({ tipo, tudo: !tipo, regime: tipo === "servico" ? null : filtros.regime }, true);
+  }
+
   const botoesDeLugar = (classes: string) => (
     <div role="group" aria-label="Onde" className={`items-center gap-2 ${classes}`}>
+      <BotaoIntencao intencao={intencao} aoEscolher={escolherIntencao} classes={botaoLugar} />
       <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
       <BotaoPerto ativo={perto} onClick={alternarPerto} />
     </div>
@@ -259,10 +271,20 @@ export function BarraBusca({
                     : "border-transparent text-ink-muted hover:border-line-strong hover:text-ink"
                 }`}
               >
-                <Icone aria-hidden className={`size-4 shrink-0 sm:size-5 ${ativo ? "text-terra-text" : ""}`} />
-                <span className="flex flex-col text-left leading-tight">
+                <Icone aria-hidden className={`hidden size-5 shrink-0 sm:block ${ativo ? "text-terra-text" : ""}`} />
+                <span className="flex flex-col text-center leading-tight sm:text-left">
                   <span className="text-label sm:text-body sm:font-semibold">{t.nome}</span>
-                  <span className="hidden text-caption text-ink-muted sm:block">{t.ajuda}</span>
+                  <span className="text-caption font-medium text-ink-muted">
+                    {/* no celular, "Vagas e serviços" não cabe embaixo de "Tudo" */}
+                    {t.valor === null ? (
+                      <>
+                        <span className="sm:hidden">Os dois</span>
+                        <span className="hidden sm:inline">{t.ajuda}</span>
+                      </>
+                    ) : (
+                      t.ajuda
+                    )}
+                  </span>
                 </span>
               </button>
             );

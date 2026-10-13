@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowRight, Briefcase, HandHelping, UserPlus, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowRight, Briefcase, ChevronDown, HandHelping, UserPlus, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { salvarIntencao } from "@/lib/acoes/intencao";
 import { INTENCOES, VOCE, type Intencao } from "@/lib/intencao";
@@ -138,9 +139,19 @@ const noCliente = () => () => {};
  * caixa no meio no computador), para ninguém deixar de ver. O topo da página continua leve.
  * "Agora não" (ou Esc, ou tocar fora) fecha; aí a pergunta fica no meio dos anúncios.
  */
-export function FolhaIntencao({ aoEscolher, aoAdiar }: { aoEscolher: (i: Intencao) => void; aoAdiar: () => void }) {
+export function FolhaIntencao({
+  aoEscolher,
+  aoAdiar,
+  atual = null,
+}: {
+  aoEscolher: (i: Intencao) => void;
+  aoAdiar: () => void;
+  /** a resposta de agora, quando a janela abre para mudar */
+  atual?: Intencao | null;
+}) {
   const titulo = useId();
-  const { tocada: escolhida, escolher, pendente } = useEscolher(aoEscolher);
+  const { tocada, escolher, pendente } = useEscolher(aoEscolher);
+  const escolhida = tocada ?? atual;
   const caixa = useRef<HTMLDivElement>(null);
   const fechar = useRef(aoAdiar);
   useEffect(() => {
@@ -168,7 +179,8 @@ export function FolhaIntencao({ aoEscolher, aoAdiar }: { aoEscolher: (i: Intenca
   }, [montado]);
 
   if (!montado) return null;
-  return (
+  // no corpo da página: dentro de uma faixa que rola (o botão da busca), a janela ficaria cortada
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 sm:items-center sm:p-6"
       onClick={(e) => e.target === e.currentTarget && aoAdiar()}
@@ -189,10 +201,11 @@ export function FolhaIntencao({ aoEscolher, aoAdiar }: { aoEscolher: (i: Intenca
         </div>
         <OpcoesIntencao rotuladoPor={titulo} escolhida={escolhida} pendente={pendente} escolher={escolher} />
         <button type="button" onClick={aoAdiar} className={`${classesAgoraNao} self-center`}>
-          Agora não
+          {atual ? "Manter como está" : "Agora não"}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -265,5 +278,52 @@ export function FaixaIntencao({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A resposta sempre à mão, junto de "Onde você mora?" e "Perto de mim": mostra o que a
+ * pessoa disse que quer fazer e abre a janela para mudar (ou responder, se ainda não respondeu).
+ */
+export function BotaoIntencao({
+  intencao,
+  aoEscolher,
+  classes,
+}: {
+  intencao: Intencao | null;
+  aoEscolher: (i: Intencao) => void;
+  /** o mesmo contorno dos botões de lugar */
+  classes: (ativo: boolean) => string;
+}) {
+  const [aberta, setAberta] = useState(false);
+  const [escolhida, setEscolhida] = useState<Intencao | null>(null);
+  const atual = escolhida ?? intencao;
+  const Icone = atual ? ICONES_INTENCAO[atual] : null;
+  const curto = atual ? INTENCOES.find((i) => i.valor === atual)?.curto : null;
+  return (
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => setAberta(true)}
+        className={`${classes(Boolean(atual))} shrink-0`}
+        aria-label={atual ? `${VOCE[atual]}. Mudar o que você quer fazer` : "O que você quer fazer no Publike?"}
+      >
+        {Icone ? <Icone aria-hidden className="size-4 shrink-0 text-terra-text" /> : null}
+        <span className="truncate">{curto ?? "O que você quer fazer?"}</span>
+        <ChevronDown aria-hidden className="-mr-0.5 size-4 shrink-0 text-ink-muted" />
+      </button>
+      {aberta && (
+        <FolhaIntencao
+          atual={atual}
+          aoAdiar={() => setAberta(false)}
+          aoEscolher={(i) => {
+            setEscolhida(i);
+            setAberta(false);
+            aoEscolher(i);
+          }}
+        />
+      )}
+    </>
   );
 }

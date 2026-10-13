@@ -62,7 +62,7 @@ export async function BuscaExplorar({ searchParams }: { searchParams: Parametros
   const sp = await searchParams;
   const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
   const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
-  return <BarraBusca filtros={filtros} local={local} abrirOndeMora={primeiro(sp.casa) === "1"} />;
+  return <BarraBusca filtros={filtros} local={local} intencao={intencao} abrirOndeMora={primeiro(sp.casa) === "1"} />;
 }
 
 /** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
