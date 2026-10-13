@@ -49,6 +49,15 @@ export type EnderecoDoPonto = {
 export type ConsultaPonto = { ok: true; endereco: EnderecoDoPonto } | { ok: false; erro: string };
 
 /**
+ * O endereço de um ponto marcado no formulário. `manterBairro`: o bairro que a
+ * pessoa já escreveu fica perto do ponto, então ele fica (o nome do mapa nem
+ * sempre é o que o povo usa).
+ */
+export type ConsultaPontoDoFormulario =
+  | { ok: true; endereco: EnderecoDoPonto; manterBairro: boolean }
+  | { ok: false; erro: string };
+
+/**
  * Quão perto do lugar certo o ponto ficou:
  * numero = na porta; rua = em algum ponto da rua; cep = no centro do CEP;
  * bairro = no meio do bairro (a pessoa precisa ajustar no mapa).

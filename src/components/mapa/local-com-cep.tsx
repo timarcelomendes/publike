@@ -1,12 +1,12 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useId, useState, useTransition, type ReactNode } from "react";
+import { useId, useRef, useState, useTransition, type ReactNode } from "react";
 import { buscarCep, buscarEnderecoDoPonto } from "@/lib/acoes/cep";
 import { formatarCep, limparCep, montarEndereco, TEXTO_PRECISAO } from "@/lib/cep";
 import { Botao } from "../ui/botao";
 import { classesEntrada, MensagemErro } from "../ui/campo";
-import { SeletorLocal } from "./seletor-local";
+import { bairroEscrito, type LugarDoPonto, SeletorLocal } from "./seletor-local";
 
 type Ponto = { lat: number; lng: number };
 
@@ -31,12 +31,13 @@ export function LocalComCep({
   inicialEndereco?: string | null;
   publico: boolean;
   erro?: string;
-  /** a cidade e o bairro do CEP, para preencher os campos do formulário */
-  aoAchar: (lugar: { cidade: string; bairro: string | null }) => void;
+  /** a cidade e o bairro (do CEP, da localização ou do ponto no mapa) para os campos do formulário; devolve se o bairro mudou */
+  aoAchar: (lugar: LugarDoPonto) => boolean;
   /** cidade e bairro do formulário, entre o CEP e o endereço */
   children?: ReactNode;
 }) {
   const id = useId();
+  const raiz = useRef<HTMLDivElement>(null);
   const [cep, setCep] = useState(formatarCep(inicialCep));
   const [numero, setNumero] = useState("");
   const [endereco, setEndereco] = useState(inicialEndereco ?? "");
@@ -53,7 +54,7 @@ export function LocalComCep({
     setFalha(null);
     setAviso(null);
     iniciarPreencher(async () => {
-      const r = await buscarEnderecoDoPonto(p.lat, p.lng);
+      const r = await buscarEnderecoDoPonto(p.lat, p.lng, bairroEscrito(raiz.current));
       if (!r.ok) {
         setAviso(r.erro);
         return;
@@ -63,7 +64,8 @@ export function LocalComCep({
       setNumero(e.numero ?? "");
       setRua(e.rua);
       if (publico) setEndereco(montarEndereco(e.rua, e.numero) ?? "");
-      aoAchar({ cidade: e.cidade, bairro: e.bairro });
+      // o bairro escrito fica perto do ponto: fica (o nome do mapa nem sempre é o do povo)
+      aoAchar({ cidade: e.cidade, bairro: r.manterBairro ? null : e.bairro });
       setAviso(
         !e.rua
           ? "Preenchemos a cidade e o bairro pela sua localização. Confira."
@@ -105,7 +107,7 @@ export function LocalComCep({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={raiz} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <p className="text-label" id={`${id}-titulo`}>
           Ache pelo CEP
@@ -208,6 +210,7 @@ export function LocalComCep({
           exato={publico && endereco.trim() !== ""}
           irPara={irPara}
           aoUsarLocalizacao={preencherPeloPonto}
+          preencher={aoAchar}
         />
       </div>
     </div>

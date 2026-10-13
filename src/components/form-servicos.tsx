@@ -32,7 +32,7 @@ import {
 import { urlDaFotoTrabalho } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, StatusAnuncio } from "@/lib/tipos";
-import { SeletorLocal } from "./mapa/seletor-local";
+import { SeletorLocal, trocarBairro } from "./mapa/seletor-local";
 import { Aviso, Selo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "./ui/campo";
@@ -429,6 +429,10 @@ export function FormServicos({
           <SeletorLocal
             inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
             erro={erros.lat ?? erros.lng}
+            preencher={({ cidade: c, bairro: b }) => {
+              if ((CIDADES as readonly string[]).includes(c)) setCidade(c);
+              return trocarBairro(formulario.current?.elements.namedItem("bairro"), b);
+            }}
           />
           {(erros.lat || erros.lng) && <MensagemErro>{erros.lat ?? erros.lng}</MensagemErro>}
         </div>

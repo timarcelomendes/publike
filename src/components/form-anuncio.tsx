@@ -11,6 +11,7 @@ import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
+import { trocarBairro } from "./mapa/seletor-local";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
@@ -411,8 +412,7 @@ export function FormAnuncio({
           erro={erros.lat ?? erros.lng}
           aoAchar={({ cidade: c, bairro: b }) => {
             if ((CIDADES as readonly string[]).includes(c)) setCidade(c);
-            const campoBairro = formulario.current?.elements.namedItem("bairro");
-            if (b && campoBairro instanceof HTMLInputElement) campoBairro.value = b;
+            return trocarBairro(formulario.current?.elements.namedItem("bairro"), b);
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
