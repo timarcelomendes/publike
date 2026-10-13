@@ -1,6 +1,7 @@
 "use client";
 
 import { Camera, Plus, X } from "lucide-react";
+import Link from "next/link";
 import {
   startTransition,
   useActionState,
@@ -98,10 +99,12 @@ export function FormPerfil({
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const agencia = tipo === "agencia";
-  // o selo de verificado vale para aquele tipo de conta e aquele CNPJ
+  // o selo de verificado vale para aquele nome, tipo de conta e CNPJ (o banco confere igual)
   const perdeSelo =
     Boolean(perfil?.verificado) &&
-    (agencia !== (perfil?.tipo === "agencia") || (agencia && limparCnpj(cnpj) !== (perfil?.cnpj ?? "")));
+    (nome.trim().replace(/\s+/g, " ") !== perfil?.nome ||
+      tipo !== perfil?.tipo ||
+      limparCnpj(cnpj) !== (perfil?.cnpj ?? ""));
 
   useEffect(() => {
     if (!estado.erros) return;
@@ -251,7 +254,8 @@ export function FormPerfil({
         )}
         {perdeSelo && (
           <Aviso tipo="alerta">
-            Trocar o tipo da conta ou o CNPJ tira o selo de verificado até a equipe do Publike conferir de novo.
+            Trocar o nome, o tipo da conta ou o CNPJ tira o selo de verificado até a equipe do Publike conferir de
+            novo.
           </Aviso>
         )}
 
@@ -406,6 +410,33 @@ export function FormPerfil({
           />
         </Campo>
       </section>
+
+      {!perfil && (
+        <div className="flex flex-col gap-1.5">
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 text-body">
+            <input
+              type="checkbox"
+              name="aceite"
+              id="aceite"
+              aria-invalid={erros.aceite ? true : undefined}
+              aria-describedby={erros.aceite ? "aceite-erro" : undefined}
+              className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+            />
+            <span>
+              Li e aceito as{" "}
+              <Link href="/privacidade#regras" target="_blank" rel="noopener" className="underline underline-offset-2">
+                regras do Publike
+              </Link>{" "}
+              e a{" "}
+              <Link href="/privacidade" target="_blank" rel="noopener" className="underline underline-offset-2">
+                política de privacidade
+              </Link>
+              .
+            </span>
+          </label>
+          {erros.aceite && <MensagemErro id="aceite-erro">{erros.aceite}</MensagemErro>}
+        </div>
+      )}
 
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 

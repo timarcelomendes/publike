@@ -17,7 +17,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "É grátis mesmo?",
-        r: "Sim. Publicar, curtir e conversar é de graça para quem procura trabalho, para quem presta serviço e para empresas de qualquer tamanho. Ninguém pode cobrar para você conseguir trabalho, nem pelo Publike nem fora dele.",
+        r: "Sim. Publicar, curtir e conversar é de graça para quem procura trabalho, para quem presta serviço e para empresas de qualquer tamanho. Ninguém pode cobrar para você conseguir trabalho, nem pelo Publike nem fora dele. A página “É grátis”, no rodapé, explica os limites contra spam e como o Publike se mantém.",
       },
       {
         p: "Funciona em quais cidades?",
@@ -125,7 +125,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como denuncio um anúncio?",
-        r: "Abra o anúncio e toque em “Denunciar anúncio”. Quem publicou não fica sabendo quem denunciou. Três denúncias tiram o anúncio do ar até a moderação analisar.",
+        r: "Abra o anúncio e toque em “Denunciar anúncio”. Quem publicou não fica sabendo quem denunciou. Algumas denúncias de pessoas diferentes tiram o anúncio do ar até a moderação analisar.",
       },
       {
         p: "Como paro de receber e-mails?",

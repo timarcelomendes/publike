@@ -69,8 +69,8 @@ export async function deixarDeSeguir(id: number, voltar: string): Promise<Result
   const supabase = await criarClienteServidor();
   const { error } = await supabase.from("seguindo").delete().eq("id", id);
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para deixar de seguir agora.") };
-  revalidatePath("/painel/seguindo");
-  // sem aviso: o próprio botão volta para "Seguir ..."
+  // sem aviso e sem recarregar a lista do painel: o próprio botão vira "Seguir de novo",
+  // para desfazer um toque sem querer (a lista vem do banco de novo na próxima visita)
   return { ok: true };
 }
 
@@ -92,7 +92,7 @@ export async function recomendarProfissional(
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar a recomendação agora.") };
   after(processarFilas);
   revalidatePath(`/perfil/${profissionalId}`);
-  return { ok: true, mensagem: "Obrigado! Sua recomendação já aparece no perfil." };
+  return { ok: true, mensagem: "Obrigado! Ela aparece no perfil assim que a pessoa aprovar." };
 }
 
 /** Quem escreveu apaga a própria recomendação. */

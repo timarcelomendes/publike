@@ -3,7 +3,7 @@
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
-import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
+import { iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
 import { sugerirTexto, type AnuncioParaIA } from "@/lib/ia/tarefas";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -59,6 +59,8 @@ export async function melhorarTextoAnuncio(rascunho: RascunhoAnuncio): Promise<S
     const s = await sugerirTexto(entrada, modelo);
     return { ok: true, ...s };
   } catch (e) {
-    return { ok: false, erro: e instanceof ErroIA ? e.message : "A IA não conseguiu ajudar agora. Tente de novo." };
+    // o motivo técnico (chave, créditos, modelo) fica no registro do servidor, não na tela
+    console.error("Publike: a ajuda da IA falhou:", e instanceof Error ? e.message : e);
+    return { ok: false, erro: "A IA não conseguiu ajudar agora. Tente de novo." };
   }
 }

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { irDepoisDoLogin } from "@/lib/acoes/perfil";
 import { GOOGLE_CLIENT_ID, TURNSTILE_SITE_KEY } from "@/lib/config";
+import { COOKIE_PEDIU_LINK } from "@/lib/link-entrada";
 import { REDES, type BotaoRede, type RedeSocial } from "@/lib/login-social";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { BotaoGoogle } from "./botao-google";
@@ -216,6 +217,8 @@ export function FormEntrar({
       setErro(traduzir(error));
       return;
     }
+    // aberto neste navegador, o link entra sozinho (veja /auth/confirmar)
+    document.cookie = `${COOKIE_PEDIU_LINK}=1; Max-Age=3600; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
     setEtapa("email-enviado");
   }
 

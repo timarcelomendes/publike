@@ -190,9 +190,15 @@ type Achado = { ponto: Ponto; comNumero: boolean; bairro: string | null };
 const PONTOS = new Map<string, { quando: number; r: Achado | null }>();
 let fila: Promise<unknown> = Promise.resolve();
 let ultima = 0;
+let naEspera = 0;
+// Uma consulta por segundo: com 20 esperando, a próxima levaria uns 20 s. Melhor dizer que o mapa
+// está ocupado (quem chamou trata como "fora do ar") do que travar a busca de todo mundo.
+const FILA_MAXIMA = 20;
 
 /** Uma consulta por vez, com pelo menos 1,1 s entre elas (regra do Nominatim). */
-function naFila<T>(tarefa: () => Promise<T>): Promise<T> {
+function naFila<T>(tarefa: () => Promise<{ status: number; corpo: T | null }>): Promise<{ status: number; corpo: T | null }> {
+  if (naEspera >= FILA_MAXIMA) return Promise.resolve({ status: 503, corpo: null });
+  naEspera++;
   const vez = fila.then(async () => {
     const espera = ultima + 1100 - Date.now();
     if (espera > 0) await new Promise((ok) => setTimeout(ok, espera));
@@ -200,6 +206,7 @@ function naFila<T>(tarefa: () => Promise<T>): Promise<T> {
       return await tarefa();
     } finally {
       ultima = Date.now();
+      naEspera--;
     }
   });
   fila = vez.catch(() => undefined);

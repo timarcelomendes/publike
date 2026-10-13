@@ -128,7 +128,7 @@ const CUIDADOS: Item[] = [
     icone: ShieldCheck,
     titulo: "Moderação",
     texto:
-      "Cada anúncio novo passa por uma revisão automática que tira do ar golpe, cobrança, discriminação e trabalho infantil. Três denúncias de pessoas diferentes também tiram, até a equipe olhar.",
+      "Cada anúncio novo passa por uma revisão automática que tira do ar golpe, cobrança, discriminação e trabalho infantil. Algumas denúncias de pessoas diferentes também tiram, até a equipe olhar.",
   },
   {
     icone: KeyRound,

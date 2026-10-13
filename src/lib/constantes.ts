@@ -366,6 +366,13 @@ export function descreverAtendimento(areas: readonly string[]) {
 }
 
 /** De onde quem recomenda conhece o profissional ("Eu recomendo"). */
+/**
+ * Versão das regras e da política de privacidade (a data da mudança). Quem cria a conta
+ * aceita esta versão, e o banco guarda qual foi (privado.aceites). Mudou o texto que vale
+ * para todo mundo, mude a data.
+ */
+export const VERSAO_TERMOS = "2026-10-13";
+
 /** Explica o que é seguir: vai uma vez, embaixo dos botões de seguir. */
 export const TEXTO_SEGUIR = "Quem segue recebe um aviso quando sair anúncio novo.";
 

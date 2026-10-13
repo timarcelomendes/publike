@@ -37,6 +37,9 @@ export function Rodape() {
           <Link href="/missao" className={link}>
             Nossa missão
           </Link>
+          <Link href="/gratis" className={link}>
+            É grátis
+          </Link>
           <Link href="/conteudos" className={link}>
             Conteúdos sobre trabalho
           </Link>
@@ -81,7 +84,11 @@ export function Rodape() {
         ))}
       </Container>
       <Container className="border-t border-line py-4 text-body-sm text-ink-muted">
-        Feito em Goiânia. Grátis para quem trabalha, para quem presta serviço e para empresas de qualquer tamanho.
+        Feito em Goiânia.{" "}
+        <Link href="/gratis" className="underline underline-offset-2 hover:text-ink">
+          Grátis
+        </Link>{" "}
+        para quem trabalha, para quem presta serviço e para empresas de qualquer tamanho.
       </Container>
     </footer>
   );

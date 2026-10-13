@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { MODO_DEMO } from "@/lib/config";
 import { caminhoSeguro } from "@/lib/formato";
-import { linkDeEntradaValido } from "@/lib/link-entrada";
+import { COOKIE_PEDIU_LINK, linkDeEntradaValido } from "@/lib/link-entrada";
 import { ehRedeSocial } from "@/lib/login-social";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
@@ -80,7 +80,12 @@ export async function POST(request: NextRequest) {
   // 303: depois do envio do formulário, o navegador segue com GET.
   const ir = (destino: string) => NextResponse.redirect(`${base}${destino}`, 303);
   const voltarComErro = (erro: string) => ir(`/entrar?erro=${erro}&next=${encodeURIComponent(proximo)}`);
-  const continuar = () => ir(`/auth/continuar?next=${encodeURIComponent(proximo)}`);
+  const continuar = () => {
+    const resposta = ir(`/auth/continuar?next=${encodeURIComponent(proximo)}`);
+    // o link já foi usado: o aviso de "este navegador pediu um link" sai
+    resposta.cookies.delete(COOKIE_PEDIU_LINK);
+    return resposta;
+  };
 
   // Só vale o envio feito pela página do próprio site (o navegador diz de onde veio).
   const origem = request.headers.get("origin");

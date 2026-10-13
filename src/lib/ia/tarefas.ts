@@ -101,7 +101,8 @@ export async function revisarAnuncio(a: AnuncioParaIA, modeloEscolhido: string):
   const { texto, parada, modelo } = await chamarIA({
     modelo: modeloEscolhido,
     sistema: SISTEMA_MODERACAO,
-    mensagem: `<anuncio>\n${descreverAnuncio(a)}\n</anuncio>`,
+    // sem "<" e ">" no texto de quem publicou: ninguém fecha o <anuncio> para escrever instruções fora dele
+    mensagem: `<anuncio>\n${descreverAnuncio(a).replace(/</g, "‹").replace(/>/g, "›")}\n</anuncio>`,
     imagens: (a.fotos ?? []).map((f) => urlDaFotoTrabalho(f)).filter((u): u is string => Boolean(u)),
     maxTokens: 400,
     esquema: { nome: "moderacao_anuncio", schema: ESQUEMA_MODERACAO },

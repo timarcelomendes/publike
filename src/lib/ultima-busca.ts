@@ -19,3 +19,12 @@ export function lerUltimaBusca(): string | null {
     return null;
   }
 }
+
+/** Ao sair da conta: quem usar o aparelho depois não volta para a busca de outra pessoa. */
+export function esquecerBusca() {
+  try {
+    window.sessionStorage.removeItem(CHAVE);
+  } catch {
+    // sem armazenamento: não havia nada guardado
+  }
+}

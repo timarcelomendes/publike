@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { useState, useTransition, type DragEvent } from "react";
 import { anotarSugestao, apagarSugestao, moverSugestao } from "@/lib/acoes/admin";
-import { tempoRelativo } from "@/lib/formato";
+import { caminhoSeguro, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_SUGESTAO, TIPOS_SUGESTAO, nomeDoTipo, type StatusSugestao, type TipoSugestao } from "@/lib/sugestoes";
 import { Selo, type VarianteSelo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -255,7 +255,8 @@ function Cartao({
         {item.pagina && (
           <li className="truncate">
             <a
-              href={item.pagina}
+              // só caminho do próprio site (quem manda a sugestão escreve a página que quiser)
+              href={caminhoSeguro(item.pagina, "/")}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 hover:underline"

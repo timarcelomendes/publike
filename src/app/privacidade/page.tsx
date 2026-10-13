@@ -3,11 +3,33 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Container } from "@/components/ui/basicos";
 import { CONTATO_EMAIL } from "@/lib/config";
+import { VERSAO_TERMOS } from "@/lib/constantes";
 
 export const metadata: Metadata = {
   title: "Privacidade e regras",
-  description: "Que dados o Publike guarda, quem vê o quê, seus direitos pela LGPD e as regras para publicar.",
+  description: "Que dados o Publike guarda, quem vê o quê, cookies, seus direitos pela LGPD e as regras para publicar.",
 };
+
+// "2026-10-13" -> "13 de outubro de 2026"
+const DATA_DA_VERSAO = new Date(`${VERSAO_TERMOS}T12:00:00Z`).toLocaleDateString("pt-BR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** Onde mandar pedidos sobre os dados: o e-mail de contato ou, sem ele, a página de sugestões. */
+function CanalDePedidos() {
+  return CONTATO_EMAIL ? (
+    <a href={`mailto:${CONTATO_EMAIL}`} className="underline">
+      {CONTATO_EMAIL}
+    </a>
+  ) : (
+    <Link href="/sugerir" className="underline">
+      Sugestões e erros
+    </Link>
+  );
+}
 
 function Secao({ id, titulo, children }: { id?: string; titulo: string; children: ReactNode }) {
   return (
@@ -36,8 +58,8 @@ export default function Privacidade() {
     <Container className="max-w-3xl py-10">
       <h1 className="text-h1">Privacidade e regras</h1>
       <p className="mt-3 mb-8 text-body-lg text-ink-muted">
-        Em palavras simples: o que guardamos, quem vê o quê e o que vale para todo mundo aqui. Atualizado em outubro de
-        2026.
+        Em palavras simples: o que guardamos, quem vê o quê e o que vale para todo mundo aqui. Versão de{" "}
+        {DATA_DA_VERSAO}.
       </p>
 
       <div className="flex flex-col gap-8">
@@ -64,6 +86,7 @@ export default function Privacidade() {
               "Quem publicou pode marcar em que etapa cada pessoa está (numa vaga: em análise, entrevista, contratado, não seguiu; num serviço: orçamento enviado, agendado, concluído, não seguiu). Quem curtiu vê a etapa e recebe um aviso quando ela muda. Quem publicou também pode escrever uma anotação, que fica só com ele, e baixar a lista de uma vaga numa planilha, só para organizar a seleção. Na planilha, o WhatsApp e o e-mail só aparecem depois do match, como na tela.",
               "Depois do match, os dois podem conversar pelo Publike. Só vocês dois leem a conversa; ela some para os dois se o match for desfeito e é apagada junto com a conta. O aviso de mensagem nova (no site e por e-mail) não leva o texto da mensagem.",
               "Seu WhatsApp e seu e-mail de contato só aparecem para a outra pessoa de um match.",
+              "Recomendações que escrevem para você só aparecem no seu perfil depois que você aprova, e você pode esconder qualquer uma depois.",
               "O CNPJ de agência, comércio ou empresa aparece no perfil e nos anúncios, para quem usa o site conferir na Receita.",
               "Denúncias só a moderação vê. Quem publicou não sabe quem denunciou.",
               "Seu CEP de casa ninguém vê: nem quem publica, nem a moderação pelo site.",
@@ -92,7 +115,8 @@ export default function Privacidade() {
             seguro (limites contra abuso, denúncias e moderação).
           </p>
           <p>
-            Usamos serviços de terceiros só para isso: o Supabase (banco de dados, login e fotos), o OpenFreeMap, com
+            Usamos serviços de terceiros só para isso: a Vercel (onde o site fica hospedado), o Supabase (banco de
+            dados, login e fotos), o OpenFreeMap, com
             dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a OpenAI (a IA que revisa o texto dos
             anúncios e ajuda a escrever), a Cloudflare (a verificação contra robôs na hora de entrar), a BrasilAPI (que
             traz os dados públicos do CNPJ na Receita para preencher o perfil; só enviamos o número do CNPJ) e, se você
@@ -117,6 +141,45 @@ export default function Privacidade() {
           </p>
         </Secao>
 
+        <Secao id="bases-legais" titulo="Com que base na lei">
+          <Lista
+            itens={[
+              "Para o Publike funcionar para você (conta, anúncios, curtidas, match, conversa, currículo e avisos): é o uso do site que você pediu, a execução do contrato (LGPD, art. 7º, V).",
+              "Para manter o site seguro (limites contra abuso, moderação, denúncias e o registro do que a equipe fez): o legítimo interesse do Publike e de quem usa o site (art. 7º, IX) e a defesa em processo, se precisar (art. 7º, VI).",
+              "O que é opcional (o CEP de casa, a localização do “Perto de mim” e o que você escreve em “O que você procura?”): seu consentimento, que você retira quando quiser apagando a informação (art. 7º, I).",
+            ]}
+          />
+        </Secao>
+
+        <Secao id="fora-do-brasil" titulo="Dados fora do Brasil">
+          <p>
+            Alguns dos serviços acima guardam ou processam dados em servidores fora do Brasil, como nos Estados Unidos
+            (por exemplo, a Vercel, a OpenAI e a Cloudflare). Mandamos para cada um só o necessário para a parte dele
+            no trabalho, e eles seguem regras de segurança e privacidade próprias.
+          </p>
+        </Secao>
+
+        <Secao id="cookies" titulo="Cookies">
+          <p>
+            O Publike usa só cookies necessários. Não usamos cookies de propaganda, de análise de audiência nem de
+            rastreamento entre sites.
+          </p>
+          <Lista
+            itens={[
+              "Sessão (os cookies que começam com sb-): mantêm você conectado. Sem eles, não dá para entrar.",
+              "publike_local: lembra a cidade, o bairro e, se você informou, o CEP de casa de quem está sem conta, por até um ano. “Esquecer onde moro” e sair da conta apagam.",
+              "publike_intencao: lembra o que você quer fazer no Publike (procurar trabalho, contratar, oferecer serviço). Sem conta, some quando você fecha o navegador; com conta, dura até um ano.",
+              "publike_pediu_link: marca, por uma hora, que este navegador pediu um link de entrar por e-mail. Com ela, o link entra sozinho aqui; em outro aparelho, a página pergunta antes.",
+              "No próprio navegador, fora dos cookies: que você já viu o aviso de cookies, se prefere a lista ou o mapa, se dispensou o convite para instalar o app e, até fechar a aba, a conversa do assistente, a sua última busca e se deixou para depois a pergunta de onde mora.",
+              "Na tela de entrar: a verificação contra robôs da Cloudflare e o botão do Google (se você usar) podem gravar cookies desses serviços.",
+            ]}
+          />
+          <p className="text-body-sm text-ink-muted">
+            Dá para apagar os cookies nas configurações do navegador. Aí você sai da conta e o site esquece suas
+            escolhas.
+          </p>
+        </Secao>
+
         <Secao titulo="Por quanto tempo">
           <Lista
             itens={[
@@ -128,23 +191,33 @@ export default function Privacidade() {
           />
         </Secao>
 
-        <Secao titulo="Seus direitos (LGPD)">
-          <p>
-            Você pode ver e corrigir seus dados em{" "}
-            <Link href="/perfil" className="underline">
-              Meu perfil
-            </Link>{" "}
-            e excluir a conta a qualquer momento, no fim da mesma página.
-            {CONTATO_EMAIL && (
+        <Secao id="direitos" titulo="Seus direitos (LGPD)">
+          <Lista
+            itens={[
               <>
-                {" "}
-                Dúvidas ou pedidos:{" "}
-                <a href={`mailto:${CONTATO_EMAIL}`} className="underline">
-                  {CONTATO_EMAIL}
+                Saber se guardamos dados seus e ver quais são: quase tudo está em{" "}
+                <Link href="/perfil" className="underline">
+                  Meu perfil
+                </Link>
+                . Para receber uma cópia de tudo, é só pedir.
+              </>,
+              "Corrigir dados incompletos ou errados, em Meu perfil, a qualquer hora.",
+              "Apagar seus dados: Excluir conta apaga na hora (veja abaixo).",
+              "Pedir a anonimização ou o bloqueio de dados desnecessários e a portabilidade (uma cópia para levar a outro serviço).",
+              "Saber com quem compartilhamos: a lista está em “Para que usamos”.",
+              "Retirar o consentimento do que é opcional: “Esquecer onde moro” e apagar o que você escreveu em “O que você procura?”.",
+              <>
+                Reclamar na Autoridade Nacional de Proteção de Dados (ANPD), em{" "}
+                <a href="https://www.gov.br/anpd" className="underline" target="_blank" rel="noopener noreferrer">
+                  gov.br/anpd
                 </a>
                 .
-              </>
-            )}
+              </>,
+            ]}
+          />
+          <p>
+            O Publike (publike.org) é o responsável pelos seus dados, o controlador, como diz a LGPD. Pedidos e dúvidas
+            sobre os seus dados: <CanalDePedidos />. Respondemos em até 15 dias.
           </p>
         </Secao>
 

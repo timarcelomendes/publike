@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { COOKIES_DA_SESSAO } from "@/lib/config";
 import { areaDoSlug, cidadeDoSlug } from "@/lib/paginas-busca";
 
 // Roda antes de cada página: renova a sessão do Supabase (cookies) e
@@ -37,6 +38,7 @@ export async function proxy(request: NextRequest) {
   let resposta = NextResponse.next({ request });
 
   const supabase = createServerClient(URL_SUPABASE, CHAVE, {
+    cookieOptions: COOKIES_DA_SESSAO,
     cookies: {
       getAll() {
         return request.cookies.getAll();

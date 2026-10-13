@@ -70,7 +70,7 @@ export function FormDenuncia({ anuncioId }: { anuncioId: string }) {
         </Link>
       </div>
       <p className="text-body-sm text-ink-muted">
-        A denúncia é anônima para quem publicou. Três denúncias de pessoas diferentes tiram o anúncio do ar até a
+        A denúncia é anônima para quem publicou. Algumas denúncias de pessoas diferentes tiram o anúncio do ar até a
         moderação olhar.
       </p>
     </form>

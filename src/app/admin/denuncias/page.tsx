@@ -25,8 +25,8 @@ export default function Denuncias() {
     <>
       <p className="mb-6 max-w-3xl text-body text-ink-muted">
         Anúncios com denúncias abertas, os que a IA tirou do ar e os que ela não conseguiu revisar, e as avaliações que
-        precisam de uma pessoa. Com três denúncias de pessoas diferentes, o anúncio sai do ar sozinho até alguém
-        decidir.
+        precisam de uma pessoa. Com três denúncias de pessoas diferentes, de contas com pelo menos 3 dias, o anúncio sai
+        do ar sozinho até alguém decidir. Denúncias de contas mais novas aparecem aqui, mas sozinhas não tiram do ar.
       </p>
       <Suspense fallback={<EsqueletoLista />}>
         <Conteudo />

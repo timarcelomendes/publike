@@ -1,6 +1,29 @@
 import type { NextConfig } from "next";
 
+// Política de conteúdo (CSP): diz ao navegador de onde a página pode carregar scripts, estilos,
+// imagens e conexões. Por enquanto só em "Report-Only": o navegador avisa no console o que seria
+// bloqueado, sem bloquear nada. Depois de conferir o site publicado sem avisos, troque a chave para
+// "Content-Security-Policy". Os scripts precisam de 'unsafe-inline' (o Next põe scripts na página).
+const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const POLITICA_DE_CONTEUDO = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
+  `img-src 'self' data: blob: ${SUPABASE} https://tiles.openfreemap.org https://*.googleusercontent.com`,
+  "font-src 'self'",
+  `connect-src 'self' ${SUPABASE} ${SUPABASE.replace(/^http/, "ws")} https://tiles.openfreemap.org https://accounts.google.com https://challenges.cloudflare.com`,
+  "frame-src https://accounts.google.com https://challenges.cloudflare.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const nextConfig: NextConfig = {
+  // não conta para quem visita qual é o servidor
+  poweredByHeader: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
@@ -39,6 +62,9 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+          ...(process.env.NODE_ENV === "production"
+            ? [{ key: "Content-Security-Policy-Report-Only", value: POLITICA_DE_CONTEUDO }]
+            : []),
         ],
       },
       {

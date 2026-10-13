@@ -46,15 +46,22 @@ export async function perguntarAoAssistente(historico: unknown): Promise<Respost
   if (!dentroDoLimite(`assistente:${quem}`, 8, 60_000)) {
     return { ok: false, erro: "Muitas perguntas seguidas. Espere um minutinho e tente de novo." };
   }
+  // Sem contar o uso no banco, o assistente não responde: assim o gasto da IA nunca fica sem limite
+  // (no banco também há um teto geral por hora, para todo mundo junto).
   const acesso = acessoFila();
-  if (acesso) {
+  if (!acesso) return { ok: false, erro: DESLIGADO };
+  {
     const { data: pode, error } = await acesso.cliente.rpc("servidor_usar_assistente", {
       p_chave: acesso.chave,
       p_quem: quem,
       p_limite: usuario ? LIMITES_CHAT.conta : LIMITES_CHAT.visitante,
     });
-    if (error) console.error("Publike: não deu para contar o uso do assistente:", error.message);
-    else if (pode === false) {
+    if (error) {
+      if (error.hint === "chat_cheio") return { ok: false, erro: error.message };
+      console.error("Publike: não deu para contar o uso do assistente:", error.message);
+      return { ok: false, erro: "O assistente não está disponível agora. Tente de novo daqui a pouco." };
+    }
+    if (pode === false) {
       return {
         ok: false,
         erro: usuario

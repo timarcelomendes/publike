@@ -79,7 +79,7 @@ export type Database = {
           },
         ];
       };
-      /** quem a pessoa segue: um perfil ou um bairro (para receber aviso de anúncio novo) */
+      /** "Eu recomendo": só aparece no perfil depois que a pessoa aprova (oculta e decidida) */
       recomendacoes: {
         Row: {
           id: number;
@@ -88,6 +88,7 @@ export type Database = {
           relacao: string;
           texto: string;
           oculta: boolean;
+          decidida: boolean;
           criado_em: string;
           atualizado_em: string;
         };
@@ -545,9 +546,11 @@ export type Database = {
           relacao: string;
           texto: string;
           oculta: boolean;
+          decidida: boolean;
           criado_em: string;
         }[];
       };
+      registrar_aceite: { Args: { p_versao: string }; Returns: undefined };
       autorizar_contratacao_publica: {
         Args: { p_anuncio: string; p_perfil: string; p_sim: boolean };
         Returns: undefined;

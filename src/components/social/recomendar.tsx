@@ -40,11 +40,15 @@ export function FormRecomendar({
     );
   }
   if (!aberto) {
+    // depois de publicar o formulário fecha, e o aviso ("aparece assim que a pessoa aprovar") fica aqui
     return (
-      <Botao tamanho="sm" onClick={() => setAberto(true)}>
-        <ThumbsUp aria-hidden />
-        {minha ? "Mudar minha recomendação" : `Recomendar ${primeiroNome}`}
-      </Botao>
+      <div className="flex flex-col items-start gap-2">
+        <Botao tamanho="sm" onClick={() => setAberto(true)}>
+          <ThumbsUp aria-hidden />
+          {minha ? "Mudar minha recomendação" : `Recomendar ${primeiroNome}`}
+        </Botao>
+        {mensagem}
+      </div>
     );
   }
   return (
@@ -114,16 +118,40 @@ export function AcoesRecomendacao({
   profissionalId,
   sou,
   oculta,
+  decidida,
 }: {
   id: number;
   profissionalId: string;
   sou: "profissional" | "autor";
   oculta: boolean;
+  /** já decidiu se mostra; nova (ou mudada) espera a decisão */
+  decidida: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   return (
     <div className="flex flex-col items-start gap-1">
-      {sou === "profissional" ? (
+      {sou === "profissional" && !decidida ? (
+        // nova: a pessoa aprova ou esconde
+        <div className="flex flex-wrap gap-2">
+          <Botao
+            tamanho="sm"
+            disabled={pendente}
+            onClick={() => rodar(() => mostrarRecomendacao(id, true, profissionalId))}
+          >
+            <Eye aria-hidden />
+            Mostrar no perfil
+          </Botao>
+          <Botao
+            tamanho="sm"
+            variante="fantasma"
+            disabled={pendente}
+            onClick={() => rodar(() => mostrarRecomendacao(id, false, profissionalId))}
+          >
+            <EyeOff aria-hidden />
+            Esconder
+          </Botao>
+        </div>
+      ) : sou === "profissional" ? (
         <Botao
           tamanho="sm"
           variante="fantasma"

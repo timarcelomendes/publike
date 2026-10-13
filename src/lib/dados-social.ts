@@ -45,6 +45,8 @@ export type Recomendacao = {
   relacao: string;
   texto: string;
   oculta: boolean;
+  /** a pessoa já decidiu (mostrar ou esconder); nova ou mudada espera a decisão */
+  decidida: boolean;
   criado_em: string;
 };
 

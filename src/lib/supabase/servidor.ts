@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./tipos-banco";
-import { SUPABASE_CHAVE, SUPABASE_URL } from "@/lib/config";
+import { COOKIES_DA_SESSAO, SUPABASE_CHAVE, SUPABASE_URL } from "@/lib/config";
 
 /** Cliente do Supabase com a sessão de quem está navegando (cookies). */
 export async function criarClienteServidor() {
@@ -13,6 +13,7 @@ export async function criarClienteServidor() {
   await connection();
   const loja = await cookies();
   return createServerClient<Database>(SUPABASE_URL, SUPABASE_CHAVE, {
+    cookieOptions: COOKIES_DA_SESSAO,
     cookies: {
       getAll() {
         return loja.getAll();

@@ -38,7 +38,7 @@ export async function SecaoRecomendacoes({
       </h2>
       <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
         {meu
-          ? "Peça para vizinhos, clientes e ex-patrões recomendarem você: confiança é o que mais pesa na hora de contratar. Você pode esconder qualquer recomendação."
+          ? "Peça para vizinhos, clientes e ex-patrões recomendarem você: confiança é o que mais pesa na hora de contratar. Cada recomendação só aparece no seu perfil depois que você aprovar."
           : visiveis
             ? `Recomendações de quem conhece ${primeiroNome}: vizinhos, clientes, ex-patrões e colegas. São diferentes das avaliações, que vêm depois de um serviço contratado pelo Publike.`
             : `Conhece ${primeiroNome}? Sua recomendação ajuda ${primeiroNome} a conseguir trabalho.`}
@@ -64,15 +64,24 @@ export async function SecaoRecomendacoes({
                       "Conhecido"}{" "}
                     · {tempoRelativo(r.criado_em, agora)}
                   </span>
-                  {r.oculta && <Selo variante="contorno">Escondida</Selo>}
+                  {r.oculta &&
+                    (r.decidida ? (
+                      <Selo variante="contorno">Escondida</Selo>
+                    ) : (
+                      <Selo>{meu ? "Nova" : "Esperando aprovação"}</Selo>
+                    ))}
                 </p>
                 <p className="text-body whitespace-pre-line">{r.texto}</p>
+                {!meu && r.autor_id === usuarioId && r.oculta && (
+                  <p className="text-body-sm text-ink-muted">Ainda não aparece no perfil de {primeiroNome}.</p>
+                )}
                 {(meu || r.autor_id === usuarioId) && (
                   <AcoesRecomendacao
                     id={r.id}
                     profissionalId={perfilId}
                     sou={meu ? "profissional" : "autor"}
                     oculta={r.oculta}
+                    decidida={r.decidida}
                   />
                 )}
               </div>

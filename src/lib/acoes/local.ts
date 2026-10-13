@@ -8,6 +8,7 @@ import { obterUsuario } from "@/lib/dados";
 import { COOKIE_LOCAL, valorCookieLocal } from "@/lib/local";
 import { arredondarCasa, criarLocal } from "@/lib/regioes";
 import { centroDoBairro, consultarCep } from "@/lib/servidor/cep";
+import { dentroDoLimite, embaralhar, enderecoDeQuemPediu } from "@/lib/servidor/limite";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
@@ -31,6 +32,10 @@ async function guardarNoNavegador(valor: string) {
 export async function salvarLocal(cidade: string, bairro: string, cep?: string | null): Promise<Resultado> {
   let local = criarLocal(String(cidade), String(bairro ?? ""), "busca");
   if (!local) return { ok: false, erro: "Escolha uma cidade da lista." };
+  // cada CEP e cada bairro novo consultam o mapa, que é de todos: no máximo 20 por minuto
+  if (!dentroDoLimite(`local:${embaralhar(await enderecoDeQuemPediu())}`, 20, 60_000)) {
+    return { ok: false, erro: "Muitas consultas seguidas. Espere um minuto e tente de novo." };
+  }
 
   const c = limparCep(typeof cep === "string" ? cep : "");
   if (c) {

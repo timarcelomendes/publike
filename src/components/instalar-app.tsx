@@ -4,6 +4,7 @@ import { Download, EllipsisVertical, Share, SquarePlus, X } from "lucide-react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
+import { avisoDeCookiesFechado } from "./aviso-cookies";
 import { classesBotao } from "./ui/botao";
 import { EVENTO_PEDIDO } from "@/lib/instalar";
 
@@ -207,6 +208,8 @@ export function ConviteInstalar() {
   useEffect(() => {
     if (aberto || dispensadoHaPouco()) return;
     if (SEM_CONVITE.some((c) => caminho.startsWith(c))) return;
+    // os dois ocupam o mesmo canto: primeiro o aviso de cookies
+    if (!avisoDeCookiesFechado()) return;
     const espera = window.setTimeout(() => {
       const j = jeitoDeInstalar();
       if (j !== "botao" && j !== "iphone" && j !== "mac") return;

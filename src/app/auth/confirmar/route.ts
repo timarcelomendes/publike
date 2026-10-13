@@ -1,13 +1,16 @@
 import { type NextRequest } from "next/server";
 import { escaparHtml } from "@/lib/email/montar";
 import { caminhoSeguro } from "@/lib/formato";
-import { linkDeEntradaValido } from "@/lib/link-entrada";
+import { COOKIE_PEDIU_LINK, linkDeEntradaValido } from "@/lib/link-entrada";
 
 // Página do link de entrar por e-mail (vem de /auth/callback). É uma página
-// leve, sem React: no celular mais simples ela já envia o formulário assim que
-// abre, e sem JavaScript o botão continua funcionando. Robôs que só abrem o
+// leve, sem React: no navegador que pediu o link, ela já envia o formulário assim
+// que abre, e sem JavaScript o botão continua funcionando. Robôs que só abrem o
 // link (antivírus do e-mail, prévia de mensagem) não enviam o formulário e
 // não gastam a entrada: ela só acontece no POST em /auth/callback.
+// Em outro navegador (o link foi aberto noutro aparelho, ou alguém mandou o link
+// da conta dele), a página pergunta antes: ninguém entra na conta de outra
+// pessoa sem perceber e preenche ali o WhatsApp ou o currículo.
 
 const ESTILO = `
 :root{--fundo:#fbf7ef;--tinta:#1f1a14;--apagado:#6b6052;--terra:#c2410c;--terra-hover:#a8380a;--foco:#1f6f4a;color-scheme:light dark}
@@ -26,11 +29,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--foco);outline-offse
 .nota{margin-top:32px;font-size:.875rem}
 a{color:inherit}`;
 
-// Envia sozinho uma vez; dois toques não gastam o link duas vezes; o "voltar" libera o botão.
-const SCRIPT = `(function(){var f=document.forms[0];if(!f)return;var b=f.querySelector("button"),t=b.textContent,e=false;
+// Dois toques não gastam o link duas vezes; o "voltar" libera o botão. Com `sozinho`, envia ao abrir.
+const script = (sozinho: boolean) => `(function(){var f=document.forms[0];if(!f)return;var b=f.querySelector("button"),t=b.textContent,e=false;
 f.addEventListener("submit",function(v){if(e){v.preventDefault();return}e=true;b.disabled=true;b.textContent="Entrando…"});
 addEventListener("pageshow",function(v){if(v.persisted){e=false;b.disabled=false;b.textContent=t}});
-if(f.requestSubmit)f.requestSubmit();else{e=true;f.submit()}})();`;
+${sozinho ? `if(f.requestSubmit)f.requestSubmit();else{e=true;f.submit()}` : ""}})();`;
 
 function pagina(titulo: string, miolo: string, script = "") {
   return `<!doctype html>
@@ -61,18 +64,34 @@ export async function GET(request: NextRequest) {
     return new Response(html, { status: 400, headers: cabecalhos });
   }
 
-  const html = pagina(
-    "Entrar",
-    `<h1>Entrando no Publike</h1>
-<p>Se não entrar sozinho em alguns segundos, toque no botão.</p>
-<form method="post" action="/auth/callback">
+  const formulario = (botao: string) => `<form method="post" action="/auth/callback">
 <input type="hidden" name="token_hash" value="${escaparHtml(tokenHash)}">
 <input type="hidden" name="type" value="${escaparHtml(tipo)}">
 <input type="hidden" name="next" value="${escaparHtml(proximo)}">
-<button type="submit">Entrar no Publike</button>
-</form>
+<button type="submit">${botao}</button>
+</form>`;
+
+  // este navegador pediu o link há pouco: entra sozinho
+  if (request.cookies.get(COOKIE_PEDIU_LINK)?.value === "1") {
+    const html = pagina(
+      "Entrar",
+      `<h1>Entrando no Publike</h1>
+<p>Se não entrar sozinho em alguns segundos, toque no botão.</p>
+${formulario("Entrar no Publike")}
 <p class="nota">Não pediu para entrar? É só fechar esta página: ninguém entra na sua conta sem este link.</p>`,
-    SCRIPT,
+      script(true),
+    );
+    return new Response(html, { headers: cabecalhos });
+  }
+
+  // outro navegador: pergunta antes de entrar
+  const html = pagina(
+    "Entrar",
+    `<h1>Foi você que pediu para entrar?</h1>
+<p>Este link abre a conta de quem pediu para entrar. Se foi você, toque no botão. Se alguém mandou este link para você, feche esta página.</p>
+${formulario("Sim, entrar no Publike")}
+<p class="nota">Ninguém entra na sua conta sem um link que chegou no seu e-mail.</p>`,
+    script(false),
   );
   return new Response(html, { headers: cabecalhos });
 }

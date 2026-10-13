@@ -15,6 +15,8 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { sair } from "@/lib/acoes/perfil";
+import { esquecerBusca } from "@/lib/ultima-busca";
+import { mudarConversa } from "./assistente/conversa-estado";
 import { BotaoInstalarApp } from "./instalar-app";
 import { Avatar } from "./ui/basicos";
 
@@ -114,7 +116,15 @@ export function MenuUsuario({
           <div className="mt-1 border-t border-line pt-1">
             <BotaoInstalarApp variante="menu" aoClicar={() => setAberto(false)} />
           </div>
-          <form action={sair} className="mt-1 border-t border-line pt-1">
+          <form
+            action={sair}
+            // num aparelho dividido, a conversa do assistente e a última busca não ficam para o próximo
+            onSubmit={() => {
+              mudarConversa([]);
+              esquecerBusca();
+            }}
+            className="mt-1 border-t border-line pt-1"
+          >
             <button
               type="submit"
               className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-body-sm text-ink hover:bg-surface-300"

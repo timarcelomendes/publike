@@ -39,3 +39,6 @@ export const REGIAO = { latMin: -17.5, latMax: -15.9, lngMin: -50.3, lngMax: -48
 
 export const MENSAGEM_DEMO =
   "Este é o modo demonstração: nada é salvo. Para publicar de verdade, conecte o Supabase (veja o README).";
+
+/** Cookies da sessão do Supabase: no site publicado, só por HTTPS ("Secure"). */
+export const COOKIES_DA_SESSAO = { secure: process.env.NODE_ENV === "production" };

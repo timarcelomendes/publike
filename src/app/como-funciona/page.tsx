@@ -37,7 +37,7 @@ const SEGURANCA = [
   "Não mande foto de documento, senha ou códigos que chegam por SMS.",
   "Na entrevista ou no primeiro serviço, prefira lugares movimentados e avise alguém de confiança.",
   "Combinou um serviço? Deixe valor e prazo por escrito no WhatsApp.",
-  "Viu algo estranho? Denuncie. Três denúncias tiram o anúncio do ar até a moderação analisar.",
+  "Viu algo estranho? Denuncie. Algumas denúncias de pessoas diferentes tiram o anúncio do ar até a moderação analisar.",
 ];
 
 const PERGUNTAS = [

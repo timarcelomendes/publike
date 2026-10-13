@@ -163,7 +163,7 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
           <Opcao
             nome="aviso_retirado"
             rotulo="Anúncio tirado do ar"
-            ajuda="Quando três denúncias ou a IA tiram um anúncio do ar."
+            ajuda="Quando as denúncias ou a IA tiram um anúncio do ar."
             inicial={config.aviso_retirado}
           />
         </div>

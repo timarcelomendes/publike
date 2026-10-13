@@ -5,11 +5,13 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
+import { VERSAO_TERMOS } from "@/lib/constantes";
 import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_INTENCAO } from "@/lib/intencao";
+import { COOKIE_LOCAL } from "@/lib/local";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -21,9 +23,21 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
   const usuario = await obterUsuario();
   if (!usuario) redirect("/entrar?next=/perfil");
 
+  // conta nova: precisa marcar que leu e aceita as regras e a política de privacidade
+  const perfilAntes = await obterMeuPerfil();
+  const faltaAceite = !perfilAntes && formData.get("aceite") !== "on";
   const leitura = lerPerfil(formData);
-  if (!leitura.success) {
-    return { ok: false, erro: "Confira os campos marcados.", erros: errosPorCampo(leitura.error) };
+  if (!leitura.success || faltaAceite) {
+    return {
+      ok: false,
+      erro: "Confira os campos marcados.",
+      erros: {
+        ...(leitura.success ? {} : errosPorCampo(leitura.error)),
+        ...(faltaAceite
+          ? { aceite: "Para criar a conta, marque que leu e aceita as regras e a política de privacidade." }
+          : {}),
+      },
+    };
   }
   const d = leitura.data;
 
@@ -34,7 +48,7 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
 
   // CNPJ novo: confere na Receita (BrasilAPI). Baixado, inapto ou suspenso não entra.
   // Se não achar (empresa aberta há pouco) ou a consulta falhar, segue: a equipe confere.
-  if (d.cnpj && d.cnpj !== (await obterMeuPerfil())?.cnpj) {
+  if (d.cnpj && d.cnpj !== perfilAntes?.cnpj) {
     const consulta = await consultarCnpj(d.cnpj);
     if (consulta.ok && !consulta.dados.ativa) {
       const erro = `Este CNPJ está com a situação ${consulta.dados.situacao.toLowerCase()} na Receita. Use um CNPJ ativo.`;
@@ -60,6 +74,11 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     return { ok: false, erro: "Confira os campos marcados.", erros: { cnpj: mensagemDeErro(error) } };
   }
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar o perfil agora.") };
+  // conta nova: guarda qual versão das regras e da política foi aceita, e quando
+  if (!perfilAntes) {
+    const { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS });
+    if (erroAceite) console.error("Publike: não deu para guardar o aceite das regras:", erroAceite.message);
+  }
   // perfil novo avisa a equipe por e-mail
   after(processarFilas);
 
@@ -109,8 +128,11 @@ export async function sair() {
     const supabase = await criarClienteServidor();
     await supabase.auth.signOut();
   }
-  // a resposta fica na conta; sem login, a pergunta volta
-  (await cookies()).delete(COOKIE_INTENCAO);
+  // a resposta fica na conta; sem login, a pergunta volta. O CEP de casa guardado neste
+  // navegador também sai: num celular dividido, quem vem depois não vê onde o outro mora.
+  const loja = await cookies();
+  loja.delete(COOKIE_INTENCAO);
+  loja.delete(COOKIE_LOCAL);
   revalidatePath("/", "layout");
   redirect("/");
 }
