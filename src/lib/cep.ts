@@ -60,9 +60,10 @@ export type ConsultaPontoDoFormulario =
 /**
  * Quão perto do lugar certo o ponto ficou:
  * numero = na porta; rua = em algum ponto da rua; cep = no centro do CEP;
- * bairro = no meio do bairro (a pessoa precisa ajustar no mapa).
+ * bairro = no meio do bairro (a pessoa precisa ajustar no mapa);
+ * conhecido = o ponto que outra vaga deste mesmo endereço público marcou.
  */
-export type Precisao = "numero" | "rua" | "cep" | "bairro";
+export type Precisao = "numero" | "conhecido" | "rua" | "cep" | "bairro";
 
 export type ConsultaCep =
   | {
@@ -77,6 +78,7 @@ export type ConsultaCep =
 
 export const TEXTO_PRECISAO: Record<Precisao, string> = {
   numero: "Achamos o número no mapa. Confira se o pino está na porta certa.",
+  conhecido: "Usamos o ponto que outra vaga deste endereço já marcou. Confira se o pino está na porta certa.",
   rua: "Achamos a rua, mas não o número. Toque no mapa para pôr o pino na porta certa.",
   cep: "Achamos a área do CEP. Toque no mapa para pôr o pino no lugar certo.",
   bairro: "Achamos só o bairro. Toque no mapa para pôr o pino no lugar certo.",

@@ -552,6 +552,10 @@ export type Database = {
       };
       registrar_aceite: { Args: { p_versao: string }; Returns: undefined };
       registrar_origem: { Args: { p_origem: string }; Returns: undefined };
+      ponto_conhecido: {
+        Args: { p_cep: string; p_numero: string };
+        Returns: { lat: number; lng: number; vezes: number }[];
+      };
       admin_origens: {
         Args: { p_desde?: string };
         Returns: {
