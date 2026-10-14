@@ -52,6 +52,9 @@ export function Rodape() {
           <Link href="/publicar" className={link}>
             Publicar grátis
           </Link>
+          <Link href="/empresas" className={link}>
+            Para empresas
+          </Link>
           <Link href="/painel/servicos" className={link}>
             Oferecer meus serviços
           </Link>

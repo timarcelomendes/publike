@@ -46,6 +46,13 @@ function contexto(proximo: string): Contexto {
       publica: true,
     };
   }
+  if (proximo.startsWith("/painel/servicos")) {
+    return {
+      titulo: "Entre para montar sua vitrine grátis",
+      texto: "Mostre seus serviços para quem mora perto. Leva uns dois minutos e é grátis para todos.",
+      publica: true,
+    };
+  }
   if (proximo.startsWith("/painel")) {
     return { titulo: "Entre para ver seu painel", texto: "Seus anúncios, curtidas e matches ficam todos lá.", publica: true };
   }
