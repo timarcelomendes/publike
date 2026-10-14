@@ -23,6 +23,9 @@ import { CIDADES } from "@/lib/constantes";
 //     cidade não vale.
 //   * "Rua JCA7" no CEP é "Rua JCA 7" no mapa: tentamos as duas.
 //   * Há "Rua 1" em vários bairros: a rua achada só vale perto do bairro do CEP.
+//   * Muita rua de Goiânia não está no mapa (a Rua Puccini, do Jardim Europa, por exemplo),
+//     e o mapa tem vários pontos com o nome do mesmo bairro, longe um do outro. Entre os
+//     achados, vale o de CEP mais parecido com o pedido (74325-200 fica perto do 74325-100).
 // O Nominatim pede no máximo uma consulta por segundo e um nome de aplicativo:
 // a fila abaixo espaça as consultas e as respostas ficam guardadas por um dia.
 
@@ -63,6 +66,7 @@ type RespostaNominatim = {
     neighbourhood?: string;
     quarter?: string;
     city_district?: string;
+    postcode?: string;
   };
 }[];
 
@@ -213,29 +217,52 @@ function naFila<T>(tarefa: () => Promise<{ status: number; corpo: T | null }>): 
   return vez;
 }
 
-async function procurarNoMapa(params: Record<string, string>): Promise<Achado | null> {
+/** Quantos números do começo dos dois CEPs são iguais (74325-200 e 74325-100: 5). */
+function cepsParecidos(a: string, b: string) {
+  let n = 0;
+  while (n < a.length && n < b.length && a[n] === b[n]) n++;
+  return n;
+}
+
+/**
+ * Um lugar no mapa. Com o CEP, pede alguns achados e fica com o de CEP mais parecido
+ * (no empate, o primeiro, que é o que o mapa acha mais certo).
+ */
+async function procurarNoMapa(params: Record<string, string>, cep?: string): Promise<Achado | null> {
   const q = new URLSearchParams({
     format: "jsonv2",
     addressdetails: "1",
-    limit: "1",
+    limit: cep ? "5" : "1",
     countrycodes: "br",
     // só dentro de Goiânia e região
     viewbox: `${REGIAO.lngMin},${REGIAO.latMax},${REGIAO.lngMax},${REGIAO.latMin}`,
     bounded: "1",
     ...params,
   });
-  const chave = q.toString();
+  const chave = cep ? `${q}#${cep}` : q.toString();
   const guardado = PONTOS.get(chave);
   if (guardado && Date.now() - guardado.quando < UM_DIA) return guardado.r;
 
   const resposta = await naFila(() =>
-    buscarJson<RespostaNominatim>(`${NOMINATIM}/search?${chave}`, {
+    buscarJson<RespostaNominatim>(`${NOMINATIM}/search?${q}`, {
       "user-agent": APLICATIVO,
       referer: "https://publike.org",
     }),
   );
   if (!resposta.corpo) return null; // fora do ar: não guarda
-  const primeiro = resposta.corpo[0];
+  const naArea = resposta.corpo.filter((a) => naRegiao({ lat: Number(a.lat), lng: Number(a.lon) }));
+  let primeiro: (typeof naArea)[number] | undefined = naArea[0];
+  if (cep) {
+    let melhor = -1;
+    for (const a of naArea) {
+      // achar a porta vale mais que o CEP parecido
+      const parecido = cepsParecidos(cep, limparCep(a.address?.postcode ?? "")) + (a.address?.house_number ? 10 : 0);
+      if (parecido > melhor) {
+        melhor = parecido;
+        primeiro = a;
+      }
+    }
+  }
   const ponto = primeiro ? { lat: Number(primeiro.lat), lng: Number(primeiro.lon) } : null;
   const end = primeiro?.address;
   const r: Achado | null = naRegiao(ponto)
@@ -271,7 +298,7 @@ async function pontoDoEndereco(
   let bairro: Achado | null | undefined;
   const pontoDoBairro = async () => {
     if (bairro === undefined)
-      bairro = e.bairro ? await procurarNoMapa({ q: `${e.bairro}, ${e.cidade}, Goiás, Brasil` }) : null;
+      bairro = e.bairro ? await procurarNoMapa({ q: `${e.bairro}, ${e.cidade}, Goiás, Brasil` }, e.cep) : null;
     return bairro;
   };
   const daRegiaoCerta = async (r: Achado) => {
@@ -290,7 +317,7 @@ async function pontoDoEndereco(
   const ruas = e.rua ? variantesDaRua(e.rua) : [];
   if (num) {
     for (const nome of ruas) {
-      const r = await procurarNoMapa({ ...base, street: `${num} ${nome}` });
+      const r = await procurarNoMapa({ ...base, street: `${num} ${nome}` }, e.cep);
       if (!r || !(await daRegiaoCerta(r))) continue;
       if (r.comNumero) return { lugar: { ponto: r.ponto, precisao: "numero" }, cidade };
       // sem o número no mapa, o resultado é a rua
@@ -299,9 +326,10 @@ async function pontoDoEndereco(
     }
   }
   if (cepBom) return { lugar: { ponto: cepBom, precisao: "cep" }, cidade };
-  if (!rua && !num) {
+  // com o número e sem ele no mapa, a rua sozinha ainda chega mais perto que o bairro
+  if (!rua) {
     for (const nome of ruas) {
-      const r = await procurarNoMapa({ ...base, street: nome });
+      const r = await procurarNoMapa({ ...base, street: nome }, e.cep);
       if (r && (await daRegiaoCerta(r))) {
         rua = r;
         break;

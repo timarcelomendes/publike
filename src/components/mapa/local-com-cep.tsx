@@ -94,9 +94,11 @@ export function LocalComCep({
         setAviso(
           r.precisao === "rua" && !numero.trim()
             ? "Achamos a rua. Ponha o número para chegar mais perto, ou toque no mapa na porta certa."
-            : r.precisao
-              ? TEXTO_PRECISAO[r.precisao]
-              : null,
+            : r.precisao === "bairro" && r.endereco.rua
+              ? `A ${r.endereco.rua} não está no mapa que usamos, então o pino ficou perto, no bairro ${r.endereco.bairro ?? "do CEP"}. Toque no mapa na porta certa.`
+              : r.precisao
+                ? TEXTO_PRECISAO[r.precisao]
+                : null,
         );
       } else {
         // abre o mapa na cidade, sem marcar: a pessoa toca no lugar
