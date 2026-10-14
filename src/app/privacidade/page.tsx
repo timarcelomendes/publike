@@ -171,7 +171,7 @@ export default function Privacidade() {
               "publike_intencao: lembra o que você quer fazer no Publike (procurar trabalho, contratar, oferecer serviço). Sem conta, some quando você fecha o navegador; com conta, dura até um ano.",
               "publike_pediu_link: marca, por uma hora, que este navegador pediu um link de entrar por e-mail. Com ela, o link entra sozinho aqui; em outro aparelho, a página pergunta antes.",
               "publike_origem: quando você chega por um anúncio do Publike (no Google ou no Instagram, por exemplo), guarda só o nome da campanha, como google:servicos, por até 7 dias. Se você criar a conta nesse tempo, anotamos de qual campanha veio, para saber se o anúncio funciona. Não vai para o Google nem para ninguém.",
-              "No próprio navegador, fora dos cookies: que você já viu o aviso de cookies, se prefere a lista ou o mapa, se dispensou o convite para instalar o app e, até fechar a aba, a conversa do assistente, a sua última busca e se deixou para depois a pergunta de onde mora.",
+              "No próprio navegador, fora dos cookies: que você já viu o aviso de cookies, se prefere a lista ou o mapa, se dispensou o convite para instalar o app e, até fechar a aba, a conversa do assistente, a sua última busca, se deixou para depois a pergunta de onde mora e se fechou o aviso de versão nova do site.",
               "Na tela de entrar: a verificação contra robôs da Cloudflare e o botão do Google (se você usar) podem gravar cookies desses serviços.",
             ]}
           />

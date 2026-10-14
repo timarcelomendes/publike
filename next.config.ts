@@ -21,9 +21,14 @@ const POLITICA_DE_CONTEUDO = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+// Versão desta publicação: muda a cada deploy na Vercel. A página guarda a dela e /versao diz a
+// do servidor; quando ficam diferentes, aparece o aviso "Tem uma versão nova" (aviso-atualizacao.tsx).
+const VERSAO = process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || `local-${Date.now()}`;
+
 const nextConfig: NextConfig = {
   // não conta para quem visita qual é o servidor
   poweredByHeader: false,
+  env: { NEXT_PUBLIC_VERSAO: VERSAO },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
