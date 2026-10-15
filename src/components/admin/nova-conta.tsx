@@ -9,10 +9,15 @@ import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada, ligarCampo, Seletor } from "../ui/campo";
 
-/** Criar uma conta pelo e-mail, para quem pediu ajuda (uma agência, um comércio). */
+// No admin, o que cada tipo cobre (pessoa: candidato e prestador de serviço).
+const AJUDA_DO_TIPO: Partial<Record<TipoConta, string>> = {
+  pessoa: "Candidato, prestador de serviço (diarista, pedreiro…) ou quem contrata para casa",
+};
+
+/** Criar uma conta pelo e-mail, para quem pediu ajuda: candidato, prestador, comércio, empresa ou agência. */
 export function FormNovaConta() {
   const [estado, acao, enviando] = useActionState(criarContaPeloAdmin, { ok: false } as EstadoForm);
-  const [tipo, setTipo] = useState<TipoConta>("agencia");
+  const [tipo, setTipo] = useState<TipoConta>("pessoa");
   const erros = estado.erros ?? {};
 
   // com onSubmit (e não action), o formulário não se apaga quando volta um erro
@@ -35,7 +40,7 @@ export function FormNovaConta() {
           type="email"
           autoComplete="off"
           required
-          placeholder="vagas@agencia.com.br"
+          placeholder="nome@email.com"
           className={classesEntrada}
         />
       </Campo>
@@ -57,7 +62,7 @@ export function FormNovaConta() {
                 className="sr-only"
               />
               <span className="text-label">{TIPOS_CONTA[t].nome}</span>
-              <span className="text-body-sm text-ink-muted">{TIPOS_CONTA[t].ajuda}</span>
+              <span className="text-body-sm text-ink-muted">{AJUDA_DO_TIPO[t] ?? TIPOS_CONTA[t].ajuda}</span>
             </label>
           ))}
         </div>
@@ -141,8 +146,8 @@ export function FormNovaConta() {
         <span>
           <span className="block text-label">Mandar o e-mail de acesso agora</span>
           <span className="block text-body-sm text-ink-muted">
-            Dica: publique as vagas antes e mande o acesso depois, pela página da conta. Assim o e-mail já diz quantas
-            vagas estão no ar.
+            Dica: publique as vagas ou monte a vitrine de serviços antes e mande o acesso depois, pela página da conta.
+            Assim o e-mail já conta o que está no ar.
           </span>
         </span>
       </label>

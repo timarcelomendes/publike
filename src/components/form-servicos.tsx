@@ -176,13 +176,19 @@ export function FormServicos({
   inicial,
   usuarioId,
   demo = false,
+  acaoSalvar = salvarServicos,
+  emNomeDe = null,
 }: {
   inicial: ValoresServicos;
   usuarioId: string;
   /** Modo demonstração: dá para ver o formulário, mas não envia fotos nem salva. */
   demo?: boolean;
+  /** Ação que salva (padrão: os serviços de quem está logado). */
+  acaoSalvar?: (anterior: EstadoForm, formData: FormData) => Promise<EstadoForm>;
+  /** Admin montando a vitrine de uma conta: o nome dela (sem envio de fotos). */
+  emNomeDe?: string | null;
 }) {
-  const [estado, acao, enviando] = useActionState(salvarServicos, ESTADO_INICIAL);
+  const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
   const [itens, setItens] = useState<Item[]>(() => inicial.servicos.map(itemDe));
   const [busca, setBusca] = useState("");
   const [todos, setTodos] = useState(false);
@@ -297,6 +303,12 @@ export function FormServicos({
 
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
+      {emNomeDe && (
+        <Aviso tipo="alerta" titulo={`Montando a vitrine de ${emNomeDe}`}>
+          Os serviços saem no nome e com o contato desta conta. Pelo admin não dá para enviar fotos: a pessoa coloca
+          depois, pela vitrine dela.
+        </Aviso>
+      )}
       <Secao
         numero={1}
         titulo="O que você faz?"
@@ -369,7 +381,8 @@ export function FormServicos({
           item={item}
           erros={errosDe(item.chave)}
           usuarioId={usuarioId}
-          demo={demo}
+          demo={demo || Boolean(emNomeDe)}
+          avisoFotos={emNomeDe ? "Pelo admin não dá para enviar fotos." : undefined}
           mudar={(m) => mudar(item.chave, m)}
           remover={() => remover(item.chave)}
         />
@@ -534,7 +547,7 @@ export function FormServicos({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando || editaveis.length === 0} className="sm:min-w-56">
-          {enviando ? "Salvando…" : "Salvar meus serviços"}
+          {enviando ? "Salvando…" : emNomeDe ? "Salvar a vitrine" : "Salvar meus serviços"}
         </Botao>
         <p className="text-body-sm text-ink-muted">
           Grátis. Seus serviços ficam 90 dias no ar, e salvar de novo renova o prazo. Ao salvar, você concorda com as{" "}
@@ -553,6 +566,7 @@ function BlocoServico({
   erros,
   usuarioId,
   demo,
+  avisoFotos,
   mudar,
   remover,
 }: {
@@ -560,6 +574,8 @@ function BlocoServico({
   erros: Record<string, string>;
   usuarioId: string;
   demo: boolean;
+  /** Por que não dá para enviar fotos (padrão: modo demonstração). */
+  avisoFotos?: string;
   mudar: (m: Partial<Item>) => void;
   remover: () => void;
 }) {
@@ -827,7 +843,9 @@ function BlocoServico({
                   {enviandoFotos > 0 ? "Enviando…" : "Adicionar fotos"}
                 </Botao>
                 {demo && (
-                  <p className="mt-1 text-body-sm text-ink-muted">No modo demonstração não dá para enviar fotos.</p>
+                  <p className="mt-1 text-body-sm text-ink-muted">
+                    {avisoFotos ?? "No modo demonstração não dá para enviar fotos."}
+                  </p>
                 )}
               </div>
             )}

@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink, Megaphone } from "lucide-react";
+import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -111,12 +111,20 @@ async function Conteudo({
             ? "O e-mail de acesso já foi enviado."
             : primeiro(sp.acesso) === "0"
               ? `A conta foi criada, mas o e-mail de acesso não saiu: ${primeiro(sp.erro_acesso) ?? ""}`
-              : "Agora publique as vagas em nome dela e, no fim, mande o e-mail de acesso."}
+              : "Agora publique as vagas ou monte a vitrine de serviços em nome dela e, no fim, mande o e-mail de acesso. Para quem só procura trabalho, já pode mandar o acesso."}
         </Aviso>
       )}
       {primeiro(sp.existente) === "1" && (
         <Aviso tipo="info" titulo="Já existe uma conta com este e-mail">
           Abrimos a conta que já existe. Daqui dá para publicar em nome dela e mandar o e-mail de acesso.
+        </Aviso>
+      )}
+      {primeiro(sp.servicos) === "1" && (
+        <Aviso tipo="sucesso" titulo="Vitrine de serviços salva.">
+          <p>
+            Os serviços já aparecem na busca. As fotos a pessoa coloca depois, em “Meus serviços”. Quando terminar,
+            mande o e-mail de acesso.
+          </p>
         </Aviso>
       )}
       {primeiro(sp.publicada) && (
@@ -143,14 +151,22 @@ async function Conteudo({
 
       {!s && (
         <Secao
-          titulo="Acesso e vagas"
-          descricao="Para quem pediu ajuda: publique as vagas em nome da conta e mande o link de entrar (sem senha) para o e-mail de login."
+          titulo="Acesso e publicação"
+          descricao="Para quem pediu ajuda: publique as vagas ou monte a vitrine de serviços em nome da conta e mande o link de entrar (sem senha) para o e-mail de login."
           acoes={
             u.perfil ? (
-              <Link href={`/admin/usuarios/${u.id}/publicar`} className={classesBotao("secundario", "sm")}>
-                <Megaphone aria-hidden />
-                Publicar vaga em nome desta conta
-              </Link>
+              <>
+                <Link href={`/admin/usuarios/${u.id}/publicar`} className={classesBotao("secundario", "sm")}>
+                  <Megaphone aria-hidden />
+                  Publicar vaga em nome desta conta
+                </Link>
+                {u.perfil.tipo !== "agencia" && (
+                  <Link href={`/admin/usuarios/${u.id}/servicos`} className={classesBotao("secundario", "sm")}>
+                    <Wrench aria-hidden />
+                    Montar a vitrine de serviços
+                  </Link>
+                )}
+              </>
             ) : undefined
           }
         >

@@ -50,7 +50,7 @@ export type ResultadoAcesso = { ok: true } | { ok: false; erro: string };
  */
 export async function mandarEmailDeAcesso(
   c: ClienteBanco,
-  dados: { email: string; nome: string; primeiro: boolean; vagas: number },
+  dados: { email: string; nome: string; primeiro: boolean; vagas: number; servicos: number },
 ): Promise<ResultadoAcesso> {
   const smtp = configSmtp();
   if (!smtp) return { ok: false, erro: "Falta configurar o e-mail do site (SMTP_SERVIDOR, SMTP_USUARIO, SMTP_SENHA)." };
@@ -70,10 +70,13 @@ export async function mandarEmailDeAcesso(
   const params = new URLSearchParams({ token_hash: token, type: "magiclink", next: proximo });
   const { data: cfg } = await c.from("config_site").select("remetente_nome, responder_para").limit(1).maybeSingle();
   // parágrafo com variável vazia some do e-mail (veja montarEmail)
-  const publicados =
-    dados.vagas > 0
-      ? `${dados.vagas === 1 ? "A sua vaga já está" : `As suas ${dados.vagas} vagas já estão`} no ar. Pelo painel você vê quem se candidatou e conversa com cada pessoa.`
-      : "";
+  const partes = [
+    dados.vagas > 0 &&
+      `${dados.vagas === 1 ? "A sua vaga já está" : `As suas ${dados.vagas} vagas já estão`} no ar. Pelo painel você vê quem se candidatou e conversa com cada pessoa.`,
+    dados.servicos > 0 &&
+      `A sua vitrine de serviços já está no ar${dados.servicos > 1 ? `, com ${dados.servicos} serviços` : ""}. Quem mora perto encontra você e chama pelo WhatsApp; pelo painel você troca preços, fotos e horários.`,
+  ];
+  const publicados = partes.filter(Boolean).join(" ");
   const email = montarEmail(
     dados.primeiro ? MODELO_PRIMEIRO : MODELO_DE_NOVO,
     { nome: dados.nome, email: dados.email, publicados, caminho: `/auth/callback?${params}` },

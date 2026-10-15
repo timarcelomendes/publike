@@ -1308,6 +1308,25 @@ export type Database = {
       };
       /** boas-vindas para quem se cadastrou, não publicou e ainda não recebeu (devolve quantos) */
       admin_boas_vindas_pendentes: { Args: Record<PropertyKey, never>; Returns: number };
+      /** os serviços da conta, como ela vê em "Meus serviços" (admin) */
+      admin_servicos_de: {
+        Args: { p_usuario: string };
+        Returns: Database["public"]["Functions"]["meus_servicos"]["Returns"];
+      };
+      /** salva a vitrine da conta com as regras de salvar_meus_servicos (admin) */
+      admin_salvar_servicos_de: {
+        Args: {
+          p_usuario: string;
+          p_servicos: Database["public"]["Functions"]["salvar_meus_servicos"]["Args"]["p_servicos"];
+          p_cidade: string;
+          p_bairro: string;
+          p_lat: number;
+          p_lng: number;
+          p_atende: string[];
+          p_horario: string | null;
+        };
+        Returns: number;
+      };
       admin_emails_do_usuario: {
         Args: { p_usuario: string; p_limite?: number };
         Returns: {

@@ -3,6 +3,7 @@
 const ACOES: Record<string, string> = {
   salvar_config: "salvou as configurações de",
   enviar_email: "mandou um e-mail para",
+  servicos_em_nome: "montou a vitrine de serviços de",
   enviar_boas_vindas: "mandou para quem faltava o e-mail de",
   remover_anuncio: "removeu o anúncio",
   liberar_anuncio: "liberou o anúncio",

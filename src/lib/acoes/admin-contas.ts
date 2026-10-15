@@ -4,11 +4,12 @@ import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
+import { limparFotosDeTrabalho } from "@/lib/servidor/arquivos";
 import { mandarEmailDeAcesso } from "@/lib/servidor/email-acesso";
 import { enviarEmailsPendentes, processarFilas } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
-import { errosPorCampo, lerAnuncio, lerPerfil, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
 
 // Contas criadas pela equipe (quem pediu ajuda para entrar no Publike, como uma
 // agência que mandou a lista de vagas). Só no admin, no computador do dono.
@@ -71,7 +72,7 @@ export async function criarContaPeloAdmin(_anterior: EstadoForm, formData: FormD
 
   let aviso = "";
   if (formData.get("enviar_acesso") === "on") {
-    const envio = await mandarEmailDeAcesso(c, { email: login, nome: d.nome, primeiro: true, vagas: 0 });
+    const envio = await mandarEmailDeAcesso(c, { email: login, nome: d.nome, primeiro: true, vagas: 0, servicos: 0 });
     aviso = envio.ok ? "&acesso=1" : `&acesso=0&erro_acesso=${encodeURIComponent(envio.erro)}`;
   }
   revalidatePath("/admin/usuarios");
@@ -92,16 +93,25 @@ export async function enviarAcessoPeloAdmin(usuarioId: string): Promise<Resultad
     return { ok: false, erro: "A conta está suspensa: o link não funcionaria." };
   }
 
-  const [{ data: perfil }, { count }] = await Promise.all([
+  const ativos = (tipo: "vaga" | "servico") =>
+    c
+      .from("anuncios")
+      .select("id", { count: "exact", head: true })
+      .eq("autor_id", usuarioId)
+      .eq("status", "ativo")
+      .eq("tipo", tipo);
+  const [{ data: perfil }, { count: vagas }, { count: servicos }] = await Promise.all([
     c.from("perfis").select("nome").eq("id", usuarioId).maybeSingle(),
-    c.from("anuncios").select("id", { count: "exact", head: true }).eq("autor_id", usuarioId).eq("status", "ativo"),
+    ativos("vaga"),
+    ativos("servico"),
   ]);
   const envio = await mandarEmailDeAcesso(c, {
     email,
     nome: perfil?.nome ?? "tudo bem",
     // nunca entrou: vai o texto de boas-vindas, que passa pelo perfil para aceitar as regras
     primeiro: !data.user.last_sign_in_at,
-    vagas: count ?? 0,
+    vagas: vagas ?? 0,
+    servicos: servicos ?? 0,
   });
   if (!envio.ok) return { ok: false, erro: envio.erro };
   refresh();
@@ -199,4 +209,56 @@ export async function enviarBoasVindasPendentes(): Promise<Resultado> {
   if (envio.motivo) return { ok: false, erro: `${total} e-mail(s) ficaram na fila: ${envio.motivo}` };
   const falhas = envio.falhas ? ` ${envio.falhas} falharam: veja em E-mails.` : "";
   return { ok: true, mensagem: `Boas-vindas enviadas para ${total} conta(s).${falhas}` };
+}
+
+/** Monta (ou atualiza) a vitrine de serviços da conta, com as regras de "Meus serviços". */
+export async function salvarServicosEmNomeDe(
+  usuarioId: string,
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Conta não encontrada." };
+
+  const leitura = lerServicos(formData);
+  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  const d = leitura.dados;
+  // pelo admin não sobe foto nova: só ficam as que já estão na pasta da conta
+  if (d.servicos.some((s) => s.fotos.some((f) => !f.startsWith(`${usuarioId}/`)))) {
+    return { ok: false, erro: "Pelo admin não dá para enviar fotos." };
+  }
+  const atende = d.atende.includes("Goiânia") ? d.atende.filter((a) => !a.startsWith("Goiânia: ")) : d.atende;
+
+  const { error } = await c.rpc("admin_salvar_servicos_de", {
+    p_usuario: usuarioId,
+    p_servicos: d.servicos.map((s) => ({
+      ...(s.id ? { id: s.id } : {}),
+      oficio: s.oficio,
+      categoria: s.categoria,
+      titulo: s.titulo,
+      descricao: s.descricao,
+      pagamento_valor: s.pagamento_valor,
+      pagamento_unidade: s.pagamento_unidade,
+      fotos: s.fotos,
+    })),
+    p_cidade: d.cidade,
+    p_bairro: d.bairro,
+    p_lat: d.lat,
+    p_lng: d.lng,
+    p_atende: atende,
+    p_horario: d.horario,
+  });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar a vitrine agora.") };
+
+  // fotos que nenhum serviço usa mais saem do Storage (como em "Meus serviços")
+  const { data: todos } = await c.from("anuncios").select("fotos").eq("autor_id", usuarioId);
+  await limparFotosDeTrabalho(
+    c,
+    usuarioId,
+    (todos ?? []).flatMap((a) => a.fotos),
+  );
+  after(processarFilas);
+  revalidatePath("/");
+  redirect(`/admin/usuarios/${usuarioId}?servicos=1`);
 }

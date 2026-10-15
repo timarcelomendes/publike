@@ -30,7 +30,7 @@ async function Conteudo() {
       </Link>
       <Secao
         titulo="Criar conta"
-        descricao="Para quem pediu ajuda para entrar no Publike, como uma agência que mandou a lista de vagas. Depois de criar, você publica as vagas em nome da conta e manda o e-mail de acesso."
+        descricao="Para quem pediu ajuda para entrar no Publike: quem procura trabalho, quem presta serviço, um comércio, uma empresa ou uma agência. Depois de criar, você publica as vagas ou monta a vitrine de serviços em nome da conta e manda o e-mail de acesso."
       >
         <FormNovaConta />
       </Secao>
