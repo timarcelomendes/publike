@@ -81,6 +81,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   aviso_match_desfeito: "Match desfeito por comportamento",
   teste: "Teste",
   boas_vindas_pessoa: "Boas-vindas (quem procura trabalho)",
+  boas_vindas_prestador: "Boas-vindas (quem presta serviço)",
   boas_vindas_empresa: "Boas-vindas (comércio e empresa)",
   boas_vindas_agencia: "Boas-vindas (agência)",
 };

@@ -616,6 +616,8 @@ export type Database = {
       registrar_aceite: { Args: { p_versao: string }; Returns: undefined };
       /** quem está logado ainda não aceitou esta versão das regras (conta criada pela equipe) */
       aceite_pendente: { Args: { p_versao: string }; Returns: boolean };
+      /** conta nova que veio pela página de serviços: as boas-vindas viram as de prestador */
+      quero_oferecer_servicos: { Args: Record<string, never>; Returns: undefined };
       registrar_origem: { Args: { p_origem: string }; Returns: undefined };
       ponto_conhecido: {
         Args: { p_cep: string; p_numero: string };

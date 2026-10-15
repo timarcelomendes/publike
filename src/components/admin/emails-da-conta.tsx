@@ -22,6 +22,8 @@ const VARIAVEIS: Record<string, { rotulo: string; exemplo: string }> = {
   quando: { rotulo: "Quando", exemplo: "08/10/2026 às 13:00" },
 };
 const AUTOMATICAS = new Set(["nome", "link"]);
+// Para onde o botão leva, quando não é a página padrão do tipo de conta.
+const CAMINHOS: Record<string, string> = { boas_vindas_prestador: "/painel/servicos" };
 
 /** Mandar qualquer modelo de e-mail para a conta, na hora (mesmo com os avisos desligados). */
 export function EnviarEmailParaConta({
@@ -84,7 +86,10 @@ export function EnviarEmailParaConta({
         <Botao
           disabled={pendente || !modelo}
           onClick={() => {
-            const dados = Object.fromEntries(campos.map((v) => [v, (valores[v] ?? "").trim()]).filter(([, t]) => t));
+            const dados: Record<string, string> = Object.fromEntries(
+              campos.map((v) => [v, (valores[v] ?? "").trim()]).filter(([, t]) => t),
+            );
+            if (CAMINHOS[modelo]) dados.caminho = CAMINHOS[modelo];
             rodar(() => enviarEmailParaConta(usuarioId, modelo, dados));
           }}
         >

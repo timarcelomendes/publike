@@ -207,9 +207,11 @@ async function Conteudo({
           sugerido={
             u.perfil?.tipo === "agencia"
               ? "boas_vindas_agencia"
-              : u.perfil?.tipo === "pessoa"
-                ? "boas_vindas_pessoa"
-                : "boas_vindas_empresa"
+              : u.perfil?.tipo !== "pessoa"
+                ? "boas_vindas_empresa"
+                : u.perfil.servicos.length > 0 || anuncios.itens.some((a) => a.tipo === "servico")
+                  ? "boas_vindas_prestador"
+                  : "boas_vindas_pessoa"
           }
         />
         {emails && emails.length > 0 && (

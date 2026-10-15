@@ -10,6 +10,7 @@
 -- =====================================================================
 
 -- Faz auth.uid() valer a conta até o fim da transação (só dentro das funções do admin).
+-- publike.pelo_admin avisa os gatilhos que foi a equipe (não manda e-mail de boas-vindas).
 create or replace function privado.agir_como(p_usuario uuid)
 returns void
 language plpgsql
@@ -19,6 +20,7 @@ begin
   perform set_config('request.jwt.claims',
                      jsonb_build_object('sub', p_usuario, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', p_usuario::text, true);
+  perform set_config('publike.pelo_admin', '1', true);
 end
 $$;
 revoke execute on function privado.agir_como(uuid) from public;

@@ -83,6 +83,12 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     const { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS });
     if (erroAceite) console.error("Publike: não deu para guardar o aceite das regras:", erroAceite.message);
   }
+  // conta nova que veio pela página de serviços: a jornada é a do prestador (montar a vitrine)
+  const proximo = formData.get("next");
+  if (!perfilAntes && d.tipo === "pessoa" && typeof proximo === "string" && proximo.startsWith("/painel/servicos")) {
+    const { error: erroBoasVindas } = await supabase.rpc("quero_oferecer_servicos");
+    if (erroBoasVindas) console.error("Publike: não deu para trocar as boas-vindas:", erroBoasVindas.message);
+  }
   // perfil novo avisa a equipe por e-mail
   after(processarFilas);
 
@@ -92,7 +98,6 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
   const sobras = (arquivos ?? []).filter((a) => a.name !== atual).map((a) => `${usuario.id}/${a.name}`);
   if (sobras.length) await supabase.storage.from("avatars").remove(sobras);
 
-  const proximo = formData.get("next");
   if (typeof proximo === "string" && proximo) {
     revalidatePath("/", "layout");
     redirect(caminhoSeguro(proximo, "/painel"));
