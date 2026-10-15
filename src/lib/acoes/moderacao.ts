@@ -10,7 +10,7 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
-import { errosPorCampo, lerAnuncio, lerDenuncia, UUID } from "@/lib/validacao";
+import { errosPorCampo, lerAnuncio, lerDenuncia, registroDoAnuncio, UUID } from "@/lib/validacao";
 
 export async function denunciarAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -70,29 +70,7 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
   const leitura = lerAnuncio(formData);
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
   const d = leitura.dados;
-  const { data, error } = await acesso.cliente
-    .from("anuncios")
-    .update({
-      titulo: d.titulo,
-      descricao: d.descricao,
-      categoria: d.categoria,
-      regime: d.regime,
-      pagamento_valor: d.pagamento_valor,
-      pagamento_unidade: d.pagamento_unidade,
-      beneficios: d.beneficios,
-      horario: d.horario,
-      vagas: d.vagas,
-      pede_curriculo: d.pede_curriculo,
-      contratante: d.contratante,
-      contratante_confidencial: d.contratante_confidencial,
-      cidade: d.cidade,
-      bairro: d.bairro,
-      cep: d.endereco ? d.cep : null,
-      endereco: d.endereco,
-      local: `SRID=4326;POINT(${d.lng} ${d.lat})`,
-    })
-    .eq("id", id)
-    .select("id");
+  const { data, error } = await acesso.cliente.from("anuncios").update(registroDoAnuncio(d)).eq("id", id).select("id");
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   if (!data?.length) return { ok: false, erro: "Anúncio não encontrado." };
 

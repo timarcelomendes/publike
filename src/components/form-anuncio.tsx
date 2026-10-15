@@ -1,12 +1,27 @@
 "use client";
 
-import { ArrowRight, Briefcase, Check, Wrench } from "lucide-react";
+import { ArrowRight, Briefcase, Check, MessageCircle, Wrench } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
-import { CATEGORIAS, CIDADES, REGIMES, REGIMES_COM_CURRICULO, UNIDADES, type Cidade } from "@/lib/constantes";
+import {
+  BENEFICIOS,
+  CATEGORIAS,
+  CIDADES,
+  CNHS,
+  ESCOLARIDADES,
+  EXPERIENCIAS,
+  JORNADAS,
+  MODELOS,
+  PCDS,
+  REGIMES,
+  REGIMES_COM_CURRICULO,
+  UNIDADES,
+  type Cidade,
+} from "@/lib/constantes";
+import { formatarTelefone } from "@/lib/formato";
 import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
@@ -33,6 +48,16 @@ export type ValoresAnuncio = {
   /** vaga de agência: a empresa que contrata (vazio quando é confidencial) */
   contratante?: string | null;
   contratante_confidencial?: boolean;
+  /** vaga: fim da faixa salarial, comissão, benefícios marcados, requisitos, jornada, modelo e PCD */
+  pagamento_ate?: number | null;
+  comissao?: boolean;
+  beneficios_lista?: string[];
+  escolaridade_minima?: string | null;
+  experiencia?: string | null;
+  cnh?: string | null;
+  jornada?: string | null;
+  modelo?: string | null;
+  pcd?: string | null;
   cidade: string;
   bairro: string;
   /** comércio, empresa e agência: o endereço que aparece na vaga */
@@ -43,6 +68,14 @@ export type ValoresAnuncio = {
 };
 
 const ESTADO_INICIAL: EstadoForm = { ok: false };
+
+/** Opção em forma de pílula (rádio ou caixa de marcar), como o tipo de contratação. */
+const classesPilula =
+  "inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-pill border border-line bg-surface-300 px-3.5 text-label transition-colors has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus";
+
+function emTexto(valor: number | null | undefined) {
+  return valor != null ? String(valor).replace(".", ",") : "";
+}
 
 function Secao({ numero, titulo, children }: { numero: number; titulo: string; children: ReactNode }) {
   return (
@@ -62,6 +95,7 @@ export function FormAnuncio({
   equipe = false,
   ia = false,
   agencia = false,
+  contatoAgencia = null,
   enderecoPublico = false,
 }: {
   inicial: ValoresAnuncio;
@@ -73,6 +107,8 @@ export function FormAnuncio({
   ia?: boolean;
   /** Quem publica é agência de emprego / RH: a vaga diz para qual empresa é. */
   agencia?: boolean;
+  /** Agência publicando: o WhatsApp e o e-mail da conta, que o candidato recebe no match. */
+  contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
   /** Comércio, empresa e agência: o endereço aparece na vaga (pessoa física: só a região). */
   enderecoPublico?: boolean;
 }) {
@@ -88,6 +124,7 @@ export function FormAnuncio({
   // Em vaga nova, CLT, estágio e temporário já marcam "pedir currículo" (até a pessoa mexer na caixa)
   const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(editando);
   const [confidencial, setConfidencial] = useState(inicial.contratante_confidencial ?? false);
+  const [beneficiosMarcados, setBeneficiosMarcados] = useState<string[]>(inicial.beneficios_lista ?? []);
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const vaga = tipo === "vaga";
@@ -105,7 +142,9 @@ export function FormAnuncio({
     startTransition(() => acao(dados));
   }
 
-  const valor = inicial.pagamento_valor != null ? String(inicial.pagamento_valor).replace(".", ",") : "";
+  const valor = emTexto(inicial.pagamento_valor);
+  // vaga: os requisitos ganham uma seção própria, e as outras andam um número
+  const n = (numero: number) => (vaga && numero >= 3 ? numero + 1 : numero);
 
   // O que já está escrito no formulário vai para a IA como rascunho.
   function lerRascunho(): RascunhoAnuncio {
@@ -232,6 +271,30 @@ export function FormAnuncio({
               />
               Empresa confidencial
             </label>
+            {!equipe && (
+              <div className="flex gap-3 border-t border-line pt-3 text-body-sm">
+                <MessageCircle aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+                <p className="text-ink-muted">
+                  <span className="text-ink">No match, o candidato fala com a agência</span>, não com a empresa
+                  contratante: recebe o WhatsApp{" "}
+                  {contatoAgencia?.whatsapp ? (
+                    <span className="text-ink">{formatarTelefone(contatoAgencia.whatsapp)}</span>
+                  ) : (
+                    "da agência"
+                  )}
+                  {contatoAgencia?.email && (
+                    <>
+                      {" "}
+                      e o e-mail <span className="text-ink">{contatoAgencia.email}</span>
+                    </>
+                  )}
+                  .{" "}
+                  <Link href="/perfil" className="underline underline-offset-2 hover:text-ink">
+                    Trocar no perfil
+                  </Link>
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -274,6 +337,43 @@ export function FormAnuncio({
             </div>
             {erros.regime && <MensagemErro>{erros.regime}</MensagemErro>}
           </fieldset>
+        )}
+
+        {vaga && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Jornada" nome="jornada" opcional erro={erros.jornada}>
+              <Seletor
+                {...ligarCampo("jornada", erros.jornada)}
+                defaultValue={inicial.jornada ?? ""}
+                className={classesEntrada}
+              >
+                <option value="">Não informar</option>
+                {JORNADAS.map((j) => (
+                  <option key={j.valor} value={j.valor}>
+                    {j.nome}
+                  </option>
+                ))}
+              </Seletor>
+            </Campo>
+            <fieldset className="flex flex-col gap-1.5">
+              <legend className="mb-1.5 text-label">Modelo de trabalho</legend>
+              <div className="flex flex-wrap gap-2">
+                {MODELOS.map((m) => (
+                  <label key={m.valor} className={classesPilula}>
+                    <input
+                      type="radio"
+                      name="modelo"
+                      value={m.valor}
+                      defaultChecked={(inicial.modelo ?? (editando ? null : "presencial")) === m.valor}
+                      className="sr-only"
+                    />
+                    {m.nome}
+                  </label>
+                ))}
+              </div>
+              {erros.modelo && <MensagemErro>{erros.modelo}</MensagemErro>}
+            </fieldset>
+          </div>
         )}
 
         {vaga && (
@@ -322,7 +422,78 @@ export function FormAnuncio({
         {ia && <MelhorarTexto lerRascunho={lerRascunho} aplicar={aplicarSugestao} />}
       </Secao>
 
-      <Secao numero={3} titulo="Valor e horário">
+      {vaga && (
+        <Secao numero={3} titulo="Requisitos">
+          <p className="-mt-2 text-body-sm text-ink-muted">
+            Tudo opcional. Peça só o que o trabalho precisa de verdade: quanto menos exigência, mais gente perto se
+            candidata.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Campo rotulo="Escolaridade mínima" nome="escolaridade_minima" erro={erros.escolaridade_minima}>
+              <Seletor
+                {...ligarCampo("escolaridade_minima", erros.escolaridade_minima)}
+                defaultValue={inicial.escolaridade_minima ?? ""}
+                className={classesEntrada}
+              >
+                <option value="">Não exige</option>
+                {ESCOLARIDADES.map((e) => (
+                  <option key={e.valor} value={e.valor}>
+                    {e.nome}
+                  </option>
+                ))}
+              </Seletor>
+            </Campo>
+            <Campo rotulo="Experiência" nome="experiencia" erro={erros.experiencia}>
+              <Seletor
+                {...ligarCampo("experiencia", erros.experiencia)}
+                defaultValue={inicial.experiencia ?? ""}
+                className={classesEntrada}
+              >
+                <option value="">Não informar</option>
+                {EXPERIENCIAS.map((e) => (
+                  <option key={e.valor} value={e.valor}>
+                    {e.nome}
+                  </option>
+                ))}
+              </Seletor>
+            </Campo>
+            <Campo rotulo="CNH" nome="cnh" erro={erros.cnh}>
+              <Seletor {...ligarCampo("cnh", erros.cnh)} defaultValue={inicial.cnh ?? ""} className={classesEntrada}>
+                <option value="">Não precisa</option>
+                {CNHS.map((c) => (
+                  <option key={c} value={c}>
+                    Categoria {c}
+                  </option>
+                ))}
+              </Seletor>
+            </Campo>
+          </div>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-label">Pessoas com deficiência (PCD)</legend>
+            <div className="flex flex-wrap gap-2">
+              <label className={classesPilula}>
+                <input type="radio" name="pcd" value="" defaultChecked={!inicial.pcd} className="sr-only" />
+                Não é específica
+              </label>
+              {PCDS.map((p) => (
+                <label key={p.valor} title={p.ajuda} className={classesPilula}>
+                  <input
+                    type="radio"
+                    name="pcd"
+                    value={p.valor}
+                    defaultChecked={inicial.pcd === p.valor}
+                    className="sr-only"
+                  />
+                  {p.nome}
+                </label>
+              ))}
+            </div>
+            {erros.pcd && <MensagemErro>{erros.pcd}</MensagemErro>}
+          </fieldset>
+        </Secao>
+      )}
+
+      <Secao numero={n(3)} titulo="Valor e horário">
         <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 self-start text-label">
           <input
             type="checkbox"
@@ -335,8 +506,12 @@ export function FormAnuncio({
         </label>
 
         {!combinar && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Valor (R$)" nome="pagamento_valor" erro={erros.pagamento_valor}>
+          <div className={`grid gap-4 ${vaga ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            <Campo
+              rotulo={vaga ? "Valor ou a partir de (R$)" : "Valor (R$)"}
+              nome="pagamento_valor"
+              erro={erros.pagamento_valor}
+            >
               <div className="relative">
                 <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-body text-ink-muted">R$</span>
                 <input
@@ -348,6 +523,22 @@ export function FormAnuncio({
                 />
               </div>
             </Campo>
+            {vaga && (
+              <Campo rotulo="Até (R$)" nome="pagamento_ate" opcional erro={erros.pagamento_ate}>
+                <div className="relative">
+                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-body text-ink-muted">
+                    R$
+                  </span>
+                  <input
+                    {...ligarCampo("pagamento_ate", erros.pagamento_ate)}
+                    defaultValue={emTexto(inicial.pagamento_ate)}
+                    inputMode="decimal"
+                    placeholder="2.200"
+                    className={`${classesEntrada} pl-10`}
+                  />
+                </div>
+              </Campo>
+            )}
             <Campo rotulo="Por" nome="pagamento_unidade" erro={erros.pagamento_unidade}>
               <Seletor
                 {...ligarCampo("pagamento_unidade", erros.pagamento_unidade)}
@@ -365,13 +556,60 @@ export function FormAnuncio({
           </div>
         )}
 
+        {vaga && !combinar && (
+          <p className="-mt-2 text-body-sm text-ink-muted">
+            Para mostrar uma faixa, preencha o “Até”: aparece “de R$ 1.800 a R$ 2.200”.
+          </p>
+        )}
+
         {vaga && (
-          <Campo rotulo="Benefícios" nome="beneficios" opcional erro={erros.beneficios}>
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 self-start text-label">
+            <input
+              type="checkbox"
+              name="comissao"
+              defaultChecked={inicial.comissao ?? false}
+              className="size-5 accent-[var(--pk-ink)]"
+            />
+            Mais comissão
+          </label>
+        )}
+
+        {vaga && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-label">
+              Benefícios <span className="font-normal text-ink-muted">(opcional)</span>
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {BENEFICIOS.map((b) => (
+                <label key={b.valor} className={classesPilula}>
+                  <input
+                    type="checkbox"
+                    name="beneficios_lista"
+                    value={b.valor}
+                    checked={beneficiosMarcados.includes(b.valor)}
+                    onChange={(e) =>
+                      setBeneficiosMarcados((atual) =>
+                        e.target.checked ? [...atual, b.valor] : atual.filter((v) => v !== b.valor),
+                      )
+                    }
+                    className="sr-only"
+                  />
+                  {beneficiosMarcados.includes(b.valor) && <Check aria-hidden className="size-4" />}
+                  {b.nome}
+                </label>
+              ))}
+            </div>
+            {erros.beneficios_lista && <MensagemErro>{erros.beneficios_lista}</MensagemErro>}
+          </fieldset>
+        )}
+
+        {vaga && (
+          <Campo rotulo="Outros benefícios" nome="beneficios" opcional erro={erros.beneficios}>
             <input
               {...ligarCampo("beneficios", erros.beneficios)}
               defaultValue={inicial.beneficios ?? ""}
               maxLength={120}
-              placeholder="Ex.: vale-transporte e refeição"
+              placeholder="Ex.: bônus por meta, uniforme, desconto na loja"
               className={classesEntrada}
             />
           </Campo>
@@ -403,7 +641,7 @@ export function FormAnuncio({
         </div>
       </Secao>
 
-      <Secao numero={4} titulo="Onde é">
+      <Secao numero={n(4)} titulo="Onde é">
         <LocalComCep
           inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
           inicialCep={inicial.cep}

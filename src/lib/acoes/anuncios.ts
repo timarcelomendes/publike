@@ -9,12 +9,14 @@ import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
-import { lerAnuncio, UUID } from "@/lib/validacao";
+import { lerAnuncio, registroDoAnuncio, UUID } from "@/lib/validacao";
 
-/** Erro do banco no formulário: o da empresa contratante fica marcado no campo. */
+/** Erro do banco no formulário: o da empresa contratante e o da faixa salarial ficam marcados no campo. */
 function erroDoBanco(error: { code?: string; message?: string; hint?: string | null }): EstadoForm {
   const erro = mensagemDeErro(error);
-  if (error.hint === "contratante") return { ok: false, erro: "Confira os campos marcados.", erros: { contratante: erro } };
+  if (error.hint === "contratante" || error.hint === "pagamento_ate") {
+    return { ok: false, erro: "Confira os campos marcados.", erros: { [error.hint]: erro } };
+  }
   return { ok: false, erro };
 }
 
@@ -27,25 +29,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
   const leitura = lerAnuncio(formData);
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
   const d = leitura.dados;
-  const registro = {
-    titulo: d.titulo,
-    descricao: d.descricao,
-    categoria: d.categoria,
-    regime: d.regime,
-    pagamento_valor: d.pagamento_valor,
-    pagamento_unidade: d.pagamento_unidade,
-    beneficios: d.beneficios,
-    horario: d.horario,
-    vagas: d.vagas,
-    pede_curriculo: d.pede_curriculo,
-    contratante: d.contratante,
-    contratante_confidencial: d.contratante_confidencial,
-    cidade: d.cidade,
-    bairro: d.bairro,
-    cep: d.endereco ? d.cep : null,
-    endereco: d.endereco,
-    local: `SRID=4326;POINT(${d.lng} ${d.lat})`,
-  };
+  const registro = registroDoAnuncio(d);
 
   const supabase = await criarClienteServidor();
   const id = formData.get("id");

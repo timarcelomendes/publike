@@ -7,7 +7,7 @@ import { FormAnuncio } from "@/components/form-anuncio";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
+import { ajudaDaIADisponivel, obterAnuncio, obterMeuPerfil } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
 import type { TipoAnuncio } from "@/lib/tipos";
 
@@ -27,7 +27,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
   if (MODO_DEMO) return <SoComSupabase />;
   const { id } = await params;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/editar`);
-  const [anuncio, ia] = await Promise.all([obterAnuncio(id), ajudaDaIADisponivel()]);
+  const [anuncio, ia, perfil] = await Promise.all([obterAnuncio(id), ajudaDaIADisponivel(), obterMeuPerfil()]);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   // os serviços são editados juntos, no cadastro "Meus serviços"
   if (anuncio.tipo === "servico") redirect("/painel/servicos");
@@ -50,6 +50,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
         <FormAnuncio
           ia={ia}
           agencia={anuncio.autor_tipo === "agencia"}
+          contatoAgencia={perfil ? { whatsapp: perfil.whatsapp, email: perfil.email } : null}
           enderecoPublico={anuncio.autor_tipo !== "pessoa"}
           inicial={{
             id: anuncio.id,
@@ -66,6 +67,15 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
             pede_curriculo: anuncio.pede_curriculo,
             contratante: anuncio.contratante,
             contratante_confidencial: anuncio.contratante_confidencial,
+            pagamento_ate: anuncio.pagamento_ate,
+            comissao: anuncio.comissao,
+            beneficios_lista: anuncio.beneficios_lista,
+            escolaridade_minima: anuncio.escolaridade_minima,
+            experiencia: anuncio.experiencia,
+            cnh: anuncio.cnh,
+            jornada: anuncio.jornada,
+            modelo: anuncio.modelo,
+            pcd: anuncio.pcd,
             cidade: anuncio.cidade,
             bairro: anuncio.bairro,
             cep: anuncio.cep,

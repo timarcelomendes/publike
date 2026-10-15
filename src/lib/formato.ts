@@ -15,6 +15,7 @@ export function formatarMoeda(valor: number) {
 
 /**
  * "R$ 1.900 / mês + vale-transporte", "R$ 120 a diária", "Valor a combinar".
+ * Com faixa: "De R$ 1.800 a R$ 2.200 / mês". Com comissão: "… + comissão".
  * No serviço, o preço é de referência: "A partir de R$ 180 a diária".
  */
 export function formatarValor(
@@ -22,22 +23,26 @@ export function formatarValor(
   unidade: string | null,
   beneficios?: string | null,
   aPartirDe = false,
+  extra: { ate?: number | null; comissao?: boolean } = {},
 ) {
   let texto = "Valor a combinar";
   if (valor != null && unidade) {
     const v = formatarMoeda(valor);
+    const faixa = extra.ate != null && extra.ate > valor;
+    const base = faixa ? `De ${v} a ${formatarMoeda(extra.ate as number)}` : v;
     const porUnidade: Record<Unidade, string> = {
-      hora: `${v} / hora`,
-      dia: `${v} a diária`,
-      semana: `${v} / semana`,
-      mes: `${v} / mês`,
-      servico: `${v} pelo serviço`,
-      m2: `${v} / m²`,
-      visita: `${v} a visita`,
+      hora: `${base} / hora`,
+      dia: faixa ? `${base} / dia` : `${v} a diária`,
+      semana: `${base} / semana`,
+      mes: `${base} / mês`,
+      servico: `${base} pelo serviço`,
+      m2: `${base} / m²`,
+      visita: faixa ? `${base} / visita` : `${v} a visita`,
     };
-    texto = porUnidade[unidade as Unidade] ?? v;
+    texto = porUnidade[unidade as Unidade] ?? base;
     if (aPartirDe) texto = `A partir de ${texto}`;
   }
+  if (extra.comissao) texto += " + comissão";
   return beneficios ? `${texto} + ${beneficios}` : texto;
 }
 
@@ -57,16 +62,21 @@ export function valorCurto(valor: number | null, unidade: string | null) {
   return `${v}${sufixo[unidade] ?? ""}`;
 }
 
-/** Valor de um anúncio: vaga com benefícios; serviço com "a partir de". */
+/** Valor de um anúncio: vaga com faixa, comissão e benefícios; serviço com "a partir de". */
 export function valorDoAnuncio(a: {
   tipo: string;
   pagamento_valor: number | null;
   pagamento_unidade: string | null;
   beneficios: string | null;
+  pagamento_ate?: number | null;
+  comissao?: boolean;
 }) {
   return a.tipo === "servico"
     ? formatarValor(a.pagamento_valor, a.pagamento_unidade, null, true)
-    : formatarValor(a.pagamento_valor, a.pagamento_unidade, a.beneficios);
+    : formatarValor(a.pagamento_valor, a.pagamento_unidade, a.beneficios, false, {
+        ate: a.pagamento_ate,
+        comissao: a.comissao,
+      });
 }
 
 /** Muitos locais são aproximados (~300 a 500 m), então não mostramos metros. */

@@ -204,6 +204,78 @@ export const REGIMES: Record<Regime, { nome: string; selo: string; ajuda: string
 };
 export const LISTA_REGIMES = Object.keys(REGIMES) as [Regime, ...Regime[]];
 
+// ---- Vaga completa (o banco confere os mesmos valores) ---------------------------
+
+/** Benefícios que dá para marcar; o que não está aqui vai no campo livre. */
+export const BENEFICIOS = [
+  { valor: "vale_transporte", nome: "Vale-transporte" },
+  { valor: "vale_refeicao", nome: "Vale-refeição" },
+  { valor: "vale_alimentacao", nome: "Vale-alimentação" },
+  { valor: "refeicao_no_local", nome: "Refeição no local" },
+  { valor: "plano_saude", nome: "Plano de saúde" },
+  { valor: "plano_odontologico", nome: "Plano odontológico" },
+  { valor: "cesta_basica", nome: "Cesta básica" },
+  { valor: "seguro_vida", nome: "Seguro de vida" },
+  { valor: "ajuda_combustivel", nome: "Ajuda de combustível" },
+  { valor: "auxilio_creche", nome: "Auxílio-creche" },
+  { valor: "gympass", nome: "Academia" },
+  { valor: "day_off", nome: "Folga no aniversário" },
+] as const;
+export type Beneficio = (typeof BENEFICIOS)[number]["valor"];
+export const VALORES_BENEFICIO = BENEFICIOS.map((b) => b.valor) as [Beneficio, ...Beneficio[]];
+export function nomeBeneficio(valor: string) {
+  return BENEFICIOS.find((b) => b.valor === valor)?.nome ?? null;
+}
+
+export const EXPERIENCIAS = [
+  { valor: "sem", nome: "Aceita sem experiência", curto: "Sem experiência" },
+  { valor: "6_meses", nome: "Pelo menos 6 meses", curto: "6 meses" },
+  { valor: "1_ano", nome: "Pelo menos 1 ano", curto: "1 ano" },
+  { valor: "2_anos", nome: "2 anos ou mais", curto: "2 anos+" },
+] as const;
+export type Experiencia = (typeof EXPERIENCIAS)[number]["valor"];
+export const VALORES_EXPERIENCIA = EXPERIENCIAS.map((e) => e.valor) as [Experiencia, ...Experiencia[]];
+export function nomeExperiencia(valor: string | null | undefined) {
+  return EXPERIENCIAS.find((e) => e.valor === valor)?.nome ?? null;
+}
+
+export const JORNADAS = [
+  { valor: "integral", nome: "Período integral" },
+  { valor: "meio_periodo", nome: "Meio período" },
+  { valor: "escala_6x1", nome: "Escala 6x1" },
+  { valor: "escala_12x36", nome: "Escala 12x36" },
+  { valor: "noturno", nome: "Noturno" },
+  { valor: "fim_de_semana", nome: "Fim de semana" },
+  { valor: "flexivel", nome: "Horário flexível" },
+] as const;
+export type Jornada = (typeof JORNADAS)[number]["valor"];
+export const VALORES_JORNADA = JORNADAS.map((j) => j.valor) as [Jornada, ...Jornada[]];
+export function nomeJornada(valor: string | null | undefined) {
+  return JORNADAS.find((j) => j.valor === valor)?.nome ?? null;
+}
+
+export const MODELOS = [
+  { valor: "presencial", nome: "Presencial" },
+  { valor: "hibrido", nome: "Híbrido" },
+  { valor: "remoto", nome: "Remoto" },
+] as const;
+export type Modelo = (typeof MODELOS)[number]["valor"];
+export const VALORES_MODELO = MODELOS.map((m) => m.valor) as [Modelo, ...Modelo[]];
+export function nomeModelo(valor: string | null | undefined) {
+  return MODELOS.find((m) => m.valor === valor)?.nome ?? null;
+}
+
+/** Vaga para pessoas com deficiência (Lei de Cotas): também para PCD ou só para PCD. */
+export const PCDS = [
+  { valor: "tambem", nome: "Também para PCD", ajuda: "Pessoas com deficiência são bem-vindas" },
+  { valor: "exclusiva", nome: "Exclusiva para PCD", ajuda: "Só para pessoas com deficiência" },
+] as const;
+export type Pcd = (typeof PCDS)[number]["valor"];
+export const VALORES_PCD = PCDS.map((p) => p.valor) as [Pcd, ...Pcd[]];
+export function nomePcd(valor: string | null | undefined) {
+  return PCDS.find((p) => p.valor === valor)?.nome ?? null;
+}
+
 export const UNIDADES: Record<Unidade, string> = {
   hora: "por hora",
   dia: "por dia (diária)",

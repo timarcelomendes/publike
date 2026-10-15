@@ -44,7 +44,15 @@ async function Conteudo() {
   const inicial = ultimo
     ? { ...vazio(ultimo.cidade, ultimo.bairro), cep: ultimo.cep, endereco: ultimo.endereco, lat: ultimo.lat, lng: ultimo.lng }
     : vazio(perfil.cidade, perfil.bairro ?? "");
-  return <FormAnuncio inicial={inicial} ia={ia} agencia={perfil.tipo === "agencia"} enderecoPublico={publico} />;
+  return (
+    <FormAnuncio
+      inicial={inicial}
+      ia={ia}
+      agencia={perfil.tipo === "agencia"}
+      contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
+      enderecoPublico={publico}
+    />
+  );
 }
 
 function vazio(cidade: string, bairro: string): ValoresAnuncio {

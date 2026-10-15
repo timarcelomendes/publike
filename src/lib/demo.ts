@@ -52,6 +52,16 @@ type Base = {
   /** vaga de agência */
   contratante?: string;
   confidencial?: boolean;
+  /** vaga completa: faixa, comissão, benefícios marcados, requisitos, jornada, modelo e PCD */
+  ate?: number;
+  comissao?: boolean;
+  beneficiosLista?: string[];
+  escolaridade?: string;
+  experiencia?: string;
+  cnh?: string;
+  jornada?: string;
+  modelo?: string;
+  pcd?: string;
   /** endereço público (só comércio, empresa e agência) */
   endereco?: string;
   cep?: string;
@@ -208,14 +218,17 @@ const BASE: Base[] = [
     contratante: "Laticínios Serra Dourada",
     titulo: "Operador de produção em laticínio",
     descricao: "Selecionamos operadores de produção para laticínio na região norte de Goiânia. Abastecer e acompanhar as máquinas de envase, conferir lotes e manter a área limpa.\n\nNão precisa de experiência: a empresa treina. Ensino fundamental completo.",
-    valor: 1850, unidade: "mes", beneficios: "vale-transporte, refeição e plano de saúde", horario: "Escala 6x1, das 6h às 14h20", vagas: 6,
+    valor: 1850, unidade: "mes", horario: "Das 6h às 14h20", vagas: 6,
+    ate: 2100, beneficiosLista: ["vale_transporte", "refeicao_no_local", "plano_saude"], escolaridade: "fundamental",
+    experiencia: "sem", jornada: "escala_6x1", pcd: "tambem",
     cidade: "Goiânia", bairro: "Setor Perimetral Norte", lat: -16.625, lng: -49.27, horasAtras: 7,
   },
   {
     id: "demo-21", autor: "demo-rh-goias", tipo: "vaga", categoria: "comercio", regime: "clt", confidencial: true,
     titulo: "Vendedor externo com moto",
     descricao: "Para empresa do ramo de alimentos, com carteira de clientes em mercados e padarias de Goiânia e Aparecida.\n\nPrecisa ter moto e CNH A. Salário fixo mais comissão e ajuda de custo para o combustível.",
-    valor: 2200, unidade: "mes", beneficios: "comissão e ajuda de combustível", horario: "Seg a sex, horário comercial", vagas: 2,
+    valor: 2200, unidade: "mes", horario: "Seg a sex, horário comercial", vagas: 2,
+    comissao: true, beneficiosLista: ["ajuda_combustivel"], experiencia: "6_meses", cnh: "A", jornada: "integral",
     cidade: "Goiânia", bairro: "Setor Oeste", lat: -16.68, lng: -49.27, horasAtras: 28,
   },
 ];
@@ -322,6 +335,15 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     cep: exato ? (b.cep ?? null) : null,
     endereco: exato ? (b.endereco ?? null) : null,
     local_exato: exato,
+    pagamento_ate: b.ate ?? null,
+    comissao: b.comissao ?? false,
+    beneficios_lista: b.beneficiosLista ?? [],
+    escolaridade_minima: b.escolaridade ?? null,
+    experiencia: b.experiencia ?? null,
+    cnh: b.cnh ?? null,
+    jornada: b.jornada ?? null,
+    modelo: b.modelo ?? (b.tipo === "vaga" ? "presencial" : null),
+    pcd: b.pcd ?? null,
   };
 }
 
@@ -351,6 +373,8 @@ function resumo(c: AnuncioCompleto, lat: number, lng: number): AnuncioResumo {
     foto: c.fotos[0] ?? null,
     autor_nota: c.tipo === "servico" ? notaDemo(c.autor_id).media : null,
     autor_avaliacoes: c.tipo === "servico" ? notaDemo(c.autor_id).total : 0,
+    pagamento_ate: c.pagamento_ate,
+    comissao: c.comissao,
   };
 }
 

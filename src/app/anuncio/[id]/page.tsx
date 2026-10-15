@@ -1,4 +1,5 @@
 import {
+  Accessibility,
   BadgeCheck,
   Banknote,
   Briefcase,
@@ -8,6 +9,8 @@ import {
   Clock,
   FileText,
   Flag,
+  Gift,
+  ListChecks,
   MapPin,
   Navigation,
   ShieldAlert,
@@ -32,7 +35,19 @@ import { MapaArea } from "@/components/mapa/mapa-area";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
-import { categoria, descreverAtendimento, REGIMES, STATUS_ANUNCIO, TEXTO_SEGUIR } from "@/lib/constantes";
+import {
+  categoria,
+  descreverAtendimento,
+  nomeBeneficio,
+  nomeEscolaridade,
+  nomeExperiencia,
+  nomeJornada,
+  nomeModelo,
+  nomePcd,
+  REGIMES,
+  STATUS_ANUNCIO,
+  TEXTO_SEGUIR,
+} from "@/lib/constantes";
 import {
   contatoDoMatch,
   listarAvaliacoesPublicas,
@@ -47,6 +62,7 @@ import {
 import {
   formatarData,
   formatarLugar,
+  formatarValor,
   formatarMesAno,
   primeiro,
   rotuloConta,
@@ -119,7 +135,8 @@ function dadosVaga(a: AnuncioCompleto) {
     description: a.descricao.replace(/\n/g, "<br>"),
     datePosted: a.criado_em,
     validThrough: a.expira_em,
-    employmentType: tipos[a.regime ?? "outro"] ?? "OTHER",
+    employmentType:
+      a.jornada === "meio_periodo" && a.regime === "clt" ? "PART_TIME" : (tipos[a.regime ?? "outro"] ?? "OTHER"),
     // vaga de agência: quem contrata é a empresa (ou "confidencial"), não a agência
     hiringOrganization: {
       "@type": "Organization",
@@ -143,12 +160,33 @@ function dadosVaga(a: AnuncioCompleto) {
     },
     directApply: false,
     url: `${SITE_URL}/anuncio/${a.id}`,
+    ...(a.modelo === "remoto"
+      ? { jobLocationType: "TELECOMMUTE", applicantLocationRequirements: { "@type": "State", name: "Goiás" } }
+      : {}),
+    ...(a.experiencia === "sem" ? { experienceRequirements: "no requirements" } : {}),
+    ...(a.experiencia && a.experiencia !== "sem"
+      ? {
+          experienceRequirements: {
+            "@type": "OccupationalExperienceRequirements",
+            monthsOfExperience: { "6_meses": 6, "1_ano": 12, "2_anos": 24 }[a.experiencia] ?? 0,
+          },
+        }
+      : {}),
+    ...(a.escolaridade_minima ? { educationRequirements: nomeEscolaridade(a.escolaridade_minima) } : {}),
     ...(a.pagamento_valor != null && a.pagamento_unidade && unidades[a.pagamento_unidade]
       ? {
           baseSalary: {
             "@type": "MonetaryAmount",
             currency: "BRL",
-            value: { "@type": "QuantitativeValue", value: a.pagamento_valor, unitText: unidades[a.pagamento_unidade] },
+            value:
+              a.pagamento_ate != null
+                ? {
+                    "@type": "QuantitativeValue",
+                    minValue: a.pagamento_valor,
+                    maxValue: a.pagamento_ate,
+                    unitText: unidades[a.pagamento_unidade],
+                  }
+                : { "@type": "QuantitativeValue", value: a.pagamento_valor, unitText: unidades[a.pagamento_unidade] },
           },
         }
       : {}),
@@ -198,6 +236,15 @@ async function DetalheAnuncio({
   const kmDeCasa = local?.ponto ? distanciaKm(local.ponto.lat, local.ponto.lng, anuncio.lat, anuncio.lng) : null;
   const comoChegar = `https://www.google.com/maps/dir/?api=1&destination=${anuncio.lat},${anuncio.lng}&travelmode=transit`;
   const temContratante = vaga && (anuncio.contratante !== null || anuncio.contratante_confidencial);
+  const beneficios = [
+    ...anuncio.beneficios_lista.flatMap((b) => nomeBeneficio(b) ?? []),
+    ...(anuncio.beneficios ? [anuncio.beneficios] : []),
+  ];
+  const requisitos = [
+    anuncio.escolaridade_minima ? `${nomeEscolaridade(anuncio.escolaridade_minima)}` : null,
+    nomeExperiencia(anuncio.experiencia),
+    anuncio.cnh ? `CNH ${anuncio.cnh}` : null,
+  ].filter((r): r is string => Boolean(r));
 
   const quadroAcao = (sufixo: string) =>
     proprio ? (
@@ -262,6 +309,18 @@ async function DetalheAnuncio({
           <div className="flex flex-wrap gap-2">
             {novo && <Selo variante="novo">Novo</Selo>}
             <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
+            {vaga && agencia && (
+              <Selo variante="aviso">
+                <Building2 aria-hidden />
+                Vaga de agência
+              </Selo>
+            )}
+            {vaga && anuncio.pcd && (
+              <Selo>
+                <Accessibility aria-hidden />
+                {nomePcd(anuncio.pcd)}
+              </Selo>
+            )}
             <Selo variante="contorno">{categoria(anuncio.categoria).nome}</Selo>
             {vaga && anuncio.pede_curriculo && (
               <Selo variante="contorno">
@@ -311,14 +370,19 @@ async function DetalheAnuncio({
               </Fato>
             )}
             <Fato icone={Banknote} rotulo={vaga ? "Valor" : "Preço"}>
-              {valor}
+              {vaga
+                ? formatarValor(anuncio.pagamento_valor, anuncio.pagamento_unidade, null, false, {
+                    ate: anuncio.pagamento_ate,
+                    comissao: anuncio.comissao,
+                  })
+                : valor}
             </Fato>
             {temContratante && (
               <Fato icone={Building2} rotulo="Empresa contratante">
                 {anuncio.contratante ?? "Confidencial"}
                 <span className="block text-body-sm font-normal text-ink-muted">
                   {anuncio.contratante
-                    ? `seleção feita por ${anuncio.autor_nome}`
+                    ? `seleção feita por ${anuncio.autor_nome}; no match, você fala com a agência`
                     : "a agência conta o nome no processo seletivo"}
                 </span>
               </Fato>
@@ -326,6 +390,11 @@ async function DetalheAnuncio({
             {vaga ? (
               <Fato icone={Briefcase} rotulo="Contratação">
                 {anuncio.regime ? REGIMES[anuncio.regime as Regime]?.nome : "Vaga"}
+                {(anuncio.jornada || anuncio.modelo) && (
+                  <span className="block text-body-sm font-normal text-ink-muted">
+                    {[nomeJornada(anuncio.jornada), nomeModelo(anuncio.modelo)].filter(Boolean).join(" · ")}
+                  </span>
+                )}
               </Fato>
             ) : (
               <Fato icone={Wrench} rotulo="Atende">
@@ -335,6 +404,16 @@ async function DetalheAnuncio({
             {anuncio.horario && (
               <Fato icone={Clock} rotulo={vaga ? "Quando" : "Quando atende"}>
                 {anuncio.horario}
+              </Fato>
+            )}
+            {vaga && beneficios.length > 0 && (
+              <Fato icone={Gift} rotulo="Benefícios">
+                {beneficios.join(", ")}
+              </Fato>
+            )}
+            {vaga && requisitos.length > 0 && (
+              <Fato icone={ListChecks} rotulo="Requisitos">
+                {requisitos.join(" · ")}
               </Fato>
             )}
             {vaga && anuncio.vagas > 1 && (

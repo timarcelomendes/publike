@@ -18,6 +18,11 @@ import {
   SLUGS_CATEGORIAS,
   SLUGS_OFICIOS,
   UNIDADES_SERVICO,
+  VALORES_BENEFICIO,
+  VALORES_EXPERIENCIA,
+  VALORES_JORNADA,
+  VALORES_MODELO,
+  VALORES_PCD,
   VALORES_DISPONIBILIDADE,
   VALORES_MOTIVO_DESFAZER,
   VALORES_ESCOLARIDADE,
@@ -110,6 +115,16 @@ export const esquemaAnuncio = z
     pagamento_unidade: z.enum(LISTA_UNIDADES).nullable(),
     beneficios: opcional(120),
     horario: opcional(120),
+    /** vaga: fim da faixa salarial ("de 1.800 a 2.200"); vazio = valor fixo */
+    pagamento_ate: z.number().nullable(),
+    comissao: z.boolean(),
+    beneficios_lista: z.array(z.enum(VALORES_BENEFICIO, { error: "Confira os benefícios marcados." })).max(12),
+    escolaridade_minima: z.enum(VALORES_ESCOLARIDADE, { error: "Escolha a escolaridade." }).nullable(),
+    experiencia: z.enum(VALORES_EXPERIENCIA, { error: "Escolha a experiência." }).nullable(),
+    cnh: z.enum(CNHS, { error: "Escolha a categoria da CNH." }).nullable(),
+    jornada: z.enum(VALORES_JORNADA, { error: "Escolha a jornada." }).nullable(),
+    modelo: z.enum(VALORES_MODELO, { error: "Escolha o modelo de trabalho." }).nullable(),
+    pcd: z.enum(VALORES_PCD, { error: "Escolha uma opção." }).nullable(),
     pede_curriculo: z.boolean(),
     /** quem publica é agência de emprego: a vaga diz a empresa contratante (ou que é confidencial) */
     agencia: z.boolean(),
@@ -164,11 +179,14 @@ export const esquemaAnuncio = z
       if (!d.pagamento_unidade) {
         ctx.addIssue({ code: "custom", path: ["pagamento_unidade"], message: "Diga se é por hora, dia, mês…" });
       }
+      const erroFaixa = conferirFaixa(d.pagamento_valor, d.pagamento_ate);
+      if (erroFaixa) ctx.addIssue({ code: "custom", path: ["pagamento_ate"], message: erroFaixa });
     }
   })
   .transform((d) => ({
     ...d,
     regime: d.tipo === "vaga" ? d.regime : null,
+    ...camposDaVaga(d),
     pagamento_valor: d.combinar ? null : d.pagamento_valor,
     pagamento_unidade: d.combinar ? null : d.pagamento_unidade,
     vagas: d.tipo === "vaga" ? d.vagas : 1,
@@ -179,6 +197,76 @@ export const esquemaAnuncio = z
   }));
 
 export type DadosAnuncio = z.output<typeof esquemaAnuncio>;
+
+/** "De 1.800 a 2.200": o fim é opcional e precisa ser maior que o começo. */
+function conferirFaixa(de: number | null, ate: number | null) {
+  if (ate == null) return null;
+  if (Number.isNaN(ate) || ate <= 0 || ate > 1_000_000) return "Confira o valor.";
+  if (de != null && !Number.isNaN(de) && ate < de) return "O fim da faixa precisa ser maior que o começo.";
+  return null;
+}
+
+/** Requisitos, benefícios, jornada e faixa só valem para vaga; "de 1.800 a 1.800" vira só 1.800. */
+function camposDaVaga(d: {
+  tipo: "vaga" | "servico";
+  combinar: boolean;
+  pagamento_valor: number | null;
+  pagamento_ate: number | null;
+  comissao: boolean;
+  beneficios_lista: string[];
+  escolaridade_minima: string | null;
+  experiencia: string | null;
+  cnh: string | null;
+  jornada: string | null;
+  modelo: string | null;
+  pcd: string | null;
+}) {
+  const vaga = d.tipo === "vaga";
+  const ate = vaga && !d.combinar && d.pagamento_ate !== d.pagamento_valor ? d.pagamento_ate : null;
+  return {
+    pagamento_ate: ate,
+    comissao: vaga && d.comissao,
+    beneficios_lista: vaga ? [...new Set(d.beneficios_lista)] : [],
+    escolaridade_minima: vaga ? d.escolaridade_minima : null,
+    experiencia: vaga ? d.experiencia : null,
+    cnh: vaga ? d.cnh : null,
+    jornada: vaga ? d.jornada : null,
+    modelo: vaga ? d.modelo : null,
+    pcd: vaga ? d.pcd : null,
+  };
+}
+
+/** Os campos que a vaga grava no banco (publicar, editar e a correção da equipe). */
+export function registroDoAnuncio(d: DadosAnuncio) {
+  return {
+    titulo: d.titulo,
+    descricao: d.descricao,
+    categoria: d.categoria,
+    regime: d.regime,
+    pagamento_valor: d.pagamento_valor,
+    pagamento_unidade: d.pagamento_unidade,
+    pagamento_ate: d.pagamento_ate,
+    comissao: d.comissao,
+    beneficios: d.beneficios,
+    beneficios_lista: d.beneficios_lista,
+    horario: d.horario,
+    vagas: d.vagas,
+    pede_curriculo: d.pede_curriculo,
+    contratante: d.contratante,
+    contratante_confidencial: d.contratante_confidencial,
+    escolaridade_minima: d.escolaridade_minima,
+    experiencia: d.experiencia,
+    cnh: d.cnh,
+    jornada: d.jornada,
+    modelo: d.modelo,
+    pcd: d.pcd,
+    cidade: d.cidade,
+    bairro: d.bairro,
+    cep: d.endereco ? d.cep : null,
+    endereco: d.endereco,
+    local: `SRID=4326;POINT(${d.lng} ${d.lat})`,
+  };
+}
 
 function coordenada(valor: string | null) {
   if (!valor) return undefined;
@@ -198,6 +286,8 @@ function errosCruzados(bruto: Record<string, unknown>) {
     if (valor == null || Number.isNaN(valor)) erros.pagamento_valor = "Informe o valor ou marque “A combinar”.";
     else if (valor <= 0 || valor > 1_000_000) erros.pagamento_valor = "Confira o valor.";
     if (!bruto.pagamento_unidade) erros.pagamento_unidade = "Diga se é por hora, dia, mês…";
+    const erroFaixa = conferirFaixa(valor, bruto.pagamento_ate as number | null);
+    if (erroFaixa) erros.pagamento_ate = erroFaixa;
   }
   return erros;
 }
@@ -216,6 +306,15 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     pagamento_unidade: campo(formData, "pagamento_unidade") || null,
     beneficios: campo(formData, "beneficios") ?? "",
     horario: campo(formData, "horario") ?? "",
+    pagamento_ate: lerNumeroBR(campo(formData, "pagamento_ate")),
+    comissao: campo(formData, "comissao") === "on",
+    beneficios_lista: formData.getAll("beneficios_lista").filter((v): v is string => typeof v === "string" && v !== ""),
+    escolaridade_minima: campo(formData, "escolaridade_minima") || null,
+    experiencia: campo(formData, "experiencia") || null,
+    cnh: campo(formData, "cnh") || null,
+    jornada: campo(formData, "jornada") || null,
+    modelo: campo(formData, "modelo") || null,
+    pcd: campo(formData, "pcd") || null,
     pede_curriculo: campo(formData, "pede_curriculo") === "on",
     agencia: campo(formData, "agencia") === "1",
     contratante: campo(formData, "contratante") ?? "",

@@ -176,6 +176,20 @@ export type Database = {
           endereco: string | null;
           /** o ponto é o endereço exato (senão é uma área de ~500 m) */
           local_exato: boolean;
+          /** vaga: fim da faixa salarial (o começo é pagamento_valor) */
+          pagamento_ate: number | null;
+          /** vaga: paga comissão além do valor */
+          comissao: boolean;
+          /** vaga: benefícios marcados (BENEFICIOS); os outros ficam em beneficios */
+          beneficios_lista: string[];
+          escolaridade_minima: string | null;
+          /** sem = aceita sem experiência; null = não informado */
+          experiencia: string | null;
+          cnh: string | null;
+          jornada: string | null;
+          modelo: string | null;
+          /** tambem = também para PCD; exclusiva = só PCD */
+          pcd: string | null;
         };
         Insert: {
           tipo: string;
@@ -200,6 +214,20 @@ export type Database = {
           contratante_confidencial?: boolean;
           cep?: string | null;
           endereco?: string | null;
+          /** vaga: fim da faixa salarial (o começo é pagamento_valor) */
+          pagamento_ate?: number | null;
+          /** vaga: paga comissão além do valor */
+          comissao?: boolean;
+          /** vaga: benefícios marcados (BENEFICIOS); os outros ficam em beneficios */
+          beneficios_lista?: string[];
+          escolaridade_minima?: string | null;
+          /** sem = aceita sem experiência; null = não informado */
+          experiencia?: string | null;
+          cnh?: string | null;
+          jornada?: string | null;
+          modelo?: string | null;
+          /** tambem = também para PCD; exclusiva = só PCD */
+          pcd?: string | null;
         };
         Update: {
           titulo?: string;
@@ -223,6 +251,20 @@ export type Database = {
           contratante_confidencial?: boolean;
           cep?: string | null;
           endereco?: string | null;
+          /** vaga: fim da faixa salarial (o começo é pagamento_valor) */
+          pagamento_ate?: number | null;
+          /** vaga: paga comissão além do valor */
+          comissao?: boolean;
+          /** vaga: benefícios marcados (BENEFICIOS); os outros ficam em beneficios */
+          beneficios_lista?: string[];
+          escolaridade_minima?: string | null;
+          /** sem = aceita sem experiência; null = não informado */
+          experiencia?: string | null;
+          cnh?: string | null;
+          jornada?: string | null;
+          modelo?: string | null;
+          /** tambem = também para PCD; exclusiva = só PCD */
+          pcd?: string | null;
         };
         Relationships: [
           {
@@ -426,6 +468,9 @@ export type Database = {
           /** média das avaliações publicadas do profissional (só serviço) */
           autor_nota: number | null;
           autor_avaliacoes: number;
+          /** vaga: fim da faixa salarial */
+          pagamento_ate: number | null;
+          comissao: boolean;
         }[];
       };
       obter_anuncio: {
@@ -469,6 +514,20 @@ export type Database = {
           cep: string | null;
           endereco: string | null;
           local_exato: boolean;
+          /** vaga: fim da faixa salarial (o começo é pagamento_valor) */
+          pagamento_ate: number | null;
+          /** vaga: paga comissão além do valor */
+          comissao: boolean;
+          /** vaga: benefícios marcados (BENEFICIOS); os outros ficam em beneficios */
+          beneficios_lista: string[];
+          escolaridade_minima: string | null;
+          /** sem = aceita sem experiência; null = não informado */
+          experiencia: string | null;
+          cnh: string | null;
+          jornada: string | null;
+          modelo: string | null;
+          /** tambem = também para PCD; exclusiva = só PCD */
+          pcd: string | null;
         }[];
       };
       meus_anuncios: {

@@ -1,4 +1,4 @@
-import { BadgeCheck, Bus, Footprints, MapPin } from "lucide-react";
+import { BadgeCheck, Building2, Bus, Footprints, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -49,6 +49,12 @@ export function CardAnuncio({
       <div className="flex flex-wrap gap-2 group-data-[visao=lista]/visao:hidden">
         {novo && <Selo variante="novo">Novo</Selo>}
         <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
+        {!servico && anuncio.autor_tipo === "agencia" && (
+          <Selo variante="contorno">
+            <Building2 aria-hidden />
+            Agência
+          </Selo>
+        )}
         {pertoDeCasa === 0 && (
           <Selo variante="aviso" className="group-data-[visao=grade]/visao:hidden">
             No seu bairro
