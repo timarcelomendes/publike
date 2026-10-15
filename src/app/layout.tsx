@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Suspense } from "react";
 import { Assistente } from "@/components/assistente/assistente";
 import { AvisoCookies } from "@/components/aviso-cookies";
+import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
 import { ConviteInstalar } from "@/components/instalar-app";
@@ -77,7 +78,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Rodape />
         <BarraInferior />
         <Assistente />
-        <AvisoCookies />
+        {/* lê o endereço da página: no build, precisa estar num Suspense */}
+        <Suspense fallback={null}>
+          <BoasVindasParceiro />
+          <AvisoCookies />
+        </Suspense>
         <AvisoAtualizacao />
         {/* lê o endereço da página: no build, precisa estar num Suspense */}
         <Suspense fallback={null}>

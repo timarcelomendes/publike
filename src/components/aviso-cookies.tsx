@@ -2,12 +2,15 @@
 
 import { Cookie } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
+import { assinarBoasVindas, esperandoBoasVindas } from "./boas-vindas-parceiro";
 import { Botao } from "./ui/botao";
 
 // Aviso de cookies: o Publike só usa cookies necessários (sessão e escolhas da
 // pessoa), então não há o que aceitar ou recusar; o aviso conta isso uma vez.
-// Fica no lugar do convite para instalar o app, que espera o aviso ser fechado.
+// Fica no lugar do convite para instalar o app, que espera o aviso ser fechado,
+// e espera as boas-vindas da primeira visita fecharem (boas-vindas-parceiro.tsx).
 
 const CHAVE = "publike_aviso_cookies";
 const VERSAO = "1";
@@ -38,8 +41,15 @@ export function avisoDeCookiesFechado() {
 export function AvisoCookies() {
   // no servidor (e antes de ler o navegador) o aviso não aparece: nada pisca para quem já viu
   const visto = useSyncExternalStore(assinar, jaViu, () => true);
+  // na primeira visita, as boas-vindas vêm antes: o aviso espera elas fecharem
+  const caminho = usePathname() ?? "/";
+  const esperando = useSyncExternalStore(
+    assinarBoasVindas,
+    () => esperandoBoasVindas(caminho),
+    () => true,
+  );
   const [fechado, setFechado] = useState(false);
-  if (visto || fechado) return null;
+  if (visto || fechado || esperando) return null;
 
   function entendi() {
     try {
