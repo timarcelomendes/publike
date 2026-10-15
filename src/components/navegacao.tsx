@@ -55,8 +55,8 @@ export function Rodape() {
           <Link href="/empresas" className={link}>
             Para empresas
           </Link>
-          <Link href="/painel/servicos" className={link}>
-            Oferecer meus serviços
+          <Link href="/profissionais" className={link}>
+            Para profissionais
           </Link>
           <Link href="/privacidade" className={link}>
             Privacidade e regras
