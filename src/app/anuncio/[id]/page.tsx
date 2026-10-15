@@ -1,6 +1,5 @@
 import {
   Accessibility,
-  BadgeCheck,
   Banknote,
   Briefcase,
   Building2,
@@ -79,6 +78,7 @@ import { obterLocal } from "@/lib/local";
 import { chaveBairro } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
+import { SeloVerificado } from "@/components/selo-verificado";
 
 export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -341,7 +341,7 @@ async function DetalheAnuncio({
             </Link>
             · {rotuloConta(anuncio.autor_tipo)}
             {anuncio.autor_verificado && (
-              <BadgeCheck aria-label="Perfil verificado" className="size-4 text-cerrado-text" />
+              <SeloVerificado agencia={agencia} />
             )}
           </p>
           {nota && nota.total > 0 && (

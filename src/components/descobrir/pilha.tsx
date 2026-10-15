@@ -23,6 +23,7 @@ import { passarVaga, salvarVaga, verPassadasDeNovo } from "@/lib/acoes/descobrir
 import type { Motivo } from "@/lib/descobrir";
 import { Selo } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
+import { SeloVerificado } from "@/components/selo-verificado";
 
 /** O que o cartão mostra (montado no servidor). */
 export type CartaVaga = {
@@ -119,7 +120,7 @@ function Cartao({ c, topo }: { c: CartaVaga; topo: boolean }) {
             <span className="truncate">
               {c.quem} · {c.quemTipo}
             </span>
-            {c.verificado && <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />}
+            {c.verificado && <SeloVerificado />}
           </p>
           {c.contratante && (
             <p className="mt-0.5 flex items-center gap-1 text-body-sm text-ink">

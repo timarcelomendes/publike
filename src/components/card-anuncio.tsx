@@ -1,4 +1,4 @@
-import { BadgeCheck, Building2, Bus, Footprints, MapPin } from "lucide-react";
+import { Building2, Bus, Footprints, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -15,6 +15,7 @@ import type { DadosCard } from "@/lib/tipos";
 import { NotaDoProfissional } from "./avaliacoes";
 import { BotaoCurtir } from "./botao-curtir";
 import { Selo } from "./ui/basicos";
+import { SeloVerificado } from "@/components/selo-verificado";
 
 const DOIS_DIAS = 48 * 3600 * 1000;
 
@@ -88,7 +89,7 @@ export function CardAnuncio({
               {anuncio.autor_nome} · {rotuloConta(anuncio.autor_tipo)}
             </span>
             {anuncio.autor_verificado && (
-              <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
+              <SeloVerificado agencia={anuncio.autor_tipo === "agencia"} />
             )}
           </p>
           {servico && <NotaDoProfissional media={anuncio.autor_nota} total={anuncio.autor_avaliacoes} compacto />}

@@ -1,4 +1,4 @@
-import { ArrowLeft, BadgeCheck, ChevronDown, Download, FileText, Heart } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, FileText, Heart } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -35,6 +35,7 @@ import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado, StatusAnuncio } from "@/lib/tipos";
+import { SeloVerificado } from "@/components/selo-verificado";
 
 export default function Interessados({ params, searchParams }: PageProps<"/painel/anuncio/[id]">) {
   return (
@@ -207,7 +208,7 @@ async function Conteudo({
                           {p.nome}
                         </Link>
                         {p.verificado && (
-                          <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
+                          <SeloVerificado agencia={p.tipo === "agencia"} />
                         )}
                       </p>
                       <p className="text-body-sm text-ink-muted">

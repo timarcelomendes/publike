@@ -1,4 +1,4 @@
-import { BadgeCheck, ChevronDown, Download, FileText, Search, ShieldAlert, Users } from "lucide-react";
+import { ChevronDown, Download, FileText, Search, ShieldAlert, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -37,6 +37,7 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { SeloVerificado } from "@/components/selo-verificado";
 
 export const metadata: Metadata = { title: "Candidatos" };
 
@@ -324,7 +325,7 @@ function CartaoCandidato({
               {c.nome}
             </Link>
             {c.verificado && (
-              <BadgeCheck aria-label="Perfil verificado" className="size-4 shrink-0 text-cerrado-text" />
+              <SeloVerificado />
             )}
           </p>
           <p className="text-body-sm text-ink-muted">

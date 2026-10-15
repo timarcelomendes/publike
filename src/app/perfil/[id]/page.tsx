@@ -1,4 +1,4 @@
-import { BadgeCheck, MapPinned, Megaphone, Pencil, Wrench } from "lucide-react";
+import { MapPinned, Megaphone, Pencil, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,6 +17,7 @@ import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
+import { SeloVerificado } from "@/components/selo-verificado";
 
 export async function generateMetadata({ params }: PageProps<"/perfil/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -76,7 +77,7 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-2 text-h2 sm:text-h1">
             <span className="truncate">{perfil.nome}</span>
-            {perfil.verificado && <BadgeCheck aria-label="Perfil verificado" className="size-6 shrink-0 text-cerrado-text" />}
+            {perfil.verificado && <SeloVerificado agencia={agencia} className="size-6" />}
           </h1>
           <p className="mt-1 text-body text-ink-muted">
             {tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} · no Publike desde {formatarMesAno(perfil.criado_em)}
