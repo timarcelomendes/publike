@@ -1,8 +1,20 @@
 "use client";
 
-import { Copy, Download, FileUp, Mail, MessageCircle, Phone, Trash2, UserPlus, UserRound } from "lucide-react";
+import {
+  Copy,
+  Download,
+  FileUp,
+  ImageIcon,
+  Mail,
+  MessageCircle,
+  Phone,
+  Share2,
+  Trash2,
+  UserPlus,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type ChangeEvent } from "react";
 import { anotarConvite, apagarConvite, importarConvites, mudarConvite } from "@/lib/acoes/admin-convites";
 import {
   ESTADOS_CONVITE,
@@ -301,6 +313,25 @@ export function ListaConvites({ convites, agora }: { convites: Convite[]; agora:
   );
 }
 
+const imagemDoConvite = (tipo: Convite["tipo"]) =>
+  `/convites/convite-${tipo === "agencia" ? "agencia" : "empresa"}.png`;
+
+/** O navegador sabe compartilhar arquivos (Safari e Chrome no Mac, celulares). Só no cliente. */
+function useCompartilhar() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        const teste = new File([""], "x.png", { type: "image/png" });
+        return typeof navigator.canShare === "function" && navigator.canShare({ files: [teste] });
+      } catch {
+        return false;
+      }
+    },
+    () => false,
+  );
+}
+
 function CartaoConvite({
   c,
   assinatura,
@@ -317,10 +348,14 @@ function CartaoConvite({
   const nota = useAcao();
   const apagar = useAcao();
   const [copiado, setCopiado] = useState(false);
+  const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
+  const podeCompartilhar = useCompartilhar();
   const [confirmar, setConfirmar] = useState(false);
   const msg = mensagemConvite(c, assinatura);
   const texto = encodeURIComponent(msg);
   const apagado = c.status === "recusou" || c.status === "sem_contato";
+
+  const imagem = imagemDoConvite(c.tipo);
 
   async function copiar() {
     try {
@@ -328,6 +363,31 @@ function CartaoConvite({
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
     } catch {}
+  }
+
+  // a imagem vai para a área de transferência: na conversa do WhatsApp, é só colar (⌘V)
+  async function copiarImagem() {
+    setAvisoImagem(null);
+    try {
+      const png = fetch(imagem).then((r) => r.blob());
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      setAvisoImagem("Imagem copiada. Na conversa do WhatsApp, cole com ⌘V (ou Ctrl+V) e mande junto com o texto.");
+    } catch {
+      setAvisoImagem("Este navegador não deixou copiar a imagem. Use Baixar imagem e anexe na conversa.");
+    }
+  }
+
+  // no Mac e no celular, abre o compartilhar do sistema com a imagem e o texto juntos
+  async function compartilhar() {
+    setAvisoImagem(null);
+    try {
+      const blob = await fetch(imagem).then((r) => r.blob());
+      const arquivo = new File([blob], `publike-${c.tipo}.png`, { type: "image/png" });
+      await navigator.share({ files: [arquivo], text: msg });
+    } catch (e) {
+      if ((e as Error)?.name !== "AbortError")
+        setAvisoImagem("Não deu para compartilhar daqui. Copie a imagem e o texto.");
+    }
   }
 
   return (
@@ -388,10 +448,46 @@ function CartaoConvite({
         ))}
       </div>
 
-      <details className="rounded-md border border-dashed border-line-strong px-3">
-        <summary className="flex min-h-10 cursor-pointer items-center text-label">Ver a mensagem</summary>
-        <p className="pb-3 text-body-sm whitespace-pre-wrap">{msg}</p>
-      </details>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <a href={imagem} target="_blank" rel="noopener noreferrer" className="shrink-0 self-start">
+          {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de um arquivo estático, sem otimização */}
+          <img
+            src={imagem}
+            alt={`Imagem do convite para ${c.tipo === "agencia" ? "agências" : "empresas"}`}
+            width={96}
+            height={120}
+            loading="lazy"
+            className="h-30 w-24 rounded-md border border-line object-cover"
+          />
+        </a>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Botao tamanho="sm" onClick={copiarImagem}>
+              <ImageIcon aria-hidden />
+              Copiar imagem
+            </Botao>
+            <a href={imagem} download={`publike-convite-${c.tipo}.png`} className={classesBotao("fantasma", "sm")}>
+              <Download aria-hidden />
+              Baixar imagem
+            </a>
+            {podeCompartilhar && (
+              <Botao tamanho="sm" variante="fantasma" onClick={compartilhar}>
+                <Share2 aria-hidden />
+                Compartilhar imagem e texto
+              </Botao>
+            )}
+          </div>
+          {avisoImagem && (
+            <p role="status" className="text-body-sm text-ink-muted">
+              {avisoImagem}
+            </p>
+          )}
+          <details className="rounded-md border border-dashed border-line-strong px-3">
+            <summary className="flex min-h-10 cursor-pointer items-center text-label">Ver a mensagem</summary>
+            <p className="pb-3 text-body-sm whitespace-pre-wrap">{msg}</p>
+          </details>
+        </div>
+      </div>
 
       <div
         className="flex flex-wrap items-center gap-1.5 border-t border-line pt-3"
