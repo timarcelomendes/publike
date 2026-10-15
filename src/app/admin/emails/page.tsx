@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import {
+  BoasVindasPendentes,
   BotoesFila,
   FormConfigEmails,
   FormEmailTeste,
@@ -117,6 +118,13 @@ async function Conteudo() {
 
       <Secao id="configuracoes" titulo="O que é enviado">
         <FormConfigEmails config={config} />
+      </Secao>
+
+      <Secao
+        titulo="Boas-vindas para quem já se cadastrou"
+        descricao="Para quem criou a conta, ainda não publicou nada e não recebeu as boas-vindas. Vale o texto de cada perfil e segue as regras dos avisos (opção ligada, avisos ligados e e-mail confirmado). Para mandar a uma pessoa só, mesmo com os avisos desligados, use a página da conta."
+      >
+        <BoasVindasPendentes />
       </Secao>
 
       <Secao

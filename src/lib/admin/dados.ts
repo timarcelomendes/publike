@@ -232,6 +232,14 @@ export async function ultimosEmails(c: ClienteBanco, limite = 40) {
   return data ?? [];
 }
 
+/** Os últimos e-mails de uma conta (para ver se chegou ou falhou). */
+export async function emailsDoUsuario(c: ClienteBanco, usuarioId: string, limite = 15) {
+  const { data, error } = await c.rpc("admin_emails_do_usuario", { p_usuario: usuarioId, p_limite: limite });
+  // antes da migração das boas-vindas a função não existe: a página segue sem a lista
+  if (error) return null;
+  return data ?? [];
+}
+
 export async function decisoesDaIA(c: ClienteBanco, limite = 40) {
   const { data, error } = await c.rpc("admin_decisoes_ia", { p_limite: limite });
   if (error) falha("as decisões da IA", error);

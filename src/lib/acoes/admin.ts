@@ -195,6 +195,7 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
     p_aviso_denuncia: marcado(formData, "aviso_denuncia"),
     p_aviso_cadastro: marcado(formData, "aviso_cadastro"),
     p_aviso_retirado: marcado(formData, "aviso_retirado"),
+    p_email_boas_vindas: marcado(formData, "email_boas_vindas"),
   });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();

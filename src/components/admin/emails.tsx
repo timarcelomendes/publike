@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageUp, RefreshCw, RotateCcw, Send } from "lucide-react";
+import { HandHeart, ImageUp, RefreshCw, RotateCcw, Send } from "lucide-react";
 import { useActionState, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   enviarEmailDeTeste,
@@ -11,6 +11,7 @@ import {
   salvarLogoEmails,
   salvarModeloEmail,
 } from "@/lib/acoes/admin";
+import { enviarBoasVindasPendentes } from "@/lib/acoes/admin-contas";
 import type { ConfigSite, ModeloEmailAdmin } from "@/lib/admin/dados";
 import { EXEMPLOS_EMAIL, LOGO_EMAIL, montarEmail } from "@/lib/email/montar";
 import type { EstadoForm } from "@/lib/tipos";
@@ -111,6 +112,12 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
 
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-2 text-label">Avisos para quem usa o site</legend>
+        <Opcao
+          nome="email_boas_vindas"
+          rotulo="Boas-vindas"
+          ajuda="Quando a pessoa cria a conta: os próximos passos de acordo com o perfil (procurar trabalho, publicar a primeira vaga ou publicar as vagas da agência)."
+          inicial={config.email_boas_vindas ?? true}
+        />
         <Opcao
           nome="email_curtida"
           rotulo="Curtida"
@@ -513,6 +520,20 @@ export function BotoesFila({ temFalhas }: { temFalhas: boolean }) {
           </Botao>
         )}
       </div>
+      {mensagem}
+    </div>
+  );
+}
+
+/** Boas-vindas para quem se cadastrou antes de existir o e-mail (ou não recebeu) e ainda não publicou. */
+export function BoasVindasPendentes() {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(enviarBoasVindasPendentes)}>
+        <HandHeart aria-hidden />
+        {pendente ? "Enviando…" : "Mandar para quem ainda não recebeu"}
+      </Botao>
       {mensagem}
     </div>
   );

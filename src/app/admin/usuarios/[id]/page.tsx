@@ -12,15 +12,24 @@ import {
   SuspenderConta,
 } from "@/components/admin/acoes-conta";
 import { DadosDaReceita } from "@/components/admin/dados-receita";
+import { EnviarEmailParaConta } from "@/components/admin/emails-da-conta";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Dado, Secao } from "@/components/admin/ui";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
 import { formatarCnpj, linkReceita } from "@/lib/cnpj";
-import { advertenciasDe, fichaUsuario, listarAnuncios, matchesDesfeitosDe, registroDaEquipe } from "@/lib/admin/dados";
+import {
+  advertenciasDe,
+  emailsDoUsuario,
+  fichaUsuario,
+  listarAnuncios,
+  matchesDesfeitosDe,
+  modelosDeEmail,
+  registroDaEquipe,
+} from "@/lib/admin/dados";
 import { LIMITES_CONTA, nomeMotivoDesfazer } from "@/lib/constantes";
-import { descreverAcao } from "@/lib/admin/textos";
+import { descreverAcao, NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import {
   ehParaSempre,
   formatarDataCurta,
@@ -56,12 +65,14 @@ async function Conteudo({
   const c = await exigirAdminLocal();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  const [u, anuncios, registro, advertencias, desfeitos, agora] = await Promise.all([
+  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora] = await Promise.all([
     fichaUsuario(c, id),
     listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
     registroDaEquipe(c, 20, id),
     advertenciasDe(c, id),
     matchesDesfeitosDe(c, id),
+    modelosDeEmail(c),
+    emailsDoUsuario(c, id),
     agoraDaRequisicao(),
   ]);
   if (!u) notFound();
@@ -170,6 +181,44 @@ async function Conteudo({
           <SuspenderConta usuarioId={u.id} moderador={u.moderador} />
         </Secao>
       )}
+
+      <Secao titulo="E-mails" descricao="A pessoa diz que não recebeu? Escolha o modelo e mande de novo, na hora.">
+        <EnviarEmailParaConta
+          usuarioId={u.id}
+          modelos={modelos
+            .filter((m) => m.grupo === "usuarios")
+            .map((m) => ({ chave: m.chave, nome: m.nome, descricao: m.descricao, variaveis: m.variaveis }))}
+          sugerido={
+            u.perfil?.tipo === "agencia"
+              ? "boas_vindas_agencia"
+              : u.perfil?.tipo === "pessoa"
+                ? "boas_vindas_pessoa"
+                : "boas_vindas_empresa"
+          }
+        />
+        {emails && emails.length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-line pt-4">
+            <h3 className="text-label">Últimos e-mails</h3>
+            <ul className="flex flex-col divide-y divide-line">
+              {emails.map((e) => (
+                <li key={e.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2.5 text-body-sm">
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-label">{NOMES_MODELOS_EMAIL[e.modelo] ?? e.modelo}</span>
+                    <span className="break-all text-ink-muted">{e.para}</span>
+                    {e.erro && <span className="text-danger">{e.erro}</span>}
+                  </span>
+                  <span className="flex flex-col items-end gap-1">
+                    <Selo variante={e.status === "falhou" ? "perigo" : e.status === "enviado" ? "match" : "contorno"}>
+                      {STATUS_EMAIL[e.status] ?? e.status}
+                    </Selo>
+                    <span className="text-ink-muted">{formatarDataHora(e.enviado_em ?? e.criado_em)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Secao>
 
       <Secao titulo="Dados da conta">
         <dl className="flex flex-col gap-3">

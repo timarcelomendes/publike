@@ -2,6 +2,8 @@
 
 const ACOES: Record<string, string> = {
   salvar_config: "salvou as configurações de",
+  enviar_email: "mandou um e-mail para",
+  enviar_boas_vindas: "mandou para quem faltava o e-mail de",
   remover_anuncio: "removeu o anúncio",
   liberar_anuncio: "liberou o anúncio",
   editar_anuncio: "corrigiu o anúncio",
@@ -77,6 +79,9 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   match_desfeito: "Match desfeito",
   aviso_match_desfeito: "Match desfeito por comportamento",
   teste: "Teste",
+  boas_vindas_pessoa: "Boas-vindas (quem procura trabalho)",
+  boas_vindas_empresa: "Boas-vindas (comércio e empresa)",
+  boas_vindas_agencia: "Boas-vindas (agência)",
 };
 
 export const STATUS_EMAIL: Record<string, string> = {

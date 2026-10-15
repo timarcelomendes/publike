@@ -375,6 +375,8 @@ export type Database = {
           email_match: boolean;
           email_moderacao: boolean;
           email_conta: boolean;
+          /** e-mail de boas-vindas para quem cria a conta */
+          email_boas_vindas: boolean;
           avisos_para: string[];
           aviso_denuncia: boolean;
           aviso_cadastro: boolean;
@@ -1247,6 +1249,7 @@ export type Database = {
           p_aviso_denuncia: boolean;
           p_aviso_cadastro: boolean;
           p_aviso_retirado: boolean;
+          p_email_boas_vindas?: boolean;
         };
         Returns: undefined;
       };
@@ -1297,6 +1300,26 @@ export type Database = {
       admin_email_teste: {
         Args: { p_para: string };
         Returns: number;
+      };
+      /** manda um modelo de e-mail para a conta, na hora (devolve o id na fila) */
+      admin_enviar_email: {
+        Args: { p_usuario: string; p_modelo: string; p_dados?: Record<string, string> };
+        Returns: number;
+      };
+      /** boas-vindas para quem se cadastrou, não publicou e ainda não recebeu (devolve quantos) */
+      admin_boas_vindas_pendentes: { Args: Record<PropertyKey, never>; Returns: number };
+      admin_emails_do_usuario: {
+        Args: { p_usuario: string; p_limite?: number };
+        Returns: {
+          id: number;
+          modelo: string;
+          para: string;
+          status: string;
+          tentativas: number;
+          erro: string | null;
+          criado_em: string;
+          enviado_em: string | null;
+        }[];
       };
       admin_status_email: {
         Args: { p_id: number };

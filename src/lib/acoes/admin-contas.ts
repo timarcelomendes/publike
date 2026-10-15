@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
 import { mandarEmailDeAcesso } from "@/lib/servidor/email-acesso";
-import { processarFilas } from "@/lib/servidor/filas";
+import { enviarEmailsPendentes, processarFilas } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, registroDoAnuncio, UUID } from "@/lib/validacao";
@@ -145,4 +145,58 @@ export async function publicarEmNomeDe(
   after(processarFilas);
   revalidatePath("/");
   redirect(`/admin/usuarios/${usuarioId}?publicada=${data.id}`);
+}
+
+/**
+ * Manda um modelo de e-mail para a conta na hora, mesmo com os avisos desligados
+ * (para quando a pessoa não recebeu). `dados`: as variáveis do modelo.
+ */
+export async function enviarEmailParaConta(
+  usuarioId: string,
+  modelo: string,
+  dados: Record<string, string>,
+): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(usuarioId) || !/^[a-z_]{3,40}$/.test(modelo)) return { ok: false, erro: "Pedido inválido." };
+  const { data: id, error } = await c.rpc("admin_enviar_email", {
+    p_usuario: usuarioId,
+    p_modelo: modelo,
+    p_dados: dados,
+  });
+  if (error || id == null) return { ok: false, erro: mensagemDeErro(error) };
+
+  const envio = await enviarEmailsPendentes(50);
+  const { data: estado } = await c.rpc("admin_status_email", { p_id: id });
+  const s = estado?.[0];
+  refresh();
+  if (s?.status === "enviado") return { ok: true, mensagem: "E-mail enviado. Peça para a pessoa olhar também o spam." };
+  if (envio.motivo) return { ok: false, erro: `O e-mail ficou na fila: ${envio.motivo}` };
+  if (envio.semEndereco)
+    return { ok: false, erro: "O e-mail ficou na fila: falta o endereço do site no ar (PUBLIKE_URL_PUBLICA)." };
+  return {
+    ok: false,
+    erro: `O servidor de e-mail recusou: ${s?.erro ?? envio.erros.find((e) => e.id === id)?.erro ?? "erro desconhecido"}`,
+  };
+}
+
+/** Boas-vindas para quem se cadastrou, não publicou nada e ainda não recebeu. */
+export async function enviarBoasVindasPendentes(): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { data: total, error } = await c.rpc("admin_boas_vindas_pendentes");
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  if (!total) {
+    refresh();
+    return {
+      ok: true,
+      mensagem:
+        "Ninguém para receber: todo mundo sem anúncio já recebeu, desligou os avisos ou não tem e-mail confirmado.",
+    };
+  }
+  const envio = await enviarEmailsPendentes(50);
+  refresh();
+  if (envio.motivo) return { ok: false, erro: `${total} e-mail(s) ficaram na fila: ${envio.motivo}` };
+  const falhas = envio.falhas ? ` ${envio.falhas} falharam: veja em E-mails.` : "";
+  return { ok: true, mensagem: `Boas-vindas enviadas para ${total} conta(s).${falhas}` };
 }
