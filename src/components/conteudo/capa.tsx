@@ -346,6 +346,57 @@ export function numeroDoConteudo(c: Conteudo) {
   return b && b.t === "numero" ? b.valor : null;
 }
 
+/** As cenas, para outras capas desenhadas (as das notícias). */
+export const CENAS = { Mercado, Procurar, Contratar, Servicos, Direitos, Fabrica, Obra, Onibus, Documento, Pessoas, Moedas };
+export type NomeCena = keyof typeof CENAS;
+export const CORES_CAPA = { terra: "var(--pk-terra)", cerrado: "var(--pk-cerrado)", ipe: "var(--pk-ipe)" } as const;
+
+/** Capa desenhada genérica: uma cena, uma cor, um número em destaque (opcional). */
+export function CapaDesenhada({
+  semente,
+  cena,
+  cor,
+  numero,
+  tamanho = "card",
+  className = "",
+}: {
+  semente: string;
+  cena: NomeCena;
+  cor: keyof typeof CORES_CAPA;
+  numero?: string | null;
+  tamanho?: "card" | "grande";
+  className?: string;
+}) {
+  const r = sorteio(semente);
+  const Cena = CENAS[cena];
+  const corCss = CORES_CAPA[cor];
+  const esquerda = cena === "Mercado" || cena === "Fabrica" || cena === "Moedas" || cena === "Obra";
+  const sol = { x: esquerda ? 60 + r(50) * 60 : 520 + r(50) * 70, y: 55 + r(51) * 20 };
+  return (
+    <div className={`relative overflow-hidden ${className}`} style={{ background: mistura(corCss, 22) }}>
+      <svg
+        viewBox="0 0 640 360"
+        role="presentation"
+        aria-hidden
+        className="block h-full w-full"
+        preserveAspectRatio="xMidYMid slice"
+      >
+        <circle cx={sol.x} cy={sol.y} r={46} fill="var(--pk-ipe)" opacity={0.9} />
+        <Cena r={r} cor={corCss} />
+      </svg>
+      {numero && (
+        <span
+          className={`absolute bottom-3 left-3 rounded-md bg-surface-200/95 px-2.5 py-1 font-display text-ink shadow-card ${
+            tamanho === "grande" ? "text-h2 sm:bottom-5 sm:left-5 sm:px-4 sm:py-2 sm:text-h1" : "text-h3"
+          }`}
+        >
+          {numero}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** A capa do artigo: cena do tema e, se houver, o número principal. */
 export function CapaConteudo({
   c,

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CapaNoticia } from "@/components/noticias/capa";
 import { Container, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
@@ -63,6 +64,7 @@ async function Noticia({ slug }: { slug: string }) {
         </p>
         <h1 className="mt-3 text-h1">{n.titulo}</h1>
         <p className="mt-3 text-body-lg">{n.resumo}</p>
+        <CapaNoticia n={n} tamanho="grande" className="mt-6 aspect-video rounded-lg border border-line" />
 
         <div className="mt-6 flex flex-col gap-4 text-body">
           {n.corpo
