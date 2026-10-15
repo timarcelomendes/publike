@@ -58,13 +58,17 @@ function hojeEmBrasilia(agora: number) {
 function instrucoes(hoje: string) {
   return `Você é o editor de notícias do Publike, um site grátis de vagas e serviços de Goiânia e região (Goiás). Hoje é ${hoje}.
 
-Procure na internet notícias publicadas nos últimos 7 dias que ajudem quem procura trabalho, quem presta serviço ou quem contrata em Goiânia e na região metropolitana (Aparecida de Goiânia, Senador Canedo, Trindade, Goianira, Anápolis e vizinhas). Exemplos do que interessa:
-- feirões e mutirões de emprego, vagas abertas pelo Sine, pela Prefeitura ou pelo Mais Empregos;
-- empresas que vão abrir na região e contratar;
-- cursos gratuitos de qualificação (Senai, Senac, Cotec, IFG, prefeituras);
+Procure na internet notícias publicadas nos últimos 7 dias sobre trabalho, emprego e mercado de trabalho. Primeiro as de Goiânia e da região metropolitana (Aparecida de Goiânia, Senador Canedo, Trindade, Goianira, Anápolis e vizinhas) e de Goiás; depois as do Brasil que mudam algo para quem trabalha, presta serviço ou contrata aqui. Vale qualquer notícia desse assunto, por exemplo:
+- vagas: feirões e mutirões de emprego, Sine, Mais Empregos, empresas que vão abrir, ampliar ou contratar;
+- demissões, fechamento de empresas, greves e acordos de categorias (com o que muda para o trabalhador);
+- salários: salário mínimo, pisos e reajustes de categorias, renda média;
+- números do emprego e da economia de Goiás e do Brasil (Caged, IBGE, desemprego, informalidade) e dos setores que mais empregam aqui (comércio, serviços, construção, indústria, agronegócio);
+- direitos e leis: CLT, jornada e escala de trabalho, FGTS, seguro-desemprego, férias, 13º, INSS e aposentadoria de quem trabalha;
+- trabalho por conta própria: MEI, autônomos, trabalho por aplicativo, crédito e apoio para pequeno negócio;
+- qualificação: cursos gratuitos (Senai, Senac, Cotec, IFG, prefeituras), jovem aprendiz, estágio, primeiro emprego;
 - concursos e processos seletivos com inscrições abertas;
-- mudanças no salário mínimo, no FGTS, no seguro-desemprego, na CLT ou no MEI;
-- números do emprego em Goiás (Caged, IBGE).
+- inclusão no trabalho: mulheres, pessoas com deficiência, pessoas acima de 50 anos;
+- tecnologia e mudanças no jeito de trabalhar (inteligência artificial, trabalho remoto) quando afetam empregos de verdade.
 
 Regras:
 - Só notícias reais que você abriu nesta busca. "fonte_url" é o endereço exato da matéria, nunca a página inicial do site.
@@ -76,8 +80,9 @@ Regras:
 - "corpo": dois a quatro parágrafos curtos, separados por uma linha em branco, com o que, quando, onde e como participar.
 - "pratico": uma frase com o que a pessoa faz com isso ("Leve RG, CPF e carteira de trabalho."). Vazio se não houver.
 - "cidade": a cidade da notícia ou "" se for de Goiás ou do Brasil todo.
+- "tema": vagas (vagas, feirões, contratações), cursos, concursos, direitos (leis, benefícios, salário mínimo), eventos, ou mercado (números, economia, setores, demissões, greves, tecnologia e o resto).
 - "fonte_data": a data da matéria no formato AAAA-MM-DD, ou "" se não souber.
-- No máximo 5 notícias, das mais úteis para as menos. Nada de notícia de crime, política partidária, propaganda ou vaga de um único anúncio. Se não achar nada que preste, devolva a lista vazia.`;
+- No máximo 8 notícias, das mais úteis para as menos, com pelo menos metade de Goiás quando houver. Nada de notícia de crime, política partidária, fofoca, propaganda ou vaga de um único anúncio. Se não achar nada que preste, devolva a lista vazia.`;
 }
 
 export type ResultadoBusca = { ok: true; novas: number; pulou?: string } | { ok: false; erro: string };
@@ -146,7 +151,7 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
       if (i.fonte_data && /^\d{4}-\d{2}-\d{2}$/.test(i.fonte_data) && i.fonte_data < limiteData) return false;
       return LISTA_TEMAS_NOTICIA.includes(i.tema);
     })
-    .slice(0, 5)
+    .slice(0, 8)
     .map((i) => ({
       slug: slugDaNoticia(i.titulo, randomBytes(3).toString("hex")),
       titulo: i.titulo.trim().slice(0, 140),
