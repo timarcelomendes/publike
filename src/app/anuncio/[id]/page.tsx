@@ -120,10 +120,15 @@ function Fato({ icone: Icone, rotulo, children }: { icone: LucideIcon; rotulo: s
 function dadosVaga(a: AnuncioCompleto) {
   const tipos: Record<string, string> = {
     clt: "FULL_TIME",
+    aprendiz: "PART_TIME",
+    estagio: "INTERN",
+    trainee: "FULL_TIME",
     temporario: "TEMPORARY",
+    intermitente: "PART_TIME",
     diaria: "PER_DIEM",
     freelance: "CONTRACTOR",
-    estagio: "INTERN",
+    produtividade: "OTHER",
+    autonomo: "CONTRACTOR",
     pj: "CONTRACTOR",
     outro: "OTHER",
   };

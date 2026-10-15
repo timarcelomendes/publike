@@ -5,7 +5,19 @@ type Funcoes = Database["public"]["Functions"];
 type LinhaDe<F extends keyof Funcoes> = Funcoes[F]["Returns"] extends (infer L)[] ? L : never;
 
 export type TipoAnuncio = "vaga" | "servico";
-export type Regime = "clt" | "temporario" | "diaria" | "freelance" | "estagio" | "pj" | "outro";
+export type Regime =
+  | "clt"
+  | "aprendiz"
+  | "estagio"
+  | "trainee"
+  | "temporario"
+  | "intermitente"
+  | "diaria"
+  | "freelance"
+  | "produtividade"
+  | "autonomo"
+  | "pj"
+  | "outro";
 export type Unidade = "hora" | "dia" | "semana" | "mes" | "servico" | "m2" | "visita";
 export type TipoConta = "pessoa" | "comercio" | "empresa" | "agencia";
 export type StatusAnuncio = "ativo" | "pausado" | "encerrado" | "expirado" | "em_analise" | "removido";

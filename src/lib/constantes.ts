@@ -191,14 +191,19 @@ export const MAX_CURSOS = 12;
 /** Tamanho máximo do PDF do currículo (o Storage também barra). */
 export const MAX_PDF_MB = 5;
 /** Regimes em que a vaga já vem marcada para pedir currículo. */
-export const REGIMES_COM_CURRICULO: readonly Regime[] = ["clt", "estagio", "temporario"];
+export const REGIMES_COM_CURRICULO: readonly Regime[] = ["clt", "aprendiz", "estagio", "trainee", "temporario"];
 
 export const REGIMES: Record<Regime, { nome: string; selo: string; ajuda: string }> = {
   clt: { nome: "Com carteira (CLT)", selo: "CLT", ajuda: "Emprego com carteira assinada" },
+  aprendiz: { nome: "Jovem Aprendiz", selo: "Aprendiz", ajuda: "Contrato de aprendiz, de 14 a 24 anos, com curso junto" },
+  estagio: { nome: "Estágio", selo: "Estágio", ajuda: "Para estudantes" },
+  trainee: { nome: "Trainee", selo: "Trainee", ajuda: "Programa para quem se formou há pouco" },
   temporario: { nome: "Temporário", selo: "Temporário", ajuda: "Contrato por um período" },
+  intermitente: { nome: "Intermitente", selo: "Intermitente", ajuda: "Com carteira, chamado quando precisa e pago pelas horas trabalhadas" },
   diaria: { nome: "Diária", selo: "Diária", ajuda: "Paga por dia de trabalho" },
   freelance: { nome: "Freelance", selo: "Freelance", ajuda: "Trabalho pontual, por tarefa ou projeto" },
-  estagio: { nome: "Estágio", selo: "Estágio", ajuda: "Para estudantes" },
+  produtividade: { nome: "Por produtividade / comissão", selo: "Comissão", ajuda: "Ganha por peça, por venda ou pelo que produzir" },
+  autonomo: { nome: "Autônomo (RPA)", selo: "Autônomo", ajuda: "Pessoa física sem CNPJ, paga por recibo (RPA)" },
   pj: { nome: "PJ / MEI", selo: "PJ", ajuda: "Contrato com CNPJ ou MEI" },
   outro: { nome: "Outro", selo: "Outro", ajuda: "Outra forma de contratação" },
 };
