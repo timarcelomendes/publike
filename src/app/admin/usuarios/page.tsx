@@ -1,10 +1,11 @@
-import { UsersRound } from "lucide-react";
+import { UserPlus, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Busca, Filtros, linkCom, Paginacao } from "@/components/admin/ui";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
+import { classesBotao } from "@/components/ui/botao";
 import { listarUsuarios, POR_PAGINA } from "@/lib/admin/dados";
 import {
   ehParaSempre,
@@ -57,7 +58,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
   return (
     <div className="flex flex-col gap-4">
       {primeiro(sp.excluida) === "1" && <Aviso tipo="sucesso" titulo="Conta apagada." />}
-      <Busca acao="/admin/usuarios" valor={q} placeholder="Nome, e-mail ou WhatsApp" ocultos={{ filtro: atuais.filtro }} />
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <Busca
+            acao="/admin/usuarios"
+            valor={q}
+            placeholder="Nome, e-mail ou WhatsApp"
+            ocultos={{ filtro: atuais.filtro }}
+          />
+        </div>
+        <Link href="/admin/usuarios/nova" className={classesBotao("primario")}>
+          <UserPlus aria-hidden />
+          Criar conta
+        </Link>
+      </div>
       <Filtros
         rotulo="Filtrar contas"
         opcoes={FILTROS}

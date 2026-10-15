@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { VERSAO_TERMOS } from "@/lib/constantes";
-import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
+import { aceitePendente, obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
@@ -24,8 +24,10 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
   if (!usuario) redirect("/entrar?next=/perfil");
 
   // conta nova: precisa marcar que leu e aceita as regras e a política de privacidade
-  const perfilAntes = await obterMeuPerfil();
-  const faltaAceite = !perfilAntes && formData.get("aceite") !== "on";
+  // conta criada pela equipe: o primeiro acesso também pede o aceite
+  const [perfilAntes, pendente] = await Promise.all([obterMeuPerfil(), aceitePendente()]);
+  const pedeAceite = !perfilAntes || pendente;
+  const faltaAceite = pedeAceite && formData.get("aceite") !== "on";
   const leitura = lerPerfil(formData);
   if (!leitura.success || faltaAceite) {
     return {
@@ -34,7 +36,9 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
       erros: {
         ...(leitura.success ? {} : errosPorCampo(leitura.error)),
         ...(faltaAceite
-          ? { aceite: "Para criar a conta, marque que leu e aceita as regras e a política de privacidade." }
+          ? {
+              aceite: `Para ${perfilAntes ? "usar" : "criar"} a conta, marque que leu e aceita as regras e a política de privacidade.`,
+            }
           : {}),
       },
     };
@@ -74,8 +78,8 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     return { ok: false, erro: "Confira os campos marcados.", erros: { cnpj: mensagemDeErro(error) } };
   }
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar o perfil agora.") };
-  // conta nova: guarda qual versão das regras e da política foi aceita, e quando
-  if (!perfilAntes) {
+  // conta nova (ou criada pela equipe): guarda qual versão das regras e da política foi aceita, e quando
+  if (pedeAceite) {
     const { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS });
     if (erroAceite) console.error("Publike: não deu para guardar o aceite das regras:", erroAceite.message);
   }

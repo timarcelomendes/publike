@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { MODO_DEMO } from "./config";
-import { ETAPAS_CANDIDATO, etapaQueVale, type EtapaCandidato } from "./constantes";
+import { ETAPAS_CANDIDATO, etapaQueVale, VERSAO_TERMOS, type EtapaCandidato } from "./constantes";
 import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
 import { raioDaBusca, type Filtros } from "./filtros";
@@ -89,6 +89,17 @@ export const obterMeuPerfil = cache(async (): Promise<MeuPerfil | null> => {
 /** Perfil pronto para publicar e curtir: tem nome e um WhatsApp. */
 export function perfilCompleto(perfil: MeuPerfil | null) {
   return Boolean(perfil && (perfil.whatsapp || perfil.email));
+}
+
+/**
+ * A conta ainda não aceitou as regras e a política de privacidade desta versão
+ * (conta criada pela equipe no admin). Sem a função no banco, segue sem pedir.
+ */
+export async function aceitePendente() {
+  if (MODO_DEMO) return false;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("aceite_pendente", { p_versao: VERSAO_TERMOS });
+  return !error && data === true;
 }
 
 export const ehModerador = cache(async () => {

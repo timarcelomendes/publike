@@ -6,7 +6,7 @@ import { ExcluirConta, FormPerfil } from "@/components/form-perfil";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { obterMeuPerfil } from "@/lib/dados";
+import { aceitePendente, obterMeuPerfil } from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 
@@ -33,7 +33,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/perfil");
-  const perfil = await obterMeuPerfil();
+  const [perfil, pendente] = await Promise.all([obterMeuPerfil(), aceitePendente()]);
   const proximo = caminhoSeguro(primeiro(sp.next), "");
 
   return (
@@ -45,6 +45,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         email={usuario.email}
         nomeSugerido={usuario.nome}
         completar={primeiro(sp.completar) === "1" || !perfil}
+        pedirAceite={pendente}
         proximo={proximo}
       />
       {perfil && (

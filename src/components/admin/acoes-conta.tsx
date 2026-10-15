@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Ban, KeyRound, RotateCcw, ShieldOff, Trash2, UserMinus } from "lucide-react";
+import { BadgeCheck, Ban, KeyRound, Mail, RotateCcw, ShieldOff, Trash2, UserMinus } from "lucide-react";
 import { useState } from "react";
 import {
   acertarLogin,
@@ -10,6 +10,7 @@ import {
   removerModerador,
   suspenderConta,
 } from "@/lib/acoes/admin";
+import { enviarAcessoPeloAdmin } from "@/lib/acoes/admin-contas";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -99,6 +100,35 @@ export function ReativarConta({ usuarioId }: { usuarioId: string }) {
 }
 
 /** Quando o login (Supabase Auth) ficou diferente da suspensão. */
+/** Manda (ou manda de novo) o link de entrar para o e-mail de login da conta. */
+export function EnviarAcesso({ usuarioId, jaEntrou }: { usuarioId: string; jaEntrou: boolean }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [enviou, setEnviou] = useState(false);
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Botao
+        disabled={pendente}
+        onClick={() =>
+          rodar(
+            () => enviarAcessoPeloAdmin(usuarioId),
+            (r) => r.ok && setEnviou(true),
+          )
+        }
+      >
+        <Mail aria-hidden />
+        {pendente ? "Enviando…" : enviou ? "Reenviar e-mail de acesso" : "Enviar e-mail de acesso"}
+      </Botao>
+      {mensagem}
+      {!jaEntrou && !mensagem && (
+        <p className="text-body-sm text-ink-muted">
+          Ainda não entrou: vai o e-mail de boas-vindas, que passa pelo perfil para a pessoa conferir os dados e aceitar
+          as regras.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AcertarLogin({ usuarioId, bloquear }: { usuarioId: string; bloquear: boolean }) {
   const { rodar, pendente, mensagem } = useAcao();
   return (

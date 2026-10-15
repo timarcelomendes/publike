@@ -1,10 +1,11 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Megaphone } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
   AcertarLogin,
+  EnviarAcesso,
   ExcluirContaAdmin,
   ReativarConta,
   SeloVerificado,
@@ -15,6 +16,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Dado, Secao } from "@/components/admin/ui";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
+import { classesBotao } from "@/components/ui/botao";
 import { formatarCnpj, linkReceita } from "@/lib/cnpj";
 import { advertenciasDe, fichaUsuario, listarAnuncios, matchesDesfeitosDe, registroDaEquipe } from "@/lib/admin/dados";
 import { LIMITES_CONTA, nomeMotivoDesfazer } from "@/lib/constantes";
@@ -26,6 +28,7 @@ import {
   formatarLugar,
   formatarTelefone,
   nomeDoProvedor,
+  primeiro,
   rotuloConta,
   tempoRelativo,
 } from "@/lib/formato";
@@ -35,17 +38,23 @@ import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Conta" };
 
-export default function Conta({ params }: PageProps<"/admin/usuarios/[id]">) {
+export default function Conta({ params, searchParams }: PageProps<"/admin/usuarios/[id]">) {
   return (
     <Suspense fallback={<EsqueletoAdmin />}>
-      <Conteudo params={params} />
+      <Conteudo params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">["params"] }) {
+async function Conteudo({
+  params,
+  searchParams,
+}: {
+  params: PageProps<"/admin/usuarios/[id]">["params"];
+  searchParams: PageProps<"/admin/usuarios/[id]">["searchParams"];
+}) {
   const c = await exigirAdminLocal();
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
   const [u, anuncios, registro, advertencias, desfeitos, agora] = await Promise.all([
     fichaUsuario(c, id),
@@ -85,6 +94,31 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
         </div>
       </header>
 
+      {primeiro(sp.criada) === "1" && (
+        <Aviso tipo="sucesso" titulo="Conta criada.">
+          {primeiro(sp.acesso) === "1"
+            ? "O e-mail de acesso já foi enviado."
+            : primeiro(sp.acesso) === "0"
+              ? `A conta foi criada, mas o e-mail de acesso não saiu: ${primeiro(sp.erro_acesso) ?? ""}`
+              : "Agora publique as vagas em nome dela e, no fim, mande o e-mail de acesso."}
+        </Aviso>
+      )}
+      {primeiro(sp.existente) === "1" && (
+        <Aviso tipo="info" titulo="Já existe uma conta com este e-mail">
+          Abrimos a conta que já existe. Daqui dá para publicar em nome dela e mandar o e-mail de acesso.
+        </Aviso>
+      )}
+      {primeiro(sp.publicada) && (
+        <Aviso tipo="sucesso" titulo="Vaga publicada em nome da conta.">
+          <p>
+            <Link href={`/anuncio/${primeiro(sp.publicada)}`} className="underline">
+              Ver a vaga
+            </Link>
+            . Publique outra ou, quando terminar, mande o e-mail de acesso.
+          </p>
+        </Aviso>
+      )}
+
       {(loginSolto || loginPreso) && (
         <Aviso tipo="alerta" titulo={loginSolto ? "O login ainda não está bloqueado" : "O login ainda está bloqueado"}>
           <p>
@@ -94,6 +128,27 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]">[
           </p>
           <AcertarLogin usuarioId={u.id} bloquear={loginSolto} />
         </Aviso>
+      )}
+
+      {!s && (
+        <Secao
+          titulo="Acesso e vagas"
+          descricao="Para quem pediu ajuda: publique as vagas em nome da conta e mande o link de entrar (sem senha) para o e-mail de login."
+          acoes={
+            u.perfil ? (
+              <Link href={`/admin/usuarios/${u.id}/publicar`} className={classesBotao("secundario", "sm")}>
+                <Megaphone aria-hidden />
+                Publicar vaga em nome desta conta
+              </Link>
+            ) : undefined
+          }
+        >
+          {u.email ? (
+            <EnviarAcesso usuarioId={u.id} jaEntrou={Boolean(u.ultimo_acesso)} />
+          ) : (
+            <p className="text-body-sm text-ink-muted">Esta conta entra pelo celular: não tem e-mail de login.</p>
+          )}
+        </Secao>
       )}
 
       {s ? (

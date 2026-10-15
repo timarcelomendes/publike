@@ -97,6 +97,7 @@ export function FormAnuncio({
   agencia = false,
   contatoAgencia = null,
   enderecoPublico = false,
+  emNomeDe = null,
 }: {
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
@@ -111,6 +112,8 @@ export function FormAnuncio({
   contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
   /** Comércio, empresa e agência: o endereço aparece na vaga (pessoa física: só a região). */
   enderecoPublico?: boolean;
+  /** Admin publicando em nome de uma conta: o nome dela. */
+  emNomeDe?: string | null;
 }) {
   const editando = Boolean(inicial.id);
   const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
@@ -179,6 +182,11 @@ export function FormAnuncio({
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
       {inicial.id && <input type="hidden" name="id" value={inicial.id} />}
+      {emNomeDe && (
+        <Aviso tipo="alerta" titulo={`Publicando em nome de ${emNomeDe}`}>
+          A vaga sai no nome e com o contato desta conta, como se ela mesma tivesse publicado.
+        </Aviso>
+      )}
 
       <Secao numero={1} titulo="O que você quer publicar?">
         {editando ? (
@@ -289,9 +297,11 @@ export function FormAnuncio({
                     </>
                   )}
                   .{" "}
-                  <Link href="/perfil" className="underline underline-offset-2 hover:text-ink">
-                    Trocar no perfil
-                  </Link>
+                  {!emNomeDe && (
+                    <Link href="/perfil" className="underline underline-offset-2 hover:text-ink">
+                      Trocar no perfil
+                    </Link>
+                  )}
                 </p>
               </div>
             )}
@@ -705,7 +715,11 @@ export function FormAnuncio({
                   ? "Publicar vaga"
                   : "Publicar serviço"}
         </Botao>
-        {equipe ? (
+        {emNomeDe ? (
+          <p className="text-body-sm text-ink-muted">
+            Fica 30 dias no ar. Quem se candidatar aparece no painel de {emNomeDe}, que recebe os avisos por e-mail.
+          </p>
+        ) : equipe ? (
           <p className="text-body-sm text-ink-muted">
             Quem publicou não recebe aviso da correção. A mudança fica no registro da equipe.
           </p>

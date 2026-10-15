@@ -72,6 +72,7 @@ export function FormPerfil({
   nomeSugerido,
   completar,
   proximo,
+  pedirAceite = false,
 }: {
   perfil: MeuPerfil | null;
   usuarioId: string;
@@ -81,6 +82,8 @@ export function FormPerfil({
   nomeSugerido?: string | null;
   completar: boolean;
   proximo: string;
+  /** Conta criada pela equipe: ainda falta o aceite das regras e da política. */
+  pedirAceite?: boolean;
 }) {
   const [estado, acao, enviando] = useActionState(salvarPerfil, { ok: false } as EstadoForm);
   const [nome, setNome] = useState(perfil?.nome ?? nomeSugerido ?? "");
@@ -411,7 +414,7 @@ export function FormPerfil({
         </Campo>
       </section>
 
-      {!perfil && (
+      {(!perfil || pedirAceite) && (
         <div className="flex flex-col gap-1.5">
           <label className="flex min-h-11 cursor-pointer items-start gap-3 text-body">
             <input

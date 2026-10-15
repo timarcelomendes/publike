@@ -84,6 +84,19 @@ ${formulario("Entrar no Publike")}
     return new Response(html, { headers: cabecalhos });
   }
 
+  // link mandado pela equipe (conta criada no admin): a pessoa não "pediu", recebeu
+  if (tipo === "magiclink") {
+    const html = pagina(
+      "Entrar",
+      `<h1>Sua conta no Publike</h1>
+<p>Este link abre a conta que o Publike criou para o seu e-mail. Toque no botão para entrar.</p>
+${formulario("Entrar no Publike")}
+<p class="nota">Não esperava este e-mail? É só fechar esta página: ninguém entra na conta sem este link.</p>`,
+      script(false),
+    );
+    return new Response(html, { headers: cabecalhos });
+  }
+
   // outro navegador: pergunta antes de entrar
   const html = pagina(
     "Entrar",

@@ -192,6 +192,8 @@ export type Database = {
           pcd: string | null;
         };
         Insert: {
+          /** quem publica (padrão: quem está logado; o admin informa ao publicar em nome da conta) */
+          autor_id?: string;
           tipo: string;
           titulo: string;
           descricao: string;
@@ -610,6 +612,8 @@ export type Database = {
         }[];
       };
       registrar_aceite: { Args: { p_versao: string }; Returns: undefined };
+      /** quem está logado ainda não aceitou esta versão das regras (conta criada pela equipe) */
+      aceite_pendente: { Args: { p_versao: string }; Returns: boolean };
       registrar_origem: { Args: { p_origem: string }; Returns: undefined };
       ponto_conhecido: {
         Args: { p_cep: string; p_numero: string };
