@@ -45,13 +45,22 @@ type Pedido = {
   imagens?: string[];
   /** Saída estruturada: nome e esquema JSON da resposta. Sem esquema, a resposta é texto livre. */
   esquema?: { nome: string; schema: Record<string, unknown> };
+  /** Deixa a IA pesquisar na internet, a partir deste lugar (as notícias). */
+  buscaNaWeb?: { cidade: string; regiao: string };
+  /** Em milissegundos (padrão 45 s; a busca na internet demora mais). */
+  tempoLimite?: number;
 };
 
 /** Por que a resposta parou antes: a IA se recusou ou acabou o espaço. */
 export type ParadaIA = "recusa" | "limite" | null;
 
-type ParteSaida = { type: string; text?: string };
-type ItemSaida = { type: string; content?: ParteSaida[] };
+type ParteSaida = { type: string; text?: string; annotations?: { type: string; url?: string }[] };
+type ItemSaida = {
+  type: string;
+  content?: ParteSaida[];
+  /** web_search_call: as páginas que a busca abriu */
+  action?: { sources?: { type?: string; url?: string }[] };
+};
 type RespostaOpenAI = {
   status?: string;
   incomplete_details?: { reason?: string } | null;
@@ -72,12 +81,16 @@ function explicarErro(status: number, corpo: string) {
   return `A IA não respondeu (código ${status}).`;
 }
 
-export async function chamarIA(p: Pedido): Promise<{ texto: string; parada: ParadaIA; modelo: string }> {
+export async function chamarIA(
+  p: Pedido,
+): Promise<{ texto: string; parada: ParadaIA; modelo: string; fontes: string[] }> {
   const chave = chaveIA();
   if (!chave) throw new ErroIA("Falta a chave da IA no servidor (OPENAI_API_KEY).");
   const modelo = modeloDaIA(p.modelo);
+  // a busca na internet não funciona sem raciocínio: no mínimo "low"
+  const esforco = p.buscaNaWeb && modelo.esforco === "none" ? "low" : modelo.esforco;
   // Com raciocínio ligado, o "pensar" também conta como saída: sobra espaço para a resposta.
-  const maxTokens = modelo.esforco === "none" ? p.maxTokens : p.maxTokens + 4000;
+  const maxTokens = esforco === "none" ? p.maxTokens : p.maxTokens + 4000;
 
   let resposta: Response;
   try {
@@ -103,15 +116,32 @@ export async function chamarIA(p: Pedido): Promise<{ texto: string; parada: Para
             ]
           : p.mensagem,
         max_output_tokens: maxTokens,
-        reasoning: { effort: modelo.esforco },
+        reasoning: { effort: esforco },
         // o texto dos anúncios não fica guardado na conta da OpenAI
         store: false,
+        ...(p.buscaNaWeb
+          ? {
+              tools: [
+                {
+                  type: "web_search",
+                  user_location: {
+                    type: "approximate",
+                    country: "BR",
+                    city: p.buscaNaWeb.cidade,
+                    region: p.buscaNaWeb.regiao,
+                  },
+                },
+              ],
+              // a lista das páginas que a busca abriu: só vale fonte que veio daqui
+              include: ["web_search_call.action.sources"],
+            }
+          : {}),
         ...(p.esquema
           ? { text: { format: { type: "json_schema", name: p.esquema.nome, schema: p.esquema.schema, strict: true } } }
           : {}),
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(p.tempoLimite ?? 45_000),
     });
   } catch (e) {
     const tempo = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
@@ -130,11 +160,18 @@ export async function chamarIA(p: Pedido): Promise<{ texto: string; parada: Para
 
   let texto = "";
   let recusou = false;
+  const fontes = new Set<string>();
   for (const item of json.output ?? []) {
+    if (item.type === "web_search_call") {
+      for (const f of item.action?.sources ?? []) if (f.url) fontes.add(f.url);
+      continue;
+    }
     if (item.type !== "message") continue;
     for (const parte of item.content ?? []) {
-      if (parte.type === "output_text" && typeof parte.text === "string") texto += parte.text;
-      else if (parte.type === "refusal") recusou = true;
+      if (parte.type === "output_text" && typeof parte.text === "string") {
+        texto += parte.text;
+        for (const a of parte.annotations ?? []) if (a.type === "url_citation" && a.url) fontes.add(a.url);
+      } else if (parte.type === "refusal") recusou = true;
     }
   }
   if (!texto && typeof json.output_text === "string") texto = json.output_text;
@@ -145,7 +182,7 @@ export async function chamarIA(p: Pedido): Promise<{ texto: string; parada: Para
     // sem espaço para terminar, ou cortada pelo filtro de conteúdo da OpenAI
     parada = json.incomplete_details?.reason === "max_output_tokens" ? "limite" : "recusa";
   }
-  return { texto: texto.trim(), parada, modelo: modelo.id };
+  return { texto: texto.trim(), parada, modelo: modelo.id, fontes: [...fontes] };
 }
 
 /** Lê a resposta em JSON (saída estruturada). */

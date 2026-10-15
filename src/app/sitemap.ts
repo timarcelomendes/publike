@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { CATEGORIAS } from "@/lib/constantes";
 import { CONTEUDOS } from "@/lib/conteudos";
+import { noticiasPublicadas } from "@/lib/servidor/noticias";
 import { caminhoDaBusca, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { criarClientePublico } from "@/lib/supabase/servidor";
@@ -48,6 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/profissionais`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/privacidade`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/conteudos`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${SITE_URL}/noticias`, changeFrequency: "daily", priority: 0.6 },
     ...CONTEUDOS.map((c) => ({
       url: `${SITE_URL}/conteudos/${c.slug}`,
       lastModified: c.publicado,
@@ -68,6 +70,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...paginas,
     ...(await paginasDeBusca()),
+    ...(await noticiasPublicadas(500)).map((n) => ({
+      url: `${SITE_URL}/noticias/${n.slug}`,
+      lastModified: n.publicar_em ? new Date(n.publicar_em).toISOString() : undefined,
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    })),
     ...(data ?? []).map((a) => ({
       url: `${SITE_URL}/anuncio/${a.id}`,
       // data no formato curto e padrão (o Google lê melhor que microssegundos com fuso)

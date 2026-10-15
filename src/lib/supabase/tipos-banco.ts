@@ -385,6 +385,10 @@ export type Database = {
           ia_melhorar_texto: boolean;
           ia_resumo: boolean;
           ia_modelo: string;
+          /** a IA procura notícias sobre trabalho (rascunhos para o admin aprovar) */
+          ia_noticias?: boolean;
+          noticias_ultima_busca?: string | null;
+          noticias_ultimo_erro?: string | null;
           email_logo: boolean;
           email_logo_url: string | null;
           chat_ativo: boolean;
@@ -392,7 +396,7 @@ export type Database = {
           atualizado_por: string | null;
         };
         Insert: SemTabela;
-        Update: SemTabela;
+        Update: { ia_noticias?: boolean };
         Relationships: [];
       };
       notificacoes: {
@@ -452,6 +456,38 @@ export type Database = {
           observacao?: string | null;
         };
         Update: { status?: string; nota?: string | null; enviada_em?: string | null; usuario_id?: string | null };
+        Relationships: [];
+      };
+      /** notícias: o site lê só as aprovadas que já chegaram no horário (RLS) */
+      noticias: {
+        Row: {
+          id: string;
+          slug: string;
+          titulo: string;
+          resumo: string;
+          corpo: string;
+          pratico: string | null;
+          tema: string;
+          cidade: string | null;
+          fonte_nome: string;
+          fonte_url: string;
+          fonte_data: string | null;
+          status: string;
+          publicar_em: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: SemTabela;
+        Update: {
+          titulo?: string;
+          resumo?: string;
+          corpo?: string;
+          pratico?: string | null;
+          tema?: string;
+          cidade?: string | null;
+          status?: string;
+          publicar_em?: string | null;
+        };
         Relationships: [];
       };
     };
@@ -646,6 +682,8 @@ export type Database = {
       registrar_aceite: { Args: { p_versao: string }; Returns: undefined };
       /** quem está logado ainda não aceitou esta versão das regras (conta criada pela equipe) */
       aceite_pendente: { Args: { p_versao: string }; Returns: boolean };
+      servidor_noticias_contexto: { Args: { p_chave: string }; Returns: Json };
+      servidor_salvar_noticias: { Args: { p_chave: string; p_itens: Json; p_erro?: string | null }; Returns: number };
       /** conta nova que veio pela página de serviços: as boas-vindas viram as de prestador */
       quero_oferecer_servicos: { Args: Record<string, never>; Returns: undefined };
       registrar_origem: { Args: { p_origem: string }; Returns: undefined };
