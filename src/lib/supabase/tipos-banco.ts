@@ -424,6 +424,36 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** convites às empresas (só o admin, com service_role) */
+      convites: {
+        Row: {
+          id: string;
+          nome: string;
+          tipo: string;
+          vagas: string[];
+          whatsapp: string[];
+          telefones: string[];
+          email: string | null;
+          observacao: string | null;
+          status: string;
+          nota: string | null;
+          enviada_em: string | null;
+          usuario_id: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          nome: string;
+          tipo?: string;
+          vagas?: string[];
+          whatsapp?: string[];
+          telefones?: string[];
+          email?: string | null;
+          observacao?: string | null;
+        };
+        Update: { status?: string; nota?: string | null; enviada_em?: string | null; usuario_id?: string | null };
+        Relationships: [];
+      };
     };
     Views: SemTabela;
     Functions: {

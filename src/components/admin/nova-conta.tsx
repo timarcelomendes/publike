@@ -14,10 +14,20 @@ const AJUDA_DO_TIPO: Partial<Record<TipoConta, string>> = {
   pessoa: "Candidato, prestador de serviço (diarista, pedreiro…) ou quem contrata para casa",
 };
 
+/** Dados de um convite que a empresa autorizou (Admin > Convites). */
+export type InicialNovaConta = {
+  convite: string;
+  nome: string;
+  tipo: TipoConta;
+  login: string;
+  whatsapp: string;
+  nota: string | null;
+};
+
 /** Criar uma conta pelo e-mail, para quem pediu ajuda: candidato, prestador, comércio, empresa ou agência. */
-export function FormNovaConta() {
+export function FormNovaConta({ inicial }: { inicial?: InicialNovaConta }) {
   const [estado, acao, enviando] = useActionState(criarContaPeloAdmin, { ok: false } as EstadoForm);
-  const [tipo, setTipo] = useState<TipoConta>("pessoa");
+  const [tipo, setTipo] = useState<TipoConta>(inicial?.tipo ?? "pessoa");
   const erros = estado.erros ?? {};
 
   // com onSubmit (e não action), o formulário não se apaga quando volta um erro
@@ -29,6 +39,13 @@ export function FormNovaConta() {
 
   return (
     <form onSubmit={enviar} noValidate className="flex flex-col gap-5">
+      {inicial && (
+        <Aviso tipo="info" titulo={`Convite de ${inicial.nome}`}>
+          {inicial.nota ? `Sua anotação: ${inicial.nota}. ` : ""}Confira o e-mail de login e o WhatsApp que a empresa
+          pediu para os candidatos. Ao criar, o convite fica ligado à conta.
+          <input type="hidden" name="convite" value={inicial.convite} />
+        </Aviso>
+      )}
       <Campo
         rotulo="E-mail de login"
         nome="login"
@@ -40,6 +57,7 @@ export function FormNovaConta() {
           type="email"
           autoComplete="off"
           required
+          defaultValue={inicial?.login}
           placeholder="nome@email.com"
           className={classesEntrada}
         />
@@ -69,7 +87,13 @@ export function FormNovaConta() {
       </fieldset>
 
       <Campo rotulo={tipo === "pessoa" ? "Nome" : "Nome do negócio"} nome="nome" erro={erros.nome}>
-        <input {...ligarCampo("nome", erros.nome)} maxLength={80} required className={classesEntrada} />
+        <input
+          {...ligarCampo("nome", erros.nome)}
+          maxLength={80}
+          required
+          defaultValue={inicial?.nome}
+          className={classesEntrada}
+        />
       </Campo>
 
       {tipo !== "pessoa" && (
@@ -121,6 +145,7 @@ export function FormNovaConta() {
             {...ligarCampo("whatsapp", erros.whatsapp, true)}
             inputMode="tel"
             autoComplete="off"
+            defaultValue={inicial?.whatsapp}
             placeholder="(62) 99999-0000"
             className={classesEntrada}
           />

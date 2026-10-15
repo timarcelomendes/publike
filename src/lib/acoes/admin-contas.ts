@@ -69,6 +69,15 @@ export async function criarContaPeloAdmin(_anterior: EstadoForm, formData: FormD
   }
   // conta nova avisa a equipe por e-mail (como no cadastro normal)
   after(processarFilas);
+  // veio de um convite (Admin > Convites): o convite fica ligado à conta
+  const convite = String(formData.get("convite") ?? "");
+  if (UUID.test(convite)) {
+    const { error: erroConvite } = await c
+      .from("convites")
+      .update({ usuario_id: id, status: "autorizou" })
+      .eq("id", convite);
+    if (erroConvite) console.error("Publike: não deu para ligar o convite à conta:", erroConvite.message);
+  }
 
   let aviso = "";
   if (formData.get("enviar_acesso") === "on") {
