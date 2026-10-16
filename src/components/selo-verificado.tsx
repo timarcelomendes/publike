@@ -24,7 +24,7 @@ export function SeloVerificado({ agencia = false, className = "size-4" }: { agen
   const { titulo, texto } = agencia ? TEXTOS.agencia : TEXTOS.conta;
   const id = useId();
   const botao = useRef<HTMLButtonElement>(null);
-  const balao = useRef<HTMLDivElement>(null);
+  const balao = useRef<HTMLSpanElement>(null);
   const [aberto, setAberto] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; acima: boolean } | null>(null);
 
@@ -97,7 +97,8 @@ export function SeloVerificado({ agencia = false, className = "size-4" }: { agen
       >
         <BadgeCheck aria-hidden className={className} />
       </button>
-      <div
+      {/* span (e não div): o selo fica dentro de parágrafos, e div dentro de p quebra a página */}
+      <span
         ref={balao}
         id={id}
         role="tooltip"
@@ -116,12 +117,12 @@ export function SeloVerificado({ agencia = false, className = "size-4" }: { agen
               }
             : undefined
         }
-        className="z-50 w-64 max-w-[calc(100vw-24px)] rounded-md border-0 bg-ink p-3 text-left text-body-sm font-normal tracking-normal text-surface-100 normal-case shadow-raised"
+        className="z-50 block w-64 max-w-[calc(100vw-24px)] rounded-md border-0 bg-ink p-3 text-left text-body-sm font-normal tracking-normal text-surface-100 normal-case shadow-raised"
       >
         <span className="block font-semibold">{titulo}</span>
         <span className="mt-0.5 block">{texto}</span>
         <span className="mt-1.5 block opacity-80">Mesmo assim, nunca pague nada para conseguir trabalho.</span>
-      </div>
+      </span>
     </>
   );
 }
