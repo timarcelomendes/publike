@@ -71,6 +71,19 @@ export async function GET(request: NextRequest) {
 <button type="submit">${botao}</button>
 </form>`;
 
+  // troca do e-mail de login: confirma com um toque (nunca sozinha)
+  if (tipo === "email_change") {
+    const html = pagina(
+      "Trocar e-mail",
+      `<h1>Confirme a troca de e-mail</h1>
+<p>Toque no botão para confirmar o e-mail novo da sua conta no Publike.</p>
+${formulario("Confirmar a troca")}
+<p class="nota">Não pediu a troca? É só fechar esta página: nada muda sem este toque.</p>`,
+      script(false),
+    );
+    return new Response(html, { headers: cabecalhos });
+  }
+
   // este navegador pediu o link há pouco: entra sozinho
   if (request.cookies.get(COOKIE_PEDIU_LINK)?.value === "1") {
     const html = pagina(

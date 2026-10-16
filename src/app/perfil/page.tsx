@@ -4,11 +4,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ExcluirConta, FormPerfil } from "@/components/form-perfil";
 import { SoComSupabase } from "@/components/so-com-supabase";
+import { TrocarEmail } from "@/components/trocar-email";
 import { Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { aceitePendente, obterMeuPerfil } from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = {
   title: "Meu perfil",
@@ -33,7 +35,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/perfil");
-  const [perfil, pendente] = await Promise.all([obterMeuPerfil(), aceitePendente()]);
+  const [perfil, pendente, contaAuth] = await Promise.all([
+    obterMeuPerfil(),
+    aceitePendente(),
+    // o e-mail novo que ainda espera confirmação (só o Supabase sabe)
+    criarClienteServidor().then((c) => c.auth.getUser()),
+  ]);
+  const conta = contaAuth.data.user;
   const proximo = caminhoSeguro(primeiro(sp.next), "");
 
   return (
@@ -62,6 +70,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
           </span>
           <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />
         </Link>
+      )}
+      {perfil && (
+        <TrocarEmail
+          atual={conta?.email || usuario.email}
+          pendente={conta?.new_email || null}
+          confirmado={primeiro(sp.email) === "confirmado"}
+        />
       )}
       {perfil && <ExcluirConta />}
     </>
