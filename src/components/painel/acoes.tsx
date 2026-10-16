@@ -119,6 +119,7 @@ export function AcoesInteressado({
   servico = false,
   semCurriculo = null,
   aceita = false,
+  compacto = false,
 }: {
   anuncioId: string;
   perfilId: string;
@@ -128,11 +129,35 @@ export function AcoesInteressado({
   semCurriculo?: string | null;
   /** você já aceitou e a pessoa recebeu o pedido do currículo */
   aceita?: boolean;
+  /** numa linha (tela Candidatos): o aceite que espera o currículo sem o caminho em passos */
+  compacto?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const esperando = aceita && semCurriculo !== null && status === "pendente";
 
   // aceito, esperando o currículo: agora é com a pessoa
+  if (esperando && compacto) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="flex items-center gap-2 text-body-sm">
+            <Hourglass aria-hidden className="size-4 shrink-0 text-terra-text" />
+            Aceito. Quando {semCurriculo} mandar o currículo, dá match.
+          </p>
+          <Botao
+            variante="fantasma"
+            tamanho="sm"
+            disabled={pendente}
+            onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "pendente"))}
+          >
+            <Undo2 aria-hidden />
+            Desfazer o aceite
+          </Botao>
+        </div>
+        {mensagem}
+      </div>
+    );
+  }
   if (esperando) {
     return (
       <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-100 p-3">

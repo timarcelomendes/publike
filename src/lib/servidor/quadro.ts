@@ -68,6 +68,23 @@ export async function entrevistasDaVaga(anuncioId: string): Promise<Map<string, 
   return new Map((data ?? []).map((e) => [e.perfil_id, e]));
 }
 
+/** A entrevista mais recente de cada candidato de várias vagas, por "anúncio:perfil" (tela Candidatos). */
+export async function entrevistasDasVagas(anuncioIds: string[]): Promise<Map<string, Entrevista>> {
+  if (!anuncioIds.length) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("entrevistas")
+    .select("id, perfil_id, anuncio_id, quando, duracao_min, formato, local, obs, situacao")
+    .in("anuncio_id", anuncioIds)
+    .order("atualizado_em", { ascending: true });
+  if (error) {
+    console.error(`Publike: falha ao ler as entrevistas: ${error.message}`);
+    return new Map();
+  }
+  // a mais recente de cada um fica por último e vale
+  return new Map((data ?? []).map((e) => [`${e.anuncio_id}:${e.perfil_id}`, e]));
+}
+
 export async function modelosDaConta(): Promise<ModeloMensagem[]> {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.from("modelos_mensagem").select("id, nome, texto").order("criado_em");

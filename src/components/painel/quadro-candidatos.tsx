@@ -1,17 +1,6 @@
 "use client";
 
-import {
-  CalendarClock,
-  Check,
-  CircleHelp,
-  ExternalLink,
-  GripVertical,
-  MessageCircle,
-  MessagesSquare,
-  Send,
-  TriangleAlert,
-  X,
-} from "lucide-react";
+import { CalendarClock, ExternalLink, GripVertical, MessageCircle, MessagesSquare, Send, X } from "lucide-react";
 import Link from "next/link";
 import {
   useEffect,
@@ -29,6 +18,7 @@ import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
 import { CaminhoDoAceite } from "../caminho-curtida";
+import { CriteriosDaAderencia, NotaAderencia } from "./nota-aderencia";
 import { Avatar, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
@@ -69,27 +59,6 @@ export type CartaoQuadro = {
   aceita: boolean;
 };
 
-function Nota({ a }: { a: Aderencia }) {
-  if (a.eliminado) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-pill border border-danger px-2 py-0.5 text-caption text-danger uppercase">
-        Eliminado
-      </span>
-    );
-  }
-  if (a.nota === null) return null;
-  const cor =
-    a.nota >= 80 ? "bg-cerrado text-on-cerrado" : a.nota >= 50 ? "bg-ipe text-on-ipe" : "bg-surface-300 text-ink";
-  return (
-    <span
-      title="Nota de aderência: o quanto bate com o que a vaga pede"
-      className={`inline-flex shrink-0 items-center rounded-pill px-2 py-0.5 text-caption font-semibold tabular-nums ${cor}`}
-    >
-      {a.nota}%
-    </span>
-  );
-}
-
 export function QuadroCandidatos({
   anuncioId,
   vaga,
@@ -98,6 +67,7 @@ export function QuadroCandidatos({
   cartoes,
   modelos,
   agora,
+  abrir = null,
 }: {
   anuncioId: string;
   vaga: string;
@@ -106,13 +76,17 @@ export function QuadroCandidatos({
   cartoes: CartaoQuadro[];
   modelos: ModeloMensagem[];
   agora: number;
+  /** abre já o cartão desta pessoa (vindo de “Abrir no quadro”, na tela Candidatos) */
+  abrir?: string | null;
 }) {
   const [lista, mover] = useOptimistic(cartoes, (atual, m: { ids: string[]; coluna: EtapaCandidato }) =>
     atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna } : c)),
   );
   const [pendente, iniciar] = useTransition();
   const [selecionados, setSelecionados] = useState<string[]>([]);
-  const [aberto, setAberto] = useState<string | null>(null);
+  const [aberto, setAberto] = useState<string | null>(() =>
+    abrir && cartoes.some((c) => c.perfil_id === abrir) ? abrir : null,
+  );
   const [mensagemEmMassa, setMensagemEmMassa] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const [esconderEliminados, setEsconderEliminados] = useState(false);
@@ -329,7 +303,7 @@ function Cartao({
           className="size-5 shrink-0 accent-[var(--pk-ink)]"
         />
         <span className="flex items-center gap-1">
-          <Nota a={c.aderencia} />
+          <NotaAderencia a={c.aderencia} />
           <GripVertical aria-hidden className="hidden size-4 shrink-0 cursor-grab text-ink-muted sm:block" />
         </span>
       </div>
@@ -411,7 +385,7 @@ function DetalheCandidato({
             {formatarLugar(c.bairro, c.cidade)} · curtiu {tempoRelativo(c.curtido_em, agora)}
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-2">
-            <Nota a={c.aderencia} />
+            <NotaAderencia a={c.aderencia} />
             <Selo variante="contorno">{ETAPAS_CANDIDATO[c.coluna].nome}</Selo>
             {c.status === "pendente" &&
               (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Para responder</Selo>)}
@@ -483,30 +457,7 @@ function DetalheCandidato({
 
       <Secao titulo="Aderência à vaga">
         {c.aderencia.criterios.length ? (
-          <ul className="flex flex-col gap-1.5">
-            {c.aderencia.criterios.map((k) => (
-              <li key={k.nome} className="flex items-start gap-2 text-body-sm">
-                {k.ok === true ? (
-                  <Check aria-label="Atende" className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
-                ) : k.ok === false ? (
-                  k.eliminatorio ? (
-                    <TriangleAlert
-                      aria-label="Não atende (eliminatória)"
-                      className="mt-0.5 size-4 shrink-0 text-danger"
-                    />
-                  ) : (
-                    <X aria-label="Não atende" className="mt-0.5 size-4 shrink-0 text-danger" />
-                  )
-                ) : (
-                  <CircleHelp aria-label="Sem informação" className="mt-0.5 size-4 shrink-0 text-ink-muted" />
-                )}
-                <span>
-                  <span className="font-semibold">{k.nome}</span>
-                  <span className="text-ink-muted"> · {k.detalhe}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <CriteriosDaAderencia a={c.aderencia} />
         ) : (
           <p className="text-body-sm text-ink-muted">
             A vaga não pede escolaridade, experiência nem CNH, e as perguntas não têm resposta procurada. Defina no

@@ -45,7 +45,8 @@ export function EtapaDoCandidato({
   const { rodar, pendente, mensagem } = useAcao();
   const [etapa, setEtapa] = useState<EtapaCandidato>(etapaInicial);
   const [nota, setNota] = useState(notaInicial ?? "");
-  const [anotar, setAnotar] = useState(Boolean(notaInicial));
+  // no cartão compacto a anotação já aparece escrita no cartão: o campo abre só para editar
+  const [anotar, setAnotar] = useState(!compacto && Boolean(notaInicial));
   const id = useId();
   const mudouNota = nota.trim() !== (notaInicial ?? "").trim();
   const servico = tipo === "servico";
@@ -102,7 +103,7 @@ export function EtapaDoCandidato({
           className="inline-flex min-h-10 items-center gap-1.5 text-body-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline"
         >
           <NotebookPen aria-hidden className="size-4" />
-          {notaInicial ? "Anotação" : "Anotar"}
+          {notaInicial ? (compacto ? "Editar anotação" : "Anotação") : "Anotar"}
           <ChevronDown aria-hidden className={`size-4 transition-transform ${anotar ? "rotate-180" : ""}`} />
         </button>
       </div>

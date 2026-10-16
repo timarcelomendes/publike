@@ -1,11 +1,22 @@
-import { ChevronDown, Download, FileText, Search, ShieldAlert, Users } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronDown,
+  Download,
+  FileText,
+  KanbanSquare,
+  Mail,
+  MessageCircle,
+  NotebookPen,
+  Phone,
+  Search,
+  ShieldAlert,
+  Target,
+  Users,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
-import { RespostasDoCandidato } from "@/components/painel/respostas-candidato";
-import { perguntasDoBanco, type Pergunta, type Respostas } from "@/lib/vaga-extra";
+import { Suspense, type ReactNode } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
-import { BotoesContato } from "@/components/contato";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
@@ -13,10 +24,14 @@ import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
+import { CriteriosDaAderencia, NotaAderencia } from "@/components/painel/nota-aderencia";
+import { RespostasDoCandidato } from "@/components/painel/respostas-candidato";
+import { SeloVerificado } from "@/components/selo-verificado";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
+import { calcularAderencia, type Aderencia } from "@/lib/aderencia";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
@@ -37,25 +52,44 @@ import {
   obterAnuncio,
   type Desfeito,
 } from "@/lib/dados";
-import { formatarLugar, primeiro, tempoRelativo } from "@/lib/formato";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
+import { formatarLugar, formatarTelefone, linkWhatsApp, primeiro, tempoRelativo } from "@/lib/formato";
+import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
+import { entrevistasDasVagas, type Entrevista } from "@/lib/servidor/quadro";
+import { obterTriagens } from "@/lib/servidor/triagem";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
-import { SeloVerificado } from "@/components/selo-verificado";
+import { juntarTriagem, perguntasDoBanco, type Pergunta, type Respostas } from "@/lib/vaga-extra";
 
 export const metadata: Metadata = { title: "Candidatos" };
 
-// Situação da curtida, do jeito que quem publicou age: primeiro quem espera resposta.
+// A situação de cada candidato, do jeito que quem publicou age.
 // "aceita": você aceitou, e a vaga espera o currículo da pessoa para dar match.
-const SITUACAO: Record<string, { nome: string; variante: "aviso" | "match" | "contorno" | "neutro"; ordem: number }> = {
-  pendente: { nome: "Para responder", variante: "aviso", ordem: 0 },
-  aceita: { nome: "Esperando currículo", variante: "neutro", ordem: 1 },
-  match: { nome: "Deu match", variante: "match", ordem: 2 },
-  desfeito: { nome: "Match desfeito", variante: "contorno", ordem: 3 },
-  dispensada: { nome: "Dispensado", variante: "contorno", ordem: 4 },
+const SITUACAO: Record<string, { nome: string; variante: "aviso" | "match" | "contorno" | "neutro" }> = {
+  pendente: { nome: "Para responder", variante: "aviso" },
+  aceita: { nome: "Esperando currículo", variante: "neutro" },
+  match: { nome: "Deu match", variante: "match" },
+  desfeito: { nome: "Match desfeito", variante: "contorno" },
+  dispensada: { nome: "Dispensado", variante: "contorno" },
 };
+
+// A lista em três partes: quem espera a sua resposta, quem você já aceitou e quem saiu.
+type Grupo = "responder" | "andamento" | "encerrados";
+const GRUPOS: Record<Grupo, { titulo: string; ajuda: string }> = {
+  responder: {
+    titulo: "Para responder",
+    ajuda: "Esperando a sua resposta. Quem mais combina com a vaga vem primeiro.",
+  },
+  andamento: { titulo: "Em andamento", ajuda: "Quem você aceitou: converse, marque a entrevista e mude a etapa." },
+  encerrados: { titulo: "Encerrados", ajuda: "Dispensados e matches desfeitos." },
+};
+const ORDEM_GRUPOS: Grupo[] = ["responder", "andamento", "encerrados"];
+const grupoDe = (c: { status: string; aceita_em?: string | null }): Grupo =>
+  esperaResposta(c) ? "responder" : c.status === "dispensada" || c.status === "desfeito" ? "encerrados" : "andamento";
+
+const ENTREVISTA_ABERTA = ["marcada", "confirmada", "remarcar"];
 
 /** Sem acento e em minúsculas, para a busca pelo nome. */
 const simples = (s: string) =>
@@ -89,7 +123,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   if (!todos) {
     return (
       <Aviso tipo="alerta" titulo="Não deu para carregar os candidatos agora">
-        Tente de novo em instantes. Enquanto isso, cada vaga mostra quem curtiu em “Meus anúncios”.
+        Tente de novo em instantes. Enquanto isso, cada vaga mostra quem curtiu em “Minhas vagas”.
       </Aviso>
     );
   }
@@ -122,19 +156,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   const procurado = simples(busca);
   const lista = daVaga
     .filter((c) => (responder ? esperaResposta(c) : !etapa || c.etapa === etapa))
-    .filter((c) => !procurado || simples(c.nome).includes(procurado))
-    // quem espera resposta primeiro; dentro de cada grupo, a curtida mais nova primeiro
-    .sort(
-      (a, b) =>
-        (SITUACAO[situacaoDaCurtida(a)]?.ordem ?? 9) - (SITUACAO[situacaoDaCurtida(b)]?.ordem ?? 9) ||
-        new Date(b.curtido_em).getTime() - new Date(a.curtido_em).getTime(),
-    );
+    .filter((c) => !procurado || simples(c.nome).includes(procurado));
 
-  // O que cada cartão precisa para responder ali mesmo, só das vagas que aparecem
+  // O que cada cartão precisa, só das vagas que aparecem
   const vagasDaLista = [...new Set(lista.map((c) => c.anuncio_id))];
   const comCurriculo = vagasDaLista.filter((id) => lista.some((c) => c.anuncio_id === id && c.tem_curriculo));
   const comDesfeito = vagasDaLista.filter((id) => lista.some((c) => c.anuncio_id === id && c.status === "desfeito"));
-  const [anuncios, curriculos, desfeitos, bloqueios, publicas, respostas] = await Promise.all([
+  const [anuncios, curriculos, desfeitos, bloqueios, publicas, respostas, triagens, entrevistas] = await Promise.all([
     Promise.all(vagasDaLista.map(async (id) => [id, await obterAnuncio(id)] as const)).then((l) => new Map(l)),
     Promise.all(
       comCurriculo.map(async (id) => [id, await listarCurriculosDosInteressados(id).catch(() => null)] as const),
@@ -145,7 +173,66 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
     comDesfeito.length ? listarMeusBloqueios() : Promise.resolve(new Map<string, { eu: boolean; ele: boolean }>()),
     minhasContratacoesPublicas(),
     listarRespostasDosCandidatos(vagasDaLista),
+    obterTriagens(vagasDaLista),
+    entrevistasDasVagas(vagasDaLista),
   ]);
+
+  // a nota de aderência (a mesma do quadro) e a entrevista em aberto de cada um
+  const perguntasDe = new Map(
+    vagasDaLista.map((id) => [
+      id,
+      juntarTriagem(perguntasDoBanco(anuncios.get(id)?.perguntas), triagens.get(id) ?? {}),
+    ]),
+  );
+  const chave = (c: Candidato) => `${c.anuncio_id}:${c.perfil_id}`;
+  const aderencias = new Map<string, Aderencia | null>();
+  for (const c of lista) {
+    const a = anuncios.get(c.anuncio_id);
+    aderencias.set(
+      chave(c),
+      a
+        ? calcularAderencia(
+            {
+              escolaridade_minima: a.escolaridade_minima,
+              experiencia: a.experiencia,
+              cnh: a.cnh,
+              cidade: a.cidade,
+              perguntas: perguntasDe.get(c.anuncio_id) ?? [],
+            },
+            {
+              curriculo: curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null,
+              respostas: respostas.get(chave(c)) ?? {},
+              cidade: c.cidade,
+            },
+            agora,
+          )
+        : null,
+    );
+  }
+  const entrevistaDe = (c: Candidato) => {
+    const e = entrevistas.get(chave(c));
+    return e && c.status === "match" && ENTREVISTA_ABERTA.includes(e.situacao) ? e : null;
+  };
+
+  // cada grupo na sua ordem: para responder, os mais aderentes primeiro; em andamento, a
+  // entrevista mais próxima primeiro; encerrados, os mais novos
+  const peso = (c: Candidato) => {
+    const a = aderencias.get(chave(c));
+    return !a ? -1 : a.eliminado ? -2 : (a.nota ?? -1);
+  };
+  const recente = (a: Candidato, b: Candidato) => new Date(b.curtido_em).getTime() - new Date(a.curtido_em).getTime();
+  const grupos: Record<Grupo, Candidato[]> = { responder: [], andamento: [], encerrados: [] };
+  for (const c of lista) grupos[grupoDe(c)].push(c);
+  grupos.responder.sort((a, b) => peso(b) - peso(a) || recente(a, b));
+  grupos.andamento.sort((a, b) => {
+    const ea = entrevistaDe(a);
+    const eb = entrevistaDe(b);
+    if (ea && eb) return new Date(ea.quando).getTime() - new Date(eb.quando).getTime();
+    if (ea || eb) return ea ? -1 : 1;
+    return recente(a, b);
+  });
+  grupos.encerrados.sort(recente);
+  const comItens = ORDEM_GRUPOS.filter((g) => grupos[g].length > 0);
 
   const link = (mudar: { etapa?: EtapaCandidato | null; responder?: boolean }) => {
     const q = new URLSearchParams();
@@ -165,15 +252,34 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
     return `/painel/candidatos/planilha${s ? `?${s}` : ""}`;
   })();
 
+  const cartao = (c: Candidato) => (
+    <CartaoCandidato
+      key={chave(c)}
+      c={c}
+      comSecoes={comItens.length > 1}
+      agora={agora}
+      mostrarVaga={!vaga}
+      pedeCurriculo={Boolean(anuncios.get(c.anuncio_id)?.pede_curriculo)}
+      curriculo={curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null}
+      curriculoFalhou={c.tem_curriculo && curriculos.get(c.anuncio_id) === null}
+      desfeito={desfeitos.get(c.anuncio_id)?.get(c.perfil_id)}
+      bloqueio={bloqueios.get(c.perfil_id)}
+      publica={publicas.get(chave(c))}
+      perguntas={perguntasDe.get(c.anuncio_id) ?? []}
+      respostas={respostas.get(chave(c))}
+      aderencia={aderencias.get(chave(c)) ?? null}
+      entrevista={entrevistaDe(c)}
+    />
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h2 className="text-h2">Candidatos</h2>
           <p className="mt-1 text-body text-ink-muted">
-            Quem curtiu suas vagas, todas juntas. Você decide quem aceitar: curtir de volta conecta vocês (a conversa
-            e o WhatsApp aparecem para os dois). Depois, marque a etapa e anote: a pessoa vê a etapa; a anotação é só
-            sua.
+            Todos que curtiram suas vagas. Responda quem está esperando, converse com quem deu match e acompanhe as
+            entrevistas.
           </p>
         </div>
         <a href={planilha} className={classesBotao("secundario", "sm")}>
@@ -264,37 +370,74 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
               ? "Ninguém esperando resposta: você está em dia."
               : "Ninguém nesta etapa."}
         </p>
-      ) : (
+      ) : comItens.length === 1 ? (
+        // um grupo só (um filtro escolhido, por exemplo): a lista direto, sem título
         <ul aria-label="Lista de candidatos" className="flex flex-col gap-3">
-          {lista.map((c) => (
-            <CartaoCandidato
-              key={`${c.anuncio_id}-${c.perfil_id}`}
-              c={c}
-              agora={agora}
-              mostrarVaga={!vaga}
-              pedeCurriculo={Boolean(anuncios.get(c.anuncio_id)?.pede_curriculo)}
-              curriculo={curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null}
-              curriculoFalhou={c.tem_curriculo && curriculos.get(c.anuncio_id) === null}
-              desfeito={desfeitos.get(c.anuncio_id)?.get(c.perfil_id)}
-              bloqueio={bloqueios.get(c.perfil_id)}
-              publica={publicas.get(`${c.anuncio_id}:${c.perfil_id}`)}
-              perguntas={perguntasDoBanco(anuncios.get(c.anuncio_id)?.perguntas)}
-              respostas={respostas.get(`${c.anuncio_id}:${c.perfil_id}`)}
-            />
-          ))}
+          {grupos[comItens[0]].map(cartao)}
         </ul>
+      ) : (
+        <div className="flex flex-col gap-8">
+          {comItens.map((g) =>
+            // encerrados ficam fechados embaixo, para não misturar com quem ainda está no processo
+            g === "encerrados" ? (
+              <details key={g} className="group">
+                <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-0.5 [&::-webkit-details-marker]:hidden">
+                  <h3 className="text-h3 whitespace-nowrap">
+                    {GRUPOS[g].titulo}{" "}
+                    <span className="font-normal text-ink-muted tabular-nums">{grupos[g].length}</span>
+                  </h3>
+                  <ChevronDown
+                    aria-hidden
+                    className="size-5 text-ink-muted transition-transform group-open:rotate-180"
+                  />
+                  <span className="basis-full text-body-sm text-ink-muted sm:basis-auto">{GRUPOS[g].ajuda}</span>
+                </summary>
+                <ul aria-label={GRUPOS[g].titulo} className="mt-3 flex flex-col gap-3">
+                  {grupos[g].map(cartao)}
+                </ul>
+              </details>
+            ) : (
+              <section key={g} aria-labelledby={`grupo-${g}`} className="flex flex-col gap-3">
+                <div>
+                  <h3 id={`grupo-${g}`} className="text-h3">
+                    {GRUPOS[g].titulo}{" "}
+                    <span className="font-normal text-ink-muted tabular-nums">{grupos[g].length}</span>
+                  </h3>
+                  <p className="text-body-sm text-ink-muted">{GRUPOS[g].ajuda}</p>
+                </div>
+                <ul aria-label={GRUPOS[g].titulo} className="flex flex-col gap-3">
+                  {grupos[g].map(cartao)}
+                </ul>
+              </section>
+            ),
+          )}
+        </div>
       )}
     </div>
   );
 }
 
+/** Um pedaço dos detalhes do candidato (currículo, aderência, contato), com o título em cima. */
+function Bloco({ titulo, icone, children }: { titulo: string; icone: ReactNode; children: ReactNode }) {
+  return (
+    <div className="rounded-md border border-line bg-surface-100 p-3">
+      <p className="flex items-center gap-2 text-label">
+        {icone}
+        {titulo}
+      </p>
+      <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
 /**
- * Um candidato, com tudo para resolver ali mesmo: responder (curtir de volta ou
- * dispensar), ver o currículo, conversar e chamar no WhatsApp depois do match,
- * marcar a etapa e anotar.
+ * Um candidato numa olhada: quem é, de qual vaga, a aderência, a entrevista e o recado;
+ * embaixo, a ação certa para o momento (responder, conversar) e a etapa. Currículo,
+ * respostas, o porquê da nota, contato e “desfazer” abrem em “Ver detalhes”.
  */
 function CartaoCandidato({
   c,
+  comSecoes,
   agora,
   publica,
   mostrarVaga,
@@ -305,8 +448,12 @@ function CartaoCandidato({
   bloqueio,
   perguntas,
   respostas,
+  aderencia,
+  entrevista,
 }: {
   c: Candidato;
+  /** a lista está dividida em grupos com título (Para responder, Em andamento…) */
+  comSecoes: boolean;
   agora: number;
   mostrarVaga: boolean;
   pedeCurriculo: boolean;
@@ -317,31 +464,35 @@ function CartaoCandidato({
   publica: { ok_empresa: boolean; ok_pessoa: boolean } | undefined;
   perguntas: Pergunta[];
   respostas: Respostas | undefined;
+  aderencia: Aderencia | null;
+  entrevista: Entrevista | null;
 }) {
   const situacao = SITUACAO[situacaoDaCurtida(c)] ?? SITUACAO.pendente;
   const primeiroNome = c.nome.split(" ")[0];
   const comModeracao = c.anuncio_status === "em_analise" || c.anuncio_status === "removido";
+  const match = c.status === "match";
   const encerrado = c.status === "dispensada" || c.status === "desfeito";
   const hoje = new Date(agora).toISOString().slice(0, 7);
-  // vaga que pede currículo: o match espera a pessoa preencher
+  // vaga que pede currículo: o match espera a pessoa mandar
   const semCurriculo = pedeCurriculo && !c.tem_curriculo ? primeiroNome : null;
+  // no grupo "Para responder" o título já diz; nos outros, o selo separa match, aceite e encerrado
+  const selo = comSecoes && esperaResposta(c) ? null : <Selo variante={situacao.variante}>{situacao.nome}</Selo>;
 
   return (
     <li
-      className={`flex flex-col gap-3 rounded-lg border bg-surface-200 p-4 shadow-card sm:p-5 ${
-        c.status === "match" ? "border-cerrado" : "border-line"
-      }`}
+      id={`candidato-${c.anuncio_id}-${c.perfil_id}`}
+      className={`scroll-mt-24 rounded-lg border bg-surface-200 shadow-card ${match ? "border-cerrado" : "border-line"}`}
     >
-      <div className={`flex gap-3 ${encerrado ? "opacity-75" : ""}`}>
-        <Avatar nome={c.nome} foto={c.foto} tamanho={48} />
+      {/* quem é, numa olhada */}
+      <div className={`flex gap-3 p-4 sm:px-5 ${encerrado ? "opacity-75" : ""}`}>
+        <Avatar nome={c.nome} foto={c.foto} tamanho={44} />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1 text-label">
-            <Link href={`/perfil/${c.perfil_id}`} className="truncate underline-offset-2 hover:underline">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Link href={`/perfil/${c.perfil_id}`} className="text-label break-words underline-offset-2 hover:underline">
               {c.nome}
             </Link>
-            {c.verificado && (
-              <SeloVerificado />
-            )}
+            {c.verificado && <SeloVerificado />}
+            {aderencia && !encerrado && <NotaAderencia a={aderencia} longo />}
           </p>
           <p className="text-body-sm text-ink-muted">
             {mostrarVaga && (
@@ -352,59 +503,59 @@ function CartaoCandidato({
                 {" · "}
               </>
             )}
-            curtiu {tempoRelativo(c.curtido_em, agora)} · {formatarLugar(c.bairro, c.cidade)}
+            {formatarLugar(c.bairro, c.cidade)} · curtiu {tempoRelativo(c.curtido_em, agora)}
           </p>
           {/* no celular o selo vai embaixo do nome, para não espremer o texto */}
-          <span className="mt-1.5 block sm:hidden">
-            <Selo variante={situacao.variante}>{situacao.nome}</Selo>
-          </span>
+          {selo && <span className="mt-1.5 block sm:hidden">{selo}</span>}
+          {entrevista && (
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm">
+              <CalendarClock aria-hidden className="size-4 shrink-0 text-ink-muted" />
+              <span className="font-semibold">Entrevista {dataDaEntrevista(entrevista.quando)}</span>
+              <Selo variante={SITUACOES_ENTREVISTA[entrevista.situacao]?.tom ?? "aviso"}>
+                {SITUACOES_ENTREVISTA[entrevista.situacao]?.nome ?? entrevista.situacao}
+              </Selo>
+            </p>
+          )}
+          {c.mensagem && (
+            <p className="mt-2 line-clamp-3 rounded-md bg-surface-300 px-3 py-2 text-body-sm">“{c.mensagem}”</p>
+          )}
+          {c.nota && (
+            <p className="mt-2 flex items-start gap-1.5 text-body-sm text-ink-muted">
+              <NotebookPen aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span className="line-clamp-2">
+                <span className="sr-only">Sua anotação: </span>
+                {c.nota}
+              </span>
+            </p>
+          )}
         </div>
-        <span className="hidden self-start sm:block">
-          <Selo variante={situacao.variante}>{situacao.nome}</Selo>
-        </span>
+        {selo && <span className="hidden self-start sm:block">{selo}</span>}
       </div>
 
-      {c.mensagem && <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{c.mensagem}”</blockquote>}
-      <RespostasDoCandidato perguntas={perguntas} respostas={respostas} />
-
-      {curriculo ? (
-        <details className="group rounded-md border border-line bg-surface-100">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-label [&::-webkit-details-marker]:hidden">
-            <FileText aria-hidden className="size-4 shrink-0 text-ink-muted" />
-            Ver currículo
-            <ChevronDown
-              aria-hidden
-              className="ml-auto size-4 text-ink-muted transition-transform group-open:rotate-180"
-            />
-          </summary>
-          <div className="border-t border-line p-3">
-            <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} />
-          </div>
-        </details>
-      ) : curriculoFalhou ? (
-        <p className="flex items-center gap-2 text-body-sm text-ink-muted">
-          <FileText aria-hidden className="size-4 shrink-0" />
-          <Link href={`/painel/anuncio/${c.anuncio_id}`} className="underline underline-offset-2">
-            Ver o currículo na vaga
-          </Link>
-        </p>
-      ) : null}
-
-      {/* ações à esquerda, etapa e anotação à direita (no celular, uma embaixo da outra) */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-3">
+      {/* o que fazer agora (à esquerda) e a etapa (à direita; no celular, embaixo) */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line px-4 py-3 sm:px-5">
         {comModeracao ? (
           <p className="flex items-start gap-2 text-body-sm text-ink-muted">
             <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
             Esta vaga está com a moderação: dá para responder depois que ela for liberada.
           </p>
-        ) : c.status === "match" ? (
+        ) : match ? (
           <div className="flex flex-wrap items-center gap-2">
             <BotaoConversar anuncioId={c.anuncio_id} outroId={c.perfil_id} />
-            <BotoesContato
-              whatsapp={c.whatsapp}
-              email={c.email}
-              mensagem={`Olá, ${primeiroNome}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`}
-            />
+            {c.whatsapp && (
+              <a
+                href={linkWhatsApp(
+                  c.whatsapp,
+                  `Olá, ${primeiroNome}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={classesBotao("sucesso", "sm")}
+              >
+                <MessageCircle aria-hidden />
+                WhatsApp
+              </a>
+            )}
           </div>
         ) : c.status === "desfeito" ? (
           <div className="flex flex-col gap-2">
@@ -434,6 +585,7 @@ function CartaoCandidato({
             status={c.status}
             semCurriculo={semCurriculo}
             aceita={esperaCurriculo(c)}
+            compacto
           />
         )}
 
@@ -451,11 +603,80 @@ function CartaoCandidato({
         )}
       </div>
 
-      {c.status === "match" && !comModeracao && (
-        <div>
-          <DesfazerMatch anuncioId={c.anuncio_id} perfilId={c.perfil_id} outroNome={c.nome} autorDaVaga />
+      {/* currículo, respostas, o porquê da nota, contato e o resto */}
+      <details className="group border-t border-line">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-label text-ink-muted hover:text-ink sm:px-5 [&::-webkit-details-marker]:hidden">
+          <FileText aria-hidden className="size-4 shrink-0" />
+          {curriculo ? "Ver currículo e detalhes" : "Ver detalhes"}
+          <ChevronDown aria-hidden className="ml-auto size-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="flex flex-col gap-3 border-t border-line px-4 py-4 sm:px-5">
+          <Bloco titulo="Currículo" icone={<FileText aria-hidden className="size-4 shrink-0 text-ink-muted" />}>
+            {curriculo ? (
+              <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} />
+            ) : curriculoFalhou ? (
+              <Link href={`/painel/anuncio/${c.anuncio_id}`} className="text-body-sm underline underline-offset-2">
+                Ver o currículo na vaga
+              </Link>
+            ) : (
+              <p className="text-body-sm text-ink-muted">
+                {primeiroNome} ainda não mandou currículo{pedeCurriculo ? ", que esta vaga pede." : "."}
+              </p>
+            )}
+          </Bloco>
+          <RespostasDoCandidato perguntas={perguntas} respostas={respostas} />
+          {aderencia && aderencia.criterios.length > 0 && (
+            <Bloco
+              titulo={
+                aderencia.eliminado
+                  ? "Aderência à vaga: eliminado"
+                  : aderencia.nota !== null
+                    ? `Aderência à vaga: ${aderencia.nota}%`
+                    : "Aderência à vaga"
+              }
+              icone={<Target aria-hidden className="size-4 shrink-0 text-ink-muted" />}
+            >
+              <CriteriosDaAderencia a={aderencia} />
+            </Bloco>
+          )}
+          {match && (c.whatsapp || c.email) && (
+            <Bloco titulo="Contato" icone={<Phone aria-hidden className="size-4 shrink-0 text-ink-muted" />}>
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-body-sm">
+                {c.whatsapp && (
+                  <a
+                    href={`tel:+${c.whatsapp}`}
+                    className="inline-flex min-h-10 items-center gap-1.5 underline-offset-2 hover:underline"
+                  >
+                    <Phone aria-hidden className="size-4 text-ink-muted" />
+                    {formatarTelefone(c.whatsapp)}
+                  </a>
+                )}
+                {c.email && (
+                  <a
+                    href={`mailto:${c.email}`}
+                    className="inline-flex min-h-10 items-center gap-1.5 break-all underline-offset-2 hover:underline"
+                  >
+                    <Mail aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                    {c.email}
+                  </a>
+                )}
+              </div>
+            </Bloco>
+          )}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link
+              href={`/painel/anuncio/${c.anuncio_id}/quadro?candidato=${c.perfil_id}`}
+              className="inline-flex min-h-10 items-center gap-1.5 text-label underline-offset-2 hover:underline"
+            >
+              <KanbanSquare aria-hidden className="size-4 text-ink-muted" />
+              Abrir no quadro (entrevista e mensagens)
+            </Link>
+            {match && !comModeracao && (
+              <DesfazerMatch anuncioId={c.anuncio_id} perfilId={c.perfil_id} outroNome={c.nome} autorDaVaga />
+            )}
+          </div>
         </div>
-      )}
+      </details>
     </li>
   );
 }

@@ -19,17 +19,25 @@ import type { StatusAnuncio } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Quadro de candidatos" };
 
-export default function Quadro({ params }: PageProps<"/painel/anuncio/[id]/quadro">) {
+export default function Quadro({ params, searchParams }: PageProps<"/painel/anuncio/[id]/quadro">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo params={params} />
+      <Conteudo params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/quadro">["params"] }) {
+async function Conteudo({
+  params,
+  searchParams,
+}: {
+  params: PageProps<"/painel/anuncio/[id]/quadro">["params"];
+  searchParams: PageProps<"/painel/anuncio/[id]/quadro">["searchParams"];
+}) {
   if (MODO_DEMO) return <SoComSupabase />;
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
+  // ?candidato=<id>: abre já o cartão dessa pessoa (link da tela Candidatos)
+  const abrir = typeof sp.candidato === "string" ? sp.candidato : null;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/quadro`);
   const [anuncio, perfil] = await Promise.all([obterAnuncio(id), obterMeuPerfil()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
@@ -46,7 +54,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/qu
           className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
         >
           <ArrowLeft aria-hidden className="size-4" />
-          Vagas
+          Minhas vagas
         </Link>
         <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -88,8 +96,8 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/qu
       </div>
       {cartoes.length === 0 ? (
         <Vazio icone={Users} titulo="Ninguém se candidatou ainda">
-          Quem curtir a vaga aparece aqui, na coluna Novos. Compartilhe o link da vaga ou a sua página de vagas em “Meus
-          anúncios”.
+          Quem curtir a vaga aparece aqui, na coluna Novos. Compartilhe o link da vaga ou a sua página de vagas em
+          “Minhas vagas”.
         </Vazio>
       ) : (
         <QuadroCandidatos
@@ -100,6 +108,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/qu
           cartoes={cartoes}
           modelos={modelos}
           agora={agora}
+          abrir={abrir}
         />
       )}
     </div>

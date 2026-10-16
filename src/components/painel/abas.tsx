@@ -16,7 +16,7 @@ const ABAS: Record<"contrata" | "pessoa", { principais: Aba[]; mais: Aba[] }> = 
   contrata: {
     principais: [
       { href: "/painel", nome: "Visão geral" },
-      { href: "/painel/anuncios", nome: "Vagas" },
+      { href: "/painel/anuncios", nome: "Minhas vagas" },
       { href: "/painel/candidatos", nome: "Candidatos" },
       { href: "/painel/conversas", nome: "Conversas" },
     ],

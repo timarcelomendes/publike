@@ -27,7 +27,7 @@ const TITULOS: Record<"todos" | TipoAnuncio, { titulo: string; texto: string }> 
     texto: "Tudo o que você publicou. Quem se interessar curte; toque no número para ver quem foi e responder.",
   },
   vaga: {
-    titulo: "Vagas que você publicou",
+    titulo: "Minhas vagas",
     texto: "Quem curtir a vaga aparece nela. Toque em “candidatos” para ver quem foi e responder.",
   },
   servico: {
@@ -78,7 +78,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   const naSituacao = (a: (typeof anuncios)[number], s: Situacao) =>
     (SITUACOES[s].status as readonly string[]).includes(a.status);
   const lista = situacao ? doTipo.filter((a) => naSituacao(a, situacao)) : doTipo;
-  const { titulo, texto } = TITULOS[tipo ?? "todos"];
+  // quem só publicou vagas (o comum em empresa, comércio e agência) vê "Minhas vagas", como na aba
+  const { titulo, texto } = TITULOS[tipo ?? (servicos === 0 ? "vaga" : "todos")];
   // o link de cada chip troca só o seu filtro e mantém o outro
   const filtro = (mudar: { tipo?: TipoAnuncio | null; situacao?: Situacao | null }) => {
     const q = new URLSearchParams();
@@ -102,20 +103,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
         </Aviso>
       )}
       {primeiro(sp.excluido) === "1" && <Aviso tipo="sucesso" titulo="Anúncio excluído." />}
-      {perfil?.tipo === "agencia" &&
-        (perfil.verificado ? (
-          <Aviso tipo="info" titulo="Agência verificada">
-            Você pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar até{" "}
-            {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora: {noAr} no ar.
-          </Aviso>
-        ) : (
-          <Aviso tipo="info" titulo="Agência aguardando verificação">
-            A equipe do Publike está conferindo o CNPJ. Até lá, vale o limite de todas as contas:{" "}
-            {LIMITES_CONTA.comum.noAr} vagas no ar e {LIMITES_CONTA.comum.porDia} por dia. Depois, até{" "}
-            {LIMITES_CONTA.agenciaVerificada.noAr} no ar e {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora:{" "}
-            {noAr} no ar.
-          </Aviso>
-        ))}
       {anuncios.length === 0 ? (
         <Vazio
           icone={Megaphone}
@@ -144,15 +131,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
               </BotaoLink>
             )}
           </div>
-          {mostrarPagina && (
-            <PaginaDeVagas
-              perfilId={perfil.id}
-              nome={perfil.nome}
-              site={SITE_URL}
-              noAr={vagasNoAr}
-              comQuadro={contaPublica}
-            />
-          )}
           {(tipo || (vagas > 0 && servicos > 0)) && (
             <nav aria-label="Filtrar anúncios" className="flex flex-wrap gap-2">
               <ChipFiltro
@@ -290,8 +268,32 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
               })}
             </ul>
           )}
+          {/* primeiro as vagas; o link e o quadro para o site vêm depois */}
+          {mostrarPagina && (
+            <PaginaDeVagas
+              perfilId={perfil.id}
+              nome={perfil.nome}
+              site={SITE_URL}
+              noAr={vagasNoAr}
+              comQuadro={contaPublica}
+            />
+          )}
         </>
       )}
+      {perfil?.tipo === "agencia" &&
+        (perfil.verificado ? (
+          <Aviso tipo="info" titulo="Agência verificada">
+            Você pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar até{" "}
+            {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora: {noAr} no ar.
+          </Aviso>
+        ) : (
+          <Aviso tipo="info" titulo="Agência aguardando verificação">
+            A equipe do Publike está conferindo o CNPJ. Até lá, vale o limite de todas as contas:{" "}
+            {LIMITES_CONTA.comum.noAr} vagas no ar e {LIMITES_CONTA.comum.porDia} por dia. Depois, até{" "}
+            {LIMITES_CONTA.agenciaVerificada.noAr} no ar e {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora:{" "}
+            {noAr} no ar.
+          </Aviso>
+        ))}
     </div>
   );
 }
