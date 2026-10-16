@@ -19,6 +19,7 @@ import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, TipoAnuncio } from "@/lib/tipos";
 import { CardAnuncio } from "./card-anuncio";
+import { DadosEstruturados } from "./dados-estruturados";
 import { BotaoLink } from "./ui/botao";
 import { Container } from "./ui/basicos";
 
@@ -181,10 +182,7 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(dados).replace(/</g, "\\u003c") }}
-      />
+      <DadosEstruturados dados={dados} />
       <p className="mt-3 max-w-3xl text-body-lg text-ink-muted">
         {introDaBusca(tipo, cidade, area?.nome ?? null, itens.length)}
       </p>

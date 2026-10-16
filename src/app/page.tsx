@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { DadosEstruturados } from "@/components/dados-estruturados";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
 import { EntendaOPublike, HeroInicio } from "@/components/inicio";
 import { ContratacoesNaHome } from "@/components/social/secoes";
@@ -31,7 +32,7 @@ const DADOS_SITE = [
 export default function Inicio({ searchParams }: PageProps<"/">) {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(DADOS_SITE) }} />
+      <DadosEstruturados dados={DADOS_SITE} />
       {/* Título e busca no mesmo bloco, baixo: os anúncios começam logo abaixo */}
       <section className="border-b border-line pb-4 sm:pb-5">
         <Container className="pt-4 sm:pt-6 lg:pt-8">
