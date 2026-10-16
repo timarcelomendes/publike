@@ -128,6 +128,7 @@ export function BotaoAssistente() {
           type="button"
           onClick={abrir}
           aria-haspopup="dialog"
+          data-assistente="botao"
           className={`fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
             soIcone ? "px-3.5" : "px-4"
           }`}

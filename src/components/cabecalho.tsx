@@ -7,6 +7,7 @@ import { ehAdminLocal } from "@/lib/supabase/admin";
 import { BotaoEntrarCabecalho, BotaoPublicar, BotaoPublicarCabecalho } from "./botao-publicar";
 import { BotaoInstalarApp } from "./instalar-app";
 import { MenuUsuario } from "./menu-usuario";
+import { JanelaMensagens } from "./conversa/janela-mensagens";
 import { Notificacoes } from "./notificacoes";
 import { Container, Logo } from "./ui/basicos";
 
@@ -73,6 +74,7 @@ async function AreaUsuario() {
   return (
     <>
       {adminLocal && <LinkAdmin />}
+      <JanelaMensagens usuarioId={usuario.id} />
       <Notificacoes usuarioId={usuario.id} />
       <MenuUsuario
         nome={perfil?.nome ?? "Minha conta"}

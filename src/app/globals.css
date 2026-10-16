@@ -242,3 +242,14 @@
 .maplibregl-ctrl-attrib {
   font-size: 11px;
 }
+
+/* Janela de mensagens no canto (janela-mensagens.tsx): no computador, o botão do
+   assistente sobe para ficar acima da barra "Mensagens" e some com ela aberta. */
+@media (min-width: 48rem) {
+  html[data-janela-mensagens] [data-assistente="botao"] {
+    bottom: 4.25rem;
+  }
+  html[data-janela-mensagens="aberta"] [data-assistente="botao"] {
+    display: none;
+  }
+}

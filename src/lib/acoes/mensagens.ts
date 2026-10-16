@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { obterUsuario } from "@/lib/dados";
+import { listarMinhasConversas, obterConversa, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -44,4 +44,27 @@ export async function marcarConversaLida(anuncioId: string, perfilId: string): P
   if (MODO_DEMO || !UUID.test(anuncioId) || !UUID.test(perfilId)) return;
   const supabase = await criarClienteServidor();
   await supabase.rpc("marcar_conversa_lida", { p_anuncio: anuncioId, p_perfil: perfilId });
+}
+
+// ---------------------------------------------------------------- janela de mensagens
+
+/** As conversas para a janela de mensagens (canto da tela), da mais recente para a mais antiga. */
+export async function conversasDaJanela() {
+  if (MODO_DEMO) return null;
+  const usuario = await obterUsuario();
+  if (!usuario) return null;
+  const lista = await listarMinhasConversas();
+  if (!lista) return null;
+  return [...lista]
+    .sort((a, b) => (b.ultima_em ?? b.match_em ?? "").localeCompare(a.ultima_em ?? a.match_em ?? ""))
+    .slice(0, 60);
+}
+
+/** Uma conversa aberta na janela de mensagens, com as últimas mensagens. */
+export async function abrirConversaDaJanela(anuncioId: string, outroId: string) {
+  if (MODO_DEMO || !UUID.test(anuncioId) || !UUID.test(outroId)) return null;
+  const usuario = await obterUsuario();
+  if (!usuario) return null;
+  const dados = await obterConversa(anuncioId, outroId);
+  return dados ? { ...dados, euId: usuario.id } : null;
 }

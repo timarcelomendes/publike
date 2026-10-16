@@ -1,7 +1,7 @@
 "use client";
 
 import { SendHorizontal } from "lucide-react";
-import { useEffect, useEffectEvent, useRef, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState, useTransition, type FormEvent } from "react";
 import { enviarMensagem, marcarConversaLida } from "@/lib/acoes/mensagens";
 import type { MensagemConversa } from "@/lib/dados";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
@@ -29,6 +29,7 @@ export function Conversa({
   euId,
   outroNome,
   iniciais,
+  compacto = false,
 }: {
   anuncioId: string;
   /** quem curtiu (a conversa é a da curtida) */
@@ -36,7 +37,10 @@ export function Conversa({
   euId: string;
   outroNome: string;
   iniciais: MensagemConversa[];
+  /** na janela de mensagens do canto: ocupa a altura dela, sem borda própria */
+  compacto?: boolean;
 }) {
+  const idCampo = useId();
   const [mensagens, setMensagens] = useState<MensagemConversa[]>(iniciais);
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -102,13 +106,19 @@ export function Conversa({
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
+    <div
+      className={
+        compacto
+          ? "flex min-h-0 flex-1 flex-col bg-surface-200"
+          : "flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card"
+      }
+    >
       <div
         ref={lista}
         role="log"
         aria-live="polite"
         aria-label={`Conversa com ${outroNome}`}
-        className="flex h-[min(60dvh,32rem)] flex-col gap-2 overflow-y-auto p-3 sm:p-4"
+        className={`flex flex-col gap-2 overflow-y-auto p-3 ${compacto ? "min-h-0 flex-1" : "h-[min(60dvh,32rem)] sm:p-4"}`}
       >
         {mensagens.length === 0 ? (
           <p className="m-auto max-w-sm text-center text-body-sm text-ink-muted">
@@ -149,11 +159,11 @@ export function Conversa({
       <form onSubmit={enviar} className="flex flex-col gap-2 border-t border-line p-3">
         {erro && <MensagemErro>{erro}</MensagemErro>}
         <div className="flex items-end gap-2">
-          <label htmlFor="mensagem" className="sr-only">
+          <label htmlFor={idCampo} className="sr-only">
             Mensagem para {primeiroNome}
           </label>
           <textarea
-            id="mensagem"
+            id={idCampo}
             value={texto}
             onChange={(e) => setTexto(e.target.value.slice(0, 2000))}
             onKeyDown={(e) => {
@@ -168,7 +178,7 @@ export function Conversa({
                 enviar();
               }
             }}
-            rows={2}
+            rows={compacto ? 1 : 2}
             placeholder={`Escreva para ${primeiroNome}…`}
             className="min-h-11 flex-1 resize-none rounded-sm border border-line-strong bg-surface-100 px-3 py-2 text-body text-ink placeholder:text-ink-muted/80"
           />
@@ -178,7 +188,7 @@ export function Conversa({
             className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md bg-terra px-4 text-label text-on-terra transition-colors hover:bg-terra-hover disabled:opacity-50"
           >
             <SendHorizontal aria-hidden className="size-4" />
-            Enviar
+            <span className={compacto ? "sr-only" : ""}>Enviar</span>
           </button>
         </div>
       </form>
