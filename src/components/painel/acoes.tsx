@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheckBig, FileText, Heart, Pause, Pencil, Play, RefreshCw, Trash, Undo2, X } from "lucide-react";
+import { CircleCheckBig, CopyPlus, FileText, Heart, Pause, Pencil, Play, RefreshCw, Trash, Undo2, X } from "lucide-react";
 import { useState } from "react";
 import { excluirAnuncio, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
@@ -63,6 +63,12 @@ export function AcoesAnuncio({
           >
             <Pencil aria-hidden />
             Editar
+          </BotaoLink>
+        )}
+        {!comModeracao && tipo === "vaga" && (
+          <BotaoLink tamanho="sm" variante="fantasma" href={`/publicar?copiar=${id}`}>
+            <CopyPlus aria-hidden />
+            Publicar parecida
           </BotaoLink>
         )}
         {comModeracao ? null : confirmar ? (

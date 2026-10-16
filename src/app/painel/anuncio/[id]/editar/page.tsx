@@ -9,7 +9,7 @@ import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { ajudaDaIADisponivel, obterAnuncio, obterMeuPerfil } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
-import type { TipoAnuncio } from "@/lib/tipos";
+import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 
 export const metadata: Metadata = { title: "Editar anúncio" };
 
@@ -52,37 +52,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
           agencia={anuncio.autor_tipo === "agencia"}
           contatoAgencia={perfil ? { whatsapp: perfil.whatsapp, email: perfil.email } : null}
           enderecoPublico={anuncio.autor_tipo !== "pessoa"}
-          inicial={{
-            id: anuncio.id,
-            tipo: anuncio.tipo as TipoAnuncio,
-            titulo: anuncio.titulo,
-            descricao: anuncio.descricao,
-            categoria: anuncio.categoria,
-            regime: anuncio.regime,
-            pagamento_valor: anuncio.pagamento_valor,
-            pagamento_unidade: anuncio.pagamento_unidade,
-            beneficios: anuncio.beneficios,
-            horario: anuncio.horario,
-            vagas: anuncio.vagas,
-            pede_curriculo: anuncio.pede_curriculo,
-            contratante: anuncio.contratante,
-            contratante_confidencial: anuncio.contratante_confidencial,
-            pagamento_ate: anuncio.pagamento_ate,
-            comissao: anuncio.comissao,
-            beneficios_lista: anuncio.beneficios_lista,
-            escolaridade_minima: anuncio.escolaridade_minima,
-            experiencia: anuncio.experiencia,
-            cnh: anuncio.cnh,
-            jornada: anuncio.jornada,
-            modelo: anuncio.modelo,
-            pcd: anuncio.pcd,
-            cidade: anuncio.cidade,
-            bairro: anuncio.bairro,
-            cep: anuncio.cep,
-            endereco: anuncio.endereco,
-            lat: anuncio.lat,
-            lng: anuncio.lng,
-          }}
+          inicial={valoresDoAnuncio(anuncio)}
         />
       )}
     </>

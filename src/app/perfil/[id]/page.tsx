@@ -200,7 +200,17 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
 
       {(vagas.length > 0 || servicos.length === 0) && (
         <section className="mt-10">
-          <h2 className="text-h2">{servicos.length || agencia ? "Vagas abertas" : "Anúncios no ar"}</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 className="text-h2">{servicos.length || agencia ? "Vagas abertas" : "Anúncios no ar"}</h2>
+            {vagas.length > 0 && perfil.tipo !== "pessoa" && (
+              <Link
+                href={`/perfil/${perfil.id}/vagas`}
+                className="text-label text-ink-muted underline underline-offset-2 hover:text-ink"
+              >
+                Página só das vagas
+              </Link>
+            )}
+          </div>
           <div className="mt-4">
             {vagas.length ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

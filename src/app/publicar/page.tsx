@@ -3,15 +3,18 @@ import { Suspense } from "react";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { ajudaDaIADisponivel, obterMeuUltimoEndereco } from "@/lib/dados";
+import { ajudaDaIADisponivel, obterAnuncio, obterMeuUltimoEndereco } from "@/lib/dados";
+import { primeiro } from "@/lib/formato";
 import { exigirPerfilCompleto } from "@/lib/sessao";
+import { UUID } from "@/lib/validacao";
+import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
   description: "Publique uma vaga em Goiânia e região e ache profissionais que moram perto. De graça para empresas de qualquer tamanho.",
 };
 
-export default function Publicar() {
+export default function Publicar({ searchParams }: PageProps<"/publicar">) {
   return (
     <Container className="max-w-3xl py-8">
       <h1 className="text-h2 sm:text-h1">Publicar grátis</h1>
@@ -20,13 +23,13 @@ export default function Publicar() {
         primeiro. Seu WhatsApp só aparece para quem você curtir de volta.
       </p>
       <Suspense fallback={<Esqueleto className="h-[60rem] w-full rounded-lg" />}>
-        <Conteudo />
+        <Conteudo searchParams={searchParams} />
       </Suspense>
     </Container>
   );
 }
 
-async function Conteudo() {
+async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">["searchParams"] }) {
   if (MODO_DEMO) {
     return (
       <>
@@ -37,21 +40,50 @@ async function Conteudo() {
       </>
     );
   }
-  const { perfil } = await exigirPerfilCompleto("/publicar");
+  const pedida = primeiro((await searchParams).copiar);
+  const pedidaCopia = pedida && UUID.test(pedida) ? pedida : null;
+  const { perfil } = await exigirPerfilCompleto(pedidaCopia ? `/publicar?copiar=${pedidaCopia}` : "/publicar");
   const publico = perfil.tipo !== "pessoa";
-  const [ia, ultimo] = await Promise.all([ajudaDaIADisponivel(), publico ? obterMeuUltimoEndereco() : null]);
+  const [ia, ultimo, original] = await Promise.all([
+    ajudaDaIADisponivel(),
+    publico ? obterMeuUltimoEndereco() : null,
+    pedidaCopia ? obterAnuncio(pedidaCopia) : null,
+  ]);
+  // "Publicar parecida": só de uma vaga sua (serviço se edita em "Meus serviços")
+  const copia =
+    original &&
+    original.autor_id === perfil.id &&
+    original.tipo === "vaga" &&
+    !["em_analise", "removido"].includes(original.status)
+      ? original
+      : null;
   // comércio e empresa: a próxima vaga já vem com o endereço da última
-  const inicial = ultimo
-    ? { ...vazio(ultimo.cidade, ultimo.bairro), cep: ultimo.cep, endereco: ultimo.endereco, lat: ultimo.lat, lng: ultimo.lng }
-    : vazio(perfil.cidade, perfil.bairro ?? "");
+  const inicial = copia
+    ? valoresDoAnuncio(copia, { copiar: true })
+    : ultimo
+      ? {
+          ...vazio(ultimo.cidade, ultimo.bairro),
+          cep: ultimo.cep,
+          endereco: ultimo.endereco,
+          lat: ultimo.lat,
+          lng: ultimo.lng,
+        }
+      : vazio(perfil.cidade, perfil.bairro ?? "");
   return (
-    <FormAnuncio
-      inicial={inicial}
-      ia={ia}
-      agencia={perfil.tipo === "agencia"}
-      contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
-      enderecoPublico={publico}
-    />
+    <>
+      {copia && (
+        <Aviso tipo="info" className="mb-6" titulo="Vaga nova a partir de outra">
+          Os campos vieram de “{copia.titulo}”. Mude o que for diferente e publique: a vaga antiga continua como está.
+        </Aviso>
+      )}
+      <FormAnuncio
+        inicial={inicial}
+        ia={ia}
+        agencia={perfil.tipo === "agencia"}
+        contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
+        enderecoPublico={publico}
+      />
+    </>
   );
 }
 

@@ -61,7 +61,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/(.*)",
+        // tudo, menos o quadro de vagas que as empresas colocam no site delas (/embed/vagas/<id>):
+        // ele manda os próprios cabeçalhos e pode ficar dentro de um iframe em outro site
+        source: "/((?!embed/).*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -70,6 +72,14 @@ const nextConfig: NextConfig = {
           ...(process.env.NODE_ENV === "production"
             ? [{ key: "Content-Security-Policy-Report-Only", value: POLITICA_DE_CONTEUDO }]
             : []),
+        ],
+      },
+      {
+        // o script que as empresas colam no site: muda pouco, mas não fica preso por dias
+        source: "/embed.js",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=3600" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
         ],
       },
       {
