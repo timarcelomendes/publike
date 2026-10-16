@@ -8,9 +8,8 @@ import {
   type EnderecoDoCep,
   type Precisao,
 } from "@/lib/cep";
-import { MODO_DEMO, REGIAO } from "@/lib/config";
+import { REGIAO } from "@/lib/config";
 import { CIDADES } from "@/lib/constantes";
-import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 // Do CEP (e do número) para um ponto no mapa, de graça e sem chave:
 //   1. o endereço vem da BrasilAPI (CEP v2, que às vezes já traz o ponto) ou,
@@ -27,8 +26,6 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 //   * Muita rua de Goiânia não está no mapa (a Rua Puccini, do Jardim Europa, por exemplo),
 //     e o mapa tem vários pontos com o nome do mesmo bairro, longe um do outro. Entre os
 //     achados, vale o de CEP mais parecido com o pedido (74325-200 fica perto do 74325-100).
-//   * Quando um comércio já publicou com o mesmo CEP e número e acertou o pino, esse ponto
-//     (público, na vaga) vale mais que o mapa: ponto_conhecido, no banco.
 // O Nominatim pede no máximo uma consulta por segundo e um nome de aplicativo:
 // a fila abaixo espaça as consultas e as respostas ficam guardadas por um dia.
 
@@ -287,21 +284,6 @@ function pontoDaCidade(cidade: string) {
 
 type Lugar = { ponto: Ponto; precisao: Precisao };
 
-/** O ponto que outra vaga com endereço público já marcou para este CEP e número. */
-async function pontoConhecido(cep: string, num: string): Promise<Ponto | null> {
-  const n = num.replace(/[\s-]/g, "");
-  if (MODO_DEMO || !/^[0-9]{1,6}[A-Za-z]?$/.test(n)) return null;
-  try {
-    const supabase = await criarClienteServidor();
-    const { data } = await supabase.rpc("ponto_conhecido", { p_cep: cep, p_numero: n });
-    const r = data?.[0];
-    const p = r ? { lat: Number(r.lat), lng: Number(r.lng) } : null;
-    return naRegiao(p) ? p : null;
-  } catch {
-    return null;
-  }
-}
-
 async function pontoDoEndereco(
   e: EnderecoDoCep,
   num: string | null,
@@ -330,16 +312,6 @@ async function pontoDoEndereco(
     const referencia = cepBom ?? (await pontoDoBairro())?.ponto ?? null;
     return !referencia || distanciaKm(r.ponto, referencia) <= 3;
   };
-
-  // já marcado por outra vaga: vale, se ficar perto do bairro do CEP (um pino errado de propósito não leva longe)
-  if (num) {
-    const conhecido = await pontoConhecido(e.cep, num);
-    if (conhecido) {
-      const b = await pontoDoBairro();
-      if (!b || distanciaKm(conhecido, b.ponto) <= 3)
-        return { lugar: { ponto: conhecido, precisao: "conhecido" }, cidade };
-    }
-  }
 
   let rua: Achado | null = null;
   const ruas = e.rua ? variantesDaRua(e.rua) : [];
