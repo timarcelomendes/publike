@@ -3,7 +3,16 @@ import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
 import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
-import { lerBeneficiosExtras, lerHorario, lerPerguntas, textoDoHorario, type HorarioDetalhe, type Pergunta } from "./vaga-extra";
+import {
+  lerBeneficiosExtras,
+  lerHorario,
+  lerPerguntas,
+  separarTriagem,
+  textoDoHorario,
+  type HorarioDetalhe,
+  type Pergunta,
+  type Triagem,
+} from "./vaga-extra";
 import {
   AREAS_ATENDIMENTO,
   CIDADES,
@@ -203,6 +212,8 @@ export const esquemaAnuncio = z
  */
 type ExtrasDaVaga = {
   perguntas?: Pergunta[];
+  /** a resposta procurada em cada pergunta (fica em vaga_triagem, fora da vaga pública) */
+  triagem?: Triagem;
   beneficios_extras?: string[];
   horario_detalhe?: HorarioDetalhe | null;
 };
@@ -375,7 +386,11 @@ function lerExtrasDaVaga(
   const erros: Record<string, string> = {};
   if (formData.has("perguntas")) {
     const r = lerPerguntas(vaga ? campo(formData, "perguntas") : null);
-    if (r.ok) dados.perguntas = r.perguntas;
+    if (r.ok) {
+      const { publicas, triagem } = separarTriagem(r.perguntas);
+      dados.perguntas = publicas;
+      dados.triagem = triagem;
+    }
     else erros.perguntas = r.erro;
   }
   if (formData.has("beneficios_extras_enviado")) {

@@ -67,7 +67,15 @@ export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?:
   }
 
   const json = JSON.stringify(
-    lista.map(({ id, nome, tipo, opcoes, obrigatoria }) => ({ id, nome, tipo, opcoes, obrigatoria })),
+    lista.map(({ id, nome, tipo, opcoes, obrigatoria, esperada, eliminatoria }) => ({
+      id,
+      nome,
+      tipo,
+      opcoes,
+      obrigatoria,
+      esperada: esperada ?? null,
+      eliminatoria: Boolean(esperada) && Boolean(eliminatoria),
+    })),
   );
 
   return (
@@ -118,7 +126,9 @@ export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?:
                     <Seletor
                       id={`${id}-tipo`}
                       value={p.tipo}
-                      onChange={(e) => mudar(p.id, { tipo: e.target.value as TipoPergunta })}
+                      onChange={(e) =>
+                        mudar(p.id, { tipo: e.target.value as TipoPergunta, esperada: null, eliminatoria: false })
+                      }
                       className={classesEntrada}
                     >
                       {LISTA_TIPOS_PERGUNTA.map((t) => (
@@ -148,7 +158,12 @@ export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?:
                             {o}
                             <button
                               type="button"
-                              onClick={() => mudar(p.id, { opcoes: p.opcoes.filter((x) => x !== o) })}
+                              onClick={() =>
+                                mudar(p.id, {
+                                  opcoes: p.opcoes.filter((x) => x !== o),
+                                  ...(p.esperada === o ? { esperada: null, eliminatoria: false } : {}),
+                                })
+                              }
                               aria-label={`Tirar a opção ${o}`}
                               className="inline-flex size-7 items-center justify-center rounded-pill hover:bg-surface-200"
                             >
@@ -181,6 +196,57 @@ export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?:
                     {p.opcoes.length < 2 && (
                       <p className="text-body-sm text-ink-muted">Dê pelo menos 2 opções para a pessoa escolher.</p>
                     )}
+                  </div>
+                )}
+                {(p.tipo === "sim_nao" || (p.tipo === "opcoes" && p.opcoes.length >= 2)) && (
+                  <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-3 sm:flex-row sm:items-end">
+                    <div className="flex flex-col gap-1.5 sm:w-64">
+                      <label htmlFor={`${id}-esperada`} className="text-label">
+                        Resposta que você procura
+                      </label>
+                      <Seletor
+                        id={`${id}-esperada`}
+                        value={p.esperada ?? ""}
+                        onChange={(e) =>
+                          mudar(p.id, {
+                            esperada: e.target.value || null,
+                            eliminatoria: e.target.value ? p.eliminatoria : false,
+                          })
+                        }
+                        className={classesEntrada}
+                      >
+                        <option value="">Qualquer uma</option>
+                        {(p.tipo === "sim_nao"
+                          ? [
+                              { valor: "sim", nome: "Sim" },
+                              { valor: "nao", nome: "Não" },
+                            ]
+                          : p.opcoes.map((o) => ({ valor: o, nome: o }))
+                        ).map((o) => (
+                          <option key={o.valor} value={o.valor}>
+                            {o.nome}
+                          </option>
+                        ))}
+                      </Seletor>
+                    </div>
+                    {p.esperada && (
+                      <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 text-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(p.eliminatoria)}
+                          onChange={(e) => mudar(p.id, { eliminatoria: e.target.checked })}
+                          className="size-5 accent-[var(--pk-ink)]"
+                        />
+                        Eliminatória
+                      </label>
+                    )}
+                    <p className="text-body-sm text-ink-muted sm:flex-1">
+                      {p.esperada
+                        ? p.eliminatoria
+                          ? "Quem responder diferente fica com nota 0 na triagem."
+                          : "Conta pontos na nota de aderência."
+                        : "Só você vê. Serve para a nota de aderência."}
+                    </p>
                   </div>
                 )}
               </li>

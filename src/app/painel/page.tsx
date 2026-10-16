@@ -19,6 +19,7 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { EditorProcuro } from "@/components/descobrir/extras";
 import { EsqueletoVisaoGeral } from "@/components/painel/esqueleto";
+import { PainelRecrutador } from "@/components/painel/recrutador";
 import {
   Bloco,
   Lado,
@@ -114,6 +115,21 @@ async function Conteudo() {
 
   const pessoa = !perfil || perfil.tipo === "pessoa";
   const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
+
+  // comércio, empresa e agência: o painel de recrutamento
+  if (perfil && !pessoa) {
+    return (
+      <div className="flex flex-col gap-6">
+        {suspensa && (
+          <Aviso tipo="alerta" titulo="Sua conta está suspensa">
+            Seus anúncios estão fora do ar e não dá para publicar, curtir ou responder. Veja o motivo no e-mail que
+            enviamos.
+          </Aviso>
+        )}
+        <PainelRecrutador nome={perfil.nome} anuncios={anuncios} candidatos={candidatos} agora={agora} />
+      </div>
+    );
+  }
   const noAr = (a: MeuAnuncio) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora;
 
   // ------------------------------------------------------------ o que oferece

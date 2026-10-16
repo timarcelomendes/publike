@@ -23,6 +23,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { Suspense, type ReactNode } from "react";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
@@ -50,7 +51,9 @@ import {
   TEXTO_SEGUIR,
 } from "@/lib/constantes";
 import {
+  contarVisita,
   contatoDoMatch,
+  minhaEntrevista,
   listarAvaliacoesPublicas,
   listarMeusBloqueios,
   listarMeusDesfeitos,
@@ -213,7 +216,11 @@ async function DetalheAnuncio({
 
   const agora = await agoraDaRequisicao();
   const proprio = usuario?.id === anuncio.autor_id;
-  const contato = anuncio.minha_curtida === "match" ? await contatoDoMatch(anuncio.id) : null;
+  const [contato, entrevista] =
+    anuncio.minha_curtida === "match"
+      ? await Promise.all([contatoDoMatch(anuncio.id), minhaEntrevista(anuncio.id)])
+      : [null, null];
+  if (!proprio && anuncio.tipo === "vaga") await contarVisita(anuncio.id, (await headers()).get("user-agent"));
   // match desfeito: dá para curtir de novo, a não ser que quem publicou tenha bloqueado
   const desfeito =
     anuncio.minha_curtida === "desfeito"
@@ -288,6 +295,7 @@ async function DetalheAnuncio({
         perguntas={perguntas}
         minhasRespostas={respostasDoBanco(anuncio.minhas_respostas)}
         pedirRespostas={primeiro(sp.responder) === "1"}
+        entrevista={entrevista}
       />
     );
 

@@ -110,6 +110,10 @@ async function Conteudo({
             <>
               {" "}
               ·{" "}
+              <Link href={`/painel/anuncio/${anuncio.id}/quadro`} className="font-semibold underline">
+                Ver como quadro
+              </Link>{" "}
+              ·{" "}
               <Link href="/painel/candidatos" className="underline">
                 Candidatos de todas as vagas
               </Link>

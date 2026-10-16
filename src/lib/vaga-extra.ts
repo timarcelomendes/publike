@@ -22,7 +22,17 @@ export type Pergunta = {
   /** só no tipo "opcoes": de 2 a 8 */
   opcoes: string[];
   obrigatoria: boolean;
+  /**
+   * Triagem (só quem publicou vê; fica em vaga_triagem, fora da vaga pública): a resposta
+   * que a empresa procura, em "sim ou não" e "escolher uma opção", e se quem responder
+   * diferente fica de fora.
+   */
+  esperada?: string | null;
+  eliminatoria?: boolean;
 };
+
+/** A triagem de cada pergunta, pelo id. */
+export type Triagem = Record<string, { esperada: string; eliminatoria: boolean }>;
 
 /** A resposta de cada pergunta, pelo id: "sim"/"nao", o texto, o número ou a opção escolhida. */
 export type Respostas = Record<string, string>;
@@ -81,9 +91,47 @@ export function lerPerguntas(bruto: unknown): { ok: true; perguntas: Pergunta[] 
       if (opcoes.length > LIMITES_EXTRA.opcoes)
         return { ok: false, erro: `No máximo ${LIMITES_EXTRA.opcoes} opções em “${nome}”.` };
     }
-    perguntas.push({ id, nome, tipo, opcoes, obrigatoria: p.obrigatoria === true });
+    const esperada =
+      tipo === "sim_nao"
+        ? p.esperada === "sim" || p.esperada === "nao"
+          ? p.esperada
+          : null
+        : tipo === "opcoes" && typeof p.esperada === "string" && opcoes.includes(p.esperada)
+          ? p.esperada
+          : null;
+    perguntas.push({
+      id,
+      nome,
+      tipo,
+      opcoes,
+      obrigatoria: p.obrigatoria === true,
+      esperada,
+      eliminatoria: esperada !== null && p.eliminatoria === true,
+    });
   }
   return { ok: true, perguntas };
+}
+
+/** Separa o que é público (a pergunta) do que só quem publicou vê (a triagem). */
+export function separarTriagem(perguntas: Pergunta[]): { publicas: Pergunta[]; triagem: Triagem } {
+  const triagem: Triagem = {};
+  const publicas = perguntas.map(({ esperada, eliminatoria, ...p }) => {
+    if (esperada) triagem[p.id] = { esperada, eliminatoria: Boolean(eliminatoria) };
+    return p;
+  });
+  return { publicas, triagem };
+}
+
+/** Junta a triagem às perguntas (formulário de editar e nota de aderência). */
+export function juntarTriagem(perguntas: Pergunta[], triagem: unknown): Pergunta[] {
+  const t = (triagem && typeof triagem === "object" ? triagem : {}) as Record<string, unknown>;
+  return perguntas.map((p) => {
+    const item = (t[p.id] ?? null) as { esperada?: unknown; eliminatoria?: unknown } | null;
+    const esperada = typeof item?.esperada === "string" ? item.esperada : null;
+    const vale =
+      esperada !== null && (p.tipo === "sim_nao" ? ["sim", "nao"].includes(esperada) : p.opcoes.includes(esperada));
+    return { ...p, esperada: vale ? esperada : null, eliminatoria: vale && item?.eliminatoria === true };
+  });
 }
 
 /** O que veio do banco (jsonb): só o que tem forma de pergunta. */

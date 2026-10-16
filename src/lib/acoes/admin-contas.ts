@@ -11,6 +11,7 @@ import { enviarEmailsPendentes, processarFilas } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { salvarTriagem } from "@/lib/servidor/triagem";
 
 // Contas criadas pela equipe (quem pediu ajuda para entrar no Publike, como uma
 // agência que mandou a lista de vagas). Só no admin, no computador do dono.
@@ -160,6 +161,7 @@ export async function publicarEmNomeDe(
     }
     return { ok: false, erro };
   }
+  await salvarTriagem(c, data.id, d.triagem);
 
   // a IA revisa o texto logo depois, como em qualquer vaga
   after(processarFilas);

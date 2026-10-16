@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { cache } from "react";
 import { MODO_DEMO } from "./config";
 import { ETAPAS_CANDIDATO, etapaQueVale, VERSAO_TERMOS, type EtapaCandidato } from "./constantes";
@@ -240,6 +241,34 @@ export async function listarRespostasDosCandidatos(anuncioIds: string[]): Promis
     return new Map();
   }
   return new Map((data ?? []).map((l) => [`${l.anuncio_id}:${l.perfil_id}`, respostasDoBanco(l.respostas)]));
+}
+
+/** A minha entrevista (a mais recente) numa vaga que curti. */
+export async function minhaEntrevista(anuncioId: string) {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return null;
+  const usuario = await obterUsuario();
+  if (!usuario) return null;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("entrevistas")
+    .select("id, quando, formato, local, obs, situacao")
+    .eq("anuncio_id", anuncioId)
+    .eq("perfil_id", usuario.id)
+    .order("atualizado_em", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/** Conta uma visita à vaga (quem publicou e robôs de busca não contam). Roda depois da resposta. */
+export async function contarVisita(anuncioId: string, agente: string | null) {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return;
+  if (!agente || /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|headless/i.test(agente)) return;
+  const supabase = await criarClienteServidor();
+  after(async () => {
+    const { error } = await supabase.rpc("contar_visita", { p_anuncio: anuncioId });
+    if (error) console.error(`Publike: falha ao contar a visita: ${error.message}`);
+  });
 }
 
 /** As perguntas de cada vaga (planilha de todos os candidatos). */

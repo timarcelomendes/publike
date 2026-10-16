@@ -1,4 +1,4 @@
-import { Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
+import { Heart, KanbanSquare, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -242,11 +242,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                         : (STATUS_ANUNCIO[status]?.ajuda ?? "")}
                     </p>
                     {a.tipo === "vaga" && candidatos ? (
-                      <FunilDaVaga
-                        id={a.id}
-                        candidatos={candidatos.filter((c) => c.anuncio_id === a.id)}
-                        novas={a.curtidas_novas}
-                      />
+                      <div className="flex flex-col gap-2">
+                        <FunilDaVaga
+                          id={a.id}
+                          candidatos={candidatos.filter((c) => c.anuncio_id === a.id)}
+                          novas={a.curtidas_novas}
+                        />
+                        <Link
+                          href={`/painel/anuncio/${a.id}/quadro`}
+                          className="inline-flex min-h-11 items-center gap-2 self-start text-label underline-offset-2 hover:underline"
+                        >
+                          <KanbanSquare aria-hidden className="size-4 text-ink-muted" />
+                          Abrir o quadro de candidatos
+                        </Link>
+                      </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-3">
                         <Link href={`/painel/anuncio/${a.id}`} className={classesBotao("secundario", "sm")}>
@@ -295,7 +304,7 @@ function FunilDaVaga({ id, candidatos, novas }: { id: string; candidatos: Candid
   const conta = (f: (c: Candidatos[number]) => boolean) => candidatos.filter(f).length;
   const base = `/painel/candidatos?vaga=${id}`;
   const passos = [
-    { nome: "Candidatos", numero: candidatos.length, href: `/painel/anuncio/${id}` },
+    { nome: "Candidatos", numero: candidatos.length, href: `/painel/anuncio/${id}/quadro` },
     {
       nome: "Para responder",
       numero: conta((c) => c.status === "pendente"),

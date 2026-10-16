@@ -8,6 +8,7 @@ import { primeiro } from "@/lib/formato";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
+import { obterTriagem } from "@/lib/servidor/triagem";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
@@ -57,9 +58,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
     !["em_analise", "removido"].includes(original.status)
       ? original
       : null;
+  const triagem = copia ? await obterTriagem(copia.id) : {};
   // comércio e empresa: a próxima vaga já vem com o endereço da última
   const inicial = copia
-    ? valoresDoAnuncio(copia, { copiar: true })
+    ? valoresDoAnuncio(copia, { copiar: true, triagem })
     : ultimo
       ? {
           ...vazio(ultimo.cidade, ultimo.bairro),

@@ -10,6 +10,7 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerAnuncio, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { salvarTriagem } from "@/lib/servidor/triagem";
 
 /** Erro do banco no formulário: o da empresa contratante e o da faixa salarial ficam marcados no campo. */
 function erroDoBanco(error: { code?: string; message?: string; hint?: string | null }): EstadoForm {
@@ -40,6 +41,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
     const { data, error } = await supabase.from("anuncios").update(registro).eq("id", id).select("id");
     if (error) return erroDoBanco(error);
     if (!data?.length) return { ok: false, erro: "Não encontramos esse anúncio entre os seus." };
+    await salvarTriagem(supabase, id, d.triagem);
     destino = `/anuncio/${id}?salvo=1`;
   } else {
     const { data, error } = await supabase
@@ -51,6 +53,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
       if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/publicar");
       return erroDoBanco(error);
     }
+    await salvarTriagem(supabase, data.id, d.triagem);
     destino = `/anuncio/${data.id}?publicado=1`;
   }
 

@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Star,
   BellRing,
+  CalendarClock,
   PartyPopper,
   ThumbsUp,
 } from "lucide-react";
@@ -35,6 +36,8 @@ function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "avaliacao") return "/painel/avaliacoes";
   if (n.tipo === "avaliacao_retida") return "/privacidade#regras";
   if (n.tipo === "etapa") return "/painel/curtidas";
+  if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
+  if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
   if (n.tipo === "seguindo" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "recomendacao") return `/perfil/${usuarioId}#recomendacoes`;
   if (n.tipo === "contratacao" && n.anuncio_id) return `/painel/contratacao/${n.anuncio_id}`;
@@ -148,13 +151,15 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                             ? MessagesSquare
                             : n.tipo === "etapa"
                               ? ListChecks
-                              : n.tipo === "seguindo"
-                                ? BellRing
-                                : n.tipo === "recomendacao"
-                                  ? ThumbsUp
-                                  : n.tipo === "contratacao"
-                                    ? PartyPopper
-                                    : ShieldCheck;
+                              : n.tipo === "entrevista" || n.tipo === "entrevista_resposta"
+                                ? CalendarClock
+                                : n.tipo === "seguindo"
+                                  ? BellRing
+                                  : n.tipo === "recomendacao"
+                                    ? ThumbsUp
+                                    : n.tipo === "contratacao"
+                                      ? PartyPopper
+                                      : ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link

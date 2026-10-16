@@ -9,6 +9,7 @@ import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
 import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
+import { EntrevistaDoCandidato, type EntrevistaDoCandidato as Entrevista } from "./entrevista-candidato";
 import { CamposDasPerguntas, faltandoResponder, SuasRespostas } from "./perguntas-da-vaga";
 import { CurtirDeNovo, DesfazerMatch } from "../desfazer-match";
 import { Aviso } from "../ui/basicos";
@@ -40,6 +41,8 @@ type Props = {
   minhasRespostas?: Respostas;
   /** veio do cartão ou do Descobrir sem responder: avisa em cima das perguntas */
   pedirRespostas?: boolean;
+  /** depois do match: a entrevista que a empresa marcou */
+  entrevista?: Entrevista | null;
 };
 
 /** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
@@ -93,6 +96,7 @@ export function PainelCurtir({
   perguntas = [],
   minhasRespostas = {},
   pedirRespostas = false,
+  entrevista = null,
 }: Props) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -148,6 +152,7 @@ export function PainelCurtir({
             ? "Combinem o serviço, o endereço, o preço e o melhor dia."
             : "Combinem os detalhes, o endereço e o melhor horário."}
         </p>
+        {entrevista && <EntrevistaDoCandidato e={entrevista} />}
         <div className="rounded-md bg-surface-200 p-3">
           <BotoesContato
             whatsapp={contato?.whatsapp ?? null}

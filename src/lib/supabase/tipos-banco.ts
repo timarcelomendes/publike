@@ -9,6 +9,42 @@ type SemTabela = { [_ in never]: never };
 export type Database = {
   public: {
     Tables: {
+      entrevistas: {
+        Row: {
+          id: string;
+          anuncio_id: string;
+          perfil_id: string;
+          quando: string;
+          duracao_min: number;
+          formato: string;
+          local: string | null;
+          obs: string | null;
+          situacao: string;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
+      modelos_mensagem: {
+        Row: { id: string; autor_id: string; nome: string; texto: string; criado_em: string };
+        Insert: { nome: string; texto: string };
+        Update: { nome?: string; texto?: string };
+        Relationships: [];
+      };
+      anuncio_visitas: {
+        Row: { anuncio_id: string; total: number; atualizado_em: string };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
+      vaga_triagem: {
+        Row: { anuncio_id: string; criterios: Json; atualizado_em: string };
+        Insert: { anuncio_id: string; criterios: Json; atualizado_em?: string };
+        Update: { criterios?: Json; atualizado_em?: string };
+        Relationships: [];
+      };
       perfis: {
         Row: {
           id: string;
@@ -887,6 +923,21 @@ export type Database = {
           match_em: string;
         }[];
       };
+      marcar_entrevista: {
+        Args: {
+          p_anuncio: string;
+          p_perfil: string;
+          p_quando: string;
+          p_formato: string;
+          p_local?: string | null;
+          p_obs?: string | null;
+          p_duracao?: number;
+        };
+        Returns: string;
+      };
+      mudar_entrevista: { Args: { p_id: string; p_situacao: string }; Returns: undefined };
+      responder_entrevista: { Args: { p_id: string; p_resposta: string }; Returns: undefined };
+      contar_visita: { Args: { p_anuncio: string }; Returns: undefined };
       responder_perguntas: {
         Args: { p_anuncio: string; p_respostas: Json };
         Returns: undefined;

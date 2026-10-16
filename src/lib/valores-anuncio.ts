@@ -1,12 +1,15 @@
 import type { ValoresAnuncio } from "@/components/form-anuncio";
 import type { AnuncioCompleto, TipoAnuncio } from "@/lib/tipos";
-import { beneficiosAntigos, horarioDoBanco, perguntasDoBanco } from "@/lib/vaga-extra";
+import { beneficiosAntigos, horarioDoBanco, juntarTriagem, perguntasDoBanco, type Triagem } from "@/lib/vaga-extra";
 
 /**
  * O que o formulário de anúncio precisa a partir de um anúncio já publicado.
  * Editar leva o `id`; "Publicar parecida" (copiar) vem sem ele e vira um anúncio novo.
  */
-export function valoresDoAnuncio(anuncio: AnuncioCompleto, { copiar = false } = {}): ValoresAnuncio {
+export function valoresDoAnuncio(
+  anuncio: AnuncioCompleto,
+  { copiar = false, triagem = {} }: { copiar?: boolean; triagem?: Triagem } = {},
+): ValoresAnuncio {
   return {
     ...(copiar ? {} : { id: anuncio.id }),
     tipo: anuncio.tipo as TipoAnuncio,
@@ -18,7 +21,7 @@ export function valoresDoAnuncio(anuncio: AnuncioCompleto, { copiar = false } = 
     pagamento_unidade: anuncio.pagamento_unidade,
     beneficios: anuncio.beneficios,
     horario: anuncio.horario,
-    perguntas: perguntasDoBanco(anuncio.perguntas),
+    perguntas: juntarTriagem(perguntasDoBanco(anuncio.perguntas), triagem),
     // vagas de antes tinham "Outros benefícios" escrito à mão: vira a lista
     beneficios_extras: anuncio.beneficios_extras.length
       ? anuncio.beneficios_extras

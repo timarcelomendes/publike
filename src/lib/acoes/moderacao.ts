@@ -11,6 +11,7 @@ import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerDenuncia, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { salvarTriagem } from "@/lib/servidor/triagem";
 
 export async function denunciarAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -73,6 +74,7 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
   const { data, error } = await acesso.cliente.from("anuncios").update(registroDoAnuncio(d)).eq("id", id).select("id");
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   if (!data?.length) return { ok: false, erro: "Anúncio não encontrado." };
+  await salvarTriagem(acesso.cliente, id, d.triagem);
 
   revalidatePath("/");
   redirect(`/admin/anuncios/${id}?salvo=1`);

@@ -10,6 +10,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { ajudaDaIADisponivel, obterAnuncio, obterMeuPerfil } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
+import { obterTriagem } from "@/lib/servidor/triagem";
 
 export const metadata: Metadata = { title: "Editar anúncio" };
 
@@ -31,6 +32,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   // os serviços são editados juntos, no cadastro "Meus serviços"
   if (anuncio.tipo === "servico") redirect("/painel/servicos");
+  const triagem = await obterTriagem(id);
 
   return (
     <>
@@ -52,7 +54,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
           agencia={anuncio.autor_tipo === "agencia"}
           contatoAgencia={perfil ? { whatsapp: perfil.whatsapp, email: perfil.email } : null}
           enderecoPublico={anuncio.autor_tipo !== "pessoa"}
-          inicial={valoresDoAnuncio(anuncio)}
+          inicial={valoresDoAnuncio(anuncio, { triagem })}
         />
       )}
     </>
