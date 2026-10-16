@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { ETAPAS_CANDIDATO, TIPOS_CONTA } from "@/lib/constantes";
+import { esperaResposta, ETAPAS_CANDIDATO, situacaoDaCurtida, TIPOS_CONTA } from "@/lib/constantes";
 import { listarMeusCandidatos, listarRespostasDosCandidatos, obterUsuario, perguntasDasVagas } from "@/lib/dados";
 import { formatarTelefone } from "@/lib/formato";
 import { dataHora, nomeDoArquivo, respostaCsv, SITUACAO_CURTIDA } from "@/lib/planilha";
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   const lista = todos.filter(
     (c) =>
       (!vaga || !UUID.test(vaga) || c.anuncio_id === vaga) &&
-      (responder ? c.status === "pendente" : !etapa || c.etapa === etapa),
+      (responder ? esperaResposta(c) : !etapa || c.etapa === etapa),
   );
 
   const ids = [...new Set(lista.map((c) => c.anuncio_id))];
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
     c.cidade,
     dataHora(c.curtido_em),
     c.mensagem,
-    SITUACAO_CURTIDA[c.status] ?? c.status,
+    SITUACAO_CURTIDA[situacaoDaCurtida(c)] ?? c.status,
     ETAPAS_CANDIDATO[c.etapa].nome,
     c.nota,
     c.whatsapp ? formatarTelefone(c.whatsapp) : "",

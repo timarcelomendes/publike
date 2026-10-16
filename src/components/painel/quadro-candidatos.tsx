@@ -28,6 +28,7 @@ import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
+import { CaminhoDoAceite } from "../caminho-curtida";
 import { Avatar, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
@@ -62,6 +63,10 @@ export type CartaoQuadro = {
     situacao: string;
   } | null;
   temCurriculo: boolean;
+  /** a vaga pede currículo e a pessoa ainda não mandou */
+  semCurriculo: boolean;
+  /** você aceitou e a vaga espera o currículo para dar match */
+  aceita: boolean;
 };
 
 function Nota({ a }: { a: Aderencia }) {
@@ -153,7 +158,8 @@ export function QuadroCandidatos({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="text-body-sm text-ink-muted">
           Arraste o cartão para outra coluna ou use “Mover para”. Ir para Entrevista ou Contratado dá o match (o contato
-          aparece para os dois); “Não seguiu” dispensa quem ainda esperava resposta.
+          aparece para os dois); “Não seguiu” dispensa quem ainda esperava resposta. Se a vaga pede currículo e a pessoa
+          ainda não mandou, ela recebe o pedido e o match sai quando ele chegar.
         </p>
         {eliminados > 0 && (
           <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-label">
@@ -344,7 +350,8 @@ function Cartao({
       </div>
       {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito") && (
         <div className="flex flex-wrap gap-1.5">
-          {c.status === "pendente" && <Selo variante="aviso">Para responder</Selo>}
+          {c.status === "pendente" &&
+            (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Para responder</Selo>)}
           {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
           {entrevistaAberta && e && (
             <Selo variante={SITUACOES_ENTREVISTA[e.situacao]?.tom ?? "aviso"}>
@@ -406,7 +413,8 @@ function DetalheCandidato({
           <p className="mt-1 flex flex-wrap items-center gap-2">
             <Nota a={c.aderencia} />
             <Selo variante="contorno">{ETAPAS_CANDIDATO[c.coluna].nome}</Selo>
-            {c.status === "pendente" && <Selo variante="aviso">Para responder</Selo>}
+            {c.status === "pendente" &&
+              (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Para responder</Selo>)}
             {match && <Selo variante="match">Deu match</Selo>}
           </p>
         </div>
@@ -451,6 +459,17 @@ function DetalheCandidato({
           </a>
         )}
       </div>
+
+      {c.status === "pendente" && c.semCurriculo && (
+        <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3">
+          <CaminhoDoAceite nome={primeiro} aceita={c.aceita} />
+          <p className="text-body-sm text-ink-muted">
+            {c.aceita
+              ? `Quando ${primeiro} mandar, dá match e a entrevista pode ser marcada.`
+              : `Esta vaga pede currículo e ${primeiro} ainda não mandou. Movendo para Entrevista ou Contratado, ${primeiro} recebe o seu aceite e o pedido do currículo.`}
+          </p>
+        </div>
+      )}
 
       <Secao titulo="Mover para">
         <div className="flex flex-wrap gap-2">
@@ -515,7 +534,9 @@ function DetalheCandidato({
       )}
 
       <Secao titulo="Entrevista">
-        {e && !marcando ? (
+        {c.aceita ? (
+          <p className="text-body-sm text-ink-muted">Dá para marcar assim que der match, quando o currículo chegar.</p>
+        ) : e && !marcando ? (
           <>
             {marcou && (
               <p role="status" className="text-body-sm text-cerrado-text">
@@ -540,13 +561,17 @@ function DetalheCandidato({
       </Secao>
 
       <Secao titulo="Mensagem">
-        <CompositorMensagem
-          anuncioId={anuncioId}
-          perfis={[{ id: c.perfil_id, nome: c.nome, match }]}
-          vaga={vaga}
-          empresa={empresa}
-          modelos={modelos}
-        />
+        {c.aceita ? (
+          <p className="text-body-sm text-ink-muted">A conversa abre com o match, assim que o currículo chegar.</p>
+        ) : (
+          <CompositorMensagem
+            anuncioId={anuncioId}
+            perfis={[{ id: c.perfil_id, nome: c.nome, match }]}
+            vaga={vaga}
+            empresa={empresa}
+            modelos={modelos}
+          />
+        )}
       </Secao>
     </div>
   );

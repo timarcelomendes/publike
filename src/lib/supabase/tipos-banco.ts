@@ -370,6 +370,7 @@ export type Database = {
           desfeito_em: string | null;
           desfeito_futuro: boolean | null;
           respostas: Json;
+          aceita_em: string | null;
         };
         Insert: {
           anuncio_id: string;
@@ -944,7 +945,7 @@ export type Database = {
       };
       responder_curtida: {
         Args: { p_anuncio: string; p_perfil: string; p_decisao: string };
-        Returns: undefined;
+        Returns: string;
       };
       renovar_anuncio: {
         Args: { p_id: string };

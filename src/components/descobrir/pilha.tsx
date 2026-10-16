@@ -227,7 +227,7 @@ export function PilhaDeVagas({
           setAviso(
             carta.pedeCurriculo && !temCurriculo
               ? {
-                  texto: `Você curtiu “${carta.titulo}”. Esta vaga pede currículo: o match só acontece depois que você preencher o seu.`,
+                  texto: `Você curtiu “${carta.titulo}”. Esta vaga pede currículo: mande o seu e o match sai na hora em que ${carta.quem} aceitar. Se deixar para depois, chega um aviso quando aceitar.`,
                   link: { href: "/perfil/curriculo", nome: "Preencher currículo" },
                 }
               : {

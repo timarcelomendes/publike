@@ -51,6 +51,7 @@ import {
   TEXTO_SEGUIR,
 } from "@/lib/constantes";
 import {
+  aceitoEsperandoMeuCurriculo,
   contarVisita,
   contatoDoMatch,
   minhaEntrevista,
@@ -231,6 +232,9 @@ async function DetalheAnuncio({
       : null;
   const temCurriculo =
     usuario && !proprio && anuncio.tipo === "vaga" ? (await obterMeuCurriculo()) !== null : null;
+  // quem publicou já aceitou e falta o currículo (vaga que pede): o próximo passo é mandar
+  const aceita =
+    anuncio.minha_curtida === "pendente" && anuncio.pede_curriculo && (await aceitoEsperandoMeuCurriculo(anuncio.id));
   const lugar = formatarLugar(anuncio.bairro, anuncio.cidade);
   const valor = valorDoAnuncio(anuncio);
   const vaga = anuncio.tipo === "vaga";
@@ -289,6 +293,7 @@ async function DetalheAnuncio({
         contato={contato}
         pedeCurriculo={anuncio.pede_curriculo}
         temCurriculo={temCurriculo}
+        aceita={aceita}
         usuarioId={usuario?.id ?? null}
         autorNome={anuncio.autor_nome}
         desfeito={desfeito}

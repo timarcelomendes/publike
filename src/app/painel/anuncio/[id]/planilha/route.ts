@@ -1,7 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { dataHora, nomeDoArquivo, respostaCsv, SITUACAO_CURTIDA } from "@/lib/planilha";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { DISPONIBILIDADES, ETAPAS_CANDIDATO, etapaQueVale, nomeEscolaridade, TIPOS_CONTA } from "@/lib/constantes";
+import {
+  DISPONIBILIDADES,
+  ETAPAS_CANDIDATO,
+  etapaQueVale,
+  nomeEscolaridade,
+  situacaoDaCurtida,
+  TIPOS_CONTA,
+} from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
   listarEtapasDosCandidatos,
@@ -71,7 +78,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/a
       p.cidade,
       dataHora(p.curtido_em),
       p.mensagem,
-      SITUACAO_CURTIDA[p.status] ?? p.status,
+      SITUACAO_CURTIDA[situacaoDaCurtida(p)] ?? p.status,
       ETAPAS_CANDIDATO[etapaQueVale("vaga", p.status, e?.etapa ?? "novo")].nome,
       e?.nota,
       p.whatsapp ? formatarTelefone(p.whatsapp) : "",

@@ -2,6 +2,7 @@
 
 export const SITUACAO_CURTIDA: Record<string, string> = {
   pendente: "Aguardando sua resposta",
+  aceita: "Aceito, esperando o currículo",
   match: "Deu match",
   dispensada: "Dispensado",
   desfeito: "Match desfeito",

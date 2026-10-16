@@ -3,6 +3,7 @@ import {
   CalendarClock,
   CircleCheck,
   FileText,
+  PartyPopper,
   HandHelping,
   Megaphone,
   MessageCircle,
@@ -34,7 +35,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { etapaParaQuemCurtiu } from "@/lib/constantes";
+import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu } from "@/lib/constantes";
 import {
   contarMinhasSalvas,
   listarMeusAnuncios,
@@ -137,8 +138,9 @@ async function Conteudo() {
   const meusServicos = anuncios?.filter((a) => a.tipo === "servico") ?? null;
   const temVagas = (minhasVagas?.length ?? 0) > 0;
   const temServicos = (meusServicos?.length ?? 0) > 0;
-  // candidatos de todas as vagas (os mesmos números da aba Candidatos)
-  const candidatosPendentes = candidatos?.filter((c) => c.status === "pendente") ?? [];
+  // candidatos de todas as vagas (os mesmos números da aba Candidatos); quem já foi aceito
+  // e só espera o currículo não está mais esperando você
+  const candidatosPendentes = candidatos?.filter(esperaResposta) ?? [];
   // pedidos dos serviços: cada serviço tem a sua lista de quem pediu
   const servicosComPedidoNovo = meusServicos?.filter((a) => a.curtidas_novas > 0) ?? [];
   const pedidosParaResponder = meusServicos ? soma(meusServicos.map((a) => a.curtidas_novas)) : null;
@@ -152,6 +154,8 @@ async function Conteudo() {
   const servicosPedidos = curtidas?.filter((c) => c.tipo === "servico") ?? null;
   // a etapa que quem publicou marcou, com a mesma regra de "Minhas curtidas"
   const etapaDe = (c: MinhaCurtida) => etapaParaQuemCurtiu(c.tipo, c.status, etapas.get(c.anuncio_id)?.etapa);
+  // vagas que já aceitaram a pessoa e só esperam o currículo para dar match
+  const aceitas = vagasCurtidas?.filter(esperaCurriculo) ?? [];
 
   // ------------------------------------------------------------ contatos
   const novas = conversas ? soma(conversas.map((c) => c.nao_lidas)) : 0;
@@ -165,6 +169,20 @@ async function Conteudo() {
   const procuraTrabalho = intencao === "trabalho" || (!intencao && pessoa) || (vagasCurtidas?.length ?? 0) > 0;
   const vencendo = anuncios?.filter((a) => noAr(a) && new Date(a.expira_em).getTime() - agora < CINCO_DIAS) ?? [];
   const fazer: ItemParaFazer[] = [];
+  if (aceitas.length > 0) {
+    fazer.push({
+      icone: PartyPopper,
+      texto:
+        aceitas.length === 1
+          ? `${aceitas[0].autor_nome} aceitou você: mande o currículo`
+          : `${aceitas.length} vagas aceitaram você: mande o currículo`,
+      ajuda: `Em ${nomes(aceitas.map((c) => c.titulo))}. Assim que você salvar o currículo, dá match.`,
+      href:
+        aceitas.length === 1
+          ? `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${aceitas[0].anuncio_id}`)}`
+          : "/perfil/curriculo",
+    });
+  }
   if (!perfilCompleto(perfil)) {
     fazer.push({
       icone: UserRound,
@@ -197,7 +215,7 @@ async function Conteudo() {
       href: linkDaConversa(comNovas),
     });
   }
-  if (pessoa && semCurriculo && procuraTrabalho) {
+  if (pessoa && semCurriculo && procuraTrabalho && aceitas.length === 0) {
     fazer.push({
       icone: FileText,
       texto: "Monte seu currículo",
@@ -346,9 +364,20 @@ async function Conteudo() {
           { nome: "Curtidas", numero: vagasCurtidas?.length ?? null, href: "/painel/curtidas?tipo=vaga" },
           {
             nome: "Aguardando aceite",
-            numero: contar(vagasCurtidas, (c) => c.status === "pendente"),
+            numero: contar(vagasCurtidas, esperaResposta),
             href: "/painel/curtidas?tipo=vaga&situacao=aguardando",
           },
+          // aceitaram e falta o currículo: só aparece quando tem
+          ...(aceitas.length
+            ? [
+                {
+                  nome: "Falta o currículo",
+                  numero: aceitas.length,
+                  href: "/painel/curtidas?tipo=vaga&situacao=curriculo",
+                  destaque: true,
+                },
+              ]
+            : []),
           {
             nome: "Deu match",
             numero: contar(vagasCurtidas, (c) => c.status === "match"),

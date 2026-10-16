@@ -78,6 +78,7 @@ export function FormCurriculo({
   proximo = "",
   hoje,
   demo = false,
+  rotuloSalvar = "Salvar currículo",
 }: {
   inicial: Curriculo | null;
   /** mês atual ("2026-10"), vindo do servidor: limite das datas */
@@ -89,6 +90,8 @@ export function FormCurriculo({
   proximo?: string;
   /** Modo demonstração: dá para ver o formulário, mas não envia nem salva. */
   demo?: boolean;
+  /** o texto do botão (ex.: "Salvar e mandar", quando uma vaga já aceitou e espera o currículo) */
+  rotuloSalvar?: string;
 }) {
   const [estado, acao, enviando] = useActionState(salvarCurriculo, ESTADO_INICIAL);
   const [escolaridade, setEscolaridade] = useState(inicial?.escolaridade ?? "");
@@ -499,7 +502,7 @@ export function FormCurriculo({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando || enviandoPdf} className="sm:min-w-56">
-          {enviando ? "Salvando…" : "Salvar currículo"}
+          {enviando ? "Salvando…" : rotuloSalvar}
         </Botao>
         <p className="text-body-sm text-ink-muted">
           Sem telefone, e-mail ou link no texto: o contato aparece sozinho no match.{" "}

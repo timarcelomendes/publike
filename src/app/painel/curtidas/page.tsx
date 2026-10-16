@@ -1,4 +1,4 @@
-import { Heart } from "lucide-react";
+import { FileText, Heart, PartyPopper } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -15,30 +15,43 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
+  esperaCurriculo,
+  esperaResposta,
   etapaParaQuemCurtiu,
   motivoParaOutro,
   nomeMotivoDesfazer,
   STATUS_ANUNCIO,
   type EtapaCandidato,
 } from "@/lib/constantes";
-import { listarMeusBloqueios, listarMeusDesfeitos, listarMinhasCurtidas, listarMinhasEtapas } from "@/lib/dados";
+import {
+  listarMeusBloqueios,
+  listarMeusDesfeitos,
+  listarMinhasCurtidas,
+  listarMinhasEtapas,
+  obterMeuCurriculo,
+  vagasQuePedemCurriculo,
+} from "@/lib/dados";
 import { formatarLugar, primeiro, rotuloConta, rotuloModalidade, tempoRelativo, valorDoAnuncio } from "@/lib/formato";
 import { ContratacaoPublica } from "@/components/social/botoes";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import type { StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
+import type { MinhaCurtida, StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Minhas curtidas" };
 
-/** Em que pé está cada curtida (os filtros da página; a visão geral do painel usa os mesmos). */
+/**
+ * Em que pé está cada curtida (os filtros da página; a visão geral do painel usa os mesmos).
+ * "Falta o currículo": quem publicou aceitou, e a vaga espera o currículo para dar match.
+ */
 const SITUACOES = {
-  aguardando: { nome: "Aguardando aceite", status: ["pendente"] },
-  match: { nome: "Deu match", status: ["match"] },
-  encerradas: { nome: "Encerradas", status: ["dispensada", "desfeito"] },
-} as const satisfies Record<string, { nome: string; status: readonly string[] }>;
+  aguardando: { nome: "Aguardando aceite", vale: esperaResposta },
+  curriculo: { nome: "Falta o currículo", vale: esperaCurriculo },
+  match: { nome: "Deu match", vale: (c: MinhaCurtida) => c.status === "match" },
+  encerradas: { nome: "Encerradas", vale: (c: MinhaCurtida) => c.status === "dispensada" || c.status === "desfeito" },
+} as const satisfies Record<string, { nome: string; vale: (c: MinhaCurtida) => boolean }>;
 type Situacao = keyof typeof SITUACOES;
-const naSituacao = (s: Situacao, status: string) => (SITUACOES[s].status as readonly string[]).includes(status);
+const naSituacao = (s: Situacao, c: MinhaCurtida) => SITUACOES[s].vale(c);
 
 const TITULOS: Record<"todos" | TipoAnuncio, string> = {
   todos: "Minhas curtidas",
@@ -58,14 +71,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/curtidas");
   const sp = await searchParams;
-  const [curtidas, desfeitos, etapas, bloqueios, publicas] = await Promise.all([
+  const [curtidas, desfeitos, etapas, bloqueios, publicas, curriculo] = await Promise.all([
     listarMinhasCurtidas(),
     listarMeusDesfeitos(),
     listarMinhasEtapas(),
     listarMeusBloqueios(),
     minhasContratacoesPublicas(),
+    obterMeuCurriculo().catch(() => null),
   ]);
   const agora = await agoraDaRequisicao();
+  // sem currículo, as vagas que pedem um ganham o passo "Você manda o currículo" no caminho
+  const pedemCurriculo = curriculo
+    ? new Set<string>()
+    : await vagasQuePedemCurriculo(
+        curtidas.filter((c) => c.tipo === "vaga" && esperaResposta(c)).map((c) => c.anuncio_id),
+      );
 
   if (curtidas.length === 0) {
     return (
@@ -96,7 +116,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   const servicos = curtidas.length - vagas;
   const doTipo = tipo ? curtidas.filter((c) => c.tipo === tipo) : curtidas;
   const lista = doTipo
-    .filter((c) => !situacao || naSituacao(situacao, c.status))
+    .filter((c) => !situacao || naSituacao(situacao, c))
     .filter((c) => !etapa || etapaDe(c)?.etapa === etapa);
 
   const link = (mudar: { tipo?: TipoAnuncio | null; situacao?: Situacao | null; etapa?: EtapaCandidato | null }) => {
@@ -145,15 +165,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
             <span aria-hidden className="mx-1 h-6 w-px shrink-0 self-center bg-line-strong" />
           </>
         )}
-        {(Object.keys(SITUACOES) as Situacao[]).map((s) => (
-          <ChipFiltro
-            key={s}
-            href={link({ situacao: situacao === s ? null : s })}
-            ativo={situacao === s}
-            nome={SITUACOES[s].nome}
-            numero={doTipo.filter((c) => naSituacao(s, c.status)).length}
-          />
-        ))}
+        {(Object.keys(SITUACOES) as Situacao[]).map((s) => {
+          const numero = doTipo.filter((c) => naSituacao(s, c)).length;
+          // "Falta o currículo" só aparece quando tem
+          if (s === "curriculo" && !numero && situacao !== s) return null;
+          return (
+            <ChipFiltro
+              key={s}
+              href={link({ situacao: situacao === s ? null : s })}
+              ativo={situacao === s}
+              nome={SITUACOES[s].nome}
+              numero={numero}
+            />
+          );
+        })}
         {etapa && (
           <ChipFiltro href={link({ etapa: null })} ativo nome={`Etapa: ${ETAPAS_CANDIDATO[etapa].paraQuemCurtiu}`} />
         )}
@@ -178,7 +203,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
               >
                 <div className="flex flex-wrap items-center gap-2">
                   {c.status === "match" && <Selo variante="match">Deu match</Selo>}
-                  {c.status === "pendente" && <Selo variante="like">Aguardando aceite</Selo>}
+                  {esperaResposta(c) && <Selo variante="like">Aguardando aceite</Selo>}
+                  {esperaCurriculo(c) && <Selo variante="aviso">Falta o currículo</Selo>}
                   {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
                   {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
                   {etapaVisivel && (
@@ -215,13 +241,32 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                 </p>
                 <p className="text-label">{valorDoAnuncio(c)}</p>
                 {/* quem publicou decide se aceita; só com o aceite vocês se conectam */}
-                {(c.status === "pendente" || c.status === "dispensada") && (
+                {(esperaResposta(c) || c.status === "dispensada") && (
                   <CaminhoDaCurtida
                     situacao={c.status as "pendente" | "dispensada"}
                     quem={c.autor_nome}
                     servico={c.tipo === "servico"}
+                    passoDoCurriculo={c.status === "pendente" && pedemCurriculo.has(c.anuncio_id)}
                     className="rounded-md border border-line bg-surface-100 p-3"
                   />
+                )}
+                {/* aceito, falta o currículo: o próximo passo é com a pessoa */}
+                {esperaCurriculo(c) && (
+                  <div className="flex flex-col gap-3 rounded-md border-2 border-terra bg-surface-100 p-3 sm:p-4">
+                    <p className="flex items-center gap-2 text-label">
+                      <PartyPopper aria-hidden className="size-[18px] shrink-0 text-terra-text" />
+                      {c.autor_nome} aceitou você! Falta só o seu currículo.
+                    </p>
+                    <CaminhoDaCurtida situacao="aceita" quem={c.autor_nome} />
+                    <BotaoLink
+                      href={`/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${c.anuncio_id}`)}`}
+                      variante="primario"
+                      className="self-start"
+                    >
+                      <FileText aria-hidden />
+                      Mandar meu currículo
+                    </BotaoLink>
+                  </div>
                 )}
                 {c.mensagem && (
                   <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">Sua mensagem: “{c.mensagem}”</p>
@@ -282,7 +327,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                   <span>
                     {c.tipo === "servico" ? "Você pediu" : "Você curtiu"} {tempoRelativo(c.curtido_em, agora)}
                   </span>
-                  {c.status === "pendente" && noAr && <BotaoCurtir anuncioId={c.anuncio_id} status="pendente" logado />}
+                  {esperaResposta(c) && noAr && <BotaoCurtir anuncioId={c.anuncio_id} status="pendente" logado />}
                 </div>
               </li>
             );

@@ -18,7 +18,7 @@ import {
 import Link from "next/link";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { STATUS_ANUNCIO } from "@/lib/constantes";
+import { esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { formatarNumero, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -37,6 +37,8 @@ type Candidato = {
   curtido_em: string;
   etapa: string;
   etapa_em: string | null;
+  /** aceito, esperando o currículo (não espera mais resposta sua) */
+  aceita_em?: string | null;
 };
 
 const DIA = 24 * 3600e3;
@@ -125,7 +127,7 @@ export async function PainelRecrutador({
   const tituloDe = new Map(vagas.map((v) => [v.id, v.titulo]));
 
   const ultimos7 = todos.filter((c) => agora - new Date(c.curtido_em).getTime() < 7 * DIA).length;
-  const pendentes = todos.filter((c) => c.status === "pendente");
+  const pendentes = todos.filter(esperaResposta);
   const antigos = pendentes.filter((c) => agora - new Date(c.curtido_em).getTime() > 2 * DIA);
   const contratados = todos.filter((c) => c.etapa === "contratado" && c.status === "match");
   const dias = contratados
@@ -323,7 +325,7 @@ export async function PainelRecrutador({
                 const numeros: [string, number, string?][] = [
                   ["Visitas", visitas.get(v.id) ?? 0],
                   ["Candidatos", daVaga.length],
-                  ["Responder", daVaga.filter((c) => c.status === "pendente").length, "text-terra-text"],
+                  ["Responder", daVaga.filter(esperaResposta).length, "text-terra-text"],
                   ["Entrevista", daVaga.filter((c) => c.etapa === "entrevista" && c.status === "match").length],
                   [
                     "Contratados",
@@ -421,9 +423,9 @@ export async function PainelRecrutador({
                         </td>
                         <td className="px-3 py-3 text-right tabular-nums">{daVaga.length}</td>
                         <td
-                          className={`px-3 py-3 text-right tabular-nums ${daVaga.some((c) => c.status === "pendente") ? "font-semibold text-terra-text" : ""}`}
+                          className={`px-3 py-3 text-right tabular-nums ${daVaga.some(esperaResposta) ? "font-semibold text-terra-text" : ""}`}
                         >
-                          {daVaga.filter((c) => c.status === "pendente").length}
+                          {daVaga.filter(esperaResposta).length}
                         </td>
                         <td className="px-3 py-3 text-right tabular-nums">
                           {daVaga.filter((c) => c.etapa === "entrevista" && c.status === "match").length}

@@ -2,6 +2,8 @@
 
 import {
   Bell,
+  FileCheck,
+  FileText,
   Heart,
   HeartCrack,
   ListChecks,
@@ -38,6 +40,11 @@ function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "etapa") return "/painel/curtidas";
   if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
+  // aceito numa vaga que pede currículo: direto para o currículo, que volta para a vaga
+  if (n.tipo === "aceite_curriculo" && n.anuncio_id)
+    return `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${n.anuncio_id}`)}`;
+  if (n.tipo === "curriculo_recebido" && n.anuncio_id)
+    return `/painel/anuncio/${n.anuncio_id}${n.ator_id ? `#candidato-${n.ator_id}` : ""}`;
   if (n.tipo === "seguindo" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "recomendacao") return `/perfil/${usuarioId}#recomendacoes`;
   if (n.tipo === "contratacao" && n.anuncio_id) return `/painel/contratacao/${n.anuncio_id}`;
@@ -159,7 +166,11 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                                     ? ThumbsUp
                                     : n.tipo === "contratacao"
                                       ? PartyPopper
-                                      : ShieldCheck;
+                                      : n.tipo === "aceite_curriculo"
+                                        ? FileText
+                                        : n.tipo === "curriculo_recebido"
+                                          ? FileCheck
+                                          : ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link
@@ -169,7 +180,7 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                     >
                       <Icone
                         aria-hidden
-                        className={`mt-0.5 size-[18px] shrink-0 ${n.tipo === "curtida" ? "text-like" : n.tipo === "match" ? "text-cerrado-text" : "text-ink-muted"}`}
+                        className={`mt-0.5 size-[18px] shrink-0 ${n.tipo === "curtida" ? "text-like" : n.tipo === "match" || n.tipo === "curriculo_recebido" ? "text-cerrado-text" : n.tipo === "aceite_curriculo" ? "text-terra-text" : "text-ink-muted"}`}
                         fill={n.tipo === "curtida" ? "currentColor" : "none"}
                       />
                       <span className="flex flex-col">

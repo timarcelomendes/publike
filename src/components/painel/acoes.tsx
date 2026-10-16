@@ -1,9 +1,23 @@
 "use client";
 
-import { CircleCheckBig, CopyPlus, FileText, Heart, Pause, Pencil, Play, RefreshCw, Trash, Undo2, X } from "lucide-react";
+import {
+  CircleCheckBig,
+  CopyPlus,
+  FileText,
+  Heart,
+  Hourglass,
+  Pause,
+  Pencil,
+  Play,
+  RefreshCw,
+  Trash,
+  Undo2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { excluirAnuncio, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
+import { CaminhoDoAceite } from "../caminho-curtida";
 import { Botao, BotaoLink } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
 
@@ -93,46 +107,77 @@ export function AcoesAnuncio({
   );
 }
 
-/** Curtir de volta (dar match), dispensar ou desfazer. No serviço: aceitar ou recusar o pedido. */
+/**
+ * Curtir de volta (dar match), dispensar ou desfazer. No serviço: aceitar ou recusar o pedido.
+ * Na vaga que pede currículo, quem ainda não mandou pode ser aceito do mesmo jeito: a
+ * pessoa recebe o pedido do currículo e o match sai sozinho quando ele chegar.
+ */
 export function AcoesInteressado({
   anuncioId,
   perfilId,
   status,
   servico = false,
   semCurriculo = null,
+  aceita = false,
 }: {
   anuncioId: string;
   perfilId: string;
   status: string;
   servico?: boolean;
-  /** vaga pede currículo e a pessoa ainda não preencheu: nome dela (o match espera) */
+  /** vaga pede currículo e a pessoa ainda não mandou: o primeiro nome dela */
   semCurriculo?: string | null;
+  /** você já aceitou e a pessoa recebeu o pedido do currículo */
+  aceita?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
-  const aguardando = semCurriculo !== null && (status === "pendente" || status === "desfeito");
+  const esperando = aceita && semCurriculo !== null && status === "pendente";
+
+  // aceito, esperando o currículo: agora é com a pessoa
+  if (esperando) {
+    return (
+      <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-100 p-3">
+        <p className="flex items-center gap-2 text-label">
+          <Hourglass aria-hidden className="size-[18px] shrink-0 text-terra-text" />
+          Aceito: esperando o currículo
+        </p>
+        <CaminhoDoAceite nome={semCurriculo} aceita />
+        <p className="text-body-sm text-ink-muted">
+          Quando {semCurriculo} mandar, dá match: o contato aparece aqui e você recebe um aviso.
+        </p>
+        <div>
+          <Botao
+            variante="fantasma"
+            tamanho="sm"
+            disabled={pendente}
+            onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "pendente"))}
+          >
+            <Undo2 aria-hidden />
+            Desfazer o aceite
+          </Botao>
+        </div>
+        {mensagem}
+      </div>
+    );
+  }
+
+  const botaoAceitar = (texto: string) => (
+    <button
+      type="button"
+      disabled={pendente}
+      onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "match"))}
+      className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
+    >
+      <Heart aria-hidden className="size-[18px] text-like" />
+      {texto}
+    </button>
+  );
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
-        {aguardando && (
-          <p className="flex min-h-11 items-center gap-2 rounded-pill bg-surface-300 px-4 text-label text-ink-muted">
-            <FileText aria-hidden className="size-[18px]" />
-            Aguardando o currículo
-          </p>
-        )}
         {status === "pendente" && (
           <>
-            {!aguardando && (
-              <button
-                type="button"
-                disabled={pendente}
-                onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "match"))}
-                className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
-              >
-                <Heart aria-hidden className="size-[18px] text-like" />
-                {servico ? "Aceitar" : "Curtir de volta"}
-              </button>
-            )}
+            {botaoAceitar(servico ? "Aceitar" : "Curtir de volta")}
             <Botao
               variante="fantasma"
               tamanho="sm"
@@ -144,17 +189,7 @@ export function AcoesInteressado({
             </Botao>
           </>
         )}
-        {status === "desfeito" && !aguardando && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => rodar(() => responderCurtida(anuncioId, perfilId, "match"))}
-            className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
-          >
-            <Heart aria-hidden className="size-[18px] text-like" />
-            Dar match de novo
-          </button>
-        )}
+        {status === "desfeito" && botaoAceitar("Dar match de novo")}
         {status === "dispensada" && (
           <Botao
             variante="fantasma"
@@ -167,10 +202,13 @@ export function AcoesInteressado({
           </Botao>
         )}
       </div>
-      {aguardando && (
-        <p className="text-body-sm text-ink-muted">
-          Esta vaga pede currículo: o match fica liberado quando {semCurriculo} preencher o currículo. O convite para
-          preencher já aparece para a pessoa.
+      {semCurriculo !== null && (status === "pendente" || status === "desfeito") && (
+        <p className="flex items-start gap-2 text-body-sm text-ink-muted">
+          <FileText aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Esta vaga pede currículo e {semCurriculo} ainda não mandou. Curtindo de volta, {semCurriculo} recebe o
+            pedido, e o match sai assim que o currículo chegar.
+          </span>
         </p>
       )}
       {mensagem}

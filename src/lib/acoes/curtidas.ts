@@ -125,7 +125,7 @@ export async function responderCurtida(
   if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel" };
 
   const supabase = await criarClienteServidor();
-  const { error } = await supabase.rpc("responder_curtida", {
+  const { data, error } = await supabase.rpc("responder_curtida", {
     p_anuncio: anuncioId,
     p_perfil: perfilId,
     p_decisao: decisao,
@@ -134,6 +134,9 @@ export async function responderCurtida(
 
   if (decisao === "match") after(processarFilas);
   refresh();
+  // vaga que pede currículo e a pessoa ainda não mandou: o aceite fica guardado e ela
+  // recebe o pedido; o match sai sozinho quando o currículo chegar (o cartão mostra isso)
+  if (data === "aceita") return { ok: true };
   if (decisao === "match") return { ok: true, mensagem: "Deu match! Agora é só conversar." };
   return { ok: true };
 }
@@ -227,7 +230,12 @@ export async function salvarEtapaCandidato(
   // Entrevista e Contratado (no serviço, Orçamento, Agendado e Concluído) só depois do
   // match; dispensado ou match desfeito não muda de etapa. Só a anotação continua livre.
   const [{ data: curtida }, { data: anuncio }] = await Promise.all([
-    supabase.from("curtidas").select("status").eq("anuncio_id", anuncioId).eq("perfil_id", perfilId).maybeSingle(),
+    supabase
+      .from("curtidas")
+      .select("status, aceita_em")
+      .eq("anuncio_id", anuncioId)
+      .eq("perfil_id", perfilId)
+      .maybeSingle(),
     supabase.from("anuncios").select("tipo").eq("id", anuncioId).maybeSingle(),
   ]);
   if (!curtida || !anuncio) return { ok: false, erro: "Essa pessoa não curtiu um anúncio seu." };
@@ -242,7 +250,9 @@ export async function salvarEtapaCandidato(
           curtida.status === "pendente"
             ? servico
               ? "Aceite o pedido primeiro: orçamento, agendamento e conclusão vêm depois."
-              : "Curta de volta primeiro: entrevista e contratação vêm depois do match."
+              : curtida.aceita_em
+                ? "Falta o currículo: entrevista e contratação vêm depois do match, assim que ele chegar."
+                : "Curta de volta primeiro: entrevista e contratação vêm depois do match."
             : `Essa pessoa não está mais no processo ${servico ? "deste serviço" : "desta vaga"}.`,
       };
     }

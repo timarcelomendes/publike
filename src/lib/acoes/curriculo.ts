@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
 import { limparCurriculos } from "@/lib/servidor/arquivos";
+import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
 import { lerCurriculo } from "@/lib/validacao";
@@ -14,7 +16,9 @@ import { lerCurriculo } from "@/lib/validacao";
 /**
  * Salva o currículo. Só a própria pessoa e quem anunciou uma vaga que ela
  * curtiu conseguem ver (o banco garante). O PDF já foi enviado pelo navegador
- * para a pasta privada da pessoa; os antigos saem do Storage.
+ * para a pasta privada da pessoa; os antigos saem do Storage. Nas vagas que já
+ * aceitaram a pessoa e esperavam o currículo, dá match na hora (gatilho no banco):
+ * sem um "next", ela volta para a vaga (ou para os matches, se forem várias).
  */
 export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -27,6 +31,13 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
   if (d.arquivo && !d.arquivo.startsWith(`${usuario.id}/`)) return { ok: false, erro: "Envie o PDF de novo." };
 
   const supabase = await criarClienteServidor();
+  // as vagas que já aceitaram e esperavam este currículo (sem a migração do aceite, nenhuma)
+  const { data: aceitas } = await supabase
+    .from("curtidas")
+    .select("anuncio_id")
+    .eq("perfil_id", usuario.id)
+    .eq("status", "pendente")
+    .not("aceita_em", "is", null);
   const { error } = await supabase.from("curriculos").upsert(
     {
       perfil_id: usuario.id,
@@ -45,10 +56,19 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
     return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar seu currículo agora.") };
   }
   await limparCurriculos(supabase, usuario.id, d.arquivo);
+  // os avisos do match (para a pessoa e para quem publicou) saem já
+  if (aceitas?.length) after(processarFilas);
 
   revalidatePath("/perfil/curriculo");
   const proximo = caminhoSeguro(formData.get("next"), "");
-  redirect(proximo || "/perfil/curriculo?salvo=1");
+  redirect(
+    proximo ||
+      (aceitas?.length === 1
+        ? `/anuncio/${aceitas[0].anuncio_id}`
+        : aceitas?.length
+          ? "/painel/curtidas?situacao=match"
+          : "/perfil/curriculo?salvo=1"),
+  );
 }
 
 /** Apaga o currículo inteiro (e o PDF). */

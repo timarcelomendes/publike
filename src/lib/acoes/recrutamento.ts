@@ -30,7 +30,9 @@ function idsValidos(ids: unknown): string[] {
 /**
  * Leva um ou vários candidatos para uma coluna do quadro. Quem espera resposta e vai para
  * Entrevista ou Contratado ganha o match antes (é o que libera o contato); quem vai para
- * "Não seguiu" sem match é dispensado. A anotação de cada um fica como está.
+ * "Não seguiu" sem match é dispensado. A anotação de cada um fica como está. Na vaga que
+ * pede currículo, quem ainda não mandou fica aceito, esperando o currículo: recebe o
+ * pedido, e o match (e a etapa) vêm quando ele chegar.
  */
 export async function moverCandidatos(anuncioId: string, perfis: string[], destino: string): Promise<ResultadoEmMassa> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -49,6 +51,7 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
   const notas = new Map((etapas ?? []).map((e) => [e.perfil_id, e.nota]));
   const nomes = new Map<string, string>();
   const falhas: Falha[] = [];
+  const aceitos: string[] = [];
   let feitos = 0;
 
   for (const perfil of ids) {
@@ -70,13 +73,18 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
             ? "pendente"
             : null;
     if (decisao) {
-      const { error } = await supabase.rpc("responder_curtida", {
+      const { data, error } = await supabase.rpc("responder_curtida", {
         p_anuncio: anuncioId,
         p_perfil: perfil,
         p_decisao: decisao,
       });
       if (error) {
         falhas.push({ perfil, erro: mensagemDeErro(error) });
+        continue;
+      }
+      // aceito, esperando o currículo: a etapa fica para depois do match
+      if (data === "aceita") {
+        aceitos.push(perfil);
         continue;
       }
     }
@@ -96,25 +104,38 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
     feitos++;
   }
 
-  if (falhas.length) {
+  if (falhas.length || aceitos.length) {
     const { data } = await supabase
       .from("perfis")
       .select("id, nome")
-      .in(
-        "id",
-        falhas.map((f) => f.perfil),
-      );
+      .in("id", [...falhas.map((f) => f.perfil), ...aceitos]);
     for (const p of data ?? []) nomes.set(p.id, p.nome.split(" ")[0]);
   }
-  if (feitos) after(processarFilas);
+  if (feitos || aceitos.length) after(processarFilas);
   refresh();
   const nome = ETAPAS_CANDIDATO[etapa].nome;
+  const quemAceitou = aceitos.map((p) => nomes.get(p) ?? "Alguém");
   return {
     ok: true,
     feitos,
     falhas: falhas.map((f) => ({ ...f, perfil: nomes.get(f.perfil) ?? "Alguém" })),
-    mensagem: feitos ? `${feitos === 1 ? "1 candidato foi" : `${feitos} candidatos foram`} para ${nome}.` : "",
+    mensagem: [
+      feitos ? `${feitos === 1 ? "1 candidato foi" : `${feitos} candidatos foram`} para ${nome}.` : "",
+      quemAceitou.length === 1
+        ? `${quemAceitou[0]} recebeu o seu aceite e o pedido do currículo, que esta vaga pede. Quando mandar, dá match e você move para ${nome}.`
+        : quemAceitou.length > 1
+          ? `${listaDeNomes(quemAceitou)} receberam o seu aceite e o pedido do currículo, que esta vaga pede. Quando mandarem, dá match e você move para ${nome}.`
+          : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
   };
+}
+
+/** "Ana", "Ana e Bia", "Ana, Bia e mais 3". */
+function listaDeNomes(nomes: string[]) {
+  if (nomes.length <= 2) return nomes.join(" e ");
+  return `${nomes.slice(0, 2).join(", ")} e mais ${nomes.length - 2}`;
 }
 
 /** Manda a mesma mensagem (com {nome}, {vaga} e {empresa}) para vários candidatos com match. */
@@ -203,12 +224,21 @@ export async function marcarEntrevista(d: DadosEntrevista): Promise<Resultado> {
     .eq("perfil_id", d.perfilId)
     .maybeSingle();
   if (curtida && curtida.status !== "match") {
-    const { error } = await supabase.rpc("responder_curtida", {
+    const { data, error } = await supabase.rpc("responder_curtida", {
       p_anuncio: d.anuncioId,
       p_perfil: d.perfilId,
       p_decisao: "match",
     });
     if (error) return { ok: false, erro: mensagemDeErro(error) };
+    // vaga que pede currículo e a pessoa ainda não mandou: aceita, mas a entrevista espera o match
+    if (data === "aceita") {
+      after(processarFilas);
+      refresh();
+      return {
+        ok: false,
+        erro: "Esta vaga pede currículo e a pessoa ainda não mandou. Ela foi aceita e recebeu o pedido: quando mandar, dá match e aí você marca a entrevista.",
+      };
+    }
   }
   const { error } = await supabase.rpc("marcar_entrevista", {
     p_anuncio: d.anuncioId,

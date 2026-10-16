@@ -20,9 +20,12 @@ import { classesEntrada } from "@/components/ui/campo";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
+  esperaCurriculo,
+  esperaResposta,
   etapasDoTipo,
   motivoParaOutro,
   nomeMotivoDesfazer,
+  situacaoDaCurtida,
   type EtapaCandidato,
 } from "@/lib/constantes";
 import {
@@ -45,11 +48,13 @@ import { SeloVerificado } from "@/components/selo-verificado";
 export const metadata: Metadata = { title: "Candidatos" };
 
 // Situação da curtida, do jeito que quem publicou age: primeiro quem espera resposta.
-const SITUACAO: Record<string, { nome: string; variante: "aviso" | "match" | "contorno"; ordem: number }> = {
+// "aceita": você aceitou, e a vaga espera o currículo da pessoa para dar match.
+const SITUACAO: Record<string, { nome: string; variante: "aviso" | "match" | "contorno" | "neutro"; ordem: number }> = {
   pendente: { nome: "Para responder", variante: "aviso", ordem: 0 },
-  match: { nome: "Deu match", variante: "match", ordem: 1 },
-  desfeito: { nome: "Match desfeito", variante: "contorno", ordem: 2 },
-  dispensada: { nome: "Dispensado", variante: "contorno", ordem: 3 },
+  aceita: { nome: "Esperando currículo", variante: "neutro", ordem: 1 },
+  match: { nome: "Deu match", variante: "match", ordem: 2 },
+  desfeito: { nome: "Match desfeito", variante: "contorno", ordem: 3 },
+  dispensada: { nome: "Dispensado", variante: "contorno", ordem: 4 },
 };
 
 /** Sem acento e em minúsculas, para a busca pelo nome. */
@@ -113,15 +118,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   const daVaga = vaga ? todos.filter((c) => c.anuncio_id === vaga) : todos;
   const contagem = new Map<EtapaCandidato, number>();
   for (const c of daVaga) contagem.set(c.etapa, (contagem.get(c.etapa) ?? 0) + 1);
-  const paraResponder = daVaga.filter((c) => c.status === "pendente").length;
+  const paraResponder = daVaga.filter(esperaResposta).length;
   const procurado = simples(busca);
   const lista = daVaga
-    .filter((c) => (responder ? c.status === "pendente" : !etapa || c.etapa === etapa))
+    .filter((c) => (responder ? esperaResposta(c) : !etapa || c.etapa === etapa))
     .filter((c) => !procurado || simples(c.nome).includes(procurado))
     // quem espera resposta primeiro; dentro de cada grupo, a curtida mais nova primeiro
     .sort(
       (a, b) =>
-        (SITUACAO[a.status]?.ordem ?? 9) - (SITUACAO[b.status]?.ordem ?? 9) ||
+        (SITUACAO[situacaoDaCurtida(a)]?.ordem ?? 9) - (SITUACAO[situacaoDaCurtida(b)]?.ordem ?? 9) ||
         new Date(b.curtido_em).getTime() - new Date(a.curtido_em).getTime(),
     );
 
@@ -313,7 +318,7 @@ function CartaoCandidato({
   perguntas: Pergunta[];
   respostas: Respostas | undefined;
 }) {
-  const situacao = SITUACAO[c.status] ?? SITUACAO.pendente;
+  const situacao = SITUACAO[situacaoDaCurtida(c)] ?? SITUACAO.pendente;
   const primeiroNome = c.nome.split(" ")[0];
   const comModeracao = c.anuncio_status === "em_analise" || c.anuncio_status === "removido";
   const encerrado = c.status === "dispensada" || c.status === "desfeito";
@@ -428,6 +433,7 @@ function CartaoCandidato({
             perfilId={c.perfil_id}
             status={c.status}
             semCurriculo={semCurriculo}
+            aceita={esperaCurriculo(c)}
           />
         )}
 

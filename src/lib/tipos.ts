@@ -32,8 +32,12 @@ export type AvaliacaoPublica = LinhaDe<"avaliacoes_publicas">;
 export type AvaliacaoRecebida = LinhaDe<"minhas_avaliacoes_recebidas">;
 export type MinhaAvaliacao = LinhaDe<"minha_avaliacao">;
 export type ItemFilaAvaliacao = LinhaDe<"fila_avaliacoes">;
-export type Interessado = LinhaDe<"interessados">;
-export type MinhaCurtida = LinhaDe<"minhas_curtidas">;
+/**
+ * aceita_em: quem publicou aceitou, mas a vaga pede currículo e a pessoa ainda não
+ * mandou (o status continua "pendente"); o match sai quando o currículo chegar.
+ */
+export type Interessado = LinhaDe<"interessados"> & { aceita_em: string | null };
+export type MinhaCurtida = LinhaDe<"minhas_curtidas"> & { aceita_em: string | null };
 export type Match = LinhaDe<"meus_matches">;
 export type ItemModeracao = LinhaDe<"fila_moderacao">;
 

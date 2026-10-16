@@ -1,12 +1,15 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PartyPopper } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CaminhoDaCurtida } from "@/components/caminho-curtida";
 import { ApagarCurriculo, FormCurriculo } from "@/components/form-curriculo";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { linkDoMeuPdf, obterMeuCurriculo } from "@/lib/dados";
+import { esperaCurriculo } from "@/lib/constantes";
+import { linkDoMeuPdf, listarMinhasCurtidas, obterMeuCurriculo } from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
+import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -59,11 +62,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   const { usuario } = await exigirPerfilCompleto(
     proximo ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}` : "/perfil/curriculo",
   );
-  const curriculo = await obterMeuCurriculo();
+  const [curriculo, curtidas] = await Promise.all([obterMeuCurriculo(), listarMinhasCurtidas().catch(() => [])]);
   const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? null);
+  // as vagas que já aceitaram a pessoa e só esperam o currículo
+  const aceitas = curtidas.filter((c) => c.tipo === "vaga" && esperaCurriculo(c));
 
   return (
     <>
+      {aceitas.length > 0 && <AceitasEsperando aceitas={aceitas} temCurriculo={curriculo !== null} />}
       {primeiro(sp.salvo) === "1" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Currículo salvo!">
           <p>
@@ -89,8 +95,53 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         linkPdf={linkPdf}
         proximo={proximo}
         hoje={hoje}
+        rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
       />
       {curriculo && <ApagarCurriculo />}
     </>
+  );
+}
+
+/** Quem já aceitou a pessoa e só espera o currículo: salvando aqui, dá match na hora. */
+function AceitasEsperando({ aceitas, temCurriculo }: { aceitas: MinhaCurtida[]; temCurriculo: boolean }) {
+  const uma = aceitas.length === 1 ? aceitas[0] : null;
+  const fazer = temCurriculo ? "confira e salve" : "preencha e salve";
+  return (
+    <section
+      aria-labelledby="aceitas-titulo"
+      className="mb-6 flex flex-col gap-3 rounded-lg border-2 border-terra bg-surface-200 p-4 shadow-card sm:p-5"
+    >
+      <h2 id="aceitas-titulo" className="flex items-center gap-2 font-display text-h3">
+        <PartyPopper aria-hidden className="size-5 shrink-0 text-terra-text" />
+        {uma ? `${uma.autor_nome} aceitou você!` : `${aceitas.length} vagas aceitaram você!`}
+      </h2>
+      <p className="text-body-sm">
+        {uma ? (
+          <>
+            Na vaga “{uma.titulo}”. Falta só o seu currículo: {fazer} aqui embaixo e dá match na hora.
+          </>
+        ) : (
+          <>Falta só o seu currículo: {fazer} aqui embaixo e dá match em todas de uma vez.</>
+        )}
+      </p>
+      {uma ? (
+        <CaminhoDaCurtida
+          situacao="aceita"
+          quem={uma.autor_nome}
+          className="rounded-md border border-line bg-surface-100 p-3"
+        />
+      ) : (
+        <ul className="flex flex-col gap-1.5 rounded-md border border-line bg-surface-100 p-3 text-body-sm">
+          {aceitas.map((c) => (
+            <li key={c.anuncio_id}>
+              <Link href={`/anuncio/${c.anuncio_id}`} className="font-semibold underline underline-offset-2">
+                {c.titulo}
+              </Link>{" "}
+              <span className="text-ink-muted">· {c.autor_nome}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

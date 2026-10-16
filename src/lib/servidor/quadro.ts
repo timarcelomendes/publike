@@ -1,6 +1,6 @@
 import "server-only";
 import { calcularAderencia, type Aderencia } from "@/lib/aderencia";
-import { etapaQueVale, type EtapaCandidato } from "@/lib/constantes";
+import { esperaCurriculo, etapaQueVale, type EtapaCandidato } from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
   listarEtapasDosCandidatos,
@@ -46,6 +46,10 @@ export type CartaoDoQuadro = {
   respostas: { pergunta: string; resposta: string }[];
   entrevista: Entrevista | null;
   temCurriculo: boolean;
+  /** a vaga pede currículo e a pessoa ainda não mandou */
+  semCurriculo: boolean;
+  /** você aceitou e a vaga espera o currículo para dar match */
+  aceita: boolean;
 };
 
 /** As entrevistas em aberto (ou a última) de cada candidato de uma vaga. */
@@ -113,6 +117,8 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       respostas: perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) })),
       entrevista: entrevistas.get(p.perfil_id) ?? null,
       temCurriculo: Boolean(cv),
+      semCurriculo: anuncio.pede_curriculo && !cv,
+      aceita: anuncio.pede_curriculo && !cv && esperaCurriculo(p),
     };
   });
   // os mais aderentes primeiro; empate: quem curtiu antes

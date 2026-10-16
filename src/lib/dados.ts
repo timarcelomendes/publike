@@ -197,11 +197,53 @@ export async function listarMeusServicos(): Promise<MeuServico[]> {
   return data ?? [];
 }
 
+/**
+ * As curtidas aceitas que esperam o currículo (vaga que pede currículo, pessoa que
+ * ainda não mandou), por "anúncio:perfil", com a hora do aceite. O banco só entrega
+ * as minhas e as das minhas vagas. Sem a migração do aceite, nenhuma.
+ */
+const aceitasEsperandoCurriculo = cache(async (): Promise<Map<string, string>> => {
+  if (MODO_DEMO) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("curtidas")
+    .select("anuncio_id, perfil_id, aceita_em")
+    .eq("status", "pendente")
+    .not("aceita_em", "is", null);
+  if (error) {
+    console.error(`Publike: falha ao ler os aceites que esperam o currículo: ${error.message}`);
+    return new Map();
+  }
+  return new Map(
+    (data ?? []).flatMap((l) => (l.aceita_em ? [[`${l.anuncio_id}:${l.perfil_id}`, l.aceita_em] as const] : [])),
+  );
+});
+
+/** Das vagas da lista, as que pedem currículo (de quem não publicou, só as que estão no ar aparecem). */
+export async function vagasQuePedemCurriculo(anuncioIds: string[]): Promise<Set<string>> {
+  const ids = anuncioIds.filter((id) => UUID.test(id));
+  if (MODO_DEMO || !ids.length) return new Set();
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.from("anuncios").select("id").in("id", ids).eq("pede_curriculo", true);
+  return new Set((data ?? []).map((a) => a.id));
+}
+
+/** Quem publicou esta vaga já me aceitou e falta só o meu currículo? */
+export async function aceitoEsperandoMeuCurriculo(anuncioId: string): Promise<boolean> {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return false;
+  const usuario = await obterUsuario();
+  if (!usuario) return false;
+  return (await aceitasEsperandoCurriculo()).has(`${anuncioId}:${usuario.id}`);
+}
+
 export async function listarInteressados(anuncioId: string): Promise<Interessado[]> {
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("interessados", { p_anuncio: anuncioId });
+  const [{ data, error }, aceitas] = await Promise.all([
+    supabase.rpc("interessados", { p_anuncio: anuncioId }),
+    aceitasEsperandoCurriculo(),
+  ]);
   if (error) falha("interessados", error);
-  return data ?? [];
+  return (data ?? []).map((l) => ({ ...l, aceita_em: aceitas.get(`${anuncioId}:${l.perfil_id}`) ?? null }));
 }
 
 /** Etapa e anotação de cada interessado de uma vaga minha (só eu vejo). */
@@ -283,7 +325,7 @@ export async function perguntasDasVagas(anuncioIds: string[]): Promise<Map<strin
 /** Todos os candidatos das minhas vagas, com a etapa (página "Candidatos" do painel). */
 export async function listarMeusCandidatos() {
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("meus_candidatos");
+  const [{ data, error }, aceitas] = await Promise.all([supabase.rpc("meus_candidatos"), aceitasEsperandoCurriculo()]);
   // sem a migração das etapas a página avisa, em vez de quebrar
   if (error) {
     console.error(`Publike: falha ao ler seus candidatos: ${error.message}`);
@@ -293,6 +335,7 @@ export async function listarMeusCandidatos() {
     ...l,
     // esperando resposta, etapa adiante de "Em análise" não vale (ver etapaQueVale)
     etapa: etapaQueVale("vaga", l.status, (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato),
+    aceita_em: aceitas.get(`${l.anuncio_id}:${l.perfil_id}`) ?? null,
   }));
 }
 
@@ -491,9 +534,16 @@ export async function listarMeusDesfeitos(): Promise<Map<string, Desfeito>> {
 
 export async function listarMinhasCurtidas(): Promise<MinhaCurtida[]> {
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("minhas_curtidas");
+  const [{ data, error }, usuario, aceitas] = await Promise.all([
+    supabase.rpc("minhas_curtidas"),
+    obterUsuario(),
+    aceitasEsperandoCurriculo(),
+  ]);
   if (error) falha("suas curtidas", error);
-  return data ?? [];
+  return (data ?? []).map((c) => ({
+    ...c,
+    aceita_em: usuario ? (aceitas.get(`${c.anuncio_id}:${usuario.id}`) ?? null) : null,
+  }));
 }
 
 export async function listarMatches(): Promise<Match[]> {

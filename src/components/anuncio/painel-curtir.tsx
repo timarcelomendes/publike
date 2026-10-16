@@ -13,7 +13,7 @@ import { EntrevistaDoCandidato, type EntrevistaDoCandidato as Entrevista } from 
 import { CamposDasPerguntas, faltandoResponder, SuasRespostas } from "./perguntas-da-vaga";
 import { CurtirDeNovo, DesfazerMatch } from "../desfazer-match";
 import { Aviso } from "../ui/basicos";
-import { Botao } from "../ui/botao";
+import { Botao, BotaoLink } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 
 type Props = {
@@ -29,6 +29,8 @@ type Props = {
   pedeCurriculo?: boolean;
   /** a pessoa logada já preencheu o currículo (null: não logada) */
   temCurriculo?: boolean | null;
+  /** quem publicou já aceitou, e falta só o currículo (a vaga pede) */
+  aceita?: boolean;
   /** quem está vendo (para desfazer o match) */
   usuarioId?: string | null;
   /** nome de quem publicou */
@@ -45,9 +47,12 @@ type Props = {
   entrevista?: Entrevista | null;
 };
 
+/** O currículo, que volta para a vaga depois de salvar. */
+const linkDoCurriculo = (anuncioId: string) => `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`;
+
 /** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
-function ConviteCurriculo({ anuncioId, forte }: { anuncioId: string; forte: boolean }) {
-  const href = `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`;
+function ConviteCurriculo({ anuncioId, forte, quem }: { anuncioId: string; forte: boolean; quem: string }) {
+  const href = linkDoCurriculo(anuncioId);
   if (!forte) {
     return (
       <p className="text-body-sm">
@@ -66,7 +71,8 @@ function ConviteCurriculo({ anuncioId, forte }: { anuncioId: string; forte: bool
         Esta vaga pede currículo
       </p>
       <p className="text-body-sm">
-        Quem publicou só consegue dar match depois que você preencher o seu. Leva uns 3 minutos.
+        Mandando agora, o match sai na hora do aceite. Se deixar para depois, você recebe um aviso quando {quem}{" "}
+        aceitar. Leva uns 3 minutos.
       </p>
       <Link
         href={href}
@@ -90,6 +96,7 @@ export function PainelCurtir({
   contato,
   pedeCurriculo = false,
   temCurriculo = null,
+  aceita = false,
   usuarioId = null,
   autorNome = "",
   desfeito = null,
@@ -107,6 +114,8 @@ export function PainelCurtir({
   const servico = tipo === "servico";
   // quem decide se aceita (e, com o aceite, vocês se conectam)
   const quem = autorNome || (servico ? "O profissional" : "Quem publicou");
+  // vaga que pede currículo, para quem ainda não mandou: entra o passo do currículo
+  const passoDoCurriculo = !servico && pedeCurriculo && temCurriculo === false;
 
   function curtir() {
     setErro(null);
@@ -231,6 +240,47 @@ export function PainelCurtir({
     );
   }
 
+  // quem publicou aceitou e falta só o currículo: o próximo passo é com a pessoa
+  if (status === "pendente" && aceita) {
+    return (
+      <div className="flex flex-col gap-4 rounded-lg border-2 border-terra bg-surface-200 p-5 shadow-card">
+        <div className="flex flex-col gap-1.5">
+          <p className="flex items-center gap-2 font-display text-h3">
+            <PartyPopper aria-hidden className="size-5 shrink-0 text-terra-text" />
+            {quem} aceitou você!
+          </p>
+          <p className="text-body-sm">
+            Falta só um passo: esta vaga pede currículo. Mande o seu e o match sai na hora, com a conversa e o WhatsApp
+            de vocês aqui.
+          </p>
+        </div>
+        <div className="rounded-md border border-line bg-surface-100 p-3">
+          <CaminhoDaCurtida situacao="aceita" quem={quem} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <BotaoLink href={linkDoCurriculo(anuncioId)} variante="primario" className="min-h-12 w-full">
+            <FileText aria-hidden />
+            Mandar meu currículo
+          </BotaoLink>
+          <p className="text-center text-body-sm text-ink-muted">
+            {temCurriculo
+              ? "Confira o seu currículo e salve para mandar."
+              : "Você preenche uma vez e ele vale para as próximas vagas."}
+          </p>
+        </div>
+        {perguntas.length > 0 && (
+          <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} />
+        )}
+        <div>
+          <Botao variante="fantasma" tamanho="sm" onClick={desfazer} disabled={pendente}>
+            Desfazer curtida
+          </Botao>
+        </div>
+        {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      </div>
+    );
+  }
+
   if (status === "pendente") {
     return (
       <div className="flex flex-col gap-3 rounded-lg bg-like-soft p-5 text-ink">
@@ -239,16 +289,20 @@ export function PainelCurtir({
           {servico ? "Pedido enviado" : "Você curtiu"}
         </p>
         <div className="rounded-md bg-surface-200 p-3">
-          <CaminhoDaCurtida situacao="pendente" quem={quem} servico={servico} />
+          <CaminhoDaCurtida situacao="pendente" quem={quem} servico={servico} passoDoCurriculo={passoDoCurriculo} />
         </div>
         <p className="text-body-sm">
-          Quando {quem} responder, você recebe um aviso e o contato aparece aqui e no seu painel.
+          {passoDoCurriculo
+            ? `Quando ${quem} responder, você recebe um aviso.`
+            : `Quando ${quem} responder, você recebe um aviso e o contato aparece aqui e no seu painel.`}
         </p>
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
         {perguntas.length > 0 && (
           <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} />
         )}
-        {!servico && temCurriculo === false && <ConviteCurriculo anuncioId={anuncioId} forte={pedeCurriculo} />}
+        {!servico && temCurriculo === false && (
+          <ConviteCurriculo anuncioId={anuncioId} forte={pedeCurriculo} quem={quem} />
+        )}
         {!servico && temCurriculo && <p className="text-body-sm">Seu currículo foi junto com a curtida.</p>}
         <div>
           <Botao variante="fantasma" tamanho="sm" onClick={desfazer} disabled={pendente}>
@@ -264,7 +318,13 @@ export function PainelCurtir({
     <div className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
       <div>
         <p className="font-display text-h3">{servico ? "Quer contratar?" : "Tem interesse?"}</p>
-        <CaminhoDaCurtida situacao="antes" quem={quem} servico={servico} className="mt-3" />
+        <CaminhoDaCurtida
+          situacao="antes"
+          quem={quem}
+          servico={servico}
+          passoDoCurriculo={passoDoCurriculo}
+          className="mt-3"
+        />
         {!servico && pedeCurriculo && (
           <p className="mt-2 flex items-start gap-2 text-body-sm">
             <FileText aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
@@ -274,11 +334,11 @@ export function PainelCurtir({
                 "O seu vai junto quando você curtir."
               ) : (
                 <>
-                  O match só acontece com currículo preenchido:{" "}
-                  <Link href={`/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`} className="underline">
-                    preencha o seu
-                  </Link>{" "}
-                  antes ou depois de curtir.
+                  Pode curtir agora e mandar depois: se {quem} aceitar, você recebe um aviso para mandar. Se preferir,{" "}
+                  <Link href={linkDoCurriculo(anuncioId)} className="underline">
+                    preencha agora
+                  </Link>
+                  .
                 </>
               )}
             </span>

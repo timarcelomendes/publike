@@ -10,7 +10,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
+import { esperaResposta, LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuPerfil } from "@/lib/dados";
 import { formatarData, formatarLugar, primeiro, rotuloModalidade, tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
@@ -307,7 +307,7 @@ function FunilDaVaga({ id, candidatos, novas }: { id: string; candidatos: Candid
     { nome: "Candidatos", numero: candidatos.length, href: `/painel/anuncio/${id}/quadro` },
     {
       nome: "Para responder",
-      numero: conta((c) => c.status === "pendente"),
+      numero: conta(esperaResposta),
       href: `${base}&situacao=responder`,
       destaque: true,
     },

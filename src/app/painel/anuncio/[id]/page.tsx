@@ -17,6 +17,7 @@ import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
+  esperaCurriculo,
   etapaQueVale,
   etapasDoTipo,
   motivoParaOutro,
@@ -205,7 +206,9 @@ async function Conteudo({
               return (
                 <li
                   key={p.perfil_id}
-                  className={`flex flex-col gap-3 rounded-lg border bg-surface-200 p-4 shadow-card sm:p-5 ${
+                  // o aviso "currículo recebido" abre a lista já neste candidato
+                  id={`candidato-${p.perfil_id}`}
+                  className={`flex scroll-mt-24 flex-col gap-3 rounded-lg border bg-surface-200 p-4 shadow-card sm:p-5 ${
                     p.status === "match" ? "border-cerrado" : "border-line"
                   } ${p.status === "dispensada" || p.status === "desfeito" ? "opacity-70" : ""}`}
                 >
@@ -229,6 +232,7 @@ async function Conteudo({
                       </p>
                     </div>
                     {p.status === "match" && <Selo variante="match">Deu match</Selo>}
+                    {esperaCurriculo(p) && semCurriculo && <Selo>Esperando currículo</Selo>}
                     {p.status === "dispensada" && (
                       <Selo variante="contorno">{servico ? "Recusado" : "Dispensado"}</Selo>
                     )}
@@ -339,6 +343,7 @@ async function Conteudo({
                         status={p.status}
                         servico={servico}
                         semCurriculo={semCurriculo}
+                        aceita={esperaCurriculo(p)}
                       />
                     )}
                   </div>

@@ -367,6 +367,20 @@ export function etapaParaQuemCurtiu(
   return vale === "novo" ? null : vale;
 }
 
+type PeDaCurtida = { status: string; aceita_em?: string | null };
+
+/**
+ * Quem publicou aceitou, mas a vaga pede currículo e a pessoa ainda não mandou: o
+ * status continua "pendente" e o match sai sozinho quando o currículo chegar.
+ */
+export const esperaCurriculo = (c: PeDaCurtida) => c.status === "pendente" && Boolean(c.aceita_em);
+
+/** Espera a resposta de quem publicou (aceitar ou dispensar). */
+export const esperaResposta = (c: PeDaCurtida) => c.status === "pendente" && !c.aceita_em;
+
+/** O pé em que está a curtida, com "aceita" para quem já foi aceito e falta mandar o currículo. */
+export const situacaoDaCurtida = (c: PeDaCurtida) => (esperaCurriculo(c) ? "aceita" : c.status);
+
 export const STATUS_ANUNCIO: Record<StatusAnuncio, { nome: string; ajuda: string }> = {
   ativo: { nome: "No ar", ajuda: "Aparece nas buscas" },
   pausado: { nome: "Pausado", ajuda: "Escondido até você reativar" },

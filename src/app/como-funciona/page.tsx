@@ -51,7 +51,7 @@ const PERGUNTAS = [
   },
   {
     p: "Quem vê meu currículo?",
-    r: "Só quem anunciou uma vaga que você curtiu, enquanto a curtida existir. Se a vaga pede currículo, o match só acontece depois que você preencher o seu. Ele não aparece no seu perfil público nem na busca. Você corrige ou apaga quando quiser, em Meu perfil.",
+    r: "Só quem anunciou uma vaga que você curtiu, enquanto a curtida existir. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar. Ele não aparece no seu perfil público nem na busca. Você corrige ou apaga quando quiser, em Meu perfil.",
   },
   {
     p: "O que é match?",
