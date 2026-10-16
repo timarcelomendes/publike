@@ -242,11 +242,3 @@
 .maplibregl-ctrl-attrib {
   font-size: 11px;
 }
-
-/* Chat no canto (janela-mensagens.tsx): no computador, a Ajuda fica numa aba do chat,
-   junto com as Conversas; o botão solto do assistente some. */
-@media (min-width: 48rem) {
-  html[data-janela-mensagens] [data-assistente="botao"] {
-    display: none;
-  }
-}
