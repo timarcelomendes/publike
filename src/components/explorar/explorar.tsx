@@ -163,11 +163,14 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   const maiorRaio = RAIOS[RAIOS.length - 1];
 
   // As perguntas da primeira visita (e depois o próximo passo) entram no meio da lista, depois
-  // dos dois primeiros anúncios: em cima fica só a busca. Sem nada a perguntar, o espaço some.
+  // dos dois primeiros anúncios (com poucos, no fim): em cima fica só a busca. Sem nada a perguntar, o espaço some.
   const perguntas = filtros.meus ? null : (
     <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
   );
   const lugarDasPerguntas = <div className="col-span-full empty:hidden">{perguntas}</div>;
+  // Com poucos anúncios, as perguntas no meio deixariam um cartão sozinho embaixo delas
+  // (3 colunas: 3 em cima, a pergunta, 1 embaixo). Até 5, elas vão para o fim da lista.
+  const depoisDe = n >= 6 ? 1 : n - 1;
 
   const lista =
     n > 0 ? (
@@ -183,7 +186,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               pertoDeCasa={local ? a.prioridade : null}
               tempoDe={tempoDe}
             />
-            {(i === 1 || (n === 1 && i === 0)) && lugarDasPerguntas}
+            {i === depoisDe && lugarDasPerguntas}
           </Fragment>
         ))}
       </div>
