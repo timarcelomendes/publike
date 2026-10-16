@@ -3,6 +3,7 @@ import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
 import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
+import { lerBeneficiosExtras, lerHorario, lerPerguntas, textoDoHorario, type HorarioDetalhe, type Pergunta } from "./vaga-extra";
 import {
   AREAS_ATENDIMENTO,
   CIDADES,
@@ -196,7 +197,17 @@ export const esquemaAnuncio = z
     contratante_confidencial: d.tipo === "vaga" && d.agencia && d.contratante_confidencial,
   }));
 
-export type DadosAnuncio = z.output<typeof esquemaAnuncio>;
+/**
+ * O que a empresa monta do jeito dela (vaga-extra.ts). `undefined`: o formulário não mandou
+ * o campo, e o que está no banco fica como está.
+ */
+type ExtrasDaVaga = {
+  perguntas?: Pergunta[];
+  beneficios_extras?: string[];
+  horario_detalhe?: HorarioDetalhe | null;
+};
+
+export type DadosAnuncio = z.output<typeof esquemaAnuncio> & ExtrasDaVaga;
 
 /** "De 1.800 a 2.200": o fim é opcional e precisa ser maior que o começo. */
 function conferirFaixa(de: number | null, ate: number | null) {
@@ -250,6 +261,9 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     beneficios: d.beneficios,
     beneficios_lista: d.beneficios_lista,
     horario: d.horario,
+    ...(d.perguntas !== undefined ? { perguntas: d.perguntas } : {}),
+    ...(d.beneficios_extras !== undefined ? { beneficios_extras: d.beneficios_extras } : {}),
+    ...(d.horario_detalhe !== undefined ? { horario_detalhe: d.horario_detalhe } : {}),
     vagas: d.vagas,
     pede_curriculo: d.pede_curriculo,
     contratante: d.contratante,
@@ -327,9 +341,63 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     lat: coordenada(campo(formData, "lat")),
     lng: coordenada(campo(formData, "lng")),
   };
+  const extras = lerExtrasDaVaga(formData, bruto.tipo === "vaga");
   const leitura = esquemaAnuncio.safeParse(bruto);
-  if (leitura.success) return { ok: true, dados: leitura.data };
-  return { ok: false, erros: { ...errosCruzados(bruto), ...errosPorCampo(leitura.error) } };
+  if (leitura.success && extras.ok) {
+    const d = leitura.data;
+    const { horario_detalhe, beneficios_extras } = extras.dados;
+    return {
+      ok: true,
+      dados: {
+        ...d,
+        ...extras.dados,
+        // o horário montado e os benefícios a mais também vão em texto: cartão, busca e planilha leem dali
+        horario: horario_detalhe ? textoDoHorario(horario_detalhe) : horario_detalhe === null ? null : d.horario,
+        beneficios: beneficios_extras ? beneficios_extras.join(", ") || null : d.beneficios,
+      },
+    };
+  }
+  return {
+    ok: false,
+    erros: {
+      ...(leitura.success ? {} : { ...errosCruzados(bruto), ...errosPorCampo(leitura.error) }),
+      ...(extras.ok ? {} : extras.erros),
+    },
+  };
+}
+
+/** Perguntas, benefícios a mais e horário montado: só da vaga, e só quando o formulário manda. */
+function lerExtrasDaVaga(
+  formData: FormData,
+  vaga: boolean,
+): { ok: true; dados: ExtrasDaVaga } | { ok: false; erros: Record<string, string> } {
+  const dados: ExtrasDaVaga = {};
+  const erros: Record<string, string> = {};
+  if (formData.has("perguntas")) {
+    const r = lerPerguntas(vaga ? campo(formData, "perguntas") : null);
+    if (r.ok) dados.perguntas = r.perguntas;
+    else erros.perguntas = r.erro;
+  }
+  if (formData.has("beneficios_extras_enviado")) {
+    const r = lerBeneficiosExtras(vaga ? formData.getAll("beneficios_extras") : []);
+    if (r.ok) dados.beneficios_extras = r.lista;
+    else erros.beneficios_extras = r.erro;
+  }
+  if (formData.has("horario_detalhe")) {
+    const r = lerHorario(vaga ? campo(formData, "horario_detalhe") : null);
+    if (r.ok) dados.horario_detalhe = r.horario;
+    else erros.horario = r.erro;
+  }
+  // nada de telefone, e-mail ou site escondido nos textos livres
+  const textos: [string, string[]][] = [
+    ["perguntas", (dados.perguntas ?? []).flatMap((p) => [p.nome, ...p.opcoes])],
+    ["beneficios_extras", dados.beneficios_extras ?? []],
+    ["horario", dados.horario_detalhe?.obs ? [dados.horario_detalhe.obs] : []],
+  ];
+  for (const [chave, lista] of textos) {
+    if (!erros[chave] && lista.some((t) => temContatoNoTexto(t))) erros[chave] = SEM_CONTATO;
+  }
+  return Object.keys(erros).length ? { ok: false, erros } : { ok: true, dados };
 }
 
 // ---------------------------------------------------------------- serviços

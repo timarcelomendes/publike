@@ -10,9 +10,19 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerDesfazerMatch, temContato, UUID } from "@/lib/validacao";
+import { lerRespostas, perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 
-/** Curtir = "tenho interesse". */
-export async function curtirAnuncio(anuncioId: string, mensagem: string | null = null): Promise<Resultado> {
+const RESPONDER = (anuncioId: string) => `/anuncio/${anuncioId}?responder=1`;
+
+/**
+ * Curtir = "tenho interesse". Se a vaga tem perguntas, as respostas vão junto. Sem elas
+ * (curtiu pelo cartão ou pelo Descobrir) e com pergunta obrigatória, leva à página da vaga.
+ */
+export async function curtirAnuncio(
+  anuncioId: string,
+  mensagem: string | null = null,
+  respostasBrutas: Respostas | null = null,
+): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncioId)) return { ok: false, erro: "Anúncio não encontrado." };
   const voltar = `/anuncio/${anuncioId}`;
@@ -25,8 +35,21 @@ export async function curtirAnuncio(anuncioId: string, mensagem: string | null =
   }
 
   const supabase = await criarClienteServidor();
-  const { error } = await supabase.from("curtidas").insert({ anuncio_id: anuncioId, mensagem: texto });
+  const { data: alvo } = await supabase.from("anuncios").select("perguntas").eq("id", anuncioId).maybeSingle();
+  const perguntas = perguntasDoBanco(alvo?.perguntas);
+  let respostas: Respostas = {};
+  if (perguntas.length) {
+    const lidas = lerRespostas(perguntas, respostasBrutas ?? {});
+    if (!lidas.ok) {
+      return respostasBrutas
+        ? { ok: false, erro: lidas.erro }
+        : { ok: false, erro: "A empresa fez perguntas para esta vaga. Responda para curtir.", ir: RESPONDER(anuncioId) };
+    }
+    respostas = lidas.respostas;
+  }
+  const { error } = await supabase.from("curtidas").insert({ anuncio_id: anuncioId, mensagem: texto, respostas });
   if (error) {
+    if (error.hint === "perguntas") return { ok: false, erro: mensagemDeErro(error), ir: RESPONDER(anuncioId) };
     if (precisaCompletarPerfil(error) || error.code === "23503") {
       return {
         ok: false,
@@ -49,6 +72,22 @@ export async function curtirAnuncio(anuncioId: string, mensagem: string | null =
     ok: true,
     mensagem: "Pronto! Agora quem publicou decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu painel.",
   };
+}
+
+/** O candidato muda as respostas às perguntas da vaga (enquanto a curtida está de pé). */
+export async function responderPerguntas(anuncioId: string, respostasBrutas: Respostas): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Anúncio não encontrado." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: `/entrar?next=/anuncio/${anuncioId}` };
+  const supabase = await criarClienteServidor();
+  const { data: alvo } = await supabase.from("anuncios").select("perguntas").eq("id", anuncioId).maybeSingle();
+  const lidas = lerRespostas(perguntasDoBanco(alvo?.perguntas), respostasBrutas);
+  if (!lidas.ok) return { ok: false, erro: lidas.erro };
+  const { error } = await supabase.rpc("responder_perguntas", { p_anuncio: anuncioId, p_respostas: lidas.respostas });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return { ok: true, mensagem: "Respostas salvas." };
 }
 
 /** Desfaz a curtida enquanto ainda não houve resposta. */

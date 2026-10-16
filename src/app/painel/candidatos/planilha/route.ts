@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { ETAPAS_CANDIDATO, TIPOS_CONTA } from "@/lib/constantes";
-import { listarMeusCandidatos, obterUsuario } from "@/lib/dados";
+import { listarMeusCandidatos, listarRespostasDosCandidatos, obterUsuario, perguntasDasVagas } from "@/lib/dados";
 import { formatarTelefone } from "@/lib/formato";
 import { dataHora, nomeDoArquivo, respostaCsv, SITUACAO_CURTIDA } from "@/lib/planilha";
 import { UUID } from "@/lib/validacao";
+import { textoDaResposta } from "@/lib/vaga-extra";
 
 // Todos os candidatos das minhas vagas numa planilha (ou só de uma vaga: ?vaga=id;
 // só de uma etapa: ?etapa=entrevista; só quem espera resposta: ?situacao=responder).
@@ -25,6 +26,23 @@ export async function GET(req: Request) {
       (responder ? c.status === "pendente" : !etapa || c.etapa === etapa),
   );
 
+  const ids = [...new Set(lista.map((c) => c.anuncio_id))];
+  const [perguntas, respostas] = await Promise.all([perguntasDasVagas(ids), listarRespostasDosCandidatos(ids)]);
+  // uma vaga só: uma coluna para cada pergunta; várias: tudo numa coluna ("Pergunta: resposta; …")
+  const umaVaga = ids.length === 1 ? (perguntas.get(ids[0]) ?? []) : null;
+  const algumaPergunta = [...perguntas.values()].some((l) => l.length > 0);
+  const colunasPerguntas = umaVaga ? umaVaga.map((q) => q.nome) : algumaPergunta ? ["Respostas às perguntas"] : [];
+  const respostasDe = (c: (typeof lista)[number]) => {
+    const r = respostas.get(`${c.anuncio_id}:${c.perfil_id}`) ?? {};
+    if (umaVaga) return umaVaga.map((q) => textoDaResposta(q, r[q.id]));
+    if (!algumaPergunta) return [];
+    return [
+      (perguntas.get(c.anuncio_id) ?? [])
+        .map((q) => `${q.nome}: ${textoDaResposta(q, r[q.id]) || "não respondeu"}`)
+        .join("; "),
+    ];
+  };
+
   const cabecalho = [
     "Vaga",
     "Nome",
@@ -39,6 +57,7 @@ export async function GET(req: Request) {
     "WhatsApp",
     "E-mail",
     "Currículo",
+    ...colunasPerguntas,
     "Perfil no Publike",
     "Candidatos da vaga",
   ];
@@ -56,6 +75,7 @@ export async function GET(req: Request) {
     c.whatsapp ? formatarTelefone(c.whatsapp) : "",
     c.email,
     c.tem_curriculo ? "Sim" : "Não",
+    ...respostasDe(c),
     `${SITE_URL}/perfil/${c.perfil_id}`,
     `${SITE_URL}/painel/anuncio/${c.anuncio_id}`,
   ]);

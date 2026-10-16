@@ -6,11 +6,13 @@ import {
   listarCurriculosDosInteressados,
   listarEtapasDosCandidatos,
   listarInteressados,
+  listarRespostasDosCandidatos,
   obterAnuncio,
   obterUsuario,
 } from "@/lib/dados";
 import { formatarTelefone } from "@/lib/formato";
 import { UUID } from "@/lib/validacao";
+import { perguntasDoBanco, textoDaResposta } from "@/lib/vaga-extra";
 
 // A lista de quem curtiu uma vaga, para abrir no Excel ou no Google Planilhas.
 // Só quem publicou baixa. O WhatsApp e o e-mail só vêm de quem deu match (o banco
@@ -28,10 +30,12 @@ export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/a
     return new NextResponse("Não encontrado.", { status: 404 });
   }
 
-  const [interessados, curriculos, etapas] = await Promise.all([
+  const perguntas = perguntasDoBanco(anuncio.perguntas);
+  const [interessados, curriculos, etapas, respostas] = await Promise.all([
     listarInteressados(id),
     listarCurriculosDosInteressados(id),
     listarEtapasDosCandidatos(id),
+    listarRespostasDosCandidatos(perguntas.length ? [id] : []),
   ]);
 
   const cabecalho = [
@@ -51,6 +55,8 @@ export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/a
     "CNH",
     "Disponibilidade",
     "Última experiência",
+    // uma coluna para cada pergunta da vaga
+    ...perguntas.map((q) => q.nome),
     "Perfil no Publike",
   ];
   const linhas = interessados.map((p) => {
@@ -75,6 +81,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/a
       c?.cnh,
       (c?.disponibilidade ?? []).map((d) => DISPONIBILIDADES.find((x) => x.valor === d)?.nome ?? d).join(", "),
       ultima ? [ultima.cargo, ultima.onde].filter(Boolean).join(" em ") : "",
+      ...perguntas.map((q) => textoDaResposta(q, respostas.get(`${id}:${p.perfil_id}`)?.[q.id])),
       `${SITE_URL}/perfil/${p.perfil_id}`,
     ];
   });

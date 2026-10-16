@@ -10,6 +10,7 @@ import {
   Flag,
   Gift,
   ListChecks,
+  MessageCircleQuestion,
   MapPin,
   Navigation,
   ShieldAlert,
@@ -17,6 +18,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import { perguntasDoBanco, respostasDoBanco } from "@/lib/vaga-extra";
 import Image from "next/image";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -245,6 +247,7 @@ async function DetalheAnuncio({
     ...anuncio.beneficios_lista.flatMap((b) => nomeBeneficio(b) ?? []),
     ...(anuncio.beneficios ? [anuncio.beneficios] : []),
   ];
+  const perguntas = vaga ? perguntasDoBanco(anuncio.perguntas) : [];
   const requisitos = [
     anuncio.escolaridade_minima ? `${nomeEscolaridade(anuncio.escolaridade_minima)}` : null,
     nomeExperiencia(anuncio.experiencia),
@@ -282,6 +285,9 @@ async function DetalheAnuncio({
         usuarioId={usuario?.id ?? null}
         autorNome={anuncio.autor_nome}
         desfeito={desfeito}
+        perguntas={perguntas}
+        minhasRespostas={respostasDoBanco(anuncio.minhas_respostas)}
+        pedirRespostas={primeiro(sp.responder) === "1"}
       />
     );
 
@@ -419,6 +425,11 @@ async function DetalheAnuncio({
             {vaga && requisitos.length > 0 && (
               <Fato icone={ListChecks} rotulo="Requisitos">
                 {requisitos.join(" · ")}
+              </Fato>
+            )}
+            {perguntas.length > 0 && (
+              <Fato icone={MessageCircleQuestion} rotulo="A empresa vai perguntar">
+                {perguntas.map((p) => p.nome).join(" · ")}
               </Fato>
             )}
             {vaga && anuncio.vagas > 1 && (

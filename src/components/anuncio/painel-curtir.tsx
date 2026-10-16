@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
+import type { Pergunta, Respostas } from "@/lib/vaga-extra";
 import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
+import { CamposDasPerguntas, faltandoResponder, SuasRespostas } from "./perguntas-da-vaga";
 import { CurtirDeNovo, DesfazerMatch } from "../desfazer-match";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -32,6 +34,12 @@ type Props = {
   autorNome?: string;
   /** match desfeito: por quem e por quê */
   desfeito?: { porMim: boolean; motivo: string | null; futuro: boolean; bloqueadoPeloOutro?: boolean } | null;
+  /** vaga com perguntas da empresa: o candidato responde ao curtir */
+  perguntas?: Pergunta[];
+  /** o que a pessoa respondeu (depois de curtir) */
+  minhasRespostas?: Respostas;
+  /** veio do cartão ou do Descobrir sem responder: avisa em cima das perguntas */
+  pedirRespostas?: boolean;
 };
 
 /** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
@@ -82,9 +90,14 @@ export function PainelCurtir({
   usuarioId = null,
   autorNome = "",
   desfeito = null,
+  perguntas = [],
+  minhasRespostas = {},
+  pedirRespostas = false,
 }: Props) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
+  const [respostas, setRespostas] = useState<Respostas>({});
+  const [faltando, setFaltando] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const servico = tipo === "servico";
@@ -97,8 +110,16 @@ export function PainelCurtir({
       router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`);
       return;
     }
+    if (perguntas.length) {
+      const falta = faltandoResponder(perguntas, respostas);
+      setFaltando(falta);
+      if (falta.length) {
+        setErro(falta.length === 1 ? "Responda à pergunta marcada para curtir." : "Responda às perguntas marcadas para curtir.");
+        return;
+      }
+    }
     iniciar(async () => {
-      const r = await curtirAnuncio(anuncioId, texto);
+      const r = await curtirAnuncio(anuncioId, texto, perguntas.length ? respostas : null);
       if (!r.ok) {
         if (r.ir) router.push(r.ir);
         else setErro(r.erro);
@@ -142,6 +163,9 @@ export function PainelCurtir({
             <Star aria-hidden className="size-4 text-ipe" fill="currentColor" strokeWidth={0} />
             Avaliar o serviço
           </Link>
+        )}
+        {perguntas.length > 0 && (
+          <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} claro />
         )}
         {usuarioId && (
           <DesfazerMatch anuncioId={anuncioId} perfilId={usuarioId} outroNome={autorNome || "quem publicou"} claro />
@@ -216,6 +240,9 @@ export function PainelCurtir({
           Quando {quem} responder, você recebe um aviso e o contato aparece aqui e no seu painel.
         </p>
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
+        {perguntas.length > 0 && (
+          <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} />
+        )}
         {!servico && temCurriculo === false && <ConviteCurriculo anuncioId={anuncioId} forte={pedeCurriculo} />}
         {!servico && temCurriculo && <p className="text-body-sm">Seu currículo foi junto com a curtida.</p>}
         <div>
@@ -253,6 +280,24 @@ export function PainelCurtir({
           </p>
         )}
       </div>
+      {perguntas.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-100 p-3">
+          <p className="text-label">A empresa quer saber</p>
+          {pedirRespostas && (
+            <p className="-mt-1 text-body-sm text-terra-text">Responda para curtir: as respostas vão junto da curtida.</p>
+          )}
+          <CamposDasPerguntas
+            perguntas={perguntas}
+            respostas={respostas}
+            mudar={(id, v) => {
+              setRespostas((r) => ({ ...r, [id]: v }));
+              setFaltando((f) => f.filter((x) => x !== id));
+              setErro(null);
+            }}
+            faltando={faltando}
+          />
+        </div>
+      )}
       {logado && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={idCampo} className="text-label">

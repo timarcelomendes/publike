@@ -8,8 +8,8 @@ import { Esqueleto } from "@/components/ui/basicos";
 import { salvarAnuncioDaEquipe } from "@/lib/acoes/moderacao";
 import { iaConfigurada } from "@/lib/ia/openai";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
-import type { TipoAnuncio } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 
 export const metadata: Metadata = { title: "Corrigir anúncio" };
 
@@ -50,37 +50,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
         acaoSalvar={salvarAnuncioDaEquipe}
         agencia={a.autor_tipo === "agencia"}
         enderecoPublico={a.autor_tipo !== "pessoa"}
-        inicial={{
-          id: a.id,
-          tipo: a.tipo as TipoAnuncio,
-          titulo: a.titulo,
-          descricao: a.descricao,
-          categoria: a.categoria,
-          regime: a.regime,
-          pagamento_valor: a.pagamento_valor,
-          pagamento_unidade: a.pagamento_unidade,
-          beneficios: a.beneficios,
-          horario: a.horario,
-          vagas: a.vagas,
-          pede_curriculo: a.pede_curriculo,
-          contratante: a.contratante,
-          contratante_confidencial: a.contratante_confidencial,
-          pagamento_ate: a.pagamento_ate,
-          comissao: a.comissao,
-          beneficios_lista: a.beneficios_lista,
-          escolaridade_minima: a.escolaridade_minima,
-          experiencia: a.experiencia,
-          cnh: a.cnh,
-          jornada: a.jornada,
-          modelo: a.modelo,
-          pcd: a.pcd,
-          cidade: a.cidade,
-          bairro: a.bairro,
-          cep: a.cep,
-          endereco: a.endereco,
-          lat: a.lat,
-          lng: a.lng,
-        }}
+        inicial={valoresDoAnuncio(a)}
       />
     </>
   );

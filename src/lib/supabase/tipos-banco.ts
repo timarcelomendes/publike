@@ -190,6 +190,9 @@ export type Database = {
           modelo: string | null;
           /** tambem = também para PCD; exclusiva = só PCD */
           pcd: string | null;
+          perguntas: Json;
+          beneficios_extras: string[];
+          horario_detalhe: Json | null;
         };
         Insert: {
           /** quem publica (padrão: quem está logado; o admin informa ao publicar em nome da conta) */
@@ -230,6 +233,9 @@ export type Database = {
           modelo?: string | null;
           /** tambem = também para PCD; exclusiva = só PCD */
           pcd?: string | null;
+          perguntas?: Json;
+          beneficios_extras?: string[];
+          horario_detalhe?: Json | null;
         };
         Update: {
           titulo?: string;
@@ -267,6 +273,9 @@ export type Database = {
           modelo?: string | null;
           /** tambem = também para PCD; exclusiva = só PCD */
           pcd?: string | null;
+          perguntas?: Json;
+          beneficios_extras?: string[];
+          horario_detalhe?: Json | null;
         };
         Relationships: [
           {
@@ -324,10 +333,12 @@ export type Database = {
           desfeito_motivo: string | null;
           desfeito_em: string | null;
           desfeito_futuro: boolean | null;
+          respostas: Json;
         };
         Insert: {
           anuncio_id: string;
           mensagem?: string | null;
+          respostas?: Json;
         };
         Update: SemTabela;
         Relationships: [
@@ -598,6 +609,10 @@ export type Database = {
           modelo: string | null;
           /** tambem = também para PCD; exclusiva = só PCD */
           pcd: string | null;
+          perguntas: Json;
+          beneficios_extras: string[];
+          horario_detalhe: Json | null;
+          minhas_respostas: Json | null;
         }[];
       };
       meus_anuncios: {
@@ -871,6 +886,10 @@ export type Database = {
           outro_email: string | null;
           match_em: string;
         }[];
+      };
+      responder_perguntas: {
+        Args: { p_anuncio: string; p_respostas: Json };
+        Returns: undefined;
       };
       responder_curtida: {
         Args: { p_anuncio: string; p_perfil: string; p_decisao: string };

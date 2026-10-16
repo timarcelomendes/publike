@@ -2,6 +2,8 @@ import { ArrowLeft, ChevronDown, Download, FileText, Heart } from "lucide-react"
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { RespostasDoCandidato } from "@/components/painel/respostas-candidato";
+import { perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
@@ -28,6 +30,7 @@ import {
   listarEtapasDosCandidatos,
   listarInteressados,
   listarMeusBloqueios,
+  listarRespostasDosCandidatos,
   obterAnuncio,
 } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
@@ -60,13 +63,15 @@ async function Conteudo({
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
-  const [todos, curriculos, desfeitos, etapas, bloqueios, publicas] = await Promise.all([
+  const perguntas = servico ? [] : perguntasDoBanco(anuncio.perguntas);
+  const [todos, curriculos, desfeitos, etapas, bloqueios, publicas, respostas] = await Promise.all([
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
     listarDesfeitosDoAnuncio(id),
     listarEtapasDosCandidatos(id),
     listarMeusBloqueios(),
     minhasContratacoesPublicas(),
+    perguntas.length ? listarRespostasDosCandidatos([id]) : Promise.resolve(new Map<string, Respostas>()),
   ]);
   // Cada interessado tem uma etapa (só quem publicou anota; quem curtiu vê a etapa); dá
   // para filtrar por ela. Esperando resposta, etapa adiante de "Em análise" não vale.
@@ -228,6 +233,7 @@ async function Conteudo({
                   {p.mensagem && (
                     <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{p.mensagem}”</blockquote>
                   )}
+                  <RespostasDoCandidato perguntas={perguntas} respostas={respostas.get(`${id}:${p.perfil_id}`)} />
                   {p.servicos.length > 0 && (
                     <div className="flex flex-wrap gap-1.5" aria-label="O que faz">
                       {p.servicos.map((s) => (

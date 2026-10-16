@@ -1,5 +1,6 @@
 import type { ValoresAnuncio } from "@/components/form-anuncio";
 import type { AnuncioCompleto, TipoAnuncio } from "@/lib/tipos";
+import { beneficiosAntigos, horarioDoBanco, perguntasDoBanco } from "@/lib/vaga-extra";
 
 /**
  * O que o formulário de anúncio precisa a partir de um anúncio já publicado.
@@ -17,6 +18,15 @@ export function valoresDoAnuncio(anuncio: AnuncioCompleto, { copiar = false } = 
     pagamento_unidade: anuncio.pagamento_unidade,
     beneficios: anuncio.beneficios,
     horario: anuncio.horario,
+    perguntas: perguntasDoBanco(anuncio.perguntas),
+    // vagas de antes tinham "Outros benefícios" escrito à mão: vira a lista
+    beneficios_extras: anuncio.beneficios_extras.length
+      ? anuncio.beneficios_extras
+      : beneficiosAntigos(anuncio.beneficios),
+    // vagas de antes tinham o horário escrito à mão: vira a observação
+    horario_detalhe:
+      horarioDoBanco(anuncio.horario_detalhe) ??
+      (anuncio.horario ? { escala: null, dias: [], turnos: [], obs: anuncio.horario.slice(0, 120) } : null),
     vagas: anuncio.vagas,
     pede_curriculo: anuncio.pede_curriculo,
     contratante: anuncio.contratante,

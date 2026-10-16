@@ -2,6 +2,8 @@ import { ChevronDown, Download, FileText, Search, ShieldAlert, Users } from "luc
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { RespostasDoCandidato } from "@/components/painel/respostas-candidato";
+import { perguntasDoBanco, type Pergunta, type Respostas } from "@/lib/vaga-extra";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
@@ -28,6 +30,7 @@ import {
   listarDesfeitosDoAnuncio,
   listarMeusBloqueios,
   listarMeusCandidatos,
+  listarRespostasDosCandidatos,
   obterAnuncio,
   type Desfeito,
 } from "@/lib/dados";
@@ -126,7 +129,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   const vagasDaLista = [...new Set(lista.map((c) => c.anuncio_id))];
   const comCurriculo = vagasDaLista.filter((id) => lista.some((c) => c.anuncio_id === id && c.tem_curriculo));
   const comDesfeito = vagasDaLista.filter((id) => lista.some((c) => c.anuncio_id === id && c.status === "desfeito"));
-  const [anuncios, curriculos, desfeitos, bloqueios, publicas] = await Promise.all([
+  const [anuncios, curriculos, desfeitos, bloqueios, publicas, respostas] = await Promise.all([
     Promise.all(vagasDaLista.map(async (id) => [id, await obterAnuncio(id)] as const)).then((l) => new Map(l)),
     Promise.all(
       comCurriculo.map(async (id) => [id, await listarCurriculosDosInteressados(id).catch(() => null)] as const),
@@ -136,6 +139,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
     ).then((l) => new Map(l)),
     comDesfeito.length ? listarMeusBloqueios() : Promise.resolve(new Map<string, { eu: boolean; ele: boolean }>()),
     minhasContratacoesPublicas(),
+    listarRespostasDosCandidatos(vagasDaLista),
   ]);
 
   const link = (mudar: { etapa?: EtapaCandidato | null; responder?: boolean }) => {
@@ -269,6 +273,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
               desfeito={desfeitos.get(c.anuncio_id)?.get(c.perfil_id)}
               bloqueio={bloqueios.get(c.perfil_id)}
               publica={publicas.get(`${c.anuncio_id}:${c.perfil_id}`)}
+              perguntas={perguntasDoBanco(anuncios.get(c.anuncio_id)?.perguntas)}
+              respostas={respostas.get(`${c.anuncio_id}:${c.perfil_id}`)}
             />
           ))}
         </ul>
@@ -292,6 +298,8 @@ function CartaoCandidato({
   curriculoFalhou,
   desfeito,
   bloqueio,
+  perguntas,
+  respostas,
 }: {
   c: Candidato;
   agora: number;
@@ -302,6 +310,8 @@ function CartaoCandidato({
   desfeito: Desfeito | undefined;
   bloqueio: { eu: boolean; ele: boolean } | undefined;
   publica: { ok_empresa: boolean; ok_pessoa: boolean } | undefined;
+  perguntas: Pergunta[];
+  respostas: Respostas | undefined;
 }) {
   const situacao = SITUACAO[c.status] ?? SITUACAO.pendente;
   const primeiroNome = c.nome.split(" ")[0];
@@ -350,6 +360,7 @@ function CartaoCandidato({
       </div>
 
       {c.mensagem && <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{c.mensagem}”</blockquote>}
+      <RespostasDoCandidato perguntas={perguntas} respostas={respostas} />
 
       {curriculo ? (
         <details className="group rounded-md border border-line bg-surface-100">

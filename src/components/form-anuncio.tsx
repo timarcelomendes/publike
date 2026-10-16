@@ -24,6 +24,8 @@ import {
 import { formatarTelefone } from "@/lib/formato";
 import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
+import { lerHorario, textoDoHorario, type HorarioDetalhe, type Pergunta } from "@/lib/vaga-extra";
+import { BeneficiosExtras, EditorPerguntas, MontarHorario } from "./anuncio/extras-da-vaga";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
 import { trocarBairro } from "./mapa/seletor-local";
@@ -58,6 +60,10 @@ export type ValoresAnuncio = {
   jornada?: string | null;
   modelo?: string | null;
   pcd?: string | null;
+  /** vaga: perguntas para o candidato, benefícios a mais e horário montado (vaga-extra.ts) */
+  perguntas?: Pergunta[];
+  beneficios_extras?: string[];
+  horario_detalhe?: HorarioDetalhe | null;
   cidade: string;
   bairro: string;
   /** comércio, empresa e agência: o endereço que aparece na vaga */
@@ -165,8 +171,8 @@ export function FormAnuncio({
       regime: vaga ? texto("regime") || null : null,
       pagamento_valor: valorDigitado != null && Number.isFinite(valorDigitado) ? valorDigitado : null,
       pagamento_unidade: combinar ? null : unidade,
-      beneficios: texto("beneficios") || null,
-      horario: texto("horario") || null,
+      beneficios: vaga ? f.getAll("beneficios_extras").join(", ") || null : texto("beneficios") || null,
+      horario: vaga ? horarioEscrito(texto("horario_detalhe")) : texto("horario") || null,
       vagas: Number(texto("vagas")) || 1,
       cidade: texto("cidade"),
       bairro: texto("bairro"),
@@ -500,6 +506,7 @@ export function FormAnuncio({
             </div>
             {erros.pcd && <MensagemErro>{erros.pcd}</MensagemErro>}
           </fieldset>
+          <EditorPerguntas inicial={inicial.perguntas ?? []} erro={erros.perguntas} />
         </Secao>
       )}
 
@@ -610,31 +617,27 @@ export function FormAnuncio({
               ))}
             </div>
             {erros.beneficios_lista && <MensagemErro>{erros.beneficios_lista}</MensagemErro>}
+            <BeneficiosExtras
+              inicial={inicial.beneficios_extras ?? []}
+              erro={erros.beneficios_extras ?? erros.beneficios}
+            />
           </fieldset>
         )}
 
-        {vaga && (
-          <Campo rotulo="Outros benefícios" nome="beneficios" opcional erro={erros.beneficios}>
-            <input
-              {...ligarCampo("beneficios", erros.beneficios)}
-              defaultValue={inicial.beneficios ?? ""}
-              maxLength={120}
-              placeholder="Ex.: bônus por meta, uniforme, desconto na loja"
-              className={classesEntrada}
-            />
-          </Campo>
-        )}
+        {vaga && <MontarHorario inicial={inicial.horario_detalhe ?? null} erro={erros.horario} />}
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
-          <Campo rotulo={vaga ? "Horário" : "Quando"} nome="horario" opcional erro={erros.horario}>
-            <input
-              {...ligarCampo("horario", erros.horario)}
-              defaultValue={inicial.horario ?? ""}
-              maxLength={120}
-              placeholder={vaga ? "Ex.: Seg a sex, das 8h às 17h" : "Ex.: Pode ser no fim de semana"}
-              className={classesEntrada}
-            />
-          </Campo>
+        <div className={vaga ? "grid gap-4 sm:max-w-40" : "grid gap-4"}>
+          {!vaga && (
+            <Campo rotulo="Quando" nome="horario" opcional erro={erros.horario}>
+              <input
+                {...ligarCampo("horario", erros.horario)}
+                defaultValue={inicial.horario ?? ""}
+                maxLength={120}
+                placeholder="Ex.: Pode ser no fim de semana"
+                className={classesEntrada}
+              />
+            </Campo>
+          )}
           {vaga && (
             <Campo rotulo="Quantas pessoas" nome="vagas" erro={erros.vagas}>
               <input
@@ -735,4 +738,10 @@ export function FormAnuncio({
       </div>
     </form>
   );
+}
+
+/** O horário montado (campo escondido) em texto, para o rascunho que vai à IA. */
+function horarioEscrito(json: string) {
+  const r = lerHorario(json || null);
+  return r.ok && r.horario ? textoDoHorario(r.horario) : null;
 }

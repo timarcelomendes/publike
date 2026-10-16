@@ -30,6 +30,7 @@ import type {
   VagaDescobrir,
 } from "./tipos";
 import { UUID } from "./validacao";
+import { perguntasDoBanco, respostasDoBanco, type Pergunta, type Respostas } from "./vaga-extra";
 
 // Leituras do banco usadas pelas páginas (sempre no servidor).
 // No modo demonstração, devolvem os dados de exemplo de demo.ts.
@@ -223,6 +224,31 @@ export async function listarEtapasDosCandidatos(
       },
     ]),
   );
+}
+
+/**
+ * As respostas dos candidatos às perguntas das vagas, por "anúncio:perfil".
+ * O banco só entrega as curtidas das minhas vagas (e as minhas).
+ */
+export async function listarRespostasDosCandidatos(anuncioIds: string[]): Promise<Map<string, Respostas>> {
+  const ids = anuncioIds.filter((id) => UUID.test(id));
+  if (MODO_DEMO || !ids.length) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.from("curtidas").select("anuncio_id, perfil_id, respostas").in("anuncio_id", ids);
+  if (error) {
+    console.error(`Publike: falha ao ler as respostas dos candidatos: ${error.message}`);
+    return new Map();
+  }
+  return new Map((data ?? []).map((l) => [`${l.anuncio_id}:${l.perfil_id}`, respostasDoBanco(l.respostas)]));
+}
+
+/** As perguntas de cada vaga (planilha de todos os candidatos). */
+export async function perguntasDasVagas(anuncioIds: string[]): Promise<Map<string, Pergunta[]>> {
+  const ids = anuncioIds.filter((id) => UUID.test(id));
+  if (MODO_DEMO || !ids.length) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.from("anuncios").select("id, perguntas").in("id", ids);
+  return new Map((data ?? []).map((a) => [a.id, perguntasDoBanco(a.perguntas)]));
 }
 
 /** Todos os candidatos das minhas vagas, com a etapa (página "Candidatos" do painel). */
