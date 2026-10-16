@@ -1,4 +1,5 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
+import { AcessoDaConta } from "@/components/admin/acesso-conta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -175,6 +176,15 @@ async function Conteudo({
           ) : (
             <p className="text-body-sm text-ink-muted">Esta conta entra pelo celular: não tem e-mail de login.</p>
           )}
+        </Secao>
+      )}
+
+      {!s && (
+        <Secao
+          titulo="Login e acesso"
+          descricao="Para quem perdeu o acesso: troque o e-mail ou o celular com que a pessoa entra e mande o link de entrar. Confira antes que é mesmo a dona da conta (por exemplo, pelo WhatsApp de contato)."
+        >
+          <AcessoDaConta usuarioId={u.id} email={u.email} telefone={u.telefone} whatsappContato={u.contato.whatsapp} />
         </Secao>
       )}
 

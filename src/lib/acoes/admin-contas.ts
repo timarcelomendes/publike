@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
 import { limparFotosDeTrabalho } from "@/lib/servidor/arquivos";
+import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { mandarEmailDeAcesso } from "@/lib/servidor/email-acesso";
 import { enviarEmailsPendentes, processarFilas } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
@@ -270,4 +271,129 @@ export async function salvarServicosEmNomeDe(
   after(processarFilas);
   revalidatePath("/");
   redirect(`/admin/usuarios/${usuarioId}?servicos=1`);
+}
+
+// ------------------------------------------------------------------ acesso da conta
+
+/** "(62) 99999-0000" → "5562999990000" (o Supabase guarda assim). Vazio: null. */
+function telefoneDeLogin(valor: string): string | null | "invalido" {
+  let d = valor.replace(/\D/g, "");
+  if (!d) return null;
+  if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
+  return /^\d{10,11}$/.test(d) ? `55${d}` : "invalido";
+}
+
+/**
+ * Troca o e-mail e o celular de login da conta (já confirmados: a equipe
+ * conferiu com a pessoa) e, se pedido, o contato que aparece nos matches.
+ */
+export async function alterarLoginPeloAdmin(
+  usuarioId: string,
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Pedido inválido." };
+
+  const { data: atual, error: erroLer } = await c.auth.admin.getUserById(usuarioId);
+  if (erroLer || !atual?.user) return { ok: false, erro: "Conta não encontrada." };
+
+  const email = String(formData.get("email_login") ?? "")
+    .trim()
+    .toLowerCase();
+  const telefone = telefoneDeLogin(String(formData.get("telefone_login") ?? ""));
+  const erros: Record<string, string> = {};
+  if (email && !EMAIL.test(email)) erros.email_login = "Confira o e-mail.";
+  if (telefone === "invalido") erros.telefone_login = "Use o DDD e o número, como (62) 99999-0000.";
+  if (!email && !telefone) erros.email_login = "A conta precisa de um e-mail ou de um celular para entrar.";
+  if (Object.keys(erros).length) return { ok: false, erro: "Confira os campos marcados.", erros };
+
+  const mudarEmail = email && email !== (atual.user.email ?? "").toLowerCase();
+  const mudarTelefone = telefone && telefone !== "invalido" && telefone !== (atual.user.phone ?? "");
+  if (!mudarEmail && !mudarTelefone && formData.get("atualizar_contato") !== "on") {
+    return { ok: false, erro: "Nada mudou." };
+  }
+  if (mudarEmail) {
+    const dono = await contaDoEmail(c, email);
+    if (dono && dono !== usuarioId) {
+      return {
+        ok: false,
+        erro: "Confira os campos marcados.",
+        erros: { email_login: "Esse e-mail já é de outra conta." },
+      };
+    }
+  }
+
+  if (mudarEmail || mudarTelefone) {
+    const { error } = await c.auth.admin.updateUserById(usuarioId, {
+      ...(mudarEmail ? { email, email_confirm: true } : {}),
+      ...(mudarTelefone ? { phone: telefone as string, phone_confirm: true } : {}),
+    });
+    if (error) {
+      const m = error.message.toLowerCase();
+      if (m.includes("phone")) {
+        return {
+          ok: false,
+          erro: "Confira os campos marcados.",
+          erros: { telefone_login: "Esse celular já é de outra conta." },
+        };
+      }
+      if (m.includes("email")) {
+        return {
+          ok: false,
+          erro: "Confira os campos marcados.",
+          erros: { email_login: "Esse e-mail já é de outra conta." },
+        };
+      }
+      return { ok: false, erro: `O Supabase não trocou: ${error.message}` };
+    }
+  }
+
+  // o contato dos matches acompanha, se pedido (WhatsApp = celular de login)
+  if (formData.get("atualizar_contato") === "on") {
+    const contato: { email?: string; whatsapp?: string } = {};
+    if (email) contato.email = email;
+    if (telefone && telefone !== "invalido") contato.whatsapp = telefone;
+    if (Object.keys(contato).length) {
+      const { error } = await c.from("contatos").update(contato).eq("perfil_id", usuarioId);
+      if (error) return { ok: false, erro: `O login mudou, mas o contato não: ${mensagemDeErro(error)}` };
+    }
+  }
+
+  refresh();
+  const partes = [mudarEmail && `e-mail de login: ${email}`, mudarTelefone && "celular de login trocado"].filter(
+    Boolean,
+  );
+  return {
+    ok: true,
+    mensagem: partes.length ? `Pronto (${partes.join("; ")}). Agora mande o link de acesso.` : "Contato atualizado.",
+  };
+}
+
+/**
+ * Um link de entrar para a equipe mandar à pessoa por outro caminho (WhatsApp),
+ * quando o e-mail não chega. Vale uma vez e por pouco tempo.
+ */
+export async function gerarLinkDeAcesso(usuarioId: string): Promise<Resultado & { link?: string }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Pedido inválido." };
+  const site = urlDosEmails();
+  if (!site) return { ok: false, erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para montar o link." };
+  const { data: u } = await c.auth.admin.getUserById(usuarioId);
+  const conta = u?.user;
+  const email = conta?.email;
+  if (!conta || !email) {
+    return { ok: false, erro: "A conta não tem e-mail de login. Coloque um e-mail acima e tente de novo." };
+  }
+  if (conta.banned_until && new Date(conta.banned_until).getTime() > Date.now()) {
+    return { ok: false, erro: "A conta está suspensa: o link não funcionaria." };
+  }
+  const { data, error } = await c.auth.admin.generateLink({ type: "magiclink", email });
+  const token = data?.properties?.hashed_token;
+  if (error || !token) return { ok: false, erro: "O Supabase não gerou o link agora. Tente de novo." };
+  const proximo = conta.last_sign_in_at ? "/painel" : "/perfil?completar=1&next=/painel";
+  const params = new URLSearchParams({ token_hash: token, type: "magiclink", next: proximo });
+  return { ok: true, mensagem: "Link gerado.", link: `${site}/auth/callback?${params}` };
 }
