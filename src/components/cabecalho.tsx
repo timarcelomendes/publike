@@ -7,6 +7,7 @@ import { ehAdminLocal } from "@/lib/supabase/admin";
 import { BotaoEntrarCabecalho, BotaoPublicar, BotaoPublicarCabecalho } from "./botao-publicar";
 import { BotaoInstalarApp } from "./instalar-app";
 import { MenuUsuario } from "./menu-usuario";
+import { assistenteDisponivel } from "@/lib/servidor/assistente";
 import { JanelaMensagens } from "./conversa/janela-mensagens";
 import { Notificacoes } from "./notificacoes";
 import { Container, Logo } from "./ui/basicos";
@@ -70,11 +71,11 @@ async function AreaUsuario() {
       </>
     );
   }
-  const [perfil, moderador] = await Promise.all([obterMeuPerfil(), ehModerador()]);
+  const [perfil, moderador, ajuda] = await Promise.all([obterMeuPerfil(), ehModerador(), assistenteDisponivel()]);
   return (
     <>
       {adminLocal && <LinkAdmin />}
-      <JanelaMensagens usuarioId={usuario.id} />
+      <JanelaMensagens usuarioId={usuario.id} ajuda={ajuda} />
       <Notificacoes usuarioId={usuario.id} />
       <MenuUsuario
         nome={perfil?.nome ?? "Minha conta"}

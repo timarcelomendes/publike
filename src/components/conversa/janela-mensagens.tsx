@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, ExternalLink, MessagesSquare, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, MessageCircleQuestion, MessagesSquare, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -9,12 +9,13 @@ import { abrirConversaDaJanela, conversasDaJanela } from "@/lib/acoes/mensagens"
 import type { Conversa as ConversaResumo, MensagemConversa } from "@/lib/dados";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { Avatar } from "../ui/basicos";
+import { Conversa as ConversaAssistente } from "../assistente/conversa";
 import { Conversa } from "./conversa";
 
-// Mensagens no canto da tela, como no LinkedIn: a barra "Mensagens" fica embaixo, à
-// direita, em todas as páginas; abre a lista das conversas e cada conversa numa
-// janelinha ao lado, sem sair da página. No celular, um ícone no cabeçalho leva à
-// página de conversas (lá a tela é pequena para janelas).
+// O chat no canto da tela, como no LinkedIn: embaixo, à direita, em todas as páginas,
+// com duas abas juntas: Ajuda (o assistente do Publike) e Conversas (os matches).
+// Cada conversa abre numa janelinha ao lado, sem sair da página. No celular, um
+// ícone no cabeçalho leva à página de conversas e o assistente continua no botão.
 
 const SEM_JANELA = /^\/(painel\/conversas|admin|entrar|auth|email|versao)/;
 const MAX_ABERTAS = 2;
@@ -43,17 +44,18 @@ function quando(iso: string | null) {
 const noNavegador = () => true;
 const noServidor = () => false;
 
-/** O avisinho do assistente sobe para não ficar em cima da barra (globals.css). */
-function marcarJanela(estado: "fechada" | "aberta" | null) {
+/** Com a barra no canto, o botão solto do assistente some no computador (globals.css). */
+function marcarJanela(estado: "presente" | null) {
   if (estado) document.documentElement.dataset.janelaMensagens = estado;
   else delete document.documentElement.dataset.janelaMensagens;
 }
 
-export function JanelaMensagens({ usuarioId }: { usuarioId: string }) {
+export function JanelaMensagens({ usuarioId, ajuda }: { usuarioId: string; ajuda: boolean }) {
   const caminho = usePathname() ?? "/";
   const montado = useSyncExternalStore(() => () => {}, noNavegador, noServidor);
   const [conversas, setConversas] = useState<ConversaResumo[] | null>(null);
-  const [lista, setLista] = useState(false);
+  // o chat do canto: fechado, ou aberto na aba Ajuda ou Conversas
+  const [aba, setAba] = useState<"ajuda" | "conversas" | null>(null);
   const [busca, setBusca] = useState("");
   const [abertas, setAbertas] = useState<Aberta[]>([]);
   const carregando = useRef(false);
@@ -93,11 +95,12 @@ export function JanelaMensagens({ usuarioId }: { usuarioId: string }) {
     };
   }, [carregar, escondida, usuarioId]);
 
+  // no computador, a "Ajuda" fica nesta barra: o botão solto do assistente some (globals.css)
   useEffect(() => {
     if (escondida || !montado) return marcarJanela(null);
-    marcarJanela(lista || abertas.some((a) => !a.minimizada) ? "aberta" : "fechada");
+    marcarJanela("presente");
     return () => marcarJanela(null);
-  }, [escondida, montado, lista, abertas]);
+  }, [escondida, montado]);
 
   async function abrir(c: ConversaResumo) {
     const chave = `${c.anuncio_id}:${c.outro_id}`;
@@ -200,31 +203,71 @@ export function JanelaMensagens({ usuarioId }: { usuarioId: string }) {
           ))}
 
           <section
-            aria-label="Mensagens"
-            className={`pointer-events-auto flex w-72 flex-col overflow-hidden rounded-t-lg border border-b-0 border-line-strong bg-surface-200 shadow-raised ${
-              lista ? "h-[28rem]" : ""
+            aria-label="Chat"
+            className={`pointer-events-auto flex w-[22rem] flex-col overflow-hidden rounded-t-lg border border-b-0 border-line-strong bg-surface-200 shadow-raised ${
+              aba ? "h-[34rem] max-h-[calc(100dvh-5rem)]" : ""
             }`}
           >
-            <button
-              type="button"
-              onClick={() => {
-                setLista((v) => !v);
-                if (!lista) void carregar();
-              }}
-              aria-expanded={lista}
-              className="flex min-h-12 shrink-0 items-center gap-2 px-3 text-left hover:bg-surface-300"
-            >
-              <MessagesSquare aria-hidden className="size-5 shrink-0" />
-              <span className="flex-1 text-label">Mensagens</span>
-              {naoLidas > 0 && (
-                <span className="inline-flex min-w-6 items-center justify-center rounded-pill bg-like px-1.5 text-caption text-surface-100 tabular-nums">
-                  {naoLidas > 99 ? "99+" : naoLidas}
-                  <span className="sr-only"> não lidas</span>
-                </span>
-              )}
-              {lista ? <ChevronDown aria-hidden className="size-4" /> : <ChevronUp aria-hidden className="size-4" />}
-            </button>
-            {lista && (
+            {/* as duas abas do chat: a Ajuda (assistente) e as Conversas (os matches) */}
+            <div role="tablist" aria-label="Chat" className="flex min-h-12 shrink-0 items-stretch">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={aba === "ajuda"}
+                onClick={() => setAba((a) => (a === "ajuda" ? null : "ajuda"))}
+                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-3 text-label transition-colors hover:bg-surface-300 ${
+                  aba === "ajuda" ? "border-ink" : "border-transparent text-ink-muted"
+                }`}
+              >
+                <MessageCircleQuestion aria-hidden className="size-5 shrink-0" />
+                Ajuda
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={aba === "conversas"}
+                onClick={() => {
+                  setAba((a) => (a === "conversas" ? null : "conversas"));
+                  if (aba !== "conversas") void carregar();
+                }}
+                className={`flex flex-1 items-center justify-center gap-2 border-b-2 px-3 text-label transition-colors hover:bg-surface-300 ${
+                  aba === "conversas" ? "border-ink" : "border-transparent text-ink-muted"
+                }`}
+              >
+                <MessagesSquare aria-hidden className="size-5 shrink-0" />
+                Conversas
+                {naoLidas > 0 && (
+                  <span className="inline-flex min-w-6 items-center justify-center rounded-pill bg-like px-1.5 text-caption text-surface-100 tabular-nums">
+                    {naoLidas > 99 ? "99+" : naoLidas}
+                    <span className="sr-only"> não lidas</span>
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAba((a) => (a ? null : "conversas"))}
+                aria-label={aba ? "Fechar o chat" : "Abrir o chat"}
+                className="flex w-11 shrink-0 items-center justify-center text-ink-muted hover:bg-surface-300 hover:text-ink"
+              >
+                {aba ? <ChevronDown aria-hidden className="size-4" /> : <ChevronUp aria-hidden className="size-4" />}
+              </button>
+            </div>
+            {aba === "ajuda" &&
+              (ajuda ? (
+                <div className="flex min-h-0 flex-1 flex-col border-t border-line bg-surface-100">
+                  <ConversaAssistente autoFoco className="min-h-0 flex-1" />
+                </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 border-t border-line p-6 text-center">
+                  <p className="text-body-sm text-ink-muted">
+                    Respostas para as dúvidas mais comuns sobre vagas, serviços e o match.
+                  </p>
+                  <Link href="/ajuda" className="text-label text-terra-text underline underline-offset-2">
+                    Abrir a central de ajuda
+                  </Link>
+                </div>
+              ))}
+            {aba === "conversas" && (
               <>
                 <div className="border-y border-line p-2">
                   <label className="relative block">

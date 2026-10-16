@@ -243,13 +243,10 @@
   font-size: 11px;
 }
 
-/* Janela de mensagens no canto (janela-mensagens.tsx): no computador, o botão do
-   assistente sobe para ficar acima da barra "Mensagens" e some com ela aberta. */
+/* Chat no canto (janela-mensagens.tsx): no computador, a Ajuda fica numa aba do chat,
+   junto com as Conversas; o botão solto do assistente some. */
 @media (min-width: 48rem) {
   html[data-janela-mensagens] [data-assistente="botao"] {
-    bottom: 4.25rem;
-  }
-  html[data-janela-mensagens="aberta"] [data-assistente="botao"] {
     display: none;
   }
 }
