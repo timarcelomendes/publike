@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
+import { PublicarAnuncio } from "@/components/publicar-anuncio";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { ajudaDaIADisponivel, obterAnuncio, obterMeuUltimoEndereco } from "@/lib/dados";
+import { ajudaDaIADisponivel, obterAnuncio, obterMeuUltimoEndereco, obterUsuario } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
@@ -41,9 +42,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       </>
     );
   }
-  const pedida = primeiro((await searchParams).copiar);
+  const sp = await searchParams;
+  const pedida = primeiro(sp.copiar);
   const pedidaCopia = pedida && UUID.test(pedida) ? pedida : null;
-  const { perfil } = await exigirPerfilCompleto(pedidaCopia ? `/publicar?copiar=${pedidaCopia}` : "/publicar");
+  const continuar = primeiro(sp.continuar) === "1";
+  // sem conta dá para preencher a vaga: o rascunho fica no aparelho e sai depois de entrar
+  if (!pedidaCopia && !(await obterUsuario())) {
+    return <PublicarAnuncio inicial={vazio("Goiânia", "")} semConta comModelos />;
+  }
+  const voltar = pedidaCopia ? `/publicar?copiar=${pedidaCopia}` : continuar ? "/publicar?continuar=1" : "/publicar";
+  const { perfil } = await exigirPerfilCompleto(voltar);
   const publico = perfil.tipo !== "pessoa";
   const [ia, ultimo, original] = await Promise.all([
     ajudaDaIADisponivel(),
@@ -78,8 +86,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
           Os campos vieram de “{copia.titulo}”. Mude o que for diferente e publique: a vaga antiga continua como está.
         </Aviso>
       )}
-      <FormAnuncio
+      <PublicarAnuncio
         inicial={inicial}
+        continuar={continuar}
+        comModelos={!copia}
         ia={ia}
         agencia={perfil.tipo === "agencia"}
         contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}

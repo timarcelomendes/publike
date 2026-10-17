@@ -25,6 +25,7 @@ export function LocalComCep({
   erro,
   aoAchar,
   children,
+  mapaOpcional = false,
 }: {
   inicial: Ponto | null;
   inicialCep?: string | null;
@@ -35,6 +36,8 @@ export function LocalComCep({
   aoAchar: (lugar: LugarDoPonto) => boolean;
   /** cidade e bairro do formulário, entre o CEP e o endereço */
   children?: ReactNode;
+  /** sem pino, vale o meio do bairro (publicar) */
+  mapaOpcional?: boolean;
 }) {
   const id = useId();
   const raiz = useRef<HTMLDivElement>(null);
@@ -205,6 +208,9 @@ export function LocalComCep({
       <div className="flex flex-col gap-1.5">
         <p className="text-label">
           {publico && endereco.trim() ? "Confira o pino no mapa" : "Marque a região no mapa"}
+          {mapaOpcional && !(publico && endereco.trim()) && (
+            <span className="font-normal text-ink-muted"> (opcional)</span>
+          )}
         </p>
         <SeletorLocal
           inicial={inicial}

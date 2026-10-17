@@ -39,6 +39,14 @@ function contexto(proximo: string): Contexto {
       texto: "Quem publicou vê seu perfil. Se curtir você de volta, o WhatsApp dos dois aparece.",
     };
   }
+  if (proximo.startsWith("/publicar?continuar=1")) {
+    return {
+      titulo: "Falta só entrar para publicar",
+      texto:
+        "Sua vaga está guardada neste aparelho. Entre com seu WhatsApp ou e-mail e ela vai ao ar na hora. Seu WhatsApp só aparece para quem você aceitar.",
+      publica: true,
+    };
+  }
   if (proximo.startsWith("/publicar")) {
     return {
       titulo: "Entre para publicar grátis",

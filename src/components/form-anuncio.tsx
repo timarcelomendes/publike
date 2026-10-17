@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Briefcase, Check, MessageCircle, Wrench } from "lucide-react";
+import { ArrowRight, Briefcase, Check, ChevronDown, MessageCircle, Wrench } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
@@ -71,7 +71,26 @@ export type ValoresAnuncio = {
   endereco?: string | null;
   lat: number | null;
   lng: number | null;
+  /** valor a combinar (rascunho e modelos) */
+  combinar?: boolean;
 };
+
+/** Campos que ficam em "Mais detalhes": com erro num deles, a seção abre. */
+const CAMPOS_DETALHES = [
+  "categoria",
+  "descricao",
+  "jornada",
+  "modelo",
+  "beneficios_lista",
+  "beneficios_extras",
+  "beneficios",
+  "vagas",
+  "escolaridade_minima",
+  "experiencia",
+  "cnh",
+  "pcd",
+  "perguntas",
+];
 
 const ESTADO_INICIAL: EstadoForm = { ok: false };
 
@@ -104,6 +123,9 @@ export function FormAnuncio({
   contatoAgencia = null,
   enderecoPublico = false,
   emNomeDe = null,
+  semConta = false,
+  aposConferir,
+  previa = null,
 }: {
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
@@ -120,12 +142,20 @@ export function FormAnuncio({
   enderecoPublico?: boolean;
   /** Admin publicando em nome de uma conta: o nome dela. */
   emNomeDe?: string | null;
+  /** Quem ainda não entrou: o botão confere e segue para entrar (a vaga sai depois). */
+  semConta?: boolean;
+  /** Sem conta: o formulário passou na conferência (com o que foi enviado). */
+  aposConferir?: (dados: FormData) => void;
+  /** Como a vaga aparece na busca, logo antes do botão. */
+  previa?: ReactNode;
 }) {
   const editando = Boolean(inicial.id);
   const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
   // anúncio novo é sempre vaga; serviço tem cadastro próprio ("Meus serviços")
   const tipo: TipoAnuncio = editando ? inicial.tipo : "vaga";
-  const [combinar, setCombinar] = useState(editando ? inicial.pagamento_valor == null : false);
+  const [combinar, setCombinar] = useState(inicial.combinar ?? (editando ? inicial.pagamento_valor == null : false));
+  // "Mais detalhes": aberto ao editar; ao publicar, só se a pessoa abrir (ou se um campo de lá tiver erro)
+  const [detalhes, setDetalhes] = useState(editando);
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
   const [descricao, setDescricao] = useState(inicial.descricao);
   const [cidade, setCidade] = useState(inicial.cidade);
@@ -136,24 +166,36 @@ export function FormAnuncio({
   const [beneficiosMarcados, setBeneficiosMarcados] = useState<string[]>(inicial.beneficios_lista ?? []);
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
+  const erroNosDetalhes = Object.keys(erros).some((k) => CAMPOS_DETALHES.includes(k));
   const vaga = tipo === "vaga";
 
   // Depois de um erro, leva a pessoa até o primeiro campo com problema
   useEffect(() => {
     if (!estado.erros) return;
-    const campo = formulario.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
-    campo?.focus();
+    const abrir = Object.keys(estado.erros).some((k) => CAMPOS_DETALHES.includes(k));
+    const t = window.setTimeout(
+      () => {
+        formulario.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      },
+      abrir ? 50 : 0,
+    );
+    return () => window.clearTimeout(t);
   }, [estado]);
+
+  // sem conta: com tudo certo, quem usa o formulário guarda o rascunho e leva para entrar
+  const enviado = useRef<FormData | null>(null);
+  useEffect(() => {
+    if (estado.ok && enviado.current && aposConferir) aposConferir(enviado.current);
+  }, [estado, aposConferir]);
 
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const dados = new FormData(e.currentTarget);
+    enviado.current = new FormData(e.currentTarget);
     startTransition(() => acao(dados));
   }
 
   const valor = emTexto(inicial.pagamento_valor);
-  // vaga: os requisitos ganham uma seção própria, e as outras andam um número
-  const n = (numero: number) => (vaga && numero >= 3 ? numero + 1 : numero);
 
   // O que já está escrito no formulário vai para a IA como rascunho.
   function lerRascunho(): RascunhoAnuncio {
@@ -240,7 +282,10 @@ export function FormAnuncio({
         )}
       </Secao>
 
-      <Secao numero={2} titulo={vaga ? "Conte sobre a vaga" : "Conte sobre o serviço"}>
+      <Secao numero={2} titulo={vaga ? "O essencial" : "Conte sobre o serviço"}>
+        <p className="-mt-2 text-body-sm text-ink-muted">
+          Só isto é obrigatório: o quê, quanto e quando. O resto fica em “Mais detalhes”, se quiser.
+        </p>
         <Campo rotulo="Título" nome="titulo" erro={erros.titulo} ajuda="Curto e direto, como você falaria para um vizinho.">
           <input
             {...ligarCampo("titulo", erros.titulo, true)}
@@ -314,19 +359,6 @@ export function FormAnuncio({
           </div>
         )}
 
-        <Campo rotulo="Categoria" nome="categoria" erro={erros.categoria}>
-          <Seletor {...ligarCampo("categoria", erros.categoria)} defaultValue={inicial.categoria} required className={classesEntrada}>
-            <option value="" disabled>
-              Escolha uma categoria
-            </option>
-            {CATEGORIAS.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.nome}
-              </option>
-            ))}
-          </Seletor>
-        </Campo>
-
         {vaga && (
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-label">Tipo de contratação</legend>
@@ -355,163 +387,6 @@ export function FormAnuncio({
           </fieldset>
         )}
 
-        {vaga && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Jornada" nome="jornada" opcional erro={erros.jornada}>
-              <Seletor
-                {...ligarCampo("jornada", erros.jornada)}
-                defaultValue={inicial.jornada ?? ""}
-                className={classesEntrada}
-              >
-                <option value="">Não informar</option>
-                {JORNADAS.map((j) => (
-                  <option key={j.valor} value={j.valor}>
-                    {j.nome}
-                  </option>
-                ))}
-              </Seletor>
-            </Campo>
-            <fieldset className="flex flex-col gap-1.5">
-              <legend className="mb-1.5 text-label">Modelo de trabalho</legend>
-              <div className="flex flex-wrap gap-2">
-                {MODELOS.map((m) => (
-                  <label key={m.valor} className={classesPilula}>
-                    <input
-                      type="radio"
-                      name="modelo"
-                      value={m.valor}
-                      defaultChecked={(inicial.modelo ?? (editando ? null : "presencial")) === m.valor}
-                      className="sr-only"
-                    />
-                    {m.nome}
-                  </label>
-                ))}
-              </div>
-              {erros.modelo && <MensagemErro>{erros.modelo}</MensagemErro>}
-            </fieldset>
-          </div>
-        )}
-
-        {vaga && (
-          <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
-            <input
-              type="checkbox"
-              name="pede_curriculo"
-              checked={pedeCurriculo}
-              onChange={(e) => {
-                setMexeuNoCurriculo(true);
-                setPedeCurriculo(e.target.checked);
-              }}
-              className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
-            />
-            <span>
-              <span className="block text-label">Pedir currículo</span>
-              <span className="block text-body-sm text-ink-muted">
-                Quem curtir é convidado a preencher o currículo: estudos, experiências, cursos e CNH. Você vê na lista
-                de interessados. Se aceitar alguém que ainda não mandou, a pessoa recebe o pedido e o match sai quando o
-                currículo chegar.
-              </span>
-            </span>
-          </label>
-        )}
-
-        <Campo
-          rotulo="Descrição"
-          nome="descricao"
-          erro={erros.descricao}
-          ajuda={
-            vaga
-              ? "O que a pessoa vai fazer, o que precisa saber e o que você oferece. Sem telefone: o contato aparece no match."
-              : "O que você faz, há quanto tempo e o que está incluído. Sem telefone: o contato aparece no match."
-          }
-        >
-          <textarea
-            {...ligarCampo("descricao", erros.descricao, true)}
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            rows={7}
-            maxLength={3000}
-            required
-            className={`${classesEntrada} resize-y`}
-          />
-          <span className="self-end text-body-sm text-ink-muted">{descricao.length}/3000</span>
-        </Campo>
-        {ia && <MelhorarTexto lerRascunho={lerRascunho} aplicar={aplicarSugestao} />}
-      </Secao>
-
-      {vaga && (
-        <Secao numero={3} titulo="Requisitos">
-          <p className="-mt-2 text-body-sm text-ink-muted">
-            Tudo opcional. Peça só o que o trabalho precisa de verdade: quanto menos exigência, mais gente perto se
-            candidata.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Campo rotulo="Escolaridade mínima" nome="escolaridade_minima" erro={erros.escolaridade_minima}>
-              <Seletor
-                {...ligarCampo("escolaridade_minima", erros.escolaridade_minima)}
-                defaultValue={inicial.escolaridade_minima ?? ""}
-                className={classesEntrada}
-              >
-                <option value="">Não exige</option>
-                {ESCOLARIDADES.map((e) => (
-                  <option key={e.valor} value={e.valor}>
-                    {e.nome}
-                  </option>
-                ))}
-              </Seletor>
-            </Campo>
-            <Campo rotulo="Experiência" nome="experiencia" erro={erros.experiencia}>
-              <Seletor
-                {...ligarCampo("experiencia", erros.experiencia)}
-                defaultValue={inicial.experiencia ?? ""}
-                className={classesEntrada}
-              >
-                <option value="">Não informar</option>
-                {EXPERIENCIAS.map((e) => (
-                  <option key={e.valor} value={e.valor}>
-                    {e.nome}
-                  </option>
-                ))}
-              </Seletor>
-            </Campo>
-            <Campo rotulo="CNH" nome="cnh" erro={erros.cnh}>
-              <Seletor {...ligarCampo("cnh", erros.cnh)} defaultValue={inicial.cnh ?? ""} className={classesEntrada}>
-                <option value="">Não precisa</option>
-                {CNHS.map((c) => (
-                  <option key={c} value={c}>
-                    Categoria {c}
-                  </option>
-                ))}
-              </Seletor>
-            </Campo>
-          </div>
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-label">Pessoas com deficiência (PCD)</legend>
-            <div className="flex flex-wrap gap-2">
-              <label className={classesPilula}>
-                <input type="radio" name="pcd" value="" defaultChecked={!inicial.pcd} className="sr-only" />
-                Não é específica
-              </label>
-              {PCDS.map((p) => (
-                <label key={p.valor} title={p.ajuda} className={classesPilula}>
-                  <input
-                    type="radio"
-                    name="pcd"
-                    value={p.valor}
-                    defaultChecked={inicial.pcd === p.valor}
-                    className="sr-only"
-                  />
-                  {p.nome}
-                </label>
-              ))}
-            </div>
-            {erros.pcd && <MensagemErro>{erros.pcd}</MensagemErro>}
-          </fieldset>
-          <EditorPerguntas inicial={inicial.perguntas ?? []} erro={erros.perguntas} />
-        </Secao>
-      )}
-
-      <Secao numero={n(3)} titulo="Valor e horário">
         <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 self-start text-label">
           <input
             type="checkbox"
@@ -592,75 +467,19 @@ export function FormAnuncio({
           </label>
         )}
 
-        {vaga && (
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-label">
-              Benefícios <span className="font-normal text-ink-muted">(opcional)</span>
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {BENEFICIOS.map((b) => (
-                <label key={b.valor} className={classesPilula}>
-                  <input
-                    type="checkbox"
-                    name="beneficios_lista"
-                    value={b.valor}
-                    checked={beneficiosMarcados.includes(b.valor)}
-                    onChange={(e) =>
-                      setBeneficiosMarcados((atual) =>
-                        e.target.checked ? [...atual, b.valor] : atual.filter((v) => v !== b.valor),
-                      )
-                    }
-                    className="sr-only"
-                  />
-                  {beneficiosMarcados.includes(b.valor) && <Check aria-hidden className="size-4" />}
-                  {b.nome}
-                </label>
-              ))}
-            </div>
-            {erros.beneficios_lista && <MensagemErro>{erros.beneficios_lista}</MensagemErro>}
-            <BeneficiosExtras
-              inicial={inicial.beneficios_extras ?? []}
-              erro={erros.beneficios_extras ?? erros.beneficios}
-            />
-          </fieldset>
-        )}
-
         {vaga && <MontarHorario inicial={inicial.horario_detalhe ?? null} erro={erros.horario} />}
-
-        <div className={vaga ? "grid gap-4 sm:max-w-40" : "grid gap-4"}>
-          {!vaga && (
-            <Campo rotulo="Quando" nome="horario" opcional erro={erros.horario}>
-              <input
-                {...ligarCampo("horario", erros.horario)}
-                defaultValue={inicial.horario ?? ""}
-                maxLength={120}
-                placeholder="Ex.: Pode ser no fim de semana"
-                className={classesEntrada}
-              />
-            </Campo>
-          )}
-          {vaga && (
-            <Campo rotulo="Quantas pessoas" nome="vagas" erro={erros.vagas}>
-              <input
-                {...ligarCampo("vagas", erros.vagas)}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={999}
-                defaultValue={inicial.vagas}
-                className={classesEntrada}
-              />
-            </Campo>
-          )}
-        </div>
       </Secao>
 
-      <Secao numero={n(4)} titulo="Onde é">
+      <Secao numero={3} titulo="Onde é">
+        <p className="-mt-2 text-body-sm text-ink-muted">
+          Basta o bairro. O CEP e o pino no mapa são opcionais: sem eles, a vaga fica no meio do bairro.
+        </p>
         <LocalComCep
           inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
           inicialCep={inicial.cep}
           inicialEndereco={inicial.endereco}
           publico={enderecoPublico && !confidencial}
+          mapaOpcional
           erro={erros.lat ?? erros.lng}
           aoAchar={({ cidade: c, bairro: b }) => {
             if ((CIDADES as readonly string[]).includes(c)) setCidade(c);
@@ -705,19 +524,278 @@ export function FormAnuncio({
         {(erros.cep || erros.endereco) && <MensagemErro>{erros.cep ?? erros.endereco}</MensagemErro>}
       </Secao>
 
+      <details
+        open={detalhes || erroNosDetalhes}
+        onToggle={(e) => setDetalhes(e.currentTarget.open)}
+        className="group rounded-lg border border-line bg-surface-200"
+      >
+        <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 p-5 sm:px-6 [&::-webkit-details-marker]:hidden">
+          <span className="flex size-8 items-center justify-center rounded-pill bg-surface-300 text-label">4</span>
+          <span className="flex-1">
+            <span className="block text-h3">Mais detalhes</span>
+            <span className="block text-body-sm text-ink-muted">
+              Opcional: descrição, categoria, benefícios, requisitos e perguntas para o candidato.
+            </span>
+          </span>
+          <ChevronDown aria-hidden className="size-5 text-ink-muted transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="flex flex-col gap-5 border-t border-line p-5 sm:p-6">
+          <Campo rotulo="Categoria" nome="categoria" opcional erro={erros.categoria}>
+            <Seletor
+              {...ligarCampo("categoria", erros.categoria)}
+              defaultValue={inicial.categoria}
+              className={classesEntrada}
+            >
+              <option value="">Escolher pelo título</option>
+              {CATEGORIAS.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.nome}
+                </option>
+              ))}
+            </Seletor>
+          </Campo>
+
+          <Campo
+            rotulo="Descrição"
+            nome="descricao"
+            opcional
+            erro={erros.descricao}
+            ajuda={
+              vaga
+                ? "O que a pessoa vai fazer, o que precisa saber e o que você oferece. Em branco, montamos uma descrição simples com o que você preencheu. Sem telefone: o contato aparece no match."
+                : "O que você faz, há quanto tempo e o que está incluído. Sem telefone: o contato aparece no match."
+            }
+          >
+            <textarea
+              {...ligarCampo("descricao", erros.descricao, true)}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              rows={7}
+              maxLength={3000}
+              className={`${classesEntrada} resize-y`}
+            />
+            <span className="self-end text-body-sm text-ink-muted">{descricao.length}/3000</span>
+          </Campo>
+          {ia && <MelhorarTexto lerRascunho={lerRascunho} aplicar={aplicarSugestao} />}
+
+          {vaga && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo rotulo="Jornada" nome="jornada" opcional erro={erros.jornada}>
+                <Seletor
+                  {...ligarCampo("jornada", erros.jornada)}
+                  defaultValue={inicial.jornada ?? ""}
+                  className={classesEntrada}
+                >
+                  <option value="">Não informar</option>
+                  {JORNADAS.map((j) => (
+                    <option key={j.valor} value={j.valor}>
+                      {j.nome}
+                    </option>
+                  ))}
+                </Seletor>
+              </Campo>
+              <fieldset className="flex flex-col gap-1.5">
+                <legend className="mb-1.5 text-label">Modelo de trabalho</legend>
+                <div className="flex flex-wrap gap-2">
+                  {MODELOS.map((m) => (
+                    <label key={m.valor} className={classesPilula}>
+                      <input
+                        type="radio"
+                        name="modelo"
+                        value={m.valor}
+                        defaultChecked={(inicial.modelo ?? (editando ? null : "presencial")) === m.valor}
+                        className="sr-only"
+                      />
+                      {m.nome}
+                    </label>
+                  ))}
+                </div>
+                {erros.modelo && <MensagemErro>{erros.modelo}</MensagemErro>}
+              </fieldset>
+            </div>
+          )}
+
+          {vaga && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
+              <input
+                type="checkbox"
+                name="pede_curriculo"
+                checked={pedeCurriculo}
+                onChange={(e) => {
+                  setMexeuNoCurriculo(true);
+                  setPedeCurriculo(e.target.checked);
+                }}
+                className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+              />
+              <span>
+                <span className="block text-label">Pedir currículo</span>
+                <span className="block text-body-sm text-ink-muted">
+                  Quem curtir é convidado a preencher o currículo: estudos, experiências, cursos e CNH. Você vê na lista
+                  de interessados. Se aceitar alguém que ainda não mandou, a pessoa recebe o pedido e o match sai quando
+                  o currículo chegar.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {vaga && (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-label">
+                Benefícios <span className="font-normal text-ink-muted">(opcional)</span>
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {BENEFICIOS.map((b) => (
+                  <label key={b.valor} className={classesPilula}>
+                    <input
+                      type="checkbox"
+                      name="beneficios_lista"
+                      value={b.valor}
+                      checked={beneficiosMarcados.includes(b.valor)}
+                      onChange={(e) =>
+                        setBeneficiosMarcados((atual) =>
+                          e.target.checked ? [...atual, b.valor] : atual.filter((v) => v !== b.valor),
+                        )
+                      }
+                      className="sr-only"
+                    />
+                    {beneficiosMarcados.includes(b.valor) && <Check aria-hidden className="size-4" />}
+                    {b.nome}
+                  </label>
+                ))}
+              </div>
+              {erros.beneficios_lista && <MensagemErro>{erros.beneficios_lista}</MensagemErro>}
+              <BeneficiosExtras
+                inicial={inicial.beneficios_extras ?? []}
+                erro={erros.beneficios_extras ?? erros.beneficios}
+              />
+            </fieldset>
+          )}
+
+          <div className={vaga ? "grid gap-4 sm:max-w-40" : "grid gap-4"}>
+            {!vaga && (
+              <Campo rotulo="Quando" nome="horario" opcional erro={erros.horario}>
+                <input
+                  {...ligarCampo("horario", erros.horario)}
+                  defaultValue={inicial.horario ?? ""}
+                  maxLength={120}
+                  placeholder="Ex.: Pode ser no fim de semana"
+                  className={classesEntrada}
+                />
+              </Campo>
+            )}
+            {vaga && (
+              <Campo rotulo="Quantas pessoas" nome="vagas" erro={erros.vagas}>
+                <input
+                  {...ligarCampo("vagas", erros.vagas)}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={999}
+                  defaultValue={inicial.vagas}
+                  className={classesEntrada}
+                />
+              </Campo>
+            )}
+          </div>
+
+          {vaga && (
+            <div className="flex flex-col gap-5 border-t border-line pt-5">
+              <h3 className="text-label">Requisitos</h3>
+              <p className="-mt-2 text-body-sm text-ink-muted">
+                Tudo opcional. Peça só o que o trabalho precisa de verdade: quanto menos exigência, mais gente perto se
+                candidata.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Campo rotulo="Escolaridade mínima" nome="escolaridade_minima" erro={erros.escolaridade_minima}>
+                  <Seletor
+                    {...ligarCampo("escolaridade_minima", erros.escolaridade_minima)}
+                    defaultValue={inicial.escolaridade_minima ?? ""}
+                    className={classesEntrada}
+                  >
+                    <option value="">Não exige</option>
+                    {ESCOLARIDADES.map((e) => (
+                      <option key={e.valor} value={e.valor}>
+                        {e.nome}
+                      </option>
+                    ))}
+                  </Seletor>
+                </Campo>
+                <Campo rotulo="Experiência" nome="experiencia" erro={erros.experiencia}>
+                  <Seletor
+                    {...ligarCampo("experiencia", erros.experiencia)}
+                    defaultValue={inicial.experiencia ?? ""}
+                    className={classesEntrada}
+                  >
+                    <option value="">Não informar</option>
+                    {EXPERIENCIAS.map((e) => (
+                      <option key={e.valor} value={e.valor}>
+                        {e.nome}
+                      </option>
+                    ))}
+                  </Seletor>
+                </Campo>
+                <Campo rotulo="CNH" nome="cnh" erro={erros.cnh}>
+                  <Seletor
+                    {...ligarCampo("cnh", erros.cnh)}
+                    defaultValue={inicial.cnh ?? ""}
+                    className={classesEntrada}
+                  >
+                    <option value="">Não precisa</option>
+                    {CNHS.map((c) => (
+                      <option key={c} value={c}>
+                        Categoria {c}
+                      </option>
+                    ))}
+                  </Seletor>
+                </Campo>
+              </div>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1 text-label">Pessoas com deficiência (PCD)</legend>
+                <div className="flex flex-wrap gap-2">
+                  <label className={classesPilula}>
+                    <input type="radio" name="pcd" value="" defaultChecked={!inicial.pcd} className="sr-only" />
+                    Não é específica
+                  </label>
+                  {PCDS.map((p) => (
+                    <label key={p.valor} title={p.ajuda} className={classesPilula}>
+                      <input
+                        type="radio"
+                        name="pcd"
+                        value={p.valor}
+                        defaultChecked={inicial.pcd === p.valor}
+                        className="sr-only"
+                      />
+                      {p.nome}
+                    </label>
+                  ))}
+                </div>
+                {erros.pcd && <MensagemErro>{erros.pcd}</MensagemErro>}
+              </fieldset>
+              <EditorPerguntas inicial={inicial.perguntas ?? []} erro={erros.perguntas} />
+            </div>
+          )}
+        </div>
+      </details>
+
+      {previa}
+
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando} className="sm:min-w-56">
           {enviando
-            ? "Salvando…"
-            : equipe
-              ? "Salvar correção"
-              : editando
-                ? "Salvar alterações"
-                : vaga
-                  ? "Publicar vaga"
-                  : "Publicar serviço"}
+            ? semConta
+              ? "Conferindo…"
+              : "Salvando…"
+            : semConta
+              ? "Continuar para publicar"
+              : equipe
+                ? "Salvar correção"
+                : editando
+                  ? "Salvar alterações"
+                  : vaga
+                    ? "Publicar vaga"
+                    : "Publicar serviço"}
         </Botao>
         {emNomeDe ? (
           <p className="text-body-sm text-ink-muted">
@@ -729,7 +807,9 @@ export function FormAnuncio({
           </p>
         ) : (
           <p className="text-body-sm text-ink-muted">
-            Grátis. Fica 30 dias no ar e pode ser renovado de 30 em 30 dias. Ao publicar, você concorda com as{" "}
+            {semConta ? "Depois é só entrar com seu WhatsApp ou e-mail: a vaga vai ao ar na hora. " : ""}
+            Grátis. Seu WhatsApp só aparece para quem você aceitar. Fica 30 dias no ar e pode ser renovado de 30 em 30
+            dias. Ao publicar, você concorda com as{" "}
             <Link href="/privacidade#regras" className="underline">
               regras do Publike
             </Link>

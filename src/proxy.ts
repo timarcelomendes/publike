@@ -12,7 +12,8 @@ const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const CHAVE =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
-const SO_COM_LOGIN = [/^\/publicar/, /^\/painel/, /^\/perfil$/, /^\/admin/, /^\/anuncio\/[^/]+\/denunciar$/];
+// /publicar abre sem conta: a vaga é preenchida antes e publicada depois de entrar
+const SO_COM_LOGIN = [/^\/painel/, /^\/perfil$/, /^\/admin/, /^\/anuncio\/[^/]+\/denunciar$/];
 
 // O admin abre sem login no computador do dono (npm run dev com PUBLIKE_ADMIN=1
 // e a chave secreta). A página confere tudo de novo; aqui só não pedimos login.
