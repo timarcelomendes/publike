@@ -51,7 +51,10 @@ async function Conteudo() {
               Quando entra no ar uma vaga nova que bate com a busca, chega um aviso (no máximo 5 por dia).
             </p>
           </div>
-          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+          <ul
+            aria-label="Buscas que avisam você"
+            className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200"
+          >
             {buscas.map((b) => (
               <li key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <SearchCheck aria-hidden className="size-5 shrink-0 text-terra-text" />
@@ -75,7 +78,10 @@ async function Conteudo() {
               Quando sair anúncio novo, chega um aviso (no máximo 5 por dia). Para parar, toque em “Deixar de seguir”.
             </p>
           </div>
-          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+          <ul
+            aria-label="O que você segue"
+            className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200"
+          >
             {lista.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 {s.alvo_perfil ? (
