@@ -17,7 +17,7 @@ import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type
 import { REGIAO } from "@/lib/config";
 import { CATEGORIAS, REGIMES } from "@/lib/constantes";
 import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
-import { hrefFiltros, RAIOS, type Filtros } from "@/lib/filtros";
+import { hrefFiltros, RAIOS, TURNOS, type Filtros, type Ordem, type Turno } from "@/lib/filtros";
 import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
 import type { Regime, TipoAnuncio } from "@/lib/tipos";
@@ -394,7 +394,16 @@ export function BarraBusca({
  * Contratação, distância e ordem (e "Só os meus", para quem publica): ficam junto da
  * contagem de resultados. No celular, aparecem ao tocar em "Filtros" (VisaoExplorar).
  */
-export function FiltrosLista({ filtros, soMeus = false }: { filtros: Filtros; soMeus?: boolean }) {
+export function FiltrosLista({
+  filtros,
+  soMeus = false,
+  combina = false,
+}: {
+  filtros: Filtros;
+  soMeus?: boolean;
+  /** quem tem currículo pode ordenar por "Combina mais" (o % de match) */
+  combina?: boolean;
+}) {
   const [ir, pendente] = useIrPara(filtros);
   return (
     <FaixaRolavel rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end lg:px-0">
@@ -417,6 +426,22 @@ export function FiltrosLista({ filtros, soMeus = false }: { filtros: Filtros; so
           {Object.entries(REGIMES).map(([valor, r]) => (
             <option key={valor} value={valor}>
               {r.nome}
+            </option>
+          ))}
+        </Seletor>
+      )}
+      {filtros.tipo === "vaga" && (
+        <Seletor
+          aria-label="Horário"
+          value={filtros.turno ?? ""}
+          onChange={(e) => ir({ turno: (e.target.value || null) as Turno | null })}
+          className={seletor}
+          envoltorio="shrink-0"
+        >
+          <option value="">Horário: qualquer</option>
+          {TURNOS.map((t) => (
+            <option key={t.valor} value={t.valor}>
+              {t.nome}
             </option>
           ))}
         </Seletor>
@@ -449,13 +474,14 @@ export function FiltrosLista({ filtros, soMeus = false }: { filtros: Filtros; so
       </Seletor>
       <Seletor
         aria-label="Ordem"
-        value={filtros.ordem}
-        onChange={(e) => ir({ ordem: e.target.value === "recentes" ? "recentes" : "perto" })}
+        value={filtros.ordem === "combina" && !combina ? "perto" : filtros.ordem}
+        onChange={(e) => ir({ ordem: e.target.value as Ordem })}
         className={seletor}
         envoltorio="shrink-0"
       >
         <option value="perto">Mais perto</option>
         <option value="recentes">Mais recentes</option>
+        {combina && <option value="combina">Combina mais</option>}
       </Seletor>
     </FaixaRolavel>
   );

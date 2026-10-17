@@ -1,16 +1,18 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { Fragment } from "react";
-import { matchComAVaga, type Aderencia, type Candidato } from "@/lib/aderencia";
+import { matchComAVaga, vagaNoTurno, type Aderencia, type CamposDaVaga, type Candidato } from "@/lib/aderencia";
 import {
   buscarAnuncios,
   listarMeusServicos,
+  minhasBuscasSalvas,
   obterMeuCurriculo,
   obterMeuPerfil,
   obterUsuario,
   requisitosDasVagas,
+  respostaDeQuemPublica,
   temAnuncioNoAr,
 } from "@/lib/dados";
-import { aplicarIntencao, descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
+import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
@@ -25,12 +27,14 @@ import {
 } from "@/lib/formato";
 import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
 import { obterLocal } from "@/lib/local";
-import { passosDaPrioridade, pontoDoLocal, type Local } from "@/lib/regioes";
+import { passosDaPrioridade, type Local } from "@/lib/regioes";
+import { acharBuscaSalva, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo } from "@/lib/tipos";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
+import { AvisarBusca } from "./avisar-busca";
 import { BarraBusca, FiltrosLista } from "./barra-busca";
 import type { ProximoPasso } from "./intencao";
 import { PerguntasNaLista } from "./perguntas-na-lista";
@@ -78,26 +82,30 @@ async function quemProcura(): Promise<Omit<Candidato, "respostas"> | null> {
   }
 }
 
-/** O % de match de cada vaga da lista com o currículo de quem busca (as próprias vagas ficam de fora). */
-async function matchDasVagas(
+/** O que cada vaga da lista pede (para o % de match e o filtro de turno). */
+async function requisitosDaLista(anuncios: AnuncioResumo[]): Promise<Map<string, CamposDaVaga>> {
+  const ids = anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id);
+  if (!ids.length) return new Map();
+  const vagas = await requisitosDasVagas(ids);
+  return new Map(vagas.map((v) => [v.id, v]));
+}
+
+/** O % de match de cada vaga com o currículo de quem busca (as próprias vagas ficam de fora). */
+function matchDasVagas(
   anuncios: AnuncioResumo[],
+  requisitos: Map<string, CamposDaVaga>,
   quem: Omit<Candidato, "respostas">,
   usuarioId: string,
   agora: number,
-): Promise<Map<string, Aderencia>> {
-  const ids = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId).map((a) => a.id);
-  try {
-    const vagas = await requisitosDasVagas(ids);
-    return new Map(
-      vagas.flatMap((v) => {
-        const a = matchComAVaga(v, quem, agora);
-        return a ? [[v.id, a] as const] : [];
-      }),
-    );
-  } catch {
-    // o % é um extra: se a leitura falhar, a busca segue sem ele
-    return new Map();
+): Map<string, Aderencia> {
+  const m = new Map<string, Aderencia>();
+  for (const a of anuncios) {
+    const v = requisitos.get(a.id);
+    if (!v || a.autor_id === usuarioId) continue;
+    const match = matchComAVaga(v, quem, agora);
+    if (match) m.set(a.id, match);
   }
+  return m;
 }
 
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
@@ -106,19 +114,6 @@ export async function BuscaExplorar({ searchParams }: { searchParams: Parametros
   const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
   const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
   return <BarraBusca filtros={filtros} local={local} intencao={intencao} abrirOndeMora={primeiro(sp.casa) === "1"} />;
-}
-
-/** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
-function partirDoLocal(filtros: Filtros, local: Local | null): Filtros {
-  if (!local || filtros.origem !== "centro") return filtros;
-  return { ...filtros, ...pontoDoLocal(local) };
-}
-
-function textoDaOrigem(filtros: Filtros, local: Local | null) {
-  if (!local || filtros.origem !== "centro") return descreverOrigem(filtros.origem);
-  if (local.ponto) return "da sua casa";
-  if (local.centro) return `do meio de ${local.bairro}`;
-  return local.regiao ? `da Região ${local.regiao} de Goiânia` : `do centro de ${local.cidade}`;
 }
 
 /** De onde sai o tempo de ônibus dos cards: da casa (CEP) ou do GPS. */
@@ -154,15 +149,43 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     obterIntencao(),
   ]);
   const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
-  const [anuncios, proximoPasso, publica, quem] = await Promise.all([
+  const avisar = filtros.tipo === "vaga" && !filtros.meus;
+  const [encontrados, proximoPasso, publica, quem, salvas] = await Promise.all([
     buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
     proximoPassoDa(intencao, Boolean(usuario)),
     // "Só os meus" só para quem tem anúncio no ar (quem só procura não precisa dele)
     usuario && !filtros.meus ? temAnuncioNoAr(usuario.id).catch(() => false) : Promise.resolve(filtros.meus),
     usuario && !filtros.meus && filtros.tipo !== "servico" ? quemProcura() : Promise.resolve(null),
+    usuario && avisar ? minhasBuscasSalvas().catch(() => []) : Promise.resolve([]),
   ]);
+  // o que cada vaga pede: para o % de match e para o turno (a busca do banco não filtra turno)
+  const requisitos =
+    quem || filtros.turno ? await requisitosDaLista(encontrados).catch(() => null) : new Map<string, CamposDaVaga>();
+  const turno = filtros.turno;
+  let anuncios =
+    turno && requisitos
+      ? encontrados.filter((a) => {
+          const v = requisitos.get(a.id);
+          return a.tipo === "vaga" && v !== undefined && vagaNoTurno(v, turno);
+        })
+      : encontrados;
+  anuncios = anuncios.slice(0, 60);
   const matches =
-    usuario && quem ? await matchDasVagas(anuncios, quem, usuario.id, agora) : new Map<string, Aderencia>();
+    usuario && quem && requisitos
+      ? matchDasVagas(anuncios, requisitos, quem, usuario.id, agora)
+      : new Map<string, Aderencia>();
+  // "Combina mais": do maior % para o menor (sem %, depois, na ordem de perto)
+  const combina = filtros.ordem === "combina" && matches.size > 0;
+  if (combina) {
+    anuncios = anuncios
+      .map((a, i) => ({ a, i, nota: matches.get(a.id)?.nota ?? -1 }))
+      .sort((x, y) => y.nota - x.nota || x.i - y.i)
+      .map((x) => x.a);
+  }
+  const resposta = await respostaDeQuemPublica(
+    anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id).map((a) => a.autor_id),
+  ).catch(() => new Map());
+  const buscaSalva = usuario && avisar ? acharBuscaSalva(filtros, salvas) : null;
 
   const tempoDe = origemDoTempo(filtros, local);
   const pontos: PontoMapa[] = anuncios.map((a) => {
@@ -233,6 +256,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               pertoDeCasa={local ? a.prioridade : null}
               tempoDe={tempoDe}
               match={matches.get(a.id) ?? null}
+              resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
             />
             {i === depoisDe && lugarDasPerguntas}
           </Fragment>
@@ -261,7 +285,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       </Vazio>
     ) : (
       <Vazio
-        icone={filtros.q || filtros.categoria ? SearchX : MapPinned}
+        icone={filtros.q || filtros.categoria || filtros.turno ? SearchX : MapPinned}
         titulo="Nada por aqui ainda"
         acao={
           <>
@@ -278,11 +302,13 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
           </>
         }
       >
-        {filtros.q || filtros.categoria
-          ? "Tente outra palavra, outra categoria ou uma distância maior."
-          : filtros.tipo === "servico"
-            ? "Ainda não há profissionais nesta área. Você faz algum serviço? Mostre aqui."
-            : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
+        {filtros.turno
+          ? "Nenhuma vaga neste horário por aqui. Tente outro horário ou uma distância maior."
+          : filtros.q || filtros.categoria
+            ? "Tente outra palavra, outra categoria ou uma distância maior."
+            : filtros.tipo === "servico"
+              ? "Ainda não há profissionais nesta área. Você faz algum serviço? Mostre aqui."
+              : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );
   // sem anúncios, as perguntas vêm depois do aviso (dizer onde mora pode trazer o que é perto)
@@ -310,20 +336,30 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
           </h2>
         }
         subtitulo={
-          <p className="text-body-sm text-ink-muted">
-            {!filtros.meus && local && !local.ponto && <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>}
-            {!filtros.meus && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
-            {filtros.meus ? (
-              <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
-            ) : (
-              <>
-                {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                {textoDaOrigem(filtros, local)}
-              </>
+          <div className="flex flex-wrap items-center gap-x-3">
+            <p className="text-body-sm text-ink-muted">
+              {combina && <>Do que mais combina com seu currículo · </>}
+              {!combina && !filtros.meus && local && !local.ponto && (
+                <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>
+              )}
+              {!combina && !filtros.meus && local?.ponto && filtros.origem === "centro" && (
+                <>Do mais perto ao mais longe · </>
+              )}
+              {filtros.meus ? (
+                <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
+              ) : (
+                <>
+                  {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
+                  {textoDaOrigem(filtros, local)}
+                </>
+              )}
+            </p>
+            {avisar && (
+              <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
             )}
-          </p>
+          </div>
         }
-        filtrosLista={<FiltrosLista filtros={filtros} soMeus={publica} />}
+        filtrosLista={<FiltrosLista filtros={filtros} soMeus={publica} combina={Boolean(quem)} />}
         lista={listaComPerguntas}
         pontos={pontos}
         origem={origem}

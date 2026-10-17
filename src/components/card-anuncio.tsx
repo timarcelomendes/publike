@@ -1,4 +1,4 @@
-import { Building2, Bus, Footprints, MapPin } from "lucide-react";
+import { Building2, Bus, Footprints, MapPin, MessageCircleReply } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -11,6 +11,7 @@ import {
   valorDoAnuncio,
 } from "@/lib/formato";
 import { deslocamentoCurto } from "@/lib/deslocamento";
+import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { DadosCard } from "@/lib/tipos";
 import { NotaDoProfissional } from "./avaliacoes";
 import { BotaoCurtir } from "./botao-curtir";
@@ -28,6 +29,7 @@ export function CardAnuncio({
   pertoDeCasa = null,
   tempoDe = null,
   match = null,
+  resposta = null,
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -38,6 +40,8 @@ export function CardAnuncio({
   tempoDe?: "casa" | "voce" | null;
   /** Vaga, para quem tem currículo: o % de match (sem currículo ou com pouco para comparar, null). */
   match?: MatchResumo | null;
+  /** Vaga: quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais). */
+  resposta?: Resposta | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -100,6 +104,16 @@ export function CardAnuncio({
             )}
           </p>
           {servico && <NotaDoProfissional media={anuncio.autor_nota} total={anuncio.autor_avaliacoes} compacto />}
+          {resposta && !proprio && (
+            <p
+              className={`mt-0.5 flex items-center gap-1 text-body-sm group-data-[visao=grade]/visao:hidden ${
+                comoResponde(resposta).bom ? "text-cerrado-text" : "text-ink-muted"
+              }`}
+            >
+              <MessageCircleReply aria-hidden className="size-4 shrink-0" />
+              <span className="truncate">{comoResponde(resposta).texto}</span>
+            </p>
+          )}
         </div>
         {comMatch && (
           // na lista, os selos de cima somem: o % fica ao lado do título

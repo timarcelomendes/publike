@@ -14,6 +14,7 @@ import {
   BellRing,
   CalendarClock,
   PartyPopper,
+  SearchCheck,
   ThumbsUp,
 } from "lucide-react";
 import Link from "next/link";
@@ -45,7 +46,7 @@ function destino(n: Notificacao, usuarioId: string) {
     return `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${n.anuncio_id}`)}`;
   if (n.tipo === "curriculo_recebido" && n.anuncio_id)
     return `/painel/anuncio/${n.anuncio_id}${n.ator_id ? `#candidato-${n.ator_id}` : ""}`;
-  if (n.tipo === "seguindo" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
+  if ((n.tipo === "seguindo" || n.tipo === "busca") && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "recomendacao") return `/perfil/${usuarioId}#recomendacoes`;
   if (n.tipo === "contratacao" && n.anuncio_id) return `/painel/contratacao/${n.anuncio_id}`;
   if (n.tipo === "mensagem" && n.anuncio_id && n.ator_id) return `/painel/conversas/${n.anuncio_id}/${n.ator_id}`;
@@ -162,15 +163,17 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                                 ? CalendarClock
                                 : n.tipo === "seguindo"
                                   ? BellRing
-                                  : n.tipo === "recomendacao"
-                                    ? ThumbsUp
-                                    : n.tipo === "contratacao"
-                                      ? PartyPopper
-                                      : n.tipo === "aceite_curriculo"
-                                        ? FileText
-                                        : n.tipo === "curriculo_recebido"
-                                          ? FileCheck
-                                          : ShieldCheck;
+                                  : n.tipo === "busca"
+                                    ? SearchCheck
+                                    : n.tipo === "recomendacao"
+                                      ? ThumbsUp
+                                      : n.tipo === "contratacao"
+                                        ? PartyPopper
+                                        : n.tipo === "aceite_curriculo"
+                                          ? FileText
+                                          : n.tipo === "curriculo_recebido"
+                                            ? FileCheck
+                                            : ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link

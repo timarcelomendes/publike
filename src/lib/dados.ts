@@ -2,6 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { cache } from "react";
 import type { CamposDaVaga } from "./aderencia";
+import type { Resposta } from "./resposta";
 import { MODO_DEMO } from "./config";
 import { ETAPAS_CANDIDATO, etapaQueVale, VERSAO_TERMOS, type EtapaCandidato } from "./constantes";
 import * as demo from "./demo";
@@ -150,8 +151,10 @@ export async function buscarAnuncios(
     p_categoria: f.categoria,
     p_regime: f.regime,
     p_texto: f.q || null,
-    p_ordem: f.ordem,
-    p_limite: f.meus ? 200 : 60,
+    // "combina" ordena depois, pelo % de match (aqui vem do mais perto)
+    p_ordem: f.ordem === "recentes" ? "recentes" : "perto",
+    // com turno, o filtro vem depois (no texto e no horário de cada vaga): busca mais para sobrarem 60
+    p_limite: f.meus || f.turno ? 200 : 60,
     p_cidade: local?.cidade ?? null,
     p_bairro: local?.bairro || null,
     p_bairros_regiao: local?.regiao ? chavesDaRegiao(local.regiao) : null,
@@ -440,13 +443,39 @@ export const obterMeuCurriculo = cache(async (): Promise<Curriculo | null> => {
   return data ? { ...data, experiencias: lerExperiencias(data.experiencias) } : null;
 });
 
+/** O jeito de responder de cada um (só quem tem 5 curtidas ou mais nos últimos 180 dias). */
+export async function respostaDeQuemPublica(autores: string[]): Promise<Map<string, Resposta>> {
+  const ids = [...new Set(autores)].filter((id) => UUID.test(id)).slice(0, 100);
+  if (MODO_DEMO || !ids.length) return new Map();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("resposta_de_quem_publica", { p_autores: ids });
+  if (error) falha("quanto cada um responde", error);
+  return new Map(
+    (data ?? []).map((r) => [r.autor_id, { taxa: Number(r.taxa), horas: r.horas === null ? null : Number(r.horas) }]),
+  );
+}
+
+/** As buscas com aviso de quem está logado (no máximo 10). */
+export async function minhasBuscasSalvas() {
+  if (MODO_DEMO) return [];
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("buscas_salvas")
+    .select("id, texto, categoria, regime, turno, lat, lng, raio_km, rotulo, caminho, criado_em")
+    .order("criado_em", { ascending: false });
+  if (error) falha("as suas buscas", error);
+  return data ?? [];
+}
+
 /** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match da busca. */
 export async function requisitosDasVagas(ids: string[]): Promise<(CamposDaVaga & { id: string })[]> {
   if (MODO_DEMO || !ids.length) return [];
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("anuncios")
-    .select("id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe")
+    .select(
+      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario",
+    )
     .in("id", ids);
   if (error) falha("o que as vagas pedem", error);
   return data ?? [];

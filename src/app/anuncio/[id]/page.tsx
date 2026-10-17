@@ -11,6 +11,7 @@ import {
   Gift,
   ListChecks,
   MessageCircleQuestion,
+  MessageCircleReply,
   MapPin,
   Navigation,
   ShieldAlert,
@@ -65,8 +66,10 @@ import {
   obterMeuPerfil,
   obterNotaDoProfissional,
   obterUsuario,
+  respostaDeQuemPublica,
   vagaSalva,
 } from "@/lib/dados";
+import { comoResponde } from "@/lib/resposta";
 import {
   formatarData,
   formatarLugar,
@@ -258,6 +261,12 @@ async function DetalheAnuncio({
   // pessoa pelo primeiro nome; comércio, empresa e agência pelo nome inteiro
   const nomeParaSeguir = anuncio.autor_tipo === "pessoa" ? primeiroNome : anuncio.autor_nome;
   const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
+  // quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais)
+  const resposta =
+    vaga && !proprio
+      ? ((await respostaDeQuemPublica([anuncio.autor_id]).catch(() => null))?.get(anuncio.autor_id) ?? null)
+      : null;
+  const responde = resposta ? comoResponde(resposta, true) : null;
   const agencia = anuncio.autor_tipo === "agencia";
   // tempo de casa até o trabalho (só com o CEP de casa: o ponto da pessoa)
   const local = vaga && !proprio ? await obterLocal() : null;
@@ -590,6 +599,17 @@ async function DetalheAnuncio({
                 Ver perfil
               </Link>
             </div>
+            {responde && (
+              <p
+                className={`flex items-start gap-2 text-body-sm ${responde.bom ? "text-cerrado-text" : "text-ink-muted"}`}
+              >
+                <MessageCircleReply aria-hidden className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {responde.texto}
+                  <span className="block text-ink-muted">nos últimos 6 meses, nas vagas do Publike</span>
+                </span>
+              </p>
+            )}
             {!proprio && (
               <div className="flex flex-col items-start gap-2 border-t border-line pt-3">
                 <BotaoSeguir

@@ -14,6 +14,7 @@
 // A descrição livre da vaga não é lida, só os cursos que ela cita.
 
 import { DISPONIBILIDADES, ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
+import type { Turno } from "./filtros";
 import { chaveBairro, regiaoDoBairro } from "./regioes";
 import type { Curriculo } from "./tipos";
 import { horarioDoBanco, textoDaResposta, type HorarioDetalhe, type Pergunta, type Respostas } from "./vaga-extra";
@@ -385,6 +386,8 @@ export type CamposDaVaga = {
   bairro: string | null;
   jornada: string | null;
   horario_detalhe: unknown;
+  /** o horário em texto ("Seg a sex, 8h às 17h"): só para o filtro de turno */
+  horario?: string | null;
 };
 
 /** O que a vaga pede, para a nota (as perguntas vêm à parte: a resposta procurada é só da empresa). */
@@ -412,4 +415,23 @@ export function matchComAVaga(vaga: CamposDaVaga, pessoa: Omit<Candidato, "respo
   const a = calcularAderencia({ ...requisitosDaVaga(vaga), perguntas: [] }, { ...pessoa, respostas: {} }, agora);
   const daVaga = a.criterios.filter((k) => !k.extra && k.ok !== null).length;
   return a.nota !== null && daVaga >= 2 ? a : null;
+}
+
+/** O turno no texto da vaga, para as vagas sem horário montado (as mais antigas). */
+const TURNO_NO_TEXTO: Record<Turno, RegExp> = {
+  manha: /manha|matutin|\b(5|6|7|8)h/,
+  tarde: /tarde|vespertin|\b(13|14)h/,
+  noite: /noite|noturn|madrugada|\b(18|19|20|22)h/,
+  fim_de_semana: /fim de semana|fins de semana|sabado|domingo/,
+};
+
+/**
+ * A vaga é no turno? Vale o horário montado (turnos, dias, escala) e a jornada; sem
+ * nada disso, o texto da vaga. A mesma regra está no banco (privado.vaga_no_turno),
+ * para o aviso das buscas salvas.
+ */
+export function vagaNoTurno(v: CamposDaVaga, turno: Turno) {
+  const periodos = periodosDaVaga(v.jornada, horarioDoBanco(v.horario_detalhe));
+  if (periodos.length) return (periodos as string[]).includes(turno);
+  return TURNO_NO_TEXTO[turno].test(simples(`${v.titulo} ${v.horario ?? ""} ${v.descricao}`));
 }

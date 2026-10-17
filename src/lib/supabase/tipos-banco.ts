@@ -146,6 +146,26 @@ export type Database = {
         Update: Record<PropertyKey, never>;
         Relationships: [];
       };
+      /** "Me avise de vagas assim": cada busca com aviso de vaga nova */
+      buscas_salvas: {
+        Row: {
+          id: number;
+          perfil_id: string;
+          texto: string | null;
+          categoria: string | null;
+          regime: string | null;
+          turno: string | null;
+          lat: number;
+          lng: number;
+          raio_km: number;
+          rotulo: string;
+          caminho: string;
+          criado_em: string;
+        };
+        Insert: Record<PropertyKey, never>;
+        Update: Record<PropertyKey, never>;
+        Relationships: [];
+      };
       salvas: {
         Row: { perfil_id: string; anuncio_id: string; criado_em: string };
         Insert: { anuncio_id: string };
@@ -714,6 +734,25 @@ export type Database = {
         Returns: { outro_id: string; eu_bloqueei: boolean; me_bloqueou: boolean }[];
       };
       seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
+      salvar_busca: {
+        Args: {
+          p_texto: string | null;
+          p_categoria: string | null;
+          p_regime: string | null;
+          p_turno: string | null;
+          p_lat: number;
+          p_lng: number;
+          p_raio_km: number;
+          p_rotulo: string;
+          p_caminho: string;
+        };
+        Returns: number;
+      };
+      /** a parte das curtidas que cada um responde (0 a 1) e a mediana em horas; só com 5 curtidas ou mais */
+      resposta_de_quem_publica: {
+        Args: { p_autores: string[] };
+        Returns: { autor_id: string; taxa: number; horas: number | null }[];
+      };
       seguir_bairro: { Args: { p_cidade: string; p_bairro: string }; Returns: undefined };
       recomendar: { Args: { p_profissional: string; p_relacao: string; p_texto: string }; Returns: undefined };
       mostrar_recomendacao: { Args: { p_id: number; p_mostrar: boolean }; Returns: undefined };
