@@ -1,6 +1,15 @@
 import { MapPinned, SearchX } from "lucide-react";
 import { Fragment } from "react";
-import { buscarAnuncios, listarMeusServicos, obterMeuCurriculo, obterUsuario, temAnuncioNoAr } from "@/lib/dados";
+import { matchComAVaga, type Aderencia, type Candidato } from "@/lib/aderencia";
+import {
+  buscarAnuncios,
+  listarMeusServicos,
+  obterMeuCurriculo,
+  obterMeuPerfil,
+  obterUsuario,
+  requisitosDasVagas,
+  temAnuncioNoAr,
+} from "@/lib/dados";
 import { aplicarIntencao, descreverOrigem, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
@@ -18,6 +27,7 @@ import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
 import { obterLocal } from "@/lib/local";
 import { passosDaPrioridade, pontoDoLocal, type Local } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import type { AnuncioResumo } from "@/lib/tipos";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
@@ -36,9 +46,10 @@ async function proximoPassoDa(intencao: Intencao | null, logado: boolean): Promi
   try {
     switch (intencao) {
       case "trabalho":
-        return logado && (await obterMeuCurriculo())
+        if (!logado) return { texto: "Preencher meu currículo", href: "/perfil/curriculo" };
+        return (await obterMeuCurriculo())
           ? { texto: "Acompanhar minhas curtidas", href: "/painel/curtidas" }
-          : { texto: "Preencher meu currículo", href: "/perfil/curriculo" };
+          : { texto: "Preencher currículo e ver o % de match", href: "/perfil/curriculo" };
       case "oferecer_servico":
         return logado && (await listarMeusServicos()).length > 0
           ? { texto: "Ver quem quer me contratar", href: "/painel" }
@@ -54,6 +65,38 @@ async function proximoPassoDa(intencao: Intencao | null, logado: boolean): Promi
   } catch {
     // o atalho é um extra: se a leitura falhar, a busca segue sem ele
     return null;
+  }
+}
+
+/** Para o % de match: o currículo e onde a pessoa mora (sem currículo, nada). */
+async function quemProcura(): Promise<Omit<Candidato, "respostas"> | null> {
+  try {
+    const [curriculo, perfil] = await Promise.all([obterMeuCurriculo(), obterMeuPerfil()]);
+    return curriculo && perfil ? { curriculo, cidade: perfil.cidade, bairro: perfil.bairro } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** O % de match de cada vaga da lista com o currículo de quem busca (as próprias vagas ficam de fora). */
+async function matchDasVagas(
+  anuncios: AnuncioResumo[],
+  quem: Omit<Candidato, "respostas">,
+  usuarioId: string,
+  agora: number,
+): Promise<Map<string, Aderencia>> {
+  const ids = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId).map((a) => a.id);
+  try {
+    const vagas = await requisitosDasVagas(ids);
+    return new Map(
+      vagas.flatMap((v) => {
+        const a = matchComAVaga(v, quem, agora);
+        return a ? [[v.id, a] as const] : [];
+      }),
+    );
+  } catch {
+    // o % é um extra: se a leitura falhar, a busca segue sem ele
+    return new Map();
   }
 }
 
@@ -111,12 +154,15 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     obterIntencao(),
   ]);
   const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
-  const [anuncios, proximoPasso, publica] = await Promise.all([
+  const [anuncios, proximoPasso, publica, quem] = await Promise.all([
     buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
     proximoPassoDa(intencao, Boolean(usuario)),
     // "Só os meus" só para quem tem anúncio no ar (quem só procura não precisa dele)
     usuario && !filtros.meus ? temAnuncioNoAr(usuario.id).catch(() => false) : Promise.resolve(filtros.meus),
+    usuario && !filtros.meus && filtros.tipo !== "servico" ? quemProcura() : Promise.resolve(null),
   ]);
+  const matches =
+    usuario && quem ? await matchDasVagas(anuncios, quem, usuario.id, agora) : new Map<string, Aderencia>();
 
   const tempoDe = origemDoTempo(filtros, local);
   const pontos: PontoMapa[] = anuncios.map((a) => {
@@ -137,6 +183,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       distancia: formatarDistancia(a.distancia_km),
       tempo: tempo ? `${tempo} ${tempoDe === "casa" ? "da sua casa" : "de onde você está"}` : null,
       autor: `${a.autor_nome} · ${rotuloConta(a.autor_tipo)}`,
+      match: a.minha_curtida === "match" ? null : (matches.get(a.id)?.nota ?? null),
     };
   });
   // a casa (CEP) ou o GPS aparecem no mapa
@@ -185,6 +232,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               usuarioId={usuario?.id ?? null}
               pertoDeCasa={local ? a.prioridade : null}
               tempoDe={tempoDe}
+              match={matches.get(a.id) ?? null}
             />
             {i === depoisDe && lugarDasPerguntas}
           </Fragment>

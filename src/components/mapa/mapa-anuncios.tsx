@@ -26,6 +26,8 @@ export type PontoMapa = {
   /** "~25 min de ônibus da sua casa" (só com CEP de casa ou GPS) */
   tempo: string | null;
   autor: string;
+  /** vaga, para quem tem currículo: o % de match */
+  match?: number | null;
 };
 
 /** De onde a busca mede: a casa (CEP), o GPS ou nenhum marcador. */
@@ -163,6 +165,12 @@ function conteudoDoCartao(p: Props, ir: (href: string) => void) {
     tempo.className = "text-body-sm text-ink";
     tempo.textContent = p.tempo;
     caixa.append(tempo);
+  }
+  if (p.match != null) {
+    const match = document.createElement("p");
+    match.className = `text-body-sm ${p.match >= 80 ? "font-semibold text-cerrado-text" : "text-ink"}`;
+    match.textContent = `${p.match}% de match com seu currículo`;
+    caixa.append(match);
   }
   const valor = document.createElement("p");
   valor.className = "mt-1 text-label text-ink";

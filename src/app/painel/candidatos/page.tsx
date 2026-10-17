@@ -31,7 +31,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
-import { calcularAderencia, type Aderencia } from "@/lib/aderencia";
+import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
@@ -55,7 +55,7 @@ import {
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { formatarLugar, formatarTelefone, linkWhatsApp, primeiro, tempoRelativo } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
-import { entrevistasDasVagas, requisitosDaVaga, type Entrevista } from "@/lib/servidor/quadro";
+import { entrevistasDasVagas, type Entrevista } from "@/lib/servidor/quadro";
 import { obterTriagens } from "@/lib/servidor/triagem";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";

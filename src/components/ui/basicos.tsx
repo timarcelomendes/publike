@@ -14,6 +14,8 @@ const SELOS = {
   neutro: "bg-surface-300 text-ink",
   novo: "bg-ipe text-on-ipe",
   match: "bg-cerrado text-on-cerrado",
+  /** % de match entre 50 e 79 (de 80 para cima, "match") */
+  matchContorno: "border border-cerrado-text text-cerrado-text",
   like: "bg-like-soft text-like-text",
   aviso: "bg-terra-soft text-terra-text",
   perigo: "border border-danger text-danger",
@@ -26,14 +28,18 @@ export type VarianteSelo = keyof typeof SELOS;
 export function Selo({
   variante = "neutro",
   className = "",
+  title,
   children,
 }: {
   variante?: VarianteSelo;
   className?: string;
+  /** a explicação que aparece ao parar o mouse em cima */
+  title?: string;
   children: ReactNode;
 }) {
   return (
     <span
+      title={title}
       className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1 text-caption whitespace-nowrap uppercase [&_svg]:size-3.5 ${SELOS[variante]} ${className}`}
     >
       {children}

@@ -1,6 +1,7 @@
 import "server-only";
 import { after } from "next/server";
 import { cache } from "react";
+import type { CamposDaVaga } from "./aderencia";
 import { MODO_DEMO } from "./config";
 import { ETAPAS_CANDIDATO, etapaQueVale, VERSAO_TERMOS, type EtapaCandidato } from "./constantes";
 import * as demo from "./demo";
@@ -425,7 +426,7 @@ function lerExperiencias(valor: unknown): Experiencia[] {
 }
 
 /** O currículo de quem está logado (ou null se ainda não preencheu). */
-export async function obterMeuCurriculo(): Promise<Curriculo | null> {
+export const obterMeuCurriculo = cache(async (): Promise<Curriculo | null> => {
   if (MODO_DEMO) return null;
   const usuario = await obterUsuario();
   if (!usuario) return null;
@@ -437,6 +438,18 @@ export async function obterMeuCurriculo(): Promise<Curriculo | null> {
     .maybeSingle();
   if (error) falha("seu currículo", error);
   return data ? { ...data, experiencias: lerExperiencias(data.experiencias) } : null;
+});
+
+/** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match da busca. */
+export async function requisitosDasVagas(ids: string[]): Promise<(CamposDaVaga & { id: string })[]> {
+  if (MODO_DEMO || !ids.length) return [];
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("anuncios")
+    .select("id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe")
+    .in("id", ids);
+  if (error) falha("o que as vagas pedem", error);
+  return data ?? [];
 }
 
 /** Link temporário (1 hora) para abrir o PDF de um currículo. */

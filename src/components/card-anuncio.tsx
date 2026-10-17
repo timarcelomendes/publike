@@ -14,6 +14,7 @@ import { deslocamentoCurto } from "@/lib/deslocamento";
 import type { DadosCard } from "@/lib/tipos";
 import { NotaDoProfissional } from "./avaliacoes";
 import { BotaoCurtir } from "./botao-curtir";
+import { SeloMatch, type MatchResumo } from "./match-vaga";
 import { Selo } from "./ui/basicos";
 import { SeloVerificado } from "@/components/selo-verificado";
 
@@ -26,6 +27,7 @@ export function CardAnuncio({
   usuarioId,
   pertoDeCasa = null,
   tempoDe = null,
+  match = null,
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -34,6 +36,8 @@ export function CardAnuncio({
   pertoDeCasa?: number | null;
   /** Mostra o tempo de ônibus (ou a pé) a partir da casa da pessoa (CEP) ou de onde ela está (GPS). */
   tempoDe?: "casa" | "voce" | null;
+  /** Vaga, para quem tem currículo: o % de match (sem currículo ou com pouco para comparar, null). */
+  match?: MatchResumo | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -41,6 +45,8 @@ export function CardAnuncio({
   const proprio = usuarioId !== null && usuarioId === anuncio.autor_id;
   const servico = anuncio.tipo === "servico";
   const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
+  // depois do match, o "Deu match" já diz tudo (e não se confunde com o %)
+  const comMatch = match && anuncio.minha_curtida !== "match" ? match : null;
 
   return (
     <article
@@ -48,6 +54,7 @@ export function CardAnuncio({
       className="relative flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:p-5 group-data-[visao=grade]/visao:gap-2 group-data-[visao=grade]/visao:p-3 group-data-[visao=grade]/visao:sm:p-4 group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4"
     >
       <div className="flex flex-wrap gap-2 group-data-[visao=lista]/visao:hidden">
+        {comMatch && <SeloMatch match={comMatch} />}
         {novo && <Selo variante="novo">Novo</Selo>}
         <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
         {!servico && anuncio.autor_tipo === "agencia" && (
@@ -94,6 +101,12 @@ export function CardAnuncio({
           </p>
           {servico && <NotaDoProfissional media={anuncio.autor_nota} total={anuncio.autor_avaliacoes} compacto />}
         </div>
+        {comMatch && (
+          // na lista, os selos de cima somem: o % fica ao lado do título
+          <span className="hidden shrink-0 group-data-[visao=lista]/visao:block">
+            <SeloMatch match={comMatch} />
+          </span>
+        )}
         {foto && (
           <Image
             src={foto}

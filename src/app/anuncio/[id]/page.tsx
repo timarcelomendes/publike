@@ -34,8 +34,10 @@ import { CnpjDoPerfil } from "@/components/cnpj-agencia";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { MapaArea } from "@/components/mapa/mapa-area";
+import { MatchDaVaga, SeloMatch } from "@/components/match-vaga";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { matchComAVaga } from "@/lib/aderencia";
 import { SITE_URL } from "@/lib/config";
 import {
   categoria,
@@ -60,6 +62,7 @@ import {
   listarMeusDesfeitos,
   obterAnuncio,
   obterMeuCurriculo,
+  obterMeuPerfil,
   obterNotaDoProfissional,
   obterUsuario,
   vagaSalva,
@@ -230,8 +233,15 @@ async function DetalheAnuncio({
           return item ? { ...item, bloqueadoPeloOutro: Boolean(b.get(anuncio.autor_id)?.ele) } : null;
         })
       : null;
-  const temCurriculo =
-    usuario && !proprio && anuncio.tipo === "vaga" ? (await obterMeuCurriculo()) !== null : null;
+  const paraQuemProcura = usuario && !proprio && anuncio.tipo === "vaga";
+  const curriculo = paraQuemProcura ? await obterMeuCurriculo() : null;
+  const temCurriculo = paraQuemProcura ? curriculo !== null : null;
+  // o % de match com o currículo (com pouco para comparar, não aparece)
+  const perfil = curriculo ? await obterMeuPerfil().catch(() => null) : null;
+  const match =
+    curriculo && perfil
+      ? matchComAVaga(anuncio, { curriculo, cidade: perfil.cidade, bairro: perfil.bairro }, agora)
+      : null;
   // quem publicou já aceitou e falta o currículo (vaga que pede): o próximo passo é mandar
   const aceita =
     anuncio.minha_curtida === "pendente" && anuncio.pede_curriculo && (await aceitoEsperandoMeuCurriculo(anuncio.id));
@@ -331,6 +341,7 @@ async function DetalheAnuncio({
       <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
         <article className="min-w-0">
           <div className="flex flex-wrap gap-2">
+            {match && <SeloMatch match={match} />}
             {novo && <Selo variante="novo">Novo</Selo>}
             <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
             {vaga && agencia && (
@@ -460,6 +471,8 @@ async function DetalheAnuncio({
 
           {/* No celular, curtir fica logo aqui; no computador, na coluna ao lado */}
           <div className="mt-6 lg:hidden">{quadroAcao("celular")}</div>
+
+          {match && <MatchDaVaga a={match} className="mt-6" />}
 
           <h2 className="mt-8 text-h2">{vaga ? "Sobre a vaga" : "Sobre o serviço"}</h2>
           <div className="mt-3 text-body whitespace-pre-line text-ink">{anuncio.descricao}</div>

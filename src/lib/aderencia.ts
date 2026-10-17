@@ -16,7 +16,7 @@
 import { DISPONIBILIDADES, ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
 import { chaveBairro, regiaoDoBairro } from "./regioes";
 import type { Curriculo } from "./tipos";
-import { textoDaResposta, type HorarioDetalhe, type Pergunta, type Respostas } from "./vaga-extra";
+import { horarioDoBanco, textoDaResposta, type HorarioDetalhe, type Pergunta, type Respostas } from "./vaga-extra";
 
 export type Criterio = {
   nome: string;
@@ -53,7 +53,7 @@ type Vaga = {
   perguntas: Pergunta[];
 };
 
-type Candidato = {
+export type Candidato = {
   curriculo:
     | (Pick<Curriculo, "escolaridade" | "experiencias" | "cnh"> &
         Partial<Pick<Curriculo, "disponibilidade" | "cursos">>)
@@ -370,4 +370,46 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
   const atendidos = conhecidos.filter((x) => x.ok).length;
   const nota = eliminado ? 0 : conhecidos.length ? Math.round((100 * atendidos) / conhecidos.length) : null;
   return { nota, eliminado, criterios, conferidos: conhecidos.length, atendidos };
+}
+
+// ---------------------------------------------------------------- dos dois lados
+
+/** Os campos da vaga que a nota usa (vêm do obter_anuncio ou direto da tabela). */
+export type CamposDaVaga = {
+  titulo: string;
+  descricao: string;
+  escolaridade_minima: string | null;
+  experiencia: string | null;
+  cnh: string | null;
+  cidade: string;
+  bairro: string | null;
+  jornada: string | null;
+  horario_detalhe: unknown;
+};
+
+/** O que a vaga pede, para a nota (as perguntas vêm à parte: a resposta procurada é só da empresa). */
+export function requisitosDaVaga(a: CamposDaVaga) {
+  return {
+    titulo: a.titulo,
+    descricao: a.descricao,
+    escolaridade_minima: a.escolaridade_minima,
+    experiencia: a.experiencia,
+    cnh: a.cnh,
+    cidade: a.cidade,
+    bairro: a.bairro,
+    jornada: a.jornada,
+    horario: horarioDoBanco(a.horario_detalhe),
+  };
+}
+
+/**
+ * O % de match de quem procura com a vaga: a mesma conta que a empresa vê, sem as
+ * perguntas (a resposta que a empresa procura é só dela, e antes de curtir não há
+ * resposta). Só quando dá para conferir a cidade e mais alguma coisa que a vaga pede:
+ * com a cidade só (e os "+"), o número diria pouco.
+ */
+export function matchComAVaga(vaga: CamposDaVaga, pessoa: Omit<Candidato, "respostas">, agora: number) {
+  const a = calcularAderencia({ ...requisitosDaVaga(vaga), perguntas: [] }, { ...pessoa, respostas: {} }, agora);
+  const daVaga = a.criterios.filter((k) => !k.extra && k.ok !== null).length;
+  return a.nota !== null && daVaga >= 2 ? a : null;
 }

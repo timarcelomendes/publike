@@ -1,5 +1,5 @@
 import "server-only";
-import { calcularAderencia, type Aderencia } from "@/lib/aderencia";
+import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { esperaCurriculo, etapaQueVale, type EtapaCandidato } from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
@@ -10,7 +10,7 @@ import {
 import { colunaDoCandidato, MODELOS_PRONTOS, type ModeloMensagem } from "@/lib/recrutamento";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { AnuncioCompleto } from "@/lib/tipos";
-import { horarioDoBanco, juntarTriagem, perguntasDoBanco, textoDaResposta, type Pergunta } from "@/lib/vaga-extra";
+import { juntarTriagem, perguntasDoBanco, textoDaResposta, type Pergunta } from "@/lib/vaga-extra";
 import { obterTriagem } from "./triagem";
 
 // Tudo o que o quadro de candidatos de uma vaga precisa, montado no servidor:
@@ -89,21 +89,6 @@ export async function modelosDaConta(): Promise<ModeloMensagem[]> {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.from("modelos_mensagem").select("id, nome, texto").order("criado_em");
   return [...(data ?? []), ...MODELOS_PRONTOS];
-}
-
-/** O que a vaga pede, para a nota de aderência (as perguntas vêm à parte, com a triagem). */
-export function requisitosDaVaga(anuncio: AnuncioCompleto) {
-  return {
-    titulo: anuncio.titulo,
-    descricao: anuncio.descricao,
-    escolaridade_minima: anuncio.escolaridade_minima,
-    experiencia: anuncio.experiencia,
-    cnh: anuncio.cnh,
-    cidade: anuncio.cidade,
-    bairro: anuncio.bairro,
-    jornada: anuncio.jornada,
-    horario: horarioDoBanco(anuncio.horario_detalhe),
-  };
 }
 
 export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
