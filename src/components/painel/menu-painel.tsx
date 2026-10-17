@@ -13,6 +13,7 @@ import {
   Star,
   Store,
   Users,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -32,13 +33,14 @@ import {
 
 const ICONES: Record<Secao["icone"], LucideIcon> = {
   hoje: House,
+  caixa: Inbox,
   candidatos: Users,
   vagas: Briefcase,
   conversas: MessagesSquare,
   curtidas: Heart,
   avisos: BellRing,
   curriculo: FileText,
-  pedidos: Inbox,
+  pedidos: Wrench,
   vitrine: Store,
   avaliacoes: Star,
 };
@@ -160,7 +162,7 @@ export function MenuPainel({
               <Link
                 href={s.href}
                 aria-current={atualSecao ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-2.5 rounded-pill px-3.5 text-label whitespace-nowrap transition-colors lg:rounded-md lg:px-3 ${
+                className={`relative flex min-h-11 items-center gap-2.5 rounded-pill px-3.5 text-label whitespace-nowrap transition-colors lg:rounded-md lg:px-3 ${
                   atualSecao
                     ? "bg-ink text-surface-100 lg:bg-surface-300 lg:text-ink"
                     : "border border-line-strong text-ink hover:bg-surface-300 lg:border-transparent"

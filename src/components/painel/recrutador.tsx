@@ -129,10 +129,7 @@ export async function PainelRecrutador({
       texto: antigos.length
         ? `${plural(antigos.length, "espera", "esperam")} há mais de 2 dias. Responder em até 1 dia mostra o selo verde nas suas vagas.`
         : "Aceite quem interessa ou dispense com um toque: a pessoa recebe o aviso.",
-      href: quadroDe(
-        pendentes.map((c) => c.anuncio_id),
-        "/painel/candidatos?situacao=responder",
-      ),
+      href: "/painel/caixa?aba=responder",
       acao: "Responder agora",
     });
   }
