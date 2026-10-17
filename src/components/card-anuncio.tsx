@@ -77,8 +77,12 @@ export function CardAnuncio({
   const proprio = usuarioId !== null && usuarioId === anuncio.autor_id;
   const servico = anuncio.tipo === "servico";
   const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
-  // depois do match, o "Deu match" já diz tudo (e não se confunde com o %)
-  const comMatch = match && anuncio.minha_curtida !== "match" ? match : null;
+  // depois do match, o "Deu match" já diz tudo (e não se confunde com o %); 0% no cartão
+  // só desanima (o porquê fica na página da vaga)
+  const comMatch = match && (match.nota ?? 0) > 0 && anuncio.minha_curtida !== "match" ? match : null;
+  // "Outro" não diz nada sobre a contratação: sem selo
+  const modalidade =
+    anuncio.tipo === "vaga" && anuncio.regime === "outro" ? null : rotuloModalidade(anuncio.tipo, anuncio.regime);
   const linhaExtras = extras
     ? [
         ...extras.beneficios.slice(0, 3).map((b) => BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b),
@@ -96,7 +100,7 @@ export function CardAnuncio({
       <div className="flex flex-wrap gap-2 group-data-[visao=lista]/visao:hidden">
         {comMatch && <SeloMatch match={comMatch} />}
         {novo && <Selo variante="novo">Novo</Selo>}
-        <Selo>{rotuloModalidade(anuncio.tipo, anuncio.regime)}</Selo>
+        {modalidade && <Selo>{modalidade}</Selo>}
         {!servico && anuncio.autor_tipo === "agencia" && (
           <Selo variante="contorno">
             <Building2 aria-hidden />
@@ -169,17 +173,16 @@ export function CardAnuncio({
         )}
       </div>
 
-      <p className="flex items-center gap-1.5 text-body-sm text-ink-muted group-data-[visao=lista]/visao:col-start-1">
+      <p className="flex items-start gap-1.5 text-body-sm text-ink-muted group-data-[visao=lista]/visao:col-start-1">
+        {/* no alto da primeira linha, quando o endereço quebra */}
         <MapPin
           aria-hidden
-          className="size-4 shrink-0 text-terra-text"
+          className="mt-0.5 size-4 shrink-0 text-terra-text"
           fill="currentColor"
           stroke="var(--pk-surface-200)"
         />
         <span className="min-w-0">
-          <span className="hidden group-data-[visao=lista]/visao:inline">
-            {rotuloModalidade(anuncio.tipo, anuncio.regime)} ·{" "}
-          </span>
+          {modalidade && <span className="hidden group-data-[visao=lista]/visao:inline">{modalidade} · </span>}
           {formatarLugar(anuncio.bairro, anuncio.cidade)}
           {distancia && ` · ${distancia}`}
         </span>
