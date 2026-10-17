@@ -1,4 +1,4 @@
-import { Building2, Bus, Footprints, MapPin, MessageCircleReply } from "lucide-react";
+import { Building2, Bus, Footprints, MapPin, MessageCircleReply, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -11,15 +11,34 @@ import {
   valorDoAnuncio,
 } from "@/lib/formato";
 import { deslocamentoCurto } from "@/lib/deslocamento";
+import { nomeBeneficio } from "@/lib/constantes";
 import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { DadosCard } from "@/lib/tipos";
 import { NotaDoProfissional } from "./avaliacoes";
+import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
 import { BotaoCurtir } from "./botao-curtir";
 import { SeloMatch, type MatchResumo } from "./match-vaga";
 import { Selo } from "./ui/basicos";
 import { SeloVerificado } from "@/components/selo-verificado";
 
 const DOIS_DIAS = 48 * 3600 * 1000;
+const DIA = 24 * 3600 * 1000;
+
+/** No cartão, os benefícios mais comuns com o nome curto. */
+const BENEFICIO_CURTO: Record<string, string> = { vale_transporte: "VT", vale_refeicao: "VR", vale_alimentacao: "VA" };
+
+/** O que a vaga oferece e pede, numa linha do cartão. */
+export type ExtrasDaVaga = { pedeCurriculo: boolean; beneficios: string[]; vagas: number; expiraEm: string };
+
+/** Para quem publicou: o que chegou na própria vaga. */
+export type MinhaVaga = { curtidas: number; novas: number };
+
+/** "Encerra hoje", "Encerra amanhã", "Encerra em 3 dias" (só nos 3 últimos dias). */
+function encerra(expiraEm: string, agora: number) {
+  const dias = Math.ceil((new Date(expiraEm).getTime() - agora) / DIA);
+  if (dias > 3 || dias < 0) return null;
+  return dias <= 0 ? "Encerra hoje" : dias === 1 ? "Encerra amanhã" : `Encerra em ${dias} dias`;
+}
 
 /** CardVaga do Design System: serve para vaga e para serviço (com a primeira foto de trabalho). */
 export function CardAnuncio({
@@ -30,6 +49,9 @@ export function CardAnuncio({
   tempoDe = null,
   match = null,
   resposta = null,
+  extras = null,
+  salva = null,
+  minha = null,
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -42,6 +64,12 @@ export function CardAnuncio({
   match?: MatchResumo | null;
   /** Vaga: quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais). */
   resposta?: Resposta | null;
+  /** Vaga: benefícios, se pede currículo, quantas pessoas e até quando fica no ar. */
+  extras?: ExtrasDaVaga | null;
+  /** Vaga de outra pessoa, para quem tem conta: se está salva (null: sem a estrela). */
+  salva?: boolean | null;
+  /** A própria vaga: curtidas e quantas esperam resposta. */
+  minha?: MinhaVaga | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -51,6 +79,14 @@ export function CardAnuncio({
   const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
   // depois do match, o "Deu match" já diz tudo (e não se confunde com o %)
   const comMatch = match && anuncio.minha_curtida !== "match" ? match : null;
+  const linhaExtras = extras
+    ? [
+        ...extras.beneficios.slice(0, 3).map((b) => BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b),
+        extras.pedeCurriculo ? "Pede currículo" : null,
+        extras.vagas > 1 ? `${extras.vagas} vagas` : null,
+      ].filter((x): x is string => Boolean(x))
+    : [];
+  const prazo = extras && !proprio ? encerra(extras.expiraEm, agora) : null;
 
   return (
     <article
@@ -164,18 +200,45 @@ export function CardAnuncio({
       <p className="text-label group-data-[visao=grade]/visao:text-body-sm group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-start-1 group-data-[visao=lista]/visao:max-w-48 group-data-[visao=lista]/visao:text-right">
         {valorDoAnuncio(anuncio)}
       </p>
+      {(linhaExtras.length > 0 || prazo) && (
+        <p className="-mt-1.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
+          {linhaExtras.join(" · ")}
+          {prazo && (
+            <span className="font-semibold whitespace-nowrap text-terra-text">
+              {linhaExtras.length > 0 && " · "}
+              {prazo}
+            </span>
+          )}
+        </p>
+      )}
 
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
         <span className="group-data-[visao=lista]/visao:hidden">{tempoRelativo(anuncio.criado_em, agora)}</span>
+        {proprio && minha && (
+          <Link
+            href={`/painel/anuncio/${anuncio.id}`}
+            className="relative z-10 inline-flex min-h-11 items-center gap-1.5 rounded-pill border border-line-strong px-4 text-label text-ink hover:bg-surface-300"
+          >
+            <Users aria-hidden className="size-4 shrink-0" />
+            {minha.curtidas === 0
+              ? "Ninguém curtiu ainda"
+              : minha.novas > 0
+                ? `${minha.novas} para responder`
+                : `${minha.curtidas} ${minha.curtidas === 1 ? "candidato" : "candidatos"}`}
+          </Link>
+        )}
         {!proprio && (
-          <BotaoCurtir
-            className="relative z-10"
-            anuncioId={anuncio.id}
-            status={anuncio.minha_curtida}
-            logado={usuarioId !== null}
-            servico={servico}
-            quem={anuncio.autor_nome}
-          />
+          <span className="flex items-center gap-2">
+            {salva !== null && !servico && <BotaoSalvarVaga anuncioId={anuncio.id} salva={salva} logado compacto />}
+            <BotaoCurtir
+              className="relative z-10"
+              anuncioId={anuncio.id}
+              status={anuncio.minha_curtida}
+              logado={usuarioId !== null}
+              servico={servico}
+              quem={anuncio.autor_nome}
+            />
+          </span>
         )}
       </div>
     </article>

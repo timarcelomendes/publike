@@ -1,8 +1,10 @@
-import { MapPinned, SearchX } from "lucide-react";
+import { MapPinned, Percent, SearchX } from "lucide-react";
+import Link from "next/link";
 import { Fragment } from "react";
-import { matchComAVaga, vagaNoTurno, type Aderencia, type CamposDaVaga, type Candidato } from "@/lib/aderencia";
+import { matchComAVaga, vagaNoTurno, type Aderencia, type Candidato } from "@/lib/aderencia";
 import {
   buscarAnuncios,
+  listarMeusAnuncios,
   listarMeusServicos,
   minhasBuscasSalvas,
   obterMeuCurriculo,
@@ -11,6 +13,8 @@ import {
   requisitosDasVagas,
   respostaDeQuemPublica,
   temAnuncioNoAr,
+  vagasSalvasEntre,
+  type DetalhesDaVaga,
 } from "@/lib/dados";
 import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
@@ -83,17 +87,24 @@ async function quemProcura(): Promise<Omit<Candidato, "respostas"> | null> {
 }
 
 /** O que cada vaga da lista pede (para o % de match e o filtro de turno). */
-async function requisitosDaLista(anuncios: AnuncioResumo[]): Promise<Map<string, CamposDaVaga>> {
+async function requisitosDaLista(anuncios: AnuncioResumo[]): Promise<Map<string, DetalhesDaVaga>> {
   const ids = anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id);
   if (!ids.length) return new Map();
   const vagas = await requisitosDasVagas(ids);
   return new Map(vagas.map((v) => [v.id, v]));
 }
 
+/** A linha de benefícios do cartão (vaga). */
+function extrasDe(v: DetalhesDaVaga | undefined) {
+  return v
+    ? { pedeCurriculo: v.pede_curriculo, beneficios: v.beneficios_lista ?? [], vagas: v.vagas, expiraEm: v.expira_em }
+    : null;
+}
+
 /** O % de match de cada vaga com o currículo de quem busca (as próprias vagas ficam de fora). */
 function matchDasVagas(
   anuncios: AnuncioResumo[],
-  requisitos: Map<string, CamposDaVaga>,
+  requisitos: Map<string, DetalhesDaVaga>,
   quem: Omit<Candidato, "respostas">,
   usuarioId: string,
   agora: number,
@@ -158,9 +169,9 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     usuario && !filtros.meus && filtros.tipo !== "servico" ? quemProcura() : Promise.resolve(null),
     usuario && avisar ? minhasBuscasSalvas().catch(() => []) : Promise.resolve([]),
   ]);
-  // o que cada vaga pede: para o % de match e para o turno (a busca do banco não filtra turno)
-  const requisitos =
-    quem || filtros.turno ? await requisitosDaLista(encontrados).catch(() => null) : new Map<string, CamposDaVaga>();
+  // o que cada vaga pede e oferece: para o % de match, o turno (a busca do banco não filtra
+  // turno) e a linha de benefícios do cartão
+  const requisitos = await requisitosDaLista(encontrados).catch(() => null);
   const turno = filtros.turno;
   let anuncios =
     turno && requisitos
@@ -182,9 +193,14 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       .sort((x, y) => y.nota - x.nota || x.i - y.i)
       .map((x) => x.a);
   }
-  const resposta = await respostaDeQuemPublica(
-    anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id).map((a) => a.autor_id),
-  ).catch(() => new Map());
+  const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id);
+  const temMinhas = Boolean(usuario) && anuncios.some((a) => a.autor_id === usuario?.id);
+  const [resposta, salvasAgora, minhas] = await Promise.all([
+    respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map()),
+    usuario ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
+    temMinhas ? listarMeusAnuncios().catch(() => []) : Promise.resolve([]),
+  ]);
+  const minhaPorId = new Map(minhas.map((m) => [m.id, { curtidas: m.curtidas_total, novas: m.curtidas_novas }]));
   const buscaSalva = usuario && avisar ? acharBuscaSalva(filtros, salvas) : null;
 
   const tempoDe = origemDoTempo(filtros, local);
@@ -257,6 +273,9 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               tempoDe={tempoDe}
               match={matches.get(a.id) ?? null}
               resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
+              extras={extrasDe(requisitos?.get(a.id))}
+              salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}
+              minha={minhaPorId.get(a.id) ?? null}
             />
             {i === depoisDe && lugarDasPerguntas}
           </Fragment>
@@ -356,6 +375,20 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
             </p>
             {avisar && (
               <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
+            )}
+            {/* o % de match chama para a conta e o currículo (quem procura trabalho já tem o atalho na lista) */}
+            {avisar && n > 0 && !quem && (!usuario || intencao !== "trabalho") && (
+              <Link
+                href={
+                  usuario
+                    ? `/perfil/curriculo?next=${encodeURIComponent(hrefFiltros(filtros))}`
+                    : `/entrar?next=${encodeURIComponent(hrefFiltros(filtros))}`
+                }
+                className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-cerrado-text underline-offset-2 hover:underline"
+              >
+                <Percent aria-hidden className="size-4 shrink-0" />
+                {usuario ? "Preencha o currículo e veja seu % de match" : "Entre e veja seu % de match em cada vaga"}
+              </Link>
             )}
           </div>
         }

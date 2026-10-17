@@ -467,14 +467,23 @@ export async function minhasBuscasSalvas() {
   return data ?? [];
 }
 
-/** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match da busca. */
-export async function requisitosDasVagas(ids: string[]): Promise<(CamposDaVaga & { id: string })[]> {
+/** O que cada vaga pede e o que mostra no cartão da busca (benefícios, quantas vagas, até quando fica no ar). */
+export type DetalhesDaVaga = CamposDaVaga & {
+  id: string;
+  pede_curriculo: boolean;
+  beneficios_lista: string[];
+  vagas: number;
+  expira_em: string;
+};
+
+/** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match e o cartão da busca. */
+export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[]> {
   if (MODO_DEMO || !ids.length) return [];
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("anuncios")
     .select(
-      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario",
+      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em",
     )
     .in("id", ids);
   if (error) falha("o que as vagas pedem", error);
@@ -765,6 +774,22 @@ export async function obterMeuUltimoEndereco() {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.rpc("meu_ultimo_endereco").maybeSingle();
   return data ?? null;
+}
+
+/** Quais destas vagas quem está logado salvou (para a estrela dos cartões da busca). */
+export async function vagasSalvasEntre(ids: string[]): Promise<Set<string>> {
+  const validos = ids.filter((id) => UUID.test(id)).slice(0, 200);
+  if (MODO_DEMO || !validos.length) return new Set();
+  const usuario = await obterUsuario();
+  if (!usuario) return new Set();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("salvas")
+    .select("anuncio_id")
+    .eq("perfil_id", usuario.id)
+    .in("anuncio_id", validos);
+  if (error) falha("as vagas salvas", error);
+  return new Set((data ?? []).map((s) => s.anuncio_id));
 }
 
 /** Esta vaga está salva por quem está logado? */
