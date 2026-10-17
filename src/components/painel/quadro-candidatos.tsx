@@ -18,7 +18,7 @@ import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
 import { CaminhoDoAceite } from "../caminho-curtida";
-import { CriteriosDaAderencia, NotaAderencia } from "./nota-aderencia";
+import { DetalheDaAderencia, NotaAderencia } from "./nota-aderencia";
 import { Avatar, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
@@ -456,14 +456,7 @@ function DetalheCandidato({
       </Secao>
 
       <Secao titulo="Aderência à vaga">
-        {c.aderencia.criterios.length ? (
-          <CriteriosDaAderencia a={c.aderencia} />
-        ) : (
-          <p className="text-body-sm text-ink-muted">
-            A vaga não pede escolaridade, experiência nem CNH, e as perguntas não têm resposta procurada. Defina no
-            editar da vaga para ter a nota.
-          </p>
-        )}
+        <DetalheDaAderencia a={c.aderencia} editarVaga={`/painel/anuncio/${anuncioId}/editar`} />
       </Secao>
 
       {(c.respostas.length > 0 || c.mensagem) && (

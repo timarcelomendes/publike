@@ -1,11 +1,22 @@
-// Nota de aderência: o quanto o candidato bate com o que a vaga pede.
-// Conta só o que dá para saber (escolaridade, experiência e CNH pelo currículo,
-// a cidade pelo perfil, as perguntas com a resposta que a empresa procura).
-// Pergunta eliminatória respondida diferente: nota 0. Sem nada para comparar: sem nota.
+// Nota de aderência: o quanto o candidato bate com a vaga, item por item.
+//
+// Compara tudo o que a vaga define e que dá para conferir no currículo, no perfil e
+// nas respostas:
+//   escolaridade · tempo de experiência · experiência na função (o cargo nas
+//   experiências × o título da vaga) · CNH · horário (turnos, dias e escala da vaga ×
+//   quando a pessoa pode trabalhar) · onde mora (cidade; bairro e região de Goiânia no
+//   detalhe) · as perguntas com a resposta que a empresa procura · os cursos que a
+//   própria vaga cita.
+// Nota = itens atendidos ÷ itens conferidos. O que não dá para saber (sem currículo,
+// sem resposta) fica de fora da conta e aparece com "?". Experiência na função, quando
+// a vaga aceita sem experiência, e os cursos só somam: aparecem quando a pessoa tem.
+// Pergunta eliminatória respondida diferente: nota 0. Nada para comparar: sem nota.
+// A descrição livre da vaga não é lida, só os cursos que ela cita.
 
-import { ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
+import { DISPONIBILIDADES, ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
+import { chaveBairro, regiaoDoBairro } from "./regioes";
 import type { Curriculo } from "./tipos";
-import { textoDaResposta, type Pergunta, type Respostas } from "./vaga-extra";
+import { textoDaResposta, type HorarioDetalhe, type Pergunta, type Respostas } from "./vaga-extra";
 
 export type Criterio = {
   nome: string;
@@ -13,23 +24,43 @@ export type Criterio = {
   ok: boolean | null;
   detalhe: string;
   eliminatorio?: boolean;
+  /** só soma: aparece quando a pessoa tem, e não conta contra quem não tem */
+  extra?: boolean;
 };
 
-export type Aderencia = { nota: number | null; eliminado: boolean; criterios: Criterio[] };
+export type Aderencia = {
+  nota: number | null;
+  eliminado: boolean;
+  criterios: Criterio[];
+  /** itens que deu para conferir (sem os "?") e quantos a pessoa atende */
+  conferidos: number;
+  atendidos: number;
+};
 
 type Vaga = {
+  titulo?: string;
+  descricao?: string;
   escolaridade_minima: string | null;
   experiencia: string | null;
   cnh: string | null;
   cidade: string;
+  bairro?: string | null;
+  /** jornada simples (integral, noturno, escala 12x36…) */
+  jornada?: string | null;
+  /** horário montado: turnos, dias e escala */
+  horario?: HorarioDetalhe | null;
   /** com a triagem junto (juntarTriagem) */
   perguntas: Pergunta[];
 };
 
 type Candidato = {
-  curriculo: Pick<Curriculo, "escolaridade" | "experiencias" | "cnh"> | null;
+  curriculo:
+    | (Pick<Curriculo, "escolaridade" | "experiencias" | "cnh"> &
+        Partial<Pick<Curriculo, "disponibilidade" | "cursos">>)
+    | null;
   respostas: Respostas;
   cidade: string | null;
+  bairro?: string | null;
 };
 
 const MESES_PEDIDOS: Record<string, number> = { "6_meses": 6, "1_ano": 12, "2_anos": 24 };
@@ -51,6 +82,15 @@ export function mesesDeExperiencia(experiencias: { inicio: string; fim: string |
   return total;
 }
 
+/** "5 meses", "1 ano e 2 meses", "3 anos". */
+function tempo(meses: number) {
+  if (meses < 12) return `${meses} ${meses === 1 ? "mês" : "meses"}`;
+  const anos = Math.floor(meses / 12);
+  const resto = meses % 12;
+  const a = `${anos} ${anos === 1 ? "ano" : "anos"}`;
+  return resto ? `${a} e ${resto} ${resto === 1 ? "mês" : "meses"}` : a;
+}
+
 /** As categorias que a CNH cobre: D cobre C e B; AB é A e B. */
 function categorias(cnh: string) {
   const c = cnh.toUpperCase();
@@ -62,6 +102,142 @@ function categorias(cnh: string) {
   return set;
 }
 
+// ---------------------------------------------------------------- palavras
+
+const simples = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    // "NR-35", "NR 35" → "nr35"
+    .replace(/\bnr\s*-?\s*(\d+)/g, "nr$1");
+
+/** Palavras que não dizem a função: o nível, o tipo de contrato, ligações. */
+const GENERICAS = new Set(
+  (
+    "auxiliar aux ajudante assistente operador operadora tecnico tecnica analista encarregado encarregada " +
+    "lider chefe supervisor supervisora coordenador coordenadora gerente subgerente jovem aprendiz estagio " +
+    "estagiario estagiaria trainee vaga vagas temporario temporaria fixo fixa efetivo efetiva junior pleno senior " +
+    "noturno noturna diurno diurna periodo integral meio turno manha tarde noite horas para com sem dos das " +
+    "nos nas pela pelo uma umas uns area setor geral gerais servicos servico pessoa profissional funcionario " +
+    "funcionaria colaborador colaboradora trabalho emprego teste etapas ii iii"
+  ).split(" "),
+);
+
+/** Raízes curtas que confundem funções diferentes: pedem mais letras em comum. */
+const RAIZES_AMBIGUAS = new Set("serv elet inst mont prod cont tran info manu mant cons".split(" "));
+
+/** As palavras que dizem a função: sem acento, sem as genéricas, com 4 letras ou mais. */
+function palavrasDaFuncao(texto: string) {
+  return simples(texto)
+    .split(/[^a-z0-9]+/)
+    .filter((p) => p.length >= 4 && !GENERICAS.has(p));
+}
+
+/** Mesma raiz: 5 letras iguais no começo (4, se a raiz não for ambígua). "recepcionista" ~ "recepção". */
+function mesmaRaiz(a: string, b: string) {
+  let n = 0;
+  while (n < a.length && n < b.length && a[n] === b[n]) n++;
+  if (n >= 5) return true;
+  return n === 4 && !RAIZES_AMBIGUAS.has(a.slice(0, 4));
+}
+
+/** A experiência do currículo que mais parece com a função da vaga (pelo título). */
+function experienciaNaFuncao(titulo: string, experiencias: Curriculo["experiencias"]) {
+  const daVaga = palavrasDaFuncao(titulo);
+  if (!daVaga.length) return null;
+  return (
+    experiencias.find((e) => {
+      const doCargo = palavrasDaFuncao(`${e.cargo} ${e.descricao ?? ""}`);
+      return daVaga.some((v) => doCargo.some((c) => mesmaRaiz(v, c)));
+    }) ?? null
+  );
+}
+
+/** Palavras dos cursos que não dizem qual é o curso. */
+const GENERICAS_CURSO = new Set(
+  (
+    "curso cursos basico basica avancado avancada intermediario completo completa online presencial livre " +
+    "certificado certificacao treinamento nivel modulo pacote para com dos das sobre"
+  ).split(" "),
+);
+
+/** Os cursos do currículo que a própria vaga cita (no título ou na descrição). */
+function cursosCitados(cursos: string[], textoDaVaga: string) {
+  const palavrasDaVaga = new Set(
+    simples(textoDaVaga)
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean),
+  );
+  return cursos.filter((curso) =>
+    simples(curso)
+      .split(/[^a-z0-9]+/)
+      .filter((p) => (p.length >= 4 || /^nr\d+$/.test(p)) && !GENERICAS_CURSO.has(p))
+      .some(
+        (p) =>
+          palavrasDaVaga.has(p) ||
+          [...palavrasDaVaga].some((v) => v.length >= 6 && p.length >= 6 && v.slice(0, 6) === p.slice(0, 6)),
+      ),
+  );
+}
+
+// ---------------------------------------------------------------- horário
+
+type Periodo = "manha" | "tarde" | "noite" | "fim_de_semana" | "escala";
+const NOME_PERIODO = Object.fromEntries(DISPONIBILIDADES.map((d) => [d.valor, d.nome.split(" (")[0].toLowerCase()]));
+
+/** Minutos de um turno dentro de cada período (manhã 6–12h, tarde 12–18h, noite 18–6h). */
+function periodosDoTurno(inicio: string, fim: string): Periodo[] {
+  const min = (h: string) => {
+    const [hh, mm] = h.split(":").map(Number);
+    return hh * 60 + mm;
+  };
+  const a = min(inicio);
+  let b = min(fim);
+  if (b <= a) b += 24 * 60; // passa da meia-noite
+  const faixas: [Periodo, number, number][] = [
+    ["noite", 0, 360],
+    ["manha", 360, 720],
+    ["tarde", 720, 1080],
+    ["noite", 1080, 1800],
+    ["manha", 1800, 2160],
+  ];
+  const minutos = new Map<Periodo, number>();
+  for (const [p, i, f] of faixas) {
+    const dentro = Math.min(b, f) - Math.max(a, i);
+    if (dentro > 0) minutos.set(p, (minutos.get(p) ?? 0) + dentro);
+  }
+  // conta o período em que o turno fica pelo menos 1 hora
+  return [...minutos].filter(([, m]) => m >= 60).map(([p]) => p);
+}
+
+/** Quando a vaga precisa que a pessoa possa trabalhar, pelo horário montado e pela jornada. */
+function periodosDaVaga(jornada: string | null | undefined, horario: HorarioDetalhe | null | undefined) {
+  const precisa = new Set<Periodo>();
+  for (const t of horario?.turnos ?? []) for (const p of periodosDoTurno(t.inicio, t.fim)) precisa.add(p);
+  if (horario?.dias.some((d) => d === "sab" || d === "dom")) precisa.add("fim_de_semana");
+  // 6x1 é a escala do comércio (seis dias, com sábado): pede fim de semana; 12x36 e as
+  // outras de revezamento pedem quem marcou "Escala" no currículo
+  if (horario?.escala === "6x1" || jornada === "escala_6x1") precisa.add("fim_de_semana");
+  if ((horario?.escala && !["5x2", "6x1"].includes(horario.escala)) || jornada === "escala_12x36")
+    precisa.add("escala");
+  if (jornada === "noturno") precisa.add("noite");
+  if (jornada === "fim_de_semana") precisa.add("fim_de_semana");
+  if (jornada === "integral" && !horario?.turnos.length) {
+    precisa.add("manha");
+    precisa.add("tarde");
+  }
+  const ordem: Periodo[] = ["manha", "tarde", "noite", "fim_de_semana", "escala"];
+  return ordem.filter((p) => precisa.has(p));
+}
+
+/** "manhã", "manhã e tarde", "manhã, tarde e escala". */
+function lista(itens: string[]) {
+  return itens.length > 1 ? `${itens.slice(0, -1).join(", ")} e ${itens[itens.length - 1]}` : (itens[0] ?? "");
+}
+
+// ---------------------------------------------------------------- a nota
+
 export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Aderencia {
   const criterios: Criterio[] = [];
   const cv = c.curriculo;
@@ -72,7 +248,11 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     criterios.push({
       nome: `Escolaridade: ${nomeEscolaridade(vaga.escolaridade_minima)}`,
       ok: tem < 0 ? null : tem >= pede,
-      detalhe: tem < 0 ? "Sem escolaridade no currículo" : (nomeEscolaridade(cv?.escolaridade) ?? ""),
+      detalhe: !cv
+        ? "Sem currículo"
+        : tem < 0
+          ? "Sem escolaridade no currículo"
+          : (nomeEscolaridade(cv.escolaridade) ?? ""),
     });
   }
 
@@ -85,13 +265,33 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
       criterios.push({
         nome: `Experiência: ${nome.toLowerCase()}`,
         ok: tem >= meses,
-        detalhe:
-          tem === 0
-            ? "Sem experiência no currículo"
-            : tem < 12
-              ? `${tem} meses`
-              : `${Math.floor(tem / 12)} ano(s) e ${tem % 12} mes(es)`,
+        detalhe: tem === 0 ? "Sem experiência no currículo" : `${tempo(tem)} somando os trabalhos`,
       });
+    }
+  }
+
+  // Experiência na função: conta quando a vaga pede experiência; quando aceita sem, só soma
+  if (vaga.titulo && palavrasDaFuncao(vaga.titulo).length) {
+    const achou = cv ? experienciaNaFuncao(vaga.titulo, cv.experiencias) : null;
+    // "Operadora de caixa · Supermercado X · até 12/2024"
+    const mesAno = (t: string) => t.replace(/^(\d{4})-(\d{2}).*$/, "$2/$1");
+    const trabalho = achou
+      ? `Trabalhou como ${achou.cargo}${achou.onde ? ` · ${achou.onde}` : ""} · ${
+          achou.fim ? `até ${mesAno(achou.fim)}` : `desde ${mesAno(achou.inicio)}`
+        }`
+      : "";
+    if (meses) {
+      criterios.push({
+        nome: "Experiência na função",
+        ok: !cv ? null : Boolean(achou),
+        detalhe: !cv
+          ? "Sem currículo"
+          : achou
+            ? trabalho
+            : `Nenhum trabalho parecido com “${vaga.titulo}” no currículo`,
+      });
+    } else if (achou) {
+      criterios.push({ nome: "Experiência na função", ok: true, detalhe: trabalho, extra: true });
     }
   }
 
@@ -104,11 +304,41 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     });
   }
 
+  // Horário: os turnos, os dias e a escala da vaga × quando a pessoa disse que pode
+  const precisa = periodosDaVaga(vaga.jornada, vaga.horario);
+  if (precisa.length) {
+    const pode = new Set(cv?.disponibilidade ?? []);
+    const faltam = precisa.filter((p) => !pode.has(p));
+    criterios.push({
+      nome: `Horário: ${lista(precisa.map((p) => NOME_PERIODO[p]))}`,
+      ok: !cv || pode.size === 0 ? null : faltam.length === 0,
+      detalhe: !cv
+        ? "Sem currículo"
+        : pode.size === 0
+          ? "Não disse no currículo quando pode trabalhar"
+          : faltam.length === 0
+            ? `Pode: ${lista(DISPONIBILIDADES.filter((d) => pode.has(d.valor)).map((d) => NOME_PERIODO[d.valor]))}`
+            : `Não marcou ${lista(faltam.map((p) => NOME_PERIODO[p]))}`,
+    });
+  }
+
+  // Onde mora: a cidade conta; o bairro e a região de Goiânia aparecem no detalhe
   if (c.cidade) {
+    const mesmaCidade = c.cidade === vaga.cidade;
+    const mesmoBairro =
+      mesmaCidade && vaga.bairro && c.bairro ? chaveBairro(vaga.bairro) === chaveBairro(c.bairro) : false;
+    const regiao = mesmaCidade && vaga.bairro && c.bairro ? regiaoDoBairro(vaga.cidade, vaga.bairro) : null;
+    const mesmaRegiao = regiao !== null && regiao === regiaoDoBairro(c.cidade, c.bairro ?? "");
     criterios.push({
       nome: `Mora em ${vaga.cidade}`,
-      ok: c.cidade === vaga.cidade,
-      detalhe: c.cidade === vaga.cidade ? "Mesma cidade da vaga" : `Mora em ${c.cidade}`,
+      ok: mesmaCidade,
+      detalhe: !mesmaCidade
+        ? `Mora em ${c.cidade}`
+        : mesmoBairro
+          ? "No mesmo bairro da vaga"
+          : mesmaRegiao
+            ? `Na mesma região da vaga (${regiao})`
+            : "Mesma cidade da vaga",
     });
   }
 
@@ -128,11 +358,16 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     });
   }
 
+  // Cursos que a vaga cita (só soma)
+  if (cv?.cursos?.length) {
+    const citados = cursosCitados(cv.cursos, `${vaga.titulo ?? ""} ${vaga.descricao ?? ""}`);
+    if (citados.length) {
+      criterios.push({ nome: "Cursos que a vaga cita", ok: true, detalhe: lista(citados), extra: true });
+    }
+  }
+
   const conhecidos = criterios.filter((x) => x.ok !== null);
-  const nota = eliminado
-    ? 0
-    : conhecidos.length
-      ? Math.round((100 * conhecidos.filter((x) => x.ok).length) / conhecidos.length)
-      : null;
-  return { nota, eliminado, criterios };
+  const atendidos = conhecidos.filter((x) => x.ok).length;
+  const nota = eliminado ? 0 : conhecidos.length ? Math.round((100 * atendidos) / conhecidos.length) : null;
+  return { nota, eliminado, criterios, conferidos: conhecidos.length, atendidos };
 }

@@ -10,7 +10,7 @@ import {
 import { colunaDoCandidato, MODELOS_PRONTOS, type ModeloMensagem } from "@/lib/recrutamento";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { AnuncioCompleto } from "@/lib/tipos";
-import { juntarTriagem, perguntasDoBanco, textoDaResposta, type Pergunta } from "@/lib/vaga-extra";
+import { horarioDoBanco, juntarTriagem, perguntasDoBanco, textoDaResposta, type Pergunta } from "@/lib/vaga-extra";
 import { obterTriagem } from "./triagem";
 
 // Tudo o que o quadro de candidatos de uma vaga precisa, montado no servidor:
@@ -91,6 +91,21 @@ export async function modelosDaConta(): Promise<ModeloMensagem[]> {
   return [...(data ?? []), ...MODELOS_PRONTOS];
 }
 
+/** O que a vaga pede, para a nota de aderência (as perguntas vêm à parte, com a triagem). */
+export function requisitosDaVaga(anuncio: AnuncioCompleto) {
+  return {
+    titulo: anuncio.titulo,
+    descricao: anuncio.descricao,
+    escolaridade_minima: anuncio.escolaridade_minima,
+    experiencia: anuncio.experiencia,
+    cnh: anuncio.cnh,
+    cidade: anuncio.cidade,
+    bairro: anuncio.bairro,
+    jornada: anuncio.jornada,
+    horario: horarioDoBanco(anuncio.horario_detalhe),
+  };
+}
+
 export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
   const id = anuncio.id;
   const [interessados, etapas, curriculos, respostas, triagem, entrevistas, modelos] = await Promise.all([
@@ -103,13 +118,7 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
     modelosDaConta(),
   ]);
   const perguntas: Pergunta[] = juntarTriagem(perguntasDoBanco(anuncio.perguntas), triagem);
-  const vaga = {
-    escolaridade_minima: anuncio.escolaridade_minima,
-    experiencia: anuncio.experiencia,
-    cnh: anuncio.cnh,
-    cidade: anuncio.cidade,
-    perguntas,
-  };
+  const vaga = { ...requisitosDaVaga(anuncio), perguntas };
 
   const cartoes: CartaoDoQuadro[] = interessados.map((p) => {
     const e = etapas.get(p.perfil_id);
@@ -130,7 +139,7 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       etapa,
       coluna: colunaDoCandidato(p.status, etapa),
       anotacao: e?.nota ?? null,
-      aderencia: calcularAderencia(vaga, { curriculo: cv, respostas: r, cidade: p.cidade }, agora),
+      aderencia: calcularAderencia(vaga, { curriculo: cv, respostas: r, cidade: p.cidade, bairro: p.bairro }, agora),
       respostas: perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) })),
       entrevista: entrevistas.get(p.perfil_id) ?? null,
       temCurriculo: Boolean(cv),
