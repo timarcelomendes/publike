@@ -17,13 +17,16 @@ import Link from "next/link";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
-import { respostaDeQuemPublica } from "@/lib/dados";
+import { obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
 import { formatarData, formatarNumero, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { comoResponde } from "@/lib/resposta";
+import type { Saude } from "@/lib/saude-vaga";
+import { saudeDasVagas } from "@/lib/servidor/saude";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { MeuAnuncio, StatusAnuncio } from "@/lib/tipos";
 import { NumeroHoje, ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
+import { NivelDaSaude } from "./saude-vaga";
 
 // Hoje, no modo Contratar (comércio, empresa e agência): o que pede você agora em
 // cartões com a ação no próprio cartão, os números da semana (com o tempo de resposta
@@ -82,13 +85,20 @@ export async function PainelRecrutador({
   const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas }, respostas] = await Promise.all([
+  const [{ visitas, entrevistas }, respostas, completas] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
     ),
     respostaDeQuemPublica([autorId]).catch(() => new Map()),
+    Promise.all(noAr.map((v) => obterAnuncio(v.id).catch(() => null))),
   ]);
+  // a saúde das vagas no ar: a mesma do quadro de cada vaga
+  const saudes = await saudeDasVagas(
+    completas.filter((a): a is NonNullable<typeof a> => a !== null),
+    todos,
+    agora,
+  ).catch(() => new Map<string, Saude>());
   const resposta = respostas.get(autorId) ?? null;
   const nomeDe = new Map(todos.map((c) => [c.perfil_id, c.nome]));
   const tituloDe = new Map(vagas.map((v) => [v.id, v.titulo]));
@@ -290,20 +300,8 @@ export async function PainelRecrutador({
                   const contratado = daVaga.filter((c) => c.etapa === "contratado" && c.status === "match").length;
                   const total = Math.max(daVaga.length, 1);
                   const ativa = status === "ativo";
-                  const d = diasNoAr(v);
-                  // quem espera há mais de 2 dias, vaga saindo do ar ou parada: pede atenção
-                  const esperandoMuito = daVaga.some(
-                    (c) => esperaResposta(c) && agora - new Date(c.curtido_em).getTime() > 2 * DIA,
-                  );
-                  const atencao = !ativa
-                    ? null
-                    : d <= 5 && d >= 0
-                      ? `Sai do ar ${d <= 0 ? "hoje" : d === 1 ? "amanhã" : `em ${d} dias`}: renove para seguir recebendo candidatos.`
-                      : paradas.includes(v)
-                        ? "Uma semana sem curtidas: divulgue o link ou revise o salário e o horário."
-                        : esperandoMuito
-                          ? "Tem gente esperando há mais de 2 dias: responder rápido mantém o selo verde."
-                          : null;
+                  const saude = ativa ? saudes.get(v.id) : undefined;
+                  const atencao = saude && saude.nivel !== "boa" ? (saude.faltando[0]?.dica ?? null) : null;
                   return (
                     <li key={v.id}>
                       <Link
@@ -318,17 +316,9 @@ export async function PainelRecrutador({
                             {plural(visitas.get(v.id) ?? 0, "visita", "visitas")} ·{" "}
                             {plural(daVaga.length, "candidato", "candidatos")}
                           </span>
-                          {ativa && (
-                            <span
-                              className={`ml-auto inline-flex items-center gap-1.5 text-body-sm font-semibold ${
-                                atencao ? "text-terra-text" : "text-cerrado-text"
-                              }`}
-                            >
-                              <span
-                                aria-hidden
-                                className={`size-2 rounded-pill ${atencao ? "bg-terra" : "bg-cerrado"}`}
-                              />
-                              {atencao ? "Pede atenção" : "Saúde boa"}
+                          {saude && (
+                            <span className="ml-auto">
+                              <NivelDaSaude s={saude} />
                             </span>
                           )}
                         </span>

@@ -102,6 +102,7 @@ export default function Privacidade() {
               "Não é público: não aparece no seu perfil, na busca nem no Google.",
               "Só vê quem anunciou uma vaga que você curtiu, e só enquanto a curtida existir. Desfez a curtida, deixou de ver.",
               "Se a vaga é de uma agência de emprego, a agência pode mostrar seu currículo à empresa contratante daquela vaga, só para a seleção.",
+              "Se você ligar “Deixar as empresas me encontrarem”, quem tem vaga na sua cidade vê o currículo em Talentos, com o nome encurtado e sem telefone nem e-mail, e pode convidar você para a vaga. Desligou, sumiu da lista.",
               "O PDF fica guardado num lugar fechado e só abre com um link que vale por uma hora.",
               "O PDF vai do jeito que você enviar. Se tiver telefone, e-mail ou endereço, quem anunciou a vaga vê esses dados.",
               "Você corrige ou apaga o currículo quando quiser, em Meu perfil > Meu currículo. Excluir a conta apaga junto.",
@@ -127,10 +128,12 @@ export default function Privacidade() {
             da empresa contratante), nunca seu contato. Quando ela acha um anúncio suspeito, ele sai do ar até uma
             pessoa da moderação olhar. No Descobrir, a IA recebe o que você escreveu em “O que você procura?”, o que
             você faz, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para pôr
-            primeiro as que combinam com você; nunca seu nome ou contato. No assistente de ajuda, a IA recebe as
-            mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que você escolheu; nunca seu contato.
-            A conversa fica só no seu navegador, não no Publike. O que você manda em Sugestões e erros fica guardado
-            para a equipe ler, com o e-mail, se você informar.
+            primeiro as que combinam com você; nunca seu nome ou contato. Se quem publicou a vaga que você curtiu pedir
+            o resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos fortes e o que
+            conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. No assistente de
+            ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que você
+            escolheu; nunca seu contato. A conversa fica só no seu navegador, não no Publike. O que você manda em
+            Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você informar.
           </p>
           <p>
             Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}

@@ -343,6 +343,38 @@ export type Database = {
           },
         ];
       };
+      resumos_candidato: {
+        Row: {
+          anuncio_id: string;
+          perfil_id: string;
+          curriculo_em: string;
+          conteudo: Json;
+          modelo: string;
+          criado_em: string;
+        };
+        Insert: {
+          anuncio_id: string;
+          perfil_id: string;
+          curriculo_em: string;
+          conteudo: Json;
+          modelo: string;
+          criado_em?: string;
+        };
+        Update: { curriculo_em?: string; conteudo?: Json; modelo?: string; criado_em?: string };
+        Relationships: [];
+      };
+      curriculo_visivel: {
+        Row: { perfil_id: string; desde: string };
+        Insert: { perfil_id: string };
+        Update: SemTabela;
+        Relationships: [];
+      };
+      convites_vaga: {
+        Row: { anuncio_id: string; perfil_id: string; criado_em: string };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       curriculos: {
         Row: {
           perfil_id: string;
@@ -1267,6 +1299,32 @@ export type Database = {
       minha_conta_suspensa: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
+      };
+      usar_ia_resumo: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
+      talentos_para_vaga: {
+        Args: { p_anuncio: string };
+        Returns: {
+          perfil_id: string;
+          nome: string;
+          foto: string | null;
+          cidade: string;
+          bairro: string | null;
+          escolaridade: string | null;
+          curso: string | null;
+          experiencias: Json;
+          cursos: string[];
+          cnh: string | null;
+          disponibilidade: string[];
+          atualizado_em: string;
+          convidado: boolean;
+        }[];
+      };
+      convidar_para_vaga: {
+        Args: { p_anuncio: string; p_perfil: string };
+        Returns: undefined;
       };
       usar_ia_texto: {
         Args: Record<PropertyKey, never>;

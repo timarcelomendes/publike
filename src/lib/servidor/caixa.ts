@@ -8,6 +8,8 @@ import {
   listarRespostasDosCandidatos,
   obterAnuncio,
 } from "@/lib/dados";
+import type { ResumoCandidato } from "@/lib/ia/tarefas";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta } from "@/lib/vaga-extra";
 import { entrevistasDasVagas, type Entrevista } from "./quadro";
@@ -34,7 +36,26 @@ export type ItemCaixa = Candidato & {
   naoLidas: number;
   /** endereço da vaga, para o presencial vir preenchido na entrevista */
   endereco: string;
+  /** o resumo da IA já feito para este currículo (some quando o currículo muda) */
+  resumo: ResumoCandidato | null;
 };
+
+/** Os resumos da IA guardados das minhas vagas, por "anúncio:perfil". */
+async function resumosGuardados(vagas: string[]) {
+  if (!vagas.length) return new Map<string, { curriculo_em: string; conteudo: ResumoCandidato }>();
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("resumos_candidato")
+    .select("anuncio_id, perfil_id, curriculo_em, conteudo")
+    .in("anuncio_id", vagas);
+  if (error) console.error(`Publike: falha ao ler os resumos da IA: ${error.message}`);
+  return new Map(
+    (data ?? []).map((r) => [
+      `${r.anuncio_id}:${r.perfil_id}`,
+      { curriculo_em: r.curriculo_em, conteudo: r.conteudo as ResumoCandidato },
+    ]),
+  );
+}
 
 export type Aba = "responder" | "andamento" | "entrevistas" | "mensagens" | "encerrados";
 
@@ -86,7 +107,7 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
   if (!todos) return null;
   const vagas = [...new Set(todos.map((c) => c.anuncio_id))];
   const comCurriculo = vagas.filter((id) => todos.some((c) => c.anuncio_id === id && c.tem_curriculo));
-  const [anuncios, curriculos, respostas, triagens, entrevistas] = await Promise.all([
+  const [anuncios, curriculos, respostas, triagens, entrevistas, resumos] = await Promise.all([
     Promise.all(vagas.map(async (id) => [id, await obterAnuncio(id)] as const)).then((l) => new Map(l)),
     Promise.all(
       comCurriculo.map(async (id) => [id, await listarCurriculosDosInteressados(id).catch(() => null)] as const),
@@ -94,6 +115,7 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
     listarRespostasDosCandidatos(vagas),
     obterTriagens(vagas),
     entrevistasDasVagas(vagas),
+    resumosGuardados(vagas),
   ]);
   const naoLidas = new Map(
     (conversas ?? [])
@@ -110,6 +132,7 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
     const r = respostas.get(chave) ?? {};
     const e = entrevistas.get(chave);
     const pedeCurriculo = Boolean(a?.pede_curriculo);
+    const resumo = resumos.get(chave);
     return {
       ...c,
       chave,
@@ -129,6 +152,10 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
       entrevista: e && c.status === "match" && ABERTA.includes(e.situacao) ? e : null,
       naoLidas: naoLidas.get(chave) ?? 0,
       endereco: a ? [a.endereco, a.bairro, a.cidade].filter(Boolean).join(", ") : "",
+      resumo:
+        resumo && cv && new Date(resumo.curriculo_em).getTime() === new Date(cv.atualizado_em).getTime()
+          ? resumo.conteudo
+          : null,
     };
   });
 }

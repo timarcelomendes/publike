@@ -31,6 +31,7 @@ import {
   listarMinhasConversas,
   listarMinhasCurtidas,
   listarMinhasEtapas,
+  meuCurriculoVisivel,
   minhasProximasEntrevistas,
   obterMeuCurriculo,
   obterMeuPerfil,
@@ -112,7 +113,7 @@ async function Conteudo() {
     const anuncios = await talvez(listarMeusAnuncios(), "os anúncios");
     pagina = <HojeServicos perfil={perfil} anuncios={anuncios} conversas={conversas} agora={agora} />;
   } else {
-    const [curtidas, etapas, curriculo, entrevistas, salvas] = await Promise.all([
+    const [curtidas, etapas, curriculo, entrevistas, salvas, visivel] = await Promise.all([
       talvez(listarMinhasCurtidas(), "as curtidas"),
       listarMinhasEtapas(),
       // { c: null } = ainda não tem currículo; null = não deu para ler
@@ -122,6 +123,7 @@ async function Conteudo() {
       ),
       minhasProximasEntrevistas(agora),
       contarMinhasSalvas(),
+      meuCurriculoVisivel(),
     ]);
     pagina = (
       <HojeTrabalhar
@@ -132,6 +134,7 @@ async function Conteudo() {
         entrevistas={entrevistas}
         conversas={conversas}
         salvas={salvas}
+        visivel={visivel}
         agora={agora}
       />
     );
@@ -247,6 +250,7 @@ function HojeTrabalhar({
   entrevistas,
   conversas,
   salvas,
+  visivel,
   agora,
 }: {
   perfil: MeuPerfil | null;
@@ -256,6 +260,8 @@ function HojeTrabalhar({
   entrevistas: EntrevistaMinha[];
   conversas: Conversa[] | null;
   salvas: number | null;
+  /** o currículo aparece em Talentos para as empresas */
+  visivel: boolean;
   agora: number;
 }) {
   const vagas = (curtidas ?? []).filter((c) => c.tipo === "vaga");
@@ -463,6 +469,21 @@ function HojeTrabalhar({
                 >
                   {curriculo?.c ? "Melhorar o currículo" : "Montar o currículo"}
                 </Link>
+                {curriculo?.c && (
+                  <p className="border-t border-line pt-3 text-body-sm text-ink-muted">
+                    {visivel ? (
+                      "Empresas com vagas na sua cidade podem achar seu currículo e convidar você."
+                    ) : (
+                      <>
+                        Quer ser convidado para vagas?{" "}
+                        <Link href="/perfil/curriculo#talentos-titulo" className="font-semibold text-ink underline">
+                          Deixe as empresas encontrarem você
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </p>
+                )}
               </>
             )}
           </section>

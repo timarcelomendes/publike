@@ -12,6 +12,7 @@ import {
   MessagesSquare,
   Star,
   Store,
+  UserSearch,
   Users,
   Wrench,
   type LucideIcon,
@@ -34,6 +35,7 @@ import {
 const ICONES: Record<Secao["icone"], LucideIcon> = {
   hoje: House,
   caixa: Inbox,
+  talentos: UserSearch,
   candidatos: Users,
   vagas: Briefcase,
   conversas: MessagesSquare,

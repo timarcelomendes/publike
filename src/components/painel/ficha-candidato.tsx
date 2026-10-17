@@ -12,7 +12,7 @@ import { formatarLugar, formatarTelefone, linkWhatsApp, tempoRelativo } from "@/
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
 import { AcoesInteressado } from "./acoes";
-import { ControlesDaFicha, EntrevistaDaFicha, type EstadoFicha } from "./controles-ficha";
+import { ControlesDaFicha, EntrevistaDaFicha, ResumoDaIA, type EstadoFicha } from "./controles-ficha";
 import { EtapaDoCandidato } from "./etapa-candidato";
 import { DetalheDaAderencia, NotaAderencia } from "./nota-aderencia";
 
@@ -52,8 +52,11 @@ export function FichaCandidato({
   anterior,
   proximo,
   depois,
+  comIA = false,
 }: {
   c: ItemCaixa;
+  /** a ajuda da IA está ligada (resumo do currículo) */
+  comIA?: boolean;
   agora: number;
   anterior: string | null;
   proximo: string | null;
@@ -168,6 +171,12 @@ export function FichaCandidato({
             entrevista={c.entrevista}
             endereco={c.endereco}
           />
+        </Secao>
+      )}
+
+      {c.curriculo && (comIA || c.resumo) && (
+        <Secao titulo="Resumo da IA">
+          <ResumoDaIA anuncioId={c.anuncio_id} perfilId={c.perfil_id} inicial={c.resumo} />
         </Secao>
       )}
 

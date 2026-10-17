@@ -4,10 +4,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CaminhoDaCurtida } from "@/components/caminho-curtida";
 import { ApagarCurriculo, FormCurriculo } from "@/components/form-curriculo";
+import { VisibilidadeCurriculo } from "@/components/visibilidade-curriculo";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { esperaCurriculo } from "@/lib/constantes";
-import { linkDoMeuPdf, listarMinhasCurtidas, obterMeuCurriculo } from "@/lib/dados";
+import { linkDoMeuPdf, listarMinhasCurtidas, meuCurriculoVisivel, obterMeuCurriculo } from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
@@ -62,7 +63,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   const { usuario } = await exigirPerfilCompleto(
     proximo ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}` : "/perfil/curriculo",
   );
-  const [curriculo, curtidas] = await Promise.all([obterMeuCurriculo(), listarMinhasCurtidas().catch(() => [])]);
+  const [curriculo, curtidas, visivel] = await Promise.all([
+    obterMeuCurriculo(),
+    listarMinhasCurtidas().catch(() => []),
+    meuCurriculoVisivel(),
+  ]);
   const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? null);
   // as vagas que já aceitaram a pessoa e só esperam o currículo
   const aceitas = curtidas.filter((c) => c.tipo === "vaga" && esperaCurriculo(c));
@@ -97,6 +102,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         hoje={hoje}
         rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
       />
+      {curriculo && <VisibilidadeCurriculo visivel={visivel} />}
       {curriculo && <ApagarCurriculo />}
     </>
   );

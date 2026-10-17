@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Heart, Keyboard, Undo2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Keyboard, Sparkles, Undo2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { responderCurtida } from "@/lib/acoes/curtidas";
+import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
+import type { ResumoCandidato } from "@/lib/ia/tarefas";
 import { EntrevistaMarcada, FormEntrevista } from "./recrutamento";
 
 // Os controles da ficha do candidato na caixa de entrada: responder (aceitar ou
@@ -344,5 +346,70 @@ export function EntrevistaDaFicha({
         setMarcou(true);
       }}
     />
+  );
+}
+
+/** O resumo do currículo pela IA: o guardado ou o botão para pedir. */
+export function ResumoDaIA({
+  anuncioId,
+  perfilId,
+  inicial,
+}: {
+  anuncioId: string;
+  perfilId: string;
+  inicial: ResumoCandidato | null;
+}) {
+  const [resumo, setResumo] = useState(inicial);
+  const [erro, setErro] = useState<string | null>(null);
+  const [pendente, iniciar] = useTransition();
+  if (!resumo) {
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <button
+          type="button"
+          disabled={pendente}
+          onClick={() =>
+            iniciar(async () => {
+              setErro(null);
+              const r = await resumirCandidatoComIA(anuncioId, perfilId);
+              if (r.ok) setResumo(r.resumo);
+              else setErro(r.erro);
+            })
+          }
+          className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300 disabled:opacity-60"
+        >
+          <Sparkles aria-hidden className="size-[18px]" />
+          {pendente ? "Lendo o currículo…" : "Resumir com IA"}
+        </button>
+        <p className="text-body-sm text-ink-muted">
+          A IA lê o currículo e as respostas e diz os pontos fortes, o que conferir e perguntas para a entrevista.
+        </p>
+        {erro && (
+          <p role="alert" className="text-body-sm text-danger">
+            {erro}
+          </p>
+        )}
+      </div>
+    );
+  }
+  const lista = (titulo: string, itens: string[]) =>
+    itens.length > 0 && (
+      <div>
+        <p className="text-caption text-ink-muted uppercase">{titulo}</p>
+        <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-5 text-body-sm">
+          {itens.map((i) => (
+            <li key={i}>{i}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  return (
+    <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-3">
+      <p className="text-body">{resumo.resumo}</p>
+      {lista("Pontos fortes para a vaga", resumo.fortes)}
+      {lista("Para conferir", resumo.conferir)}
+      {lista("Perguntas para a entrevista", resumo.perguntas)}
+      <p className="text-caption text-ink-muted">Feito pela IA a partir do currículo: confira antes de decidir.</p>
+    </div>
   );
 }

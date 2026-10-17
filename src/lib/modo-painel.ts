@@ -37,6 +37,7 @@ export type Secao = {
   icone:
     | "hoje"
     | "caixa"
+    | "talentos"
     | "candidatos"
     | "vagas"
     | "conversas"
@@ -54,6 +55,7 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel", nome: "Hoje", icone: "hoje" },
     { href: "/painel/caixa", nome: "Caixa de entrada", icone: "caixa", contador: "responder" },
     { href: "/painel/anuncios?tipo=vaga", nome: "Minhas vagas", icone: "vagas" },
+    { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
     { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
   ],
   trabalhar: [
@@ -98,7 +100,12 @@ export const OUTRAS: Record<ModoPainel, { href: string; nome: string }[]> = {
  * Hoje, conversas e matches valem para todos: null.
  */
 export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | null {
-  if (caminho.startsWith("/painel/candidatos") || caminho.startsWith("/painel/caixa")) return "contratar";
+  if (
+    caminho.startsWith("/painel/candidatos") ||
+    caminho.startsWith("/painel/caixa") ||
+    caminho.startsWith("/painel/talentos")
+  )
+    return "contratar";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "servicos";
   if (caminho.startsWith("/painel/anuncios"))
     return tipo === "servico" ? "servicos" : tipo === "vaga" ? "contratar" : null;

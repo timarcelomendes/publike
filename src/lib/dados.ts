@@ -325,6 +325,25 @@ export async function minhasProximasEntrevistas(agora: number) {
   return data ?? [];
 }
 
+/** Talentos: quem deixou as empresas acharem o currículo, para uma vaga minha (sem contato). */
+export async function talentosParaVaga(anuncioId: string) {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return [];
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("talentos_para_vaga", { p_anuncio: anuncioId });
+  if (error) falha("talentos", error);
+  return (data ?? []).map((t) => ({ ...t, experiencias: lerExperiencias(t.experiencias) }));
+}
+
+/** Se eu deixei as empresas acharem meu currículo (Talentos). */
+export async function meuCurriculoVisivel(): Promise<boolean> {
+  if (MODO_DEMO) return false;
+  const usuario = await obterUsuario();
+  if (!usuario) return false;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase.from("curriculo_visivel").select("perfil_id").eq("perfil_id", usuario.id).maybeSingle();
+  return Boolean(data);
+}
+
 /** Conta uma visita à vaga (quem publicou e robôs de busca não contam). Roda depois da resposta. */
 export async function contarVisita(anuncioId: string, agente: string | null) {
   if (MODO_DEMO || !UUID.test(anuncioId)) return;
@@ -438,7 +457,7 @@ export async function obterConversa(
 }
 
 /** Experiências vindas do banco (jsonb), já no formato das telas. */
-function lerExperiencias(valor: unknown): Experiencia[] {
+export function lerExperiencias(valor: unknown): Experiencia[] {
   if (!Array.isArray(valor)) return [];
   const t = (v: unknown) => (typeof v === "string" ? v : "");
   return valor.map((x) => {

@@ -55,7 +55,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Quem vê meu currículo?",
-        r: "Preencha “Meu currículo” uma vez. Só quem anunciou uma vaga que você curtiu vê o currículo, enquanto a curtida existir. Ele não aparece no seu perfil público nem na busca. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
+        r: "Preencha “Meu currículo” uma vez. Só quem anunciou uma vaga que você curtiu vê o currículo, enquanto a curtida existir. Ele não aparece no seu perfil público nem na busca. Se quiser, ligue “Deixar as empresas me encontrarem” no currículo: quem tem vaga na sua cidade vê o currículo sem telefone e sem e-mail, com o nome encurtado, e pode convidar você; o contato só sai se você curtir a vaga e der match. Dá para desligar quando quiser. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
       },
       {
         p: "Presto serviço (diarista, pedreiro, manicure…). Como apareço?",

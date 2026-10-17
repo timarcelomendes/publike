@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { QuadroCandidatos } from "@/components/painel/quadro-candidatos";
+import { SaudeDaVaga } from "@/components/painel/saude-vaga";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -13,6 +14,7 @@ import { STATUS_ANUNCIO } from "@/lib/constantes";
 import { obterAnuncio, obterMeuPerfil } from "@/lib/dados";
 import { formatarLugar } from "@/lib/formato";
 import { montarQuadro } from "@/lib/servidor/quadro";
+import { saudeDasVagas } from "@/lib/servidor/saude";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio } from "@/lib/tipos";
@@ -42,7 +44,19 @@ async function Conteudo({
   const [anuncio, perfil] = await Promise.all([obterAnuncio(id), obterMeuPerfil()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const { cartoes, modelos, temTriagem } = await montarQuadro(anuncio, agora);
+  const { cartoes, modelos } = await montarQuadro(anuncio, agora);
+  const saude = (
+    await saudeDasVagas(
+      [anuncio],
+      cartoes.map((c) => ({
+        anuncio_id: id,
+        status: c.status,
+        aceita_em: c.aceita ? c.curtido_em : null,
+        curtido_em: c.curtido_em,
+      })),
+      agora,
+    )
+  ).get(id);
   const status = anuncio.status as StatusAnuncio;
   const endereco = [anuncio.endereco, formatarLugar(anuncio.bairro, anuncio.cidade)].filter(Boolean).join(", ");
 
@@ -83,17 +97,8 @@ async function Conteudo({
             </BotaoLink>
           </div>
         </div>
-        {!temTriagem && cartoes.length > 0 && (
-          <p className="mt-3 rounded-md bg-surface-300 px-4 py-3 text-body-sm">
-            Dica: no{" "}
-            <Link href={`/painel/anuncio/${id}/editar`} className="font-semibold underline underline-offset-2">
-              editar da vaga
-            </Link>
-            , diga a resposta que você procura em cada pergunta (e se ela elimina). A nota de aderência fica mais
-            certeira.
-          </p>
-        )}
       </div>
+      {saude && <SaudeDaVaga s={saude} />}
       {cartoes.length === 0 ? (
         <Vazio icone={Users} titulo="Ninguém se candidatou ainda">
           Quem curtir a vaga aparece aqui, na coluna Novos. Compartilhe o link da vaga ou a sua página de vagas em

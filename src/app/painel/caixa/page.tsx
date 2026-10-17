@@ -11,6 +11,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
+import { ajudaDaIADisponivel } from "@/lib/dados";
 import { primeiro, tempoRelativo } from "@/lib/formato";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import { ABAS, montarCaixa, naAba, ordenar, type Aba, type ItemCaixa } from "@/lib/servidor/caixa";
@@ -38,7 +39,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   await exigirUsuario("/painel/caixa");
   const sp = await searchParams;
   const agora = await agoraDaRequisicao();
-  const itens = await montarCaixa(agora);
+  const [itens, comIA] = await Promise.all([montarCaixa(agora), ajudaDaIADisponivel()]);
 
   if (!itens) {
     return (
@@ -182,7 +183,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
             </Link>
           )}
           {aberto ? (
-            <FichaCandidato c={aberto} agora={agora} anterior={anterior} proximo={proximo} depois={depois} />
+            <FichaCandidato
+              c={aberto}
+              agora={agora}
+              anterior={anterior}
+              proximo={proximo}
+              depois={depois}
+              comIA={comIA}
+            />
           ) : (
             <p className="rounded-lg border border-dashed border-line-strong px-4 py-10 text-center text-body-sm text-ink-muted">
               Nada aberto. Escolha alguém de outra aba.
