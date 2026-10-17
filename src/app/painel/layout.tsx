@@ -1,29 +1,52 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
-import { AbasBase, AbasPainel } from "@/components/painel/abas";
+import { MenuPainel, MenuPainelEsqueleto } from "@/components/painel/menu-painel";
 import { Container } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { obterMeuPerfil } from "@/lib/dados";
+import { listarMeusAnuncios, listarMinhasConversas, obterMeuPerfil } from "@/lib/dados";
+import { COOKIE_MODO, lerModo, modoPadrao, type Contadores } from "@/lib/modo-painel";
+import { obterIntencao } from "@/lib/servidor/intencao";
 
-export const metadata: Metadata = {
-  title: "Meu painel",
-  robots: { index: false },
-};
+export const metadata: Metadata = { title: "Meu painel", robots: { index: false } };
 
+// O painel: o menu do modo (Contratar, Trabalhar ou Serviços) na coluna da esquerda e a
+// página ao lado. No celular, o menu vira uma linha em cima da página.
 export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
   return (
-    <Container className="py-8">
-      <h1 className="text-h2 sm:text-h1">Meu painel</h1>
-      <Suspense fallback={<AbasBase ativa={null} />}>
-        <AbasDaConta />
-      </Suspense>
-      <div className="mt-6">{children}</div>
+    <Container className="py-6 sm:py-8">
+      <h1 className="sr-only">Meu painel</h1>
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="lg:sticky lg:top-20">
+          <Suspense fallback={<MenuPainelEsqueleto />}>
+            <MenuDaConta />
+          </Suspense>
+        </div>
+        <div className="min-w-0">{children}</div>
+      </div>
     </Container>
   );
 }
 
-/** A aba "Candidatos" aparece para quem contrata: comércio, empresa e agência. */
-async function AbasDaConta() {
-  const perfil = MODO_DEMO ? null : await obterMeuPerfil();
-  return <AbasPainel candidatos={Boolean(perfil && perfil.tipo !== "pessoa")} />;
+/** O modo escolhido (ou o da conta) e os números do menu: quem espera resposta e mensagens novas. */
+async function MenuDaConta() {
+  if (MODO_DEMO) {
+    return <MenuPainel modo="trabalhar" contadores={{ responder: 0, pedidos: 0, mensagens: 0 }} nome={null} />;
+  }
+  const [perfil, intencao, anuncios, conversas, jar] = await Promise.all([
+    obterMeuPerfil().catch(() => null),
+    obterIntencao().catch(() => null),
+    listarMeusAnuncios().catch(() => []),
+    listarMinhasConversas().catch(() => null),
+    cookies(),
+  ]);
+  const modo = lerModo(jar.get(COOKIE_MODO)?.value) ?? modoPadrao(perfil?.tipo, intencao);
+  const soma = (tipo: string) =>
+    anuncios.filter((a) => a.tipo === tipo).reduce((total, a) => total + (a.curtidas_novas ?? 0), 0);
+  const contadores: Contadores = {
+    responder: soma("vaga"),
+    pedidos: soma("servico"),
+    mensagens: (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0),
+  };
+  return <MenuPainel modo={modo} contadores={contadores} nome={perfil?.nome ?? null} />;
 }

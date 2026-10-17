@@ -1,41 +1,29 @@
 import {
-  Briefcase,
+  Bell,
   CalendarClock,
-  CircleCheck,
   FileText,
-  PartyPopper,
-  HandHelping,
-  Megaphone,
+  Hourglass,
   MessageCircle,
   MessagesSquare,
-  Plus,
+  PartyPopper,
   Search,
+  Sparkles,
   Star,
   Store,
   UserRound,
-  Users,
   Wrench,
 } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
-import { EditorProcuro } from "@/components/descobrir/extras";
+import { Suspense } from "react";
 import { EsqueletoVisaoGeral } from "@/components/painel/esqueleto";
+import { Etapas, NumeroHoje, ParaFazerAgora, Saudacao, type Cartao } from "@/components/painel/hoje";
 import { PainelRecrutador } from "@/components/painel/recrutador";
-import {
-  Bloco,
-  Lado,
-  LinkDoBloco,
-  ParaFazer,
-  Sugestoes,
-  Trilha,
-  type ItemParaFazer,
-  type Sugestao,
-} from "@/components/painel/fluxo";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu } from "@/lib/constantes";
+import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu, type EtapaCandidato } from "@/lib/constantes";
 import {
   contarMinhasSalvas,
   listarMeusAnuncios,
@@ -43,28 +31,30 @@ import {
   listarMinhasConversas,
   listarMinhasCurtidas,
   listarMinhasEtapas,
+  minhasProximasEntrevistas,
   obterMeuCurriculo,
   obterMeuPerfil,
-  obterProcuro,
   perfilCompleto,
+  type Conversa,
 } from "@/lib/dados";
-import { plural, tempoRelativo } from "@/lib/formato";
+import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
+import { COOKIE_MODO, lerModo, modoPadrao } from "@/lib/modo-painel";
+import { dataDaEntrevista } from "@/lib/recrutamento";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { Curriculo, MeuAnuncio, MeuPerfil, MinhaCurtida } from "@/lib/tipos";
 
-// Visão geral do painel: o que espera uma ação sua ("Para fazer agora") e os dois
-// lados da conta, cada um com os seus fluxos em passos numerados:
-//   O que você oferece: o seu trabalho, as vagas que publicou e os seus serviços.
-//   O que você procura: as vagas que curtiu e os profissionais que chamou.
-// Cada número leva à lista já filtrada. O lado que vem primeiro depende do que a
-// pessoa disse que quer fazer no Publike (ou do tipo de conta). O banco não muda:
-// tudo sai das leituras que as outras abas já usam.
+// Hoje: a primeira página do painel, no modo da conta (ou no que a pessoa escolheu no
+// menu). Em cima, o que pede a pessoa agora, em cartões com a ação no próprio cartão;
+// embaixo, o andamento do modo. O banco não muda: tudo sai das leituras de sempre.
+//   Contratar ... candidatos para responder, entrevistas, vagas e a agenda
+//   Trabalhar ... aceites, entrevistas, cada candidatura com a etapa e o currículo
+//   Serviços .... pedidos para responder, a vitrine e as avaliações
 
-const CINCO_DIAS = 5 * 24 * 3600 * 1000;
+const DIA = 24 * 3600e3;
 
-export default function VisaoGeral() {
+export default function Hoje() {
   return (
     <Suspense fallback={<EsqueletoVisaoGeral />}>
       <Conteudo />
@@ -72,21 +62,14 @@ export default function VisaoGeral() {
   );
 }
 
-/** Uma leitura que, se falhar, não derruba a visão geral (o número vira "–"). */
+/** Uma leitura que, se falhar, não derruba a página (o número vira "–"). */
 async function talvez<T>(leitura: Promise<T>, oQue: string): Promise<T | null> {
   try {
     return await leitura;
   } catch (e) {
-    console.error(`Publike: visão geral sem ${oQue}: ${e instanceof Error ? e.message : String(e)}`);
+    console.error(`Publike: Hoje sem ${oQue}: ${e instanceof Error ? e.message : String(e)}`);
     return null;
   }
-}
-
-const soma = (lista: number[]) => lista.reduce((total, n) => total + n, 0);
-
-/** Quantos da lista passam no teste (null se a lista não carregou). */
-function contar<T>(lista: T[] | null, teste: (x: T) => boolean) {
-  return lista ? lista.filter(teste).length : null;
 }
 
 /** "Garçom", "Garçom e Cozinheira", "Garçom e mais 2" */
@@ -95,565 +78,549 @@ function nomes(lista: string[]) {
   return unicos.length <= 2 ? unicos.join(" e ") : `${unicos[0]} e mais ${unicos.length - 1}`;
 }
 
+const soma = (lista: number[]) => lista.reduce((total, n) => total + n, 0);
+
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel");
-  const [perfil, intencao, anuncios, candidatos, curtidas, etapas, conversas, leituraCurriculo, procuro, salvas] =
-    await Promise.all([
-      obterMeuPerfil(),
-      talvez(obterIntencao(), "a intenção"),
-      talvez(listarMeusAnuncios(), "os anúncios"),
-      listarMeusCandidatos(),
-      talvez(listarMinhasCurtidas(), "as curtidas"),
-      listarMinhasEtapas(),
-      listarMinhasConversas(),
-      // { c: null } = ainda não tem currículo; null = não deu para ler
-      talvez(obterMeuCurriculo().then((c) => ({ c })), "o currículo"),
-      obterProcuro(),
-      contarMinhasSalvas(),
-    ]);
+  const [perfil, intencao, jar, conversas] = await Promise.all([
+    obterMeuPerfil(),
+    talvez(obterIntencao(), "a intenção"),
+    cookies(),
+    listarMinhasConversas(),
+  ]);
   const agora = await agoraDaRequisicao();
-
-  const pessoa = !perfil || perfil.tipo === "pessoa";
+  const modo = lerModo(jar.get(COOKIE_MODO)?.value) ?? modoPadrao(perfil?.tipo, intencao);
   const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
 
-  // comércio, empresa e agência: o painel de recrutamento
-  if (perfil && !pessoa) {
-    return (
-      <div className="flex flex-col gap-6">
-        {suspensa && (
-          <Aviso tipo="alerta" titulo="Sua conta está suspensa">
-            Seus anúncios estão fora do ar e não dá para publicar, curtir ou responder. Veja o motivo no e-mail que
-            enviamos.
-          </Aviso>
-        )}
-        <PainelRecrutador nome={perfil.nome} anuncios={anuncios} candidatos={candidatos} agora={agora} />
-      </div>
+  let pagina;
+  if (modo === "contratar" && perfil) {
+    const [anuncios, candidatos] = await Promise.all([
+      talvez(listarMeusAnuncios(), "os anúncios"),
+      listarMeusCandidatos(),
+    ]);
+    pagina = (
+      <PainelRecrutador
+        nome={perfil.nome}
+        autorId={perfil.id}
+        anuncios={anuncios}
+        candidatos={candidatos}
+        agora={agora}
+      />
+    );
+  } else if (modo === "servicos") {
+    const anuncios = await talvez(listarMeusAnuncios(), "os anúncios");
+    pagina = <HojeServicos perfil={perfil} anuncios={anuncios} conversas={conversas} agora={agora} />;
+  } else {
+    const [curtidas, etapas, curriculo, entrevistas, salvas] = await Promise.all([
+      talvez(listarMinhasCurtidas(), "as curtidas"),
+      listarMinhasEtapas(),
+      // { c: null } = ainda não tem currículo; null = não deu para ler
+      talvez(
+        obterMeuCurriculo().then((c) => ({ c })),
+        "o currículo",
+      ),
+      minhasProximasEntrevistas(agora),
+      contarMinhasSalvas(),
+    ]);
+    pagina = (
+      <HojeTrabalhar
+        perfil={perfil}
+        curtidas={curtidas}
+        etapas={etapas}
+        curriculo={curriculo}
+        entrevistas={entrevistas}
+        conversas={conversas}
+        salvas={salvas}
+        agora={agora}
+      />
     );
   }
-  const noAr = (a: MeuAnuncio) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora;
-
-  // ------------------------------------------------------------ o que oferece
-  const minhasVagas = anuncios?.filter((a) => a.tipo === "vaga") ?? null;
-  const meusServicos = anuncios?.filter((a) => a.tipo === "servico") ?? null;
-  const temVagas = (minhasVagas?.length ?? 0) > 0;
-  const temServicos = (meusServicos?.length ?? 0) > 0;
-  // candidatos de todas as vagas (os mesmos números da aba Candidatos); quem já foi aceito
-  // e só espera o currículo não está mais esperando você
-  const candidatosPendentes = candidatos?.filter(esperaResposta) ?? [];
-  // pedidos dos serviços: cada serviço tem a sua lista de quem pediu
-  const servicosComPedidoNovo = meusServicos?.filter((a) => a.curtidas_novas > 0) ?? [];
-  const pedidosParaResponder = meusServicos ? soma(meusServicos.map((a) => a.curtidas_novas)) : null;
-  const linkDosPedidos =
-    meusServicos?.length === 1 ? `/painel/anuncio/${meusServicos[0].id}` : "/painel/anuncios?tipo=servico";
-  const linkDosPedidosNovos =
-    servicosComPedidoNovo.length === 1 ? `/painel/anuncio/${servicosComPedidoNovo[0].id}` : linkDosPedidos;
-
-  // ------------------------------------------------------------ o que procura
-  const vagasCurtidas = curtidas?.filter((c) => c.tipo === "vaga") ?? null;
-  const servicosPedidos = curtidas?.filter((c) => c.tipo === "servico") ?? null;
-  // a etapa que quem publicou marcou, com a mesma regra de "Minhas curtidas"
-  const etapaDe = (c: MinhaCurtida) => etapaParaQuemCurtiu(c.tipo, c.status, etapas.get(c.anuncio_id)?.etapa);
-  // vagas que já aceitaram a pessoa e só esperam o currículo para dar match
-  const aceitas = vagasCurtidas?.filter(esperaCurriculo) ?? [];
-
-  // ------------------------------------------------------------ contatos
-  const novas = conversas ? soma(conversas.map((c) => c.nao_lidas)) : 0;
-  const comNovas = conversas?.filter((c) => c.nao_lidas > 0) ?? [];
-  const semOi = conversas?.filter((c) => !c.ultima_texto) ?? [];
-  const linkDaConversa = (lista: { anuncio_id: string; outro_id: string }[]) =>
-    lista.length === 1 ? `/painel/conversas/${lista[0].anuncio_id}/${lista[0].outro_id}` : "/painel/conversas";
-
-  // ------------------------------------------------------------ para fazer agora
-  const semCurriculo = leituraCurriculo !== null && leituraCurriculo.c === null;
-  const procuraTrabalho = intencao === "trabalho" || (!intencao && pessoa) || (vagasCurtidas?.length ?? 0) > 0;
-  const vencendo = anuncios?.filter((a) => noAr(a) && new Date(a.expira_em).getTime() - agora < CINCO_DIAS) ?? [];
-  const fazer: ItemParaFazer[] = [];
-  if (aceitas.length > 0) {
-    fazer.push({
-      icone: PartyPopper,
-      texto:
-        aceitas.length === 1
-          ? `${aceitas[0].autor_nome} aceitou você: mande o currículo`
-          : `${aceitas.length} vagas aceitaram você: mande o currículo`,
-      ajuda: `Em ${nomes(aceitas.map((c) => c.titulo))}. Assim que você salvar o currículo, dá match.`,
-      href:
-        aceitas.length === 1
-          ? `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${aceitas[0].anuncio_id}`)}`
-          : "/perfil/curriculo",
-    });
-  }
-  if (!perfilCompleto(perfil)) {
-    fazer.push({
-      icone: UserRound,
-      texto: "Complete seu perfil",
-      ajuda: "Com um WhatsApp ou e-mail você já pode publicar e curtir.",
-      href: "/perfil",
-    });
-  }
-  if (candidatosPendentes.length > 0) {
-    fazer.push({
-      icone: Users,
-      texto: `${plural(candidatosPendentes.length, "candidato esperando", "candidatos esperando")} sua resposta`,
-      ajuda: `Em ${nomes(candidatosPendentes.map((c) => c.anuncio_titulo))}`,
-      href: "/painel/candidatos?situacao=responder",
-    });
-  }
-  if (pedidosParaResponder) {
-    fazer.push({
-      icone: Wrench,
-      texto: `${plural(pedidosParaResponder, "pedido de serviço esperando", "pedidos de serviço esperando")} sua resposta`,
-      ajuda: `Em ${nomes(servicosComPedidoNovo.map((a) => a.titulo))}`,
-      href: linkDosPedidosNovos,
-    });
-  }
-  if (novas > 0) {
-    fazer.push({
-      icone: MessagesSquare,
-      texto: plural(novas, "mensagem nova", "mensagens novas"),
-      ajuda: `De ${nomes(comNovas.map((c) => c.outro_nome))}`,
-      href: linkDaConversa(comNovas),
-    });
-  }
-  if (pessoa && semCurriculo && procuraTrabalho && aceitas.length === 0) {
-    fazer.push({
-      icone: FileText,
-      texto: "Monte seu currículo",
-      ajuda: "Leva poucos minutos. Quem publicou a vaga vê quando você curte.",
-      href: "/perfil/curriculo",
-    });
-  }
-  if (vencendo.length > 0) {
-    fazer.push({
-      icone: CalendarClock,
-      texto: `${plural(vencendo.length, "anúncio sai", "anúncios saem")} do ar em breve`,
-      ajuda: "Renove para continuar recebendo interessados.",
-      href: "/painel/anuncios",
-    });
-  }
-  if (semOi.length > 0) {
-    fazer.push({
-      icone: MessageCircle,
-      texto: `${plural(semOi.length, "match", "matches")} sem conversa ainda`,
-      ajuda: `Mande um oi para ${nomes(semOi.map((c) => c.outro_nome))}`,
-      href: linkDaConversa(semOi),
-    });
-  }
-
-  // ------------------------------------------------------------ blocos de cada lado
-  // Um fluxo aparece quando já tem movimento ou quando é o principal da conta;
-  // os outros viram uma linha de sugestão no fim do lado.
-  const vagaPrincipal = !pessoa || intencao === "contratar_pessoa";
-  const servicoPrincipal = intencao === "oferecer_servico";
-  const procurarVagaPrincipal = pessoa && (intencao === "trabalho" || !intencao);
-  const pedirServicoPrincipal = intencao === "contratar_servico";
-  const temVagasCurtidas = (vagasCurtidas?.length ?? 0) > 0;
-  const temServicosPedidos = (servicosPedidos?.length ?? 0) > 0;
-
-  const blocoVagas = (
-    <Bloco
-      key="vagas"
-      id="ofereco-vagas"
-      icone={Megaphone}
-      titulo="Vagas que você publicou"
-      texto="Quem curte a vaga vira candidato. Você decide quem aceitar: o aceite conecta vocês. Depois vêm a entrevista e a contratação."
-      acao={
-        <BotaoLink href="/publicar" tamanho="sm">
-          <Plus aria-hidden />
-          Publicar vaga
-        </BotaoLink>
-      }
-    >
-      <Trilha
-        rotulo="Passos das vagas que você publicou"
-        passos={[
-          {
-            nome: "No ar",
-            numero: minhasVagas ? minhasVagas.filter(noAr).length : null,
-            href: "/painel/anuncios?tipo=vaga",
-            sempre: temVagas,
-          },
-          { nome: "Candidatos", numero: candidatos?.length ?? null, href: "/painel/candidatos" },
-          {
-            nome: "Para responder",
-            numero: candidatos ? candidatosPendentes.length : null,
-            href: "/painel/candidatos?situacao=responder",
-            destaque: true,
-          },
-          {
-            nome: "Entrevista",
-            numero: contar(candidatos, (c) => c.etapa === "entrevista"),
-            href: "/painel/candidatos?etapa=entrevista",
-          },
-          {
-            nome: "Contratados",
-            numero: contar(candidatos, (c) => c.etapa === "contratado"),
-            href: "/painel/candidatos?etapa=contratado",
-            final: true,
-          },
-        ]}
-      />
-    </Bloco>
-  );
-
-  const blocoServicos = (
-    <Bloco
-      key="servicos"
-      id="ofereco-servicos"
-      icone={Store}
-      titulo="Seus serviços"
-      texto="Quem precisa pede o serviço na sua vitrine. Você decide se aceita: o aceite conecta vocês para combinar o serviço."
-      acao={
-        <BotaoLink href="/painel/servicos" tamanho="sm">
-          <Store aria-hidden />
-          {temServicos ? "Editar vitrine" : "Montar vitrine"}
-        </BotaoLink>
-      }
-    >
-      <Trilha
-        rotulo="Passos dos seus serviços"
-        passos={[
-          {
-            nome: "Na vitrine",
-            numero: meusServicos ? meusServicos.filter(noAr).length : null,
-            href: "/painel/anuncios?tipo=servico",
-            sempre: temServicos,
-          },
-          {
-            nome: "Pedidos",
-            numero: meusServicos ? soma(meusServicos.map((a) => a.curtidas_total)) : null,
-            href: linkDosPedidos,
-          },
-          { nome: "Para responder", numero: pedidosParaResponder, href: linkDosPedidosNovos, destaque: true },
-          {
-            nome: "Aceitos",
-            numero: meusServicos ? soma(meusServicos.map((a) => a.matches)) : null,
-            href: "/painel/conversas",
-            final: true,
-          },
-        ]}
-      />
-      {temServicos && (
-        <div>
-          <LinkDoBloco href="/painel/avaliacoes" icone={Star}>
-            Avaliações que você recebeu
-          </LinkDoBloco>
-        </div>
-      )}
-    </Bloco>
-  );
-
-  const blocoVagasCurtidas = (
-    <Bloco
-      key="vagas-curtidas"
-      id="procuro-vagas"
-      icone={Briefcase}
-      titulo="Vagas que você curtiu"
-      texto="Você curte e quem publicou decide se aceita. Se aceitar, vocês se conectam e combinam a entrevista."
-      acao={
-        <BotaoLink href="/descobrir" tamanho="sm">
-          <Search aria-hidden />
-          Descobrir vagas
-        </BotaoLink>
-      }
-    >
-      <EditorProcuro inicial={procuro} comecarFechado />
-      <Trilha
-        rotulo="Passos das vagas que você curtiu"
-        passos={[
-          { nome: "Curtidas", numero: vagasCurtidas?.length ?? null, href: "/painel/curtidas?tipo=vaga" },
-          {
-            nome: "Aguardando aceite",
-            numero: contar(vagasCurtidas, esperaResposta),
-            href: "/painel/curtidas?tipo=vaga&situacao=aguardando",
-          },
-          // aceitaram e falta o currículo: só aparece quando tem
-          ...(aceitas.length
-            ? [
-                {
-                  nome: "Falta o currículo",
-                  numero: aceitas.length,
-                  href: "/painel/curtidas?tipo=vaga&situacao=curriculo",
-                  destaque: true,
-                },
-              ]
-            : []),
-          {
-            nome: "Deu match",
-            numero: contar(vagasCurtidas, (c) => c.status === "match"),
-            href: "/painel/curtidas?tipo=vaga&situacao=match",
-          },
-          {
-            nome: "Entrevista",
-            numero: contar(vagasCurtidas, (c) => etapaDe(c) === "entrevista"),
-            href: "/painel/curtidas?tipo=vaga&etapa=entrevista",
-          },
-          {
-            nome: "Contratado",
-            numero: contar(vagasCurtidas, (c) => etapaDe(c) === "contratado"),
-            href: "/painel/curtidas?tipo=vaga&etapa=contratado",
-            final: true,
-          },
-        ]}
-      />
-      {salvas ? (
-        <div>
-          <LinkDoBloco href="/descobrir?aba=salvas" icone={Star}>
-            {plural(salvas, "vaga salva", "vagas salvas")} para decidir depois
-          </LinkDoBloco>
-        </div>
-      ) : null}
-    </Bloco>
-  );
-
-  const blocoServicosPedidos = (
-    <Bloco
-      key="servicos-pedidos"
-      id="procuro-servicos"
-      icone={Wrench}
-      titulo="Profissionais que você chamou"
-      texto="Você pede e o profissional decide se aceita. Se aceitar, vocês se conectam e combinam o dia."
-      acao={
-        <BotaoLink href="/?tipo=servico" tamanho="sm">
-          <Search aria-hidden />
-          Encontrar profissionais
-        </BotaoLink>
-      }
-    >
-      <Trilha
-        rotulo="Passos dos serviços que você pediu"
-        passos={[
-          { nome: "Pedidos", numero: servicosPedidos?.length ?? null, href: "/painel/curtidas?tipo=servico" },
-          {
-            nome: "Aguardando aceite",
-            numero: contar(servicosPedidos, (c) => c.status === "pendente"),
-            href: "/painel/curtidas?tipo=servico&situacao=aguardando",
-          },
-          {
-            nome: "Aceitaram",
-            numero: contar(servicosPedidos, (c) => c.status === "match"),
-            href: "/painel/curtidas?tipo=servico&situacao=match",
-          },
-          {
-            nome: "Agendados",
-            numero: contar(servicosPedidos, (c) => etapaDe(c) === "agendado"),
-            href: "/painel/curtidas?tipo=servico&etapa=agendado",
-          },
-          {
-            nome: "Concluídos",
-            numero: contar(servicosPedidos, (c) => etapaDe(c) === "concluido"),
-            href: "/painel/curtidas?tipo=servico&etapa=concluido",
-            final: true,
-          },
-        ]}
-      />
-    </Bloco>
-  );
-
-  // O que você oferece: o seu trabalho (pessoa), os serviços e as vagas
-  const blocosOfereco: ReactNode[] = [];
-  const sugestoesOfereco: Sugestao[] = [];
-  const mostrarServicos = temServicos || servicoPrincipal;
-  const mostrarVagas = temVagas || vagaPrincipal;
-  const servicos = mostrarServicos && blocoServicos;
-  const vagas = mostrarVagas && blocoVagas;
-  // "Seu trabalho" só para pessoa; primeiro vem o que a pessoa disse que quer fazer
-  const trabalho = pessoa && (
-    <BlocoSeuTrabalho key="trabalho" perfil={perfil} curriculo={leituraCurriculo} agora={agora} />
-  );
-  const ordemOfereco = !pessoa
-    ? [vagas, servicos]
-    : servicoPrincipal
-      ? [servicos, trabalho, vagas]
-      : intencao === "contratar_pessoa"
-        ? [vagas, trabalho, servicos]
-        : [trabalho, servicos, vagas];
-  for (const b of ordemOfereco) if (b) blocosOfereco.push(b);
-  if (!mostrarServicos) {
-    sugestoesOfereco.push({
-      icone: HandHelping,
-      pergunta: pessoa ? "Faz bicos ou presta serviços?" : "Seu negócio presta serviços?",
-      acao: "Monte sua vitrine grátis",
-      href: "/painel/servicos",
-    });
-  }
-  if (!mostrarVagas) {
-    sugestoesOfereco.push({
-      icone: Megaphone,
-      pergunta: "Precisa contratar alguém?",
-      acao: "Publique a vaga grátis",
-      href: "/publicar",
-    });
-  }
-
-  // O que você procura: as vagas curtidas (pessoa) e os profissionais chamados
-  const blocosProcuro: ReactNode[] = [];
-  const sugestoesProcuro: Sugestao[] = [];
-  const mostrarVagasCurtidas = temVagasCurtidas || procurarVagaPrincipal;
-  const mostrarServicosPedidos = temServicosPedidos || pedirServicoPrincipal;
-  const ordemProcuro = pedirServicoPrincipal
-    ? [mostrarServicosPedidos && blocoServicosPedidos, mostrarVagasCurtidas && blocoVagasCurtidas]
-    : [mostrarVagasCurtidas && blocoVagasCurtidas, mostrarServicosPedidos && blocoServicosPedidos];
-  for (const b of ordemProcuro) if (b) blocosProcuro.push(b);
-  if (!mostrarVagasCurtidas && pessoa) {
-    sugestoesProcuro.push({
-      icone: Briefcase,
-      pergunta: "Procurando trabalho?",
-      acao: "Veja as vagas perto de você",
-      href: "/?tipo=vaga",
-    });
-  }
-  if (!mostrarServicosPedidos) {
-    sugestoesProcuro.push({
-      icone: Wrench,
-      pergunta: "Precisa de um serviço?",
-      acao: "Encontre profissionais perto de você",
-      href: "/?tipo=servico",
-    });
-  }
-
-  const ladoOfereco = (
-    <Lado
-      key="ofereco"
-      id="ofereco"
-      icone={HandHelping}
-      titulo="O que você oferece"
-      texto="O que você publicou ou mostra. Quem se interessa curte, e você decide se aceita: o aceite conecta vocês."
-    >
-      {blocosOfereco}
-      <Sugestoes itens={sugestoesOfereco} />
-    </Lado>
-  );
-  const ladoProcuro = (
-    <Lado
-      key="procuro"
-      id="procuro"
-      icone={Search}
-      titulo="O que você procura"
-      texto="O que você curtiu ou pediu. Quem publicou decide se aceita: só com o aceite vocês se conectam."
-    >
-      {blocosProcuro}
-      <Sugestoes itens={sugestoesProcuro} />
-    </Lado>
-  );
-  // quem procura trabalho ou um serviço vê primeiro o que procura; quem oferece ou contrata, o que oferece
-  const procuraPrimeiro = intencao ? intencao === "trabalho" || intencao === "contratar_servico" : pessoa;
-  const incompleto = !anuncios || !curtidas || (temVagas && !candidatos) || !conversas;
 
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-4">
-        {suspensa && (
-          <Aviso tipo="alerta" titulo="Sua conta está suspensa">
-            Seus anúncios estão fora do ar e não dá para publicar, curtir ou editar. Veja o motivo no e-mail que
-            enviamos.
-          </Aviso>
-        )}
-        {incompleto && (
-          <Aviso tipo="alerta" titulo="Parte dos números não carregou">
-            Onde aparece “–”, tente de novo em instantes.
-          </Aviso>
-        )}
-        <ParaFazer itens={fazer.slice(0, 5)} />
-      </div>
-      {procuraPrimeiro ? [ladoProcuro, ladoOfereco] : [ladoOfereco, ladoProcuro]}
-      {conversas && conversas.length > 0 && (
-        <section aria-labelledby="contatos" className="flex flex-col gap-3">
-          <h2 id="contatos" className="text-h3">
-            Em contato
-          </h2>
-          <div className="rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:max-w-md sm:p-5">
-            <Trilha
-              rotulo="Seus contatos"
-              setas={false}
-              passos={[
-                { nome: "Matches", numero: conversas.length, href: "/painel/matches" },
-                { nome: "Mensagens novas", numero: novas, href: "/painel/conversas", destaque: true },
-              ]}
-            />
-          </div>
-        </section>
+    <div className="flex flex-col gap-6">
+      {suspensa && (
+        <Aviso tipo="alerta" titulo="Sua conta está suspensa">
+          Seus anúncios estão fora do ar e não dá para publicar, curtir ou responder. Veja o motivo no e-mail que
+          enviamos.
+        </Aviso>
       )}
+      {pagina}
     </div>
   );
 }
 
-/** O que quem curte uma vaga mostra de si: o que faz e o currículo. */
-function BlocoSeuTrabalho({
+/** Os cartões que valem em todos os modos: perfil incompleto, mensagens novas e matches sem oi. */
+function cartoesDaConta(
+  perfil: MeuPerfil | null,
+  conversas: Conversa[] | null,
+  doModo: (c: Conversa) => boolean,
+): Cartao[] {
+  const daqui = (conversas ?? []).filter(doModo);
+  const comNovas = daqui.filter((c) => c.nao_lidas > 0);
+  const semOi = daqui.filter((c) => !c.ultima_texto);
+  const linkDaConversa = (lista: Conversa[]) =>
+    lista.length === 1 ? `/painel/conversas/${lista[0].anuncio_id}/${lista[0].outro_id}` : "/painel/conversas";
+  const cartoes: Cartao[] = [];
+  if (comNovas.length) {
+    const novas = soma(comNovas.map((c) => c.nao_lidas));
+    cartoes.push({
+      icone: MessagesSquare,
+      quando: "Mensagens",
+      titulo: plural(novas, "mensagem nova", "mensagens novas"),
+      texto: `De ${nomes(comNovas.map((c) => c.outro_nome))}`,
+      href: linkDaConversa(comNovas),
+      acao: "Ler e responder",
+    });
+  }
+  if (semOi.length) {
+    cartoes.push({
+      icone: MessageCircle,
+      quando: "Conexão nova",
+      titulo: `${plural(semOi.length, "match", "matches")} sem conversa ainda`,
+      texto: `Mande um oi para ${nomes(semOi.map((c) => c.outro_nome))}`,
+      href: linkDaConversa(semOi),
+      acao: "Mandar um oi",
+    });
+  }
+  if (!perfilCompleto(perfil)) {
+    cartoes.push({
+      icone: UserRound,
+      quando: "Perfil",
+      titulo: "Complete seu perfil",
+      texto: "Com um WhatsApp ou e-mail você já pode publicar e curtir.",
+      href: "/perfil",
+      acao: "Completar",
+    });
+  }
+  return cartoes;
+}
+
+// ==================================================================== Trabalhar
+
+type EntrevistaMinha = Awaited<ReturnType<typeof minhasProximasEntrevistas>>[number];
+
+/** O que falta no currículo, na ordem que mais ajuda a combinar com as vagas. */
+function forcaDoCurriculo(c: Curriculo | null) {
+  const itens: { feito: boolean; dica: string }[] = [
+    { feito: Boolean(c?.experiencias.length), dica: "Conte onde já trabalhou: é o que quem contrata lê primeiro." },
+    { feito: Boolean(c?.disponibilidade.length), dica: "Diga os horários que pode: o % de match usa isso." },
+    { feito: Boolean(c?.escolaridade), dica: "Coloque a escolaridade: muitas vagas pedem." },
+    { feito: Boolean(c?.cursos.length), dica: "Liste cursos e certificados: contam no % de match." },
+    { feito: Boolean(c?.arquivo), dica: "Anexe um PDF, se tiver: quem contrata pode baixar." },
+  ];
+  const feitos = itens.filter((i) => i.feito).length;
+  return {
+    pontos: c ? Math.round((100 * (feitos + 1)) / (itens.length + 1)) : 0,
+    dica: itens.find((i) => !i.feito)?.dica ?? null,
+  };
+}
+
+/** Onde está cada candidatura, em 4 passos: curtiu, aceito, entrevista, contratado. */
+function andamento(c: MinhaCurtida, etapa: EtapaCandidato | null, entrevista: EntrevistaMinha | undefined) {
+  if (c.status === "dispensada") return { feitas: 1, atual: false, texto: "Não foi dessa vez", fim: true };
+  if (c.status === "desfeito") return { feitas: 1, atual: false, texto: "Match desfeito", fim: true };
+  if (etapa === "nao_seguiu") return { feitas: 2, atual: false, texto: "Encerrado", fim: true };
+  if (etapa === "contratado") return { feitas: 4, atual: false, texto: "Contratado! Parabéns", fim: false };
+  if (entrevista || etapa === "entrevista")
+    return {
+      feitas: 2,
+      atual: true,
+      texto: entrevista ? `Entrevista ${dataDaEntrevista(entrevista.quando)}` : "Em entrevista",
+      fim: false,
+    };
+  if (c.status === "match") return { feitas: 2, atual: true, texto: "Deu match: combinem a entrevista", fim: false };
+  if (esperaCurriculo(c)) return { feitas: 1, atual: true, texto: "Aceitou você: falta o currículo", fim: false };
+  return {
+    feitas: 1,
+    atual: true,
+    texto: etapa === "analise" ? `${c.autor_nome} está analisando` : `Esperando ${c.autor_nome} responder`,
+    fim: false,
+  };
+}
+
+function HojeTrabalhar({
   perfil,
+  curtidas,
+  etapas,
   curriculo,
+  entrevistas,
+  conversas,
+  salvas,
   agora,
 }: {
   perfil: MeuPerfil | null;
-  /** { c: null } = ainda não tem; null = não deu para ler */
+  curtidas: MinhaCurtida[] | null;
+  etapas: Map<string, { etapa: EtapaCandidato; atualizado_em: string }>;
   curriculo: { c: Curriculo | null } | null;
+  entrevistas: EntrevistaMinha[];
+  conversas: Conversa[] | null;
+  salvas: number | null;
   agora: number;
 }) {
-  const servicos = perfil?.servicos ?? [];
-  const link = "font-semibold text-ink underline underline-offset-2 hover:text-terra-text";
+  const vagas = (curtidas ?? []).filter((c) => c.tipo === "vaga");
+  const etapaDe = (c: MinhaCurtida) => etapaParaQuemCurtiu(c.tipo, c.status, etapas.get(c.anuncio_id)?.etapa);
+  const aceitas = vagas.filter(esperaCurriculo);
+  const tituloDe = new Map(vagas.map((v) => [v.anuncio_id, v]));
+  const entrevistaDe = new Map(entrevistas.map((e) => [e.anuncio_id, e]));
+  const semCurriculo = curriculo !== null && curriculo.c === null;
+
+  const cartoes: Cartao[] = [];
+  if (aceitas.length) {
+    cartoes.push({
+      icone: PartyPopper,
+      tom: "bom",
+      quando: "Boa notícia",
+      titulo: aceitas.length === 1 ? `${aceitas[0].autor_nome} aceitou você` : `${aceitas.length} vagas aceitaram você`,
+      texto: `Em ${nomes(aceitas.map((c) => c.titulo))}. Mande o currículo e o match sai na hora.`,
+      href:
+        aceitas.length === 1
+          ? `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${aceitas[0].anuncio_id}`)}`
+          : "/perfil/curriculo",
+      acao: "Mandar meu currículo",
+    });
+  }
+  const paraConfirmar = entrevistas.filter((e) => e.situacao === "marcada");
+  for (const e of entrevistas.filter((x) => new Date(x.quando).getTime() <= agora + 3 * DIA).slice(0, 2)) {
+    const v = tituloDe.get(e.anuncio_id);
+    const confirmar = e.situacao === "marcada";
+    cartoes.push({
+      icone: CalendarClock,
+      tom: confirmar ? "urgente" : "normal",
+      quando: dataDaEntrevista(e.quando),
+      titulo: `Entrevista${v ? ` para ${v.titulo}` : ""}`,
+      texto: confirmar
+        ? `${v?.autor_nome ?? "Quem publicou"} marcou: confirme que vai ou peça outro horário.`
+        : e.situacao === "remarcar"
+          ? "Você pediu outro horário: espere o novo dia."
+          : "Confirmada. Chegue uns minutos antes.",
+      href: `/anuncio/${e.anuncio_id}`,
+      acao: confirmar ? "Confirmar" : "Ver detalhes",
+    });
+  }
+  if (paraConfirmar.length > 2) {
+    cartoes.push({
+      icone: CalendarClock,
+      titulo: `${paraConfirmar.length} entrevistas para confirmar`,
+      href: "/painel/curtidas?tipo=vaga&etapa=entrevista",
+      acao: "Ver",
+    });
+  }
+  cartoes.push(...cartoesDaConta(perfil, conversas, (c) => c.papel === "curti" && c.anuncio_tipo === "vaga"));
+  if (semCurriculo && aceitas.length === 0) {
+    cartoes.push({
+      icone: FileText,
+      quando: "Currículo",
+      titulo: "Monte seu currículo",
+      texto: "Leva poucos minutos e mostra o seu % de match em cada vaga.",
+      href: "/perfil/curriculo",
+      acao: "Montar agora",
+    });
+  }
+  const vencendo = vagas.filter(
+    (c) =>
+      esperaResposta(c) &&
+      c.anuncio_status === "ativo" &&
+      new Date(c.expira_em).getTime() - agora < 3 * DIA &&
+      new Date(c.expira_em).getTime() > agora,
+  );
+  if (vencendo.length) {
+    cartoes.push({
+      icone: Hourglass,
+      quando: "Em breve",
+      titulo: `${plural(vencendo.length, "vaga que você curtiu sai", "vagas que você curtiu saem")} do ar`,
+      texto: `${nomes(vencendo.map((c) => c.titulo))}. Mande uma mensagem pelo anúncio, se tiver.`,
+      href: "/painel/curtidas?tipo=vaga&situacao=aguardando",
+      acao: "Ver as vagas",
+    });
+  }
+
+  // as candidaturas: as que andam primeiro, depois as que esperam, as encerradas por último
+  const lista = vagas
+    .map((c) => ({ c, a: andamento(c, etapaDe(c), entrevistaDe.get(c.anuncio_id)) }))
+    .sort(
+      (x, y) =>
+        Number(x.a.fim) - Number(y.a.fim) ||
+        y.a.feitas - x.a.feitas ||
+        new Date(y.c.curtido_em).getTime() - new Date(x.c.curtido_em).getTime(),
+    );
+  const ativas = lista.filter((x) => !x.a.fim).length;
+  const forca = curriculo ? forcaDoCurriculo(curriculo.c) : null;
+
   return (
-    <Bloco
-      id="ofereco-trabalho"
-      icone={UserRound}
-      titulo="Seu trabalho"
-      texto="É o que quem publicou a vaga vê quando você curte."
-      acao={
-        <BotaoLink href="/perfil" tamanho="sm">
-          Editar perfil
-        </BotaoLink>
-      }
-    >
-      <dl className="grid gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3">
-          <dt className="text-label">O que você faz</dt>
-          <dd>
-            {servicos.length > 0 ? (
-              <ul aria-label="O que você faz" className="flex flex-wrap gap-1.5">
-                {servicos.slice(0, 8).map((s) => (
-                  <li key={s} className="rounded-pill bg-surface-300 px-2.5 py-1 text-body-sm">
-                    {s}
-                  </li>
-                ))}
-                {servicos.length > 8 && (
-                  <li className="px-1 py-1 text-body-sm text-ink-muted">e mais {servicos.length - 8}</li>
-                )}
-              </ul>
-            ) : (
+    <div className="flex flex-col gap-8">
+      <Saudacao
+        nome={perfil?.nome ?? null}
+        agora={agora}
+        pendencias={cartoes.length}
+        acao={
+          <BotaoLink href="/?tipo=vaga&ordem=combina" variante="primario" tamanho="sm">
+            <Search aria-hidden />
+            Vagas que combinam
+          </BotaoLink>
+        }
+      />
+      {curtidas === null && (
+        <Aviso tipo="alerta" titulo="Parte da página não carregou">
+          Suas candidaturas não apareceram agora. Tente de novo em instantes.
+        </Aviso>
+      )}
+      <ParaFazerAgora
+        itens={cartoes}
+        vazio="Tudo em dia. Quando alguém aceitar você ou marcar uma entrevista, aparece aqui."
+      />
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <section aria-labelledby="candidaturas" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="candidaturas" className="text-h3">
+              Suas candidaturas
+              {ativas > 0 && <span className="text-ink-muted"> · {ativas} em andamento</span>}
+            </h2>
+            {vagas.length > 0 && (
+              <Link
+                href="/painel/curtidas?tipo=vaga"
+                className="text-label text-ink-muted underline underline-offset-2 hover:text-ink"
+              >
+                Ver todas
+              </Link>
+            )}
+          </div>
+          {vagas.length === 0 ? (
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface-200 p-5">
+              <p className="text-body text-ink">Você ainda não curtiu nenhuma vaga.</p>
               <p className="text-body-sm text-ink-muted">
-                Ainda não disse.{" "}
-                <Link href="/perfil" className={link}>
-                  Dizer o que você faz
-                </Link>
+                Curta as que interessam: quem publicou vê seu perfil e decide se aceita. Aqui você acompanha cada uma,
+                da curtida à contratação.
               </p>
-            )}
-          </dd>
-        </div>
-        <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3">
-          <dt className="text-label">Currículo</dt>
-          <dd className="flex flex-col gap-1 text-body-sm">
-            {!curriculo ? (
-              <span className="text-ink-muted">Não deu para ver agora.</span>
-            ) : curriculo.c ? (
-              <>
-                <span className="flex items-center gap-1.5">
-                  <CircleCheck aria-hidden className="size-4 shrink-0 text-cerrado-text" />
-                  Preenchido · atualizado {tempoRelativo(curriculo.c.atualizado_em, agora)}
-                </span>
-                <Link href="/perfil/curriculo" className={`${link} self-start`}>
-                  Ver ou editar
-                </Link>
-              </>
+              <BotaoLink href="/descobrir" tamanho="sm">
+                <Sparkles aria-hidden />
+                Descobrir vagas
+              </BotaoLink>
+            </div>
+          ) : (
+            <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+              {lista.slice(0, 6).map(({ c, a }) => (
+                <li key={c.anuncio_id}>
+                  <Link
+                    href={`/anuncio/${c.anuncio_id}`}
+                    className="flex flex-col gap-2 px-4 py-3.5 transition-colors hover:bg-surface-300 sm:px-5"
+                  >
+                    <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                      <span className="text-label">{c.titulo}</span>
+                      <span className="text-body-sm text-ink-muted">
+                        {c.autor_nome} · {c.bairro} · curtiu {tempoRelativo(c.curtido_em, agora)}
+                      </span>
+                    </span>
+                    <Etapas feitas={a.feitas} atual={a.atual} rotulo={a.texto} />
+                    <span
+                      className={`text-body-sm ${
+                        a.fim
+                          ? "text-ink-muted"
+                          : a.feitas >= 2 || esperaCurriculo(c)
+                            ? "font-semibold text-cerrado-text"
+                            : "text-ink"
+                      }`}
+                    >
+                      {a.texto}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <aside className="flex flex-col gap-4">
+          <section
+            aria-labelledby="seu-curriculo"
+            className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+          >
+            <h2 id="seu-curriculo" className="text-h3">
+              Seu currículo
+            </h2>
+            {!forca ? (
+              <p className="text-body-sm text-ink-muted">Não deu para ver agora.</p>
             ) : (
               <>
-                <span className="text-ink-muted">Ainda não tem. Com ele, quem contrata conhece você melhor.</span>
-                <Link href="/perfil/curriculo" className={`${link} self-start`}>
-                  Montar currículo
+                <p className="flex items-baseline gap-2">
+                  <span className="font-display text-h2 leading-none tabular-nums">{forca.pontos}%</span>
+                  <span className="text-body-sm text-ink-muted">completo</span>
+                </p>
+                <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-surface-300">
+                  <span
+                    className={forca.pontos >= 80 ? "bg-cerrado" : "bg-ipe"}
+                    style={{ width: `${forca.pontos}%` }}
+                  />
+                </span>
+                <p className="text-body-sm text-ink-muted">
+                  {forca.dica ??
+                    (curriculo?.c ? `Completo. Atualizado ${tempoRelativo(curriculo.c.atualizado_em, agora)}.` : "")}
+                </p>
+                <Link
+                  href="/perfil/curriculo"
+                  className="self-start text-label underline underline-offset-2 hover:text-terra-text"
+                >
+                  {curriculo?.c ? "Melhorar o currículo" : "Montar o currículo"}
                 </Link>
               </>
             )}
-          </dd>
-        </div>
-      </dl>
-    </Bloco>
+          </section>
+
+          <nav aria-label="Atalhos de quem procura trabalho" className="flex flex-col gap-2">
+            <Atalho icone={Search} href="/?tipo=vaga&ordem=combina" titulo="Vagas que combinam com você" />
+            <Atalho icone={Bell} href="/painel/seguindo" titulo="Avisos de vagas e quem você segue" />
+            {salvas ? (
+              <Atalho
+                icone={Star}
+                href="/descobrir?aba=salvas"
+                titulo={`${plural(salvas, "vaga salva", "vagas salvas")} para decidir`}
+              />
+            ) : null}
+          </nav>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+// ==================================================================== Serviços
+
+function HojeServicos({
+  perfil,
+  anuncios,
+  conversas,
+  agora,
+}: {
+  perfil: MeuPerfil | null;
+  anuncios: MeuAnuncio[] | null;
+  conversas: Conversa[] | null;
+  agora: number;
+}) {
+  const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
+  const noAr = servicos.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
+  const comPedido = servicos.filter((a) => a.curtidas_novas > 0);
+  const paraResponder = soma(servicos.map((a) => a.curtidas_novas));
+  const linkDe = (lista: MeuAnuncio[]) =>
+    lista.length === 1 ? `/painel/anuncio/${lista[0].id}` : "/painel/anuncios?tipo=servico";
+
+  const cartoes: Cartao[] = [];
+  if (paraResponder) {
+    cartoes.push({
+      icone: Wrench,
+      tom: "urgente",
+      quando: "Esperando você",
+      titulo: `${plural(paraResponder, "pedido esperando", "pedidos esperando")} sua resposta`,
+      texto: `Em ${nomes(comPedido.map((a) => a.titulo))}. Aceite para conversar e combinar o dia.`,
+      href: linkDe(comPedido),
+      acao: "Responder agora",
+    });
+  }
+  cartoes.push(...cartoesDaConta(perfil, conversas, (c) => c.papel === "publiquei" && c.anuncio_tipo === "servico"));
+  if (servicos.length === 0) {
+    cartoes.push({
+      icone: Store,
+      quando: "Comece aqui",
+      titulo: "Monte sua vitrine",
+      texto: "Diga o que faz, onde atende e quanto cobra. Quem mora perto pede pelo Publike.",
+      href: "/painel/servicos",
+      acao: "Montar vitrine",
+    });
+  }
+  const vencendo = noAr.filter((a) => new Date(a.expira_em).getTime() - agora < 5 * DIA);
+  if (vencendo.length) {
+    cartoes.push({
+      icone: Hourglass,
+      quando: "Em breve",
+      titulo: `${plural(vencendo.length, "serviço sai", "serviços saem")} do ar`,
+      texto: "Renove para continuar recebendo pedidos.",
+      href: "/painel/anuncios?tipo=servico",
+      acao: "Renovar",
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <Saudacao
+        nome={perfil?.nome ?? null}
+        agora={agora}
+        pendencias={cartoes.length}
+        acao={
+          <BotaoLink href="/painel/servicos" variante="primario" tamanho="sm">
+            <Store aria-hidden />
+            {servicos.length ? "Editar vitrine" : "Montar vitrine"}
+          </BotaoLink>
+        }
+      />
+      <ParaFazerAgora itens={cartoes} vazio="Tudo em dia. Quando alguém pedir um serviço seu, aparece aqui." />
+
+      <section aria-label="Números dos seus serviços" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <NumeroHoje
+          nome="Na vitrine"
+          valor={anuncios ? formatarNumero(noAr.length) : "–"}
+          href="/painel/anuncios?tipo=servico"
+        />
+        <NumeroHoje
+          nome="Pedidos"
+          valor={anuncios ? formatarNumero(soma(servicos.map((a) => a.curtidas_total))) : "–"}
+          ajuda="desde que publicou"
+          href="/painel/anuncios?tipo=servico"
+        />
+        <NumeroHoje
+          nome="Para responder"
+          valor={anuncios ? formatarNumero(paraResponder) : "–"}
+          href={linkDe(comPedido)}
+        />
+        <NumeroHoje
+          nome="Aceitos"
+          valor={anuncios ? formatarNumero(soma(servicos.map((a) => a.matches))) : "–"}
+          ajuda="viraram conversa"
+          href="/painel/conversas"
+        />
+      </section>
+
+      {servicos.length > 0 && (
+        <section aria-labelledby="seus-servicos" className="flex flex-col gap-3">
+          <h2 id="seus-servicos" className="text-h3">
+            Seus serviços
+          </h2>
+          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+            {servicos.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/painel/anuncio/${a.id}`}
+                  className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 py-3.5 transition-colors hover:bg-surface-300 sm:px-5"
+                >
+                  <span className="text-label">{a.titulo}</span>
+                  <span className="text-body-sm text-ink-muted">
+                    {plural(a.curtidas_total, "pedido", "pedidos")}
+                    {a.curtidas_novas > 0 && (
+                      <strong className="text-terra-text"> · {a.curtidas_novas} para responder</strong>
+                    )}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <nav aria-label="Atalhos dos serviços" className="grid gap-2 sm:grid-cols-2">
+        <Atalho icone={Store} href="/painel/servicos" titulo="Sua vitrine: serviços, fotos e preços" />
+        <Atalho icone={Star} href="/painel/avaliacoes" titulo="Avaliações que você recebeu" />
+      </nav>
+    </div>
+  );
+}
+
+function Atalho({ icone: Icone, href, titulo }: { icone: typeof Search; href: string; titulo: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex min-h-12 items-center gap-3 rounded-md border border-line bg-surface-200 px-4 py-2.5 text-label transition-colors hover:border-line-strong"
+    >
+      <Icone aria-hidden className="size-5 shrink-0 text-ink-muted" />
+      {titulo}
+    </Link>
   );
 }

@@ -175,12 +175,13 @@ export const obterAnuncio = cache(async (id: string): Promise<AnuncioCompleto | 
   return data ?? null;
 });
 
-export async function listarMeusAnuncios(): Promise<MeuAnuncio[]> {
+// em cache: o menu do painel e a página leem na mesma requisição
+export const listarMeusAnuncios = cache(async (): Promise<MeuAnuncio[]> => {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("meus_anuncios");
   if (error) falha("seus anúncios", error);
   return data ?? [];
-}
+});
 
 /** Se quem está logado tem anúncio no ar (para mostrar o filtro "Só os meus" só a quem publica). */
 export async function temAnuncioNoAr(usuarioId: string): Promise<boolean> {
@@ -306,6 +307,24 @@ export async function minhaEntrevista(anuncioId: string) {
   return data ?? null;
 }
 
+/** As minhas entrevistas que ainda vão acontecer (página Hoje, modo Trabalhar). */
+export async function minhasProximasEntrevistas(agora: number) {
+  if (MODO_DEMO) return [];
+  const usuario = await obterUsuario();
+  if (!usuario) return [];
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .from("entrevistas")
+    .select("id, anuncio_id, quando, formato, situacao")
+    .eq("perfil_id", usuario.id)
+    .in("situacao", ["marcada", "confirmada", "remarcar"])
+    .gte("quando", new Date(agora - 2 * 3600e3).toISOString())
+    .order("quando")
+    .limit(10);
+  if (error) console.error(`Publike: falha ao ler suas entrevistas: ${error.message}`);
+  return data ?? [];
+}
+
 /** Conta uma visita à vaga (quem publicou e robôs de busca não contam). Roda depois da resposta. */
 export async function contarVisita(anuncioId: string, agente: string | null) {
   if (MODO_DEMO || !UUID.test(anuncioId)) return;
@@ -376,7 +395,7 @@ export type Conversa = {
 };
 
 /** As conversas dos meus matches (null se o banco ainda não tem a conversa). */
-export async function listarMinhasConversas(): Promise<Conversa[] | null> {
+export const listarMinhasConversas = cache(async (): Promise<Conversa[] | null> => {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("minhas_conversas");
   if (error) {
@@ -387,7 +406,7 @@ export async function listarMinhasConversas(): Promise<Conversa[] | null> {
     ...l,
     etapa: (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato,
   }));
-}
+});
 
 export type MensagemConversa = {
   id: number;
