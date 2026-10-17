@@ -38,7 +38,8 @@ export type CartaVaga = {
   regime: string;
   lugar: string;
   distancia: string | null;
-  nota: number;
+  /** o % de match com o currículo (a mesma conta da busca e da empresa); sem currículo ou com pouco para comparar, null */
+  match: { nota: number; atendidos: number; conferidos: number } | null;
   motivos: Motivo[];
   pedeCurriculo: boolean;
   resumo: string;
@@ -59,13 +60,18 @@ const ICONES: Record<Motivo["tipo"], LucideIcon> = {
 
 const LIMIAR = 110;
 
-/** Anel com a nota de compatibilidade (0 a 100). */
-function Anel({ nota }: { nota: number }) {
+/** Anel com o % de match (a mesma conta da busca e da página da vaga). */
+function Anel({ match }: { match: NonNullable<CartaVaga["match"]> }) {
+  const nota = match.nota;
   const raio = 22;
   const volta = 2 * Math.PI * raio;
-  const cor = nota >= 70 ? "var(--pk-cerrado)" : nota >= 45 ? "var(--pk-ipe)" : "var(--pk-ink-muted)";
+  const cor = nota >= 80 ? "var(--pk-cerrado)" : nota >= 50 ? "var(--pk-ipe)" : "var(--pk-ink-muted)";
+  const itens = `${match.conferidos} ${match.conferidos === 1 ? "item" : "itens"}`;
   return (
-    <div className="relative size-14 shrink-0" title="Quanto esta vaga combina com você">
+    <div
+      className="relative size-14 shrink-0"
+      title={`Seu currículo atende ${match.atendidos} de ${itens} que a vaga pede`}
+    >
       <svg viewBox="0 0 52 52" className="size-14 -rotate-90" aria-hidden>
         <circle cx="26" cy="26" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="5" />
         <circle
@@ -81,9 +87,10 @@ function Anel({ nota }: { nota: number }) {
         />
       </svg>
       <span className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="font-display text-[17px] font-bold text-ink">{nota}%</span>
+        <span className={`font-display font-bold text-ink ${nota >= 100 ? "text-[13px]" : "text-[15px]"}`}>{nota}%</span>
+        <span className="mt-0.5 text-[9px] font-semibold text-ink-muted uppercase">match</span>
       </span>
-      <span className="sr-only">Combina {nota}% com você</span>
+      <span className="sr-only">{nota}% de match com o seu currículo</span>
     </div>
   );
 }
@@ -129,7 +136,7 @@ function Cartao({ c, topo }: { c: CartaVaga; topo: boolean }) {
             </p>
           )}
         </div>
-        <Anel nota={c.nota} />
+        {c.match && <Anel match={c.match} />}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -362,7 +369,7 @@ export function PilhaDeVagas({
           key={atual.id}
           role="group"
           aria-roledescription="vaga"
-          aria-label={`${atual.titulo}, combina ${atual.nota}% com você. Use as setas: direita curte, esquerda passa, para cima salva.`}
+          aria-label={`${atual.titulo}${atual.match ? `, ${atual.match.nota}% de match` : ""}. Use as setas: direita curte, esquerda passa, para cima salva.`}
           onPointerDown={apertar}
           onPointerMove={mover}
           onPointerUp={soltar}

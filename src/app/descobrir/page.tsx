@@ -8,12 +8,14 @@ import { EditorProcuro, EscolherBairro, TirarSalva } from "@/components/descobri
 import { Aviso, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
+import { matchComAVaga, type Aderencia } from "@/lib/aderencia";
 import {
   listarVagasParaDescobrir,
   obterMeuCurriculo,
   obterMeuPerfil,
   obterProcuro,
   obterUsuario,
+  requisitosDasVagas,
 } from "@/lib/dados";
 import { calorDaVaga, pontuar, type QuemProcura, type VagaIndicada } from "@/lib/descobrir";
 import { formatarDistancia, formatarLugar, primeiro, rotuloConta, rotuloModalidade, valorDoAnuncio } from "@/lib/formato";
@@ -73,7 +75,10 @@ function paraCard(v: VagaIndicada): DadosCard {
   };
 }
 
-function paraCarta(v: VagaIndicada): CartaVaga {
+type Matches = Map<string, Aderencia>;
+
+function paraCarta(v: VagaIndicada, matches: Matches): CartaVaga {
+  const m = matches.get(v.id);
   const resumo = v.descricao.replace(/\s+/g, " ").trim();
   return {
     id: v.id,
@@ -86,7 +91,7 @@ function paraCarta(v: VagaIndicada): CartaVaga {
     regime: rotuloModalidade("vaga", v.regime),
     lugar: formatarLugar(v.bairro, v.cidade),
     distancia: formatarDistancia(v.distanciaKm),
-    nota: v.nota,
+    match: m && m.nota !== null ? { nota: m.nota, atendidos: m.atendidos, conferidos: m.conferidos } : null,
     motivos: v.motivos,
     pedeCurriculo: v.pede_curriculo,
     resumo: resumo.length > 260 ? `${resumo.slice(0, 257)}…` : resumo,
@@ -144,6 +149,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
         .map((v) => (ia.has(v.id) ? { ...v, nota: Math.max(1, Math.min(99, Math.round(0.6 * ia.get(v.id)! + 0.4 * v.nota))) } : v))
         .sort((a, b) => b.nota - a.nota);
     }
+  }
+
+  // o % de match com o currículo, a mesma conta da busca (a ordem continua sendo a das indicações)
+  let matches: Matches = new Map();
+  if (curriculo && perfil) {
+    const pessoa = { curriculo, cidade: perfil.cidade, bairro: perfil.bairro };
+    const detalhes = await requisitosDasVagas(todas.filter((v) => v.autor_id !== usuario?.id).map((v) => v.id)).catch(
+      () => [],
+    );
+    matches = new Map(
+      detalhes.flatMap((d) => {
+        const m = matchComAVaga(d, pessoa, agora);
+        return m ? [[d.id, m] as const] : [];
+      }),
+    );
   }
 
   const contagem: Record<Aba, number | null> = {
@@ -215,16 +235,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
       {aba === "para-voce" && (
         <PilhaDeVagas
           key={procuro ?? ""}
-          cartas={paraVoce.slice(0, 40).map(paraCarta)}
+          cartas={paraVoce.slice(0, 40).map((v) => paraCarta(v, matches))}
           logado={Boolean(usuario)}
           temCurriculo={Boolean(curriculo)}
           passadas={passadas}
         />
       )}
 
-      {aba === "perto" && <Perto vagas={todas} local={local} agora={agora} usuarioId={usuario?.id ?? null} />}
+      {aba === "perto" && (
+        <Perto vagas={todas} local={local} agora={agora} usuarioId={usuario?.id ?? null} matches={matches} />
+      )}
 
-      {aba === "em-alta" && <EmAlta vagas={todas} agora={agora} usuarioId={usuario?.id ?? null} />}
+      {aba === "em-alta" && <EmAlta vagas={todas} agora={agora} usuarioId={usuario?.id ?? null} matches={matches} />}
 
       {aba === "salvas" &&
         (!usuario ? (
@@ -239,7 +261,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
           <div className="grid gap-4 sm:grid-cols-2">
             {salvas.map((v) => (
               <div key={v.id} className="flex flex-col gap-1">
-                <CardAnuncio anuncio={paraCard(v)} agora={agora} usuarioId={usuario.id} />
+                <CardAnuncio anuncio={paraCard(v)} agora={agora} usuarioId={usuario.id} match={matches.get(v.id) ?? null} />
                 <TirarSalva anuncioId={v.id} />
               </div>
             ))}
@@ -255,11 +277,13 @@ function Perto({
   local,
   agora,
   usuarioId,
+  matches,
 }: {
   vagas: VagaIndicada[];
   local: Awaited<ReturnType<typeof obterLocal>>;
   agora: number;
   usuarioId: string | null;
+  matches: Matches;
 }) {
   if (!local) {
     return (
@@ -302,7 +326,14 @@ function Perto({
             </h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               {g.vagas.slice(0, 30).map((v) => (
-                <CardAnuncio key={v.id} anuncio={paraCard(v)} agora={agora} usuarioId={usuarioId} pertoDeCasa={v.perto <= 1 ? v.perto : null} />
+                <CardAnuncio
+                  key={v.id}
+                  anuncio={paraCard(v)}
+                  agora={agora}
+                  usuarioId={usuarioId}
+                  pertoDeCasa={v.perto <= 1 ? v.perto : null}
+                  match={matches.get(v.id) ?? null}
+                />
               ))}
             </div>
           </section>
@@ -316,7 +347,17 @@ function Perto({
   );
 }
 
-function EmAlta({ vagas, agora, usuarioId }: { vagas: VagaIndicada[]; agora: number; usuarioId: string | null }) {
+function EmAlta({
+  vagas,
+  agora,
+  usuarioId,
+  matches,
+}: {
+  vagas: VagaIndicada[];
+  agora: number;
+  usuarioId: string | null;
+  matches: Matches;
+}) {
   const lista = [...vagas]
     .map((v) => ({ v, calor: calorDaVaga(v, agora) }))
     .sort((a, b) => b.calor - a.calor || b.v.criado_em.localeCompare(a.v.criado_em))
@@ -344,7 +385,7 @@ function EmAlta({ vagas, agora, usuarioId }: { vagas: VagaIndicada[]; agora: num
                 </>
               )}
             </p>
-            <CardAnuncio anuncio={paraCard(v)} agora={agora} usuarioId={usuarioId} />
+            <CardAnuncio anuncio={paraCard(v)} agora={agora} usuarioId={usuarioId} match={matches.get(v.id) ?? null} />
           </li>
         ))}
       </ol>
