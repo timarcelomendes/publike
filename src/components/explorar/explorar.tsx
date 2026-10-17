@@ -161,12 +161,14 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   ]);
   const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
   const avisar = filtros.tipo === "vaga" && !filtros.meus;
+  // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
+  const procuraTrabalho = intencao === null || intencao === "trabalho";
   const [encontrados, proximoPasso, publica, quem, salvas] = await Promise.all([
     buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
     proximoPassoDa(intencao, Boolean(usuario)),
     // "Só os meus" só para quem tem anúncio no ar (quem só procura não precisa dele)
     usuario && !filtros.meus ? temAnuncioNoAr(usuario.id).catch(() => false) : Promise.resolve(filtros.meus),
-    usuario && !filtros.meus && filtros.tipo !== "servico" ? quemProcura() : Promise.resolve(null),
+    usuario && procuraTrabalho && !filtros.meus && filtros.tipo !== "servico" ? quemProcura() : Promise.resolve(null),
     usuario && avisar ? minhasBuscasSalvas().catch(() => []) : Promise.resolve([]),
   ]);
   // o que cada vaga pede e oferece: para o % de match, o turno (a busca do banco não filtra
@@ -377,7 +379,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
             )}
             {/* o % de match chama para a conta e o currículo (quem procura trabalho já tem o atalho na lista) */}
-            {avisar && n > 0 && !quem && (!usuario || intencao !== "trabalho") && (
+            {avisar && n > 0 && !quem && procuraTrabalho && (!usuario || intencao !== "trabalho") && (
               <Link
                 href={
                   usuario

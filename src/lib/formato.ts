@@ -128,10 +128,26 @@ export function rotuloConta(tipo: string) {
   return TIPOS_CONTA[(tipo as TipoConta) in TIPOS_CONTA ? (tipo as TipoConta) : "pessoa"].minusculo;
 }
 
+const LIGACOES = new Set(["de", "da", "do", "das", "dos", "e"]);
+
+/**
+ * O bairro com as iniciais em maiúscula, como as pessoas escrevem às vezes em minúscula:
+ * "Setor sul" → "Setor Sul". Só mexe nas palavras todas em minúscula ("de", "da"... ficam);
+ * siglas e o que já veio com maiúscula ("BNH", "Vila São João") ficam como estão.
+ */
+export function nomeDoBairro(bairro: string) {
+  return bairro.replace(/\p{L}[\p{L}'’.-]*/gu, (palavra, posicao: number) =>
+    palavra === palavra.toLocaleLowerCase("pt-BR") && (posicao === 0 || !LIGACOES.has(palavra))
+      ? palavra.charAt(0).toLocaleUpperCase("pt-BR") + palavra.slice(1)
+      : palavra,
+  );
+}
+
 /** "Setor Bueno" ou "Setor Garavelo, Aparecida de Goiânia". */
 export function formatarLugar(bairro: string | null, cidade: string) {
   if (!bairro) return cidade;
-  return cidade === "Goiânia" ? bairro : `${bairro}, ${cidade}`;
+  const b = nomeDoBairro(bairro);
+  return cidade === "Goiânia" ? b : `${b}, ${cidade}`;
 }
 
 /** 5562999990001 → (62) 99999-0001 */
