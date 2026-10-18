@@ -1,6 +1,7 @@
 // Convites às empresas (admin): a lista, o arquivo modelo e a mensagem do convite.
 
 import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, VALORES_BENEFICIO } from "./constantes";
+import { escaparHtml } from "./email/montar";
 
 export const ESTADOS_CONVITE = [
   { id: "a_enviar", nome: "A enviar", filtro: "A enviar" },
@@ -338,6 +339,32 @@ export function mensagemConviteAgrupada(
       : `• É grátis para a empresa e para o candidato: sem plano e sem taxa.\n• A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus.`,
     `Se não tiver interesse, é só responder "não" que eu não mando mais mensagens. Obrigado!`,
   ].join("\n\n");
+}
+
+/**
+ * O e-mail do convite (o mesmo da prévia no admin e do que sai pelo Publike): assunto, texto e
+ * HTML, com o link da vaga como botão "Conferir e publicar a vaga".
+ */
+export function emailDoConvite(
+  c: Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho">,
+  assinatura: string,
+  site: string,
+) {
+  const link = linkDoConvite(site, c.token);
+  const texto = mensagemConvite(c, assinatura.slice(0, 40), link, Boolean(c.rascunho));
+  const paragrafo = (t: string) =>
+    `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(t).replace(/\n/g, "<br>")}</p>`;
+  const corpo = texto
+    .split("\n\n")
+    .map((p) =>
+      p.includes(link)
+        ? paragrafo(p.replace(link, "").trim()) +
+          `<p style="margin:-6px 0 20px;"><a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;background:#c2410c;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;">Conferir e publicar a vaga</a></p>`
+        : paragrafo(p),
+    )
+    .join("");
+  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1f1a14;max-width:560px;">${corpo}</div>`;
+  return { assunto: assuntoConvite(c), texto, html };
 }
 
 export function assuntoConvite(c: Pick<Convite, "vagas">) {

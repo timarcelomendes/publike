@@ -27,6 +27,7 @@ import {
   ESTADOS_CONVITE,
   formatarFone,
   lerCsv,
+  emailDoConvite,
   linkDoConvite,
   linhasParaConvites,
   mensagemConviteAgrupada,
@@ -618,6 +619,56 @@ const MARCAS = {
 type Marca = keyof typeof MARCAS;
 const LISTA_MARCAS = Object.keys(MARCAS) as Marca[];
 
+/** Como o e-mail chega: de quem, para quem, o assunto e o corpo, antes de enviar. */
+function PreviaEmail({
+  c,
+  site,
+  assinatura,
+  enviando,
+  aoFechar,
+  aoEnviar,
+}: {
+  c: Convite;
+  site: string;
+  assinatura: string;
+  enviando: boolean;
+  aoFechar: () => void;
+  aoEnviar: () => void;
+}) {
+  const e = emailDoConvite(c, assinatura, site);
+  return (
+    <section
+      aria-label={`Prévia do e-mail para ${c.nome}`}
+      className="flex flex-col gap-3 rounded-md border border-line-strong bg-surface-200 p-3"
+    >
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body-sm">
+        <dt className="text-ink-muted">De</dt>
+        <dd>Publike</dd>
+        <dt className="text-ink-muted">Para</dt>
+        <dd className="break-all">{c.email}</dd>
+        <dt className="text-ink-muted">Assunto</dt>
+        <dd className="text-label">{e.assunto}</dd>
+      </dl>
+      {/* o corpo como chega na caixa de entrada (fundo branco, como a maioria dos e-mails) */}
+      <iframe
+        title={`Corpo do e-mail para ${c.nome}`}
+        srcDoc={`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:20px;background:#ffffff">${e.html}</body>`}
+        sandbox=""
+        className="h-96 w-full rounded-sm border border-line bg-white"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Botao variante="primario" tamanho="sm" disabled={enviando} onClick={aoEnviar}>
+          <Mail aria-hidden />
+          {enviando ? "Enviando…" : "Enviar agora"}
+        </Botao>
+        <Botao variante="fantasma" tamanho="sm" onClick={aoFechar}>
+          Fechar
+        </Botao>
+      </div>
+    </section>
+  );
+}
+
 const juntarNomes = (l: string[]) => (l.length < 2 ? l.join("") : `${l.slice(0, -1).join(", ")} e ${l.at(-1)}`);
 
 const imagemDoConvite = (tipo: Convite["tipo"]) =>
@@ -665,6 +716,7 @@ function CartaoConvite({
   const nota = useAcao();
   const apagar = useAcao();
   const email = useAcao();
+  const [previaEmail, setPreviaEmail] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
   const podeCompartilhar = useCompartilhar();
@@ -743,21 +795,10 @@ function CartaoConvite({
           </a>
         ))}
         {c.email && (
-          // manda pelo Publike (o "mailto:" dependia do programa de e-mail do computador e cortava o texto)
-          <Botao
-            tamanho="sm"
-            disabled={email.pendente}
-            onClick={() =>
-              email.rodar(
-                () => enviarConviteEmail(c.id, assinatura),
-                (r) => {
-                  if (r.ok && c.status === "a_enviar") aoMarcar("enviada");
-                },
-              )
-            }
-          >
+          // abre a prévia; o envio é pelo Publike (o "mailto:" dependia do programa de e-mail do computador)
+          <Botao tamanho="sm" aria-expanded={previaEmail} onClick={() => setPreviaEmail((v) => !v)}>
             <Mail aria-hidden />
-            {email.pendente ? "Enviando…" : `Enviar e-mail para ${c.email}`}
+            E-mail para {c.email}
           </Botao>
         )}
         <Botao tamanho="sm" onClick={copiar}>
@@ -775,6 +816,25 @@ function CartaoConvite({
           </a>
         ))}
       </div>
+      {previaEmail && c.email && (
+        <PreviaEmail
+          c={c}
+          site={site}
+          assinatura={assinatura}
+          enviando={email.pendente}
+          aoFechar={() => setPreviaEmail(false)}
+          aoEnviar={() =>
+            email.rodar(
+              () => enviarConviteEmail(c.id, assinatura),
+              (r) => {
+                if (!r.ok) return;
+                setPreviaEmail(false);
+                if (c.status === "a_enviar") aoMarcar("enviada");
+              },
+            )
+          }
+        />
+      )}
       {email.mensagem}
 
       {grupo && (

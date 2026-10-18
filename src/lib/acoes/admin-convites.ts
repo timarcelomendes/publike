@@ -3,17 +3,14 @@
 import { refresh } from "next/cache";
 import nodemailer from "nodemailer";
 import {
-  assuntoConvite,
+  emailDoConvite,
   limparTelefone,
-  linkDoConvite,
-  mensagemConvite,
   rascunhoValido,
   STATUS_CONVITE,
   type Convite,
   type NovoConvite,
   type StatusConvite,
 } from "@/lib/convites";
-import { escaparHtml } from "@/lib/email/montar";
 import { configSmtp, urlDosEmails } from "@/lib/servidor/ambiente";
 import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
@@ -194,18 +191,11 @@ export async function enviarConviteEmail(id: string, assinatura: string): Promis
   const convite = conv as unknown as Convite;
   const para = convite.email;
   if (!para) return { ok: false, erro: "Este convite não tem e-mail." };
-  const site = urlDosEmails() ?? "https://publike.org";
-  const link = linkDoConvite(site, convite.token);
-  const texto = mensagemConvite(convite, String(assinatura ?? "").slice(0, 40), link, Boolean(convite.rascunho));
-  const html = texto
-    .split("\n\n")
-    .map((p) =>
-      p.includes(link)
-        ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(p.replace(link, "").trim()).replace(/\n/g, "<br>")}<br>` +
-          `<a href="${escaparHtml(link)}" style="display:inline-block;margin-top:10px;padding:12px 20px;background:#c2410c;color:#ffffff;font-weight:600;text-decoration:none;border-radius:8px;">Conferir e publicar a vaga</a></p>`
-        : `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(p).replace(/\n/g, "<br>")}</p>`,
-    )
-    .join("");
+  const { assunto, texto, html } = emailDoConvite(
+    convite,
+    String(assinatura ?? ""),
+    urlDosEmails() ?? "https://publike.org",
+  );
   const transporte = nodemailer.createTransport({
     host: smtp.servidor,
     port: smtp.porta,
@@ -220,9 +210,9 @@ export async function enviarConviteEmail(id: string, assinatura: string): Promis
     await transporte.sendMail({
       from: { name: "Publike", address: smtp.remetente },
       to: para,
-      subject: assuntoConvite(convite),
+      subject: assunto,
       text: texto,
-      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1f1a14;max-width:560px;">${html}</div>`,
+      html,
     });
   } catch (e) {
     console.error("Publike: o convite por e-mail não saiu:", e instanceof Error ? e.message : String(e));
