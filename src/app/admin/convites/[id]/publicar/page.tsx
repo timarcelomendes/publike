@@ -142,15 +142,19 @@ async function Conteudo({ id }: { id: string }) {
                     />
                   </label>
                   <label htmlFor={id_("email")} className="flex flex-col gap-1 text-label">
-                    E-mail (login da conta)
+                    E-mail (é por ele que a empresa entra)
                     <input
                       id={id_("email")}
                       name="conta_email"
                       type="email"
                       defaultValue={convite.email ?? ""}
-                      placeholder="Sem e-mail, o login é pelo WhatsApp"
+                      placeholder="contato@empresa.com.br"
                       className={classesEntrada}
                     />
+                    <span className="text-body-sm font-normal text-ink-muted">
+                      O Publike entra só pelo e-mail. Sem ele, a vaga sai, mas a empresa só consegue entrar depois que
+                      você colocar um e-mail na conta.
+                    </span>
                   </label>
                   {convite.tipo === "agencia" && (
                     <label htmlFor={id_("cnpj")} className="flex flex-col gap-1 text-label">

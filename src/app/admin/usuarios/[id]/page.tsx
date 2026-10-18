@@ -138,6 +138,12 @@ async function Conteudo({
           </p>
         </Aviso>
       )}
+      {primeiro(sp.sem_email) === "1" && (
+        <Aviso tipo="alerta" titulo="A empresa ainda não tem como entrar">
+          O Publike entra só pelo e-mail, e esta conta foi criada sem e-mail. Peça o e-mail na conversa, coloque no
+          login abaixo e mande o acesso (por e-mail ou pelo link, no WhatsApp).
+        </Aviso>
+      )}
 
       {(loginSolto || loginPreso) && (
         <Aviso tipo="alerta" titulo={loginSolto ? "O login ainda não está bloqueado" : "O login ainda está bloqueado"}>

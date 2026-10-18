@@ -266,6 +266,8 @@ export async function publicarConvitePeloAdmin(
 
   // a conta da empresa: a do convite, a que já usa o e-mail, ou uma nova
   let contaId: string | null = null;
+  // conta nova sem e-mail: ainda não tem como entrar (o login é só pelo e-mail)
+  let semEmail = false;
   if (convite.usuario_id) {
     const { data: p } = await c.from("perfis").select("id").eq("id", convite.usuario_id).maybeSingle();
     contaId = p?.id ?? null;
@@ -328,6 +330,7 @@ export async function publicarConvitePeloAdmin(
         return { ok: false, erro: `Conta da empresa: ${mensagemDeErro((erroPerfil ?? erroContato)!)}` };
       }
       contaId = id;
+      semEmail = !p.email;
     }
   }
 
@@ -367,5 +370,5 @@ export async function publicarConvitePeloAdmin(
   // a IA revisa o texto, como em qualquer vaga; a conta nova avisa a equipe
   after(processarFilas);
   revalidatePath("/");
-  redirect(`/admin/usuarios/${contaId}?publicada=${anuncio.id}`);
+  redirect(`/admin/usuarios/${contaId}?publicada=${anuncio.id}${semEmail ? "&sem_email=1" : ""}`);
 }
