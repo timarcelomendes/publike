@@ -11,6 +11,7 @@ import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/nave
 import { RodapeDaPagina } from "@/components/rodape-da-pagina";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
+import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
 import "./globals.css";
 
 // Fontes da interface (Design System), servidas pelo próprio site.
@@ -51,16 +52,22 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf7ef" },
-    { media: "(prefers-color-scheme: dark)", color: "#17130f" },
-  ],
+  // claro por padrão; no escuro, o components/tema.tsx troca a cor
+  themeColor: COR_BARRA.claro,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${figtree.variable} ${bricolage.variable}`}>
+    // o SCRIPT_TEMA marca data-tema no <html> antes do React (por isso o suppressHydrationWarning)
+    <html
+      lang="pt-BR"
+      className={`${figtree.variable} ${bricolage.variable}`}
+      data-tema="claro"
+      suppressHydrationWarning
+    >
       <head>
+        {/* claro, automático ou escuro: aplica a escolha antes de pintar a página */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
         {/* guarda o "pode instalar" do navegador, que chega antes do React (instalar-app.tsx) */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_PEDIDO }} />
       </head>

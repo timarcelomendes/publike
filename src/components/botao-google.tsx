@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTemaEscuro } from "./tema";
 
 // Botão oficial "Continuar com o Google" (Google Identity Services).
 // O login acontece no próprio site: a janela do Google mostra o endereço do
@@ -52,24 +53,6 @@ async function novoNonce() {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(nonce));
   const hex = Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
   return { nonce, hex };
-}
-
-// O tema do site segue o do sistema (prefers-color-scheme no globals.css).
-const ESCURO = "(prefers-color-scheme: dark)";
-
-function acompanharTema(avisar: () => void) {
-  const consulta = window.matchMedia(ESCURO);
-  consulta.addEventListener("change", avisar);
-  return () => consulta.removeEventListener("change", avisar);
-}
-
-/** true quando o site está no tema escuro; muda na hora em que o sistema troca. */
-function useTemaEscuro() {
-  return useSyncExternalStore(
-    acompanharTema,
-    () => window.matchMedia(ESCURO).matches,
-    () => false,
-  );
 }
 
 export function BotaoGoogle({

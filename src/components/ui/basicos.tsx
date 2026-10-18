@@ -152,7 +152,8 @@ export function Vazio({
 // ------------------------------------------------------------------ Logo
 
 // O estilo vai dentro do próprio SVG: não depende do globals.css.
-const ESTILO_LOGO = ".lk-i{fill:#1f1a14}@media (prefers-color-scheme:dark){.lk-i{fill:#ffffff}}";
+const ESTILO_LOGO =
+  '.lk-i{fill:#1f1a14}:root[data-tema="escuro"] .lk-i{fill:#ffffff}@media (prefers-color-scheme:dark){:root[data-tema="auto"] .lk-i{fill:#ffffff}}';
 
 /**
  * A assinatura no site: o p de publike é o pino, com o check vazado (deu match).

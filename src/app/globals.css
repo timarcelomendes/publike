@@ -48,8 +48,38 @@
   color-scheme: light;
 }
 
+/* Tema: claro por padrão; a pessoa escolhe escuro ou automático no botão do cabeçalho
+   (components/tema.tsx), que marca <html data-tema="escuro|auto">. */
+:root[data-tema="escuro"] {
+  --pk-surface-100: #17130f;
+  --pk-surface-200: #221d18;
+  --pk-surface-300: #2e2721;
+  --pk-line: #3b332b;
+  --pk-line-strong: #7d7062;
+  --pk-ink: #f5efe6;
+  --pk-ink-muted: #b5a998;
+  --pk-like: #ff4d5a;
+  --pk-on-like: #1f1a14;
+  --pk-like-text: #ff7a85;
+  --pk-like-soft: #3a1418;
+  --pk-terra-hover: #d4501a;
+  --pk-terra-text: #f08a4b;
+  --pk-terra-soft: #3d2216;
+  --pk-cerrado-text: #5cc493;
+  --pk-danger: #f97066;
+  --pk-focus: #f5b301;
+  --pk-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --pk-shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.55);
+  --pk-veu: rgba(0, 0, 0, 0.62);
+  --pk-social-surface: #202124;
+  --pk-social-hover: #303134;
+  --pk-social-line: #202124;
+  --pk-social-ink: #e8eaed;
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root[data-tema="auto"] {
     --pk-surface-100: #17130f;
     --pk-surface-200: #221d18;
     --pk-surface-300: #2e2721;

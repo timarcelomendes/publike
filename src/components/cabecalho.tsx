@@ -8,6 +8,7 @@ import { BotaoEntrarCabecalho, BotaoPublicar, BotaoPublicarCabecalho } from "./b
 import { BotaoInstalarApp } from "./instalar-app";
 import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
+import { BotaoTema } from "./tema";
 import { Container, Logo } from "./ui/basicos";
 
 function LinkNav({ href, children }: { href: string; children: ReactNode }) {
@@ -33,6 +34,7 @@ export function Cabecalho() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <BotaoInstalarApp variante="cabecalho" />
+          <BotaoTema />
           {/* No celular, "Publicar" fica na barra de baixo */}
           <Suspense fallback={<BotaoPublicar />}>
             <BotaoPublicarCabecalho />

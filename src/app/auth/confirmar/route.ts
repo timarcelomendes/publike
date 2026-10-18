@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { escaparHtml } from "@/lib/email/montar";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_PEDIU_LINK, linkDeEntradaValido } from "@/lib/link-entrada";
+import { SCRIPT_TEMA } from "@/lib/tema";
 
 // Página do link de entrar por e-mail (vem de /auth/callback). É uma página
 // leve, sem React: no navegador que pediu o link, ela já envia o formulário assim
@@ -12,9 +13,15 @@ import { COOKIE_PEDIU_LINK, linkDeEntradaValido } from "@/lib/link-entrada";
 // da conta dele), a página pergunta antes: ninguém entra na conta de outra
 // pessoa sem perceber e preenche ali o WhatsApp ou o currículo.
 
+// o tema que a pessoa escolheu no site (claro por padrão; lib/tema.ts)
+const ESCURO =
+  "--fundo:#17130f;--tinta:#f5efe6;--apagado:#b5a998;--terra-hover:#d4501a;--foco:#f5b301;color-scheme:dark";
+
 const ESTILO = `
-:root{--fundo:#fbf7ef;--tinta:#1f1a14;--apagado:#6b6052;--terra:#c2410c;--terra-hover:#a8380a;--foco:#1f6f4a;color-scheme:light dark}
-@media (prefers-color-scheme:dark){:root{--fundo:#17130f;--tinta:#f5efe6;--apagado:#b5a998;--terra-hover:#d4501a;--foco:#f5b301}}
+:root{--fundo:#fbf7ef;--tinta:#1f1a14;--apagado:#6b6052;--terra:#c2410c;--terra-hover:#a8380a;--foco:#1f6f4a;color-scheme:light}
+:root[data-tema=escuro]{${ESCURO}}@media (prefers-color-scheme:dark){:root[data-tema=auto]{${ESCURO}}}
+.logo-escuro,:root[data-tema=escuro] .logo-claro{display:none}:root[data-tema=escuro] .logo-escuro{display:block}
+@media (prefers-color-scheme:dark){:root[data-tema=auto] .logo-claro{display:none}:root[data-tema=auto] .logo-escuro{display:block}}
 *{box-sizing:border-box}
 body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--fundo);color:var(--tinta);
 font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:24px 16px;text-align:center}
@@ -39,9 +46,10 @@ function pagina(titulo: string, miolo: string, script = "") {
   return `<!doctype html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>${escaparHtml(titulo)} · Publike</title><link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${ESTILO}</style></head>
+<title>${escaparHtml(titulo)} · Publike</title><link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${ESTILO}</style>
+<script>${SCRIPT_TEMA}</script></head>
 <body><main>
-<picture><source srcset="/logo/publike-logo-escuro.svg" media="(prefers-color-scheme: dark)"><img src="/logo/publike-logo.svg" alt="Publike" width="122" height="40"></picture>
+<img class="logo-claro" src="/logo/publike-logo.svg" alt="Publike" width="122" height="40"><img class="logo-escuro" src="/logo/publike-logo-escuro.svg" alt="Publike" width="122" height="40">
 ${miolo}
 </main>${script ? `<script>${script}</script>` : ""}</body>
 </html>`;
