@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CapaNoticia } from "@/components/noticias/capa";
-import { Container, Selo } from "@/components/ui/basicos";
+import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
 import { dataCurta, TEMAS_NOTICIA } from "@/lib/noticias";
@@ -17,7 +17,13 @@ export async function generateMetadata({ params }: PageProps<"/noticias/[slug]">
     title: n.titulo,
     description: n.resumo,
     alternates: { canonical: `/noticias/${n.slug}` },
-    openGraph: { type: "article", title: n.titulo, description: n.resumo, publishedTime: n.publicar_em ?? undefined },
+    openGraph: {
+      type: "article",
+      title: n.titulo,
+      description: n.resumo,
+      publishedTime: n.publicar_em ?? undefined,
+      ...(n.foto_url ? { images: [{ url: n.foto_url, alt: n.foto_alt ?? "" }] } : {}),
+    },
   };
 }
 
@@ -45,6 +51,7 @@ async function Noticia({ slug }: { slug: string }) {
     isBasedOn: n.fonte_url,
     author: { "@type": "Organization", name: "Publike", url: SITE_URL },
     publisher: { "@type": "Organization", name: "Publike", url: SITE_URL },
+    ...(n.foto_url ? { image: [n.foto_url] } : {}),
   };
   return (
     <Container className="py-8 sm:py-12">
@@ -57,14 +64,43 @@ async function Noticia({ slug }: { slug: string }) {
           <ArrowLeft aria-hidden className="size-4" />
           Notícias
         </Link>
-        <p className="mt-6 flex flex-wrap items-center gap-2 text-body-sm text-ink-muted">
-          <Selo variante="contorno">{TEMAS_NOTICIA[n.tema]?.nome ?? n.tema}</Selo>
+        <p className="mt-6 text-caption text-terra-text uppercase">{TEMAS_NOTICIA[n.tema]?.nome ?? n.tema}</p>
+        <h1 className="mt-2 text-h1">{n.titulo}</h1>
+        <p className="mt-3 text-body-lg text-ink-muted">{n.resumo}</p>
+        <p className="mt-4 flex flex-wrap items-center gap-x-2 border-t border-line pt-3 text-body-sm text-ink-muted">
           {n.publicar_em && <time dateTime={n.publicar_em}>{dataCurta(n.publicar_em)}</time>}
           {n.cidade && <span>· {n.cidade}</span>}
+          <span>· Fonte: {n.fonte_nome}</span>
         </p>
-        <h1 className="mt-3 text-h1">{n.titulo}</h1>
-        <p className="mt-3 text-body-lg">{n.resumo}</p>
-        <CapaNoticia n={n} tamanho="grande" className="mt-6 aspect-video rounded-lg border border-line" />
+        <figure className="mt-5">
+          <CapaNoticia n={n} tamanho="grande" className="aspect-video rounded-md" />
+          {n.foto_url && n.foto_autor && (
+            <figcaption className="mt-2 text-body-sm text-ink-muted">
+              Foto:{" "}
+              {n.foto_autor_url ? (
+                <a
+                  href={n.foto_autor_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  {n.foto_autor}
+                </a>
+              ) : (
+                n.foto_autor
+              )}{" "}
+              /{" "}
+              <a
+                href={n.foto_link ?? "https://www.pexels.com"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                Pexels
+              </a>
+            </figcaption>
+          )}
+        </figure>
 
         <div className="mt-6 flex flex-col gap-4 text-body">
           {n.corpo

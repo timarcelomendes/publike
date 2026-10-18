@@ -1,8 +1,8 @@
 import { CapaDesenhada, type CORES_CAPA, type NomeCena } from "@/components/conteudo/capa";
 import type { Noticia, TemaNoticia } from "@/lib/noticias";
 
-// Capa das notícias: desenhada (sem a foto do jornal, que tem dono), com a
-// cena escolhida pelo assunto e o número da notícia em destaque ("600 vagas").
+// Capa das notícias: a foto de banco livre (Pexels) quando a notícia tem uma; se não,
+// a capa desenhada (a foto do jornal tem dono), com a cena do assunto e o número em destaque.
 
 const CENA_DO_TEMA: Record<TemaNoticia, NomeCena> = {
   vagas: "Pessoas",
@@ -48,10 +48,23 @@ export function CapaNoticia({
   tamanho = "card",
   className = "",
 }: {
-  n: Pick<Noticia, "slug" | "titulo" | "tema">;
+  n: Pick<Noticia, "slug" | "titulo" | "tema" | "foto_url" | "foto_alt">;
   tamanho?: "card" | "grande";
   className?: string;
 }) {
+  if (n.foto_url) {
+    return (
+      // a foto vem do banco já no tamanho certo (1200 de largura): sem passar pelo otimizador
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={n.foto_url}
+        alt={n.foto_alt || ""}
+        loading={tamanho === "grande" ? "eager" : "lazy"}
+        decoding="async"
+        className={`block w-full bg-surface-300 object-cover ${className}`}
+      />
+    );
+  }
   const cena = PALAVRAS.find(([re]) => re.test(n.titulo))?.[1] ?? CENA_DO_TEMA[n.tema] ?? "Mercado";
   return (
     <CapaDesenhada

@@ -578,6 +578,11 @@ export type Database = {
           publicar_em: string | null;
           criado_em: string;
           atualizado_em: string;
+          foto_url: string | null;
+          foto_autor: string | null;
+          foto_autor_url: string | null;
+          foto_link: string | null;
+          foto_alt: string | null;
         };
         Insert: SemTabela;
         Update: {
@@ -809,6 +814,7 @@ export type Database = {
       aceite_pendente: { Args: { p_versao: string }; Returns: boolean };
       servidor_noticias_contexto: { Args: { p_chave: string }; Returns: Json };
       servidor_salvar_noticias: { Args: { p_chave: string; p_itens: Json; p_erro?: string | null }; Returns: number };
+      servidor_fotos_noticias: { Args: { p_chave: string; p_fotos: Json }; Returns: number };
       /** conta nova que veio pela página de serviços: as boas-vindas viram as de prestador */
       quero_oferecer_servicos: { Args: Record<string, never>; Returns: undefined };
       registrar_origem: { Args: { p_origem: string }; Returns: undefined };

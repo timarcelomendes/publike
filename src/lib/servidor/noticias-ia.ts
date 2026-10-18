@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { chamarIA, ErroIA, iaConfigurada, lerJson } from "@/lib/ia/openai";
 import { LISTA_TEMAS_NOTICIA, normalizarUrl, slugDaNoticia, type TemaNoticia } from "@/lib/noticias";
 import { acessoFila } from "./filas";
+import { buscarFoto, fotosConfiguradas } from "./fotos-noticias";
 
 // A IA procura notícias sobre trabalho em Goiânia e região e escreve um resumo
 // curto de cada uma. Tudo entra como rascunho: só vai para o site quando o
@@ -22,6 +23,8 @@ type ItemIA = {
   fonte_nome: string;
   fonte_url: string;
   fonte_data: string;
+  /** o que buscar no banco de fotos, em inglês */
+  foto_busca: string;
 };
 
 const ESQUEMA = {
@@ -34,7 +37,18 @@ const ESQUEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["titulo", "resumo", "corpo", "pratico", "tema", "cidade", "fonte_nome", "fonte_url", "fonte_data"],
+        required: [
+          "titulo",
+          "resumo",
+          "corpo",
+          "pratico",
+          "tema",
+          "cidade",
+          "fonte_nome",
+          "fonte_url",
+          "fonte_data",
+          "foto_busca",
+        ],
         properties: {
           titulo: { type: "string" },
           resumo: { type: "string" },
@@ -45,6 +59,7 @@ const ESQUEMA = {
           fonte_nome: { type: "string" },
           fonte_url: { type: "string" },
           fonte_data: { type: "string" },
+          foto_busca: { type: "string" },
         },
       },
     },
@@ -82,6 +97,7 @@ Regras:
 - "cidade": a cidade da notícia ou "" se for de Goiás ou do Brasil todo.
 - "tema": vagas (vagas, feirões, contratações), cursos, concursos, direitos (leis, benefícios, salário mínimo), eventos, ou mercado (números, economia, setores, demissões, greves, tecnologia e o resto).
 - "fonte_data": a data da matéria no formato AAAA-MM-DD, ou "" se não souber.
+- "foto_busca": duas a quatro palavras em inglês para achar uma foto de banco que combine com o assunto, como numa notícia de jornal ("construction workers", "job fair crowd", "students classroom"). Sem nome de pessoa, de empresa ou de lugar.
 - No máximo 8 notícias, das mais úteis para as menos, com pelo menos metade de Goiás quando houver. Nada de notícia de crime, política partidária, fofoca, propaganda ou vaga de um único anúncio. Se não achar nada que preste, devolva a lista vazia.`;
 }
 
@@ -101,10 +117,19 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
     modelo: string | null;
     ultima_busca: string | null;
     recentes: { titulo: string; fonte_url: string }[];
+    sem_foto?: { id: string; titulo: string; tema: TemaNoticia }[];
+    fotos_usadas?: string[];
   };
+  const usadas = new Set(contexto.fotos_usadas ?? []);
+  // as notícias que ainda estão sem foto ganham uma (também quando a busca de notícias não roda agora)
+  const completar = () => completarFotos(cliente, chave, contexto.sem_foto ?? [], usadas);
   if (!forcar) {
-    if (!contexto.ligada) return { ok: true, novas: 0, pulou: "A busca de notícias está desligada no admin." };
+    if (!contexto.ligada) {
+      await completar();
+      return { ok: true, novas: 0, pulou: "A busca de notícias está desligada no admin." };
+    }
     if (contexto.ultima_busca && agora - Date.parse(contexto.ultima_busca) < INTERVALO_MIN) {
+      await completar();
       return { ok: true, novas: 0, pulou: "A última busca foi há pouco." };
     }
   }
@@ -163,16 +188,39 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
       fonte_nome: (i.fonte_nome.trim() || new URL(i.fonte_url).hostname.replace(/^www\./, "")).slice(0, 120),
       fonte_url: i.fonte_url.trim(),
       fonte_data: /^\d{4}-\d{2}-\d{2}$/.test(i.fonte_data) ? i.fonte_data : "",
+      foto_busca: (i.foto_busca ?? "").trim(),
     }));
+  // a foto de cada uma (uma de cada vez: duas notícias não ficam com a mesma)
+  const comFoto = [];
+  for (const { foto_busca, ...a } of aceitas) {
+    comFoto.push({ ...a, ...((await buscarFoto(foto_busca, a.tema, usadas)) ?? {}) });
+  }
 
   const descartadas = itens.length - aceitas.length;
   const { data: novas, error } = await cliente.rpc("servidor_salvar_noticias", {
     p_chave: chave,
-    p_itens: aceitas,
+    p_itens: comFoto,
     p_erro: descartadas
       ? `${descartadas} sugestão(ões) da IA ficaram de fora (fonte não confirmada, repetida ou antiga).`
       : null,
   });
   if (error) return { ok: false, erro: "Não deu para guardar as notícias." };
+  await completar();
   return { ok: true, novas: novas ?? 0 };
+}
+
+/** Foto para as notícias que ainda não têm (as antigas e as que o banco de fotos não achou antes). */
+async function completarFotos(
+  cliente: NonNullable<ReturnType<typeof acessoFila>>["cliente"],
+  chave: string,
+  semFoto: { id: string; titulo: string; tema: TemaNoticia }[],
+  usadas: Set<string>,
+) {
+  if (!fotosConfiguradas() || !semFoto.length) return;
+  const fotos = [];
+  for (const n of semFoto) {
+    const foto = await buscarFoto("", n.tema, usadas);
+    if (foto) fotos.push({ id: n.id, ...foto });
+  }
+  if (fotos.length) await cliente.rpc("servidor_fotos_noticias", { p_chave: chave, p_fotos: fotos });
 }

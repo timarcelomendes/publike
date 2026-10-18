@@ -9,7 +9,7 @@ const POLITICA_DE_CONTEUDO = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-  `img-src 'self' data: blob: ${SUPABASE} https://tiles.openfreemap.org https://*.googleusercontent.com`,
+  `img-src 'self' data: blob: ${SUPABASE} https://tiles.openfreemap.org https://*.googleusercontent.com https://images.pexels.com`,
   "font-src 'self'",
   `connect-src 'self' ${SUPABASE} ${SUPABASE.replace(/^http/, "ws")} https://tiles.openfreemap.org https://accounts.google.com https://challenges.cloudflare.com`,
   "frame-src https://accounts.google.com https://challenges.cloudflare.com",
