@@ -7,7 +7,8 @@ import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
 import { ConviteInstalar } from "@/components/instalar-app";
-import { AvisoDemo, BarraInferior, Rodape } from "@/components/navegacao";
+import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/navegacao";
+import { RodapeDaPagina } from "@/components/rodape-da-pagina";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import "./globals.css";
@@ -75,7 +76,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main id="conteudo" className="flex-1">
           {children}
         </main>
-        <Rodape />
+        {/* lê o endereço da página (painel e perfil: rodapé curto; entrar: sem rodapé) */}
+        <Suspense fallback={null}>
+          <RodapeDaPagina completo={<Rodape />} curto={<RodapeCurto />} />
+        </Suspense>
         <BarraInferior />
         <Assistente />
         {/* lê o endereço da página: no build, precisa estar num Suspense */}

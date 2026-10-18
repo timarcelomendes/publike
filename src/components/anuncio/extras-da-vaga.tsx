@@ -335,6 +335,10 @@ export function BeneficiosExtras({ inicial, erro }: { inicial: string[]; erro?: 
 export function MontarHorario({ inicial, erro }: { inicial: HorarioDetalhe | null; erro?: string }) {
   const base = useId();
   const [h, setH] = useState<HorarioDetalhe>(inicial ?? { escala: null, dias: [], turnos: [], obs: "" });
+  // sem horário montado, fica atrás de um botão (é opcional e ocupava meia tela no celular)
+  const [aberto, setAberto] = useState(
+    Boolean(inicial && (inicial.escala || inicial.dias.length || inicial.turnos.length || inicial.obs.trim())),
+  );
   const mudar = (parte: Partial<HorarioDetalhe>) => setH((atual) => ({ ...atual, ...parte }));
   const completos = h.turnos.filter((t) => t.inicio && t.fim);
   const previa = textoDoHorario({ ...h, turnos: completos, obs: h.obs.trim() });
@@ -353,6 +357,19 @@ export function MontarHorario({ inicial, erro }: { inicial: HorarioDetalhe | nul
           ? ["seg", "ter", "qua", "qui", "sex", "sab"]
           : null;
     mudar({ escala: nova, ...(dias && h.dias.length === 0 ? { dias } : {}) });
+  }
+
+  if (!aberto) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Botao tamanho="sm" onClick={() => setAberto(true)} className="self-start">
+          <Plus aria-hidden />
+          Adicionar horário
+        </Botao>
+        <p className="text-body-sm text-ink-muted">Opcional: escala, dias da semana e turnos.</p>
+        {erro && <MensagemErro>{erro}</MensagemErro>}
+      </div>
+    );
   }
 
   return (

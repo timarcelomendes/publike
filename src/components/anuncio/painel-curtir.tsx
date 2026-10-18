@@ -3,7 +3,7 @@
 import { FileText, Heart, HeartCrack, PartyPopper, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
@@ -43,6 +43,8 @@ type Props = {
   minhasRespostas?: Respostas;
   /** veio do cartão ou do Descobrir sem responder: avisa em cima das perguntas */
   pedirRespostas?: boolean;
+  /** tocou em Curtir sem conta, entrou e voltou (?curtir=1): o quadro aparece com o botão à mão */
+  continuarCurtida?: boolean;
   /** depois do match: a entrevista que a empresa marcou */
   entrevista?: Entrevista | null;
 };
@@ -103,6 +105,7 @@ export function PainelCurtir({
   perguntas = [],
   minhasRespostas = {},
   pedirRespostas = false,
+  continuarCurtida = false,
   entrevista = null,
 }: Props) {
   const router = useRouter();
@@ -112,6 +115,17 @@ export function PainelCurtir({
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const servico = tipo === "servico";
+  const quadro = useRef<HTMLDivElement>(null);
+  const botaoCurtir = useRef<HTMLButtonElement>(null);
+  // voltou de "Entrar" para curtir: termina o que a pessoa começou (o quadro na tela, o botão com o foco)
+  const continuar = continuarCurtida && logado && (status === null || status === "desfeito");
+  useEffect(() => {
+    const el = quadro.current;
+    // a página tem o quadro duas vezes (celular e computador): só o que está à mostra
+    if (!continuar || !el || el.offsetParent === null) return;
+    el.scrollIntoView({ block: "center" });
+    botaoCurtir.current?.focus({ preventScroll: true });
+  }, [continuar]);
   // quem decide se aceita (e, com o aceite, vocês se conectam)
   const quem = autorNome || (servico ? "O profissional" : "Quem publicou");
   // vaga que pede currículo, para quem ainda não mandou: entra o passo do currículo
@@ -120,7 +134,7 @@ export function PainelCurtir({
   function curtir() {
     setErro(null);
     if (!logado) {
-      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`);
+      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1`)}`);
       return;
     }
     if (perguntas.length) {
@@ -315,7 +329,17 @@ export function PainelCurtir({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
+    <div
+      ref={quadro}
+      className={`flex flex-col gap-4 rounded-lg border bg-surface-200 p-5 shadow-card ${
+        continuar ? "border-like ring-2 ring-like/30" : "border-line"
+      }`}
+    >
+      {continuar && (
+        <p role="status" className="rounded-md bg-like-soft px-3 py-2 text-label text-like-text">
+          Pronto, você entrou. Falta só tocar em “{servico ? "Quero contratar" : "Curtir a vaga"}”.
+        </p>
+      )}
       <div>
         <p className="font-display text-h3">{servico ? "Quer contratar?" : "Tem interesse?"}</p>
         <CaminhoDaCurtida
@@ -385,6 +409,7 @@ export function PainelCurtir({
         </div>
       )}
       <button
+        ref={botaoCurtir}
         type="button"
         onClick={curtir}
         disabled={pendente}

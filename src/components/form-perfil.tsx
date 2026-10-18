@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Plus, X } from "lucide-react";
+import { Camera, ChevronDown, Plus, X } from "lucide-react";
 import Link from "next/link";
 import {
   startTransition,
@@ -172,6 +172,145 @@ export function FormPerfil({
     }
   }
 
+  // Primeira vez (veio de "Entrar" para curtir ou publicar): só o que falta para seguir, o resto fica para depois
+  const curto = completar && !perfil;
+
+  const blocoFoto = (
+    <div className="flex items-center gap-4">
+      <Avatar nome={nome || "?"} foto={foto} tamanho={72} />
+      <div className="flex flex-col gap-1">
+        <label
+          className={`inline-flex min-h-10 cursor-pointer items-center gap-2 self-start rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${enviandoFoto ? "opacity-60" : ""}`}
+        >
+          <Camera aria-hidden className="size-[18px]" />
+          {enviandoFoto ? "Enviando…" : foto ? "Trocar foto" : "Pôr uma foto"}
+          <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
+        </label>
+        <p className="text-body-sm text-ink-muted">Opcional. Rosto ou logo ajudam a passar confiança.</p>
+        {(erroFoto || erros.foto) && <MensagemErro>{erroFoto ?? erros.foto}</MensagemErro>}
+      </div>
+    </div>
+  );
+
+  const campoWhatsapp = (
+    <Campo rotulo="WhatsApp" nome="whatsapp" erro={erros.whatsapp}>
+      <input
+        {...ligarCampo("whatsapp", erros.whatsapp)}
+        value={whatsapp}
+        onChange={(e) => setWhatsapp(mascararCelular(e.target.value))}
+        inputMode="tel"
+        autoComplete="tel-national"
+        placeholder="(62) 99999-0000"
+        className={classesEntrada}
+      />
+    </Campo>
+  );
+
+  const camposEmail = (
+    <>
+      <Campo rotulo="E-mail de contato" nome="email" opcional erro={erros.email}>
+        <input
+          {...ligarCampo("email", erros.email)}
+          type="email"
+          defaultValue={perfil?.email ?? email ?? ""}
+          autoComplete="email"
+          className={classesEntrada}
+        />
+      </Campo>
+      <label className="flex min-h-11 cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          name="receber_emails"
+          defaultChecked={perfil?.receber_emails ?? true}
+          className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+        />
+        <span>
+          <span className="block text-label">Receber avisos por e-mail</span>
+          <span className="block text-body-sm text-ink-muted">
+            Curtidas, matches e avisos da moderação, no e-mail da sua conta.
+          </span>
+        </span>
+      </label>
+    </>
+  );
+
+  const secaoSobre = (
+    <>
+      <h2 className="text-h3">{tipo === "pessoa" ? "Sobre você" : agencia ? "Sobre a agência" : "Sobre o negócio"}</h2>
+      <Campo
+        rotulo={tipo === "pessoa" ? "O que você faz" : "Área de atuação"}
+        nome="novo-servico"
+        ajuda="Aparece para quem publica quando você curte. Até 12."
+      >
+        <div className="flex gap-2">
+          <input
+            id="novo-servico"
+            value={novo}
+            onChange={(e) => setNovo(e.target.value)}
+            onKeyDown={teclaServico}
+            maxLength={40}
+            placeholder="Ex.: pedreiro, garçom, diarista"
+            className={classesEntrada}
+            aria-describedby="novo-servico-ajuda"
+          />
+          <Botao onClick={() => adicionar(novo)} aria-label="Adicionar">
+            <Plus aria-hidden />
+          </Botao>
+        </div>
+      </Campo>
+      {servicos.length > 0 && (
+        <ul className="flex flex-wrap gap-2" aria-label="O que você faz">
+          {servicos.map((s) => (
+            <li key={s}>
+              <button
+                type="button"
+                onClick={() => setServicos(servicos.filter((x) => x !== s))}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-pill bg-ink px-3 text-label text-surface-100"
+              >
+                {s}
+                <X aria-hidden className="size-4" />
+                <span className="sr-only">(remover)</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {SUGESTOES.filter((s) => !servicos.some((x) => x.toLowerCase() === s.toLowerCase()))
+          .slice(0, 10)
+          .map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => adicionar(s)}
+              className="inline-flex min-h-9 items-center gap-1 rounded-pill border border-line bg-surface-300 px-3 text-body-sm text-ink hover:border-line-strong"
+            >
+              <Plus aria-hidden className="size-3.5" />
+              {s}
+            </button>
+          ))}
+      </div>
+      {erros.servicos && <MensagemErro>{erros.servicos}</MensagemErro>}
+
+      <Campo rotulo="Apresentação" nome="sobre" opcional erro={erros.sobre}>
+        <textarea
+          {...ligarCampo("sobre", erros.sobre)}
+          defaultValue={perfil?.sobre ?? ""}
+          rows={4}
+          maxLength={600}
+          placeholder={
+            tipo === "pessoa"
+              ? "Ex.: Trabalho com cozinha há 3 anos. Tenho disponibilidade à noite e moro no Jardim América."
+              : agencia
+                ? "Ex.: Recrutamento e seleção desde 2012. Atendemos comércio, indústria e escritórios de Goiânia."
+                : "Ex.: Restaurante de comida caseira no Setor Bueno, aberto desde 2015."
+          }
+          className={`${classesEntrada} resize-y`}
+        />
+      </Campo>
+    </>
+  );
+
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
       {completar && (
@@ -185,18 +324,7 @@ export function FormPerfil({
       <input type="hidden" name="servicos" value={servicos.join(",")} />
 
       <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
-        <div className="flex items-center gap-4">
-          <Avatar nome={nome || "?"} foto={foto} tamanho={72} />
-          <div className="flex flex-col gap-1">
-            <label className={`inline-flex min-h-10 cursor-pointer items-center gap-2 self-start rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${enviandoFoto ? "opacity-60" : ""}`}>
-              <Camera aria-hidden className="size-[18px]" />
-              {enviandoFoto ? "Enviando…" : foto ? "Trocar foto" : "Pôr uma foto"}
-              <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
-            </label>
-            <p className="text-body-sm text-ink-muted">Opcional. Rosto ou logo ajudam a passar confiança.</p>
-            {(erroFoto || erros.foto) && <MensagemErro>{erroFoto ?? erros.foto}</MensagemErro>}
-          </div>
-        </div>
+        {!curto && blocoFoto}
 
         <Campo
           rotulo={tipo === "pessoa" ? "Seu nome" : agencia ? "Nome da agência" : "Nome do comércio ou da empresa"}
@@ -296,123 +424,53 @@ export function FormPerfil({
         </div>
       </section>
 
-      <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
-        <div>
-          <h2 className="text-h3">Contato</h2>
-          <p className="mt-1 text-body-sm text-ink-muted">
-            Só aparece para quem deu match com você. Nunca fica público no site.
-          </p>
-        </div>
-        <Campo rotulo="WhatsApp" nome="whatsapp" erro={erros.whatsapp}>
-          <input
-            {...ligarCampo("whatsapp", erros.whatsapp)}
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(mascararCelular(e.target.value))}
-            inputMode="tel"
-            autoComplete="tel-national"
-            placeholder="(62) 99999-0000"
-            className={classesEntrada}
-          />
-        </Campo>
-        <Campo rotulo="E-mail de contato" nome="email" opcional erro={erros.email}>
-          <input
-            {...ligarCampo("email", erros.email)}
-            type="email"
-            defaultValue={perfil?.email ?? email ?? ""}
-            autoComplete="email"
-            className={classesEntrada}
-          />
-        </Campo>
-        <label className="flex min-h-11 cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            name="receber_emails"
-            defaultChecked={perfil?.receber_emails ?? true}
-            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
-          />
-          <span>
-            <span className="block text-label">Receber avisos por e-mail</span>
-            <span className="block text-body-sm text-ink-muted">
-              Curtidas, matches e avisos da moderação, no e-mail da sua conta.
-            </span>
-          </span>
-        </label>
-      </section>
-
-      <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
-        <h2 className="text-h3">{tipo === "pessoa" ? "Sobre você" : agencia ? "Sobre a agência" : "Sobre o negócio"}</h2>
-        <Campo
-          rotulo={tipo === "pessoa" ? "O que você faz" : "Área de atuação"}
-          nome="novo-servico"
-          ajuda="Aparece para quem publica quando você curte. Até 12."
-        >
-          <div className="flex gap-2">
-            <input
-              id="novo-servico"
-              value={novo}
-              onChange={(e) => setNovo(e.target.value)}
-              onKeyDown={teclaServico}
-              maxLength={40}
-              placeholder="Ex.: pedreiro, garçom, diarista"
-              className={classesEntrada}
-              aria-describedby="novo-servico-ajuda"
-            />
-            <Botao onClick={() => adicionar(novo)} aria-label="Adicionar">
-              <Plus aria-hidden />
-            </Botao>
-          </div>
-        </Campo>
-        {servicos.length > 0 && (
-          <ul className="flex flex-wrap gap-2" aria-label="O que você faz">
-            {servicos.map((s) => (
-              <li key={s}>
-                <button
-                  type="button"
-                  onClick={() => setServicos(servicos.filter((x) => x !== s))}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-pill bg-ink px-3 text-label text-surface-100"
-                >
-                  {s}
-                  <X aria-hidden className="size-4" />
-                  <span className="sr-only">(remover)</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex flex-wrap gap-2">
-          {SUGESTOES.filter((s) => !servicos.some((x) => x.toLowerCase() === s.toLowerCase()))
-            .slice(0, 10)
-            .map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => adicionar(s)}
-                className="inline-flex min-h-9 items-center gap-1 rounded-pill border border-line bg-surface-300 px-3 text-body-sm text-ink hover:border-line-strong"
-              >
-                <Plus aria-hidden className="size-3.5" />
-                {s}
-              </button>
-            ))}
-        </div>
-        {erros.servicos && <MensagemErro>{erros.servicos}</MensagemErro>}
-
-        <Campo rotulo="Apresentação" nome="sobre" opcional erro={erros.sobre}>
-          <textarea
-            {...ligarCampo("sobre", erros.sobre)}
-            defaultValue={perfil?.sobre ?? ""}
-            rows={4}
-            maxLength={600}
-            placeholder={
-              tipo === "pessoa"
-                ? "Ex.: Trabalho com cozinha há 3 anos. Tenho disponibilidade à noite e moro no Jardim América."
-                : agencia
-                  ? "Ex.: Recrutamento e seleção desde 2012. Atendemos comércio, indústria e escritórios de Goiânia."
-                  : "Ex.: Restaurante de comida caseira no Setor Bueno, aberto desde 2015."
-            }
-            className={`${classesEntrada} resize-y`}
-          />
-        </Campo>
-      </section>
+      {curto ? (
+        <>
+          <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+            {campoWhatsapp}
+            <p className="-mt-3 text-body-sm text-ink-muted">Só aparece para quem der match com você.</p>
+          </section>
+          {/* o resto fica para depois: os campos continuam no formulário (vão com o que já vem marcado) */}
+          <details
+            open={erros.foto || erros.email || erros.servicos || erros.sobre ? true : undefined}
+            className="group rounded-lg border border-line bg-surface-200"
+          >
+            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 p-5 sm:px-6 [&::-webkit-details-marker]:hidden">
+              <span className="min-w-0 flex-1">
+                <span className="block text-label">Mais sobre você (opcional)</span>
+                <span className="block text-body-sm text-ink-muted">
+                  Foto, e-mail, o que você faz e uma apresentação.
+                </span>
+              </span>
+              <ChevronDown
+                aria-hidden
+                className="size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+              />
+            </summary>
+            <div className="flex flex-col gap-5 border-t border-line p-5 sm:p-6">
+              {blocoFoto}
+              {camposEmail}
+              {secaoSobre}
+            </div>
+          </details>
+        </>
+      ) : (
+        <>
+          <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+            <div>
+              <h2 className="text-h3">Contato</h2>
+              <p className="mt-1 text-body-sm text-ink-muted">
+                Só aparece para quem deu match com você. Nunca fica público no site.
+              </p>
+            </div>
+            {campoWhatsapp}
+            {camposEmail}
+          </section>
+          <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+            {secaoSobre}
+          </section>
+        </>
+      )}
 
       {(!perfil || pedirAceite) && (
         <div className="flex flex-col gap-1.5">

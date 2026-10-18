@@ -18,7 +18,7 @@ const VERSAO = "1";
 export const EVENTO_BOAS_VINDAS = "publike:boas-vindas";
 
 // Páginas onde a pessoa já sabe o que veio fazer (ou que são da equipe): sem aviso.
-const SEM_AVISO = /^\/(admin|auth|entrar|perfil|painel|anuncio\/|email|versao)/;
+const SEM_AVISO = /^\/(admin|auth|entrar|perfil|painel|publicar|anuncio\/|email|versao)/;
 
 function jaViu() {
   try {

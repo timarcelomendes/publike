@@ -55,7 +55,8 @@ export function BotaoCurtir({
     setErro(null);
     setExplicar(false);
     if (!logado) {
-      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`);
+      // volta para a vaga com o quadro de curtir à mão (?curtir=1)
+      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1`)}`);
       return;
     }
     if (respondido) {

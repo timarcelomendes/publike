@@ -219,6 +219,7 @@ export function LocalComCep({
           irPara={irPara}
           aoUsarLocalizacao={preencherPeloPonto}
           preencher={aoAchar}
+          recolhido={mapaOpcional}
         />
       </div>
     </div>

@@ -319,6 +319,7 @@ async function DetalheAnuncio({
         perguntas={perguntas}
         minhasRespostas={respostasDoBanco(anuncio.minhas_respostas)}
         pedirRespostas={primeiro(sp.responder) === "1"}
+        continuarCurtida={primeiro(sp.curtir) === "1"}
         entrevista={entrevista}
       />
     );

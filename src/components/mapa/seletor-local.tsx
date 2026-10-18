@@ -2,7 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeoJSONSource, Map as MapaML } from "maplibre-gl";
-import { LocateFixed } from "lucide-react";
+import { LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { buscarEnderecoDoPonto } from "@/lib/acoes/cep";
 import { CENTRO_GOIANIA, REGIAO } from "@/lib/config";
@@ -57,7 +57,10 @@ export function SeletorLocal({
   irPara = null,
   aoUsarLocalizacao,
   preencher,
+  recolhido = false,
 }: {
+  /** o mapa só abre quando precisa (toque em "Marcar no mapa", CEP achado ou localização): a página fica mais curta */
+  recolhido?: boolean;
   inicial: Ponto | null;
   erro?: string;
   /** o ponto é o endereço exato (comércio, empresa ou agência com endereço) */
@@ -76,6 +79,8 @@ export function SeletorLocal({
   const [aviso, setAviso] = useState<string | null>(null);
   const [buscandoGps, setBuscandoGps] = useState(false);
   const [falhou, setFalhou] = useState(false);
+  const [abriu, setAbriu] = useState(false);
+  const mapaVisivel = !recolhido || abriu || ponto !== null || irPara !== null;
 
   // bairro pelo ponto: o último ponto com endereço achado, a espera entre toques
   // seguidos e a vez (um toque novo descarta a resposta de um toque anterior)
@@ -128,6 +133,10 @@ export function SeletorLocal({
   useEffect(() => {
     aoTocar.current = bairroDoPonto;
   });
+  // o mapa abriu agora (estava recolhido): o MapLibre mede de novo a caixa
+  useEffect(() => {
+    if (mapaVisivel) mapa.current?.resize();
+  }, [mapaVisivel]);
   useEffect(() => () => cancelarBairro(), []);
 
   useEffect(() => {
@@ -269,7 +278,9 @@ export function SeletorLocal({
   return (
     <div className="flex flex-col gap-2">
       <div
-        className={`relative h-72 overflow-hidden rounded-lg border bg-surface-300 ${erro && !ponto ? "border-danger" : "border-line"}`}
+        className={`relative h-72 overflow-hidden rounded-lg border bg-surface-300 ${erro && !ponto ? "border-danger" : "border-line"} ${
+          mapaVisivel ? "" : "hidden"
+        }`}
       >
         {/* Container do MapLibre dentro de uma caixa absoluta: o CSS dele troca o position do container. */}
         <div className="absolute inset-0">
@@ -291,6 +302,12 @@ export function SeletorLocal({
           <LocateFixed aria-hidden />
           {buscandoGps ? "Procurando…" : "Usar minha localização"}
         </Botao>
+        {!mapaVisivel && (
+          <Botao tamanho="sm" onClick={() => setAbriu(true)}>
+            <MapPin aria-hidden />
+            Marcar no mapa
+          </Botao>
+        )}
         <p className="text-body-sm text-ink-muted" aria-live="polite">
           {ponto
             ? exato

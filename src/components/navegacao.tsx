@@ -100,6 +100,27 @@ export function Rodape() {
   );
 }
 
+/** O rodapé das telas que funcionam como app (painel, perfil): uma linha só. */
+export function RodapeCurto() {
+  const link = "text-ink-muted hover:text-ink hover:underline";
+  return (
+    <footer className="mt-12 border-t border-line">
+      <Container className="flex flex-wrap items-center gap-x-4 gap-y-1 py-4 text-body-sm">
+        <span className="text-ink-muted">Publike · grátis</span>
+        <Link href="/ajuda" className={link}>
+          Ajuda
+        </Link>
+        <Link href="/privacidade" className={link}>
+          Privacidade e regras
+        </Link>
+        <Link href="/sugerir" className={link}>
+          Sugestões e erros
+        </Link>
+      </Container>
+    </footer>
+  );
+}
+
 export function AvisoDemo() {
   return (
     <div className="border-b border-line bg-ipe text-on-ipe">

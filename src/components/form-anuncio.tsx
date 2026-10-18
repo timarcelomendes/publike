@@ -33,6 +33,9 @@ import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
 
+/** Os tipos de contratação que aparecem primeiro (os outros ficam em "Outros tipos"). */
+const REGIMES_PRINCIPAIS: Regime[] = ["clt", "diaria", "freelance", "temporario", "estagio", "aprendiz"];
+
 export type ValoresAnuncio = {
   id?: string;
   tipo: TipoAnuncio;
@@ -164,6 +167,10 @@ export function FormAnuncio({
   const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(editando);
   const [confidencial, setConfidencial] = useState(inicial.contratante_confidencial ?? false);
   const [beneficiosMarcados, setBeneficiosMarcados] = useState<string[]>(inicial.beneficios_lista ?? []);
+  // tipos de contratação: os mais comuns à mostra, os outros atrás de "Outros tipos"
+  const [todosRegimes, setTodosRegimes] = useState(
+    Boolean(inicial.regime && !REGIMES_PRINCIPAIS.includes(inicial.regime as Regime)),
+  );
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const erroNosDetalhes = Object.keys(erros).some((k) => CAMPOS_DETALHES.includes(k));
@@ -363,25 +370,36 @@ export function FormAnuncio({
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-label">Tipo de contratação</legend>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(REGIMES).map(([v, r]) => (
-                <label
-                  key={v}
-                  title={r.ajuda}
-                  className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label transition-colors has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+              {Object.entries(REGIMES)
+                .filter(([v]) => todosRegimes || REGIMES_PRINCIPAIS.includes(v as Regime))
+                .map(([v, r]) => (
+                  <label
+                    key={v}
+                    title={r.ajuda}
+                    className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label transition-colors has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+                  >
+                    <input
+                      type="radio"
+                      name="regime"
+                      value={v}
+                      defaultChecked={inicial.regime === v}
+                      onChange={() => {
+                        if (!mexeuNoCurriculo) setPedeCurriculo(REGIMES_COM_CURRICULO.includes(v as Regime));
+                      }}
+                      className="sr-only"
+                    />
+                    {r.nome}
+                  </label>
+                ))}
+              {!todosRegimes && (
+                <button
+                  type="button"
+                  onClick={() => setTodosRegimes(true)}
+                  className="inline-flex min-h-10 items-center rounded-pill px-2 text-label text-terra-text underline underline-offset-2"
                 >
-                  <input
-                    type="radio"
-                    name="regime"
-                    value={v}
-                    defaultChecked={inicial.regime === v}
-                    onChange={() => {
-                      if (!mexeuNoCurriculo) setPedeCurriculo(REGIMES_COM_CURRICULO.includes(v as Regime));
-                    }}
-                    className="sr-only"
-                  />
-                  {r.nome}
-                </label>
-              ))}
+                  Outros tipos
+                </button>
+              )}
             </div>
             {erros.regime && <MensagemErro>{erros.regime}</MensagemErro>}
           </fieldset>
