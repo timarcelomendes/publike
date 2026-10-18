@@ -182,8 +182,7 @@ function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void })
 
 /**
  * A busca do topo da página: tipo, texto, onde mora, perto de mim e categorias. Só isso:
- * as perguntas da primeira visita ficam no meio dos anúncios (PerguntasNaLista), para os
- * anúncios aparecerem logo na primeira tela.
+ * as perguntas da primeira visita ficam em cima da lista de anúncios (PerguntasNaLista).
  */
 export function BarraBusca({
   filtros,

@@ -250,15 +250,11 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         : `${n >= 60 ? "60+" : n} ${n === 1 ? nome[0] : nome[1]}`;
   const maiorRaio = RAIOS[RAIOS.length - 1];
 
-  // As perguntas da primeira visita (e depois o próximo passo) entram no meio da lista, depois
-  // dos dois primeiros anúncios (com poucos, no fim): em cima fica só a busca. Sem nada a perguntar, o espaço some.
+  // As perguntas da primeira visita (e depois o próximo passo, com o "Mudar") ficam em cima da lista,
+  // junto dos filtros: os anúncios não se partem no meio. Sem nada a perguntar, o espaço some.
   const perguntas = filtros.meus ? null : (
     <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
   );
-  const lugarDasPerguntas = <div className="col-span-full empty:hidden">{perguntas}</div>;
-  // Com poucos anúncios, as perguntas no meio deixariam um cartão sozinho embaixo delas
-  // (3 colunas: 3 em cima, a pergunta, 1 embaixo). Até 5, elas vão para o fim da lista.
-  const depoisDe = n >= 6 ? 1 : n - 1;
   // Poucas vagas (o começo): no fim da lista, o aviso de vaga nova e a distância maior, para quem procura trabalho
   const poucas = n > 0 && n < 10 && !filtros.meus && filtros.tipo !== "servico" && procuraTrabalho;
   // No fim da lista, o convite para quem tem vaga: no começo, são as vagas que mais faltam.
@@ -271,7 +267,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar).
       // "dense": com 3 colunas, o terceiro anúncio sobe para o lado dos dois primeiros, antes das perguntas.
       <div className="grid grid-flow-row-dense gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2">
-        {anuncios.map((a, i) => (
+        {anuncios.map((a) => (
           <Fragment key={a.id}>
             <CardAnuncio
               anuncio={a}
@@ -285,7 +281,6 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}
               minha={minhaPorId.get(a.id) ?? null}
             />
-            {i === depoisDe && lugarDasPerguntas}
           </Fragment>
         ))}
         {poucas && (
@@ -390,6 +385,11 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       <div className="flex flex-col gap-4">
         {lista}
         <div className="empty:hidden">{perguntas}</div>
+      </div>
+    ) : perguntas ? (
+      <div className="flex flex-col gap-4">
+        <div className="empty:hidden">{perguntas}</div>
+        {lista}
       </div>
     ) : (
       lista

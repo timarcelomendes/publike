@@ -8,10 +8,9 @@ import { FaixaIntencao, FolhaIntencao, type ProximoPasso } from "./intencao";
 import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
 
 /**
- * As perguntas da primeira visita, no meio dos anúncios (depois dos dois primeiros) e uma
- * por vez: "O que você quer fazer no Publike?", depois "Onde você mora?" e, respondidas,
+ * As perguntas da primeira visita, em cima da lista de anúncios (sem partir a lista no meio) e
+ * uma por vez: "O que você quer fazer no Publike?", depois "Onde você mora?" e, respondidas,
  * o próximo passo para a resposta (currículo, vitrine, publicar), com o "Mudar".
- * Em cima da lista ficam só a busca e os filtros: os anúncios aparecem logo na primeira tela.
  * Sem resposta, "O que você quer fazer" abre numa janela por cima ao chegar; fechada ("Agora
  * não"), fica só no botão da busca nesta visita. "Agora não" também deixa o "Onde você mora?" para depois.
  */

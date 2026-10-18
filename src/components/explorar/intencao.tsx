@@ -13,8 +13,8 @@ import { INTENCOES, VOCE, type Intencao } from "@/lib/intencao";
 //   1ª visita: FolhaIntencao, numa janela (depois vem o "Onde você mora?"); "Agora não" deixa só o botão da busca.
 //   Depois: FaixaIntencao ("Você procura trabalho  Mudar"), com o próximo passo que faz
 //   sentido para a resposta (currículo, vitrine, publicar).
-// Os dois ficam no meio dos anúncios, depois dos dois primeiros (PerguntasNaLista): em cima
-// da lista, só a busca. A resposta escolhe a aba da busca, mas não é um filtro.
+// Os dois ficam em cima da lista de anúncios (PerguntasNaLista), sem partir a lista no meio.
+// A resposta escolhe a aba da busca, mas não é um filtro.
 
 export const ICONES_INTENCAO: Record<Intencao, LucideIcon> = {
   trabalho: Briefcase,
@@ -105,7 +105,7 @@ const noCliente = () => () => {};
 /**
  * Primeira visita: a pergunta numa janela por cima da página (folha de baixo no celular,
  * caixa no meio no computador), para ninguém deixar de ver. O topo da página continua leve.
- * "Agora não" (ou Esc, ou tocar fora) fecha; aí a pergunta fica no meio dos anúncios.
+ * "Agora não" (ou Esc, ou tocar fora) fecha; aí a pergunta fica só no botão da busca.
  */
 export function FolhaIntencao({
   aoEscolher,

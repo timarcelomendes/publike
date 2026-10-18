@@ -258,8 +258,8 @@ export function usePerguntaAdiada(): [boolean, () => void] {
 }
 
 /**
- * A pergunta de quem chega sem dizer onde mora: um campo de CEP e um botão, num quadro no
- * meio dos anúncios (PerguntasNaLista), no lugar do pedido de localização do navegador.
+ * A pergunta de quem chega sem dizer onde mora: um campo de CEP e um botão, num quadro em
+ * cima da lista de anúncios (PerguntasNaLista), no lugar do pedido de localização do navegador.
  * A localização e o bairro (para quem não sabe o CEP) ficam como links, com "Agora não".
  */
 export function PerguntaOndeMora({
