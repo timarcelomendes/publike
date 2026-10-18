@@ -1,4 +1,4 @@
-import { MapPinned, Percent, SearchX, Store } from "lucide-react";
+import { BellPlus, MapPinned, Percent, SearchX, Store } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 import { matchComAVaga, vagaNoTurno, type Aderencia, type Candidato } from "@/lib/aderencia";
@@ -259,6 +259,8 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   // Com poucos anúncios, as perguntas no meio deixariam um cartão sozinho embaixo delas
   // (3 colunas: 3 em cima, a pergunta, 1 embaixo). Até 5, elas vão para o fim da lista.
   const depoisDe = n >= 6 ? 1 : n - 1;
+  // Poucas vagas (o começo): no fim da lista, o aviso de vaga nova e a distância maior, para quem procura trabalho
+  const poucas = n > 0 && n < 10 && !filtros.meus && filtros.tipo !== "servico" && procuraTrabalho;
   // No fim da lista, o convite para quem tem vaga: no começo, são as vagas que mais faltam.
   // Não aparece para quem já disse que procura trabalho ou oferece serviços, nem para quem já tem anúncio no ar.
   const convidarQuemContrata =
@@ -286,6 +288,51 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
             {i === depoisDe && lugarDasPerguntas}
           </Fragment>
         ))}
+        {poucas && (
+          <aside
+            aria-label="Poucas vagas por aqui"
+            className="col-span-full flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-ink-muted">
+                <BellPlus aria-hidden className="size-5" />
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <p className="text-label">Poucas vagas por aqui, por enquanto</p>
+                <p className="text-body-sm text-ink-muted">
+                  Receba um aviso quando entrar uma vaga nova que combina com esta busca.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pl-13">
+              {filtros.tipo === "vaga" ? (
+                <AvisarBusca
+                  caminho={hrefFiltros(filtros)}
+                  salvaId={buscaSalva?.id ?? null}
+                  logado={Boolean(usuario)}
+                />
+              ) : (
+                <Link
+                  href={hrefFiltros(filtros, { tipo: "vaga", tudo: false })}
+                  scroll={false}
+                  className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-terra-text underline-offset-2 hover:underline"
+                >
+                  <BellPlus aria-hidden className="size-4 shrink-0" />
+                  Ver só as vagas e receber aviso
+                </Link>
+              )}
+              {!filtros.tempo && filtros.raio < maiorRaio && (
+                <Link
+                  href={hrefFiltros(filtros, { raio: maiorRaio })}
+                  scroll={false}
+                  className="inline-flex min-h-9 items-center text-body-sm text-ink underline underline-offset-2 hover:text-terra-text"
+                >
+                  Buscar até {maiorRaio} km
+                </Link>
+              )}
+            </div>
+          </aside>
+        )}
         {convidarQuemContrata && <ConviteQuemContrata />}
       </div>
     ) : filtros.meus ? (
@@ -380,7 +427,8 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
                 </>
               )}
             </p>
-            {avisar && (
+            {/* com poucas vagas, o aviso fica no fim da lista (no bloco "Poucas vagas por aqui") */}
+            {avisar && !poucas && (
               <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
             )}
             {/* o % de match chama para a conta e o currículo (quem procura trabalho já tem o atalho na lista) */}

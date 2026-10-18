@@ -69,6 +69,9 @@ const ICONES_PERFIL: Record<Intencao, LucideIcon> = {
  */
 export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: Intencao; linkDetalhes?: boolean }) {
   const [atual, setAtual] = useState<Intencao>(inicial);
+  // na página inicial, no celular: só os 4 primeiros (a lista inteira passava de uma tela)
+  const [todos, setTodos] = useState(false);
+  const curto = linkDetalhes && !todos;
   const base = useId();
   const abas = useRef<(HTMLButtonElement | null)[]>([]);
   const perfil = PERFIS.find((p) => p.valor === atual) ?? PERFIS[0];
@@ -127,12 +130,14 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
         <ul
           className={`grid gap-2 sm:grid-cols-2 sm:gap-3 ${perfil.recursos.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}
         >
-          {perfil.recursos.map((r) => {
+          {perfil.recursos.map((r, i) => {
             const Icone = ICONES[r.icone];
             return (
               <li
                 key={r.titulo}
-                className="flex gap-3 rounded-lg border border-line bg-surface-200 p-3 shadow-card sm:flex-col sm:gap-2 sm:p-4"
+                className={`flex gap-3 rounded-lg border border-line bg-surface-200 p-3 shadow-card sm:flex-col sm:gap-2 sm:p-4 ${
+                  curto && i >= 4 ? "max-sm:hidden" : ""
+                }`}
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft text-terra-text">
                   <Icone aria-hidden className="size-5" />
@@ -145,6 +150,15 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
             );
           })}
         </ul>
+        {curto && perfil.recursos.length > 4 && (
+          <button
+            type="button"
+            onClick={() => setTodos(true)}
+            className="-mt-2 self-start text-label text-terra-text underline underline-offset-2 sm:hidden"
+          >
+            Ver mais {perfil.recursos.length - 4}
+          </button>
+        )}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <Link href={perfil.acao.href} className={classesBotao("primario")}>
             {perfil.acao.texto}

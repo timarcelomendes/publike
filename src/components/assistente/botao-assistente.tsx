@@ -46,13 +46,24 @@ function useAreaVisivel(ativo: boolean) {
 /**
  * No celular, o botão mostra "Chat" no topo da página e vira só o
  * ícone depois que a pessoa rola (assim tapa menos os cartões); volta a mostrar
- * o texto quando ela sobe de novo. No computador, o texto fica sempre.
+ * o texto quando ela sobe de novo. Descendo a lista, ele sai da frente (fica no canto onde
+ * passam os botões Curtir) e volta assim que ela sobe. No computador, o texto fica sempre.
  */
 function useSoIcone() {
   const [soIcone, setSoIcone] = useState(false);
+  const [escondido, setEscondido] = useState(false);
   useEffect(() => {
     const celular = window.matchMedia("(max-width: 639px)");
-    const medir = () => setSoIcone(celular.matches && window.scrollY > 120);
+    let antes = window.scrollY;
+    const medir = () => {
+      const y = window.scrollY;
+      setSoIcone(celular.matches && y > 120);
+      // pequenas mexidas (o dedo parado) não escondem nem mostram
+      if (Math.abs(y - antes) > 8) {
+        setEscondido(celular.matches && y > 120 && y > antes);
+        antes = y;
+      }
+    };
     medir();
     window.addEventListener("scroll", medir, { passive: true });
     celular.addEventListener("change", medir);
@@ -61,7 +72,7 @@ function useSoIcone() {
       celular.removeEventListener("change", medir);
     };
   }, []);
-  return soIcone;
+  return { soIcone, escondido };
 }
 
 /**
@@ -74,7 +85,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
   const [aberto, setAberto] = useState(false);
   const botao = useRef<HTMLButtonElement>(null);
   const area = useAreaVisivel(aberto);
-  const soIcone = useSoIcone();
+  const { soIcone, escondido } = useSoIcone();
   const conversa = useConversa();
   const { conversas, carregar, marcarLida, naoLidas } = useConversasDoChat(usuarioId);
   // abre na aba que tem novidade: mensagem não lida vai direto para Conversas
@@ -139,9 +150,9 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
           onClick={abrir}
           aria-haspopup="dialog"
           data-assistente="botao"
-          className={`fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
+          className={`fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform,opacity] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
             soIcone ? "px-3.5" : "px-4"
-          }`}
+          } ${escondido ? "pointer-events-none translate-y-24 opacity-0" : ""}`}
         >
           <MessagesSquare aria-hidden className="size-5 shrink-0" />
           {/* recolhido, o texto some da tela mas continua sendo o nome do botão */}

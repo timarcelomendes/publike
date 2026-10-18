@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import type { Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { AVISOS_GPS, pedirPosicao, useIrPara } from "./barra-busca";
-import { CartaoIntencao, FaixaIntencao, FolhaIntencao, type ProximoPasso } from "./intencao";
+import { FaixaIntencao, FolhaIntencao, type ProximoPasso } from "./intencao";
 import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
 
 /**
@@ -13,7 +13,7 @@ import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora
  * o próximo passo para a resposta (currículo, vitrine, publicar), com o "Mudar".
  * Em cima da lista ficam só a busca e os filtros: os anúncios aparecem logo na primeira tela.
  * Sem resposta, "O que você quer fazer" abre numa janela por cima ao chegar; fechada ("Agora
- * não"), continua aqui, no meio dos anúncios. "Agora não" também deixa o "Onde você mora?" para depois.
+ * não"), fica só no botão da busca nesta visita. "Agora não" também deixa o "Onde você mora?" para depois.
  */
 export function PerguntasNaLista({
   filtros,
@@ -56,13 +56,10 @@ export function PerguntasNaLista({
     );
   }
 
-  // a pergunta não some: na chegada, numa janela por cima; fechada, fica aqui no meio dos anúncios
+  // na chegada, numa janela por cima
   if (!intencaoAtual) {
-    return adiada ? (
-      <CartaoIntencao aoEscolher={escolher} />
-    ) : (
-      <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita />
-    );
+    // "Agora não": nesta visita, a pergunta fica só no botão "O que você quer fazer?" da busca
+    return adiada ? null : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita />;
   }
 
   if (!temLocal && filtros.origem === "centro" && !adiada) {

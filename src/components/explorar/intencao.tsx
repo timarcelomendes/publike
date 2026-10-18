@@ -10,7 +10,7 @@ import { Simbolo } from "../ui/basicos";
 import { INTENCOES, VOCE, type Intencao } from "@/lib/intencao";
 
 // "O que você quer fazer no Publike?"
-//   1ª visita: CartaoIntencao (depois vem o "Onde você mora?").
+//   1ª visita: FolhaIntencao, numa janela (depois vem o "Onde você mora?"); "Agora não" deixa só o botão da busca.
 //   Depois: FaixaIntencao ("Você procura trabalho  Mudar"), com o próximo passo que faz
 //   sentido para a resposta (currículo, vitrine, publicar).
 // Os dois ficam no meio dos anúncios, depois dos dois primeiros (PerguntasNaLista): em cima
@@ -99,40 +99,6 @@ function OpcoesIntencao({
 /** "Agora não" das perguntas da primeira visita: um link no canto, sem disputar com as respostas. */
 export const classesAgoraNao =
   "inline-flex min-h-10 shrink-0 items-center text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60";
-
-/** Primeira visita: a pergunta, num quadro no meio dos anúncios. */
-export function CartaoIntencao({
-  aoEscolher,
-  aoAdiar,
-}: {
-  aoEscolher: (i: Intencao) => void;
-  /** sem "Agora não": a pergunta fica no meio dos anúncios até a pessoa responder */
-  aoAdiar?: () => void;
-}) {
-  const titulo = useId();
-  const { tocada: escolhida, escolher, pendente } = useEscolher(aoEscolher);
-  return (
-    <section
-      aria-labelledby={titulo}
-      className="flex flex-col gap-2 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-card sm:gap-3 sm:p-4"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 id={titulo} className="text-label sm:text-h3">
-            O que você quer fazer no Publike?
-          </h2>
-          <p className="text-body-sm text-ink-muted">Assim a busca já abre no que interessa a você.</p>
-        </div>
-        {aoAdiar && (
-          <button type="button" onClick={aoAdiar} className={classesAgoraNao}>
-            Agora não
-          </button>
-        )}
-      </div>
-      <OpcoesIntencao rotuladoPor={titulo} escolhida={escolhida} pendente={pendente} escolher={escolher} />
-    </section>
-  );
-}
 
 const noCliente = () => () => {};
 
