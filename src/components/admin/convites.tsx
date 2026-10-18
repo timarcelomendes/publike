@@ -56,8 +56,18 @@ async function lerArquivo(arquivo: File) {
 
 // ------------------------------------------------------------------ Importar
 
+/** Depois de importar: o atalho para a lista (a sub-aba Empresas). */
+function VerLista() {
+  return (
+    <Link href="/admin/convites" className={`${classesBotao("secundario", "sm")} self-start`}>
+      Ver a lista de empresas
+    </Link>
+  );
+}
+
 export function ImportarConvites() {
   const { rodar, pendente, mensagem } = useAcao();
+  const [importou, setImportou] = useState(false);
   const [previa, setPrevia] = useState<{
     arquivo: string;
     convites: NovoConvite[];
@@ -160,6 +170,7 @@ export function ImportarConvites() {
                   () => importarConvites(previa.convites),
                   (r) => {
                     if (r.ok) {
+                      setImportou(true);
                       setPrevia(null);
                       if (campo.current) campo.current.value = "";
                     }
@@ -185,6 +196,7 @@ export function ImportarConvites() {
         </div>
       )}
       {mensagem}
+      {importou && <VerLista />}
     </div>
   );
 }
@@ -244,6 +256,7 @@ function juntarPorEmpresa(lidas: LidaDaImagem[]): LidaDaImagem[] {
  */
 export function ImportarPorImagens() {
   const { rodar, pendente, mensagem } = useAcao();
+  const [importou, setImportou] = useState(false);
   const [lidas, setLidas] = useState<LidaDaImagem[] | null>(null);
   const [progresso, setProgresso] = useState<{ feitas: number; total: number } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -387,7 +400,10 @@ export function ImportarPorImagens() {
                 rodar(
                   () => importarConvites(marcadas.map((l) => l.convite!)),
                   (r) => {
-                    if (r.ok) limpar();
+                    if (r.ok) {
+                      setImportou(true);
+                      limpar();
+                    }
                   },
                 )
               }
@@ -403,6 +419,7 @@ export function ImportarPorImagens() {
         </div>
       )}
       {mensagem}
+      {importou && <VerLista />}
     </div>
   );
 }
@@ -454,7 +471,7 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
   if (!convites.length) {
     return (
       <p className="rounded-md border border-dashed border-line-strong p-6 text-center text-body-sm text-ink-muted">
-        Nenhuma empresa na lista ainda. Importe pelas imagens dos anúncios ou pelo arquivo, logo abaixo.
+        Nenhuma empresa na lista ainda. Importe em “Importar pelas imagens” ou “Importar arquivo”, aqui em cima.
       </p>
     );
   }
