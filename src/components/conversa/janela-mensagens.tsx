@@ -80,7 +80,7 @@ type Aberta = {
   outro_nome: string;
   outro_foto: string | null;
   titulo: string;
-  dados: { perfilId: string; euId: string; mensagens: MensagemConversa[] } | null;
+  dados: { perfilId: string; euId: string; mensagens: MensagemConversa[]; vaga: boolean } | null;
 };
 
 /** A aba "Conversas" do chat: a lista e, tocando numa, a conversa ali dentro. */
@@ -120,7 +120,15 @@ export function PainelConversas({
       if (!vale) return;
       setAberta((a) =>
         a && a.anuncio_id === pedida.anuncioId && a.outro_id === pedida.outroId && r
-          ? { ...a, dados: { perfilId: r.conversa.perfil_id, euId: r.euId, mensagens: r.mensagens } }
+          ? {
+              ...a,
+              dados: {
+                perfilId: r.conversa.perfil_id,
+                euId: r.euId,
+                mensagens: r.mensagens,
+                vaga: r.conversa.anuncio_tipo === "vaga",
+              },
+            }
           : a,
       );
       marcarLida(pedida.anuncioId, pedida.outroId);
@@ -159,7 +167,15 @@ export function PainelConversas({
     const r = await abrirConversaDaJanela(c.anuncio_id, c.outro_id);
     setAberta((a) =>
       a && a.anuncio_id === c.anuncio_id && a.outro_id === c.outro_id && r
-        ? { ...a, dados: { perfilId: r.conversa.perfil_id, euId: r.euId, mensagens: r.mensagens } }
+        ? {
+            ...a,
+            dados: {
+              perfilId: r.conversa.perfil_id,
+              euId: r.euId,
+              mensagens: r.mensagens,
+              vaga: r.conversa.anuncio_tipo === "vaga",
+            },
+          }
         : a,
     );
     marcarLida(c.anuncio_id, c.outro_id);
@@ -200,6 +216,7 @@ export function PainelConversas({
             euId={aberta.dados.euId}
             outroNome={aberta.outro_nome}
             iniciais={aberta.dados.mensagens}
+            vaga={aberta.dados.vaga}
             compacto
           />
         ) : (
@@ -262,7 +279,10 @@ export function PainelConversas({
                   </span>
                 </span>
                 {c.nao_lidas > 0 && (
-                  <span aria-label={`${c.nao_lidas} não lidas`} className="mt-2 size-2.5 shrink-0 rounded-full bg-like" />
+                  <span
+                    aria-label={`${c.nao_lidas} não lidas`}
+                    className="mt-2 size-2.5 shrink-0 rounded-full bg-like"
+                  />
                 )}
               </button>
             </li>

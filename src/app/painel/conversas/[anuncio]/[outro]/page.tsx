@@ -91,6 +91,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conversas/[anun
         euId={usuario.id}
         outroNome={c.outro_nome}
         iniciais={mensagens}
+        vaga={c.anuncio_tipo === "vaga"}
       />
       <p className="text-body-sm text-ink-muted">
         Só vocês dois leem esta conversa. Nunca pague para conseguir trabalho e não mande senha nem foto de documento

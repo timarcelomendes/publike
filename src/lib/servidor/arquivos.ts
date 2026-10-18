@@ -33,10 +33,23 @@ export async function limparFotosDeTrabalho(cliente: ComStorage, usuarioId: stri
   if (sobras.length) await cliente.storage.from("trabalhos").remove(sobras);
 }
 
-/** Tira do Storage os PDFs de currículo que não são o atual (ou todos, se `atual` for null). */
-export async function limparCurriculos(cliente: ComStorage, usuarioId: string, atual: string | null) {
-  const manter = atual?.split("/")[1];
+/**
+ * Tira do Storage os PDFs de currículo que não são o atual (ou todos, se `atual` for null).
+ * Os que foram mandados numa conversa ficam (a outra pessoa ainda abre pelo chat).
+ */
+export async function limparCurriculos(
+  cliente: Pick<SupabaseClient, "storage" | "from">,
+  usuarioId: string,
+  atual: string | null,
+) {
+  const manter = new Set([atual?.split("/")[1]]);
+  const { data: noChat } = await cliente
+    .from("mensagens")
+    .select("anexo")
+    .eq("autor_id", usuarioId)
+    .not("anexo", "is", null);
+  for (const m of noChat ?? []) if (m.anexo) manter.add(m.anexo.split("/")[1]);
   const { data: arquivos } = await cliente.storage.from("curriculos").list(usuarioId, { limit: 50 });
-  const sobras = (arquivos ?? []).filter((a) => a.name !== manter).map((a) => `${usuarioId}/${a.name}`);
+  const sobras = (arquivos ?? []).filter((a) => !manter.has(a.name)).map((a) => `${usuarioId}/${a.name}`);
   if (sobras.length) await cliente.storage.from("curriculos").remove(sobras);
 }

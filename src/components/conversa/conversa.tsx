@@ -1,8 +1,18 @@
 "use client";
 
-import { SendHorizontal } from "lucide-react";
-import { useEffect, useEffectEvent, useId, useRef, useState, useTransition, type FormEvent } from "react";
-import { enviarMensagem, marcarConversaLida } from "@/lib/acoes/mensagens";
+import { FileText, Paperclip, SendHorizontal } from "lucide-react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import { anexarCurriculoNaConversa, enviarMensagem, linkDoAnexo, marcarConversaLida } from "@/lib/acoes/mensagens";
+import { MAX_PDF_MB } from "@/lib/constantes";
 import type { MensagemConversa } from "@/lib/dados";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { MensagemErro } from "../ui/campo";
@@ -30,6 +40,7 @@ export function Conversa({
   outroNome,
   iniciais,
   compacto = false,
+  vaga = true,
 }: {
   anuncioId: string;
   /** quem curtiu (a conversa é a da curtida) */
@@ -39,6 +50,8 @@ export function Conversa({
   iniciais: MensagemConversa[];
   /** na janela de mensagens do canto: ocupa a altura dela, sem borda própria */
   compacto?: boolean;
+  /** conversa de vaga: quem curtiu pode anexar o currículo (PDF) */
+  vaga?: boolean;
 }) {
   const idCampo = useId();
   const [mensagens, setMensagens] = useState<MensagemConversa[]>(iniciais);
@@ -74,7 +87,19 @@ export function Conversa({
         (mudanca) => {
           const mudou = mudanca.new as MensagemConversa;
           // "lida" aparece na hora em que a outra pessoa abre a conversa
-          setMensagens((atual) => atual.map((m) => (m.id === mudou.id ? { ...m, lida_em: mudou.lida_em } : m)));
+          // e o currículo anexado (entra logo depois da mensagem)
+          setMensagens((atual) =>
+            atual.map((m) =>
+              m.id === mudou.id
+                ? {
+                    ...m,
+                    lida_em: mudou.lida_em,
+                    anexo: mudou.anexo ?? m.anexo,
+                    anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
+                  }
+                : m,
+            ),
+          );
         },
       )
       .subscribe();
@@ -103,6 +128,46 @@ export function Conversa({
       setTexto("");
       setMensagens((atual) => (atual.some((m) => m.id === r.mensagem.id) ? atual : [...atual, r.mensagem]));
     });
+  }
+
+  // currículo pelo chat: só quem curtiu a vaga (a conversa é a da curtida dela)
+  const podeAnexar = vaga && perfilId === euId;
+  const [enviandoPdf, setEnviandoPdf] = useState(false);
+
+  async function anexar(e: ChangeEvent<HTMLInputElement>) {
+    const pdf = e.target.files?.[0];
+    e.target.value = "";
+    if (!pdf) return;
+    setErro(null);
+    if (pdf.type !== "application/pdf") return setErro("Anexe o currículo em PDF.");
+    if (pdf.size > MAX_PDF_MB * 1024 * 1024) return setErro(`O PDF pode ter no máximo ${MAX_PDF_MB} MB.`);
+    setEnviandoPdf(true);
+    try {
+      const caminho = `${euId}/${Date.now()}.pdf`;
+      const { error } = await criarClienteNavegador()
+        .storage.from("curriculos")
+        .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
+      if (error) throw error;
+      const r = await anexarCurriculoNaConversa(anuncioId, caminho, pdf.name);
+      if (!r.ok) return setErro(r.erro);
+      setMensagens((atual) => (atual.some((m) => m.id === r.mensagem.id) ? atual : [...atual, r.mensagem]));
+    } catch {
+      setErro("Não deu para enviar o PDF agora. Tente de novo.");
+    } finally {
+      setEnviandoPdf(false);
+    }
+  }
+
+  /** Abre o currículo anexado (link que vale pouco tempo, pedido na hora). */
+  async function abrirAnexo(id: number) {
+    // a aba abre já no toque (o navegador bloqueia janela aberta depois de esperar)
+    const aba = window.open("", "_blank");
+    const link = await linkDoAnexo(id);
+    if (link && aba) aba.location.href = link;
+    else {
+      aba?.close();
+      setErro("Não deu para abrir o currículo agora.");
+    }
   }
 
   return (
@@ -143,7 +208,25 @@ export function Conversa({
                   }`}
                 >
                   <span className="sr-only">{minha ? "Você" : primeiroNome}: </span>
-                  {m.texto}
+                  {m.anexo ? (
+                    <button
+                      type="button"
+                      onClick={() => abrirAnexo(m.id)}
+                      className={`flex min-h-11 items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label underline-offset-2 hover:underline ${
+                        minha ? "bg-surface-100/15" : "bg-surface-200"
+                      }`}
+                    >
+                      <FileText aria-hidden className="size-5 shrink-0" />
+                      <span className="min-w-0">
+                        <span className="block break-all">{m.anexo_nome ?? "Currículo.pdf"}</span>
+                        <span className={`block text-caption ${minha ? "text-surface-100/70" : "text-ink-muted"}`}>
+                          Currículo em PDF · abrir
+                        </span>
+                      </span>
+                    </button>
+                  ) : (
+                    m.texto
+                  )}
                   <span
                     className={`mt-0.5 block text-right text-[12px] ${minha ? "text-surface-100/70" : "text-ink-muted"}`}
                   >
@@ -159,6 +242,24 @@ export function Conversa({
       <form onSubmit={enviar} className="flex flex-col gap-2 border-t border-line p-3">
         {erro && <MensagemErro>{erro}</MensagemErro>}
         <div className="flex items-end gap-2">
+          {podeAnexar && (
+            <label
+              title="Anexar currículo (PDF)"
+              className={`inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line-strong text-ink-muted hover:bg-surface-300 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${
+                enviandoPdf ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              <Paperclip aria-hidden className="size-5" />
+              <span className="sr-only">{enviandoPdf ? "Enviando o currículo…" : "Anexar currículo (PDF)"}</span>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={anexar}
+                disabled={enviandoPdf}
+                className="sr-only"
+              />
+            </label>
+          )}
           <label htmlFor={idCampo} className="sr-only">
             Mensagem para {primeiroNome}
           </label>

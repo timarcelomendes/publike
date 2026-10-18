@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { listarMinhasConversas, obterConversa, obterUsuario } from "@/lib/dados";
+import { listarMinhasConversas, obterConversa, obterUsuario, type MensagemConversa } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -37,6 +37,51 @@ export async function enviarMensagem(anuncioId: string, perfilId: string, texto:
     ok: true,
     mensagem: { id: data, autor_id: usuario.id, texto: limpo, criado_em: new Date().toISOString(), lida_em: null },
   };
+}
+
+/**
+ * Manda o currículo (PDF) na conversa de um match de vaga. O navegador já enviou o arquivo
+ * para a pasta da pessoa no Storage; o banco confere, manda a mensagem com o anexo e guarda
+ * o PDF como o currículo dela.
+ */
+export async function anexarCurriculoNaConversa(
+  anuncioId: string,
+  arquivo: string,
+  nome: string,
+): Promise<{ ok: true; mensagem: MensagemConversa } | { ok: false; erro: string }> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId) || typeof arquivo !== "string" || typeof nome !== "string") {
+    return { ok: false, erro: "Pedido inválido." };
+  }
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("enviar_curriculo_na_conversa", {
+    p_anuncio: anuncioId,
+    p_arquivo: arquivo,
+    p_nome: nome.slice(0, 120),
+  });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para mandar o currículo agora.") };
+  after(processarFilas);
+  const { data: m } = await supabase
+    .from("mensagens")
+    .select("id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome")
+    .eq("id", data)
+    .maybeSingle();
+  return m
+    ? { ok: true, mensagem: m }
+    : { ok: false, erro: "O currículo foi, mas a conversa não atualizou. Abra de novo." };
+}
+
+/** Link do currículo anexado numa mensagem (só os dois da conversa; vale 10 minutos). */
+export async function linkDoAnexo(mensagemId: number): Promise<string | null> {
+  if (MODO_DEMO || !Number.isSafeInteger(mensagemId)) return null;
+  const supabase = await criarClienteServidor();
+  // a leitura da mensagem já confere que a pessoa está na conversa
+  const { data } = await supabase.from("mensagens").select("anexo").eq("id", mensagemId).maybeSingle();
+  if (!data?.anexo) return null;
+  const { data: link } = await supabase.storage.from("curriculos").createSignedUrl(data.anexo, 600);
+  return link?.signedUrl ?? null;
 }
 
 /** Abri a conversa: o que a outra pessoa mandou fica lido. */

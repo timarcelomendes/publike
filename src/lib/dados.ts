@@ -433,6 +433,9 @@ export type MensagemConversa = {
   texto: string;
   criado_em: string;
   lida_em: string | null;
+  /** currículo anexado pelo chat (PDF no Storage, pasta de quem mandou) */
+  anexo?: string | null;
+  anexo_nome?: string | null;
 };
 
 /** A conversa com `outroId` sobre um anúncio, com as últimas 300 mensagens. */
@@ -447,7 +450,7 @@ export async function obterConversa(
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("mensagens")
-    .select("id, autor_id, texto, criado_em, lida_em")
+    .select("id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome")
     .eq("anuncio_id", anuncioId)
     .eq("perfil_id", conversa.perfil_id)
     .order("id", { ascending: false })

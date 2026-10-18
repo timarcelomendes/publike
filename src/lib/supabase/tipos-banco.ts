@@ -523,6 +523,8 @@ export type Database = {
           texto: string;
           criado_em: string;
           lida_em: string | null;
+          anexo: string | null;
+          anexo_nome: string | null;
         };
         Insert: SemTabela;
         Update: SemTabela;
@@ -854,6 +856,10 @@ export type Database = {
       };
       enviar_mensagem: {
         Args: { p_anuncio: string; p_perfil: string; p_texto: string };
+        Returns: number;
+      };
+      enviar_curriculo_na_conversa: {
+        Args: { p_anuncio: string; p_arquivo: string; p_nome: string };
         Returns: number;
       };
       marcar_conversa_lida: {
