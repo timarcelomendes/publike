@@ -1,5 +1,5 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
-import { AcessoDaConta } from "@/components/admin/acesso-conta";
+import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -140,8 +140,8 @@ async function Conteudo({
       )}
       {primeiro(sp.sem_email) === "1" && (
         <Aviso tipo="alerta" titulo="A empresa ainda não tem como entrar">
-          O Publike entra só pelo e-mail, e esta conta foi criada sem e-mail. Peça o e-mail na conversa, coloque no
-          login abaixo e mande o acesso (por e-mail ou pelo link, no WhatsApp).
+          O Publike entra só pelo e-mail, e esta conta foi criada sem e-mail. Use “Mandar o acesso pelo WhatsApp”, logo
+          abaixo: a empresa abre o link, coloca o e-mail dela e entra.
         </Aviso>
       )}
 
@@ -180,7 +180,7 @@ async function Conteudo({
           {u.email ? (
             <EnviarAcesso usuarioId={u.id} jaEntrou={Boolean(u.ultimo_acesso)} />
           ) : (
-            <p className="text-body-sm text-ink-muted">Esta conta entra pelo celular: não tem e-mail de login.</p>
+            <AcessoPorWhatsapp usuarioId={u.id} />
           )}
         </Secao>
       )}

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -398,4 +399,47 @@ export async function gerarLinkDeAcesso(usuarioId: string): Promise<Resultado & 
   const proximo = conta.last_sign_in_at ? "/painel" : "/perfil?completar=1&next=/painel";
   const params = new URLSearchParams({ token_hash: token, type: "magiclink", next: proximo });
   return { ok: true, mensagem: "Link gerado.", link: `${site}/auth/callback?${params}` };
+}
+
+/**
+ * Conta sem e-mail (criada pelo admin, a empresa disse "sim" no WhatsApp): gera o link /acesso/<token>
+ * e a mensagem para o WhatsApp de contato. A empresa abre, coloca o e-mail e entra com ele.
+ */
+export async function gerarAcessoPorWhatsapp(
+  usuarioId: string,
+): Promise<{ ok: true; link: string; whatsapp: string; mensagem: string } | { ok: false; erro: string }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Pedido inválido." };
+  const { data: u } = await c.auth.admin.getUserById(usuarioId);
+  if (!u?.user) return { ok: false, erro: "Conta não encontrada." };
+  if (u.user.email) return { ok: false, erro: `A conta já entra pelo e-mail ${u.user.email}: use Enviar acesso.` };
+  const [{ data: perfil }, { data: contato }, { data: vaga }] = await Promise.all([
+    c.from("perfis").select("nome").eq("id", usuarioId).maybeSingle(),
+    c.from("contatos").select("whatsapp").eq("perfil_id", usuarioId).maybeSingle(),
+    c
+      .from("anuncios")
+      .select("id, titulo")
+      .eq("autor_id", usuarioId)
+      .eq("tipo", "vaga")
+      .order("criado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (!perfil) return { ok: false, erro: "Esta conta ainda não tem perfil." };
+  if (!contato?.whatsapp) return { ok: false, erro: "A conta não tem WhatsApp de contato." };
+  const token = randomBytes(32).toString("hex");
+  const { error } = await c.from("acessos_conta").insert({ token, perfil_id: usuarioId });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para gerar o link. A migração já rodou?") };
+  const site = urlDosEmails() ?? "https://publike.org";
+  const link = `${site}/acesso/${token}`;
+  const mensagem = [
+    `Olá, pessoal da ${perfil.nome}! Aqui é do Publike.`,
+    vaga
+      ? `A vaga de ${vaga.titulo} já está no ar: ${site}/anuncio/${vaga.id}`
+      : "A conta de vocês no Publike já está pronta.",
+    `Para ver os candidatos e cuidar da vaga, abra este link e coloque o e-mail da empresa (é por ele que vocês entram, sem senha):\n${link}`,
+    "O link vale por 30 dias e só uma vez. Qualquer dúvida, é só responder aqui.",
+  ].join("\n\n");
+  return { ok: true, link, whatsapp: contato.whatsapp, mensagem };
 }

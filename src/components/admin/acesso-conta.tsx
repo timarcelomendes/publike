@@ -2,7 +2,7 @@
 
 import { Copy, KeyRound, Link2, MessageCircle } from "lucide-react";
 import { startTransition, useActionState, useState, type FormEvent } from "react";
-import { alterarLoginPeloAdmin, gerarLinkDeAcesso } from "@/lib/acoes/admin-contas";
+import { alterarLoginPeloAdmin, gerarAcessoPorWhatsapp, gerarLinkDeAcesso } from "@/lib/acoes/admin-contas";
 import { formatarTelefone } from "@/lib/formato";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
@@ -153,6 +153,71 @@ export function AcessoDaConta({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Conta sem e-mail de login: a mensagem para o WhatsApp com o link /acesso/<token>. A empresa
+ * abre, coloca o e-mail e ele vira o login (o Publike entra só pelo e-mail).
+ */
+export function AcessoPorWhatsapp({ usuarioId }: { usuarioId: string }) {
+  const [gerado, setGerado] = useState<{ whatsapp: string; mensagem: string } | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [gerando, setGerando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  async function gerar() {
+    setGerando(true);
+    setErro(null);
+    const r = await gerarAcessoPorWhatsapp(usuarioId);
+    setGerando(false);
+    if (r.ok) setGerado({ whatsapp: r.whatsapp, mensagem: r.mensagem });
+    else setErro(r.erro);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-body-sm text-ink-muted">
+        Esta conta não tem e-mail de login, e o Publike entra só pelo e-mail. Mande pelo WhatsApp o link de acesso: a
+        empresa abre, coloca o e-mail dela e entra com ele (o e-mail fica ligado à conta, à vaga e ao WhatsApp).
+      </p>
+      {!gerado && (
+        <Botao variante="sucesso" tamanho="sm" disabled={gerando} onClick={gerar} className="self-start">
+          <MessageCircle aria-hidden />
+          {gerando ? "Gerando…" : "Mandar o acesso pelo WhatsApp"}
+        </Botao>
+      )}
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {gerado && (
+        <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
+          <p className="text-body-sm whitespace-pre-wrap">{gerado.mensagem}</p>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`https://wa.me/${gerado.whatsapp}?text=${encodeURIComponent(gerado.mensagem)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-cerrado px-3.5 text-label text-on-cerrado"
+            >
+              <MessageCircle aria-hidden className="size-4" />
+              Abrir o WhatsApp {formatarTelefone(gerado.whatsapp)}
+            </a>
+            <Botao
+              tamanho="sm"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(gerado.mensagem);
+                  setCopiado(true);
+                  setTimeout(() => setCopiado(false), 2000);
+                } catch {}
+              }}
+            >
+              <Copy aria-hidden />
+              {copiado ? "Copiada" : "Copiar mensagem"}
+            </Botao>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

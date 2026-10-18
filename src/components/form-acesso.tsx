@@ -1,0 +1,40 @@
+"use client";
+
+import { Mail } from "lucide-react";
+import { startTransition, useActionState, type FormEvent } from "react";
+import { vincularEmailDoAcesso } from "@/lib/acoes/acesso";
+import type { EstadoForm } from "@/lib/tipos";
+import { Aviso } from "./ui/basicos";
+import { Botao } from "./ui/botao";
+import { Campo, classesEntrada, ligarCampo } from "./ui/campo";
+
+/** O e-mail da empresa no link de acesso: vira o login da conta. */
+export function FormAcesso({ token }: { token: string }) {
+  const [estado, acao, enviando] = useActionState(vincularEmailDoAcesso.bind(null, token), { ok: false } as EstadoForm);
+  const erros = estado.erros ?? {};
+  // sem limpar o campo quando volta com erro (o "action" do form limparia)
+  function enviar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const dados = new FormData(e.currentTarget);
+    startTransition(() => acao(dados));
+  }
+  return (
+    <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
+      <Campo rotulo="E-mail da empresa" nome="email_empresa" erro={erros.email_empresa}>
+        <input
+          {...ligarCampo("email_empresa", erros.email_empresa)}
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          placeholder="contato@empresa.com.br"
+          className={classesEntrada}
+        />
+      </Campo>
+      {estado.erro && !erros.email_empresa && <Aviso tipo="erro">{estado.erro}</Aviso>}
+      <Botao type="submit" variante="primario" disabled={enviando} className="self-start">
+        <Mail aria-hidden />
+        {enviando ? "Ligando…" : "Usar este e-mail"}
+      </Botao>
+    </form>
+  );
+}

@@ -116,15 +116,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
       : "Não foi possível entrar. Tente de novo."
     : undefined;
   const redes = await redesParaEntrar();
+  // veio do link de acesso (/acesso/<token>): o e-mail já ficou ligado à conta
+  const emailPedido = primeiro(sp.email)?.trim().slice(0, 200);
+  const emailInicial = emailPedido && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailPedido) ? emailPedido : undefined;
 
   return (
     <Colunas ctx={ctx}>
+      {primeiro(sp.acesso) === "1" && emailInicial && (
+        <Aviso tipo="sucesso" titulo="Pronto: o e-mail ficou ligado à conta" className="mb-6">
+          Agora toque em receber o link: ele chega em {emailInicial} e entra na conta da empresa.
+        </Aviso>
+      )}
       <FormEntrar
         proximo={proximo}
         erroInicial={erro}
         redes={redes}
         celular={LOGIN_CELULAR}
         cabecalho={<CabecalhoEntrar />}
+        emailInicial={emailInicial}
       />
     </Colunas>
   );

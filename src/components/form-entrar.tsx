@@ -58,8 +58,11 @@ export function FormEntrar({
   redes,
   celular: comCelular,
   cabecalho,
+  emailInicial,
 }: {
   proximo: string;
+  /** veio do link de acesso: o e-mail que a empresa acabou de ligar à conta */
+  emailInicial?: string;
   erroInicial?: string;
   redes: BotaoRede[];
   celular: boolean;
@@ -67,11 +70,11 @@ export function FormEntrar({
   cabecalho?: ReactNode;
 }) {
   const supabase = useMemo(() => criarClienteNavegador(), []);
-  const [modo, setModo] = useState<"celular" | "email">(comCelular ? "celular" : "email");
+  const [modo, setModo] = useState<"celular" | "email">(comCelular && !emailInicial ? "celular" : "email");
   const [etapa, setEtapa] = useState<"pedir" | "codigo" | "email-enviado">("pedir");
   const [celular, setCelular] = useState("");
   const [codigo, setCodigo] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailInicial ?? "");
   const [erro, setErro] = useState<string | null>(erroInicial ?? null);
   const [carregando, setCarregando] = useState(false);
   const [abrindo, setAbrindo] = useState<RedeSocial | null>(null);

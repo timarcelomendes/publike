@@ -531,6 +531,20 @@ export type Database = {
         Relationships: [];
       };
       /** convites às empresas (só o admin, com service_role) */
+      /** acesso pelo link (WhatsApp): só o admin (service_role) cria; a página usa as funções */
+      acessos_conta: {
+        Row: {
+          token: string;
+          perfil_id: string;
+          criado_em: string;
+          expira_em: string;
+          usado_em: string | null;
+          email: string | null;
+        };
+        Insert: { token: string; perfil_id: string };
+        Update: SemTabela;
+        Relationships: [];
+      };
       convites: {
         Row: {
           id: string;
@@ -842,6 +856,8 @@ export type Database = {
         Returns: { nome: string; tipo: string; rascunho: Json | null; status: string }[];
       };
       aceitar_convite: { Args: { p_token: string; p_anuncio: string }; Returns: boolean };
+      acesso_do_link: { Args: { p_token: string }; Returns: { nome: string; vaga: string | null; situacao: string }[] };
+      vincular_email_do_link: { Args: { p_token: string; p_email: string }; Returns: string };
       recusar_convite: { Args: { p_token: string }; Returns: boolean };
       /** conta nova que veio pela página de serviços: as boas-vindas viram as de prestador */
       quero_oferecer_servicos: { Args: Record<string, never>; Returns: undefined };
