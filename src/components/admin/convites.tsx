@@ -796,9 +796,15 @@ function CartaoConvite({
         ))}
         {c.email && (
           // abre a prévia; o envio é pelo Publike (o "mailto:" dependia do programa de e-mail do computador)
-          <Botao tamanho="sm" aria-expanded={previaEmail} onClick={() => setPreviaEmail((v) => !v)}>
+          <Botao
+            tamanho="sm"
+            aria-expanded={previaEmail}
+            onClick={() => setPreviaEmail((v) => !v)}
+            className="max-w-full"
+          >
             <Mail aria-hidden />
-            E-mail para {c.email}
+            {/* e-mail comprido não estica o cartão no celular */}
+            <span className="min-w-0 truncate">E-mail para {c.email}</span>
           </Botao>
         )}
         <Botao tamanho="sm" onClick={copiar}>
@@ -951,7 +957,7 @@ function CartaoConvite({
 
       {c.aceite_em && (
         <p className="text-body-sm text-cerrado-text">
-          Aceitou pelo link e publicou em{" "}
+          Autorizou e a vaga foi publicada em{" "}
           {new Date(c.aceite_em).toLocaleString("pt-BR", {
             day: "2-digit",
             month: "2-digit",
@@ -970,21 +976,20 @@ function CartaoConvite({
         </p>
       )}
 
-      {c.status === "autorizou" &&
-        (c.usuario_id ? (
-          <Link href={`/admin/usuarios/${c.usuario_id}`} className={`${classesBotao("secundario", "sm")} self-start`}>
-            <UserRound aria-hidden />
-            Abrir a conta da empresa
-          </Link>
-        ) : (
-          <Link
-            href={`/admin/usuarios/nova?convite=${c.id}`}
-            className={`${classesBotao("primario", "sm")} self-start`}
-          >
-            <UserPlus aria-hidden />
-            Criar a conta e publicar as vagas
-          </Link>
-        ))}
+      {!c.anuncio_id && c.status !== "recusou" && c.status !== "sem_contato" && (
+        // disse "sim" no WhatsApp mas não abriu o link: o admin publica por ela
+        <Link href={`/admin/convites/${c.id}/publicar`} className={`${classesBotao("secundario", "sm")} self-start`}>
+          <UserPlus aria-hidden />
+          Disse sim? Publicar por ela
+        </Link>
+      )}
+
+      {c.status === "autorizou" && c.usuario_id && (
+        <Link href={`/admin/usuarios/${c.usuario_id}`} className={`${classesBotao("secundario", "sm")} self-start`}>
+          <UserRound aria-hidden />
+          Abrir a conta da empresa
+        </Link>
+      )}
 
       <div className="flex flex-col gap-1">
         <label htmlFor={`nota-${c.id}`} className="sr-only">

@@ -564,7 +564,14 @@ export type Database = {
           rascunho?: Json | null;
           origem?: string | null;
         };
-        Update: { status?: string; nota?: string | null; enviada_em?: string | null; usuario_id?: string | null };
+        Update: {
+          status?: string;
+          nota?: string | null;
+          enviada_em?: string | null;
+          usuario_id?: string | null;
+          anuncio_id?: string | null;
+          aceite_em?: string | null;
+        };
         Relationships: [];
       };
       /** notícias: o site lê só as aprovadas que já chegaram no horário (RLS) */

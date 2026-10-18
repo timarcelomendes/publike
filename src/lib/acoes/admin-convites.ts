@@ -1,6 +1,8 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { after } from "next/server";
 import nodemailer from "nodemailer";
 import {
   emailDoConvite,
@@ -16,8 +18,11 @@ import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
 import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
-import type { Resultado } from "@/lib/tipos";
-import { UUID } from "@/lib/validacao";
+import type { EstadoForm, Resultado } from "@/lib/tipos";
+import { errosPorCampo, lerAnuncio, lerPerfil, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { completarAnuncio } from "@/lib/servidor/completar-anuncio";
+import { processarFilas } from "@/lib/servidor/filas";
+import { salvarTriagem } from "@/lib/servidor/triagem";
 
 // Convites às empresas: importar a lista, marcar a situação e anotar. Só no admin.
 
@@ -225,4 +230,142 @@ export async function enviarConviteEmail(id: string, assinatura: string): Promis
   }
   refresh();
   return { ok: true, mensagem: `E-mail enviado para ${para}.` };
+}
+
+/**
+ * A empresa disse "sim" (no WhatsApp ou por e-mail) mas não abriu o link: o admin publica por ela.
+ * Cria a conta da empresa se ainda não tiver (login pelo e-mail, ou pelo WhatsApp), publica a vaga
+ * em nome dela e marca o convite como Autorizou, guardando como foi o aceite.
+ * Os campos da conta vêm com "conta_" (o formulário da vaga já usa cidade e bairro).
+ */
+export async function publicarConvitePeloAdmin(
+  conviteId: string,
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(conviteId)) return { ok: false, erro: "Convite não encontrado." };
+  const { data: conv } = await c.from("convites").select("*").eq("id", conviteId).maybeSingle();
+  if (!conv) return { ok: false, erro: "Este convite não existe mais." };
+  const convite = conv as unknown as Convite;
+  if (formData.get("autorizou") !== "on") {
+    return { ok: false, erro: `Marque que ${convite.nome} autorizou a publicação antes de publicar.` };
+  }
+  const comoAutorizou = String(formData.get("como_autorizou") ?? "")
+    .trim()
+    .slice(0, 300);
+
+  // a vaga primeiro: com erro nela, nenhuma conta é criada (sem categoria, descrição ou ponto no
+  // mapa, completa como na publicação normal)
+  await completarAnuncio(formData);
+  const leitura = lerAnuncio(formData);
+  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  const d = leitura.dados;
+  if (d.tipo !== "vaga") return { ok: false, erro: "Pelo convite dá para publicar só vagas." };
+
+  // a conta da empresa: a do convite, a que já usa o e-mail, ou uma nova
+  let contaId: string | null = null;
+  if (convite.usuario_id) {
+    const { data: p } = await c.from("perfis").select("id").eq("id", convite.usuario_id).maybeSingle();
+    contaId = p?.id ?? null;
+  }
+  if (!contaId) {
+    const perfil = new FormData();
+    perfil.set("nome", String(formData.get("conta_nome") ?? ""));
+    perfil.set("tipo", String(formData.get("conta_tipo") ?? ""));
+    perfil.set("whatsapp", String(formData.get("conta_whatsapp") ?? ""));
+    perfil.set("email", String(formData.get("conta_email") ?? ""));
+    perfil.set("cnpj", String(formData.get("conta_cnpj") ?? ""));
+    perfil.set("cidade", d.cidade);
+    perfil.set("bairro", d.bairro ?? "");
+    perfil.set("receber_emails", "on");
+    const lp = lerPerfil(perfil);
+    if (!lp.success) {
+      const e = errosPorCampo(lp.error);
+      const [campo, msg] = Object.entries(e)[0] ?? ["", "Confira os dados da conta."];
+      const nomes: Record<string, string> = {
+        nome: "nome",
+        whatsapp: "WhatsApp",
+        email: "e-mail",
+        cnpj: "CNPJ",
+        tipo: "tipo",
+      };
+      return { ok: false, erro: `Conta da empresa (${nomes[campo] ?? campo}): ${msg}` };
+    }
+    const p = lp.data;
+    if (p.email) {
+      const { data: achados } = await c.rpc("admin_listar_usuarios", {
+        p_busca: p.email,
+        p_filtro: "todos",
+        p_limite: 20,
+      });
+      contaId = achados?.find((u) => u.email?.toLowerCase() === p.email)?.id ?? null;
+    }
+    if (!contaId) {
+      const { data: criado, error: erroLogin } = await c.auth.admin.createUser(
+        p.email
+          ? { email: p.email, email_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } }
+          : { phone: p.whatsapp, phone_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } },
+      );
+      if (erroLogin || !criado.user) {
+        return {
+          ok: false,
+          erro: `O Supabase não criou a conta: ${erroLogin?.message ?? "erro desconhecido"}. Se a empresa já tem conta, publique pela página da conta em Usuários.`,
+        };
+      }
+      const id = criado.user.id;
+      const { error: erroPerfil } = await c
+        .from("perfis")
+        .insert({ id, nome: p.nome, tipo: p.tipo, cidade: p.cidade, bairro: p.bairro, sobre: null, cnpj: p.cnpj });
+      const { error: erroContato } = erroPerfil
+        ? { error: null }
+        : await c
+            .from("contatos")
+            .insert({ perfil_id: id, whatsapp: p.whatsapp, email: p.email, receber_emails: true });
+      if (erroPerfil ?? erroContato) {
+        await c.auth.admin.deleteUser(id);
+        return { ok: false, erro: `Conta da empresa: ${mensagemDeErro((erroPerfil ?? erroContato)!)}` };
+      }
+      contaId = id;
+    }
+  }
+
+  const { data: anuncio, error } = await c
+    .from("anuncios")
+    .insert({ ...registroDoAnuncio(d), tipo: d.tipo, autor_id: contaId })
+    .select("id")
+    .single();
+  if (error) {
+    const erro = mensagemDeErro(error);
+    if (error.hint === "contratante" || error.hint === "pagamento_ate") {
+      return { ok: false, erro: "Confira os campos marcados.", erros: { [error.hint]: erro } };
+    }
+    return { ok: false, erro };
+  }
+  await salvarTriagem(c, anuncio.id, d.triagem);
+
+  const quando = new Date().toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+  const registro = `Autorizou em ${quando} (publicada pelo admin)${comoAutorizou ? `: ${comoAutorizou}` : "."}`;
+  await c
+    .from("convites")
+    .update({
+      status: "autorizou",
+      usuario_id: contaId,
+      anuncio_id: anuncio.id,
+      aceite_em: new Date().toISOString(),
+      nota: [registro, convite.nota].filter(Boolean).join(" · ").slice(0, 500),
+    })
+    .eq("id", conviteId);
+
+  // a IA revisa o texto, como em qualquer vaga; a conta nova avisa a equipe
+  after(processarFilas);
+  revalidatePath("/");
+  redirect(`/admin/usuarios/${contaId}?publicada=${anuncio.id}`);
 }
