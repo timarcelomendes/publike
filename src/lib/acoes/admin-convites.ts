@@ -1,7 +1,20 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { limparTelefone, rascunhoValido, STATUS_CONVITE, type NovoConvite, type StatusConvite } from "@/lib/convites";
+import nodemailer from "nodemailer";
+import {
+  assuntoConvite,
+  limparTelefone,
+  linkDoConvite,
+  mensagemConvite,
+  rascunhoValido,
+  STATUS_CONVITE,
+  type Convite,
+  type NovoConvite,
+  type StatusConvite,
+} from "@/lib/convites";
+import { escaparHtml } from "@/lib/email/montar";
+import { configSmtp, urlDosEmails } from "@/lib/servidor/ambiente";
 import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
 import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
@@ -160,4 +173,66 @@ export async function lerConviteDaImagem(
       origem: "imagem",
     },
   };
+}
+
+/**
+ * Manda o convite por e-mail direto pelo Publike (o mesmo SMTP dos avisos do site): sem depender
+ * do programa de e-mail do computador. Deu certo: o convite fica como "Enviei".
+ */
+export async function enviarConviteEmail(id: string, assinatura: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  const smtp = configSmtp();
+  if (!smtp)
+    return {
+      ok: false,
+      erro: "O envio de e-mail não está configurado neste computador (SMTP no .env.local). Use Copiar mensagem.",
+    };
+  const { data: conv } = await c.from("convites").select("*").eq("id", id).maybeSingle();
+  if (!conv) return { ok: false, erro: "Este convite não existe mais. Atualize a página." };
+  const convite = conv as unknown as Convite;
+  const para = convite.email;
+  if (!para) return { ok: false, erro: "Este convite não tem e-mail." };
+  const site = urlDosEmails() ?? "https://publike.org";
+  const link = linkDoConvite(site, convite.token);
+  const texto = mensagemConvite(convite, String(assinatura ?? "").slice(0, 40), link, Boolean(convite.rascunho));
+  const html = texto
+    .split("\n\n")
+    .map((p) =>
+      p.includes(link)
+        ? `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(p.replace(link, "").trim()).replace(/\n/g, "<br>")}<br>` +
+          `<a href="${escaparHtml(link)}" style="display:inline-block;margin-top:10px;padding:12px 20px;background:#c2410c;color:#ffffff;font-weight:600;text-decoration:none;border-radius:8px;">Conferir e publicar a vaga</a></p>`
+        : `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(p).replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("");
+  const transporte = nodemailer.createTransport({
+    host: smtp.servidor,
+    port: smtp.porta,
+    secure: smtp.seguro,
+    requireTLS: !smtp.seguro,
+    auth: { user: smtp.usuario, pass: smtp.senha },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
+  try {
+    await transporte.sendMail({
+      from: { name: "Publike", address: smtp.remetente },
+      to: para,
+      subject: assuntoConvite(convite),
+      text: texto,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1f1a14;max-width:560px;">${html}</div>`,
+    });
+  } catch (e) {
+    console.error("Publike: o convite por e-mail não saiu:", e instanceof Error ? e.message : String(e));
+    return { ok: false, erro: "O e-mail não saiu. Confira o SMTP no .env.local ou use Copiar mensagem." };
+  } finally {
+    transporte.close();
+  }
+  if (convite.status === "a_enviar") {
+    await c.from("convites").update({ status: "enviada", enviada_em: new Date().toISOString() }).eq("id", id);
+  }
+  refresh();
+  return { ok: true, mensagem: `E-mail enviado para ${para}.` };
 }

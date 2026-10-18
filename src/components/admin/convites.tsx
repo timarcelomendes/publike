@@ -18,13 +18,13 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransiti
 import {
   anotarConvite,
   apagarConvite,
+  enviarConviteEmail,
   importarConvites,
   lerConviteDaImagem,
   mudarConvite,
 } from "@/lib/acoes/admin-convites";
 import {
   ESTADOS_CONVITE,
-  assuntoConvite,
   formatarFone,
   lerCsv,
   linkDoConvite,
@@ -664,6 +664,7 @@ function CartaoConvite({
 }) {
   const nota = useAcao();
   const apagar = useAcao();
+  const email = useAcao();
   const [copiado, setCopiado] = useState(false);
   const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
   const podeCompartilhar = useCompartilhar();
@@ -742,13 +743,22 @@ function CartaoConvite({
           </a>
         ))}
         {c.email && (
-          <a
-            href={`mailto:${c.email}?subject=${encodeURIComponent(assuntoConvite(c))}&body=${texto}`}
-            className={classesBotao("secundario", "sm")}
+          // manda pelo Publike (o "mailto:" dependia do programa de e-mail do computador e cortava o texto)
+          <Botao
+            tamanho="sm"
+            disabled={email.pendente}
+            onClick={() =>
+              email.rodar(
+                () => enviarConviteEmail(c.id, assinatura),
+                (r) => {
+                  if (r.ok && c.status === "a_enviar") aoMarcar("enviada");
+                },
+              )
+            }
           >
             <Mail aria-hidden />
-            {c.email}
-          </a>
+            {email.pendente ? "Enviando…" : `Enviar e-mail para ${c.email}`}
+          </Botao>
         )}
         <Botao tamanho="sm" onClick={copiar}>
           <Copy aria-hidden />
@@ -765,6 +775,7 @@ function CartaoConvite({
           </a>
         ))}
       </div>
+      {email.mensagem}
 
       {grupo && (
         <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-300 p-3 text-body-sm">
