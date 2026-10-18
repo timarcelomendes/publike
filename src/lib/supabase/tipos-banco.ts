@@ -583,6 +583,9 @@ export type Database = {
           foto_autor_url: string | null;
           foto_link: string | null;
           foto_alt: string | null;
+          foto_fonte: string | null;
+          foto_licenca: string | null;
+          foto_licenca_url: string | null;
         };
         Insert: SemTabela;
         Update: {

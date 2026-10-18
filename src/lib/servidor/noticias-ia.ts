@@ -23,7 +23,7 @@ type ItemIA = {
   fonte_nome: string;
   fonte_url: string;
   fonte_data: string;
-  /** o que buscar no banco de fotos, em inglês */
+  /** o que buscar nas fotos livres (Openverse), em inglês */
   foto_busca: string;
 };
 
@@ -97,7 +97,7 @@ Regras:
 - "cidade": a cidade da notícia ou "" se for de Goiás ou do Brasil todo.
 - "tema": vagas (vagas, feirões, contratações), cursos, concursos, direitos (leis, benefícios, salário mínimo), eventos, ou mercado (números, economia, setores, demissões, greves, tecnologia e o resto).
 - "fonte_data": a data da matéria no formato AAAA-MM-DD, ou "" se não souber.
-- "foto_busca": duas a quatro palavras em inglês para achar uma foto de banco que combine com o assunto, como numa notícia de jornal ("construction workers", "job fair crowd", "students classroom"). Sem nome de pessoa, de empresa ou de lugar.
+- "foto_busca": duas a quatro palavras em inglês para achar uma foto real que combine com o assunto, como numa notícia de jornal ("construction workers", "job fair crowd", "students classroom"). Sem nome de pessoa, de empresa ou de lugar.
 - No máximo 8 notícias, das mais úteis para as menos, com pelo menos metade de Goiás quando houver. Nada de notícia de crime, política partidária, fofoca, propaganda ou vaga de um único anúncio. Se não achar nada que preste, devolva a lista vazia.`;
 }
 
@@ -209,7 +209,7 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
   return { ok: true, novas: novas ?? 0 };
 }
 
-/** Foto para as notícias que ainda não têm (as antigas e as que o banco de fotos não achou antes). */
+/** Foto para as notícias que ainda não têm (as antigas e as que a busca de fotos não achou antes). */
 async function completarFotos(
   cliente: NonNullable<ReturnType<typeof acessoFila>>["cliente"],
   chave: string,
@@ -218,7 +218,8 @@ async function completarFotos(
 ) {
   if (!fotosConfiguradas() || !semFoto.length) return;
   const fotos = [];
-  for (const n of semFoto) {
+  // o Openverse sem chave aceita 20 buscas por minuto: 5 notícias por vez
+  for (const n of semFoto.slice(0, 5)) {
     const foto = await buscarFoto("", n.tema, usadas);
     if (foto) fotos.push({ id: n.id, ...foto });
   }

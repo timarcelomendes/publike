@@ -74,30 +74,21 @@ async function Noticia({ slug }: { slug: string }) {
         </p>
         <figure className="mt-5">
           <CapaNoticia n={n} tamanho="grande" className="aspect-video rounded-md" />
-          {n.foto_url && n.foto_autor && (
+          {n.foto_url && (
             <figcaption className="mt-2 text-body-sm text-ink-muted">
-              Foto:{" "}
-              {n.foto_autor_url ? (
-                <a
-                  href={n.foto_autor_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  {n.foto_autor}
-                </a>
-              ) : (
-                n.foto_autor
-              )}{" "}
-              /{" "}
-              <a
-                href={n.foto_link ?? "https://www.pexels.com"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                Pexels
-              </a>
+              Imagem ilustrativa. Foto:{" "}
+              <Credito href={n.foto_autor_url}>{n.foto_autor || "autor não informado"}</Credito>
+              {n.foto_fonte && (
+                <>
+                  {" "}
+                  (<Credito href={n.foto_link}>{n.foto_fonte}</Credito>)
+                </>
+              )}
+              {n.foto_licenca && (
+                <>
+                  , <Credito href={n.foto_licenca_url}>{n.foto_licenca}</Credito>
+                </>
+              )}
             </figcaption>
           )}
         </figure>
@@ -158,5 +149,15 @@ async function Noticia({ slug }: { slug: string }) {
         </section>
       </article>
     </Container>
+  );
+}
+
+/** Link do crédito da foto (quem fotografou, a página da foto, a licença). */
+function Credito({ href, children }: { href?: string | null; children: React.ReactNode }) {
+  if (!href) return <>{children}</>;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+      {children}
+    </a>
   );
 }

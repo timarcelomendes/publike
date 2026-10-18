@@ -28,12 +28,15 @@ export type Noticia = {
   status: StatusNoticia;
   publicar_em: string | null;
   criado_em: string;
-  /** foto de banco livre (Pexels), com o crédito de quem fotografou */
+  /** foto com licença livre (Openverse: Flickr e Wikimedia), com o crédito e a licença */
   foto_url?: string | null;
   foto_autor?: string | null;
   foto_autor_url?: string | null;
   foto_link?: string | null;
   foto_alt?: string | null;
+  foto_fonte?: string | null;
+  foto_licenca?: string | null;
+  foto_licenca_url?: string | null;
 };
 
 /** Os horários em que as notícias aprovadas entram no site, ao longo do dia (Brasília). */

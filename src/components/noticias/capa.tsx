@@ -1,7 +1,7 @@
 import { CapaDesenhada, type CORES_CAPA, type NomeCena } from "@/components/conteudo/capa";
 import type { Noticia, TemaNoticia } from "@/lib/noticias";
 
-// Capa das notícias: a foto de banco livre (Pexels) quando a notícia tem uma; se não,
+// Capa das notícias: a foto com licença livre (Openverse) quando a notícia tem uma; se não,
 // a capa desenhada (a foto do jornal tem dono), com a cena do assunto e o número em destaque.
 
 const CENA_DO_TEMA: Record<TemaNoticia, NomeCena> = {
@@ -54,7 +54,7 @@ export function CapaNoticia({
 }) {
   if (n.foto_url) {
     return (
-      // a foto vem do banco já no tamanho certo (1200 de largura): sem passar pelo otimizador
+      // a foto vem do Flickr ou da Wikimedia já num tamanho bom: sem passar pelo otimizador
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={n.foto_url}
