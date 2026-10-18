@@ -428,6 +428,8 @@ export function ImportarPorImagens() {
 
 export function ListaConvites({ convites, agora, site }: { convites: Convite[]; agora: number; site: string }) {
   const [filtro, setFiltro] = useState<StatusConvite | "todos">("todos");
+  // filtros a mais (juntam com a situação): lida da imagem, agência, só telefone
+  const [marcas, setMarcas] = useState<Set<Marca>>(new Set());
   const [mudancas, setMudancas] = useState<Record<string, Partial<Convite>>>({});
   const [tocou, setTocou] = useState<Set<string>>(new Set());
   const [assinatura, setAssinatura] = useState("o Marcelo");
@@ -444,7 +446,9 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
 
   const itens = useMemo(() => convites.map((c) => ({ ...c, ...mudancas[c.id] })), [convites, mudancas]);
   const conta = (s: StatusConvite) => itens.filter((c) => c.status === s).length;
-  const visiveis = itens.filter((c) => filtro === "todos" || c.status === filtro);
+  const visiveis = itens.filter(
+    (c) => (filtro === "todos" || c.status === filtro) && [...marcas].every((m) => MARCAS[m].tem(c)),
+  );
   const naHora = itens.filter((c) => c.enviada_em && Date.parse(c.enviada_em) > agora - 3600e3).length;
 
   function marcar(c: Convite, status: StatusConvite) {
@@ -533,10 +537,38 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
         ))}
       </div>
 
+      {LISTA_MARCAS.some((m) => itens.some(MARCAS[m].tem)) && (
+        <div role="group" aria-label="Filtrar por tipo" className="sem-barra -mt-2 flex gap-2 overflow-x-auto pb-1">
+          {LISTA_MARCAS.filter((m) => itens.some(MARCAS[m].tem) || marcas.has(m)).map((m) => {
+            const ativo = marcas.has(m);
+            return (
+              <button
+                key={m}
+                type="button"
+                className={chip(ativo)}
+                aria-pressed={ativo}
+                onClick={() =>
+                  setMarcas((atual) => {
+                    const nova = new Set(atual);
+                    if (ativo) nova.delete(m);
+                    else nova.add(m);
+                    return nova;
+                  })
+                }
+              >
+                {MARCAS[m].nome} <span className="tabular-nums opacity-70">{itens.filter(MARCAS[m].tem).length}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
       {visiveis.length === 0 ? (
-        <p className="py-6 text-center text-body-sm text-ink-muted">Nenhuma empresa nesta situação.</p>
+        <p className="py-6 text-center text-body-sm text-ink-muted">
+          {marcas.size ? "Nenhuma empresa com esses filtros." : "Nenhuma empresa nesta situação."}
+        </p>
       ) : (
         <ul className="flex flex-col gap-3">
           {visiveis.map((c) => (
@@ -555,6 +587,15 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
     </div>
   );
 }
+
+// os filtros a mais da lista (os mesmos selos do cartão)
+const MARCAS = {
+  imagem: { nome: "Lida da imagem", tem: (c: Convite) => c.origem === "imagem" },
+  agencia: { nome: "Agência", tem: (c: Convite) => c.tipo === "agencia" },
+  so_telefone: { nome: "Só telefone", tem: (c: Convite) => !c.whatsapp.length && !c.email },
+} as const;
+type Marca = keyof typeof MARCAS;
+const LISTA_MARCAS = Object.keys(MARCAS) as Marca[];
 
 const imagemDoConvite = (tipo: Convite["tipo"]) =>
   `/convites/convite-${tipo === "agencia" ? "agencia" : "empresa"}.png`;
