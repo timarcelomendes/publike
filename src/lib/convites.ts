@@ -312,6 +312,34 @@ export function mensagemConvite(
   ].join("\n\n");
 }
 
+/**
+ * Uma mensagem só para várias empresas com o mesmo WhatsApp (uma agência ou um grupo que anuncia
+ * com nomes diferentes): cada vaga com o seu link, e cada link vale o aceite daquela empresa.
+ */
+export function mensagemConviteAgrupada(
+  lista: Pick<Convite, "nome" | "tipo" | "vagas" | "token" | "rascunho">[],
+  assinatura: string,
+  site: string,
+) {
+  const quem = assinatura.trim() ? `Sou ${assinatura.trim()}, do Publike` : "Aqui é do Publike";
+  const agencia = lista.some((c) => c.tipo === "agencia");
+  const itens = lista
+    .map((c) => {
+      const vagas = juntar(c.vagas.map(minusculo));
+      return `• ${c.nome}${vagas ? ` (${vagas})` : ""}:\n${linkDoConvite(site, c.token)}`;
+    })
+    .join("\n\n");
+  return [
+    `Olá! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de Goiânia e região.`,
+    `Vi que vocês estão com vagas abertas. Posso publicar no Publike, sem custo? Já deixei cada uma pronta no site: é só abrir o link, conferir e tocar em Publicar (entra com o WhatsApp ou o e-mail, sem senha).`,
+    itens,
+    agencia
+      ? `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• É grátis: sem plano e sem taxa por candidato.`
+      : `• É grátis para a empresa e para o candidato: sem plano e sem taxa.\n• A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus.`,
+    `Se não tiver interesse, é só responder "não" que eu não mando mais mensagens. Obrigado!`,
+  ].join("\n\n");
+}
+
 export function assuntoConvite(c: Pick<Convite, "vagas">) {
   return c.vagas.length
     ? `Vaga de ${minusculo(c.vagas[0])}: divulgação grátis no Publike`

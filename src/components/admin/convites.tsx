@@ -29,6 +29,7 @@ import {
   lerCsv,
   linkDoConvite,
   linhasParaConvites,
+  mensagemConviteAgrupada,
   mensagemConvite,
   type Convite,
   type NovoConvite,
@@ -446,8 +447,22 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
 
   const itens = useMemo(() => convites.map((c) => ({ ...c, ...mudancas[c.id] })), [convites, mudancas]);
   const conta = (s: StatusConvite) => itens.filter((c) => c.status === s).length;
+  // empresas com o mesmo WhatsApp (ainda a convidar): dá para mandar uma mensagem só
+  const grupos = useMemo(() => {
+    const porNumero = new Map<string, Convite[]>();
+    for (const c of itens) {
+      if (c.status !== "a_enviar" && c.status !== "enviada") continue;
+      for (const n of c.whatsapp) porNumero.set(n, [...(porNumero.get(n) ?? []), c]);
+    }
+    return new Map([...porNumero].filter(([, l]) => l.length > 1));
+  }, [itens]);
+  const grupoDe = (c: Convite) => {
+    const n = c.whatsapp.find((x) => grupos.has(x));
+    return n ? { numero: n, convites: grupos.get(n)! } : null;
+  };
+  const temMarca = (m: Marca, c: Convite) => (m === "mesmo_whatsapp" ? Boolean(grupoDe(c)) : MARCAS[m].tem(c));
   const visiveis = itens.filter(
-    (c) => (filtro === "todos" || c.status === filtro) && [...marcas].every((m) => MARCAS[m].tem(c)),
+    (c) => (filtro === "todos" || c.status === filtro) && [...marcas].every((m) => temMarca(m, c)),
   );
   const naHora = itens.filter((c) => c.enviada_em && Date.parse(c.enviada_em) > agora - 3600e3).length;
 
@@ -537,9 +552,9 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
         ))}
       </div>
 
-      {LISTA_MARCAS.some((m) => itens.some(MARCAS[m].tem)) && (
+      {LISTA_MARCAS.some((m) => itens.some((c) => temMarca(m, c))) && (
         <div role="group" aria-label="Filtrar por tipo" className="sem-barra -mt-2 flex gap-2 overflow-x-auto pb-1">
-          {LISTA_MARCAS.filter((m) => itens.some(MARCAS[m].tem) || marcas.has(m)).map((m) => {
+          {LISTA_MARCAS.filter((m) => itens.some((c) => temMarca(m, c)) || marcas.has(m)).map((m) => {
             const ativo = marcas.has(m);
             return (
               <button
@@ -556,7 +571,8 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
                   })
                 }
               >
-                {MARCAS[m].nome} <span className="tabular-nums opacity-70">{itens.filter(MARCAS[m].tem).length}</span>
+                {MARCAS[m].nome}{" "}
+                <span className="tabular-nums opacity-70">{itens.filter((c) => temMarca(m, c)).length}</span>
               </button>
             );
           })}
@@ -580,6 +596,9 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
               lembrar={tocou.has(c.id) && c.status === "a_enviar"}
               aoAbrirWhats={() => setTocou((t) => new Set(t).add(c.id))}
               aoMarcar={(s) => marcar(c, s)}
+              grupo={grupoDe(c)}
+              aoAbrirGrupo={(l) => setTocou((t) => new Set([...t, ...l.map((x) => x.id)]))}
+              aoMarcarGrupo={(l) => l.forEach((x) => marcar(x, "enviada"))}
             />
           ))}
         </ul>
@@ -593,9 +612,13 @@ const MARCAS = {
   imagem: { nome: "Lida da imagem", tem: (c: Convite) => c.origem === "imagem" },
   agencia: { nome: "Agência", tem: (c: Convite) => c.tipo === "agencia" },
   so_telefone: { nome: "Só telefone", tem: (c: Convite) => !c.whatsapp.length && !c.email },
+  // depende das outras empresas da lista (calculado na lista)
+  mesmo_whatsapp: { nome: "Mesmo WhatsApp", tem: () => false },
 } as const;
 type Marca = keyof typeof MARCAS;
 const LISTA_MARCAS = Object.keys(MARCAS) as Marca[];
+
+const juntarNomes = (l: string[]) => (l.length < 2 ? l.join("") : `${l.slice(0, -1).join(", ")} e ${l.at(-1)}`);
 
 const imagemDoConvite = (tipo: Convite["tipo"]) =>
   `/convites/convite-${tipo === "agencia" ? "agencia" : "empresa"}.png`;
@@ -623,6 +646,9 @@ function CartaoConvite({
   lembrar,
   aoAbrirWhats,
   aoMarcar,
+  grupo,
+  aoAbrirGrupo,
+  aoMarcarGrupo,
 }: {
   c: Convite;
   /** o endereço público do site (o link do convite) */
@@ -631,6 +657,10 @@ function CartaoConvite({
   lembrar: boolean;
   aoAbrirWhats: () => void;
   aoMarcar: (s: StatusConvite) => void;
+  /** outras empresas da lista com o mesmo WhatsApp (a convidar): enviar numa mensagem só */
+  grupo: { numero: string; convites: Convite[] } | null;
+  aoAbrirGrupo: (l: Convite[]) => void;
+  aoMarcarGrupo: (l: Convite[]) => void;
 }) {
   const nota = useAcao();
   const apagar = useAcao();
@@ -735,6 +765,35 @@ function CartaoConvite({
           </a>
         ))}
       </div>
+
+      {grupo && (
+        <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-300 p-3 text-body-sm">
+          <p>
+            <span className="text-label">Mesmo WhatsApp {formatarFone(grupo.numero)}</span> de{" "}
+            {juntarNomes(grupo.convites.filter((x) => x.id !== c.id).map((x) => x.nome))}. Mande uma mensagem só, com o
+            link de cada vaga.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`https://wa.me/55${grupo.numero}?text=${encodeURIComponent(mensagemConviteAgrupada(grupo.convites, assinatura, site))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => aoAbrirGrupo(grupo.convites)}
+              className={classesBotao("sucesso", "sm")}
+            >
+              <MessageCircle aria-hidden />
+              Enviar junto ({grupo.convites.length} empresas)
+            </a>
+            <Botao
+              tamanho="sm"
+              disabled={grupo.convites.every((x) => x.status === "enviada")}
+              onClick={() => aoMarcarGrupo(grupo.convites)}
+            >
+              Marcar as {grupo.convites.length} como Enviei
+            </Botao>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <a href={imagem} target="_blank" rel="noopener noreferrer" className="shrink-0 self-start">
