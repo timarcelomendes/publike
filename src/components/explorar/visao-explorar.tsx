@@ -150,15 +150,16 @@ export function VisaoExplorar({
 
   return (
     <div>
-      {/* Celular: contagem e jeito de ver; a origem e o botão "Filtros"; os filtros, se abertos.
-          Computador: contagem à esquerda (nunca espremida) e, na mesma linha, os filtros e o jeito
-          de ver; a origem embaixo, na largura toda. */}
-      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-x-6">
-        <div className="col-start-1 row-start-1">{titulo}</div>
+      {/* Celular: título e jeito de ver; a origem e o botão "Filtros"; os filtros, se abertos.
+          Computador: título à esquerda e, na mesma linha, os filtros e o jeito de ver; sem espaço
+          para os dois, os filtros descem para a linha de baixo (nada fica cortado). A origem vem
+          por último, na largura toda. */}
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:flex lg:flex-wrap lg:gap-x-6 lg:gap-y-3">
+        <div className="col-start-1 row-start-1 lg:shrink-0">{titulo}</div>
         <div className="col-start-2 row-start-1 lg:hidden">
           <SeletorVisao visao={visao} celular />
         </div>
-        <div className="col-span-2 row-start-2 flex items-center justify-between gap-3">
+        <div className="col-span-2 row-start-2 flex items-center justify-between gap-3 lg:order-last lg:-mt-1 lg:w-full">
           <div className="min-w-0 flex-1">{subtitulo}</div>
           <button
             type="button"
@@ -183,7 +184,7 @@ export function VisaoExplorar({
         </div>
         <div
           id={idFiltros}
-          className={`col-span-2 row-start-3 mt-2 items-center gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:mt-0 lg:flex lg:justify-end ${
+          className={`col-span-2 row-start-3 mt-2 items-center gap-3 lg:mt-0 lg:ml-auto lg:flex lg:justify-end ${
             filtrosAbertos ? "flex" : "hidden"
           }`}
         >
