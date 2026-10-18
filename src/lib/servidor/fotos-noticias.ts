@@ -89,8 +89,14 @@ export async function fotoAbre(url: string) {
   }
 }
 
-/** As fotos que servem para uma busca (licença, tamanho e formato certos), ainda sem conferir se abrem. */
-async function candidatas(termo: string, quantas = 20): Promise<FotoNoticia[]> {
+/** O Openverse sem chave aceita no máximo 20 fotos por busca (mais que isso, ele recusa a busca). */
+const POR_BUSCA = 20;
+
+/**
+ * As fotos que servem para uma busca (licença, tamanho e formato certos), ainda sem conferir se abrem.
+ * Se o Openverse recusar ou não responder, volta o motivo em `erro`.
+ */
+async function candidatas(termo: string): Promise<{ fotos: FotoNoticia[]; erro?: string }> {
   const base = (process.env.OPENVERSE_URL || "https://api.openverse.org/v1").replace(/\/+$/, "");
   const q = new URLSearchParams({
     q: termo.slice(0, 80),
@@ -100,7 +106,7 @@ async function candidatas(termo: string, quantas = 20): Promise<FotoNoticia[]> {
     size: "large",
     extension: "jpg",
     mature: "false",
-    page_size: String(quantas),
+    page_size: String(POR_BUSCA),
   });
   try {
     const r = await fetch(`${base}/images/?${q}`, {
@@ -108,9 +114,18 @@ async function candidatas(termo: string, quantas = 20): Promise<FotoNoticia[]> {
       signal: AbortSignal.timeout(12_000),
       cache: "no-store",
     });
-    if (!r.ok) return [];
+    if (!r.ok) {
+      console.warn(`Publike: o Openverse recusou a busca de fotos (${r.status}).`);
+      return {
+        fotos: [],
+        erro:
+          r.status === 429
+            ? "O banco de fotos pediu uma pausa (limite de buscas). Tente de novo em um minuto."
+            : `O banco de fotos recusou a busca (erro ${r.status}). Tente de novo.`,
+      };
+    }
     const fotos = ((await r.json()) as { results?: FotoOpenverse[] }).results ?? [];
-    return fotos
+    const boas = fotos
       .filter((x) => {
         const w = x.width ?? 0;
         const h = x.height ?? 0;
@@ -138,8 +153,9 @@ async function candidatas(termo: string, quantas = 20): Promise<FotoNoticia[]> {
         foto_licenca: nomeDaLicenca(f).slice(0, 40),
         foto_licenca_url: f.license_url?.startsWith("https://") ? f.license_url.slice(0, 300) : "",
       }));
+    return { fotos: boas };
   } catch {
-    return [];
+    return { fotos: [], erro: "O banco de fotos não respondeu. Tente de novo." };
   }
 }
 
@@ -148,7 +164,7 @@ export async function buscarFoto(busca: string, tema: TemaNoticia, usadas: Set<s
   if (!fotosConfiguradas()) return null;
   for (const termo of [busca.trim(), ...BUSCA_DO_TEMA[tema]].filter(Boolean)) {
     // confere até 3 por busca: se nenhuma abrir, tenta a próxima busca
-    for (const f of (await candidatas(termo)).filter((x) => !usadas.has(x.foto_link)).slice(0, 3)) {
+    for (const f of (await candidatas(termo)).fotos.filter((x) => !usadas.has(x.foto_link)).slice(0, 3)) {
       if (await fotoAbre(f.foto_url)) {
         usadas.add(f.foto_link);
         return f;
@@ -159,11 +175,13 @@ export async function buscarFoto(busca: string, tema: TemaNoticia, usadas: Set<s
 }
 
 /** Para o admin escolher: até 8 fotos que abrem, para uma busca (ou o assunto da notícia). */
-export async function opcoesDeFoto(busca: string, tema: TemaNoticia): Promise<FotoNoticia[]> {
+export async function opcoesDeFoto(busca: string, tema: TemaNoticia): Promise<{ fotos: FotoNoticia[]; erro?: string }> {
   const termo = busca.trim() || BUSCA_DO_TEMA[tema][0];
-  const lista = (await candidatas(termo, 30)).slice(0, 12);
+  const { fotos, erro } = await candidatas(termo);
+  if (erro) return { fotos: [], erro };
+  const lista = fotos.slice(0, 12);
   const abrem = await Promise.all(lista.map((f) => fotoAbre(f.foto_url)));
-  return lista.filter((_, i) => abrem[i]).slice(0, 8);
+  return { fotos: lista.filter((_, i) => abrem[i]).slice(0, 8) };
 }
 
 /** Confere uma foto escolhida no admin (vem do navegador): endereços e tamanhos certos. */

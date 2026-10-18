@@ -155,7 +155,8 @@ export async function buscarFotosNoticia(
 ): Promise<{ ok: true; fotos: FotoNoticia[] } | { ok: false; erro: string }> {
   if (!(await clienteAdminOuNulo())) return { ok: false, erro: FORA };
   if (!LISTA_TEMAS_NOTICIA.includes(tema)) return { ok: false, erro: "Pedido inválido." };
-  return { ok: true, fotos: await opcoesDeFoto(String(busca ?? "").slice(0, 80), tema) };
+  const { fotos, erro } = await opcoesDeFoto(String(busca ?? "").slice(0, 80), tema);
+  return erro ? { ok: false, erro } : { ok: true, fotos };
 }
 
 /** Troca a foto da notícia (ou tira: fica a capa desenhada). */
