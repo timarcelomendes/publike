@@ -180,7 +180,8 @@ export function AcessoPorWhatsapp({ usuarioId }: { usuarioId: string }) {
     <div className="flex flex-col gap-3">
       <p className="text-body-sm text-ink-muted">
         Esta conta não tem e-mail de login, e o Publike entra só pelo e-mail. Mande pelo WhatsApp o link de acesso: a
-        empresa abre, coloca o e-mail dela e entra com ele (o e-mail fica ligado à conta, à vaga e ao WhatsApp).
+        empresa (ou a pessoa) abre, coloca o e-mail e entra com ele (o e-mail fica ligado à conta, aos anúncios e ao
+        WhatsApp).
       </p>
       {!gerado && (
         <Botao variante="sucesso" tamanho="sm" disabled={gerando} onClick={gerar} className="self-start">

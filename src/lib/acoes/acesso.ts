@@ -12,7 +12,7 @@ const MOTIVOS: Record<string, string> = {
   usado: "Este link já foi usado. Entre com o e-mail que você colocou.",
   expirado: "Este link venceu. Peça um novo para quem mandou.",
   email_invalido: "Confira o e-mail.",
-  email_em_uso: "Esse e-mail já é de outra conta no Publike. Use outro e-mail da empresa.",
+  email_em_uso: "Esse e-mail já é de outra conta no Publike. Use outro e-mail.",
   ja_tem_email: "Esta conta já entra por um e-mail. Entre com ele.",
 };
 

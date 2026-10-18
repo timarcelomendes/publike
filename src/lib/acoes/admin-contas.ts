@@ -414,14 +414,14 @@ export async function gerarAcessoPorWhatsapp(
   const { data: u } = await c.auth.admin.getUserById(usuarioId);
   if (!u?.user) return { ok: false, erro: "Conta não encontrada." };
   if (u.user.email) return { ok: false, erro: `A conta já entra pelo e-mail ${u.user.email}: use Enviar acesso.` };
-  const [{ data: perfil }, { data: contato }, { data: vaga }] = await Promise.all([
+  const [{ data: perfil }, { data: contato }, { data: anuncio }] = await Promise.all([
     c.from("perfis").select("nome").eq("id", usuarioId).maybeSingle(),
     c.from("contatos").select("whatsapp").eq("perfil_id", usuarioId).maybeSingle(),
     c
       .from("anuncios")
-      .select("id, titulo")
+      .select("id, titulo, tipo")
       .eq("autor_id", usuarioId)
-      .eq("tipo", "vaga")
+      .order("tipo", { ascending: false }) // a vaga antes do serviço
       .order("criado_em", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -433,13 +433,24 @@ export async function gerarAcessoPorWhatsapp(
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para gerar o link. A migração já rodou?") };
   const site = urlDosEmails() ?? "https://publike.org";
   const link = `${site}/acesso/${token}`;
-  const mensagem = [
-    `Olá, pessoal da ${perfil.nome}! Aqui é do Publike.`,
-    vaga
-      ? `A vaga de ${vaga.titulo} já está no ar: ${site}/anuncio/${vaga.id}`
-      : "A conta de vocês no Publike já está pronta.",
-    `Para ver os candidatos e cuidar da vaga, abra este link e coloque o e-mail da empresa (é por ele que vocês entram, sem senha):\n${link}`,
-    "O link vale por 30 dias e só uma vez. Qualquer dúvida, é só responder aqui.",
-  ].join("\n\n");
+  const fim = "O link vale por 30 dias e só uma vez. Qualquer dúvida, é só responder aqui.";
+  // vitrine de serviços (prestador): a mensagem é para a pessoa, não para a empresa
+  const mensagem = (
+    anuncio?.tipo === "servico"
+      ? [
+          `Olá, ${perfil.nome}! Aqui é do Publike.`,
+          `Sua vitrine de serviços já está no ar: ${site}/anuncio/${anuncio.id}`,
+          `Para colocar fotos dos seus trabalhos e cuidar da vitrine, abra este link e coloque o seu e-mail (é por ele que você entra, sem senha):\n${link}`,
+          fim,
+        ]
+      : [
+          `Olá, pessoal da ${perfil.nome}! Aqui é do Publike.`,
+          anuncio
+            ? `A vaga de ${anuncio.titulo} já está no ar: ${site}/anuncio/${anuncio.id}`
+            : "A conta de vocês no Publike já está pronta.",
+          `Para ver os candidatos e cuidar da vaga, abra este link e coloque o e-mail da empresa (é por ele que vocês entram, sem senha):\n${link}`,
+          fim,
+        ]
+  ).join("\n\n");
   return { ok: true, link, whatsapp: contato.whatsapp, mensagem };
 }

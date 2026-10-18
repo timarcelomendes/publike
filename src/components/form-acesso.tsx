@@ -8,8 +8,8 @@ import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo } from "./ui/campo";
 
-/** O e-mail da empresa no link de acesso: vira o login da conta. */
-export function FormAcesso({ token }: { token: string }) {
+/** O e-mail da empresa (ou da pessoa, na vitrine de serviços) no link de acesso: vira o login da conta. */
+export function FormAcesso({ token, pessoal = false }: { token: string; pessoal?: boolean }) {
   const [estado, acao, enviando] = useActionState(vincularEmailDoAcesso.bind(null, token), { ok: false } as EstadoForm);
   const erros = estado.erros ?? {};
   // sem limpar o campo quando volta com erro (o "action" do form limparia)
@@ -20,13 +20,13 @@ export function FormAcesso({ token }: { token: string }) {
   }
   return (
     <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
-      <Campo rotulo="E-mail da empresa" nome="email_empresa" erro={erros.email_empresa}>
+      <Campo rotulo={pessoal ? "Seu e-mail" : "E-mail da empresa"} nome="email_empresa" erro={erros.email_empresa}>
         <input
           {...ligarCampo("email_empresa", erros.email_empresa)}
           type="email"
           autoComplete="email"
           inputMode="email"
-          placeholder="contato@empresa.com.br"
+          placeholder={pessoal ? "seunome@gmail.com" : "contato@empresa.com.br"}
           className={classesEntrada}
         />
       </Campo>

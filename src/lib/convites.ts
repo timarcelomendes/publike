@@ -1,6 +1,6 @@
 // Convites às empresas (admin): a lista, o arquivo modelo e a mensagem do convite.
 
-import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, VALORES_BENEFICIO } from "./constantes";
+import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, SLUGS_OFICIOS, VALORES_BENEFICIO } from "./constantes";
 import { escaparHtml } from "./email/montar";
 
 export const ESTADOS_CONVITE = [
@@ -13,7 +13,8 @@ export const ESTADOS_CONVITE = [
 export type StatusConvite = (typeof ESTADOS_CONVITE)[number]["id"];
 export const STATUS_CONVITE = ESTADOS_CONVITE.map((e) => e.id) as StatusConvite[];
 
-export type TipoConvite = "empresa" | "agencia";
+/** prestador: profissional que oferece serviço (eletricista, diarista...): o convite é para a vitrine */
+export type TipoConvite = "empresa" | "agencia" | "prestador";
 
 export type Convite = {
   id: string;
@@ -41,6 +42,8 @@ export type Convite = {
 
 /** A vaga lida do anúncio (imagem), para vir pronta no formulário de publicar. */
 export type RascunhoConvite = {
+  /** prestador: o ofício do catálogo (eletricista, diarista...), quando dá para saber */
+  oficio?: string;
   titulo: string;
   descricao: string;
   categoria: string;
@@ -79,7 +82,9 @@ export function rascunhoValido(x: unknown): RascunhoConvite | null {
   const salario = n("salario");
   const ate = n("salario_ate");
   const qtd = n("quantidade");
+  const oficio = t("oficio", 40);
   return {
+    ...((SLUGS_OFICIOS as readonly string[]).includes(oficio) ? { oficio } : {}),
     titulo,
     descricao,
     categoria: (SLUGS_CATEGORIAS as readonly string[]).includes(t("categoria", 40)) ? t("categoria", 40) : "",
@@ -123,6 +128,15 @@ const EXEMPLOS = [
     "Vaga vista no Instagram",
   ],
   ["Agência Exemplo RH (apague esta linha)", "agencia", "Auxiliar de limpeza", "(62) 98888-0000", "", "", ""],
+  [
+    "João Eletricista (apague esta linha)",
+    "prestador",
+    "Eletricista, Instalação de chuveiro",
+    "(62) 97777-0000",
+    "",
+    "",
+    "",
+  ],
 ];
 
 /** Texto do modelo, com ";" (o Excel em português abre em colunas) e BOM (acentos certos). */
@@ -241,7 +255,11 @@ export function linhasParaConvites(linhas: string[][]): {
       return ignoradas.push({ linha: n, motivo: `${nome} sem WhatsApp, telefone ou e-mail que sirva` });
     convites.push({
       nome,
-      tipo: /ag[eê]ncia|rh/i.test(col(l, "tipo")) ? "agencia" : "empresa",
+      tipo: /ag[eê]ncia|rh/i.test(col(l, "tipo"))
+        ? "agencia"
+        : /prestador|profissional|aut[oô]nomo|servi[cç]o/i.test(col(l, "tipo"))
+          ? "prestador"
+          : "empresa",
       vagas: [
         ...new Set(
           col(l, "vagas")
@@ -281,14 +299,27 @@ export function mensagemConvite(
 ) {
   const pedido = link
     ? pronta
-      ? `Já deixei a vaga pronta no site. É só abrir, conferir e tocar em Publicar (entra com o WhatsApp ou o e-mail, sem senha):\n${link}`
-      : `Para publicar, é só abrir o link, escrever a vaga e tocar em Publicar (entra com o WhatsApp ou o e-mail, sem senha):\n${link}`
+      ? `Já deixei a vaga pronta no site. É só abrir, conferir e tocar em Publicar (entra com o e-mail, sem senha):\n${link}`
+      : `Para publicar, é só abrir o link, escrever a vaga e tocar em Publicar (entra com o e-mail, sem senha):\n${link}`
     : null;
   const vagas = juntar(c.vagas.map(minusculo));
   const essa = c.vagas.length > 1 ? "essas vagas" : "essa vaga";
   const quem = assinatura.trim() ? `Sou ${assinatura.trim()}, do Publike` : "Aqui é do Publike";
   const abre = `Olá, pessoal da ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de Goiânia e região.`;
   const fecha = `Se não tiver interesse, é só responder "não" que eu não mando mais mensagens. Obrigado!`;
+  if (c.tipo === "prestador") {
+    // profissional: a vitrine de serviços (quem disse "pode", o admin monta e manda o acesso)
+    const servicos = juntar(c.vagas.map(minusculo));
+    return [
+      `Olá, ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de Goiânia e região.`,
+      servicos
+        ? `Vi que você faz ${servicos}. Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`
+        : "Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa do seu serviço perto de você te encontra pelo site e chama no WhatsApp.",
+      `• É grátis: sem plano, sem taxa e sem comissão.\n• Você aparece primeiro para quem mora perto de onde você atende.\n• Seu WhatsApp só aparece para quem você aceitar.`,
+      `Se quiser, é só responder "pode" e me dizer o bairro onde você atende. Eu monto a vitrine e te mando o link para entrar e conferir.`,
+      fecha,
+    ].join("\n\n");
+  }
   if (c.tipo === "agencia") {
     return [
       abre,
@@ -332,7 +363,7 @@ export function mensagemConviteAgrupada(
     .join("\n\n");
   return [
     `Olá! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de Goiânia e região.`,
-    `Vi que vocês estão com vagas abertas. Posso publicar no Publike, sem custo? Já deixei cada uma pronta no site: é só abrir o link, conferir e tocar em Publicar (entra com o WhatsApp ou o e-mail, sem senha).`,
+    `Vi que vocês estão com vagas abertas. Posso publicar no Publike, sem custo? Já deixei cada uma pronta no site: é só abrir o link, conferir e tocar em Publicar (entra com o e-mail, sem senha).`,
     itens,
     agencia
       ? `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• É grátis: sem plano e sem taxa por candidato.`
@@ -350,14 +381,15 @@ export function emailDoConvite(
   assinatura: string,
   site: string,
 ) {
-  const link = linkDoConvite(site, c.token);
-  const texto = mensagemConvite(c, assinatura.slice(0, 40), link, Boolean(c.rascunho));
+  // prestador: sem link (a vitrine, o admin monta quando ele responder "pode")
+  const link = c.tipo === "prestador" ? "" : linkDoConvite(site, c.token);
+  const texto = mensagemConvite(c, assinatura.slice(0, 40), link || null, Boolean(c.rascunho));
   const paragrafo = (t: string) =>
     `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(t).replace(/\n/g, "<br>")}</p>`;
   const corpo = texto
     .split("\n\n")
     .map((p) =>
-      p.includes(link)
+      link && p.includes(link)
         ? paragrafo(p.replace(link, "").trim()) +
           `<p style="margin:-6px 0 20px;"><a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;background:#c2410c;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;">Conferir e publicar a vaga</a></p>`
         : paragrafo(p),
@@ -367,7 +399,11 @@ export function emailDoConvite(
   return { assunto: assuntoConvite(c), texto, html };
 }
 
-export function assuntoConvite(c: Pick<Convite, "vagas">) {
+export function assuntoConvite(c: Pick<Convite, "vagas" | "tipo">) {
+  if (c.tipo === "prestador")
+    return c.vagas.length
+      ? `${c.vagas[0]}: sua vitrine de serviços grátis no Publike`
+      : "Sua vitrine de serviços grátis no Publike";
   return c.vagas.length
     ? `Vaga de ${minusculo(c.vagas[0])}: divulgação grátis no Publike`
     : "Divulgação grátis das suas vagas no Publike";

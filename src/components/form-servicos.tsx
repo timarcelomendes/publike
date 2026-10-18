@@ -178,6 +178,7 @@ export function FormServicos({
   demo = false,
   acaoSalvar = salvarServicos,
   emNomeDe = null,
+  extras = null,
 }: {
   inicial: ValoresServicos;
   usuarioId: string;
@@ -187,6 +188,8 @@ export function FormServicos({
   acaoSalvar?: (anterior: EstadoForm, formData: FormData) => Promise<EstadoForm>;
   /** Admin montando a vitrine de uma conta: o nome dela (sem envio de fotos). */
   emNomeDe?: string | null;
+  /** Campos a mais, antes do botão de salvar (ex.: a conta e a autorização, no convite). */
+  extras?: ReactNode;
 }) {
   const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
   const [itens, setItens] = useState<Item[]>(() => inicial.servicos.map(itemDe));
@@ -542,6 +545,8 @@ export function FormServicos({
           {erros.horario && <MensagemErro>{erros.horario}</MensagemErro>}
         </div>
       </Secao>
+
+      {extras}
 
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 

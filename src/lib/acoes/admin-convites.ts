@@ -19,7 +19,8 @@ import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
 import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
-import { errosPorCampo, lerAnuncio, lerPerfil, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { centroDoBairro } from "@/lib/servidor/cep";
 import { completarAnuncio } from "@/lib/servidor/completar-anuncio";
 import { processarFilas } from "@/lib/servidor/filas";
 import { salvarTriagem } from "@/lib/servidor/triagem";
@@ -45,7 +46,7 @@ function conferir(n: NovoConvite): NovoConvite | null {
     typeof n.email === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(n.email) ? n.email.slice(0, 200) : null;
   return {
     nome,
-    tipo: n.tipo === "agencia" ? "agencia" : "empresa",
+    tipo: n.tipo === "agencia" || n.tipo === "prestador" ? n.tipo : "empresa",
     vagas: lista(n.vagas, 20, 80),
     whatsapp,
     telefones,
@@ -80,7 +81,7 @@ export async function importarConvites(itens: NovoConvite[]): Promise<Resultado>
   return {
     ok: true,
     mensagem:
-      `${novos.length === 1 ? "1 empresa entrou" : `${novos.length} empresas entraram`} na lista.` +
+      `${novos.length === 1 ? "1 convite entrou" : `${novos.length} convites entraram`} na lista.` +
       (repetidas ? ` ${repetidas === 1 ? "1 já estava" : `${repetidas} já estavam`} e ficaram como estavam.` : ""),
   };
 }
@@ -143,7 +144,9 @@ export async function lerConviteDaImagem(
   } catch (e) {
     return { ok: false, erro: e instanceof ErroIA ? e.message : "A IA não conseguiu ler esta imagem." };
   }
-  if (!lida.e_vaga) return { ok: false, erro: `Não parece anúncio de vaga${lida.motivo ? `: ${lida.motivo}` : "."}` };
+  const servico = Boolean(lida.e_servico) && !lida.e_vaga;
+  if (!lida.e_vaga && !servico)
+    return { ok: false, erro: `Não parece anúncio de vaga nem de serviço${lida.motivo ? `: ${lida.motivo}` : "."}` };
   const nome = (lida.empresa || "").replace(/\s+/g, " ").trim();
   if (nome.length < 2) return { ok: false, erro: "A imagem não diz o nome da empresa." };
   const fones = (l: unknown) =>
@@ -165,7 +168,7 @@ export async function lerConviteDaImagem(
     ok: true,
     convite: {
       nome: nome.slice(0, 120),
-      tipo: lida.tipo === "agencia" ? "agencia" : "empresa",
+      tipo: servico ? "prestador" : lida.tipo === "agencia" ? "agencia" : "empresa",
       vagas: [...new Set(cargos.length ? cargos : rascunho ? [rascunho.titulo] : [])].slice(0, 20),
       whatsapp,
       telefones,
@@ -265,74 +268,9 @@ export async function publicarConvitePeloAdmin(
   if (d.tipo !== "vaga") return { ok: false, erro: "Pelo convite dá para publicar só vagas." };
 
   // a conta da empresa: a do convite, a que já usa o e-mail, ou uma nova
-  let contaId: string | null = null;
-  // conta nova sem e-mail: ainda não tem como entrar (o login é só pelo e-mail)
-  let semEmail = false;
-  if (convite.usuario_id) {
-    const { data: p } = await c.from("perfis").select("id").eq("id", convite.usuario_id).maybeSingle();
-    contaId = p?.id ?? null;
-  }
-  if (!contaId) {
-    const perfil = new FormData();
-    perfil.set("nome", String(formData.get("conta_nome") ?? ""));
-    perfil.set("tipo", String(formData.get("conta_tipo") ?? ""));
-    perfil.set("whatsapp", String(formData.get("conta_whatsapp") ?? ""));
-    perfil.set("email", String(formData.get("conta_email") ?? ""));
-    perfil.set("cnpj", String(formData.get("conta_cnpj") ?? ""));
-    perfil.set("cidade", d.cidade);
-    perfil.set("bairro", d.bairro ?? "");
-    perfil.set("receber_emails", "on");
-    const lp = lerPerfil(perfil);
-    if (!lp.success) {
-      const e = errosPorCampo(lp.error);
-      const [campo, msg] = Object.entries(e)[0] ?? ["", "Confira os dados da conta."];
-      const nomes: Record<string, string> = {
-        nome: "nome",
-        whatsapp: "WhatsApp",
-        email: "e-mail",
-        cnpj: "CNPJ",
-        tipo: "tipo",
-      };
-      return { ok: false, erro: `Conta da empresa (${nomes[campo] ?? campo}): ${msg}` };
-    }
-    const p = lp.data;
-    if (p.email) {
-      const { data: achados } = await c.rpc("admin_listar_usuarios", {
-        p_busca: p.email,
-        p_filtro: "todos",
-        p_limite: 20,
-      });
-      contaId = achados?.find((u) => u.email?.toLowerCase() === p.email)?.id ?? null;
-    }
-    if (!contaId) {
-      const { data: criado, error: erroLogin } = await c.auth.admin.createUser(
-        p.email
-          ? { email: p.email, email_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } }
-          : { phone: p.whatsapp, phone_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } },
-      );
-      if (erroLogin || !criado.user) {
-        return {
-          ok: false,
-          erro: `O Supabase não criou a conta: ${erroLogin?.message ?? "erro desconhecido"}. Se a empresa já tem conta, publique pela página da conta em Usuários.`,
-        };
-      }
-      const id = criado.user.id;
-      const { error: erroPerfil } = await c
-        .from("perfis")
-        .insert({ id, nome: p.nome, tipo: p.tipo, cidade: p.cidade, bairro: p.bairro, sobre: null, cnpj: p.cnpj });
-      const { error: erroContato } = erroPerfil
-        ? { error: null }
-        : await c
-            .from("contatos")
-            .insert({ perfil_id: id, whatsapp: p.whatsapp, email: p.email, receber_emails: true });
-      if (erroPerfil ?? erroContato) {
-        await c.auth.admin.deleteUser(id);
-        return { ok: false, erro: `Conta da empresa: ${mensagemDeErro((erroPerfil ?? erroContato)!)}` };
-      }
-      contaId = id;
-      semEmail = !p.email;
-    }
-  }
+  const conta = await garantirConta(c, convite, formData, d.cidade, d.bairro ?? "");
+  if ("erro" in conta) return { ok: false, erro: conta.erro };
+  const { id: contaId, semEmail } = conta;
 
   const { data: anuncio, error } = await c
     .from("anuncios")
@@ -371,4 +309,181 @@ export async function publicarConvitePeloAdmin(
   after(processarFilas);
   revalidatePath("/");
   redirect(`/admin/usuarios/${contaId}?publicada=${anuncio.id}${semEmail ? "&sem_email=1" : ""}`);
+}
+
+/**
+ * O prestador disse "sim" ao convite: o admin confere os serviços lidos do anúncio e monta a vitrine
+ * no nome dele (a conta é criada aqui, se ainda não existir). O convite fica como Autorizou.
+ */
+export async function montarVitrinePeloAdmin(
+  conviteId: string,
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(conviteId)) return { ok: false, erro: "Convite não encontrado." };
+  const { data: conv } = await c.from("convites").select("*").eq("id", conviteId).maybeSingle();
+  if (!conv) return { ok: false, erro: "Este convite não existe mais." };
+  const convite = conv as unknown as Convite;
+  if (formData.get("autorizou") !== "on") {
+    return { ok: false, erro: `Marque que ${convite.nome} autorizou a publicação antes de salvar.` };
+  }
+  const comoAutorizou = String(formData.get("como_autorizou") ?? "")
+    .trim()
+    .slice(0, 300);
+
+  // sem ponto no mapa, o meio do bairro (como na publicação de vaga)
+  const bairro = String(formData.get("bairro") ?? "").trim();
+  const cidade = String(formData.get("cidade") ?? "").trim() || "Goiânia";
+  if ((!formData.get("lat") || !formData.get("lng")) && bairro) {
+    const centro = await centroDoBairro(bairro, cidade).catch(() => null);
+    if (centro) {
+      formData.set("lat", String(centro.lat));
+      formData.set("lng", String(centro.lng));
+    }
+  }
+  // os serviços primeiro: com erro neles, nenhuma conta é criada
+  const leitura = lerServicos(formData);
+  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  const d = leitura.dados;
+  if (d.servicos.some((s) => s.fotos.length > 0)) return { ok: false, erro: "Pelo admin não dá para enviar fotos." };
+
+  const conta = await garantirConta(c, convite, formData, d.cidade, d.bairro);
+  if ("erro" in conta) return { ok: false, erro: conta.erro };
+  const { id: contaId, semEmail } = conta;
+
+  const atende = d.atende.includes("Goiânia") ? d.atende.filter((a) => !a.startsWith("Goiânia: ")) : d.atende;
+  const { error } = await c.rpc("admin_salvar_servicos_de", {
+    p_usuario: contaId,
+    p_servicos: d.servicos.map((s) => ({
+      ...(s.id ? { id: s.id } : {}),
+      oficio: s.oficio,
+      categoria: s.categoria,
+      titulo: s.titulo,
+      descricao: s.descricao,
+      pagamento_valor: s.pagamento_valor,
+      pagamento_unidade: s.pagamento_unidade,
+      fotos: s.fotos,
+    })),
+    p_cidade: d.cidade,
+    p_bairro: d.bairro,
+    p_lat: d.lat,
+    p_lng: d.lng,
+    p_atende: atende,
+    p_horario: d.horario,
+  });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar a vitrine agora.") };
+
+  const { data: ultimo } = await c
+    .from("anuncios")
+    .select("id")
+    .eq("autor_id", contaId)
+    .eq("tipo", "servico")
+    .order("criado_em", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const quando = new Date().toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+  const registro = `Autorizou em ${quando} (vitrine montada pelo admin)${comoAutorizou ? `: ${comoAutorizou}` : "."}`;
+  await c
+    .from("convites")
+    .update({
+      status: "autorizou",
+      usuario_id: contaId,
+      anuncio_id: ultimo?.id ?? convite.anuncio_id,
+      aceite_em: new Date().toISOString(),
+      nota: [registro, convite.nota].filter(Boolean).join(" · ").slice(0, 500),
+    })
+    .eq("id", convite.id);
+  after(processarFilas);
+  revalidatePath("/");
+  redirect(`/admin/usuarios/${contaId}?servicos=1${semEmail ? "&sem_email=1" : ""}`);
+}
+
+/**
+ * A conta de quem disse "sim": a do convite, a que já usa o e-mail, ou uma nova (login pelo e-mail,
+ * ou pelo WhatsApp quando não tem e-mail). Os campos vêm com "conta_" no formulário.
+ */
+async function garantirConta(
+  c: NonNullable<Awaited<ReturnType<typeof clienteAdminOuNulo>>>,
+  convite: Convite,
+  formData: FormData,
+  cidade: string,
+  bairro: string,
+): Promise<{ id: string; semEmail: boolean } | { erro: string }> {
+  let contaId: string | null = null;
+  // conta nova sem e-mail: ainda não tem como entrar (o login é só pelo e-mail)
+  let semEmail = false;
+  if (convite.usuario_id) {
+    const { data: p } = await c.from("perfis").select("id").eq("id", convite.usuario_id).maybeSingle();
+    contaId = p?.id ?? null;
+  }
+  if (!contaId) {
+    const perfil = new FormData();
+    perfil.set("nome", String(formData.get("conta_nome") ?? ""));
+    perfil.set("tipo", String(formData.get("conta_tipo") ?? ""));
+    perfil.set("whatsapp", String(formData.get("conta_whatsapp") ?? ""));
+    perfil.set("email", String(formData.get("conta_email") ?? ""));
+    perfil.set("cnpj", String(formData.get("conta_cnpj") ?? ""));
+    perfil.set("cidade", cidade);
+    perfil.set("bairro", bairro);
+    perfil.set("receber_emails", "on");
+    const lp = lerPerfil(perfil);
+    if (!lp.success) {
+      const e = errosPorCampo(lp.error);
+      const [campo, msg] = Object.entries(e)[0] ?? ["", "Confira os dados da conta."];
+      const nomes: Record<string, string> = {
+        nome: "nome",
+        whatsapp: "WhatsApp",
+        email: "e-mail",
+        cnpj: "CNPJ",
+        tipo: "tipo",
+      };
+      return { erro: `Conta (${nomes[campo] ?? campo}): ${msg}` };
+    }
+    const p = lp.data;
+    if (p.email) {
+      const { data: achados } = await c.rpc("admin_listar_usuarios", {
+        p_busca: p.email,
+        p_filtro: "todos",
+        p_limite: 20,
+      });
+      contaId = achados?.find((u) => u.email?.toLowerCase() === p.email)?.id ?? null;
+    }
+    if (!contaId) {
+      const { data: criado, error: erroLogin } = await c.auth.admin.createUser(
+        p.email
+          ? { email: p.email, email_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } }
+          : { phone: p.whatsapp, phone_confirm: true, user_metadata: { name: p.nome, criada_pela_equipe: true } },
+      );
+      if (erroLogin || !criado.user) {
+        return {
+          erro: `O Supabase não criou a conta: ${erroLogin?.message ?? "erro desconhecido"}. Se já existe uma conta, use a página dela em Usuários.`,
+        };
+      }
+      const id = criado.user.id;
+      const { error: erroPerfil } = await c
+        .from("perfis")
+        .insert({ id, nome: p.nome, tipo: p.tipo, cidade: p.cidade, bairro: p.bairro, sobre: null, cnpj: p.cnpj });
+      const { error: erroContato } = erroPerfil
+        ? { error: null }
+        : await c
+            .from("contatos")
+            .insert({ perfil_id: id, whatsapp: p.whatsapp, email: p.email, receber_emails: true });
+      if (erroPerfil ?? erroContato) {
+        await c.auth.admin.deleteUser(id);
+        return { erro: `Conta: ${mensagemDeErro((erroPerfil ?? erroContato)!)}` };
+      }
+      contaId = id;
+      semEmail = !p.email;
+    }
+  }
+  if (!contaId) return { erro: "Não deu para achar nem criar a conta." };
+  return { id: contaId, semEmail };
 }

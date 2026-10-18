@@ -309,7 +309,7 @@ function AvisoConvite({ convite }: { convite: { token: string; nome: string; pro
           {convite.pronta
             ? "A vaga já veio preenchida com o anúncio de vocês. Confira, ajuste o que precisar e toque em Publicar."
             : "Escreva a vaga e toque em Publicar."}{" "}
-          É grátis, sem plano e sem taxa. Para publicar, você entra com o WhatsApp ou o e-mail, sem senha.
+          É grátis, sem plano e sem taxa. Para publicar, você entra com o e-mail, sem senha.
         </span>
         <span className="flex flex-wrap items-center gap-x-3">
           <button

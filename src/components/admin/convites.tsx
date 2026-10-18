@@ -62,7 +62,7 @@ async function lerArquivo(arquivo: File) {
 function VerLista() {
   return (
     <Link href="/admin/convites" className={`${classesBotao("secundario", "sm")} self-start`}>
-      Ver a lista de empresas
+      Ver a lista de convidados
     </Link>
   );
 }
@@ -107,11 +107,11 @@ export function ImportarConvites() {
     <div className="flex flex-col gap-4">
       <ol className="flex flex-col gap-1.5 text-body-sm text-ink-muted">
         <li>
-          1. Baixe o modelo e abra no Excel ou no Google Planilhas. Uma empresa por linha; vagas separadas por vírgula;
-          mais de um telefone separado por barra.
+          1. Baixe o modelo e abra no Excel ou no Google Planilhas. Um convite por linha (empresa ou prestador); vagas
+          ou serviços separados por vírgula; mais de um telefone separado por barra.
         </li>
-        <li>2. Na coluna “tipo”, escreva empresa ou agencia. Apague as duas linhas de exemplo.</li>
-        <li>3. Salve como CSV e escolha o arquivo aqui. Empresa que já está na lista não entra de novo.</li>
+        <li>2. Na coluna “tipo”, escreva empresa, agencia ou prestador. Apague as linhas de exemplo.</li>
+        <li>3. Salve como CSV e escolha o arquivo aqui. Quem já está na lista não entra de novo.</li>
       </ol>
       <div className="flex flex-wrap gap-2">
         <a href="/admin/convites/modelo" className={classesBotao("secundario", "sm")}>
@@ -139,7 +139,7 @@ export function ImportarConvites() {
         <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-4">
           <p className="text-label">
             {previa.arquivo}:{" "}
-            {previa.convites.length === 1 ? "1 empresa pronta" : `${previa.convites.length} empresas prontas`}
+            {previa.convites.length === 1 ? "1 convite pronto" : `${previa.convites.length} convites prontos`}
             {previa.ignoradas.length > 0 &&
               `, ${previa.ignoradas.length === 1 ? "1 linha ficou de fora" : `${previa.ignoradas.length} linhas ficaram de fora`}`}
           </p>
@@ -182,7 +182,7 @@ export function ImportarConvites() {
             >
               {pendente
                 ? "Importando…"
-                : `Importar ${previa.convites.length === 1 ? "1 empresa" : `${previa.convites.length} empresas`}`}
+                : `Importar ${previa.convites.length === 1 ? "1 convite" : `${previa.convites.length} convites`}`}
             </Botao>
             <Botao
               variante="fantasma"
@@ -309,12 +309,15 @@ export function ImportarPorImagens() {
   return (
     <div className="flex flex-col gap-4">
       <ol className="flex flex-col gap-1.5 text-body-sm text-ink-muted">
-        <li>1. Salve as imagens (ou tire prints) das vagas que você viu: um anúncio por imagem.</li>
+        <li>1. Salve as imagens (ou tire prints) das vagas e dos serviços que você viu: um anúncio por imagem.</li>
         <li>
-          2. Escolha as imagens aqui (até {MAX_IMAGENS} por vez). A IA lê a empresa, os cargos, o WhatsApp, o telefone,
-          o e-mail e a vaga.
+          2. Escolha as imagens aqui (até {MAX_IMAGENS} por vez). A IA lê quem anunciou, os cargos (ou o serviço), o
+          WhatsApp, o telefone, o e-mail e a vaga.
         </li>
-        <li>3. Confira e importe. O convite leva o link com a vaga pronta: a empresa confere e publica.</li>
+        <li>
+          3. Confira e importe. O convite da empresa leva o link com a vaga pronta: ela confere e publica. O do
+          prestador pede um “pode”, e você monta a vitrine dele.
+        </li>
       </ol>
       <label
         className={`${classesBotao("secundario", "sm")} cursor-pointer self-start has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${progresso ? "pointer-events-none opacity-60" : ""}`}
@@ -342,7 +345,7 @@ export function ImportarPorImagens() {
       {lidas && (
         <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-4">
           <p className="text-label">
-            {marcadas.length === 1 ? "1 empresa para importar" : `${marcadas.length} empresas para importar`}
+            {marcadas.length === 1 ? "1 convite para importar" : `${marcadas.length} convites para importar`}
             {lidas.some((l) => l.erro) &&
               `, ${lidas.filter((l) => l.erro).length === 1 ? "1 imagem ficou de fora" : `${lidas.filter((l) => l.erro).length} imagens ficaram de fora`}`}
           </p>
@@ -412,7 +415,7 @@ export function ImportarPorImagens() {
             >
               {pendente
                 ? "Importando…"
-                : `Importar ${marcadas.length === 1 ? "1 empresa" : `${marcadas.length} empresas`}`}
+                : `Importar ${marcadas.length === 1 ? "1 convite" : `${marcadas.length} convites`}`}
             </Botao>
             <Botao variante="fantasma" tamanho="sm" onClick={limpar}>
               Cancelar
@@ -452,7 +455,7 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
   const grupos = useMemo(() => {
     const porNumero = new Map<string, Convite[]>();
     for (const c of itens) {
-      if (c.status !== "a_enviar" && c.status !== "enviada") continue;
+      if ((c.status !== "a_enviar" && c.status !== "enviada") || c.tipo === "prestador") continue;
       for (const n of c.whatsapp) porNumero.set(n, [...(porNumero.get(n) ?? []), c]);
     }
     return new Map([...porNumero].filter(([, l]) => l.length > 1));
@@ -491,7 +494,7 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
   if (!convites.length) {
     return (
       <p className="rounded-md border border-dashed border-line-strong p-6 text-center text-body-sm text-ink-muted">
-        Nenhuma empresa na lista ainda. Importe em “Importar pelas imagens” ou “Importar arquivo”, aqui em cima.
+        Ninguém na lista ainda. Importe em “Importar pelas imagens” ou “Importar arquivo”, aqui em cima.
       </p>
     );
   }
@@ -584,7 +587,7 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
 
       {visiveis.length === 0 ? (
         <p className="py-6 text-center text-body-sm text-ink-muted">
-          {marcas.size ? "Nenhuma empresa com esses filtros." : "Nenhuma empresa nesta situação."}
+          {marcas.size ? "Ninguém com esses filtros." : "Ninguém nesta situação."}
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -612,6 +615,7 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
 const MARCAS = {
   imagem: { nome: "Lida da imagem", tem: (c: Convite) => c.origem === "imagem" },
   agencia: { nome: "Agência", tem: (c: Convite) => c.tipo === "agencia" },
+  prestador: { nome: "Prestador", tem: (c: Convite) => c.tipo === "prestador" },
   so_telefone: { nome: "Só telefone", tem: (c: Convite) => !c.whatsapp.length && !c.email },
   // depende das outras empresas da lista (calculado na lista)
   mesmo_whatsapp: { nome: "Mesmo WhatsApp", tem: () => false },
@@ -671,8 +675,9 @@ function PreviaEmail({
 
 const juntarNomes = (l: string[]) => (l.length < 2 ? l.join("") : `${l.slice(0, -1).join(", ")} e ${l.at(-1)}`);
 
+// a imagem é da vaga (empresa ou agência); para o prestador, vai só o texto
 const imagemDoConvite = (tipo: Convite["tipo"]) =>
-  `/convites/convite-${tipo === "agencia" ? "agencia" : "empresa"}.png`;
+  tipo === "prestador" ? null : `/convites/convite-${tipo === "agencia" ? "agencia" : "empresa"}.png`;
 
 /** O navegador sabe compartilhar arquivos (Safari e Chrome no Mac, celulares). Só no cliente. */
 function useCompartilhar() {
@@ -721,7 +726,13 @@ function CartaoConvite({
   const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
   const podeCompartilhar = useCompartilhar();
   const [confirmar, setConfirmar] = useState(false);
-  const msg = mensagemConvite(c, assinatura, linkDoConvite(site, c.token), Boolean(c.rascunho));
+  // prestador: sem link (quem responder "pode", o admin monta a vitrine)
+  const msg = mensagemConvite(
+    c,
+    assinatura,
+    c.tipo === "prestador" ? null : linkDoConvite(site, c.token),
+    Boolean(c.rascunho),
+  );
   const texto = encodeURIComponent(msg);
   const apagado = c.status === "recusou" || c.status === "sem_contato";
 
@@ -738,6 +749,7 @@ function CartaoConvite({
   // a imagem vai para a área de transferência: na conversa do WhatsApp, é só colar (⌘V)
   async function copiarImagem() {
     setAvisoImagem(null);
+    if (!imagem) return;
     try {
       const png = fetch(imagem).then((r) => r.blob());
       await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
@@ -750,6 +762,7 @@ function CartaoConvite({
   // no Mac e no celular, abre o compartilhar do sistema com a imagem e o texto juntos
   async function compartilhar() {
     setAvisoImagem(null);
+    if (!imagem) return;
     try {
       const blob = await fetch(imagem).then((r) => r.blob());
       const arquivo = new File([blob], `publike-${c.tipo}.png`, { type: "image/png" });
@@ -774,6 +787,7 @@ function CartaoConvite({
         </div>
         <div className="flex flex-wrap gap-1.5">
           {c.tipo === "agencia" && <Selo variante="aviso">Agência</Selo>}
+          {c.tipo === "prestador" && <Selo variante="aviso">Prestador</Selo>}
           {c.status === "autorizou" && <Selo variante="match">Autorizou</Selo>}
           {c.origem === "imagem" && <Selo variante="contorno">Lida da imagem</Selo>}
           {!c.whatsapp.length && !c.email && <Selo variante="contorno">Só telefone</Selo>}
@@ -873,34 +887,38 @@ function CartaoConvite({
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <a href={imagem} target="_blank" rel="noopener noreferrer" className="shrink-0 self-start">
-          {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de um arquivo estático, sem otimização */}
-          <img
-            src={imagem}
-            alt={`Imagem do convite para ${c.tipo === "agencia" ? "agências" : "empresas"}`}
-            width={96}
-            height={120}
-            loading="lazy"
-            className="h-30 w-24 rounded-md border border-line object-cover"
-          />
-        </a>
+        {imagem && (
+          <a href={imagem} target="_blank" rel="noopener noreferrer" className="shrink-0 self-start">
+            {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de um arquivo estático, sem otimização */}
+            <img
+              src={imagem}
+              alt={`Imagem do convite para ${c.tipo === "agencia" ? "agências" : "empresas"}`}
+              width={96}
+              height={120}
+              loading="lazy"
+              className="h-30 w-24 rounded-md border border-line object-cover"
+            />
+          </a>
+        )}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap gap-2">
-            <Botao tamanho="sm" onClick={copiarImagem}>
-              <ImageIcon aria-hidden />
-              Copiar imagem
-            </Botao>
-            <a href={imagem} download={`publike-convite-${c.tipo}.png`} className={classesBotao("fantasma", "sm")}>
-              <Download aria-hidden />
-              Baixar imagem
-            </a>
-            {podeCompartilhar && (
-              <Botao tamanho="sm" variante="fantasma" onClick={compartilhar}>
-                <Share2 aria-hidden />
-                Compartilhar imagem e texto
+          {imagem && (
+            <div className="flex flex-wrap gap-2">
+              <Botao tamanho="sm" onClick={copiarImagem}>
+                <ImageIcon aria-hidden />
+                Copiar imagem
               </Botao>
-            )}
-          </div>
+              <a href={imagem} download={`publike-convite-${c.tipo}.png`} className={classesBotao("fantasma", "sm")}>
+                <Download aria-hidden />
+                Baixar imagem
+              </a>
+              {podeCompartilhar && (
+                <Botao tamanho="sm" variante="fantasma" onClick={compartilhar}>
+                  <Share2 aria-hidden />
+                  Compartilhar imagem e texto
+                </Botao>
+              )}
+            </div>
+          )}
           {avisoImagem && (
             <p role="status" className="text-body-sm text-ink-muted">
               {avisoImagem}
@@ -978,16 +996,19 @@ function CartaoConvite({
 
       {!c.anuncio_id && c.status !== "recusou" && c.status !== "sem_contato" && (
         // disse "sim" no WhatsApp mas não abriu o link: o admin publica por ela
-        <Link href={`/admin/convites/${c.id}/publicar`} className={`${classesBotao("secundario", "sm")} self-start`}>
+        <Link
+          href={`/admin/convites/${c.id}/${c.tipo === "prestador" ? "vitrine" : "publicar"}`}
+          className={`${classesBotao("secundario", "sm")} self-start`}
+        >
           <UserPlus aria-hidden />
-          Disse sim? Publicar por ela
+          {c.tipo === "prestador" ? "Disse sim? Montar a vitrine por ele" : "Disse sim? Publicar por ela"}
         </Link>
       )}
 
       {c.status === "autorizou" && c.usuario_id && (
         <Link href={`/admin/usuarios/${c.usuario_id}`} className={`${classesBotao("secundario", "sm")} self-start`}>
           <UserRound aria-hidden />
-          Abrir a conta da empresa
+          {c.tipo === "prestador" ? "Abrir a conta" : "Abrir a conta da empresa"}
         </Link>
       )}
 

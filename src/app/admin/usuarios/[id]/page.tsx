@@ -139,9 +139,9 @@ async function Conteudo({
         </Aviso>
       )}
       {primeiro(sp.sem_email) === "1" && (
-        <Aviso tipo="alerta" titulo="A empresa ainda não tem como entrar">
+        <Aviso tipo="alerta" titulo="A conta ainda não tem como entrar">
           O Publike entra só pelo e-mail, e esta conta foi criada sem e-mail. Use “Mandar o acesso pelo WhatsApp”, logo
-          abaixo: a empresa abre o link, coloca o e-mail dela e entra.
+          abaixo: a pessoa abre o link, coloca o e-mail dela e entra.
         </Aviso>
       )}
 

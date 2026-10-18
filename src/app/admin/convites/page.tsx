@@ -12,11 +12,11 @@ import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
-export const metadata: Metadata = { title: "Convites às empresas" };
+export const metadata: Metadata = { title: "Convites" };
 
 // sub-abas: a lista, importar pelas imagens dos anúncios e importar pelo arquivo
 const ABAS = [
-  { id: "lista", nome: "Empresas", icone: List },
+  { id: "lista", nome: "Convidados", icone: List },
   { id: "imagens", nome: "Importar pelas imagens", icone: ImageIcon },
   { id: "arquivo", nome: "Importar arquivo", icone: FileUp },
 ] as const;
@@ -71,8 +71,8 @@ async function Conteudo({ aba }: { aba: Aba }) {
       <SubAbas ativa={aba} total={error ? null : (data?.length ?? 0)} />
       {aba === "lista" && (
         <Secao
-          titulo="Convites às empresas"
-          descricao="Empresas que estão anunciando vagas em outros lugares. Mande o convite pelo WhatsApp ou e-mail: o link leva a vaga pronta, e quando a empresa publica por ele, o convite vira Autorizou sozinho."
+          titulo="Convites"
+          descricao="Empresas anunciando vagas e prestadores anunciando serviços em outros lugares. Mande o convite pelo WhatsApp ou e-mail: para a empresa, o link leva a vaga pronta e, quando ela publica por ele, o convite vira Autorizou sozinho. O prestador responde “pode”, e você monta a vitrine dele."
         >
           {error ? (
             <Aviso tipo="erro" titulo="Não deu para ler os convites">
@@ -91,7 +91,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
         <Secao
           id="importar-imagens"
           titulo="Importar pelas imagens dos anúncios"
-          descricao="Viu vagas nas redes? Salve as imagens dos anúncios e escolha aqui: a IA lê a empresa, o contato e a vaga, e o convite leva a vaga pronta para a empresa conferir e publicar."
+          descricao="Viu vagas ou serviços anunciados nas redes? Salve as imagens dos anúncios e escolha aqui: a IA lê quem anunciou, o contato e a vaga (ou o serviço), e o convite já vai pronto."
         >
           <ImportarPorImagens />
         </Secao>
