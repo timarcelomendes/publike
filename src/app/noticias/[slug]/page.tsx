@@ -51,7 +51,7 @@ async function Noticia({ slug }: { slug: string }) {
     isBasedOn: n.fonte_url,
     author: { "@type": "Organization", name: "Publike", url: SITE_URL },
     publisher: { "@type": "Organization", name: "Publike", url: SITE_URL },
-    ...(n.foto_url ? { image: [n.foto_url] } : {}),
+    ...(n.foto_url ? { image: [new URL(n.foto_url, SITE_URL).href] } : {}),
   };
   return (
     <Container className="py-8 sm:py-12">

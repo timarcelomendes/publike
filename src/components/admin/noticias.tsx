@@ -376,8 +376,11 @@ function FotoDaNoticia({ n, tema }: { n: Noticia; tema: TemaNoticia }) {
     iniciar(async () => {
       setErroBusca(null);
       const r = await buscarFotosNoticia(busca, tema);
-      if (!r.ok) setErroBusca(r.erro);
-      else setOpcoes(r.fotos);
+      if (!r.ok) {
+        // o erro substitui o resultado anterior (não aparece "nenhuma foto" junto)
+        setErroBusca(r.erro);
+        setOpcoes(null);
+      } else setOpcoes(r.fotos);
     });
 
   return (
@@ -475,8 +478,8 @@ function FotoDaNoticia({ n, tema }: { n: Noticia; tema: TemaNoticia }) {
             </Botao>
           </form>
           <p className="text-caption text-ink-muted">
-            Fotos com licença livre do Flickr e da Wikimedia (só as que abrem). Busca vazia usa o assunto da notícia; em
-            inglês costuma achar mais.
+            Fotos do Pixabay (o site guarda uma cópia) ou, se não achar, fotos livres do Flickr e da Wikimedia. Busca
+            vazia usa o assunto da notícia.
           </p>
           {erroBusca && <p className="text-body-sm text-danger">{erroBusca}</p>}
           {opcoes && opcoes.length === 0 && (

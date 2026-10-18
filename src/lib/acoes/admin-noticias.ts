@@ -3,7 +3,13 @@
 import { refresh, revalidatePath, updateTag } from "next/cache";
 import { mensagemDeErro } from "@/lib/erros";
 import { LISTA_TEMAS_NOTICIA, proximoHorarioLivre, type TemaNoticia } from "@/lib/noticias";
-import { fotoAbre, fotoValida, opcoesDeFoto, type FotoNoticia } from "@/lib/servidor/fotos-noticias";
+import {
+  fotoAbre,
+  fotoValida,
+  opcoesDeFoto,
+  prepararFotoEscolhida,
+  type FotoNoticia,
+} from "@/lib/servidor/fotos-noticias";
 import { buscarNoticias } from "@/lib/servidor/noticias-ia";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { Resultado } from "@/lib/tipos";
@@ -179,8 +185,9 @@ export async function trocarFotoNoticia(id: string, foto: FotoNoticia | null): P
   } else {
     const f = fotoValida(foto);
     if (!f) return { ok: false, erro: "Essa foto não serve. Escolha outra." };
-    if (!(await fotoAbre(f.foto_url))) return { ok: false, erro: "Essa foto não abre. Escolha outra." };
-    campos = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v || null])) as typeof campos;
+    const pronta = await prepararFotoEscolhida(f);
+    if (!pronta) return { ok: false, erro: "Essa foto não abre ou não deu para guardar. Escolha outra." };
+    campos = Object.fromEntries(Object.entries(pronta).map(([k, v]) => [k, v || null])) as typeof campos;
   }
   const { error } = await c.from("noticias").update(campos).eq("id", id);
   if (error) return { ok: false, erro: mensagemDeErro(error) };

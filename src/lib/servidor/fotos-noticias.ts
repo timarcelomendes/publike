@@ -1,7 +1,10 @@
 import "server-only";
 import type { TemaNoticia } from "@/lib/noticias";
+import { criarClientePublico } from "@/lib/supabase/servidor";
+import { buscarNoPixabay, guardarCopia, idDoPixabay, pixabayConfigurado } from "./fotos-pixabay";
 
-// Fotos de verdade para as notícias, pelo Openverse: fotos com licença livre do Flickr e da
+// Fotos de verdade para as notícias. Com a chave do Pixabay (PIXABAY_API_KEY), vêm de lá
+// (fotos-pixabay.ts: o site guarda uma cópia). Sem ela, ou se o Pixabay não achar nada, pelo Openverse: fotos com licença livre do Flickr e da
 // Wikimedia (muitas de agências públicas), sem chave nem conta. Só entram licenças que deixam
 // usar em site e recortar (CC BY, CC BY-SA, CC0); a legenda leva quem fotografou e a licença.
 // A foto do jornal da matéria tem dono e não entra. Se nada servir, fica a capa desenhada.
@@ -63,8 +66,16 @@ function tamanhoBom(url: string, largura: number) {
   return `https://upload.wikimedia.org/wikipedia/commons/thumb/${m[1]}/${m[2]}/${m[3]}/1280px-${m[3]}`;
 }
 
+/** A cópia guardada no site (fotos do Pixabay): /noticias/foto/pixabay-123.jpg */
+const COPIA = /^\/noticias\/foto\/([a-z]+-\d{1,20})\.(jpg|png|webp)$/;
+
 /** A imagem abre mesmo? (o Flickr e a Wikimedia apagam fotos; um link quebrado não vai para o site) */
 export async function fotoAbre(url: string) {
+  const copia = url.match(COPIA);
+  if (copia) {
+    const { data } = await criarClientePublico().rpc("foto_noticia", { p_id: copia[1] });
+    return Boolean(data?.length);
+  }
   if (!HOSTS.test(url)) return false;
   // nos testes, a conferência vai para um servidor falso (as fotos de verdade não abrem lá)
   const teste = process.env.FOTOS_CONFERIR_URL;
@@ -154,14 +165,41 @@ async function candidatas(termo: string): Promise<{ fotos: FotoNoticia[]; erro?:
         foto_licenca_url: f.license_url?.startsWith("https://") ? f.license_url.slice(0, 300) : "",
       }));
     return { fotos: boas };
-  } catch {
-    return { fotos: [], erro: "O banco de fotos não respondeu. Tente de novo." };
+  } catch (e) {
+    // o motivo vai para o terminal do servidor (sem rede, demorou demais, resposta que não é JSON...)
+    const causa = e instanceof Error ? `${e.name}: ${e.message}${e.cause ? ` (${String(e.cause)})` : ""}` : String(e);
+    console.warn(`Publike: a busca de fotos no Openverse falhou: ${causa}`);
+    return {
+      fotos: [],
+      erro:
+        e instanceof Error && e.name === "TimeoutError"
+          ? "O banco de fotos demorou demais para responder. Tente de novo."
+          : "O banco de fotos não respondeu. Tente de novo.",
+    };
   }
 }
 
 /** Busca e devolve a primeira foto boa, que abre e ainda não foi usada (null se nada servir). */
 export async function buscarFoto(busca: string, tema: TemaNoticia, usadas: Set<string>): Promise<FotoNoticia | null> {
   if (!fotosConfiguradas()) return null;
+  if (pixabayConfigurado()) {
+    // a sugestão da IA vem em inglês; as do assunto, em português e em inglês
+    const buscas: [string, "pt" | "en"][] = [
+      [busca.trim(), "en"],
+      [BUSCA_DO_TEMA[tema][0], "pt"],
+      [BUSCA_DO_TEMA[tema][1], "en"],
+    ];
+    for (const [termo, lingua] of buscas.filter(([t]) => t)) {
+      const { fotos } = await buscarNoPixabay(termo, lingua);
+      for (const f of fotos.filter((x) => !usadas.has(x.foto_link)).slice(0, 2)) {
+        const copia = await guardarCopia(f);
+        if (copia) {
+          usadas.add(f.foto_link);
+          return copia;
+        }
+      }
+    }
+  }
   for (const termo of [busca.trim(), ...BUSCA_DO_TEMA[tema]].filter(Boolean)) {
     // confere até 3 por busca: se nenhuma abrir, tenta a próxima busca
     for (const f of (await candidatas(termo)).fotos.filter((x) => !usadas.has(x.foto_link)).slice(0, 3)) {
@@ -177,6 +215,17 @@ export async function buscarFoto(busca: string, tema: TemaNoticia, usadas: Set<s
 /** Para o admin escolher: até 8 fotos que abrem, para uma busca (ou o assunto da notícia). */
 export async function opcoesDeFoto(busca: string, tema: TemaNoticia): Promise<{ fotos: FotoNoticia[]; erro?: string }> {
   const termo = busca.trim() || BUSCA_DO_TEMA[tema][0];
+  if (pixabayConfigurado()) {
+    // em português primeiro; se achar pouco, completa com a busca em inglês
+    const pt = await buscarNoPixabay(termo, "pt");
+    if (pt.erro) return { fotos: [], erro: pt.erro };
+    let lista = pt.fotos;
+    if (lista.length < 8) {
+      const en = await buscarNoPixabay(termo, "en");
+      lista = [...lista, ...en.fotos.filter((f) => !lista.some((x) => x.foto_link === f.foto_link))];
+    }
+    if (lista.length) return { fotos: lista.slice(0, 8) };
+  }
   const { fotos, erro } = await candidatas(termo);
   if (erro) return { fotos: [], erro };
   const lista = fotos.slice(0, 12);
@@ -200,5 +249,16 @@ export function fotoValida(f: unknown): FotoNoticia | null {
     foto_licenca: t("foto_licenca", 40),
     foto_licenca_url: https("foto_licenca_url", 300),
   };
-  return HOSTS.test(foto.foto_url) && foto.foto_link ? foto : null;
+  if (!foto.foto_link) return null;
+  if (foto.foto_fonte === "Pixabay") return idDoPixabay(foto.foto_link) ? foto : null;
+  return HOSTS.test(foto.foto_url) ? foto : null;
+}
+
+/**
+ * A foto que o admin escolheu, pronta para guardar: a do Pixabay vira uma cópia no site;
+ * a do Openverse tem que abrir. null se não der.
+ */
+export async function prepararFotoEscolhida(f: FotoNoticia): Promise<FotoNoticia | null> {
+  if (f.foto_fonte === "Pixabay") return guardarCopia(f);
+  return (await fotoAbre(f.foto_url)) ? f : null;
 }

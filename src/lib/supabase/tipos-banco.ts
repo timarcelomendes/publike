@@ -818,6 +818,11 @@ export type Database = {
       servidor_noticias_contexto: { Args: { p_chave: string }; Returns: Json };
       servidor_salvar_noticias: { Args: { p_chave: string; p_itens: Json; p_erro?: string | null }; Returns: number };
       servidor_fotos_noticias: { Args: { p_chave: string; p_fotos: Json }; Returns: number };
+      servidor_guardar_foto_noticia: {
+        Args: { p_chave: string; p_id: string; p_tipo: string; p_dados: string };
+        Returns: undefined;
+      };
+      foto_noticia: { Args: { p_id: string }; Returns: { tipo: string; dados: string }[] };
       /** conta nova que veio pela página de serviços: as boas-vindas viram as de prestador */
       quero_oferecer_servicos: { Args: Record<string, never>; Returns: undefined };
       registrar_origem: { Args: { p_origem: string }; Returns: undefined };
