@@ -1,8 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { STATUS_CONVITE, type NovoConvite, type StatusConvite } from "@/lib/convites";
+import { limparTelefone, rascunhoValido, STATUS_CONVITE, type NovoConvite, type StatusConvite } from "@/lib/convites";
 import { mensagemDeErro } from "@/lib/erros";
+import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
+import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
@@ -34,6 +36,8 @@ function conferir(n: NovoConvite): NovoConvite | null {
     telefones,
     email,
     observacao: typeof n.observacao === "string" && n.observacao.trim() ? n.observacao.trim().slice(0, 500) : null,
+    rascunho: rascunhoValido(n.rascunho),
+    origem: n.origem === "imagem" ? "imagem" : "arquivo",
   };
 }
 
@@ -101,4 +105,59 @@ export async function apagarConvite(id: string): Promise<Resultado> {
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
   return { ok: true };
+}
+
+/**
+ * Lê a imagem de um anúncio de vaga com a IA e devolve a empresa pronta para importar
+ * (ou o motivo de ter ficado de fora). Nada é salvo: o admin confere antes de importar.
+ */
+export async function lerConviteDaImagem(
+  imagem: string,
+  nomeArquivo: string,
+): Promise<{ ok: true; convite: NovoConvite } | { ok: false; erro: string }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (typeof imagem !== "string" || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(imagem))
+    return { ok: false, erro: "Arquivo que não é imagem." };
+  if (imagem.length > 2_000_000) return { ok: false, erro: "Imagem grande demais." };
+  if (!iaConfigurada()) return { ok: false, erro: "Falta a chave da IA (OPENAI_API_KEY) no .env.local." };
+  const { data: cfg } = await c.from("config_site").select("ia_modelo").limit(1).maybeSingle();
+  let lida;
+  try {
+    lida = await lerVagaDaImagem(imagem, String(nomeArquivo ?? ""), cfg?.ia_modelo ?? MODELO_PADRAO);
+  } catch (e) {
+    return { ok: false, erro: e instanceof ErroIA ? e.message : "A IA não conseguiu ler esta imagem." };
+  }
+  if (!lida.e_vaga) return { ok: false, erro: `Não parece anúncio de vaga${lida.motivo ? `: ${lida.motivo}` : "."}` };
+  const nome = (lida.empresa || "").replace(/\s+/g, " ").trim();
+  if (nome.length < 2) return { ok: false, erro: "A imagem não diz o nome da empresa." };
+  const fones = (l: unknown) =>
+    [
+      ...new Set(
+        (Array.isArray(l) ? l : []).map((t) => limparTelefone(String(t))).filter((t): t is string => Boolean(t)),
+      ),
+    ].slice(0, 5);
+  const whatsapp = fones(lida.whatsapp);
+  const telefones = fones(lida.telefones).filter((t) => !whatsapp.includes(t));
+  const email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lida.email ?? "") ? lida.email.toLowerCase().slice(0, 200) : null;
+  if (!whatsapp.length && !telefones.length && !email)
+    return { ok: false, erro: `${nome}: a imagem não tem WhatsApp, telefone ou e-mail.` };
+  const rascunho = rascunhoValido(lida.vaga);
+  const cargos = (Array.isArray(lida.cargos) ? lida.cargos : [])
+    .map((v) => String(v).trim().slice(0, 80))
+    .filter(Boolean);
+  return {
+    ok: true,
+    convite: {
+      nome: nome.slice(0, 120),
+      tipo: lida.tipo === "agencia" ? "agencia" : "empresa",
+      vagas: [...new Set(cargos.length ? cargos : rascunho ? [rascunho.titulo] : [])].slice(0, 20),
+      whatsapp,
+      telefones,
+      email,
+      observacao: `Lida da imagem ${String(nomeArquivo ?? "").slice(0, 80)}`.trim(),
+      rascunho,
+      origem: "imagem",
+    },
+  };
 }

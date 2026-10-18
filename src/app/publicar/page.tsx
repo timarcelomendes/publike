@@ -9,6 +9,9 @@ import { primeiro } from "@/lib/formato";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
+import { rascunhoValido } from "@/lib/convites";
+import { criarClientePublico } from "@/lib/supabase/servidor";
+import { valoresDoConvite } from "@/lib/valores-convite";
 import { obterTriagem } from "@/lib/servidor/triagem";
 
 export const metadata: Metadata = {
@@ -46,11 +49,27 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   const pedida = primeiro(sp.copiar);
   const pedidaCopia = pedida && UUID.test(pedida) ? pedida : null;
   const continuar = primeiro(sp.continuar) === "1";
+  // veio do link do convite do Publike: a vaga lida do anúncio da empresa vem pronta
+  const convite = await conviteDoLink(primeiro(sp.convite));
   // sem conta dá para preencher a vaga: o rascunho fica no aparelho e sai depois de entrar
   if (!pedidaCopia && !(await obterUsuario())) {
-    return <PublicarAnuncio inicial={vazio("Goiânia", "")} semConta comModelos />;
+    const base = vazio("Goiânia", "");
+    return (
+      <PublicarAnuncio
+        inicial={convite?.rascunho ? valoresDoConvite(convite.rascunho, base) : base}
+        semConta
+        comModelos={!convite}
+        convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
+      />
+    );
   }
-  const voltar = pedidaCopia ? `/publicar?copiar=${pedidaCopia}` : continuar ? "/publicar?continuar=1" : "/publicar";
+  const voltar = pedidaCopia
+    ? `/publicar?copiar=${pedidaCopia}`
+    : continuar
+      ? "/publicar?continuar=1"
+      : convite
+        ? `/publicar?convite=${convite.token}`
+        : "/publicar";
   const { perfil } = await exigirPerfilCompleto(voltar);
   const publico = perfil.tipo !== "pessoa";
   const [ia, ultimo, original] = await Promise.all([
@@ -68,7 +87,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       : null;
   const triagem = copia ? await obterTriagem(copia.id) : {};
   // comércio e empresa: a próxima vaga já vem com o endereço da última
-  const inicial = copia
+  const inicialSemConvite = copia
     ? valoresDoAnuncio(copia, { copiar: true, triagem })
     : ultimo
       ? {
@@ -79,6 +98,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
           lng: ultimo.lng,
         }
       : vazio(perfil.cidade, perfil.bairro ?? "");
+  const inicial =
+    convite?.rascunho && !copia ? valoresDoConvite(convite.rascunho, inicialSemConvite) : inicialSemConvite;
   return (
     <>
       {copia && (
@@ -89,14 +110,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       <PublicarAnuncio
         inicial={inicial}
         continuar={continuar}
-        comModelos={!copia}
+        comModelos={!copia && !convite}
         ia={ia}
         agencia={perfil.tipo === "agencia"}
         contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
         enderecoPublico={publico}
+        convite={
+          convite && !copia ? { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) } : null
+        }
       />
     </>
   );
+}
+
+/** O convite do link (só se ainda vale: quem disse que não quer não vê mais o convite). */
+async function conviteDoLink(token: string | undefined) {
+  if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
+  const { data } = await criarClientePublico().rpc("convite_do_token", { p_token: token });
+  const c = data?.[0];
+  if (!c || c.status === "recusou") return null;
+  return { token, nome: c.nome, rascunho: rascunhoValido(c.rascunho) };
 }
 
 function vazio(cidade: string, bairro: string): ValoresAnuncio {

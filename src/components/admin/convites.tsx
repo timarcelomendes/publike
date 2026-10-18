@@ -15,12 +15,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type ChangeEvent } from "react";
-import { anotarConvite, apagarConvite, importarConvites, mudarConvite } from "@/lib/acoes/admin-convites";
+import {
+  anotarConvite,
+  apagarConvite,
+  importarConvites,
+  lerConviteDaImagem,
+  mudarConvite,
+} from "@/lib/acoes/admin-convites";
 import {
   ESTADOS_CONVITE,
   assuntoConvite,
   formatarFone,
   lerCsv,
+  linkDoConvite,
   linhasParaConvites,
   mensagemConvite,
   type Convite,
@@ -182,9 +189,227 @@ export function ImportarConvites() {
   );
 }
 
+// ------------------------------------------------------------------ Importar por imagens
+
+/** Até quantas imagens por vez (cada uma é uma leitura da IA). */
+const MAX_IMAGENS = 30;
+
+/** A imagem reduzida (lado maior de 1600 px, JPEG) em data: URL: cabe no pedido ao servidor e a IA lê bem. */
+async function reduzirImagem(arquivo: File): Promise<string> {
+  const bitmap = await createImageBitmap(arquivo);
+  const escala = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const tela = document.createElement("canvas");
+  tela.width = Math.round(bitmap.width * escala);
+  tela.height = Math.round(bitmap.height * escala);
+  tela.getContext("2d")!.drawImage(bitmap, 0, 0, tela.width, tela.height);
+  bitmap.close();
+  for (const qualidade of [0.85, 0.7, 0.55]) {
+    const url = tela.toDataURL("image/jpeg", qualidade);
+    if (url.length < 900_000) return url;
+  }
+  return tela.toDataURL("image/jpeg", 0.4);
+}
+
+type LidaDaImagem = { arquivo: string; convite?: NovoConvite; erro?: string; marcada: boolean };
+
+/** Junta as vagas da mesma empresa (várias imagens dela) num convite só. */
+function juntarPorEmpresa(lidas: LidaDaImagem[]): LidaDaImagem[] {
+  const saida: LidaDaImagem[] = [];
+  for (const l of lidas) {
+    const igual =
+      l.convite && saida.find((s) => s.convite && s.convite.nome.toLowerCase() === l.convite!.nome.toLowerCase());
+    if (!igual || !igual.convite || !l.convite) {
+      saida.push(l);
+      continue;
+    }
+    const a = igual.convite;
+    const b = l.convite;
+    igual.convite = {
+      ...a,
+      vagas: [...new Set([...a.vagas, ...b.vagas])].slice(0, 20),
+      whatsapp: [...new Set([...a.whatsapp, ...b.whatsapp])].slice(0, 5),
+      telefones: [...new Set([...a.telefones, ...b.telefones])].slice(0, 5),
+      email: a.email ?? b.email,
+      rascunho: a.rascunho ?? b.rascunho,
+    };
+    igual.arquivo = `${igual.arquivo}, ${l.arquivo}`;
+  }
+  return saida;
+}
+
+/**
+ * Importar pelas imagens dos anúncios (prints ou imagens salvas das vagas que você viu nas redes):
+ * a IA lê empresa, cargos, contato e a vaga; você confere e importa. A vaga lida vem pronta
+ * no link do convite, para a empresa só conferir e publicar.
+ */
+export function ImportarPorImagens() {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [lidas, setLidas] = useState<LidaDaImagem[] | null>(null);
+  const [progresso, setProgresso] = useState<{ feitas: number; total: number } | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const campo = useRef<HTMLInputElement>(null);
+
+  async function escolher(e: ChangeEvent<HTMLInputElement>) {
+    const arquivos = [...(e.target.files ?? [])].filter((f) => f.type.startsWith("image/"));
+    setErro(null);
+    setLidas(null);
+    if (!arquivos.length) return;
+    if (arquivos.length > MAX_IMAGENS) {
+      setErro(`Escolha até ${MAX_IMAGENS} imagens por vez.`);
+      return;
+    }
+    const resultado: LidaDaImagem[] = [];
+    setProgresso({ feitas: 0, total: arquivos.length });
+    // uma de cada vez: a IA lê melhor e o servidor não recebe tudo junto
+    for (const arquivo of arquivos) {
+      let imagem: string;
+      try {
+        imagem = await reduzirImagem(arquivo);
+      } catch {
+        resultado.push({ arquivo: arquivo.name, erro: "Não deu para abrir esta imagem.", marcada: false });
+        setProgresso({ feitas: resultado.length, total: arquivos.length });
+        continue;
+      }
+      const r = await lerConviteDaImagem(imagem, arquivo.name).catch(() => ({
+        ok: false as const,
+        erro: "Falhou a leitura. Tente de novo.",
+      }));
+      resultado.push(
+        r.ok
+          ? { arquivo: arquivo.name, convite: r.convite, marcada: true }
+          : { arquivo: arquivo.name, erro: r.erro, marcada: false },
+      );
+      setProgresso({ feitas: resultado.length, total: arquivos.length });
+    }
+    setProgresso(null);
+    setLidas(juntarPorEmpresa(resultado));
+  }
+
+  const marcadas = (lidas ?? []).filter((l) => l.convite && l.marcada);
+  const limpar = () => {
+    setLidas(null);
+    if (campo.current) campo.current.value = "";
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ol className="flex flex-col gap-1.5 text-body-sm text-ink-muted">
+        <li>1. Salve as imagens (ou tire prints) das vagas que você viu: um anúncio por imagem.</li>
+        <li>
+          2. Escolha as imagens aqui (até {MAX_IMAGENS} por vez). A IA lê a empresa, os cargos, o WhatsApp, o telefone,
+          o e-mail e a vaga.
+        </li>
+        <li>3. Confira e importe. O convite leva o link com a vaga pronta: a empresa confere e publica.</li>
+      </ol>
+      <label
+        className={`${classesBotao("secundario", "sm")} cursor-pointer self-start has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${progresso ? "pointer-events-none opacity-60" : ""}`}
+      >
+        <ImageIcon aria-hidden />
+        Escolher as imagens
+        <input
+          ref={campo}
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/webp"
+          onChange={escolher}
+          disabled={Boolean(progresso)}
+          className="sr-only"
+        />
+      </label>
+
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {progresso && (
+        <p role="status" className="text-body-sm text-ink-muted">
+          Lendo as imagens… {progresso.feitas} de {progresso.total}
+        </p>
+      )}
+
+      {lidas && (
+        <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-4">
+          <p className="text-label">
+            {marcadas.length === 1 ? "1 empresa para importar" : `${marcadas.length} empresas para importar`}
+            {lidas.some((l) => l.erro) &&
+              `, ${lidas.filter((l) => l.erro).length === 1 ? "1 imagem ficou de fora" : `${lidas.filter((l) => l.erro).length} imagens ficaram de fora`}`}
+          </p>
+          <ul aria-label="Lidas das imagens" className="flex flex-col gap-2">
+            {lidas.map((l, i) =>
+              l.convite ? (
+                <li key={i} className="flex items-start gap-3 rounded-sm bg-surface-200 p-3">
+                  <input
+                    type="checkbox"
+                    checked={l.marcada}
+                    aria-label={`Importar ${l.convite.nome}`}
+                    onChange={(e) => {
+                      const v = e.target.checked;
+                      setLidas((atual) => atual && atual.map((x, j) => (j === i ? { ...x, marcada: v } : x)));
+                    }}
+                    className="mt-1 size-5 accent-[var(--pk-ink)]"
+                  />
+                  <div className="flex min-w-0 flex-col gap-0.5 text-body-sm">
+                    <p className="text-label">
+                      {l.convite.nome}
+                      {l.convite.tipo === "agencia" && <span className="text-ink-muted"> · agência</span>}
+                    </p>
+                    {l.convite.vagas.length > 0 && <p>{l.convite.vagas.join(", ")}</p>}
+                    <p className="text-ink-muted">
+                      {[
+                        ...l.convite.whatsapp.map((n) => `WhatsApp ${formatarFone(n)}`),
+                        ...l.convite.telefones.map((n) => `Tel. ${formatarFone(n)}`),
+                        l.convite.email,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    {l.convite.rascunho && (
+                      <p className="text-ink-muted">
+                        Vaga pronta: {l.convite.rascunho.titulo}
+                        {l.convite.rascunho.salario
+                          ? ` · R$ ${l.convite.rascunho.salario.toLocaleString("pt-BR")}`
+                          : ""}
+                      </p>
+                    )}
+                    <p className="truncate text-caption text-ink-muted">{l.arquivo}</p>
+                  </div>
+                </li>
+              ) : (
+                <li key={i} className="rounded-sm px-3 py-2 text-body-sm text-ink-muted">
+                  {l.arquivo}: {l.erro}
+                </li>
+              ),
+            )}
+          </ul>
+          <div className="flex flex-wrap gap-2">
+            <Botao
+              variante="primario"
+              tamanho="sm"
+              disabled={pendente || !marcadas.length}
+              onClick={() =>
+                rodar(
+                  () => importarConvites(marcadas.map((l) => l.convite!)),
+                  (r) => {
+                    if (r.ok) limpar();
+                  },
+                )
+              }
+            >
+              {pendente
+                ? "Importando…"
+                : `Importar ${marcadas.length === 1 ? "1 empresa" : `${marcadas.length} empresas`}`}
+            </Botao>
+            <Botao variante="fantasma" tamanho="sm" onClick={limpar}>
+              Cancelar
+            </Botao>
+          </div>
+        </div>
+      )}
+      {mensagem}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ Lista
 
-export function ListaConvites({ convites, agora }: { convites: Convite[]; agora: number }) {
+export function ListaConvites({ convites, agora, site }: { convites: Convite[]; agora: number; site: string }) {
   const [filtro, setFiltro] = useState<StatusConvite | "todos">("todos");
   const [mudancas, setMudancas] = useState<Record<string, Partial<Convite>>>({});
   const [tocou, setTocou] = useState<Set<string>>(new Set());
@@ -229,7 +454,7 @@ export function ListaConvites({ convites, agora }: { convites: Convite[]; agora:
   if (!convites.length) {
     return (
       <p className="rounded-md border border-dashed border-line-strong p-6 text-center text-body-sm text-ink-muted">
-        Nenhuma empresa na lista ainda. Baixe o modelo, preencha e importe o arquivo acima.
+        Nenhuma empresa na lista ainda. Importe pelas imagens dos anúncios ou pelo arquivo, logo abaixo.
       </p>
     );
   }
@@ -301,6 +526,7 @@ export function ListaConvites({ convites, agora }: { convites: Convite[]; agora:
             <CartaoConvite
               key={c.id}
               c={c}
+              site={site}
               assinatura={assinatura}
               lembrar={tocou.has(c.id) && c.status === "a_enviar"}
               aoAbrirWhats={() => setTocou((t) => new Set(t).add(c.id))}
@@ -334,12 +560,15 @@ function useCompartilhar() {
 
 function CartaoConvite({
   c,
+  site,
   assinatura,
   lembrar,
   aoAbrirWhats,
   aoMarcar,
 }: {
   c: Convite;
+  /** o endereço público do site (o link do convite) */
+  site: string;
   assinatura: string;
   lembrar: boolean;
   aoAbrirWhats: () => void;
@@ -351,7 +580,7 @@ function CartaoConvite({
   const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
   const podeCompartilhar = useCompartilhar();
   const [confirmar, setConfirmar] = useState(false);
-  const msg = mensagemConvite(c, assinatura);
+  const msg = mensagemConvite(c, assinatura, linkDoConvite(site, c.token), Boolean(c.rascunho));
   const texto = encodeURIComponent(msg);
   const apagado = c.status === "recusou" || c.status === "sem_contato";
 
@@ -405,6 +634,7 @@ function CartaoConvite({
         <div className="flex flex-wrap gap-1.5">
           {c.tipo === "agencia" && <Selo variante="aviso">Agência</Selo>}
           {c.status === "autorizou" && <Selo variante="match">Autorizou</Selo>}
+          {c.origem === "imagem" && <Selo variante="contorno">Lida da imagem</Selo>}
           {!c.whatsapp.length && !c.email && <Selo variante="contorno">Só telefone</Selo>}
         </div>
       </div>
@@ -530,6 +760,27 @@ function CartaoConvite({
           </span>
         )}
       </div>
+
+      {c.aceite_em && (
+        <p className="text-body-sm text-cerrado-text">
+          Aceitou pelo link e publicou em{" "}
+          {new Date(c.aceite_em).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "America/Sao_Paulo",
+          })}
+          {c.anuncio_id && (
+            <>
+              {" · "}
+              <Link href={`/anuncio/${c.anuncio_id}`} className="underline underline-offset-2">
+                ver a vaga
+              </Link>
+            </>
+          )}
+        </p>
+      )}
 
       {c.status === "autorizou" &&
         (c.usuario_id ? (

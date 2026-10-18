@@ -111,6 +111,12 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
       return erroDoBanco(error);
     }
     await salvarTriagem(supabase, data.id, d.triagem);
+    // veio do link do convite: publicar é o aceite (o convite vira "Autorizou" no admin)
+    const convite = formData.get("convite");
+    if (typeof convite === "string" && /^[0-9a-f]{64}$/.test(convite)) {
+      const { error: erroConvite } = await supabase.rpc("aceitar_convite", { p_token: convite, p_anuncio: data.id });
+      if (erroConvite) console.warn("Publike: não deu para registrar o aceite do convite:", erroConvite.message);
+    }
     destino = `/anuncio/${data.id}?publicado=1`;
   }
 

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ImportarConvites, ListaConvites } from "@/components/admin/convites";
+import { ImportarConvites, ImportarPorImagens, ListaConvites } from "@/components/admin/convites";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
 import type { Convite } from "@/lib/convites";
+import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -41,8 +42,19 @@ async function Conteudo() {
             Confira se a migração 20261015200000_convites.sql já rodou no Supabase.
           </Aviso>
         ) : (
-          <ListaConvites convites={(data ?? []) as Convite[]} agora={agora} />
+          <ListaConvites
+            convites={(data ?? []) as unknown as Convite[]}
+            agora={agora}
+            site={urlDosEmails() ?? "https://publike.org"}
+          />
         )}
+      </Secao>
+      <Secao
+        id="importar-imagens"
+        titulo="Importar pelas imagens dos anúncios"
+        descricao="Viu vagas nas redes? Salve as imagens dos anúncios e escolha aqui: a IA lê a empresa, o contato e a vaga, e o convite leva a vaga pronta para a empresa conferir e publicar."
+      >
+        <ImportarPorImagens />
       </Secao>
       <Secao
         id="importar"

@@ -2,8 +2,9 @@
 
 import { Check, LoaderCircle, MapPin, RotateCcw, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState, useTransition } from "react";
 import { conferirAnuncio, salvarAnuncio } from "@/lib/acoes/anuncios";
+import { recusarConvite } from "@/lib/acoes/convite";
 import { REGIMES } from "@/lib/constantes";
 import { formatarValor } from "@/lib/formato";
 import { MODELOS_ANUNCIO, type ModeloAnuncio } from "@/lib/modelos-anuncio";
@@ -96,6 +97,7 @@ export function PublicarAnuncio({
   agencia = false,
   contatoAgencia = null,
   enderecoPublico = false,
+  convite = null,
 }: {
   inicial: ValoresAnuncio;
   /** quem ainda não entrou: o formulário confere e leva para entrar */
@@ -108,6 +110,8 @@ export function PublicarAnuncio({
   agencia?: boolean;
   contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
   enderecoPublico?: boolean;
+  /** veio do link do convite do Publike: publicar é o aceite */
+  convite?: { token: string; nome: string; pronta: boolean } | null;
 }) {
   const router = useRouter();
   const raiz = useRef<HTMLDivElement>(null);
@@ -129,6 +133,8 @@ export function PublicarAnuncio({
     function abrir() {
       const r = lerRascunhoGuardado();
       if (!r) return;
+      // a vaga do convite vem pronta: o rascunho antigo deste aparelho não passa por cima dela
+      if (convite && !continuar) return;
       if (continuar && !semConta) {
         apagarRascunho();
         setAviso("publicando");
@@ -205,7 +211,8 @@ export function PublicarAnuncio({
 
   return (
     <div ref={raiz} onInput={aoMexer} onChange={aoMexer} className="flex flex-col gap-6">
-      {semConta && (
+      {convite && <AvisoConvite convite={convite} />}
+      {semConta && !convite && (
         <Aviso tipo="info" titulo="Não precisa de conta para começar">
           Preencha a vaga. No fim, é só entrar com seu WhatsApp ou e-mail e ela vai ao ar na hora. O que você escreve
           fica guardado neste aparelho.
@@ -278,8 +285,50 @@ export function PublicarAnuncio({
         contatoAgencia={contatoAgencia}
         enderecoPublico={enderecoPublico}
         previa={previa?.titulo ? <PreviaDaVaga p={previa} /> : null}
+        extras={convite ? { convite: convite.token } : undefined}
       />
     </div>
+  );
+}
+
+/** Quem chegou pelo link do convite: de quem é o convite, o que fazer e como dizer que não quer. */
+function AvisoConvite({ convite }: { convite: { token: string; nome: string; pronta: boolean } }) {
+  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [enviando, iniciar] = useTransition();
+  if (resposta?.ok) {
+    return (
+      <Aviso tipo="info" titulo="Combinado">
+        {resposta.texto}
+      </Aviso>
+    );
+  }
+  return (
+    <Aviso tipo="info" titulo={`Convite do Publike para ${convite.nome}`}>
+      <span className="flex flex-col gap-2">
+        <span>
+          {convite.pronta
+            ? "A vaga já veio preenchida com o anúncio de vocês. Confira, ajuste o que precisar e toque em Publicar."
+            : "Escreva a vaga e toque em Publicar."}{" "}
+          É grátis, sem plano e sem taxa. Para publicar, você entra com o WhatsApp ou o e-mail, sem senha.
+        </span>
+        <span className="flex flex-wrap items-center gap-x-3">
+          <button
+            type="button"
+            disabled={enviando}
+            onClick={() =>
+              iniciar(async () => {
+                const r = await recusarConvite(convite.token);
+                setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "" } : { ok: false, texto: r.erro });
+              })
+            }
+            className="min-h-10 text-body-sm text-ink-muted underline underline-offset-2"
+          >
+            Não quero receber convites
+          </button>
+          {resposta && !resposta.ok && <span className="text-body-sm text-danger">{resposta.texto}</span>}
+        </span>
+      </span>
+    </Aviso>
   );
 }
 

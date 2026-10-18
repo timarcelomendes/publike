@@ -129,6 +129,7 @@ export function FormAnuncio({
   semConta = false,
   aposConferir,
   previa = null,
+  extras,
 }: {
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
@@ -151,6 +152,8 @@ export function FormAnuncio({
   aposConferir?: (dados: FormData) => void;
   /** Como a vaga aparece na busca, logo antes do botão. */
   previa?: ReactNode;
+  /** Campos escondidos a mais (o convite da empresa, que vira o aceite ao publicar). */
+  extras?: Record<string, string>;
 }) {
   const editando = Boolean(inicial.id);
   const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
@@ -237,6 +240,9 @@ export function FormAnuncio({
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
       {inicial.id && <input type="hidden" name="id" value={inicial.id} />}
+      {Object.entries(extras ?? {}).map(([k, v]) => (
+        <input key={k} type="hidden" name={k} value={v} />
+      ))}
       {emNomeDe && (
         <Aviso tipo="alerta" titulo={`Publicando em nome de ${emNomeDe}`}>
           A vaga sai no nome e com o contato desta conta, como se ela mesma tivesse publicado.

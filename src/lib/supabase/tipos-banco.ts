@@ -547,6 +547,11 @@ export type Database = {
           usuario_id: string | null;
           criado_em: string;
           atualizado_em: string;
+          token: string;
+          rascunho: Json | null;
+          origem: string | null;
+          aceite_em: string | null;
+          anuncio_id: string | null;
         };
         Insert: {
           nome: string;
@@ -556,6 +561,8 @@ export type Database = {
           telefones?: string[];
           email?: string | null;
           observacao?: string | null;
+          rascunho?: Json | null;
+          origem?: string | null;
         };
         Update: { status?: string; nota?: string | null; enviada_em?: string | null; usuario_id?: string | null };
         Relationships: [];
@@ -823,6 +830,12 @@ export type Database = {
         Returns: undefined;
       };
       foto_noticia: { Args: { p_id: string }; Returns: { tipo: string; dados: string }[] };
+      convite_do_token: {
+        Args: { p_token: string };
+        Returns: { nome: string; tipo: string; rascunho: Json | null; status: string }[];
+      };
+      aceitar_convite: { Args: { p_token: string; p_anuncio: string }; Returns: boolean };
+      recusar_convite: { Args: { p_token: string }; Returns: boolean };
       /** conta nova que veio pela página de serviços: as boas-vindas viram as de prestador */
       quero_oferecer_servicos: { Args: Record<string, never>; Returns: undefined };
       registrar_origem: { Args: { p_origem: string }; Returns: undefined };

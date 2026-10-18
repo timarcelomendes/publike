@@ -41,8 +41,10 @@ type Pedido = {
   sistema: string;
   mensagem: string;
   maxTokens: number;
-  /** Fotos para a IA olhar junto com o texto (endereços públicos). */
+  /** Fotos para a IA olhar junto com o texto (endereços públicos ou data: URL). */
   imagens?: string[];
+  /** "high" para ler letra miúda (telefone num cartaz); o padrão "low" sai bem mais barato */
+  detalhe?: "low" | "high";
   /** Saída estruturada: nome e esquema JSON da resposta. Sem esquema, a resposta é texto livre. */
   esquema?: { nome: string; schema: Record<string, unknown> };
   /** Deixa a IA pesquisar na internet, a partir deste lugar (as notícias). */
@@ -110,7 +112,7 @@ export async function chamarIA(
                 content: [
                   { type: "input_text", text: p.mensagem },
                   // "low" basta para ver telefone, rosto ou conteúdo impróprio, e custa bem menos
-                  ...p.imagens.map((url) => ({ type: "input_image", image_url: url, detail: "low" })),
+                  ...p.imagens.map((url) => ({ type: "input_image", image_url: url, detail: p.detalhe ?? "low" })),
                 ],
               },
             ]

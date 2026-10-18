@@ -1,5 +1,7 @@
 // Convites às empresas (admin): a lista, o arquivo modelo e a mensagem do convite.
 
+import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, VALORES_BENEFICIO } from "./constantes";
+
 export const ESTADOS_CONVITE = [
   { id: "a_enviar", nome: "A enviar", filtro: "A enviar" },
   { id: "enviada", nome: "Enviei", filtro: "Enviados" },
@@ -26,10 +28,83 @@ export type Convite = {
   enviada_em: string | null;
   usuario_id: string | null;
   criado_em: string;
+  /** o link do convite: /publicar?convite=<token> */
+  token: string;
+  /** a vaga lida da imagem do anúncio, que vem pronta no formulário de publicar */
+  rascunho: RascunhoConvite | null;
+  origem: "arquivo" | "imagem" | null;
+  /** quando a empresa publicou pela página do convite */
+  aceite_em: string | null;
+  anuncio_id: string | null;
+};
+
+/** A vaga lida do anúncio (imagem), para vir pronta no formulário de publicar. */
+export type RascunhoConvite = {
+  titulo: string;
+  descricao: string;
+  categoria: string;
+  regime: string;
+  salario: number | null;
+  salario_ate: number | null;
+  unidade: string;
+  beneficios: string[];
+  cidade: string;
+  bairro: string;
+  quantidade: number;
 };
 
 /** O que vem de uma linha do arquivo (ou do formulário), já limpo. */
-export type NovoConvite = Pick<Convite, "nome" | "tipo" | "vagas" | "whatsapp" | "telefones" | "email" | "observacao">;
+export type NovoConvite = Pick<
+  Convite,
+  "nome" | "tipo" | "vagas" | "whatsapp" | "telefones" | "email" | "observacao"
+> & { rascunho?: RascunhoConvite | null; origem?: "arquivo" | "imagem" };
+
+/**
+ * Confere o rascunho da vaga (vem da IA ou do navegador do admin): só valores que o formulário
+ * de publicar conhece; o resto fica vazio para a empresa preencher.
+ */
+export function rascunhoValido(x: unknown): RascunhoConvite | null {
+  if (!x || typeof x !== "object") return null;
+  const o = x as Record<string, unknown>;
+  const t = (k: string, max: number) =>
+    typeof o[k] === "string" ? (o[k] as string).replace(/\s+/g, " ").trim().slice(0, max) : "";
+  const n = (k: string) =>
+    typeof o[k] === "number" && Number.isFinite(o[k]) && (o[k] as number) > 0
+      ? Math.round((o[k] as number) * 100) / 100
+      : null;
+  const titulo = t("titulo", 90);
+  if (titulo.length < 2) return null;
+  const descricao = typeof o.descricao === "string" ? o.descricao.trim().slice(0, 3000) : "";
+  const salario = n("salario");
+  const ate = n("salario_ate");
+  const qtd = n("quantidade");
+  return {
+    titulo,
+    descricao,
+    categoria: (SLUGS_CATEGORIAS as readonly string[]).includes(t("categoria", 40)) ? t("categoria", 40) : "",
+    regime: (LISTA_REGIMES as readonly string[]).includes(t("regime", 20)) ? t("regime", 20) : "",
+    salario: salario && salario < 1_000_000 ? salario : null,
+    salario_ate: salario && ate && ate > salario && ate < 1_000_000 ? ate : null,
+    unidade: (LISTA_UNIDADES as readonly string[]).includes(t("unidade", 20)) ? t("unidade", 20) : "",
+    beneficios: Array.isArray(o.beneficios)
+      ? [
+          ...new Set(
+            o.beneficios.filter(
+              (b): b is string => typeof b === "string" && (VALORES_BENEFICIO as readonly string[]).includes(b),
+            ),
+          ),
+        ]
+      : [],
+    cidade: t("cidade", 60),
+    bairro: t("bairro", 60),
+    quantidade: qtd && qtd >= 1 && qtd <= 999 ? Math.floor(qtd) : 1,
+  };
+}
+
+/** O link que vai na mensagem: a empresa confere a vaga e publica (é o aceite). */
+export function linkDoConvite(site: string, token: string) {
+  return `${site.replace(/\/+$/, "")}/publicar?convite=${token}`;
+}
 
 // ---------------------------------------------------------------------------
 // Arquivo modelo (CSV, abre no Excel e no Google Planilhas)
@@ -196,7 +271,18 @@ export function formatarFone(n: string) {
 const minusculo = (v: string) => v.replace(/\S+/g, (p) => (/^[A-Z]{2,}$/.test(p) ? p : p.toLowerCase()));
 const juntar = (l: string[]) => (l.length < 2 ? l.join("") : `${l.slice(0, -1).join(", ")} e ${l.at(-1)}`);
 
-export function mensagemConvite(c: Pick<Convite, "nome" | "tipo" | "vagas">, assinatura: string) {
+export function mensagemConvite(
+  c: Pick<Convite, "nome" | "tipo" | "vagas">,
+  assinatura: string,
+  link?: string | null,
+  /** a vaga lida do anúncio já vem pronta no link */
+  pronta = false,
+) {
+  const pedido = link
+    ? pronta
+      ? `Já deixei a vaga pronta no site. É só abrir, conferir e tocar em Publicar (entra com o WhatsApp ou o e-mail, sem senha):\n${link}`
+      : `Para publicar, é só abrir o link, escrever a vaga e tocar em Publicar (entra com o WhatsApp ou o e-mail, sem senha):\n${link}`
+    : null;
   const vagas = juntar(c.vagas.map(minusculo));
   const essa = c.vagas.length > 1 ? "essas vagas" : "essa vaga";
   const quem = assinatura.trim() ? `Sou ${assinatura.trim()}, do Publike` : "Aqui é do Publike";
@@ -209,7 +295,8 @@ export function mensagemConvite(c: Pick<Convite, "nome" | "tipo" | "vagas">, ass
         ? `Vi que vocês estão com vaga de ${vagas}. Posso publicar ${essa} no Publike em nome da agência, sem custo?`
         : "Posso publicar as vagas de vocês no Publike em nome da agência, sem custo?",
       `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• Quando vocês aceitam um candidato, ele recebe o WhatsApp e o e-mail da agência, nunca os do cliente. O cliente pode aparecer como empresa confidencial.\n• É grátis: sem plano e sem taxa por candidato.`,
-      `Se puder, responda "pode publicar" e me diga qual WhatsApp e qual e-mail devem aparecer nas vagas. Eu cadastro e mando o acesso para vocês acompanharem.`,
+      pedido ??
+        `Se puder, responda "pode publicar" e me diga qual WhatsApp e qual e-mail devem aparecer nas vagas. Eu cadastro e mando o acesso para vocês acompanharem.`,
       fecha,
     ].join("\n\n");
   }
@@ -219,7 +306,8 @@ export function mensagemConvite(c: Pick<Convite, "nome" | "tipo" | "vagas">, ass
       ? `Vi que vocês estão contratando ${vagas}. Posso publicar ${essa} no Publike, sem custo, para mais gente da região ficar sabendo?`
       : "Posso publicar as vagas de vocês no Publike, sem custo, para mais gente da região ficar sabendo?",
     `• É grátis para a empresa e para o candidato: sem plano e sem taxa.\n• Não somos agência: quem se interessa curte a vaga, e vocês decidem com quem conversar. Ao aceitar, o contato é direto com vocês.\n• A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus até a empresa.`,
-    `Se puder, responda "pode publicar" e me diga qual WhatsApp ou e-mail deve receber os candidatos. Eu cadastro e mando o acesso para vocês acompanharem.`,
+    pedido ??
+      `Se puder, responda "pode publicar" e me diga qual WhatsApp ou e-mail deve receber os candidatos. Eu cadastro e mando o acesso para vocês acompanharem.`,
     fecha,
   ].join("\n\n");
 }
