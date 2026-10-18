@@ -407,7 +407,8 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       )}
       <VisaoExplorar
         titulo={
-          <h2 className="text-h3 sm:text-h2" aria-live="polite">
+          // no computador, um pouco menor: cabe na linha dos filtros
+          <h2 className="text-h3 sm:text-h2 lg:text-h3 2xl:text-h2" aria-live="polite">
             {contagem}
           </h2>
         }

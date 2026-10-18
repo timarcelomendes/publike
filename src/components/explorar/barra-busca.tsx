@@ -42,8 +42,10 @@ const chip = (ativo: boolean) =>
   }`;
 
 // Os filtros da lista têm a cara de botão secundário pequeno.
+// field-sizing: a caixa mede o que está escolhido (não a opção mais comprida da lista), para os
+// filtros caberem na linha do título no computador
 const seletor =
-  "min-h-10 rounded-md border border-line-strong bg-surface-200 pl-3.5 text-label text-ink transition-colors hover:bg-surface-300";
+  "min-h-10 field-sizing-content rounded-md border border-line-strong bg-surface-200 pl-3.5 text-label text-ink transition-colors hover:bg-surface-300";
 
 /** Muda a URL com os filtros novos, sem pular para o topo. */
 export function useIrPara(filtros: Filtros) {

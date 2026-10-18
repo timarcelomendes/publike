@@ -154,7 +154,7 @@ export function VisaoExplorar({
           Computador: título à esquerda e, na mesma linha, os filtros e o jeito de ver; sem espaço
           para os dois, os filtros descem para a linha de baixo (nada fica cortado). A origem vem
           por último, na largura toda. */}
-      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:flex lg:flex-wrap lg:gap-x-6 lg:gap-y-3">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:flex lg:flex-wrap lg:gap-x-4 lg:gap-y-3">
         <div className="col-start-1 row-start-1 lg:shrink-0">{titulo}</div>
         <div className="col-start-2 row-start-1 lg:hidden">
           <SeletorVisao visao={visao} celular />
