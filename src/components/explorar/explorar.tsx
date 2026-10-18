@@ -247,7 +247,10 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       ? `Nenhum resultado`
       : filtros.meus
         ? `${n} ${n === 1 ? "anúncio seu" : "anúncios seus"}`
-        : `${n >= 60 ? "60+" : n} ${n === 1 ? nome[0] : nome[1]}`;
+        : n > 20
+          ? `${n >= 60 ? "60+" : n} ${nome[1]}`
+          : // com poucas, o número não ajuda: só o que é ("Vagas perto de você")
+            `${nome[1][0].toUpperCase()}${nome[1].slice(1)} perto de você`;
   const maiorRaio = RAIOS[RAIOS.length - 1];
 
   // As perguntas da primeira visita (e depois o próximo passo, com o "Mudar") ficam em cima da lista,
