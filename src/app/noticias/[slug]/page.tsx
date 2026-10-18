@@ -73,24 +73,28 @@ async function Noticia({ slug }: { slug: string }) {
           <span>· Fonte: {n.fonte_nome}</span>
         </p>
         <figure className="mt-5">
-          <CapaNoticia n={n} tamanho="grande" className="aspect-video rounded-md" />
-          {n.foto_url && (
-            <figcaption className="mt-2 text-body-sm text-ink-muted">
-              Imagem ilustrativa. Foto:{" "}
-              <Credito href={n.foto_autor_url}>{n.foto_autor || "autor não informado"}</Credito>
-              {n.foto_fonte && (
-                <>
-                  {" "}
-                  (<Credito href={n.foto_link}>{n.foto_fonte}</Credito>)
-                </>
-              )}
-              {n.foto_licenca && (
-                <>
-                  , <Credito href={n.foto_licenca_url}>{n.foto_licenca}</Credito>
-                </>
-              )}
-            </figcaption>
-          )}
+          <CapaNoticia
+            n={n}
+            tamanho="grande"
+            className="aspect-video rounded-md"
+            legenda={
+              <figcaption className="mt-2 text-body-sm text-ink-muted">
+                Imagem ilustrativa. Foto:{" "}
+                <Credito href={n.foto_autor_url}>{n.foto_autor || "autor não informado"}</Credito>
+                {n.foto_fonte && (
+                  <>
+                    {" "}
+                    (<Credito href={n.foto_link}>{n.foto_fonte}</Credito>)
+                  </>
+                )}
+                {n.foto_licenca && (
+                  <>
+                    , <Credito href={n.foto_licenca_url}>{n.foto_licenca}</Credito>
+                  </>
+                )}
+              </figcaption>
+            }
+          />
         </figure>
 
         <div className="mt-6 flex flex-col gap-4 text-body">

@@ -32,7 +32,7 @@ export function Cabecalho() {
           <LinkNav href="/noticias">Notícias</LinkNav>
           <LinkNav href="/como-funciona">Como funciona</LinkNav>
         </nav>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <BotaoInstalarApp variante="cabecalho" />
           <BotaoTema />
           {/* No celular, "Publicar" fica na barra de baixo */}
@@ -56,7 +56,8 @@ function LinkAdmin() {
       className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-label text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink"
     >
       <Laptop aria-hidden className="size-4" />
-      Admin
+      {/* no celular, só o ícone (o cabeçalho tem também o botão do tema) */}
+      <span className="sr-only sm:not-sr-only">Admin</span>
     </Link>
   );
 }

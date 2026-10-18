@@ -63,62 +63,124 @@ function tamanhoBom(url: string, largura: number) {
   return `https://upload.wikimedia.org/wikipedia/commons/thumb/${m[1]}/${m[2]}/${m[3]}/1280px-${m[3]}`;
 }
 
-/** Busca e devolve a primeira foto boa que ainda não foi usada (null se nada servir). */
-export async function buscarFoto(busca: string, tema: TemaNoticia, usadas: Set<string>): Promise<FotoNoticia | null> {
-  if (!fotosConfiguradas()) return null;
+/** A imagem abre mesmo? (o Flickr e a Wikimedia apagam fotos; um link quebrado não vai para o site) */
+export async function fotoAbre(url: string) {
+  if (!HOSTS.test(url)) return false;
+  // nos testes, a conferência vai para um servidor falso (as fotos de verdade não abrem lá)
+  const teste = process.env.FOTOS_CONFERIR_URL;
+  const alvo = teste ? `${teste.replace(/\/+$/, "")}/${url.replace(/^https:\/\//, "")}` : url;
+  const pedir = (metodo: "HEAD" | "GET") =>
+    fetch(alvo, {
+      method: metodo,
+      headers: {
+        "User-Agent": "Publike/1.0 (+https://publike.org)",
+        ...(metodo === "GET" ? { Range: "bytes=0-2047" } : {}),
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(8_000),
+      cache: "no-store",
+    });
+  try {
+    let r = await pedir("HEAD");
+    if (r.status === 405 || r.status === 403) r = await pedir("GET");
+    return r.ok && (r.headers.get("content-type") ?? "").startsWith("image/");
+  } catch {
+    return false;
+  }
+}
+
+/** As fotos que servem para uma busca (licença, tamanho e formato certos), ainda sem conferir se abrem. */
+async function candidatas(termo: string, quantas = 20): Promise<FotoNoticia[]> {
   const base = (process.env.OPENVERSE_URL || "https://api.openverse.org/v1").replace(/\/+$/, "");
-  for (const termo of [busca.trim(), ...BUSCA_DO_TEMA[tema]].filter(Boolean)) {
-    try {
-      const q = new URLSearchParams({
-        q: termo.slice(0, 80),
-        license_type: "commercial,modification",
-        source: "flickr,wikimedia",
-        aspect_ratio: "wide",
-        size: "large",
-        extension: "jpg",
-        mature: "false",
-        page_size: "20",
-      });
-      const r = await fetch(`${base}/images/?${q}`, {
-        headers: { "User-Agent": "Publike/1.0 (+https://publike.org)", Accept: "application/json" },
-        signal: AbortSignal.timeout(12_000),
-        cache: "no-store",
-      });
-      if (!r.ok) continue;
-      const fotos = ((await r.json()) as { results?: FotoOpenverse[] }).results ?? [];
-      const f = fotos.find((x) => {
+  const q = new URLSearchParams({
+    q: termo.slice(0, 80),
+    license_type: "commercial,modification",
+    source: "flickr,wikimedia",
+    aspect_ratio: "wide",
+    size: "large",
+    extension: "jpg",
+    mature: "false",
+    page_size: String(quantas),
+  });
+  try {
+    const r = await fetch(`${base}/images/?${q}`, {
+      headers: { "User-Agent": "Publike/1.0 (+https://publike.org)", Accept: "application/json" },
+      signal: AbortSignal.timeout(12_000),
+      cache: "no-store",
+    });
+    if (!r.ok) return [];
+    const fotos = ((await r.json()) as { results?: FotoOpenverse[] }).results ?? [];
+    return fotos
+      .filter((x) => {
         const w = x.width ?? 0;
         const h = x.height ?? 0;
         return (
           x.url &&
           HOSTS.test(x.url) &&
           x.foreign_landing_url?.startsWith("https://") &&
-          !usadas.has(x.foreign_landing_url) &&
           w >= 900 &&
           h > 0 &&
           w / h >= 1.3 &&
           w / h <= 2.1
         );
-      });
-      if (!f?.url || !f.foreign_landing_url) continue;
-      usadas.add(f.foreign_landing_url);
-      return {
-        foto_url: tamanhoBom(f.url, f.width ?? 0),
+      })
+      .map((f) => ({
+        foto_url: tamanhoBom(f.url!, f.width ?? 0),
         foto_autor: (f.creator ?? "").trim().slice(0, 120),
         // (na Wikimedia, quem não tem página vem com um link de "criar página": esse fica de fora)
         foto_autor_url:
           f.creator_url?.startsWith("https://") && !f.creator_url.includes("redlink=1")
             ? f.creator_url.slice(0, 600)
             : "",
-        foto_link: f.foreign_landing_url.slice(0, 600),
+        foto_link: f.foreign_landing_url!.slice(0, 600),
         foto_alt: (f.title ?? "").trim().slice(0, 300),
         foto_fonte: FONTES[f.provider ?? ""] ?? "Openverse",
         foto_licenca: nomeDaLicenca(f).slice(0, 40),
         foto_licenca_url: f.license_url?.startsWith("https://") ? f.license_url.slice(0, 300) : "",
-      };
-    } catch {
-      // sem foto desta vez: a notícia segue com a capa desenhada e tenta de novo na próxima busca
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Busca e devolve a primeira foto boa, que abre e ainda não foi usada (null se nada servir). */
+export async function buscarFoto(busca: string, tema: TemaNoticia, usadas: Set<string>): Promise<FotoNoticia | null> {
+  if (!fotosConfiguradas()) return null;
+  for (const termo of [busca.trim(), ...BUSCA_DO_TEMA[tema]].filter(Boolean)) {
+    // confere até 3 por busca: se nenhuma abrir, tenta a próxima busca
+    for (const f of (await candidatas(termo)).filter((x) => !usadas.has(x.foto_link)).slice(0, 3)) {
+      if (await fotoAbre(f.foto_url)) {
+        usadas.add(f.foto_link);
+        return f;
+      }
     }
   }
   return null;
+}
+
+/** Para o admin escolher: até 8 fotos que abrem, para uma busca (ou o assunto da notícia). */
+export async function opcoesDeFoto(busca: string, tema: TemaNoticia): Promise<FotoNoticia[]> {
+  const termo = busca.trim() || BUSCA_DO_TEMA[tema][0];
+  const lista = (await candidatas(termo, 30)).slice(0, 12);
+  const abrem = await Promise.all(lista.map((f) => fotoAbre(f.foto_url)));
+  return lista.filter((_, i) => abrem[i]).slice(0, 8);
+}
+
+/** Confere uma foto escolhida no admin (vem do navegador): endereços e tamanhos certos. */
+export function fotoValida(f: unknown): FotoNoticia | null {
+  if (!f || typeof f !== "object") return null;
+  const o = f as Record<string, unknown>;
+  const t = (k: string, max: number) => (typeof o[k] === "string" ? (o[k] as string).trim().slice(0, max) : "");
+  const https = (k: string, max: number) => (/^https:\/\//.test(t(k, max)) ? t(k, max) : "");
+  const foto = {
+    foto_url: t("foto_url", 600),
+    foto_autor: t("foto_autor", 120),
+    foto_autor_url: https("foto_autor_url", 600),
+    foto_link: https("foto_link", 600),
+    foto_alt: t("foto_alt", 300),
+    foto_fonte: t("foto_fonte", 60),
+    foto_licenca: t("foto_licenca", 40),
+    foto_licenca_url: https("foto_licenca_url", 300),
+  };
+  return HOSTS.test(foto.foto_url) && foto.foto_link ? foto : null;
 }

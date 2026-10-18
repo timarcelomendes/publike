@@ -1,14 +1,17 @@
 "use client";
 
-import { CalendarClock, ExternalLink, RefreshCw, Send, Trash2, Undo2 } from "lucide-react";
-import { useState } from "react";
+import { CalendarClock, ExternalLink, ImageOff, Images, RefreshCw, Search, Send, Trash2, Undo2 } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
+  buscarFotosNoticia,
   buscarNoticiasAgora,
   ligarBuscaNoticias,
   mudarSituacaoNoticia,
   salvarNoticia,
+  trocarFotoNoticia,
   type CamposNoticia,
 } from "@/lib/acoes/admin-noticias";
+import type { FotoNoticia } from "@/lib/servidor/fotos-noticias";
 import { LISTA_TEMAS_NOTICIA, TEMAS_NOTICIA, type Noticia, type TemaNoticia } from "@/lib/noticias";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -193,6 +196,8 @@ function CartaoNoticia({ n, aba, aoTerminar }: { n: Noticia; aba: Aba; aoTermina
         </a>
       </div>
 
+      {aba !== "descartadas" && <FotoDaNoticia n={n} tema={campos.tema} />}
+
       <label htmlFor={id("titulo")} className="sr-only">
         Título
       </label>
@@ -344,5 +349,176 @@ function CartaoNoticia({ n, aba, aoTerminar }: { n: Noticia; aba: Aba; aoTermina
         {acao.mensagem}
       </div>
     </li>
+  );
+}
+
+// ------------------------------------------------------------------ Foto
+
+/** A foto da notícia: confere se abre, troca por outra (fotos livres) ou tira. */
+function FotoDaNoticia({ n, tema }: { n: Noticia; tema: TemaNoticia }) {
+  const acao = useAcao();
+  // a foto que falhou ao abrir (pelo endereço: trocou a foto, confere de novo)
+  const [quebrada, setQuebrada] = useState<string | null>(null);
+  const [trocando, setTrocando] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [opcoes, setOpcoes] = useState<FotoNoticia[] | null>(null);
+  const [erroBusca, setErroBusca] = useState<string | null>(null);
+  const [buscando, iniciar] = useTransition();
+  const falhou = Boolean(n.foto_url) && quebrada === n.foto_url;
+  const img = useRef<HTMLImageElement>(null);
+  // a foto pode ter falhado antes do React chegar: confere ao abrir e quando a foto muda
+  useEffect(() => {
+    const i = img.current;
+    if (i?.complete && i.naturalWidth === 0 && n.foto_url) setQuebrada(n.foto_url);
+  }, [n.foto_url]);
+
+  const procurar = () =>
+    iniciar(async () => {
+      setErroBusca(null);
+      const r = await buscarFotosNoticia(busca, tema);
+      if (!r.ok) setErroBusca(r.erro);
+      else setOpcoes(r.fotos);
+    });
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-200 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="aspect-video w-full shrink-0 overflow-hidden rounded-sm bg-surface-300 sm:w-56">
+          {n.foto_url && !falhou ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              ref={img}
+              src={n.foto_url}
+              alt={n.foto_alt || "Foto da notícia"}
+              onError={() => setQuebrada(n.foto_url ?? null)}
+              className="size-full object-cover"
+            />
+          ) : (
+            <span className="flex size-full flex-col items-center justify-center gap-1 p-2 text-center text-caption text-ink-muted">
+              <ImageOff aria-hidden className="size-5" />
+              {falhou ? "A foto não abre" : "Sem foto: capa desenhada"}
+            </span>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-2 text-body-sm">
+          <p className="text-label">Foto</p>
+          {falhou ? (
+            <p role="alert" className="text-danger">
+              A foto não abre. Troque ou use a capa desenhada: ela não vai para o site assim.
+            </p>
+          ) : n.foto_url ? (
+            <p className="text-ink-muted">
+              {n.foto_autor || "Autor não informado"}
+              {n.foto_fonte ? ` · ${n.foto_fonte}` : ""}
+              {n.foto_licenca ? ` · ${n.foto_licenca}` : ""}
+              {n.foto_link && (
+                <>
+                  {" · "}
+                  <a
+                    href={n.foto_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    ver a página da foto
+                  </a>
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="text-ink-muted">A notícia sai com a capa desenhada. Se quiser, escolha uma foto.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Botao tamanho="sm" aria-expanded={trocando} onClick={() => setTrocando((v) => !v)}>
+              <Images aria-hidden />
+              {n.foto_url ? "Trocar foto" : "Escolher foto"}
+            </Botao>
+            {n.foto_url && (
+              <Botao
+                variante="fantasma"
+                tamanho="sm"
+                disabled={acao.pendente}
+                onClick={() => acao.rodar(() => trocarFotoNoticia(n.id, null))}
+              >
+                <ImageOff aria-hidden />
+                Usar a capa desenhada
+              </Botao>
+            )}
+          </div>
+          {acao.mensagem}
+        </div>
+      </div>
+
+      {trocando && (
+        <div className="flex flex-col gap-3 border-t border-line pt-3">
+          <form
+            className="flex flex-wrap gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              procurar();
+            }}
+          >
+            <label htmlFor={`foto-busca-${n.id}`} className="sr-only">
+              Buscar foto
+            </label>
+            <input
+              id={`foto-busca-${n.id}`}
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              maxLength={80}
+              placeholder="ex.: feira de empregos, construção, sala de aula"
+              className={`${classesEntrada} min-w-0 flex-1`}
+            />
+            <Botao type="submit" tamanho="sm" disabled={buscando}>
+              <Search aria-hidden />
+              {buscando ? "Buscando…" : "Buscar fotos"}
+            </Botao>
+          </form>
+          <p className="text-caption text-ink-muted">
+            Fotos com licença livre do Flickr e da Wikimedia (só as que abrem). Busca vazia usa o assunto da notícia; em
+            inglês costuma achar mais.
+          </p>
+          {erroBusca && <p className="text-body-sm text-danger">{erroBusca}</p>}
+          {opcoes && opcoes.length === 0 && (
+            <p className="text-body-sm text-ink-muted">Nenhuma foto boa para essa busca. Tente outras palavras.</p>
+          )}
+          {opcoes && opcoes.length > 0 && (
+            <ul aria-label="Fotos para escolher" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {opcoes.map((f) => (
+                <li key={f.foto_link}>
+                  <button
+                    type="button"
+                    disabled={acao.pendente}
+                    onClick={() =>
+                      acao.rodar(
+                        () => trocarFotoNoticia(n.id, f),
+                        (r) => {
+                          if (r.ok) {
+                            setTrocando(false);
+                            setOpcoes(null);
+                          }
+                        },
+                      )
+                    }
+                    className="group flex w-full flex-col gap-1 rounded-sm text-left focus-visible:outline-2"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={f.foto_url}
+                      alt={f.foto_alt || "Foto livre"}
+                      loading="lazy"
+                      className="aspect-video w-full rounded-sm bg-surface-300 object-cover ring-terra group-hover:ring-2"
+                    />
+                    <span className="truncate text-caption text-ink-muted">
+                      {f.foto_autor || "Autor não informado"} · {f.foto_licenca}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

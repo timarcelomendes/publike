@@ -1,5 +1,7 @@
 import { CapaDesenhada, type CORES_CAPA, type NomeCena } from "@/components/conteudo/capa";
+import type { ReactNode } from "react";
 import type { Noticia, TemaNoticia } from "@/lib/noticias";
+import { FotoComReserva } from "./foto";
 
 // Capa das notícias: a foto com licença livre (Openverse) quando a notícia tem uma; se não,
 // a capa desenhada (a foto do jornal tem dono), com a cena do assunto e o número em destaque.
@@ -47,26 +49,16 @@ export function CapaNoticia({
   n,
   tamanho = "card",
   className = "",
+  legenda,
 }: {
   n: Pick<Noticia, "slug" | "titulo" | "tema" | "foto_url" | "foto_alt">;
   tamanho?: "card" | "grande";
   className?: string;
+  /** crédito da foto (só aparece se a foto abrir) */
+  legenda?: ReactNode;
 }) {
-  if (n.foto_url) {
-    return (
-      // a foto vem do Flickr ou da Wikimedia já num tamanho bom: sem passar pelo otimizador
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={n.foto_url}
-        alt={n.foto_alt || ""}
-        loading={tamanho === "grande" ? "eager" : "lazy"}
-        decoding="async"
-        className={`block w-full bg-surface-300 object-cover ${className}`}
-      />
-    );
-  }
   const cena = PALAVRAS.find(([re]) => re.test(n.titulo))?.[1] ?? CENA_DO_TEMA[n.tema] ?? "Mercado";
-  return (
+  const desenhada = (
     <CapaDesenhada
       semente={n.slug}
       cena={cena}
@@ -74,6 +66,17 @@ export function CapaNoticia({
       numero={numeroDaNoticia(n.titulo)}
       tamanho={tamanho}
       className={className}
+    />
+  );
+  if (!n.foto_url) return desenhada;
+  return (
+    <FotoComReserva
+      src={n.foto_url}
+      alt={n.foto_alt || ""}
+      carregar={tamanho === "grande" ? "eager" : "lazy"}
+      className={className}
+      reserva={desenhada}
+      legenda={legenda}
     />
   );
 }

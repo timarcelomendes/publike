@@ -3,6 +3,7 @@
 import { refresh, revalidatePath, updateTag } from "next/cache";
 import { mensagemDeErro } from "@/lib/erros";
 import { LISTA_TEMAS_NOTICIA, proximoHorarioLivre, type TemaNoticia } from "@/lib/noticias";
+import { fotoAbre, fotoValida, opcoesDeFoto, type FotoNoticia } from "@/lib/servidor/fotos-noticias";
 import { buscarNoticias } from "@/lib/servidor/noticias-ia";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { Resultado } from "@/lib/tipos";
@@ -88,6 +89,17 @@ export async function salvarNoticia(
   const d = conferir(campos);
   if (typeof d === "string") return { ok: false, erro: d };
 
+  // a foto tem que abrir antes de ir para o site (o Flickr e a Wikimedia às vezes apagam a foto)
+  if (publicar !== "nao") {
+    const { data: atual } = await c.from("noticias").select("foto_url").eq("id", id).maybeSingle();
+    if (atual?.foto_url && !(await fotoAbre(atual.foto_url))) {
+      return {
+        ok: false,
+        erro: "A foto desta notícia não abre. Troque a foto ou use a capa desenhada antes de publicar.",
+      };
+    }
+  }
+
   let publicar_em: string | undefined;
   if (publicar === "agora") publicar_em = new Date().toISOString();
   if (publicar === "agendar") {
@@ -134,4 +146,43 @@ export async function mudarSituacaoNoticia(id: string, para: "descartada" | "ras
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   atualizarSite();
   return { ok: true, mensagem: para === "descartada" ? "Descartada." : "Saiu do site e voltou para revisar." };
+}
+
+/** Fotos para escolher (só as que abrem), pela busca digitada ou pelo assunto da notícia. */
+export async function buscarFotosNoticia(
+  busca: string,
+  tema: TemaNoticia,
+): Promise<{ ok: true; fotos: FotoNoticia[] } | { ok: false; erro: string }> {
+  if (!(await clienteAdminOuNulo())) return { ok: false, erro: FORA };
+  if (!LISTA_TEMAS_NOTICIA.includes(tema)) return { ok: false, erro: "Pedido inválido." };
+  return { ok: true, fotos: await opcoesDeFoto(String(busca ?? "").slice(0, 80), tema) };
+}
+
+/** Troca a foto da notícia (ou tira: fica a capa desenhada). */
+export async function trocarFotoNoticia(id: string, foto: FotoNoticia | null): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  let campos: Record<keyof FotoNoticia, string | null>;
+  if (foto === null) {
+    campos = {
+      foto_url: null,
+      foto_autor: null,
+      foto_autor_url: null,
+      foto_link: null,
+      foto_alt: null,
+      foto_fonte: null,
+      foto_licenca: null,
+      foto_licenca_url: null,
+    };
+  } else {
+    const f = fotoValida(foto);
+    if (!f) return { ok: false, erro: "Essa foto não serve. Escolha outra." };
+    if (!(await fotoAbre(f.foto_url))) return { ok: false, erro: "Essa foto não abre. Escolha outra." };
+    campos = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v || null])) as typeof campos;
+  }
+  const { error } = await c.from("noticias").update(campos).eq("id", id);
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  atualizarSite();
+  return { ok: true, mensagem: foto ? "Foto trocada." : "Sem foto: a notícia usa a capa desenhada." };
 }
