@@ -163,7 +163,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
       {aberto && (
         <>
           {/* fundo escurecido: tocar fora fecha (só no celular) */}
-          <div aria-hidden onClick={fechar} className="fixed inset-0 z-50 bg-ink/40 md:hidden" />
+          <div aria-hidden onClick={fechar} className="fixed inset-0 z-50 bg-veu md:hidden" />
           <div
             role="dialog"
             aria-modal="true"

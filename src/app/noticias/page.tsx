@@ -103,7 +103,7 @@ async function Lista({ tema: pedido }: { tema?: string }) {
         <div>
           <h2 className="text-h3">Procurando trabalho perto de casa?</h2>
           <p className="mt-1 text-body text-ink-muted">
-            Vagas e bicos pela distância e pelo tempo de ônibus. É grátis.
+            Vagas e freelances pela distância e pelo tempo de ônibus. É grátis.
           </p>
         </div>
         <BotaoLink href="/?tipo=vaga" variante="primario">

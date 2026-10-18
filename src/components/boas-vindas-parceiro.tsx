@@ -3,13 +3,15 @@
 import { ArrowRight, Briefcase, Store, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Simbolo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 
 // Boas-vindas na primeira visita: o Publike é parceiro de quem trabalha e de
 // quem contrata, e é sempre grátis. Aparece uma vez por navegador; o aviso de
 // cookies espera ele fechar (e o convite de instalar o app espera o de cookies).
+// Na página inicial, quem dá as boas-vindas é a pergunta "O que você quer fazer no
+// Publike?" (FolhaIntencao): uma janela só. Fechada a pergunta, as boas-vindas contam como vistas.
 
 const CHAVE = "publike_boas_vindas";
 const VERSAO = "1";
@@ -27,10 +29,33 @@ function jaViu() {
   }
 }
 
-/** Para o aviso de cookies esperar as boas-vindas fecharem (onde elas aparecem). */
-export function esperandoBoasVindas(caminho: string) {
-  return !SEM_AVISO.test(caminho) && !jaViu();
+/** A pergunta da primeira visita está aberta (na página inicial, ela faz as vezes das boas-vindas). */
+let perguntaAberta = false;
+
+/** A pergunta "O que você quer fazer?" abriu ou fechou: fechada, as boas-vindas contam como vistas. */
+export function avisarPerguntaAberta(aberta: boolean) {
+  perguntaAberta = aberta;
+  if (!aberta) {
+    try {
+      window.localStorage.setItem(CHAVE, VERSAO);
+    } catch {
+      // sem armazenamento: nada a guardar
+    }
+  }
+  window.dispatchEvent(new Event(EVENTO_BOAS_VINDAS));
 }
+
+/** Para o aviso de cookies esperar as boas-vindas (ou a pergunta da página inicial) fecharem. */
+export function esperandoBoasVindas(caminho: string) {
+  return perguntaAberta || (!SEM_AVISO.test(caminho) && !jaViu());
+}
+
+function comPerguntaAberta() {
+  return perguntaAberta;
+}
+
+/** Na página inicial, a pergunta chega com os anúncios: as boas-vindas esperam um pouco por ela. */
+const ESPERA_NA_INICIAL = 2500;
 
 export function assinarBoasVindas(avisar: () => void) {
   return assinar(avisar);
@@ -49,7 +74,7 @@ const PARA_QUEM = [
   {
     icone: Briefcase,
     titulo: "Para quem procura trabalho",
-    texto: "Vagas com carteira, bicos e diárias perto de casa, com a distância e o tempo de ônibus.",
+    texto: "Vagas com carteira, diárias e freelances perto de casa, com a distância e o tempo de ônibus.",
     acao: "Ver vagas",
     href: "/?tipo=vaga",
   },
@@ -73,8 +98,17 @@ export function BoasVindasParceiro() {
   const caminho = usePathname() ?? "/";
   // no servidor (e antes de ler o navegador) não aparece: nada pisca para quem já viu
   const visto = useSyncExternalStore(assinar, jaViu, () => true);
+  const pergunta = useSyncExternalStore(assinar, comPerguntaAberta, () => false);
   const dialogo = useRef<HTMLDialogElement>(null);
-  const mostrar = !visto && !SEM_AVISO.test(caminho);
+  // na inicial, só se a pergunta não aparecer (sem anúncios, por exemplo)
+  const naInicial = caminho === "/";
+  const [esperouEm, setEsperouEm] = useState<string | null>(null);
+  useEffect(() => {
+    if (!naInicial) return;
+    const t = window.setTimeout(() => setEsperouEm(caminho), ESPERA_NA_INICIAL);
+    return () => window.clearTimeout(t);
+  }, [naInicial, caminho]);
+  const mostrar = !visto && !pergunta && !SEM_AVISO.test(caminho) && (!naInicial || esperouEm === caminho);
 
   useEffect(() => {
     const d = dialogo.current;
@@ -103,7 +137,7 @@ export function BoasVindasParceiro() {
         // toque fora do quadro fecha
         if (e.target === e.currentTarget) fechar();
       }}
-      className="m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-lg border border-line-strong bg-surface-200 p-0 text-ink shadow-raised backdrop:bg-ink/50 sm:m-auto sm:max-w-xl sm:rounded-lg"
+      className="m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-lg border border-line-strong bg-surface-200 p-0 text-ink shadow-raised backdrop:bg-veu sm:m-auto sm:max-w-xl sm:rounded-lg"
     >
       <div className="flex flex-col gap-5 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
         <div className="flex items-start justify-between gap-4">

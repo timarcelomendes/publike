@@ -5,6 +5,8 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { salvarIntencao } from "@/lib/acoes/intencao";
+import { avisarPerguntaAberta } from "../boas-vindas-parceiro";
+import { Simbolo } from "../ui/basicos";
 import { INTENCOES, VOCE, type Intencao } from "@/lib/intencao";
 
 // "O que você quer fazer no Publike?"
@@ -143,11 +145,14 @@ export function FolhaIntencao({
   aoEscolher,
   aoAdiar,
   atual = null,
+  primeiraVisita = false,
 }: {
   aoEscolher: (i: Intencao) => void;
   aoAdiar: () => void;
   /** a resposta de agora, quando a janela abre para mudar */
   atual?: Intencao | null;
+  /** na chegada: a janela faz as vezes das boas-vindas (grátis, o que é o Publike) */
+  primeiraVisita?: boolean;
 }) {
   const titulo = useId();
   const { tocada, escolher, pendente } = useEscolher(aoEscolher);
@@ -163,6 +168,13 @@ export function FolhaIntencao({
     () => true,
     () => false,
   );
+
+  // na chegada, é a única janela: as boas-vindas não abrem por cima (e contam como vistas ao fechar)
+  useEffect(() => {
+    if (!montado || !primeiraVisita) return;
+    avisarPerguntaAberta(true);
+    return () => avisarPerguntaAberta(false);
+  }, [montado, primeiraVisita]);
 
   useEffect(() => {
     if (!montado) return;
@@ -182,7 +194,7 @@ export function FolhaIntencao({
   // no corpo da página: dentro de uma faixa que rola (o botão da busca), a janela ficaria cortada
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-veu sm:items-center sm:p-6"
       onClick={(e) => e.target === e.currentTarget && aoAdiar()}
     >
       <div
@@ -191,18 +203,35 @@ export function FolhaIntencao({
         aria-modal="true"
         aria-labelledby={titulo}
         tabIndex={-1}
-        className="flex w-full flex-col gap-3 rounded-t-lg outline-none bg-surface-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-raised sm:max-w-2xl sm:rounded-lg sm:p-6"
+        className="flex w-full flex-col gap-3 rounded-t-lg border border-line-strong outline-none bg-surface-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-raised sm:max-w-2xl sm:rounded-lg sm:p-6"
       >
+        {primeiraVisita && (
+          <div className="flex items-center gap-3">
+            <Simbolo altura={28} />
+            <span className="rounded-pill bg-ipe px-2.5 py-1 text-caption text-on-ipe uppercase">Grátis, sempre</span>
+          </div>
+        )}
         <div>
           <h2 id={titulo} className="text-h3">
             O que você quer fazer no Publike?
           </h2>
-          <p className="mt-0.5 text-body-sm text-ink-muted">Assim a busca já abre no que interessa a você.</p>
+          <p className="mt-0.5 text-body-sm text-ink-muted">
+            {primeiraVisita
+              ? "Um mural de trabalho de Goiânia e região, perto de casa: sem plano, sem taxa e sem comissão. Escolha e a busca já abre no que interessa a você."
+              : "Assim a busca já abre no que interessa a você."}
+          </p>
         </div>
         <OpcoesIntencao rotuladoPor={titulo} escolhida={escolhida} pendente={pendente} escolher={escolher} />
-        <button type="button" onClick={aoAdiar} className={`${classesAgoraNao} self-center`}>
-          {atual ? "Manter como está" : "Agora não"}
-        </button>
+        <div className="flex items-center justify-center gap-5">
+          <button type="button" onClick={aoAdiar} className={classesAgoraNao}>
+            {atual ? "Manter como está" : "Agora não"}
+          </button>
+          {primeiraVisita && (
+            <Link href="/gratis" className={classesAgoraNao}>
+              Por que é grátis?
+            </Link>
+          )}
+        </div>
       </div>
     </div>,
     document.body,

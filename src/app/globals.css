@@ -43,6 +43,8 @@
   --pk-social-hover: #f8f9fa;
   --pk-social-line: #dadce0;
   --pk-social-ink: #3c4043;
+  /* o véu atrás das janelas: escurece a página nos dois temas (o ink, no escuro, é creme) */
+  --pk-veu: rgba(31, 26, 20, 0.45);
   color-scheme: light;
 }
 
@@ -67,6 +69,7 @@
     --pk-focus: #f5b301;
     --pk-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
     --pk-shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.55);
+    --pk-veu: rgba(0, 0, 0, 0.62);
     --pk-social-surface: #202124;
     --pk-social-hover: #303134;
     --pk-social-line: #202124;
@@ -83,6 +86,7 @@
   --color-line-strong: var(--pk-line-strong);
   --color-ink: var(--pk-ink);
   --color-ink-muted: var(--pk-ink-muted);
+  --color-veu: var(--pk-veu);
   --color-like: var(--pk-like);
   --color-on-like: var(--pk-on-like);
   --color-like-text: var(--pk-like-text);

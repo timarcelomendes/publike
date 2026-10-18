@@ -346,6 +346,15 @@ export function numeroDoConteudo(c: Conteudo) {
   return b && b.t === "numero" ? b.valor : null;
 }
 
+/**
+ * O que o número é, curto, para ir junto dele na capa ("1.511.709" sozinho não diz nada):
+ * o rótulo até a primeira vírgula ("moradores em Goiânia, pela estimativa do IBGE" → "moradores em Goiânia").
+ */
+export function rotuloDoNumero(c: Conteudo) {
+  const b = c.blocos.find((x) => x.t === "numero");
+  return b && b.t === "numero" ? b.rotulo.split(",")[0].trim() : null;
+}
+
 /** As cenas, para outras capas desenhadas (as das notícias). */
 export const CENAS = { Mercado, Procurar, Contratar, Servicos, Direitos, Fabrica, Obra, Onibus, Documento, Pessoas, Moedas };
 export type NomeCena = keyof typeof CENAS;
@@ -411,6 +420,7 @@ export function CapaConteudo({
   const cor = r(99) < 0.35 ? CORES_EXTRA[Math.floor(r(98) * CORES_EXTRA.length)] : COR[c.tema];
   const Cena = CENA_DO_ARTIGO[c.slug] ?? CENAS_TEMA[c.tema];
   const numero = numeroDoConteudo(c);
+  const rotulo = rotuloDoNumero(c);
   const esquerda = Cena === Mercado || Cena === Fabrica || Cena === Moedas || Cena === Obra;
   const sol = { x: esquerda ? 60 + r(50) * 60 : 520 + r(50) * 70, y: 55 + r(51) * 20 };
   return (
@@ -421,11 +431,12 @@ export function CapaConteudo({
       </svg>
       {numero && (
         <span
-          className={`absolute bottom-3 left-3 rounded-md bg-surface-200/95 px-2.5 py-1 font-display text-ink shadow-card ${
-            tamanho === "grande" ? "text-h2 sm:bottom-5 sm:left-5 sm:px-4 sm:py-2 sm:text-h1" : "text-h3"
+          className={`absolute bottom-3 left-3 flex max-w-[calc(100%-1.5rem)] flex-col rounded-md bg-surface-200/95 px-2.5 py-1 text-ink shadow-card ${
+            tamanho === "grande" ? "sm:bottom-5 sm:left-5 sm:max-w-md sm:px-4 sm:py-2" : "sm:max-w-[80%]"
           }`}
         >
-          {numero}
+          <span className={`font-display ${tamanho === "grande" ? "text-h2 sm:text-h1" : "text-h3"}`}>{numero}</span>
+          {rotulo && <span className="line-clamp-2 text-caption text-ink-muted">{rotulo}</span>}
         </span>
       )}
     </div>

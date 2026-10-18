@@ -556,7 +556,7 @@ function Gaveta({
       aria-labelledby={id}
       onClose={fechar}
       onClick={(e) => e.target === e.currentTarget && fechar()}
-      className="m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-lg border border-line-strong bg-surface-200 p-0 text-ink shadow-raised backdrop:bg-ink/50 sm:mt-0 sm:mr-0 sm:ml-auto sm:h-dvh sm:max-h-dvh sm:w-[34rem] sm:rounded-none sm:rounded-l-lg"
+      className="m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-lg border border-line-strong bg-surface-200 p-0 text-ink shadow-raised backdrop:bg-veu sm:mt-0 sm:mr-0 sm:ml-auto sm:h-dvh sm:max-h-dvh sm:w-[34rem] sm:rounded-none sm:rounded-l-lg"
     >
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-surface-200 px-5 py-3">
         <h2 id={id} className="truncate text-h3">

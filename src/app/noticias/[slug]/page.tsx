@@ -111,7 +111,7 @@ async function Noticia({ slug }: { slug: string }) {
         <section className="mt-10 flex flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-5">
           <h2 className="text-h3">Procurando trabalho perto de casa?</h2>
           <p className="text-body text-ink-muted">
-            No Publike, as vagas e os bicos aparecem pela distância e pelo tempo de ônibus até você. É grátis.
+            No Publike, as vagas e os freelances aparecem pela distância e pelo tempo de ônibus até você. É grátis.
           </p>
           <div className="flex flex-wrap gap-2">
             <BotaoLink href="/?tipo=vaga" variante="primario">

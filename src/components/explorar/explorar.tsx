@@ -1,4 +1,4 @@
-import { MapPinned, Percent, SearchX } from "lucide-react";
+import { MapPinned, Percent, SearchX, Store } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 import { matchComAVaga, vagaNoTurno, type Aderencia, type Candidato } from "@/lib/aderencia";
@@ -259,6 +259,10 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   // Com poucos anúncios, as perguntas no meio deixariam um cartão sozinho embaixo delas
   // (3 colunas: 3 em cima, a pergunta, 1 embaixo). Até 5, elas vão para o fim da lista.
   const depoisDe = n >= 6 ? 1 : n - 1;
+  // No fim da lista, o convite para quem tem vaga: no começo, são as vagas que mais faltam.
+  // Não aparece para quem já disse que procura trabalho ou oferece serviços, nem para quem já tem anúncio no ar.
+  const convidarQuemContrata =
+    !filtros.meus && filtros.tipo !== "servico" && !publica && (intencao === null || intencao === "contratar_pessoa");
 
   const lista =
     n > 0 ? (
@@ -282,6 +286,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
             {i === depoisDe && lugarDasPerguntas}
           </Fragment>
         ))}
+        {convidarQuemContrata && <ConviteQuemContrata />}
       </div>
     ) : filtros.meus ? (
       <Vazio
@@ -427,5 +432,31 @@ export function ExplorarEsqueleto() {
         <Esqueleto className="hidden h-[calc(100dvh-7rem)] rounded-lg lg:block" />
       </div>
     </Container>
+  );
+}
+
+/** Para quem tem vaga: publicar é grátis e dá para começar sem conta, por um modelo pronto. */
+function ConviteQuemContrata() {
+  return (
+    <aside
+      aria-label="Para quem tem vaga"
+      className="col-span-full flex flex-col gap-3 rounded-lg border border-line bg-surface-300 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:p-5"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft text-terra-text">
+          <Store aria-hidden className="size-5" />
+        </span>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-label">Tem vaga para preencher?</p>
+          <p className="text-body-sm text-ink-muted">
+            Publique grátis em poucos minutos: dá para começar sem conta, a partir de um modelo pronto. A vaga aparece
+            aqui para quem mora perto.
+          </p>
+        </div>
+      </div>
+      <BotaoLink href="/publicar" variante="secundario" className="shrink-0 self-start sm:self-center">
+        Publicar vaga grátis
+      </BotaoLink>
+    </aside>
   );
 }

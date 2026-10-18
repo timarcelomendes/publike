@@ -26,7 +26,7 @@ import { BotaoLink } from "@/components/ui/botao";
 export const metadata: Metadata = {
   title: "Nossa missão",
   description:
-    "O Publike é uma ferramenta do povo para gerar emprego em Goiânia e região: vagas, bicos e serviços perto de casa, com o tempo de ônibus de cada vaga, contato só depois do match e tudo de graça.",
+    "O Publike é uma ferramenta do povo para gerar emprego em Goiânia e região: vagas, freelances e serviços perto de casa, com o tempo de ônibus de cada vaga, contato só depois do match e tudo de graça.",
 };
 
 type Item = { icone: LucideIcon; titulo: string; texto: string };

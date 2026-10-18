@@ -58,7 +58,11 @@ export function PerguntasNaLista({
 
   // a pergunta não some: na chegada, numa janela por cima; fechada, fica aqui no meio dos anúncios
   if (!intencaoAtual) {
-    return adiada ? <CartaoIntencao aoEscolher={escolher} /> : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} />;
+    return adiada ? (
+      <CartaoIntencao aoEscolher={escolher} />
+    ) : (
+      <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita />
+    );
   }
 
   if (!temLocal && filtros.origem === "centro" && !adiada) {
