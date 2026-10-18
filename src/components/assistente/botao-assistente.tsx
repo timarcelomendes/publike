@@ -4,6 +4,7 @@ import { MessageCircleQuestion, MessagesSquare, RotateCcw, X } from "lucide-reac
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from "react";
+import { EVENTO_ABRIR_CONVERSA, marcarChatNaPagina, type PedidoConversa } from "@/lib/abrir-conversa";
 import { PainelConversas, useConversasDoChat } from "../conversa/janela-mensagens";
 import { Conversa } from "./conversa";
 import { mudarConversa, useConversa } from "./conversa-estado";
@@ -90,9 +91,12 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
   const { conversas, carregar, marcarLida, naoLidas } = useConversasDoChat(usuarioId);
   // abre na aba que tem novidade: mensagem não lida vai direto para Conversas
   const [aba, setAba] = useState<"ajuda" | "conversas">("ajuda");
+  // conversa pedida de fora do chat (o "Deu match!" da vaga): abre direto nela
+  const [pedida, setPedida] = useState<PedidoConversa | null>(null);
 
-  function abrir() {
-    setAba(naoLidas > 0 || !ajuda ? "conversas" : "ajuda");
+  function abrir(conversaPedida: PedidoConversa | null = null) {
+    setPedida(conversaPedida);
+    setAba(conversaPedida || naoLidas > 0 || !ajuda ? "conversas" : "ajuda");
     // um passo a mais no histórico: o "voltar" fecha a conversa
     if (window.location.hash !== MARCA) {
       window.history.pushState(
@@ -103,6 +107,19 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
     }
     setAberto(true);
   }
+
+  const aoPedirConversa = useEffectEvent((e: Event) => abrir((e as CustomEvent<PedidoConversa>).detail));
+  useEffect(() => {
+    // só com conta: as conversas são dos matches
+    if (!usuarioId) return;
+    marcarChatNaPagina(true);
+    const ouvir = (e: Event) => aoPedirConversa(e);
+    window.addEventListener(EVENTO_ABRIR_CONVERSA, ouvir);
+    return () => {
+      marcarChatNaPagina(false);
+      window.removeEventListener(EVENTO_ABRIR_CONVERSA, ouvir);
+    };
+  }, [usuarioId]);
 
   function fechar() {
     if (window.location.hash === MARCA) window.history.back();
@@ -147,7 +164,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
         <button
           ref={botao}
           type="button"
-          onClick={abrir}
+          onClick={() => abrir()}
           aria-haspopup="dialog"
           data-assistente="botao"
           className={`fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform,opacity] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
@@ -253,6 +270,8 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
               )
             ) : (
               <PainelConversas
+                key={pedida ? `${pedida.anuncioId}-${pedida.outroId}` : "lista"}
+                pedida={pedida}
                 usuarioId={usuarioId}
                 conversas={conversas}
                 carregar={carregar}

@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { abrirConversaDaJanela, conversasDaJanela } from "@/lib/acoes/mensagens";
+import type { PedidoConversa } from "@/lib/abrir-conversa";
 import type { Conversa as ConversaResumo, MensagemConversa } from "@/lib/dados";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { Avatar } from "../ui/basicos";
@@ -88,14 +89,46 @@ export function PainelConversas({
   conversas,
   carregar,
   marcarLida,
+  pedida = null,
 }: {
   usuarioId: string | null;
   conversas: ConversaResumo[] | null;
   carregar: () => Promise<void>;
   marcarLida: (anuncioId: string, outroId: string) => void;
+  /** abre já nesta conversa (pedida de fora do chat, como o "Deu match!" da vaga) */
+  pedida?: PedidoConversa | null;
 }) {
   const [busca, setBusca] = useState("");
-  const [aberta, setAberta] = useState<Aberta | null>(null);
+  const [aberta, setAberta] = useState<Aberta | null>(
+    pedida
+      ? {
+          anuncio_id: pedida.anuncioId,
+          outro_id: pedida.outroId,
+          outro_nome: pedida.outroNome,
+          outro_foto: pedida.outroFoto ?? null,
+          titulo: pedida.titulo,
+          dados: null,
+        }
+      : null,
+  );
+
+  // a conversa pedida de fora: busca as mensagens e marca como lida
+  useEffect(() => {
+    if (!pedida) return;
+    let vale = true;
+    abrirConversaDaJanela(pedida.anuncioId, pedida.outroId).then((r) => {
+      if (!vale) return;
+      setAberta((a) =>
+        a && a.anuncio_id === pedida.anuncioId && a.outro_id === pedida.outroId && r
+          ? { ...a, dados: { perfilId: r.conversa.perfil_id, euId: r.euId, mensagens: r.mensagens } }
+          : a,
+      );
+      marcarLida(pedida.anuncioId, pedida.outroId);
+    });
+    return () => {
+      vale = false;
+    };
+  }, [pedida, marcarLida]);
 
   useEffect(() => {
     void carregar();

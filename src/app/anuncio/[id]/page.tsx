@@ -320,6 +320,7 @@ async function DetalheAnuncio({
         minhasRespostas={respostasDoBanco(anuncio.minhas_respostas)}
         pedirRespostas={primeiro(sp.responder) === "1"}
         continuarCurtida={primeiro(sp.curtir) === "1"}
+        autorId={anuncio.autor_id}
         entrevista={entrevista}
       />
     );

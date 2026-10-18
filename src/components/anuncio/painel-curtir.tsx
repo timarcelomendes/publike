@@ -1,9 +1,10 @@
 "use client";
 
-import { FileText, Heart, HeartCrack, PartyPopper, Star } from "lucide-react";
+import { FileText, Heart, HeartCrack, MessagesSquare, PartyPopper, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { pedirConversa } from "@/lib/abrir-conversa";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
@@ -45,6 +46,8 @@ type Props = {
   pedirRespostas?: boolean;
   /** tocou em Curtir sem conta, entrou e voltou (?curtir=1): o quadro aparece com o botão à mão */
   continuarCurtida?: boolean;
+  /** quem publicou: depois do match, a conversa no Chat do Publike é com ele */
+  autorId?: string | null;
   /** depois do match: a entrevista que a empresa marcou */
   entrevista?: Entrevista | null;
 };
@@ -106,6 +109,7 @@ export function PainelCurtir({
   minhasRespostas = {},
   pedirRespostas = false,
   continuarCurtida = false,
+  autorId = null,
   entrevista = null,
 }: Props) {
   const router = useRouter();
@@ -176,6 +180,20 @@ export function PainelCurtir({
             : "Combinem os detalhes, o endereço e o melhor horário."}
         </p>
         {entrevista && <EntrevistaDoCandidato e={entrevista} />}
+        {autorId && (
+          // no Chat do canto da tela, sem sair da página (sem o Chat, a conversa em tela cheia)
+          <Link
+            href={`/painel/conversas/${anuncioId}/${autorId}`}
+            onClick={(e) => {
+              if (pedirConversa({ anuncioId, outroId: autorId, outroNome: autorNome || quem, titulo }))
+                e.preventDefault();
+            }}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-pill bg-surface-200 px-5 text-label text-ink hover:bg-surface-300"
+          >
+            <MessagesSquare aria-hidden className="size-5 text-cerrado-text" />
+            Conversar pelo chat do Publike
+          </Link>
+        )}
         <div className="rounded-md bg-surface-200 p-3">
           <BotoesContato
             whatsapp={contato?.whatsapp ?? null}
