@@ -41,6 +41,7 @@ import {
 import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { COOKIE_MODO, lerModo, modoPadrao } from "@/lib/modo-painel";
 import { dataDaEntrevista } from "@/lib/recrutamento";
+import { listarMeusClientes } from "@/lib/servidor/clientes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -96,9 +97,13 @@ async function Conteudo() {
 
   let pagina;
   if (modo === "contratar" && perfil) {
-    const [anuncios, candidatos] = await Promise.all([
+    const [anuncios, candidatos, clientes] = await Promise.all([
       talvez(listarMeusAnuncios(), "os anúncios"),
       listarMeusCandidatos(),
+      // agência: quantos clientes (o atalho "Seus clientes")
+      perfil.tipo === "agencia"
+        ? listarMeusClientes().then((l) => l?.filter((c) => !c.arquivado_em).length ?? 0)
+        : null,
     ]);
     pagina = (
       <PainelRecrutador
@@ -107,6 +112,7 @@ async function Conteudo() {
         anuncios={anuncios}
         candidatos={candidatos}
         agora={agora}
+        clientes={clientes}
       />
     );
   } else if (modo === "servicos") {

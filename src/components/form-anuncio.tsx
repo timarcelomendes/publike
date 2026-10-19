@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowRight, Briefcase, Check, ChevronDown, MessageCircle, Wrench } from "lucide-react";
+import { ArrowRight, Briefcase, Check, ChevronDown, Wrench } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
+import { temLugar, type ClienteParaVaga } from "@/lib/clientes";
 import {
   BENEFICIOS,
   CATEGORIAS,
@@ -21,10 +22,10 @@ import {
   UNIDADES,
   type Cidade,
 } from "@/lib/constantes";
-import { formatarTelefone } from "@/lib/formato";
 import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
 import { lerHorario, textoDoHorario, type HorarioDetalhe, type Pergunta } from "@/lib/vaga-extra";
+import { EmpresaDaVaga } from "./anuncio/empresa-da-vaga";
 import { BeneficiosExtras, EditorPerguntas, MontarHorario } from "./anuncio/extras-da-vaga";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
@@ -57,6 +58,8 @@ export type ValoresAnuncio = {
   /** vaga de agência: a empresa que contrata (vazio quando é confidencial) */
   contratante?: string | null;
   contratante_confidencial?: boolean;
+  /** vaga de agência: o cliente (Clientes, no painel) */
+  cliente_id?: string | null;
   /** vaga: fim da faixa salarial, comissão, benefícios marcados, requisitos, jornada, modelo e PCD */
   pagamento_ate?: number | null;
   comissao?: boolean;
@@ -131,6 +134,7 @@ export function FormAnuncio({
   ia = false,
   agencia = false,
   contatoAgencia = null,
+  clientes = null,
   enderecoPublico = false,
   emNomeDe = null,
   semConta = false,
@@ -149,6 +153,8 @@ export function FormAnuncio({
   agencia?: boolean;
   /** Agência publicando: o WhatsApp e o e-mail da conta, que o candidato recebe no match. */
   contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
+  /** Agência: os clientes para escolher (null: só o nome escrito à mão, como na moderação). */
+  clientes?: ClienteParaVaga[] | null;
   /** Comércio, empresa e agência: o endereço aparece na vaga (pessoa física: só a região). */
   enderecoPublico?: boolean;
   /** Admin publicando em nome de uma conta: o nome dela. */
@@ -181,6 +187,16 @@ export function FormAnuncio({
   // Em vaga nova, CLT, estágio e temporário já marcam "pedir currículo" (até a pessoa mexer na caixa)
   const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(editando);
   const [confidencial, setConfidencial] = useState(inicial.contratante_confidencial ?? false);
+  // o lugar da vaga: escolher um cliente traz o dele (e monta o "Onde é" de novo)
+  const [lugar, setLugar] = useState({
+    bairro: inicial.bairro,
+    cep: inicial.cep ?? null,
+    endereco: inicial.endereco ?? null,
+    lat: inicial.lat,
+    lng: inicial.lng,
+  });
+  const [chaveLugar, setChaveLugar] = useState(0);
+  const [lugarDoCliente, setLugarDoCliente] = useState<string | null>(null);
   const [beneficiosMarcados, setBeneficiosMarcados] = useState<string[]>(inicial.beneficios_lista ?? []);
   // tipos de contratação: os mais comuns à mostra, os outros atrás de "Outros tipos"
   const [todosRegimes, setTodosRegimes] = useState(
@@ -241,6 +257,17 @@ export function FormAnuncio({
       cidade: texto("cidade"),
       bairro: texto("bairro"),
     };
+  }
+
+  function usarLugarDoCliente(c: ClienteParaVaga) {
+    if (!temLugar(c)) {
+      setLugarDoCliente(null);
+      return;
+    }
+    if (c.cidade && (CIDADES as readonly string[]).includes(c.cidade)) setCidade(c.cidade);
+    setLugar({ bairro: c.bairro ?? "", cep: c.cep, endereco: c.endereco, lat: c.lat, lng: c.lng });
+    setChaveLugar((k) => k + 1);
+    setLugarDoCliente(c.nome);
   }
 
   function aplicarSugestao(titulo: string, novaDescricao: string) {
@@ -323,65 +350,17 @@ export function FormAnuncio({
         </Campo>
 
         {vaga && agencia && (
-          <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-4">
-            <input type="hidden" name="agencia" value="1" />
-            <Campo
-              rotulo="Para qual empresa é a vaga?"
-              nome="contratante"
-              erro={erros.contratante}
-              ajuda={
-                confidencial
-                  ? "Quem procura vaga vê “Empresa confidencial”. Conte o ramo na descrição, como “indústria de alimentos”."
-                  : "O nome aparece na vaga, junto com o da agência. Sem telefone, e-mail ou site."
-              }
-            >
-              <input
-                {...ligarCampo("contratante", erros.contratante, true)}
-                defaultValue={inicial.contratante ?? ""}
-                disabled={confidencial}
-                maxLength={80}
-                autoComplete="off"
-                placeholder="Ex.: Distribuidora Cerrado"
-                className={classesEntrada}
-              />
-            </Campo>
-            <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 self-start text-label">
-              <input
-                type="checkbox"
-                name="contratante_confidencial"
-                checked={confidencial}
-                onChange={(e) => setConfidencial(e.target.checked)}
-                className="size-5 accent-[var(--pk-ink)]"
-              />
-              Empresa confidencial
-            </label>
-            {!equipe && (
-              <div className="flex gap-3 border-t border-line pt-3 text-body-sm">
-                <MessageCircle aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
-                <p className="text-ink-muted">
-                  <span className="text-ink">No match, o candidato fala com a agência</span>, não com a empresa
-                  contratante: recebe o WhatsApp{" "}
-                  {contatoAgencia?.whatsapp ? (
-                    <span className="text-ink">{formatarTelefone(contatoAgencia.whatsapp)}</span>
-                  ) : (
-                    "da agência"
-                  )}
-                  {contatoAgencia?.email && (
-                    <>
-                      {" "}
-                      e o e-mail <span className="text-ink">{contatoAgencia.email}</span>
-                    </>
-                  )}
-                  .{" "}
-                  {!emNomeDe && (
-                    <Link href="/perfil" className="underline underline-offset-2 hover:text-ink">
-                      Trocar no perfil
-                    </Link>
-                  )}
-                </p>
-              </div>
-            )}
-          </div>
+          <EmpresaDaVaga
+            clientes={clientes}
+            inicial={{ cliente_id: inicial.cliente_id ?? null, contratante: inicial.contratante ?? null }}
+            erros={erros}
+            confidencial={confidencial}
+            aoMudarConfidencial={setConfidencial}
+            aoEscolherCliente={usarLugarDoCliente}
+            equipe={equipe}
+            emNomeDe={emNomeDe}
+            contatoAgencia={contatoAgencia}
+          />
         )}
 
         {vaga && (
@@ -510,10 +489,16 @@ export function FormAnuncio({
         <p className="-mt-2 text-body-sm text-ink-muted">
           Basta o bairro. O CEP e o pino no mapa são opcionais: sem eles, a vaga fica no meio do bairro.
         </p>
+        {lugarDoCliente && (
+          <p role="status" className="-mt-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm text-ink">
+            Veio o endereço de {lugarDoCliente}. Confira se a vaga é lá.
+          </p>
+        )}
         <LocalComCep
-          inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
-          inicialCep={inicial.cep}
-          inicialEndereco={inicial.endereco}
+          key={chaveLugar}
+          inicial={lugar.lat != null && lugar.lng != null ? { lat: lugar.lat, lng: lugar.lng } : null}
+          inicialCep={lugar.cep}
+          inicialEndereco={lugar.endereco}
           publico={enderecoPublico && !confidencial}
           mapaOpcional
           erro={erros.lat ?? erros.lng}
@@ -540,7 +525,7 @@ export function FormAnuncio({
             <Campo rotulo="Bairro ou setor" nome="bairro" erro={erros.bairro}>
               <input
                 {...ligarCampo("bairro", erros.bairro)}
-                defaultValue={inicial.bairro}
+                defaultValue={lugar.bairro}
                 list="bairros"
                 maxLength={80}
                 required

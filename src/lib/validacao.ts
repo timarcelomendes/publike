@@ -153,6 +153,10 @@ export const esquemaAnuncio = z
       .max(80, { error: "Use no máximo 80 letras." })
       .refine((t) => !temContato(t), { error: "Tire o telefone, e-mail ou site do nome da empresa." }),
     contratante_confidencial: z.boolean(),
+    /** agência: o cliente escolhido na lista (null: outra empresa; undefined: o formulário não tem a lista) */
+    cliente_id: z.string().regex(UUID, { error: "Escolha um cliente da lista." }).nullable().optional(),
+    /** agência: a empresa escrita à mão vira cliente */
+    guardar_cliente: z.boolean(),
     vagas: z
       .number({ error: "Informe quantas pessoas." })
       .int({ error: "Use um número inteiro." })
@@ -182,7 +186,7 @@ export const esquemaAnuncio = z
     if (d.tipo === "vaga" && !d.regime) {
       ctx.addIssue({ code: "custom", path: ["regime"], message: "Escolha o tipo de contratação." });
     }
-    if (d.tipo === "vaga" && d.agencia && !d.contratante_confidencial && d.contratante.length < 2) {
+    if (d.tipo === "vaga" && d.agencia && !d.contratante_confidencial && !d.cliente_id && d.contratante.length < 2) {
       ctx.addIssue({
         code: "custom",
         path: ["contratante"],
@@ -202,18 +206,26 @@ export const esquemaAnuncio = z
       if (erroFaixa) ctx.addIssue({ code: "custom", path: ["pagamento_ate"], message: erroFaixa });
     }
   })
-  .transform((d) => ({
-    ...d,
-    regime: d.tipo === "vaga" ? d.regime : null,
-    ...camposDaVaga(d),
-    pagamento_valor: d.combinar ? null : d.pagamento_valor,
-    pagamento_unidade: d.combinar ? null : d.pagamento_unidade,
-    vagas: d.tipo === "vaga" ? d.vagas : 1,
-    pede_curriculo: d.tipo === "vaga" && d.pede_curriculo,
-    contratante:
-      d.tipo === "vaga" && d.agencia && !d.contratante_confidencial ? d.contratante.replace(/\s+/g, " ") : null,
-    contratante_confidencial: d.tipo === "vaga" && d.agencia && d.contratante_confidencial,
-  }));
+  .transform((d) => {
+    const daAgencia = d.tipo === "vaga" && d.agencia;
+    const escrito = d.contratante.replace(/\s+/g, " ");
+    const cliente = daAgencia ? (d.cliente_id ?? null) : null;
+    return {
+      ...d,
+      regime: d.tipo === "vaga" ? d.regime : null,
+      ...camposDaVaga(d),
+      pagamento_valor: d.combinar ? null : d.pagamento_valor,
+      pagamento_unidade: d.combinar ? null : d.pagamento_unidade,
+      vagas: d.tipo === "vaga" ? d.vagas : 1,
+      pede_curriculo: d.tipo === "vaga" && d.pede_curriculo,
+      // com cliente, o nome vem dele (o banco põe); confidencial, a vaga fica sem nome
+      contratante: daAgencia && !d.contratante_confidencial && !cliente ? escrito : null,
+      contratante_confidencial: daAgencia && d.contratante_confidencial,
+      cliente_id: d.cliente_id === undefined ? undefined : cliente,
+      /** a empresa escrita à mão que vira cliente ao salvar (também na confidencial) */
+      cliente_novo: daAgencia && !cliente && d.guardar_cliente && escrito.length >= 2 ? escrito : null,
+    };
+  });
 
 /**
  * O que a empresa monta do jeito dela (vaga-extra.ts). `undefined`: o formulário não mandou
@@ -290,6 +302,8 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     ...(d.tipo === "vaga" ? { prazo_dias: d.prazo_dias } : {}),
     contratante: d.contratante,
     contratante_confidencial: d.contratante_confidencial,
+    // sem a lista de clientes no formulário (admin, moderação), o cliente da vaga fica como está
+    ...(d.cliente_id !== undefined ? { cliente_id: d.cliente_id } : {}),
     escolaridade_minima: d.escolaridade_minima,
     experiencia: d.experiencia,
     cnh: d.cnh,
@@ -314,7 +328,13 @@ function coordenada(valor: string | null) {
 function errosCruzados(bruto: Record<string, unknown>) {
   const erros: Record<string, string> = {};
   if (bruto.tipo === "vaga" && !bruto.regime) erros.regime = "Escolha o tipo de contratação.";
-  if (bruto.tipo === "vaga" && bruto.agencia && !bruto.contratante_confidencial && !String(bruto.contratante).trim()) {
+  if (
+    bruto.tipo === "vaga" &&
+    bruto.agencia &&
+    !bruto.contratante_confidencial &&
+    !bruto.cliente_id &&
+    !String(bruto.contratante).trim()
+  ) {
     erros.contratante = SEM_CONTRATANTE;
   }
   if (!bruto.combinar) {
@@ -364,6 +384,8 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     agencia: campo(formData, "agencia") === "1",
     contratante: campo(formData, "contratante") ?? "",
     contratante_confidencial: campo(formData, "contratante_confidencial") === "on",
+    cliente_id: formData.has("cliente_id") ? campo(formData, "cliente_id") || null : undefined,
+    guardar_cliente: campo(formData, "guardar_cliente") === "on",
     vagas: Number(campo(formData, "vagas") || "1"),
     cidade: campo(formData, "cidade"),
     bairro: campo(formData, "bairro") ?? "",
@@ -754,6 +776,94 @@ export function lerPerfil(formData: FormData) {
     email: campo(formData, "email") ?? "",
     receber_emails: campo(formData, "receber_emails") === "on",
     cnpj: campo(formData, "cnpj") ?? "",
+  });
+}
+
+// ---------------------------------------------------------------- cliente da agência
+
+const SEM_CONTATO_NO_NOME = "Tire o telefone, e-mail ou link do nome da empresa.";
+
+/** Os dados de um cliente da agência. Só o nome aparece na vaga; o resto fica com a agência. */
+export const esquemaCliente = z.object({
+  nome: z
+    .string()
+    .trim()
+    .min(2, { error: "Escreva o nome da empresa." })
+    .max(80, { error: "Use no máximo 80 letras." })
+    .refine((t) => !temContato(t), { error: SEM_CONTATO_NO_NOME })
+    .transform((t) => t.replace(/\s+/g, " ")),
+  cnpj: z
+    .string()
+    .transform(limparCnpj)
+    .refine((c) => !c || cnpjValido(c), { error: "Confira o CNPJ: algum número ou letra não bate." })
+    .transform((c) => c || null),
+  confidencial: z.boolean(),
+  cidade: z.enum(CIDADES, { error: "Escolha a cidade." }).nullable(),
+  bairro: z
+    .string()
+    .trim()
+    .max(80, { error: "Use no máximo 80 letras." })
+    .refine((t) => !temContato(t), { error: SEM_CONTATO })
+    .transform((t) => t || null),
+  cep: z
+    .string()
+    .transform((t) => limparCep(t) || null)
+    .refine((c) => c === null || cepValido(c), { error: "O CEP tem 8 números." }),
+  endereco: z
+    .string()
+    .trim()
+    .max(120, { error: "Use no máximo 120 letras." })
+    .refine((t) => !temContato(t), { error: SEM_CONTATO })
+    .transform((t) => t || null),
+  lat: z.number().min(REGIAO.latMin).max(REGIAO.latMax).nullable(),
+  lng: z.number().min(REGIAO.lngMin).max(REGIAO.lngMax).nullable(),
+  responsavel: z
+    .string()
+    .trim()
+    .max(80, { error: "Use no máximo 80 letras." })
+    .transform((t) => t.replace(/\s+/g, " ") || null),
+  telefone: z
+    .string()
+    .transform(normalizarWhatsapp)
+    .refine((d) => !d || /^55[1-9]\d\d{8,9}$/.test(d), {
+      error: "Confira o número: DDD + número, como (62) 99999-0000.",
+    })
+    .transform((d) => d || null),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(120, { error: "Use no máximo 120 letras." })
+    .refine((t) => !t || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t), { error: "Confira o e-mail." })
+    .transform((t) => t || null),
+  nota: z
+    .string()
+    .trim()
+    .max(1000, { error: "Use no máximo 1000 letras." })
+    .transform((t) => t || null),
+});
+
+export type DadosCliente = z.output<typeof esquemaCliente>;
+
+export function lerCliente(formData: FormData) {
+  const lat = coordenada(campo(formData, "lat"));
+  const lng = coordenada(campo(formData, "lng"));
+  const cidade = campo(formData, "cidade");
+  return esquemaCliente.safeParse({
+    nome: campo(formData, "nome") ?? "",
+    cnpj: campo(formData, "cnpj") ?? "",
+    confidencial: campo(formData, "confidencial") === "on",
+    cidade: cidade || null,
+    bairro: campo(formData, "bairro") ?? "",
+    cep: campo(formData, "cep") ?? "",
+    endereco: campo(formData, "endereco") ?? "",
+    // o ponto vale inteiro (os dois números) ou nada
+    lat: lat !== undefined && lng !== undefined ? lat : null,
+    lng: lat !== undefined && lng !== undefined ? lng : null,
+    responsavel: campo(formData, "responsavel") ?? "",
+    telefone: campo(formData, "telefone") ?? "",
+    email: campo(formData, "email") ?? "",
+    nota: campo(formData, "nota") ?? "",
   });
 }
 

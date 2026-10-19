@@ -4,6 +4,7 @@ import { Check, LoaderCircle, MapPin, RotateCcw, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { conferirAnuncio, salvarAnuncio } from "@/lib/acoes/anuncios";
+import type { ClienteParaVaga } from "@/lib/clientes";
 import { REGIMES } from "@/lib/constantes";
 import { formatarValor } from "@/lib/formato";
 import { MODELOS_ANUNCIO, type ModeloAnuncio } from "@/lib/modelos-anuncio";
@@ -68,15 +69,20 @@ function aplicarModelo(m: ModeloAnuncio, atual: ValoresAnuncio): ValoresAnuncio 
   };
 }
 
-/** O lugar já escrito no formulário (trocar de modelo não apaga o bairro). */
+/** O lugar e a empresa já escritos no formulário (trocar de modelo não apaga o bairro nem o cliente). */
 function lugarDoFormulario(form: HTMLFormElement | null, base: ValoresAnuncio): ValoresAnuncio {
   if (!form) return base;
+  const dados = new FormData(form);
   const r: Rascunho = { salvo_em: Date.now(), campos: [] };
-  for (const [k, v] of new FormData(form).entries())
+  for (const [k, v] of dados.entries())
     if (typeof v === "string" && ["cidade", "bairro", "cep", "endereco", "lat", "lng"].includes(k))
       r.campos.push([k, v]);
   r.campos.push(["titulo", "x"]);
   const lido = valoresDoRascunho(r, base);
+  const texto = (k: string) => {
+    const v = dados.get(k);
+    return typeof v === "string" ? v : null;
+  };
   return {
     ...base,
     cidade: lido.cidade,
@@ -85,6 +91,14 @@ function lugarDoFormulario(form: HTMLFormElement | null, base: ValoresAnuncio): 
     endereco: lido.endereco,
     lat: lido.lat,
     lng: lido.lng,
+    // agência: o cliente escolhido (ou a empresa escrita) e a marcação de confidencial
+    ...(dados.has("agencia")
+      ? {
+          cliente_id: texto("cliente_id") || null,
+          contratante: texto("contratante") ?? base.contratante ?? null,
+          contratante_confidencial: texto("contratante_confidencial") === "on",
+        }
+      : {}),
   };
 }
 
@@ -96,6 +110,7 @@ export function PublicarAnuncio({
   ia = false,
   agencia = false,
   contatoAgencia = null,
+  clientes = null,
   enderecoPublico = false,
   convite = null,
 }: {
@@ -109,6 +124,8 @@ export function PublicarAnuncio({
   ia?: boolean;
   agencia?: boolean;
   contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
+  /** agência: os clientes para escolher */
+  clientes?: ClienteParaVaga[] | null;
   enderecoPublico?: boolean;
   /** veio do link do convite do Publike: publicar é o aceite */
   convite?: { token: string; nome: string; pronta: boolean } | null;
@@ -290,6 +307,7 @@ export function PublicarAnuncio({
         ia={ia && !semConta}
         agencia={agencia}
         contatoAgencia={contatoAgencia}
+        clientes={clientes}
         enderecoPublico={enderecoPublico}
         previa={previa?.titulo ? <PreviaDaVaga p={previa} /> : null}
         extras={convite ? { convite: convite.token } : undefined}

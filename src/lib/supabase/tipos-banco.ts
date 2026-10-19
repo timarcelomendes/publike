@@ -45,6 +45,61 @@ export type Database = {
         Update: { criterios?: Json; atualizado_em?: string };
         Relationships: [];
       };
+      /** clientes das agências (só a agência vê; na vaga aparece só o nome) */
+      clientes_agencia: {
+        Row: {
+          id: string;
+          agencia_id: string;
+          nome: string;
+          cnpj: string | null;
+          confidencial: boolean;
+          cidade: string | null;
+          bairro: string | null;
+          cep: string | null;
+          endereco: string | null;
+          lat: number | null;
+          lng: number | null;
+          responsavel: string | null;
+          telefone: string | null;
+          email: string | null;
+          nota: string | null;
+          arquivado_em: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          nome: string;
+          cnpj?: string | null;
+          confidencial?: boolean;
+          cidade?: string | null;
+          bairro?: string | null;
+          cep?: string | null;
+          endereco?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+          responsavel?: string | null;
+          telefone?: string | null;
+          email?: string | null;
+          nota?: string | null;
+        };
+        Update: {
+          nome?: string;
+          cnpj?: string | null;
+          confidencial?: boolean;
+          cidade?: string | null;
+          bairro?: string | null;
+          cep?: string | null;
+          endereco?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+          responsavel?: string | null;
+          telefone?: string | null;
+          email?: string | null;
+          nota?: string | null;
+          arquivado_em?: string | null;
+        };
+        Relationships: [];
+      };
       perfis: {
         Row: {
           id: string;
@@ -230,6 +285,8 @@ export type Database = {
           /** vaga de agência: a empresa que contrata (null se confidencial) */
           contratante: string | null;
           contratante_confidencial: boolean;
+          /** vaga de agência: o cliente (clientes_agencia), também na confidencial */
+          cliente_id: string | null;
           /** CEP e endereço (só comércio, empresa e agência; senão null) */
           cep: string | null;
           endereco: string | null;
@@ -279,6 +336,7 @@ export type Database = {
           preenchida_em?: string | null;
           contratante?: string | null;
           contratante_confidencial?: boolean;
+          cliente_id?: string | null;
           cep?: string | null;
           endereco?: string | null;
           /** vaga: fim da faixa salarial (o começo é pagamento_valor) */
@@ -322,6 +380,7 @@ export type Database = {
           preenchida_em?: string | null;
           contratante?: string | null;
           contratante_confidencial?: boolean;
+          cliente_id?: string | null;
           cep?: string | null;
           endereco?: string | null;
           /** vaga: fim da faixa salarial (o começo é pagamento_valor) */
@@ -1297,6 +1356,7 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: { cep: string; cidade: string; bairro: string; lat: number; lng: number }[];
       };
+      garantir_cliente: { Args: { p_nome: string }; Returns: string };
       meu_ultimo_endereco: {
         Args: Record<PropertyKey, never>;
         Returns: {

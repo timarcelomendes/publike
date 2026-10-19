@@ -13,6 +13,8 @@ import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 import { conviteDoLink } from "@/lib/servidor/convite-do-link";
 import { valoresDoConvite } from "@/lib/valores-convite";
 import { obterTriagem } from "@/lib/servidor/triagem";
+import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
+import { temLugar } from "@/lib/clientes";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
@@ -73,12 +75,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       : convite
         ? `/publicar?convite=${convite.token}`
         : "/publicar";
-  const { perfil } = await exigirPerfilCompleto(voltar);
+  // agência: "Publicar vaga" na ficha do cliente chega com ?cliente=
+  const pedidoCliente = primeiro(sp.cliente);
+  const comCliente = pedidoCliente && UUID.test(pedidoCliente) ? pedidoCliente : null;
+  const { perfil } = await exigirPerfilCompleto(
+    comCliente && voltar === "/publicar" ? `/publicar?cliente=${comCliente}` : voltar,
+  );
   const publico = perfil.tipo !== "pessoa";
-  const [ia, ultimo, original] = await Promise.all([
+  const agencia = perfil.tipo === "agencia";
+  const clientePedido = agencia ? comCliente : null;
+  const [ia, ultimo, original, clientes] = await Promise.all([
     ajudaDaIADisponivel(),
     publico ? obterMeuUltimoEndereco() : null,
     pedidaCopia ? obterAnuncio(pedidaCopia) : null,
+    agencia ? clientesParaVaga(clientePedido) : null,
   ]);
   // "Publicar parecida": só de uma vaga sua (serviço se edita em "Meus serviços")
   const copia =
@@ -88,7 +98,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
     !["em_analise", "removido"].includes(original.status)
       ? original
       : null;
-  const triagem = copia ? await obterTriagem(copia.id) : {};
+  const [triagem, clienteDaCopia] = await Promise.all([
+    copia ? obterTriagem(copia.id) : {},
+    copia && clientes ? clienteDaVaga(copia.id) : null,
+  ]);
+  // a vaga é para este cliente: o nome, o jeito (confidencial ou não) e o lugar vêm dele
+  const cliente = clientePedido ? (clientes?.find((c) => c.id === clientePedido) ?? null) : null;
   // comércio e empresa: a próxima vaga já vem com o endereço da última
   const inicialSemConvite = copia
     ? valoresDoAnuncio(copia, { copiar: true, triagem })
@@ -101,8 +116,29 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
           lng: ultimo.lng,
         }
       : vazio(perfil.cidade, perfil.bairro ?? "");
-  const inicial =
+  const inicialSemCliente =
     convite?.rascunho && !copia ? valoresDoConvite(convite.rascunho, inicialSemConvite) : inicialSemConvite;
+  const inicial: ValoresAnuncio = cliente
+    ? {
+        ...inicialSemCliente,
+        cliente_id: cliente.id,
+        contratante: null,
+        contratante_confidencial: cliente.confidencial,
+        ...(temLugar(cliente)
+          ? {
+              cidade: cliente.cidade ?? inicialSemCliente.cidade,
+              bairro: cliente.bairro ?? "",
+              cep: cliente.cep,
+              endereco: cliente.endereco,
+              lat: cliente.lat,
+              lng: cliente.lng,
+            }
+          : {}),
+      }
+    : // "publicar parecida": o mesmo cliente da vaga de antes, se ele ainda está na lista
+      clienteDaCopia && clientes?.some((c) => c.id === clienteDaCopia)
+      ? { ...inicialSemCliente, cliente_id: clienteDaCopia }
+      : inicialSemCliente;
   return (
     <>
       {copia && (
@@ -115,8 +151,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
         continuar={continuar}
         comModelos={!copia && !convite}
         ia={ia}
-        agencia={perfil.tipo === "agencia"}
+        agencia={agencia}
         contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
+        clientes={clientes}
         enderecoPublico={publico}
         convite={
           convite && !copia ? { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) } : null

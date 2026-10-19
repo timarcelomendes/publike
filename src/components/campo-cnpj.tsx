@@ -24,6 +24,9 @@ export function CampoCnpj({
   agencia,
   aoAchar,
   aoUsar,
+  rotulo,
+  ajuda,
+  textoUsar = "Usar o nome e o bairro da Receita",
 }: {
   valor: string;
   aoMudar: (valor: string) => void;
@@ -33,6 +36,10 @@ export function CampoCnpj({
   aoAchar: (dados: DadosCnpj) => void;
   /** a pessoa pediu para usar o nome e o endereço da Receita */
   aoUsar: (dados: DadosCnpj) => void;
+  /** o rótulo, a ajuda e o botão (padrão: os do perfil; o cadastro de clientes da agência usa os seus) */
+  rotulo?: string;
+  ajuda?: string;
+  textoUsar?: string;
 }) {
   const [consulta, setConsulta] = useState<{ cnpj: string; resultado: ConsultaCnpj } | null>(null);
   const [buscando, iniciar] = useTransition();
@@ -64,14 +71,15 @@ export function CampoCnpj({
   return (
     <div className="flex flex-col gap-3 rounded-md bg-surface-300 p-4">
       <Campo
-        rotulo={agencia ? "CNPJ da agência" : "CNPJ"}
+        rotulo={rotulo ?? (agencia ? "CNPJ da agência" : "CNPJ")}
         nome="cnpj"
         opcional={!agencia}
         erro={erro}
         ajuda={
-          agencia
+          ajuda ??
+          (agencia
             ? "Aparece no seu perfil e nas suas vagas, para quem procura trabalho conferir na Receita. Vale o CNPJ com letras."
-            : "Com ele, buscamos na Receita o nome e o bairro da empresa. O número aparece no seu perfil e passa mais confiança."
+            : "Com ele, buscamos na Receita o nome e o bairro da empresa. O número aparece no seu perfil e passa mais confiança.")
         }
       >
         <div className="relative">
@@ -122,7 +130,7 @@ export function CampoCnpj({
               onClick={() => aoUsar(dados)}
               className="inline-flex min-h-10 items-center self-start rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300"
             >
-              Usar o nome e o bairro da Receita
+              {textoUsar}
             </button>
           </div>
         )}

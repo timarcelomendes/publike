@@ -1,9 +1,10 @@
-import { Heart, KanbanSquare, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
+import { Building2, Heart, KanbanSquare, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
+import { FiltroCliente } from "@/components/painel/filtro-cliente";
 import { ChipFiltro } from "@/components/painel/fluxo";
 import { PaginaDeVagas } from "@/components/painel/pagina-de-vagas";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -13,6 +14,7 @@ import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { esperaResposta, LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuPerfil } from "@/lib/dados";
 import { ateQuando, formatarLugar, primeiro, rotuloModalidade, semPrazo, tempoRelativo } from "@/lib/formato";
+import { empresasDasVagas, listarMeusClientes, type EmpresaNaVaga } from "@/lib/servidor/clientes";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -59,7 +61,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/painel/anuncios");
-  const [anuncios, perfil, candidatos, extras] = await Promise.all([
+  const [anuncios, perfil, candidatos, extras, daAgencia] = await Promise.all([
     listarMeusAnuncios(),
     obterMeuPerfil(),
     listarMeusCandidatos(),
@@ -67,7 +69,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
     criarClienteServidor().then((c) =>
       c.from("anuncios").select("id, prazo_dias, preenchida_em").eq("autor_id", usuario.id).eq("tipo", "vaga"),
     ),
+    // agência: os clientes e para quem é cada vaga
+    obterMeuPerfil().then((p) =>
+      p?.tipo === "agencia" ? Promise.all([listarMeusClientes(), empresasDasVagas(usuario.id)]) : null,
+    ),
   ]);
+  const [clientes, empresas] = daAgencia ?? [null, null];
+  const nomeDoCliente = new Map((clientes ?? []).map((c) => [c.id, c.nome]));
+  const pedidoCliente = primeiro(sp.cliente);
+  const cliente = pedidoCliente && nomeDoCliente.has(pedidoCliente) ? pedidoCliente : null;
   const extraDe = new Map((extras.data ?? []).map((e) => [e.id, e]));
   const agora = await agoraDaRequisicao();
   const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
@@ -78,7 +88,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   const tipo: TipoAnuncio | null = pedido === "vaga" || pedido === "servico" ? pedido : null;
   const vagas = anuncios.filter((a) => a.tipo === "vaga").length;
   const servicos = anuncios.length - vagas;
-  const doTipo = tipo ? anuncios.filter((a) => a.tipo === tipo) : anuncios;
+  const doTipo = (tipo ? anuncios.filter((a) => a.tipo === tipo) : anuncios).filter(
+    (a) => !cliente || empresas?.get(a.id)?.cliente === cliente,
+  );
+  // agência: os clientes com vaga, para o filtro
+  const vagasPorCliente = new Map<string, number>();
+  for (const e of empresas?.values() ?? []) {
+    if (e.cliente && nomeDoCliente.has(e.cliente))
+      vagasPorCliente.set(e.cliente, (vagasPorCliente.get(e.cliente) ?? 0) + 1);
+  }
+  const clientesComVagas = [...vagasPorCliente.entries()]
+    .map(([id, total]) => ({ id, nome: nomeDoCliente.get(id) ?? "", total }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   const pedidaSituacao = primeiro(sp.situacao);
   const situacao = pedidaSituacao && pedidaSituacao in SITUACOES ? (pedidaSituacao as Situacao) : null;
   const naSituacao = (a: (typeof anuncios)[number], s: Situacao) =>
@@ -93,6 +114,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
     const s = mudar.situacao !== undefined ? mudar.situacao : situacao;
     if (t) q.set("tipo", t);
     if (s) q.set("situacao", s);
+    if (cliente) q.set("cliente", cliente);
     const texto = q.toString();
     return `/painel/anuncios${texto ? `?${texto}` : ""}`;
   };
@@ -131,12 +153,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                 Editar vitrine
               </BotaoLink>
             ) : (
-              <BotaoLink href="/publicar" tamanho="sm">
+              <BotaoLink href={cliente ? `/publicar?cliente=${cliente}` : "/publicar"} tamanho="sm">
                 <Plus aria-hidden />
                 Publicar vaga
               </BotaoLink>
             )}
           </div>
+          {(clientesComVagas.length > 1 || cliente) && tipo !== "servico" && (
+            <FiltroCliente
+              clientes={clientesComVagas}
+              cliente={cliente}
+              caminho="/painel/anuncios"
+              manter={{ tipo, situacao }}
+            />
+          )}
           {(tipo || (vagas > 0 && servicos > 0)) && (
             <nav aria-label="Filtrar anúncios" className="flex flex-wrap gap-2">
               <ChipFiltro
@@ -166,7 +196,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
               ))}
             </nav>
           )}
-          {lista.length === 0 && situacao ? (
+          {lista.length === 0 && cliente ? (
+            <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm text-ink">
+              {`Nenhuma vaga ${situacao ? `${SITUACOES[situacao].nome.toLowerCase()} ` : ""}de ${nomeDoCliente.get(cliente)}.`}{" "}
+              <Link href={`/publicar?cliente=${cliente}`} className="font-semibold underline underline-offset-2">
+                Publicar vaga para este cliente
+              </Link>
+            </p>
+          ) : lista.length === 0 && situacao ? (
             <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm text-ink">
               Nada {situacao === "no_ar" ? "no ar" : situacao === "pausados" ? "pausado" : "fora do ar"} aqui.{" "}
               <Link href={filtro({ situacao: null })} className="font-semibold underline underline-offset-2">
@@ -196,6 +233,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                 const venceLogo =
                   status === "ativo" && !semPrazo(a.expira_em) && new Date(a.expira_em).getTime() - agora < CINCO_DIAS;
                 const extra = extraDe.get(a.id);
+                const empresa = empresas?.get(a.id);
                 const podeRenovar = status === "expirado" || status === "encerrado" || venceLogo;
                 return (
                   <li
@@ -222,6 +260,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                         {a.titulo}
                       </Link>
                     </h3>
+                    {empresa && <EmpresaDaVagaNaLista empresa={empresa} nome={nomeDoCliente} />}
                     <p className="text-body-sm text-ink-muted">
                       {formatarLugar(a.bairro, a.cidade)} · publicado {tempoRelativo(a.criado_em, agora)} ·{" "}
                       {status === "ativo" ? `no ar ${ateQuando(a.expira_em)}` : (STATUS_ANUNCIO[status]?.ajuda ?? "")}
@@ -309,6 +348,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
           </Aviso>
         ))}
     </div>
+  );
+}
+
+/** Agência: para qual empresa é a vaga (o cliente abre a ficha dele). */
+function EmpresaDaVagaNaLista({ empresa, nome }: { empresa: EmpresaNaVaga; nome: Map<string, string> }) {
+  const cliente = empresa.cliente ? nome.get(empresa.cliente) : null;
+  return (
+    <p className="-mt-1 flex flex-wrap items-center gap-x-1.5 text-body-sm">
+      <Building2 aria-hidden className="size-4 shrink-0 text-ink-muted" />
+      {cliente ? (
+        <Link href={`/painel/clientes/${empresa.cliente}`} className="underline underline-offset-2">
+          {cliente}
+        </Link>
+      ) : (
+        <span>{empresa.contratante ?? (empresa.confidencial ? "Empresa confidencial" : "Empresa não informada")}</span>
+      )}
+      {cliente && empresa.confidencial && <span className="text-ink-muted">(confidencial na vaga)</span>}
+    </p>
   );
 }
 

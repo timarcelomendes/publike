@@ -22,6 +22,7 @@ import { DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
+import { FiltroCliente } from "@/components/painel/filtro-cliente";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
 import { DetalheDaAderencia, NotaAderencia } from "@/components/painel/nota-aderencia";
@@ -50,11 +51,13 @@ import {
   listarMeusCandidatos,
   listarRespostasDosCandidatos,
   obterAnuncio,
+  obterMeuPerfil,
   type Desfeito,
 } from "@/lib/dados";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { formatarLugar, formatarTelefone, linkWhatsApp, primeiro, tempoRelativo } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
+import { clientesDasVagas, listarMeusClientes } from "@/lib/servidor/clientes";
 import { entrevistasDasVagas, type Entrevista } from "@/lib/servidor/quadro";
 import { obterTriagens } from "@/lib/servidor/triagem";
 import { exigirUsuario } from "@/lib/sessao";
@@ -111,20 +114,52 @@ type Candidato = NonNullable<Awaited<ReturnType<typeof listarMeusCandidatos>>>[n
 
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/candidatos">["searchParams"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
-  await exigirUsuario("/painel/candidatos");
+  const usuario = await exigirUsuario("/painel/candidatos");
   const sp = await searchParams;
   const pedidaVaga = primeiro(sp.vaga);
   const pedidaEtapa = primeiro(sp.etapa);
   const responder = primeiro(sp.situacao) === "responder";
   const busca = (primeiro(sp.q) ?? "").trim().slice(0, 60);
-  const todos = await listarMeusCandidatos();
+  const [todosDaConta, daAgencia] = await Promise.all([
+    listarMeusCandidatos(),
+    // agência: os clientes e o cliente de cada vaga
+    obterMeuPerfil().then((p) =>
+      p?.tipo === "agencia" ? Promise.all([listarMeusClientes(), clientesDasVagas(usuario.id)]) : null,
+    ),
+  ]);
   const agora = await agoraDaRequisicao();
+  const [clientes, clienteDe] = daAgencia ?? [null, null];
+  const nomeDoCliente = new Map((clientes ?? []).map((c) => [c.id, c.nome]));
+  const pedidoCliente = primeiro(sp.cliente);
+  const cliente = pedidoCliente && nomeDoCliente.has(pedidoCliente) ? pedidoCliente : null;
+  // os clientes com candidatos, para o filtro
+  const porCliente = new Map<string, number>();
+  for (const c of todosDaConta ?? []) {
+    const id = clienteDe?.get(c.anuncio_id);
+    if (id && nomeDoCliente.has(id)) porCliente.set(id, (porCliente.get(id) ?? 0) + 1);
+  }
+  const clientesComCandidatos = [...porCliente.entries()]
+    .map(([id, total]) => ({ id, nome: nomeDoCliente.get(id) ?? "", total }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const todos =
+    todosDaConta && cliente ? todosDaConta.filter((c) => clienteDe?.get(c.anuncio_id) === cliente) : todosDaConta;
 
   if (!todos) {
     return (
       <Aviso tipo="alerta" titulo="Não deu para carregar os candidatos agora">
         Tente de novo em instantes. Enquanto isso, cada vaga mostra quem curtiu em “Minhas vagas”.
       </Aviso>
+    );
+  }
+  if (todos.length === 0 && cliente) {
+    return (
+      <Vazio
+        icone={Users}
+        titulo={`Ninguém curtiu as vagas de ${nomeDoCliente.get(cliente)} ainda`}
+        acao={<BotaoLink href="/painel/candidatos">Ver todos os candidatos</BotaoLink>}
+      >
+        Quem curtir as vagas deste cliente aparece aqui.
+      </Vazio>
     );
   }
   if (todos.length === 0) {
@@ -231,6 +266,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
 
   const link = (mudar: { etapa?: EtapaCandidato | null; responder?: boolean }) => {
     const q = new URLSearchParams();
+    if (cliente) q.set("cliente", cliente);
     if (vaga) q.set("vaga", vaga);
     if (mudar.responder) q.set("situacao", "responder");
     else if (mudar.etapa) q.set("etapa", mudar.etapa);
@@ -240,6 +276,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   };
   const planilha = (() => {
     const q = new URLSearchParams();
+    if (cliente) q.set("cliente", cliente);
     if (vaga) q.set("vaga", vaga);
     if (responder) q.set("situacao", "responder");
     else if (etapa) q.set("etapa", etapa);
@@ -254,6 +291,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
       comSecoes={comItens.length > 1}
       agora={agora}
       mostrarVaga={!vaga}
+      cliente={!cliente ? (nomeDoCliente.get(clienteDe?.get(c.anuncio_id) ?? "") ?? null) : null}
       pedeCurriculo={Boolean(anuncios.get(c.anuncio_id)?.pede_curriculo)}
       curriculo={curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null}
       curriculoFalhou={c.tem_curriculo && curriculos.get(c.anuncio_id) === null}
@@ -284,14 +322,23 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
       </div>
 
       <div className="flex flex-col gap-3">
-        {(vagas.size > 1 || todos.length > 8) && (
+        {(vagas.size > 1 || todos.length > 8 || clientesComCandidatos.length > 1 || cliente) && (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            {(clientesComCandidatos.length > 1 || cliente) && (
+              <FiltroCliente
+                clientes={clientesComCandidatos}
+                cliente={cliente}
+                caminho="/painel/candidatos"
+                manter={{ situacao: responder ? "responder" : null, etapa: responder ? null : etapa }}
+              />
+            )}
             {vagas.size > 1 && (
               <FiltroVaga
                 vagas={[...vagas.values()]}
                 vaga={vaga}
                 etapa={responder ? null : etapa}
                 situacao={responder ? "responder" : null}
+                cliente={cliente}
               />
             )}
             {todos.length > 8 && (
@@ -314,6 +361,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
                     className={`${classesEntrada} pl-9`}
                   />
                 </div>
+                {cliente && <input type="hidden" name="cliente" value={cliente} />}
                 {vaga && <input type="hidden" name="vaga" value={vaga} />}
                 {responder && <input type="hidden" name="situacao" value="responder" />}
                 {etapa && <input type="hidden" name="etapa" value={etapa} />}
@@ -436,6 +484,7 @@ function CartaoCandidato({
   agora,
   publica,
   mostrarVaga,
+  cliente,
   pedeCurriculo,
   curriculo,
   curriculoFalhou,
@@ -451,6 +500,8 @@ function CartaoCandidato({
   comSecoes: boolean;
   agora: number;
   mostrarVaga: boolean;
+  /** agência: o cliente da vaga (ao lado do título) */
+  cliente?: string | null;
   pedeCurriculo: boolean;
   curriculo: CurriculoDoInteressado | null;
   curriculoFalhou: boolean;
@@ -495,6 +546,7 @@ function CartaoCandidato({
                 <Link href={`/painel/anuncio/${c.anuncio_id}`} className="text-ink underline underline-offset-2">
                   {c.anuncio_titulo}
                 </Link>
+                {cliente && ` (${cliente})`}
                 {" · "}
               </>
             )}

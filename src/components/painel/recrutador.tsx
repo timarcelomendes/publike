@@ -1,4 +1,5 @@
 import {
+  Building2,
   CalendarClock,
   ChevronRight,
   Clock,
@@ -74,12 +75,15 @@ export async function PainelRecrutador({
   anuncios,
   candidatos,
   agora,
+  clientes = null,
 }: {
   nome: string;
   autorId: string;
   anuncios: MeuAnuncio[] | null;
   candidatos: Candidato[] | null;
   agora: number;
+  /** agência: quantos clientes estão na lista (null: não é agência) */
+  clientes?: number | null;
 }) {
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
@@ -440,7 +444,18 @@ export async function PainelRecrutador({
           titulo="Todos os candidatos"
           texto="De todas as vagas juntas, com busca e planilha."
         />
-        {servicos.length ? (
+        {clientes !== null ? (
+          <Atalho
+            icone={Building2}
+            href="/painel/clientes"
+            titulo="Seus clientes"
+            texto={
+              clientes > 0
+                ? `${plural(clientes, "cliente", "clientes")}, com as vagas, os candidatos e a planilha de cada um.`
+                : "Cadastre as empresas para quem você seleciona: ao publicar, é só escolher."
+            }
+          />
+        ) : servicos.length ? (
           <Atalho
             icone={Store}
             href="/painel/anuncios?tipo=servico"

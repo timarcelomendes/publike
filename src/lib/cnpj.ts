@@ -103,6 +103,10 @@ export type DadosCnpj = {
   municipio: string | null;
   uf: string | null;
   bairro: string | null;
+  /** o endereço da sede (8 números; rua com o tipo, como "Rua 90"; número) */
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
   /** AAAA-MM-DD */
   abertura: string | null;
   mei: boolean;

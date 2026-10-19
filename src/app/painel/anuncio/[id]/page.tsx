@@ -12,6 +12,7 @@ import { BotaoBloquear, DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
@@ -99,6 +100,9 @@ async function Conteudo({
           <Selo variante={status === "ativo" ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
         </div>
         <h2 className="mt-2 text-h2">{anuncio.titulo}</h2>
+        {anuncio.autor_tipo === "agencia" && (
+          <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
+        )}
         <p className="mt-1 text-body-sm text-ink-muted">
           <Link href={`/anuncio/${anuncio.id}`} className="underline">
             Ver anúncio

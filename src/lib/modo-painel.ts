@@ -46,7 +46,8 @@ export type Secao = {
     | "curriculo"
     | "pedidos"
     | "vitrine"
-    | "avaliacoes";
+    | "avaliacoes"
+    | "clientes";
   contador?: keyof Contadores;
 };
 
@@ -73,6 +74,17 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
   ],
 };
+
+/** Agência de emprego tem mais uma seção em Contratar: os clientes, logo depois das vagas. */
+const CLIENTES: Secao = { href: "/painel/clientes", nome: "Clientes", icone: "clientes" };
+
+/** As seções do modo para esta conta (a agência ganha "Clientes"). */
+export function secoesDoModo(modo: ModoPainel, tipoConta: string | null | undefined): Secao[] {
+  const secoes = SECOES[modo];
+  if (modo !== "contratar" || tipoConta !== "agencia") return secoes;
+  const depoisDe = secoes.findIndex((s) => s.icone === "vagas") + 1;
+  return [...secoes.slice(0, depoisDe), CLIENTES, ...secoes.slice(depoisDe)];
+}
 
 /** O resto do painel, no fim do menu (o que não é do modo aberto). */
 export const OUTRAS: Record<ModoPainel, { href: string; nome: string }[]> = {
@@ -103,7 +115,8 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
   if (
     caminho.startsWith("/painel/candidatos") ||
     caminho.startsWith("/painel/caixa") ||
-    caminho.startsWith("/painel/talentos")
+    caminho.startsWith("/painel/talentos") ||
+    caminho.startsWith("/painel/clientes")
   )
     return "contratar";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "servicos";
@@ -115,9 +128,14 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
 }
 
 /** A seção aberta no menu (a mais específica que bate com o endereço). */
-export function secaoAtiva(modo: ModoPainel, caminho: string, tipo: string | null): string | null {
+export function secaoAtiva(
+  modo: ModoPainel,
+  caminho: string,
+  tipo: string | null,
+  tipoConta: string | null = null,
+): string | null {
   if (caminho === "/painel" || caminho === "/painel/") return "/painel";
-  const secoes = [...SECOES[modo], ...OUTRAS[modo]];
+  const secoes = [...secoesDoModo(modo, tipoConta), ...OUTRAS[modo]];
   // a página de um anúncio (quem curtiu, quadro, editar) fica na lista de anúncios do modo
   if (caminho.startsWith("/painel/anuncio/")) {
     return SECOES[modo].find((s) => s.href.startsWith("/painel/anuncios"))?.href ?? null;

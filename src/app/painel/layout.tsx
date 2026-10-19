@@ -48,5 +48,7 @@ async function MenuDaConta() {
     pedidos: soma("servico"),
     mensagens: (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0),
   };
-  return <MenuPainel modo={modo} contadores={contadores} nome={perfil?.nome ?? null} />;
+  return (
+    <MenuPainel modo={modo} contadores={contadores} nome={perfil?.nome ?? null} tipoConta={perfil?.tipo ?? null} />
+  );
 }

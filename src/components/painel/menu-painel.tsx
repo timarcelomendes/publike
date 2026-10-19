@@ -3,6 +3,7 @@
 import {
   BellRing,
   Briefcase,
+  Building2,
   Check,
   ChevronDown,
   FileText,
@@ -26,7 +27,7 @@ import {
   MODOS,
   OUTRAS,
   secaoAtiva,
-  SECOES,
+  secoesDoModo,
   type Contadores,
   type ModoPainel,
   type Secao,
@@ -45,6 +46,7 @@ const ICONES: Record<Secao["icone"], LucideIcon> = {
   pedidos: Wrench,
   vitrine: Store,
   avaliacoes: Star,
+  clientes: Building2,
 };
 
 function guardarModo(modo: ModoPainel) {
@@ -65,17 +67,20 @@ export function MenuPainel({
   modo: modoDoServidor,
   contadores,
   nome,
+  tipoConta = null,
 }: {
   modo: ModoPainel;
   contadores: Contadores;
   nome: string | null;
+  /** o tipo da conta (agência ganha "Clientes" em Contratar) */
+  tipoConta?: string | null;
 }) {
   const caminho = usePathname() ?? "/painel";
   const tipo = useSearchParams()?.get("tipo") ?? null;
   const router = useRouter();
   const daRota = modoDaRota(caminho, tipo);
   const modo = daRota ?? modoDoServidor;
-  const ativa = secaoAtiva(modo, caminho, tipo);
+  const ativa = secaoAtiva(modo, caminho, tipo, tipoConta);
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const idMenu = useId();
@@ -108,7 +113,7 @@ export function MenuPainel({
     else router.push("/painel");
   }
 
-  const secoes = SECOES[modo];
+  const secoes = secoesDoModo(modo, tipoConta);
   const outras = OUTRAS[modo];
 
   return (

@@ -9,7 +9,7 @@ import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
-import { lerAnuncio, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { lerAnuncio, registroDoAnuncio, UUID, type DadosAnuncio } from "@/lib/validacao";
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { completarAnuncio } from "@/lib/servidor/completar-anuncio";
 
@@ -25,13 +25,57 @@ export async function conferirAnuncio(_anterior: EstadoForm, formData: FormData)
   return { ok: true };
 }
 
-/** Erro do banco no formulário: o da empresa contratante e o da faixa salarial ficam marcados no campo. */
+/** Erro do banco no formulário: o da empresa contratante, do cliente e da faixa salarial ficam marcados no campo. */
 function erroDoBanco(error: { code?: string; message?: string; hint?: string | null }): EstadoForm {
   const erro = mensagemDeErro(error);
   if (error.hint === "contratante" || error.hint === "pagamento_ate") {
     return { ok: false, erro: "Confira os campos marcados.", erros: { [error.hint]: erro } };
   }
+  if (error.hint === "cliente") return { ok: false, erro: "Confira os campos marcados.", erros: { cliente_id: erro } };
   return { ok: false, erro };
+}
+
+type Banco = Awaited<ReturnType<typeof criarClienteServidor>>;
+
+/** Agência: a empresa escrita à mão vira cliente (ou acha o cliente com o mesmo nome). Falhou: a vaga sai sem. */
+async function garantirCliente(supabase: Banco, nome: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("garantir_cliente", { p_nome: nome });
+  if (error) console.warn(`Publike: não deu para guardar o cliente: ${error.message}`);
+  return data ?? null;
+}
+
+/**
+ * Depois de salvar a vaga de um cliente: o cliente sem lugar guarda o da vaga (a próxima já vem
+ * com ele) e, numa vaga nova, o cliente arquivado volta para a lista.
+ */
+async function cuidarDoCliente(supabase: Banco, clienteId: string, d: DadosAnuncio, nova: boolean) {
+  const mudancas = [
+    supabase
+      .from("clientes_agencia")
+      .update({
+        cidade: d.cidade,
+        bairro: d.bairro,
+        cep: d.endereco ? d.cep : null,
+        endereco: d.endereco,
+        lat: d.lat,
+        lng: d.lng,
+      })
+      .eq("id", clienteId)
+      .is("bairro", null)
+      .is("lat", null),
+  ];
+  if (nova) {
+    mudancas.push(
+      supabase
+        .from("clientes_agencia")
+        .update({ arquivado_em: null })
+        .eq("id", clienteId)
+        .not("arquivado_em", "is", null),
+    );
+  }
+  for (const { error } of await Promise.all(mudancas)) {
+    if (error) console.warn(`Publike: não deu para atualizar o cliente: ${error.message}`);
+  }
 }
 
 /** Publica um anúncio novo ou salva a edição de um existente. */
@@ -44,9 +88,11 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
   const leitura = lerAnuncio(formData);
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
   const d = leitura.dados;
-  const registro = registroDoAnuncio(d);
-
   const supabase = await criarClienteServidor();
+  const clienteNovo = d.cliente_novo ? await garantirCliente(supabase, d.cliente_novo) : null;
+  const registro = { ...registroDoAnuncio(d), ...(clienteNovo ? { cliente_id: clienteNovo } : {}) };
+  const cliente = clienteNovo ?? d.cliente_id ?? null;
+
   const id = formData.get("id");
   let destino: string;
 
@@ -56,6 +102,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
     if (error) return erroDoBanco(error);
     if (!data?.length) return { ok: false, erro: "Não encontramos esse anúncio entre os seus." };
     await salvarTriagem(supabase, id, d.triagem);
+    if (cliente) await cuidarDoCliente(supabase, cliente, d, false);
     destino = `/anuncio/${id}?salvo=1`;
   } else {
     const { data, error } = await supabase
@@ -68,6 +115,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
       return erroDoBanco(error);
     }
     await salvarTriagem(supabase, data.id, d.triagem);
+    if (cliente) await cuidarDoCliente(supabase, cliente, d, true);
     // veio do link do convite: publicar é o aceite (o convite vira "Autorizou" no admin)
     const convite = formData.get("convite");
     if (typeof convite === "string" && /^[0-9a-f]{64}$/.test(convite)) {

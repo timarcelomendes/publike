@@ -22,6 +22,10 @@ type RespostaBrasilApi = {
   municipio?: string | null;
   uf?: string | null;
   bairro?: string | null;
+  cep?: string | number | null;
+  descricao_tipo_de_logradouro?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
   data_inicio_atividade?: string | null;
   opcao_pelo_mei?: boolean | null;
 };
@@ -38,6 +42,10 @@ type RespostaCnpjWs = {
     cidade?: { nome?: string } | null;
     estado?: { sigla?: string } | null;
     bairro?: string | null;
+    cep?: string | null;
+    tipo_logradouro?: string | null;
+    logradouro?: string | null;
+    numero?: string | null;
     data_inicio_atividade?: string | null;
   } | null;
 };
@@ -48,6 +56,26 @@ function texto(v: unknown) {
 
 function situacao(v: unknown) {
   return (texto(v) ?? "DESCONHECIDA").toUpperCase();
+}
+
+/** CEP com 8 números (a resposta pode vir com ponto, traço ou como número). */
+function cep(v: unknown) {
+  const d = typeof v === "number" ? String(v).padStart(8, "0") : String(v ?? "").replace(/\D/g, "");
+  return d.length === 8 ? d : null;
+}
+
+/** "RUA" + "90" vira "RUA 90" (sem repetir o tipo quando ele já vem no nome). */
+function logradouro(tipo: unknown, nome: unknown) {
+  const n = texto(nome);
+  if (!n) return null;
+  const t = texto(tipo);
+  return t && !n.toUpperCase().startsWith(t.toUpperCase()) ? `${t} ${n}` : n;
+}
+
+/** Número da fachada; "S/N" e afins ficam de fora. */
+function numero(v: unknown) {
+  const n = texto(v);
+  return n && /\d/.test(n) ? n.slice(0, 10) : null;
 }
 
 function daBrasilApi(c: string, d: RespostaBrasilApi): DadosCnpj {
@@ -67,6 +95,9 @@ function daBrasilApi(c: string, d: RespostaBrasilApi): DadosCnpj {
     municipio: texto(d.municipio),
     uf: texto(d.uf),
     bairro: texto(d.bairro),
+    cep: cep(d.cep),
+    logradouro: logradouro(d.descricao_tipo_de_logradouro, d.logradouro),
+    numero: numero(d.numero),
     abertura: texto(d.data_inicio_atividade),
     mei: d.opcao_pelo_mei === true,
   };
@@ -89,6 +120,9 @@ function doCnpjWs(c: string, d: RespostaCnpjWs): DadosCnpj {
     municipio: texto(e.cidade?.nome),
     uf: texto(e.estado?.sigla),
     bairro: texto(e.bairro),
+    cep: cep(e.cep),
+    logradouro: logradouro(e.tipo_logradouro, e.logradouro),
+    numero: numero(e.numero),
     abertura: texto(e.data_inicio_atividade),
     mei: texto(d.simples?.mei)?.toLowerCase() === "sim",
   };

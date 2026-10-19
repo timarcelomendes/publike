@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { QuadroCandidatos } from "@/components/painel/quadro-candidatos";
 import { SaudeDaVaga } from "@/components/painel/saude-vaga";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -79,6 +80,9 @@ async function Conteudo({
               </span>
             </div>
             <h2 className="mt-2 text-h2">{anuncio.titulo}</h2>
+            {anuncio.autor_tipo === "agencia" && (
+              <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <BotaoLink href={`/painel/anuncio/${id}`} tamanho="sm">

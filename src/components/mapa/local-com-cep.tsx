@@ -21,6 +21,7 @@ export function LocalComCep({
   inicial,
   inicialCep,
   inicialEndereco,
+  inicialNumero,
   publico,
   erro,
   aoAchar,
@@ -30,6 +31,8 @@ export function LocalComCep({
   inicial: Ponto | null;
   inicialCep?: string | null;
   inicialEndereco?: string | null;
+  /** o número da fachada, para "Achar no mapa" chegar na porta (o cadastro do cliente traz da Receita) */
+  inicialNumero?: string | null;
   publico: boolean;
   erro?: string;
   /** a cidade e o bairro (do CEP, da localização ou do ponto no mapa) para os campos do formulário; devolve se o bairro mudou */
@@ -42,7 +45,7 @@ export function LocalComCep({
   const id = useId();
   const raiz = useRef<HTMLDivElement>(null);
   const [cep, setCep] = useState(formatarCep(inicialCep));
-  const [numero, setNumero] = useState("");
+  const [numero, setNumero] = useState(inicialNumero ?? "");
   const [endereco, setEndereco] = useState(inicialEndereco ?? "");
   const [rua, setRua] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);

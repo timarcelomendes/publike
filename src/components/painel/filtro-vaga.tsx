@@ -12,6 +12,7 @@ export function FiltroVaga({
   situacao = null,
   caminho = "/painel/candidatos",
   aba = null,
+  cliente = null,
 }: {
   vagas: { id: string; titulo: string; total: number }[];
   vaga: string | null;
@@ -21,6 +22,8 @@ export function FiltroVaga({
   caminho?: string;
   /** a aba aberta da caixa de entrada */
   aba?: string | null;
+  /** agência: o cliente escolhido (fica no filtro) */
+  cliente?: string | null;
 }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
@@ -35,6 +38,7 @@ export function FiltroVaga({
         disabled={pendente}
         onChange={(e) => {
           const q = new URLSearchParams();
+          if (cliente) q.set("cliente", cliente);
           if (e.target.value) q.set("vaga", e.target.value);
           if (aba) q.set("aba", aba);
           if (situacao) q.set("situacao", situacao);

@@ -96,6 +96,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         p: "Sou agência de emprego ou RH. Posso usar?",
         r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. Depois que a equipe confere o CNPJ, a agência pode ter até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
       },
+      {
+        p: "Sou agência: como organizo as vagas por cliente?",
+        r: "No painel, em Clientes, cadastre as empresas para quem você seleciona: nome, CNPJ, endereço, quem é o contato lá e anotações. Ao publicar, escolha o cliente: o nome e o endereço já vêm na vaga. Na ficha de cada cliente aparecem as vagas, os candidatos, quem espera resposta e quem foi contratado, e dá para baixar a planilha só dos candidatos daquele cliente. CNPJ, contato e anotações ficam só com você; na vaga aparece só o nome do cliente (ou “Empresa confidencial”, e aí você continua sabendo de quem é a vaga).",
+      },
     ],
   },
   {
@@ -524,12 +528,24 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
               "Trocar o CNPJ tira o selo até a nova conferência.",
             ],
           },
+          {
+            titulo: "Cadastre os seus clientes",
+            texto: "No painel, em Clientes, guarde as empresas para quem você seleciona.",
+            detalhes: [
+              "Só o nome é obrigatório. Com o CNPJ, o Publike busca na Receita o nome e o endereço.",
+              "O endereço do cliente já vai para as vagas dele. Marque “Vagas confidenciais” para o cliente que não quer aparecer.",
+              "Quem é o contato no cliente, o telefone e as anotações ficam só com você.",
+              "Ao publicar para uma empresa nova, ela também entra em Clientes.",
+            ],
+            imagem: "clientes",
+            link: { href: "/painel/clientes", texto: "Abrir Clientes" },
+          },
           publicar(
             "Publique a vaga do cliente",
-            "Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”.",
+            "Em cada vaga, escolha o cliente (ou escreva outra empresa) ou marque “Empresa confidencial”.",
             [
               "A vaga sai com o selo “Vaga de agência” e o nome da agência.",
-              "Empresa confidencial: o local vira uma área de uns 500 metros, sem o endereço do cliente.",
+              "Empresa confidencial: na vaga aparece “Empresa confidencial” e o local vira uma área de uns 500 metros, sem o endereço do cliente. No painel, você continua vendo de quem é a vaga.",
               "Publique as vagas de vários clientes da mesma conta, cada uma com o seu local.",
             ],
             "vaga-agencia",
@@ -542,6 +558,17 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
             ],
           },
           INTERESSADOS,
+          {
+            titulo: "Acompanhe cada cliente",
+            texto: "A ficha do cliente junta as vagas, os candidatos e quem foi contratado.",
+            detalhes: [
+              "Em Minhas vagas e em Candidatos, o filtro “Cliente” mostra só as vagas e os candidatos de uma empresa.",
+              "“Planilha dos candidatos” baixa a lista daquele cliente para mandar a ele (o contato só de quem deu match).",
+              "Cliente que parou de contratar? Arquive: ele sai da lista ao publicar e as vagas dele continuam como estão.",
+            ],
+            imagem: "cliente-ficha",
+            link: { href: "/painel/clientes", texto: "Ver os clientes" },
+          },
           ENTREVISTA,
           RENOVAR,
           {
