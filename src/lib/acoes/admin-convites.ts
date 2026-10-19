@@ -21,7 +21,7 @@ import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
 import { centroDoBairro } from "@/lib/servidor/cep";
-import { completarAnuncio } from "@/lib/servidor/completar-anuncio";
+import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio";
 import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { processarFilas } from "@/lib/servidor/filas";
 import { salvarTriagem } from "@/lib/servidor/triagem";
@@ -262,9 +262,10 @@ export async function publicarConvitePeloAdmin(
 
   // a vaga primeiro: com erro nela, nenhuma conta é criada (sem categoria, descrição ou ponto no
   // mapa, completa como na publicação normal)
-  await completarAnuncio(formData);
+  const trocas = await completarAnuncio(formData);
   const leitura = lerAnuncio(formData);
-  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  if (!leitura.ok)
+    return { ok: false, erro: "Confira os campos marcados.", erros: ajustarErros(leitura.erros, trocas) };
   const d = leitura.dados;
   if (d.tipo !== "vaga") return { ok: false, erro: "Pelo convite dá para publicar só vagas." };
 

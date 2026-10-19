@@ -40,6 +40,7 @@ import { trocarBairro } from "./mapa/seletor-local";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
+import { ResumoErros } from "./ui/resumo-erros";
 
 /** Os tipos de contratação que aparecem primeiro (os outros ficam em "Outros tipos"). */
 const REGIMES_PRINCIPAIS: Regime[] = ["clt", "diaria", "freelance", "temporario", "estagio", "aprendiz"];
@@ -111,6 +112,39 @@ const CAMPOS_DETALHES = [
   "pcd",
   "perguntas",
 ];
+
+/** O nome de cada campo no resumo do que falta, perto do botão. */
+const NOMES_CAMPOS: Record<string, string> = {
+  titulo: "Título",
+  contratante: "Empresa da vaga",
+  cliente_id: "Empresa da vaga",
+  regime: "Tipo de contratação",
+  pagamento_valor: "Valor",
+  pagamento_ate: "Valor “Até”",
+  pagamento_unidade: "Valor “Por”",
+  ganhos_extras: "Ganhos a mais",
+  horario: "Horário",
+  cidade: "Cidade",
+  bairro: "Bairro",
+  cep: "CEP",
+  endereco: "Endereço",
+  lat: "Lugar no mapa",
+  lng: "Lugar no mapa",
+  categoria: "Categoria",
+  descricao: "Descrição",
+  jornada: "Jornada",
+  modelo: "Modelo de trabalho",
+  beneficios_lista: "Benefícios",
+  beneficios_extras: "Benefícios",
+  beneficios: "Benefícios",
+  vagas: "Quantas pessoas",
+  escolaridade_minima: "Escolaridade",
+  experiencia: "Experiência",
+  cnh: "CNH",
+  pcd: "Pessoas com deficiência",
+  perguntas: "Perguntas para o candidato",
+  prazo_dias: "Prazo",
+};
 
 const ESTADO_INICIAL: EstadoForm = { ok: false };
 
@@ -890,7 +924,17 @@ export function FormAnuncio({
 
       {previa}
 
-      {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
+      {estado.erro && (
+        <ResumoErros
+          erros={erros}
+          nomes={NOMES_CAMPOS}
+          acao={semConta ? "continuar" : equipe || editando ? "salvar" : "publicar"}
+          reserva={estado.erro}
+          antesDeIr={(campo) => {
+            if (CAMPOS_DETALHES.includes(campo)) setDetalhes(true);
+          }}
+        />
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando} className="sm:min-w-56">

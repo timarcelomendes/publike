@@ -36,6 +36,7 @@ import { SeletorLocal, trocarBairro } from "./mapa/seletor-local";
 import { Aviso, Selo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "./ui/campo";
+import { ResumoErros } from "./ui/resumo-erros";
 
 export type ServicoInicial = {
   id: string;
@@ -174,6 +175,27 @@ const chip = (ativo: boolean) =>
     ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-300 text-ink hover:border-line-strong"
   }`;
 
+/** O nome de cada campo no resumo do que falta, perto do botão. */
+const NOMES_CAMPOS: Record<string, string> = {
+  servicos: "Serviços",
+  cidade: "Cidade",
+  bairro: "Bairro",
+  lat: "Lugar no mapa",
+  lng: "Lugar no mapa",
+  atende: "Onde você atende",
+  horario: "Horário",
+};
+
+/** Os campos de cada serviço: o nome no resumo e o id na tela (sem id: vai até a mensagem). */
+const CAMPOS_DO_SERVICO: Record<string, [string, string | null]> = {
+  titulo: ["nome do serviço", "titulo"],
+  categoria: ["categoria", "categoria"],
+  descricao: ["descrição", "descricao"],
+  pagamento_valor: ["preço", "valor"],
+  pagamento_unidade: ["preço “por”", "unidade"],
+  fotos: ["fotos", null],
+};
+
 export function FormServicos({
   inicial,
   usuarioId,
@@ -305,6 +327,17 @@ export function FormServicos({
       if (indice >= 0 && k.startsWith(prefixo)) lista[k.slice(prefixo.length)] = v;
     return lista;
   };
+
+  // o resumo do que falta: "Pedreiro: Descrição", com o id de cada campo do serviço
+  const resumo = { nomes: {} as Record<string, string>, alvos: {} as Record<string, string> };
+  editaveis.forEach((item, indice) => {
+    const servico = item.titulo.trim() || acharOficio(item.oficio)?.nome || `Serviço ${indice + 1}`;
+    for (const [campo, [nome, alvo]] of Object.entries(CAMPOS_DO_SERVICO)) {
+      resumo.nomes[`servicos.${indice}.${campo}`] = `${servico}, ${nome}`;
+      if (alvo) resumo.alvos[`servicos.${indice}.${campo}`] = `s-${item.chave}-${alvo}`;
+    }
+  });
+  Object.assign(resumo.nomes, NOMES_CAMPOS);
 
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
@@ -566,7 +599,9 @@ export function FormServicos({
 
       {extras}
 
-      {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
+      {estado.erro && (
+        <ResumoErros erros={erros} nomes={resumo.nomes} alvos={resumo.alvos} acao="salvar" reserva={estado.erro} />
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando || editaveis.length === 0} className="sm:min-w-56">

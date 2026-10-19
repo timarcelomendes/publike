@@ -79,12 +79,19 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 
 const SEM_CONTATO = "Tire o telefone, e-mail ou link. O contato aparece sozinho quando der match.";
 
+/** "Escreva pelo menos 20 letras (faltam 7)." */
+export function faltamLetras(min: number, tamanho: number) {
+  const faltam = min - tamanho;
+  return `Escreva pelo menos ${min} letras (${faltam === 1 ? "falta 1" : `faltam ${faltam}`}).`;
+}
+
 function texto(min: number, max: number, nome: string, textoLivre = false) {
   return z
-    .string({ error: `Preencha ${nome}.` })
+    .string({ error: `Escreva ${nome}.` })
     .trim()
-    .min(min, { error: min <= 1 ? `Preencha ${nome}.` : `Use pelo menos ${min} letras.` })
-    .max(max, { error: `Use no máximo ${max} letras.` })
+    .min(1, { error: `Escreva ${nome}.` })
+    .min(min, { error: (p) => faltamLetras(min, String(p.input ?? "").length) })
+    .max(max, { error: (p) => `Use no máximo ${max} letras (tem ${String(p.input ?? "").length}).` })
     .refine((t) => !procurarContato(t, textoLivre), { error: SEM_CONTATO });
 }
 
@@ -117,6 +124,8 @@ export function errosPorCampo(erro: z.ZodError) {
 
 // ---------------------------------------------------------------- anúncio
 
+const SEM_REGIME = "Escolha o tipo de contratação: CLT, diária, freela…";
+const SEM_VALOR = "Escreva quanto paga ou marque “Valor a combinar”.";
 const SEM_CONTRATANTE = "Diga para qual empresa é a vaga ou marque “Empresa confidencial”.";
 
 export const esquemaAnuncio = z
@@ -164,7 +173,7 @@ export const esquemaAnuncio = z
     /** agência: a empresa escrita à mão vira cliente */
     guardar_cliente: z.boolean(),
     vagas: z
-      .number({ error: "Informe quantas pessoas." })
+      .number({ error: "Escreva quantas pessoas a vaga procura." })
       .int({ error: "Use um número inteiro." })
       .min(1, { error: "Pelo menos 1." })
       .max(999, { error: "No máximo 999." }),
@@ -187,10 +196,10 @@ export const esquemaAnuncio = z
   })
   .superRefine((d, ctx) => {
     if (d.tipo === "vaga" && d.titulo.length < 5) {
-      ctx.addIssue({ code: "custom", path: ["titulo"], message: "Use pelo menos 5 letras." });
+      ctx.addIssue({ code: "custom", path: ["titulo"], message: faltamLetras(5, d.titulo.length) });
     }
     if (d.tipo === "vaga" && !d.regime) {
-      ctx.addIssue({ code: "custom", path: ["regime"], message: "Escolha o tipo de contratação." });
+      ctx.addIssue({ code: "custom", path: ["regime"], message: SEM_REGIME });
     }
     if (d.tipo === "vaga" && d.agencia && !d.contratante_confidencial && !d.cliente_id && d.contratante.length < 2) {
       ctx.addIssue({
@@ -201,7 +210,7 @@ export const esquemaAnuncio = z
     }
     if (!d.combinar) {
       if (d.pagamento_valor == null || Number.isNaN(d.pagamento_valor)) {
-        ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Informe o valor ou marque “A combinar”." });
+        ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: SEM_VALOR });
       } else if (d.pagamento_valor <= 0 || d.pagamento_valor > 1_000_000) {
         ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Confira o valor." });
       }
@@ -336,7 +345,9 @@ function coordenada(valor: string | null) {
 /** Regras que dependem de mais de um campo, conferidas mesmo quando outros campos têm erro. */
 function errosCruzados(bruto: Record<string, unknown>) {
   const erros: Record<string, string> = {};
-  if (bruto.tipo === "vaga" && !bruto.regime) erros.regime = "Escolha o tipo de contratação.";
+  const titulo = String(bruto.titulo ?? "").trim();
+  if (bruto.tipo === "vaga" && titulo.length >= 2 && titulo.length < 5) erros.titulo = faltamLetras(5, titulo.length);
+  if (bruto.tipo === "vaga" && !bruto.regime) erros.regime = SEM_REGIME;
   if (
     bruto.tipo === "vaga" &&
     bruto.agencia &&
@@ -348,7 +359,7 @@ function errosCruzados(bruto: Record<string, unknown>) {
   }
   if (!bruto.combinar) {
     const valor = bruto.pagamento_valor as number | null;
-    if (valor == null || Number.isNaN(valor)) erros.pagamento_valor = "Informe o valor ou marque “A combinar”.";
+    if (valor == null || Number.isNaN(valor)) erros.pagamento_valor = SEM_VALOR;
     else if (valor <= 0 || valor > 1_000_000) erros.pagamento_valor = "Confira o valor.";
     if (!bruto.pagamento_unidade) erros.pagamento_unidade = "Diga se é por hora, dia, mês…";
     const erroFaixa = conferirFaixa(valor, bruto.pagamento_ate as number | null);
@@ -496,7 +507,7 @@ const esquemaServico = z
   .superRefine((d, ctx) => {
     if (d.combinar) return;
     if (d.pagamento_valor == null || Number.isNaN(d.pagamento_valor)) {
-      ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Informe o preço ou marque “A combinar”." });
+      ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Escreva o preço ou marque “A combinar”." });
     } else if (d.pagamento_valor <= 0 || d.pagamento_valor > 1_000_000) {
       ctx.addIssue({ code: "custom", path: ["pagamento_valor"], message: "Confira o valor." });
     }

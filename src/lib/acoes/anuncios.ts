@@ -11,7 +11,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerAnuncio, registroDoAnuncio, UUID, type DadosAnuncio } from "@/lib/validacao";
 import { salvarTriagem } from "@/lib/servidor/triagem";
-import { completarAnuncio } from "@/lib/servidor/completar-anuncio";
+import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio";
 
 /**
  * Antes de entrar: confere o anúncio de quem ainda não tem conta (nada é salvo). Com
@@ -19,9 +19,10 @@ import { completarAnuncio } from "@/lib/servidor/completar-anuncio";
  * entrar, ele é publicado.
  */
 export async function conferirAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  await completarAnuncio(formData, true);
+  const trocas = await completarAnuncio(formData, true);
   const leitura = lerAnuncio(formData);
-  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  if (!leitura.ok)
+    return { ok: false, erro: "Confira os campos marcados.", erros: ajustarErros(leitura.erros, trocas) };
   return { ok: true };
 }
 
@@ -84,9 +85,10 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
   const usuario = await obterUsuario();
   if (!usuario) redirect("/entrar?next=/publicar");
 
-  await completarAnuncio(formData);
+  const trocas = await completarAnuncio(formData);
   const leitura = lerAnuncio(formData);
-  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  if (!leitura.ok)
+    return { ok: false, erro: "Confira os campos marcados.", erros: ajustarErros(leitura.erros, trocas) };
   const d = leitura.dados;
   const supabase = await criarClienteServidor();
   const clienteNovo = d.cliente_novo ? await garantirCliente(supabase, d.cliente_novo) : null;
