@@ -4,6 +4,7 @@ import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, SlidersHorizontal,
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { RAIO_PADRAO, type Filtros } from "@/lib/filtros";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
+import { AreaDoMapa, type Limites } from "./area-do-mapa";
 
 const TELA_GRANDE = "(min-width: 1024px)";
 
@@ -146,6 +147,8 @@ export function VisaoExplorar({
   const comLista = visao !== "mapa";
   const mudados = filtrosMudados(filtros);
   const [filtrosAbertos, setFiltrosAbertos] = useState(mudados > 0);
+  // a parte do mapa na tela (com o mapa à mostra): a lista mostra só o que está nela
+  const [area, setArea] = useState<Limites | null>(null);
   const idFiltros = useId();
 
   return (
@@ -211,11 +214,15 @@ export function VisaoExplorar({
                   : "h-80 lg:sticky lg:top-20 lg:h-full lg:max-h-[calc(100dvh-7rem)] lg:min-h-80"
               }
             >
-              <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} />
+              <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} aoMudarArea={setArea} />
             </div>
           </div>
         )}
-        {comLista && <div className={visao === "blocos-mapa" ? "lg:order-1" : ""}>{lista}</div>}
+        {comLista && (
+          <div className={visao === "blocos-mapa" ? "lg:order-1" : ""}>
+            <AreaDoMapa value={comMapa ? area : null}>{lista}</AreaDoMapa>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -42,9 +42,13 @@ import { AvisarBusca } from "./avisar-busca";
 import { BarraBusca, FiltrosLista } from "./barra-busca";
 import type { ProximoPasso } from "./intencao";
 import { PerguntasNaLista } from "./perguntas-na-lista";
+import { ListaPaginada } from "./lista-paginada";
 import { VisaoExplorar } from "./visao-explorar";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
+
+/** Quantos anúncios a busca traz (a lista mostra de 12 em 12, e o mapa todos). */
+const LIMITE = 120;
 
 /**
  * O próximo passo de quem respondeu "O que você quer fazer no Publike?", ao lado da
@@ -182,7 +186,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
           return a.tipo === "vaga" && v !== undefined && vagaNoTurno(v, turno);
         })
       : encontrados;
-  anuncios = anuncios.slice(0, 60);
+  anuncios = anuncios.slice(0, LIMITE);
   const matches =
     usuario && quem && requisitos
       ? matchDasVagas(anuncios, requisitos, quem, usuario.id, agora)
@@ -248,7 +252,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       : filtros.meus
         ? `${n} ${n === 1 ? "anúncio seu" : "anúncios seus"}`
         : n > 20
-          ? `${n >= 60 ? "60+" : n} ${nome[1]}`
+          ? `${n >= LIMITE ? `${LIMITE}+` : n} ${nome[1]}`
           : // com poucas, o número não ajuda: só o que é ("Vagas perto de você")
             `${nome[1][0].toUpperCase()}${nome[1].slice(1)} perto de você`;
   const maiorRaio = RAIOS[RAIOS.length - 1];
@@ -269,8 +273,10 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
     n > 0 ? (
       // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar).
       // "dense": com 3 colunas, o terceiro anúncio sobe para o lado dos dois primeiros, antes das perguntas.
-      <div className="grid grid-flow-row-dense gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2">
-        {anuncios.map((a) => (
+      <ListaPaginada
+        className="grid grid-flow-row-dense gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2"
+        itens={anuncios.map((a) => ({ id: a.id, lat: a.lat, lng: a.lng }))}
+        cartoes={anuncios.map((a) => (
           <Fragment key={a.id}>
             <CardAnuncio
               anuncio={a}
@@ -286,53 +292,57 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
             />
           </Fragment>
         ))}
-        {poucas && (
-          <aside
-            aria-label="Poucas vagas por aqui"
-            className="col-span-full flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
-          >
-            <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-ink-muted">
-                <BellPlus aria-hidden className="size-5" />
-              </span>
-              <div className="flex flex-col gap-0.5">
-                <p className="text-label">Poucas vagas por aqui, por enquanto</p>
-                <p className="text-body-sm text-ink-muted">
-                  Receba um aviso quando entrar uma vaga nova que combina com esta busca.
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pl-13">
-              {filtros.tipo === "vaga" ? (
-                <AvisarBusca
-                  caminho={hrefFiltros(filtros)}
-                  salvaId={buscaSalva?.id ?? null}
-                  logado={Boolean(usuario)}
-                />
-              ) : (
-                <Link
-                  href={hrefFiltros(filtros, { tipo: "vaga", tudo: false })}
-                  scroll={false}
-                  className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-terra-text underline-offset-2 hover:underline"
-                >
-                  <BellPlus aria-hidden className="size-4 shrink-0" />
-                  Ver só as vagas e receber aviso
-                </Link>
-              )}
-              {!filtros.tempo && filtros.raio < maiorRaio && (
-                <Link
-                  href={hrefFiltros(filtros, { raio: maiorRaio })}
-                  scroll={false}
-                  className="inline-flex min-h-9 items-center text-body-sm text-ink underline underline-offset-2 hover:text-terra-text"
-                >
-                  Buscar até {maiorRaio} km
-                </Link>
-              )}
-            </div>
-          </aside>
-        )}
-        {convidarQuemContrata && <ConviteQuemContrata />}
-      </div>
+        depois={
+          <>
+            {poucas && (
+              <aside
+                aria-label="Poucas vagas por aqui"
+                className="col-span-full flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-ink-muted">
+                    <BellPlus aria-hidden className="size-5" />
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-label">Poucas vagas por aqui, por enquanto</p>
+                    <p className="text-body-sm text-ink-muted">
+                      Receba um aviso quando entrar uma vaga nova que combina com esta busca.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pl-13">
+                  {filtros.tipo === "vaga" ? (
+                    <AvisarBusca
+                      caminho={hrefFiltros(filtros)}
+                      salvaId={buscaSalva?.id ?? null}
+                      logado={Boolean(usuario)}
+                    />
+                  ) : (
+                    <Link
+                      href={hrefFiltros(filtros, { tipo: "vaga", tudo: false })}
+                      scroll={false}
+                      className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-terra-text underline-offset-2 hover:underline"
+                    >
+                      <BellPlus aria-hidden className="size-4 shrink-0" />
+                      Ver só as vagas e receber aviso
+                    </Link>
+                  )}
+                  {!filtros.tempo && filtros.raio < maiorRaio && (
+                    <Link
+                      href={hrefFiltros(filtros, { raio: maiorRaio })}
+                      scroll={false}
+                      className="inline-flex min-h-9 items-center text-body-sm text-ink underline underline-offset-2 hover:text-terra-text"
+                    >
+                      Buscar até {maiorRaio} km
+                    </Link>
+                  )}
+                </div>
+              </aside>
+            )}
+            {convidarQuemContrata && <ConviteQuemContrata />}
+          </>
+        }
+      />
     ) : filtros.meus ? (
       <Vazio
         icone={SearchX}

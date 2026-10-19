@@ -194,10 +194,13 @@ export function MapaAnuncios({
   pontos,
   filtros,
   origem = null,
+  aoMudarArea,
 }: {
   pontos: PontoMapa[];
   filtros: Filtros;
   origem?: OrigemMapa;
+  /** a parte do mapa na tela mudou: [oeste, sul, leste, norte] (a lista mostra só o que está nela) */
+  aoMudarArea?: (limites: [number, number, number, number] | null) => void;
 }) {
   const router = useRouter();
   const caixa = useRef<HTMLDivElement>(null);
@@ -205,6 +208,10 @@ export function MapaAnuncios({
   const marcadores = useRef(new Map<string, Marker>());
   const naTela = useRef(new Map<string, Marker>());
   const atualizar = useRef<() => void>(() => {});
+  const avisarArea = useRef(aoMudarArea);
+  useEffect(() => {
+    avisarArea.current = aoMudarArea;
+  }, [aoMudarArea]);
   const [pronto, setPronto] = useState(false);
   const [falhou, setFalhou] = useState(false);
   const [movido, setMovido] = useState(false);
@@ -345,6 +352,13 @@ export function MapaAnuncios({
           // Refaz as etiquetas quando o mapa para de mexer ou os dados chegam (não a cada quadro:
           // no meio de um toque a etiqueta sumiria e o clique cairia no mapa)
           m.on("moveend", () => atualizar.current());
+          // a lista acompanha a parte do mapa na tela
+          const area = () => {
+            const b = m.getBounds();
+            avisarArea.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+          };
+          m.on("moveend", area);
+          area();
           m.on("sourcedata", (e) => {
             if (e.sourceId === "anuncios" && e.isSourceLoaded) atualizar.current();
           });
@@ -366,6 +380,7 @@ export function MapaAnuncios({
 
     return () => {
       cancelado = true;
+      avisarArea.current?.(null);
       for (const marcador of todos.values()) marcador.remove();
       todos.clear();
       visiveis.clear();
