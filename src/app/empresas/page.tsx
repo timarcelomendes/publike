@@ -89,7 +89,7 @@ const PERGUNTAS = [
   },
   {
     p: "Quanto tempo a vaga fica no ar?",
-    r: "30 dias, e dá para renovar. Você também pode pausar ou encerrar quando quiser, por exemplo quando já contratou.",
+    r: "Você escolhe ao publicar: 15, 30, 60, 90 dias, outro prazo ou sem prazo (fica até você encerrar). Contratou? Marque “Vaga preenchida”: a vaga continua no site com a marcação e quem curtiu recebe o aviso.",
   },
   {
     p: "Onde o Publike funciona?",

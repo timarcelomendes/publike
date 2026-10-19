@@ -187,7 +187,7 @@ export default function Privacidade() {
         <Secao titulo="Por quanto tempo">
           <Lista
             itens={[
-              "Anúncios saem das buscas depois de 30 dias, a não ser que você renove.",
+              "Anúncios saem das buscas no fim do prazo escolhido ao publicar (30 dias, se nada foi escolhido), a não ser que você renove. Vaga “sem prazo” fica até ser encerrada.",
               "Avisos (curtidas e matches) são apagados depois de 90 dias. O registro dos e-mails enviados, depois de 30 dias.",
               "Quando você exclui a conta, apagamos na hora seu perfil, contato, foto, currículo, anúncios, curtidas e matches.",
               "O registro do que a moderação fez (por exemplo, a remoção de um anúncio ou a suspensão de uma conta) fica guardado para a segurança do site, mesmo depois que a conta é excluída.",

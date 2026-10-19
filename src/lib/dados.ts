@@ -515,6 +515,7 @@ export type DetalhesDaVaga = CamposDaVaga & {
   beneficios_lista: string[];
   vagas: number;
   expira_em: string;
+  preenchida_em: string | null;
 };
 
 /** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match e o cartão da busca. */
@@ -524,7 +525,7 @@ export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[
   const { data, error } = await supabase
     .from("anuncios")
     .select(
-      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em",
+      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em, preenchida_em",
     )
     .in("id", ids);
   if (error) falha("o que as vagas pedem", error);
@@ -749,7 +750,17 @@ export async function listarVagasParaDescobrir(): Promise<VagaDescobrir[]> {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("vagas_para_descobrir", { p_limite: 300 });
   if (error) falha("vagas do Descobrir", error);
-  return data ?? [];
+  const vagas = data ?? [];
+  if (!vagas.length) return vagas;
+  // vaga preenchida não entra no Descobrir (na busca, ela aparece com a marcação)
+  const ids = vagas.map((v) => v.id);
+  const { data: preenchidas } = await supabase
+    .from("anuncios")
+    .select("id")
+    .in("id", ids)
+    .not("preenchida_em", "is", null);
+  const fora = new Set((preenchidas ?? []).map((p) => p.id));
+  return fora.size ? vagas.filter((v) => !fora.has(v.id)) : vagas;
 }
 
 /** "O que você procura?" de quem está logado. */

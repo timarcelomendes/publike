@@ -1,4 +1,4 @@
-import { Building2, Bus, Footprints, MapPin, MessageCircleReply, Users } from "lucide-react";
+import { Building2, Bus, Footprints, MapPin, MessageCircleReply, UserCheck, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -28,7 +28,14 @@ const DIA = 24 * 3600 * 1000;
 const BENEFICIO_CURTO: Record<string, string> = { vale_transporte: "VT", vale_refeicao: "VR", vale_alimentacao: "VA" };
 
 /** O que a vaga oferece e pede, numa linha do cartão. */
-export type ExtrasDaVaga = { pedeCurriculo: boolean; beneficios: string[]; vagas: number; expiraEm: string };
+export type ExtrasDaVaga = {
+  pedeCurriculo: boolean;
+  beneficios: string[];
+  vagas: number;
+  expiraEm: string;
+  /** a vaga foi preenchida: continua na busca, com a marcação, e não dá mais para curtir */
+  preenchida?: boolean;
+};
 
 /** Para quem publicou: o que chegou na própria vaga. */
 export type MinhaVaga = { curtidas: number; novas: number };
@@ -90,7 +97,8 @@ export function CardAnuncio({
         extras.vagas > 1 ? `${extras.vagas} vagas` : null,
       ].filter((x): x is string => Boolean(x))
     : [];
-  const prazo = extras && !proprio ? encerra(extras.expiraEm, agora) : null;
+  const preenchida = Boolean(extras?.preenchida);
+  const prazo = extras && !proprio && !preenchida ? encerra(extras.expiraEm, agora) : null;
 
   return (
     <article
@@ -98,8 +106,14 @@ export function CardAnuncio({
       className="relative flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:p-5 group-data-[visao=grade]/visao:gap-2 group-data-[visao=grade]/visao:p-3 group-data-[visao=grade]/visao:sm:p-4 group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4"
     >
       <div className="flex flex-wrap gap-2 group-data-[visao=lista]/visao:hidden">
-        {comMatch && <SeloMatch match={comMatch} />}
-        {novo && <Selo variante="novo">Novo</Selo>}
+        {preenchida && (
+          <Selo variante="aviso">
+            <UserCheck aria-hidden />
+            Vaga preenchida
+          </Selo>
+        )}
+        {comMatch && !preenchida && <SeloMatch match={comMatch} />}
+        {novo && !preenchida && <Selo variante="novo">Novo</Selo>}
         {modalidade && <Selo>{modalidade}</Selo>}
         {!servico && anuncio.autor_tipo === "agencia" && (
           <Selo variante="contorno">
@@ -232,15 +246,21 @@ export function CardAnuncio({
         )}
         {!proprio && (
           <span className="flex items-center gap-2">
-            {salva !== null && !servico && <BotaoSalvarVaga anuncioId={anuncio.id} salva={salva} logado compacto />}
-            <BotaoCurtir
-              className="relative z-10"
-              anuncioId={anuncio.id}
-              status={anuncio.minha_curtida}
-              logado={usuarioId !== null}
-              servico={servico}
-              quem={anuncio.autor_nome}
-            />
+            {salva !== null && !servico && !preenchida && (
+              <BotaoSalvarVaga anuncioId={anuncio.id} salva={salva} logado compacto />
+            )}
+            {preenchida && anuncio.minha_curtida !== "match" ? (
+              <span className="text-label text-ink-muted">Vaga preenchida</span>
+            ) : (
+              <BotaoCurtir
+                className="relative z-10"
+                anuncioId={anuncio.id}
+                status={anuncio.minha_curtida}
+                logado={usuarioId !== null}
+                servico={servico}
+                quem={anuncio.autor_nome}
+              />
+            )}
           </span>
         )}
       </div>

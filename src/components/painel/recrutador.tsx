@@ -18,7 +18,7 @@ import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
-import { formatarData, formatarNumero, plural } from "@/lib/formato";
+import { ateQuando, formatarNumero, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { comoResponde } from "@/lib/resposta";
 import type { Saude } from "@/lib/saude-vaga";
@@ -198,7 +198,7 @@ export async function PainelRecrutador({
       icone: Hourglass,
       quando: d <= 0 ? "Hoje" : d === 1 ? "Amanhã" : `Em ${d} dias`,
       titulo: vencendo.length === 1 ? `${vencendo[0].titulo} sai do ar` : `${vencendo.length} vagas saem do ar`,
-      texto: "Renove por mais 30 dias para continuar recebendo candidatos.",
+      texto: "Renove para continuar recebendo candidatos, ou marque como preenchida se já contratou.",
       href: "/painel/anuncios?tipo=vaga",
       acao: "Renovar",
     });
@@ -312,7 +312,7 @@ export async function PainelRecrutador({
                           <span className="font-display text-h3">{v.titulo}</span>
                           <Selo variante={ativa ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
                           <span className="text-body-sm text-ink-muted">
-                            {ativa ? `até ${formatarData(v.expira_em)} · ` : ""}
+                            {ativa ? `${ateQuando(v.expira_em)} · ` : ""}
                             {plural(visitas.get(v.id) ?? 0, "visita", "visitas")} ·{" "}
                             {plural(daVaga.length, "candidato", "candidatos")}
                           </span>

@@ -13,6 +13,7 @@ import { categoria, MOTIVOS_DENUNCIA } from "@/lib/constantes";
 import {
   ehParaSempre,
   formatarDataCurta,
+  semPrazo,
   formatarDataHora,
   formatarLugar,
   primeiro,
@@ -115,7 +116,9 @@ async function Conteudo({
           <Dado rotulo="Valor">{valorDoAnuncio(anuncio)}</Dado>
           {anuncio.horario && <Dado rotulo="Horário">{anuncio.horario}</Dado>}
           {anuncio.tipo === "vaga" && <Dado rotulo="Vagas">{anuncio.vagas}</Dado>}
-          <Dado rotulo="No ar até">{formatarDataCurta(anuncio.expira_em)}</Dado>
+          <Dado rotulo="No ar até">
+            {semPrazo(anuncio.expira_em) ? "sem prazo" : formatarDataCurta(anuncio.expira_em)}
+          </Dado>
           <Dado rotulo="Última mudança">{formatarDataHora(anuncio.atualizado_em)}</Dado>
         </dl>
         <p className="rounded-md bg-surface-300 p-4 text-body whitespace-pre-line">{anuncio.descricao}</p>

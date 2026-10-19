@@ -101,6 +101,16 @@ export function tempoRelativo(iso: string, agora: number) {
 }
 
 /** "7 de outubro" */
+/** Vaga sem prazo para sair do ar: o banco guarda a saída em 31/12/9999. */
+export function semPrazo(expiraEm: string | null | undefined) {
+  return Boolean(expiraEm) && new Date(expiraEm as string).getUTCFullYear() >= 9999;
+}
+
+/** "no ar até 18 de novembro" ou, sem prazo, "no ar até ser encerrada". */
+export function ateQuando(expiraEm: string) {
+  return semPrazo(expiraEm) ? "até ser encerrada" : `até ${formatarData(expiraEm)}`;
+}
+
 export function formatarData(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "numeric",

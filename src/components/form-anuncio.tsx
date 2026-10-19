@@ -52,6 +52,8 @@ export type ValoresAnuncio = {
   pede_curriculo?: boolean;
   /** quem curtir já recebe o contato (match na hora) */
   contato_direto?: boolean;
+  /** em quantos dias a vaga sai do ar sozinha; null: sem prazo (fica até ser encerrada) */
+  prazo_dias?: number | null;
   /** vaga de agência: a empresa que contrata (vazio quando é confidencial) */
   contratante?: string | null;
   contratante_confidencial?: boolean;
@@ -100,6 +102,9 @@ const CAMPOS_DETALHES = [
 const ESTADO_INICIAL: EstadoForm = { ok: false };
 
 /** Opção em forma de pílula (rádio ou caixa de marcar), como o tipo de contratação. */
+/** As opções de prazo da vaga, em dias (e ainda "outro" e "sem prazo"). */
+const PRAZOS = [15, 30, 60, 90];
+
 const classesPilula =
   "inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-pill border border-line bg-surface-300 px-3.5 text-label transition-colors has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus";
 
@@ -167,6 +172,11 @@ export function FormAnuncio({
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
   const [descricao, setDescricao] = useState(inicial.descricao);
   const [cidade, setCidade] = useState(inicial.cidade);
+  // o prazo da vaga: uma das opções, outro número de dias ou sem prazo
+  const prazoInicial = inicial.prazo_dias === undefined ? 30 : inicial.prazo_dias;
+  const [prazo, setPrazo] = useState<string>(
+    prazoInicial === null ? "sem" : PRAZOS.includes(prazoInicial) ? String(prazoInicial) : "outro",
+  );
   const [pedeCurriculo, setPedeCurriculo] = useState(inicial.pede_curriculo ?? false);
   // Em vaga nova, CLT, estágio e temporário já marcam "pedir currículo" (até a pessoa mexer na caixa)
   const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(editando);
@@ -804,6 +814,73 @@ export function FormAnuncio({
       </details>
 
       {vaga && (
+        <fieldset className="flex flex-col gap-2 rounded-md border border-line bg-surface-200 p-4">
+          <legend className="sr-only">Expiração automática</legend>
+          <p className="text-label" aria-hidden>
+            Expiração automática
+          </p>
+          <p className="-mt-1 text-body-sm text-ink-muted">
+            Em quantos dias a vaga sai do ar sozinha. Sem prazo, ela fica no ar até você encerrar ou marcar como
+            preenchida.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PRAZOS.map((d) => (
+              <label key={d} className={classesPilula}>
+                <input
+                  type="radio"
+                  name="prazo"
+                  value={d}
+                  checked={prazo === String(d)}
+                  onChange={() => setPrazo(String(d))}
+                  className="sr-only"
+                />
+                {d} dias
+              </label>
+            ))}
+            <label className={classesPilula}>
+              <input
+                type="radio"
+                name="prazo"
+                value="outro"
+                checked={prazo === "outro"}
+                onChange={() => setPrazo("outro")}
+                className="sr-only"
+              />
+              Outro
+            </label>
+            <label className={classesPilula}>
+              <input
+                type="radio"
+                name="prazo"
+                value="sem"
+                checked={prazo === "sem"}
+                onChange={() => setPrazo("sem")}
+                className="sr-only"
+              />
+              Sem prazo
+            </label>
+          </div>
+          {prazo === "outro" && (
+            <label htmlFor="prazo-outro" className="flex items-center gap-2 text-body-sm">
+              <input
+                id="prazo-outro"
+                name="prazo_outro"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={365}
+                defaultValue={prazoInicial && !PRAZOS.includes(prazoInicial) ? prazoInicial : ""}
+                aria-invalid={erros.prazo_dias ? true : undefined}
+                className={`${classesEntrada} w-24`}
+              />
+              dias (de 1 a 365)
+            </label>
+          )}
+          {erros.prazo_dias && <MensagemErro>{erros.prazo_dias}</MensagemErro>}
+        </fieldset>
+      )}
+
+      {vaga && (
         <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4">
           <input
             type="checkbox"
@@ -843,7 +920,8 @@ export function FormAnuncio({
         </Botao>
         {emNomeDe ? (
           <p className="text-body-sm text-ink-muted">
-            Fica 30 dias no ar. Quem se candidatar aparece no painel de {emNomeDe}, que recebe os avisos por e-mail.
+            Fica no ar pelo prazo escolhido. Quem se candidatar aparece no painel de {emNomeDe}, que recebe os avisos
+            por e-mail.
           </p>
         ) : equipe ? (
           <p className="text-body-sm text-ink-muted">
@@ -852,8 +930,8 @@ export function FormAnuncio({
         ) : (
           <p className="text-body-sm text-ink-muted">
             {semConta ? "Depois é só entrar com seu WhatsApp ou e-mail: a vaga vai ao ar na hora. " : ""}
-            Grátis. Seu WhatsApp só aparece no match. Fica 30 dias no ar e pode ser renovado de 30 em 30
-            dias. Ao publicar, você concorda com as{" "}
+            Grátis. Seu WhatsApp só aparece no match. Fica no ar pelo prazo que você escolher, e dá para renovar. Ao
+            publicar, você concorda com as{" "}
             <Link href="/privacidade#regras" className="underline">
               regras do Publike
             </Link>

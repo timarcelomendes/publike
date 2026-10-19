@@ -12,7 +12,8 @@ import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { esperaResposta, LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuPerfil } from "@/lib/dados";
-import { formatarData, formatarLugar, primeiro, rotuloModalidade, tempoRelativo } from "@/lib/formato";
+import { ateQuando, formatarLugar, primeiro, rotuloModalidade, semPrazo, tempoRelativo } from "@/lib/formato";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
@@ -57,12 +58,17 @@ export default function MeusAnuncios({ searchParams }: PageProps<"/painel/anunci
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anuncios">["searchParams"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
-  await exigirUsuario("/painel/anuncios");
-  const [anuncios, perfil, candidatos] = await Promise.all([
+  const usuario = await exigirUsuario("/painel/anuncios");
+  const [anuncios, perfil, candidatos, extras] = await Promise.all([
     listarMeusAnuncios(),
     obterMeuPerfil(),
     listarMeusCandidatos(),
+    // o prazo escolhido e a marcação de preenchida de cada vaga
+    criarClienteServidor().then((c) =>
+      c.from("anuncios").select("id, prazo_dias, preenchida_em").eq("autor_id", usuario.id).eq("tipo", "vaga"),
+    ),
   ]);
+  const extraDe = new Map((extras.data ?? []).map((e) => [e.id, e]));
   const agora = await agoraDaRequisicao();
   const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
   // o banco conta no limite o que está no ar, pausado ou em análise
@@ -187,7 +193,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
             <ul aria-label="Lista de anúncios" className="flex flex-col gap-4">
               {lista.map((a) => {
                 const status = a.status as StatusAnuncio;
-                const venceLogo = status === "ativo" && new Date(a.expira_em).getTime() - agora < CINCO_DIAS;
+                const venceLogo =
+                  status === "ativo" && !semPrazo(a.expira_em) && new Date(a.expira_em).getTime() - agora < CINCO_DIAS;
+                const extra = extraDe.get(a.id);
                 const podeRenovar = status === "expirado" || status === "encerrado" || venceLogo;
                 return (
                   <li
@@ -207,6 +215,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                         {STATUS_ANUNCIO[status]?.nome ?? status}
                       </Selo>
                       <Selo>{rotuloModalidade(a.tipo, a.regime)}</Selo>
+                      {extra?.preenchida_em && <Selo variante="aviso">Vaga preenchida</Selo>}
                     </div>
                     <h3 className="text-h3">
                       <Link href={`/anuncio/${a.id}`} className="underline-offset-2 hover:underline">
@@ -215,9 +224,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                     </h3>
                     <p className="text-body-sm text-ink-muted">
                       {formatarLugar(a.bairro, a.cidade)} · publicado {tempoRelativo(a.criado_em, agora)} ·{" "}
-                      {status === "ativo"
-                        ? `no ar até ${formatarData(a.expira_em)}`
-                        : (STATUS_ANUNCIO[status]?.ajuda ?? "")}
+                      {status === "ativo" ? `no ar ${ateQuando(a.expira_em)}` : (STATUS_ANUNCIO[status]?.ajuda ?? "")}
                     </p>
                     {a.tipo === "vaga" && candidatos ? (
                       <div className="flex flex-col gap-2">
@@ -261,7 +268,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                       </div>
                     )}
                     <div className="border-t border-line pt-3">
-                      <AcoesAnuncio id={a.id} tipo={a.tipo} status={status} podeRenovar={podeRenovar} />
+                      <AcoesAnuncio
+                        id={a.id}
+                        tipo={a.tipo}
+                        status={status}
+                        podeRenovar={podeRenovar}
+                        prazoDias={extra ? extra.prazo_dias : 30}
+                        preenchida={Boolean(extra?.preenchida_em)}
+                      />
                     </div>
                   </li>
                 );

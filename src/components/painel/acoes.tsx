@@ -3,6 +3,7 @@
 import {
   CircleCheckBig,
   CopyPlus,
+  DoorOpen,
   FileText,
   Heart,
   Hourglass,
@@ -12,10 +13,11 @@ import {
   RefreshCw,
   Trash,
   Undo2,
+  UserCheck,
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { excluirAnuncio, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
+import { excluirAnuncio, marcarVagaPreenchida, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
 import { CaminhoDoAceite } from "../caminho-curtida";
 import { Botao, BotaoLink } from "../ui/botao";
@@ -27,11 +29,17 @@ export function AcoesAnuncio({
   tipo,
   status,
   podeRenovar,
+  prazoDias = null,
+  preenchida = false,
 }: {
   id: string;
   tipo: string;
   status: string;
   podeRenovar: boolean;
+  /** o prazo da vaga, em dias (null: sem prazo) */
+  prazoDias?: number | null;
+  /** a vaga foi marcada como preenchida */
+  preenchida?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
@@ -55,8 +63,11 @@ export function AcoesAnuncio({
         {podeRenovar && (
           <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => renovarAnuncio(id))}>
             <RefreshCw aria-hidden />
-            Renovar por {tipo === "servico" ? 90 : 30} dias
+            Renovar por {tipo === "servico" ? 90 : (prazoDias ?? 30)} dias
           </Botao>
+        )}
+        {tipo === "vaga" && (status === "ativo" || status === "pausado") && (
+          <BotaoVagaPreenchida id={id} preenchida={preenchida} />
         )}
         {(status === "ativo" || status === "pausado") && (
           <Botao
@@ -104,6 +115,60 @@ export function AcoesAnuncio({
       </div>
       {mensagem}
     </div>
+  );
+}
+
+/**
+ * Marcar a vaga como preenchida (pergunta antes: quem curtiu recebe o aviso) ou reabrir.
+ * A vaga continua no site com a marcação "Vaga preenchida".
+ */
+export function BotaoVagaPreenchida({ id, preenchida }: { id: string; preenchida: boolean }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [confirmar, setConfirmar] = useState(false);
+  if (preenchida) {
+    return (
+      <span className="flex flex-wrap items-center gap-2">
+        <Botao
+          tamanho="sm"
+          variante="fantasma"
+          disabled={pendente}
+          onClick={() => rodar(() => marcarVagaPreenchida(id, false))}
+        >
+          <DoorOpen aria-hidden />
+          Reabrir a vaga
+        </Botao>
+        {mensagem}
+      </span>
+    );
+  }
+  return confirmar ? (
+    <span className="flex flex-wrap items-center gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
+      Quem curtiu e ainda espera recebe o aviso de que a vaga foi preenchida. A vaga continua no site, com a marcação.
+      <Botao
+        tamanho="sm"
+        variante="sucesso"
+        disabled={pendente}
+        onClick={() =>
+          rodar(
+            () => marcarVagaPreenchida(id, true),
+            () => setConfirmar(false),
+          )
+        }
+      >
+        Sim, foi preenchida
+      </Botao>
+      <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmar(false)}>
+        Cancelar
+      </Botao>
+    </span>
+  ) : (
+    <span className="flex flex-wrap items-center gap-2">
+      <Botao tamanho="sm" disabled={pendente} onClick={() => setConfirmar(true)}>
+        <UserCheck aria-hidden />
+        Vaga preenchida
+      </Botao>
+      {mensagem}
+    </span>
   );
 }
 

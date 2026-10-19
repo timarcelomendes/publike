@@ -16,6 +16,7 @@ import {
   Navigation,
   ShieldAlert,
   Users,
+  UserCheck,
   Wrench,
   Zap,
   type LucideIcon,
@@ -33,6 +34,7 @@ import { BotaoSeguir } from "@/components/social/botoes";
 import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
 import { VerMaisPerto } from "@/components/anuncio/ver-mais";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
+import { BotaoVagaPreenchida } from "@/components/painel/acoes";
 import { PainelCurtir } from "@/components/anuncio/painel-curtir";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { MapaArea } from "@/components/mapa/mapa-area";
@@ -72,11 +74,12 @@ import {
 } from "@/lib/dados";
 import { comoResponde } from "@/lib/resposta";
 import {
-  formatarData,
+  ateQuando,
   formatarLugar,
   formatarValor,
   formatarMesAno,
   primeiro,
+  semPrazo,
   rotuloConta,
   rotuloModalidade,
   tempoRelativo,
@@ -152,7 +155,7 @@ function dadosVaga(a: AnuncioCompleto) {
     title: a.titulo,
     description: a.descricao.replace(/\n/g, "<br>"),
     datePosted: a.criado_em,
-    validThrough: a.expira_em,
+    ...(semPrazo(a.expira_em) ? {} : { validThrough: a.expira_em }),
     employmentType:
       a.jornada === "meio_periodo" && a.regime === "clt" ? "PART_TIME" : (tipos[a.regime ?? "outro"] ?? "OTHER"),
     // vaga de agência: quem contrata é a empresa (ou "confidencial"), não a agência
@@ -300,6 +303,23 @@ async function DetalheAnuncio({
         <BotaoLink href={vaga ? `/painel/anuncio/${anuncio.id}/editar` : "/painel/servicos"}>
           {vaga ? "Editar anúncio" : "Editar meus serviços"}
         </BotaoLink>
+        {vaga && (anuncio.status === "ativo" || anuncio.status === "pausado") && (
+          <BotaoVagaPreenchida id={anuncio.id} preenchida={Boolean(anuncio.preenchida_em)} />
+        )}
+      </div>
+    ) : anuncio.preenchida_em && anuncio.minha_curtida !== "match" ? (
+      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
+        <p className="flex items-center gap-2 font-display text-h3">
+          <UserCheck aria-hidden className="size-5 text-cerrado-text" />
+          Vaga preenchida
+        </p>
+        <p className="text-body-sm text-ink-muted">
+          {anuncio.autor_nome || "Quem publicou"} já achou quem procurava
+          {anuncio.minha_curtida ? ". Obrigado pelo seu interesse!" : "."} Tem outras vagas perto de você.
+        </p>
+        <BotaoLink href="/?tipo=vaga" variante="primario">
+          Ver vagas perto de mim
+        </BotaoLink>
       </div>
     ) : (
       <PainelCurtir
@@ -329,7 +349,8 @@ async function DetalheAnuncio({
 
   return (
     <Container className="py-6 sm:py-8">
-      {vaga && anuncio.status === "ativo" && (
+      {/* vaga preenchida sai do Google para Vagas (o Google pede para tirar as vagas fechadas) */}
+      {vaga && anuncio.status === "ativo" && !anuncio.preenchida_em && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(dadosVaga(anuncio)).replace(/</g, "\\u003c") }}
@@ -340,8 +361,8 @@ async function DetalheAnuncio({
 
       {primeiro(sp.publicado) === "1" && (
         <Aviso tipo="sucesso" className="mt-4" titulo="Seu anúncio está no ar!">
-          Ele fica 30 dias publicado e pode ser renovado de 30 em 30 dias. Quando alguém curtir, você recebe um aviso e
-          vê a pessoa no seu painel.
+          Ele fica no ar pelo prazo que você escolheu e pode ser renovado. Quando alguém curtir, você recebe um aviso e
+          vê a pessoa no seu painel. Preencheu a vaga? Marque como preenchida no painel.
         </Aviso>
       )}
       {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" className="mt-4" titulo="Alterações salvas." />}
@@ -376,7 +397,13 @@ async function DetalheAnuncio({
                 Pede currículo
               </Selo>
             )}
-            {anuncio.contato_direto && anuncio.status === "ativo" && (
+            {vaga && anuncio.preenchida_em && (
+              <Selo variante="aviso">
+                <UserCheck aria-hidden />
+                Vaga preenchida
+              </Selo>
+            )}
+            {anuncio.contato_direto && anuncio.status === "ativo" && !anuncio.preenchida_em && (
               <Selo variante="contorno">
                 <Zap aria-hidden />
                 Contato direto
@@ -483,7 +510,7 @@ async function DetalheAnuncio({
             <Fato icone={CalendarClock} rotulo="Publicado">
               {tempoRelativo(anuncio.criado_em, agora)}
               <span className="block text-body-sm font-normal text-ink-muted">
-                fica no ar até {formatarData(anuncio.expira_em)}
+                {anuncio.preenchida_em ? "vaga preenchida" : `fica no ar ${ateQuando(anuncio.expira_em)}`}
               </span>
             </Fato>
           </dl>

@@ -33,7 +33,8 @@ const GRATIS: Item[] = [
   {
     icone: Megaphone,
     titulo: "Publicar vagas e serviços",
-    texto: "Com carteira, diária, freelance ou serviço. Cada anúncio fica 30 dias no ar e dá para renovar.",
+    texto:
+      "Com carteira, diária, freelance ou serviço. A vaga fica no ar pelo prazo que você escolher (ou sem prazo), e dá para renovar.",
   },
   {
     icone: Heart,

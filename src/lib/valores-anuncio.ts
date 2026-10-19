@@ -33,6 +33,7 @@ export function valoresDoAnuncio(
     vagas: anuncio.vagas,
     pede_curriculo: anuncio.pede_curriculo,
     contato_direto: anuncio.contato_direto,
+    prazo_dias: anuncio.prazo_dias,
     contratante: anuncio.contratante,
     contratante_confidencial: anuncio.contratante_confidencial,
     pagamento_ate: anuncio.pagamento_ate,

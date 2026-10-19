@@ -112,7 +112,34 @@ export async function renovarAnuncio(id: string): Promise<Resultado> {
   if (error) return { ok: false, erro: mensagemDeErro(error) };
 
   refresh();
-  return { ok: true, mensagem: "Pronto: mais 30 dias no ar." };
+  return { ok: true, mensagem: "Pronto: o prazo da vaga começou de novo." };
+}
+
+/**
+ * A vaga foi preenchida (ou reaberta). Ela continua no site com a marcação, ninguém mais curte,
+ * e quem curtiu e esperava (ou deu match) recebe o aviso, menos quem foi contratado.
+ */
+export async function marcarVagaPreenchida(id: string, preenchida: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel/anuncios" };
+
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("marcar_vaga_preenchida", { p_id: id, p_preenchida: preenchida });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para marcar agora. Tente de novo.") };
+
+  after(processarFilas);
+  refresh();
+  if (!preenchida) return { ok: true, mensagem: "Vaga reaberta: dá para curtir de novo." };
+  const n = data ?? 0;
+  return {
+    ok: true,
+    mensagem:
+      n === 0
+        ? "Vaga marcada como preenchida."
+        : `Vaga marcada como preenchida. ${n === 1 ? "1 pessoa foi avisada" : `${n} pessoas foram avisadas`}.`,
+  };
 }
 
 export async function excluirAnuncio(id: string): Promise<Resultado> {

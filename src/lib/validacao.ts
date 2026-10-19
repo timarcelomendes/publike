@@ -138,6 +138,13 @@ export const esquemaAnuncio = z
     pede_curriculo: z.boolean(),
     /** contato direto: quem curtir já dá match (sem esperar o aceite) */
     contato_direto: z.boolean(),
+    /** a vaga sai do ar sozinha em tantos dias (null: sem prazo) */
+    prazo_dias: z
+      .number({ error: "Diga em quantos dias, de 1 a 365, ou escolha Sem prazo." })
+      .int({ error: "Use um número inteiro de dias." })
+      .min(1, { error: "Diga em quantos dias, de 1 a 365, ou escolha Sem prazo." })
+      .max(365, { error: "No máximo 365 dias. Para mais, escolha Sem prazo." })
+      .nullable(),
     /** quem publica é agência de emprego: a vaga diz a empresa contratante (ou que é confidencial) */
     agencia: z.boolean(),
     contratante: z
@@ -280,6 +287,7 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     vagas: d.vagas,
     pede_curriculo: d.pede_curriculo,
     contato_direto: d.contato_direto,
+    ...(d.tipo === "vaga" ? { prazo_dias: d.prazo_dias } : {}),
     contratante: d.contratante,
     contratante_confidencial: d.contratante_confidencial,
     escolaridade_minima: d.escolaridade_minima,
@@ -322,6 +330,13 @@ function errosCruzados(bruto: Record<string, unknown>) {
 
 export type LeituraAnuncio = { ok: true; dados: DadosAnuncio } | { ok: false; erros: Record<string, string> };
 
+/** O prazo da vaga no formulário: uma opção, "outro" (com o número) ou "sem". Sem o campo, 30 dias. */
+function lerPrazo(prazo: string | null, outro: string | null): number | null {
+  if (prazo === "sem") return null;
+  if (prazo === "outro") return outro ? Number(outro) : Number.NaN;
+  return prazo ? Number(prazo) : 30;
+}
+
 export function lerAnuncio(formData: FormData): LeituraAnuncio {
   const bruto = {
     tipo: campo(formData, "tipo"),
@@ -345,6 +360,7 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     pcd: campo(formData, "pcd") || null,
     pede_curriculo: campo(formData, "pede_curriculo") === "on",
     contato_direto: campo(formData, "contato_direto") === "on",
+    prazo_dias: lerPrazo(campo(formData, "prazo"), campo(formData, "prazo_outro")),
     agencia: campo(formData, "agencia") === "1",
     contratante: campo(formData, "contratante") ?? "",
     contratante_confidencial: campo(formData, "contratante_confidencial") === "on",

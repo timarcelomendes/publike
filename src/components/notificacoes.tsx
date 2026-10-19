@@ -17,6 +17,7 @@ import {
   PartyPopper,
   SearchCheck,
   ThumbsUp,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -49,6 +50,7 @@ function destino(n: Notificacao, usuarioId: string) {
     return `/painel/anuncio/${n.anuncio_id}${n.ator_id ? `#candidato-${n.ator_id}` : ""}`;
   if ((n.tipo === "seguindo" || n.tipo === "busca" || n.tipo === "convite") && n.anuncio_id)
     return `/anuncio/${n.anuncio_id}`;
+  if (n.tipo === "vaga_preenchida") return "/?tipo=vaga";
   if (n.tipo === "recomendacao") return `/perfil/${usuarioId}#recomendacoes`;
   if (n.tipo === "contratacao" && n.anuncio_id) return `/painel/contratacao/${n.anuncio_id}`;
   if (n.tipo === "mensagem" && n.anuncio_id && n.ator_id) return `/painel/conversas/${n.anuncio_id}/${n.ator_id}`;
@@ -177,7 +179,9 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                                             ? FileText
                                             : n.tipo === "curriculo_recebido"
                                               ? FileCheck
-                                              : ShieldCheck;
+                                              : n.tipo === "vaga_preenchida"
+                                                ? UserCheck
+                                                : ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link

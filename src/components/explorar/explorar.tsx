@@ -101,7 +101,13 @@ async function requisitosDaLista(anuncios: AnuncioResumo[]): Promise<Map<string,
 /** A linha de benefícios do cartão (vaga). */
 function extrasDe(v: DetalhesDaVaga | undefined) {
   return v
-    ? { pedeCurriculo: v.pede_curriculo, beneficios: v.beneficios_lista ?? [], vagas: v.vagas, expiraEm: v.expira_em }
+    ? {
+        pedeCurriculo: v.pede_curriculo,
+        beneficios: v.beneficios_lista ?? [],
+        vagas: v.vagas,
+        expiraEm: v.expira_em,
+        preenchida: Boolean(v.preenchida_em),
+      }
     : null;
 }
 

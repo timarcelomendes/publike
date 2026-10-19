@@ -78,7 +78,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Quanto tempo a vaga fica no ar?",
-        r: "30 dias, e pode ser renovada de 30 em 30 dias no seu painel. Dá para pausar ou encerrar quando quiser.",
+        r: "Você escolhe ao publicar, em “Expiração automática”: 15, 30, 60 ou 90 dias, outro número (até 365) ou “Sem prazo”, em que a vaga fica no ar até você encerrar. Com prazo, dá para renovar no painel. Dá para pausar ou encerrar quando quiser.",
+      },
+      {
+        p: "Preenchi a vaga. E agora?",
+        r: "Em Meus anúncios (ou na página da vaga), toque em “Vaga preenchida”. A vaga continua no site com a marcação “Vaga preenchida”, ninguém mais consegue curtir, e quem curtiu e ainda esperava recebe um aviso (quem você contratou não). Mudou de ideia? “Reabrir a vaga”.",
       },
       {
         p: "Como escolho quem contratar?",
@@ -212,11 +216,12 @@ const ENTREVISTA: PassoJornada = {
   link: { href: "/painel/caixa", texto: "Caixa de entrada" },
 };
 const RENOVAR: PassoJornada = {
-  titulo: "Renove, pause ou encerre",
-  texto: "A vaga fica 30 dias no ar. Em Meus anúncios, você cuida dela quando quiser.",
+  titulo: "Preencheu? Marque a vaga",
+  texto: "Em Meus anúncios, você cuida da vaga quando quiser: preenchida, pausada, renovada ou encerrada.",
   detalhes: [
-    "Renovar por 30 dias: a vaga volta a valer por mais um mês.",
-    "Pausar: some da busca sem perder os candidatos. Encerrar: a vaga foi preenchida.",
+    "Vaga preenchida: ela continua no site com a marcação, ninguém mais curte, e quem esperava recebe o aviso.",
+    "Ao publicar, você escolhe em quantos dias a vaga sai do ar sozinha (15, 30, 60, 90 ou outro) ou “Sem prazo”. Com prazo, dá para renovar.",
+    "Pausar: some da busca sem perder os candidatos. Encerrar: tira a vaga do ar.",
     "Publicar parecida: copia uma vaga sua para não começar do zero.",
     `Cada conta tem até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publica até ${LIMITES_CONTA.comum.porDia} por dia.`,
   ],

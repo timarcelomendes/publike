@@ -225,6 +225,8 @@ export type Database = {
           atende: string[];
           pede_curriculo: boolean;
           contato_direto: boolean;
+          preenchida_em: string | null;
+          prazo_dias: number | null;
           /** vaga de agência: a empresa que contrata (null se confidencial) */
           contratante: string | null;
           contratante_confidencial: boolean;
@@ -273,6 +275,8 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          prazo_dias?: number | null;
+          preenchida_em?: string | null;
           contratante?: string | null;
           contratante_confidencial?: boolean;
           cep?: string | null;
@@ -314,6 +318,8 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          prazo_dias?: number | null;
+          preenchida_em?: string | null;
           contratante?: string | null;
           contratante_confidencial?: boolean;
           cep?: string | null;
@@ -744,6 +750,8 @@ export type Database = {
           horario_detalhe: Json | null;
           minhas_respostas: Json | null;
           contato_direto: boolean;
+          preenchida_em: string | null;
+          prazo_dias: number | null;
         }[];
       };
       meus_anuncios: {
@@ -859,6 +867,7 @@ export type Database = {
         Args: { p_token: string };
         Returns: { nome: string; tipo: string; rascunho: Json | null; status: string }[];
       };
+      marcar_vaga_preenchida: { Args: { p_id: string; p_preenchida: boolean }; Returns: number };
       aceitar_convite: { Args: { p_token: string; p_anuncio: string }; Returns: boolean };
       acesso_do_link: { Args: { p_token: string }; Returns: { nome: string; vaga: string | null; situacao: string }[] };
       vincular_email_do_link: { Args: { p_token: string; p_email: string }; Returns: string };
