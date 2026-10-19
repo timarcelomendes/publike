@@ -1,24 +1,39 @@
 "use client";
 
-import { ArrowRight, Briefcase, HandHelping, UserPlus, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowRight, Building2, Store, UserRound, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
-import type { JornadaAjuda } from "@/lib/ajuda";
-import type { Intencao } from "@/lib/intencao";
+import type { PerfilAjuda } from "@/lib/ajuda";
+import { TIPOS_CONTA } from "@/lib/constantes";
+import type { TipoConta } from "@/lib/tipos";
 
-const ICONES: Record<Intencao, LucideIcon> = {
-  trabalho: Briefcase,
-  contratar_servico: Wrench,
-  oferecer_servico: HandHelping,
-  contratar_pessoa: UserPlus,
+const ICONES: Record<TipoConta, LucideIcon> = {
+  pessoa: UserRound,
+  comercio: Store,
+  empresa: Building2,
+  agencia: Users,
 };
 
-/** O passo a passo de cada perfil (abas), do começo ao fim, com o atalho de cada passo. */
-export function JornadasAjuda({ jornadas, inicial }: { jornadas: JornadaAjuda[]; inicial: Intencao }) {
-  const [atual, setAtual] = useState<Intencao>(inicial);
+/**
+ * O passo a passo por tipo de conta (o mesmo "Você é" do cadastro): uma aba por tipo e, quando o
+ * tipo tem mais de um caminho (a pessoa que procura trabalho, oferece serviço ou contrata para
+ * casa), a escolha do caminho. Cada passo tem o atalho para a tela certa.
+ */
+export function JornadasAjuda({
+  perfis,
+  inicial,
+}: {
+  perfis: PerfilAjuda[];
+  inicial: { tipo: TipoConta; jornada?: string };
+}) {
+  const [tipo, setTipo] = useState<TipoConta>(inicial.tipo);
+  const [escolhida, setEscolhida] = useState<Record<string, string>>(
+    inicial.jornada ? { [inicial.tipo]: inicial.jornada } : {},
+  );
   const base = useId();
   const abas = useRef<(HTMLButtonElement | null)[]>([]);
-  const jornada = jornadas.find((j) => j.id === atual) ?? jornadas[0];
+  const perfil = perfis.find((p) => p.tipo === tipo) ?? perfis[0];
+  const jornada = perfil.jornadas.find((j) => j.id === escolhida[perfil.tipo]) ?? perfil.jornadas[0];
 
   // setas trocam de aba (padrão de abas acessíveis)
   function teclas(e: KeyboardEvent, i: number) {
@@ -26,50 +41,80 @@ export function JornadasAjuda({ jornadas, inicial }: { jornadas: JornadaAjuda[];
       e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
     if (!passo) return;
     e.preventDefault();
-    const proximo = (i + passo + jornadas.length) % jornadas.length;
-    setAtual(jornadas[proximo].id);
+    const proximo = (i + passo + perfis.length) % perfis.length;
+    setTipo(perfis[proximo].tipo);
     abas.current[proximo]?.focus();
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div role="tablist" aria-label="Escolha o seu caso" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {jornadas.map((j, i) => {
-          const Icone = ICONES[j.id];
-          const ativo = j.id === atual;
-          return (
-            <button
-              key={j.id}
-              ref={(el) => {
-                abas.current[i] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`${base}-aba-${j.id}`}
-              aria-selected={ativo}
-              aria-controls={`${base}-painel`}
-              tabIndex={ativo ? 0 : -1}
-              onClick={() => setAtual(j.id)}
-              onKeyDown={(e) => teclas(e, i)}
-              className={`flex min-h-12 items-center gap-2 rounded-md border px-3 py-2 text-left text-label transition-colors ${
-                ativo
-                  ? "border-ink bg-ink text-surface-100"
-                  : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-              }`}
-            >
-              <Icone aria-hidden className={`size-5 shrink-0 ${ativo ? "" : "text-terra-text"}`} />
-              {j.perfil}
-            </button>
-          );
-        })}
+      <div>
+        <p className="mb-2 text-label">Você é</p>
+        <div role="tablist" aria-label="Você é" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {perfis.map((p, i) => {
+            const Icone = ICONES[p.tipo];
+            const ativo = p.tipo === tipo;
+            return (
+              <button
+                key={p.tipo}
+                ref={(el) => {
+                  abas.current[i] = el;
+                }}
+                type="button"
+                role="tab"
+                id={`${base}-aba-${p.tipo}`}
+                aria-selected={ativo}
+                aria-controls={`${base}-painel`}
+                tabIndex={ativo ? 0 : -1}
+                onClick={() => setTipo(p.tipo)}
+                onKeyDown={(e) => teclas(e, i)}
+                className={`flex min-h-14 items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
+                  ativo
+                    ? "border-ink bg-ink text-surface-100"
+                    : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+                }`}
+              >
+                <Icone aria-hidden className={`mt-0.5 size-5 shrink-0 ${ativo ? "" : "text-terra-text"}`} />
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-label">{TIPOS_CONTA[p.tipo].nome}</span>
+                  <span className={`text-body-sm ${ativo ? "opacity-80" : "text-ink-muted"}`}>
+                    {TIPOS_CONTA[p.tipo].ajuda}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div
         role="tabpanel"
         id={`${base}-painel`}
-        aria-labelledby={`${base}-aba-${jornada.id}`}
+        aria-labelledby={`${base}-aba-${perfil.tipo}`}
         className="flex flex-col gap-5"
       >
+        {perfil.jornadas.length > 1 && (
+          <div role="group" aria-label="O que você quer fazer" className="flex flex-wrap gap-2">
+            {perfil.jornadas.map((j) => {
+              const ativo = j.id === jornada.id;
+              return (
+                <button
+                  key={j.id}
+                  type="button"
+                  aria-pressed={ativo}
+                  onClick={() => setEscolhida((e) => ({ ...e, [perfil.tipo]: j.id }))}
+                  className={`inline-flex min-h-10 items-center rounded-pill border px-3.5 text-label transition-colors ${
+                    ativo
+                      ? "border-terra-text bg-terra-soft text-terra-text"
+                      : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+                  }`}
+                >
+                  {j.nome}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <p className="max-w-2xl text-body-lg">{jornada.resumo}</p>
         <ol className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {jornada.passos.map((p, i) => (

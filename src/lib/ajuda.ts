@@ -1,5 +1,5 @@
 import { CIDADES, LIMITES_CONTA } from "./constantes";
-import type { Intencao } from "./intencao";
+import type { TipoConta } from "./tipos";
 
 // Página de ajuda (/ajuda) e o que o assistente sabe sobre o Publike.
 // Mudou como algo funciona? Mude aqui: a página e o assistente leem daqui.
@@ -150,160 +150,252 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
 
 /** Um passo da jornada: o que fazer, por quê e onde (o link leva direto para a tela). */
 export type PassoJornada = { titulo: string; texto: string; link?: { href: string; texto: string } };
-export type JornadaAjuda = { id: Intencao; perfil: string; resumo: string; passos: PassoJornada[] };
+/** Um caminho dentro do tipo de conta (a pessoa que procura trabalho, a que oferece serviço...). */
+export type JornadaAjuda = { id: string; nome: string; resumo: string; passos: PassoJornada[] };
+/** O passo a passo de um tipo de conta (o mesmo "Você é" do cadastro). */
+export type PerfilAjuda = { tipo: TipoConta; jornadas: JornadaAjuda[] };
 
-/** O caminho de cada perfil no Publike, do começo ao fim (página de ajuda e assistente). */
-export const JORNADAS_AJUDA: JornadaAjuda[] = [
+const ENTRAR: PassoJornada = {
+  titulo: "Entre e complete o perfil",
+  texto:
+    "Sem senha: entre com o e-mail (ou Google, Facebook, LinkedIn). No “Você é”, escolha o tipo de conta e diga o nome, o bairro e o WhatsApp.",
+  link: { href: "/entrar", texto: "Entrar" },
+};
+const RENOVAR: PassoJornada = {
+  titulo: "Renove ou encerre",
+  texto: `A vaga fica 30 dias no ar e pode ser renovada no painel. Preencheu? Encerre para parar de receber curtidas. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publicar ${LIMITES_CONTA.comum.porDia} por dia.`,
+  link: { href: "/painel/anuncios", texto: "Meus anúncios" },
+};
+const INTERESSADOS: PassoJornada = {
+  titulo: "Veja os interessados",
+  texto:
+    "No painel da vaga aparecem quem curtiu, com o currículo, o % de match e as respostas. Aceite, dispense ou deixe para depois. Com o “Contato direto”, o contato já aparece na hora.",
+  link: { href: "/painel/anuncios", texto: "Meus anúncios" },
+};
+const ENTREVISTA: PassoJornada = {
+  titulo: "Converse e marque a entrevista",
+  texto:
+    "Deu match, o WhatsApp de vocês aparece para os dois. Marque a entrevista pelo Publike e mude a etapa de cada candidato: a pessoa recebe o aviso.",
+};
+const COMO_RECEBER: PassoJornada = {
+  titulo: "Escolha como receber",
+  texto:
+    "Peça currículo, faça perguntas (com respostas que eliminam ou destacam) e decida o contato: aceitar um por um ou “Contato direto”, em que quem curtir já recebe o seu WhatsApp.",
+};
+const VITRINE: PassoJornada[] = [
   {
-    id: "trabalho",
-    perfil: "Procuro trabalho",
-    resumo: "Ache vaga perto de casa, curta e converse direto com quem contrata.",
-    passos: [
+    titulo: "Monte a vitrine",
+    texto:
+      "Em Meus serviços, escolha o que você faz (até 8 serviços), escreva como trabalha, dê um preço de referência (ou “a combinar”) e coloque fotos dos trabalhos.",
+    link: { href: "/painel/servicos", texto: "Montar a vitrine" },
+  },
+  {
+    titulo: "Diga onde e quando atende",
+    texto: "Marque o bairro e as regiões ou cidades que atende. Quem mora nesses lugares vê seus serviços primeiro.",
+  },
+  {
+    titulo: "Escolha o contato direto",
+    texto:
+      "Ligado, quem pedir o serviço já recebe o seu WhatsApp, sem esperar. Desligado, você vê o pedido e escolhe quem aceita.",
+  },
+  {
+    titulo: "Responda os pedidos",
+    texto:
+      "Cada pedido chega com um aviso e aparece no painel, com a mensagem de quem quer contratar. Combine o serviço, o endereço, o preço e o dia.",
+    link: { href: "/painel", texto: "Meu painel" },
+  },
+  {
+    titulo: "Junte avaliações",
+    texto:
+      "Depois do serviço, quem contratou pode avaliar. As notas aparecem na vitrine e ajudam a ser escolhido. Salvar a vitrine de novo renova os 90 dias no ar.",
+    link: { href: "/painel/avaliacoes", texto: "Minhas avaliações" },
+  },
+];
+
+/** O caminho de cada tipo de conta no Publike, do começo ao fim (página de ajuda e assistente). */
+export const PERFIS_AJUDA: PerfilAjuda[] = [
+  {
+    tipo: "pessoa",
+    jornadas: [
       {
-        titulo: "Diga onde você mora",
-        texto:
-          "Com o CEP (ou a localização do celular), as vagas mais perto aparecem primeiro, com a distância e o tempo de ônibus até o trabalho.",
-        link: { href: "/?casa=1", texto: "Informar onde moro" },
+        id: "trabalho",
+        nome: "Procuro trabalho",
+        resumo: "Ache vaga perto de casa, curta e converse direto com quem contrata.",
+        passos: [
+          {
+            titulo: "Diga onde você mora",
+            texto:
+              "Com o CEP (ou a localização do celular), as vagas mais perto aparecem primeiro, com a distância e o tempo de ônibus até o trabalho.",
+            link: { href: "/?casa=1", texto: "Informar onde moro" },
+          },
+          {
+            titulo: "Preencha o currículo",
+            texto:
+              "Leva uns 3 minutos: estudos, experiências, cursos e CNH. Com ele, cada vaga mostra o seu % de match, e as vagas que pedem currículo já recebem o seu.",
+            link: { href: "/perfil/curriculo", texto: "Preencher o currículo" },
+          },
+          {
+            titulo: "Curta as vagas que combinam",
+            texto:
+              "Toque em Curtir a vaga e, se quiser, mande uma mensagem curta. Se a empresa fez perguntas, responda ali mesmo. Vaga com “Contato direto” já libera o WhatsApp na hora.",
+            link: { href: "/?tipo=vaga", texto: "Ver vagas perto de mim" },
+          },
+          {
+            titulo: "Acompanhe suas curtidas",
+            texto:
+              "Em Minhas curtidas você vê quem aceitou e em que etapa está: entrevista marcada, aprovado ou não seguiu. Chega um aviso a cada novidade.",
+            link: { href: "/painel/curtidas", texto: "Minhas curtidas" },
+          },
+          {
+            titulo: "Deu match: converse",
+            texto:
+              "O WhatsApp e o e-mail de vocês aparecem para os dois. Combine pelo WhatsApp ou pelo chat do Publike. Ninguém pode cobrar nada para você conseguir a vaga.",
+          },
+          {
+            titulo: "Receba as vagas novas",
+            texto:
+              "Na busca, toque em “Me avise de vagas assim” e receba um aviso quando entrar vaga nova que combina com você.",
+          },
+        ],
       },
       {
-        titulo: "Preencha o currículo",
-        texto:
-          "Leva uns 3 minutos: estudos, experiências, cursos e CNH. Com ele, cada vaga mostra o seu % de match, e as vagas que pedem currículo já recebem o seu.",
-        link: { href: "/perfil/curriculo", texto: "Preencher o currículo" },
+        id: "servicos",
+        nome: "Ofereço serviços",
+        resumo: "Diarista, pedreiro, eletricista, manicure: monte sua vitrine e seja chamado por quem mora perto.",
+        passos: [ENTRAR, ...VITRINE],
       },
       {
-        titulo: "Curta as vagas que combinam",
-        texto:
-          "Toque em Curtir a vaga e, se quiser, mande uma mensagem curta. Se a empresa fez perguntas, responda ali mesmo. Vaga com “Contato direto” já libera o WhatsApp na hora.",
-        link: { href: "/?tipo=vaga", texto: "Ver vagas perto de mim" },
-      },
-      {
-        titulo: "Acompanhe suas curtidas",
-        texto:
-          "Em Minhas curtidas você vê quem aceitou e em que etapa está: entrevista marcada, aprovado ou não seguiu. Chega um aviso a cada novidade.",
-        link: { href: "/painel/curtidas", texto: "Minhas curtidas" },
-      },
-      {
-        titulo: "Deu match: converse",
-        texto:
-          "O WhatsApp e o e-mail de vocês aparecem para os dois. Combine pelo WhatsApp ou pelo chat do Publike. Ninguém pode cobrar nada para você conseguir a vaga.",
-      },
-      {
-        titulo: "Receba as vagas novas",
-        texto:
-          "Na busca, toque em “Me avise de vagas assim” e receba um aviso quando entrar vaga nova que combina com você.",
+        id: "casa",
+        nome: "Contrato para casa",
+        resumo: "Uma faxina, um reparo, uma babá: ache um profissional perto ou publique a vaga da sua casa.",
+        passos: [
+          {
+            titulo: "Busque em Serviços",
+            texto:
+              "Na busca, escolha Serviços e o que precisa (diarista, pedreiro, eletricista…). Os profissionais que atendem a sua região aparecem primeiro, com fotos, preço “a partir de” e avaliações.",
+            link: { href: "/?tipo=servico", texto: "Ver serviços perto de mim" },
+          },
+          {
+            titulo: "Toque em Quero contratar",
+            texto:
+              "Mande uma mensagem curta com o que precisa, o bairro e o melhor dia. Sem telefone na mensagem: o contato aparece no match (ou na hora, com o “Contato direto”).",
+          },
+          {
+            titulo: "Ou publique a vaga da casa",
+            texto:
+              "Precisa de alguém fixo ou por diária? Publique a vaga: para conta Pessoa, ela mostra só uma área de uns 500 metros, nunca o seu endereço.",
+            link: { href: "/publicar", texto: "Publicar vaga grátis" },
+          },
+          {
+            titulo: "Combine e acompanhe",
+            texto:
+              "Deu match, o WhatsApp de vocês aparece para os dois. Seus pedidos ficam em Minhas curtidas; as vagas, em Meus anúncios.",
+            link: { href: "/painel/curtidas", texto: "Meus pedidos" },
+          },
+          {
+            titulo: "Avalie depois do serviço",
+            texto: "Sua avaliação ajuda outros vizinhos a escolher e valoriza quem trabalha bem.",
+          },
+        ],
       },
     ],
   },
   {
-    id: "contratar_servico",
-    perfil: "Contratar um serviço",
-    resumo: "Ache um profissional perto de casa, veja fotos e avaliações e chame direto.",
-    passos: [
+    tipo: "comercio",
+    jornadas: [
       {
-        titulo: "Busque em Serviços",
-        texto:
-          "Na busca, escolha Serviços e o que precisa (diarista, pedreiro, eletricista…). Os profissionais que atendem a sua região aparecem primeiro.",
-        link: { href: "/?tipo=servico", texto: "Ver serviços perto de mim" },
+        id: "contratar",
+        nome: "Contratar",
+        resumo: "Loja, bar, salão, oficina, padaria: ache gente do bairro para trabalhar com você.",
+        passos: [
+          {
+            ...ENTRAR,
+            texto:
+              "Sem senha: entre com o e-mail e escolha “Comércio” em “Você é”. Com o CNPJ (opcional), o Publike preenche o nome e o endereço da loja para você.",
+          },
+          {
+            titulo: "Publique a vaga com o endereço",
+            texto:
+              "Leva dois minutos, e dá para começar por um modelo pronto. Com o CEP e o número, o pino fica na porta da loja e quem mora perto vê primeiro, com o tempo de ônibus até aí.",
+            link: { href: "/publicar", texto: "Publicar vaga grátis" },
+          },
+          COMO_RECEBER,
+          INTERESSADOS,
+          ENTREVISTA,
+          RENOVAR,
+        ],
       },
       {
-        titulo: "Veja a vitrine",
-        texto:
-          "Cada profissional mostra o que faz, as fotos dos trabalhos, o preço de referência (“a partir de”) e as avaliações de quem já contratou.",
-      },
-      {
-        titulo: "Toque em Quero contratar",
-        texto:
-          "Mande uma mensagem curta com o que precisa, o bairro e o melhor dia. Sem telefone na mensagem: o contato aparece no match.",
-      },
-      {
-        titulo: "Deu match: combine",
-        texto:
-          "Quando o profissional aceita (ou na hora, se ele usa o “Contato direto”), o WhatsApp de vocês aparece para os dois. Acompanhe seus pedidos em Minhas curtidas.",
-        link: { href: "/painel/curtidas", texto: "Meus pedidos" },
-      },
-      {
-        titulo: "Avalie depois do serviço",
-        texto: "Sua avaliação ajuda outros vizinhos a escolher e valoriza quem trabalha bem.",
-      },
-    ],
-  },
-  {
-    id: "oferecer_servico",
-    perfil: "Ofereço serviços",
-    resumo: "Diarista, pedreiro, eletricista, manicure: monte sua vitrine e seja chamado por quem mora perto.",
-    passos: [
-      {
-        titulo: "Entre e complete o perfil",
-        texto: "Sem senha: entre com o e-mail e diga seu nome, o bairro e o WhatsApp que recebe os pedidos.",
-        link: { href: "/entrar", texto: "Entrar" },
-      },
-      {
-        titulo: "Monte a vitrine",
-        texto:
-          "Em Meus serviços, escolha o que você faz (até 8 serviços), escreva como trabalha, dê um preço de referência (ou “a combinar”) e coloque fotos dos seus trabalhos.",
-        link: { href: "/painel/servicos", texto: "Montar minha vitrine" },
-      },
-      {
-        titulo: "Diga onde e quando atende",
-        texto:
-          "Marque o bairro onde fica e as regiões ou cidades que atende. Quem mora nesses lugares vê seus serviços primeiro.",
-      },
-      {
-        titulo: "Escolha o contato direto",
-        texto:
-          "Ligado, quem pedir o serviço já recebe o seu WhatsApp, sem esperar. Desligado, você vê o pedido e escolhe quem aceita.",
-      },
-      {
-        titulo: "Responda os pedidos",
-        texto:
-          "Cada pedido chega com um aviso e aparece no seu painel, com a mensagem de quem quer contratar. Combine o serviço, o endereço, o preço e o dia.",
-        link: { href: "/painel", texto: "Meu painel" },
-      },
-      {
-        titulo: "Junte avaliações",
-        texto:
-          "Depois do serviço, quem contratou pode avaliar você. As notas aparecem na sua vitrine e ajudam a ser escolhido. Salvar a vitrine de novo renova os 90 dias no ar.",
-        link: { href: "/painel/avaliacoes", texto: "Minhas avaliações" },
+        id: "servicos",
+        nome: "Mostrar serviços",
+        resumo: "Salão, oficina, assistência: mostre o que você faz e receba pedidos de quem mora perto.",
+        passos: [ENTRAR, ...VITRINE],
       },
     ],
   },
   {
-    id: "contratar_pessoa",
-    perfil: "Contratar alguém",
-    resumo: "Empresa, comércio ou casa: publique a vaga grátis e receba quem mora perto.",
-    passos: [
+    tipo: "empresa",
+    jornadas: [
       {
-        titulo: "Entre e complete o perfil",
-        texto:
-          "Sem senha: entre com o e-mail (ou Google, Facebook, LinkedIn) e diga o nome, o tipo de conta e o WhatsApp que recebe os candidatos.",
-        link: { href: "/entrar", texto: "Entrar" },
+        id: "contratar",
+        nome: "Contratar",
+        resumo: "Empresa, indústria, condomínio ou ONG: receba candidatos da região, com currículo e triagem.",
+        passos: [
+          {
+            ...ENTRAR,
+            texto:
+              "Sem senha: entre com o e-mail e escolha “Empresa” em “Você é”. Com o CNPJ (opcional), o Publike preenche o nome e o endereço.",
+          },
+          {
+            titulo: "Publique a vaga completa",
+            texto:
+              "Contratação (carteira, temporária, estágio, diária…), salário ou faixa, benefícios, escala e horário, escolaridade, experiência e CNH. Com o endereço, quem mora perto vê primeiro.",
+            link: { href: "/publicar", texto: "Publicar vaga grátis" },
+          },
+          COMO_RECEBER,
+          INTERESSADOS,
+          ENTREVISTA,
+          RENOVAR,
+        ],
       },
+    ],
+  },
+  {
+    tipo: "agencia",
+    jornadas: [
       {
-        titulo: "Publique a vaga",
-        texto:
-          "Leva dois minutos e dá para começar por um modelo pronto. Com o endereço certo, quem mora perto vê sua vaga primeiro. É grátis para empresas de qualquer tamanho.",
-        link: { href: "/publicar", texto: "Publicar vaga grátis" },
-      },
-      {
-        titulo: "Escolha como receber",
-        texto:
-          "Peça currículo, faça perguntas (com respostas que eliminam ou destacam) e decida o contato: aceitar um por um ou “Contato direto”, em que quem curtir já recebe o seu WhatsApp.",
-      },
-      {
-        titulo: "Veja os interessados",
-        texto:
-          "No painel da vaga aparecem quem curtiu, com o currículo, o % de match e as respostas. Aceite, dispense ou deixe para depois.",
-        link: { href: "/painel/anuncios", texto: "Meus anúncios" },
-      },
-      {
-        titulo: "Converse e marque a entrevista",
-        texto:
-          "Deu match, o contato aparece para os dois. Marque a entrevista pelo Publike e mude a etapa de cada candidato: a pessoa recebe o aviso.",
-      },
-      {
-        titulo: "Renove ou encerre",
-        texto: "A vaga fica 30 dias no ar e pode ser renovada. Preencheu? Encerre para parar de receber curtidas.",
+        id: "recrutar",
+        nome: "Recrutar para clientes",
+        resumo: "Agência de emprego ou RH: publique as vagas dos seus clientes, de graça, com o nome da agência.",
+        passos: [
+          {
+            ...ENTRAR,
+            texto:
+              "Sem senha: entre com o e-mail, escolha “Agência / RH” em “Você é” e informe o CNPJ da agência (obrigatório).",
+          },
+          {
+            titulo: "Espere a conferência do CNPJ",
+            texto: `A equipe confere o CNPJ e a agência ganha o selo de verificada: até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e ${LIMITES_CONTA.agenciaVerificada.porDia} por dia (antes, ${LIMITES_CONTA.comum.noAr} e ${LIMITES_CONTA.comum.porDia}). Trocar o CNPJ tira o selo.`,
+          },
+          {
+            titulo: "Publique a vaga do cliente",
+            texto:
+              "Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial” (aí o local vira uma área de uns 500 metros). A vaga sai com o selo “Vaga de agência”.",
+            link: { href: "/publicar", texto: "Publicar vaga grátis" },
+          },
+          {
+            ...COMO_RECEBER,
+            texto:
+              "Peça currículo e faça perguntas de triagem. Quem você aceita recebe o WhatsApp e o e-mail da agência, nunca os do cliente.",
+          },
+          INTERESSADOS,
+          ENTREVISTA,
+          {
+            titulo: "Sem cobrar do candidato",
+            texto:
+              "A agência não pode cobrar nada de quem se candidata: nem taxa, nem curso, nem exame. Vaga que cobra é removida e a conta pode ser suspensa.",
+          },
+        ],
       },
     ],
   },
@@ -312,11 +404,13 @@ export const JORNADAS_AJUDA: JornadaAjuda[] = [
 /** O conteúdo da ajuda em texto corrido, para o assistente. */
 export function textoDaAjuda() {
   const temas = TEMAS_AJUDA.map((t) => `## ${t.titulo}\n${t.perguntas.map((q) => `- ${q.p}\n  ${q.r}`).join("\n")}`);
-  const jornadas = JORNADAS_AJUDA.map(
-    (j) =>
-      `## Passo a passo: ${j.perfil}\n${j.passos
-        .map((p, i) => `${i + 1}. ${p.titulo}: ${p.texto}${p.link ? ` (${p.link.texto}: ${p.link.href})` : ""}`)
-        .join("\n")}`,
+  const jornadas = PERFIS_AJUDA.flatMap((p) =>
+    p.jornadas.map(
+      (j) =>
+        `## Passo a passo (conta ${p.tipo}): ${j.nome}\n${j.passos
+          .map((x, i) => `${i + 1}. ${x.titulo}: ${x.texto}${x.link ? ` (${x.link.texto}: ${x.link.href})` : ""}`)
+          .join("\n")}`,
+    ),
   );
   return [...temas, ...jornadas].join("\n\n");
 }

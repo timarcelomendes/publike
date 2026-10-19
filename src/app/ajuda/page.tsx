@@ -7,10 +7,13 @@ import { JornadasAjuda } from "@/components/assistente/jornadas-ajuda";
 import { ListaAjuda } from "@/components/assistente/lista-ajuda";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { JORNADAS_AJUDA, TEMAS_AJUDA } from "@/lib/ajuda";
+import { PERFIS_AJUDA, TEMAS_AJUDA } from "@/lib/ajuda";
 import { ID_CONVERSA_AJUDA } from "@/lib/assistente";
 import { assistenteDisponivel } from "@/lib/servidor/assistente";
+import { obterMeuPerfil } from "@/lib/dados";
+import type { Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import type { TipoConta } from "@/lib/tipos";
 
 export const metadata: Metadata = {
   title: "Ajuda",
@@ -56,9 +59,9 @@ export default function Ajuda() {
             Seu caminho no Publike
           </h2>
           <p className="mt-2 mb-6 max-w-2xl text-body text-ink-muted">
-            Escolha o seu caso e veja, passo a passo, do começo até fechar o trabalho.
+            Escolha o seu tipo de conta e veja, passo a passo, do começo até fechar o trabalho.
           </p>
-          <Suspense fallback={<JornadasAjuda jornadas={JORNADAS_AJUDA} inicial="trabalho" />}>
+          <Suspense fallback={<JornadasAjuda perfis={PERFIS_AJUDA} inicial={{ tipo: "pessoa" }} />}>
             <JornadasDoPerfil />
           </Suspense>
         </Container>
@@ -106,10 +109,23 @@ export default function Ajuda() {
   );
 }
 
-/** Abre no caso que a pessoa escolheu em "O que você quer fazer no Publike?" (sem resposta, trabalho). */
+/**
+ * Abre no tipo da conta de quem entrou; sem conta, pelo que a pessoa respondeu em "O que você
+ * quer fazer no Publike?" (sem resposta: Pessoa, procurando trabalho).
+ */
 async function JornadasDoPerfil() {
-  const intencao = await obterIntencao().catch(() => null);
-  return <JornadasAjuda jornadas={JORNADAS_AJUDA} inicial={intencao ?? "trabalho"} />;
+  const [perfil, intencao] = await Promise.all([obterMeuPerfil().catch(() => null), obterIntencao().catch(() => null)]);
+  const caminho: Record<Intencao, { tipo: TipoConta; jornada?: string }> = {
+    trabalho: { tipo: "pessoa", jornada: "trabalho" },
+    oferecer_servico: { tipo: "pessoa", jornada: "servicos" },
+    contratar_servico: { tipo: "pessoa", jornada: "casa" },
+    contratar_pessoa: { tipo: "empresa" },
+  };
+  const porIntencao = intencao ? caminho[intencao] : null;
+  const inicial: { tipo: TipoConta; jornada?: string } = perfil
+    ? { tipo: perfil.tipo as TipoConta, jornada: porIntencao?.tipo === perfil.tipo ? porIntencao.jornada : undefined }
+    : (porIntencao ?? { tipo: "pessoa" as const });
+  return <JornadasAjuda perfis={PERFIS_AJUDA} inicial={inicial} />;
 }
 
 /** O que fazer quando a pergunta não está na lista: o assistente, quando está ligado, ou a equipe. */
