@@ -1,13 +1,34 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, MapPinned } from "lucide-react";
-import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { dentro, useAreaDoMapa } from "./area-do-mapa";
 
-const POR_PAGINA = 12;
+// Quantos por página, pelo tamanho da tela: 4 no celular, até 12 no computador grande
+// (sempre linhas cheias: 2 colunas no tablet, 3 no computador).
+const TAMANHOS: [string, number][] = [
+  ["(min-width: 1280px)", 12],
+  ["(min-width: 1024px)", 9],
+  ["(min-width: 640px)", 6],
+];
+const NO_CELULAR = 4;
+
+function usePorPagina() {
+  return useSyncExternalStore(
+    (avisar) => {
+      const mqs = TAMANHOS.map(([q]) => window.matchMedia(q));
+      for (const mq of mqs) mq.addEventListener("change", avisar);
+      return () => {
+        for (const mq of mqs) mq.removeEventListener("change", avisar);
+      };
+    },
+    () => TAMANHOS.find(([q]) => window.matchMedia(q).matches)?.[1] ?? NO_CELULAR,
+    () => 12,
+  );
+}
 
 /**
- * Os cartões da busca, de 12 em 12. Com o mapa na tela, só os que estão na parte do mapa à
+ * Os cartões da busca, em páginas (4 no celular, até 12 no computador). Com o mapa na tela, só os que estão na parte do mapa à
  * mostra (mexeu no mapa, a lista acompanha e volta para a primeira página).
  */
 export function ListaPaginada({
@@ -24,9 +45,10 @@ export function ListaPaginada({
   className: string;
 }) {
   const area = useAreaDoMapa();
+  const porPagina = usePorPagina();
   const topo = useRef<HTMLDivElement>(null);
   // a página volta para a primeira quando a área muda (a chave é a área)
-  const chaveArea = area ? area.map((n) => n.toFixed(4)).join(",") : "toda";
+  const chaveArea = `${porPagina}:${area ? area.map((n) => n.toFixed(4)).join(",") : "toda"}`;
   const [pagina, setPagina] = useState({ area: chaveArea, n: 1 });
   const atual = pagina.area === chaveArea ? pagina.n : 1;
 
@@ -35,9 +57,9 @@ export function ListaPaginada({
     [itens, area],
   );
   const total = visiveis.length;
-  const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+  const paginas = Math.max(1, Math.ceil(total / porPagina));
   const n = Math.min(atual, paginas);
-  const desta = visiveis.slice((n - 1) * POR_PAGINA, n * POR_PAGINA);
+  const desta = visiveis.slice((n - 1) * porPagina, n * porPagina);
   const foraDaArea = itens.length - total;
 
   function ir(p: number) {
@@ -69,10 +91,10 @@ export function ListaPaginada({
             type="button"
             onClick={() => ir(n - 1)}
             disabled={n === 1}
-            className="inline-flex min-h-10 items-center gap-1 rounded-pill border border-line-strong bg-surface-200 px-3 text-label text-ink hover:bg-surface-300 disabled:opacity-40"
+            className="inline-flex min-h-10 min-w-10 items-center justify-center gap-1 rounded-pill border border-line-strong bg-surface-200 px-3 text-label text-ink hover:bg-surface-300 disabled:opacity-40"
           >
             <ChevronLeft aria-hidden className="size-4" />
-            Anterior
+            <span className="max-sm:sr-only">Anterior</span>
           </button>
           {numeros(n, paginas).map((p, i) =>
             p === null ? (
@@ -100,9 +122,9 @@ export function ListaPaginada({
             type="button"
             onClick={() => ir(n + 1)}
             disabled={n === paginas}
-            className="inline-flex min-h-10 items-center gap-1 rounded-pill border border-line-strong bg-surface-200 px-3 text-label text-ink hover:bg-surface-300 disabled:opacity-40"
+            className="inline-flex min-h-10 min-w-10 items-center justify-center gap-1 rounded-pill border border-line-strong bg-surface-200 px-3 text-label text-ink hover:bg-surface-300 disabled:opacity-40"
           >
-            Próxima
+            <span className="max-sm:sr-only">Próxima</span>
             <ChevronRight aria-hidden className="size-4" />
           </button>
         </nav>
