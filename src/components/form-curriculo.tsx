@@ -1,6 +1,19 @@
 "use client";
 
-import { Check, FileText, Info, Plus, Trash2, Upload, X } from "lucide-react";
+import {
+  Camera,
+  Check,
+  FileText,
+  FileUp,
+  Info,
+  LoaderCircle,
+  Plus,
+  Sparkles,
+  Trash2,
+  Undo2,
+  Upload,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import {
   startTransition,
@@ -13,7 +26,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { apagarCurriculo, salvarCurriculo } from "@/lib/acoes/curriculo";
+import { apagarCurriculo, lerCurriculoEnviado, salvarCurriculo, type LeituraDoArquivo } from "@/lib/acoes/curriculo";
 import {
   CNHS,
   DISPONIBILIDADES,
@@ -72,6 +85,295 @@ function Rotulo({ htmlFor, children, opcional }: { htmlFor: string; children: Re
   );
 }
 
+type CurriculoLido = Extract<LeituraDoArquivo, { ok: true }>["curriculo"];
+
+/** O que o formulário tinha antes da leitura do currículo pronto (para o "Desfazer"). */
+type Retrato = {
+  titulo: string;
+  habilidades: string[];
+  escolaridade: string;
+  curso: string;
+  experiencias: ItemExperiencia[];
+  cursos: string[];
+  cnh: string;
+  disponibilidade: string[];
+  arquivo: string | null;
+  nomePdf: string | null;
+};
+
+/** Manda o PDF para a pasta privada da pessoa no Storage e devolve o caminho. */
+async function enviarPdf(pdf: File, usuarioId: string) {
+  const caminho = `${usuarioId}/${Date.now()}.pdf`;
+  const { error } = await criarClienteNavegador()
+    .storage.from("curriculos")
+    .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
+  if (error) throw error;
+  return caminho;
+}
+
+/** Erro com a mensagem pronta para a tela. */
+class ErroDaLeitura extends Error {}
+
+/** A foto do celular, menor (JPG de até `lado` px): a leitura aceita até 1 MB ao todo. */
+async function diminuirFoto(foto: File, lado: number, qualidade: number): Promise<Blob> {
+  let imagem: ImageBitmap;
+  try {
+    imagem = await createImageBitmap(foto);
+  } catch {
+    throw new ErroDaLeitura("Não deu para abrir esta foto. Tente outra (JPG ou PNG) ou envie o PDF.");
+  }
+  const escala = Math.min(1, lado / Math.max(imagem.width, imagem.height));
+  const tela = document.createElement("canvas");
+  tela.width = Math.round(imagem.width * escala);
+  tela.height = Math.round(imagem.height * escala);
+  const ctx = tela.getContext("2d");
+  if (!ctx) throw new ErroDaLeitura("Não deu para preparar a foto. Envie o PDF.");
+  // PNG com fundo transparente vira folha branca
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, tela.width, tela.height);
+  ctx.drawImage(imagem, 0, 0, tela.width, tela.height);
+  imagem.close();
+  return new Promise((ok, falha) =>
+    tela.toBlob(
+      (b) => (b ? ok(b) : falha(new ErroDaLeitura("Não deu para preparar a foto. Envie o PDF."))),
+      "image/jpeg",
+      qualidade,
+    ),
+  );
+}
+
+const MAX_FOTOS = 3;
+/** As fotos, juntas, depois de diminuídas (a ação do servidor aceita até 1 MB). */
+const LIMITE_FOTOS = 900 * 1024;
+
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
+function juntar(partes: string[]) {
+  return partes.length > 1 ? `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}` : (partes[0] ?? "");
+}
+
+/** O que a leitura preencheu, em palavras: "profissão, 6 habilidades, estudos e 3 experiências". */
+function resumoDaLeitura(l: CurriculoLido) {
+  return juntar(
+    [
+      l.titulo ? "profissão" : "",
+      l.habilidades.length ? plural(l.habilidades.length, "habilidade", "habilidades") : "",
+      l.escolaridade ? "estudos" : "",
+      l.experiencias.length ? plural(l.experiencias.length, "experiência", "experiências") : "",
+      l.cursos.length ? plural(l.cursos.length, "curso", "cursos") : "",
+      l.cnh ? "CNH" : "",
+      l.disponibilidade.length ? "horários" : "",
+    ].filter(Boolean),
+  );
+}
+
+type Situacao =
+  | { tipo: "parado" }
+  | { tipo: "lendo" }
+  | { tipo: "pronto"; texto: string; semData: number; comPdf: boolean }
+  | { tipo: "erro"; texto: string };
+
+/**
+ * "Já tem currículo pronto?": a pessoa manda o PDF (que fica anexado) ou até 3 fotos da folha
+ * (que não ficam guardadas), a IA lê e o formulário vem preenchido. Nada é salvo até ela salvar.
+ */
+function LerCurriculoPronto({
+  usuarioId,
+  compacto,
+  rotuloSalvar,
+  aoLer,
+  aoDesfazer,
+  aoMudarLendo,
+}: {
+  usuarioId: string;
+  /** a pessoa já tem currículo salvo: o convite é para trocar pelo mais novo */
+  compacto: boolean;
+  /** o texto do botão de salvar, para o aviso dizer onde tocar */
+  rotuloSalvar: string;
+  aoLer: (lido: CurriculoLido, pdf: { caminho: string; nome: string } | null) => void;
+  aoDesfazer: (() => void) | null;
+  aoMudarLendo: (lendo: boolean) => void;
+}) {
+  const [situacao, setSituacao] = useState<Situacao>({ tipo: "parado" });
+  const seletorPdf = useRef<HTMLInputElement>(null);
+  const seletorFoto = useRef<HTMLInputElement>(null);
+  const aviso = useRef<HTMLDivElement>(null);
+
+  // o resultado aparece na tela (a pessoa pode ter rolado a página enquanto lia)
+  useEffect(() => {
+    if (situacao.tipo === "pronto" || situacao.tipo === "erro") aviso.current?.focus();
+  }, [situacao]);
+
+  async function ler(montar: () => Promise<{ dados: FormData; pdf: { caminho: string; nome: string } | null }>) {
+    setSituacao({ tipo: "lendo" });
+    aoMudarLendo(true);
+    let resultado: LeituraDoArquivo;
+    let pdf: { caminho: string; nome: string } | null = null;
+    try {
+      const pedido = await montar();
+      pdf = pedido.pdf;
+      resultado = await lerCurriculoEnviado(pedido.dados);
+    } catch (e) {
+      resultado = {
+        ok: false,
+        erro: e instanceof ErroDaLeitura ? e.message : "Não deu para enviar o arquivo. Tente de novo.",
+      };
+    }
+    aoMudarLendo(false);
+    if (!resultado.ok) return setSituacao({ tipo: "erro", texto: resultado.erro });
+    aoLer(resultado.curriculo, pdf);
+    setSituacao({
+      tipo: "pronto",
+      texto: resumoDaLeitura(resultado.curriculo),
+      semData: resultado.curriculo.experiencias.filter((x) => !x.inicio || (!x.atual && !x.fim)).length,
+      comPdf: pdf !== null,
+    });
+  }
+
+  function escolherPdf(e: ChangeEvent<HTMLInputElement>) {
+    const pdf = e.target.files?.[0];
+    e.target.value = "";
+    if (!pdf) return;
+    if (pdf.type !== "application/pdf") return setSituacao({ tipo: "erro", texto: "Envie um arquivo PDF." });
+    if (pdf.size > MAX_PDF_MB * 1024 * 1024) {
+      return setSituacao({ tipo: "erro", texto: `O PDF pode ter no máximo ${MAX_PDF_MB} MB.` });
+    }
+    void ler(async () => {
+      const caminho = await enviarPdf(pdf, usuarioId);
+      const dados = new FormData();
+      dados.set("pdf", caminho);
+      return { dados, pdf: { caminho, nome: pdf.name } };
+    });
+  }
+
+  function escolherFotos(e: ChangeEvent<HTMLInputElement>) {
+    const fotos = [...(e.target.files ?? [])];
+    e.target.value = "";
+    if (!fotos.length) return;
+    if (fotos.length > MAX_FOTOS) {
+      return setSituacao({ tipo: "erro", texto: `Escolha no máximo ${MAX_FOTOS} fotos, uma por página.` });
+    }
+    if (fotos.some((f) => !f.type.startsWith("image/"))) {
+      return setSituacao({ tipo: "erro", texto: "Escolha fotos (JPG ou PNG). Para PDF, use “Enviar PDF”." });
+    }
+    void ler(async () => {
+      let menores: Blob[] = [];
+      for (const [lado, qualidade] of [
+        [1600, 0.75],
+        [1280, 0.6],
+      ] as const) {
+        menores = await Promise.all(fotos.map((f) => diminuirFoto(f, lado, qualidade)));
+        if (menores.reduce((t, b) => t + b.size, 0) <= LIMITE_FOTOS) break;
+      }
+      if (menores.reduce((t, b) => t + b.size, 0) > LIMITE_FOTOS) {
+        throw new ErroDaLeitura("As fotos ficaram grandes demais. Mande uma página por vez ou envie o PDF.");
+      }
+      const dados = new FormData();
+      menores.forEach((b, i) => dados.append("foto", b, `pagina-${i + 1}.jpg`));
+      return { dados, pdf: null };
+    });
+  }
+
+  const lendo = situacao.tipo === "lendo";
+  return (
+    <section
+      aria-labelledby="ler-curriculo"
+      className="flex flex-col gap-4 rounded-lg border-2 border-dashed border-line-strong bg-surface-200 p-5 sm:p-6"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft text-terra-text">
+          <Sparkles aria-hidden className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <h2 id="ler-curriculo" className="text-h3">
+            {compacto ? "Tem um currículo mais novo?" : "Já tem currículo pronto?"}
+          </h2>
+          <p className="mt-1 text-body-sm text-ink-muted">
+            {compacto
+              ? "Envie o PDF ou a foto: o Publike lê e troca os campos aqui embaixo. Nada muda até você salvar."
+              : "Envie o PDF ou tire uma foto da folha. O Publike lê e preenche os campos para você. Depois é só conferir e salvar."}
+          </p>
+        </div>
+      </div>
+
+      <div ref={aviso} tabIndex={-1} className="outline-none empty:hidden">
+        {lendo && (
+          <p role="status" className="flex items-center gap-2 text-label">
+            <LoaderCircle aria-hidden className="size-5 shrink-0 motion-safe:animate-spin" />
+            Lendo seu currículo… pode levar até um minuto.
+          </p>
+        )}
+        {situacao.tipo === "pronto" && (
+          <Aviso tipo="sucesso" titulo="Pronto! Confira os campos aqui embaixo.">
+            <p>
+              Preenchemos {situacao.texto}. Confira tudo e toque em “{rotuloSalvar}”, no fim da página.
+            </p>
+            {situacao.semData > 0 && (
+              <p>
+                Complete as datas que faltam em{" "}
+                {situacao.semData === 1 ? "uma experiência" : plural(situacao.semData, "experiência", "experiências")}.
+              </p>
+            )}
+            {situacao.comPdf && <p>O PDF também ficou anexado ao currículo.</p>}
+          </Aviso>
+        )}
+        {situacao.tipo === "erro" && <Aviso tipo="erro">{situacao.texto}</Aviso>}
+      </div>
+
+      <input
+        ref={seletorPdf}
+        type="file"
+        accept="application/pdf"
+        onChange={escolherPdf}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+      />
+      <input
+        ref={seletorFoto}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={escolherFotos}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+      />
+      {!lendo && (
+        // no celular, um botão por linha, na largura toda
+        <div className="grid gap-2 sm:flex sm:flex-wrap">
+          <Botao onClick={() => seletorPdf.current?.click()}>
+            <FileUp aria-hidden />
+            {situacao.tipo === "pronto" ? "Enviar outro PDF" : "Enviar PDF"}
+          </Botao>
+          <Botao onClick={() => seletorFoto.current?.click()}>
+            <Camera aria-hidden />
+            Foto do currículo
+          </Botao>
+          {situacao.tipo === "pronto" && aoDesfazer && (
+            <Botao
+              variante="fantasma"
+              onClick={() => {
+                aoDesfazer();
+                setSituacao({ tipo: "parado" });
+              }}
+            >
+              <Undo2 aria-hidden />
+              Desfazer
+            </Botao>
+          )}
+        </div>
+      )}
+      {(situacao.tipo === "parado" || situacao.tipo === "erro") && (
+        <p className="text-body-sm text-ink-muted">
+          PDF de até {MAX_PDF_MB} MB ou até {MAX_FOTOS} fotos, uma por página. Telefone, e-mail e endereço não entram
+          nos campos.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function FormCurriculo({
   inicial,
   usuarioId,
@@ -80,6 +382,7 @@ export function FormCurriculo({
   hoje,
   demo = false,
   rotuloSalvar = "Salvar currículo",
+  lerArquivo = false,
 }: {
   inicial: Curriculo | null;
   /** mês atual ("2026-10"), vindo do servidor: limite das datas */
@@ -93,9 +396,15 @@ export function FormCurriculo({
   demo?: boolean;
   /** o texto do botão (ex.: "Salvar e mandar", quando uma vaga já aceitou e espera o currículo) */
   rotuloSalvar?: string;
+  /** "Já tem currículo pronto?": a IA lê o PDF ou a foto e preenche (com a ajuda da IA ligada) */
+  lerArquivo?: boolean;
 }) {
   const [estado, acao, enviando] = useActionState(salvarCurriculo, ESTADO_INICIAL);
+  const [titulo, setTitulo] = useState(inicial?.titulo ?? "");
   const [escolaridade, setEscolaridade] = useState(inicial?.escolaridade ?? "");
+  const [curso, setCurso] = useState(inicial?.curso ?? "");
+  const [cnh, setCnh] = useState(inicial?.cnh ?? "");
+  const [disponibilidade, setDisponibilidade] = useState<string[]>(inicial?.disponibilidade ?? []);
   const [experiencias, setExperiencias] = useState<ItemExperiencia[]>(() =>
     (inicial?.experiencias ?? []).map((e) => ({
       chave: novaChave(),
@@ -115,6 +424,9 @@ export function FormCurriculo({
   const [nomePdf, setNomePdf] = useState<string | null>(null);
   const [enviandoPdf, setEnviandoPdf] = useState(false);
   const [erroPdf, setErroPdf] = useState<string | null>(null);
+  // a leitura do currículo pronto: enquanto lê, não dá para salvar; "Desfazer" volta ao que era
+  const [lendo, setLendo] = useState(false);
+  const [antesDaLeitura, setAntesDaLeitura] = useState<Retrato | null>(null);
   const seletorPdf = useRef<HTMLInputElement>(null);
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
@@ -178,17 +490,59 @@ export function FormCurriculo({
     if (demo) return setErroPdf("No modo demonstração o PDF não é enviado.");
     setEnviandoPdf(true);
     try {
-      const caminho = `${usuarioId}/${Date.now()}.pdf`;
-      const { error } = await criarClienteNavegador()
-        .storage.from("curriculos")
-        .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
-      if (error) throw error;
-      setArquivo(caminho);
+      setArquivo(await enviarPdf(pdf, usuarioId));
       setNomePdf(pdf.name);
     } catch {
       setErroPdf("Não deu para enviar o PDF. Tente de novo.");
     }
     setEnviandoPdf(false);
+  }
+
+  /** Põe no formulário o que a IA leu (o que ela não achou fica como estava). Nada é salvo ainda. */
+  function aplicarLeitura(lido: CurriculoLido, pdf: { caminho: string; nome: string } | null) {
+    setAntesDaLeitura({
+      titulo,
+      habilidades,
+      escolaridade,
+      curso,
+      experiencias,
+      cursos,
+      cnh,
+      disponibilidade,
+      arquivo,
+      nomePdf,
+    });
+    if (lido.titulo) setTitulo(lido.titulo);
+    if (lido.habilidades.length) setHabilidades(lido.habilidades);
+    if (lido.escolaridade) setEscolaridade(lido.escolaridade);
+    if (lido.curso) setCurso(lido.curso);
+    if (lido.experiencias.length) setExperiencias(lido.experiencias.map((x) => ({ chave: novaChave(), ...x })));
+    if (lido.cursos.length) setCursos(lido.cursos);
+    if (lido.cnh) setCnh(lido.cnh);
+    if (lido.disponibilidade.length) setDisponibilidade(lido.disponibilidade);
+    if (pdf) {
+      setArquivo(pdf.caminho);
+      setNomePdf(pdf.nome);
+      setErroPdf(null);
+    }
+    setNovaHabilidade("");
+    setNovoCurso("");
+  }
+
+  function desfazerLeitura() {
+    const r = antesDaLeitura;
+    if (!r) return;
+    setTitulo(r.titulo);
+    setHabilidades(r.habilidades);
+    setEscolaridade(r.escolaridade);
+    setCurso(r.curso);
+    setExperiencias(r.experiencias);
+    setCursos(r.cursos);
+    setCnh(r.cnh);
+    setDisponibilidade(r.disponibilidade);
+    setArquivo(r.arquivo);
+    setNomePdf(r.nomePdf);
+    setAntesDaLeitura(null);
   }
 
   function enviar(e: FormEvent<HTMLFormElement>) {
@@ -229,6 +583,17 @@ export function FormCurriculo({
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
       {proximo && <input type="hidden" name="next" value={proximo} />}
 
+      {lerArquivo && !demo && (
+        <LerCurriculoPronto
+          usuarioId={usuarioId}
+          compacto={inicial !== null}
+          rotuloSalvar={rotuloSalvar}
+          aoLer={aplicarLeitura}
+          aoDesfazer={antesDaLeitura ? desfazerLeitura : null}
+          aoMudarLendo={setLendo}
+        />
+      )}
+
       <Secao
         titulo="O que você faz"
         descricao="É o que as empresas veem primeiro. Diga sua profissão (ou o trabalho que procura) e o que você sabe fazer bem."
@@ -240,7 +605,8 @@ export function FormCurriculo({
           <input
             id="titulo"
             name="titulo"
-            defaultValue={inicial?.titulo ?? ""}
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
             maxLength={60}
             placeholder="Ex.: Auxiliar de cozinha, Motorista, Vendedora"
             aria-invalid={erros.titulo ? true : undefined}
@@ -356,7 +722,8 @@ export function FormCurriculo({
               <input
                 id="curso"
                 name="curso"
-                defaultValue={inicial?.curso ?? ""}
+                value={curso}
+                onChange={(e) => setCurso(e.target.value)}
                 maxLength={80}
                 placeholder="Ex.: Administração, Técnico em Enfermagem"
                 aria-invalid={erros.curso ? true : undefined}
@@ -544,7 +911,7 @@ export function FormCurriculo({
       <Secao titulo="Habilitação e horários">
         <div className="flex flex-col gap-1.5 sm:max-w-xs">
           <Rotulo htmlFor="cnh">Carteira de motorista (CNH)</Rotulo>
-          <Seletor id="cnh" name="cnh" defaultValue={inicial?.cnh ?? ""} className={classesEntrada}>
+          <Seletor id="cnh" name="cnh" value={cnh} onChange={(e) => setCnh(e.target.value)} className={classesEntrada}>
             <option value="">Não tenho</option>
             {CNHS.map((c) => (
               <option key={c} value={c}>
@@ -559,7 +926,15 @@ export function FormCurriculo({
           </legend>
           <div className="flex flex-wrap gap-2">
             {DISPONIBILIDADES.map((d) => (
-              <Disponibilidade key={d.valor} valor={d.valor} nome={d.nome} inicial={inicial?.disponibilidade ?? []} />
+              <Disponibilidade
+                key={d.valor}
+                valor={d.valor}
+                nome={d.nome}
+                marcado={disponibilidade.includes(d.valor)}
+                aoMudar={(marcado) =>
+                  setDisponibilidade((l) => (marcado ? [...l, d.valor] : l.filter((v) => v !== d.valor)))
+                }
+              />
             ))}
           </div>
         </fieldset>
@@ -624,7 +999,7 @@ export function FormCurriculo({
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Botao type="submit" variante="primario" disabled={enviando || enviandoPdf} className="sm:min-w-56">
+        <Botao type="submit" variante="primario" disabled={enviando || enviandoPdf || lendo} className="sm:min-w-56">
           {enviando ? "Salvando…" : rotuloSalvar}
         </Botao>
         <p className="text-body-sm text-ink-muted">
@@ -640,8 +1015,17 @@ export function FormCurriculo({
 }
 
 /** Chip de disponibilidade (checkbox de verdade, para ir no formulário). */
-function Disponibilidade({ valor, nome, inicial }: { valor: string; nome: string; inicial: readonly string[] }) {
-  const [marcado, setMarcado] = useState(inicial.includes(valor));
+function Disponibilidade({
+  valor,
+  nome,
+  marcado,
+  aoMudar,
+}: {
+  valor: string;
+  nome: string;
+  marcado: boolean;
+  aoMudar: (marcado: boolean) => void;
+}) {
   return (
     <label className={chip(marcado)}>
       <input
@@ -649,7 +1033,7 @@ function Disponibilidade({ valor, nome, inicial }: { valor: string; nome: string
         name="disponibilidade"
         value={valor}
         checked={marcado}
-        onChange={(e) => setMarcado(e.target.checked)}
+        onChange={(e) => aoMudar(e.target.checked)}
         className="sr-only"
       />
       {marcado && <Check aria-hidden className="size-4" />}

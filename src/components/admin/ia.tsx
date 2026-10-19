@@ -44,7 +44,7 @@ export function FormConfigIA({ config, modelos }: { config: ConfigSite; modelos:
         <Opcao
           nome="ia_melhorar_texto"
           rotulo="Ajuda da IA para quem usa o site"
-          ajuda="“Melhorar texto” ao publicar (até 20 vezes por dia por pessoa) e a ordem das vagas no Descobrir (até 12 por dia, guardadas por 6 horas)."
+          ajuda="“Melhorar texto” ao publicar e a leitura do currículo pronto (PDF ou foto), juntos até 20 vezes por dia por pessoa, e a ordem das vagas no Descobrir (até 12 por dia, guardadas por 6 horas)."
           inicial={config.ia_melhorar_texto}
         />
         <Opcao

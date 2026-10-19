@@ -45,6 +45,8 @@ type Pedido = {
   imagens?: string[];
   /** "high" para ler letra miúda (telefone num cartaz); o padrão "low" sai bem mais barato */
   detalhe?: "low" | "high";
+  /** PDFs para a IA ler junto com o texto (data: URL em base64), como o currículo de quem procura trabalho. */
+  arquivos?: { nome: string; dados: string }[];
   /** Saída estruturada: nome e esquema JSON da resposta. Sem esquema, a resposta é texto livre. */
   esquema?: { nome: string; schema: Record<string, unknown> };
   /** Deixa a IA pesquisar na internet, a partir deste lugar (as notícias). */
@@ -105,18 +107,24 @@ export async function chamarIA(
       body: JSON.stringify({
         model: modelo.id,
         instructions: p.sistema,
-        input: p.imagens?.length
-          ? [
-              {
-                role: "user",
-                content: [
-                  { type: "input_text", text: p.mensagem },
-                  // "low" basta para ver telefone, rosto ou conteúdo impróprio, e custa bem menos
-                  ...p.imagens.map((url) => ({ type: "input_image", image_url: url, detail: p.detalhe ?? "low" })),
-                ],
-              },
-            ]
-          : p.mensagem,
+        input:
+          p.imagens?.length || p.arquivos?.length
+            ? [
+                {
+                  role: "user",
+                  content: [
+                    { type: "input_text", text: p.mensagem },
+                    ...(p.arquivos ?? []).map((a) => ({ type: "input_file", filename: a.nome, file_data: a.dados })),
+                    // "low" basta para ver telefone, rosto ou conteúdo impróprio, e custa bem menos
+                    ...(p.imagens ?? []).map((url) => ({
+                      type: "input_image",
+                      image_url: url,
+                      detail: p.detalhe ?? "low",
+                    })),
+                  ],
+                },
+              ]
+            : p.mensagem,
         max_output_tokens: maxTokens,
         reasoning: { effort: esforco },
         // o texto dos anúncios não fica guardado na conta da OpenAI

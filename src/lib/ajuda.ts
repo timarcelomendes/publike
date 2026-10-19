@@ -55,6 +55,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Abra a vaga e toque em Curtir. Quem publicou vê seu perfil e a sua mensagem. Se curtir você de volta, dá match e o WhatsApp dos dois aparece no painel.",
       },
       {
+        p: "Posso enviar o currículo que já tenho?",
+        r: "Pode. Em “Meu currículo”, toque em “Enviar PDF” ou em “Foto do currículo” (até 3 fotos, uma por página). A IA lê e preenche os campos: profissão, habilidades, estudos, experiências, cursos e CNH. Confira, complete o que faltar e toque em “Salvar currículo”: nada é salvo antes disso. Telefone, e-mail e endereço não entram nos campos. O PDF fica anexado ao currículo (dá para tirar); as fotos não ficam guardadas.",
+      },
+      {
         p: "Quem vê meu currículo?",
         r: "Preencha “Meu currículo” uma vez. Quem anunciou uma vaga que você curtiu vê o currículo, enquanto a curtida existir. Se quiser, ligue “Deixar as empresas me encontrarem” no currículo: quem tem vaga na sua cidade vê o currículo sem telefone e sem e-mail, com o nome encurtado, e pode convidar você; o contato só sai se você curtir a vaga e der match. E, se ligar “Aparecer na aba Talentos”, um resumo seu aparece na aba Talentos da busca. Dá para desligar quando quiser. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
       },
@@ -343,6 +347,7 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
             texto: "Leva uns 3 minutos e vale para todas as vagas.",
             detalhes: [
               "O que você faz (sua profissão), habilidades, estudos, experiências, cursos e CNH.",
+              "Já tem currículo pronto? Envie o PDF ou a foto da folha: o Publike preenche os campos e você só confere.",
               "Com o currículo, cada vaga mostra o seu % de match: o quanto você combina com o que ela pede.",
               "Vagas que pedem currículo já recebem o seu quando você curte.",
               "Se quiser, deixe o currículo à vista das empresas: elas podem convidar você para uma vaga, sem ver o seu contato.",

@@ -9,6 +9,7 @@ import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { esperaCurriculo } from "@/lib/constantes";
 import {
+  ajudaDaIADisponivel,
   linkDoMeuPdf,
   listarMinhasCurtidas,
   meuCurriculoNaVitrine,
@@ -75,11 +76,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         ? "/perfil/curriculo?para=talentos"
         : "/perfil/curriculo",
   );
-  const [curriculo, curtidas, visivel, vitrine] = await Promise.all([
+  const [curriculo, curtidas, visivel, vitrine, ia] = await Promise.all([
     obterMeuCurriculo(),
     listarMinhasCurtidas().catch(() => []),
     meuCurriculoVisivel(),
     meuCurriculoNaVitrine(),
+    ajudaDaIADisponivel().catch(() => false),
   ]);
   const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? null);
   // as vagas que já aceitaram a pessoa e só esperam o currículo
@@ -97,7 +99,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
             <li>
               {curriculo
                 ? "Confira o currículo. Mudou algo? Toque em “Salvar currículo”."
-                : "Preencha o currículo e toque em “Salvar currículo”."}
+                : ia
+                  ? "Envie o PDF ou a foto do seu currículo (o Publike preenche) ou preencha aqui. Depois, toque em “Salvar currículo”."
+                  : "Preencha o currículo e toque em “Salvar currículo”."}
             </li>
             <li>
               No fim da página, ligue{" "}
@@ -159,6 +163,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         proximo={depoisDeSalvar}
         hoje={hoje}
         rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
+        lerArquivo={ia}
       />
       {curriculo && <VisibilidadeCurriculo visivel={visivel} vitrine={vitrine} />}
       {curriculo && <ApagarCurriculo />}
