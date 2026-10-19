@@ -22,6 +22,7 @@ import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
 import { centroDoBairro } from "@/lib/servidor/cep";
 import { completarAnuncio } from "@/lib/servidor/completar-anuncio";
+import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { processarFilas } from "@/lib/servidor/filas";
 import { salvarTriagem } from "@/lib/servidor/triagem";
 
@@ -374,6 +375,7 @@ export async function montarVitrinePeloAdmin(
     p_horario: d.horario,
   });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar a vitrine agora.") };
+  await salvarContatoDireto(c, contaId, formData);
 
   const { data: ultimo } = await c
     .from("anuncios")

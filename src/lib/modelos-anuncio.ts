@@ -196,12 +196,16 @@ export function descricaoSimples(d: {
   horario: string | null;
   bairro: string;
   cidade: string;
+  /** contato direto: quem curtir já recebe o contato */
+  direto?: boolean;
 }) {
   const partes = [
     `Vaga de ${d.titulo.replace(/\.$/, "")} no ${d.bairro}, em ${d.cidade}.`,
     d.nomeRegime ? `Contratação: ${d.nomeRegime.toLowerCase()}.` : null,
     d.horario ? `Horário: ${d.horario}.` : null,
-    "Se tiver interesse, é só curtir a vaga: quem publicou vê seu perfil e, se aceitar, vocês conversam.",
+    d.direto
+      ? "Se tiver interesse, é só curtir a vaga: o contato de quem publicou aparece na hora."
+      : "Se tiver interesse, é só curtir a vaga: quem publicou vê seu perfil e, se aceitar, vocês conversam.",
   ];
   return partes.filter(Boolean).join("\n\n");
 }

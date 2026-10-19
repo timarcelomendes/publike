@@ -31,6 +31,7 @@ export async function completarAnuncio(formData: FormData, provisorio = false) {
         horario: horario.ok && horario.horario ? textoDoHorario(horario.horario) : texto("horario") || null,
         bairro: texto("bairro"),
         cidade: texto("cidade") || "Goiânia",
+        direto: texto("contato_direto") === "on",
       }),
     );
   }

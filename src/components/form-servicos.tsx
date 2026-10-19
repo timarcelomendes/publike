@@ -57,6 +57,8 @@ export type ValoresServicos = {
   lng: number | null;
   atende: string[];
   horario: string | null;
+  /** quem pedir o serviço já recebe o WhatsApp (match na hora); sem a opção, vale ligado */
+  contato_direto?: boolean;
 };
 
 type Item = {
@@ -545,6 +547,22 @@ export function FormServicos({
           {erros.horario && <MensagemErro>{erros.horario}</MensagemErro>}
         </div>
       </Secao>
+
+      <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
+        <input
+          type="checkbox"
+          name="contato_direto"
+          defaultChecked={inicial.contato_direto ?? true}
+          className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+        />
+        <span>
+          <span className="block text-label">Contato direto</span>
+          <span className="block text-body-sm text-ink-muted">
+            Quem pedir o serviço já recebe {emNomeDe ? "o WhatsApp da conta" : "seu WhatsApp"}, sem esperar o aceite.
+            Desligado, {emNomeDe ? "a pessoa escolhe" : "você escolhe"} quem aceita.
+          </span>
+        </span>
+      </label>
 
       {extras}
 

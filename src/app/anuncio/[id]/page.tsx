@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   Users,
   Wrench,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { perguntasDoBanco, respostasDoBanco } from "@/lib/vaga-extra";
@@ -322,6 +323,7 @@ async function DetalheAnuncio({
         continuarCurtida={primeiro(sp.curtir) === "1"}
         autorId={anuncio.autor_id}
         entrevista={entrevista}
+        contatoDireto={anuncio.contato_direto && anuncio.status === "ativo"}
       />
     );
 
@@ -372,6 +374,12 @@ async function DetalheAnuncio({
               <Selo variante="contorno">
                 <FileText aria-hidden />
                 Pede currículo
+              </Selo>
+            )}
+            {anuncio.contato_direto && anuncio.status === "ativo" && (
+              <Selo variante="contorno">
+                <Zap aria-hidden />
+                Contato direto
               </Selo>
             )}
           </div>

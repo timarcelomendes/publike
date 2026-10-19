@@ -9,6 +9,7 @@ import { Aviso } from "@/components/ui/basicos";
 import { salvarServicosEmNomeDe } from "@/lib/acoes/admin-contas";
 import { fichaUsuario } from "@/lib/admin/dados";
 import { regiaoDoBairro } from "@/lib/regioes";
+import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 
@@ -49,7 +50,10 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]/se
     );
   }
 
-  const { data: servicos, error } = await c.rpc("admin_servicos_de", { p_usuario: id });
+  const [{ data: servicos, error }, direto] = await Promise.all([
+    c.rpc("admin_servicos_de", { p_usuario: id }),
+    contatoDiretoDosServicos(c, id),
+  ]);
   if (error) {
     return (
       <div className="flex max-w-3xl flex-col gap-6">
@@ -84,6 +88,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]/se
     lng: base?.lng ?? null,
     atende: base?.atende.length ? base.atende : [regiao ? `Goiânia: ${regiao}` : p.cidade],
     horario: base?.horario ?? null,
+    contato_direto: direto ?? true,
   };
 
   return (

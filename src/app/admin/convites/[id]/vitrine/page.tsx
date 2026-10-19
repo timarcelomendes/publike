@@ -11,6 +11,7 @@ import { montarVitrinePeloAdmin } from "@/lib/acoes/admin-convites";
 import { UNIDADES_SERVICO } from "@/lib/constantes";
 import { rascunhoValido, type Convite } from "@/lib/convites";
 import { regiaoDoBairro } from "@/lib/regioes";
+import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 
@@ -80,6 +81,7 @@ async function Conteudo({ id }: { id: string }) {
     lng: null,
     atende: [regiao ? `Goiânia: ${regiao}` : cidade],
     horario: null,
+    contato_direto: (conta ? await contatoDiretoDosServicos(c, conta.id) : null) ?? true,
   };
 
   return (

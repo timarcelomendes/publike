@@ -7,6 +7,7 @@ import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
 import { limparFotosDeTrabalho } from "@/lib/servidor/arquivos";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
+import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { mandarEmailDeAcesso } from "@/lib/servidor/email-acesso";
 import { enviarEmailsPendentes, processarFilas } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
@@ -263,6 +264,7 @@ export async function salvarServicosEmNomeDe(
     p_horario: d.horario,
   });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar a vitrine agora.") };
+  await salvarContatoDireto(c, usuarioId, formData);
 
   // fotos que nenhum serviço usa mais saem do Storage (como em "Meus serviços")
   const { data: todos } = await c.from("anuncios").select("fotos").eq("autor_id", usuarioId);

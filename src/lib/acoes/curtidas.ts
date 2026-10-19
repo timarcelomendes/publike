@@ -68,6 +68,16 @@ export async function curtirAnuncio(
 
   after(processarFilas);
   refresh();
+  // contato direto: a curtida já virou match
+  const { data: feita } = await supabase
+    .from("curtidas")
+    .select("status")
+    .eq("anuncio_id", anuncioId)
+    .eq("perfil_id", usuario.id)
+    .maybeSingle();
+  if (feita?.status === "match") {
+    return { ok: true, mensagem: "Deu match! O contato já está liberado: chame no WhatsApp." };
+  }
   return {
     ok: true,
     mensagem: "Pronto! Agora quem publicou decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu painel.",
@@ -207,6 +217,13 @@ export async function curtirDeNovo(anuncioId: string, mensagem: string | null = 
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível curtir de novo agora.") };
   after(processarFilas);
   refresh();
+  const { data: feita } = await supabase
+    .from("curtidas")
+    .select("status")
+    .eq("anuncio_id", anuncioId)
+    .eq("perfil_id", usuario.id)
+    .maybeSingle();
+  if (feita?.status === "match") return { ok: true, mensagem: "Deu match de novo! O contato já está liberado." };
   return { ok: true, mensagem: "Pronto! Se a outra pessoa topar, dá match de novo." };
 }
 

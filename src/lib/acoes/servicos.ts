@@ -8,6 +8,7 @@ import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { limparFotosDeTrabalho } from "@/lib/servidor/arquivos";
 import { centroDoBairro } from "@/lib/servidor/cep";
+import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
@@ -65,6 +66,8 @@ export async function salvarServicos(_anterior: EstadoForm, formData: FormData):
     if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/painel/servicos");
     return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar seus serviços agora.") };
   }
+
+  await salvarContatoDireto(supabase, usuario.id, formData);
 
   // Fotos que nenhum serviço usa mais saem do Storage (inclusive as dos encerrados).
   const { data: meus } = await supabase.from("anuncios").select("fotos").eq("autor_id", usuario.id);

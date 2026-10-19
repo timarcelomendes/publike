@@ -50,6 +50,8 @@ export type ValoresAnuncio = {
   vagas: number;
   /** vaga: quem curtir é convidado a preencher o currículo, e você vê o currículo de cada um */
   pede_curriculo?: boolean;
+  /** quem curtir já recebe o contato (match na hora) */
+  contato_direto?: boolean;
   /** vaga de agência: a empresa que contrata (vazio quando é confidencial) */
   contratante?: string | null;
   contratante_confidencial?: boolean;
@@ -801,6 +803,24 @@ export function FormAnuncio({
         </div>
       </details>
 
+      {vaga && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4">
+          <input
+            type="checkbox"
+            name="contato_direto"
+            defaultChecked={inicial.contato_direto ?? false}
+            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+          />
+          <span>
+            <span className="block text-label">Contato direto: quem curtir já recebe o WhatsApp</span>
+            <span className="block text-body-sm text-ink-muted">
+              Sem esperar você aceitar, e você vê o contato de quem curtiu. Mais rápido, mas chegam mais contatos.
+              Desligado, você escolhe quem aceita.
+            </span>
+          </span>
+        </label>
+      )}
+
       {previa}
 
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
@@ -832,7 +852,7 @@ export function FormAnuncio({
         ) : (
           <p className="text-body-sm text-ink-muted">
             {semConta ? "Depois é só entrar com seu WhatsApp ou e-mail: a vaga vai ao ar na hora. " : ""}
-            Grátis. Seu WhatsApp só aparece para quem você aceitar. Fica 30 dias no ar e pode ser renovado de 30 em 30
+            Grátis. Seu WhatsApp só aparece no match. Fica 30 dias no ar e pode ser renovado de 30 em 30
             dias. Ao publicar, você concorda com as{" "}
             <Link href="/privacidade#regras" className="underline">
               regras do Publike

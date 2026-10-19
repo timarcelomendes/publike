@@ -136,6 +136,8 @@ export const esquemaAnuncio = z
     modelo: z.enum(VALORES_MODELO, { error: "Escolha o modelo de trabalho." }).nullable(),
     pcd: z.enum(VALORES_PCD, { error: "Escolha uma opção." }).nullable(),
     pede_curriculo: z.boolean(),
+    /** contato direto: quem curtir já dá match (sem esperar o aceite) */
+    contato_direto: z.boolean(),
     /** quem publica é agência de emprego: a vaga diz a empresa contratante (ou que é confidencial) */
     agencia: z.boolean(),
     contratante: z
@@ -277,6 +279,7 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     ...(d.horario_detalhe !== undefined ? { horario_detalhe: d.horario_detalhe } : {}),
     vagas: d.vagas,
     pede_curriculo: d.pede_curriculo,
+    contato_direto: d.contato_direto,
     contratante: d.contratante,
     contratante_confidencial: d.contratante_confidencial,
     escolaridade_minima: d.escolaridade_minima,
@@ -341,6 +344,7 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
     modelo: campo(formData, "modelo") || null,
     pcd: campo(formData, "pcd") || null,
     pede_curriculo: campo(formData, "pede_curriculo") === "on",
+    contato_direto: campo(formData, "contato_direto") === "on",
     agencia: campo(formData, "agencia") === "1",
     contratante: campo(formData, "contratante") ?? "",
     contratante_confidencial: campo(formData, "contratante_confidencial") === "on",

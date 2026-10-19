@@ -32,6 +32,7 @@ export function valoresDoAnuncio(
       (anuncio.horario ? { escala: null, dias: [], turnos: [], obs: anuncio.horario.slice(0, 120) } : null),
     vagas: anuncio.vagas,
     pede_curriculo: anuncio.pede_curriculo,
+    contato_direto: anuncio.contato_direto,
     contratante: anuncio.contratante,
     contratante_confidencial: anuncio.contratante_confidencial,
     pagamento_ate: anuncio.pagamento_ate,

@@ -13,7 +13,9 @@ import { listarMeusServicos, obterNotaDoProfissional } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { regiaoDoBairro } from "@/lib/regioes";
 import { centroDoBairro } from "@/lib/servidor/cep";
+import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { conviteDoLink } from "@/lib/servidor/convite-do-link";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Meus serviços" };
@@ -24,7 +26,7 @@ export default function MeusServicos({ searchParams }: PageProps<"/painel/servic
       <h2 className="text-h2">Mostre o que você faz</h2>
       <p className="mt-2 mb-6 text-body text-ink-muted">
         Pedreiro, diarista, manicure, eletricista… Quem precisa vê seus serviços perto de casa e chama você. Seu
-        WhatsApp só aparece quando você aceitar.
+        WhatsApp aparece no match: na hora, com o contato direto, ou quando você aceitar.
       </p>
       <Suspense fallback={<Esqueleto className="h-[60rem] w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />
@@ -67,7 +69,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
   const { usuario, perfil } = await exigirPerfilCompleto(
     convite ? `/painel/servicos?convite=${convite.token}` : "/painel/servicos",
   );
-  const [servicos, nota] = await Promise.all([listarMeusServicos(), obterNotaDoProfissional(usuario.id)]);
+  const [servicos, nota, direto] = await Promise.all([
+    listarMeusServicos(),
+    obterNotaDoProfissional(usuario.id),
+    criarClienteServidor().then((c) => contatoDiretoDosServicos(c, usuario.id)),
+  ]);
   const r = convite?.tipo === "prestador" ? convite.rascunho : null;
   // sem vitrine ainda: o ponto no mapa começa no meio do bairro do anúncio (dá para ajustar)
   const centro =
@@ -113,6 +119,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
         ? areaDoPerfil(r.cidade || "Goiânia", r.bairro)
         : areaDoPerfil(perfil.cidade, perfil.bairro),
     horario: base?.horario ?? null,
+    contato_direto: direto ?? true,
   };
 
   return (

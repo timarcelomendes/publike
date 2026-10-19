@@ -85,6 +85,7 @@ export function valoresDoRascunho(r: Rascunho, base: ValoresAnuncio): ValoresAnu
     modelo: um("modelo") || base.modelo,
     pcd: um("pcd") || null,
     pede_curriculo: um("pede_curriculo") === "on",
+    contato_direto: um("contato_direto") === "on",
     perguntas,
     horario_detalhe: horario.ok ? horario.horario : null,
     vagas: Number(um("vagas")) || 1,

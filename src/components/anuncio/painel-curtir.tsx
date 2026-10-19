@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Heart, HeartCrack, MessagesSquare, PartyPopper, Star } from "lucide-react";
+import { FileText, Heart, HeartCrack, MessagesSquare, PartyPopper, Star, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -50,6 +50,8 @@ type Props = {
   autorId?: string | null;
   /** depois do match: a entrevista que a empresa marcou */
   entrevista?: Entrevista | null;
+  /** quem publicou liberou o contato: curtir já é match */
+  contatoDireto?: boolean;
 };
 
 /** O currículo, que volta para a vaga depois de salvar. */
@@ -111,6 +113,7 @@ export function PainelCurtir({
   continuarCurtida = false,
   autorId = null,
   entrevista = null,
+  contatoDireto = false,
 }: Props) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -174,7 +177,9 @@ export function PainelCurtir({
           Deu match! Agora é só conversar.
         </p>
         <p className="text-body-sm opacity-90">
-          {quem} aceitou e vocês estão conectados.{" "}
+          {contatoDireto
+            ? `${quem} libera o contato para quem se interessa: vocês estão conectados.`
+            : `${quem} aceitou e vocês estão conectados.`}{" "}
           {servico
             ? "Combinem o serviço, o endereço, o preço e o melhor dia."
             : "Combinem os detalhes, o endereço e o melhor horário."}
@@ -360,13 +365,24 @@ export function PainelCurtir({
       )}
       <div>
         <p className="font-display text-h3">{servico ? "Quer contratar?" : "Tem interesse?"}</p>
-        <CaminhoDaCurtida
-          situacao="antes"
-          quem={quem}
-          servico={servico}
-          passoDoCurriculo={passoDoCurriculo}
-          className="mt-3"
-        />
+        {contatoDireto && !passoDoCurriculo ? (
+          <p className="mt-3 flex items-start gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
+            <Zap aria-hidden className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
+            <span>
+              <span className="font-semibold">Contato direto.</span>{" "}
+              {servico ? "Ao tocar em Quero contratar" : "Ao curtir"}, o WhatsApp de {quem} aparece na hora, e {quem}{" "}
+              recebe o seu. Sem esperar o aceite.
+            </span>
+          </p>
+        ) : (
+          <CaminhoDaCurtida
+            situacao="antes"
+            quem={quem}
+            servico={servico}
+            passoDoCurriculo={passoDoCurriculo}
+            className="mt-3"
+          />
+        )}
         {!servico && pedeCurriculo && (
           <p className="mt-2 flex items-start gap-2 text-body-sm">
             <FileText aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />

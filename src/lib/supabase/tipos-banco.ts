@@ -224,6 +224,7 @@ export type Database = {
           fotos: string[];
           atende: string[];
           pede_curriculo: boolean;
+          contato_direto: boolean;
           /** vaga de agência: a empresa que contrata (null se confidencial) */
           contratante: string | null;
           contratante_confidencial: boolean;
@@ -271,6 +272,7 @@ export type Database = {
           fotos?: string[];
           atende?: string[];
           pede_curriculo?: boolean;
+          contato_direto?: boolean;
           contratante?: string | null;
           contratante_confidencial?: boolean;
           cep?: string | null;
@@ -311,6 +313,7 @@ export type Database = {
           fotos?: string[];
           atende?: string[];
           pede_curriculo?: boolean;
+          contato_direto?: boolean;
           contratante?: string | null;
           contratante_confidencial?: boolean;
           cep?: string | null;
@@ -740,6 +743,7 @@ export type Database = {
           beneficios_extras: string[];
           horario_detalhe: Json | null;
           minhas_respostas: Json | null;
+          contato_direto: boolean;
         }[];
       };
       meus_anuncios: {

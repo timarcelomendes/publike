@@ -333,6 +333,7 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     atende: b.atende ?? [],
     // na demonstração, CLT e estágio pedem currículo
     pede_curriculo: b.tipo === "vaga" && (b.regime === "clt" || b.regime === "estagio"),
+    contato_direto: b.tipo === "servico",
     contratante: b.contratante ?? null,
     contratante_confidencial: b.confidencial ?? false,
     autor_cnpj: a.cnpj ?? null,
