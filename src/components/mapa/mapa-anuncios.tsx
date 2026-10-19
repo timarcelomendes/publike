@@ -352,8 +352,16 @@ export function MapaAnuncios({
           // Refaz as etiquetas quando o mapa para de mexer ou os dados chegam (não a cada quadro:
           // no meio de um toque a etiqueta sumiria e o clique cairia no mapa)
           m.on("moveend", () => atualizar.current());
-          // a lista acompanha a parte do mapa na tela
+          // a lista acompanha a parte do mapa na tela: quando a pessoa mexe no mapa (ou a busca o move).
+          // Se só o tamanho do mapa mudou, a lista fica como está: em Blocos + mapa, o mapa tem a altura
+          // dos cartões, e a página 2 (mais curta) encolhia o mapa, a área mudava, a lista voltava para a
+          // página 1, crescia, o mapa crescia de novo... e a tela ficava piscando entre as duas páginas.
+          let ultimaCamera = "";
           const area = () => {
+            const c = m.getCenter();
+            const camera = `${c.lng.toFixed(6)},${c.lat.toFixed(6)},${m.getZoom().toFixed(3)}`;
+            if (camera === ultimaCamera) return;
+            ultimaCamera = camera;
             const b = m.getBounds();
             avisarArea.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
           };
