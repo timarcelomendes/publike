@@ -8,6 +8,7 @@ import {
   Mail,
   MessageCircle,
   Phone,
+  Search,
   Share2,
   Trash2,
   UserPlus,
@@ -431,10 +432,18 @@ export function ImportarPorImagens() {
 
 // ------------------------------------------------------------------ Lista
 
+const semAcento = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
 export function ListaConvites({ convites, agora, site }: { convites: Convite[]; agora: number; site: string }) {
   const [filtro, setFiltro] = useState<StatusConvite | "todos">("todos");
   // filtros a mais (juntam com a situação): lida da imagem, agência, só telefone
   const [marcas, setMarcas] = useState<Set<Marca>>(new Set());
+  // busca pelo nome (sem acento) ou pelo telefone (só os números, com ou sem o 55)
+  const [busca, setBusca] = useState("");
   const [mudancas, setMudancas] = useState<Record<string, Partial<Convite>>>({});
   const [tocou, setTocou] = useState<Set<string>>(new Set());
   const [assinatura, setAssinatura] = useState("o Marcelo");
@@ -465,8 +474,15 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
     return n ? { numero: n, convites: grupos.get(n)! } : null;
   };
   const temMarca = (m: Marca, c: Convite) => (m === "mesmo_whatsapp" ? Boolean(grupoDe(c)) : MARCAS[m].tem(c));
+  const termo = semAcento(busca.trim());
+  const digitos = busca.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  const achou = (c: Convite) =>
+    !termo ||
+    semAcento(c.nome).includes(termo) ||
+    (c.email ?? "").toLowerCase().includes(termo) ||
+    (digitos.length >= 3 && [...c.whatsapp, ...c.telefones].some((n) => n.includes(digitos)));
   const visiveis = itens.filter(
-    (c) => (filtro === "todos" || c.status === filtro) && [...marcas].every((m) => temMarca(m, c)),
+    (c) => (filtro === "todos" || c.status === filtro) && [...marcas].every((m) => temMarca(m, c)) && achou(c),
   );
   const naHora = itens.filter((c) => c.enviada_em && Date.parse(c.enviada_em) > agora - 3600e3).length;
 
@@ -534,6 +550,21 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
         </label>
       </div>
 
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted"
+        />
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          aria-label="Buscar por nome ou telefone"
+          placeholder="Buscar por nome ou telefone"
+          className={`${classesEntrada} pl-9`}
+        />
+      </div>
+
       <div role="group" aria-label="Filtrar pela situação" className="sem-barra flex gap-2 overflow-x-auto pb-1">
         <button
           type="button"
@@ -587,7 +618,11 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
 
       {visiveis.length === 0 ? (
         <p className="py-6 text-center text-body-sm text-ink-muted">
-          {marcas.size ? "Ninguém com esses filtros." : "Ninguém nesta situação."}
+          {termo
+            ? `Ninguém com “${busca.trim()}”${marcas.size || filtro !== "todos" ? " nesses filtros" : ""}.`
+            : marcas.size
+              ? "Ninguém com esses filtros."
+              : "Ninguém nesta situação."}
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
