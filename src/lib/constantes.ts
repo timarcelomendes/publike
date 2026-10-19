@@ -187,6 +187,8 @@ export function nomeDisponibilidade(valor: string) {
 }
 
 export const MAX_EXPERIENCIAS = 10;
+/** Estudos a mais, além de "Até onde você estudou". */
+export const MAX_ESTUDOS = 4;
 export const MAX_CURSOS = 12;
 /** Tamanho máximo do PDF do currículo (o Storage também barra). */
 export const MAX_PDF_MB = 5;

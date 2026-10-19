@@ -1,5 +1,6 @@
 import { FileText } from "lucide-react";
-import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
+import { nomeDisponibilidade } from "@/lib/constantes";
+import { textosDosEstudos } from "@/lib/estudos";
 import type { Curriculo, Experiencia } from "@/lib/tipos";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -56,11 +57,12 @@ export function CurriculoResumo({
   linkPdf: string | null;
   hoje: string;
 }) {
-  const estudo = nomeEscolaridade(curriculo.escolaridade);
+  // o mais alto primeiro e, embaixo, os outros (técnico, outra faculdade, pós)
+  const estudos = textosDosEstudos(curriculo);
   const habilidades = curriculo.habilidades ?? [];
-  const linhas: { rotulo: string; valor: string }[] = [];
+  const linhas: { rotulo: string; valor: string | string[] }[] = [];
   if (curriculo.titulo) linhas.push({ rotulo: "O que faz", valor: curriculo.titulo });
-  if (estudo) linhas.push({ rotulo: "Estudos", valor: curriculo.curso ? `${estudo} · ${curriculo.curso}` : estudo });
+  if (estudos.length) linhas.push({ rotulo: "Estudos", valor: estudos });
   if (curriculo.cnh) linhas.push({ rotulo: "CNH", valor: `Categoria ${curriculo.cnh}` });
   if (curriculo.disponibilidade.length)
     linhas.push({ rotulo: "Pode trabalhar", valor: curriculo.disponibilidade.map(nomeDisponibilidade).join(", ") });
@@ -72,7 +74,15 @@ export function CurriculoResumo({
           {linhas.map((l) => (
             <div key={l.rotulo} className="contents">
               <dt className="text-ink-muted">{l.rotulo}</dt>
-              <dd className="mb-1 sm:mb-0">{l.valor}</dd>
+              <dd className="mb-1 sm:mb-0">
+                {Array.isArray(l.valor)
+                  ? l.valor.map((v) => (
+                      <span key={v} className="block">
+                        {v}
+                      </span>
+                    ))
+                  : l.valor}
+              </dd>
             </div>
           ))}
         </dl>

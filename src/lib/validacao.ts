@@ -24,7 +24,9 @@ import {
   LISTA_REGIMES,
   LISTA_TIPOS_CONTA,
   LISTA_UNIDADES,
+  ESCOLARIDADES_COM_CURSO,
   MAX_CURSOS,
+  MAX_ESTUDOS,
   MAX_EXPERIENCIAS,
   MAX_FOTOS,
   MAX_SERVICOS,
@@ -607,6 +609,24 @@ const esquemaExperiencia = z
   })
   .transform(({ atual, ...d }) => ({ ...d, fim: atual ? null : d.fim }));
 
+const mesmoEstudo = (a: { nivel: string; curso: string }, b: { nivel: string; curso: string }) =>
+  a.nivel === b.nivel && a.curso.toLowerCase() === b.curso.toLowerCase();
+
+/** Um estudo a mais: o nível (técnico, faculdade ou pós) e o curso. */
+const esquemaEstudo = z.object({
+  nivel: z.string().refine((v) => ESCOLARIDADES_COM_CURSO.includes(v), { error: "Escolha o nível do estudo." }),
+  curso: z
+    .string()
+    .transform((t) => t.replace(/\s+/g, " ").trim())
+    .pipe(
+      z
+        .string()
+        .min(2, { error: "Diga qual curso." })
+        .max(80, { error: "Use no máximo 80 letras." })
+        .refine((t) => !temContato(t), { error: SEM_CONTATO }),
+    ),
+});
+
 export const esquemaCurriculo = z
   .object({
     escolaridade: z.enum(VALORES_ESCOLARIDADE, { error: "Escolha até onde você estudou." }),
@@ -617,6 +637,11 @@ export const esquemaCurriculo = z
       .refine((t) => !temContato(t), { error: SEM_CONTATO })
       .transform((t) => t || null),
     experiencias: z.array(esquemaExperiencia).max(MAX_EXPERIENCIAS, { error: `No máximo ${MAX_EXPERIENCIAS} experiências.` }),
+    /** outros estudos, além do mais alto (sem repetir o mesmo curso) */
+    estudos: z
+      .array(esquemaEstudo)
+      .max(MAX_ESTUDOS, { error: `No máximo ${MAX_ESTUDOS} estudos a mais.` })
+      .transform((l) => l.filter((e, i) => l.findIndex((x) => mesmoEstudo(x, e)) === i)),
     cursos: z
       .array(z.string().trim().min(2, { error: "Use pelo menos 2 letras." }).max(80, { error: "Use no máximo 80 letras." }))
       .max(MAX_CURSOS, { error: `No máximo ${MAX_CURSOS} cursos.` })
@@ -655,10 +680,12 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
   let experiencias: unknown = [];
   let cursos: unknown = [];
   let habilidades: unknown = [];
+  let estudos: unknown = [];
   try {
     experiencias = JSON.parse(campo(formData, "experiencias") ?? "[]");
     cursos = JSON.parse(campo(formData, "cursos") ?? "[]");
     habilidades = JSON.parse(campo(formData, "habilidades") ?? "[]");
+    estudos = JSON.parse(campo(formData, "estudos") ?? "[]");
   } catch {
     return { ok: false, erros: { geral: "Algo deu errado com o formulário. Recarregue a página." } };
   }
@@ -677,6 +704,10 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
         descricao: textoDe(o.descricao),
       };
     }),
+    estudos: (Array.isArray(estudos) ? estudos : []).map((x) => {
+      const o = (x ?? {}) as Record<string, unknown>;
+      return { nivel: textoDe(o.nivel), curso: textoDe(o.curso) };
+    }),
     cursos: (Array.isArray(cursos) ? cursos : []).map(textoDe).filter((c) => c.trim()),
     cnh: campo(formData, "cnh") || null,
     disponibilidade: formData.getAll("disponibilidade").filter((v): v is string => typeof v === "string"),
@@ -688,7 +719,9 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
   const erros: Record<string, string> = {};
   for (const problema of leitura.error.issues) {
     const chave =
-      problema.path[0] === "experiencias" && problema.path.length > 1 ? problema.path.join(".") : String(problema.path[0] ?? "geral");
+      (problema.path[0] === "experiencias" || problema.path[0] === "estudos") && problema.path.length > 1
+        ? problema.path.join(".")
+        : String(problema.path[0] ?? "geral");
     if (!erros[chave]) erros[chave] = problema.message;
   }
   return { ok: false, erros };

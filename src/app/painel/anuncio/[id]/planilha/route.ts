@@ -5,7 +5,6 @@ import {
   DISPONIBILIDADES,
   ETAPAS_CANDIDATO,
   etapaQueVale,
-  nomeEscolaridade,
   situacaoDaCurtida,
   TIPOS_CONTA,
 } from "@/lib/constantes";
@@ -17,6 +16,7 @@ import {
   obterAnuncio,
   obterUsuario,
 } from "@/lib/dados";
+import { textosDosEstudos } from "@/lib/estudos";
 import { formatarTelefone } from "@/lib/formato";
 import { UUID } from "@/lib/validacao";
 import { perguntasDoBanco, textoDaResposta } from "@/lib/vaga-extra";
@@ -84,7 +84,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext<"/painel/a
       p.whatsapp ? formatarTelefone(p.whatsapp) : "",
       p.email,
       c ? "Sim" : "Não",
-      nomeEscolaridade(c?.escolaridade) ?? "",
+      c ? textosDosEstudos(c).join("; ") : "",
       c?.cnh,
       (c?.disponibilidade ?? []).map((d) => DISPONIBILIDADES.find((x) => x.valor === d)?.nome ?? d).join(", "),
       ultima ? [ultima.cargo, ultima.onde].filter(Boolean).join(" em ") : "",

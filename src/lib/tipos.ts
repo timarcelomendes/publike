@@ -43,6 +43,8 @@ export type ItemModeracao = LinhaDe<"fila_moderacao">;
 
 /** Uma experiência no currículo. Datas no formato "2024-03"; fim null = trabalho atual. */
 export type Experiencia = { cargo: string; onde: string; inicio: string; fim: string | null; descricao: string };
+/** Um estudo a mais no currículo (além de "Até onde você estudou"): o nível e o curso. */
+export type Estudo = { nivel: string; curso: string };
 /** O currículo como as telas usam (experiências já tipadas). */
 export type Curriculo = {
   escolaridade: string | null;
@@ -56,6 +58,8 @@ export type Curriculo = {
   /** o que a pessoa faz ("Auxiliar de cozinha") e as habilidades (aba Talentos) */
   titulo?: string | null;
   habilidades?: string[];
+  /** outros estudos, além do mais alto: um técnico, outra faculdade, uma pós */
+  estudos?: Estudo[];
 };
 /** Currículo de quem curtiu a vaga, com o link temporário do PDF. */
 export type CurriculoDoInteressado = Curriculo & { perfil_id: string; link_pdf: string | null };

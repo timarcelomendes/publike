@@ -33,9 +33,11 @@ import {
   ESCOLARIDADES,
   ESCOLARIDADES_COM_CURSO,
   MAX_CURSOS,
+  MAX_ESTUDOS,
   MAX_EXPERIENCIAS,
   MAX_PDF_MB,
 } from "@/lib/constantes";
+import { NIVEIS_DE_OUTRO_ESTUDO } from "@/lib/estudos";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
@@ -44,6 +46,9 @@ import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "./ui/campo";
 
 const ESTADO_INICIAL: EstadoForm = { ok: false };
+
+/** Um estudo a mais (além do mais alto), com a chave da linha no formulário. */
+type ItemEstudo = { chave: string; nivel: string; curso: string };
 
 type ItemExperiencia = {
   chave: string;
@@ -93,6 +98,7 @@ type Retrato = {
   habilidades: string[];
   escolaridade: string;
   curso: string;
+  estudos: ItemEstudo[];
   experiencias: ItemExperiencia[];
   cursos: string[];
   cnh: string;
@@ -158,7 +164,7 @@ function resumoDaLeitura(l: CurriculoLido) {
     [
       l.titulo ? "profissão" : "",
       l.habilidades.length ? plural(l.habilidades.length, "habilidade", "habilidades") : "",
-      l.escolaridade ? "estudos" : "",
+      l.escolaridade || l.estudos.length ? "estudos" : "",
       l.experiencias.length ? plural(l.experiencias.length, "experiência", "experiências") : "",
       l.cursos.length ? plural(l.cursos.length, "curso", "cursos") : "",
       l.cnh ? "CNH" : "",
@@ -403,6 +409,9 @@ export function FormCurriculo({
   const [titulo, setTitulo] = useState(inicial?.titulo ?? "");
   const [escolaridade, setEscolaridade] = useState(inicial?.escolaridade ?? "");
   const [curso, setCurso] = useState(inicial?.curso ?? "");
+  const [estudos, setEstudos] = useState<ItemEstudo[]>(() =>
+    (inicial?.estudos ?? []).map((e) => ({ chave: novaChave(), nivel: e.nivel, curso: e.curso })),
+  );
   const [cnh, setCnh] = useState(inicial?.cnh ?? "");
   const [disponibilidade, setDisponibilidade] = useState<string[]>(inicial?.disponibilidade ?? []);
   const [experiencias, setExperiencias] = useState<ItemExperiencia[]>(() =>
@@ -498,6 +507,17 @@ export function FormCurriculo({
     setEnviandoPdf(false);
   }
 
+  function mudarEstudo(chave: string, mudancas: Partial<ItemEstudo>) {
+    setEstudos((lista) => lista.map((e) => (e.chave === chave ? { ...e, ...mudancas } : e)));
+  }
+
+  function adicionarEstudo() {
+    if (estudos.length >= MAX_ESTUDOS) return;
+    const chave = novaChave();
+    setEstudos((lista) => [...lista, { chave, nivel: "", curso: "" }]);
+    setTimeout(() => document.getElementById(`estudo-${chave}-nivel`)?.focus(), 50);
+  }
+
   /** Põe no formulário o que a IA leu (o que ela não achou fica como estava). Nada é salvo ainda. */
   function aplicarLeitura(lido: CurriculoLido, pdf: { caminho: string; nome: string } | null) {
     setAntesDaLeitura({
@@ -505,6 +525,7 @@ export function FormCurriculo({
       habilidades,
       escolaridade,
       curso,
+      estudos,
       experiencias,
       cursos,
       cnh,
@@ -516,6 +537,7 @@ export function FormCurriculo({
     if (lido.habilidades.length) setHabilidades(lido.habilidades);
     if (lido.escolaridade) setEscolaridade(lido.escolaridade);
     if (lido.curso) setCurso(lido.curso);
+    if (lido.estudos.length) setEstudos(lido.estudos.map((e) => ({ chave: novaChave(), ...e })));
     if (lido.experiencias.length) setExperiencias(lido.experiencias.map((x) => ({ chave: novaChave(), ...x })));
     if (lido.cursos.length) setCursos(lido.cursos);
     if (lido.cnh) setCnh(lido.cnh);
@@ -536,6 +558,7 @@ export function FormCurriculo({
     setHabilidades(r.habilidades);
     setEscolaridade(r.escolaridade);
     setCurso(r.curso);
+    setEstudos(r.estudos);
     setExperiencias(r.experiencias);
     setCursos(r.cursos);
     setCnh(r.cnh);
@@ -564,6 +587,7 @@ export function FormCurriculo({
     // o que ficou digitado e não foi adicionado também vale
     const pendente = novoCurso.replace(/\s+/g, " ").trim();
     dados.set("cursos", JSON.stringify(pendente.length >= 2 ? [...cursos, pendente] : cursos));
+    dados.set("estudos", JSON.stringify(estudos.map(({ nivel, curso }) => ({ nivel, curso }))));
     const habilidadePendente = novaHabilidade.replace(/\s+/g, " ").trim();
     dados.set(
       "habilidades",
@@ -691,7 +715,10 @@ export function FormCurriculo({
         </div>
       </Secao>
 
-      <Secao titulo="Estudos">
+      <Secao
+        titulo="Estudos"
+        descricao="Primeiro o mais alto. Fez mais de um técnico, faculdade ou pós? Ponha os outros embaixo."
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Rotulo htmlFor="escolaridade">Até onde você estudou</Rotulo>
@@ -733,6 +760,73 @@ export function FormCurriculo({
             </div>
           )}
         </div>
+        {estudos.map((x, i) => {
+          const id = (c: string) => `estudo-${x.chave}-${c}`;
+          const erro = (c: string) => erros[`estudos.${i}.${c}`];
+          return (
+            <fieldset key={x.chave} className="flex flex-col gap-4 rounded-md border border-line-strong p-4">
+              <legend className="sr-only">Outro estudo {i + 1}</legend>
+              <div className="flex items-center justify-between gap-3">
+                <p aria-hidden className="text-label text-ink-muted">
+                  Outro estudo
+                </p>
+                <Botao
+                  tamanho="sm"
+                  variante="fantasma"
+                  onClick={() => setEstudos((l) => l.filter((e) => e.chave !== x.chave))}
+                  aria-label={`Tirar outro estudo ${i + 1}`}
+                >
+                  <Trash2 aria-hidden />
+                  Tirar
+                </Botao>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Rotulo htmlFor={id("nivel")}>Nível</Rotulo>
+                  <Seletor
+                    id={id("nivel")}
+                    value={x.nivel}
+                    onChange={(e) => mudarEstudo(x.chave, { nivel: e.target.value })}
+                    aria-invalid={erro("nivel") ? true : undefined}
+                    className={classesEntrada}
+                  >
+                    <option value="" disabled>
+                      Escolha…
+                    </option>
+                    {NIVEIS_DE_OUTRO_ESTUDO.map((e) => (
+                      <option key={e.valor} value={e.valor}>
+                        {e.nome}
+                      </option>
+                    ))}
+                  </Seletor>
+                  {erro("nivel") && <MensagemErro>{erro("nivel")}</MensagemErro>}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Rotulo htmlFor={id("curso")}>Qual curso</Rotulo>
+                  <input
+                    id={id("curso")}
+                    value={x.curso}
+                    onChange={(e) => mudarEstudo(x.chave, { curso: e.target.value })}
+                    maxLength={80}
+                    placeholder="Ex.: Técnico em Enfermagem, Pedagogia"
+                    aria-invalid={erro("curso") ? true : undefined}
+                    className={classesEntrada}
+                  />
+                  {erro("curso") && <MensagemErro>{erro("curso")}</MensagemErro>}
+                </div>
+              </div>
+            </fieldset>
+          );
+        })}
+        {estudos.length < MAX_ESTUDOS ? (
+          <Botao onClick={adicionarEstudo} className="self-start">
+            <Plus aria-hidden />
+            {estudos.length ? "Pôr mais um estudo" : "Pôr outro estudo"}
+          </Botao>
+        ) : (
+          <p className="text-body-sm text-ink-muted">Você chegou a {MAX_ESTUDOS} estudos a mais.</p>
+        )}
+        {erros.estudos && <MensagemErro>{erros.estudos}</MensagemErro>}
       </Secao>
 
       <Secao

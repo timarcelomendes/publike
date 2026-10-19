@@ -32,6 +32,7 @@ import type {
   Usuario,
   VagaDescobrir,
 } from "./tipos";
+import { estudosDoBanco } from "./estudos";
 import { UUID } from "./validacao";
 import { perguntasDoBanco, respostasDoBanco, type Pergunta, type Respostas } from "./vaga-extra";
 
@@ -331,7 +332,11 @@ export async function talentosParaVaga(anuncioId: string) {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("talentos_para_vaga", { p_anuncio: anuncioId });
   if (error) falha("talentos", error);
-  return (data ?? []).map((t) => ({ ...t, experiencias: lerExperiencias(t.experiencias) }));
+  return (data ?? []).map((t) => ({
+    ...t,
+    experiencias: lerExperiencias(t.experiencias),
+    estudos: estudosDoBanco(t.estudos),
+  }));
 }
 
 /** Se eu deixei as empresas acharem meu currículo (Talentos). */
@@ -492,12 +497,14 @@ export const obterMeuCurriculo = cache(async (): Promise<Curriculo | null> => {
   const { data, error } = await supabase
     .from("curriculos")
     .select(
-      "escolaridade, curso, experiencias, cursos, cnh, disponibilidade, arquivo, atualizado_em, titulo, habilidades",
+      "escolaridade, curso, experiencias, cursos, cnh, disponibilidade, arquivo, atualizado_em, titulo, habilidades, estudos",
     )
     .eq("perfil_id", usuario.id)
     .maybeSingle();
   if (error) falha("seu currículo", error);
-  return data ? { ...data, experiencias: lerExperiencias(data.experiencias) } : null;
+  return data
+    ? { ...data, experiencias: lerExperiencias(data.experiencias), estudos: estudosDoBanco(data.estudos) }
+    : null;
 });
 
 /** O jeito de responder de cada um (só quem tem 5 curtidas ou mais nos últimos 180 dias). */
@@ -576,7 +583,12 @@ export async function listarCurriculosDosInteressados(anuncioId: string): Promis
   return new Map(
     linhas.map((l) => [
       l.perfil_id,
-      { ...l, experiencias: lerExperiencias(l.experiencias), link_pdf: l.arquivo ? (links.get(l.arquivo) ?? null) : null },
+      {
+        ...l,
+        experiencias: lerExperiencias(l.experiencias),
+        estudos: estudosDoBanco(l.estudos),
+        link_pdf: l.arquivo ? (links.get(l.arquivo) ?? null) : null,
+      },
     ]),
   );
 }

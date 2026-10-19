@@ -5,6 +5,7 @@ import {
   ESCOLARIDADES,
   ESCOLARIDADES_COM_CURSO,
   MAX_CURSOS,
+  MAX_ESTUDOS,
   MAX_EXPERIENCIAS,
 } from "@/lib/constantes";
 import { MAX_HABILIDADES } from "@/lib/talentos";
@@ -20,13 +21,15 @@ export type CurriculoLido = {
   habilidades: string[];
   escolaridade: string;
   curso: string;
+  /** outros estudos (técnico, faculdade, pós), além do mais alto */
+  estudos: { nivel: string; curso: string }[];
   experiencias: { cargo: string; onde: string; inicio: string; fim: string; atual: boolean; descricao: string }[];
   cursos: string[];
   cnh: string;
   disponibilidade: string[];
 };
 
-type Resposta = CurriculoLido & { e_curriculo: boolean };
+type Resposta = Omit<CurriculoLido, "estudos"> & { e_curriculo: boolean; outros_estudos: CurriculoLido["estudos"] };
 
 const comVazio = (l: readonly string[]) => [...l, ""];
 const texto = { type: "string" } as const;
@@ -41,6 +44,7 @@ const ESQUEMA = {
     "habilidades",
     "escolaridade",
     "curso",
+    "outros_estudos",
     "experiencias",
     "cursos",
     "cnh",
@@ -52,6 +56,15 @@ const ESQUEMA = {
     habilidades: listaDeTexto,
     escolaridade: { type: "string", enum: comVazio(ESCOLARIDADES.map((e) => e.valor)) },
     curso: texto,
+    outros_estudos: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["nivel", "curso"],
+        properties: { nivel: { type: "string", enum: [...ESCOLARIDADES_COM_CURSO] }, curso: texto },
+      },
+    },
     experiencias: {
       type: "array",
       items: {
@@ -86,6 +99,7 @@ Regras:
 - "habilidades": até ${MAX_HABILIDADES}, curtas (até 40 letras cada), o que a pessoa sabe fazer: "Atendimento ao cliente", "Pacote Office", "Empilhadeira". Não repita os cursos.
 - "escolaridade": a mais alta, desta lista: ${escolaridades}. Ensino médio cursando é "medio_incompleto"; faculdade cursando ou trancada é "superior_incompleto".
 - "curso": o nome do curso técnico, da faculdade ou da pós-graduação (até 80 letras), só para técnico, superior ou pós.
+- "outros_estudos": até ${MAX_ESTUDOS} outros cursos técnicos, faculdades ou pós-graduações, além do mais alto (que já vai em "escolaridade" e "curso"): o nível ("tecnico", "superior_incompleto", "superior" ou "pos") e o nome do curso.
 - "experiencias": até ${MAX_EXPERIENCIAS}, da mais recente para a mais antiga. "cargo" (até 80 letras), "onde" (a empresa ou o lugar, até 80 letras), "inicio" e "fim" no formato AAAA-MM. Se só tiver o ano, use AAAA-01 no início e AAAA-12 no fim. "atual": true se a pessoa ainda trabalha lá ("atual", "até o momento", "emprego atual"), com "fim" "". Sem data, "". "descricao": o que a pessoa fazia, em uma ou duas frases simples (até 300 letras).
 - "cursos": até ${MAX_CURSOS} cursos livres, técnicos, NR, informática ou idiomas (até 80 letras cada), com a carga horária se tiver: "Excel básico (20 h)".
 - "cnh": a categoria da carteira de motorista, só se o currículo disser.
@@ -127,6 +141,17 @@ export function limparCurriculoLido(r: Partial<Resposta>, hoje: string): Curricu
   const escolaridade = ESCOLARIDADES.some((e) => e.valor === r.escolaridade) ? (r.escolaridade as string) : "";
   const titulo = curto(r.titulo, 60);
   const curso = ESCOLARIDADES_COM_CURSO.includes(escolaridade) ? curto(r.curso, 80) : "";
+  // os outros estudos: com nível de curso, sem contato e sem repetir o principal nem entre si
+  const estudos: CurriculoLido["estudos"] = [];
+  for (const e of Array.isArray(r.outros_estudos) ? r.outros_estudos : []) {
+    const nivel = typeof e?.nivel === "string" && ESCOLARIDADES_COM_CURSO.includes(e.nivel) ? e.nivel : "";
+    const nome = curto(e?.curso, 80);
+    const igual = (n: string, c: string) => n === nivel && c.toLowerCase() === nome.toLowerCase();
+    if (!nivel || nome.length < 2 || temContato(nome) || igual(escolaridade, curso)) continue;
+    if (estudos.some((x) => igual(x.nivel, x.curso))) continue;
+    estudos.push({ nivel, curso: nome });
+    if (estudos.length >= MAX_ESTUDOS) break;
+  }
   const experiencias: CurriculoLido["experiencias"] = [];
   for (const x of Array.isArray(r.experiencias) ? r.experiencias : []) {
     const cargo = curto(x?.cargo, 80);
@@ -152,6 +177,7 @@ export function limparCurriculoLido(r: Partial<Resposta>, hoje: string): Curricu
     habilidades: lista(r.habilidades, 2, 40, MAX_HABILIDADES, temContato),
     escolaridade,
     curso: curso.length >= 2 && !temContato(curso) ? curso : "",
+    estudos,
     experiencias,
     cursos: lista(r.cursos, 2, 80, MAX_CURSOS, temContatoNoTexto),
     cnh: (CNHS as readonly string[]).includes(r.cnh ?? "") ? (r.cnh as string) : "",
@@ -165,6 +191,7 @@ export function camposLidos(c: CurriculoLido) {
     Number(Boolean(c.titulo)) +
     c.habilidades.length +
     Number(Boolean(c.escolaridade)) +
+    c.estudos.length +
     c.experiencias.length +
     c.cursos.length +
     Number(Boolean(c.cnh))

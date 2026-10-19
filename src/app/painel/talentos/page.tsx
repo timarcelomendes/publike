@@ -182,6 +182,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
                       curriculo={{
                         escolaridade: t.escolaridade,
                         curso: t.curso,
+                        estudos: t.estudos,
                         experiencias: t.experiencias,
                         cursos: t.cursos,
                         cnh: t.cnh,

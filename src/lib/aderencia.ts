@@ -14,6 +14,7 @@
 // A descrição livre da vaga não é lida, só os cursos que ela cita.
 
 import { DISPONIBILIDADES, ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
+import { escolaridadeMaisAlta } from "./estudos";
 import type { Turno } from "./filtros";
 import { chaveBairro, regiaoDoBairro } from "./regioes";
 import type { Curriculo } from "./tipos";
@@ -57,7 +58,7 @@ type Vaga = {
 export type Candidato = {
   curriculo:
     | (Pick<Curriculo, "escolaridade" | "experiencias" | "cnh"> &
-        Partial<Pick<Curriculo, "disponibilidade" | "cursos">>)
+        Partial<Pick<Curriculo, "disponibilidade" | "cursos" | "estudos">>)
     | null;
   respostas: Respostas;
   cidade: string | null;
@@ -245,7 +246,9 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
 
   if (vaga.escolaridade_minima) {
     const pede = ESCOLARIDADES.findIndex((e) => e.valor === vaga.escolaridade_minima);
-    const tem = cv?.escolaridade ? ESCOLARIDADES.findIndex((e) => e.valor === cv.escolaridade) : -1;
+    // o mais alto de todos: o principal ou um dos outros estudos
+    const maisAlta = cv ? escolaridadeMaisAlta(cv) : null;
+    const tem = maisAlta ? ESCOLARIDADES.findIndex((e) => e.valor === maisAlta) : -1;
     criterios.push({
       nome: `Escolaridade: ${nomeEscolaridade(vaga.escolaridade_minima)}`,
       ok: tem < 0 ? null : tem >= pede,
@@ -253,7 +256,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
         ? "Sem currículo"
         : tem < 0
           ? "Sem escolaridade no currículo"
-          : (nomeEscolaridade(cv.escolaridade) ?? ""),
+          : (nomeEscolaridade(maisAlta) ?? ""),
     });
   }
 

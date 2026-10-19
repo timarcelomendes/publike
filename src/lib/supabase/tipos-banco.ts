@@ -467,6 +467,8 @@ export type Database = {
           /** o que a pessoa faz ("Auxiliar de cozinha") e as habilidades: a vitrine de Talentos */
           titulo: string | null;
           habilidades: string[];
+          /** outros estudos: [{ nivel, curso }] */
+          estudos: Json;
           criado_em: string;
           atualizado_em: string;
         };
@@ -481,6 +483,7 @@ export type Database = {
           arquivo?: string | null;
           titulo?: string | null;
           habilidades?: string[];
+          estudos?: Json;
         };
         Update: {
           escolaridade?: string | null;
@@ -492,6 +495,7 @@ export type Database = {
           arquivo?: string | null;
           titulo?: string | null;
           habilidades?: string[];
+          estudos?: Json;
         };
         Relationships: [];
       };
@@ -1068,6 +1072,7 @@ export type Database = {
           atualizado_em: string;
           titulo: string | null;
           habilidades: string[];
+          estudos: Json;
         }[];
       };
       desfazer_match: {
@@ -1472,6 +1477,7 @@ export type Database = {
           convidado: boolean;
           titulo: string | null;
           habilidades: string[];
+          estudos: Json;
         }[];
       };
       convidar_para_vaga: {
@@ -1521,6 +1527,7 @@ export type Database = {
           cargos: string[];
           meses_experiencia: number;
           atualizado_em: string;
+          estudos: Json;
         }[];
       };
       /** o currículo completo: só empresa, comércio e agência que entraram */
@@ -1542,6 +1549,7 @@ export type Database = {
           cnh: string | null;
           disponibilidade: string[];
           atualizado_em: string;
+          estudos: Json;
         }[];
       };
       usar_ia_texto: {

@@ -5,7 +5,7 @@ import { TriagemRapida, type CartaTriagem } from "@/components/painel/triagem-ra
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { nomeEscolaridade } from "@/lib/constantes";
+import { textosDosEstudos } from "@/lib/estudos";
 import { formatarLugar, primeiro, tempoRelativo } from "@/lib/formato";
 import { montarCaixa, naAba, ordenar } from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
@@ -46,7 +46,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   );
 
   const cartas: CartaTriagem[] = fila.map((c) => {
-    const estudo = nomeEscolaridade(c.curriculo?.escolaridade);
+    const estudos = c.curriculo ? textosDosEstudos(c.curriculo) : [];
     return {
       anuncioId: c.anuncio_id,
       perfilId: c.perfil_id,
@@ -63,7 +63,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
         .slice(0, 6)
         .map((k) => ({ nome: k.nome, ok: k.ok, extra: k.extra, eliminatorio: k.eliminatorio })),
       recado: c.mensagem,
-      estudo: estudo ? (c.curriculo?.curso ? `${estudo} · ${c.curriculo.curso}` : estudo) : null,
+      estudo: estudos.length ? estudos.join("; ") : null,
       titulo: c.curriculo?.titulo ?? null,
       experiencias: (c.curriculo?.experiencias ?? [])
         .slice(0, 3)

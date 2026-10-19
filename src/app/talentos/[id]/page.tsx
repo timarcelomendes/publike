@@ -142,6 +142,7 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
             curriculo={{
               escolaridade: cv.escolaridade,
               curso: cv.curso,
+              estudos: cv.estudos,
               experiencias: cv.experiencias,
               cursos: cv.cursos,
               cnh: cv.cnh,
@@ -175,7 +176,7 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
               </ul>
             </Parte>
           )}
-          {(estudo || resumo.cnh || turnos) && (
+          {(estudo || resumo.estudos.length > 0 || resumo.cnh || turnos) && (
             <ul className="flex flex-col gap-2 text-body">
               {estudo && (
                 <li className="flex items-center gap-2">
@@ -186,6 +187,15 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
                   </span>
                 </li>
               )}
+              {resumo.estudos.map((e) => (
+                <li key={`${e.nivel}-${e.curso}`} className="flex items-center gap-2">
+                  <GraduationCap aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                  <span>
+                    {nomeEscolaridade(e.nivel)}
+                    <span className="text-ink-muted"> · {e.curso}</span>
+                  </span>
+                </li>
+              ))}
               {resumo.cnh && (
                 <li className="flex items-center gap-2">
                   <Car aria-hidden className="size-4 shrink-0 text-ink-muted" />
