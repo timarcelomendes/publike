@@ -72,7 +72,8 @@ async function curriculoNoTopo(): Promise<CurriculoNoTopo> {
   if (MODO_DEMO) return "cadastrar";
   const [perfil, intencao] = await Promise.all([obterMeuPerfil().catch(() => null), obterIntencao().catch(() => null)]);
   if (perfil && perfil.tipo !== "pessoa") return null;
-  if (intencao === "contratar_pessoa" || intencao === "contratar_servico") return null;
+  // conta de pessoa: sempre "Currículo | Publicar grátis"; a resposta da pergunta só vale para visitante
+  if (!perfil && (intencao === "contratar_pessoa" || intencao === "contratar_servico")) return null;
   return perfil && (await meuCurriculoNaVitrine().catch(() => false)) ? "meu" : "cadastrar";
 }
 

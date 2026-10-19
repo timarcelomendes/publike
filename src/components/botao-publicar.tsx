@@ -42,14 +42,14 @@ export function PublicarECurriculo({ curriculo }: { curriculo: CurriculoNoTopo }
         // só a partir do notebook: no meio-termo o topo não cabe (no celular, o caminho fica no "Publicar")
         <Link
           href={cv === "meu" ? "/perfil/curriculo" : "/perfil/curriculo?para=talentos"}
-          aria-label={cv === "meu" ? undefined : "Cadastrar currículo"}
+          aria-label={cv === "meu" ? "Meu currículo" : "Cadastrar currículo"}
           title={cv === "meu" ? "Ver e atualizar meu currículo" : "Cadastre seu currículo e apareça para as empresas"}
           className={`hidden min-h-11 items-center gap-2 bg-terra-soft px-4 text-label whitespace-nowrap text-terra-text transition-colors hover:bg-[color-mix(in_srgb,var(--color-terra-soft)_88%,var(--color-terra))] lg:inline-flex [&_svg]:size-[18px] [&_svg]:shrink-0 ${
             publicar ? "rounded-l-md" : "rounded-md"
           }`}
         >
           <FileUser aria-hidden />
-          {cv === "meu" ? "Meu currículo" : "Currículo"}
+          Currículo
         </Link>
       )}
       {publicar && (
