@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { COOKIES_DA_SESSAO } from "@/lib/config";
 import { COOKIE_ORIGEM, DURACAO_ORIGEM, origemDoLink } from "@/lib/origem";
 import { areaDoSlug, cidadeDoSlug } from "@/lib/paginas-busca";
@@ -46,7 +46,29 @@ function marcarOrigem(request: NextRequest, resposta: NextResponse) {
   });
 }
 
-export async function proxy(request: NextRequest) {
+// Quantas pessoas abrem o site (o painel do admin mostra). Só página aberta por gente:
+// sem robô, sem pré-carregamento, sem admin e sem as rotas internas. O banco não guarda o IP.
+const ROBO =
+  /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|lighthouse|headless|curl|wget|python|axios|node-fetch|go-http|java\/|okhttp/i;
+const FORA_DA_CONTA = /^\/(admin|api|auth|embed|email|versao|pagina-que-nao-existe)(\/|$)/;
+
+function abriuPagina(request: NextRequest) {
+  if (request.method !== "GET" || FORA_DA_CONTA.test(request.nextUrl.pathname)) return false;
+  const h = request.headers;
+  if (h.get("next-router-prefetch") || /prefetch/i.test(`${h.get("purpose") ?? ""}${h.get("sec-purpose") ?? ""}`))
+    return false;
+  // só a página aberta inteira (link, endereço digitado, recarregar). A navegação dentro do site
+  // não passa: ela não se separa do pré-carregamento, e a pessoa já foi contada na entrada.
+  const pagina = h.get("sec-fetch-mode") === "navigate" || (h.get("accept") ?? "").includes("text/html");
+  return pagina && !ROBO.test(h.get("user-agent") ?? "");
+}
+
+function ipDe(request: NextRequest) {
+  const h = request.headers;
+  return (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim();
+}
+
+export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   if (buscaInexistente(request.nextUrl.pathname)) {
     return NextResponse.rewrite(new URL("/pagina-que-nao-existe", request.url), { status: 404 });
   }
@@ -74,6 +96,18 @@ export async function proxy(request: NextRequest) {
   const logado = Boolean(data?.claims?.sub);
 
   marcarOrigem(request, resposta);
+
+  const ip = ipDe(request);
+  if (ip && abriuPagina(request)) {
+    // depois da resposta: a página não espera a conta
+    evento.waitUntil(
+      Promise.resolve(
+        supabase.rpc("contar_acesso", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),
+      ).then(({ error }) => {
+        if (error) console.warn(`Publike: não deu para contar o acesso: ${error.message}`);
+      }),
+    );
+  }
 
   const { pathname, search } = request.nextUrl;
   const adminLocal =

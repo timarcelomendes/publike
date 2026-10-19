@@ -1164,6 +1164,7 @@ export type Database = {
       mudar_entrevista: { Args: { p_id: string; p_situacao: string }; Returns: undefined };
       responder_entrevista: { Args: { p_id: string; p_resposta: string }; Returns: undefined };
       contar_visita: { Args: { p_anuncio: string }; Returns: undefined };
+      contar_acesso: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
       responder_perguntas: {
         Args: { p_anuncio: string; p_respostas: Json };
         Returns: undefined;
@@ -1559,6 +1560,10 @@ export type Database = {
 
       // ---------------------------------------------------- painel (admin e moderação)
       admin_resumo: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      admin_acessos_site: {
         Args: Record<PropertyKey, never>;
         Returns: Json;
       };

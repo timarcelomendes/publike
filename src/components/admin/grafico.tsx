@@ -8,7 +8,7 @@ function diaMes(iso: string) {
 }
 
 /** Barras por dia (últimos 30 dias). Sem biblioteca: SVG simples, que escala com a largura. */
-function Barras({ titulo, valores, dias }: { titulo: string; valores: number[]; dias: string[] }) {
+export function Barras({ titulo, valores, dias }: { titulo: string; valores: number[]; dias: string[] }) {
   const total = valores.reduce((a, b) => a + b, 0);
   const maior = Math.max(...valores, 0);
   const iMaior = valores.indexOf(maior);

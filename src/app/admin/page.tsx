@@ -4,12 +4,20 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { GraficoDias, Ranking } from "@/components/admin/grafico";
+import { Barras, GraficoDias, Ranking } from "@/components/admin/grafico";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { categoria } from "@/lib/constantes";
-import { configDoSite, listarChavesServidor, numerosDoPainel, registroDaEquipe, ultimoResumo } from "@/lib/admin/dados";
+import {
+  acessosDoSite,
+  configDoSite,
+  listarChavesServidor,
+  numerosDoPainel,
+  registroDaEquipe,
+  ultimoResumo,
+  type AcessosSite,
+} from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
 import { ehModerador } from "@/lib/dados";
 import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
@@ -33,8 +41,9 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, config, resumo, registro, chaves, agora] = await Promise.all([
+  const [n, acessos, config, resumo, registro, chaves, agora] = await Promise.all([
     numerosDoPainel(c),
+    acessosDoSite(c),
     configDoSite(c),
     ultimoResumo(c),
     registroDaEquipe(c, 10),
@@ -152,6 +161,13 @@ async function Conteudo() {
         />
       </div>
 
+      <Secao
+        titulo="Quem abriu o site"
+        descricao="Pessoas por dia (robôs ficam de fora). A mesma pessoa em dois dias conta duas vezes: o site não guarda quem visitou."
+      >
+        <AcessosDoSite acessos={acessos} />
+      </Secao>
+
       {config.ia_resumo && (
         <Secao
           titulo="Resumo da IA"
@@ -219,6 +235,43 @@ async function Conteudo() {
           </ul>
         )}
       </Secao>
+    </div>
+  );
+}
+
+function AcessosDoSite({ acessos }: { acessos: AcessosSite | null }) {
+  if (!acessos) {
+    return (
+      <p className="text-body-sm text-ink-muted">
+        A contagem começa depois de rodar a migração <code>20261019250000_acessos_site.sql</code> no Supabase.
+      </p>
+    );
+  }
+  const numeros: [string, number, string?][] = [
+    ["Hoje", acessos.hoje],
+    ["Com conta hoje", acessos.com_conta_hoje, "entraram na conta"],
+    ["Ontem", acessos.ontem],
+    ["Média em 7 dias", acessos.media_7d, "por dia, sem hoje"],
+  ];
+  return (
+    <div className="flex flex-col gap-5">
+      <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-4">
+        {numeros.map(([rotulo, valor, detalhe]) => (
+          <div key={rotulo} className="flex flex-col">
+            <dt className="text-ink-muted">{rotulo}</dt>
+            <dd className="font-display text-h3">{formatarNumero(valor)}</dd>
+            {detalhe && <dd className="text-caption text-ink-muted">{detalhe}</dd>}
+          </div>
+        ))}
+      </dl>
+      <Barras
+        titulo="Visitantes por dia"
+        valores={acessos.por_dia.map((d) => d.visitantes)}
+        dias={acessos.por_dia.map((d) => d.dia)}
+      />
+      {acessos.desde && (
+        <p className="text-caption text-ink-muted">Contando desde {acessos.desde.split("-").reverse().join("/")}.</p>
+      )}
     </div>
   );
 }

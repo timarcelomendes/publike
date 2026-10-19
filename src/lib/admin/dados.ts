@@ -146,6 +146,28 @@ export async function numerosDoPainel(c: ClienteBanco) {
   return data as unknown as NumerosPainel;
 }
 
+/** Quantas pessoas abriram o site, por dia (o banco não guarda quem). */
+export type AcessosSite = {
+  hoje: number;
+  com_conta_hoje: number;
+  ontem: number;
+  /** média por dia dos 7 dias antes de hoje */
+  media_7d: number;
+  /** o primeiro dia contado (null: nada ainda) */
+  desde: string | null;
+  por_dia: { dia: string; visitantes: number }[];
+};
+
+/** null: a contagem ainda não existe neste banco (falta rodar a migração 20261019250000). */
+export async function acessosDoSite(c: ClienteBanco): Promise<AcessosSite | null> {
+  const { data, error } = await c.rpc("admin_acessos_site");
+  if (error) {
+    console.warn(`Publike: sem a contagem de acessos: ${error.message}`);
+    return null;
+  }
+  return data as unknown as AcessosSite;
+}
+
 export async function listarUsuarios(c: ClienteBanco, busca: string | null, filtro: string, pagina: number) {
   const { data, error } = await c.rpc("admin_listar_usuarios", {
     p_busca: busca,
