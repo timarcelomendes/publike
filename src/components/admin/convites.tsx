@@ -315,8 +315,8 @@ export function ImportarPorImagens() {
           WhatsApp, o telefone, o e-mail e a vaga.
         </li>
         <li>
-          3. Confira e importe. O convite da empresa leva o link com a vaga pronta: ela confere e publica. O do
-          prestador pede um “pode”, e você monta a vitrine dele.
+          3. Confira e importe. O convite leva o link com a vaga (ou a vitrine de serviços) pronta: é só conferir e
+          publicar.
         </li>
       </ol>
       <label
@@ -726,13 +726,7 @@ function CartaoConvite({
   const [avisoImagem, setAvisoImagem] = useState<string | null>(null);
   const podeCompartilhar = useCompartilhar();
   const [confirmar, setConfirmar] = useState(false);
-  // prestador: sem link (quem responder "pode", o admin monta a vitrine)
-  const msg = mensagemConvite(
-    c,
-    assinatura,
-    c.tipo === "prestador" ? null : linkDoConvite(site, c.token),
-    Boolean(c.rascunho),
-  );
+  const msg = mensagemConvite(c, assinatura, linkDoConvite(site, c.token, c.tipo), Boolean(c.rascunho));
   const texto = encodeURIComponent(msg);
   const apagado = c.status === "recusou" || c.status === "sem_contato";
 

@@ -2,14 +2,18 @@ import { ChevronRight, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { AvisoConvite } from "@/components/aviso-convite";
 import { FormServicos, type ValoresServicos } from "@/components/form-servicos";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
+import { UNIDADES_SERVICO } from "@/lib/constantes";
 import { NotaDoProfissional } from "@/components/avaliacoes";
 import { listarMeusServicos, obterNotaDoProfissional } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { regiaoDoBairro } from "@/lib/regioes";
+import { centroDoBairro } from "@/lib/servidor/cep";
+import { conviteDoLink } from "@/lib/servidor/convite-do-link";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Meus serviços" };
@@ -58,27 +62,56 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
     );
   }
 
-  const { usuario, perfil } = await exigirPerfilCompleto("/painel/servicos");
+  // veio do link do convite do Publike: o serviço lido do anúncio vem pronto, e salvar é o aceite
+  const convite = await conviteDoLink(primeiro(sp.convite));
+  const { usuario, perfil } = await exigirPerfilCompleto(
+    convite ? `/painel/servicos?convite=${convite.token}` : "/painel/servicos",
+  );
   const [servicos, nota] = await Promise.all([listarMeusServicos(), obterNotaDoProfissional(usuario.id)]);
+  const r = convite?.tipo === "prestador" ? convite.rascunho : null;
+  // sem vitrine ainda: o ponto no mapa começa no meio do bairro do anúncio (dá para ajustar)
+  const centro =
+    r?.bairro && servicos.length === 0 ? await centroDoBairro(r.bairro, r.cidade || "Goiânia").catch(() => null) : null;
+  const doConvite =
+    r && r.titulo && !servicos.some((s) => s.titulo.toLowerCase() === r.titulo.toLowerCase())
+      ? {
+          id: "",
+          oficio: r.oficio || null,
+          categoria: r.categoria,
+          titulo: r.titulo,
+          descricao: r.descricao,
+          pagamento_valor: (UNIDADES_SERVICO as readonly string[]).includes(r.unidade) ? r.salario : null,
+          pagamento_unidade: (UNIDADES_SERVICO as readonly string[]).includes(r.unidade) ? r.unidade : null,
+          fotos: [],
+          status: "novo",
+        }
+      : null;
   // o que é igual para todos (onde fica, onde atende, quando) vem do primeiro serviço
   const base = servicos.find((s) => s.status !== "em_analise" && s.status !== "removido") ?? servicos[0];
   const inicial: ValoresServicos = {
-    servicos: servicos.map((s) => ({
-      id: s.id,
-      oficio: s.oficio,
-      categoria: s.categoria,
-      titulo: s.titulo,
-      descricao: s.descricao,
-      pagamento_valor: s.pagamento_valor,
-      pagamento_unidade: s.pagamento_unidade,
-      fotos: s.fotos,
-      status: s.status,
-    })),
-    cidade: base?.cidade ?? perfil.cidade,
-    bairro: base?.bairro ?? perfil.bairro ?? "",
-    lat: base?.lat ?? null,
-    lng: base?.lng ?? null,
-    atende: base?.atende.length ? base.atende : areaDoPerfil(perfil.cidade, perfil.bairro),
+    servicos: [
+      ...servicos.map((s) => ({
+        id: s.id,
+        oficio: s.oficio,
+        categoria: s.categoria,
+        titulo: s.titulo,
+        descricao: s.descricao,
+        pagamento_valor: s.pagamento_valor,
+        pagamento_unidade: s.pagamento_unidade,
+        fotos: s.fotos,
+        status: s.status,
+      })),
+      ...(doConvite ? [doConvite] : []),
+    ],
+    cidade: base?.cidade ?? (r?.bairro ? r.cidade || "Goiânia" : perfil.cidade),
+    bairro: base?.bairro ?? (r?.bairro || perfil.bairro || ""),
+    lat: base?.lat ?? centro?.lat ?? null,
+    lng: base?.lng ?? centro?.lng ?? null,
+    atende: base?.atende.length
+      ? base.atende
+      : r?.bairro
+        ? areaDoPerfil(r.cidade || "Goiânia", r.bairro)
+        : areaDoPerfil(perfil.cidade, perfil.bairro),
     horario: base?.horario ?? null,
   };
 
@@ -114,7 +147,23 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
           <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />
         </Link>
       )}
-      <FormServicos inicial={inicial} usuarioId={usuario.id} />
+      {convite?.tipo === "prestador" && (
+        <div className="mb-6">
+          <AvisoConvite token={convite.token} nome={convite.nome}>
+            {doConvite
+              ? "O serviço já veio preenchido com o seu anúncio. Confira, coloque fotos se quiser e toque em Salvar."
+              : "Escreva o seu serviço e toque em Salvar."}{" "}
+            É grátis, sem plano e sem taxa.
+          </AvisoConvite>
+        </div>
+      )}
+      <FormServicos
+        inicial={inicial}
+        usuarioId={usuario.id}
+        extras={
+          convite?.tipo === "prestador" ? <input type="hidden" name="convite" value={convite.token} /> : undefined
+        }
+      />
     </>
   );
 }

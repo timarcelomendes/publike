@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
 import { PublicarAnuncio } from "@/components/publicar-anuncio";
@@ -9,8 +10,7 @@ import { primeiro } from "@/lib/formato";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
-import { rascunhoValido } from "@/lib/convites";
-import { criarClientePublico } from "@/lib/supabase/servidor";
+import { conviteDoLink } from "@/lib/servidor/convite-do-link";
 import { valoresDoConvite } from "@/lib/valores-convite";
 import { obterTriagem } from "@/lib/servidor/triagem";
 
@@ -50,7 +50,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   const pedidaCopia = pedida && UUID.test(pedida) ? pedida : null;
   const continuar = primeiro(sp.continuar) === "1";
   // veio do link do convite do Publike: a vaga lida do anúncio da empresa vem pronta
-  const convite = await conviteDoLink(primeiro(sp.convite));
+  const lido = await conviteDoLink(primeiro(sp.convite));
+  // convite de prestador: a página dele é a da vitrine de serviços
+  if (lido?.tipo === "prestador") redirect(`/convite/${lido.token}`);
+  const convite = lido;
   // sem conta dá para preencher a vaga: o rascunho fica no aparelho e sai depois de entrar
   if (!pedidaCopia && !(await obterUsuario())) {
     const base = vazio("Goiânia", "");
@@ -121,15 +124,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       />
     </>
   );
-}
-
-/** O convite do link (só se ainda vale: quem disse que não quer não vê mais o convite). */
-async function conviteDoLink(token: string | undefined) {
-  if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
-  const { data } = await criarClientePublico().rpc("convite_do_token", { p_token: token });
-  const c = data?.[0];
-  if (!c || c.status === "recusou") return null;
-  return { token, nome: c.nome, rascunho: rascunhoValido(c.rascunho) };
 }
 
 function vazio(cidade: string, bairro: string): ValoresAnuncio {

@@ -2,9 +2,8 @@
 
 import { Check, LoaderCircle, MapPin, RotateCcw, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useRef, useState, useTransition } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { conferirAnuncio, salvarAnuncio } from "@/lib/acoes/anuncios";
-import { recusarConvite } from "@/lib/acoes/convite";
 import { REGIMES } from "@/lib/constantes";
 import { formatarValor } from "@/lib/formato";
 import { MODELOS_ANUNCIO, type ModeloAnuncio } from "@/lib/modelos-anuncio";
@@ -18,6 +17,7 @@ import {
   type Rascunho,
 } from "@/lib/rascunho-anuncio";
 import type { Regime } from "@/lib/tipos";
+import { AvisoConvite } from "./aviso-convite";
 import { FormAnuncio, type ValoresAnuncio } from "./form-anuncio";
 import { Aviso, Selo } from "./ui/basicos";
 
@@ -211,7 +211,14 @@ export function PublicarAnuncio({
 
   return (
     <div ref={raiz} onInput={aoMexer} onChange={aoMexer} className="flex flex-col gap-6">
-      {convite && <AvisoConvite convite={convite} />}
+      {convite && (
+        <AvisoConvite token={convite.token} nome={convite.nome}>
+          {convite.pronta
+            ? "A vaga já veio preenchida com o anúncio de vocês. Confira, ajuste o que precisar e toque em Publicar."
+            : "Escreva a vaga e toque em Publicar."}{" "}
+          É grátis, sem plano e sem taxa. Para publicar, você entra com o e-mail, sem senha.
+        </AvisoConvite>
+      )}
       {semConta && !convite && (
         <Aviso tipo="info" titulo="Não precisa de conta para começar">
           Preencha a vaga. No fim, é só entrar com seu WhatsApp ou e-mail e ela vai ao ar na hora. O que você escreve
@@ -288,47 +295,6 @@ export function PublicarAnuncio({
         extras={convite ? { convite: convite.token } : undefined}
       />
     </div>
-  );
-}
-
-/** Quem chegou pelo link do convite: de quem é o convite, o que fazer e como dizer que não quer. */
-function AvisoConvite({ convite }: { convite: { token: string; nome: string; pronta: boolean } }) {
-  const [resposta, setResposta] = useState<{ ok: boolean; texto: string } | null>(null);
-  const [enviando, iniciar] = useTransition();
-  if (resposta?.ok) {
-    return (
-      <Aviso tipo="info" titulo="Combinado">
-        {resposta.texto}
-      </Aviso>
-    );
-  }
-  return (
-    <Aviso tipo="info" titulo={`Convite do Publike para ${convite.nome}`}>
-      <span className="flex flex-col gap-2">
-        <span>
-          {convite.pronta
-            ? "A vaga já veio preenchida com o anúncio de vocês. Confira, ajuste o que precisar e toque em Publicar."
-            : "Escreva a vaga e toque em Publicar."}{" "}
-          É grátis, sem plano e sem taxa. Para publicar, você entra com o e-mail, sem senha.
-        </span>
-        <span className="flex flex-wrap items-center gap-x-3">
-          <button
-            type="button"
-            disabled={enviando}
-            onClick={() =>
-              iniciar(async () => {
-                const r = await recusarConvite(convite.token);
-                setResposta(r.ok ? { ok: true, texto: r.mensagem ?? "" } : { ok: false, texto: r.erro });
-              })
-            }
-            className="min-h-10 text-body-sm text-ink-muted underline underline-offset-2"
-          >
-            Não quero receber convites
-          </button>
-          {resposta && !resposta.ok && <span className="text-body-sm text-danger">{resposta.texto}</span>}
-        </span>
-      </span>
-    </Aviso>
   );
 }
 

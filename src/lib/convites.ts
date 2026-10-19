@@ -108,8 +108,10 @@ export function rascunhoValido(x: unknown): RascunhoConvite | null {
 }
 
 /** O link que vai na mensagem: a empresa confere a vaga e publica (é o aceite). */
-export function linkDoConvite(site: string, token: string) {
-  return `${site.replace(/\/+$/, "")}/publicar?convite=${token}`;
+export function linkDoConvite(site: string, token: string, tipo: TipoConvite = "empresa") {
+  const raiz = site.replace(/\/+$/, "");
+  // prestador: a página do convite mostra a vitrine pronta e leva para entrar e salvar
+  return tipo === "prestador" ? `${raiz}/convite/${token}` : `${raiz}/publicar?convite=${token}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,7 +318,11 @@ export function mensagemConvite(
         ? `Vi que você faz ${servicos}. Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`
         : "Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa do seu serviço perto de você te encontra pelo site e chama no WhatsApp.",
       `• É grátis: sem plano, sem taxa e sem comissão.\n• Você aparece primeiro para quem mora perto de onde você atende.\n• Seu WhatsApp só aparece para quem você aceitar.`,
-      `Se quiser, é só responder "pode" e me dizer o bairro onde você atende. Eu monto a vitrine e te mando o link para entrar e conferir.`,
+      link
+        ? pronta
+          ? `Já deixei a sua vitrine pronta no site. É só abrir, conferir e tocar em Salvar (entra com o e-mail, sem senha):\n${link}`
+          : `Para aparecer, é só abrir o link, escrever o seu serviço e tocar em Salvar (entra com o e-mail, sem senha):\n${link}`
+        : `Se quiser, é só responder "pode" e me dizer o bairro onde você atende. Eu monto a vitrine e te mando o link para entrar e conferir.`,
       fecha,
     ].join("\n\n");
   }
@@ -381,17 +387,17 @@ export function emailDoConvite(
   assinatura: string,
   site: string,
 ) {
-  // prestador: sem link (a vitrine, o admin monta quando ele responder "pode")
-  const link = c.tipo === "prestador" ? "" : linkDoConvite(site, c.token);
-  const texto = mensagemConvite(c, assinatura.slice(0, 40), link || null, Boolean(c.rascunho));
+  const link = linkDoConvite(site, c.token, c.tipo);
+  const texto = mensagemConvite(c, assinatura.slice(0, 40), link, Boolean(c.rascunho));
+  const botao = c.tipo === "prestador" ? "Conferir e salvar a vitrine" : "Conferir e publicar a vaga";
   const paragrafo = (t: string) =>
     `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;">${escaparHtml(t).replace(/\n/g, "<br>")}</p>`;
   const corpo = texto
     .split("\n\n")
     .map((p) =>
-      link && p.includes(link)
+      p.includes(link)
         ? paragrafo(p.replace(link, "").trim()) +
-          `<p style="margin:-6px 0 20px;"><a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;background:#c2410c;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;">Conferir e publicar a vaga</a></p>`
+          `<p style="margin:-6px 0 20px;"><a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;background:#c2410c;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;">${botao}</a></p>`
         : paragrafo(p),
     )
     .join("");

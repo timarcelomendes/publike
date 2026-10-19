@@ -72,7 +72,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
       {aba === "lista" && (
         <Secao
           titulo="Convites"
-          descricao="Empresas anunciando vagas e prestadores anunciando serviços em outros lugares. Mande o convite pelo WhatsApp ou e-mail: para a empresa, o link leva a vaga pronta e, quando ela publica por ele, o convite vira Autorizou sozinho. O prestador responde “pode”, e você monta a vitrine dele."
+          descricao="Empresas anunciando vagas e prestadores anunciando serviços em outros lugares. Mande o convite pelo WhatsApp ou e-mail: o link leva a vaga (ou a vitrine de serviços) pronta e, quando a pessoa publica por ele, o convite vira Autorizou sozinho. Respondeu “sim” sem abrir o link? Publique por ela daqui."
         >
           {error ? (
             <Aviso tipo="erro" titulo="Não deu para ler os convites">

@@ -7,6 +7,7 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { limparFotosDeTrabalho } from "@/lib/servidor/arquivos";
+import { centroDoBairro } from "@/lib/servidor/cep";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
@@ -21,6 +22,15 @@ export async function salvarServicos(_anterior: EstadoForm, formData: FormData):
   const usuario = await obterUsuario();
   if (!usuario) redirect("/entrar?next=/painel/servicos");
 
+  // veio do convite e não marcou o mapa: vale o meio do bairro (como na vaga)
+  const bairro = String(formData.get("bairro") ?? "").trim();
+  if (formData.get("convite") && (!formData.get("lat") || !formData.get("lng")) && bairro) {
+    const centro = await centroDoBairro(bairro, String(formData.get("cidade") ?? "") || "Goiânia").catch(() => null);
+    if (centro) {
+      formData.set("lat", String(centro.lat));
+      formData.set("lng", String(centro.lng));
+    }
+  }
   const leitura = lerServicos(formData);
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
   const d = leitura.dados;
@@ -63,6 +73,23 @@ export async function salvarServicos(_anterior: EstadoForm, formData: FormData):
     usuario.id,
     (meus ?? []).flatMap((a) => a.fotos),
   );
+
+  // veio do link do convite: salvar a vitrine é o aceite (o convite vira "Autorizou" no admin)
+  const convite = formData.get("convite");
+  if (typeof convite === "string" && /^[0-9a-f]{64}$/.test(convite)) {
+    const { data: ultimo } = await supabase
+      .from("anuncios")
+      .select("id")
+      .eq("autor_id", usuario.id)
+      .eq("tipo", "servico")
+      .order("criado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (ultimo) {
+      const { error: erroConvite } = await supabase.rpc("aceitar_convite", { p_token: convite, p_anuncio: ultimo.id });
+      if (erroConvite) console.warn("Publike: não deu para registrar o aceite do convite:", erroConvite.message);
+    }
+  }
 
   // com a moderação automática ligada, a IA revisa os textos e as fotos logo depois
   after(processarFilas);
