@@ -437,6 +437,13 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** quem aparece na aba Talentos da busca (só o resumo, aberto) */
+      curriculo_na_vitrine: {
+        Row: { perfil_id: string; desde: string };
+        Insert: { perfil_id: string };
+        Update: SemTabela;
+        Relationships: [];
+      };
       convites_vaga: {
         Row: { anuncio_id: string; perfil_id: string; criado_em: string };
         Insert: SemTabela;
@@ -453,6 +460,9 @@ export type Database = {
           cnh: string | null;
           disponibilidade: string[];
           arquivo: string | null;
+          /** o que a pessoa faz ("Auxiliar de cozinha") e as habilidades: a vitrine de Talentos */
+          titulo: string | null;
+          habilidades: string[];
           criado_em: string;
           atualizado_em: string;
         };
@@ -465,6 +475,8 @@ export type Database = {
           cnh?: string | null;
           disponibilidade?: string[];
           arquivo?: string | null;
+          titulo?: string | null;
+          habilidades?: string[];
         };
         Update: {
           escolaridade?: string | null;
@@ -474,6 +486,8 @@ export type Database = {
           cnh?: string | null;
           disponibilidade?: string[];
           arquivo?: string | null;
+          titulo?: string | null;
+          habilidades?: string[];
         };
         Relationships: [];
       };
@@ -1047,6 +1061,8 @@ export type Database = {
           disponibilidade: string[];
           arquivo: string | null;
           atualizado_em: string;
+          titulo: string | null;
+          habilidades: string[];
         }[];
       };
       desfazer_match: {
@@ -1449,11 +1465,79 @@ export type Database = {
           disponibilidade: string[];
           atualizado_em: string;
           convidado: boolean;
+          titulo: string | null;
+          habilidades: string[];
         }[];
       };
       convidar_para_vaga: {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
+      };
+      /** a aba Talentos (aberta): só o resumo de quem está na vitrine */
+      buscar_talentos: {
+        Args: {
+          p_texto?: string | null;
+          p_cidade?: string | null;
+          p_bairro?: string | null;
+          p_limite?: number;
+          p_deslocamento?: number;
+        };
+        Returns: {
+          perfil_id: string;
+          nome: string;
+          cidade: string;
+          bairro: string | null;
+          titulo: string | null;
+          habilidades: string[];
+          cursos: string[];
+          escolaridade: string | null;
+          cnh: string | null;
+          disponibilidade: string[];
+          cargos: string[];
+          meses_experiencia: number;
+          atualizado_em: string;
+          total: number;
+        }[];
+      };
+      talento_resumo: {
+        Args: { p_perfil: string };
+        Returns: {
+          perfil_id: string;
+          nome: string;
+          cidade: string;
+          bairro: string | null;
+          titulo: string | null;
+          habilidades: string[];
+          cursos: string[];
+          escolaridade: string | null;
+          curso: string | null;
+          cnh: string | null;
+          disponibilidade: string[];
+          cargos: string[];
+          meses_experiencia: number;
+          atualizado_em: string;
+        }[];
+      };
+      /** o currículo completo: só empresa, comércio e agência que entraram */
+      talento_completo: {
+        Args: { p_perfil: string };
+        Returns: {
+          perfil_id: string;
+          nome: string;
+          foto: string | null;
+          cidade: string;
+          bairro: string | null;
+          sobre: string | null;
+          titulo: string | null;
+          habilidades: string[];
+          escolaridade: string | null;
+          curso: string | null;
+          experiencias: Json;
+          cursos: string[];
+          cnh: string | null;
+          disponibilidade: string[];
+          atualizado_em: string;
+        }[];
       };
       usar_ia_texto: {
         Args: Record<PropertyKey, never>;

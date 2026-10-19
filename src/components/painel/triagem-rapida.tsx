@@ -27,6 +27,8 @@ export type CartaTriagem = {
   criterios: { nome: string; ok: boolean | null; extra?: boolean; eliminatorio?: boolean }[];
   recado: string | null;
   estudo: string | null;
+  /** o que a pessoa faz ("Auxiliar de cozinha"), do currículo */
+  titulo: string | null;
   experiencias: string[];
   temCurriculo: boolean;
   /** a vaga pede currículo e a pessoa não mandou: o primeiro nome */
@@ -268,6 +270,7 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
           <div className="flex flex-col gap-1 text-body-sm">
             {atual.temCurriculo ? (
               <>
+                {atual.titulo && <p className="text-label">{atual.titulo}</p>}
                 {atual.experiencias.length ? (
                   atual.experiencias.map((e) => <p key={e}>{e}</p>)
                 ) : (

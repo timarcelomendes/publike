@@ -1,5 +1,6 @@
 import { ChevronDown, Megaphone, UserSearch } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { BotaoConvidar } from "@/components/painel/botao-convidar";
@@ -46,6 +47,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
       <p className="mt-1 text-body text-ink-muted">
         Quem tem currículo no Publike e deixou as empresas acharem. Convide quem combina: a pessoa vê a vaga e, se
         curtir, chega na sua caixa de entrada.
+      </p>
+      <p className="mt-1 text-body-sm text-ink-muted">
+        Aqui aparece quem mora na cidade da vaga. Gente de toda a região está na{" "}
+        <Link href="/talentos" className="text-label text-ink underline underline-offset-2">
+          aba Talentos da busca
+        </Link>
+        .
       </p>
     </div>
   );
@@ -135,6 +143,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="text-label">{t.nome}</span>
+                      {t.titulo && <span className="text-body-sm text-ink-muted">· {t.titulo}</span>}
                       <NotaAderencia a={a} longo />
                     </p>
                     <p className="text-body-sm text-ink-muted">
@@ -179,6 +188,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
                         disponibilidade: t.disponibilidade,
                         arquivo: null,
                         atualizado_em: t.atualizado_em,
+                        titulo: t.titulo,
+                        habilidades: t.habilidades,
                       }}
                       linkPdf={null}
                       hoje={hoje}

@@ -6,7 +6,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/painel", "/perfil$", "/publicar", "/entrar", "/moderacao", "/auth/", "/*/denunciar"],
+      // Talentos: o resumo de quem procura trabalho fica fora do Google (a página também diz noindex)
+      disallow: ["/painel", "/perfil$", "/publicar", "/entrar", "/moderacao", "/auth/", "/*/denunciar", "/talentos"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };

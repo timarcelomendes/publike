@@ -39,7 +39,9 @@ const PALAVRAS_VAZIAS = new Set(
     "para com sem mais menos que uma umas uns como trabalho trabalhar vaga vagas procuro quero queria " +
     "gostaria perto setor bairro regiao goiania aparecida empresa pessoa pessoas algum alguma qualquer " +
     "tenho tambem muito pouco onde quando todo toda todos dias semana horario fazer servico servicos area " +
-    "experiencia anos desde meio periodo"
+    "experiencia anos desde meio periodo " +
+    // qualidades que quase toda vaga pede (vêm nas habilidades do currículo): não dizem a área
+    "equipe pontual pontualidade proativo proativa responsavel comprometido comprometida dedicado dedicada"
   ).split(" "),
 );
 

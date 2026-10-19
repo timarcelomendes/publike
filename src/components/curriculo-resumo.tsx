@@ -57,7 +57,9 @@ export function CurriculoResumo({
   hoje: string;
 }) {
   const estudo = nomeEscolaridade(curriculo.escolaridade);
+  const habilidades = curriculo.habilidades ?? [];
   const linhas: { rotulo: string; valor: string }[] = [];
+  if (curriculo.titulo) linhas.push({ rotulo: "O que faz", valor: curriculo.titulo });
   if (estudo) linhas.push({ rotulo: "Estudos", valor: curriculo.curso ? `${estudo} · ${curriculo.curso}` : estudo });
   if (curriculo.cnh) linhas.push({ rotulo: "CNH", valor: `Categoria ${curriculo.cnh}` });
   if (curriculo.disponibilidade.length)
@@ -75,6 +77,18 @@ export function CurriculoResumo({
           ))}
         </dl>
       )}
+      {habilidades.length > 0 && (
+        <div>
+          <h4 className="mb-2 text-caption text-ink-muted uppercase">Habilidades</h4>
+          <ul className="flex flex-wrap gap-1.5">
+            {habilidades.map((h) => (
+              <li key={h} className="rounded-pill bg-surface-300 px-2.5 py-1">
+                {h}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div>
         <h4 className="mb-2 text-caption text-ink-muted uppercase">Experiência</h4>
         {curriculo.experiencias.length ? (
@@ -89,7 +103,7 @@ export function CurriculoResumo({
       </div>
       {curriculo.cursos.length > 0 && (
         <div>
-          <h4 className="mb-2 text-caption text-ink-muted uppercase">Cursos e habilidades</h4>
+          <h4 className="mb-2 text-caption text-ink-muted uppercase">Cursos</h4>
           <ul className="flex flex-wrap gap-1.5">
             {curriculo.cursos.map((c) => (
               <li key={c} className="rounded-pill bg-surface-300 px-2.5 py-1">

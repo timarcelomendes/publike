@@ -8,7 +8,13 @@ import { VisibilidadeCurriculo } from "@/components/visibilidade-curriculo";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { esperaCurriculo } from "@/lib/constantes";
-import { linkDoMeuPdf, listarMinhasCurtidas, meuCurriculoVisivel, obterMeuCurriculo } from "@/lib/dados";
+import {
+  linkDoMeuPdf,
+  listarMinhasCurtidas,
+  meuCurriculoNaVitrine,
+  meuCurriculoVisivel,
+  obterMeuCurriculo,
+} from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
@@ -63,10 +69,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   const { usuario } = await exigirPerfilCompleto(
     proximo ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}` : "/perfil/curriculo",
   );
-  const [curriculo, curtidas, visivel] = await Promise.all([
+  const [curriculo, curtidas, visivel, vitrine] = await Promise.all([
     obterMeuCurriculo(),
     listarMinhasCurtidas().catch(() => []),
     meuCurriculoVisivel(),
+    meuCurriculoNaVitrine(),
   ]);
   const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? null);
   // as vagas que já aceitaram a pessoa e só esperam o currículo
@@ -81,6 +88,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
             Agora é só curtir as vagas que combinam com você. Quem anunciou vê seu currículo e, se curtir de volta, o
             WhatsApp dos dois aparece.
           </p>
+          {!vitrine && (
+            <p className="mt-2">
+              Quer que as empresas achem você? Ligue{" "}
+              <a href="#quem-acha" className="text-label underline">
+                “Aparecer na aba Talentos”
+              </a>{" "}
+              no fim da página.
+            </p>
+          )}
           <p className="mt-3">
             <Link href="/?tipo=vaga" className="text-label underline">
               Ver vagas perto de mim
@@ -102,7 +118,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         hoje={hoje}
         rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
       />
-      {curriculo && <VisibilidadeCurriculo visivel={visivel} />}
+      {curriculo && <VisibilidadeCurriculo visivel={visivel} vitrine={vitrine} />}
       {curriculo && <ApagarCurriculo />}
     </>
   );

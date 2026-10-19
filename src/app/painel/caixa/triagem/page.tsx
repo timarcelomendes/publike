@@ -64,6 +64,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
         .map((k) => ({ nome: k.nome, ok: k.ok, extra: k.extra, eliminatorio: k.eliminatorio })),
       recado: c.mensagem,
       estudo: estudo ? (c.curriculo?.curso ? `${estudo} · ${c.curriculo.curso}` : estudo) : null,
+      titulo: c.curriculo?.titulo ?? null,
       experiencias: (c.curriculo?.experiencias ?? [])
         .slice(0, 3)
         .map((e) => [e.cargo, e.onde].filter(Boolean).join(" · ") + (e.fim ? "" : " (atual)")),

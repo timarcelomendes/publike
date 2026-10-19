@@ -24,6 +24,7 @@ import {
   MAX_PDF_MB,
 } from "@/lib/constantes";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
@@ -108,6 +109,8 @@ export function FormCurriculo({
   );
   const [cursos, setCursos] = useState<string[]>(inicial?.cursos ?? []);
   const [novoCurso, setNovoCurso] = useState("");
+  const [habilidades, setHabilidades] = useState<string[]>(inicial?.habilidades ?? []);
+  const [novaHabilidade, setNovaHabilidade] = useState("");
   const [arquivo, setArquivo] = useState<string | null>(inicial?.arquivo ?? null);
   const [nomePdf, setNomePdf] = useState<string | null>(null);
   const [enviandoPdf, setEnviandoPdf] = useState(false);
@@ -148,6 +151,20 @@ export function FormCurriculo({
     if (e.key === "Enter") {
       e.preventDefault();
       adicionarCurso();
+    }
+  }
+
+  function adicionarHabilidade(texto: string) {
+    const h = texto.replace(/\s+/g, " ").trim().slice(0, 40);
+    if (h.length < 2 || habilidades.length >= MAX_HABILIDADES) return;
+    if (!habilidades.some((x) => x.toLowerCase() === h.toLowerCase())) setHabilidades([...habilidades, h]);
+    setNovaHabilidade("");
+  }
+
+  function teclaHabilidade(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      adicionarHabilidade(novaHabilidade);
     }
   }
 
@@ -193,6 +210,15 @@ export function FormCurriculo({
     // o que ficou digitado e não foi adicionado também vale
     const pendente = novoCurso.replace(/\s+/g, " ").trim();
     dados.set("cursos", JSON.stringify(pendente.length >= 2 ? [...cursos, pendente] : cursos));
+    const habilidadePendente = novaHabilidade.replace(/\s+/g, " ").trim();
+    dados.set(
+      "habilidades",
+      JSON.stringify(
+        habilidadePendente.length >= 2 && habilidades.length < MAX_HABILIDADES
+          ? [...habilidades, habilidadePendente]
+          : habilidades,
+      ),
+    );
     dados.set("arquivo", arquivo ?? "");
     startTransition(() => acao(dados));
   }
@@ -202,6 +228,102 @@ export function FormCurriculo({
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
       {proximo && <input type="hidden" name="next" value={proximo} />}
+
+      <Secao
+        titulo="O que você faz"
+        descricao="É o que as empresas veem primeiro. Diga sua profissão (ou o trabalho que procura) e o que você sabe fazer bem."
+      >
+        <div className="flex flex-col gap-1.5">
+          <Rotulo htmlFor="titulo" opcional>
+            Sua profissão ou o trabalho que procura
+          </Rotulo>
+          <input
+            id="titulo"
+            name="titulo"
+            defaultValue={inicial?.titulo ?? ""}
+            maxLength={60}
+            placeholder="Ex.: Auxiliar de cozinha, Motorista, Vendedora"
+            aria-invalid={erros.titulo ? true : undefined}
+            className={classesEntrada}
+          />
+          {erros.titulo && <MensagemErro>{erros.titulo}</MensagemErro>}
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-label" id="habilidades-titulo">
+            Habilidades e conhecimentos <span className="font-normal text-ink-muted">(opcional)</span>
+          </p>
+          {habilidades.length > 0 && (
+            <ul className="flex flex-wrap gap-2" aria-label="Suas habilidades">
+              {habilidades.map((h) => (
+                <li
+                  key={h}
+                  className="inline-flex min-h-10 items-center gap-1 rounded-pill bg-surface-300 pr-1 pl-3.5 text-label"
+                >
+                  {h}
+                  <button
+                    type="button"
+                    onClick={() => setHabilidades(habilidades.filter((x) => x !== h))}
+                    aria-label={`Tirar ${h}`}
+                    className="flex size-8 items-center justify-center rounded-pill hover:bg-surface-200"
+                  >
+                    <X aria-hidden className="size-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {habilidades.length < MAX_HABILIDADES ? (
+            <>
+              <div className="flex gap-2">
+                <label htmlFor="nova-habilidade" className="sr-only">
+                  Habilidade ou conhecimento
+                </label>
+                <input
+                  id="nova-habilidade"
+                  value={novaHabilidade}
+                  onChange={(e) => setNovaHabilidade(e.target.value)}
+                  onKeyDown={teclaHabilidade}
+                  maxLength={40}
+                  placeholder="Ex.: Atendimento ao cliente, Empilhadeira"
+                  aria-invalid={erros.habilidades ? true : undefined}
+                  aria-describedby="habilidades-titulo"
+                  className={classesEntrada}
+                />
+                <Botao
+                  onClick={() => adicionarHabilidade(novaHabilidade)}
+                  disabled={novaHabilidade.trim().length < 2}
+                  className="shrink-0"
+                >
+                  <Plus aria-hidden />
+                  Pôr
+                </Botao>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <p className="text-body-sm text-ink-muted">Ou toque para pôr:</p>
+                <ul className="flex flex-wrap gap-2" aria-label="Sugestões de habilidades">
+                  {HABILIDADES_SUGERIDAS.filter(
+                    (s) => !habilidades.some((h) => h.toLowerCase() === s.toLowerCase()),
+                  ).map((s) => (
+                    <li key={s}>
+                      <button
+                        type="button"
+                        onClick={() => adicionarHabilidade(s)}
+                        className="inline-flex min-h-10 items-center gap-1 rounded-pill border border-line bg-surface-200 px-3.5 text-label transition-colors hover:border-line-strong"
+                      >
+                        <Plus aria-hidden className="size-4 text-ink-muted" />
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : (
+            <p className="text-body-sm text-ink-muted">Você chegou a {MAX_HABILIDADES} habilidades.</p>
+          )}
+          {erros.habilidades && <MensagemErro>{erros.habilidades}</MensagemErro>}
+        </div>
+      </Secao>
 
       <Secao titulo="Estudos">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -370,8 +492,8 @@ export function FormCurriculo({
       </Secao>
 
       <Secao
-        titulo="Cursos e o que você sabe fazer"
-        descricao="Cursos livres, NR, informática, idiomas, máquinas que sabe operar… Um de cada vez."
+        titulo="Cursos"
+        descricao="Cursos livres e técnicos, NR, informática, idiomas, máquinas que sabe operar… Um de cada vez."
       >
         {cursos.length > 0 && (
           <ul className="flex flex-wrap gap-2" aria-label="Seus cursos">
@@ -396,7 +518,7 @@ export function FormCurriculo({
         {cursos.length < MAX_CURSOS ? (
           <div className="flex gap-2">
             <label htmlFor="novo-curso" className="sr-only">
-              Curso ou habilidade
+              Curso
             </label>
             <input
               id="novo-curso"
@@ -493,8 +615,9 @@ export function FormCurriculo({
       <div className="flex gap-3 rounded-md bg-surface-300 p-4 text-body-sm">
         <Info aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" />
         <p>
-          <strong className="text-label">Quem vê seu currículo:</strong> só quem anunciou uma vaga que você curtiu,
-          enquanto a curtida existir. Ele não aparece no seu perfil público nem na busca.
+          <strong className="text-label">Quem vê seu currículo:</strong> quem anunciou uma vaga que você curtiu,
+          enquanto a curtida existir. Para as empresas acharem você, ou para aparecer na aba Talentos da busca, ligue as
+          opções que aparecem embaixo depois de salvar.
         </p>
       </div>
 

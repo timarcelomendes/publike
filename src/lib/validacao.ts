@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
+import { MAX_HABILIDADES } from "./talentos";
 import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
 import {
@@ -609,9 +610,24 @@ export const esquemaCurriculo = z
     cnh: z.enum(CNHS).nullable(),
     disponibilidade: z.array(z.enum(VALORES_DISPONIBILIDADE)),
     arquivo: z.string().regex(CAMINHO_CURRICULO, { error: "Envie o PDF de novo." }).nullable(),
+    /** o que a pessoa faz ("Auxiliar de cozinha"): o título na aba Talentos */
+    titulo: z
+      .string()
+      .trim()
+      .max(60, { error: "Use no máximo 60 letras." })
+      .refine((t) => !temContato(t), { error: SEM_CONTATO })
+      .transform((t) => t.replace(/\s+/g, " ") || null),
+    habilidades: z
+      .array(
+        z.string().trim().min(2, { error: "Use pelo menos 2 letras." }).max(40, { error: "Use no máximo 40 letras." }),
+      )
+      .max(MAX_HABILIDADES, { error: `No máximo ${MAX_HABILIDADES} habilidades.` })
+      .refine((l) => !l.some((t) => temContato(t)), { error: SEM_CONTATO }),
   })
   .superRefine((d, ctx) => {
     if (d.curso && d.curso.length < 2) ctx.addIssue({ code: "custom", path: ["curso"], message: "Use pelo menos 2 letras." });
+    if (d.titulo && d.titulo.length < 2)
+      ctx.addIssue({ code: "custom", path: ["titulo"], message: "Use pelo menos 2 letras." });
   });
 
 export type DadosCurriculo = z.output<typeof esquemaCurriculo>;
@@ -624,9 +640,11 @@ export type LeituraCurriculo = { ok: true; dados: DadosCurriculo } | { ok: false
 export function lerCurriculo(formData: FormData): LeituraCurriculo {
   let experiencias: unknown = [];
   let cursos: unknown = [];
+  let habilidades: unknown = [];
   try {
     experiencias = JSON.parse(campo(formData, "experiencias") ?? "[]");
     cursos = JSON.parse(campo(formData, "cursos") ?? "[]");
+    habilidades = JSON.parse(campo(formData, "habilidades") ?? "[]");
   } catch {
     return { ok: false, erros: { geral: "Algo deu errado com o formulário. Recarregue a página." } };
   }
@@ -649,6 +667,8 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
     cnh: campo(formData, "cnh") || null,
     disponibilidade: formData.getAll("disponibilidade").filter((v): v is string => typeof v === "string"),
     arquivo: campo(formData, "arquivo") || null,
+    titulo: campo(formData, "titulo") ?? "",
+    habilidades: (Array.isArray(habilidades) ? habilidades : []).map(textoDe).filter((h) => h.trim()),
   });
   if (leitura.success) return { ok: true, dados: leitura.data };
   const erros: Record<string, string> = {};

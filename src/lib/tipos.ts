@@ -53,6 +53,9 @@ export type Curriculo = {
   disponibilidade: string[];
   arquivo: string | null;
   atualizado_em: string;
+  /** o que a pessoa faz ("Auxiliar de cozinha") e as habilidades (aba Talentos) */
+  titulo?: string | null;
+  habilidades?: string[];
 };
 /** Currículo de quem curtiu a vaga, com o link temporário do PDF. */
 export type CurriculoDoInteressado = Curriculo & { perfil_id: string; link_pdf: string | null };

@@ -125,7 +125,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
 
   const quem: QuemProcura | null = usuario
     ? {
-        servicos: perfil?.servicos ?? [],
+        // o que faz: o do perfil e o do currículo (a profissão e as habilidades)
+        servicos: [
+          ...(perfil?.servicos ?? []),
+          ...(curriculo?.titulo ? [curriculo.titulo] : []),
+          ...(curriculo?.habilidades ?? []),
+        ],
         cargos: curriculo?.experiencias.map((e) => e.cargo) ?? [],
         cursos: curriculo?.cursos ?? [],
         curso: curriculo?.curso ?? null,

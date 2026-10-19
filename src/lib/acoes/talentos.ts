@@ -65,6 +65,8 @@ export async function resumirCandidatoComIA(anuncioId: string, perfilId: string)
     ),
     "</comparacao>",
     "<curriculo>",
+    cv.titulo ? `O que faz: ${cv.titulo}` : "",
+    cv.habilidades?.length ? `Habilidades: ${cv.habilidades.join(", ")}` : "",
     `Escolaridade: ${nomeEscolaridade(cv.escolaridade) ?? "não informou"}${cv.curso ? ` · ${cv.curso}` : ""}`,
     `CNH: ${cv.cnh ?? "não tem ou não informou"}`,
     `Pode trabalhar: ${cv.disponibilidade.map(nomeDisponibilidade).join(", ") || "não informou"}`,
@@ -142,5 +144,43 @@ export async function mudarVisibilidadeCurriculo(visivel: boolean): Promise<Resu
     mensagem: visivel
       ? "Pronto: empresas com vagas na sua cidade podem achar seu currículo e convidar você."
       : "Pronto: seu currículo não aparece mais para as empresas.",
+  };
+}
+
+/**
+ * "Aparecer na aba Talentos": o resumo do currículo na busca, aberto a quem visita. Quem
+ * aparece na aba também aparece para as empresas (Talentos do painel); sair das empresas
+ * tira da aba (o banco apaga junto).
+ */
+export async function mudarVitrineCurriculo(ligar: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/curriculo" };
+  const supabase = await criarClienteServidor();
+  if (ligar) {
+    const visivel = await supabase
+      .from("curriculo_visivel")
+      .upsert({ perfil_id: usuario.id }, { ignoreDuplicates: true });
+    const { error } = visivel.error
+      ? visivel
+      : await supabase.from("curriculo_na_vitrine").upsert({ perfil_id: usuario.id }, { ignoreDuplicates: true });
+    if (error) {
+      return {
+        ok: false,
+        erro: /foreign key|violates/i.test(error.message)
+          ? "Salve o currículo primeiro."
+          : mensagemDeErro(error, "Não deu para salvar agora."),
+      };
+    }
+  } else {
+    const { error } = await supabase.from("curriculo_na_vitrine").delete().eq("perfil_id", usuario.id);
+    if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora.") };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: ligar
+      ? "Pronto: você aparece na aba Talentos. Quem visita vê o resumo; as empresas, o currículo completo."
+      : "Pronto: você saiu da aba Talentos. As empresas com vaga na sua cidade ainda acham seu currículo.",
   };
 }

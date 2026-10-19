@@ -70,7 +70,7 @@ export default function Privacidade() {
               "No perfil: nome, se você é pessoa, comércio, empresa ou agência de emprego, cidade, bairro, foto (opcional), o que você faz e uma apresentação. Agência informa também o CNPJ; comércio e empresa podem informar.",
               "Contato: seu WhatsApp e, se quiser, um e-mail.",
               "O que você faz no site: anúncios, curtidas, matches, denúncias e, no Descobrir, as vagas que salvou ou passou e o que escreveu em “O que você procura?” (só você vê).",
-              "Se você preencher: o currículo (estudos, experiências, cursos, CNH, quando pode trabalhar) e o PDF que anexar.",
+              "Se você preencher: o currículo (o que você faz, habilidades, estudos, experiências, cursos, CNH, quando pode trabalhar) e o PDF que anexar.",
               "Localização dos anúncios: comércio, empresa e agência podem informar o CEP e o endereço, que aparecem na vaga com o ponto exato, como uma fachada. Vaga de pessoa física e de empresa confidencial guardam só a região, uma área de uns 500 metros, sem endereço.",
               "CEP de casa (opcional, em “Onde você mora?”): guardamos o CEP e um ponto arredondado, de uns 300 metros, só para medir a distância e o tempo de ônibus até as vagas. Ninguém mais vê. Sem conta, fica só no seu navegador. “Esquecer onde moro” apaga.",
               "Quando você usa “Perto de mim”, a localização serve só para a busca e não fica salva no seu perfil.",
@@ -99,10 +99,11 @@ export default function Privacidade() {
         <Secao id="curriculo" titulo="Seu currículo">
           <Lista
             itens={[
-              "Não é público: não aparece no seu perfil, na busca nem no Google.",
+              "Não aparece no seu perfil público nem no Google. Na busca, só se você ligar “Aparecer na aba Talentos” (veja abaixo).",
               "Só vê quem anunciou uma vaga que você curtiu, e só enquanto a curtida existir. Desfez a curtida, deixou de ver.",
               "Se a vaga é de uma agência de emprego, a agência pode mostrar seu currículo à empresa contratante daquela vaga, só para a seleção.",
               "Se você ligar “Deixar as empresas me encontrarem”, quem tem vaga na sua cidade vê o currículo em Talentos, com o nome encurtado e sem telefone nem e-mail, e pode convidar você para a vaga. Desligou, sumiu da lista.",
+              "Se você ligar “Aparecer na aba Talentos”, qualquer visitante vê um resumo na aba Talentos da busca: o nome encurtado, o bairro, o que você faz, as habilidades, os cursos, os estudos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram veem o currículo completo e a foto, e podem convidar você para uma vaga. Telefone, e-mail e o PDF continuam escondidos, e a aba fica fora do Google. Desligou, saiu da aba na hora.",
               "O PDF fica guardado num lugar fechado e só abre com um link que vale por uma hora.",
               "O PDF vai do jeito que você enviar. Se tiver telefone, e-mail ou endereço, quem anunciou a vaga vê esses dados.",
               "Você corrige ou apaga o currículo quando quiser, em Meu perfil > Meu currículo. Excluir a conta apaga junto.",
@@ -127,13 +128,13 @@ export default function Privacidade() {
             A IA recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome
             da empresa contratante), nunca seu contato. Quando ela acha um anúncio suspeito, ele sai do ar até uma
             pessoa da moderação olhar. No Descobrir, a IA recebe o que você escreveu em “O que você procura?”, o que
-            você faz, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para pôr
-            primeiro as que combinam com você; nunca seu nome ou contato. Se quem publicou a vaga que você curtiu pedir
-            o resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos fortes e o que
-            conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. No assistente de
-            ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que você
-            escolheu; nunca seu contato. A conversa fica só no seu navegador, não no Publike. O que você manda em
-            Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você informar.
+            você faz, as habilidades, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas,
+            só para pôr primeiro as que combinam com você; nunca seu nome ou contato. Se quem publicou a vaga que você
+            curtiu pedir o resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos
+            fortes e o que conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. No
+            assistente de ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro nome e o bairro
+            que você escolheu; nunca seu contato. A conversa fica só no seu navegador, não no Publike. O que você manda
+            em Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você informar.
           </p>
           <p>
             Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}

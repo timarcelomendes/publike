@@ -56,7 +56,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Quem vê meu currículo?",
-        r: "Preencha “Meu currículo” uma vez. Só quem anunciou uma vaga que você curtiu vê o currículo, enquanto a curtida existir. Ele não aparece no seu perfil público nem na busca. Se quiser, ligue “Deixar as empresas me encontrarem” no currículo: quem tem vaga na sua cidade vê o currículo sem telefone e sem e-mail, com o nome encurtado, e pode convidar você; o contato só sai se você curtir a vaga e der match. Dá para desligar quando quiser. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
+        r: "Preencha “Meu currículo” uma vez. Quem anunciou uma vaga que você curtiu vê o currículo, enquanto a curtida existir. Se quiser, ligue “Deixar as empresas me encontrarem” no currículo: quem tem vaga na sua cidade vê o currículo sem telefone e sem e-mail, com o nome encurtado, e pode convidar você; o contato só sai se você curtir a vaga e der match. E, se ligar “Aparecer na aba Talentos”, um resumo seu aparece na aba Talentos da busca. Dá para desligar quando quiser. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
+      },
+      {
+        p: "O que é a aba Talentos?",
+        r: "É a vitrine de quem procura trabalho, ao lado das abas Vagas e Serviços. Aparece só quem ligou “Aparecer na aba Talentos” no currículo. Quem visita vê um resumo: o nome encurtado (Maria S.), o bairro, o que a pessoa faz, as habilidades, os cursos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram na conta veem o currículo completo e podem convidar para uma vaga. Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só sai no match: a empresa convida, você vê a vaga e decide se curte.",
       },
       {
         p: "Presto serviço (diarista, pedreiro, manicure…). Como apareço?",
@@ -68,6 +72,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     id: "contratar",
     titulo: "Para quem contrata",
     perguntas: [
+      {
+        p: "Como acho gente pela aba Talentos?",
+        r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo e convida a pessoa para uma vaga sua no ar. Ela recebe o convite, vê a vaga e decide se curte; o contato aparece no match.",
+      },
       {
         p: "Quem pode publicar vaga?",
         r: "Qualquer pessoa, comércio, empresa de qualquer tamanho (do MEI à indústria) ou agência de emprego de Goiânia e região, com um WhatsApp no perfil.",
@@ -203,10 +211,21 @@ const INTERESSADOS: PassoJornada = {
     "Para cada pessoa: perfil, mensagem, currículo, respostas às perguntas e o % de match com a vaga.",
     "Curtir de volta (aceitar) dá match e libera o contato dos dois.",
     "Em Candidatos você vê os interessados de todas as vagas juntos, filtra e baixa a lista numa planilha.",
-    "Em Talentos aparecem pessoas que deixaram o currículo à vista das empresas: dá para convidar para a vaga, e a pessoa decide se curte.",
+    "No painel, em Talentos, aparecem pessoas da cidade da vaga que deixaram o currículo à vista das empresas: dá para convidar para a vaga, e a pessoa decide se curte.",
   ],
   imagem: "interessados",
   link: { href: "/painel/candidatos", texto: "Candidatos" },
+};
+const TALENTOS: PassoJornada = {
+  titulo: "Ache gente na aba Talentos",
+  texto: "Na busca, a aba Talentos mostra quem procura trabalho na região e escolheu aparecer.",
+  detalhes: [
+    "Cada pessoa aparece com o que faz, a experiência, as habilidades e o bairro. Filtre pelo cargo, por uma habilidade ou pela cidade.",
+    "Entrando com a conta da empresa, abra o currículo completo: onde a pessoa trabalhou, as datas e o que fazia.",
+    "“Convidar para a vaga”: a pessoa recebe o convite, vê a vaga e decide se curte. O contato sai no match.",
+  ],
+  imagem: "talentos",
+  link: { href: "/talentos", texto: "Ver os talentos" },
 };
 const ENTREVISTA: PassoJornada = {
   titulo: "Converse e mude as etapas",
@@ -323,13 +342,25 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
             titulo: "Preencha o currículo",
             texto: "Leva uns 3 minutos e vale para todas as vagas.",
             detalhes: [
-              "Estudos, experiências, cursos e CNH.",
+              "O que você faz (sua profissão), habilidades, estudos, experiências, cursos e CNH.",
               "Com o currículo, cada vaga mostra o seu % de match: o quanto você combina com o que ela pede.",
               "Vagas que pedem currículo já recebem o seu quando você curte.",
               "Se quiser, deixe o currículo à vista das empresas: elas podem convidar você para uma vaga, sem ver o seu contato.",
             ],
             imagem: "curriculo",
             link: { href: "/perfil/curriculo", texto: "Preencher o currículo" },
+          },
+          {
+            titulo: "Apareça na aba Talentos",
+            texto: "No fim do currículo, ligue “Aparecer na aba Talentos”: as empresas acham você na busca.",
+            detalhes: [
+              "Quem visita vê um resumo: o nome encurtado, o bairro, o que você faz, as habilidades e os cargos, sem o nome das empresas.",
+              "Empresas, comércios e agências que entraram veem o currículo completo e convidam você para uma vaga.",
+              "Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só sai no match.",
+              "Desligou, saiu da aba na hora.",
+            ],
+            imagem: "talentos-opcao",
+            link: { href: "/talentos", texto: "Ver a aba Talentos" },
           },
           {
             titulo: "Procure do seu jeito",
@@ -468,6 +499,7 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
           ),
           COMO_RECEBER,
           INTERESSADOS,
+          TALENTOS,
           ENTREVISTA,
           RENOVAR,
         ],
@@ -502,6 +534,7 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
           ),
           COMO_RECEBER,
           INTERESSADOS,
+          TALENTOS,
           ENTREVISTA,
           RENOVAR,
         ],
@@ -558,6 +591,7 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
             ],
           },
           INTERESSADOS,
+          TALENTOS,
           {
             titulo: "Acompanhe cada cliente",
             texto: "A ficha do cliente junta as vagas, os candidatos e quem foi contratado.",

@@ -344,6 +344,20 @@ export async function meuCurriculoVisivel(): Promise<boolean> {
   return Boolean(data);
 }
 
+/** Se quem está logado aparece na aba Talentos da busca (o resumo, aberto a quem visita). */
+export async function meuCurriculoNaVitrine(): Promise<boolean> {
+  if (MODO_DEMO) return false;
+  const usuario = await obterUsuario();
+  if (!usuario) return false;
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("curriculo_na_vitrine")
+    .select("perfil_id")
+    .eq("perfil_id", usuario.id)
+    .maybeSingle();
+  return Boolean(data);
+}
+
 /** Conta uma visita à vaga (quem publicou e robôs de busca não contam). Roda depois da resposta. */
 export async function contarVisita(anuncioId: string, agente: string | null) {
   if (MODO_DEMO || !UUID.test(anuncioId)) return;
@@ -477,7 +491,9 @@ export const obterMeuCurriculo = cache(async (): Promise<Curriculo | null> => {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("curriculos")
-    .select("escolaridade, curso, experiencias, cursos, cnh, disponibilidade, arquivo, atualizado_em")
+    .select(
+      "escolaridade, curso, experiencias, cursos, cnh, disponibilidade, arquivo, atualizado_em, titulo, habilidades",
+    )
     .eq("perfil_id", usuario.id)
     .maybeSingle();
   if (error) falha("seu currículo", error);

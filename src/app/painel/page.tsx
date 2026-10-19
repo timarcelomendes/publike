@@ -31,6 +31,7 @@ import {
   listarMinhasConversas,
   listarMinhasCurtidas,
   listarMinhasEtapas,
+  meuCurriculoNaVitrine,
   meuCurriculoVisivel,
   minhasProximasEntrevistas,
   obterMeuCurriculo,
@@ -119,7 +120,7 @@ async function Conteudo() {
     const anuncios = await talvez(listarMeusAnuncios(), "os anúncios");
     pagina = <HojeServicos perfil={perfil} anuncios={anuncios} conversas={conversas} agora={agora} />;
   } else {
-    const [curtidas, etapas, curriculo, entrevistas, salvas, visivel] = await Promise.all([
+    const [curtidas, etapas, curriculo, entrevistas, salvas, visivel, vitrine] = await Promise.all([
       talvez(listarMinhasCurtidas(), "as curtidas"),
       listarMinhasEtapas(),
       // { c: null } = ainda não tem currículo; null = não deu para ler
@@ -130,6 +131,7 @@ async function Conteudo() {
       minhasProximasEntrevistas(agora),
       contarMinhasSalvas(),
       meuCurriculoVisivel(),
+      meuCurriculoNaVitrine(),
     ]);
     pagina = (
       <HojeTrabalhar
@@ -141,6 +143,7 @@ async function Conteudo() {
         conversas={conversas}
         salvas={salvas}
         visivel={visivel}
+        vitrine={vitrine}
         agora={agora}
       />
     );
@@ -212,6 +215,10 @@ type EntrevistaMinha = Awaited<ReturnType<typeof minhasProximasEntrevistas>>[num
 /** O que falta no currículo, na ordem que mais ajuda a combinar com as vagas. */
 function forcaDoCurriculo(c: Curriculo | null) {
   const itens: { feito: boolean; dica: string }[] = [
+    {
+      feito: Boolean(c?.titulo && c.habilidades?.length),
+      dica: "Diga o que você faz e as suas habilidades: é o que as empresas veem primeiro.",
+    },
     { feito: Boolean(c?.experiencias.length), dica: "Conte onde já trabalhou: é o que quem contrata lê primeiro." },
     { feito: Boolean(c?.disponibilidade.length), dica: "Diga os horários que pode: o % de match usa isso." },
     { feito: Boolean(c?.escolaridade), dica: "Coloque a escolaridade: muitas vagas pedem." },
@@ -257,6 +264,7 @@ function HojeTrabalhar({
   conversas,
   salvas,
   visivel,
+  vitrine,
   agora,
 }: {
   perfil: MeuPerfil | null;
@@ -268,6 +276,8 @@ function HojeTrabalhar({
   salvas: number | null;
   /** o currículo aparece em Talentos para as empresas */
   visivel: boolean;
+  /** e o resumo aparece na aba Talentos da busca */
+  vitrine: boolean;
   agora: number;
 }) {
   const vagas = (curtidas ?? []).filter((c) => c.tipo === "vaga");
@@ -477,8 +487,16 @@ function HojeTrabalhar({
                 </Link>
                 {curriculo?.c && (
                   <p className="border-t border-line pt-3 text-body-sm text-ink-muted">
-                    {visivel ? (
-                      "Empresas com vagas na sua cidade podem achar seu currículo e convidar você."
+                    {vitrine ? (
+                      "Você aparece na aba Talentos: empresas de toda a região acham seu currículo e convidam você."
+                    ) : visivel ? (
+                      <>
+                        Empresas com vagas na sua cidade podem achar seu currículo e convidar você. Para toda a região,{" "}
+                        <Link href="/perfil/curriculo#vitrine-titulo" className="font-semibold text-ink underline">
+                          apareça na aba Talentos
+                        </Link>
+                        .
+                      </>
                     ) : (
                       <>
                         Quer ser convidado para vagas?{" "}

@@ -48,6 +48,8 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
       cnh: d.cnh,
       disponibilidade: d.disponibilidade,
       arquivo: d.arquivo,
+      titulo: d.titulo,
+      habilidades: d.habilidades,
     },
     { onConflict: "perfil_id" },
   );

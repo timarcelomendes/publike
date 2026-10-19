@@ -1,17 +1,7 @@
 "use client";
 
-import {
-  Briefcase,
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid,
-  LocateFixed,
-  Search,
-  UserRound,
-  Wrench,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, LocateFixed, Search, UserRound, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { REGIAO } from "@/lib/config";
@@ -20,21 +10,17 @@ import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
 import { hrefFiltros, RAIOS, TURNOS, type Filtros, type Ordem, type Turno } from "@/lib/filtros";
 import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
-import type { Regime, TipoAnuncio } from "@/lib/tipos";
+import type { Regime } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
+import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "./abas";
 import { BotaoIntencao } from "./intencao";
 import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 
 // Três jeitos de olhar, cada um com a sua cara:
-//   O QUE (tipo) ...... abas sublinhadas, em cima da busca
+//   O QUE (tipo) ...... abas sublinhadas, em cima da busca (abas.tsx; Talentos é outra página)
 //   ONDE (local) ...... botões de contorno com ícone de lugar
 //   CATEGORIA ......... pílulas de filtro (a escolhida fica escura e ganha um ×)
-const TIPOS: { valor: TipoAnuncio | null; nome: string; ajuda: string; icone: LucideIcon }[] = [
-  { valor: null, nome: "Tudo", ajuda: "Vagas e serviços", icone: LayoutGrid },
-  { valor: "vaga", nome: "Vagas", ajuda: "Quero trabalhar", icone: Briefcase },
-  { valor: "servico", nome: "Serviços", ajuda: "Quero contratar", icone: Wrench },
-];
 
 const chip = (ativo: boolean) =>
   `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
@@ -250,14 +236,9 @@ export function BarraBusca({
       {/* No celular: abas, busca e uma faixa só com o lugar e as categorias (e o painel do bairro).
           No computador: abas e lugar na mesma linha, o painel do bairro, a busca e as categorias. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
-        <div
-          role="group"
-          aria-label="O que você procura"
-          className="order-1 grid grid-cols-3 border-b border-line sm:flex sm:flex-1 sm:gap-1"
-        >
-          {TIPOS.map((t) => {
+        <div role="group" aria-label="O que você procura" className={`order-1 ${classesGrupoAbas}`}>
+          {ABAS_ANUNCIOS.map((t) => {
             const ativo = filtros.tipo === t.valor;
-            const Icone = t.icone;
             return (
               <button
                 key={t.nome}
@@ -266,30 +247,16 @@ export function BarraBusca({
                 onClick={() =>
                   ir({ tipo: t.valor, tudo: t.valor === null, regime: t.valor === "servico" ? null : filtros.regime })
                 }
-                className={`-mb-px flex min-h-11 items-center justify-center gap-2 border-b-[3px] px-2 pb-2 pt-0.5 transition-colors sm:min-h-12 sm:justify-start sm:px-3 sm:pb-2.5 sm:pt-1 ${
-                  ativo
-                    ? "border-ink text-ink"
-                    : "border-transparent text-ink-muted hover:border-line-strong hover:text-ink"
-                }`}
+                className={classesAba(ativo)}
               >
-                <Icone aria-hidden className={`hidden size-5 shrink-0 sm:block ${ativo ? "text-terra-text" : ""}`} />
-                <span className="flex flex-col text-center leading-tight sm:text-left">
-                  <span className="text-label sm:text-body sm:font-semibold">{t.nome}</span>
-                  <span className="text-caption font-medium text-ink-muted">
-                    {/* no celular, "Vagas e serviços" não cabe embaixo de "Tudo" */}
-                    {t.valor === null ? (
-                      <>
-                        <span className="sm:hidden">Os dois</span>
-                        <span className="hidden sm:inline">{t.ajuda}</span>
-                      </>
-                    ) : (
-                      t.ajuda
-                    )}
-                  </span>
-                </span>
+                <MioloAba aba={t} ativo={ativo} />
               </button>
             );
           })}
+          {/* gente que procura trabalho: outra página (não são anúncios) */}
+          <Link href={ABA_TALENTOS.href} className={classesAba(false)}>
+            <MioloAba aba={ABA_TALENTOS} ativo={false} />
+          </Link>
         </div>
 
         {botoesDeLugar("hidden min-w-0 sm:order-2 sm:mb-1.5 sm:flex")}
