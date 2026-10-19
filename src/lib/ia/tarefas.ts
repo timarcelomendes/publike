@@ -4,6 +4,7 @@ import { CATEGORIAS, oficio, REGIMES, TIPOS_CONTA, UNIDADES } from "@/lib/consta
 import { formatarMoeda, urlDaFotoTrabalho } from "@/lib/formato";
 import type { Regime, TipoConta, Unidade } from "@/lib/tipos";
 import { temContato, temContatoNoTexto } from "@/lib/validacao";
+import { ganhosDoBanco, textoDoGanho } from "@/lib/vaga-extra";
 import { chamarIA, ErroIA, lerJson } from "./openai";
 
 // O que a IA faz no Publike: revisar anúncios, ajudar a escrever e resumir a semana.
@@ -29,6 +30,8 @@ export type AnuncioParaIA = {
   /** vaga de agência: a empresa que contrata */
   contratante?: string | null;
   contratante_confidencial?: boolean;
+  /** vaga: comissão, bônus, gorjeta... (jsonb do banco) */
+  ganhos_extras?: unknown;
 };
 
 function descreverAnuncio(a: AnuncioParaIA) {
@@ -47,6 +50,9 @@ function descreverAnuncio(a: AnuncioParaIA) {
     a.pagamento_valor != null
       ? `Pagamento: ${formatarMoeda(a.pagamento_valor)} ${UNIDADES[a.pagamento_unidade as Unidade] ?? ""}`.trim()
       : "Pagamento: a combinar",
+    ganhosDoBanco(a.ganhos_extras).length
+      ? `Ganhos a mais: ${ganhosDoBanco(a.ganhos_extras).map(textoDoGanho).join("; ")}`
+      : null,
     a.beneficios ? `Benefícios: ${a.beneficios}` : null,
     a.horario ? `Horário: ${a.horario}` : null,
     a.vagas && a.vagas > 1 ? `Vagas: ${a.vagas}` : null,

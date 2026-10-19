@@ -309,6 +309,8 @@ export type Database = {
           perguntas: Json;
           beneficios_extras: string[];
           horario_detalhe: Json | null;
+          /** ganhos a mais junto do valor: [{ nome, detalhe }] */
+          ganhos_extras: Json;
         };
         Insert: {
           /** quem publica (padrão: quem está logado; o admin informa ao publicar em nome da conta) */
@@ -356,6 +358,7 @@ export type Database = {
           perguntas?: Json;
           beneficios_extras?: string[];
           horario_detalhe?: Json | null;
+          ganhos_extras?: Json;
         };
         Update: {
           titulo?: string;
@@ -400,6 +403,7 @@ export type Database = {
           perguntas?: Json;
           beneficios_extras?: string[];
           horario_detalhe?: Json | null;
+          ganhos_extras?: Json;
         };
         Relationships: [
           {
@@ -825,6 +829,7 @@ export type Database = {
           contato_direto: boolean;
           preenchida_em: string | null;
           prazo_dias: number | null;
+          ganhos_extras: Json;
         }[];
       };
       meus_anuncios: {
@@ -1897,6 +1902,7 @@ export type Database = {
           fotos: string[];
           contratante: string | null;
           contratante_confidencial: boolean;
+          ganhos_extras: Json;
         }[];
       };
       servidor_resultado_ia: {

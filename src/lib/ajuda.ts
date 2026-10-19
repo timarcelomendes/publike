@@ -86,7 +86,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como publico uma vaga?",
-        r: `Toque em “Publicar grátis”, escreva o título, a descrição, o tipo de contratação (carteira, temporária, diária ou freelance), o valor e o local. Comércio e empresa podem informar o CEP e o número: o pino fica na porta e quem mora perto vê primeiro, com o tempo de ônibus até aí. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publicar ${LIMITES_CONTA.comum.porDia} por dia.`,
+        r: `Toque em “Publicar grátis”, escreva o título, a descrição, o tipo de contratação (carteira, temporária, diária ou freelance), o valor e o local. Comissão, bônus, gorjeta e outros ganhos vão em “Ganhos a mais”, logo abaixo do valor, com como funciona cada um. Comércio e empresa podem informar o CEP e o número: o pino fica na porta e quem mora perto vê primeiro, com o tempo de ônibus até aí. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publicar ${LIMITES_CONTA.comum.porDia} por dia.`,
       },
       {
         p: "Quanto tempo a vaga fica no ar?",

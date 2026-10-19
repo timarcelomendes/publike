@@ -1,17 +1,19 @@
 "use client";
 
 import { Check, Plus, X } from "lucide-react";
-import { useId, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   DIAS_SEMANA,
   ESCALAS,
   LIMITES_EXTRA,
   LISTA_TIPOS_PERGUNTA,
   novoIdPergunta,
+  SUGESTOES_GANHOS,
   textoDoHorario,
   TIPOS_PERGUNTA,
   type DiaSemana,
   type Escala,
+  type GanhoExtra,
   type HorarioDetalhe,
   type Pergunta,
   type TipoPergunta,
@@ -20,7 +22,7 @@ import { Botao } from "../ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "../ui/campo";
 
 // As partes da vaga que a empresa monta do jeito dela, no formulário de publicar:
-// perguntas para o candidato, benefícios a mais e o horário em turnos.
+// perguntas para o candidato, benefícios a mais, ganhos a mais e o horário em turnos.
 // Cada uma manda o que montou num campo escondido (JSON ou um campo por item).
 
 const pilula =
@@ -326,6 +328,124 @@ export function BeneficiosExtras({ inicial, erro }: { inicial: string[]; erro?: 
       )}
       {erro && <MensagemErro>{erro}</MensagemErro>}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------- ganhos a mais
+
+type LinhaGanho = GanhoExtra & { chave: string; livre: boolean };
+
+const exemploDo = (nome: string) => SUGESTOES_GANHOS.find((s) => s.nome === nome)?.exemplo ?? "como é pago";
+
+/**
+ * Ganhos a mais, junto do valor: comissão, bônus, gorjeta... Toca no de sempre (ou em "Outro",
+ * com o nome que quiser) e diz, se quiser, como funciona. Vai num campo escondido, em JSON.
+ */
+export function GanhosExtras({ inicial, erro }: { inicial: GanhoExtra[]; erro?: string }) {
+  const base = useId();
+  const [lista, setLista] = useState<LinhaGanho[]>(() =>
+    inicial.map((g, i) => ({ ...g, chave: `g${i}`, livre: !SUGESTOES_GANHOS.some((s) => s.nome === g.nome) })),
+  );
+  const proxima = useRef(inicial.length);
+  const sugestoes = SUGESTOES_GANHOS.filter((s) => !lista.some((g) => g.nome.toLowerCase() === s.nome.toLowerCase()));
+
+  function adicionar(nome: string | null) {
+    if (lista.length >= LIMITES_EXTRA.ganhos) return;
+    const chave = `g${proxima.current++}`;
+    setLista((l) => [...l, { chave, nome: nome ?? "", detalhe: "", livre: nome === null }]);
+    // vai direto para o que falta escrever: o nome (no "Outro") ou como funciona
+    setTimeout(() => document.getElementById(`${base}-${chave}-${nome === null ? "nome" : "detalhe"}`)?.focus(), 50);
+  }
+
+  const mudar = (chave: string, parte: Partial<GanhoExtra>) =>
+    setLista((l) => l.map((g) => (g.chave === chave ? { ...g, ...parte } : g)));
+
+  return (
+    <fieldset className="flex flex-col gap-3">
+      <input
+        type="hidden"
+        name="ganhos_extras"
+        value={JSON.stringify(lista.map(({ nome, detalhe }) => ({ nome, detalhe })))}
+      />
+      <legend className="mb-1 text-label">
+        Ganhos a mais <span className="font-normal text-ink-muted">(opcional)</span>
+      </legend>
+      <p className="-mt-1 text-body-sm text-ink-muted">Comissão, bônus, gorjeta… Aparecem junto do valor da vaga.</p>
+      {lista.length > 0 && (
+        <ul aria-label="Ganhos a mais da vaga" className="flex flex-col gap-2">
+          {lista.map((g) => {
+            const id = (c: string) => `${base}-${g.chave}-${c}`;
+            return (
+              <li
+                key={g.chave}
+                className="flex flex-col gap-2 rounded-md border border-line-strong p-3 sm:flex-row sm:items-center"
+              >
+                {g.livre ? (
+                  <>
+                    <label htmlFor={id("nome")} className="sr-only">
+                      Nome do ganho a mais
+                    </label>
+                    <input
+                      id={id("nome")}
+                      value={g.nome}
+                      onChange={(e) => mudar(g.chave, { nome: e.target.value })}
+                      onKeyDown={aoEnter(() => document.getElementById(id("detalhe"))?.focus())}
+                      maxLength={LIMITES_EXTRA.nomeGanho}
+                      placeholder="Nome. Ex.: Participação nos lucros"
+                      className={`${classesEntrada} sm:w-56 sm:flex-none`}
+                    />
+                  </>
+                ) : (
+                  <p className="flex items-center gap-1.5 text-label sm:w-56 sm:flex-none">
+                    <Plus aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                    {g.nome}
+                  </p>
+                )}
+                <div className="flex min-w-0 flex-1 gap-2">
+                  <label htmlFor={id("detalhe")} className="sr-only">
+                    Como funciona{g.nome ? `: ${g.nome}` : ""}
+                  </label>
+                  <input
+                    id={id("detalhe")}
+                    value={g.detalhe}
+                    onChange={(e) => mudar(g.chave, { detalhe: e.target.value })}
+                    onKeyDown={aoEnter(() => {})}
+                    maxLength={LIMITES_EXTRA.detalheGanho}
+                    placeholder={`Como funciona (opcional). Ex.: ${exemploDo(g.nome)}`}
+                    className={`${classesEntrada} min-w-0 flex-1`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLista((l) => l.filter((x) => x.chave !== g.chave))}
+                    aria-label={`Tirar ${g.nome || "este ganho"}`}
+                    className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-surface-300 hover:text-ink"
+                  >
+                    <X aria-hidden className="size-5" />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {lista.length < LIMITES_EXTRA.ganhos ? (
+        <div className="flex flex-wrap gap-2">
+          {sugestoes.map((s) => (
+            <button key={s.nome} type="button" onClick={() => adicionar(s.nome)} className={`${pilula} ${desligada}`}>
+              <Plus aria-hidden className="size-4" />
+              {s.nome}
+            </button>
+          ))}
+          <button type="button" onClick={() => adicionar(null)} className={`${pilula} ${desligada}`}>
+            <Plus aria-hidden className="size-4" />
+            Outro
+          </button>
+        </div>
+      ) : (
+        <p className="text-body-sm text-ink-muted">Você chegou a {LIMITES_EXTRA.ganhos} ganhos a mais.</p>
+      )}
+      {erro && <MensagemErro>{erro}</MensagemErro>}
+    </fieldset>
   );
 }
 

@@ -2,6 +2,7 @@
 // - perguntas (requisitos personalizados): a empresa dá o nome e o tipo de resposta; o
 //   candidato responde ao curtir e a resposta aparece em Candidatos e na planilha;
 // - benefícios a mais, além dos prontos;
+// - ganhos a mais, junto do valor: comissão, bônus, gorjeta... (com "como funciona");
 // - horário montado: escala, dias, turnos e uma observação.
 // Serve para o formulário (navegador), a validação e as páginas (servidor).
 
@@ -45,6 +46,9 @@ export const LIMITES_EXTRA = {
   resposta: 200,
   beneficiosExtras: 10,
   nomeBeneficio: 40,
+  ganhos: 6,
+  nomeGanho: 40,
+  detalheGanho: 60,
   turnos: 4,
   obsHorario: 120,
 };
@@ -210,6 +214,85 @@ export function beneficiosAntigos(texto: string | null | undefined) {
     .filter((b) => b.length >= 2)
     .slice(0, LIMITES_EXTRA.beneficiosExtras)
     .map((b) => b.slice(0, LIMITES_EXTRA.nomeBeneficio));
+}
+
+// ---------------------------------------------------------------- ganhos a mais
+
+/** Um ganho a mais da vaga: o nome ("Bônus") e, se quiser, como funciona ("até R$ 500 por meta batida"). */
+export type GanhoExtra = { nome: string; detalhe: string };
+
+/** Os de sempre, com um exemplo de "como funciona" (o formulário oferece; dá para pôr outro). */
+export const SUGESTOES_GANHOS = [
+  { nome: "Comissão", exemplo: "3% sobre as vendas" },
+  { nome: "Bônus", exemplo: "até R$ 500 por meta batida" },
+  { nome: "Gorjeta", exemplo: "dividida entre a equipe" },
+  { nome: "Hora extra", exemplo: "paga com 50% a mais" },
+  { nome: "Prêmio por assiduidade", exemplo: "R$ 200 no mês sem faltas" },
+  { nome: "Adicional noturno", exemplo: "20% a mais depois das 22h" },
+] as const;
+
+export const ehComissao = (nome: string) => /comiss/i.test(nome);
+
+/** Lê os ganhos a mais que vieram do formulário (JSON). Linha sem nome (aberta e deixada em branco) fica de fora. */
+export function lerGanhosExtras(bruto: unknown): { ok: true; lista: GanhoExtra[] } | { ok: false; erro: string } {
+  if (bruto == null || bruto === "") return { ok: true, lista: [] };
+  let itens: unknown;
+  try {
+    itens = typeof bruto === "string" ? JSON.parse(bruto) : bruto;
+  } catch {
+    return { ok: false, erro: "Não deu para ler os ganhos a mais. Tente de novo." };
+  }
+  if (!Array.isArray(itens)) return { ok: false, erro: "Não deu para ler os ganhos a mais. Tente de novo." };
+  const lista: GanhoExtra[] = [];
+  const vistos = new Set<string>();
+  for (const item of itens) {
+    const g = (item ?? {}) as Record<string, unknown>;
+    const nome = limpo(g.nome, LIMITES_EXTRA.nomeGanho + 1);
+    const detalhe = limpo(g.detalhe, LIMITES_EXTRA.detalheGanho + 1);
+    if (!nome) {
+      if (detalhe) return { ok: false, erro: "Dê um nome ao ganho a mais (ex.: Bônus)." };
+      continue;
+    }
+    if (nome.length < 2) return { ok: false, erro: `O nome “${nome}” ficou curto demais.` };
+    if (nome.length > LIMITES_EXTRA.nomeGanho) {
+      return { ok: false, erro: `Encurte “${nome.slice(0, 20)}…”: até ${LIMITES_EXTRA.nomeGanho} letras.` };
+    }
+    if (detalhe.length > LIMITES_EXTRA.detalheGanho) {
+      return { ok: false, erro: `Encurte como funciona “${nome}”: até ${LIMITES_EXTRA.detalheGanho} letras.` };
+    }
+    if (vistos.has(nome.toLowerCase())) continue;
+    vistos.add(nome.toLowerCase());
+    lista.push({ nome, detalhe });
+  }
+  if (lista.length > LIMITES_EXTRA.ganhos)
+    return { ok: false, erro: `No máximo ${LIMITES_EXTRA.ganhos} ganhos a mais.` };
+  return { ok: true, lista };
+}
+
+/**
+ * O que veio do banco (jsonb). As vagas de antes dos ganhos a mais só tinham "Mais comissão":
+ * com a comissão marcada e a lista vazia, a comissão aparece como um ganho.
+ */
+export function ganhosDoBanco(valor: unknown, comissao?: boolean | null): GanhoExtra[] {
+  const r = lerGanhosExtras(Array.isArray(valor) ? valor : []);
+  const lista = r.ok ? r.lista : [];
+  return !lista.length && comissao ? [{ nome: "Comissão", detalhe: "" }] : lista;
+}
+
+/** "Bônus: até R$ 500 por meta batida", ou só "Gorjeta". */
+export function textoDoGanho(g: GanhoExtra) {
+  return g.detalhe ? `${g.nome}: ${g.detalhe}` : g.nome;
+}
+
+/** Os nomes, curtos, para o cartão: "bônus e comissão", "bônus, gorjeta e mais 2". */
+export function nomesDosGanhos(lista: GanhoExtra[]) {
+  // "Bônus" vira "bônus"; sigla ("PLR") fica como está
+  const nomes = lista.map((g) =>
+    /^.[a-zà-ú]/.test(g.nome) ? g.nome.charAt(0).toLowerCase() + g.nome.slice(1) : g.nome,
+  );
+  if (nomes.length <= 2) return nomes.join(" e ");
+  // "e mais 2" não se parte no fim da linha do cartão
+  return `${nomes.slice(0, 2).join(", ")} e\u00a0mais\u00a0${nomes.length - 2}`;
 }
 
 // ---------------------------------------------------------------- horário montado

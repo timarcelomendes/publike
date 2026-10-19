@@ -14,6 +14,7 @@ import { deslocamentoCurto } from "@/lib/deslocamento";
 import { nomeBeneficio } from "@/lib/constantes";
 import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { DadosCard } from "@/lib/tipos";
+import type { GanhoExtra } from "@/lib/vaga-extra";
 import { NotaDoProfissional } from "./avaliacoes";
 import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
 import { BotaoCurtir } from "./botao-curtir";
@@ -35,6 +36,8 @@ export type ExtrasDaVaga = {
   expiraEm: string;
   /** a vaga foi preenchida: continua na busca, com a marcação, e não dá mais para curtir */
   preenchida?: boolean;
+  /** comissão, bônus, gorjeta... (vão junto do valor) */
+  ganhos?: GanhoExtra[];
 };
 
 /** Para quem publicou: o que chegou na própria vaga. */
@@ -215,7 +218,7 @@ export function CardAnuncio({
       )}
 
       <p className="text-label group-data-[visao=grade]/visao:text-body-sm group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-start-1 group-data-[visao=lista]/visao:max-w-48 group-data-[visao=lista]/visao:text-right">
-        {valorDoAnuncio(anuncio)}
+        {valorDoAnuncio(extras?.ganhos ? { ...anuncio, ganhos_extras: extras.ganhos } : anuncio)}
       </p>
       {(linhaExtras.length > 0 || prazo) && (
         <p className="-mt-1.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">

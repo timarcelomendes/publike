@@ -21,7 +21,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { perguntasDoBanco, respostasDoBanco } from "@/lib/vaga-extra";
+import { ganhosDoBanco, perguntasDoBanco, respostasDoBanco, textoDoGanho } from "@/lib/vaga-extra";
 import Image from "next/image";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -194,6 +194,10 @@ function dadosVaga(a: AnuncioCompleto) {
         }
       : {}),
     ...(a.escolaridade_minima ? { educationRequirements: nomeEscolaridade(a.escolaridade_minima) } : {}),
+    // comissão, bônus, gorjeta...: o Google mostra junto do salário
+    ...(ganhosDoBanco(a.ganhos_extras, a.comissao).length
+      ? { incentiveCompensation: ganhosDoBanco(a.ganhos_extras, a.comissao).map(textoDoGanho).join("; ") }
+      : {}),
     ...(a.pagamento_valor != null && a.pagamento_unidade && unidades[a.pagamento_unidade]
       ? {
           baseSalary: {
@@ -282,6 +286,7 @@ async function DetalheAnuncio({
     ...(anuncio.beneficios ? [anuncio.beneficios] : []),
   ];
   const perguntas = vaga ? perguntasDoBanco(anuncio.perguntas) : [];
+  const ganhos = vaga ? ganhosDoBanco(anuncio.ganhos_extras, anuncio.comissao) : [];
   const requisitos = [
     anuncio.escolaridade_minima ? `${nomeEscolaridade(anuncio.escolaridade_minima)}` : null,
     nomeExperiencia(anuncio.experiencia),
@@ -454,9 +459,15 @@ async function DetalheAnuncio({
               {vaga
                 ? formatarValor(anuncio.pagamento_valor, anuncio.pagamento_unidade, null, false, {
                     ate: anuncio.pagamento_ate,
-                    comissao: anuncio.comissao,
                   })
                 : valor}
+              {/* os ganhos a mais, um por linha, com como funciona */}
+              {ganhos.map((g) => (
+                <span key={g.nome} className="mt-0.5 block text-body-sm font-normal">
+                  + {g.nome}
+                  {g.detalhe && <span className="text-ink-muted">: {g.detalhe}</span>}
+                </span>
+              ))}
             </Fato>
             {temContratante && (
               <Fato icone={Building2} rotulo="Empresa contratante">

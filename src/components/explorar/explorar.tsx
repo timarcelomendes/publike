@@ -36,6 +36,7 @@ import { passosDaPrioridade, type Local } from "@/lib/regioes";
 import { acharBuscaSalva, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo } from "@/lib/tipos";
+import { ganhosDoBanco } from "@/lib/vaga-extra";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
@@ -121,6 +122,7 @@ function extrasDe(v: DetalhesDaVaga | undefined) {
         vagas: v.vagas,
         expiraEm: v.expira_em,
         preenchida: Boolean(v.preenchida_em),
+        ganhos: ganhosDoBanco(v.ganhos_extras),
       }
     : null;
 }

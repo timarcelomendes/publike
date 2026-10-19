@@ -344,6 +344,8 @@ function completo(b: Base, agora: number): AnuncioCompleto {
     local_exato: exato,
     pagamento_ate: b.ate ?? null,
     comissao: b.comissao ?? false,
+    // a vaga de exemplo com comissão mostra os ganhos a mais como a de verdade
+    ganhos_extras: b.comissao ? [{ nome: "Comissão", detalhe: "sobre as vendas" }] : [],
     beneficios_lista: b.beneficiosLista ?? [],
     escolaridade_minima: b.escolaridade ?? null,
     experiencia: b.experiencia ?? null,

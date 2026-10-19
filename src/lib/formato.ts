@@ -1,6 +1,7 @@
 import { SUPABASE_URL } from "./config";
 import { REGIMES, TIPOS_ANUNCIO, TIPOS_CONTA } from "./constantes";
 import type { Regime, TipoAnuncio, TipoConta, Unidade } from "./tipos";
+import { ganhosDoBanco, nomesDosGanhos, type GanhoExtra } from "./vaga-extra";
 
 const FUSO = "America/Sao_Paulo";
 
@@ -15,7 +16,7 @@ export function formatarMoeda(valor: number) {
 
 /**
  * "R$ 1.900 / mês + vale-transporte", "R$ 120 a diária", "Valor a combinar".
- * Com faixa: "De R$ 1.800 a R$ 2.200 / mês". Com comissão: "… + comissão".
+ * Com faixa: "De R$ 1.800 a R$ 2.200 / mês". Com ganhos a mais: "… + bônus e comissão".
  * No serviço, o preço é de referência: "A partir de R$ 180 a diária".
  */
 export function formatarValor(
@@ -23,7 +24,7 @@ export function formatarValor(
   unidade: string | null,
   beneficios?: string | null,
   aPartirDe = false,
-  extra: { ate?: number | null; comissao?: boolean } = {},
+  extra: { ate?: number | null; comissao?: boolean; ganhos?: GanhoExtra[] } = {},
 ) {
   let texto = "Valor a combinar";
   if (valor != null && unidade) {
@@ -42,7 +43,8 @@ export function formatarValor(
     texto = porUnidade[unidade as Unidade] ?? base;
     if (aPartirDe) texto = `A partir de ${texto}`;
   }
-  if (extra.comissao) texto += " + comissão";
+  if (extra.ganhos?.length) texto += ` + ${nomesDosGanhos(extra.ganhos)}`;
+  else if (extra.comissao) texto += " + comissão";
   return beneficios ? `${texto} + ${beneficios}` : texto;
 }
 
@@ -62,7 +64,7 @@ export function valorCurto(valor: number | null, unidade: string | null) {
   return `${v}${sufixo[unidade] ?? ""}`;
 }
 
-/** Valor de um anúncio: vaga com faixa, comissão e benefícios; serviço com "a partir de". */
+/** Valor de um anúncio: vaga com faixa, ganhos a mais e benefícios; serviço com "a partir de". */
 export function valorDoAnuncio(a: {
   tipo: string;
   pagamento_valor: number | null;
@@ -70,12 +72,14 @@ export function valorDoAnuncio(a: {
   beneficios: string | null;
   pagamento_ate?: number | null;
   comissao?: boolean;
+  /** comissão, bônus, gorjeta... (jsonb do banco); sem eles, vale o "comissao" */
+  ganhos_extras?: unknown;
 }) {
   return a.tipo === "servico"
     ? formatarValor(a.pagamento_valor, a.pagamento_unidade, null, true)
     : formatarValor(a.pagamento_valor, a.pagamento_unidade, a.beneficios, false, {
         ate: a.pagamento_ate,
-        comissao: a.comissao,
+        ganhos: ganhosDoBanco(a.ganhos_extras, a.comissao),
       });
 }
 

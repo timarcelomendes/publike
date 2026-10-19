@@ -5,11 +5,14 @@ import { MAX_HABILIDADES } from "./talentos";
 import { lerNumeroBR } from "./numero";
 import { REGIAO } from "./config";
 import {
+  ehComissao,
   lerBeneficiosExtras,
+  lerGanhosExtras,
   lerHorario,
   lerPerguntas,
   separarTriagem,
   textoDoHorario,
+  type GanhoExtra,
   type HorarioDetalhe,
   type Pergunta,
   type Triagem,
@@ -238,6 +241,8 @@ type ExtrasDaVaga = {
   triagem?: Triagem;
   beneficios_extras?: string[];
   horario_detalhe?: HorarioDetalhe | null;
+  /** comissão, bônus, gorjeta... junto do valor */
+  ganhos_extras?: GanhoExtra[];
 };
 
 export type DadosAnuncio = z.output<typeof esquemaAnuncio> & ExtrasDaVaga;
@@ -297,6 +302,7 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     ...(d.perguntas !== undefined ? { perguntas: d.perguntas } : {}),
     ...(d.beneficios_extras !== undefined ? { beneficios_extras: d.beneficios_extras } : {}),
     ...(d.horario_detalhe !== undefined ? { horario_detalhe: d.horario_detalhe } : {}),
+    ...(d.ganhos_extras !== undefined ? { ganhos_extras: d.ganhos_extras } : {}),
     vagas: d.vagas,
     pede_curriculo: d.pede_curriculo,
     contato_direto: d.contato_direto,
@@ -399,12 +405,14 @@ export function lerAnuncio(formData: FormData): LeituraAnuncio {
   const leitura = esquemaAnuncio.safeParse(bruto);
   if (leitura.success && extras.ok) {
     const d = leitura.data;
-    const { horario_detalhe, beneficios_extras } = extras.dados;
+    const { horario_detalhe, beneficios_extras, ganhos_extras } = extras.dados;
     return {
       ok: true,
       dados: {
         ...d,
         ...extras.dados,
+        // "Mais comissão" de antes: marcado quando um dos ganhos a mais é comissão (cartão e vagas antigas)
+        comissao: ganhos_extras ? d.tipo === "vaga" && ganhos_extras.some((g) => ehComissao(g.nome)) : d.comissao,
         // o horário montado e os benefícios a mais também vão em texto: cartão, busca e planilha leem dali
         horario: horario_detalhe ? textoDoHorario(horario_detalhe) : horario_detalhe === null ? null : d.horario,
         beneficios: beneficios_extras ? beneficios_extras.join(", ") || null : d.beneficios,
@@ -446,11 +454,17 @@ function lerExtrasDaVaga(
     if (r.ok) dados.horario_detalhe = r.horario;
     else erros.horario = r.erro;
   }
+  if (formData.has("ganhos_extras")) {
+    const r = lerGanhosExtras(vaga ? campo(formData, "ganhos_extras") : null);
+    if (r.ok) dados.ganhos_extras = r.lista;
+    else erros.ganhos_extras = r.erro;
+  }
   // nada de telefone, e-mail ou site escondido nos textos livres
   const textos: [string, string[]][] = [
     ["perguntas", (dados.perguntas ?? []).flatMap((p) => [p.nome, ...p.opcoes])],
     ["beneficios_extras", dados.beneficios_extras ?? []],
     ["horario", dados.horario_detalhe?.obs ? [dados.horario_detalhe.obs] : []],
+    ["ganhos_extras", (dados.ganhos_extras ?? []).flatMap((g) => [g.nome, g.detalhe])],
   ];
   for (const [chave, lista] of textos) {
     if (!erros[chave] && lista.some((t) => temContatoNoTexto(t))) erros[chave] = SEM_CONTATO;

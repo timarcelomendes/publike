@@ -18,6 +18,7 @@ import {
   type Rascunho,
 } from "@/lib/rascunho-anuncio";
 import type { Regime } from "@/lib/tipos";
+import { ganhosDoBanco, lerGanhosExtras } from "@/lib/vaga-extra";
 import { AvisoConvite } from "./aviso-convite";
 import { FormAnuncio, type ValoresAnuncio } from "./form-anuncio";
 import { Aviso, Selo } from "./ui/basicos";
@@ -37,6 +38,7 @@ function lerPrevia(form: HTMLFormElement): Previa {
   const combinar = t("combinar") === "on";
   const valor = lerNumeroBR(t("pagamento_valor"));
   const ate = lerNumeroBR(t("pagamento_ate"));
+  const ganhos = lerGanhosExtras(t("ganhos_extras"));
   return {
     titulo: t("titulo"),
     valor: formatarValor(
@@ -44,7 +46,7 @@ function lerPrevia(form: HTMLFormElement): Previa {
       combinar ? null : t("pagamento_unidade") || null,
       null,
       false,
-      { ate: ate != null && Number.isFinite(ate) ? ate : null, comissao: t("comissao") === "on" },
+      { ate: ate != null && Number.isFinite(ate) ? ate : null, ganhos: ganhos.ok ? ganhos.lista : [] },
     ),
     regime: REGIMES[t("regime") as Regime]?.selo ?? null,
     lugar: [t("bairro"), t("cidade")].filter(Boolean).join(" · "),
@@ -63,6 +65,7 @@ function aplicarModelo(m: ModeloAnuncio, atual: ValoresAnuncio): ValoresAnuncio 
     pagamento_ate: m.ate,
     pagamento_unidade: m.unidade,
     comissao: m.comissao ?? false,
+    ganhos_extras: ganhosDoBanco([], m.comissao),
     jornada: m.jornada ?? null,
     beneficios_lista: m.beneficios ?? [],
     pede_curriculo: m.pedeCurriculo ?? false,

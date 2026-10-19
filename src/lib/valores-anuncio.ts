@@ -1,6 +1,13 @@
 import type { ValoresAnuncio } from "@/components/form-anuncio";
 import type { AnuncioCompleto, TipoAnuncio } from "@/lib/tipos";
-import { beneficiosAntigos, horarioDoBanco, juntarTriagem, perguntasDoBanco, type Triagem } from "@/lib/vaga-extra";
+import {
+  beneficiosAntigos,
+  ganhosDoBanco,
+  horarioDoBanco,
+  juntarTriagem,
+  perguntasDoBanco,
+  type Triagem,
+} from "@/lib/vaga-extra";
 
 /**
  * O que o formulário de anúncio precisa a partir de um anúncio já publicado.
@@ -38,6 +45,8 @@ export function valoresDoAnuncio(
     contratante_confidencial: anuncio.contratante_confidencial,
     pagamento_ate: anuncio.pagamento_ate,
     comissao: anuncio.comissao,
+    // vagas de antes só tinham "Mais comissão": vira o ganho "Comissão"
+    ganhos_extras: ganhosDoBanco(anuncio.ganhos_extras, anuncio.comissao),
     beneficios_lista: anuncio.beneficios_lista,
     escolaridade_minima: anuncio.escolaridade_minima,
     experiencia: anuncio.experiencia,

@@ -532,6 +532,8 @@ export type DetalhesDaVaga = CamposDaVaga & {
   vagas: number;
   expira_em: string;
   preenchida_em: string | null;
+  /** comissão, bônus, gorjeta... (jsonb) */
+  ganhos_extras: unknown;
 };
 
 /** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match e o cartão da busca. */
@@ -541,7 +543,7 @@ export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[
   const { data, error } = await supabase
     .from("anuncios")
     .select(
-      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em, preenchida_em",
+      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em, preenchida_em, ganhos_extras",
     )
     .in("id", ids);
   if (error) falha("o que as vagas pedem", error);

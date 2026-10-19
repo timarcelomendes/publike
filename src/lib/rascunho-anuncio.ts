@@ -4,7 +4,7 @@
 import type { ValoresAnuncio } from "@/components/form-anuncio";
 import { lerNumeroBR } from "./numero";
 import type { TipoAnuncio } from "./tipos";
-import { lerHorario, perguntasDoBanco } from "./vaga-extra";
+import { lerGanhosExtras, lerHorario, perguntasDoBanco } from "./vaga-extra";
 
 const CHAVE = "publike_rascunho_vaga";
 /** Depois de uma semana, o rascunho não volta mais. */
@@ -59,6 +59,7 @@ export function valoresDoRascunho(r: Rascunho, base: ValoresAnuncio): ValoresAnu
   };
   const combinar = um("combinar") === "on";
   const horario = lerHorario(um("horario_detalhe"));
+  const ganhos = lerGanhosExtras(um("ganhos_extras"));
   let perguntas = base.perguntas;
   try {
     const p = um("perguntas");
@@ -76,6 +77,7 @@ export function valoresDoRascunho(r: Rascunho, base: ValoresAnuncio): ValoresAnu
     pagamento_unidade: um("pagamento_unidade") || base.pagamento_unidade,
     pagamento_ate: combinar ? null : numero("pagamento_ate"),
     comissao: um("comissao") === "on",
+    ...(ganhos.ok && um("ganhos_extras") !== null ? { ganhos_extras: ganhos.lista } : {}),
     beneficios_lista: todos("beneficios_lista"),
     beneficios_extras: todos("beneficios_extras"),
     escolaridade_minima: um("escolaridade_minima") || null,

@@ -24,9 +24,16 @@ import {
 } from "@/lib/constantes";
 import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
-import { lerHorario, textoDoHorario, type HorarioDetalhe, type Pergunta } from "@/lib/vaga-extra";
+import {
+  ganhosDoBanco,
+  lerHorario,
+  textoDoHorario,
+  type GanhoExtra,
+  type HorarioDetalhe,
+  type Pergunta,
+} from "@/lib/vaga-extra";
 import { EmpresaDaVaga } from "./anuncio/empresa-da-vaga";
-import { BeneficiosExtras, EditorPerguntas, MontarHorario } from "./anuncio/extras-da-vaga";
+import { BeneficiosExtras, EditorPerguntas, GanhosExtras, MontarHorario } from "./anuncio/extras-da-vaga";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
 import { trocarBairro } from "./mapa/seletor-local";
@@ -62,7 +69,10 @@ export type ValoresAnuncio = {
   cliente_id?: string | null;
   /** vaga: fim da faixa salarial, comissão, benefícios marcados, requisitos, jornada, modelo e PCD */
   pagamento_ate?: number | null;
+  /** "Mais comissão" de antes; os ganhos a mais (abaixo) tomaram o lugar */
   comissao?: boolean;
+  /** comissão, bônus, gorjeta... junto do valor */
+  ganhos_extras?: GanhoExtra[];
   beneficios_lista?: string[];
   escolaridade_minima?: string | null;
   experiencia?: string | null;
@@ -471,15 +481,10 @@ export function FormAnuncio({
         )}
 
         {vaga && (
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 self-start text-label">
-            <input
-              type="checkbox"
-              name="comissao"
-              defaultChecked={inicial.comissao ?? false}
-              className="size-5 accent-[var(--pk-ink)]"
-            />
-            Mais comissão
-          </label>
+          <GanhosExtras
+            inicial={inicial.ganhos_extras ?? ganhosDoBanco([], inicial.comissao)}
+            erro={erros.ganhos_extras}
+          />
         )}
 
         {vaga && <MontarHorario inicial={inicial.horario_detalhe ?? null} erro={erros.horario} />}
