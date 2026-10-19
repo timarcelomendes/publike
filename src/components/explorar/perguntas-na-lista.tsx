@@ -12,7 +12,8 @@ import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora
  * uma por vez: "O que você quer fazer no Publike?", depois "Onde você mora?" e, respondidas,
  * o próximo passo para a resposta (currículo, vitrine, publicar), com o "Mudar".
  * Sem resposta, "O que você quer fazer" abre numa janela por cima ao chegar; fechada ("Agora
- * não"), fica só no botão da busca nesta visita. "Agora não" também deixa o "Onde você mora?" para depois.
+ * não"), volta só na próxima visita (as abas da busca fazem o resto). "Agora não" também deixa o
+ * "Onde você mora?" para depois.
  */
 export function PerguntasNaLista({
   filtros,
@@ -35,7 +36,8 @@ export function PerguntasNaLista({
   const painel = useId();
   const intencaoAtual = escolhidaAgora ?? intencao;
 
-  // Procuro trabalho → Vagas; Quero contratar um serviço → Serviços (as outras ficam em Tudo)
+  // Procuro trabalho → Vagas; Quero contratar um serviço → Serviços; Ofereço serviços fica em
+  // Tudo (Procuro funcionário vai para a aba Talentos: a própria pergunta leva, em intencao.tsx)
   function escolher(i: Intencao) {
     setEscolhidaAgora(i);
     const tipo = tipoDaIntencao(i);
@@ -57,7 +59,7 @@ export function PerguntasNaLista({
 
   // na chegada, numa janela por cima
   if (!intencaoAtual) {
-    // "Agora não": nesta visita, a pergunta fica só no botão "O que você quer fazer?" da busca
+    // "Agora não": a pergunta volta na próxima visita
     return adiada ? null : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita />;
   }
 

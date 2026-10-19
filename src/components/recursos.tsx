@@ -21,8 +21,8 @@ import {
   Sparkles,
   Star,
   Store,
-  UserPlus,
   Users,
+  UserSearch,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -60,7 +60,7 @@ const ICONES_PERFIL: Record<Intencao, LucideIcon> = {
   trabalho: Briefcase,
   contratar_servico: Wrench,
   oferecer_servico: HandHelping,
-  contratar_pessoa: UserPlus,
+  contratar_pessoa: UserSearch,
 };
 
 /**

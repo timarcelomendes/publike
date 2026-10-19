@@ -73,6 +73,11 @@ export const PERFIS: Perfil[] = [
         texto: "Preencha uma vez. Quem anunciou a vaga que você curtiu vê junto com seu perfil.",
       },
       {
+        icone: "pessoas",
+        titulo: "Apareça na aba Talentos",
+        texto: "Se quiser, as empresas da região acham seu currículo e convidam você.",
+      },
+      {
         icone: "etapas",
         titulo: "Saiba em que pé está",
         texto: "Veja a etapa de cada vaga: entrevista, aprovado, contratado.",
@@ -163,7 +168,7 @@ export const PERFIS: Perfil[] = [
   },
   {
     valor: "contratar_pessoa",
-    aba: "Contratar alguém",
+    aba: "Procuro funcionário",
     resumo: "Publique a vaga de graça e contrate gente que mora perto.",
     recursos: [
       {
@@ -185,6 +190,11 @@ export const PERFIS: Perfil[] = [
         icone: "pessoas",
         titulo: "Veja quem curtiu",
         texto: "Perfil, currículo e o que cada pessoa faz. Curta de volta quem combina.",
+      },
+      {
+        icone: "curriculo",
+        titulo: "Aba Talentos",
+        texto: "Veja quem procura trabalho perto e convide para a sua vaga.",
       },
       {
         icone: "planilha",

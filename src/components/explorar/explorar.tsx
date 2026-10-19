@@ -134,7 +134,7 @@ export async function BuscaExplorar({ searchParams }: { searchParams: Parametros
   const sp = await searchParams;
   const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
   const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
-  return <BarraBusca filtros={filtros} local={local} intencao={intencao} abrirOndeMora={primeiro(sp.casa) === "1"} />;
+  return <BarraBusca filtros={filtros} local={local} abrirOndeMora={primeiro(sp.casa) === "1"} />;
 }
 
 /** De onde sai o tempo de ônibus dos cards: da casa (CEP) ou do GPS. */

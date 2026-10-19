@@ -1,26 +1,29 @@
 "use client";
 
-import { ArrowRight, Briefcase, ChevronDown, HandHelping, UserPlus, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowRight, Briefcase, HandHelping, UserSearch, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { salvarIntencao } from "@/lib/acoes/intencao";
 import { avisarPerguntaAberta } from "../boas-vindas-parceiro";
 import { Simbolo } from "../ui/basicos";
-import { INTENCOES, VOCE, type Intencao } from "@/lib/intencao";
+import { INTENCOES, PAGINA_DA_INTENCAO, VOCE, type Intencao } from "@/lib/intencao";
 
 // "O que você quer fazer no Publike?"
-//   1ª visita: FolhaIntencao, numa janela (depois vem o "Onde você mora?"); "Agora não" deixa só o botão da busca.
+//   1ª visita: FolhaIntencao, numa janela (depois vem o "Onde você mora?"); "Agora não" deixa
+//   para a próxima visita.
 //   Depois: FaixaIntencao ("Você procura trabalho  Mudar"), com o próximo passo que faz
 //   sentido para a resposta (currículo, vitrine, publicar).
 // Os dois ficam em cima da lista de anúncios (PerguntasNaLista), sem partir a lista no meio.
-// A resposta escolhe a aba da busca, mas não é um filtro.
+// A resposta escolhe a aba da busca (Procuro funcionário abre a aba Talentos), mas não é um
+// filtro: quem filtra são as abas, e por isso a pergunta não fica na barra da busca.
 
 export const ICONES_INTENCAO: Record<Intencao, LucideIcon> = {
   trabalho: Briefcase,
   contratar_servico: Wrench,
   oferecer_servico: HandHelping,
-  contratar_pessoa: UserPlus,
+  contratar_pessoa: UserSearch,
 };
 
 /** O próximo passo de quem respondeu (vem do servidor: depende da conta). */
@@ -28,16 +31,21 @@ export type ProximoPasso = { texto: string; href: string } | null;
 
 /**
  * Guarda a resposta (na conta ou nesta visita) e avisa quem chamou (a busca troca de aba).
- * `tocada` é a resposta que a pessoa acabou de tocar, antes de o servidor confirmar.
+ * A resposta que abre outra página (Procuro funcionário → aba Talentos) vai para lá depois de
+ * guardada, para a página já saber dela. `tocada` é a resposta que a pessoa acabou de tocar,
+ * antes de o servidor confirmar.
  */
 function useEscolher(aoEscolher?: (i: Intencao) => void) {
+  const router = useRouter();
   const [tocada, setTocada] = useState<Intencao | null>(null);
   const [pendente, iniciar] = useTransition();
   function escolher(i: Intencao) {
     setTocada(i);
-    aoEscolher?.(i);
+    const pagina = PAGINA_DA_INTENCAO[i];
+    if (!pagina) aoEscolher?.(i);
     iniciar(async () => {
       await salvarIntencao(i);
+      if (pagina) router.push(pagina);
     });
   }
   return { tocada, escolher, pendente };
@@ -105,7 +113,7 @@ const noCliente = () => () => {};
 /**
  * Primeira visita: a pergunta numa janela por cima da página (folha de baixo no celular,
  * caixa no meio no computador), para ninguém deixar de ver. O topo da página continua leve.
- * "Agora não" (ou Esc, ou tocar fora) fecha; aí a pergunta fica só no botão da busca.
+ * "Agora não" (ou Esc, ou tocar fora) fecha; a pergunta volta na próxima visita.
  */
 export function FolhaIntencao({
   aoEscolher,
@@ -157,7 +165,7 @@ export function FolhaIntencao({
   }, [montado]);
 
   if (!montado) return null;
-  // no corpo da página: dentro de uma faixa que rola (o botão da busca), a janela ficaria cortada
+  // no corpo da página: dentro de uma faixa que rola, a janela ficaria cortada
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-veu sm:items-center sm:p-6"
@@ -273,52 +281,5 @@ export function FaixaIntencao({
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * A resposta sempre à mão, junto de "Onde você mora?" e "Perto de mim": mostra o que a
- * pessoa disse que quer fazer e abre a janela para mudar (ou responder, se ainda não respondeu).
- */
-export function BotaoIntencao({
-  intencao,
-  aoEscolher,
-  classes,
-}: {
-  intencao: Intencao | null;
-  aoEscolher: (i: Intencao) => void;
-  /** o mesmo contorno dos botões de lugar */
-  classes: (ativo: boolean) => string;
-}) {
-  const [aberta, setAberta] = useState(false);
-  const [escolhida, setEscolhida] = useState<Intencao | null>(null);
-  const atual = escolhida ?? intencao;
-  const Icone = atual ? ICONES_INTENCAO[atual] : null;
-  const curto = atual ? INTENCOES.find((i) => i.valor === atual)?.curto : null;
-  return (
-    <>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        onClick={() => setAberta(true)}
-        className={`${classes(Boolean(atual))} shrink-0`}
-        aria-label={atual ? `${VOCE[atual]}. Mudar o que você quer fazer` : "O que você quer fazer no Publike?"}
-      >
-        {Icone ? <Icone aria-hidden className="size-4 shrink-0 text-terra-text" /> : null}
-        <span className="truncate">{curto ?? "O que você quer fazer?"}</span>
-        <ChevronDown aria-hidden className="-mr-0.5 size-4 shrink-0 text-ink-muted" />
-      </button>
-      {aberta && (
-        <FolhaIntencao
-          atual={atual}
-          aoAdiar={() => setAberta(false)}
-          aoEscolher={(i) => {
-            setEscolhida(i);
-            setAberta(false);
-            aoEscolher(i);
-          }}
-        />
-      )}
-    </>
   );
 }

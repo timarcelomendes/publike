@@ -12,9 +12,7 @@ import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
 import type { Regime } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
-import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "./abas";
-import { BotaoIntencao } from "./intencao";
 import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 
 // Três jeitos de olhar, cada um com a sua cara:
@@ -175,13 +173,10 @@ function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void })
 export function BarraBusca({
   filtros,
   local,
-  intencao = null,
   abrirOndeMora = false,
 }: {
   filtros: Filtros;
   local: Local | null;
-  /** o que a pessoa disse que quer fazer no Publike (o botão ao lado do lugar mostra e muda) */
-  intencao?: Intencao | null;
   /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
   abrirOndeMora?: boolean;
 }) {
@@ -215,15 +210,8 @@ export function BarraBusca({
 
   // "Onde você mora?" e "Perto de mim": no computador, na linha das abas; no celular, no
   // começo da faixa das categorias (uma linha a menos antes dos anúncios)
-  // mudar a resposta troca a aba: Procuro trabalho → Vagas; Quero contratar um serviço → Serviços
-  function escolherIntencao(i: Intencao) {
-    const tipo = tipoDaIntencao(i);
-    ir({ tipo, tudo: !tipo, regime: tipo === "servico" ? null : filtros.regime }, true);
-  }
-
   const botoesDeLugar = (classes: string) => (
     <div role="group" aria-label="Onde" className={`items-center gap-2 ${classes}`}>
-      <BotaoIntencao intencao={intencao} aoEscolher={escolherIntencao} classes={botaoLugar} />
       <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
       <BotaoPerto ativo={perto} onClick={alternarPerto} />
     </div>

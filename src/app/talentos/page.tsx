@@ -12,6 +12,7 @@ import { CIDADES } from "@/lib/constantes";
 import { meuCurriculoNaVitrine, obterMeuPerfil } from "@/lib/dados";
 import { formatarNumero, primeiro } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
+import { obterIntencao } from "@/lib/servidor/intencao";
 import { buscarTalentos } from "@/lib/servidor/talentos";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 
@@ -137,9 +138,15 @@ async function Busca({ searchParams }: { searchParams: Parametros }) {
 
 async function Lista({ searchParams }: { searchParams: Parametros }) {
   const f = lerBusca(await searchParams);
-  const [local, perfil] = await Promise.all([obterLocal().catch(() => null), obterMeuPerfil().catch(() => null)]);
+  const [local, perfil, intencao] = await Promise.all([
+    obterLocal().catch(() => null),
+    obterMeuPerfil().catch(() => null),
+    obterIntencao().catch(() => null),
+  ]);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
   const naAba = perfil?.tipo === "pessoa" ? await meuCurriculoNaVitrine() : false;
+  // quem respondeu "Procuro funcionário" (e ainda não entrou como empresa) vê o convite para publicar
+  const procuraFuncionario = !empresa && intencao === "contratar_pessoa";
   const resultado = MODO_DEMO
     ? { lista: [], total: 0 }
     : await buscarTalentos({ texto: f.q, cidade: f.cidade, bairro: local?.bairro || null, pagina: f.pagina });
@@ -249,6 +256,18 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
           </p>
           <BotaoLink href="/perfil/curriculo" tamanho="sm">
             Editar meu currículo
+          </BotaoLink>
+        </div>
+      ) : procuraFuncionario ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+          <Megaphone aria-hidden className="size-5 shrink-0 text-ink-muted" />
+          <p className="min-w-0 grow basis-64 text-body-sm">
+            <span className="text-label">Procura funcionário?</span> Publique a vaga grátis: quem combina curte e
+            aparece para você. Para abrir o currículo completo e convidar daqui, entre com a conta da empresa, comércio
+            ou agência.
+          </p>
+          <BotaoLink href="/publicar" tamanho="sm">
+            Publicar vaga grátis
           </BotaoLink>
         </div>
       ) : (
