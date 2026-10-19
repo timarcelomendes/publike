@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AvatarAssistente, Conversa } from "@/components/assistente/conversa";
+import { JornadasAjuda } from "@/components/assistente/jornadas-ajuda";
 import { ListaAjuda } from "@/components/assistente/lista-ajuda";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { TEMAS_AJUDA } from "@/lib/ajuda";
+import { JORNADAS_AJUDA, TEMAS_AJUDA } from "@/lib/ajuda";
 import { ID_CONVERSA_AJUDA } from "@/lib/assistente";
 import { assistenteDisponivel } from "@/lib/servidor/assistente";
+import { obterIntencao } from "@/lib/servidor/intencao";
 
 export const metadata: Metadata = {
   title: "Ajuda",
@@ -29,6 +31,12 @@ export default function Ajuda() {
             </Suspense>
           </p>
           <nav aria-label="Temas" className="mt-6 flex flex-wrap gap-2">
+            <a
+              href="#passo-a-passo"
+              className="inline-flex min-h-10 items-center rounded-pill border border-ink bg-ink px-3.5 text-label text-surface-100"
+            >
+              Passo a passo
+            </a>
             {TEMAS_AJUDA.map((t) => (
               <a
                 key={t.id}
@@ -39,6 +47,20 @@ export default function Ajuda() {
               </a>
             ))}
           </nav>
+        </Container>
+      </section>
+
+      <section id="passo-a-passo" aria-labelledby="titulo-passo-a-passo" className="scroll-mt-20 border-b border-line">
+        <Container className="py-10">
+          <h2 id="titulo-passo-a-passo" className="text-h2">
+            Seu caminho no Publike
+          </h2>
+          <p className="mt-2 mb-6 max-w-2xl text-body text-ink-muted">
+            Escolha o seu caso e veja, passo a passo, do começo até fechar o trabalho.
+          </p>
+          <Suspense fallback={<JornadasAjuda jornadas={JORNADAS_AJUDA} inicial="trabalho" />}>
+            <JornadasDoPerfil />
+          </Suspense>
         </Container>
       </section>
 
@@ -82,6 +104,12 @@ export default function Ajuda() {
       </Container>
     </>
   );
+}
+
+/** Abre no caso que a pessoa escolheu em "O que você quer fazer no Publike?" (sem resposta, trabalho). */
+async function JornadasDoPerfil() {
+  const intencao = await obterIntencao().catch(() => null);
+  return <JornadasAjuda jornadas={JORNADAS_AJUDA} inicial={intencao ?? "trabalho"} />;
 }
 
 /** O que fazer quando a pergunta não está na lista: o assistente, quando está ligado, ou a equipe. */
