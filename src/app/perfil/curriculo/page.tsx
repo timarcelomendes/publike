@@ -66,8 +66,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
     );
   }
 
+  // veio de "Cadastrar meu currículo" (aba Talentos): o passo a passo no alto
+  const paraTalentos = primeiro(sp.para) === "talentos";
   const { usuario } = await exigirPerfilCompleto(
-    proximo ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}` : "/perfil/curriculo",
+    proximo
+      ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}`
+      : paraTalentos
+        ? "/perfil/curriculo?para=talentos"
+        : "/perfil/curriculo",
   );
   const [curriculo, curtidas, visivel, vitrine] = await Promise.all([
     obterMeuCurriculo(),
@@ -78,10 +84,46 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? null);
   // as vagas que já aceitaram a pessoa e só esperam o currículo
   const aceitas = curtidas.filter((c) => c.tipo === "vaga" && esperaCurriculo(c));
+  // quem veio para a aba Talentos, ao salvar, cai direto na opção de aparecer nela
+  const depoisDeSalvar =
+    proximo || (paraTalentos && !vitrine && !aceitas.length ? "/perfil/curriculo?salvo=1#quem-acha" : "");
 
   return (
     <>
       {aceitas.length > 0 && <AceitasEsperando aceitas={aceitas} temCurriculo={curriculo !== null} />}
+      {paraTalentos && !vitrine && (
+        <Aviso tipo="info" className="mb-6" titulo="Para aparecer na aba Talentos">
+          <ol className="flex list-decimal flex-col gap-1 pl-5">
+            <li>
+              {curriculo
+                ? "Confira o currículo. Mudou algo? Toque em “Salvar currículo”."
+                : "Preencha o currículo e toque em “Salvar currículo”."}
+            </li>
+            <li>
+              No fim da página, ligue{" "}
+              {curriculo ? (
+                <a href="#quem-acha" className="text-label underline">
+                  “Aparecer na aba Talentos”
+                </a>
+              ) : (
+                <span className="text-label">“Aparecer na aba Talentos”</span>
+              )}
+              .
+            </li>
+          </ol>
+          <p className="mt-2">
+            As empresas da região veem seu currículo e podem convidar você para vagas. Telefone e e-mail ficam
+            escondidos até o match.
+          </p>
+        </Aviso>
+      )}
+      {paraTalentos && vitrine && (
+        <Aviso tipo="sucesso" className="mb-6" titulo="Você já aparece na aba Talentos">
+          <Link href={`/talentos/${usuario.id}`} className="text-label underline">
+            Ver como você aparece
+          </Link>
+        </Aviso>
+      )}
       {primeiro(sp.salvo) === "1" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Currículo salvo!">
           <p>
@@ -114,7 +156,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         inicial={curriculo}
         usuarioId={usuario.id}
         linkPdf={linkPdf}
-        proximo={proximo}
+        proximo={depoisDeSalvar}
         hoje={hoje}
         rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
       />

@@ -1,14 +1,14 @@
 "use client";
 
-import { ArrowRight, Briefcase, HandHelping, UserSearch, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowRight, Briefcase, FileUser, HandHelping, UserSearch, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { salvarIntencao } from "@/lib/acoes/intencao";
 import { avisarPerguntaAberta } from "../boas-vindas-parceiro";
-import { Simbolo } from "../ui/basicos";
-import { INTENCOES, PAGINA_DA_INTENCAO, VOCE, type Intencao } from "@/lib/intencao";
+import { Selo, Simbolo } from "../ui/basicos";
+import { INTENCAO_EM_DESTAQUE, INTENCOES, PAGINA_DA_INTENCAO, VOCE, type Intencao } from "@/lib/intencao";
 
 // "O que você quer fazer no Publike?"
 //   1ª visita: FolhaIntencao, numa janela (depois vem o "Onde você mora?"); "Agora não" deixa
@@ -24,6 +24,7 @@ export const ICONES_INTENCAO: Record<Intencao, LucideIcon> = {
   contratar_servico: Wrench,
   oferecer_servico: HandHelping,
   contratar_pessoa: UserSearch,
+  talento: FileUser,
 };
 
 /** O próximo passo de quem respondeu (vem do servidor: depende da conta). */
@@ -52,9 +53,10 @@ function useEscolher(aoEscolher?: (i: Intencao) => void) {
 }
 
 /**
- * As quatro respostas. Medem o próprio quadro (container query), porque ele fica no meio
- * dos anúncios e muda de largura com o jeito de ver: estreito (celular), 2 × 2 só com o
- * nome curto; médio, 2 × 2 com o nome inteiro e a ajuda; largo, uma linha de 4.
+ * As respostas. Medem o próprio quadro (container query), porque ele fica no meio dos
+ * anúncios e muda de largura com o jeito de ver: estreito (celular), 2 × 2 só com o nome
+ * curto; médio, 2 × 2 com o nome inteiro e a ajuda; largo, uma linha de 4. O cadastro na aba
+ * Talentos vem por último, na linha inteira, com o selo "Novo" e sempre com a ajuda.
  */
 function OpcoesIntencao({
   rotuladoPor,
@@ -73,6 +75,7 @@ function OpcoesIntencao({
         {INTENCOES.map((op) => {
           const Icone = ICONES_INTENCAO[op.valor];
           const ativa = escolhida === op.valor;
+          const destaque = op.valor === INTENCAO_EM_DESTAQUE;
           return (
             <button
               key={op.valor}
@@ -83,19 +86,31 @@ function OpcoesIntencao({
               onClick={() => escolher(op.valor)}
               className={`flex min-h-12 items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors disabled:opacity-70 @md:gap-3 @md:px-3 @md:py-2 ${
                 ativa ? "border-ink bg-surface-300" : "border-line-strong bg-surface-200 hover:bg-surface-300"
-              }`}
+              } ${destaque ? "col-span-2 gap-3 px-3 py-2 @3xl:col-span-4" : ""}`}
             >
               <Icone
                 aria-hidden
-                className={`size-4 shrink-0 @md:size-5 ${ativa ? "text-terra-text" : "text-ink-muted"}`}
+                className={`shrink-0 ${destaque ? "size-5" : "size-4 @md:size-5"} ${ativa ? "text-terra-text" : "text-ink-muted"}`}
               />
-              <span className="flex min-w-0 flex-col">
-                <span className="text-label leading-tight @md:leading-[inherit]">
-                  <span className="@md:hidden">{op.curto}</span>
-                  <span className="hidden @md:inline">{op.nome}</span>
+              {destaque ? (
+                <span className="flex min-w-0 flex-col">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-label">
+                    {op.nome}
+                    <Selo variante="novo" className="px-2 py-0.5">
+                      Novo
+                    </Selo>
+                  </span>
+                  <span className="text-body-sm text-ink-muted">{op.ajuda}</span>
                 </span>
-                <span className="hidden text-body-sm text-ink-muted @md:block">{op.ajuda}</span>
-              </span>
+              ) : (
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-label leading-tight @md:leading-[inherit]">
+                    <span className="@md:hidden">{op.curto}</span>
+                    <span className="hidden @md:inline">{op.nome}</span>
+                  </span>
+                  <span className="hidden text-body-sm text-ink-muted @md:block">{op.ajuda}</span>
+                </span>
+              )}
             </button>
           );
         })}

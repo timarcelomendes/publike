@@ -6,6 +6,8 @@ import type { TipoAnuncio } from "./tipos";
  *   contratar_servico ... a busca abre em Serviços
  *   oferecer_servico .... convite para montar a vitrine em "Meus serviços"
  *   contratar_pessoa .... abre a aba Talentos; na home, o convite para publicar a vaga
+ *   talento ............. abre o currículo, com o caminho para aparecer na aba Talentos
+ *                         (em destaque na pergunta); na home, a busca abre em Vagas
  * Logado: fica na conta. Sem login: só nesta visita. A pergunta e a resposta (com o
  * "Mudar" e o próximo passo) ficam no meio dos anúncios da home (PerguntasNaLista).
  * Não é um filtro: quem filtra são as abas.
@@ -35,7 +37,16 @@ export const INTENCOES = [
     curto: "Procuro funcionário",
     ajuda: "Veja talentos e publique a vaga",
   },
+  {
+    valor: "talento",
+    nome: "Cadastrar meu currículo",
+    curto: "Cadastrar meu currículo",
+    ajuda: "Entre na aba Talentos: as empresas da região acham você e convidam para vagas",
+  },
 ] as const;
+
+/** A resposta que ocupa a linha inteira, com o selo "Novo": o cadastro na aba Talentos. */
+export const INTENCAO_EM_DESTAQUE = "talento";
 
 export type Intencao = (typeof INTENCOES)[number]["valor"];
 
@@ -45,6 +56,7 @@ export const VOCE: Record<Intencao, string> = {
   contratar_servico: "Você quer contratar um serviço",
   oferecer_servico: "Você oferece serviços",
   contratar_pessoa: "Você procura funcionário",
+  talento: "Você quer aparecer para as empresas",
 };
 
 export const COOKIE_INTENCAO = "publike_intencao";
@@ -53,12 +65,18 @@ export function lerIntencao(valor: string | undefined | null): Intencao | null {
   return INTENCOES.some((i) => i.valor === valor) ? (valor as Intencao) : null;
 }
 
-/** Quem procura funcionário vai para a aba Talentos (outra página, não um filtro da home). */
-export const PAGINA_DA_INTENCAO: Partial<Record<Intencao, string>> = { contratar_pessoa: "/talentos" };
+/**
+ * As respostas que abrem outra página: quem procura funcionário vai para a aba Talentos; quem
+ * quer aparecer nela, para o currículo (com o passo a passo no alto).
+ */
+export const PAGINA_DA_INTENCAO: Partial<Record<Intencao, string>> = {
+  contratar_pessoa: "/talentos",
+  talento: "/perfil/curriculo?para=talentos",
+};
 
 /** A aba que a busca abre para cada resposta (null = Tudo). */
 export function tipoDaIntencao(intencao: Intencao | null): TipoAnuncio | null {
-  if (intencao === "trabalho") return "vaga";
+  if (intencao === "trabalho" || intencao === "talento") return "vaga";
   if (intencao === "contratar_servico") return "servico";
   return null;
 }

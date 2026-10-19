@@ -354,6 +354,7 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
             titulo: "Apareça na aba Talentos",
             texto: "No fim do currículo, ligue “Aparecer na aba Talentos”: as empresas acham você na busca.",
             detalhes: [
+              "Atalho: no alto da aba Talentos (ou na pergunta “O que você quer fazer?”), toque em “Cadastrar meu currículo”.",
               "Quem visita vê um resumo: o nome encurtado, o bairro, o que você faz, as habilidades e os cargos, sem o nome das empresas.",
               "Empresas, comércios e agências que entraram veem o currículo completo e convidam você para uma vaga.",
               "Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só sai no match.",

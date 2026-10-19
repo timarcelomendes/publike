@@ -232,5 +232,6 @@ export const PARA_TODOS: Recurso[] = [
 ];
 
 export function perfilDaIntencao(intencao: Intencao | null): Intencao {
-  return intencao ?? "trabalho";
+  // quem quer aparecer na aba Talentos procura trabalho: a mesma aba de recursos
+  return intencao === "talento" ? "trabalho" : (intencao ?? "trabalho");
 }

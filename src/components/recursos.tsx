@@ -6,6 +6,7 @@ import {
   Building2,
   Bus,
   FileText,
+  FileUser,
   HandHelping,
   Heart,
   Images,
@@ -61,6 +62,7 @@ const ICONES_PERFIL: Record<Intencao, LucideIcon> = {
   contratar_servico: Wrench,
   oferecer_servico: HandHelping,
   contratar_pessoa: UserSearch,
+  talento: FileUser,
 };
 
 /**

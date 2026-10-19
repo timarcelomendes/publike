@@ -6,6 +6,7 @@ import {
   buscarAnuncios,
   listarMeusAnuncios,
   listarMeusServicos,
+  meuCurriculoNaVitrine,
   minhasBuscasSalvas,
   obterMeuCurriculo,
   obterMeuPerfil,
@@ -52,16 +53,29 @@ const LIMITE = 120;
 
 /**
  * O próximo passo de quem respondeu "O que você quer fazer no Publike?", ao lado da
- * resposta. Com conta, leva em conta o que já fez (currículo pronto, vitrine montada).
+ * resposta. Com conta, leva em conta o que já fez (currículo pronto, aba Talentos, vitrine).
  */
 async function proximoPassoDa(intencao: Intencao | null, logado: boolean): Promise<ProximoPasso> {
   try {
     switch (intencao) {
-      case "trabalho":
+      case "trabalho": {
         if (!logado) return { texto: "Preencher meu currículo", href: "/perfil/curriculo" };
-        return (await obterMeuCurriculo())
+        if (!(await obterMeuCurriculo())) {
+          return { texto: "Preencher currículo e ver o % de match", href: "/perfil/curriculo" };
+        }
+        // com currículo: o convite para a aba Talentos, até a pessoa entrar nela
+        return (await meuCurriculoNaVitrine())
           ? { texto: "Acompanhar minhas curtidas", href: "/painel/curtidas" }
-          : { texto: "Preencher currículo e ver o % de match", href: "/perfil/curriculo" };
+          : { texto: "Aparecer na aba Talentos", href: "/perfil/curriculo#quem-acha" };
+      }
+      case "talento": {
+        if (!logado || !(await obterMeuCurriculo())) {
+          return { texto: "Cadastrar meu currículo", href: "/perfil/curriculo?para=talentos" };
+        }
+        return (await meuCurriculoNaVitrine())
+          ? { texto: "Ver a aba Talentos", href: "/talentos" }
+          : { texto: "Aparecer na aba Talentos", href: "/perfil/curriculo#quem-acha" };
+      }
       case "oferecer_servico":
         return logado && (await listarMeusServicos()).length > 0
           ? { texto: "Ver quem quer me contratar", href: "/painel" }
@@ -172,7 +186,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
   const avisar = filtros.tipo === "vaga" && !filtros.meus;
   // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
-  const procuraTrabalho = intencao === null || intencao === "trabalho";
+  const procuraTrabalho = intencao === null || intencao === "trabalho" || intencao === "talento";
   const [encontrados, proximoPasso, publica, quem, salvas] = await Promise.all([
     buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
     proximoPassoDa(intencao, Boolean(usuario)),
@@ -452,7 +466,7 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
               <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
             )}
             {/* o % de match chama para a conta e o currículo (quem procura trabalho já tem o atalho na lista) */}
-            {avisar && n > 0 && !quem && procuraTrabalho && (!usuario || intencao !== "trabalho") && (
+            {avisar && n > 0 && !quem && procuraTrabalho && (!usuario || intencao === null) && (
               <Link
                 href={
                   usuario

@@ -120,6 +120,7 @@ async function JornadasDoPerfil() {
     oferecer_servico: { tipo: "pessoa", jornada: "servicos" },
     contratar_servico: { tipo: "pessoa", jornada: "casa" },
     contratar_pessoa: { tipo: "empresa" },
+    talento: { tipo: "pessoa", jornada: "trabalho" },
   };
   const porIntencao = intencao ? caminho[intencao] : null;
   const inicial: { tipo: TipoConta; jornada?: string } = perfil

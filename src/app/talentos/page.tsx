@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FileText, Megaphone, Search, UserSearch } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileUser, Megaphone, Search, UserSearch } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -72,6 +72,9 @@ export default function Talentos({ searchParams }: PageProps<"/talentos">) {
             Gente de Goiânia e região procurando trabalho, que escolheu aparecer aqui. O currículo completo e o convite
             para uma vaga ficam para empresas, comércios e agências que entraram na conta.
           </p>
+          <Suspense fallback={null}>
+            <ChamadaTalento />
+          </Suspense>
         </Container>
       </section>
       <Container className="py-6 sm:py-8">
@@ -144,7 +147,6 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
     obterIntencao().catch(() => null),
   ]);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
-  const naAba = perfil?.tipo === "pessoa" ? await meuCurriculoNaVitrine() : false;
   // quem respondeu "Procuro funcionário" (e ainda não entrou como empresa) vê o convite para publicar
   const procuraFuncionario = !empresa && intencao === "contratar_pessoa";
   const resultado = MODO_DEMO
@@ -180,7 +182,7 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
               filtrado ? (
                 <BotaoLink href="/talentos">Ver todos os talentos</BotaoLink>
               ) : (
-                <BotaoLink href="/perfil/curriculo">Preencher meu currículo</BotaoLink>
+                <BotaoLink href="/perfil/curriculo?para=talentos">Cadastrar meu currículo</BotaoLink>
               )
             }
           >
@@ -247,17 +249,6 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
             Publicar vaga grátis
           </BotaoLink>
         </div>
-      ) : naAba ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-          <FileText aria-hidden className="size-5 shrink-0 text-ink-muted" />
-          <p className="min-w-0 grow basis-64 text-body-sm">
-            <span className="text-label">Você aparece aqui.</span> Quem atualizou o currículo há menos tempo vem
-            primeiro: mantenha o seu em dia.
-          </p>
-          <BotaoLink href="/perfil/curriculo" tamanho="sm">
-            Editar meu currículo
-          </BotaoLink>
-        </div>
       ) : procuraFuncionario ? (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
           <Megaphone aria-hidden className="size-5 shrink-0 text-ink-muted" />
@@ -270,18 +261,37 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
             Publicar vaga grátis
           </BotaoLink>
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * No alto da aba, o cadastro de quem procura trabalho: "Cadastrar meu currículo" (ou, para quem
+ * já aparece, o lembrete de manter o currículo em dia). Empresa e quem procura funcionário não veem.
+ */
+async function ChamadaTalento() {
+  if (MODO_DEMO) return null;
+  const [perfil, intencao] = await Promise.all([obterMeuPerfil().catch(() => null), obterIntencao().catch(() => null)]);
+  if ((perfil && perfil.tipo !== "pessoa") || (!perfil && intencao === "contratar_pessoa")) return null;
+  const naAba = perfil ? await meuCurriculoNaVitrine() : false;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-line-strong bg-surface-200 px-3 py-3 shadow-card sm:px-4">
+      <FileUser aria-hidden className="size-5 shrink-0 text-terra-text" />
+      {naAba ? (
+        <p className="min-w-0 grow basis-56 text-body-sm">
+          <span className="text-label">Você aparece aqui.</span> Quem atualizou o currículo há menos tempo vem primeiro:
+          mantenha o seu em dia.
+        </p>
       ) : (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-          <FileText aria-hidden className="size-5 shrink-0 text-ink-muted" />
-          <p className="min-w-0 grow basis-64 text-body-sm">
-            <span className="text-label">Procura trabalho?</span> Apareça aqui também: preencha seu currículo e ligue
-            “Aparecer na aba Talentos”. Telefone e e-mail ficam escondidos até o match.
-          </p>
-          <BotaoLink href="/perfil/curriculo" tamanho="sm">
-            Preencher meu currículo
-          </BotaoLink>
-        </div>
+        <p className="min-w-0 grow basis-56 text-body-sm">
+          <span className="text-label">Procura trabalho?</span> Cadastre seu currículo e apareça aqui para as empresas
+          da região. Telefone e e-mail ficam escondidos até o match.
+        </p>
       )}
+      <BotaoLink href={naAba ? "/perfil/curriculo" : "/perfil/curriculo?para=talentos"} tamanho="sm">
+        {naAba ? "Editar meu currículo" : "Cadastrar meu currículo"}
+      </BotaoLink>
     </div>
   );
 }
