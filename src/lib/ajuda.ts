@@ -148,66 +148,142 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
   },
 ];
 
-/** Um passo da jornada: o que fazer, por quê e onde (o link leva direto para a tela). */
-export type PassoJornada = { titulo: string; texto: string; link?: { href: string; texto: string } };
+/**
+ * Um passo da jornada: o que fazer, por quê e onde (o link leva direto para a tela).
+ * `detalhes`: o que aparece na tela, dicas e cuidados, em frases curtas.
+ * `imagem`: a tela de verdade, em public/ajuda/<imagem>.webp (capturada no celular).
+ */
+export type PassoJornada = {
+  titulo: string;
+  texto: string;
+  detalhes?: string[];
+  imagem?: string;
+  link?: { href: string; texto: string };
+};
 /** Um caminho dentro do tipo de conta (a pessoa que procura trabalho, a que oferece serviço...). */
 export type JornadaAjuda = { id: string; nome: string; resumo: string; passos: PassoJornada[] };
 /** O passo a passo de um tipo de conta (o mesmo "Você é" do cadastro). */
 export type PerfilAjuda = { tipo: TipoConta; jornadas: JornadaAjuda[] };
 
-const ENTRAR: PassoJornada = {
+const entrar = (tipo: string, extra: string[] = []): PassoJornada => ({
   titulo: "Entre e complete o perfil",
-  texto:
-    "Sem senha: entre com o e-mail (ou Google, Facebook, LinkedIn). No “Você é”, escolha o tipo de conta e diga o nome, o bairro e o WhatsApp.",
+  texto: `Não tem senha. Toque em Entrar, use o e-mail (ou Google, Facebook, LinkedIn) e, no “Você é”, escolha ${tipo}.`,
+  detalhes: [
+    "O link de entrar chega no e-mail, vale uma vez e por pouco tempo. Não chegou? Veja o spam e peça outro.",
+    "No perfil vão o nome, a cidade, o bairro e o WhatsApp. O WhatsApp só aparece no match, para os dois.",
+    ...extra,
+    "Dá para instalar o Publike como app no celular: “Instalar app”, no topo.",
+  ],
+  imagem: "perfil",
   link: { href: "/entrar", texto: "Entrar" },
-};
-const RENOVAR: PassoJornada = {
-  titulo: "Renove ou encerre",
-  texto: `A vaga fica 30 dias no ar e pode ser renovada no painel. Preencheu? Encerre para parar de receber curtidas. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publicar ${LIMITES_CONTA.comum.porDia} por dia.`,
-  link: { href: "/painel/anuncios", texto: "Meus anúncios" },
+});
+
+const COMO_RECEBER: PassoJornada = {
+  titulo: "Escolha como receber os candidatos",
+  texto: "No formulário da vaga, decida o que pedir e como o contato é liberado.",
+  detalhes: [
+    "Pedir currículo: quem curtir é convidado a preencher (estudos, experiências, cursos, CNH). Se você aceitar alguém sem currículo, a pessoa recebe o pedido e o match sai quando ele chegar.",
+    "Perguntas: faça perguntas suas (sim ou não, opções ou texto). Marque a resposta esperada para destacar quem combina ou eliminar quem não serve.",
+    "Contato direto (no fim do formulário): ligado, quem curtir já vê o seu WhatsApp e você vê o dele. Desligado, você aceita um por um.",
+  ],
+  imagem: "contato-direto",
 };
 const INTERESSADOS: PassoJornada = {
   titulo: "Veja os interessados",
-  texto:
-    "No painel da vaga aparecem quem curtiu, com o currículo, o % de match e as respostas. Aceite, dispense ou deixe para depois. Com o “Contato direto”, o contato já aparece na hora.",
-  link: { href: "/painel/anuncios", texto: "Meus anúncios" },
+  texto: "Cada curtida chega com aviso no sino e por e-mail, e aparece no painel da vaga.",
+  detalhes: [
+    "Para cada pessoa: perfil, mensagem, currículo, respostas às perguntas e o % de match com a vaga.",
+    "Curtir de volta (aceitar) dá match e libera o contato dos dois.",
+    "Em Candidatos você vê os interessados de todas as vagas juntos, filtra e baixa a lista numa planilha.",
+    "Em Talentos aparecem pessoas que deixaram o currículo à vista das empresas: dá para convidar para a vaga, e a pessoa decide se curte.",
+  ],
+  imagem: "interessados",
+  link: { href: "/painel/candidatos", texto: "Candidatos" },
 };
 const ENTREVISTA: PassoJornada = {
-  titulo: "Converse e marque a entrevista",
+  titulo: "Converse e mude as etapas",
   texto:
-    "Deu match, o WhatsApp de vocês aparece para os dois. Marque a entrevista pelo Publike e mude a etapa de cada candidato: a pessoa recebe o aviso.",
+    "Deu match, o WhatsApp e o e-mail de vocês aparecem para os dois. Combine pelo WhatsApp ou pelo chat do Publike.",
+  detalhes: [
+    "Etapas de cada candidato: Novo, Em análise, Entrevista, Contratado ou Não seguiu. A pessoa vê a etapa e recebe aviso.",
+    "Dá para marcar a entrevista pelo Publike e anotar o que combinou (a anotação só você vê).",
+    "Não deu certo? “Desfazer match” pede o motivo e tira o contato dos dois.",
+  ],
+  link: { href: "/painel/caixa", texto: "Caixa de entrada" },
 };
-const COMO_RECEBER: PassoJornada = {
-  titulo: "Escolha como receber",
-  texto:
-    "Peça currículo, faça perguntas (com respostas que eliminam ou destacam) e decida o contato: aceitar um por um ou “Contato direto”, em que quem curtir já recebe o seu WhatsApp.",
+const RENOVAR: PassoJornada = {
+  titulo: "Renove, pause ou encerre",
+  texto: "A vaga fica 30 dias no ar. Em Meus anúncios, você cuida dela quando quiser.",
+  detalhes: [
+    "Renovar por 30 dias: a vaga volta a valer por mais um mês.",
+    "Pausar: some da busca sem perder os candidatos. Encerrar: a vaga foi preenchida.",
+    "Publicar parecida: copia uma vaga sua para não começar do zero.",
+    `Cada conta tem até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publica até ${LIMITES_CONTA.comum.porDia} por dia.`,
+  ],
+  imagem: "meus-anuncios",
+  link: { href: "/painel/anuncios", texto: "Meus anúncios" },
 };
+const publicar = (titulo: string, texto: string, extra: string[], imagem = "publicar"): PassoJornada => ({
+  titulo,
+  texto,
+  detalhes: [
+    "Obrigatório é pouco: o título, o tipo de contratação, o valor (ou “a combinar”) e o bairro. Sem descrição, o Publike escreve uma simples.",
+    ...extra,
+    "Use “Melhorar texto com IA” para deixar o anúncio claro e completo, e confira antes de publicar.",
+    "Telefone, e-mail ou link no texto não passam: o contato aparece sozinho no match.",
+  ],
+  imagem,
+  link: { href: "/publicar", texto: "Publicar vaga grátis" },
+});
 const VITRINE: PassoJornada[] = [
   {
     titulo: "Monte a vitrine",
-    texto:
-      "Em Meus serviços, escolha o que você faz (até 8 serviços), escreva como trabalha, dê um preço de referência (ou “a combinar”) e coloque fotos dos trabalhos.",
+    texto: "Em Meus serviços, escolha o que você faz entre os ofícios da lista (ou “Outro serviço”). Até 8 serviços.",
+    detalhes: [
+      "Cada serviço tem nome (ex.: “Pedreiro: reboco e contrapiso”), descrição de como você trabalha e preço de referência.",
+      "O preço aparece como “a partir de”, por hora, dia, serviço, m² ou visita. Prefere não dizer? Marque “A combinar”.",
+      "Fotos dos trabalhos (até 6 por serviço) chamam mais clientes. Nada de telefone, placa de carro ou rosto de cliente nas fotos.",
+    ],
+    imagem: "servicos",
     link: { href: "/painel/servicos", texto: "Montar a vitrine" },
   },
   {
     titulo: "Diga onde e quando atende",
-    texto: "Marque o bairro e as regiões ou cidades que atende. Quem mora nesses lugares vê seus serviços primeiro.",
+    texto: "Marque o seu bairro no mapa e escolha as regiões de Goiânia e as cidades que você atende.",
+    detalhes: [
+      "O mapa mostra só uma área de uns 500 metros, nunca o seu endereço.",
+      "Quem mora nas regiões que você atende vê seus serviços primeiro, mesmo longe de você.",
+      "Dias e horários são opcionais (ex.: “Seg a sáb, das 7h às 17h”).",
+    ],
+    imagem: "atende",
   },
   {
     titulo: "Escolha o contato direto",
-    texto:
-      "Ligado, quem pedir o serviço já recebe o seu WhatsApp, sem esperar. Desligado, você vê o pedido e escolhe quem aceita.",
+    texto: "No fim do formulário, decida como os pedidos chegam.",
+    detalhes: [
+      "Ligado: quem tocar em “Quero contratar” já recebe o seu WhatsApp, e você o dele. Mais rápido.",
+      "Desligado: você vê o pedido com a mensagem e escolhe quem aceita.",
+      "Vale para todos os seus serviços. Dá para mudar quando quiser.",
+    ],
+    imagem: "contato-direto-servicos",
   },
   {
-    titulo: "Responda os pedidos",
-    texto:
-      "Cada pedido chega com um aviso e aparece no painel, com a mensagem de quem quer contratar. Combine o serviço, o endereço, o preço e o dia.",
+    titulo: "Responda e organize os pedidos",
+    texto: "Cada pedido chega com aviso e aparece no painel, com a mensagem de quem quer contratar.",
+    detalhes: [
+      "Etapas de cada cliente: Novo, Orçamento enviado, Agendado, Concluído ou Não seguiu.",
+      "Depois do match, combine o serviço, o endereço, o preço e o dia pelo WhatsApp ou pelo chat do Publike.",
+    ],
     link: { href: "/painel", texto: "Meu painel" },
   },
   {
-    titulo: "Junte avaliações",
-    texto:
-      "Depois do serviço, quem contratou pode avaliar. As notas aparecem na vitrine e ajudam a ser escolhido. Salvar a vitrine de novo renova os 90 dias no ar.",
+    titulo: "Junte avaliações e mantenha no ar",
+    texto: "Depois do serviço, quem contratou pode dar nota e comentar. As avaliações aparecem na sua vitrine.",
+    detalhes: [
+      "Boas notas trazem mais pedidos: quem procura vê a média antes de chamar.",
+      "Os serviços ficam 90 dias no ar. Salvar a vitrine de novo renova o prazo.",
+    ],
+    imagem: "vitrine",
     link: { href: "/painel/avaliacoes", texto: "Minhas avaliações" },
   },
 ];
@@ -220,81 +296,142 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
       {
         id: "trabalho",
         nome: "Procuro trabalho",
-        resumo: "Ache vaga perto de casa, curta e converse direto com quem contrata.",
+        resumo: "Ache vaga perto de casa, curta e converse direto com quem contrata. Tudo grátis.",
         passos: [
+          entrar("“Pessoa”"),
           {
             titulo: "Diga onde você mora",
-            texto:
-              "Com o CEP (ou a localização do celular), as vagas mais perto aparecem primeiro, com a distância e o tempo de ônibus até o trabalho.",
+            texto: "Com o CEP (ou a localização do celular), as vagas mais perto aparecem primeiro.",
+            detalhes: [
+              "Cada vaga mostra a distância e o tempo de ônibus da sua casa até o trabalho.",
+              "Não sabe o CEP? Use a localização do celular.",
+              "O CEP fica só com você: quem publica não vê onde você mora.",
+            ],
+            imagem: "onde-mora",
             link: { href: "/?casa=1", texto: "Informar onde moro" },
           },
           {
             titulo: "Preencha o currículo",
-            texto:
-              "Leva uns 3 minutos: estudos, experiências, cursos e CNH. Com ele, cada vaga mostra o seu % de match, e as vagas que pedem currículo já recebem o seu.",
+            texto: "Leva uns 3 minutos e vale para todas as vagas.",
+            detalhes: [
+              "Estudos, experiências, cursos e CNH.",
+              "Com o currículo, cada vaga mostra o seu % de match: o quanto você combina com o que ela pede.",
+              "Vagas que pedem currículo já recebem o seu quando você curte.",
+              "Se quiser, deixe o currículo à vista das empresas: elas podem convidar você para uma vaga, sem ver o seu contato.",
+            ],
+            imagem: "curriculo",
             link: { href: "/perfil/curriculo", texto: "Preencher o currículo" },
           },
           {
-            titulo: "Curta as vagas que combinam",
-            texto:
-              "Toque em Curtir a vaga e, se quiser, mande uma mensagem curta. Se a empresa fez perguntas, responda ali mesmo. Vaga com “Contato direto” já libera o WhatsApp na hora.",
+            titulo: "Procure do seu jeito",
+            texto: "Na busca, filtre e veja as vagas em blocos ou no mapa.",
+            detalhes: [
+              "Filtros: tipo de contratação (carteira, temporária, diária, freelance…), horário, distância ou tempo de ônibus, e a ordem.",
+              "No mapa, aproxime numa região: a lista mostra só o que está ali. “Buscar nesta área” procura a partir dali.",
+              "Em Descobrir, as vagas vêm uma por uma: deslize para o lado e curta as que combinam.",
+            ],
+            imagem: "busca",
             link: { href: "/?tipo=vaga", texto: "Ver vagas perto de mim" },
           },
           {
+            titulo: "Curta as vagas que combinam",
+            texto: "Toque em “Curtir a vaga”. A empresa vê o seu perfil, o currículo e a mensagem.",
+            detalhes: [
+              "Mensagem opcional, de até 280 letras (ex.: “Tenho 2 anos de experiência e moro perto”). Sem telefone: o contato sai no match.",
+              "Se a empresa fez perguntas, responda ali mesmo, antes de curtir.",
+              "Vaga com o selo “Contato direto” libera o WhatsApp na hora em que você curte.",
+              "Salve vagas para ver depois e siga a empresa ou o bairro para saber das próximas.",
+            ],
+            imagem: "curtir",
+          },
+          {
             titulo: "Acompanhe suas curtidas",
-            texto:
-              "Em Minhas curtidas você vê quem aceitou e em que etapa está: entrevista marcada, aprovado ou não seguiu. Chega um aviso a cada novidade.",
+            texto: "Em Minhas curtidas você vê o que aconteceu com cada vaga.",
+            detalhes: [
+              "Etapas: Recebido, Em análise, Entrevista, Contratado ou Encerrado. Chega um aviso a cada mudança.",
+              "Se a empresa aceitou e falta o currículo, aparece o pedido: mande e o match sai na hora.",
+              "Desistiu? Dá para descurtir enquanto espera resposta.",
+            ],
+            imagem: "curtidas",
             link: { href: "/painel/curtidas", texto: "Minhas curtidas" },
           },
           {
             titulo: "Deu match: converse",
-            texto:
-              "O WhatsApp e o e-mail de vocês aparecem para os dois. Combine pelo WhatsApp ou pelo chat do Publike. Ninguém pode cobrar nada para você conseguir a vaga.",
+            texto: "O WhatsApp e o e-mail de vocês aparecem para os dois. Combine a entrevista.",
+            detalhes: [
+              "Converse pelo WhatsApp ou pelo chat do Publike, sem sair do site.",
+              "Ninguém pode cobrar nada para você conseguir trabalho: taxa, curso, uniforme ou exame pago é golpe. Denuncie.",
+              "Na entrevista, prefira lugares movimentados e avise alguém de confiança.",
+            ],
+            imagem: "match",
           },
           {
             titulo: "Receba as vagas novas",
-            texto:
-              "Na busca, toque em “Me avise de vagas assim” e receba um aviso quando entrar vaga nova que combina com você.",
+            texto: "Não achou ainda? Deixe o Publike avisar você.",
+            detalhes: [
+              "Na busca, toque em “Me avise de vagas assim”: chega um aviso quando entrar vaga nova parecida.",
+              "Conhece alguém que faria a vaga? “Indicar pelo WhatsApp” manda o link.",
+            ],
           },
         ],
       },
       {
         id: "servicos",
         nome: "Ofereço serviços",
-        resumo: "Diarista, pedreiro, eletricista, manicure: monte sua vitrine e seja chamado por quem mora perto.",
-        passos: [ENTRAR, ...VITRINE],
+        resumo:
+          "Diarista, pedreiro, eletricista, manicure: monte sua vitrine grátis e seja chamado por quem mora perto.",
+        passos: [entrar("“Pessoa”"), ...VITRINE],
       },
       {
         id: "casa",
         nome: "Contrato para casa",
         resumo: "Uma faxina, um reparo, uma babá: ache um profissional perto ou publique a vaga da sua casa.",
         passos: [
+          entrar("“Pessoa”"),
           {
             titulo: "Busque em Serviços",
-            texto:
-              "Na busca, escolha Serviços e o que precisa (diarista, pedreiro, eletricista…). Os profissionais que atendem a sua região aparecem primeiro, com fotos, preço “a partir de” e avaliações.",
+            texto: "Na busca, escolha Serviços e o que precisa: diarista, pedreiro, eletricista, manicure…",
+            detalhes: [
+              "Os profissionais que atendem a sua região aparecem primeiro, no mapa ou em lista.",
+              "Na vitrine: o que a pessoa faz, fotos dos trabalhos, preço de referência (“a partir de”) e avaliações de quem já contratou.",
+            ],
+            imagem: "busca-servicos",
             link: { href: "/?tipo=servico", texto: "Ver serviços perto de mim" },
           },
           {
             titulo: "Toque em Quero contratar",
-            texto:
-              "Mande uma mensagem curta com o que precisa, o bairro e o melhor dia. Sem telefone na mensagem: o contato aparece no match (ou na hora, com o “Contato direto”).",
+            texto: "Mande uma mensagem curta com o que precisa, o bairro e o melhor dia.",
+            detalhes: [
+              "Ex.: “Preciso rebocar um muro de 12 metros no Setor Bueno. Pode ser sábado?”",
+              "Sem telefone na mensagem: o contato aparece no match.",
+              "Profissional com o selo “Contato direto” libera o WhatsApp na hora.",
+            ],
+            imagem: "quero-contratar",
           },
           {
             titulo: "Ou publique a vaga da casa",
-            texto:
-              "Precisa de alguém fixo ou por diária? Publique a vaga: para conta Pessoa, ela mostra só uma área de uns 500 metros, nunca o seu endereço.",
+            texto: "Precisa de alguém fixo ou por diária (diarista, babá, cuidador)? Publique a vaga.",
+            detalhes: [
+              "Para conta Pessoa, a vaga mostra só uma área de uns 500 metros, nunca o seu endereço.",
+              "Quem curtir aparece no seu painel, com perfil e currículo. Você escolhe quem aceita.",
+            ],
+            imagem: "publicar",
             link: { href: "/publicar", texto: "Publicar vaga grátis" },
           },
           {
             titulo: "Combine e acompanhe",
-            texto:
-              "Deu match, o WhatsApp de vocês aparece para os dois. Seus pedidos ficam em Minhas curtidas; as vagas, em Meus anúncios.",
+            texto: "Deu match, o WhatsApp de vocês aparece para os dois.",
+            detalhes: [
+              "Seus pedidos ficam em Minhas curtidas, com a etapa: Orçamento enviado, Agendado, Concluído.",
+              "Combine o preço e o dia antes. Não pague adiantado para quem você não conhece.",
+            ],
+            imagem: "curtidas",
             link: { href: "/painel/curtidas", texto: "Meus pedidos" },
           },
           {
             titulo: "Avalie depois do serviço",
-            texto: "Sua avaliação ajuda outros vizinhos a escolher e valoriza quem trabalha bem.",
+            texto: "Dê uma nota e conte como foi.",
+            detalhes: ["Sua avaliação ajuda os vizinhos a escolher e valoriza quem trabalha bem."],
           },
         ],
       },
@@ -306,19 +443,20 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
       {
         id: "contratar",
         nome: "Contratar",
-        resumo: "Loja, bar, salão, oficina, padaria: ache gente do bairro para trabalhar com você.",
+        resumo: "Loja, bar, salão, oficina, padaria: ache gente do bairro para trabalhar com você, de graça.",
         passos: [
-          {
-            ...ENTRAR,
-            texto:
-              "Sem senha: entre com o e-mail e escolha “Comércio” em “Você é”. Com o CNPJ (opcional), o Publike preenche o nome e o endereço da loja para você.",
-          },
-          {
-            titulo: "Publique a vaga com o endereço",
-            texto:
-              "Leva dois minutos, e dá para começar por um modelo pronto. Com o CEP e o número, o pino fica na porta da loja e quem mora perto vê primeiro, com o tempo de ônibus até aí.",
-            link: { href: "/publicar", texto: "Publicar vaga grátis" },
-          },
+          entrar("“Comércio”", [
+            "Com o CNPJ (opcional), o Publike busca os dados públicos e preenche o nome e o endereço da loja.",
+          ]),
+          publicar(
+            "Publique a vaga com o endereço da loja",
+            "Leva dois minutos, e dá para começar por um modelo pronto (atendente, caixa, auxiliar de cozinha…).",
+            [
+              "Com o CEP e o número, o pino fica na porta da loja: quem mora perto vê primeiro, com o tempo de ônibus até aí.",
+              "A próxima vaga já vem com o endereço da última.",
+              "Diga o salário (ou faixa), os benefícios, a escala e o horário: vaga completa recebe mais curtidas.",
+            ],
+          ),
           COMO_RECEBER,
           INTERESSADOS,
           ENTREVISTA,
@@ -328,8 +466,8 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
       {
         id: "servicos",
         nome: "Mostrar serviços",
-        resumo: "Salão, oficina, assistência: mostre o que você faz e receba pedidos de quem mora perto.",
-        passos: [ENTRAR, ...VITRINE],
+        resumo: "Salão, oficina, assistência técnica: mostre o que você faz e receba pedidos de quem mora perto.",
+        passos: [entrar("“Comércio”"), ...VITRINE],
       },
     ],
   },
@@ -341,17 +479,18 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
         nome: "Contratar",
         resumo: "Empresa, indústria, condomínio ou ONG: receba candidatos da região, com currículo e triagem.",
         passos: [
-          {
-            ...ENTRAR,
-            texto:
-              "Sem senha: entre com o e-mail e escolha “Empresa” em “Você é”. Com o CNPJ (opcional), o Publike preenche o nome e o endereço.",
-          },
-          {
-            titulo: "Publique a vaga completa",
-            texto:
-              "Contratação (carteira, temporária, estágio, diária…), salário ou faixa, benefícios, escala e horário, escolaridade, experiência e CNH. Com o endereço, quem mora perto vê primeiro.",
-            link: { href: "/publicar", texto: "Publicar vaga grátis" },
-          },
+          entrar("“Empresa”", [
+            "Com o CNPJ (opcional), o Publike busca os dados públicos e preenche o nome e o endereço.",
+          ]),
+          publicar(
+            "Publique a vaga completa",
+            "Quanto mais completa, mais gente certa curte. Vaga com carteira, temporária, estágio, diária ou freelance.",
+            [
+              "Salário ou faixa, comissão e benefícios (vale-transporte, refeição, plano de saúde…).",
+              "Escala e horário, escolaridade, experiência, CNH, modelo de trabalho e vaga PcD.",
+              "Com o endereço, quem mora perto vê primeiro, com o tempo de ônibus até a empresa.",
+            ],
+          ),
           COMO_RECEBER,
           INTERESSADOS,
           ENTREVISTA,
@@ -368,38 +507,61 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
         nome: "Recrutar para clientes",
         resumo: "Agência de emprego ou RH: publique as vagas dos seus clientes, de graça, com o nome da agência.",
         passos: [
-          {
-            ...ENTRAR,
-            texto:
-              "Sem senha: entre com o e-mail, escolha “Agência / RH” em “Você é” e informe o CNPJ da agência (obrigatório).",
-          },
+          entrar("“Agência / RH”", [
+            "O CNPJ da agência é obrigatório (vale também o CNPJ com letras, o novo da Receita).",
+          ]),
           {
             titulo: "Espere a conferência do CNPJ",
-            texto: `A equipe confere o CNPJ e a agência ganha o selo de verificada: até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e ${LIMITES_CONTA.agenciaVerificada.porDia} por dia (antes, ${LIMITES_CONTA.comum.noAr} e ${LIMITES_CONTA.comum.porDia}). Trocar o CNPJ tira o selo.`,
+            texto: "A equipe do Publike confere o CNPJ e dá o selo de agência verificada.",
+            detalhes: [
+              `Verificada, a agência pode ter até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar ${LIMITES_CONTA.agenciaVerificada.porDia} por dia (antes: ${LIMITES_CONTA.comum.noAr} e ${LIMITES_CONTA.comum.porDia}).`,
+              "Quem procura vaga pode conferir o CNPJ na Receita: ele aparece no perfil da agência.",
+              "Trocar o CNPJ tira o selo até a nova conferência.",
+            ],
           },
-          {
-            titulo: "Publique a vaga do cliente",
-            texto:
-              "Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial” (aí o local vira uma área de uns 500 metros). A vaga sai com o selo “Vaga de agência”.",
-            link: { href: "/publicar", texto: "Publicar vaga grátis" },
-          },
+          publicar(
+            "Publique a vaga do cliente",
+            "Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”.",
+            [
+              "A vaga sai com o selo “Vaga de agência” e o nome da agência.",
+              "Empresa confidencial: o local vira uma área de uns 500 metros, sem o endereço do cliente.",
+              "Publique as vagas de vários clientes da mesma conta, cada uma com o seu local.",
+            ],
+            "vaga-agencia",
+          ),
           {
             ...COMO_RECEBER,
-            texto:
-              "Peça currículo e faça perguntas de triagem. Quem você aceita recebe o WhatsApp e o e-mail da agência, nunca os do cliente.",
+            detalhes: [
+              ...(COMO_RECEBER.detalhes ?? []),
+              "Quem você aceita recebe o WhatsApp e o e-mail da agência, nunca os do cliente.",
+            ],
           },
           INTERESSADOS,
           ENTREVISTA,
+          RENOVAR,
           {
             titulo: "Sem cobrar do candidato",
-            texto:
-              "A agência não pode cobrar nada de quem se candidata: nem taxa, nem curso, nem exame. Vaga que cobra é removida e a conta pode ser suspensa.",
+            texto: "A agência não pode cobrar nada de quem se candidata.",
+            detalhes: [
+              "Nem taxa de cadastro, nem curso, nem exame, nem uniforme.",
+              "Vaga que cobra é tirada do ar pela moderação, e a conta pode ser suspensa.",
+            ],
           },
         ],
       },
     ],
   },
 ];
+
+/** O endereço da página de um caminho: /ajuda/caminho/pessoa-trabalho. */
+export const idDoCaminho = (tipo: TipoConta, jornada: string) => `${tipo}-${jornada}`;
+
+/** Todos os caminhos, com o tipo de conta (para as páginas /ajuda/caminho/[id]). */
+export function todosOsCaminhos() {
+  return PERFIS_AJUDA.flatMap((p) =>
+    p.jornadas.map((j) => ({ id: idDoCaminho(p.tipo, j.id), tipo: p.tipo, jornada: j })),
+  );
+}
 
 /** O conteúdo da ajuda em texto corrido, para o assistente. */
 export function textoDaAjuda() {
@@ -408,7 +570,11 @@ export function textoDaAjuda() {
     p.jornadas.map(
       (j) =>
         `## Passo a passo (conta ${p.tipo}): ${j.nome}\n${j.passos
-          .map((x, i) => `${i + 1}. ${x.titulo}: ${x.texto}${x.link ? ` (${x.link.texto}: ${x.link.href})` : ""}`)
+          .map((x, i) => {
+            const link = x.link ? ` (${x.link.texto}: ${x.link.href})` : "";
+            const detalhes = (x.detalhes ?? []).map((d) => `\n   - ${d}`).join("");
+            return `${i + 1}. ${x.titulo}: ${x.texto}${link}${detalhes}`;
+          })
           .join("\n")}`,
     ),
   );

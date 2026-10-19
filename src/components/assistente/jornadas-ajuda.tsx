@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowRight, Building2, Store, UserRound, Users, type LucideIcon } from "lucide-react";
+import { Building2, Share2, Store, UserRound, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
-import type { PerfilAjuda } from "@/lib/ajuda";
+import { idDoCaminho, type PerfilAjuda } from "@/lib/ajuda";
 import { TIPOS_CONTA } from "@/lib/constantes";
 import type { TipoConta } from "@/lib/tipos";
+import { PassosDoCaminho } from "./passos-caminho";
 
 const ICONES: Record<TipoConta, LucideIcon> = {
   pessoa: UserRound,
@@ -115,35 +116,17 @@ export function JornadasAjuda({
             })}
           </div>
         )}
-        <p className="max-w-2xl text-body-lg">{jornada.resumo}</p>
-        <ol className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {jornada.passos.map((p, i) => (
-            <li key={p.titulo} className="flex gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card">
-              <span
-                aria-hidden
-                className="flex size-8 shrink-0 items-center justify-center rounded-pill bg-ink font-display text-label text-surface-100 tabular-nums"
-              >
-                {i + 1}
-              </span>
-              <div className="flex min-w-0 flex-col gap-1">
-                <h3 className="text-label">
-                  <span className="sr-only">Passo {i + 1}: </span>
-                  {p.titulo}
-                </h3>
-                <p className="text-body-sm text-ink-muted">{p.texto}</p>
-                {p.link && (
-                  <Link
-                    href={p.link.href}
-                    className="mt-1 inline-flex min-h-9 items-center gap-1 self-start text-label text-terra-text underline-offset-2 hover:underline"
-                  >
-                    {p.link.texto}
-                    <ArrowRight aria-hidden className="size-4" />
-                  </Link>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <p className="max-w-2xl text-body-lg">{jornada.resumo}</p>
+          <Link
+            href={`/ajuda/caminho/${idDoCaminho(perfil.tipo, jornada.id)}`}
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-label text-terra-text underline-offset-2 hover:underline"
+          >
+            <Share2 aria-hidden className="size-4" />
+            Abrir para compartilhar
+          </Link>
+        </div>
+        <PassosDoCaminho passos={jornada.passos} nivel={3} />
       </div>
     </div>
   );
