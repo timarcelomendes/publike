@@ -2,9 +2,10 @@ import { Laptop } from "lucide-react";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { MODO_DEMO } from "@/lib/config";
-import { ehModerador, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { ehModerador, meuCurriculoNaVitrine, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { obterIntencao } from "@/lib/servidor/intencao";
 import { ehAdminLocal } from "@/lib/supabase/admin";
-import { BotaoEntrarCabecalho, BotaoPublicar, BotaoPublicarCabecalho } from "./botao-publicar";
+import { BotaoEntrarCabecalho, BotaoPublicar, PublicarECurriculo, type CurriculoNoTopo } from "./botao-publicar";
 import { BotaoInstalarApp } from "./instalar-app";
 import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
@@ -37,7 +38,7 @@ export function Cabecalho() {
           <BotaoTema />
           {/* No celular, "Publicar" fica na barra de baixo */}
           <Suspense fallback={<BotaoPublicar />}>
-            <BotaoPublicarCabecalho />
+            <PublicarDoTopo />
           </Suspense>
           <Suspense fallback={<div className="size-10 animate-pulse rounded-pill bg-surface-300" />}>
             <AreaUsuario />
@@ -60,6 +61,19 @@ function LinkAdmin() {
       <span className="sr-only sm:not-sr-only">Admin</span>
     </Link>
   );
+}
+
+/** "Publicar grátis" e, para quem procura trabalho, o "Currículo" do lado. Empresa e quem quer contratar não veem o currículo. */
+async function PublicarDoTopo() {
+  return <PublicarECurriculo curriculo={await curriculoNoTopo()} />;
+}
+
+async function curriculoNoTopo(): Promise<CurriculoNoTopo> {
+  if (MODO_DEMO) return "cadastrar";
+  const [perfil, intencao] = await Promise.all([obterMeuPerfil().catch(() => null), obterIntencao().catch(() => null)]);
+  if (perfil && perfil.tipo !== "pessoa") return null;
+  if (intencao === "contratar_pessoa" || intencao === "contratar_servico") return null;
+  return perfil && (await meuCurriculoNaVitrine().catch(() => false)) ? "meu" : "cadastrar";
 }
 
 async function AreaUsuario() {

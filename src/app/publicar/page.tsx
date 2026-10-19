@@ -1,11 +1,19 @@
+import { FileUser } from "lucide-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
 import { PublicarAnuncio } from "@/components/publicar-anuncio";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
+import { BotaoLink } from "@/components/ui/botao";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { ajudaDaIADisponivel, obterAnuncio, obterMeuUltimoEndereco, obterUsuario } from "@/lib/dados";
+import {
+  ajudaDaIADisponivel,
+  meuCurriculoNaVitrine,
+  obterAnuncio,
+  obterMeuUltimoEndereco,
+  obterUsuario,
+} from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
@@ -15,6 +23,7 @@ import { valoresDoConvite } from "@/lib/valores-convite";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
 import { temLugar } from "@/lib/clientes";
+import { obterIntencao } from "@/lib/servidor/intencao";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
@@ -59,13 +68,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   // sem conta dá para preencher a vaga: o rascunho fica no aparelho e sai depois de entrar
   if (!pedidaCopia && !(await obterUsuario())) {
     const base = vazio("Goiânia", "");
+    const intencao = await obterIntencao().catch(() => null);
+    const contrata = intencao === "contratar_pessoa" || intencao === "contratar_servico";
     return (
-      <PublicarAnuncio
-        inicial={convite?.rascunho ? valoresDoConvite(convite.rascunho, base) : base}
-        semConta
-        comModelos={!convite}
-        convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
-      />
+      <>
+        {!convite && !contrata && <ChamadaCurriculo />}
+        <PublicarAnuncio
+          inicial={convite?.rascunho ? valoresDoConvite(convite.rascunho, base) : base}
+          semConta
+          comModelos={!convite}
+          convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
+        />
+      </>
     );
   }
   const voltar = pedidaCopia
@@ -141,6 +155,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       : inicialSemCliente;
   return (
     <>
+      {perfil.tipo === "pessoa" && !copia && !convite && !(await meuCurriculoNaVitrine().catch(() => false)) && (
+        <ChamadaCurriculo />
+      )}
       {copia && (
         <Aviso tipo="info" className="mb-6" titulo="Vaga nova a partir de outra">
           Os campos vieram de “{copia.titulo}”. Mude o que for diferente e publique: a vaga antiga continua como está.
@@ -160,6 +177,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
         }
       />
     </>
+  );
+}
+
+/**
+ * Quem procura trabalho às vezes toca em "Publicar" achando que é para o currículo:
+ * aqui ele acha o caminho certo.
+ */
+function ChamadaCurriculo() {
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-line-strong bg-surface-200 px-3 py-3 shadow-card sm:px-4">
+      <FileUser aria-hidden className="size-5 shrink-0 text-terra-text" />
+      <p className="min-w-0 grow basis-56 text-body-sm">
+        <span className="text-label">Procura trabalho?</span> Aqui é para publicar vaga ou serviço. Para as empresas
+        acharem você, cadastre seu currículo.
+      </p>
+      <BotaoLink href="/perfil/curriculo?para=talentos" variante="secundario" tamanho="sm">
+        <FileUser aria-hidden />
+        Cadastrar currículo
+      </BotaoLink>
+    </div>
   );
 }
 

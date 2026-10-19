@@ -135,10 +135,11 @@ export function BotaoInstalarApp({
         type="button"
         onClick={clicar}
         title="Instalar o app do Publike"
-        className="inline-flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-md px-2 text-label text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink lg:px-2.5"
+        className="inline-flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-md px-2 text-label text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink xl:px-2.5"
       >
         <Download aria-hidden className="size-[18px] shrink-0" />
-        <span className="sr-only lg:not-sr-only">Instalar app</span>
+        {/* o nome só em tela larga: no notebook, o espaço vai para o "Currículo" ao lado do "Publicar grátis" */}
+        <span className="sr-only xl:not-sr-only">Instalar app</span>
       </button>
     );
   }
