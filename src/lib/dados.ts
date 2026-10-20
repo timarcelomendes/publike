@@ -299,7 +299,7 @@ export async function minhaEntrevista(anuncioId: string) {
   const supabase = await criarClienteServidor();
   const { data } = await supabase
     .from("entrevistas")
-    .select("id, quando, formato, local, obs, situacao")
+    .select("id, quando, formato, local, obs, situacao, duracao_min, atualizado_em")
     .eq("anuncio_id", anuncioId)
     .eq("perfil_id", usuario.id)
     .order("atualizado_em", { ascending: false })

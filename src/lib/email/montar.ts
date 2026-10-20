@@ -93,6 +93,9 @@ function rodape(modelo: ModeloEmail, siteUrl: string) {
   return `Você recebeu este aviso porque tem uma conta no Publike. Para não receber mais avisos por e-mail, desmarque a opção no seu perfil: ${site}/perfil`;
 }
 
+/** Link a mais embaixo do botão (ex.: "Adicionar ao Google Agenda" no e-mail da entrevista). */
+export type LinkExtra = { rotulo: string; link: string };
+
 /**
  * `logo`: endereço da imagem do topo (null = só o nome, em texto). Precisa ser
  * um endereço público: o e-mail é aberto no celular de quem recebe.
@@ -102,6 +105,7 @@ export function montarEmail(
   dados: unknown,
   siteUrl: string,
   logo: string | null = null,
+  extras: LinkExtra[] = [],
 ): EmailMontado {
   const valores = valoresDoEmail(dados, siteUrl);
   // assunto numa linha só (nada de quebra de linha no cabeçalho)
@@ -111,7 +115,16 @@ export function montarEmail(
   const link = valores.link;
   const textoRodape = rodape(modelo, siteUrl);
 
-  const texto = [...partes, botao ? `${botao}: ${link}` : null, "—", textoRodape].filter(Boolean).join("\n\n");
+  const links = extras.filter((x) => x.rotulo.trim() && /^https:\/\/[^\s"'<>\\]+$/.test(x.link));
+  const texto = [
+    ...partes,
+    botao ? `${botao}: ${link}` : null,
+    ...links.map((x) => `${x.rotulo}: ${x.link}`),
+    "—",
+    textoRodape,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const htmlParagrafos = partes
     .map(
@@ -124,6 +137,12 @@ export function montarEmail(
       `<a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">${escaparHtml(botao)}</a>` +
       `</td></tr></table>`
     : "";
+  const htmlExtras = links
+    .map(
+      (x) =>
+        `<p style="margin:12px 0 0;font-size:15px;line-height:1.5;"><a href="${escaparHtml(x.link)}" style="color:${CORES.terra};font-weight:600;">${escaparHtml(x.rotulo)}</a></p>`,
+    )
+    .join("");
 
   // Com a imagem bloqueada (Outlook no computador), aparece o texto "Publike".
   const cabecalho =
@@ -141,7 +160,7 @@ export function montarEmail(
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
 ${cabecalho}
 <tr><td style="background:${CORES.cartao};border:1px solid ${CORES.linha};border-radius:12px;padding:28px 24px;">
-${htmlParagrafos}${htmlBotao}
+${htmlParagrafos}${htmlBotao}${htmlExtras}
 </td></tr>
 <tr><td style="padding:16px 4px 0;font-size:13px;line-height:1.5;color:${CORES.apagado};">${escaparHtml(textoRodape)}</td></tr>
 </table>

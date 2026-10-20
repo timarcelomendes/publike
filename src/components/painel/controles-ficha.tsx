@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { responderCurtida } from "@/lib/acoes/curtidas";
 import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
+import { SITE_URL } from "@/lib/config";
 import type { ResumoCandidato } from "@/lib/ia/tarefas";
 import { EntrevistaMarcada, FormEntrevista } from "./recrutamento";
 
@@ -304,6 +305,8 @@ type EntrevistaResumo = {
   local: string | null;
   obs: string | null;
   situacao: string;
+  duracao_min?: number | null;
+  atualizado_em?: string | null;
 };
 
 /** A entrevista na ficha: a marcada (com remarcar e cancelar) ou o formulário para marcar. */
@@ -311,12 +314,15 @@ export function EntrevistaDaFicha({
   anuncioId,
   perfilId,
   nome,
+  vaga,
   entrevista,
   endereco,
 }: {
   anuncioId: string;
   perfilId: string;
   nome: string;
+  /** o título da vaga (para o evento na agenda) */
+  vaga: string;
   entrevista: EntrevistaResumo | null;
   endereco: string;
 }) {
@@ -330,7 +336,15 @@ export function EntrevistaDaFicha({
             Entrevista marcada. {nome.split(" ")[0]} recebeu o aviso e a mensagem na conversa.
           </p>
         )}
-        <EntrevistaMarcada entrevista={entrevista} aoRemarcar={() => (setMarcou(false), setMarcando(true))} />
+        <EntrevistaMarcada
+          entrevista={entrevista}
+          aoRemarcar={() => (setMarcou(false), setMarcando(true))}
+          agenda={{
+            vaga,
+            candidato: nome,
+            url: `${SITE_URL}/painel/anuncio/${anuncioId}/quadro?candidato=${perfilId}`,
+          }}
+        />
       </div>
     );
   }

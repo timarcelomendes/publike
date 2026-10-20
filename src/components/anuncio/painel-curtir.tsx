@@ -184,7 +184,7 @@ export function PainelCurtir({
             ? "Combinem o serviço, o endereço, o preço e o melhor dia."
             : "Combinem os detalhes, o endereço e o melhor horário."}
         </p>
-        {entrevista && <EntrevistaDoCandidato e={entrevista} />}
+        {entrevista && <EntrevistaDoCandidato e={entrevista} vaga={titulo} empresa={autorNome} anuncioId={anuncioId} />}
         {autorId && (
           // no Chat do canto da tela, sem sair da página (sem o Chat, a conversa em tela cheia)
           <Link

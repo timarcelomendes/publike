@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { conviteDoEmail } from "@/lib/agenda";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail, montarEmail } from "@/lib/email/montar";
 import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
@@ -127,11 +128,14 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
   try {
     for (const item of itens) {
       try {
+        // entrevista marcada, confirmada ou cancelada: o convite de agenda vai junto
+        const convite = conviteDoEmail(item.dados, site, new Date());
         const email = montarEmail(
           { modelo: item.modelo, grupo: item.grupo, assunto: item.assunto, corpo: item.corpo, botao: item.botao },
           item.dados,
           site,
           logo,
+          convite?.google ? [{ rotulo: "Adicionar ao Google Agenda", link: convite.google }] : [],
         );
         await transporte.sendMail({
           from: { name: item.remetente_nome, address: smtp.remetente },
@@ -141,6 +145,9 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
           text: email.texto,
           html: email.html,
           headers: { "Auto-Submitted": "auto-generated" },
+          ...(convite
+            ? { icalEvent: { method: convite.metodo, filename: "entrevista.ics", content: convite.ics } }
+            : {}),
         });
       } catch (e) {
         const erro = textoDoErro(e);

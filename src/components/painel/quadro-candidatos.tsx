@@ -24,6 +24,7 @@ import {
 } from "react";
 import type { Aderencia } from "@/lib/aderencia";
 import { adicionarFinalistas, tirarFinalista } from "@/lib/acoes/finalistas";
+import { SITE_URL } from "@/lib/config";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { DECISOES_CLIENTE, type RespostaCliente } from "@/lib/finalistas";
@@ -541,7 +542,15 @@ function DetalheCandidato({
                 Entrevista marcada. O candidato recebeu o aviso e a mensagem na conversa.
               </p>
             )}
-            <EntrevistaMarcada entrevista={e} aoRemarcar={() => (setMarcou(false), setMarcando(true))} />
+            <EntrevistaMarcada
+              entrevista={e}
+              aoRemarcar={() => (setMarcou(false), setMarcando(true))}
+              agenda={{
+                vaga,
+                candidato: c.nome,
+                url: `${SITE_URL}/painel/anuncio/${anuncioId}/quadro?candidato=${c.perfil_id}`,
+              }}
+            />
           </>
         ) : (
           <FormEntrevista

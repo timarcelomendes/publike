@@ -263,6 +263,8 @@ export async function mudarEntrevista(id: string, situacao: "cancelada" | "reali
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("mudar_entrevista", { p_id: id, p_situacao: situacao });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
+  // cancelada: o aviso (com o cancelamento para a agenda) sai por e-mail
+  if (situacao === "cancelada") after(processarFilas);
   refresh();
   return { ok: true };
 }
@@ -276,6 +278,8 @@ export async function responderEntrevista(id: string, resposta: "confirmada" | "
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("responder_entrevista", { p_id: id, p_resposta: resposta });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
+  // o aviso para quem publicou sai por e-mail (confirmada: com o convite para a agenda)
+  after(processarFilas);
   refresh();
   return {
     ok: true,

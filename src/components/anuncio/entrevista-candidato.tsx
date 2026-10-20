@@ -2,12 +2,15 @@
 
 import { CalendarCheck, CalendarClock } from "lucide-react";
 import { responderEntrevista } from "@/lib/acoes/recrutamento";
+import { eventoDaEntrevista } from "@/lib/agenda";
+import { SITE_URL } from "@/lib/config";
 import {
   dataDaEntrevista,
   FORMATOS_ENTREVISTA,
   SITUACOES_ENTREVISTA,
   type FormatoEntrevista,
 } from "@/lib/recrutamento";
+import { BotoesAgenda } from "../agenda/botoes-agenda";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
@@ -19,10 +22,23 @@ export type EntrevistaDoCandidato = {
   local: string | null;
   obs: string | null;
   situacao: string;
+  duracao_min?: number | null;
+  atualizado_em?: string | null;
 };
 
 /** Para quem se candidatou: a entrevista marcada, com confirmar presença ou pedir para remarcar. */
-export function EntrevistaDoCandidato({ e }: { e: EntrevistaDoCandidato }) {
+export function EntrevistaDoCandidato({
+  e,
+  vaga,
+  empresa,
+  anuncioId,
+}: {
+  e: EntrevistaDoCandidato;
+  /** para o evento na agenda: o título da vaga, quem publicou e a vaga no Publike */
+  vaga: string;
+  empresa?: string;
+  anuncioId: string;
+}) {
   const { rodar, pendente, mensagem } = useAcao();
   const aberta = ["marcada", "confirmada", "remarcar"].includes(e.situacao);
   const situacao = SITUACOES_ENTREVISTA[e.situacao] ?? SITUACOES_ENTREVISTA.marcada;
@@ -50,6 +66,11 @@ export function EntrevistaDoCandidato({ e }: { e: EntrevistaDoCandidato }) {
         )}
       </p>
       {e.obs && <p className="text-body-sm text-ink-muted">{e.obs}</p>}
+      {aberta && (
+        <BotoesAgenda
+          evento={eventoDaEntrevista(e, { vaga, empresa, para: "candidato", url: `${SITE_URL}/anuncio/${anuncioId}` })}
+        />
+      )}
       {aberta && (
         <div className="flex flex-wrap gap-2">
           {e.situacao !== "confirmada" && (

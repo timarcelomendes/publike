@@ -17,6 +17,8 @@ import {
   type FormatoEntrevista,
   type ModeloMensagem,
 } from "@/lib/recrutamento";
+import { eventoDaEntrevista } from "@/lib/agenda";
+import { BotoesAgenda } from "../agenda/botoes-agenda";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
@@ -32,6 +34,8 @@ type EntrevistaResumo = {
   local: string | null;
   obs: string | null;
   situacao: string;
+  duracao_min?: number | null;
+  atualizado_em?: string | null;
 };
 
 /** "2026-10-22T14:00" (Brasília) a partir da data guardada, para o campo de data e hora. */
@@ -192,9 +196,12 @@ export function FormEntrevista({
 export function EntrevistaMarcada({
   entrevista,
   aoRemarcar,
+  agenda = null,
 }: {
   entrevista: EntrevistaResumo;
   aoRemarcar: () => void;
+  /** para pôr na agenda de quem publicou: a vaga, o candidato e o link de volta */
+  agenda?: { vaga: string; candidato: string; url: string } | null;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const situacao = SITUACOES_ENTREVISTA[entrevista.situacao] ?? SITUACOES_ENTREVISTA.marcada;
@@ -210,6 +217,16 @@ export function EntrevistaMarcada({
         {entrevista.local ? `: ${entrevista.local}` : ""}
         {entrevista.obs ? ` · ${entrevista.obs}` : ""}
       </p>
+      {aberta && agenda && (
+        <BotoesAgenda
+          evento={eventoDaEntrevista(entrevista, {
+            vaga: agenda.vaga,
+            candidato: agenda.candidato,
+            para: "empresa",
+            url: agenda.url,
+          })}
+        />
+      )}
       <div className="flex flex-wrap gap-2">
         {aberta && (
           <>

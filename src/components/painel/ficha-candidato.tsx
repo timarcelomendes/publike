@@ -168,6 +168,7 @@ export function FichaCandidato({
             anuncioId={c.anuncio_id}
             perfilId={c.perfil_id}
             nome={c.nome}
+            vaga={c.anuncio_titulo}
             entrevista={c.entrevista}
             endereco={c.endereco}
           />
