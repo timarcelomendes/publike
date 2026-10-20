@@ -1,0 +1,4 @@
+{
+  // As migrações são PostgreSQL (Supabase): a extensão SQL Server (mssql) as lê como T-SQL e marca erros que não existem.
+  "mssql.intelliSense.enableErrorChecking": false
+}
