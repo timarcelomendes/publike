@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { REGIAO } from "@/lib/config";
-import { CATEGORIAS, REGIMES } from "@/lib/constantes";
+import { CATEGORIAS, REGIMES, type Categoria } from "@/lib/constantes";
 import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
 import { hrefFiltros, RAIOS, TURNOS, type Filtros, type Ordem, type Turno } from "@/lib/filtros";
 import { lembrarBusca } from "@/lib/ultima-busca";
@@ -15,15 +15,10 @@ import { Seletor } from "../ui/campo";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "./abas";
 import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 
-// Três jeitos de olhar, cada um com a sua cara:
+// Jeitos de olhar, cada um com a sua cara:
 //   O QUE (tipo) ...... abas sublinhadas, em cima da busca (abas.tsx; Talentos é outra página)
 //   ONDE (local) ...... botões de contorno com ícone de lugar
-//   CATEGORIA ......... pílulas de filtro (a escolhida fica escura e ganha um ×)
-
-const chip = (ativo: boolean) =>
-  `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
-    ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-300 text-ink hover:border-line-strong"
-  }`;
+//   ÁREA e o resto .... seletores nos filtros da lista (FiltrosLista)
 
 // Os filtros da lista têm a cara de botão secundário pequeno.
 // field-sizing: a caixa mede o que está escolhido (não a opção mais comprida da lista), para os
@@ -167,7 +162,7 @@ function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void })
 }
 
 /**
- * A busca do topo da página: tipo, texto, onde mora, perto de mim e categorias. Só isso:
+ * A busca do topo da página: tipo, texto, onde mora e perto de mim. Só isso (a área fica nos filtros):
  * as perguntas da primeira visita ficam em cima da lista de anúncios (PerguntasNaLista).
  */
 export function BarraBusca({
@@ -209,7 +204,7 @@ export function BarraBusca({
   }
 
   // "Onde você mora?" e "Perto de mim": no computador, na linha das abas; no celular, no
-  // começo da faixa das categorias (uma linha a menos antes dos anúncios)
+  // numa faixa logo abaixo da busca
   const botoesDeLugar = (classes: string) => (
     <div role="group" aria-label="Onde" className={`items-center gap-2 ${classes}`}>
       <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
@@ -221,8 +216,8 @@ export function BarraBusca({
     <div className="relative mt-3 flex flex-col gap-3 sm:mt-5">
       {pendente && <Carregando />}
 
-      {/* No celular: abas, busca e uma faixa só com o lugar e as categorias (e o painel do bairro).
-          No computador: abas e lugar na mesma linha, o painel do bairro, a busca e as categorias. */}
+      {/* No celular: abas, busca e uma faixa com o lugar (e o painel do bairro).
+          No computador: abas e lugar na mesma linha, o painel do bairro e a busca. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
         <div role="group" aria-label="O que você procura" className={`order-1 ${classesGrupoAbas}`}>
           {ABAS_ANUNCIOS.map((t) => {
@@ -310,30 +305,9 @@ export function BarraBusca({
           </button>
         </form>
 
-        <div className="order-3 min-w-0 sm:order-5 sm:basis-full">
-          <FaixaRolavel rotulo="Lugar e categoria">
-            {botoesDeLugar("flex shrink-0 sm:hidden")}
-            <span aria-hidden className="my-1.5 w-px shrink-0 bg-line-strong sm:hidden" />
-            <div role="group" aria-label="Categoria" className="flex shrink-0 gap-2">
-              {CATEGORIAS.map(({ slug, nome, icone: Icone }) => {
-                const ativa = filtros.categoria === slug;
-                return (
-                  <button
-                    key={slug}
-                    type="button"
-                    aria-pressed={ativa}
-                    // tocar de novo tira o filtro
-                    onClick={() => ir({ categoria: ativa ? null : slug })}
-                    className={chip(ativa)}
-                  >
-                    <Icone aria-hidden className="size-4" />
-                    {nome}
-                    {ativa && <X aria-hidden className="-mr-1 size-3.5" />}
-                  </button>
-                );
-              })}
-            </div>
-          </FaixaRolavel>
+        {/* celular: os botões de lugar numa faixa (no computador, ficam ao lado da busca) */}
+        <div className="order-3 min-w-0 sm:hidden">
+          <FaixaRolavel rotulo="Lugar">{botoesDeLugar("flex shrink-0")}</FaixaRolavel>
         </div>
 
         {avisoGps && (
@@ -370,6 +344,20 @@ export function FiltrosLista({
           <span aria-hidden className="my-1.5 w-px shrink-0 bg-line-strong" />
         </>
       )}
+      <Seletor
+        aria-label="Área"
+        value={filtros.categoria ?? ""}
+        onChange={(e) => ir({ categoria: (e.target.value || null) as Categoria | null })}
+        className={seletor}
+        envoltorio="shrink-0"
+      >
+        <option value="">Área: todas</option>
+        {CATEGORIAS.map((c) => (
+          <option key={c.slug} value={c.slug}>
+            {c.nome}
+          </option>
+        ))}
+      </Seletor>
       {filtros.tipo !== "servico" && (
         <Seletor
           aria-label="Tipo de contratação"

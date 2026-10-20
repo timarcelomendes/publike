@@ -19,6 +19,8 @@ import {
 } from "@/lib/rascunho-anuncio";
 import type { Regime } from "@/lib/tipos";
 import { ganhosDoBanco, lerGanhosExtras } from "@/lib/vaga-extra";
+import { valoresDoConvite } from "@/lib/valores-convite";
+import { ArteDaVaga } from "./arte-da-vaga";
 import { AvisoConvite } from "./aviso-convite";
 import { FormAnuncio, type ValoresAnuncio } from "./form-anuncio";
 import { Aviso, Selo } from "./ui/basicos";
@@ -124,6 +126,7 @@ export function PublicarAnuncio({
   continuar?: boolean;
   /** vaga nova do zero (não "publicar parecida") */
   comModelos?: boolean;
+  /** a ajuda da IA está ligada: "Melhorar texto" e "Tem a arte da vaga?" (só com conta) */
   ia?: boolean;
   agencia?: boolean;
   contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
@@ -138,7 +141,7 @@ export function PublicarAnuncio({
   const [inicial, setInicial] = useState(base);
   const [chave, setChave] = useState(0);
   const [modelo, setModelo] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<"restaurado" | "publicando" | null>(null);
+  const [aviso, setAviso] = useState<"restaurado" | "publicando" | "lido" | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [previa, setPrevia] = useState<Previa | null>(null);
   const tempo = useRef<number | null>(null);
@@ -210,6 +213,14 @@ export function PublicarAnuncio({
     setAviso(null);
   }
 
+  // "Tem a arte da vaga?": o que a IA leu da imagem entra no formulário (o lugar já escrito fica)
+  function aplicarArte(vaga: Parameters<typeof valoresDoConvite>[0]) {
+    setInicial(valoresDoConvite(vaga, lugarDoFormulario(formulario(), base)));
+    setModelo(null);
+    setChave((c) => c + 1);
+    setAviso("lido");
+  }
+
   function seguirParaEntrar() {
     const f = formulario();
     if (f) guardarRascunho(f);
@@ -261,11 +272,18 @@ export function PublicarAnuncio({
           </button>
         </div>
       )}
+      {aviso === "lido" && (
+        <Aviso tipo="info" titulo="Preenchemos com o que estava na imagem">
+          Confira cada campo antes de publicar: o título, o valor, o que a vaga pede e o endereço.
+        </Aviso>
+      )}
       {erro && (
         <Aviso tipo="alerta" titulo="Sua vaga ainda não foi publicada">
           {erro}
         </Aviso>
       )}
+
+      {comModelos && ia && !semConta && <ArteDaVaga aoLer={aplicarArte} />}
 
       {comModelos && (
         <section aria-labelledby="modelos-titulo" className="flex flex-col gap-3">

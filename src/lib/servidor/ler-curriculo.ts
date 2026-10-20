@@ -14,7 +14,8 @@ export type LeituraDoArquivo = { ok: true; curriculo: CurriculoLido } | { ok: fa
 
 /** Fotos do currículo: no máximo 3, já diminuídas no navegador (a ação aceita até 1 MB ao todo). */
 const MAX_FOTOS = 3;
-const TIPOS_DE_FOTO: Record<string, (b: Buffer) => boolean> = {
+/** Confere pelos primeiros bytes que a foto é mesmo JPG, PNG ou WebP. */
+export const TIPOS_DE_FOTO: Record<string, (b: Buffer) => boolean> = {
   "image/jpeg": (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
   "image/png": (b) => b.subarray(0, 4).toString("hex") === "89504e47",
   "image/webp": (b) => b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP",
