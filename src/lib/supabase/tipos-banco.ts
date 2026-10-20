@@ -89,6 +89,45 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** equipe da agência: quem age pela agência, com o próprio login */
+      equipe_agencia: {
+        Row: { agencia_id: string; membro_id: string; papel: string; criado_em: string; convidado_por: string | null };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
+      convites_equipe: {
+        Row: {
+          id: string;
+          token: string;
+          agencia_id: string;
+          papel: string;
+          nome: string | null;
+          criado_por: string | null;
+          criado_em: string;
+          expira_em: string;
+          cancelado_em: string | null;
+          aceito_por: string | null;
+          aceito_em: string | null;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
+      atividades_equipe: {
+        Row: {
+          id: number;
+          agencia_id: string;
+          membro_id: string | null;
+          anuncio_id: string | null;
+          perfil_id: string | null;
+          texto: string;
+          criado_em: string;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       links_finalistas: {
         Row: {
           anuncio_id: string;
@@ -1268,6 +1307,47 @@ export type Database = {
       aceitar_convite_candidato: { Args: { p_token: string; p_respostas?: Json }; Returns: string };
       recusar_convite_candidato: { Args: { p_token: string }; Returns: string };
       curriculo_do_convite: { Args: { p_token: string }; Returns: Json };
+      conta_atual: { Args: Record<PropertyKey, never>; Returns: string };
+      papel_na_conta: { Args: Record<PropertyKey, never>; Returns: string };
+      criar_convite_equipe: {
+        Args: { p_papel: string; p_nome?: string | null };
+        Returns: { id: string; token: string; expira_em: string }[];
+      };
+      cancelar_convite_equipe: { Args: { p_id: string }; Returns: undefined };
+      convite_equipe_do_token: { Args: { p_token: string }; Returns: Json };
+      aceitar_convite_equipe: { Args: { p_token: string }; Returns: string };
+      escolher_conta: { Args: { p_conta: string | null }; Returns: undefined };
+      mudar_papel_equipe: { Args: { p_membro: string; p_papel: string }; Returns: undefined };
+      tirar_da_equipe: { Args: { p_membro: string }; Returns: undefined };
+      sair_da_equipe: { Args: { p_agencia: string }; Returns: undefined };
+      minhas_contas: {
+        Args: Record<PropertyKey, never>;
+        Returns: { conta_id: string; nome: string; foto: string | null; tipo: string; papel: string; atual: boolean }[];
+      };
+      equipe_da_conta: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          membro_id: string;
+          nome: string;
+          foto: string | null;
+          papel: string;
+          desde: string;
+          ultima_atividade: string | null;
+          sou_eu: boolean;
+        }[];
+      };
+      atividades_da_equipe: {
+        Args: { p_limite?: number };
+        Returns: {
+          id: number;
+          criado_em: string;
+          membro_id: string | null;
+          quem: string;
+          texto: string;
+          anuncio_id: string | null;
+          perfil_id: string | null;
+        }[];
+      };
       responder_finalista: {
         Args: {
           p_token: string;

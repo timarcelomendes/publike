@@ -19,6 +19,7 @@ import {
   SearchCheck,
   ThumbsUp,
   UserCheck,
+  UsersRound,
   UserX,
 } from "lucide-react";
 import Link from "next/link";
@@ -46,6 +47,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   vaga_preenchida: UserCheck,
   finalistas: ClipboardCheck,
   convite_candidato: UserX,
+  equipe: UsersRound,
 };
 
 type Notificacao = {
@@ -69,6 +71,7 @@ function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
   if (n.tipo === "finalistas" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/finalistas`;
   if (n.tipo === "convite_candidato" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/convidar`;
+  if (n.tipo === "equipe") return "/painel/equipe";
   // aceito numa vaga que pede currículo: direto para o currículo, que volta para a vaga
   if (n.tipo === "aceite_curriculo" && n.anuncio_id)
     return `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${n.anuncio_id}`)}`;

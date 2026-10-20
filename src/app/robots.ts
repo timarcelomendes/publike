@@ -18,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         "/talentos",
         "/finalistas/",
         "/candidatura/",
+        "/equipe/",
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

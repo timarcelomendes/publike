@@ -4,8 +4,9 @@ import { Suspense } from "react";
 import { MenuPainel, MenuPainelEsqueleto } from "@/components/painel/menu-painel";
 import { Container } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { listarMeusAnuncios, listarMinhasConversas, obterMeuPerfil } from "@/lib/dados";
+import { listarMeusAnuncios, listarMinhasConversas, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { COOKIE_MODO, lerModo, modoPadrao, type Contadores } from "@/lib/modo-painel";
+import { minhasContas } from "@/lib/servidor/equipe";
 import { obterIntencao } from "@/lib/servidor/intencao";
 
 export const metadata: Metadata = { title: "Meu painel", robots: { index: false } };
@@ -33,12 +34,15 @@ async function MenuDaConta() {
   if (MODO_DEMO) {
     return <MenuPainel modo="trabalhar" contadores={{ responder: 0, pedidos: 0, mensagens: 0 }} nome={null} />;
   }
-  const [perfil, intencao, anuncios, conversas, jar] = await Promise.all([
+  const [perfil, intencao, anuncios, conversas, jar, usuario, contas] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     obterIntencao().catch(() => null),
     listarMeusAnuncios().catch(() => []),
     listarMinhasConversas().catch(() => null),
     cookies(),
+    obterUsuario(),
+    // a conta da pessoa e as das equipes de que faz parte (com mais de uma, dá para trocar)
+    minhasContas().catch(() => []),
   ]);
   const modo = lerModo(jar.get(COOKIE_MODO)?.value) ?? modoPadrao(perfil?.tipo, intencao);
   const soma = (tipo: string) =>
@@ -49,6 +53,13 @@ async function MenuDaConta() {
     mensagens: (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0),
   };
   return (
-    <MenuPainel modo={modo} contadores={contadores} nome={perfil?.nome ?? null} tipoConta={perfil?.tipo ?? null} />
+    <MenuPainel
+      modo={modo}
+      contadores={contadores}
+      nome={perfil?.nome ?? null}
+      tipoConta={perfil?.tipo ?? null}
+      contas={contas}
+      papel={usuario?.papel ?? "dono"}
+    />
   );
 }

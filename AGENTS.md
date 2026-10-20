@@ -14,6 +14,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Next.js 16 com **Cache Components** ligado: qualquer leitura de cookies, `params`, `searchParams` ou do banco fica dentro de um `<Suspense>`; horário da requisição só com `agoraDaRequisicao()` (`src/lib/tempo.ts`) dentro dessas partes.
 - O proxy (antigo middleware) fica em `src/proxy.ts`.
 - Banco: `supabase/migrations/`. Segurança no banco (RLS + permissões por coluna); as ações em `src/lib/acoes/` sempre conferem o login de novo.
+- Equipe da agência: quem é da equipe age pela agência com o próprio login (o gancho do Auth `custom_access_token_hook` põe a conta no token). No banco, "a minha conta" é `public.conta_atual()`; `auth.uid()` só para o que é da pessoa (aceite dos termos, moderação, excluir a conta, a própria equipe). No site, `obterUsuario().id` é a conta pela qual se age e `pessoaId` é a pessoa; `papel` diz dono, admin ou recrutador.
 - Tipos do banco em `src/lib/supabase/tipos-banco.ts` (formato do `supabase gen types`).
 - Sem as variáveis do Supabase o site roda em modo demonstração com os dados de `src/lib/demo.ts`.
 - Design System: tokens em `src/app/globals.css`. `like` só para curtida, `terra` só para a ação principal (um botão terra por tela), `ipe` para selos, `cerrado` para match/sucesso, `danger` só para erro e denúncia, `social-*` só nos botões de login social (mesmo padrão do botão oficial do Google, que troca entre claro e escuro em `src/components/botao-google.tsx`).

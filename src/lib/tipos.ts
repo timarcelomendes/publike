@@ -1,3 +1,4 @@
+import type { PapelNaConta } from "./equipe";
 import type { Database } from "./supabase/tipos-banco";
 
 type Funcoes = Database["public"]["Functions"];
@@ -118,7 +119,18 @@ export type Perfil = {
 export type MeuPerfil = Perfil & { whatsapp: string | null; email: string | null; receber_emails: boolean };
 
 /** `nome` vem da conta Google, Facebook ou LinkedIn (quando houver) e só serve de sugestão no perfil. */
-export type Usuario = { id: string; email: string | null; telefone: string | null; nome: string | null };
+/**
+ * Quem está logado. `id` é a conta pela qual a pessoa age: a dela ou, para quem é da equipe de uma
+ * agência e escolheu agir por ela, a da agência. `pessoaId` é sempre a própria pessoa.
+ */
+export type Usuario = {
+  id: string;
+  pessoaId: string;
+  papel: PapelNaConta;
+  email: string | null;
+  telefone: string | null;
+  nome: string | null;
+};
 
 /** Resposta padrão das ações (server actions). */
 export type Resultado = { ok: true; mensagem?: string } | { ok: false; erro: string; ir?: string };

@@ -47,7 +47,8 @@ export type Secao = {
     | "pedidos"
     | "vitrine"
     | "avaliacoes"
-    | "clientes";
+    | "clientes"
+    | "equipe";
   contador?: keyof Contadores;
 };
 
@@ -75,15 +76,16 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
   ],
 };
 
-/** Agência de emprego tem mais uma seção em Contratar: os clientes, logo depois das vagas. */
+/** Agência de emprego tem mais duas seções em Contratar: os clientes, logo depois das vagas, e a equipe. */
 const CLIENTES: Secao = { href: "/painel/clientes", nome: "Clientes", icone: "clientes" };
+const EQUIPE: Secao = { href: "/painel/equipe", nome: "Equipe", icone: "equipe" };
 
-/** As seções do modo para esta conta (a agência ganha "Clientes"). */
+/** As seções do modo para esta conta (a agência ganha "Clientes" e "Equipe"). */
 export function secoesDoModo(modo: ModoPainel, tipoConta: string | null | undefined): Secao[] {
   const secoes = SECOES[modo];
   if (modo !== "contratar" || tipoConta !== "agencia") return secoes;
   const depoisDe = secoes.findIndex((s) => s.icone === "vagas") + 1;
-  return [...secoes.slice(0, depoisDe), CLIENTES, ...secoes.slice(depoisDe)];
+  return [...secoes.slice(0, depoisDe), CLIENTES, ...secoes.slice(depoisDe), EQUIPE];
 }
 
 /** O resto do painel, no fim do menu (o que não é do modo aberto). */
@@ -116,7 +118,8 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/candidatos") ||
     caminho.startsWith("/painel/caixa") ||
     caminho.startsWith("/painel/talentos") ||
-    caminho.startsWith("/painel/clientes")
+    caminho.startsWith("/painel/clientes") ||
+    caminho.startsWith("/painel/equipe")
   )
     return "contratar";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "servicos";

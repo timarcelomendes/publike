@@ -43,6 +43,7 @@ import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { COOKIE_MODO, lerModo, modoPadrao } from "@/lib/modo-painel";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import { listarMeusClientes } from "@/lib/servidor/clientes";
+import { minhasContas } from "@/lib/servidor/equipe";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -85,7 +86,7 @@ const soma = (lista: number[]) => lista.reduce((total, n) => total + n, 0);
 
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
-  await exigirUsuario("/painel");
+  const usuario = await exigirUsuario("/painel");
   const [perfil, intencao, jar, conversas] = await Promise.all([
     obterMeuPerfil(),
     talvez(obterIntencao(), "a intenção"),
@@ -106,9 +107,11 @@ async function Conteudo() {
         ? listarMeusClientes().then((l) => l?.filter((c) => !c.arquivado_em).length ?? 0)
         : null,
     ]);
+    // quem é da equipe da agência: "Boa noite, Bruno" (o nome da pessoa, não o da agência)
+    const pessoa = usuario.papel !== "dono" ? (await minhasContas()).find((c) => c.papel === "dono") : null;
     pagina = (
       <PainelRecrutador
-        nome={perfil.nome}
+        nome={pessoa?.nome ?? perfil.nome}
         autorId={perfil.id}
         anuncios={anuncios}
         candidatos={candidatos}

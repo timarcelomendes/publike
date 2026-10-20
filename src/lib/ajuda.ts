@@ -125,6 +125,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "No quadro da vaga, toque em “Chamar candidato de fora”. Escreva o nome e, se tiver, envie o PDF ou a foto do currículo: o Publike lê e monta o currículo da pessoa, sem telefone nem e-mail, e o arquivo não fica guardado. Mande o link pelo WhatsApp. A pessoa entra com o celular, confere o currículo e aceita: aparece no quadro com match e você recebe o aviso. O link vale 14 dias, e você vê ali quem aceitou, quem não quis e pode cancelar.",
       },
       {
+        p: "Sou agência: como ponho a minha equipe?",
+        r: "No painel, em Equipe, crie um convite para cada pessoa e mande o link pelo WhatsApp. A pessoa entra com o próprio celular e passa a agir pela agência: publica e edita vagas, responde candidatos, move no quadro, marca entrevistas, conversa e cuida dos clientes. Administrador faz tudo, inclusive a equipe e o perfil da agência; recrutador faz tudo menos isso. O que cada um faz fica anotado com o nome dele. Para tirar alguém, toque em “Tirar”: a pessoa perde o acesso na hora. Quem é da equipe troca entre a agência e a própria conta no menu do painel.",
+      },
+      {
         p: "Sou agência: como mando os finalistas para o cliente?",
         r: "No quadro da vaga, marque quem deu match e toque em “Enviar ao cliente” (ou use “Finalistas para o cliente”, no topo do quadro). Escreva o seu parecer de cada pessoa, crie o link e mande ao cliente pelo WhatsApp. Ele abre sem criar conta, vê o currículo e o seu parecer e responde “Quero entrevistar” ou “Não seguir”, com um comentário. A resposta aparece no seu quadro e chega um aviso. Telefone, e-mail e o PDF do currículo não aparecem para o cliente. O link vale 30 dias: dá para renovar ou trocar. A página do cliente dá para imprimir ou salvar em PDF.",
       },

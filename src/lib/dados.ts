@@ -54,15 +54,30 @@ function nomeDaConta(meta: Record<string, unknown> | undefined): string | null {
   return nome ? nome.slice(0, 80) : null;
 }
 
-/** Quem está logado (ou null). Validado pelo Supabase a cada visita. */
+/**
+ * Quem está logado (ou null). Validado pelo Supabase a cada visita. Quem é da equipe de uma agência
+ * e escolheu agir por ela tem no token a conta ("conta"): o `id` é o da agência (o banco faz o
+ * mesmo, em conta_atual()). O papel vem do banco a cada visita: quem foi tirado da equipe volta na
+ * hora para a própria conta, e quem mudou de papel já vê o novo.
+ */
 export const obterUsuario = cache(async (): Promise<Usuario | null> => {
   if (MODO_DEMO) return null;
   const supabase = await criarClienteServidor();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims?.sub) return null;
+  let conta =
+    typeof claims.conta === "string" && UUID.test(claims.conta) && claims.conta !== claims.sub ? claims.conta : null;
+  let papel: Usuario["papel"] = "dono";
+  if (conta) {
+    const { data: doBanco } = await supabase.rpc("papel_na_conta");
+    if (doBanco === "admin" || doBanco === "recrutador") papel = doBanco;
+    else conta = null;
+  }
   return {
-    id: claims.sub,
+    id: conta ?? claims.sub,
+    pessoaId: claims.sub,
+    papel,
     email: typeof claims.email === "string" && claims.email ? claims.email : null,
     telefone: typeof claims.phone === "string" && claims.phone ? claims.phone : null,
     nome: nomeDaConta(claims.user_metadata as Record<string, unknown> | undefined),

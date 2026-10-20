@@ -5,9 +5,10 @@ import { Suspense } from "react";
 import { ExcluirConta, FormPerfil } from "@/components/form-perfil";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { TrocarEmail } from "@/components/trocar-email";
-import { Container, Esqueleto } from "@/components/ui/basicos";
+import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { aceitePendente, obterMeuPerfil } from "@/lib/dados";
+import { PAPEIS_EQUIPE } from "@/lib/equipe";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -43,6 +44,42 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   ]);
   const conta = contaAuth.data.user;
   const proximo = caminhoSeguro(primeiro(sp.next), "");
+
+  // quem é da equipe de uma agência e age por ela: o perfil é o da agência
+  if (usuario.papel !== "dono") {
+    const papel = PAPEIS_EQUIPE[usuario.papel];
+    return (
+      <>
+        <Aviso tipo="info" className="mb-6" titulo={`Você está agindo pela ${perfil?.nome ?? "agência"}`}>
+          <p>
+            Este é o perfil da agência. Você é {papel.nome.toLowerCase()} na equipe
+            {usuario.papel === "recrutador" ? ": só quem administra muda o perfil da agência." : "."}
+          </p>
+          <p className="mt-2">
+            Para mudar os seus dados (nome, celular, currículo), troque para a sua conta no menu do painel.
+          </p>
+          {perfil && (
+            <p className="mt-2">
+              <Link href={`/perfil/${perfil.id}`} className="text-label underline">
+                Ver como o perfil da agência aparece
+              </Link>
+            </p>
+          )}
+        </Aviso>
+        {usuario.papel === "admin" && perfil && (
+          <FormPerfil
+            perfil={perfil}
+            usuarioId={usuario.id}
+            telefone={null}
+            email={null}
+            completar={false}
+            pedirAceite={pendente}
+            proximo={proximo}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>

@@ -15,12 +15,15 @@ import {
   Store,
   UserSearch,
   Users,
+  UsersRound,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { trocarConta } from "@/lib/acoes/equipe";
+import { PAPEIS_EQUIPE, type ContaDisponivel, type PapelNaConta } from "@/lib/equipe";
 import {
   COOKIE_MODO,
   modoDaRota,
@@ -47,6 +50,7 @@ const ICONES: Record<Secao["icone"], LucideIcon> = {
   vitrine: Store,
   avaliacoes: Star,
   clientes: Building2,
+  equipe: UsersRound,
 };
 
 function guardarModo(modo: ModoPainel) {
@@ -68,12 +72,18 @@ export function MenuPainel({
   contadores,
   nome,
   tipoConta = null,
+  contas = [],
+  papel = "dono",
 }: {
   modo: ModoPainel;
   contadores: Contadores;
   nome: string | null;
-  /** o tipo da conta (agência ganha "Clientes" em Contratar) */
+  /** o tipo da conta (agência ganha "Clientes" e "Equipe" em Contratar) */
   tipoConta?: string | null;
+  /** as contas pelas quais a pessoa pode agir (a dela e as das equipes): com mais de uma, dá para trocar */
+  contas?: ContaDisponivel[];
+  /** o papel na conta atual (quem é da equipe age pela agência) */
+  papel?: PapelNaConta;
 }) {
   const caminho = usePathname() ?? "/painel";
   const tipo = useSearchParams()?.get("tipo") ?? null;
@@ -85,6 +95,24 @@ export function MenuPainel({
   const caixa = useRef<HTMLDivElement>(null);
   const idMenu = useId();
   const atual = MODOS.find((m) => m.valor === modo) ?? MODOS[0];
+  const [trocando, iniciarTroca] = useTransition();
+  const [erroTroca, setErroTroca] = useState<string | null>(null);
+
+  function agirComo(conta: ContaDisponivel) {
+    if (conta.atual) return setAberto(false);
+    setErroTroca(null);
+    iniciarTroca(async () => {
+      const r = await trocarConta(conta.conta_id);
+      if (!r.ok) {
+        if (r.ir) router.push(r.ir);
+        return setErroTroca(r.erro);
+      }
+      setAberto(false);
+      guardarModo(conta.tipo === "agencia" ? "contratar" : "trabalhar");
+      router.push("/painel");
+      router.refresh();
+    });
+  }
 
   // abriu uma página de outro modo (um link de e-mail, por exemplo): o menu e a página Hoje vão junto
   useEffect(() => {
@@ -127,35 +155,71 @@ export function MenuPainel({
           className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2 text-left transition-colors hover:bg-surface-300"
         >
           <span className="min-w-0 flex-1">
-            <span className="block text-caption text-ink-muted uppercase">{atual.nome}</span>
+            <span className="block text-caption text-ink-muted uppercase">
+              {atual.nome}
+              {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
+            </span>
             {nome && <span className="block truncate text-label">{nome}</span>}
           </span>
           <span className="text-body-sm text-ink-muted">Trocar</span>
           <ChevronDown aria-hidden className={`size-4 shrink-0 transition-transform ${aberto ? "rotate-180" : ""}`} />
         </button>
         {aberto && (
-          <ul
+          <div
             id={idMenu}
-            aria-label="Modos do painel"
             className="absolute top-full right-0 left-0 z-40 mt-1 rounded-md border border-line-strong bg-surface-200 py-1 shadow-raised"
           >
-            {MODOS.map((m) => (
-              <li key={m.valor}>
-                <button
-                  type="button"
-                  aria-current={m.valor === modo ? "true" : undefined}
-                  onClick={() => escolher(m.valor)}
-                  className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-label">{m.nome}</span>
-                    <span className="block text-body-sm text-ink-muted">{m.ajuda}</span>
-                  </span>
-                  {m.valor === modo && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
-                </button>
-              </li>
-            ))}
-          </ul>
+            {contas.length > 1 && (
+              <>
+                <p className="px-4 pt-2 pb-1 text-caption text-ink-muted uppercase">Agir como</p>
+                <ul aria-label="Contas" className="border-b border-line pb-1">
+                  {contas.map((c) => (
+                    <li key={c.conta_id}>
+                      <button
+                        type="button"
+                        aria-current={c.atual ? "true" : undefined}
+                        disabled={trocando}
+                        onClick={() => agirComo(c)}
+                        className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300 disabled:opacity-60"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-label">{c.nome}</span>
+                          <span className="block text-body-sm text-ink-muted">
+                            {c.papel === "dono" ? "Sua conta" : `Equipe · ${PAPEIS_EQUIPE[c.papel].nome}`}
+                          </span>
+                        </span>
+                        {c.atual && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {erroTroca && (
+                  <p role="alert" className="px-4 py-2 text-body-sm text-danger">
+                    {erroTroca}
+                  </p>
+                )}
+                <p className="px-4 pt-2 pb-1 text-caption text-ink-muted uppercase">Modo</p>
+              </>
+            )}
+            <ul aria-label="Modos do painel">
+              {MODOS.map((m) => (
+                <li key={m.valor}>
+                  <button
+                    type="button"
+                    aria-current={m.valor === modo ? "true" : undefined}
+                    onClick={() => escolher(m.valor)}
+                    className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-label">{m.nome}</span>
+                      <span className="block text-body-sm text-ink-muted">{m.ajuda}</span>
+                    </span>
+                    {m.valor === modo && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 
