@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, List, Users } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Download, List, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -59,6 +59,8 @@ async function Conteudo({
     )
   ).get(id);
   const status = anuncio.status as StatusAnuncio;
+  const agencia = anuncio.autor_tipo === "agencia";
+  const finalistas = cartoes.filter((c) => c.finalista).length;
   const endereco = [anuncio.endereco, formatarLugar(anuncio.bairro, anuncio.cidade)].filter(Boolean).join(", ");
 
   return (
@@ -80,11 +82,15 @@ async function Conteudo({
               </span>
             </div>
             <h2 className="mt-2 text-h2">{anuncio.titulo}</h2>
-            {anuncio.autor_tipo === "agencia" && (
-              <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
-            )}
+            {agencia && <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />}
           </div>
           <div className="flex flex-wrap gap-2">
+            {agencia && (
+              <BotaoLink href={`/painel/anuncio/${id}/finalistas`} tamanho="sm">
+                <ClipboardCheck aria-hidden />
+                {finalistas ? `Finalistas para o cliente (${finalistas})` : "Finalistas para o cliente"}
+              </BotaoLink>
+            )}
             <BotaoLink href={`/painel/anuncio/${id}`} tamanho="sm">
               <List aria-hidden />
               Ver em lista
@@ -118,6 +124,7 @@ async function Conteudo({
           modelos={modelos}
           agora={agora}
           abrir={abrir}
+          agencia={agencia}
         />
       )}
     </div>

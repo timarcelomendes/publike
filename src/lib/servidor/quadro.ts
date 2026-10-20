@@ -11,6 +11,8 @@ import { colunaDoCandidato, MODELOS_PRONTOS, type ModeloMensagem } from "@/lib/r
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { AnuncioCompleto } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta, type Pergunta } from "@/lib/vaga-extra";
+import type { RespostaCliente } from "@/lib/finalistas";
+import { finalistasDaVaga } from "./finalistas";
 import { obterTriagem } from "./triagem";
 
 // Tudo o que o quadro de candidatos de uma vaga precisa, montado no servidor:
@@ -50,6 +52,8 @@ export type CartaoDoQuadro = {
   semCurriculo: boolean;
   /** você aceitou e a vaga espera o currículo para dar match */
   aceita: boolean;
+  /** está nos finalistas para o cliente (com a resposta dele) */
+  finalista: RespostaCliente | null;
 };
 
 /** As entrevistas em aberto (ou a última) de cada candidato de uma vaga. */
@@ -91,9 +95,13 @@ export async function modelosDaConta(): Promise<ModeloMensagem[]> {
   return [...(data ?? []), ...MODELOS_PRONTOS];
 }
 
+function finalistaDe(f: RespostaCliente | undefined): RespostaCliente | null {
+  return f ? { decisao: f.decisao, comentario: f.comentario, quem: f.quem, decidido_em: f.decidido_em } : null;
+}
+
 export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
   const id = anuncio.id;
-  const [interessados, etapas, curriculos, respostas, triagem, entrevistas, modelos] = await Promise.all([
+  const [interessados, etapas, curriculos, respostas, triagem, entrevistas, modelos, finalistas] = await Promise.all([
     listarInteressados(id),
     listarEtapasDosCandidatos(id),
     listarCurriculosDosInteressados(id).catch(() => new Map()),
@@ -101,6 +109,7 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
     obterTriagem(id),
     entrevistasDaVaga(id),
     modelosDaConta(),
+    finalistasDaVaga(id),
   ]);
   const perguntas: Pergunta[] = juntarTriagem(perguntasDoBanco(anuncio.perguntas), triagem);
   const vaga = { ...requisitosDaVaga(anuncio), perguntas };
@@ -130,6 +139,7 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       temCurriculo: Boolean(cv),
       semCurriculo: anuncio.pede_curriculo && !cv,
       aceita: anuncio.pede_curriculo && !cv && esperaCurriculo(p),
+      finalista: finalistaDe(finalistas.get(p.perfil_id)),
     };
   });
   // os mais aderentes primeiro; empate: quem curtiu antes

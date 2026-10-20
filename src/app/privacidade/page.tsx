@@ -101,7 +101,7 @@ export default function Privacidade() {
             itens={[
               "Não aparece no seu perfil público nem no Google. Na busca, só se você ligar “Aparecer na aba Talentos” (veja abaixo).",
               "Só vê quem anunciou uma vaga que você curtiu, e só enquanto a curtida existir. Desfez a curtida, deixou de ver.",
-              "Se a vaga é de uma agência de emprego, a agência pode mostrar seu currículo à empresa contratante daquela vaga, só para a seleção.",
+              "Se a vaga é de uma agência de emprego, a agência pode mostrar seu currículo à empresa contratante daquela vaga, só para a seleção. Pelo link de finalistas do Publike, a empresa vê o currículo e o parecer da agência, sem o seu telefone, o e-mail nem o PDF, e você recebe um aviso.",
               "Se você ligar “Deixar as empresas me encontrarem”, quem tem vaga na sua cidade vê o currículo em Talentos, com o nome encurtado e sem telefone nem e-mail, e pode convidar você para a vaga. Desligou, sumiu da lista.",
               "Se você ligar “Aparecer na aba Talentos”, qualquer visitante vê um resumo na aba Talentos da busca: o nome encurtado, o bairro, o que você faz, as habilidades, os cursos, os estudos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram veem o currículo completo e a foto, e podem convidar você para uma vaga. Telefone, e-mail e o PDF continuam escondidos, e a aba fica fora do Google. Desligou, saiu da aba na hora.",
               "O PDF fica guardado num lugar fechado e só abre com um link que vale por uma hora.",

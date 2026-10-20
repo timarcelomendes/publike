@@ -1,6 +1,16 @@
 "use client";
 
-import { CalendarClock, ExternalLink, GripVertical, MessageCircle, MessagesSquare, Send, X } from "lucide-react";
+import {
+  CalendarClock,
+  ClipboardCheck,
+  ExternalLink,
+  GripVertical,
+  MessageCircle,
+  MessagesSquare,
+  Send,
+  UserPlus,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import {
   useEffect,
@@ -13,8 +23,10 @@ import {
   type ReactNode,
 } from "react";
 import type { Aderencia } from "@/lib/aderencia";
+import { adicionarFinalistas, tirarFinalista } from "@/lib/acoes/finalistas";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
+import { DECISOES_CLIENTE, type RespostaCliente } from "@/lib/finalistas";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
 import { CaminhoDoAceite } from "../caminho-curtida";
@@ -57,6 +69,8 @@ export type CartaoQuadro = {
   semCurriculo: boolean;
   /** você aceitou e a vaga espera o currículo para dar match */
   aceita: boolean;
+  /** está nos finalistas para o cliente (com a resposta dele) */
+  finalista: RespostaCliente | null;
 };
 
 export function QuadroCandidatos({
@@ -68,6 +82,7 @@ export function QuadroCandidatos({
   modelos,
   agora,
   abrir = null,
+  agencia = false,
 }: {
   anuncioId: string;
   vaga: string;
@@ -78,6 +93,8 @@ export function QuadroCandidatos({
   agora: number;
   /** abre já o cartão desta pessoa (vindo de “Abrir no quadro”, na tela Candidatos) */
   abrir?: string | null;
+  /** agência: mandar os finalistas ao cliente */
+  agencia?: boolean;
 }) {
   const [lista, mover] = useOptimistic(cartoes, (atual, m: { ids: string[]; coluna: EtapaCandidato }) =>
     atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna } : c)),
@@ -109,6 +126,15 @@ export function QuadroCandidatos({
         setAviso({ ok: !r.falhas.length, texto: [r.mensagem, falhas].filter(Boolean).join(" ") });
         setSelecionados((s) => s.filter((id) => !mudam.includes(id)));
       }
+    });
+  }
+
+  function enviarAoCliente(ids: string[]) {
+    setAviso(null);
+    iniciar(async () => {
+      const r = await adicionarFinalistas(anuncioId, ids);
+      setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+      if (r.ok) setSelecionados([]);
     });
   }
 
@@ -226,6 +252,12 @@ export function QuadroCandidatos({
             <Send aria-hidden />
             Mandar mensagem
           </Botao>
+          {agencia && (
+            <Botao tamanho="sm" disabled={pendente} onClick={() => enviarAoCliente(selecionados)}>
+              <ClipboardCheck aria-hidden />
+              Enviar ao cliente
+            </Botao>
+          )}
           <Botao tamanho="sm" variante="fantasma" onClick={() => setSelecionados([])}>
             Limpar
           </Botao>
@@ -259,6 +291,9 @@ export function QuadroCandidatos({
             modelos={modelos}
             agora={agora}
             moverPara={(coluna) => moverPara([atual.perfil_id], coluna)}
+            agencia={agencia}
+            enviarAoCliente={() => enviarAoCliente([atual.perfil_id])}
+            pendente={pendente}
           />
         )}
       </Gaveta>
@@ -322,7 +357,7 @@ function Cartao({
           </p>
         </div>
       </div>
-      {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito") && (
+      {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito" || c.finalista) && (
         <div className="flex flex-wrap gap-1.5">
           {c.status === "pendente" &&
             (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Para responder</Selo>)}
@@ -333,6 +368,7 @@ function Cartao({
               {dataDaEntrevista(e.quando)}
             </Selo>
           )}
+          {c.finalista && <SeloDoCliente r={c.finalista} />}
         </div>
       )}
       <Seletor
@@ -361,6 +397,9 @@ function DetalheCandidato({
   modelos,
   agora,
   moverPara,
+  agencia,
+  enviarAoCliente,
+  pendente,
 }: {
   c: CartaoQuadro;
   anuncioId: string;
@@ -370,6 +409,9 @@ function DetalheCandidato({
   modelos: ModeloMensagem[];
   agora: number;
   moverPara: (coluna: EtapaCandidato) => void;
+  agencia: boolean;
+  enviarAoCliente: () => void;
+  pendente: boolean;
 }) {
   const [marcando, setMarcando] = useState(false);
   const [marcou, setMarcou] = useState(false);
@@ -455,6 +497,18 @@ function DetalheCandidato({
         </div>
       </Secao>
 
+      {agencia && (
+        <Secao titulo="Cliente">
+          <ClienteDoCandidato
+            c={c}
+            anuncioId={anuncioId}
+            agora={agora}
+            enviarAoCliente={enviarAoCliente}
+            pendente={pendente}
+          />
+        </Secao>
+      )}
+
       <Secao titulo="Aderência à vaga">
         <DetalheDaAderencia a={c.aderencia} editarVaga={`/painel/anuncio/${anuncioId}/editar`} />
       </Secao>
@@ -517,6 +571,96 @@ function DetalheCandidato({
           />
         )}
       </Secao>
+    </div>
+  );
+}
+
+/** No cartão: o candidato está com o cliente, e o que ele respondeu. */
+function SeloDoCliente({ r }: { r: RespostaCliente }) {
+  if (!r.decisao) return <Selo variante="contorno">Com o cliente</Selo>;
+  return (
+    <Selo variante={DECISOES_CLIENTE[r.decisao].selo} title={r.comentario ?? undefined}>
+      Cliente: {DECISOES_CLIENTE[r.decisao].nome.toLowerCase()}
+    </Selo>
+  );
+}
+
+/** Na gaveta (agência): mandar ao cliente, ou o que o cliente respondeu. */
+function ClienteDoCandidato({
+  c,
+  anuncioId,
+  agora,
+  enviarAoCliente,
+  pendente,
+}: {
+  c: CartaoQuadro;
+  anuncioId: string;
+  agora: number;
+  enviarAoCliente: () => void;
+  pendente: boolean;
+}) {
+  const [tirando, iniciar] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
+  const primeiro = c.nome.split(" ")[0];
+  const f = c.finalista;
+  const lista = (
+    <Link
+      href={`/painel/anuncio/${anuncioId}/finalistas#finalista-${c.perfil_id}`}
+      className="underline underline-offset-2"
+    >
+      Ver os finalistas e o parecer
+    </Link>
+  );
+  if (!f) {
+    if (c.status !== "match") {
+      return <p className="text-body-sm text-ink-muted">Depois do match, dá para mandar {primeiro} ao cliente.</p>;
+    }
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <Botao tamanho="sm" disabled={pendente} onClick={enviarAoCliente}>
+          <UserPlus aria-hidden />
+          Pôr nos finalistas
+        </Botao>
+        <p className="text-body-sm text-ink-muted">
+          O cliente vê o currículo (sem contato) e o seu parecer, e responde pelo link. {lista}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2 text-body-sm">
+      <p className="flex flex-wrap items-center gap-2">
+        <SeloDoCliente r={f} />
+        {f.decidido_em && (
+          <span className="text-ink-muted">
+            {f.quem ? `${f.quem}, ` : ""}
+            {tempoRelativo(f.decidido_em, agora)}
+          </span>
+        )}
+      </p>
+      {f.comentario && <blockquote className="rounded-md bg-surface-300 p-3">“{f.comentario}”</blockquote>}
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {lista}
+        <button
+          type="button"
+          disabled={tirando}
+          onClick={() =>
+            iniciar(async () => {
+              setErro(null);
+              const r = await tirarFinalista(anuncioId, c.perfil_id);
+              if (!r.ok) setErro(r.erro);
+            })
+          }
+          className="text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60"
+        >
+          Tirar da lista
+        </button>
+      </p>
+      {erro && (
+        <p role="alert" className="text-danger">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

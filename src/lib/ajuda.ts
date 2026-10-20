@@ -112,6 +112,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         p: "Sou agência: como organizo as vagas por cliente?",
         r: "No painel, em Clientes, cadastre as empresas para quem você seleciona: nome, CNPJ, endereço, quem é o contato lá e anotações. Ao publicar, escolha o cliente: o nome e o endereço já vêm na vaga. Na ficha de cada cliente aparecem as vagas, os candidatos, quem espera resposta e quem foi contratado, e dá para baixar a planilha só dos candidatos daquele cliente. CNPJ, contato e anotações ficam só com você; na vaga aparece só o nome do cliente (ou “Empresa confidencial”, e aí você continua sabendo de quem é a vaga).",
       },
+      {
+        p: "Sou agência: como mando os finalistas para o cliente?",
+        r: "No quadro da vaga, marque quem deu match e toque em “Enviar ao cliente” (ou use “Finalistas para o cliente”, no topo do quadro). Escreva o seu parecer de cada pessoa, crie o link e mande ao cliente pelo WhatsApp. Ele abre sem criar conta, vê o currículo e o seu parecer e responde “Quero entrevistar” ou “Não seguir”, com um comentário. A resposta aparece no seu quadro e chega um aviso. Telefone, e-mail e o PDF do currículo não aparecem para o cliente. O link vale 30 dias: dá para renovar ou trocar. A página do cliente dá para imprimir ou salvar em PDF.",
+      },
     ],
   },
   {
@@ -598,6 +602,16 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
           },
           INTERESSADOS,
           TALENTOS,
+          {
+            titulo: "Mande os finalistas ao cliente",
+            texto: "No quadro da vaga, marque quem deu match e toque em “Enviar ao cliente”. Depois, mande o link.",
+            detalhes: [
+              "Escreva o seu parecer de cada pessoa (a IA ajuda a começar). O cliente lê junto com o currículo.",
+              "O cliente abre sem criar conta e responde “Quero entrevistar” ou “Não seguir”, com um comentário. A resposta aparece no quadro e chega um aviso.",
+              "Telefone, e-mail e o PDF do currículo não aparecem para o cliente: o contato fica com você.",
+              "O link vale 30 dias. Renove ou troque quando quiser (trocando, o antigo para de abrir). A página dá para imprimir ou salvar em PDF.",
+            ],
+          },
           {
             titulo: "Acompanhe cada cliente",
             texto: "A ficha do cliente junta as vagas, os candidatos e quem foi contratado.",

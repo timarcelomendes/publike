@@ -276,3 +276,18 @@
 .maplibregl-ctrl-attrib {
   font-size: 11px;
 }
+
+/* Impressão. Página feita para imprimir (data-imprimir, como a dos finalistas para o cliente):
+   só o conteúdo, sem o topo, o rodapé, a barra de baixo e os avisos do site. Em qualquer página,
+   o que tem data-nao-imprimir (botões, formulários) fica de fora do papel. */
+@media print {
+  body:has([data-imprimir]) > :not(main) {
+    display: none !important;
+  }
+  body:has([data-imprimir]) {
+    padding-bottom: 0 !important;
+  }
+  [data-nao-imprimir] {
+    display: none !important;
+  }
+}

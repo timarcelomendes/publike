@@ -33,6 +33,37 @@ export type Database = {
         Update: { nome?: string; texto?: string };
         Relationships: [];
       };
+      /** finalistas que a agência mostra ao cliente pelo link (só quem publicou a vaga lê) */
+      finalistas: {
+        Row: {
+          id: string;
+          anuncio_id: string;
+          perfil_id: string;
+          parecer: string | null;
+          decisao: string | null;
+          comentario: string | null;
+          quem: string | null;
+          decidido_em: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
+      links_finalistas: {
+        Row: {
+          anuncio_id: string;
+          token: string;
+          criado_em: string;
+          expira_em: string;
+          aberto_em: string | null;
+          aberturas: number;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       anuncio_visitas: {
         Row: { anuncio_id: string; total: number; atualizado_em: string };
         Insert: SemTabela;
@@ -1165,6 +1196,27 @@ export type Database = {
       responder_entrevista: { Args: { p_id: string; p_resposta: string }; Returns: undefined };
       contar_visita: { Args: { p_anuncio: string }; Returns: undefined };
       contar_acesso: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
+      adicionar_finalistas: { Args: { p_anuncio: string; p_perfis: string[] }; Returns: number };
+      tirar_finalista: { Args: { p_anuncio: string; p_perfil: string }; Returns: undefined };
+      salvar_parecer_finalista: {
+        Args: { p_anuncio: string; p_perfil: string; p_parecer: string };
+        Returns: undefined;
+      };
+      link_dos_finalistas: {
+        Args: { p_anuncio: string; p_acao?: string };
+        Returns: { token: string; expira_em: string }[];
+      };
+      finalistas_do_link: { Args: { p_token: string }; Returns: Json };
+      responder_finalista: {
+        Args: {
+          p_token: string;
+          p_id: string;
+          p_decisao: string | null;
+          p_comentario?: string | null;
+          p_quem?: string | null;
+        };
+        Returns: string;
+      };
       responder_perguntas: {
         Args: { p_anuncio: string; p_respostas: Json };
         Returns: undefined;
