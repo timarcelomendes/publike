@@ -81,6 +81,7 @@ export async function PainelRecrutador({
   candidatos,
   agora,
   clientes = null,
+  extras = [],
 }: {
   nome: string;
   autorId: string;
@@ -89,6 +90,8 @@ export async function PainelRecrutador({
   agora: number;
   /** agência: quantos clientes estão na lista (null: não é agência) */
   clientes?: number | null;
+  /** outros "para fazer agora" da conta (as conexões: pedidos e mensagens novas) */
+  extras?: Cartao[];
 }) {
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
@@ -277,6 +280,7 @@ export async function PainelRecrutador({
       acao: "Ver os clientes",
     });
   }
+  cartoes.push(...extras);
 
   const responde = resposta ? comoResponde(resposta) : null;
 

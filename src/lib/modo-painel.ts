@@ -29,7 +29,7 @@ export function modoPadrao(tipoConta: string | null | undefined, intencao: Inten
 }
 
 /** Contadores que aparecem nas seções do menu. */
-export type Contadores = { responder: number; pedidos: number; mensagens: number };
+export type Contadores = { responder: number; pedidos: number; mensagens: number; conexoes: number };
 
 export type Secao = {
   href: string;
@@ -48,7 +48,8 @@ export type Secao = {
     | "vitrine"
     | "avaliacoes"
     | "clientes"
-    | "equipe";
+    | "equipe"
+    | "conexoes";
   contador?: keyof Contadores;
 };
 
@@ -58,12 +59,14 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel/caixa", nome: "Caixa de entrada", icone: "caixa", contador: "responder" },
     { href: "/painel/anuncios?tipo=vaga", nome: "Minhas vagas", icone: "vagas" },
     { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
+    { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes" },
     { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
   ],
   trabalhar: [
     { href: "/painel", nome: "Hoje", icone: "hoje" },
     { href: "/painel/curtidas?tipo=vaga", nome: "Candidaturas", icone: "curtidas" },
     { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
+    { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes" },
     { href: "/painel/seguindo", nome: "Avisos e seguindo", icone: "avisos" },
     { href: "/perfil/curriculo", nome: "Currículo", icone: "curriculo" },
   ],

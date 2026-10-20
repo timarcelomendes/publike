@@ -2,6 +2,7 @@ import {
   Bell,
   CalendarClock,
   FileText,
+  Handshake,
   Hourglass,
   MessageCircle,
   MessagesSquare,
@@ -23,6 +24,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
+import { caminhoConexao, type Conexao } from "@/lib/conexoes";
 import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu, type EtapaCandidato } from "@/lib/constantes";
 import {
   contarMinhasSalvas,
@@ -43,6 +45,7 @@ import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { COOKIE_MODO, lerModo, modoPadrao } from "@/lib/modo-painel";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import { listarMeusClientes } from "@/lib/servidor/clientes";
+import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { minhasContas } from "@/lib/servidor/equipe";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { exigirUsuario } from "@/lib/sessao";
@@ -84,14 +87,45 @@ function nomes(lista: string[]) {
 
 const soma = (lista: number[]) => lista.reduce((total, n) => total + n, 0);
 
+/** As conexões que pedem algo: pedidos para responder e mensagens novas (Contratar e Trabalhar). */
+function cartoesDeConexao(lista: Conexao[] | null): Cartao[] {
+  const recebidos = (lista ?? []).filter((c) => c.status === "pendente" && !c.pedi);
+  const comNovas = (lista ?? []).filter((c) => c.status === "aceita" && c.nao_lidas > 0);
+  const link = (l: Conexao[]) => (l.length === 1 ? caminhoConexao(l[0].outro_id) : "/painel/conexoes");
+  const cartoes: Cartao[] = [];
+  if (recebidos.length) {
+    cartoes.push({
+      icone: Handshake,
+      tom: "urgente",
+      quando: "Conexões",
+      titulo: plural(recebidos.length, "pedido de conexão", "pedidos de conexão"),
+      texto: `De ${nomes(recebidos.map((c) => c.outro_nome))}. Aceite ou recuse.`,
+      href: link(recebidos),
+      acao: "Responder",
+    });
+  }
+  if (comNovas.length) {
+    cartoes.push({
+      icone: MessagesSquare,
+      quando: "Conexões",
+      titulo: plural(soma(comNovas.map((c) => c.nao_lidas)), "mensagem nova", "mensagens novas"),
+      texto: `De ${nomes(comNovas.map((c) => c.outro_nome))}`,
+      href: link(comNovas),
+      acao: "Ler e responder",
+    });
+  }
+  return cartoes;
+}
+
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel");
-  const [perfil, intencao, jar, conversas] = await Promise.all([
+  const [perfil, intencao, jar, conversas, conexoes] = await Promise.all([
     obterMeuPerfil(),
     talvez(obterIntencao(), "a intenção"),
     cookies(),
     listarMinhasConversas(),
+    minhasConexoes().catch(() => null),
   ]);
   const agora = await agoraDaRequisicao();
   const modo = lerModo(jar.get(COOKIE_MODO)?.value) ?? modoPadrao(perfil?.tipo, intencao);
@@ -117,6 +151,7 @@ async function Conteudo() {
         candidatos={candidatos}
         agora={agora}
         clientes={clientes}
+        extras={cartoesDeConexao(conexoes)}
       />
     );
   } else if (modo === "servicos") {
@@ -144,6 +179,7 @@ async function Conteudo() {
         curriculo={curriculo}
         entrevistas={entrevistas}
         conversas={conversas}
+        conexoes={conexoes}
         salvas={salvas}
         visivel={visivel}
         vitrine={vitrine}
@@ -265,6 +301,7 @@ function HojeTrabalhar({
   curriculo,
   entrevistas,
   conversas,
+  conexoes,
   salvas,
   visivel,
   vitrine,
@@ -276,6 +313,7 @@ function HojeTrabalhar({
   curriculo: { c: Curriculo | null } | null;
   entrevistas: EntrevistaMinha[];
   conversas: Conversa[] | null;
+  conexoes: Conexao[] | null;
   salvas: number | null;
   /** o currículo aparece em Talentos para as empresas */
   visivel: boolean;
@@ -332,6 +370,7 @@ function HojeTrabalhar({
     });
   }
   cartoes.push(...cartoesDaConta(perfil, conversas, (c) => c.papel === "curti" && c.anuncio_tipo === "vaga"));
+  cartoes.push(...cartoesDeConexao(conexoes));
   if (semCurriculo && aceitas.length === 0) {
     cartoes.push({
       icone: FileText,

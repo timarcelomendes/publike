@@ -128,6 +128,34 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      conexoes: {
+        Row: {
+          id: string;
+          talento_id: string;
+          empresa_id: string;
+          pedida_por: string;
+          status: string;
+          mensagem: string | null;
+          criado_em: string;
+          respondida_em: string | null;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
+      mensagens_conexao: {
+        Row: {
+          id: number;
+          conexao_id: string;
+          autor_id: string;
+          texto: string;
+          criado_em: string;
+          lida_em: string | null;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       links_finalistas: {
         Row: {
           anuncio_id: string;
@@ -1347,6 +1375,54 @@ export type Database = {
           anuncio_id: string | null;
           perfil_id: string | null;
         }[];
+      };
+      pedir_conexao: {
+        Args: { p_com: string; p_mensagem?: string | null };
+        Returns: { id: string; status: string }[];
+      };
+      responder_conexao: {
+        Args: { p_conexao: string; p_aceitar: boolean };
+        Returns: undefined;
+      };
+      desfazer_conexao: {
+        Args: { p_conexao: string };
+        Returns: undefined;
+      };
+      enviar_mensagem_conexao: {
+        Args: { p_conexao: string; p_texto: string };
+        Returns: number;
+      };
+      marcar_conexao_lida: {
+        Args: { p_conexao: string };
+        Returns: undefined;
+      };
+      minhas_conexoes: {
+        Args: { p_outro?: string | null };
+        Returns: {
+          id: string;
+          status: string;
+          pedi: boolean;
+          outro_id: string;
+          outro_nome: string;
+          outro_foto: string | null;
+          outro_tipo: string;
+          outro_cidade: string;
+          outro_bairro: string | null;
+          outro_na_vitrine: boolean;
+          mensagem: string | null;
+          criado_em: string;
+          respondida_em: string | null;
+          whatsapp: string | null;
+          email: string | null;
+          ultima_texto: string | null;
+          ultima_em: string | null;
+          ultima_minha: boolean | null;
+          nao_lidas: number;
+        }[];
+      };
+      estado_conexoes: {
+        Args: { p_outros: string[] };
+        Returns: { outro_id: string; conexao_id: string; status: string; pedi: boolean }[];
       };
       responder_finalista: {
         Args: {

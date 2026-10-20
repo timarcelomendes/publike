@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import { MenuPainel, MenuPainelEsqueleto } from "@/components/painel/menu-painel";
 import { Container } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
+import { pendenciasDeConexao } from "@/lib/conexoes";
 import { listarMeusAnuncios, listarMinhasConversas, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { COOKIE_MODO, lerModo, modoPadrao, type Contadores } from "@/lib/modo-painel";
+import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { minhasContas } from "@/lib/servidor/equipe";
 import { obterIntencao } from "@/lib/servidor/intencao";
 
@@ -32,9 +34,11 @@ export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
 /** O modo escolhido (ou o da conta) e os números do menu: quem espera resposta e mensagens novas. */
 async function MenuDaConta() {
   if (MODO_DEMO) {
-    return <MenuPainel modo="trabalhar" contadores={{ responder: 0, pedidos: 0, mensagens: 0 }} nome={null} />;
+    return (
+      <MenuPainel modo="trabalhar" contadores={{ responder: 0, pedidos: 0, mensagens: 0, conexoes: 0 }} nome={null} />
+    );
   }
-  const [perfil, intencao, anuncios, conversas, jar, usuario, contas] = await Promise.all([
+  const [perfil, intencao, anuncios, conversas, jar, usuario, contas, conexoes] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     obterIntencao().catch(() => null),
     listarMeusAnuncios().catch(() => []),
@@ -43,6 +47,7 @@ async function MenuDaConta() {
     obterUsuario(),
     // a conta da pessoa e as das equipes de que faz parte (com mais de uma, dá para trocar)
     minhasContas().catch(() => []),
+    minhasConexoes().catch(() => null),
   ]);
   const modo = lerModo(jar.get(COOKIE_MODO)?.value) ?? modoPadrao(perfil?.tipo, intencao);
   const soma = (tipo: string) =>
@@ -51,6 +56,7 @@ async function MenuDaConta() {
     responder: soma("vaga"),
     pedidos: soma("servico"),
     mensagens: (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0),
+    conexoes: pendenciasDeConexao(conexoes ?? []),
   };
   return (
     <MenuPainel

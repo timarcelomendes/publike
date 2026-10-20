@@ -2,6 +2,7 @@ import { ArrowLeft, Briefcase, Car, Clock, GraduationCap, Lock, MapPin, UserSear
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { classesHabilidade, textoDisponibilidade } from "@/components/talentos/cartao-talento";
 import { ConvidarTalento } from "@/components/talentos/convidar-talento";
@@ -11,13 +12,15 @@ import { MODO_DEMO } from "@/lib/config";
 import { nomeEscolaridade } from "@/lib/constantes";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
+import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { talentoCompleto, talentoResumo, vagasParaConvidar } from "@/lib/servidor/talentos";
 import { textoDaExperiencia, tituloDoTalento } from "@/lib/talentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 // A página de uma pessoa da aba Talentos. Todo mundo vê o resumo; empresa, comércio e
-// agência que entraram veem o currículo completo (as empresas, as datas e o que fazia) e
-// convidam para uma vaga. Sem telefone, e-mail ou PDF: o contato sai só no match.
+// agência que entraram veem o currículo completo (as empresas, as datas e o que fazia),
+// pedem conexão (sem precisar de vaga) e convidam para uma vaga. Sem telefone, e-mail ou PDF:
+// o contato aparece quando a pessoa aceita a conexão ou no match.
 
 export const metadata: Metadata = { title: "Talento no Publike", robots: { index: false, follow: false } };
 
@@ -69,7 +72,10 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa") && !souEu;
   const completo = empresa ? await talentoCompleto(id) : null;
   const cv = completo?.ok ? completo.talento : null;
-  const vagas = cv ? await vagasParaConvidar(id, agora) : [];
+  const [vagas, estados] = await Promise.all([
+    cv ? vagasParaConvidar(id, agora) : Promise.resolve([]),
+    cv ? estadosDeConexao([resumo.perfil_id]) : Promise.resolve(null),
+  ]);
   const hoje = new Date(agora).toISOString().slice(0, 7);
   const estudo = nomeEscolaridade(resumo.escolaridade);
   const turnos = textoDisponibilidade(resumo.disponibilidade);
@@ -99,7 +105,8 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
         <Aviso tipo="info" titulo="É assim que você aparece na aba Talentos">
           <p>
             Quem visita vê este resumo. Empresas, comércios e agências que entraram veem também as empresas onde você
-            trabalhou e podem convidar você para uma vaga. Telefone e e-mail continuam escondidos.
+            trabalhou, podem pedir conexão com você e convidar para uma vaga. Telefone e e-mail só aparecem se você
+            aceitar a conexão ou der match.
           </p>
           <p className="mt-2">
             <Link href="/perfil/curriculo" className="text-label underline underline-offset-2">
@@ -109,12 +116,35 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
         </Aviso>
       )}
 
+      {cv && (
+        <section
+          aria-labelledby="conectar-titulo"
+          className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+        >
+          <h2 id="conectar-titulo" className="text-h3">
+            Conectar com {primeiroNome}
+          </h2>
+          <p className="text-body-sm text-ink-muted">
+            Não precisa ter vaga aberta. Se {primeiroNome} aceitar, aparecem o WhatsApp e o e-mail dos dois e vocês
+            conversam pelo Publike.
+          </p>
+          <BotaoConectar
+            outroId={resumo.perfil_id}
+            outroNome={resumo.nome}
+            estado={estados?.get(resumo.perfil_id) ?? null}
+            logado
+            voltar={`/talentos/${id}`}
+            para="talento"
+            principal={vagas.length === 0}
+          />
+        </section>
+      )}
       {cv && vagas.length > 0 && <ConvidarTalento perfilId={resumo.perfil_id} nome={resumo.nome} vagas={vagas} />}
       {cv && vagas.length === 0 && (
-        <Aviso tipo="info" titulo={`Publique uma vaga para convidar ${primeiroNome}`}>
-          <p>O convite é para uma vaga sua que esteja no ar. Publicar é grátis e leva dois minutos.</p>
+        <Aviso tipo="info" titulo={`Tem vaga para ${primeiroNome}?`}>
+          <p>Publique a vaga e convide daqui: {primeiroNome} vê a vaga e decide se curte. Publicar é grátis.</p>
           <p className="mt-2">
-            <BotaoLink href="/publicar" tamanho="sm" variante="primario">
+            <BotaoLink href="/publicar" tamanho="sm">
               Publicar vaga grátis
             </BotaoLink>
           </p>
@@ -214,10 +244,10 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
       )}
 
       {!usuario && (
-        <Aviso tipo="info" titulo="Para ver o currículo completo e convidar">
+        <Aviso tipo="info" titulo="Para ver o currículo completo e se conectar">
           <p>
             Entre com a conta da sua empresa, comércio ou agência: aparecem as empresas onde {primeiroNome} trabalhou,
-            as datas e o que fazia, e você convida para uma vaga sua. É grátis.
+            as datas e o que fazia, e você pede conexão (mesmo sem vaga aberta) ou convida para uma vaga sua. É grátis.
           </p>
           <p className="mt-2">
             <BotaoLink href={`/entrar?next=${encodeURIComponent(`/talentos/${id}`)}`} tamanho="sm" variante="primario">
@@ -228,14 +258,14 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
       )}
       {usuario && !empresa && !souEu && (
         <Aviso tipo="info">
-          O currículo completo e o convite para uma vaga são para empresas, comércios e agências. Você está vendo o
-          resumo.
+          O currículo completo, a conexão e o convite para uma vaga são para empresas, comércios e agências. Você está
+          vendo o resumo.
         </Aviso>
       )}
 
       <p className="flex items-start gap-2 border-t border-line pt-4 text-body-sm text-ink-muted">
         <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
-        Telefone e e-mail só aparecem no match: a empresa convida, {primeiroNome} vê a vaga e decide se curte.
+        Telefone e e-mail só aparecem quando {primeiroNome} aceita a conexão ou dá match numa vaga.
       </p>
     </article>
   );

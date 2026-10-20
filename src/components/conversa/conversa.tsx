@@ -11,6 +11,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { enviarMensagemConexao, marcarConexaoLida } from "@/lib/acoes/conexoes";
 import { anexarCurriculoNaConversa, enviarMensagem, linkDoAnexo, marcarConversaLida } from "@/lib/acoes/mensagens";
 import { MAX_PDF_MB } from "@/lib/constantes";
 import type { MensagemConversa } from "@/lib/dados";
@@ -30,21 +31,27 @@ function dia(iso: string) {
 }
 
 /**
- * A conversa de um match, dentro do Publike. As mensagens novas chegam na hora
- * (Supabase Realtime); só os dois do match leem.
+ * A conversa de um match (anúncio + quem curtiu) ou de uma conexão (talento e empresa), dentro do
+ * Publike. As mensagens novas chegam na hora (Supabase Realtime); só os dois leem.
  */
 export function Conversa({
   anuncioId,
   perfilId,
+  conexaoId,
   euId,
   outroNome,
   iniciais,
   compacto = false,
   vaga = true,
-}: {
-  anuncioId: string;
-  /** quem curtiu (a conversa é a da curtida) */
-  perfilId: string;
+}: (
+  | {
+      anuncioId: string;
+      /** quem curtiu (a conversa é a da curtida) */
+      perfilId: string;
+      conexaoId?: undefined;
+    }
+  | { conexaoId: string; anuncioId?: undefined; perfilId?: undefined }
+) & {
   euId: string;
   outroNome: string;
   iniciais: MensagemConversa[];
@@ -62,51 +69,48 @@ export function Conversa({
   const primeiroNome = outroNome.split(" ")[0];
 
   const ler = useEffectEvent(() => {
-    marcarConversaLida(anuncioId, perfilId).catch(() => undefined);
+    (conexaoId ? marcarConexaoLida(conexaoId) : marcarConversaLida(anuncioId ?? "", perfilId ?? "")).catch(
+      () => undefined,
+    );
   });
 
   // ao abrir: marca como lida e passa a ouvir as mensagens novas
   useEffect(() => {
     ler();
     const supabase = criarClienteNavegador();
+    // a conversa de uma conexão tem a própria tabela; a de um match é filtrada pelo anúncio
+    const tabela = conexaoId ? "mensagens_conexao" : "mensagens";
+    const filtro = conexaoId ? `conexao_id=eq.${conexaoId}` : `anuncio_id=eq.${anuncioId}`;
     const canal = supabase
-      .channel(`conversa-${anuncioId}-${perfilId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensagens", filter: `anuncio_id=eq.${anuncioId}` },
-        (mudanca) => {
-          const nova = mudanca.new as MensagemConversa & { perfil_id: string };
-          if (nova.perfil_id !== perfilId) return;
-          setMensagens((atual) => (atual.some((m) => m.id === nova.id) ? atual : [...atual, nova]));
-          if (nova.autor_id !== euId) ler();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "mensagens", filter: `anuncio_id=eq.${anuncioId}` },
-        (mudanca) => {
-          const mudou = mudanca.new as MensagemConversa;
-          // "lida" aparece na hora em que a outra pessoa abre a conversa
-          // e o currículo anexado (entra logo depois da mensagem)
-          setMensagens((atual) =>
-            atual.map((m) =>
-              m.id === mudou.id
-                ? {
-                    ...m,
-                    lida_em: mudou.lida_em,
-                    anexo: mudou.anexo ?? m.anexo,
-                    anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
-                  }
-                : m,
-            ),
-          );
-        },
-      )
+      .channel(conexaoId ? `conexao-${conexaoId}` : `conversa-${anuncioId}-${perfilId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: tabela, filter: filtro }, (mudanca) => {
+        const nova = mudanca.new as MensagemConversa & { perfil_id?: string };
+        if (!conexaoId && nova.perfil_id !== perfilId) return;
+        setMensagens((atual) => (atual.some((m) => m.id === nova.id) ? atual : [...atual, nova]));
+        if (nova.autor_id !== euId) ler();
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: tabela, filter: filtro }, (mudanca) => {
+        const mudou = mudanca.new as MensagemConversa;
+        // "lida" aparece na hora em que a outra pessoa abre a conversa
+        // e o currículo anexado (entra logo depois da mensagem)
+        setMensagens((atual) =>
+          atual.map((m) =>
+            m.id === mudou.id
+              ? {
+                  ...m,
+                  lida_em: mudou.lida_em,
+                  anexo: mudou.anexo ?? m.anexo,
+                  anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
+                }
+              : m,
+          ),
+        );
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(canal);
     };
-  }, [anuncioId, perfilId, euId]);
+  }, [anuncioId, perfilId, conexaoId, euId]);
 
   // desce até a última mensagem
   useEffect(() => {
@@ -120,7 +124,9 @@ export function Conversa({
     if (!t || pendente) return;
     setErro(null);
     iniciar(async () => {
-      const r = await enviarMensagem(anuncioId, perfilId, t);
+      const r = conexaoId
+        ? await enviarMensagemConexao(conexaoId, t)
+        : await enviarMensagem(anuncioId ?? "", perfilId ?? "", t);
       if (!r.ok) {
         setErro(r.erro);
         return;
@@ -131,7 +137,7 @@ export function Conversa({
   }
 
   // currículo pelo chat: só quem curtiu a vaga (a conversa é a da curtida dela)
-  const podeAnexar = vaga && perfilId === euId;
+  const podeAnexar = !conexaoId && vaga && perfilId === euId;
   const [enviandoPdf, setEnviandoPdf] = useState(false);
 
   async function anexar(e: ChangeEvent<HTMLInputElement>) {
@@ -148,6 +154,7 @@ export function Conversa({
         .storage.from("curriculos")
         .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
       if (error) throw error;
+      if (!anuncioId) return;
       const r = await anexarCurriculoNaConversa(anuncioId, caminho, pdf.name);
       if (!r.ok) return setErro(r.erro);
       setMensagens((atual) => (atual.some((m) => m.id === r.mensagem.id) ? atual : [...atual, r.mensagem]));
@@ -187,7 +194,9 @@ export function Conversa({
       >
         {mensagens.length === 0 ? (
           <p className="m-auto max-w-sm text-center text-body-sm text-ink-muted">
-            Deu match! Mande a primeira mensagem para {primeiroNome}: combinem horário, endereço e o que mais precisar.
+            {conexaoId
+              ? `Vocês estão conectados! Mande a primeira mensagem para ${primeiroNome}: conte o que procura e combinem os próximos passos.`
+              : `Deu match! Mande a primeira mensagem para ${primeiroNome}: combinem horário, endereço e o que mais precisar.`}
           </p>
         ) : (
           mensagens.map((m, i) => {

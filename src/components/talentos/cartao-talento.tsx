@@ -1,5 +1,6 @@
 import { Briefcase, Car, Clock, GraduationCap, MapPin } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 import { formatarLugar } from "@/lib/formato";
 import { textoDaExperiencia, tituloDoTalento, type TalentoResumo } from "@/lib/talentos";
@@ -23,8 +24,9 @@ export function textoDisponibilidade(lista: string[]) {
 /**
  * Uma pessoa na aba Talentos: o que faz, onde mora (bairro), a experiência (os cargos, sem as
  * empresas) e as habilidades. Sem foto e com o nome encurtado; o cartão todo abre a página dela.
+ * `acao` (o botão Conectar, para empresas) fica por cima do link do cartão.
  */
-export function CartaoTalento({ t }: { t: TalentoResumo }) {
+export function CartaoTalento({ t, acao }: { t: TalentoResumo; acao?: ReactNode }) {
   const estudo = nomeEscolaridade(t.escolaridade);
   const turnos = textoDisponibilidade(t.disponibilidade);
   const habilidades = t.habilidades.length ? t.habilidades : t.cursos;
@@ -69,28 +71,31 @@ export function CartaoTalento({ t }: { t: TalentoResumo }) {
         </ul>
       )}
 
-      {(estudo || t.cnh || turnos) && (
-        <ul className="mt-auto flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-body-sm text-ink-muted">
-          {estudo && (
-            <li className="flex items-center gap-1.5">
-              <GraduationCap aria-hidden className="size-4 shrink-0" />
-              {estudo}
-            </li>
-          )}
-          {t.cnh && (
-            <li className="flex items-center gap-1.5">
-              <Car aria-hidden className="size-4 shrink-0" />
-              CNH {t.cnh}
-            </li>
-          )}
-          {turnos && (
-            <li className="flex items-center gap-1.5">
-              <Clock aria-hidden className="size-4 shrink-0" />
-              {turnos.charAt(0).toUpperCase() + turnos.slice(1)}
-            </li>
-          )}
-        </ul>
-      )}
+      <div className="mt-auto flex flex-col gap-3">
+        {(estudo || t.cnh || turnos) && (
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-body-sm text-ink-muted">
+            {estudo && (
+              <li className="flex items-center gap-1.5">
+                <GraduationCap aria-hidden className="size-4 shrink-0" />
+                {estudo}
+              </li>
+            )}
+            {t.cnh && (
+              <li className="flex items-center gap-1.5">
+                <Car aria-hidden className="size-4 shrink-0" />
+                CNH {t.cnh}
+              </li>
+            )}
+            {turnos && (
+              <li className="flex items-center gap-1.5">
+                <Clock aria-hidden className="size-4 shrink-0" />
+                {turnos.charAt(0).toUpperCase() + turnos.slice(1)}
+              </li>
+            )}
+          </ul>
+        )}
+        {acao && <div className="relative z-10">{acao}</div>}
+      </div>
     </article>
   );
 }

@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   FileText,
+  Handshake,
   Heart,
   House,
   Inbox,
@@ -51,6 +52,7 @@ const ICONES: Record<Secao["icone"], LucideIcon> = {
   avaliacoes: Star,
   clientes: Building2,
   equipe: UsersRound,
+  conexoes: Handshake,
 };
 
 function guardarModo(modo: ModoPainel) {

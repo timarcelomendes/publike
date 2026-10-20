@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, FileUser, Megaphone, Search, UserSearch } fr
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "@/components/explorar/abas";
 import { CartaoTalento } from "@/components/talentos/cartao-talento";
 import { Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
@@ -12,18 +13,20 @@ import { CIDADES } from "@/lib/constantes";
 import { meuCurriculoNaVitrine, obterMeuPerfil } from "@/lib/dados";
 import { formatarNumero, primeiro } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
+import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { buscarTalentos } from "@/lib/servidor/talentos";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 
 // A aba Talentos: gente de Goiânia e região procurando trabalho, que escolheu aparecer.
 // Aberta, mas só com o resumo; o currículo completo e o convite ficam na página de cada
-// um, para empresa, comércio e agência que entraram. Fora do Google (robots e noindex).
+// um, para empresa, comércio e agência que entraram. Elas também pedem conexão daqui, sem
+// precisar de vaga (Conectar em cada cartão). Fora do Google (robots e noindex).
 
 export const metadata: Metadata = {
   title: "Talentos: gente procurando trabalho perto de você",
   description:
-    "Quem procura trabalho em Goiânia e região e escolheu aparecer: o que faz, a experiência e as habilidades. Convide para a sua vaga, de graça.",
+    "Quem procura trabalho em Goiânia e região e escolheu aparecer: o que faz, a experiência e as habilidades. Conecte-se ou convide para a sua vaga, de graça.",
   robots: { index: false, follow: false },
 };
 
@@ -69,8 +72,9 @@ export default function Talentos({ searchParams }: PageProps<"/talentos">) {
             <Busca searchParams={searchParams} />
           </Suspense>
           <p className="mt-3 text-body-sm text-ink-muted">
-            Gente de Goiânia e região procurando trabalho, que escolheu aparecer aqui. O currículo completo e o convite
-            para uma vaga ficam para empresas, comércios e agências que entraram na conta.
+            Gente de Goiânia e região procurando trabalho, que escolheu aparecer aqui. Empresas, comércios e agências
+            que entraram na conta abrem o currículo completo, pedem conexão (mesmo sem vaga aberta) e convidam para uma
+            vaga.
           </p>
           <Suspense fallback={null}>
             <ChamadaTalento />
@@ -163,6 +167,8 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
   const { lista, total } = resultado;
   const paginas = Math.min(Math.ceil(total / TALENTOS_POR_PAGINA), MAX_PAGINAS_TALENTOS);
   const filtrado = Boolean(f.q || f.cidade);
+  // empresa: o botão Conectar em cada cartão, já com o estado (pedido enviado, conectados…)
+  const estados = empresa ? await estadosDeConexao(lista.map((t) => t.perfil_id)) : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -208,7 +214,22 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
           <ul aria-label="Talentos" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {lista.map((t) => (
               <li key={t.perfil_id}>
-                <CartaoTalento t={t} />
+                <CartaoTalento
+                  t={t}
+                  acao={
+                    estados && (
+                      <BotaoConectar
+                        outroId={t.perfil_id}
+                        outroNome={t.nome}
+                        estado={estados.get(t.perfil_id) ?? null}
+                        logado
+                        voltar={hrefBusca(f)}
+                        para="talento"
+                        jeito="cartao"
+                      />
+                    )
+                  }
+                />
               </li>
             ))}
           </ul>
@@ -242,12 +263,17 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
           <Megaphone aria-hidden className="size-5 shrink-0 text-ink-muted" />
           <p className="min-w-0 grow basis-64 text-body-sm">
-            <span className="text-label">Achou alguém?</span> Abra o currículo e convide para uma vaga sua. A pessoa vê
-            a vaga e decide se curte; o contato aparece no match.
+            <span className="text-label">Achou alguém?</span> Toque em Conectar: não precisa ter vaga aberta. Quando a
+            pessoa aceita, aparecem o contato e a conversa. Ou abra o currículo e convide para uma vaga sua.
           </p>
-          <BotaoLink href="/publicar" tamanho="sm">
-            Publicar vaga grátis
-          </BotaoLink>
+          <div className="flex flex-wrap gap-2">
+            <BotaoLink href="/painel/conexoes" tamanho="sm" variante="fantasma">
+              Minhas conexões
+            </BotaoLink>
+            <BotaoLink href="/publicar" tamanho="sm">
+              Publicar vaga grátis
+            </BotaoLink>
+          </div>
         </div>
       ) : procuraFuncionario ? (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">

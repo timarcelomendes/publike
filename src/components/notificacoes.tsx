@@ -4,6 +4,7 @@ import {
   Bell,
   FileCheck,
   FileText,
+  Handshake,
   Heart,
   HeartCrack,
   ListChecks,
@@ -48,6 +49,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   finalistas: ClipboardCheck,
   convite_candidato: UserX,
   equipe: UsersRound,
+  conexao: Handshake,
 };
 
 type Notificacao = {
@@ -72,6 +74,7 @@ function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "finalistas" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/finalistas`;
   if (n.tipo === "convite_candidato" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/convidar`;
   if (n.tipo === "equipe") return "/painel/equipe";
+  if (n.tipo === "conexao") return n.ator_id ? `/painel/conexoes/${n.ator_id}` : "/painel/conexoes";
   // aceito numa vaga que pede currículo: direto para o currículo, que volta para a vaga
   if (n.tipo === "aceite_curriculo" && n.anuncio_id)
     return `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${n.anuncio_id}`)}`;

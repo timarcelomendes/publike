@@ -68,7 +68,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é a aba Talentos?",
-        r: "É a vitrine de quem procura trabalho, ao lado das abas Vagas e Serviços. Aparece só quem ligou “Aparecer na aba Talentos” no currículo. Quem visita vê um resumo: o nome encurtado (Maria S.), o bairro, o que a pessoa faz, as habilidades, os cursos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram na conta veem o currículo completo e podem convidar para uma vaga. Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só sai no match: a empresa convida, você vê a vaga e decide se curte.",
+        r: "É a vitrine de quem procura trabalho, ao lado das abas Vagas e Serviços. Aparece só quem ligou “Aparecer na aba Talentos” no currículo. Quem visita vê um resumo: o nome encurtado (Maria S.), o bairro, o que a pessoa faz, as habilidades, os cursos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram na conta veem o currículo completo e podem pedir conexão com você (mesmo sem vaga aberta) ou convidar para uma vaga. Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só aparece se você aceitar a conexão ou der match numa vaga.",
+      },
+      {
+        p: "Posso me conectar com uma empresa sem ter vaga aberta?",
+        r: "Pode. Na página da empresa, comércio ou agência, toque em Conectar e, se quiser, mande um recado (sem telefone nem e-mail). Se aceitarem, aparecem o WhatsApp e o e-mail dos dois e vocês conversam pelo Publike, em Conexões. Para pedir, você precisa aparecer na aba Talentos: assim a empresa vê o seu currículo. As empresas também podem pedir conexão com você; aceite ou recuse em Conexões. Qualquer um desfaz quando quiser.",
       },
       {
         p: "Presto serviço (diarista, pedreiro, manicure…). Como apareço?",
@@ -82,7 +86,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "Como acho gente pela aba Talentos?",
-        r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo e convida a pessoa para uma vaga sua no ar. Ela recebe o convite, vê a vaga e decide se curte; o contato aparece no match.",
+        r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo, pede conexão (mesmo sem vaga aberta) ou convida a pessoa para uma vaga sua no ar. No convite, ela vê a vaga e decide se curte; o contato aparece no match.",
+      },
+      {
+        p: "Posso falar com alguém da aba Talentos sem ter vaga?",
+        r: "Pode. Na aba Talentos, toque em Conectar no cartão da pessoa, ou abra a página dela e mande um recado junto. Se ela aceitar, aparecem o WhatsApp e o e-mail dos dois e vocês conversam pelo Publike, em Conexões. Antes do sim não sai contato nenhum: a pessoa decide. São até 30 pedidos por dia; se a pessoa não aceitar, dá para pedir de novo depois de 30 dias.",
       },
       {
         p: "Quem pode publicar vaga?",
@@ -247,6 +255,7 @@ const TALENTOS: PassoJornada = {
     "Cada pessoa aparece com o que faz, a experiência, as habilidades e o bairro. Filtre pelo cargo, por uma habilidade ou pela cidade.",
     "Entrando com a conta da empresa, abra o currículo completo: onde a pessoa trabalhou, as datas e o que fazia.",
     "“Convidar para a vaga”: a pessoa recebe o convite, vê a vaga e decide se curte. O contato sai no match.",
+    "“Conectar”: mesmo sem vaga aberta. Se a pessoa aceitar, aparecem o contato e a conversa, em Conexões.",
   ],
   imagem: "talentos",
   link: { href: "/talentos", texto: "Ver os talentos" },
