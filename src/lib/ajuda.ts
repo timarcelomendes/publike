@@ -113,6 +113,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "No painel, em Clientes, cadastre as empresas para quem você seleciona: nome, CNPJ, endereço, quem é o contato lá e anotações. Ao publicar, escolha o cliente: o nome e o endereço já vêm na vaga. Na ficha de cada cliente aparecem as vagas, os candidatos, quem espera resposta e quem foi contratado, e dá para baixar a planilha só dos candidatos daquele cliente. CNPJ, contato e anotações ficam só com você; na vaga aparece só o nome do cliente (ou “Empresa confidencial”, e aí você continua sabendo de quem é a vaga).",
       },
       {
+        p: "Sou agência: como controlo a taxa e a garantia de reposição?",
+        r: "No quadro da vaga, abra o cartão de quem está em Contratados e registre a colocação: o dia em que a pessoa começou, a taxa cobrada do cliente (marque quando receber) e a garantia (30, 45, 60, 90 dias ou outra). Se a pessoa sair antes do fim da garantia, marque a saída: vira reposição. O Hoje avisa das garantias acabando, das reposições e das taxas a receber, e a ficha do cliente junta tudo. Só a agência vê.",
+      },
+      {
         p: "Sou agência: como mando os finalistas para o cliente?",
         r: "No quadro da vaga, marque quem deu match e toque em “Enviar ao cliente” (ou use “Finalistas para o cliente”, no topo do quadro). Escreva o seu parecer de cada pessoa, crie o link e mande ao cliente pelo WhatsApp. Ele abre sem criar conta, vê o currículo e o seu parecer e responde “Quero entrevistar” ou “Não seguir”, com um comentário. A resposta aparece no seu quadro e chega um aviso. Telefone, e-mail e o PDF do currículo não aparecem para o cliente. O link vale 30 dias: dá para renovar ou trocar. A página do cliente dá para imprimir ou salvar em PDF.",
       },
@@ -610,6 +614,16 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
               "O cliente abre sem criar conta e responde “Quero entrevistar” ou “Não seguir”, com um comentário. A resposta aparece no quadro e chega um aviso.",
               "Telefone, e-mail e o PDF do currículo não aparecem para o cliente: o contato fica com você.",
               "O link vale 30 dias. Renove ou troque quando quiser (trocando, o antigo para de abrir). A página dá para imprimir ou salvar em PDF.",
+            ],
+          },
+          {
+            titulo: "Registre a colocação",
+            texto:
+              "Contratou para o cliente? No quadro, abra o cartão de quem está em Contratados e registre a colocação.",
+            detalhes: [
+              "O dia em que a pessoa começou, a taxa cobrada do cliente (e se já recebeu) e a garantia de reposição.",
+              "O Hoje avisa quando uma garantia está acabando, quando alguém sai dentro dela (reposição) e quanto falta receber.",
+              "Na ficha do cliente ficam as taxas, quanto falta receber e quem está em garantia. Só a agência vê.",
             ],
           },
           {

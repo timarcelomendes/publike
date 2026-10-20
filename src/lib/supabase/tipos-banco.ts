@@ -51,6 +51,24 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** colocações da agência: o começo, a taxa e a garantia (só quem publicou a vaga lê) */
+      colocacoes: {
+        Row: {
+          anuncio_id: string;
+          perfil_id: string;
+          inicio: string;
+          taxa: number | null;
+          paga: boolean;
+          garantia_dias: number;
+          saiu_em: string | null;
+          nota: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       links_finalistas: {
         Row: {
           anuncio_id: string;
@@ -1207,6 +1225,20 @@ export type Database = {
         Returns: { token: string; expira_em: string }[];
       };
       finalistas_do_link: { Args: { p_token: string }; Returns: Json };
+      salvar_colocacao: {
+        Args: {
+          p_anuncio: string;
+          p_perfil: string;
+          p_inicio: string;
+          p_taxa?: number | null;
+          p_paga?: boolean;
+          p_garantia_dias?: number;
+          p_saiu_em?: string | null;
+          p_nota?: string | null;
+        };
+        Returns: undefined;
+      };
+      apagar_colocacao: { Args: { p_anuncio: string; p_perfil: string }; Returns: undefined };
       responder_finalista: {
         Args: {
           p_token: string;

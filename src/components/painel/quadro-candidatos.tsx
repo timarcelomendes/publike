@@ -24,6 +24,7 @@ import {
 } from "react";
 import type { Aderencia } from "@/lib/aderencia";
 import { adicionarFinalistas, tirarFinalista } from "@/lib/acoes/finalistas";
+import type { Colocacao } from "@/lib/colocacoes";
 import { SITE_URL } from "@/lib/config";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
@@ -31,6 +32,7 @@ import { DECISOES_CLIENTE, type RespostaCliente } from "@/lib/finalistas";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
 import { CaminhoDoAceite } from "../caminho-curtida";
+import { FormColocacao, SeloDaColocacao } from "./colocacao";
 import { DetalheDaAderencia, NotaAderencia } from "./nota-aderencia";
 import { Avatar, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -72,6 +74,8 @@ export type CartaoQuadro = {
   aceita: boolean;
   /** está nos finalistas para o cliente (com a resposta dele) */
   finalista: RespostaCliente | null;
+  /** agência: a colocação de quem foi contratado (o começo, a taxa e a garantia) */
+  colocacao: Colocacao | null;
 };
 
 export function QuadroCandidatos({
@@ -358,7 +362,7 @@ function Cartao({
           </p>
         </div>
       </div>
-      {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito" || c.finalista) && (
+      {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito" || c.finalista || c.colocacao) && (
         <div className="flex flex-wrap gap-1.5">
           {c.status === "pendente" &&
             (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Para responder</Selo>)}
@@ -370,6 +374,7 @@ function Cartao({
             </Selo>
           )}
           {c.finalista && <SeloDoCliente r={c.finalista} />}
+          {c.colocacao && <SeloDaColocacao c={c.colocacao} agora={agora} />}
         </div>
       )}
       <Seletor
@@ -497,6 +502,12 @@ function DetalheCandidato({
           ))}
         </div>
       </Secao>
+
+      {agencia && c.status === "match" && (c.coluna === "contratado" || c.colocacao) && (
+        <Secao titulo="Colocação">
+          <FormColocacao anuncioId={anuncioId} perfilId={c.perfil_id} nome={c.nome} atual={c.colocacao} agora={agora} />
+        </Secao>
+      )}
 
       {agencia && (
         <Secao titulo="Cliente">

@@ -10,19 +10,24 @@ import {
   Plus,
   RefreshCw,
   Search,
+  ShieldCheck,
   Store,
+  UserRoundX,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
-import { ateQuando, formatarNumero, plural } from "@/lib/formato";
+import { ateQuando, formatarMoeda, formatarNumero, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { comoResponde } from "@/lib/resposta";
 import type { Saude } from "@/lib/saude-vaga";
+import { colocacoesDasVagas } from "@/lib/servidor/colocacoes";
 import { saudeDasVagas } from "@/lib/servidor/saude";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { MeuAnuncio, StatusAnuncio } from "@/lib/tipos";
@@ -89,13 +94,15 @@ export async function PainelRecrutador({
   const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas }, respostas, completas] = await Promise.all([
+  const [{ visitas, entrevistas }, respostas, completas, colocacoes] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
     ),
     respostaDeQuemPublica([autorId]).catch(() => new Map()),
     Promise.all(noAr.map((v) => obterAnuncio(v.id).catch(() => null))),
+    // agência: as colocações (garantias e taxas a receber)
+    typeof clientes === "number" ? colocacoesDasVagas().then((m) => [...m.values()]) : Promise.resolve([]),
   ]);
   // a saúde das vagas no ar: a mesma do quadro de cada vaga
   const saudes = await saudeDasVagas(
@@ -216,6 +223,58 @@ export async function PainelRecrutador({
         "Divulgue o link da sua página de vagas no WhatsApp e no Instagram, ou revise o título, o salário e o horário.",
       href: "/painel/anuncios?tipo=vaga#pagina-de-vagas",
       acao: "Divulgar",
+    });
+  }
+
+  // agência: reposição (saiu dentro da garantia, no último mês), garantia acabando e taxas a receber
+  const hoje = hojeEmBrasilia(agora);
+  const comSituacao = colocacoes.map((c) => ({ c, s: situacaoDaColocacao(c, hoje) }));
+  const umMesAtras = hojeEmBrasilia(agora - 30 * DIA);
+  const reposicoes = comSituacao.filter(({ c, s }) => s.tipo === "reposicao" && (c.saiu_em ?? "") >= umMesAtras);
+  const acabando = comSituacao.filter(({ s }) => s.tipo === "garantia" && s.faltam <= 7);
+  const aReceber = colocacoes.filter((c) => !c.paga && (c.taxa ?? 0) > 0);
+  const naColocacao = (c: { anuncio_id: string; perfil_id: string }) =>
+    `/painel/anuncio/${c.anuncio_id}/quadro?candidato=${c.perfil_id}`;
+  if (reposicoes.length) {
+    const { c } = reposicoes[0];
+    cartoes.push({
+      icone: UserRoundX,
+      tom: "urgente",
+      quando: "Reposição",
+      titulo:
+        reposicoes.length === 1
+          ? `${primeiroNome(c.perfil_id) || "Um contratado"} saiu dentro da garantia`
+          : `${reposicoes.length} contratados saíram dentro da garantia`,
+      texto: "Reponha para o cliente: chame outro finalista ou publique a vaga de novo.",
+      href: reposicoes.length === 1 ? naColocacao(c) : "/painel/clientes",
+      acao: "Ver",
+    });
+  }
+  if (acabando.length) {
+    const prox = acabando.reduce((a, b) =>
+      a.s.tipo === "garantia" && b.s.tipo === "garantia" && b.s.faltam < a.s.faltam ? b : a,
+    );
+    const faltam = prox.s.tipo === "garantia" ? prox.s.faltam : 0;
+    cartoes.push({
+      icone: ShieldCheck,
+      quando: faltam === 0 ? "Hoje" : faltam === 1 ? "Amanhã" : `Em ${faltam} dias`,
+      titulo:
+        acabando.length === 1
+          ? `A garantia de ${primeiroNome(prox.c.perfil_id) || "um contratado"} acaba`
+          : `${acabando.length} garantias acabam nesta semana`,
+      texto: "Bom momento para falar com o cliente e confirmar que deu tudo certo.",
+      href: acabando.length === 1 ? naColocacao(prox.c) : "/painel/clientes",
+      acao: "Ver",
+    });
+  }
+  if (aReceber.length) {
+    cartoes.push({
+      icone: Wallet,
+      quando: "A receber",
+      titulo: `${formatarMoeda(aReceber.reduce((s, c) => s + (c.taxa ?? 0), 0))} em taxas a receber`,
+      texto: `${plural(aReceber.length, "colocação", "colocações")} sem o pagamento marcado. Marque na colocação quando receber.`,
+      href: "/painel/clientes",
+      acao: "Ver os clientes",
     });
   }
 
