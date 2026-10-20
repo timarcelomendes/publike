@@ -33,7 +33,7 @@ export function ResponderConexao({ id, principal = true }: { id: string; princip
 
 /**
  * Cancelar o pedido que fiz, tirar da lista um pedido não aceito ou desfazer a conexão. Desfazer
- * pede confirmação (a conversa some para os dois).
+ * pede confirmação (os contatos deixam de aparecer; a conversa só continua se houver um match).
  */
 export function DesfazerConexao({
   id,

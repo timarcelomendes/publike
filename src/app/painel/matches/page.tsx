@@ -79,7 +79,7 @@ async function Conteudo() {
                   “{m.anuncio_titulo}”
                 </Link>
               </p>
-              <BotaoConversar anuncioId={m.anuncio_id} outroId={m.outro_id} />
+              <BotaoConversar outroId={m.outro_id} />
               <BotoesContato whatsapp={m.outro_whatsapp} email={m.outro_email} mensagem={mensagem} />
               {m.papel === "curti" && m.anuncio_tipo === "servico" && (
                 <Link

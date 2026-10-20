@@ -323,7 +323,7 @@ async function Conteudo({
                       </div>
                     ) : p.status === "match" ? (
                       <div className="flex flex-col gap-2">
-                        <BotaoConversar anuncioId={anuncio.id} outroId={p.perfil_id} />
+                        <BotaoConversar outroId={p.perfil_id} />
                         <BotoesContato
                           whatsapp={p.whatsapp}
                           email={p.email}

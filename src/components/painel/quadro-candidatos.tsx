@@ -28,6 +28,7 @@ import type { Colocacao } from "@/lib/colocacoes";
 import { SITE_URL } from "@/lib/config";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
+import { caminhoConversa } from "@/lib/conversas";
 import { DECISOES_CLIENTE, type RespostaCliente } from "@/lib/finalistas";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
@@ -459,7 +460,7 @@ function DetalheCandidato({
         </Link>
         {match && (
           <Link
-            href={`/painel/conversas/${anuncioId}/${c.perfil_id}`}
+            href={caminhoConversa(c.perfil_id)}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-line-strong px-3 text-label hover:bg-surface-300"
           >
             <MessagesSquare aria-hidden className="size-4" />

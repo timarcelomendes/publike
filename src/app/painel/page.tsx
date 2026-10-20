@@ -25,12 +25,12 @@ import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { caminhoConexao, type Conexao } from "@/lib/conexoes";
+import { caminhoConversa, type ConversaPessoa } from "@/lib/conversas";
 import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu, type EtapaCandidato } from "@/lib/constantes";
 import {
   contarMinhasSalvas,
   listarMeusAnuncios,
   listarMeusCandidatos,
-  listarMinhasConversas,
   listarMinhasCurtidas,
   listarMinhasEtapas,
   meuCurriculoNaVitrine,
@@ -39,13 +39,13 @@ import {
   obterMeuCurriculo,
   obterMeuPerfil,
   perfilCompleto,
-  type Conversa,
 } from "@/lib/dados";
 import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { COOKIE_MODO, lerModo, modoPadrao } from "@/lib/modo-painel";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import { listarMeusClientes } from "@/lib/servidor/clientes";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
+import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { minhasContas } from "@/lib/servidor/equipe";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { exigirUsuario } from "@/lib/sessao";
@@ -87,34 +87,44 @@ function nomes(lista: string[]) {
 
 const soma = (lista: number[]) => lista.reduce((total, n) => total + n, 0);
 
-/** As conexões que pedem algo: pedidos para responder e mensagens novas (Contratar e Trabalhar). */
+/** Os pedidos de conexão para responder (Contratar e Trabalhar). As mensagens ficam nas conversas. */
 function cartoesDeConexao(lista: Conexao[] | null): Cartao[] {
   const recebidos = (lista ?? []).filter((c) => c.status === "pendente" && !c.pedi);
-  const comNovas = (lista ?? []).filter((c) => c.status === "aceita" && c.nao_lidas > 0);
-  const link = (l: Conexao[]) => (l.length === 1 ? caminhoConexao(l[0].outro_id) : "/painel/conexoes");
-  const cartoes: Cartao[] = [];
-  if (recebidos.length) {
-    cartoes.push({
+  if (!recebidos.length) return [];
+  return [
+    {
       icone: Handshake,
       tom: "urgente",
       quando: "Conexões",
       titulo: plural(recebidos.length, "pedido de conexão", "pedidos de conexão"),
       texto: `De ${nomes(recebidos.map((c) => c.outro_nome))}. Aceite ou recuse.`,
-      href: link(recebidos),
+      href: recebidos.length === 1 ? caminhoConexao(recebidos[0].outro_id) : "/painel/conexoes",
       acao: "Responder",
-    });
-  }
-  if (comNovas.length) {
-    cartoes.push({
+    },
+  ];
+}
+
+/** As conversas de cada modo (uma por pessoa): as vagas em comum e, para talento e empresa, a conexão. */
+const conversaDoModo = {
+  contratar: (c: ConversaPessoa) => c.conectados || c.vagas.some((v) => v.papel === "publiquei" && v.tipo === "vaga"),
+  trabalhar: (c: ConversaPessoa) => c.conectados || c.vagas.some((v) => v.papel === "curti" && v.tipo === "vaga"),
+  servicos: (c: ConversaPessoa) => c.vagas.some((v) => v.papel === "publiquei" && v.tipo === "servico"),
+};
+
+/** As mensagens novas, uma conversa por pessoa. */
+function cartoesDeMensagens(conversas: ConversaPessoa[] | null, doModo: (c: ConversaPessoa) => boolean): Cartao[] {
+  const comNovas = (conversas ?? []).filter((c) => doModo(c) && c.nao_lidas > 0);
+  if (!comNovas.length) return [];
+  return [
+    {
       icone: MessagesSquare,
-      quando: "Conexões",
+      quando: "Mensagens",
       titulo: plural(soma(comNovas.map((c) => c.nao_lidas)), "mensagem nova", "mensagens novas"),
       texto: `De ${nomes(comNovas.map((c) => c.outro_nome))}`,
-      href: link(comNovas),
+      href: comNovas.length === 1 ? caminhoConversa(comNovas[0].outro_id) : "/painel/conversas",
       acao: "Ler e responder",
-    });
-  }
-  return cartoes;
+    },
+  ];
 }
 
 async function Conteudo() {
@@ -124,7 +134,7 @@ async function Conteudo() {
     obterMeuPerfil(),
     talvez(obterIntencao(), "a intenção"),
     cookies(),
-    listarMinhasConversas(),
+    conversasPorPessoa(),
     minhasConexoes().catch(() => null),
   ]);
   const agora = await agoraDaRequisicao();
@@ -151,7 +161,7 @@ async function Conteudo() {
         candidatos={candidatos}
         agora={agora}
         clientes={clientes}
-        extras={cartoesDeConexao(conexoes)}
+        extras={[...cartoesDeConexao(conexoes), ...cartoesDeMensagens(conversas, conversaDoModo.contratar)]}
       />
     );
   } else if (modo === "servicos") {
@@ -204,26 +214,14 @@ async function Conteudo() {
 /** Os cartões que valem em todos os modos: perfil incompleto, mensagens novas e matches sem oi. */
 function cartoesDaConta(
   perfil: MeuPerfil | null,
-  conversas: Conversa[] | null,
-  doModo: (c: Conversa) => boolean,
+  conversas: ConversaPessoa[] | null,
+  doModo: (c: ConversaPessoa) => boolean,
 ): Cartao[] {
-  const daqui = (conversas ?? []).filter(doModo);
-  const comNovas = daqui.filter((c) => c.nao_lidas > 0);
-  const semOi = daqui.filter((c) => !c.ultima_texto);
-  const linkDaConversa = (lista: Conversa[]) =>
-    lista.length === 1 ? `/painel/conversas/${lista[0].anuncio_id}/${lista[0].outro_id}` : "/painel/conversas";
-  const cartoes: Cartao[] = [];
-  if (comNovas.length) {
-    const novas = soma(comNovas.map((c) => c.nao_lidas));
-    cartoes.push({
-      icone: MessagesSquare,
-      quando: "Mensagens",
-      titulo: plural(novas, "mensagem nova", "mensagens novas"),
-      texto: `De ${nomes(comNovas.map((c) => c.outro_nome))}`,
-      href: linkDaConversa(comNovas),
-      acao: "Ler e responder",
-    });
-  }
+  // match sem nenhuma mensagem ainda (a conversa é uma por pessoa: com mensagem de outra vaga, já tem oi)
+  const semOi = (conversas ?? []).filter((c) => doModo(c) && c.vagas.length > 0 && !c.ultima_texto);
+  const linkDaConversa = (lista: ConversaPessoa[]) =>
+    lista.length === 1 ? caminhoConversa(lista[0].outro_id) : "/painel/conversas";
+  const cartoes: Cartao[] = [...cartoesDeMensagens(conversas, doModo)];
   if (semOi.length) {
     cartoes.push({
       icone: MessageCircle,
@@ -312,7 +310,7 @@ function HojeTrabalhar({
   etapas: Map<string, { etapa: EtapaCandidato; atualizado_em: string }>;
   curriculo: { c: Curriculo | null } | null;
   entrevistas: EntrevistaMinha[];
-  conversas: Conversa[] | null;
+  conversas: ConversaPessoa[] | null;
   conexoes: Conexao[] | null;
   salvas: number | null;
   /** o currículo aparece em Talentos para as empresas */
@@ -369,7 +367,7 @@ function HojeTrabalhar({
       acao: "Ver",
     });
   }
-  cartoes.push(...cartoesDaConta(perfil, conversas, (c) => c.papel === "curti" && c.anuncio_tipo === "vaga"));
+  cartoes.push(...cartoesDaConta(perfil, conversas, conversaDoModo.trabalhar));
   cartoes.push(...cartoesDeConexao(conexoes));
   if (semCurriculo && aceitas.length === 0) {
     cartoes.push({
@@ -581,7 +579,7 @@ function HojeServicos({
 }: {
   perfil: MeuPerfil | null;
   anuncios: MeuAnuncio[] | null;
-  conversas: Conversa[] | null;
+  conversas: ConversaPessoa[] | null;
   agora: number;
 }) {
   const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
@@ -603,7 +601,7 @@ function HojeServicos({
       acao: "Responder agora",
     });
   }
-  cartoes.push(...cartoesDaConta(perfil, conversas, (c) => c.papel === "publiquei" && c.anuncio_tipo === "servico"));
+  cartoes.push(...cartoesDaConta(perfil, conversas, conversaDoModo.servicos));
   if (servicos.length === 0) {
     cartoes.push({
       icone: Store,

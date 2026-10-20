@@ -5,9 +5,10 @@ import { MenuPainel, MenuPainelEsqueleto } from "@/components/painel/menu-painel
 import { Container } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { pendenciasDeConexao } from "@/lib/conexoes";
-import { listarMeusAnuncios, listarMinhasConversas, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { listarMeusAnuncios, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { COOKIE_MODO, lerModo, modoPadrao, type Contadores } from "@/lib/modo-painel";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
+import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { minhasContas } from "@/lib/servidor/equipe";
 import { obterIntencao } from "@/lib/servidor/intencao";
 
@@ -42,7 +43,7 @@ async function MenuDaConta() {
     obterMeuPerfil().catch(() => null),
     obterIntencao().catch(() => null),
     listarMeusAnuncios().catch(() => []),
-    listarMinhasConversas().catch(() => null),
+    conversasPorPessoa().catch(() => null),
     cookies(),
     obterUsuario(),
     // a conta da pessoa e as das equipes de que faz parte (com mais de uma, dá para trocar)

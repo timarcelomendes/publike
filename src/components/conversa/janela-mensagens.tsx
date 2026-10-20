@@ -5,14 +5,15 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { abrirConversaDaJanela, conversasDaJanela } from "@/lib/acoes/mensagens";
 import type { PedidoConversa } from "@/lib/abrir-conversa";
-import type { Conversa as ConversaResumo, MensagemConversa } from "@/lib/dados";
+import { caminhoConversa, origemDaConversa, vagaDoCurriculo, type ConversaPessoa } from "@/lib/conversas";
+import type { MensagemConversa } from "@/lib/dados";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { Avatar } from "../ui/basicos";
 import { Conversa } from "./conversa";
 
-// As conversas (dos matches) dentro do chat do canto da tela, ao lado da Ajuda
-// (botao-assistente.tsx): a lista, com busca e não lidas, e a conversa aberta ali
-// mesmo, sem sair da página.
+// As conversas dentro do chat do canto da tela, ao lado da Ajuda (botao-assistente.tsx): uma por
+// pessoa (vagas em comum e conexão juntas), com busca e não lidas, e a conversa aberta ali mesmo,
+// sem sair da página.
 
 function quando(iso: string | null) {
   if (!iso) return "";
@@ -28,7 +29,7 @@ function quando(iso: string | null) {
  * Atualiza quando chega mensagem (Realtime) e, se ele cair, a cada minuto.
  */
 export function useConversasDoChat(usuarioId: string | null) {
-  const [conversas, setConversas] = useState<ConversaResumo[] | null>(null);
+  const [conversas, setConversas] = useState<ConversaPessoa[] | null>(null);
   const carregando = useRef(false);
 
   const carregar = useCallback(async () => {
@@ -63,11 +64,8 @@ export function useConversasDoChat(usuarioId: string | null) {
     };
   }, [carregar, usuarioId]);
 
-  const marcarLida = useCallback((anuncioId: string, outroId: string) => {
-    setConversas(
-      (atual) =>
-        atual?.map((c) => (c.anuncio_id === anuncioId && c.outro_id === outroId ? { ...c, nao_lidas: 0 } : c)) ?? null,
-    );
+  const marcarLida = useCallback((outroId: string) => {
+    setConversas((atual) => atual?.map((c) => (c.outro_id === outroId ? { ...c, nao_lidas: 0 } : c)) ?? null);
   }, []);
 
   const naoLidas = (conversas ?? []).reduce((t, c) => t + (c.nao_lidas ?? 0), 0);
@@ -75,13 +73,30 @@ export function useConversasDoChat(usuarioId: string | null) {
 }
 
 type Aberta = {
-  anuncio_id: string;
   outro_id: string;
   outro_nome: string;
   outro_foto: string | null;
+  /** de onde vem a conversa (as vagas e a conexão) */
   titulo: string;
-  dados: { perfilId: string; euId: string; mensagens: MensagemConversa[]; vaga: boolean } | null;
+  dados: {
+    conversaId: string;
+    euId: string;
+    mensagens: MensagemConversa[];
+    vagaDoCurriculo: string | null;
+    conexao: boolean;
+  } | null;
 };
+
+/** Os dados da conversa aberta, do jeito que o componente da conversa pede. */
+function dadosDaAberta(r: NonNullable<Awaited<ReturnType<typeof abrirConversaDaJanela>>>): Aberta["dados"] {
+  return {
+    conversaId: r.conversaId,
+    euId: r.euId,
+    mensagens: r.mensagens,
+    vagaDoCurriculo: vagaDoCurriculo(r.conversa),
+    conexao: r.conversa.vagas.length === 0,
+  };
+}
 
 /** A aba "Conversas" do chat: a lista e, tocando numa, a conversa ali dentro. */
 export function PainelConversas({
@@ -92,9 +107,9 @@ export function PainelConversas({
   pedida = null,
 }: {
   usuarioId: string | null;
-  conversas: ConversaResumo[] | null;
+  conversas: ConversaPessoa[] | null;
   carregar: () => Promise<void>;
-  marcarLida: (anuncioId: string, outroId: string) => void;
+  marcarLida: (outroId: string) => void;
   /** abre já nesta conversa (pedida de fora do chat, como o "Deu match!" da vaga) */
   pedida?: PedidoConversa | null;
 }) {
@@ -102,11 +117,10 @@ export function PainelConversas({
   const [aberta, setAberta] = useState<Aberta | null>(
     pedida
       ? {
-          anuncio_id: pedida.anuncioId,
           outro_id: pedida.outroId,
           outro_nome: pedida.outroNome,
           outro_foto: pedida.outroFoto ?? null,
-          titulo: pedida.titulo,
+          titulo: pedida.titulo ?? "",
           dados: null,
         }
       : null,
@@ -116,22 +130,14 @@ export function PainelConversas({
   useEffect(() => {
     if (!pedida) return;
     let vale = true;
-    abrirConversaDaJanela(pedida.anuncioId, pedida.outroId).then((r) => {
+    abrirConversaDaJanela(pedida.outroId).then((r) => {
       if (!vale) return;
       setAberta((a) =>
-        a && a.anuncio_id === pedida.anuncioId && a.outro_id === pedida.outroId && r
-          ? {
-              ...a,
-              dados: {
-                perfilId: r.conversa.perfil_id,
-                euId: r.euId,
-                mensagens: r.mensagens,
-                vaga: r.conversa.anuncio_tipo === "vaga",
-              },
-            }
+        a && a.outro_id === pedida.outroId && r
+          ? { ...a, titulo: origemDaConversa(r.conversa) || a.titulo, dados: dadosDaAberta(r) }
           : a,
       );
-      marcarLida(pedida.anuncioId, pedida.outroId);
+      marcarLida(pedida.outroId);
     });
     return () => {
       vale = false;
@@ -146,7 +152,7 @@ export function PainelConversas({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-body-sm text-ink-muted">
-          Entre para conversar com quem deu match com você: vagas, serviços e entrevistas, tudo aqui.
+          Entre para conversar com quem deu match ou se conectou com você: vagas, serviços e entrevistas, tudo aqui.
         </p>
         <Link href="/entrar" className="text-label text-terra-text underline underline-offset-2">
           Entrar
@@ -155,30 +161,17 @@ export function PainelConversas({
     );
   }
 
-  async function abrir(c: ConversaResumo) {
+  async function abrir(c: ConversaPessoa) {
     setAberta({
-      anuncio_id: c.anuncio_id,
       outro_id: c.outro_id,
       outro_nome: c.outro_nome,
       outro_foto: c.outro_foto,
-      titulo: c.anuncio_titulo,
+      titulo: origemDaConversa(c),
       dados: null,
     });
-    const r = await abrirConversaDaJanela(c.anuncio_id, c.outro_id);
-    setAberta((a) =>
-      a && a.anuncio_id === c.anuncio_id && a.outro_id === c.outro_id && r
-        ? {
-            ...a,
-            dados: {
-              perfilId: r.conversa.perfil_id,
-              euId: r.euId,
-              mensagens: r.mensagens,
-              vaga: r.conversa.anuncio_tipo === "vaga",
-            },
-          }
-        : a,
-    );
-    marcarLida(c.anuncio_id, c.outro_id);
+    const r = await abrirConversaDaJanela(c.outro_id);
+    setAberta((a) => (a && a.outro_id === c.outro_id && r ? { ...a, dados: dadosDaAberta(r) } : a));
+    marcarLida(c.outro_id);
   }
 
   if (aberta) {
@@ -202,7 +195,7 @@ export function PainelConversas({
             <span className="block truncate text-caption text-ink-muted">{aberta.titulo}</span>
           </span>
           <Link
-            href={`/painel/conversas/${aberta.anuncio_id}/${aberta.outro_id}`}
+            href={caminhoConversa(aberta.outro_id)}
             aria-label="Abrir a conversa em tela cheia"
             className="inline-flex size-10 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
           >
@@ -211,12 +204,13 @@ export function PainelConversas({
         </div>
         {aberta.dados ? (
           <Conversa
-            anuncioId={aberta.anuncio_id}
-            perfilId={aberta.dados.perfilId}
+            outroId={aberta.outro_id}
+            conversaId={aberta.dados.conversaId}
             euId={aberta.dados.euId}
             outroNome={aberta.outro_nome}
             iniciais={aberta.dados.mensagens}
-            vaga={aberta.dados.vaga}
+            vagaDoCurriculo={aberta.dados.vagaDoCurriculo}
+            conexao={aberta.dados.conexao}
             compacto
           />
         ) : (
@@ -228,7 +222,7 @@ export function PainelConversas({
 
   const procurado = busca.trim().toLowerCase();
   const filtradas = (conversas ?? []).filter(
-    (c) => !procurado || `${c.outro_nome} ${c.anuncio_titulo}`.toLowerCase().includes(procurado),
+    (c) => !procurado || `${c.outro_nome} ${c.vagas.map((v) => v.titulo).join(" ")}`.toLowerCase().includes(procurado),
   );
 
   return (
@@ -255,11 +249,11 @@ export function PainelConversas({
           <li className="p-4 text-body-sm text-ink-muted">
             {conversas.length
               ? "Nenhuma conversa com esse nome."
-              : "Nenhuma conversa ainda. A conversa abre quando dá match: aí vocês combinam tudo por aqui."}
+              : "Nenhuma conversa ainda. A conversa abre quando dá match ou quando uma conexão é aceita: aí vocês combinam tudo por aqui."}
           </li>
         ) : (
           filtradas.map((c) => (
-            <li key={`${c.anuncio_id}:${c.outro_id}`}>
+            <li key={c.outro_id}>
               <button
                 type="button"
                 onClick={() => void abrir(c)}
@@ -269,13 +263,17 @@ export function PainelConversas({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-2">
                     <span className={`truncate text-label ${c.nao_lidas ? "" : "font-normal"}`}>{c.outro_nome}</span>
-                    <span className="shrink-0 text-caption text-ink-muted">{quando(c.ultima_em ?? c.match_em)}</span>
+                    <span className="shrink-0 text-caption text-ink-muted">{quando(c.ultima_em ?? c.desde)}</span>
                   </span>
-                  <span className="block truncate text-caption text-ink-muted">{c.anuncio_titulo}</span>
+                  <span className="block truncate text-caption text-ink-muted">{origemDaConversa(c)}</span>
                   <span
                     className={`block truncate text-body-sm ${c.nao_lidas ? "font-semibold text-ink" : "text-ink-muted"}`}
                   >
-                    {c.ultima_texto ? `${c.ultima_minha ? "Você: " : ""}${c.ultima_texto}` : "Deu match! Diga oi."}
+                    {c.ultima_texto
+                      ? `${c.ultima_minha ? "Você: " : ""}${c.ultima_texto}`
+                      : c.vagas.length
+                        ? "Deu match! Diga oi."
+                        : "Conectados! Diga oi."}
                   </span>
                 </span>
                 {c.nao_lidas > 0 && (

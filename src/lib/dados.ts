@@ -430,37 +430,6 @@ export async function listarMinhasEtapas(): Promise<Map<string, { etapa: EtapaCa
   );
 }
 
-export type Conversa = {
-  anuncio_id: string;
-  perfil_id: string;
-  anuncio_titulo: string;
-  anuncio_tipo: string;
-  papel: string;
-  outro_id: string;
-  outro_nome: string;
-  outro_foto: string | null;
-  etapa: EtapaCandidato;
-  ultima_texto: string | null;
-  ultima_em: string | null;
-  ultima_minha: boolean | null;
-  nao_lidas: number;
-  match_em: string | null;
-};
-
-/** As conversas dos meus matches (null se o banco ainda não tem a conversa). */
-export const listarMinhasConversas = cache(async (): Promise<Conversa[] | null> => {
-  const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("minhas_conversas");
-  if (error) {
-    console.error(`Publike: falha ao ler suas conversas: ${error.message}`);
-    return null;
-  }
-  return (data ?? []).map((l) => ({
-    ...l,
-    etapa: (l.etapa in ETAPAS_CANDIDATO ? l.etapa : "novo") as EtapaCandidato,
-  }));
-});
-
 export type MensagemConversa = {
   id: number;
   autor_id: string;
@@ -471,27 +440,6 @@ export type MensagemConversa = {
   anexo?: string | null;
   anexo_nome?: string | null;
 };
-
-/** A conversa com `outroId` sobre um anúncio, com as últimas 300 mensagens. */
-export async function obterConversa(
-  anuncioId: string,
-  outroId: string,
-): Promise<{ conversa: Conversa; mensagens: MensagemConversa[] } | null> {
-  if (!UUID.test(anuncioId) || !UUID.test(outroId)) return null;
-  const conversas = await listarMinhasConversas();
-  const conversa = conversas?.find((c) => c.anuncio_id === anuncioId && c.outro_id === outroId);
-  if (!conversa) return null;
-  const supabase = await criarClienteServidor();
-  const { data, error } = await supabase
-    .from("mensagens")
-    .select("id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome")
-    .eq("anuncio_id", anuncioId)
-    .eq("perfil_id", conversa.perfil_id)
-    .order("id", { ascending: false })
-    .limit(300);
-  if (error) falha("a conversa", error);
-  return { conversa, mensagens: (data ?? []).reverse() };
-}
 
 /** Experiências vindas do banco (jsonb), já no formato das telas. */
 export function lerExperiencias(valor: unknown): Experiencia[] {

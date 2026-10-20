@@ -2,7 +2,6 @@ import "server-only";
 import { cache } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { lerStatusConexao, type Conexao, type EstadoConexao } from "@/lib/conexoes";
-import type { MensagemConversa } from "@/lib/dados";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Database } from "@/lib/supabase/tipos-banco";
 import { UUID } from "@/lib/validacao";
@@ -38,35 +37,19 @@ export const minhasConexoes = cache(async (): Promise<Conexao[] | null> => {
 });
 
 /**
- * A conexão com uma conta (pedido, contatos e conversa). null: não há conexão com ela;
- * undefined: não deu para ler.
+ * A conexão com uma conta (o pedido ou, aceita, os contatos; a conversa fica em Conversas). null:
+ * não há conexão com ela; undefined: não deu para ler.
  */
-export async function conexaoCom(
-  outroId: string,
-): Promise<{ conexao: Conexao; mensagens: MensagemConversa[] } | null | undefined> {
+export async function conexaoCom(outroId: string): Promise<Conexao | null | undefined> {
   if (MODO_DEMO || !UUID.test(outroId)) return null;
-  const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("minhas_conexoes", { p_outro: outroId });
+  const { data, error } = await (await criarClienteServidor()).rpc("minhas_conexoes", { p_outro: outroId });
   if (error) {
     if (semMigracao(error)) return null;
     console.error(`Publike: falha ao ler a conexão: ${error.message}`);
     return undefined;
   }
   const linha = data?.[0];
-  if (!linha) return null;
-  const conexao = lerConexao(linha);
-  if (conexao.status !== "aceita") return { conexao, mensagens: [] };
-  const { data: mensagens, error: erroMensagens } = await supabase
-    .from("mensagens_conexao")
-    .select("id, autor_id, texto, criado_em, lida_em")
-    .eq("conexao_id", conexao.id)
-    .order("id", { ascending: false })
-    .limit(300);
-  if (erroMensagens) {
-    console.error(`Publike: falha ao ler a conversa da conexão: ${erroMensagens.message}`);
-    return undefined;
-  }
-  return { conexao, mensagens: (mensagens ?? []).reverse() };
+  return linha ? lerConexao(linha) : null;
 }
 
 /** Como está a conexão com cada conta da lista (para os botões dos cartões). */

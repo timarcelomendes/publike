@@ -1,18 +1,14 @@
 import { MessagesSquare } from "lucide-react";
+import { caminhoConversa } from "@/lib/conversas";
 import { BotaoLink } from "./ui/botao";
 
-/** Abre a conversa do match dentro do Publike. `outroId` é a outra pessoa do match. */
-export function BotaoConversar({
-  anuncioId,
-  outroId,
-  naoLidas = 0,
-}: {
-  anuncioId: string;
-  outroId: string;
-  naoLidas?: number;
-}) {
+/**
+ * Abre a conversa com a outra pessoa dentro do Publike (uma por pessoa: as vagas em comum e a
+ * conexão ficam juntas). `outroId` é a outra pessoa do match.
+ */
+export function BotaoConversar({ outroId, naoLidas = 0 }: { outroId: string; naoLidas?: number }) {
   return (
-    <BotaoLink href={`/painel/conversas/${anuncioId}/${outroId}`} tamanho="sm" className="self-start">
+    <BotaoLink href={caminhoConversa(outroId)} tamanho="sm" className="self-start">
       <MessagesSquare aria-hidden />
       Conversar no Publike
       {naoLidas > 0 && (

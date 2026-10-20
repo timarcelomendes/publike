@@ -8,6 +8,7 @@ import { SeloVerificado } from "@/components/selo-verificado";
 import { Avatar, Selo } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
 import { esperaResposta } from "@/lib/constantes";
+import { caminhoConversa } from "@/lib/conversas";
 import { formatarLugar, formatarTelefone, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
@@ -67,7 +68,7 @@ export function FichaCandidato({
   const primeiro = c.nome.split(" ")[0];
   const match = estado === "match";
   const encerrado = estado === "dispensada" || estado === "desfeito";
-  const conversa = match ? `/painel/conversas/${c.anuncio_id}/${c.perfil_id}` : null;
+  const conversa = match ? caminhoConversa(c.perfil_id) : null;
   const hoje = new Date(agora).toISOString().slice(0, 7);
 
   return (
@@ -128,7 +129,7 @@ export function FichaCandidato({
 
       {match && (
         <div className="flex flex-wrap items-center gap-2">
-          <BotaoConversar anuncioId={c.anuncio_id} outroId={c.perfil_id} naoLidas={c.naoLidas} />
+          <BotaoConversar outroId={c.perfil_id} naoLidas={c.naoLidas} />
           {c.whatsapp && (
             <a
               href={linkWhatsApp(

@@ -56,6 +56,8 @@ const nextConfig: NextConfig = {
       // endereços curtos das páginas de busca
       { source: "/vagas", destination: "/vagas/goiania", permanent: false },
       { source: "/servicos", destination: "/servicos/goiania", permanent: false },
+      // a conversa era uma por vaga (anúncio + pessoa); agora é uma por pessoa (links antigos e e-mails)
+      { source: "/painel/conversas/:anuncio/:outro", destination: "/painel/conversas/:outro", permanent: false },
     ];
   },
   async headers() {

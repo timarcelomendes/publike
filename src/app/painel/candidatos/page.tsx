@@ -588,7 +588,7 @@ function CartaoCandidato({
           </p>
         ) : match ? (
           <div className="flex flex-wrap items-center gap-2">
-            <BotaoConversar anuncioId={c.anuncio_id} outroId={c.perfil_id} />
+            <BotaoConversar outroId={c.perfil_id} />
             {c.whatsapp && (
               <a
                 href={linkWhatsApp(

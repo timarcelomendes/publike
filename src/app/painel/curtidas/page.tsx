@@ -282,7 +282,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                   <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
                     <p className="text-label text-cerrado-text">Deu match! Agora é só conversar.</p>
                     <p className="text-body-sm">{c.autor_nome} aceitou e vocês estão conectados.</p>
-                    <BotaoConversar anuncioId={c.anuncio_id} outroId={c.autor_id} />
+                    <BotaoConversar outroId={c.autor_id} />
                     <BotoesContato
                       whatsapp={c.autor_whatsapp}
                       email={c.autor_email}

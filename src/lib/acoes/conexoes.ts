@@ -11,8 +11,9 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 
-// Conexões entre talentos e empresas: pedir, responder, desfazer e conversar. O banco confere
-// quem pode (lados certos, aba Talentos, bloqueio, conta suspensa, limite do dia).
+// Conexões entre talentos e empresas: pedir, responder e desfazer (a conversa, uma por pessoa, fica
+// em acoes/mensagens.ts). O banco confere quem pode (lados certos, aba Talentos, bloqueio, conta
+// suspensa, limite do dia).
 
 /** O caminho de volta depois de entrar (só caminhos do próprio site). */
 function voltarPara(voltar: string | undefined) {
@@ -85,35 +86,4 @@ export async function desfazerConexao(id: string): Promise<Resultado> {
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para desfazer agora.") };
   refresh();
   return { ok: true, mensagem: "Pronto." };
-}
-
-type Enviada =
-  | { ok: true; mensagem: { id: number; autor_id: string; texto: string; criado_em: string; lida_em: null } }
-  | { ok: false; erro: string };
-
-/** Manda uma mensagem na conversa de uma conexão aceita. */
-export async function enviarMensagemConexao(conexaoId: string, texto: string): Promise<Enviada> {
-  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!UUID.test(conexaoId) || typeof texto !== "string") return { ok: false, erro: "Pedido inválido." };
-  const limpo = texto.trim();
-  if (!limpo) return { ok: false, erro: "Escreva a mensagem." };
-  if (limpo.length > 2000) return { ok: false, erro: "A mensagem passa de 2000 letras." };
-  const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
-  const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("enviar_mensagem_conexao", { p_conexao: conexaoId, p_texto: limpo });
-  if (error) return { ok: false, erro: mensagemDeErro(error) };
-  // o aviso por e-mail para o outro lado sai pela fila
-  after(processarFilas);
-  return {
-    ok: true,
-    mensagem: { id: data, autor_id: usuario.id, texto: limpo, criado_em: new Date().toISOString(), lida_em: null },
-  };
-}
-
-/** Abri a conexão: o que o outro lado mandou fica lido. */
-export async function marcarConexaoLida(conexaoId: string): Promise<void> {
-  if (MODO_DEMO || !UUID.test(conexaoId)) return;
-  const supabase = await criarClienteServidor();
-  await supabase.rpc("marcar_conexao_lida", { p_conexao: conexaoId });
 }

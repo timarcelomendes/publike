@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
+import { caminhoConversa } from "@/lib/conversas";
 import { tempoRelativo } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 
@@ -85,7 +86,8 @@ function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "vaga_preenchida") return "/?tipo=vaga";
   if (n.tipo === "recomendacao") return `/perfil/${usuarioId}#recomendacoes`;
   if (n.tipo === "contratacao" && n.anuncio_id) return `/painel/contratacao/${n.anuncio_id}`;
-  if (n.tipo === "mensagem" && n.anuncio_id && n.ator_id) return `/painel/conversas/${n.anuncio_id}/${n.ator_id}`;
+  // a conversa é uma por pessoa (as vagas em comum e a conexão juntas)
+  if (n.tipo === "mensagem") return n.ator_id ? caminhoConversa(n.ator_id) : "/painel/conversas";
   return "/painel";
 }
 

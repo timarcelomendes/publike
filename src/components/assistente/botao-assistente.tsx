@@ -270,7 +270,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
               )
             ) : (
               <PainelConversas
-                key={pedida ? `${pedida.anuncioId}-${pedida.outroId}` : "lista"}
+                key={pedida ? pedida.outroId : "lista"}
                 pedida={pedida}
                 usuarioId={usuarioId}
                 conversas={conversas}

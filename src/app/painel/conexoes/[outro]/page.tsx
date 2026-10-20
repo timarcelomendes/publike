@@ -1,25 +1,25 @@
-import { ArrowLeft, Handshake } from "lucide-react";
+import { ArrowLeft, Handshake, MessagesSquare } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { DesfazerConexao, ResponderConexao } from "@/components/conexoes/acoes-conexao";
 import { linkDoOutro, QuemConexao } from "@/components/conexoes/quem";
 import { BotoesContato } from "@/components/contato";
-import { Conversa } from "@/components/conversa/conversa";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { pedirDeNovoEm } from "@/lib/conexoes";
+import { caminhoConversa } from "@/lib/conversas";
 import { formatarDataCurta } from "@/lib/formato";
 import { conexaoCom } from "@/lib/servidor/conexoes";
 import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Conexão", robots: { index: false } };
 
-// A conexão com uma conta: o pedido (para responder ou esperando), ou, aceita, os contatos e a
-// conversa dentro do Publike.
+// A conexão com uma conta: o pedido (para responder ou esperando), ou, aceita, os contatos e o
+// caminho para a conversa (uma por pessoa, em Conversas, junto com as vagas em comum).
 
 export default function PaginaConexao({ params }: PageProps<"/painel/conexoes/[outro]">) {
   return (
@@ -32,17 +32,17 @@ export default function PaginaConexao({ params }: PageProps<"/painel/conexoes/[o
 async function Conteudo({ params }: { params: PageProps<"/painel/conexoes/[outro]">["params"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
   const { outro } = await params;
-  const usuario = await exigirUsuario(`/painel/conexoes/${outro}`);
-  const dados = await conexaoCom(outro);
+  await exigirUsuario(`/painel/conexoes/${outro}`);
+  const c = await conexaoCom(outro);
 
-  if (dados === undefined) {
+  if (c === undefined) {
     return (
       <Aviso tipo="alerta" titulo="Não deu para abrir a conexão agora">
         Tente de novo em instantes.
       </Aviso>
     );
   }
-  if (!dados) {
+  if (!c) {
     return (
       <Vazio
         icone={Handshake}
@@ -54,7 +54,6 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conexoes/[outro
     );
   }
 
-  const { conexao: c, mensagens } = dados;
   const pessoa = c.outro_tipo === "pessoa";
   const primeiroNome = pessoa ? c.outro_nome.split(" ")[0] : c.outro_nome;
   const pedirDeNovo = c.status === "recusada" ? pedirDeNovoEm(c.respondida_em) : null;
@@ -121,6 +120,31 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conexoes/[outro
 
       {c.status === "aceita" && (
         <>
+          <section
+            aria-label="Conversa"
+            className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+          >
+            <p className="text-body">
+              Converse com {primeiroNome} pelo Publike, sem trocar número. É uma conversa só: se vocês também tiverem
+              uma vaga em comum, fica tudo junto.
+            </p>
+            {c.ultima_texto && (
+              <p className="truncate text-body-sm text-ink-muted">
+                {c.ultima_minha ? "Você: " : `${primeiroNome}: `}
+                {c.ultima_texto}
+              </p>
+            )}
+            <BotaoLink href={caminhoConversa(c.outro_id)} variante="primario" className="self-start">
+              <MessagesSquare aria-hidden />
+              Conversar
+              {c.nao_lidas > 0 && (
+                <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-pill bg-like px-1.5 text-caption text-on-like">
+                  {c.nao_lidas}
+                  <span className="sr-only"> {c.nao_lidas === 1 ? "mensagem nova" : "mensagens novas"}</span>
+                </span>
+              )}
+            </BotaoLink>
+          </section>
           <section aria-label="Contatos" className="flex flex-col gap-2">
             <BotoesContato
               whatsapp={c.whatsapp}
@@ -128,20 +152,11 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conexoes/[outro
               mensagem={`Olá, ${primeiroNome}! Nos conectamos pelo Publike.`}
             />
           </section>
-          <Conversa conexaoId={c.id} euId={usuario.id} outroNome={c.outro_nome} iniciais={mensagens} />
-          <p className="text-body-sm text-ink-muted">
-            Só vocês dois leem esta conversa. Nunca pague para conseguir trabalho e não mande senha nem foto de
-            documento por aqui. Algo estranho?{" "}
-            <Link href="/sugerir" className="underline underline-offset-2 hover:text-ink">
-              Avise a equipe
-            </Link>
-            .
-          </p>
           <div className="border-t border-line pt-3">
             <DesfazerConexao
               id={c.id}
               rotulo="Desfazer conexão"
-              confirmar={`Desfazer a conexão com ${c.outro_nome}? A conversa some para os dois e os contatos deixam de aparecer.`}
+              confirmar={`Desfazer a conexão com ${c.outro_nome}? Os contatos deixam de aparecer e a conversa só continua se vocês tiverem um match numa vaga.`}
             />
           </div>
         </>

@@ -48,12 +48,9 @@ export function caminhoConexao(outroId: string) {
   return `/painel/conexoes/${outroId}`;
 }
 
-/** O número do menu: pedidos esperando a minha resposta e mensagens novas. */
+/** O número do menu: pedidos esperando a minha resposta (as mensagens contam em Conversas). */
 export function pendenciasDeConexao(lista: Conexao[]) {
-  return lista.reduce(
-    (total, c) => total + (c.status === "pendente" && !c.pedi ? 1 : 0) + (c.status === "aceita" ? c.nao_lidas : 0),
-    0,
-  );
+  return lista.filter((c) => c.status === "pendente" && !c.pedi).length;
 }
 
 /** A data em que dá para pedir de novo, depois de um pedido recusado. */

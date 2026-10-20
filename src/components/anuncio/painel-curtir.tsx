@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { pedirConversa } from "@/lib/abrir-conversa";
+import { caminhoConversa } from "@/lib/conversas";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
@@ -188,10 +189,9 @@ export function PainelCurtir({
         {autorId && (
           // no Chat do canto da tela, sem sair da página (sem o Chat, a conversa em tela cheia)
           <Link
-            href={`/painel/conversas/${anuncioId}/${autorId}`}
+            href={caminhoConversa(autorId)}
             onClick={(e) => {
-              if (pedirConversa({ anuncioId, outroId: autorId, outroNome: autorNome || quem, titulo }))
-                e.preventDefault();
+              if (pedirConversa({ outroId: autorId, outroNome: autorNome || quem, titulo })) e.preventDefault();
             }}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-pill bg-surface-200 px-5 text-label text-ink hover:bg-surface-300"
           >
@@ -369,9 +369,9 @@ export function PainelCurtir({
           <p className="mt-3 flex items-start gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
             <Zap aria-hidden className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
             <span>
-              <span className="font-semibold">Contato direto.</span>{" "}
-              {servico ? "Ao tocar em Quero contratar" : "Ao curtir"}, o WhatsApp de {quem} aparece na hora, e {quem}{" "}
-              recebe o seu. Sem esperar o aceite.
+              <span className="font-semibold">Contato direto:</span>{" "}
+              {servico ? "ao tocar em Quero contratar" : "ao curtir"}, você e {quem} trocam o WhatsApp na hora, sem
+              esperar o aceite.
             </span>
           </p>
         ) : (

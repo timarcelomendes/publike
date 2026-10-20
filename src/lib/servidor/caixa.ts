@@ -4,7 +4,6 @@ import { esperaCurriculo, esperaResposta } from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
   listarMeusCandidatos,
-  listarMinhasConversas,
   listarRespostasDosCandidatos,
   obterAnuncio,
 } from "@/lib/dados";
@@ -12,6 +11,7 @@ import type { ResumoCandidato } from "@/lib/ia/tarefas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta } from "@/lib/vaga-extra";
+import { conversasPorPessoa } from "./conversas";
 import { entrevistasDasVagas, type Entrevista } from "./quadro";
 import { obterTriagens } from "./triagem";
 
@@ -103,7 +103,7 @@ export function ordenar(aba: Aba, lista: ItemCaixa[]) {
 
 /** Todos os candidatos com o que a ficha precisa. null: não deu para ler. */
 export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
-  const [todos, conversas] = await Promise.all([listarMeusCandidatos(), listarMinhasConversas()]);
+  const [todos, conversas] = await Promise.all([listarMeusCandidatos(), conversasPorPessoa()]);
   if (!todos) return null;
   const vagas = [...new Set(todos.map((c) => c.anuncio_id))];
   const comCurriculo = vagas.filter((id) => todos.some((c) => c.anuncio_id === id && c.tem_curriculo));
@@ -117,11 +117,8 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
     entrevistasDasVagas(vagas),
     resumosGuardados(vagas),
   ]);
-  const naoLidas = new Map(
-    (conversas ?? [])
-      .filter((c) => c.papel === "publiquei" && c.anuncio_tipo === "vaga")
-      .map((c) => [`${c.anuncio_id}:${c.outro_id}`, c.nao_lidas]),
-  );
+  // a conversa é uma por pessoa: as não lidas são as da pessoa (de qualquer vaga ou da conexão)
+  const naoLidas = new Map((conversas ?? []).map((c) => [c.outro_id, c.nao_lidas]));
 
   return todos.map((c) => {
     const chave = `${c.anuncio_id}:${c.perfil_id}`;
@@ -150,7 +147,7 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
           )
         : null,
       entrevista: e && c.status === "match" && ABERTA.includes(e.situacao) ? e : null,
-      naoLidas: naoLidas.get(chave) ?? 0,
+      naoLidas: naoLidas.get(c.perfil_id) ?? 0,
       endereco: a ? [a.endereco, a.bairro, a.cidade].filter(Boolean).join(", ") : "",
       resumo:
         resumo && cv && new Date(resumo.curriculo_em).getTime() === new Date(cv.atualizado_em).getTime()

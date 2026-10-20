@@ -143,19 +143,6 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
-      mensagens_conexao: {
-        Row: {
-          id: number;
-          conexao_id: string;
-          autor_id: string;
-          texto: string;
-          criado_em: string;
-          lida_em: string | null;
-        };
-        Insert: SemTabela;
-        Update: SemTabela;
-        Relationships: [];
-      };
       links_finalistas: {
         Row: {
           anuncio_id: string;
@@ -740,11 +727,26 @@ export type Database = {
         Update: { lida?: boolean };
         Relationships: [];
       };
+      /** a conversa de duas contas (só pelas funções) */
+      conversas: {
+        Row: {
+          id: string;
+          conta_a: string;
+          conta_b: string;
+          criado_em: string;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       mensagens: {
         Row: {
           id: number;
-          anuncio_id: string;
-          perfil_id: string;
+          /** a conversa da dupla (uma por pessoa) */
+          conversa_id: string | null;
+          /** a vaga de onde a mensagem veio (null: mandada direto na conversa) */
+          anuncio_id: string | null;
+          perfil_id: string | null;
           autor_id: string;
           texto: string;
           criado_em: string;
@@ -1388,14 +1390,6 @@ export type Database = {
         Args: { p_conexao: string };
         Returns: undefined;
       };
-      enviar_mensagem_conexao: {
-        Args: { p_conexao: string; p_texto: string };
-        Returns: number;
-      };
-      marcar_conexao_lida: {
-        Args: { p_conexao: string };
-        Returns: undefined;
-      };
       minhas_conexoes: {
         Args: { p_outro?: string | null };
         Returns: {
@@ -1419,6 +1413,36 @@ export type Database = {
           ultima_minha: boolean | null;
           nao_lidas: number;
         }[];
+      };
+      conversas_por_pessoa: {
+        Args: { p_outro?: string | null };
+        Returns: {
+          outro_id: string;
+          outro_nome: string;
+          outro_foto: string | null;
+          outro_tipo: string;
+          outro_na_vitrine: boolean;
+          conversa_id: string | null;
+          conectados: boolean;
+          vagas: Json;
+          desde: string | null;
+          ultima_texto: string | null;
+          ultima_em: string | null;
+          ultima_minha: boolean | null;
+          nao_lidas: number;
+        }[];
+      };
+      abrir_conversa_com: {
+        Args: { p_outro: string };
+        Returns: string | null;
+      };
+      enviar_mensagem_para: {
+        Args: { p_outro: string; p_texto: string };
+        Returns: number;
+      };
+      marcar_conversa_lida_com: {
+        Args: { p_outro: string };
+        Returns: undefined;
       };
       estado_conexoes: {
         Args: { p_outros: string[] };

@@ -11,8 +11,12 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import { enviarMensagemConexao, marcarConexaoLida } from "@/lib/acoes/conexoes";
-import { anexarCurriculoNaConversa, enviarMensagem, linkDoAnexo, marcarConversaLida } from "@/lib/acoes/mensagens";
+import {
+  anexarCurriculoNaConversa,
+  enviarMensagemPara,
+  linkDoAnexo,
+  marcarConversaLidaCom,
+} from "@/lib/acoes/mensagens";
 import { MAX_PDF_MB } from "@/lib/constantes";
 import type { MensagemConversa } from "@/lib/dados";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
@@ -31,34 +35,32 @@ function dia(iso: string) {
 }
 
 /**
- * A conversa de um match (anúncio + quem curtiu) ou de uma conexão (talento e empresa), dentro do
- * Publike. As mensagens novas chegam na hora (Supabase Realtime); só os dois leem.
+ * A conversa com uma pessoa, dentro do Publike: uma só, com as mensagens das vagas em comum e da
+ * conexão juntas. As mensagens novas chegam na hora (Supabase Realtime); só os dois leem.
  */
 export function Conversa({
-  anuncioId,
-  perfilId,
-  conexaoId,
+  outroId,
+  conversaId,
   euId,
   outroNome,
   iniciais,
   compacto = false,
-  vaga = true,
-}: (
-  | {
-      anuncioId: string;
-      /** quem curtiu (a conversa é a da curtida) */
-      perfilId: string;
-      conexaoId?: undefined;
-    }
-  | { conexaoId: string; anuncioId?: undefined; perfilId?: undefined }
-) & {
+  vagaDoCurriculo = null,
+  conexao = false,
+}: {
+  /** a outra conta da conversa */
+  outroId: string;
+  /** a conversa da dupla (para ouvir as mensagens novas) */
+  conversaId: string;
   euId: string;
   outroNome: string;
   iniciais: MensagemConversa[];
   /** na janela de mensagens do canto: ocupa a altura dela, sem borda própria */
   compacto?: boolean;
-  /** conversa de vaga: quem curtiu pode anexar o currículo (PDF) */
-  vaga?: boolean;
+  /** a vaga em que curti (sou o candidato): dá para anexar o currículo (PDF) */
+  vagaDoCurriculo?: string | null;
+  /** a conversa vem só da conexão (sem vaga em comum): muda o texto da conversa vazia */
+  conexao?: boolean;
 }) {
   const idCampo = useId();
   const [mensagens, setMensagens] = useState<MensagemConversa[]>(iniciais);
@@ -69,27 +71,22 @@ export function Conversa({
   const primeiroNome = outroNome.split(" ")[0];
 
   const ler = useEffectEvent(() => {
-    (conexaoId ? marcarConexaoLida(conexaoId) : marcarConversaLida(anuncioId ?? "", perfilId ?? "")).catch(
-      () => undefined,
-    );
+    marcarConversaLidaCom(outroId).catch(() => undefined);
   });
 
-  // ao abrir: marca como lida e passa a ouvir as mensagens novas
+  // ao abrir: marca como lida e passa a ouvir as mensagens novas (de qualquer vaga ou da conexão)
   useEffect(() => {
     ler();
     const supabase = criarClienteNavegador();
-    // a conversa de uma conexão tem a própria tabela; a de um match é filtrada pelo anúncio
-    const tabela = conexaoId ? "mensagens_conexao" : "mensagens";
-    const filtro = conexaoId ? `conexao_id=eq.${conexaoId}` : `anuncio_id=eq.${anuncioId}`;
+    const filtro = `conversa_id=eq.${conversaId}`;
     const canal = supabase
-      .channel(conexaoId ? `conexao-${conexaoId}` : `conversa-${anuncioId}-${perfilId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: tabela, filter: filtro }, (mudanca) => {
-        const nova = mudanca.new as MensagemConversa & { perfil_id?: string };
-        if (!conexaoId && nova.perfil_id !== perfilId) return;
+      .channel(`conversa-${conversaId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens", filter: filtro }, (mudanca) => {
+        const nova = mudanca.new as MensagemConversa;
         setMensagens((atual) => (atual.some((m) => m.id === nova.id) ? atual : [...atual, nova]));
         if (nova.autor_id !== euId) ler();
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: tabela, filter: filtro }, (mudanca) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "mensagens", filter: filtro }, (mudanca) => {
         const mudou = mudanca.new as MensagemConversa;
         // "lida" aparece na hora em que a outra pessoa abre a conversa
         // e o currículo anexado (entra logo depois da mensagem)
@@ -110,7 +107,7 @@ export function Conversa({
     return () => {
       supabase.removeChannel(canal);
     };
-  }, [anuncioId, perfilId, conexaoId, euId]);
+  }, [conversaId, euId]);
 
   // desce até a última mensagem
   useEffect(() => {
@@ -124,9 +121,7 @@ export function Conversa({
     if (!t || pendente) return;
     setErro(null);
     iniciar(async () => {
-      const r = conexaoId
-        ? await enviarMensagemConexao(conexaoId, t)
-        : await enviarMensagem(anuncioId ?? "", perfilId ?? "", t);
+      const r = await enviarMensagemPara(outroId, t);
       if (!r.ok) {
         setErro(r.erro);
         return;
@@ -136,8 +131,8 @@ export function Conversa({
     });
   }
 
-  // currículo pelo chat: só quem curtiu a vaga (a conversa é a da curtida dela)
-  const podeAnexar = !conexaoId && vaga && perfilId === euId;
+  // currículo pelo chat: só quem curtiu uma vaga da outra pessoa (vai para a curtida dela)
+  const podeAnexar = Boolean(vagaDoCurriculo);
   const [enviandoPdf, setEnviandoPdf] = useState(false);
 
   async function anexar(e: ChangeEvent<HTMLInputElement>) {
@@ -154,8 +149,8 @@ export function Conversa({
         .storage.from("curriculos")
         .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
       if (error) throw error;
-      if (!anuncioId) return;
-      const r = await anexarCurriculoNaConversa(anuncioId, caminho, pdf.name);
+      if (!vagaDoCurriculo) return;
+      const r = await anexarCurriculoNaConversa(vagaDoCurriculo, caminho, pdf.name);
       if (!r.ok) return setErro(r.erro);
       setMensagens((atual) => (atual.some((m) => m.id === r.mensagem.id) ? atual : [...atual, r.mensagem]));
     } catch {
@@ -194,7 +189,7 @@ export function Conversa({
       >
         {mensagens.length === 0 ? (
           <p className="m-auto max-w-sm text-center text-body-sm text-ink-muted">
-            {conexaoId
+            {conexao
               ? `Vocês estão conectados! Mande a primeira mensagem para ${primeiroNome}: conte o que procura e combinem os próximos passos.`
               : `Deu match! Mande a primeira mensagem para ${primeiroNome}: combinem horário, endereço e o que mais precisar.`}
           </p>

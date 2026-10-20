@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useId, useState } from "react";
 import { desfazerConexao, pedirConexao } from "@/lib/acoes/conexoes";
 import { caminhoConexao, MAX_RECADO_CONEXAO, type EstadoConexao } from "@/lib/conexoes";
+import { caminhoConversa } from "@/lib/conversas";
 import { Botao, classesBotao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -80,7 +81,7 @@ export function BotaoConectar({
   if (estado?.status === "aceita") {
     return (
       <div className="flex flex-col items-start gap-1">
-        <Link href={caminhoConexao(outroId)} className={classesBotao("sucesso", tamanho)}>
+        <Link href={caminhoConversa(outroId)} className={classesBotao("sucesso", tamanho)}>
           <Check aria-hidden />
           Conectados
           <span aria-hidden>·</span>

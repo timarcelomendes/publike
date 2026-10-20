@@ -2,8 +2,9 @@
 
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { listarMinhasConversas, obterConversa, obterUsuario, type MensagemConversa } from "@/lib/dados";
+import { obterUsuario, type MensagemConversa } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
+import { conversaCom, conversasPorPessoa } from "@/lib/servidor/conversas";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
@@ -12,12 +13,13 @@ type Enviada =
   | { ok: true; mensagem: { id: number; autor_id: string; texto: string; criado_em: string; lida_em: null } }
   | { ok: false; erro: string };
 
-/** Manda uma mensagem na conversa de um match (anúncio + quem curtiu). */
-export async function enviarMensagem(anuncioId: string, perfilId: string, texto: string): Promise<Enviada> {
+/**
+ * Manda uma mensagem para uma conta com quem tenho match ou conexão aceita (a conversa é uma por
+ * pessoa: as vagas e a conexão ficam juntas).
+ */
+export async function enviarMensagemPara(outroId: string, texto: string): Promise<Enviada> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!UUID.test(anuncioId) || !UUID.test(perfilId) || typeof texto !== "string") {
-    return { ok: false, erro: "Pedido inválido." };
-  }
+  if (!UUID.test(outroId) || typeof texto !== "string") return { ok: false, erro: "Pedido inválido." };
   const limpo = texto.trim();
   if (!limpo) return { ok: false, erro: "Escreva a mensagem." };
   if (limpo.length > 2000) return { ok: false, erro: "A mensagem passa de 2000 letras." };
@@ -25,11 +27,7 @@ export async function enviarMensagem(anuncioId: string, perfilId: string, texto:
   if (!usuario) return { ok: false, erro: "Entre na sua conta." };
 
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("enviar_mensagem", {
-    p_anuncio: anuncioId,
-    p_perfil: perfilId,
-    p_texto: limpo,
-  });
+  const { data, error } = await supabase.rpc("enviar_mensagem_para", { p_outro: outroId, p_texto: limpo });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   // o aviso por e-mail para a outra pessoa sai pela fila
   after(processarFilas);
@@ -84,32 +82,29 @@ export async function linkDoAnexo(mensagemId: number): Promise<string | null> {
   return link?.signedUrl ?? null;
 }
 
-/** Abri a conversa: o que a outra pessoa mandou fica lido. */
-export async function marcarConversaLida(anuncioId: string, perfilId: string): Promise<void> {
-  if (MODO_DEMO || !UUID.test(anuncioId) || !UUID.test(perfilId)) return;
+/** Abri a conversa: tudo o que a outra pessoa mandou (de qualquer vaga ou da conexão) fica lido. */
+export async function marcarConversaLidaCom(outroId: string): Promise<void> {
+  if (MODO_DEMO || !UUID.test(outroId)) return;
   const supabase = await criarClienteServidor();
-  await supabase.rpc("marcar_conversa_lida", { p_anuncio: anuncioId, p_perfil: perfilId });
+  await supabase.rpc("marcar_conversa_lida_com", { p_outro: outroId });
 }
 
 // ---------------------------------------------------------------- janela de mensagens
 
-/** As conversas para a janela de mensagens (canto da tela), da mais recente para a mais antiga. */
+/** As conversas para a janela de mensagens (canto da tela): uma por pessoa, da mais recente. */
 export async function conversasDaJanela() {
   if (MODO_DEMO) return null;
   const usuario = await obterUsuario();
   if (!usuario) return null;
-  const lista = await listarMinhasConversas();
-  if (!lista) return null;
-  return [...lista]
-    .sort((a, b) => (b.ultima_em ?? b.match_em ?? "").localeCompare(a.ultima_em ?? a.match_em ?? ""))
-    .slice(0, 60);
+  const lista = await conversasPorPessoa();
+  return lista ? lista.slice(0, 60) : null;
 }
 
-/** Uma conversa aberta na janela de mensagens, com as últimas mensagens. */
-export async function abrirConversaDaJanela(anuncioId: string, outroId: string) {
-  if (MODO_DEMO || !UUID.test(anuncioId) || !UUID.test(outroId)) return null;
+/** A conversa com uma pessoa, aberta na janela de mensagens, com as últimas mensagens. */
+export async function abrirConversaDaJanela(outroId: string) {
+  if (MODO_DEMO || !UUID.test(outroId)) return null;
   const usuario = await obterUsuario();
   if (!usuario) return null;
-  const dados = await obterConversa(anuncioId, outroId);
+  const dados = await conversaCom(outroId);
   return dados ? { ...dados, euId: usuario.id } : null;
 }
