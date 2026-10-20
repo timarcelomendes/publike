@@ -59,6 +59,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Pode. Em “Meu currículo”, toque em “Enviar PDF” ou em “Foto do currículo” (até 3 fotos, uma por página). A IA lê e preenche os campos: profissão, habilidades, estudos, experiências, cursos e CNH. Confira, complete o que faltar e toque em “Salvar currículo”: nada é salvo antes disso. Telefone, e-mail e endereço não entram nos campos. O PDF fica anexado ao currículo (dá para tirar); as fotos não ficam guardadas.",
       },
       {
+        p: "Recebi um link de convite para uma vaga. É seguro?",
+        r: "É o convite de quem recebeu o seu currículo por fora (pelo WhatsApp, por e-mail ou em mãos) e quer chamar você pelo Publike. Abra o link, entre com o seu celular, confira o currículo que veio pronto e aceite: aí dá match e o WhatsApp dos dois aparece. Se não quiser, toque em “Não tenho interesse”: o que foi lido do seu currículo sai do convite. O Publike nunca cobra nada de quem procura trabalho.",
+      },
+      {
         p: "Quem vê meu currículo?",
         r: "Preencha “Meu currículo” uma vez. Quem anunciou uma vaga que você curtiu vê o currículo, enquanto a curtida existir. Se quiser, ligue “Deixar as empresas me encontrarem” no currículo: quem tem vaga na sua cidade vê o currículo sem telefone e sem e-mail, com o nome encurtado, e pode convidar você; o contato só sai se você curtir a vaga e der match. E, se ligar “Aparecer na aba Talentos”, um resumo seu aparece na aba Talentos da busca. Dá para desligar quando quiser. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
       },
@@ -115,6 +119,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       {
         p: "Sou agência: como controlo a taxa e a garantia de reposição?",
         r: "No quadro da vaga, abra o cartão de quem está em Contratados e registre a colocação: o dia em que a pessoa começou, a taxa cobrada do cliente (marque quando receber) e a garantia (30, 45, 60, 90 dias ou outra). Se a pessoa sair antes do fim da garantia, marque a saída: vira reposição. O Hoje avisa das garantias acabando, das reposições e das taxas a receber, e a ficha do cliente junta tudo. Só a agência vê.",
+      },
+      {
+        p: "Recebi um currículo por fora. Como ponho a pessoa na vaga?",
+        r: "No quadro da vaga, toque em “Chamar candidato de fora”. Escreva o nome e, se tiver, envie o PDF ou a foto do currículo: o Publike lê e monta o currículo da pessoa, sem telefone nem e-mail, e o arquivo não fica guardado. Mande o link pelo WhatsApp. A pessoa entra com o celular, confere o currículo e aceita: aparece no quadro com match e você recebe o aviso. O link vale 14 dias, e você vê ali quem aceitou, quem não quis e pode cancelar.",
       },
       {
         p: "Sou agência: como mando os finalistas para o cliente?",

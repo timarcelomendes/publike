@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardCheck, Download, List, Users } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Download, List, UserPlus, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -91,6 +91,12 @@ async function Conteudo({
                 {finalistas ? `Finalistas para o cliente (${finalistas})` : "Finalistas para o cliente"}
               </BotaoLink>
             )}
+            {status === "ativo" && (
+              <BotaoLink href={`/painel/anuncio/${id}/convidar`} tamanho="sm">
+                <UserPlus aria-hidden />
+                Chamar candidato de fora
+              </BotaoLink>
+            )}
             <BotaoLink href={`/painel/anuncio/${id}`} tamanho="sm">
               <List aria-hidden />
               Ver em lista
@@ -112,7 +118,7 @@ async function Conteudo({
       {cartoes.length === 0 ? (
         <Vazio icone={Users} titulo="Ninguém se candidatou ainda">
           Quem curtir a vaga aparece aqui, na coluna Novos. Compartilhe o link da vaga ou a sua página de vagas em
-          “Minhas vagas”.
+          “Minhas vagas”. Recebeu um currículo por fora? Use “Chamar candidato de fora”.
         </Vazio>
       ) : (
         <QuadroCandidatos

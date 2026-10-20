@@ -8,6 +8,7 @@ import { VisibilidadeCurriculo } from "@/components/visibilidade-curriculo";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { esperaCurriculo } from "@/lib/constantes";
+import { TOKEN_CONVITE } from "@/lib/convite-candidato";
 import {
   ajudaDaIADisponivel,
   linkDoMeuPdf,
@@ -17,6 +18,7 @@ import {
   obterMeuCurriculo,
 } from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
+import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -69,20 +71,27 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
 
   // veio de "Cadastrar meu currículo" (aba Talentos): o passo a passo no alto
   const paraTalentos = primeiro(sp.para) === "talentos";
+  // veio do convite de quem publicou a vaga (candidato de fora): o currículo vem pronto
+  const tokenConvite = primeiro(sp.convite);
+  const convite = tokenConvite && TOKEN_CONVITE.test(tokenConvite) ? tokenConvite : null;
   const { usuario } = await exigirPerfilCompleto(
     proximo
       ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}`
       : paraTalentos
         ? "/perfil/curriculo?para=talentos"
-        : "/perfil/curriculo",
+        : convite
+          ? `/perfil/curriculo?convite=${convite}`
+          : "/perfil/curriculo",
   );
-  const [curriculo, curtidas, visivel, vitrine, ia] = await Promise.all([
+  const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite] = await Promise.all([
     obterMeuCurriculo(),
     listarMinhasCurtidas().catch(() => []),
     meuCurriculoVisivel(),
     meuCurriculoNaVitrine(),
     ajudaDaIADisponivel().catch(() => false),
+    convite ? dadosDoConvite(convite).catch(() => null) : null,
   ]);
+  const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : null;
   const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? null);
   // as vagas que já aceitaram a pessoa e só esperam o currículo
   const aceitas = curtidas.filter((c) => c.tipo === "vaga" && esperaCurriculo(c));
@@ -128,6 +137,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
           </Link>
         </Aviso>
       )}
+      {lido && dadosConvite && (
+        <Aviso tipo="info" className="mb-6" titulo="Seu currículo já veio preenchido">
+          {dadosConvite.quem.nome} montou com o currículo que você mandou. Confira tudo, corrija o que precisar e salve
+          no fim da página.
+        </Aviso>
+      )}
       {primeiro(sp.salvo) === "1" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Currículo salvo!">
           <p>
@@ -156,8 +171,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         </Aviso>
       )}
       <FormCurriculo
-        key={curriculo?.atualizado_em ?? "novo"}
+        key={curriculo?.atualizado_em ?? (lido ? "convite" : "novo")}
         inicial={curriculo}
+        lido={lido}
         usuarioId={usuario.id}
         linkPdf={linkPdf}
         proximo={depoisDeSalvar}

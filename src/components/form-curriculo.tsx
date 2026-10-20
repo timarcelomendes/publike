@@ -37,8 +37,14 @@ import {
   MAX_EXPERIENCIAS,
   MAX_PDF_MB,
 } from "@/lib/constantes";
+import {
+  enviarPdf,
+  ErroDaLeitura,
+  fotosParaLeitura,
+  MAX_FOTOS_CURRICULO,
+  resumoDaLeitura,
+} from "@/lib/arquivo-curriculo";
 import { NIVEIS_DE_OUTRO_ESTUDO } from "@/lib/estudos";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
@@ -107,71 +113,7 @@ type Retrato = {
   nomePdf: string | null;
 };
 
-/** Manda o PDF para a pasta privada da pessoa no Storage e devolve o caminho. */
-async function enviarPdf(pdf: File, usuarioId: string) {
-  const caminho = `${usuarioId}/${Date.now()}.pdf`;
-  const { error } = await criarClienteNavegador()
-    .storage.from("curriculos")
-    .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
-  if (error) throw error;
-  return caminho;
-}
-
-/** Erro com a mensagem pronta para a tela. */
-class ErroDaLeitura extends Error {}
-
-/** A foto do celular, menor (JPG de até `lado` px): a leitura aceita até 1 MB ao todo. */
-async function diminuirFoto(foto: File, lado: number, qualidade: number): Promise<Blob> {
-  let imagem: ImageBitmap;
-  try {
-    imagem = await createImageBitmap(foto);
-  } catch {
-    throw new ErroDaLeitura("Não deu para abrir esta foto. Tente outra (JPG ou PNG) ou envie o PDF.");
-  }
-  const escala = Math.min(1, lado / Math.max(imagem.width, imagem.height));
-  const tela = document.createElement("canvas");
-  tela.width = Math.round(imagem.width * escala);
-  tela.height = Math.round(imagem.height * escala);
-  const ctx = tela.getContext("2d");
-  if (!ctx) throw new ErroDaLeitura("Não deu para preparar a foto. Envie o PDF.");
-  // PNG com fundo transparente vira folha branca
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, tela.width, tela.height);
-  ctx.drawImage(imagem, 0, 0, tela.width, tela.height);
-  imagem.close();
-  return new Promise((ok, falha) =>
-    tela.toBlob(
-      (b) => (b ? ok(b) : falha(new ErroDaLeitura("Não deu para preparar a foto. Envie o PDF."))),
-      "image/jpeg",
-      qualidade,
-    ),
-  );
-}
-
-const MAX_FOTOS = 3;
-/** As fotos, juntas, depois de diminuídas (a ação do servidor aceita até 1 MB). */
-const LIMITE_FOTOS = 900 * 1024;
-
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
-
-function juntar(partes: string[]) {
-  return partes.length > 1 ? `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}` : (partes[0] ?? "");
-}
-
-/** O que a leitura preencheu, em palavras: "profissão, 6 habilidades, estudos e 3 experiências". */
-function resumoDaLeitura(l: CurriculoLido) {
-  return juntar(
-    [
-      l.titulo ? "profissão" : "",
-      l.habilidades.length ? plural(l.habilidades.length, "habilidade", "habilidades") : "",
-      l.escolaridade || l.estudos.length ? "estudos" : "",
-      l.experiencias.length ? plural(l.experiencias.length, "experiência", "experiências") : "",
-      l.cursos.length ? plural(l.cursos.length, "curso", "cursos") : "",
-      l.cnh ? "CNH" : "",
-      l.disponibilidade.length ? "horários" : "",
-    ].filter(Boolean),
-  );
-}
 
 type Situacao =
   | { tipo: "parado" }
@@ -256,24 +198,14 @@ function LerCurriculoPronto({
     const fotos = [...(e.target.files ?? [])];
     e.target.value = "";
     if (!fotos.length) return;
-    if (fotos.length > MAX_FOTOS) {
-      return setSituacao({ tipo: "erro", texto: `Escolha no máximo ${MAX_FOTOS} fotos, uma por página.` });
+    if (fotos.length > MAX_FOTOS_CURRICULO) {
+      return setSituacao({ tipo: "erro", texto: `Escolha no máximo ${MAX_FOTOS_CURRICULO} fotos, uma por página.` });
     }
     if (fotos.some((f) => !f.type.startsWith("image/"))) {
       return setSituacao({ tipo: "erro", texto: "Escolha fotos (JPG ou PNG). Para PDF, use “Enviar PDF”." });
     }
     void ler(async () => {
-      let menores: Blob[] = [];
-      for (const [lado, qualidade] of [
-        [1600, 0.75],
-        [1280, 0.6],
-      ] as const) {
-        menores = await Promise.all(fotos.map((f) => diminuirFoto(f, lado, qualidade)));
-        if (menores.reduce((t, b) => t + b.size, 0) <= LIMITE_FOTOS) break;
-      }
-      if (menores.reduce((t, b) => t + b.size, 0) > LIMITE_FOTOS) {
-        throw new ErroDaLeitura("As fotos ficaram grandes demais. Mande uma página por vez ou envie o PDF.");
-      }
+      const menores = await fotosParaLeitura(fotos);
       const dados = new FormData();
       menores.forEach((b, i) => dados.append("foto", b, `pagina-${i + 1}.jpg`));
       return { dados, pdf: null };
@@ -372,8 +304,8 @@ function LerCurriculoPronto({
       )}
       {(situacao.tipo === "parado" || situacao.tipo === "erro") && (
         <p className="text-body-sm text-ink-muted">
-          PDF de até {MAX_PDF_MB} MB ou até {MAX_FOTOS} fotos, uma por página. Telefone, e-mail e endereço não entram
-          nos campos.
+          PDF de até {MAX_PDF_MB} MB ou até {MAX_FOTOS_CURRICULO} fotos, uma por página. Telefone, e-mail e endereço não
+          entram nos campos.
         </p>
       )}
     </section>
@@ -389,6 +321,7 @@ export function FormCurriculo({
   demo = false,
   rotuloSalvar = "Salvar currículo",
   lerArquivo = false,
+  lido = null,
 }: {
   inicial: Curriculo | null;
   /** mês atual ("2026-10"), vindo do servidor: limite das datas */
@@ -404,30 +337,37 @@ export function FormCurriculo({
   rotuloSalvar?: string;
   /** "Já tem currículo pronto?": a IA lê o PDF ou a foto e preenche (com a ajuda da IA ligada) */
   lerArquivo?: boolean;
+  /** sem currículo salvo: o formulário começa com o que já foi lido (o convite de quem publicou a vaga) */
+  lido?: CurriculoLido | null;
 }) {
   const [estado, acao, enviando] = useActionState(salvarCurriculo, ESTADO_INICIAL);
-  const [titulo, setTitulo] = useState(inicial?.titulo ?? "");
-  const [escolaridade, setEscolaridade] = useState(inicial?.escolaridade ?? "");
-  const [curso, setCurso] = useState(inicial?.curso ?? "");
+  const semente = inicial ? null : lido;
+  const [titulo, setTitulo] = useState(inicial?.titulo ?? semente?.titulo ?? "");
+  const [escolaridade, setEscolaridade] = useState(inicial?.escolaridade ?? semente?.escolaridade ?? "");
+  const [curso, setCurso] = useState(inicial?.curso ?? semente?.curso ?? "");
   const [estudos, setEstudos] = useState<ItemEstudo[]>(() =>
-    (inicial?.estudos ?? []).map((e) => ({ chave: novaChave(), nivel: e.nivel, curso: e.curso })),
+    (inicial?.estudos ?? semente?.estudos ?? []).map((e) => ({ chave: novaChave(), nivel: e.nivel, curso: e.curso })),
   );
-  const [cnh, setCnh] = useState(inicial?.cnh ?? "");
-  const [disponibilidade, setDisponibilidade] = useState<string[]>(inicial?.disponibilidade ?? []);
+  const [cnh, setCnh] = useState(inicial?.cnh ?? semente?.cnh ?? "");
+  const [disponibilidade, setDisponibilidade] = useState<string[]>(
+    inicial?.disponibilidade ?? semente?.disponibilidade ?? [],
+  );
   const [experiencias, setExperiencias] = useState<ItemExperiencia[]>(() =>
-    (inicial?.experiencias ?? []).map((e) => ({
-      chave: novaChave(),
-      cargo: e.cargo,
-      onde: e.onde,
-      inicio: e.inicio,
-      fim: e.fim ?? "",
-      atual: !e.fim,
-      descricao: e.descricao,
-    })),
+    semente
+      ? semente.experiencias.map((x) => ({ chave: novaChave(), ...x }))
+      : (inicial?.experiencias ?? []).map((e) => ({
+          chave: novaChave(),
+          cargo: e.cargo,
+          onde: e.onde,
+          inicio: e.inicio,
+          fim: e.fim ?? "",
+          atual: !e.fim,
+          descricao: e.descricao,
+        })),
   );
-  const [cursos, setCursos] = useState<string[]>(inicial?.cursos ?? []);
+  const [cursos, setCursos] = useState<string[]>(inicial?.cursos ?? semente?.cursos ?? []);
   const [novoCurso, setNovoCurso] = useState("");
-  const [habilidades, setHabilidades] = useState<string[]>(inicial?.habilidades ?? []);
+  const [habilidades, setHabilidades] = useState<string[]>(inicial?.habilidades ?? semente?.habilidades ?? []);
   const [novaHabilidade, setNovaHabilidade] = useState("");
   const [arquivo, setArquivo] = useState<string | null>(inicial?.arquivo ?? null);
   const [nomePdf, setNomePdf] = useState<string | null>(null);

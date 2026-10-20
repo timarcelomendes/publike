@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Talentos e a lista de finalistas da agência: fora do Google (as páginas também dizem noindex)
+      // Talentos, a lista de finalistas e os convites da agência: fora do Google (as páginas também dizem noindex)
       disallow: [
         "/painel",
         "/perfil$",
@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         "/*/denunciar",
         "/talentos",
         "/finalistas/",
+        "/candidatura/",
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

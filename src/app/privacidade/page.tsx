@@ -107,6 +107,7 @@ export default function Privacidade() {
               "O PDF fica guardado num lugar fechado e só abre com um link que vale por uma hora.",
               "O PDF vai do jeito que você enviar. Se tiver telefone, e-mail ou endereço, quem anunciou a vaga vê esses dados.",
               "Se você usar “Já tem currículo pronto?”, o PDF ou as fotos vão para a IA só para preencher os campos, e nada é salvo antes de você conferir. Telefone, e-mail e endereço não entram nos campos. As fotos não ficam guardadas no Publike; o PDF fica anexado ao currículo, e você pode tirar.",
+              "Se você mandou seu currículo por fora (WhatsApp, e-mail ou em mãos) para quem publicou uma vaga, essa pessoa ou agência pode chamar você pelo Publike. A IA lê o PDF ou a foto só para montar os campos do currículo, sem telefone nem e-mail, e o arquivo não fica guardado. O que foi lido fica no convite até você aceitar e salvar o seu, dizer que não tem interesse ou o convite vencer (14 dias). Você só entra na vaga se aceitar.",
               "Você corrige ou apaga o currículo quando quiser, em Meu perfil > Meu currículo. Excluir a conta apaga junto.",
             ]}
           />
@@ -134,10 +135,10 @@ export default function Privacidade() {
             curtiu pedir o resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos
             fortes e o que conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. No
             “Já tem currículo pronto?”, a IA recebe o PDF ou as fotos do currículo que você enviou, só para preencher os
-            campos do seu currículo. No assistente de ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu
-            primeiro nome e o bairro que você escolheu; nunca seu contato. A conversa fica só no seu navegador, não no
-            Publike. O que você manda em Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você
-            informar.
+            campos do seu currículo; no convite de quem publicou uma vaga, o currículo que você mandou para ela, só para
+            isso também. No assistente de ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro
+            nome e o bairro que você escolheu; nunca seu contato. A conversa fica só no seu navegador, não no Publike. O
+            que você manda em Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você informar.
           </p>
           <p>
             Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}

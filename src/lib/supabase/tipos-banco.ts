@@ -69,6 +69,26 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** candidato de fora: o convite pelo link (só quem convidou lê) */
+      convites_candidato: {
+        Row: {
+          id: string;
+          token: string;
+          anuncio_id: string;
+          autor_id: string;
+          nome: string;
+          curriculo: Json | null;
+          criado_em: string;
+          expira_em: string;
+          cancelado_em: string | null;
+          recusado_em: string | null;
+          perfil_id: string | null;
+          aceito_em: string | null;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       links_finalistas: {
         Row: {
           anuncio_id: string;
@@ -1239,6 +1259,15 @@ export type Database = {
         Returns: undefined;
       };
       apagar_colocacao: { Args: { p_anuncio: string; p_perfil: string }; Returns: undefined };
+      criar_convite_candidato: {
+        Args: { p_anuncio: string; p_nome: string; p_curriculo?: Json | null };
+        Returns: { id: string; token: string; expira_em: string }[];
+      };
+      cancelar_convite_candidato: { Args: { p_id: string }; Returns: undefined };
+      convite_candidato_do_token: { Args: { p_token: string }; Returns: Json };
+      aceitar_convite_candidato: { Args: { p_token: string; p_respostas?: Json }; Returns: string };
+      recusar_convite_candidato: { Args: { p_token: string }; Returns: string };
+      curriculo_do_convite: { Args: { p_token: string }; Returns: Json };
       responder_finalista: {
         Args: {
           p_token: string;

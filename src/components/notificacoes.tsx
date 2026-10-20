@@ -19,11 +19,34 @@ import {
   SearchCheck,
   ThumbsUp,
   UserCheck,
+  UserX,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { tempoRelativo } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
+
+/** O ícone de cada tipo de aviso (o resto: escudo, da moderação). */
+const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+  match: MessageCircleHeart,
+  match_desfeito: HeartCrack,
+  curtida: Heart,
+  avaliacao: Star,
+  mensagem: MessagesSquare,
+  etapa: ListChecks,
+  entrevista: CalendarClock,
+  entrevista_resposta: CalendarClock,
+  seguindo: BellRing,
+  busca: SearchCheck,
+  convite: Send,
+  recomendacao: ThumbsUp,
+  contratacao: PartyPopper,
+  aceite_curriculo: FileText,
+  curriculo_recebido: FileCheck,
+  vaga_preenchida: UserCheck,
+  finalistas: ClipboardCheck,
+  convite_candidato: UserX,
+};
 
 type Notificacao = {
   id: number;
@@ -45,6 +68,7 @@ function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
   if (n.tipo === "finalistas" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/finalistas`;
+  if (n.tipo === "convite_candidato" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/convidar`;
   // aceito numa vaga que pede currículo: direto para o currículo, que volta para a vaga
   if (n.tipo === "aceite_curriculo" && n.anuncio_id)
     return `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${n.anuncio_id}`)}`;
@@ -152,40 +176,7 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
           ) : (
             <ul className="flex max-h-96 flex-col overflow-y-auto">
               {itens.map((n) => {
-                const Icone =
-                  n.tipo === "match"
-                    ? MessageCircleHeart
-                    : n.tipo === "match_desfeito"
-                      ? HeartCrack
-                      : n.tipo === "curtida"
-                        ? Heart
-                        : n.tipo === "avaliacao"
-                          ? Star
-                          : n.tipo === "mensagem"
-                            ? MessagesSquare
-                            : n.tipo === "etapa"
-                              ? ListChecks
-                              : n.tipo === "entrevista" || n.tipo === "entrevista_resposta"
-                                ? CalendarClock
-                                : n.tipo === "seguindo"
-                                  ? BellRing
-                                  : n.tipo === "busca"
-                                    ? SearchCheck
-                                    : n.tipo === "convite"
-                                      ? Send
-                                      : n.tipo === "recomendacao"
-                                        ? ThumbsUp
-                                        : n.tipo === "contratacao"
-                                          ? PartyPopper
-                                          : n.tipo === "aceite_curriculo"
-                                            ? FileText
-                                            : n.tipo === "curriculo_recebido"
-                                              ? FileCheck
-                                              : n.tipo === "vaga_preenchida"
-                                                ? UserCheck
-                                                : n.tipo === "finalistas"
-                                                  ? ClipboardCheck
-                                                  : ShieldCheck;
+                const Icone = ICONES[n.tipo] ?? ShieldCheck;
                 return (
                   <li key={n.id}>
                     <Link
