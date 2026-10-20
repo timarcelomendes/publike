@@ -8,15 +8,16 @@ import {
   type EnderecoDoCep,
   type Precisao,
 } from "@/lib/cep";
-import { REGIAO } from "@/lib/config";
+import { MODO_DEMO, REGIAO } from "@/lib/config";
 import { CIDADES } from "@/lib/constantes";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 // Do CEP (e do número) para um ponto no mapa, de graça e sem chave:
 //   1. o endereço vem da BrasilAPI (CEP v2, que às vezes já traz o ponto) ou,
 //      se ela falhar, do ViaCEP;
 //   2. o ponto vem do OpenStreetMap (Nominatim): primeiro a rua com o número,
-//      depois o ponto do CEP, depois só a rua, depois o bairro. Quem publica
-//      confere e ajusta o pino no mapa.
+//      depois só a rua (por campos e por texto livre com o bairro), depois o
+//      ponto do CEP, depois o bairro. Quem publica confere e ajusta o pino no mapa.
 // Cuidados que a vida real pediu:
 //   * Para muitos CEPs a BrasilAPI devolve o meio da cidade (o mesmo ponto
 //     para CEPs de bairros diferentes). Ponto do CEP colado no centro da
@@ -26,6 +27,8 @@ import { CIDADES } from "@/lib/constantes";
 //   * Muita rua de Goiânia não está no mapa (a Rua Puccini, do Jardim Europa, por exemplo),
 //     e o mapa tem vários pontos com o nome do mesmo bairro, longe um do outro. Entre os
 //     achados, vale o de CEP mais parecido com o pedido (74325-200 fica perto do 74325-100).
+//   * Quando um comércio já publicou com o mesmo CEP e número e acertou o pino, esse ponto
+//     (público, na vaga) vale mais que o mapa: ponto_conhecido, no banco.
 // O Nominatim pede no máximo uma consulta por segundo e um nome de aplicativo:
 // a fila abaixo espaça as consultas e as respostas ficam guardadas por um dia.
 
@@ -98,13 +101,16 @@ function chave(s: string) {
     .trim();
 }
 
-/** "Rua JCA7" → ["Rua JCA7", "Rua JCA 7"]: o OpenStreetMap separa letras e números. */
+/**
+ * "Rua JCA7" → ["Rua JCA7", "Rua JCA 7"] e "Rua C-149" → ["Rua C-149", "Rua C 149", "Rua C149"]:
+ * no OpenStreetMap, o nome das ruas de Goiânia aparece de jeitos diferentes.
+ */
 function variantesDaRua(rua: string) {
-  const separada = rua
-    .replace(/([A-Za-zÀ-ÿ])(?=\d)|(\d)(?=[A-Za-zÀ-ÿ])/g, "$1$2 ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return [...new Set([rua, separada])];
+  const limpa = (v: string) => v.replace(/\s+/g, " ").trim();
+  const separada = limpa(rua.replace(/([A-Za-zÀ-ÿ])(?=\d)|(\d)(?=[A-Za-zÀ-ÿ])/g, "$1$2 "));
+  const semHifenEspaco = limpa(rua.replace(/(\w)-(?=\d)/g, "$1 "));
+  const semHifenJunto = limpa(rua.replace(/(\w)-(?=\d)/g, "$1"));
+  return [...new Set([rua, separada, semHifenEspaco, semHifenJunto])];
 }
 
 function naRegiao(p: Ponto | null): p is Ponto {
@@ -284,6 +290,21 @@ function pontoDaCidade(cidade: string) {
 
 type Lugar = { ponto: Ponto; precisao: Precisao };
 
+/** O ponto que outra vaga com endereço público já marcou para este CEP e número. */
+async function pontoConhecido(cep: string, num: string): Promise<Ponto | null> {
+  const n = num.replace(/[\s-]/g, "");
+  if (MODO_DEMO || !/^[0-9]{1,6}[A-Za-z]?$/.test(n)) return null;
+  try {
+    const supabase = await criarClienteServidor();
+    const { data } = await supabase.rpc("ponto_conhecido", { p_cep: cep, p_numero: n });
+    const r = data?.[0];
+    const p = r ? { lat: Number(r.lat), lng: Number(r.lng) } : null;
+    return naRegiao(p) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
 async function pontoDoEndereco(
   e: EnderecoDoCep,
   num: string | null,
@@ -313,6 +334,16 @@ async function pontoDoEndereco(
     return !referencia || distanciaKm(r.ponto, referencia) <= 3;
   };
 
+  // já marcado por outra vaga: vale, se ficar perto do bairro do CEP (um pino errado de propósito não leva longe)
+  if (num) {
+    const conhecido = await pontoConhecido(e.cep, num);
+    if (conhecido) {
+      const b = await pontoDoBairro();
+      if (!b || distanciaKm(conhecido, b.ponto) <= 3)
+        return { lugar: { ponto: conhecido, precisao: "conhecido" }, cidade };
+    }
+  }
+
   let rua: Achado | null = null;
   const ruas = e.rua ? variantesDaRua(e.rua) : [];
   if (num) {
@@ -325,8 +356,8 @@ async function pontoDoEndereco(
       break;
     }
   }
-  if (cepBom) return { lugar: { ponto: cepBom, precisao: "cep" }, cidade };
-  // com o número e sem ele no mapa, a rua sozinha ainda chega mais perto que o bairro
+  // A rua do CEP vem antes do ponto do CEP: o ponto da BrasilAPI costuma ser o meio
+  // do bairro (ou de um trecho grande), e quem digita o CEP espera ver a própria rua.
   if (!rua) {
     for (const nome of ruas) {
       const r = await procurarNoMapa({ ...base, street: nome }, e.cep);
@@ -336,7 +367,18 @@ async function pontoDoEndereco(
       }
     }
   }
+  // a busca por campos às vezes não acha; o texto livre com o bairro acha
+  if (!rua && e.bairro) {
+    for (const nome of ruas) {
+      const r = await procurarNoMapa({ q: `${nome}, ${e.bairro}, ${e.cidade}, Goiás, Brasil` }, e.cep);
+      if (r && (await daRegiaoCerta(r))) {
+        rua = r;
+        break;
+      }
+    }
+  }
   if (rua) return { lugar: { ponto: rua.ponto, precisao: "rua" }, cidade };
+  if (cepBom) return { lugar: { ponto: cepBom, precisao: "cep" }, cidade };
   const b = await pontoDoBairro();
   if (b) return { lugar: { ponto: b.ponto, precisao: "bairro" }, cidade };
   return { lugar: null, cidade };
