@@ -5,7 +5,7 @@ import { formatarLugar, urlDaFotoRecado, valorCurto } from "@/lib/formato";
 import type { Recado } from "@/lib/servidor/recados";
 import { Avatar } from "../ui/basicos";
 import type { EstadoConexao } from "@/lib/conexoes";
-import { BotaoConectarRecado } from "./botao-conectar-recado";
+import { BotaoConectarCompacto } from "../conexoes/botao-conectar-compacto";
 import { BotaoForca } from "./botao-forca";
 import { BotaoIndicar } from "./botao-indicar";
 import { MenuDoRecado } from "./menu-do-recado";
@@ -157,10 +157,10 @@ export function BalaoDoRecado({
         )}
         {r.status === "no_ar" && <BotaoIndicar recadoId={r.id} autor={r.autor_nome} />}
         {r.status === "no_ar" && conexao !== undefined && logado && !proprio && (
-          <BotaoConectarRecado
-            recadoId={r.id}
-            autor={{ id: r.autor_id, nome: r.autor_nome, tipo: r.autor_tipo }}
+          <BotaoConectarCompacto
+            outro={{ id: r.autor_id, nome: r.autor_nome, tipo: r.autor_tipo }}
             estado={conexao}
+            voltar={`/recado/${r.id}`}
           />
         )}
         {r.status === "no_ar" && acoes}

@@ -54,7 +54,7 @@ export function AbasDaLinha({
       aria-expanded={aberto}
       aria-controls={id}
       onClick={() => setAberto((a) => !a)}
-      className={`min-h-[38px] items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-3.5 text-label text-ink hover:bg-surface-300 ${classe}`}
+      className={`min-h-[38px] shrink-0 items-center gap-1.5 rounded-pill whitespace-nowrap border border-line-strong bg-surface-200 px-3 text-label text-ink hover:bg-surface-300 ${classe}`}
     >
       <SlidersHorizontal aria-hidden className="size-4" />
       Filtros
@@ -72,7 +72,7 @@ export function AbasDaLinha({
   return (
     <>
       <div className="sticky top-16 z-30 -mx-4 bg-surface-100 px-4 sm:mx-0 sm:px-0">
-        <nav aria-label="O que ver na linha do tempo" className="flex items-end border-b border-line sm:gap-6">
+        <nav aria-label="O que ver na linha do tempo" className="flex items-end border-b border-line sm:gap-6 lg:gap-4 2xl:gap-6">
           {ABAS.map(({ valor, nome, icone: Icone }) => {
             const atual = valor === aba;
             const n = numeros[valor];

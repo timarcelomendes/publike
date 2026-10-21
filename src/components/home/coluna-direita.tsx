@@ -7,7 +7,7 @@ import { meusSeguidos } from "@/lib/dados-social";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { plural } from "@/lib/formato";
 import type { Local } from "@/lib/regioes";
-import { BotaoConectar } from "../conexoes/botao-conectar";
+import { BotaoConectarCompacto } from "../conexoes/botao-conectar-compacto";
 import { SeloVerificado } from "../selo-verificado";
 import { BotaoSeguir } from "../social/botoes";
 import { Avatar } from "../ui/basicos";
@@ -33,9 +33,9 @@ export async function ContratandoPerto({ local }: { local: Local | null }) {
       <h2 id="contratando-perto" className="text-h3">
         {local?.ponto ? "Contratando perto de você" : "Contratando em Goiânia e região"}
       </h2>
-      <ul className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-3.5">
         {empresas.map((e) => (
-          <li key={e.id} className="flex flex-col gap-2">
+          <li key={e.id} className="flex flex-col gap-1.5">
             <Link href={`/perfil/${e.id}/vagas`} className="flex min-w-0 items-center gap-3 hover:underline">
               <Avatar nome={e.nome} foto={e.foto} tamanho={40} forma="quadrada" colorida />
               <span className="min-w-0">
@@ -48,24 +48,22 @@ export async function ContratandoPerto({ local }: { local: Local | null }) {
                 </span>
               </span>
             </Link>
-            {/* Seguir (aviso de vaga nova) e Conectar (conversar mesmo sem vaga), embaixo do nome */}
-            <div className="flex flex-wrap items-start gap-2">
+            {/* Seguir (o sino: aviso de vaga nova) e Conectar, pequenos, embaixo do nome */}
+            <div className="flex items-center gap-2 pl-[52px]">
               <BotaoSeguir
                 alvo={{ perfil: e.id }}
                 seguidoId={seguidos.find((s) => s.alvo_perfil === e.id)?.id ?? null}
                 logado={usuario !== null}
                 voltar="/"
-                rotulo="Seguir"
-                semIcone
+                rotulo={`Seguir ${e.nome}: aviso de vaga nova`}
+                rotuloSeguindo={`Seguindo ${e.nome}`}
+                soIcone
               />
-              <BotaoConectar
-                outroId={e.id}
-                outroNome={e.nome}
+              <BotaoConectarCompacto
+                outro={{ id: e.id, nome: e.nome, tipo: e.tipo }}
                 estado={estados.get(e.id) ?? null}
-                logado={usuario !== null}
                 voltar="/"
-                para="empresa"
-                jeito="cartao"
+                jeito="pilula"
               />
             </div>
           </li>

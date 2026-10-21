@@ -23,6 +23,7 @@ export function BotaoSeguir({
   rotuloSeguindo = "Seguindo",
   lista = false,
   semIcone = false,
+  soIcone = false,
 }: {
   alvo: { perfil: string } | { cidade: string; bairro: string };
   /** id do que já sigo (para deixar de seguir) */
@@ -37,10 +38,57 @@ export function BotaoSeguir({
   lista?: boolean;
   /** numa coluna estreita (home): só o texto, sem o sino */
   semIcone?: boolean;
+  /** numa lista apertada (Contratando, na home): só o sino, redondo e pequeno; o rótulo vai no título */
+  soIcone?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [id, setId] = useState<number | null>(seguidoId);
   const seguindo = id !== null;
+  const nomeDoBotao = seguindo ? (lista ? "Deixar de seguir" : rotuloSeguindo) : rotulo;
+
+  if (soIcone) {
+    const Sino = seguindo ? BellRing : BellPlus;
+    const redondo = `grid size-8 shrink-0 place-items-center rounded-pill border transition-colors disabled:opacity-60 ${
+      seguindo
+        ? "border-cerrado-text/30 bg-tom-servico text-cerrado-text"
+        : "border-line-strong text-ink hover:bg-surface-300"
+    }`;
+    if (!logado) {
+      return (
+        <Link href={`/entrar?next=${encodeURIComponent(voltar)}`} className={redondo} title={rotulo}>
+          <BellPlus aria-hidden className="size-4" />
+          <span className="sr-only">{rotulo}</span>
+        </Link>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className={redondo}
+        title={nomeDoBotao}
+        aria-pressed={seguindo}
+        disabled={pendente}
+        onClick={() =>
+          id !== null
+            ? rodar(
+                () => deixarDeSeguir(id, voltar),
+                (r) => {
+                  if (r.ok) setId(null);
+                },
+              )
+            : rodar(
+                () => ("perfil" in alvo ? seguirPerfil(alvo.perfil, voltar) : seguirBairro(alvo.cidade, alvo.bairro, voltar)),
+                (r) => {
+                  if (r.ok && "id" in r && typeof r.id === "number") setId(r.id);
+                },
+              )
+        }
+      >
+        <Sino aria-hidden className="size-4" />
+        <span className="sr-only">{nomeDoBotao}</span>
+      </button>
+    );
+  }
 
   if (!logado) {
     return (
