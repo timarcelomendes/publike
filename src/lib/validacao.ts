@@ -959,6 +959,42 @@ export const esquemaDenuncia = z.object({
     .transform((t) => t || null),
 });
 
+// ---------------------------------------------------------------- recado
+
+/** O recado da linha do tempo: texto de 1 a 280 letras, foto e anúncio citado opcionais. */
+export const esquemaRecado = z.object({
+  texto: z
+    .string()
+    .transform((t) =>
+      t
+        .replace(/\r\n?/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim(),
+    )
+    .pipe(
+      z
+        .string()
+        .min(1, { error: "Escreva o recado." })
+        .max(280, { error: "Use no máximo 280 letras." })
+        .refine((t) => !temContatoNoTexto(t), {
+          error: "Tire o telefone, o e-mail ou o link. O contato é pela conversa do Publike.",
+        }),
+    ),
+  foto: z
+    .string()
+    .regex(/^[0-9a-f-]{36}\/\d{10,16}\.jpg$/, { error: "Envie a foto de novo." })
+    .nullable(),
+  anuncio_id: z.string().regex(UUID, { error: "Cite outra vaga." }).nullable(),
+});
+
+export function lerRecado(formData: FormData) {
+  return esquemaRecado.safeParse({
+    texto: campo(formData, "texto") ?? "",
+    foto: campo(formData, "foto") || null,
+    anuncio_id: campo(formData, "anuncio_id") || null,
+  });
+}
+
 export function lerDenuncia(formData: FormData) {
   return esquemaDenuncia.safeParse({
     anuncio_id: campo(formData, "anuncio_id") ?? "",

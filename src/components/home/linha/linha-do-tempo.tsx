@@ -1,9 +1,13 @@
-import { Briefcase, CircleCheck, MapPinned, Wrench, type LucideIcon } from "lucide-react";
+import { Briefcase, CircleCheck, MapPinned, MessageSquareText, Wrench, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
-import { horaNaLinha, montarLinha, quandoFoi } from "@/lib/linha-do-tempo";
-import { chaveDaLinha, dadosDaLinha } from "@/lib/servidor/linha";
-import { Vazio } from "../../ui/basicos";
+import { horaNaLinha, montarLinha, quandoFoi, recolherRecados, type ItemDaLinha } from "@/lib/linha-do-tempo";
+import { chaveDaLinha, dadosDaLinha, type DadoDaLinha, type DadosDaLinha } from "@/lib/servidor/linha";
+import { BalaoDoRecado } from "../../recados/balao-do-recado";
+import { EscreverRecado } from "../../recados/escrever-recado";
+import { RecadosRecolhidos } from "../../recados/recados-recolhidos";
+import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
 import { ListaDaLinha } from "./lista-da-linha";
 import { CartaoDoAceite, CartaoDoServico, TicketDaVaga } from "./objetos";
@@ -32,6 +36,32 @@ function No({ icone: Icone, tipo }: { icone: LucideIcon; tipo: keyof typeof NO }
   );
 }
 
+/** O nó de quem escreveu (recado) ou de quem está escrevendo agora (com o anel ipê). */
+function NoDaFoto({
+  nome,
+  foto,
+  tipo,
+  agora = false,
+}: {
+  nome: string;
+  foto: string | null;
+  tipo: string;
+  agora?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={`relative z-[1] mt-1.5 hidden justify-self-center rounded-pill sm:block ${
+        agora
+          ? "shadow-[0_0_0_2px_var(--pk-surface-100),0_0_0_4px_var(--pk-ipe),0_0_0_7px_var(--pk-surface-100)]"
+          : "shadow-[0_0_0_4px_var(--pk-surface-100)]"
+      }`}
+    >
+      <Avatar nome={nome} foto={foto} tamanho={32} forma={tipo === "pessoa" ? "redonda" : "quadrada"} colorida />
+    </span>
+  );
+}
+
 function Ponto({ terra = false }: { terra?: boolean }) {
   return (
     <span
@@ -43,41 +73,99 @@ function Ponto({ terra = false }: { terra?: boolean }) {
   );
 }
 
+const HORA = "hidden pt-[18px] text-right text-body-sm leading-4 font-semibold text-ink-muted tabular-nums sm:block";
+
+/** Um item da linha (vaga, serviço, recado ou aceite), com a hora e o nó. */
+function Item({ item, d, logado }: { item: ItemDaLinha<DadoDaLinha>; d: DadosDaLinha; logado: boolean }) {
+  const hora = horaNaLinha(Date.parse(item.quando), d.agora);
+  const dados = item.dados;
+  return (
+    <div className={`${GRADE} items-start`}>
+      <span className={HORA}>{hora}</span>
+      {"aceite" in dados ? (
+        <>
+          <No icone={CircleCheck} tipo="aceite" />
+          <CartaoDoAceite m={dados.aceite} hora={hora} />
+        </>
+      ) : "recado" in dados ? (
+        <>
+          <NoDaFoto nome={dados.recado.autor_nome} foto={dados.recado.autor_foto} tipo={dados.recado.autor_tipo} />
+          <BalaoDoRecado r={dados.recado} logado={logado} hora={hora} />
+        </>
+      ) : dados.anuncio.anuncio.tipo === "servico" ? (
+        <>
+          <No icone={Wrench} tipo="servico" />
+          <CartaoDoServico item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} />
+        </>
+      ) : (
+        <>
+          <No icone={Briefcase} tipo="vaga" />
+          <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** A primeira linha: "agora", a foto da pessoa e o campo do recado (em Tudo e em Recados). */
+async function Agora({ d }: { d: DadosDaLinha }) {
+  if (d.aba !== "tudo" && d.aba !== "recado") return null;
+  const [usuario, perfil] = await Promise.all([obterUsuario(), obterMeuPerfil().catch(() => null)]);
+  if (!usuario) return null;
+  return (
+    <div className={`${GRADE} items-start`}>
+      <span className={HORA}>agora</span>
+      <NoDaFoto nome={perfil?.nome ?? "?"} foto={perfil?.foto ?? null} tipo={perfil?.tipo ?? "pessoa"} agora />
+      <EscreverRecado pessoaId={usuario.pessoaId} autorTipo={d.autorTipo} />
+    </div>
+  );
+}
+
 /**
- * A linha do tempo da home: vagas, serviços e aceites, do mais novo para o mais antigo, com os
- * separadores de dia e a marca "Você parou aqui". `meio`: o que entra uma vez depois do 4º item,
- * só no celular (quem está contratando; no computador, fica em cima do mapa).
+ * A linha do tempo da home: vagas, serviços, recados e aceites, do mais novo para o mais antigo,
+ * com os separadores de dia e a marca "Você parou aqui". No Tudo, depois de 2 recados seguidos, o
+ * resto recolhe. `meio`: o que entra uma vez depois do 4º item, só no celular (quem está
+ * contratando; no computador, fica em cima do mapa).
  */
 export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams: Parametros; meio?: ReactNode }) {
   const d = await dadosDaLinha(chaveDaLinha(await searchParams));
+  const logado = d.usuarioId !== null;
+  const agora = <Agora d={d} />;
   if (!d.itens.length) {
     const maior = RAIOS[RAIOS.length - 1];
     return (
-      <>
-        <Vazio
-          icone={MapPinned}
-          titulo={d.aba === "servico" ? "Nenhum serviço por aqui ainda" : "Nada por aqui ainda"}
-          acao={
-            (d.filtros.tempo || d.filtros.raio < maior) && (
-              <BotaoLink href={hrefFiltros(d.filtrosDaBusca, { raio: maior, tempo: null })} scroll={false}>
-                Buscar até {maior} km
-              </BotaoLink>
-            )
-          }
-        >
-          {d.filtros.q || d.filtros.categoria || d.filtros.turno
-            ? "Tente outra palavra, outra categoria ou uma distância maior."
-            : "Quando aparecer algo novo perto de você, entra aqui."}
-        </Vazio>
+      <section aria-label="Linha do tempo" className="flex flex-col gap-3">
+        {agora}
+        {d.aba === "recado" ? (
+          <Vazio icone={MessageSquareText} titulo="Nenhum recado por aqui ainda">
+            Escreva o primeiro: conte o que você procura ou quem você está contratando.
+          </Vazio>
+        ) : (
+          <Vazio
+            icone={MapPinned}
+            titulo={d.aba === "servico" ? "Nenhum serviço por aqui ainda" : "Nada por aqui ainda"}
+            acao={
+              (d.filtros.tempo || d.filtros.raio < maior) && (
+                <BotaoLink href={hrefFiltros(d.filtrosDaBusca, { raio: maior, tempo: null })} scroll={false}>
+                  Buscar até {maior} km
+                </BotaoLink>
+              )
+            }
+          >
+            {d.filtros.q || d.filtros.categoria || d.filtros.turno
+              ? "Tente outra palavra, outra categoria ou uma distância maior."
+              : "Quando aparecer algo novo perto de você, entra aqui."}
+          </Vazio>
+        )}
         <RegistrarVisita />
-      </>
+      </section>
     );
   }
 
   const blocos: ReactNode[] = [];
   const contam: boolean[] = [];
   let n = 0;
-  for (const p of montarLinha(d.itens, d.marca, d.agora)) {
+  for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora), d.aba === "tudo")) {
     if (p.tipo === "dia") {
       blocos.push(
         <div key={p.chave} className={`${GRADE} items-center pt-2`}>
@@ -102,33 +190,19 @@ export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams
         </div>,
       );
       contam.push(false);
-    } else {
-      const { item } = p;
-      const hora = horaNaLinha(Date.parse(item.quando), d.agora);
-      const dados = item.dados;
+    } else if (p.tipo === "recolhidos") {
       blocos.push(
-        <div key={p.chave} className={`${GRADE} items-start`}>
-          <span className="hidden pt-[18px] text-right text-body-sm leading-4 font-semibold text-ink-muted tabular-nums sm:block">
-            {hora}
-          </span>
-          {"aceite" in dados ? (
-            <>
-              <No icone={CircleCheck} tipo="aceite" />
-              <CartaoDoAceite m={dados.aceite} hora={hora} />
-            </>
-          ) : dados.anuncio.anuncio.tipo === "servico" ? (
-            <>
-              <No icone={Wrench} tipo="servico" />
-              <CartaoDoServico item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} />
-            </>
-          ) : (
-            <>
-              <No icone={Briefcase} tipo="vaga" />
-              <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
-            </>
-          )}
+        <div key={p.chave} className="flex flex-col gap-2.5 sm:gap-3">
+          <RecadosRecolhidos quantos={p.itens.length} grade={GRADE}>
+            {p.itens.map((item) => (
+              <Item key={`${item.tipo}-${item.id}`} item={item} d={d} logado={logado} />
+            ))}
+          </RecadosRecolhidos>
         </div>,
       );
+      contam.push(true);
+    } else {
+      blocos.push(<Item key={p.chave} item={p.item} d={d} logado={logado} />);
       contam.push(true);
       n++;
       if (n === 4 && meio) {
@@ -146,6 +220,7 @@ export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams
     <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
       {/* o traço da linha, no meio da coluna dos nós */}
       <span aria-hidden className="absolute top-3 bottom-0 left-[83px] hidden w-0.5 rounded-pill bg-line sm:block" />
+      {agora}
       <ListaDaLinha partes={blocos} contam={contam} />
       <RegistrarVisita />
     </section>

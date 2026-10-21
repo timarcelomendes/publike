@@ -178,11 +178,17 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
           tudo: numeroDaAba(d.novas.tudo),
           vaga: numeroDaAba(d.novas.vaga),
           servico: numeroDaAba(d.novas.servico),
+          recado: numeroDaAba(d.novas.recado),
         }}
         hrefs={{
           tudo: hrefFiltros(base, { tipo: null, tudo: true, regime: base.regime, turno: null }),
           vaga: hrefFiltros(base, { tipo: "vaga", tudo: false }),
           servico: hrefFiltros(base, { tipo: "servico", tudo: false, regime: null, turno: null }),
+          // a aba dos recados não é um tipo de anúncio: o mesmo endereço de Tudo, com tipo=recado
+          recado: hrefFiltros(base, { tipo: null, tudo: true, regime: null, turno: null }).replace(
+            "tipo=tudo",
+            "tipo=recado",
+          ),
         }}
         mudados={mudados}
         abrirFiltros={casa}

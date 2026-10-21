@@ -16,7 +16,7 @@ export const MARCA_MAXIMA = 30 * DIA;
 /** Quanto tempo o aceite de uma curtida fica na linha. */
 export const ACEITE_NA_LINHA = 7 * DIA;
 
-export type TipoNaLinha = "vaga" | "servico" | "aceite";
+export type TipoNaLinha = "vaga" | "servico" | "recado" | "aceite";
 
 /** Um item da linha: o que é, a chave e quando entrou (ISO). */
 export type ItemDaLinha<T> = { tipo: TipoNaLinha; id: string; quando: string; dados: T };
@@ -142,14 +142,50 @@ export function montarLinha<T>(itens: ItemDaLinha<T>[], marca: number | null, ag
   return partesDaLinha;
 }
 
+/** No Tudo, quantos recados seguidos aparecem antes de recolher o resto ("Mais 3 recados"). */
+export const RECADOS_SEGUIDOS = 2;
+
+/**
+ * Agrupa as partes da linha para mostrar: recados seguidos (sem dia ou marca no meio) além de
+ * `RECADOS_SEGUIDOS` viram um grupo recolhido. Fora do Tudo, nada recolhe.
+ */
+export function recolherRecados<T>(
+  partesDaLinha: ParteDaLinha<T>[],
+  recolher: boolean,
+): (ParteDaLinha<T> | { tipo: "recolhidos"; chave: string; itens: ItemDaLinha<T>[] })[] {
+  if (!recolher) return partesDaLinha;
+  const saida: (ParteDaLinha<T> | { tipo: "recolhidos"; chave: string; itens: ItemDaLinha<T>[] })[] = [];
+  let seguidos = 0;
+  let grupo: { tipo: "recolhidos"; chave: string; itens: ItemDaLinha<T>[] } | null = null;
+  for (const p of partesDaLinha) {
+    if (p.tipo === "item" && p.item.tipo === "recado") {
+      seguidos++;
+      if (seguidos <= RECADOS_SEGUIDOS) {
+        saida.push(p);
+      } else {
+        if (!grupo) {
+          grupo = { tipo: "recolhidos", chave: `recolhidos-${p.chave}`, itens: [] };
+          saida.push(grupo);
+        }
+        grupo.itens.push(p.item);
+      }
+      continue;
+    }
+    seguidos = 0;
+    grupo = null;
+    saida.push(p);
+  }
+  return saida;
+}
+
 /** Quantos itens de cada tipo chegaram depois da marca (sem marca: nenhum é "novo"). */
 export function novidades<T>(itens: ItemDaLinha<T>[], marca: number | null) {
-  const n = { tudo: 0, vaga: 0, servico: 0 };
+  const n = { tudo: 0, vaga: 0, servico: 0, recado: 0 };
   if (marca === null) return n;
   for (const i of itens) {
     if (Date.parse(i.quando) <= marca) continue;
     n.tudo++;
-    if (i.tipo === "vaga" || i.tipo === "servico") n[i.tipo]++;
+    if (i.tipo === "vaga" || i.tipo === "servico" || i.tipo === "recado") n[i.tipo]++;
   }
   return n;
 }

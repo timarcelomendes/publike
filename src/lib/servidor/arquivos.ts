@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type ComStorage = Pick<SupabaseClient, "storage">;
 
-export const PASTAS_DA_PESSOA = ["avatars", "trabalhos", "curriculos", "fundos"] as const;
+export const PASTAS_DA_PESSOA = ["avatars", "trabalhos", "curriculos", "fundos", "recados"] as const;
 
 /**
  * Apaga tudo o que a pessoa guardou no Storage. Vem antes de excluir a conta:

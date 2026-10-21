@@ -357,7 +357,7 @@
   border-left: 2px dashed var(--pk-line);
 }
 .tiquete-pequeno {
-  --canhoto: 116px;
+  --canhoto: 136px;
   --furo: 8px;
 }
 .tiquete-pequeno .tiquete-fundo::before {

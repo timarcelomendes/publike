@@ -4,6 +4,7 @@ import { vagaNoTurno, type Aderencia } from "@/lib/aderencia";
 import {
   buscarAnuncios,
   listarMatches,
+  obterMeuPerfil,
   obterUsuario,
   respostaDeQuemPublica,
   vagasSalvasEntre,
@@ -18,6 +19,7 @@ import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { recadosDaLinha, type Recado } from "@/lib/servidor/recados";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, Match } from "@/lib/tipos";
 import type { Resposta } from "@/lib/resposta";
@@ -26,15 +28,16 @@ import { deslocamentoCurto } from "@/lib/deslocamento";
 import {
   formatarDistancia,
   formatarLugar,
+  primeiro,
   rotuloConta,
   rotuloModalidade,
   valorCurto,
   valorDoAnuncio,
 } from "@/lib/formato";
 
-/** As abas da linha (a de recados chega com os recados). */
-export type AbaDaLinha = "tudo" | "vaga" | "servico";
-export const ABAS_DA_LINHA: AbaDaLinha[] = ["tudo", "vaga", "servico"];
+/** As abas da linha. */
+export type AbaDaLinha = "tudo" | "vaga" | "servico" | "recado";
+export const ABAS_DA_LINHA: AbaDaLinha[] = ["tudo", "vaga", "servico", "recado"];
 
 /** Quantos anúncios a linha busca (do mais novo para o mais antigo). */
 const LIMITE = 120;
@@ -101,7 +104,7 @@ export type AnuncioNaLinha = {
   resumo: string | null;
 };
 
-export type DadoDaLinha = { anuncio: AnuncioNaLinha } | { aceite: Match };
+export type DadoDaLinha = { anuncio: AnuncioNaLinha } | { aceite: Match } | { recado: Recado };
 
 export type DadosDaLinha = {
   agora: number;
@@ -115,7 +118,9 @@ export type DadosDaLinha = {
   tempoDe: "casa" | "voce" | null;
   itens: ItemDaLinha<DadoDaLinha>[];
   marca: number | null;
-  novas: { tudo: number; vaga: number; servico: number };
+  novas: { tudo: number; vaga: number; servico: number; recado: number };
+  /** a pessoa pode escrever recado (tem conta) e o que ela faz ("pessoa" escreve o que procura) */
+  autorTipo: string | null;
 };
 
 type Parametros = Record<string, string | string[] | undefined>;
@@ -136,14 +141,16 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   // a aba: a da URL; sem ela, a última escolhida; sem nada, a da resposta "O que você quer fazer"
   // (quem quer contratar um serviço abre em Serviços) ou Tudo
   const aba: AbaDaLinha =
-    lidos.tipo ??
-    (lidos.tudo
-      ? "tudo"
-      : (prefs.aba ?? ((await obterIntencao().catch(() => null)) === "contratar_servico" ? "servico" : "tudo")));
+    primeiro(sp.tipo) === "recado"
+      ? "recado"
+      : (lidos.tipo ??
+        (lidos.tudo
+          ? "tudo"
+          : (prefs.aba ?? ((await obterIntencao().catch(() => null)) === "contratar_servico" ? "servico" : "tudo"))));
   const filtrosDaBusca: Filtros = {
     ...lidos,
-    tipo: aba === "tudo" ? null : aba,
-    tudo: aba === "tudo",
+    tipo: aba === "vaga" || aba === "servico" ? aba : null,
+    tudo: aba === "tudo" || aba === "recado",
     ordem: "recentes",
     regime: aba === "servico" ? null : lidos.regime,
     turno: aba === "vaga" ? lidos.turno : null,
@@ -151,10 +158,13 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   const filtros = partirDoLocal(filtrosDaBusca, local);
   const usuarioId = usuario?.id ?? null;
 
-  const [encontrados, quem, matchesDaConta] = await Promise.all([
-    buscarAnuncios(filtros, agora, local, usuarioId),
-    usuario && aba !== "servico" ? quemProcura() : Promise.resolve(null),
+  // na aba Recados, só os recados (os anúncios entram na conta das novidades mais abaixo)
+  const [encontrados, quem, matchesDaConta, recados, perfil] = await Promise.all([
+    aba === "recado" ? Promise.resolve([]) : buscarAnuncios(filtros, agora, local, usuarioId),
+    usuario && (aba === "tudo" || aba === "vaga") ? quemProcura() : Promise.resolve(null),
     usuario ? listarMatches().catch(() => []) : Promise.resolve([]),
+    usuario ? recadosDaLinha(filtros) : Promise.resolve([]),
+    usuario ? obterMeuPerfil().catch(() => null) : Promise.resolve(null),
   ]);
   const marca = marcaDaVisita(prefs.vistaEm, prefs.marcaEm, agora);
   const requisitos = await requisitosDaLista(encontrados).catch(() => null);
@@ -198,9 +208,22 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     .filter((m) => m.papel === "curti" && m.match_em && agora - Date.parse(m.match_em) <= ACEITE_NA_LINHA)
     .map((m) => ({ tipo: "aceite", id: m.anuncio_id, quando: m.match_em, dados: { aceite: m } }));
   if (aba === "tudo") itens.push(...aceites);
+  // os recados no ar (e os da pessoa em revisão): em Tudo e em Recados
+  const itensDeRecado: ItemDaLinha<DadoDaLinha>[] = recados.map((r) => ({
+    tipo: "recado",
+    id: r.id,
+    quando: r.quando,
+    dados: { recado: r },
+  }));
+  if (aba === "tudo" || aba === "recado") itens.push(...itensDeRecado);
+  // os da própria pessoa não contam como novidade
+  const recadosDeOutros = itensDeRecado.filter((i) => "recado" in i.dados && !i.dados.recado.meu);
 
-  // os números das abas contam vagas e serviços juntos: fora de Tudo, uma busca a mais (só com marca)
-  let novas = novidades(itens, marca);
+  // os números das abas contam tudo junto: fora de Tudo, uma busca a mais (só com marca)
+  let novas = novidades(
+    aba === "tudo" ? [...itens.filter((i) => i.tipo !== "recado"), ...recadosDeOutros] : itens,
+    marca,
+  );
   if (aba !== "tudo" && marca !== null) {
     const todos = await buscarAnuncios(
       { ...filtros, tipo: null, tudo: true, regime: null, turno: null },
@@ -215,6 +238,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
             ({ tipo: a.tipo === "servico" ? "servico" : "vaga", id: a.id, quando: a.criado_em, dados: null }) as const,
         ),
         ...aceites,
+        ...recadosDeOutros,
       ],
       marca,
     );
@@ -230,6 +254,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     itens,
     marca,
     novas,
+    autorTipo: perfil?.tipo ?? null,
   };
 });
 

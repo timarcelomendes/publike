@@ -5,28 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { escolherFundo, salvarFotoDoFundo, trocarFotoPeloTopo } from "@/lib/acoes/home";
 import { FUNDO_LARGURA, FUNDO_MAX_BYTES, FUNDOS, type Fundo } from "@/lib/fundos";
+import { reduzirImagem as reduzir } from "@/lib/reduzir-imagem";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { Avatar } from "../../ui/basicos";
-
-/** Reduz a imagem para no máximo `largura` px de largura (JPEG). Com `quadrado`, corta no meio. */
-async function reduzir(arquivo: File, largura: number, quadrado = false): Promise<Blob> {
-  const imagem = await createImageBitmap(arquivo);
-  const lado = Math.min(imagem.width, imagem.height);
-  const [sx, sy, sw, sh] = quadrado
-    ? [(imagem.width - lado) / 2, (imagem.height - lado) / 2, lado, lado]
-    : [0, 0, imagem.width, imagem.height];
-  const w = Math.min(largura, sw);
-  const h = Math.round((sh * w) / sw);
-  const tela = document.createElement("canvas");
-  tela.width = w;
-  tela.height = h;
-  const ctx = tela.getContext("2d");
-  if (!ctx) throw new Error("canvas");
-  ctx.drawImage(imagem, sx, sy, sw, sh, 0, 0, w, h);
-  return new Promise((resolver, rejeitar) =>
-    tela.toBlob((b) => (b ? resolver(b) : rejeitar(new Error("blob"))), "image/jpeg", 0.85),
-  );
-}
 
 /**
  * O topo da home com o fundo que a pessoa escolhe (preto, uma imagem pronta ou uma foto dela) e a

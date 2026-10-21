@@ -5,14 +5,15 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AcoesModeracaoAnuncio } from "@/components/admin/acoes-anuncio";
 import { AcoesModeracaoAvaliacao } from "@/components/admin/acoes-avaliacao";
+import { AcoesModeracaoRecado } from "@/components/admin/acoes-recado";
 import { Estrelas } from "@/components/avaliacoes";
 import { SeloStatus } from "@/components/admin/ui";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { Selo, Vazio } from "@/components/ui/basicos";
-import { filaDaModeracao, filaDeAvaliacoes } from "@/lib/admin/dados";
+import { filaDaModeracao, filaDeAvaliacoes, filaDeRecados } from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
-import { formatarLugar, tempoRelativo } from "@/lib/formato";
+import { formatarLugar, tempoRelativo, urlDaFotoRecado } from "@/lib/formato";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -24,9 +25,10 @@ export default function Denuncias() {
   return (
     <>
       <p className="mb-6 max-w-3xl text-body text-ink-muted">
-        Anúncios com denúncias abertas, os que a IA tirou do ar e os que ela não conseguiu revisar, e as avaliações que
-        precisam de uma pessoa. Com três denúncias de pessoas diferentes, de contas com pelo menos 3 dias, o anúncio sai
-        do ar sozinho até alguém decidir. Denúncias de contas mais novas aparecem aqui, mas sozinhas não tiram do ar.
+        Anúncios com denúncias abertas, os que a IA tirou do ar e os que ela não conseguiu revisar, e as avaliações e os
+        recados que precisam de uma pessoa. Com três denúncias de pessoas diferentes, de contas com pelo menos 3 dias, o
+        anúncio sai do ar sozinho até alguém decidir. Denúncias de contas mais novas aparecem aqui, mas sozinhas não
+        tiram do ar.
       </p>
       <Suspense fallback={<EsqueletoLista />}>
         <Conteudo />
@@ -38,9 +40,10 @@ export default function Denuncias() {
 async function Conteudo() {
   const acesso = await acessoDaEquipe();
   if (!acesso) notFound();
-  const [fila, avaliacoes, agora] = await Promise.all([
+  const [fila, avaliacoes, recados, agora] = await Promise.all([
     filaDaModeracao(acesso.cliente),
     filaDeAvaliacoes(acesso.cliente),
+    filaDeRecados(acesso.cliente),
     agoraDaRequisicao(),
   ]);
 
@@ -226,6 +229,95 @@ async function Conteudo() {
                 </div>
               </li>
             ))}
+          </ul>
+        )}
+      </section>
+
+      <section id="recados" className="flex scroll-mt-24 flex-col gap-4">
+        <div>
+          <h2 className="text-h3">Recados</h2>
+          <p className="mt-1 max-w-3xl text-body-sm text-ink-muted">
+            Recados da linha do tempo que a IA reteve, que ela não conseguiu revisar ou que receberam denúncia. Com três
+            denúncias de contas com pelo menos 3 dias, o recado sai do ar sozinho até alguém decidir. Remover tira de
+            todo lugar e avisa quem escreveu com o motivo.
+          </p>
+        </div>
+        {recados.length === 0 ? (
+          <Vazio icone={ShieldCheck} titulo="Nenhum recado para revisar" />
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {recados.map((r) => {
+              const foto = urlDaFotoRecado(r.foto);
+              return (
+                <li
+                  key={r.recado_id}
+                  className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Selo variante={r.situacao === "retido" ? "aviso" : "contorno"}>
+                      {r.situacao === "retido"
+                        ? "Fora do ar"
+                        : r.situacao === "denunciado"
+                          ? "No ar, com denúncia"
+                          : "A IA não conseguiu revisar"}
+                    </Selo>
+                    {r.denuncias_abertas > 0 && (
+                      <Selo variante="aviso">
+                        {r.denuncias_abertas} {r.denuncias_abertas === 1 ? "denúncia" : "denúncias"}
+                      </Selo>
+                    )}
+                  </div>
+                  <p className="text-body-sm text-ink-muted">
+                    De{" "}
+                    {acesso.admin ? (
+                      <Link href={`/admin/usuarios/${r.autor_id}`} className="underline">
+                        {r.autor_nome}
+                      </Link>
+                    ) : (
+                      r.autor_nome
+                    )}{" "}
+                    · {formatarLugar(r.bairro, r.cidade)} · {tempoRelativo(r.criado_em, agora)}
+                    {r.anuncio_titulo && ` · cita “${r.anuncio_titulo}”`}
+                  </p>
+                  <blockquote className="rounded-md bg-surface-300 p-3 text-body whitespace-pre-line">
+                    “{r.texto}”
+                  </blockquote>
+                  {foto && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={foto} alt="Foto do recado" className="max-h-48 w-fit rounded-md object-cover" />
+                  )}
+                  {(r.ia_categorias.length > 0 || r.ia_explicacao) && (
+                    <div className="flex flex-col gap-2 rounded-md bg-terra-soft p-3 text-body-sm">
+                      <div className="flex flex-wrap gap-2">
+                        {r.ia_categorias.map((c) => (
+                          <Selo key={c} variante="contorno">
+                            {CATEGORIAS_IA[c] ?? c}
+                          </Selo>
+                        ))}
+                      </div>
+                      {r.ia_explicacao && <p>IA: {r.ia_explicacao}</p>}
+                    </div>
+                  )}
+                  {r.motivos.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {r.motivos.map((m) => (
+                        <Selo key={m} variante="contorno">
+                          {NOME_MOTIVO[m] ?? m}
+                        </Selo>
+                      ))}
+                    </div>
+                  )}
+                  {r.detalhes.map((t, i) => (
+                    <p key={i} className="rounded-md bg-surface-300 p-3 text-body-sm">
+                      “{t}”
+                    </p>
+                  ))}
+                  <div className="border-t border-line pt-3">
+                    <AcoesModeracaoRecado id={r.recado_id} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

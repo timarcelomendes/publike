@@ -307,6 +307,8 @@ export const LISTA_TIPOS_CONTA = Object.keys(TIPOS_CONTA) as [TipoConta, ...Tipo
 /** Anúncios no ar ao mesmo tempo e publicações por dia (o banco confere). */
 export const LIMITES_CONTA = {
   comum: { noAr: 20, porDia: 10 },
+  /** recados na linha do tempo, por conta, nas últimas 24 horas */
+  recadosPorDia: 5,
   /** agência de emprego / RH com o CNPJ conferido pela equipe */
   agenciaVerificada: { noAr: 200, porDia: 50 },
 } as const;

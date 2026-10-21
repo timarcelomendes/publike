@@ -1,18 +1,19 @@
 "use client";
 
-import { Briefcase, Layers, SlidersHorizontal, Wrench, type LucideIcon } from "lucide-react";
+import { Briefcase, Layers, MessageSquareText, SlidersHorizontal, Wrench, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { escolherAbaDaHome } from "@/lib/acoes/home";
 
 export const EVENTO_FILTROS = "publike-filtros-linha";
 
-type Aba = "tudo" | "vaga" | "servico";
+type Aba = "tudo" | "vaga" | "servico" | "recado";
 
 const ABAS: { valor: Aba; nome: string; icone: LucideIcon }[] = [
   { valor: "tudo", nome: "Tudo", icone: Layers },
   { valor: "vaga", nome: "Vagas", icone: Briefcase },
   { valor: "servico", nome: "Serviços", icone: Wrench },
+  { valor: "recado", nome: "Recados", icone: MessageSquareText },
 ];
 
 /**

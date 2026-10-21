@@ -7,6 +7,7 @@ import { Suspense, type ReactNode } from "react";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { CardAnuncio } from "@/components/card-anuncio";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
+import { SecaoRecados } from "@/components/recados/secao-recados";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { SecaoContratacoes, SecaoRecomendacoes } from "@/components/social/secoes";
@@ -207,6 +208,10 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           )}
         </section>
       )}
+
+      <Suspense fallback={null}>
+        <SecaoRecados perfilId={perfil.id} logado={usuario !== null} meu={meu} agora={agora} />
+      </Suspense>
 
       {perfil.tipo === "pessoa" && (
         <SecaoRecomendacoes perfilId={perfil.id} nome={perfil.nome} usuarioId={usuario?.id ?? null} agora={agora} />

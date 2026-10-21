@@ -228,6 +228,16 @@ export async function filaDeAvaliacoes(c: ClienteBanco) {
   return data ?? [];
 }
 
+/** Recados retidos, denunciados ou que a IA não revisou. Sem a migração dos recados, lista vazia. */
+export async function filaDeRecados(c: ClienteBanco) {
+  const { data, error } = await c.rpc("fila_recados");
+  if (error) {
+    if (error.code === "PGRST202") return [];
+    falha("a fila de recados", error);
+  }
+  return data ?? [];
+}
+
 export async function filaDaModeracao(c: ClienteBanco) {
   const { data, error } = await c.rpc("fila_moderacao");
   if (error) falha("a fila da moderação", error);

@@ -207,6 +207,12 @@ export function urlDaFotoTrabalho(caminho: string | null | undefined) {
   return `${SUPABASE_URL}/storage/v1/object/public/trabalhos/${caminho}`;
 }
 
+/** A foto de um recado (bucket público "recados"). */
+export function urlDaFotoRecado(caminho: string | null | undefined) {
+  if (!caminho || !SUPABASE_URL) return null;
+  return `${SUPABASE_URL}/storage/v1/object/public/recados/${caminho}`;
+}
+
 export function primeiro(valor: string | string[] | undefined) {
   return Array.isArray(valor) ? valor[0] : valor;
 }

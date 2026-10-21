@@ -745,6 +745,8 @@ export type Database = {
           lida: boolean;
           criado_em: string;
           ator_id: string | null;
+          /** o recado do aviso (Força, no ar, não publicado) */
+          recado_id: string | null;
         };
         Insert: SemTabela;
         Update: { lida?: boolean };
@@ -1400,6 +1402,160 @@ export type Database = {
           anuncio_id: string | null;
           perfil_id: string | null;
         }[];
+      };
+      /** recados (só pelas funções) */
+      escrever_recado: {
+        Args: {
+          p_texto: string;
+          p_foto?: string | null;
+          p_anuncio?: string | null;
+          p_lat?: number | null;
+          p_lng?: number | null;
+          p_cidade?: string | null;
+          p_bairro?: string | null;
+        };
+        Returns: { id: string; status: string }[];
+      };
+      apagar_recado: { Args: { p_recado: string }; Returns: string | null };
+      dar_forca: { Args: { p_recado: string }; Returns: { forcas: number; dei: boolean }[] };
+      denunciar_recado: {
+        Args: { p_recado: string; p_motivo: string; p_detalhes?: string | null };
+        Returns: undefined;
+      };
+      linha_recados: {
+        Args: { p_lat: number; p_lng: number; p_raio_km?: number; p_limite?: number };
+        Returns: {
+          id: string;
+          autor_id: string;
+          autor_nome: string;
+          autor_tipo: string;
+          autor_foto: string | null;
+          autor_verificado: boolean;
+          texto: string;
+          foto: string | null;
+          cidade: string;
+          bairro: string | null;
+          distancia_km: number | null;
+          status: string;
+          motivo: string | null;
+          forcas: number;
+          dei_forca: boolean;
+          meu: boolean | null;
+          quando: string;
+          anuncio_id: string | null;
+          anuncio_tipo: string | null;
+          anuncio_titulo: string | null;
+          anuncio_autor: string | null;
+          anuncio_valor: number | null;
+          anuncio_unidade: string | null;
+          anuncio_regime: string | null;
+          anuncio_bairro: string | null;
+          anuncio_cidade: string | null;
+          seguindo: boolean;
+        }[];
+      };
+      recados_do_perfil: {
+        Args: { p_perfil: string; p_limite?: number };
+        Returns: {
+          id: string;
+          autor_id: string;
+          autor_nome: string;
+          autor_tipo: string;
+          autor_foto: string | null;
+          autor_verificado: boolean;
+          texto: string;
+          foto: string | null;
+          cidade: string;
+          bairro: string | null;
+          distancia_km: number | null;
+          status: string;
+          motivo: string | null;
+          forcas: number;
+          dei_forca: boolean;
+          meu: boolean | null;
+          quando: string;
+          anuncio_id: string | null;
+          anuncio_tipo: string | null;
+          anuncio_titulo: string | null;
+          anuncio_autor: string | null;
+          anuncio_valor: number | null;
+          anuncio_unidade: string | null;
+          anuncio_regime: string | null;
+          anuncio_bairro: string | null;
+          anuncio_cidade: string | null;
+        }[];
+      };
+      recado: {
+        Args: { p_id: string };
+        Returns: {
+          id: string;
+          autor_id: string;
+          autor_nome: string;
+          autor_tipo: string;
+          autor_foto: string | null;
+          autor_verificado: boolean;
+          texto: string;
+          foto: string | null;
+          cidade: string;
+          bairro: string | null;
+          distancia_km: number | null;
+          status: string;
+          motivo: string | null;
+          forcas: number;
+          dei_forca: boolean;
+          meu: boolean | null;
+          quando: string;
+          anuncio_id: string | null;
+          anuncio_tipo: string | null;
+          anuncio_titulo: string | null;
+          anuncio_autor: string | null;
+          anuncio_valor: number | null;
+          anuncio_unidade: string | null;
+          anuncio_regime: string | null;
+          anuncio_bairro: string | null;
+          anuncio_cidade: string | null;
+        }[];
+      };
+      servidor_pegar_recados_ia: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { recado_id: string; versao: string; texto: string; citado: string | null; modelo: string }[];
+      };
+      servidor_resultado_recado: {
+        Args: {
+          p_chave: string;
+          p_recado: string;
+          p_versao: string;
+          p_decisao: string;
+          p_categorias?: string[];
+          p_explicacao?: string | null;
+          p_modelo?: string | null;
+        };
+        Returns: string;
+      };
+      fila_recados: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          recado_id: string;
+          situacao: string;
+          texto: string;
+          foto: string | null;
+          status: string;
+          autor_id: string;
+          autor_nome: string;
+          cidade: string;
+          bairro: string | null;
+          anuncio_titulo: string | null;
+          denuncias_abertas: number;
+          motivos: string[];
+          detalhes: string[];
+          ia_categorias: string[];
+          ia_explicacao: string | null;
+          criado_em: string;
+        }[];
+      };
+      moderar_recado: {
+        Args: { p_recado: string; p_decisao: string; p_nota?: string | null };
+        Returns: undefined;
       };
       pedir_conexao: {
         Args: { p_com: string; p_mensagem?: string | null };

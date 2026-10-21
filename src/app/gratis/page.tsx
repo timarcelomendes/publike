@@ -69,11 +69,12 @@ const NUNCA = [
 const PROMESSA =
   "O básico do Publike vai continuar grátis, sempre: procurar, publicar, curtir, dar match e conversar. Se um dia existir alguma coisa paga, ela vai ser opcional, vamos avisar antes e ela nunca vai ser cobrada de quem procura trabalho.";
 
-const { comum, agenciaVerificada } = LIMITES_CONTA;
+const { comum, agenciaVerificada, recadosPorDia } = LIMITES_CONTA;
 const LIMITE =
   `Tem, mas não é cobrança: é contra spam, para as vagas de verdade não sumirem no meio de anúncio repetido. ` +
   `Cada conta pode ter até ${comum.noAr} anúncios no ar ao mesmo tempo e publicar até ${comum.porDia} por dia. ` +
-  `Agência de emprego ou RH com o CNPJ conferido pela equipe pode ter até ${agenciaVerificada.noAr} vagas no ar e publicar ${agenciaVerificada.porDia} por dia.`;
+  `Agência de emprego ou RH com o CNPJ conferido pela equipe pode ter até ${agenciaVerificada.noAr} vagas no ar e publicar ${agenciaVerificada.porDia} por dia. ` +
+  `Na linha do tempo, cada conta escreve até ${recadosPorDia} recados por dia.`;
 
 const SUSTENTO =
   "Hoje o Publike é mantido pelo fundador, com o apoio de parceiros que acreditam em emprego perto de casa. Os gastos são com servidores, mapas, envio dos e-mails de aviso e a IA que revisa os anúncios. Parceiros não recebem seus dados e não escolhem quais vagas aparecem primeiro: a ordem é pela distância e pelo que combina com você.";
