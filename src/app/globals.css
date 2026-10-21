@@ -29,6 +29,10 @@
   --pk-on-terra: #ffffff;
   --pk-terra-text: #a8380a;
   --pk-terra-soft: #fbe3d4;
+  /* o tom de fundo de cada tipo na linha do tempo da home (bem leve, um por tipo) */
+  --pk-tom-vaga: #fcefe4;
+  --pk-tom-servico: #eaf3eb;
+  --pk-tom-recado: #fcf3d6;
   --pk-ipe: #f5b301;
   --pk-on-ipe: #1f1a14;
   --pk-cerrado: #1f6f4a;
@@ -70,6 +74,9 @@
   --pk-terra-hover: #d4501a;
   --pk-terra-text: #f08a4b;
   --pk-terra-soft: #3d2216;
+  --pk-tom-vaga: #2b2019;
+  --pk-tom-servico: #1d2620;
+  --pk-tom-recado: #2b2618;
   --pk-cerrado-text: #5cc493;
   --pk-danger: #f97066;
   --pk-focus: #f5b301;
@@ -101,6 +108,9 @@
     --pk-terra-hover: #d4501a;
     --pk-terra-text: #f08a4b;
     --pk-terra-soft: #3d2216;
+    --pk-tom-vaga: #2b2019;
+    --pk-tom-servico: #1d2620;
+    --pk-tom-recado: #2b2618;
     --pk-cerrado-text: #5cc493;
     --pk-danger: #f97066;
     --pk-focus: #f5b301;
@@ -135,6 +145,9 @@
   --color-on-terra: var(--pk-on-terra);
   --color-terra-text: var(--pk-terra-text);
   --color-terra-soft: var(--pk-terra-soft);
+  --color-tom-vaga: var(--pk-tom-vaga);
+  --color-tom-servico: var(--pk-tom-servico);
+  --color-tom-recado: var(--pk-tom-recado);
   --color-ipe: var(--pk-ipe);
   --color-on-ipe: var(--pk-on-ipe);
   --color-cerrado: var(--pk-cerrado);
@@ -312,8 +325,8 @@
  * do Curtir poderem sair do cartão. No celular, o canhoto desce: o picote fica deitado.
  */
 .tiquete {
-  --canhoto: 164px;
-  --furo: 12px;
+  --canhoto: 144px;
+  --furo: 11px;
   position: relative;
   isolation: isolate;
 }
@@ -321,14 +334,14 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  filter: drop-shadow(0 1px 1px rgb(31 26 20 / 0.08)) drop-shadow(0 6px 14px rgb(31 26 20 / 0.07));
+  filter: drop-shadow(0 1px 1px rgb(31 26 20 / 0.07)) drop-shadow(0 3px 8px rgb(31 26 20 / 0.05));
 }
 .tiquete-fundo::before {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 22px;
-  background: var(--pk-surface-200);
+  border-radius: 18px;
+  background: var(--tom, var(--pk-surface-200));
   -webkit-mask:
     radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 0, #0000 97%, #000) top / 100% 51% no-repeat,
     radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
@@ -338,8 +351,8 @@
 }
 .tiquete-picote {
   position: absolute;
-  top: 16px;
-  bottom: 16px;
+  top: 14px;
+  bottom: 14px;
   right: calc(var(--canhoto) - 1px);
   border-left: 2px dashed var(--pk-line);
 }
@@ -352,8 +365,8 @@
 }
 @media (max-width: 639px) {
   .tiquete {
-    --canhoto: 64px;
-    --furo: 10px;
+    --canhoto: 56px;
+    --furo: 9px;
   }
   .tiquete-fundo::before {
     -webkit-mask:

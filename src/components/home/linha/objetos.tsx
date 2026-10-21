@@ -66,12 +66,21 @@ function HoraNoCanto({ hora, claro = false }: { hora: string; claro?: boolean })
   );
 }
 
-function Lugar({ item, tempoDe }: { item: AnuncioNaLinha; tempoDe: "casa" | "voce" | null }) {
+/** O lugar (e o tempo de ônibus) numa linha, com as etiquetas (`children`) logo depois. */
+function Lugar({
+  item,
+  tempoDe,
+  children,
+}: {
+  item: AnuncioNaLinha;
+  tempoDe: "casa" | "voce" | null;
+  children?: ReactNode;
+}) {
   const a = item.anuncio;
   const distancia = formatarDistancia(a.distancia_km);
   const tempo = tempoDe && a.tipo === "vaga" ? deslocamentoCurto(a.distancia_km) : null;
   return (
-    <p className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1 text-body-sm text-ink-muted">
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body-sm text-ink-muted">
       <span className="inline-flex items-center gap-1">
         <MapPin aria-hidden className="size-4 shrink-0 text-terra-text" />
         {formatarLugar(a.bairro, a.cidade)}
@@ -87,11 +96,18 @@ function Lugar({ item, tempoDe }: { item: AnuncioNaLinha; tempoDe: "casa" | "voc
           {tempo}
         </span>
       )}
-    </p>
+      {children}
+    </div>
   );
 }
 
-/** O tíquete da vaga. */
+/** O começo da descrição: a introdução do anúncio, em até 2 linhas. */
+function Resumo({ texto }: { texto: string | null }) {
+  if (!texto) return null;
+  return <p className="mt-1 line-clamp-2 text-body-sm text-ink/80">{texto}</p>;
+}
+
+/** O tíquete da vaga (fundo no tom de vaga). */
 export function TicketDaVaga({
   item,
   hora,
@@ -118,28 +134,28 @@ export function TicketDaVaga({
   return (
     <article
       id={`anuncio-${a.id}`}
-      className="tiquete grid min-w-0 grid-rows-[auto_var(--canhoto)] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:grid-cols-[minmax(0,1fr)_var(--canhoto)] sm:grid-rows-1 sm:rounded-lg"
+      className="tiquete grid min-w-0 grid-rows-[auto_var(--canhoto)] [--tom:var(--pk-tom-vaga)] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:grid-cols-[minmax(0,1fr)_var(--canhoto)] sm:grid-rows-1 sm:rounded-lg"
     >
       <span aria-hidden className="tiquete-fundo" />
       <span aria-hidden className="tiquete-picote" />
-      <div className="flex min-w-0 gap-3 p-4 sm:gap-4 sm:p-5">
+      <div className="flex min-w-0 gap-3 p-3.5 sm:px-4 sm:py-3.5">
         <Avatar
           nome={a.autor_nome}
           foto={item.foto}
-          tamanho={48}
+          tamanho={40}
           forma={a.autor_tipo === "pessoa" ? "redonda" : "quadrada"}
           colorida
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
-            <h3 className="min-w-0 flex-1 font-display text-[19px] leading-6 font-bold tracking-[-0.01em] sm:text-[21px] sm:leading-[26px]">
+            <h3 className="min-w-0 flex-1 font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
               <Link href={`/anuncio/${a.id}`} className="outline-none after:absolute after:inset-0 after:content-['']">
                 {a.titulo}
               </Link>
             </h3>
             <HoraNoCanto hora={hora} />
           </div>
-          <p className="mt-0.5 flex items-center gap-1 text-body font-medium">
+          <p className="flex items-center gap-1 text-body-sm font-semibold">
             <span className="truncate">{a.autor_nome}</span>
             {a.autor_verificado && <SeloVerificado agencia={a.autor_tipo === "agencia"} />}
             {a.autor_tipo === "agencia" && (
@@ -152,21 +168,23 @@ export function TicketDaVaga({
               </>
             )}
           </p>
-          <Lugar item={item} tempoDe={tempoDe} />
-          {(etiquetas.length > 0 || match) && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {match && <SeloMatch match={match} />}
-              <ul className="contents [&>li]:rounded-pill [&>li]:bg-surface-300 [&>li]:px-2.5 [&>li]:py-0.5 [&>li]:text-[13px] [&>li]:leading-[18px] [&>li]:font-semibold">
-                {etiquetas}
-              </ul>
-            </div>
-          )}
+          <Resumo texto={item.resumo} />
+          <Lugar item={item} tempoDe={tempoDe}>
+            {(etiquetas.length > 0 || match) && (
+              <span className="flex flex-wrap items-center gap-1.5 text-ink">
+                {match && <SeloMatch match={match} />}
+                <ul className="contents [&>li]:rounded-pill [&>li]:bg-surface-100 [&>li]:px-2.5 [&>li]:py-0.5 [&>li]:text-[13px] [&>li]:leading-[18px] [&>li]:font-semibold">
+                  {etiquetas}
+                </ul>
+              </span>
+            )}
+          </Lugar>
         </div>
       </div>
       {/* o canhoto: o valor e o Curtir */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:flex-col sm:items-stretch sm:justify-between sm:p-5 sm:pl-6">
-        <p className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0.5">
-          <span className="font-display text-[22px] leading-6 font-extrabold tracking-[-0.02em] tabular-nums sm:text-[26px] sm:leading-[30px]">
+      <div className="flex items-center justify-between gap-3 px-3.5 sm:flex-col sm:items-stretch sm:justify-center sm:gap-2.5 sm:p-3.5 sm:pl-5">
+        <p className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0">
+          <span className="font-display text-[20px] leading-6 font-extrabold tracking-[-0.02em] tabular-nums sm:text-[22px] sm:leading-[26px]">
             {valor}
           </span>
           {unidade && <span className="text-body-sm text-ink-muted">{unidade}</span>}
@@ -196,7 +214,7 @@ export function TicketDaVaga({
   );
 }
 
-/** O cartão do profissional (serviço). */
+/** O cartão do profissional (serviço), no tom de serviço. */
 export function CartaoDoServico({
   item,
   hora,
@@ -213,34 +231,35 @@ export function CartaoDoServico({
   return (
     <article
       id={`anuncio-${a.id}`}
-      className="relative grid min-w-0 grid-cols-[48px_minmax(0,1fr)] gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:gap-4 sm:p-5"
+      className="relative grid min-w-0 grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-[18px] bg-tom-servico p-3.5 shadow-[0_1px_1px_rgb(31_26_20/0.07),0_3px_8px_rgb(31_26_20/0.05)] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:px-4"
     >
-      <Avatar nome={a.autor_nome} foto={item.foto} tamanho={56} className="max-sm:size-12" />
+      <Avatar nome={a.autor_nome} foto={item.foto} tamanho={40} />
       <div className="min-w-0">
         <div className="flex items-start gap-2">
-          <h3 className="min-w-0 flex-1 font-display text-[19px] leading-6 font-bold tracking-[-0.01em] sm:text-[20px] sm:leading-[25px]">
+          <h3 className="min-w-0 flex-1 font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
             <Link href={`/anuncio/${a.id}`} className="outline-none after:absolute after:inset-0 after:content-['']">
               {a.titulo}
             </Link>
           </h3>
           <HoraNoCanto hora={hora} />
         </div>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-body font-medium">
+        <p className="flex flex-wrap items-center gap-x-1.5 text-body-sm font-semibold">
           {a.autor_nome}
           <NotaDoProfissional media={a.autor_nota} total={a.autor_avaliacoes} compacto />
         </p>
+        <Resumo texto={item.resumo} />
         <Lugar item={item} tempoDe={null} />
       </div>
-      <div className="col-span-2 flex items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-1 sm:flex-col sm:items-end sm:border-0 sm:pt-0 sm:text-right">
-        <p className="flex items-baseline gap-1.5 sm:flex-col sm:items-end sm:gap-0.5">
-          <span className="font-display text-[20px] leading-6 font-extrabold tracking-[-0.02em] tabular-nums sm:text-[22px] sm:leading-[26px]">
+      <div className="col-span-2 flex items-center justify-between gap-3 border-t border-line/70 pt-2.5 sm:col-span-1 sm:flex-col sm:items-end sm:justify-center sm:gap-2 sm:border-0 sm:pt-0 sm:text-right">
+        <p className="flex items-baseline gap-1.5 sm:flex-col sm:items-end sm:gap-0">
+          <span className="font-display text-[19px] leading-6 font-extrabold tracking-[-0.02em] tabular-nums sm:text-[20px] sm:leading-[24px]">
             {valor}
           </span>
           {unidade && <span className="text-body-sm text-ink-muted">{unidade}</span>}
         </p>
         {foto && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={foto} alt="" className="hidden size-16 rounded-md object-cover sm:block" />
+          <img src={foto} alt="" className="hidden size-12 rounded-md object-cover sm:block" />
         )}
         {!proprio && (
           <BotaoCurtir
@@ -261,21 +280,21 @@ export function CartaoDoServico({
 export function CartaoDoAceite({ m, hora }: { m: Match; hora: string }) {
   const servico = m.anuncio_tipo === "servico";
   return (
-    <article className="flex flex-col gap-1 rounded-lg bg-cerrado px-5 py-4 text-on-cerrado sm:px-6 sm:py-5">
+    <article className="flex flex-col gap-1 rounded-[18px] bg-cerrado px-4 py-3.5 text-on-cerrado sm:px-5">
       <div className="flex items-start gap-2">
-        <h3 className="min-w-0 flex-1 font-display text-[19px] leading-6 font-bold tracking-[-0.01em] sm:text-[21px] sm:leading-[26px]">
+        <h3 className="min-w-0 flex-1 font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
           {m.outro_nome} aceitou {servico ? "seu pedido" : "sua curtida"}
         </h3>
         <HoraNoCanto hora={hora} claro />
       </div>
-      <p className="text-body text-on-cerrado/90">
+      <p className="text-body-sm text-on-cerrado/90">
         Vocês estão conectados {servico ? "pelo serviço" : "pela vaga"} de{" "}
         <Link href={`/anuncio/${m.anuncio_id}`} className="font-semibold underline underline-offset-2">
           {m.anuncio_titulo}
         </Link>
         . {servico ? "Combinem o serviço." : "Combine a entrevista."}
       </p>
-      <div className="mt-2.5 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         {m.outro_whatsapp && (
           <a
             href={linkWhatsApp(m.outro_whatsapp, `Oi! Vi no Publike que deu match em "${m.anuncio_titulo}".`)}

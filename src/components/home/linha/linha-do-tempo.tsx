@@ -14,15 +14,18 @@ type Parametros = Promise<Record<string, string | string[] | undefined>>;
 // No computador: a hora, o nó no traço e o objeto. No celular, só o objeto (a hora vai para o canto dele).
 const GRADE = "sm:grid sm:grid-cols-[56px_36px_minmax(0,1fr)] sm:gap-x-2.5";
 
-function No({ icone: Icone, verde = false }: { icone: LucideIcon; verde?: boolean }) {
+// o nó tem o tom do tipo, como o cartão ao lado
+const NO = {
+  vaga: "bg-tom-vaga text-terra-text",
+  servico: "bg-tom-servico text-cerrado-text",
+  aceite: "bg-cerrado text-on-cerrado",
+};
+
+function No({ icone: Icone, tipo }: { icone: LucideIcon; tipo: keyof typeof NO }) {
   return (
     <span
       aria-hidden
-      className={`relative z-[1] mt-1.5 hidden size-9 place-items-center rounded-pill sm:grid ${
-        verde
-          ? "bg-cerrado text-on-cerrado shadow-[0_0_0_4px_var(--pk-surface-100)]"
-          : "bg-surface-100 text-terra-text shadow-[inset_0_0_0_2px_var(--pk-line)]"
-      }`}
+      className={`relative z-[1] mt-2.5 hidden size-8 place-items-center justify-self-center rounded-pill shadow-[0_0_0_4px_var(--pk-surface-100)] sm:grid ${NO[tipo]}`}
     >
       <Icone className="size-4" />
     </span>
@@ -105,22 +108,22 @@ export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams
       const dados = item.dados;
       blocos.push(
         <div key={p.chave} className={`${GRADE} items-start`}>
-          <span className="hidden pt-4 text-right text-body-sm leading-4 font-semibold text-ink-muted tabular-nums sm:block">
+          <span className="hidden pt-[18px] text-right text-body-sm leading-4 font-semibold text-ink-muted tabular-nums sm:block">
             {hora}
           </span>
           {"aceite" in dados ? (
             <>
-              <No icone={CircleCheck} verde />
+              <No icone={CircleCheck} tipo="aceite" />
               <CartaoDoAceite m={dados.aceite} hora={hora} />
             </>
           ) : dados.anuncio.anuncio.tipo === "servico" ? (
             <>
-              <No icone={Wrench} />
+              <No icone={Wrench} tipo="servico" />
               <CartaoDoServico item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} />
             </>
           ) : (
             <>
-              <No icone={Briefcase} />
+              <No icone={Briefcase} tipo="vaga" />
               <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
             </>
           )}
@@ -140,7 +143,7 @@ export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams
   }
 
   return (
-    <section aria-label="Linha do tempo" className="relative flex flex-col gap-4 pb-8 sm:gap-[18px]">
+    <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
       {/* o traço da linha, no meio da coluna dos nós */}
       <span aria-hidden className="absolute top-3 bottom-0 left-[83px] hidden w-0.5 rounded-pill bg-line sm:block" />
       <ListaDaLinha partes={blocos} contam={contam} />
