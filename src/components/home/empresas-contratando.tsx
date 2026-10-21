@@ -25,7 +25,8 @@ export type EmpresaContratando = {
  */
 export async function empresasContratando(local: Local | null, quantas: number): Promise<EmpresaContratando[]> {
   const vagas = (await anunciosNoAr("vaga")).filter((v) => v.autor_tipo !== "pessoa");
-  const ponto = local?.ponto ?? null;
+  // a casa (CEP) ou, sem ela, o meio do bairro escolhido: as mais perto primeiro
+  const ponto = local?.ponto ?? local?.centro ?? null;
   const porEmpresa = new Map<string, EmpresaContratando>();
   for (const v of vagas) {
     const km = ponto ? distanciaKm(ponto.lat, ponto.lng, v.lat, v.lng) : null;

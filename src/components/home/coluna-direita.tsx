@@ -1,11 +1,11 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import Link from "next/link";
 import { conteudoDoSlug } from "@/lib/conteudos";
 import type { Conteudo } from "@/lib/conteudos/tipos";
 import { obterUsuario } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
-import { plural } from "@/lib/formato";
+import { formatarLugar, plural } from "@/lib/formato";
 import type { Local } from "@/lib/regioes";
 import { BotaoConectarCompacto } from "../conexoes/botao-conectar-compacto";
 import { SeloVerificado } from "../selo-verificado";
@@ -31,8 +31,17 @@ export async function ContratandoPerto({ local }: { local: Local | null }) {
   return (
     <section aria-labelledby="contratando-perto" className={caixa}>
       <h2 id="contratando-perto" className="text-h3">
-        {local?.ponto ? "Contratando perto de você" : "Contratando em Goiânia e região"}
+        {local ? "Contratando perto de você" : "Contratando em Goiânia e região"}
       </h2>
+      {/* o lugar de quem vê: o bairro (CEP de casa, busca ou perfil); sem bairro, a cidade */}
+      {local && (
+        <p className="-mt-2 flex items-center gap-1 text-body-sm text-ink-muted">
+          <MapPin aria-hidden className="size-4 shrink-0" />
+          <span className="truncate">
+            {local.bairro ? `${formatarLugar(local.bairro, local.cidade)} e região` : `${local.cidade} e região`}
+          </span>
+        </p>
+      )}
       <ul className="flex flex-col gap-3.5">
         {empresas.map((e) => (
           <li key={e.id} className="flex flex-col gap-1.5">

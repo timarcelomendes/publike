@@ -3,7 +3,8 @@
 // Compara tudo o que a vaga define e que dá para conferir no currículo, no perfil e
 // nas respostas:
 //   escolaridade · tempo de experiência · experiência na função (o cargo nas
-//   experiências × o título da vaga) · CNH · horário (turnos, dias e escala da vaga ×
+//   experiências ou o título do currículo × o título da vaga; a descrição da experiência
+//   não conta) · CNH · horário (turnos, dias e escala da vaga ×
 //   quando a pessoa pode trabalhar) · onde mora (cidade; bairro e região de Goiânia no
 //   detalhe) · as perguntas com a resposta que a empresa procura · os cursos que a
 //   própria vaga cita.
@@ -127,12 +128,20 @@ const GENERICAS = new Set(
     "estagiario estagiaria trainee vaga vagas temporario temporaria fixo fixa efetivo efetiva junior pleno senior " +
     "noturno noturna diurno diurna periodo integral meio turno manha tarde noite horas para com sem dos das " +
     "nos nas pela pelo uma umas uns area setor geral gerais servicos servico pessoa profissional funcionario " +
-    "funcionaria colaborador colaboradora trabalho emprego teste etapas ii iii"
+    "funcionaria colaborador colaboradora trabalho emprego teste etapas ii iii " +
+    // onde e como se trabalha, não a função ("Vendedor interno e online")
+    "interno interna externo externa online presencial remoto remota hibrido hibrida home office loja"
   ).split(" "),
 );
 
 /** Raízes curtas que confundem funções diferentes: pedem mais letras em comum. */
 const RAIZES_AMBIGUAS = new Set("serv elet inst mont prod cont tran info manu mant cons".split(" "));
+
+/**
+ * Começos de 5 letras que juntam funções diferentes ("produção" × "product manager", "compressor"
+ * × "compras", "operação" × "operador"): pedem 7 letras em comum.
+ */
+const RAIZES_AMBIGUAS_5 = new Set("produ compr opera admin comer contr inter merca impor trans prest".split(" "));
 
 /** As palavras que dizem a função: sem acento, sem as genéricas, com 4 letras ou mais. */
 function palavrasDaFuncao(texto: string) {
@@ -145,17 +154,20 @@ function palavrasDaFuncao(texto: string) {
 function mesmaRaiz(a: string, b: string) {
   let n = 0;
   while (n < a.length && n < b.length && a[n] === b[n]) n++;
+  if (n >= 7 || a === b) return true;
+  if (RAIZES_AMBIGUAS_5.has(a.slice(0, 5))) return false;
   if (n >= 5) return true;
   return n === 4 && !RAIZES_AMBIGUAS.has(a.slice(0, 4));
 }
 
-/** A experiência do currículo que mais parece com a função da vaga (pelo título). */
+/** A experiência do currículo que mais parece com a função da vaga (o cargo × o título da vaga). */
 function experienciaNaFuncao(titulo: string, experiencias: Curriculo["experiencias"]) {
   const daVaga = palavrasDaFuncao(titulo);
   if (!daVaga.length) return null;
   return (
     experiencias.find((e) => {
-      const doCargo = palavrasDaFuncao(`${e.cargo} ${e.descricao ?? ""}`);
+      // só o cargo: a descrição é texto solto ("produção de relatórios" não faz auxiliar de produção)
+      const doCargo = palavrasDaFuncao(e.cargo);
       return daVaga.some((v) => doCargo.some((c) => mesmaRaiz(v, c)));
     }) ?? null
   );

@@ -306,24 +306,27 @@ export function CartaoDoAceite({ m, hora }: { m: Match; hora: string }) {
         </Link>
         . {servico ? "Combinem o serviço." : "Combine a entrevista."}
       </p>
-      <div className="mt-2 flex flex-wrap gap-2">
+      {/* os dois lado a lado, do mesmo tamanho (no celular estreito também) */}
+      <div className="mt-2 flex gap-2">
         {m.outro_whatsapp && (
           <a
             href={linkWhatsApp(m.outro_whatsapp, `Oi! Vi no Publike que deu match em "${m.anuncio_titulo}".`)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-surface-200 px-4 text-label font-bold text-cerrado-text"
+            className="inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-pill bg-surface-200 px-3 text-label font-bold whitespace-nowrap text-cerrado-text hover:bg-surface-100 sm:flex-none sm:px-4"
           >
-            <MessageCircle aria-hidden className="size-4" />
-            Chamar no WhatsApp
+            <MessageCircle aria-hidden className="size-4 shrink-0" />
+            <span aria-hidden>WhatsApp</span>
+            <span className="sr-only">Chamar no WhatsApp</span>
           </a>
         )}
         <Link
           href={caminhoConversa(m.outro_id)}
-          className="inline-flex min-h-10 items-center gap-2 rounded-md border border-on-cerrado/55 px-4 text-label"
+          className="inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-pill border border-on-cerrado/55 px-3 text-label whitespace-nowrap hover:bg-on-cerrado/10 sm:flex-none sm:px-4"
         >
-          <MessagesSquare aria-hidden className="size-4" />
-          Conversar no Publike
+          <MessagesSquare aria-hidden className="size-4 shrink-0" />
+          <span aria-hidden>Conversar</span>
+          <span className="sr-only">Conversar no Publike</span>
         </Link>
       </div>
     </article>

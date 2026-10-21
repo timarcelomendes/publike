@@ -9,6 +9,7 @@ import { ServicosDoBairro } from "@/components/home/servicos-do-bairro";
 import { HeroVitrine, NovasHoje } from "@/components/home/vitrine";
 import { CartaoDaConta } from "@/components/home/cartao-da-conta";
 import { ContratandoPerto } from "@/components/home/coluna-direita";
+import { NovosPerto } from "@/components/home/novos-perto";
 import { LateralDaLinha } from "@/components/home/linha/lateral-da-linha";
 import { LinhaDoTempo } from "@/components/home/linha/linha-do-tempo";
 import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
@@ -151,9 +152,13 @@ function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
   return (
     <Container className="pt-4 pb-4 sm:pt-6">
       <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px]">
-        <aside className="hidden lg:sticky lg:top-[88px] lg:block">
+        <aside className="hidden flex-col gap-4 lg:flex">
           <Suspense fallback={<Esqueleto className="h-72 rounded-lg" />}>
             <CartaoDaConta jeito="linha" />
+          </Suspense>
+          {/* quem entrou no Publike nos últimos 30 dias, do mais perto para o mais longe */}
+          <Suspense fallback={null}>
+            <NovosPerto />
           </Suspense>
         </aside>
         <div className="min-w-0">
