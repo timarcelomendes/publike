@@ -33,6 +33,13 @@
   --pk-tom-vaga: #fcefe4;
   --pk-tom-servico: #eaf3eb;
   --pk-tom-recado: #fcf3d6;
+  /* as iniciais de quem não tem foto: tons fechados e foscos, com letra clara (iguais nos dois temas) */
+  --pk-avatar-cerrado: #1f6f4a;
+  --pk-avatar-petroleo: #1d5c6b;
+  --pk-avatar-ameixa: #6b3a5b;
+  --pk-avatar-ocre: #8a5a12;
+  --pk-avatar-grafite: #3d3832;
+  --pk-on-avatar: #fbf7ef;
   --pk-ipe: #f5b301;
   --pk-on-ipe: #1f1a14;
   --pk-cerrado: #1f6f4a;
@@ -148,6 +155,12 @@
   --color-tom-vaga: var(--pk-tom-vaga);
   --color-tom-servico: var(--pk-tom-servico);
   --color-tom-recado: var(--pk-tom-recado);
+  --color-avatar-cerrado: var(--pk-avatar-cerrado);
+  --color-avatar-petroleo: var(--pk-avatar-petroleo);
+  --color-avatar-ameixa: var(--pk-avatar-ameixa);
+  --color-avatar-ocre: var(--pk-avatar-ocre);
+  --color-avatar-grafite: var(--pk-avatar-grafite);
+  --color-on-avatar: var(--pk-on-avatar);
   --color-ipe: var(--pk-ipe);
   --color-on-ipe: var(--pk-on-ipe);
   --color-cerrado: var(--pk-cerrado);

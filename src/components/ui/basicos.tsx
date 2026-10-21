@@ -84,12 +84,16 @@ export function Aviso({
 
 // ------------------------------------------------------------------ Avatar
 
-/** As cores das iniciais de quem não tem foto (cada nome cai sempre na mesma). */
+/**
+ * As cores das iniciais de quem não tem foto (cada nome cai sempre na mesma): tons fechados e
+ * foscos, só para avatares, com letra clara. Sem terra (a ação principal) nem ipê (os selos).
+ */
 const CORES_INICIAIS = [
-  "bg-terra text-on-terra",
-  "bg-cerrado text-on-cerrado",
-  "bg-ink text-surface-100",
-  "bg-ipe text-on-ipe",
+  "bg-avatar-cerrado text-on-avatar",
+  "bg-avatar-petroleo text-on-avatar",
+  "bg-avatar-ameixa text-on-avatar",
+  "bg-avatar-ocre text-on-avatar",
+  "bg-avatar-grafite text-on-avatar",
 ] as const;
 
 /** A cor de fundo de um nome (a mesma das iniciais): para a capa colorida dos cartões. */
@@ -104,8 +108,10 @@ function corDoNome(nome: string) {
 }
 
 /**
- * Foto da conta ou, sem foto, as iniciais. `forma="quadrada"`: o logo de empresa, comércio
- * e agência (no cartão do anúncio). `colorida`: as iniciais num fundo de cor, pelo nome.
+ * Foto da conta ou, sem foto, as iniciais. Pessoa: círculo. `forma="quadrada"`: empresa, comércio
+ * e agência, num quadrado de cantos arredondados (28% do lado, a mesma forma em qualquer tamanho);
+ * o logo enviado fica inteiro num quadro branco com folga e borda fina, sem cortar.
+ * `colorida`: as iniciais num fundo de cor, pelo nome.
  */
 export function Avatar({
   nome,
@@ -123,7 +129,21 @@ export function Avatar({
   colorida?: boolean;
 }) {
   const url = urlDaFoto(foto);
-  const canto = forma === "quadrada" ? "rounded-md" : "rounded-pill";
+  const quadrada = forma === "quadrada";
+  const canto = quadrada ? "" : "rounded-pill";
+  const raio = quadrada ? { borderRadius: Math.round(tamanho * 0.28) } : {};
+  if (url && quadrada) {
+    // o logo inteiro, num quadro branco (logos são feitos para fundo claro, nos dois temas)
+    const folga = Math.max(2, Math.round(tamanho * 0.1));
+    return (
+      <span
+        className={`inline-flex shrink-0 items-center justify-center overflow-hidden bg-[#fff] shadow-[inset_0_0_0_1px_var(--pk-line)] ${className}`}
+        style={{ width: tamanho, height: tamanho, padding: folga, ...raio }}
+      >
+        <Image src={url} alt="" width={tamanho} height={tamanho} unoptimized className="size-full object-contain" />
+      </span>
+    );
+  }
   if (url) {
     return (
       <Image
@@ -143,7 +163,7 @@ export function Avatar({
       className={`inline-flex shrink-0 items-center justify-center ${canto} font-display font-bold ${
         colorida ? corDoNome(nome) : "bg-surface-300 text-ink"
       } ${className}`}
-      style={{ width: tamanho, height: tamanho, fontSize: Math.round(tamanho * 0.38) }}
+      style={{ width: tamanho, height: tamanho, fontSize: Math.round(tamanho * 0.38), ...raio }}
     >
       {iniciais(nome)}
     </span>
