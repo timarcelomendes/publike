@@ -364,9 +364,32 @@ export type Database = {
         Relationships: [];
       };
       preferencias: {
-        Row: { perfil_id: string; procuro: string | null; atualizado_em: string };
-        Insert: { procuro?: string | null };
-        Update: { procuro?: string | null };
+        Row: {
+          perfil_id: string;
+          procuro: string | null;
+          atualizado_em: string;
+          home_vista_em: string | null;
+          home_marca_em: string | null;
+          home_aba: string | null;
+          fundo: string;
+          fundo_arquivo: string | null;
+        };
+        Insert: {
+          procuro?: string | null;
+          home_vista_em?: string | null;
+          home_marca_em?: string | null;
+          home_aba?: string | null;
+          fundo?: string;
+          fundo_arquivo?: string | null;
+        };
+        Update: {
+          procuro?: string | null;
+          home_vista_em?: string | null;
+          home_marca_em?: string | null;
+          home_aba?: string | null;
+          fundo?: string;
+          fundo_arquivo?: string | null;
+        };
         Relationships: [];
       };
       moderadores: {

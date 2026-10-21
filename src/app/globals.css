@@ -304,3 +304,117 @@
     display: none !important;
   }
 }
+
+/*
+ * Linha do tempo da home de quem entrou.
+ * O tíquete da vaga: o fundo branco tem dois recortes no picote (máscara) e a sombra acompanha os
+ * recortes (filtro no invólucro do fundo). O conteúdo fica por cima, sem máscara, para os balões
+ * do Curtir poderem sair do cartão. No celular, o canhoto desce: o picote fica deitado.
+ */
+.tiquete {
+  --canhoto: 164px;
+  --furo: 12px;
+  position: relative;
+  isolation: isolate;
+}
+.tiquete-fundo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  filter: drop-shadow(0 1px 1px rgb(31 26 20 / 0.08)) drop-shadow(0 6px 14px rgb(31 26 20 / 0.07));
+}
+.tiquete-fundo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: var(--pk-surface-200);
+  -webkit-mask:
+    radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 0, #0000 97%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 0, #0000 97%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+}
+.tiquete-picote {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  right: calc(var(--canhoto) - 1px);
+  border-left: 2px dashed var(--pk-line);
+}
+.tiquete-pequeno {
+  --canhoto: 116px;
+  --furo: 8px;
+}
+.tiquete-pequeno .tiquete-fundo::before {
+  border-radius: 14px;
+}
+@media (max-width: 639px) {
+  .tiquete {
+    --canhoto: 64px;
+    --furo: 10px;
+  }
+  .tiquete-fundo::before {
+    -webkit-mask:
+      radial-gradient(circle var(--furo) at 0 calc(100% - var(--canhoto)), #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle var(--furo) at 100% calc(100% - var(--canhoto)), #0000 97%, #000) right / 51% 100%
+        no-repeat;
+    mask:
+      radial-gradient(circle var(--furo) at 0 calc(100% - var(--canhoto)), #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle var(--furo) at 100% calc(100% - var(--canhoto)), #0000 97%, #000) right / 51% 100%
+        no-repeat;
+  }
+  .tiquete-picote {
+    top: auto;
+    bottom: calc(var(--canhoto) - 1px);
+    left: 14px;
+    right: 14px;
+    border-left: 0;
+    border-top: 2px dashed var(--pk-line);
+  }
+  /* o pequeno (vaga citada) fica sem canhoto no celular */
+  .tiquete-pequeno .tiquete-fundo::before {
+    -webkit-mask: none;
+    mask: none;
+  }
+  .tiquete-pequeno .tiquete-picote {
+    display: none;
+  }
+}
+
+/*
+ * As abas encaixadas na borda de baixo do topo: a escolhida tem a cor da página e dois cantos
+ * côncavos (o gradiente só desenha a forma), e desce 1 px para cobrir o fio da borda.
+ */
+.aba-encaixada {
+  --canto: 18px;
+  position: relative;
+}
+.aba-encaixada[aria-current="page"] {
+  background: var(--pk-surface-100);
+  margin-bottom: -1px;
+  padding-bottom: calc(var(--folga, 16px) + 1px);
+}
+.aba-encaixada[aria-current="page"]::before,
+.aba-encaixada[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: var(--canto);
+  height: var(--canto);
+  pointer-events: none;
+}
+.aba-encaixada[aria-current="page"]::before {
+  left: calc(-1 * var(--canto));
+  background: radial-gradient(circle at 0 0, #0000 calc(var(--canto) - 0.5px), var(--pk-surface-100) var(--canto));
+}
+.aba-encaixada[aria-current="page"]::after {
+  right: calc(-1 * var(--canto));
+  background: radial-gradient(circle at 100% 0, #0000 calc(var(--canto) - 0.5px), var(--pk-surface-100) var(--canto));
+}
+@media (max-width: 639px) {
+  .aba-encaixada {
+    --canto: 14px;
+  }
+}

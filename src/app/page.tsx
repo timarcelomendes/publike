@@ -1,4 +1,4 @@
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
@@ -7,9 +7,12 @@ import { EmpresasContratando } from "@/components/home/empresas-contratando";
 import { FaixaArte } from "@/components/home/faixa-arte";
 import { ServicosDoBairro } from "@/components/home/servicos-do-bairro";
 import { HeroVitrine, NovasHoje } from "@/components/home/vitrine";
-import { CaixaDePublicar } from "@/components/home/caixa-publicar";
-import { AtalhosDaConta, CartaoDaConta } from "@/components/home/cartao-da-conta";
-import { ContratandoPerto, DoBlog } from "@/components/home/coluna-direita";
+import { CartaoDaConta } from "@/components/home/cartao-da-conta";
+import { ContratandoPerto } from "@/components/home/coluna-direita";
+import { LateralDaLinha } from "@/components/home/linha/lateral-da-linha";
+import { LinhaDoTempo } from "@/components/home/linha/linha-do-tempo";
+import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
+import { EsqueletoCards } from "@/components/card-anuncio";
 import { MolduraDaHome } from "@/components/home/moldura";
 import { EntendaOPublike } from "@/components/inicio";
 import { MenuPainelEsqueleto } from "@/components/painel/menu-painel";
@@ -122,13 +125,52 @@ async function SecoesDaVitrine({ searchParams }: { searchParams: Parametros }) {
   );
 }
 
-/** Quem entrou: a home da conta, no modo do painel (Trabalhar e Serviços: o feed). */
+/** Quem entrou: a home da conta, no modo do painel. */
 async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
   const [modo, sp] = await Promise.all([modoDaConta(), searchParams]);
   // quem contrata abre direto no trabalho com os candidatos; com uma busca no endereço, a lista
   const comBusca = Object.keys(sp).some((k) => BUSCA.includes(k));
-  if (modo === "contratar" && !comBusca) return <HomeEmpresa />;
-  const empresa = modo === "contratar";
+  if (modo === "contratar") return comBusca ? <BuscaDaEmpresa searchParams={searchParams} /> : <HomeEmpresa />;
+  return <LinhaDaConta searchParams={searchParams} />;
+}
+
+/**
+ * Quem procura trabalho ou oferece serviço: a linha do tempo. Em cima, o topo com a foto, as
+ * novidades e as abas; embaixo, a linha (vagas, serviços e aceites, do mais novo para o mais
+ * antigo) e, no computador, quem está contratando e o mapa numa coluna à direita.
+ */
+function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
+  const contratando = (
+    <Suspense fallback={null}>
+      <ContratandoAcimaDoMapa />
+    </Suspense>
+  );
+  return (
+    <Container className="pt-4 pb-4 sm:pt-6">
+      <Suspense fallback={<Esqueleto className="mb-6 h-56 rounded-[28px]" />}>
+        <TopoDaConta searchParams={searchParams} />
+      </Suspense>
+      <div className="lg:grid lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:gap-8">
+        <div className="min-w-0 lg:self-start">
+          <Suspense fallback={<EsqueletoCards quantos={3} />}>
+            <LinhaDoTempo searchParams={searchParams} meio={contratando} />
+          </Suspense>
+        </div>
+        <aside aria-label="Perto de você" className="hidden min-w-0 lg:block">
+          <Suspense fallback={<Esqueleto className="aspect-[4/5] rounded-lg" />}>
+            <LateralDaLinha searchParams={searchParams} acima={contratando} />
+          </Suspense>
+        </aside>
+      </div>
+      <Suspense fallback={null}>
+        <Contratados />
+      </Suspense>
+    </Container>
+  );
+}
+
+/** Quem contrata, com uma busca no endereço: a lista com filtros e mapa (como antes). */
+function BuscaDaEmpresa({ searchParams }: { searchParams: Parametros }) {
   return (
     <>
       <h1 className="sr-only">Publike: trabalho perto de você</h1>
@@ -139,65 +181,18 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
               <CartaoDaConta />
             </Suspense>
             <Suspense fallback={<Esqueleto className="h-64 rounded-lg" />}>
-              {empresa ? <MenuDaConta /> : <AtalhosDaConta />}
+              <MenuDaConta />
             </Suspense>
           </>
         }
-        direita={
-          empresa ? null : (
-            <Suspense fallback={null}>
-              <ColunaDireita />
-            </Suspense>
-          )
-        }
-        // com Blocos + mapa, quem contrata perto sobe para cima do mapa; embaixo, só os conteúdos
-        direitaComMapa={empresa ? null : <DoBlog />}
-        mapaAoLado
       >
-        {/* publicar fica aqui, acima da busca e dos filtros (como no LinkedIn), e não no topo da página */}
-        <Suspense fallback={<Esqueleto className="mb-4 hidden h-[7.75rem] rounded-lg md:block" />}>
-          <CaixaDePublicar />
+        <Suspense fallback={<BuscaEsqueleto />}>
+          <BuscaExplorar searchParams={searchParams} className="mb-6" />
         </Suspense>
-        {empresa ? (
-          <Suspense fallback={<BuscaEsqueleto />}>
-            <BuscaExplorar searchParams={searchParams} className="mb-6" />
-          </Suspense>
-        ) : (
-          // no computador, a busca fica no topo da página; no celular, aqui
-          <form action="/" role="search" className="mb-4 lg:hidden">
-            <label className="flex h-11 items-center gap-2 rounded-pill bg-surface-300 px-4 text-ink-muted focus-within:outline-2 focus-within:outline-focus">
-              <Search aria-hidden className="size-4 shrink-0" />
-              <span className="sr-only">Buscar vagas e serviços</span>
-              <input
-                type="search"
-                name="q"
-                enterKeyHint="search"
-                placeholder="Buscar vaga: garçom, auxiliar…"
-                maxLength={80}
-                className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
-              />
-            </label>
-          </form>
-        )}
-        {/* sem a busca inteira em cima (quem contrata tem), a lista traz Onde você mora e Perto de mim */}
         <Suspense fallback={<ExplorarEsqueleto />}>
-          <Explorar
-            searchParams={searchParams}
-            variante="feed"
-            lugar={!empresa}
-            acimaDoMapa={
-              empresa ? null : (
-                <Suspense fallback={null}>
-                  <ContratandoAcimaDoMapa />
-                </Suspense>
-              )
-            }
-          />
+          <Explorar searchParams={searchParams} variante="feed" />
         </Suspense>
       </MolduraDaHome>
-      <Suspense fallback={null}>
-        <Contratados />
-      </Suspense>
     </>
   );
 }
@@ -272,18 +267,7 @@ async function HomeEmpresa() {
   );
 }
 
-/** A coluna da direita do feed: quem contrata perto (com o Seguir) e os conteúdos. */
-async function ColunaDireita() {
-  const local = await obterLocal();
-  return (
-    <>
-      <ContratandoPerto local={local} />
-      <DoBlog />
-    </>
-  );
-}
-
-/** Com Blocos + mapa: quem contrata perto em cima do mapa, estreito como na coluna da direita. */
+/** Quem contrata perto: em cima do mapa (computador) ou no meio da linha (celular). */
 async function ContratandoAcimaDoMapa() {
   return <ContratandoPerto local={await obterLocal()} />;
 }

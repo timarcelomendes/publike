@@ -6,7 +6,13 @@ import { ehModerador, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { ehAdminLocal } from "@/lib/supabase/admin";
-import { BotaoEntrarCabecalho, BotaoPublicar, PublicarECurriculo, type CurriculoNoTopo } from "./botao-publicar";
+import {
+  BotaoEntrarCabecalho,
+  BotaoPublicar,
+  PublicarDaConta,
+  PublicarECurriculo,
+  type CurriculoNoTopo,
+} from "./botao-publicar";
 import { BotaoInstalarApp } from "./instalar-app";
 import { LinkTopo } from "./nav-topo";
 import { MenuUsuario } from "./menu-usuario";
@@ -132,7 +138,7 @@ async function InstalarDoTopo() {
  */
 async function PublicarDoTopo() {
   const usuario = MODO_DEMO ? null : await obterUsuario();
-  if (usuario) return null;
+  if (usuario) return <PublicarDaConta />;
   return <PublicarECurriculo curriculo={await curriculoNoTopo()} />;
 }
 

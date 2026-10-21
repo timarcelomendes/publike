@@ -20,6 +20,23 @@ export function BotaoPublicar() {
   );
 }
 
+/**
+ * "Publicar" do topo para quem entrou (no computador): com contorno, porque o terra da tela fica
+ * com a ação principal de cada página (na home, o cartão do topo). No celular, a barra de baixo tem.
+ */
+export function PublicarDaConta() {
+  const caminho = usePathname();
+  if (SEM_BOTAO.some((r) => r.test(caminho))) return null;
+  return (
+    <div className="hidden lg:block">
+      <BotaoLink href="/publicar" variante="secundario" tamanho="sm">
+        <Plus aria-hidden />
+        Publicar
+      </BotaoLink>
+    </div>
+  );
+}
+
 // Telas que já levam ao currículo (ou que não são para quem procura trabalho)
 const SEM_CURRICULO = [/^\/perfil\/curriculo/, /^\/talentos/, /^\/publicar/, /^\/entrar/, /^\/admin/];
 
