@@ -184,7 +184,13 @@ export function TicketDaVaga({
       {/* o canhoto: o valor e o Curtir */}
       <div className="flex items-center justify-between gap-3 px-3.5 sm:flex-col sm:items-stretch sm:justify-center sm:gap-2.5 sm:p-3.5 sm:pl-5">
         <p className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0">
-          <span className="font-display text-[20px] leading-6 font-extrabold tracking-[-0.02em] tabular-nums sm:text-[22px] sm:leading-[26px]">
+          <span
+            className={`font-display font-extrabold tracking-[-0.02em] whitespace-nowrap tabular-nums ${
+              unidade
+                ? "text-[20px] leading-6 sm:text-[22px] sm:leading-[26px]"
+                : "text-[17px] leading-6 sm:text-[18px]"
+            }`}
+          >
             {valor}
           </span>
           {unidade && <span className="text-body-sm text-ink-muted">{unidade}</span>}
@@ -192,7 +198,7 @@ export function TicketDaVaga({
         {proprio ? (
           <Link
             href={`/painel/anuncio/${a.id}`}
-            className="relative z-10 inline-flex min-h-10 items-center justify-center rounded-pill border border-line-strong px-4 text-label hover:bg-surface-300"
+            className="relative z-10 inline-flex min-h-9 items-center justify-center rounded-pill border border-line-strong px-3 text-label whitespace-nowrap hover:bg-surface-300"
           >
             Seu anúncio
           </Link>
@@ -252,7 +258,13 @@ export function CartaoDoServico({
       </div>
       <div className="col-span-2 flex items-center justify-between gap-3 border-t border-line/70 pt-2.5 sm:col-span-1 sm:flex-col sm:items-end sm:justify-center sm:gap-2 sm:border-0 sm:pt-0 sm:text-right">
         <p className="flex items-baseline gap-1.5 sm:flex-col sm:items-end sm:gap-0">
-          <span className="font-display text-[19px] leading-6 font-extrabold tracking-[-0.02em] tabular-nums sm:text-[20px] sm:leading-[24px]">
+          <span
+            className={`font-display font-extrabold tracking-[-0.02em] whitespace-nowrap tabular-nums ${
+              unidade
+                ? "text-[19px] leading-6 sm:text-[20px] sm:leading-[24px]"
+                : "text-[17px] leading-6 sm:text-[18px]"
+            }`}
+          >
             {valor}
           </span>
           {unidade && <span className="text-body-sm text-ink-muted">{unidade}</span>}
