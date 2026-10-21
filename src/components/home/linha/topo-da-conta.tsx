@@ -16,7 +16,8 @@ import { AbasDaLinha } from "./abas-da-linha";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
-type Acao = { texto: string; href: string; icone: LucideIcon };
+/** `noCartao`: no computador o cartão da esquerda já tem esse atalho (o botão some de lá) */
+type Acao = { texto: string; href: string; icone: LucideIcon; noCartao?: boolean };
 
 /** A ação que mais pede a conta agora, pelo uso: quem contrata, quem presta serviço, quem procura. */
 async function proximaAcao(): Promise<Acao | null> {
@@ -35,13 +36,14 @@ async function proximaAcao(): Promise<Acao | null> {
   if (uso === "servicos") {
     const anuncios = await listarMeusAnuncios().catch(() => []);
     const servicos = anuncios.filter((a) => a.tipo === "servico");
-    if (!servicos.length) return { texto: "Montar a vitrine", href: "/painel/servicos", icone: Store };
+    if (!servicos.length) return { texto: "Montar a vitrine", href: "/painel/servicos", icone: Store, noCartao: true };
     const pedidos = servicos.reduce((t, a) => t + (a.curtidas_novas ?? 0), 0);
     return pedidos
       ? {
           texto: `Responder ${plural(pedidos, "pedido", "pedidos")}`,
           href: "/painel/anuncios?tipo=servico",
           icone: Inbox,
+          noCartao: true,
         }
       : null;
   }
@@ -52,13 +54,15 @@ async function proximaAcao(): Promise<Acao | null> {
     texto: curriculo ? `Completar o currículo · ${pontos}%` : "Montar o currículo",
     href: "/perfil/curriculo",
     icone: FileText,
+    noCartao: true,
   };
 }
 
 /**
- * O topo da home de quem entrou: a saudação com as novidades desde a última visita e a ação que
- * mais pede a conta; o campo do recado com a foto (que troca ali mesmo); as abas da linha do
- * tempo e os filtros.
+ * O topo da home de quem entrou (no meio, ao lado do cartão da conta): a saudação com as novidades
+ * desde a última visita e a ação que mais pede a conta; o campo do recado, numa linha só (abre ao
+ * tocar); as abas da linha do tempo e os filtros. No celular, sem o cartão, a foto (que troca ali
+ * mesmo) vai ao lado da saudação.
  */
 export async function TopoDaConta({ searchParams }: { searchParams: Parametros }) {
   const sp = await searchParams;
@@ -90,17 +94,34 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
     <>
       <section aria-label="Sua conta" className="flex flex-col gap-3.5 sm:gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-body text-ink-muted">
-            <span className="font-display text-[19px] leading-6 font-bold text-ink sm:text-[20px]">
-              {saudacao(d.agora)}
-              {nome ? `, ${nome}` : ""}.
-            </span>{" "}
-            {frase}
-          </p>
+          <div className="flex min-w-0 items-center gap-3">
+            {usuario && (
+              <span className="shrink-0 lg:hidden">
+                <FotoDaConta
+                  nome={perfil?.nome ?? "?"}
+                  foto={perfil?.foto ?? null}
+                  empresa={empresa}
+                  pessoaId={usuario.pessoaId}
+                  podeTrocar={usuario.id === usuario.pessoaId}
+                  tamanho={44}
+                  className="shrink-0"
+                />
+              </span>
+            )}
+            <p className="min-w-0 text-body-sm text-ink-muted sm:text-body">
+              <span className="font-display text-[18px] leading-6 font-bold text-ink sm:text-[20px]">
+                {saudacao(d.agora)}
+                {nome ? `, ${nome}` : ""}.
+              </span>{" "}
+              {frase}
+            </p>
+          </div>
           {acao && Icone && (
             <Link
               href={acao.href}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-terra px-4 text-label text-on-terra transition-colors hover:bg-terra-hover"
+              className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-terra px-4 text-label text-on-terra transition-colors hover:bg-terra-hover ${
+                acao.noCartao ? "lg:hidden" : ""
+              }`}
             >
               <Icone aria-hidden className="size-[18px]" />
               {acao.texto}
@@ -126,16 +147,19 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
           <EscreverRecado
             pessoaId={usuario.pessoaId}
             autorTipo={d.autorTipo}
+            // no celular a foto já está ao lado da saudação
             avatar={
-              <FotoDaConta
-                nome={perfil?.nome ?? "?"}
-                foto={perfil?.foto ?? null}
-                empresa={empresa}
-                pessoaId={usuario.pessoaId}
-                podeTrocar={usuario.id === usuario.pessoaId}
-                tamanho={44}
-                className="shrink-0"
-              />
+              <span className="hidden shrink-0 lg:block">
+                <FotoDaConta
+                  nome={perfil?.nome ?? "?"}
+                  foto={perfil?.foto ?? null}
+                  empresa={empresa}
+                  pessoaId={usuario.pessoaId}
+                  podeTrocar={usuario.id === usuario.pessoaId}
+                  tamanho={40}
+                  className="shrink-0"
+                />
+              </span>
             }
           />
         )}

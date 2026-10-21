@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { formatarLugar, urlDaFotoRecado, valorCurto } from "@/lib/formato";
 import type { Recado } from "@/lib/servidor/recados";
 import { Avatar } from "../ui/basicos";
+import type { EstadoConexao } from "@/lib/conexoes";
+import { BotaoConectarRecado } from "./botao-conectar-recado";
 import { BotaoForca } from "./botao-forca";
 import { BotaoIndicar } from "./botao-indicar";
 import { MenuDoRecado } from "./menu-do-recado";
@@ -58,7 +60,7 @@ function Citacao({ r }: { r: Recado }) {
 
 /**
  * O recado: um balão no tom de recado, como numa conversa. O nome e o que a pessoa faz, o texto,
- * a foto, a vaga citada (tíquete pequeno), a Força e o menu. O próprio recado em revisão aparece
+ * a foto, a vaga citada (tíquete pequeno), a Força, o Indicar, o Conectar e o menu. O próprio recado em revisão aparece
  * só para quem escreveu, com "Em revisão". `hora`: no celular, no canto (na linha do tempo).
  * `comFoto`: a foto de quem escreveu no topo (no computador, ela fica no traço da linha).
  */
@@ -68,6 +70,7 @@ export function BalaoDoRecado({
   hora = null,
   comFoto = "celular",
   acoes = null,
+  conexao,
 }: {
   r: Recado;
   logado: boolean;
@@ -75,6 +78,11 @@ export function BalaoDoRecado({
   comFoto?: "celular" | "sempre";
   /** o que vem depois da Força (Indicar) */
   acoes?: ReactNode;
+  /**
+   * a conexão com quem escreveu: com ela (mesmo null, sem conexão), o Conectar fica no rodapé;
+   * sem (na página do próprio perfil, que já tem o Conectar), fica no menu
+   */
+  conexao?: EstadoConexao | null;
 }) {
   const foto = urlDaFotoRecado(r.foto);
   const proprio = Boolean(r.meu);
@@ -148,13 +156,20 @@ export function BalaoDoRecado({
           <BotaoForca recadoId={r.id} forcas={r.forcas} dei={r.dei_forca} proprio={proprio} logado={logado} />
         )}
         {r.status === "no_ar" && <BotaoIndicar recadoId={r.id} autor={r.autor_nome} />}
+        {r.status === "no_ar" && conexao !== undefined && logado && !proprio && (
+          <BotaoConectarRecado
+            recadoId={r.id}
+            autor={{ id: r.autor_id, nome: r.autor_nome, tipo: r.autor_tipo }}
+            estado={conexao}
+          />
+        )}
         {r.status === "no_ar" && acoes}
         <span className="ml-auto">
           <MenuDoRecado
             recadoId={r.id}
             proprio={proprio}
             logado={logado}
-            autor={{ id: r.autor_id, nome: r.autor_nome }}
+            autor={conexao === undefined ? { id: r.autor_id, nome: r.autor_nome } : undefined}
           />
         </span>
       </footer>

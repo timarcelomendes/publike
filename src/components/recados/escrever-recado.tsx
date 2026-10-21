@@ -35,6 +35,8 @@ export function EscreverRecado({
   const [achados, setAchados] = useState<{ chave: string; itens: Citavel[] } | null>(null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
+  // tocou no campo (ou num dos botões): abre; saiu de tudo, vazio: fecha
+  const [ativo, setAtivo] = useState(false);
   const [pendente, iniciar] = useTransition();
   const campo = useRef<HTMLTextAreaElement>(null);
   const id = useId();
@@ -120,15 +122,23 @@ export function EscreverRecado({
     });
   }
 
+  const aberto = ativo || Boolean(texto) || Boolean(foto) || Boolean(citado) || citando || pendente || enviandoFoto;
+  const botaoIcone =
+    "grid size-10 shrink-0 cursor-pointer place-items-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink";
+
+  // Fechado: uma linha só (a foto, "Conte o que você procura…" e os ícones de foto e de citar).
+  // Ao tocar, abre: a foto escolhida, a vaga citada e o "Enviar recado".
   return (
     <div
-      className={
-        avatar
-          ? "min-w-0 rounded-lg border border-line bg-surface-200 p-3.5 shadow-card sm:p-4"
-          : "min-w-0 rounded-[18px] border border-line-strong bg-surface-200 px-3.5 pt-3 pb-2.5 sm:rounded-tl-[6px] sm:px-4"
-      }
+      onFocus={() => setAtivo(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setAtivo(false);
+      }}
+      className={`min-w-0 border border-line bg-surface-200 p-1.5 shadow-card transition-[border-radius] ${
+        aberto ? "rounded-lg sm:p-2" : "rounded-[28px]"
+      }`}
     >
-      <div className={avatar ? "flex items-start gap-3" : ""}>
+      <div className="flex items-center gap-1.5">
         {avatar}
         <label htmlFor={`${id}-texto`} className="sr-only">
           Escrever um recado para quem está perto
@@ -140,13 +150,26 @@ export function EscreverRecado({
           maxLength={MAXIMO}
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder={
-            contratando ? "Conte quem você está contratando…" : "Conte o que você procura: trabalho, bico, serviço…"
-          }
-          className={`block w-full resize-none bg-transparent text-[16px] leading-6 text-ink outline-none placeholder:text-ink-muted ${
-            avatar ? "min-h-11 min-w-0 flex-1 py-2.5" : "min-h-7"
-          }`}
+          placeholder={contratando ? "Conte quem você está contratando…" : "Conte o que você procura…"}
+          className="block min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2.5 py-2 text-[16px] leading-6 text-ink outline-none placeholder:text-ink-muted"
         />
+        <label
+          className={`${botaoIcone} ${enviandoFoto ? "opacity-60" : ""} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus`}
+        >
+          <ImagePlus aria-hidden className="size-5" />
+          <span className="sr-only">{enviandoFoto ? "Enviando a foto" : "Pôr foto no recado"}</span>
+          <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
+        </label>
+        <button
+          type="button"
+          aria-expanded={citando}
+          onClick={() => setCitando((c) => !c)}
+          disabled={Boolean(citado)}
+          className={`${botaoIcone} disabled:opacity-50`}
+        >
+          <Quote aria-hidden className="size-5" />
+          <span className="sr-only">Citar vaga</span>
+        </button>
       </div>
 
       {foto && (
@@ -264,48 +287,28 @@ export function EscreverRecado({
         </div>
       )}
 
-      <div
-        className={`flex flex-wrap items-center gap-1 border-t border-line ${avatar ? "mt-3 pt-2.5 sm:ml-[56px]" : "mt-2 pt-2"}`}
-      >
-        <label
-          className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-pill px-2.5 text-label text-ink-muted hover:bg-surface-300 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${
-            enviandoFoto ? "opacity-60" : ""
-          }`}
-        >
-          <ImagePlus aria-hidden className="size-[18px]" />
-          {enviandoFoto ? "Enviando…" : "Foto"}
-          <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
-        </label>
-        <button
-          type="button"
-          aria-expanded={citando}
-          onClick={() => setCitando((c) => !c)}
-          disabled={Boolean(citado)}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-pill px-2.5 text-label text-ink-muted hover:bg-surface-300 hover:text-ink disabled:opacity-50"
-        >
-          <Quote aria-hidden className="size-[18px]" />
-          Citar vaga
-        </button>
-        <span
-          aria-live="polite"
-          className={`ml-auto pr-1 text-body-sm tabular-nums ${restam < 20 ? "font-semibold text-danger" : "text-ink-muted"}`}
-        >
-          {/* o contador só aparece quando começa a escrever (no celular, o botão cabe na linha) */}
-          {texto.length > 0 && `${texto.length}/${MAXIMO}`}
-        </span>
-        <button
-          type="button"
-          onClick={publicar}
-          disabled={pendente || enviandoFoto || !texto.trim()}
-          className="inline-flex min-h-9 items-center rounded-pill bg-ink px-4 text-label font-bold text-surface-100 disabled:opacity-45"
-        >
-          {pendente ? "Enviando…" : "Enviar recado"}
-        </button>
-      </div>
+      {aberto && (
+        <div className="mt-1.5 flex items-center justify-end gap-2 border-t border-line px-1 pt-2">
+          <span
+            aria-live="polite"
+            className={`pr-1 text-body-sm tabular-nums ${restam < 20 ? "font-semibold text-danger" : "text-ink-muted"}`}
+          >
+            {texto.length > 0 && `${texto.length}/${MAXIMO}`}
+          </span>
+          <button
+            type="button"
+            onClick={publicar}
+            disabled={pendente || enviandoFoto || !texto.trim()}
+            className="inline-flex min-h-9 items-center rounded-pill bg-ink px-4 text-label font-bold text-surface-100 disabled:opacity-45"
+          >
+            {pendente ? "Enviando…" : "Enviar recado"}
+          </button>
+        </div>
+      )}
       {aviso && (
         <p
           role={aviso.ok ? "status" : "alert"}
-          className={`mt-1.5 text-body-sm ${aviso.ok ? "text-cerrado-text" : "text-danger"}`}
+          className={`mt-1.5 px-2.5 pb-1 text-body-sm ${aviso.ok ? "text-cerrado-text" : "text-danger"}`}
         >
           {aviso.texto}
         </p>

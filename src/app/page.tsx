@@ -137,9 +137,10 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
 }
 
 /**
- * Quem procura trabalho ou oferece serviço: a linha do tempo. Em cima, o topo com a foto, as
- * novidades e as abas; embaixo, a linha (vagas, serviços e aceites, do mais novo para o mais
- * antigo) e, no computador, quem está contratando e o mapa numa coluna à direita.
+ * A linha do tempo de quem entrou, em três colunas no computador: à esquerda, o cartão da conta
+ * (a foto, o nome e os atalhos: o currículo, ou o painel de vagas de quem contrata); no meio, o
+ * topo (a saudação, o recado e as abas) e a linha; à direita, quem está contratando e o mapa.
+ * No celular, uma coluna só.
  */
 function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
   const contratando = (
@@ -149,12 +150,24 @@ function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
   );
   return (
     <Container className="pt-4 pb-4 sm:pt-6">
-      <Suspense fallback={<Esqueleto className="mb-6 h-56 rounded-[28px]" />}>
-        <TopoDaConta searchParams={searchParams} />
-      </Suspense>
-      <Suspense fallback={<EsqueletoCards quantos={3} />}>
-        <LinhaOuBusca searchParams={searchParams} contratando={contratando} />
-      </Suspense>
+      <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px]">
+        <aside className="hidden lg:sticky lg:top-[88px] lg:block">
+          <Suspense fallback={<Esqueleto className="h-72 rounded-lg" />}>
+            <CartaoDaConta jeito="linha" />
+          </Suspense>
+        </aside>
+        <div className="min-w-0">
+          <Suspense fallback={<Esqueleto className="mb-6 h-40 rounded-lg" />}>
+            <TopoDaConta searchParams={searchParams} />
+          </Suspense>
+          <Suspense fallback={<EsqueletoCards quantos={3} />}>
+            <CentroDaLinha searchParams={searchParams} contratando={contratando} />
+          </Suspense>
+        </div>
+        <Suspense fallback={null}>
+          <LadoDaLinha searchParams={searchParams} contratando={contratando} />
+        </Suspense>
+      </div>
       <Suspense fallback={null}>
         <Contratados />
       </Suspense>
@@ -163,36 +176,33 @@ function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
 }
 
 /**
- * Embaixo do topo: a linha do tempo; com uma busca por palavra ou uma ordem escolhida ("Combina
- * mais", "Mais perto"), a lista de resultados de sempre, na mesma moldura (o mapa à direita).
+ * No meio, embaixo do topo: a linha do tempo; com uma busca por palavra ou uma ordem escolhida
+ * ("Combina mais", "Mais perto"), a lista de resultados de sempre.
  */
-async function LinhaOuBusca({ searchParams, contratando }: { searchParams: Parametros; contratando: ReactNode }) {
+async function CentroDaLinha({ searchParams, contratando }: { searchParams: Parametros; contratando: ReactNode }) {
   const sp = await searchParams;
   if (primeiro(sp.q) || primeiro(sp.ordem)) {
     return (
-      <div className="lg:grid lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:gap-8">
-        <div className="min-w-0">
-          <Suspense fallback={<ExplorarEsqueleto />}>
-            <Explorar searchParams={searchParams} variante="feed" acimaDoMapa={contratando} />
-          </Suspense>
-        </div>
-        <ColunaDoMapa className="hidden min-w-0 flex-col gap-4 self-stretch lg:flex" />
-      </div>
+      <Suspense fallback={<ExplorarEsqueleto />}>
+        <Explorar searchParams={searchParams} variante="feed" acimaDoMapa={contratando} />
+      </Suspense>
     );
   }
+  return <LinhaDoTempo searchParams={searchParams} meio={contratando} />;
+}
+
+/** À direita (computador grande): quem está contratando e o mapa (o da busca ou o da linha). */
+async function LadoDaLinha({ searchParams, contratando }: { searchParams: Parametros; contratando: ReactNode }) {
+  const sp = await searchParams;
+  if (primeiro(sp.q) || primeiro(sp.ordem)) {
+    return <ColunaDoMapa className="hidden min-w-0 flex-col gap-4 self-stretch xl:flex" />;
+  }
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:gap-8">
-      <div className="min-w-0 lg:self-start">
-        <Suspense fallback={<EsqueletoCards quantos={3} />}>
-          <LinhaDoTempo searchParams={searchParams} meio={contratando} />
-        </Suspense>
-      </div>
-      <aside aria-label="Perto de você" className="hidden min-w-0 lg:block">
-        <Suspense fallback={<Esqueleto className="aspect-[4/5] rounded-lg" />}>
-          <LateralDaLinha searchParams={searchParams} acima={contratando} />
-        </Suspense>
-      </aside>
-    </div>
+    <aside aria-label="Perto de você" className="hidden min-w-0 xl:block">
+      <Suspense fallback={<Esqueleto className="aspect-[4/5] rounded-lg" />}>
+        <LateralDaLinha searchParams={searchParams} acima={contratando} />
+      </Suspense>
+    </aside>
   );
 }
 

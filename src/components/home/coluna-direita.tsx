@@ -2,31 +2,41 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { conteudoDoSlug } from "@/lib/conteudos";
 import type { Conteudo } from "@/lib/conteudos/tipos";
+import { obterUsuario } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
+import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { plural } from "@/lib/formato";
 import type { Local } from "@/lib/regioes";
+import { BotaoConectar } from "../conexoes/botao-conectar";
 import { SeloVerificado } from "../selo-verificado";
 import { BotaoSeguir } from "../social/botoes";
 import { Avatar } from "../ui/basicos";
 import { empresasContratando } from "./empresas-contratando";
 
 // A coluna da direita do feed (computador grande; no celular, depois da lista): quem
-// está contratando perto, com o Seguir (aviso de vaga nova), e os conteúdos do blog.
+// está contratando perto, com o Seguir (aviso de vaga nova) e o Conectar, e os conteúdos do blog.
 
 const caixa = "flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card";
 
 export async function ContratandoPerto({ local }: { local: Local | null }) {
-  const [empresas, seguidos] = await Promise.all([empresasContratando(local, 4), meusSeguidos().catch(() => [])]);
+  const [todas, seguidos, usuario] = await Promise.all([
+    empresasContratando(local, 5),
+    meusSeguidos().catch(() => []),
+    obterUsuario().catch(() => null),
+  ]);
+  // a própria empresa não aparece na lista dela
+  const empresas = todas.filter((e) => e.id !== usuario?.id).slice(0, 4);
   if (!empresas.length) return null;
+  const estados = usuario ? await estadosDeConexao(empresas.map((e) => e.id)) : new Map();
   return (
     <section aria-labelledby="contratando-perto" className={caixa}>
       <h2 id="contratando-perto" className="text-h3">
         {local?.ponto ? "Contratando perto de você" : "Contratando em Goiânia e região"}
       </h2>
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-4">
         {empresas.map((e) => (
-          <li key={e.id} className="flex items-center gap-3">
-            <Link href={`/perfil/${e.id}/vagas`} className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
+          <li key={e.id} className="flex flex-col gap-2">
+            <Link href={`/perfil/${e.id}/vagas`} className="flex min-w-0 items-center gap-3 hover:underline">
               <Avatar nome={e.nome} foto={e.foto} tamanho={40} forma="quadrada" colorida />
               <span className="min-w-0">
                 <span className="flex items-center gap-1 text-label">
@@ -38,16 +48,26 @@ export async function ContratandoPerto({ local }: { local: Local | null }) {
                 </span>
               </span>
             </Link>
-            <span className="shrink-0">
+            {/* Seguir (aviso de vaga nova) e Conectar (conversar mesmo sem vaga), embaixo do nome */}
+            <div className="flex flex-wrap items-start gap-2">
               <BotaoSeguir
                 alvo={{ perfil: e.id }}
                 seguidoId={seguidos.find((s) => s.alvo_perfil === e.id)?.id ?? null}
-                logado
+                logado={usuario !== null}
                 voltar="/"
                 rotulo="Seguir"
                 semIcone
               />
-            </span>
+              <BotaoConectar
+                outroId={e.id}
+                outroNome={e.nome}
+                estado={estados.get(e.id) ?? null}
+                logado={usuario !== null}
+                voltar="/"
+                para="empresa"
+                jeito="cartao"
+              />
+            </div>
           </li>
         ))}
       </ul>

@@ -6,6 +6,7 @@ import { Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { obterUsuario } from "@/lib/dados";
 import { tempoRelativo } from "@/lib/formato";
+import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { umRecado } from "@/lib/servidor/recados";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -54,10 +55,17 @@ async function Conteudo({ params }: { params: PageProps<"/recado/[id]">["params"
     );
   }
   const logado = usuario !== null;
+  const conexao = logado && !r.meu ? ((await estadosDeConexao([r.autor_id])).get(r.autor_id) ?? null) : null;
   return (
     <>
       <h1 className="mb-4 font-display text-h2">Recado de {r.autor_nome}</h1>
-      <BalaoDoRecado r={r} logado={logado} hora={tempoRelativo(r.quando, agora)} comFoto="sempre" />
+      <BalaoDoRecado
+        r={r}
+        logado={logado}
+        hora={tempoRelativo(r.quando, agora)}
+        comFoto="sempre"
+        conexao={conexao}
+      />
       <div className="mt-6 flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 sm:flex-row sm:items-center">
         <p className="flex-1 text-body">
           {logado

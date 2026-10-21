@@ -2,6 +2,8 @@ import { Briefcase, CircleCheck, MapPinned, MessageSquareText, Wrench, type Luci
 import type { ReactNode } from "react";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { horaNaLinha, montarLinha, quandoFoi, recolherRecados, type ItemDaLinha } from "@/lib/linha-do-tempo";
+import type { EstadoConexao } from "@/lib/conexoes";
+import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { chaveDaLinha, dadosDaLinha, type DadoDaLinha, type DadosDaLinha } from "@/lib/servidor/linha";
 import { BalaoDoRecado } from "../../recados/balao-do-recado";
 import { RecadosRecolhidos } from "../../recados/recados-recolhidos";
@@ -74,7 +76,18 @@ function Ponto({ terra = false }: { terra?: boolean }) {
 const HORA = "hidden pt-[18px] text-right text-body-sm leading-4 font-semibold text-ink-muted tabular-nums sm:block";
 
 /** Um item da linha (vaga, serviço, recado ou aceite), com a hora e o nó. */
-function Item({ item, d, logado }: { item: ItemDaLinha<DadoDaLinha>; d: DadosDaLinha; logado: boolean }) {
+function Item({
+  item,
+  d,
+  logado,
+  conexoes,
+}: {
+  item: ItemDaLinha<DadoDaLinha>;
+  d: DadosDaLinha;
+  logado: boolean;
+  /** a conexão com quem escreveu cada recado (para o Conectar no rodapé) */
+  conexoes: Map<string, EstadoConexao>;
+}) {
   const hora = horaNaLinha(Date.parse(item.quando), d.agora);
   const dados = item.dados;
   return (
@@ -88,7 +101,12 @@ function Item({ item, d, logado }: { item: ItemDaLinha<DadoDaLinha>; d: DadosDaL
       ) : "recado" in dados ? (
         <>
           <NoDaFoto nome={dados.recado.autor_nome} foto={dados.recado.autor_foto} tipo={dados.recado.autor_tipo} />
-          <BalaoDoRecado r={dados.recado} logado={logado} hora={hora} />
+          <BalaoDoRecado
+            r={dados.recado}
+            logado={logado}
+            hora={hora}
+            conexao={conexoes.get(dados.recado.autor_id) ?? null}
+          />
         </>
       ) : dados.anuncio.anuncio.tipo === "servico" ? (
         <>
@@ -114,6 +132,12 @@ function Item({ item, d, logado }: { item: ItemDaLinha<DadoDaLinha>; d: DadosDaL
 export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams: Parametros; meio?: ReactNode }) {
   const d = await dadosDaLinha(chaveDaLinha(await searchParams));
   const logado = d.usuarioId !== null;
+  const autores = [
+    ...new Set(
+      d.itens.flatMap((i) => ("recado" in i.dados && !i.dados.recado.meu ? [i.dados.recado.autor_id] : [])),
+    ),
+  ];
+  const conexoes = logado && autores.length ? await estadosDeConexao(autores) : new Map<string, EstadoConexao>();
   if (!d.itens.length) {
     const maior = RAIOS[RAIOS.length - 1];
     return (
@@ -177,19 +201,19 @@ export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams
         <div key={p.chave} className="flex flex-col gap-2.5 sm:gap-3">
           <RecadosRecolhidos quantos={p.itens.length} grade={GRADE}>
             {p.itens.map((item) => (
-              <Item key={`${item.tipo}-${item.id}`} item={item} d={d} logado={logado} />
+              <Item key={`${item.tipo}-${item.id}`} item={item} d={d} logado={logado} conexoes={conexoes} />
             ))}
           </RecadosRecolhidos>
         </div>,
       );
       contam.push(true);
     } else {
-      blocos.push(<Item key={p.chave} item={p.item} d={d} logado={logado} />);
+      blocos.push(<Item key={p.chave} item={p.item} d={d} logado={logado} conexoes={conexoes} />);
       contam.push(true);
       n++;
       if (n === 4 && meio) {
         blocos.push(
-          <div key="meio" className="lg:hidden">
+          <div key="meio" className="xl:hidden">
             {meio}
           </div>,
         );

@@ -1,10 +1,24 @@
-import { ArrowRight, ImagePlus, Link2, MapPin } from "lucide-react";
+import {
+  ArrowRight,
+  Briefcase,
+  FileText,
+  Handshake,
+  Heart,
+  ImagePlus,
+  Inbox,
+  Link2,
+  MapPin,
+  Store,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
+import { esperaResposta } from "@/lib/constantes";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
 import { pendenciasDeConexao } from "@/lib/conexoes";
 import {
   contarMinhasSalvas,
   listarMeusAnuncios,
+  listarMeusCandidatos,
   listarMinhasCurtidas,
   minhasBuscasSalvas,
   obterMeuCurriculo,
@@ -26,7 +40,7 @@ const TIPO: Record<string, string> = { empresa: "Empresa", comercio: "Comércio"
  * perfil, não o modo do painel: quem procura trabalho vê o currículo e o que falta; quem presta
  * serviço, a vitrine; quem contrata, o link da página de vagas.
  */
-export async function CartaoDaConta() {
+export async function CartaoDaConta({ jeito = "painel" }: { jeito?: "painel" | "linha" } = {}) {
   const [perfil, uso, usuario] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     perfilDeUso(),
@@ -65,15 +79,20 @@ export async function CartaoDaConta() {
             </Link>
             {perfil.verificado && <SeloVerificado agencia={perfil.tipo === "agencia"} />}
           </p>
+          {jeito === "linha" && (
+            <p className="text-body-sm text-ink">{empresa ? (TIPO[perfil.tipo] ?? "Empresa") : <QuemE uso={uso} />}</p>
+          )}
           <p className="flex items-center gap-1 text-body-sm text-ink-muted">
             <MapPin aria-hidden className="size-3.5 shrink-0" />
             <span className="truncate">
-              {empresa ? `${TIPO[perfil.tipo] ?? "Empresa"} · ` : ""}
+              {empresa && jeito !== "linha" ? `${TIPO[perfil.tipo] ?? "Empresa"} · ` : ""}
               {formatarLugar(perfil.bairro, perfil.cidade)}
             </span>
           </p>
         </div>
-        {uso === "trabalho" ? (
+        {jeito === "linha" ? (
+          <LinksDaLinha id={perfil.id} uso={uso} />
+        ) : uso === "trabalho" ? (
           <Curriculo />
         ) : uso === "servicos" ? (
           <Vitrine />
@@ -250,6 +269,117 @@ export async function AtalhosDaConta() {
         Meu painel
         <ArrowRight aria-hidden className="size-4" />
       </Link>
+    </nav>
+  );
+}
+
+/** A linha de quem é (embaixo do nome, na linha do tempo): o título do currículo ou o que faz. */
+async function QuemE({ uso }: { uso: string }) {
+  if (uso === "servicos") return <>Presta serviços</>;
+  const curriculo = await obterMeuCurriculo().catch(() => null);
+  return <>{curriculo?.titulo ? `${curriculo.titulo} · procura trabalho` : "Procura trabalho"}</>;
+}
+
+type LinkDoCartao = { nome: string; href: string; icone: LucideIcon; numero?: string | null; destaque?: boolean };
+
+/**
+ * Os atalhos do cartão na linha do tempo: quem procura vê o currículo (com a barra), as curtidas e
+ * as conexões; quem presta serviço, a vitrine e os pedidos; quem contrata, o painel de vagas, quem
+ * espera resposta e a página de vagas. Todo mundo vê as conexões (com os pedidos em destaque).
+ */
+async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
+  const conexoes = await minhasConexoes().catch(() => null);
+  const pedidosDeConexao = pendenciasDeConexao(conexoes ?? []);
+  const conectados = (conexoes ?? []).filter((c) => c.status === "aceita").length;
+  const linkConexoes: LinkDoCartao = {
+    nome: "Conexões",
+    href: "/painel/conexoes",
+    icone: Handshake,
+    numero: pedidosDeConexao ? String(pedidosDeConexao) : conectados ? String(conectados) : null,
+    destaque: pedidosDeConexao > 0,
+  };
+  let barra: number | null = null;
+  let links: LinkDoCartao[];
+  if (uso === "contratar") {
+    const [anuncios, candidatos] = await Promise.all([
+      listarMeusAnuncios().catch(() => []),
+      listarMeusCandidatos().catch(() => null),
+    ]);
+    const noAr = anuncios.filter((a) => a.tipo === "vaga" && a.status === "ativo").length;
+    const esperam = (candidatos ?? []).filter(esperaResposta).length;
+    links = [
+      { nome: "Painel de vagas", href: "/painel", icone: Briefcase, numero: noAr ? `${noAr} no ar` : null },
+      {
+        nome: "Candidatos esperando",
+        href: "/painel/caixa?aba=responder",
+        icone: Inbox,
+        numero: esperam ? String(esperam) : null,
+        destaque: esperam > 0,
+      },
+      { nome: "Sua página de vagas", href: `/perfil/${id}/vagas`, icone: Link2 },
+      linkConexoes,
+    ];
+  } else if (uso === "servicos") {
+    const anuncios = await listarMeusAnuncios().catch(() => []);
+    const servicos = anuncios.filter((a) => a.tipo === "servico");
+    const pedidos = servicos.reduce((t, a) => t + (a.curtidas_novas ?? 0), 0);
+    links = [
+      { nome: "Minha vitrine", href: "/painel/servicos", icone: Store, numero: String(servicos.length) },
+      {
+        nome: "Pedidos",
+        href: "/painel/anuncios?tipo=servico",
+        icone: Inbox,
+        numero: pedidos ? String(pedidos) : null,
+        destaque: pedidos > 0,
+      },
+      linkConexoes,
+    ];
+  } else {
+    const [curriculo, curtidas] = await Promise.all([
+      obterMeuCurriculo().catch(() => null),
+      listarMinhasCurtidas().catch(() => []),
+    ]);
+    barra = forcaDoCurriculo(curriculo).pontos;
+    links = [
+      { nome: "Meu currículo", href: "/perfil/curriculo", icone: FileText, numero: `${barra}%` },
+      {
+        nome: "Minhas curtidas",
+        href: "/painel/curtidas",
+        icone: Heart,
+        numero: curtidas.length ? String(curtidas.length) : null,
+      },
+      linkConexoes,
+    ];
+  }
+  return (
+    <nav aria-label="Atalhos da conta" className="flex flex-col border-t border-line pt-2">
+      {links.map(({ nome, href, icone: Icone, numero, destaque }, i) => (
+        <div key={nome}>
+          <Link
+            href={href}
+            className="-mx-2 flex min-h-10 items-center gap-2.5 rounded-md px-2 text-label hover:bg-surface-300"
+          >
+            <Icone aria-hidden className="size-[18px] shrink-0 text-ink-muted" />
+            <span className="min-w-0 flex-1 truncate">{nome}</span>
+            {numero && (
+              <span
+                className={
+                  destaque
+                    ? "min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text"
+                    : "text-body-sm font-semibold text-ink-muted tabular-nums"
+                }
+              >
+                {numero}
+              </span>
+            )}
+          </Link>
+          {i === 0 && barra !== null && (
+            <span aria-hidden className="mb-1.5 block h-1.5 overflow-hidden rounded-pill bg-surface-300">
+              <span className="block h-full rounded-pill bg-cerrado" style={{ width: `${barra}%` }} />
+            </span>
+          )}
+        </div>
+      ))}
     </nav>
   );
 }
