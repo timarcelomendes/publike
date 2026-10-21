@@ -1,4 +1,4 @@
-import { FileText, Heart, PartyPopper } from "lucide-react";
+import { FileText, Flag, Heart, PartyPopper } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -288,7 +288,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                       email={c.autor_email}
                       mensagem={`Olá! Deu match no Publike em “${c.titulo}”. Podemos conversar?`}
                     />
-                    <DesfazerMatch anuncioId={c.anuncio_id} perfilId={usuario.id} outroNome={c.autor_nome} />
+                    {/* desfazer e denunciar na mesma linha (o formulário do desfazer abre embaixo) */}
+                    <div className="flex flex-wrap items-start gap-x-1">
+                      <DesfazerMatch anuncioId={c.anuncio_id} perfilId={usuario.id} outroNome={c.autor_nome} />
+                      <Link
+                        href={`/anuncio/${c.anuncio_id}/denunciar`}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-label text-danger underline-offset-2 hover:underline"
+                      >
+                        <Flag aria-hidden className="size-4" />
+                        Denunciar
+                        <span className="sr-only"> {c.tipo === "servico" ? "o serviço" : "a vaga"} {c.titulo}</span>
+                      </Link>
+                    </div>
                   </div>
                 )}
                 {c.status === "match" && c.tipo === "vaga" && etapaVisivel?.etapa === "contratado" && (

@@ -1,4 +1,4 @@
-import { MapPinned, Megaphone, Pencil, Wrench } from "lucide-react";
+import { FileText, MapPinned, Megaphone, Pencil, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +16,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TEXTO_SEGUIR, TIPOS_CONTA } from "@/lib/constantes";
 import {
   listarAvaliacoesPublicas,
+  obterMeuCurriculo,
   obterMeuPerfil,
   obterNotaDoProfissional,
   obterPerfilPublico,
@@ -24,6 +25,7 @@ import {
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
+import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
@@ -61,6 +63,18 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
   const { perfil, anuncios } = dados;
   const agora = await agoraDaRequisicao();
   const meu = usuario?.id === perfil.id;
+  const pessoa = perfil.tipo === "pessoa";
+  // a própria pessoa: o que ela faz (o título do currículo) e se presta serviço
+  const [uso, curriculo] =
+    meu && pessoa ? await Promise.all([perfilDeUso(), obterMeuCurriculo().catch(() => null)]) : [null, null];
+  const oQueFaz =
+    meu && pessoa
+      ? uso === "servicos"
+        ? "Presta serviços"
+        : curriculo?.titulo
+          ? `${curriculo.titulo} · procura trabalho`
+          : "Procura trabalho"
+      : null;
   const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
   const suspensa = Boolean(perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
   const agencia = perfil.tipo === "agencia";
@@ -89,7 +103,8 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             {perfil.verificado && <SeloVerificado agencia={agencia} className="size-6" />}
           </h1>
           <p className="mt-1 text-body text-ink-muted">
-            {tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} · no Publike desde {formatarMesAno(perfil.criado_em)}
+            {oQueFaz ?? tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} · no Publike desde{" "}
+            {formatarMesAno(perfil.criado_em)}
           </p>
           {perfil.cnpj && (
             <CnpjDoPerfil cnpj={perfil.cnpj} verificada={agencia && perfil.verificado} className="mt-1" />
@@ -103,10 +118,18 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           )}
         </div>
         {meu ? (
-          <BotaoLink href="/perfil" tamanho="sm" className="self-start sm:self-center">
-            <Pencil aria-hidden />
-            Editar perfil
-          </BotaoLink>
+          <div className="flex flex-wrap gap-2 self-start sm:self-center">
+            {oQueFaz && uso !== "servicos" && (
+              <BotaoLink href="/perfil/curriculo" tamanho="sm">
+                <FileText aria-hidden />
+                Meu currículo
+              </BotaoLink>
+            )}
+            <BotaoLink href="/perfil" tamanho="sm">
+              <Pencil aria-hidden />
+              Editar perfil
+            </BotaoLink>
+          </div>
         ) : (
           <div className="flex max-w-60 flex-col items-start gap-1 self-start sm:items-end sm:self-center sm:text-right">
             <BotaoSeguir
@@ -227,7 +250,9 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         <SecaoContratacoes empresa={perfil.id} agora={agora} />
       )}
 
-      {(vagas.length > 0 || servicos.length === 0) && (
+      {/* pessoa sem anúncio: sem a seção (quem procura trabalho não anuncia); só a dona que presta
+          serviço vê o convite para montar a vitrine */}
+      {(vagas.length > 0 || (servicos.length === 0 && (!pessoa || (meu && uso === "servicos")))) && (
         <section className="mt-10">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 className="text-h2">{servicos.length || agencia ? "Vagas abertas" : "Anúncios no ar"}</h2>
@@ -272,8 +297,9 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
       )}
 
       <p className="mt-8 text-body-sm text-ink-muted">
-        O contato de {perfil.tipo === "pessoa" ? perfil.nome.split(" ")[0] : perfil.nome} aparece só depois de um match
-        ou de uma conexão aceita.
+        {meu
+          ? "Seu WhatsApp e seu e-mail só aparecem para quem tem um match ou uma conexão aceita com você."
+          : `O contato de ${pessoa ? perfil.nome.split(" ")[0] : perfil.nome} aparece só depois de um match ou de uma conexão aceita.`}
       </p>
     </>
   );
