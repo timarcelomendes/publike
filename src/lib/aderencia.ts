@@ -7,9 +7,12 @@
 //   quando a pessoa pode trabalhar) · onde mora (cidade; bairro e região de Goiânia no
 //   detalhe) · as perguntas com a resposta que a empresa procura · os cursos que a
 //   própria vaga cita.
-// Nota = itens atendidos ÷ itens conferidos. O que não dá para saber (sem currículo,
-// sem resposta) fica de fora da conta e aparece com "?". Experiência na função, quando
-// a vaga aceita sem experiência, e os cursos só somam: aparecem quando a pessoa tem.
+// Nota = itens atendidos ÷ itens conferidos, com a experiência na função valendo 60% (a
+// escolaridade, a cidade e o horário não fazem alguém de TI servir para mecânico). O que não
+// dá para saber (sem currículo, sem resposta) fica de fora da conta e aparece com "?". A
+// experiência na função conta quando a vaga pede experiência ou quando a pessoa tem algum
+// trabalho (ou um título) no currículo; sem nenhum, numa vaga que aceita sem, fica de fora.
+// Os cursos só somam: aparecem quando a pessoa tem.
 // Pergunta eliminatória respondida diferente: nota 0. Nada para comparar: sem nota.
 // A descrição livre da vaga não é lida, só os cursos que ela cita.
 
@@ -28,6 +31,8 @@ export type Criterio = {
   eliminatorio?: boolean;
   /** só soma: aparece quando a pessoa tem, e não conta contra quem não tem */
   extra?: boolean;
+  /** a experiência na função: vale mais que os outros itens (ver PESO_DA_FUNCAO) */
+  funcao?: boolean;
 };
 
 export type Aderencia = {
@@ -58,7 +63,7 @@ type Vaga = {
 export type Candidato = {
   curriculo:
     | (Pick<Curriculo, "escolaridade" | "experiencias" | "cnh"> &
-        Partial<Pick<Curriculo, "disponibilidade" | "cursos" | "estudos">>)
+        Partial<Pick<Curriculo, "disponibilidade" | "cursos" | "estudos" | "titulo">>)
     | null;
   respostas: Respostas;
   cidade: string | null;
@@ -155,6 +160,21 @@ function experienciaNaFuncao(titulo: string, experiencias: Curriculo["experienci
     }) ?? null
   );
 }
+
+/** O título do currículo ("Mecânico de automóveis") parece com a função da vaga? */
+function tituloNaFuncao(tituloDaVaga: string, tituloDoCurriculo: string | null | undefined) {
+  if (!tituloDoCurriculo) return false;
+  const daVaga = palavrasDaFuncao(tituloDaVaga);
+  const doTitulo = palavrasDaFuncao(tituloDoCurriculo);
+  return daVaga.some((v) => doTitulo.some((c) => mesmaRaiz(v, c)));
+}
+
+/**
+ * Quanto a experiência na função pesa na nota (o resto divide o que sobra). Sem ela, a nota não
+ * passa de 40%: bater a escolaridade, a cidade e o horário não faz alguém de TI servir para
+ * mecânico.
+ */
+export const PESO_DA_FUNCAO = 0.6;
 
 /** Palavras dos cursos que não dizem qual é o curso. */
 const GENERICAS_CURSO = new Set(
@@ -274,28 +294,33 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     }
   }
 
-  // Experiência na função: conta quando a vaga pede experiência; quando aceita sem, só soma
+  // Experiência na função: conta (e pesa mais) quando a vaga pede experiência ou quando a pessoa
+  // tem alguma experiência ou um título no currículo. Sem experiência nenhuma, numa vaga que aceita
+  // sem: fica de fora (o primeiro emprego não é contado contra).
   if (vaga.titulo && palavrasDaFuncao(vaga.titulo).length) {
     const achou = cv ? experienciaNaFuncao(vaga.titulo, cv.experiencias) : null;
+    const peloTitulo = !achou && cv ? tituloNaFuncao(vaga.titulo, cv.titulo) : false;
     // "Operadora de caixa · Supermercado X · até 12/2024"
     const mesAno = (t: string) => t.replace(/^(\d{4})-(\d{2}).*$/, "$2/$1");
     const trabalho = achou
       ? `Trabalhou como ${achou.cargo}${achou.onde ? ` · ${achou.onde}` : ""} · ${
           achou.fim ? `até ${mesAno(achou.fim)}` : `desde ${mesAno(achou.inicio)}`
         }`
-      : "";
-    if (meses) {
+      : peloTitulo
+        ? `No currículo: ${cv?.titulo}`
+        : "";
+    const temHistorico = Boolean(cv && (cv.experiencias.length || cv.titulo));
+    if (meses || temHistorico) {
       criterios.push({
         nome: "Experiência na função",
-        ok: !cv ? null : Boolean(achou),
+        ok: !cv ? null : Boolean(achou || peloTitulo),
         detalhe: !cv
           ? "Sem currículo"
-          : achou
+          : achou || peloTitulo
             ? trabalho
             : `Nenhum trabalho parecido com “${vaga.titulo}” no currículo`,
+        funcao: true,
       });
-    } else if (achou) {
-      criterios.push({ nome: "Experiência na função", ok: true, detalhe: trabalho, extra: true });
     }
   }
 
@@ -372,7 +397,22 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
 
   const conhecidos = criterios.filter((x) => x.ok !== null);
   const atendidos = conhecidos.filter((x) => x.ok).length;
-  const nota = eliminado ? 0 : conhecidos.length ? Math.round((100 * atendidos) / conhecidos.length) : null;
+  // a função pesa PESO_DA_FUNCAO; os outros itens dividem o resto (sem outros, só ela conta)
+  const funcao = conhecidos.find((x) => x.funcao);
+  const outros = conhecidos.filter((x) => !x.funcao);
+  const parteDosOutros = outros.length ? outros.filter((x) => x.ok).length / outros.length : null;
+  const nota = eliminado
+    ? 0
+    : !conhecidos.length
+      ? null
+      : funcao
+        ? Math.round(
+            100 *
+              (parteDosOutros === null
+                ? Number(funcao.ok)
+                : PESO_DA_FUNCAO * Number(funcao.ok) + (1 - PESO_DA_FUNCAO) * parteDosOutros),
+          )
+        : Math.round((100 * atendidos) / conhecidos.length);
   return { nota, eliminado, criterios, conferidos: conhecidos.length, atendidos };
 }
 
