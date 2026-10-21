@@ -12,8 +12,8 @@ import {
 } from "@/lib/dados";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
+import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
 import { formatarLugar, plural } from "@/lib/formato";
-import type { ModoPainel } from "@/lib/modo-painel";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { SeloVerificado } from "../selo-verificado";
 import { Avatar } from "../ui/basicos";
@@ -21,12 +21,12 @@ import { Avatar } from "../ui/basicos";
 const TIPO: Record<string, string> = { empresa: "Empresa", comercio: "Comércio", agencia: "Agência / RH" };
 
 /**
- * O cartão da conta no alto da coluna da esquerda da home (como o perfil do LinkedIn):
- * Trabalhar mostra o currículo e o que falta; Serviços, a vitrine; Contratar, a empresa
- * com o link da página de vagas.
+ * O cartão da conta no alto da coluna da esquerda da home (como o perfil do LinkedIn). Segue o
+ * perfil, não o modo do painel: quem procura trabalho vê o currículo e o que falta; quem presta
+ * serviço, a vitrine; quem contrata, o link da página de vagas.
  */
-export async function CartaoDaConta({ modo }: { modo: ModoPainel }) {
-  const perfil = await obterMeuPerfil().catch(() => null);
+export async function CartaoDaConta() {
+  const [perfil, uso] = await Promise.all([obterMeuPerfil().catch(() => null), perfilDeUso()]);
   if (!perfil) {
     return (
       <section className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4">
@@ -70,29 +70,38 @@ export async function CartaoDaConta({ modo }: { modo: ModoPainel }) {
             </span>
           </p>
         </div>
-        {modo === "trabalhar" ? (
+        {uso === "trabalho" ? (
           <Curriculo />
-        ) : modo === "servicos" ? (
+        ) : uso === "servicos" ? (
           <Vitrine />
         ) : (
-          <div className="flex flex-col gap-2 border-t border-line pt-3 text-body-sm">
-            <Link
-              href={`/perfil/${perfil.id}/vagas`}
-              className="inline-flex items-center gap-1.5 font-semibold text-ink hover:text-terra-text"
-            >
-              <Link2 aria-hidden className="size-4 shrink-0" />
-              Sua página de vagas
-            </Link>
-            {!perfil.foto && (
-              <Link href="/perfil" className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink">
-                <ImagePlus aria-hidden className="size-4 shrink-0" />
-                Ponha o logo: aparece nas suas vagas
-              </Link>
-            )}
-          </div>
+          <PaginaDeVagas id={perfil.id} empresa={empresa} semLogo={!perfil.foto} />
         )}
       </div>
     </section>
+  );
+}
+
+/** Quem contrata: o link da página de vagas e, sem logo, o convite para pôr. */
+async function PaginaDeVagas({ id, empresa, semLogo }: { id: string; empresa: boolean; semLogo: boolean }) {
+  // pessoa que contrata: o link só depois da primeira vaga (antes, quem chama é a caixa de publicar)
+  if (!empresa && !(await listarMeusAnuncios().catch(() => [])).some((a) => a.tipo === "vaga")) return null;
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-3 text-body-sm">
+      <Link
+        href={`/perfil/${id}/vagas`}
+        className="inline-flex items-center gap-1.5 font-semibold text-ink hover:text-terra-text"
+      >
+        <Link2 aria-hidden className="size-4 shrink-0" />
+        Sua página de vagas
+      </Link>
+      {empresa && semLogo && (
+        <Link href="/perfil" className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink">
+          <ImagePlus aria-hidden className="size-4 shrink-0" />
+          Ponha o logo: aparece nas suas vagas
+        </Link>
+      )}
+    </div>
   );
 }
 
@@ -147,18 +156,19 @@ async function Vitrine() {
 type Atalho = { nome: string; href: string; numero: number | null; destaque?: boolean };
 
 /**
- * Os atalhos da coluna da esquerda (Trabalhar e Serviços): uma lista curta com os números,
- * no lugar do menu inteiro do painel (que continua em Meu painel).
+ * Os atalhos da coluna da esquerda do feed: uma lista curta com os números, no lugar do menu
+ * inteiro do painel (que continua em Meu painel). Também seguem o perfil, como o cartão.
  */
-export async function AtalhosDaConta({ modo }: { modo: ModoPainel }) {
-  const [conversas, conexoes] = await Promise.all([
+export async function AtalhosDaConta() {
+  const [conversas, conexoes, uso] = await Promise.all([
     conversasPorPessoa().catch(() => null),
     minhasConexoes().catch(() => null),
+    perfilDeUso(),
   ]);
   const novas = (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0);
   const pedidosDeConexao = pendenciasDeConexao(conexoes ?? []);
   let itens: Atalho[];
-  if (modo === "servicos") {
+  if (uso === "servicos") {
     const anuncios = await listarMeusAnuncios().catch(() => []);
     const pedidos = anuncios.filter((a) => a.tipo === "servico").reduce((t, a) => t + (a.curtidas_novas ?? 0), 0);
     itens = [
@@ -166,6 +176,23 @@ export async function AtalhosDaConta({ modo }: { modo: ModoPainel }) {
       { nome: "Conversas", href: "/painel/conversas", numero: novas, destaque: novas > 0 },
       { nome: "Vitrine", href: "/painel/servicos", numero: null },
       { nome: "Avaliações", href: "/painel/avaliacoes", numero: null },
+    ];
+  } else if (uso === "contratar") {
+    // pessoa que contrata (ou conta que trocou o modo do painel): as vagas dela e os serviços pedidos
+    const [anuncios, curtidas] = await Promise.all([
+      listarMeusAnuncios().catch(() => []),
+      listarMinhasCurtidas().catch(() => []),
+    ]);
+    const candidatos = anuncios.filter((a) => a.tipo === "vaga").reduce((t, a) => t + (a.curtidas_novas ?? 0), 0);
+    itens = [
+      { nome: "Minhas vagas", href: "/painel/anuncios?tipo=vaga", numero: candidatos, destaque: candidatos > 0 },
+      {
+        nome: "Serviços pedidos",
+        href: "/painel/curtidas?tipo=servico",
+        numero: curtidas.filter((c) => c.tipo === "servico").length,
+      },
+      { nome: "Conversas", href: "/painel/conversas", numero: novas, destaque: novas > 0 },
+      { nome: "Conexões", href: "/painel/conexoes", numero: pedidosDeConexao, destaque: pedidosDeConexao > 0 },
     ];
   } else {
     const [curtidas, salvas, avisos] = await Promise.all([

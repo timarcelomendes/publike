@@ -520,8 +520,17 @@ export async function Explorar({
               <p className="text-body-sm text-ink-muted">
                 {combina && <>Do que mais combina com seu currículo · </>}
                 {!combina && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
-                {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                {textoDaOrigem(filtros, local)}
+                {/* sem o CEP de casa (só o bairro), o nome do bairro diz mais que "da Região Sudoeste" */}
+                {local && !local.ponto && filtros.origem === "centro" ? (
+                  <>
+                    {local.bairro} e região · em até {filtros.raio} km
+                  </>
+                ) : (
+                  <>
+                    {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
+                    {textoDaOrigem(filtros, local)}
+                  </>
+                )}
               </p>
             ) : (
               <p className="text-body-sm text-ink-muted">
@@ -562,7 +571,7 @@ export async function Explorar({
             )}
           </div>
         }
-        filtrosLista={<FiltrosLista filtros={filtros} soMeus={publica} combina={Boolean(quem)} />}
+        filtrosLista={<FiltrosLista filtros={filtros} soMeus={publica} combina={Boolean(quem)} quebrar={feed} />}
         lista={listaComPerguntas}
         pontos={pontos}
         origem={origem}

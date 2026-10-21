@@ -7,6 +7,7 @@ import { EmpresasContratando } from "@/components/home/empresas-contratando";
 import { FaixaArte } from "@/components/home/faixa-arte";
 import { ServicosDoBairro } from "@/components/home/servicos-do-bairro";
 import { HeroVitrine, NovasHoje } from "@/components/home/vitrine";
+import { CaixaDePublicar } from "@/components/home/caixa-publicar";
 import { AtalhosDaConta, CartaoDaConta } from "@/components/home/cartao-da-conta";
 import { ContratandoPerto, DoBlog } from "@/components/home/coluna-direita";
 import { MolduraDaHome } from "@/components/home/moldura";
@@ -135,10 +136,10 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
         esquerda={
           <>
             <Suspense fallback={<Esqueleto className="h-56 rounded-lg" />}>
-              <CartaoDaConta modo={modo} />
+              <CartaoDaConta />
             </Suspense>
             <Suspense fallback={<Esqueleto className="h-64 rounded-lg" />}>
-              {empresa ? <MenuDaConta /> : <AtalhosDaConta modo={modo} />}
+              {empresa ? <MenuDaConta /> : <AtalhosDaConta />}
             </Suspense>
           </>
         }
@@ -150,6 +151,10 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
           )
         }
       >
+        {/* publicar fica aqui, acima da busca e dos filtros (como no LinkedIn), e não no topo da página */}
+        <Suspense fallback={<Esqueleto className="mb-4 hidden h-[7.75rem] rounded-lg md:block" />}>
+          <CaixaDePublicar />
+        </Suspense>
         {empresa ? (
           <Suspense fallback={<BuscaEsqueleto />}>
             <BuscaExplorar searchParams={searchParams} className="mb-6" />
@@ -223,7 +228,7 @@ async function HomeEmpresa() {
         esquerda={
           <>
             <Suspense fallback={<Esqueleto className="h-56 rounded-lg" />}>
-              <CartaoDaConta modo="contratar" />
+              <CartaoDaConta />
             </Suspense>
             <Suspense fallback={<MenuPainelEsqueleto />}>
               <MenuDaConta />

@@ -151,6 +151,24 @@ function FaixaRolavel({
   );
 }
 
+/** Os filtros em linhas que quebram (o feed): tudo à vista, nada cortado nas pontas. */
+function FiltrosEmLinhas({
+  rotulo,
+  ocupado,
+  children,
+}: {
+  rotulo: string;
+  ocupado?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div role="group" aria-label={rotulo} aria-busy={ocupado} className="flex flex-wrap items-center gap-2">
+      {children}
+    </div>
+  );
+}
+
 function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={ativo} className={`${botaoLugar(ativo)} shrink-0`}>
@@ -341,15 +359,19 @@ export function FiltrosLista({
   filtros,
   soMeus = false,
   combina = false,
+  quebrar = false,
 }: {
   filtros: Filtros;
   soMeus?: boolean;
   /** quem tem currículo pode ordenar por "Combina mais" (o % de match) */
   combina?: boolean;
+  /** numa coluna estreita (o feed): os filtros quebram em linhas, em vez de uma faixa que rola */
+  quebrar?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
+  const Faixa = quebrar ? FiltrosEmLinhas : FaixaRolavel;
   return (
-    <FaixaRolavel rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end lg:px-0">
+    <Faixa rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end lg:px-0">
       {/* quem publica: ver na busca (lista e mapa) só os próprios anúncios; vem primeiro, porque muda o que a lista mostra */}
       {soMeus && (
         <>
@@ -440,7 +462,7 @@ export function FiltrosLista({
         <option value="recentes">Mais recentes</option>
         {combina && <option value="combina">Combina mais</option>}
       </Seletor>
-    </FaixaRolavel>
+    </Faixa>
   );
 }
 

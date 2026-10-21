@@ -2,7 +2,7 @@ import { Laptop, Search } from "lucide-react";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { MODO_DEMO } from "@/lib/config";
-import { ehModerador, meuCurriculoNaVitrine, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { ehModerador, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { ehAdminLocal } from "@/lib/supabase/admin";
@@ -33,7 +33,10 @@ export function Cabecalho() {
           <NavPrincipal />
         </Suspense>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          <BotaoInstalarApp variante="cabecalho" />
+          {/* quem entrou tem o "Instalar o app" no menu da conta e publica pela caixa no alto do feed */}
+          <Suspense fallback={<BotaoInstalarApp variante="cabecalho" />}>
+            <InstalarDoTopo />
+          </Suspense>
           <BotaoTema />
           {/* No celular, "Publicar" fica na barra de baixo */}
           <Suspense fallback={<BotaoPublicar />}>
@@ -116,18 +119,28 @@ function LinkAdmin() {
   );
 }
 
-/** "Publicar grátis" e, para quem procura trabalho, o "Currículo" do lado. Empresa e quem quer contratar não veem o currículo. */
+/** O "Instalar app" do topo é do visitante: quem entrou acha no menu da conta (o topo fica com a busca). */
+async function InstalarDoTopo() {
+  const usuario = MODO_DEMO ? null : await obterUsuario();
+  return usuario ? null : <BotaoInstalarApp variante="cabecalho" />;
+}
+
+/**
+ * "Publicar grátis" e, para quem procura trabalho, o "Currículo" do lado: só para o visitante.
+ * Quem entrou publica pela caixa no alto do feed (como no LinkedIn) e tem o currículo no cartão
+ * da conta. Quem quer contratar não vê o currículo.
+ */
 async function PublicarDoTopo() {
+  const usuario = MODO_DEMO ? null : await obterUsuario();
+  if (usuario) return null;
   return <PublicarECurriculo curriculo={await curriculoNoTopo()} />;
 }
 
 async function curriculoNoTopo(): Promise<CurriculoNoTopo> {
   if (MODO_DEMO) return "cadastrar";
-  const [perfil, intencao] = await Promise.all([obterMeuPerfil().catch(() => null), obterIntencao().catch(() => null)]);
-  if (perfil && perfil.tipo !== "pessoa") return null;
-  // conta de pessoa: sempre "Currículo | Publicar grátis"; a resposta da pergunta só vale para visitante
-  if (!perfil && (intencao === "contratar_pessoa" || intencao === "contratar_servico")) return null;
-  return perfil && (await meuCurriculoNaVitrine().catch(() => false)) ? "meu" : "cadastrar";
+  const intencao = await obterIntencao().catch(() => null);
+  if (intencao === "contratar_pessoa" || intencao === "contratar_servico") return null;
+  return "cadastrar";
 }
 
 async function AreaUsuario() {
