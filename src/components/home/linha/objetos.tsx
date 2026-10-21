@@ -1,4 +1,4 @@
-import { Bus, CircleCheck, Footprints, MapPin, MessageCircle, MessagesSquare } from "lucide-react";
+import { Bus, CircleCheck, Footprints, Heart, MapPin, MessageCircle, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { nomeBeneficio } from "@/lib/constantes";
@@ -217,6 +217,44 @@ export function TicketDaVaga({
         )}
       </div>
     </article>
+  );
+}
+
+/**
+ * Em cima da vaga que as pessoas estão curtindo: quantas já curtiram (nunca quem) e o convite para
+ * curtir também. Quem já curtiu se vê no número; quem publicou vê o atalho para os candidatos.
+ */
+export function FaixaDeCurtidas({ item, usuarioId }: { item: AnuncioNaLinha; usuarioId: string | null }) {
+  const c = item.curtidas;
+  if (!c) return null;
+  const a = item.anuncio;
+  const proprio = usuarioId !== null && usuarioId === a.autor_id;
+  const curti = a.minha_curtida != null;
+  return (
+    // o coração fica ao lado da primeira linha do texto, mesmo quando ele quebra
+    <p className="flex items-start gap-1.5 px-1 text-body-sm text-ink">
+      <Heart aria-hidden className="mt-0.5 size-4 shrink-0 fill-like text-like" />
+      {proprio ? (
+        <span className="min-w-0">
+          Sua vaga já tem <b className="font-semibold tabular-nums">{c.total} curtidas</b>.{" "}
+          <Link
+            href={`/painel/anuncio/${a.id}`}
+            className="font-semibold whitespace-nowrap text-ink underline underline-offset-2 hover:text-terra-text"
+          >
+            Ver quem curtiu
+          </Link>
+        </span>
+      ) : curti ? (
+        <span className="min-w-0">
+          <b className="font-semibold">Você e mais {c.total - 1} pessoas</b> curtiram esta vaga
+        </span>
+      ) : (
+        <span className="min-w-0">
+          <b className="font-semibold tabular-nums">{c.total} pessoas</b> já curtiram esta vaga.{" "}
+          <span className="text-ink-muted">Curta também, se ela combina com você.</span>
+        </span>
+      )}
+    </p>
   );
 }
 

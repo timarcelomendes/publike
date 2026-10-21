@@ -11,6 +11,7 @@ import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_INTENCAO } from "@/lib/intencao";
+import { lerModos, modosDoTipo } from "@/lib/modo-painel";
 import { COOKIE_LOCAL } from "@/lib/local";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -29,7 +30,12 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
   const pedeAceite = !perfilAntes || pendente;
   const faltaAceite = pedeAceite && formData.get("aceite") !== "on";
   const leitura = lerPerfil(formData);
-  if (!leitura.success || faltaAceite) {
+  // "O que você quer fazer no Publike?": pelo menos um (procurar trabalho só para pessoa)
+  const tipoEscolhido = leitura.success ? leitura.data.tipo : String(formData.get("tipo") ?? "pessoa");
+  const modos = lerModos(formData.getAll("modos").map(String)).filter((m) => modosDoTipo(tipoEscolhido).includes(m));
+  // as caixinhas desmarcadas não vão no formulário: "tem_modos" diz que a pergunta estava lá
+  const semModo = formData.get("tem_modos") === "1" && modos.length === 0;
+  if (!leitura.success || faltaAceite || semModo) {
     return {
       ok: false,
       erro: "Confira os campos marcados.",
@@ -40,6 +46,7 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
               aceite: `Para ${perfilAntes ? "usar" : "criar"} a conta, marque que leu e aceita as regras e a política de privacidade.`,
             }
           : {}),
+        ...(semModo ? { modos: "Marque pelo menos uma opção: procurar trabalho, oferecer serviços ou contratar." } : {}),
       },
     };
   }
@@ -78,6 +85,13 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     return { ok: false, erro: "Confira os campos marcados.", erros: { cnpj: mensagemDeErro(error) } };
   }
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar o perfil agora.") };
+  // o que a conta faz: o painel e a home mostram só esses modos (banco sem a migração: segue)
+  if (modos.length) {
+    const { error: erroModos } = await supabase.rpc("salvar_meus_modos", { p_modos: modos });
+    if (erroModos && erroModos.code !== "PGRST202") {
+      return { ok: false, erro: mensagemDeErro(erroModos, "Não foi possível salvar o que você faz no Publike.") };
+    }
+  }
   // conta nova (ou criada pela equipe): guarda qual versão das regras e da política foi aceita, e quando
   if (pedeAceite) {
     const { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS });

@@ -16,6 +16,13 @@ export const MARCA_MAXIMA = 30 * DIA;
 /** Quanto tempo o aceite de uma curtida fica na linha. */
 export const ACEITE_NA_LINHA = 7 * DIA;
 
+/**
+ * Vaga com curtidas recentes sobe na linha (para a hora da última curtida): só se a última foi
+ * nos últimos 3 dias, e no máximo 4 por vez (as mais curtidas), para a linha não virar só isso.
+ */
+export const CURTIDAS_SOBEM = 3 * DIA;
+export const MAX_VAGAS_QUE_SOBEM = 4;
+
 export type TipoNaLinha = "vaga" | "servico" | "recado" | "aceite";
 
 /** Um item da linha: o que é, a chave e quando entrou (ISO). */

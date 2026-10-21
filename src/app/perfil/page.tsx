@@ -10,6 +10,9 @@ import { MODO_DEMO } from "@/lib/config";
 import { aceitePendente, obterMeuPerfil } from "@/lib/dados";
 import { PAPEIS_EQUIPE } from "@/lib/equipe";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
+import { modoPadrao } from "@/lib/modo-painel";
+import { obterIntencao } from "@/lib/servidor/intencao";
+import { modosMarcados, modosNoBanco } from "@/lib/servidor/modo";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
@@ -36,12 +39,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/perfil");
-  const [perfil, pendente, contaAuth] = await Promise.all([
+  const [perfil, pendente, contaAuth, marcados, comModos, intencao] = await Promise.all([
     obterMeuPerfil(),
     aceitePendente(),
     // o e-mail novo que ainda espera confirmação (só o Supabase sabe)
     criarClienteServidor().then((c) => c.auth.getUser()),
+    modosMarcados(),
+    modosNoBanco(),
+    obterIntencao().catch(() => null),
   ]);
+  // "O que você quer fazer no Publike?": o que a conta marcou; conta nova, pelo tipo e pelo que
+  // disse que quer fazer. Banco sem a migração: a pergunta não aparece (não teria onde guardar).
+  const modos = comModos ? (marcados ?? [modoPadrao(perfil?.tipo, intencao)]) : undefined;
   const conta = contaAuth.data.user;
   const proximo = caminhoSeguro(primeiro(sp.next), "");
 
@@ -75,6 +84,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
             completar={false}
             pedirAceite={pendente}
             proximo={proximo}
+            modos={modos}
           />
         )}
       </>
@@ -92,8 +102,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         completar={primeiro(sp.completar) === "1" || !perfil}
         pedirAceite={pendente}
         proximo={proximo}
+        modos={modos}
       />
-      {perfil && (
+      {/* o currículo: para quem procura trabalho (ou ainda não marcou o que faz) */}
+      {perfil && (!marcados || marcados.includes("trabalhar")) && (
         <Link
           href="/perfil/curriculo"
           className="mt-8 flex items-center gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card hover:border-line-strong"

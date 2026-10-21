@@ -21,6 +21,34 @@ export function lerModo(valor: string | null | undefined): ModoPainel | null {
   return MODOS.some((m) => m.valor === valor) ? (valor as ModoPainel) : null;
 }
 
+/** Os modos numa ordem só (a do menu e a do perfil), sem repetir e sem valor estranho. */
+export function lerModos(valores: readonly (string | null | undefined)[] | null | undefined): ModoPainel[] {
+  const lista = new Set(valores ?? []);
+  return MODOS.map((m) => m.valor).filter((m) => lista.has(m));
+}
+
+/**
+ * O que a conta pode marcar em "O que você quer fazer no Publike?": procurar trabalho é só de
+ * pessoa (comércio, empresa e agência contratam e podem oferecer serviços).
+ */
+export function modosDoTipo(tipoConta: string | null | undefined): ModoPainel[] {
+  return tipoConta && tipoConta !== "pessoa" ? ["servicos", "contratar"] : ["trabalhar", "servicos", "contratar"];
+}
+
+/**
+ * O que a pessoa faz, numa linha, pelo que marcou: "Product Manager · procura trabalho · presta
+ * serviços". `titulo`: o do currículo (só com "Procurar trabalho").
+ */
+export function textoDoQueFaz(modos: readonly ModoPainel[], titulo?: string | null) {
+  const partes = [
+    modos.includes("trabalhar") && (titulo ? `${titulo} · procura trabalho` : "procura trabalho"),
+    modos.includes("servicos") && "presta serviços",
+    modos.includes("contratar") && "contrata",
+  ].filter((t): t is string => Boolean(t));
+  const texto = partes.join(" · ");
+  return texto.charAt(0).toLocaleUpperCase("pt-BR") + texto.slice(1);
+}
+
 /** O modo de quem ainda não escolheu: pelo tipo de conta e pelo que disse que quer fazer. */
 export function modoPadrao(tipoConta: string | null | undefined, intencao: Intencao | null): ModoPainel {
   if ((tipoConta && tipoConta !== "pessoa") || intencao === "contratar_pessoa") return "contratar";

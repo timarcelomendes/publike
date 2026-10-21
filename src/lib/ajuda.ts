@@ -189,6 +189,14 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Abra o anúncio e toque em “Denunciar anúncio”. Quem publicou não fica sabendo quem denunciou. Algumas denúncias de pessoas diferentes tiram o anúncio do ar até a moderação analisar.",
       },
       {
+        p: "Posso procurar trabalho e contratar na mesma conta?",
+        r: "Pode. Em Meu perfil, em “O que você quer fazer no Publike?”, marque quantos quiser: procurar trabalho, oferecer serviços e contratar. O painel e a página inicial mostram só o que você marcar, e o “Trocar”, no topo do menu do painel, passa de um para o outro. Comércio, empresa e agência contratam e também podem oferecer serviços.",
+      },
+      {
+        p: "Por que aparece “8 pessoas já curtiram esta vaga”?",
+        r: "Para você saber quais vagas estão sendo procuradas. Aparece só o número, a partir de 3 curtidas: quem curtiu nunca aparece para ninguém além de quem publicou a vaga.",
+      },
+      {
         p: "Como paro de receber e-mails?",
         r: "Em Meu perfil, desmarque a opção de receber avisos por e-mail. Avisos sobre a sua conta (como suspensão) chegam mesmo assim.",
       },

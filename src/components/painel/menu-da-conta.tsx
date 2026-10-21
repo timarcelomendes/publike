@@ -6,7 +6,7 @@ import { caminhoDaConta } from "@/lib/servidor/caminho";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { minhasContas } from "@/lib/servidor/equipe";
-import { modoDaConta } from "@/lib/servidor/modo";
+import { modoDaConta, modosDaConta } from "@/lib/servidor/modo";
 import { MenuPainel } from "./menu-painel";
 
 /**
@@ -19,9 +19,10 @@ export async function MenuDaConta() {
       <MenuPainel modo="trabalhar" contadores={{ responder: 0, pedidos: 0, mensagens: 0, conexoes: 0 }} nome={null} />
     );
   }
-  const [perfil, modo, anuncios, conversas, usuario, contas, conexoes] = await Promise.all([
+  const [perfil, modo, modos, anuncios, conversas, usuario, contas, conexoes] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     modoDaConta(),
+    modosDaConta(),
     listarMeusAnuncios().catch(() => []),
     conversasPorPessoa().catch(() => null),
     obterUsuario(),
@@ -49,6 +50,7 @@ export async function MenuDaConta() {
   return (
     <MenuPainel
       modo={modo}
+      modos={modos}
       contadores={contadores}
       nome={perfil?.nome ?? null}
       tipoConta={perfil?.tipo ?? null}

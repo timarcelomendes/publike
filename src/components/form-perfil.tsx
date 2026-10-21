@@ -1,6 +1,16 @@
 "use client";
 
-import { Camera, ChevronDown, Plus, X } from "lucide-react";
+import {
+  Briefcase,
+  Camera,
+  Check,
+  ChevronDown,
+  Plus,
+  Store,
+  UserSearch,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import {
   startTransition,
@@ -17,6 +27,7 @@ import { BAIRROS } from "@/lib/bairros";
 import { bairroDaReceita, formatarCnpj, limparCnpj, nomeDaReceita, type DadosCnpj } from "@/lib/cnpj";
 import { CIDADES, LIMITES_CONTA, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarTelefone } from "@/lib/formato";
+import { lerModos, modosDoTipo, type ModoPainel } from "@/lib/modo-painel";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, MeuPerfil, TipoConta } from "@/lib/tipos";
 import { CampoCnpj } from "./campo-cnpj";
@@ -64,6 +75,36 @@ function mascararCelular(valor: string) {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
+/** "O que você quer fazer no Publike?": cada modo do painel, na ordem da pergunta. */
+const OPCOES_MODO: {
+  valor: ModoPainel;
+  nome: string;
+  ajuda: (pessoa: boolean) => string;
+  icone: LucideIcon;
+}[] = [
+  {
+    valor: "trabalhar",
+    nome: "Procurar trabalho",
+    ajuda: () => "Vagas, currículo e entrevistas",
+    icone: Briefcase,
+  },
+  {
+    valor: "servicos",
+    nome: "Oferecer serviços",
+    ajuda: () => "Vitrine, pedidos e avaliações",
+    icone: Store,
+  },
+  {
+    valor: "contratar",
+    nome: "Contratar",
+    ajuda: (pessoa) =>
+      pessoa
+        ? "Vaga para casa ou para o seu negócio"
+        : "Vagas, candidatos e entrevistas",
+    icone: UserSearch,
+  },
+];
+
 export function FormPerfil({
   perfil,
   usuarioId,
@@ -73,6 +114,7 @@ export function FormPerfil({
   completar,
   proximo,
   pedirAceite = false,
+  modos: modosIniciais,
 }: {
   perfil: MeuPerfil | null;
   usuarioId: string;
@@ -84,6 +126,8 @@ export function FormPerfil({
   proximo: string;
   /** Conta criada pela equipe: ainda falta o aceite das regras e da política. */
   pedirAceite?: boolean;
+  /** o que a conta faz no Publike (os modos do painel); sem: a pergunta não aparece */
+  modos?: ModoPainel[];
 }) {
   const [estado, acao, enviando] = useActionState(salvarPerfil, { ok: false } as EstadoForm);
   const [nome, setNome] = useState(perfil?.nome ?? nomeSugerido ?? "");
@@ -99,6 +143,17 @@ export function FormPerfil({
   );
   const [cnpj, setCnpj] = useState(formatarCnpj(perfil?.cnpj));
   const [bairro, setBairro] = useState(perfil?.bairro ?? "");
+  const comModos = modosIniciais !== undefined;
+  const [modos, setModos] = useState<ModoPainel[]>(modosIniciais ?? []);
+  // procurar trabalho é só de pessoa: o que não cabe no tipo some da pergunta e do que vai salvar
+  const modosPossiveis = modosDoTipo(tipo);
+  const modosValidos = modos.filter((m) => modosPossiveis.includes(m));
+
+  function marcarModo(modo: ModoPainel, marcado: boolean) {
+    setModos((atual) =>
+      lerModos(marcado ? [...atual, modo] : atual.filter((m) => m !== modo)),
+    );
+  }
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const agencia = tipo === "agencia";
@@ -322,6 +377,7 @@ export function FormPerfil({
       {proximo && <input type="hidden" name="next" value={proximo} />}
       <input type="hidden" name="foto" value={foto ?? ""} />
       <input type="hidden" name="servicos" value={servicos.join(",")} />
+      {comModos && <input type="hidden" name="tem_modos" value="1" />}
 
       <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
         {!curto && blocoFoto}
@@ -354,7 +410,15 @@ export function FormPerfil({
                   name="tipo"
                   value={valor}
                   checked={tipo === valor}
-                  onChange={() => setTipo(valor as TipoConta)}
+                  onChange={() => {
+                    setTipo(valor as TipoConta);
+                    // virou comércio, empresa ou agência e só procurava trabalho: passa a contratar
+                    if (
+                      valor !== "pessoa" &&
+                      !modos.some((m) => m !== "trabalhar")
+                    )
+                      setModos(["contratar"]);
+                  }}
                   className="sr-only"
                 />
                 <span className="text-label">{t.nome}</span>
@@ -364,6 +428,69 @@ export function FormPerfil({
           </div>
           {erros.tipo && <MensagemErro>{erros.tipo}</MensagemErro>}
         </fieldset>
+
+        {comModos && (
+          <fieldset
+            id="modos"
+            className="flex scroll-mt-24 flex-col gap-2"
+            aria-describedby="modos-ajuda"
+            aria-invalid={erros.modos ? true : undefined}
+          >
+            <legend className="mb-1 text-label">
+              O que você quer fazer no Publike?
+            </legend>
+            <p
+              id="modos-ajuda"
+              className="-mt-1 mb-1 text-body-sm text-ink-muted"
+            >
+              Marque quantos quiser. O painel e a página inicial mostram só o
+              que você marcar.
+            </p>
+            <div
+              className={`grid gap-2 ${modosPossiveis.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+            >
+              {OPCOES_MODO.filter((o) => modosPossiveis.includes(o.valor)).map(
+                ({ valor, nome, ajuda, icone: Icone }) => {
+                  const marcado = modosValidos.includes(valor);
+                  return (
+                    <label
+                      key={valor}
+                      className="relative flex cursor-pointer flex-col gap-1 rounded-md border border-line-strong bg-surface-200 p-3 pr-10 has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+                    >
+                      <input
+                        type="checkbox"
+                        name="modos"
+                        value={valor}
+                        checked={marcado}
+                        onChange={(e) => marcarModo(valor, e.target.checked)}
+                        className="sr-only"
+                      />
+                      {/* a caixinha: vazia ou com o visto */}
+                      <span
+                        aria-hidden
+                        className={`absolute top-3 right-3 grid size-5 place-items-center rounded-[5px] border ${
+                          marcado
+                            ? "border-ink bg-ink text-surface-100"
+                            : "border-line-strong bg-surface-200"
+                        }`}
+                      >
+                        {marcado && (
+                          <Check className="size-3.5" strokeWidth={3} />
+                        )}
+                      </span>
+                      <Icone aria-hidden className="size-5 text-terra-text" />
+                      <span className="text-label">{nome}</span>
+                      <span className="text-body-sm text-ink-muted">
+                        {ajuda(tipo === "pessoa")}
+                      </span>
+                    </label>
+                  );
+                },
+              )}
+            </div>
+            {erros.modos && <MensagemErro>{erros.modos}</MensagemErro>}
+          </fieldset>
+        )}
 
         {tipo !== "pessoa" && (
           <CampoCnpj

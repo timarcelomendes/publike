@@ -1,4 +1,4 @@
-import { Briefcase, CircleCheck, MapPinned, MessageSquareText, Wrench, type LucideIcon } from "lucide-react";
+import { Briefcase, CircleCheck, Heart, MapPinned, MessageSquareText, Wrench, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { horaNaLinha, montarLinha, quandoFoi, recolherRecados, type ItemDaLinha } from "@/lib/linha-do-tempo";
@@ -10,7 +10,7 @@ import { RecadosRecolhidos } from "../../recados/recados-recolhidos";
 import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
 import { ListaDaLinha } from "./lista-da-linha";
-import { CartaoDoAceite, CartaoDoServico, TicketDaVaga } from "./objetos";
+import { CartaoDoAceite, CartaoDoServico, FaixaDeCurtidas, TicketDaVaga } from "./objetos";
 import { RegistrarVisita } from "./registrar-visita";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
@@ -23,6 +23,8 @@ const NO = {
   vaga: "bg-tom-vaga text-terra-text",
   servico: "bg-tom-servico text-cerrado-text",
   aceite: "bg-cerrado text-on-cerrado",
+  // a vaga que as pessoas estão curtindo: o coração da curtida
+  curtidas: "bg-like-soft text-like",
 };
 
 function No({ icone: Icone, tipo }: { icone: LucideIcon; tipo: keyof typeof NO }) {
@@ -115,8 +117,16 @@ function Item({
         </>
       ) : (
         <>
-          <No icone={Briefcase} tipo="vaga" />
-          <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
+          {dados.anuncio.curtidas ? <No icone={Heart} tipo="curtidas" /> : <No icone={Briefcase} tipo="vaga" />}
+          {dados.anuncio.curtidas ? (
+            // a vaga que as pessoas estão curtindo: quantas curtiram, em cima do tíquete
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <FaixaDeCurtidas item={dados.anuncio} usuarioId={d.usuarioId} />
+              <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
+            </div>
+          ) : (
+            <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
+          )}
         </>
       )}
     </div>

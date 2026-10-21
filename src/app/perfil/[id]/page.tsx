@@ -25,7 +25,8 @@ import {
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
-import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
+import { textoDoQueFaz } from "@/lib/modo-painel";
+import { modosMarcados } from "@/lib/servidor/modo";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
@@ -64,17 +65,10 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
   const agora = await agoraDaRequisicao();
   const meu = usuario?.id === perfil.id;
   const pessoa = perfil.tipo === "pessoa";
-  // a própria pessoa: o que ela faz (o título do currículo) e se presta serviço
-  const [uso, curriculo] =
-    meu && pessoa ? await Promise.all([perfilDeUso(), obterMeuCurriculo().catch(() => null)]) : [null, null];
-  const oQueFaz =
-    meu && pessoa
-      ? uso === "servicos"
-        ? "Presta serviços"
-        : curriculo?.titulo
-          ? `${curriculo.titulo} · procura trabalho`
-          : "Procura trabalho"
-      : null;
+  // a própria pessoa: o que ela faz (o que marcou no perfil e o título do currículo)
+  const [modos, curriculo] =
+    meu && pessoa ? await Promise.all([modosMarcados(), obterMeuCurriculo().catch(() => null)]) : [null, null];
+  const oQueFaz = modos ? textoDoQueFaz(modos, curriculo?.titulo) : null;
   const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
   const suspensa = Boolean(perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
   const agencia = perfil.tipo === "agencia";
@@ -119,7 +113,7 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         </div>
         {meu ? (
           <div className="flex flex-wrap gap-2 self-start sm:self-center">
-            {oQueFaz && uso !== "servicos" && (
+            {modos?.includes("trabalhar") && (
               <BotaoLink href="/perfil/curriculo" tamanho="sm">
                 <FileText aria-hidden />
                 Meu currículo
@@ -252,7 +246,7 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
 
       {/* pessoa sem anúncio: sem a seção (quem procura trabalho não anuncia); só a dona que presta
           serviço vê o convite para montar a vitrine */}
-      {(vagas.length > 0 || (servicos.length === 0 && (!pessoa || (meu && uso === "servicos")))) && (
+      {(vagas.length > 0 || (servicos.length === 0 && (!pessoa || Boolean(modos?.includes("servicos"))))) && (
         <section className="mt-10">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 className="text-h2">{servicos.length || agencia ? "Vagas abertas" : "Anúncios no ar"}</h2>

@@ -1056,6 +1056,18 @@ export type Database = {
         Args: { p_intencao: string };
         Returns: undefined;
       };
+      curtidas_das_vagas: {
+        Args: { p_ids: string[] };
+        Returns: { anuncio_id: string; curtidas: number; ultima: string }[];
+      };
+      meus_modos: {
+        Args: Record<PropertyKey, never>;
+        Returns: string[] | null;
+      };
+      salvar_meus_modos: {
+        Args: { p_modos: string[] };
+        Returns: string[];
+      };
       meus_bloqueios: {
         Args: Record<PropertyKey, never>;
         Returns: { outro_id: string; eu_bloqueei: boolean; me_bloqueou: boolean }[];

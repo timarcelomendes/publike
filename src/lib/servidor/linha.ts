@@ -11,7 +11,14 @@ import {
   type DetalhesDaVaga,
 } from "@/lib/dados";
 import { lerFiltros, type Filtros } from "@/lib/filtros";
-import { ACEITE_NA_LINHA, marcaDaVisita, novidades, type ItemDaLinha } from "@/lib/linha-do-tempo";
+import {
+  ACEITE_NA_LINHA,
+  CURTIDAS_SOBEM,
+  marcaDaVisita,
+  MAX_VAGAS_QUE_SOBEM,
+  novidades,
+  type ItemDaLinha,
+} from "@/lib/linha-do-tempo";
 import { obterLocal } from "@/lib/local";
 import type { Local } from "@/lib/regioes";
 import { partirDoLocal } from "@/lib/servidor/busca-salva";
@@ -102,7 +109,23 @@ export type AnuncioNaLinha = {
   salva: boolean | null;
   /** o começo da descrição (a introdução no cartão), numa linha só */
   resumo: string | null;
+  /** quantas pessoas curtiram a vaga (só a partir de 3; quem curtiu nunca aparece) e quando foi a última */
+  curtidas?: { total: number; ultima: string } | null;
 };
+
+/**
+ * As curtidas das vagas, só o número (o banco só devolve a partir de 3, e nunca quem curtiu).
+ * Banco sem a migração: sem números.
+ */
+async function curtidasDasVagas(ids: string[]): Promise<Map<string, { total: number; ultima: string }>> {
+  if (!ids.length) return new Map();
+  const { data, error } = await (await criarClienteServidor()).rpc("curtidas_das_vagas", { p_ids: ids.slice(0, 100) });
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao contar as curtidas das vagas: ${error.message}`);
+    return new Map();
+  }
+  return new Map((data ?? []).map((l) => [l.anuncio_id, { total: l.curtidas, ultima: l.ultima }]));
+}
 
 export type DadoDaLinha = { anuncio: AnuncioNaLinha } | { aceite: Match } | { recado: Recado };
 
@@ -242,6 +265,28 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       ],
       marca,
     );
+  }
+  // as vagas que as pessoas estão curtindo: o número no cartão ("8 pessoas já curtiram") e, as
+  // de curtida recente, sobem para a hora da última curtida (depois de contar as novidades: a vaga
+  // não vira "nova" por isso)
+  if (aba === "tudo" || aba === "vaga") {
+    const vagas = itens.filter((i) => i.tipo === "vaga" && "anuncio" in i.dados);
+    const curtidas = await curtidasDasVagas(vagas.map((i) => i.id)).catch(
+      () => new Map<string, { total: number; ultima: string }>(),
+    );
+    const sobem = new Set(
+      [...curtidas]
+        .filter(([, c]) => agora - Date.parse(c.ultima) <= CURTIDAS_SOBEM)
+        .sort(([, a], [, b]) => b.total - a.total || Date.parse(b.ultima) - Date.parse(a.ultima))
+        .slice(0, MAX_VAGAS_QUE_SOBEM)
+        .map(([id]) => id),
+    );
+    for (const i of vagas) {
+      const c = curtidas.get(i.id);
+      if (!c || !("anuncio" in i.dados)) continue;
+      i.dados.anuncio.curtidas = c;
+      if (sobem.has(i.id) && Date.parse(c.ultima) > Date.parse(i.quando)) i.quando = c.ultima;
+    }
   }
   return {
     agora,

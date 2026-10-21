@@ -85,7 +85,7 @@ export function BotaoConectarCompacto({
   }
 
   return (
-    <span className="relative z-10 flex flex-col">
+    <span className="relative z-10 flex flex-col items-start">
       <button
         type="button"
         disabled={pendente}

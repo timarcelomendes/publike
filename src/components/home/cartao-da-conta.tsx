@@ -27,6 +27,8 @@ import {
 } from "@/lib/dados";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
+import { textoDoQueFaz } from "@/lib/modo-painel";
+import { modosMarcados } from "@/lib/servidor/modo";
 import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
 import { formatarLugar, plural } from "@/lib/formato";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -275,8 +277,10 @@ export async function AtalhosDaConta() {
 
 /** A linha de quem é (embaixo do nome, na linha do tempo): o título do currículo ou o que faz. */
 async function QuemE({ uso }: { uso: string }) {
+  const [marcados, curriculo] = await Promise.all([modosMarcados(), obterMeuCurriculo().catch(() => null)]);
+  // o que marcou no perfil ("O que você quer fazer no Publike?"); sem marcação, pelo uso
+  if (marcados) return <>{textoDoQueFaz(marcados, curriculo?.titulo)}</>;
   if (uso === "servicos") return <>Presta serviços</>;
-  const curriculo = await obterMeuCurriculo().catch(() => null);
   return <>{curriculo?.titulo ? `${curriculo.titulo} · procura trabalho` : "Procura trabalho"}</>;
 }
 

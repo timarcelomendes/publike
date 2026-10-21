@@ -79,6 +79,7 @@ function lerCookie(): string | null {
  */
 export function MenuPainel({
   modo: modoDoServidor,
+  modos = MODOS.map((m) => m.valor),
   contadores,
   nome,
   tipoConta = null,
@@ -86,6 +87,8 @@ export function MenuPainel({
   papel = "dono",
 }: {
   modo: ModoPainel;
+  /** os modos que a conta usa (marcados no perfil): só eles aparecem para trocar */
+  modos?: ModoPainel[];
   contadores: Contadores;
   nome: string | null;
   /** o tipo da conta (agência ganha "Clientes" e "Equipe" em Contratar) */
@@ -108,6 +111,10 @@ export function MenuPainel({
   const idMenu = useId();
   const atual = MODOS.find((m) => m.valor === modo) ?? MODOS[0];
   const [trocando, iniciarTroca] = useTransition();
+  // os modos para trocar: os da conta (e o da página aberta, se veio por um link de outro modo)
+  const opcoes = MODOS.filter((m) => modos.includes(m.valor) || m.valor === modo);
+  // um modo só e uma conta só: o topo não abre nada (o "Mudar" leva ao perfil)
+  const semTroca = opcoes.length <= 1 && contas.length <= 1;
   const [erroTroca, setErroTroca] = useState<string | null>(null);
 
   function agirComo(conta: ContaDisponivel) {
@@ -193,23 +200,44 @@ export function MenuPainel({
   return (
     <nav aria-label="Seções do painel" className="flex flex-col gap-3 lg:gap-5">
       <div ref={caixa} className="relative">
-        <button
-          type="button"
-          aria-expanded={aberto}
-          aria-controls={idMenu}
-          onClick={() => setAberto((a) => !a)}
-          className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2 text-left transition-colors hover:bg-surface-300"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-caption text-ink-muted uppercase">
-              {atual.nome}
-              {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
+        {semTroca ? (
+          <div className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2">
+            <span className="min-w-0 flex-1">
+              <span className="block text-caption text-ink-muted uppercase">
+                {atual.nome}
+                {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
+              </span>
+              {nome && <span className="block truncate text-label">{nome}</span>}
             </span>
-            {nome && <span className="block truncate text-label">{nome}</span>}
-          </span>
-          <span className="text-body-sm text-ink-muted">Trocar</span>
-          <ChevronDown aria-hidden className={`size-4 shrink-0 transition-transform ${aberto ? "rotate-180" : ""}`} />
-        </button>
+            {papel === "dono" || papel === "admin" ? (
+              <Link
+                href="/perfil#modos"
+                className="text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
+              >
+                Mudar
+                <span className="sr-only"> o que você faz no Publike</span>
+              </Link>
+            ) : null}
+          </div>
+        ) : (
+          <button
+            type="button"
+            aria-expanded={aberto}
+            aria-controls={idMenu}
+            onClick={() => setAberto((a) => !a)}
+            className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2 text-left transition-colors hover:bg-surface-300"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-caption text-ink-muted uppercase">
+                {atual.nome}
+                {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
+              </span>
+              {nome && <span className="block truncate text-label">{nome}</span>}
+            </span>
+            <span className="text-body-sm text-ink-muted">Trocar</span>
+            <ChevronDown aria-hidden className={`size-4 shrink-0 transition-transform ${aberto ? "rotate-180" : ""}`} />
+          </button>
+        )}
         {aberto && (
           <div
             id={idMenu}
@@ -248,7 +276,7 @@ export function MenuPainel({
               </>
             )}
             <ul aria-label="Modos do painel">
-              {MODOS.map((m) => (
+              {opcoes.map((m) => (
                 <li key={m.valor}>
                   <button
                     type="button"
@@ -265,6 +293,15 @@ export function MenuPainel({
                 </li>
               ))}
             </ul>
+            {(papel === "dono" || papel === "admin") && (
+              <Link
+                href="/perfil#modos"
+                onClick={() => setAberto(false)}
+                className="flex min-h-11 items-center border-t border-line px-4 text-body-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+              >
+                Escolher o que você faz no Publike
+              </Link>
+            )}
           </div>
         )}
       </div>
