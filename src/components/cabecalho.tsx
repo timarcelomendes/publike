@@ -78,8 +78,9 @@ async function NavPrincipal() {
   return (
     <>
       <form action="/" role="search" className="hidden min-w-0 flex-1 lg:flex lg:max-w-sm xl:max-w-md">
-        <label className="flex h-10 w-full items-center gap-2 rounded-pill bg-surface-300 px-4 text-ink-muted focus-within:outline-2 focus-within:outline-focus">
-          <Search aria-hidden className="size-4 shrink-0" />
+        {/* a busca à vista: fundo branco no creme da página e a lupa em terra */}
+        <label className="flex h-10 w-full items-center gap-2 rounded-pill border border-line bg-surface-200 px-4 text-ink-muted focus-within:outline-2 focus-within:outline-focus">
+          <Search aria-hidden className="size-[18px] shrink-0 text-terra-text" />
           <span className="sr-only">Buscar vagas e serviços</span>
           <input
             type="search"

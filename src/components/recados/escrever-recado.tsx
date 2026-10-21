@@ -116,7 +116,7 @@ export function EscreverRecado({
       setCitado(null);
       setCitando(false);
       setBusca("");
-      setAviso({ ok: true, texto: r.mensagem ?? "Recado publicado." });
+      setAviso({ ok: true, texto: r.mensagem ?? "Recado enviado." });
     });
   }
 
@@ -290,7 +290,8 @@ export function EscreverRecado({
           aria-live="polite"
           className={`ml-auto pr-1 text-body-sm tabular-nums ${restam < 20 ? "font-semibold text-danger" : "text-ink-muted"}`}
         >
-          {texto.length}/{MAXIMO}
+          {/* o contador só aparece quando começa a escrever (no celular, o botão cabe na linha) */}
+          {texto.length > 0 && `${texto.length}/${MAXIMO}`}
         </span>
         <button
           type="button"
@@ -298,7 +299,7 @@ export function EscreverRecado({
           disabled={pendente || enviandoFoto || !texto.trim()}
           className="inline-flex min-h-9 items-center rounded-pill bg-ink px-4 text-label font-bold text-surface-100 disabled:opacity-45"
         >
-          {pendente ? "Publicando…" : "Publicar"}
+          {pendente ? "Enviando…" : "Enviar recado"}
         </button>
       </div>
       {aviso && (

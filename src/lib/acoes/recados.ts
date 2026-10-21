@@ -61,7 +61,9 @@ export async function escreverRecado(formData: FormData): Promise<ResultadoRecad
   return {
     ok: true,
     emRevisao,
-    mensagem: emRevisao ? "Recado enviado. Ele aparece para os outros depois da revisão." : "Recado publicado.",
+    mensagem: emRevisao
+      ? "Recado enviado. Ele aparece para os outros depois da revisão."
+      : "Recado enviado: já está na linha do tempo.",
   };
 }
 

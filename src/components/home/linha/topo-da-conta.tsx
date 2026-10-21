@@ -1,4 +1,4 @@
-import { FileText, Inbox, Plus, Store, type LucideIcon } from "lucide-react";
+import { FileText, Inbox, Plus, Search, Store, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { esperaResposta } from "@/lib/constantes";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
@@ -107,6 +107,21 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
             </Link>
           )}
         </div>
+        {/* no celular e no tablet, a busca (no computador, ela fica no cabeçalho) */}
+        <form action="/" role="search" className="lg:hidden">
+          <label className="flex h-12 items-center gap-2.5 rounded-pill border border-line bg-surface-200 px-4 text-ink focus-within:outline-2 focus-within:outline-focus">
+            <Search aria-hidden className="size-5 shrink-0 text-terra-text" />
+            <span className="sr-only">Buscar vagas e serviços</span>
+            <input
+              type="search"
+              name="q"
+              enterKeyHint="search"
+              placeholder="Garçom, diarista, auxiliar…"
+              maxLength={80}
+              className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
+            />
+          </label>
+        </form>
         {usuario && (
           <EscreverRecado
             pessoaId={usuario.pessoaId}
