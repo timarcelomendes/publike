@@ -5,8 +5,8 @@ import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
 import { FiltroCliente } from "@/components/painel/filtro-cliente";
-import { ChipFiltro } from "@/components/painel/fluxo";
 import { PaginaDeVagas } from "@/components/painel/pagina-de-vagas";
+import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
@@ -42,7 +42,7 @@ const TITULOS: Record<"todos" | TipoAnuncio, { titulo: string; texto: string }> 
 // Filtro pela situação: o que está no ar, o que está pausado e o que já saiu do ar.
 const SITUACOES = {
   no_ar: { nome: "No ar", status: ["ativo"] },
-  pausados: { nome: "Pausados", status: ["pausado"] },
+  pausados: { nome: "Pausadas", status: ["pausado"] },
   fora: { nome: "Fora do ar", status: ["expirado", "encerrado", "em_analise", "removido"] },
 } as const;
 type Situacao = keyof typeof SITUACOES;
@@ -108,13 +108,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   // quem só publicou vagas (o comum em empresa, comércio e agência) vê "Minhas vagas", como na aba
   const { titulo, texto } = TITULOS[tipo ?? (servicos === 0 ? "vaga" : "todos")];
   // o link de cada chip troca só o seu filtro e mantém o outro
-  const filtro = (mudar: { tipo?: TipoAnuncio | null; situacao?: Situacao | null }) => {
+  const filtro = (mudar: { tipo?: TipoAnuncio | null; situacao?: Situacao | null; cliente?: string | null }) => {
     const q = new URLSearchParams();
     const t = mudar.tipo !== undefined ? mudar.tipo : tipo;
     const s = mudar.situacao !== undefined ? mudar.situacao : situacao;
+    const c = mudar.cliente !== undefined ? mudar.cliente : cliente;
     if (t) q.set("tipo", t);
     if (s) q.set("situacao", s);
-    if (cliente) q.set("cliente", cliente);
+    if (c) q.set("cliente", c);
     const texto = q.toString();
     return `/painel/anuncios${texto ? `?${texto}` : ""}`;
   };
@@ -159,46 +160,68 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
               </BotaoLink>
             )}
           </div>
-          {(clientesComVagas.length > 1 || cliente) && tipo !== "servico" && (
-            <FiltroCliente
-              clientes={clientesComVagas}
-              cliente={cliente}
-              caminho="/painel/anuncios"
-              manter={{ tipo, situacao }}
-            />
-          )}
-          {(tipo || (vagas > 0 && servicos > 0)) && (
-            <nav aria-label="Filtrar anúncios" className="flex flex-wrap gap-2">
-              <ChipFiltro
-                href={filtro({ tipo: tipo === "vaga" ? null : "vaga" })}
-                ativo={tipo === "vaga"}
-                nome="Vagas"
-                numero={vagas}
-              />
-              <ChipFiltro
-                href={filtro({ tipo: tipo === "servico" ? null : "servico" })}
-                ativo={tipo === "servico"}
-                nome="Serviços"
-                numero={servicos}
-              />
-            </nav>
-          )}
-          {doTipo.length > 1 && (
-            <nav aria-label="Filtrar pela situação" className="flex flex-wrap gap-2">
-              {(Object.keys(SITUACOES) as Situacao[]).map((s) => (
-                <ChipFiltro
-                  key={s}
-                  href={filtro({ situacao: situacao === s ? null : s })}
-                  ativo={situacao === s}
-                  nome={SITUACOES[s].nome}
-                  numero={doTipo.filter((a) => naSituacao(a, s)).length}
+          {/* os filtros numa faixa só: a situação (uma escolha, sem ×), o tipo (só para quem tem
+              vagas e serviços) e, na agência, o cliente (com o logo; muitos clientes: a lista) */}
+          {(doTipo.length > 1 || situacao || (vagas > 0 && servicos > 0) || clientesComVagas.length > 1 || cliente) && (
+            <div className="flex flex-col gap-2.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3">
+              {(doTipo.length > 1 || situacao) && (
+                <Segmentos
+                  rotulo="Filtrar pela situação"
+                  opcoes={[
+                    { nome: "Todas", numero: doTipo.length, href: filtro({ situacao: null }), ativo: !situacao },
+                    ...(Object.keys(SITUACOES) as Situacao[]).map((s) => ({
+                      nome: SITUACOES[s].nome,
+                      numero: doTipo.filter((a) => naSituacao(a, s)).length,
+                      href: filtro({ situacao: s }),
+                      ativo: situacao === s,
+                    })),
+                  ]}
                 />
-              ))}
-            </nav>
+              )}
+              {vagas > 0 && servicos > 0 && (
+                <Segmentos
+                  rotulo="Filtrar anúncios"
+                  opcoes={[
+                    { nome: "Vagas e serviços", href: filtro({ tipo: null }), ativo: !tipo },
+                    { nome: "Vagas", numero: vagas, href: filtro({ tipo: "vaga" }), ativo: tipo === "vaga" },
+                    {
+                      nome: "Serviços",
+                      numero: servicos,
+                      href: filtro({ tipo: "servico" }),
+                      ativo: tipo === "servico",
+                    },
+                  ]}
+                />
+              )}
+              {(clientesComVagas.length > 1 || cliente) &&
+                tipo !== "servico" &&
+                (clientesComVagas.length <= 6 ? (
+                  <Segmentos
+                    rotulo="Filtrar pelo cliente"
+                    opcoes={[
+                      { nome: "Todos os clientes", href: filtro({ cliente: null }), ativo: !cliente },
+                      ...clientesComVagas.map((c) => ({
+                        nome: c.nome,
+                        numero: c.total,
+                        href: filtro({ cliente: c.id }),
+                        ativo: cliente === c.id,
+                        avatar: { nome: c.nome },
+                      })),
+                    ]}
+                  />
+                ) : (
+                  <FiltroCliente
+                    clientes={clientesComVagas}
+                    cliente={cliente}
+                    caminho="/painel/anuncios"
+                    manter={{ tipo, situacao }}
+                  />
+                ))}
+            </div>
           )}
           {lista.length === 0 && cliente ? (
             <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm text-ink">
-              {`Nenhuma vaga ${situacao ? `${SITUACOES[situacao].nome.toLowerCase()} ` : ""}de ${nomeDoCliente.get(cliente)}.`}{" "}
+              {`Nenhuma vaga ${situacao ? `${situacao === "pausados" ? "pausada" : SITUACOES[situacao].nome.toLowerCase()} ` : ""}de ${nomeDoCliente.get(cliente)}.`}{" "}
               <Link href={`/publicar?cliente=${cliente}`} className="font-semibold underline underline-offset-2">
                 Publicar vaga para este cliente
               </Link>
