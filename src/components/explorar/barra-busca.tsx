@@ -258,7 +258,7 @@ export function BarraBusca({
       {/* No celular: abas, busca e uma faixa com o lugar (e o painel do bairro).
           No computador: abas e lugar na mesma linha, o painel do bairro e a busca. */}
       <div
-        className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap ${soLugar ? "sm:items-center sm:gap-x-3" : "sm:items-end sm:gap-x-4"}`}
+        className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap ${soLugar ? "sm:items-center sm:gap-x-2" : "sm:items-end sm:gap-x-4"}`}
       >
         {!faixa && !soLugar && (
           <div role="group" aria-label="O que você procura" className={`order-1 ${classesGrupoAbas}`}>
@@ -290,7 +290,7 @@ export function BarraBusca({
           // bairro corta antes (o nome inteiro fica no title do botão)
           `min-w-0 ${
             soLugar
-              ? "flex flex-wrap sm:order-2 [&>button]:rounded-pill sm:[&>button:first-child]:max-w-42 @2xl:[&>button:first-child]:max-w-64"
+              ? "flex flex-wrap sm:order-2 [&>button]:rounded-pill sm:[&>button]:min-h-8 sm:[&>button]:px-2.5 sm:[&>button]:text-body-sm sm:[&>button]:font-semibold sm:[&>button:first-child]:max-w-36 @2xl:[&>button:first-child]:max-w-64"
               : `hidden sm:flex ${faixa ? "sm:order-5" : "sm:order-2 sm:mb-1.5"}`
           }`,
         )}

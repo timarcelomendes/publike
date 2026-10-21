@@ -150,6 +150,9 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
             </Suspense>
           )
         }
+        // com Blocos + mapa, quem contrata perto sobe para cima do mapa; embaixo, só os conteúdos
+        direitaComMapa={empresa ? null : <DoBlog />}
+        mapaAoLado
       >
         {/* publicar fica aqui, acima da busca e dos filtros (como no LinkedIn), e não no topo da página */}
         <Suspense fallback={<Esqueleto className="mb-4 hidden h-[7.75rem] rounded-lg md:block" />}>
@@ -178,7 +181,18 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
         )}
         {/* sem a busca inteira em cima (quem contrata tem), a lista traz Onde você mora e Perto de mim */}
         <Suspense fallback={<ExplorarEsqueleto />}>
-          <Explorar searchParams={searchParams} variante="feed" lugar={!empresa} />
+          <Explorar
+            searchParams={searchParams}
+            variante="feed"
+            lugar={!empresa}
+            acimaDoMapa={
+              empresa ? null : (
+                <Suspense fallback={null}>
+                  <ContratandoAcimaDoMapa />
+                </Suspense>
+              )
+            }
+          />
         </Suspense>
       </MolduraDaHome>
       <Suspense fallback={null}>
@@ -267,6 +281,11 @@ async function ColunaDireita() {
       <DoBlog />
     </>
   );
+}
+
+/** Com Blocos + mapa: quem contrata perto em cima do mapa, estreito como na coluna da direita. */
+async function ContratandoAcimaDoMapa() {
+  return <ContratandoPerto local={await obterLocal()} />;
 }
 
 /** Gente contratada pelo Publike (com o sim dos dois lados): aparece com 3 ou mais. */

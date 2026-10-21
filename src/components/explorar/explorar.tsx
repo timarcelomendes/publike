@@ -1,6 +1,6 @@
 import { BellPlus, MapPinned, Percent, SearchX, Store } from "lucide-react";
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { matchComAVaga, vagaNoTurno, type Aderencia, type Candidato } from "@/lib/aderencia";
 import {
   buscarAnuncios,
@@ -208,11 +208,14 @@ export async function Explorar({
   searchParams,
   variante = "vitrine",
   lugar = false,
+  acimaDoMapa = null,
 }: {
   searchParams: Parametros;
   variante?: "vitrine" | "feed";
   /** no feed: os botões Onde você mora e Perto de mim na barra de cima (quem contrata já tem a busca inteira) */
   lugar?: boolean;
+  /** com Blocos + mapa: o que vai em cima do mapa (no feed, quem contrata perto) */
+  acimaDoMapa?: ReactNode;
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
@@ -552,7 +555,9 @@ export async function Explorar({
                   </>
                 )}
               </p>
-            ) : (
+            ) : null}
+            {feed && usuario && !filtros.meus && <PadraoDaHome filtros={filtros} intencao={intencao} />}
+            {feed ? null : (
               <p className="text-body-sm text-ink-muted">
                 {combina && <>Do que mais combina com seu currículo · </>}
                 {!combina && !filtros.meus && local && !local.ponto && (
@@ -607,6 +612,7 @@ export async function Explorar({
         padrao={feed ? "blocos" : undefined}
         compacto={feed}
         ordemFora={ordemFora}
+        acimaDoMapa={acimaDoMapa}
       />
     </>
   );
@@ -702,7 +708,7 @@ function AtalhosDoFeed({
           href={i.href}
           scroll={false}
           aria-current={i.ativo ? "page" : undefined}
-          className={`inline-flex min-h-10 shrink-0 items-center rounded-pill border px-3.5 text-label transition-colors ${
+          className={`inline-flex min-h-10 shrink-0 items-center rounded-pill border px-3.5 text-label transition-colors sm:min-h-8 sm:px-3 sm:text-body-sm sm:font-semibold ${
             i.ativo
               ? "border-ink bg-ink text-surface-100"
               : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
@@ -764,5 +770,39 @@ function ConviteQuemContrata() {
         Publicar vaga grátis
       </BotaoLink>
     </aside>
+  );
+}
+
+const NOMES_TIPO = { vaga: "as vagas", servico: "os serviços", tudo: "vagas e serviços" } as const;
+const ABRE_EM = { vaga: "nas vagas", servico: "nos serviços", tudo: "em vagas e serviços" } as const;
+
+/**
+ * No feed: de onde a home abre (pelo que a pessoa disse que procura) e o caminho para o outro
+ * lado. Deixa claro que dá para ver serviços (ou vagas), mas a home volta sempre para o dela.
+ */
+function PadraoDaHome({ filtros, intencao }: { filtros: Filtros; intencao: Intencao | null }) {
+  const padrao = tipoDaIntencao(intencao);
+  const aqui = filtros.tipo ?? "tudo";
+  const base = padrao ?? "tudo";
+  const outro = base === "servico" ? "vaga" : "servico";
+  const link = "font-semibold text-ink underline underline-offset-2 hover:text-terra-text";
+  return (
+    <p className="basis-full text-body-sm text-ink-muted">
+      {aqui === base ? (
+        <>
+          {`Sua home abre ${ABRE_EM[base]}.`}{" "}
+          <Link href={hrefFiltros(filtros, { tipo: outro, tudo: false })} scroll={false} className={link}>
+            Ver {NOMES_TIPO[outro]}
+          </Link>
+        </>
+      ) : (
+        <>
+          Você está vendo {NOMES_TIPO[aqui as keyof typeof NOMES_TIPO]}.{" "}
+          <Link href={hrefFiltros(filtros, { tipo: padrao, tudo: padrao === null })} scroll={false} className={link}>
+            Voltar para {NOMES_TIPO[base]}
+          </Link>
+        </>
+      )}
+    </p>
   );
 }

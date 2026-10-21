@@ -3,6 +3,7 @@
 import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/filtros";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 import { AreaDoMapa, type Limites } from "./area-do-mapa";
@@ -29,6 +30,35 @@ const VISOES: { valor: Visao; nome: string; icone: LucideIcon }[] = [
   { valor: "mapa", nome: "Mapa", icone: IconeMapa },
   { valor: "blocos-mapa", nome: "Blocos + mapa", icone: Columns2 },
 ];
+
+// No feed (Blocos + mapa), o mapa vai para uma coluna própria da página, de cima a baixo
+// (ColunaDoMapa, posta pela moldura da home): a busca, os filtros e a lista ficam na coluna
+// da esquerda, todos da mesma largura.
+let colunaDoMapa: HTMLElement | null = null;
+const avisosDaColuna = new Set<() => void>();
+function registrarColuna(el: HTMLElement | null) {
+  colunaDoMapa = el;
+  // depois do commit: avisar (e o portal mudar) no meio dele quebra o React ("Unexpected Fiber popped")
+  queueMicrotask(() => avisosDaColuna.forEach((avisar) => avisar()));
+}
+
+/** O lugar do mapa (e do que vai em cima dele) ao lado da coluna da lista, na moldura da home. */
+export function ColunaDoMapa({ className }: { className?: string }) {
+  return <div ref={registrarColuna} className={className} />;
+}
+
+function useColunaDoMapa() {
+  return useSyncExternalStore(
+    (avisar) => {
+      avisosDaColuna.add(avisar);
+      return () => {
+        avisosDaColuna.delete(avisar);
+      };
+    },
+    () => colunaDoMapa,
+    () => null,
+  );
+}
 
 /** As visões do celular (tela menor que a do computador). */
 const VISOES_CELULAR: Visao[] = ["blocos", "mapa"];
@@ -146,6 +176,7 @@ export function VisaoExplorar({
   padrao,
   compacto = false,
   ordemFora = false,
+  acimaDoMapa = null,
 }: {
   titulo: ReactNode;
   subtitulo: ReactNode;
@@ -160,8 +191,13 @@ export function VisaoExplorar({
   compacto?: boolean;
   /** a ordem fica nos atalhos de cima (o feed): não conta como filtro mudado */
   ordemFora?: boolean;
+  /** com Blocos + mapa: um bloco em cima do mapa, na coluna dele (no feed, quem contrata perto) */
+  acimaDoMapa?: ReactNode;
 }) {
   const visao = useVisao(padrao);
+  const colunaFora = useColunaDoMapa();
+  // o mapa na coluna própria da página (feed, Blocos + mapa): aqui fica só a lista
+  const mapaFora = visao === "blocos-mapa" && compacto && colunaFora ? colunaFora : null;
   const comMapa = visao === "mapa" || visao === "blocos-mapa";
   const comLista = visao !== "mapa";
   const mudados = filtrosMudados(filtros, ordemFora);
@@ -204,7 +240,7 @@ export function VisaoExplorar({
               {titulo}
               {subtitulo}
             </div>
-            {botaoFiltros("min-h-10 rounded-pill px-4")}
+            {botaoFiltros("min-h-10 rounded-pill px-4 sm:min-h-8 sm:px-3 sm:text-body-sm sm:font-semibold")}
           </div>
           <div
             id={idFiltros}
@@ -267,18 +303,32 @@ export function VisaoExplorar({
 
       <div
         data-visao={visao}
-        className={`group/visao ${visao === "blocos-mapa" ? "flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6" : ""}`}
+        className={`group/visao ${visao === "blocos-mapa" && !mapaFora ? "flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6" : ""}`}
       >
         {/* Blocos + mapa no computador: a coluna do mapa estica até a altura dos cartões, e o mapa
             ocupa essa altura (no máximo a da tela, preso no topo ao rolar). Assim a borda de baixo
             do mapa bate com a dos cartões quando a lista é curta. */}
-        {comMapa && (
-          <div className={visao === "blocos-mapa" ? "lg:order-2" : ""}>
+        {mapaFora &&
+          createPortal(
+            <>
+              {acimaDoMapa}
+              <div className="sticky top-20 h-[calc(100dvh-7rem)] min-h-80">
+                <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} aoMudarArea={setArea} />
+              </div>
+            </>,
+            mapaFora,
+          )}
+        {comMapa && !mapaFora && (
+          <div className={visao !== "blocos-mapa" ? "" : acimaDoMapa ? "flex flex-col gap-4 lg:order-2" : "lg:order-2"}>
+            {/* no feed, com Blocos + mapa: "Contratando perto" fica em cima do mapa, na largura dele */}
+            {visao === "blocos-mapa" && acimaDoMapa}
             <div
               className={
                 visao === "mapa"
                   ? "h-[calc(100dvh-14rem)] min-h-96"
-                  : "h-80 lg:sticky lg:top-20 lg:h-full lg:max-h-[calc(100dvh-7rem)] lg:min-h-80"
+                  : acimaDoMapa
+                    ? "h-80 lg:sticky lg:top-20 lg:h-auto lg:max-h-[calc(100dvh-7rem)] lg:min-h-80 lg:flex-1"
+                    : "h-80 lg:sticky lg:top-20 lg:h-full lg:max-h-[calc(100dvh-7rem)] lg:min-h-80"
               }
             >
               <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} aoMudarArea={setArea} />
@@ -286,7 +336,7 @@ export function VisaoExplorar({
           </div>
         )}
         {comLista && (
-          <div className={visao === "blocos-mapa" ? "lg:order-1" : ""}>
+          <div className={visao === "blocos-mapa" && !mapaFora ? "lg:order-1" : ""}>
             <AreaDoMapa value={comMapa ? area : null}>{lista}</AreaDoMapa>
           </div>
         )}
