@@ -22,6 +22,7 @@ export function BotaoSeguir({
   rotulo,
   rotuloSeguindo = "Seguindo",
   lista = false,
+  semIcone = false,
 }: {
   alvo: { perfil: string } | { cidade: string; bairro: string };
   /** id do que já sigo (para deixar de seguir) */
@@ -34,6 +35,8 @@ export function BotaoSeguir({
   rotuloSeguindo?: string;
   /** na lista do painel o botão é a ação de parar: "Deixar de seguir" */
   lista?: boolean;
+  /** numa coluna estreita (home): só o texto, sem o sino */
+  semIcone?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [id, setId] = useState<number | null>(seguidoId);
@@ -75,7 +78,7 @@ export function BotaoSeguir({
           }
         }}
       >
-        {seguindo ? (
+        {semIcone ? null : seguindo ? (
           lista ? (
             <BellOff aria-hidden />
           ) : (

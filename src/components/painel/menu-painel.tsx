@@ -111,7 +111,7 @@ export function MenuPainel({
       }
       setAberto(false);
       guardarModo(conta.tipo === "agencia" ? "contratar" : "trabalhar");
-      router.push("/painel");
+      if (caminho !== "/") router.push("/painel");
       router.refresh();
     });
   }
@@ -139,7 +139,8 @@ export function MenuPainel({
   function escolher(novo: ModoPainel) {
     setAberto(false);
     guardarModo(novo);
-    if (caminho === "/painel") router.refresh();
+    // na home e no Hoje, a mesma página muda de modo; nas outras, vai para o Hoje
+    if (caminho === "/painel" || caminho === "/") router.refresh();
     else router.push("/painel");
   }
 

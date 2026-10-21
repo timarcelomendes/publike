@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Clock,
   Hourglass,
+  ImageUp,
   Link2,
   Megaphone,
   MessageCircleReply,
@@ -18,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
@@ -31,7 +33,9 @@ import { colocacoesDasVagas } from "@/lib/servidor/colocacoes";
 import { saudeDasVagas } from "@/lib/servidor/saude";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { MeuAnuncio, StatusAnuncio } from "@/lib/tipos";
+import type { ConversaPessoa } from "@/lib/conversas";
 import { NumeroHoje, ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
+import { EsperandoResposta, MensagensRecentes, TalentosDaVaga } from "./hoje-extras";
 import { NivelDaSaude } from "./saude-vaga";
 
 // Hoje, no modo Contratar (comércio, empresa e agência): o que pede você agora em
@@ -82,6 +86,8 @@ export async function PainelRecrutador({
   agora,
   clientes = null,
   extras = [],
+  conversas = null,
+  fotoDaVaga = false,
 }: {
   nome: string;
   autorId: string;
@@ -92,6 +98,10 @@ export async function PainelRecrutador({
   clientes?: number | null;
   /** outros "para fazer agora" da conta (as conexões: pedidos e mensagens novas) */
   extras?: Cartao[];
+  /** as conversas da conta (as mais recentes aparecem ao lado das vagas) */
+  conversas?: ConversaPessoa[] | null;
+  /** a leitura da arte da vaga está ligada: o atalho "Mandar a foto da vaga" */
+  fotoDaVaga?: boolean;
 }) {
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
@@ -291,10 +301,18 @@ export async function PainelRecrutador({
         agora={agora}
         pendencias={cartoes.length}
         acao={
-          <BotaoLink href="/publicar" variante="primario" tamanho="sm">
-            <Plus aria-hidden />
-            Publicar vaga
-          </BotaoLink>
+          <span className="flex flex-wrap items-center gap-2">
+            {fotoDaVaga && (
+              <BotaoLink href="/publicar#arte" tamanho="sm">
+                <ImageUp aria-hidden />
+                Mandar a foto da vaga
+              </BotaoLink>
+            )}
+            <BotaoLink href="/publicar" variante="primario" tamanho="sm">
+              <Plus aria-hidden />
+              Publicar vaga
+            </BotaoLink>
+          </span>
         }
       />
 
@@ -313,6 +331,12 @@ export async function PainelRecrutador({
             itens={cartoes}
             vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
           />
+
+          {pendentes.length > 0 && (
+            <Suspense fallback={null}>
+              <EsperandoResposta agora={agora} />
+            </Suspense>
+          )}
 
           <section aria-label="Números do recrutamento" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <NumeroHoje
@@ -345,7 +369,7 @@ export async function PainelRecrutador({
             />
           </section>
 
-          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <section aria-labelledby="suas-vagas" className="flex flex-col gap-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="suas-vagas" className="text-h3">
@@ -422,6 +446,7 @@ export async function PainelRecrutador({
             </section>
 
             <aside className="flex flex-col gap-4">
+              <MensagensRecentes conversas={conversas} agora={agora} />
               <section
                 aria-labelledby="agenda"
                 className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
@@ -489,6 +514,9 @@ export async function PainelRecrutador({
                   </p>
                 )}
               </section>
+              <Suspense fallback={null}>
+                <TalentosDaVaga vagas={vagas} agora={agora} />
+              </Suspense>
             </aside>
           </div>
         </>

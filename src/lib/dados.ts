@@ -1,4 +1,5 @@
 import "server-only";
+import { cacheLife } from "next/cache";
 import { after } from "next/server";
 import { cache } from "react";
 import type { CamposDaVaga } from "./aderencia";
@@ -9,7 +10,8 @@ import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
 import { raioDaBusca, type Filtros } from "./filtros";
 import { chavesDaRegiao, type Local } from "./regioes";
-import { criarClienteServidor } from "./supabase/servidor";
+import { fotosDosAutores } from "./servidor/fotos-autores";
+import { criarClientePublico, criarClienteServidor } from "./supabase/servidor";
 import { agoraDaRequisicao } from "./tempo";
 import type {
   AnuncioCompleto,
@@ -138,6 +140,18 @@ export const ajudaDaIADisponivel = cache(async () => {
   const { data } = await supabase.rpc("config_publica");
   return Boolean(data?.[0]?.ia_melhorar_texto);
 });
+
+/**
+ * A mesma conta de `ajudaDaIADisponivel`, sem sessão e guardada por alguns minutos: para a
+ * home, que não pode ler o banco a cada visita (a faixa "Tem a arte da vaga?").
+ */
+export async function iaLigadaNoSite(): Promise<boolean> {
+  "use cache";
+  cacheLife("minutes");
+  if (MODO_DEMO || !iaConfigurada()) return false;
+  const { data } = await criarClientePublico().rpc("config_publica");
+  return Boolean(data?.[0]?.ia_melhorar_texto);
+}
 
 /** Busca da página inicial. Com `local`, os anúncios do bairro, da região e da cidade vêm primeiro. */
 /** Com o CEP de casa e medindo a partir de casa, a ordem é só pela distância. */
@@ -747,13 +761,13 @@ export async function listarVagasParaDescobrir(): Promise<VagaDescobrir[]> {
   if (!vagas.length) return vagas;
   // vaga preenchida não entra no Descobrir (na busca, ela aparece com a marcação)
   const ids = vagas.map((v) => v.id);
-  const { data: preenchidas } = await supabase
-    .from("anuncios")
-    .select("id")
-    .in("id", ids)
-    .not("preenchida_em", "is", null);
+  const [{ data: preenchidas }, logos] = await Promise.all([
+    supabase.from("anuncios").select("id").in("id", ids).not("preenchida_em", "is", null),
+    // o logo de quem publicou, no alto do cartão
+    fotosDosAutores(vagas.map((v) => v.autor_id)),
+  ]);
   const fora = new Set((preenchidas ?? []).map((p) => p.id));
-  return fora.size ? vagas.filter((v) => !fora.has(v.id)) : vagas;
+  return vagas.filter((v) => !fora.has(v.id)).map((v) => ({ ...v, autor_foto: logos[v.autor_id] ?? null }));
 }
 
 /** "O que você procura?" de quem está logado. */

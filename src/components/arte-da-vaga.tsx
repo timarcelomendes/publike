@@ -40,6 +40,7 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
 
   return (
     <section
+      id="arte"
       aria-labelledby={`${id}-titulo`}
       className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:flex-row sm:items-center sm:p-5"
     >

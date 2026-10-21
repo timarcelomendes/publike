@@ -25,7 +25,8 @@ export type StatusAnuncio = "ativo" | "pausado" | "encerrado" | "expirado" | "em
 export type StatusCurtida = "pendente" | "match" | "dispensada";
 
 export type AnuncioResumo = LinhaDe<"buscar_anuncios">;
-export type VagaDescobrir = LinhaDe<"vagas_para_descobrir">;
+/** autor_foto: o logo de quem publicou, lido à parte (perfis.foto) */
+export type VagaDescobrir = LinhaDe<"vagas_para_descobrir"> & { autor_foto?: string | null };
 export type AnuncioCompleto = LinhaDe<"obter_anuncio">;
 export type MeuAnuncio = LinhaDe<"meus_anuncios">;
 export type MeuServico = LinhaDe<"meus_servicos">;
@@ -86,6 +87,8 @@ export type DadosCard = Pick<
   | "minha_curtida"
 > & {
   distancia_km: number | null;
+  /** a foto do perfil de quem publicou (o logo da empresa); sem ela, o cartão mostra as iniciais */
+  autor_foto?: string | null;
   /** serviço: o que a pessoa faz (pedreiro, diarista...) */
   oficio?: string | null;
   /** serviço: a primeira foto de trabalho (caminho no Storage) */

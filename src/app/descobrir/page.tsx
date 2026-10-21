@@ -70,6 +70,7 @@ function paraCard(v: VagaIndicada): DadosCard {
     autor_nome: v.autor_nome,
     autor_tipo: v.autor_tipo,
     autor_verificado: v.autor_verificado,
+    autor_foto: v.autor_foto ?? null,
     minha_curtida: v.minha_curtida,
     distancia_km: v.distanciaKm,
   };

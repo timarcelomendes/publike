@@ -169,11 +169,20 @@ export function BarraBusca({
   filtros,
   local,
   abrirOndeMora = false,
+  className = "mt-3 sm:mt-5",
+  faixa = false,
+  soLugar = false,
 }: {
   filtros: Filtros;
   local: Local | null;
   /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
   abrirOndeMora?: boolean;
+  /** o espaço em cima (na faixa da vitrine, nenhum) */
+  className?: string;
+  /** na faixa escura da vitrine: só a busca e o lugar (as abas ficam em cima da lista) */
+  faixa?: boolean;
+  /** no feed de quem entrou (a busca fica no topo da página): só Onde você mora e Perto de mim */
+  soLugar?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const [ondeMora, setOndeMora] = useState(abrirOndeMora);
@@ -213,36 +222,40 @@ export function BarraBusca({
   );
 
   return (
-    <div className="relative mt-3 flex flex-col gap-3 sm:mt-5">
+    <div className={`relative flex flex-col gap-3 ${className}`}>
       {pendente && <Carregando />}
 
       {/* No celular: abas, busca e uma faixa com o lugar (e o painel do bairro).
           No computador: abas e lugar na mesma linha, o painel do bairro e a busca. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
-        <div role="group" aria-label="O que você procura" className={`order-1 ${classesGrupoAbas}`}>
-          {ABAS_ANUNCIOS.map((t) => {
-            const ativo = filtros.tipo === t.valor;
-            return (
-              <button
-                key={t.nome}
-                type="button"
-                aria-pressed={ativo}
-                onClick={() =>
-                  ir({ tipo: t.valor, tudo: t.valor === null, regime: t.valor === "servico" ? null : filtros.regime })
-                }
-                className={classesAba(ativo)}
-              >
-                <MioloAba aba={t} ativo={ativo} />
-              </button>
-            );
-          })}
-          {/* gente que procura trabalho: outra página (não são anúncios) */}
-          <Link href={ABA_TALENTOS.href} className={classesAba(false)}>
-            <MioloAba aba={ABA_TALENTOS} ativo={false} />
-          </Link>
-        </div>
+        {!faixa && !soLugar && (
+          <div role="group" aria-label="O que você procura" className={`order-1 ${classesGrupoAbas}`}>
+            {ABAS_ANUNCIOS.map((t) => {
+              const ativo = filtros.tipo === t.valor;
+              return (
+                <button
+                  key={t.nome}
+                  type="button"
+                  aria-pressed={ativo}
+                  onClick={() =>
+                    ir({ tipo: t.valor, tudo: t.valor === null, regime: t.valor === "servico" ? null : filtros.regime })
+                  }
+                  className={classesAba(ativo)}
+                >
+                  <MioloAba aba={t} ativo={ativo} />
+                </button>
+              );
+            })}
+            {/* gente que procura trabalho: outra página (não são anúncios) */}
+            <Link href={ABA_TALENTOS.href} className={classesAba(false)}>
+              <MioloAba aba={ABA_TALENTOS} ativo={false} />
+            </Link>
+          </div>
+        )}
 
-        {botoesDeLugar("hidden min-w-0 sm:order-2 sm:mb-1.5 sm:flex")}
+        {botoesDeLugar(
+          `min-w-0 ${soLugar ? "flex flex-wrap" : "hidden sm:flex"} ${faixa ? "sm:order-5" : "sm:order-2 sm:mb-1.5"}`,
+        )}
 
         {ondeMora && (
           <div className="order-4 sm:order-3 sm:basis-full">
@@ -261,7 +274,7 @@ export function BarraBusca({
         <form
           role="search"
           onSubmit={buscar}
-          className="order-2 flex items-center gap-1 rounded-lg border border-line-strong bg-surface-200 p-1 pl-3 shadow-card has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus sm:order-4 sm:basis-full sm:p-1.5 sm:pl-3"
+          className={`order-2 ${soLugar ? "hidden" : "flex"} items-center gap-1 rounded-lg border border-line-strong bg-surface-200 p-1 pl-3 shadow-card has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus sm:order-4 sm:basis-full sm:p-1.5 sm:pl-3`}
         >
           <label htmlFor="busca" className="sr-only">
             O que você procura?
@@ -306,7 +319,7 @@ export function BarraBusca({
         </form>
 
         {/* celular: os botões de lugar numa faixa (no computador, ficam ao lado da busca) */}
-        <div className="order-3 min-w-0 sm:hidden">
+        <div className={`order-3 min-w-0 sm:hidden ${soLugar ? "hidden" : ""}`}>
           <FaixaRolavel rotulo="Lugar">{botoesDeLugar("flex shrink-0")}</FaixaRolavel>
         </div>
 

@@ -2,10 +2,8 @@ import {
   Bell,
   CalendarClock,
   FileText,
-  Handshake,
   Hourglass,
   MessageCircle,
-  MessagesSquare,
   PartyPopper,
   Search,
   Sparkles,
@@ -14,23 +12,29 @@ import {
   UserRound,
   Wrench,
 } from "lucide-react";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoVisaoGeral } from "@/components/painel/esqueleto";
 import { Etapas, NumeroHoje, ParaFazerAgora, Saudacao, type Cartao } from "@/components/painel/hoje";
-import { PainelRecrutador } from "@/components/painel/recrutador";
+import {
+  cartoesDeConexao,
+  cartoesDeMensagens,
+  conversaDoModo,
+  nomes,
+  soma,
+  talvez,
+} from "@/components/painel/cartoes-hoje";
+import { HojeContratar } from "@/components/painel/hoje-contratar";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { caminhoConexao, type Conexao } from "@/lib/conexoes";
+import type { Conexao } from "@/lib/conexoes";
 import { caminhoConversa, type ConversaPessoa } from "@/lib/conversas";
 import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu, type EtapaCandidato } from "@/lib/constantes";
 import {
   contarMinhasSalvas,
   listarMeusAnuncios,
-  listarMeusCandidatos,
   listarMinhasCurtidas,
   listarMinhasEtapas,
   meuCurriculoNaVitrine,
@@ -41,13 +45,11 @@ import {
   perfilCompleto,
 } from "@/lib/dados";
 import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
-import { COOKIE_MODO, lerModo, modoPadrao } from "@/lib/modo-painel";
+import { forcaDoCurriculo } from "@/lib/curriculo-forca";
+import { modoDaConta } from "@/lib/servidor/modo";
 import { dataDaEntrevista } from "@/lib/recrutamento";
-import { listarMeusClientes } from "@/lib/servidor/clientes";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
-import { minhasContas } from "@/lib/servidor/equipe";
-import { obterIntencao } from "@/lib/servidor/intencao";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { Curriculo, MeuAnuncio, MeuPerfil, MinhaCurtida } from "@/lib/tipos";
@@ -69,101 +71,21 @@ export default function Hoje() {
   );
 }
 
-/** Uma leitura que, se falhar, não derruba a página (o número vira "–"). */
-async function talvez<T>(leitura: Promise<T>, oQue: string): Promise<T | null> {
-  try {
-    return await leitura;
-  } catch (e) {
-    console.error(`Publike: Hoje sem ${oQue}: ${e instanceof Error ? e.message : String(e)}`);
-    return null;
-  }
-}
-
-/** "Garçom", "Garçom e Cozinheira", "Garçom e mais 2" */
-function nomes(lista: string[]) {
-  const unicos = [...new Set(lista)];
-  return unicos.length <= 2 ? unicos.join(" e ") : `${unicos[0]} e mais ${unicos.length - 1}`;
-}
-
-const soma = (lista: number[]) => lista.reduce((total, n) => total + n, 0);
-
-/** Os pedidos de conexão para responder (Contratar e Trabalhar). As mensagens ficam nas conversas. */
-function cartoesDeConexao(lista: Conexao[] | null): Cartao[] {
-  const recebidos = (lista ?? []).filter((c) => c.status === "pendente" && !c.pedi);
-  if (!recebidos.length) return [];
-  return [
-    {
-      icone: Handshake,
-      tom: "urgente",
-      quando: "Conexões",
-      titulo: plural(recebidos.length, "pedido de conexão", "pedidos de conexão"),
-      texto: `De ${nomes(recebidos.map((c) => c.outro_nome))}. Aceite ou recuse.`,
-      href: recebidos.length === 1 ? caminhoConexao(recebidos[0].outro_id) : "/painel/conexoes",
-      acao: "Responder",
-    },
-  ];
-}
-
-/** As conversas de cada modo (uma por pessoa): as vagas em comum e, para talento e empresa, a conexão. */
-const conversaDoModo = {
-  contratar: (c: ConversaPessoa) => c.conectados || c.vagas.some((v) => v.papel === "publiquei" && v.tipo === "vaga"),
-  trabalhar: (c: ConversaPessoa) => c.conectados || c.vagas.some((v) => v.papel === "curti" && v.tipo === "vaga"),
-  servicos: (c: ConversaPessoa) => c.vagas.some((v) => v.papel === "publiquei" && v.tipo === "servico"),
-};
-
-/** As mensagens novas, uma conversa por pessoa. */
-function cartoesDeMensagens(conversas: ConversaPessoa[] | null, doModo: (c: ConversaPessoa) => boolean): Cartao[] {
-  const comNovas = (conversas ?? []).filter((c) => doModo(c) && c.nao_lidas > 0);
-  if (!comNovas.length) return [];
-  return [
-    {
-      icone: MessagesSquare,
-      quando: "Mensagens",
-      titulo: plural(soma(comNovas.map((c) => c.nao_lidas)), "mensagem nova", "mensagens novas"),
-      texto: `De ${nomes(comNovas.map((c) => c.outro_nome))}`,
-      href: comNovas.length === 1 ? caminhoConversa(comNovas[0].outro_id) : "/painel/conversas",
-      acao: "Ler e responder",
-    },
-  ];
-}
-
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel");
-  const [perfil, intencao, jar, conversas, conexoes] = await Promise.all([
+  const [perfil, modo, conversas, conexoes] = await Promise.all([
     obterMeuPerfil(),
-    talvez(obterIntencao(), "a intenção"),
-    cookies(),
+    modoDaConta(),
     conversasPorPessoa(),
     minhasConexoes().catch(() => null),
   ]);
   const agora = await agoraDaRequisicao();
-  const modo = lerModo(jar.get(COOKIE_MODO)?.value) ?? modoPadrao(perfil?.tipo, intencao);
   const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
 
   let pagina;
   if (modo === "contratar" && perfil) {
-    const [anuncios, candidatos, clientes] = await Promise.all([
-      talvez(listarMeusAnuncios(), "os anúncios"),
-      listarMeusCandidatos(),
-      // agência: quantos clientes (o atalho "Seus clientes")
-      perfil.tipo === "agencia"
-        ? listarMeusClientes().then((l) => l?.filter((c) => !c.arquivado_em).length ?? 0)
-        : null,
-    ]);
-    // quem é da equipe da agência: "Boa noite, Bruno" (o nome da pessoa, não o da agência)
-    const pessoa = usuario.papel !== "dono" ? (await minhasContas()).find((c) => c.papel === "dono") : null;
-    pagina = (
-      <PainelRecrutador
-        nome={pessoa?.nome ?? perfil.nome}
-        autorId={perfil.id}
-        anuncios={anuncios}
-        candidatos={candidatos}
-        agora={agora}
-        clientes={clientes}
-        extras={[...cartoesDeConexao(conexoes), ...cartoesDeMensagens(conversas, conversaDoModo.contratar)]}
-      />
-    );
+    pagina = <HojeContratar usuario={usuario} perfil={perfil} conversas={conversas} conexoes={conexoes} agora={agora} />;
   } else if (modo === "servicos") {
     const anuncios = await talvez(listarMeusAnuncios(), "os anúncios");
     pagina = <HojeServicos perfil={perfil} anuncios={anuncios} conversas={conversas} agora={agora} />;
@@ -248,26 +170,6 @@ function cartoesDaConta(
 // ==================================================================== Trabalhar
 
 type EntrevistaMinha = Awaited<ReturnType<typeof minhasProximasEntrevistas>>[number];
-
-/** O que falta no currículo, na ordem que mais ajuda a combinar com as vagas. */
-function forcaDoCurriculo(c: Curriculo | null) {
-  const itens: { feito: boolean; dica: string }[] = [
-    {
-      feito: Boolean(c?.titulo && c.habilidades?.length),
-      dica: "Diga o que você faz e as suas habilidades: é o que as empresas veem primeiro.",
-    },
-    { feito: Boolean(c?.experiencias.length), dica: "Conte onde já trabalhou: é o que quem contrata lê primeiro." },
-    { feito: Boolean(c?.disponibilidade.length), dica: "Diga os horários que pode: o % de match usa isso." },
-    { feito: Boolean(c?.escolaridade), dica: "Coloque a escolaridade: muitas vagas pedem." },
-    { feito: Boolean(c?.cursos.length), dica: "Liste cursos e certificados: contam no % de match." },
-    { feito: Boolean(c?.arquivo), dica: "Anexe um PDF, se tiver: quem contrata pode baixar." },
-  ];
-  const feitos = itens.filter((i) => i.feito).length;
-  return {
-    pontos: c ? Math.round((100 * (feitos + 1)) / (itens.length + 1)) : 0,
-    dica: itens.find((i) => !i.feito)?.dica ?? null,
-  };
-}
 
 /** Onde está cada candidatura, em 4 passos: curtiu, aceito, entrevista, contratado. */
 function andamento(c: MinhaCurtida, etapa: EtapaCandidato | null, entrevista: EntrevistaMinha | undefined) {

@@ -1,52 +1,10 @@
 import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
-import { Suspense } from "react";
-import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { ComoFuncionaAnimado } from "./como-funciona-animado";
 import { ConteudosNaHome } from "./conteudo/na-home";
 import { PASSOS } from "./passos";
 import { RecursosDoPublike } from "./secao-recursos";
-import { Container, Selo } from "./ui/basicos";
-
-/** Quantas vagas e quantos serviços estão no ar (só aparece quando já são muitos, para não parecer vazio). */
-async function NoAr() {
-  const [vagas, servicos] = await Promise.all([anunciosNoAr("vaga"), anunciosNoAr("servico")]);
-  if (vagas.length + servicos.length < 20) return null;
-  // a leitura traz até 200 de cada
-  const n = (x: number) => (x >= 200 ? "200+" : String(x));
-  // não cabe no celular: fica só no computador
-  return (
-    <span className="hidden lg:inline">
-      {n(vagas.length)} vagas e {n(servicos.length)} serviços no ar.{" "}
-    </span>
-  );
-}
-
-/**
- * Título da página inicial, curto para os anúncios aparecerem logo: no celular, uma
- * linha só (o título e o selo GRÁTIS); no computador, mais uma linha de apoio com o link
- * para entender. A busca vem embaixo, no mesmo bloco (app/page.tsx), e "Como funciona"
- * fica depois dos anúncios.
- */
-export function HeroInicio() {
-  return (
-    <>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h1 className="text-h3 sm:text-h1">Trabalho perto de você.</h1>
-        <Selo variante="novo">Grátis</Selo>
-      </div>
-      <p className="mt-1 hidden text-body text-ink-muted sm:block">
-        Vagas de emprego, diárias, freelances e profissionais do bairro em Goiânia e região.{" "}
-        <Suspense fallback={null}>
-          <NoAr />
-        </Suspense>
-        <a href="#entenda" className="whitespace-nowrap text-ink underline underline-offset-2 hover:text-terra-text">
-          Entenda como funciona
-        </a>
-      </p>
-    </>
-  );
-}
+import { Container } from "./ui/basicos";
 
 /** Os três passos em cartões (página Como funciona). */
 export function PassosComoFunciona() {

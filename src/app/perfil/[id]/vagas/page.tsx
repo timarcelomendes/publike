@@ -96,7 +96,11 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]/vagas">["p
           <ul aria-label="Vagas abertas" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {vagas.map((a) => (
               <li key={a.id} className="contents">
-                <CardAnuncio anuncio={a} agora={agora} usuarioId={usuario?.id ?? null} />
+                <CardAnuncio
+                  anuncio={{ ...a, autor_foto: perfil.foto }}
+                  agora={agora}
+                  usuarioId={usuario?.id ?? null}
+                />
               </li>
             ))}
           </ul>

@@ -84,18 +84,46 @@ export function Aviso({
 
 // ------------------------------------------------------------------ Avatar
 
+/** As cores das iniciais de quem não tem foto (cada nome cai sempre na mesma). */
+const CORES_INICIAIS = [
+  "bg-terra text-on-terra",
+  "bg-cerrado text-on-cerrado",
+  "bg-ink text-surface-100",
+  "bg-ipe text-on-ipe",
+] as const;
+
+/** A cor de fundo de um nome (a mesma das iniciais): para a capa colorida dos cartões. */
+export function fundoDoNome(nome: string) {
+  return corDoNome(nome).split(" ")[0];
+}
+
+function corDoNome(nome: string) {
+  let soma = 0;
+  for (const letra of nome) soma = (soma * 31 + (letra.codePointAt(0) ?? 0)) % 9973;
+  return CORES_INICIAIS[soma % CORES_INICIAIS.length];
+}
+
+/**
+ * Foto da conta ou, sem foto, as iniciais. `forma="quadrada"`: o logo de empresa, comércio
+ * e agência (no cartão do anúncio). `colorida`: as iniciais num fundo de cor, pelo nome.
+ */
 export function Avatar({
   nome,
   foto,
   tamanho = 40,
   className = "",
+  forma = "redonda",
+  colorida = false,
 }: {
   nome: string;
   foto?: string | null;
   tamanho?: number;
   className?: string;
+  forma?: "redonda" | "quadrada";
+  colorida?: boolean;
 }) {
   const url = urlDaFoto(foto);
+  const canto = forma === "quadrada" ? "rounded-md" : "rounded-pill";
   if (url) {
     return (
       <Image
@@ -104,7 +132,7 @@ export function Avatar({
         width={tamanho}
         height={tamanho}
         unoptimized
-        className={`shrink-0 rounded-pill bg-surface-300 object-cover ${className}`}
+        className={`shrink-0 ${canto} bg-surface-300 object-cover ${className}`}
         style={{ width: tamanho, height: tamanho }}
       />
     );
@@ -112,7 +140,9 @@ export function Avatar({
   return (
     <span
       aria-hidden
-      className={`inline-flex shrink-0 items-center justify-center rounded-pill bg-surface-300 font-display font-bold text-ink ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center ${canto} font-display font-bold ${
+        colorida ? corDoNome(nome) : "bg-surface-300 text-ink"
+      } ${className}`}
       style={{ width: tamanho, height: tamanho, fontSize: Math.round(tamanho * 0.38) }}
     >
       {iniciais(nome)}

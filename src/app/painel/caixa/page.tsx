@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarClock, List, MessagesSquare, Users, Zap } from "lucide-react";
+import { ArrowLeft, List, Users, Zap } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -6,14 +6,13 @@ import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FichaCandidato } from "@/components/painel/ficha-candidato";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
-import { NotaAderencia } from "@/components/painel/nota-aderencia";
+import { ItemDaLista } from "@/components/painel/item-caixa";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Aviso, Avatar, Vazio } from "@/components/ui/basicos";
+import { Aviso, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { ajudaDaIADisponivel } from "@/lib/dados";
-import { primeiro, tempoRelativo } from "@/lib/formato";
-import { dataDaEntrevista } from "@/lib/recrutamento";
+import { primeiro } from "@/lib/formato";
 import { ABAS, montarCaixa, naAba, ordenar, type Aba, type ItemCaixa } from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -199,48 +198,5 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
         </div>
       </div>
     </div>
-  );
-}
-
-function ItemDaLista({ c, agora, href, aberto }: { c: ItemCaixa; agora: number; href: string; aberto: boolean }) {
-  const encerrado = c.status === "dispensada" || c.status === "desfeito";
-  return (
-    <li>
-      <Link
-        href={href}
-        scroll={false}
-        aria-current={aberto ? "true" : undefined}
-        className={`flex gap-3 px-4 py-3 transition-colors ${
-          aberto ? "bg-surface-300 shadow-[inset_3px_0_0_var(--color-ink)]" : "hover:bg-surface-300"
-        }`}
-      >
-        <Avatar nome={c.nome} foto={c.foto} tamanho={40} />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-label">{c.nome}</span>
-            {c.aderencia && !encerrado && <NotaAderencia a={c.aderencia} />}
-          </span>
-          <span className="block truncate text-body-sm text-ink-muted">
-            {c.anuncio_titulo} · {tempoRelativo(c.curtido_em, agora)}
-          </span>
-          {c.entrevista ? (
-            <span className="mt-0.5 flex items-center gap-1.5 text-body-sm font-semibold">
-              <CalendarClock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              {dataDaEntrevista(c.entrevista.quando)}
-            </span>
-          ) : c.aceita ? (
-            <span className="mt-0.5 block text-body-sm text-ink-muted">Aceito: esperando o currículo</span>
-          ) : c.mensagem && !encerrado ? (
-            <span className="mt-0.5 line-clamp-1 text-body-sm text-ink">“{c.mensagem}”</span>
-          ) : null}
-          {c.naoLidas > 0 && (
-            <span className="mt-1 inline-flex items-center gap-1 rounded-pill bg-ink px-2 text-caption leading-5 text-surface-100">
-              <MessagesSquare aria-hidden className="size-3.5" />
-              {c.naoLidas} {c.naoLidas === 1 ? "mensagem nova" : "mensagens novas"}
-            </span>
-          )}
-        </span>
-      </Link>
-    </li>
   );
 }

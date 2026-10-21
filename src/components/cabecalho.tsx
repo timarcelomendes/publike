@@ -1,12 +1,14 @@
-import { Laptop } from "lucide-react";
+import { Laptop, Search } from "lucide-react";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { ehModerador, meuCurriculoNaVitrine, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { ehAdminLocal } from "@/lib/supabase/admin";
 import { BotaoEntrarCabecalho, BotaoPublicar, PublicarECurriculo, type CurriculoNoTopo } from "./botao-publicar";
 import { BotaoInstalarApp } from "./instalar-app";
+import { LinkTopo } from "./nav-topo";
 import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
 import { BotaoTema } from "./tema";
@@ -27,12 +29,9 @@ export function Cabecalho() {
         <Link href="/" aria-label="Publike, página inicial" className="mr-3 shrink-0 rounded-sm">
           <Logo altura={34} />
         </Link>
-        <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
-          {/* Vagas e Serviços ficam nas abas da busca, na home (não repetimos aqui) */}
-          <LinkNav href="/descobrir">Descobrir</LinkNav>
-          <LinkNav href="/noticias">Notícias</LinkNav>
-          <LinkNav href="/como-funciona">Como funciona</LinkNav>
-        </nav>
+        <Suspense fallback={<NavVisitante />}>
+          <NavPrincipal />
+        </Suspense>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <BotaoInstalarApp variante="cabecalho" />
           <BotaoTema />
@@ -46,6 +45,60 @@ export function Cabecalho() {
         </div>
       </Container>
     </header>
+  );
+}
+
+/** O menu do visitante: o que é o Publike. */
+function NavVisitante() {
+  return (
+    <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
+      {/* Vagas e Serviços ficam nas abas da busca, na home (não repetimos aqui) */}
+      <LinkNav href="/descobrir">Descobrir</LinkNav>
+      <LinkNav href="/noticias">Notícias</LinkNav>
+      <LinkNav href="/como-funciona">Como funciona</LinkNav>
+    </nav>
+  );
+}
+
+/** Quem entrou: a busca no topo e Início, Conversas (com as novas), Conexões e Notícias. */
+async function NavPrincipal() {
+  const usuario = MODO_DEMO ? null : await obterUsuario();
+  if (!usuario) return <NavVisitante />;
+  const conversas = await conversasPorPessoa().catch(() => null);
+  const novas = (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0);
+  return (
+    <>
+      <form action="/" role="search" className="hidden min-w-0 flex-1 lg:flex lg:max-w-sm xl:max-w-md">
+        <label className="flex h-10 w-full items-center gap-2 rounded-pill bg-surface-300 px-4 text-ink-muted focus-within:outline-2 focus-within:outline-focus">
+          <Search aria-hidden className="size-4 shrink-0" />
+          <span className="sr-only">Buscar vagas e serviços</span>
+          <input
+            type="search"
+            name="q"
+            enterKeyHint="search"
+            placeholder="Garçom, diarista, auxiliar…"
+            maxLength={80}
+            className="min-w-0 flex-1 bg-transparent text-body-sm text-ink outline-none placeholder:text-ink-muted"
+          />
+        </label>
+      </form>
+      <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
+        <LinkTopo href="/">Início</LinkTopo>
+        <LinkTopo href="/painel/conversas">
+          Conversas
+          {novas > 0 && (
+            <span className="min-w-5 rounded-pill bg-like px-1.5 text-center text-caption leading-5 text-on-like">
+              {novas > 99 ? "99+" : novas}
+              <span className="sr-only"> novas</span>
+            </span>
+          )}
+        </LinkTopo>
+        <LinkTopo href="/painel/conexoes">Conexões</LinkTopo>
+        <span className="hidden xl:contents">
+          <LinkTopo href="/noticias">Notícias</LinkTopo>
+        </span>
+      </nav>
+    </>
   );
 }
 

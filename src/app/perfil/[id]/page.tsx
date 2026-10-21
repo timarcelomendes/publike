@@ -156,7 +156,12 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           )}
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {servicos.map((a) => (
-              <CardAnuncio key={a.id} anuncio={a} agora={agora} usuarioId={usuario?.id ?? null} />
+              <CardAnuncio
+                key={a.id}
+                anuncio={{ ...a, autor_foto: perfil.foto }}
+                agora={agora}
+                usuarioId={usuario?.id ?? null}
+              />
             ))}
           </div>
           {trabalhos.length > 0 && (
@@ -230,7 +235,12 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
             {vagas.length ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {vagas.map((a) => (
-                  <CardAnuncio key={a.id} anuncio={a} agora={agora} usuarioId={usuario?.id ?? null} />
+                  <CardAnuncio
+                    key={a.id}
+                    anuncio={{ ...a, autor_foto: perfil.foto }}
+                    agora={agora}
+                    usuarioId={usuario?.id ?? null}
+                  />
                 ))}
               </div>
             ) : (

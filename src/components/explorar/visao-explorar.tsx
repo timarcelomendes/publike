@@ -55,8 +55,11 @@ function guardar(v: Visao) {
 
 let escolhidaAgora: Visao | null = null;
 
-/** A visão escolhida (ou a padrão: blocos + mapa no computador, blocos no celular). */
-function useVisao(): Visao {
+/**
+ * A visão escolhida (ou a padrão: blocos + mapa no computador, blocos no celular). `padrao`:
+ * outra para quem nunca escolheu (no feed de quem entrou, Blocos).
+ */
+export function useVisao(padrao?: Visao): Visao {
   return useSyncExternalStore(
     (avisar) => {
       const mq = window.matchMedia(TELA_GRANDE);
@@ -75,7 +78,7 @@ function useVisao(): Visao {
     },
     () => {
       const grande = window.matchMedia(TELA_GRANDE).matches;
-      const v = escolhidaAgora ?? lerGuardada() ?? (grande ? "blocos-mapa" : "blocos");
+      const v = escolhidaAgora ?? lerGuardada() ?? padrao ?? (grande ? "blocos-mapa" : "blocos");
       return grande || VISOES_CELULAR.includes(v) ? v : "blocos";
     },
     () => "blocos",
@@ -113,9 +116,11 @@ function SeletorVisao({ visao, celular = false }: { visao: Visao; celular?: bool
   );
 }
 
-/** Quantos filtros da lista fogem do padrão (contratação, distância ou tempo, ordem, só os meus). */
+/** Quantos filtros da lista fogem do padrão (contratação, horário, área, distância ou tempo, ordem, só os meus). */
 function filtrosMudados(f: Filtros) {
-  return [f.regime, f.tempo || f.raio !== RAIO_PADRAO, f.ordem !== "perto", f.meus].filter(Boolean).length;
+  return [f.regime, f.turno, f.categoria, f.tempo || f.raio !== RAIO_PADRAO, f.ordem !== "perto", f.meus].filter(
+    Boolean,
+  ).length;
 }
 
 /**
@@ -133,6 +138,8 @@ export function VisaoExplorar({
   pontos,
   origem = null,
   filtros,
+  padrao,
+  compacto = false,
 }: {
   titulo: ReactNode;
   subtitulo: ReactNode;
@@ -141,8 +148,12 @@ export function VisaoExplorar({
   pontos: PontoMapa[];
   origem?: OrigemMapa;
   filtros: Filtros;
+  /** o jeito de ver de quem nunca escolheu */
+  padrao?: Visao;
+  /** numa coluna estreita (o feed): os filtros ficam atrás do botão também no computador */
+  compacto?: boolean;
 }) {
-  const visao = useVisao();
+  const visao = useVisao(padrao);
   const comMapa = visao === "mapa" || visao === "blocos-mapa";
   const comLista = visao !== "mapa";
   const mudados = filtrosMudados(filtros);
@@ -153,50 +164,94 @@ export function VisaoExplorar({
 
   return (
     <div>
-      {/* Celular: título e jeito de ver; a origem e o botão "Filtros"; os filtros, se abertos.
+      {compacto ? (
+        // numa coluna estreita (o feed), discreto: o título e a origem numa linha, com "Filtros";
+        // os filtros e o jeito de ver (lista, grade, mapa) abrem embaixo
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 [&_h2]:text-label [&_h2]:text-ink">
+              {titulo}
+              {subtitulo}
+            </div>
+            <button
+              type="button"
+              aria-expanded={filtrosAbertos}
+              aria-controls={idFiltros}
+              onClick={() => setFiltrosAbertos((a) => !a)}
+              className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-label transition-colors ${
+                filtrosAbertos
+                  ? "border-ink bg-surface-300 text-ink"
+                  : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+              }`}
+            >
+              <SlidersHorizontal aria-hidden className="size-4" />
+              Filtros
+              {mudados > 0 && (
+                <span className="rounded-pill bg-ink px-1.5 text-caption text-surface-100">
+                  {mudados}
+                  <span className="sr-only"> {mudados === 1 ? "mudado" : "mudados"}</span>
+                </span>
+              )}
+            </button>
+          </div>
+          <div id={idFiltros} className={filtrosAbertos ? "flex flex-wrap items-center gap-3" : "hidden"}>
+            <div className="shrink-0 lg:hidden">
+              <SeletorVisao visao={visao} celular />
+            </div>
+            <div className="hidden shrink-0 lg:block">
+              <SeletorVisao visao={visao} />
+            </div>
+            <div className="w-full min-w-0">{filtrosLista}</div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Celular: título e jeito de ver; a origem e o botão "Filtros"; os filtros, se abertos.
           Computador: título à esquerda e, na mesma linha, os filtros e o jeito de ver; sem espaço
           para os dois, os filtros descem para a linha de baixo (nada fica cortado). A origem vem
           por último, na largura toda. */}
-      <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:flex lg:flex-wrap lg:gap-x-4 lg:gap-y-3">
-        <div className="col-start-1 row-start-1 lg:shrink-0">{titulo}</div>
-        <div className="col-start-2 row-start-1 lg:hidden">
-          <SeletorVisao visao={visao} celular />
-        </div>
-        <div className="col-span-2 row-start-2 flex items-center justify-between gap-3 lg:order-last lg:-mt-1 lg:w-full">
-          <div className="min-w-0 flex-1">{subtitulo}</div>
-          <button
-            type="button"
-            aria-expanded={filtrosAbertos}
-            aria-controls={idFiltros}
-            onClick={() => setFiltrosAbertos((a) => !a)}
-            className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-label transition-colors lg:hidden ${
-              filtrosAbertos
-                ? "border-ink bg-surface-300 text-ink"
-                : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-            }`}
-          >
-            <SlidersHorizontal aria-hidden className="size-4" />
-            Filtros
-            {mudados > 0 && (
-              <span className="rounded-pill bg-ink px-1.5 text-caption text-surface-100">
-                {mudados}
-                <span className="sr-only"> {mudados === 1 ? "mudado" : "mudados"}</span>
-              </span>
-            )}
-          </button>
-        </div>
-        <div
-          id={idFiltros}
-          className={`col-span-2 row-start-3 mt-2 items-center gap-3 lg:mt-0 lg:ml-auto lg:flex lg:justify-end ${
-            filtrosAbertos ? "flex" : "hidden"
-          }`}
-        >
-          <div className="min-w-0 flex-1 lg:flex-initial">{filtrosLista}</div>
-          <div className="hidden shrink-0 lg:block">
-            <SeletorVisao visao={visao} />
+          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:flex lg:flex-wrap lg:gap-x-4 lg:gap-y-3">
+            <div className="col-start-1 row-start-1 lg:shrink-0">{titulo}</div>
+            <div className="col-start-2 row-start-1 lg:hidden">
+              <SeletorVisao visao={visao} celular />
+            </div>
+            <div className="col-span-2 row-start-2 flex items-center justify-between gap-3 lg:order-last lg:-mt-1 lg:w-full">
+              <div className="min-w-0 flex-1">{subtitulo}</div>
+              <button
+                type="button"
+                aria-expanded={filtrosAbertos}
+                aria-controls={idFiltros}
+                onClick={() => setFiltrosAbertos((a) => !a)}
+                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-label transition-colors lg:hidden ${
+                  filtrosAbertos
+                    ? "border-ink bg-surface-300 text-ink"
+                    : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+                }`}
+              >
+                <SlidersHorizontal aria-hidden className="size-4" />
+                Filtros
+                {mudados > 0 && (
+                  <span className="rounded-pill bg-ink px-1.5 text-caption text-surface-100">
+                    {mudados}
+                    <span className="sr-only"> {mudados === 1 ? "mudado" : "mudados"}</span>
+                  </span>
+                )}
+              </button>
+            </div>
+            <div
+              id={idFiltros}
+              className={`col-span-2 row-start-3 mt-2 items-center gap-3 lg:mt-0 lg:ml-auto lg:flex lg:justify-end ${
+                filtrosAbertos ? "flex" : "hidden"
+              }`}
+            >
+              <div className="min-w-0 flex-1 lg:flex-initial">{filtrosLista}</div>
+              <div className="hidden shrink-0 lg:block">
+                <SeletorVisao visao={visao} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       <div
         data-visao={visao}

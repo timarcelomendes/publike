@@ -34,12 +34,14 @@ import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
 import { obterLocal } from "@/lib/local";
 import { passosDaPrioridade, type Local } from "@/lib/regioes";
 import { acharBuscaSalva, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
+import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo } from "@/lib/tipos";
 import { ganhosDoBanco } from "@/lib/vaga-extra";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
 import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
+import { ABA_TALENTOS, ABAS_ANUNCIOS } from "./abas";
 import { AvisarBusca } from "./avisar-busca";
 import { BarraBusca, FiltrosLista } from "./barra-busca";
 import type { ProximoPasso } from "./intencao";
@@ -123,6 +125,7 @@ function extrasDe(v: DetalhesDaVaga | undefined) {
         expiraEm: v.expira_em,
         preenchida: Boolean(v.preenchida_em),
         ganhos: ganhosDoBanco(v.ganhos_extras),
+        resumo: v.descricao ? v.descricao.replace(/\s+/g, " ").trim().slice(0, 220) : null,
       }
     : null;
 }
@@ -146,11 +149,30 @@ function matchDasVagas(
 }
 
 /** A busca do topo da página (fica dentro do destaque, logo abaixo do título). */
-export async function BuscaExplorar({ searchParams }: { searchParams: Parametros }) {
+export async function BuscaExplorar({
+  searchParams,
+  className,
+  faixa = false,
+  soLugar = false,
+}: {
+  searchParams: Parametros;
+  className?: string;
+  faixa?: boolean;
+  soLugar?: boolean;
+}) {
   const sp = await searchParams;
   const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
   const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
-  return <BarraBusca filtros={filtros} local={local} abrirOndeMora={primeiro(sp.casa) === "1"} />;
+  return (
+    <BarraBusca
+      filtros={filtros}
+      local={local}
+      abrirOndeMora={primeiro(sp.casa) === "1"}
+      className={className}
+      faixa={faixa}
+      soLugar={soLugar}
+    />
+  );
 }
 
 /** De onde sai o tempo de ônibus dos cards: da casa (CEP) ou do GPS. */
@@ -177,7 +199,18 @@ export function BuscaEsqueleto() {
   );
 }
 
-export async function Explorar({ searchParams }: { searchParams: Parametros }) {
+/**
+ * A lista da home. `variante="feed"` (quem entrou, na coluna do meio): sem margens próprias,
+ * um cartão por linha, filtros recolhidos, os atalhos de ordem e a linha do match.
+ */
+export async function Explorar({
+  searchParams,
+  variante = "vitrine",
+}: {
+  searchParams: Parametros;
+  variante?: "vitrine" | "feed";
+}) {
+  const feed = variante === "feed";
   const parametros = await searchParams;
   const [agora, local, usuario, intencao] = await Promise.all([
     agoraDaRequisicao(),
@@ -223,10 +256,12 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
   }
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id);
   const temMinhas = Boolean(usuario) && anuncios.some((a) => a.autor_id === usuario?.id);
-  const [resposta, salvasAgora, minhas] = await Promise.all([
+  const [resposta, salvasAgora, minhas, logos] = await Promise.all([
     respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map()),
     usuario ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
     temMinhas ? listarMeusAnuncios().catch(() => []) : Promise.resolve([]),
+    // o logo de quem publicou (a foto do perfil), no alto do cartão
+    fotosDosAutores(anuncios.map((a) => a.autor_id)),
   ]);
   const minhaPorId = new Map(minhas.map((m) => [m.id, { curtidas: m.curtidas_total, novas: m.curtidas_novas }]));
   const buscaSalva = usuario && avisar ? acharBuscaSalva(filtros, salvas) : null;
@@ -281,8 +316,13 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
 
   // As perguntas da primeira visita (e depois o próximo passo, com o "Mudar") ficam em cima da lista,
   // junto dos filtros: os anúncios não se partem no meio. Sem nada a perguntar, o espaço some.
+  // no feed, com tudo respondido, a linha do próximo passo fica só no celular (no computador, o cartão da conta mostra)
+  // (sem currículo, o convite para o currículo e o % de match aparece também no computador)
+  const respondidas = feed && intencao && local && quem;
   const perguntas = filtros.meus ? null : (
-    <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
+    <div className={respondidas ? "lg:hidden" : "contents"}>
+      <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
+    </div>
   );
   // Poucas vagas (o começo): no fim da lista, o aviso de vaga nova e a distância maior, para quem procura trabalho
   const poucas = n > 0 && n < 10 && !filtros.meus && filtros.tipo !== "servico" && procuraTrabalho;
@@ -296,12 +336,16 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       // blocos: 1 a 3 colunas; grade: cartões pequenos, 2 a 4 colunas; lista: uma linha por anúncio (ver VisaoExplorar).
       // "dense": com 3 colunas, o terceiro anúncio sobe para o lado dos dois primeiros, antes das perguntas.
       <ListaPaginada
-        className="grid grid-flow-row-dense gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2"
+        className={
+          feed
+            ? "grid grid-cols-1 gap-4 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=lista]/visao:gap-2"
+            : "grid grid-flow-row-dense grid-cols-1 gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2"
+        }
         itens={anuncios.map((a) => ({ id: a.id, lat: a.lat, lng: a.lng }))}
         cartoes={anuncios.map((a) => (
           <Fragment key={a.id}>
             <CardAnuncio
-              anuncio={a}
+              anuncio={{ ...a, autor_foto: logos[a.autor_id] ?? null }}
               agora={agora}
               usuarioId={usuario?.id ?? null}
               pertoDeCasa={local ? a.prioridade : null}
@@ -430,8 +474,33 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
       lista
     );
 
+  // feed: os atalhos de ordem (Para você, Perto de casa, Novas) e a linha verde do match
+  const fortes = [...matches.values()].filter((m) => (m.nota ?? 0) >= 80).length;
+  const atalhos = !feed ? (
+    <AbasDaLista filtros={filtros} />
+  ) : (
+    <div className="flex flex-col gap-3">
+      <AtalhosDoFeed filtros={filtros} comCurriculo={Boolean(quem)} temCasa={Boolean(local?.ponto)} />
+      {fortes > 0 && filtros.ordem !== "combina" && (
+        <Link
+          href={hrefFiltros(filtros, { ordem: "combina" })}
+          scroll={false}
+          className="flex items-center gap-3 rounded-lg bg-cerrado px-4 py-3.5 text-on-cerrado transition-opacity hover:opacity-95 sm:px-5"
+        >
+          <Percent aria-hidden className="size-5 shrink-0" />
+          <span className="min-w-0 flex-1 text-label sm:text-body-lg sm:font-semibold">
+            {fortes === 1 ? "1 vaga combina" : `${fortes} vagas combinam`} 80% ou mais com você
+          </span>
+          <span className="shrink-0 text-label underline underline-offset-2">Ver</span>
+        </Link>
+      )}
+    </div>
+  );
+  const Moldura = feed ? Fragment : Container;
+
   return (
-    <Container className="pt-4 sm:pt-6">
+    <Moldura {...(feed ? {} : { className: "pt-4 sm:pt-6" })}>
+      {atalhos && <div className="mb-4">{atalhos}</div>}
       {primeiro(parametros.conta) === "excluida" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Sua conta foi excluída.">
           Apagamos seu perfil, seus anúncios e suas curtidas. Obrigado por ter usado o Publike.
@@ -446,23 +515,33 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         }
         subtitulo={
           <div className="flex flex-wrap items-center gap-x-3">
-            <p className="text-body-sm text-ink-muted">
-              {combina && <>Do que mais combina com seu currículo · </>}
-              {!combina && !filtros.meus && local && !local.ponto && (
-                <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>
-              )}
-              {!combina && !filtros.meus && local?.ponto && filtros.origem === "centro" && (
-                <>Do mais perto ao mais longe · </>
-              )}
-              {filtros.meus ? (
-                <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
-              ) : (
-                <>
-                  {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                  {textoDaOrigem(filtros, local)}
-                </>
-              )}
-            </p>
+            {feed ? (
+              // no feed, curto: de onde e até onde
+              <p className="text-body-sm text-ink-muted">
+                {combina && <>Do que mais combina com seu currículo · </>}
+                {!combina && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
+                {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
+                {textoDaOrigem(filtros, local)}
+              </p>
+            ) : (
+              <p className="text-body-sm text-ink-muted">
+                {combina && <>Do que mais combina com seu currículo · </>}
+                {!combina && !filtros.meus && local && !local.ponto && (
+                  <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>
+                )}
+                {!combina && !filtros.meus && local?.ponto && filtros.origem === "centro" && (
+                  <>Do mais perto ao mais longe · </>
+                )}
+                {filtros.meus ? (
+                  <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
+                ) : (
+                  <>
+                    {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
+                    {textoDaOrigem(filtros, local)}
+                  </>
+                )}
+              </p>
+            )}
             {/* com poucas vagas, o aviso fica no fim da lista (no bloco "Poucas vagas por aqui") */}
             {avisar && !poucas && (
               <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
@@ -488,8 +567,114 @@ export async function Explorar({ searchParams }: { searchParams: Parametros }) {
         pontos={pontos}
         origem={origem}
         filtros={filtros}
+        padrao={feed ? "blocos" : undefined}
+        compacto={feed}
       />
-    </Container>
+    </Moldura>
+  );
+}
+
+/** Na vitrine, em cima da lista: Tudo, Vagas, Serviços e Talentos (a faixa do topo só tem a busca). */
+function AbasDaLista({ filtros }: { filtros: Filtros }) {
+  const classe = (ativo: boolean) =>
+    `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label sm:px-4 transition-colors ${
+      ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+    }`;
+  return (
+    <div
+      role="group"
+      aria-label="O que você procura"
+      className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+    >
+      {ABAS_ANUNCIOS.map((a) => {
+        const ativo = a.valor === null ? !filtros.tipo : filtros.tipo === a.valor;
+        const href =
+          a.valor === null
+            ? hrefFiltros(filtros, { tipo: null, tudo: true })
+            : hrefFiltros(filtros, {
+                tipo: a.valor,
+                tudo: false,
+                regime: a.valor === "servico" ? null : filtros.regime,
+              });
+        return (
+          <Link
+            key={a.nome}
+            href={href}
+            scroll={false}
+            aria-current={ativo ? "page" : undefined}
+            className={classe(ativo)}
+          >
+            <a.icone aria-hidden className="hidden size-4 sm:block" />
+            {a.nome}
+          </Link>
+        );
+      })}
+      <Link href={ABA_TALENTOS.href} className={classe(false)}>
+        <ABA_TALENTOS.icone aria-hidden className="hidden size-4 sm:block" />
+        Talentos
+      </Link>
+    </div>
+  );
+}
+
+/** Os atalhos de ordem do feed, como abas: cada um é uma busca (o endereço muda). */
+function AtalhosDoFeed({
+  filtros,
+  comCurriculo,
+  temCasa,
+}: {
+  filtros: Filtros;
+  comCurriculo: boolean;
+  temCasa: boolean;
+}) {
+  const itens: { nome: string; href: string; ativo: boolean }[] = [
+    ...(comCurriculo
+      ? [
+          {
+            nome: "Para você",
+            href: hrefFiltros(filtros, { ordem: "combina", tipo: "vaga", tudo: false }),
+            ativo: filtros.ordem === "combina" && filtros.tipo !== "servico",
+          },
+        ]
+      : []),
+    {
+      nome: temCasa ? "Perto de casa" : "Mais perto",
+      href: hrefFiltros(filtros, { ordem: "perto", tipo: "vaga", tudo: false }),
+      ativo: filtros.ordem === "perto" && filtros.tipo !== "servico",
+    },
+    {
+      nome: "Novas",
+      href: hrefFiltros(filtros, { ordem: "recentes", tipo: "vaga", tudo: false }),
+      ativo: filtros.ordem === "recentes" && filtros.tipo !== "servico",
+    },
+    {
+      nome: "Serviços",
+      href: hrefFiltros(filtros, { tipo: "servico", tudo: false, regime: null, turno: null }),
+      ativo: filtros.tipo === "servico",
+    },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label="O que você procura"
+      className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+    >
+      {itens.map((i) => (
+        <Link
+          key={i.nome}
+          href={i.href}
+          scroll={false}
+          aria-current={i.ativo ? "page" : undefined}
+          className={`inline-flex min-h-10 shrink-0 items-center rounded-pill border px-4 text-label transition-colors ${
+            i.ativo
+              ? "border-ink bg-ink text-surface-100"
+              : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+          }`}
+        >
+          {i.nome}
+        </Link>
+      ))}
+    </div>
   );
 }
 

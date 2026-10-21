@@ -45,6 +45,11 @@
   --pk-social-ink: #3c4043;
   /* o véu atrás das janelas: escurece a página nos dois temas (o ink, no escuro, é creme) */
   --pk-veu: rgba(31, 26, 20, 0.45);
+  /* a faixa escura da home (vitrine): escura nos dois temas */
+  --pk-hero: #1f1a14;
+  --pk-on-hero: #fbf7ef;
+  --pk-on-hero-muted: #d8cfc2;
+  --pk-hero-line: #7d7062;
   color-scheme: light;
 }
 
@@ -75,6 +80,8 @@
   --pk-social-hover: #303134;
   --pk-social-line: #202124;
   --pk-social-ink: #e8eaed;
+  --pk-hero: #0d0a07;
+  --pk-hero-line: #5b5045;
   color-scheme: dark;
 }
 
@@ -104,6 +111,8 @@
     --pk-social-hover: #303134;
     --pk-social-line: #202124;
     --pk-social-ink: #e8eaed;
+    --pk-hero: #0d0a07;
+    --pk-hero-line: #5b5045;
     color-scheme: dark;
   }
 }
@@ -137,6 +146,10 @@
   --color-social-hover: var(--pk-social-hover);
   --color-social-line: var(--pk-social-line);
   --color-social-ink: var(--pk-social-ink);
+  --color-hero: var(--pk-hero);
+  --color-on-hero: var(--pk-on-hero);
+  --color-on-hero-muted: var(--pk-on-hero-muted);
+  --color-hero-line: var(--pk-hero-line);
 
   --font-sans: var(--font-figtree), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-bricolage), var(--font-figtree), system-ui, sans-serif;
