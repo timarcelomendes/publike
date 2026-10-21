@@ -1,16 +1,28 @@
 "use client";
 
-import { Ellipsis, Flag, Trash2 } from "lucide-react";
+import { Ellipsis, Flag, Trash2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { pedirConexao } from "@/lib/acoes/conexoes";
 import { apagarRecado, denunciarRecado } from "@/lib/acoes/recados";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
 
 /**
  * O menu do recado: quem escreveu apaga (com confirmação ali mesmo, sem janela do navegador);
- * os outros denunciam, com os motivos da denúncia de anúncio.
+ * os outros pedem conexão com quem escreveu ou denunciam, com os motivos da denúncia de anúncio.
  */
-export function MenuDoRecado({ recadoId, proprio, logado }: { recadoId: string; proprio: boolean; logado: boolean }) {
+export function MenuDoRecado({
+  recadoId,
+  proprio,
+  logado,
+  autor,
+}: {
+  recadoId: string;
+  proprio: boolean;
+  logado: boolean;
+  /** quem escreveu (para o "Conectar com") */
+  autor?: { id: string; nome: string };
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [passo, setPasso] = useState<"menu" | "apagar" | "denunciar">("menu");
@@ -75,14 +87,33 @@ export function MenuDoRecado({ recadoId, proprio, logado }: { recadoId: string; 
                 Apagar recado
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => setPasso("denunciar")}
-                className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label text-danger hover:bg-surface-300"
-              >
-                <Flag aria-hidden className="size-[18px]" />
-                Denunciar recado
-              </button>
+              <>
+                {autor && (
+                  <button
+                    type="button"
+                    disabled={pendente}
+                    onClick={() =>
+                      iniciar(async () => {
+                        const r = await pedirConexao(autor.id, null, `/recado/${recadoId}`);
+                        if (!r.ok && r.ir?.startsWith("/entrar")) return router.push(r.ir);
+                        setAviso(r.ok ? { ok: true, texto: r.mensagem } : { ok: false, texto: r.erro });
+                      })
+                    }
+                    className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label hover:bg-surface-300 disabled:opacity-60"
+                  >
+                    <UserPlus aria-hidden className="size-[18px]" />
+                    {pendente ? "Enviando…" : `Conectar com ${autor.nome.split(" ")[0]}`}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPasso("denunciar")}
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label text-danger hover:bg-surface-300"
+                >
+                  <Flag aria-hidden className="size-[18px]" />
+                  Denunciar recado
+                </button>
+              </>
             )
           ) : passo === "apagar" ? (
             <div className="flex flex-col gap-3 p-2">

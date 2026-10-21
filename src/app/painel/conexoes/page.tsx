@@ -68,9 +68,8 @@ async function Conteudo() {
       <div>
         <h2 className="text-h2">Conexões</h2>
         <p className="mt-1 text-body text-ink-muted">
-          {empresa
-            ? "Gente da aba Talentos com quem você quer conversar, mesmo sem vaga aberta. Quando a pessoa aceita, aparecem o WhatsApp e o e-mail e vocês conversam por aqui."
-            : "Empresas, comércios e agências com quem você quer conversar, mesmo sem vaga aberta. Quando o outro lado aceita, aparecem os contatos e vocês conversam por aqui."}
+          Pessoas, empresas, comércios e agências com quem você quer conversar, mesmo sem vaga aberta. Quando o outro
+          lado aceita, aparecem o WhatsApp e o e-mail dos dois e vocês conversam por aqui.
         </p>
       </div>
 
@@ -92,7 +91,11 @@ async function Conteudo() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <ResponderConexao id={c.id} />
                 <Link href={linkDoOutro(c)} className="text-body-sm underline underline-offset-2 hover:text-ink">
-                  {c.outro_tipo === "pessoa" ? "Ver o currículo" : "Ver a página"}
+                  {c.outro_tipo === "pessoa" && c.outro_na_vitrine
+                    ? "Ver o currículo"
+                    : c.outro_tipo === "pessoa"
+                      ? "Ver o perfil"
+                      : "Ver a página"}
                 </Link>
               </div>
             </li>
@@ -173,8 +176,8 @@ function NaoAceitos({ lista }: { lista: Conexao[] }) {
 function VazioEmpresa() {
   return (
     <Vazio icone={Handshake} titulo="Nenhuma conexão ainda" acao={<BotaoLink href="/talentos">Ver talentos</BotaoLink>}>
-      Na aba Talentos, toque em Conectar em quem combina com a sua empresa. Não precisa ter vaga aberta: quando a pessoa
-      aceita, vocês conversam por aqui.
+      Na aba Talentos, toque em Conectar em quem combina com a sua empresa, ou no perfil de qualquer pessoa ou empresa.
+      Não precisa ter vaga aberta: quando o outro lado aceita, vocês conversam por aqui.
     </Vazio>
   );
 }
@@ -196,8 +199,8 @@ async function VazioTalento() {
       }
     >
       {naAba
-        ? "Empresas da região podem pedir conexão com você. Você também pode: na página de uma empresa, comércio ou agência, toque em Conectar."
-        : "Apareça na aba Talentos para as empresas da região acharem você e pedirem conexão, mesmo sem vaga aberta. Você também pode pedir, na página de cada empresa."}
+        ? "Empresas e pessoas da região podem pedir conexão com você. Você também pode: no perfil de qualquer pessoa, empresa, comércio ou agência, toque em Conectar."
+        : "Apareça na aba Talentos para as empresas da região acharem você, mesmo sem vaga aberta. Você também pode pedir conexão no perfil de qualquer pessoa, empresa, comércio ou agência."}
     </Vazio>
   );
 }

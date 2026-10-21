@@ -54,8 +54,11 @@ export function FichaCandidato({
   proximo,
   depois,
   comIA = false,
+  conectar = null,
 }: {
   c: ItemCaixa;
+  /** o botão Conectar com a pessoa (conexão sem vaga, que fica depois da vaga acabar) */
+  conectar?: ReactNode;
   /** a ajuda da IA está ligada (resumo do currículo) */
   comIA?: boolean;
   agora: number;
@@ -106,7 +109,9 @@ export function FichaCandidato({
             )}
           </p>
         </div>
+        {conectar && <div className="hidden shrink-0 sm:block">{conectar}</div>}
       </header>
+      {conectar && <div className="sm:hidden">{conectar}</div>}
 
       {estado === "moderacao" ? (
         <p className="flex items-start gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm text-ink-muted">

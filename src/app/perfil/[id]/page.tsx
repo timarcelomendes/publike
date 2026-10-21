@@ -16,7 +16,6 @@ import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TEXTO_SEGUIR, TIPOS_CONTA } from "@/lib/constantes";
 import {
   listarAvaliacoesPublicas,
-  meuCurriculoNaVitrine,
   obterMeuPerfil,
   obterNotaDoProfissional,
   obterPerfilPublico,
@@ -122,9 +121,14 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         )}
       </div>
 
-      {!meu && !suspensa && perfil.tipo !== "pessoa" && (
+      {!meu && !suspensa && (
         <Suspense fallback={null}>
-          <ConectarComEmpresa empresaId={perfil.id} nome={perfil.nome} logado={usuario !== null} />
+          <ConectarComPerfil
+            outroId={perfil.id}
+            nome={perfil.nome}
+            empresa={perfil.tipo !== "pessoa"}
+            logado={usuario !== null}
+          />
         </Suspense>
       )}
 
@@ -269,57 +273,57 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
 
       <p className="mt-8 text-body-sm text-ink-muted">
         O contato de {perfil.tipo === "pessoa" ? perfil.nome.split(" ")[0] : perfil.nome} aparece só depois de um match
-        {perfil.tipo === "pessoa" ? "" : " ou de uma conexão aceita"}.
+        ou de uma conexão aceita.
       </p>
     </>
   );
 }
 
 /**
- * Para quem procura trabalho: pedir conexão com a empresa, comércio ou agência, mesmo sem vaga
- * aberta. Quem não está na aba Talentos é convidado a aparecer lá antes (a empresa vê o currículo).
+ * Pedir conexão com esta conta, mesmo sem vaga: qualquer conta com qualquer outra (pessoa com
+ * pessoa, empresa com empresa, pessoa com empresa). Quem procura trabalho, na página de uma
+ * empresa, vê "Quer trabalhar aqui?".
  */
-async function ConectarComEmpresa({ empresaId, nome, logado }: { empresaId: string; nome: string; logado: boolean }) {
-  const voltar = `/perfil/${empresaId}`;
-  let conteudo: ReactNode;
-  if (!logado) {
-    conteudo = (
-      <BotaoConectar outroId={empresaId} outroNome={nome} estado={null} logado={false} voltar={voltar} para="empresa" />
-    );
-  } else {
-    const eu = await obterMeuPerfil().catch(() => null);
-    // empresa não se conecta com empresa
-    if (!eu || eu.tipo !== "pessoa") return null;
-    const [naAba, estados] = await Promise.all([
-      meuCurriculoNaVitrine().catch(() => false),
-      estadosDeConexao([empresaId]),
-    ]);
-    const estado = estados.get(empresaId) ?? null;
-    conteudo =
-      naAba || estado ? (
-        <BotaoConectar outroId={empresaId} outroNome={nome} estado={estado} logado voltar={voltar} para="empresa" />
-      ) : (
-        <div className="flex flex-col items-start gap-2">
-          <p className="text-body-sm">
-            Para pedir conexão, apareça na aba Talentos: assim a empresa vê o seu currículo (sem telefone nem e-mail).
-          </p>
-          <BotaoLink href="/perfil/curriculo?para=talentos" tamanho="sm">
-            Aparecer na aba Talentos
-          </BotaoLink>
-        </div>
-      );
-  }
+async function ConectarComPerfil({
+  outroId,
+  nome,
+  empresa,
+  logado,
+}: {
+  outroId: string;
+  nome: string;
+  /** a página é de empresa, comércio ou agência */
+  empresa: boolean;
+  logado: boolean;
+}) {
+  const voltar = `/perfil/${outroId}`;
+  const para = empresa ? "empresa" : "talento";
+  const eu = logado ? await obterMeuPerfil().catch(() => null) : null;
+  const estado = eu ? ((await estadosDeConexao([outroId])).get(outroId) ?? null) : null;
+  const procuraTrabalho = empresa && (!eu || eu.tipo === "pessoa");
+  const primeiro = empresa ? nome : nome.split(" ")[0];
+  const conteudo: ReactNode = (
+    <BotaoConectar
+      outroId={outroId}
+      outroNome={nome}
+      estado={estado}
+      logado={eu !== null}
+      voltar={voltar}
+      para={para}
+    />
+  );
   return (
     <section
       aria-labelledby="conectar-empresa"
       className="mt-6 flex max-w-2xl flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
     >
       <h2 id="conectar-empresa" className="text-h3">
-        Quer trabalhar aqui?
+        {procuraTrabalho ? "Quer trabalhar aqui?" : `Conectar com ${primeiro}`}
       </h2>
       <p className="text-body-sm text-ink-muted">
-        Peça conexão com {nome}, mesmo sem vaga aberta. Se aceitarem, aparecem o WhatsApp e o e-mail dos dois e vocês
-        conversam pelo Publike.
+        {procuraTrabalho
+          ? `Peça conexão com ${nome}, mesmo sem vaga aberta. Se aceitarem, aparecem o WhatsApp e o e-mail dos dois e vocês conversam pelo Publike.`
+          : `Peça conexão com ${primeiro}. ${empresa ? "Se aceitarem" : "Se aceitar"}, aparecem o WhatsApp e o e-mail dos dois e vocês conversam pelo Publike.`}
       </p>
       {conteudo}
     </section>

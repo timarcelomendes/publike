@@ -150,7 +150,12 @@ export function BalaoDoRecado({
         {r.status === "no_ar" && <BotaoIndicar recadoId={r.id} autor={r.autor_nome} />}
         {r.status === "no_ar" && acoes}
         <span className="ml-auto">
-          <MenuDoRecado recadoId={r.id} proprio={proprio} logado={logado} />
+          <MenuDoRecado
+            recadoId={r.id}
+            proprio={proprio}
+            logado={logado}
+            autor={{ id: r.autor_id, nome: r.autor_nome }}
+          />
         </span>
       </footer>
     </article>

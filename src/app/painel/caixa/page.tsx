@@ -2,6 +2,7 @@ import { ArrowLeft, List, Users, Zap } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FichaCandidato } from "@/components/painel/ficha-candidato";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
@@ -13,6 +14,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { ajudaDaIADisponivel } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
+import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { ABAS, montarCaixa, naAba, ordenar, type Aba, type ItemCaixa } from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -98,6 +100,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   const seguinte = posicao >= 0 ? (lista[posicao + 1] ?? lista[posicao - 1] ?? null) : (lista[0] ?? null);
   const depois = href({ c: seguinte && seguinte.chave !== aberto?.chave ? seguinte.chave : null });
   const paraResponder = contagem.get("responder") ?? 0;
+  // a conexão com quem está aberto (fica depois da vaga acabar)
+  const conexao = aberto ? ((await estadosDeConexao([aberto.perfil_id])).get(aberto.perfil_id) ?? null) : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -189,6 +193,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
               proximo={proximo}
               depois={depois}
               comIA={comIA}
+              conectar={
+                <BotaoConectar
+                  key={aberto.perfil_id}
+                  outroId={aberto.perfil_id}
+                  outroNome={aberto.nome}
+                  estado={conexao}
+                  logado
+                  voltar={href({ c: aberto.chave })}
+                  para="talento"
+                  jeito="cartao"
+                />
+              }
             />
           ) : (
             <p className="rounded-lg border border-dashed border-line-strong px-4 py-10 text-center text-body-sm text-ink-muted">
