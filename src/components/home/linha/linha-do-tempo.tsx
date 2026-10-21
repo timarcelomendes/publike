@@ -1,11 +1,9 @@
 import { Briefcase, CircleCheck, MapPinned, MessageSquareText, Wrench, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { horaNaLinha, montarLinha, quandoFoi, recolherRecados, type ItemDaLinha } from "@/lib/linha-do-tempo";
 import { chaveDaLinha, dadosDaLinha, type DadoDaLinha, type DadosDaLinha } from "@/lib/servidor/linha";
 import { BalaoDoRecado } from "../../recados/balao-do-recado";
-import { EscreverRecado } from "../../recados/escrever-recado";
 import { RecadosRecolhidos } from "../../recados/recados-recolhidos";
 import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
@@ -107,20 +105,6 @@ function Item({ item, d, logado }: { item: ItemDaLinha<DadoDaLinha>; d: DadosDaL
   );
 }
 
-/** A primeira linha: "agora", a foto da pessoa e o campo do recado (em Tudo e em Recados). */
-async function Agora({ d }: { d: DadosDaLinha }) {
-  if (d.aba !== "tudo" && d.aba !== "recado") return null;
-  const [usuario, perfil] = await Promise.all([obterUsuario(), obterMeuPerfil().catch(() => null)]);
-  if (!usuario) return null;
-  return (
-    <div className={`${GRADE} items-start`}>
-      <span className={HORA}>agora</span>
-      <NoDaFoto nome={perfil?.nome ?? "?"} foto={perfil?.foto ?? null} tipo={perfil?.tipo ?? "pessoa"} agora />
-      <EscreverRecado pessoaId={usuario.pessoaId} autorTipo={d.autorTipo} />
-    </div>
-  );
-}
-
 /**
  * A linha do tempo da home: vagas, serviços, recados e aceites, do mais novo para o mais antigo,
  * com os separadores de dia e a marca "Você parou aqui". No Tudo, depois de 2 recados seguidos, o
@@ -130,12 +114,10 @@ async function Agora({ d }: { d: DadosDaLinha }) {
 export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams: Parametros; meio?: ReactNode }) {
   const d = await dadosDaLinha(chaveDaLinha(await searchParams));
   const logado = d.usuarioId !== null;
-  const agora = <Agora d={d} />;
   if (!d.itens.length) {
     const maior = RAIOS[RAIOS.length - 1];
     return (
       <section aria-label="Linha do tempo" className="flex flex-col gap-3">
-        {agora}
         {d.aba === "recado" ? (
           <Vazio icone={MessageSquareText} titulo="Nenhum recado por aqui ainda">
             Escreva o primeiro: conte o que você procura ou quem você está contratando.
@@ -220,7 +202,6 @@ export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams
     <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
       {/* o traço da linha, no meio da coluna dos nós */}
       <span aria-hidden className="absolute top-3 bottom-0 left-[83px] hidden w-0.5 rounded-pill bg-line sm:block" />
-      {agora}
       <ListaDaLinha partes={blocos} contam={contam} />
       <RegistrarVisita />
     </section>

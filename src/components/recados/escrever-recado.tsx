@@ -2,7 +2,7 @@
 
 import { Briefcase, ImagePlus, Quote, Wrench, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
 import { escreverRecado, procurarParaCitar, type Citavel } from "@/lib/acoes/recados";
 import { reduzirImagem } from "@/lib/reduzir-imagem";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
@@ -14,7 +14,16 @@ const FOTO_MAX_BYTES = 8 * 1024 * 1024;
  * O campo do "agora", no topo da linha do tempo: o recado (até 280 letras), uma foto (reduzida no
  * navegador e enviada para recados/<pessoa>/) e, se quiser, uma vaga ou um serviço citado.
  */
-export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; autorTipo: string | null }) {
+export function EscreverRecado({
+  pessoaId,
+  autorTipo,
+  avatar = null,
+}: {
+  pessoaId: string;
+  autorTipo: string | null;
+  /** no topo da home: a foto da conta ao lado do campo (com a câmera para trocar) */
+  avatar?: ReactNode;
+}) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
   const [foto, setFoto] = useState<{ caminho: string; url: string } | null>(null);
@@ -112,22 +121,33 @@ export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; auto
   }
 
   return (
-    <div className="min-w-0 rounded-[18px] border border-line-strong bg-surface-200 px-3.5 pt-3 pb-2.5 sm:rounded-tl-[6px] sm:px-4">
-      <label htmlFor={`${id}-texto`} className="sr-only">
-        Escrever um recado para quem está perto
-      </label>
-      <textarea
-        id={`${id}-texto`}
-        ref={campo}
-        rows={1}
-        maxLength={MAXIMO}
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        placeholder={
-          contratando ? "Conte quem você está contratando…" : "Conte o que você procura: trabalho, bico, serviço…"
-        }
-        className="block min-h-7 w-full resize-none bg-transparent text-[16px] leading-6 text-ink outline-none placeholder:text-ink-muted"
-      />
+    <div
+      className={
+        avatar
+          ? "min-w-0 rounded-lg border border-line bg-surface-200 p-3.5 shadow-card sm:p-4"
+          : "min-w-0 rounded-[18px] border border-line-strong bg-surface-200 px-3.5 pt-3 pb-2.5 sm:rounded-tl-[6px] sm:px-4"
+      }
+    >
+      <div className={avatar ? "flex items-start gap-3" : ""}>
+        {avatar}
+        <label htmlFor={`${id}-texto`} className="sr-only">
+          Escrever um recado para quem está perto
+        </label>
+        <textarea
+          id={`${id}-texto`}
+          ref={campo}
+          rows={1}
+          maxLength={MAXIMO}
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder={
+            contratando ? "Conte quem você está contratando…" : "Conte o que você procura: trabalho, bico, serviço…"
+          }
+          className={`block w-full resize-none bg-transparent text-[16px] leading-6 text-ink outline-none placeholder:text-ink-muted ${
+            avatar ? "min-h-11 min-w-0 flex-1 py-2.5" : "min-h-7"
+          }`}
+        />
+      </div>
 
       {foto && (
         <div className="relative mt-2.5 w-fit">
@@ -244,7 +264,9 @@ export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; auto
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-line pt-2">
+      <div
+        className={`flex flex-wrap items-center gap-1 border-t border-line ${avatar ? "mt-3 pt-2.5 sm:ml-[56px]" : "mt-2 pt-2"}`}
+      >
         <label
           className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-pill px-2.5 text-label text-ink-muted hover:bg-surface-300 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${
             enviandoFoto ? "opacity-60" : ""

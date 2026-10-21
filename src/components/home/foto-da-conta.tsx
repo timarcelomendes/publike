@@ -9,8 +9,6 @@ import { reduzirImagem } from "@/lib/reduzir-imagem";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { Avatar } from "../ui/basicos";
 
-const TAMANHO = 64;
-
 /**
  * A foto (ou o logo) no cartão da conta, com o botão de câmera para trocar ali mesmo. Quem é da
  * equipe de uma agência troca o logo no perfil da agência (o botão leva para lá).
@@ -21,6 +19,8 @@ export function FotoDaConta({
   empresa,
   pessoaId,
   podeTrocar,
+  tamanho = 64,
+  className = "-mt-8 self-start bg-surface-200 p-1",
 }: {
   nome: string;
   foto: string | null;
@@ -29,12 +29,15 @@ export function FotoDaConta({
   pessoaId: string;
   /** a conta é da própria pessoa (não de uma agência pela qual ela age) */
   podeTrocar: boolean;
+  tamanho?: number;
+  /** a moldura (no cartão, a borda branca que sobe na faixa) */
+  className?: string;
 }) {
   const router = useRouter();
   const [foto, setFoto] = useState(inicial);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const raio = empresa ? Math.round(TAMANHO * 0.28) : 999;
+  const raio = empresa ? Math.round(tamanho * 0.28) : 999;
   const rotulo = empresa ? (foto ? "Trocar o logo" : "Pôr o logo") : foto ? "Trocar a foto" : "Pôr uma foto";
 
   async function enviar(e: ChangeEvent<HTMLInputElement>) {
@@ -67,15 +70,19 @@ export function FotoDaConta({
 
   const imagem = (
     <span className="block" style={{ borderRadius: raio + 4 }}>
-      <Avatar nome={nome} foto={foto} tamanho={TAMANHO} forma={empresa ? "quadrada" : "redonda"} colorida />
+      <Avatar nome={nome} foto={foto} tamanho={tamanho} forma={empresa ? "quadrada" : "redonda"} colorida />
     </span>
   );
   const camera = (
-    <span className="absolute -right-1.5 -bottom-1.5 grid size-[28px] place-items-center rounded-pill bg-surface-200 text-ink shadow-[0_0_0_2px_var(--pk-line)] group-hover:bg-surface-300">
-      <Camera aria-hidden className="size-[15px]" />
+    <span
+      className={`absolute grid place-items-center rounded-pill bg-surface-200 text-ink shadow-[0_0_0_1px_var(--pk-line),0_1px_3px_rgb(31_26_20/0.15)] group-hover:bg-surface-300 ${
+        tamanho < 56 ? "-right-1.5 -bottom-1.5 size-[22px]" : "-right-1.5 -bottom-1.5 size-[28px]"
+      }`}
+    >
+      <Camera aria-hidden className={tamanho < 56 ? "size-3" : "size-[15px]"} />
     </span>
   );
-  const moldura = `group relative -mt-8 self-start bg-surface-200 p-1 ${enviando ? "opacity-70" : ""}`;
+  const moldura = `group relative ${className} ${enviando ? "opacity-70" : ""}`;
 
   return (
     <>

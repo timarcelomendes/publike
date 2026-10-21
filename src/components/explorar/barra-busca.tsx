@@ -199,6 +199,7 @@ export function BarraBusca({
   faixa = false,
   soLugar = false,
   extra = null,
+  umaLinha = false,
 }: {
   filtros: Filtros;
   local: Local | null;
@@ -212,6 +213,8 @@ export function BarraBusca({
   soLugar?: boolean;
   /** com soLugar: o que vem na mesma linha dos botões de lugar (no feed, os atalhos e o "Filtros") */
   extra?: ReactNode;
+  /** com soLugar: o lugar e o extra numa linha só, sem quebrar (o extra rola de lado) */
+  umaLinha?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const [ondeMora, setOndeMora] = useState(abrirOndeMora);
@@ -258,7 +261,13 @@ export function BarraBusca({
       {/* No celular: abas, busca e uma faixa com o lugar (e o painel do bairro).
           No computador: abas e lugar na mesma linha, o painel do bairro e a busca. */}
       <div
-        className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap ${soLugar ? "sm:items-center sm:gap-x-2" : "sm:items-end sm:gap-x-4"}`}
+        className={`flex flex-col gap-3 sm:flex-row ${
+          soLugar
+            ? // no feed, o lugar e os filtros numa linha só (os filtros rolam de lado); com o painel
+              // do bairro aberto, ele desce para a linha de baixo
+              `sm:items-center sm:gap-x-2 ${umaLinha && !ondeMora ? "sm:flex-nowrap" : "sm:flex-wrap"}`
+            : "sm:flex-wrap sm:items-end sm:gap-x-4"
+        }`}
       >
         {!faixa && !soLugar && (
           <div role="group" aria-label="O que você procura" className={`order-1 ${classesGrupoAbas}`}>
@@ -290,14 +299,14 @@ export function BarraBusca({
           // bairro corta antes (o nome inteiro fica no title do botão)
           `min-w-0 ${
             soLugar
-              ? "flex flex-wrap sm:order-2 [&>button]:rounded-pill sm:[&>button]:min-h-8 sm:[&>button]:px-2.5 sm:[&>button]:text-body-sm sm:[&>button]:font-semibold sm:[&>button:first-child]:max-w-36 @2xl:[&>button:first-child]:max-w-64"
+              ? `flex flex-wrap sm:order-2 ${umaLinha ? "sm:shrink-0 sm:flex-nowrap" : ""} [&>button]:rounded-pill sm:[&>button]:min-h-8 sm:[&>button]:px-2.5 sm:[&>button]:text-body-sm sm:[&>button]:font-semibold sm:[&>button:first-child]:max-w-36 @2xl:[&>button:first-child]:max-w-64`
               : `hidden sm:flex ${faixa ? "sm:order-5" : "sm:order-2 sm:mb-1.5"}`
           }`,
         )}
 
         {/* no feed: os atalhos na linha do lugar (no celular, na linha de baixo, depois do painel
             do bairro, que abre logo embaixo do botão); quando não cabem, descem inteiros */}
-        {soLugar && extra && <div className="order-6 min-w-0 sm:order-2">{extra}</div>}
+        {soLugar && extra && <div className={`order-6 min-w-0 sm:order-2 ${umaLinha ? "sm:flex-1" : ""}`}>{extra}</div>}
 
         {ondeMora && (
           <div className="order-4 sm:order-3 sm:basis-full">
