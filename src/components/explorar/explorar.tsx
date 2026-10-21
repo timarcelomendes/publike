@@ -201,14 +201,18 @@ export function BuscaEsqueleto() {
 
 /**
  * A lista da home. `variante="feed"` (quem entrou, na coluna do meio): sem margens próprias,
- * um cartão por linha, filtros recolhidos, os atalhos de ordem e a linha do match.
+ * um cartão por linha, uma barra com o lugar, os atalhos de ordem e o "Filtros" (que abre o
+ * painel dos filtros e do jeito de ver) e a linha do match.
  */
 export async function Explorar({
   searchParams,
   variante = "vitrine",
+  lugar = false,
 }: {
   searchParams: Parametros;
   variante?: "vitrine" | "feed";
+  /** no feed: os botões Onde você mora e Perto de mim na barra de cima (quem contrata já tem a busca inteira) */
+  lugar?: boolean;
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
@@ -218,7 +222,10 @@ export async function Explorar({
     obterUsuario(),
     obterIntencao(),
   ]);
-  const filtros = partirDoLocal(aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao)), local);
+  const filtrosDaBusca = aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao));
+  const filtros = partirDoLocal(filtrosDaBusca, local);
+  // no feed, a ordem fica nos atalhos (Para você, Mais perto, Novas); serviços não têm atalho de ordem
+  const ordemFora = feed && filtros.tipo !== "servico";
   const avisar = filtros.tipo === "vaga" && !filtros.meus;
   // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
   const procuraTrabalho = intencao === null || intencao === "trabalho" || intencao === "talento";
@@ -458,6 +465,23 @@ export async function Explorar({
               : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );
+  // feed: a linha verde do match vem logo em cima dos cartões
+  const fortes = [...matches.values()].filter((m) => (m.nota ?? 0) >= 80).length;
+  const linhaDoMatch =
+    feed && fortes > 0 && filtros.ordem !== "combina" ? (
+      <Link
+        href={hrefFiltros(filtros, { ordem: "combina" })}
+        scroll={false}
+        className="flex items-center gap-3 rounded-lg bg-cerrado px-4 py-3.5 text-on-cerrado transition-opacity hover:opacity-95 sm:px-5"
+      >
+        <Percent aria-hidden className="size-5 shrink-0" />
+        <span className="min-w-0 flex-1 text-label sm:text-body-lg sm:font-semibold">
+          {fortes === 1 ? "1 vaga combina" : `${fortes} vagas combinam`} 80% ou mais com você
+        </span>
+        <span className="shrink-0 text-label underline underline-offset-2">Ver</span>
+      </Link>
+    ) : null;
+
   // sem anúncios, as perguntas vêm depois do aviso (dizer onde mora pode trazer o que é perto)
   const listaComPerguntas =
     n === 0 && perguntas ? (
@@ -465,41 +489,37 @@ export async function Explorar({
         {lista}
         <div className="empty:hidden">{perguntas}</div>
       </div>
-    ) : perguntas ? (
+    ) : perguntas || linhaDoMatch ? (
       <div className="flex flex-col gap-4">
-        <div className="empty:hidden">{perguntas}</div>
+        {linhaDoMatch}
+        {perguntas && <div className="empty:hidden">{perguntas}</div>}
         {lista}
       </div>
     ) : (
       lista
     );
 
-  // feed: os atalhos de ordem (Para você, Perto de casa, Novas) e a linha verde do match
-  const fortes = [...matches.values()].filter((m) => (m.nota ?? 0) >= 80).length;
+  // feed: uma linha só com o lugar (casa ou GPS) e os atalhos de ordem (Para você, Perto de casa,
+  // Novas, Serviços); quando não cabe, os atalhos descem inteiros para a linha de baixo
+  const atalhosDoFeed = (
+    <AtalhosDoFeed filtros={filtros} comCurriculo={Boolean(quem)} temCasa={Boolean(local?.ponto)} />
+  );
   const atalhos = !feed ? (
     <AbasDaLista filtros={filtros} />
+  ) : lugar ? (
+    <BarraBusca
+      filtros={filtrosDaBusca}
+      local={local}
+      abrirOndeMora={primeiro(parametros.casa) === "1"}
+      className=""
+      soLugar
+      extra={atalhosDoFeed}
+    />
   ) : (
-    <div className="flex flex-col gap-3">
-      <AtalhosDoFeed filtros={filtros} comCurriculo={Boolean(quem)} temCasa={Boolean(local?.ponto)} />
-      {fortes > 0 && filtros.ordem !== "combina" && (
-        <Link
-          href={hrefFiltros(filtros, { ordem: "combina" })}
-          scroll={false}
-          className="flex items-center gap-3 rounded-lg bg-cerrado px-4 py-3.5 text-on-cerrado transition-opacity hover:opacity-95 sm:px-5"
-        >
-          <Percent aria-hidden className="size-5 shrink-0" />
-          <span className="min-w-0 flex-1 text-label sm:text-body-lg sm:font-semibold">
-            {fortes === 1 ? "1 vaga combina" : `${fortes} vagas combinam`} 80% ou mais com você
-          </span>
-          <span className="shrink-0 text-label underline underline-offset-2">Ver</span>
-        </Link>
-      )}
-    </div>
+    atalhosDoFeed
   );
-  const Moldura = feed ? Fragment : Container;
-
-  return (
-    <Moldura {...(feed ? {} : { className: "pt-4 sm:pt-6" })}>
+  const conteudo = (
+    <>
       {atalhos && <div className="mb-4">{atalhos}</div>}
       {primeiro(parametros.conta) === "excluida" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Sua conta foi excluída.">
@@ -571,16 +591,27 @@ export async function Explorar({
             )}
           </div>
         }
-        filtrosLista={<FiltrosLista filtros={filtros} soMeus={publica} combina={Boolean(quem)} quebrar={feed} />}
+        filtrosLista={
+          <FiltrosLista
+            filtros={filtros}
+            soMeus={publica}
+            combina={Boolean(quem)}
+            quebrar={feed}
+            semOrdem={ordemFora}
+          />
+        }
         lista={listaComPerguntas}
         pontos={pontos}
         origem={origem}
         filtros={filtros}
         padrao={feed ? "blocos" : undefined}
         compacto={feed}
+        ordemFora={ordemFora}
       />
-    </Moldura>
+    </>
   );
+  // feed: sem margens próprias (está na coluna do meio)
+  return feed ? conteudo : <Container className="pt-4 sm:pt-6">{conteudo}</Container>;
 }
 
 /** Na vitrine, em cima da lista: Tudo, Vagas, Serviços e Talentos (a faixa do topo só tem a busca). */
@@ -663,18 +694,15 @@ function AtalhosDoFeed({
     },
   ];
   return (
-    <div
-      role="group"
-      aria-label="O que você procura"
-      className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0"
-    >
+    // na linha do lugar (sem rolar de lado: o que não cabe desce)
+    <div role="group" aria-label="O que você procura" className="flex min-w-0 flex-wrap gap-2">
       {itens.map((i) => (
         <Link
           key={i.nome}
           href={i.href}
           scroll={false}
           aria-current={i.ativo ? "page" : undefined}
-          className={`inline-flex min-h-10 shrink-0 items-center rounded-pill border px-4 text-label transition-colors ${
+          className={`inline-flex min-h-10 shrink-0 items-center rounded-pill border px-3.5 text-label transition-colors ${
             i.ativo
               ? "border-ink bg-ink text-surface-100"
               : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"

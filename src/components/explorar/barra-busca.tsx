@@ -169,11 +169,19 @@ function FiltrosEmLinhas({
   );
 }
 
-function BotaoPerto({ ativo, onClick }: { ativo: boolean; onClick: () => void }) {
+function BotaoPerto({ ativo, onClick, curto = false }: { ativo: boolean; onClick: () => void; curto?: boolean }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={ativo} className={`${botaoLugar(ativo)} shrink-0`}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={ativo}
+      title={curto ? "Perto de mim" : undefined}
+      className={`${botaoLugar(ativo)} shrink-0`}
+    >
       <LocateFixed aria-hidden className={`size-4 shrink-0 ${ativo ? "text-terra-text" : ""}`} />
-      Perto de mim
+      {/* curto (o feed, numa coluna estreita): só o ícone, para o lugar e os atalhos caberem numa linha;
+          o nome volta no celular (o lugar tem a linha só para ele) e numa coluna larga */}
+      <span className={curto ? "sr-only max-sm:not-sr-only @2xl:not-sr-only" : undefined}>Perto de mim</span>
       {ativo && <X aria-hidden className="-mr-1 size-3.5 shrink-0" />}
     </button>
   );
@@ -190,6 +198,7 @@ export function BarraBusca({
   className = "mt-3 sm:mt-5",
   faixa = false,
   soLugar = false,
+  extra = null,
 }: {
   filtros: Filtros;
   local: Local | null;
@@ -201,6 +210,8 @@ export function BarraBusca({
   faixa?: boolean;
   /** no feed de quem entrou (a busca fica no topo da página): só Onde você mora e Perto de mim */
   soLugar?: boolean;
+  /** com soLugar: o que vem na mesma linha dos botões de lugar (no feed, os atalhos e o "Filtros") */
+  extra?: ReactNode;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const [ondeMora, setOndeMora] = useState(abrirOndeMora);
@@ -235,17 +246,20 @@ export function BarraBusca({
   const botoesDeLugar = (classes: string) => (
     <div role="group" aria-label="Onde" className={`items-center gap-2 ${classes}`}>
       <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
-      <BotaoPerto ativo={perto} onClick={alternarPerto} />
+      <BotaoPerto ativo={perto} onClick={alternarPerto} curto={soLugar} />
     </div>
   );
 
   return (
-    <div className={`relative flex flex-col gap-3 ${className}`}>
+    // no feed (soLugar), a largura da coluna decide o "Perto de mim" curto (consulta de contêiner)
+    <div className={`relative flex flex-col gap-3 ${soLugar ? "@container" : ""} ${className}`}>
       {pendente && <Carregando />}
 
       {/* No celular: abas, busca e uma faixa com o lugar (e o painel do bairro).
           No computador: abas e lugar na mesma linha, o painel do bairro e a busca. */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-4">
+      <div
+        className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap ${soLugar ? "sm:items-center sm:gap-x-3" : "sm:items-end sm:gap-x-4"}`}
+      >
         {!faixa && !soLugar && (
           <div role="group" aria-label="O que você procura" className={`order-1 ${classesGrupoAbas}`}>
             {ABAS_ANUNCIOS.map((t) => {
@@ -272,8 +286,18 @@ export function BarraBusca({
         )}
 
         {botoesDeLugar(
-          `min-w-0 ${soLugar ? "flex flex-wrap" : "hidden sm:flex"} ${faixa ? "sm:order-5" : "sm:order-2 sm:mb-1.5"}`,
+          // no feed, redondos como os atalhos da mesma linha; numa coluna estreita, o nome do
+          // bairro corta antes (o nome inteiro fica no title do botão)
+          `min-w-0 ${
+            soLugar
+              ? "flex flex-wrap sm:order-2 [&>button]:rounded-pill sm:[&>button:first-child]:max-w-42 @2xl:[&>button:first-child]:max-w-64"
+              : `hidden sm:flex ${faixa ? "sm:order-5" : "sm:order-2 sm:mb-1.5"}`
+          }`,
         )}
+
+        {/* no feed: os atalhos na linha do lugar (no celular, na linha de baixo, depois do painel
+            do bairro, que abre logo embaixo do botão); quando não cabem, descem inteiros */}
+        {soLugar && extra && <div className="order-6 min-w-0 sm:order-2">{extra}</div>}
 
         {ondeMora && (
           <div className="order-4 sm:order-3 sm:basis-full">
@@ -360,6 +384,7 @@ export function FiltrosLista({
   soMeus = false,
   combina = false,
   quebrar = false,
+  semOrdem = false,
 }: {
   filtros: Filtros;
   soMeus?: boolean;
@@ -367,6 +392,8 @@ export function FiltrosLista({
   combina?: boolean;
   /** numa coluna estreita (o feed): os filtros quebram em linhas, em vez de uma faixa que rola */
   quebrar?: boolean;
+  /** a ordem já está nos atalhos (Mais perto, Novas): sem o seletor repetido */
+  semOrdem?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const Faixa = quebrar ? FiltrosEmLinhas : FaixaRolavel;
@@ -451,17 +478,19 @@ export function FiltrosLista({
           ))}
         </optgroup>
       </Seletor>
-      <Seletor
-        aria-label="Ordem"
-        value={filtros.ordem === "combina" && !combina ? "perto" : filtros.ordem}
-        onChange={(e) => ir({ ordem: e.target.value as Ordem })}
-        className={seletor}
-        envoltorio="shrink-0"
-      >
-        <option value="perto">Mais perto</option>
-        <option value="recentes">Mais recentes</option>
-        {combina && <option value="combina">Combina mais</option>}
-      </Seletor>
+      {!semOrdem && (
+        <Seletor
+          aria-label="Ordem"
+          value={filtros.ordem === "combina" && !combina ? "perto" : filtros.ordem}
+          onChange={(e) => ir({ ordem: e.target.value as Ordem })}
+          className={seletor}
+          envoltorio="shrink-0"
+        >
+          <option value="perto">Mais perto</option>
+          <option value="recentes">Mais recentes</option>
+          {combina && <option value="combina">Combina mais</option>}
+        </Seletor>
+      )}
     </Faixa>
   );
 }

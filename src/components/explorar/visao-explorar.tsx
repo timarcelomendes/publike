@@ -1,8 +1,9 @@
 "use client";
 
 import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
-import { RAIO_PADRAO, type Filtros } from "@/lib/filtros";
+import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/filtros";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 import { AreaDoMapa, type Limites } from "./area-do-mapa";
 
@@ -85,7 +86,16 @@ export function useVisao(padrao?: Visao): Visao {
   );
 }
 
-function SeletorVisao({ visao, celular = false }: { visao: Visao; celular?: boolean }) {
+function SeletorVisao({
+  visao,
+  celular = false,
+  nomeDoAtivo = false,
+}: {
+  visao: Visao;
+  celular?: boolean;
+  /** o nome do jeito escolhido sempre à mostra (no painel dos filtros do feed) */
+  nomeDoAtivo?: boolean;
+}) {
   return (
     <div
       role="radiogroup"
@@ -108,19 +118,14 @@ function SeletorVisao({ visao, celular = false }: { visao: Visao; celular?: bool
           >
             <Icone aria-hidden className="size-4" />
             {/* no celular são só duas: os nomes cabem e explicam melhor que o ícone */}
-            <span className={celular ? "" : ativo ? "hidden 2xl:inline" : "sr-only"}>{nome}</span>
+            <span className={celular || (ativo && nomeDoAtivo) ? "" : ativo ? "hidden 2xl:inline" : "sr-only"}>
+              {nome}
+            </span>
           </button>
         );
       })}
     </div>
   );
-}
-
-/** Quantos filtros da lista fogem do padrão (contratação, horário, área, distância ou tempo, ordem, só os meus). */
-function filtrosMudados(f: Filtros) {
-  return [f.regime, f.turno, f.categoria, f.tempo || f.raio !== RAIO_PADRAO, f.ordem !== "perto", f.meus].filter(
-    Boolean,
-  ).length;
 }
 
 /**
@@ -140,6 +145,7 @@ export function VisaoExplorar({
   filtros,
   padrao,
   compacto = false,
+  ordemFora = false,
 }: {
   titulo: ReactNode;
   subtitulo: ReactNode;
@@ -152,56 +158,81 @@ export function VisaoExplorar({
   padrao?: Visao;
   /** numa coluna estreita (o feed): os filtros ficam atrás do botão também no computador */
   compacto?: boolean;
+  /** a ordem fica nos atalhos de cima (o feed): não conta como filtro mudado */
+  ordemFora?: boolean;
 }) {
   const visao = useVisao(padrao);
   const comMapa = visao === "mapa" || visao === "blocos-mapa";
   const comLista = visao !== "mapa";
-  const mudados = filtrosMudados(filtros);
+  const mudados = filtrosMudados(filtros, ordemFora);
   const [filtrosAbertos, setFiltrosAbertos] = useState(mudados > 0);
+  const alternarFiltros = () => setFiltrosAbertos((a) => !a);
   // a parte do mapa na tela (com o mapa à mostra): a lista mostra só o que está nela
   const [area, setArea] = useState<Limites | null>(null);
   const idFiltros = useId();
+  const botaoFiltros = (classes: string) => (
+    <button
+      type="button"
+      aria-expanded={filtrosAbertos}
+      aria-controls={idFiltros}
+      onClick={alternarFiltros}
+      className={`inline-flex shrink-0 items-center gap-1.5 border text-label transition-colors ${classes} ${
+        filtrosAbertos
+          ? "border-ink bg-surface-300 text-ink"
+          : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+      }`}
+    >
+      <SlidersHorizontal aria-hidden className="size-4" />
+      Filtros
+      {mudados > 0 && (
+        <span className="rounded-pill bg-ink px-1.5 text-caption text-surface-100">
+          {mudados}
+          <span className="sr-only"> {mudados === 1 ? "mudado" : "mudados"}</span>
+        </span>
+      )}
+    </button>
+  );
 
   return (
     <div>
       {compacto ? (
-        // numa coluna estreita (o feed), discreto: o título e a origem numa linha, com "Filtros";
-        // os filtros e o jeito de ver (lista, grade, mapa) abrem embaixo
+        // numa coluna estreita (o feed), discreto: a contagem e de onde a lista conta, com o
+        // "Filtros" ao lado; os filtros e o jeito de ver abrem num painel logo embaixo
         <div className="mb-4 flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1 [&_h2]:text-label [&_h2]:text-ink">
+            <div className="min-w-0 flex-1 [&_h2]:text-body-lg [&_h2]:font-semibold [&_h2]:text-ink">
               {titulo}
               {subtitulo}
             </div>
-            <button
-              type="button"
-              aria-expanded={filtrosAbertos}
-              aria-controls={idFiltros}
-              onClick={() => setFiltrosAbertos((a) => !a)}
-              className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-label transition-colors ${
-                filtrosAbertos
-                  ? "border-ink bg-surface-300 text-ink"
-                  : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-              }`}
-            >
-              <SlidersHorizontal aria-hidden className="size-4" />
-              Filtros
-              {mudados > 0 && (
-                <span className="rounded-pill bg-ink px-1.5 text-caption text-surface-100">
-                  {mudados}
-                  <span className="sr-only"> {mudados === 1 ? "mudado" : "mudados"}</span>
-                </span>
-              )}
-            </button>
+            {botaoFiltros("min-h-10 rounded-pill px-4")}
           </div>
-          <div id={idFiltros} className={filtrosAbertos ? "flex flex-wrap items-center gap-3" : "hidden"}>
-            <div className="shrink-0 lg:hidden">
-              <SeletorVisao visao={visao} celular />
+          <div
+            id={idFiltros}
+            className={
+              filtrosAbertos
+                ? "flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-3 shadow-card sm:p-4"
+                : "hidden"
+            }
+          >
+            <div className="min-w-0">{filtrosLista}</div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-3">
+              <span className="text-label text-ink-muted">Ver como</span>
+              <div className="shrink-0 lg:hidden">
+                <SeletorVisao visao={visao} celular />
+              </div>
+              <div className="hidden shrink-0 lg:block">
+                <SeletorVisao visao={visao} nomeDoAtivo />
+              </div>
+              {mudados > 0 && (
+                <Link
+                  href={hrefFiltros(filtros, SEM_FILTROS)}
+                  scroll={false}
+                  className="ml-auto inline-flex min-h-9 items-center text-label text-ink underline underline-offset-2 hover:text-terra-text"
+                >
+                  Limpar filtros
+                </Link>
+              )}
             </div>
-            <div className="hidden shrink-0 lg:block">
-              <SeletorVisao visao={visao} />
-            </div>
-            <div className="w-full min-w-0">{filtrosLista}</div>
           </div>
         </div>
       ) : (
@@ -217,26 +248,7 @@ export function VisaoExplorar({
             </div>
             <div className="col-span-2 row-start-2 flex items-center justify-between gap-3 lg:order-last lg:-mt-1 lg:w-full">
               <div className="min-w-0 flex-1">{subtitulo}</div>
-              <button
-                type="button"
-                aria-expanded={filtrosAbertos}
-                aria-controls={idFiltros}
-                onClick={() => setFiltrosAbertos((a) => !a)}
-                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-label transition-colors lg:hidden ${
-                  filtrosAbertos
-                    ? "border-ink bg-surface-300 text-ink"
-                    : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-                }`}
-              >
-                <SlidersHorizontal aria-hidden className="size-4" />
-                Filtros
-                {mudados > 0 && (
-                  <span className="rounded-pill bg-ink px-1.5 text-caption text-surface-100">
-                    {mudados}
-                    <span className="sr-only"> {mudados === 1 ? "mudado" : "mudados"}</span>
-                  </span>
-                )}
-              </button>
+              {botaoFiltros("min-h-9 rounded-md px-3 lg:hidden")}
             </div>
             <div
               id={idFiltros}

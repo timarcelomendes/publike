@@ -134,6 +134,31 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
   return s ? `/?${s}` : "/";
 }
 
+/**
+ * Quantos filtros da lista fogem do padrão (área, contratação, horário, distância ou tempo, ordem,
+ * só os meus). `ordemFora`: a ordem fica nos atalhos (o feed), não conta como filtro.
+ */
+export function filtrosMudados(f: Filtros, ordemFora = false) {
+  return [
+    f.regime,
+    f.turno,
+    f.categoria,
+    f.tempo || f.raio !== RAIO_PADRAO,
+    !ordemFora && f.ordem !== "perto",
+    f.meus,
+  ].filter(Boolean).length;
+}
+
+/** O que "Limpar filtros" desfaz (a busca, o tipo, a ordem e de onde contar continuam). */
+export const SEM_FILTROS: Partial<Filtros> = {
+  categoria: null,
+  regime: null,
+  turno: null,
+  raio: RAIO_PADRAO,
+  tempo: null,
+  meus: false,
+};
+
 export function descreverOrigem(origem: Origem) {
   if (origem === "gps") return "de você";
   if (origem === "mapa") return "da área escolhida no mapa";

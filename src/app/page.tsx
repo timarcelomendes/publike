@@ -176,14 +176,9 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
             </label>
           </form>
         )}
-        {!empresa && (
-          // onde a pessoa mora e o "Perto de mim" (o tempo de ônibus e a ordem saem daqui)
-          <Suspense fallback={null}>
-            <BuscaExplorar searchParams={searchParams} className="mb-4" soLugar />
-          </Suspense>
-        )}
+        {/* sem a busca inteira em cima (quem contrata tem), a lista traz Onde você mora e Perto de mim */}
         <Suspense fallback={<ExplorarEsqueleto />}>
-          <Explorar searchParams={searchParams} variante="feed" />
+          <Explorar searchParams={searchParams} variante="feed" lugar={!empresa} />
         </Suspense>
       </MolduraDaHome>
       <Suspense fallback={null}>
