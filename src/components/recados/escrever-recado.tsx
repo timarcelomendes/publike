@@ -21,7 +21,9 @@ export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; auto
   const [citado, setCitado] = useState<Citavel | null>(null);
   const [citando, setCitando] = useState(false);
   const [busca, setBusca] = useState("");
-  const [achados, setAchados] = useState<Citavel[]>([]);
+  const [minhas, setMinhas] = useState(autorTipo !== null && autorTipo !== "pessoa");
+  // o resultado guarda de qual busca veio (para não mostrar o da busca anterior)
+  const [achados, setAchados] = useState<{ chave: string; itens: Citavel[] } | null>(null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const [pendente, iniciar] = useTransition();
@@ -29,8 +31,12 @@ export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; auto
   const id = useId();
   const contratando = autorTipo !== null && autorTipo !== "pessoa";
   const restam = MAXIMO - texto.length;
-  // com menos de 2 letras, a lista some (o que veio antes fica guardado até a próxima busca)
-  const lista = busca.trim().length >= 2 ? achados : [];
+  const termo = busca.trim();
+  const chaveDaBusca = `${minhas ? "minhas" : "todas"}|${termo}`;
+  // em Todas, só com 2 letras ou mais; em Minhas vagas, já lista tudo o que está no ar
+  const podeProcurar = minhas || termo.length >= 2;
+  const pronto = podeProcurar && achados?.chave === chaveDaBusca;
+  const lista = pronto ? achados.itens : [];
 
   // a caixa cresce com o texto (até umas 6 linhas)
   useEffect(() => {
@@ -40,18 +46,16 @@ export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; auto
     t.style.height = `${Math.min(t.scrollHeight, 160)}px`;
   }, [texto]);
 
-  // "Citar vaga": procura pelo título, um pouco depois de parar de digitar
+  // "Citar vaga": procura pelo cargo ou pela empresa, um pouco depois de parar de digitar
   useEffect(() => {
-    if (!citando) return;
-    const termo = busca.trim();
-    if (termo.length < 2) return;
+    if (!citando || !podeProcurar) return;
     const espera = setTimeout(() => {
-      procurarParaCitar(termo)
-        .then(setAchados)
-        .catch(() => setAchados([]));
+      procurarParaCitar(termo, minhas)
+        .then((itens) => setAchados({ chave: chaveDaBusca, itens }))
+        .catch(() => setAchados({ chave: chaveDaBusca, itens: [] }));
     }, 300);
     return () => clearTimeout(espera);
-  }, [busca, citando]);
+  }, [citando, podeProcurar, termo, minhas, chaveDaBusca]);
 
   async function escolherFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
@@ -166,15 +170,40 @@ export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; auto
 
       {citando && !citado && (
         <div className="mt-2.5 rounded-md border border-line bg-surface-100 p-2">
-          <label className="flex flex-col gap-1 text-body-sm font-semibold">
-            Qual vaga ou serviço?
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-body-sm font-semibold">Qual vaga ou serviço?</p>
+            <div role="group" aria-label="Onde procurar" className="flex gap-1">
+              {[
+                { valor: false, nome: "Todas" },
+                { valor: true, nome: "Minhas vagas" },
+              ].map((o) => (
+                <button
+                  key={o.nome}
+                  type="button"
+                  aria-pressed={minhas === o.valor}
+                  onClick={() => setMinhas(o.valor)}
+                  className={`min-h-8 rounded-pill px-3 text-[13px] font-semibold ${
+                    minhas === o.valor ? "bg-ink text-surface-100" : "bg-surface-300 text-ink hover:bg-line"
+                  }`}
+                >
+                  {o.nome}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="block">
+            <span className="sr-only">
+              {minhas ? "Procurar nas suas vagas" : "Procurar pelo cargo ou pela empresa"}
+            </span>
             <input
               type="search"
               autoFocus
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Procure pelo nome: garçom, eletricista…"
-              className="min-h-10 rounded-md border border-line-strong bg-surface-200 px-3 text-body font-normal"
+              placeholder={
+                minhas ? "Procure nas suas vagas e serviços…" : "Procure pelo cargo ou pela empresa: garçom, Padaria…"
+              }
+              className="min-h-10 w-full rounded-md border border-line-strong bg-surface-200 px-3 text-body"
             />
           </label>
           {lista.length > 0 && (
@@ -196,14 +225,21 @@ export function EscreverRecado({ pessoaId, autorTipo }: { pessoaId: string; auto
                     )}
                     <span className="truncate">
                       <b className="font-semibold">{a.titulo}</b> · {a.autor}
+                      {a.bairro && <span className="text-ink-muted"> · {a.bairro}</span>}
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          {busca.trim().length >= 2 && lista.length === 0 && (
-            <p className="mt-1.5 px-1 text-body-sm text-ink-muted">Nada no ar com esse nome.</p>
+          {pronto && lista.length === 0 && (
+            <p className="mt-1.5 px-1 text-body-sm text-ink-muted">
+              {minhas && !termo
+                ? "Você não tem vaga nem serviço no ar agora."
+                : minhas
+                  ? "Nenhuma vaga sua com esse nome."
+                  : "Nada no ar com esse cargo ou empresa."}
+            </p>
           )}
         </div>
       )}

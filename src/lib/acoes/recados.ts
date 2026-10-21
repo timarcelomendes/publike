@@ -117,25 +117,80 @@ export async function denunciarRecado(id: string, motivo: string, detalhes: stri
 
 export type Citavel = { id: string; tipo: string; titulo: string; autor: string; bairro: string | null };
 
-/** "Citar vaga": as vagas e serviços no ar com a palavra no título (Goiânia e região). */
-export async function procurarParaCitar(texto: string): Promise<Citavel[]> {
+/**
+ * "Citar vaga": as vagas e serviços no ar pelo nome do cargo ou da empresa (Goiânia e região). Com
+ * `soMinhas`, só os anúncios da própria conta (sem palavra, todos os que estão no ar).
+ */
+export async function procurarParaCitar(texto: string, soMinhas = false): Promise<Citavel[]> {
   if (MODO_DEMO) return [];
   const termo = String(texto ?? "")
     .trim()
     .slice(0, 60);
-  if (termo.length < 2) return [];
+  if (!soMinhas && termo.length < 2) return [];
   const usuario = await obterUsuario();
   if (!usuario) return [];
   const supabase = await criarClienteServidor();
-  const { data } = await supabase.rpc("buscar_anuncios", {
-    p_lat: CENTRO_GOIANIA.lat,
-    p_lng: CENTRO_GOIANIA.lng,
-    p_raio_km: 100,
-    p_texto: termo,
-    p_ordem: "recentes",
-    p_limite: 8,
-  });
-  return (data ?? []).map((a) => ({ id: a.id, tipo: a.tipo, titulo: a.titulo, autor: a.autor_nome, bairro: a.bairro }));
+  const agora = new Date().toISOString();
+  // a palavra entra no "ilike" sem os curingas
+  const parecido = `%${termo.replace(/[%_\\]/g, " ")}%`;
+
+  if (soMinhas) {
+    let consulta = supabase
+      .from("anuncios")
+      .select("id, tipo, titulo, bairro, autor:perfis!anuncios_autor_id_fkey(nome)")
+      .eq("autor_id", usuario.id)
+      .eq("status", "ativo")
+      .gt("expira_em", agora)
+      .order("criado_em", { ascending: false })
+      .limit(20);
+    if (termo.length >= 2) consulta = consulta.ilike("titulo", parecido);
+    const { data } = await consulta;
+    return (data ?? []).map((a) => ({
+      id: a.id,
+      tipo: a.tipo,
+      titulo: a.titulo,
+      autor: a.autor?.nome ?? "",
+      bairro: a.bairro,
+    }));
+  }
+
+  const [porTitulo, empresas] = await Promise.all([
+    supabase.rpc("buscar_anuncios", {
+      p_lat: CENTRO_GOIANIA.lat,
+      p_lng: CENTRO_GOIANIA.lng,
+      p_raio_km: 100,
+      p_texto: termo,
+      p_ordem: "recentes",
+      p_limite: 8,
+    }),
+    // quem publica (comércio, empresa, agência) com a palavra no nome
+    supabase.from("perfis").select("id").neq("tipo", "pessoa").ilike("nome", parecido).limit(10),
+  ]);
+  const idsDasEmpresas = (empresas.data ?? []).map((p) => p.id);
+  const daEmpresa = idsDasEmpresas.length
+    ? ((
+        await supabase
+          .from("anuncios")
+          .select("id, tipo, titulo, bairro, autor:perfis!anuncios_autor_id_fkey(nome)")
+          .in("autor_id", idsDasEmpresas)
+          .eq("status", "ativo")
+          .gt("expira_em", agora)
+          .order("criado_em", { ascending: false })
+          .limit(10)
+      ).data ?? [])
+    : [];
+  const vistos = new Set<string>();
+  const lista: Citavel[] = [];
+  for (const a of porTitulo.data ?? []) {
+    vistos.add(a.id);
+    lista.push({ id: a.id, tipo: a.tipo, titulo: a.titulo, autor: a.autor_nome, bairro: a.bairro });
+  }
+  for (const a of daEmpresa) {
+    if (vistos.has(a.id)) continue;
+    vistos.add(a.id);
+    lista.push({ id: a.id, tipo: a.tipo, titulo: a.titulo, autor: a.autor?.nome ?? "", bairro: a.bairro });
+  }
+  return lista.slice(0, 10);
 }
 
 /** Moderação: liberar (vai ao ar) ou remover (com o motivo para quem escreveu). */
