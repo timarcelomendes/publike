@@ -17,6 +17,7 @@ import { partirDoLocal } from "@/lib/servidor/busca-salva";
 import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { obterIntencao } from "@/lib/servidor/intencao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, Match } from "@/lib/tipos";
 import type { Resposta } from "@/lib/resposta";
@@ -114,8 +115,13 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     preferenciasDaHome(),
   ]);
   const lidos = lerFiltros(sp);
-  // a aba: a da URL; sem ela, a última escolhida; sem nada, Tudo
-  const aba: AbaDaLinha = lidos.tipo ?? (lidos.tudo ? "tudo" : (prefs.aba ?? "tudo"));
+  // a aba: a da URL; sem ela, a última escolhida; sem nada, a da resposta "O que você quer fazer"
+  // (quem quer contratar um serviço abre em Serviços) ou Tudo
+  const aba: AbaDaLinha =
+    lidos.tipo ??
+    (lidos.tudo
+      ? "tudo"
+      : (prefs.aba ?? ((await obterIntencao().catch(() => null)) === "contratar_servico" ? "servico" : "tudo")));
   const filtrosDaBusca: Filtros = {
     ...lidos,
     tipo: aba === "tudo" ? null : aba,

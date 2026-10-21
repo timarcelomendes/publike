@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
 import { EmpresasContratando } from "@/components/home/empresas-contratando";
@@ -13,6 +13,8 @@ import { LateralDaLinha } from "@/components/home/linha/lateral-da-linha";
 import { LinhaDoTempo } from "@/components/home/linha/linha-do-tempo";
 import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
 import { EsqueletoCards } from "@/components/card-anuncio";
+import { ColunaDoMapa } from "@/components/explorar/visao-explorar";
+import { primeiro } from "@/lib/formato";
 import { MolduraDaHome } from "@/components/home/moldura";
 import { EntendaOPublike } from "@/components/inicio";
 import { MenuPainelEsqueleto } from "@/components/painel/menu-painel";
@@ -150,22 +152,47 @@ function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
       <Suspense fallback={<Esqueleto className="mb-6 h-56 rounded-[28px]" />}>
         <TopoDaConta searchParams={searchParams} />
       </Suspense>
-      <div className="lg:grid lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:gap-8">
-        <div className="min-w-0 lg:self-start">
-          <Suspense fallback={<EsqueletoCards quantos={3} />}>
-            <LinhaDoTempo searchParams={searchParams} meio={contratando} />
-          </Suspense>
-        </div>
-        <aside aria-label="Perto de você" className="hidden min-w-0 lg:block">
-          <Suspense fallback={<Esqueleto className="aspect-[4/5] rounded-lg" />}>
-            <LateralDaLinha searchParams={searchParams} acima={contratando} />
-          </Suspense>
-        </aside>
-      </div>
+      <Suspense fallback={<EsqueletoCards quantos={3} />}>
+        <LinhaOuBusca searchParams={searchParams} contratando={contratando} />
+      </Suspense>
       <Suspense fallback={null}>
         <Contratados />
       </Suspense>
     </Container>
+  );
+}
+
+/**
+ * Embaixo do topo: a linha do tempo; com uma busca por palavra ou uma ordem escolhida ("Combina
+ * mais", "Mais perto"), a lista de resultados de sempre, na mesma moldura (o mapa à direita).
+ */
+async function LinhaOuBusca({ searchParams, contratando }: { searchParams: Parametros; contratando: ReactNode }) {
+  const sp = await searchParams;
+  if (primeiro(sp.q) || primeiro(sp.ordem)) {
+    return (
+      <div className="lg:grid lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:gap-8">
+        <div className="min-w-0">
+          <Suspense fallback={<ExplorarEsqueleto />}>
+            <Explorar searchParams={searchParams} variante="feed" acimaDoMapa={contratando} />
+          </Suspense>
+        </div>
+        <ColunaDoMapa className="hidden min-w-0 flex-col gap-4 self-stretch lg:flex" />
+      </div>
+    );
+  }
+  return (
+    <div className="lg:grid lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:gap-8">
+      <div className="min-w-0 lg:self-start">
+        <Suspense fallback={<EsqueletoCards quantos={3} />}>
+          <LinhaDoTempo searchParams={searchParams} meio={contratando} />
+        </Suspense>
+      </div>
+      <aside aria-label="Perto de você" className="hidden min-w-0 lg:block">
+        <Suspense fallback={<Esqueleto className="aspect-[4/5] rounded-lg" />}>
+          <LateralDaLinha searchParams={searchParams} acima={contratando} />
+        </Suspense>
+      </aside>
+    </div>
   );
 }
 

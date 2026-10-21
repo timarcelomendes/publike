@@ -2,11 +2,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Pastas de cada pessoa no Storage: avatars/<id>/ (foto de perfil),
-// trabalhos/<id>/ (fotos dos serviços) e curriculos/<id>/ (PDF do currículo, privado).
+// trabalhos/<id>/ (fotos dos serviços), curriculos/<id>/ (PDF do currículo, privado) e
+// fundos/<id>/ (a foto do fundo do topo da home, privada).
 
 type ComStorage = Pick<SupabaseClient, "storage">;
 
-export const PASTAS_DA_PESSOA = ["avatars", "trabalhos", "curriculos"] as const;
+export const PASTAS_DA_PESSOA = ["avatars", "trabalhos", "curriculos", "fundos"] as const;
 
 /**
  * Apaga tudo o que a pessoa guardou no Storage. Vem antes de excluir a conta:

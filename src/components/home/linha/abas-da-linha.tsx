@@ -26,6 +26,7 @@ export function AbasDaLinha({
   numeros,
   hrefs,
   mudados,
+  abrirFiltros = false,
   textoDoRaio,
   filtros,
 }: {
@@ -33,11 +34,13 @@ export function AbasDaLinha({
   numeros: Record<Aba, string | null>;
   hrefs: Record<Aba, string>;
   mudados: number;
+  /** já abre o painel dos filtros (vem de "Informe seu CEP") */
+  abrirFiltros?: boolean;
   textoDoRaio: string;
   /** os filtros da lista (FiltrosLista) e o "Limpar filtros" */
   filtros: ReactNode;
 }) {
-  const [aberto, setAberto] = useState(mudados > 0);
+  const [aberto, setAberto] = useState(mudados > 0 || abrirFiltros);
   const id = useId();
   useEffect(() => {
     const alternar = () => setAberto((a) => !a);
