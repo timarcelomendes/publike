@@ -9,6 +9,7 @@ import {
   minhasBuscasSalvas,
   obterMeuCurriculo,
   obterMeuPerfil,
+  obterUsuario,
 } from "@/lib/dados";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
@@ -16,7 +17,7 @@ import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
 import { formatarLugar, plural } from "@/lib/formato";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { SeloVerificado } from "../selo-verificado";
-import { Avatar } from "../ui/basicos";
+import { FotoDaConta } from "./foto-da-conta";
 
 const TIPO: Record<string, string> = { empresa: "Empresa", comercio: "Comércio", agencia: "Agência / RH" };
 
@@ -26,7 +27,11 @@ const TIPO: Record<string, string> = { empresa: "Empresa", comercio: "Comércio"
  * serviço, a vitrine; quem contrata, o link da página de vagas.
  */
 export async function CartaoDaConta() {
-  const [perfil, uso] = await Promise.all([obterMeuPerfil().catch(() => null), perfilDeUso()]);
+  const [perfil, uso, usuario] = await Promise.all([
+    obterMeuPerfil().catch(() => null),
+    perfilDeUso(),
+    obterUsuario().catch(() => null),
+  ]);
   if (!perfil) {
     return (
       <section className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4">
@@ -46,15 +51,13 @@ export async function CartaoDaConta() {
     >
       <div aria-hidden className="h-14 bg-ipe" />
       <div className="flex flex-col gap-3 px-4 pb-4">
-        <Link href={`/perfil/${perfil.id}`} className="-mt-8 self-start rounded-md ring-4 ring-surface-200">
-          <Avatar
-            nome={perfil.nome}
-            foto={perfil.foto}
-            tamanho={64}
-            forma={empresa ? "quadrada" : "redonda"}
-            colorida
-          />
-        </Link>
+        <FotoDaConta
+          nome={perfil.nome}
+          foto={perfil.foto}
+          empresa={empresa}
+          pessoaId={usuario?.pessoaId ?? perfil.id}
+          podeTrocar={Boolean(usuario && usuario.id === usuario.pessoaId)}
+        />
         <div className="min-w-0">
           <p className="flex items-center gap-1 text-body-lg font-semibold">
             <Link href={`/perfil/${perfil.id}`} className="truncate hover:underline">
