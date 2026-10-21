@@ -5,27 +5,25 @@ import {
   Clock,
   Hourglass,
   ImageUp,
-  Link2,
   Megaphone,
   MessageCircleReply,
   Plus,
   RefreshCw,
-  Search,
+  Send,
   ShieldCheck,
-  Store,
+  UserSearch,
+  UsersRound,
   UserRoundX,
-  Users,
   Wallet,
-  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Selo, Vazio } from "@/components/ui/basicos";
+import { Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
-import { ateQuando, formatarMoeda, formatarNumero, plural } from "@/lib/formato";
+import { ateQuando, formatarMoeda, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { comoResponde } from "@/lib/resposta";
 import type { Saude } from "@/lib/saude-vaga";
@@ -34,13 +32,21 @@ import { saudeDasVagas } from "@/lib/servidor/saude";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { MeuAnuncio, StatusAnuncio } from "@/lib/tipos";
 import type { ConversaPessoa } from "@/lib/conversas";
-import { NumeroHoje, ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
+import { SITE_URL } from "@/lib/config";
+import { caminhoDaConta, type Caminho } from "@/lib/servidor/caminho";
+import { equipeDaConta } from "@/lib/servidor/equipe";
+import { ComecePorAqui, FaixaDoCaminho, SeusClientes, type Passo, type PrimeiroPasso } from "./caminho-hoje";
+import { ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
+import { LinksParaMandar, type LinkParaMandar } from "./links-para-mandar";
 import { EsperandoResposta, MensagensRecentes, TalentosDaVaga } from "./hoje-extras";
 import { NivelDaSaude } from "./saude-vaga";
 
-// Hoje, no modo Contratar (comércio, empresa e agência): o que pede você agora em
-// cartões com a ação no próprio cartão, os números da semana (com o tempo de resposta
-// que aparece nas suas vagas), cada vaga com o funil e o que pede atenção, e a agenda.
+// Hoje, no modo Contratar (comércio, empresa e agência), pelo caminho da vaga:
+//   agência ............ Clientes → Vagas → Candidatos → Para o cliente → Contratados
+//   comércio e empresa . Vagas → Candidatos → Entrevistas → Contratados
+// No topo, um resumo e as ações principais; a faixa com o número de cada passo e o passo
+// que pede você; o que fazer agora (com a ação no cartão); os clientes (agência) ou as
+// vagas; ao lado, os links para mandar, a agenda e a equipe. Conta nova: "Comece por aqui".
 
 type Candidato = {
   anuncio_id: string;
@@ -88,6 +94,7 @@ export async function PainelRecrutador({
   extras = [],
   conversas = null,
   fotoDaVaga = false,
+  perfilPronto = true,
 }: {
   nome: string;
   autorId: string;
@@ -102,12 +109,14 @@ export async function PainelRecrutador({
   conversas?: ConversaPessoa[] | null;
   /** a leitura da arte da vaga está ligada: o atalho "Mandar a foto da vaga" */
   fotoDaVaga?: boolean;
+  /** o perfil já tem o que precisa (agência: o CNPJ; empresa: foto ou descrição) */
+  perfilPronto?: boolean;
 }) {
+  const agencia = typeof clientes === "number";
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
-  const servicos = (anuncios ?? []).filter((a) => a.tipo === "servico");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas }, respostas, completas, colocacoes] = await Promise.all([
+  const [{ visitas, entrevistas }, respostas, completas, colocacoes, caminho, equipe] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -115,7 +124,9 @@ export async function PainelRecrutador({
     respostaDeQuemPublica([autorId]).catch(() => new Map()),
     Promise.all(noAr.map((v) => obterAnuncio(v.id).catch(() => null))),
     // agência: as colocações (garantias e taxas a receber)
-    typeof clientes === "number" ? colocacoesDasVagas().then((m) => [...m.values()]) : Promise.resolve([]),
+    agencia ? colocacoesDasVagas().then((m) => [...m.values()]) : Promise.resolve([]),
+    caminhoDaConta(),
+    agencia ? equipeDaConta().catch(() => null) : Promise.resolve(null),
   ]);
   // a saúde das vagas no ar: a mesma do quadro de cada vaga
   const saudes = await saudeDasVagas(
@@ -127,14 +138,9 @@ export async function PainelRecrutador({
   const nomeDe = new Map(todos.map((c) => [c.perfil_id, c.nome]));
   const tituloDe = new Map(vagas.map((v) => [v.id, v.titulo]));
 
-  const ultimos7 = todos.filter((c) => agora - new Date(c.curtido_em).getTime() < 7 * DIA).length;
   const pendentes = todos.filter(esperaResposta);
   const antigos = pendentes.filter((c) => agora - new Date(c.curtido_em).getTime() > 2 * DIA);
   const contratados = todos.filter((c) => c.etapa === "contratado" && c.status === "match");
-  const dias = contratados
-    .filter((c) => c.etapa_em)
-    .map((c) => (new Date(c.etapa_em as string).getTime() - new Date(c.curtido_em).getTime()) / DIA);
-  const tempoMedio = dias.length ? Math.max(0, Math.round(dias.reduce((a, b) => a + b, 0) / dias.length)) : null;
   const semana = entrevistas.filter((e) => new Date(e.quando).getTime() <= agora + 7 * DIA);
 
   // ------------------------------------------------------------ para fazer agora
@@ -232,9 +238,8 @@ export async function PainelRecrutador({
       icone: Megaphone,
       quando: "Uma semana sem curtidas",
       titulo: `${plural(paradas.length, "vaga", "vagas")} sem candidatos`,
-      texto:
-        "Divulgue o link da sua página de vagas no WhatsApp e no Instagram, ou revise o título, o salário e o horário.",
-      href: "/painel/anuncios?tipo=vaga#pagina-de-vagas",
+      texto: "Divulgue o link da vaga no WhatsApp e no Instagram, ou revise o título, o salário e o horário.",
+      href: "/painel/links",
       acao: "Divulgar",
     });
   }
@@ -290,9 +295,259 @@ export async function PainelRecrutador({
       acao: "Ver os clientes",
     });
   }
+  // agência: os finalistas (prontos para mandar, o cliente abriu e não respondeu, o cliente respondeu)
+  const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));
+  const paraQuem = (v: Caminho["vagas"][number]) =>
+    (v.clienteId ? nomeDoCliente.get(v.clienteId) : null) ?? "o cliente";
+  if (agencia) {
+    const comProntos = caminho.vagas.filter(
+      (v) => v.prontos.length > 0 && (v.anuncio.status === "ativo" || v.anuncio.status === "pausado"),
+    );
+    for (const v of comProntos.slice(0, 2)) {
+      const nomes = v.prontos.slice(0, 2).map((c) => c.nome.split(" ")[0]);
+      cartoes.push({
+        icone: Send,
+        quando: "Para o cliente",
+        titulo: `Mandar ${v.prontos.length === 1 ? "o finalista" : `${v.prontos.length} finalistas`} de ${v.anuncio.titulo} para ${paraQuem(v)}`,
+        texto: `${nomes.join(" e ")}${v.prontos.length > 2 ? " e mais" : ""} ${v.prontos.length === 1 ? "deu" : "deram"} match. O cliente abre sem conta, vê o currículo e o seu parecer, e responde por ali.`,
+        href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
+        acao: v.link ? "Pôr na lista" : "Montar o link",
+      });
+    }
+    const respondeu = caminho.vagas.filter((v) =>
+      v.finalistas.some((f) => f.decidido_em && agora - Date.parse(f.decidido_em) < 7 * DIA),
+    );
+    for (const v of respondeu.slice(0, 2)) {
+      const n = v.finalistas.filter((f) => f.decidido_em && agora - Date.parse(f.decidido_em) < 7 * DIA).length;
+      cartoes.push({
+        icone: MessageCircleReply,
+        tom: "bom",
+        quando: "O cliente respondeu",
+        titulo: `${paraQuem(v)} respondeu sobre ${plural(n, "finalista", "finalistas")} de ${v.anuncio.titulo}`,
+        texto: "Veja quem ele quer entrevistar e leve a pessoa para Entrevista no quadro.",
+        href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
+        acao: "Ver as respostas",
+      });
+    }
+    const semResposta = caminho.vagas.filter(
+      (v) =>
+        v.link?.aberto_em &&
+        agora - Date.parse(v.link.aberto_em) > DIA &&
+        v.finalistas.length > 0 &&
+        v.finalistas.every((f) => !f.decisao),
+    );
+    if (semResposta.length) {
+      const v = semResposta[0];
+      cartoes.push({
+        icone: Hourglass,
+        quando: "Esperando o cliente",
+        titulo: `${paraQuem(v)} abriu os finalistas e ainda não respondeu`,
+        texto: `${v.anuncio.titulo}${semResposta.length > 1 ? ` e mais ${plural(semResposta.length - 1, "vaga", "vagas")}` : ""}. Um lembrete no WhatsApp costuma resolver.`,
+        href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
+        acao: "Ver o link",
+      });
+    }
+  }
+  // vaga no ar sem salário (quem procura filtra por ele)
+  const semSalario = noAr.filter((a) => a.pagamento_valor == null);
+  if (semSalario.length) {
+    cartoes.push({
+      icone: Wallet,
+      quando: "Pode melhorar",
+      titulo:
+        semSalario.length === 1 ? `${semSalario[0].titulo} está sem salário` : `${semSalario.length} vagas sem salário`,
+      texto: "Vaga com salário recebe mais curtidas: quem procura filtra por ele.",
+      href: semSalario.length === 1 ? `/painel/anuncio/${semSalario[0].id}/editar` : "/painel/anuncios?tipo=vaga",
+      acao: "Completar",
+    });
+  }
   cartoes.push(...extras);
 
   const responde = resposta ? comoResponde(resposta) : null;
+  const listaDeVagas = agencia
+    ? vagas.filter((v) => !caminho.vagas.find((c) => c.anuncio.id === v.id)?.clienteId)
+    : vagas;
+
+  // ------------------------------------------------------------ o caminho
+  const nomesDe = (lista: string[]) =>
+    lista.length <= 2 ? lista.join(" e ") : `${lista.slice(0, 2).join(", ")} e mais ${lista.length - 2}`;
+  const esperando = nomesDe([...new Set(pendentes.map((c) => primeiroNome(c.perfil_id)).filter(Boolean))]);
+  const ultimoContratado = [...contratados].sort((x, y) => (y.etapa_em ?? "").localeCompare(x.etapa_em ?? ""))[0];
+  const passoClientes: Passo = {
+    nome: "Clientes",
+    numero: caminho.clientes,
+    texto: caminho.clientes
+      ? nomesDe(caminho.listaClientes.map((c) => c.nome))
+      : "Cadastre as empresas para quem você seleciona",
+    acao: "Adicionar cliente",
+    href: "/painel/clientes/novo",
+    estado: caminho.clientes ? "feito" : "agora",
+  };
+  const passoVagas: Passo = {
+    nome: "Vagas no ar",
+    numero: noAr.length,
+    texto: semSalario.length
+      ? `${semSalario[0].titulo} está sem salário`
+      : noAr.length
+        ? `${plural(todos.length, "candidato", "candidatos")} no total`
+        : "Nenhuma vaga no ar agora",
+    acao: noAr.length ? "Ver vagas" : "Publicar vaga",
+    href: noAr.length ? "/painel/anuncios?tipo=vaga" : "/publicar",
+    estado: noAr.length ? "feito" : "agora",
+  };
+  const passoCandidatos: Passo = {
+    nome: "Para responder",
+    numero: pendentes.length,
+    texto: pendentes.length
+      ? `${esperando} ${pendentes.length === 1 ? "espera" : "esperam"} você`
+      : "Ninguém esperando resposta",
+    acao: pendentes.length ? "Responder agora" : "Ver candidatos",
+    href: pendentes.length ? "/painel/caixa?aba=responder" : "/painel/caixa",
+    estado: pendentes.length ? "agora" : "normal",
+  };
+  const passoCliente: Passo = {
+    nome: "Com o cliente",
+    numero: caminho.comCliente,
+    texto: caminho.prontos
+      ? `${plural(caminho.prontos, "finalista pronto", "finalistas prontos")} para mandar`
+      : caminho.respostasNovas
+        ? `${plural(caminho.respostasNovas, "resposta nova", "respostas novas")} do cliente`
+        : caminho.comCliente
+          ? "Esperando a resposta do cliente"
+          : "Quem der match pode ir para o cliente",
+    acao: caminho.prontos ? "Montar o link" : "Ver os links",
+    href: "/painel/finalistas",
+    estado: caminho.prontos ? "agora" : "normal",
+  };
+  const passoEntrevistas: Passo = {
+    nome: "Entrevistas",
+    numero: caminho.entrevistas,
+    texto: semana.length
+      ? `Próxima: ${primeiroNome(semana[0].perfil_id) || "candidato"}, ${dataDaEntrevista(semana[0].quando)}`
+      : caminho.entrevistas
+        ? "Sem data marcada"
+        : "Leve quem combina para Entrevista no quadro",
+    acao: "Ver entrevistas",
+    href: "/painel/caixa?aba=entrevistas",
+    estado: semData.length || remarcar.length ? "agora" : "normal",
+  };
+  const passoContratados: Passo = {
+    nome: "Contratados",
+    numero: contratados.length,
+    texto: ultimoContratado
+      ? `${primeiroNome(ultimoContratado.perfil_id) || "Último"}, em ${tituloDe.get(ultimoContratado.anuncio_id) ?? "uma vaga"}`
+      : "Ninguém contratado ainda",
+    acao: agencia ? "Ver colocações" : "Ver contratados",
+    href: "/painel/contratados",
+    estado: contratados.length ? "feito" : "normal",
+  };
+  const passos = agencia
+    ? [passoClientes, passoVagas, passoCandidatos, passoCliente, passoContratados]
+    : [{ ...passoVagas, nome: "Vagas no ar" }, passoCandidatos, passoEntrevistas, passoContratados];
+  // um passo "agora" por vez: o primeiro que pede você
+  const daVez = passos.findIndex((p) => p.estado === "agora");
+  const faixa = passos.map((p, i) => (p.estado === "agora" && i !== daVez ? { ...p, estado: "normal" as const } : p));
+
+  // ------------------------------------------------------------ conta nova
+  const divulgou = todos.length > 0;
+  const primeiros: PrimeiroPasso[] = [
+    {
+      titulo: agencia ? "Perfil da agência com CNPJ" : "Perfil da empresa",
+      texto: agencia
+        ? "A equipe confere o CNPJ e a agência ganha o selo de verificada."
+        : "Logo e uma linha sobre a empresa: quem procura confia mais.",
+      feito: perfilPronto,
+      acao: { nome: "Completar", href: "/perfil" },
+    },
+    ...(agencia
+      ? [
+          {
+            titulo: "Cadastrar o primeiro cliente",
+            texto: "Digite o CNPJ: o nome e o endereço vêm da Receita. Contato e anotações ficam só com você.",
+            feito: caminho.clientes > 0,
+            acao: { nome: "Adicionar cliente", href: "/painel/clientes/novo" },
+          },
+        ]
+      : []),
+    {
+      titulo: agencia ? "Publicar a vaga do cliente" : "Publicar a primeira vaga",
+      texto: agencia
+        ? "Escolha o cliente e o nome e o endereço já entram na vaga. Dá para deixar o nome do cliente em sigilo."
+        : "Grátis, sem limite de candidatos. Quem mora perto vê primeiro.",
+      feito: vagas.length > 0,
+      acao: { nome: "Publicar vaga", href: "/publicar" },
+    },
+    {
+      titulo: "Divulgar o link da vaga",
+      texto: "Mande no WhatsApp e nos grupos do bairro. Quem curtir chega na sua caixa de candidatos.",
+      feito: divulgou,
+    },
+    {
+      titulo: "Responder quem curtiu",
+      texto: "Aceite ou dispense com um toque. Aceitou, o contato aparece para os dois.",
+      feito: divulgou && pendentes.length < todos.length,
+    },
+    ...(agencia
+      ? [
+          {
+            titulo: "Mandar os finalistas ao cliente",
+            texto:
+              "Um link sem conta: o cliente vê o currículo e o seu parecer e responde “Quero entrevistar”. O contato fica com você.",
+            feito: caminho.vagas.some((v) => v.link),
+          },
+        ]
+      : []),
+  ];
+  const contaNova = vagas.length === 0;
+
+  // ------------------------------------------------------------ links para mandar
+  const links: LinkParaMandar[] = [];
+  if (noAr.length) {
+    links.push({
+      titulo: "Todas as suas vagas",
+      detalhe: `${SITE_URL.replace(/^https?:\/\//, "")}/perfil/${autorId}/vagas`,
+      url: `${SITE_URL}/perfil/${autorId}/vagas`,
+      mensagem: `Vagas abertas de ${nome} no Publike. Candidate-se de graça`,
+    });
+  }
+  if (agencia) {
+    for (const v of caminho.vagas
+      .filter((x) => x.anuncio.status === "ativo" && (x.link || x.prontos.length))
+      .slice(0, 3)) {
+      const vencido = v.link && Date.parse(v.link.expira_em) < agora;
+      links.push({
+        titulo: `Finalistas · ${v.anuncio.titulo}`,
+        detalhe: `Para ${paraQuem(v)} · ${
+          !v.link
+            ? "ainda não criado"
+            : vencido
+              ? "venceu"
+              : v.link.aberto_em
+                ? "o cliente já abriu"
+                : "ainda não aberto"
+        }`,
+        url: v.link && !vencido ? `${SITE_URL}/finalistas/${v.link.token}` : undefined,
+        mensagem: `Os finalistas para ${v.anuncio.titulo}`,
+        criar: `/painel/anuncio/${v.anuncio.id}/finalistas`,
+      });
+    }
+  }
+  for (const v of noAr.slice(0, 2)) {
+    links.push({
+      titulo: `Vaga · ${v.titulo}`,
+      detalhe: "Para divulgar em grupos",
+      url: `${SITE_URL}/anuncio/${v.id}`,
+      mensagem: `Vaga: ${v.titulo}. Candidate-se de graça no Publike`,
+    });
+  }
+
+  const resumo = contaNova
+    ? agencia
+      ? "Seu painel segue o caminho de cada vaga: do cliente ao contratado."
+      : "Seu painel segue o caminho de cada vaga: da publicação ao contratado."
+    : `${plural(noAr.length, "vaga no ar", "vagas no ar")}${agencia && caminho.clientes ? ` para ${plural(caminho.clientes, "cliente", "clientes")}` : ""}.${
+        pendentes.length ? ` ${plural(pendentes.length, "candidato espera", "candidatos esperam")} você.` : ""
+      }`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -300,12 +555,20 @@ export async function PainelRecrutador({
         nome={nome}
         agora={agora}
         pendencias={cartoes.length}
+        resumo={resumo}
+        boasVindas={contaNova}
         acao={
           <span className="flex flex-wrap items-center gap-2">
-            {fotoDaVaga && (
+            {fotoDaVaga && !contaNova && (
               <BotaoLink href="/publicar#arte" tamanho="sm">
                 <ImageUp aria-hidden />
                 Mandar a foto da vaga
+              </BotaoLink>
+            )}
+            {agencia && (
+              <BotaoLink href="/painel/clientes/novo" tamanho="sm">
+                <Building2 aria-hidden />
+                Adicionar cliente
               </BotaoLink>
             )}
             <BotaoLink href="/publicar" variante="primario" tamanho="sm">
@@ -316,21 +579,43 @@ export async function PainelRecrutador({
         }
       />
 
-      {vagas.length === 0 ? (
-        <Vazio
-          icone={Megaphone}
-          titulo="Publique a primeira vaga"
-          acao={<BotaoLink href="/publicar">Publicar vaga grátis</BotaoLink>}
-        >
-          Grátis, sem limite de candidatos. Quem mora perto vê primeiro, e você acompanha tudo aqui: candidatos, % de
-          match, entrevistas e contratações.
-        </Vazio>
-      ) : (
-        <>
-          <ParaFazerAgora
-            itens={cartoes}
-            vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
-          />
+      {contaNova ? <ComecePorAqui passos={primeiros} /> : <FaixaDoCaminho passos={faixa} />}
+
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
+          {contaNova ? (
+            <ParaFazerAgora
+              lista
+              titulo="Enquanto isso"
+              vazio=""
+              itens={[
+                {
+                  icone: UserSearch,
+                  titulo: "Veja quem tem currículo perto",
+                  texto: "Na aba Talentos, convide quem combina, mesmo antes de publicar.",
+                  href: "/painel/talentos",
+                  acao: "Ver talentos",
+                },
+                ...(agencia
+                  ? [
+                      {
+                        icone: UsersRound,
+                        titulo: "Chame a sua equipe",
+                        texto: "Cada recrutador entra com o próprio celular e age pela agência.",
+                        href: "/painel/equipe",
+                        acao: "Convidar",
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          ) : (
+            <ParaFazerAgora
+              lista
+              itens={cartoes}
+              vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
+            />
+          )}
 
           {pendentes.length > 0 && (
             <Suspense fallback={null}>
@@ -338,42 +623,13 @@ export async function PainelRecrutador({
             </Suspense>
           )}
 
-          <section aria-label="Números do recrutamento" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <NumeroHoje
-              nome="Tempo de resposta"
-              valor={responde && resposta?.horas != null ? prazoCurto(resposta.horas) : "–"}
-              selo={responde?.bom ? "Selo ativo" : undefined}
-              ajuda={responde ? responde.texto : "Aparece com 5 curtidas: quanto antes responder, melhor"}
-            />
-            <NumeroHoje
-              nome="Candidatos novos"
-              valor={formatarNumero(ultimos7)}
-              ajuda={`nos últimos 7 dias · ${formatarNumero(todos.length)} no total`}
-              href="/painel/candidatos"
-            />
-            <NumeroHoje
-              nome="Entrevistas"
-              valor={formatarNumero(semana.length)}
-              ajuda="nos próximos 7 dias"
-              href="/painel/candidatos?etapa=entrevista"
-            />
-            <NumeroHoje
-              nome="Contratados"
-              valor={formatarNumero(contratados.length)}
-              ajuda={
-                tempoMedio === null
-                  ? "Da curtida ao sim: –"
-                  : `Em média ${plural(tempoMedio, "dia", "dias")} da curtida ao sim`
-              }
-              href="/painel/candidatos?etapa=contratado"
-            />
-          </section>
+          {agencia && <SeusClientes clientes={caminho.listaClientes} vagas={caminho.vagas} />}
 
-          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          {listaDeVagas.length > 0 && (
             <section aria-labelledby="suas-vagas" className="flex flex-col gap-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="suas-vagas" className="text-h3">
-                  Suas vagas
+                  {agencia ? "Vagas sem cliente" : "Suas vagas"}
                 </h2>
                 <Link
                   href="/painel/anuncios?tipo=vaga"
@@ -383,7 +639,7 @@ export async function PainelRecrutador({
                 </Link>
               </div>
               <ul className="flex flex-col gap-3">
-                {vagas.map((v) => {
+                {listaDeVagas.map((v) => {
                   const daVaga = todos.filter((c) => c.anuncio_id === v.id);
                   const status = v.status as StatusAnuncio;
                   const responder = daVaga.filter(esperaResposta).length;
@@ -444,9 +700,22 @@ export async function PainelRecrutador({
                 })}
               </ul>
             </section>
+          )}
+        </div>
 
-            <aside className="flex flex-col gap-4">
-              <MensagensRecentes conversas={conversas} agora={agora} />
+        <aside className="flex flex-col gap-4">
+          {links.length > 0 && <LinksParaMandar links={links} mais="/painel/links" />}
+          <MensagensRecentes conversas={conversas} agora={agora} />
+          {contaNova && (
+            <section className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+              <h2 className="text-h3">Link das suas vagas</h2>
+              <p className="text-body-sm text-ink-muted">
+                Fica pronto quando a primeira vaga for ao ar. Vaga nova entra sozinha nele.
+              </p>
+            </section>
+          )}
+          {!contaNova && (
+            <>
               <section
                 aria-labelledby="agenda"
                 className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
@@ -514,86 +783,36 @@ export async function PainelRecrutador({
                   </p>
                 )}
               </section>
-              <Suspense fallback={null}>
-                <TalentosDaVaga vagas={vagas} agora={agora} />
-              </Suspense>
-            </aside>
-          </div>
-        </>
-      )}
-
-      <section aria-label="Mais" className="grid gap-3 sm:grid-cols-3">
-        <Atalho
-          icone={Link2}
-          href="/painel/anuncios?tipo=vaga#pagina-de-vagas"
-          titulo="Sua página de vagas"
-          texto="O link com todas as vagas e o código para o site da empresa."
-        />
-        <Atalho
-          icone={Users}
-          href="/painel/candidatos"
-          titulo="Todos os candidatos"
-          texto="De todas as vagas juntas, com busca e planilha."
-        />
-        {clientes !== null ? (
-          <Atalho
-            icone={Building2}
-            href="/painel/clientes"
-            titulo="Seus clientes"
-            texto={
-              clientes > 0
-                ? `${plural(clientes, "cliente", "clientes")}, com as vagas, os candidatos e a planilha de cada um.`
-                : "Cadastre as empresas para quem você seleciona: ao publicar, é só escolher."
-            }
-          />
-        ) : servicos.length ? (
-          <Atalho
-            icone={Store}
-            href="/painel/anuncios?tipo=servico"
-            titulo="Seus serviços"
-            texto={`${plural(servicos.length, "serviço", "serviços")} na vitrine.`}
-          />
-        ) : (
-          <Atalho
-            icone={Search}
-            href="/painel/curtidas"
-            titulo="O que você curtiu"
-            texto="Serviços e vagas que você pediu ou curtiu."
-          />
-        )}
-      </section>
+            </>
+          )}
+          {agencia && equipe && !contaNova && (
+            <section
+              aria-labelledby="sua-equipe"
+              className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+            >
+              <h2 id="sua-equipe" className="text-h3">
+                Sua equipe
+              </h2>
+              <p className="text-body-sm text-ink-muted">
+                {equipe.length <= 1
+                  ? "Só você por enquanto. Cada recrutador entra com o próprio celular e age pela agência."
+                  : `${plural(equipe.length, "pessoa", "pessoas")}: ${equipe
+                      .slice(0, 3)
+                      .map((m) => m.nome.split(" ")[0])
+                      .join(", ")}${equipe.length > 3 ? " e mais" : ""}.`}
+              </p>
+              <Link href="/painel/equipe" className="self-start text-label underline underline-offset-2">
+                {equipe.length <= 1 ? "Convidar alguém" : "Ver a equipe"}
+              </Link>
+            </section>
+          )}
+          {!contaNova && (
+            <Suspense fallback={null}>
+              <TalentosDaVaga vagas={vagas} agora={agora} />
+            </Suspense>
+          )}
+        </aside>
+      </div>
     </div>
-  );
-}
-
-/** "no mesmo dia", "1 dia", "3 dias" (o valor grande do tempo de resposta). */
-function prazoCurto(horas: number) {
-  if (horas < 24) return "No dia";
-  const dias = Math.round(horas / 24);
-  return dias <= 1 ? "1 dia" : `${dias} dias`;
-}
-
-function Atalho({
-  icone: Icone,
-  href,
-  titulo,
-  texto,
-}: {
-  icone: LucideIcon;
-  href: string;
-  titulo: string;
-  texto: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex h-full items-start gap-3 rounded-lg border border-line bg-surface-200 p-4 transition-colors hover:border-line-strong"
-    >
-      <Icone aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" />
-      <span className="min-w-0">
-        <span className="block text-label">{titulo}</span>
-        <span className="block text-body-sm text-ink-muted">{texto}</span>
-      </span>
-    </Link>
   );
 }

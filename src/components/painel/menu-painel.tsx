@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  BadgeCheck,
   BellRing,
   Briefcase,
   Building2,
+  CalendarDays,
   Check,
   ChevronDown,
   FileText,
@@ -11,7 +13,9 @@ import {
   Heart,
   House,
   Inbox,
+  Link2,
   MessagesSquare,
+  Send,
   Star,
   Store,
   UserSearch,
@@ -27,11 +31,11 @@ import { trocarConta } from "@/lib/acoes/equipe";
 import { PAPEIS_EQUIPE, type ContaDisponivel, type PapelNaConta } from "@/lib/equipe";
 import {
   COOKIE_MODO,
+  gruposDoModo,
   modoDaRota,
   MODOS,
   OUTRAS,
   secaoAtiva,
-  secoesDoModo,
   type Contadores,
   type ModoPainel,
   type Secao,
@@ -53,6 +57,10 @@ const ICONES: Record<Secao["icone"], LucideIcon> = {
   clientes: Building2,
   equipe: UsersRound,
   conexoes: Handshake,
+  finalistas: Send,
+  contratados: BadgeCheck,
+  links: Link2,
+  entrevistas: CalendarDays,
 };
 
 function guardarModo(modo: ModoPainel) {
@@ -88,11 +96,13 @@ export function MenuPainel({
   papel?: PapelNaConta;
 }) {
   const caminho = usePathname() ?? "/painel";
-  const tipo = useSearchParams()?.get("tipo") ?? null;
+  const busca = useSearchParams();
+  const tipo = busca?.get("tipo") ?? null;
+  const aba = busca?.get("aba") ?? null;
   const router = useRouter();
   const daRota = modoDaRota(caminho, tipo);
   const modo = daRota ?? modoDoServidor;
-  const ativa = secaoAtiva(modo, caminho, tipo, tipoConta);
+  const ativa = secaoAtiva(modo, caminho, tipo, tipoConta, aba);
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const idMenu = useId();
@@ -144,8 +154,41 @@ export function MenuPainel({
     else router.push("/painel");
   }
 
-  const secoes = secoesDoModo(modo, tipoConta);
+  const grupos = gruposDoModo(modo, tipoConta);
   const outras = OUTRAS[modo];
+
+  // o número de uma seção: pílula (pede ação), "N pronto(s)" (para o cliente) ou texto discreto
+  function numero(s: Secao, atualSecao: boolean) {
+    const n = s.contador ? (contadores[s.contador] ?? 0) : 0;
+    const jeito = s.jeito ?? "pilula";
+    if (jeito === "texto") {
+      if (!s.contador || (n === 0 && !s.passo)) return null;
+      return (
+        <span className="ml-auto text-body-sm font-semibold text-ink-muted tabular-nums">
+          {n}
+          {s.sufixo && n > 0 ? ` ${s.sufixo}` : ""}
+        </span>
+      );
+    }
+    if (n <= 0) return null;
+    if (jeito === "pronto") {
+      return (
+        <span className="ml-auto rounded-pill bg-terra-soft px-2 text-caption leading-6 text-terra-text tabular-nums normal-case">
+          {n} {n === 1 ? "pronto" : "prontos"}
+        </span>
+      );
+    }
+    return (
+      <span
+        className={`ml-auto min-w-6 rounded-pill px-1.5 text-center text-caption leading-6 tabular-nums ${
+          atualSecao ? "bg-surface-100 text-ink lg:bg-ink lg:text-surface-100" : "bg-ink text-surface-100"
+        }`}
+      >
+        {n > 99 ? "99+" : n}
+        <span className="sr-only"> novos</span>
+      </span>
+    );
+  }
 
   return (
     <nav aria-label="Seções do painel" className="flex flex-col gap-3 lg:gap-5">
@@ -226,38 +269,58 @@ export function MenuPainel({
         )}
       </div>
 
-      <ul className="sem-barra -mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
-        {secoes.map((s) => {
-          const Icone = ICONES[s.icone];
-          const n = s.contador ? contadores[s.contador] : 0;
-          const atualSecao = ativa === s.href;
-          return (
-            <li key={s.href} className="shrink-0">
-              <Link
-                href={s.href}
-                aria-current={atualSecao ? "page" : undefined}
-                className={`relative flex min-h-11 items-center gap-2.5 rounded-pill px-3.5 text-label whitespace-nowrap transition-colors lg:rounded-md lg:px-3 ${
-                  atualSecao
-                    ? "bg-ink text-surface-100 lg:bg-surface-300 lg:text-ink"
-                    : "border border-line-strong text-ink hover:bg-surface-300 lg:border-transparent"
-                }`}
-              >
-                <Icone aria-hidden className="size-5 shrink-0" />
-                <span className="lg:flex-1">{s.nome}</span>
-                {n > 0 && (
-                  <span
-                    className={`min-w-6 rounded-pill px-1.5 text-center text-caption leading-6 tabular-nums ${
-                      atualSecao ? "bg-surface-100 text-ink lg:bg-ink lg:text-surface-100" : "bg-ink text-surface-100"
-                    }`}
-                  >
-                    {n > 99 ? "99+" : n}
-                    <span className="sr-only"> novos</span>
-                  </span>
-                )}
-              </Link>
-            </li>
-          );
-        })}
+      <ul className="sem-barra -mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-4 lg:overflow-visible lg:px-0">
+        {grupos.map((g) => (
+          <li key={g.nome ?? "inicio"} className="contents lg:block">
+            {g.nome && <p className="hidden px-3 pb-1.5 text-body-sm font-semibold text-ink-muted lg:block">{g.nome}</p>}
+            <ul
+              className={`contents lg:relative lg:flex lg:flex-col lg:gap-0.5 ${
+                // o traço que liga os passos do caminho
+                g.caminho
+                  ? "lg:before:absolute lg:before:top-5 lg:before:bottom-5 lg:before:left-[22px] lg:before:w-px lg:before:bg-line"
+                  : ""
+              }`}
+            >
+              {g.secoes.map((s) => {
+                const Icone = ICONES[s.icone];
+                const atualSecao = ativa === s.href;
+                return (
+                  <li key={s.href} className="relative shrink-0">
+                    <Link
+                      href={s.href}
+                      aria-current={atualSecao ? "page" : undefined}
+                      className={`relative flex min-h-11 items-center gap-2.5 rounded-pill px-3.5 text-label whitespace-nowrap transition-colors lg:min-h-10 lg:rounded-md lg:px-3 ${
+                        atualSecao
+                          ? "bg-ink text-surface-100 lg:bg-surface-300 lg:text-ink"
+                          : "border border-line-strong text-ink hover:bg-surface-300 lg:border-transparent"
+                      }`}
+                    >
+                      {s.passo ? (
+                        <span
+                          aria-hidden
+                          className={`grid size-[22px] shrink-0 place-items-center rounded-pill text-[12px] font-bold tabular-nums lg:relative ${
+                            atualSecao
+                              ? "bg-surface-100 text-ink lg:bg-ink lg:text-surface-100"
+                              : "border-[1.5px] border-line-strong bg-surface-100 text-ink-muted"
+                          }`}
+                        >
+                          {s.passo}
+                        </span>
+                      ) : (
+                        <Icone aria-hidden className="size-5 shrink-0" />
+                      )}
+                      <span className={s.passo ? "" : "lg:flex-1"}>
+                        {s.passo && <span className="sr-only">Passo {s.passo}: </span>}
+                        {s.nome}
+                      </span>
+                      {numero(s, atualSecao)}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
         {/* no celular, o resto do painel vem na mesma linha, mais discreto */}
         {outras.map((o) => (
           <li key={o.href} className="shrink-0 lg:hidden">
@@ -275,7 +338,7 @@ export function MenuPainel({
       </ul>
 
       <div className="hidden flex-col gap-1 border-t border-line pt-3 lg:flex">
-        <p className="px-3 text-caption text-ink-muted uppercase">Mais</p>
+        <p className="px-3 text-body-sm font-semibold text-ink-muted">Mais</p>
         <ul className="flex flex-col">
           {outras.map((o) => (
             <li key={o.href}>

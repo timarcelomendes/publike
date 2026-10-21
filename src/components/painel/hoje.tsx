@@ -29,10 +29,16 @@ export function Saudacao({
   agora,
   pendencias,
   acao,
+  resumo,
+  boasVindas = false,
 }: {
   nome: string | null;
   agora: number;
   pendencias: number;
+  /** uma frase do que está acontecendo, embaixo da data ("3 vagas no ar para 2 clientes.") */
+  resumo?: string;
+  /** conta nova: "Boas-vindas" no lugar do bom dia */
+  boasVindas?: boolean;
   /** o botão principal do modo (Publicar vaga, por exemplo) */
   acao?: ReactNode;
 }) {
@@ -41,7 +47,7 @@ export function Saudacao({
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         <h2 className="text-h2 sm:text-h1">
-          {cumprimento(agora)}
+          {boasVindas ? "Boas-vindas" : cumprimento(agora)}
           {primeiro ? `, ${primeiro}` : ""}
         </h2>
         <p className="mt-1 text-body text-ink-muted">
@@ -52,6 +58,7 @@ export function Saudacao({
               ? "1 coisa pede você"
               : `${pendencias} coisas pedem você`}
         </p>
+        {resumo && <p className="mt-0.5 text-body text-ink">{resumo}</p>}
       </div>
       {acao}
     </header>
@@ -88,7 +95,18 @@ const TONS = {
  * "Para fazer agora": os três mais urgentes em cartões, com a ação no próprio cartão;
  * o resto numa lista embaixo. Sem nada: uma linha de tudo em dia.
  */
-export function ParaFazerAgora({ itens, vazio }: { itens: Cartao[]; vazio: string }) {
+export function ParaFazerAgora({
+  itens,
+  vazio,
+  lista = false,
+  titulo = "Para fazer agora",
+}: {
+  itens: Cartao[];
+  vazio: string;
+  titulo?: string;
+  /** tudo numa lista, uma linha por tarefa com o botão à direita (a Hoje de quem contrata) */
+  lista?: boolean;
+}) {
   if (itens.length === 0) {
     return (
       <p className="flex items-center gap-2 rounded-md bg-surface-300 px-4 py-3 text-body-sm text-ink">
@@ -97,6 +115,7 @@ export function ParaFazerAgora({ itens, vazio }: { itens: Cartao[]; vazio: strin
       </p>
     );
   }
+  if (lista) return <ListaParaFazer itens={itens} titulo={titulo} />;
   const cartoes = itens.slice(0, 3);
   const resto = itens.slice(3);
   return (
@@ -144,6 +163,51 @@ export function ParaFazerAgora({ itens, vazio }: { itens: Cartao[]; vazio: strin
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+function ListaParaFazer({ itens, titulo: nome }: { itens: Cartao[]; titulo: string }) {
+  return (
+    <section aria-labelledby="para-fazer" className="flex flex-col gap-3">
+      <h2 id="para-fazer" className="text-h3">
+        {nome}
+      </h2>
+      <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200 shadow-card">
+        {itens.map(({ icone: Icone, quando, titulo, texto, href, acao, tom = "normal" }) => (
+          <li key={titulo} className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3.5 sm:flex-nowrap sm:px-5">
+            <span
+              aria-hidden
+              className={`grid size-10 shrink-0 place-items-center rounded-pill ${
+                tom === "urgente"
+                  ? "bg-terra-soft text-terra-text"
+                  : tom === "bom"
+                    ? "bg-cerrado text-on-cerrado"
+                    : "bg-surface-300 text-ink"
+              }`}
+            >
+              <Icone className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1 basis-48">
+              {quando && (
+                <span className={`block text-caption ${tom === "urgente" ? "text-terra-text" : "text-ink-muted"}`}>
+                  {quando}
+                </span>
+              )}
+              <h3 className="text-label">{titulo}</h3>
+              {texto && <p className="text-body-sm text-ink-muted">{texto}</p>}
+            </span>
+            <Link
+              href={href}
+              className={`ml-[54px] inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md px-3.5 text-label transition-opacity hover:opacity-90 sm:ml-0 ${
+                tom === "urgente" ? "bg-ink text-surface-100" : "border border-line-strong text-ink"
+              }`}
+            >
+              {acao}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

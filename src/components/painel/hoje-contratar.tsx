@@ -27,7 +27,7 @@ export async function HojeContratar({
   const [anuncios, candidatos, clientes, fotoDaVaga] = await Promise.all([
     talvez(listarMeusAnuncios(), "os anúncios"),
     listarMeusCandidatos(),
-    // agência: quantos clientes (o atalho "Seus clientes")
+    // agência: quantos clientes
     perfil.tipo === "agencia" ? listarMeusClientes().then((l) => l?.filter((c) => !c.arquivado_em).length ?? 0) : null,
     ajudaDaIADisponivel(),
   ]);
@@ -44,6 +44,7 @@ export async function HojeContratar({
       extras={[...cartoesDeConexao(conexoes), ...cartoesDeMensagens(conversas, conversaDoModo.contratar)]}
       conversas={conversas}
       fotoDaVaga={fotoDaVaga}
+      perfilPronto={perfil.tipo === "agencia" ? Boolean(perfil.cnpj) : Boolean(perfil.foto || perfil.sobre)}
     />
   );
 }

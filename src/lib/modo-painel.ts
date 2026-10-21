@@ -28,8 +28,18 @@ export function modoPadrao(tipoConta: string | null | undefined, intencao: Inten
   return "trabalhar";
 }
 
-/** Contadores que aparecem nas seções do menu. */
-export type Contadores = { responder: number; pedidos: number; mensagens: number; conexoes: number };
+/** Contadores que aparecem nas seções do menu (os do caminho da vaga só no modo Contratar). */
+export type Contadores = {
+  responder: number;
+  pedidos: number;
+  mensagens: number;
+  conexoes: number;
+  clientes?: number;
+  vagasNoAr?: number;
+  prontos?: number;
+  entrevistas?: number;
+  contratados?: number;
+};
 
 export type Secao = {
   href: string;
@@ -49,9 +59,22 @@ export type Secao = {
     | "avaliacoes"
     | "clientes"
     | "equipe"
-    | "conexoes";
+    | "conexoes"
+    | "finalistas"
+    | "contratados"
+    | "links"
+    | "entrevistas";
   contador?: keyof Contadores;
+  /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
+  jeito?: "pilula" | "pronto" | "texto";
+  /** o número do passo no caminho da vaga */
+  passo?: number;
+  /** o texto ao lado do número ("no ar") */
+  sufixo?: string;
 };
+
+/** Um grupo de seções no menu (sem nome: o primeiro, com Hoje). `caminho`: os passos numerados. */
+export type GrupoMenu = { nome: string | null; caminho?: boolean; secoes: Secao[] };
 
 export const SECOES: Record<ModoPainel, Secao[]> = {
   contratar: [
@@ -91,6 +114,48 @@ export function secoesDoModo(modo: ModoPainel, tipoConta: string | null | undefi
   return [...secoes.slice(0, depoisDe), CLIENTES, ...secoes.slice(depoisDe), EQUIPE];
 }
 
+/**
+ * Os grupos do menu. Em Contratar, o caminho da vaga, sempre na mesma ordem: a agência tem
+ * Clientes e Para o cliente; comércio e empresa, Entrevistas. Os outros modos, um grupo só.
+ */
+export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefined): GrupoMenu[] {
+  if (modo !== "contratar") return [{ nome: null, secoes: SECOES[modo] }];
+  const agencia = tipoConta === "agencia";
+  const caminho: Omit<Secao, "passo">[] = agencia
+    ? [
+        { href: "/painel/clientes", nome: "Clientes", icone: "clientes", contador: "clientes", jeito: "texto" },
+        { href: "/painel/anuncios?tipo=vaga", nome: "Vagas", icone: "vagas", contador: "vagasNoAr", jeito: "texto", sufixo: "no ar" },
+        { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder", jeito: "pilula" },
+        { href: "/painel/finalistas", nome: "Para o cliente", icone: "finalistas", contador: "prontos", jeito: "pronto" },
+        { href: "/painel/contratados", nome: "Contratados", icone: "contratados", contador: "contratados", jeito: "texto" },
+      ]
+    : [
+        { href: "/painel/anuncios?tipo=vaga", nome: "Vagas", icone: "vagas", contador: "vagasNoAr", jeito: "texto", sufixo: "no ar" },
+        { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder", jeito: "pilula" },
+        { href: "/painel/caixa?aba=entrevistas", nome: "Entrevistas", icone: "entrevistas", contador: "entrevistas", jeito: "texto" },
+        { href: "/painel/contratados", nome: "Contratados", icone: "contratados", contador: "contratados", jeito: "texto" },
+      ];
+  return [
+    { nome: null, secoes: [{ href: "/painel", nome: "Hoje", icone: "hoje" }] },
+    { nome: "O caminho da vaga", caminho: true, secoes: caminho.map((s, n) => ({ ...s, passo: n + 1 })) },
+    {
+      nome: "Achar gente",
+      secoes: [
+        { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
+        { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes", jeito: "pilula" },
+        { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens", jeito: "pilula" },
+      ],
+    },
+    {
+      nome: agencia ? "Agência" : "Sua empresa",
+      secoes: [
+        { href: "/painel/links", nome: "Links para divulgar", icone: "links" },
+        ...(agencia ? [EQUIPE] : []),
+      ],
+    },
+  ];
+}
+
 /** O resto do painel, no fim do menu (o que não é do modo aberto). */
 export const OUTRAS: Record<ModoPainel, { href: string; nome: string }[]> = {
   contratar: [
@@ -122,7 +187,10 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/caixa") ||
     caminho.startsWith("/painel/talentos") ||
     caminho.startsWith("/painel/clientes") ||
-    caminho.startsWith("/painel/equipe")
+    caminho.startsWith("/painel/equipe") ||
+    caminho.startsWith("/painel/finalistas") ||
+    caminho.startsWith("/painel/contratados") ||
+    caminho.startsWith("/painel/links")
   )
     return "contratar";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "servicos";
@@ -139,9 +207,15 @@ export function secaoAtiva(
   caminho: string,
   tipo: string | null,
   tipoConta: string | null = null,
+  aba: string | null = null,
 ): string | null {
   if (caminho === "/painel" || caminho === "/painel/") return "/painel";
-  const secoes = [...secoesDoModo(modo, tipoConta), ...OUTRAS[modo]];
+  const secoes = [...gruposDoModo(modo, tipoConta).flatMap((g) => g.secoes), ...OUTRAS[modo]];
+  // a caixa na aba de entrevistas é o passo Entrevistas (comércio e empresa)
+  if (caminho.startsWith("/painel/caixa") && aba === "entrevistas") {
+    const entrevistas = secoes.find((s) => s.href === "/painel/caixa?aba=entrevistas");
+    if (entrevistas) return entrevistas.href;
+  }
   // a página de um anúncio (quem curtiu, quadro, editar) fica na lista de anúncios do modo
   if (caminho.startsWith("/painel/anuncio/")) {
     return SECOES[modo].find((s) => s.href.startsWith("/painel/anuncios"))?.href ?? null;
