@@ -13,6 +13,7 @@ import { SoOlharDaConta } from "@/components/so-olhar-da-conta";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
+import { SCRIPT_TOQUE_CEDO } from "@/lib/toque-cedo";
 import "./globals.css";
 
 // Fontes da interface (Design System), servidas pelo próprio site.
@@ -71,6 +72,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
         {/* guarda o "pode instalar" do navegador, que chega antes do React (instalar-app.tsx) */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_PEDIDO }} />
+        {/* o toque num botão antes de a página ficar pronta não se perde (lib/toque-cedo.ts) */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TOQUE_CEDO }} />
       </head>
       <body className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <a

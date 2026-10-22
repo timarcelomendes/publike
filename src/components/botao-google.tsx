@@ -128,6 +128,8 @@ export function BotaoGoogle({
       )}
       <div
         ref={caixa}
+        // o botão é desenhado pelo script do Google (fora do React): o "toque antes da hora" não mexe nele
+        data-sem-react=""
         aria-busy={!google}
         // O quadro do Google é sempre "claro" por dentro. Sem isto, no tema escuro o
         // navegador pinta um retângulo branco em volta do botão.

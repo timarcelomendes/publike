@@ -460,3 +460,9 @@ html[data-so-olhar]
   ) {
   cursor: not-allowed;
 }
+
+/* o toque guardado antes de a página ficar pronta (lib/toque-cedo.ts): o botão mostra que está esperando */
+[data-esperando] {
+  cursor: progress;
+  opacity: 0.6;
+}

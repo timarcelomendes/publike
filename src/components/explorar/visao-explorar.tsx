@@ -2,10 +2,10 @@
 
 import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/filtros";
-import { CHAVE_VISAO_BUSCA, VISOES_CELULAR, type Visao } from "@/lib/visao";
+import { CHAVE_VISAO, CHAVE_VISAO_BUSCA, VISOES_CELULAR, type Visao } from "@/lib/visao";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 import { AreaDoMapa, type Limites } from "./area-do-mapa";
 
@@ -61,7 +61,7 @@ function useColunaDoMapa() {
   );
 }
 
-const CHAVE = "publike_visao";
+const CHAVE = CHAVE_VISAO;
 const EVENTO = "publike-visao";
 
 function lerGuardada(chave: string): Visao | null {
@@ -79,10 +79,19 @@ function guardar(v: Visao, chave: string) {
   } catch {
     // sem armazenamento (aba anônima): vale só até recarregar
   }
-  // a da busca vai também num cookie: a próxima busca já vem do servidor no jeito escolhido
-  if (chave === CHAVE_VISAO_BUSCA)
-    document.cookie = `${chave}=${v}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  guardarNoCookie(v, chave);
   window.dispatchEvent(new CustomEvent(EVENTO, { detail: { v, chave } }));
+}
+
+/** Também num cookie: a próxima página já vem do servidor no jeito escolhido (sem trocar depois de abrir). */
+function guardarNoCookie(v: Visao, chave: string) {
+  document.cookie = `${chave}=${v}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+}
+
+/** Quem escolheu antes do cookie existir: o que está guardado no navegador vai para o cookie uma vez. */
+function cookieEmDia(chave: string) {
+  const v = lerGuardada(chave);
+  if (v && !document.cookie.split("; ").includes(`${chave}=${v}`)) guardarNoCookie(v, chave);
 }
 
 const escolhidaAgora = new Map<string, Visao>();
@@ -93,6 +102,7 @@ const escolhidaAgora = new Map<string, Visao>();
  * `inicial`: a que o servidor já desenhou (a busca sabe a escolhida pelo cookie); sem ela, Blocos.
  */
 export function useVisao(padrao?: Visao, chave = CHAVE, inicial: Visao = "blocos"): Visao {
+  useEffect(() => cookieEmDia(chave), [chave]);
   return useSyncExternalStore(
     (avisar) => {
       const mq = window.matchMedia(TELA_GRANDE);
@@ -329,6 +339,9 @@ export function VisaoExplorar({
         {/* Blocos + mapa no computador: a coluna do mapa estica até a altura dos cartões, e o mapa
             ocupa essa altura (no máximo a da tela, preso no topo ao rolar). Assim a borda de baixo
             do mapa bate com a dos cartões quando a lista é curta. */}
+        {/* sem o mapa ao lado (Blocos, Grade, Mapa no meio), a coluna da direita fica com quem contrata perto,
+            como na linha do tempo */}
+        {!mapaFora && compacto && colunaFora && acimaDoMapa && createPortal(acimaDoMapa, colunaFora)}
         {mapaFora &&
           createPortal(
             <>

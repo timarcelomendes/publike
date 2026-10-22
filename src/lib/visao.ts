@@ -8,6 +8,9 @@ export const VALORES_VISAO: Visao[] = ["lista", "grade", "blocos", "mapa", "bloc
 /** No celular só há Blocos e Mapa (lista e grade apertam demais os cartões numa tela pequena). */
 export const VISOES_CELULAR: Visao[] = ["blocos", "mapa"];
 
+/** O jeito de ver das listas (a vitrine e as listas de quem entrou), no navegador e num cookie. */
+export const CHAVE_VISAO = "publike_visao";
+
 /**
  * O jeito de ver da busca por palavra de quem entrou (começa na Lista no computador). Fica no
  * navegador e num cookie com o mesmo nome: assim a página já vem do servidor no jeito certo, sem

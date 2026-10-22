@@ -18,7 +18,7 @@ import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
-import { visaoInicialDaBusca } from "@/lib/servidor/visao";
+import { visaoInicialDaBusca, visaoInicialDaLista } from "@/lib/servidor/visao";
 import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
 import {
   formatarDistancia,
@@ -175,8 +175,8 @@ export async function Explorar({
   ]);
   const filtrosDaBusca = aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao));
   const filtros = partirDoLocal(filtrosDaBusca, local);
-  // a busca por palavra de quem entrou já vem no jeito de ver escolhido (sem trocar depois de abrir)
-  const visaoDaBusca = feed && filtros.q.trim() ? await visaoInicialDaBusca() : undefined;
+  // o jeito de ver já vem do servidor (o escolhido, pelo cookie, ou o padrão): a lista não troca depois de abrir
+  const visaoDaLista = feed && filtros.q.trim() ? await visaoInicialDaBusca() : await visaoInicialDaLista(feed);
   // busca por palavra ("mecânico"): a página vira a dos resultados (o título diz o que foi buscado,
   // em cima ficam Tudo, Vagas e Serviços, e o que tem a palavra no título vem primeiro)
   const termo = filtros.q.trim();
@@ -542,7 +542,6 @@ export async function Explorar({
                 )}
               </p>
             ) : null}
-            {feed && usuario && !filtros.meus && !busca && <PadraoDaHome filtros={filtros} intencao={intencao} />}
             {feed ? null : (
               <p className="text-body-sm text-ink-muted">
                 {quantos && <>{quantos} · </>}
@@ -610,7 +609,7 @@ export async function Explorar({
         ordem={feed ? null : <OrdemDaLista filtros={filtros} combina={Boolean(quem)} />}
         padrao={feed ? (busca ? "lista" : "blocos") : undefined}
         busca={feed && busca}
-        inicial={visaoDaBusca}
+        inicial={visaoDaLista}
         compacto={feed}
         ordemFora={ordemFora}
         acimaDoMapa={acimaDoMapa}
@@ -800,39 +799,5 @@ function ConviteQuemContrata() {
         Publicar vaga grátis
       </BotaoLink>
     </aside>
-  );
-}
-
-const NOMES_TIPO = { vaga: "as vagas", servico: "os serviços", tudo: "vagas e serviços" } as const;
-const ABRE_EM = { vaga: "nas vagas", servico: "nos serviços", tudo: "em vagas e serviços" } as const;
-
-/**
- * No feed: de onde a home abre (pelo que a pessoa disse que procura) e o caminho para o outro
- * lado. Deixa claro que dá para ver serviços (ou vagas), mas a home volta sempre para o dela.
- */
-function PadraoDaHome({ filtros, intencao }: { filtros: Filtros; intencao: Intencao | null }) {
-  const padrao = tipoDaIntencao(intencao);
-  const aqui = filtros.tipo ?? "tudo";
-  const base = padrao ?? "tudo";
-  const outro = base === "servico" ? "vaga" : "servico";
-  const link = "font-semibold text-ink underline underline-offset-2 hover:text-terra-text";
-  return (
-    <p className="basis-full text-body-sm text-ink-muted">
-      {aqui === base ? (
-        <>
-          {`Sua home abre ${ABRE_EM[base]}.`}{" "}
-          <Link href={hrefFiltros(filtros, { tipo: outro, tudo: false })} scroll={false} className={link}>
-            Ver {NOMES_TIPO[outro]}
-          </Link>
-        </>
-      ) : (
-        <>
-          Você está vendo {NOMES_TIPO[aqui as keyof typeof NOMES_TIPO]}.{" "}
-          <Link href={hrefFiltros(filtros, { tipo: padrao, tudo: padrao === null })} scroll={false} className={link}>
-            Voltar para {NOMES_TIPO[base]}
-          </Link>
-        </>
-      )}
-    </p>
   );
 }

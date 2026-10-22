@@ -1,4 +1,4 @@
-import { FileText, Inbox, Plus, Search, Store, type LucideIcon } from "lucide-react";
+import { ArrowLeft, FileText, Inbox, Plus, Search, Store, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { esperaResposta } from "@/lib/constantes";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
@@ -91,6 +91,22 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   // o recado e as abas da linha do tempo saem. Fica só o campo da busca no celular, já com a palavra.
   const q = primeiro(sp.q)?.trim().slice(0, 80);
   if (q) return <CampoDaBusca valor={q} className="mb-4 lg:hidden" />;
+  // as listas ("Para você", "Mais perto", "Novas"): a lista tem a barra dela (os atalhos e o Filtros);
+  // aqui, só a volta para a linha do tempo (e a busca, no celular)
+  if (primeiro(sp.ordem)) {
+    return (
+      <div className="mb-3 flex flex-col gap-3">
+        <CampoDaBusca className="lg:hidden" />
+        <Link
+          href="/"
+          className="inline-flex min-h-9 items-center gap-1.5 self-start text-label text-ink-muted transition-colors hover:text-ink"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          Linha do tempo
+        </Link>
+      </div>
+    );
+  }
   // "Informe seu CEP" (?casa=1): os filtros já abrem com o "Onde você mora?"
   const casa = primeiro(sp.casa) === "1";
   const [d, perfil, acao, usuario] = await Promise.all([
