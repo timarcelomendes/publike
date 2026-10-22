@@ -5,14 +5,23 @@ import { BotaoSeguir } from "@/components/social/botoes";
 import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { minhasBuscasSalvas } from "@/lib/dados";
-import { meusSeguidos } from "@/lib/dados-social";
+import { meusSeguidos, type Seguido } from "@/lib/dados-social";
 
 /**
  * O que a conta segue (comércios, empresas e bairros) e as buscas que avisam: a página Seguindo do
  * painel e a aba Seguindo das Conexões. `voltar`: para onde volta depois de entrar (o Seguir de novo).
+ * `seguidos` e `buscas`: já filtrados (a busca e os filtros da aba); sem eles, mostra tudo.
  */
-export async function ListaSeguindo({ voltar }: { voltar: string }) {
-  const [lista, buscas] = await Promise.all([meusSeguidos(), minhasBuscasSalvas()]);
+export async function ListaSeguindo({
+  voltar,
+  seguidos,
+  buscas: filtradas,
+}: {
+  voltar: string;
+  seguidos?: Seguido[];
+  buscas?: Awaited<ReturnType<typeof minhasBuscasSalvas>>;
+}) {
+  const [lista, buscas] = await Promise.all([seguidos ?? meusSeguidos(), filtradas ?? minhasBuscasSalvas()]);
 
   if (lista.length === 0 && buscas.length === 0) {
     return (
