@@ -97,6 +97,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Não. No painel, toque em “Publicar pela foto” (ou, em Publicar, em “Escolher a imagem”) e mande a foto do anúncio: a arte que você postou no Instagram, o cartaz ou um print do WhatsApp. O Publike lê a imagem e preenche o título, o valor, o tipo de contratação, os benefícios e a descrição. Confira cada campo, ajuste o endereço e publique.",
       },
       {
+        p: "Como vejo as minhas vagas do jeito que quem procura trabalho vê?",
+        r: "No painel, toque em Trocar (no alto do menu) e em “Ver como pessoa”. A home vira a de quem procura trabalho, com as vagas, os serviços e os recados perto, e as suas vagas aparecem como as pessoas veem. É só olhar: curtir, salvar, conectar e escrever ficam desligados. Para voltar, toque em “Voltar para…” na faixa do alto (ou abra o painel).",
+      },
+      {
         p: "Quem pode publicar vaga?",
         r: "Qualquer pessoa, comércio, empresa de qualquer tamanho (do MEI à indústria) ou agência de emprego de Goiânia e região, com um WhatsApp no perfil.",
       },

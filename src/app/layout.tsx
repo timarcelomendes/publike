@@ -9,6 +9,7 @@ import { Cabecalho } from "@/components/cabecalho";
 import { ConviteInstalar } from "@/components/instalar-app";
 import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/navegacao";
 import { RodapeDaPagina } from "@/components/rodape-da-pagina";
+import { SoOlharDaConta } from "@/components/so-olhar-da-conta";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
@@ -79,6 +80,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Pular para o conteúdo
         </a>
         <Cabecalho />
+        {/* empresa, comércio ou agência vendo como pessoa: a faixa do "só olhar" (lê o cookie e a conta) */}
+        <Suspense fallback={null}>
+          <SoOlharDaConta />
+        </Suspense>
         {MODO_DEMO && <AvisoDemo />}
         <main id="conteudo" className="flex-1">
           {children}

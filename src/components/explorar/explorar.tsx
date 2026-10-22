@@ -17,6 +17,7 @@ import {
 import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { visaoInicialDaBusca } from "@/lib/servidor/visao";
 import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
 import {
@@ -165,11 +166,12 @@ export async function Explorar({
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
-  const [agora, local, usuario, intencao] = await Promise.all([
+  const [agora, local, usuario, intencao, soOlhar] = await Promise.all([
     agoraDaRequisicao(),
     obterLocal(),
     obterUsuario(),
     obterIntencao(),
+    soOlharComoPessoa(),
   ]);
   const filtrosDaBusca = aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao));
   const filtros = partirDoLocal(filtrosDaBusca, local);
@@ -334,14 +336,15 @@ export async function Explorar({
             <CardAnuncio
               anuncio={{ ...a, autor_foto: logos[a.autor_id] ?? null }}
               agora={agora}
-              usuarioId={usuario?.id ?? null}
+              // só olhando (empresa vendo como pessoa), nenhum cartão é "meu"
+              usuarioId={usuario ? (soOlhar ? "so-olhar" : usuario.id) : null}
               pertoDeCasa={local ? a.prioridade : null}
               tempoDe={tempoDe}
               match={matches.get(a.id) ?? null}
               resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
               extras={extrasDe(requisitos?.get(a.id))}
               salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}
-              minha={minhaPorId.get(a.id) ?? null}
+              minha={soOlhar ? null : (minhaPorId.get(a.id) ?? null)}
             />
           </Fragment>
         ))}

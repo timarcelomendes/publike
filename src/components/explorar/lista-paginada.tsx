@@ -86,7 +86,11 @@ export function ListaPaginada({
         </div>
       )}
       {paginas > 1 && (
-        <nav aria-label="Páginas da busca" className="flex flex-wrap items-center justify-center gap-2 pt-2">
+        <nav
+          aria-label="Páginas da busca"
+          data-pode-olhar
+          className="flex flex-wrap items-center justify-center gap-2 pt-2"
+        >
           <button
             type="button"
             onClick={() => ir(n - 1)}

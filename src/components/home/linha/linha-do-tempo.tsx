@@ -133,14 +133,27 @@ function Item({
   );
 }
 
+/** No "só olhar", ninguém é dono de nada na linha: os cartões ficam como os de quem procura trabalho. */
+const QUEM_SO_OLHA = "so-olhar";
+
 /**
  * A linha do tempo da home: vagas, serviços, recados e aceites, do mais novo para o mais antigo,
  * com os separadores de dia e a marca "Você parou aqui". No Tudo, depois de 2 recados seguidos, o
  * resto recolhe. `meio`: o que entra uma vez depois do 4º item, só no celular (quem está
  * contratando; no computador, fica em cima do mapa).
  */
-export async function LinhaDoTempo({ searchParams, meio = null }: { searchParams: Parametros; meio?: ReactNode }) {
-  const d = await dadosDaLinha(chaveDaLinha(await searchParams));
+export async function LinhaDoTempo({
+  searchParams,
+  meio = null,
+  soOlhar = false,
+}: {
+  searchParams: Parametros;
+  meio?: ReactNode;
+  /** empresa vendo como pessoa: as vagas da conta aparecem como as pessoas veem (com Curtir, que não age) */
+  soOlhar?: boolean;
+}) {
+  const daConta = await dadosDaLinha(chaveDaLinha(await searchParams));
+  const d = soOlhar && daConta.usuarioId ? { ...daConta, usuarioId: QUEM_SO_OLHA } : daConta;
   const logado = d.usuarioId !== null;
   const autores = [
     ...new Set(

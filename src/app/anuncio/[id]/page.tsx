@@ -95,6 +95,7 @@ import { chaveBairro } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
+import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 
 export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -230,12 +231,14 @@ async function DetalheAnuncio({
   if (!anuncio) notFound();
 
   const agora = await agoraDaRequisicao();
-  const proprio = usuario?.id === anuncio.autor_id;
+  const dono = usuario?.id === anuncio.autor_id;
+  // empresa vendo como pessoa ("só olhar"): a própria vaga aparece como as pessoas veem
+  const proprio = dono && !(await soOlharComoPessoa());
   const [contato, entrevista] =
     anuncio.minha_curtida === "match"
       ? await Promise.all([contatoDoMatch(anuncio.id), minhaEntrevista(anuncio.id)])
       : [null, null];
-  if (!proprio && anuncio.tipo === "vaga") await contarVisita(anuncio.id, (await headers()).get("user-agent"));
+  if (!dono && anuncio.tipo === "vaga") await contarVisita(anuncio.id, (await headers()).get("user-agent"));
   // match desfeito: dá para curtir de novo, a não ser que quem publicou tenha bloqueado
   const desfeito =
     anuncio.minha_curtida === "desfeito"

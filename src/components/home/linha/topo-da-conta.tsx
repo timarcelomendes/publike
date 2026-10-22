@@ -85,7 +85,7 @@ function CampoDaBusca({ valor = "", className }: { valor?: string; className?: s
  * tocar); as abas da linha do tempo e os filtros. No celular, sem o cartão, a foto (que troca ali
  * mesmo) vai ao lado da saudação.
  */
-export async function TopoDaConta({ searchParams }: { searchParams: Parametros }) {
+export async function TopoDaConta({ searchParams, soOlhar = false }: { searchParams: Parametros; soOlhar?: boolean }) {
   const sp = await searchParams;
   // busca por palavra ("mecânico"): a página vira a dos resultados, com o título na lista; a saudação,
   // o recado e as abas da linha do tempo saem. Fica só o campo da busca no celular, já com a palavra.
@@ -96,7 +96,8 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
   const [d, perfil, acao, usuario] = await Promise.all([
     dadosDaLinha(chaveDaLinha(sp)),
     obterMeuPerfil(),
-    proximaAcao(),
+    // só olhando (empresa vendo como pessoa), nada a fazer pela conta
+    soOlhar ? Promise.resolve(null) : proximaAcao(),
     obterUsuario(),
   ]);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
@@ -119,28 +120,39 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
     <>
       <section aria-label="Sua conta" className="flex flex-col gap-3.5 sm:gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            {usuario && (
-              <span className="shrink-0 lg:hidden">
-                <FotoDaConta
-                  nome={perfil?.nome ?? "?"}
-                  foto={perfil?.foto ?? null}
-                  empresa={empresa}
-                  pessoaId={usuario.pessoaId}
-                  podeTrocar={usuario.id === usuario.pessoaId}
-                  tamanho={44}
-                  className="shrink-0"
-                />
-              </span>
-            )}
-            <p className="min-w-0 text-body-sm text-ink-muted sm:text-body">
-              <span className="font-display text-[18px] leading-6 font-bold text-ink sm:text-[20px]">
-                {saudacao(d.agora)}
-                {nome ? `, ${nome}` : ""}.
-              </span>{" "}
-              {frase}
-            </p>
-          </div>
+          {soOlhar ? (
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <h2 className="font-display text-[18px] leading-6 font-bold text-ink sm:text-[20px]">
+                Como quem procura trabalho vê o Publike
+              </h2>
+              <p className="text-body-sm text-ink-muted sm:text-body">
+                As vagas, os serviços e os recados de quem está perto. Só olhar.
+              </p>
+            </div>
+          ) : (
+            <div className="flex min-w-0 items-center gap-3">
+              {usuario && (
+                <span className="shrink-0 lg:hidden">
+                  <FotoDaConta
+                    nome={perfil?.nome ?? "?"}
+                    foto={perfil?.foto ?? null}
+                    empresa={empresa}
+                    pessoaId={usuario.pessoaId}
+                    podeTrocar={usuario.id === usuario.pessoaId}
+                    tamanho={44}
+                    className="shrink-0"
+                  />
+                </span>
+              )}
+              <p className="min-w-0 text-body-sm text-ink-muted sm:text-body">
+                <span className="font-display text-[18px] leading-6 font-bold text-ink sm:text-[20px]">
+                  {saudacao(d.agora)}
+                  {nome ? `, ${nome}` : ""}.
+                </span>{" "}
+                {frase}
+              </p>
+            </div>
+          )}
           {acao && Icone && (
             <Link
               href={acao.href}
@@ -155,7 +167,7 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
         </div>
         {/* no celular e no tablet, a busca (no computador, ela fica no cabeçalho) */}
         <CampoDaBusca className="lg:hidden" />
-        {usuario && (
+        {usuario && !soOlhar && (
           <EscreverRecado
             pessoaId={usuario.pessoaId}
             autorTipo={d.autorTipo}

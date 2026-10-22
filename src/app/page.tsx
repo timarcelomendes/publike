@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye } from "lucide-react";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
@@ -29,6 +29,7 @@ import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { obterLocal } from "@/lib/local";
 import { modoDaConta } from "@/lib/servidor/modo";
+import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 // Quem é o Publike, para o Google (nome do site e da organização nos resultados).
@@ -130,7 +131,9 @@ async function SecoesDaVitrine({ searchParams }: { searchParams: Parametros }) {
 
 /** Quem entrou: a home da conta, no modo do painel. */
 async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
-  const [modo, sp] = await Promise.all([modoDaConta(), searchParams]);
+  const [modo, sp, soOlhar] = await Promise.all([modoDaConta(), searchParams, soOlharComoPessoa()]);
+  // empresa, comércio ou agência vendo como pessoa ("só olhar", no Trocar do painel): a linha de quem procura trabalho
+  if (soOlhar) return <LinhaDaConta searchParams={searchParams} soOlhar />;
   // quem contrata abre direto no trabalho com os candidatos; com uma busca no endereço, a lista
   const comBusca = Object.keys(sp).some((k) => BUSCA.includes(k));
   if (modo === "contratar") return comBusca ? <BuscaDaEmpresa searchParams={searchParams} /> : <HomeEmpresa />;
@@ -143,7 +146,7 @@ async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
  * topo (a saudação, o recado e as abas) e a linha; à direita, quem está contratando e o mapa.
  * No celular, uma coluna só.
  */
-function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
+function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Parametros; soOlhar?: boolean }) {
   const contratando = (
     <Suspense fallback={null}>
       <ContratandoAcimaDoMapa />
@@ -153,20 +156,26 @@ function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
     <Container className="pt-4 pb-4 sm:pt-6">
       <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px]">
         <aside className="hidden flex-col gap-4 lg:flex">
-          <Suspense fallback={<Esqueleto className="h-72 rounded-lg" />}>
-            <CartaoDaConta jeito="linha" />
-          </Suspense>
-          {/* quem entrou no Publike nos últimos 30 dias, do mais perto para o mais longe */}
-          <Suspense fallback={null}>
-            <NovosPerto />
-          </Suspense>
+          {soOlhar ? (
+            <CartaoSoOlhar />
+          ) : (
+            <>
+              <Suspense fallback={<Esqueleto className="h-72 rounded-lg" />}>
+                <CartaoDaConta jeito="linha" />
+              </Suspense>
+              {/* quem entrou no Publike nos últimos 30 dias, do mais perto para o mais longe */}
+              <Suspense fallback={null}>
+                <NovosPerto />
+              </Suspense>
+            </>
+          )}
         </aside>
         <div className="min-w-0">
           <Suspense fallback={<Esqueleto className="mb-6 h-40 rounded-lg" />}>
-            <TopoDaConta searchParams={searchParams} />
+            <TopoDaConta searchParams={searchParams} soOlhar={soOlhar} />
           </Suspense>
           <Suspense fallback={<EsqueletoCards quantos={3} />}>
-            <CentroDaLinha searchParams={searchParams} contratando={contratando} />
+            <CentroDaLinha searchParams={searchParams} contratando={contratando} soOlhar={soOlhar} />
           </Suspense>
         </div>
         <Suspense fallback={null}>
@@ -184,7 +193,15 @@ function LinhaDaConta({ searchParams }: { searchParams: Parametros }) {
  * No meio, embaixo do topo: a linha do tempo; com uma busca por palavra ou uma ordem escolhida
  * ("Combina mais", "Mais perto"), a lista de resultados de sempre.
  */
-async function CentroDaLinha({ searchParams, contratando }: { searchParams: Parametros; contratando: ReactNode }) {
+async function CentroDaLinha({
+  searchParams,
+  contratando,
+  soOlhar = false,
+}: {
+  searchParams: Parametros;
+  contratando: ReactNode;
+  soOlhar?: boolean;
+}) {
   const sp = await searchParams;
   if (primeiro(sp.q) || primeiro(sp.ordem)) {
     return (
@@ -193,7 +210,23 @@ async function CentroDaLinha({ searchParams, contratando }: { searchParams: Para
       </Suspense>
     );
   }
-  return <LinhaDoTempo searchParams={searchParams} meio={contratando} />;
+  return <LinhaDoTempo searchParams={searchParams} meio={contratando} soOlhar={soOlhar} />;
+}
+
+/** "Só olhar", à esquerda no lugar do cartão da conta: o que é esta página e como as vagas da conta aparecem. */
+function CartaoSoOlhar() {
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
+      <span className="flex size-11 items-center justify-center rounded-pill bg-surface-300 text-ink">
+        <Eye aria-hidden className="size-5" />
+      </span>
+      <h2 className="text-label">Vendo como pessoa</h2>
+      <p className="text-body-sm text-ink-muted">
+        Esta é a linha de quem procura trabalho por aqui: as vagas, os serviços e os recados. Abra uma vaga sua para ver
+        como as pessoas a veem.
+      </p>
+    </section>
+  );
 }
 
 /** À direita (computador grande): quem está contratando e o mapa (o da busca ou o da linha). */

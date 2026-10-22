@@ -444,3 +444,19 @@
     --canto: 14px;
   }
 }
+
+/* "Ver como pessoa · só olhar" (faixa-so-olhar.tsx): nas páginas de pessoa, o que age fica com o
+   cursor de proibido; abrir, fechar, escolher e andar pela lista continuam valendo */
+html[data-so-olhar]
+  #conteudo
+  :is(button, [role="button"], input[type="submit"]):not(
+    [aria-expanded],
+    [aria-haspopup],
+    [aria-controls],
+    [role="radio"],
+    [role="tab"],
+    [role="option"],
+    [data-pode-olhar] *
+  ) {
+  cursor: not-allowed;
+}

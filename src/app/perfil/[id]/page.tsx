@@ -30,6 +30,7 @@ import { modosMarcados } from "@/lib/servidor/modo";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TipoConta } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
+import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 
 export async function generateMetadata({ params }: PageProps<"/perfil/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -63,7 +64,8 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
   if (!dados) notFound();
   const { perfil, anuncios } = dados;
   const agora = await agoraDaRequisicao();
-  const meu = usuario?.id === perfil.id;
+  // empresa vendo como pessoa ("só olhar"): o próprio perfil aparece como os outros veem
+  const meu = usuario?.id === perfil.id && !(await soOlharComoPessoa());
   const pessoa = perfil.tipo === "pessoa";
   // a própria pessoa: o que ela faz (o que marcou no perfil e o título do currículo)
   const [modos, curriculo] =

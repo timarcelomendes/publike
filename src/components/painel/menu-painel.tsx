@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  Eye,
   FileText,
   Handshake,
   Heart,
@@ -29,6 +30,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { trocarConta } from "@/lib/acoes/equipe";
 import { PAPEIS_EQUIPE, type ContaDisponivel, type PapelNaConta } from "@/lib/equipe";
+import { verComoPessoa } from "../faixa-so-olhar";
 import {
   COOKIE_MODO,
   gruposDoModo,
@@ -113,8 +115,10 @@ export function MenuPainel({
   const [trocando, iniciarTroca] = useTransition();
   // os modos para trocar: os da conta (e o da página aberta, se veio por um link de outro modo)
   const opcoes = MODOS.filter((m) => modos.includes(m.valor) || m.valor === modo);
-  // um modo só e uma conta só: o topo não abre nada (o "Mudar" leva ao perfil)
-  const semTroca = opcoes.length <= 1 && contas.length <= 1;
+  // empresa, comércio e agência: "Ver como pessoa · só olhar" (o Publike de quem procura trabalho, sem agir)
+  const comoPessoa = Boolean(tipoConta) && tipoConta !== "pessoa";
+  // um modo só, uma conta só e nada para ver como pessoa: o topo não abre nada (o "Mudar" leva ao perfil)
+  const semTroca = opcoes.length <= 1 && contas.length <= 1 && !comoPessoa;
   const [erroTroca, setErroTroca] = useState<string | null>(null);
 
   function agirComo(conta: ContaDisponivel) {
@@ -293,6 +297,24 @@ export function MenuPainel({
                 </li>
               ))}
             </ul>
+            {comoPessoa && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAberto(false);
+                  verComoPessoa();
+                }}
+                className="flex min-h-14 w-full items-center gap-3 border-t border-line px-4 py-2 text-left hover:bg-surface-300"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-label">Ver como pessoa</span>
+                  <span className="block text-body-sm text-ink-muted">
+                    Só olhar: o Publike de quem procura trabalho
+                  </span>
+                </span>
+                <Eye aria-hidden className="size-5 shrink-0 text-ink-muted" />
+              </button>
+            )}
             {(papel === "dono" || papel === "admin") && (
               <Link
                 href="/perfil#modos"

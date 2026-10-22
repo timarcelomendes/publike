@@ -20,6 +20,7 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
 import { errosPorCampo, lerPerfil } from "@/lib/validacao";
+import { COOKIE_SO_OLHAR } from "@/lib/so-olhar";
 
 export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -158,6 +159,7 @@ export async function sair() {
   const loja = await cookies();
   loja.delete(COOKIE_INTENCAO);
   loja.delete(COOKIE_LOCAL);
+  loja.delete(COOKIE_SO_OLHAR);
   revalidatePath("/", "layout");
   redirect("/");
 }
