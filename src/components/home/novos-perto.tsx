@@ -23,7 +23,8 @@ const DIAS = 30;
  * seção da home do visitante (o Conectar leva a entrar na conta).
  */
 type Jeito = "coluna" | "faixa" | "vitrine";
-const QUANTOS: Record<Jeito, number> = { coluna: 6, faixa: 10, vitrine: 10 };
+// a coluna fica presa ao rolar: 4 contas para caber na tela junto do cartão da conta
+const QUANTOS: Record<Jeito, number> = { coluna: 4, faixa: 10, vitrine: 10 };
 
 type Novo = {
   id: string;
@@ -146,10 +147,15 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
           </h2>
           {totalTexto && <p className="mt-0.5 text-[13px] leading-[18px] text-ink-muted">{totalTexto}</p>}
         </div>
-        <ul className="flex flex-col gap-3.5">
+        <ul className="flex flex-col gap-3">
           {novos.map((n) => (
-            <li key={n.id} className="flex flex-col gap-1.5">
-              <Link href={`/perfil/${n.id}`} className="flex min-w-0 items-center gap-2.5 hover:underline">
+            // uma linha por conta: a foto, o nome com quando chegou e o Conectar só com o ícone
+            <li key={n.id} className="flex items-center gap-2">
+              <Link
+                href={`/perfil/${n.id}`}
+                title={`Chegou ${tempoRelativo(n.criado_em, agora)}`}
+                className="flex min-w-0 flex-1 items-center gap-2.5 hover:underline"
+              >
                 <Avatar
                   nome={n.nome}
                   foto={n.foto}
@@ -163,21 +169,17 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
                     {n.verificado && <SeloVerificado agencia={n.tipo === "agencia"} />}
                   </span>
                   <span className="block truncate text-[13px] leading-[18px] text-ink-muted">
-                    {oQueE(n.tipo)} · {formatarLugar(n.bairro, n.cidade)}
-                  </span>
-                  <span className="block truncate text-[12px] leading-4 text-ink-muted">
-                    chegou {tempoRelativo(n.criado_em, agora)}
+                    {/* o tipo já aparece na forma da foto (pessoa redonda, empresa quadrada); quando chegou, na dica do link */}
+                    {formatarLugar(n.bairro, n.cidade)}
                   </span>
                 </span>
               </Link>
-              <div className="pl-[46px]">
-                <BotaoConectarCompacto
-                  outro={{ id: n.id, nome: n.nome, tipo: n.tipo }}
-                  estado={estados.get(n.id) ?? null}
-                  voltar="/"
-                  jeito="pilula"
-                />
-              </div>
+              <BotaoConectarCompacto
+                outro={{ id: n.id, nome: n.nome, tipo: n.tipo }}
+                estado={estados.get(n.id) ?? null}
+                voltar="/"
+                jeito="icone"
+              />
             </li>
           ))}
         </ul>
@@ -189,14 +191,17 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
   const cartoes = (
     <ul
       className={`sem-barra -mx-4 flex gap-3 overflow-x-auto px-4 pb-1 ${
-        vitrine ? "mt-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5" : "mt-3"
+        vitrine
+          ? "mt-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5"
+          : // no celular rola de lado; do tablet em diante, uma grade de até 5 (o resto fica para o celular)
+            "mt-3 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 md:grid-cols-4 lg:grid-cols-5 sm:[&>li:nth-child(n+6)]:hidden"
       }`}
     >
       {novos.map((n) => (
         <li
           key={n.id}
           className={`flex shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface-200 p-3.5 text-center shadow-card ${
-            vitrine ? "w-44 sm:w-auto" : "w-40"
+            vitrine ? "w-44 sm:w-auto" : "w-40 sm:w-auto"
           }`}
         >
           <Link

@@ -355,16 +355,21 @@ export function MenuPainel({
                       }`}
                     >
                       {s.passo ? (
-                        <span
-                          aria-hidden
-                          className={`grid size-[22px] shrink-0 place-items-center rounded-pill text-[12px] font-bold tabular-nums lg:relative ${
-                            atualSecao
-                              ? "bg-surface-100 text-ink lg:bg-ink lg:text-surface-100"
-                              : "border-[1.5px] border-line-strong bg-surface-100 text-ink-muted"
-                          }`}
-                        >
-                          {s.passo}
-                        </span>
+                        // o número do passo só no computador (o caminho em pé); na pílula do celular, o ícone,
+                        // para a pílula ter um número só (a contagem)
+                        <>
+                          <Icone aria-hidden className="size-5 shrink-0 lg:hidden" />
+                          <span
+                            aria-hidden
+                            className={`hidden size-[22px] shrink-0 place-items-center rounded-pill text-[12px] font-bold tabular-nums lg:relative lg:grid ${
+                              atualSecao
+                                ? "bg-surface-100 text-ink lg:bg-ink lg:text-surface-100"
+                                : "border-[1.5px] border-line-strong bg-surface-100 text-ink-muted"
+                            }`}
+                          >
+                            {s.passo}
+                          </span>
+                        </>
                       ) : (
                         <Icone aria-hidden className="size-5 shrink-0" />
                       )}

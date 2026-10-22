@@ -188,6 +188,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
           // no celular e no tablet, a busca e o "Recado" numa linha (no computador, a busca fica no cabeçalho)
           <BuscaERecado
             busca={<CampoDaBusca />}
+            mudados={mudados}
             recado={{
               pessoaId: usuario.pessoaId,
               autorTipo: d.autorTipo,
@@ -208,7 +209,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
             }}
           />
         ) : (
-          <CampoDaBusca className="lg:hidden" />
+          <BuscaERecado busca={<CampoDaBusca />} mudados={mudados} />
         )}
       </section>
       <div aria-hidden className="h-3 sm:h-4" />

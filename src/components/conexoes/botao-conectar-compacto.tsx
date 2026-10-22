@@ -13,6 +13,8 @@ import { caminhoConversa } from "@/lib/conversas";
 const JEITOS = {
   rodape: "min-h-9 px-3 text-label hover:bg-surface-100",
   pilula: "h-8 border border-line-strong px-3 text-body-sm font-semibold hover:bg-surface-300",
+  // só o ícone, numa linha com o nome (as listas dos lados da home)
+  icone: "size-8 justify-center border border-line-strong hover:bg-surface-300",
 };
 
 /**
@@ -39,13 +41,17 @@ export function BotaoConectarCompacto({
   // pessoa: o primeiro nome; empresa: o nome inteiro
   const nome = outro.tipo === "pessoa" ? outro.nome.split(" ")[0] : outro.nome;
   const base = `relative z-10 inline-flex shrink-0 items-center gap-1.5 rounded-pill whitespace-nowrap transition-colors disabled:opacity-60 ${JEITOS[jeito]}`;
-  const texto = jeito === "rodape" ? "max-[359px]:sr-only" : "";
+  // no rodapé do recado, no celular, fica só o ícone (Força, Indicar e o menu cabem na linha)
+  const texto = jeito === "rodape" ? "max-[419px]:sr-only" : jeito === "icone" ? "sr-only" : "";
   const icone = jeito === "rodape" ? "size-[18px]" : "size-4";
+  const dica = jeito === "icone" ? `Conectar com ${nome}` : undefined;
   // depois do pedido, na pílula: só o texto (é um estado, não uma ação)
   const estadoBase =
     jeito === "pilula"
       ? "relative z-10 inline-flex h-8 shrink-0 items-center gap-1.5 px-1 text-body-sm font-semibold whitespace-nowrap"
-      : base;
+      : jeito === "icone"
+        ? "relative z-10 inline-flex size-8 shrink-0 items-center justify-center rounded-pill"
+        : base;
 
   if (estado?.status === "recusada") return null;
 
@@ -89,6 +95,7 @@ export function BotaoConectarCompacto({
       <button
         type="button"
         disabled={pendente}
+        title={dica}
         onClick={() =>
           iniciar(async () => {
             setErro(null);

@@ -65,7 +65,8 @@ export async function CartaoDaConta({ jeito = "painel" }: { jeito?: "painel" | "
       aria-label="Sua conta"
       className="overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card"
     >
-      <div aria-hidden className="h-14 bg-ipe" />
+      {/* a capa calma: o ipê fica para os selos (um por tela) */}
+      <div aria-hidden className="h-12 bg-surface-300" />
       <div className="flex flex-col gap-3 px-4 pb-4">
         <FotoDaConta
           nome={perfil.nome}
@@ -284,7 +285,15 @@ async function QuemE({ uso }: { uso: string }) {
   return <>{curriculo?.titulo ? `${curriculo.titulo} · procura trabalho` : "Procura trabalho"}</>;
 }
 
-type LinkDoCartao = { nome: string; href: string; icone: LucideIcon; numero?: string | null; destaque?: boolean };
+type LinkDoCartao = {
+  nome: string;
+  href: string;
+  icone: LucideIcon;
+  numero?: string | null;
+  destaque?: boolean;
+  /** a ação no lugar do atalho (o currículo que ainda não existe) */
+  chamada?: boolean;
+};
 
 /**
  * Os atalhos do cartão na linha do tempo: quem procura vê o currículo (com a barra), as curtidas e
@@ -345,7 +354,10 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
     ]);
     barra = forcaDoCurriculo(curriculo).pontos;
     links = [
-      { nome: "Meu currículo", href: "/perfil/curriculo", icone: FileText, numero: `${barra}%` },
+      // sem currículo, a barra vazia não convida: no lugar dela, a ação
+      barra === 0
+        ? { nome: "Montar o currículo", href: "/perfil/curriculo", icone: FileText, numero: "5 min", chamada: true }
+        : { nome: "Meu currículo", href: "/perfil/curriculo", icone: FileText, numero: `${barra}%` },
       {
         nome: "Minhas curtidas",
         href: "/painel/curtidas",
@@ -357,27 +369,33 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
   }
   return (
     <nav aria-label="Atalhos da conta" className="flex flex-col border-t border-line pt-2">
-      {links.map(({ nome, href, icone: Icone, numero, destaque }, i) => (
+      {links.map(({ nome, href, icone: Icone, numero, destaque, chamada }, i) => (
         <div key={nome}>
           <Link
             href={href}
-            className="-mx-2 flex min-h-10 items-center gap-2.5 rounded-md px-2 text-label hover:bg-surface-300"
+            className={
+              chamada
+                ? "-mx-2 my-1 flex min-h-10 items-center gap-2.5 rounded-md bg-terra-soft px-2.5 text-label text-terra-text hover:underline"
+                : "-mx-2 flex min-h-10 items-center gap-2.5 rounded-md px-2 text-label hover:bg-surface-300"
+            }
           >
-            <Icone aria-hidden className="size-[18px] shrink-0 text-ink-muted" />
+            <Icone aria-hidden className={`size-[18px] shrink-0 ${chamada ? "" : "text-ink-muted"}`} />
             <span className="min-w-0 flex-1 truncate">{nome}</span>
             {numero && (
               <span
                 className={
                   destaque
                     ? "min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text"
-                    : "text-body-sm font-semibold text-ink-muted tabular-nums"
+                    : chamada
+                      ? "text-[12px] font-semibold"
+                      : "text-body-sm font-semibold text-ink-muted tabular-nums"
                 }
               >
                 {numero}
               </span>
             )}
           </Link>
-          {i === 0 && barra !== null && (
+          {i === 0 && barra !== null && !chamada && (
             <span aria-hidden className="mb-1.5 block h-1.5 overflow-hidden rounded-pill bg-surface-300">
               <span className="block h-full rounded-pill bg-cerrado" style={{ width: `${barra}%` }} />
             </span>

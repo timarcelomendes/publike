@@ -156,10 +156,12 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
       <ContratandoAcimaDoMapa />
     </Suspense>
   );
-  // no meio da linha (celular e tablet): quem está contratando e quem chegou perto
+  // no meio da linha (celular e tablet): quem está contratando e quem chegou perto, em faixas que rolam de lado
   const meio = (
     <div className="flex flex-col gap-6">
-      {contratando}
+      <Suspense fallback={null}>
+        <ContratandoAcimaDoMapa jeito="faixa" />
+      </Suspense>
       {!soOlhar && (
         <div className="lg:hidden">
           <Suspense fallback={null}>
@@ -170,9 +172,11 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
     </div>
   );
   return (
-    <Container className="pt-4 pb-4 sm:pt-6">
+    // no computador grande, até 1280 px: o meio fica com espaço para o tíquete inteiro
+    <Container data-pagina-larga="" className="pt-4 pb-4 sm:pt-6 xl:max-w-7xl">
       <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px]">
-        <aside className="hidden flex-col gap-4 lg:flex">
+        {/* as colunas dos lados ficam presas ao rolar (a grade é alta; a coluna, do tamanho dela) */}
+        <aside className="hidden flex-col gap-4 lg:sticky lg:top-[88px] lg:flex">
           {soOlhar ? (
             <CartaoSoOlhar />
           ) : (
@@ -255,7 +259,7 @@ async function LadoDaLinha({ searchParams, contratando }: { searchParams: Parame
     return <ColunaDoMapa className="hidden min-w-0 flex-col gap-4 self-stretch xl:flex" />;
   }
   return (
-    <aside aria-label="Perto de você" className="hidden min-w-0 xl:block">
+    <aside aria-label="Perto de você" className="hidden min-w-0 xl:sticky xl:top-[88px] xl:block">
       <Suspense fallback={<Esqueleto className="aspect-[4/5] rounded-lg" />}>
         <LateralDaLinha searchParams={searchParams} acima={contratando} />
       </Suspense>
@@ -365,9 +369,9 @@ async function HomeEmpresa() {
   );
 }
 
-/** Quem contrata perto: em cima do mapa (computador) ou no meio da linha (celular). */
-async function ContratandoAcimaDoMapa() {
-  return <ContratandoPerto local={await obterLocal()} />;
+/** Quem contrata perto: em cima do mapa (computador) ou, em faixa, no meio da linha (celular). */
+async function ContratandoAcimaDoMapa({ jeito = "coluna" }: { jeito?: "coluna" | "faixa" }) {
+  return <ContratandoPerto local={await obterLocal()} jeito={jeito} />;
 }
 
 /** Gente contratada pelo Publike (com o sim dos dois lados): aparece com 3 ou mais. */

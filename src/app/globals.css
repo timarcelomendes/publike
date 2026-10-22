@@ -81,9 +81,9 @@
   --pk-terra-hover: #d4501a;
   --pk-terra-text: #f08a4b;
   --pk-terra-soft: #3d2216;
-  --pk-tom-vaga: #2b2019;
-  --pk-tom-servico: #1d2620;
-  --pk-tom-recado: #2b2618;
+  --pk-tom-vaga: #3a2516;
+  --pk-tom-servico: #1a3226;
+  --pk-tom-recado: #352b10;
   --pk-cerrado-text: #5cc493;
   --pk-danger: #f97066;
   --pk-focus: #f5b301;
@@ -115,9 +115,9 @@
     --pk-terra-hover: #d4501a;
     --pk-terra-text: #f08a4b;
     --pk-terra-soft: #3d2216;
-    --pk-tom-vaga: #2b2019;
-    --pk-tom-servico: #1d2620;
-    --pk-tom-recado: #2b2618;
+    --pk-tom-vaga: #3a2516;
+    --pk-tom-servico: #1a3226;
+    --pk-tom-recado: #352b10;
     --pk-cerrado-text: #5cc493;
     --pk-danger: #f97066;
     --pk-focus: #f5b301;
@@ -354,7 +354,12 @@
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  background: var(--tom, var(--pk-surface-200));
+  /* o corpo branco e o canhoto no tom do tipo (a divisão é seca, no picote: não é degradê) */
+  background: linear-gradient(
+    to left,
+    var(--tom, var(--pk-surface-200)) var(--canhoto),
+    var(--pk-surface-200) var(--canhoto)
+  );
   -webkit-mask:
     radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 0, #0000 97%, #000) top / 100% 51% no-repeat,
     radial-gradient(circle var(--furo) at calc(100% - var(--canhoto)) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
@@ -382,6 +387,12 @@
     --furo: 9px;
   }
   .tiquete-fundo::before {
+    /* no celular, o canhoto fica embaixo */
+    background: linear-gradient(
+      to top,
+      var(--tom, var(--pk-surface-200)) var(--canhoto),
+      var(--pk-surface-200) var(--canhoto)
+    );
     -webkit-mask:
       radial-gradient(circle var(--furo) at 0 calc(100% - var(--canhoto)), #0000 97%, #000) left / 51% 100% no-repeat,
       radial-gradient(circle var(--furo) at 100% calc(100% - var(--canhoto)), #0000 97%, #000) right / 51% 100%
@@ -465,4 +476,23 @@ html[data-so-olhar]
 [data-esperando] {
   cursor: progress;
   opacity: 0.6;
+}
+
+/*
+ * Tema escuro: os furos do tíquete ficam pequenos (grandes, viravam bolinhas pretas entre os cartões)
+ * e o mapa, que só existe claro, escurece por cima (os rótulos e os pinos do Publike não mudam).
+ */
+:root[data-tema="escuro"] .tiquete {
+  --furo: 6px;
+}
+:root[data-tema="escuro"] .maplibregl-canvas {
+  filter: invert(0.92) hue-rotate(180deg) saturate(0.6) brightness(0.95);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tema="auto"] .tiquete {
+    --furo: 6px;
+  }
+  :root[data-tema="auto"] .maplibregl-canvas {
+    filter: invert(0.92) hue-rotate(180deg) saturate(0.6) brightness(0.95);
+  }
 }

@@ -39,17 +39,48 @@ const POR_UNIDADE: Record<string, string> = {
 
 /** O valor grande e o que ele quer dizer, em duas partes ("R$ 1.800" e "por mês"). */
 function valorEmDuas(a: AnuncioNaLinha["anuncio"]) {
-  if (a.pagamento_valor == null || !a.pagamento_unidade) return { valor: "A combinar", unidade: null };
+  if (a.pagamento_valor == null || !a.pagamento_unidade) return { valor: "A combinar", unidade: null, partes: [] };
   const ate = a.pagamento_ate != null && a.pagamento_ate > a.pagamento_valor ? a.pagamento_ate : null;
   // no serviço, "a partir de" já diz tudo quando o valor é pelo serviço
   const unidade =
     a.tipo === "servico" && a.pagamento_unidade === "servico" ? null : (POR_UNIDADE[a.pagamento_unidade] ?? null);
-  return {
-    valor: formatarMoeda(a.pagamento_valor),
-    unidade: [a.tipo === "servico" ? "a partir de" : null, ate ? `até ${formatarMoeda(ate)}` : null, unidade]
-      .filter(Boolean)
-      .join(" · "),
-  };
+  const partes = [
+    a.tipo === "servico" ? "a partir de" : null,
+    ate ? `até ${formatarMoeda(ate)}` : null,
+    unidade,
+  ].filter((p): p is string => Boolean(p));
+  return { valor: formatarMoeda(a.pagamento_valor), unidade: partes.join(" · "), partes };
+}
+
+/**
+ * O valor no canhoto: em Bricolage 800 e, embaixo, o que ele quer dizer ("a partir de", "até R$ 2.100",
+ * "por mês"). No celular, numa linha só; no computador, uma parte embaixo da outra (não quebra no meio).
+ */
+function Valor({ a }: { a: AnuncioNaLinha["anuncio"] }) {
+  const { valor, partes } = valorEmDuas(a);
+  return (
+    <p className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0">
+      <span
+        className={`font-display font-extrabold tracking-[-0.02em] whitespace-nowrap tabular-nums ${
+          partes.length
+            ? "text-[20px] leading-6 sm:text-[22px] sm:leading-[26px]"
+            : "text-[17px] leading-6 sm:text-[18px]"
+        }`}
+      >
+        {valor}
+      </span>
+      {partes.length > 0 && (
+        <span className="text-body-sm text-ink-muted sm:leading-[18px]">
+          {partes.map((p, i) => (
+            <span key={p} className="sm:block">
+              {i > 0 && <span className="sm:hidden"> · </span>}
+              {p}
+            </span>
+          ))}
+        </span>
+      )}
+    </p>
+  );
 }
 
 const BENEFICIO_CURTO: Record<string, string> = { vale_transporte: "VT", vale_refeicao: "VR", vale_alimentacao: "VA" };
@@ -124,12 +155,21 @@ export function TicketDaVaga({
   const proprio = usuarioId !== null && usuarioId === a.autor_id;
   const preenchida = Boolean(item.requisitos?.preenchida_em);
   const modalidade = a.regime === "outro" ? null : rotuloModalidade(a.tipo, a.regime);
-  const beneficios = (item.requisitos?.beneficios_lista ?? []).slice(0, 2);
+  // as etiquetas numa linha só: a modalidade, o primeiro benefício e "+N" com o resto (a vaga mostra todos)
+  const todosBeneficios = item.requisitos?.beneficios_lista ?? [];
+  const beneficios = todosBeneficios.slice(0, 1);
+  const outros = todosBeneficios.length - beneficios.length;
   const match = item.match && (item.match.nota ?? 0) > 0 && a.minha_curtida !== "match" ? item.match : null;
-  const { valor, unidade } = valorEmDuas(a);
   const etiquetas: ReactNode[] = [];
   if (modalidade) etiquetas.push(<li key="m">{modalidade}</li>);
   for (const b of beneficios) etiquetas.push(<li key={b}>{BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}</li>);
+  if (outros > 0)
+    etiquetas.push(
+      <li key="mais">
+        +{outros}
+        <span className="sr-only"> {outros === 1 ? "benefício" : "benefícios"}</span>
+      </li>,
+    );
   if (preenchida) etiquetas.push(<li key="p">Vaga preenchida</li>);
 
   return (
@@ -172,7 +212,7 @@ export function TicketDaVaga({
           <Resumo texto={item.resumo} />
           <Lugar item={item} tempoDe={tempoDe}>
             {(etiquetas.length > 0 || match) && (
-              <span className="flex flex-wrap items-center gap-1.5 text-ink">
+              <span className="flex flex-nowrap items-center gap-1.5 text-ink [&_li]:whitespace-nowrap">
                 {match && <SeloMatch match={match} />}
                 <ul className="contents [&>li]:rounded-pill [&>li]:bg-surface-100 [&>li]:px-2.5 [&>li]:py-0.5 [&>li]:text-[13px] [&>li]:leading-[18px] [&>li]:font-semibold">
                   {etiquetas}
@@ -184,18 +224,7 @@ export function TicketDaVaga({
       </div>
       {/* o canhoto: o valor e o Curtir */}
       <div className="flex items-center justify-between gap-3 px-3.5 sm:flex-col sm:items-stretch sm:justify-center sm:gap-2.5 sm:p-3.5 sm:pl-5">
-        <p className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0">
-          <span
-            className={`font-display font-extrabold tracking-[-0.02em] whitespace-nowrap tabular-nums ${
-              unidade
-                ? "text-[20px] leading-6 sm:text-[22px] sm:leading-[26px]"
-                : "text-[17px] leading-6 sm:text-[18px]"
-            }`}
-          >
-            {valor}
-          </span>
-          {unidade && <span className="text-body-sm text-ink-muted">{unidade}</span>}
-        </p>
+        <Valor a={a} />
         {proprio ? (
           <Link
             href={`/painel/anuncio/${a.id}`}
@@ -259,7 +288,10 @@ export function FaixaDeCurtidas({ item, usuarioId }: { item: AnuncioNaLinha; usu
   );
 }
 
-/** O cartão do profissional (serviço), no tom de serviço. */
+/**
+ * O tíquete do profissional (serviço): o mesmo da vaga ("todo trabalho conta"), com o canhoto no tom de
+ * serviço. A foto de um trabalho, se tiver, fica ao lado do texto (no computador).
+ */
 export function CartaoDoServico({
   item,
   hora,
@@ -272,55 +304,63 @@ export function CartaoDoServico({
   const a = item.anuncio;
   const proprio = usuarioId !== null && usuarioId === a.autor_id;
   const foto = urlDaFotoTrabalho(a.foto);
-  const { valor, unidade } = valorEmDuas(a);
   return (
     <article
       id={`anuncio-${a.id}`}
-      className="relative grid min-w-0 grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-[18px] bg-tom-servico p-3.5 shadow-[0_1px_1px_rgb(31_26_20/0.07),0_3px_8px_rgb(31_26_20/0.05)] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:px-4"
+      className="tiquete grid min-w-0 grid-rows-[auto_var(--canhoto)] [--tom:var(--pk-tom-servico)] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:grid-cols-[minmax(0,1fr)_var(--canhoto)] sm:grid-rows-1 sm:rounded-lg"
     >
-      <Avatar nome={a.autor_nome} foto={item.foto} tamanho={40} />
-      <div className="min-w-0">
-        <div className="flex items-start gap-2">
-          <h3 className="min-w-0 flex-1 font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
-            <Link href={`/anuncio/${a.id}`} className="outline-none after:absolute after:inset-0 after:content-['']">
-              {a.titulo}
-            </Link>
-          </h3>
-          <HoraNoCanto hora={hora} />
+      <span aria-hidden className="tiquete-fundo" />
+      <span aria-hidden className="tiquete-picote" />
+      <div className="flex min-w-0 gap-3 p-3.5 sm:px-4 sm:py-3.5">
+        <Avatar
+          nome={a.autor_nome}
+          foto={item.foto}
+          tamanho={40}
+          forma={a.autor_tipo === "pessoa" ? "redonda" : "quadrada"}
+          colorida
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <h3 className="min-w-0 flex-1 font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
+              <Link href={`/anuncio/${a.id}`} className="outline-none after:absolute after:inset-0 after:content-['']">
+                {a.titulo}
+              </Link>
+            </h3>
+            <HoraNoCanto hora={hora} />
+          </div>
+          <p className="flex flex-wrap items-center gap-x-1.5 text-body-sm font-semibold">
+            {a.autor_nome}
+            <NotaDoProfissional media={a.autor_nota} total={a.autor_avaliacoes} compacto />
+          </p>
+          <Resumo texto={item.resumo} />
+          <Lugar item={item} tempoDe={null} />
         </div>
-        <p className="flex flex-wrap items-center gap-x-1.5 text-body-sm font-semibold">
-          {a.autor_nome}
-          <NotaDoProfissional media={a.autor_nota} total={a.autor_avaliacoes} compacto />
-        </p>
-        <Resumo texto={item.resumo} />
-        <Lugar item={item} tempoDe={null} />
-      </div>
-      <div className="col-span-2 flex items-center justify-between gap-3 border-t border-line/70 pt-2.5 sm:col-span-1 sm:flex-col sm:items-end sm:justify-center sm:gap-2 sm:border-0 sm:pt-0 sm:text-right">
-        <p className="flex items-baseline gap-1.5 sm:flex-col sm:items-end sm:gap-0">
-          <span
-            className={`font-display font-extrabold tracking-[-0.02em] whitespace-nowrap tabular-nums ${
-              unidade
-                ? "text-[19px] leading-6 sm:text-[20px] sm:leading-[24px]"
-                : "text-[17px] leading-6 sm:text-[18px]"
-            }`}
-          >
-            {valor}
-          </span>
-          {unidade && <span className="text-body-sm text-ink-muted">{unidade}</span>}
-        </p>
         {foto && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={foto} alt="" className="hidden size-12 rounded-md object-cover sm:block" />
+          <img src={foto} alt="" className="hidden size-14 shrink-0 self-center rounded-md object-cover sm:block" />
         )}
-        {!proprio && (
-          <BotaoCurtir
-            className="relative z-10"
-            anuncioId={a.id}
-            status={a.minha_curtida}
-            logado={usuarioId !== null}
-            servico
-            quem={a.autor_nome}
-          />
+      </div>
+      {/* o canhoto: o valor e o Contratar */}
+      <div className="flex items-center justify-between gap-3 px-3.5 sm:flex-col sm:items-stretch sm:justify-center sm:gap-2.5 sm:p-3.5 sm:pl-5">
+        <Valor a={a} />
+        {proprio ? (
+          <Link
+            href={`/painel/anuncio/${a.id}`}
+            className="relative z-10 inline-flex min-h-9 items-center justify-center rounded-pill border border-line-strong px-3 text-label whitespace-nowrap hover:bg-surface-300"
+          >
+            Seu anúncio
+          </Link>
+        ) : (
+          <span className="relative z-10 flex items-center gap-2 sm:flex-col sm:items-stretch">
+            <BotaoCurtir
+              className="[&>button]:whitespace-nowrap sm:[&>button]:w-full sm:[&>button]:justify-center"
+              anuncioId={a.id}
+              status={a.minha_curtida}
+              logado={usuarioId !== null}
+              servico
+              quem={a.autor_nome}
+            />
+          </span>
         )}
       </div>
     </article>

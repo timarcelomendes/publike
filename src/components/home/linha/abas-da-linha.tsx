@@ -18,8 +18,8 @@ const ABAS: { valor: Aba; nome: string; icone: LucideIcon }[] = [
 
 /**
  * As abas da linha do tempo, sublinhadas como as outras abas do site: cada uma mostra quantas
- * novidades chegaram desde a última visita. Ficam presas no alto ao rolar. À direita (no celular,
- * embaixo), Filtros; o painel dos filtros abre logo embaixo, numa linha só que rola de lado.
+ * novidades chegaram desde a última visita. Ficam presas no alto ao rolar. À direita, Filtros (no
+ * celular, o ícone ao lado da busca); o painel dos filtros abre logo embaixo, numa linha só que rola de lado.
  */
 export function AbasDaLinha({
   aba,
@@ -124,8 +124,7 @@ export function AbasDaLinha({
           {botaoFiltros("mb-2 ml-3 hidden self-center sm:inline-flex")}
         </nav>
       </div>
-      {/* no celular, o Filtros fica embaixo das abas, à direita */}
-      <div className="mt-2.5 flex justify-end sm:hidden">{botaoFiltros("inline-flex")}</div>
+      {/* no celular, o Filtros é o ícone ao lado da busca (BuscaERecado), que avisa por EVENTO_FILTROS */}
       <div
         id={id}
         className={aberto ? "mt-3 rounded-lg border border-line bg-surface-200 p-3 shadow-card sm:p-4" : "hidden"}

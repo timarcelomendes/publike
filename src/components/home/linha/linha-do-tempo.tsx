@@ -15,8 +15,9 @@ import { RegistrarVisita } from "./registrar-visita";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
-// No computador: a hora, o nó no traço e o objeto. No celular, só o objeto (a hora vai para o canto dele).
-const GRADE = "sm:grid sm:grid-cols-[56px_36px_minmax(0,1fr)] sm:gap-x-2.5";
+// No computador: a hora, o nó no traço e o objeto (as duas primeiras colunas estreitas, para o tíquete
+// ter espaço). No celular, só o objeto (a hora vai para o canto dele).
+const GRADE = "sm:grid sm:grid-cols-[48px_32px_minmax(0,1fr)] sm:gap-x-2";
 
 // o nó tem o tom do tipo, como o cartão ao lado
 const NO = {
@@ -75,7 +76,8 @@ function Ponto({ terra = false }: { terra?: boolean }) {
   );
 }
 
-const HORA = "hidden pt-[18px] text-right text-body-sm leading-4 font-semibold text-ink-muted tabular-nums sm:block";
+const HORA =
+  "hidden pt-[18px] text-right text-[13px] leading-4 font-semibold whitespace-nowrap text-ink-muted tabular-nums sm:block";
 
 /** Um item da linha (vaga, serviço, recado ou aceite), com a hora e o nó. */
 function Item({
@@ -248,7 +250,7 @@ export async function LinhaDoTempo({
   return (
     <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
       {/* o traço da linha, no meio da coluna dos nós */}
-      <span aria-hidden className="absolute top-3 bottom-0 left-[83px] hidden w-0.5 rounded-pill bg-line sm:block" />
+      <span aria-hidden className="absolute top-3 bottom-0 left-[71px] hidden w-0.5 rounded-pill bg-line sm:block" />
       <ListaDaLinha partes={blocos} contam={contam} />
       <RegistrarVisita />
     </section>

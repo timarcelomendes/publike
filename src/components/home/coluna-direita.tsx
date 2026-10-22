@@ -4,36 +4,87 @@ import { conteudoDoSlug } from "@/lib/conteudos";
 import type { Conteudo } from "@/lib/conteudos/tipos";
 import { obterUsuario } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
-import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { formatarLugar, plural } from "@/lib/formato";
 import type { Local } from "@/lib/regioes";
-import { BotaoConectarCompacto } from "../conexoes/botao-conectar-compacto";
 import { SeloVerificado } from "../selo-verificado";
 import { BotaoSeguir } from "../social/botoes";
 import { Avatar } from "../ui/basicos";
 import { empresasContratando } from "./empresas-contratando";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
-// A coluna da direita do feed (computador grande; no celular, depois da lista): quem
-// está contratando perto, com o Seguir (aviso de vaga nova) e o Conectar, e os conteúdos do blog.
+// A coluna da direita do feed (computador grande; no celular, no meio da lista): quem
+// está contratando perto, com o Seguir (aviso de vaga nova), e os conteúdos do blog.
 
 const caixa = "flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card";
 
-export async function ContratandoPerto({ local }: { local: Local | null }) {
+export async function ContratandoPerto({
+  local,
+  jeito = "coluna",
+}: {
+  local: Local | null;
+  jeito?: "coluna" | "faixa";
+}) {
   const visita = await cidadeDaVisita();
   const [todas, seguidos, usuario] = await Promise.all([
-    empresasContratando(local, 5, visita),
+    empresasContratando(local, 6, visita),
     meusSeguidos().catch(() => []),
     obterUsuario().catch(() => null),
   ]);
-  // a própria empresa não aparece na lista dela
-  const empresas = todas.filter((e) => e.id !== usuario?.id).slice(0, 4);
+  // a própria empresa não aparece na lista dela; na coluna (presa ao rolar), só 3 para caber na tela
+  const empresas = todas.filter((e) => e.id !== usuario?.id).slice(0, jeito === "coluna" ? 3 : 6);
   if (!empresas.length) return null;
-  const estados = usuario ? await estadosDeConexao(empresas.map((e) => e.id)) : new Map();
+  const titulo = local ? "Contratando perto de você" : `Contratando em ${visita.cidade} e região`;
+  // a ação daqui é Seguir: o aviso de vaga nova (o Conectar fica no perfil da empresa)
+  const seguir = (e: (typeof empresas)[number]) => (
+    <BotaoSeguir
+      alvo={{ perfil: e.id }}
+      seguidoId={seguidos.find((s) => s.alvo_perfil === e.id)?.id ?? null}
+      logado={usuario !== null}
+      voltar="/"
+      rotulo={`Seguir ${e.nome}: aviso de vaga nova`}
+      rotuloSeguindo={`Seguindo ${e.nome}`}
+      soIcone
+    />
+  );
+
+  if (jeito === "faixa") {
+    // no meio da linha (celular e tablet): uma faixa que rola de lado, como a das contas novas
+    return (
+      <section aria-labelledby="contratando-perto-faixa" className="flex flex-col">
+        <h2 id="contratando-perto-faixa" className="text-h3">
+          {titulo}
+        </h2>
+        <ul className="sem-barra -mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+          {empresas.map((e) => (
+            <li
+              key={e.id}
+              className="flex w-40 shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface-200 p-3.5 text-center shadow-card"
+            >
+              <Link
+                href={`/perfil/${e.id}/vagas`}
+                className="flex min-w-0 flex-col items-center gap-1.5 self-stretch hover:underline"
+              >
+                <Avatar nome={e.nome} foto={e.foto} tamanho={56} forma="quadrada" colorida />
+                <span className="flex max-w-full items-center justify-center gap-1 text-body-sm font-semibold">
+                  <span className="truncate">{e.nome}</span>
+                  {e.verificado && <SeloVerificado agencia={e.tipo === "agencia"} />}
+                </span>
+                <span className="-mt-1 block max-w-full truncate text-[13px] leading-[18px] text-ink-muted">
+                  {plural(e.vagas, "vaga", "vagas")} · {e.lugar}
+                </span>
+              </Link>
+              <div className="mt-auto">{seguir(e)}</div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="contratando-perto" className={caixa}>
       <h2 id="contratando-perto" className="text-h3">
-        {local ? "Contratando perto de você" : `Contratando em ${visita.cidade} e região`}
+        {titulo}
       </h2>
       {/* o lugar de quem vê: o bairro (CEP de casa, busca ou perfil); sem bairro, a cidade */}
       {local && (
@@ -44,10 +95,11 @@ export async function ContratandoPerto({ local }: { local: Local | null }) {
           </span>
         </p>
       )}
-      <ul className="flex flex-col gap-3.5">
+      <ul className="flex flex-col gap-3">
         {empresas.map((e) => (
-          <li key={e.id} className="flex flex-col gap-1.5">
-            <Link href={`/perfil/${e.id}/vagas`} className="flex min-w-0 items-center gap-3 hover:underline">
+          // uma linha por empresa: a foto, o nome com as vagas e o sino à direita
+          <li key={e.id} className="flex items-center gap-2">
+            <Link href={`/perfil/${e.id}/vagas`} className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
               <Avatar nome={e.nome} foto={e.foto} tamanho={40} forma="quadrada" colorida />
               <span className="min-w-0">
                 <span className="flex items-center gap-1 text-label">
@@ -59,24 +111,7 @@ export async function ContratandoPerto({ local }: { local: Local | null }) {
                 </span>
               </span>
             </Link>
-            {/* Seguir (o sino: aviso de vaga nova) e Conectar, pequenos, embaixo do nome */}
-            <div className="flex items-center gap-2 pl-[52px]">
-              <BotaoSeguir
-                alvo={{ perfil: e.id }}
-                seguidoId={seguidos.find((s) => s.alvo_perfil === e.id)?.id ?? null}
-                logado={usuario !== null}
-                voltar="/"
-                rotulo={`Seguir ${e.nome}: aviso de vaga nova`}
-                rotuloSeguindo={`Seguindo ${e.nome}`}
-                soIcone
-              />
-              <BotaoConectarCompacto
-                outro={{ id: e.id, nome: e.nome, tipo: e.tipo }}
-                estado={estados.get(e.id) ?? null}
-                voltar="/"
-                jeito="pilula"
-              />
-            </div>
+            {seguir(e)}
           </li>
         ))}
       </ul>
