@@ -45,7 +45,8 @@ export async function HeroVitrine({ busca }: { busca: ReactNode }) {
             </Selo>
           </div>
           <p className="hidden text-body text-ink-muted sm:block sm:text-body-lg">
-            Vagas com carteira, diárias, freelances e profissionais do bairro. Curtiu, deu match, vocês conversam.{" "}
+            Vagas com carteira, diárias, freelances e profissionais do bairro. Curtir é se candidatar: deu match, vocês
+            conversam.{" "}
             <Suspense fallback={null}>
               <NoAr cidade={cidade} />
             </Suspense>

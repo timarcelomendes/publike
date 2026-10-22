@@ -234,11 +234,11 @@ export function PilhaDeVagas({
           setAviso(
             carta.pedeCurriculo && !temCurriculo
               ? {
-                  texto: `Você curtiu “${carta.titulo}”. Esta vaga pede currículo: mande o seu e o match sai na hora em que ${carta.quem} aceitar. Se deixar para depois, chega um aviso quando aceitar.`,
+                  texto: `Você curtiu “${carta.titulo}” e se candidatou. Esta vaga pede currículo: mande o seu e o match sai na hora em que ${carta.quem} aceitar. Se deixar para depois, chega um aviso quando aceitar.`,
                   link: { href: "/perfil/curriculo", nome: "Preencher currículo" },
                 }
               : {
-                  texto: `Você curtiu “${carta.titulo}”. Agora ${carta.quem} decide se aceita. Se aceitar, vocês se conectam e o WhatsApp aparece no seu painel.`,
+                  texto: `Você curtiu “${carta.titulo}” e se candidatou. Agora ${carta.quem} decide se aceita. Se aceitar, vocês se conectam e o WhatsApp aparece no seu painel.`,
                 },
           );
         } else if (gesto === "salvar") {
@@ -420,8 +420,8 @@ export function PilhaDeVagas({
         <button
           type="button"
           onClick={() => decidir("curtir")}
-          aria-label="Curtir (seta para a direita)"
-          title="Curtir"
+          aria-label="Curtir: me candidatar (seta para a direita)"
+          title="Curtir é se candidatar"
           className="flex size-14 items-center justify-center rounded-pill bg-like text-on-like shadow-card transition-transform hover:scale-105 active:scale-95 sm:size-16"
         >
           <Heart aria-hidden className="size-7 sm:size-8" fill="currentColor" />

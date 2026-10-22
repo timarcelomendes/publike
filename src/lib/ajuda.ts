@@ -53,7 +53,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como me candidato a uma vaga?",
-        r: "Abra a vaga e toque em Curtir. Quem publicou vê seu perfil e a sua mensagem. Se curtir você de volta, dá match e o WhatsApp dos dois aparece no painel.",
+        r: "Abra a vaga e toque em Curtir: no Publike, curtir a vaga é se candidatar. Quem publicou vê seu perfil e a sua mensagem. Se aceitar você, dá match e o WhatsApp dos dois aparece no painel.",
       },
       {
         p: "Posso enviar o currículo que já tenho?",
@@ -155,6 +155,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     id: "match",
     titulo: "Curtidas, match e conversa",
     perguntas: [
+      {
+        p: "Curtir uma vaga é o mesmo que me candidatar?",
+        r: "É. No Publike, curtir uma vaga é se candidatar a ela, não um “gostei” como numa rede social: quem publicou recebe o seu perfil, o currículo (se você tiver) e a sua mensagem, e decide se aceita. Se aceitar, dá match e o WhatsApp dos dois aparece. Quer só guardar a vaga para ver depois? Toque em Salvar.",
+      },
       {
         p: "O que é o “Contato direto”?",
         r: "É uma opção de quem publica. Ligada, quem curtir a vaga (ou pedir o serviço) já dá match na hora: os dois veem o WhatsApp e o e-mail um do outro, sem esperar o aceite. Desligada, quem publicou escolhe quem aceita. Anúncios com a opção ligada mostram o selo “Contato direto”. Vaga que pede currículo libera o contato quando o seu currículo chegar.",

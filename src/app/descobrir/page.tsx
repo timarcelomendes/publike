@@ -44,7 +44,7 @@ export default function Descobrir({ searchParams }: PageProps<"/descobrir">) {
     <Container className="max-w-6xl py-4 sm:py-8">
       <h1 className="sr-only sm:not-sr-only sm:text-h1">Descobrir</h1>
       <p className="mt-1 hidden text-body text-ink-muted sm:block">
-        Vagas que combinam com você, uma de cada vez. Gostou, curta. Não é para você, passe.
+        Vagas que combinam com você, uma de cada vez. Quer a vaga? Curta para se candidatar. Não é para você? Passe.
       </p>
       <Suspense fallback={<Esqueleto className="mt-6 h-[40rem] w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />
@@ -204,8 +204,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
 
       <div className="hidden rounded-md border border-line p-4 text-body-sm text-ink-muted lg:block">
         <p className="text-label text-ink">Atalhos</p>
-        <p className="mt-1">→ curte · ← passa · ↑ salva</p>
-        <p className="mt-2">Curtiu e gostaram de você também? Dá match e o WhatsApp de vocês aparece.</p>
+        <p className="mt-1">→ curte (se candidata) · ← passa · ↑ salva</p>
+        <p className="mt-2">Curtir é se candidatar. Se a empresa aceitar, dá match e o WhatsApp de vocês aparece.</p>
       </div>
     </aside>
   );

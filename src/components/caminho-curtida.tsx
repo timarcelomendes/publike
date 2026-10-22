@@ -117,10 +117,15 @@ export function CaminhoDaCurtida({
   const comCurriculo =
     !servico && (situacao === "aceita" || (passoDoCurriculo && (situacao === "antes" || situacao === "pendente")));
 
+  // na vaga, curtir é se candidatar (não um "gostei"): o primeiro passo diz isso
   const curtir: Passo =
     situacao === "antes"
-      ? { estado: "agora", texto: servico ? "Você pede o serviço" : "Você curte a vaga" }
-      : { estado: "feito", texto: servico ? "Você pediu o serviço" : "Você curtiu a vaga" };
+      ? servico
+        ? { estado: "agora", texto: "Você pede o serviço" }
+        : { estado: "agora", texto: "Você curte a vaga", ajuda: "Curtir é se candidatar" }
+      : servico
+        ? { estado: "feito", texto: "Você pediu o serviço" }
+        : { estado: "feito", texto: "Você curtiu a vaga", ajuda: "Sua candidatura foi enviada" };
 
   const aceite: Passo = aceitou
     ? { estado: "feito", texto: situacao === "aceita" ? `${quem} aceitou você` : `${quem} aceitou` }

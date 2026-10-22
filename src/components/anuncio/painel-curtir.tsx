@@ -334,7 +334,7 @@ export function PainelCurtir({
       <div className="flex flex-col gap-3 rounded-lg bg-like-soft p-5 text-ink">
         <p className="flex items-center gap-2 font-display text-h3 text-like-text">
           <Heart aria-hidden className="size-5 text-like" fill="currentColor" />
-          {servico ? "Pedido enviado" : "Você curtiu"}
+          {servico ? "Pedido enviado" : "Você curtiu e se candidatou"}
         </p>
         <div className="rounded-md bg-surface-200 p-3">
           <CaminhoDaCurtida situacao="pendente" quem={quem} servico={servico} passoDoCurriculo={passoDoCurriculo} />
@@ -375,7 +375,7 @@ export function PainelCurtir({
         </p>
       )}
       <div>
-        <p className="font-display text-h3">{servico ? "Quer contratar?" : "Tem interesse?"}</p>
+        <p className="font-display text-h3">{servico ? "Quer contratar?" : "Quer se candidatar?"}</p>
         {contatoDireto && !passoDoCurriculo ? (
           // o que mais pesa na decisão: em destaque, no verde do match
           <div className="mt-3 flex items-start gap-3 rounded-md border-2 border-cerrado bg-cerrado/10 p-3.5">
