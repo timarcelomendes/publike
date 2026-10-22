@@ -54,7 +54,8 @@ export async function ContratandoPerto({
         <h2 id="contratando-perto-faixa" className="text-h3">
           {titulo}
         </h2>
-        <ul className="sem-barra -mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+        {/* relative: o texto do leitor de tela (sr-only, absoluto) fica dentro da rolagem e não alarga a página */}
+        <ul className="sem-barra relative -mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
           {empresas.map((e) => (
             <li
               key={e.id}
