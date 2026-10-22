@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { obterUsuario } from "@/lib/dados";
+import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
 import { iaConfigurada } from "@/lib/ia/openai";
@@ -26,6 +26,10 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const usuario = await obterUsuario();
   if (!usuario) redirect("/entrar?next=/perfil/curriculo");
+
+  // currículo é de pessoa: comércio, empresa e agência não cadastram
+  const perfil = await obterMeuPerfil();
+  if (perfil && perfil.tipo !== "pessoa") return { ok: false, erro: "Currículo é só para conta de pessoa." };
 
   const leitura = lerCurriculo(formData);
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };

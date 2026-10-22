@@ -2,7 +2,7 @@
 
 import { UserPlus } from "lucide-react";
 import { startTransition, useActionState, useState, type FormEvent } from "react";
-import { criarContaPeloAdmin } from "@/lib/acoes/admin-contas";
+import { criarContaPeloAdmin, criarPerfilPeloAdmin } from "@/lib/acoes/admin-contas";
 import { CIDADES, LISTA_TIPOS_CONTA, TIPOS_CONTA } from "@/lib/constantes";
 import type { EstadoForm, TipoConta } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
@@ -25,10 +25,18 @@ export type InicialNovaConta = {
   nota: string | null;
 };
 
-/** Criar uma conta pelo e-mail, para quem pediu ajuda: candidato, prestador, comércio, empresa ou agência. */
-export function FormNovaConta({ inicial }: { inicial?: InicialNovaConta }) {
-  const [estado, acao, enviando] = useActionState(criarContaPeloAdmin, { ok: false } as EstadoForm);
-  const [tipo, setTipo] = useState<TipoConta>(inicial?.tipo ?? "pessoa");
+/**
+ * Criar uma conta pelo e-mail, para quem pediu ajuda: candidato, prestador, comércio, empresa ou agência.
+ * Com `contaId`, a conta já existe (a pessoa entrou, mas não terminou o perfil): o formulário só cria o
+ * perfil, sem o e-mail de login nem o envio do acesso.
+ */
+export function FormNovaConta({ inicial, contaId }: { inicial?: InicialNovaConta; contaId?: string }) {
+  const [estado, acao, enviando] = useActionState(
+    contaId ? criarPerfilPeloAdmin.bind(null, contaId) : criarContaPeloAdmin,
+    { ok: false } as EstadoForm,
+  );
+  // conta que já entrou e autorizou vaga: quase sempre comércio ou empresa
+  const [tipo, setTipo] = useState<TipoConta>(inicial?.tipo ?? (contaId ? "comercio" : "pessoa"));
   const erros = estado.erros ?? {};
 
   // com onSubmit (e não action), o formulário não se apaga quando volta um erro
@@ -47,22 +55,24 @@ export function FormNovaConta({ inicial }: { inicial?: InicialNovaConta }) {
           <input type="hidden" name="convite" value={inicial.convite} />
         </Aviso>
       )}
-      <Campo
-        rotulo="E-mail de login"
-        nome="login"
-        erro={erros.login}
-        ajuda="É por ele que a pessoa entra (sem senha). Se já tiver conta com este e-mail, abrimos a conta que existe."
-      >
-        <input
-          {...ligarCampo("login", erros.login, true)}
-          type="email"
-          autoComplete="off"
-          required
-          defaultValue={inicial?.login}
-          placeholder="nome@email.com"
-          className={classesEntrada}
-        />
-      </Campo>
+      {!contaId && (
+        <Campo
+          rotulo="E-mail de login"
+          nome="login"
+          erro={erros.login}
+          ajuda="É por ele que a pessoa entra (sem senha). Se já tiver conta com este e-mail, abrimos a conta que existe."
+        >
+          <input
+            {...ligarCampo("login", erros.login, true)}
+            type="email"
+            autoComplete="off"
+            required
+            defaultValue={inicial?.login}
+            placeholder="nome@email.com"
+            className={classesEntrada}
+          />
+        </Campo>
+      )}
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-label">Tipo de conta</legend>
@@ -160,7 +170,7 @@ export function FormNovaConta({ inicial }: { inicial?: InicialNovaConta }) {
           nome="email"
           opcional
           erro={erros.email}
-          ajuda="Vazio: usa o e-mail de login."
+          ajuda={contaId ? "Vazio: usa o e-mail de login, se a conta tiver." : "Vazio: usa o e-mail de login."}
         >
           <input
             {...ligarCampo("email", erros.email, true)}
@@ -171,16 +181,18 @@ export function FormNovaConta({ inicial }: { inicial?: InicialNovaConta }) {
         </Campo>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
-        <input type="checkbox" name="enviar_acesso" className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]" />
-        <span>
-          <span className="block text-label">Mandar o e-mail de acesso agora</span>
-          <span className="block text-body-sm text-ink-muted">
-            Dica: publique as vagas ou monte a vitrine de serviços antes e mande o acesso depois, pela página da conta.
-            Assim o e-mail já conta o que está no ar.
+      {!contaId && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-md bg-surface-300 p-4">
+          <input type="checkbox" name="enviar_acesso" className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]" />
+          <span>
+            <span className="block text-label">Mandar o e-mail de acesso agora</span>
+            <span className="block text-body-sm text-ink-muted">
+              Dica: publique as vagas ou monte a vitrine de serviços antes e mande o acesso depois, pela página da
+              conta. Assim o e-mail já conta o que está no ar.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      )}
 
       <p className="text-body-sm text-ink-muted">
         Crie a conta só com a autorização da pessoa ou da empresa. No primeiro acesso, ela confere os dados e aceita as
@@ -191,7 +203,7 @@ export function FormNovaConta({ inicial }: { inicial?: InicialNovaConta }) {
 
       <Botao type="submit" variante="primario" disabled={enviando} className="self-start">
         <UserPlus aria-hidden />
-        {enviando ? "Criando…" : "Criar conta"}
+        {enviando ? "Criando…" : contaId ? "Criar o perfil e publicar" : "Criar conta"}
       </Botao>
     </form>
   );

@@ -95,7 +95,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   }
 
   const completar = primeiro(sp.completar) === "1" || !perfil;
-  const comCurriculo = Boolean(perfil && (!marcados || marcados.includes("trabalhar")));
+  // currículo é só de pessoa (comércio, empresa e agência contratam)
+  const comCurriculo = Boolean(perfil && perfil.tipo === "pessoa" && (!marcados || marcados.includes("trabalhar")));
   // a página é longa: um atalho para cada parte (só no perfil já feito; no "completar", o formulário é curto)
   const partes = completar
     ? []

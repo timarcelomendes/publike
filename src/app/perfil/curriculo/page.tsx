@@ -74,7 +74,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   // veio do convite de quem publicou a vaga (candidato de fora): o currículo vem pronto
   const tokenConvite = primeiro(sp.convite);
   const convite = tokenConvite && TOKEN_CONVITE.test(tokenConvite) ? tokenConvite : null;
-  const { usuario } = await exigirPerfilCompleto(
+  const { usuario, perfil } = await exigirPerfilCompleto(
     proximo
       ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}`
       : paraTalentos
@@ -83,6 +83,22 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
           ? `/perfil/curriculo?convite=${convite}`
           : "/perfil/curriculo",
   );
+  // currículo é de pessoa: comércio, empresa e agência contratam (quem age pela agência também cai aqui)
+  if (perfil.tipo !== "pessoa") {
+    return (
+      <Aviso tipo="info" titulo="Currículo é para quem procura trabalho">
+        <p>
+          Esta conta é de {perfil.tipo === "agencia" ? "agência" : perfil.tipo === "empresa" ? "empresa" : "comércio"}:
+          aqui não tem currículo. Para procurar trabalho, entre com a sua conta de pessoa.
+        </p>
+        <p className="mt-2">
+          <Link href="/painel" className="text-label underline">
+            Ir para o painel
+          </Link>
+        </p>
+      </Aviso>
+    );
+  }
   const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite] = await Promise.all([
     obterMeuCurriculo(),
     listarMinhasCurtidas().catch(() => []),

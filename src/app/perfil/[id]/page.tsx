@@ -115,7 +115,7 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         </div>
         {meu ? (
           <div className="flex flex-wrap gap-2 self-start sm:self-center">
-            {modos?.includes("trabalhar") && (
+            {perfil.tipo === "pessoa" && modos?.includes("trabalhar") && (
               <BotaoLink href="/perfil/curriculo" tamanho="sm">
                 <FileText aria-hidden />
                 Meu currículo

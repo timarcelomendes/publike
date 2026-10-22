@@ -174,7 +174,13 @@ async function Conteudo({
                   </Link>
                 )}
               </>
-            ) : undefined
+            ) : (
+              // entrou mas não terminou o perfil: cria o perfil e publica na mesma página
+              <Link href={`/admin/usuarios/${u.id}/publicar`} className={classesBotao("secundario", "sm")}>
+                <Megaphone aria-hidden />
+                Criar o perfil e publicar vaga
+              </Link>
+            )
           }
         >
           {u.email ? (

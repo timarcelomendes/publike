@@ -93,6 +93,55 @@ export async function criarContaPeloAdmin(_anterior: EstadoForm, formData: FormD
   redirect(`/admin/usuarios/${id}?criada=1${aviso}`);
 }
 
+/**
+ * Cria o perfil de uma conta que já entrou (login feito) mas ainda não terminou o perfil: a empresa
+ * autorizou e vai completar depois. Com o perfil, dá para publicar em nome dela; no primeiro acesso,
+ * ela confere os dados e aceita as regras, como numa conta criada pela equipe.
+ */
+export async function criarPerfilPeloAdmin(
+  usuarioId: string,
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Conta não encontrada." };
+  // a ficha do admin (a mesma da página da conta): o login existe e o e-mail dele
+  const { data: ficha, error: erroConta } = await c.rpc("admin_usuario", { p_id: usuarioId });
+  const conta = ficha as unknown as { email: string | null; perfil: unknown } | null;
+  if (erroConta || !conta) return { ok: false, erro: "Conta não encontrada." };
+  if (conta.perfil) redirect(`/admin/usuarios/${usuarioId}/publicar`);
+
+  // o e-mail de contato (o que aparece no match) é o de login, se não vier outro
+  if (!String(formData.get("email") ?? "").trim() && conta.email) formData.set("email", conta.email);
+  formData.set("receber_emails", "on");
+  const leitura = lerPerfil(formData);
+  if (!leitura.success) return { ok: false, erro: "Confira os campos marcados.", erros: errosPorCampo(leitura.error) };
+  const d = leitura.data;
+
+  const { error: erroPerfil } = await c.from("perfis").insert({
+    id: usuarioId,
+    nome: d.nome,
+    tipo: d.tipo,
+    cidade: d.cidade,
+    bairro: d.bairro,
+    sobre: d.sobre,
+    cnpj: d.cnpj,
+  });
+  if (erroPerfil) {
+    if (erroPerfil.hint === "cnpj")
+      return { ok: false, erro: "Confira os campos marcados.", erros: { cnpj: mensagemDeErro(erroPerfil) } };
+    return { ok: false, erro: mensagemDeErro(erroPerfil, "Não foi possível criar o perfil.") };
+  }
+  const { error: erroContato } = await c
+    .from("contatos")
+    .upsert({ perfil_id: usuarioId, whatsapp: d.whatsapp, email: d.email, receber_emails: true });
+  if (erroContato) console.error("Publike: o perfil saiu, mas o contato não:", erroContato.message);
+  after(processarFilas);
+  revalidatePath("/admin/usuarios");
+  redirect(`/admin/usuarios/${usuarioId}/publicar?perfil=1`);
+}
+
 /** Manda (ou manda de novo) o link de entrar para o e-mail de login da conta. */
 export async function enviarAcessoPeloAdmin(usuarioId: string): Promise<Resultado> {
   const c = await clienteAdminOuNulo();

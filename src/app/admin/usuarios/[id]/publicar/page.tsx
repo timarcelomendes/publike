@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { FormNovaConta } from "@/components/admin/nova-conta";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
 import { Aviso } from "@/components/ui/basicos";
 import { publicarEmNomeDe } from "@/lib/acoes/admin-contas";
@@ -38,13 +39,17 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]/pu
       Voltar à conta
     </Link>
   );
+  // a conta entrou mas não terminou o perfil (vai completar depois): a equipe cria o perfil aqui e já publica
   if (!u.perfil) {
     return (
       <div className="flex max-w-3xl flex-col gap-6">
         {voltar}
-        <Aviso tipo="alerta" titulo="Esta conta ainda não tem perfil">
-          Sem perfil (nome, tipo e WhatsApp), não dá para publicar em nome dela.
+        <h2 className="text-h2">Criar o perfil e publicar</h2>
+        <Aviso tipo="info" titulo="Esta conta entrou, mas ainda não terminou o perfil">
+          Preencha o básico do negócio (nome, tipo, cidade e WhatsApp) para publicar as vagas em nome dela. No próximo
+          acesso, a conta confere os dados, completa o resto e aceita as regras.
         </Aviso>
+        <FormNovaConta contaId={u.id} />
       </div>
     );
   }
