@@ -184,6 +184,8 @@ export function VisaoExplorar({
   acimaDoMapa = null,
   busca = false,
   inicial,
+  abas = null,
+  ordem = null,
 }: {
   titulo: ReactNode;
   subtitulo: ReactNode;
@@ -204,6 +206,10 @@ export function VisaoExplorar({
   busca?: boolean;
   /** o jeito que o servidor já desenhou (a busca: o escolhido, pelo cookie) */
   inicial?: Visao;
+  /** na vitrine: Tudo, Vagas, Serviços e Talentos (no computador, na linha dos filtros) */
+  abas?: ReactNode;
+  /** na vitrine, no computador: a ordem na linha do título, junto do jeito de ver */
+  ordem?: ReactNode;
 }) {
   const chave = busca ? CHAVE_VISAO_BUSCA : CHAVE;
   const visao = useVisao(padrao, chave, inicial);
@@ -286,29 +292,31 @@ export function VisaoExplorar({
         </div>
       ) : (
         <>
-          {/* Celular: título e jeito de ver; a origem e o botão "Filtros"; os filtros, se abertos.
-          Computador: título à esquerda e, na mesma linha, os filtros e o jeito de ver; sem espaço
-          para os dois, os filtros descem para a linha de baixo (nada fica cortado). A origem vem
-          por último, na largura toda. */}
-          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:flex lg:flex-wrap lg:gap-x-4 lg:gap-y-3">
-            <div className="col-start-1 row-start-1 lg:shrink-0">{titulo}</div>
-            <div className="col-start-2 row-start-1 lg:hidden">
+          {/* Celular: as abas; o título e o jeito de ver; a origem e o botão "Filtros"; os filtros, se
+          abertos. Computador: as abas e os filtros numa linha só (sem espaço, os filtros rolam de lado,
+          com as setas; nada desce para outra linha); embaixo, o título e a origem, com o jeito de ver à
+          direita. Uma grade só, sem repetir nada: cada parte muda de lugar no computador. */}
+          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-x-4 lg:gap-y-1">
+            {abas && <div className="col-span-2 row-start-1 mb-4 min-w-0 lg:col-span-1 lg:mb-3">{abas}</div>}
+            <div className="col-start-1 row-start-2 lg:col-span-2">{titulo}</div>
+            <div className="col-start-2 row-start-2 lg:hidden">
               <SeletorVisao visao={visao} chave={chave} celular />
             </div>
-            <div className="col-span-2 row-start-2 flex items-center justify-between gap-3 lg:order-last lg:-mt-1 lg:w-full">
+            <div className="col-span-2 row-start-3 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">{subtitulo}</div>
               {botaoFiltros("min-h-9 rounded-md px-3 lg:hidden")}
             </div>
+            <div className="hidden lg:col-start-3 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center lg:gap-3">
+              {ordem}
+              <SeletorVisao visao={visao} chave={chave} />
+            </div>
             <div
               id={idFiltros}
-              className={`col-span-2 row-start-3 mt-2 items-center gap-3 lg:mt-0 lg:ml-auto lg:flex lg:justify-end ${
-                filtrosAbertos ? "flex" : "hidden"
+              className={`col-span-2 row-start-4 mt-2 min-w-0 lg:col-start-2 lg:row-start-1 lg:mt-0 lg:mb-3 lg:block ${
+                filtrosAbertos ? "block" : "hidden"
               }`}
             >
-              <div className="min-w-0 flex-1 lg:flex-initial">{filtrosLista}</div>
-              <div className="hidden shrink-0 lg:block">
-                <SeletorVisao visao={visao} chave={chave} />
-              </div>
+              {filtrosLista}
             </div>
           </div>
         </>

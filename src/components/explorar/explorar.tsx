@@ -42,7 +42,7 @@ import { Aviso, Container, Esqueleto, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
 import { ABA_TALENTOS, ABAS_ANUNCIOS } from "./abas";
 import { AvisarBusca } from "./avisar-busca";
-import { BarraBusca, FiltrosLista } from "./barra-busca";
+import { BarraBusca, FiltrosLista, OrdemDaLista } from "./barra-busca";
 import type { ProximoPasso } from "./intencao";
 import { PerguntasNaLista } from "./perguntas-na-lista";
 import { ListaPaginada } from "./lista-paginada";
@@ -507,7 +507,8 @@ export async function Explorar({
   );
   const conteudo = (
     <>
-      {atalhos && <div className="mb-4">{atalhos}</div>}
+      {/* na vitrine, as abas vão na grade da lista (no computador, na linha dos filtros) */}
+      {feed && atalhos && <div className="mb-4">{atalhos}</div>}
       {primeiro(parametros.conta) === "excluida" && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Sua conta foi excluída.">
           Apagamos seu perfil, seus anúncios e suas curtidas. Obrigado por ter usado o Publike.
@@ -598,12 +599,15 @@ export async function Explorar({
             combina={Boolean(quem)}
             quebrar={feed}
             semOrdem={ordemFora}
+            ordemSoNoCelular={!feed}
           />
         }
         lista={listaComPerguntas}
         pontos={pontos}
         origem={origem}
         filtros={filtros}
+        abas={feed ? null : atalhos}
+        ordem={feed ? null : <OrdemDaLista filtros={filtros} combina={Boolean(quem)} />}
         padrao={feed ? (busca ? "lista" : "blocos") : undefined}
         busca={feed && busca}
         inicial={visaoDaBusca}
@@ -670,7 +674,7 @@ function AbasDaLista({ filtros, talentos = true }: { filtros: Filtros; talentos?
             aria-current={ativo ? "page" : undefined}
             className={classe(ativo)}
           >
-            <a.icone aria-hidden className="hidden size-4 sm:block" />
+            <a.icone aria-hidden className="hidden size-4 sm:block lg:hidden xl:block" />
             {a.nome}
           </Link>
         );
@@ -681,7 +685,7 @@ function AbasDaLista({ filtros, talentos = true }: { filtros: Filtros; talentos?
           href={filtros.q ? `${ABA_TALENTOS.href}?q=${encodeURIComponent(filtros.q)}` : ABA_TALENTOS.href}
           className={classe(false)}
         >
-          <ABA_TALENTOS.icone aria-hidden className="hidden size-4 sm:block" />
+          <ABA_TALENTOS.icone aria-hidden className="hidden size-4 sm:block lg:hidden xl:block" />
           Talentos
         </Link>
       )}

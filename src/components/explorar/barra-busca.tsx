@@ -394,6 +394,7 @@ export function FiltrosLista({
   combina = false,
   quebrar = false,
   semOrdem = false,
+  ordemSoNoCelular = false,
 }: {
   filtros: Filtros;
   soMeus?: boolean;
@@ -403,11 +404,14 @@ export function FiltrosLista({
   quebrar?: boolean;
   /** a ordem já está nos atalhos (Mais perto, Novas): sem o seletor repetido */
   semOrdem?: boolean;
+  /** a vitrine: no computador, a ordem fica na linha do título, junto do jeito de ver (OrdemDaLista) */
+  ordemSoNoCelular?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const Faixa = quebrar ? FiltrosEmLinhas : FaixaRolavel;
   return (
-    <Faixa rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end lg:px-0">
+    // "end-safe": juntos à direita quando cabem; sem espaço, começam da esquerda e rolam (nenhum fica escondido)
+    <Faixa rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end-safe lg:px-0">
       {/* quem publica: ver na busca (lista e mapa) só os próprios anúncios; vem primeiro, porque muda o que a lista mostra */}
       {soMeus && (
         <>
@@ -488,20 +492,50 @@ export function FiltrosLista({
         </optgroup>
       </Seletor>
       {!semOrdem && (
-        <Seletor
-          aria-label="Ordem"
-          value={filtros.ordem === "combina" && !combina ? "perto" : filtros.ordem}
-          onChange={(e) => ir({ ordem: e.target.value as Ordem })}
-          className={seletor}
-          envoltorio="shrink-0"
-        >
-          <option value="perto">Mais perto</option>
-          <option value="recentes">Mais recentes</option>
-          {combina && <option value="combina">Combina mais</option>}
-        </Seletor>
+        <SeletorOrdem
+          filtros={filtros}
+          combina={combina}
+          ir={ir}
+          envoltorio={ordemSoNoCelular ? "shrink-0 lg:hidden" : "shrink-0"}
+        />
       )}
     </Faixa>
   );
+}
+
+function SeletorOrdem({
+  filtros,
+  combina,
+  ir,
+  envoltorio,
+}: {
+  filtros: Filtros;
+  combina: boolean;
+  ir: (mudancas: Partial<Filtros>) => void;
+  envoltorio: string;
+}) {
+  return (
+    <Seletor
+      aria-label="Ordem"
+      value={filtros.ordem === "combina" && !combina ? "perto" : filtros.ordem}
+      onChange={(e) => ir({ ordem: e.target.value as Ordem })}
+      className={seletor}
+      envoltorio={envoltorio}
+    >
+      <option value="perto">Mais perto</option>
+      <option value="recentes">Mais recentes</option>
+      {combina && <option value="combina">Combina mais</option>}
+    </Seletor>
+  );
+}
+
+/**
+ * A ordem da lista sozinha, para a linha do título no computador (na vitrine, junto do jeito de
+ * ver): a linha das abas fica só com os filtros e cabe inteira. No celular, ela fica nos filtros.
+ */
+export function OrdemDaLista({ filtros, combina = false }: { filtros: Filtros; combina?: boolean }) {
+  const [ir] = useIrPara(filtros);
+  return <SeletorOrdem filtros={filtros} combina={combina} ir={ir} envoltorio="shrink-0" />;
 }
 
 /** "Só os meus": quem publicou vê na busca (lista e mapa) só os próprios anúncios. Fica junto dos filtros. */
