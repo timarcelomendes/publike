@@ -1,20 +1,18 @@
-import { ArrowLeft, Briefcase, Car, Clock, GraduationCap, Lock, MapPin, UserSearch } from "lucide-react";
+import { ArrowLeft, Lock, MapPin, UserSearch } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
-import { CurriculoResumo } from "@/components/curriculo-resumo";
-import { classesHabilidade, textoDisponibilidade } from "@/components/talentos/cartao-talento";
+import { CurriculoDoTalento } from "@/components/talentos/curriculo-do-talento";
 import { ConvidarTalento } from "@/components/talentos/convidar-talento";
 import { Aviso, Avatar, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { nomeEscolaridade } from "@/lib/constantes";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { talentoCompleto, talentoResumo, vagasParaConvidar } from "@/lib/servidor/talentos";
-import { textoDaExperiencia, tituloDoTalento } from "@/lib/talentos";
+import { tituloDoTalento } from "@/lib/talentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 // A página de uma pessoa da aba Talentos. Todo mundo vê o resumo; empresa, comércio e
@@ -38,15 +36,6 @@ export default function PaginaTalento({ params }: PageProps<"/talentos/[id]">) {
         <Conteudo params={params} />
       </Suspense>
     </Container>
-  );
-}
-
-function Parte({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-h3">{titulo}</h2>
-      {children}
-    </section>
   );
 }
 
@@ -77,8 +66,6 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
     cv ? estadosDeConexao([resumo.perfil_id]) : Promise.resolve(null),
   ]);
   const hoje = new Date(agora).toISOString().slice(0, 7);
-  const estudo = nomeEscolaridade(resumo.escolaridade);
-  const turnos = textoDisponibilidade(resumo.disponibilidade);
   const primeiroNome = resumo.nome.split(" ")[0];
 
   return (
@@ -154,94 +141,7 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
 
       {cv?.sobre && <p className="text-body whitespace-pre-line">{cv.sobre}</p>}
 
-      {resumo.habilidades.length > 0 && (
-        <Parte titulo="Habilidades e conhecimentos">
-          <ul className="flex flex-wrap gap-2">
-            {resumo.habilidades.map((h) => (
-              <li key={h} className={classesHabilidade}>
-                {h}
-              </li>
-            ))}
-          </ul>
-        </Parte>
-      )}
-
-      {cv ? (
-        <Parte titulo="Currículo">
-          <CurriculoResumo
-            curriculo={{
-              escolaridade: cv.escolaridade,
-              curso: cv.curso,
-              estudos: cv.estudos,
-              experiencias: cv.experiencias,
-              cursos: cv.cursos,
-              cnh: cv.cnh,
-              disponibilidade: cv.disponibilidade,
-              arquivo: null,
-              atualizado_em: cv.atualizado_em,
-            }}
-            linkPdf={null}
-            hoje={hoje}
-          />
-        </Parte>
-      ) : (
-        <>
-          <Parte titulo="Experiência">
-            <p className="flex items-start gap-2 text-body">
-              <Briefcase aria-hidden className="mt-1 size-4 shrink-0 text-ink-muted" />
-              <span>
-                {textoDaExperiencia(resumo.meses_experiencia)}
-                {resumo.cargos.length > 0 && <span className="text-ink-muted"> · {resumo.cargos.join(", ")}</span>}
-              </span>
-            </p>
-          </Parte>
-          {resumo.cursos.length > 0 && (
-            <Parte titulo="Cursos">
-              <ul className="flex flex-wrap gap-2">
-                {resumo.cursos.map((c) => (
-                  <li key={c} className={classesHabilidade}>
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </Parte>
-          )}
-          {(estudo || resumo.estudos.length > 0 || resumo.cnh || turnos) && (
-            <ul className="flex flex-col gap-2 text-body">
-              {estudo && (
-                <li className="flex items-center gap-2">
-                  <GraduationCap aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                  <span>
-                    {estudo}
-                    {resumo.curso && <span className="text-ink-muted"> · {resumo.curso}</span>}
-                  </span>
-                </li>
-              )}
-              {resumo.estudos.map((e) => (
-                <li key={`${e.nivel}-${e.curso}`} className="flex items-center gap-2">
-                  <GraduationCap aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                  <span>
-                    {nomeEscolaridade(e.nivel)}
-                    <span className="text-ink-muted"> · {e.curso}</span>
-                  </span>
-                </li>
-              ))}
-              {resumo.cnh && (
-                <li className="flex items-center gap-2">
-                  <Car aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                  CNH categoria {resumo.cnh}
-                </li>
-              )}
-              {turnos && (
-                <li className="flex items-center gap-2">
-                  <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                  Pode trabalhar: {turnos}
-                </li>
-              )}
-            </ul>
-          )}
-        </>
-      )}
+      <CurriculoDoTalento resumo={resumo} cv={cv} hoje={hoje} />
 
       {!usuario && (
         <Aviso tipo="info" titulo="Para ver o currículo completo e se conectar">

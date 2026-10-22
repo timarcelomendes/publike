@@ -11,6 +11,8 @@ import { SecaoRecados } from "@/components/recados/secao-recados";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { SecaoContratacoes, SecaoRecomendacoes } from "@/components/social/secoes";
+import { ConvidarTalento } from "@/components/talentos/convidar-talento";
+import { CurriculoDoTalento } from "@/components/talentos/curriculo-do-talento";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { descreverAtendimento, TEXTO_SEGUIR, TIPOS_CONTA } from "@/lib/constantes";
@@ -23,8 +25,10 @@ import {
   obterUsuario,
 } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
-import { formatarLugar, formatarMesAno, urlDaFotoTrabalho } from "@/lib/formato";
+import { formatarLugar, formatarMesAno, tempoRelativo, urlDaFotoTrabalho } from "@/lib/formato";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
+import { talentoCompleto, talentoResumo, vagasParaConvidar } from "@/lib/servidor/talentos";
+import { tituloDoTalento } from "@/lib/talentos";
 import { textoDoQueFaz } from "@/lib/modo-painel";
 import { modosMarcados } from "@/lib/servidor/modo";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -166,6 +170,13 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         </section>
       )}
 
+      {/* quem procura trabalho: o resumo do currículo, para todos (o completo, para as empresas) */}
+      {pessoa && !suspensa && (
+        <Suspense fallback={null}>
+          <CurriculoNoPerfil perfilId={perfil.id} meu={meu} temCurriculo={Boolean(curriculo)} />
+        </Suspense>
+      )}
+
       {servicos.length > 0 && (
         <section className="mt-10">
           <h2 className="flex items-center gap-2 text-h2">
@@ -298,6 +309,96 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           : `O contato de ${pessoa ? perfil.nome.split(" ")[0] : perfil.nome} aparece só depois de um match ou de uma conexão aceita.`}
       </p>
     </>
+  );
+}
+
+/**
+ * O currículo de quem procura trabalho, na página do perfil: o mesmo da página do talento. Todo mundo
+ * vê o resumo (o que faz, as habilidades, os cargos sem as empresas, os cursos, os estudos, a CNH e os
+ * horários); empresa, comércio e agência que entraram veem o completo (onde trabalhou, as datas e o
+ * que fazia) e convidam para uma vaga. Escondido pela pessoa, não aparece (só para ela, com o caminho
+ * para mostrar).
+ */
+async function CurriculoNoPerfil({
+  perfilId,
+  meu,
+  temCurriculo,
+}: {
+  perfilId: string;
+  meu: boolean;
+  temCurriculo: boolean;
+}) {
+  const t = await talentoResumo(perfilId);
+  if (!t) {
+    if (!meu || !temCurriculo) return null;
+    return (
+      <section aria-labelledby="curriculo-titulo" className="mt-10 max-w-2xl">
+        <h2 id="curriculo-titulo" className="text-h2">
+          Currículo
+        </h2>
+        <p className="mt-2 rounded-md bg-surface-300 px-4 py-3 text-body-sm">
+          Seu currículo está escondido: quem abre seu perfil não vê, e ele não aparece para as empresas nem na aba
+          Talentos.{" "}
+          <Link href="/perfil/curriculo#quem-acha" className="text-label underline underline-offset-2">
+            Mostrar meu currículo
+          </Link>
+        </p>
+      </section>
+    );
+  }
+  // empresa, comércio e agência que entraram: o currículo completo (onde trabalhou, as datas) e o convite
+  const [usuario, eu, agora] = await Promise.all([
+    obterUsuario(),
+    obterMeuPerfil().catch(() => null),
+    agoraDaRequisicao(),
+  ]);
+  const empresa = !meu && Boolean(eu && eu.tipo !== "pessoa");
+  const completo = empresa ? await talentoCompleto(perfilId) : null;
+  const cv = completo?.ok ? completo.talento : null;
+  const vagas = cv ? await vagasParaConvidar(perfilId, agora).catch(() => []) : [];
+  const hoje = new Date(agora).toISOString().slice(0, 7);
+  const primeiroNome = t.nome.split(" ")[0];
+  return (
+    <section aria-labelledby="curriculo-titulo" className="mt-10 max-w-3xl">
+      <h2 id="curriculo-titulo" className="flex items-center gap-2 text-h2">
+        <FileText aria-hidden className="size-6" />
+        Currículo
+      </h2>
+      <div className="mt-4 flex flex-col gap-6 rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:p-6">
+        <div>
+          <p className="text-h3 break-words">{tituloDoTalento(t)}</p>
+          <p className="mt-0.5 text-body-sm text-ink-muted">
+            Currículo atualizado {tempoRelativo(t.atualizado_em, agora)}
+          </p>
+        </div>
+        <CurriculoDoTalento resumo={t} cv={cv} hoje={hoje} nivel={3} tituloDoCompleto="Experiência e estudos" />
+        {completo && !completo.ok && <Aviso tipo="alerta">{completo.erro}</Aviso>}
+      </div>
+      {cv && vagas.length > 0 && (
+        <div className="mt-4">
+          <ConvidarTalento perfilId={perfilId} nome={t.nome} vagas={vagas} />
+        </div>
+      )}
+      <p className="mt-3 text-body-sm text-ink-muted">
+        {meu ? (
+          "É assim que todos veem. Empresas, comércios e agências que entraram veem também onde você trabalhou, as datas e o que fazia. Telefone, e-mail e o PDF não aparecem."
+        ) : cv ? (
+          `Telefone e e-mail só aparecem quando ${primeiroNome} aceita a conexão ou dá match numa vaga.`
+        ) : usuario ? (
+          "Empresas, comércios e agências que entraram veem também onde trabalhou, as datas e o que fazia."
+        ) : (
+          <>
+            Empresas, comércios e agências que entram veem também onde {primeiroNome} trabalhou, as datas e o que fazia.{" "}
+            <Link
+              href={`/entrar?next=${encodeURIComponent(`/perfil/${perfilId}`)}`}
+              className="text-label text-ink underline underline-offset-2"
+            >
+              Entrar como empresa
+            </Link>
+          </>
+        )}
+      </p>
+    </section>
   );
 }
 

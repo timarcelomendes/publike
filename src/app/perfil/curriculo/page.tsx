@@ -37,8 +37,8 @@ export default function PaginaCurriculo({ searchParams }: PageProps<"/perfil/cur
       </Link>
       <h1 className="mt-1 text-h2 sm:text-h1">Meu currículo</h1>
       <p className="mt-2 mb-6 text-body text-ink-muted">
-        Para vagas com carteira, estágio e temporárias. Preencha uma vez: quando você curtir uma vaga, quem anunciou vê
-        seu currículo junto com o seu perfil.
+        Para vagas com carteira, estágio e temporárias. Preencha uma vez: ele aparece no seu perfil, as empresas da
+        região acham você e, quando você curtir uma vaga, quem anunciou vê seu currículo junto com o seu perfil.
       </p>
       <Suspense fallback={<Esqueleto className="h-[56rem] w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />
@@ -120,31 +120,35 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
       {aceitas.length > 0 && <AceitasEsperando aceitas={aceitas} temCurriculo={curriculo !== null} />}
       {paraTalentos && !vitrine && (
         <Aviso tipo="info" className="mb-6" titulo="Para aparecer na aba Talentos">
-          <ol className="flex list-decimal flex-col gap-1 pl-5">
-            <li>
-              {curriculo
-                ? "Confira o currículo. Mudou algo? Toque em “Salvar currículo”."
-                : ia
-                  ? "Envie o PDF ou a foto do seu currículo (o Publike preenche) ou preencha aqui. Depois, toque em “Salvar currículo”."
-                  : "Preencha o currículo e toque em “Salvar currículo”."}
-            </li>
-            <li>
-              No fim da página, ligue{" "}
-              {curriculo ? (
-                <a href="#quem-acha" className="text-label underline">
-                  “Aparecer na aba Talentos”
-                </a>
-              ) : (
-                <span className="text-label">“Aparecer na aba Talentos”</span>
-              )}
+          {curriculo ? (
+            // já tem currículo, mas escondeu da aba: o caminho é ligar de novo
+            <p>
+              Seu currículo está escondido da aba. No fim da página, ligue{" "}
+              <a href="#quem-acha" className="text-label underline">
+                “Aparecer na aba Talentos”
+              </a>
               .
-            </li>
-          </ol>
+            </p>
+          ) : (
+            <p>
+              {ia
+                ? "Envie o PDF ou a foto do seu currículo (o Publike preenche) ou preencha aqui, e toque em “Salvar currículo”."
+                : "Preencha o currículo e toque em “Salvar currículo”."}{" "}
+              Pronto: ele já aparece na aba Talentos.
+            </p>
+          )}
           <p className="mt-2">
             As empresas da região veem seu currículo e podem convidar você para vagas. Telefone e e-mail ficam
             escondidos até o match.
           </p>
         </Aviso>
+      )}
+      {!curriculo && !paraTalentos && (
+        // currículo novo já aparece: a pessoa sabe antes de salvar
+        <p className="mb-6 rounded-md bg-surface-300 px-4 py-3 text-body-sm">
+          Ao salvar, seu currículo aparece para as empresas da região e na aba Talentos, com o nome encurtado e sem
+          telefone, e-mail nem o PDF. Prefere não aparecer? Depois de salvar, é só desligar no fim da página.
+        </p>
       )}
       {paraTalentos && vitrine && (
         <Aviso tipo="sucesso" className="mb-6" titulo="Você já aparece na aba Talentos">
@@ -165,7 +169,19 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
             Agora é só curtir as vagas que combinam com você. Quem anunciou vê seu currículo e, se curtir de volta, o
             WhatsApp dos dois aparece.
           </p>
-          {!vitrine && (
+          {vitrine ? (
+            <p className="mt-2">
+              Seu currículo já aparece para as empresas da região e na aba Talentos, sem telefone e e-mail (
+              <Link href={`/talentos/${usuario.id}`} className="text-label underline">
+                ver como aparece
+              </Link>
+              ). Prefere não aparecer? Desligue no{" "}
+              <a href="#quem-acha" className="text-label underline">
+                fim da página
+              </a>
+              .
+            </p>
+          ) : (
             <p className="mt-2">
               Quer que as empresas achem você? Ligue{" "}
               <a href="#quem-acha" className="text-label underline">

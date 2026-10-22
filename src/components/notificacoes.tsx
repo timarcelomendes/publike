@@ -20,6 +20,7 @@ import {
   SearchCheck,
   ThumbsUp,
   UserCheck,
+  UserSearch,
   UsersRound,
   UserX,
   MessageSquareText,
@@ -64,6 +65,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   convite_agencia: Inbox,
   convite_servicos: Share2,
   convite_vitrine: Store,
+  // o currículo passou a aparecer para as empresas e na aba Talentos
+  curriculo_publico: UserSearch,
 };
 
 type Notificacao = {
@@ -79,6 +82,7 @@ type Notificacao = {
 
 function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
+  if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
   if (n.tipo === "convite_empresa" || n.tipo === "convite_agencia") return "/painel";
   if (n.tipo === "convite_servicos") return `/perfil/${usuarioId}`;
   if (n.tipo === "convite_vitrine") return "/painel/servicos";

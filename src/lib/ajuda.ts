@@ -65,11 +65,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Quem vê meu currículo?",
-        r: "Preencha “Meu currículo” uma vez. Quem anunciou uma vaga que você curtiu vê o currículo, enquanto a curtida existir. Se quiser, ligue “Deixar as empresas me encontrarem” no currículo: quem tem vaga na sua cidade vê o currículo sem telefone e sem e-mail, com o nome encurtado, e pode convidar você; o contato só sai se você curtir a vaga e der match. E, se ligar “Aparecer na aba Talentos”, um resumo seu aparece na aba Talentos da busca. Dá para desligar quando quiser. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
+        r: "Preencha “Meu currículo” uma vez. Ao salvar, ele aparece para as empresas da sua cidade, que podem convidar você, e um resumo aparece na aba Talentos da busca e no seu perfil: com o nome encurtado e sem telefone, e-mail nem o PDF. O contato só sai se você curtir a vaga e der match. Prefere não aparecer? No fim da página do currículo, desligue “Deixar as empresas me encontrarem” ou “Aparecer na aba Talentos”. Quem anunciou uma vaga que você curtiu vê o currículo enquanto a curtida existir. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
       },
       {
         p: "O que é a aba Talentos?",
-        r: "É a vitrine de quem procura trabalho, ao lado das abas Vagas e Serviços. Aparece só quem ligou “Aparecer na aba Talentos” no currículo. Quem visita vê um resumo: o nome encurtado (Maria S.), o bairro, o que a pessoa faz, as habilidades, os cursos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram na conta veem o currículo completo e podem pedir conexão com você (mesmo sem vaga aberta) ou convidar para uma vaga. Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só aparece se você aceitar a conexão ou der match numa vaga.",
+        r: "É a vitrine de quem procura trabalho, ao lado das abas Vagas e Serviços. Aparece quem salvou o currículo e não desligou “Aparecer na aba Talentos”. Quem visita vê um resumo: o nome encurtado (Maria S.), o bairro, o que a pessoa faz, as habilidades, os cursos e os cargos, sem o nome das empresas. Empresas, comércios e agências que entraram na conta veem o currículo completo e podem pedir conexão com você (mesmo sem vaga aberta) ou convidar para uma vaga. Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só aparece se você aceitar a conexão ou der match numa vaga.",
       },
       {
         p: "Posso me conectar com uma empresa sem ter vaga aberta?",
@@ -275,7 +275,7 @@ const INTERESSADOS: PassoJornada = {
 };
 const TALENTOS: PassoJornada = {
   titulo: "Ache gente na aba Talentos",
-  texto: "Na busca, a aba Talentos mostra quem procura trabalho na região e escolheu aparecer.",
+  texto: "Na busca, a aba Talentos mostra quem procura trabalho na região e salvou o currículo.",
   detalhes: [
     "Cada pessoa aparece com o que faz, a experiência, as habilidades e o bairro. Filtre pelo cargo, por uma habilidade ou pela cidade.",
     "Entrando com a conta da empresa, abra o currículo completo: onde a pessoa trabalhou, as datas e o que fazia.",
@@ -404,20 +404,20 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
               "Já tem currículo pronto? Envie o PDF ou a foto da folha: o Publike preenche os campos e você só confere.",
               "Com o currículo, cada vaga mostra o seu % de match: o quanto você combina com o que ela pede.",
               "Vagas que pedem currículo já recebem o seu quando você curte.",
-              "Se quiser, deixe o currículo à vista das empresas: elas podem convidar você para uma vaga, sem ver o seu contato.",
+              "Ao salvar, o currículo fica à vista das empresas: elas podem convidar você para uma vaga, sem ver o seu contato.",
             ],
             imagem: "curriculo",
             link: { href: "/perfil/curriculo", texto: "Preencher o currículo" },
           },
           {
             titulo: "Apareça na aba Talentos",
-            texto: "No fim do currículo, ligue “Aparecer na aba Talentos”: as empresas acham você na busca.",
+            texto: "Salvou o currículo, já aparece na aba Talentos: as empresas acham você na busca.",
             detalhes: [
               "Atalho: “Currículo”, ao lado de “Publicar grátis” no alto da tela (no computador), ou “Cadastrar meu currículo” no alto da aba Talentos.",
               "Quem visita vê um resumo: o nome encurtado, o bairro, o que você faz, as habilidades e os cargos, sem o nome das empresas.",
               "Empresas, comércios e agências que entraram veem o currículo completo e convidam você para uma vaga.",
               "Telefone, e-mail e o PDF ficam escondidos, e a aba fica fora do Google. O contato só sai no match.",
-              "Desligou, saiu da aba na hora.",
+              "Prefere não aparecer? Desligue “Aparecer na aba Talentos” no fim do currículo: sai da aba na hora.",
             ],
             imagem: "talentos-opcao",
             link: { href: "/talentos", texto: "Ver a aba Talentos" },
