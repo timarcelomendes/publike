@@ -18,6 +18,7 @@ import { BotaoInstalarApp } from "./instalar-app";
 import { LinkTopo } from "./nav-topo";
 import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
+import { BotaoChatTopo } from "./assistente/botao-chat-topo";
 import { BotaoTema } from "./tema";
 import { Container, Logo } from "./ui/basicos";
 
@@ -156,10 +157,17 @@ async function AreaUsuario() {
       </>
     );
   }
-  const [perfil, moderador] = await Promise.all([obterMeuPerfil(), ehModerador()]);
+  const [perfil, moderador, conversas] = await Promise.all([
+    obterMeuPerfil(),
+    ehModerador(),
+    conversasPorPessoa().catch(() => null),
+  ]);
+  const novas = (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0);
   return (
     <>
       {adminLocal && <LinkAdmin />}
+      {/* no celular, o Chat fica aqui (o botão do canto cobria os cartões) */}
+      <BotaoChatTopo novas={novas} />
       <Notificacoes usuarioId={usuario.id} />
       <MenuUsuario
         nome={perfil?.nome ?? "Minha conta"}

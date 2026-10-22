@@ -18,11 +18,14 @@ export function EscreverRecado({
   pessoaId,
   autorTipo,
   avatar = null,
+  focar = 0,
 }: {
   pessoaId: string;
   autorTipo: string | null;
   /** no topo da home: a foto da conta ao lado do campo (com a câmera para trocar) */
   avatar?: ReactNode;
+  /** muda quando o "Recado" do celular abre o campo: o cursor vai para ele */
+  focar?: number;
 }) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -48,6 +51,10 @@ export function EscreverRecado({
   const podeProcurar = minhas || termo.length >= 2;
   const pronto = podeProcurar && achados?.chave === chaveDaBusca;
   const lista = pronto ? achados.itens : [];
+
+  useEffect(() => {
+    if (focar) campo.current?.focus();
+  }, [focar]);
 
   // a caixa cresce com o texto (até umas 6 linhas)
   useEffect(() => {

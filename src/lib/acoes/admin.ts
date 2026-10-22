@@ -327,6 +327,22 @@ export async function enviarConviteEmail(modelo: string): Promise<Resultado> {
   return { ok: true, mensagem: `Convite na fila para ${total} conta(s); ${enviados} já saíram.${resto}${comFalha}` };
 }
 
+/** O convite no sino de quem não tem e-mail na conta (uma vez por conta). */
+export async function enviarAvisoConvite(modelo: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!CONVITES.includes(modelo)) return { ok: false, erro: "Convite desconhecido." };
+  const { data: total, error } = await c.rpc("admin_enviar_aviso_convite", { p_modelo: modelo });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return {
+    ok: true,
+    mensagem: total
+      ? `Aviso no sino de ${total} conta(s) sem e-mail.`
+      : "Ninguém para avisar agora: todas as contas sem e-mail do grupo já receberam.",
+  };
+}
+
 /** O convite para uma conta só (pelo e-mail de login), para ver como chega. */
 export async function testarConviteEmail(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const c = await clienteAdminOuNulo();

@@ -1,25 +1,35 @@
-import { CircleUserRound, House, LayoutDashboard, Plus, Sparkles } from "lucide-react";
+import { CircleUserRound, ClipboardList, House, Inbox, LayoutDashboard, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
+import type { ModoPainel } from "@/lib/modo-painel";
 
-export type AbaInferior = "inicio" | "descobrir" | "publicar" | "painel" | "perfil" | null;
+export type AbaInferior = "inicio" | "segunda" | "publicar" | "painel" | "perfil" | null;
 
-const ITENS = [
-  { id: "inicio", href: "/", nome: "Início", icone: House },
-  { id: "descobrir", href: "/descobrir", nome: "Descobrir", icone: Sparkles },
-  { id: "publicar", href: "/publicar", nome: "Publicar", icone: Plus },
-  { id: "painel", href: "/painel", nome: "Painel", icone: LayoutDashboard },
-  { id: "perfil", href: "/perfil", nome: "Perfil", icone: CircleUserRound },
-] as const;
+/**
+ * A segunda aba muda com o modo da conta: quem procura trabalho (e o visitante) tem o Descobrir
+ * (as vagas uma a uma); quem contrata, os candidatos; quem presta serviço, os pedidos.
+ */
+export const SEGUNDA: Record<ModoPainel, { href: string; nome: string; icone: typeof Sparkles }> = {
+  trabalhar: { href: "/descobrir", nome: "Descobrir", icone: Sparkles },
+  contratar: { href: "/painel/caixa", nome: "Candidatos", icone: Inbox },
+  servicos: { href: "/painel/anuncios?tipo=servico", nome: "Pedidos", icone: ClipboardList },
+};
 
 /** Barra de navegação do celular (fica escondida no computador). */
-export function BarraInferiorBase({ ativo }: { ativo: AbaInferior }) {
+export function BarraInferiorBase({ ativo, modo = "trabalhar" }: { ativo: AbaInferior; modo?: ModoPainel }) {
+  const itens = [
+    { id: "inicio", href: "/", nome: "Início", icone: House },
+    { id: "segunda", ...SEGUNDA[modo] },
+    { id: "publicar", href: "/publicar", nome: "Publicar", icone: Plus },
+    { id: "painel", href: "/painel", nome: "Painel", icone: LayoutDashboard },
+    { id: "perfil", href: "/perfil", nome: "Perfil", icone: CircleUserRound },
+  ] as const;
   return (
     <nav
       aria-label="Navegação"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface-200/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
     >
       <ul className="grid grid-cols-5">
-        {ITENS.map(({ id, href, nome, icone: Icone }) => {
+        {itens.map(({ id, href, nome, icone: Icone }) => {
           const atual = ativo === id;
           const publicar = id === "publicar";
           return (

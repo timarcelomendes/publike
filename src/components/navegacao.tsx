@@ -7,13 +7,23 @@ import { BotaoInstalarApp } from "./instalar-app";
 import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { Container, Logo } from "./ui/basicos";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
+import { MODO_DEMO } from "@/lib/config";
+import { obterUsuario } from "@/lib/dados";
+import { modoDaConta } from "@/lib/servidor/modo";
 
 export function BarraInferior() {
   return (
     <Suspense fallback={<BarraInferiorBase ativo={null} />}>
-      <BarraInferiorAtiva />
+      <BarraDoModo />
     </Suspense>
   );
+}
+
+/** A barra de quem tem conta segue o modo (Contratar, Trabalhar ou Serviços). */
+async function BarraDoModo() {
+  const usuario = MODO_DEMO ? null : await obterUsuario();
+  const modo = usuario ? await modoDaConta().catch(() => "trabalhar" as const) : "trabalhar";
+  return <BarraInferiorAtiva modo={modo} />;
 }
 
 export function Rodape() {

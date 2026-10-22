@@ -94,8 +94,48 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
     );
   }
 
+  const completar = primeiro(sp.completar) === "1" || !perfil;
+  const comCurriculo = Boolean(perfil && (!marcados || marcados.includes("trabalhar")));
+  // a página é longa: um atalho para cada parte (só no perfil já feito; no "completar", o formulário é curto)
+  const partes = completar
+    ? []
+    : [
+        { href: "#perfil-dados", nome: "Perfil" },
+        { href: "#perfil-contato", nome: "Contato e avisos" },
+        {
+          href: "#perfil-sobre",
+          nome:
+            perfil?.tipo === "pessoa"
+              ? "Sobre você"
+              : perfil?.tipo === "agencia"
+                ? "Sobre a agência"
+                : "Sobre o negócio",
+        },
+        ...(comCurriculo ? [{ href: "#perfil-curriculo", nome: "Currículo" }] : []),
+        { href: "#perfil-conta", nome: "Conta" },
+      ];
+
   return (
     <>
+      {partes.length > 0 && (
+        <nav
+          aria-label="Partes do perfil"
+          className="sticky top-16 z-30 -mx-4 mb-6 border-b border-line bg-surface-100/95 px-4 py-2 backdrop-blur-md sm:mx-0 sm:rounded-pill sm:border sm:px-2"
+        >
+          <ul className="sem-barra flex gap-1 overflow-x-auto">
+            {partes.map((p) => (
+              <li key={p.href} className="shrink-0">
+                <a
+                  href={p.href}
+                  className="inline-flex min-h-9 items-center rounded-pill px-3 text-label whitespace-nowrap text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink"
+                >
+                  {p.nome}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
       <FormPerfil
         perfil={perfil}
         usuarioId={usuario.id}
@@ -103,16 +143,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         email={usuario.email}
         nomeSugerido={usuario.nome}
         cidadePadrao={visita.cidade}
-        completar={primeiro(sp.completar) === "1" || !perfil}
+        completar={completar}
         pedirAceite={pendente}
         proximo={proximo}
         modos={modos}
       />
       {/* o currículo: para quem procura trabalho (ou ainda não marcou o que faz) */}
-      {perfil && (!marcados || marcados.includes("trabalhar")) && (
+      {comCurriculo && (
         <Link
+          id="perfil-curriculo"
           href="/perfil/curriculo"
-          className="mt-8 flex items-center gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card hover:border-line-strong"
+          className="mt-8 flex scroll-mt-32 items-center gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card hover:border-line-strong"
         >
           <FileText aria-hidden className="size-6 shrink-0 text-terra-text" />
           <span className="min-w-0 flex-1">
@@ -123,6 +164,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
           </span>
           <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />
         </Link>
+      )}
+      {perfil && (
+        <h2 id="perfil-conta" className="mt-10 -mb-4 scroll-mt-32 text-h3">
+          Conta
+        </h2>
       )}
       {perfil && (
         <TrocarEmail

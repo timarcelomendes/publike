@@ -394,7 +394,10 @@ export function FormPerfil({
       <input type="hidden" name="servicos" value={servicos.join(",")} />
       {comModos && <input type="hidden" name="tem_modos" value="1" />}
 
-      <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+      <section
+        id="perfil-dados"
+        className="flex scroll-mt-32 flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
+      >
         {!curto && blocoFoto}
 
         <Campo
@@ -598,7 +601,10 @@ export function FormPerfil({
         </>
       ) : (
         <>
-          <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+          <section
+            id="perfil-contato"
+            className="flex scroll-mt-32 flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
+          >
             <div>
               <h2 className="text-h3">Contato</h2>
               <p className="mt-1 text-body-sm text-ink-muted">
@@ -608,7 +614,10 @@ export function FormPerfil({
             {campoWhatsapp}
             {camposEmail}
           </section>
-          <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+          <section
+            id="perfil-sobre"
+            className="flex scroll-mt-32 flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
+          >
             {secaoSobre}
           </section>
         </>

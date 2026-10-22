@@ -24,6 +24,9 @@ import {
   UserX,
   MessageSquareText,
   BicepsFlexed,
+  Inbox,
+  Share2,
+  Store,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
@@ -55,6 +58,12 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   conexao: Handshake,
   recado_no_ar: MessageSquareText,
   recado_forca: BicepsFlexed,
+  // os convites do admin, para quem não tem e-mail
+  convite_curriculo: FileText,
+  convite_empresa: Inbox,
+  convite_agencia: Inbox,
+  convite_servicos: Share2,
+  convite_vitrine: Store,
 };
 
 type Notificacao = {
@@ -69,6 +78,10 @@ type Notificacao = {
 };
 
 function destino(n: Notificacao, usuarioId: string) {
+  if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
+  if (n.tipo === "convite_empresa" || n.tipo === "convite_agencia") return "/painel";
+  if (n.tipo === "convite_servicos") return `/perfil/${usuarioId}`;
+  if (n.tipo === "convite_vitrine") return "/painel/servicos";
   if (n.tipo === "curtida" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}`;
   if (n.tipo === "match") return "/painel/matches";
   if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
@@ -182,7 +195,7 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
       {aberto && (
         <div
           id="lista-avisos"
-          className="absolute top-full right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-line bg-surface-200 p-2 shadow-raised"
+          className="absolute top-full right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:w-auto rounded-md border border-line bg-surface-200 p-2 shadow-raised"
         >
           <p className="px-3 pt-1 pb-2 text-label">Avisos</p>
           {itens.length === 0 ? (

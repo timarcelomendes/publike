@@ -11,6 +11,7 @@ import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/nave
 import { RodapeDaPagina } from "@/components/rodape-da-pagina";
 import { SoOlharDaConta } from "@/components/so-olhar-da-conta";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
+import { obterUsuario } from "@/lib/dados";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
 import { SCRIPT_TOQUE_CEDO } from "@/lib/toque-cedo";
@@ -58,6 +59,11 @@ export const viewport: Viewport = {
   themeColor: COR_BARRA.claro,
 };
 
+async function RodapeDaConta() {
+  const usuario = MODO_DEMO ? null : await obterUsuario();
+  return <RodapeDaPagina completo={<Rodape />} curto={<RodapeCurto />} logado={Boolean(usuario)} />;
+}
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // o SCRIPT_TEMA marca data-tema no <html> antes do React (por isso o suppressHydrationWarning)
@@ -91,9 +97,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main id="conteudo" className="flex-1">
           {children}
         </main>
-        {/* lê o endereço da página (painel e perfil: rodapé curto; entrar: sem rodapé) */}
+        {/* lê o endereço da página e a conta (quem entrou, painel e perfil: rodapé curto; entrar: sem rodapé) */}
         <Suspense fallback={null}>
-          <RodapeDaPagina completo={<Rodape />} curto={<RodapeCurto />} />
+          <RodapeDaConta />
         </Suspense>
         <BarraInferior />
         <Assistente />

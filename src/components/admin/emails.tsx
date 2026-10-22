@@ -1,8 +1,9 @@
 "use client";
 
-import { HandHeart, ImageUp, Mail, RefreshCw, RotateCcw, Send } from "lucide-react";
+import { Bell, HandHeart, ImageUp, Mail, RefreshCw, RotateCcw, Send } from "lucide-react";
 import { useActionState, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
+  enviarAvisoConvite,
   enviarConviteEmail,
   enviarEmailDeTeste,
   processarFilasAgora,
@@ -573,7 +574,16 @@ const CONVITES_EMAIL = [
  * Um convite por grupo de contas que já existem: o teste para um e-mail e, depois, o envio para
  * quem ainda não recebeu (com confirmação). Os textos ficam em "Textos dos e-mails".
  */
-export function ConvitesPorEmail({ convites, sugestao }: { convites: ConviteEmail[]; sugestao: string }) {
+export function ConvitesPorEmail({
+  convites,
+  avisos,
+  sugestao,
+}: {
+  convites: ConviteEmail[];
+  /** no sino, para quem não tem e-mail (null antes da migração) */
+  avisos: ConviteEmail[] | null;
+  sugestao: string;
+}) {
   return (
     <ul className="flex flex-col gap-3">
       {CONVITES_EMAIL.map((info) => {
@@ -582,7 +592,10 @@ export function ConvitesPorEmail({ convites, sugestao }: { convites: ConviteEmai
           recebem: 0,
           ja_receberam: 0,
         };
-        return <LinhaConvite key={info.modelo} info={info} convite={c} sugestao={sugestao} />;
+        const a = avisos
+          ? (avisos.find((x) => x.modelo === info.modelo) ?? { modelo: info.modelo, recebem: 0, ja_receberam: 0 })
+          : null;
+        return <LinhaConvite key={info.modelo} info={info} convite={c} aviso={a} sugestao={sugestao} />;
       })}
     </ul>
   );
@@ -591,10 +604,12 @@ export function ConvitesPorEmail({ convites, sugestao }: { convites: ConviteEmai
 function LinhaConvite({
   info,
   convite,
+  aviso,
   sugestao,
 }: {
   info: (typeof CONVITES_EMAIL)[number];
   convite: ConviteEmail;
+  aviso: ConviteEmail | null;
   sugestao: string;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
@@ -640,6 +655,7 @@ function LinhaConvite({
         </div>
       </div>
       {mensagem}
+      {aviso && <AvisoNoSino modelo={info.modelo} aviso={aviso} />}
       <form action={acao} className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <input type="hidden" name="modelo" value={info.modelo} />
         <Campo
@@ -665,5 +681,52 @@ function LinhaConvite({
       </form>
       <Resultado estado={estado} />
     </li>
+  );
+}
+
+/** O mesmo convite no sino, para as contas do grupo sem e-mail (entraram pelo celular). */
+function AvisoNoSino({ modelo, aviso }: { modelo: string; aviso: ConviteEmail }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [confirmar, setConfirmar] = useState(false);
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-body-sm">
+          <Bell aria-hidden className="mr-1 inline size-4 align-[-3px] text-ink-muted" />
+          Sem e-mail, no sino: <strong>{aviso.recebem}</strong>{" "}
+          {aviso.recebem === 1 ? "conta recebe" : "contas recebem"} agora
+          {aviso.ja_receberam > 0 && <span className="text-ink-muted"> · {aviso.ja_receberam} já receberam</span>}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {confirmar ? (
+            <>
+              <Botao
+                tamanho="sm"
+                variante="secundario"
+                disabled={pendente}
+                onClick={() =>
+                  rodar(
+                    () => enviarAvisoConvite(modelo),
+                    () => setConfirmar(false),
+                  )
+                }
+              >
+                <Bell aria-hidden />
+                {pendente ? "Avisando…" : `Confirmar: avisar ${aviso.recebem}`}
+              </Botao>
+              <Botao tamanho="sm" variante="secundario" disabled={pendente} onClick={() => setConfirmar(false)}>
+                Cancelar
+              </Botao>
+            </>
+          ) : (
+            <Botao tamanho="sm" variante="secundario" disabled={aviso.recebem === 0} onClick={() => setConfirmar(true)}>
+              <Bell aria-hidden />
+              Avisar no sino {aviso.recebem}
+            </Botao>
+          )}
+        </div>
+      </div>
+      {mensagem}
+    </div>
   );
 }

@@ -10,9 +10,9 @@ import { numeroDaAba, quandoFoi, saudacao } from "@/lib/linha-do-tempo";
 import { chaveDaLinha, dadosDaLinha } from "@/lib/servidor/linha";
 import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
 import { BarraBusca, FiltrosLista } from "../../explorar/barra-busca";
-import { EscreverRecado } from "../../recados/escrever-recado";
 import { FotoDaConta } from "../foto-da-conta";
 import { AbasDaLinha } from "./abas-da-linha";
+import { BuscaERecado } from "./busca-e-recado";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
@@ -184,27 +184,31 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
             </Link>
           )}
         </div>
-        {/* no celular e no tablet, a busca (no computador, ela fica no cabeçalho) */}
-        <CampoDaBusca className="lg:hidden" />
-        {usuario && !soOlhar && (
-          <EscreverRecado
-            pessoaId={usuario.pessoaId}
-            autorTipo={d.autorTipo}
-            // no celular a foto já está ao lado da saudação
-            avatar={
-              <span className="hidden shrink-0 lg:block">
-                <FotoDaConta
-                  nome={perfil?.nome ?? "?"}
-                  foto={perfil?.foto ?? null}
-                  empresa={empresa}
-                  pessoaId={usuario.pessoaId}
-                  podeTrocar={usuario.id === usuario.pessoaId}
-                  tamanho={40}
-                  className="shrink-0"
-                />
-              </span>
-            }
+        {usuario && !soOlhar ? (
+          // no celular e no tablet, a busca e o "Recado" numa linha (no computador, a busca fica no cabeçalho)
+          <BuscaERecado
+            busca={<CampoDaBusca />}
+            recado={{
+              pessoaId: usuario.pessoaId,
+              autorTipo: d.autorTipo,
+              // no celular a foto já está ao lado da saudação
+              avatar: (
+                <span className="hidden shrink-0 lg:block">
+                  <FotoDaConta
+                    nome={perfil?.nome ?? "?"}
+                    foto={perfil?.foto ?? null}
+                    empresa={empresa}
+                    pessoaId={usuario.pessoaId}
+                    podeTrocar={usuario.id === usuario.pessoaId}
+                    tamanho={40}
+                    className="shrink-0"
+                  />
+                </span>
+              ),
+            }}
           />
+        ) : (
+          <CampoDaBusca className="lg:hidden" />
         )}
       </section>
       <div aria-hidden className="h-3 sm:h-4" />

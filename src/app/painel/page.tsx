@@ -396,63 +396,67 @@ function HojeTrabalhar({
         </section>
 
         <aside className="flex flex-col gap-4">
-          <section
-            aria-labelledby="seu-curriculo"
-            className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
-          >
-            <h2 id="seu-curriculo" className="text-h3">
-              Seu currículo
-            </h2>
-            {!forca ? (
-              <p className="text-body-sm text-ink-muted">Não deu para ver agora.</p>
-            ) : (
-              <>
-                <p className="flex items-baseline gap-2">
-                  <span className="font-display text-h2 leading-none tabular-nums">{forca.pontos}%</span>
-                  <span className="text-body-sm text-ink-muted">completo</span>
-                </p>
-                <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-surface-300">
-                  <span
-                    className={forca.pontos >= 80 ? "bg-cerrado" : "bg-ipe"}
-                    style={{ width: `${forca.pontos}%` }}
-                  />
-                </span>
-                <p className="text-body-sm text-ink-muted">
-                  {forca.dica ??
-                    (curriculo?.c ? `Completo. Atualizado ${tempoRelativo(curriculo.c.atualizado_em, agora)}.` : "")}
-                </p>
-                <Link
-                  href="/perfil/curriculo"
-                  className="self-start text-label underline underline-offset-2 hover:text-terra-text"
-                >
-                  {curriculo?.c ? "Melhorar o currículo" : "Montar o currículo"}
-                </Link>
-                {curriculo?.c && (
-                  <p className="border-t border-line pt-3 text-body-sm text-ink-muted">
-                    {vitrine ? (
-                      "Você aparece na aba Talentos: empresas de toda a região acham seu currículo e convidam você."
-                    ) : visivel ? (
-                      <>
-                        Empresas com vagas na sua cidade podem achar seu currículo e convidar você. Para toda a região,{" "}
-                        <Link href="/perfil/curriculo#vitrine-titulo" className="font-semibold text-ink underline">
-                          apareça na aba Talentos
-                        </Link>
-                        .
-                      </>
-                    ) : (
-                      <>
-                        Quer ser convidado para vagas?{" "}
-                        <Link href="/perfil/curriculo#talentos-titulo" className="font-semibold text-ink underline">
-                          Deixe as empresas encontrarem você
-                        </Link>
-                        .
-                      </>
-                    )}
+          {/* sem currículo, o convite já está em "Para fazer agora" (um convite só por tela) */}
+          {!semCurriculo && (
+            <section
+              aria-labelledby="seu-curriculo"
+              className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+            >
+              <h2 id="seu-curriculo" className="text-h3">
+                Seu currículo
+              </h2>
+              {!forca ? (
+                <p className="text-body-sm text-ink-muted">Não deu para ver agora.</p>
+              ) : (
+                <>
+                  <p className="flex items-baseline gap-2">
+                    <span className="font-display text-h2 leading-none tabular-nums">{forca.pontos}%</span>
+                    <span className="text-body-sm text-ink-muted">completo</span>
                   </p>
-                )}
-              </>
-            )}
-          </section>
+                  <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-surface-300">
+                    <span
+                      className={forca.pontos >= 80 ? "bg-cerrado" : "bg-ipe"}
+                      style={{ width: `${forca.pontos}%` }}
+                    />
+                  </span>
+                  <p className="text-body-sm text-ink-muted">
+                    {forca.dica ??
+                      (curriculo?.c ? `Completo. Atualizado ${tempoRelativo(curriculo.c.atualizado_em, agora)}.` : "")}
+                  </p>
+                  <Link
+                    href="/perfil/curriculo"
+                    className="self-start text-label underline underline-offset-2 hover:text-terra-text"
+                  >
+                    {curriculo?.c ? "Melhorar o currículo" : "Montar o currículo"}
+                  </Link>
+                  {curriculo?.c && (
+                    <p className="border-t border-line pt-3 text-body-sm text-ink-muted">
+                      {vitrine ? (
+                        "Você aparece na aba Talentos: empresas de toda a região acham seu currículo e convidam você."
+                      ) : visivel ? (
+                        <>
+                          Empresas com vagas na sua cidade podem achar seu currículo e convidar você. Para toda a
+                          região,{" "}
+                          <Link href="/perfil/curriculo#vitrine-titulo" className="font-semibold text-ink underline">
+                            apareça na aba Talentos
+                          </Link>
+                          .
+                        </>
+                      ) : (
+                        <>
+                          Quer ser convidado para vagas?{" "}
+                          <Link href="/perfil/curriculo#talentos-titulo" className="font-semibold text-ink underline">
+                            Deixe as empresas encontrarem você
+                          </Link>
+                          .
+                        </>
+                      )}
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
+          )}
 
           <nav aria-label="Atalhos de quem procura trabalho" className="flex flex-col gap-2">
             <Atalho icone={Search} href="/?tipo=vaga&ordem=combina" titulo="Vagas que combinam com você" />

@@ -268,6 +268,13 @@ export async function convitesPorEmail(c: ClienteBanco) {
   return data ?? [];
 }
 
+/** Os convites no sino (contas sem e-mail). Antes da migração, null: a página mostra só o e-mail. */
+export async function avisosDeConvite(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_avisos_de_convite");
+  if (error) return null;
+  return data ?? [];
+}
+
 export async function ultimosEmails(c: ClienteBanco, limite = 40) {
   const { data, error } = await c.rpc("admin_fila_emails", { p_limite: limite });
   if (error) falha("a fila de e-mails", error);

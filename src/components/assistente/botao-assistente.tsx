@@ -4,7 +4,13 @@ import { MessageCircleQuestion, MessagesSquare, RotateCcw, X } from "lucide-reac
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from "react";
-import { EVENTO_ABRIR_CONVERSA, marcarChatNaPagina, type PedidoConversa } from "@/lib/abrir-conversa";
+import {
+  avisarNaoLidas,
+  EVENTO_ABRIR_CHAT,
+  EVENTO_ABRIR_CONVERSA,
+  marcarChatNaPagina,
+  type PedidoConversa,
+} from "@/lib/abrir-conversa";
 import { PainelConversas, useConversasDoChat } from "../conversa/janela-mensagens";
 import { Conversa } from "./conversa";
 import { mudarConversa, useConversa } from "./conversa-estado";
@@ -85,6 +91,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
   const caminho = usePathname() ?? "/";
   const [aberto, setAberto] = useState(false);
   const botao = useRef<HTMLButtonElement>(null);
+  const quemAbriu = useRef<HTMLElement | null>(null);
   const area = useAreaVisivel(aberto);
   const { soIcone, escondido } = useSoIcone();
   const conversa = useConversa();
@@ -108,23 +115,36 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
     setAberto(true);
   }
 
-  const aoPedirConversa = useEffectEvent((e: Event) => abrir((e as CustomEvent<PedidoConversa>).detail));
+  const aoPedirConversa = useEffectEvent((e: Event) => {
+    // quem abriu (o ícone do cabeçalho, no celular) recebe o foco de volta ao fechar
+    quemAbriu.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    abrir(e.type === EVENTO_ABRIR_CONVERSA ? (e as CustomEvent<PedidoConversa>).detail : null);
+  });
   useEffect(() => {
     // só com conta: as conversas são dos matches
     if (!usuarioId) return;
     marcarChatNaPagina(true);
     const ouvir = (e: Event) => aoPedirConversa(e);
     window.addEventListener(EVENTO_ABRIR_CONVERSA, ouvir);
+    window.addEventListener(EVENTO_ABRIR_CHAT, ouvir);
     return () => {
       marcarChatNaPagina(false);
       window.removeEventListener(EVENTO_ABRIR_CONVERSA, ouvir);
+      window.removeEventListener(EVENTO_ABRIR_CHAT, ouvir);
     };
   }, [usuarioId]);
+
+  // o ícone do cabeçalho mostra o mesmo número
+  useEffect(() => {
+    if (usuarioId) avisarNaoLidas(naoLidas);
+  }, [usuarioId, naoLidas]);
 
   function fechar() {
     if (window.location.hash === MARCA) window.history.back();
     else setAberto(false);
-    requestAnimationFrame(() => botao.current?.focus());
+    const volta = quemAbriu.current;
+    quemAbriu.current = null;
+    requestAnimationFrame(() => (volta?.isConnected ? volta : botao.current)?.focus());
   }
 
   const aoTeclar = useEffectEvent((e: globalThis.KeyboardEvent) => {
@@ -150,7 +170,8 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
     };
   }, [aberto]);
 
-  if (SEM_BOTAO.some((r) => r.test(caminho))) return null;
+  // sem o botão (admin, Descobrir), o Chat ainda abre pelo ícone do cabeçalho
+  const semBotao = SEM_BOTAO.some((r) => r.test(caminho));
 
   // no celular: a folha vai do topo da área visível (com uma folga) até o fim dela
   const folga = area ? Math.min(72, Math.max(16, area.altura * 0.08)) : 0;
@@ -160,14 +181,15 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
 
   return (
     <>
-      {!aberto && (
+      {!aberto && !semBotao && (
         <button
           ref={botao}
           type="button"
           onClick={() => abrir()}
           aria-haspopup="dialog"
           data-assistente="botao"
-          className={`fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform,opacity] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
+          // no celular, quem tem conta abre pelo ícone do cabeçalho
+          className={`${usuarioId ? "max-md:hidden " : ""}fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform,opacity] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
             soIcone ? "px-3.5" : "px-4"
           } ${escondido ? "pointer-events-none translate-y-24 opacity-0" : ""}`}
         >

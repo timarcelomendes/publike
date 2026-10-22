@@ -14,7 +14,7 @@ import {
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
-import { configDoSite, convitesPorEmail, modelosDeEmail, ultimosEmails } from "@/lib/admin/dados";
+import { avisosDeConvite, configDoSite, convitesPorEmail, modelosDeEmail, ultimosEmails } from "@/lib/admin/dados";
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail } from "@/lib/email/montar";
@@ -36,12 +36,13 @@ export default function Emails() {
 
 async function Conteudo() {
   const c = await exigirAdminLocal();
-  const [config, modelos, fila, agora, convites] = await Promise.all([
+  const [config, modelos, fila, agora, convites, avisos] = await Promise.all([
     configDoSite(c),
     modelosDeEmail(c),
     ultimosEmails(c, 40),
     agoraDaRequisicao(),
     convitesPorEmail(c),
+    avisosDeConvite(c),
   ]);
   const smtp = situacaoSmtp();
   const filas = situacaoFilas();
@@ -126,9 +127,9 @@ async function Conteudo() {
         <Secao
           id="convites"
           titulo="Convites por e-mail"
-          descricao="Um e-mail para cada grupo de contas que já existem, uma vez por conta. Segue as regras dos avisos (e-mails ligados, avisos ligados na conta e e-mail confirmado). Mande um teste antes; os textos ficam em Textos dos e-mails, com prévia."
+          descricao="Um e-mail para cada grupo de contas que já existem, uma vez por conta. Segue as regras dos avisos (e-mails ligados, avisos ligados na conta e e-mail confirmado). Mande um teste antes; os textos ficam em Textos dos e-mails, com prévia. Quem entrou pelo celular e não tem e-mail recebe o convite no sino, com o pedido de pôr um e-mail no perfil."
         >
-          <ConvitesPorEmail convites={convites} sugestao={config.avisos_para[0] ?? ""} />
+          <ConvitesPorEmail convites={convites} avisos={avisos} sugestao={config.avisos_para[0] ?? ""} />
         </Secao>
       )}
 

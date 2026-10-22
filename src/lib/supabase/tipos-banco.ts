@@ -2268,6 +2268,13 @@ export type Database = {
       };
       /** põe o convite na fila para quem ainda pode receber (devolve quantos) */
       admin_enviar_convite_email: { Args: { p_modelo: string }; Returns: number };
+      /** o convite no sino, para quem não tem e-mail: quantos recebem agora e quantos já receberam */
+      admin_avisos_de_convite: {
+        Args: Record<PropertyKey, never>;
+        Returns: { modelo: string; recebem: number; ja_receberam: number }[];
+      };
+      /** põe o convite no sino de quem não tem e-mail e ainda não recebeu (devolve quantos) */
+      admin_enviar_aviso_convite: { Args: { p_modelo: string }; Returns: number };
       /** o convite para a conta desse e-mail, mesmo fora do grupo (devolve o id na fila) */
       admin_convite_email_teste: { Args: { p_modelo: string; p_email: string }; Returns: number };
       /** os serviços da conta, como ela vê em "Meus serviços" (admin) */

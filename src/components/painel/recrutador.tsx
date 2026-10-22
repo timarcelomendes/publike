@@ -557,33 +557,36 @@ export async function PainelRecrutador({
         pendencias={cartoes.length}
         resumo={resumo}
         boasVindas={contaNova}
+        // conta nova: a ação é a do passo da vez no "Comece por aqui" (um botão principal por tela)
         acao={
-          <div className="flex flex-col items-start gap-1.5 sm:items-end">
-            <span className="flex flex-wrap items-center gap-2">
+          contaNova ? undefined : (
+            <div className="flex flex-col items-start gap-1.5 sm:items-end">
+              <span className="flex flex-wrap items-center gap-2">
+                {fotoDaVaga && !contaNova && (
+                  <BotaoLink href="/publicar#arte" tamanho="sm">
+                    <ImageUp aria-hidden />
+                    Publicar pela foto
+                  </BotaoLink>
+                )}
+                {agencia && (
+                  <BotaoLink href="/painel/clientes/novo" tamanho="sm">
+                    <Building2 aria-hidden />
+                    Adicionar cliente
+                  </BotaoLink>
+                )}
+                <BotaoLink href="/publicar" variante="primario" tamanho="sm">
+                  <Plus aria-hidden />
+                  Publicar vaga
+                </BotaoLink>
+              </span>
+              {/* o que é "pela foto": a vaga que já existe numa imagem vira a vaga preenchida */}
               {fotoDaVaga && !contaNova && (
-                <BotaoLink href="/publicar#arte" tamanho="sm">
-                  <ImageUp aria-hidden />
-                  Publicar pela foto
-                </BotaoLink>
+                <p className="max-w-xs text-body-sm text-ink-muted sm:text-right">
+                  Pela foto: mande a arte da vaga (o post ou o cartaz) e o Publike preenche tudo.
+                </p>
               )}
-              {agencia && (
-                <BotaoLink href="/painel/clientes/novo" tamanho="sm">
-                  <Building2 aria-hidden />
-                  Adicionar cliente
-                </BotaoLink>
-              )}
-              <BotaoLink href="/publicar" variante="primario" tamanho="sm">
-                <Plus aria-hidden />
-                Publicar vaga
-              </BotaoLink>
-            </span>
-            {/* o que é "pela foto": a vaga que já existe numa imagem vira a vaga preenchida */}
-            {fotoDaVaga && !contaNova && (
-              <p className="max-w-xs text-body-sm text-ink-muted sm:text-right">
-                Pela foto: mande a arte da vaga (o post ou o cartaz) e o Publike preenche tudo.
-              </p>
-            )}
-          </div>
+            </div>
+          )
         }
       />
 
