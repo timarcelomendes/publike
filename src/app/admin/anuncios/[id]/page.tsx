@@ -1,4 +1,5 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import { classesBotao } from "@/components/ui/botao";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -108,7 +109,21 @@ async function Conteudo({
         <AcoesModeracaoAnuncio anuncioId={id} status={ficha.status} denunciasAbertas={abertas} iaFalhou={iaFalhou} />
       </Secao>
 
-      <Secao titulo="O anúncio">
+      <Secao
+        titulo="O anúncio"
+        acoes={
+          acesso.admin &&
+          anuncio.tipo === "vaga" && (
+            <Link
+              href={`/admin/usuarios/${ficha.autor.id}/publicar?copiar=${id}#formulario-vaga`}
+              className={classesBotao("secundario", "sm")}
+            >
+              <Copy aria-hidden />
+              Duplicar a vaga
+            </Link>
+          )
+        }
+      >
         <dl className="flex flex-col gap-3">
           {(anuncio.contratante || anuncio.contratante_confidencial) && (
             <Dado rotulo="Empresa contratante">{anuncio.contratante ?? "Confidencial"}</Dado>
