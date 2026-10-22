@@ -15,6 +15,7 @@ import {
   ACEITE_NA_LINHA,
   CURTIDAS_SOBEM,
   marcaDaVisita,
+  SESSAO_DA_HOME,
   MAX_VAGAS_QUE_SOBEM,
   novidades,
   type ItemDaLinha,
@@ -166,6 +167,8 @@ export type DadosDaLinha = {
   tempoDe: "casa" | "voce" | null;
   itens: ItemDaLinha<DadoDaLinha>[];
   marca: number | null;
+  /** esta abertura começa uma visita (a anterior foi há mais de 30 min): só aí o topo diz quantas novidades */
+  visitaNova: boolean;
   novas: { tudo: number; vaga: number; servico: number; recado: number };
   /** a pessoa pode escrever recado (tem conta) e o que ela faz ("pessoa" escreve o que procura) */
   autorTipo: string | null;
@@ -216,6 +219,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     usuario ? obterMeuPerfil().catch(() => null) : Promise.resolve(null),
   ]);
   const marca = marcaDaVisita(prefs.vistaEm, prefs.marcaEm, agora);
+  const visitaNova = prefs.vistaEm !== null && agora - new Date(prefs.vistaEm).getTime() > SESSAO_DA_HOME;
   const requisitos = await requisitosDaLista(encontrados).catch(() => null);
   const turno = filtros.turno;
   const anuncios = (
@@ -340,6 +344,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     tempoDe: origemDoTempo(filtros, local),
     itens,
     marca,
+    visitaNova,
     novas,
     autorTipo: perfil?.tipo ?? null,
   };

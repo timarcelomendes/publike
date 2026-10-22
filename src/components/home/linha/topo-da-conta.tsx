@@ -121,8 +121,9 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
   // pessoa: o primeiro nome; empresa, comércio e agência: o nome inteiro
   const nome = (empresa ? perfil?.nome : perfil?.nome?.split(" ")[0])?.trim() ?? "";
+  // "N novidades desde…" só quando a pessoa volta depois de mais de 30 min fora (a 1ª abertura da visita)
   const frase =
-    d.marca === null
+    d.marca === null || !d.visitaNova
       ? null
       : d.novas.tudo > 0
         ? `${d.novas.tudo === 1 ? "1 novidade" : `${d.novas.tudo > 99 ? "99+" : d.novas.tudo} novidades`} desde ${quandoFoi(d.marca, d.agora)}`
