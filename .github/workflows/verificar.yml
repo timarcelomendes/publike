@@ -1,0 +1,65 @@
+# A cada push e pull request, antes do site: o código (tipos e ESLint) e as migrações do banco,
+# aplicadas uma por uma num Postgres novo, como no Supabase (scripts/ci/verificar-migracoes.sh).
+name: Verificar
+
+on:
+  push:
+  pull_request:
+
+# um push novo no mesmo ramo cancela a conferência que ainda estava rodando
+concurrency:
+  group: verificar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codigo:
+    name: Código (TypeScript e ESLint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Tipos das rotas (sem precisar do build)
+        run: npx next typegen
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: ESLint
+        run: npm run lint
+
+  migracoes:
+    name: Migrações do banco
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      # a mesma versão do Auth usada nos testes locais
+      AUTH_VERSAO: v2.177.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Auth do Supabase (cria o esquema auth)
+        run: |
+          mkdir -p "$RUNNER_TEMP/auth"
+          curl -fsSL "https://github.com/supabase/auth/releases/download/${AUTH_VERSAO}/auth-${AUTH_VERSAO}-x86.tar.gz" | tar -xz -C "$RUNNER_TEMP/auth"
+          echo "AUTH_BIN=$RUNNER_TEMP/auth/auth" >> "$GITHUB_ENV"
+      - name: Aplicar as migrações num banco novo
+        run: bash scripts/ci/verificar-migracoes.sh
