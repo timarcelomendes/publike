@@ -377,14 +377,18 @@ export function PainelCurtir({
       <div>
         <p className="font-display text-h3">{servico ? "Quer contratar?" : "Tem interesse?"}</p>
         {contatoDireto && !passoDoCurriculo ? (
-          <p className="mt-3 flex items-start gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
-            <Zap aria-hidden className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
-            <span>
-              <span className="font-semibold">Contato direto:</span>{" "}
-              {servico ? "ao tocar em Quero contratar" : "ao curtir"}, você e {quem} trocam o WhatsApp na hora, sem
-              esperar o aceite.
+          // o que mais pesa na decisão: em destaque, no verde do match
+          <div className="mt-3 flex items-start gap-3 rounded-md border-2 border-cerrado bg-cerrado/10 p-3.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-cerrado text-on-cerrado">
+              <Zap aria-hidden className="size-5" />
             </span>
-          </p>
+            <p className="min-w-0 text-body">
+              <span className="block text-label text-cerrado-text">Contato direto</span>
+              {servico ? "Ao tocar em Quero contratar" : "Ao curtir"}, você e{" "}
+              <strong className="font-semibold">{quem}</strong> trocam o WhatsApp{" "}
+              <strong className="font-semibold">na hora</strong>, sem esperar o aceite.
+            </p>
+          </div>
         ) : (
           <CaminhoDaCurtida
             situacao="antes"

@@ -412,7 +412,7 @@ async function DetalheAnuncio({
               </Selo>
             )}
             {anuncio.contato_direto && anuncio.status === "ativo" && !anuncio.preenchida_em && (
-              <Selo variante="contorno">
+              <Selo variante="match">
                 <Zap aria-hidden />
                 Contato direto
               </Selo>
