@@ -15,6 +15,7 @@ import { obterIntencao } from "@/lib/servidor/intencao";
 import { modosMarcados, modosNoBanco } from "@/lib/servidor/modo";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 export const metadata: Metadata = {
   title: "Meu perfil",
@@ -39,7 +40,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/perfil");
-  const [perfil, pendente, contaAuth, marcados, comModos, intencao] = await Promise.all([
+  const [perfil, pendente, contaAuth, marcados, comModos, intencao, visita] = await Promise.all([
     obterMeuPerfil(),
     aceitePendente(),
     // o e-mail novo que ainda espera confirmação (só o Supabase sabe)
@@ -47,6 +48,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
     modosMarcados(),
     modosNoBanco(),
     obterIntencao().catch(() => null),
+    // perfil novo: a cidade já vem marcada (a de onde a pessoa disse que mora ou a do endereço de internet)
+    cidadeDaVisita(),
   ]);
   // "O que você quer fazer no Publike?": o que a conta marcou; conta nova, pelo tipo e pelo que
   // disse que quer fazer. Banco sem a migração: a pergunta não aparece (não teria onde guardar).
@@ -99,6 +102,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         telefone={usuario.telefone}
         email={usuario.email}
         nomeSugerido={usuario.nome}
+        cidadePadrao={visita.cidade}
         completar={primeiro(sp.completar) === "1" || !perfil}
         pedirAceite={pendente}
         proximo={proximo}

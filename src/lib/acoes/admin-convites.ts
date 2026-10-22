@@ -25,6 +25,8 @@ import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio
 import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { processarFilas } from "@/lib/servidor/filas";
 import { salvarTriagem } from "@/lib/servidor/triagem";
+import { areasSemRepetir } from "@/lib/constantes";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 // Convites às empresas: importar a lista, marcar a situação e anotar. Só no admin.
 
@@ -337,7 +339,7 @@ export async function montarVitrinePeloAdmin(
 
   // sem ponto no mapa, o meio do bairro (como na publicação de vaga)
   const bairro = String(formData.get("bairro") ?? "").trim();
-  const cidade = String(formData.get("cidade") ?? "").trim() || "Goiânia";
+  const cidade = String(formData.get("cidade") ?? "").trim() || PRACA_PADRAO.cidade;
   if ((!formData.get("lat") || !formData.get("lng")) && bairro) {
     const centro = await centroDoBairro(bairro, cidade).catch(() => null);
     if (centro) {
@@ -355,7 +357,7 @@ export async function montarVitrinePeloAdmin(
   if ("erro" in conta) return { ok: false, erro: conta.erro };
   const { id: contaId, semEmail } = conta;
 
-  const atende = d.atende.includes("Goiânia") ? d.atende.filter((a) => !a.startsWith("Goiânia: ")) : d.atende;
+  const atende = areasSemRepetir(d.atende);
   const { error } = await c.rpc("admin_salvar_servicos_de", {
     p_usuario: contaId,
     p_servicos: d.servicos.map((s) => ({

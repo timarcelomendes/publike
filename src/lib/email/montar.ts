@@ -1,3 +1,4 @@
+import { PRACA_PADRAO } from "@/lib/pracas";
 // Monta o e-mail (assunto, HTML e texto) a partir do modelo editado no admin.
 // Sem dependências do servidor: o admin usa a mesma função na prévia.
 
@@ -181,7 +182,7 @@ export const EXEMPLOS_EMAIL: Record<string, string> = {
   ate: "15/10/2026 às 14:30",
   total: "2",
   tipo: "comércio",
-  cidade: "Goiânia",
+  cidade: PRACA_PADRAO.cidade,
   origem: "o anúncio recebeu denúncias de três pessoas diferentes.",
   quando: "08/10/2026 às 13:00",
   caminho: "/painel",

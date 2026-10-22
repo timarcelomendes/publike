@@ -405,7 +405,16 @@ export const MOTIVOS_DENUNCIA = [
 ] as const;
 export type MotivoDenuncia = (typeof MOTIVOS_DENUNCIA)[number]["valor"];
 
-/** Região metropolitana de Goiânia. */
+/** "a, b e c" */
+export function emLista(itens: readonly string[]) {
+  if (itens.length <= 1) return itens[0] ?? "";
+  return `${itens.slice(0, -1).join(", ")} e ${itens[itens.length - 1]}`;
+}
+
+/**
+ * As cidades onde o Publike funciona (hoje, a região metropolitana de Goiânia). Cada praça
+ * (`pracas.ts`) diz quais são as suas.
+ */
 export const CIDADES = [
   "Goiânia",
   "Aparecida de Goiânia",
@@ -434,30 +443,54 @@ export type Cidade = (typeof CIDADES)[number];
 export const REGIOES = ["Centro", "Norte", "Sul", "Leste", "Oeste", "Noroeste", "Sudoeste"] as const;
 export type Regiao = (typeof REGIOES)[number];
 
+/** As cidades divididas em regiões (hoje, só Goiânia); nas outras, a cidade inteira é uma área só. */
+export const REGIOES_DAS_CIDADES: Partial<Record<Cidade, readonly Regiao[]>> = { Goiânia: REGIOES };
+
+/** "Goiânia: Sul": a área de uma região da cidade (onde um profissional atende). */
+export const areaDaRegiao = (cidade: string, regiao: string) => `${cidade}: ${regiao}`;
+
+/** "Goiânia: Sul" → { cidade: "Goiânia", regiao: "Sul" }; a cidade inteira vem sem região. */
+export function partesDaArea(area: string): { cidade: string; regiao: string | null } {
+  const i = area.indexOf(": ");
+  return i > 0 ? { cidade: area.slice(0, i), regiao: area.slice(i + 2) } : { cidade: area, regiao: null };
+}
+
 /**
- * Onde um profissional atende: uma região de Goiânia ("Goiânia: Sul"),
- * Goiânia inteira ("Goiânia") ou outra cidade da região metropolitana.
+ * Onde um profissional atende: uma região de uma cidade dividida em regiões ("Goiânia: Sul"),
+ * a cidade inteira ("Goiânia") ou outra cidade da praça.
  */
-export const AREAS_GOIANIA = REGIOES.map((r) => `Goiânia: ${r}`);
-export const AREAS_ATENDIMENTO = ["Goiânia", ...AREAS_GOIANIA, ...CIDADES.filter((c) => c !== "Goiânia")];
+export const AREAS_ATENDIMENTO = CIDADES.flatMap((c) => [
+  c,
+  ...(REGIOES_DAS_CIDADES[c] ?? []).map((r) => areaDaRegiao(c, r)),
+]);
+
+/** A cidade inteira já cobre as regiões dela: ["Goiânia", "Goiânia: Sul"] → ["Goiânia"]. */
+export function areasSemRepetir(areas: readonly string[]) {
+  return areas.filter((a) => {
+    const { cidade, regiao } = partesDaArea(a);
+    return !regiao || !areas.includes(cidade);
+  });
+}
 
 /** "Goiânia: Sul" → "Região Sul"; cidade fica igual. */
 export function nomeDaAreaAtendida(area: string) {
-  return area.startsWith("Goiânia: ") ? `Região ${area.slice(9)}` : area;
+  const { regiao } = partesDaArea(area);
+  return regiao ? `Região ${regiao}` : area;
 }
 
-/** Junta as regiões de Goiânia ("Região Sul e Sudoeste de Goiânia") e lista as cidades. */
+/** Junta as regiões de cada cidade ("Região Sul e Sudoeste de Goiânia") e lista as cidades. */
 export function descreverAtendimento(areas: readonly string[]) {
-  const regioes = areas.filter((a) => a.startsWith("Goiânia: ")).map((a) => a.slice(9));
-  const cidades = areas.filter((a) => !a.startsWith("Goiânia: "));
-  const partes: string[] = [];
-  if (regioes.length) {
-    const lista = regioes.length === 1 ? regioes[0] : `${regioes.slice(0, -1).join(", ")} e ${regioes[regioes.length - 1]}`;
-    partes.push(`${regioes.length === 1 ? "Região" : "Regiões"} ${lista} de Goiânia`);
+  const regioes = new Map<string, string[]>();
+  const cidades: string[] = [];
+  for (const area of areas) {
+    const { cidade, regiao } = partesDaArea(area);
+    if (regiao) regioes.set(cidade, [...(regioes.get(cidade) ?? []), regiao]);
+    else cidades.push(area);
   }
-  partes.push(...cidades);
-  if (partes.length <= 1) return partes[0] ?? "";
-  return `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`;
+  const partes = [...regioes].map(
+    ([cidade, rs]) => `${rs.length === 1 ? "Região" : "Regiões"} ${emLista(rs)} de ${cidade}`,
+  );
+  return emLista([...partes, ...cidades]);
 }
 
 /** De onde quem recomenda conhece o profissional ("Eu recomendo"). */

@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, LocateFixed, Search, UserRound, X } from "lu
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
-import { REGIAO } from "@/lib/config";
 import { CATEGORIAS, REGIMES, type Categoria } from "@/lib/constantes";
 import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
 import { hrefFiltros, RAIOS, TURNOS, type Filtros, type Ordem, type Turno } from "@/lib/filtros";
@@ -14,6 +13,7 @@ import type { Regime } from "@/lib/tipos";
 import { Seletor } from "../ui/campo";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "./abas";
 import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
+import { noPublike, ONDE_FUNCIONA } from "@/lib/pracas";
 
 // Jeitos de olhar, cada um com a sua cara:
 //   O QUE (tipo) ...... abas sublinhadas, em cima da busca (abas.tsx; Talentos é outra página)
@@ -42,7 +42,7 @@ export function useIrPara(filtros: Filtros) {
 
 export const AVISOS_GPS = {
   sem: "Seu navegador não informa a localização.",
-  fora: "Você parece estar fora de Goiânia e região. Mostrando a partir do centro de Goiânia.",
+  fora: `Você parece estar fora de ${ONDE_FUNCIONA}. Por enquanto, o Publike funciona só lá.`,
   negado: "Não conseguimos sua localização. Confira a permissão do navegador.",
 } as const;
 
@@ -55,8 +55,7 @@ export function pedirPosicao(
   navigator.geolocation.getCurrentPosition(
     ({ coords }) => {
       const { latitude: lat, longitude: lng } = coords;
-      if (lat < REGIAO.latMin || lat > REGIAO.latMax || lng < REGIAO.lngMin || lng > REGIAO.lngMax)
-        return falhou("fora");
+      if (!noPublike({ lat, lng })) return falhou("fora");
       achou({ lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 });
     },
     () => falhou("negado"),
@@ -200,14 +199,17 @@ export function BarraBusca({
   soLugar = false,
   extra = null,
   umaLinha = false,
+  cidade,
 }: {
   filtros: Filtros;
   local: Local | null;
+  /** a cidade de quem vê (`cidadeDaVisita`): sem lugar escolhido, o "Onde você mora?" abre nela */
+  cidade?: string;
   /** vem de "Informe seu CEP" (?casa=1): já abre o "Onde você mora?" */
   abrirOndeMora?: boolean;
   /** o espaço em cima (na faixa da vitrine, nenhum) */
   className?: string;
-  /** na faixa escura da vitrine: só a busca e o lugar (as abas ficam em cima da lista) */
+  /** na faixa do topo da vitrine: só a busca e o lugar (as abas ficam em cima da lista) */
   faixa?: boolean;
   /** no feed de quem entrou (a busca fica no topo da página): só Onde você mora e Perto de mim */
   soLugar?: boolean;
@@ -247,7 +249,12 @@ export function BarraBusca({
   // "Onde você mora?" e "Perto de mim": no computador, na linha das abas; no celular, no
   // numa faixa logo abaixo da busca
   const botoesDeLugar = (classes: string) => (
-    <div role="group" aria-label="Onde" className={`items-center gap-2 ${classes}`}>
+    <div
+      role="group"
+      aria-label="Onde"
+      // na vitrine: com a pergunta "Onde você mora?" em cima da lista, os botões esperam (um convite só)
+      className={`items-center gap-2 ${faixa ? "[body:has([data-pergunta-onde-mora])_&]:hidden" : ""} ${classes}`}
+    >
       <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
       <BotaoPerto ativo={perto} onClick={alternarPerto} curto={soLugar} />
     </div>
@@ -313,6 +320,7 @@ export function BarraBusca({
             <PainelOndeMora
               id={painel}
               local={local}
+              cidadePadrao={cidade}
               fechar={() => setOndeMora(false)}
               // quem acabou de dizer onde mora quer ver a partir de casa, não de onde está agora
               aoSalvar={() => {
@@ -370,7 +378,9 @@ export function BarraBusca({
         </form>
 
         {/* celular: os botões de lugar numa faixa (no computador, ficam ao lado da busca) */}
-        <div className={`order-3 min-w-0 sm:hidden ${soLugar ? "hidden" : ""}`}>
+        <div
+          className={`order-3 min-w-0 sm:hidden ${soLugar ? "hidden" : ""} ${faixa ? "[body:has([data-pergunta-onde-mora])_&]:hidden" : ""}`}
+        >
           <FaixaRolavel rotulo="Lugar">{botoesDeLugar("flex shrink-0")}</FaixaRolavel>
         </div>
 

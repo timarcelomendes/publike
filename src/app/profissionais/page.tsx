@@ -5,11 +5,11 @@ import { Container, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
 import { MAX_FOTOS, MAX_SERVICOS, MIN_AVALIACOES, OFICIOS } from "@/lib/constantes";
+import { CIDADES_ATENDIDAS, ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
   title: "Para profissionais: sua vitrine de serviços grátis",
-  description:
-    "Diarista, pedreiro, manicure, eletricista: monte de graça sua vitrine de serviços e seja chamado por quem mora perto, em Goiânia e região. Seu WhatsApp só aparece quando você aceitar.",
+  description: `Diarista, pedreiro, manicure, eletricista: monte de graça sua vitrine de serviços e seja chamado por quem mora perto, em ${ONDE_FUNCIONA}. Seu WhatsApp só aparece quando você aceitar.`,
   alternates: { canonical: "/profissionais" },
 };
 
@@ -102,7 +102,7 @@ const PERGUNTAS = [
   { p: "Quanto tempo a vitrine fica no ar?", r: "90 dias. Para renovar, é só abrir e salvar de novo." },
   {
     p: "Onde o Publike funciona?",
-    r: "Em Goiânia e região: Aparecida de Goiânia, Senador Canedo, Trindade, Goianira e as cidades vizinhas.",
+    r: CIDADES_ATENDIDAS,
   },
 ];
 

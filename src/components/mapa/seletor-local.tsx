@@ -5,11 +5,11 @@ import type { GeoJSONSource, Map as MapaML } from "maplibre-gl";
 import { LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { buscarEnderecoDoPonto } from "@/lib/acoes/cep";
-import { CENTRO_GOIANIA, REGIAO } from "@/lib/config";
 import { distanciaKm } from "@/lib/descobrir";
-import { chaveBairro } from "@/lib/regioes";
+import { centroDaCidade, chaveBairro } from "@/lib/regioes";
 import { Botao } from "../ui/botao";
 import { carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA, recolherCreditos } from "./maplibre";
+import { cidadeDoPublike, noPublike, ONDE_FUNCIONA, PRACA_PADRAO } from "@/lib/pracas";
 
 type Ponto = { lat: number; lng: number };
 
@@ -38,7 +38,7 @@ export function bairroEscrito(elemento: Element | null | undefined) {
 const AJUSTE_KM = 0.4;
 
 function dentroDaRegiao(p: Ponto) {
-  return p.lat >= REGIAO.latMin && p.lat <= REGIAO.latMax && p.lng >= REGIAO.lngMin && p.lng <= REGIAO.lngMax;
+  return noPublike(p);
 }
 
 /**
@@ -58,7 +58,10 @@ export function SeletorLocal({
   aoUsarLocalizacao,
   preencher,
   recolhido = false,
+  cidade,
 }: {
+  /** sem ponto ainda, o mapa abre no centro desta cidade (a do formulário) */
+  cidade?: string | null;
   /** o mapa só abre quando precisa (toque em "Marcar no mapa", CEP achado ou localização): a página fica mais curta */
   recolhido?: boolean;
   inicial: Ponto | null;
@@ -145,7 +148,8 @@ export function SeletorLocal({
     carregarMapLibre()
       .then((ml) => {
         if (cancelado || !caixa.current) return;
-        const centro = inicial ?? CENTRO_GOIANIA;
+        const daCidade = cidadeDoPublike(cidade);
+        const centro = inicial ?? (daCidade ? centroDaCidade(daCidade) : PRACA_PADRAO.centro);
         instancia = new ml.Map({
           container: caixa.current,
           style: ESTILO_MAPA,
@@ -190,7 +194,7 @@ export function SeletorLocal({
           m.on("click", (e) => {
             const p = { lat: e.lngLat.lat, lng: e.lngLat.lng };
             if (!dentroDaRegiao(p)) {
-              setAviso("Por enquanto o Publike funciona em Goiânia e região.");
+              setAviso(`Por enquanto o Publike funciona em ${ONDE_FUNCIONA}.`);
               return;
             }
             setAviso(null);
@@ -252,7 +256,7 @@ export function SeletorLocal({
         setBuscandoGps(false);
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         if (!dentroDaRegiao(p)) {
-          setAviso("Você parece estar fora de Goiânia e região. Toque no mapa para marcar o local do trabalho.");
+          setAviso(`Você parece estar fora de ${ONDE_FUNCIONA}. Toque no mapa para marcar o local do trabalho.`);
           return;
         }
         setAviso(null);

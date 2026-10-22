@@ -5,9 +5,9 @@ import type { GeoJSONSource, Map as MapaML, Marker, Popup } from "maplibre-gl";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { REGIAO } from "@/lib/config";
 import { hrefFiltros, raioDaBusca, type Filtros } from "@/lib/filtros";
 import { caixaDoRaio, carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA, recolherCreditos } from "./maplibre";
+import { CAIXA_DO_PUBLIKE } from "@/lib/pracas";
 
 export type PontoMapa = {
   id: string;
@@ -235,8 +235,8 @@ export function MapaAnuncios({
           fitBoundsOptions: { padding: 24 },
           attributionControl: { compact: true },
           maxBounds: [
-            [REGIAO.lngMin - 0.5, REGIAO.latMin - 0.5],
-            [REGIAO.lngMax + 0.5, REGIAO.latMax + 0.5],
+            [CAIXA_DO_PUBLIKE.lngMin - 0.5, CAIXA_DO_PUBLIKE.latMin - 0.5],
+            [CAIXA_DO_PUBLIKE.lngMax + 0.5, CAIXA_DO_PUBLIKE.latMax + 0.5],
           ],
         });
         mapa.current = instancia;

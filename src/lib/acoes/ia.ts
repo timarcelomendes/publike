@@ -7,6 +7,7 @@ import { iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
 import { sugerirTexto, type AnuncioParaIA } from "@/lib/ia/tarefas";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export type SugestaoTexto = { ok: true; titulo: string; descricao: string } | { ok: false; erro: string };
 
@@ -26,7 +27,7 @@ function limpar(r: RascunhoAnuncio): AnuncioParaIA {
     beneficios: t(r.beneficios, 120) || null,
     horario: t(r.horario, 120) || null,
     vagas: n(r.vagas),
-    cidade: t(r.cidade, 60) || "Goiânia",
+    cidade: t(r.cidade, 60) || PRACA_PADRAO.cidade,
     bairro: t(r.bairro, 80),
   };
 }

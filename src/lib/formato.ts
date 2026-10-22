@@ -2,6 +2,7 @@ import { SUPABASE_URL } from "./config";
 import { REGIMES, TIPOS_ANUNCIO, TIPOS_CONTA } from "./constantes";
 import type { Regime, TipoAnuncio, TipoConta, Unidade } from "./tipos";
 import { ganhosDoBanco, nomesDosGanhos, type GanhoExtra } from "./vaga-extra";
+import { cidadeDePraca } from "./pracas";
 
 const FUSO = "America/Sao_Paulo";
 
@@ -157,11 +158,11 @@ export function nomeDoBairro(bairro: string) {
   );
 }
 
-/** "Setor Bueno" ou "Setor Garavelo, Aparecida de Goiânia". */
+/** "Setor Bueno" ou "Setor Garavelo, Aparecida de Goiânia": o bairro da cidade que dá nome à praça vai sem a cidade. */
 export function formatarLugar(bairro: string | null, cidade: string) {
   if (!bairro) return cidade;
   const b = nomeDoBairro(bairro);
-  return cidade === "Goiânia" ? b : `${b}, ${cidade}`;
+  return cidadeDePraca(cidade) ? b : `${b}, ${cidade}`;
 }
 
 /** 5562999990001 → (62) 99999-0001 */

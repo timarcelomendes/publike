@@ -5,6 +5,8 @@ import { LISTA_TEMAS_NOTICIA, normalizarUrl, slugDaNoticia, type TemaNoticia } f
 import { acessoFila } from "./filas";
 import { buscarFoto, fotosConfiguradas } from "./fotos-noticias";
 
+// As notícias são da praça principal (Goiânia e região, com as fontes de Goiás). Com outra praça,
+// a busca roda uma vez para cada uma, com as cidades e as fontes de lá.
 // A IA procura notícias sobre trabalho em Goiânia e região e escreve um resumo
 // curto de cada uma. Tudo entra como rascunho: só vai para o site quando o
 // admin aprova. Roda pelo agendamento do servidor (/api/noticias/buscar) ou

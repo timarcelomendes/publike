@@ -22,11 +22,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { CIDADES_DAS_PRACAS, ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
   title: "Nossa missão",
-  description:
-    "O Publike é uma ferramenta do povo para gerar emprego em Goiânia e região: vagas, freelances e serviços perto de casa, com o tempo de ônibus de cada vaga, contato só depois do match e tudo de graça.",
+  description: `O Publike é uma ferramenta do povo para gerar emprego em ${ONDE_FUNCIONA}: vagas, freelances e serviços perto de casa, com o tempo de ônibus de cada vaga, contato só depois do match e tudo de graça.`,
 };
 
 type Item = { icone: LucideIcon; titulo: string; texto: string };
@@ -174,9 +174,11 @@ export default function Missao() {
       <section className="border-b border-line">
         <Container className="py-10 sm:py-14">
           <p className="text-caption text-ink-muted uppercase">Nossa missão</p>
-          <h1 className="mt-2 max-w-3xl text-h1 sm:text-display">Pôr Goiânia para trabalhar perto de casa.</h1>
+          <h1 className="mt-2 max-w-3xl text-h1 sm:text-display">
+            Pôr {CIDADES_DAS_PRACAS} para trabalhar perto de casa.
+          </h1>
           <p className="mt-4 max-w-2xl text-body-lg text-ink-muted">
-            O Publike é uma ferramenta do povo para gerar emprego em Goiânia e região. Quem procura acha vaga com
+            O Publike é uma ferramenta do povo para gerar emprego em {ONDE_FUNCIONA}. Quem procura acha vaga com
             carteira, diária, freelance ou cliente para o seu serviço no próprio bairro. Quem contrata, do comércio da
             esquina à indústria, acha gente boa que mora perto. Tudo de graça, para os dois lados.
           </p>
@@ -196,9 +198,10 @@ export default function Missao() {
           </h2>
           <div className="mt-3 flex flex-col gap-3 text-body text-ink-muted">
             <p>
-              Hoje, quem procura trabalho em Goiânia pula entre sites de emprego feitos para a cidade inteira, grupos de
-              WhatsApp e Facebook cheios de golpe e aplicativos que cobram do profissional para ver o contato do
-              cliente. Muita vaga boa fica a duas horas de ônibus, e muita vaga perto de casa nem chega a ser vista.
+              Hoje, quem procura trabalho em {CIDADES_DAS_PRACAS} pula entre sites de emprego feitos para a cidade
+              inteira, grupos de WhatsApp e Facebook cheios de golpe e aplicativos que cobram do profissional para ver o
+              contato do cliente. Muita vaga boa fica a duas horas de ônibus, e muita vaga perto de casa nem chega a ser
+              vista.
             </p>
             <p>
               O Publike junta tudo num lugar só, organizado pela distância e pelo tempo de ônibus, com o contato

@@ -3,7 +3,7 @@ import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
 import { MAX_HABILIDADES } from "./talentos";
 import { lerNumeroBR } from "./numero";
-import { REGIAO } from "./config";
+import { CAIXA_DO_PUBLIKE as CAIXA, noPublike, ONDE_FUNCIONA } from "./pracas";
 import {
   ehComissao,
   lerBeneficiosExtras,
@@ -127,6 +127,7 @@ export function errosPorCampo(erro: z.ZodError) {
 const SEM_REGIME = "Escolha o tipo de contratação: CLT, diária, freela…";
 const SEM_VALOR = "Escreva quanto paga ou marque “Valor a combinar”.";
 const SEM_CONTRATANTE = "Diga para qual empresa é a vaga ou marque “Empresa confidencial”.";
+const FORA_DO_PUBLIKE = `Marque um ponto em ${ONDE_FUNCIONA}.`;
 
 export const esquemaAnuncio = z
   .object({
@@ -187,14 +188,18 @@ export const esquemaAnuncio = z
     endereco: opcional(120),
     lat: z
       .number({ error: "Marque no mapa a região do trabalho." })
-      .min(REGIAO.latMin, { error: "Marque um ponto em Goiânia e região." })
-      .max(REGIAO.latMax, { error: "Marque um ponto em Goiânia e região." }),
+      .min(CAIXA.latMin, { error: FORA_DO_PUBLIKE })
+      .max(CAIXA.latMax, { error: FORA_DO_PUBLIKE }),
     lng: z
       .number({ error: "Marque no mapa a região do trabalho." })
-      .min(REGIAO.lngMin, { error: "Marque um ponto em Goiânia e região." })
-      .max(REGIAO.lngMax, { error: "Marque um ponto em Goiânia e região." }),
+      .min(CAIXA.lngMin, { error: FORA_DO_PUBLIKE })
+      .max(CAIXA.lngMax, { error: FORA_DO_PUBLIKE }),
   })
   .superRefine((d, ctx) => {
+    // dentro da caixa, mas fora de todas as praças (com mais de uma praça)
+    if (!noPublike({ lat: d.lat, lng: d.lng })) {
+      ctx.addIssue({ code: "custom", path: ["lat"], message: FORA_DO_PUBLIKE });
+    }
     if (d.tipo === "vaga" && d.titulo.length < 5) {
       ctx.addIssue({ code: "custom", path: ["titulo"], message: faltamLetras(5, d.titulo.length) });
     }
@@ -535,12 +540,12 @@ export const esquemaServicos = z.object({
   bairro: texto(2, 80, "o bairro"),
   lat: z
     .number({ error: "Marque no mapa a região onde você fica." })
-    .min(REGIAO.latMin, { error: "Marque um ponto em Goiânia e região." })
-    .max(REGIAO.latMax, { error: "Marque um ponto em Goiânia e região." }),
+    .min(CAIXA.latMin, { error: FORA_DO_PUBLIKE })
+    .max(CAIXA.latMax, { error: FORA_DO_PUBLIKE }),
   lng: z
     .number({ error: "Marque no mapa a região onde você fica." })
-    .min(REGIAO.lngMin, { error: "Marque um ponto em Goiânia e região." })
-    .max(REGIAO.lngMax, { error: "Marque um ponto em Goiânia e região." }),
+    .min(CAIXA.lngMin, { error: FORA_DO_PUBLIKE })
+    .max(CAIXA.lngMax, { error: FORA_DO_PUBLIKE }),
 });
 
 export type DadosServicos = z.output<typeof esquemaServicos>;
@@ -893,8 +898,8 @@ export const esquemaCliente = z.object({
     .max(120, { error: "Use no máximo 120 letras." })
     .refine((t) => !temContato(t), { error: SEM_CONTATO })
     .transform((t) => t || null),
-  lat: z.number().min(REGIAO.latMin).max(REGIAO.latMax).nullable(),
-  lng: z.number().min(REGIAO.lngMin).max(REGIAO.lngMax).nullable(),
+  lat: z.number().min(CAIXA.latMin).max(CAIXA.latMax).nullable(),
+  lng: z.number().min(CAIXA.lngMin).max(CAIXA.lngMax).nullable(),
   responsavel: z
     .string()
     .trim()

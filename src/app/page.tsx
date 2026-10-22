@@ -31,6 +31,7 @@ import { obterLocal } from "@/lib/local";
 import { modoDaConta } from "@/lib/servidor/modo";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { ONDE_FUNCIONA, PRACA_PADRAO, PRACAS } from "@/lib/pracas";
 
 // Quem é o Publike, para o Google (nome do site e da organização nos resultados).
 const DADOS_SITE = [
@@ -38,7 +39,7 @@ const DADOS_SITE = [
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Publike",
-    alternateName: "Publike Goiânia",
+    alternateName: `Publike ${PRACA_PADRAO.cidade}`,
     url: `${SITE_URL}/`,
     inLanguage: "pt-BR",
   },
@@ -48,9 +49,8 @@ const DADOS_SITE = [
     name: "Publike",
     url: `${SITE_URL}/`,
     logo: `${SITE_URL}/logo/publike-icone-1024.png`,
-    description:
-      "Ferramenta gratuita para gerar emprego em Goiânia e região: vagas, diárias, freelances e profissionais do bairro.",
-    areaServed: { "@type": "AdministrativeArea", name: "Região Metropolitana de Goiânia, GO" },
+    description: `Ferramenta gratuita para gerar emprego em ${ONDE_FUNCIONA}: vagas, diárias, freelances e profissionais do bairro.`,
+    areaServed: PRACAS.map((p) => ({ "@type": "AdministrativeArea", name: `${p.nomeOficial}, ${p.uf}` })),
   },
 ];
 
@@ -85,8 +85,9 @@ async function HomeDaVisita({ searchParams }: { searchParams: Parametros }) {
 }
 
 /**
- * Visitante (direção B): a faixa escura com a busca, as vagas novas, as empresas contratando,
- * a faixa da arte da vaga, os serviços e, por fim, a lista completa (filtros e mapa).
+ * Visitante (direção B): a faixa clara (papel da marca) com a busca e, logo embaixo, a lista completa (filtros e
+ * mapa): quem chega vê as vagas primeiro. Depois, as vagas novas, as empresas contratando, a faixa
+ * da arte da vaga e os serviços.
  */
 function HomeVisitante({ searchParams }: { searchParams: Parametros }) {
   return (
@@ -98,14 +99,14 @@ function HomeVisitante({ searchParams }: { searchParams: Parametros }) {
           </Suspense>
         }
       />
-      <Suspense fallback={null}>
-        <SecoesDaVitrine searchParams={searchParams} />
-      </Suspense>
-      <div id="vagas" className="mt-6 scroll-mt-20 sm:mt-10">
+      <div id="vagas" className="mt-2 scroll-mt-20 sm:mt-4">
         <Suspense fallback={<ExplorarEsqueleto />}>
           <Explorar searchParams={searchParams} />
         </Suspense>
       </div>
+      <Suspense fallback={null}>
+        <SecoesDaVitrine searchParams={searchParams} />
+      </Suspense>
       <Suspense fallback={null}>
         <Contratados />
       </Suspense>
@@ -121,7 +122,7 @@ async function SecoesDaVitrine({ searchParams }: { searchParams: Parametros }) {
   if (Object.keys(sp).some((k) => BUSCA.includes(k))) return null;
   return (
     <>
-      <NovasHoje />
+      <NovasHoje local={local} />
       <EmpresasContratando local={local} />
       <FaixaArte logado={false} />
       <ServicosDoBairro />

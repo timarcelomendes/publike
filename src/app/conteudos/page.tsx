@@ -3,9 +3,10 @@ import { CaminhosGratis } from "@/components/conteudo/blocos";
 import { CartaoConteudo } from "@/components/conteudo/cartao";
 import { Container, Selo } from "@/components/ui/basicos";
 import { CONTEUDOS, conteudosDoTema, TEMAS_CONTEUDO, type TemaConteudo } from "@/lib/conteudos";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
-  title: "Conteúdos sobre trabalho em Goiânia e região",
+  title: `Conteúdos sobre trabalho em ${ONDE_FUNCIONA}`,
   description:
     "Números do emprego em Goiânia e Goiás, dicas para achar vaga perto de casa, contratar de graça, oferecer serviços e conhecer seus direitos.",
   alternates: { canonical: "/conteudos" },
@@ -22,7 +23,7 @@ export default function Conteudos() {
       <section className="border-b border-line">
         <Container className="py-10 sm:py-14">
           <Selo variante="novo">Grátis</Selo>
-          <h1 className="mt-3 text-h1 sm:text-display">Trabalho em Goiânia e região</h1>
+          <h1 className="mt-3 text-h1 sm:text-display">Trabalho em {ONDE_FUNCIONA}</h1>
           <p className="mt-3 max-w-2xl text-body-lg text-ink-muted">
             Os números do emprego, dicas para achar vaga perto de casa, contratar sem gastar e oferecer seus serviços. Tudo
             ligado às vagas e aos serviços grátis do Publike.

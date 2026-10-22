@@ -1,35 +1,39 @@
 import "server-only";
-import { categoria, REGIMES } from "@/lib/constantes";
+import { categoria, REGIMES, type Cidade } from "@/lib/constantes";
 import { nomeDoTempo } from "@/lib/deslocamento";
 import { descreverOrigem, raioDaBusca, TURNOS, type Filtros } from "@/lib/filtros";
-import { pontoDoLocal, type Local } from "@/lib/regioes";
+import { centroDaCidade, pontoDoLocal, type Local } from "@/lib/regioes";
 import type { Regime } from "@/lib/tipos";
 
 // A busca da página inicial vista do servidor: de onde contam as distâncias e o nome
 // curto de uma busca com aviso ("Me avise de vagas assim").
 
-/** Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora. */
-export function partirDoLocal(filtros: Filtros, local: Local | null): Filtros {
-  if (!local || filtros.origem !== "centro") return filtros;
-  return { ...filtros, ...pontoDoLocal(local) };
+/**
+ * Sem GPS nem ponto no mapa, as distâncias contam a partir de onde a pessoa mora; sem isso,
+ * do centro da cidade dada (a que dá nome à praça de quem vê).
+ */
+export function partirDoLocal(filtros: Filtros, local: Local | null, cidade?: Cidade | null): Filtros {
+  if (filtros.origem !== "centro") return filtros;
+  if (local) return { ...filtros, ...pontoDoLocal(local) };
+  return cidade ? { ...filtros, ...centroDaCidade(cidade) } : filtros;
 }
 
-export function textoDaOrigem(filtros: Filtros, local: Local | null) {
-  if (!local || filtros.origem !== "centro") return descreverOrigem(filtros.origem);
+export function textoDaOrigem(filtros: Filtros, local: Local | null, cidade?: Cidade | null) {
+  if (!local || filtros.origem !== "centro") return descreverOrigem(filtros.origem, cidade ?? undefined);
   if (local.ponto) return "da sua casa";
   if (local.centro) return `do meio de ${local.bairro}`;
-  return local.regiao ? `da Região ${local.regiao} de Goiânia` : `do centro de ${local.cidade}`;
+  return local.regiao ? `da Região ${local.regiao} de ${local.cidade}` : `do centro de ${local.cidade}`;
 }
 
 /** “caixa” · Comércio e vendas · CLT · à tarde · até 10 km da sua casa */
-export function rotuloDaBusca(f: Filtros, local: Local | null) {
+export function rotuloDaBusca(f: Filtros, local: Local | null, cidade?: Cidade | null) {
   const distancia = f.tempo ? nomeDoTempo(f.tempo).replace(/^Até/, "até") : `até ${f.raio} km`;
   return [
     f.q ? `“${f.q}”` : null,
     f.categoria ? categoria(f.categoria).nome : null,
     f.regime ? REGIMES[f.regime as Regime]?.nome : null,
     f.turno ? TURNOS.find((t) => t.valor === f.turno)?.curto : null,
-    `${distancia} ${textoDaOrigem(f, local)}`,
+    `${distancia} ${textoDaOrigem(f, local, cidade)}`,
   ]
     .filter(Boolean)
     .join(" · ")

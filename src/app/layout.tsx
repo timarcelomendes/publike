@@ -15,6 +15,7 @@ import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
 import { SCRIPT_TOQUE_CEDO } from "@/lib/toque-cedo";
 import "./globals.css";
+import { CIDADES_DAS_PRACAS, ONDE_FUNCIONA } from "@/lib/pracas";
 
 // Fontes da interface (Design System), servidas pelo próprio site.
 const figtree = localFont({
@@ -34,11 +35,10 @@ const bricolage = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Publike · Vagas de emprego em Goiânia, diárias, freelances e serviços perto de você",
+    default: `Publike · Vagas de emprego em ${CIDADES_DAS_PRACAS}, diárias, freelances e serviços perto de você`,
     template: "%s · Publike",
   },
-  description:
-    "Ferramenta gratuita para gerar emprego em Goiânia e região: vagas, diárias e freelances perto de casa, com a distância e o tempo de ônibus, e empresas de todos os tamanhos achando profissionais do bairro.",
+  description: `Ferramenta gratuita para gerar emprego em ${ONDE_FUNCIONA}: vagas, diárias e freelances perto de casa, com a distância e o tempo de ônibus, e empresas de todos os tamanhos achando profissionais do bairro.`,
   applicationName: "Publike",
   openGraph: {
     type: "website",

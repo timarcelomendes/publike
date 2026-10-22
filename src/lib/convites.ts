@@ -2,6 +2,7 @@
 
 import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, SLUGS_OFICIOS, VALORES_BENEFICIO } from "./constantes";
 import { escaparHtml } from "./email/montar";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const ESTADOS_CONVITE = [
   { id: "a_enviar", nome: "A enviar", filtro: "A enviar" },
@@ -307,13 +308,13 @@ export function mensagemConvite(
   const vagas = juntar(c.vagas.map(minusculo));
   const essa = c.vagas.length > 1 ? "essas vagas" : "essa vaga";
   const quem = assinatura.trim() ? `Sou ${assinatura.trim()}, do Publike` : "Aqui é do Publike";
-  const abre = `Olá, pessoal da ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de Goiânia e região.`;
+  const abre = `Olá, pessoal da ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`;
   const fecha = `Se não tiver interesse, é só responder "não" que eu não mando mais mensagens. Obrigado!`;
   if (c.tipo === "prestador") {
     // profissional: a vitrine de serviços (quem disse "pode", o admin monta e manda o acesso)
     const servicos = juntar(c.vagas.map(minusculo));
     return [
-      `Olá, ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de Goiânia e região.`,
+      `Olá, ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
       servicos
         ? `Vi que você faz ${servicos}. Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`
         : "Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa do seu serviço perto de você te encontra pelo site e chama no WhatsApp.",
@@ -368,7 +369,7 @@ export function mensagemConviteAgrupada(
     })
     .join("\n\n");
   return [
-    `Olá! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de Goiânia e região.`,
+    `Olá! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
     `Vi que vocês estão com vagas abertas. Posso publicar no Publike, sem custo? Já deixei cada uma pronta no site: é só abrir o link, conferir e tocar em Publicar (entra com o e-mail, sem senha).`,
     itens,
     agencia

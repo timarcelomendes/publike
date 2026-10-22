@@ -1,8 +1,9 @@
-import { CENTRO_GOIANIA, REGIAO } from "./config";
+import { CENTRO_GOIANIA } from "./config";
 import { REGIMES, SLUGS_CATEGORIAS, type Categoria } from "./constantes";
 import { raioDoTempo, TEMPOS } from "./deslocamento";
 import { primeiro } from "./formato";
 import type { Regime, TipoAnuncio } from "./tipos";
+import { noPublike, PRACA_PADRAO } from "./pracas";
 
 export const RAIOS = [5, 10, 25, 50] as const;
 export const RAIO_PADRAO = 25;
@@ -75,13 +76,7 @@ export function lerFiltros(sp: Parametros): Filtros {
   const tempo = numero(primeiro(sp.tempo));
   const lat = numero(primeiro(sp.lat));
   const lng = numero(primeiro(sp.lng));
-  const temPonto =
-    lat !== null &&
-    lng !== null &&
-    lat >= REGIAO.latMin &&
-    lat <= REGIAO.latMax &&
-    lng >= REGIAO.lngMin &&
-    lng <= REGIAO.lngMax;
+  const temPonto = lat !== null && lng !== null && noPublike({ lat, lng });
   const origem = primeiro(sp.origem);
 
   return {
@@ -159,10 +154,11 @@ export const SEM_FILTROS: Partial<Filtros> = {
   meus: false,
 };
 
-export function descreverOrigem(origem: Origem) {
+/** De onde contam as distâncias; no centro, o da cidade de quem está vendo (sem ela, a da praça principal). */
+export function descreverOrigem(origem: Origem, cidade: string = PRACA_PADRAO.cidade) {
   if (origem === "gps") return "de você";
   if (origem === "mapa") return "da área escolhida no mapa";
-  return "do centro de Goiânia";
+  return `do centro de ${cidade}`;
 }
 
 /** Até onde buscar, em km: o raio escolhido ou o que dá para fazer de ônibus no tempo escolhido. */

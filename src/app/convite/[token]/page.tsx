@@ -8,6 +8,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { obterUsuario } from "@/lib/dados";
 import { formatarValor } from "@/lib/formato";
 import { conviteDoLink } from "@/lib/servidor/convite-do-link";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Sua vitrine no Publike", robots: { index: false, follow: false } };
 
@@ -61,7 +62,7 @@ async function Conteudo({ token }: { token: string }) {
           {r.bairro && (
             <p className="flex items-center gap-1.5 text-body-sm text-ink-muted">
               <MapPin aria-hidden className="size-4" />
-              {r.bairro}, {r.cidade || "Goiânia"}
+              {r.bairro}, {r.cidade || PRACA_PADRAO.cidade}
             </p>
           )}
         </section>

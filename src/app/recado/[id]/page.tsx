@@ -9,6 +9,7 @@ import { tempoRelativo } from "@/lib/formato";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { umRecado } from "@/lib/servidor/recados";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // O recado sozinho, para compartilhar. Fora do Google: é conversa, não anúncio.
 
@@ -70,7 +71,7 @@ async function Conteudo({ params }: { params: PageProps<"/recado/[id]">["params"
         <p className="flex-1 text-body">
           {logado
             ? "Veja os outros recados, vagas e serviços perto de você."
-            : "No Publike, quem procura trabalho e quem contrata em Goiânia e região se encontram, de graça."}
+            : `No Publike, quem procura trabalho e quem contrata em ${ONDE_FUNCIONA} se encontram, de graça.`}
         </p>
         {logado ? (
           <BotaoLink href="/?tipo=recado" variante="secundario">

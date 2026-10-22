@@ -38,6 +38,7 @@ import { colocacoesDasVagas } from "@/lib/servidor/colocacoes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio } from "@/lib/tipos";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Cliente" };
 
@@ -72,7 +73,8 @@ async function Conteudo({
   const candidatos = (todos ?? []).filter((c) => clienteDe.get(c.anuncio_id) === id);
   const n = numerosDosClientes(clienteDe, vagas, candidatos, agora).get(id);
   const arquivado = Boolean(cliente.arquivado_em);
-  const lugar = cliente.bairro || cliente.cidade ? formatarLugar(cliente.bairro, cliente.cidade ?? "Goiânia") : null;
+  const lugar =
+    cliente.bairro || cliente.cidade ? formatarLugar(cliente.bairro, cliente.cidade ?? PRACA_PADRAO.cidade) : null;
   const base = `/painel/candidatos?cliente=${id}`;
   const passos = [
     { nome: "Vagas no ar", numero: n?.noAr ?? 0, href: `/painel/anuncios?tipo=vaga&cliente=${id}` },

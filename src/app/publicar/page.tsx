@@ -24,10 +24,12 @@ import { obterTriagem } from "@/lib/servidor/triagem";
 import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
 import { temLugar } from "@/lib/clientes";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { ONDE_FUNCIONA, PRACA_PADRAO } from "@/lib/pracas";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
-  description: "Publique uma vaga em Goiânia e região e ache profissionais que moram perto. De graça para empresas de qualquer tamanho.",
+  description: `Publique uma vaga em ${ONDE_FUNCIONA} e ache profissionais que moram perto. De graça para empresas de qualquer tamanho.`,
 };
 
 export default function Publicar({ searchParams }: PageProps<"/publicar">) {
@@ -52,7 +54,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
         <Aviso tipo="alerta" className="mb-6" titulo="Modo demonstração">
           {MENSAGEM_DEMO}
         </Aviso>
-        <FormAnuncio inicial={vazio("Goiânia", "")} enderecoPublico />
+        <FormAnuncio inicial={vazio(PRACA_PADRAO.cidade, "")} enderecoPublico />
       </>
     );
   }
@@ -67,7 +69,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   const convite = lido;
   // sem conta dá para preencher a vaga: o rascunho fica no aparelho e sai depois de entrar
   if (!pedidaCopia && !(await obterUsuario())) {
-    const base = vazio("Goiânia", "");
+    // a cidade de quem vê (onde disse que mora ou pelo endereço de internet)
+    const base = vazio((await cidadeDaVisita()).cidade, "");
     const intencao = await obterIntencao().catch(() => null);
     const contrata = intencao === "contratar_pessoa" || intencao === "contratar_servico";
     return (

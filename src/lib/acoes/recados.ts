@@ -2,7 +2,7 @@
 
 import { refresh, revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { CENTRO_GOIANIA, MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
+import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
@@ -13,6 +13,7 @@ import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { lerRecado, UUID } from "@/lib/validacao";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 /** O meio do bairro do perfil (nunca a casa). Sem o mapa em 3 segundos, o centro da região ou da cidade. */
 async function lugarDoRecado(cidade: string, bairro: string | null) {
@@ -120,7 +121,7 @@ export async function denunciarRecado(id: string, motivo: string, detalhes: stri
 export type Citavel = { id: string; tipo: string; titulo: string; autor: string; bairro: string | null };
 
 /**
- * "Citar vaga": as vagas e serviços no ar pelo nome do cargo ou da empresa (Goiânia e região). Com
+ * "Citar vaga": as vagas e serviços no ar pelo nome do cargo ou da empresa (na praça de quem escreve). Com
  * `soMinhas`, só os anúncios da própria conta (sem palavra, todos os que estão no ar).
  */
 export async function procurarParaCitar(texto: string, soMinhas = false): Promise<Citavel[]> {
@@ -156,10 +157,11 @@ export async function procurarParaCitar(texto: string, soMinhas = false): Promis
     }));
   }
 
+  const { centro } = (await cidadeDaVisita()).praca;
   const [porTitulo, empresas] = await Promise.all([
     supabase.rpc("buscar_anuncios", {
-      p_lat: CENTRO_GOIANIA.lat,
-      p_lng: CENTRO_GOIANIA.lng,
+      p_lat: centro.lat,
+      p_lng: centro.lng,
       p_raio_km: 100,
       p_texto: termo,
       p_ordem: "recentes",

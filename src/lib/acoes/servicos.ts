@@ -13,6 +13,8 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
 import { lerServicos } from "@/lib/validacao";
+import { areasSemRepetir } from "@/lib/constantes";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 /**
  * "Meus serviços": salva todos de uma vez. Cada serviço vira um anúncio na
@@ -26,7 +28,9 @@ export async function salvarServicos(_anterior: EstadoForm, formData: FormData):
   // veio do convite e não marcou o mapa: vale o meio do bairro (como na vaga)
   const bairro = String(formData.get("bairro") ?? "").trim();
   if (formData.get("convite") && (!formData.get("lat") || !formData.get("lng")) && bairro) {
-    const centro = await centroDoBairro(bairro, String(formData.get("cidade") ?? "") || "Goiânia").catch(() => null);
+    const centro = await centroDoBairro(bairro, String(formData.get("cidade") ?? "") || PRACA_PADRAO.cidade).catch(
+      () => null,
+    );
     if (centro) {
       formData.set("lat", String(centro.lat));
       formData.set("lng", String(centro.lng));
@@ -40,8 +44,8 @@ export async function salvarServicos(_anterior: EstadoForm, formData: FormData):
   if (d.servicos.some((s) => s.fotos.some((f) => !f.startsWith(`${usuario.id}/`)))) {
     return { ok: false, erro: "Envie as fotos de novo." };
   }
-  // Goiânia inteira já inclui as regiões
-  const atende = d.atende.includes("Goiânia") ? d.atende.filter((a) => !a.startsWith("Goiânia: ")) : d.atende;
+  // a cidade inteira (Goiânia inteira) já inclui as regiões dela
+  const atende = areasSemRepetir(d.atende);
 
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("salvar_meus_servicos", {

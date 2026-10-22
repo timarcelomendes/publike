@@ -16,6 +16,7 @@ import { formatarLugar, plural, primeiro } from "@/lib/formato";
 import { clientesDasVagas, listarMeusClientes, numerosDosClientes } from "@/lib/servidor/clientes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Clientes" };
 
@@ -177,7 +178,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cli
 }
 
 function CartaoCliente({ c, n }: { c: Cliente; n: NumerosDoCliente }) {
-  const lugar = c.bairro || c.cidade ? formatarLugar(c.bairro, c.cidade ?? "Goiânia") : null;
+  const lugar = c.bairro || c.cidade ? formatarLugar(c.bairro, c.cidade ?? PRACA_PADRAO.cidade) : null;
   const base = `/painel/candidatos?cliente=${c.id}`;
   return (
     <li className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5">

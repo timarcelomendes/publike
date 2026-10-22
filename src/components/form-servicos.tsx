@@ -16,13 +16,13 @@ import {
 import { salvarServicos } from "@/lib/acoes/servicos";
 import { BAIRROS } from "@/lib/bairros";
 import {
-  AREAS_GOIANIA,
+  areaDaRegiao,
   CATEGORIAS,
   CIDADES,
   MAX_FOTOS,
   MAX_SERVICOS,
   OFICIOS,
-  REGIOES,
+  REGIOES_DAS_CIDADES,
   STATUS_ANUNCIO,
   UNIDADES,
   UNIDADES_SERVICO,
@@ -30,6 +30,7 @@ import {
   type Cidade,
 } from "@/lib/constantes";
 import { urlDaFotoTrabalho } from "@/lib/formato";
+import { PRACA_PADRAO, pracaDaCidade } from "@/lib/pracas";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, StatusAnuncio } from "@/lib/tipos";
 import { SeletorLocal, trocarBairro } from "./mapa/seletor-local";
@@ -277,10 +278,8 @@ export function FormServicos({
   function marcarArea(area: string, marcado: boolean) {
     setAtende((atual) => {
       const novo = new Set(atual);
-      if (area === "Goiânia") {
-        // Goiânia inteira cobre as regiões
-        for (const r of AREAS_GOIANIA) novo.delete(r);
-      }
+      // a cidade inteira (Goiânia inteira) cobre as regiões dela
+      for (const r of REGIOES_DAS_CIDADES[area as Cidade] ?? []) novo.delete(areaDaRegiao(area, r));
       if (marcado) novo.add(area);
       else novo.delete(area);
       return novo;
@@ -315,8 +314,13 @@ export function FormServicos({
     ? OFICIOS.filter((o) => semAcento(o.nome).includes(termo))
     : todos
       ? OFICIOS
-      : OFICIOS.filter((o) => (MAIS_COMUNS as readonly string[]).includes(o.slug) || itens.some((i) => i.oficio === o.slug));
-  const goianiaInteira = atende.has("Goiânia");
+      : OFICIOS.filter(
+          (o) => (MAIS_COMUNS as readonly string[]).includes(o.slug) || itens.some((i) => i.oficio === o.slug),
+        );
+  // as áreas da praça de quem atende: as cidades divididas em regiões (Goiânia) e as outras
+  const cidadesDaPraca = (pracaDaCidade(cidade) ?? PRACA_PADRAO).cidades;
+  const comRegioes = cidadesDaPraca.filter((c) => REGIOES_DAS_CIDADES[c]);
+  const semRegioes = cidadesDaPraca.filter((c) => !REGIOES_DAS_CIDADES[c]);
 
   // erros de cada serviço chegam como "servicos.0.descricao", na ordem dos editáveis
   const errosDe = (chave: string) => {
@@ -479,6 +483,7 @@ export function FormServicos({
           <p className="text-label">Marque a sua região no mapa</p>
           <SeletorLocal
             inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
+            cidade={cidade}
             erro={erros.lat ?? erros.lng}
             preencher={({ cidade: c, bairro: b }) => {
               if ((CIDADES as readonly string[]).includes(c)) setCidade(c);
@@ -494,51 +499,56 @@ export function FormServicos({
         titulo="Onde você atende"
         descricao="Quem mora nesses lugares vê seus serviços primeiro, mesmo que esteja longe de onde você fica."
       >
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-label">Goiânia</legend>
-          <div className="flex flex-wrap gap-2">
-            <label
-              className={`${chip(goianiaInteira)} cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus`}
-            >
-              <input
-                type="checkbox"
-                name="atende"
-                value="Goiânia"
-                checked={goianiaInteira}
-                onChange={(e) => marcarArea("Goiânia", e.target.checked)}
-                className="sr-only"
-              />
-              {goianiaInteira && <Check aria-hidden className="size-4" />}
-              Goiânia inteira
-            </label>
-            {REGIOES.map((r) => {
-              const area = `Goiânia: ${r}`;
-              const marcado = goianiaInteira || atende.has(area);
-              return (
+        {comRegioes.map((cidadeComRegioes) => {
+          const inteira = atende.has(cidadeComRegioes);
+          return (
+            <fieldset key={cidadeComRegioes} className="flex flex-col gap-3">
+              <legend className="mb-2 text-label">{cidadeComRegioes}</legend>
+              <div className="flex flex-wrap gap-2">
                 <label
-                  key={r}
-                  className={`${chip(marcado)} ${goianiaInteira ? "opacity-60" : "cursor-pointer"} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus`}
+                  className={`${chip(inteira)} cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus`}
                 >
                   <input
                     type="checkbox"
-                    name={goianiaInteira ? undefined : "atende"}
-                    value={area}
-                    checked={marcado}
-                    disabled={goianiaInteira}
-                    onChange={(e) => marcarArea(area, e.target.checked)}
+                    name="atende"
+                    value={cidadeComRegioes}
+                    checked={inteira}
+                    onChange={(e) => marcarArea(cidadeComRegioes, e.target.checked)}
                     className="sr-only"
                   />
-                  {marcado && <Check aria-hidden className="size-4" />}
-                  Região {r}
+                  {inteira && <Check aria-hidden className="size-4" />}
+                  {cidadeComRegioes} inteira
                 </label>
-              );
-            })}
-          </div>
-        </fieldset>
+                {(REGIOES_DAS_CIDADES[cidadeComRegioes] ?? []).map((r) => {
+                  const area = areaDaRegiao(cidadeComRegioes, r);
+                  const marcado = inteira || atende.has(area);
+                  return (
+                    <label
+                      key={r}
+                      className={`${chip(marcado)} ${inteira ? "opacity-60" : "cursor-pointer"} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus`}
+                    >
+                      <input
+                        type="checkbox"
+                        name={inteira ? undefined : "atende"}
+                        value={area}
+                        checked={marcado}
+                        disabled={inteira}
+                        onChange={(e) => marcarArea(area, e.target.checked)}
+                        className="sr-only"
+                      />
+                      {marcado && <Check aria-hidden className="size-4" />}
+                      Região {r}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          );
+        })}
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-label">Outras cidades</legend>
+          <legend className="mb-2 text-label">{comRegioes.length ? "Outras cidades" : "Cidades"}</legend>
           <div className="flex flex-wrap gap-2">
-            {CIDADES.filter((c) => c !== "Goiânia").map((c) => {
+            {semRegioes.map((c) => {
               const marcado = atende.has(c);
               return (
                 <label

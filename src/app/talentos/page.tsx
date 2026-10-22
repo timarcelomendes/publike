@@ -17,16 +17,16 @@ import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { buscarTalentos } from "@/lib/servidor/talentos";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
-// A aba Talentos: gente de Goiânia e região procurando trabalho, que escolheu aparecer.
+// A aba Talentos: gente procurando trabalho onde o Publike funciona, que escolheu aparecer.
 // Aberta, mas só com o resumo; o currículo completo e o convite ficam na página de cada
 // um, para empresa, comércio e agência que entraram. Elas também pedem conexão daqui, sem
 // precisar de vaga (Conectar em cada cartão). Fora do Google (robots e noindex).
 
 export const metadata: Metadata = {
   title: "Talentos: gente procurando trabalho perto de você",
-  description:
-    "Quem procura trabalho em Goiânia e região e escolheu aparecer: o que faz, a experiência e as habilidades. Conecte-se ou convide para a sua vaga, de graça.",
+  description: `Quem procura trabalho em ${ONDE_FUNCIONA} e escolheu aparecer: o que faz, a experiência e as habilidades. Conecte-se ou convide para a sua vaga, de graça.`,
   robots: { index: false, follow: false },
 };
 
@@ -72,8 +72,8 @@ export default function Talentos({ searchParams }: PageProps<"/talentos">) {
             <Busca searchParams={searchParams} />
           </Suspense>
           <p className="mt-3 text-body-sm text-ink-muted">
-            Gente de Goiânia e região procurando trabalho, que escolheu aparecer aqui. Empresas, comércios e agências
-            que entraram na conta abrem o currículo completo, pedem conexão (mesmo sem vaga aberta) e convidam para uma
+            Gente de {ONDE_FUNCIONA} procurando trabalho, que escolheu aparecer aqui. Empresas, comércios e agências que
+            entraram na conta abrem o currículo completo, pedem conexão (mesmo sem vaga aberta) e convidam para uma
             vaga.
           </p>
           <Suspense fallback={null}>

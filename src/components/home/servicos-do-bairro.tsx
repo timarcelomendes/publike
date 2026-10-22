@@ -3,10 +3,12 @@ import Link from "next/link";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { formatarLugar, plural } from "@/lib/formato";
 import { Avatar, Container } from "../ui/basicos";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 /** Na home do visitante: 4 serviços (os com foto de trabalho primeiro) e o caminho para todos. */
 export async function ServicosDoBairro() {
-  const servicos = await anunciosNoAr("servico");
+  const { cidade } = await cidadeDaVisita();
+  const servicos = await anunciosNoAr("servico", cidade);
   const escolhidos = [...servicos.filter((s) => s.foto), ...servicos.filter((s) => !s.foto)].slice(0, 4);
   if (escolhidos.length < 2) return null;
   return (

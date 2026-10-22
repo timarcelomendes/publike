@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { distanciaKm } from "@/lib/descobrir";
 import { formatarLugar, plural } from "@/lib/formato";
-import type { Local } from "@/lib/regioes";
+import { centroDaCidade, type Local } from "@/lib/regioes";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { SeloVerificado } from "../selo-verificado";
 import { Avatar, Container } from "../ui/basicos";
+import { type CidadeDaVisita, cidadeDaVisita } from "@/lib/servidor/cidade";
 
 export type EmpresaContratando = {
   id: string;
@@ -20,13 +21,18 @@ export type EmpresaContratando = {
 };
 
 /**
- * Quem tem vaga no ar (empresa, comércio e agência), com quantas: com o CEP de casa, as
- * mais perto primeiro; sem, as que mais contratam. Sai das vagas no ar (com cache).
+ * Quem tem vaga no ar (empresa, comércio e agência) na praça de quem vê, com quantas: com o CEP
+ * de casa, as mais perto primeiro (sem ele, do meio do bairro ou do centro da cidade que veio pelo
+ * endereço de internet); sem nada disso, as que mais contratam. Sai das vagas no ar (com cache).
  */
-export async function empresasContratando(local: Local | null, quantas: number): Promise<EmpresaContratando[]> {
-  const vagas = (await anunciosNoAr("vaga")).filter((v) => v.autor_tipo !== "pessoa");
-  // a casa (CEP) ou, sem ela, o meio do bairro escolhido: as mais perto primeiro
-  const ponto = local?.ponto ?? local?.centro ?? null;
+export async function empresasContratando(
+  local: Local | null,
+  quantas: number,
+  visita: CidadeDaVisita,
+): Promise<EmpresaContratando[]> {
+  const vagas = (await anunciosNoAr("vaga", visita.cidade)).filter((v) => v.autor_tipo !== "pessoa");
+  // a casa (CEP), o meio do bairro escolhido ou o centro da cidade da pessoa: as mais perto primeiro
+  const ponto = local?.ponto ?? local?.centro ?? (visita.fonte === "internet" ? centroDaCidade(visita.cidade) : null);
   const porEmpresa = new Map<string, EmpresaContratando>();
   for (const v of vagas) {
     const km = ponto ? distanciaKm(ponto.lat, ponto.lng, v.lat, v.lng) : null;
@@ -73,13 +79,14 @@ function CartaoEmpresa({ e }: { e: EmpresaContratando }) {
 
 /** Na home do visitante: até 5 empresas, em colunas (no celular, uma faixa que rola). */
 export async function EmpresasContratando({ local }: { local: Local | null }) {
-  const empresas = await empresasContratando(local, 5);
+  const visita = await cidadeDaVisita();
+  const empresas = await empresasContratando(local, 5, visita);
   if (empresas.length < 2) return null;
   return (
     <Container className="mt-12 sm:mt-16">
       <section aria-labelledby="empresas-contratando">
         <h2 id="empresas-contratando" className="text-h2 sm:text-[28px] sm:leading-[34px]">
-          {local?.ponto ? "Empresas contratando perto de você" : "Empresas contratando em Goiânia e região"}
+          {local?.ponto ? "Empresas contratando perto de você" : `Empresas contratando em ${visita.cidade} e região`}
         </h2>
         {/* no celular, uma faixa que rola de lado; do tablet para cima, em colunas */}
         <ul className="sem-barra -mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">

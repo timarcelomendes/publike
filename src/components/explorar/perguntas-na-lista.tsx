@@ -20,9 +20,12 @@ export function PerguntasNaLista({
   intencao,
   temLocal,
   proximoPasso,
+  cidade,
 }: {
   filtros: Filtros;
   intencao: Intencao | null;
+  /** a cidade de quem vê (`cidadeDaVisita`) */
+  cidade: string;
   /** a pessoa já disse onde mora (CEP, bairro ou o bairro do perfil) */
   temLocal: boolean;
   proximoPasso: ProximoPasso;
@@ -60,13 +63,21 @@ export function PerguntasNaLista({
   // na chegada, numa janela por cima
   if (!intencaoAtual) {
     // "Agora não": a pergunta volta na próxima visita
-    return adiada ? null : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita />;
+    return adiada ? null : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita cidade={cidade} />;
   }
 
   if (!temLocal && filtros.origem === "centro" && !adiada) {
     // "Não sei o CEP": cidade e bairro, aqui mesmo
     if (semCep) {
-      return <PainelOndeMora id={painel} local={null} fechar={() => setSemCep(false)} aoSalvar={contarDeCasa} />;
+      return (
+        <PainelOndeMora
+          id={painel}
+          local={null}
+          cidadePadrao={cidade}
+          fechar={() => setSemCep(false)}
+          aoSalvar={contarDeCasa}
+        />
+      );
     }
     return (
       <div className="flex flex-col gap-2">

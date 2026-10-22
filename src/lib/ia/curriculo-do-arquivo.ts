@@ -11,6 +11,7 @@ import {
 import { MAX_HABILIDADES } from "@/lib/talentos";
 import { temContato, temContatoNoTexto } from "@/lib/validacao";
 import { chamarIA, ErroIA, lerJson } from "./openai";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // Lê o currículo que a pessoa já tem (PDF ou fotos da folha) e devolve os campos do currículo
 // do Publike, para ela conferir antes de salvar. Só o que está escrito, sem contato nenhum.
@@ -89,7 +90,7 @@ const ESQUEMA = {
 
 function instrucoes(hoje: string) {
   const escolaridades = ESCOLARIDADES.map((e) => `"${e.valor}" (${e.nome})`).join(", ");
-  return `Você lê o currículo de uma pessoa que procura trabalho (um PDF ou fotos da folha) e preenche o currículo dela no Publike, um site gratuito de vagas de Goiânia e região. A pessoa confere tudo antes de salvar.
+  return `Você lê o currículo de uma pessoa que procura trabalho (um PDF ou fotos da folha) e preenche o currículo dela no Publike, um site gratuito de vagas de ${ONDE_FUNCIONA}. A pessoa confere tudo antes de salvar.
 
 Regras:
 - Use só o que está escrito. Não invente cargo, empresa, data, curso nem habilidade. O que o currículo não diz fica vazio ("" ou lista vazia).

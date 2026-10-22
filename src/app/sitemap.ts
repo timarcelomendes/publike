@@ -5,6 +5,7 @@ import { CATEGORIAS } from "@/lib/constantes";
 import { CONTEUDOS } from "@/lib/conteudos";
 import { noticiasPublicadas } from "@/lib/servidor/noticias";
 import { caminhoDaBusca, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
+import { cidadeDePraca, PRACAS } from "@/lib/pracas";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { TipoAnuncio } from "@/lib/tipos";
@@ -13,7 +14,8 @@ import type { TipoAnuncio } from "@/lib/tipos";
 async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
   const lista: MetadataRoute.Sitemap = [];
   for (const tipo of ["vaga", "servico"] as TipoAnuncio[]) {
-    const anuncios = await anunciosNoAr(tipo);
+    // os anúncios de todas as praças
+    const anuncios = (await Promise.all(PRACAS.map((p) => anunciosNoAr(tipo, p.cidade)))).flat();
     const cidades = new Set(CIDADES_PRINCIPAIS);
     for (const a of anuncios) if (cidadeDoSlug(slugDaCidade(a.cidade))) cidades.add(a.cidade);
     for (const cidade of cidades) {
@@ -21,7 +23,7 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
       lista.push({
         url: `${SITE_URL}${caminhoDaBusca(tipo, cidade)}`,
         changeFrequency: "hourly",
-        priority: cidade === "Goiânia" ? 0.9 : 0.8,
+        priority: cidadeDePraca(cidade) ? 0.9 : 0.8,
       });
       for (const c of CATEGORIAS) {
         if (c.slug === "outros" || !daCidade.some((a) => a.categoria === c.slug)) continue;

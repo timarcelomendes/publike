@@ -42,6 +42,7 @@ import {
   valorCurto,
   valorDoAnuncio,
 } from "@/lib/formato";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 /** As abas da linha. */
 export type AbaDaLinha = "tudo" | "vaga" | "servico" | "recado";
@@ -178,11 +179,12 @@ type Parametros = Record<string, string | string[] | undefined>;
  */
 export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> => {
   const sp = JSON.parse(chave) as Parametros;
-  const [agora, local, usuario, prefs] = await Promise.all([
+  const [agora, local, usuario, prefs, visita] = await Promise.all([
     agoraDaRequisicao(),
     obterLocal(),
     obterUsuario(),
     preferenciasDaHome(),
+    cidadeDaVisita(),
   ]);
   const lidos = lerFiltros(sp);
   // a aba: a da URL; sem ela, a última escolhida; sem nada, a da resposta "O que você quer fazer"
@@ -202,7 +204,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     regime: aba === "servico" ? null : lidos.regime,
     turno: aba === "vaga" ? lidos.turno : null,
   };
-  const filtros = partirDoLocal(filtrosDaBusca, local);
+  const filtros = partirDoLocal(filtrosDaBusca, local, visita.praca.cidade);
   const usuarioId = usuario?.id ?? null;
 
   // na aba Recados, só os recados (os anúncios entram na conta das novidades mais abaixo)

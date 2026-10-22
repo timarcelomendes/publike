@@ -1,4 +1,5 @@
 import { CATEGORIAS, CIDADES, type Categoria } from "./constantes";
+import { PRACAS } from "./pracas";
 import type { TipoAnuncio } from "./tipos";
 
 // Páginas para quem procura no Google: "vagas de emprego em Goiânia",
@@ -24,8 +25,8 @@ export function areaDoSlug(slug: string): (typeof CATEGORIAS)[number] | null {
   return CATEGORIAS.find((c) => c.slug === slug) ?? null;
 }
 
-/** As cidades com página própria no rodapé e nos links (as maiores da região). */
-export const CIDADES_PRINCIPAIS = ["Goiânia", "Aparecida de Goiânia", "Senador Canedo", "Trindade", "Goianira"];
+/** As cidades com página própria no rodapé e nos links (as maiores de cada praça). */
+export const CIDADES_PRINCIPAIS: string[] = PRACAS.flatMap((p) => [p.cidade, ...p.vizinhas]);
 
 export const PASTA: Record<TipoAnuncio, "vagas" | "servicos"> = { vaga: "vagas", servico: "servicos" };
 

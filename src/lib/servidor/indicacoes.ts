@@ -5,6 +5,7 @@ import type { QuemProcura, VagaIndicada } from "@/lib/descobrir";
 import { chamarIA, lerJson, MODELO_PADRAO } from "@/lib/ia/openai";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Regime } from "@/lib/tipos";
+import { ONDE_FUNCIONA, UFS } from "@/lib/pracas";
 
 // "Para você" com IA: as regras escolhem as melhores vagas e a IA lê o que a
 // pessoa procura e a experiência dela para dar uma nota a cada uma. A nota
@@ -17,7 +18,7 @@ const QUANTAS = 25;
 const SEIS_HORAS = 6 * 3600 * 1000;
 const GUARDADAS = new Map<string, { quando: number; notas: Map<string, number> }>();
 
-const SISTEMA = `Você ajuda quem procura trabalho em Goiânia (GO) a achar vagas no Publike.
+const SISTEMA = `Você ajuda quem procura trabalho em ${ONDE_FUNCIONA} (${UFS}) a achar vagas no Publike.
 Recebe o que a pessoa procura e a experiência dela, e uma lista de vagas.
 Para cada vaga, dê uma nota de 0 a 100 dizendo quanto ela combina com a pessoa:
 área e tarefas, horário, tipo de contratação, exigências (CNH, estudo, experiência) e o que a pessoa disse que quer.

@@ -6,6 +6,7 @@ import { enviarEmailParaConta } from "@/lib/acoes/admin-contas";
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export type ModeloParaEnviar = { chave: string; nome: string; descricao: string; variaveis: string[] };
 
@@ -17,7 +18,7 @@ const VARIAVEIS: Record<string, { rotulo: string; exemplo: string }> = {
   ate: { rotulo: "Até quando", exemplo: "15/10/2026 às 14:30" },
   total: { rotulo: "Quantidade", exemplo: "2" },
   tipo: { rotulo: "Tipo", exemplo: "comércio" },
-  cidade: { rotulo: "Cidade", exemplo: "Goiânia" },
+  cidade: { rotulo: "Cidade", exemplo: PRACA_PADRAO.cidade },
   origem: { rotulo: "Origem", exemplo: "o anúncio recebeu denúncias de três pessoas diferentes." },
   quando: { rotulo: "Quando", exemplo: "08/10/2026 às 13:00" },
 };

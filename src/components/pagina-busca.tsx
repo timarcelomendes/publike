@@ -15,6 +15,7 @@ import {
   slugDaCidade,
   tituloDaBusca,
 } from "@/lib/paginas-busca";
+import { pracaDaCidade } from "@/lib/pracas";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, TipoAnuncio } from "@/lib/tipos";
@@ -38,7 +39,7 @@ function filtrar(lista: AnuncioResumo[], cidade: string, area: Categoria | null)
 }
 
 export async function metadadosDaBusca({ tipo, cidade, area }: Busca): Promise<Metadata> {
-  const total = filtrar(await anunciosNoAr(tipo), cidade, area?.slug ?? null).length;
+  const total = filtrar(await anunciosNoAr(tipo, cidade), cidade, area?.slug ?? null).length;
   const titulo = tituloDaBusca(tipo, cidade, area?.nome ?? null);
   const descricao = descricaoDaBusca(tipo, cidade, area?.nome ?? null, total);
   const caminho = caminhoDaBusca(tipo, cidade, area?.slug);
@@ -133,7 +134,8 @@ export function PaginaDeBusca(busca: Busca) {
 }
 
 async function Conteudo({ tipo, cidade, area }: Busca) {
-  const [todos, agora] = await Promise.all([anunciosNoAr(tipo), agoraDaRequisicao()]);
+  // os da praça desta cidade
+  const [todos, agora] = await Promise.all([anunciosNoAr(tipo, cidade), agoraDaRequisicao()]);
   const daCidade = todos.filter((a) => a.cidade === cidade);
   const itens = area ? daCidade.filter((a) => a.categoria === area.slug) : daCidade;
   const vaga = tipo === "vaga";
@@ -147,8 +149,10 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
   for (const a of todos) {
     if (!area || a.categoria === area.slug) contagemCidades.set(a.cidade, (contagemCidades.get(a.cidade) ?? 0) + 1);
   }
+  // as outras cidades da mesma praça
+  const praca = pracaDaCidade(cidade);
   const outrasCidades = [...new Set([...CIDADES_PRINCIPAIS, ...contagemCidades.keys()])]
-    .filter((c) => c !== cidade && cidadeDoSlug(slugDaCidade(c)) !== null)
+    .filter((c) => c !== cidade && cidadeDoSlug(slugDaCidade(c)) !== null && pracaDaCidade(c) === praca)
     .map((c) => ({ cidade: c, total: contagemCidades.get(c) ?? 0 }))
     .filter((c) => c.total > 0 || (!area && CIDADES_PRINCIPAIS.includes(c.cidade)));
 

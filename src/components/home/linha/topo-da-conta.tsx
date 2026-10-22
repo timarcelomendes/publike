@@ -13,6 +13,7 @@ import { BarraBusca, FiltrosLista } from "../../explorar/barra-busca";
 import { EscreverRecado } from "../../recados/escrever-recado";
 import { FotoDaConta } from "../foto-da-conta";
 import { AbasDaLinha } from "./abas-da-linha";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
@@ -109,12 +110,13 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   }
   // "Informe seu CEP" (?casa=1): os filtros já abrem com o "Onde você mora?"
   const casa = primeiro(sp.casa) === "1";
-  const [d, perfil, acao, usuario] = await Promise.all([
+  const [d, perfil, acao, usuario, visita] = await Promise.all([
     dadosDaLinha(chaveDaLinha(sp)),
     obterMeuPerfil(),
     // só olhando (empresa vendo como pessoa), nada a fazer pela conta
     soOlhar ? Promise.resolve(null) : proximaAcao(),
     obterUsuario(),
+    cidadeDaVisita(),
   ]);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
   // pessoa: o primeiro nome; empresa, comércio e agência: o nome inteiro
@@ -232,6 +234,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
             <BarraBusca
               filtros={base}
               local={d.local}
+              cidade={visita.cidade}
               abrirOndeMora={casa}
               className=""
               soLugar

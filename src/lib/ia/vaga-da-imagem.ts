@@ -1,6 +1,7 @@
 import "server-only";
 import { BENEFICIOS, CATEGORIAS, LISTA_REGIMES, LISTA_UNIDADES, OFICIOS } from "@/lib/constantes";
 import { chamarIA, ErroIA, lerJson } from "./openai";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // Lê a imagem de um anúncio de vaga (a arte que a empresa postou numa rede social) e devolve
 // a empresa, o contato e a vaga, para o admin importar em Convites. Só o que está escrito.
@@ -84,7 +85,7 @@ const ESQUEMA = {
 } as const;
 
 function instrucoes() {
-  return `Você lê a imagem de um anúncio de vaga de emprego, ou de um profissional oferecendo serviço (uma arte postada em rede social), de Goiânia e região, e passa os dados para o Publike, um site gratuito de vagas e serviços.
+  return `Você lê a imagem de um anúncio de vaga de emprego, ou de um profissional oferecendo serviço (uma arte postada em rede social), de ${ONDE_FUNCIONA}, e passa os dados para o Publike, um site gratuito de vagas e serviços.
 
 Regras:
 - Use só o que está escrito na imagem. Não invente nome, número, salário nem endereço. O que não aparece fica vazio ("" ou null).

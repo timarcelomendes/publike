@@ -1,11 +1,11 @@
 /**
- * Regiões de Goiânia e o "perto de casa" da busca: primeiro os anúncios do
+ * Regiões das cidades e o "perto de casa" da busca: primeiro os anúncios do
  * bairro da pessoa, depois os da região dela, depois os da cidade.
  *
- * Fontes: Wikipédia ("Lista de bairros de Goiânia", por região) e, para os
- * bairros que não estão lá, a região dos vizinhos mais próximos no
- * OpenStreetMap (© colaboradores do OpenStreetMap, ODbL).
- * Fora de Goiânia, a cidade inteira conta como uma região só.
+ * Hoje só Goiânia é dividida em regiões. Fontes: Wikipédia ("Lista de bairros de
+ * Goiânia", por região) e, para os bairros que não estão lá, a região dos vizinhos
+ * mais próximos no OpenStreetMap (© colaboradores do OpenStreetMap, ODbL).
+ * Nas outras cidades, a cidade inteira conta como uma região só.
  */
 import { CENTRO_GOIANIA } from "./config";
 import { CIDADES, REGIOES, type Cidade, type Regiao } from "./constantes";
@@ -52,10 +52,13 @@ for (const regiao of REGIOES) {
   for (const chave of BAIRROS_POR_REGIAO[regiao].split(";")) REGIAO_DO_BAIRRO.set(chave, regiao);
 }
 
-/** Região de um bairro de Goiânia (null se não souber ou se for outra cidade). */
+/** O bairro → a região, nas cidades divididas em regiões (outra cidade com regiões entra aqui). */
+const REGIOES_DOS_BAIRROS: Partial<Record<Cidade, Map<string, Regiao>>> = { Goiânia: REGIAO_DO_BAIRRO };
+
+/** Região de um bairro (null se não souber ou se a cidade não for dividida em regiões). */
 export function regiaoDoBairro(cidade: string, bairro: string): Regiao | null {
-  if (cidade !== "Goiânia" || !bairro) return null;
-  return REGIAO_DO_BAIRRO.get(chaveBairro(bairro)) ?? null;
+  if (!bairro) return null;
+  return REGIOES_DOS_BAIRROS[cidade as Cidade]?.get(chaveBairro(bairro)) ?? null;
 }
 
 /** Chaves de todos os bairros da região, para o banco comparar. */
@@ -63,7 +66,7 @@ export function chavesDaRegiao(regiao: Regiao) {
   return BAIRROS_POR_REGIAO[regiao].split(";");
 }
 
-/** Ponto aproximado de cada região de Goiânia, para medir as distâncias. */
+/** Ponto aproximado de cada região (de Goiânia), para medir as distâncias. */
 const CENTRO_REGIAO: Record<Regiao, { lat: number; lng: number }> = {
   Centro: { lat: -16.672, lng: -49.262 },
   Norte: { lat: -16.612, lng: -49.262 },
@@ -74,7 +77,7 @@ const CENTRO_REGIAO: Record<Regiao, { lat: number; lng: number }> = {
   Sudoeste: { lat: -16.728, lng: -49.33 },
 };
 
-/** Centro aproximado de cada cidade da região metropolitana. */
+/** Centro aproximado de cada cidade do Publike. */
 const CENTRO_CIDADE: Record<Cidade, { lat: number; lng: number }> = {
   "Goiânia": CENTRO_GOIANIA,
   "Aparecida de Goiânia": { lat: -16.8198, lng: -49.2469 },
@@ -97,6 +100,11 @@ const CENTRO_CIDADE: Record<Cidade, { lat: number; lng: number }> = {
   "Santo Antônio de Goiás": { lat: -16.4815, lng: -49.3096 },
   "Terezópolis de Goiás": { lat: -16.3945, lng: -49.0797 },
 };
+
+/** O centro de uma cidade: de onde a lista conta a distância de quem ainda não disse onde mora. */
+export function centroDaCidade(cidade: Cidade) {
+  return CENTRO_CIDADE[cidade];
+}
 
 /**
  * Onde a pessoa mora: o CEP de casa (guardado na conta), o que ela escolheu na
@@ -153,7 +161,7 @@ export function localPreciso(local: Local | null) {
 
 /** "Região Sul de Goiânia", "Trindade". */
 export function nomeDaArea(local: Local) {
-  return local.regiao ? `Região ${local.regiao} de Goiânia` : local.cidade;
+  return local.regiao ? `Região ${local.regiao} de ${local.cidade}` : local.cidade;
 }
 
 /** Ordem de prioridade, para mostrar: ["Setor Bueno", "Região Sul", "Goiânia"]. */

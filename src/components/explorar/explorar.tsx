@@ -47,6 +47,7 @@ import type { ProximoPasso } from "./intencao";
 import { PerguntasNaLista } from "./perguntas-na-lista";
 import { ListaPaginada } from "./lista-paginada";
 import { VisaoExplorar } from "./visao-explorar";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
@@ -109,12 +110,13 @@ export async function BuscaExplorar({
   soLugar?: boolean;
 }) {
   const sp = await searchParams;
-  const [local, intencao] = await Promise.all([obterLocal(), obterIntencao()]);
+  const [local, intencao, visita] = await Promise.all([obterLocal(), obterIntencao(), cidadeDaVisita()]);
   const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
   return (
     <BarraBusca
       filtros={filtros}
       local={local}
+      cidade={visita.cidade}
       abrirOndeMora={primeiro(sp.casa) === "1"}
       className={className}
       faixa={faixa}
@@ -166,15 +168,18 @@ export async function Explorar({
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
-  const [agora, local, usuario, intencao, soOlhar] = await Promise.all([
+  const [agora, local, usuario, intencao, soOlhar, visita] = await Promise.all([
     agoraDaRequisicao(),
     obterLocal(),
     obterUsuario(),
     obterIntencao(),
     soOlharComoPessoa(),
+    cidadeDaVisita(),
   ]);
   const filtrosDaBusca = aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao));
-  const filtros = partirDoLocal(filtrosDaBusca, local);
+  // sem dizer onde mora, a lista conta do centro da cidade principal da praça (a cidade adivinhada
+  // pelo endereço de internet fica só nos textos: se errar, não esconde vaga)
+  const filtros = partirDoLocal(filtrosDaBusca, local, visita.praca.cidade);
   // o jeito de ver já vem do servidor (o escolhido, pelo cookie, ou o padrão): a lista não troca depois de abrir
   const visaoDaLista = feed && filtros.q.trim() ? await visaoInicialDaBusca() : await visaoInicialDaLista(feed);
   // busca por palavra ("mecânico"): a página vira a dos resultados (o título diz o que foi buscado,
@@ -310,7 +315,13 @@ export async function Explorar({
   const perguntas =
     filtros.meus || (busca && feed) ? null : (
       <div className={respondidas ? "lg:hidden" : "contents"}>
-        <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
+        <PerguntasNaLista
+          filtros={filtros}
+          intencao={intencao}
+          temLocal={Boolean(local)}
+          proximoPasso={proximoPasso}
+          cidade={visita.cidade}
+        />
       </div>
     );
   // Poucas vagas (o começo): no fim da lista, o aviso de vaga nova e a distância maior, para quem procura trabalho
@@ -497,6 +508,7 @@ export async function Explorar({
     <BarraBusca
       filtros={filtrosDaBusca}
       local={local}
+      cidade={visita.cidade}
       abrirOndeMora={primeiro(parametros.casa) === "1"}
       className=""
       soLugar
@@ -537,7 +549,7 @@ export async function Explorar({
                 ) : (
                   <>
                     {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                    {textoDaOrigem(filtros, local)}
+                    {textoDaOrigem(filtros, local, visita.praca.cidade)}
                   </>
                 )}
               </p>
@@ -553,11 +565,14 @@ export async function Explorar({
                   <>Do mais perto ao mais longe · </>
                 )}
                 {filtros.meus ? (
-                  <>Só os seus anúncios no ar, do mais perto ao mais longe {textoDaOrigem(filtros, local)}</>
+                  <>
+                    Só os seus anúncios no ar, do mais perto ao mais longe{" "}
+                    {textoDaOrigem(filtros, local, visita.praca.cidade)}
+                  </>
                 ) : (
                   <>
                     {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                    {textoDaOrigem(filtros, local)}
+                    {textoDaOrigem(filtros, local, visita.praca.cidade)}
                   </>
                 )}
               </p>

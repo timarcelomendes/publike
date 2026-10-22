@@ -12,6 +12,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { BotaoConectarCompacto } from "../conexoes/botao-conectar-compacto";
 import { SeloVerificado } from "../selo-verificado";
 import { Avatar } from "../ui/basicos";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 const DIAS = 30;
 const QUANTOS = 5;
@@ -48,7 +49,9 @@ function nomeNaLista(n: Novo) {
  * pontos. Sai do cache das listas, sem perguntar ao mapa a cada visita.
  */
 async function meiosDosBairros() {
-  const [vagas, servicos] = await Promise.all([anunciosNoAr("vaga"), anunciosNoAr("servico")]);
+  // os da praça de quem vê
+  const { cidade } = await cidadeDaVisita();
+  const [vagas, servicos] = await Promise.all([anunciosNoAr("vaga", cidade), anunciosNoAr("servico", cidade)]);
   const somas = new Map<string, { lat: number; lng: number; n: number }>();
   for (const a of [...vagas, ...servicos]) {
     if (!a.bairro || a.lat == null || a.lng == null) continue;

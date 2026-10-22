@@ -8,6 +8,7 @@ import { obterLocal } from "@/lib/local";
 import { dadosDaBusca, partirDoLocal, rotuloDaBusca } from "@/lib/servidor/busca-salva";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 // "Me avise de vagas assim": guarda a busca da página inicial e o banco avisa quando
 // entrar no ar uma vaga nova que bate (privado.avisar_buscas). Tudo é lido de novo
@@ -28,8 +29,9 @@ export async function salvarBusca(caminho: string): Promise<Resultado & { id?: n
   }
   const filtros = lerFiltros(params);
   if (filtros.tipo !== "vaga" || filtros.meus) return { ok: false, erro: "O aviso é para busca de vagas." };
-  const local = await obterLocal();
-  const f = partirDoLocal(filtros, local);
+  const [local, { praca }] = await Promise.all([obterLocal(), cidadeDaVisita()]);
+  const cidade = praca.cidade;
+  const f = partirDoLocal(filtros, local, cidade);
   const d = dadosDaBusca(f);
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("salvar_busca", {
@@ -40,7 +42,7 @@ export async function salvarBusca(caminho: string): Promise<Resultado & { id?: n
     p_lat: d.lat,
     p_lng: d.lng,
     p_raio_km: d.raio_km,
-    p_rotulo: rotuloDaBusca(f, local),
+    p_rotulo: rotuloDaBusca(f, local, cidade),
     p_caminho: hrefFiltros(filtros),
   });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar o aviso agora.") };

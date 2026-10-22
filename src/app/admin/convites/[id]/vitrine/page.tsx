@@ -8,12 +8,13 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FormServicos, type ValoresServicos } from "@/components/form-servicos";
 import { Aviso } from "@/components/ui/basicos";
 import { montarVitrinePeloAdmin } from "@/lib/acoes/admin-convites";
-import { UNIDADES_SERVICO } from "@/lib/constantes";
+import { areaDaRegiao, UNIDADES_SERVICO } from "@/lib/constantes";
 import { rascunhoValido, type Convite } from "@/lib/convites";
 import { regiaoDoBairro } from "@/lib/regioes";
 import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Vitrine com o sim do prestador" };
 
@@ -43,7 +44,7 @@ async function Conteudo({ id }: { id: string }) {
   const r = rascunhoValido(convite.rascunho);
   const titulo = r?.titulo || convite.vagas[0] || "";
   const bairro = r?.bairro ?? "";
-  const cidade = r?.cidade || "Goiânia";
+  const cidade = r?.cidade || PRACA_PADRAO.cidade;
   const regiao = regiaoDoBairro(cidade, bairro);
   const unidade = r && (UNIDADES_SERVICO as readonly string[]).includes(r.unidade) ? r.unidade : null;
   const inicial: ValoresServicos = {
@@ -79,7 +80,7 @@ async function Conteudo({ id }: { id: string }) {
     bairro,
     lat: null,
     lng: null,
-    atende: [regiao ? `Goiânia: ${regiao}` : cidade],
+    atende: [regiao ? areaDaRegiao(cidade, regiao) : cidade],
     horario: null,
     contato_direto: (conta ? await contatoDiretoDosServicos(c, conta.id) : null) ?? true,
   };

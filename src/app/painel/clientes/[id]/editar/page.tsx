@@ -10,6 +10,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil } from "@/lib/dados";
 import { obterMeuCliente } from "@/lib/servidor/clientes";
 import { exigirUsuario } from "@/lib/sessao";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Editar cliente" };
 
@@ -42,7 +43,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/clientes/[id]/e
       <p className="mt-1 mb-6 text-body text-ink-muted">
         Trocar o nome troca também nas vagas deste cliente que mostram o nome.
       </p>
-      <FormCliente cliente={cliente} cidadePadrao={perfil?.cidade ?? "Goiânia"} />
+      <FormCliente cliente={cliente} cidadePadrao={perfil?.cidade ?? PRACA_PADRAO.cidade} />
     </>
   );
 }

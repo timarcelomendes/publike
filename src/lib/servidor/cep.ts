@@ -8,9 +8,9 @@ import {
   type EnderecoDoCep,
   type Precisao,
 } from "@/lib/cep";
-import { MODO_DEMO, REGIAO } from "@/lib/config";
-import { CIDADES } from "@/lib/constantes";
+import { MODO_DEMO } from "@/lib/config";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { CAIXA_DO_PUBLIKE, cidadeDoPublike, noPublike, ONDE_FUNCIONA, pracaDaCidade } from "@/lib/pracas";
 
 // Do CEP (e do número) para um ponto no mapa, de graça e sem chave:
 //   1. o endereço vem da BrasilAPI (CEP v2, que às vezes já traz o ponto) ou,
@@ -113,16 +113,14 @@ function variantesDaRua(rua: string) {
   return [...new Set([rua, separada, semHifenEspaco, semHifenJunto])];
 }
 
+/** O ponto fica onde o Publike funciona (em alguma praça)? */
 function naRegiao(p: Ponto | null): p is Ponto {
-  return (
-    p !== null && p.lat >= REGIAO.latMin && p.lat <= REGIAO.latMax && p.lng >= REGIAO.lngMin && p.lng <= REGIAO.lngMax
-  );
+  return noPublike(p);
 }
 
 /** "Goiania" e "Goiânia" são a mesma cidade: devolve o nome da nossa lista. */
 function cidadeDaLista(nome: string) {
-  const chave = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-  return CIDADES.find((c) => chave(c) === chave(nome)) ?? null;
+  return cidadeDoPublike(nome);
 }
 
 async function buscarJson<T>(
@@ -240,8 +238,8 @@ async function procurarNoMapa(params: Record<string, string>, cep?: string): Pro
     addressdetails: "1",
     limit: cep ? "5" : "1",
     countrycodes: "br",
-    // só dentro de Goiânia e região
-    viewbox: `${REGIAO.lngMin},${REGIAO.latMax},${REGIAO.lngMax},${REGIAO.latMin}`,
+    // só dentro das praças do Publike
+    viewbox: `${CAIXA_DO_PUBLIKE.lngMin},${CAIXA_DO_PUBLIKE.latMax},${CAIXA_DO_PUBLIKE.lngMax},${CAIXA_DO_PUBLIKE.latMin}`,
     bounded: "1",
     ...params,
   });
@@ -385,7 +383,7 @@ async function pontoDoEndereco(
 }
 
 /**
- * Endereço e ponto de um CEP de Goiânia e região. Com o número, tenta achar a
+ * Endereço e ponto de um CEP de onde o Publike funciona. Com o número, tenta achar a
  * porta. Sem ponto (o mapa não achou), devolve só o endereço: a pessoa marca
  * no mapa.
  */
@@ -404,11 +402,12 @@ export async function consultarCep(valor: string, num?: string | null): Promise<
   }
   const { endereco } = achado;
   const cidade = cidadeDaLista(endereco.cidade);
-  if (endereco.uf !== "GO" || !cidade) {
+  // uma cidade do Publike, no estado da praça dela
+  if (!cidade || pracaDaCidade(cidade)?.uf !== endereco.uf) {
     return {
       ok: false,
       motivo: "fora_da_regiao",
-      erro: `Esse CEP é de ${endereco.cidade}${endereco.uf ? ` (${endereco.uf})` : ""}. Por enquanto o Publike funciona em Goiânia e região.`,
+      erro: `Esse CEP é de ${endereco.cidade}${endereco.uf ? ` (${endereco.uf})` : ""}. Por enquanto o Publike funciona em ${ONDE_FUNCIONA}.`,
     };
   }
   const n =
@@ -465,7 +464,7 @@ const ENDERECOS = new Map<string, { quando: number; r: ConsultaPonto }>();
  */
 export async function enderecoDoPonto(lat: number, lng: number): Promise<ConsultaPonto> {
   const ponto = { lat, lng };
-  if (!naRegiao(ponto)) return { ok: false, erro: "Esse lugar fica fora de Goiânia e região." };
+  if (!naRegiao(ponto)) return { ok: false, erro: `Esse lugar fica fora de ${ONDE_FUNCIONA}.` };
   const chave = `${lat.toFixed(4)},${lng.toFixed(4)}`;
   const guardado = ENDERECOS.get(chave);
   if (guardado && Date.now() - guardado.quando < UM_DIA) return guardado.r;

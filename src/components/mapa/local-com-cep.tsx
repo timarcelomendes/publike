@@ -27,7 +27,10 @@ export function LocalComCep({
   aoAchar,
   children,
   mapaOpcional = false,
+  cidade,
 }: {
+  /** a cidade do formulário: sem ponto ainda, o mapa abre nela */
+  cidade?: string | null;
   inicial: Ponto | null;
   inicialCep?: string | null;
   inicialEndereco?: string | null;
@@ -223,6 +226,7 @@ export function LocalComCep({
           aoUsarLocalizacao={preencherPeloPonto}
           preencher={aoAchar}
           recolhido={mapaOpcional}
+          cidade={cidade}
         />
       </div>
     </div>

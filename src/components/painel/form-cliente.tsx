@@ -179,6 +179,7 @@ export function FormCliente({ cliente, cidadePadrao }: { cliente: Cliente | null
           inicialNumero={lugar.numero}
           publico
           mapaOpcional
+          cidade={cidade}
           erro={erros.lat ?? erros.lng}
           aoAchar={({ cidade: c, bairro: b }) => {
             // achou no mapa: o aviso da Receita já cumpriu o papel

@@ -8,11 +8,11 @@ import { BotaoLink } from "@/components/ui/botao";
 import { primeiro } from "@/lib/formato";
 import { LISTA_TEMAS_NOTICIA, TEMAS_NOTICIA, type TemaNoticia } from "@/lib/noticias";
 import { noticiasPublicadas } from "@/lib/servidor/noticias";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
-  title: "Notícias sobre trabalho em Goiânia e região",
-  description:
-    "Vagas e feirões, salários, cursos gratuitos, concursos e o que muda nos seus direitos em Goiânia e região, em poucas linhas e com a fonte.",
+  title: `Notícias sobre trabalho em ${ONDE_FUNCIONA}`,
+  description: `Vagas e feirões, salários, cursos gratuitos, concursos e o que muda nos seus direitos em ${ONDE_FUNCIONA}, em poucas linhas e com a fonte.`,
   alternates: { canonical: "/noticias" },
 };
 
@@ -24,7 +24,7 @@ export default function Noticias({ searchParams }: PageProps<"/noticias">) {
           <p className="text-caption text-terra-text uppercase">Atualizado todo dia</p>
           <h1 className="mt-2 text-h1 sm:text-display">Notícias do trabalho</h1>
           <p className="mt-3 max-w-2xl text-body-lg text-ink-muted">
-            O que muda para quem trabalha e para quem contrata em Goiânia e região. Em poucas linhas, com o link da
+            O que muda para quem trabalha e para quem contrata em {ONDE_FUNCIONA}. Em poucas linhas, com o link da
             notícia completa.
           </p>
         </Container>

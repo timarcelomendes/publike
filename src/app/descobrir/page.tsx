@@ -24,11 +24,11 @@ import { nomeDaArea, pontoDoLocal } from "@/lib/regioes";
 import { notasDaIA } from "@/lib/servidor/indicacoes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { DadosCard } from "@/lib/tipos";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
   title: "Descobrir vagas",
-  description:
-    "Deslize para o lado e ache trabalho perto de casa: vagas que combinam com você, no seu bairro e em alta em Goiânia e região.",
+  description: `Deslize para o lado e ache trabalho perto de casa: vagas que combinam com você, no seu bairro e em alta em ${ONDE_FUNCIONA}.`,
 };
 
 const ABAS = [

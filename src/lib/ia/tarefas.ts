@@ -6,6 +6,7 @@ import type { Regime, TipoConta, Unidade } from "@/lib/tipos";
 import { temContato, temContatoNoTexto } from "@/lib/validacao";
 import { ganhosDoBanco, textoDoGanho } from "@/lib/vaga-extra";
 import { chamarIA, ErroIA, lerJson } from "./openai";
+import { ONDE_FUNCIONA, UFS } from "@/lib/pracas";
 
 // O que a IA faz no Publike: revisar anúncios, ajudar a escrever e resumir a semana.
 
@@ -66,7 +67,7 @@ function descreverAnuncio(a: AnuncioParaIA) {
 
 // ------------------------------------------------------------------ moderação
 
-const SISTEMA_MODERACAO = `Você é a moderação automática do Publike, um mural gratuito de vagas de emprego, trabalhos freelance e serviços em Goiânia (GO), Brasil.
+const SISTEMA_MODERACAO = `Você é a moderação automática do Publike, um mural gratuito de vagas de emprego, trabalhos freelance e serviços em ${ONDE_FUNCIONA} (${UFS}), Brasil.
 
 Leia o anúncio e decida se ele pode continuar no ar ("aprovar") ou se deve sair do ar até uma pessoa da equipe olhar ("reter").
 
@@ -141,7 +142,7 @@ export async function revisarAnuncio(a: AnuncioParaIA, modeloEscolhido: string):
 
 // ------------------------------------------------------------------ avaliações
 
-const SISTEMA_AVALIACAO = `Você é a moderação automática das avaliações do Publike, um mural gratuito de vagas e serviços em Goiânia (GO), Brasil.
+const SISTEMA_AVALIACAO = `Você é a moderação automática das avaliações do Publike, um mural gratuito de vagas e serviços em ${ONDE_FUNCIONA} (${UFS}), Brasil.
 
 Quem contratou um profissional avalia o serviço, e o profissional pode responder. Leia o texto e decida se ele pode aparecer no perfil ("publicar") ou se deve ficar escondido até uma pessoa da equipe olhar ("reter").
 
@@ -202,7 +203,7 @@ export async function revisarAvaliacao(a: TextoDeAvaliacao, modeloEscolhido: str
 
 // ------------------------------------------------------------------ recados
 
-const SISTEMA_RECADO = `Você é a moderação automática dos recados do Publike, um mural gratuito de vagas e serviços em Goiânia (GO), Brasil.
+const SISTEMA_RECADO = `Você é a moderação automática dos recados do Publike, um mural gratuito de vagas e serviços em ${ONDE_FUNCIONA} (${UFS}), Brasil.
 
 Recado é um texto curto (até 280 letras) que alguém escreve para quem está perto: quem procura trabalho conta o que procura, quem contrata avisa que está contratando, quem presta serviço se apresenta. Leia o texto e decida se ele pode aparecer na linha do tempo ("publicar") ou se deve ficar escondido até uma pessoa da equipe olhar ("reter").
 
@@ -272,7 +273,7 @@ export async function revisarRecado(r: RecadoParaIA, modeloEscolhido: string): P
 
 // ------------------------------------------------------------------ melhorar texto
 
-const SISTEMA_TEXTO = `Você ajuda pessoas de Goiânia a escrever anúncios para o Publike, um mural gratuito de vagas, freelances e serviços.
+const SISTEMA_TEXTO = `Você ajuda pessoas de ${ONDE_FUNCIONA} a escrever anúncios para o Publike, um mural gratuito de vagas, freelances e serviços.
 
 Reescreva o título e a descrição em português do Brasil claro, direto e simpático, como quem fala com um vizinho.
 - Mantenha todos os fatos: valores, horários, requisitos, local, quantidade de vagas.
@@ -315,7 +316,7 @@ export async function sugerirTexto(a: AnuncioParaIA, modelo: string): Promise<{ 
 
 // ------------------------------------------------------------------ resumo do painel
 
-const SISTEMA_RESUMO = `Você é analista do Publike, um mural gratuito de vagas, freelances e serviços em Goiânia (GO).
+const SISTEMA_RESUMO = `Você é analista do Publike, um mural gratuito de vagas, freelances e serviços em ${ONDE_FUNCIONA} (${UFS}).
 Com os números do período, escreva para o dono do site um resumo curto em português do Brasil:
 - até 8 tópicos começando com "- ";
 - primeiro o que aconteceu (cadastros, anúncios, curtidas, matches), comparando com o período anterior quando houver;
@@ -339,7 +340,7 @@ export async function escreverResumo(dados: unknown, modeloEscolhido: string): P
 /** O que a ficha mostra: um parágrafo, os pontos fortes, o que conferir e perguntas para a entrevista. */
 export type ResumoCandidato = { resumo: string; fortes: string[]; conferir: string[]; perguntas: string[] };
 
-const SISTEMA_CANDIDATO = `Você ajuda quem publicou uma vaga no Publike (Goiânia, GO) a ler um currículo rápido.
+const SISTEMA_CANDIDATO = `Você ajuda quem publicou uma vaga no Publike (${ONDE_FUNCIONA}, ${UFS}) a ler um currículo rápido.
 Recebe a vaga, o que dá para comparar com ela, o currículo e as respostas do candidato. Escreva em português do Brasil, simples e direto:
 - "resumo": 2 ou 3 frases sobre a experiência e o que o candidato traz para ESTA vaga;
 - "fortes": até 3 pontos fortes para a vaga, curtos;

@@ -10,6 +10,7 @@ import { CIDADES, type Cidade } from "@/lib/constantes";
 import type { Local } from "@/lib/regioes";
 import { classesBotao } from "../ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "../ui/campo";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 /** Botão de lugar (onde mora, perto de mim, só os meus): contorno; escolhido, ganha borda escura e fundo leve. */
 export const botaoLugar = (ativo: boolean) =>
@@ -64,24 +65,27 @@ export function BotaoOndeMora({
 /**
  * Painel "Onde você mora?". O jeito mais preciso é o CEP de casa: as distâncias
  * e o tempo de ônibus saem da rua da pessoa. Sem CEP, cidade e bairro já põem
- * primeiro o que é do bairro, depois da região (em Goiânia) e da cidade.
+ * primeiro o que é do bairro, depois da região (nas cidades com regiões) e da cidade.
  * O CEP fica na conta (ou neste navegador) e ninguém mais vê.
  */
 export function PainelOndeMora({
   id,
   local,
+  cidadePadrao,
   fechar,
   aoSalvar,
 }: {
   id: string;
   local: Local | null;
+  /** sem lugar escolhido: a cidade de quem vê (pelo endereço de internet, ou a principal) */
+  cidadePadrao?: string;
   fechar: () => void;
   /** depois de salvar (a busca passa a contar de casa) */
   aoSalvar?: () => void;
 }) {
   const [cep, setCep] = useState(formatarCep(local?.cep));
   const [cepConferido, setCepConferido] = useState<string | null>(local?.cep ?? null);
-  const [cidade, setCidade] = useState<string>(local?.cidade ?? "Goiânia");
+  const [cidade, setCidade] = useState<string>(local?.cidade ?? cidadePadrao ?? PRACA_PADRAO.cidade);
   const [bairro, setBairro] = useState(local?.bairro ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
@@ -282,8 +286,8 @@ export function PerguntaOndeMora({
     if (limparCep(cep).length !== 8) return setErro("Digite os 8 números do CEP da sua casa.");
     setErro(null);
     iniciar(async () => {
-      // a cidade e o bairro saem do próprio CEP
-      const r = await salvarLocal("Goiânia", "", limparCep(cep));
+      // a cidade e o bairro saem do próprio CEP (a cidade daqui é só para passar na conferência)
+      const r = await salvarLocal(PRACA_PADRAO.cidade, "", limparCep(cep));
       if (!r.ok) return setErro(r.erro);
       aoSalvar?.();
     });
@@ -296,6 +300,8 @@ export function PerguntaOndeMora({
     <form
       onSubmit={salvar}
       aria-labelledby={`${campo}-titulo`}
+      // na vitrine, enquanto esta pergunta está na tela, os botões de lugar da busca do topo somem (um "Onde você mora?" só)
+      data-pergunta-onde-mora=""
       className="flex flex-col gap-2 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-card sm:p-4 lg:flex-row lg:items-start lg:gap-6"
     >
       <div className="min-w-0 lg:flex-1">

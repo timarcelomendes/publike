@@ -12,6 +12,7 @@ import { regiaoDoBairro } from "@/lib/regioes";
 import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
+import { areaDaRegiao } from "@/lib/constantes";
 
 export const metadata: Metadata = { title: "Vitrine de serviços da conta" };
 
@@ -86,7 +87,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]/se
     bairro: base?.bairro ?? p.bairro ?? "",
     lat: base?.lat ?? null,
     lng: base?.lng ?? null,
-    atende: base?.atende.length ? base.atende : [regiao ? `Goiânia: ${regiao}` : p.cidade],
+    atende: base?.atende.length ? base.atende : [regiao ? areaDaRegiao(p.cidade, regiao) : p.cidade],
     horario: base?.horario ?? null,
     contato_direto: direto ?? true,
   };

@@ -12,6 +12,7 @@ import { SeloVerificado } from "../selo-verificado";
 import { BotaoSeguir } from "../social/botoes";
 import { Avatar } from "../ui/basicos";
 import { empresasContratando } from "./empresas-contratando";
+import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 // A coluna da direita do feed (computador grande; no celular, depois da lista): quem
 // está contratando perto, com o Seguir (aviso de vaga nova) e o Conectar, e os conteúdos do blog.
@@ -19,8 +20,9 @@ import { empresasContratando } from "./empresas-contratando";
 const caixa = "flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card";
 
 export async function ContratandoPerto({ local }: { local: Local | null }) {
+  const visita = await cidadeDaVisita();
   const [todas, seguidos, usuario] = await Promise.all([
-    empresasContratando(local, 5),
+    empresasContratando(local, 5, visita),
     meusSeguidos().catch(() => []),
     obterUsuario().catch(() => null),
   ]);
@@ -31,7 +33,7 @@ export async function ContratandoPerto({ local }: { local: Local | null }) {
   return (
     <section aria-labelledby="contratando-perto" className={caixa}>
       <h2 id="contratando-perto" className="text-h3">
-        {local ? "Contratando perto de você" : "Contratando em Goiânia e região"}
+        {local ? "Contratando perto de você" : `Contratando em ${visita.cidade} e região`}
       </h2>
       {/* o lugar de quem vê: o bairro (CEP de casa, busca ou perfil); sem bairro, a cidade */}
       {local && (

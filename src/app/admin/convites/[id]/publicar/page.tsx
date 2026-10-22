@@ -13,6 +13,7 @@ import { iaConfigurada } from "@/lib/ia/openai";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 import { valoresDoConvite } from "@/lib/valores-convite";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Publicar com o sim da empresa" };
 
@@ -49,7 +50,7 @@ async function Conteudo({ id }: { id: string }) {
     beneficios: null,
     horario: null,
     vagas: 1,
-    cidade: "Goiânia",
+    cidade: PRACA_PADRAO.cidade,
     bairro: "",
     lat: null,
     lng: null,

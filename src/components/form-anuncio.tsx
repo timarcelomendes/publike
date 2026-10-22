@@ -540,6 +540,7 @@ export function FormAnuncio({
           inicialEndereco={lugar.endereco}
           publico={enderecoPublico && !confidencial}
           mapaOpcional
+          cidade={cidade}
           erro={erros.lat ?? erros.lng}
           aoAchar={({ cidade: c, bairro: b }) => {
             if ((CIDADES as readonly string[]).includes(c)) setCidade(c);

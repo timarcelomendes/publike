@@ -5,6 +5,7 @@ import { RecursosDoPublike } from "@/components/secao-recursos";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { LIMITES_CONTA } from "@/lib/constantes";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
   title: "Como funciona",
@@ -67,7 +68,7 @@ const PERGUNTAS = [
   },
   {
     p: "Quem pode publicar?",
-    r: "Qualquer pessoa, comércio, empresa ou agência de emprego de Goiânia e região, com um WhatsApp no perfil.",
+    r: `Qualquer pessoa, comércio, empresa ou agência de emprego de ${ONDE_FUNCIONA}, com um WhatsApp no perfil.`,
   },
   {
     p: "Sou agência de emprego ou RH. Posso usar?",
@@ -90,9 +91,9 @@ export default function ComoFunciona() {
         <Container className="py-10 sm:py-14">
           <h1 className="max-w-3xl text-h1 sm:text-display">Quem precisa publica. Quem faz curte.</h1>
           <p className="mt-4 max-w-2xl text-body-lg text-ink-muted">
-            O Publike é uma ferramenta do povo para gerar emprego em Goiânia e região: vagas com carteira, diárias,
-            freelances e serviços, organizados pela distância e pelo tempo de ônibus de casa. De graça para quem procura e
-            para empresas de qualquer tamanho.
+            O Publike é uma ferramenta do povo para gerar emprego em {ONDE_FUNCIONA}: vagas com carteira, diárias,
+            freelances e serviços, organizados pela distância e pelo tempo de ônibus de casa. De graça para quem procura
+            e para empresas de qualquer tamanho.
           </p>
         </Container>
       </section>

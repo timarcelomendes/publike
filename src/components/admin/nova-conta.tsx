@@ -8,6 +8,7 @@ import type { EstadoForm, TipoConta } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada, ligarCampo, Seletor } from "../ui/campo";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 // No admin, o que cada tipo cobre (pessoa: candidato e prestador de serviço).
 const AJUDA_DO_TIPO: Partial<Record<TipoConta, string>> = {
@@ -121,7 +122,11 @@ export function FormNovaConta({ inicial }: { inicial?: InicialNovaConta }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
-          <Seletor {...ligarCampo("cidade", erros.cidade)} defaultValue="Goiânia" className={classesEntrada}>
+          <Seletor
+            {...ligarCampo("cidade", erros.cidade)}
+            defaultValue={PRACA_PADRAO.cidade}
+            className={classesEntrada}
+          >
             {CIDADES.map((c) => (
               <option key={c} value={c}>
                 {c}

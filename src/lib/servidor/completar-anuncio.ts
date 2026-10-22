@@ -1,10 +1,11 @@
 import "server-only";
-import { CENTRO_GOIANIA } from "@/lib/config";
 import { REGIMES } from "@/lib/constantes";
 import { categoriaPeloTitulo, descricaoSimples } from "@/lib/modelos-anuncio";
 import { centroDoBairro } from "@/lib/servidor/cep";
 import type { Regime } from "@/lib/tipos";
 import { lerHorario, textoDoHorario } from "@/lib/vaga-extra";
+import { cidadeDoPublike, PRACA_PADRAO } from "@/lib/pracas";
+import { centroDaCidade } from "@/lib/regioes";
 
 /**
  * Publicar sem travar: só o título, o tipo de contratação, o valor e o bairro são
@@ -38,15 +39,15 @@ export async function completarAnuncio(formData: FormData, provisorio = false): 
         nomeRegime: REGIMES[regime as Regime]?.nome ?? null,
         horario: horario.ok && horario.horario ? textoDoHorario(horario.horario) : texto("horario") || null,
         bairro: texto("bairro"),
-        cidade: texto("cidade") || "Goiânia",
+        cidade: texto("cidade") || PRACA_PADRAO.cidade,
         direto: texto("contato_direto") === "on",
       }),
     );
   }
   if ((!texto("lat") || !texto("lng")) && texto("bairro")) {
     const centro = provisorio
-      ? CENTRO_GOIANIA
-      : await centroDoBairro(texto("bairro"), texto("cidade") || "Goiânia").catch(() => null);
+      ? centroDaCidade(cidadeDoPublike(texto("cidade")) ?? PRACA_PADRAO.cidade)
+      : await centroDoBairro(texto("bairro"), texto("cidade") || PRACA_PADRAO.cidade).catch(() => null);
     if (centro) {
       formData.set("lat", String(centro.lat));
       formData.set("lng", String(centro.lng));

@@ -27,7 +27,7 @@ async function podeConsultar() {
   return true;
 }
 
-/** Endereço e ponto no mapa de um CEP de Goiânia e região (com o número, a porta). */
+/** Endereço e ponto no mapa de um CEP de onde o Publike funciona (com o número, a porta). */
 export async function buscarCep(cep: string, numero?: string | null): Promise<ConsultaCep> {
   if (typeof cep !== "string") return { ok: false, motivo: "invalido", erro: "O CEP tem 8 números." };
   if (!(await podeConsultar())) {

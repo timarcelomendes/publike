@@ -1,5 +1,6 @@
-import { CIDADES, LIMITES_CONTA } from "./constantes";
+import { CIDADES, emLista, LIMITES_CONTA } from "./constantes";
 import type { TipoConta } from "./tipos";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // Página de ajuda (/ajuda) e o que o assistente sabe sobre o Publike.
 // Mudou como algo funciona? Mude aqui: a página e o assistente leem daqui.
@@ -14,7 +15,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "O que é o Publike?",
-        r: "Uma ferramenta do povo para gerar emprego em Goiânia e região. Tem vagas com carteira, diárias, freelances e profissionais que prestam serviço, organizados pela distância e pelo tempo de ônibus de casa. Quem precisa publica, quem faz curte. Deu match, vocês conversam pelo WhatsApp.",
+        r: `Uma ferramenta do povo para gerar emprego em ${ONDE_FUNCIONA}. Tem vagas com carteira, diárias, freelances e profissionais que prestam serviço, organizados pela distância e pelo tempo de ônibus de casa. Quem precisa publica, quem faz curte. Deu match, vocês conversam pelo WhatsApp.`,
       },
       {
         p: "É grátis mesmo?",
@@ -22,7 +23,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Funciona em quais cidades?",
-        r: `Em Goiânia e região: ${CIDADES.join(", ")}.`,
+        r: `Em ${ONDE_FUNCIONA}: ${emLista(CIDADES)}.`,
       },
       {
         p: "Como eu entro? Precisa de senha?",
@@ -102,7 +103,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Quem pode publicar vaga?",
-        r: "Qualquer pessoa, comércio, empresa de qualquer tamanho (do MEI à indústria) ou agência de emprego de Goiânia e região, com um WhatsApp no perfil.",
+        r: `Qualquer pessoa, comércio, empresa de qualquer tamanho (do MEI à indústria) ou agência de emprego de ${ONDE_FUNCIONA}, com um WhatsApp no perfil.`,
       },
       {
         p: "Como publico uma vaga?",
@@ -330,7 +331,7 @@ const VITRINE: PassoJornada[] = [
   },
   {
     titulo: "Diga onde e quando atende",
-    texto: "Marque o seu bairro no mapa e escolha as regiões de Goiânia e as cidades que você atende.",
+    texto: "Marque o seu bairro no mapa e escolha as regiões e as cidades que você atende.",
     detalhes: [
       "O mapa mostra só uma área de uns 500 metros, nunca o seu endereço.",
       "Quem mora nas regiões que você atende vê seus serviços primeiro, mesmo longe de você.",

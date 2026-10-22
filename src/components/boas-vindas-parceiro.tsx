@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Simbolo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // Boas-vindas na primeira visita: o Publike é parceiro de quem trabalha e de
 // quem contrata, e é sempre grátis. Aparece uma vez por navegador; o aviso de
@@ -160,7 +161,7 @@ export function BoasVindasParceiro() {
             O Publike é seu parceiro de trabalho
           </h2>
           <p id="boas-vindas-texto" className="mt-2 text-body text-ink-muted">
-            Um mural de trabalho de Goiânia e região que liga quem precisa de alguém a quem quer trabalhar, perto de
+            Um mural de trabalho de {ONDE_FUNCIONA} que liga quem precisa de alguém a quem quer trabalhar, perto de
             casa. Sem plano, sem taxa por candidato e sem comissão.
           </p>
         </div>

@@ -10,6 +10,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { todosOsCaminhos } from "@/lib/ajuda";
 import { SITE_URL } from "@/lib/config";
 import { TIPOS_CONTA } from "@/lib/constantes";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // O passo a passo de um caminho, com as telas: a página para mandar a quem ainda não usa o Publike.
 
@@ -85,7 +86,7 @@ function Conteudo({ id }: { id: string }) {
 
         <section className="mt-10 flex flex-col items-start gap-3 rounded-lg bg-surface-300 p-5 sm:p-6">
           <h2 className="text-h3">Pronto para começar?</h2>
-          <p className="text-body text-ink-muted">É grátis, sem senha e funciona no celular. Goiânia e região.</p>
+          <p className="text-body text-ink-muted">É grátis, sem senha e funciona no celular. {ONDE_FUNCIONA}.</p>
           <div className="flex flex-wrap gap-2">
             {primeiro && (
               <BotaoLink href={primeiro.href} variante="primario">

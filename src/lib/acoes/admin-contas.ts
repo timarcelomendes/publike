@@ -14,6 +14,7 @@ import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
 import { salvarTriagem } from "@/lib/servidor/triagem";
+import { areasSemRepetir } from "@/lib/constantes";
 
 // Contas criadas pela equipe (quem pediu ajuda para entrar no Publike, como uma
 // agência que mandou a lista de vagas). Só no admin, no computador do dono.
@@ -242,7 +243,7 @@ export async function salvarServicosEmNomeDe(
   if (d.servicos.some((s) => s.fotos.some((f) => !f.startsWith(`${usuarioId}/`)))) {
     return { ok: false, erro: "Pelo admin não dá para enviar fotos." };
   }
-  const atende = d.atende.includes("Goiânia") ? d.atende.filter((a) => !a.startsWith("Goiânia: ")) : d.atende;
+  const atende = areasSemRepetir(d.atende);
 
   const { error } = await c.rpc("admin_salvar_servicos_de", {
     p_usuario: usuarioId,

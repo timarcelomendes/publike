@@ -10,6 +10,7 @@ import { formatarDistancia, formatarLugar, rotuloConta, valorDoAnuncio } from "@
 import { chamarIA, iaConfigurada, lerJson, modeloDaIA } from "@/lib/ia/openai";
 import { pontoDoLocal, type Local } from "@/lib/regioes";
 import { criarClientePublico, criarClienteServidor } from "@/lib/supabase/servidor";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // O assistente responde dúvidas com o conteúdo da página de ajuda (src/lib/ajuda.ts).
 // Com conta, ele também procura vagas, serviços e empresas no banco: a IA só
@@ -66,7 +67,7 @@ function instrucoes(pessoa: { logada: boolean; nome: string | null; local: Local
           : ""
       }. Você pode buscar vagas, serviços e empresas para ela.`
     : "A pessoa NÃO está logada. Você só tira dúvidas. Para buscar vagas, serviços ou empresas, ou para ajudar com a conta dela (anúncios, curtidas, matches, perfil), use a ação pedir_login.";
-  return `Você é o assistente do Publike, uma ferramenta do povo para gerar emprego em Goiânia e região.
+  return `Você é o assistente do Publike, uma ferramenta do povo para gerar emprego em ${ONDE_FUNCIONA}.
 Responda em português do Brasil, com palavras simples, de forma calorosa e direta, em no máximo 4 frases curtas.
 Use só as informações sobre o Publike que estão abaixo. Se não souber, diga que não sabe e indique a página de ajuda (/ajuda) ou a página Sugestões e erros (/sugerir).
 Nunca invente vagas, empresas, valores, prazos ou regras. Nunca peça documento, senha, código de SMS, dados de cartão ou dinheiro.

@@ -9,6 +9,7 @@ import { salvarIntencao } from "@/lib/acoes/intencao";
 import { avisarPerguntaAberta } from "../boas-vindas-parceiro";
 import { Selo, Simbolo } from "../ui/basicos";
 import { INTENCAO_EM_DESTAQUE, INTENCOES, PAGINA_DA_INTENCAO, VOCE, type Intencao } from "@/lib/intencao";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 // "O que você quer fazer no Publike?"
 //   1ª visita: FolhaIntencao, numa janela (depois vem o "Onde você mora?"); "Agora não" deixa
@@ -135,9 +136,12 @@ export function FolhaIntencao({
   aoAdiar,
   atual = null,
   primeiraVisita = false,
+  cidade = PRACA_PADRAO.cidade,
 }: {
   aoEscolher: (i: Intencao) => void;
   aoAdiar: () => void;
+  /** a cidade de quem vê, para a apresentação da primeira visita */
+  cidade?: string;
   /** a resposta de agora, quando a janela abre para mudar */
   atual?: Intencao | null;
   /** na chegada: a janela faz as vezes das boas-vindas (grátis, o que é o Publike) */
@@ -206,7 +210,7 @@ export function FolhaIntencao({
           </h2>
           <p className="mt-0.5 text-body-sm text-ink-muted">
             {primeiraVisita
-              ? "Um mural de trabalho de Goiânia e região, perto de casa: sem plano, sem taxa e sem comissão. Escolha e a busca já abre no que interessa a você."
+              ? `Um mural de trabalho de ${cidade} e região, perto de casa: sem plano, sem taxa e sem comissão. Escolha e a busca já abre no que interessa a você.`
               : "Assim a busca já abre no que interessa a você."}
           </p>
         </div>

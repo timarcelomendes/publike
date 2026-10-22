@@ -35,6 +35,7 @@ import { CampoCnpj } from "./campo-cnpj";
 import { Aviso, Avatar } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 const SUGESTOES = [
   "Diarista",
@@ -116,8 +117,11 @@ export function FormPerfil({
   proximo,
   pedirAceite = false,
   modos: modosIniciais,
+  cidadePadrao = PRACA_PADRAO.cidade,
 }: {
   perfil: MeuPerfil | null;
+  /** perfil novo: a cidade de quem vê (onde disse que mora ou pelo endereço de internet) */
+  cidadePadrao?: string;
   usuarioId: string;
   telefone: string | null;
   email: string | null;
@@ -136,7 +140,7 @@ export function FormPerfil({
   const [foto, setFoto] = useState<string | null>(perfil?.foto ?? null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
-  const [cidade, setCidade] = useState(perfil?.cidade ?? "Goiânia");
+  const [cidade, setCidade] = useState(perfil?.cidade ?? cidadePadrao);
   const [servicos, setServicos] = useState<string[]>(perfil?.servicos ?? []);
   const [novo, setNovo] = useState("");
   const [whatsapp, setWhatsapp] = useState(
@@ -363,7 +367,7 @@ export function FormPerfil({
             tipo === "pessoa"
               ? "Ex.: Trabalho com cozinha há 3 anos. Tenho disponibilidade à noite e moro no Jardim América."
               : agencia
-                ? "Ex.: Recrutamento e seleção desde 2012. Atendemos comércio, indústria e escritórios de Goiânia."
+                ? `Ex.: Recrutamento e seleção desde 2012. Atendemos comércio, indústria e escritórios de ${cidade}.`
                 : "Ex.: Restaurante de comida caseira no Setor Bueno, aberto desde 2015."
           }
           className={`${classesEntrada} resize-y`}

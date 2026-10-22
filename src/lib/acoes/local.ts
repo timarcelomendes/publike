@@ -11,6 +11,7 @@ import { centroDoBairro, consultarCep } from "@/lib/servidor/cep";
 import { dentroDoLimite, embaralhar, enderecoDeQuemPediu } from "@/lib/servidor/limite";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
+import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 const UM_ANO = 365 * 24 * 3600;
 
@@ -47,7 +48,7 @@ export async function salvarLocal(cidade: string, bairro: string, cep?: string |
       cep: c,
       ponto: arredondarCasa(r.ponto),
     });
-    if (!local) return { ok: false, erro: "Por enquanto o Publike funciona em Goiânia e região." };
+    if (!local) return { ok: false, erro: `Por enquanto o Publike funciona em ${ONDE_FUNCIONA}.` };
 
     const usuario = MODO_DEMO ? null : await obterUsuario();
     if (usuario) {
@@ -85,7 +86,7 @@ export async function salvarLocal(cidade: string, bairro: string, cep?: string |
   return { ok: true };
 }
 
-/** Esquece o que foi escolhido (volta a usar o perfil, ou o centro de Goiânia). */
+/** Esquece o que foi escolhido (volta a usar o perfil, ou o centro da cidade de quem visita). */
 export async function esquecerLocal(): Promise<Resultado> {
   (await cookies()).delete(COOKIE_LOCAL);
   if (!MODO_DEMO && (await obterUsuario())) {

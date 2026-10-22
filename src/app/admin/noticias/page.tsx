@@ -8,6 +8,7 @@ import type { Noticia } from "@/lib/noticias";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Notícias" };
 
@@ -37,7 +38,7 @@ async function Conteudo() {
     <div className="flex flex-col gap-6">
       <Secao
         titulo="Notícias"
-        descricao="A IA procura notícias sobre trabalho em Goiânia e região (feirões, cursos gratuitos, concursos, direitos) e escreve um resumo com a fonte. Nada vai para o site sem você aprovar: publique agora ou agende para o próximo horário livre (8h, 12h ou 18h)."
+        descricao={`A IA procura notícias sobre trabalho em ${PRACA_PADRAO.nome} (feirões, cursos gratuitos, concursos, direitos) e escreve um resumo com a fonte. Nada vai para o site sem você aprovar: publique agora ou agende para o próximo horário livre (8h, 12h ou 18h).`}
       >
         {error ? (
           <Aviso tipo="erro" titulo="Não deu para ler as notícias">

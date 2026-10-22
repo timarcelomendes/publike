@@ -5,11 +5,11 @@ import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
 import { LIMITES_CONTA, REGIMES } from "@/lib/constantes";
+import { CIDADES_ATENDIDAS, ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
   title: "Para empresas: publique sua vaga grátis",
-  description:
-    "Loja, comércio do bairro ou empresa média: publique a vaga de graça e contrate gente que mora perto, em Goiânia e região. Você escolhe com quem conversar.",
+  description: `Loja, comércio do bairro ou empresa média: publique a vaga de graça e contrate gente que mora perto, em ${ONDE_FUNCIONA}. Você escolhe com quem conversar.`,
   alternates: { canonical: "/empresas" },
 };
 
@@ -93,7 +93,7 @@ const PERGUNTAS = [
   },
   {
     p: "Onde o Publike funciona?",
-    r: "Em Goiânia e região: Aparecida de Goiânia, Senador Canedo, Trindade, Goianira e as cidades vizinhas.",
+    r: CIDADES_ATENDIDAS,
   },
 ];
 

@@ -7,7 +7,7 @@ import { FormServicos, type ValoresServicos } from "@/components/form-servicos";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { UNIDADES_SERVICO } from "@/lib/constantes";
+import { areaDaRegiao, UNIDADES_SERVICO } from "@/lib/constantes";
 import { NotaDoProfissional } from "@/components/avaliacoes";
 import { listarMeusServicos, obterNotaDoProfissional } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
@@ -17,6 +17,7 @@ import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { conviteDoLink } from "@/lib/servidor/convite-do-link";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { exigirPerfilCompleto } from "@/lib/sessao";
+import { PRACA_PADRAO } from "@/lib/pracas";
 
 export const metadata: Metadata = { title: "Meus serviços" };
 
@@ -38,7 +39,7 @@ export default function MeusServicos({ searchParams }: PageProps<"/painel/servic
 /** Para quem ainda não tem serviço: onde atende começa pela região (ou cidade) do perfil. */
 function areaDoPerfil(cidade: string, bairro: string | null) {
   const regiao = regiaoDoBairro(cidade, bairro ?? "");
-  if (regiao) return [`Goiânia: ${regiao}`];
+  if (regiao) return [areaDaRegiao(cidade, regiao)];
   return [cidade];
 }
 
@@ -47,11 +48,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
   if (MODO_DEMO) {
     const vazio: ValoresServicos = {
       servicos: [],
-      cidade: "Goiânia",
+      cidade: PRACA_PADRAO.cidade,
       bairro: "",
       lat: null,
       lng: null,
-      atende: ["Goiânia: Centro"],
+      atende: [areaDaRegiao(PRACA_PADRAO.cidade, "Centro")],
       horario: null,
     };
     return (
@@ -77,7 +78,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
   const r = convite?.tipo === "prestador" ? convite.rascunho : null;
   // sem vitrine ainda: o ponto no mapa começa no meio do bairro do anúncio (dá para ajustar)
   const centro =
-    r?.bairro && servicos.length === 0 ? await centroDoBairro(r.bairro, r.cidade || "Goiânia").catch(() => null) : null;
+    r?.bairro && servicos.length === 0
+      ? await centroDoBairro(r.bairro, r.cidade || PRACA_PADRAO.cidade).catch(() => null)
+      : null;
   const doConvite =
     r && r.titulo && !servicos.some((s) => s.titulo.toLowerCase() === r.titulo.toLowerCase())
       ? {
@@ -109,14 +112,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
       })),
       ...(doConvite ? [doConvite] : []),
     ],
-    cidade: base?.cidade ?? (r?.bairro ? r.cidade || "Goiânia" : perfil.cidade),
+    cidade: base?.cidade ?? (r?.bairro ? r.cidade || PRACA_PADRAO.cidade : perfil.cidade),
     bairro: base?.bairro ?? (r?.bairro || perfil.bairro || ""),
     lat: base?.lat ?? centro?.lat ?? null,
     lng: base?.lng ?? centro?.lng ?? null,
     atende: base?.atende.length
       ? base.atende
       : r?.bairro
-        ? areaDoPerfil(r.cidade || "Goiânia", r.bairro)
+        ? areaDoPerfil(r.cidade || PRACA_PADRAO.cidade, r.bairro)
         : areaDoPerfil(perfil.cidade, perfil.bairro),
     horario: base?.horario ?? null,
     contato_direto: direto ?? true,
