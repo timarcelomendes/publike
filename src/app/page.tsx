@@ -124,6 +124,9 @@ async function SecoesDaVitrine({ searchParams }: { searchParams: Parametros }) {
     <>
       <NovasHoje local={local} />
       <EmpresasContratando local={local} />
+      <Suspense fallback={null}>
+        <NovosPerto jeito="vitrine" />
+      </Suspense>
       <FaixaArte logado={false} />
       <ServicosDoBairro />
     </>
@@ -153,6 +156,19 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
       <ContratandoAcimaDoMapa />
     </Suspense>
   );
+  // no meio da linha (celular e tablet): quem está contratando e quem chegou perto
+  const meio = (
+    <div className="flex flex-col gap-6">
+      {contratando}
+      {!soOlhar && (
+        <div className="lg:hidden">
+          <Suspense fallback={null}>
+            <NovosPerto jeito="faixa" />
+          </Suspense>
+        </div>
+      )}
+    </div>
+  );
   return (
     <Container className="pt-4 pb-4 sm:pt-6">
       <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px]">
@@ -176,7 +192,7 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
             <TopoDaConta searchParams={searchParams} soOlhar={soOlhar} />
           </Suspense>
           <Suspense fallback={<EsqueletoCards quantos={3} />}>
-            <CentroDaLinha searchParams={searchParams} contratando={contratando} soOlhar={soOlhar} />
+            <CentroDaLinha searchParams={searchParams} contratando={contratando} meio={meio} soOlhar={soOlhar} />
           </Suspense>
         </div>
         <Suspense fallback={null}>
@@ -197,10 +213,12 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
 async function CentroDaLinha({
   searchParams,
   contratando,
+  meio,
   soOlhar = false,
 }: {
   searchParams: Parametros;
   contratando: ReactNode;
+  meio: ReactNode;
   soOlhar?: boolean;
 }) {
   const sp = await searchParams;
@@ -211,7 +229,7 @@ async function CentroDaLinha({
       </Suspense>
     );
   }
-  return <LinhaDoTempo searchParams={searchParams} meio={contratando} soOlhar={soOlhar} />;
+  return <LinhaDoTempo searchParams={searchParams} meio={meio} soOlhar={soOlhar} />;
 }
 
 /** "Só olhar", à esquerda no lugar do cartão da conta: o que é esta página e como as vagas da conta aparecem. */
@@ -330,6 +348,10 @@ async function HomeEmpresa() {
             </Suspense>
           </div>
           <HojeContratar usuario={usuario} perfil={perfil} conversas={conversas} conexoes={conexoes} agora={agora} />
+          {/* gente e empresas que chegaram perto: para contratar e para conectar */}
+          <Suspense fallback={null}>
+            <NovosPerto jeito="faixa" />
+          </Suspense>
           <Link
             href="/?tipo=tudo"
             className="inline-flex items-center gap-1.5 self-start text-label text-ink underline underline-offset-2 hover:text-terra-text"
