@@ -258,6 +258,16 @@ export async function modelosDeEmail(c: ClienteBanco) {
   return data ?? [];
 }
 
+/** Convites por e-mail: quantas contas recebem agora e quantas já receberam (sem a migração, nada). */
+export async function convitesPorEmail(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_convites_por_email");
+  if (error) {
+    console.error("Publike: não deu para ler os convites por e-mail:", error.message);
+    return null;
+  }
+  return data ?? [];
+}
+
 export async function ultimosEmails(c: ClienteBanco, limite = 40) {
   const { data, error } = await c.rpc("admin_fila_emails", { p_limite: limite });
   if (error) falha("a fila de e-mails", error);

@@ -2261,6 +2261,15 @@ export type Database = {
       };
       /** boas-vindas para quem se cadastrou, não publicou e ainda não recebeu (devolve quantos) */
       admin_boas_vindas_pendentes: { Args: Record<PropertyKey, never>; Returns: number };
+      /** convites por e-mail: quantas contas recebem agora e quantas já receberam, por convite */
+      admin_convites_por_email: {
+        Args: Record<PropertyKey, never>;
+        Returns: { modelo: string; recebem: number; ja_receberam: number }[];
+      };
+      /** põe o convite na fila para quem ainda pode receber (devolve quantos) */
+      admin_enviar_convite_email: { Args: { p_modelo: string }; Returns: number };
+      /** o convite para a conta desse e-mail, mesmo fora do grupo (devolve o id na fila) */
+      admin_convite_email_teste: { Args: { p_modelo: string; p_email: string }; Returns: number };
       /** os serviços da conta, como ela vê em "Meus serviços" (admin) */
       admin_servicos_de: {
         Args: { p_usuario: string };

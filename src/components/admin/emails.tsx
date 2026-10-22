@@ -1,8 +1,9 @@
 "use client";
 
-import { HandHeart, ImageUp, RefreshCw, RotateCcw, Send } from "lucide-react";
+import { HandHeart, ImageUp, Mail, RefreshCw, RotateCcw, Send } from "lucide-react";
 import { useActionState, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
+  enviarConviteEmail,
   enviarEmailDeTeste,
   processarFilasAgora,
   reenviarEmailsComFalha,
@@ -10,6 +11,7 @@ import {
   salvarConfigEmails,
   salvarLogoEmails,
   salvarModeloEmail,
+  testarConviteEmail,
 } from "@/lib/acoes/admin";
 import { enviarBoasVindasPendentes } from "@/lib/acoes/admin-contas";
 import type { ConfigSite, ModeloEmailAdmin } from "@/lib/admin/dados";
@@ -536,5 +538,132 @@ export function BoasVindasPendentes() {
       </Botao>
       {mensagem}
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ convites por e-mail
+
+export type ConviteEmail = { modelo: string; recebem: number; ja_receberam: number };
+
+const CONVITES_EMAIL = [
+  {
+    modelo: "convite_curriculo",
+    nome: "Pessoas: preencher o currículo",
+    quem: "Quem procura trabalho e ainda não preencheu o currículo.",
+  },
+  {
+    modelo: "convite_empresa",
+    nome: "Empresas e comércios: gestão de candidatos",
+    quem: "As contas de empresa e de comércio.",
+  },
+  { modelo: "convite_agencia", nome: "Agências: gestão de candidatos", quem: "As contas de agência." },
+  {
+    modelo: "convite_servicos",
+    nome: "Serviços: divulgar a vitrine",
+    quem: "Quem tem serviço no ar. O link da vitrine vai no e-mail, para mandar no WhatsApp e nos grupos.",
+  },
+  {
+    modelo: "convite_vitrine",
+    nome: "Serviços: montar a vitrine",
+    quem: "Quem marcou que oferece serviços e ainda não tem serviço no Publike.",
+  },
+];
+
+/**
+ * Um convite por grupo de contas que já existem: o teste para um e-mail e, depois, o envio para
+ * quem ainda não recebeu (com confirmação). Os textos ficam em "Textos dos e-mails".
+ */
+export function ConvitesPorEmail({ convites, sugestao }: { convites: ConviteEmail[]; sugestao: string }) {
+  return (
+    <ul className="flex flex-col gap-3">
+      {CONVITES_EMAIL.map((info) => {
+        const c = convites.find((x) => x.modelo === info.modelo) ?? {
+          modelo: info.modelo,
+          recebem: 0,
+          ja_receberam: 0,
+        };
+        return <LinhaConvite key={info.modelo} info={info} convite={c} sugestao={sugestao} />;
+      })}
+    </ul>
+  );
+}
+
+function LinhaConvite({
+  info,
+  convite,
+  sugestao,
+}: {
+  info: (typeof CONVITES_EMAIL)[number];
+  convite: ConviteEmail;
+  sugestao: string;
+}) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [confirmar, setConfirmar] = useState(false);
+  const [estado, acao, testando] = useActionState(testarConviteEmail, INICIAL);
+  return (
+    <li className="flex flex-col gap-3 rounded-md border border-line p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-label">{info.nome}</p>
+          <p className="text-body-sm text-ink-muted">{info.quem}</p>
+          <p className="mt-1 text-body-sm">
+            <strong>{convite.recebem}</strong> {convite.recebem === 1 ? "conta recebe" : "contas recebem"} agora
+            {convite.ja_receberam > 0 && <span className="text-ink-muted"> · {convite.ja_receberam} já receberam</span>}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {confirmar ? (
+            <>
+              <Botao
+                tamanho="sm"
+                disabled={pendente}
+                onClick={() =>
+                  rodar(
+                    () => enviarConviteEmail(info.modelo),
+                    () => setConfirmar(false),
+                  )
+                }
+              >
+                <Mail aria-hidden />
+                {pendente ? "Enviando…" : `Confirmar: enviar para ${convite.recebem}`}
+              </Botao>
+              <Botao tamanho="sm" variante="secundario" disabled={pendente} onClick={() => setConfirmar(false)}>
+                Cancelar
+              </Botao>
+            </>
+          ) : (
+            <Botao tamanho="sm" disabled={convite.recebem === 0} onClick={() => setConfirmar(true)}>
+              <Mail aria-hidden />
+              Enviar para {convite.recebem}
+            </Botao>
+          )}
+        </div>
+      </div>
+      {mensagem}
+      <form action={acao} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <input type="hidden" name="modelo" value={info.modelo} />
+        <Campo
+          rotulo="Antes, mande um teste para a conta com este e-mail"
+          nome={`para-${info.modelo}`}
+          erro={estado.erros?.para}
+          className="flex-1"
+        >
+          <input
+            {...ligarCampo(`para-${info.modelo}`, estado.erros?.para)}
+            name="para"
+            type="email"
+            defaultValue={sugestao}
+            required
+            autoComplete="email"
+            className={classesEntrada}
+          />
+        </Campo>
+        <Botao type="submit" tamanho="sm" variante="secundario" disabled={testando} className="sm:mb-1">
+          <Send aria-hidden />
+          {testando ? "Enviando…" : "Enviar teste"}
+        </Botao>
+      </form>
+      <Resultado estado={estado} />
+    </li>
   );
 }

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import {
   BoasVindasPendentes,
   BotoesFila,
+  ConvitesPorEmail,
   FormConfigEmails,
   FormEmailTeste,
   FormLogoEmails,
@@ -13,7 +14,7 @@ import {
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
-import { configDoSite, modelosDeEmail, ultimosEmails } from "@/lib/admin/dados";
+import { configDoSite, convitesPorEmail, modelosDeEmail, ultimosEmails } from "@/lib/admin/dados";
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail } from "@/lib/email/montar";
@@ -35,11 +36,12 @@ export default function Emails() {
 
 async function Conteudo() {
   const c = await exigirAdminLocal();
-  const [config, modelos, fila, agora] = await Promise.all([
+  const [config, modelos, fila, agora, convites] = await Promise.all([
     configDoSite(c),
     modelosDeEmail(c),
     ultimosEmails(c, 40),
     agoraDaRequisicao(),
+    convitesPorEmail(c),
   ]);
   const smtp = situacaoSmtp();
   const filas = situacaoFilas();
@@ -119,6 +121,16 @@ async function Conteudo() {
       <Secao id="configuracoes" titulo="O que é enviado">
         <FormConfigEmails config={config} />
       </Secao>
+
+      {convites && (
+        <Secao
+          id="convites"
+          titulo="Convites por e-mail"
+          descricao="Um e-mail para cada grupo de contas que já existem, uma vez por conta. Segue as regras dos avisos (e-mails ligados, avisos ligados na conta e e-mail confirmado). Mande um teste antes; os textos ficam em Textos dos e-mails, com prévia."
+        >
+          <ConvitesPorEmail convites={convites} sugestao={config.avisos_para[0] ?? ""} />
+        </Secao>
+      )}
 
       <Secao
         titulo="Boas-vindas para quem já se cadastrou"

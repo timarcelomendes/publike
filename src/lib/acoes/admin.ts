@@ -294,6 +294,57 @@ export async function enviarEmailDeTeste(_anterior: EstadoForm, formData: FormDa
   };
 }
 
+const CONVITES = ["convite_curriculo", "convite_empresa", "convite_agencia", "convite_servicos", "convite_vitrine"];
+
+/** Convite por e-mail para o grupo todo: entra na fila e sai em levas de 50 (o resto, na próxima leva). */
+export async function enviarConviteEmail(modelo: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!CONVITES.includes(modelo)) return { ok: false, erro: "Convite desconhecido." };
+  const { data: total, error } = await c.rpc("admin_enviar_convite_email", { p_modelo: modelo });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  if (!total) {
+    refresh();
+    return { ok: true, mensagem: "Ninguém para receber agora: todo mundo do grupo já recebeu ou desligou os avisos." };
+  }
+  // até 4 levas agora (200 e-mails); o que sobrar sai nas próximas (Processar filas, ou nas ações do site)
+  let enviados = 0;
+  let falhas = 0;
+  for (let i = 0; i < 4; i++) {
+    const envio = await enviarEmailsPendentes(50);
+    if (envio.motivo) {
+      refresh();
+      return { ok: false, erro: `${total} e-mail(s) ficaram na fila: ${envio.motivo}` };
+    }
+    enviados += envio.enviados;
+    falhas += envio.falhas;
+    if (envio.enviados + envio.falhas < 50) break;
+  }
+  refresh();
+  const resto =
+    total - enviados - falhas > 0 ? ` ${total - enviados - falhas} ficaram na fila: use "Processar filas".` : "";
+  const comFalha = falhas ? ` ${falhas} falharam: veja em Últimos e-mails.` : "";
+  return { ok: true, mensagem: `Convite na fila para ${total} conta(s); ${enviados} já saíram.${resto}${comFalha}` };
+}
+
+/** O convite para uma conta só (pelo e-mail de login), para ver como chega. */
+export async function testarConviteEmail(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const modelo = texto(formData, "modelo");
+  const para = texto(formData, "para").toLowerCase();
+  if (!CONVITES.includes(modelo)) return { ok: false, erro: "Convite desconhecido." };
+  if (!EMAIL.test(para)) return { ok: false, erro: "Confira o e-mail.", erros: { para: "Confira o e-mail." } };
+  const { data: id, error } = await c.rpc("admin_convite_email_teste", { p_modelo: modelo, p_email: para });
+  if (error || id == null) return { ok: false, erro: mensagemDeErro(error) };
+  const envio = await enviarEmailsPendentes(50);
+  if (envio.motivo) return { ok: false, erro: envio.motivo };
+  const { data: estado } = await c.rpc("admin_status_email", { p_id: id });
+  refresh();
+  if (estado?.[0]?.status === "enviado") return { ok: true, mensagem: `Teste enviado para ${para}.` };
+  return { ok: false, erro: `O e-mail ficou na fila: ${estado?.[0]?.erro ?? "veja em Últimos e-mails"}` };
+}
+
 export async function reenviarEmailsComFalha(): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
