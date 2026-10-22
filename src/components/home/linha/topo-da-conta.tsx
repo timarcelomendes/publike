@@ -1,6 +1,8 @@
 import { ArrowLeft, FileText, Inbox, Plus, Search, Store, type LucideIcon } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { esperaResposta } from "@/lib/constantes";
+import { COOKIE_CONVITE_RECADO, conviteRecadoFechado } from "@/lib/convite-recado";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { nomeDoTempo } from "@/lib/deslocamento";
@@ -8,7 +10,10 @@ import { filtrosMudados, hrefFiltros, SEM_FILTROS } from "@/lib/filtros";
 import { plural, primeiro } from "@/lib/formato";
 import { numeroDaAba, quandoFoi, saudacao } from "@/lib/linha-do-tempo";
 import { chaveDaLinha, dadosDaLinha } from "@/lib/servidor/linha";
-import { perfilDeUso } from "@/lib/servidor/perfil-de-uso";
+import { perfilDeUso, type PerfilDeUso } from "@/lib/servidor/perfil-de-uso";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { agoraDaRequisicao } from "@/lib/tempo";
+import type { TextoDoConvite } from "../../recados/convite-recado";
 import { BarraBusca, FiltrosLista } from "../../explorar/barra-busca";
 import { FotoDaConta } from "../foto-da-conta";
 import { AbasDaLinha } from "./abas-da-linha";
@@ -57,6 +62,41 @@ async function proximaAcao(): Promise<Acao | null> {
     icone: FileText,
     noCartao: true,
   };
+}
+
+const TEXTOS_DO_CONVITE: Record<PerfilDeUso, TextoDoConvite> = {
+  trabalho: {
+    pedido: "Conte o que você procura.",
+    exemplo: "Tenho experiência como garçom e procuro vaga aqui perto.",
+    quemVe: "Quem contrata perto de você vê.",
+  },
+  servicos: {
+    pedido: "Conte o serviço que você faz.",
+    exemplo: "Sou eletricista e atendo aqui no bairro. Orçamento sem compromisso.",
+    quemVe: "Quem precisa do serviço perto de você vê.",
+  },
+  contratar: {
+    pedido: "Conte quem você está contratando.",
+    exemplo: "Estamos contratando auxiliar de cozinha para o fim de semana.",
+    quemVe: "Quem procura trabalho perto de você vê.",
+  },
+};
+
+/**
+ * O convite para o primeiro recado (em cima do campo): só para a conta que nunca deixou recado e
+ * que não tocou em "Agora não" há pouco. O texto segue o uso da conta.
+ */
+async function conviteDoRecado(): Promise<TextoDoConvite | null> {
+  const [usuario, jar, agora] = await Promise.all([obterUsuario(), cookies(), agoraDaRequisicao()]);
+  if (!usuario || conviteRecadoFechado(jar.get(COOKIE_CONVITE_RECADO)?.value, agora)) return null;
+  // os recados da própria conta (para a dona, também os em revisão)
+  const [{ data, error }, uso] = await Promise.all([
+    (await criarClienteServidor()).rpc("recados_do_perfil", { p_perfil: usuario.id, p_limite: 1 }),
+    perfilDeUso(),
+  ]);
+  // sem dar para saber (ou já escreveu), sem convite
+  if (error || (data ?? []).length > 0) return null;
+  return TEXTOS_DO_CONVITE[uso];
 }
 
 /** A busca no celular e no tablet (no computador, ela fica no cabeçalho). */
@@ -110,13 +150,14 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   }
   // "Informe seu CEP" (?casa=1): os filtros já abrem com o "Onde você mora?"
   const casa = primeiro(sp.casa) === "1";
-  const [d, perfil, acao, usuario, visita] = await Promise.all([
+  const [d, perfil, acao, usuario, visita, convite] = await Promise.all([
     dadosDaLinha(chaveDaLinha(sp)),
     obterMeuPerfil(),
     // só olhando (empresa vendo como pessoa), nada a fazer pela conta
     soOlhar ? Promise.resolve(null) : proximaAcao(),
     obterUsuario(),
     cidadeDaVisita(),
+    soOlhar ? Promise.resolve(null) : conviteDoRecado().catch(() => null),
   ]);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
   // pessoa: o primeiro nome; empresa, comércio e agência: o nome inteiro
@@ -189,6 +230,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
           <BuscaERecado
             busca={<CampoDaBusca />}
             mudados={mudados}
+            convite={convite}
             recado={{
               pessoaId: usuario.pessoaId,
               autorTipo: d.autorTipo,

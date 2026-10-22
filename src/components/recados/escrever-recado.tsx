@@ -19,6 +19,7 @@ export function EscreverRecado({
   autorTipo,
   avatar = null,
   focar = 0,
+  aoEnviar,
 }: {
   pessoaId: string;
   autorTipo: string | null;
@@ -26,6 +27,8 @@ export function EscreverRecado({
   avatar?: ReactNode;
   /** muda quando o "Recado" do celular abre o campo: o cursor vai para ele */
   focar?: number;
+  /** o recado foi enviado (o convite para o primeiro recado sai da tela) */
+  aoEnviar?: () => void;
 }) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -126,6 +129,7 @@ export function EscreverRecado({
       setCitando(false);
       setBusca("");
       setAviso({ ok: true, texto: r.mensagem ?? "Recado enviado." });
+      aoEnviar?.();
     });
   }
 
