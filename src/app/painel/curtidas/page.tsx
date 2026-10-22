@@ -12,6 +12,7 @@ import { ChipFiltro } from "@/components/painel/fluxo";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
+import { minhasCandidaturasVistas } from "@/lib/servidor/visitas";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
@@ -73,13 +74,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/curtidas");
   const sp = await searchParams;
-  const [curtidas, desfeitos, etapas, bloqueios, publicas, curriculo] = await Promise.all([
+  const [curtidas, desfeitos, etapas, bloqueios, publicas, curriculo, vistas] = await Promise.all([
     listarMinhasCurtidas(),
     listarMeusDesfeitos(),
     listarMinhasEtapas(),
     listarMeusBloqueios(),
     minhasContratacoesPublicas(),
     obterMeuCurriculo().catch(() => null),
+    // as candidaturas que a empresa já abriu (Quem viu seu perfil)
+    minhasCandidaturasVistas(),
   ]);
   const agora = await agoraDaRequisicao();
   // sem currículo, as vagas que pedem um ganham o passo "Você manda o currículo" no caminho
@@ -200,6 +203,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
           {lista.map((c) => {
             const noAr = c.anuncio_status === "ativo";
             const etapaVisivel = etapaDe(c);
+            // a empresa já abriu a candidatura (só enquanto espera a resposta)
+            const vista = esperaResposta(c) && vistas.has(c.anuncio_id);
             return (
               <li
                 key={c.anuncio_id}
@@ -208,6 +213,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                 <div className="flex flex-wrap items-center gap-2">
                   {c.status === "match" && <Selo variante="match">Deu match</Selo>}
                   {esperaResposta(c) && <Selo variante="like">Aguardando aceite</Selo>}
+                  {vista && <Selo variante="contorno">Vista pela empresa</Selo>}
                   {esperaCurriculo(c) && <Selo variante="aviso">Falta o currículo</Selo>}
                   {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
                   {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}

@@ -12,6 +12,7 @@ import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { SecaoContratacoes, SecaoRecomendacoes } from "@/components/social/secoes";
 import { ConvidarTalento } from "@/components/talentos/convidar-talento";
+import { RegistrarVisitaPerfil } from "@/components/visitas/registrar-visita";
 import { CurriculoDoTalento } from "@/components/talentos/curriculo-do-talento";
 import { Avatar, Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -90,6 +91,8 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
 
   return (
     <>
+      {/* conta para "Quem viu seu perfil" (a própria conta e a suspensa, não) */}
+      {!meu && !suspensa && <RegistrarVisitaPerfil perfilId={perfil.id} onde="perfil" />}
       {suspensa && (
         <Aviso tipo="alerta" titulo="Esta conta está suspensa" className="mb-6">
           A moderação do Publike suspendeu esta conta. Os anúncios dela estão fora do ar.

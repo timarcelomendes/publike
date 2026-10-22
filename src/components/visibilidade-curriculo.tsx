@@ -6,14 +6,15 @@ import { useState, type ReactNode } from "react";
 import { mudarVisibilidadeCurriculo, mudarVitrineCurriculo } from "@/lib/acoes/talentos";
 import { useAcao } from "./ui/usar-acao";
 
-/** O botão de ligar e desligar, com o título da opção como nome. */
-function Opcao({
+/** O botão de ligar e desligar, com o título da opção como nome (`nivel`: o nível do título). */
+export function Opcao({
   id,
   icone: Icone,
   titulo,
   ligado,
   pendente,
   aoMudar,
+  nivel = 2,
   children,
 }: {
   id: string;
@@ -22,15 +23,17 @@ function Opcao({
   ligado: boolean;
   pendente: boolean;
   aoMudar: () => void;
+  nivel?: 2 | 3;
   children: ReactNode;
 }) {
+  const Titulo = nivel === 2 ? "h2" : "h3";
   return (
     <div className="flex items-start gap-3">
       <Icone aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" />
       <div className="min-w-0 flex-1">
-        <h2 id={id} className="scroll-mt-24 text-h3">
+        <Titulo id={id} className="scroll-mt-24 text-h3">
           {titulo}
-        </h2>
+        </Titulo>
         <div className="mt-1 text-body-sm text-ink-muted">{children}</div>
       </div>
       <button

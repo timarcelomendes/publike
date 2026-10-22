@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   Briefcase,
+  Eye,
   FileText,
   Handshake,
   Heart,
@@ -26,6 +27,7 @@ import {
   obterUsuario,
 } from "@/lib/dados";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
+import { resumoDasVisitas } from "@/lib/servidor/visitas";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { textoDoQueFaz } from "@/lib/modo-painel";
 import { modosMarcados } from "@/lib/servidor/modo";
@@ -185,10 +187,11 @@ type Atalho = { nome: string; href: string; numero: number | null; destaque?: bo
  * inteiro do painel (que continua em Meu painel). Também seguem o perfil, como o cartão.
  */
 export async function AtalhosDaConta() {
-  const [conversas, conexoes, uso] = await Promise.all([
+  const [conversas, conexoes, uso, visitas] = await Promise.all([
     conversasPorPessoa().catch(() => null),
     minhasConexoes().catch(() => null),
     perfilDeUso(),
+    resumoDasVisitas().catch(() => null),
   ]);
   const novas = (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0);
   const pedidosDeConexao = pendenciasDeConexao(conexoes ?? []);
@@ -237,6 +240,12 @@ export async function AtalhosDaConta() {
       { nome: "Avisos de vaga", href: "/painel/seguindo", numero: avisos.length },
     ];
   }
+  itens.push({
+    nome: "Quem viu seu perfil",
+    href: "/painel/visitas",
+    numero: visitas?.semana ?? null,
+    destaque: (visitas?.novas ?? 0) > 0,
+  });
   return (
     <nav
       aria-label="Atalhos da conta"
@@ -301,7 +310,18 @@ type LinkDoCartao = {
  * espera resposta e a página de vagas. Todo mundo vê as conexões (com os pedidos em destaque).
  */
 async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
-  const conexoes = await minhasConexoes().catch(() => null);
+  const [conexoes, visitas] = await Promise.all([
+    minhasConexoes().catch(() => null),
+    resumoDasVisitas().catch(() => null),
+  ]);
+  // quem viu o perfil nos últimos 7 dias (em destaque quando há visita nova desde a última vez)
+  const linkVisitas: LinkDoCartao = {
+    nome: "Quem viu seu perfil",
+    href: "/painel/visitas",
+    icone: Eye,
+    numero: visitas?.semana ? String(visitas.semana) : null,
+    destaque: (visitas?.novas ?? 0) > 0,
+  };
   const pedidosDeConexao = pendenciasDeConexao(conexoes ?? []);
   const conectados = (conexoes ?? []).filter((c) => c.status === "aceita").length;
   const linkConexoes: LinkDoCartao = {
@@ -331,6 +351,7 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
       },
       { nome: "Sua página de vagas", href: `/perfil/${id}/vagas`, icone: Link2 },
       linkConexoes,
+      linkVisitas,
     ];
   } else if (uso === "servicos") {
     const anuncios = await listarMeusAnuncios().catch(() => []);
@@ -346,6 +367,7 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
         destaque: pedidos > 0,
       },
       linkConexoes,
+      linkVisitas,
     ];
   } else {
     const [curriculo, curtidas] = await Promise.all([
@@ -365,6 +387,7 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
         numero: curtidas.length ? String(curtidas.length) : null,
       },
       linkConexoes,
+      linkVisitas,
     ];
   }
   return (

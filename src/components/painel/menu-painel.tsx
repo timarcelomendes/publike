@@ -63,6 +63,7 @@ const ICONES: Record<Secao["icone"], LucideIcon> = {
   contratados: BadgeCheck,
   links: Link2,
   entrevistas: CalendarDays,
+  visitas: Eye,
 };
 
 function guardarModo(modo: ModoPainel) {

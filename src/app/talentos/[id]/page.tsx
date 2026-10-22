@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { CurriculoDoTalento } from "@/components/talentos/curriculo-do-talento";
 import { ConvidarTalento } from "@/components/talentos/convidar-talento";
+import { RegistrarVisitaPerfil } from "@/components/visitas/registrar-visita";
 import { Aviso, Avatar, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
@@ -70,6 +71,8 @@ async function Conteudo({ params }: { params: PageProps<"/talentos/[id]">["param
 
   return (
     <article className="mt-2 flex flex-col gap-6">
+      {/* conta para "Quem viu seu perfil": empresa que abre o currículo avisa a pessoa */}
+      {!souEu && <RegistrarVisitaPerfil perfilId={resumo.perfil_id} onde="talento" />}
       <header className="flex items-start gap-4">
         <Avatar nome={resumo.nome} foto={cv?.foto ?? null} tamanho={64} />
         <div className="min-w-0 flex-1">

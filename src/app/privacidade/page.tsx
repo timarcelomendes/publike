@@ -99,7 +99,7 @@ export default function Privacidade() {
         <Secao id="curriculo" titulo="Seu currículo">
           <Lista
             itens={[
-              "Não aparece no seu perfil público nem no Google. Na busca, só se você ligar “Aparecer na aba Talentos” (veja abaixo).",
+              "Não aparece no Google. Ao salvar, um resumo aparece no seu perfil e na aba Talentos da busca, e você pode desligar (veja abaixo).",
               "Só vê quem anunciou uma vaga que você curtiu, e só enquanto a curtida existir. Desfez a curtida, deixou de ver.",
               "Se a vaga é de uma agência de emprego, a agência pode mostrar seu currículo à empresa contratante daquela vaga, só para a seleção. Pelo link de finalistas do Publike, a empresa vê o currículo e o parecer da agência, sem o seu telefone, o e-mail nem o PDF, e você recebe um aviso.",
               "A agência pode ter uma equipe: pessoas com login próprio que cuidam das vagas dela. Elas veem o mesmo que a agência vê das candidaturas às vagas dela, e o que cada uma faz fica anotado para a agência.",
@@ -112,6 +112,19 @@ export default function Privacidade() {
               "Se você usar “Já tem currículo pronto?”, o PDF ou as fotos vão para a IA só para preencher os campos, e nada é salvo antes de você conferir. Telefone, e-mail e endereço não entram nos campos. As fotos não ficam guardadas no Publike; o PDF fica anexado ao currículo, e você pode tirar.",
               "Se você mandou seu currículo por fora (WhatsApp, e-mail ou em mãos) para quem publicou uma vaga, essa pessoa ou agência pode chamar você pelo Publike. A IA lê o PDF ou a foto só para montar os campos do currículo, sem telefone nem e-mail, e o arquivo não fica guardado. O que foi lido fica no convite até você aceitar e salvar o seu, dizer que não tem interesse ou o convite vencer (14 dias). Você só entra na vaga se aceitar.",
               "Você corrige ou apaga o currículo quando quiser, em Meu perfil > Meu currículo. Excluir a conta apaga junto.",
+            ]}
+          />
+        </Secao>
+
+        <Secao id="visitas" titulo="Quem viu seu perfil">
+          <Lista
+            itens={[
+              "Quando alguém que entrou na conta abre seu perfil, seu currículo (a página na aba Talentos) ou, se for quem publicou a vaga, a sua candidatura, o Publike anota quem foi, o que abriu e quando. Quem não entrou vira só um número.",
+              "Você vê essas visitas em Meu painel > Quem viu seu perfil, dos últimos 30 dias. As anotações são apagadas depois de 90 dias.",
+              "Do mesmo jeito, quem você visita fica sabendo que foi você: empresas, comércios e agências pelo nome; pessoas pelo nome encurtado (ex.: Maria S.), com o que fazem e o bairro.",
+              "Pessoa pode ligar “Navegar sem aparecer”: quem ela visita vê só que alguém preferiu não aparecer. Em troca, ela também não vê o nome das pessoas que a visitaram. Empresas, comércios e agências aparecem sempre.",
+              "Quando uma empresa vê seu perfil, seu currículo ou sua candidatura, chega um aviso no sino (no máximo um da mesma empresa por semana). As outras visitas viram um resumo por dia. Não mandamos e-mail, e você pode desligar os avisos.",
+              "Não contam: você mesmo, a equipe da sua agência, contas suspensas e quem você bloqueou.",
             ]}
           />
         </Secao>

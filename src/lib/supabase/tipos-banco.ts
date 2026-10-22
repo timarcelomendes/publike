@@ -1129,6 +1129,40 @@ export type Database = {
       seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
       contar_banner: { Args: { p_banner: string; p_evento: string }; Returns: undefined };
       marcar_banner_visto: { Args: { p_banner: string; p_clicou?: boolean }; Returns: undefined };
+      registrar_visita: { Args: { p_perfil: string; p_onde: string; p_anuncio?: string | null }; Returns: undefined };
+      quem_viu_meu_perfil: {
+        Args: { p_dias?: number };
+        Returns: {
+          visitante_id: string | null;
+          nome: string | null;
+          tipo: string;
+          foto: string | null;
+          cidade: string | null;
+          bairro: string | null;
+          verificado: boolean;
+          titulo: string | null;
+          curriculo_aberto: boolean;
+          onde: string;
+          anuncio_id: string | null;
+          anuncio_titulo: string | null;
+          ultima: string;
+          vezes: number;
+        }[];
+      };
+      resumo_das_visitas: {
+        Args: Record<PropertyKey, never>;
+        Returns: { semana: number; semana_passada: number; novas: number; anonimas: number }[];
+      };
+      marcar_visitas_vistas: { Args: Record<PropertyKey, never>; Returns: undefined };
+      minhas_opcoes_de_visitas: {
+        Args: Record<PropertyKey, never>;
+        Returns: { avisar: boolean; sem_aparecer: boolean }[];
+      };
+      mudar_opcoes_de_visitas: { Args: { p_avisar: boolean; p_sem_aparecer: boolean }; Returns: undefined };
+      minhas_candidaturas_vistas: {
+        Args: Record<PropertyKey, never>;
+        Returns: { anuncio_id: string; vista_em: string }[];
+      };
       salvar_busca: {
         Args: {
           p_texto: string | null;

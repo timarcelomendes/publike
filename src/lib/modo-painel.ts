@@ -62,6 +62,8 @@ export type Contadores = {
   pedidos: number;
   mensagens: number;
   conexoes: number;
+  /** quem viu o perfil desde a última vez que a conta abriu "Quem viu seu perfil" */
+  visitas?: number;
   clientes?: number;
   vagasNoAr?: number;
   prontos?: number;
@@ -91,7 +93,8 @@ export type Secao = {
     | "finalistas"
     | "contratados"
     | "links"
-    | "entrevistas";
+    | "entrevistas"
+    | "visitas";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
   jeito?: "pilula" | "pronto" | "texto";
@@ -112,12 +115,14 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
     { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes" },
     { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
+    { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
   ],
   trabalhar: [
     { href: "/painel", nome: "Hoje", icone: "hoje" },
     { href: "/painel/curtidas?tipo=vaga", nome: "Candidaturas", icone: "curtidas" },
     { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
     { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes" },
+    { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
     { href: "/painel/seguindo", nome: "Avisos e seguindo", icone: "avisos" },
     { href: "/perfil/curriculo", nome: "Currículo", icone: "curriculo" },
   ],
@@ -127,6 +132,7 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel/servicos", nome: "Vitrine", icone: "vitrine" },
     { href: "/painel/avaliacoes", nome: "Avaliações", icone: "avaliacoes" },
     { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
+    { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
   ],
 };
 
@@ -172,6 +178,13 @@ export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefi
         { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
         { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes", jeito: "pilula" },
         { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens", jeito: "pilula" },
+        {
+          href: "/painel/visitas",
+          nome: "Quem viu seu perfil",
+          icone: "visitas",
+          contador: "visitas",
+          jeito: "pilula",
+        },
       ],
     },
     {

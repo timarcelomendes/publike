@@ -28,6 +28,7 @@ import {
   Inbox,
   Share2,
   Store,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
@@ -67,6 +68,10 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   convite_vitrine: Store,
   // o currículo passou a aparecer para as empresas e na aba Talentos
   curriculo_publico: UserSearch,
+  // quem viu o perfil, o currículo ou a candidatura
+  visita: Eye,
+  visitas_do_dia: Eye,
+  visitas_novidade: Eye,
 };
 
 type Notificacao = {
@@ -83,6 +88,8 @@ type Notificacao = {
 function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
   if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
+  if (n.tipo === "visitas_novidade") return "/painel/visitas#opcoes";
+  if (n.tipo === "visita" || n.tipo === "visitas_do_dia") return "/painel/visitas";
   if (n.tipo === "convite_empresa" || n.tipo === "convite_agencia") return "/painel";
   if (n.tipo === "convite_servicos") return `/perfil/${usuarioId}`;
   if (n.tipo === "convite_vitrine") return "/painel/servicos";

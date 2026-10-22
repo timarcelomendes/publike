@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FichaCandidato } from "@/components/painel/ficha-candidato";
+import { RegistrarVisitaPerfil } from "@/components/visitas/registrar-visita";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
 import { ItemDaLista } from "@/components/painel/item-caixa";
@@ -188,6 +189,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
               <ArrowLeft aria-hidden className="size-4" />
               Voltar à lista
             </Link>
+          )}
+          {aberto && (
+            // a empresa abriu a candidatura: a pessoa fica sabendo (só quando a ficha aparece na tela)
+            <RegistrarVisitaPerfil
+              key={aberto.chave}
+              perfilId={aberto.perfil_id}
+              onde="candidatura"
+              anuncioId={aberto.anuncio_id}
+            />
           )}
           {aberto ? (
             <FichaCandidato
