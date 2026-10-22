@@ -881,6 +881,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      banners: {
+        Row: {
+          id: string;
+          titulo: string;
+          texto: string | null;
+          botao: string;
+          acao: string;
+          link: string | null;
+          publico: string;
+          ativo: boolean;
+          inicio: string | null;
+          fim: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          titulo: string;
+          texto?: string | null;
+          botao: string;
+          acao: string;
+          link?: string | null;
+          publico?: string;
+          ativo?: boolean;
+          inicio?: string | null;
+          fim?: string | null;
+        };
+        Update: {
+          titulo?: string;
+          texto?: string | null;
+          botao?: string;
+          acao?: string;
+          link?: string | null;
+          publico?: string;
+          ativo?: boolean;
+          inicio?: string | null;
+          fim?: string | null;
+        };
+        Relationships: [];
+      };
+      banner_numeros: {
+        Row: { banner_id: string; dia: string; vistos: number; cliques: number; fechados: number };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
     };
     Views: SemTabela;
     Functions: {
@@ -1073,6 +1118,7 @@ export type Database = {
         Returns: { outro_id: string; eu_bloqueei: boolean; me_bloqueou: boolean }[];
       };
       seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
+      contar_banner: { Args: { p_banner: string; p_evento: string }; Returns: undefined };
       salvar_busca: {
         Args: {
           p_texto: string | null;

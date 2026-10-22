@@ -14,7 +14,9 @@ import { Botao } from "./ui/botao";
 
 const CHAVE = "publike_aviso_cookies";
 const VERSAO = "1";
-const EVENTO = "publike:aviso-cookies";
+/** Avisa quem espera o aviso fechar (o convite de instalar o app e o banner da página inicial). */
+export const EVENTO_AVISO_COOKIES = "publike:aviso-cookies";
+const EVENTO = EVENTO_AVISO_COOKIES;
 
 function jaViu() {
   try {
