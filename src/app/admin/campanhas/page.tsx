@@ -45,9 +45,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/camp
         descricao={
           <>
             Conta nova que chegou pelo link de um anúncio com <code>?utm_source=google&amp;utm_campaign=servicos</code>{" "}
-            aparece aqui como <strong>google:servicos</strong>. Divida o gasto da campanha pelas contas que publicaram e
-            você tem o custo de cada vaga ou vitrine. Quem abriu o link do e-mail em outro navegador entra como
-            “direto”.
+            aparece aqui como <strong>google:servicos</strong>. Anúncio do Google sem utm (só a marcação automática do
+            Google Ads) aparece como <strong>google-ads</strong>, com o número da campanha. Divida o gasto da campanha
+            pelas contas que publicaram e você tem o custo de cada vaga ou vitrine. Quem abriu o link do e-mail em outro
+            navegador entra como “direto”.
           </>
         }
       >

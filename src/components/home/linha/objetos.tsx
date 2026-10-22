@@ -12,6 +12,7 @@ import {
   rotuloModalidade,
   urlDaFotoTrabalho,
 } from "@/lib/formato";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
@@ -327,13 +328,35 @@ export function CartaoDoServico({
 }
 
 /** O cartão verde: o outro lado aceitou a curtida (ou o pedido de serviço) da pessoa. */
-export function CartaoDoAceite({ m, hora }: { m: Match; hora: string }) {
+export function CartaoDoAceite({
+  m,
+  hora,
+  usuarioId,
+  direto = false,
+}: {
+  m: Match;
+  hora: string;
+  /** quem curtiu (a ficha dela vai no link, para quem publicou) */
+  usuarioId: string | null;
+  /** contato direto: o match saiu na hora, sem aceite */
+  direto?: boolean;
+}) {
   const servico = m.anuncio_tipo === "servico";
+  // o link da mensagem: o aceite (a ficha, para quem publicou) ou, no contato direto, o anúncio
+  const link = linkDoMatch({
+    anuncioId: m.anuncio_id,
+    perfilId: usuarioId ?? "",
+    para: "quem_publicou",
+    direto,
+    servico,
+  });
   return (
     <article className="flex flex-col gap-1 rounded-[18px] bg-cerrado px-4 py-3.5 text-on-cerrado sm:px-5">
       <div className="flex items-start gap-2">
         <h3 className="min-w-0 flex-1 font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
-          {m.outro_nome} aceitou {servico ? "seu pedido" : "sua curtida"}
+          {direto
+            ? `Deu match com ${m.outro_nome}`
+            : `${m.outro_nome} aceitou ${servico ? "seu pedido" : "sua curtida"}`}
         </h3>
         <HoraNoCanto hora={hora} claro />
       </div>
@@ -348,7 +371,10 @@ export function CartaoDoAceite({ m, hora }: { m: Match; hora: string }) {
       <div className="mt-2 flex gap-2">
         {m.outro_whatsapp && (
           <a
-            href={linkWhatsApp(m.outro_whatsapp, `Oi! Vi no Publike que deu match em "${m.anuncio_titulo}".`)}
+            href={linkWhatsApp(
+              m.outro_whatsapp,
+              mensagemComLink(`Oi! Vi no Publike que deu match em “${m.anuncio_titulo}”.`, link),
+            )}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-pill bg-surface-200 px-3 text-label font-bold whitespace-nowrap text-cerrado-text hover:bg-surface-100 sm:flex-none sm:px-4"

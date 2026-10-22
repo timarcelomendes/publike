@@ -10,6 +10,7 @@ import { classesBotao } from "@/components/ui/botao";
 import { esperaResposta } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { formatarLugar, formatarTelefone, linkWhatsApp, tempoRelativo } from "@/lib/formato";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
 import { AcoesInteressado } from "./acoes";
@@ -55,8 +56,11 @@ export function FichaCandidato({
   depois,
   comIA = false,
   conectar = null,
+  direto = false,
 }: {
   c: ItemCaixa;
+  /** a vaga tem contato direto: o match saiu na hora, sem aceite (a mensagem leva o link da vaga) */
+  direto?: boolean;
   /** o botão Conectar com a pessoa (conexão sem vaga, que fica depois da vaga acabar) */
   conectar?: ReactNode;
   /** a ajuda da IA está ligada (resumo do currículo) */
@@ -139,7 +143,11 @@ export function FichaCandidato({
             <a
               href={linkWhatsApp(
                 c.whatsapp,
-                `Olá, ${primeiro}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
+                // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
+                mensagemComLink(
+                  `Olá, ${primeiro}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
+                  linkDoMatch({ anuncioId: c.anuncio_id, perfilId: c.perfil_id, para: "quem_curtiu", direto }),
+                ),
               )}
               target="_blank"
               rel="noopener noreferrer"

@@ -7,6 +7,7 @@ import { perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { BotaoBloquear, DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
@@ -327,11 +328,19 @@ async function Conteudo({
                         <BotoesContato
                           whatsapp={p.whatsapp}
                           email={p.email}
-                          mensagem={
+                          // o link: o pedido ou a curtida aceita (para a pessoa) ou, no contato direto, o anúncio
+                          mensagem={mensagemComLink(
                             servico
                               ? `Olá, ${primeiroNome}! Aceitei seu pedido para “${anuncio.titulo}” no Publike. Vamos combinar?`
-                              : `Olá, ${primeiroNome}! Vi que você curtiu “${anuncio.titulo}” no Publike. Vamos conversar?`
-                          }
+                              : `Olá, ${primeiroNome}! Vi que você curtiu “${anuncio.titulo}” no Publike. Vamos conversar?`,
+                            linkDoMatch({
+                              anuncioId: anuncio.id,
+                              perfilId: p.perfil_id,
+                              para: "quem_curtiu",
+                              direto: Boolean(anuncio.contato_direto),
+                              servico,
+                            }),
+                          )}
                         />
                         <DesfazerMatch
                           anuncioId={anuncio.id}

@@ -3,6 +3,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_PEDIU_LINK, linkDeEntradaValido } from "@/lib/link-entrada";
 import { ehRedeSocial } from "@/lib/login-social";
+import { origemValida } from "@/lib/origem";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 // Volta do login com Google, Facebook, LinkedIn e do link de entrar por e-mail.
@@ -26,9 +27,15 @@ function ehSuspensa(erro: { code?: string; message: string }) {
   return erro.code === "user_banned" || erro.message.toLowerCase().includes("banned");
 }
 
+/** A campanha que veio no link de volta ("google:servicos"), para /auth/continuar anotar na conta nova. */
+function comOrigem(caminho: string, origem: string | null | undefined) {
+  return origemValida(origem) ? `${caminho}&origem=${encodeURIComponent(origem)}` : caminho;
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const proximo = caminhoSeguro(url.searchParams.get("next"), "/");
+  const origem = url.searchParams.get("origem");
   const codigo = url.searchParams.get("code");
   const viaRede = ehRedeSocial(url.searchParams.get("via"));
   const base = enderecoBase(request);
@@ -52,6 +59,7 @@ export async function GET(request: NextRequest) {
     const tipo = url.searchParams.get("type") ?? "email";
     if (!linkDeEntradaValido(tokenHash, tipo)) return voltarComErro("link");
     const params = new URLSearchParams({ token_hash: tokenHash, type: tipo, next: proximo });
+    if (origemValida(origem)) params.set("origem", origem);
     return NextResponse.redirect(`${base}/auth/confirmar?${params}`);
   }
 
@@ -59,7 +67,9 @@ export async function GET(request: NextRequest) {
     const supabase = await criarClienteServidor();
     const { error } = await supabase.auth.exchangeCodeForSession(codigo);
     if (!error) {
-      return NextResponse.redirect(`${base}/auth/continuar?next=${encodeURIComponent(proximo)}`);
+      return NextResponse.redirect(
+        `${base}${comOrigem(`/auth/continuar?next=${encodeURIComponent(proximo)}`, origem)}`,
+      );
     }
     if (ehSuspensa(error)) return voltarComErro("suspensa");
   }
@@ -75,13 +85,14 @@ export async function POST(request: NextRequest) {
     return typeof v === "string" ? v : null;
   };
   const proximo = caminhoSeguro(campo("next"), "/");
+  const origemDaCampanha = campo("origem");
   const tokenHash = campo("token_hash") ?? "";
   const tipo = campo("type") ?? "";
   // 303: depois do envio do formulário, o navegador segue com GET.
   const ir = (destino: string) => NextResponse.redirect(`${base}${destino}`, 303);
   const voltarComErro = (erro: string) => ir(`/entrar?erro=${erro}&next=${encodeURIComponent(proximo)}`);
   const continuar = () => {
-    const resposta = ir(`/auth/continuar?next=${encodeURIComponent(proximo)}`);
+    const resposta = ir(comOrigem(`/auth/continuar?next=${encodeURIComponent(proximo)}`, origemDaCampanha));
     // o link já foi usado: o aviso de "este navegador pediu um link" sai
     resposta.cookies.delete(COOKIE_PEDIU_LINK);
     return resposta;

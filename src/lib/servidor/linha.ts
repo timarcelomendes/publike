@@ -22,6 +22,7 @@ import {
 import { obterLocal } from "@/lib/local";
 import type { Local } from "@/lib/regioes";
 import { partirDoLocal } from "@/lib/servidor/busca-salva";
+import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -127,7 +128,30 @@ async function curtidasDasVagas(ids: string[]): Promise<Map<string, { total: num
   return new Map((data ?? []).map((l) => [l.anuncio_id, { total: l.curtidas, ultima: l.ultima }]));
 }
 
-export type DadoDaLinha = { anuncio: AnuncioNaLinha } | { aceite: Match } | { recado: Recado };
+/**
+ * As vagas que sobem na linha: as que as pessoas estão curtindo agora (última curtida nos últimos
+ * 3 dias; no máximo 4, as mais curtidas), com a hora da última curtida. Essa é a hora da vaga na
+ * linha e também a que conta como novidade: o que fica acima do "Você parou aqui" é novo.
+ */
+function horasQueSobem(curtidas: Map<string, { total: number; ultima: string }>, agora: number) {
+  return new Map(
+    [...curtidas]
+      .filter(([, c]) => agora - Date.parse(c.ultima) <= CURTIDAS_SOBEM)
+      .sort(([, a], [, b]) => b.total - a.total || Date.parse(b.ultima) - Date.parse(a.ultima))
+      .slice(0, MAX_VAGAS_QUE_SOBEM)
+      .map(([id, c]) => [id, c.ultima] as const),
+  );
+}
+
+/** A hora de uma vaga na linha: a da publicação ou, se ela subiu, a da última curtida. */
+function horaDaVaga(publicada: string, subiu: string | undefined) {
+  return subiu && Date.parse(subiu) > Date.parse(publicada) ? subiu : publicada;
+}
+
+export type DadoDaLinha =
+  | { anuncio: AnuncioNaLinha }
+  | { aceite: Match; /** contato direto: o match saiu na hora, sem aceite */ direto: boolean }
+  | { recado: Recado };
 
 export type DadosDaLinha = {
   agora: number;
@@ -226,10 +250,36 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       },
     },
   }));
+  // as vagas que as pessoas estão curtindo: o número no cartão ("8 pessoas já curtiram") e, as de
+  // curtida recente, sobem para a hora da última curtida. Antes de contar as novidades: a vaga que
+  // subiu fica acima do "Você parou aqui" e conta como novidade (a saudação e as abas batem com a linha)
+  if (aba === "tudo" || aba === "vaga") {
+    const curtidas = await curtidasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+      () => new Map<string, { total: number; ultima: string }>(),
+    );
+    const sobem = horasQueSobem(curtidas, agora);
+    for (const i of itens) {
+      const c = curtidas.get(i.id);
+      if (i.tipo !== "vaga" || !c || !("anuncio" in i.dados)) continue;
+      i.dados.anuncio.curtidas = c;
+      i.quando = horaDaVaga(i.quando, sobem.get(i.id));
+    }
+  }
   // os aceites de quem curtiu (o outro lado aceitou), dos últimos 7 dias, só em Tudo
-  const aceites: ItemDaLinha<DadoDaLinha>[] = matchesDaConta
-    .filter((m) => m.papel === "curti" && m.match_em && agora - Date.parse(m.match_em) <= ACEITE_NA_LINHA)
-    .map((m) => ({ tipo: "aceite", id: m.anuncio_id, quando: m.match_em, dados: { aceite: m } }));
+  const recentes = matchesDaConta.filter(
+    (m) => m.papel === "curti" && m.match_em && agora - Date.parse(m.match_em) <= ACEITE_NA_LINHA,
+  );
+  // contato direto: o match saiu na hora, sem aceite (o cartão e o link da mensagem mudam)
+  const diretos =
+    aba === "tudo" && recentes.length
+      ? await anunciosComContatoDireto(recentes.map((m) => m.anuncio_id))
+      : new Set<string>();
+  const aceites: ItemDaLinha<DadoDaLinha>[] = recentes.map((m) => ({
+    tipo: "aceite",
+    id: m.anuncio_id,
+    quando: m.match_em,
+    dados: { aceite: m, direto: diretos.has(m.anuncio_id) },
+  }));
   if (aba === "tudo") itens.push(...aceites);
   // os recados no ar (e os da pessoa em revisão): em Tudo e em Recados
   const itensDeRecado: ItemDaLinha<DadoDaLinha>[] = recados.map((r) => ({
@@ -254,39 +304,29 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       local,
       usuarioId,
     ).catch(() => []);
+    // as vagas que subiram contam pela hora da última curtida, como na linha
+    const sobemDeTodas = horasQueSobem(
+      await curtidasDasVagas(todos.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+        () => new Map<string, { total: number; ultima: string }>(),
+      ),
+      agora,
+    );
     novas = novidades(
       [
         ...todos.map(
           (a) =>
-            ({ tipo: a.tipo === "servico" ? "servico" : "vaga", id: a.id, quando: a.criado_em, dados: null }) as const,
+            ({
+              tipo: a.tipo === "servico" ? "servico" : "vaga",
+              id: a.id,
+              quando: a.tipo === "vaga" ? horaDaVaga(a.criado_em, sobemDeTodas.get(a.id)) : a.criado_em,
+              dados: null,
+            }) as const,
         ),
         ...aceites,
         ...recadosDeOutros,
       ],
       marca,
     );
-  }
-  // as vagas que as pessoas estão curtindo: o número no cartão ("8 pessoas já curtiram") e, as
-  // de curtida recente, sobem para a hora da última curtida (depois de contar as novidades: a vaga
-  // não vira "nova" por isso)
-  if (aba === "tudo" || aba === "vaga") {
-    const vagas = itens.filter((i) => i.tipo === "vaga" && "anuncio" in i.dados);
-    const curtidas = await curtidasDasVagas(vagas.map((i) => i.id)).catch(
-      () => new Map<string, { total: number; ultima: string }>(),
-    );
-    const sobem = new Set(
-      [...curtidas]
-        .filter(([, c]) => agora - Date.parse(c.ultima) <= CURTIDAS_SOBEM)
-        .sort(([, a], [, b]) => b.total - a.total || Date.parse(b.ultima) - Date.parse(a.ultima))
-        .slice(0, MAX_VAGAS_QUE_SOBEM)
-        .map(([id]) => id),
-    );
-    for (const i of vagas) {
-      const c = curtidas.get(i.id);
-      if (!c || !("anuncio" in i.dados)) continue;
-      i.dados.anuncio.curtidas = c;
-      if (sobem.has(i.id) && Date.parse(c.ultima) > Date.parse(i.quando)) i.quando = c.ultima;
-    }
   }
   return {
     agora,

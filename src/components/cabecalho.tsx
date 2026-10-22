@@ -13,6 +13,7 @@ import {
   PublicarECurriculo,
   type CurriculoNoTopo,
 } from "./botao-publicar";
+import { EntradaComABusca, EntradaDaBusca } from "./busca-do-topo";
 import { BotaoInstalarApp } from "./instalar-app";
 import { LinkTopo } from "./nav-topo";
 import { MenuUsuario } from "./menu-usuario";
@@ -82,14 +83,9 @@ async function NavPrincipal() {
         <label className="flex h-10 w-full items-center gap-2 rounded-pill border border-line bg-surface-200 px-4 text-ink-muted focus-within:outline-2 focus-within:outline-focus">
           <Search aria-hidden className="size-[18px] shrink-0 text-terra-text" />
           <span className="sr-only">Buscar vagas e serviços</span>
-          <input
-            type="search"
-            name="q"
-            enterKeyHint="search"
-            placeholder="Garçom, diarista, auxiliar…"
-            maxLength={80}
-            className="min-w-0 flex-1 bg-transparent text-body-sm text-ink outline-none placeholder:text-ink-muted"
-          />
+          <Suspense fallback={<EntradaDaBusca />}>
+            <EntradaComABusca />
+          </Suspense>
         </label>
       </form>
       <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">

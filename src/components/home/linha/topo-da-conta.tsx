@@ -58,6 +58,27 @@ async function proximaAcao(): Promise<Acao | null> {
   };
 }
 
+/** A busca no celular e no tablet (no computador, ela fica no cabeçalho). */
+function CampoDaBusca({ valor = "", className }: { valor?: string; className?: string }) {
+  return (
+    <form action="/" role="search" className={className}>
+      <label className="flex h-12 items-center gap-2.5 rounded-pill border border-line bg-surface-200 px-4 text-ink focus-within:outline-2 focus-within:outline-focus">
+        <Search aria-hidden className="size-5 shrink-0 text-terra-text" />
+        <span className="sr-only">Buscar vagas e serviços</span>
+        <input
+          type="search"
+          name="q"
+          enterKeyHint="search"
+          placeholder="Garçom, diarista, auxiliar…"
+          maxLength={80}
+          defaultValue={valor}
+          className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
+        />
+      </label>
+    </form>
+  );
+}
+
 /**
  * O topo da home de quem entrou (no meio, ao lado do cartão da conta): a saudação com as novidades
  * desde a última visita e a ação que mais pede a conta; o campo do recado, numa linha só (abre ao
@@ -66,6 +87,10 @@ async function proximaAcao(): Promise<Acao | null> {
  */
 export async function TopoDaConta({ searchParams }: { searchParams: Parametros }) {
   const sp = await searchParams;
+  // busca por palavra ("mecânico"): a página vira a dos resultados, com o título na lista; a saudação,
+  // o recado e as abas da linha do tempo saem. Fica só o campo da busca no celular, já com a palavra.
+  const q = primeiro(sp.q)?.trim().slice(0, 80);
+  if (q) return <CampoDaBusca valor={q} className="mb-4 lg:hidden" />;
   // "Informe seu CEP" (?casa=1): os filtros já abrem com o "Onde você mora?"
   const casa = primeiro(sp.casa) === "1";
   const [d, perfil, acao, usuario] = await Promise.all([
@@ -129,20 +154,7 @@ export async function TopoDaConta({ searchParams }: { searchParams: Parametros }
           )}
         </div>
         {/* no celular e no tablet, a busca (no computador, ela fica no cabeçalho) */}
-        <form action="/" role="search" className="lg:hidden">
-          <label className="flex h-12 items-center gap-2.5 rounded-pill border border-line bg-surface-200 px-4 text-ink focus-within:outline-2 focus-within:outline-focus">
-            <Search aria-hidden className="size-5 shrink-0 text-terra-text" />
-            <span className="sr-only">Buscar vagas e serviços</span>
-            <input
-              type="search"
-              name="q"
-              enterKeyHint="search"
-              placeholder="Garçom, diarista, auxiliar…"
-              maxLength={80}
-              className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
-            />
-          </label>
-        </form>
+        <CampoDaBusca className="lg:hidden" />
         {usuario && (
           <EscreverRecado
             pessoaId={usuario.pessoaId}

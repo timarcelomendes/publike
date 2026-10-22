@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { DemoMatch } from "@/components/demo-match";
@@ -11,6 +12,7 @@ import { obterUsuario } from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
 import { REDES_ATIVAS } from "@/lib/login-social";
 import { redesParaEntrar } from "@/lib/login-social-servidor";
+import { COOKIE_ORIGEM, origemValida } from "@/lib/origem";
 
 /** Mensagens para ?erro= (vem de /auth/callback). */
 const ERROS: Record<string, string> = {
@@ -116,6 +118,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
       : "Não foi possível entrar. Tente de novo."
     : undefined;
   const redes = await redesParaEntrar();
+  // chegou por uma campanha: ela vai no link de entrar (quem abre o e-mail em outro navegador não perde)
+  const origem = (await cookies()).get(COOKIE_ORIGEM)?.value;
   // veio do link de acesso (/acesso/<token>): o e-mail já ficou ligado à conta
   const emailPedido = primeiro(sp.email)?.trim().slice(0, 200);
   const emailInicial = emailPedido && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailPedido) ? emailPedido : undefined;
@@ -129,6 +133,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
       )}
       <FormEntrar
         proximo={proximo}
+        origem={origemValida(origem) ? origem : undefined}
         erroInicial={erro}
         redes={redes}
         celular={LOGIN_CELULAR}

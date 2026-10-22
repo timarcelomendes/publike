@@ -17,6 +17,7 @@ import {
 import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { visaoInicialDaBusca } from "@/lib/servidor/visao";
 import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
 import {
   formatarDistancia,
@@ -28,6 +29,7 @@ import {
   valorDoAnuncio,
 } from "@/lib/formato";
 import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
+import { semAcento } from "@/lib/descobrir";
 import { obterLocal } from "@/lib/local";
 import { passosDaPrioridade } from "@/lib/regioes";
 import { acharBuscaSalva, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
@@ -147,6 +149,7 @@ export async function Explorar({
   variante = "vitrine",
   lugar = false,
   acimaDoMapa = null,
+  abasDaBusca = false,
 }: {
   searchParams: Parametros;
   variante?: "vitrine" | "feed";
@@ -154,6 +157,11 @@ export async function Explorar({
   lugar?: boolean;
   /** com Blocos + mapa: o que vai em cima do mapa (no feed, quem contrata perto) */
   acimaDoMapa?: ReactNode;
+  /**
+   * numa busca por palavra no feed: Tudo, Vagas e Serviços em cima (a home de quem entrou; quem
+   * contrata já tem as abas na barra da busca)
+   */
+  abasDaBusca?: boolean;
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
@@ -165,8 +173,15 @@ export async function Explorar({
   ]);
   const filtrosDaBusca = aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao));
   const filtros = partirDoLocal(filtrosDaBusca, local);
-  // no feed, a ordem fica nos atalhos (Para você, Mais perto, Novas); serviços não têm atalho de ordem
-  const ordemFora = feed && filtros.tipo !== "servico";
+  // a busca por palavra de quem entrou já vem no jeito de ver escolhido (sem trocar depois de abrir)
+  const visaoDaBusca = feed && filtros.q.trim() ? await visaoInicialDaBusca() : undefined;
+  // busca por palavra ("mecânico"): a página vira a dos resultados (o título diz o que foi buscado,
+  // em cima ficam Tudo, Vagas e Serviços, e o que tem a palavra no título vem primeiro)
+  const termo = filtros.q.trim();
+  const busca = termo.length > 0;
+  // no feed, a ordem fica nos atalhos (Para você, Mais perto, Novas); serviços não têm atalho de ordem.
+  // Na busca por palavra, os atalhos dão lugar às abas e a ordem volta para os filtros.
+  const ordemFora = feed && filtros.tipo !== "servico" && !busca;
   const avisar = filtros.tipo === "vaga" && !filtros.meus;
   // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
   const procuraTrabalho = intencao === null || intencao === "trabalho" || intencao === "talento";
@@ -201,6 +216,10 @@ export async function Explorar({
       .map((a, i) => ({ a, i, nota: matches.get(a.id)?.nota ?? -1 }))
       .sort((x, y) => y.nota - x.nota || x.i - y.i)
       .map((x) => x.a);
+  } else if (busca && filtros.ordem !== "recentes") {
+    // o banco acha a palavra no título, na descrição e no ofício, e ordena só por perto: aqui, quem
+    // tem a palavra no título vem antes (do mais perto ao mais longe dentro de cada grupo)
+    anuncios = ordenarPeloTitulo(anuncios, termo);
   }
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id);
   const temMinhas = Boolean(usuario) && anuncios.some((a) => a.autor_id === usuario?.id);
@@ -261,17 +280,37 @@ export async function Explorar({
           : // com poucas, o número não ajuda: só o que é ("Vagas perto de você")
             `${nome[1][0].toUpperCase()}${nome[1].slice(1)} perto de você`;
   const maiorRaio = RAIOS[RAIOS.length - 1];
+  // na busca por palavra: "Resultados para “mecânico”", com quantos são embaixo
+  const tituloDaLista = busca ? (n === 0 ? `Nada encontrado para “${termo}”` : `Resultados para “${termo}”`) : contagem;
+  const quantos =
+    busca && n > 0
+      ? `${n >= LIMITE ? `${LIMITE}+` : n} ${
+          filtros.tipo === "vaga"
+            ? n === 1
+              ? "vaga"
+              : "vagas"
+            : filtros.tipo === "servico"
+              ? n === 1
+                ? "serviço"
+                : "serviços"
+              : n === 1
+                ? "resultado"
+                : "resultados"
+        }`
+      : null;
 
   // As perguntas da primeira visita (e depois o próximo passo, com o "Mudar") ficam em cima da lista,
   // junto dos filtros: os anúncios não se partem no meio. Sem nada a perguntar, o espaço some.
   // no feed, com tudo respondido, a linha do próximo passo fica só no celular (no computador, o cartão da conta mostra)
   // (sem currículo, o convite para o currículo e o % de match aparece também no computador)
   const respondidas = feed && intencao && local && quem;
-  const perguntas = filtros.meus ? null : (
-    <div className={respondidas ? "lg:hidden" : "contents"}>
-      <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
-    </div>
-  );
+  // na busca por palavra, nada entre o título e os resultados
+  const perguntas =
+    filtros.meus || (busca && feed) ? null : (
+      <div className={respondidas ? "lg:hidden" : "contents"}>
+        <PerguntasNaLista filtros={filtros} intencao={intencao} temLocal={Boolean(local)} proximoPasso={proximoPasso} />
+      </div>
+    );
   // Poucas vagas (o começo): no fim da lista, o aviso de vaga nova e a distância maior, para quem procura trabalho
   const poucas = n > 0 && n < 10 && !filtros.meus && filtros.tipo !== "servico" && procuraTrabalho;
   // No fim da lista, o convite para quem tem vaga: no começo, são as vagas que mais faltam.
@@ -447,6 +486,10 @@ export async function Explorar({
   );
   const atalhos = !feed ? (
     <AbasDaLista filtros={filtros} />
+  ) : busca ? (
+    abasDaBusca ? (
+      <AbasDaLista filtros={filtros} talentos={false} />
+    ) : null
   ) : lugar ? (
     <BarraBusca
       filtros={filtrosDaBusca}
@@ -471,7 +514,7 @@ export async function Explorar({
         titulo={
           // no computador, um pouco menor: cabe na linha dos filtros
           <h2 className="text-h3 sm:text-h2 lg:text-h3 2xl:text-h2" aria-live="polite">
-            {contagem}
+            {tituloDaLista}
           </h2>
         }
         subtitulo={
@@ -479,6 +522,7 @@ export async function Explorar({
             {feed ? (
               // no feed, curto: de onde e até onde
               <p className="text-body-sm text-ink-muted">
+                {quantos && <>{quantos} · </>}
                 {combina && <>Do que mais combina com seu currículo · </>}
                 {!combina && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
                 {/* sem o CEP de casa (só o bairro), o nome do bairro diz mais que "da Região Sudoeste" */}
@@ -494,9 +538,10 @@ export async function Explorar({
                 )}
               </p>
             ) : null}
-            {feed && usuario && !filtros.meus && <PadraoDaHome filtros={filtros} intencao={intencao} />}
+            {feed && usuario && !filtros.meus && !busca && <PadraoDaHome filtros={filtros} intencao={intencao} />}
             {feed ? null : (
               <p className="text-body-sm text-ink-muted">
+                {quantos && <>{quantos} · </>}
                 {combina && <>Do que mais combina com seu currículo · </>}
                 {!combina && !filtros.meus && local && !local.ponto && (
                   <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>
@@ -513,6 +558,15 @@ export async function Explorar({
                   </>
                 )}
               </p>
+            )}
+            {busca && (
+              <Link
+                href={hrefFiltros(filtros, { q: "" })}
+                scroll={false}
+                className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+              >
+                Limpar busca
+              </Link>
             )}
             {/* com poucas vagas, o aviso fica no fim da lista (no bloco "Poucas vagas por aqui") */}
             {avisar && !poucas && (
@@ -547,7 +601,9 @@ export async function Explorar({
         pontos={pontos}
         origem={origem}
         filtros={filtros}
-        padrao={feed ? "blocos" : undefined}
+        padrao={feed ? (busca ? "lista" : "blocos") : undefined}
+        busca={feed && busca}
+        inicial={visaoDaBusca}
         compacto={feed}
         ordemFora={ordemFora}
         acimaDoMapa={acimaDoMapa}
@@ -558,8 +614,31 @@ export async function Explorar({
   return feed ? conteudo : <Container className="pt-4 sm:pt-6">{conteudo}</Container>;
 }
 
+/**
+ * Busca por palavra: quem tem no título mais palavras da busca vem antes (pelo começo da palavra:
+ * "mecânico" acha "Mecânica"); o resto segue a ordem que veio do banco (de perto para longe).
+ */
+function ordenarPeloTitulo<T extends { titulo: string }>(lista: T[], termo: string): T[] {
+  const termos = [
+    ...new Set(
+      semAcento(termo)
+        .split(/[^a-z0-9]+/)
+        .filter((p) => p.length >= 3)
+        .map((p) => (p.length > 5 ? p.slice(0, 5) : p)),
+    ),
+  ];
+  if (!termos.length) return lista;
+  return lista
+    .map((a, i) => {
+      const titulo = semAcento(a.titulo);
+      return { a, i, peso: termos.filter((t) => titulo.includes(t)).length };
+    })
+    .sort((x, y) => y.peso - x.peso || x.i - y.i)
+    .map((x) => x.a);
+}
+
 /** Na vitrine, em cima da lista: Tudo, Vagas, Serviços e Talentos (a faixa do topo só tem a busca). */
-function AbasDaLista({ filtros }: { filtros: Filtros }) {
+function AbasDaLista({ filtros, talentos = true }: { filtros: Filtros; talentos?: boolean }) {
   const classe = (ativo: boolean) =>
     `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label sm:px-4 transition-colors ${
       ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
@@ -593,10 +672,16 @@ function AbasDaLista({ filtros }: { filtros: Filtros }) {
           </Link>
         );
       })}
-      <Link href={ABA_TALENTOS.href} className={classe(false)}>
-        <ABA_TALENTOS.icone aria-hidden className="hidden size-4 sm:block" />
-        Talentos
-      </Link>
+      {talentos && (
+        // com uma busca por palavra, a aba Talentos já abre buscando por ela
+        <Link
+          href={filtros.q ? `${ABA_TALENTOS.href}?q=${encodeURIComponent(filtros.q)}` : ABA_TALENTOS.href}
+          className={classe(false)}
+        >
+          <ABA_TALENTOS.icone aria-hidden className="hidden size-4 sm:block" />
+          Talentos
+        </Link>
+      )}
     </div>
   );
 }

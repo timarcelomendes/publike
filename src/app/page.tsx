@@ -189,7 +189,7 @@ async function CentroDaLinha({ searchParams, contratando }: { searchParams: Para
   if (primeiro(sp.q) || primeiro(sp.ordem)) {
     return (
       <Suspense fallback={<ExplorarEsqueleto />}>
-        <Explorar searchParams={searchParams} variante="feed" acimaDoMapa={contratando} />
+        <Explorar searchParams={searchParams} variante="feed" acimaDoMapa={contratando} abasDaBusca />
       </Suspense>
     );
   }

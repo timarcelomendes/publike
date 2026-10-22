@@ -31,6 +31,7 @@ import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { DECISOES_CLIENTE, type RespostaCliente } from "@/lib/finalistas";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
 import { CaminhoDoAceite } from "../caminho-curtida";
 import { FormColocacao, SeloDaColocacao } from "./colocacao";
@@ -89,6 +90,7 @@ export function QuadroCandidatos({
   agora,
   abrir = null,
   agencia = false,
+  contatoDireto = false,
 }: {
   anuncioId: string;
   vaga: string;
@@ -97,6 +99,8 @@ export function QuadroCandidatos({
   cartoes: CartaoQuadro[];
   modelos: ModeloMensagem[];
   agora: number;
+  /** a vaga tem contato direto: o match sai na hora, sem aceite (a mensagem leva o link da vaga) */
+  contatoDireto?: boolean;
   /** abre já o cartão desta pessoa (vindo de “Abrir no quadro”, na tela Candidatos) */
   abrir?: string | null;
   /** agência: mandar os finalistas ao cliente */
@@ -300,6 +304,7 @@ export function QuadroCandidatos({
             agencia={agencia}
             enviarAoCliente={() => enviarAoCliente([atual.perfil_id])}
             pendente={pendente}
+            direto={contatoDireto}
           />
         )}
       </Gaveta>
@@ -407,8 +412,11 @@ function DetalheCandidato({
   agencia,
   enviarAoCliente,
   pendente,
+  direto,
 }: {
   c: CartaoQuadro;
+  /** contato direto: o match saiu na hora, sem aceite */
+  direto: boolean;
   anuncioId: string;
   vaga: string;
   empresa: string;
@@ -471,7 +479,11 @@ function DetalheCandidato({
           <a
             href={linkWhatsApp(
               c.whatsapp,
-              `Olá, ${primeiro}! Aqui é da ${empresa}, sobre a vaga de ${vaga} no Publike.`,
+              // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
+              mensagemComLink(
+                `Olá, ${primeiro}! Aqui é da ${empresa}, sobre a vaga de ${vaga} no Publike.`,
+                linkDoMatch({ anuncioId, perfilId: c.perfil_id, para: "quem_curtiu", direto }),
+              ),
             )}
             target="_blank"
             rel="noopener noreferrer"

@@ -14,6 +14,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { ajudaDaIADisponivel } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
+import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { ABAS, montarCaixa, naAba, ordenar, type Aba, type ItemCaixa } from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
@@ -102,6 +103,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   const paraResponder = contagem.get("responder") ?? 0;
   // a conexão com quem está aberto (fica depois da vaga acabar)
   const conexao = aberto ? ((await estadosDeConexao([aberto.perfil_id])).get(aberto.perfil_id) ?? null) : null;
+  // contato direto: o match saiu na hora (sem aceite); a mensagem do WhatsApp leva o link da vaga
+  const direto = aberto ? (await anunciosComContatoDireto([aberto.anuncio_id])).has(aberto.anuncio_id) : false;
 
   return (
     <div className="flex flex-col gap-5">
@@ -126,10 +129,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      {/* as abas e a vaga numa linha só, da mesma altura (a vaga na ponta direita); sem espaço para as duas, a vaga
+          desce inteira para a linha de baixo, sem cortar aba nenhuma. No celular, as abas rolam de lado e a vaga vem
+          embaixo. A aba sem ninguém fica apagada e sem o zero. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
         <nav
           aria-label="Abas da caixa de entrada"
-          className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:max-w-full sm:px-0"
         >
           {ABAS.map((a) => {
             const n = contagem.get(a.valor) ?? 0;
@@ -141,18 +147,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
                 href={href({ aba: a.valor })}
                 scroll={false}
                 aria-current={ativa ? "page" : undefined}
-                className={classesChip(ativa, destaque)}
+                className={classesChip(ativa, destaque, n === 0)}
               >
                 {a.nome}
-                <span className={ativa ? "text-surface-100/80" : destaque ? "" : "text-ink-muted"}>{n}</span>
+                {n > 0 && <span className={ativa ? "text-surface-100/80" : destaque ? "" : "text-ink-muted"}>{n}</span>}
               </Link>
             );
           })}
         </nav>
         {vagas.size > 1 && (
-          <div className="sm:w-72">
-            <FiltroVaga vagas={[...vagas.values()]} vaga={vaga} etapa={null} caminho="/painel/caixa" aba={aba} />
-          </div>
+          <FiltroVaga compacto vagas={[...vagas.values()]} vaga={vaga} etapa={null} caminho="/painel/caixa" aba={aba} />
         )}
       </div>
 
@@ -188,6 +192,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
           {aberto ? (
             <FichaCandidato
               c={aberto}
+              direto={direto}
               agora={agora}
               anterior={anterior}
               proximo={proximo}

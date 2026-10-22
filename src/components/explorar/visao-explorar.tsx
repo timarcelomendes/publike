@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/filtros";
+import { CHAVE_VISAO_BUSCA, VISOES_CELULAR, type Visao } from "@/lib/visao";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 import { AreaDoMapa, type Limites } from "./area-do-mapa";
 
@@ -21,7 +22,7 @@ const TELA_GRANDE = "(min-width: 1024px)";
  * apertam demais os cartões numa tela pequena, e o mapa em cima dos blocos empurra a lista
  * para baixo. Quem escolheu outra no computador vê Blocos no celular.
  */
-export type Visao = "lista" | "grade" | "blocos" | "mapa" | "blocos-mapa";
+export type { Visao };
 
 const VISOES: { valor: Visao; nome: string; icone: LucideIcon }[] = [
   { valor: "lista", nome: "Lista", icone: List },
@@ -60,42 +61,43 @@ function useColunaDoMapa() {
   );
 }
 
-/** As visões do celular (tela menor que a do computador). */
-const VISOES_CELULAR: Visao[] = ["blocos", "mapa"];
-
 const CHAVE = "publike_visao";
 const EVENTO = "publike-visao";
 
-function lerGuardada(): Visao | null {
+function lerGuardada(chave: string): Visao | null {
   try {
-    const v = window.localStorage.getItem(CHAVE);
+    const v = window.localStorage.getItem(chave);
     return VISOES.some((x) => x.valor === v) ? (v as Visao) : null;
   } catch {
     return null;
   }
 }
 
-function guardar(v: Visao) {
+function guardar(v: Visao, chave: string) {
   try {
-    window.localStorage.setItem(CHAVE, v);
+    window.localStorage.setItem(chave, v);
   } catch {
     // sem armazenamento (aba anônima): vale só até recarregar
   }
-  window.dispatchEvent(new CustomEvent(EVENTO, { detail: v }));
+  // a da busca vai também num cookie: a próxima busca já vem do servidor no jeito escolhido
+  if (chave === CHAVE_VISAO_BUSCA)
+    document.cookie = `${chave}=${v}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  window.dispatchEvent(new CustomEvent(EVENTO, { detail: { v, chave } }));
 }
 
-let escolhidaAgora: Visao | null = null;
+const escolhidaAgora = new Map<string, Visao>();
 
 /**
  * A visão escolhida (ou a padrão: blocos + mapa no computador, blocos no celular). `padrao`:
- * outra para quem nunca escolheu (no feed de quem entrou, Blocos).
+ * outra para quem nunca escolheu (no feed de quem entrou, Blocos). `chave`: onde fica guardada.
+ * `inicial`: a que o servidor já desenhou (a busca sabe a escolhida pelo cookie); sem ela, Blocos.
  */
-export function useVisao(padrao?: Visao): Visao {
+export function useVisao(padrao?: Visao, chave = CHAVE, inicial: Visao = "blocos"): Visao {
   return useSyncExternalStore(
     (avisar) => {
       const mq = window.matchMedia(TELA_GRANDE);
       const mudou = (e: Event) => {
-        if (e instanceof CustomEvent) escolhidaAgora = e.detail as Visao;
+        if (e instanceof CustomEvent && e.detail?.chave) escolhidaAgora.set(e.detail.chave, e.detail.v as Visao);
         avisar();
       };
       mq.addEventListener("change", avisar);
@@ -109,19 +111,22 @@ export function useVisao(padrao?: Visao): Visao {
     },
     () => {
       const grande = window.matchMedia(TELA_GRANDE).matches;
-      const v = escolhidaAgora ?? lerGuardada() ?? padrao ?? (grande ? "blocos-mapa" : "blocos");
+      const v = escolhidaAgora.get(chave) ?? lerGuardada(chave) ?? padrao ?? (grande ? "blocos-mapa" : "blocos");
       return grande || VISOES_CELULAR.includes(v) ? v : "blocos";
     },
-    () => "blocos",
+    () => inicial,
   );
 }
 
+/** 40 px de altura no total (34 + o respiro e a borda do grupo): a mesma dos seletores ao lado. */
 function SeletorVisao({
   visao,
+  chave,
   celular = false,
   nomeDoAtivo = false,
 }: {
   visao: Visao;
+  chave: string;
   celular?: boolean;
   /** o nome do jeito escolhido sempre à mostra (no painel dos filtros do feed) */
   nomeDoAtivo?: boolean;
@@ -141,8 +146,8 @@ function SeletorVisao({
             role="radio"
             aria-checked={ativo}
             title={nome}
-            onClick={() => guardar(valor)}
-            className={`inline-flex min-h-9 min-w-8 items-center justify-center gap-1.5 rounded-pill px-2 sm:min-w-9 sm:px-2.5 text-label transition-colors ${
+            onClick={() => guardar(valor, chave)}
+            className={`inline-flex min-h-[34px] min-w-8 items-center justify-center gap-1.5 rounded-pill px-2 sm:min-w-9 sm:px-2.5 text-label transition-colors ${
               ativo ? "bg-ink text-surface-100" : "text-ink-muted hover:bg-surface-300 hover:text-ink"
             }`}
           >
@@ -177,6 +182,8 @@ export function VisaoExplorar({
   compacto = false,
   ordemFora = false,
   acimaDoMapa = null,
+  busca = false,
+  inicial,
 }: {
   titulo: ReactNode;
   subtitulo: ReactNode;
@@ -193,12 +200,18 @@ export function VisaoExplorar({
   ordemFora?: boolean;
   /** com Blocos + mapa: um bloco em cima do mapa, na coluna dele (no feed, quem contrata perto) */
   acimaDoMapa?: ReactNode;
+  /** a busca por palavra de quem entrou: o jeito de ver fica guardado à parte (começa na Lista) */
+  busca?: boolean;
+  /** o jeito que o servidor já desenhou (a busca: o escolhido, pelo cookie) */
+  inicial?: Visao;
 }) {
-  const visao = useVisao(padrao);
+  const chave = busca ? CHAVE_VISAO_BUSCA : CHAVE;
+  const visao = useVisao(padrao, chave, inicial);
   const colunaFora = useColunaDoMapa();
-  // o mapa na coluna própria da página (feed, Blocos + mapa): aqui fica só a lista
-  const mapaFora = visao === "blocos-mapa" && compacto && colunaFora ? colunaFora : null;
-  const comMapa = visao === "mapa" || visao === "blocos-mapa";
+  // o mapa na coluna própria da página (feed, com Blocos + mapa ou com a Lista, que é estreita e deixaria a
+  // coluna vazia): aqui fica só a lista
+  const mapaFora = (visao === "blocos-mapa" || visao === "lista") && compacto && colunaFora ? colunaFora : null;
+  const comMapa = visao === "mapa" || visao === "blocos-mapa" || mapaFora !== null;
   const comLista = visao !== "mapa";
   const mudados = filtrosMudados(filtros, ordemFora);
   const [filtrosAbertos, setFiltrosAbertos] = useState(mudados > 0);
@@ -254,10 +267,10 @@ export function VisaoExplorar({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-3">
               <span className="text-label text-ink-muted">Ver como</span>
               <div className="shrink-0 lg:hidden">
-                <SeletorVisao visao={visao} celular />
+                <SeletorVisao visao={visao} chave={chave} celular />
               </div>
               <div className="hidden shrink-0 lg:block">
-                <SeletorVisao visao={visao} nomeDoAtivo />
+                <SeletorVisao visao={visao} chave={chave} nomeDoAtivo />
               </div>
               {mudados > 0 && (
                 <Link
@@ -280,7 +293,7 @@ export function VisaoExplorar({
           <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:flex lg:flex-wrap lg:gap-x-4 lg:gap-y-3">
             <div className="col-start-1 row-start-1 lg:shrink-0">{titulo}</div>
             <div className="col-start-2 row-start-1 lg:hidden">
-              <SeletorVisao visao={visao} celular />
+              <SeletorVisao visao={visao} chave={chave} celular />
             </div>
             <div className="col-span-2 row-start-2 flex items-center justify-between gap-3 lg:order-last lg:-mt-1 lg:w-full">
               <div className="min-w-0 flex-1">{subtitulo}</div>
@@ -294,7 +307,7 @@ export function VisaoExplorar({
             >
               <div className="min-w-0 flex-1 lg:flex-initial">{filtrosLista}</div>
               <div className="hidden shrink-0 lg:block">
-                <SeletorVisao visao={visao} />
+                <SeletorVisao visao={visao} chave={chave} />
               </div>
             </div>
           </div>

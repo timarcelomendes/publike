@@ -7,17 +7,20 @@ import type { ReactNode } from "react";
 // com os seus fluxos em passos numerados. Cada número leva à lista já filtrada.
 
 /**
- * Chip de filtro (Candidatos, Meus anúncios, Minhas curtidas). `relative` segura o texto
+ * Chip de filtro (Candidatos, Meus anúncios, Minhas curtidas). `vazio`: ninguém ali (mais apagado,
+ * sem o zero). `relative` segura o texto
  * só para leitor de tela dentro do chip: sem isso, numa fileira que rola de lado, ele
  * escapa da rolagem e alarga a página no celular.
  */
-export function classesChip(ativo: boolean, destaque = false) {
-  return `relative inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+export function classesChip(ativo: boolean, destaque = false, vazio = false) {
+  return `relative inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label whitespace-nowrap transition-colors ${
     ativo
       ? "border-ink bg-ink text-surface-100"
       : destaque
         ? "border-transparent bg-terra-soft text-terra-text hover:border-terra-text"
-        : "border-line bg-surface-300 text-ink hover:border-line-strong"
+        : vazio
+          ? "border-line bg-transparent text-ink-muted hover:border-line-strong hover:text-ink"
+          : "border-line bg-surface-300 text-ink hover:border-line-strong"
   }`;
 }
 

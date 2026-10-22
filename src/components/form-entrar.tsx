@@ -54,6 +54,7 @@ function mascararCelular(valor: string) {
 
 export function FormEntrar({
   proximo,
+  origem,
   erroInicial,
   redes,
   celular: comCelular,
@@ -61,6 +62,8 @@ export function FormEntrar({
   emailInicial,
 }: {
   proximo: string;
+  /** a campanha de onde a pessoa chegou ("google:servicos"): vai no link de volta do e-mail e das redes */
+  origem?: string;
   /** veio do link de acesso: o e-mail que a empresa acabou de ligar à conta */
   emailInicial?: string;
   erroInicial?: string;
@@ -105,6 +108,8 @@ export function FormEntrar({
   function urlDeRetorno(via?: RedeSocial) {
     const params = new URLSearchParams({ next: proximo });
     if (via) params.set("via", via);
+    // quem abre o link do e-mail em outro navegador (o do app de e-mail) não tem o cookie da campanha
+    if (origem) params.set("origem", origem);
     return `${window.location.origin}/auth/callback?${params}`;
   }
 

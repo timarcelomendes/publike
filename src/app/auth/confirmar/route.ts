@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { escaparHtml } from "@/lib/email/montar";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_PEDIU_LINK, linkDeEntradaValido } from "@/lib/link-entrada";
+import { origemValida } from "@/lib/origem";
 import { SCRIPT_TEMA } from "@/lib/tema";
 
 // Página do link de entrar por e-mail (vem de /auth/callback). É uma página
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = sp.get("token_hash");
   const tipo = sp.get("type") ?? "email";
   const proximo = caminhoSeguro(sp.get("next"), "/");
+  const origem = sp.get("origem");
   const cabecalhos = { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" };
 
   if (!linkDeEntradaValido(tokenHash, tipo)) {
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
 <input type="hidden" name="token_hash" value="${escaparHtml(tokenHash)}">
 <input type="hidden" name="type" value="${escaparHtml(tipo)}">
 <input type="hidden" name="next" value="${escaparHtml(proximo)}">
-<button type="submit">${botao}</button>
+${origemValida(origem) ? `<input type="hidden" name="origem" value="${escaparHtml(origem)}">\n` : ""}<button type="submit">${botao}</button>
 </form>`;
 
   // troca do e-mail de login: confirma com um toque (nunca sozinha)

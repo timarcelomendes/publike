@@ -166,6 +166,7 @@ async function Conteudo({
           agora={agora}
           abrir={abrir}
           agencia={agencia}
+          contatoDireto={Boolean(anuncio.contato_direto)}
         />
       )}
     </div>

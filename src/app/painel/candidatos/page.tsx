@@ -56,6 +56,7 @@ import {
 } from "@/lib/dados";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { formatarLugar, formatarTelefone, linkWhatsApp, primeiro, tempoRelativo } from "@/lib/formato";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { clientesDasVagas, listarMeusClientes } from "@/lib/servidor/clientes";
 import { entrevistasDasVagas, type Entrevista } from "@/lib/servidor/quadro";
@@ -293,6 +294,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
       mostrarVaga={!vaga}
       cliente={!cliente ? (nomeDoCliente.get(clienteDe?.get(c.anuncio_id) ?? "") ?? null) : null}
       pedeCurriculo={Boolean(anuncios.get(c.anuncio_id)?.pede_curriculo)}
+      direto={Boolean(anuncios.get(c.anuncio_id)?.contato_direto)}
       curriculo={curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null}
       curriculoFalhou={c.tem_curriculo && curriculos.get(c.anuncio_id) === null}
       desfeito={desfeitos.get(c.anuncio_id)?.get(c.perfil_id)}
@@ -494,8 +496,11 @@ function CartaoCandidato({
   respostas,
   aderencia,
   entrevista,
+  direto,
 }: {
   c: Candidato;
+  /** a vaga tem contato direto: o match saiu na hora, sem aceite (a mensagem leva o link da vaga) */
+  direto: boolean;
   /** a lista está dividida em grupos com título (Para responder, Em andamento…) */
   comSecoes: boolean;
   agora: number;
@@ -593,7 +598,11 @@ function CartaoCandidato({
               <a
                 href={linkWhatsApp(
                   c.whatsapp,
-                  `Olá, ${primeiroNome}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
+                  // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
+                  mensagemComLink(
+                    `Olá, ${primeiroNome}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
+                    linkDoMatch({ anuncioId: c.anuncio_id, perfilId: c.perfil_id, para: "quem_curtiu", direto }),
+                  ),
                 )}
                 target="_blank"
                 rel="noopener noreferrer"

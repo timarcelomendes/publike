@@ -11,6 +11,8 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { listarMatches } from "@/lib/dados";
 import { formatarLugar, rotuloConta, tempoRelativo } from "@/lib/formato";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
+import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -27,6 +29,8 @@ async function Conteudo() {
   const usuario = await exigirUsuario("/painel/matches");
   const matches = await listarMatches();
   const agora = await agoraDaRequisicao();
+  // contato direto: o match saiu na hora (sem aceite); a mensagem do WhatsApp leva o link do anúncio
+  const diretos = await anunciosComContatoDireto(matches.map((m) => m.anuncio_id));
 
   if (matches.length === 0) {
     return (
@@ -45,10 +49,21 @@ async function Conteudo() {
     <ul className="flex flex-col gap-4">
       {matches.map((m) => {
         const primeiroNome = m.outro_nome.split(" ")[0];
-        const mensagem =
+        // o link vai para quem recebe: quem curtiu vê a curtida aceita; quem publicou, a ficha
+        // da pessoa; no contato direto (sem aceite), os dois recebem o anúncio
+        const link = linkDoMatch({
+          anuncioId: m.anuncio_id,
+          perfilId: m.papel === "publiquei" ? m.outro_id : usuario.id,
+          para: m.papel === "publiquei" ? "quem_curtiu" : "quem_publicou",
+          direto: diretos.has(m.anuncio_id),
+          servico: m.anuncio_tipo === "servico",
+        });
+        const mensagem = mensagemComLink(
           m.papel === "publiquei"
             ? `Olá, ${primeiroNome}! Vi que você curtiu “${m.anuncio_titulo}” no Publike. Vamos conversar?`
-            : `Olá! Deu match no Publike em “${m.anuncio_titulo}”. Podemos conversar?`;
+            : `Olá! Deu match no Publike em “${m.anuncio_titulo}”. Podemos conversar?`,
+          link,
+        );
         return (
           <li
             key={`${m.anuncio_id}-${m.outro_id}`}

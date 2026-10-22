@@ -5,6 +5,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  CircleCheck,
   Plus,
   Store,
   UserSearch,
@@ -168,6 +169,11 @@ export function FormPerfil({
     if (!estado.erros) return;
     formulario.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [estado]);
+
+  // "Perfil salvo." ao lado do botão (onde a pessoa tocou); some quando ela mexe de novo e volta a
+  // aparecer no próximo salvar (cada resposta do servidor é um objeto novo)
+  const [mexeuDepoisDe, setMexeuDepoisDe] = useState<EstadoForm | null>(null);
+  const salvoVisivel = Boolean(estado.ok && estado.mensagem) && mexeuDepoisDe !== estado;
 
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -367,13 +373,18 @@ export function FormPerfil({
   );
 
   return (
-    <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
+    <form
+      ref={formulario}
+      onSubmit={enviar}
+      onChange={() => setMexeuDepoisDe(estado)}
+      noValidate
+      className="flex flex-col gap-6"
+    >
       {completar && (
         <Aviso tipo="info" titulo="Falta pouco!">
           Complete seu perfil para publicar e curtir. Seu WhatsApp só aparece para quem der match com você.
         </Aviso>
       )}
-      {estado.ok && estado.mensagem && <Aviso tipo="sucesso" titulo={estado.mensagem} />}
       {proximo && <input type="hidden" name="next" value={proximo} />}
       <input type="hidden" name="foto" value={foto ?? ""} />
       <input type="hidden" name="servicos" value={servicos.join(",")} />
@@ -628,9 +639,20 @@ export function FormPerfil({
 
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
-      <Botao type="submit" variante="primario" disabled={enviando || enviandoFoto} className="self-start sm:min-w-56">
-        {enviando ? "Salvando…" : proximo ? "Salvar e continuar" : "Salvar perfil"}
-      </Botao>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Botao type="submit" variante="primario" disabled={enviando || enviandoFoto} className="sm:min-w-56">
+          {enviando ? "Salvando…" : proximo ? "Salvar e continuar" : "Salvar perfil"}
+        </Botao>
+        {/* o aviso fica sempre na página (vazio até salvar), para o leitor de tela anunciar */}
+        <p role="status" aria-live="polite">
+          {salvoVisivel && !enviando && (
+            <span className="inline-flex items-center gap-1.5 rounded-pill bg-cerrado/12 px-3 py-1.5 text-label text-cerrado-text">
+              <CircleCheck aria-hidden className="size-[18px]" />
+              {estado.mensagem}
+            </span>
+          )}
+        </p>
+      </div>
     </form>
   );
 }

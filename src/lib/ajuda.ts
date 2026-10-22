@@ -94,7 +94,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Já tenho a arte da vaga. Preciso digitar tudo?",
-        r: "Não. Em Publicar, toque em “Escolher a imagem” e mande a foto do anúncio (a arte que você postou no Instagram ou no WhatsApp). O Publike lê a imagem e preenche o título, o valor, o tipo de contratação, os benefícios e a descrição. Confira cada campo, ajuste o endereço e publique.",
+        r: "Não. No painel, toque em “Publicar pela foto” (ou, em Publicar, em “Escolher a imagem”) e mande a foto do anúncio: a arte que você postou no Instagram, o cartaz ou um print do WhatsApp. O Publike lê a imagem e preenche o título, o valor, o tipo de contratação, os benefícios e a descrição. Confira cada campo, ajuste o endereço e publique.",
       },
       {
         p: "Quem pode publicar vaga?",

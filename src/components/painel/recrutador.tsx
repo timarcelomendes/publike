@@ -107,7 +107,7 @@ export async function PainelRecrutador({
   extras?: Cartao[];
   /** as conversas da conta (as mais recentes aparecem ao lado das vagas) */
   conversas?: ConversaPessoa[] | null;
-  /** a leitura da arte da vaga está ligada: o atalho "Mandar a foto da vaga" */
+  /** a leitura da arte da vaga está ligada: o atalho "Publicar pela foto" */
   fotoDaVaga?: boolean;
   /** o perfil já tem o que precisa (agência: o CNPJ; empresa: foto ou descrição) */
   perfilPronto?: boolean;
@@ -558,24 +558,32 @@ export async function PainelRecrutador({
         resumo={resumo}
         boasVindas={contaNova}
         acao={
-          <span className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col items-start gap-1.5 sm:items-end">
+            <span className="flex flex-wrap items-center gap-2">
+              {fotoDaVaga && !contaNova && (
+                <BotaoLink href="/publicar#arte" tamanho="sm">
+                  <ImageUp aria-hidden />
+                  Publicar pela foto
+                </BotaoLink>
+              )}
+              {agencia && (
+                <BotaoLink href="/painel/clientes/novo" tamanho="sm">
+                  <Building2 aria-hidden />
+                  Adicionar cliente
+                </BotaoLink>
+              )}
+              <BotaoLink href="/publicar" variante="primario" tamanho="sm">
+                <Plus aria-hidden />
+                Publicar vaga
+              </BotaoLink>
+            </span>
+            {/* o que é "pela foto": a vaga que já existe numa imagem vira a vaga preenchida */}
             {fotoDaVaga && !contaNova && (
-              <BotaoLink href="/publicar#arte" tamanho="sm">
-                <ImageUp aria-hidden />
-                Mandar a foto da vaga
-              </BotaoLink>
+              <p className="max-w-xs text-body-sm text-ink-muted sm:text-right">
+                Pela foto: mande a arte da vaga (o post ou o cartaz) e o Publike preenche tudo.
+              </p>
             )}
-            {agencia && (
-              <BotaoLink href="/painel/clientes/novo" tamanho="sm">
-                <Building2 aria-hidden />
-                Adicionar cliente
-              </BotaoLink>
-            )}
-            <BotaoLink href="/publicar" variante="primario" tamanho="sm">
-              <Plus aria-hidden />
-              Publicar vaga
-            </BotaoLink>
-          </span>
+          </div>
         }
       />
 

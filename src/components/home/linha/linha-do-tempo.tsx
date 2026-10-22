@@ -98,7 +98,7 @@ function Item({
       {"aceite" in dados ? (
         <>
           <No icone={CircleCheck} tipo="aceite" />
-          <CartaoDoAceite m={dados.aceite} hora={hora} />
+          <CartaoDoAceite m={dados.aceite} hora={hora} usuarioId={d.usuarioId} direto={dados.direto} />
         </>
       ) : "recado" in dados ? (
         <>

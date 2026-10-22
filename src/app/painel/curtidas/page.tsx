@@ -10,6 +10,8 @@ import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfaze
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
 import { SoComSupabase } from "@/components/so-com-supabase";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
+import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
@@ -81,11 +83,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   ]);
   const agora = await agoraDaRequisicao();
   // sem currículo, as vagas que pedem um ganham o passo "Você manda o currículo" no caminho
-  const pedemCurriculo = curriculo
-    ? new Set<string>()
-    : await vagasQuePedemCurriculo(
-        curtidas.filter((c) => c.tipo === "vaga" && esperaResposta(c)).map((c) => c.anuncio_id),
-      );
+  const [pedemCurriculo, diretos] = await Promise.all([
+    curriculo
+      ? new Set<string>()
+      : vagasQuePedemCurriculo(curtidas.filter((c) => c.tipo === "vaga" && esperaResposta(c)).map((c) => c.anuncio_id)),
+    // contato direto: o match saiu na hora (sem aceite); a mensagem do WhatsApp leva o link do anúncio
+    anunciosComContatoDireto(curtidas.filter((c) => c.status === "match").map((c) => c.anuncio_id)),
+  ]);
 
   if (curtidas.length === 0) {
     return (
@@ -281,12 +285,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                 {c.status === "match" && (
                   <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
                     <p className="text-label text-cerrado-text">Deu match! Agora é só conversar.</p>
-                    <p className="text-body-sm">{c.autor_nome} aceitou e vocês estão conectados.</p>
+                    <p className="text-body-sm">
+                      {diretos.has(c.anuncio_id)
+                        ? `${c.autor_nome} libera o contato para quem se interessa: vocês estão conectados.`
+                        : `${c.autor_nome} aceitou e vocês estão conectados.`}
+                    </p>
                     <BotaoConversar outroId={c.autor_id} />
                     <BotoesContato
                       whatsapp={c.autor_whatsapp}
                       email={c.autor_email}
-                      mensagem={`Olá! Deu match no Publike em “${c.titulo}”. Podemos conversar?`}
+                      // o link: o aceite (a ficha, para quem publicou) ou, no contato direto, o anúncio
+                      mensagem={mensagemComLink(
+                        `Olá! Deu match no Publike em “${c.titulo}”. Podemos conversar?`,
+                        linkDoMatch({
+                          anuncioId: c.anuncio_id,
+                          perfilId: usuario.id,
+                          para: "quem_publicou",
+                          direto: diretos.has(c.anuncio_id),
+                          servico: c.tipo === "servico",
+                        }),
+                      )}
                     />
                     {/* desfazer e denunciar na mesma linha (o formulário do desfazer abre embaixo) */}
                     <div className="flex flex-wrap items-start gap-x-1">

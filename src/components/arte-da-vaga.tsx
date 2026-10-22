@@ -42,7 +42,8 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
     <section
       id="arte"
       aria-labelledby={`${id}-titulo`}
-      className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:flex-row sm:items-center sm:p-5"
+      // quem chega por "Publicar pela foto" (/publicar#arte) vê o quadro inteiro, abaixo do cabeçalho fixo
+      className="flex scroll-mt-24 flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:flex-row sm:items-center sm:p-5"
     >
       <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-ipe text-on-ipe">
         <ImageUp aria-hidden className="size-6" />
@@ -52,7 +53,8 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
           Tem a arte da vaga? Mande a foto.
         </h2>
         <p className="text-body-sm text-ink-muted">
-          O Publike lê a imagem e preenche a vaga. Você só confere antes de publicar.
+          Pode ser o post do Instagram, o cartaz ou um print do WhatsApp. O Publike lê a imagem e preenche a vaga; você
+          só confere antes de publicar.
         </p>
         {erro && (
           <div className="mt-2">

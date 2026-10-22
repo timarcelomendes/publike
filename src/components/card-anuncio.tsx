@@ -143,7 +143,13 @@ export function CardAnuncio({
   ) : null;
 
   const etiquetas: ReactNode[] = [];
-  if (modalidade) etiquetas.push(<Etiqueta key="modalidade">{modalidade}</Etiqueta>);
+  // na lista, a modalidade já vai na linha do lugar ("CLT · Setor Sul")
+  if (modalidade)
+    etiquetas.push(
+      <Etiqueta key="modalidade" className="bg-surface-300 text-ink group-data-[visao=lista]/visao:hidden">
+        {modalidade}
+      </Etiqueta>,
+    );
   if (pertoDeCasa === 0) {
     etiquetas.push(
       <Etiqueta key="perto" className="bg-terra-soft text-terra-text">
@@ -292,7 +298,14 @@ export function CardAnuncio({
         )}
 
         {etiquetas.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5 group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
+          // na lista, numa linha embaixo do lugar (benefícios, currículo, prazo): o que ajuda a escolher
+          <ul
+            className={`flex flex-wrap gap-1.5 group-data-[visao=grade]/visao:hidden ${
+              etiquetas.length === (modalidade ? 1 : 0)
+                ? "group-data-[visao=lista]/visao:hidden"
+                : "group-data-[visao=lista]/visao:col-start-1 group-data-[visao=lista]/visao:gap-1"
+            }`}
+          >
             {etiquetas}
           </ul>
         )}

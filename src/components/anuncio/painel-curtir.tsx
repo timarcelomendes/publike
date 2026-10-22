@@ -8,6 +8,7 @@ import { pedirConversa } from "@/lib/abrir-conversa";
 import { caminhoConversa } from "@/lib/conversas";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
 import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
@@ -203,7 +204,17 @@ export function PainelCurtir({
           <BotoesContato
             whatsapp={contato?.whatsapp ?? null}
             email={contato?.email ?? null}
-            mensagem={`Olá! Deu match no Publike em “${titulo}”. Podemos conversar?`}
+            // o link: o aceite (a ficha, para quem publicou) ou, no contato direto, o anúncio
+            mensagem={mensagemComLink(
+              `Olá! Deu match no Publike em “${titulo}”. Podemos conversar?`,
+              linkDoMatch({
+                anuncioId,
+                perfilId: usuarioId ?? "",
+                para: "quem_publicou",
+                direto: contatoDireto,
+                servico,
+              }),
+            )}
           />
         </div>
         {servico && (
