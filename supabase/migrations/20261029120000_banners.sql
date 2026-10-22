@@ -2,8 +2,9 @@
 --
 -- O admin cria um aviso em janela (popup) na página inicial: ver as vagas novas, uma busca de
 -- vagas, uma página do site ou compartilhar o Publike. Aparece um por vez (o mais novo ligado
--- para aquele público), uma vez por navegador (o navegador guarda quais já viu), depois das
--- boas-vindas e do aviso de cookies.
+-- para aquele público). Cada banner escolhe: só uma vez, ou de novo a cada N dias até a pessoa
+-- tocar no botão. O navegador guarda o que já viu; quem tem conta fica marcado também no banco
+-- (banners_vistos), e aí vale em qualquer aparelho.
 -- Os números (quantas vezes apareceu, quantos tocaram no botão e quantos fecharam) ficam
 -- somados por dia, sem guardar quem.
 --
@@ -19,6 +20,8 @@ create table if not exists public.banners (
   -- só caminho do próprio site ("/..."), nunca outro endereço
   link text check (link is null or (link ~ '^/([^/\\].*)?$' and char_length(link) <= 300)),
   publico text not null default 'todos' check (publico in ('todos', 'visitantes', 'pessoas', 'empresas')),
+  -- null: só uma vez; N: de novo a cada N dias, até tocar no botão
+  repetir_dias integer check (repetir_dias is null or repetir_dias between 1 and 90),
   ativo boolean not null default false,
   inicio timestamptz,
   fim timestamptz,
@@ -27,6 +30,8 @@ create table if not exists public.banners (
   check (acao = 'compartilhar' or link is not null),
   check (fim is null or inicio is null or fim > inicio)
 );
+alter table public.banners add column if not exists repetir_dias integer
+  check (repetir_dias is null or repetir_dias between 1 and 90);
 create index if not exists banners_no_ar_idx on public.banners (criado_em desc) where ativo;
 comment on table public.banners is
   'Avisos em janela na página inicial, criados no admin. O site lê só os ligados dentro das datas.';
@@ -100,3 +105,44 @@ end
 $$;
 revoke execute on function public.contar_banner(uuid, text) from public;
 grant execute on function public.contar_banner(uuid, text) to anon, authenticated;
+
+-- Quem tem conta: o banner que a pessoa (o login) já viu e se tocou no botão, em qualquer aparelho.
+create table if not exists public.banners_vistos (
+  banner_id uuid not null references public.banners (id) on delete cascade,
+  pessoa_id uuid not null references auth.users (id) on delete cascade,
+  visto_em timestamptz not null default now(),
+  clicou boolean not null default false,
+  primary key (banner_id, pessoa_id)
+);
+alter table public.banners_vistos enable row level security;
+revoke all on public.banners_vistos from anon, authenticated;
+grant select on public.banners_vistos to authenticated;
+grant select, insert, update, delete on public.banners_vistos to service_role;
+drop policy if exists banners_vistos_meus on public.banners_vistos;
+create policy banners_vistos_meus on public.banners_vistos
+  for select to authenticated
+  using (pessoa_id = (select auth.uid()));
+
+-- O site marca: viu (de novo, a data muda) ou tocou no botão (fica marcado).
+create or replace function public.marcar_banner_visto(p_banner uuid, p_clicou boolean default false)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    return;
+  end if;
+  if not exists (select 1 from public.banners b where b.id = p_banner and b.ativo) then
+    return;
+  end if;
+  insert into public.banners_vistos as v (banner_id, pessoa_id, visto_em, clicou)
+  values (p_banner, auth.uid(), now(), coalesce(p_clicou, false))
+  on conflict (banner_id, pessoa_id) do update
+    set visto_em = case when excluded.clicou then v.visto_em else now() end,
+        clicou = v.clicou or excluded.clicou;
+end
+$$;
+revoke execute on function public.marcar_banner_visto(uuid, boolean) from public;
+grant execute on function public.marcar_banner_visto(uuid, boolean) to authenticated;

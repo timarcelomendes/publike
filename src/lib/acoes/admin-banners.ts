@@ -65,6 +65,15 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     if (!link) erros.caminho = "Use um endereço do Publike começando com /, como /vagas/goiania.";
   }
 
+  // null: só uma vez; N: de novo a cada N dias (até tocar no botão)
+  let repetirDias: number | null = null;
+  if (texto(formData, "repetir") === "dias") {
+    repetirDias = Number(texto(formData, "repetir_dias"));
+    if (!Number.isInteger(repetirDias) || repetirDias < 1 || repetirDias > 90) {
+      erros.repetir_dias = "Escolha de 1 a 90 dias.";
+    }
+  }
+
   const inicioTexto = texto(formData, "inicio");
   const fimTexto = texto(formData, "fim");
   const inicio = inicioTexto ? dataDeBrasilia(inicioTexto) : null;
@@ -82,6 +91,7 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     acao,
     link,
     publico,
+    repetir_dias: repetirDias,
     inicio,
     fim,
     ativo: formData.get("ativo") === "on",

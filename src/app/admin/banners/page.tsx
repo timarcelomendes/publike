@@ -76,6 +76,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     acao: editar.acao as AcaoBanner,
     link: editar.link,
     publico: editar.publico as PublicoBanner,
+    repetir_dias: editar.repetir_dias,
     ativo: editar.ativo,
     inicio: diaDeBrasilia(editar.inicio),
     fim: diaDeBrasilia(editar.fim, true),
@@ -85,14 +86,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     <div className="flex flex-col gap-6">
       {salvo && (
         <Aviso tipo="sucesso" titulo={salvo === "novo" ? "Banner criado" : "Banner salvo"}>
-          Quem abrir a página inicial vê o banner depois de 3 segundos (uma vez por navegador).
+          Quem abrir a página inicial vê o banner depois de 3 segundos.
         </Aviso>
       )}
       {(editar || novo) && (
         <Secao
           id="formulario"
           titulo={editar ? "Editar o banner" : "Novo banner"}
-          descricao="Uma janela na página inicial, 3 segundos depois de abrir. Cada navegador vê uma vez. Na visita em que já apareceu outra janela (as boas-vindas, a pergunta da inicial ou o aviso de cookies), o banner fica para a próxima."
+          descricao="Uma janela na página inicial, 3 segundos depois de abrir. Na visita em que já apareceu outra janela (as boas-vindas, a pergunta da inicial ou o aviso de cookies), o banner fica para a próxima."
           acoes={
             banners.length > 0 && (
               <Link href="/admin/banners" className={classesBotao("fantasma", "sm")}>
@@ -146,6 +147,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
                       {ACOES_BANNER[b.acao as AcaoBanner] ?? b.acao}
                       {b.link && b.acao !== "novas" ? ` (${b.link})` : ""} · botão “{b.botao}” ·{" "}
                       {PUBLICOS_BANNER[b.publico as PublicoBanner] ?? b.publico}
+                      {b.repetir_dias === null
+                        ? " · só uma vez"
+                        : ` · de novo a cada ${b.repetir_dias} ${b.repetir_dias === 1 ? "dia" : "dias"}`}
                       {b.inicio ? ` · de ${formatarDataCurta(b.inicio)}` : ""}
                       {b.fim ? ` · até ${formatarDataCurta(diaDeBrasilia(b.fim, true) + "T12:00:00-03:00")}` : ""}
                     </p>

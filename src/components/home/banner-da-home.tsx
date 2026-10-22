@@ -8,7 +8,9 @@ import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "@/components/boas-vinda
 import { Botao, classesBotao } from "@/components/ui/botao";
 import {
   COOKIE_BANNERS,
+  diaDeHoje,
   LINK_COMPARTILHAR,
+  podeMostrar,
   lerBannersVistos,
   valorComBannerVisto,
   type AcaoBanner,
@@ -17,9 +19,9 @@ import {
 
 // O banner da página inicial (criado no admin): uma janela que sobe de baixo no celular e fica no
 // meio da tela no computador. Uma janela por visita: se as boas-vindas, a pergunta da inicial ou o
-// aviso de cookies apareceram, fica para a próxima; senão, aparece depois de 3 segundos. Uma vez
-// por navegador (cookie publike_banners). Conta quando aparece, quando
-// tocam no botão e quando fecham (/api/banners).
+// aviso de cookies apareceram, fica para a próxima; senão, aparece depois de 3 segundos. Só uma
+// vez, ou de novo a cada N dias até tocar no botão (o cookie publike_banners e, com conta, o banco).
+// Conta quando aparece, quando tocam no botão e quando fecham (/api/banners).
 
 const ESPERA = 3000;
 const ICONES: Record<AcaoBanner, LucideIcon> = {
@@ -45,13 +47,15 @@ function cookieDosBanners() {
   return document.cookie.match(new RegExp(`(?:^|; )${COOKIE_BANNERS}=([^;]*)`))?.[1] ?? "";
 }
 
-function jaViu(id: string) {
-  return lerBannersVistos(decodeURIComponent(cookieDosBanners())).has(id);
+/** Já apareceu neste navegador (hoje, ou "só uma vez", ou tocou no botão)? */
+function jaViu(banner: BannerNoAr) {
+  const visto = lerBannersVistos(decodeURIComponent(cookieDosBanners())).get(banner.id);
+  return !podeMostrar(banner.repetir_dias, visto, diaDeHoje(Date.now()));
 }
 
-/** Guarda que este navegador viu o banner (um ano). */
-function marcarVisto(id: string) {
-  const valor = valorComBannerVisto(decodeURIComponent(cookieDosBanners()), id);
+/** Guarda que este navegador viu o banner hoje (ou tocou no botão), por um ano. */
+function marcarVisto(id: string, clicou = false) {
+  const valor = valorComBannerVisto(decodeURIComponent(cookieDosBanners()), id, diaDeHoje(Date.now()), clicou);
   document.cookie = `${COOKIE_BANNERS}=${encodeURIComponent(valor)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
@@ -86,10 +90,10 @@ export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
       houveOutra.current = true;
       return;
     }
-    if (houveOutra.current || jaViu(banner.id)) return;
+    if (houveOutra.current || jaViu(banner)) return;
     const t = window.setTimeout(() => setPronto(true), ESPERA);
     return () => window.clearTimeout(t);
-  }, [esperando, banner.id]);
+  }, [esperando, banner]);
 
   const mostrar = pronto && !fechado;
   useEffect(() => {
@@ -102,6 +106,7 @@ export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
 
   function fechar(evento: "fechou" | "clique") {
     contar(banner.id, evento);
+    if (evento === "clique") marcarVisto(banner.id, true);
     dialogo.current?.close();
     setFechado(true);
   }
@@ -111,6 +116,7 @@ export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
 
   async function compartilhar() {
     contar(banner.id, "clique");
+    marcarVisto(banner.id, true);
     if (navigator.share) {
       try {
         await navigator.share({ title: "Publike", text: banner.texto ?? banner.titulo, url: url() });
@@ -192,6 +198,7 @@ export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
                   // o link completo (com o endereço do site) só existe no navegador
                   e.currentTarget.href = `https://wa.me/?text=${encodeURIComponent(mensagem())}`;
                   contar(banner.id, "clique");
+                  marcarVisto(banner.id, true);
                 }}
                 target="_blank"
                 rel="noopener noreferrer"

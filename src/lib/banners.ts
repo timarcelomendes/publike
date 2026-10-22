@@ -26,21 +26,63 @@ export type BannerNoAr = {
   botao: string;
   acao: AcaoBanner;
   link: string | null;
+  /** null: só uma vez; N: de novo a cada N dias, até a pessoa tocar no botão */
+  repetir_dias: number | null;
 };
 
-/** Os banners que este navegador já viu (ids separados por vírgula; os 20 mais recentes). */
+/**
+ * Os banners que este navegador já viu: "id~dia~clicou" separados por vírgula (o dia contado desde
+ * 1970, os 20 mais recentes). Quem tem conta também fica marcado no banco (vale em qualquer aparelho).
+ */
 export const COOKIE_BANNERS = "publike_banners";
 const MAXIMO_VISTOS = 20;
 const UUID_SIMPLES = /^[0-9a-f-]{36}$/i;
 
-export function lerBannersVistos(valor: string | undefined | null) {
-  return new Set((valor ?? "").split(",").filter((id) => UUID_SIMPLES.test(id)));
+export type Visto = { dia: number; clicou: boolean };
+
+/** O dia de hoje (contado desde 1970, em Brasília). */
+export function diaDeHoje(agora: number) {
+  return Math.floor((agora - 3 * 3600 * 1000) / (24 * 3600 * 1000));
 }
 
-/** O cookie com mais um banner visto (o mais antigo sai quando passa de 20). */
-export function valorComBannerVisto(valor: string | undefined | null, id: string) {
-  const ids = [...lerBannersVistos(valor)].filter((x) => x !== id);
-  return [...ids, id].slice(-MAXIMO_VISTOS).join(",");
+export function lerBannersVistos(valor: string | undefined | null) {
+  const vistos = new Map<string, Visto>();
+  for (const parte of (valor ?? "").split(",")) {
+    const [id, dia, clicou] = parte.split("~");
+    if (!UUID_SIMPLES.test(id ?? "")) continue;
+    // o formato antigo (só o id) conta como visto hoje, sem clique
+    vistos.set(id, { dia: Number(dia) || Number.MAX_SAFE_INTEGER, clicou: clicou === "1" });
+  }
+  return vistos;
+}
+
+/** O cookie com o banner visto hoje (ou clicado); o mais antigo sai quando passa de 20. */
+export function valorComBannerVisto(valor: string | undefined | null, id: string, dia: number, clicou: boolean) {
+  const vistos = lerBannersVistos(valor);
+  const antes = vistos.get(id);
+  vistos.delete(id);
+  vistos.set(id, { dia, clicou: clicou || Boolean(antes?.clicou) });
+  return [...vistos]
+    .slice(-MAXIMO_VISTOS)
+    .map(([x, v]) => `${x}~${v.dia === Number.MAX_SAFE_INTEGER ? dia : v.dia}~${v.clicou ? 1 : 0}`)
+    .join(",");
+}
+
+/**
+ * Pode mostrar de novo? Nunca visto: sim. Visto com "só uma vez" (`repetirDias` null) ou já clicado:
+ * não. Com repetição: quando passaram os dias.
+ */
+export function podeMostrar(repetirDias: number | null, visto: Visto | undefined, hoje: number) {
+  if (!visto) return true;
+  if (repetirDias === null || visto.clicou) return false;
+  return hoje - visto.dia >= repetirDias;
+}
+
+/** Junta o que o navegador e a conta guardaram: o dia mais recente e se clicou em algum. */
+export function juntarVistos(a: Visto | undefined, b: Visto | undefined): Visto | undefined {
+  if (!a || !b) return a ?? b;
+  const dias = [a.dia, b.dia].filter((d) => d !== Number.MAX_SAFE_INTEGER);
+  return { dia: dias.length ? Math.max(...dias) : Number.MAX_SAFE_INTEGER, clicou: a.clicou || b.clicou };
 }
 
 /** As vagas novas (a lista "Novas" da página inicial). */

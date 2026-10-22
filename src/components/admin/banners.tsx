@@ -19,6 +19,7 @@ export type BannerParaEditar = {
   acao: AcaoBanner;
   link: string | null;
   publico: PublicoBanner;
+  repetir_dias: number | null;
   ativo: boolean;
   inicio: string;
   fim: string;
@@ -50,6 +51,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
   const [botao, setBotao] = useState(banner?.botao ?? BOTAO_SUGERIDO.novas);
   // o texto do botão acompanha a ação enquanto ninguém mexeu nele
   const [botaoMexido, setBotaoMexido] = useState(Boolean(banner));
+  const [repetir, setRepetir] = useState(banner?.repetir_dias != null);
 
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -167,6 +169,50 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             ))}
           </Seletor>
         </Campo>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-label">Quantas vezes aparece</legend>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm border border-line px-3 has-checked:border-ink">
+            <input
+              type="radio"
+              name="repetir"
+              value="uma"
+              checked={!repetir}
+              onChange={() => setRepetir(false)}
+              className="size-4 accent-[var(--pk-ink)]"
+            />
+            <span className="text-body">Só uma vez para cada pessoa</span>
+          </label>
+          <label className="flex min-h-11 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 rounded-sm border border-line px-3 py-2 has-checked:border-ink">
+            <input
+              type="radio"
+              name="repetir"
+              value="dias"
+              checked={repetir}
+              onChange={() => setRepetir(true)}
+              className="size-4 accent-[var(--pk-ink)]"
+            />
+            <span className="text-body">De novo a cada</span>
+            <input
+              type="number"
+              name="repetir_dias"
+              aria-label="Dias até aparecer de novo"
+              aria-invalid={erros.repetir_dias ? true : undefined}
+              min={1}
+              max={90}
+              defaultValue={banner?.repetir_dias ?? 7}
+              disabled={!repetir}
+              className={classesEntrada.replace("w-full", "w-20")}
+            />
+            <span className="text-body">dias, até a pessoa tocar no botão</span>
+          </label>
+          {erros.repetir_dias ? (
+            <p className="text-body-sm text-danger">{erros.repetir_dias}</p>
+          ) : (
+            <p className="text-body-sm text-ink-muted">
+              Quem tem conta vê uma vez na conta, em qualquer aparelho; quem não tem, uma vez em cada navegador.
+            </p>
+          )}
+        </fieldset>
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo rotulo="Começa em" nome="inicio" opcional erro={erros.inicio} ajuda="Vazio: já.">
             <input
@@ -228,6 +274,11 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             <span className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-terra px-4 text-label text-on-terra">
               {botao || "Botão"}
             </span>
+            {tipo === "compartilhar" && (
+              <span className="text-center text-label text-ink-muted underline underline-offset-2">
+                Mandar no WhatsApp
+              </span>
+            )}
             <span className="text-center text-label text-ink-muted">Agora não</span>
           </div>
         </div>

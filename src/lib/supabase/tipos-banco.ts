@@ -890,6 +890,7 @@ export type Database = {
           acao: string;
           link: string | null;
           publico: string;
+          repetir_dias: number | null;
           ativo: boolean;
           inicio: string | null;
           fim: string | null;
@@ -903,6 +904,7 @@ export type Database = {
           acao: string;
           link?: string | null;
           publico?: string;
+          repetir_dias?: number | null;
           ativo?: boolean;
           inicio?: string | null;
           fim?: string | null;
@@ -914,10 +916,17 @@ export type Database = {
           acao?: string;
           link?: string | null;
           publico?: string;
+          repetir_dias?: number | null;
           ativo?: boolean;
           inicio?: string | null;
           fim?: string | null;
         };
+        Relationships: [];
+      };
+      banners_vistos: {
+        Row: { banner_id: string; pessoa_id: string; visto_em: string; clicou: boolean };
+        Insert: SemTabela;
+        Update: SemTabela;
         Relationships: [];
       };
       banner_numeros: {
@@ -1119,6 +1128,7 @@ export type Database = {
       };
       seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
       contar_banner: { Args: { p_banner: string; p_evento: string }; Returns: undefined };
+      marcar_banner_visto: { Args: { p_banner: string; p_clicou?: boolean }; Returns: undefined };
       salvar_busca: {
         Args: {
           p_texto: string | null;
