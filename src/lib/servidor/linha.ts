@@ -20,6 +20,8 @@ import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { noticiasPublicadas } from "@/lib/servidor/noticias";
+import type { Noticia } from "@/lib/noticias";
 import { recadosDaLinha, type Recado } from "@/lib/servidor/recados";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, Match } from "@/lib/tipos";
@@ -132,6 +134,21 @@ function horasQueSobem(curtidas: Map<string, CurtidasDaVaga>) {
   return new Map([...curtidas].map(([id, c]) => [id, c.ultima] as const));
 }
 
+/** Quantas notícias a linha lê, e até quantos dias depois da publicação (ou da atualização) elas ficam. */
+const NOTICIAS_NA_LINHA = 12;
+const NOTICIA_NA_LINHA = 30 * 24 * 60 * 60 * 1000;
+/** Uma edição até 10 minutos depois de publicar é acerto, não atualização (não sobe de novo). */
+const ACERTO_DA_NOTICIA = 10 * 60 * 1000;
+
+/** A hora da notícia na linha: a da publicação ou, se mudou depois, a da última mudança. */
+function horaDaNoticia(n: Noticia): { quando: string; atualizada: boolean } {
+  const publicada = n.publicar_em ?? n.criado_em;
+  const atualizada = Boolean(
+    n.atualizado_em && Date.parse(n.atualizado_em) - Date.parse(publicada) > ACERTO_DA_NOTICIA,
+  );
+  return { quando: atualizada ? (n.atualizado_em as string) : publicada, atualizada };
+}
+
 /** A hora de uma vaga na linha: a da publicação ou, se ela subiu, a da última curtida. */
 function horaDaVaga(publicada: string, subiu: string | undefined) {
   return subiu && Date.parse(subiu) > Date.parse(publicada) ? subiu : publicada;
@@ -139,6 +156,7 @@ function horaDaVaga(publicada: string, subiu: string | undefined) {
 
 export type DadoDaLinha =
   | { anuncio: AnuncioNaLinha }
+  | { noticia: Noticia; /** mudou depois de publicada: entra na linha na hora da mudança */ atualizada: boolean }
   | { aceite: Match; /** contato direto: o match saiu na hora, sem aceite */ direto: boolean }
   | { recado: Recado };
 
@@ -284,6 +302,21 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     dados: { recado: r },
   }));
   if (aba === "tudo" || aba === "recado") itens.push(...itensDeRecado);
+  // as notícias do Publike, só em Tudo e sem busca nem filtro: na hora da publicação ou, se foram
+  // atualizadas depois, na hora da atualização (sobem de novo, com "Atualizada")
+  const semFiltro = !filtros.q && !filtros.categoria && !filtros.regime && !filtros.turno;
+  const itensDeNoticia: ItemDaLinha<DadoDaLinha>[] = semFiltro
+    ? (await noticiasPublicadas(NOTICIAS_NA_LINHA).catch(() => []))
+        .map((n) => ({ n, ...horaDaNoticia(n) }))
+        .filter(({ quando }) => agora - Date.parse(quando) <= NOTICIA_NA_LINHA)
+        .map(({ n, quando, atualizada }) => ({
+          tipo: "noticia",
+          id: n.id,
+          quando,
+          dados: { noticia: n, atualizada },
+        }))
+    : [];
+  if (aba === "tudo") itens.push(...itensDeNoticia);
   // os da própria pessoa não contam como novidade
   const recadosDeOutros = itensDeRecado.filter((i) => "recado" in i.dados && !i.dados.recado.meu);
 
@@ -318,6 +351,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
         ),
         ...aceites,
         ...recadosDeOutros,
+        ...itensDeNoticia,
       ],
       marca,
     );

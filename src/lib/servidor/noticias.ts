@@ -8,7 +8,7 @@ import { criarClientePublico } from "@/lib/supabase/servidor";
 // horário). Iguais para todo mundo: ficam guardadas por alguns minutos.
 
 const CAMPOS =
-  "id, slug, titulo, resumo, corpo, pratico, tema, cidade, fonte_nome, fonte_url, fonte_data, status, publicar_em, criado_em, foto_url, foto_autor, foto_autor_url, foto_link, foto_alt, foto_fonte, foto_licenca, foto_licenca_url";
+  "id, slug, titulo, resumo, corpo, pratico, tema, cidade, fonte_nome, fonte_url, fonte_data, status, publicar_em, criado_em, atualizado_em, foto_url, foto_autor, foto_autor_url, foto_link, foto_alt, foto_fonte, foto_licenca, foto_licenca_url";
 
 export async function noticiasPublicadas(limite = 60): Promise<Noticia[]> {
   "use cache";

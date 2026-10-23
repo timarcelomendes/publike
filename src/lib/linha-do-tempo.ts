@@ -16,7 +16,7 @@ export const MARCA_MAXIMA = 30 * DIA;
 /** Quanto tempo o aceite de uma curtida fica na linha. */
 export const ACEITE_NA_LINHA = 7 * DIA;
 
-export type TipoNaLinha = "vaga" | "servico" | "recado" | "aceite";
+export type TipoNaLinha = "vaga" | "servico" | "recado" | "aceite" | "noticia";
 
 /** Um item da linha: o que é, a chave e quando entrou (ISO). */
 export type ItemDaLinha<T> = { tipo: TipoNaLinha; id: string; quando: string; dados: T };

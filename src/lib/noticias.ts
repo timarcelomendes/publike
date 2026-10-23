@@ -28,6 +28,8 @@ export type Noticia = {
   status: StatusNoticia;
   publicar_em: string | null;
   criado_em: string;
+  /** a última mudança (o banco acerta sozinho a cada edição) */
+  atualizado_em?: string;
   /** foto com licença livre (Openverse: Flickr e Wikimedia), com o crédito e a licença */
   foto_url?: string | null;
   foto_autor?: string | null;
