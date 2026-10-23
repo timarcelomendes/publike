@@ -130,6 +130,7 @@ async function Conteudo() {
           valor={n.curtidas.matches_7d}
           hoje={hoje.matches}
           detalhe={`${formatarNumero(n.curtidas.matches)} no total`}
+          href="/admin/matches"
         />
         <Numero
           rotulo="Denúncias abertas"
