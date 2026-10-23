@@ -50,6 +50,7 @@ export async function escreverRecado(formData: FormData): Promise<ResultadoRecad
       p_lng: lugar.lng,
       p_cidade: lugar.cidade,
       p_bairro: lugar.bairro,
+      p_talento: d.talento_id,
     })
     .maybeSingle();
   if (error) {
@@ -193,6 +194,57 @@ export async function procurarParaCitar(texto: string, soMinhas = false): Promis
     if (vistos.has(a.id)) continue;
     vistos.add(a.id);
     lista.push({ id: a.id, tipo: a.tipo, titulo: a.titulo, autor: a.autor?.nome ?? "", bairro: a.bairro });
+  }
+  return lista.slice(0, 10);
+}
+
+export type CurriculoCitavel = { id: string; nome: string; titulo: string | null; bairro: string | null };
+
+/**
+ * "Compartilhar currículo": as pessoas da aba Talentos pelo nome, cargo ou habilidade (as do bairro de
+ * quem escreve primeiro). Sem palavra, as que atualizaram o currículo por último.
+ */
+export async function procurarCurriculoParaCitar(texto: string): Promise<CurriculoCitavel[]> {
+  if (MODO_DEMO) return [];
+  const termo = String(texto ?? "")
+    .trim()
+    .slice(0, 60);
+  const usuario = await obterUsuario();
+  if (!usuario) return [];
+  const perfil = await obterMeuPerfil();
+  const supabase = await criarClienteServidor();
+  const comPalavra = termo.length >= 2;
+  const [porCurriculo, porNome] = await Promise.all([
+    // o cargo, as habilidades e os cursos do currículo
+    supabase.rpc("buscar_talentos", {
+      p_texto: comPalavra ? termo : null,
+      p_cidade: null,
+      p_bairro: perfil?.bairro ?? null,
+      p_limite: 10,
+      p_deslocamento: 0,
+    }),
+    // o nome: as pessoas com a palavra no nome, conferidas uma a uma (só vale quem está na aba Talentos)
+    comPalavra
+      ? supabase
+          .from("perfis")
+          .select("id")
+          .eq("tipo", "pessoa")
+          .neq("id", usuario.id)
+          .ilike("nome", `%${termo.replace(/[%_\\]/g, " ")}%`)
+          .limit(6)
+      : Promise.resolve({ data: [] as { id: string }[] }),
+  ]);
+  const doNome = await Promise.all(
+    (porNome.data ?? []).map(
+      async ({ id }) => (await supabase.rpc("talento_resumo", { p_perfil: id }).maybeSingle()).data,
+    ),
+  );
+  const vistos = new Set<string>([usuario.id]);
+  const lista: CurriculoCitavel[] = [];
+  for (const t of [...doNome, ...(porCurriculo.data ?? [])]) {
+    if (!t || vistos.has(t.perfil_id)) continue;
+    vistos.add(t.perfil_id);
+    lista.push({ id: t.perfil_id, nome: t.nome, titulo: t.titulo ?? t.cargos?.[0] ?? null, bairro: t.bairro });
   }
   return lista.slice(0, 10);
 }

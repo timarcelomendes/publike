@@ -990,6 +990,7 @@ export const esquemaRecado = z.object({
     .regex(/^[0-9a-f-]{36}\/\d{10,16}\.jpg$/, { error: "Envie a foto de novo." })
     .nullable(),
   anuncio_id: z.string().regex(UUID, { error: "Cite outra vaga." }).nullable(),
+  talento_id: z.string().regex(UUID, { error: "Escolha outro currículo." }).nullable(),
 });
 
 export function lerRecado(formData: FormData) {
@@ -997,6 +998,7 @@ export function lerRecado(formData: FormData) {
     texto: campo(formData, "texto") ?? "",
     foto: campo(formData, "foto") || null,
     anuncio_id: campo(formData, "anuncio_id") || null,
+    talento_id: campo(formData, "talento_id") || null,
   });
 }
 

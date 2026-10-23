@@ -1516,6 +1516,7 @@ export type Database = {
           p_lng?: number | null;
           p_cidade?: string | null;
           p_bairro?: string | null;
+          p_talento?: string | null;
         };
         Returns: { id: string; status: string }[];
       };
@@ -1554,6 +1555,12 @@ export type Database = {
           anuncio_regime: string | null;
           anuncio_bairro: string | null;
           anuncio_cidade: string | null;
+          talento_id: string | null;
+          talento_nome: string | null;
+          talento_titulo: string | null;
+          talento_foto: string | null;
+          talento_bairro: string | null;
+          talento_cidade: string | null;
           seguindo: boolean;
         }[];
       };
@@ -1586,6 +1593,12 @@ export type Database = {
           anuncio_regime: string | null;
           anuncio_bairro: string | null;
           anuncio_cidade: string | null;
+          talento_id: string | null;
+          talento_nome: string | null;
+          talento_titulo: string | null;
+          talento_foto: string | null;
+          talento_bairro: string | null;
+          talento_cidade: string | null;
         }[];
       };
       recado: {
@@ -1617,6 +1630,12 @@ export type Database = {
           anuncio_regime: string | null;
           anuncio_bairro: string | null;
           anuncio_cidade: string | null;
+          talento_id: string | null;
+          talento_nome: string | null;
+          talento_titulo: string | null;
+          talento_foto: string | null;
+          talento_bairro: string | null;
+          talento_cidade: string | null;
         }[];
       };
       servidor_pegar_recados_ia: {

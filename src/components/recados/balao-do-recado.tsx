@@ -1,4 +1,4 @@
-import { Briefcase, Clock, EyeOff, Wrench } from "lucide-react";
+import { Briefcase, Clock, EyeOff, FileUser, Wrench } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatarLugar, urlDaFotoRecado, valorCurto } from "@/lib/formato";
@@ -54,6 +54,34 @@ function Citacao({ r }: { r: Recado }) {
       <p className="hidden items-center justify-center px-2 font-display text-[15px] leading-5 font-extrabold whitespace-nowrap tabular-nums sm:flex">
         {valorCurto(r.anuncio_valor, r.anuncio_unidade)}
       </p>
+    </div>
+  );
+}
+
+/** O currículo compartilhado: a pessoa da aba Talentos (nome curto, cargo e bairro), que leva ao currículo. */
+function CurriculoCompartilhado({ r }: { r: Recado }) {
+  if (!r.talento_id || !r.talento_nome) return null;
+  return (
+    <div className="relative mt-2.5 flex min-w-0 items-center gap-2.5 rounded-[14px] border border-line bg-surface-200 px-3 py-2.5">
+      <Avatar nome={r.talento_nome} foto={r.talento_foto} tamanho={32} forma="redonda" colorida />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-display text-[15px] leading-5 font-bold">
+          <Link
+            href={`/talentos/${r.talento_id}`}
+            className="outline-none after:absolute after:inset-0 after:z-[1] after:content-[''] focus-visible:underline"
+          >
+            {r.talento_nome}
+          </Link>
+        </p>
+        <p className="truncate text-body-sm text-ink-muted">
+          {r.talento_titulo ?? "Procura trabalho"}
+          {r.talento_cidade && ` · ${formatarLugar(r.talento_bairro, r.talento_cidade)}`}
+        </p>
+      </div>
+      <span className="hidden shrink-0 items-center gap-1.5 text-label font-semibold text-ink sm:inline-flex">
+        <FileUser aria-hidden className="size-4" />
+        Ver currículo
+      </span>
     </div>
   );
 }
@@ -150,6 +178,7 @@ export function BalaoDoRecado({
       )}
 
       <Citacao r={r} />
+      <CurriculoCompartilhado r={r} />
 
       <footer className="mt-2.5 flex items-center gap-2">
         {r.status === "no_ar" && (
