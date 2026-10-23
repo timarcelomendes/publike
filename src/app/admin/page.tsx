@@ -64,11 +64,11 @@ async function Conteudo() {
           <div className="flex flex-col gap-2">
             <Situacao ok={Boolean(filas.smtp)}>
               E-mail no servidor (SMTP_SERVIDOR, SMTP_USUARIO, SMTP_SENHA e SMTP_REMETENTE).{" "}
-              <Link href="/admin/emails" className="underline">Ver e-mails</Link>
+              <Link href="/admin/emails?aba=configuracoes" className="underline">Ver e-mails</Link>
             </Situacao>
             <Situacao ok={Boolean(filas.enderecoEmails)}>
               Endereço do site no ar para os links dos e-mails (PUBLIKE_URL_PUBLICA no seu computador).{" "}
-              <Link href="/admin/emails" className="underline">Ver e-mails</Link>
+              <Link href="/admin/emails?aba=configuracoes" className="underline">Ver e-mails</Link>
             </Situacao>
             <Situacao ok={temChave}>
               Chave do servidor, para o site publicado mandar e-mails e rodar a IA.{" "}
@@ -76,7 +76,7 @@ async function Conteudo() {
             </Situacao>
             <Situacao ok={config.avisos_para.length > 0}>
               Quem recebe os avisos da equipe (denúncia, cadastro, anúncio tirado do ar).{" "}
-              <Link href="/admin/emails#configuracoes" className="underline">Escolher</Link>
+              <Link href="/admin/emails?aba=configuracoes#configuracoes" className="underline">Escolher</Link>
             </Situacao>
             {config.ia_moderacao && (
               <Situacao ok={filas.ia}>
