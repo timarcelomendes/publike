@@ -8,6 +8,7 @@ import type { EstadoConexao } from "@/lib/conexoes";
 import { BotaoConectarCompacto } from "../conexoes/botao-conectar-compacto";
 import { BotaoForca } from "./botao-forca";
 import { BotaoIndicar } from "./botao-indicar";
+import { FotoDoRecado } from "./foto-do-recado";
 import { MenuDoRecado } from "./menu-do-recado";
 
 /** O que quem escreveu faz, ao lado do nome ("procura trabalho", "está contratando"). */
@@ -167,15 +168,7 @@ export function BalaoDoRecado({
 
       <p className="mt-1.5 text-[16px] leading-6 break-words whitespace-pre-line text-ink">{r.texto}</p>
 
-      {foto && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={foto}
-          alt=""
-          loading="lazy"
-          className="mt-2.5 max-h-[280px] w-auto max-w-full rounded-[12px] bg-surface-300 object-cover"
-        />
-      )}
+      {foto && <FotoDoRecado src={foto} autor={r.autor_nome} />}
 
       <Citacao r={r} />
       <CurriculoCompartilhado r={r} />
