@@ -1,7 +1,8 @@
 "use client";
 
-import { CircleCheckBig, Trash2 } from "lucide-react";
+import { CircleCheckBig, Sparkles, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
+import { processarFilasAgora } from "@/lib/acoes/admin";
 import { moderarRecado } from "@/lib/acoes/recados";
 import { Botao } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
@@ -44,6 +45,20 @@ export function AcoesModeracaoRecado({ id }: { id: string }) {
           Remover
         </Botao>
       </div>
+      {mensagem}
+    </div>
+  );
+}
+
+/** Só no admin do Mac: roda a revisão da IA (anúncios, recados e avaliações) e a fila de e-mails agora. */
+export function RevisarFilaAgora() {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(processarFilasAgora)}>
+        <Sparkles aria-hidden />
+        Revisar com a IA agora
+      </Botao>
       {mensagem}
     </div>
   );
