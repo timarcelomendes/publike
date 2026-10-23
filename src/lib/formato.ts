@@ -160,7 +160,8 @@ export function nomeDoBairro(bairro: string) {
 
 /** "Setor Bueno" ou "Setor Garavelo, Aparecida de Goiânia": o bairro da cidade que dá nome à praça vai sem a cidade. */
 export function formatarLugar(bairro: string | null, cidade: string) {
-  if (!bairro) return cidade;
+  // sem bairro, ou só a cidade (vaga de empresa confidencial): a cidade
+  if (!bairro || bairro === cidade) return cidade;
   const b = nomeDoBairro(bairro);
   return cidadeDePraca(cidade) ? b : `${b}, ${cidade}`;
 }

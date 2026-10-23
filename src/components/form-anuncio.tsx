@@ -320,6 +320,43 @@ export function FormAnuncio({
     setDescricao(novaDescricao);
   }
 
+  // a cidade e o bairro (dentro do CEP e do mapa; na vaga confidencial, sozinhos)
+  const camposDoLugar = (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
+        <Seletor
+          {...ligarCampo("cidade", erros.cidade)}
+          value={cidade}
+          onChange={(e) => setCidade(e.target.value)}
+          className={classesEntrada}
+        >
+          {CIDADES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Seletor>
+      </Campo>
+      <Campo rotulo={confidencial ? "Bairro ou setor (opcional)" : "Bairro ou setor"} nome="bairro" erro={erros.bairro}>
+        <input
+          {...ligarCampo("bairro", erros.bairro)}
+          defaultValue={confidencial && lugar.bairro === cidade ? "" : lugar.bairro}
+          list="bairros"
+          maxLength={80}
+          required={!confidencial}
+          placeholder="Ex.: Setor Bueno"
+          autoComplete="off"
+          className={classesEntrada}
+        />
+        <datalist id="bairros">
+          {(BAIRROS[cidade as Cidade] ?? []).map((b) => (
+            <option key={b} value={b} />
+          ))}
+        </datalist>
+      </Campo>
+    </div>
+  );
+
   return (
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
       {inicial.id && <input type="hidden" name="id" value={inicial.id} />}
@@ -526,61 +563,36 @@ export function FormAnuncio({
 
       <Secao numero={3} titulo="Onde é">
         <p className="-mt-2 text-body-sm text-ink-muted">
-          Basta o bairro. O CEP e o pino no mapa são opcionais: sem eles, a vaga fica no meio do bairro.
+          {confidencial
+            ? "Empresa confidencial: a vaga mostra só a cidade, sem endereço nem ponto no mapa. O bairro é opcional: sem ele, a distância conta do centro da cidade."
+            : "Basta o bairro. O CEP e o pino no mapa são opcionais: sem eles, a vaga fica no meio do bairro."}
         </p>
         {lugarDoCliente && (
           <p role="status" className="-mt-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm text-ink">
             Veio o endereço de {lugarDoCliente}. Confira se a vaga é lá.
           </p>
         )}
-        <LocalComCep
-          key={chaveLugar}
-          inicial={lugar.lat != null && lugar.lng != null ? { lat: lugar.lat, lng: lugar.lng } : null}
-          inicialCep={lugar.cep}
-          inicialEndereco={lugar.endereco}
-          publico={enderecoPublico && !confidencial}
-          mapaOpcional
-          cidade={cidade}
-          erro={erros.lat ?? erros.lng}
-          aoAchar={({ cidade: c, bairro: b }) => {
-            if ((CIDADES as readonly string[]).includes(c)) setCidade(c);
-            return trocarBairro(formulario.current?.elements.namedItem("bairro"), b);
-          }}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Cidade" nome="cidade" erro={erros.cidade}>
-              <Seletor
-                {...ligarCampo("cidade", erros.cidade)}
-                value={cidade}
-                onChange={(e) => setCidade(e.target.value)}
-                className={classesEntrada}
-              >
-                {CIDADES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Seletor>
-            </Campo>
-            <Campo rotulo="Bairro ou setor" nome="bairro" erro={erros.bairro}>
-              <input
-                {...ligarCampo("bairro", erros.bairro)}
-                defaultValue={lugar.bairro}
-                list="bairros"
-                maxLength={80}
-                required
-                placeholder="Ex.: Setor Bueno"
-                autoComplete="off"
-                className={classesEntrada}
-              />
-              <datalist id="bairros">
-                {(BAIRROS[cidade as Cidade] ?? []).map((b) => (
-                  <option key={b} value={b} />
-                ))}
-              </datalist>
-            </Campo>
-          </div>
-        </LocalComCep>
+        {confidencial ? (
+          // confidencial: sem CEP, endereço e pino (o servidor põe o ponto no meio do bairro ou da cidade)
+          camposDoLugar
+        ) : (
+          <LocalComCep
+            key={chaveLugar}
+            inicial={lugar.lat != null && lugar.lng != null ? { lat: lugar.lat, lng: lugar.lng } : null}
+            inicialCep={lugar.cep}
+            inicialEndereco={lugar.endereco}
+            publico={enderecoPublico && !confidencial}
+            mapaOpcional
+            cidade={cidade}
+            erro={erros.lat ?? erros.lng}
+            aoAchar={({ cidade: c, bairro: b }) => {
+              if ((CIDADES as readonly string[]).includes(c)) setCidade(c);
+              return trocarBairro(formulario.current?.elements.namedItem("bairro"), b);
+            }}
+          >
+            {camposDoLugar}
+          </LocalComCep>
+        )}
         {(erros.lat || erros.lng) && <MensagemErro>{erros.lat ?? erros.lng}</MensagemErro>}
         {(erros.cep || erros.endereco) && <MensagemErro>{erros.cep ?? erros.endereco}</MensagemErro>}
       </Secao>

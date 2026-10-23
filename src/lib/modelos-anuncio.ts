@@ -200,7 +200,10 @@ export function descricaoSimples(d: {
   direto?: boolean;
 }) {
   const partes = [
-    `Vaga de ${d.titulo.replace(/\.$/, "")} no ${d.bairro}, em ${d.cidade}.`,
+    // vaga só com a cidade (empresa confidencial sem bairro): o "bairro" é a própria cidade
+    d.bairro === d.cidade
+      ? `Vaga de ${d.titulo.replace(/\.$/, "")} em ${d.cidade}.`
+      : `Vaga de ${d.titulo.replace(/\.$/, "")} no ${d.bairro}, em ${d.cidade}.`,
     d.nomeRegime ? `Contratação: ${d.nomeRegime.toLowerCase()}.` : null,
     d.horario ? `Horário: ${d.horario}.` : null,
     d.direto

@@ -23,6 +23,21 @@ export async function completarAnuncio(formData: FormData, provisorio = false): 
     return typeof v === "string" ? v.trim() : "";
   };
   const titulo = texto("titulo");
+  // vaga de agência com a empresa confidencial: sem endereço, CEP nem pino (nada que leve à empresa).
+  // O bairro é opcional: sem ele, a vaga fica na cidade (o "bairro" guardado é a própria cidade, e o
+  // ponto é o centro dela)
+  if (texto("contratante_confidencial") === "on") {
+    for (const campo of ["cep", "endereco", "lat", "lng"]) formData.delete(campo);
+    const cidade = cidadeDoPublike(texto("cidade")) ?? PRACA_PADRAO.cidade;
+    if (!texto("bairro")) formData.set("bairro", cidade);
+    // com o bairro, o meio dele; sem o bairro (ou sem achar no mapa, já que aqui não tem o pino), o centro da cidade
+    const bairro = texto("bairro");
+    const centro =
+      (bairro !== cidade && !provisorio ? await centroDoBairro(bairro, cidade).catch(() => null) : null) ??
+      centroDaCidade(cidade);
+    formData.set("lat", String(centro.lat));
+    formData.set("lng", String(centro.lng));
+  }
   if (!texto("categoria")) {
     if (titulo) formData.set("categoria", categoriaPeloTitulo(titulo));
     else trocas.categoria = null;
