@@ -408,6 +408,7 @@ export function FiltrosLista({
   quebrar = false,
   semOrdem = false,
   ordemSoNoCelular = false,
+  ordemDaLinha = false,
 }: {
   filtros: Filtros;
   soMeus?: boolean;
@@ -419,6 +420,8 @@ export function FiltrosLista({
   semOrdem?: boolean;
   /** a vitrine: no computador, a ordem fica na linha do título, junto do jeito de ver (OrdemDaLista) */
   ordemSoNoCelular?: boolean;
+  /** a linha do tempo: Últimas (ela mesma) ou Mais relevantes (abre a lista nessa ordem) */
+  ordemDaLinha?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const Faixa = quebrar ? FiltrosEmLinhas : FaixaRolavel;
@@ -504,6 +507,18 @@ export function FiltrosLista({
           ))}
         </optgroup>
       </Seletor>
+      {ordemDaLinha && (
+        <Seletor
+          aria-label="Ordem"
+          value={filtros.ordem === "relevantes" ? "relevantes" : "ultimas"}
+          onChange={(e) => ir({ ordem: e.target.value === "relevantes" ? "relevantes" : "perto" })}
+          className={seletor}
+          envoltorio="shrink-0"
+        >
+          <option value="ultimas">Últimas</option>
+          <option value="relevantes">Mais relevantes</option>
+        </Seletor>
+      )}
       {!semOrdem && (
         <SeletorOrdem
           filtros={filtros}
@@ -537,6 +552,7 @@ function SeletorOrdem({
     >
       <option value="perto">Mais perto</option>
       <option value="recentes">Mais recentes</option>
+      <option value="relevantes">Mais relevantes</option>
       {combina && <option value="combina">Combina mais</option>}
     </Seletor>
   );

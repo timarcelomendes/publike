@@ -238,7 +238,7 @@ export async function Explorar({
       .map((a, i) => ({ a, i, nota: matches.get(a.id)?.nota ?? -1 }))
       .sort((x, y) => y.nota - x.nota || x.i - y.i)
       .map((x) => x.a);
-  } else if (busca && filtros.ordem !== "recentes") {
+  } else if (busca && filtros.ordem !== "recentes" && filtros.ordem !== "relevantes") {
     // o banco acha a palavra no título, na descrição e no ofício, e ordena só por perto: aqui, quem
     // tem a palavra no título vem antes (do mais perto ao mais longe dentro de cada grupo)
     anuncios = ordenarPeloTitulo(anuncios, termo);
@@ -752,6 +752,12 @@ function AtalhosDoFeed({
       nome: "Novas",
       href: hrefFiltros(filtros, { ordem: "recentes", tipo: "vaga", tudo: false }),
       ativo: filtros.ordem === "recentes" && filtros.tipo !== "servico",
+    },
+    {
+      // as mais curtidas e mais abertas nos últimos 30 dias
+      nome: "Mais relevantes",
+      href: hrefFiltros(filtros, { ordem: "relevantes", tipo: "vaga", tudo: false }),
+      ativo: filtros.ordem === "relevantes" && filtros.tipo !== "servico",
     },
     {
       nome: "Serviços",

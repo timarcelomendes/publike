@@ -1112,7 +1112,7 @@ export type Database = {
       };
       curtidas_das_vagas: {
         Args: { p_ids: string[] };
-        Returns: { anuncio_id: string; curtidas: number; ultima: string }[];
+        Returns: { anuncio_id: string; curtidas: number | null; ultima: string }[];
       };
       meus_modos: {
         Args: Record<PropertyKey, never>;
@@ -1430,6 +1430,7 @@ export type Database = {
       responder_entrevista: { Args: { p_id: string; p_resposta: string }; Returns: undefined };
       contar_visita: { Args: { p_anuncio: string }; Returns: undefined };
       contar_acesso: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
+      contar_abertura: { Args: { p_anuncio: string; p_ip: string; p_navegador: string }; Returns: undefined };
       adicionar_finalistas: { Args: { p_anuncio: string; p_perfis: string[] }; Returns: number };
       tirar_finalista: { Args: { p_anuncio: string; p_perfil: string }; Returns: undefined };
       salvar_parecer_finalista: {

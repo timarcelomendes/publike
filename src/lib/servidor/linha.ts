@@ -11,15 +11,7 @@ import {
   type DetalhesDaVaga,
 } from "@/lib/dados";
 import { lerFiltros, type Filtros } from "@/lib/filtros";
-import {
-  ACEITE_NA_LINHA,
-  CURTIDAS_SOBEM,
-  marcaDaVisita,
-  SESSAO_DA_HOME,
-  MAX_VAGAS_QUE_SOBEM,
-  novidades,
-  type ItemDaLinha,
-} from "@/lib/linha-do-tempo";
+import { ACEITE_NA_LINHA, marcaDaVisita, SESSAO_DA_HOME, novidades, type ItemDaLinha } from "@/lib/linha-do-tempo";
 import { obterLocal } from "@/lib/local";
 import type { Local } from "@/lib/regioes";
 import { partirDoLocal } from "@/lib/servidor/busca-salva";
@@ -116,13 +108,15 @@ export type AnuncioNaLinha = {
   curtidas?: { total: number; ultima: string } | null;
 };
 
+type CurtidasDaVaga = { total: number | null; ultima: string };
+
 /**
- * As curtidas das vagas, só o número (o banco só devolve a partir de 3, e nunca quem curtiu).
- * Banco sem a migração: sem números.
+ * As curtidas das vagas: a hora da última de cada vaga curtida e o número, que o banco só devolve a
+ * partir de 3 (nunca quem curtiu). Banco sem a migração: sem curtidas.
  */
-async function curtidasDasVagas(ids: string[]): Promise<Map<string, { total: number; ultima: string }>> {
+async function curtidasDasVagas(ids: string[]): Promise<Map<string, CurtidasDaVaga>> {
   if (!ids.length) return new Map();
-  const { data, error } = await (await criarClienteServidor()).rpc("curtidas_das_vagas", { p_ids: ids.slice(0, 100) });
+  const { data, error } = await (await criarClienteServidor()).rpc("curtidas_das_vagas", { p_ids: ids.slice(0, 200) });
   if (error) {
     if (error.code !== "PGRST202") console.error(`Publike: falha ao contar as curtidas das vagas: ${error.message}`);
     return new Map();
@@ -131,18 +125,11 @@ async function curtidasDasVagas(ids: string[]): Promise<Map<string, { total: num
 }
 
 /**
- * As vagas que sobem na linha: as que as pessoas estão curtindo agora (última curtida nos últimos
- * 3 dias; no máximo 4, as mais curtidas), com a hora da última curtida. Essa é a hora da vaga na
- * linha e também a que conta como novidade: o que fica acima do "Você parou aqui" é novo.
+ * As vagas que sobem na linha: toda vaga curtida vale pela hora da última curtida. Essa é a hora da
+ * vaga na linha e também a que conta como novidade: o que fica acima do "Você parou aqui" é novo.
  */
-function horasQueSobem(curtidas: Map<string, { total: number; ultima: string }>, agora: number) {
-  return new Map(
-    [...curtidas]
-      .filter(([, c]) => agora - Date.parse(c.ultima) <= CURTIDAS_SOBEM)
-      .sort(([, a], [, b]) => b.total - a.total || Date.parse(b.ultima) - Date.parse(a.ultima))
-      .slice(0, MAX_VAGAS_QUE_SOBEM)
-      .map(([id, c]) => [id, c.ultima] as const),
-  );
+function horasQueSobem(curtidas: Map<string, CurtidasDaVaga>) {
+  return new Map([...curtidas].map(([id, c]) => [id, c.ultima] as const));
 }
 
 /** A hora de uma vaga na linha: a da publicação ou, se ela subiu, a da última curtida. */
@@ -160,7 +147,7 @@ export type DadosDaLinha = {
   local: Local | null;
   usuarioId: string | null;
   aba: AbaDaLinha;
-  /** os filtros da busca (sem a ordem: a linha é sempre do mais novo para o mais antigo) */
+  /** os filtros da busca (a ordem é "ultimas": do mais novo para o mais antigo, com as vagas curtidas) */
   filtros: Filtros;
   /** os mesmos, antes de partir da casa (para a barra e os links) */
   filtrosDaBusca: Filtros;
@@ -203,7 +190,9 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     ...lidos,
     tipo: aba === "vaga" || aba === "servico" ? aba : null,
     tudo: aba === "tudo" || aba === "recado",
-    ordem: "recentes",
+    // do mais novo para o mais antigo, com as vagas curtidas na hora da última curtida (o banco já traz
+    // as curtidas há pouco entre as primeiras; com outra ordem na URL, a home mostra a lista, não a linha)
+    ordem: "ultimas",
     regime: aba === "servico" ? null : lidos.regime,
     turno: aba === "vaga" ? lidos.turno : null,
   };
@@ -256,18 +245,18 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       },
     },
   }));
-  // as vagas que as pessoas estão curtindo: o número no cartão ("8 pessoas já curtiram") e, as de
-  // curtida recente, sobem para a hora da última curtida. Antes de contar as novidades: a vaga que
-  // subiu fica acima do "Você parou aqui" e conta como novidade (a saudação e as abas batem com a linha)
+  // as vagas que as pessoas curtiram: o número no cartão ("8 pessoas já curtiram", só a partir de 3)
+  // e a hora da última curtida, para onde a vaga sobe. Antes de contar as novidades: a vaga que subiu
+  // fica acima do "Você parou aqui" e conta como novidade (a saudação e as abas batem com a linha)
   if (aba === "tudo" || aba === "vaga") {
     const curtidas = await curtidasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-      () => new Map<string, { total: number; ultima: string }>(),
+      () => new Map<string, CurtidasDaVaga>(),
     );
-    const sobem = horasQueSobem(curtidas, agora);
+    const sobem = horasQueSobem(curtidas);
     for (const i of itens) {
       const c = curtidas.get(i.id);
       if (i.tipo !== "vaga" || !c || !("anuncio" in i.dados)) continue;
-      i.dados.anuncio.curtidas = c;
+      if (c.total !== null) i.dados.anuncio.curtidas = { total: c.total, ultima: c.ultima };
       i.quando = horaDaVaga(i.quando, sobem.get(i.id));
     }
   }
@@ -313,9 +302,8 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     // as vagas que subiram contam pela hora da última curtida, como na linha
     const sobemDeTodas = horasQueSobem(
       await curtidasDasVagas(todos.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-        () => new Map<string, { total: number; ultima: string }>(),
+        () => new Map<string, CurtidasDaVaga>(),
       ),
-      agora,
     );
     novas = novidades(
       [

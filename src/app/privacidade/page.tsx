@@ -30,6 +30,7 @@ export default function Privacidade() {
             "Localização dos anúncios: comércio, empresa e agência podem informar o CEP e o endereço, que aparecem na vaga com o ponto exato, como uma fachada. Vaga de pessoa física e de empresa confidencial guardam só a região, uma área de uns 500 metros, sem endereço.",
             "CEP de casa (opcional, em “Onde você mora?”): guardamos o CEP e um ponto arredondado, de uns 300 metros, só para medir a distância e o tempo de ônibus até as vagas. Ninguém mais vê. Sem conta, fica só no seu navegador. “Esquecer onde moro” apaga.",
             "Quando você usa “Perto de mim”, a localização serve só para a busca e não fica salva no seu perfil.",
+            "Quantas vezes cada anúncio foi aberto, para a ordem “Mais relevantes”: uma vez por pessoa por dia, sem guardar quem. O endereço de internet e o navegador viram um código que muda todo dia, e nem o Publike consegue saber de quem era. Fica 30 dias.",
           ]}
         />
       </Secao>

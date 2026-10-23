@@ -169,7 +169,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
       : d.novas.tudo > 0
         ? `${d.novas.tudo === 1 ? "1 novidade" : `${d.novas.tudo > 99 ? "99+" : d.novas.tudo} novidades`} desde ${quandoFoi(d.marca, d.agora)}`
         : `Nada novo desde ${quandoFoi(d.marca, d.agora)}`;
-  // os links das abas e dos filtros: sem a ordem (a linha é sempre do mais novo para o mais antigo)
+  // os links das abas e dos filtros: sem a ordem (a linha é sempre a das últimas; "Mais relevantes" abre a lista)
   const base = { ...d.filtrosDaBusca, ordem: "perto" as const };
   const mudados = filtrosMudados(d.filtrosDaBusca, true);
   const textoDoRaio = d.filtros.tempo ? nomeDoTempo(d.filtros.tempo).toLowerCase() : `até ${d.filtros.raio} km`;
@@ -288,7 +288,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
               soLugar
               umaLinha
               // o lugar e os filtros da lista numa linha só (os filtros rolam de lado)
-              extra={<FiltrosLista filtros={base} semOrdem />}
+              extra={<FiltrosLista filtros={base} semOrdem ordemDaLinha />}
             />
             {mudados > 0 && (
               <Link

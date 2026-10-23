@@ -182,7 +182,7 @@ export async function buscarAnuncios(
     p_regime: f.regime,
     p_texto: f.q || null,
     // "combina" ordena depois, pelo % de match (aqui vem do mais perto)
-    p_ordem: f.ordem === "recentes" ? "recentes" : "perto",
+    p_ordem: f.ordem === "recentes" || f.ordem === "relevantes" || f.ordem === "ultimas" ? f.ordem : "perto",
     // com turno, o filtro vem depois (no texto e no horário de cada vaga): busca mais para sobrarem 60
     p_limite: f.meus || f.turno ? 200 : 120,
     p_cidade: local?.cidade ?? null,

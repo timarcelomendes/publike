@@ -10,7 +10,11 @@ export const RAIO_PADRAO = 25;
 
 export type Origem = "centro" | "gps" | "mapa";
 /** "combina": do que mais combina com o currículo (só para quem tem currículo; sem ele, vale "perto") */
-export type Ordem = "perto" | "recentes" | "combina";
+/**
+ * "relevantes": as mais curtidas e mais abertas nos últimos 30 dias. "ultimas": a linha do tempo (a vaga
+ * vale pela hora mais nova entre a publicação e a última curtida; não vai na URL, é o padrão da linha)
+ */
+export type Ordem = "perto" | "recentes" | "combina" | "relevantes" | "ultimas";
 
 /** Quando a pessoa pode trabalhar: o filtro de turno das vagas. */
 export const TURNOS = [
@@ -88,7 +92,7 @@ export function lerFiltros(sp: Parametros): Filtros {
     turno: (tipo === "vaga" || !tipo) && TURNOS.some((t) => t.valor === turno) ? (turno as Turno) : null,
     raio: raio && (RAIOS as readonly number[]).includes(raio) ? raio : RAIO_PADRAO,
     tempo: tempo && (TEMPOS as readonly number[]).includes(tempo) ? tempo : null,
-    ordem: ordem === "recentes" || ordem === "combina" ? ordem : "perto",
+    ordem: ordem === "recentes" || ordem === "combina" || ordem === "relevantes" ? ordem : "perto",
     lat: temPonto ? Math.round(lat * 10000) / 10000 : CENTRO_GOIANIA.lat,
     lng: temPonto ? Math.round(lng * 10000) / 10000 : CENTRO_GOIANIA.lng,
     origem: temPonto ? (origem === "gps" ? "gps" : "mapa") : "centro",
@@ -118,7 +122,7 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
   if (f.turno && f.tipo === "vaga") p.set("turno", f.turno);
   if (f.tempo) p.set("tempo", String(f.tempo));
   else if (f.raio !== RAIO_PADRAO) p.set("raio", String(f.raio));
-  if (f.ordem !== "perto") p.set("ordem", f.ordem);
+  if (f.ordem !== "perto" && f.ordem !== "ultimas") p.set("ordem", f.ordem);
   if (f.meus) p.set("meus", "1");
   if (f.origem !== "centro") {
     p.set("lat", String(f.lat));

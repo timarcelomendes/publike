@@ -28,6 +28,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { Suspense, type ReactNode } from "react";
+import { ContarAbertura } from "@/components/anuncio/contar-abertura";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
 import { BotaoSeguir } from "@/components/social/botoes";
@@ -357,6 +358,8 @@ async function DetalheAnuncio({
 
   return (
     <Container className="py-6 sm:py-8">
+      {/* conta a abertura para "Mais relevantes" (não conta quem publicou: o banco confere) */}
+      {anuncio.status === "ativo" && <ContarAbertura anuncioId={anuncio.id} />}
       {/* vaga preenchida sai do Google para Vagas (o Google pede para tirar as vagas fechadas) */}
       {vaga && anuncio.status === "ativo" && !anuncio.preenchida_em && (
         <script
