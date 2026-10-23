@@ -173,6 +173,11 @@ export type DadosDaLinha = {
   filtrosDaBusca: Filtros;
   tempoDe: "casa" | "voce" | null;
   itens: ItemDaLinha<DadoDaLinha>[];
+  /**
+   * Na aba Recados, a linha não tem vagas nem serviços, mas o mapa do lado continua com os de perto
+   * (sem ele, o mapa ficava vazio). Nas outras abas, null: o mapa usa os itens da linha.
+   */
+  doMapa: AnuncioResumo[] | null;
   marca: number | null;
   /** esta abertura começa uma visita (a anterior foi há mais de 30 min): só aí o topo diz quantas novidades */
   visitaNova: boolean;
@@ -220,7 +225,17 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   const relevantes = filtrosDaBusca.ordem === "relevantes";
   const usuarioId = usuario?.id ?? null;
 
-  // na aba Recados, só os recados (os anúncios entram na conta das novidades mais abaixo)
+  // na aba Recados, só os recados na linha; os anúncios de perto vão para o mapa do lado e para a
+  // conta das novidades mais abaixo (uma busca só, já começada aqui)
+  const deTudo =
+    aba === "recado"
+      ? buscarAnuncios(
+          { ...filtros, tipo: null, tudo: true, regime: null, turno: null },
+          agora,
+          local,
+          usuarioId,
+        ).catch(() => [])
+      : null;
   const [encontrados, quem, matchesDaConta, recados, perfil] = await Promise.all([
     aba === "recado" ? Promise.resolve([]) : buscarAnuncios(filtros, agora, local, usuarioId),
     usuario && (aba === "tudo" || aba === "vaga") ? quemProcura() : Promise.resolve(null),
@@ -330,12 +345,14 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     marca,
   );
   if (aba !== "tudo" && marca !== null) {
-    const todos = await buscarAnuncios(
-      { ...filtros, tipo: null, tudo: true, regime: null, turno: null },
-      agora,
-      local,
-      usuarioId,
-    ).catch(() => []);
+    const todos =
+      (await deTudo) ??
+      (await buscarAnuncios(
+        { ...filtros, tipo: null, tudo: true, regime: null, turno: null },
+        agora,
+        local,
+        usuarioId,
+      ).catch(() => []));
     // as vagas que subiram contam pela hora da última curtida, como na linha
     const sobemDeTodas = horasQueSobem(
       await curtidasDasVagas(todos.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
@@ -370,6 +387,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     filtrosDaBusca,
     tempoDe: origemDoTempo(filtros, local),
     itens,
+    doMapa: deTudo ? (await deTudo).slice(0, LIMITE) : null,
     marca,
     visitaNova,
     novas,
@@ -387,26 +405,10 @@ export function mapaDaLinha(d: DadosDaLinha): { pontos: PontoMapa[]; origem: Ori
   for (const i of d.itens) {
     if (!("anuncio" in i.dados)) continue;
     const { anuncio: a, match } = i.dados.anuncio;
-    const tempo = d.tempoDe && a.tipo === "vaga" ? deslocamentoCurto(a.distancia_km) : null;
-    pontos.push({
-      id: a.id,
-      lat: a.lat,
-      lng: a.lng,
-      titulo: a.titulo,
-      tipo: a.tipo,
-      lugar: formatarLugar(a.bairro, a.cidade),
-      valor: valorDoAnuncio(a),
-      curto:
-        a.tipo === "servico" && a.pagamento_valor != null
-          ? `a partir de ${valorCurto(a.pagamento_valor, a.pagamento_unidade)}`
-          : valorCurto(a.pagamento_valor, a.pagamento_unidade),
-      modalidade: rotuloModalidade(a.tipo, a.regime),
-      distancia: formatarDistancia(a.distancia_km),
-      tempo: tempo ? `${tempo} ${d.tempoDe === "casa" ? "da sua casa" : "de onde você está"}` : null,
-      autor: `${a.autor_nome} · ${rotuloConta(a.autor_tipo)}`,
-      match: a.minha_curtida === "match" ? null : (match?.nota ?? null),
-    });
+    pontos.push(pontoDoMapa(a, a.minha_curtida === "match" ? null : (match?.nota ?? null), d.tempoDe));
   }
+  // na aba Recados: as vagas e os serviços de perto (a linha só tem recados)
+  for (const a of d.doMapa ?? []) pontos.push(pontoDoMapa(a, null, d.tempoDe));
   const f = d.filtros;
   const origem: OrigemMapa =
     d.tempoDe === "casa"
@@ -415,4 +417,27 @@ export function mapaDaLinha(d: DadosDaLinha): { pontos: PontoMapa[]; origem: Ori
         ? { lat: f.lat, lng: f.lng, rotulo: "Você está aqui", tipo: "voce" }
         : null;
   return { pontos, origem };
+}
+
+/** Um anúncio no mapa da linha: a etiqueta (valor, distância e tempo) e o cartão. */
+function pontoDoMapa(a: AnuncioResumo, match: number | null, tempoDe: DadosDaLinha["tempoDe"]): PontoMapa {
+  const tempo = tempoDe && a.tipo === "vaga" ? deslocamentoCurto(a.distancia_km) : null;
+  return {
+    id: a.id,
+    lat: a.lat,
+    lng: a.lng,
+    titulo: a.titulo,
+    tipo: a.tipo,
+    lugar: formatarLugar(a.bairro, a.cidade),
+    valor: valorDoAnuncio(a),
+    curto:
+      a.tipo === "servico" && a.pagamento_valor != null
+        ? `a partir de ${valorCurto(a.pagamento_valor, a.pagamento_unidade)}`
+        : valorCurto(a.pagamento_valor, a.pagamento_unidade),
+    modalidade: rotuloModalidade(a.tipo, a.regime),
+    distancia: formatarDistancia(a.distancia_km),
+    tempo: tempo ? `${tempo} ${tempoDe === "casa" ? "da sua casa" : "de onde você está"}` : null,
+    autor: `${a.autor_nome} · ${rotuloConta(a.autor_tipo)}`,
+    match,
+  };
 }
