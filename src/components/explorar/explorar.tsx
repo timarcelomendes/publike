@@ -48,6 +48,7 @@ import { PerguntasNaLista } from "./perguntas-na-lista";
 import { ListaPaginada } from "./lista-paginada";
 import { VisaoExplorar } from "./visao-explorar";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
+import { comPertoGuardado } from "@/lib/servidor/perto";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
@@ -114,7 +115,7 @@ export async function BuscaExplorar({
 }) {
   const sp = await searchParams;
   const [local, intencao, visita] = await Promise.all([obterLocal(), obterIntencao(), cidadeDaVisita()]);
-  const filtros = aplicarIntencao(lerFiltros(sp), tipoDaIntencao(intencao));
+  const filtros = aplicarIntencao(lerFiltros(await comPertoGuardado(sp)), tipoDaIntencao(intencao));
   return (
     <BarraBusca
       filtros={filtros}
@@ -187,7 +188,7 @@ export async function Explorar({
     soOlharComoPessoa(),
     cidadeDaVisita(),
   ]);
-  const filtrosDaBusca = aplicarIntencao(lerFiltros(parametros), tipoDaIntencao(intencao));
+  const filtrosDaBusca = aplicarIntencao(lerFiltros(await comPertoGuardado(parametros)), tipoDaIntencao(intencao));
   // sem dizer onde mora, a lista conta do centro da cidade principal da praça (a cidade adivinhada
   // pelo endereço de internet fica só nos textos: se errar, não esconde vaga)
   const filtros = partirDoLocal(filtrosDaBusca, local, visita.praca.cidade);

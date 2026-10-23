@@ -6,6 +6,7 @@ import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { AVISOS_GPS, pedirPosicao, useIrPara } from "./barra-busca";
 import { FaixaIntencao, FolhaIntencao, type ProximoPasso } from "./intencao";
 import { PainelOndeMora, PerguntaOndeMora, usePerguntaAdiada } from "./onde-mora";
+import { esquecerPerto } from "@/lib/perto-guardado";
 
 /**
  * As perguntas da primeira visita, em cima da lista de anúncios (sem partir a lista no meio) e
@@ -49,6 +50,7 @@ export function PerguntasNaLista({
 
   // quem acabou de dizer onde mora quer ver a partir de casa, não de onde está agora
   function contarDeCasa() {
+    esquecerPerto();
     if (filtros.origem !== "centro") ir({ origem: "centro" }, true);
   }
 

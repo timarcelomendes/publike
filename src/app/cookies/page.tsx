@@ -24,6 +24,7 @@ export default function Cookies() {
           itens={[
             "Sessão (os cookies que começam com sb-): mantêm você conectado. Sem eles, não dá para entrar.",
             "publike_local: lembra a cidade, o bairro e, se você informou, o CEP de casa de quem está sem conta, por até um ano. “Esquecer onde moro” e sair da conta apagam.",
+            "publike_perto: quando você toca em “Perto de mim” e o navegador deixa, guarda a sua posição aproximada (cerca de 100 metros, nunca a exata) por 24 horas, para as próximas visitas já contarem dali. Fica só no seu aparelho e não vai para o banco do Publike. Tocar de novo em “Perto de mim” ou escolher contar de casa apaga.",
             "publike_intencao: lembra o que você quer fazer no Publike (procurar trabalho, contratar, oferecer serviço). Sem conta, some quando você fecha o navegador; com conta, dura até um ano.",
             "publike_pediu_link: marca, por uma hora, que este navegador pediu um link de entrar por e-mail. Com ela, o link entra sozinho aqui; em outro aparelho, a página pergunta antes.",
             "publike_origem: quando você chega por um anúncio do Publike (no Google ou no Instagram, por exemplo), guarda só o nome da campanha, como google:servicos, por até 7 dias. Se você criar a conta nesse tempo, anotamos de qual campanha veio, para saber se o anúncio funciona. Não vai para o Google nem para ninguém.",

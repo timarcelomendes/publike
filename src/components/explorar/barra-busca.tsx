@@ -14,6 +14,7 @@ import { Seletor } from "../ui/campo";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "./abas";
 import { BotaoOndeMora, botaoLugar, PainelOndeMora } from "./onde-mora";
 import { noPublike, ONDE_FUNCIONA } from "@/lib/pracas";
+import { esquecerPerto, guardarPerto, pertoGuardadoNoNavegador } from "@/lib/perto-guardado";
 
 // Jeitos de olhar, cada um com a sua cara:
 //   O QUE (tipo) ...... abas sublinhadas, em cima da busca (abas.tsx; Talentos é outra página)
@@ -46,7 +47,10 @@ export const AVISOS_GPS = {
   negado: "Não conseguimos sua localização. Confira a permissão do navegador.",
 } as const;
 
-/** Pede a posição ao navegador. Arredonda (~100 m): bom para o mapa e a distância, sem a posição exata na URL. */
+/**
+ * Pede a posição ao navegador. Arredonda (~100 m): bom para o mapa e a distância, sem a posição exata
+ * na URL. A posição fica guardada no aparelho por 24 horas (perto-guardado.ts).
+ */
 export function pedirPosicao(
   achou: (ponto: { lat: number; lng: number }) => void,
   falhou: (motivo: keyof typeof AVISOS_GPS) => void,
@@ -56,7 +60,10 @@ export function pedirPosicao(
     ({ coords }) => {
       const { latitude: lat, longitude: lng } = coords;
       if (!noPublike({ lat, lng })) return falhou("fora");
-      achou({ lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 });
+      const ponto = { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 };
+      // guardado no aparelho por 24 horas: as próximas visitas já contam daqui
+      guardarPerto(ponto);
+      achou(ponto);
     },
     () => falhou("negado"),
     { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
@@ -222,6 +229,39 @@ export function BarraBusca({
   contrata?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
+  // "Perto de mim" guardado e a permissão já dada: a posição se atualiza sozinha (e vale por mais 24 h).
+  // Se a pessoa andou (~200 m), a busca passa a contar do lugar novo.
+  useEffect(() => {
+    const guardado = pertoGuardadoNoNavegador();
+    if (!guardado || !navigator.permissions?.query || !("geolocation" in navigator)) return;
+    let ativo = true;
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((permissao) => {
+        if (!ativo || permissao.state !== "granted") return;
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => {
+            if (!ativo) return;
+            const novo = {
+              lat: Math.round(coords.latitude * 1000) / 1000,
+              lng: Math.round(coords.longitude * 1000) / 1000,
+            };
+            if (!noPublike(novo)) return;
+            guardarPerto(novo);
+            const andou = Math.abs(novo.lat - guardado.lat) > 0.002 || Math.abs(novo.lng - guardado.lng) > 0.002;
+            if (andou && filtros.origem === "gps") ir({ lat: novo.lat, lng: novo.lng, origem: "gps" }, true);
+          },
+          () => {},
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+        );
+      })
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+    // só ao abrir a página
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [ondeMora, setOndeMora] = useState(abrirOndeMora);
   // para o "Voltar para a busca" da página do anúncio
   const enderecoDaBusca = hrefFiltros(filtros);
@@ -240,8 +280,11 @@ export function BarraBusca({
   const perto = filtros.origem === "gps";
 
   function alternarPerto() {
-    // tocar de novo desliga: volta a contar do centro (ou da casa)
-    if (perto) return ir({ origem: "centro" });
+    // tocar de novo desliga: volta a contar do centro (ou da casa) e esquece a posição guardada
+    if (perto) {
+      esquecerPerto();
+      return ir({ origem: "centro" });
+    }
     setAvisoGps(null);
     pedirPosicao(
       ({ lat, lng }) => ir({ lat, lng, origem: "gps", ordem: "perto" }),
@@ -327,6 +370,7 @@ export function BarraBusca({
               fechar={() => setOndeMora(false)}
               // quem acabou de dizer onde mora quer ver a partir de casa, não de onde está agora
               aoSalvar={() => {
+                esquecerPerto();
                 if (filtros.origem !== "centro") ir({ origem: "centro" }, true);
               }}
             />

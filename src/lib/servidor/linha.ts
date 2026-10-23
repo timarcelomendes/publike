@@ -38,6 +38,7 @@ import {
   valorDoAnuncio,
 } from "@/lib/formato";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
+import { comPertoGuardado } from "@/lib/servidor/perto";
 
 /** As abas da linha. */
 export type AbaDaLinha = "tudo" | "vaga" | "servico" | "recado";
@@ -193,7 +194,8 @@ type Parametros = Record<string, string | string[] | undefined>;
  * linha e o mapa usam o mesmo resultado). `chave` = os parâmetros da URL em JSON.
  */
 export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> => {
-  const sp = JSON.parse(chave) as Parametros;
+  // com o "Perto de mim" guardado (24 h), conta de onde a pessoa estava
+  const sp = await comPertoGuardado(JSON.parse(chave) as Parametros);
   const [agora, local, usuario, prefs, visita] = await Promise.all([
     agoraDaRequisicao(),
     obterLocal(),
