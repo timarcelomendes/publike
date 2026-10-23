@@ -7,7 +7,7 @@ import { forcaDoCurriculo } from "@/lib/curriculo-forca";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { nomeDoTempo } from "@/lib/deslocamento";
 import { filtrosMudados, hrefFiltros, SEM_FILTROS } from "@/lib/filtros";
-import { plural, primeiro } from "@/lib/formato";
+import { plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { numeroDaAba, quandoFoi, saudacao } from "@/lib/linha-do-tempo";
 import { chaveDaLinha, dadosDaLinha } from "@/lib/servidor/linha";
 import { perfilDeUso, type PerfilDeUso } from "@/lib/servidor/perfil-de-uso";
@@ -19,6 +19,8 @@ import { FotoDaConta } from "../foto-da-conta";
 import { AbasDaLinha } from "./abas-da-linha";
 import { BuscaERecado } from "./busca-e-recado";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
+import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
+import { Aviso } from "../../ui/basicos";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
@@ -150,7 +152,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   }
   // "Informe seu CEP" (?casa=1): os filtros já abrem com o "Onde você mora?"
   const casa = primeiro(sp.casa) === "1";
-  const [d, perfil, acao, usuario, visita, convite] = await Promise.all([
+  const [d, perfil, proxima, usuario, visita, convite, pdfNaoSalvo] = await Promise.all([
     dadosDaLinha(chaveDaLinha(sp)),
     obterMeuPerfil(),
     // só olhando (empresa vendo como pessoa), nada a fazer pela conta
@@ -158,7 +160,11 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
     obterUsuario(),
     cidadeDaVisita(),
     soOlhar ? Promise.resolve(null) : conviteDoRecado().catch(() => null),
+    // mandou o PDF do currículo e ele não foi salvo: o aviso fica aqui até salvar
+    soOlhar ? Promise.resolve(null) : meuPdfNaoSalvo(),
   ]);
+  const acao: Acao | null =
+    pdfNaoSalvo && proxima?.href === "/perfil/curriculo" ? { ...proxima, texto: "Terminar o currículo" } : proxima;
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
   // pessoa: o primeiro nome; empresa, comércio e agência: o nome inteiro
   const nome = (empresa ? perfil?.nome : perfil?.nome?.split(" ")[0])?.trim() ?? "";
@@ -225,6 +231,18 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
             </Link>
           )}
         </div>
+        {pdfNaoSalvo && (
+          <Aviso tipo="alerta" titulo="Seu currículo ainda não foi salvo">
+            <p>
+              O PDF que você mandou
+              {pdfNaoSalvo.enviadoEm ? ` ${tempoRelativo(pdfNaoSalvo.enviadoEm, d.agora)}` : ""} está guardado. Falta
+              conferir e tocar em “Salvar currículo” para as empresas verem.
+            </p>
+            <Link href="/perfil/curriculo" className="self-start text-label underline underline-offset-2">
+              Terminar meu currículo
+            </Link>
+          </Aviso>
+        )}
         {usuario && !soOlhar ? (
           // no celular e no tablet, a busca e o "Recado" numa linha (no computador, a busca fica no cabeçalho)
           <BuscaERecado

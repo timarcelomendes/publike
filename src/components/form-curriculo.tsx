@@ -114,6 +114,9 @@ type Retrato = {
   nomePdf: string | null;
 };
 
+// o PDF que a pessoa mandou antes e não chegou a salvar
+const NOME_PDF_GUARDADO = "O PDF que você mandou";
+
 // o salvar que não chegou ao servidor: o que a pessoa preencheu fica na aba até ela recarregar
 const salvarCurriculoProtegido = protegerAcao(salvarCurriculo);
 const CHAVE_RASCUNHO = "publike_rascunho_curriculo";
@@ -137,6 +140,7 @@ function LerCurriculoPronto({
   aoLer,
   aoDesfazer,
   aoMudarLendo,
+  pdfGuardado = null,
 }: {
   usuarioId: string;
   /** a pessoa já tem currículo salvo: o convite é para trocar pelo mais novo */
@@ -146,6 +150,8 @@ function LerCurriculoPronto({
   aoLer: (lido: CurriculoLido, pdf: { caminho: string; nome: string } | null) => void;
   aoDesfazer: (() => void) | null;
   aoMudarLendo: (lendo: boolean) => void;
+  /** o PDF que a pessoa já mandou e não chegou a salvar: dá para ler de novo sem enviar outra vez */
+  pdfGuardado?: string | null;
 }) {
   const [situacao, setSituacao] = useState<Situacao>({ tipo: "parado" });
   const seletorPdf = useRef<HTMLInputElement>(null);
@@ -285,6 +291,20 @@ function LerCurriculoPronto({
       {!lendo && (
         // no celular, um botão por linha, na largura toda
         <div className="grid gap-2 sm:flex sm:flex-wrap">
+          {pdfGuardado && situacao.tipo !== "pronto" && (
+            <Botao
+              onClick={() =>
+                void ler(async () => {
+                  const dados = new FormData();
+                  dados.set("pdf", pdfGuardado);
+                  return { dados, pdf: { caminho: pdfGuardado, nome: NOME_PDF_GUARDADO } };
+                })
+              }
+            >
+              <Sparkles aria-hidden />
+              Preencher com esse PDF
+            </Botao>
+          )}
           <Botao onClick={() => seletorPdf.current?.click()}>
             <FileUp aria-hidden />
             {situacao.tipo === "pronto" ? "Enviar outro PDF" : "Enviar PDF"}
@@ -327,6 +347,7 @@ export function FormCurriculo({
   rotuloSalvar = "Salvar currículo",
   lerArquivo = false,
   lido = null,
+  pdfGuardado = null,
 }: {
   inicial: Curriculo | null;
   /** mês atual ("2026-10"), vindo do servidor: limite das datas */
@@ -344,6 +365,8 @@ export function FormCurriculo({
   lerArquivo?: boolean;
   /** sem currículo salvo: o formulário começa com o que já foi lido (o convite de quem publicou a vaga) */
   lido?: CurriculoLido | null;
+  /** sem currículo salvo: o PDF que a pessoa mandou e não chegou a salvar (já vem anexado) */
+  pdfGuardado?: string | null;
 }) {
   const [estado, acao, enviando] = useActionState(salvarCurriculoProtegido, ESTADO_INICIAL);
   const [recuperado, setRecuperado] = useState(false);
@@ -375,8 +398,9 @@ export function FormCurriculo({
   const [novoCurso, setNovoCurso] = useState("");
   const [habilidades, setHabilidades] = useState<string[]>(inicial?.habilidades ?? semente?.habilidades ?? []);
   const [novaHabilidade, setNovaHabilidade] = useState("");
-  const [arquivo, setArquivo] = useState<string | null>(inicial?.arquivo ?? null);
-  const [nomePdf, setNomePdf] = useState<string | null>(null);
+  const guardado = inicial ? null : pdfGuardado;
+  const [arquivo, setArquivo] = useState<string | null>(inicial?.arquivo ?? guardado ?? null);
+  const [nomePdf, setNomePdf] = useState<string | null>(guardado ? NOME_PDF_GUARDADO : null);
   const [enviandoPdf, setEnviandoPdf] = useState(false);
   const [erroPdf, setErroPdf] = useState<string | null>(null);
   // a leitura do currículo pronto: enquanto lê, não dá para salvar; "Desfazer" volta ao que era
@@ -608,6 +632,7 @@ export function FormCurriculo({
           aoLer={aplicarLeitura}
           aoDesfazer={antesDaLeitura ? desfazerLeitura : null}
           aoMudarLendo={setLendo}
+          pdfGuardado={guardado}
         />
       )}
 

@@ -17,8 +17,9 @@ import {
   meuCurriculoVisivel,
   obterMeuCurriculo,
 } from "@/lib/dados";
-import { caminhoSeguro, primeiro } from "@/lib/formato";
+import { caminhoSeguro, primeiro, tempoRelativo } from "@/lib/formato";
 import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
+import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -108,7 +109,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
     convite ? dadosDoConvite(convite).catch(() => null) : null,
   ]);
   const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : null;
-  const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? null);
+  // mandou o PDF e o currículo não foi salvo: o formulário já vem com ele
+  const pdfNaoSalvo = !curriculo && !lido ? await meuPdfNaoSalvo() : null;
+  const agora = await agoraDaRequisicao();
+  const linkPdf = await linkDoMeuPdf(curriculo?.arquivo ?? pdfNaoSalvo?.caminho ?? null);
   // as vagas que já aceitaram a pessoa e só esperam o currículo
   const aceitas = curtidas.filter((c) => c.tipo === "vaga" && esperaCurriculo(c));
   // quem veio para a aba Talentos, ao salvar, cai direto na opção de aparecer nela
@@ -155,6 +159,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
           <Link href={`/talentos/${usuario.id}`} className="text-label underline">
             Ver como você aparece
           </Link>
+        </Aviso>
+      )}
+      {pdfNaoSalvo && (
+        <Aviso tipo="alerta" className="mb-6" titulo="Seu currículo ainda não foi salvo">
+          <p>
+            Você mandou o PDF{pdfNaoSalvo.enviadoEm ? ` ${tempoRelativo(pdfNaoSalvo.enviadoEm, agora)}` : ""}, mas o
+            currículo não chegou a ser salvo. O PDF já está aqui embaixo.
+            {ia ? " Toque em “Preencher com esse PDF”, confira" : " Preencha"} e toque em “Salvar currículo”, no fim da
+            página.
+          </p>
         </Aviso>
       )}
       {lido && dadosConvite && (
@@ -212,6 +226,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         hoje={hoje}
         rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
         lerArquivo={ia}
+        pdfGuardado={pdfNaoSalvo?.caminho ?? null}
       />
       {curriculo && <VisibilidadeCurriculo visivel={visivel} vitrine={vitrine} />}
       {curriculo && <ApagarCurriculo />}

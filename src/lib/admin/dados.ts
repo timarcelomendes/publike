@@ -1,6 +1,8 @@
 import "server-only";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/tipos-banco";
+import { pdfNaoSalvoDe } from "@/lib/servidor/curriculo-pendente";
+import { agoraDaRequisicao } from "@/lib/tempo";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -218,12 +220,12 @@ async function curriculoDasContas(
   }
   const comCurriculo = new Set((data ?? []).map((l) => l.perfil_id));
   const situacao: Record<string, SituacaoCurriculo> = {};
+  const agora = await agoraDaRequisicao();
   await Promise.all(
     pessoas.map(async (id) => {
       if (comCurriculo.has(id)) return void (situacao[id] = "salvo");
-      // o PDF fica na pasta da pessoa assim que ela envia, antes de salvar
-      const { data: arquivos } = await c.storage.from("curriculos").list(id, { limit: 1 });
-      situacao[id] = arquivos?.length ? "pdf" : "nao";
+      // o PDF fica na pasta da pessoa assim que ela envia, antes de salvar (o do chat não conta)
+      situacao[id] = (await pdfNaoSalvoDe(c, id, agora).catch(() => null)) ? "pdf" : "nao";
     }),
   );
   return situacao;
