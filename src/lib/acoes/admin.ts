@@ -10,7 +10,13 @@ import { ErroIA, iaConfigurada, MODELOS_IA, modeloDaIA } from "@/lib/ia/openai";
 import { escreverResumo } from "@/lib/ia/tarefas";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { prepararLogoEmail } from "@/lib/servidor/logo-email";
-import { enviarEmailsPendentes, processarFilas, revisarAnunciosPendentes } from "@/lib/servidor/filas";
+import {
+  enviarEmailsPendentes,
+  processarFilas,
+  revisarAnunciosPendentes,
+  revisarAvaliacoesPendentes,
+  revisarRecadosPendentes,
+} from "@/lib/servidor/filas";
 import { ehStatusSugestao } from "@/lib/sugestoes";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -377,15 +383,23 @@ export async function reenviarEmailsComFalha(): Promise<Resultado> {
 export async function processarFilasAgora(): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
-  const ia = await revisarAnunciosPendentes(20);
+  // as revisões da IA (anúncios, recados e avaliações) e depois os e-mails, que elas podem gerar
+  const [ia, recados, avaliacoes] = await Promise.all([
+    revisarAnunciosPendentes(20),
+    revisarRecadosPendentes(20),
+    revisarAvaliacoesPendentes(20),
+  ]);
   const emails = await enviarEmailsPendentes(50);
   refresh();
   const partes = [
     `${emails.enviados} e-mail(s) enviado(s)`,
     emails.falhas ? `${emails.falhas} com falha` : null,
     ia.revisados ? `${ia.revisados} anúncio(s) revisado(s) pela IA` : null,
+    recados.revisados ? `${recados.revisados} recado(s) revisado(s) pela IA` : null,
+    avaliacoes.revisados ? `${avaliacoes.revisados} avaliação(ões) revisada(s) pela IA` : null,
   ].filter(Boolean);
-  if (emails.motivo && !emails.enviados) return { ok: false, erro: emails.motivo };
+  const revisados = ia.revisados + recados.revisados + avaliacoes.revisados;
+  if (emails.motivo && !emails.enviados && !revisados) return { ok: false, erro: emails.motivo };
   const espera = emails.semEndereco
     ? " Os avisos para as pessoas esperam o endereço do site no ar (PUBLIKE_URL_PUBLICA)."
     : "";
