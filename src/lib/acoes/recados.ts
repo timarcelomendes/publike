@@ -198,11 +198,19 @@ export async function procurarParaCitar(texto: string, soMinhas = false): Promis
   return lista.slice(0, 10);
 }
 
-export type CurriculoCitavel = { id: string; nome: string; titulo: string | null; bairro: string | null };
+export type CurriculoCitavel = {
+  id: string;
+  nome: string;
+  titulo: string | null;
+  bairro: string | null;
+  /** o currículo de quem está escrevendo */
+  seu?: boolean;
+};
 
 /**
  * "Compartilhar currículo": as pessoas da aba Talentos pelo nome, cargo ou habilidade (as do bairro de
- * quem escreve primeiro). Sem palavra, as que atualizaram o currículo por último.
+ * quem escreve primeiro). Sem palavra, o currículo da própria pessoa (se estiver na aba) e os que
+ * atualizaram por último.
  */
 export async function procurarCurriculoParaCitar(texto: string): Promise<CurriculoCitavel[]> {
   if (MODO_DEMO) return [];
@@ -214,7 +222,7 @@ export async function procurarCurriculoParaCitar(texto: string): Promise<Curricu
   const perfil = await obterMeuPerfil();
   const supabase = await criarClienteServidor();
   const comPalavra = termo.length >= 2;
-  const [porCurriculo, porNome] = await Promise.all([
+  const [porCurriculo, porNome, meu] = await Promise.all([
     // o cargo, as habilidades e os cursos do currículo
     supabase.rpc("buscar_talentos", {
       p_texto: comPalavra ? termo : null,
@@ -229,23 +237,32 @@ export async function procurarCurriculoParaCitar(texto: string): Promise<Curricu
           .from("perfis")
           .select("id")
           .eq("tipo", "pessoa")
-          .neq("id", usuario.id)
           .ilike("nome", `%${termo.replace(/[%_\\]/g, " ")}%`)
           .limit(6)
       : Promise.resolve({ data: [] as { id: string }[] }),
+    // o próprio currículo (só se estiver na aba Talentos), primeiro da lista quando não há palavra
+    comPalavra ? Promise.resolve(null) : supabase.rpc("talento_resumo", { p_perfil: usuario.id }).maybeSingle(),
   ]);
   const doNome = await Promise.all(
     (porNome.data ?? []).map(
       async ({ id }) => (await supabase.rpc("talento_resumo", { p_perfil: id }).maybeSingle()).data,
     ),
   );
-  const vistos = new Set<string>([usuario.id]);
+  const vistos = new Set<string>();
   const lista: CurriculoCitavel[] = [];
-  for (const t of [...doNome, ...(porCurriculo.data ?? [])]) {
+  for (const t of [meu?.data ?? null, ...doNome, ...(porCurriculo.data ?? [])]) {
     if (!t || vistos.has(t.perfil_id)) continue;
     vistos.add(t.perfil_id);
-    lista.push({ id: t.perfil_id, nome: t.nome, titulo: t.titulo ?? t.cargos?.[0] ?? null, bairro: t.bairro });
+    lista.push({
+      id: t.perfil_id,
+      nome: t.nome,
+      titulo: t.titulo ?? t.cargos?.[0] ?? null,
+      bairro: t.bairro,
+      seu: t.perfil_id === usuario.id,
+    });
   }
+  // o próprio currículo sempre em primeiro
+  lista.sort((a, b) => Number(Boolean(b.seu)) - Number(Boolean(a.seu)));
   return lista.slice(0, 10);
 }
 

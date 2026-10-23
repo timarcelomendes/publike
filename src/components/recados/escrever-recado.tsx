@@ -393,7 +393,15 @@ export function EscreverRecado({
         <p className="mt-2.5 flex w-fit max-w-full items-center gap-2 rounded-pill bg-surface-300 py-1 pr-1 pl-3 text-body-sm">
           <FileUser aria-hidden className="size-4 shrink-0 text-ink-muted" />
           <span className="truncate">
-            Compartilhando o currículo de <b className="font-semibold">{curriculo.nome}</b>
+            {curriculo.seu ? (
+              <>
+                Compartilhando <b className="font-semibold">o seu currículo</b>
+              </>
+            ) : (
+              <>
+                Compartilhando o currículo de <b className="font-semibold">{curriculo.nome}</b>
+              </>
+            )}
             {curriculo.titulo && ` · ${curriculo.titulo}`}
           </span>
           <button
@@ -435,7 +443,7 @@ export function EscreverRecado({
                   >
                     <FileUser aria-hidden className="size-4 shrink-0 text-ink-muted" />
                     <span className="truncate">
-                      <b className="font-semibold">{t.nome}</b>
+                      <b className="font-semibold">{t.seu ? "Seu currículo" : t.nome}</b>
                       {t.titulo && ` · ${t.titulo}`}
                       {t.bairro && <span className="text-ink-muted"> · {t.bairro}</span>}
                     </span>
