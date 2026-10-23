@@ -49,7 +49,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
   const pedido = primeiro(sp.filtro) ?? "todos";
   const filtro = FILTROS.some((f) => f.valor === pedido) ? pedido : "todos";
   const pagina = Math.max(1, Math.floor(Number(primeiro(sp.pagina))) || 1);
-  const [{ itens, total }, agora] = await Promise.all([
+  const [{ itens, total, curriculos }, agora] = await Promise.all([
     listarUsuarios(c, q || null, filtro, pagina),
     agoraDaRequisicao(),
   ]);
@@ -103,6 +103,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
                       <span className="truncate text-label">{u.nome ?? "Sem perfil ainda"}</span>
                       {u.moderador && <Selo variante="neutro">Moderador</Selo>}
                       {u.verificado && <Selo variante="match">Verificado</Selo>}
+                      {curriculos[u.id] === "salvo" && <Selo variante="contorno">Com currículo</Selo>}
+                      {curriculos[u.id] === "pdf" && <Selo variante="perigo">Mandou o PDF e não salvou</Selo>}
+                      {curriculos[u.id] === "nao" && <Selo variante="aviso">Sem currículo</Selo>}
                       {u.suspenso_ate &&
                         (banida ? (
                           <Selo variante="perigo">Banida</Selo>

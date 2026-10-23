@@ -196,7 +196,37 @@ export async function listarUsuarios(c: ClienteBanco, busca: string | null, filt
     p_deslocamento: (pagina - 1) * POR_PAGINA,
   });
   if (error) falha("as contas", error);
-  return { itens: data ?? [], total: Number(data?.[0]?.total ?? 0) };
+  const itens = data ?? [];
+  return { itens, total: Number(itens[0]?.total ?? 0), curriculos: await curriculoDasContas(c, itens) };
+}
+
+/**
+ * O currículo de cada pessoa da página: "salvo", "pdf" (mandou o PDF e não salvou o currículo) ou
+ * "nao". Contas que não são de pessoa ficam de fora (não têm currículo).
+ */
+export type SituacaoCurriculo = "salvo" | "pdf" | "nao";
+async function curriculoDasContas(
+  c: ClienteBanco,
+  itens: { id: string; tipo: string | null }[],
+): Promise<Record<string, SituacaoCurriculo>> {
+  const pessoas = itens.filter((u) => u.tipo === "pessoa").map((u) => u.id);
+  if (!pessoas.length) return {};
+  const { data, error } = await c.from("curriculos").select("perfil_id").in("perfil_id", pessoas);
+  if (error) {
+    console.warn(`Publike: sem a situação dos currículos: ${error.message}`);
+    return {};
+  }
+  const comCurriculo = new Set((data ?? []).map((l) => l.perfil_id));
+  const situacao: Record<string, SituacaoCurriculo> = {};
+  await Promise.all(
+    pessoas.map(async (id) => {
+      if (comCurriculo.has(id)) return void (situacao[id] = "salvo");
+      // o PDF fica na pasta da pessoa assim que ela envia, antes de salvar
+      const { data: arquivos } = await c.storage.from("curriculos").list(id, { limit: 1 });
+      situacao[id] = arquivos?.length ? "pdf" : "nao";
+    }),
+  );
+  return situacao;
 }
 
 export async function fichaUsuario(c: ClienteBanco, id: string) {
