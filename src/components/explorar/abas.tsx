@@ -35,24 +35,26 @@ export function classesAba(ativo: boolean) {
   }`;
 }
 
-/** O que vai dentro da aba: o ícone (só no computador), o nome e a ajuda. */
-export function MioloAba({ aba, ativo }: { aba: Aba; ativo: boolean }) {
+/** O que vai dentro da aba: o ícone (só no computador), o nome e a ajuda (`semAjuda`: só o nome). */
+export function MioloAba({ aba, ativo, semAjuda = false }: { aba: Aba; ativo: boolean; semAjuda?: boolean }) {
   const Icone = aba.icone;
   return (
     <>
       <Icone aria-hidden className={`hidden size-5 shrink-0 sm:block ${ativo ? "text-terra-text" : ""}`} />
       <span className="flex flex-col text-center leading-tight sm:text-left">
         <span className="text-label sm:text-body sm:font-semibold">{aba.nome}</span>
-        <span className="text-caption font-medium text-ink-muted">
-          {aba.curta ? (
-            <>
-              <span className="sm:hidden">{aba.curta}</span>
-              <span className="hidden sm:inline">{aba.ajuda}</span>
-            </>
-          ) : (
-            aba.ajuda
-          )}
-        </span>
+        {!semAjuda && (
+          <span className="text-caption font-medium text-ink-muted">
+            {aba.curta ? (
+              <>
+                <span className="sm:hidden">{aba.curta}</span>
+                <span className="hidden sm:inline">{aba.ajuda}</span>
+              </>
+            ) : (
+              aba.ajuda
+            )}
+          </span>
+        )}
       </span>
     </>
   );

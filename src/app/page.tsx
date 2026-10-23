@@ -298,10 +298,10 @@ function BuscaDaEmpresa({ searchParams }: { searchParams: Parametros }) {
         }
       >
         <Suspense fallback={<BuscaEsqueleto />}>
-          <BuscaExplorar searchParams={searchParams} className="mb-6" />
+          <BuscaExplorar searchParams={searchParams} className="mb-6" contrata />
         </Suspense>
         <Suspense fallback={<ExplorarEsqueleto />}>
-          <Explorar searchParams={searchParams} variante="feed" />
+          <Explorar searchParams={searchParams} variante="feed" contrata />
         </Suspense>
       </MolduraDaHome>
     </>

@@ -1,8 +1,9 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { after } from "next/server";
-import { obterUsuario } from "@/lib/dados";
+import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { COOKIE_INTENCAO, lerIntencao, type Intencao } from "@/lib/intencao";
+import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 /**
@@ -10,6 +11,17 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
  * Logada: a resposta guardada na conta. Sem login: a desta visita (cookie de sessão).
  */
 export async function obterIntencao(): Promise<Intencao | null> {
+  const intencao = await intencaoGuardada();
+  // empresa, comércio e agência não procuram trabalho (uma resposta antiga, de antes de criar a conta,
+  // ou do cookie da visita): para elas, vale "procuro funcionário". No "só olhar", vê como pessoa.
+  if (intencao === "trabalho" || intencao === "talento") {
+    const perfil = await obterMeuPerfil().catch(() => null);
+    if (perfil && perfil.tipo !== "pessoa" && !(await soOlharComoPessoa())) return "contratar_pessoa";
+  }
+  return intencao;
+}
+
+async function intencaoGuardada(): Promise<Intencao | null> {
   const doCookie = lerIntencao((await cookies()).get(COOKIE_INTENCAO)?.value);
   const usuario = await obterUsuario();
   if (!usuario) return doCookie;

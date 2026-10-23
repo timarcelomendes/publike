@@ -103,11 +103,14 @@ export async function BuscaExplorar({
   className,
   faixa = false,
   soLugar = false,
+  contrata = false,
 }: {
   searchParams: Parametros;
   className?: string;
   faixa?: boolean;
   soLugar?: boolean;
+  /** quem contrata: as abas só com o nome (as frases "Quero trabalhar"... são de quem visita) */
+  contrata?: boolean;
 }) {
   const sp = await searchParams;
   const [local, intencao, visita] = await Promise.all([obterLocal(), obterIntencao(), cidadeDaVisita()]);
@@ -121,6 +124,7 @@ export async function BuscaExplorar({
       className={className}
       faixa={faixa}
       soLugar={soLugar}
+      contrata={contrata}
     />
   );
 }
@@ -153,6 +157,7 @@ export async function Explorar({
   lugar = false,
   acimaDoMapa = null,
   abasDaBusca = false,
+  contrata = false,
 }: {
   searchParams: Parametros;
   variante?: "vitrine" | "feed";
@@ -165,6 +170,12 @@ export async function Explorar({
    * contrata já tem as abas na barra da busca)
    */
   abasDaBusca?: boolean;
+  /**
+   * quem contrata (empresa, comércio e agência, fora do "só olhar"): a lista das vagas do Publike
+   * sempre como a de uma busca (cartões menores, a ordem nos filtros), sem o que é de quem procura
+   * trabalho (o % de match, o convite para o currículo e o "Oferecer meus serviços")
+   */
+  contrata?: boolean;
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
@@ -181,17 +192,21 @@ export async function Explorar({
   // pelo endereço de internet fica só nos textos: se errar, não esconde vaga)
   const filtros = partirDoLocal(filtrosDaBusca, local, visita.praca.cidade);
   // o jeito de ver já vem do servidor (o escolhido, pelo cookie, ou o padrão): a lista não troca depois de abrir
-  const visaoDaLista = feed && filtros.q.trim() ? await visaoInicialDaBusca() : await visaoInicialDaLista(feed);
+  const visaoDaLista =
+    feed && (filtros.q.trim() || contrata) ? await visaoInicialDaBusca() : await visaoInicialDaLista(feed);
   // busca por palavra ("mecânico"): a página vira a dos resultados (o título diz o que foi buscado,
   // em cima ficam Tudo, Vagas e Serviços, e o que tem a palavra no título vem primeiro)
   const termo = filtros.q.trim();
   const busca = termo.length > 0;
+  // quem contrata vê a lista sempre como a de uma busca
+  const comoBusca = busca || contrata;
   // no feed, a ordem fica nos atalhos (Para você, Mais perto, Novas); serviços não têm atalho de ordem.
   // Na busca por palavra, os atalhos dão lugar às abas e a ordem volta para os filtros.
-  const ordemFora = feed && filtros.tipo !== "servico" && !busca;
-  const avisar = filtros.tipo === "vaga" && !filtros.meus;
+  const ordemFora = feed && filtros.tipo !== "servico" && !comoBusca;
+  // o aviso de vaga nova é de quem procura trabalho (quem contrata não segue vagas dos outros)
+  const avisar = filtros.tipo === "vaga" && !filtros.meus && !contrata;
   // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
-  const procuraTrabalho = intencao === null || intencao === "trabalho" || intencao === "talento";
+  const procuraTrabalho = !contrata && (intencao === null || intencao === "trabalho" || intencao === "talento");
   const [encontrados, proximoPasso, publica, quem, salvas] = await Promise.all([
     buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
     proximoPassoDa(intencao, Boolean(usuario)),
@@ -313,7 +328,7 @@ export async function Explorar({
   const respondidas = feed && intencao && local && quem;
   // na busca por palavra, nada entre o título e os resultados
   const perguntas =
-    filtros.meus || (busca && feed) ? null : (
+    filtros.meus || (comoBusca && feed) ? null : (
       <div className={respondidas ? "lg:hidden" : "contents"}>
         <PerguntasNaLista
           filtros={filtros}
@@ -406,7 +421,7 @@ export async function Explorar({
                 </div>
               </aside>
             )}
-            {convidarQuemContrata && <ConviteQuemContrata />}
+            {convidarQuemContrata && <ConviteQuemContrata comConta={Boolean(usuario)} />}
           </>
         }
       />
@@ -443,9 +458,10 @@ export async function Explorar({
               </BotaoLink>
             )}
             {filtros.tipo === "servico" ? (
-              <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink>
+              // quem contrata não oferece serviço: só a distância maior
+              !contrata && <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink>
             ) : (
-              <BotaoLink href="/publicar">Publicar grátis</BotaoLink>
+              <BotaoLink href="/publicar">{contrata ? "Publicar vaga" : "Publicar grátis"}</BotaoLink>
             )}
           </>
         }
@@ -500,7 +516,7 @@ export async function Explorar({
   );
   const atalhos = !feed ? (
     <AbasDaLista filtros={filtros} />
-  ) : busca ? (
+  ) : comoBusca ? (
     abasDaBusca ? (
       <AbasDaLista filtros={filtros} talentos={false} />
     ) : null
@@ -622,8 +638,8 @@ export async function Explorar({
         filtros={filtros}
         abas={feed ? null : atalhos}
         ordem={feed ? null : <OrdemDaLista filtros={filtros} combina={Boolean(quem)} />}
-        padrao={feed ? (busca ? "lista" : "blocos") : undefined}
-        busca={feed && busca}
+        padrao={feed ? (comoBusca ? "lista" : "blocos") : undefined}
+        busca={feed && comoBusca}
         inicial={visaoDaLista}
         compacto={feed}
         ordemFora={ordemFora}
@@ -791,8 +807,8 @@ export function ExplorarEsqueleto() {
   );
 }
 
-/** Para quem tem vaga: publicar é grátis e dá para começar sem conta, por um modelo pronto. */
-function ConviteQuemContrata() {
+/** Para quem tem vaga: publicar é grátis, por um modelo pronto (sem conta, dá para começar sem ela). */
+function ConviteQuemContrata({ comConta }: { comConta: boolean }) {
   return (
     <aside
       aria-label="Para quem tem vaga"
@@ -805,8 +821,9 @@ function ConviteQuemContrata() {
         <div className="flex flex-col gap-0.5">
           <p className="text-label">Tem vaga para preencher?</p>
           <p className="text-body-sm text-ink-muted">
-            Publique grátis em poucos minutos: dá para começar sem conta, a partir de um modelo pronto. A vaga aparece
-            aqui para quem mora perto.
+            {comConta
+              ? "Publique grátis em poucos minutos, a partir de um modelo pronto. A vaga aparece aqui para quem mora perto."
+              : "Publique grátis em poucos minutos: dá para começar sem conta, a partir de um modelo pronto. A vaga aparece aqui para quem mora perto."}
           </p>
         </div>
       </div>

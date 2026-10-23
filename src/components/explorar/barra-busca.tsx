@@ -200,6 +200,7 @@ export function BarraBusca({
   extra = null,
   umaLinha = false,
   cidade,
+  contrata = false,
 }: {
   filtros: Filtros;
   local: Local | null;
@@ -217,6 +218,8 @@ export function BarraBusca({
   extra?: ReactNode;
   /** com soLugar: o lugar e o extra numa linha só, sem quebrar (o extra rola de lado) */
   umaLinha?: boolean;
+  /** quem contrata: as abas só com o nome */
+  contrata?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const [ondeMora, setOndeMora] = useState(abrirOndeMora);
@@ -290,13 +293,13 @@ export function BarraBusca({
                   }
                   className={classesAba(ativo)}
                 >
-                  <MioloAba aba={t} ativo={ativo} />
+                  <MioloAba aba={t} ativo={ativo} semAjuda={contrata} />
                 </button>
               );
             })}
             {/* gente que procura trabalho: outra página (não são anúncios) */}
             <Link href={ABA_TALENTOS.href} className={classesAba(false)}>
-              <MioloAba aba={ABA_TALENTOS} ativo={false} />
+              <MioloAba aba={ABA_TALENTOS} ativo={false} semAjuda={contrata} />
             </Link>
           </div>
         )}
