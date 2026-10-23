@@ -144,4 +144,6 @@ export type EstadoForm = {
   mensagem?: string;
   erro?: string;
   erros?: Record<string, string>;
+  /** o salvar não chegou ao servidor (site publicado de novo com a página aberta, ou sem internet) */
+  semSalvar?: boolean;
 };

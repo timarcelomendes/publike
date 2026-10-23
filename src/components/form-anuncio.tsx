@@ -2,7 +2,17 @@
 
 import { ArrowRight, Briefcase, Check, ChevronDown, Wrench } from "lucide-react";
 import Link from "next/link";
-import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
@@ -213,7 +223,9 @@ export function FormAnuncio({
   extras?: Record<string, string>;
 }) {
   const editando = Boolean(inicial.id);
-  const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
+  // a falha sem chegar ao servidor (site publicado de novo com a página aberta) vira aviso na tela
+  const acaoProtegida = useMemo(() => protegerAcao(acaoSalvar), [acaoSalvar]);
+  const [estado, acao, enviando] = useActionState(acaoProtegida, ESTADO_INICIAL);
   // anúncio novo é sempre vaga; serviço tem cadastro próprio ("Meus serviços")
   const tipo: TipoAnuncio = editando ? inicial.tipo : "vaga";
   const [combinar, setCombinar] = useState(inicial.combinar ?? (editando ? inicial.pagamento_valor == null : false));

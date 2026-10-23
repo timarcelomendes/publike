@@ -24,6 +24,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { excluirConta, salvarPerfil } from "@/lib/acoes/perfil";
+import { protegerAcao } from "@/lib/acao-segura";
 import { BAIRROS } from "@/lib/bairros";
 import { bairroDaReceita, formatarCnpj, limparCnpj, nomeDaReceita, type DadosCnpj } from "@/lib/cnpj";
 import { CIDADES, LIMITES_CONTA, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
@@ -107,6 +108,9 @@ const OPCOES_MODO: {
   },
 ];
 
+// a falha sem chegar ao servidor (site publicado de novo com a página aberta) vira aviso na tela
+const salvarPerfilProtegido = protegerAcao(salvarPerfil);
+
 export function FormPerfil({
   perfil,
   usuarioId,
@@ -134,7 +138,7 @@ export function FormPerfil({
   /** o que a conta faz no Publike (os modos do painel); sem: a pergunta não aparece */
   modos?: ModoPainel[];
 }) {
-  const [estado, acao, enviando] = useActionState(salvarPerfil, { ok: false } as EstadoForm);
+  const [estado, acao, enviando] = useActionState(salvarPerfilProtegido, { ok: false } as EstadoForm);
   const [nome, setNome] = useState(perfil?.nome ?? nomeSugerido ?? "");
   const [tipo, setTipo] = useState<TipoConta>((perfil?.tipo as TipoConta) ?? "pessoa");
   const [foto, setFoto] = useState<string | null>(perfil?.foto ?? null);

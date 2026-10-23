@@ -27,6 +27,7 @@ import {
   type ReactNode,
 } from "react";
 import { apagarCurriculo, lerCurriculoEnviado, salvarCurriculo, type LeituraDoArquivo } from "@/lib/acoes/curriculo";
+import { protegerAcao } from "@/lib/acao-segura";
 import {
   CNHS,
   DISPONIBILIDADES,
@@ -112,6 +113,10 @@ type Retrato = {
   arquivo: string | null;
   nomePdf: string | null;
 };
+
+// o salvar que não chegou ao servidor: o que a pessoa preencheu fica na aba até ela recarregar
+const salvarCurriculoProtegido = protegerAcao(salvarCurriculo);
+const CHAVE_RASCUNHO = "publike_rascunho_curriculo";
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
@@ -340,7 +345,8 @@ export function FormCurriculo({
   /** sem currículo salvo: o formulário começa com o que já foi lido (o convite de quem publicou a vaga) */
   lido?: CurriculoLido | null;
 }) {
-  const [estado, acao, enviando] = useActionState(salvarCurriculo, ESTADO_INICIAL);
+  const [estado, acao, enviando] = useActionState(salvarCurriculoProtegido, ESTADO_INICIAL);
+  const [recuperado, setRecuperado] = useState(false);
   const semente = inicial ? null : lido;
   const [titulo, setTitulo] = useState(inicial?.titulo ?? semente?.titulo ?? "");
   const [escolaridade, setEscolaridade] = useState(inicial?.escolaridade ?? semente?.escolaridade ?? "");
@@ -507,6 +513,53 @@ export function FormCurriculo({
     setNomePdf(r.nomePdf);
     setAntesDaLeitura(null);
   }
+
+  // o salvar falhou sem chegar ao servidor: guarda o que está preenchido, para voltar depois de recarregar
+  useEffect(() => {
+    if (!estado.semSalvar) return;
+    const retrato: Retrato = {
+      titulo,
+      habilidades,
+      escolaridade,
+      curso,
+      estudos,
+      experiencias,
+      cursos,
+      cnh,
+      disponibilidade,
+      arquivo,
+      nomePdf,
+    };
+    try {
+      sessionStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(retrato));
+    } catch {}
+    // só quando chega a falha (o que muda depois é guardado de novo na próxima tentativa)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado]);
+
+  // voltou depois de recarregar: o formulário recebe o que estava preenchido
+  useEffect(() => {
+    let r: Retrato | null = null;
+    try {
+      const guardado = sessionStorage.getItem(CHAVE_RASCUNHO);
+      sessionStorage.removeItem(CHAVE_RASCUNHO);
+      r = guardado ? (JSON.parse(guardado) as Retrato) : null;
+    } catch {}
+    if (!r) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lido do navegador depois de montar
+    setTitulo(r.titulo ?? "");
+    setHabilidades(r.habilidades ?? []);
+    setEscolaridade(r.escolaridade ?? "");
+    setCurso(r.curso ?? "");
+    setEstudos(r.estudos ?? []);
+    setExperiencias(r.experiencias ?? []);
+    setCursos(r.cursos ?? []);
+    setCnh(r.cnh ?? "");
+    setDisponibilidade(r.disponibilidade ?? []);
+    setArquivo(r.arquivo ?? null);
+    setNomePdf(r.nomePdf ?? null);
+    setRecuperado(true);
+  }, []);
 
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -953,6 +1006,7 @@ export function FormCurriculo({
               </option>
             ))}
           </Seletor>
+          {erros.cnh && <MensagemErro>{erros.cnh}</MensagemErro>}
         </div>
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-label">
@@ -971,6 +1025,7 @@ export function FormCurriculo({
               />
             ))}
           </div>
+          {erros.disponibilidade && <MensagemErro>{erros.disponibilidade}</MensagemErro>}
         </fieldset>
       </Secao>
 
@@ -1030,7 +1085,19 @@ export function FormCurriculo({
         </p>
       </div>
 
-      {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
+      {recuperado && !estado.erro && (
+        <Aviso tipo="info">Voltamos com o que você tinha preenchido. Confira e toque em “{rotuloSalvar}”.</Aviso>
+      )}
+      {estado.erro && (
+        <div role="alert" className="flex flex-col gap-2">
+          <Aviso tipo="erro">{estado.erro}</Aviso>
+          {estado.semSalvar && (
+            <Botao type="button" variante="secundario" onClick={() => window.location.reload()} className="self-start">
+              Recarregar a página
+            </Botao>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando || enviandoPdf || lendo} className="sm:min-w-56">

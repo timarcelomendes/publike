@@ -33,7 +33,15 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
   if (perfil && perfil.tipo !== "pessoa") return { ok: false, erro: "Currículo é só para conta de pessoa." };
 
   const leitura = lerCurriculo(formData);
-  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  if (!leitura.ok) {
+    // o primeiro problema já no aviso (alguns campos não têm lugar para a mensagem embaixo deles)
+    const primeiro = Object.values(leitura.erros)[0];
+    return {
+      ok: false,
+      erro: primeiro ? `Confira os campos marcados: ${primeiro}` : "Confira os campos marcados.",
+      erros: leitura.erros,
+    };
+  }
   const d = leitura.dados;
   if (d.arquivo && !d.arquivo.startsWith(`${usuario.id}/`)) return { ok: false, erro: "Envie o PDF de novo." };
 
