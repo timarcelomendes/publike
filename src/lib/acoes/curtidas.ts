@@ -6,6 +6,7 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { ETAPAS_CANDIDATO, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
+import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -35,7 +36,7 @@ export async function curtirAnuncio(
   }
 
   const supabase = await criarClienteServidor();
-  const { data: alvo } = await supabase.from("anuncios").select("perguntas").eq("id", anuncioId).maybeSingle();
+  const { data: alvo } = await supabase.from("anuncios").select("perguntas, tipo").eq("id", anuncioId).maybeSingle();
   const perguntas = perguntasDoBanco(alvo?.perguntas);
   let respostas: Respostas = {};
   if (perguntas.length) {
@@ -67,6 +68,8 @@ export async function curtirAnuncio(
   }
 
   after(processarFilas);
+  // candidatura a vaga vale para a campanha (Google Ads)
+  if (alvo?.tipo === "vaga") await marcarConversao("candidatura");
   refresh();
   // contato direto: a curtida já virou match
   const { data: feita } = await supabase

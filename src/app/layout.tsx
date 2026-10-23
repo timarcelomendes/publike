@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Suspense } from "react";
 import { Assistente } from "@/components/assistente/assistente";
 import { AvisoCookies } from "@/components/aviso-cookies";
+import { GoogleAds } from "@/components/google-ads";
 import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
@@ -107,6 +108,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <BoasVindasParceiro />
           <AvisoCookies />
+          {/* só carrega o Google depois do "Aceitar" no aviso de cookies */}
+          <GoogleAds />
         </Suspense>
         <AvisoAtualizacao />
         {/* lê o endereço da página: no build, precisa estar num Suspense */}

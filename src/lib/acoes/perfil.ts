@@ -16,6 +16,7 @@ import { COOKIE_ORIGEM } from "@/lib/origem";
 import { COOKIE_LOCAL } from "@/lib/local";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
+import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
@@ -108,6 +109,8 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
   }
   // perfil novo avisa a equipe por e-mail
   after(processarFilas);
+  // conta nova vale para a campanha (Google Ads)
+  if (!perfilAntes) await marcarConversao("cadastro");
 
   // Apaga fotos antigas que ficaram na pasta da pessoa
   const atual = d.foto?.split("/")[1] ?? null;

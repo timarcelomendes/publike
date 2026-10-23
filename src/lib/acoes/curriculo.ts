@@ -9,6 +9,7 @@ import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
 import { iaConfigurada } from "@/lib/ia/openai";
 import { limparCurriculos } from "@/lib/servidor/arquivos";
+import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
 import { lerArquivoDoCurriculo, type LeituraDoArquivo } from "@/lib/servidor/ler-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -44,6 +45,11 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
     .eq("perfil_id", usuario.id)
     .eq("status", "pendente")
     .not("aceita_em", "is", null);
+  // o primeiro currículo vale para a campanha (Google Ads)
+  const { count: jaTinha } = await supabase
+    .from("curriculos")
+    .select("perfil_id", { count: "exact", head: true })
+    .eq("perfil_id", usuario.id);
   const { error } = await supabase.from("curriculos").upsert(
     {
       perfil_id: usuario.id,
@@ -65,6 +71,7 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
     return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar seu currículo agora.") };
   }
   await limparCurriculos(supabase, usuario.id, d.arquivo);
+  if (jaTinha === 0) await marcarConversao("curriculo");
   // os avisos do match (para a pessoa e para quem publicou) saem já
   if (aceitas?.length) after(processarFilas);
 

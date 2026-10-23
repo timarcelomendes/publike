@@ -5,14 +5,17 @@ import type { NextConfig } from "next";
 // bloqueado, sem bloquear nada. Depois de conferir o site publicado sem avisos, troque a chave para
 // "Content-Security-Policy". Os scripts precisam de 'unsafe-inline' (o Next põe scripts na página).
 const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+// o Google Ads (só carrega depois do aceite dos cookies, google-ads.tsx): imagens e conexões das conversões
+const GOOGLE_ADS =
+  "https://www.googletagmanager.com https://www.google.com https://www.google.com.br https://googleads.g.doubleclick.net https://www.googleadservices.com";
 const POLITICA_DE_CONTEUDO = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-  `img-src 'self' data: blob: ${SUPABASE} https://tiles.openfreemap.org https://*.googleusercontent.com https://live.staticflickr.com https://*.staticflickr.com https://upload.wikimedia.org https://pixabay.com https://cdn.pixabay.com`,
+  `img-src 'self' data: blob: ${SUPABASE} https://tiles.openfreemap.org https://*.googleusercontent.com https://live.staticflickr.com https://*.staticflickr.com https://upload.wikimedia.org https://pixabay.com https://cdn.pixabay.com ${GOOGLE_ADS}`,
   "font-src 'self'",
-  `connect-src 'self' ${SUPABASE} ${SUPABASE.replace(/^http/, "ws")} https://tiles.openfreemap.org https://accounts.google.com https://challenges.cloudflare.com`,
-  "frame-src https://accounts.google.com https://challenges.cloudflare.com",
+  `connect-src 'self' ${SUPABASE} ${SUPABASE.replace(/^http/, "ws")} https://tiles.openfreemap.org https://accounts.google.com https://challenges.cloudflare.com ${GOOGLE_ADS}`,
+  "frame-src https://accounts.google.com https://challenges.cloudflare.com https://td.doubleclick.net https://www.googletagmanager.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",

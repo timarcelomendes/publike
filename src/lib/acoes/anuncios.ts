@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
+import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -125,6 +126,7 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
       if (erroConvite) console.warn("Publike: não deu para registrar o aceite do convite:", erroConvite.message);
     }
     destino = `/anuncio/${data.id}?publicado=1`;
+    if (d.tipo === "vaga") await marcarConversao("vaga");
   }
 
   // com a moderação automática ligada, a IA revisa o texto logo depois
