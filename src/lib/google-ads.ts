@@ -1,5 +1,5 @@
 // Google Ads: o código do Google (gtag.js) só carrega para quem tocou em "Aceitar" no aviso de cookies
-// (ou ligou depois, na política de privacidade). Sem isso, nada vai para o Google.
+// (ou ligou depois, na página Cookies). Sem isso, nada vai para o Google.
 // As conversões são os momentos que valem para a campanha. A ação no servidor marca o momento num
 // cookie curto (publike_conversao, só o nome do momento, sem nada da pessoa), e o navegador avisa o
 // Google e apaga o cookie (google-ads.tsx). Sem aceite, o navegador só apaga.

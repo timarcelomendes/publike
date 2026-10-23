@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { EVENTO_PROPAGANDA } from "@/lib/google-ads";
 import { aceitouPropaganda, guardarPropaganda } from "./google-ads";
 
-// Na política de privacidade: liga ou desliga os cookies de propaganda (o Google Ads) depois do aviso.
+// Na página Cookies (/cookies): liga ou desliga os cookies de propaganda (o Google Ads) depois do aviso.
 
 function assinar(avisar: () => void) {
   window.addEventListener(EVENTO_PROPAGANDA, avisar);

@@ -165,8 +165,12 @@ function Colunas({ ctx, children }: { ctx: Contexto; children: ReactNode }) {
         {children}
         <p className="mt-6 text-body-sm text-ink-muted">
           Ao entrar, você aceita as{" "}
+          <Link href="/regras" className="underline underline-offset-2 hover:text-ink">
+            regras
+          </Link>{" "}
+          e a{" "}
           <Link href="/privacidade" className="underline underline-offset-2 hover:text-ink">
-            regras e a política de privacidade
+            política de privacidade
           </Link>
           .
         </p>

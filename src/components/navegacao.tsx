@@ -73,7 +73,13 @@ export function Rodape() {
             Para profissionais
           </Link>
           <Link href="/privacidade" className={link}>
-            Privacidade e regras
+            Privacidade
+          </Link>
+          <Link href="/cookies" className={link}>
+            Cookies
+          </Link>
+          <Link href="/regras" className={link}>
+            Regras
           </Link>
           <Link href="/ajuda" className={link}>
             Ajuda

@@ -179,8 +179,8 @@ export default function Gratis() {
           </ul>
           <p className="mt-3 text-body-sm text-ink-muted">
             As regras completas estão em{" "}
-            <Link href="/privacidade#regras" className={linkTexto}>
-              Privacidade e regras
+            <Link href="/regras" className={linkTexto}>
+              Regras do Publike
             </Link>
             .
           </p>

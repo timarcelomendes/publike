@@ -967,7 +967,7 @@ export function FormAnuncio({
             {semConta ? "Depois é só entrar com seu WhatsApp ou e-mail: a vaga vai ao ar na hora. " : ""}
             Grátis. Seu WhatsApp só aparece no match. Fica no ar pelo prazo que você escolher, e dá para renovar. Ao
             publicar, você concorda com as{" "}
-            <Link href="/privacidade#regras" className="underline">
+            <Link href="/regras" className="underline">
               regras do Publike
             </Link>
             .

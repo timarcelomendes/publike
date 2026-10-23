@@ -10,7 +10,7 @@ import { Botao } from "./ui/botao";
 
 // Aviso de cookies: os necessários (sessão e escolhas da pessoa) sempre; os de propaganda (o código do
 // Google Ads, para saber se o anúncio trouxe gente) só com o "Aceitar". "Só os necessários" fecha sem eles.
-// A escolha muda depois na política de privacidade (#cookies).
+// A escolha muda depois na página Cookies (/cookies).
 // Fica no lugar do convite para instalar o app, que espera o aviso ser fechado,
 // e espera as boas-vindas da primeira visita fecharem (boas-vindas-parceiro.tsx).
 
@@ -79,7 +79,7 @@ export function AvisoCookies() {
         </span>
       </p>
       <div className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
-        <Link href="/privacidade#cookies" className="text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline">
+        <Link href="/cookies" className="text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline">
           Saiba mais
         </Link>
         <Botao tamanho="sm" onClick={() => escolher(false)}>

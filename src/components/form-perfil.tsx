@@ -636,7 +636,7 @@ export function FormPerfil({
             />
             <span>
               Li e aceito as{" "}
-              <Link href="/privacidade#regras" target="_blank" rel="noopener" className="underline underline-offset-2">
+              <Link href="/regras" target="_blank" rel="noopener" className="underline underline-offset-2">
                 regras do Publike
               </Link>{" "}
               e a{" "}

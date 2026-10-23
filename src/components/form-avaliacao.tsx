@@ -123,7 +123,7 @@ export function FormAvaliacao({
         </Botao>
         <p className="text-body-sm text-ink-muted">
           Aparece no perfil com o seu primeiro nome. Ao enviar, você concorda com as{" "}
-          <Link href="/privacidade#regras" className="underline">
+          <Link href="/regras" className="underline">
             regras do Publike
           </Link>
           .

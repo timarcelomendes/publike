@@ -619,7 +619,7 @@ export function FormServicos({
         </Botao>
         <p className="text-body-sm text-ink-muted">
           Grátis. Seus serviços ficam 90 dias no ar, e salvar de novo renova o prazo. Ao salvar, você concorda com as{" "}
-          <Link href="/privacidade#regras" className="underline">
+          <Link href="/regras" className="underline">
             regras do Publike
           </Link>
           .
