@@ -1,28 +1,33 @@
-import { ChevronDown, Megaphone, UserSearch } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Megaphone, UserSearch } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { BotaoConvidar } from "@/components/painel/botao-convidar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { CriteriosDaAderencia, NotaAderencia } from "@/components/painel/nota-aderencia";
 import { SoComSupabase } from "@/components/so-com-supabase";
+import { CartaoTalento } from "@/components/talentos/cartao-talento";
 import { Aviso, Avatar, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { calcularAderencia, requisitosDaVaga } from "@/lib/aderencia";
 import { MODO_DEMO } from "@/lib/config";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
-import { listarMeusAnuncios, obterAnuncio, talentosParaVaga } from "@/lib/dados";
-import { formatarLugar, primeiro, tempoRelativo } from "@/lib/formato";
+import { listarMeusAnuncios, obterAnuncio, obterMeuPerfil, talentosParaVaga } from "@/lib/dados";
+import { formatarLugar, formatarNumero, primeiro, tempoRelativo } from "@/lib/formato";
+import { estadosDeConexao } from "@/lib/servidor/conexoes";
+import { buscarTalentos } from "@/lib/servidor/talentos";
 import { exigirUsuario } from "@/lib/sessao";
+import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Talentos" };
 
-// Talentos: quem deixou as empresas acharem o currículo, na cidade da vaga, do que mais
-// combina para o que menos combina. Sem contato e com o nome encurtado: a empresa
-// convida, a pessoa vê a vaga e decide se curte. O contato sai só no match.
+// Talentos: todos os que deixaram as empresas acharem o currículo. Com vaga no ar, do que mais
+// combina com ela para o que menos combina, com o Convidar; sem vaga, todos, com o Conectar e o
+// convite para publicar. Sem contato e com o nome encurtado: o contato sai só no match (ou na conexão).
 
 export default function Talentos({ searchParams }: PageProps<"/painel/talentos">) {
   return (
@@ -49,7 +54,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
         curtir, chega na sua caixa de entrada.
       </p>
       <p className="mt-1 text-body-sm text-ink-muted">
-        Aqui aparece quem mora na cidade da vaga. Gente de toda a região está na{" "}
+        Para procurar por cargo ou habilidade, use a{" "}
         <Link href="/talentos" className="text-label text-ink underline underline-offset-2">
           aba Talentos da busca
         </Link>
@@ -58,16 +63,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
     </div>
   );
   if (!noAr.length) {
+    const pagina = Math.max(1, Math.min(MAX_PAGINAS_TALENTOS, Number(primeiro(sp.pagina)) || 1));
     return (
       <div className="flex flex-col gap-5">
         {cabecalho}
-        <Vazio
-          icone={Megaphone}
-          titulo="Publique uma vaga para ver os talentos"
-          acao={<BotaoLink href="/publicar">Publicar vaga grátis</BotaoLink>}
-        >
-          Talentos mostra quem combina com uma vaga sua que esteja no ar, na mesma cidade.
-        </Vazio>
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+          <Megaphone aria-hidden className="size-5 shrink-0 text-ink-muted" />
+          <p className="min-w-0 grow basis-64 text-body-sm">
+            <span className="text-label">Com uma vaga no ar,</span> você vê o % de quem mais combina com ela e convida
+            direto daqui. Sem vaga, toque em Conectar: quando a pessoa aceita, aparecem o contato e a conversa.
+          </p>
+          <BotaoLink href="/publicar" tamanho="sm">
+            Publicar vaga grátis
+          </BotaoLink>
+        </div>
+        <TodosOsTalentos pagina={pagina} />
       </div>
     );
   }
@@ -124,13 +134,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
       )}
       <p className="text-body-sm text-ink-muted">
         {talentos.length
-          ? `${talentos.length} ${talentos.length === 1 ? "pessoa" : "pessoas"} em ${anuncio.cidade} para “${anuncio.titulo}”, quem mais combina primeiro.`
+          ? `${formatarNumero(talentos.length)} ${talentos.length === 1 ? "pessoa" : "pessoas"} para “${anuncio.titulo}”, quem mais combina primeiro.`
           : ""}
       </p>
       {talentos.length === 0 ? (
         <Vazio icone={UserSearch} titulo="Ninguém em Talentos para esta vaga ainda">
-          Aparece quem mora em {anuncio.cidade}, tem currículo e deixou as empresas acharem. Enquanto isso, divulgue o
-          link da vaga.
+          Aparece quem tem currículo e deixou as empresas acharem (quem já curtiu a vaga está nos candidatos). Enquanto
+          isso, divulgue o link da vaga.
         </Vazio>
       ) : (
         <ul aria-label="Talentos" className="flex flex-col gap-3">
@@ -208,5 +218,87 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tal
         currículo de Talentos quando quiser.
       </p>
     </div>
+  );
+}
+
+/** Sem vaga no ar: todos os talentos (os do bairro da conta primeiro), em páginas, com o Conectar. */
+async function TodosOsTalentos({ pagina }: { pagina: number }) {
+  const perfil = await obterMeuPerfil().catch(() => null);
+  const resultado = await buscarTalentos({ texto: "", cidade: null, bairro: perfil?.bairro || null, pagina });
+  if (!resultado) {
+    return (
+      <Aviso tipo="alerta" titulo="Não deu para carregar os talentos agora">
+        Tente de novo em instantes.
+      </Aviso>
+    );
+  }
+  const { lista, total } = resultado;
+  if (lista.length === 0) {
+    return pagina > 1 ? (
+      <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm">
+        Esta página está vazia.{" "}
+        <Link href="/painel/talentos" className="font-semibold underline underline-offset-2">
+          Ver a primeira
+        </Link>
+      </p>
+    ) : (
+      <Vazio icone={UserSearch} titulo="Ninguém em Talentos ainda">
+        Quem procura trabalho e salva o currículo aparece aqui. Enquanto isso, publique sua vaga: quem procura vê.
+      </Vazio>
+    );
+  }
+  const paginas = Math.min(Math.ceil(total / TALENTOS_POR_PAGINA), MAX_PAGINAS_TALENTOS);
+  const estados = await estadosDeConexao(lista.map((t) => t.perfil_id));
+  const href = (n: number) => (n > 1 ? `/painel/talentos?pagina=${n}` : "/painel/talentos");
+  return (
+    <>
+      <p className="text-body-sm text-ink-muted">
+        {formatarNumero(total)} {total === 1 ? "talento" : "talentos"}
+        {perfil?.bairro ? `. Quem mora no ${perfil.bairro} vem primeiro.` : "."}
+      </p>
+      <ul aria-label="Talentos" className="grid gap-4 sm:grid-cols-2">
+        {lista.map((t) => (
+          <li key={t.perfil_id}>
+            <CartaoTalento
+              t={t}
+              acao={
+                <BotaoConectar
+                  outroId={t.perfil_id}
+                  outroNome={t.nome}
+                  estado={estados.get(t.perfil_id) ?? null}
+                  logado
+                  voltar={href(pagina)}
+                  para="talento"
+                  jeito="cartao"
+                />
+              }
+            />
+          </li>
+        ))}
+      </ul>
+      {paginas > 1 && (
+        <nav aria-label="Páginas" className="flex items-center justify-center gap-3">
+          {pagina > 1 ? (
+            <BotaoLink href={href(pagina - 1)} tamanho="sm" variante="fantasma">
+              <ChevronLeft aria-hidden />
+              Anterior
+            </BotaoLink>
+          ) : (
+            <span className="w-24" />
+          )}
+          <span className="text-body-sm text-ink-muted">
+            Página {pagina} de {paginas}
+          </span>
+          {pagina < paginas ? (
+            <BotaoLink href={href(pagina + 1)} tamanho="sm" variante="fantasma">
+              Próxima
+              <ChevronRight aria-hidden />
+            </BotaoLink>
+          ) : (
+            <span className="w-24" />
+          )}
+        </nav>
+      )}
+    </>
   );
 }
