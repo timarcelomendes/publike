@@ -528,8 +528,9 @@ export function ListaConvites({ convites, agora, site }: { convites: Convite[]; 
                 ? "Convites enviados na última hora. Faça uma pausa antes dos próximos."
                 : `de uns ${POR_HORA} convites por hora`}
             </span>
-            Muitas mensagens iguais para quem não tem o seu número fazem o WhatsApp bloquear a conta. Telefone fixo sem
-            WhatsApp: ligue ou mande e-mail.
+            Muitas mensagens para quem não tem o seu número fazem o WhatsApp bloquear a conta. O texto já muda um pouco
+            de um convite para outro, mas o que mais conta é o ritmo e quem responde. Telefone fixo sem WhatsApp: ligue
+            ou mande e-mail.
           </p>
         </div>
         <label className="flex flex-col gap-1 text-label">

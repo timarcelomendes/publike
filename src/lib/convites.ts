@@ -293,36 +293,105 @@ export function formatarFone(n: string) {
 const minusculo = (v: string) => v.replace(/\S+/g, (p) => (/^[A-Z]{2,}$/.test(p) ? p : p.toLowerCase()));
 const juntar = (l: string[]) => (l.length < 2 ? l.join("") : `${l.slice(0, -1).join(", ")} e ${l.at(-1)}`);
 
+// O texto muda um pouco de um convite para outro (a saudação, a apresentação, o pedido, a ordem dos
+// pontos e a despedida), com o mesmo conteúdo: muitas mensagens idênticas para quem não tem o número
+// pesam para o WhatsApp tratar como spam. A escolha sai do token do convite, então a mesma pessoa
+// recebe sempre o mesmo texto (o "Copiar mensagem", o WhatsApp e o e-mail batem).
+
+/** Um número de 0 a 2³² a partir do texto (FNV-1a): a mesma semente dá sempre a mesma escolha. */
+function sorteio(semente: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < semente.length; i++) {
+    h ^= semente.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** Escolhe uma das opções pela semente e pela parte da mensagem (cada parte varia por conta própria). */
+function escolher<T>(semente: string, parte: string, opcoes: readonly T[]): T {
+  return opcoes[sorteio(`${semente}|${parte}`) % opcoes.length];
+}
+
+/** A mesma lista em outra ordem, sempre a mesma para a semente. */
+function embaralhar<T>(semente: string, parte: string, lista: readonly T[]): T[] {
+  return lista
+    .map((item, i) => ({ item, n: sorteio(`${semente}|${parte}|${i}`) }))
+    .sort((a, b) => a.n - b.n)
+    .map((x) => x.item);
+}
+
+const DESPEDIDAS = [
+  `Se não tiver interesse, é só responder "não" que eu não mando mais mensagens. Obrigado!`,
+  `Se não fizer sentido para vocês, é só responder "não" que eu não mando mais nada. Obrigado!`,
+  `Caso não tenha interesse, responda "não" e eu paro de mandar mensagens. Valeu!`,
+  `Não quer receber? Responda "não" e eu não mando mais mensagens. Obrigado pela atenção!`,
+] as const;
+
+const ENTRAR = "(entra com o e-mail, sem senha)";
+
 export function mensagemConvite(
-  c: Pick<Convite, "nome" | "tipo" | "vagas">,
+  c: Pick<Convite, "nome" | "tipo" | "vagas"> & { token?: string },
   assinatura: string,
   link?: string | null,
   /** a vaga lida do anúncio já vem pronta no link */
   pronta = false,
 ) {
+  const s = c.token || c.nome;
   const pedido = link
     ? pronta
-      ? `Já deixei a vaga pronta no site. É só abrir, conferir e tocar em Publicar (entra com o e-mail, sem senha):\n${link}`
-      : `Para publicar, é só abrir o link, escrever a vaga e tocar em Publicar (entra com o e-mail, sem senha):\n${link}`
+      ? escolher(s, "pronta", [
+          `Já deixei a vaga pronta no site. É só abrir, conferir e tocar em Publicar ${ENTRAR}:\n${link}`,
+          `A vaga já está montada no site: falta só vocês conferirem e tocarem em Publicar ${ENTRAR}:\n${link}`,
+          `Deixei tudo pronto. Abrindo o link, é só conferir a vaga e tocar em Publicar ${ENTRAR}:\n${link}`,
+        ])
+      : escolher(s, "link", [
+          `Para publicar, é só abrir o link, escrever a vaga e tocar em Publicar ${ENTRAR}:\n${link}`,
+          `É rapidinho: abra o link, escreva a vaga e toque em Publicar ${ENTRAR}:\n${link}`,
+        ])
     : null;
   const vagas = juntar(c.vagas.map(minusculo));
   const essa = c.vagas.length > 1 ? "essas vagas" : "essa vaga";
   const quem = assinatura.trim() ? `Sou ${assinatura.trim()}, do Publike` : "Aqui é do Publike";
-  const abre = `Olá, pessoal da ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`;
-  const fecha = `Se não tiver interesse, é só responder "não" que eu não mando mais mensagens. Obrigado!`;
+  const apresenta = escolher(s, "apresenta", [
+    `${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
+    `${quem}. O Publike (publike.org) é um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
+    `${quem} (publike.org), um site de vagas e serviços de ${ONDE_FUNCIONA}, sem custo nenhum.`,
+  ]);
+  const ola = escolher(s, "ola", ["Olá", "Oi"]);
+  const tudo = escolher(s, "tudo", ["Tudo bem?", "Tudo certo?", "Como vão?"]);
+  const abre = `${ola}, ${escolher(s, "pessoal", ["pessoal", "equipe"])} da ${c.nome}! ${tudo} ${apresenta}`;
+  const fecha = escolher(s, "fecha", DESPEDIDAS);
+  const pontos = (lista: string[][]) =>
+    embaralhar(
+      s,
+      "pontos",
+      lista.map((opcoes, i) => `• ${escolher(s, `ponto${i}`, opcoes)}`),
+    ).join("\n");
   if (c.tipo === "prestador") {
     // profissional: a vitrine de serviços (quem disse "pode", o admin monta e manda o acesso)
     const servicos = juntar(c.vagas.map(minusculo));
     return [
-      `Olá, ${c.nome}! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
+      // para uma pessoa só: sem o "Como vão?"
+      `${ola}, ${c.nome}! ${escolher(s, "tudo", ["Tudo bem?", "Tudo certo?"])} ${apresenta}`,
       servicos
-        ? `Vi que você faz ${servicos}. Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`
+        ? escolher(s, "pede", [
+            `Vi que você faz ${servicos}. Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`,
+            `Vi que você trabalha com ${servicos}. Quer que eu monte a sua vitrine no Publike, de graça? Quem procura ${minusculo(c.vagas[0])} perto de você te acha pelo site e chama no WhatsApp.`,
+          ])
         : "Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa do seu serviço perto de você te encontra pelo site e chama no WhatsApp.",
-      `• É grátis: sem plano, sem taxa e sem comissão.\n• Você aparece primeiro para quem mora perto de onde você atende.\n• Seu WhatsApp só aparece para quem você aceitar.`,
+      pontos([
+        ["É grátis: sem plano, sem taxa e sem comissão.", "Não custa nada: sem plano, sem taxa e sem comissão."],
+        [
+          "Você aparece primeiro para quem mora perto de onde você atende.",
+          "Quem mora perto de onde você atende vê você primeiro.",
+        ],
+        ["Seu WhatsApp só aparece para quem você aceitar.", "O seu WhatsApp só aparece para quem você aceitar."],
+      ]),
       link
         ? pronta
-          ? `Já deixei a sua vitrine pronta no site. É só abrir, conferir e tocar em Salvar (entra com o e-mail, sem senha):\n${link}`
-          : `Para aparecer, é só abrir o link, escrever o seu serviço e tocar em Salvar (entra com o e-mail, sem senha):\n${link}`
+          ? `Já deixei a sua vitrine pronta no site. É só abrir, conferir e tocar em Salvar ${ENTRAR}:\n${link}`
+          : `Para aparecer, é só abrir o link, escrever o seu serviço e tocar em Salvar ${ENTRAR}:\n${link}`
         : `Se quiser, é só responder "pode" e me dizer o bairro onde você atende. Eu monto a vitrine e te mando o link para entrar e conferir.`,
       fecha,
     ].join("\n\n");
@@ -331,9 +400,22 @@ export function mensagemConvite(
     return [
       abre,
       vagas
-        ? `Vi que vocês estão com vaga de ${vagas}. Posso publicar ${essa} no Publike em nome da agência, sem custo?`
+        ? escolher(s, "pede", [
+            `Vi que vocês estão com vaga de ${vagas}. Posso publicar ${essa} no Publike em nome da agência, sem custo?`,
+            `Vi o anúncio de ${vagas} de vocês. Querem que eu publique ${essa} no Publike em nome da agência? É sem custo.`,
+          ])
         : "Posso publicar as vagas de vocês no Publike em nome da agência, sem custo?",
-      `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• Quando vocês aceitam um candidato, ele recebe o WhatsApp e o e-mail da agência, nunca os do cliente. O cliente pode aparecer como empresa confidencial.\n• É grátis: sem plano e sem taxa por candidato.`,
+      pontos([
+        [
+          `Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".`,
+          `O Publike não concorre com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".`,
+        ],
+        [
+          "Quando vocês aceitam um candidato, ele recebe o WhatsApp e o e-mail da agência, nunca os do cliente. O cliente pode aparecer como empresa confidencial.",
+          "O candidato aceito recebe o WhatsApp e o e-mail da agência, nunca os do cliente, que pode aparecer como empresa confidencial.",
+        ],
+        ["É grátis: sem plano e sem taxa por candidato.", "Não custa nada: sem plano e sem taxa por candidato."],
+      ]),
       pedido ??
         `Se puder, responda "pode publicar" e me diga qual WhatsApp e qual e-mail devem aparecer nas vagas. Eu cadastro e mando o acesso para vocês acompanharem.`,
       fecha,
@@ -342,9 +424,26 @@ export function mensagemConvite(
   return [
     abre,
     vagas
-      ? `Vi que vocês estão contratando ${vagas}. Posso publicar ${essa} no Publike, sem custo, para mais gente da região ficar sabendo?`
+      ? escolher(s, "pede", [
+          `Vi que vocês estão contratando ${vagas}. Posso publicar ${essa} no Publike, sem custo, para mais gente da região ficar sabendo?`,
+          `Vi o anúncio de ${vagas} de vocês. Posso divulgar ${essa} no Publike, de graça, para chegar a mais gente da região?`,
+          `Soube que vocês procuram ${vagas}. Querem que eu publique ${essa} no Publike? É sem custo e mais gente da região fica sabendo.`,
+        ])
       : "Posso publicar as vagas de vocês no Publike, sem custo, para mais gente da região ficar sabendo?",
-    `• É grátis para a empresa e para o candidato: sem plano e sem taxa.\n• Não somos agência: quem se interessa curte a vaga, e vocês decidem com quem conversar. Ao aceitar, o contato é direto com vocês.\n• A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus até a empresa.`,
+    pontos([
+      [
+        "É grátis para a empresa e para o candidato: sem plano e sem taxa.",
+        "Não custa nada, nem para a empresa nem para o candidato: sem plano e sem taxa.",
+      ],
+      [
+        "Não somos agência: quem se interessa curte a vaga, e vocês decidem com quem conversar. Ao aceitar, o contato é direto com vocês.",
+        "Não somos agência: quem tem interesse curte a vaga e vocês escolhem com quem conversar. Aceitou, o contato é direto com vocês.",
+      ],
+      [
+        "A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus até a empresa.",
+        "Quem mora perto vê a vaga primeiro, com a distância e o tempo de ônibus até a empresa.",
+      ],
+    ]),
     pedido ??
       `Se puder, responda "pode publicar" e me diga qual WhatsApp ou e-mail deve receber os candidatos. Eu cadastro e mando o acesso para vocês acompanharem.`,
     fecha,
@@ -360,6 +459,7 @@ export function mensagemConviteAgrupada(
   assinatura: string,
   site: string,
 ) {
+  const s = lista.map((c) => c.token).join("|");
   const quem = assinatura.trim() ? `Sou ${assinatura.trim()}, do Publike` : "Aqui é do Publike";
   const agencia = lista.some((c) => c.tipo === "agencia");
   const itens = lista
@@ -369,13 +469,16 @@ export function mensagemConviteAgrupada(
     })
     .join("\n\n");
   return [
-    `Olá! Tudo bem? ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
-    `Vi que vocês estão com vagas abertas. Posso publicar no Publike, sem custo? Já deixei cada uma pronta no site: é só abrir o link, conferir e tocar em Publicar (entra com o e-mail, sem senha).`,
+    `${escolher(s, "ola", ["Olá", "Oi"])}! ${escolher(s, "tudo", ["Tudo bem?", "Tudo certo?", "Como vão?"])} ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
+    escolher(s, "pede", [
+      `Vi que vocês estão com vagas abertas. Posso publicar no Publike, sem custo? Já deixei cada uma pronta no site: é só abrir o link, conferir e tocar em Publicar ${ENTRAR}.`,
+      `Vi as vagas abertas de vocês. Querem que eu publique no Publike? É sem custo, e cada uma já está pronta no site: é só abrir o link, conferir e tocar em Publicar ${ENTRAR}.`,
+    ]),
     itens,
     agencia
       ? `• Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".\n• É grátis: sem plano e sem taxa por candidato.`
       : `• É grátis para a empresa e para o candidato: sem plano e sem taxa.\n• A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus.`,
-    `Se não tiver interesse, é só responder "não" que eu não mando mais mensagens. Obrigado!`,
+    escolher(s, "fecha", DESPEDIDAS),
   ].join("\n\n");
 }
 
