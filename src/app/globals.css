@@ -226,6 +226,13 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* rede de segurança: nada largo demais faz a página andar para os lados no celular. "clip" (e não
+     "hidden") não cria uma área de rolagem, então o que é sticky (cabeçalho, colunas) continua preso */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     background-color: var(--pk-surface-100);
     color: var(--pk-ink);
