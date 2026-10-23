@@ -4,13 +4,16 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "@/components/explorar/abas";
+import { CartaoDaConta } from "@/components/home/cartao-da-conta";
+import { MolduraDaHome } from "@/components/home/moldura";
+import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { CartaoTalento } from "@/components/talentos/cartao-talento";
 import { Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { classesEntrada, Seletor } from "@/components/ui/campo";
 import { MODO_DEMO } from "@/lib/config";
 import { CIDADES } from "@/lib/constantes";
-import { meuCurriculoNaVitrine, obterMeuPerfil } from "@/lib/dados";
+import { meuCurriculoNaVitrine, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero, primeiro } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
@@ -51,6 +54,81 @@ function hrefBusca(f: { q: string; cidade: string | null; pagina: number }) {
 
 export default function Talentos({ searchParams }: PageProps<"/talentos">) {
   return (
+    <Suspense
+      fallback={
+        <Container className="py-6 sm:py-8">
+          <EsqueletoTalentos />
+        </Container>
+      }
+    >
+      <Pagina searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+/**
+ * Quem entrou vê a aba dentro da moldura da home (a conta e o menu à esquerda), como as abas Tudo,
+ * Vagas e Serviços; quem visita, a página aberta, com o título grande.
+ */
+async function Pagina({ searchParams }: { searchParams: Parametros }) {
+  const usuario = MODO_DEMO ? null : await obterUsuario();
+  if (!usuario) return <TalentosAberta searchParams={searchParams} />;
+  return (
+    <MolduraDaHome
+      esquerda={
+        <>
+          <Suspense fallback={<Esqueleto className="h-56 rounded-lg" />}>
+            <CartaoDaConta />
+          </Suspense>
+          <Suspense fallback={<Esqueleto className="h-64 rounded-lg" />}>
+            <MenuDaConta />
+          </Suspense>
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h1 className="text-h3 sm:text-h2">Talentos perto de você</h1>
+        <Selo variante="novo">Grátis</Selo>
+      </div>
+      <Abas semAjuda />
+      <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
+        <Busca searchParams={searchParams} />
+      </Suspense>
+      <p className="mt-3 text-body-sm text-ink-muted">
+        Gente procurando trabalho que escolheu aparecer aqui. Empresas, comércios e agências abrem o currículo completo,
+        pedem conexão (mesmo sem vaga aberta) e convidam para uma vaga.
+      </p>
+      <Suspense fallback={null}>
+        <ChamadaTalento />
+      </Suspense>
+      <div className="mt-6">
+        <Suspense fallback={<EsqueletoTalentos />}>
+          <Lista searchParams={searchParams} />
+        </Suspense>
+      </div>
+    </MolduraDaHome>
+  );
+}
+
+/** Tudo, Vagas e Serviços levam à lista da home; Talentos é esta página. */
+function Abas({ semAjuda = false }: { semAjuda?: boolean }) {
+  return (
+    <nav aria-label="O que você procura" className={`mt-3 sm:mt-5 ${classesGrupoAbas}`}>
+      {ABAS_ANUNCIOS.map((a) => (
+        <Link key={a.nome} href={`/?tipo=${a.valor ?? "tudo"}`} className={classesAba(false)}>
+          <MioloAba aba={a} ativo={false} semAjuda={semAjuda} />
+        </Link>
+      ))}
+      <Link href={ABA_TALENTOS.href} aria-current="page" className={classesAba(true)}>
+        <MioloAba aba={ABA_TALENTOS} ativo semAjuda={semAjuda} />
+      </Link>
+    </nav>
+  );
+}
+
+/** Quem visita: a página aberta, com o título grande. */
+function TalentosAberta({ searchParams }: { searchParams: Parametros }) {
+  return (
     <>
       <section className="border-b border-line pb-4 sm:pb-5">
         <Container className="pt-4 sm:pt-6 lg:pt-8">
@@ -58,16 +136,7 @@ export default function Talentos({ searchParams }: PageProps<"/talentos">) {
             <h1 className="text-h3 sm:text-h1">Talentos perto de você.</h1>
             <Selo variante="novo">Grátis</Selo>
           </div>
-          <nav aria-label="O que você procura" className={`mt-3 sm:mt-5 ${classesGrupoAbas}`}>
-            {ABAS_ANUNCIOS.map((a) => (
-              <Link key={a.nome} href={`/?tipo=${a.valor ?? "tudo"}`} className={classesAba(false)}>
-                <MioloAba aba={a} ativo={false} />
-              </Link>
-            ))}
-            <Link href={ABA_TALENTOS.href} aria-current="page" className={classesAba(true)}>
-              <MioloAba aba={ABA_TALENTOS} ativo />
-            </Link>
-          </nav>
+          <Abas />
           <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
             <Busca searchParams={searchParams} />
           </Suspense>
@@ -187,14 +256,16 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
             acao={
               filtrado ? (
                 <BotaoLink href="/talentos">Ver todos os talentos</BotaoLink>
-              ) : (
+              ) : empresa ? null : (
                 <BotaoLink href="/perfil/curriculo?para=talentos">Cadastrar meu currículo</BotaoLink>
               )
             }
           >
             {filtrado
               ? "Tente outra palavra, como o nome do cargo ou uma habilidade, ou procure em todas as cidades."
-              : "Quem procura trabalho e escolhe aparecer vem para cá. Procura trabalho? Seja o primeiro."}
+              : empresa
+                ? "Quem procura trabalho e escolhe aparecer vem para cá. Enquanto isso, publique sua vaga: quem procura vê."
+                : "Quem procura trabalho e escolhe aparecer vem para cá. Procura trabalho? Seja o primeiro."}
           </Vazio>
         )
       ) : (
