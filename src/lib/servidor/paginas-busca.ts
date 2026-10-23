@@ -24,7 +24,8 @@ export function anunciosNoAr(tipo: TipoAnuncio, cidade?: string | null): Promise
 
 async function anunciosDaPraca(tipo: TipoAnuncio, cidadeDaPraca: string): Promise<AnuncioNoAr[]> {
   "use cache";
-  cacheLife("minutes");
+  // 15 minutos ("default"): com "minutes", a página era regravada a cada minuto na Vercel
+  cacheLife("default");
   const { centro } = pracaDaCidade(cidadeDaPraca) ?? PRACA_PADRAO;
   if (MODO_DEMO) {
     const lista = demo.buscarDemo({ ...FILTROS_PADRAO, tipo, raio: 100, ordem: "recentes" }, Date.now(), null);

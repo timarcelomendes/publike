@@ -17,10 +17,15 @@ import { ONDE_FUNCIONA } from "@/lib/pracas";
 // diz o que procurar; quem busca é o site, e os resultados vêm do banco (a IA
 // não inventa vaga). A conversa não fica guardada: vai e volta do navegador.
 
-/** O assistente aparece no site? (chave da IA no servidor e ligado no admin). Guardado por alguns minutos. */
+/**
+ * O assistente aparece no site? (chave da IA no servidor e ligado no admin). Guardado por 1 hora: ele está
+ * em todas as páginas (no layout), e o tempo mais curto do que fica guardado vale para a página inteira.
+ * Com "minutes", cada página era regravada a cada minuto na Vercel (gravações de ISR do plano grátis).
+ */
 export async function assistenteDisponivel(): Promise<boolean> {
   "use cache";
-  cacheLife("minutes");
+  // a página inteira vale pelo tempo mais curto guardado nela: "minutes" a regravava a cada minuto na Vercel
+  cacheLife("hours");
   if (MODO_DEMO || !iaConfigurada()) return false;
   try {
     const { data, error } = await criarClientePublico().rpc("assistente_ligado");

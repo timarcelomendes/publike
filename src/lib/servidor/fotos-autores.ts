@@ -10,7 +10,8 @@ import { criarClientePublico } from "@/lib/supabase/servidor";
  */
 async function fotosGuardadas(ids: string[]): Promise<Record<string, string | null>> {
   "use cache";
-  cacheLife("minutes");
+  // 15 minutos ("default"): com "minutes", a página era regravada a cada minuto na Vercel
+  cacheLife("default");
   const { data, error } = await criarClientePublico().from("perfis").select("id, foto").in("id", ids);
   if (error) throw new Error(error.message);
   return Object.fromEntries((data ?? []).map((p) => [p.id, p.foto]));

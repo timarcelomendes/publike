@@ -12,7 +12,8 @@ const CAMPOS =
 
 export async function noticiasPublicadas(limite = 60): Promise<Noticia[]> {
   "use cache";
-  cacheLife("minutes");
+  // 15 minutos ("default"): com "minutes", a página era regravada a cada minuto na Vercel
+  cacheLife("default");
   cacheTag("noticias");
   if (MODO_DEMO) return [];
   const { data, error } = await criarClientePublico()
@@ -29,7 +30,8 @@ export async function noticiasPublicadas(limite = 60): Promise<Noticia[]> {
 
 export async function noticiaDoSlug(slug: string): Promise<Noticia | null> {
   "use cache";
-  cacheLife("minutes");
+  // 15 minutos ("default"): com "minutes", a página era regravada a cada minuto na Vercel
+  cacheLife("default");
   cacheTag("noticias");
   if (MODO_DEMO || !/^[a-z0-9-]{3,90}$/.test(slug)) return null;
   const { data } = await criarClientePublico().from("noticias").select(CAMPOS).eq("slug", slug).maybeSingle();

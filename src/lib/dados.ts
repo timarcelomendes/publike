@@ -142,12 +142,13 @@ export const ajudaDaIADisponivel = cache(async () => {
 });
 
 /**
- * A mesma conta de `ajudaDaIADisponivel`, sem sessão e guardada por alguns minutos: para a
+ * A mesma conta de `ajudaDaIADisponivel`, sem sessão e guardada por 1 hora: para a
  * home, que não pode ler o banco a cada visita (a faixa "Tem a arte da vaga?").
  */
 export async function iaLigadaNoSite(): Promise<boolean> {
   "use cache";
-  cacheLife("minutes");
+  // a página inteira vale pelo tempo mais curto guardado nela: "minutes" a regravava a cada minuto na Vercel
+  cacheLife("hours");
   if (MODO_DEMO || !iaConfigurada()) return false;
   const { data } = await criarClientePublico().rpc("config_publica");
   return Boolean(data?.[0]?.ia_melhorar_texto);

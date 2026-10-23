@@ -30,7 +30,8 @@ export type QuadroDeVagas = {
 
 export async function vagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> {
   "use cache";
-  cacheLife("minutes");
+  // 15 minutos ("default"): com "minutes", a página era regravada a cada minuto na Vercel
+  cacheLife("default");
   cacheTag(`vagas-da-empresa-${id}`);
   if (MODO_DEMO || !UUID.test(id)) return null;
   const cliente = criarClientePublico();

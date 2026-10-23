@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh, revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -18,6 +18,7 @@ import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
+import { atualizarCabecalho } from "@/lib/servidor/atualizar-cabecalho";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
 import { errosPorCampo, lerPerfil } from "@/lib/validacao";
@@ -119,7 +120,7 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
   if (sobras.length) await supabase.storage.from("avatars").remove(sobras);
 
   if (typeof proximo === "string" && proximo) {
-    revalidatePath("/", "layout");
+    atualizarCabecalho();
     redirect(caminhoSeguro(proximo, "/painel"));
   }
   refresh();
@@ -148,7 +149,7 @@ export async function excluirConta(_anterior: EstadoForm, formData: FormData): P
 
   await supabase.auth.signOut().catch(() => undefined);
   (await cookies()).delete(COOKIE_INTENCAO);
-  revalidatePath("/", "layout");
+  atualizarCabecalho();
   redirect("/?conta=excluida");
 }
 
@@ -163,7 +164,7 @@ export async function sair() {
   loja.delete(COOKIE_INTENCAO);
   loja.delete(COOKIE_LOCAL);
   loja.delete(COOKIE_SO_OLHAR);
-  revalidatePath("/", "layout");
+  atualizarCabecalho();
   redirect("/");
 }
 
@@ -182,7 +183,7 @@ export async function irDepoisDoLogin(proximo: string) {
     jar.delete(COOKIE_ORIGEM);
   }
   const perfil = await obterMeuPerfil();
-  revalidatePath("/", "layout");
+  atualizarCabecalho();
   if (!perfilCompleto(perfil)) redirect(`/perfil?completar=1&next=${encodeURIComponent(destino)}`);
   redirect(destino);
 }

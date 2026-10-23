@@ -7,12 +7,13 @@ import { REDES, REDES_ATIVAS, type BotaoRede, type RedeSocial } from "./login-so
 
 /**
  * Provedores que estão ligados no Supabase (Authentication → Sign In / Providers).
- * Guardado por alguns minutos. Se o Supabase não responder, devolve null e
+ * Guardado por 1 hora. Se o Supabase não responder, devolve null e
  * valem só as variáveis do .env.local.
  */
 async function provedoresNoSupabase(): Promise<Record<string, boolean> | null> {
   "use cache";
-  cacheLife("minutes");
+  // a página inteira vale pelo tempo mais curto guardado nela: "minutes" a regravava a cada minuto na Vercel
+  cacheLife("hours");
   try {
     const resposta = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
       headers: { apikey: SUPABASE_CHAVE },

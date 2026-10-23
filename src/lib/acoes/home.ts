@@ -1,12 +1,13 @@
 "use server";
 
-import { refresh, revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { ehFundo } from "@/lib/fundos";
 import type { Resultado } from "@/lib/tipos";
 import { proximaVisita } from "@/lib/linha-do-tempo";
+import { atualizarCabecalho } from "@/lib/servidor/atualizar-cabecalho";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 /**
@@ -94,7 +95,7 @@ export async function trocarFotoPeloTopo(caminho: string): Promise<Resultado> {
   const atual = caminho.split("/")[1];
   const sobras = (arquivos ?? []).filter((a) => a.name !== atual).map((a) => `${usuario.id}/${a.name}`);
   if (sobras.length) await supabase.storage.from("avatars").remove(sobras);
-  revalidatePath("/", "layout");
+  atualizarCabecalho();
   return { ok: true, mensagem: "Foto trocada." };
 }
 
