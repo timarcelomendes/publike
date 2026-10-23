@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { BlocoConteudo, Conteudo } from "@/lib/conteudos/tipos";
 import { BotaoLink } from "../ui/botao";
 import { TextoRico } from "./texto-rico";
-import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 /** O corpo do artigo. */
 export function CorpoDoConteudo({ c }: { c: Conteudo }) {
@@ -102,7 +101,7 @@ export function CaminhosGratis() {
         No Publike, tudo é de graça
       </h2>
       <p className="mt-1 text-body-sm text-ink-muted">
-        Para quem procura, para quem contrata e para quem presta serviço em {ONDE_FUNCIONA}.
+        Para quem procura, para quem contrata e para quem presta serviço.
       </p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-3">
         {itens.map((i) => (

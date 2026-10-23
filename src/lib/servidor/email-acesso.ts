@@ -4,7 +4,6 @@ import { montarEmail, type ModeloEmail } from "@/lib/email/montar";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { configSmtp, urlDosEmails } from "./ambiente";
 import { logoDosEmails } from "./filas";
-import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // E-mail de acesso mandado pelo admin: a conta foi criada pela equipe (ou a
 // pessoa pediu ajuda para entrar) e recebe um link de entrar. Sai na hora,
@@ -17,7 +16,7 @@ const MODELO_PRIMEIRO: ModeloEmail = {
   assunto: "Sua conta no Publike está pronta",
   corpo: `Olá, {{nome}}!
 
-Criamos a sua conta no Publike, o mural de vagas e serviços de ${ONDE_FUNCIONA}, como combinamos.
+Criamos a sua conta no Publike, o mural de vagas e serviços, como combinamos.
 
 {{publicados}}
 

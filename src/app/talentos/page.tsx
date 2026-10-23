@@ -141,7 +141,7 @@ function TalentosAberta({ searchParams }: { searchParams: Parametros }) {
             <Busca searchParams={searchParams} />
           </Suspense>
           <p className="mt-3 text-body-sm text-ink-muted">
-            Gente de {ONDE_FUNCIONA} procurando trabalho, que escolheu aparecer aqui. Empresas, comércios e agências que
+            Gente procurando trabalho perto de você, que escolheu aparecer aqui. Empresas, comércios e agências que
             entraram na conta abrem o currículo completo, pedem conexão (mesmo sem vaga aberta) e convidam para uma
             vaga.
           </p>

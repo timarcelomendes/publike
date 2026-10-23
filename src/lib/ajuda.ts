@@ -15,7 +15,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "O que é o Publike?",
-        r: `Uma ferramenta do povo para gerar emprego em ${ONDE_FUNCIONA}. Tem vagas com carteira, diárias, freelances e profissionais que prestam serviço, organizados pela distância e pelo tempo de ônibus de casa. Quem precisa publica, quem faz curte. Deu match, vocês conversam pelo WhatsApp.`,
+        r: `Uma ferramenta do povo para gerar emprego. Tem vagas com carteira, diárias, freelances e profissionais que prestam serviço, organizados pela distância e pelo tempo de ônibus de casa. Quem precisa publica, quem faz curte. Deu match, vocês conversam pelo WhatsApp.`,
       },
       {
         p: "É grátis mesmo?",

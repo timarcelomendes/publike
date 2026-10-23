@@ -178,9 +178,9 @@ export default function Missao() {
             Pôr {CIDADES_DAS_PRACAS} para trabalhar perto de casa.
           </h1>
           <p className="mt-4 max-w-2xl text-body-lg text-ink-muted">
-            O Publike é uma ferramenta do povo para gerar emprego em {ONDE_FUNCIONA}. Quem procura acha vaga com
-            carteira, diária, freelance ou cliente para o seu serviço no próprio bairro. Quem contrata, do comércio da
-            esquina à indústria, acha gente boa que mora perto. Tudo de graça, para os dois lados.
+            O Publike é uma ferramenta do povo para gerar emprego. Quem procura acha vaga com carteira, diária,
+            freelance ou cliente para o seu serviço no próprio bairro. Quem contrata, do comércio da esquina à
+            indústria, acha gente boa que mora perto. Tudo de graça, para os dois lados.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <BotaoLink href="/#busca" variante="primario">

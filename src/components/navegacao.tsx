@@ -6,7 +6,6 @@ import { BarraInferiorBase } from "./barra-inferior-base";
 import { BotaoInstalarApp } from "./instalar-app";
 import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { Container, Logo } from "./ui/basicos";
-import { ONDE_FUNCIONA } from "@/lib/pracas";
 import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { modoDaConta } from "@/lib/servidor/modo";
@@ -34,7 +33,7 @@ export function Rodape() {
         <div className="max-w-sm">
           <Logo altura={32} />
           <p className="mt-3 text-body-sm text-ink-muted">
-            Uma ferramenta do povo para gerar emprego em {ONDE_FUNCIONA}: trabalho perto de casa, de graça.
+            Uma ferramenta do povo para gerar emprego: trabalho perto de casa, de graça.
           </p>
           <p className="mt-3 font-display text-h3">Publicou, curtiu, trabalhou.</p>
         </div>

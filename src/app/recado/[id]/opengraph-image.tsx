@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
-import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // A imagem que aparece quando alguém manda o link de um recado (WhatsApp, redes): o texto do
 // recado num balão, quem escreveu e o nome do Publike.
@@ -59,7 +58,7 @@ export default async function Imagem({ params }: { params: Promise<{ id: string 
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 30 }}>
         <span style={{ fontWeight: 800, fontSize: 44 }}>publike</span>
-        <span style={{ color: "#6b6052" }}>Trabalho perto de casa, em {ONDE_FUNCIONA}</span>
+        <span style={{ color: "#6b6052" }}>Trabalho perto de casa, de graça</span>
       </div>
     </div>,
     size,
