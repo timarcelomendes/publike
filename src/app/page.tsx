@@ -227,6 +227,15 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
  * No meio, embaixo do topo: a linha do tempo; com uma busca por palavra ou uma ordem escolhida
  * ("Combina mais", "Mais perto"), a lista de resultados de sempre.
  */
+/**
+ * Na home de quem entrou, a busca e as ordens da lista (Mais perto, Novas, Para você) trocam a linha
+ * do tempo pela lista. "Mais relevantes" não: ela só muda a ordem da própria linha.
+ */
+function ordemDeLista(sp: Awaited<Parametros>) {
+  const ordem = primeiro(sp.ordem);
+  return Boolean(ordem) && ordem !== "relevantes";
+}
+
 async function CentroDaLinha({
   searchParams,
   contratando,
@@ -239,7 +248,7 @@ async function CentroDaLinha({
   soOlhar?: boolean;
 }) {
   const sp = await searchParams;
-  if (primeiro(sp.q) || primeiro(sp.ordem)) {
+  if (primeiro(sp.q) || ordemDeLista(sp)) {
     return (
       <Suspense fallback={<ExplorarEsqueleto />}>
         <Explorar searchParams={searchParams} variante="feed" acimaDoMapa={contratando} abasDaBusca />
@@ -268,7 +277,7 @@ function CartaoSoOlhar() {
 /** À direita (computador grande): quem está contratando e o mapa (o da busca ou o da linha). */
 async function LadoDaLinha({ searchParams, contratando }: { searchParams: Parametros; contratando: ReactNode }) {
   const sp = await searchParams;
-  if (primeiro(sp.q) || primeiro(sp.ordem)) {
+  if (primeiro(sp.q) || ordemDeLista(sp)) {
     return <ColunaDoMapa className="hidden min-w-0 flex-col gap-4 self-stretch xl:flex" />;
   }
   return (

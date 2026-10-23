@@ -116,8 +116,22 @@ export type ParteDaLinha<T> =
   | { tipo: "marca"; chave: string; quando: number }
   | { tipo: "item"; chave: string; item: ItemDaLinha<T> };
 
-/** Ordena do mais novo para o mais antigo e põe os separadores de dia e a marca no lugar. */
-export function montarLinha<T>(itens: ItemDaLinha<T>[], marca: number | null, agora: number): ParteDaLinha<T>[] {
+/**
+ * Ordena do mais novo para o mais antigo e põe os separadores de dia e a marca no lugar. Nas mais
+ * relevantes, fica a ordem que veio (a do banco), com um título só, sem dias nem a marca.
+ */
+export function montarLinha<T>(
+  itens: ItemDaLinha<T>[],
+  marca: number | null,
+  agora: number,
+  relevantes = false,
+): ParteDaLinha<T>[] {
+  if (relevantes) {
+    return [
+      { tipo: "dia", chave: "relevantes", titulo: "Mais relevantes", data: "mais curtidas e vistas em 30 dias" },
+      ...itens.map((item) => ({ tipo: "item" as const, chave: `${item.tipo}-${item.id}`, item })),
+    ];
+  }
   const ordenados = [...itens].sort((a, b) => Date.parse(b.quando) - Date.parse(a.quando));
   const partesDaLinha: ParteDaLinha<T>[] = [];
   let diaAtual = "";

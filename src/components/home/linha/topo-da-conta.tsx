@@ -134,7 +134,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   if (q) return <CampoDaBusca valor={q} className="mb-4 lg:hidden" />;
   // as listas ("Para você", "Mais perto", "Novas"): a lista tem a barra dela (os atalhos e o Filtros);
   // aqui, só a volta para a linha do tempo (e a busca, no celular)
-  if (primeiro(sp.ordem)) {
+  if (primeiro(sp.ordem) && primeiro(sp.ordem) !== "relevantes") {
     return (
       <div className="mb-3 flex flex-col gap-3">
         <CampoDaBusca className="lg:hidden" />
@@ -169,9 +169,9 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
       : d.novas.tudo > 0
         ? `${d.novas.tudo === 1 ? "1 novidade" : `${d.novas.tudo > 99 ? "99+" : d.novas.tudo} novidades`} desde ${quandoFoi(d.marca, d.agora)}`
         : `Nada novo desde ${quandoFoi(d.marca, d.agora)}`;
-  // os links das abas e dos filtros: sem a ordem (a linha é sempre a das últimas; "Mais relevantes" abre a lista)
-  const base = { ...d.filtrosDaBusca, ordem: "perto" as const };
-  const mudados = filtrosMudados(d.filtrosDaBusca, true);
+  // os links das abas e dos filtros: com "Mais relevantes", ela continua; sem, a linha é a das últimas
+  const base = { ...d.filtrosDaBusca, ordem: d.relevantes ? ("relevantes" as const) : ("perto" as const) };
+  const mudados = filtrosMudados(d.filtrosDaBusca, true) + (d.relevantes ? 1 : 0);
   const textoDoRaio = d.filtros.tempo ? nomeDoTempo(d.filtros.tempo).toLowerCase() : `até ${d.filtros.raio} km`;
   const Icone = acao?.icone;
 
@@ -292,7 +292,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
             />
             {mudados > 0 && (
               <Link
-                href={hrefFiltros(base, SEM_FILTROS)}
+                href={hrefFiltros(base, { ...SEM_FILTROS, ordem: "perto" })}
                 scroll={false}
                 className="self-end text-label text-ink underline underline-offset-2 hover:text-terra-text"
               >

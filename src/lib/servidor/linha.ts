@@ -165,8 +165,10 @@ export type DadosDaLinha = {
   local: Local | null;
   usuarioId: string | null;
   aba: AbaDaLinha;
-  /** os filtros da busca (a ordem é "ultimas": do mais novo para o mais antigo, com as vagas curtidas) */
+  /** os filtros da busca (a ordem: "ultimas", do mais novo para o mais antigo, ou "relevantes") */
   filtros: Filtros;
+  /** "Mais relevantes": os anúncios mais curtidos e abertos em 30 dias, na ordem do banco (sem dias nem a marca) */
+  relevantes: boolean;
   /** os mesmos, antes de partir da casa (para a barra e os links) */
   filtrosDaBusca: Filtros;
   tempoDe: "casa" | "voce" | null;
@@ -208,13 +210,14 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     ...lidos,
     tipo: aba === "vaga" || aba === "servico" ? aba : null,
     tudo: aba === "tudo" || aba === "recado",
-    // do mais novo para o mais antigo, com as vagas curtidas na hora da última curtida (o banco já traz
-    // as curtidas há pouco entre as primeiras; com outra ordem na URL, a home mostra a lista, não a linha)
-    ordem: "ultimas",
+    // do mais novo para o mais antigo, com as vagas curtidas na hora da última curtida; ou, se a pessoa
+    // escolheu, as mais relevantes (curtidas e aberturas dos últimos 30 dias). As outras ordens abrem a lista.
+    ordem: lidos.ordem === "relevantes" ? "relevantes" : "ultimas",
     regime: aba === "servico" ? null : lidos.regime,
     turno: aba === "vaga" ? lidos.turno : null,
   };
   const filtros = partirDoLocal(filtrosDaBusca, local, visita.praca.cidade);
+  const relevantes = filtrosDaBusca.ordem === "relevantes";
   const usuarioId = usuario?.id ?? null;
 
   // na aba Recados, só os recados (os anúncios entram na conta das novidades mais abaixo)
@@ -293,7 +296,8 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     quando: m.match_em,
     dados: { aceite: m, direto: diretos.has(m.anuncio_id) },
   }));
-  if (aba === "tudo") itens.push(...aceites);
+  // nas mais relevantes, só os anúncios (na ordem do banco): aceites, recados e notícias não têm pontos
+  if (aba === "tudo" && !relevantes) itens.push(...aceites);
   // os recados no ar (e os da pessoa em revisão): em Tudo e em Recados
   const itensDeRecado: ItemDaLinha<DadoDaLinha>[] = recados.map((r) => ({
     tipo: "recado",
@@ -301,7 +305,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     quando: r.quando,
     dados: { recado: r },
   }));
-  if (aba === "tudo" || aba === "recado") itens.push(...itensDeRecado);
+  if (aba === "recado" || (aba === "tudo" && !relevantes)) itens.push(...itensDeRecado);
   // as notícias do Publike, só em Tudo e sem busca nem filtro: na hora da publicação ou, se foram
   // atualizadas depois, na hora da atualização (sobem de novo, com "Atualizada")
   const semFiltro = !filtros.q && !filtros.categoria && !filtros.regime && !filtros.turno;
@@ -316,7 +320,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
           dados: { noticia: n, atualizada },
         }))
     : [];
-  if (aba === "tudo") itens.push(...itensDeNoticia);
+  if (aba === "tudo" && !relevantes) itens.push(...itensDeNoticia);
   // os da própria pessoa não contam como novidade
   const recadosDeOutros = itensDeRecado.filter((i) => "recado" in i.dados && !i.dados.recado.meu);
 
@@ -362,6 +366,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     usuarioId,
     aba,
     filtros,
+    relevantes,
     filtrosDaBusca,
     tempoDe: origemDoTempo(filtros, local),
     itens,

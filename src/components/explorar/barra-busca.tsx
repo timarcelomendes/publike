@@ -420,7 +420,7 @@ export function FiltrosLista({
   semOrdem?: boolean;
   /** a vitrine: no computador, a ordem fica na linha do título, junto do jeito de ver (OrdemDaLista) */
   ordemSoNoCelular?: boolean;
-  /** a linha do tempo: Últimas (ela mesma) ou Mais relevantes (abre a lista nessa ordem) */
+  /** a linha do tempo: Últimas (o padrão) ou Mais relevantes (a mesma linha, na ordem das curtidas e aberturas) */
   ordemDaLinha?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);

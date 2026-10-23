@@ -212,7 +212,7 @@ export async function LinhaDoTempo({
   const blocos: ReactNode[] = [];
   const contam: boolean[] = [];
   let n = 0;
-  for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora), d.aba === "tudo")) {
+  for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes), d.aba === "tudo")) {
     if (p.tipo === "dia") {
       blocos.push(
         <div key={p.chave} className={`${GRADE} items-center pt-2`}>

@@ -754,12 +754,6 @@ function AtalhosDoFeed({
       ativo: filtros.ordem === "recentes" && filtros.tipo !== "servico",
     },
     {
-      // as mais curtidas e mais abertas nos últimos 30 dias
-      nome: "Mais relevantes",
-      href: hrefFiltros(filtros, { ordem: "relevantes", tipo: "vaga", tudo: false }),
-      ativo: filtros.ordem === "relevantes" && filtros.tipo !== "servico",
-    },
-    {
       nome: "Serviços",
       href: hrefFiltros(filtros, { tipo: "servico", tudo: false, regime: null, turno: null }),
       ativo: filtros.tipo === "servico",
