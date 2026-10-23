@@ -146,6 +146,26 @@ export async function numerosDoPainel(c: ClienteBanco) {
   return data as unknown as NumerosPainel;
 }
 
+/** O começo de hoje em Goiânia (o banco conta os dias nesse fuso), em ISO. */
+export function inicioDeHoje(agora: number) {
+  const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(agora));
+  // Goiânia não tem horário de verão desde 2019: sempre -03:00
+  return new Date(`${dia}T00:00:00-03:00`).toISOString();
+}
+
+/** Os números de hoje dos cartões do painel: contas, anúncios publicados, curtidas e matches. */
+export async function numerosDeHoje(c: ClienteBanco, n: NumerosPainel, agora: number) {
+  const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(agora));
+  const deHoje = n.por_dia.find((d) => d.dia === dia) ?? { contas: 0, anuncios: 0, curtidas: 0 };
+  const { count, error } = await c
+    .from("curtidas")
+    .select("anuncio_id", { count: "exact", head: true })
+    .eq("status", "match")
+    .gte("respondida_em", inicioDeHoje(agora));
+  if (error) console.warn(`Publike: sem os matches de hoje: ${error.message}`);
+  return { contas: deHoje.contas, anuncios: deHoje.anuncios, curtidas: deHoje.curtidas, matches: count ?? 0 };
+}
+
 /** Quantas pessoas abriram o site, por dia (o banco não guarda quem). */
 export type AcessosSite = {
   hoje: number;

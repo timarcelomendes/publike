@@ -44,10 +44,16 @@ export function Numero({
   href,
   icone: Icone,
   alerta,
+  hoje,
+  textoHoje = "hoje",
 }: {
   rotulo: string;
   valor: number;
   detalhe?: ReactNode;
+  /** quanto foi hoje (desde a meia-noite em Goiânia), embaixo do número */
+  hoje?: number;
+  /** o texto depois do número de hoje ("hoje", "publicados hoje") */
+  textoHoje?: string;
   href?: string;
   icone?: LucideIcon;
   /** Destaca quando precisa de atenção (ex.: denúncias abertas). */
@@ -60,6 +66,12 @@ export function Numero({
         {rotulo}
       </span>
       <span className={`font-display text-h1 ${alerta ? "text-terra-text" : "text-ink"}`}>{formatarNumero(valor)}</span>
+      {hoje !== undefined && (
+        <span className="text-label text-ink">
+          {hoje > 0 ? "+" : ""}
+          {formatarNumero(hoje)} {textoHoje}
+        </span>
+      )}
       {detalhe && <span className="text-body-sm text-ink-muted">{detalhe}</span>}
     </>
   );

@@ -13,6 +13,7 @@ import {
   acessosDoSite,
   configDoSite,
   listarChavesServidor,
+  numerosDeHoje,
   numerosDoPainel,
   registroDaEquipe,
   ultimoResumo,
@@ -50,6 +51,7 @@ async function Conteudo() {
     listarChavesServidor(c),
     agoraDaRequisicao(),
   ]);
+  const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
   const temChave = chaves.length > 0;
   const faltando =
@@ -102,6 +104,7 @@ async function Conteudo() {
           rotulo="Contas"
           icone={UserRound}
           valor={n.contas}
+          hoje={hoje.contas}
           detalhe={`+${formatarNumero(n.contas_7d)} em 7 dias`}
           href="/admin/usuarios"
         />
@@ -109,6 +112,8 @@ async function Conteudo() {
           rotulo="Anúncios no ar"
           icone={Megaphone}
           valor={n.anuncios.no_ar}
+          hoje={hoje.anuncios}
+          textoHoje="publicados hoje"
           detalhe={`${plural(n.anuncios.vagas_no_ar, "vaga", "vagas")} · ${plural(n.anuncios.servicos_no_ar, "serviço", "serviços")}`}
           href="/admin/anuncios?status=ativo"
         />
@@ -116,12 +121,14 @@ async function Conteudo() {
           rotulo="Curtidas em 7 dias"
           icone={Heart}
           valor={n.curtidas.novas_7d}
+          hoje={hoje.curtidas}
           detalhe={`${formatarNumero(n.curtidas.total)} no total`}
         />
         <Numero
           rotulo="Matches em 7 dias"
           icone={MessageCircleHeart}
           valor={n.curtidas.matches_7d}
+          hoje={hoje.matches}
           detalhe={`${formatarNumero(n.curtidas.matches)} no total`}
         />
         <Numero
