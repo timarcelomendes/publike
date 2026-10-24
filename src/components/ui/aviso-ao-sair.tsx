@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Botao } from "./botao";
 
 /**
@@ -12,26 +12,41 @@ import { Botao } from "./botao";
  */
 export function AvisoAoSair({
   ativo,
+  mudou,
+  perguntarAoFechar = true,
   titulo,
   texto,
   rotuloSalvar,
+  rotuloSair = "Sair sem salvar",
   podeSalvar = true,
   aoSalvar,
 }: {
   ativo: boolean;
+  /** conferido na hora de sair (sem: com `ativo`, sempre pergunta); ver useFormularioMudou */
+  mudou?: () => boolean;
+  /** false: fechar a aba e recarregar não perguntam (o que foi escrito já fica guardado no aparelho) */
+  perguntarAoFechar?: boolean;
   titulo: string;
   texto: string;
   rotuloSalvar: string;
+  rotuloSair?: string;
   podeSalvar?: boolean;
   aoSalvar: () => void;
 }) {
   const router = useRouter();
   const janela = useRef<HTMLDialogElement>(null);
   const [destino, setDestino] = useState<string | null>(null);
+  // a conferência mais nova, sem ligar e desligar a escuta a cada desenho
+  const conferir = useRef(mudou);
+  useEffect(() => {
+    conferir.current = mudou;
+  });
 
   useEffect(() => {
     if (!ativo) return;
+    const temCoisaPorSalvar = () => !conferir.current || conferir.current();
     const aoDescarregar = (e: BeforeUnloadEvent) => {
+      if (!temCoisaPorSalvar()) return;
       e.preventDefault();
       // navegadores mais antigos só perguntam com isso
       e.returnValue = "";
@@ -46,17 +61,18 @@ export function AvisoAoSair({
       // outro site: fica com a pergunta do navegador; a mesma página (uma âncora): não sai
       if (url.origin !== window.location.origin) return;
       if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      if (!temCoisaPorSalvar()) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       setDestino(`${url.pathname}${url.search}${url.hash}`);
     };
-    window.addEventListener("beforeunload", aoDescarregar);
+    if (perguntarAoFechar) window.addEventListener("beforeunload", aoDescarregar);
     window.addEventListener("click", aoClicar, true);
     return () => {
       window.removeEventListener("beforeunload", aoDescarregar);
       window.removeEventListener("click", aoClicar, true);
     };
-  }, [ativo]);
+  }, [ativo, perguntarAoFechar]);
 
   useEffect(() => {
     if (destino && !janela.current?.open) janela.current?.showModal();
@@ -109,10 +125,45 @@ export function AvisoAoSair({
             }}
             className="w-full"
           >
-            Sair sem salvar
+            {rotuloSair}
           </Botao>
         </div>
       </div>
     </dialog>
   );
+}
+
+/** O que o formulário manda, em texto (de arquivo, o nome e o tamanho). */
+function retratoDoFormulario(f: HTMLFormElement) {
+  const partes: string[] = [];
+  new FormData(f).forEach((v, k) => partes.push(`${k}=${typeof v === "string" ? v : `${v.name}:${v.size}`}`));
+  return partes.join("\n");
+}
+
+/**
+ * O `mudou` do AvisoAoSair para um formulário comum: compara o que ele manda agora com o de antes do
+ * primeiro toque da pessoa (o que a página preenche sozinha ao abrir não conta) ou com o do último
+ * salvar que deixou a pessoa na página (`salvo` muda a cada salvar que deu certo).
+ */
+export function useFormularioMudou(formulario: RefObject<HTMLFormElement | null>, salvo?: unknown) {
+  const base = useRef<string | null>(null);
+  useEffect(() => {
+    const f = formulario.current;
+    if (!f) return;
+    const guardar = () => {
+      if (base.current === null) base.current = retratoDoFormulario(f);
+    };
+    const eventos = ["pointerdown", "keydown", "focusin"] as const;
+    for (const ev of eventos) f.addEventListener(ev, guardar, true);
+    return () => {
+      for (const ev of eventos) f.removeEventListener(ev, guardar, true);
+    };
+  }, [formulario]);
+  useEffect(() => {
+    if (salvo && formulario.current) base.current = retratoDoFormulario(formulario.current);
+  }, [salvo, formulario]);
+  return () => {
+    const f = formulario.current;
+    return f !== null && base.current !== null && retratoDoFormulario(f) !== base.current;
+  };
 }

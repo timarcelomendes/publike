@@ -33,6 +33,7 @@ import { lerModos, modosDoTipo, type ModoPainel } from "@/lib/modo-painel";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, MeuPerfil, TipoConta } from "@/lib/tipos";
 import { CampoCnpj } from "./campo-cnpj";
+import { AvisoAoSair, useFormularioMudou } from "./ui/aviso-ao-sair";
 import { Aviso, Avatar } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
@@ -165,6 +166,9 @@ export function FormPerfil({
     );
   }
   const formulario = useRef<HTMLFormElement>(null);
+  // sair com o perfil mexido e não salvo pergunta antes; salvar e ficar na página recomeça a conta
+  const mudou = useFormularioMudou(formulario, estado.ok ? estado : null);
+  const rotuloSalvar = proximo ? "Salvar e continuar" : "Salvar perfil";
   const erros = estado.erros ?? {};
   const agencia = tipo === "agencia";
   // o selo de verificado vale para aquele nome, tipo de conta e CNPJ (o banco confere igual)
@@ -676,7 +680,7 @@ export function FormPerfil({
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Botao type="submit" variante="primario" disabled={enviando || enviandoFoto} className="sm:min-w-56">
-          {enviando ? "Salvando…" : proximo ? "Salvar e continuar" : "Salvar perfil"}
+          {enviando ? "Salvando…" : rotuloSalvar}
         </Botao>
         {/* o aviso fica sempre na página (vazio até salvar), para o leitor de tela anunciar */}
         <p role="status" aria-live="polite">
@@ -688,6 +692,16 @@ export function FormPerfil({
           )}
         </p>
       </div>
+
+      <AvisoAoSair
+        ativo
+        mudou={mudou}
+        titulo="Sair sem salvar o perfil?"
+        texto="O que você mudou no perfil ainda não foi salvo."
+        rotuloSalvar={rotuloSalvar}
+        podeSalvar={!enviando && !enviandoFoto}
+        aoSalvar={() => formulario.current?.requestSubmit()}
+      />
     </form>
   );
 }

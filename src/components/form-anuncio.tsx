@@ -48,6 +48,7 @@ import { BeneficiosExtras, EditorPerguntas, GanhosExtras, MontarHorario } from "
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
 import { trocarBairro } from "./mapa/seletor-local";
+import { AvisoAoSair, useFormularioMudou } from "./ui/aviso-ao-sair";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
@@ -196,6 +197,7 @@ export function FormAnuncio({
   aposConferir,
   previa = null,
   extras,
+  jaMudou = false,
 }: {
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
@@ -222,6 +224,8 @@ export function FormAnuncio({
   previa?: ReactNode;
   /** Campos escondidos a mais (o convite da empresa, que vira o aceite ao publicar). */
   extras?: Record<string, string>;
+  /** Veio preenchido pelo que a pessoa fez antes (a arte da vaga lida pela IA): sair pergunta mesmo sem mexer. */
+  jaMudou?: boolean;
 }) {
   const editando = Boolean(inicial.id);
   // a falha sem chegar ao servidor (site publicado de novo com a página aberta) vira aviso na tela
@@ -260,6 +264,8 @@ export function FormAnuncio({
     Boolean(inicial.regime && !REGIMES_PRINCIPAIS.includes(inicial.regime as Regime)),
   );
   const formulario = useRef<HTMLFormElement>(null);
+  // sair com a vaga mexida e não salva pergunta antes (o salvar leva para outra página)
+  const mudouDesdeQueAbriu = useFormularioMudou(formulario);
   // vaga nova que não chegou ao servidor: o preenchido fica no aparelho e volta ao recarregar
   // (o /publicar traz o rascunho de volta)
   useEffect(() => {
@@ -268,6 +274,15 @@ export function FormAnuncio({
   const erros = estado.erros ?? {};
   const erroNosDetalhes = Object.keys(erros).some((k) => CAMPOS_DETALHES.includes(k));
   const vaga = tipo === "vaga";
+  const rotuloSalvar = semConta
+    ? "Continuar para publicar"
+    : equipe
+      ? "Salvar correção"
+      : editando
+        ? "Salvar alterações"
+        : vaga
+          ? "Publicar vaga"
+          : "Publicar serviço";
 
   // Depois de um erro, leva a pessoa até o primeiro campo com problema
   useEffect(() => {
@@ -983,19 +998,7 @@ export function FormAnuncio({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando} className="sm:min-w-56">
-          {enviando
-            ? semConta
-              ? "Conferindo…"
-              : "Salvando…"
-            : semConta
-              ? "Continuar para publicar"
-              : equipe
-                ? "Salvar correção"
-                : editando
-                  ? "Salvar alterações"
-                  : vaga
-                    ? "Publicar vaga"
-                    : "Publicar serviço"}
+          {enviando ? (semConta ? "Conferindo…" : "Salvando…") : rotuloSalvar}
         </Botao>
         {emNomeDe ? (
           <p className="text-body-sm text-ink-muted">
@@ -1018,6 +1021,26 @@ export function FormAnuncio({
           </p>
         )}
       </div>
+
+      {/* a vaga nova que não chegou ao servidor já ficou guardada: recarregar não pergunta */}
+      <AvisoAoSair
+        ativo={!(estado.semSalvar && !editando && !equipe)}
+        mudou={() => jaMudou || mudouDesdeQueAbriu()}
+        // sem conta, o que a pessoa escreve já fica no aparelho: fechar a aba não perde nada
+        perguntarAoFechar={!semConta}
+        titulo={editando || equipe ? "Sair sem salvar as alterações?" : "Sair sem publicar a vaga?"}
+        texto={
+          editando || equipe
+            ? "O que você mudou ainda não foi salvo."
+            : semConta
+              ? "O que você escreveu fica guardado neste aparelho, mas a vaga só vai ao ar quando você continuar e entrar."
+              : "Ela ainda não foi publicada, e o que você preencheu se perde."
+        }
+        rotuloSalvar={rotuloSalvar}
+        rotuloSair={semConta ? "Sair e terminar depois" : undefined}
+        podeSalvar={!enviando}
+        aoSalvar={() => formulario.current?.requestSubmit()}
+      />
     </form>
   );
 }

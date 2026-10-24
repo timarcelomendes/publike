@@ -343,6 +343,7 @@ export function PublicarAnuncio({
         enderecoPublico={enderecoPublico}
         previa={previa?.titulo ? <PreviaDaVaga p={previa} /> : null}
         extras={convite ? { convite: convite.token } : undefined}
+        jaMudou={aviso === "lido"}
       />
     </div>
   );
