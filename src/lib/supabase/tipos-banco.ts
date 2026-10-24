@@ -1124,6 +1124,14 @@ export type Database = {
         Args: { p_modos: string[] };
         Returns: string[];
       };
+      meu_responsavel: {
+        Args: Record<PropertyKey, never>;
+        Returns: { responsavel: string; mostrar: boolean }[];
+      };
+      salvar_meu_responsavel: {
+        Args: { p_responsavel: string; p_mostrar: boolean };
+        Returns: undefined;
+      };
       meus_bloqueios: {
         Args: Record<PropertyKey, never>;
         Returns: { outro_id: string; eu_bloqueei: boolean; me_bloqueou: boolean }[];

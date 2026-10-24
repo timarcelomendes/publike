@@ -98,6 +98,27 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
       return { ok: false, erro: mensagemDeErro(erroModos, "Não foi possível salvar o que você faz no Publike.") };
     }
   }
+  // empresa, comércio e agência: quem responde pela conta e se o nome vai nas conversas e nos recados
+  // (o campo só vem quando o banco já tem a migração; virar pessoa apaga)
+  if (
+    formData.get("tem_responsavel") === "1" ||
+    (d.tipo === "pessoa" && perfilAntes && perfilAntes.tipo !== "pessoa")
+  ) {
+    const { error: erroResponsavel } = await supabase.rpc("salvar_meu_responsavel", {
+      p_responsavel: d.tipo === "pessoa" ? "" : String(formData.get("responsavel") ?? "").slice(0, 80),
+      p_mostrar: formData.get("responsavel_mostrar") === "1",
+    });
+    if (erroResponsavel?.hint === "responsavel") {
+      return {
+        ok: false,
+        erro: "Confira os campos marcados.",
+        erros: { responsavel: mensagemDeErro(erroResponsavel) },
+      };
+    }
+    if (erroResponsavel && erroResponsavel.code !== "PGRST202") {
+      return { ok: false, erro: mensagemDeErro(erroResponsavel, "Não foi possível salvar o responsável da conta.") };
+    }
+  }
   // conta nova (ou criada pela equipe): guarda qual versão das regras e da política foi aceita, e quando
   // (é registro legal: se não gravar, a pessoa sabe e salva de novo; o resto já está salvo e não muda)
   if (pedeAceite) {

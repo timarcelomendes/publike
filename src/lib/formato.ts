@@ -179,6 +179,15 @@ export function linkWhatsApp(numero: string, texto: string) {
 }
 
 /** Iniciais para o avatar sem foto: "Ana Cozinha" → "AC". */
+/**
+ * Nas conversas e nos recados, a empresa que mostra o responsável vem como "Ana Souza · Clínica Sorriso"
+ * (migração 20261108120000_responsavel_da_conta). As iniciais e a cor do avatar seguem o nome da conta.
+ */
+export function nomeDaConta(nome: string) {
+  const i = nome.lastIndexOf(" · ");
+  return i > 0 ? nome.slice(i + 3) : nome;
+}
+
 export function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
   const letras = (partes[0]?.[0] ?? "") + (partes.length > 1 ? partes[partes.length - 1][0] : "");

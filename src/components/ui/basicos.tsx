@@ -1,7 +1,7 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import type { ComponentProps, ReactNode } from "react";
-import { iniciais, urlDaFoto } from "@/lib/formato";
+import { iniciais, nomeDaConta, urlDaFoto } from "@/lib/formato";
 import { LOGO, LOGO_LARGURA } from "./logo-caminhos";
 
 export function Container({ className = "", ...props }: ComponentProps<"div">) {
@@ -114,7 +114,7 @@ function corDoNome(nome: string) {
  * `colorida`: as iniciais num fundo de cor, pelo nome.
  */
 export function Avatar({
-  nome,
+  nome: nomeMostrado,
   foto,
   tamanho = 40,
   className = "",
@@ -128,6 +128,8 @@ export function Avatar({
   forma?: "redonda" | "quadrada";
   colorida?: boolean;
 }) {
+  // "Ana Souza · Clínica Sorriso" (o responsável nas conversas): as iniciais e a cor são as da conta
+  const nome = nomeDaConta(nomeMostrado);
   const url = urlDaFoto(foto);
   const quadrada = forma === "quadrada";
   const canto = quadrada ? "" : "rounded-pill";

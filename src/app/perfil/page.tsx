@@ -13,6 +13,7 @@ import { caminhoSeguro, primeiro } from "@/lib/formato";
 import { modoPadrao } from "@/lib/modo-painel";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { modosMarcados, modosNoBanco } from "@/lib/servidor/modo";
+import { meuResponsavel } from "@/lib/servidor/responsavel";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
@@ -40,7 +41,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/perfil");
-  const [perfil, pendente, contaAuth, marcados, comModos, intencao, visita] = await Promise.all([
+  const [perfil, pendente, contaAuth, marcados, comModos, intencao, visita, responsavel] = await Promise.all([
     obterMeuPerfil(),
     aceitePendente(),
     // o e-mail novo que ainda espera confirmação (só o Supabase sabe)
@@ -50,6 +51,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
     obterIntencao().catch(() => null),
     // perfil novo: a cidade já vem marcada (a de onde a pessoa disse que mora ou a do endereço de internet)
     cidadeDaVisita(),
+    // empresa, comércio e agência: quem responde pela conta (e se o nome vai nas conversas e nos recados)
+    meuResponsavel(),
   ]);
   // "O que você quer fazer no Publike?": o que a conta marcou; conta nova, pelo tipo e pelo que
   // disse que quer fazer. Banco sem a migração: a pergunta não aparece (não teria onde guardar).
@@ -88,6 +91,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
             pedirAceite={pendente}
             proximo={proximo}
             modos={modos}
+            responsavel={responsavel}
           />
         )}
       </>
@@ -148,6 +152,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         pedirAceite={pendente}
         proximo={proximo}
         modos={modos}
+        responsavel={responsavel}
       />
       {/* o currículo: para quem procura trabalho (ou ainda não marcou o que faz) */}
       {comCurriculo && (

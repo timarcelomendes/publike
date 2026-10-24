@@ -32,6 +32,7 @@ import { formatarTelefone } from "@/lib/formato";
 import { lerModos, modosDoTipo, type ModoPainel } from "@/lib/modo-painel";
 import { tipoPeloNome } from "@/lib/nome-de-empresa";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import type { Responsavel } from "@/lib/servidor/responsavel";
 import type { EstadoForm, MeuPerfil, TipoConta } from "@/lib/tipos";
 import { CampoCnpj } from "./campo-cnpj";
 import { AvisoAoSair, useFormularioMudou } from "./ui/aviso-ao-sair";
@@ -125,7 +126,10 @@ export function FormPerfil({
   pedirAceite = false,
   modos: modosIniciais,
   cidadePadrao = PRACA_PADRAO.cidade,
+  responsavel: responsavelInicial,
 }: {
+  /** empresa, comércio e agência: quem responde pela conta; `undefined`: o banco ainda sem a migração */
+  responsavel?: Responsavel | null;
   perfil: MeuPerfil | null;
   /** perfil novo: a cidade de quem vê (onde disse que mora ou pelo endereço de internet) */
   cidadePadrao?: string;
@@ -155,6 +159,8 @@ export function FormPerfil({
   );
   const [cnpj, setCnpj] = useState(formatarCnpj(perfil?.cnpj));
   const [bairro, setBairro] = useState(perfil?.bairro ?? "");
+  const [responsavel, setResponsavel] = useState(responsavelInicial?.responsavel ?? "");
+  const [mostrarResponsavel, setMostrarResponsavel] = useState(responsavelInicial?.mostrar ?? false);
   const comModos = modosIniciais !== undefined;
   const [modos, setModos] = useState<ModoPainel[]>(modosIniciais ?? []);
   // procurar trabalho é só de pessoa: o que não cabe no tipo some da pergunta e do que vai salvar
@@ -486,6 +492,59 @@ export function FormPerfil({
             </Aviso>
           )}
         </fieldset>
+
+        {responsavelInicial !== undefined && tipo !== "pessoa" && (
+          <>
+            <input type="hidden" name="tem_responsavel" value="1" />
+            <Campo
+              rotulo="Responsável pela conta"
+              nome="responsavel"
+              opcional
+              erro={erros.responsavel}
+              ajuda="Quem conversa com os candidatos e escreve os recados. Não aparece na vaga nem no perfil."
+            >
+              <input
+                {...ligarCampo("responsavel", erros.responsavel)}
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+                maxLength={60}
+                autoComplete="name"
+                className={classesEntrada}
+              />
+            </Campo>
+            {responsavel.trim().length >= 2 && (
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1 text-label">Nome nas conversas e nos recados</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { valor: false, titulo: `Só ${agencia ? "da agência" : "da empresa"}`, exemplo: nome.trim() },
+                    {
+                      valor: true,
+                      titulo: `Responsável e ${agencia ? "agência" : "empresa"}`,
+                      exemplo: `${responsavel.trim().replace(/\s+/g, " ")} · ${nome.trim()}`,
+                    },
+                  ].map((o) => (
+                    <label
+                      key={String(o.valor)}
+                      className="flex cursor-pointer flex-col rounded-md border border-line-strong bg-surface-200 p-3 has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+                    >
+                      <input
+                        type="radio"
+                        name="responsavel_mostrar"
+                        value={o.valor ? "1" : "0"}
+                        checked={mostrarResponsavel === o.valor}
+                        onChange={() => setMostrarResponsavel(o.valor)}
+                        className="sr-only"
+                      />
+                      <span className="text-label">{o.titulo}</span>
+                      <span className="text-body-sm break-words text-ink-muted">“{o.exemplo || "…"}”</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+          </>
+        )}
 
         {comModos && (
           <fieldset
