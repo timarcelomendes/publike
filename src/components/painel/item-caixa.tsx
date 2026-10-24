@@ -25,8 +25,10 @@ export function ItemDaLista({ c, agora, href, aberto }: { c: ItemCaixa; agora: n
             <span className="min-w-0 flex-1 truncate text-label">{c.nome}</span>
             {c.aderencia && !encerrado && <NotaAderencia a={c.aderencia} />}
           </span>
-          <span className="block truncate text-body-sm text-ink-muted">
-            {c.anuncio_titulo} · {tempoRelativo(c.curtido_em, agora)}
+          {/* o título da vaga encurta; a hora fica sempre inteira */}
+          <span className="flex min-w-0 gap-1 text-body-sm text-ink-muted">
+            <span className="truncate">{c.anuncio_titulo}</span>
+            <span className="shrink-0 whitespace-nowrap">· {tempoRelativo(c.curtido_em, agora)}</span>
           </span>
           {c.entrevista ? (
             <span className="mt-0.5 flex items-center gap-1.5 text-body-sm font-semibold">

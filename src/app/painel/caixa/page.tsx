@@ -161,7 +161,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
         )}
       </div>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
         <div className={escolhido ? "hidden lg:block" : ""}>
           {lista.length === 0 ? (
             <p className="rounded-lg border border-line bg-surface-200 px-4 py-6 text-body-sm text-ink-muted">
