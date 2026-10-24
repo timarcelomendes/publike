@@ -179,6 +179,16 @@ export async function saudeDoSite(c: ClienteBanco): Promise<SaudeSite | null> {
   return data as unknown as SaudeSite;
 }
 
+/** Por que as vagas e os serviços foram encerrados (a pergunta do "Encerrar"). null: banco sem a migração. */
+export async function motivosDeEncerramento(c: ClienteBanco, dias = 30) {
+  const { data, error } = await c.rpc("admin_motivos_encerramento", { p_dias: dias });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler os motivos de encerramento:", error.message);
+    return null;
+  }
+  return data ?? [];
+}
+
 /** O começo de hoje em Goiânia (o banco conta os dias nesse fuso), em ISO. */
 export function inicioDeHoje(agora: number) {
   const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(agora));

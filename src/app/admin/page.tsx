@@ -10,10 +10,12 @@ import { SaudeDoSite } from "@/components/admin/saude";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { categoria } from "@/lib/constantes";
+import { MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import {
   acessosDoSite,
   configDoSite,
   listarChavesServidor,
+  motivosDeEncerramento,
   numerosDeHoje,
   numerosDoPainel,
   registroDaEquipe,
@@ -44,7 +46,7 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, acessos, config, resumo, registro, chaves, agora, saude] = await Promise.all([
+  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
     configDoSite(c),
@@ -53,6 +55,7 @@ async function Conteudo() {
     listarChavesServidor(c),
     agoraDaRequisicao(),
     saudeDoSite(c),
+    motivosDeEncerramento(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -210,6 +213,24 @@ async function Conteudo() {
           <Ranking itens={n.bairros} />
         </Secao>
       </div>
+
+      {encerramentos && (
+        <Secao
+          titulo="Por que encerraram"
+          descricao="Últimos 30 dias, pela pergunta (opcional) do Encerrar. Vagas e serviços juntos."
+        >
+          {encerramentos.length ? (
+            <Ranking
+              itens={encerramentos.map((e) => ({
+                nome: `${MOTIVOS_ENCERRAMENTO[e.motivo as MotivoEncerramento] ?? e.motivo}${e.tipo === "servico" ? " (serviço)" : ""}`,
+                n: e.total,
+              }))}
+            />
+          ) : (
+            <p className="text-body-sm text-ink-muted">Ninguém respondeu ainda.</p>
+          )}
+        </Secao>
+      )}
 
       <Secao titulo="Contas">
         <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-4 lg:grid-cols-7">

@@ -19,6 +19,7 @@ import {
 import { useState } from "react";
 import { excluirAnuncio, marcarVagaPreenchida, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
+import { MOTIVOS_DO_TIPO, MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import { CaminhoDoAceite } from "../caminho-curtida";
 import { Botao, BotaoLink } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
@@ -45,6 +46,9 @@ export function AcoesAnuncio({
   const [confirmar, setConfirmar] = useState(false);
   // encerrar tira do ar na hora: pergunta antes (um toque sem querer encerrava a vaga)
   const [confirmarEncerrar, setConfirmarEncerrar] = useState(false);
+  // por que encerrou (opcional): ajuda a saber quantas vagas o Publike preencheu
+  const [motivo, setMotivo] = useState<MotivoEncerramento | null>(null);
+  const [detalhe, setDetalhe] = useState("");
   const comModeracao = status === "em_analise" || status === "removido";
 
   return (
@@ -80,20 +84,61 @@ export function AcoesAnuncio({
                   : "Encerrar a vaga? Ela sai do ar e para de receber candidatos."}{" "}
                 Para voltar ao ar, use Renovar.
               </p>
+              <fieldset className="flex flex-col gap-1.5">
+                <legend className="mb-1 text-label">
+                  Por que está encerrando? <span className="font-normal text-ink-muted">(opcional)</span>
+                </legend>
+                <div className="flex flex-wrap gap-1.5">
+                  {MOTIVOS_DO_TIPO[tipo === "servico" ? "servico" : "vaga"].map((m) => (
+                    <label
+                      key={m}
+                      className="cursor-pointer rounded-pill border border-line-strong bg-surface-200 px-3 py-1.5 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+                    >
+                      <input
+                        type="radio"
+                        name={`motivo-${id}`}
+                        value={m}
+                        checked={motivo === m}
+                        onChange={() => setMotivo(m)}
+                        className="sr-only"
+                      />
+                      {MOTIVOS_ENCERRAMENTO[m]}
+                    </label>
+                  ))}
+                </div>
+                {motivo === "outro" && (
+                  <input
+                    aria-label="Conte o motivo"
+                    placeholder="Conte o motivo (opcional)"
+                    value={detalhe}
+                    onChange={(e) => setDetalhe(e.target.value)}
+                    maxLength={200}
+                    className="mt-1 min-h-10 w-full rounded-md border border-line-strong bg-surface-200 px-3 text-body-sm"
+                  />
+                )}
+              </fieldset>
               <div className="flex flex-wrap items-center gap-2">
                 <Botao
                   tamanho="sm"
                   disabled={pendente}
                   onClick={() =>
                     rodar(
-                      () => mudarStatusAnuncio(id, "encerrado"),
+                      () => mudarStatusAnuncio(id, "encerrado", motivo ? { motivo, detalhe } : null),
                       () => setConfirmarEncerrar(false),
                     )
                   }
                 >
                   Sim, encerrar
                 </Botao>
-                <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmarEncerrar(false)}>
+                <Botao
+                  tamanho="sm"
+                  variante="fantasma"
+                  onClick={() => {
+                    setConfirmarEncerrar(false);
+                    setMotivo(null);
+                    setDetalhe("");
+                  }}
+                >
                   Cancelar
                 </Botao>
               </div>

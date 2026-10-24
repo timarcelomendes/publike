@@ -4,6 +4,7 @@ import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
+import { MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
@@ -169,7 +170,12 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
   redirect(destino);
 }
 
-export async function mudarStatusAnuncio(id: string, status: "ativo" | "pausado" | "encerrado"): Promise<Resultado> {
+export async function mudarStatusAnuncio(
+  id: string,
+  status: "ativo" | "pausado" | "encerrado",
+  /** ao encerrar: o motivo (opcional) que a confirmação perguntou */
+  encerramento?: { motivo: MotivoEncerramento; detalhe?: string } | null,
+): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(id) || !["ativo", "pausado", "encerrado"].includes(status)) {
     return { ok: false, erro: "Pedido inválido." };
@@ -181,6 +187,18 @@ export async function mudarStatusAnuncio(id: string, status: "ativo" | "pausado"
   const { data, error } = await supabase.from("anuncios").update({ status }).eq("id", id).select("id");
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   if (!data?.length) return { ok: false, erro: "Não encontramos esse anúncio entre os seus." };
+
+  // o motivo é só para a conta do Publike: se não gravar (banco sem a migração), a vaga já foi encerrada
+  if (status === "encerrado" && encerramento && encerramento.motivo in MOTIVOS_ENCERRAMENTO) {
+    const { error: erroMotivo } = await supabase.rpc("registrar_motivo_encerramento", {
+      p_anuncio: id,
+      p_motivo: encerramento.motivo,
+      p_detalhe: (encerramento.detalhe ?? "").slice(0, 200),
+    });
+    if (erroMotivo && erroMotivo.code !== "PGRST202") {
+      console.error(`Publike: não deu para guardar o motivo do encerramento: ${erroMotivo.message}`);
+    }
+  }
 
   refresh();
   const mensagens = { ativo: "Anúncio de volta no ar.", pausado: "Anúncio pausado.", encerrado: "Anúncio encerrado." };

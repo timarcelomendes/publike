@@ -1124,6 +1124,14 @@ export type Database = {
         Args: { p_modos: string[] };
         Returns: string[];
       };
+      registrar_motivo_encerramento: {
+        Args: { p_anuncio: string; p_motivo: string; p_detalhe?: string | null };
+        Returns: undefined;
+      };
+      admin_motivos_encerramento: {
+        Args: { p_dias?: number };
+        Returns: { tipo: string; motivo: string; total: number; ultimo: string }[];
+      };
       meu_responsavel: {
         Args: Record<PropertyKey, never>;
         Returns: { responsavel: string; mostrar: boolean }[];
