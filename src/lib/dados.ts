@@ -169,7 +169,7 @@ export async function buscarAnuncios(
 ): Promise<AnuncioResumo[]> {
   if (f.meus && !autorId) return [];
   if (MODO_DEMO) {
-    const lista = demo.buscarDemo(f, agora, local);
+    const lista = demo.buscarDemo(f, agora, local).filter((a) => !f.quem || a.autor_tipo === f.quem);
     return f.meus ? lista.filter((a) => a.autor_id === autorId) : lista;
   }
   const supabase = await criarClienteServidor();
@@ -184,8 +184,8 @@ export async function buscarAnuncios(
     p_texto: f.q || null,
     // "combina" ordena depois, pelo % de match (aqui vem do mais perto)
     p_ordem: f.ordem === "recentes" || f.ordem === "relevantes" || f.ordem === "ultimas" ? f.ordem : "perto",
-    // com turno, o filtro vem depois (no texto e no horário de cada vaga): busca mais para sobrarem 60
-    p_limite: f.meus || f.turno ? 200 : 120,
+    // com turno ou quem publicou, o filtro vem depois: busca mais para sobrarem bastantes
+    p_limite: f.meus || f.turno || f.quem ? 200 : 120,
     p_cidade: local?.cidade ?? null,
     p_bairro: local?.bairro || null,
     p_bairros_regiao: local?.regiao ? chavesDaRegiao(local.regiao) : null,
@@ -194,7 +194,9 @@ export async function buscarAnuncios(
     p_por_distancia: porDistancia(f, local),
   });
   if (error) falha("anúncios", error);
-  return f.meus ? (data ?? []).filter((a) => a.autor_id === autorId) : (data ?? []);
+  // quem publicou (empresa, comércio, agência ou pessoa): pelo tipo da conta de cada anúncio
+  const lista = f.quem ? (data ?? []).filter((a) => a.autor_tipo === f.quem) : (data ?? []);
+  return f.meus ? lista.filter((a) => a.autor_id === autorId) : lista;
 }
 
 export const obterAnuncio = cache(async (id: string): Promise<AnuncioCompleto | null> => {

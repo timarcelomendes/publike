@@ -25,6 +25,15 @@ export const TURNOS = [
 ] as const;
 export type Turno = (typeof TURNOS)[number]["valor"];
 
+/** Quem publicou: o tipo da conta (empresa, comércio, agência de emprego ou pessoa). */
+export const QUEM_PUBLICA = [
+  { valor: "empresa", nome: "Empresas" },
+  { valor: "comercio", nome: "Comércios" },
+  { valor: "agencia", nome: "Agências de emprego" },
+  { valor: "pessoa", nome: "Pessoas" },
+] as const;
+export type QuemPublica = (typeof QUEM_PUBLICA)[number]["valor"];
+
 export type Filtros = {
   q: string;
   tipo: TipoAnuncio | null;
@@ -41,6 +50,8 @@ export type Filtros = {
   origem: Origem;
   /** "Só os meus": só os anúncios de quem está logado */
   meus: boolean;
+  /** só os anúncios de um tipo de conta (empresa, comércio, agência ou pessoa) */
+  quem?: QuemPublica | null;
   /** a pessoa escolheu "Tudo" (vale mesmo se o que ela procura abre em Vagas ou Serviços) */
   tudo?: boolean;
 };
@@ -82,6 +93,7 @@ export function lerFiltros(sp: Parametros): Filtros {
   const lng = numero(primeiro(sp.lng));
   const temPonto = lat !== null && lng !== null && noPublike({ lat, lng });
   const origem = primeiro(sp.origem);
+  const quem = primeiro(sp.quem);
 
   return {
     q,
@@ -97,6 +109,7 @@ export function lerFiltros(sp: Parametros): Filtros {
     lng: temPonto ? Math.round(lng * 10000) / 10000 : CENTRO_GOIANIA.lng,
     origem: temPonto ? (origem === "gps" ? "gps" : "mapa") : "centro",
     meus: primeiro(sp.meus) === "1",
+    quem: QUEM_PUBLICA.some((q) => q.valor === quem) ? (quem as QuemPublica) : null,
     tudo: tipo === "tudo",
   };
 }
@@ -124,6 +137,7 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
   else if (f.raio !== RAIO_PADRAO) p.set("raio", String(f.raio));
   if (f.ordem !== "perto" && f.ordem !== "ultimas") p.set("ordem", f.ordem);
   if (f.meus) p.set("meus", "1");
+  if (f.quem) p.set("quem", f.quem);
   if (f.origem !== "centro") {
     p.set("lat", String(f.lat));
     p.set("lng", String(f.lng));
@@ -135,7 +149,7 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
 
 /**
  * Quantos filtros da lista fogem do padrão (área, contratação, horário, distância ou tempo, ordem,
- * só os meus). `ordemFora`: a ordem fica nos atalhos (o feed), não conta como filtro.
+ * só os meus, quem publicou). `ordemFora`: a ordem fica nos atalhos (o feed), não conta como filtro.
  */
 export function filtrosMudados(f: Filtros, ordemFora = false) {
   return [
@@ -145,6 +159,7 @@ export function filtrosMudados(f: Filtros, ordemFora = false) {
     f.tempo || f.raio !== RAIO_PADRAO,
     !ordemFora && f.ordem !== "perto",
     f.meus,
+    f.quem,
   ].filter(Boolean).length;
 }
 
@@ -156,6 +171,7 @@ export const SEM_FILTROS: Partial<Filtros> = {
   raio: RAIO_PADRAO,
   tempo: null,
   meus: false,
+  quem: null,
 };
 
 /** De onde contam as distâncias; no centro, o da cidade de quem está vendo (sem ela, a da praça principal). */

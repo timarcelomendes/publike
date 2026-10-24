@@ -296,6 +296,7 @@ const BUSCA = [
   "lng",
   "origem",
   "meus",
+  "quem",
   "casa",
 ];
 

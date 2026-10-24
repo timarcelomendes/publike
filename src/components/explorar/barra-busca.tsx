@@ -6,7 +6,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { CATEGORIAS, REGIMES, type Categoria } from "@/lib/constantes";
 import { nomeDoTempo, TEMPOS } from "@/lib/deslocamento";
-import { hrefFiltros, RAIOS, TURNOS, type Filtros, type Ordem, type Turno } from "@/lib/filtros";
+import {
+  hrefFiltros,
+  QUEM_PUBLICA,
+  RAIOS,
+  TURNOS,
+  type Filtros,
+  type Ordem,
+  type QuemPublica,
+  type Turno,
+} from "@/lib/filtros";
 import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
 import type { Regime } from "@/lib/tipos";
@@ -568,6 +577,23 @@ export function FiltrosLista({
             ))}
           </Seletor>,
         )}
+      {rotulado(
+        "Quem publicou",
+        <Seletor
+          aria-label="Quem publicou"
+          value={filtros.quem ?? ""}
+          onChange={(e) => ir({ quem: (e.target.value || null) as QuemPublica | null })}
+          className={classe}
+          envoltorio={envoltorio}
+        >
+          <option value="">{comRotulos ? "Todos" : "Quem publicou: todos"}</option>
+          {QUEM_PUBLICA.map((q) => (
+            <option key={q.valor} value={q.valor}>
+              {q.nome}
+            </option>
+          ))}
+        </Seletor>,
+      )}
       {rotulado(
         "Distância",
         <Seletor
