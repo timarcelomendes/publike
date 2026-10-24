@@ -49,6 +49,7 @@ import {
 import { NIVEIS_DE_OUTRO_ESTUDO } from "@/lib/estudos";
 import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
+import { AvisoAoSair } from "./ui/aviso-ao-sair";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "./ui/campo";
@@ -261,7 +262,7 @@ function LerCurriculoPronto({
         {situacao.tipo === "pronto" && (
           <Aviso tipo="sucesso" titulo="Pronto! Confira os campos aqui embaixo.">
             <p>
-              Preenchemos {situacao.texto}. Confira tudo e toque em “{rotuloSalvar}”, no fim da página.
+              Preenchemos {situacao.texto}. Ainda não está salvo: confira e toque em “{rotuloSalvar}”, embaixo da tela.
             </p>
             {situacao.semData > 0 && (
               <p>
@@ -416,6 +417,24 @@ export function FormCurriculo({
   const formulario = useRef<HTMLFormElement>(null);
   const erros = estado.erros ?? {};
   const pdfOriginal = arquivo !== null && arquivo === inicial?.arquivo;
+  // o que está preenchido agora, para saber se mudou desde que a página abriu (salvar troca a chave
+  // do formulário, e ele recomeça)
+  const retrato = JSON.stringify([
+    titulo,
+    habilidades,
+    escolaridade,
+    curso,
+    estudos.map((e) => [e.nivel, e.curso]),
+    experiencias.map((x) => [x.cargo, x.onde, x.inicio, x.fim, x.atual, x.descricao]),
+    cursos,
+    cnh,
+    disponibilidade,
+    arquivo,
+  ]);
+  const [retratoAoAbrir] = useState(retrato);
+  // tem coisa por salvar (a leitura do PDF, o que a pessoa mexeu, o convite ou o PDF que ficou
+  // guardado): o botão de salvar acompanha a tela, para ninguém sair achando que já salvou
+  const porSalvar = retrato !== retratoAoAbrir || (!inicial && (semente !== null || guardado !== null));
 
   // Depois de um erro, leva a pessoa até o primeiro campo com problema
   useEffect(() => {
@@ -1137,19 +1156,47 @@ export function FormCurriculo({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* com coisa por salvar, o botão acompanha a tela (em cima da barra de baixo, no celular) */}
+      <div
+        className={
+          porSalvar
+            ? "sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-raised md:bottom-4"
+            : "flex flex-col gap-3 sm:flex-row sm:items-center"
+        }
+      >
         <Botao type="submit" variante="primario" disabled={enviando || enviandoPdf || lendo} className="sm:min-w-56">
           {enviando ? "Salvando…" : rotuloSalvar}
         </Botao>
-        <p className="text-body-sm text-ink-muted">
-          Sem telefone, e-mail ou link no texto: o contato aparece sozinho no match.{" "}
-          <Link href="/privacidade#curriculo" className="underline">
-            Como cuidamos do currículo
-          </Link>
-          .
-        </p>
+        {porSalvar ? (
+          <p className="text-body-sm text-ink-muted">Seu currículo ainda não foi salvo.</p>
+        ) : (
+          <SemContatoNoTexto />
+        )}
       </div>
+      {porSalvar && <SemContatoNoTexto />}
+
+      {/* sair com coisa por salvar pergunta antes (o salvar que não chegou ao servidor já guardou tudo) */}
+      <AvisoAoSair
+        ativo={porSalvar && !demo && !estado.semSalvar}
+        titulo="Sair sem salvar o currículo?"
+        texto="Ele ainda não foi salvo, e as empresas só veem depois de salvar."
+        rotuloSalvar={rotuloSalvar}
+        podeSalvar={!enviando && !enviandoPdf && !lendo}
+        aoSalvar={() => formulario.current?.requestSubmit()}
+      />
     </form>
+  );
+}
+
+function SemContatoNoTexto() {
+  return (
+    <p className="text-body-sm text-ink-muted">
+      Sem telefone, e-mail ou link no texto: o contato aparece sozinho no match.{" "}
+      <Link href="/privacidade#curriculo" className="underline">
+        Como cuidamos do currículo
+      </Link>
+      .
+    </p>
   );
 }
 
