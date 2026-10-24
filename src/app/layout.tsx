@@ -113,8 +113,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <GoogleAds />
         </Suspense>
         <AvisoAtualizacao />
-        {/* o "salvo" de uma ação que levou para outra página (lib/aviso-depois.ts) */}
-        <AvisoDepois />
+        {/* o "salvo" de uma ação que levou para outra página (lib/aviso-depois.ts); lê o endereço da página */}
+        <Suspense fallback={null}>
+          <AvisoDepois />
+        </Suspense>
         {/* lê o endereço da página: no build, precisa estar num Suspense */}
         <Suspense fallback={null}>
           <ConviteInstalar />
