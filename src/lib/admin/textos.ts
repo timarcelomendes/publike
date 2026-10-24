@@ -3,6 +3,7 @@
 const ACOES: Record<string, string> = {
   salvar_config: "salvou as configurações de",
   enviar_email: "mandou um e-mail para",
+  mensagem_equipe: "mandou uma mensagem da equipe para",
   servicos_em_nome: "montou a vitrine de serviços de",
   enviar_boas_vindas: "mandou para quem faltava o e-mail de",
   remover_anuncio: "removeu o anúncio",
@@ -63,6 +64,7 @@ export const CATEGORIAS_IA: Record<string, string> = {
 };
 
 export const NOMES_MODELOS_EMAIL: Record<string, string> = {
+  mensagem_equipe: "Mensagem da equipe",
   curtida: "Curtida",
   match: "Match",
   em_analise: "Anúncio em análise",

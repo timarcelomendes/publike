@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { conviteDoEmail } from "@/lib/agenda";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail, montarEmail } from "@/lib/email/montar";
+import { EMAIL_DA_EQUIPE } from "@/lib/mensagem-equipe";
 import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { revisarAnuncio, revisarAvaliacao, revisarRecado, type DecisaoIA } from "@/lib/ia/tarefas";
 import { criarClienteAdmin, type ClienteBanco } from "@/lib/supabase/admin";
@@ -140,7 +141,8 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
         await transporte.sendMail({
           from: { name: item.remetente_nome, address: smtp.remetente },
           to: item.para,
-          replyTo: item.responder_para || undefined,
+          // a mensagem da equipe: quem responde fala com a equipe
+          replyTo: item.modelo === "mensagem_equipe" ? EMAIL_DA_EQUIPE : item.responder_para || undefined,
           subject: email.assunto,
           text: email.texto,
           html: email.html,

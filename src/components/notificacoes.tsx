@@ -29,6 +29,7 @@ import {
   Share2,
   Store,
   Eye,
+  Megaphone,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
@@ -72,6 +73,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   visita: Eye,
   visitas_do_dia: Eye,
   visitas_novidade: Eye,
+  // a mensagem que a equipe do Publike escreveu para a conta
+  mensagem_equipe: Megaphone,
 };
 
 type Notificacao = {
@@ -86,6 +89,7 @@ type Notificacao = {
 };
 
 function destino(n: Notificacao, usuarioId: string) {
+  if (n.tipo === "mensagem_equipe") return "/painel/mensagens-da-equipe";
   if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
   if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
   if (n.tipo === "visitas_novidade") return "/painel/visitas#opcoes";

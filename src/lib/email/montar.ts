@@ -91,6 +91,8 @@ function rodape(modelo: ModeloEmail, siteUrl: string) {
     return "Aviso para a equipe do Publike. Quem recebe estes avisos é escolhido no admin.";
   if (modelo.grupo === "sistema") return "Mensagem de teste enviada pelo admin do Publike.";
   if (modelo.modelo.startsWith("conta_")) return "Este é um aviso sobre a sua conta no Publike.";
+  if (modelo.modelo === "mensagem_equipe")
+    return "Mensagem da equipe do Publike para a sua conta. Para responder, é só responder este e-mail.";
   return `Você recebeu este aviso porque tem uma conta no Publike. Para não receber mais avisos por e-mail, desmarque a opção no seu perfil: ${site}/perfil`;
 }
 

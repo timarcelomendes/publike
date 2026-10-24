@@ -15,6 +15,7 @@ import {
 import { DadosDaReceita } from "@/components/admin/dados-receita";
 import { EnviarEmailParaConta } from "@/components/admin/emails-da-conta";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { MensagemDaEquipe } from "@/components/admin/mensagem-equipe";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Dado, Secao } from "@/components/admin/ui";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
@@ -26,6 +27,7 @@ import {
   fichaUsuario,
   listarAnuncios,
   matchesDesfeitosDe,
+  mensagensDaEquipeDe,
   modelosDeEmail,
   registroDaEquipe,
 } from "@/lib/admin/dados";
@@ -66,7 +68,7 @@ async function Conteudo({
   const c = await exigirAdminLocal();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora] = await Promise.all([
+  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora, mensagens] = await Promise.all([
     fichaUsuario(c, id),
     listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
     registroDaEquipe(c, 20, id),
@@ -75,6 +77,7 @@ async function Conteudo({
     modelosDeEmail(c),
     emailsDoUsuario(c, id),
     agoraDaRequisicao(),
+    mensagensDaEquipeDe(c, id),
   ]);
   if (!u) notFound();
 
@@ -220,11 +223,26 @@ async function Conteudo({
         </Secao>
       )}
 
+      {u.perfil && mensagens && (
+        <Secao
+          titulo="Mensagem da equipe"
+          descricao="Escreva para a conta: chega no sino e, se marcar, também no e-mail. A pessoa lê todas em Mensagens da equipe."
+        >
+          <MensagemDaEquipe
+            contaId={u.id}
+            nome={nome}
+            temEmail={Boolean(u.email || u.contato.email)}
+            enviadas={mensagens}
+          />
+        </Secao>
+      )}
+
       <Secao titulo="E-mails" descricao="A pessoa diz que não recebeu? Escolha o modelo e mande de novo, na hora.">
         <EnviarEmailParaConta
           usuarioId={u.id}
           modelos={modelos
-            .filter((m) => m.grupo === "usuarios")
+            // a mensagem da equipe tem a seção dela (o texto é escrito na hora)
+            .filter((m) => m.grupo === "usuarios" && m.chave !== "mensagem_equipe")
             .map((m) => ({ chave: m.chave, nome: m.nome, descricao: m.descricao, variaveis: m.variaveis }))}
           sugerido={
             u.perfil?.tipo === "agencia"

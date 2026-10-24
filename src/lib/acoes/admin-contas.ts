@@ -15,6 +15,7 @@ import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { areasSemRepetir } from "@/lib/constantes";
+import { LIMITES_MENSAGEM_EQUIPE } from "@/lib/mensagem-equipe";
 
 // Contas criadas pela equipe (quem pediu ajuda para entrar no Publike, como uma
 // agência que mandou a lista de vagas). Só no admin, no computador do dono.
@@ -251,6 +252,41 @@ export async function enviarEmailParaConta(
   return {
     ok: false,
     erro: `O servidor de e-mail recusou: ${s?.erro ?? envio.erros.find((e) => e.id === id)?.erro ?? "erro desconhecido"}`,
+  };
+}
+
+/**
+ * Mensagem da equipe: chega no sino da conta e, com `email`, também no e-mail (a resposta vai para a
+ * equipe). O e-mail sai na hora, como no "Enviar agora".
+ */
+export async function mandarMensagemDaEquipe(
+  contaId: string,
+  assunto: string,
+  texto: string,
+  email: boolean,
+): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { data, error } = await c.rpc("admin_mandar_mensagem_equipe", {
+    p_conta: contaId,
+    p_assunto: assunto.slice(0, LIMITES_MENSAGEM_EQUIPE.assunto + 20),
+    p_texto: texto.slice(0, LIMITES_MENSAGEM_EQUIPE.texto + 50),
+    p_email: email,
+  });
+  if (error?.code === "PGRST202") return { ok: false, erro: "Rode antes a migração da mensagem da equipe." };
+  if (error || !data) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  if (!data.email_id) return { ok: true, mensagem: "Mensagem no sino da conta." };
+
+  const envio = await enviarEmailsPendentes(50);
+  const { data: estado } = await c.rpc("admin_status_email", { p_id: data.email_id });
+  const s = estado?.[0];
+  if (s?.status === "enviado") return { ok: true, mensagem: "Mensagem no sino e no e-mail da conta." };
+  if (envio.motivo) return { ok: false, erro: `Foi para o sino, mas o e-mail ficou na fila: ${envio.motivo}` };
+  return {
+    ok: false,
+    erro: `Foi para o sino, mas o servidor de e-mail recusou: ${s?.erro ?? envio.erros.find((e) => e.id === data.email_id)?.erro ?? "erro desconhecido"}`,
   };
 }
 

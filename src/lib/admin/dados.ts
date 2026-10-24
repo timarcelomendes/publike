@@ -382,6 +382,16 @@ export async function emailsDoUsuario(c: ClienteBanco, usuarioId: string, limite
   return data ?? [];
 }
 
+/** As mensagens da equipe que a conta recebeu. null: banco sem a migração. */
+export async function mensagensDaEquipeDe(c: ClienteBanco, contaId: string) {
+  const { data, error } = await c.rpc("admin_mensagens_equipe", { p_conta: contaId });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as mensagens da equipe:", error.message);
+    return null;
+  }
+  return data ?? [];
+}
+
 export async function decisoesDaIA(c: ClienteBanco, limite = 40) {
   const { data, error } = await c.rpc("admin_decisoes_ia", { p_limite: limite });
   if (error) falha("as decisões da IA", error);

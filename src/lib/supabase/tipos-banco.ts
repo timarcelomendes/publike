@@ -1124,6 +1124,26 @@ export type Database = {
         Args: { p_modos: string[] };
         Returns: string[];
       };
+      admin_mandar_mensagem_equipe: {
+        Args: { p_conta: string; p_assunto: string; p_texto: string; p_email: boolean };
+        Returns: { id: number; email_id: number | null };
+      };
+      admin_mensagens_equipe: {
+        Args: { p_conta: string };
+        Returns: {
+          id: number;
+          assunto: string;
+          texto: string;
+          por_email: boolean;
+          criado_em: string;
+          lida_em: string | null;
+        }[];
+      };
+      minhas_mensagens_equipe: {
+        Args: Record<PropertyKey, never>;
+        Returns: { id: number; assunto: string; texto: string; criado_em: string; lida_em: string | null }[];
+      };
+      ler_mensagens_equipe: { Args: Record<PropertyKey, never>; Returns: undefined };
       registrar_motivo_encerramento: {
         Args: { p_anuncio: string; p_motivo: string; p_detalhe?: string | null };
         Returns: undefined;
