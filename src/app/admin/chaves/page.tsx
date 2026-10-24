@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { BotaoApagarChave, FormNovaChave } from "@/components/admin/chaves";
+import { BotaoApagarChave, FormNovaChave, GeradorDeSegredo } from "@/components/admin/chaves";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { listarChavesServidor } from "@/lib/admin/dados";
@@ -68,6 +68,13 @@ async function Conteudo() {
 
       <Secao titulo="Gerar uma chave">
         <FormNovaChave />
+      </Secao>
+
+      <Secao
+        titulo="Gerar um segredo"
+        descricao="Para os segredos que o site usa fora do banco, como o CRON_SECRET das tarefas agendadas. O valor nasce aqui no navegador e não fica guardado: copie na hora."
+      >
+        <GeradorDeSegredo />
       </Secao>
     </div>
   );
