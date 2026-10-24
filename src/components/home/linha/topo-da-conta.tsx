@@ -16,7 +16,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import type { TextoDoConvite } from "../../recados/convite-recado";
 import { BarraBusca, FiltrosLista } from "../../explorar/barra-busca";
 import { FotoDaConta } from "../foto-da-conta";
-import { AbasDaLinha } from "./abas-da-linha";
+import { AbasDaLinha, OrdemDaLinha } from "./abas-da-linha";
 import { BuscaERecado } from "./busca-e-recado";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
@@ -177,7 +177,8 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
         : `Nada novo desde ${quandoFoi(d.marca, d.agora)}`;
   // os links das abas e dos filtros: com "Mais relevantes", ela continua; sem, a linha é a das últimas
   const base = { ...d.filtrosDaBusca, ordem: d.relevantes ? ("relevantes" as const) : ("perto" as const) };
-  const mudados = filtrosMudados(d.filtrosDaBusca, true) + (d.relevantes ? 1 : 0);
+  // a ordem fica à vista, fora dos Filtros: não conta como filtro mudado
+  const mudados = filtrosMudados(d.filtrosDaBusca, true);
   const textoDoRaio = d.filtros.tempo ? nomeDoTempo(d.filtros.tempo).toLowerCase() : `até ${d.filtros.raio} km`;
   const Icone = acao?.icone;
 
@@ -295,29 +296,40 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
         abrirFiltros={casa}
         textoDoRaio={textoDoRaio}
         filtros={
-          <>
+          <div className="flex flex-col gap-4">
             {/* de onde contam as distâncias: a casa (CEP) ou onde a pessoa está agora */}
-            <BarraBusca
-              filtros={base}
-              local={d.local}
-              cidade={visita.cidade}
-              abrirOndeMora={casa}
-              className=""
-              soLugar
-              umaLinha
-              // o lugar e os filtros da lista numa linha só (os filtros rolam de lado)
-              extra={<FiltrosLista filtros={base} semOrdem ordemDaLinha />}
-            />
+            <div className="flex flex-col gap-1">
+              <span className="text-caption font-semibold text-ink-muted">De onde contar a distância</span>
+              <BarraBusca
+                filtros={base}
+                local={d.local}
+                cidade={visita.cidade}
+                abrirOndeMora={casa}
+                className=""
+                soLugar
+              />
+            </div>
+            {/* cada filtro com o nome em cima, em grade: nada fica escondido numa faixa que rola de lado */}
+            <FiltrosLista filtros={base} semOrdem comRotulos />
             {mudados > 0 && (
               <Link
-                href={hrefFiltros(base, { ...SEM_FILTROS, ordem: "perto" })}
+                href={hrefFiltros(base, { ...SEM_FILTROS, ordem: base.ordem })}
                 scroll={false}
                 className="self-end text-label text-ink underline underline-offset-2 hover:text-terra-text"
               >
                 Limpar filtros
               </Link>
             )}
-          </>
+          </div>
+        }
+        ordem={
+          d.aba === "recado" ? null : (
+            <OrdemDaLinha
+              relevantes={d.relevantes}
+              ultimas={hrefFiltros(base, { ordem: "perto" })}
+              maisRelevantes={hrefFiltros(base, { ordem: "relevantes" })}
+            />
+          )
         }
       />
       <div aria-hidden className="h-4 sm:h-5" />

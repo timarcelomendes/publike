@@ -26,6 +26,9 @@ import { esquecerPerto, guardarPerto, pertoGuardadoNoNavegador } from "@/lib/per
 // filtros caberem na linha do título no computador
 const seletor =
   "min-h-10 field-sizing-content rounded-md border border-line-strong bg-surface-200 pl-3.5 text-label text-ink transition-colors hover:bg-surface-300";
+/** No painel dos filtros (com o nome em cima): ocupa a célula da grade. */
+const seletorDaGrade =
+  "min-h-11 w-full rounded-md border border-line-strong bg-surface-200 pl-3.5 text-label text-ink transition-colors hover:bg-surface-300";
 
 /** Muda a URL com os filtros novos, sem pular para o topo. */
 export function useIrPara(filtros: Filtros) {
@@ -158,6 +161,24 @@ function FaixaRolavel({
 }
 
 /** Os filtros em linhas que quebram (o feed): tudo à vista, nada cortado nas pontas. */
+/** O painel dos filtros da linha do tempo: os filtros com o nome em cima, em duas colunas. */
+function FiltrosEmGrade({
+  rotulo,
+  ocupado,
+  children,
+}: {
+  rotulo: string;
+  ocupado?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div role="group" aria-label={rotulo} aria-busy={ocupado} className="grid grid-cols-2 gap-3">
+      {children}
+    </div>
+  );
+}
+
 function FiltrosEmLinhas({
   rotulo,
   ocupado,
@@ -352,7 +373,7 @@ export function BarraBusca({
           // bairro corta antes (o nome inteiro fica no title do botão)
           `min-w-0 ${
             soLugar
-              ? `flex flex-wrap sm:order-2 ${umaLinha ? "sm:shrink-0 sm:flex-nowrap" : ""} [&>button]:rounded-pill sm:[&>button]:min-h-8 sm:[&>button]:px-2.5 sm:[&>button]:text-body-sm sm:[&>button]:font-semibold sm:[&>button:first-child]:max-w-36 @2xl:[&>button:first-child]:max-w-64`
+              ? `flex flex-wrap sm:order-2 ${umaLinha ? "sm:shrink-0 sm:flex-nowrap" : ""} [&>button]:rounded-pill sm:[&>button]:min-h-8 sm:[&>button]:px-2.5 sm:[&>button]:text-body-sm sm:[&>button]:font-semibold ${extra ? "sm:[&>button:first-child]:max-w-36 @2xl:[&>button:first-child]:max-w-64" : "sm:[&>button:first-child]:max-w-80"}`
               : `hidden sm:flex ${faixa ? "sm:order-5" : "sm:order-2 sm:mb-1.5"}`
           }`,
         )}
@@ -453,6 +474,7 @@ export function FiltrosLista({
   semOrdem = false,
   ordemSoNoCelular = false,
   ordemDaLinha = false,
+  comRotulos = false,
 }: {
   filtros: Filtros;
   soMeus?: boolean;
@@ -466,9 +488,23 @@ export function FiltrosLista({
   ordemSoNoCelular?: boolean;
   /** a linha do tempo: Últimas (o padrão) ou Mais relevantes (a mesma linha, na ordem das curtidas e aberturas) */
   ordemDaLinha?: boolean;
+  /** o painel dos filtros da linha do tempo: cada filtro com o nome em cima, em grade (nada rola de lado) */
+  comRotulos?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
-  const Faixa = quebrar ? FiltrosEmLinhas : FaixaRolavel;
+  const Faixa = comRotulos ? FiltrosEmGrade : quebrar ? FiltrosEmLinhas : FaixaRolavel;
+  // com o nome em cima, o seletor ocupa a célula inteira e a opção vazia diz só "Todas"/"Qualquer"
+  const classe = comRotulos ? seletorDaGrade : seletor;
+  const envoltorio = comRotulos ? "w-full" : "shrink-0";
+  const rotulado = (rotulo: string, campo: ReactNode) =>
+    comRotulos ? (
+      <label className="flex min-w-0 flex-col gap-1">
+        <span className="text-caption font-semibold text-ink-muted">{rotulo}</span>
+        {campo}
+      </label>
+    ) : (
+      campo
+    );
   return (
     // "end-safe": juntos à direita quando cabem; sem espaço, começam da esquerda e rolam (nenhum fica escondido)
     <Faixa rotulo="Filtros da lista" ocupado={pendente} className="items-center lg:mx-0 lg:justify-end-safe lg:px-0">
@@ -479,78 +515,88 @@ export function FiltrosLista({
           <span aria-hidden className="my-1.5 w-px shrink-0 bg-line-strong" />
         </>
       )}
-      <Seletor
-        aria-label="Área"
-        value={filtros.categoria ?? ""}
-        onChange={(e) => ir({ categoria: (e.target.value || null) as Categoria | null })}
-        className={seletor}
-        envoltorio="shrink-0"
-      >
-        <option value="">Área: todas</option>
-        {CATEGORIAS.map((c) => (
-          <option key={c.slug} value={c.slug}>
-            {c.nome}
-          </option>
-        ))}
-      </Seletor>
-      {filtros.tipo !== "servico" && (
+      {rotulado(
+        "Área",
         <Seletor
-          aria-label="Tipo de contratação"
-          value={filtros.regime ?? ""}
-          onChange={(e) => ir({ regime: (e.target.value || null) as Regime | null })}
-          className={seletor}
-          envoltorio="shrink-0"
+          aria-label="Área"
+          value={filtros.categoria ?? ""}
+          onChange={(e) => ir({ categoria: (e.target.value || null) as Categoria | null })}
+          className={classe}
+          envoltorio={envoltorio}
         >
-          <option value="">Contratação: todas</option>
-          {Object.entries(REGIMES).map(([valor, r]) => (
-            <option key={valor} value={valor}>
-              {r.nome}
+          <option value="">{comRotulos ? "Todas" : "Área: todas"}</option>
+          {CATEGORIAS.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.nome}
             </option>
           ))}
-        </Seletor>
+        </Seletor>,
       )}
-      {filtros.tipo === "vaga" && (
+      {filtros.tipo !== "servico" &&
+        rotulado(
+          "Contratação",
+          <Seletor
+            aria-label="Tipo de contratação"
+            value={filtros.regime ?? ""}
+            onChange={(e) => ir({ regime: (e.target.value || null) as Regime | null })}
+            className={classe}
+            envoltorio={envoltorio}
+          >
+            <option value="">{comRotulos ? "Todas" : "Contratação: todas"}</option>
+            {Object.entries(REGIMES).map(([valor, r]) => (
+              <option key={valor} value={valor}>
+                {r.nome}
+              </option>
+            ))}
+          </Seletor>,
+        )}
+      {filtros.tipo === "vaga" &&
+        rotulado(
+          "Horário",
+          <Seletor
+            aria-label="Horário"
+            value={filtros.turno ?? ""}
+            onChange={(e) => ir({ turno: (e.target.value || null) as Turno | null })}
+            className={classe}
+            envoltorio={envoltorio}
+          >
+            <option value="">{comRotulos ? "Qualquer" : "Horário: qualquer"}</option>
+            {TURNOS.map((t) => (
+              <option key={t.valor} value={t.valor}>
+                {t.nome}
+              </option>
+            ))}
+          </Seletor>,
+        )}
+      {rotulado(
+        "Distância",
         <Seletor
-          aria-label="Horário"
-          value={filtros.turno ?? ""}
-          onChange={(e) => ir({ turno: (e.target.value || null) as Turno | null })}
-          className={seletor}
-          envoltorio="shrink-0"
+          aria-label="Distância ou tempo de ônibus"
+          value={filtros.tempo ? `t${filtros.tempo}` : String(filtros.raio)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.startsWith("t")) ir({ tempo: Number(v.slice(1)) });
+            else ir({ raio: Number(v), tempo: null });
+          }}
+          className={classe}
+          envoltorio={envoltorio}
         >
-          <option value="">Horário: qualquer</option>
-          {TURNOS.map((t) => (
-            <option key={t.valor} value={t.valor}>
-              {t.nome}
-            </option>
-          ))}
-        </Seletor>
+          <optgroup label="Tempo de ônibus">
+            {TEMPOS.map((t) => (
+              <option key={t} value={`t${t}`}>
+                {nomeDoTempo(t)}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Distância">
+            {RAIOS.map((r) => (
+              <option key={r} value={r}>
+                Até {r} km
+              </option>
+            ))}
+          </optgroup>
+        </Seletor>,
       )}
-      <Seletor
-        aria-label="Distância ou tempo de ônibus"
-        value={filtros.tempo ? `t${filtros.tempo}` : String(filtros.raio)}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v.startsWith("t")) ir({ tempo: Number(v.slice(1)) });
-          else ir({ raio: Number(v), tempo: null });
-        }}
-        className={seletor}
-        envoltorio="shrink-0"
-      >
-        <optgroup label="Tempo de ônibus">
-          {TEMPOS.map((t) => (
-            <option key={t} value={`t${t}`}>
-              {nomeDoTempo(t)}
-            </option>
-          ))}
-        </optgroup>
-        <optgroup label="Distância">
-          {RAIOS.map((r) => (
-            <option key={r} value={r}>
-              Até {r} km
-            </option>
-          ))}
-        </optgroup>
-      </Seletor>
       {ordemDaLinha && (
         <Seletor
           aria-label="Ordem"

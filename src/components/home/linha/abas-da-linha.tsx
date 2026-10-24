@@ -29,6 +29,7 @@ export function AbasDaLinha({
   abrirFiltros = false,
   textoDoRaio,
   filtros,
+  ordem = null,
 }: {
   aba: Aba;
   numeros: Record<Aba, string | null>;
@@ -39,6 +40,8 @@ export function AbasDaLinha({
   textoDoRaio: string;
   /** os filtros da lista (FiltrosLista) e o "Limpar filtros" */
   filtros: ReactNode;
+  /** Últimas ou Mais relevantes (OrdemDaLinha): fora do painel, sempre à vista logo acima da lista */
+  ordem?: ReactNode;
 }) {
   const [aberto, setAberto] = useState(mudados > 0 || abrirFiltros);
   const id = useId();
@@ -131,6 +134,46 @@ export function AbasDaLinha({
       >
         {filtros}
       </div>
+      {ordem && <div className="mt-3">{ordem}</div>}
     </>
+  );
+}
+
+/** A ordem da linha do tempo, à vista (não dentro dos Filtros): Últimas, o padrão, ou Mais relevantes. */
+export function OrdemDaLinha({
+  relevantes,
+  ultimas,
+  maisRelevantes,
+}: {
+  relevantes: boolean;
+  ultimas: string;
+  maisRelevantes: string;
+}) {
+  const opcao = (ativa: boolean) =>
+    `inline-flex min-h-9 items-center rounded-pill px-3.5 text-label transition-colors ${
+      ativa ? "bg-ink text-surface-100" : "text-ink-muted hover:text-ink"
+    }`;
+  return (
+    <nav aria-label="Ordem da linha do tempo" className="flex items-center gap-2">
+      <span className="text-body-sm text-ink-muted">Ordem:</span>
+      <span className="inline-flex rounded-pill border border-line-strong bg-surface-200 p-0.5">
+        <Link
+          href={ultimas}
+          scroll={false}
+          aria-current={relevantes ? undefined : "true"}
+          className={opcao(!relevantes)}
+        >
+          Últimas
+        </Link>
+        <Link
+          href={maisRelevantes}
+          scroll={false}
+          aria-current={relevantes ? "true" : undefined}
+          className={opcao(relevantes)}
+        >
+          Mais relevantes
+        </Link>
+      </span>
+    </nav>
   );
 }
