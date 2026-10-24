@@ -2,6 +2,7 @@
 
 import { UserPlus } from "lucide-react";
 import { useActionState } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { adicionarModerador } from "@/lib/acoes/admin";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
@@ -9,9 +10,10 @@ import { Botao } from "../ui/botao";
 import { Campo, classesEntrada, ligarCampo } from "../ui/campo";
 
 const INICIAL: EstadoForm = { ok: false };
+const adicionarProtegido = protegerAcao(adicionarModerador);
 
 export function FormNovoModerador() {
-  const [estado, acao, enviando] = useActionState(adicionarModerador, INICIAL);
+  const [estado, acao, enviando] = useActionState(adicionarProtegido, INICIAL);
   return (
     <form action={acao} className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">

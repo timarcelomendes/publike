@@ -3,6 +3,7 @@
 import { Briefcase, FileUser, ImagePlus, Quote, Smile, Wrench, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import {
   escreverRecado,
   procurarCurriculoParaCitar,
@@ -199,10 +200,11 @@ export function EscreverRecado({
     if (curriculo) dados.set("talento_id", curriculo.id);
     setAviso(null);
     iniciar(async () => {
-      const r = await escreverRecado(dados);
+      // sem chegar ao servidor, o recado fica no campo e o aviso aparece
+      const r = await chamarAcao(() => escreverRecado(dados));
       if (!r.ok) {
         setAviso({ ok: false, texto: r.erro });
-        if (r.ir) router.push(r.ir);
+        if ("ir" in r && r.ir) router.push(r.ir);
         return;
       }
       setTexto("");

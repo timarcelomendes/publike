@@ -3,6 +3,7 @@
 import { Star } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { salvarVaga } from "@/lib/acoes/descobrir";
 
 const CLASSES =
@@ -45,7 +46,7 @@ export function BotaoSalvarVaga({
         disabled={pendente}
         onClick={() =>
           iniciar(async () => {
-            const r = await salvarVaga(anuncioId, !marcada);
+            const r = await chamarAcao(() => salvarVaga(anuncioId, !marcada));
             if (r.ok) {
               setMarcada(!marcada);
               setErro(null);

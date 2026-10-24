@@ -4,6 +4,7 @@ import { BicepsFlexed } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { darForca } from "@/lib/acoes/recados";
 
 /**
@@ -27,7 +28,7 @@ export function BotaoForca({
   const [forcas, setForcas] = useState(forcasIniciais);
   const [dei, setDei] = useState(deiInicial);
   const [erro, setErro] = useState<string | null>(null);
-  const [, iniciar] = useTransition();
+  const [pendente, iniciar] = useTransition();
   const rotulo = forcas === 1 ? "1 Força" : `${forcas} Força`;
 
   if (proprio) {
@@ -54,18 +55,20 @@ export function BotaoForca({
       <button
         type="button"
         aria-pressed={dei}
+        // um toque por vez: o segundo, antes da resposta, desfazia a conta da mudança na hora
+        disabled={pendente}
         onClick={() => {
           const antes = { forcas, dei };
           setErro(null);
           setDei(!dei);
           setForcas(Math.max(0, forcas + (dei ? -1 : 1)));
           iniciar(async () => {
-            const r = await darForca(recadoId);
+            const r = await chamarAcao(() => darForca(recadoId));
             if (!r.ok) {
               setForcas(antes.forcas);
               setDei(antes.dei);
               setErro(r.erro);
-              if (r.ir) router.push(r.ir);
+              if ("ir" in r && r.ir) router.push(r.ir);
               return;
             }
             if ("forcas" in r) {

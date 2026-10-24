@@ -2,6 +2,7 @@
 
 import { CalendarPlus, Send, Trash } from "lucide-react";
 import { useId, useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import {
   apagarModeloMensagem,
   mandarMensagemEmMassa,
@@ -309,10 +310,12 @@ export function CompositorMensagem({
   function mandar() {
     setAviso(null);
     iniciar(async () => {
-      const r = await mandarMensagemEmMassa(
-        anuncioId,
-        comMatch.map((p) => p.id),
-        texto,
+      const r = await chamarAcao(() =>
+        mandarMensagemEmMassa(
+          anuncioId,
+          comMatch.map((p) => p.id),
+          texto,
+        ),
       );
       if (!r.ok) setAviso({ ok: false, texto: r.erro });
       else {
@@ -330,7 +333,7 @@ export function CompositorMensagem({
   function salvarComoPronta() {
     setAviso(null);
     iniciar(async () => {
-      const r = await salvarModeloMensagem(nomeModelo, texto);
+      const r = await chamarAcao(() => salvarModeloMensagem(nomeModelo, texto));
       setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Salva." } : { ok: false, texto: r.erro });
       if (r.ok) setNomeModelo("");
     });
@@ -338,7 +341,7 @@ export function CompositorMensagem({
 
   function apagar(id: string) {
     iniciar(async () => {
-      const r = await apagarModeloMensagem(id);
+      const r = await chamarAcao(() => apagarModeloMensagem(id));
       if (r.ok) {
         setModeloId("");
         setTexto("");

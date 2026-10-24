@@ -3,11 +3,14 @@
 import { Star } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { avaliarServico } from "@/lib/acoes/avaliacoes";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro } from "./ui/campo";
+
+const avaliarProtegido = protegerAcao(avaliarServico);
 
 const ROTULOS = ["", "Ruim", "Fraco", "Bom", "Muito bom", "Excelente"];
 
@@ -22,7 +25,7 @@ export function FormAvaliacao({
   perfilProfissional: string;
   inicial: { nota: number; comentario: string | null } | null;
 }) {
-  const [estado, acao, enviando] = useActionState(avaliarServico, { ok: false } as EstadoForm);
+  const [estado, acao, enviando] = useActionState(avaliarProtegido, { ok: false } as EstadoForm);
   const [nota, setNota] = useState(inicial?.nota ?? 0);
   const [passando, setPassando] = useState(0);
   const [comentario, setComentario] = useState(inicial?.comentario ?? "");

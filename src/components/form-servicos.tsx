@@ -7,12 +7,14 @@ import {
   startTransition,
   useActionState,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
   type ReactNode,
 } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { salvarServicos } from "@/lib/acoes/servicos";
 import { BAIRROS } from "@/lib/bairros";
 import {
@@ -216,7 +218,9 @@ export function FormServicos({
   /** Campos a mais, antes do botão de salvar (ex.: a conta e a autorização, no convite). */
   extras?: ReactNode;
 }) {
-  const [estado, acao, enviando] = useActionState(acaoSalvar, ESTADO_INICIAL);
+  // a falha de rede (ou o site publicado de novo) vira o aviso do formulário, sem perder o que foi preenchido
+  const salvarProtegido = useMemo(() => protegerAcao(acaoSalvar), [acaoSalvar]);
+  const [estado, acao, enviando] = useActionState(salvarProtegido, ESTADO_INICIAL);
   const [itens, setItens] = useState<Item[]>(() => inicial.servicos.map(itemDe));
   const [busca, setBusca] = useState("");
   const [todos, setTodos] = useState(false);

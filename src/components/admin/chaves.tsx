@@ -2,6 +2,7 @@
 
 import { Check, Copy, KeyRound, Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { apagarChaveServidor, criarChaveServidor, type EstadoChave } from "@/lib/acoes/admin";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -9,9 +10,10 @@ import { Campo, classesEntrada, ligarCampo } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
 const INICIAL: EstadoChave = { ok: false };
+const criarChaveProtegido = protegerAcao(criarChaveServidor);
 
 export function FormNovaChave() {
-  const [estado, acao, enviando] = useActionState(criarChaveServidor, INICIAL);
+  const [estado, acao, enviando] = useActionState(criarChaveProtegido, INICIAL);
   const [copiado, setCopiado] = useState(false);
   const linha = estado.chave ? `PUBLIKE_CHAVE_SERVIDOR=${estado.chave}` : "";
 

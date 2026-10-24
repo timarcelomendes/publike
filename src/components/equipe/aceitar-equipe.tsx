@@ -3,6 +3,7 @@
 import { ArrowLeftRight, Check, LoaderCircle, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { aceitarConviteEquipe, trocarConta } from "@/lib/acoes/equipe";
 import { Botao } from "../ui/botao";
 
@@ -17,9 +18,9 @@ export function AceitarEquipe({ token, agencia }: { token: string; agencia: stri
   function entrar() {
     setErro(null);
     iniciar(async () => {
-      const r = await aceitarConviteEquipe(token);
+      const r = await chamarAcao(() => aceitarConviteEquipe(token));
       if (!r.ok) {
-        if (r.ir) return router.push(r.ir);
+        if ("ir" in r && r.ir) return router.push(r.ir);
         return setErro(r.erro);
       }
       if (!r.agindo) return setSemTroca(true);
@@ -65,8 +66,8 @@ export function AgirComo({ contaId, nome }: { contaId: string; nome: string }) {
           disabled={pendente}
           onClick={() =>
             iniciar(async () => {
-              const r = await trocarConta(contaId);
-              if (!r.ok) return r.ir ? router.push(r.ir) : setErro(r.erro);
+              const r = await chamarAcao(() => trocarConta(contaId));
+              if (!r.ok) return "ir" in r && r.ir ? router.push(r.ir) : setErro(r.erro);
               router.push("/painel");
               router.refresh();
             })

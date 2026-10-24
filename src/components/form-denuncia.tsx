@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { denunciarAnuncio } from "@/lib/acoes/moderacao";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
@@ -9,8 +10,10 @@ import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro } from "./ui/campo";
 
+const denunciarProtegido = protegerAcao(denunciarAnuncio);
+
 export function FormDenuncia({ anuncioId }: { anuncioId: string }) {
-  const [estado, acao, enviando] = useActionState(denunciarAnuncio, { ok: false } as EstadoForm);
+  const [estado, acao, enviando] = useActionState(denunciarProtegido, { ok: false } as EstadoForm);
 
   if (estado.ok) {
     return (

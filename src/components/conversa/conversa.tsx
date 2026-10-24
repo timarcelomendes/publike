@@ -11,6 +11,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import {
   anexarCurriculoNaConversa,
   enviarMensagemPara,
@@ -121,7 +122,8 @@ export function Conversa({
     if (!t || pendente) return;
     setErro(null);
     iniciar(async () => {
-      const r = await enviarMensagemPara(outroId, t);
+      // sem chegar ao servidor, o texto fica no campo e o aviso aparece
+      const r = await chamarAcao(() => enviarMensagemPara(outroId, t));
       if (!r.ok) {
         setErro(r.erro);
         return;
@@ -164,7 +166,7 @@ export function Conversa({
   async function abrirAnexo(id: number) {
     // a aba abre já no toque (o navegador bloqueia janela aberta depois de esperar)
     const aba = window.open("", "_blank");
-    const link = await linkDoAnexo(id);
+    const link = await linkDoAnexo(id).catch(() => null);
     if (link && aba) aba.location.href = link;
     else {
       aba?.close();

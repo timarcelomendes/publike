@@ -2,6 +2,7 @@
 
 import { Bug, Heart, Lightbulb, Send, Sparkles, type LucideIcon } from "lucide-react";
 import { useActionState, useState } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { enviarSugestao } from "@/lib/acoes/sugestoes";
 import { TIPOS_SUGESTAO, type TipoSugestao } from "@/lib/sugestoes";
 import type { EstadoForm } from "@/lib/tipos";
@@ -11,6 +12,7 @@ import { Campo, classesEntrada, ligarCampo, MensagemErro } from "./ui/campo";
 
 const ICONES: Record<TipoSugestao, LucideIcon> = { erro: Bug, sugestao: Lightbulb, melhoria: Sparkles, elogio: Heart };
 const INICIAL: EstadoForm = { ok: false };
+const enviarSugestaoProtegido = protegerAcao(enviarSugestao);
 
 /** Erro, sugestão, elogio ou melhoria. Sem conta, pede um e-mail (opcional) para a resposta. */
 export function FormSugestao({
@@ -23,7 +25,7 @@ export function FormSugestao({
   pagina: string | null;
   logado: boolean;
 }) {
-  const [estado, acao, enviando] = useActionState(enviarSugestao, INICIAL);
+  const [estado, acao, enviando] = useActionState(enviarSugestaoProtegido, INICIAL);
   const [tipo, setTipo] = useState<TipoSugestao | null>(tipoInicial);
   const [texto, setTexto] = useState("");
   const erros = estado.erros ?? {};

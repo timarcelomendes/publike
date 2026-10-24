@@ -22,6 +22,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import type { Aderencia } from "@/lib/aderencia";
 import { adicionarFinalistas, tirarFinalista } from "@/lib/acoes/finalistas";
 import type { Colocacao } from "@/lib/colocacoes";
@@ -129,7 +130,8 @@ export function QuadroCandidatos({
     setAviso(null);
     iniciar(async () => {
       mover({ ids: mudam, coluna });
-      const r = await moverCandidatos(anuncioId, mudam, coluna);
+      // sem chegar ao servidor, os cartões voltam para a coluna de antes e o aviso aparece
+      const r = await chamarAcao(() => moverCandidatos(anuncioId, mudam, coluna));
       if (!r.ok) setAviso({ ok: false, texto: r.erro });
       else {
         const falhas = r.falhas.map((f) => `${f.perfil}: ${f.erro}`).join(" ");
@@ -142,7 +144,7 @@ export function QuadroCandidatos({
   function enviarAoCliente(ids: string[]) {
     setAviso(null);
     iniciar(async () => {
-      const r = await adicionarFinalistas(anuncioId, ids);
+      const r = await chamarAcao(() => adicionarFinalistas(anuncioId, ids));
       setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
       if (r.ok) setSelecionados([]);
     });
@@ -680,7 +682,7 @@ function ClienteDoCandidato({
           onClick={() =>
             iniciar(async () => {
               setErro(null);
-              const r = await tirarFinalista(anuncioId, c.perfil_id);
+              const r = await chamarAcao(() => tirarFinalista(anuncioId, c.perfil_id));
               if (!r.ok) setErro(r.erro);
             })
           }

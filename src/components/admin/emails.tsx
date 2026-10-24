@@ -2,6 +2,7 @@
 
 import { Bell, HandHeart, ImageUp, Mail, RefreshCw, RotateCcw, Send } from "lucide-react";
 import { useActionState, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import {
   enviarAvisoConvite,
   enviarConviteEmail,
@@ -24,6 +25,12 @@ import { Campo, classesEntrada, ligarCampo, MensagemErro } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
 const INICIAL: EstadoForm = { ok: false };
+// a falha de rede (ou o site publicado de novo) vira o aviso do formulário
+const enviarEmailDeTesteProtegido = protegerAcao(enviarEmailDeTeste);
+const salvarConfigEmailsProtegido = protegerAcao(salvarConfigEmails);
+const salvarLogoEmailsProtegido = protegerAcao(salvarLogoEmails);
+const salvarModeloEmailProtegido = protegerAcao(salvarModeloEmail);
+const testarConviteEmailProtegido = protegerAcao(testarConviteEmail);
 
 function Resultado({ estado }: { estado: EstadoForm }) {
   if (estado.erro) return <Aviso tipo="erro">{estado.erro}</Aviso>;
@@ -51,7 +58,7 @@ function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string;
 // ------------------------------------------------------------------ teste
 
 export function FormEmailTeste({ sugestao }: { sugestao: string }) {
-  const [estado, acao, enviando] = useActionState(enviarEmailDeTeste, INICIAL);
+  const [estado, acao, enviando] = useActionState(enviarEmailDeTesteProtegido, INICIAL);
   return (
     <form action={acao} className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -78,7 +85,7 @@ export function FormEmailTeste({ sugestao }: { sugestao: string }) {
 // ------------------------------------------------------------------ configurações
 
 export function FormConfigEmails({ config }: { config: ConfigSite }) {
-  const [estado, acao, enviando] = useActionState(salvarConfigEmails, INICIAL);
+  const [estado, acao, enviando] = useActionState(salvarConfigEmailsProtegido, INICIAL);
   const erros = estado.erros ?? {};
   return (
     <form action={acao} className="flex flex-col gap-6">
@@ -176,6 +183,17 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
             ajuda="Quando as denúncias ou a IA tiram um anúncio do ar."
             inicial={config.aviso_retirado}
           />
+          {config.aviso_falha !== undefined && (
+            <>
+              <input type="hidden" name="tem_aviso_falha" value="1" />
+              <Opcao
+                nome="aviso_falha"
+                rotulo="Falha na vaga ou no currículo"
+                ajuda="Erro ao publicar vaga ou salvar currículo (no máximo um por falha igual a cada 15 minutos) e quem erra o mesmo formulário 3 vezes. Tudo fica em Falhas."
+                inicial={config.aviso_falha}
+              />
+            </>
+          )}
         </div>
       </fieldset>
 
@@ -226,7 +244,7 @@ export function FormLogoEmails({
   propria: string | null;
   padrao: string;
 }) {
-  const [estado, acao, enviando] = useActionState(salvarLogoEmails, INICIAL);
+  const [estado, acao, enviando] = useActionState(salvarLogoEmailsProtegido, INICIAL);
   // A prévia do arquivo escolhido vale até o próximo envio (depois a página mostra a logo salva).
   const [escolhida, setEscolhida] = useState<{ url: string; estado: EstadoForm } | null>(null);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
@@ -320,7 +338,7 @@ export function FormLogoEmails({
 // ------------------------------------------------------------------ textos
 
 function EditorModelo({ m, siteUrl, logo }: { m: ModeloEmailAdmin; siteUrl: string; logo: string | null }) {
-  const [estado, acao, enviando] = useActionState(salvarModeloEmail, INICIAL);
+  const [estado, acao, enviando] = useActionState(salvarModeloEmailProtegido, INICIAL);
   const restaurar = useAcao();
   const [assunto, setAssunto] = useState(m.assunto);
   const [corpo, setCorpo] = useState(m.corpo);
@@ -614,7 +632,7 @@ function LinhaConvite({
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
-  const [estado, acao, testando] = useActionState(testarConviteEmail, INICIAL);
+  const [estado, acao, testando] = useActionState(testarConviteEmailProtegido, INICIAL);
   return (
     <li className="flex flex-col gap-3 rounded-md border border-line p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">

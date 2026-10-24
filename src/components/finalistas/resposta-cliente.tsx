@@ -2,6 +2,7 @@
 
 import { Check, Printer, X } from "lucide-react";
 import { useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { responderFinalista } from "@/lib/acoes/finalistas";
 import { DECISOES_CLIENTE, LIMITES_FINALISTAS, type DecisaoCliente } from "@/lib/finalistas";
 import { Botao } from "../ui/botao";
@@ -57,7 +58,7 @@ export function RespostaDoCliente({
       // o nome de quem responde fica no aparelho: as outras respostas usam o mesmo
       const q = quem.replace(/\s+/g, " ").trim() || lerNome();
       guardarNome(q);
-      const r = await responderFinalista(token, id, nova, texto, q);
+      const r = await chamarAcao(() => responderFinalista(token, id, nova, texto, q));
       if (r.ok) {
         setQuem(q);
         setComentarioSalvo(texto.trim());

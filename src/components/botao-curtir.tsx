@@ -3,6 +3,7 @@
 import { Heart, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { curtirAnuncio, curtirDeNovo, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
 
@@ -148,13 +149,12 @@ export function BotaoCurtir({
     const curtindo = !curtido;
     iniciar(async () => {
       setAtual(curtido ? null : "pendente");
-      const r = desfeito
-        ? await curtirDeNovo(anuncioId)
-        : curtido
-          ? await descurtirAnuncio(anuncioId)
-          : await curtirAnuncio(anuncioId);
+      // sem chegar ao servidor, volta { ok: false }: o coração desfaz e o erro aparece
+      const r = await chamarAcao(() =>
+        desfeito ? curtirDeNovo(anuncioId) : curtido ? descurtirAnuncio(anuncioId) : curtirAnuncio(anuncioId),
+      );
       if (!r.ok) {
-        if (r.ir) router.push(r.ir);
+        if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
       } else if (curtindo) {
         setExplicar(true);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { salvarConfigIA } from "@/lib/acoes/admin";
 import type { ConfigSite } from "@/lib/admin/dados";
 import type { EstadoForm } from "@/lib/tipos";
@@ -8,6 +9,7 @@ import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 
 const INICIAL: EstadoForm = { ok: false };
+const salvarConfigIAProtegido = protegerAcao(salvarConfigIA);
 
 type Modelo = { id: string; nome: string; ajuda: string };
 
@@ -29,7 +31,7 @@ function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string;
 }
 
 export function FormConfigIA({ config, modelos }: { config: ConfigSite; modelos: readonly Modelo[] }) {
-  const [estado, acao, enviando] = useActionState(salvarConfigIA, INICIAL);
+  const [estado, acao, enviando] = useActionState(salvarConfigIAProtegido, INICIAL);
   const atual = modelos.some((m) => m.id === config.ia_modelo) ? config.ia_modelo : modelos[0].id;
   return (
     <form action={acao} className="flex flex-col gap-6">

@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { aceitarConviteCandidato, recusarConviteCandidato } from "@/lib/acoes/convites-candidato";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
 import { CamposDasPerguntas, faltandoResponder } from "../anuncio/perguntas-da-vaga";
@@ -38,9 +39,9 @@ export function AceitarConvite({
       return;
     }
     iniciar(async () => {
-      const r = await aceitarConviteCandidato(token, respostas);
+      const r = await chamarAcao(() => aceitarConviteCandidato(token, respostas));
       if (r.ok) return router.push(r.ir);
-      if (r.ir) return router.push(r.ir);
+      if ("ir" in r && r.ir) return router.push(r.ir);
       setErro(r.erro);
     });
   }
@@ -113,7 +114,7 @@ export function NaoQuero({ token }: { token: string }) {
         disabled={pendente}
         onClick={() =>
           iniciar(async () => {
-            const r = await recusarConviteCandidato(token);
+            const r = await chamarAcao(() => recusarConviteCandidato(token));
             setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
           })
         }

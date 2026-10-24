@@ -1,7 +1,8 @@
 "use client";
 
 import { Copy, KeyRound, Link2, MessageCircle } from "lucide-react";
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useMemo, useState, type FormEvent } from "react";
+import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
 import { alterarLoginPeloAdmin, gerarAcessoPorWhatsapp, gerarLinkDeAcesso } from "@/lib/acoes/admin-contas";
 import { formatarTelefone } from "@/lib/formato";
 import type { EstadoForm } from "@/lib/tipos";
@@ -24,7 +25,8 @@ export function AcessoDaConta({
   telefone: string | null;
   whatsappContato: string | null;
 }) {
-  const [estado, acao, salvando] = useActionState(alterarLoginPeloAdmin.bind(null, usuarioId), {
+  const alterarProtegido = useMemo(() => protegerAcao(alterarLoginPeloAdmin.bind(null, usuarioId)), [usuarioId]);
+  const [estado, acao, salvando] = useActionState(alterarProtegido, {
     ok: false,
   } as EstadoForm);
   const erros = estado.erros ?? {};
@@ -43,7 +45,7 @@ export function AcessoDaConta({
     setGerando(true);
     setAviso(null);
     setLink(null);
-    const r = await gerarLinkDeAcesso(usuarioId);
+    const r = await chamarAcao(() => gerarLinkDeAcesso(usuarioId));
     setGerando(false);
     if (r.ok && r.link) setLink(r.link);
     else if (!r.ok) setAviso(r.erro);
@@ -170,7 +172,7 @@ export function AcessoPorWhatsapp({ usuarioId }: { usuarioId: string }) {
   async function gerar() {
     setGerando(true);
     setErro(null);
-    const r = await gerarAcessoPorWhatsapp(usuarioId);
+    const r = await chamarAcao(() => gerarAcessoPorWhatsapp(usuarioId));
     setGerando(false);
     if (r.ok) setGerado({ whatsapp: r.whatsapp, mensagem: r.mensagem });
     else setErro(r.erro);

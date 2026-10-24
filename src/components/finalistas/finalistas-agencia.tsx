@@ -3,6 +3,7 @@
 import { Check, Copy, ExternalLink, Link2, MessageCircle, RefreshCw, Sparkles, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { adicionarFinalistas, mexerNoLink, salvarParecer, tirarFinalista } from "@/lib/acoes/finalistas";
 import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
 import { LIMITES_FINALISTAS } from "@/lib/finalistas";
@@ -58,7 +59,7 @@ export function LinkDoCliente({
   function mexer(acao: "pegar" | "renovar" | "trocar") {
     setAviso(null);
     iniciar(async () => {
-      const r = await mexerNoLink(anuncioId, acao);
+      const r = await chamarAcao(() => mexerNoLink(anuncioId, acao));
       if (!r.ok) setAviso({ ok: false, texto: r.erro });
       else
         setAviso({
@@ -193,7 +194,7 @@ export function ParecerDoFinalista({
   function salvar() {
     setAviso(null);
     iniciar(async () => {
-      const r = await salvarParecer(anuncioId, perfilId, texto);
+      const r = await chamarAcao(() => salvarParecer(anuncioId, perfilId, texto));
       if (r.ok) {
         setSalvo(texto.trim());
         setTexto(texto.trim());
@@ -205,7 +206,7 @@ export function ParecerDoFinalista({
   function comecarComIA() {
     setAviso(null);
     iniciar(async () => {
-      const r = await resumirCandidatoComIA(anuncioId, perfilId);
+      const r = await chamarAcao(() => resumirCandidatoComIA(anuncioId, perfilId));
       if (!r.ok) {
         setAviso({ ok: false, texto: r.erro });
         return;
@@ -276,7 +277,7 @@ export function TirarFinalista({ anuncioId, perfilId, nome }: { anuncioId: strin
         disabled={pendente}
         onClick={() =>
           iniciar(async () => {
-            const r = await tirarFinalista(anuncioId, perfilId);
+            const r = await chamarAcao(() => tirarFinalista(anuncioId, perfilId));
             if (!r.ok) setErro(r.erro);
           })
         }
@@ -334,7 +335,7 @@ export function AdicionarFinalistas({
           onClick={() =>
             iniciar(async () => {
               setAviso(null);
-              const r = await adicionarFinalistas(anuncioId, marcados);
+              const r = await chamarAcao(() => adicionarFinalistas(anuncioId, marcados));
               setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
               if (r.ok) setMarcados([]);
             })

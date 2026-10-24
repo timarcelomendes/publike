@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition, type DragEvent } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { anotarSugestao, apagarSugestao, moverSugestao } from "@/lib/acoes/admin";
 import { caminhoSeguro, tempoRelativo } from "@/lib/formato";
 import { COLUNAS_SUGESTAO, TIPOS_SUGESTAO, nomeDoTipo, type StatusSugestao, type TipoSugestao } from "@/lib/sugestoes";
@@ -77,7 +78,7 @@ export function QuadroSugestoes({ itens: iniciais, agora }: { itens: ItemSugesta
     setErro(null);
     setItens((lista) => lista.map((i) => (i.id === id ? { ...i, status: coluna, posicao } : i)));
     iniciar(async () => {
-      const r = await moverSugestao(id, coluna, posicao);
+      const r = await chamarAcao(() => moverSugestao(id, coluna, posicao));
       if (!r.ok) {
         setItens(antes);
         setErro(r.erro);
@@ -318,7 +319,7 @@ function Cartao({
               disabled={salvando || nota === (item.nota ?? "")}
               onClick={() =>
                 iniciar(async () => {
-                  const r = await anotarSugestao(item.id, nota);
+                  const r = await chamarAcao(() => anotarSugestao(item.id, nota));
                   setAviso(r.ok ? "Salva." : r.erro);
                 })
               }
@@ -332,7 +333,7 @@ function Cartao({
                 disabled={salvando}
                 onClick={() =>
                   iniciar(async () => {
-                    const r = await apagarSugestao(item.id);
+                    const r = await chamarAcao(() => apagarSugestao(item.id));
                     if (r.ok) aoApagar();
                     else setAviso(r.erro);
                   })

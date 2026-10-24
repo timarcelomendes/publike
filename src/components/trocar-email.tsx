@@ -2,12 +2,15 @@
 
 import { Mail, MailCheck } from "lucide-react";
 import { startTransition, useActionState, type FormEvent } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { reenviarTrocaDeEmail, trocarEmailDeLogin } from "@/lib/acoes/email-login";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo } from "./ui/campo";
 import { useAcao } from "./ui/usar-acao";
+
+const trocarEmailProtegido = protegerAcao(trocarEmailDeLogin);
 
 /**
  * O e-mail com que a pessoa entra no Publike, e como trocar. A troca só vale
@@ -24,7 +27,7 @@ export function TrocarEmail({
   /** voltou do link de confirmação */
   confirmado: boolean;
 }) {
-  const [estado, acao, enviando] = useActionState(trocarEmailDeLogin, { ok: false } as EstadoForm);
+  const [estado, acao, enviando] = useActionState(trocarEmailProtegido, { ok: false } as EstadoForm);
   const reenviar = useAcao();
   const erros = estado.erros ?? {};
 

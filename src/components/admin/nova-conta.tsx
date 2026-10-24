@@ -1,7 +1,8 @@
 "use client";
 
 import { UserPlus } from "lucide-react";
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useMemo, useState, type FormEvent } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { criarContaPeloAdmin, criarPerfilPeloAdmin } from "@/lib/acoes/admin-contas";
 import { CIDADES, LISTA_TIPOS_CONTA, TIPOS_CONTA } from "@/lib/constantes";
 import type { EstadoForm, TipoConta } from "@/lib/tipos";
@@ -31,10 +32,11 @@ export type InicialNovaConta = {
  * perfil, sem o e-mail de login nem o envio do acesso.
  */
 export function FormNovaConta({ inicial, contaId }: { inicial?: InicialNovaConta; contaId?: string }) {
-  const [estado, acao, enviando] = useActionState(
-    contaId ? criarPerfilPeloAdmin.bind(null, contaId) : criarContaPeloAdmin,
-    { ok: false } as EstadoForm,
+  const criarProtegido = useMemo(
+    () => protegerAcao(contaId ? criarPerfilPeloAdmin.bind(null, contaId) : criarContaPeloAdmin),
+    [contaId],
   );
+  const [estado, acao, enviando] = useActionState(criarProtegido, { ok: false } as EstadoForm);
   // conta que já entrou e autorizou vaga: quase sempre comércio ou empresa
   const [tipo, setTipo] = useState<TipoConta>(inicial?.tipo ?? (contaId ? "comercio" : "pessoa"));
   const erros = estado.erros ?? {};

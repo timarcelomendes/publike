@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { cancelarConviteCandidato, criarConviteCandidato } from "@/lib/acoes/convites-candidato";
 import {
   enviarPdf,
@@ -117,9 +118,10 @@ export function ChamarCandidato({
       if (arquivo?.tipo === "fotos") {
         (await fotosParaLeitura(arquivo.fotos)).forEach((b, i) => dados.append("foto", b, `pagina-${i + 1}.jpg`));
       }
-      const r = await criarConviteCandidato(anuncioId, dados);
+      // sem chegar ao servidor, o aviso certo (e não o do arquivo) e o nome fica no campo
+      const r = await chamarAcao(() => criarConviteCandidato(anuncioId, dados));
       if (!r.ok) {
-        if (r.campo === "nome") {
+        if ("campo" in r && r.campo === "nome") {
           setErroNome(r.erro);
           campoNome.current?.focus();
         } else setErro(r.erro);
@@ -405,7 +407,7 @@ function ItemConvite({
   const [pendente, iniciar] = useTransition();
   const [aberto, setAberto] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const situacao = situacaoNaLista(c, agora);
   const info = SITUACOES_CONVITE[situacao];
   const url = `${site}/candidatura/${c.token}`;
@@ -455,8 +457,10 @@ function ItemConvite({
                     disabled={pendente}
                     onClick={() =>
                       iniciar(async () => {
-                        const r = await cancelarConviteCandidato(c.id);
-                        setAviso(r.ok ? null : r.erro);
+                        const r = await chamarAcao(() => cancelarConviteCandidato(c.id));
+                        setAviso(
+                          r.ok ? { ok: true, texto: r.mensagem ?? "Convite cancelado." } : { ok: false, texto: r.erro },
+                        );
                         setConfirmar(false);
                       })
                     }
@@ -495,8 +499,11 @@ function ItemConvite({
         </div>
       )}
       {aviso && (
-        <p role="alert" className="text-body-sm text-danger">
-          {aviso}
+        <p
+          role={aviso.ok ? "status" : "alert"}
+          className={`text-body-sm ${aviso.ok ? "text-cerrado-text" : "text-danger"}`}
+        >
+          {aviso.texto}
         </p>
       )}
     </li>

@@ -1,7 +1,8 @@
 "use client";
 
 import { Mail } from "lucide-react";
-import { startTransition, useActionState, type FormEvent } from "react";
+import { startTransition, useActionState, useMemo, type FormEvent } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { vincularEmailDoAcesso } from "@/lib/acoes/acesso";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
@@ -10,7 +11,8 @@ import { Campo, classesEntrada, ligarCampo } from "./ui/campo";
 
 /** O e-mail da empresa (ou da pessoa, na vitrine de serviços) no link de acesso: vira o login da conta. */
 export function FormAcesso({ token, pessoal = false }: { token: string; pessoal?: boolean }) {
-  const [estado, acao, enviando] = useActionState(vincularEmailDoAcesso.bind(null, token), { ok: false } as EstadoForm);
+  const vincularProtegido = useMemo(() => protegerAcao(vincularEmailDoAcesso.bind(null, token)), [token]);
+  const [estado, acao, enviando] = useActionState(vincularProtegido, { ok: false } as EstadoForm);
   const erros = estado.erros ?? {};
   // sem limpar o campo quando volta com erro (o "action" do form limparia)
   function enviar(e: FormEvent<HTMLFormElement>) {

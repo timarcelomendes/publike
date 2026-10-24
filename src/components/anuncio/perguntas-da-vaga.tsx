@@ -2,6 +2,7 @@
 
 import { MessageCircleQuestion, Pencil } from "lucide-react";
 import { useId, useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { responderPerguntas } from "@/lib/acoes/curtidas";
 import { textoDaResposta, type Pergunta, type Respostas } from "@/lib/vaga-extra";
 import { Aviso } from "../ui/basicos";
@@ -120,7 +121,7 @@ export function SuasRespostas({
     if (falta.length) return;
     setErro(null);
     iniciar(async () => {
-      const r = await responderPerguntas(anuncioId, respostas);
+      const r = await chamarAcao(() => responderPerguntas(anuncioId, respostas));
       if (!r.ok) setErro(r.erro);
       else {
         setEditando(false);

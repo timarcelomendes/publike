@@ -3,6 +3,7 @@
 import { Building2, Lock, MapPin } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { salvarCliente } from "@/lib/acoes/clientes";
 import { BAIRROS } from "@/lib/bairros";
 import { montarEndereco } from "@/lib/cep";
@@ -19,6 +20,7 @@ import { Botao } from "../ui/botao";
 import { Campo, classesEntrada, ligarCampo, Seletor } from "../ui/campo";
 
 const ESTADO_INICIAL: EstadoForm = { ok: false };
+const salvarClienteProtegido = protegerAcao(salvarCliente);
 
 /** Cidade da Receita entre as do Publike ("GOIANIA" vira "Goiânia"). */
 function cidadeDaReceita(d: DadosCnpj): Cidade | null {
@@ -61,7 +63,7 @@ function Parte({
  * endereço, contato e anotações ficam só com a agência.
  */
 export function FormCliente({ cliente, cidadePadrao }: { cliente: Cliente | null; cidadePadrao: string }) {
-  const [estado, acao, enviando] = useActionState(salvarCliente, ESTADO_INICIAL);
+  const [estado, acao, enviando] = useActionState(salvarClienteProtegido, ESTADO_INICIAL);
   const erros = estado.erros ?? {};
   const formulario = useRef<HTMLFormElement>(null);
   const [cnpj, setCnpj] = useState(formatarCnpj(cliente?.cnpj ?? ""));

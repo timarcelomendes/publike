@@ -3,6 +3,7 @@
 import { Ellipsis, Flag, Trash2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { pedirConexao } from "@/lib/acoes/conexoes";
 import { apagarRecado, denunciarRecado } from "@/lib/acoes/recados";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
@@ -94,8 +95,8 @@ export function MenuDoRecado({
                     disabled={pendente}
                     onClick={() =>
                       iniciar(async () => {
-                        const r = await pedirConexao(autor.id, null, `/recado/${recadoId}`);
-                        if (!r.ok && r.ir?.startsWith("/entrar")) return router.push(r.ir);
+                        const r = await chamarAcao(() => pedirConexao(autor.id, null, `/recado/${recadoId}`));
+                        if (!r.ok && "ir" in r && r.ir?.startsWith("/entrar")) return router.push(r.ir);
                         setAviso(r.ok ? { ok: true, texto: r.mensagem } : { ok: false, texto: r.erro });
                       })
                     }
@@ -133,7 +134,7 @@ export function MenuDoRecado({
                   disabled={pendente}
                   onClick={() =>
                     iniciar(async () => {
-                      const r = await apagarRecado(recadoId);
+                      const r = await chamarAcao(() => apagarRecado(recadoId));
                       if (!r.ok) setAviso({ ok: false, texto: r.erro });
                       else {
                         setAberto(false);
@@ -154,7 +155,7 @@ export function MenuDoRecado({
                 e.preventDefault();
                 if (!motivo) return setAviso({ ok: false, texto: "Escolha o motivo." });
                 iniciar(async () => {
-                  const r = await denunciarRecado(recadoId, motivo, detalhes);
+                  const r = await chamarAcao(() => denunciarRecado(recadoId, motivo, detalhes));
                   setAviso(
                     r.ok ? { ok: true, texto: r.mensagem ?? "Denúncia enviada." } : { ok: false, texto: r.erro },
                   );

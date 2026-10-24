@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Heart, Keyboard, Sparkles, Undo2, X } from "
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { responderCurtida } from "@/lib/acoes/curtidas";
 import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
 import { SITE_URL } from "@/lib/config";
@@ -82,9 +83,9 @@ export function ControlesDaFicha({
   function responder(decisao: "match" | "dispensada") {
     setErro(null);
     iniciar(async () => {
-      const r = await responderCurtida(anuncioId, perfilId, decisao);
+      const r = await chamarAcao(() => responderCurtida(anuncioId, perfilId, decisao));
       if (!r.ok) {
-        if (r.ir) router.push(r.ir);
+        if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
         return;
       }
@@ -108,7 +109,7 @@ export function ControlesDaFicha({
     const u = ultima;
     if (!u?.desfaz) return;
     iniciar(async () => {
-      const r = await responderCurtida(u.anuncioId, u.perfilId, "pendente");
+      const r = await chamarAcao(() => responderCurtida(u.anuncioId, u.perfilId, "pendente"));
       if (!r.ok) return setErro(r.erro);
       guardar(null);
       router.push(`/painel/caixa?aba=responder&c=${u.anuncioId}:${u.perfilId}`, { scroll: false });
@@ -171,7 +172,7 @@ export function ControlesDaFicha({
             disabled={pendente}
             onClick={() =>
               iniciar(async () => {
-                const r = await responderCurtida(anuncioId, perfilId, "pendente");
+                const r = await chamarAcao(() => responderCurtida(anuncioId, perfilId, "pendente"));
                 if (!r.ok) setErro(r.erro);
               })
             }
@@ -385,7 +386,7 @@ export function ResumoDaIA({
           onClick={() =>
             iniciar(async () => {
               setErro(null);
-              const r = await resumirCandidatoComIA(anuncioId, perfilId);
+              const r = await chamarAcao(() => resumirCandidatoComIA(anuncioId, perfilId));
               if (r.ok) setResumo(r.resumo);
               else setErro(r.erro);
             })

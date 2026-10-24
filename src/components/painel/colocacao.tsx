@@ -1,7 +1,8 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { startTransition, useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
+import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
 import { apagarColocacao, salvarColocacao } from "@/lib/acoes/colocacoes";
 import { GARANTIA_PADRAO, GARANTIAS, hojeEmBrasilia, situacaoDaColocacao, type Colocacao } from "@/lib/colocacoes";
 import { formatarMoeda } from "@/lib/formato";
@@ -43,7 +44,11 @@ export function FormColocacao({
   atual: Colocacao | null;
   agora: number;
 }) {
-  const [estado, acao, salvando] = useActionState(salvarColocacao.bind(null, anuncioId, perfilId), ESTADO_INICIAL);
+  const salvarProtegido = useMemo(
+    () => protegerAcao(salvarColocacao.bind(null, anuncioId, perfilId)),
+    [anuncioId, perfilId],
+  );
+  const [estado, acao, salvando] = useActionState(salvarProtegido, ESTADO_INICIAL);
   const [apagando, iniciar] = useTransition();
   const [apagou, setApagou] = useState<string | null>(null);
   const hoje = hojeEmBrasilia(agora);
@@ -198,7 +203,7 @@ export function FormColocacao({
             disabled={salvando || apagando}
             onClick={() =>
               iniciar(async () => {
-                const r = await apagarColocacao(anuncioId, perfilId);
+                const r = await chamarAcao(() => apagarColocacao(anuncioId, perfilId));
                 setApagou(r.ok ? (r.mensagem ?? "Apagada.") : (r.erro ?? "Não deu para apagar."));
               })
             }

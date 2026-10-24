@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowRight, Eye, Power, Search, Share2, Sparkles, Trash2, X, type LucideIcon } from "lucide-react";
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useMemo, useState, type FormEvent } from "react";
+import { protegerAcao } from "@/lib/acao-segura";
 import { apagarBanner, ligarBanner, salvarBanner } from "@/lib/acoes/admin-banners";
 import { ACOES_BANNER, palavraDoLink, PUBLICOS_BANNER, type AcaoBanner, type PublicoBanner } from "@/lib/banners";
 import type { EstadoForm } from "@/lib/tipos";
@@ -41,7 +42,9 @@ const ICONES: Record<AcaoBanner, LucideIcon> = {
 
 /** Criar (sem `banner`) ou editar um banner, com a prévia de como fica a janela. */
 export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
-  const [estado, acao, enviando] = useActionState(salvarBanner.bind(null, banner?.id ?? null), {
+  const id = banner?.id ?? null;
+  const salvarProtegido = useMemo(() => protegerAcao(salvarBanner.bind(null, id)), [id]);
+  const [estado, acao, enviando] = useActionState(salvarProtegido, {
     ok: false,
   } as EstadoForm);
   const erros = estado.erros ?? {};

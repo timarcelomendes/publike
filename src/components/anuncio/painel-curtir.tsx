@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { pedirConversa } from "@/lib/abrir-conversa";
+import { chamarAcao } from "@/lib/acao-segura";
 import { caminhoConversa } from "@/lib/conversas";
 import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
@@ -155,9 +156,9 @@ export function PainelCurtir({
       }
     }
     iniciar(async () => {
-      const r = await curtirAnuncio(anuncioId, texto, perguntas.length ? respostas : null);
+      const r = await chamarAcao(() => curtirAnuncio(anuncioId, texto, perguntas.length ? respostas : null));
       if (!r.ok) {
-        if (r.ir) router.push(r.ir);
+        if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
       }
     });
@@ -166,7 +167,7 @@ export function PainelCurtir({
   function desfazer() {
     setErro(null);
     iniciar(async () => {
-      const r = await descurtirAnuncio(anuncioId);
+      const r = await chamarAcao(() => descurtirAnuncio(anuncioId));
       if (!r.ok) setErro(r.erro);
     });
   }

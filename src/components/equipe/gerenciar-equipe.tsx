@@ -3,6 +3,7 @@
 import { Check, Copy, ExternalLink, LogOut, MessageCircle, UserMinus, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import {
   cancelarConviteEquipe,
   criarConviteEquipe,
@@ -82,8 +83,8 @@ export function ConvidarParaEquipe({ site, agencia }: { site: string; agencia: s
     e.preventDefault();
     setErro(null);
     iniciar(async () => {
-      const r = await criarConviteEquipe(papel, nome);
-      if (!r.ok) return setErro({ campo: r.campo, texto: r.erro });
+      const r = await chamarAcao(() => criarConviteEquipe(papel, nome));
+      if (!r.ok) return setErro({ campo: "campo" in r ? r.campo : undefined, texto: r.erro });
       setCriado({ token: r.token, expira_em: r.expira_em, nome: nome.trim(), papel });
       setNome("");
     });
@@ -202,7 +203,7 @@ export function MembroDaEquipe({
   function trocarPapel(papel: string) {
     setAviso(null);
     iniciar(async () => {
-      const r = await mudarPapelEquipe(m.membro_id, papel);
+      const r = await chamarAcao(() => mudarPapelEquipe(m.membro_id, papel));
       setAviso(
         r.ok
           ? { ok: true, texto: `${primeiro} agora é ${PAPEIS_EQUIPE[papel as PapelEquipe].nome.toLowerCase()}.` }
@@ -214,12 +215,16 @@ export function MembroDaEquipe({
   function tirarOuSair() {
     setAviso(null);
     iniciar(async () => {
-      const r = m.sou_eu ? await sairDaEquipe(agenciaId) : await tirarDaEquipe(m.membro_id);
+      const r = await chamarAcao(() => (m.sou_eu ? sairDaEquipe(agenciaId) : tirarDaEquipe(m.membro_id)));
       if (!r.ok) return setAviso({ ok: false, texto: r.erro });
       if (m.sou_eu) {
         router.push("/painel");
         router.refresh();
+        return;
       }
+      // a confirmação de que deu certo, no lugar da pergunta
+      setConfirmar(false);
+      setAviso({ ok: true, texto: r.mensagem ?? `${primeiro} não age mais pela agência.` });
     });
   }
 
@@ -296,6 +301,7 @@ export function ConviteDaEquipe({ c, site, agencia }: { c: ConviteNaTela; site: 
   const [aberto, setAberto] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [feito, setFeito] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const url = `${site}/equipe/${c.token}`;
   return (
@@ -322,8 +328,10 @@ export function ConviteDaEquipe({ c, site, agencia }: { c: ConviteNaTela; site: 
                 disabled={pendente}
                 onClick={() =>
                   iniciar(async () => {
-                    const r = await cancelarConviteEquipe(c.id);
+                    setErro(null);
+                    const r = await chamarAcao(() => cancelarConviteEquipe(c.id));
                     if (!r.ok) setErro(r.erro);
+                    else setFeito(r.mensagem ?? "Convite cancelado.");
                     setConfirmar(false);
                   })
                 }
@@ -351,6 +359,11 @@ export function ConviteDaEquipe({ c, site, agencia }: { c: ConviteNaTela; site: 
       {erro && (
         <p role="alert" className="text-body-sm text-danger">
           {erro}
+        </p>
+      )}
+      {feito && (
+        <p role="status" className="text-body-sm text-cerrado-text">
+          {feito}
         </p>
       )}
     </li>
