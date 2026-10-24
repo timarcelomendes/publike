@@ -6,6 +6,7 @@ import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
 import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
+import { registrarFalha, textoDoErro } from "@/lib/servidor/falhas";
 import { TIPOS_DE_FOTO } from "@/lib/servidor/ler-curriculo";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -19,6 +20,18 @@ export type LeituraDaArte = { ok: true; vaga: RascunhoConvite } | { ok: false; e
 const MAX_BYTES = 1024 * 1024;
 
 export async function lerArteDaVaga(dados: FormData): Promise<LeituraDaArte> {
+  const leitura = await lerArte(dados);
+  // a imagem que não serve fica só registrada; a falha da IA chega à equipe (no catch, abaixo)
+  if (!leitura.ok && leitura.erro !== MENSAGEM_DEMO && !falhouNaIA.has(leitura)) {
+    await registrarFalha({ onde: "vaga", etapa: "validacao", mensagem: leitura.erro, detalhe: "arte da vaga" });
+  }
+  return leitura;
+}
+
+/** As respostas de erro da IA (já registradas como falha do sistema). */
+const falhouNaIA = new WeakSet<object>();
+
+async function lerArte(dados: FormData): Promise<LeituraDaArte> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!iaConfigurada()) return { ok: false, erro: "A leitura da imagem não está disponível agora." };
   const usuario = await obterUsuario();
@@ -59,6 +72,13 @@ export async function lerArteDaVaga(dados: FormData): Promise<LeituraDaArte> {
     if (!vaga) return { ok: false, erro: "Não deu para achar o cargo na imagem. Tente uma foto mais nítida." };
     return { ok: true, vaga };
   } catch (e) {
-    return { ok: false, erro: e instanceof ErroIA ? e.message : "Não deu para ler a imagem agora. Tente de novo." };
+    const falha = {
+      ok: false as const,
+      erro: e instanceof ErroIA ? e.message : "Não deu para ler a imagem agora. Tente de novo.",
+    };
+    console.error("Publike: a leitura da arte da vaga falhou:", e);
+    await registrarFalha({ onde: "vaga", etapa: "leitura", mensagem: falha.erro, detalhe: textoDoErro(e) });
+    falhouNaIA.add(falha);
+    return falha;
   }
 }

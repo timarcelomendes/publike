@@ -717,6 +717,8 @@ export type Database = {
           aviso_denuncia: boolean;
           aviso_cadastro: boolean;
           aviso_retirado: boolean;
+          /** aviso para a equipe quando publicar vaga ou salvar currículo falha (sem a migração: undefined) */
+          aviso_falha?: boolean;
           ia_moderacao: boolean;
           ia_melhorar_texto: boolean;
           ia_resumo: boolean;
@@ -2313,6 +2315,39 @@ export type Database = {
           p_aviso_cadastro: boolean;
           p_aviso_retirado: boolean;
           p_email_boas_vindas?: boolean;
+          p_aviso_falha?: boolean;
+        };
+        Returns: undefined;
+      };
+      admin_listar_falhas: {
+        Args: { p_limite?: number };
+        Returns: {
+          id: number;
+          onde: string;
+          etapa: string;
+          mensagem: string;
+          detalhe: string | null;
+          codigo: string | null;
+          campos: string[];
+          pagina: string | null;
+          navegador: string | null;
+          conta_id: string | null;
+          conta_nome: string | null;
+          conta_tipo: string | null;
+          avisado: boolean;
+          criado_em: string;
+        }[];
+      };
+      registrar_falha_cadastro: {
+        Args: {
+          p_onde: string;
+          p_etapa: string;
+          p_mensagem: string;
+          p_detalhe?: string;
+          p_codigo?: string;
+          p_campos?: string[];
+          p_pagina?: string;
+          p_navegador?: string;
         };
         Returns: undefined;
       };

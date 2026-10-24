@@ -4,6 +4,7 @@ import { ImageUp, LoaderCircle } from "lucide-react";
 import { useId, useState } from "react";
 import { lerArteDaVaga } from "@/lib/acoes/arte-vaga";
 import { ErroDaLeitura, fotosParaLeitura } from "@/lib/arquivo-curriculo";
+import { detalheDoErro, relatarFalha } from "@/lib/falhas";
 import type { RascunhoConvite } from "@/lib/convites";
 import { MensagemErro } from "./ui/campo";
 
@@ -32,7 +33,13 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
       if (!r.ok) return setErro(r.erro);
       aoLer(r.vaga);
     } catch (falha) {
-      setErro(falha instanceof ErroDaLeitura ? falha.message : "Não deu para ler a imagem agora. Tente de novo.");
+      const mensagem =
+        falha instanceof ErroDaLeitura ? falha.message : "Não deu para ler a imagem agora. Tente de novo.";
+      setErro(mensagem);
+      // a foto que não abre é do aparelho; o resto (o pedido que não chegou) a equipe precisa saber
+      if (!(falha instanceof ErroDaLeitura)) {
+        relatarFalha({ onde: "vaga", etapa: "conexao", mensagem, detalhe: `arte da vaga · ${detalheDoErro(falha)}` });
+      }
     } finally {
       setLendo(false);
     }

@@ -3,6 +3,7 @@
 import { Check, CircleHelp, Heart, Plus, SkipForward, TriangleAlert, Undo2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { responderCurtida } from "@/lib/acoes/curtidas";
 import { Avatar } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
@@ -36,7 +37,8 @@ export type CartaTriagem = {
   respostas: { pergunta: string; resposta: string }[];
 };
 
-type Feita = { carta: CartaTriagem; decisao: "match" | "dispensada" | "pular"; desfaz: boolean };
+/** `confirmada`: o servidor já gravou (o "Deu match" só aparece depois disso). */
+type Feita = { carta: CartaTriagem; decisao: "match" | "dispensada" | "pular"; desfaz: boolean; confirmada?: boolean };
 
 const LIMITE = 110;
 
@@ -67,13 +69,15 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
       }
       setFeitas((l) => [...l, { carta, decisao, desfaz: decisao === "dispensada" || carta.semCurriculo !== null }]);
       iniciar(async () => {
-        const r = await responderCurtida(carta.anuncioId, carta.perfilId, decisao);
+        const r = await chamarAcao(() => responderCurtida(carta.anuncioId, carta.perfilId, decisao));
         if (!r.ok) {
           // não deu: a carta volta para o topo
           setErro(r.erro);
           setFeitas((l) => l.filter((f) => f.carta !== carta));
           setFila((f) => [carta, ...f]);
+          return;
         }
+        setFeitas((l) => l.map((f) => (f.carta === carta ? { ...f, confirmada: true } : f)));
       });
     }, 180);
   }
@@ -86,8 +90,13 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
     setFila((f) => [ultima.carta, ...f]);
     if (ultima.decisao === "pular") return;
     iniciar(async () => {
-      const r = await responderCurtida(ultima.carta.anuncioId, ultima.carta.perfilId, "pendente");
-      if (!r.ok) setErro(r.erro);
+      const r = await chamarAcao(() => responderCurtida(ultima.carta.anuncioId, ultima.carta.perfilId, "pendente"));
+      if (!r.ok) {
+        // o servidor continua com a decisão: a carta sai da fila de novo e o erro diz por quê
+        setErro(`Não deu para desfazer. ${r.erro}`);
+        setFila((f) => f.filter((c) => c !== ultima.carta));
+        setFeitas((l) => [...l, ultima]);
+      }
     });
   }
 
@@ -360,7 +369,7 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
           </button>
         </p>
       )}
-      {ultima && !ultima.desfaz && ultima.decisao === "match" && (
+      {ultima && !ultima.desfaz && ultima.decisao === "match" && ultima.confirmada && (
         <p role="status" className="text-center text-body-sm text-cerrado-text">
           Deu match com {ultima.carta.nome.split(" ")[0]}! O contato está liberado na caixa de entrada.
         </p>

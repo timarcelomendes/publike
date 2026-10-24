@@ -2,6 +2,7 @@
 
 import { Search, StarOff } from "lucide-react";
 import { useId, useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { salvarProcuro, salvarVaga } from "@/lib/acoes/descobrir";
 import type { Local } from "@/lib/regioes";
 import { BotaoOndeMora, PainelOndeMora } from "../explorar/onde-mora";
@@ -50,7 +51,7 @@ export function EditorProcuro({
       onSubmit={(e) => {
         e.preventDefault();
         iniciar(async () => {
-          const r = await salvarProcuro(texto);
+          const r = await chamarAcao(() => salvarProcuro(texto));
           if (r.ok) {
             setErro(null);
             setAberto(!texto.trim());
@@ -107,18 +108,32 @@ export function EscolherBairro({ local }: { local: Local | null }) {
   );
 }
 
-/** Tirar uma vaga das salvas. */
+/** Tirar uma vaga das salvas (some da lista quando o servidor confirma; falhou: diz por quê). */
 export function TirarSalva({ anuncioId }: { anuncioId: string }) {
   const [pendente, iniciar] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
   return (
-    <button
-      type="button"
-      disabled={pendente}
-      onClick={() => iniciar(async () => void (await salvarVaga(anuncioId, false)))}
-      className="inline-flex min-h-10 items-center gap-1.5 self-start text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-60"
-    >
-      <StarOff aria-hidden className="size-4" />
-      {pendente ? "Tirando…" : "Tirar das salvas"}
-    </button>
+    <div className="flex flex-col gap-1 self-start">
+      <button
+        type="button"
+        disabled={pendente}
+        onClick={() =>
+          iniciar(async () => {
+            setErro(null);
+            const r = await chamarAcao(() => salvarVaga(anuncioId, false));
+            if (!r.ok) setErro(r.erro);
+          })
+        }
+        className="inline-flex min-h-10 items-center gap-1.5 self-start text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-60"
+      >
+        <StarOff aria-hidden className="size-4" />
+        {pendente ? "Tirando…" : "Tirar das salvas"}
+      </button>
+      {erro && (
+        <p role="alert" className="text-body-sm text-danger">
+          {erro}
+        </p>
+      )}
+    </div>
   );
 }

@@ -16,7 +16,8 @@ export default function Erro({ error, retry }: { error: Error & { digest?: strin
       <Simbolo altura={56} />
       <h1 className="mt-6 text-h2 sm:text-h1">Algo deu errado</h1>
       <p className="mt-2 max-w-md text-body text-ink-muted">
-        Não conseguimos carregar esta página agora. Tente de novo em instantes.
+        Não conseguimos mostrar esta página agora. Se você estava salvando alguma coisa, confira se ela ficou salva
+        antes de fazer de novo. Tente de novo em instantes.
       </p>
       {error.digest && <p className="mt-2 text-body-sm text-ink-muted">Código: {error.digest}</p>}
       <div className="mt-6 flex flex-wrap justify-center gap-3">

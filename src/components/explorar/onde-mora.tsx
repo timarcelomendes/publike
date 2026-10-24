@@ -2,6 +2,7 @@
 
 import { ChevronDown, House, LocateFixed, X } from "lucide-react";
 import { useId, useState, useSyncExternalStore, useTransition, type FormEvent } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { buscarCep } from "@/lib/acoes/cep";
 import { esquecerLocal, salvarLocal } from "@/lib/acoes/local";
 import { formatarCep, limparCep } from "@/lib/cep";
@@ -96,7 +97,7 @@ export function PainelOndeMora({
     if (c.length !== 8 || c === cepConferido) return;
     setErro(null);
     iniciar(async () => {
-      const r = await buscarCep(c);
+      const r = await chamarAcao(() => buscarCep(c));
       if (!r.ok) {
         setErro(r.erro);
         setCepConferido(null);
@@ -112,7 +113,7 @@ export function PainelOndeMora({
     e.preventDefault();
     setErro(null);
     iniciar(async () => {
-      const r = await salvarLocal(cidade, bairro, limparCep(cep) || null);
+      const r = await chamarAcao(() => salvarLocal(cidade, bairro, limparCep(cep) || null));
       if (!r.ok) return setErro(r.erro);
       fechar();
       aoSalvar?.();
@@ -122,7 +123,8 @@ export function PainelOndeMora({
   function esquecer() {
     setErro(null);
     iniciar(async () => {
-      await esquecerLocal();
+      const r = await chamarAcao(() => esquecerLocal());
+      if (!r.ok) return setErro(r.erro);
       fechar();
     });
   }
@@ -287,7 +289,7 @@ export function PerguntaOndeMora({
     setErro(null);
     iniciar(async () => {
       // a cidade e o bairro saem do próprio CEP (a cidade daqui é só para passar na conferência)
-      const r = await salvarLocal(PRACA_PADRAO.cidade, "", limparCep(cep));
+      const r = await chamarAcao(() => salvarLocal(PRACA_PADRAO.cidade, "", limparCep(cep)));
       if (!r.ok) return setErro(r.erro);
       aoSalvar?.();
     });

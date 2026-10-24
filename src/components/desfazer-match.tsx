@@ -2,6 +2,7 @@
 
 import { Ban, Heart, HeartCrack, Undo2 } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
+import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
 import { bloquearPessoa, curtirDeNovo, desfazerMatch } from "@/lib/acoes/curtidas";
 import { MOTIVOS_DESFAZER } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
@@ -10,6 +11,9 @@ import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro } from "./ui/campo";
 
 const ESTADO_INICIAL: EstadoForm = { ok: false };
+
+// a falha sem chegar ao servidor vira aviso no formulário (não a página de erro)
+const desfazerMatchProtegido = protegerAcao(desfazerMatch);
 
 /**
  * "Desfazer match": abre ali mesmo um formulário com o motivo e a
@@ -31,7 +35,7 @@ export function DesfazerMatch({
   claro?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
-  const [estado, acao, enviando] = useActionState(desfazerMatch, ESTADO_INICIAL);
+  const [estado, acao, enviando] = useActionState(desfazerMatchProtegido, ESTADO_INICIAL);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [futuro, setFuturo] = useState("");
@@ -181,7 +185,7 @@ export function CurtirDeNovo({ anuncioId, servico = false }: { anuncioId: string
         onClick={() =>
           iniciar(async () => {
             setErro(null);
-            const r = await curtirDeNovo(anuncioId);
+            const r = await chamarAcao(() => curtirDeNovo(anuncioId));
             if (r.ok) setOk(r.mensagem ?? "Pronto!");
             else setErro(r.erro);
           })
@@ -211,15 +215,19 @@ export function BotaoBloquear({
 }) {
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
+  const [feito, setFeito] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState(false);
   const primeiroNome = outroNome.split(" ")[0];
 
   function trocar(bloquear: boolean) {
     setErro(null);
+    setFeito(null);
     iniciar(async () => {
-      const r = await bloquearPessoa(outroId, bloquear);
-      if (!r.ok) setErro(r.erro);
+      const r = await chamarAcao(() => bloquearPessoa(outroId, bloquear));
+      // falhou: a confirmação fica aberta, com o motivo
+      if (!r.ok) return setErro(r.erro);
       setConfirmar(false);
+      if (r.mensagem) setFeito(r.mensagem);
     });
   }
 
@@ -258,6 +266,11 @@ export function BotaoBloquear({
         </button>
       )}
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {feito && !erro && (
+        <p role="status" className="text-body-sm text-cerrado-text">
+          {feito}
+        </p>
+      )}
     </div>
   );
 }

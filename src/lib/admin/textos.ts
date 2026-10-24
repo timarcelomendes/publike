@@ -74,6 +74,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   aviso_denuncia: "Nova denúncia",
   aviso_cadastro: "Novo cadastro",
   aviso_retirado: "Anúncio tirado do ar",
+  aviso_falha: "Falha na vaga ou no currículo",
   avaliacao: "Avaliação nova",
   avaliacao_retida: "Avaliação não publicada",
   aviso_avaliacao: "Avaliação para revisar",

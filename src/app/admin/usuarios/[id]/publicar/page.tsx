@@ -112,6 +112,13 @@ async function Conteudo({ params, searchParams }: { params: Props["params"]; sea
     <div className="flex max-w-5xl flex-col gap-6">
       {voltar}
       <h2 className="text-h2">Publicar vaga em nome de {p.nome}</h2>
+      {primeiro(sp.perfil) === "1" && (
+        <Aviso tipo="sucesso" titulo="Perfil salvo.">
+          {primeiro(sp.contato) === "0"
+            ? "Mas o WhatsApp e o e-mail de contato não salvaram: abra a conta e confira antes de publicar."
+            : "Agora é só publicar a vaga."}
+        </Aviso>
+      )}
       {primeiro(sp.copiar) && !copiavel && (
         <Aviso tipo="erro" titulo="Não achei essa vaga">
           Confira o link ou o código. Dá para copiar só vagas (serviços, não).

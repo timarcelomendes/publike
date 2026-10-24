@@ -370,13 +370,23 @@ async function DetalheAnuncio({
 
       <VerMaisPerto tipo={vaga ? "vaga" : "servico"} />
 
-      {primeiro(sp.publicado) === "1" && (
-        <Aviso tipo="sucesso" className="mt-4" titulo="Seu anúncio está no ar!">
-          Ele fica no ar pelo prazo que você escolheu e pode ser renovado. Quando alguém curtir, você recebe um aviso e
-          vê a pessoa no seu painel. Preencheu a vaga? Marque como preenchida no painel.
+      {primeiro(sp.publicado) === "1" &&
+        (status === "ativo" ? (
+          <Aviso tipo="sucesso" className="mt-4" titulo="Seu anúncio está no ar!">
+            Ele fica no ar pelo prazo que você escolheu e pode ser renovado. Quando alguém curtir, você recebe um aviso e
+            vê a pessoa no seu painel. Preencheu a vaga? Marque como preenchida no painel.
+          </Aviso>
+        ) : (
+          // salvou, mas ainda não está para todo mundo (o aviso logo abaixo diz por quê)
+          <Aviso tipo="sucesso" className="mt-4" titulo="Anúncio salvo." />
+        ))}
+      {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" className="mt-4" titulo="Alterações salvas." />}
+      {primeiro(sp.triagem) === "0" && proprio && (
+        <Aviso tipo="alerta" className="mt-4" titulo="As respostas da triagem não salvaram">
+          O resto do anúncio está salvo. Abra Editar, confira as perguntas da triagem e salve de novo. A equipe do
+          Publike já foi avisada.
         </Aviso>
       )}
-      {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" className="mt-4" titulo="Alterações salvas." />}
       {proprio && status !== "ativo" && (
         <Aviso tipo="alerta" className="mt-4" titulo={`Este anúncio está: ${STATUS_ANUNCIO[status]?.nome ?? status}`}>
           {STATUS_ANUNCIO[status]?.ajuda}. Só você consegue ver esta página agora.

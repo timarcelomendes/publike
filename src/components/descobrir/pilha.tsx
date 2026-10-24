@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { curtirAnuncio } from "@/lib/acoes/curtidas";
 import { passarVaga, salvarVaga, verPassadasDeNovo } from "@/lib/acoes/descobrir";
 import type { Motivo } from "@/lib/descobrir";
@@ -204,7 +205,7 @@ export function PilhaDeVagas({
   const [saindo, setSaindo] = useState<Gesto | null>(null);
   const [aviso, setAviso] = useState<{ texto: string; link?: { href: string; nome: string } } | null>(null);
   const [historico, setHistorico] = useState<{ indice: number; gesto: Gesto }[]>([]);
-  const [, iniciar] = useTransition();
+  const [pendente, iniciar] = useTransition();
   const inicio = useRef<{ x: number; y: number } | null>(null);
   const atual = cartas[indice];
   const proxima = cartas[indice + 1];
@@ -218,16 +219,26 @@ export function PilhaDeVagas({
       }
       setSaindo(gesto);
       const carta = atual;
+      const posicao = indice;
+      // a carta sai voando já; se o servidor não confirmar, ela volta para a pessoa decidir de novo
+      let falhou = false;
+      let saiu = false;
       iniciar(async () => {
-        const r =
+        const r = await chamarAcao(() =>
           gesto === "curtir"
-            ? await curtirAnuncio(carta.id)
+            ? curtirAnuncio(carta.id)
             : gesto === "salvar"
-              ? await salvarVaga(carta.id)
-              : await passarVaga(carta.id);
+              ? salvarVaga(carta.id)
+              : passarVaga(carta.id),
+        );
         if (!r.ok) {
-          if (r.ir) router.push(r.ir);
-          setAviso({ texto: r.erro });
+          falhou = true;
+          if (saiu) {
+            setIndice(posicao);
+            setHistorico((h) => h.filter((x) => x.indice !== posicao));
+          }
+          if ("ir" in r && r.ir) router.push(r.ir);
+          setAviso({ texto: `${r.erro} A vaga voltou para a pilha.` });
           return;
         }
         if (gesto === "curtir") {
@@ -249,6 +260,12 @@ export function PilhaDeVagas({
       });
       // a carta sai voando e a próxima sobe
       setTimeout(() => {
+        saiu = true;
+        if (falhou) {
+          setSaindo(null);
+          setArrasto({ x: 0, y: 0, ativo: false });
+          return;
+        }
         setHistorico((h) => [...h.slice(-9), { indice, gesto }]);
         setIndice((i) => i + 1);
         setSaindo(null);
@@ -260,16 +277,22 @@ export function PilhaDeVagas({
 
   // curtida não volta pela pilha (desfazer curtida fica na própria vaga)
   const ultimo = historico[historico.length - 1];
-  const podeVoltar = Boolean(ultimo && ultimo.gesto !== "curtir" && !saindo);
+  const podeVoltar = Boolean(ultimo && ultimo.gesto !== "curtir" && !saindo && !pendente);
+  /** A carta volta só depois que o servidor desfaz (passada ou salva); falhou: diz por quê. */
   function voltar() {
     if (!ultimo || ultimo.gesto === "curtir") return;
     const carta = cartas[ultimo.indice];
-    setHistorico((h) => h.slice(0, -1));
-    setIndice(ultimo.indice);
     setAviso(null);
     iniciar(async () => {
-      if (ultimo.gesto === "passar") await passarVaga(carta.id, false);
-      else await salvarVaga(carta.id, false);
+      const r = await chamarAcao(() =>
+        ultimo.gesto === "passar" ? passarVaga(carta.id, false) : salvarVaga(carta.id, false),
+      );
+      if (!r.ok) {
+        setAviso({ texto: r.erro });
+        return;
+      }
+      setHistorico((h) => h.slice(0, -1));
+      setIndice(ultimo.indice);
     });
   }
 
@@ -320,6 +343,11 @@ export function PilhaDeVagas({
           <BotaoLink href="/descobrir?aba=em-alta">Ver em alta</BotaoLink>
           <BotaoLink href="/descobrir?aba=perto">No seu bairro</BotaoLink>
         </div>
+        {aviso && (
+          <p role="alert" className="text-body-sm text-danger">
+            {aviso.texto}
+          </p>
+        )}
         {podeVoltar && (
           <button
             type="button"
@@ -336,14 +364,19 @@ export function PilhaDeVagas({
             type="button"
             onClick={() =>
               iniciar(async () => {
-                await verPassadasDeNovo();
+                const r = await chamarAcao(() => verPassadasDeNovo());
+                if (!r.ok) {
+                  setAviso({ texto: r.erro });
+                  return;
+                }
                 setIndice(0);
                 setHistorico([]);
               })
             }
-            className="min-h-11 text-label text-ink-muted underline underline-offset-2 hover:text-ink"
+            disabled={pendente}
+            className="min-h-11 text-label text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60"
           >
-            Rever as {passadas} vagas que você passou
+            {pendente ? "Buscando as vagas…" : `Rever as ${passadas} vagas que você passou`}
           </button>
         )}
       </div>

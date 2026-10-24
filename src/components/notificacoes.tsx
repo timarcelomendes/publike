@@ -175,12 +175,22 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
     setAberto(abrir);
     setAgora(Date.now());
     if (abrir && naoLidas > 0) {
+      const antes = itens;
       setItens((atual) => atual.map((i) => ({ ...i, lida: true })));
+      // não marcou no banco: os avisos voltam a contar como novos (senão sumiriam só nesta tela)
       criarClienteNavegador()
         .from("notificacoes")
         .update({ lida: true })
         .eq("lida", false)
-        .then(() => undefined);
+        .then(
+          ({ error }) => {
+            if (error) {
+              console.warn("Publike: não deu para marcar os avisos como lidos:", error.message);
+              setItens(antes);
+            }
+          },
+          () => setItens(antes),
+        );
     }
   }
 

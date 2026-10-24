@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, Mail, MailCheck, Smartphone } from "lucide-react";
+import { ArrowLeft, Mail, MailCheck, RotateCw, Smartphone } from "lucide-react";
 import Image from "next/image";
 import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { ehNavegacao } from "@/lib/acao-segura";
 import { irDepoisDoLogin } from "@/lib/acoes/perfil";
 import { GOOGLE_CLIENT_ID, TURNSTILE_SITE_KEY } from "@/lib/config";
 import { COOKIE_PEDIU_LINK } from "@/lib/link-entrada";
@@ -41,6 +42,20 @@ function traduzir(erro: ErroAuth) {
   if (codigo === "email_address_invalid" || msg.includes("email address")) return "Confira o e-mail digitado.";
   if (codigo === "validation_failed" || msg.includes("phone")) return "Confira o número digitado, com DDD.";
   return "Não deu certo agora. Tente de novo em instantes.";
+}
+
+/** Espera entre um e-mail e outro (o Supabase também segura pedidos seguidos para o mesmo endereço). */
+const ESPERA_REENVIO = 60;
+
+/** "…request this after 37 seconds": quanto o Supabase ainda pede para esperar. */
+function segundosPedidos(erro: ErroAuth) {
+  const n = /after (\d+) seconds?/i.exec(erro?.message ?? "")?.[1];
+  return n ? Number(n) : null;
+}
+
+/** 0:45 */
+function relogio(segundos: number) {
+  return `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, "0")}`;
 }
 
 /** (62) 99999-0000 enquanto a pessoa digita. */
@@ -90,7 +105,12 @@ export function FormEntrar({
   const [tokenRobo, setTokenRobo] = useState<string | null>(null);
   const [rodada, setRodada] = useState(0);
   const [verificando, setVerificando] = useState(false);
-  const aguardando = useRef<"email" | "celular" | null>(null);
+  const aguardando = useRef<"email" | "reenvio" | "celular" | null>(null);
+  // Reenvio do link: quando o botão volta a valer, quantas vezes foi e o resultado da última.
+  const [liberaEm, setLiberaEm] = useState(0);
+  const [agora, setAgora] = useState(0);
+  const [reenvios, setReenvios] = useState(0);
+  const [reenviado, setReenviado] = useState(false);
 
   const digitos = celular.replace(/\D/g, "");
   const telefone = `+55${digitos}`;
@@ -104,6 +124,18 @@ export function FormEntrar({
     return () => window.removeEventListener("pageshow", aoMostrar);
   }, []);
 
+  // contagem do "Reenviar e-mail": um tique por segundo só enquanto falta tempo
+  useEffect(() => {
+    if (etapa !== "email-enviado" || liberaEm <= Date.now()) return;
+    const relogioId = window.setInterval(() => {
+      const t = Date.now();
+      setAgora(t);
+      if (t >= liberaEm) window.clearInterval(relogioId);
+    }, 1000);
+    return () => window.clearInterval(relogioId);
+  }, [etapa, liberaEm]);
+  const faltam = Math.max(0, Math.ceil((liberaEm - agora) / 1000));
+
   /** Para onde o Supabase devolve a pessoa. `via` diz qual rede foi usada (só muda a mensagem de erro). */
   function urlDeRetorno(via?: RedeSocial) {
     const params = new URLSearchParams({ next: proximo });
@@ -114,8 +146,20 @@ export function FormEntrar({
   }
 
   function continuar() {
-    // O servidor confere se o perfil está completo e leva ao destino.
-    startTransition(() => irDepoisDoLogin(proximo));
+    // O servidor confere se o perfil está completo e leva ao destino. Se a ação não chegar ao
+    // servidor (site publicado de novo com a página aberta), /auth/continuar faz o mesmo caminho.
+    setCarregando(true);
+    startTransition(async () => {
+      try {
+        await irDepoisDoLogin(proximo);
+      } catch (e) {
+        if (ehNavegacao(e)) throw e;
+        console.error("Publike: não deu para seguir depois de entrar:", e);
+        // carregamento inteiro de propósito: a página aberta pode ser de uma versão velha do site
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign(`/auth/continuar?${new URLSearchParams({ next: proximo })}`);
+      }
+    });
   }
 
   async function entrarCom(rede: RedeSocial) {
@@ -159,11 +203,12 @@ export function FormEntrar({
     const qual = aguardando.current;
     aguardando.current = null;
     if (qual === "email") void enviarLink(token);
+    else if (qual === "reenvio") void enviarLink(token, true);
     else if (qual === "celular") void enviarCodigo(token);
   }
 
   /** Sem token ainda: o pedido espera a verificação terminar. */
-  function esperarVerificacao(qual: "email" | "celular") {
+  function esperarVerificacao(qual: "email" | "reenvio" | "celular") {
     if (!comVerificacao || tokenRobo) return false;
     aguardando.current = qual;
     setVerificando(true);
@@ -213,21 +258,48 @@ export function FormEntrar({
     continuar();
   }
 
-  async function enviarLink(token: string | null) {
+  /** O "Reenviar e-mail" fica parado por `segundos`. */
+  function esperarReenvio(segundos: number) {
+    const t = Date.now();
+    setAgora(t);
+    setLiberaEm(t + segundos * 1000);
+  }
+
+  /** Manda o link (ou manda de novo, na tela "Confira seu e-mail"). */
+  async function enviarLink(token: string | null, reenvio = false) {
     setCarregando(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: urlDeRetorno(), ...(token ? { captchaToken: token } : {}) },
-    });
+    let error: ErroAuth = null;
+    try {
+      ({ error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: urlDeRetorno(), ...(token ? { captchaToken: token } : {}) },
+      }));
+    } catch {
+      // sem internet ou o Supabase fora do ar: o pedido nem chegou
+      error = { message: "rede" };
+    }
     setCarregando(false);
     novaVerificacao();
     if (error) {
-      setErro(traduzir(error));
+      setErro(error.message === "rede" ? "Sem conexão agora. Confira sua internet e tente de novo." : traduzir(error));
+      // o Supabase diz quanto falta: o botão espera esse tempo
+      const espera = segundosPedidos(error);
+      if (espera) esperarReenvio(espera);
       return;
     }
     // aberto neste navegador, o link entra sozinho (veja /auth/confirmar)
     document.cookie = `${COOKIE_PEDIU_LINK}=1; Max-Age=3600; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+    esperarReenvio(ESPERA_REENVIO);
+    setReenviado(reenvio);
+    if (reenvio) setReenvios((n) => n + 1);
     setEtapa("email-enviado");
+  }
+
+  async function reenviarLink() {
+    setErro(null);
+    setReenviado(false);
+    if (esperarVerificacao("reenvio")) return;
+    await enviarLink(tokenRobo, true);
   }
 
   async function pedirLink(e: FormEvent) {
@@ -237,23 +309,73 @@ export function FormEntrar({
     await enviarLink(tokenRobo);
   }
 
+  const verificacao = comVerificacao && (
+    <VerificacaoRobo
+      key={rodada}
+      siteKey={TURNSTILE_SITE_KEY}
+      aoVerificar={aoVerificar}
+      aoExpirar={() => setTokenRobo(null)}
+    />
+  );
+
   if (etapa === "email-enviado") {
     return (
-      <div role="status" className="flex flex-col items-start gap-4">
+      <div className="flex flex-col items-start gap-4">
         <span className="flex size-12 items-center justify-center rounded-pill bg-surface-300">
           <MailCheck aria-hidden className="size-6 text-cerrado-text" />
         </span>
-        <div>
+        <div role="status">
           <p className="font-display text-h3">Confira seu e-mail</p>
           <p className="mt-1 text-body text-ink-muted">
             Mandamos um link para <strong className="text-ink">{email}</strong>. Abra o link neste mesmo navegador para
             entrar. Não chegou em alguns minutos? Veja a caixa de spam.
           </p>
         </div>
-        <Botao variante="fantasma" onClick={() => setEtapa("pedir")} className="-ml-3">
+        {reenviado && !erro && (
+          <Aviso tipo="sucesso" className="w-full">
+            Mandamos de novo. Use o link do e-mail mais novo: os anteriores deixam de valer.
+          </Aviso>
+        )}
+        {erro && (
+          <Aviso tipo="erro" className="w-full">
+            {erro}
+          </Aviso>
+        )}
+        <Botao
+          variante="secundario"
+          onClick={reenviarLink}
+          disabled={carregando || verificando || faltam > 0}
+          className="min-h-12 w-full"
+        >
+          <RotateCw aria-hidden />
+          {verificando
+            ? "Confirmando que você não é um robô…"
+            : carregando
+              ? "Enviando de novo…"
+              : faltam > 0
+                ? `Reenviar e-mail em ${relogio(faltam)}`
+                : "Reenviar e-mail"}
+        </Botao>
+        {reenvios >= 2 && (
+          <p className="text-body-sm text-ink-muted">
+            Ainda nada? Confira se o endereço está certo
+            {comCelular ? " ou entre com o celular, pelo código por SMS" : ""}.
+          </p>
+        )}
+        <Botao
+          variante="fantasma"
+          onClick={() => {
+            setEtapa("pedir");
+            setErro(null);
+            setReenviado(false);
+            setReenvios(0);
+          }}
+          className="-ml-3"
+        >
           <ArrowLeft aria-hidden />
           Usar outro e-mail
         </Botao>
+        {verificacao}
       </div>
     );
   }
@@ -409,14 +531,7 @@ export function FormEntrar({
           )}
         </form>
       )}
-      {comVerificacao && (
-        <VerificacaoRobo
-          key={rodada}
-          siteKey={TURNSTILE_SITE_KEY}
-          aoVerificar={aoVerificar}
-          aoExpirar={() => setTokenRobo(null)}
-        />
-      )}
+      {verificacao}
     </div>
   );
 }

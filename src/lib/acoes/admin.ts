@@ -202,6 +202,8 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
     p_aviso_cadastro: marcado(formData, "aviso_cadastro"),
     p_aviso_retirado: marcado(formData, "aviso_retirado"),
     p_email_boas_vindas: marcado(formData, "email_boas_vindas"),
+    // a opção só aparece com a migração das falhas (20261104120000); sem ela, nem vai
+    ...(formData.has("tem_aviso_falha") ? { p_aviso_falha: marcado(formData, "aviso_falha") } : {}),
   });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();

@@ -7,9 +7,11 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
+import { avisarDepois } from "@/lib/servidor/aviso-depois";
 import { iaConfigurada } from "@/lib/ia/openai";
 import { limparCurriculos } from "@/lib/servidor/arquivos";
 import { marcarConversao } from "@/lib/servidor/conversao";
+import { registrarFalha, textoDoErro, vigiar, type Vigia } from "@/lib/servidor/falhas";
 import { processarFilas } from "@/lib/servidor/filas";
 import { lerArquivoDoCurriculo, type LeituraDoArquivo } from "@/lib/servidor/ler-curriculo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -24,13 +26,21 @@ import { lerCurriculo } from "@/lib/validacao";
  * sem um "next", ela volta para a vaga (ou para os matches, se forem várias).
  */
 export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  // qualquer falha fica registrada e chega à equipe (src/lib/servidor/falhas.ts)
+  return vigiar("curriculo", (vigia) => salvar(formData, vigia));
+}
+
+async function salvar(formData: FormData, vigia: Vigia): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const usuario = await obterUsuario();
   if (!usuario) redirect("/entrar?next=/perfil/curriculo");
 
   // currículo é de pessoa: comércio, empresa e agência não cadastram
   const perfil = await obterMeuPerfil();
-  if (perfil && perfil.tipo !== "pessoa") return { ok: false, erro: "Currículo é só para conta de pessoa." };
+  if (perfil && perfil.tipo !== "pessoa") {
+    vigia.marcar("validacao", `conta do tipo ${perfil.tipo}`);
+    return { ok: false, erro: "Currículo é só para conta de pessoa." };
+  }
 
   const leitura = lerCurriculo(formData);
   if (!leitura.ok) {
@@ -43,7 +53,10 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
     };
   }
   const d = leitura.dados;
-  if (d.arquivo && !d.arquivo.startsWith(`${usuario.id}/`)) return { ok: false, erro: "Envie o PDF de novo." };
+  if (d.arquivo && !d.arquivo.startsWith(`${usuario.id}/`)) {
+    vigia.marcar("arquivo", "o caminho do PDF não é da pasta da pessoa");
+    return { ok: false, erro: "Envie o PDF de novo." };
+  }
 
   const supabase = await criarClienteServidor();
   // as vagas que já aceitaram e esperavam este currículo (sem a migração do aceite, nenhuma)
@@ -76,15 +89,23 @@ export async function salvarCurriculo(_anterior: EstadoForm, formData: FormData)
   );
   if (error) {
     if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/perfil/curriculo");
+    vigia.banco(error);
     return { ok: false, erro: mensagemDeErro(error, "Não foi possível salvar seu currículo agora.") };
   }
-  await limparCurriculos(supabase, usuario.id, d.arquivo);
+  // os PDFs antigos: o currículo já salvou, a sobra no Storage não muda nada para a pessoa
+  try {
+    await limparCurriculos(supabase, usuario.id, d.arquivo);
+  } catch (e) {
+    console.warn("Publike: não deu para apagar os PDFs antigos do currículo:", e);
+  }
   if (jaTinha === 0) await marcarConversao("curriculo");
   // os avisos do match (para a pessoa e para quem publicou) saem já
   if (aceitas?.length) after(processarFilas);
 
   revalidatePath("/perfil/curriculo");
   const proximo = caminhoSeguro(formData.get("next"), "");
+  // fora da página do currículo (que já mostra "salvo"), o aviso vai junto para o destino
+  if (proximo || aceitas?.length) await avisarDepois(aceitas?.length ? "curriculo_match" : "curriculo_salvo");
   redirect(
     proximo ||
       (aceitas?.length === 1
@@ -121,5 +142,19 @@ export async function lerCurriculoEnviado(dados: FormData): Promise<LeituraDoArq
   if (!iaConfigurada()) return { ok: false, erro: "A leitura do currículo não está disponível agora." };
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre na sua conta para continuar." };
-  return lerArquivoDoCurriculo(dados, usuario.id, await criarClienteServidor());
+  let leitura: LeituraDoArquivo;
+  try {
+    leitura = await lerArquivoDoCurriculo(dados, usuario.id, await criarClienteServidor());
+  } catch (e) {
+    console.error("Publike: erro ao ler o currículo enviado:", e);
+    leitura = { ok: false, erro: "Não deu para ler o arquivo agora. Preencha os campos ou tente de novo." };
+    await registrarFalha({ onde: "curriculo", etapa: "leitura", mensagem: leitura.erro, detalhe: textoDoErro(e) });
+    return leitura;
+  }
+  if (!leitura.ok && leitura.erro !== MENSAGEM_DEMO) {
+    // a IA ou o arquivo falharam (aviso na hora); o resto é o arquivo que não serve (só registra)
+    const doSistema = /^Não deu para (ler o currículo agora|abrir o PDF)/.test(leitura.erro);
+    await registrarFalha({ onde: "curriculo", etapa: doSistema ? "leitura" : "validacao", mensagem: leitura.erro });
+  }
+  return leitura;
 }

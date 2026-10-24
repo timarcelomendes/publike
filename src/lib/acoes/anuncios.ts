@@ -13,6 +13,7 @@ import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerAnuncio, registroDoAnuncio, UUID, type DadosAnuncio } from "@/lib/validacao";
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio";
+import { vigiar, type Vigia } from "@/lib/servidor/falhas";
 
 /**
  * Antes de entrar: confere o anúncio de quem ainda não tem conta (nada é salvo). Com
@@ -20,6 +21,10 @@ import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio
  * entrar, ele é publicado.
  */
 export async function conferirAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  return vigiar("vaga", () => conferir(formData));
+}
+
+async function conferir(formData: FormData): Promise<EstadoForm> {
   const trocas = await completarAnuncio(formData, true);
   const leitura = lerAnuncio(formData);
   if (!leitura.ok)
@@ -39,11 +44,11 @@ function erroDoBanco(error: { code?: string; message?: string; hint?: string | n
 
 type Banco = Awaited<ReturnType<typeof criarClienteServidor>>;
 
-/** Agência: a empresa escrita à mão vira cliente (ou acha o cliente com o mesmo nome). Falhou: a vaga sai sem. */
-async function garantirCliente(supabase: Banco, nome: string): Promise<string | null> {
+/** Agência: a empresa escrita à mão vira cliente (ou acha o cliente com o mesmo nome). */
+async function garantirCliente(supabase: Banco, nome: string) {
   const { data, error } = await supabase.rpc("garantir_cliente", { p_nome: nome });
   if (error) console.warn(`Publike: não deu para guardar o cliente: ${error.message}`);
-  return data ?? null;
+  return { id: data ?? null, error };
 }
 
 /**
@@ -80,8 +85,15 @@ async function cuidarDoCliente(supabase: Banco, clienteId: string, d: DadosAnunc
   }
 }
 
-/** Publica um anúncio novo ou salva a edição de um existente. */
+/**
+ * Publica um anúncio novo ou salva a edição de um existente. Qualquer falha (preenchimento, banco,
+ * erro no meio) fica registrada e chega à equipe (src/lib/servidor/falhas.ts).
+ */
 export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  return vigiar("vaga", (vigia) => publicarOuSalvar(formData, vigia));
+}
+
+async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const usuario = await obterUsuario();
   if (!usuario) redirect("/entrar?next=/publicar");
@@ -92,7 +104,20 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
     return { ok: false, erro: "Confira os campos marcados.", erros: ajustarErros(leitura.erros, trocas) };
   const d = leitura.dados;
   const supabase = await criarClienteServidor();
-  const clienteNovo = d.cliente_novo ? await garantirCliente(supabase, d.cliente_novo) : null;
+  let clienteNovo: string | null = null;
+  if (d.cliente_novo) {
+    // falhou: a vaga não sai sem o cliente que a pessoa escreveu (sairia no nome errado, sem aviso)
+    const garantido = await garantirCliente(supabase, d.cliente_novo);
+    if (!garantido.id) {
+      if (garantido.error) vigia.banco(garantido.error);
+      return {
+        ok: false,
+        erro: "Não deu para guardar a empresa cliente. Nada foi publicado; tente de novo.",
+        erros: { cliente_id: "Não deu para guardar esta empresa agora." },
+      };
+    }
+    clienteNovo = garantido.id;
+  }
   const registro = { ...registroDoAnuncio(d), ...(clienteNovo ? { cliente_id: clienteNovo } : {}) };
   const cliente = clienteNovo ?? d.cliente_id ?? null;
 
@@ -102,11 +127,15 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
   if (typeof id === "string" && id) {
     if (!UUID.test(id)) return { ok: false, erro: "Anúncio não encontrado." };
     const { data, error } = await supabase.from("anuncios").update(registro).eq("id", id).select("id");
-    if (error) return erroDoBanco(error);
+    if (error) {
+      vigia.banco(error);
+      return erroDoBanco(error);
+    }
     if (!data?.length) return { ok: false, erro: "Não encontramos esse anúncio entre os seus." };
-    await salvarTriagem(supabase, id, d.triagem);
+    const erroTriagem = await salvarTriagem(supabase, id, d.triagem);
+    if (erroTriagem) vigia.parcial("A vaga salvou, mas as respostas da triagem não.", erroTriagem);
     if (cliente) await cuidarDoCliente(supabase, cliente, d, false);
-    destino = `/anuncio/${id}?salvo=1`;
+    destino = `/anuncio/${id}?salvo=1${erroTriagem ? "&triagem=0" : ""}`;
   } else {
     const { data, error } = await supabase
       .from("anuncios")
@@ -115,17 +144,22 @@ export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): 
       .single();
     if (error) {
       if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/publicar");
+      vigia.banco(error);
       return erroDoBanco(error);
     }
-    await salvarTriagem(supabase, data.id, d.triagem);
+    const erroTriagem = await salvarTriagem(supabase, data.id, d.triagem);
+    if (erroTriagem) vigia.parcial("A vaga foi publicada, mas as respostas da triagem não salvaram.", erroTriagem);
     if (cliente) await cuidarDoCliente(supabase, cliente, d, true);
     // veio do link do convite: publicar é o aceite (o convite vira "Autorizou" no admin)
     const convite = formData.get("convite");
     if (typeof convite === "string" && /^[0-9a-f]{64}$/.test(convite)) {
       const { error: erroConvite } = await supabase.rpc("aceitar_convite", { p_token: convite, p_anuncio: data.id });
-      if (erroConvite) console.warn("Publike: não deu para registrar o aceite do convite:", erroConvite.message);
+      if (erroConvite) {
+        console.warn("Publike: não deu para registrar o aceite do convite:", erroConvite.message);
+        vigia.parcial("A vaga foi publicada, mas o aceite do convite não ficou registrado.", erroConvite);
+      }
     }
-    destino = `/anuncio/${data.id}?publicado=1`;
+    destino = `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}`;
     if (d.tipo === "vaga") await marcarConversao("vaga");
   }
 

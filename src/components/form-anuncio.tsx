@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { protegerAcao } from "@/lib/acao-segura";
+import { guardarRascunho } from "@/lib/rascunho-anuncio";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
@@ -224,7 +225,7 @@ export function FormAnuncio({
 }) {
   const editando = Boolean(inicial.id);
   // a falha sem chegar ao servidor (site publicado de novo com a página aberta) vira aviso na tela
-  const acaoProtegida = useMemo(() => protegerAcao(acaoSalvar), [acaoSalvar]);
+  const acaoProtegida = useMemo(() => protegerAcao(acaoSalvar, "vaga"), [acaoSalvar]);
   const [estado, acao, enviando] = useActionState(acaoProtegida, ESTADO_INICIAL);
   // anúncio novo é sempre vaga; serviço tem cadastro próprio ("Meus serviços")
   const tipo: TipoAnuncio = editando ? inicial.tipo : "vaga";
@@ -259,6 +260,11 @@ export function FormAnuncio({
     Boolean(inicial.regime && !REGIMES_PRINCIPAIS.includes(inicial.regime as Regime)),
   );
   const formulario = useRef<HTMLFormElement>(null);
+  // vaga nova que não chegou ao servidor: o preenchido fica no aparelho e volta ao recarregar
+  // (o /publicar traz o rascunho de volta)
+  useEffect(() => {
+    if (estado.semSalvar && !editando && !equipe && formulario.current) guardarRascunho(formulario.current);
+  }, [estado, editando, equipe]);
   const erros = estado.erros ?? {};
   const erroNosDetalhes = Object.keys(erros).some((k) => CAMPOS_DETALHES.includes(k));
   const vaga = tipo === "vaga";
@@ -949,6 +955,20 @@ export function FormAnuncio({
 
       {previa}
 
+      {estado.semSalvar && (
+        <Aviso tipo="erro" titulo="Nada foi salvo ainda">
+          {editando || equipe ? (
+            <>Toque em salvar de novo. Se não der, copie o que você mudou antes de recarregar a página.</>
+          ) : (
+            <span className="flex flex-col items-start gap-2">
+              O que você preencheu ficou guardado neste aparelho e volta quando a página abrir de novo.
+              <Botao type="button" variante="secundario" tamanho="sm" onClick={() => window.location.reload()}>
+                Recarregar a página
+              </Botao>
+            </span>
+          )}
+        </Aviso>
+      )}
       {estado.erro && (
         <ResumoErros
           erros={erros}

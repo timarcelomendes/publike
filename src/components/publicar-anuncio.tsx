@@ -3,7 +3,9 @@
 import { Check, LoaderCircle, MapPin, RotateCcw, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
+import { ERRO_SEM_SALVAR, ehNavegacao } from "@/lib/acao-segura";
 import { conferirAnuncio, salvarAnuncio } from "@/lib/acoes/anuncios";
+import { detalheDoErro, relatarFalha } from "@/lib/falhas";
 import type { ClienteParaVaga } from "@/lib/clientes";
 import { REGIMES } from "@/lib/constantes";
 import { formatarValor } from "@/lib/formato";
@@ -163,7 +165,16 @@ export function PublicarAnuncio({
         setAviso("publicando");
         startTransition(async () => {
           // deu certo: a ação leva para a vaga publicada; voltou: mostra o formulário com o erro
-          const resultado = await salvarAnuncio({ ok: false }, formDataDoRascunho(r));
+          let resultado: Awaited<ReturnType<typeof salvarAnuncio>>;
+          try {
+            resultado = await salvarAnuncio({ ok: false }, formDataDoRascunho(r));
+          } catch (e) {
+            if (ehNavegacao(e)) throw e;
+            // não chegou ao servidor: o rascunho volta e a pessoa vê o motivo (e a equipe fica sabendo)
+            console.error("Publike: a vaga guardada não chegou ao servidor:", e);
+            relatarFalha({ onde: "vaga", etapa: "conexao", mensagem: ERRO_SEM_SALVAR, detalhe: detalheDoErro(e) });
+            resultado = { ok: false, erro: ERRO_SEM_SALVAR };
+          }
           if (!resultado || resultado.ok) return;
           try {
             localStorage.setItem("publike_rascunho_vaga", JSON.stringify(r));

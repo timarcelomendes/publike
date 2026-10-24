@@ -139,7 +139,7 @@ export async function criarPerfilPeloAdmin(
   if (erroContato) console.error("Publike: o perfil saiu, mas o contato não:", erroContato.message);
   after(processarFilas);
   revalidatePath("/admin/usuarios");
-  redirect(`/admin/usuarios/${usuarioId}/publicar?perfil=1`);
+  redirect(`/admin/usuarios/${usuarioId}/publicar?perfil=1${erroContato ? "&contato=0" : ""}`);
 }
 
 /** Manda (ou manda de novo) o link de entrar para o e-mail de login da conta. */

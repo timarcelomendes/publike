@@ -28,6 +28,7 @@ import {
 } from "react";
 import { apagarCurriculo, lerCurriculoEnviado, salvarCurriculo, type LeituraDoArquivo } from "@/lib/acoes/curriculo";
 import { protegerAcao } from "@/lib/acao-segura";
+import { detalheDoErro, relatarFalha } from "@/lib/falhas";
 import {
   CNHS,
   DISPONIBILIDADES,
@@ -118,7 +119,8 @@ type Retrato = {
 const NOME_PDF_GUARDADO = "O PDF que você mandou";
 
 // o salvar que não chegou ao servidor: o que a pessoa preencheu fica na aba até ela recarregar
-const salvarCurriculoProtegido = protegerAcao(salvarCurriculo);
+const salvarCurriculoProtegido = protegerAcao(salvarCurriculo, "curriculo");
+const apagarCurriculoProtegido = protegerAcao(apagarCurriculo);
 const CHAVE_RASCUNHO = "publike_rascunho_curriculo";
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
@@ -177,6 +179,10 @@ function LerCurriculoPronto({
         ok: false,
         erro: e instanceof ErroDaLeitura ? e.message : "Não deu para enviar o arquivo. Tente de novo.",
       };
+      // o arquivo que não sobe (ou o pedido que não chega) a equipe precisa saber
+      if (!(e instanceof ErroDaLeitura)) {
+        relatarFalha({ onde: "curriculo", etapa: "arquivo", mensagem: resultado.erro, detalhe: `leitura · ${detalheDoErro(e)}` });
+      }
     }
     aoMudarLendo(false);
     if (!resultado.ok) return setSituacao({ tipo: "erro", texto: resultado.erro });
@@ -471,8 +477,15 @@ export function FormCurriculo({
     try {
       setArquivo(await enviarPdf(pdf, usuarioId));
       setNomePdf(pdf.name);
-    } catch {
-      setErroPdf("Não deu para enviar o PDF. Tente de novo.");
+    } catch (falha) {
+      const mensagem = "Não deu para enviar o PDF. Tente de novo.";
+      setErroPdf(mensagem);
+      relatarFalha({
+        onde: "curriculo",
+        etapa: "arquivo",
+        mensagem,
+        detalhe: `PDF de ${Math.round(pdf.size / 1024)} KB · ${detalheDoErro(falha)}`,
+      });
     }
     setEnviandoPdf(false);
   }
@@ -1169,7 +1182,7 @@ function Disponibilidade({
 }
 
 export function ApagarCurriculo() {
-  const [estado, acao, enviando] = useActionState(apagarCurriculo, ESTADO_INICIAL);
+  const [estado, acao, enviando] = useActionState(apagarCurriculoProtegido, ESTADO_INICIAL);
   return (
     <details className="mt-10 rounded-lg border border-line bg-surface-200 p-5">
       <summary className="cursor-pointer text-label text-ink-muted">Apagar meu currículo</summary>

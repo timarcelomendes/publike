@@ -2,9 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import type { Resultado } from "@/lib/tipos";
 
-/** Roda uma ação do servidor e mostra o resultado embaixo dos botões. */
+/**
+ * Roda uma ação do servidor e mostra o resultado embaixo dos botões. Se a ação nem chegar ao
+ * servidor (internet caiu, site publicado de novo com a página aberta), mostra o aviso em vez da
+ * página de erro, e `depois` recebe a falha (quem mudou a tela antes pode desfazer).
+ */
 export function useAcao() {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
@@ -13,7 +18,7 @@ export function useAcao() {
   function rodar(acao: () => Promise<Resultado>, depois?: (r: Resultado) => void) {
     setAviso(null);
     iniciar(async () => {
-      const r = await acao();
+      const r: Resultado = await chamarAcao(acao);
       if (!r.ok) {
         if (r.ir) router.push(r.ir);
         else setAviso({ ok: false, texto: r.erro });

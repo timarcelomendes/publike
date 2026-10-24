@@ -2,6 +2,7 @@
 
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { avisarDepois } from "@/lib/servidor/aviso-depois";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
@@ -52,7 +53,10 @@ export async function salvarCliente(_anterior: EstadoForm, formData: FormData): 
     clienteId = data.id;
   }
 
-  if (formData.get("depois") === "publicar") redirect(`/publicar?cliente=${clienteId}`);
+  if (formData.get("depois") === "publicar") {
+    await avisarDepois("cliente_salvo");
+    redirect(`/publicar?cliente=${clienteId}`);
+  }
   redirect(`/painel/clientes/${clienteId}?salvo=1`);
 }
 

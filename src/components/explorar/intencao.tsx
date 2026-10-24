@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { chamarAcao } from "@/lib/acao-segura";
 import { salvarIntencao } from "@/lib/acoes/intencao";
 import { avisarPerguntaAberta } from "../boas-vindas-parceiro";
 import { Selo, Simbolo } from "../ui/basicos";
@@ -40,17 +41,25 @@ export type ProximoPasso = { texto: string; href: string } | null;
 function useEscolher(aoEscolher?: (i: Intencao) => void) {
   const router = useRouter();
   const [tocada, setTocada] = useState<Intencao | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   function escolher(i: Intencao) {
     setTocada(i);
+    setErro(null);
     const pagina = PAGINA_DA_INTENCAO[i];
-    if (!pagina) aoEscolher?.(i);
     iniciar(async () => {
-      await salvarIntencao(i);
+      const r = await chamarAcao(() => salvarIntencao(i));
+      // não guardou: a resposta desmarca e o quadro diz por quê (e continua aberto)
+      if (!r.ok) {
+        setTocada(null);
+        setErro(r.erro);
+        return;
+      }
       if (pagina) router.push(pagina);
+      else aoEscolher?.(i);
     });
   }
-  return { tocada, escolher, pendente };
+  return { tocada, escolher, pendente, erro };
 }
 
 /**
@@ -148,7 +157,7 @@ export function FolhaIntencao({
   primeiraVisita?: boolean;
 }) {
   const titulo = useId();
-  const { tocada, escolher, pendente } = useEscolher(aoEscolher);
+  const { tocada, escolher, pendente, erro } = useEscolher(aoEscolher);
   const escolhida = tocada ?? atual;
   const caixa = useRef<HTMLDivElement>(null);
   const fechar = useRef(aoAdiar);
@@ -215,6 +224,11 @@ export function FolhaIntencao({
           </p>
         </div>
         <OpcoesIntencao rotuladoPor={titulo} escolhida={escolhida} pendente={pendente} escolher={escolher} />
+        {erro && (
+          <p role="alert" className="text-center text-body-sm text-danger">
+            {erro}
+          </p>
+        )}
         <div className="flex items-center justify-center gap-5">
           <button type="button" onClick={aoAdiar} className={classesAgoraNao}>
             {atual ? "Manter como está" : "Agora não"}
@@ -248,7 +262,7 @@ export function FaixaIntencao({
   const titulo = useId();
   const pergunta = useId();
   const opcoes = useId();
-  const { tocada, escolher, pendente } = useEscolher((i) => {
+  const { tocada, escolher, pendente, erro } = useEscolher((i) => {
     setAberta(false);
     aoEscolher(i);
   });
@@ -294,6 +308,11 @@ export function FaixaIntencao({
             O que você quer fazer no Publike?
           </p>
           <OpcoesIntencao rotuladoPor={pergunta} escolhida={escolhida} pendente={pendente} escolher={escolher} />
+          {erro && (
+            <p role="alert" className="text-body-sm text-danger">
+              {erro}
+            </p>
+          )}
           <button type="button" onClick={() => setAberta(false)} className={`${classesAgoraNao} self-start`}>
             Manter como está
           </button>

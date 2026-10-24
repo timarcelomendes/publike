@@ -23,6 +23,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
 import { errosPorCampo, lerPerfil } from "@/lib/validacao";
 import { COOKIE_SO_OLHAR } from "@/lib/so-olhar";
+import { avisarDepois } from "@/lib/servidor/aviso-depois";
 
 export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -98,9 +99,18 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
     }
   }
   // conta nova (ou criada pela equipe): guarda qual versão das regras e da política foi aceita, e quando
+  // (é registro legal: se não gravar, a pessoa sabe e salva de novo; o resto já está salvo e não muda)
   if (pedeAceite) {
-    const { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS });
-    if (erroAceite) console.error("Publike: não deu para guardar o aceite das regras:", erroAceite.message);
+    let { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS });
+    if (erroAceite) ({ error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS }));
+    if (erroAceite) {
+      console.error("Publike: não deu para guardar o aceite das regras:", erroAceite.message);
+      refresh();
+      return {
+        ok: false,
+        erro: "Seu perfil foi salvo, mas não conseguimos registrar que você aceitou as regras. Toque em salvar de novo.",
+      };
+    }
   }
   // conta nova que veio pela página de serviços: a jornada é a do prestador (montar a vitrine)
   const proximo = formData.get("next");
@@ -121,6 +131,8 @@ export async function salvarPerfil(_anterior: EstadoForm, formData: FormData): P
 
   if (typeof proximo === "string" && proximo) {
     atualizarCabecalho();
+    // conta nova segue o caminho dela (a página de destino recebe); perfil editado leva o "salvo" junto
+    if (perfilAntes) await avisarDepois("perfil_salvo");
     redirect(caminhoSeguro(proximo, "/painel"));
   }
   refresh();

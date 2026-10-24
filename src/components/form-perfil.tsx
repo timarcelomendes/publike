@@ -110,6 +110,7 @@ const OPCOES_MODO: {
 
 // a falha sem chegar ao servidor (site publicado de novo com a página aberta) vira aviso na tela
 const salvarPerfilProtegido = protegerAcao(salvarPerfil);
+const excluirContaProtegida = protegerAcao(excluirConta);
 
 export function FormPerfil({
   perfil,
@@ -255,7 +256,14 @@ export function FormPerfil({
           {enviandoFoto ? "Enviando…" : foto ? "Trocar foto" : "Pôr uma foto"}
           <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
         </label>
-        <p className="text-body-sm text-ink-muted">Opcional. Rosto ou logo ajudam a passar confiança.</p>
+        {/* a foto já subiu, mas só vale no perfil depois de salvar (sem isto, parece salva) */}
+        {foto && foto !== (perfil?.foto ?? null) && !enviandoFoto && !erroFoto ? (
+          <p role="status" className="text-body-sm text-terra-text">
+            Foto nova pronta. Ela só fica no perfil quando você salvar.
+          </p>
+        ) : (
+          <p className="text-body-sm text-ink-muted">Opcional. Rosto ou logo ajudam a passar confiança.</p>
+        )}
         {(erroFoto || erros.foto) && <MensagemErro>{erroFoto ?? erros.foto}</MensagemErro>}
       </div>
     </div>
@@ -654,7 +662,17 @@ export function FormPerfil({
         </div>
       )}
 
-      {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
+      {estado.erro && (
+        <div role="alert" className="flex flex-col gap-2">
+          <Aviso tipo="erro">{estado.erro}</Aviso>
+          {estado.semSalvar && (
+            <p className="text-body-sm text-ink-muted">
+              Toque em salvar de novo. Se não der, recarregue a página (o que você mudou aqui precisa ser preenchido de
+              novo).
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Botao type="submit" variante="primario" disabled={enviando || enviandoFoto} className="sm:min-w-56">
@@ -675,7 +693,7 @@ export function FormPerfil({
 }
 
 export function ExcluirConta() {
-  const [estado, acao, enviando] = useActionState(excluirConta, { ok: false } as EstadoForm);
+  const [estado, acao, enviando] = useActionState(excluirContaProtegida, { ok: false } as EstadoForm);
   return (
     <details className="mt-10 rounded-lg border border-line bg-surface-200 p-5">
       <summary className="cursor-pointer text-label text-ink-muted">Excluir minha conta</summary>
