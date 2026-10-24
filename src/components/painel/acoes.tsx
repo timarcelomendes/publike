@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  CircleCheckBig,
+  CircleStop,
   CopyPlus,
   DoorOpen,
   FileText,
@@ -43,6 +43,8 @@ export function AcoesAnuncio({
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
+  // encerrar tira do ar na hora: pergunta antes (um toque sem querer encerrava a vaga)
+  const [confirmarEncerrar, setConfirmarEncerrar] = useState(false);
   const comModeracao = status === "em_analise" || status === "removido";
 
   return (
@@ -69,17 +71,39 @@ export function AcoesAnuncio({
         {tipo === "vaga" && (status === "ativo" || status === "pausado") && (
           <BotaoVagaPreenchida id={id} preenchida={preenchida} />
         )}
-        {(status === "ativo" || status === "pausado") && (
-          <Botao
-            tamanho="sm"
-            variante="fantasma"
-            disabled={pendente}
-            onClick={() => rodar(() => mudarStatusAnuncio(id, "encerrado"))}
-          >
-            <CircleCheckBig aria-hidden />
-            Encerrar
-          </Botao>
-        )}
+        {(status === "ativo" || status === "pausado") &&
+          (confirmarEncerrar ? (
+            <div className="flex w-full flex-col gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
+              <p>
+                {tipo === "servico"
+                  ? "Encerrar o serviço? Ele sai do ar e para de receber pedidos."
+                  : "Encerrar a vaga? Ela sai do ar e para de receber candidatos."}{" "}
+                Para voltar ao ar, use Renovar.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Botao
+                  tamanho="sm"
+                  disabled={pendente}
+                  onClick={() =>
+                    rodar(
+                      () => mudarStatusAnuncio(id, "encerrado"),
+                      () => setConfirmarEncerrar(false),
+                    )
+                  }
+                >
+                  Sim, encerrar
+                </Botao>
+                <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmarEncerrar(false)}>
+                  Cancelar
+                </Botao>
+              </div>
+            </div>
+          ) : (
+            <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => setConfirmarEncerrar(true)}>
+              <CircleStop aria-hidden />
+              Encerrar
+            </Botao>
+          ))}
         {!comModeracao && (
           <BotaoLink
             tamanho="sm"
