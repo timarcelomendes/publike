@@ -69,7 +69,7 @@ export function FotoDaConta({
   }
 
   const imagem = (
-    <span className="block" style={{ borderRadius: raio + 4 }}>
+    <span className="flex" style={{ borderRadius: raio + 4 }}>
       <Avatar nome={nome} foto={foto} tamanho={tamanho} forma={empresa ? "quadrada" : "redonda"} colorida />
     </span>
   );
@@ -82,7 +82,9 @@ export function FotoDaConta({
       <Camera aria-hidden className={tamanho < 56 ? "size-3" : "size-[15px]"} />
     </span>
   );
-  const moldura = `group relative ${className} ${enviando ? "opacity-70" : ""}`;
+  // inline-flex: dentro de uma linha (o campo do recado) a câmera fica no canto do quadro; com a moldura
+  // em linha (label), o Safari prendia a câmera no começo da linha, fora do quadro
+  const moldura = `group relative inline-flex ${className} ${enviando ? "opacity-70" : ""}`;
 
   return (
     <>
