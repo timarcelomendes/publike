@@ -30,6 +30,7 @@ import { bairroDaReceita, formatarCnpj, limparCnpj, nomeDaReceita, type DadosCnp
 import { CIDADES, LIMITES_CONTA, TIPOS_CONTA, type Cidade } from "@/lib/constantes";
 import { formatarTelefone } from "@/lib/formato";
 import { lerModos, modosDoTipo, type ModoPainel } from "@/lib/modo-painel";
+import { tipoPeloNome } from "@/lib/nome-de-empresa";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, MeuPerfil, TipoConta } from "@/lib/tipos";
 import { CampoCnpj } from "./campo-cnpj";
@@ -159,6 +160,17 @@ export function FormPerfil({
   // procurar trabalho é só de pessoa: o que não cabe no tipo some da pergunta e do que vai salvar
   const modosPossiveis = modosDoTipo(tipo);
   const modosValidos = modos.filter((m) => modosPossiveis.includes(m));
+
+  function trocarTipo(valor: TipoConta) {
+    setTipo(valor);
+    // virou comércio, empresa ou agência e só procurava trabalho: passa a contratar
+    if (valor !== "pessoa" && !modos.some((m) => m !== "trabalhar")) setModos(["contratar"]);
+  }
+
+  // "Pessoa" com nome de empresa ("AJON Consultoria"): pergunta se é empresa (a foto redonda, o filtro
+  // "Quem publicou" e o selo seguem o tipo). "Não, sou eu" cala a pergunta para aquele nome.
+  const [nomeDePessoa, setNomeDePessoa] = useState<string | null>(null);
+  const tipoSugerido = tipo === "pessoa" && nomeDePessoa !== nome.trim() ? tipoPeloNome(nome) : null;
 
   function marcarModo(modo: ModoPainel, marcado: boolean) {
     setModos((atual) =>
@@ -444,15 +456,7 @@ export function FormPerfil({
                   name="tipo"
                   value={valor}
                   checked={tipo === valor}
-                  onChange={() => {
-                    setTipo(valor as TipoConta);
-                    // virou comércio, empresa ou agência e só procurava trabalho: passa a contratar
-                    if (
-                      valor !== "pessoa" &&
-                      !modos.some((m) => m !== "trabalhar")
-                    )
-                      setModos(["contratar"]);
-                  }}
+                  onChange={() => trocarTipo(valor as TipoConta)}
                   className="sr-only"
                 />
                 <span className="text-label">{t.nome}</span>
@@ -461,6 +465,26 @@ export function FormPerfil({
             ))}
           </div>
           {erros.tipo && <MensagemErro>{erros.tipo}</MensagemErro>}
+          {tipoSugerido && (
+            <Aviso
+              tipo="alerta"
+              titulo={`Você está publicando como ${TIPOS_CONTA[tipoSugerido].minusculo}?`}
+              className="mt-1"
+            >
+              <p>
+                “{nome.trim()}” parece nome de {TIPOS_CONTA[tipoSugerido].minusculo}. Conta de pessoa aparece com a foto
+                redonda e em “Pessoas” no filtro de quem publicou.
+              </p>
+              <span className="mt-1 flex flex-wrap gap-2">
+                <Botao tamanho="sm" onClick={() => trocarTipo(tipoSugerido)}>
+                  Sim, mudar para {TIPOS_CONTA[tipoSugerido].nome}
+                </Botao>
+                <Botao tamanho="sm" variante="fantasma" onClick={() => setNomeDePessoa(nome.trim())}>
+                  Não, sou eu
+                </Botao>
+              </span>
+            </Aviso>
+          )}
         </fieldset>
 
         {comModos && (
