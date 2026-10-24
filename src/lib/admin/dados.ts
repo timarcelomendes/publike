@@ -148,6 +148,37 @@ export async function numerosDoPainel(c: ClienteBanco) {
   return data as unknown as NumerosPainel;
 }
 
+/** O quadro verde/vermelho do topo do painel (migração 20261107120000_saude_do_site.sql). */
+export type SaudeSite = {
+  emails: {
+    parados: number;
+    parado_desde: string | null;
+    na_fila: number;
+    falharam_24h: number;
+    ultimo_enviado: string | null;
+  };
+  ia: {
+    ligada: boolean;
+    parados: number;
+    parado_desde: string | null;
+    erros_24h: number;
+    ultima_revisao: string | null;
+  };
+  chaves: { nome: string; criada_em: string; usada_em: string | null }[];
+  moderacao: { anuncios: number; recados: number; avaliacoes: number; denuncias: number; desde: string | null };
+  falhas: { sistema_24h: number; ultima: string | null };
+};
+
+/** Sem a migração ainda, o quadro não aparece (null) e o resto do painel segue normal. */
+export async function saudeDoSite(c: ClienteBanco): Promise<SaudeSite | null> {
+  const { data, error } = await c.rpc("admin_saude");
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler a saúde do site:", error.message);
+    return null;
+  }
+  return data as unknown as SaudeSite;
+}
+
 /** O começo de hoje em Goiânia (o banco conta os dias nesse fuso), em ISO. */
 export function inicioDeHoje(agora: number) {
   const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(agora));

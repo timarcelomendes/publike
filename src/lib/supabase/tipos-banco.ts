@@ -2160,6 +2160,10 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Json;
       };
+      admin_saude: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       admin_acessos_site: {
         Args: Record<PropertyKey, never>;
         Returns: Json;

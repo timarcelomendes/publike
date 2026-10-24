@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Barras, GraficoDias, Ranking } from "@/components/admin/grafico";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
+import { SaudeDoSite } from "@/components/admin/saude";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { categoria } from "@/lib/constantes";
@@ -16,6 +17,7 @@ import {
   numerosDeHoje,
   numerosDoPainel,
   registroDaEquipe,
+  saudeDoSite,
   ultimoResumo,
   type AcessosSite,
 } from "@/lib/admin/dados";
@@ -42,7 +44,7 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, acessos, config, resumo, registro, chaves, agora] = await Promise.all([
+  const [n, acessos, config, resumo, registro, chaves, agora, saude] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
     configDoSite(c),
@@ -50,6 +52,7 @@ async function Conteudo() {
     registroDaEquipe(c, 10),
     listarChavesServidor(c),
     agoraDaRequisicao(),
+    saudeDoSite(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -59,6 +62,7 @@ async function Conteudo() {
 
   return (
     <div className="flex flex-col gap-6">
+      {saude && <SaudeDoSite saude={saude} agora={agora} />}
       {faltando && (
         <Secao titulo="Falta configurar" descricao="O site funciona sem isso, mas os e-mails e a IA só rodam com tudo pronto.">
           <div className="flex flex-col gap-2">
