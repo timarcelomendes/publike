@@ -16,6 +16,7 @@ import {
   configDoSite,
   listarChavesServidor,
   motivosDeEncerramento,
+  respostasNovasDaEquipe,
   numerosDeHoje,
   numerosDoPainel,
   registroDaEquipe,
@@ -46,7 +47,7 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos] = await Promise.all([
+  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos, respostas] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
     configDoSite(c),
@@ -56,6 +57,7 @@ async function Conteudo() {
     agoraDaRequisicao(),
     saudeDoSite(c),
     motivosDeEncerramento(c),
+    respostasNovasDaEquipe(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -66,6 +68,28 @@ async function Conteudo() {
   return (
     <div className="flex flex-col gap-6">
       {saude && <SaudeDoSite saude={saude} agora={agora} />}
+      {respostas && respostas.length > 0 && (
+        <Secao
+          titulo="Responderam a equipe"
+          descricao="Respostas às mensagens da equipe que ninguém abriu ainda. Abrir a conta marca como vistas."
+        >
+          <ul className="flex flex-col divide-y divide-line">
+            {respostas.map((r) => (
+              <li key={r.id} className="flex flex-col gap-1 py-2.5 text-body-sm">
+                <span className="flex flex-wrap items-baseline justify-between gap-2">
+                  <Link href={`/admin/usuarios/${r.conta_id}`} className="text-label underline underline-offset-2">
+                    {r.nome ?? "Conta sem nome"}
+                  </Link>
+                  <span className="text-ink-muted">
+                    sobre “{r.assunto}” · {tempoRelativo(r.criado_em, agora)}
+                  </span>
+                </span>
+                <span className="line-clamp-3 whitespace-pre-line">{r.texto}</span>
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      )}
       {faltando && (
         <Secao titulo="Falta configurar" descricao="O site funciona sem isso, mas os e-mails e a IA só rodam com tudo pronto.">
           <div className="flex flex-col gap-2">

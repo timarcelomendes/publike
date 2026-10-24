@@ -3,6 +3,7 @@ import type { ClienteBanco } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/tipos-banco";
 import { pdfNaoSalvoDe } from "@/lib/servidor/curriculo-pendente";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { lerRespostas } from "@/lib/mensagem-equipe";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -387,6 +388,16 @@ export async function mensagensDaEquipeDe(c: ClienteBanco, contaId: string) {
   const { data, error } = await c.rpc("admin_mensagens_equipe", { p_conta: contaId });
   if (error) {
     if (error.code !== "PGRST202") console.error("Publike: falha ao ler as mensagens da equipe:", error.message);
+    return null;
+  }
+  return (data ?? []).map((m) => ({ ...m, respostas: lerRespostas(m.respostas) }));
+}
+
+/** As respostas às mensagens da equipe que ninguém viu ainda (o painel inicial). null: banco sem a migração. */
+export async function respostasNovasDaEquipe(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_respostas_equipe", { p_limite: 10 });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as respostas da equipe:", error.message);
     return null;
   }
   return data ?? [];

@@ -290,6 +290,14 @@ export async function mandarMensagemDaEquipe(
   };
 }
 
+/** Abriu a conta no admin: as respostas dela às mensagens da equipe deixam de ser novas. */
+export async function verRespostasDaEquipe(contaId: string): Promise<void> {
+  const c = await clienteAdminOuNulo();
+  if (!c || !UUID.test(contaId)) return;
+  const { error } = await c.rpc("admin_ver_respostas_equipe", { p_conta: contaId });
+  if (error && error.code !== "PGRST202") console.error("Publike: não deu para marcar as respostas:", error.message);
+}
+
 /** Boas-vindas para quem se cadastrou, não publicou nada e ainda não recebeu. */
 export async function enviarBoasVindasPendentes(): Promise<Resultado> {
   const c = await clienteAdminOuNulo();

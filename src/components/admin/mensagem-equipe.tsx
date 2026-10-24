@@ -1,10 +1,10 @@
 "use client";
 
 import { Bell, Mail, Send } from "lucide-react";
-import { useState } from "react";
-import { mandarMensagemDaEquipe } from "@/lib/acoes/admin-contas";
+import { useEffect, useState } from "react";
+import { mandarMensagemDaEquipe, verRespostasDaEquipe } from "@/lib/acoes/admin-contas";
 import { formatarDataHora } from "@/lib/formato";
-import { EMAIL_DA_EQUIPE, LIMITES_MENSAGEM_EQUIPE } from "@/lib/mensagem-equipe";
+import { EMAIL_DA_EQUIPE, LIMITES_MENSAGEM_EQUIPE, type RespostaDaConta } from "@/lib/mensagem-equipe";
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -16,6 +16,7 @@ export type MensagemEnviada = {
   por_email: boolean;
   criado_em: string;
   lida_em: string | null;
+  respostas: RespostaDaConta[];
 };
 
 /**
@@ -41,6 +42,11 @@ export function MensagemDaEquipe({
   const [email, setEmail] = useState(temEmail);
   const [confirmar, setConfirmar] = useState(false);
   const pronto = assunto.trim().length >= 3 && texto.trim().length >= 3;
+  const novas = enviadas.some((m) => m.respostas.some((r) => !r.vista_em));
+  // abriu a conta: as respostas dela deixam de ser novas (a marca "nova" fica nesta visita)
+  useEffect(() => {
+    if (novas) verRespostasDaEquipe(contaId).catch(() => {});
+  }, [novas, contaId]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -162,6 +168,15 @@ export function MensagemDaEquipe({
                   </span>
                 </span>
                 <span className="whitespace-pre-line text-ink-muted">{m.texto}</span>
+                {m.respostas.map((r) => (
+                  <span key={r.id} className="mt-1 ml-4 flex flex-col gap-0.5 rounded-md bg-surface-300 px-3 py-2">
+                    <span className="text-ink-muted">
+                      {nome} respondeu · {formatarDataHora(r.criado_em)}
+                      {!r.vista_em && <span className="ml-2 rounded-pill bg-ipe px-2 py-0.5 text-on-ipe">Nova</span>}
+                    </span>
+                    <span className="whitespace-pre-line text-ink">{r.texto}</span>
+                  </span>
+                ))}
               </li>
             ))}
           </ul>

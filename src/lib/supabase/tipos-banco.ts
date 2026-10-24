@@ -1137,13 +1137,36 @@ export type Database = {
           por_email: boolean;
           criado_em: string;
           lida_em: string | null;
+          /** a partir de 20261111120000_resposta_da_equipe */
+          respostas?: Json;
         }[];
       };
+      admin_respostas_equipe: {
+        Args: { p_limite?: number };
+        Returns: {
+          id: number;
+          conta_id: string;
+          nome: string | null;
+          assunto: string;
+          texto: string;
+          criado_em: string;
+        }[];
+      };
+      admin_ver_respostas_equipe: { Args: { p_conta: string }; Returns: undefined };
       minhas_mensagens_equipe: {
         Args: Record<PropertyKey, never>;
-        Returns: { id: number; assunto: string; texto: string; criado_em: string; lida_em: string | null }[];
+        Returns: {
+          id: number;
+          assunto: string;
+          texto: string;
+          criado_em: string;
+          lida_em: string | null;
+          /** a partir de 20261111120000_resposta_da_equipe */
+          respostas?: Json;
+        }[];
       };
       ler_mensagens_equipe: { Args: Record<PropertyKey, never>; Returns: undefined };
+      responder_mensagem_equipe: { Args: { p_mensagem: number; p_texto: string }; Returns: number };
       registrar_motivo_encerramento: {
         Args: { p_anuncio: string; p_motivo: string; p_detalhe?: string | null };
         Returns: undefined;

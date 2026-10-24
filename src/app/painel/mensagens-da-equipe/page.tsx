@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { LerMensagensDaEquipe } from "@/components/painel/ler-mensagens-equipe";
+import { ResponderMensagemDaEquipe } from "@/components/painel/responder-mensagem-equipe";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
@@ -59,6 +60,19 @@ async function Conteudo() {
                 </time>
               </div>
               <p className="whitespace-pre-line text-body">{m.texto}</p>
+              {m.respostas.length > 0 && (
+                <ul className="flex flex-col gap-2 border-t border-line pt-3">
+                  {m.respostas.map((r) => (
+                    <li key={r.id} className="ml-4 flex flex-col gap-0.5 rounded-md bg-surface-300 px-3 py-2">
+                      <span className="text-body-sm text-ink-muted">
+                        Você respondeu · <time dateTime={r.criado_em}>{formatarDataHora(r.criado_em)}</time>
+                      </span>
+                      <span className="text-body-sm whitespace-pre-line">{r.texto}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <ResponderMensagemDaEquipe mensagemId={m.id} />
             </li>
           ))}
         </ul>
@@ -67,7 +81,7 @@ async function Conteudo() {
       <p className="flex items-start gap-2 text-body-sm text-ink-muted">
         <Mail aria-hidden className="mt-0.5 size-4 shrink-0" />
         <span>
-          Quer responder? Escreva para{" "}
+          Use o Responder de cada mensagem ou escreva para{" "}
           <a href={`mailto:${EMAIL_DA_EQUIPE}`} className="font-semibold text-ink underline underline-offset-2">
             {EMAIL_DA_EQUIPE}
           </a>
