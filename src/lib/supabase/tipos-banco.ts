@@ -1523,6 +1523,7 @@ export type Database = {
         Returns: { id: string; status: string }[];
       };
       apagar_recado: { Args: { p_recado: string }; Returns: string | null };
+      editar_recado: { Args: { p_recado: string; p_texto: string }; Returns: { status: string }[] };
       dar_forca: { Args: { p_recado: string }; Returns: { forcas: number; dei: boolean }[] };
       denunciar_recado: {
         Args: { p_recado: string; p_motivo: string; p_detalhes?: string | null };

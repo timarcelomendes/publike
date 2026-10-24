@@ -1,15 +1,15 @@
 "use client";
 
-import { Ellipsis, Flag, Trash2, UserPlus } from "lucide-react";
+import { Ellipsis, Flag, Pencil, Trash2, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { pedirConexao } from "@/lib/acoes/conexoes";
-import { apagarRecado, denunciarRecado } from "@/lib/acoes/recados";
+import { apagarRecado, denunciarRecado, editarRecado } from "@/lib/acoes/recados";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
 
 /**
- * O menu do recado: quem escreveu apaga (com confirmação ali mesmo, sem janela do navegador);
+ * O menu do recado: quem escreveu edita o texto ou apaga (com confirmação ali mesmo, sem janela do navegador);
  * os outros pedem conexão com quem escreveu ou denunciam, com os motivos da denúncia de anúncio.
  */
 export function MenuDoRecado({
@@ -17,8 +17,11 @@ export function MenuDoRecado({
   proprio,
   logado,
   autor,
+  texto = "",
 }: {
   recadoId: string;
+  /** o texto de agora (para editar) */
+  texto?: string;
   proprio: boolean;
   logado: boolean;
   /** quem escreveu (para o "Conectar com") */
@@ -26,7 +29,8 @@ export function MenuDoRecado({
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
-  const [passo, setPasso] = useState<"menu" | "apagar" | "denunciar">("menu");
+  const [passo, setPasso] = useState<"menu" | "editar" | "apagar" | "denunciar">("menu");
+  const [novoTexto, setNovoTexto] = useState(texto);
   const [motivo, setMotivo] = useState("");
   const [detalhes, setDetalhes] = useState("");
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -71,7 +75,8 @@ export function MenuDoRecado({
       {aberto && (
         <div
           id={id}
-          className="absolute right-0 bottom-11 z-30 w-[300px] max-w-[calc(100vw-32px)] rounded-lg border border-line bg-surface-200 p-2 text-ink shadow-raised"
+          // editar abre para baixo (o campo do texto é alto e, para cima, passaria do topo da página)
+          className={`absolute right-0 ${passo === "editar" ? "top-11" : "bottom-11"} z-30 w-[300px] max-w-[calc(100vw-32px)] rounded-lg border border-line bg-surface-200 p-2 text-ink shadow-raised`}
         >
           {aviso ? (
             <p role="status" className={`p-2 text-body-sm ${aviso.ok ? "text-ink" : "text-danger"}`}>
@@ -79,14 +84,27 @@ export function MenuDoRecado({
             </p>
           ) : passo === "menu" ? (
             proprio ? (
-              <button
-                type="button"
-                onClick={() => setPasso("apagar")}
-                className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label hover:bg-surface-300"
-              >
-                <Trash2 aria-hidden className="size-[18px]" />
-                Apagar recado
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNovoTexto(texto);
+                    setPasso("editar");
+                  }}
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label hover:bg-surface-300"
+                >
+                  <Pencil aria-hidden className="size-[18px]" />
+                  Editar recado
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPasso("apagar")}
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label hover:bg-surface-300"
+                >
+                  <Trash2 aria-hidden className="size-[18px]" />
+                  Apagar recado
+                </button>
+              </>
             ) : (
               <>
                 {autor && (
@@ -116,6 +134,51 @@ export function MenuDoRecado({
                 </button>
               </>
             )
+          ) : passo === "editar" ? (
+            <form
+              className="flex flex-col gap-2.5 p-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                iniciar(async () => {
+                  const r = await chamarAcao(() => editarRecado(recadoId, novoTexto));
+                  if (!r.ok) return setAviso({ ok: false, texto: r.erro });
+                  if (r.emRevisao) return setAviso({ ok: true, texto: r.mensagem ?? "Recado editado." });
+                  setAberto(false);
+                  router.refresh();
+                });
+              }}
+            >
+              <label className="flex flex-col gap-1 text-label">
+                Editar o texto
+                <textarea
+                  value={novoTexto}
+                  onChange={(e) => setNovoTexto(e.target.value)}
+                  maxLength={280}
+                  rows={5}
+                  autoFocus
+                  className="rounded-md border border-line-strong bg-surface-200 px-3 py-2 text-body font-normal"
+                />
+              </label>
+              <p className="text-body-sm text-ink-muted">
+                {280 - novoTexto.length} letras sobrando. A foto e o que foi citado continuam iguais.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAberto(false)}
+                  className="min-h-10 rounded-md px-3 text-label hover:bg-surface-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={pendente || !novoTexto.trim()}
+                  className="min-h-10 rounded-md bg-terra px-4 text-label font-bold text-on-terra disabled:opacity-60"
+                >
+                  {pendente ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
+            </form>
           ) : passo === "apagar" ? (
             <div className="flex flex-col gap-3 p-2">
               <p className="text-body-sm">

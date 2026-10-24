@@ -189,6 +189,7 @@ export function BalaoDoRecado({
         <span className="ml-auto">
           <MenuDoRecado
             recadoId={r.id}
+            texto={r.texto}
             proprio={proprio}
             logado={logado}
             autor={conexao === undefined ? { id: r.autor_id, nome: r.autor_nome } : undefined}

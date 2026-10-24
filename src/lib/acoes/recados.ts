@@ -84,6 +84,35 @@ export async function apagarRecado(id: string): Promise<Resultado> {
   return { ok: true, mensagem: "Recado apagado." };
 }
 
+/** Troca o texto do próprio recado (com a revisão ligada, ele volta para a revisão). */
+export async function editarRecado(id: string, texto: string): Promise<ResultadoRecado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(id)) return { ok: false, erro: "Recado não encontrado." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/" };
+  const dados = new FormData();
+  dados.set("texto", texto);
+  const leitura = lerRecado(dados);
+  if (!leitura.success) {
+    const problema = leitura.error.issues.find((i) => i.path[0] === "texto");
+    if (problema) return { ok: false, erro: problema.message };
+  }
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase
+    .rpc("editar_recado", { p_recado: id, p_texto: leitura.data?.texto ?? texto })
+    .maybeSingle();
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível editar o recado agora.") };
+  const emRevisao = data?.status === "revisao";
+  if (emRevisao) after(processarFilas);
+  revalidatePath(`/recado/${id}`);
+  refresh();
+  return {
+    ok: true,
+    emRevisao,
+    mensagem: emRevisao ? "Recado editado. Ele volta a aparecer para os outros depois da revisão." : "Recado editado.",
+  };
+}
+
 /** Dá (ou tira) a Força de um recado. */
 export async function darForca(id: string): Promise<{ ok: true; forcas: number; dei: boolean } | Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
