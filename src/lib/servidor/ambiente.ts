@@ -10,9 +10,17 @@ export function chaveSecretaSupabase() {
   return (process.env.SUPABASE_SECRET_KEY || "").trim();
 }
 
-/** Chave do servidor: só serve para mandar os e-mails e rodar a IA. Gerada no admin. */
+/**
+ * Chave do servidor: só serve para mandar os e-mails e rodar a IA. Gerada no admin.
+ * Também vale a linha inteira colada como valor ("PUBLIKE_CHAVE_SERVIDOR=publike_…", com ou sem aspas): ao
+ * editar a variável na Vercel, o que se cola no campo Value vira o valor, com o nome junto, e o banco recusava.
+ */
 export function chaveDoServidor() {
-  return (process.env.PUBLIKE_CHAVE_SERVIDOR || "").trim();
+  return (process.env.PUBLIKE_CHAVE_SERVIDOR || "")
+    .trim()
+    .replace(/^(?:export\s+)?PUBLIKE_CHAVE_SERVIDOR\s*=\s*/, "")
+    .replace(/^(["'])(.*)\1$/, "$2")
+    .trim();
 }
 
 export type ConfigSmtp = {

@@ -15,7 +15,8 @@ const criarChaveProtegido = protegerAcao(criarChaveServidor);
 export function FormNovaChave() {
   const [estado, acao, enviando] = useActionState(criarChaveProtegido, INICIAL);
   const [copiado, setCopiado] = useState(false);
-  const linha = estado.chave ? `PUBLIKE_CHAVE_SERVIDOR=${estado.chave}` : "";
+  // só o valor: na Vercel, a linha inteira colada no campo Value vira o valor (com o nome junto)
+  const chave = estado.chave ?? "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -43,20 +44,23 @@ export function FormNovaChave() {
       {estado.chave && (
         <Aviso tipo="alerta" titulo={`Chave “${estado.nome}” criada. Copie agora: ela não aparece de novo.`}>
           <p>
-            Cole esta linha nas variáveis de ambiente da hospedagem (na Vercel: Settings › Environment Variables) e
-            publique o site de novo. Não mande a chave por chat nem e-mail.
+            Na Vercel (Settings › Environment Variables), abra PUBLIKE_CHAVE_SERVIDOR, cole só o valor abaixo no campo
+            Value e faça um Redeploy: a chave nova só vale depois de publicar o site de novo. Não mande a chave por chat
+            nem e-mail.
           </p>
-          <code className="mt-2 block rounded-sm bg-surface-200 p-3 font-mono text-body-sm break-all select-all">{linha}</code>
+          <code className="mt-2 block rounded-sm bg-surface-200 p-3 font-mono text-body-sm break-all select-all">
+            {chave}
+          </code>
           <div className="mt-2">
             <Botao
               tamanho="sm"
               onClick={async () => {
-                await navigator.clipboard.writeText(linha);
+                await navigator.clipboard.writeText(chave);
                 setCopiado(true);
               }}
             >
               {copiado ? <Check aria-hidden /> : <Copy aria-hidden />}
-              {copiado ? "Copiado" : "Copiar"}
+              {copiado ? "Valor copiado" : "Copiar o valor"}
             </Botao>
           </div>
         </Aviso>
