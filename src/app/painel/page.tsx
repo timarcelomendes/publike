@@ -46,7 +46,9 @@ import {
 } from "@/lib/dados";
 import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
-import { modoDaConta } from "@/lib/servidor/modo";
+import { atividadesDoMenu, modoDaConta } from "@/lib/servidor/modo";
+import { listarMeusCandidatos } from "@/lib/dados";
+import { MODOS, type ModoPainel } from "@/lib/modo-painel";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
@@ -74,11 +76,12 @@ export default function Hoje() {
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel");
-  const [perfil, modo, conversas, conexoes] = await Promise.all([
+  const [perfil, modo, conversas, conexoes, atividades] = await Promise.all([
     obterMeuPerfil(),
     modoDaConta(),
     conversasPorPessoa(),
     minhasConexoes().catch(() => null),
+    atividadesDoMenu(),
   ]);
   const agora = await agoraDaRequisicao();
   const suspensa = Boolean(perfil?.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
@@ -129,7 +132,77 @@ async function Conteudo() {
         </Aviso>
       )}
       {pagina}
+      {/* quem faz mais de uma coisa: o Hoje é o da atividade principal; as outras, num quadro curto */}
+      {atividades.length > 1 && (
+        <Suspense fallback={null}>
+          <OutrasAtividades outras={atividades.filter((a) => a !== modo)} />
+        </Suspense>
+      )}
     </div>
+  );
+}
+
+/** O que pede a pessoa nas outras atividades dela (o menu mostra todas; aqui, o resumo de cada uma). */
+async function OutrasAtividades({ outras }: { outras: ModoPainel[] }) {
+  const [anuncios, candidatos] = await Promise.all([
+    outras.includes("servicos") ? listarMeusAnuncios().catch(() => []) : Promise.resolve([]),
+    outras.includes("contratar") ? listarMeusCandidatos().catch(() => []) : Promise.resolve([]),
+  ]);
+  const linhas = outras.map((m) => {
+    const nome = MODOS.find((x) => x.valor === m)?.nome ?? m;
+    if (m === "contratar") {
+      const n = (candidatos ?? []).filter(esperaResposta).length;
+      return n
+        ? {
+            nome,
+            texto: `${plural(n, "candidato espera", "candidatos esperam")} sua resposta`,
+            href: "/painel/caixa?aba=responder",
+            acao: "Responder",
+          }
+        : {
+            nome,
+            texto: "Nenhum candidato esperando resposta",
+            href: "/painel/anuncios?tipo=vaga",
+            acao: "Ver suas vagas",
+          };
+    }
+    if (m === "servicos") {
+      const n = anuncios.filter((a) => a.tipo === "servico").reduce((t, a) => t + (a.curtidas_novas ?? 0), 0);
+      return n
+        ? {
+            nome,
+            texto: `${plural(n, "pedido novo", "pedidos novos")}`,
+            href: "/painel/anuncios?tipo=servico",
+            acao: "Responder",
+          }
+        : { nome, texto: "Nenhum pedido novo", href: "/painel/servicos", acao: "Ver a vitrine" };
+    }
+    return {
+      nome,
+      texto: "Suas candidaturas e o currículo",
+      href: "/painel/curtidas?tipo=vaga",
+      acao: "Ver candidaturas",
+    };
+  });
+  return (
+    <section aria-labelledby="outras-atividades" className="flex flex-col gap-3">
+      <h2 id="outras-atividades" className="text-h3">
+        Suas outras atividades
+      </h2>
+      <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+        {linhas.map((l) => (
+          <li key={l.nome} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+            <span className="min-w-0 flex-1">
+              <span className="block text-label">{l.nome}</span>
+              <span className="block text-body-sm text-ink-muted">{l.texto}</span>
+            </span>
+            <Link href={l.href} className="text-label underline underline-offset-2 hover:text-terra-text">
+              {l.acao}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

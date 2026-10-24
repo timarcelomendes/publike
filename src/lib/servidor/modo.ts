@@ -1,9 +1,8 @@
 import "server-only";
-import { cookies } from "next/headers";
 import { cache } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
-import { COOKIE_MODO, lerModo, lerModos, modoPadrao, MODOS, type ModoPainel } from "@/lib/modo-painel";
+import { lerModos, modoPadrao, MODOS, modosDoTipo, type ModoPainel } from "@/lib/modo-painel";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { obterIntencao } from "./intencao";
 
@@ -38,19 +37,32 @@ export const modosDaConta = cache(
 );
 
 /**
- * O modo da conta (Contratar, Trabalhar ou Serviços): o escolhido no menu do painel, se for um
- * dos que a conta usa; sem escolha, o do tipo de conta e do que a pessoa disse que quer fazer
- * (ou o primeiro que ela marcou). A home e o painel usam a mesma conta, para nunca discordarem.
+ * A atividade principal da conta (Contratar, Trabalhar ou Serviços): a do tipo de conta e do que a
+ * pessoa disse que quer fazer, se ela marcou essa; senão, a primeira que marcou. Fixa: não se troca
+ * na tela (o painel mostra todas as atividades juntas; o Início é o mesmo feed para todos). Decide a
+ * página Hoje e a segunda aba da barra de baixo no celular.
  */
 export async function modoDaConta(): Promise<ModoPainel> {
-  const [jar, perfil, intencao, modos] = await Promise.all([
-    cookies(),
+  const [perfil, intencao, modos] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     obterIntencao().catch(() => null),
     modosDaConta(),
   ]);
-  const escolhido = lerModo(jar.get(COOKIE_MODO)?.value);
-  if (escolhido && modos.includes(escolhido)) return escolhido;
   const padrao = modoPadrao(perfil?.tipo, intencao);
   return modos.includes(padrao) ? padrao : (modos[0] ?? padrao);
+}
+
+/**
+ * As atividades que aparecem no menu do painel, a principal primeiro: as que a conta marcou (só as
+ * que o tipo de conta permite). Sem marcação, só a principal (antes, as três ficavam para trocar).
+ */
+export async function atividadesDoMenu(): Promise<ModoPainel[]> {
+  const [perfil, marcados, principal] = await Promise.all([
+    obterMeuPerfil().catch(() => null),
+    modosMarcados(),
+    modoDaConta(),
+  ]);
+  const doTipo = modosDoTipo(perfil?.tipo);
+  const lista = (marcados ?? [principal]).filter((m) => doTipo.includes(m));
+  return [principal, ...lista.filter((m) => m !== principal)];
 }

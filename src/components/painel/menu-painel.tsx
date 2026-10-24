@@ -30,14 +30,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { trocarConta } from "@/lib/acoes/equipe";
 import { PAPEIS_EQUIPE, type ContaDisponivel, type PapelNaConta } from "@/lib/equipe";
-import { verComoPessoa } from "../faixa-so-olhar";
 import {
-  COOKIE_MODO,
-  gruposDoModo,
-  modoDaRota,
-  MODOS,
-  OUTRAS,
+  gruposDaConta,
+  outrasDaConta,
   secaoAtiva,
+  textoDoQueFaz,
   type Contadores,
   type ModoPainel,
   type Secao,
@@ -66,32 +63,21 @@ const ICONES: Record<Secao["icone"], LucideIcon> = {
   visitas: Eye,
 };
 
-function guardarModo(modo: ModoPainel) {
-  document.cookie = `${COOKIE_MODO}=${modo}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-}
-
-function lerCookie(): string | null {
-  const m = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_MODO}=([^;]*)`));
-  return m ? m[1] : null;
-}
-
 /**
- * O menu do painel: o modo (Contratar, Trabalhar, Serviços) no topo e as seções dele.
- * No computador fica na coluna da esquerda; no celular, o modo e as seções numa linha
- * que rola de lado, em cima da página.
+ * O menu do painel, um espaço à parte (só a pessoa vê): no topo, de quem é e o que a conta faz; embaixo,
+ * as seções de todas as atividades dela juntas (sem trocar de modo na tela). No computador fica na
+ * coluna da esquerda; no celular, numa linha que rola de lado, em cima da página.
  */
 export function MenuPainel({
-  modo: modoDoServidor,
-  modos = MODOS.map((m) => m.valor),
+  atividades,
   contadores,
   nome,
   tipoConta = null,
   contas = [],
   papel = "dono",
 }: {
-  modo: ModoPainel;
-  /** os modos que a conta usa (marcados no perfil): só eles aparecem para trocar */
-  modos?: ModoPainel[];
+  /** o que a conta faz (a principal primeiro): o menu mostra todas juntas, sem troca de modo */
+  atividades: ModoPainel[];
   contadores: Contadores;
   nome: string | null;
   /** o tipo da conta (agência ganha "Clientes" e "Equipe" em Contratar) */
@@ -106,20 +92,14 @@ export function MenuPainel({
   const tipo = busca?.get("tipo") ?? null;
   const aba = busca?.get("aba") ?? null;
   const router = useRouter();
-  const daRota = modoDaRota(caminho, tipo);
-  const modo = daRota ?? modoDoServidor;
-  const ativa = secaoAtiva(modo, caminho, tipo, tipoConta, aba);
+  // todas as atividades da conta juntas, sem troca de modo na tela
+  const grupos = gruposDaConta(atividades, tipoConta);
+  const outras = outrasDaConta(atividades, grupos);
+  const ativa = secaoAtiva(grupos, outras, caminho, tipo, aba);
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const idMenu = useId();
-  const atual = MODOS.find((m) => m.valor === modo) ?? MODOS[0];
   const [trocando, iniciarTroca] = useTransition();
-  // os modos para trocar: os da conta (e o da página aberta, se veio por um link de outro modo)
-  const opcoes = MODOS.filter((m) => modos.includes(m.valor) || m.valor === modo);
-  // empresa, comércio e agência: "Ver como pessoa · só olhar" (o Publike de quem procura trabalho, sem agir)
-  const comoPessoa = Boolean(tipoConta) && tipoConta !== "pessoa";
-  // um modo só, uma conta só e nada para ver como pessoa: o topo não abre nada (o "Mudar" leva ao perfil)
-  const semTroca = opcoes.length <= 1 && contas.length <= 1 && !comoPessoa;
   const [erroTroca, setErroTroca] = useState<string | null>(null);
 
   function agirComo(conta: ContaDisponivel) {
@@ -132,18 +112,12 @@ export function MenuPainel({
         return setErroTroca(r.erro);
       }
       setAberto(false);
-      guardarModo(conta.tipo === "agencia" ? "contratar" : "trabalhar");
       if (caminho !== "/") router.push("/painel");
       router.refresh();
     });
   }
 
-  // abriu uma página de outro modo (um link de e-mail, por exemplo): o menu e a página Hoje vão junto
-  useEffect(() => {
-    if (daRota && lerCookie() !== daRota) guardarModo(daRota);
-  }, [daRota]);
-
-  // o menu dos modos fecha ao tocar fora e com Esc
+  // a lista das contas (agir como) fecha ao tocar fora e com Esc
   useEffect(() => {
     if (!aberto) return;
     const fora = (e: PointerEvent) => {
@@ -157,17 +131,6 @@ export function MenuPainel({
       document.removeEventListener("keydown", tecla);
     };
   }, [aberto]);
-
-  function escolher(novo: ModoPainel) {
-    setAberto(false);
-    guardarModo(novo);
-    // na home e no Hoje, a mesma página muda de modo; nas outras, vai para o Hoje
-    if (caminho === "/painel" || caminho === "/") router.refresh();
-    else router.push("/painel");
-  }
-
-  const grupos = gruposDoModo(modo, tipoConta);
-  const outras = OUTRAS[modo];
 
   // o número de uma seção: pílula (pede ação), "N pronto(s)" (para o cliente) ou texto discreto
   function numero(s: Secao, atualSecao: boolean) {
@@ -204,117 +167,70 @@ export function MenuPainel({
 
   return (
     <nav aria-label="Seções do painel" className="flex flex-col gap-3 lg:gap-5">
+      {/* o painel é um espaço à parte: diz de quem é e o que a conta faz (muda no perfil, não aqui) */}
       <div ref={caixa} className="relative">
-        {semTroca ? (
-          <div className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2">
-            <span className="min-w-0 flex-1">
-              <span className="block text-caption text-ink-muted uppercase">
-                {atual.nome}
-                {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
-              </span>
-              {nome && <span className="block truncate text-label">{nome}</span>}
+        <div className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2">
+          <span className="min-w-0 flex-1">
+            <span className="block text-caption text-ink-muted">
+              Seu painel · só você vê
+              {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
             </span>
-            {papel === "dono" || papel === "admin" ? (
-              <Link
-                href="/perfil#modos"
-                className="text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
-              >
-                Mudar
-                <span className="sr-only"> o que você faz no Publike</span>
-              </Link>
-            ) : null}
-          </div>
-        ) : (
-          <button
-            type="button"
-            aria-expanded={aberto}
-            aria-controls={idMenu}
-            onClick={() => setAberto((a) => !a)}
-            className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2 text-left transition-colors hover:bg-surface-300"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block text-caption text-ink-muted uppercase">
-                {atual.nome}
-                {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
-              </span>
-              {nome && <span className="block truncate text-label">{nome}</span>}
-            </span>
-            <span className="text-body-sm text-ink-muted">Trocar</span>
-            <ChevronDown aria-hidden className={`size-4 shrink-0 transition-transform ${aberto ? "rotate-180" : ""}`} />
-          </button>
-        )}
+            {nome && <span className="block truncate text-label">{nome}</span>}
+            {atividades.length > 0 && (
+              <span className="block text-body-sm text-ink-muted">{textoDoQueFaz(atividades)}</span>
+            )}
+          </span>
+          {contas.length > 1 ? (
+            <button
+              type="button"
+              aria-expanded={aberto}
+              aria-controls={idMenu}
+              onClick={() => setAberto((a) => !a)}
+              className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-body-sm text-ink-muted hover:bg-surface-300 hover:text-ink"
+            >
+              Agir como
+              <ChevronDown aria-hidden className={`size-4 transition-transform ${aberto ? "rotate-180" : ""}`} />
+            </button>
+          ) : papel === "dono" || papel === "admin" ? (
+            <Link
+              href="/perfil#modos"
+              className="shrink-0 text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
+            >
+              Mudar
+              <span className="sr-only"> o que você faz no Publike</span>
+            </Link>
+          ) : null}
+        </div>
         {aberto && (
           <div
             id={idMenu}
             className="absolute top-full right-0 left-0 z-40 mt-1 rounded-md border border-line-strong bg-surface-200 py-1 shadow-raised"
           >
-            {contas.length > 1 && (
-              <>
-                <p className="px-4 pt-2 pb-1 text-caption text-ink-muted uppercase">Agir como</p>
-                <ul aria-label="Contas" className="border-b border-line pb-1">
-                  {contas.map((c) => (
-                    <li key={c.conta_id}>
-                      <button
-                        type="button"
-                        aria-current={c.atual ? "true" : undefined}
-                        disabled={trocando}
-                        onClick={() => agirComo(c)}
-                        className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300 disabled:opacity-60"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-label">{c.nome}</span>
-                          <span className="block text-body-sm text-ink-muted">
-                            {c.papel === "dono" ? "Sua conta" : `Equipe · ${PAPEIS_EQUIPE[c.papel].nome}`}
-                          </span>
-                        </span>
-                        {c.atual && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                {erroTroca && (
-                  <p role="alert" className="px-4 py-2 text-body-sm text-danger">
-                    {erroTroca}
-                  </p>
-                )}
-                <p className="px-4 pt-2 pb-1 text-caption text-ink-muted uppercase">Modo</p>
-              </>
-            )}
-            <ul aria-label="Modos do painel">
-              {opcoes.map((m) => (
-                <li key={m.valor}>
+            <ul aria-label="Contas" className="pb-1">
+              {contas.map((c) => (
+                <li key={c.conta_id}>
                   <button
                     type="button"
-                    aria-current={m.valor === modo ? "true" : undefined}
-                    onClick={() => escolher(m.valor)}
-                    className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300"
+                    aria-current={c.atual ? "true" : undefined}
+                    disabled={trocando}
+                    onClick={() => agirComo(c)}
+                    className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300 disabled:opacity-60"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-label">{m.nome}</span>
-                      <span className="block text-body-sm text-ink-muted">{m.ajuda}</span>
+                      <span className="block truncate text-label">{c.nome}</span>
+                      <span className="block text-body-sm text-ink-muted">
+                        {c.papel === "dono" ? "Sua conta" : `Equipe · ${PAPEIS_EQUIPE[c.papel].nome}`}
+                      </span>
                     </span>
-                    {m.valor === modo && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
+                    {c.atual && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
                   </button>
                 </li>
               ))}
             </ul>
-            {comoPessoa && (
-              <button
-                type="button"
-                onClick={() => {
-                  setAberto(false);
-                  verComoPessoa();
-                }}
-                className="flex min-h-14 w-full items-center gap-3 border-t border-line px-4 py-2 text-left hover:bg-surface-300"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-label">Ver como pessoa</span>
-                  <span className="block text-body-sm text-ink-muted">
-                    Só olhar: o Publike de quem procura trabalho
-                  </span>
-                </span>
-                <Eye aria-hidden className="size-5 shrink-0 text-ink-muted" />
-              </button>
+            {erroTroca && (
+              <p role="alert" className="px-4 py-2 text-body-sm text-danger">
+                {erroTroca}
+              </p>
             )}
             {(papel === "dono" || papel === "admin") && (
               <Link
@@ -331,7 +247,13 @@ export function MenuPainel({
 
       <ul className="sem-barra -mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-4 lg:overflow-visible lg:px-0">
         {grupos.map((g) => (
-          <li key={g.nome ?? "inicio"} className="contents lg:block">
+          <li key={`${g.atividade ?? ""}${g.nome ?? "inicio"}`} className="contents lg:block">
+            {g.atividade && (
+              // com mais de uma atividade: o nome dela ("Contratar"), também na faixa do celular
+              <p className="shrink-0 self-center px-1 text-caption font-semibold text-ink-muted lg:px-3 lg:pt-1 lg:pb-1 lg:text-label lg:text-ink">
+                {g.atividade}
+              </p>
+            )}
             {g.nome && <p className="hidden px-3 pb-1.5 text-body-sm font-semibold text-ink-muted lg:block">{g.nome}</p>}
             <ul
               className={`contents lg:relative lg:flex lg:flex-col lg:gap-0.5 ${

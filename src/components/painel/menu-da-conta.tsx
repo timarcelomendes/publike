@@ -7,23 +7,26 @@ import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { resumoDasVisitas } from "@/lib/servidor/visitas";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { minhasContas } from "@/lib/servidor/equipe";
-import { modoDaConta, modosDaConta } from "@/lib/servidor/modo";
+import { atividadesDoMenu } from "@/lib/servidor/modo";
 import { MenuPainel } from "./menu-painel";
 
 /**
  * O menu do painel com os números (quem espera resposta, pedidos, mensagens novas e pedidos
- * de conexão) no modo da conta. Fica no painel e na coluna da esquerda da home de quem entrou.
+ * de conexão) de todas as atividades da conta. Fica no painel e na página Talentos.
  */
 export async function MenuDaConta() {
   if (MODO_DEMO) {
     return (
-      <MenuPainel modo="trabalhar" contadores={{ responder: 0, pedidos: 0, mensagens: 0, conexoes: 0 }} nome={null} />
+      <MenuPainel
+        atividades={["trabalhar"]}
+        contadores={{ responder: 0, pedidos: 0, mensagens: 0, conexoes: 0 }}
+        nome={null}
+      />
     );
   }
-  const [perfil, modo, modos, anuncios, conversas, usuario, contas, conexoes, visitas] = await Promise.all([
+  const [perfil, atividades, anuncios, conversas, usuario, contas, conexoes, visitas] = await Promise.all([
     obterMeuPerfil().catch(() => null),
-    modoDaConta(),
-    modosDaConta(),
+    atividadesDoMenu(),
     listarMeusAnuncios().catch(() => []),
     conversasPorPessoa().catch(() => null),
     obterUsuario(),
@@ -35,7 +38,7 @@ export async function MenuDaConta() {
   const soma = (tipo: string) =>
     anuncios.filter((a) => a.tipo === tipo).reduce((total, a) => total + (a.curtidas_novas ?? 0), 0);
   // o caminho da vaga (Contratar): clientes, vagas no ar, prontos para o cliente, entrevistas e contratados
-  const caminho = modo === "contratar" ? await caminhoDaConta().catch(() => null) : null;
+  const caminho = atividades.includes("contratar") ? await caminhoDaConta().catch(() => null) : null;
   const contadores: Contadores = {
     responder: caminho?.responder ?? soma("vaga"),
     pedidos: soma("servico"),
@@ -52,8 +55,7 @@ export async function MenuDaConta() {
   };
   return (
     <MenuPainel
-      modo={modo}
-      modos={modos}
+      atividades={atividades}
       contadores={contadores}
       nome={perfil?.nome ?? null}
       tipoConta={perfil?.tipo ?? null}

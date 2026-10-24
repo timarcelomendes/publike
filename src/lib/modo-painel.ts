@@ -105,7 +105,13 @@ export type Secao = {
 };
 
 /** Um grupo de seções no menu (sem nome: o primeiro, com Hoje). `caminho`: os passos numerados. */
-export type GrupoMenu = { nome: string | null; caminho?: boolean; secoes: Secao[] };
+export type GrupoMenu = {
+  nome: string | null;
+  caminho?: boolean;
+  secoes: Secao[];
+  /** com mais de uma atividade: o nome dela em cima do primeiro grupo dela ("Contratar") */
+  atividade?: string;
+};
 
 export const SECOES: Record<ModoPainel, Secao[]> = {
   contratar: [
@@ -242,16 +248,51 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
   return null;
 }
 
+/** O que vale para todas as atividades: fica no alto do menu, uma vez só, quando a conta faz mais de uma. */
+const COMUNS = ["/painel", "/painel/conversas", "/painel/conexoes", "/painel/visitas"];
+
+/**
+ * Os grupos do menu para as atividades da conta (a principal primeiro), sem troca de modo: com uma
+ * atividade, o menu dela, como sempre; com mais, o comum no alto (Hoje, Conversas, Conexões, Quem viu
+ * seu perfil) e o grupo de cada atividade com o nome dela em cima ("Contratar", "Trabalhar", "Serviços").
+ */
+export function gruposDaConta(atividades: ModoPainel[], tipoConta: string | null | undefined): GrupoMenu[] {
+  if (atividades.length <= 1) return gruposDoModo(atividades[0] ?? "trabalhar", tipoConta);
+  const todas = atividades.flatMap((m) => gruposDoModo(m, tipoConta).flatMap((g) => g.secoes));
+  const comuns = COMUNS.map((href) => todas.find((s) => s.href === href)).filter((s): s is Secao => Boolean(s));
+  const grupos: GrupoMenu[] = [{ nome: null, secoes: comuns }];
+  for (const m of atividades) {
+    const nome = MODOS.find((x) => x.valor === m)?.nome ?? m;
+    let primeiro = true;
+    for (const g of gruposDoModo(m, tipoConta)) {
+      const secoes = g.secoes.filter((s) => !COMUNS.includes(s.href));
+      if (!secoes.length) continue;
+      grupos.push({ ...g, atividade: primeiro ? nome : undefined, secoes });
+      primeiro = false;
+    }
+  }
+  return grupos;
+}
+
+/** O "Mais" do menu: o resto do painel das atividades da conta, sem repetir o que já está nos grupos. */
+export function outrasDaConta(atividades: ModoPainel[], grupos: GrupoMenu[]): { href: string; nome: string }[] {
+  const nosGrupos = new Set(grupos.flatMap((g) => g.secoes.map((s) => s.href)));
+  const vistas = new Set<string>();
+  return atividades
+    .flatMap((m) => OUTRAS[m])
+    .filter((o) => !nosGrupos.has(o.href) && !vistas.has(o.href) && vistas.add(o.href));
+}
+
 /** A seção aberta no menu (a mais específica que bate com o endereço). */
 export function secaoAtiva(
-  modo: ModoPainel,
+  grupos: GrupoMenu[],
+  outras: { href: string; nome: string }[],
   caminho: string,
   tipo: string | null,
-  tipoConta: string | null = null,
   aba: string | null = null,
 ): string | null {
   if (caminho === "/painel" || caminho === "/painel/") return "/painel";
-  const secoes = [...gruposDoModo(modo, tipoConta).flatMap((g) => g.secoes), ...OUTRAS[modo]];
+  const secoes = [...grupos.flatMap((g) => g.secoes), ...outras];
   // a caixa na aba de entrevistas é o passo Entrevistas (comércio e empresa)
   if (caminho.startsWith("/painel/caixa") && aba === "entrevistas") {
     const entrevistas = secoes.find((s) => s.href === "/painel/caixa?aba=entrevistas");
@@ -259,7 +300,7 @@ export function secaoAtiva(
   }
   // a página de um anúncio (quem curtiu, quadro, editar) fica na lista de anúncios do modo
   if (caminho.startsWith("/painel/anuncio/")) {
-    return SECOES[modo].find((s) => s.href.startsWith("/painel/anuncios"))?.href ?? null;
+    return secoes.find((s) => s.href.startsWith("/painel/anuncios"))?.href ?? null;
   }
   let melhor: string | null = null;
   for (const s of secoes) {
