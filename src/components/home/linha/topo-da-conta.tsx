@@ -1,6 +1,7 @@
 import { ArrowLeft, FileText, Inbox, Plus, Search, Store, type LucideIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Suspense } from "react";
 import { esperaResposta } from "@/lib/constantes";
 import { COOKIE_CONVITE_RECADO, conviteRecadoFechado } from "@/lib/convite-recado";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
@@ -17,6 +18,7 @@ import type { TextoDoConvite } from "../../recados/convite-recado";
 import { BarraBusca, FiltrosLista } from "../../explorar/barra-busca";
 import { FotoDaConta } from "../foto-da-conta";
 import { AbasDaLinha, OrdemDaLinha } from "./abas-da-linha";
+import { FaixaDeQuemContrata } from "./faixa-de-quem-contrata";
 import { BuscaERecado } from "./busca-e-recado";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
@@ -273,6 +275,14 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
           <BuscaERecado busca={<CampoDaBusca />} mudados={mudados} />
         )}
       </section>
+      {/* quem tem vaga no ar: um atalho para as vagas e os candidatos (o Início é o mesmo feed para todos) */}
+      {!soOlhar && (
+        <div className="mt-3 sm:mt-4">
+          <Suspense fallback={null}>
+            <FaixaDeQuemContrata agora={d.agora} />
+          </Suspense>
+        </div>
+      )}
       <div aria-hidden className="h-3 sm:h-4" />
       <AbasDaLinha
         aba={d.aba}

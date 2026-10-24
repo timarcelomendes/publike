@@ -1,5 +1,4 @@
-import { ArrowRight, Eye } from "lucide-react";
-import Link from "next/link";
+import { Eye } from "lucide-react";
 import { Suspense, type ReactNode } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
@@ -16,21 +15,14 @@ import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
 import { EsqueletoCards } from "@/components/card-anuncio";
 import { ColunaDoMapa } from "@/components/explorar/visao-explorar";
 import { primeiro } from "@/lib/formato";
-import { MolduraDaHome } from "@/components/home/moldura";
 import { BannerDaHome } from "@/components/home/banner-da-home";
 import { bannerDaHome } from "@/lib/servidor/banners";
 import { EntendaOPublike } from "@/components/inicio";
-import { MenuPainelEsqueleto } from "@/components/painel/menu-painel";
-import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { ContratacoesNaHome } from "@/components/social/secoes";
-import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
-import { HojeContratar } from "@/components/painel/hoje-contratar";
+import { Container, Esqueleto } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
-import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
-import { minhasConexoes } from "@/lib/servidor/conexoes";
-import { conversasPorPessoa } from "@/lib/servidor/conversas";
+import { obterUsuario } from "@/lib/dados";
 import { obterLocal } from "@/lib/local";
-import { modoDaConta } from "@/lib/servidor/modo";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { ONDE_FUNCIONA, PRACA_PADRAO, PRACAS } from "@/lib/pracas";
@@ -146,15 +138,16 @@ async function SecoesDaVitrine({ searchParams }: { searchParams: Parametros }) {
   );
 }
 
-/** Quem entrou: a home da conta, no modo do painel. */
+/**
+ * Quem entrou: o Início é o mesmo feed para todos, em qualquer modo do painel. Quem contrata vê, no
+ * topo, a faixa das vagas e dos candidatos (FaixaDeQuemContrata); o trabalho com os candidatos fica no
+ * painel. (Antes, o modo Contratar trocava o Início pelo Hoje do painel: quem publicava não via a vaga
+ * em lugar nenhum e achava que ela não tinha saído.)
+ */
 async function HomeDaConta({ searchParams }: { searchParams: Parametros }) {
-  const [modo, sp, soOlhar] = await Promise.all([modoDaConta(), searchParams, soOlharComoPessoa()]);
-  // empresa, comércio ou agência vendo como pessoa ("só olhar", no Trocar do painel): a linha de quem procura trabalho
-  if (soOlhar) return <LinhaDaConta searchParams={searchParams} soOlhar />;
-  // quem contrata abre direto no trabalho com os candidatos; com uma busca no endereço, a lista
-  const comBusca = Object.keys(sp).some((k) => BUSCA.includes(k));
-  if (modo === "contratar") return comBusca ? <BuscaDaEmpresa searchParams={searchParams} /> : <HomeEmpresa />;
-  return <LinhaDaConta searchParams={searchParams} />;
+  // empresa, comércio ou agência vendo como pessoa ("só olhar", no Trocar do painel): sem as ações da conta
+  const soOlhar = await soOlharComoPessoa();
+  return <LinhaDaConta searchParams={searchParams} soOlhar={soOlhar} />;
 }
 
 /**
@@ -289,35 +282,7 @@ async function LadoDaLinha({ searchParams, contratando }: { searchParams: Parame
   );
 }
 
-/** Quem contrata, com uma busca no endereço: a lista com filtros e mapa (como antes). */
-function BuscaDaEmpresa({ searchParams }: { searchParams: Parametros }) {
-  return (
-    <>
-      <h1 className="sr-only">Publike: trabalho perto de você</h1>
-      <MolduraDaHome
-        esquerda={
-          <>
-            <Suspense fallback={<Esqueleto className="h-56 rounded-lg" />}>
-              <CartaoDaConta />
-            </Suspense>
-            <Suspense fallback={<Esqueleto className="h-64 rounded-lg" />}>
-              <MenuDaConta />
-            </Suspense>
-          </>
-        }
-      >
-        <Suspense fallback={<BuscaEsqueleto />}>
-          <BuscaExplorar searchParams={searchParams} className="mb-6" contrata />
-        </Suspense>
-        <Suspense fallback={<ExplorarEsqueleto />}>
-          <Explorar searchParams={searchParams} variante="feed" contrata />
-        </Suspense>
-      </MolduraDaHome>
-    </>
-  );
-}
-
-/** Os parâmetros de busca da home: com qualquer um, quem contrata vê a lista. */
+/** Os parâmetros de busca da home: com qualquer um, a vitrine de quem não entrou fica só com a lista. */
 const BUSCA = [
   "q",
   "tipo",
@@ -333,63 +298,6 @@ const BUSCA = [
   "meus",
   "casa",
 ];
-
-/** Empresa, comércio e agência (modo Contratar): o Hoje do painel, com o cartão da empresa. */
-async function HomeEmpresa() {
-  const [usuario, perfil, conversas, conexoes, agora] = await Promise.all([
-    obterUsuario(),
-    obterMeuPerfil(),
-    conversasPorPessoa(),
-    minhasConexoes().catch(() => null),
-    agoraDaRequisicao(),
-  ]);
-  if (!usuario || !perfil) return null;
-  const suspensa = Boolean(perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
-  return (
-    <>
-      <h1 className="sr-only">Publike: seus candidatos</h1>
-      <MolduraDaHome
-        esquerda={
-          <>
-            <Suspense fallback={<Esqueleto className="h-56 rounded-lg" />}>
-              <CartaoDaConta />
-            </Suspense>
-            <Suspense fallback={<MenuPainelEsqueleto />}>
-              <MenuDaConta />
-            </Suspense>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-6">
-          {suspensa && (
-            <Aviso tipo="alerta" titulo="Sua conta está suspensa">
-              Seus anúncios estão fora do ar e não dá para publicar, curtir ou responder. Veja o motivo no e-mail que
-              enviamos.
-            </Aviso>
-          )}
-          {/* no celular, o menu do painel fica em cima (como no Meu painel) */}
-          <div className="lg:hidden">
-            <Suspense fallback={<MenuPainelEsqueleto />}>
-              <MenuDaConta />
-            </Suspense>
-          </div>
-          <HojeContratar usuario={usuario} perfil={perfil} conversas={conversas} conexoes={conexoes} agora={agora} />
-          {/* gente e empresas que chegaram perto: para contratar e para conectar */}
-          <Suspense fallback={null}>
-            <NovosPerto jeito="faixa" />
-          </Suspense>
-          <Link
-            href="/?tipo=tudo"
-            className="inline-flex items-center gap-1.5 self-start text-label text-ink underline underline-offset-2 hover:text-terra-text"
-          >
-            Ver as vagas do Publike
-            <ArrowRight aria-hidden className="size-4" />
-          </Link>
-        </div>
-      </MolduraDaHome>
-    </>
-  );
-}
 
 /** Quem contrata perto: em cima do mapa (computador) ou, em faixa, no meio da linha (celular). */
 async function ContratandoAcimaDoMapa({ jeito = "coluna" }: { jeito?: "coluna" | "faixa" }) {
