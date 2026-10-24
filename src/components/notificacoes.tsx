@@ -97,7 +97,10 @@ function destino(n: Notificacao, usuarioId: string) {
   if (n.tipo === "match") return "/painel/matches";
   if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "avaliacao") return "/painel/avaliacoes";
-  if (n.tipo === "avaliacao_retida") return "/regras";
+  if (n.tipo === "avaliacao_retida" || n.tipo === "avaliacao_removida") return "/regras";
+  if (n.tipo === "avaliacao_liberada" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
+  // moderação do anúncio: Meus anúncios mostra se está em análise, no ar ou como pôr de volta
+  if (n.tipo === "em_analise" || n.tipo === "liberado") return "/painel/anuncios";
   if (n.tipo === "etapa") return "/painel/curtidas";
   if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
