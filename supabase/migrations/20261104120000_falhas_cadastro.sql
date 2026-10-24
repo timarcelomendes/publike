@@ -37,6 +37,8 @@ create table if not exists privado.falhas_cadastro (
   avisado boolean not null default false,
   criado_em timestamptz not null default now()
 );
+-- Sem regras: ninguém lê nem escreve direto pela API, só pelas funções abaixo.
+alter table privado.falhas_cadastro enable row level security;
 create index if not exists falhas_cadastro_criado_idx on privado.falhas_cadastro (criado_em desc);
 create index if not exists falhas_cadastro_conta_idx on privado.falhas_cadastro (conta_id, criado_em desc)
   where conta_id is not null;
