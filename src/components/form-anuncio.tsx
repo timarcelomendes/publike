@@ -451,7 +451,9 @@ export function FormAnuncio({
 
       <Secao numero={2} titulo={vaga ? "O essencial" : "Conte sobre o serviço"}>
         <p className="-mt-2 text-body-sm text-ink-muted">
-          Só isto é obrigatório: o quê, quanto e quando. O resto fica em “Mais detalhes”, se quiser.
+          {vaga
+            ? "Só isto é obrigatório: o título, o tipo de contratação, o valor e o bairro. O resto fica em “Mais detalhes”, se quiser."
+            : "Só isto é obrigatório: o quê, quanto e quando. O resto fica em “Mais detalhes”, se quiser."}
         </p>
         <Campo rotulo="Título" nome="titulo" erro={erros.titulo} ajuda="Curto e direto, como você falaria para um vizinho.">
           <input
