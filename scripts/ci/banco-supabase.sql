@@ -1,6 +1,17 @@
 -- O que o Supabase já traz pronto num banco novo e as migrações do Publike usam: os papéis (anon,
 -- authenticated, service_role), os esquemas extensions e storage e a publicação do Realtime. Só
 -- para conferir as migrações num Postgres comum (CI); no Supabase, nada disto roda.
+
+-- A imagem postgis/postgis do CI já cria o PostGIS (e o topology, o tiger e o fuzzystrmatch) no
+-- esquema public; no Supabase ele fica em extensions, onde as migrações o criam. Começa sem eles.
+drop extension if exists postgis_tiger_geocoder cascade;
+drop extension if exists postgis_topology cascade;
+drop extension if exists fuzzystrmatch cascade;
+drop extension if exists postgis cascade;
+drop schema if exists tiger cascade;
+drop schema if exists tiger_data cascade;
+drop schema if exists topology cascade;
+
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin noinherit; end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin noinherit; end if;
