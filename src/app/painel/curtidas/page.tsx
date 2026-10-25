@@ -34,7 +34,15 @@ import {
   obterMeuCurriculo,
   vagasQuePedemCurriculo,
 } from "@/lib/dados";
-import { formatarLugar, primeiro, rotuloConta, rotuloModalidade, tempoRelativo, valorDoAnuncio } from "@/lib/formato";
+import {
+  formatarLugar,
+  nomeCurtoDaConta,
+  primeiro,
+  rotuloConta,
+  rotuloModalidade,
+  tempoRelativo,
+  valorDoAnuncio,
+} from "@/lib/formato";
 import { ContratacaoPublica } from "@/components/social/botoes";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { exigirUsuario } from "@/lib/sessao";
@@ -283,7 +291,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                 )}
                 {etapaVisivel && (
                   <p className="text-body-sm text-ink-muted">
-                    {c.autor_nome.split(" ")[0]}{" "}
+                    {nomeCurtoDaConta(c.autor_nome, c.autor_tipo)}{" "}
                     {etapaVisivel.etapa === "nao_seguiu" ? "encerrou o processo" : "atualizou a etapa"}{" "}
                     {tempoRelativo(etapaVisivel.atualizado_em, agora)}.
                   </p>
@@ -341,9 +349,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                     <p className="text-body-sm text-ink-muted">
                       {desfeitos.get(c.anuncio_id)?.porMim
                         ? `Você desfez o match. Motivo: ${nomeMotivoDesfazer(desfeitos.get(c.anuncio_id)?.motivo).toLowerCase()}.`
-                        : `${c.autor_nome.split(" ")[0]} desfez o match. Motivo: ${motivoParaOutro(desfeitos.get(c.anuncio_id)?.motivo)}.`}
+                        : `${nomeCurtoDaConta(c.autor_nome, c.autor_tipo)} desfez o match. Motivo: ${motivoParaOutro(desfeitos.get(c.anuncio_id)?.motivo)}.`}
                       {bloqueios.get(c.autor_id)?.ele
-                        ? ` ${c.autor_nome.split(" ")[0]} preferiu não negociar de novo.`
+                        ? ` ${nomeCurtoDaConta(c.autor_nome, c.autor_tipo)} preferiu não negociar de novo.`
                         : noAr
                           ? ` Se quiser, dá para ${c.tipo === "servico" ? "pedir" : "curtir"} de novo.`
                           : ""}

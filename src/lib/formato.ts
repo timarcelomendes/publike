@@ -3,6 +3,7 @@ import { REGIMES, TIPOS_ANUNCIO, TIPOS_CONTA } from "./constantes";
 import type { Regime, TipoAnuncio, TipoConta, Unidade } from "./tipos";
 import { ganhosDoBanco, nomesDosGanhos, type GanhoExtra } from "./vaga-extra";
 import { cidadeDePraca } from "./pracas";
+import { tipoPeloNome } from "./nome-de-empresa";
 
 const FUSO = "America/Sao_Paulo";
 
@@ -186,6 +187,17 @@ export function linkWhatsApp(numero: string, texto: string) {
 export function nomeDaConta(nome: string) {
   const i = nome.lastIndexOf(" · ");
   return i > 0 ? nome.slice(i + 3) : nome;
+}
+
+/**
+ * Como chamar a conta numa frase curta ("Ana atualizou a etapa"): a pessoa pelo primeiro nome; empresa,
+ * comércio, agência e pessoa com nome de empresa ("Call Center DentSmile") pelo nome inteiro, como nos
+ * e-mails (privado.nome_para_email).
+ */
+export function nomeCurtoDaConta(nome: string, tipo: string | null | undefined) {
+  const limpo = nome.trim();
+  if (tipo !== "pessoa" || tipoPeloNome(limpo)) return limpo;
+  return limpo.split(/\s+/)[0] || limpo;
 }
 
 export function iniciais(nome: string) {
