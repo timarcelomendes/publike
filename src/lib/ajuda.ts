@@ -1,6 +1,7 @@
 import { CIDADES, emLista, LIMITES_CONTA } from "./constantes";
 import type { TipoConta } from "./tipos";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
+import { jeitosDeEntrar } from "./login-social";
 
 // Página de ajuda (/ajuda) e o que o assistente sabe sobre o Publike.
 // Mudou como algo funciona? Mude aqui: a página e o assistente leem daqui.
@@ -244,7 +245,7 @@ export type PerfilAjuda = { tipo: TipoConta; jornadas: JornadaAjuda[] };
 
 const entrar = (tipo: string, extra: string[] = []): PassoJornada => ({
   titulo: "Entre e complete o perfil",
-  texto: `Não tem senha. Toque em Entrar, use o e-mail (ou Google, Facebook, LinkedIn) e, no “Você é”, escolha ${tipo}.`,
+  texto: `Não tem senha. Toque em Entrar, use ${jeitosDeEntrar()} e, no “Você é”, escolha ${tipo}.`,
   detalhes: [
     "O link de entrar chega no e-mail, vale uma vez e por pouco tempo. Não chegou? Veja o spam e peça outro.",
     "No perfil vão o nome, a cidade, o bairro e o WhatsApp. O WhatsApp só aparece no match, para os dois.",

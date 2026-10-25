@@ -10,7 +10,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { LOGIN_CELULAR, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { caminhoSeguro, primeiro } from "@/lib/formato";
-import { REDES_ATIVAS } from "@/lib/login-social";
+import { jeitosDeEntrar, REDES_ATIVAS } from "@/lib/login-social";
 import { redesParaEntrar } from "@/lib/login-social-servidor";
 import { COOKIE_ORIGEM, origemValida } from "@/lib/origem";
 
@@ -44,8 +44,7 @@ function contexto(proximo: string): Contexto {
   if (proximo.startsWith("/publicar?continuar=1")) {
     return {
       titulo: "Falta só entrar para publicar",
-      texto:
-        "Sua vaga está guardada neste aparelho. Entre com seu WhatsApp ou e-mail e ela vai ao ar na hora. Seu WhatsApp só aparece para quem você aceitar.",
+      texto: `Sua vaga está guardada neste aparelho. Entre com ${jeitosDeEntrar()} e ela vai ao ar na hora. Seu WhatsApp só aparece para quem você aceitar.`,
       publica: true,
     };
   }

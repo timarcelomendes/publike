@@ -26,6 +26,7 @@ import { ArteDaVaga } from "./arte-da-vaga";
 import { AvisoConvite } from "./aviso-convite";
 import { FormAnuncio, type ValoresAnuncio } from "./form-anuncio";
 import { Aviso, Selo } from "./ui/basicos";
+import { jeitosDeEntrar } from "@/lib/login-social";
 
 // Publicar uma vaga: os modelos prontos em cima, a prévia de como a vaga aparece e,
 // para quem ainda não entrou, o rascunho guardado no aparelho. Depois de entrar
@@ -263,8 +264,8 @@ export function PublicarAnuncio({
       )}
       {semConta && !convite && (
         <Aviso tipo="info" titulo="Não precisa de conta para começar">
-          Preencha a vaga. No fim, é só entrar com seu WhatsApp ou e-mail e ela vai ao ar na hora. O que você escreve
-          fica guardado neste aparelho.
+          Preencha a vaga. No fim, é só entrar com {jeitosDeEntrar()} e ela vai ao ar na hora. O que você escreve fica
+          guardado neste aparelho.
         </Aviso>
       )}
       {aviso === "restaurado" && (

@@ -53,6 +53,7 @@ import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
 import { ResumoErros } from "./ui/resumo-erros";
+import { jeitosDeEntrar } from "@/lib/login-social";
 
 /** Os tipos de contratação que aparecem primeiro (os outros ficam em "Outros tipos"). */
 const REGIMES_PRINCIPAIS: Regime[] = ["clt", "diaria", "freelance", "temporario", "estagio", "aprendiz"];
@@ -1011,7 +1012,7 @@ export function FormAnuncio({
           </p>
         ) : (
           <p className="text-body-sm text-ink-muted">
-            {semConta ? "Depois é só entrar com seu WhatsApp ou e-mail: a vaga vai ao ar na hora. " : ""}
+            {semConta ? `Depois é só entrar com ${jeitosDeEntrar()}: a vaga vai ao ar na hora. ` : ""}
             Grátis. Seu WhatsApp só aparece no match. Fica no ar pelo prazo que você escolher, e dá para renovar. Ao
             publicar, você concorda com as{" "}
             <Link href="/regras" className="underline">

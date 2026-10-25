@@ -25,6 +25,7 @@ import { notasDaIA } from "@/lib/servidor/indicacoes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { DadosCard } from "@/lib/tipos";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
+import { jeitosDeEntrar } from "@/lib/login-social";
 
 export const metadata: Metadata = {
   title: "Descobrir vagas",
@@ -195,7 +196,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
         </>
       ) : (
         <Aviso tipo="info" titulo="Entre para curtir e receber vagas que combinam com você">
-          Sem senha: é só o e-mail, o Google ou o celular.{" "}
+          Sem senha: é só {jeitosDeEntrar()}.{" "}
           <Link href="/entrar?next=/descobrir" className="underline">
             Entrar
           </Link>
