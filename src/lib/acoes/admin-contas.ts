@@ -9,7 +9,7 @@ import { limparFotosDeTrabalho } from "@/lib/servidor/arquivos";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { salvarContatoDireto } from "@/lib/servidor/contato-direto";
 import { mandarEmailDeAcesso } from "@/lib/servidor/email-acesso";
-import { enviarEmailsPendentes, processarFilas } from "@/lib/servidor/filas";
+import { enviarEmailsPendentes, enviarPushPendentes, processarFilas } from "@/lib/servidor/filas";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
@@ -277,6 +277,8 @@ export async function mandarMensagemDaEquipe(
   if (error?.code === "PGRST202") return { ok: false, erro: "Rode antes a migração da mensagem da equipe." };
   if (error || !data) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
+  // a notificação no celular sai já (precisa das chaves das notificações também neste computador)
+  after(() => enviarPushPendentes());
   if (!data.email_id) return { ok: true, mensagem: "Mensagem no sino da conta." };
 
   const envio = await enviarEmailsPendentes(50);
