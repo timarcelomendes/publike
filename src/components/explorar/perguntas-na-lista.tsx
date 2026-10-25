@@ -62,7 +62,10 @@ export function PerguntasNaLista({
     );
   }
 
-  // na chegada, numa janela por cima
+  // na chegada, numa janela por cima. Quem chega numa busca pronta (o botão de um banner, um link com a
+  // palavra ou as vagas novas) já disse o que quer ver: a janela fica para a próxima visita
+  const buscaPronta = Boolean(filtros.q.trim()) || filtros.ordem === "recentes";
+  if (!intencaoAtual && buscaPronta) return null;
   if (!intencaoAtual) {
     // "Agora não": a pergunta volta na próxima visita
     return adiada ? null : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita cidade={cidade} />;
