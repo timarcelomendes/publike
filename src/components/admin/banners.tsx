@@ -297,7 +297,13 @@ export function AcoesBanner({ id, ativo }: { id: string; ativo: boolean }) {
   return (
     <div className="flex flex-col items-start gap-2">
       <div className="flex flex-wrap gap-2">
-        <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => ligarBanner(id, !ativo))}>
+        {/* ligar em verde, desligar em vermelho */}
+        <Botao
+          tamanho="sm"
+          variante={ativo ? "perigo" : "sucesso"}
+          disabled={pendente}
+          onClick={() => rodar(() => ligarBanner(id, !ativo))}
+        >
           <Power aria-hidden />
           {ativo ? "Desligar" : "Ligar"}
         </Botao>
