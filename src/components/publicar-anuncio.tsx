@@ -168,6 +168,24 @@ export function PublicarAnuncio({
       // veio com um modelo pedido (o vazio de Serviços): o rascunho antigo também não passa por cima
       if (modeloInicial && !continuar) return;
       if (continuar && !semConta) {
+        // agência: o formulário sem conta não pede a empresa contratante, e o banco recusa a vaga sem
+        // ela. Em vez do erro, o formulário volta preenchido, no campo da empresa.
+        const preenchido = (k: string) => r.campos.some(([c, v]) => c === k && v.trim() !== "");
+        const semEmpresa =
+          !preenchido("contratante") && !preenchido("cliente_id") && !preenchido("contratante_confidencial");
+        if (agencia && semEmpresa) {
+          apagarRascunho();
+          setInicial(valoresDoRascunho(r, base));
+          setChave((c) => c + 1);
+          setErro("Falta só dizer para qual empresa é a vaga, ou marcar Empresa confidencial.");
+          window.setTimeout(() => {
+            const campo =
+              document.getElementById("contratante") ?? document.querySelector<HTMLElement>("[name=cliente_id]");
+            campo?.scrollIntoView({ block: "center" });
+            campo?.focus();
+          }, 300);
+          return;
+        }
         apagarRascunho();
         setAviso("publicando");
         startTransition(async () => {
