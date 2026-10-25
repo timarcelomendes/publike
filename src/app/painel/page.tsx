@@ -45,7 +45,7 @@ import {
   obterMeuPerfil,
   perfilCompleto,
 } from "@/lib/dados";
-import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
+import { formatarNumero, nomeCurtoDaConta, plural, tempoRelativo } from "@/lib/formato";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
 import { vapidPublica } from "@/lib/servidor/ambiente";
 import { atividadesDoMenu, modoDaConta } from "@/lib/servidor/modo";
@@ -368,6 +368,34 @@ function HojeTrabalhar({
     });
   }
   cartoes.push(...cartoesDaConta(perfil, conversas, conversaDoModo.trabalhar));
+  // match dos últimos 7 dias parado: ninguém escreveu na conversa depois do match. Quem nunca trocou
+  // mensagem já tem o "Mandar um oi" (cartoesDaConta); aqui fica quem já tinha conversado antes (a
+  // mensagem da curtida, outra vaga)
+  const parados = vagas.filter((c) => {
+    if (c.status !== "match" || !c.respondida_em || c.anuncio_status !== "ativo") return false;
+    const desde = new Date(c.respondida_em).getTime();
+    const etapa = etapaDe(c);
+    if (agora - desde > 7 * DIA || entrevistaDe.has(c.anuncio_id) || (etapa && etapa !== "analise")) return false;
+    const conversa = conversas?.find((x) => x.outro_id === c.autor_id);
+    if (!conversa?.ultima_texto) return false;
+    return !conversa.ultima_em || new Date(conversa.ultima_em).getTime() < desde;
+  });
+  if (parados.length) {
+    const nome = nomeCurtoDaConta(parados[0].autor_nome, parados[0].autor_tipo);
+    cartoes.push({
+      icone: MessageCircle,
+      tom: "bom",
+      quando: "Deu match",
+      titulo:
+        parados.length === 1 ? `Combine a entrevista com ${nome}` : `${parados.length} matches esperando a conversa`,
+      texto:
+        parados.length === 1
+          ? `Em ${parados[0].titulo}. Mande uma mensagem e combinem o dia e o horário.`
+          : `Em ${nomes(parados.map((c) => c.titulo))}. Mande uma mensagem e combinem a entrevista.`,
+      href: parados.length === 1 ? caminhoConversa(parados[0].autor_id) : "/painel/conversas",
+      acao: "Conversar",
+    });
+  }
   cartoes.push(...cartoesDeConexao(conexoes));
   if (semCurriculo && aceitas.length === 0) {
     cartoes.push({
