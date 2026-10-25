@@ -7,6 +7,7 @@ import {
   revisarAvaliacoesPendentes,
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
+import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 
 // A garantia das filas: a tarefa agendada do GitHub (.github/workflows/filas.yml) chama a cada 5 minutos,
 // com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém
@@ -26,12 +27,14 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  const [ia, avaliacoes, recados, parados] = await Promise.all([
+  const [ia, avaliacoes, recados, parados, combinam] = await Promise.all([
     revisarAnunciosPendentes(20),
     revisarAvaliacoesPendentes(20),
     revisarRecadosPendentes(20),
     // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
     liberarContatosParados(),
+    // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos
+    mandarCombinamDaSemana(),
   ]);
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
@@ -43,6 +46,7 @@ export async function GET(request: Request) {
     avaliacoes.motivo,
     recados.motivo,
     parados.motivo,
+    combinam.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -58,6 +62,7 @@ export async function GET(request: Request) {
       emails: { enviados: emails.enviados, falhas: emails.falhas },
       celular,
       contatos_liberados: parados.liberadas,
+      combinam: { vagas: combinam.vagas, talentos: combinam.talentos, vistos: combinam.vistos },
       ia: { anuncios: ia, avaliacoes, recados },
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },

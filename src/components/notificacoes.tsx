@@ -18,6 +18,7 @@ import {
   ClipboardCheck,
   PartyPopper,
   SearchCheck,
+  Sparkles,
   ThumbsUp,
   UserCheck,
   UserSearch,
@@ -76,6 +77,9 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   visitas_novidade: Eye,
   // a mensagem que a equipe do Publike escreveu para a conta
   mensagem_equipe: Megaphone,
+  // as vagas e os talentos que combinam, toda semana
+  vagas_semana: Sparkles,
+  talentos_semana: UserSearch,
 };
 
 type Notificacao = {

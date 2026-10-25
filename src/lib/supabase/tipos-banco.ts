@@ -713,6 +713,8 @@ export type Database = {
           email_conta: boolean;
           /** e-mail de boas-vindas para quem cria a conta */
           email_boas_vindas: boolean;
+          /** 20261119120000: vagas e talentos que combinam, toda semana */
+          combinam_semana?: boolean;
           avisos_para: string[];
           aviso_denuncia: boolean;
           aviso_cadastro: boolean;
@@ -1158,6 +1160,54 @@ export type Database = {
       };
       servidor_inscricao_expirada: { Args: { p_chave: string; p_endpoint: string }; Returns: undefined };
       servidor_liberar_contatos_parados: { Args: { p_chave: string }; Returns: number };
+      admin_ligar_combinam: { Args: { p_ligado: boolean }; Returns: undefined };
+      servidor_combinam_situacao: {
+        Args: { p_chave: string };
+        Returns: { ligado: boolean; semana: string; pode: boolean }[];
+      };
+      servidor_combinam_vagas: {
+        Args: { p_chave: string };
+        Returns: {
+          id: string;
+          autor_id: string;
+          autor_nome: string;
+          titulo: string;
+          descricao: string;
+          escolaridade_minima: string | null;
+          experiencia: string | null;
+          cnh: string | null;
+          cidade: string;
+          bairro: string | null;
+          jornada: string | null;
+          horario_detalhe: Json | null;
+          horario: string | null;
+          criado_em: string;
+        }[];
+      };
+      servidor_combinam_pessoas: {
+        Args: { p_chave: string; p_semana: string; p_limite?: number };
+        Returns: { perfil_id: string; cidade: string | null; bairro: string | null; curriculo: Json; ja: string[] }[];
+      };
+      servidor_combinam_empresas: {
+        Args: { p_chave: string; p_semana: string; p_limite?: number };
+        Returns: { perfil_id: string; vagas: Json | null; ja: string[] }[];
+      };
+      servidor_combinam_talentos: {
+        Args: { p_chave: string };
+        Returns: { perfil_id: string; nome: string; cidade: string | null; bairro: string | null; curriculo: Json }[];
+      };
+      servidor_combinam_registrar: {
+        Args: {
+          p_chave: string;
+          p_semana: string;
+          p_conta: string;
+          p_tipo: string;
+          p_ids: string[];
+          p_texto: string;
+          p_dados: Json;
+        };
+        Returns: boolean;
+      };
       admin_mandar_mensagem_equipe: {
         Args: { p_conta: string; p_assunto: string; p_texto: string; p_email: boolean };
         Returns: { id: number; email_id: number | null };

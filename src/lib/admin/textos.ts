@@ -92,6 +92,8 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   convite_agencia: "Convite: gestão de candidatos (agência)",
   convite_servicos: "Convite: divulgar a vitrine",
   convite_vitrine: "Convite: montar a vitrine",
+  vagas_semana: "Vagas que combinam (toda semana)",
+  talentos_semana: "Talentos que combinam (toda semana)",
 };
 
 export const STATUS_EMAIL: Record<string, string> = {

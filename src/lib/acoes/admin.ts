@@ -210,6 +210,25 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
   return { ok: true, mensagem: "Configurações salvas." };
 }
 
+/** Liga ou desliga as vagas e os talentos que combinam, toda semana (migração 20261119120000). */
+export async function ligarCombinam(ligado: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { error } = await c.rpc("admin_ligar_combinam", { p_ligado: ligado });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20261119120000_combinam_da_semana.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: ligado
+      ? "Ligado: sai toda segunda, a partir das 9h, junto com a tarefa das filas."
+      : "Desligado: nada mais sai.",
+  };
+}
+
 const SEM_MIGRACAO_LOGO = "Confira se a migração 20261009290000_logo_emails.sql já rodou no Supabase.";
 
 /**

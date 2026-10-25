@@ -188,4 +188,8 @@ export const EXEMPLOS_EMAIL: Record<string, string> = {
   origem: "o anúncio recebeu denúncias de três pessoas diferentes.",
   quando: "08/10/2026 às 13:00",
   caminho: "/painel",
+  // as vagas e os talentos da semana
+  quantas: "3 vagas combinam",
+  lista:
+    "• Auxiliar de cozinha, Padaria Pão Quente, Setor Sul: 88% de match\n• Atendente de balcão, Padaria Pão Quente, Setor Sul: 81% de match\n• Repositor, Supermercado Bom Preço, Campinas: 74% de match",
 };

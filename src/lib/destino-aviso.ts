@@ -14,6 +14,9 @@ export type AvisoComDestino = {
  */
 export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "mensagem_equipe") return "/painel/mensagens-da-equipe";
+  // as vagas e os talentos da semana: a lista pelo % de match e a aba Talentos
+  if (n.tipo === "vagas_semana") return "/?tipo=vaga&ordem=combina";
+  if (n.tipo === "talentos_semana") return "/talentos";
   if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
   if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
   if (n.tipo === "visitas_novidade") return "/painel/visitas#opcoes";

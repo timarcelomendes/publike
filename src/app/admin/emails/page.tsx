@@ -1,4 +1,4 @@
-import { FileText, MailCheck, MailWarning, Send, Settings } from "lucide-react";
+import { FileText, MailCheck, MailWarning, Send, Settings, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -11,6 +11,7 @@ import {
   FormLogoEmails,
   TextosDosEmails,
 } from "@/components/admin/emails";
+import { LigarCombinam } from "@/components/admin/combinam";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
@@ -20,6 +21,7 @@ import { SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail } from "@/lib/email/montar";
 import { primeiro, tempoRelativo } from "@/lib/formato";
 import { situacaoSmtp } from "@/lib/servidor/ambiente";
+import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -31,6 +33,7 @@ const ABAS = [
   { id: "enviados", nome: "Enviados", icone: MailCheck },
   { id: "configuracoes", nome: "Configurações", icone: Settings },
   { id: "convites", nome: "Convites", icone: Send },
+  { id: "semana", nome: "Da semana", icone: Sparkles },
   { id: "textos", nome: "Textos", icone: FileText },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
@@ -89,6 +92,8 @@ async function Conteudo({ aba }: { aba: Aba }) {
     aba === "convites" ? convitesPorEmail(c) : nada,
     aba === "convites" ? avisosDeConvite(c) : nada,
   ]);
+  // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
+  const previa = aba === "semana" ? await mandarCombinamDaSemana({ simular: true }) : null;
   const smtp = situacaoSmtp();
   const filas = situacaoFilas();
   const temFalhas = fila.some((e) => e.status === "falhou");
@@ -182,6 +187,8 @@ async function Conteudo({ aba }: { aba: Aba }) {
         </>
       )}
 
+      {aba === "semana" && previa && <DaSemana previa={previa} />}
+
       {aba === "convites" && (
         <>
           {convites && (
@@ -271,5 +278,56 @@ async function Conteudo({ aba }: { aba: Aba }) {
         </Secao>
       )}
     </div>
+  );
+}
+
+/** Vagas e talentos que combinam, toda semana: ligar, como funciona e a prévia desta semana. */
+function DaSemana({ previa }: { previa: Awaited<ReturnType<typeof mandarCombinamDaSemana>> }) {
+  const semMigracao = previa.semana === undefined;
+  const ligado = Boolean(previa.ligado);
+  const segunda = previa.semana ? previa.semana.split("-").reverse().join("/") : null;
+  return (
+    <>
+      <Secao
+        titulo="Vagas e talentos que combinam"
+        descricao="Toda segunda, a partir das 9h: quem tem currículo recebe as vagas novas da semana com 70% de match ou mais, e quem tem vaga no ar recebe os currículos da aba Talentos que combinam com ela (até 5, nunca repete, e “Outra área” fica de fora). Chega no sino, no celular de quem ativou e por e-mail (com os avisos ligados na conta). Só sai para quem tem algo bom."
+      >
+        {semMigracao ? (
+          <Situacao ok={false}>
+            Rode antes a migração <code>20261119120000_combinam_da_semana.sql</code> no Supabase.
+          </Situacao>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <Situacao ok={ligado}>
+              {ligado ? "Ligado." : "Desligado: nada sai até você ligar."} Os textos do e-mail ficam na aba Textos:
+              “Vagas que combinam com você” e “Talentos que combinam com as suas vagas”.
+            </Situacao>
+            <LigarCombinam ligado={ligado} />
+          </div>
+        )}
+      </Secao>
+      {!semMigracao && (
+        <Secao
+          titulo={`Prévia da semana de ${segunda}`}
+          descricao="A mesma conta do envio, sem mandar nada, com quem ainda não recebeu nesta semana. Os exemplos não dizem para quem iriam."
+        >
+          <div className="flex flex-col gap-4">
+            <p className="text-body-sm">
+              <strong>{previa.vagas}</strong> {previa.vagas === 1 ? "pessoa receberia" : "pessoas receberiam"} vagas e{" "}
+              <strong>{previa.talentos}</strong> {previa.talentos === 1 ? "conta receberia" : "contas receberiam"}{" "}
+              talentos, de {previa.vistos} {previa.vistos === 1 ? "conta vista" : "contas vistas"}.
+            </p>
+            {(previa.exemplos ?? []).map((x, i) => (
+              <div key={i} className="flex flex-col gap-1 rounded-md border border-line bg-surface-100 p-3">
+                <p className="text-label">{x.tipo === "vagas_semana" ? "Vagas" : "Talentos"}</p>
+                <p className="text-body-sm">{x.texto}</p>
+                <p className="text-body-sm whitespace-pre-line text-ink-muted">{x.lista}</p>
+              </div>
+            ))}
+            {previa.motivo && <Situacao ok={false}>{previa.motivo}</Situacao>}
+          </div>
+        </Secao>
+      )}
+    </>
   );
 }
