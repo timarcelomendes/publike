@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Conversa } from "@/components/conversa/conversa";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { SemLinhaDoPainel } from "@/components/painel/sem-linha-do-painel";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -19,9 +20,13 @@ export const metadata: Metadata = { title: "Conversa", robots: { index: false } 
 
 export default function PaginaConversa({ params }: PageProps<"/painel/conversas/[outro]">) {
   return (
-    <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo params={params} />
-    </Suspense>
+    <>
+      {/* uma página das Mensagens: no celular, sem a linha do menu do painel */}
+      <SemLinhaDoPainel />
+      <Suspense fallback={<EsqueletoLista />}>
+        <Conteudo params={params} />
+      </Suspense>
+    </>
   );
 }
 

@@ -56,12 +56,18 @@ export function modoPadrao(tipoConta: string | null | undefined, intencao: Inten
   return "trabalhar";
 }
 
+/**
+ * As páginas das Mensagens, um lugar só para falar com as pessoas: as conversas (a aba padrão), os
+ * matches e as conexões. Acendem as Mensagens na barra de baixo, no topo e no menu do painel.
+ */
+export const PAGINAS_DE_MENSAGENS = ["/painel/conversas", "/painel/matches", "/painel/conexoes"];
+
 /** Contadores que aparecem nas seções do menu (os do caminho da vaga só no modo Contratar). */
 export type Contadores = {
   responder: number;
   pedidos: number;
+  /** as mensagens novas e os pedidos de conexão para responder (as Mensagens juntam os dois) */
   mensagens: number;
-  conexoes: number;
   /** quem viu o perfil desde a última vez que a conta abriu "Quem viu seu perfil" */
   visitas?: number;
   clientes?: number;
@@ -113,21 +119,22 @@ export type GrupoMenu = {
   atividade?: string;
 };
 
+/** As Mensagens (as conversas, os matches e as conexões), com as mensagens novas e os pedidos de conexão. */
+const MENSAGENS: Secao = { href: "/painel/conversas", nome: "Mensagens", icone: "conversas", contador: "mensagens" };
+
 export const SECOES: Record<ModoPainel, Secao[]> = {
   contratar: [
     { href: "/painel", nome: "Hoje", icone: "hoje" },
     { href: "/painel/caixa", nome: "Caixa de entrada", icone: "caixa", contador: "responder" },
     { href: "/painel/anuncios?tipo=vaga", nome: "Minhas vagas", icone: "vagas" },
     { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
-    { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes" },
-    { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
+    MENSAGENS,
     { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
   ],
   trabalhar: [
     { href: "/painel", nome: "Hoje", icone: "hoje" },
     { href: "/painel/curtidas?tipo=vaga", nome: "Candidaturas", icone: "curtidas" },
-    { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
-    { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes" },
+    MENSAGENS,
     { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
     { href: "/painel/seguindo", nome: "Avisos e seguindo", icone: "avisos" },
     { href: "/perfil/curriculo", nome: "Currículo", icone: "curriculo" },
@@ -137,7 +144,7 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel/anuncios?tipo=servico", nome: "Pedidos", icone: "pedidos", contador: "pedidos" },
     { href: "/painel/servicos", nome: "Vitrine", icone: "vitrine" },
     { href: "/painel/avaliacoes", nome: "Avaliações", icone: "avaliacoes" },
-    { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens" },
+    MENSAGENS,
     { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
   ],
 };
@@ -182,8 +189,7 @@ export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefi
       nome: "Achar gente",
       secoes: [
         { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
-        { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes", contador: "conexoes", jeito: "pilula" },
-        { href: "/painel/conversas", nome: "Conversas", icone: "conversas", contador: "mensagens", jeito: "pilula" },
+        { ...MENSAGENS, jeito: "pilula" },
         {
           href: "/painel/visitas",
           nome: "Quem viu seu perfil",
@@ -203,21 +209,18 @@ export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefi
   ];
 }
 
-/** O resto do painel, no fim do menu (o que não é do modo aberto). */
+/** O resto do painel, no fim do menu (o que não é do modo aberto). Os matches ficam nas Mensagens. */
 export const OUTRAS: Record<ModoPainel, { href: string; nome: string }[]> = {
   contratar: [
     { href: "/painel/candidatos", nome: "Lista de candidatos e planilha" },
-    { href: "/painel/matches", nome: "Matches" },
     { href: "/painel/curtidas", nome: "O que você curtiu" },
     { href: "/painel/seguindo", nome: "Seguindo" },
   ],
   trabalhar: [
-    { href: "/painel/matches", nome: "Matches" },
     { href: "/painel/curtidas?tipo=servico", nome: "Serviços que você pediu" },
     { href: "/painel/anuncios", nome: "Meus anúncios" },
   ],
   servicos: [
-    { href: "/painel/matches", nome: "Matches" },
     { href: "/painel/curtidas", nome: "O que você curtiu" },
     { href: "/painel/seguindo", nome: "Seguindo" },
   ],
@@ -249,12 +252,12 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
 }
 
 /** O que vale para todas as atividades: fica no alto do menu, uma vez só, quando a conta faz mais de uma. */
-const COMUNS = ["/painel", "/painel/conversas", "/painel/conexoes", "/painel/visitas"];
+const COMUNS = ["/painel", "/painel/conversas", "/painel/visitas"];
 
 /**
  * Os grupos do menu para as atividades da conta (a principal primeiro), sem troca de modo: com uma
- * atividade, o menu dela, como sempre; com mais, o comum no alto (Hoje, Conversas, Conexões, Quem viu
- * seu perfil) e o grupo de cada atividade com o nome dela em cima ("Contratar", "Trabalhar", "Serviços").
+ * atividade, o menu dela, como sempre; com mais, o comum no alto (Hoje, Mensagens, Quem viu seu
+ * perfil) e o grupo de cada atividade com o nome dela em cima ("Contratar", "Trabalhar", "Serviços").
  */
 export function gruposDaConta(atividades: ModoPainel[], tipoConta: string | null | undefined): GrupoMenu[] {
   if (atividades.length <= 1) return gruposDoModo(atividades[0] ?? "trabalhar", tipoConta);
@@ -293,6 +296,10 @@ export function secaoAtiva(
 ): string | null {
   if (caminho === "/painel" || caminho === "/painel/") return "/painel";
   const secoes = [...grupos.flatMap((g) => g.secoes), ...outras];
+  // as Mensagens juntam as conversas, os matches e as conexões
+  if (PAGINAS_DE_MENSAGENS.some((p) => caminho.startsWith(p))) {
+    return secoes.find((s) => s.href === MENSAGENS.href)?.href ?? null;
+  }
   // a caixa na aba de entrevistas é o passo Entrevistas (comércio e empresa)
   if (caminho.startsWith("/painel/caixa") && aba === "entrevistas") {
     const entrevistas = secoes.find((s) => s.href === "/painel/caixa?aba=entrevistas");

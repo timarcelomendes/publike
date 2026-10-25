@@ -2,6 +2,7 @@ import { MessagesSquare } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { AbasMensagens, AbasMensagensBase } from "@/components/painel/abas-mensagens";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -13,15 +14,21 @@ import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
-export const metadata: Metadata = { title: "Conversas" };
+export const metadata: Metadata = { title: "Mensagens" };
 
-// Uma conversa por pessoa: o que veio de cada vaga em comum e da conexão fica junto.
+// Uma conversa por pessoa: o que veio de cada vaga em comum e da conexão fica junto. É a aba padrão
+// das Mensagens (com os Matches e as Conexões).
 
 export default function Conversas() {
   return (
-    <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo />
-    </Suspense>
+    <div className="flex max-w-3xl flex-col gap-4">
+      <Suspense fallback={<AbasMensagensBase atual="conversas" />}>
+        <AbasMensagens atual="conversas" />
+      </Suspense>
+      <Suspense fallback={<EsqueletoLista />}>
+        <Conteudo />
+      </Suspense>
+    </div>
   );
 }
 

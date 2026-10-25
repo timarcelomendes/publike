@@ -12,14 +12,15 @@ import { MenuPainel } from "./menu-painel";
 
 /**
  * O menu do painel com os números (quem espera resposta, pedidos, mensagens novas e pedidos
- * de conexão) de todas as atividades da conta. Fica no painel e na página Talentos.
+ * de conexão, que as Mensagens somam) de todas as atividades da conta. Fica no painel e na página
+ * Talentos.
  */
 export async function MenuDaConta() {
   if (MODO_DEMO) {
     return (
       <MenuPainel
         atividades={["trabalhar"]}
-        contadores={{ responder: 0, pedidos: 0, mensagens: 0, conexoes: 0 }}
+        contadores={{ responder: 0, pedidos: 0, mensagens: 0 }}
         nome={null}
       />
     );
@@ -42,8 +43,9 @@ export async function MenuDaConta() {
   const contadores: Contadores = {
     responder: caminho?.responder ?? soma("vaga"),
     pedidos: soma("servico"),
-    mensagens: (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0),
-    conexoes: pendenciasDeConexao(conexoes ?? []),
+    // as Mensagens juntam as conversas e as conexões: as mensagens novas e os pedidos para responder
+    mensagens:
+      (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0) + pendenciasDeConexao(conexoes ?? []),
     visitas: visitas?.novas ?? 0,
     ...(caminho && {
       clientes: caminho.clientes,

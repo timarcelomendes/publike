@@ -6,6 +6,7 @@ import { DesfazerConexao, ResponderConexao } from "@/components/conexoes/acoes-c
 import { linkDoOutro, QuemConexao } from "@/components/conexoes/quem";
 import { BotoesContato } from "@/components/contato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { SemLinhaDoPainel } from "@/components/painel/sem-linha-do-painel";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -23,9 +24,13 @@ export const metadata: Metadata = { title: "Conexão", robots: { index: false } 
 
 export default function PaginaConexao({ params }: PageProps<"/painel/conexoes/[outro]">) {
   return (
-    <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo params={params} />
-    </Suspense>
+    <>
+      {/* uma página das Mensagens: no celular, sem a linha do menu do painel */}
+      <SemLinhaDoPainel />
+      <Suspense fallback={<EsqueletoLista />}>
+        <Conteudo params={params} />
+      </Suspense>
+    </>
   );
 }
 

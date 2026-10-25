@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { DesfazerMatch } from "@/components/desfazer-match";
+import { AbasMensagens, AbasMensagensBase } from "@/components/painel/abas-mensagens";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Avatar, Vazio } from "@/components/ui/basicos";
@@ -16,11 +17,18 @@ import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
+// Uma aba das Mensagens: cada match com o WhatsApp, o e-mail e a conversa.
+
 export default function Matches() {
   return (
-    <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo />
-    </Suspense>
+    <div className="flex max-w-3xl flex-col gap-4">
+      <Suspense fallback={<AbasMensagensBase atual="matches" />}>
+        <AbasMensagens atual="matches" />
+      </Suspense>
+      <Suspense fallback={<EsqueletoLista />}>
+        <Conteudo />
+      </Suspense>
+    </div>
   );
 }
 

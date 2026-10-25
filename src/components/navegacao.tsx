@@ -6,11 +6,7 @@ import { BarraInferiorBase } from "./barra-inferior-base";
 import { BotaoInstalarApp } from "./instalar-app";
 import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { Container, Logo } from "./ui/basicos";
-import { MODO_DEMO } from "@/lib/config";
-import { listarMeusAnuncios, obterUsuario } from "@/lib/dados";
-import { caminhoDaConta } from "@/lib/servidor/caminho";
-import { conversasPorPessoa } from "@/lib/servidor/conversas";
-import { modoDaConta } from "@/lib/servidor/modo";
+import { navegacaoDaConta } from "@/lib/servidor/navegacao";
 
 export function BarraInferior() {
   return (
@@ -23,29 +19,11 @@ export function BarraInferior() {
 
 /**
  * A barra de quem tem conta segue o modo (Contratar, Trabalhar ou Serviços), com os números do que
- * espera a pessoa: os candidatos ou os pedidos para responder e as mensagens novas.
+ * espera a pessoa: os candidatos ou os pedidos para responder, as mensagens novas e os pedidos de conexão.
  */
 async function BarraDoModo() {
-  const usuario = MODO_DEMO ? null : await obterUsuario();
-  if (!usuario) return <BarraInferiorAtiva modo={null} />;
-  const modo = await modoDaConta().catch(() => "trabalhar" as const);
-  const [conversas, anuncios, caminho] = await Promise.all([
-    conversasPorPessoa().catch(() => null),
-    modo === "trabalhar" ? Promise.resolve([]) : listarMeusAnuncios().catch(() => []),
-    modo === "contratar" ? caminhoDaConta().catch(() => null) : Promise.resolve(null),
-  ]);
-  const soma = (tipo: string) =>
-    anuncios.filter((a) => a.tipo === tipo).reduce((total, a) => total + (a.curtidas_novas ?? 0), 0);
-  return (
-    <BarraInferiorAtiva
-      modo={modo}
-      numeros={{
-        mensagens: (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0),
-        segunda:
-          modo === "contratar" ? (caminho?.responder ?? soma("vaga")) : modo === "servicos" ? soma("servico") : 0,
-      }}
-    />
-  );
+  const conta = await navegacaoDaConta();
+  return <BarraInferiorAtiva modo={conta?.modo ?? null} numeros={conta?.numeros} />;
 }
 
 export function Rodape() {

@@ -6,6 +6,7 @@ import { Suspense, type ReactNode } from "react";
 import { DesfazerConexao, ResponderConexao } from "@/components/conexoes/acoes-conexao";
 import { linkDoOutro, QuemConexao } from "@/components/conexoes/quem";
 import { BotaoConectarCompacto } from "@/components/conexoes/botao-conectar-compacto";
+import { AbasMensagens, AbasMensagensBase } from "@/components/painel/abas-mensagens";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
 import { SeloVerificado } from "@/components/selo-verificado";
@@ -180,11 +181,17 @@ function NadaComFiltro({ aba, f, q }: { aba: Aba; f: string | null; q: string })
   );
 }
 
+// Uma aba das Mensagens (com as Conversas e os Matches).
 export default function Conexoes({ searchParams }: PageProps<"/painel/conexoes">) {
   return (
-    <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo searchParams={searchParams} />
-    </Suspense>
+    <div className="flex max-w-3xl flex-col gap-4">
+      <Suspense fallback={<AbasMensagensBase atual="conexoes" />}>
+        <AbasMensagens atual="conexoes" />
+      </Suspense>
+      <Suspense fallback={<EsqueletoLista />}>
+        <Conteudo searchParams={searchParams} />
+      </Suspense>
+    </div>
   );
 }
 
