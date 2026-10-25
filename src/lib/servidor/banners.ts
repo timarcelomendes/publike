@@ -16,6 +16,7 @@ import {
 } from "@/lib/banners";
 import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { obterIntencao } from "@/lib/servidor/intencao";
 import { criarClientePublico, criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -50,8 +51,12 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
   const [usuario, jar, agora] = await Promise.all([obterUsuario(), cookies(), agoraDaRequisicao()]);
   const perfil = usuario ? await obterMeuPerfil().catch(() => null) : null;
   const publicos = ["todos"];
-  if (!usuario) publicos.push("visitantes");
-  else if (perfil) publicos.push(perfil.tipo === "pessoa" ? "pessoas" : "empresas");
+  // o visitante que já respondeu "O que você quer fazer" também vê o banner do público dele
+  if (!usuario) {
+    publicos.push("visitantes");
+    const intencao = await obterIntencao().catch(() => null);
+    if (intencao) publicos.push(intencao === "contratar_pessoa" ? "empresas" : "pessoas");
+  } else if (perfil) publicos.push(perfil.tipo === "pessoa" ? "pessoas" : "empresas");
   // o banco só devolve os ligados e dentro das datas (RLS)
   const consulta = (colunas: string) =>
     criarClientePublico()

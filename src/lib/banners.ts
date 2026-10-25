@@ -14,8 +14,9 @@ export type AcaoBanner = keyof typeof ACOES_BANNER;
 export const PUBLICOS_BANNER = {
   todos: "Todo mundo",
   visitantes: "Quem ainda não tem conta",
-  pessoas: "Quem procura trabalho ou presta serviço (conta de pessoa)",
-  empresas: "Quem contrata (comércio, empresa e agência)",
+  // o visitante entra em "pessoas" ou "empresas" pela resposta de "O que você quer fazer"
+  pessoas: "Quem procura trabalho ou presta serviço (conta de pessoa ou visitante que respondeu isso)",
+  empresas: "Quem contrata (comércio, empresa, agência ou visitante que procura funcionário)",
 } as const;
 export type PublicoBanner = keyof typeof PUBLICOS_BANNER;
 

@@ -71,7 +71,8 @@ export function PerguntasNaLista({
     return adiada ? null : <FolhaIntencao aoEscolher={escolher} aoAdiar={adiar} primeiraVisita cidade={cidade} />;
   }
 
-  if (!temLocal && filtros.origem === "centro" && !adiada) {
+  // quem procura funcionário não vai buscar vaga perto de casa: vai direto para o "Publicar vaga grátis"
+  if (!temLocal && filtros.origem === "centro" && !adiada && intencaoAtual !== "contratar_pessoa") {
     // "Não sei o CEP": cidade e bairro, aqui mesmo
     if (semCep) {
       return (
