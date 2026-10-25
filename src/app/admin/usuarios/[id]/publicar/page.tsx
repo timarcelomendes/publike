@@ -70,7 +70,10 @@ async function Conteudo({ params, searchParams }: { params: Props["params"]; sea
   }
 
   const p = u.perfil;
+  // vaga que a equipe publica em nome da conta já sai com o contato direto (dá para desmarcar):
+  // a empresa quase nunca entra para aceitar, e quem curte fica sem resposta
   const vazio: ValoresAnuncio = {
+    contato_direto: true,
     tipo: "vaga",
     titulo: "",
     descricao: "",
@@ -105,7 +108,7 @@ async function Conteudo({ params, searchParams }: { params: Props["params"]; sea
   if (copiavel) {
     const copia = valoresDoAnuncio(copiavel, { copiar: true, triagem: await obterTriagem(copiavel.id, c) });
     // de outra conta: o cliente da agência não vale aqui
-    inicial = copiavel.autor_id === id ? copia : { ...copia, cliente_id: null };
+    inicial = { ...(copiavel.autor_id === id ? copia : { ...copia, cliente_id: null }), contato_direto: true };
   }
 
   return (

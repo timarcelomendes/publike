@@ -1148,6 +1148,7 @@ export type Database = {
         Returns: undefined;
       };
       servidor_inscricao_expirada: { Args: { p_chave: string; p_endpoint: string }; Returns: undefined };
+      servidor_liberar_contatos_parados: { Args: { p_chave: string }; Returns: number };
       admin_mandar_mensagem_equipe: {
         Args: { p_conta: string; p_assunto: string; p_texto: string; p_email: boolean };
         Returns: { id: number; email_id: number | null };

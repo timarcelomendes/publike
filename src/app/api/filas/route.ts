@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import {
   enviarEmailsPendentes,
   enviarPushPendentes,
+  liberarContatosParados,
   revisarAnunciosPendentes,
   revisarAvaliacoesPendentes,
   revisarRecadosPendentes,
@@ -25,17 +26,24 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  const [ia, avaliacoes, recados] = await Promise.all([
+  const [ia, avaliacoes, recados, parados] = await Promise.all([
     revisarAnunciosPendentes(20),
     revisarAvaliacoesPendentes(20),
     revisarRecadosPendentes(20),
+    // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
+    liberarContatosParados(),
   ]);
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
 
-  const problemas = [emails.motivo, celular.motivo, ia.motivo, avaliacoes.motivo, recados.motivo].filter(
-    (m): m is string => Boolean(m),
-  );
+  const problemas = [
+    emails.motivo,
+    celular.motivo,
+    ia.motivo,
+    avaliacoes.motivo,
+    recados.motivo,
+    parados.motivo,
+  ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
     problemas.push(
@@ -49,6 +57,7 @@ export async function GET(request: Request) {
       problemas,
       emails: { enviados: emails.enviados, falhas: emails.falhas },
       celular,
+      contatos_liberados: parados.liberadas,
       ia: { anuncios: ia, avaliacoes, recados },
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },

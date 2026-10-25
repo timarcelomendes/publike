@@ -384,6 +384,23 @@ export async function enviarPushPendentes(limite = 20): Promise<ResultadoPush> {
 }
 
 /** Roda depois de cada ação que pode gerar e-mail ou revisão (dentro de after()). */
+/**
+ * Vaga com curtida parada há 48 horas, de uma conta que nunca entrou (a equipe publicou em nome dela): o
+ * contato é liberado e quem curtiu recebe o "Deu match" (migração 20261116120000). Só pela tarefa das filas.
+ */
+export async function liberarContatosParados(): Promise<{ liberadas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { liberadas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_liberar_contatos_parados", { p_chave: acesso.chave });
+  if (error) {
+    // banco sem a migração: nada a fazer
+    if (error.code === "PGRST202") return { liberadas: 0 };
+    console.error("Publike: falha ao liberar os contatos parados:", error.message);
+    return { liberadas: 0, motivo: "Não foi possível liberar os contatos das curtidas paradas." };
+  }
+  return { liberadas: Number(data ?? 0) };
+}
+
 export async function processarFilas() {
   try {
     const [ia, avaliacoes, recados] = await Promise.all([
