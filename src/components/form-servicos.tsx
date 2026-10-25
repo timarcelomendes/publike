@@ -488,6 +488,7 @@ export function FormServicos({
           <SeletorLocal
             inicial={inicial.lat != null && inicial.lng != null ? { lat: inicial.lat, lng: inicial.lng } : null}
             cidade={cidade}
+            dica="Toque no mapa perto de onde você fica"
             erro={erros.lat ?? erros.lng}
             preencher={({ cidade: c, bairro: b }) => {
               if ((CIDADES as readonly string[]).includes(c)) setCidade(c);

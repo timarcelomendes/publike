@@ -59,7 +59,10 @@ export function SeletorLocal({
   preencher,
   recolhido = false,
   cidade,
+  dica,
 }: {
+  /** a dica em cima do mapa; sem ela, a da vaga ("Toque no mapa perto de onde é o trabalho") */
+  dica?: string;
   /** sem ponto ainda, o mapa abre no centro desta cidade (a do formulário) */
   cidade?: string | null;
   /** o mapa só abre quando precisa (toque em "Marcar no mapa", CEP achado ou localização): a página fica mais curta */
@@ -297,7 +300,7 @@ export function SeletorLocal({
         )}
         {!ponto && !falhou && (
           <p className="pointer-events-none absolute inset-x-3 bottom-3 rounded-md bg-surface-200/95 px-3 py-2 text-center text-body-sm text-ink shadow-card">
-            {exato ? "Toque no mapa na porta do trabalho" : "Toque no mapa perto de onde é o trabalho"}
+            {dica ?? (exato ? "Toque no mapa na porta do trabalho" : "Toque no mapa perto de onde é o trabalho")}
           </p>
         )}
       </div>
