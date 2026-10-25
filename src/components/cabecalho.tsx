@@ -176,7 +176,7 @@ async function AreaUsuario() {
         perfilId={usuario.id}
         temPerfil={Boolean(perfil)}
         moderador={moderador}
-        candidatos={Boolean(perfil && perfil.tipo !== "pessoa")}
+        empresa={Boolean(perfil && perfil.tipo !== "pessoa")}
       />
     </>
   );

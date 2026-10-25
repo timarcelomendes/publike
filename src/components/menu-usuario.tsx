@@ -4,16 +4,15 @@ import {
   ChevronDown,
   CircleHelp,
   Eye,
-  LayoutDashboard,
+  FileText,
+  Link2,
   LogOut,
-  MessageCircleHeart,
-  MessagesSquare,
   Moon,
+  Newspaper,
   ShieldCheck,
   Sun,
   SunMoon,
   UserRound,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -77,21 +76,26 @@ function Aparencia() {
   );
 }
 
+/**
+ * O menu da conta: quem é (com o perfil que os outros veem), o que é da conta e as preferências. O dia a
+ * dia (Candidaturas ou Candidatos, Mensagens e Painel) fica no topo do computador e na barra de baixo do
+ * celular.
+ */
 export function MenuUsuario({
   nome,
   foto,
   perfilId,
   temPerfil,
   moderador,
-  candidatos = false,
+  empresa = false,
 }: {
   nome: string;
   foto: string | null;
   perfilId: string;
   temPerfil: boolean;
   moderador: boolean;
-  /** quem contrata (comércio, empresa, agência) vê o atalho para os candidatos */
-  candidatos?: boolean;
+  /** comércio, empresa ou agência: a página de vagas no lugar do currículo */
+  empresa?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -126,42 +130,57 @@ export function MenuUsuario({
       {aberto && (
         <div
           id="menu-conta"
-          className="absolute top-full right-0 mt-2 w-64 rounded-md border border-line bg-surface-200 p-2 shadow-raised"
+          className="absolute top-full right-0 mt-2 w-72 rounded-md border border-line bg-surface-200 p-2 shadow-raised"
         >
-          <p className="truncate px-3 pt-1 pb-2 text-label">{nome}</p>
           <nav aria-label="Conta" className="flex flex-col" onClick={() => setAberto(false)}>
-            <Item href="/painel" icone={LayoutDashboard}>
-              Meu painel
-            </Item>
-            {candidatos && (
-              <Item href="/painel/candidatos" icone={Users}>
-                Candidatos
-              </Item>
+            {/* no alto, quem é: o nome leva ao perfil que os outros veem */}
+            {temPerfil ? (
+              <Link
+                href={`/perfil/${perfilId}`}
+                className="mb-1 flex min-h-14 items-center gap-3 rounded-sm px-3 py-2 hover:bg-surface-300"
+              >
+                <Avatar nome={nome} foto={foto} tamanho={40} />
+                <span className="min-w-0">
+                  <span className="block truncate text-label">{nome}</span>
+                  <span className="block text-body-sm text-terra-text">Ver meu perfil</span>
+                </span>
+              </Link>
+            ) : (
+              <p className="truncate px-3 pt-1 pb-2 text-label">{nome}</p>
             )}
-            <Item href="/painel/matches" icone={MessageCircleHeart}>
-              Matches
-            </Item>
-            <Item href="/painel/conversas" icone={MessagesSquare}>
-              Conversas
-            </Item>
-            <Item href="/perfil" icone={UserRound}>
-              Editar perfil
-            </Item>
-            {temPerfil && (
-              <Item href={`/perfil/${perfilId}`} icone={Eye}>
-                Ver meu perfil público
+            <div className="flex flex-col border-t border-line pt-1">
+              <Item href="/perfil" icone={UserRound}>
+                Editar perfil
               </Item>
-            )}
-            {moderador && (
-              <Item href="/admin/denuncias" icone={ShieldCheck}>
-                Moderação
+              {!empresa ? (
+                <Item href="/perfil/curriculo" icone={FileText}>
+                  Currículo
+                </Item>
+              ) : (
+                temPerfil && (
+                  <Item href={`/perfil/${perfilId}/vagas`} icone={Link2}>
+                    Sua página de vagas
+                  </Item>
+                )
+              )}
+              <Item href="/painel/visitas" icone={Eye}>
+                Quem viu seu perfil
               </Item>
-            )}
+              {moderador && (
+                <Item href="/admin/denuncias" icone={ShieldCheck}>
+                  Moderação
+                </Item>
+              )}
+            </div>
           </nav>
           <div className="mt-1 border-t border-line pt-1">
             <Aparencia />
             <BotaoInstalarApp variante="menu" aoClicar={() => setAberto(false)} />
             <div onClick={() => setAberto(false)}>
+              {/* as Notícias saíram do topo: ficam aqui e no rodapé */}
+              <Item href="/noticias" icone={Newspaper}>
+                Notícias
+              </Item>
               <Item href="/ajuda" icone={CircleHelp}>
                 Ajuda
               </Item>
