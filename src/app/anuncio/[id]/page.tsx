@@ -29,6 +29,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { Suspense, type ReactNode } from "react";
+import { BarraCurtirCelular } from "@/components/anuncio/barra-curtir-celular";
 import { ContarAbertura } from "@/components/anuncio/contar-abertura";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
@@ -548,7 +549,18 @@ async function DetalheAnuncio({
           </dl>
 
           {/* No celular, curtir fica logo aqui; no computador, na coluna ao lado */}
-          <div className="mt-6 lg:hidden">{quadroAcao("celular")}</div>
+          <div id="quadro-celular" className="mt-6 scroll-mt-24 lg:hidden">
+            {quadroAcao("celular")}
+          </div>
+          {!proprio && !(anuncio.preenchida_em && anuncio.minha_curtida !== "match") && (
+            <BarraCurtirCelular
+              alvo="quadro-celular"
+              titulo={anuncio.titulo}
+              valor={valor}
+              status={anuncio.minha_curtida}
+              servico={!vaga}
+            />
+          )}
 
           {match && <MatchDaVaga a={match} className="mt-6" />}
 
