@@ -214,7 +214,8 @@ export function FormAnuncio({
   /** Agência: os clientes para escolher (null: só o nome escrito à mão, como na moderação). */
   clientes?: ClienteParaVaga[] | null;
   /** Comércio, empresa e agência: o endereço aparece na vaga (pessoa física: só a região). */
-  enderecoPublico?: boolean;
+  /** true: comércio, empresa e agência; "talvez": quem ainda não entrou (o endereço fica opcional) */
+  enderecoPublico?: boolean | "talvez";
   /** Admin publicando em nome de uma conta: o nome dela. */
   emNomeDe?: string | null;
   /** Quem ainda não entrou: o botão confere e segue para entrar (a vaga sai depois). */
@@ -617,7 +618,7 @@ export function FormAnuncio({
             inicial={lugar.lat != null && lugar.lng != null ? { lat: lugar.lat, lng: lugar.lng } : null}
             inicialCep={lugar.cep}
             inicialEndereco={lugar.endereco}
-            publico={enderecoPublico && !confidencial}
+            publico={confidencial ? false : enderecoPublico}
             mapaOpcional
             cidade={cidade}
             erro={erros.lat ?? erros.lng}

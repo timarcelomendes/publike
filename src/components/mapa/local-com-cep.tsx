@@ -15,14 +15,15 @@ type Ponto = { lat: number; lng: number };
  * cidade e o bairro; depois a pessoa confere e ajusta no mapa.
  * Comércio, empresa e agência (`publico`) mostram o endereço na vaga, e o ponto
  * fica exato. Pessoa física usa o CEP só para achar o lugar: na vaga aparece
- * uma área de ~500 m, sem endereço.
+ * uma área de ~500 m, sem endereço. Sem conta ainda (`publico="talvez"`), o endereço aparece como
+ * opcional: se a conta for de pessoa, o banco apaga o endereço e arredonda o ponto (anuncios_endereco).
  */
 export function LocalComCep({
   inicial,
   inicialCep,
   inicialEndereco,
   inicialNumero,
-  publico,
+  publico: publicoPedido,
   erro,
   aoAchar,
   children,
@@ -36,7 +37,8 @@ export function LocalComCep({
   inicialEndereco?: string | null;
   /** o número da fachada, para "Achar no mapa" chegar na porta (o cadastro do cliente traz da Receita) */
   inicialNumero?: string | null;
-  publico: boolean;
+  /** true: comércio, empresa e agência; "talvez": quem ainda não entrou (o endereço é opcional) */
+  publico: boolean | "talvez";
   erro?: string;
   /** a cidade e o bairro (do CEP, da localização ou do ponto no mapa) para os campos do formulário; devolve se o bairro mudou */
   aoAchar: (lugar: LugarDoPonto) => boolean;
@@ -47,6 +49,8 @@ export function LocalComCep({
 }) {
   const id = useId();
   const raiz = useRef<HTMLDivElement>(null);
+  const talvez = publicoPedido === "talvez";
+  const publico = publicoPedido !== false;
   const [cep, setCep] = useState(formatarCep(inicialCep));
   const [numero, setNumero] = useState(inicialNumero ?? "");
   const [endereco, setEndereco] = useState(inicialEndereco ?? "");
@@ -182,9 +186,11 @@ export function LocalComCep({
             {preenchendo
               ? "Procurando o endereço deste lugar…"
               : (aviso ??
-                (publico
-                  ? "Com o endereço certo, quem mora perto acha sua vaga e sabe quanto tempo leva para chegar."
-                  : "O CEP só ajuda a achar o lugar. Na vaga aparece uma área de uns 500 m, sem o endereço."))}
+                (talvez
+                  ? "Empresa ou comércio? O endereço aparece na vaga, com o pino na porta. Pessoa física: mostramos só a região."
+                  : publico
+                    ? "Com o endereço certo, quem mora perto acha sua vaga e sabe quanto tempo leva para chegar."
+                    : "O CEP só ajuda a achar o lugar. Na vaga aparece uma área de uns 500 m, sem o endereço."))}
           </p>
         )}
       </div>
@@ -194,7 +200,10 @@ export function LocalComCep({
       {publico && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${id}-endereco`} className="text-label">
-            Endereço <span className="font-normal text-ink-muted">(aparece na vaga)</span>
+            Endereço{" "}
+            <span className="font-normal text-ink-muted">
+              {talvez ? "(opcional, aparece na vaga de empresa e comércio)" : "(aparece na vaga)"}
+            </span>
           </label>
           <input
             id={`${id}-endereco`}

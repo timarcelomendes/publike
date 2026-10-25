@@ -85,6 +85,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
           semConta
           comModelos={!convite}
           modelo={convite ? null : modelo}
+          // ainda não se sabe se a conta é de empresa: o endereço aparece como opcional
+          enderecoPublico="talvez"
           convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
         />
       </>

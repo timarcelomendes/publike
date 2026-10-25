@@ -138,7 +138,7 @@ export function PublicarAnuncio({
   contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
   /** agência: os clientes para escolher */
   clientes?: ClienteParaVaga[] | null;
-  enderecoPublico?: boolean;
+  enderecoPublico?: boolean | "talvez";
   /** veio do link do convite do Publike: publicar é o aceite */
   convite?: { token: string; nome: string; pronta: boolean } | null;
 }) {
