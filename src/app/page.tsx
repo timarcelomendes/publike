@@ -15,8 +15,6 @@ import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
 import { EsqueletoCards } from "@/components/card-anuncio";
 import { ColunaDoMapa } from "@/components/explorar/visao-explorar";
 import { primeiro } from "@/lib/formato";
-import { BannerDaHome } from "@/components/home/banner-da-home";
-import { bannerDaHome } from "@/lib/servidor/banners";
 import { EntendaOPublike } from "@/components/inicio";
 import { ContratacoesNaHome } from "@/components/social/secoes";
 import { Container, Esqueleto } from "@/components/ui/basicos";
@@ -58,19 +56,8 @@ export default function Inicio({ searchParams }: PageProps<"/">) {
       <Suspense fallback={<HomeEsqueleto />}>
         <HomeDaVisita searchParams={searchParams} />
       </Suspense>
-      <Suspense fallback={null}>
-        <BannerDaVisita searchParams={searchParams} />
-      </Suspense>
     </>
   );
-}
-
-/** O banner do admin (uma janela, uma vez por navegador); não aparece no meio de uma busca por palavra. */
-async function BannerDaVisita({ searchParams }: { searchParams: Parametros }) {
-  const sp = await searchParams;
-  if (primeiro(sp.q)) return null;
-  const banner = await bannerDaHome();
-  return banner ? <BannerDaHome banner={banner} /> : null;
 }
 
 function HomeEsqueleto() {

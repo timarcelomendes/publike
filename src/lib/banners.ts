@@ -1,6 +1,7 @@
-// Banners da página inicial: um aviso em janela (popup) criado no admin, para ver vagas novas, uma
-// busca de vagas, uma página do site ou compartilhar o Publike. Um por vez, uma vez por navegador
-// (o cookie guarda os que já apareceram). Banco: migração 20261029120000_banners.sql.
+// Banners: um aviso em janela (popup) criado no admin, para ver vagas novas, uma busca de vagas, uma
+// página do site ou compartilhar o Publike, nas páginas escolhidas (a inicial, por padrão), depois
+// de alguns segundos. Um por vez, uma vez por navegador (o cookie guarda os que já apareceram).
+// Banco: migrações 20261029120000_banners.sql e 20261117120000_banners_paginas_e_atraso.sql.
 
 export const ACOES_BANNER = {
   novas: "Ver as vagas novas",
@@ -18,6 +19,34 @@ export const PUBLICOS_BANNER = {
 } as const;
 export type PublicoBanner = keyof typeof PUBLICOS_BANNER;
 
+/** Onde o banner pode abrir. */
+export const PAGINAS_BANNER = {
+  inicio: "Página inicial",
+  descobrir: "Listas de vagas e serviços (Descobrir)",
+  anuncio: "Página de uma vaga ou serviço",
+  painel: "Painel",
+  perfil: "Meu perfil",
+  noticias: "Notícias",
+  talentos: "Talentos",
+} as const;
+export type PaginaBanner = keyof typeof PAGINAS_BANNER;
+
+/** A página do banner pelo endereço; null: o banner nunca abre aqui. A inicial com busca por palavra não conta. */
+export function paginaDoBanner(caminho: string, temBusca: boolean): PaginaBanner | null {
+  if (caminho === "/") return temBusca ? null : "inicio";
+  const dentro = (base: string) => caminho === base || caminho.startsWith(`${base}/`);
+  if (dentro("/descobrir") || dentro("/vagas") || dentro("/servicos")) return "descobrir";
+  if (dentro("/anuncio")) return "anuncio";
+  if (dentro("/painel")) return "painel";
+  if (dentro("/perfil")) return "perfil";
+  if (dentro("/noticias")) return "noticias";
+  if (dentro("/talentos")) return "talentos";
+  return null;
+}
+
+/** Quanto o banner espera depois de abrir a página, quando o banco não diz (os antigos: 3 s). */
+export const ATRASO_PADRAO = 3;
+
 /** O banner como o site mostra. */
 export type BannerNoAr = {
   id: string;
@@ -28,6 +57,10 @@ export type BannerNoAr = {
   link: string | null;
   /** null: só uma vez; N: de novo a cada N dias, até a pessoa tocar no botão */
   repetir_dias: number | null;
+  /** onde pode abrir */
+  paginas: PaginaBanner[];
+  /** segundos depois de abrir a página */
+  atraso: number;
 };
 
 /**

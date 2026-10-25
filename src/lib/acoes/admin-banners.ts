@@ -7,6 +7,7 @@ import {
   caminhoDoSite,
   LINK_VAGAS_NOVAS,
   linkDaBusca,
+  PAGINAS_BANNER,
   PUBLICOS_BANNER,
   type AcaoBanner,
   type PublicoBanner,
@@ -55,9 +56,12 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
 
   let link: string | null = null;
   if (acao === "novas") link = LINK_VAGAS_NOVAS;
+  // na busca, a área de quem vê (o currículo); sem ela, a palavra escrita (ou as vagas novas)
+  const buscaDaArea = acao === "busca" && formData.get("busca_da_area") === "on";
   if (acao === "busca") {
     const palavra = texto(formData, "palavra");
-    if (palavra.length < 2 || palavra.length > 60) erros.palavra = "Escreva o que buscar (ex.: garçom).";
+    if (buscaDaArea && !palavra) link = LINK_VAGAS_NOVAS;
+    else if (palavra.length < 2 || palavra.length > 60) erros.palavra = "Escreva o que buscar (ex.: garçom).";
     else link = linkDaBusca(palavra);
   }
   if (acao === "link") {
@@ -73,6 +77,11 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
       erros.repetir_dias = "Escolha de 1 a 90 dias.";
     }
   }
+
+  const paginas = formData.getAll("paginas").filter((p): p is string => typeof p === "string" && p in PAGINAS_BANNER);
+  if (!paginas.length) erros.paginas = "Escolha pelo menos uma página.";
+  const atraso = Number(texto(formData, "atraso_segundos") || "3");
+  if (!Number.isInteger(atraso) || atraso < 0 || atraso > 60) erros.atraso_segundos = "De 0 a 60 segundos.";
 
   const inicioTexto = texto(formData, "inicio");
   const fimTexto = texto(formData, "fim");
@@ -92,6 +101,9 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     link,
     publico,
     repetir_dias: repetirDias,
+    paginas: [...new Set(paginas)],
+    atraso_segundos: atraso,
+    busca_da_area: buscaDaArea,
     inicio,
     fim,
     ativo: formData.get("ativo") === "on",

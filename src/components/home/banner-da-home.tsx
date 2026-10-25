@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, Search, Share2, Sparkles, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { avisoDeCookiesFechado, EVENTO_AVISO_COOKIES } from "@/components/aviso-cookies";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "@/components/boas-vindas-parceiro";
@@ -10,6 +11,7 @@ import {
   COOKIE_BANNERS,
   diaDeHoje,
   LINK_COMPARTILHAR,
+  paginaDoBanner,
   podeMostrar,
   lerBannersVistos,
   valorComBannerVisto,
@@ -17,13 +19,16 @@ import {
   type BannerNoAr,
 } from "@/lib/banners";
 
-// O banner da página inicial (criado no admin): uma janela que sobe de baixo no celular e fica no
-// meio da tela no computador. Uma janela por visita: se as boas-vindas, a pergunta da inicial ou o
-// aviso de cookies apareceram, fica para a próxima; senão, aparece depois de 3 segundos. Só uma
-// vez, ou de novo a cada N dias até tocar no botão (o cookie publike_banners e, com conta, o banco).
-// Conta quando aparece, quando tocam no botão e quando fecham (/api/banners).
+// O banner (criado no admin): uma janela que sobe de baixo no celular e fica no meio da tela no
+// computador, nas páginas que o banner escolheu (a inicial, por padrão), depois dos segundos dele.
+// Uma janela por visita: se as boas-vindas, a pergunta da inicial ou o aviso de cookies apareceram,
+// ou se outro banner já abriu, fica para a próxima. Só uma vez, ou de novo a cada N dias até tocar
+// no botão (o cookie publike_banners e, com conta, o banco). Conta quando aparece, quando tocam no
+// botão e quando fecham (/api/banners).
 
-const ESPERA = 3000;
+// valem para a visita inteira (até recarregar), mesmo trocando de página
+let houveOutraNestaVisita = false;
+let abriuNestaVisita = false;
 const ICONES: Record<AcaoBanner, LucideIcon> = {
   novas: Sparkles,
   busca: Search,
@@ -74,6 +79,17 @@ function contar(id: string, evento: "visto" | "clique" | "fechou") {
   }).catch(() => {});
 }
 
+/** Escolhe o banner da página aberta: o primeiro (o mais novo) que pode abrir aqui. */
+export function BannerDoSite({ banners }: { banners: BannerNoAr[] }) {
+  const caminho = usePathname() ?? "/";
+  const busca = useSearchParams();
+  const pagina = paginaDoBanner(caminho, Boolean(busca?.get("q")));
+  const banner = pagina ? banners.find((b) => b.paginas.includes(pagina)) : undefined;
+  if (!banner) return null;
+  // trocou de página: a espera começa de novo
+  return <BannerDaHome key={`${banner.id}-${caminho}`} banner={banner} />;
+}
+
 export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
   // no servidor (e antes de ler o navegador) não aparece
   const esperando = useSyncExternalStore(assinar, outroAvisoAntes, () => true);
@@ -82,16 +98,15 @@ export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
   const [copiado, setCopiado] = useState(false);
   const dialogo = useRef<HTMLDialogElement>(null);
 
-  // uma janela por visita: se outra apareceu (as boas-vindas, a pergunta da inicial ou o aviso de
-  // cookies), o banner fica para a próxima. Sem outra, espera um pouco: a pessoa vê a página antes.
-  const houveOutra = useRef(false);
+  // uma janela por visita: se outra apareceu (as boas-vindas, a pergunta da inicial, o aviso de
+  // cookies ou outro banner), o banner fica para a próxima. Sem outra, espera os segundos do banner.
   useEffect(() => {
     if (outroAvisoAntes()) {
-      houveOutra.current = true;
+      houveOutraNestaVisita = true;
       return;
     }
-    if (houveOutra.current || jaViu(banner)) return;
-    const t = window.setTimeout(() => setPronto(true), ESPERA);
+    if (houveOutraNestaVisita || abriuNestaVisita || jaViu(banner)) return;
+    const t = window.setTimeout(() => setPronto(true), Math.max(0, banner.atraso) * 1000);
     return () => window.clearTimeout(t);
   }, [esperando, banner]);
 
@@ -100,6 +115,7 @@ export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
     const d = dialogo.current;
     if (!mostrar || !d || d.open) return;
     d.showModal();
+    abriuNestaVisita = true;
     marcarVisto(banner.id);
     contar(banner.id, "visto");
   }, [mostrar, banner.id]);

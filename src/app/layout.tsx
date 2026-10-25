@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Assistente } from "@/components/assistente/assistente";
 import { AvisoCookies } from "@/components/aviso-cookies";
 import { AvisoDepois } from "@/components/aviso-depois";
+import { BannerDaVisita } from "@/components/banner-da-visita";
 import { GoogleAds } from "@/components/google-ads";
 import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
@@ -120,6 +121,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* lê o endereço da página: no build, precisa estar num Suspense */}
         <Suspense fallback={null}>
           <ConviteInstalar />
+        </Suspense>
+        {/* os banners do admin (Admin › Banners), nas páginas que cada um escolheu; lê a conta e o endereço */}
+        <Suspense fallback={null}>
+          <BannerDaVisita />
         </Suspense>
       </body>
     </html>

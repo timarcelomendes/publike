@@ -896,6 +896,9 @@ export type Database = {
           ativo: boolean;
           inicio: string | null;
           fim: string | null;
+          paginas: string[];
+          atraso_segundos: number;
+          busca_da_area: boolean;
           criado_em: string;
           atualizado_em: string;
         };
@@ -910,6 +913,9 @@ export type Database = {
           ativo?: boolean;
           inicio?: string | null;
           fim?: string | null;
+          paginas?: string[];
+          atraso_segundos?: number;
+          busca_da_area?: boolean;
         };
         Update: {
           titulo?: string;
@@ -922,6 +928,9 @@ export type Database = {
           ativo?: boolean;
           inicio?: string | null;
           fim?: string | null;
+          paginas?: string[];
+          atraso_segundos?: number;
+          busca_da_area?: boolean;
         };
         Relationships: [];
       };

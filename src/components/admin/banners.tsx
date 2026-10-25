@@ -4,7 +4,15 @@ import { ArrowRight, Eye, Power, Search, Share2, Sparkles, Trash2, X, type Lucid
 import { startTransition, useActionState, useMemo, useState, type FormEvent } from "react";
 import { protegerAcao } from "@/lib/acao-segura";
 import { apagarBanner, ligarBanner, salvarBanner } from "@/lib/acoes/admin-banners";
-import { ACOES_BANNER, palavraDoLink, PUBLICOS_BANNER, type AcaoBanner, type PublicoBanner } from "@/lib/banners";
+import {
+  ACOES_BANNER,
+  PAGINAS_BANNER,
+  palavraDoLink,
+  PUBLICOS_BANNER,
+  type AcaoBanner,
+  type PaginaBanner,
+  type PublicoBanner,
+} from "@/lib/banners";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -24,6 +32,9 @@ export type BannerParaEditar = {
   ativo: boolean;
   inicio: string;
   fim: string;
+  paginas: PaginaBanner[];
+  atraso_segundos: number;
+  busca_da_area: boolean;
 };
 
 const BOTAO_SUGERIDO: Record<AcaoBanner, string> = {
@@ -55,6 +66,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
   // o texto do botão acompanha a ação enquanto ninguém mexeu nele
   const [botaoMexido, setBotaoMexido] = useState(Boolean(banner));
   const [repetir, setRepetir] = useState(banner?.repetir_dias != null);
+  const [daArea, setDaArea] = useState(banner?.busca_da_area ?? false);
 
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -115,15 +127,38 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
           ))}
         </fieldset>
         {tipo === "busca" && (
-          <Campo rotulo="O que buscar" nome="palavra" erro={erros.palavra} ajuda="A busca de vagas por essa palavra.">
-            <input
-              {...ligarCampo("palavra", erros.palavra, true)}
-              defaultValue={palavraDoLink(banner?.acao === "busca" ? banner.link : null)}
-              maxLength={60}
-              placeholder="garçom"
-              className={classesEntrada}
-            />
-          </Campo>
+          <>
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-sm border border-line px-3 py-2.5 has-checked:border-ink">
+              <input
+                type="checkbox"
+                name="busca_da_area"
+                checked={daArea}
+                onChange={(e) => setDaArea(e.target.checked)}
+                className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+              />
+              <span>
+                <span className="block text-body">Buscar pela área de quem vê</span>
+                <span className="block text-body-sm text-ink-muted">
+                  Quem tem currículo vê as vagas do que faz (o “o que você faz” do currículo, ou o último cargo).
+                </span>
+              </span>
+            </label>
+            <Campo
+              rotulo={daArea ? "Para quem não tem currículo" : "O que buscar"}
+              nome="palavra"
+              opcional={daArea}
+              erro={erros.palavra}
+              ajuda={daArea ? "A busca por essa palavra. Vazio: as vagas novas." : "A busca de vagas por essa palavra."}
+            >
+              <input
+                {...ligarCampo("palavra", erros.palavra, true)}
+                defaultValue={palavraDoLink(banner?.acao === "busca" ? banner.link : null)}
+                maxLength={60}
+                placeholder="garçom"
+                className={classesEntrada}
+              />
+            </Campo>
+          </>
         )}
         {tipo === "link" && (
           <Campo
@@ -171,6 +206,51 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
               </option>
             ))}
           </Seletor>
+        </Campo>
+        <fieldset className="flex flex-col gap-2" aria-describedby="paginas-ajuda">
+          <legend className="mb-1.5 text-label">Onde abre</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(Object.keys(PAGINAS_BANNER) as PaginaBanner[]).map((p) => (
+              <label
+                key={p}
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm border border-line px-3 has-checked:border-ink"
+              >
+                <input
+                  type="checkbox"
+                  name="paginas"
+                  value={p}
+                  defaultChecked={(banner?.paginas ?? ["inicio"]).includes(p)}
+                  className="size-4 accent-[var(--pk-ink)]"
+                />
+                <span className="text-body">{PAGINAS_BANNER[p]}</span>
+              </label>
+            ))}
+          </div>
+          {erros.paginas ? (
+            <p className="text-body-sm text-danger">{erros.paginas}</p>
+          ) : (
+            <p id="paginas-ajuda" className="text-body-sm text-ink-muted">
+              Abre na primeira dessas páginas que a pessoa visitar. A inicial com uma busca por palavra não conta.
+            </p>
+          )}
+        </fieldset>
+        <Campo
+          rotulo="Espera para abrir"
+          nome="atraso_segundos"
+          erro={erros.atraso_segundos}
+          ajuda="Segundos depois que a página abre (0 a 60). Com pouca espera, a janela cobre a página antes de a pessoa ver."
+        >
+          <span className="flex items-center gap-3">
+            <input
+              {...ligarCampo("atraso_segundos", erros.atraso_segundos, true)}
+              type="number"
+              min={0}
+              max={60}
+              defaultValue={banner?.atraso_segundos ?? 3}
+              className={classesEntrada.replace("w-full", "w-24")}
+            />
+            <span className="text-body">segundos</span>
+          </span>
         </Campo>
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1.5 text-label">Quantas vezes aparece</legend>
@@ -247,7 +327,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             defaultChecked={banner?.ativo ?? true}
             className="size-5 accent-[var(--pk-ink)]"
           />
-          <span className="text-body">Ligado (aparece na página inicial)</span>
+          <span className="text-body">Ligado (aparece nas páginas escolhidas)</span>
         </label>
         <div>
           <Botao type="submit" variante="primario" disabled={enviando}>

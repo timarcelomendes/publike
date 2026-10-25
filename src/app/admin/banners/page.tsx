@@ -7,7 +7,14 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Aviso, Selo, Vazio, type VarianteSelo } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
-import { ACOES_BANNER, PUBLICOS_BANNER, type AcaoBanner, type PublicoBanner } from "@/lib/banners";
+import {
+  ACOES_BANNER,
+  PAGINAS_BANNER,
+  PUBLICOS_BANNER,
+  type AcaoBanner,
+  type PaginaBanner,
+  type PublicoBanner,
+} from "@/lib/banners";
 import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
 import type { Database } from "@/lib/supabase/tipos-banco";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
@@ -118,6 +125,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     ativo: editar.ativo,
     inicio: diaDeBrasilia(editar.inicio),
     fim: diaDeBrasilia(editar.fim, true),
+    // sem a migração 20261117120000: só a inicial, em 3 segundos
+    paginas: (editar.paginas ?? ["inicio"]) as PaginaBanner[],
+    atraso_segundos: editar.atraso_segundos ?? 3,
+    busca_da_area: editar.busca_da_area ?? false,
   };
 
   return (
@@ -132,7 +143,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
         <Secao
           id="formulario"
           titulo={editar ? "Editar o banner" : "Novo banner"}
-          descricao="Uma janela na página inicial, 3 segundos depois de abrir. Na visita em que já apareceu outra janela (as boas-vindas, a pergunta da inicial ou o aviso de cookies), o banner fica para a próxima."
+          descricao="Uma janela nas páginas que você escolher, alguns segundos depois de abrir. Na visita em que já apareceu outra janela (as boas-vindas, a pergunta da inicial, o aviso de cookies ou outro banner), o banner fica para a próxima."
           acoes={
             banners.length > 0 && (
               <Link href="/admin/banners" className={classesBotao("fantasma", "sm")}>
@@ -149,8 +160,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
           titulo="Banners"
           descricao={
             <>
-              Aparece um banner por vez: o mais novo no ar para quem chega (todo mundo, visitante, conta de pessoa ou de
-              empresa).{" "}
+              Aparece um banner por visita: o mais novo no ar para quem chega (todo mundo, visitante, conta de pessoa ou
+              de empresa), na primeira das páginas dele que a pessoa abrir.{" "}
               {noAr.length > 1 &&
                 "Com mais de um no ar para o mesmo público, quem já viu o mais novo vê o seguinte na próxima visita."}
             </>
@@ -176,11 +187,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
                       {b.texto && <p className="text-body-sm text-ink-muted">{b.texto}</p>}
                       <p className="text-body-sm text-ink-muted">
                         {ACOES_BANNER[b.acao as AcaoBanner] ?? b.acao}
-                        {b.link && b.acao !== "novas" ? ` (${b.link})` : ""} · botão “{b.botao}” ·{" "}
-                        {PUBLICOS_BANNER[b.publico as PublicoBanner] ?? b.publico}
+                        {b.acao === "busca" && b.busca_da_area
+                          ? " pela área de quem vê"
+                          : b.link && b.acao !== "novas"
+                            ? ` (${b.link})`
+                            : ""}{" "}
+                        · botão “{b.botao}” · {PUBLICOS_BANNER[b.publico as PublicoBanner] ?? b.publico}
                         {b.repetir_dias === null
                           ? " · só uma vez"
                           : ` · de novo a cada ${b.repetir_dias} ${b.repetir_dias === 1 ? "dia" : "dias"}`}
+                        {` · ${(b.paginas ?? ["inicio"]).map((p) => PAGINAS_BANNER[p as PaginaBanner] ?? p).join(", ")}`}
+                        {` · depois de ${b.atraso_segundos ?? 3} s`}
                         {b.inicio ? ` · de ${formatarDataCurta(b.inicio)}` : ""}
                         {b.fim ? ` · até ${formatarDataCurta(diaDeBrasilia(b.fim, true) + "T12:00:00-03:00")}` : ""}
                       </p>
