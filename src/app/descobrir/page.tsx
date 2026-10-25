@@ -96,6 +96,7 @@ function paraCarta(v: VagaIndicada, matches: Matches): CartaVaga {
     match: m && m.nota !== null ? { nota: m.nota, atendidos: m.atendidos, conferidos: m.conferidos } : null,
     motivos: v.motivos,
     pedeCurriculo: v.pede_curriculo,
+    contatoDireto: Boolean(v.contato_direto),
     resumo: resumo.length > 260 ? `${resumo.slice(0, 257)}…` : resumo,
     curtidasSemana: v.curtidas_7d,
   };

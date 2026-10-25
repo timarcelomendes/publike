@@ -26,7 +26,8 @@ export type StatusCurtida = "pendente" | "match" | "dispensada";
 
 export type AnuncioResumo = LinhaDe<"buscar_anuncios">;
 /** autor_foto: o logo de quem publicou, lido à parte (perfis.foto) */
-export type VagaDescobrir = LinhaDe<"vagas_para_descobrir"> & { autor_foto?: string | null };
+/** contato_direto: quem curte já vê o WhatsApp (lido à parte, como o logo) */
+export type VagaDescobrir = LinhaDe<"vagas_para_descobrir"> & { autor_foto?: string | null; contato_direto?: boolean };
 export type AnuncioCompleto = LinhaDe<"obter_anuncio">;
 export type MeuAnuncio = LinhaDe<"meus_anuncios">;
 export type MeuServico = LinhaDe<"meus_servicos">;

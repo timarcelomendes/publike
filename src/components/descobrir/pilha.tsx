@@ -13,6 +13,7 @@ import {
   Star,
   Undo2,
   X,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -43,6 +44,8 @@ export type CartaVaga = {
   match: { nota: number; atendidos: number; conferidos: number } | null;
   motivos: Motivo[];
   pedeCurriculo: boolean;
+  /** quem curte já vê o WhatsApp de quem publicou */
+  contatoDireto: boolean;
   resumo: string;
   curtidasSemana: number;
 };
@@ -119,6 +122,12 @@ function Cartao({ c, topo }: { c: CartaVaga; topo: boolean }) {
               <Selo variante="contorno">
                 <FileText aria-hidden />
                 Pede currículo
+              </Selo>
+            )}
+            {c.contatoDireto && (
+              <Selo variante="matchContorno">
+                <Zap aria-hidden />
+                Contato direto
               </Selo>
             )}
             {c.curtidasSemana >= 3 && <Selo variante="aviso">Em alta</Selo>}

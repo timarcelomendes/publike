@@ -1,4 +1,4 @@
-import { Bus, Footprints, MapPin, MessageCircleReply, UserCheck, Users } from "lucide-react";
+import { Bus, Footprints, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -36,6 +36,8 @@ export type ExtrasDaVaga = {
   expiraEm: string;
   /** a vaga foi preenchida: continua na busca, com a marcação, e não dá mais para curtir */
   preenchida?: boolean;
+  /** quem curte já vê o WhatsApp de quem publicou, sem esperar o aceite */
+  contatoDireto?: boolean;
   /** comissão, bônus, gorjeta... (vão junto do valor) */
   ganhos?: GanhoExtra[];
   /** o começo da descrição (duas linhas no cartão) */
@@ -148,6 +150,13 @@ export function CardAnuncio({
     etiquetas.push(
       <Etiqueta key="modalidade" className="bg-surface-300 text-ink group-data-[visao=lista]/visao:hidden">
         {modalidade}
+      </Etiqueta>,
+    );
+  if (extras?.contatoDireto && !preenchida && !proprio)
+    etiquetas.push(
+      <Etiqueta key="direto" className="bg-surface-300 text-cerrado-text">
+        <Zap aria-hidden className="mr-1 size-3.5" />
+        Contato direto
       </Etiqueta>,
     );
   if (pertoDeCasa === 0) {

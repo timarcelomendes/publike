@@ -521,6 +521,8 @@ export type DetalhesDaVaga = CamposDaVaga & {
   preenchida_em: string | null;
   /** comissão, bônus, gorjeta... (jsonb) */
   ganhos_extras: unknown;
+  /** quem curte já vê o WhatsApp de quem publicou (a etiqueta "Contato direto" no cartão) */
+  contato_direto?: boolean;
 };
 
 /** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match e o cartão da busca. */
@@ -530,7 +532,7 @@ export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[
   const { data, error } = await supabase
     .from("anuncios")
     .select(
-      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em, preenchida_em, ganhos_extras",
+      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em, preenchida_em, ganhos_extras, contato_direto",
     )
     .in("id", ids);
   if (error) falha("o que as vagas pedem", error);
@@ -764,13 +766,16 @@ export async function listarVagasParaDescobrir(): Promise<VagaDescobrir[]> {
   if (!vagas.length) return vagas;
   // vaga preenchida não entra no Descobrir (na busca, ela aparece com a marcação)
   const ids = vagas.map((v) => v.id);
-  const [{ data: preenchidas }, logos] = await Promise.all([
-    supabase.from("anuncios").select("id").in("id", ids).not("preenchida_em", "is", null),
+  const [{ data: extras }, logos] = await Promise.all([
+    supabase.from("anuncios").select("id, preenchida_em, contato_direto").in("id", ids),
     // o logo de quem publicou, no alto do cartão
     fotosDosAutores(vagas.map((v) => v.autor_id)),
   ]);
-  const fora = new Set((preenchidas ?? []).map((p) => p.id));
-  return vagas.filter((v) => !fora.has(v.id)).map((v) => ({ ...v, autor_foto: logos[v.autor_id] ?? null }));
+  const fora = new Set((extras ?? []).filter((e) => e.preenchida_em).map((e) => e.id));
+  const diretas = new Set((extras ?? []).filter((e) => e.contato_direto).map((e) => e.id));
+  return vagas
+    .filter((v) => !fora.has(v.id))
+    .map((v) => ({ ...v, autor_foto: logos[v.autor_id] ?? null, contato_direto: diretas.has(v.id) }));
 }
 
 /** "O que você procura?" de quem está logado. */

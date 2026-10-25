@@ -1,4 +1,14 @@
-import { ArrowRight, Bus, CircleCheck, Footprints, Heart, MapPin, MessageCircle, MessagesSquare } from "lucide-react";
+import {
+  ArrowRight,
+  Bus,
+  CircleCheck,
+  Footprints,
+  Heart,
+  MapPin,
+  MessageCircle,
+  MessagesSquare,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { nomeBeneficio } from "@/lib/constantes";
@@ -164,6 +174,14 @@ export function TicketDaVaga({
   const match = item.match && (item.match.nota ?? 0) > 0 && a.minha_curtida !== "match" ? item.match : null;
   const etiquetas: ReactNode[] = [];
   if (modalidade) etiquetas.push(<li key="m">{modalidade}</li>);
+  // quem curte já vê o WhatsApp: a etiqueta vem logo depois da contratação
+  if (item.requisitos?.contato_direto && !preenchida && !proprio)
+    etiquetas.push(
+      <li key="d" className="inline-flex items-center gap-1 text-cerrado-text">
+        <Zap aria-hidden className="size-3.5" />
+        Contato direto
+      </li>,
+    );
   for (const b of beneficios) etiquetas.push(<li key={b}>{BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}</li>);
   if (outros > 0)
     etiquetas.push(
