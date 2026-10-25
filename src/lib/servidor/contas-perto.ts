@@ -34,11 +34,14 @@ const PARTICULAS = new Set(["da", "de", "do", "das", "dos", "e", "di", "du", "de
 /**
  * Pessoa: "Maria S." (o nome inteiro só aparece na conexão aceita); empresa: o nome todo. A mesma regra do
  * banco (privado.nome_curto, a aba Talentos): a inicial é a da primeira palavra depois do nome, pulando
- * "da, de, do…" ("Maria da Silva Souza" → "Maria S.").
+ * "da, de, do…" ("Maria da Silva Souza" → "Maria S.") e cortando o negócio depois de " - " ou " | ".
  */
 export function nomeNaLista(n: Pick<ContaPerto, "nome" | "tipo">) {
   if (n.tipo !== "pessoa") return n.nome;
-  const [primeiro, ...resto] = n.nome.trim().split(/\s+/);
+  // sem o negócio escrito junto ("Thiago B. Silva - Cuidados de Enfermagem" → "Thiago B.")
+  const limpo = n.nome.trim().replace(/\s+/g, " ");
+  const semNegocio = limpo.replace(/ [-|–—] .*$/, "").trim() || limpo;
+  const [primeiro, ...resto] = semNegocio.split(" ");
   const sobrenome = resto.find((x) => !PARTICULAS.has(x.toLowerCase()));
   return sobrenome ? `${primeiro} ${sobrenome.charAt(0).toLocaleUpperCase("pt-BR")}.` : primeiro;
 }
