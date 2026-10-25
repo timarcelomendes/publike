@@ -1,4 +1,4 @@
-import { Bus, HandCoins, Heart, ListChecks, Lock, MapPin, Store, type LucideIcon } from "lucide-react";
+import { Bus, HandCoins, Heart, ListChecks, Lock, MapPin, Store, UserSearch, type LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/basicos";
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/empresas" },
 };
 
-type Item = { icone: LucideIcon; titulo: string; texto: string };
+type Item = { icone: LucideIcon; titulo: string; texto: string; link?: { href: string; texto: string } };
 
 const MOTIVOS: Item[] = [
   {
@@ -33,6 +33,13 @@ const MOTIVOS: Item[] = [
     titulo: "Você escolhe com quem conversar",
     texto:
       "Quem tem interesse curte a vaga. Você vê o perfil, o que a pessoa faz e o currículo, e curte de volta quem combina.",
+  },
+  {
+    icone: UserSearch,
+    titulo: "Ache gente mesmo sem vaga aberta",
+    texto:
+      "Na aba Talentos, veja o currículo de quem mora perto e procura trabalho, e convide para a sua vaga. Também é grátis.",
+    link: { href: "/talentos", texto: "Ver os talentos" },
   },
   {
     icone: Lock,
@@ -85,7 +92,7 @@ const PERGUNTAS = [
   },
   {
     p: "Quantas vagas posso publicar?",
-    r: `Cada conta pode ter até ${comum.noAr} vagas no ar ao mesmo tempo e publicar até ${comum.porDia} por dia. O limite é contra spam, não é cobrança.`,
+    r: `Cada conta pode ter até ${comum.noAr} vagas no ar ao mesmo tempo e publicar até ${comum.porDia} por dia. Agência de emprego ou RH com o CNPJ conferido pela equipe vai a ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. O limite é contra spam, não é cobrança.`,
   },
   {
     p: "Quanto tempo a vaga fica no ar?",
@@ -142,7 +149,7 @@ export default function Empresas() {
             Por que publicar no Publike
           </h2>
           <ul className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {MOTIVOS.map(({ icone: Icone, titulo, texto }) => (
+            {MOTIVOS.map(({ icone: Icone, titulo, texto, link }) => (
               <li key={titulo} className="flex gap-4 rounded-lg border border-line bg-surface-200 p-5">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300">
                   <Icone aria-hidden className="size-5 text-terra-text" />
@@ -150,6 +157,14 @@ export default function Empresas() {
                 <div>
                   <h3 className="text-label">{titulo}</h3>
                   <p className="mt-1 text-body-sm text-ink-muted">{texto}</p>
+                  {link && (
+                    <Link
+                      href={link.href}
+                      className="mt-2 inline-block text-label text-ink underline underline-offset-2 hover:text-terra-text"
+                    >
+                      {link.texto}
+                    </Link>
+                  )}
                 </div>
               </li>
             ))}
