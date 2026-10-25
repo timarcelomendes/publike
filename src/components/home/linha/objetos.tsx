@@ -169,13 +169,15 @@ export function TicketDaVaga({
   const modalidade = a.regime === "outro" ? null : rotuloModalidade(a.tipo, a.regime);
   // as etiquetas numa linha só: a modalidade, o primeiro benefício e "+N" com o resto (a vaga mostra todos)
   const todosBeneficios = item.requisitos?.beneficios_lista ?? [];
-  const beneficios = todosBeneficios.slice(0, 1);
+  const direto = Boolean(item.requisitos?.contato_direto) && !preenchida && !proprio;
+  // com o "Contato direto", os benefícios ficam todos no "+N" (cabe numa linha)
+  const beneficios = todosBeneficios.slice(0, direto ? 0 : 1);
   const outros = todosBeneficios.length - beneficios.length;
   const match = item.match && (item.match.nota ?? 0) > 0 && a.minha_curtida !== "match" ? item.match : null;
   const etiquetas: ReactNode[] = [];
   if (modalidade) etiquetas.push(<li key="m">{modalidade}</li>);
   // quem curte já vê o WhatsApp: a etiqueta vem logo depois da contratação
-  if (item.requisitos?.contato_direto && !preenchida && !proprio)
+  if (direto)
     etiquetas.push(
       <li key="d" className="inline-flex items-center gap-1 text-cerrado-text">
         <Zap aria-hidden className="size-3.5" />
@@ -232,7 +234,7 @@ export function TicketDaVaga({
           <Resumo texto={item.resumo} />
           <Lugar item={item} tempoDe={tempoDe}>
             {(etiquetas.length > 0 || match) && (
-              <span className="flex flex-nowrap items-center gap-1.5 text-ink [&_li]:whitespace-nowrap">
+              <span className="flex flex-wrap items-center gap-1.5 text-ink [&_li]:whitespace-nowrap">
                 {match && <SeloMatch match={match} />}
                 <ul className="contents [&>li]:rounded-pill [&>li]:bg-surface-100 [&>li]:px-2.5 [&>li]:py-0.5 [&>li]:text-[13px] [&>li]:leading-[18px] [&>li]:font-semibold">
                   {etiquetas}
