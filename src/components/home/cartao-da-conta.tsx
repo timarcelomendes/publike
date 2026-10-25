@@ -305,7 +305,7 @@ type LinkDoCartao = {
 };
 
 /**
- * Os atalhos do cartão na linha do tempo: quem procura vê o currículo (com a barra), as curtidas e
+ * Os atalhos do cartão na linha do tempo: quem procura vê o currículo (com a barra), as candidaturas e
  * as conexões; quem presta serviço, a vitrine e os pedidos; quem contrata, o painel de vagas, quem
  * espera resposta e a página de vagas. Todo mundo vê as conexões (com os pedidos em destaque).
  */
@@ -375,16 +375,18 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
       listarMinhasCurtidas().catch(() => []),
     ]);
     barra = forcaDoCurriculo(curriculo).pontos;
+    const candidaturas = curtidas.filter((c) => c.tipo === "vaga").length;
     links = [
       // sem currículo, a barra vazia não convida: no lugar dela, a ação
       barra === 0
         ? { nome: "Montar o currículo", href: "/perfil/curriculo", icone: FileText, numero: "5 min", chamada: true }
         : { nome: "Meu currículo", href: "/perfil/curriculo", icone: FileText, numero: `${barra}%` },
+      // o mesmo nome do painel e da barra de baixo
       {
-        nome: "Minhas curtidas",
-        href: "/painel/curtidas",
+        nome: "Candidaturas",
+        href: "/painel/curtidas?tipo=vaga",
         icone: Heart,
-        numero: curtidas.length ? String(curtidas.length) : null,
+        numero: candidaturas ? String(candidaturas) : null,
       },
       linkConexoes,
       linkVisitas,
