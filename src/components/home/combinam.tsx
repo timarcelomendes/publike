@@ -111,7 +111,7 @@ function Bloco({
           {rotulo}
         </Link>
       </div>
-      <ul className="grid gap-x-2 sm:grid-cols-2">{children}</ul>
+      <ul className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">{children}</ul>
     </section>
   );
 }
