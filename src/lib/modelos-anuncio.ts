@@ -212,3 +212,17 @@ export function descricaoSimples(d: {
   ];
   return partes.filter(Boolean).join("\n\n");
 }
+
+/**
+ * O modelo para o pedido de serviço de quem buscou uma palavra ("diarista" → "Diarista 1x por semana"),
+ * no vazio de Serviços. Sem modelo para a palavra, null (o /publicar abre em branco).
+ */
+export function modeloDaPalavra(palavra: string): string | null {
+  const p = palavra
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (/diarista|faxin|limpeza/.test(p)) return "diarista";
+  if (/pedreir|obra|reforma/.test(p)) return "pedreiro";
+  return null;
+}

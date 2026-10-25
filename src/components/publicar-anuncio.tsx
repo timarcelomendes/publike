@@ -121,7 +121,10 @@ export function PublicarAnuncio({
   clientes = null,
   enderecoPublico = false,
   convite = null,
+  modelo: modeloPedido = null,
 }: {
+  /** o modelo para abrir já aplicado (`/publicar?modelo=diarista`, do vazio de Serviços) */
+  modelo?: string | null;
   inicial: ValoresAnuncio;
   /** quem ainda não entrou: o formulário confere e leva para entrar */
   semConta?: boolean;
@@ -141,9 +144,10 @@ export function PublicarAnuncio({
 }) {
   const router = useRouter();
   const raiz = useRef<HTMLDivElement>(null);
-  const [inicial, setInicial] = useState(base);
+  const modeloInicial = comModelos ? (MODELOS_ANUNCIO.find((m) => m.id === modeloPedido) ?? null) : null;
+  const [inicial, setInicial] = useState(() => (modeloInicial ? aplicarModelo(modeloInicial, base) : base));
   const [chave, setChave] = useState(0);
-  const [modelo, setModelo] = useState<string | null>(null);
+  const [modelo, setModelo] = useState<string | null>(modeloInicial?.id ?? null);
   const [aviso, setAviso] = useState<"restaurado" | "publicando" | "lido" | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [previa, setPrevia] = useState<Previa | null>(null);
@@ -161,6 +165,8 @@ export function PublicarAnuncio({
       if (!r) return;
       // a vaga do convite vem pronta: o rascunho antigo deste aparelho não passa por cima dela
       if (convite && !continuar) return;
+      // veio com um modelo pedido (o vazio de Serviços): o rascunho antigo também não passa por cima
+      if (modeloInicial && !continuar) return;
       if (continuar && !semConta) {
         apagarRascunho();
         setAviso("publicando");

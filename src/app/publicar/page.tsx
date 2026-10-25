@@ -15,6 +15,7 @@ import {
   obterUsuario,
 } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
+import { MODELOS_ANUNCIO } from "@/lib/modelos-anuncio";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
@@ -62,6 +63,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   const pedida = primeiro(sp.copiar);
   const pedidaCopia = pedida && UUID.test(pedida) ? pedida : null;
   const continuar = primeiro(sp.continuar) === "1";
+  // "Publicar o pedido grátis" do vazio de Serviços: o formulário abre com o modelo da área
+  const pedidoModelo = primeiro(sp.modelo);
+  const modelo = MODELOS_ANUNCIO.some((m) => m.id === pedidoModelo) ? (pedidoModelo ?? null) : null;
   // veio do link do convite do Publike: a vaga lida do anúncio da empresa vem pronta
   const lido = await conviteDoLink(primeiro(sp.convite));
   // convite de prestador: a página dele é a da vitrine de serviços
@@ -80,6 +84,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
           inicial={convite?.rascunho ? valoresDoConvite(convite.rascunho, base) : base}
           semConta
           comModelos={!convite}
+          modelo={convite ? null : modelo}
           convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
         />
       </>
@@ -91,7 +96,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       ? "/publicar?continuar=1"
       : convite
         ? `/publicar?convite=${convite.token}`
-        : "/publicar";
+        : modelo
+          ? `/publicar?modelo=${modelo}`
+          : "/publicar";
   // agência: "Publicar vaga" na ficha do cliente chega com ?cliente=
   const pedidoCliente = primeiro(sp.cliente);
   const comCliente = pedidoCliente && UUID.test(pedidoCliente) ? pedidoCliente : null;
@@ -170,6 +177,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
         inicial={inicial}
         continuar={continuar}
         comModelos={!copia && !convite}
+        modelo={copia || convite ? null : modelo}
         ia={ia}
         agencia={agencia}
         contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}

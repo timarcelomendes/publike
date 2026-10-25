@@ -17,6 +17,8 @@ import {
 import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { modosMarcados } from "@/lib/servidor/modo";
+import { modeloDaPalavra } from "@/lib/modelos-anuncio";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { visaoInicialDaBusca, visaoInicialDaLista } from "@/lib/servidor/visao";
 import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
@@ -287,6 +289,14 @@ export async function Explorar({
         : null;
 
   const n = anuncios.length;
+  // Serviços vazio: a aba é de quem quer contratar ("Publicar o pedido grátis"); "Oferecer meus serviços"
+  // só para quem disse que oferece serviço (a resposta da pergunta ou o modo marcado no perfil)
+  const ofereceServico =
+    n === 0 && filtros.tipo === "servico"
+      ? intencao === "oferecer_servico" ||
+        (usuario ? ((await modosMarcados().catch(() => null))?.includes("servicos") ?? false) : false)
+      : false;
+  const modeloDoPedido = modeloDaPalavra(filtros.q);
   const nome =
     filtros.tipo === "vaga"
       ? ["vaga", "vagas"]
@@ -459,8 +469,15 @@ export async function Explorar({
               </BotaoLink>
             )}
             {filtros.tipo === "servico" ? (
-              // quem contrata não oferece serviço: só a distância maior
-              !contrata && <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink>
+              <>
+                <BotaoLink
+                  href={modeloDoPedido ? `/publicar?modelo=${modeloDoPedido}` : "/publicar"}
+                  variante="primario"
+                >
+                  Publicar o pedido grátis
+                </BotaoLink>
+                {ofereceServico && !contrata && <BotaoLink href="/painel/servicos">Oferecer meus serviços</BotaoLink>}
+              </>
             ) : (
               <BotaoLink href="/publicar">{contrata ? "Publicar vaga" : "Publicar grátis"}</BotaoLink>
             )}
@@ -469,10 +486,10 @@ export async function Explorar({
       >
         {filtros.turno
           ? "Nenhuma vaga neste horário por aqui. Tente outro horário ou uma distância maior."
-          : filtros.q || filtros.categoria
-            ? "Tente outra palavra, outra categoria ou uma distância maior."
-            : filtros.tipo === "servico"
-              ? "Ainda não há profissionais nesta área. Você faz algum serviço? Mostre aqui."
+          : filtros.tipo === "servico"
+            ? "Ainda ninguém oferece isso perto de você. Publique o pedido grátis: quem faz e mora perto curte, e você escolhe."
+            : filtros.q || filtros.categoria
+              ? "Tente outra palavra, outra categoria ou uma distância maior."
               : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );

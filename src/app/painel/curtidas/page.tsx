@@ -200,7 +200,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
         )}
       </nav>
 
-      {lista.length === 0 ? (
+      {tipo === "servico" && doTipo.length === 0 ? (
+        // nenhum pedido ainda: os dois caminhos de quem quer contratar um serviço
+        <Vazio
+          icone={Heart}
+          titulo="Você ainda não pediu nenhum serviço"
+          acao={
+            <>
+              <BotaoLink href="/?tipo=servico" variante="primario">
+                Achar um profissional
+              </BotaoLink>
+              <BotaoLink href="/publicar">Publicar o pedido</BotaoLink>
+            </>
+          }
+        >
+          Ache quem faz perto de você e toque em Quero contratar, ou publique o pedido grátis: quem faz e mora perto
+          curte, e você escolhe.
+        </Vazio>
+      ) : lista.length === 0 ? (
         <p className="text-body text-ink-muted">
           Nada aqui com esse filtro.{" "}
           <Link href="/painel/curtidas" className="font-semibold text-ink underline underline-offset-2">
