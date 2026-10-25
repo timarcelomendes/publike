@@ -560,8 +560,7 @@ export function FormPerfil({
               id="modos-ajuda"
               className="-mt-1 mb-1 text-body-sm text-ink-muted"
             >
-              Marque quantos quiser. O painel e a página inicial mostram só o
-              que você marcar.
+              Marque quantos quiser. O painel mostra só o que você marcar.
             </p>
             <div
               className={`grid gap-2 ${modosPossiveis.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
