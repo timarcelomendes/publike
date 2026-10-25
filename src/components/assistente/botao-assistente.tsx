@@ -188,8 +188,9 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
           onClick={() => abrir()}
           aria-haspopup="dialog"
           data-assistente="botao"
-          // no celular, quem tem conta abre pelo ícone do cabeçalho; com a barra do Curtir (página da vaga), sobe
-          className={`${usuarioId ? "max-md:hidden " : ""}fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 [html[data-barra-curtir]_&]:max-lg:bottom-[calc(9.5rem+env(safe-area-inset-bottom))] inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform,opacity] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
+          // no celular, não aparece (cobria o Curtir dos cartões): quem tem conta tem as Mensagens na barra de
+          // baixo, e o visitante, a Ajuda no cabeçalho. Com a barra do Curtir (página da vaga), sobe
+          className={`max-md:hidden fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 [html[data-barra-curtir]_&]:max-lg:bottom-[calc(9.5rem+env(safe-area-inset-bottom))] inline-flex h-12 min-w-12 items-center justify-center rounded-pill bg-ink text-label text-surface-100 shadow-raised transition-[padding,transform,opacity] duration-200 hover:scale-[1.03] motion-reduce:transition-none md:right-6 md:bottom-6 ${
             soIcone ? "px-3.5" : "px-4"
           } ${escondido ? "pointer-events-none translate-y-24 opacity-0" : ""}`}
         >

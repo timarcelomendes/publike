@@ -2,12 +2,16 @@
 
 import {
   ChevronDown,
+  CircleHelp,
   Eye,
   LayoutDashboard,
   LogOut,
   MessageCircleHeart,
   MessagesSquare,
+  Moon,
   ShieldCheck,
+  Sun,
+  SunMoon,
   UserRound,
   Users,
   type LucideIcon,
@@ -15,9 +19,11 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { sair } from "@/lib/acoes/perfil";
+import { TEMAS, type Tema } from "@/lib/tema";
 import { esquecerBusca } from "@/lib/ultima-busca";
 import { mudarConversa } from "./assistente/conversa-estado";
 import { BotaoInstalarApp } from "./instalar-app";
+import { definirTema, useTema } from "./tema";
 import { Avatar } from "./ui/basicos";
 
 function Item({ href, icone: Icone, children }: { href: string; icone: LucideIcon; children: ReactNode }) {
@@ -29,6 +35,45 @@ function Item({ href, icone: Icone, children }: { href: string; icone: LucideIco
       <Icone aria-hidden className="size-[18px] text-ink-muted" />
       {children}
     </Link>
+  );
+}
+
+const APARENCIA: Record<Tema, { nome: string; icone: LucideIcon }> = {
+  claro: { nome: "Claro", icone: Sun },
+  auto: { nome: "Automático", icone: SunMoon },
+  escuro: { nome: "Escuro", icone: Moon },
+};
+
+/** Claro, automático (igual ao do aparelho) ou escuro: no celular, o tema mora aqui (o topo fica só com o sino e a conta). */
+function Aparencia() {
+  const tema = useTema();
+  return (
+    <div className="px-3 py-2">
+      <p id="aparencia-titulo" className="text-body-sm text-ink-muted">
+        Aparência
+      </p>
+      <div role="radiogroup" aria-labelledby="aparencia-titulo" className="mt-1.5 grid grid-cols-3 gap-1">
+        {TEMAS.map((t) => {
+          const { nome, icone: Icone } = APARENCIA[t];
+          const marcado = t === tema;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="radio"
+              aria-checked={marcado}
+              onClick={() => definirTema(t)}
+              className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-sm border text-caption ${
+                marcado ? "border-ink bg-surface-300 text-ink" : "border-line text-ink-muted hover:bg-surface-300"
+              }`}
+            >
+              <Icone aria-hidden className="size-4" />
+              {nome}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -114,7 +159,13 @@ export function MenuUsuario({
             )}
           </nav>
           <div className="mt-1 border-t border-line pt-1">
+            <Aparencia />
             <BotaoInstalarApp variante="menu" aoClicar={() => setAberto(false)} />
+            <div onClick={() => setAberto(false)}>
+              <Item href="/ajuda" icone={CircleHelp}>
+                Ajuda
+              </Item>
+            </div>
           </div>
           <form
             action={sair}

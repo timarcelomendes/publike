@@ -19,7 +19,7 @@ import { BotaoInstalarApp } from "./instalar-app";
 import { LinkTopo } from "./nav-topo";
 import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
-import { BotaoChatTopo } from "./assistente/botao-chat-topo";
+import { BotaoAjudaTopo } from "./assistente/botao-ajuda-topo";
 import { BotaoTema } from "./tema";
 import { Container, Logo } from "./ui/basicos";
 
@@ -47,7 +47,10 @@ export function Cabecalho() {
           <Suspense fallback={<BotaoInstalarApp variante="cabecalho" />}>
             <InstalarDoTopo />
           </Suspense>
-          <BotaoTema />
+          {/* no celular, o tema fica no menu da conta (Aparência): o topo só com o sino e a conta */}
+          <span className="hidden md:contents">
+            <BotaoTema />
+          </span>
           {/* No celular, "Publicar" fica na barra de baixo */}
           <Suspense fallback={<BotaoPublicar />}>
             <PublicarDoTopo />
@@ -155,21 +158,16 @@ async function AreaUsuario() {
     return (
       <>
         {adminLocal && <LinkAdmin />}
+        <BotaoAjudaTopo />
         <BotaoEntrarCabecalho />
       </>
     );
   }
-  const [perfil, moderador, conversas] = await Promise.all([
-    obterMeuPerfil(),
-    ehModerador(),
-    conversasPorPessoa().catch(() => null),
-  ]);
-  const novas = (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0);
+  const [perfil, moderador] = await Promise.all([obterMeuPerfil(), ehModerador()]);
   return (
     <>
       {adminLocal && <LinkAdmin />}
-      {/* no celular, o Chat fica aqui (o botão do canto cobria os cartões) */}
-      <BotaoChatTopo novas={novas} />
+      {/* no celular, as Mensagens ficam na barra de baixo (o Chat do canto fica no computador) */}
       <Notificacoes usuarioId={usuario.id} vapid={vapidPublica()} />
       <MenuUsuario
         nome={perfil?.nome ?? "Minha conta"}

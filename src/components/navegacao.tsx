@@ -7,22 +7,45 @@ import { BotaoInstalarApp } from "./instalar-app";
 import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { Container, Logo } from "./ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { obterUsuario } from "@/lib/dados";
+import { listarMeusAnuncios, obterUsuario } from "@/lib/dados";
+import { caminhoDaConta } from "@/lib/servidor/caminho";
+import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { modoDaConta } from "@/lib/servidor/modo";
 
 export function BarraInferior() {
   return (
-    <Suspense fallback={<BarraInferiorBase ativo={null} />}>
+    // enquanto carrega, a barra vazia (sem mostrar as abas de outra pessoa)
+    <Suspense fallback={<BarraInferiorBase ativo={null} abas={null} />}>
       <BarraDoModo />
     </Suspense>
   );
 }
 
-/** A barra de quem tem conta segue o modo (Contratar, Trabalhar ou Serviços). */
+/**
+ * A barra de quem tem conta segue o modo (Contratar, Trabalhar ou Serviços), com os números do que
+ * espera a pessoa: os candidatos ou os pedidos para responder e as mensagens novas.
+ */
 async function BarraDoModo() {
   const usuario = MODO_DEMO ? null : await obterUsuario();
-  const modo = usuario ? await modoDaConta().catch(() => "trabalhar" as const) : "trabalhar";
-  return <BarraInferiorAtiva modo={modo} />;
+  if (!usuario) return <BarraInferiorAtiva modo={null} />;
+  const modo = await modoDaConta().catch(() => "trabalhar" as const);
+  const [conversas, anuncios, caminho] = await Promise.all([
+    conversasPorPessoa().catch(() => null),
+    modo === "trabalhar" ? Promise.resolve([]) : listarMeusAnuncios().catch(() => []),
+    modo === "contratar" ? caminhoDaConta().catch(() => null) : Promise.resolve(null),
+  ]);
+  const soma = (tipo: string) =>
+    anuncios.filter((a) => a.tipo === tipo).reduce((total, a) => total + (a.curtidas_novas ?? 0), 0);
+  return (
+    <BarraInferiorAtiva
+      modo={modo}
+      numeros={{
+        mensagens: (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0),
+        segunda:
+          modo === "contratar" ? (caminho?.responder ?? soma("vaga")) : modo === "servicos" ? soma("servico") : 0,
+      }}
+    />
+  );
 }
 
 export function Rodape() {
