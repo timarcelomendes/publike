@@ -185,13 +185,30 @@ export function TicketDaVaga({
       </li>,
     );
   for (const b of beneficios) etiquetas.push(<li key={b}>{BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}</li>);
-  if (outros > 0)
+  if (outros > 0) {
+    // o "+N" mostra quais são ao passar o mouse ou tocar (fica por cima do link do cartão)
+    const nomes = todosBeneficios.slice(beneficios.length).map((x) => nomeBeneficio(x) ?? x);
     etiquetas.push(
-      <li key="mais">
-        +{outros}
-        <span className="sr-only"> {outros === 1 ? "benefício" : "benefícios"}</span>
+      <li key="mais" className="group/mais relative z-10">
+        <span
+          tabIndex={0}
+          className="cursor-help rounded-pill outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        >
+          +{outros}
+          <span className="sr-only">
+            {" "}
+            {outros === 1 ? "benefício" : "benefícios"}: {nomes.join(", ")}
+          </span>
+        </span>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-0 bottom-full mb-1.5 hidden w-max max-w-56 rounded-md bg-ink px-2.5 py-1.5 text-[12px] leading-4 font-semibold whitespace-normal text-surface-100 shadow-raised group-focus-within/mais:block group-hover/mais:block"
+        >
+          {nomes.join(", ")}
+        </span>
       </li>,
     );
+  }
   if (preenchida) etiquetas.push(<li key="p">Vaga preenchida</li>);
 
   return (
