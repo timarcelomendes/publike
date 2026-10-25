@@ -4,6 +4,7 @@ import type { Database } from "@/lib/supabase/tipos-banco";
 import { pdfNaoSalvoDe } from "@/lib/servidor/curriculo-pendente";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { lerRespostas } from "@/lib/mensagem-equipe";
+import { urlDosEmails } from "@/lib/servidor/ambiente";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -188,6 +189,58 @@ export async function motivosDeEncerramento(c: ClienteBanco, dias = 30) {
     return null;
   }
   return data ?? [];
+}
+
+export type SituacaoPush = {
+  aparelhos: number;
+  contas: number;
+  novos_7d: number;
+  enviadas_24h: number;
+  falhas_24h: number;
+  na_fila: number;
+  mais_antiga_na_fila: string | null;
+  ultima_enviada: string | null;
+  ultimo_erro: string | null;
+  ultimo_erro_em: string | null;
+};
+
+/** Os números das notificações no celular, do banco de produção. null: banco sem a migração. */
+export async function situacaoDoPush(c: ClienteBanco): Promise<SituacaoPush | null> {
+  const { data, error } = await c.rpc("admin_situacao_push");
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as notificações no celular:", error.message);
+    return null;
+  }
+  return data as unknown as SituacaoPush;
+}
+
+/**
+ * As notificações estão ligadas no site publicado? O admin roda no computador do dono e não vê as
+ * variáveis da Vercel: pergunta ao próprio site (/api/notificacoes). null: não deu para perguntar.
+ */
+export async function pushNoSitePublicado(): Promise<{
+  endereco: string;
+  ligadas: boolean;
+  chave: string | null;
+} | null> {
+  // o endereço público do site (no computador do dono, PUBLIKE_URL_PUBLICA pode apontar para o próprio computador)
+  const configurado = urlDosEmails();
+  const endereco =
+    configurado && /^https:\/\//.test(configurado) && !/\/\/(localhost|127\.)/.test(configurado)
+      ? configurado
+      : "https://publike.org";
+  try {
+    const r = await fetch(`${endereco}/api/notificacoes`, { cache: "no-store", signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return null;
+    const corpo = (await r.json()) as { ligadas?: unknown; chave?: unknown };
+    return {
+      endereco,
+      ligadas: corpo.ligadas === true,
+      chave: typeof corpo.chave === "string" ? corpo.chave : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** O começo de hoje em Goiânia (o banco conta os dias nesse fuso), em ISO. */

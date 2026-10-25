@@ -1124,6 +1124,7 @@ export type Database = {
         Args: { p_modos: string[] };
         Returns: string[];
       };
+      admin_situacao_push: { Args: Record<PropertyKey, never>; Returns: Json };
       salvar_inscricao_push: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_navegador?: string | null };
         Returns: undefined;
