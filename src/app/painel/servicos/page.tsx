@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AvisoConvite } from "@/components/aviso-convite";
 import { FormServicos, type ValoresServicos } from "@/components/form-servicos";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
+import { VitrineComRascunho } from "@/components/vitrine-com-rascunho";
 import { BotaoLink } from "@/components/ui/botao";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { areaDaRegiao, UNIDADES_SERVICO } from "@/lib/constantes";
@@ -167,9 +168,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ser
           </AvisoConvite>
         </div>
       )}
-      <FormServicos
+      <VitrineComRascunho
         inicial={inicial}
         usuarioId={usuario.id}
+        rascunho={primeiro(sp.rascunho) === "1"}
         extras={
           convite?.tipo === "prestador" ? <input type="hidden" name="convite" value={convite.token} /> : undefined
         }

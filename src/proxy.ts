@@ -112,6 +112,20 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   const { pathname, search } = request.nextUrl;
   const adminLocal =
     ADMIN_LOCAL && pathname.startsWith("/admin") && ENDERECO_LOCAL.test(request.headers.get("host") ?? "");
+  // a vitrine sem conta: dá para preencher antes de entrar (o convite pede conta, e segue para o /entrar)
+  if (
+    !logado &&
+    request.method === "GET" &&
+    pathname === "/painel/servicos" &&
+    !request.nextUrl.searchParams.has("convite")
+  ) {
+    const destino = request.nextUrl.clone();
+    destino.pathname = "/vitrine";
+    destino.search = "";
+    const redirecionar = NextResponse.redirect(destino);
+    for (const cookie of resposta.cookies.getAll()) redirecionar.cookies.set(cookie);
+    return redirecionar;
+  }
   if (!logado && !adminLocal && request.method === "GET" && SO_COM_LOGIN.some((r) => r.test(pathname))) {
     const destino = request.nextUrl.clone();
     destino.pathname = "/entrar";

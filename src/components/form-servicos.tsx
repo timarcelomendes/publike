@@ -3,6 +3,7 @@
 import { Camera, Check, Info, Plus, Search, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   startTransition,
   useActionState,
@@ -32,6 +33,8 @@ import {
   type Cidade,
 } from "@/lib/constantes";
 import { urlDaFotoTrabalho } from "@/lib/formato";
+import { lerNumeroBR } from "@/lib/numero";
+import { guardarVitrine, VOLTA_DA_VITRINE } from "@/lib/rascunho-servicos";
 import { PRACA_PADRAO, pracaDaCidade } from "@/lib/pracas";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import type { EstadoForm, StatusAnuncio } from "@/lib/tipos";
@@ -113,7 +116,8 @@ function novaChave() {
 
 function itemDe(s: ServicoInicial): Item {
   return {
-    chave: s.id,
+    // o serviço novo (do convite ou do rascunho sem conta) ainda não tem id
+    chave: s.id || novaChave(),
     id: s.id,
     oficio: s.oficio,
     categoria: s.categoria,
@@ -206,6 +210,7 @@ export function FormServicos({
   acaoSalvar = salvarServicos,
   emNomeDe = null,
   extras = null,
+  semConta = false,
 }: {
   inicial: ValoresServicos;
   usuarioId: string;
@@ -217,7 +222,13 @@ export function FormServicos({
   emNomeDe?: string | null;
   /** Campos a mais, antes do botão de salvar (ex.: a conta e a autorização, no convite). */
   extras?: ReactNode;
+  /**
+   * Quem ainda não entrou: preenche a vitrine (sem as fotos, que pedem conta), e o "Entrar e publicar"
+   * guarda no aparelho e leva ao /entrar; depois de entrar, o formulário volta preenchido.
+   */
+  semConta?: boolean;
 }) {
+  const router = useRouter();
   // a falha de rede (ou o site publicado de novo) vira o aviso do formulário, sem perder o que foi preenchido
   const salvarProtegido = useMemo(() => protegerAcao(acaoSalvar), [acaoSalvar]);
   const [estado, acao, enviando] = useActionState(salvarProtegido, ESTADO_INICIAL);
@@ -293,6 +304,36 @@ export function FormServicos({
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const dados = new FormData(e.currentTarget);
+    if (semConta) {
+      // sem conta: guarda no aparelho e entra; depois de entrar, a pessoa confere e salva
+      const texto = (k: string) => String(dados.get(k) ?? "").trim();
+      const numero = (k: string) => {
+        const n = Number.parseFloat(texto(k));
+        return Number.isFinite(n) ? n : null;
+      };
+      guardarVitrine({
+        servicos: editaveis.map((i) => ({
+          id: "",
+          oficio: i.oficio,
+          categoria: i.categoria,
+          titulo: i.titulo,
+          descricao: i.descricao,
+          pagamento_valor: i.combinar ? null : (lerNumeroBR(i.valor) ?? null),
+          pagamento_unidade: i.unidade,
+          fotos: [],
+          status: "novo",
+        })),
+        cidade,
+        bairro: texto("bairro"),
+        lat: numero("lat"),
+        lng: numero("lng"),
+        atende: [...atende],
+        horario: texto("horario") || null,
+        contato_direto: dados.get("contato_direto") === "on",
+      });
+      router.push(`/entrar?next=${encodeURIComponent(VOLTA_DA_VITRINE)}`);
+      return;
+    }
     dados.set(
       "servicos",
       JSON.stringify(
@@ -427,8 +468,14 @@ export function FormServicos({
           item={item}
           erros={errosDe(item.chave)}
           usuarioId={usuarioId}
-          demo={demo || Boolean(emNomeDe)}
-          avisoFotos={emNomeDe ? "Pelo admin não dá para enviar fotos." : undefined}
+          demo={demo || Boolean(emNomeDe) || semConta}
+          avisoFotos={
+            emNomeDe
+              ? "Pelo admin não dá para enviar fotos."
+              : semConta
+                ? "As fotos você põe depois de entrar."
+                : undefined
+          }
           mudar={(m) => mudar(item.chave, m)}
           remover={() => remover(item.chave)}
         />
@@ -620,9 +667,16 @@ export function FormServicos({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Botao type="submit" variante="primario" disabled={enviando || editaveis.length === 0} className="sm:min-w-56">
-          {enviando ? "Salvando…" : emNomeDe ? "Salvar a vitrine" : "Salvar meus serviços"}
+          {enviando
+            ? "Salvando…"
+            : emNomeDe
+              ? "Salvar a vitrine"
+              : semConta
+                ? "Entrar e publicar"
+                : "Salvar meus serviços"}
         </Botao>
         <p className="text-body-sm text-ink-muted">
+          {semConta && "Para publicar, você entra no Publike. O que preencheu volta com você. "}
           Grátis. Seus serviços ficam 90 dias no ar, e salvar de novo renova o prazo. Ao salvar, você concorda com as{" "}
           <Link href="/regras" className="underline">
             regras do Publike
