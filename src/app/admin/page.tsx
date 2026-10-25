@@ -4,19 +4,25 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { Barras, GraficoDias, Ranking } from "@/components/admin/grafico";
+import { AcessosDoSite } from "@/components/admin/acessos";
+import { GraficoDias, Ranking } from "@/components/admin/grafico";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
+import { SaudeDoSite } from "@/components/admin/saude";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { categoria } from "@/lib/constantes";
+import { MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import {
   acessosDoSite,
   configDoSite,
   listarChavesServidor,
+  motivosDeEncerramento,
+  respostasNovasDaEquipe,
+  numerosDeHoje,
   numerosDoPainel,
   registroDaEquipe,
+  saudeDoSite,
   ultimoResumo,
-  type AcessosSite,
 } from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
 import { ehModerador } from "@/lib/dados";
@@ -41,7 +47,7 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, acessos, config, resumo, registro, chaves, agora] = await Promise.all([
+  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos, respostas] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
     configDoSite(c),
@@ -49,7 +55,11 @@ async function Conteudo() {
     registroDaEquipe(c, 10),
     listarChavesServidor(c),
     agoraDaRequisicao(),
+    saudeDoSite(c),
+    motivosDeEncerramento(c),
+    respostasNovasDaEquipe(c),
   ]);
+  const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
   const temChave = chaves.length > 0;
   const faltando =
@@ -57,16 +67,39 @@ async function Conteudo() {
 
   return (
     <div className="flex flex-col gap-6">
+      {saude && <SaudeDoSite saude={saude} agora={agora} />}
+      {respostas && respostas.length > 0 && (
+        <Secao
+          titulo="Responderam a equipe"
+          descricao="Respostas às mensagens da equipe que ninguém abriu ainda. Abrir a conta marca como vistas."
+        >
+          <ul className="flex flex-col divide-y divide-line">
+            {respostas.map((r) => (
+              <li key={r.id} className="flex flex-col gap-1 py-2.5 text-body-sm">
+                <span className="flex flex-wrap items-baseline justify-between gap-2">
+                  <Link href={`/admin/usuarios/${r.conta_id}`} className="text-label underline underline-offset-2">
+                    {r.nome ?? "Conta sem nome"}
+                  </Link>
+                  <span className="text-ink-muted">
+                    sobre “{r.assunto}” · {tempoRelativo(r.criado_em, agora)}
+                  </span>
+                </span>
+                <span className="line-clamp-3 whitespace-pre-line">{r.texto}</span>
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      )}
       {faltando && (
         <Secao titulo="Falta configurar" descricao="O site funciona sem isso, mas os e-mails e a IA só rodam com tudo pronto.">
           <div className="flex flex-col gap-2">
             <Situacao ok={Boolean(filas.smtp)}>
               E-mail no servidor (SMTP_SERVIDOR, SMTP_USUARIO, SMTP_SENHA e SMTP_REMETENTE).{" "}
-              <Link href="/admin/emails" className="underline">Ver e-mails</Link>
+              <Link href="/admin/emails?aba=configuracoes" className="underline">Ver e-mails</Link>
             </Situacao>
             <Situacao ok={Boolean(filas.enderecoEmails)}>
               Endereço do site no ar para os links dos e-mails (PUBLIKE_URL_PUBLICA no seu computador).{" "}
-              <Link href="/admin/emails" className="underline">Ver e-mails</Link>
+              <Link href="/admin/emails?aba=configuracoes" className="underline">Ver e-mails</Link>
             </Situacao>
             <Situacao ok={temChave}>
               Chave do servidor, para o site publicado mandar e-mails e rodar a IA.{" "}
@@ -74,7 +107,7 @@ async function Conteudo() {
             </Situacao>
             <Situacao ok={config.avisos_para.length > 0}>
               Quem recebe os avisos da equipe (denúncia, cadastro, anúncio tirado do ar).{" "}
-              <Link href="/admin/emails#configuracoes" className="underline">Escolher</Link>
+              <Link href="/admin/emails?aba=configuracoes#configuracoes" className="underline">Escolher</Link>
             </Situacao>
             {config.ia_moderacao && (
               <Situacao ok={filas.ia}>
@@ -102,6 +135,7 @@ async function Conteudo() {
           rotulo="Contas"
           icone={UserRound}
           valor={n.contas}
+          hoje={hoje.contas}
           detalhe={`+${formatarNumero(n.contas_7d)} em 7 dias`}
           href="/admin/usuarios"
         />
@@ -109,6 +143,8 @@ async function Conteudo() {
           rotulo="Anúncios no ar"
           icone={Megaphone}
           valor={n.anuncios.no_ar}
+          hoje={hoje.anuncios}
+          textoHoje="publicados hoje"
           detalhe={`${plural(n.anuncios.vagas_no_ar, "vaga", "vagas")} · ${plural(n.anuncios.servicos_no_ar, "serviço", "serviços")}`}
           href="/admin/anuncios?status=ativo"
         />
@@ -116,13 +152,16 @@ async function Conteudo() {
           rotulo="Curtidas em 7 dias"
           icone={Heart}
           valor={n.curtidas.novas_7d}
+          hoje={hoje.curtidas}
           detalhe={`${formatarNumero(n.curtidas.total)} no total`}
         />
         <Numero
           rotulo="Matches em 7 dias"
           icone={MessageCircleHeart}
           valor={n.curtidas.matches_7d}
+          hoje={hoje.matches}
           detalhe={`${formatarNumero(n.curtidas.matches)} no total`}
+          href="/admin/matches"
         />
         <Numero
           rotulo="Denúncias abertas"
@@ -163,7 +202,7 @@ async function Conteudo() {
 
       <Secao
         titulo="Quem abriu o site"
-        descricao="Pessoas por dia (robôs ficam de fora). A mesma pessoa em dois dias conta duas vezes: o site não guarda quem visitou."
+        descricao="Pessoas diferentes por dia. Hoje se compara com ontem até a mesma hora."
       >
         <AcessosDoSite acessos={acessos} />
       </Secao>
@@ -198,6 +237,24 @@ async function Conteudo() {
           <Ranking itens={n.bairros} />
         </Secao>
       </div>
+
+      {encerramentos && (
+        <Secao
+          titulo="Por que encerraram"
+          descricao="Últimos 30 dias, pela pergunta (opcional) do Encerrar. Vagas e serviços juntos."
+        >
+          {encerramentos.length ? (
+            <Ranking
+              itens={encerramentos.map((e) => ({
+                nome: `${MOTIVOS_ENCERRAMENTO[e.motivo as MotivoEncerramento] ?? e.motivo}${e.tipo === "servico" ? " (serviço)" : ""}`,
+                n: e.total,
+              }))}
+            />
+          ) : (
+            <p className="text-body-sm text-ink-muted">Ninguém respondeu ainda.</p>
+          )}
+        </Secao>
+      )}
 
       <Secao titulo="Contas">
         <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-4 lg:grid-cols-7">
@@ -239,39 +296,3 @@ async function Conteudo() {
   );
 }
 
-function AcessosDoSite({ acessos }: { acessos: AcessosSite | null }) {
-  if (!acessos) {
-    return (
-      <p className="text-body-sm text-ink-muted">
-        A contagem começa depois de rodar a migração <code>20261019250000_acessos_site.sql</code> no Supabase.
-      </p>
-    );
-  }
-  const numeros: [string, number, string?][] = [
-    ["Hoje", acessos.hoje],
-    ["Com conta hoje", acessos.com_conta_hoje, "entraram na conta"],
-    ["Ontem", acessos.ontem],
-    ["Média em 7 dias", acessos.media_7d, "por dia, sem hoje"],
-  ];
-  return (
-    <div className="flex flex-col gap-5">
-      <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-4">
-        {numeros.map(([rotulo, valor, detalhe]) => (
-          <div key={rotulo} className="flex flex-col">
-            <dt className="text-ink-muted">{rotulo}</dt>
-            <dd className="font-display text-h3">{formatarNumero(valor)}</dd>
-            {detalhe && <dd className="text-caption text-ink-muted">{detalhe}</dd>}
-          </div>
-        ))}
-      </dl>
-      <Barras
-        titulo="Visitantes por dia"
-        valores={acessos.por_dia.map((d) => d.visitantes)}
-        dias={acessos.por_dia.map((d) => d.dia)}
-      />
-      {acessos.desde && (
-        <p className="text-caption text-ink-muted">Contando desde {acessos.desde.split("-").reverse().join("/")}.</p>
-      )}
-    </div>
-  );
-}
