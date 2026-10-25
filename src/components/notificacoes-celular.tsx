@@ -48,12 +48,19 @@ async function guardar(inscricao: PushSubscription) {
   );
 }
 
-export function AtivarNotificacoes({ vapid, jeito = "sino" }: { vapid: string; jeito?: "sino" | "cartao" }) {
+export type EstadoNotificacoes = Estado;
+
+/**
+ * O estado das notificações neste aparelho e as ações de ligar e desligar. Usado pelo "Ativar notificações"
+ * (sino e perfil) e pelo convite (`ConviteNotificacoes`). Sem `vapid`, não faz nada (fica "carregando").
+ */
+export function useNotificacoesCelular(vapid: string | null) {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
 
   useEffect(() => {
+    if (!vapid) return;
     let vivo = true;
     (async () => {
       const iphone = /iPhone|iPad/.test(navigator.userAgent);
@@ -84,16 +91,17 @@ export function AtivarNotificacoes({ vapid, jeito = "sino" }: { vapid: string; j
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [vapid]);
 
   async function ativar() {
+    if (!vapid) return false;
     setOcupado(true);
     setAviso(null);
     try {
       const permissao = await Notification.requestPermission();
       if (permissao !== "granted") {
         setEstado(permissao === "denied" ? "negado" : "inativo");
-        return;
+        return false;
       }
       const reg = await registro();
       await navigator.serviceWorker.ready;
@@ -116,13 +124,15 @@ export function AtivarNotificacoes({ vapid, jeito = "sino" }: { vapid: string; j
       const r = await guardar(inscricao);
       if (!r.ok) {
         setAviso({ ok: false, texto: r.erro });
-        return;
+        return false;
       }
       sessionStorage.setItem("publike_push_ok", "1");
       setEstado("ativo");
       setAviso({ ok: true, texto: "Pronto: os avisos vão chegar neste aparelho." });
+      return true;
     } catch {
       setAviso({ ok: false, texto: "Este navegador não deixou ativar. Tente de novo ou use outro navegador." });
+      return false;
     } finally {
       setOcupado(false);
     }
@@ -144,6 +154,12 @@ export function AtivarNotificacoes({ vapid, jeito = "sino" }: { vapid: string; j
       setOcupado(false);
     }
   }
+
+  return { estado, ocupado, aviso, ativar, desativar };
+}
+
+export function AtivarNotificacoes({ vapid, jeito = "sino" }: { vapid: string; jeito?: "sino" | "cartao" }) {
+  const { estado, ocupado, aviso, ativar, desativar } = useNotificacoesCelular(vapid || null);
 
   if (estado === "carregando" || estado === "sem-suporte") return null;
   // no sino, só aparece o que ainda dá para fazer (ligado, sem ruído)

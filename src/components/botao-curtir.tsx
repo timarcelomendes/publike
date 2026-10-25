@@ -6,6 +6,7 @@ import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from
 import { chamarAcao } from "@/lib/acao-segura";
 import { curtirAnuncio, curtirDeNovo, descurtirAnuncio } from "@/lib/acoes/curtidas";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
+import { ConviteNotificacoes } from "./convite-notificacoes";
 
 // A dica "Curtir é se candidatar" (curtir aqui não é reagir, como numa rede social): aparece uma
 // vez por navegador, no primeiro botão de vaga que fica inteiro na tela, depois das boas-vindas.
@@ -59,9 +60,12 @@ export function BotaoCurtir({
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [explicar, setExplicar] = useState(false);
+  // com o dedo ou o foco no balão (o convite das notificações está nele), ele não fecha sozinho
+  const [segurar, setSegurar] = useState(false);
   const [dica, setDica] = useState(false);
   const eu = useId();
   const caixa = useRef<HTMLDivElement>(null);
+  const balao = useRef<HTMLDivElement>(null);
   // a dica vale para a vaga ainda não curtida (no serviço, o botão já diz "Contratar")
   const podeDica = !servico && status === null;
 
@@ -106,11 +110,16 @@ export function BotaoCurtir({
     return () => clearTimeout(t);
   }, [erro]);
 
+  // o balão abre em cima do botão: perto do topo, ficava embaixo do cabeçalho
   useEffect(() => {
-    if (!explicar) return;
+    if (explicar) balao.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [explicar]);
+
+  useEffect(() => {
+    if (!explicar || segurar) return;
     const t = setTimeout(() => setExplicar(false), 9000);
     return () => clearTimeout(t);
-  }, [explicar]);
+  }, [explicar, segurar]);
 
   // match desfeito: dá para curtir de novo (o servidor recusa se a outra pessoa bloqueou)
   const desfeito = atual === "desfeito";
@@ -209,13 +218,24 @@ export function BotaoCurtir({
       )}
       {explicar && !erro && (
         <div
+          ref={balao}
           role="status"
-          className="absolute right-0 bottom-full z-20 mb-2 flex w-64 items-start gap-2 rounded-md border border-line-strong bg-surface-200 p-3 text-body-sm text-ink shadow-raised"
+          onPointerEnter={() => setSegurar(true)}
+          onFocus={() => setSegurar(true)}
+          className="absolute right-0 bottom-full z-20 mb-2 flex w-64 scroll-mt-36 items-start gap-2 rounded-md border border-line-strong bg-surface-200 p-3 text-body-sm text-ink shadow-raised"
         >
-          <p>
-            <strong>{servico ? "Pedido enviado!" : "Curtido: você se candidatou!"}</strong> Agora{" "}
-            {quem || "quem publicou"} decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu painel.
-          </p>
+          <div className="flex min-w-0 flex-col gap-2.5">
+            <p>
+              <strong>{servico ? "Pedido enviado!" : "Curtido: você se candidatou!"}</strong> Agora{" "}
+              {quem || "quem publicou"} decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu
+              painel.
+            </p>
+            <ConviteNotificacoes
+              jeito="balao"
+              titulo="Saiba na hora"
+              texto={servico ? "Avisar no celular quando responder" : "Avisar no celular se aceitar"}
+            />
+          </div>
           <button
             type="button"
             onClick={() => setExplicar(false)}

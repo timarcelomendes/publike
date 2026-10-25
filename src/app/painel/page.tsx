@@ -25,6 +25,7 @@ import {
   talvez,
 } from "@/components/painel/cartoes-hoje";
 import { HojeContratar } from "@/components/painel/hoje-contratar";
+import { ConviteNotificacoes } from "@/components/convite-notificacoes";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -46,6 +47,7 @@ import {
 } from "@/lib/dados";
 import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
+import { vapidPublica } from "@/lib/servidor/ambiente";
 import { atividadesDoMenu, modoDaConta } from "@/lib/servidor/modo";
 import { listarMeusCandidatos } from "@/lib/dados";
 import { MODOS, type ModoPainel } from "@/lib/modo-painel";
@@ -72,6 +74,22 @@ export default function Hoje() {
     </Suspense>
   );
 }
+
+/** O convite das notificações no celular, pelo que a conta faz. */
+const CONVITE_NOTIFICACOES: Record<string, { titulo: string; texto: string }> = {
+  contratar: {
+    titulo: "Saiba na hora quando alguém se candidatar",
+    texto: "Candidatos, mensagens e entrevistas chegam no celular, mesmo com o Publike fechado.",
+  },
+  servicos: {
+    titulo: "Saiba na hora quando pedirem seu serviço",
+    texto: "Pedidos, mensagens e avaliações chegam no celular, mesmo com o Publike fechado.",
+  },
+  trabalhar: {
+    titulo: "Saiba na hora quando responderem",
+    texto: "Aceites, mensagens e entrevistas chegam no celular, mesmo com o Publike fechado.",
+  },
+};
 
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
@@ -130,6 +148,13 @@ async function Conteudo() {
           Seus anúncios estão fora do ar e não dá para publicar, curtir ou responder. Veja o motivo no e-mail que
           enviamos.
         </Aviso>
+      )}
+      {/* o convite das notificações no celular (só para quem ainda não ligou neste aparelho) */}
+      {!suspensa && (
+        <ConviteNotificacoes
+          vapid={vapidPublica()}
+          {...(CONVITE_NOTIFICACOES[modo] ?? CONVITE_NOTIFICACOES.trabalhar)}
+        />
       )}
       {pagina}
       {/* quem faz mais de uma coisa: o Hoje é o da atividade principal; as outras, num quadro curto */}
