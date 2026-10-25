@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BotaoApagarChave, FormNovaChave, GeradorDeChavesVapid, GeradorDeSegredo } from "@/components/admin/chaves";
@@ -76,6 +77,42 @@ async function Conteudo() {
         descricao="Para os segredos que o site usa fora do banco, como o CRON_SECRET das tarefas agendadas. O valor nasce aqui no navegador e não fica guardado: copie na hora."
       >
         <GeradorDeSegredo />
+      </Secao>
+
+      <Secao
+        titulo="Tarefas agendadas"
+        descricao="Quem chama /api/filas (e-mails, revisões da IA e notificações no celular) com o CRON_SECRET."
+      >
+        <ul className="flex flex-col gap-2 text-body-sm">
+          <li>
+            <a
+              href="https://console.cron-job.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-label underline underline-offset-2"
+            >
+              cron-job.org
+              <ExternalLink aria-hidden className="size-3.5" />
+            </a>{" "}
+            <span className="text-ink-muted">
+              · a cada minuto. Em History, 200 é que está andando; 401, o segredo não bate com o CRON_SECRET da Vercel.
+            </span>
+          </li>
+          <li>
+            <a
+              href="https://github.com/timarcelomendes/publike/actions/workflows/filas.yml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-label underline underline-offset-2"
+            >
+              GitHub › Filas do site
+              <ExternalLink aria-hidden className="size-3.5" />
+            </a>{" "}
+            <span className="text-ink-muted">
+              · a reserva (o GitHub atrasa as agendadas); avisa por e-mail quando a fila trava.
+            </span>
+          </li>
+        </ul>
       </Secao>
 
       <Secao
