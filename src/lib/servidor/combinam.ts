@@ -52,7 +52,7 @@ function nomesCurtos(nomes: string[]) {
   return frase.endsWith(".") ? frase : `${frase}.`;
 }
 
-function comoCurriculo(dado: unknown): Curriculo | null {
+export function comoCurriculo(dado: unknown): Curriculo | null {
   if (!dado || typeof dado !== "object" || Array.isArray(dado)) return null;
   const c = dado as Record<string, unknown>;
   return {
@@ -67,7 +67,7 @@ function comoCurriculo(dado: unknown): Curriculo | null {
 }
 
 /** O que o talento faz, para a linha do e-mail: o "o que você faz" ou o cargo mais recente. */
-function oQueFaz(c: Curriculo) {
+export function oQueFaz(c: Curriculo) {
   const titulo = c.titulo?.trim();
   if (titulo) return titulo;
   const cargo = (c.experiencias ?? []).map((e) => String(e?.cargo ?? "").trim()).find(Boolean);
@@ -78,6 +78,71 @@ function oQueFaz(c: Curriculo) {
  * `simular`: a prévia do admin. Faz a mesma conta com quem ainda não foi visto nesta semana, mas não
  * manda nem registra nada (e roda mesmo desligado ou antes da segunda às 9h).
  */
+/** Uma vaga do jeito que a conta do match e a lista precisam. */
+export type VagaParaCombinar = CamposDaVaga & { id: string; autor_id: string; autor_nome: string };
+/** Um talento da aba Talentos: o resumo aberto e o currículo (para a conta). */
+export type TalentoParaCombinar = {
+  perfil_id: string;
+  nome: string;
+  cidade: string | null;
+  bairro: string | null;
+  cv: Curriculo;
+};
+
+/**
+ * As vagas que combinam com o currículo (70% ou mais, sem "Outra área"), na região da pessoa, da que
+ * combina mais para a que combina menos. `ja`: as que ela curtiu, passou ou já recebeu.
+ */
+export function escolherVagas(
+  pessoa: { id: string; cidade: string | null; bairro: string | null; curriculo: Curriculo | null },
+  vagas: VagaParaCombinar[],
+  ja: Set<string>,
+  agora: number,
+  quantas = ATE,
+) {
+  const curriculo = pessoa.curriculo;
+  if (!curriculo) return [];
+  const perto = cidadesPerto(pessoa.cidade);
+  return vagas
+    .filter((v) => v.autor_id !== pessoa.id && !ja.has(v.id) && perto.includes(v.cidade))
+    .map((v) => ({ v, m: matchComAVaga(v, { curriculo, cidade: pessoa.cidade, bairro: pessoa.bairro }, agora) }))
+    .filter((x): x is { v: VagaParaCombinar; m: Aderencia } =>
+      Boolean(x.m && (x.m.nota ?? 0) >= MINIMO && !outraArea(x.m)),
+    )
+    .sort((a, b) => (b.m.nota ?? 0) - (a.m.nota ?? 0))
+    .slice(0, quantas);
+}
+
+/**
+ * Os talentos que combinam com as vagas da conta, cada um com a vaga em que combina mais (só as da
+ * região dele), do que combina mais para o que combina menos. `ja`: os que já curtiram, estão
+ * conectados ou já foram mandados.
+ */
+export function escolherTalentos(
+  contaId: string,
+  vagas: (CamposDaVaga & { id: string })[],
+  talentos: TalentoParaCombinar[],
+  ja: Set<string>,
+  agora: number,
+  quantas = ATE,
+) {
+  return talentos
+    .filter((t) => t.perfil_id !== contaId && !ja.has(t.perfil_id))
+    .map((t) => {
+      let melhor: { vaga: string; vagaId: string; m: Aderencia } | null = null;
+      for (const v of vagas) {
+        if (!cidadesPerto(v.cidade).includes(t.cidade ?? "")) continue;
+        const m = matchComAVaga(v, { curriculo: t.cv, cidade: t.cidade, bairro: t.bairro }, agora);
+        if (m && (m.nota ?? 0) >= MINIMO && !outraArea(m) && (!melhor || (m.nota ?? 0) > (melhor.m.nota ?? 0)))
+          melhor = { vaga: v.titulo, vagaId: v.id, m };
+      }
+      return melhor ? { t, ...melhor } : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => (b.m.nota ?? 0) - (a.m.nota ?? 0))
+    .slice(0, quantas);
+}
+
 export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<ResultadoCombinam> {
   const resultado: ResultadoCombinam = { vagas: 0, talentos: 0, vistos: 0, ...(simular ? { exemplos: [] } : {}) };
   const acesso = acessoFila();
@@ -135,20 +200,12 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
   ]);
   if (eVagas || ePessoas) falhas.push((eVagas ?? ePessoas)!.message);
   for (const p of eVagas ? [] : (pessoas ?? [])) {
-    const curriculo = comoCurriculo(p.curriculo);
-    const ja = new Set(p.ja ?? []);
-    const perto = cidadesPerto(p.cidade);
-    const boas = (vagas ?? [])
-      .filter((v) => v.autor_id !== p.perfil_id && !ja.has(v.id) && perto.includes(v.cidade))
-      .map((v) => ({
-        v,
-        m: curriculo
-          ? matchComAVaga(v as CamposDaVaga, { curriculo, cidade: p.cidade, bairro: p.bairro }, agora)
-          : null,
-      }))
-      .filter((x): x is { v: typeof x.v; m: Aderencia } => Boolean(x.m && (x.m.nota ?? 0) >= MINIMO && !outraArea(x.m)))
-      .sort((a, b) => (b.m.nota ?? 0) - (a.m.nota ?? 0))
-      .slice(0, ATE);
+    const boas = escolherVagas(
+      { id: p.perfil_id, cidade: p.cidade, bairro: p.bairro, curriculo: comoCurriculo(p.curriculo) },
+      (vagas ?? []) as VagaParaCombinar[],
+      new Set(p.ja ?? []),
+      agora,
+    );
     const n = quantas(boas.length, "vaga", "vagas");
     await registrar(
       p.perfil_id,
@@ -178,24 +235,13 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
     .map((t) => ({ ...t, cv: comoCurriculo(t.curriculo) }))
     .filter((t): t is typeof t & { cv: Curriculo } => t.cv !== null);
   for (const e of eTalentos ? [] : (empresas ?? [])) {
-    const suas = (Array.isArray(e.vagas) ? e.vagas : []) as unknown as (CamposDaVaga & { id: string })[];
-    const ja = new Set(e.ja ?? []);
-    const boas = comCurriculo
-      .filter((t) => t.perfil_id !== e.perfil_id && !ja.has(t.perfil_id))
-      .map((t) => {
-        // a vaga em que o talento combina mais (só as da região dele)
-        let melhor: { vaga: string; m: Aderencia } | null = null;
-        for (const v of suas) {
-          if (!cidadesPerto(v.cidade).includes(t.cidade ?? "")) continue;
-          const m = matchComAVaga(v, { curriculo: t.cv, cidade: t.cidade, bairro: t.bairro }, agora);
-          if (m && (m.nota ?? 0) >= MINIMO && !outraArea(m) && (!melhor || (m.nota ?? 0) > (melhor.m.nota ?? 0)))
-            melhor = { vaga: v.titulo, m };
-        }
-        return melhor ? { t, ...melhor } : null;
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null)
-      .sort((a, b) => (b.m.nota ?? 0) - (a.m.nota ?? 0))
-      .slice(0, ATE);
+    const boas = escolherTalentos(
+      e.perfil_id,
+      (Array.isArray(e.vagas) ? e.vagas : []) as unknown as (CamposDaVaga & { id: string })[],
+      comCurriculo,
+      new Set(e.ja ?? []),
+      agora,
+    );
     const n = quantas(boas.length, "talento", "talentos");
     await registrar(
       e.perfil_id,

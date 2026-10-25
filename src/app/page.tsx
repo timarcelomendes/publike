@@ -9,6 +9,7 @@ import { HeroVitrine, NovasHoje } from "@/components/home/vitrine";
 import { CartaoDaConta } from "@/components/home/cartao-da-conta";
 import { ContratandoPerto } from "@/components/home/coluna-direita";
 import { NovosPerto } from "@/components/home/novos-perto";
+import { CombinamComVoce } from "@/components/home/combinam";
 import { LateralDaLinha } from "@/components/home/linha/lateral-da-linha";
 import { LinhaDoTempo } from "@/components/home/linha/linha-do-tempo";
 import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
@@ -235,7 +236,17 @@ async function CentroDaLinha({
       </Suspense>
     );
   }
-  return <LinhaDoTempo searchParams={searchParams} meio={meio} soOlhar={soOlhar} />;
+  return (
+    <>
+      {/* as vagas (ou os talentos) que combinam com a conta, no alto da linha; "só olhar" vê a linha de pessoa */}
+      {!soOlhar && (
+        <Suspense fallback={null}>
+          <CombinamComVoce />
+        </Suspense>
+      )}
+      <LinhaDoTempo searchParams={searchParams} meio={meio} soOlhar={soOlhar} />
+    </>
+  );
 }
 
 /** "Só olhar", à esquerda no lugar do cartão da conta: o que é esta página e como as vagas da conta aparecem. */

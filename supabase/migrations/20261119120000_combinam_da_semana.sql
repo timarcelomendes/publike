@@ -123,8 +123,10 @@ begin
 end
 $$;
 
--- As vagas novas da semana (o que a conta do match precisa)
-create or replace function public.servidor_combinam_vagas(p_chave text)
+-- As vagas novas (da semana, no aviso; do mês, no "Combinam com você" da home), com o que a conta do
+-- match precisa
+drop function if exists public.servidor_combinam_vagas(text);
+create or replace function public.servidor_combinam_vagas(p_chave text, p_dias integer default 7)
 returns table (id uuid, autor_id uuid, autor_nome text, titulo text, descricao text, escolaridade_minima text,
                experiencia text, cnh text, cidade text, bairro text, jornada text, horario_detalhe jsonb,
                horario text, criado_em timestamptz)
@@ -140,10 +142,10 @@ begin
     from public.anuncios a
     join public.perfis p on p.id = a.autor_id
    where a.tipo = 'vaga' and a.status = 'ativo' and a.preenchida_em is null and a.expira_em > now()
-     and a.criado_em > now() - interval '7 days'
+     and a.criado_em > now() - make_interval(days => least(greatest(coalesce(p_dias, 7), 1), 90))
      and not coalesce(p.suspenso_ate > now(), false)
    order by a.criado_em desc
-   limit 500;
+   limit 800;
 end
 $$;
 
@@ -258,11 +260,11 @@ begin
 end
 $$;
 
-revoke execute on function public.servidor_combinam_situacao(text), public.servidor_combinam_vagas(text),
+revoke execute on function public.servidor_combinam_situacao(text), public.servidor_combinam_vagas(text, integer),
   public.servidor_combinam_pessoas(text, date, integer), public.servidor_combinam_empresas(text, date, integer),
   public.servidor_combinam_talentos(text),
   public.servidor_combinam_registrar(text, date, uuid, text, uuid[], text, jsonb) from public;
-grant execute on function public.servidor_combinam_situacao(text), public.servidor_combinam_vagas(text),
+grant execute on function public.servidor_combinam_situacao(text), public.servidor_combinam_vagas(text, integer),
   public.servidor_combinam_pessoas(text, date, integer), public.servidor_combinam_empresas(text, date, integer),
   public.servidor_combinam_talentos(text),
   public.servidor_combinam_registrar(text, date, uuid, text, uuid[], text, jsonb)

@@ -1166,7 +1166,7 @@ export type Database = {
         Returns: { ligado: boolean; semana: string; pode: boolean }[];
       };
       servidor_combinam_vagas: {
-        Args: { p_chave: string };
+        Args: { p_chave: string; p_dias?: number };
         Returns: {
           id: string;
           autor_id: string;
