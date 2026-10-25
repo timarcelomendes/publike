@@ -283,7 +283,10 @@ async function DetalheAnuncio({
   const agencia = anuncio.autor_tipo === "agencia";
   // tempo de casa até o trabalho (só com o CEP de casa: o ponto da pessoa)
   const local = vaga && !proprio ? await obterLocal() : null;
-  const kmDeCasa = local?.ponto ? distanciaKm(local.ponto.lat, local.ponto.lng, anuncio.lat, anuncio.lng) : null;
+  // arredondada a 0,1 km, como a distância da lista (buscar_anuncios): o mesmo tempo nas duas
+  const kmDeCasa = local?.ponto
+    ? Math.round(distanciaKm(local.ponto.lat, local.ponto.lng, anuncio.lat, anuncio.lng) * 10) / 10
+    : null;
   const comoChegar = `https://www.google.com/maps/dir/?api=1&destination=${anuncio.lat},${anuncio.lng}&travelmode=transit`;
   const temContratante = vaga && (anuncio.contratante !== null || anuncio.contratante_confidencial);
   const beneficios = [
