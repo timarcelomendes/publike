@@ -1,7 +1,8 @@
 import type { TipoConta } from "./tipos";
 
 /**
- * O nome parece de empresa? No perfil, quem marca "Pessoa" com um nome como "AJON Consultoria de Trânsito"
+ * O nome parece de empresa? (As mesmas listas estão no banco, em `privado.nome_parece_empresa`, para o
+ * "Oi, …" dos e-mails: mudou aqui, mude lá.) No perfil, quem marca "Pessoa" com um nome como "AJON Consultoria de Trânsito"
  * vê a pergunta "Você está publicando como empresa?" (a foto redonda, o filtro "Quem publicou" e o
  * selo dependem do tipo da conta). Só sugere: a pessoa decide. Devolve o tipo mais provável ou null.
  */
@@ -105,6 +106,16 @@ const EMPRESA = [
   "exportadora",
   "franquia",
   "rede",
+  "center",
+  "centro",
+  "callcenter",
+  "telemarketing",
+  "atendimento",
+  "shop",
+  "store",
+  "delivery",
+  "corp",
+  "company",
 ];
 
 function palavras(nome: string) {
@@ -115,6 +126,7 @@ function palavras(nome: string) {
     .replace(/s\s*\/\s*a\b/g, " sa ")
     .replace(/auto\s*pecas/g, " autopecas ")
     .replace(/lava\s*jato/g, " lavajato ")
+    .replace(/call\s*center/g, " callcenter ")
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
 }
