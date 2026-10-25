@@ -69,7 +69,7 @@ const ICONES: Record<Secao["icone"], LucideIcon> = {
  * coluna da esquerda; no celular, numa linha que rola de lado, em cima da página.
  */
 export function MenuPainel({
-  atividades,
+  atividades: recebidas,
   contadores,
   nome,
   tipoConta = null,
@@ -92,6 +92,9 @@ export function MenuPainel({
   const tipo = busca?.get("tipo") ?? null;
   const aba = busca?.get("aba") ?? null;
   const router = useRouter();
+  // uma aba aberta desde antes de uma versão nova do site pode trazer o menu antigo sem a lista
+  // (o erro "atividades.length" no navegador): sem ela, vale o menu de quem procura trabalho
+  const atividades: ModoPainel[] = Array.isArray(recebidas) ? recebidas : ["trabalhar"];
   // todas as atividades da conta juntas, sem troca de modo na tela
   const grupos = gruposDaConta(atividades, tipoConta);
   const outras = outrasDaConta(atividades, grupos);
