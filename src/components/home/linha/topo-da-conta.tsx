@@ -138,7 +138,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
   if (q) return <CampoDaBusca valor={q} className="mb-4 lg:hidden" />;
   // as listas ("Para você", "Mais perto", "Novas"): a lista tem a barra dela (os atalhos e o Filtros);
   // aqui, só a volta para a linha do tempo (e a busca, no celular)
-  if (primeiro(sp.ordem) && primeiro(sp.ordem) !== "relevantes") {
+  if (primeiro(sp.ordem) && primeiro(sp.ordem) !== "relevantes" && primeiro(sp.ordem) !== "ultimas") {
     return (
       <div className="mb-3 flex flex-col gap-3">
         <CampoDaBusca className="lg:hidden" />
@@ -178,7 +178,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
         ? `${d.novas.tudo === 1 ? "1 novidade" : `${d.novas.tudo > 99 ? "99+" : d.novas.tudo} novidades`} desde ${quandoFoi(d.marca, d.agora)}`
         : `Nada novo desde ${quandoFoi(d.marca, d.agora)}`;
   // os links das abas e dos filtros: com "Mais relevantes", ela continua; sem, a linha é a das últimas
-  const base = { ...d.filtrosDaBusca, ordem: d.relevantes ? ("relevantes" as const) : ("perto" as const) };
+  const base = { ...d.filtrosDaBusca, ordem: d.relevantes ? ("relevantes" as const) : ("ultimas" as const) };
   // a ordem fica à vista, fora dos Filtros: não conta como filtro mudado
   const mudados = filtrosMudados(d.filtrosDaBusca, true);
   const textoDoRaio = d.filtros.tempo ? nomeDoTempo(d.filtros.tempo).toLowerCase() : `até ${d.filtros.raio} km`;
@@ -336,7 +336,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
           d.aba === "recado" ? null : (
             <OrdemDaLinha
               relevantes={d.relevantes}
-              ultimas={hrefFiltros(base, { ordem: "perto" })}
+              ultimas={hrefFiltros(base, { ordem: "ultimas" })}
               maisRelevantes={hrefFiltros(base, { ordem: "relevantes" })}
             />
           )

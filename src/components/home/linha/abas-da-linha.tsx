@@ -139,7 +139,7 @@ export function AbasDaLinha({
   );
 }
 
-/** A ordem da linha do tempo, à vista (não dentro dos Filtros): Últimas, o padrão, ou Mais relevantes. */
+/** A ordem da linha do tempo, à vista (não dentro dos Filtros): Mais relevantes, o padrão, ou Últimas. */
 export function OrdemDaLinha({
   relevantes,
   ultimas,
@@ -158,20 +158,20 @@ export function OrdemDaLinha({
       <span className="text-body-sm text-ink-muted">Ordem:</span>
       <span className="inline-flex rounded-pill border border-line-strong bg-surface-200 p-0.5">
         <Link
-          href={ultimas}
-          scroll={false}
-          aria-current={relevantes ? undefined : "true"}
-          className={opcao(!relevantes)}
-        >
-          Últimas
-        </Link>
-        <Link
           href={maisRelevantes}
           scroll={false}
           aria-current={relevantes ? "true" : undefined}
           className={opcao(relevantes)}
         >
           Mais relevantes
+        </Link>
+        <Link
+          href={ultimas}
+          scroll={false}
+          aria-current={relevantes ? undefined : "true"}
+          className={opcao(!relevantes)}
+        >
+          Últimas
         </Link>
       </span>
     </nav>

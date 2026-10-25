@@ -209,11 +209,11 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
  */
 /**
  * Na home de quem entrou, a busca e as ordens da lista (Mais perto, Novas, Para você) trocam a linha
- * do tempo pela lista. "Mais relevantes" não: ela só muda a ordem da própria linha.
+ * do tempo pela lista. "Mais relevantes" (o padrão) e "Últimas" não: elas só mudam a ordem da própria linha.
  */
 function ordemDeLista(sp: Awaited<Parametros>) {
   const ordem = primeiro(sp.ordem);
-  return Boolean(ordem) && ordem !== "relevantes";
+  return Boolean(ordem) && ordem !== "relevantes" && ordem !== "ultimas";
 }
 
 async function CentroDaLinha({

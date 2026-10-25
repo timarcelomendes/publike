@@ -217,9 +217,10 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     ...lidos,
     tipo: aba === "vaga" || aba === "servico" ? aba : null,
     tudo: aba === "tudo" || aba === "recado",
-    // do mais novo para o mais antigo, com as vagas curtidas na hora da última curtida; ou, se a pessoa
-    // escolheu, as mais relevantes (curtidas e aberturas dos últimos 30 dias). As outras ordens abrem a lista.
-    ordem: lidos.ordem === "relevantes" ? "relevantes" : "ultimas",
+    // as mais relevantes (curtidas e aberturas dos últimos 30 dias), o padrão; ou, se a pessoa escolheu,
+    // do mais novo para o mais antigo, com as vagas curtidas na hora da última curtida. As outras ordens
+    // abrem a lista.
+    ordem: lidos.ordem === "ultimas" ? "ultimas" : "relevantes",
     regime: aba === "servico" ? null : lidos.regime,
     turno: aba === "vaga" ? lidos.turno : null,
   };
