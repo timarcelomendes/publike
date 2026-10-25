@@ -14,6 +14,8 @@ import { modoPadrao } from "@/lib/modo-painel";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { modosMarcados, modosNoBanco } from "@/lib/servidor/modo";
 import { meuResponsavel } from "@/lib/servidor/responsavel";
+import { vapidPublica } from "@/lib/servidor/ambiente";
+import { AtivarNotificacoes } from "@/components/notificacoes-celular";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
@@ -154,6 +156,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         modos={modos}
         responsavel={responsavel}
       />
+      {/* os avisos do sino também no celular (cada aparelho liga o seu) */}
+      {!completar && vapidPublica() && (
+        <div className="mt-8">
+          <AtivarNotificacoes vapid={vapidPublica() ?? ""} jeito="cartao" />
+        </div>
+      )}
       {/* o currículo: para quem procura trabalho (ou ainda não marcou o que faz) */}
       {comCurriculo && (
         <Link

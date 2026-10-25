@@ -95,3 +95,29 @@ export function urlDosEmails(): string | null {
   }
   return null;
 }
+
+/** O valor da variável, tolerando a linha inteira colada ("NOME=valor", com ou sem aspas). */
+function valorColado(nome: string) {
+  return (process.env[nome] || "")
+    .trim()
+    .replace(new RegExp(`^(?:export\\s+)?${nome}\\s*=\\s*`), "")
+    .replace(/^(["'])(.*)\1$/, "$2")
+    .trim();
+}
+
+/**
+ * Chaves das notificações no celular (VAPID), geradas no admin (Chaves › Notificações no celular).
+ * A pública vai para o navegador (é com ela que o aparelho se inscreve); a privada só o servidor lê.
+ * Sem as duas, o botão "Ativar notificações" não aparece.
+ */
+export function chavesVapid(): { publica: string; privada: string; contato: string } | null {
+  const publica = valorColado("PUBLIKE_VAPID_PUBLICA");
+  const privada = valorColado("PUBLIKE_VAPID_PRIVADA");
+  if (!/^[A-Za-z0-9_-]{86,88}$/.test(publica) || !/^[A-Za-z0-9_-]{42,44}$/.test(privada)) return null;
+  return { publica, privada, contato: "mailto:development@publike.org" };
+}
+
+/** Só a chave pública (pode ir para o navegador). */
+export function vapidPublica(): string | null {
+  return chavesVapid()?.publica ?? null;
+}

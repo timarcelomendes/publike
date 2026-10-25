@@ -8,7 +8,9 @@ import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { revisarAnuncio, revisarAvaliacao, revisarRecado, type DecisaoIA } from "@/lib/ia/tarefas";
 import { criarClienteAdmin, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
-import { chaveDoServidor, chaveSecretaSupabase, configSmtp, urlDosEmails } from "./ambiente";
+import { destinoDoAviso } from "@/lib/destino-aviso";
+import { chaveDoServidor, chavesVapid, chaveSecretaSupabase, configSmtp, urlDosEmails } from "./ambiente";
+import { enviarPush, type InscricaoPush } from "./web-push";
 
 // O banco põe os e-mails e as revisões da IA em filas. O servidor do site
 // esvazia as filas logo depois de cada ação (com after(), sem atrasar a
@@ -319,6 +321,68 @@ export async function revisarRecadosPendentes(limite = 5): Promise<ResultadoIA> 
   return resultado;
 }
 
+// ------------------------------------------------------------------ notificações no celular
+
+export type ResultadoPush = { enviadas: number; falhas: number; expiradas: number; motivo?: string };
+
+/** Uma etiqueta curta por assunto: a notificação nova do mesmo assunto troca a antiga no celular. */
+function etiqueta(tipo: string, ...partes: (string | null)[]) {
+  const id = partes.find(Boolean)?.replace(/-/g, "").slice(0, 16) ?? "";
+  return `${tipo.replace(/[^a-z_]/g, "").slice(0, 15)}${id ? `-${id}` : ""}`.slice(0, 32);
+}
+
+/**
+ * Manda os avisos do sino que estão na fila do celular (Web Push). Sem as chaves VAPID, as
+ * notificações estão desligadas: não é erro, a fila espera (e a notificação velha some em 1 dia).
+ */
+export async function enviarPushPendentes(limite = 20): Promise<ResultadoPush> {
+  const resultado: ResultadoPush = { enviadas: 0, falhas: 0, expiradas: 0 };
+  const chaves = chavesVapid();
+  if (!chaves) return resultado;
+  const acesso = acessoFila();
+  if (!acesso) return { ...resultado, motivo: "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR)." };
+  const { cliente, chave } = acesso;
+  const { data: itens, error } = await cliente.rpc("servidor_pegar_push", { p_chave: chave, p_limite: limite });
+  if (error) {
+    // banco sem a migração das notificações no celular: nada a fazer
+    if (error.code === "PGRST202") return resultado;
+    console.error("Publike: falha ao ler a fila do celular:", error.message);
+    return { ...resultado, motivo: "Não foi possível ler a fila das notificações no celular." };
+  }
+  for (const item of itens ?? []) {
+    const inscricoes = (Array.isArray(item.inscricoes) ? item.inscricoes : []) as InscricaoPush[];
+    const dados = {
+      titulo: "Publike",
+      corpo: item.texto,
+      url: destinoDoAviso(item, item.conta_id),
+      tag: etiqueta(item.tipo, item.anuncio_id, item.ator_id, item.recado_id),
+    };
+    const envios = await Promise.all(
+      inscricoes.map((i) =>
+        enviarPush(i, dados, chaves, {
+          topico: dados.tag.replace(/[^A-Za-z0-9_-]/g, ""),
+          urgencia: ["mensagem", "match", "entrevista", "mensagem_equipe"].includes(item.tipo) ? "high" : "normal",
+        }),
+      ),
+    );
+    let algumaSaiu = inscricoes.length === 0;
+    const erros: string[] = [];
+    for (const [n, r] of envios.entries()) {
+      if (r.ok) algumaSaiu = true;
+      else if (r.expirada) {
+        resultado.expiradas++;
+        await cliente.rpc("servidor_inscricao_expirada", { p_chave: chave, p_endpoint: inscricoes[n].endpoint });
+      } else erros.push(r.erro);
+    }
+    // só tenta de novo quando nenhum aparelho recebeu e algum falhou por um motivo passageiro
+    const ok = algumaSaiu || erros.length === 0;
+    if (ok) resultado.enviadas++;
+    else resultado.falhas++;
+    await cliente.rpc("servidor_marcar_push", { p_chave: chave, p_id: item.id, p_ok: ok, p_erro: erros[0] ?? null });
+  }
+  return resultado;
+}
+
 /** Roda depois de cada ação que pode gerar e-mail ou revisão (dentro de after()). */
 export async function processarFilas() {
   try {
@@ -330,7 +394,7 @@ export async function processarFilas() {
     if (avaliacoes.erros) console.warn(`Publike: ${avaliacoes.erros} avaliação(ões) vão ser revisadas de novo.`);
     if (recados.erros) console.warn(`Publike: ${recados.erros} recado(s) vão ser revisados de novo.`);
     // a IA pode ter tirado um anúncio do ar: esses avisos também saem agora
-    await enviarEmailsPendentes();
+    await Promise.all([enviarEmailsPendentes(), enviarPushPendentes()]);
     if (ia.erros) console.warn(`Publike: ${ia.erros} revisão(ões) da IA vão ser tentadas de novo.`);
   } catch (e) {
     console.error("Publike: falha ao processar as filas:", textoDoErro(e));

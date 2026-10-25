@@ -188,3 +188,100 @@ export function GeradorDeSegredo() {
     </div>
   );
 }
+
+function emBase64url(bytes: Uint8Array) {
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+/** O par de chaves VAPID (P-256) gerado no navegador: a pública em 65 bytes, a privada em 32. */
+async function chavesVapidNovas() {
+  const par = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const publica = new Uint8Array(await crypto.subtle.exportKey("raw", par.publicKey));
+  const jwk = await crypto.subtle.exportKey("jwk", par.privateKey);
+  return { publica: emBase64url(publica), privada: jwk.d ?? "" };
+}
+
+function LinhaDeCopiar({ nome, valor }: { nome: string; valor: string }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <div className="mt-2 flex flex-col gap-1">
+      <span className="text-label">{nome}</span>
+      <code className="block rounded-sm bg-surface-200 p-3 font-mono text-body-sm break-all select-all">{valor}</code>
+      <span>
+        <Botao
+          tamanho="sm"
+          onClick={async () => {
+            await navigator.clipboard.writeText(valor);
+            setCopiado(true);
+          }}
+        >
+          {copiado ? <Check aria-hidden /> : <Copy aria-hidden />}
+          {copiado ? "Valor copiado" : "Copiar o valor"}
+        </Botao>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * As chaves das notificações no celular (VAPID). Nascem aqui no navegador e não ficam guardadas.
+ * Trocar as chaves desliga as notificações de todo mundo (cada aparelho precisa ativar de novo).
+ */
+export function GeradorDeChavesVapid({ ligadas }: { ligadas: boolean }) {
+  const [chaves, setChaves] = useState<{ publica: string; privada: string } | null>(null);
+  const [confirmar, setConfirmar] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function gerar() {
+    setErro(null);
+    setConfirmar(false);
+    try {
+      setChaves(await chavesVapidNovas());
+    } catch {
+      setErro("Este navegador não gerou as chaves. Tente no Chrome.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {ligadas && !chaves && (
+        <p className="text-body-sm text-ink-muted">
+          Já estão ligadas. Gere de novo só se a chave privada vazou: trocar as chaves desliga as notificações de todo
+          mundo, e cada aparelho precisa ativar de novo.
+        </p>
+      )}
+      <span>
+        {ligadas && !confirmar && !chaves ? (
+          <Botao variante="fantasma" onClick={() => setConfirmar(true)}>
+            <KeyRound aria-hidden />
+            Gerar chaves novas
+          </Botao>
+        ) : (
+          <Botao onClick={gerar}>
+            <KeyRound aria-hidden />
+            {ligadas ? "Sim, gerar chaves novas" : "Gerar as chaves"}
+          </Botao>
+        )}
+      </span>
+      {erro && <p className="text-body-sm text-danger">{erro}</p>}
+      {chaves && (
+        <Aviso tipo="alerta" titulo="Chaves geradas. Copie agora: elas não ficam guardadas em lugar nenhum.">
+          <LinhaDeCopiar nome="PUBLIKE_VAPID_PUBLICA" valor={chaves.publica} />
+          <LinhaDeCopiar nome="PUBLIKE_VAPID_PRIVADA (secreta)" valor={chaves.privada} />
+          <ol className="mt-3 flex list-decimal flex-col gap-1 pl-5">
+            <li>
+              Na Vercel (Settings › Environment Variables), crie PUBLIKE_VAPID_PUBLICA e PUBLIKE_VAPID_PRIVADA em
+              Production, cada uma com o seu valor (só o valor, sem o nome na frente).
+            </li>
+            <li>Faça um Redeploy. O sino passa a mostrar o &ldquo;Ativar notificações&rdquo;.</li>
+            <li>Para testar no seu computador, ponha as duas também no .env.local e reinicie o site.</li>
+          </ol>
+          <p className="mt-2">A privada é segredo: não mande por chat nem e-mail.</p>
+        </Aviso>
+      )}
+    </div>
+  );
+}

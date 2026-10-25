@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { BotaoApagarChave, FormNovaChave, GeradorDeSegredo } from "@/components/admin/chaves";
+import { BotaoApagarChave, FormNovaChave, GeradorDeChavesVapid, GeradorDeSegredo } from "@/components/admin/chaves";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { listarChavesServidor } from "@/lib/admin/dados";
@@ -8,6 +8,7 @@ import { formatarDataCurta, tempoRelativo } from "@/lib/formato";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { chavesVapid } from "@/lib/servidor/ambiente";
 
 export const metadata: Metadata = { title: "Chaves" };
 
@@ -75,6 +76,18 @@ async function Conteudo() {
         descricao="Para os segredos que o site usa fora do banco, como o CRON_SECRET das tarefas agendadas. O valor nasce aqui no navegador e não fica guardado: copie na hora."
       >
         <GeradorDeSegredo />
+      </Secao>
+
+      <Secao
+        titulo="Notificações no celular"
+        descricao="As chaves que assinam as notificações (Web Push). Sem elas, o sino não mostra o “Ativar notificações”."
+      >
+        <Situacao ok={Boolean(chavesVapid())}>
+          {chavesVapid()
+            ? "Ligadas neste servidor (PUBLIKE_VAPID_PUBLICA e PUBLIKE_VAPID_PRIVADA)."
+            : "Desligadas: faltam PUBLIKE_VAPID_PUBLICA e PUBLIKE_VAPID_PRIVADA."}
+        </Situacao>
+        <GeradorDeChavesVapid ligadas={Boolean(chavesVapid())} />
       </Secao>
     </div>
   );

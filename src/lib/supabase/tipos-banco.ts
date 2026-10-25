@@ -1124,6 +1124,29 @@ export type Database = {
         Args: { p_modos: string[] };
         Returns: string[];
       };
+      salvar_inscricao_push: {
+        Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_navegador?: string | null };
+        Returns: undefined;
+      };
+      remover_inscricao_push: { Args: { p_endpoint: string }; Returns: undefined };
+      servidor_pegar_push: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: {
+          id: number;
+          tipo: string;
+          texto: string;
+          anuncio_id: string | null;
+          ator_id: string | null;
+          recado_id: string | null;
+          conta_id: string;
+          inscricoes: Json;
+        }[];
+      };
+      servidor_marcar_push: {
+        Args: { p_chave: string; p_id: number; p_ok: boolean; p_erro?: string | null };
+        Returns: undefined;
+      };
+      servidor_inscricao_expirada: { Args: { p_chave: string; p_endpoint: string }; Returns: undefined };
       admin_mandar_mensagem_equipe: {
         Args: { p_conta: string; p_assunto: string; p_texto: string; p_email: boolean };
         Returns: { id: number; email_id: number | null };

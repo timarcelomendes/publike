@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import {
   enviarEmailsPendentes,
+  enviarPushPendentes,
   revisarAnunciosPendentes,
   revisarAvaliacoesPendentes,
   revisarRecadosPendentes,
@@ -30,10 +31,10 @@ export async function GET(request: Request) {
     revisarRecadosPendentes(20),
   ]);
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
-  const emails = await enviarEmailsPendentes(20);
+  const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
 
-  const problemas = [emails.motivo, ia.motivo, avaliacoes.motivo, recados.motivo].filter((m): m is string =>
-    Boolean(m),
+  const problemas = [emails.motivo, celular.motivo, ia.motivo, avaliacoes.motivo, recados.motivo].filter(
+    (m): m is string => Boolean(m),
   );
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
       ok,
       problemas,
       emails: { enviados: emails.enviados, falhas: emails.falhas },
+      celular,
       ia: { anuncios: ia, avaliacoes, recados },
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },

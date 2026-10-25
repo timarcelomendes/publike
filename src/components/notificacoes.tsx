@@ -33,7 +33,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
-import { caminhoConversa } from "@/lib/conversas";
+import { destinoDoAviso } from "@/lib/destino-aviso";
+import { AtivarNotificacoes } from "./notificacoes-celular";
 import { tempoRelativo } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 
@@ -88,50 +89,15 @@ type Notificacao = {
   recado_id: string | null;
 };
 
-function destino(n: Notificacao, usuarioId: string) {
-  if (n.tipo === "mensagem_equipe") return "/painel/mensagens-da-equipe";
-  if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
-  if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
-  if (n.tipo === "visitas_novidade") return "/painel/visitas#opcoes";
-  if (n.tipo === "visita" || n.tipo === "visitas_do_dia") return "/painel/visitas";
-  if (n.tipo === "convite_empresa" || n.tipo === "convite_agencia") return "/painel";
-  if (n.tipo === "convite_servicos") return `/perfil/${usuarioId}`;
-  if (n.tipo === "convite_vitrine") return "/painel/servicos";
-  if (n.tipo === "curtida" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}`;
-  if (n.tipo === "match") return "/painel/matches";
-  if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
-  if (n.tipo === "avaliacao") return "/painel/avaliacoes";
-  if (n.tipo === "avaliacao_retida" || n.tipo === "avaliacao_removida") return "/regras";
-  if (n.tipo === "avaliacao_liberada" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
-  // moderação do anúncio: Meus anúncios mostra se está em análise, no ar ou como pôr de volta
-  if (n.tipo === "em_analise" || n.tipo === "liberado") return "/painel/anuncios";
-  if (n.tipo === "etapa") return "/painel/curtidas";
-  if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
-  if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
-  if (n.tipo === "finalistas" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/finalistas`;
-  if (n.tipo === "convite_candidato" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/convidar`;
-  if (n.tipo === "equipe") return "/painel/equipe";
-  // recados: a página do recado (o "não publicado" leva aos recados do perfil, onde aparece o motivo)
-  if ((n.tipo === "recado_no_ar" || n.tipo === "recado_forca") && n.recado_id) return `/recado/${n.recado_id}`;
-  if (n.tipo === "recado_retido") return `/perfil/${usuarioId}#recados`;
-  if (n.tipo === "conexao") return n.ator_id ? `/painel/conexoes/${n.ator_id}` : "/painel/conexoes";
-  // aceito numa vaga que pede currículo: direto para o currículo, que volta para a vaga
-  if (n.tipo === "aceite_curriculo" && n.anuncio_id)
-    return `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${n.anuncio_id}`)}`;
-  if (n.tipo === "curriculo_recebido" && n.anuncio_id)
-    return `/painel/anuncio/${n.anuncio_id}${n.ator_id ? `#candidato-${n.ator_id}` : ""}`;
-  if ((n.tipo === "seguindo" || n.tipo === "busca" || n.tipo === "convite") && n.anuncio_id)
-    return `/anuncio/${n.anuncio_id}`;
-  if (n.tipo === "vaga_preenchida") return "/?tipo=vaga";
-  if (n.tipo === "recomendacao") return `/perfil/${usuarioId}#recomendacoes`;
-  if (n.tipo === "contratacao" && n.anuncio_id) return `/painel/contratacao/${n.anuncio_id}`;
-  // a conversa é uma por pessoa (as vagas em comum e a conexão juntas)
-  if (n.tipo === "mensagem") return n.ator_id ? caminhoConversa(n.ator_id) : "/painel/conversas";
-  return "/painel";
-}
-
 /** Sino com avisos de curtida e de match, que chegam na hora (Supabase Realtime). */
-export function Notificacoes({ usuarioId }: { usuarioId: string }) {
+export function Notificacoes({
+  usuarioId,
+  vapid = null,
+}: {
+  usuarioId: string;
+  /** a chave pública das notificações no celular; sem ela, o "Ativar notificações" não aparece */
+  vapid?: string | null;
+}) {
   const [itens, setItens] = useState<Notificacao[]>([]);
   const [aberto, setAberto] = useState(false);
   const [agora, setAgora] = useState(0);
@@ -226,6 +192,7 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
           className="absolute top-full right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:w-auto rounded-md border border-line bg-surface-200 p-2 shadow-raised"
         >
           <p className="px-3 pt-1 pb-2 text-label">Avisos</p>
+          {vapid && <AtivarNotificacoes vapid={vapid} />}
           {itens.length === 0 ? (
             <p className="px-3 pb-3 text-body-sm text-ink-muted">
               Nada por enquanto. Curtidas, matches, mensagens e novidades das suas candidaturas aparecem aqui.
@@ -237,7 +204,7 @@ export function Notificacoes({ usuarioId }: { usuarioId: string }) {
                 return (
                   <li key={n.id}>
                     <Link
-                      href={destino(n, usuarioId)}
+                      href={destinoDoAviso(n, usuarioId)}
                       onClick={() => setAberto(false)}
                       className="flex gap-3 rounded-sm px-3 py-2.5 hover:bg-surface-300"
                     >

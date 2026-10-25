@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { ehModerador, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { vapidPublica } from "@/lib/servidor/ambiente";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { ehAdminLocal } from "@/lib/supabase/admin";
@@ -169,7 +170,7 @@ async function AreaUsuario() {
       {adminLocal && <LinkAdmin />}
       {/* no celular, o Chat fica aqui (o botão do canto cobria os cartões) */}
       <BotaoChatTopo novas={novas} />
-      <Notificacoes usuarioId={usuario.id} />
+      <Notificacoes usuarioId={usuario.id} vapid={vapidPublica()} />
       <MenuUsuario
         nome={perfil?.nome ?? "Minha conta"}
         foto={perfil?.foto ?? null}
