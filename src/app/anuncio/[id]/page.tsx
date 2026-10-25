@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building2,
   Bus,
+  Footprints,
   CalendarClock,
   Clock,
   FileText,
@@ -89,7 +90,7 @@ import {
 } from "@/lib/formato";
 import { formatarCep } from "@/lib/cep";
 import { distanciaKm } from "@/lib/descobrir";
-import { deslocamentos, formatarMinutos, minutosAte } from "@/lib/deslocamento";
+import { deslocamentoCurto, deslocamentos, formatarMinutos } from "@/lib/deslocamento";
 import { meusSeguidos } from "@/lib/dados-social";
 import { obterLocal } from "@/lib/local";
 import { chaveBairro } from "@/lib/regioes";
@@ -464,8 +465,9 @@ async function DetalheAnuncio({
               )}
             </Fato>
             {kmDeCasa != null && (
-              <Fato icone={Bus} rotulo="Da sua casa">
-                {formatarMinutos(minutosAte(kmDeCasa, "onibus"))} de ônibus
+              // o mesmo tempo da lista (deslocamentoCurto): a pé até 1,5 km, senão de ônibus
+              <Fato icone={kmDeCasa <= 1.5 ? Footprints : Bus} rotulo="Da sua casa">
+                {deslocamentoCurto(kmDeCasa)}
                 <span className="block text-body-sm font-normal text-ink-muted">
                   {kmDeCasa < 1 ? "menos de 1 km" : `${kmDeCasa.toFixed(1).replace(".", ",")} km`} em linha reta · estimativa
                 </span>
