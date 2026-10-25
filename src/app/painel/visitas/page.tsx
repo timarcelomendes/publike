@@ -11,7 +11,8 @@ import { BotaoLink } from "@/components/ui/botao";
 import { OpcoesVisitas } from "@/components/visitas/opcoes-visitas";
 import { MarcarVisitasVistas } from "@/components/visitas/registrar-visita";
 import { MODO_DEMO } from "@/lib/config";
-import { obterMeuPerfil } from "@/lib/dados";
+import { forcaDoCurriculo } from "@/lib/curriculo-forca";
+import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
 import { formatarLugar, plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { nomeNaLista, oQueE } from "@/lib/servidor/contas-perto";
 import { minhasOpcoesDeVisitas, quemViuMeuPerfil, resumoDasVisitas, type Visitante } from "@/lib/servidor/visitas";
@@ -52,13 +53,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/vis
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/visitas");
   const sp = await searchParams;
-  const [perfil, visitantes, resumo, opcoes, agora] = await Promise.all([
+  const [perfil, visitantes, resumo, opcoes, agora, curriculo] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     quemViuMeuPerfil(30),
     resumoDasVisitas(),
     minhasOpcoesDeVisitas(),
     agoraDaRequisicao(),
+    obterMeuCurriculo().catch(() => null),
   ]);
+  // com o currículo em 100%, o vazio não pede para completar o que já está completo
+  const curriculoCompleto = forcaDoCurriculo(curriculo).pontos >= 100;
   const pessoa = !perfil || perfil.tipo === "pessoa";
   const comNome = visitantes.filter((v) => v.visitante_id !== null);
   const escondidos = visitantes.length - comNome.length;
@@ -107,14 +111,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/vis
           titulo="Ninguém viu seu perfil nos últimos 30 dias"
           acao={
             pessoa ? (
-              <BotaoLink href="/perfil/curriculo">Completar o currículo</BotaoLink>
+              curriculoCompleto ? (
+                <BotaoLink href="/?tipo=vaga&ordem=combina">Ver vagas que combinam</BotaoLink>
+              ) : (
+                <BotaoLink href="/perfil/curriculo">Completar o currículo</BotaoLink>
+              )
             ) : (
               <BotaoLink href="/publicar">Publicar uma vaga</BotaoLink>
             )
           }
         >
           {pessoa
-            ? "Com o currículo completo, você aparece para as empresas da região e na aba Talentos. Quando alguém abrir, aparece aqui."
+            ? curriculoCompleto
+              ? "Seu currículo está completo. Curtir vagas leva as empresas até o seu perfil: quando alguém abrir, aparece aqui."
+              : "Com o currículo completo, você aparece para as empresas da região e na aba Talentos. Quando alguém abrir, aparece aqui."
             : "Quem vê uma vaga sua costuma abrir a página da empresa. Quando alguém abrir, aparece aqui."}
         </Vazio>
       ) : (
