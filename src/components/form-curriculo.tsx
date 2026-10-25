@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   startTransition,
   useActionState,
@@ -123,6 +124,30 @@ const NOME_PDF_GUARDADO = "O PDF que você mandou";
 const salvarCurriculoProtegido = protegerAcao(salvarCurriculo, "curriculo");
 const apagarCurriculoProtegido = protegerAcao(apagarCurriculo);
 const CHAVE_RASCUNHO = "publike_rascunho_curriculo";
+// o currículo preenchido sem conta: fica neste aparelho até a pessoa entrar (uma semana, no máximo)
+const CHAVE_SEM_CONTA = "publike_curriculo_sem_conta";
+const VALIDADE_SEM_CONTA = 7 * 24 * 3600e3;
+/** Para onde o "Entrar e salvar" volta: o formulário reabre com o que foi preenchido. */
+export const VOLTA_DO_CURRICULO = "/perfil/curriculo?rascunho=1";
+
+function guardarSemConta(r: Retrato) {
+  try {
+    localStorage.setItem(CHAVE_SEM_CONTA, JSON.stringify({ salvo_em: Date.now(), retrato: r }));
+  } catch {}
+}
+
+/** O currículo preenchido sem conta (e some do aparelho, a não ser que `manter`). */
+function lerSemConta(manter: boolean): Retrato | null {
+  try {
+    const bruto = localStorage.getItem(CHAVE_SEM_CONTA);
+    if (!bruto) return null;
+    if (!manter) localStorage.removeItem(CHAVE_SEM_CONTA);
+    const r = JSON.parse(bruto) as { salvo_em: number; retrato: Retrato };
+    return Date.now() - r.salvo_em > VALIDADE_SEM_CONTA ? null : r.retrato;
+  } catch {
+    return null;
+  }
+}
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
@@ -355,6 +380,7 @@ export function FormCurriculo({
   lerArquivo = false,
   lido = null,
   pdfGuardado = null,
+  semConta = false,
 }: {
   inicial: Curriculo | null;
   /** mês atual ("2026-10"), vindo do servidor: limite das datas */
@@ -374,7 +400,13 @@ export function FormCurriculo({
   lido?: CurriculoLido | null;
   /** sem currículo salvo: o PDF que a pessoa mandou e não chegou a salvar (já vem anexado) */
   pdfGuardado?: string | null;
+  /**
+   * Quem ainda não entrou: preenche aqui (sem o PDF e sem a leitura, que pedem conta), e o salvar
+   * guarda no aparelho e leva ao /entrar; depois de entrar, o formulário volta preenchido.
+   */
+  semConta?: boolean;
 }) {
+  const router = useRouter();
   const [estado, acao, enviando] = useActionState(salvarCurriculoProtegido, ESTADO_INICIAL);
   const [recuperado, setRecuperado] = useState(false);
   const semente = inicial ? null : lido;
@@ -435,6 +467,25 @@ export function FormCurriculo({
   // tem coisa por salvar (a leitura do PDF, o que a pessoa mexeu, o convite ou o PDF que ficou
   // guardado): o botão de salvar acompanha a tela, para ninguém sair achando que já salvou
   const porSalvar = retrato !== retratoAoAbrir || (!inicial && (semente !== null || guardado !== null));
+
+  // sem conta, o que a pessoa preenche já fica no aparelho (sair e voltar não perde nada)
+  useEffect(() => {
+    if (!semConta || retrato === retratoAoAbrir) return;
+    guardarSemConta({
+      titulo,
+      habilidades,
+      escolaridade,
+      curso,
+      estudos,
+      experiencias,
+      cursos,
+      cnh,
+      disponibilidade,
+      arquivo: null,
+      nomePdf: null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- o retrato resume todos os campos
+  }, [semConta, retrato]);
 
   // Depois de um erro, leva a pessoa até o primeiro campo com problema
   useEffect(() => {
@@ -593,7 +644,8 @@ export function FormCurriculo({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado]);
 
-  // voltou depois de recarregar: o formulário recebe o que estava preenchido
+  // voltou depois de recarregar (ou de entrar, com o que preencheu sem conta): o formulário recebe o
+  // que estava preenchido. Com um currículo já salvo, o de sem conta não passa por cima dele
   useEffect(() => {
     let r: Retrato | null = null;
     try {
@@ -601,6 +653,7 @@ export function FormCurriculo({
       sessionStorage.removeItem(CHAVE_RASCUNHO);
       r = guardado ? (JSON.parse(guardado) as Retrato) : null;
     } catch {}
+    if (!r && (semConta || !inicial)) r = lerSemConta(semConta);
     if (!r) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lido do navegador depois de montar
     setTitulo(r.titulo ?? "");
@@ -615,10 +668,34 @@ export function FormCurriculo({
     setArquivo(r.arquivo ?? null);
     setNomePdf(r.nomePdf ?? null);
     setRecuperado(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao abrir
   }, []);
 
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (semConta) {
+      // sem conta: guarda no aparelho e entra; depois de entrar, a pessoa confere e salva
+      const pendente = novoCurso.replace(/\s+/g, " ").trim();
+      const habilidadePendente = novaHabilidade.replace(/\s+/g, " ").trim();
+      guardarSemConta({
+        titulo,
+        habilidades:
+          habilidadePendente.length >= 2 && habilidades.length < MAX_HABILIDADES
+            ? [...habilidades, habilidadePendente]
+            : habilidades,
+        escolaridade,
+        curso,
+        estudos,
+        experiencias,
+        cursos: pendente.length >= 2 ? [...cursos, pendente] : cursos,
+        cnh,
+        disponibilidade,
+        arquivo: null,
+        nomePdf: null,
+      });
+      router.push(`/entrar?next=${encodeURIComponent(VOLTA_DO_CURRICULO)}`);
+      return;
+    }
     const dados = new FormData(e.currentTarget);
     dados.set(
       "experiencias",
@@ -656,7 +733,7 @@ export function FormCurriculo({
     <form ref={formulario} onSubmit={enviar} noValidate className="flex flex-col gap-6">
       {proximo && <input type="hidden" name="next" value={proximo} />}
 
-      {lerArquivo && !demo && (
+      {lerArquivo && !demo && !semConta && (
         <LerCurriculoPronto
           usuarioId={usuarioId}
           compacto={inicial !== null}
@@ -1086,52 +1163,58 @@ export function FormCurriculo({
         </fieldset>
       </Secao>
 
-      <Secao
-        titulo="Currículo em PDF"
-        descricao="Se você já tem um currículo pronto, pode anexar. Não é obrigatório: o que você preencheu acima já vale."
-      >
-        {arquivo ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-md bg-surface-300 p-3">
-            <FileText aria-hidden className="size-6 shrink-0 text-ink-muted" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-label">{nomePdf ?? "Seu currículo.pdf"}</p>
-              {pdfOriginal && linkPdf ? (
-                <a href={linkPdf} target="_blank" rel="noopener noreferrer" className="text-body-sm underline">
-                  Abrir para conferir
-                </a>
-              ) : (
-                <p className="text-body-sm text-ink-muted">{pdfOriginal ? "Anexado" : "Enviado. Falta salvar."}</p>
-              )}
+      {semConta ? (
+        <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm">
+          Já tem um currículo em PDF? Depois de entrar, dá para anexar e até deixar o Publike preencher por ele.
+        </p>
+      ) : (
+        <Secao
+          titulo="Currículo em PDF"
+          descricao="Se você já tem um currículo pronto, pode anexar. Não é obrigatório: o que você preencheu acima já vale."
+        >
+          {arquivo ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-md bg-surface-300 p-3">
+              <FileText aria-hidden className="size-6 shrink-0 text-ink-muted" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-label">{nomePdf ?? "Seu currículo.pdf"}</p>
+                {pdfOriginal && linkPdf ? (
+                  <a href={linkPdf} target="_blank" rel="noopener noreferrer" className="text-body-sm underline">
+                    Abrir para conferir
+                  </a>
+                ) : (
+                  <p className="text-body-sm text-ink-muted">{pdfOriginal ? "Anexado" : "Enviado. Falta salvar."}</p>
+                )}
+              </div>
+              <Botao tamanho="sm" variante="fantasma" onClick={() => setArquivo(null)}>
+                <Trash2 aria-hidden />
+                Tirar
+              </Botao>
             </div>
-            <Botao tamanho="sm" variante="fantasma" onClick={() => setArquivo(null)}>
-              <Trash2 aria-hidden />
-              Tirar
-            </Botao>
-          </div>
-        ) : (
-          <div>
-            <input
-              ref={seletorPdf}
-              type="file"
-              accept="application/pdf"
-              onChange={escolherPdf}
-              className="sr-only"
-              tabIndex={-1}
-              aria-hidden
-            />
-            <Botao onClick={() => seletorPdf.current?.click()} disabled={enviandoPdf}>
-              <Upload aria-hidden />
-              {enviandoPdf ? "Enviando…" : "Anexar PDF"}
-            </Botao>
-            <p className="mt-2 text-body-sm text-ink-muted">Até {MAX_PDF_MB} MB.</p>
-          </div>
-        )}
-        {(erroPdf || erros.arquivo) && <MensagemErro>{erroPdf ?? erros.arquivo}</MensagemErro>}
-        <Aviso tipo="info">
-          O PDF vai do jeito que está. Se tiver seu telefone, e-mail ou endereço, quem anunciou a vaga vai ver esses
-          dados quando você curtir.
-        </Aviso>
-      </Secao>
+          ) : (
+            <div>
+              <input
+                ref={seletorPdf}
+                type="file"
+                accept="application/pdf"
+                onChange={escolherPdf}
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+              />
+              <Botao onClick={() => seletorPdf.current?.click()} disabled={enviandoPdf}>
+                <Upload aria-hidden />
+                {enviandoPdf ? "Enviando…" : "Anexar PDF"}
+              </Botao>
+              <p className="mt-2 text-body-sm text-ink-muted">Até {MAX_PDF_MB} MB.</p>
+            </div>
+          )}
+          {(erroPdf || erros.arquivo) && <MensagemErro>{erroPdf ?? erros.arquivo}</MensagemErro>}
+          <Aviso tipo="info">
+            O PDF vai do jeito que está. Se tiver seu telefone, e-mail ou endereço, quem anunciou a vaga vai ver esses
+            dados quando você curtir.
+          </Aviso>
+        </Secao>
+      )}
 
       <div className="flex gap-3 rounded-md bg-surface-300 p-4 text-body-sm">
         <Info aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" />
@@ -1167,7 +1250,11 @@ export function FormCurriculo({
         <Botao type="submit" variante="primario" disabled={enviando || enviandoPdf || lendo} className="sm:min-w-56">
           {enviando ? "Salvando…" : rotuloSalvar}
         </Botao>
-        {porSalvar ? (
+        {semConta ? (
+          <p className="text-body-sm text-ink-muted">
+            Para salvar, você entra no Publike (grátis). O que preencheu fica guardado neste aparelho.
+          </p>
+        ) : porSalvar ? (
           <p className="text-body-sm text-ink-muted">Seu currículo ainda não foi salvo.</p>
         ) : (
           <SemContatoNoTexto />
@@ -1177,7 +1264,7 @@ export function FormCurriculo({
 
       {/* sair com coisa por salvar pergunta antes (o salvar que não chegou ao servidor já guardou tudo) */}
       <AvisoAoSair
-        ativo={porSalvar && !demo && !estado.semSalvar}
+        ativo={porSalvar && !demo && !estado.semSalvar && !semConta}
         titulo="Sair sem salvar o currículo?"
         texto="Ele ainda não foi salvo, e as empresas só veem depois de salvar."
         rotuloSalvar={rotuloSalvar}

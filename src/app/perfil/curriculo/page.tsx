@@ -16,6 +16,7 @@ import {
   meuCurriculoNaVitrine,
   meuCurriculoVisivel,
   obterMeuCurriculo,
+  obterUsuario,
 } from "@/lib/dados";
 import { caminhoSeguro, primeiro, tempoRelativo } from "@/lib/formato";
 import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
@@ -75,6 +76,25 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   // veio do convite de quem publicou a vaga (candidato de fora): o currículo vem pronto
   const tokenConvite = primeiro(sp.convite);
   const convite = tokenConvite && TOKEN_CONVITE.test(tokenConvite) ? tokenConvite : null;
+  // sem conta: dá para preencher; o salvar guarda no aparelho e pede para entrar (o convite pede conta)
+  if (!convite && !(await obterUsuario())) {
+    return (
+      <>
+        <Aviso tipo="info" className="mb-6" titulo="Preencha agora, entre só para salvar">
+          O que você preencher fica guardado neste aparelho. No fim, toque em “Entrar e salvar o currículo”: depois de
+          entrar, ele volta preenchido para você conferir e salvar.
+        </Aviso>
+        <FormCurriculo
+          inicial={null}
+          usuarioId=""
+          linkPdf={null}
+          hoje={hoje}
+          rotuloSalvar="Entrar e salvar o currículo"
+          semConta
+        />
+      </>
+    );
+  }
   const { usuario, perfil } = await exigirPerfilCompleto(
     proximo
       ? `/perfil/curriculo?next=${encodeURIComponent(proximo)}`
