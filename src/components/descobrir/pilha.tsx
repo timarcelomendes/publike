@@ -214,7 +214,18 @@ export function PilhaDeVagas({
     (gesto: Gesto) => {
       if (!atual || saindo) return;
       if (!logado) {
-        router.push("/entrar?next=/descobrir");
+        // sem conta, o X só passa a carta (nada a guardar); curtir e salvar pedem para entrar
+        if (gesto !== "passar") {
+          router.push("/entrar?next=/descobrir");
+          return;
+        }
+        setSaindo(gesto);
+        setAviso(null);
+        setTimeout(() => {
+          setIndice((i) => i + 1);
+          setSaindo(null);
+          setArrasto({ x: 0, y: 0, ativo: false });
+        }, 260);
         return;
       }
       setSaindo(gesto);
