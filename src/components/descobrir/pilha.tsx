@@ -41,7 +41,7 @@ export type CartaVaga = {
   lugar: string;
   distancia: string | null;
   /** o % de match com o currículo (a mesma conta da busca e da empresa); sem currículo ou com pouco para comparar, null */
-  match: { nota: number; atendidos: number; conferidos: number } | null;
+  match: { nota: number; atendidos: number; conferidos: number; outraArea?: boolean } | null;
   motivos: Motivo[];
   pedeCurriculo: boolean;
   /** quem curte já vê o WhatsApp de quem publicou */
@@ -66,6 +66,17 @@ const LIMIAR = 110;
 
 /** Anel com o % de match (a mesma conta da busca e da página da vaga). */
 function Anel({ match }: { match: NonNullable<CartaVaga["match"]> }) {
+  // a experiência é de outra área: o número baixo não diz nada
+  if (match.outraArea) {
+    return (
+      <span
+        className="shrink-0 rounded-pill border border-line-strong px-2.5 py-1 text-[12px] leading-4 font-semibold text-ink-muted"
+        title="Sua experiência no currículo é de outra área"
+      >
+        Outra área
+      </span>
+    );
+  }
   const nota = match.nota;
   const raio = 22;
   const volta = 2 * Math.PI * raio;

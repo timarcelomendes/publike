@@ -1,11 +1,22 @@
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import type { Aderencia } from "@/lib/aderencia";
+import type { Aderencia, Criterio } from "@/lib/aderencia";
 import { CriteriosDaAderencia } from "./painel/nota-aderencia";
 import { Selo } from "./ui/basicos";
 
-/** O que o selo precisa: a nota e a conta (atende 4 de 5 itens). */
-export type MatchResumo = Pick<Aderencia, "nota" | "atendidos" | "conferidos">;
+/** O que o selo precisa: a nota e a conta (atende 4 de 5 itens); com os critérios, sabe se é outra área. */
+export type MatchResumo = Pick<Aderencia, "nota" | "atendidos" | "conferidos"> & {
+  criterios?: Criterio[];
+  outraArea?: boolean;
+};
+
+/**
+ * A experiência do currículo é em outra área (o item "Experiência na função" não bate). Esse item
+ * vale 60% da nota, então o número fica baixo e não diz nada: o selo mostra "Outra área".
+ */
+export function ehOutraArea(m: MatchResumo) {
+  return m.outraArea ?? Boolean(m.criterios?.some((c) => c.funcao && c.ok === false));
+}
 
 const itens = (n: number) => `${n} ${n === 1 ? "item" : "itens"}`;
 
@@ -15,6 +26,17 @@ const itens = (n: number) => `${n} ${n === 1 ? "item" : "itens"}`;
  */
 export function SeloMatch({ match, className = "" }: { match: MatchResumo; className?: string }) {
   if (match.nota === null) return null;
+  if (ehOutraArea(match)) {
+    return (
+      <Selo
+        variante="contorno"
+        title="Sua experiência no currículo é de outra área. O que a vaga pede está na página dela."
+        className={className}
+      >
+        Outra área
+      </Selo>
+    );
+  }
   return (
     <Selo
       variante={match.nota >= 80 ? "match" : match.nota >= 50 ? "matchContorno" : "contorno"}

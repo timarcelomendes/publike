@@ -9,6 +9,7 @@ import { Aviso, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { matchComAVaga, type Aderencia } from "@/lib/aderencia";
+import { ehOutraArea } from "@/components/match-vaga";
 import {
   listarVagasParaDescobrir,
   obterMeuCurriculo,
@@ -93,7 +94,10 @@ function paraCarta(v: VagaIndicada, matches: Matches): CartaVaga {
     regime: rotuloModalidade("vaga", v.regime),
     lugar: formatarLugar(v.bairro, v.cidade),
     distancia: formatarDistancia(v.distanciaKm),
-    match: m && m.nota !== null ? { nota: m.nota, atendidos: m.atendidos, conferidos: m.conferidos } : null,
+    match:
+      m && m.nota !== null
+        ? { nota: m.nota, atendidos: m.atendidos, conferidos: m.conferidos, outraArea: ehOutraArea(m) }
+        : null,
     motivos: v.motivos,
     pedeCurriculo: v.pede_curriculo,
     contatoDireto: Boolean(v.contato_direto),
@@ -172,6 +176,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
         return m ? [[d.id, m] as const] : [];
       }),
     );
+    // as de outra área (a experiência não bate) vão para o fim do "Para você"
+    const fora = (id: string) => {
+      const m = matches.get(id);
+      return Boolean(m && m.nota !== null && ehOutraArea(m));
+    };
+    paraVoce = [...paraVoce.filter((v) => !fora(v.id)), ...paraVoce.filter((v) => fora(v.id))];
   }
 
   const contagem: Record<Aba, number | null> = {
