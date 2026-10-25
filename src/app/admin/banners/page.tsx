@@ -1,4 +1,4 @@
-import { MousePointerClick, Pencil, Plus, X as Fechou, Eye } from "lucide-react";
+import { LayoutList, MousePointerClick, Pencil, Plus, X as Fechou, Eye } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -30,6 +30,42 @@ function diaDeBrasilia(iso: string | null, fimDoDia = false) {
   if (!iso) return "";
   const d = new Date(new Date(iso).getTime() - 3 * 3600 * 1000 - (fimDoDia ? 1 : 0));
   return d.toISOString().slice(0, 10);
+}
+
+// sub-abas: a lista (abre primeiro) e o formulário (novo ou editar)
+function SubAbas({ ativa, total, editando }: { ativa: "lista" | "form"; total: number; editando: string | null }) {
+  const classe = (atual: boolean) =>
+    `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
+      atual ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-300 text-ink hover:border-line-strong"
+    }`;
+  return (
+    <nav aria-label="Banners" className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+      <Link
+        href="/admin/banners"
+        aria-current={ativa === "lista" ? "page" : undefined}
+        className={classe(ativa === "lista")}
+      >
+        <LayoutList aria-hidden className="size-4" />
+        Banners
+        <span className="tabular-nums opacity-70">{formatarNumero(total)}</span>
+      </Link>
+      {editando ? (
+        <span aria-current="page" className={classe(true)}>
+          <Pencil aria-hidden className="size-4" />
+          Editar: {editando}
+        </span>
+      ) : (
+        <Link
+          href="/admin/banners?aba=novo"
+          aria-current={ativa === "form" ? "page" : undefined}
+          className={classe(ativa === "form")}
+        >
+          <Plus aria-hidden className="size-4" />
+          Novo banner
+        </Link>
+      )}
+    </nav>
+  );
 }
 
 function situacao(b: Banner, agora: number): { nome: string; variante: VarianteSelo } {
@@ -64,7 +100,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     somas.set(n.banner_id, s);
   }
   const editar = banners.find((b) => b.id === primeiro(sp.editar));
-  const novo = primeiro(sp.novo) === "1" || banners.length === 0;
+  // "?novo=1" é o endereço antigo do formulário
+  const novo = primeiro(sp.aba) === "novo" || primeiro(sp.novo) === "1" || banners.length === 0;
+  const aba = editar || novo ? "form" : "lista";
   const salvo = primeiro(sp.salvo);
   const noAr = banners.filter((b) => situacao(b, agora).nome === "No ar");
 
@@ -84,12 +122,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
 
   return (
     <div className="flex flex-col gap-6">
-      {salvo && (
+      <SubAbas ativa={aba} total={banners.length} editando={editar?.titulo ?? null} />
+      {salvo && aba === "lista" && (
         <Aviso tipo="sucesso" titulo={salvo === "novo" ? "Banner criado" : "Banner salvo"}>
           Quem abrir a página inicial vê o banner depois de 3 segundos.
         </Aviso>
       )}
-      {(editar || novo) && (
+      {aba === "form" && (
         <Secao
           id="formulario"
           titulo={editar ? "Editar o banner" : "Novo banner"}
@@ -105,86 +144,76 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
           <FormBanner key={editar?.id ?? "novo"} banner={paraEditar} />
         </Secao>
       )}
-      <Secao
-        titulo="Banners"
-        descricao={
-          <>
-            Aparece um banner por vez: o mais novo no ar para quem chega (todo mundo, visitante, conta de pessoa ou de
-            empresa).{" "}
-            {noAr.length > 1 &&
-              "Com mais de um no ar para o mesmo público, quem já viu o mais novo vê o seguinte na próxima visita."}
-          </>
-        }
-        acoes={
-          !novo &&
-          !editar && (
-            <Link href="/admin/banners?novo=1#formulario" className={classesBotao("primario", "sm")}>
-              <Plus aria-hidden />
-              Novo banner
-            </Link>
-          )
-        }
-      >
-        {banners.length === 0 ? (
-          <Vazio icone={Plus} titulo="Nenhum banner ainda">
-            Crie o primeiro no formulário acima.
-          </Vazio>
-        ) : (
-          <ul aria-label="Banners" className="flex flex-col divide-y divide-line rounded-lg border border-line">
-            {banners.map((b) => {
-              const s = situacao(b, agora);
-              const n = somas.get(b.id) ?? { vistos: 0, cliques: 0, fechados: 0 };
-              const taxa = n.vistos ? Math.round((n.cliques / n.vistos) * 100) : null;
-              return (
-                <li key={b.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex min-w-0 flex-col gap-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Selo variante={s.variante}>{s.nome}</Selo>
-                      <span className="text-label">{b.titulo}</span>
+      {aba === "lista" && (
+        <Secao
+          titulo="Banners"
+          descricao={
+            <>
+              Aparece um banner por vez: o mais novo no ar para quem chega (todo mundo, visitante, conta de pessoa ou de
+              empresa).{" "}
+              {noAr.length > 1 &&
+                "Com mais de um no ar para o mesmo público, quem já viu o mais novo vê o seguinte na próxima visita."}
+            </>
+          }
+        >
+          {banners.length === 0 ? (
+            <Vazio icone={Plus} titulo="Nenhum banner ainda">
+              Crie o primeiro em Novo banner.
+            </Vazio>
+          ) : (
+            <ul aria-label="Banners" className="flex flex-col divide-y divide-line rounded-lg border border-line">
+              {banners.map((b) => {
+                const s = situacao(b, agora);
+                const n = somas.get(b.id) ?? { vistos: 0, cliques: 0, fechados: 0 };
+                const taxa = n.vistos ? Math.round((n.cliques / n.vistos) * 100) : null;
+                return (
+                  <li key={b.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Selo variante={s.variante}>{s.nome}</Selo>
+                        <span className="text-label">{b.titulo}</span>
+                      </div>
+                      {b.texto && <p className="text-body-sm text-ink-muted">{b.texto}</p>}
+                      <p className="text-body-sm text-ink-muted">
+                        {ACOES_BANNER[b.acao as AcaoBanner] ?? b.acao}
+                        {b.link && b.acao !== "novas" ? ` (${b.link})` : ""} · botão “{b.botao}” ·{" "}
+                        {PUBLICOS_BANNER[b.publico as PublicoBanner] ?? b.publico}
+                        {b.repetir_dias === null
+                          ? " · só uma vez"
+                          : ` · de novo a cada ${b.repetir_dias} ${b.repetir_dias === 1 ? "dia" : "dias"}`}
+                        {b.inicio ? ` · de ${formatarDataCurta(b.inicio)}` : ""}
+                        {b.fim ? ` · até ${formatarDataCurta(diaDeBrasilia(b.fim, true) + "T12:00:00-03:00")}` : ""}
+                      </p>
+                      <p className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Eye aria-hidden className="size-4 text-ink-muted" />
+                          {formatarNumero(n.vistos)} {n.vistos === 1 ? "viu" : "viram"}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <MousePointerClick aria-hidden className="size-4 text-ink-muted" />
+                          {formatarNumero(n.cliques)} {n.cliques === 1 ? "clicou" : "clicaram"}
+                          {taxa !== null && <span className="text-ink-muted">({taxa}%)</span>}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Fechou aria-hidden className="size-4 text-ink-muted" />
+                          {formatarNumero(n.fechados)} {n.fechados === 1 ? "fechou" : "fecharam"}
+                        </span>
+                      </p>
                     </div>
-                    {b.texto && <p className="text-body-sm text-ink-muted">{b.texto}</p>}
-                    <p className="text-body-sm text-ink-muted">
-                      {ACOES_BANNER[b.acao as AcaoBanner] ?? b.acao}
-                      {b.link && b.acao !== "novas" ? ` (${b.link})` : ""} · botão “{b.botao}” ·{" "}
-                      {PUBLICOS_BANNER[b.publico as PublicoBanner] ?? b.publico}
-                      {b.repetir_dias === null
-                        ? " · só uma vez"
-                        : ` · de novo a cada ${b.repetir_dias} ${b.repetir_dias === 1 ? "dia" : "dias"}`}
-                      {b.inicio ? ` · de ${formatarDataCurta(b.inicio)}` : ""}
-                      {b.fim ? ` · até ${formatarDataCurta(diaDeBrasilia(b.fim, true) + "T12:00:00-03:00")}` : ""}
-                    </p>
-                    <p className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Eye aria-hidden className="size-4 text-ink-muted" />
-                        {formatarNumero(n.vistos)} {n.vistos === 1 ? "viu" : "viram"}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MousePointerClick aria-hidden className="size-4 text-ink-muted" />
-                        {formatarNumero(n.cliques)} {n.cliques === 1 ? "clicou" : "clicaram"}
-                        {taxa !== null && <span className="text-ink-muted">({taxa}%)</span>}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Fechou aria-hidden className="size-4 text-ink-muted" />
-                        {formatarNumero(n.fechados)} {n.fechados === 1 ? "fechou" : "fecharam"}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                    <Link
-                      href={`/admin/banners?editar=${b.id}#formulario`}
-                      className={classesBotao("secundario", "sm")}
-                    >
-                      <Pencil aria-hidden />
-                      Editar
-                    </Link>
-                    <AcoesBanner id={b.id} ativo={b.ativo} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Secao>
+                    <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                      <Link href={`/admin/banners?editar=${b.id}`} className={classesBotao("secundario", "sm")}>
+                        <Pencil aria-hidden />
+                        Editar
+                      </Link>
+                      <AcoesBanner id={b.id} ativo={b.ativo} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Secao>
+      )}
     </div>
   );
 }
