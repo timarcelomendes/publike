@@ -49,7 +49,7 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { MinhaCurtida, StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
 
-export const metadata: Metadata = { title: "Minhas curtidas" };
+export const metadata: Metadata = { title: "Candidaturas" };
 
 /**
  * Em que pé está cada curtida (os filtros da página; a visão geral do painel usa os mesmos).
@@ -64,9 +64,10 @@ const SITUACOES = {
 type Situacao = keyof typeof SITUACOES;
 const naSituacao = (s: Situacao, c: MinhaCurtida) => SITUACOES[s].vale(c);
 
+// o mesmo nome do menu (Candidaturas); com o filtro, o que a lista mostra
 const TITULOS: Record<"todos" | TipoAnuncio, string> = {
-  todos: "Minhas curtidas",
-  vaga: "Vagas que você curtiu",
+  todos: "Candidaturas",
+  vaga: "Suas candidaturas",
   servico: "Serviços que você pediu",
 };
 
