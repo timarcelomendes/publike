@@ -2,9 +2,13 @@
 
 import { BellOff, BellPlus, BellRing } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { apagarBusca, salvarBusca } from "@/lib/acoes/buscas";
 import { useAcao } from "../ui/usar-acao";
+
+/** O "Me avise" sem conta volta do /entrar com avisar=1: o aviso é criado uma vez só, mesmo com dois botões na página. */
+let avisoDaVolta: string | null = null;
 
 const link =
   "inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-terra-text underline-offset-2 hover:underline disabled:opacity-60";
@@ -25,10 +29,30 @@ export function AvisarBusca({
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [id, setId] = useState(salvaId);
+  const router = useRouter();
+
+  // voltou do /entrar pelo "Me avise": cria o aviso e tira o avisar=1 do endereço
+  useEffect(() => {
+    if (!logado || avisoDaVolta === window.location.href) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("avisar") !== "1") return;
+    avisoDaVolta = url.href;
+    url.searchParams.delete("avisar");
+    router.replace(`${url.pathname}${url.search}`, { scroll: false });
+    if (id !== null) return;
+    rodar(
+      () => salvarBusca(caminho),
+      (r) => {
+        if (r.ok && "id" in r && typeof r.id === "number") setId(r.id);
+      },
+    );
+  }, [logado, id, caminho, rodar, router]);
 
   if (!logado) {
+    // a volta traz avisar=1, e o aviso sai sozinho depois de entrar
+    const volta = `${caminho}${caminho.includes("?") ? "&" : "?"}avisar=1`;
     return (
-      <Link href={`/entrar?next=${encodeURIComponent(caminho)}`} className={link}>
+      <Link href={`/entrar?next=${encodeURIComponent(volta)}`} className={link}>
         <BellPlus aria-hidden className="size-4 shrink-0" />
         Me avise de vagas assim
       </Link>
