@@ -28,12 +28,26 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-type Contexto = { titulo: string; texto: string; padrao?: boolean; publica?: boolean };
+type Contexto = {
+  titulo: string;
+  texto: string;
+  padrao?: boolean;
+  publica?: boolean;
+  /** o exemplo ao lado: vitrine (quem presta serviço) ou pedido de serviço (quem contrata um) */
+  demo?: "vitrine" | "pedido";
+};
 
 /** O título conta por que a pessoa precisa entrar (vem de ?next=). */
 function contexto(proximo: string): Contexto {
   if (/^\/anuncio\/[^/]+\/denunciar/.test(proximo)) {
     return { titulo: "Entre para denunciar o anúncio", texto: "Sua denúncia vai direto para a moderação do Publike." };
+  }
+  if (proximo.startsWith("/anuncio/") && /[?&]servico=1(&|$)/.test(proximo)) {
+    return {
+      titulo: "Entre para pedir o serviço",
+      texto: "O profissional vê seu perfil e decide se aceita. Se aceitar, o WhatsApp dos dois aparece.",
+      demo: "pedido",
+    };
   }
   if (proximo.startsWith("/anuncio/")) {
     return {
@@ -60,10 +74,34 @@ function contexto(proximo: string): Contexto {
       titulo: "Entre para montar sua vitrine grátis",
       texto: "Mostre seus serviços para quem mora perto. Leva uns dois minutos e é grátis para todos.",
       publica: true,
+      demo: "vitrine",
     };
   }
   if (proximo.startsWith("/painel")) {
     return { titulo: "Entre para ver seu painel", texto: "Seus anúncios, curtidas e matches ficam todos lá.", publica: true };
+  }
+  if (proximo.startsWith("/perfil/curriculo")) {
+    return { titulo: "Entre para cadastrar seu currículo", texto: "As empresas da região acham você na aba Talentos." };
+  }
+  if (proximo.startsWith("/talentos")) {
+    return {
+      titulo: "Entre como empresa para ver o currículo completo",
+      texto: "Veja onde a pessoa trabalhou e convide para a sua vaga. É grátis.",
+      publica: true,
+    };
+  }
+  if (proximo.startsWith("/descobrir")) {
+    return {
+      titulo: "Entre para curtir as vagas que combinam com você",
+      texto: "Quem publicou vê seu perfil. Se curtir você de volta, o WhatsApp dos dois aparece.",
+    };
+  }
+  // "Me avise de vagas assim" (a busca volta com avisar=1 e o aviso sai sozinho)
+  if (/[?&]avisar=1(&|$)/.test(proximo)) {
+    return {
+      titulo: "Entre para receber aviso de vagas assim",
+      texto: "Quando entrar uma vaga nova parecida, avisamos no site e por e-mail.",
+    };
   }
   if (proximo.startsWith("/perfil")) {
     return { titulo: "Entre para cuidar do seu perfil", texto: "É ele que aparece quando você curte um anúncio." };
@@ -153,7 +191,7 @@ function Colunas({ ctx, children }: { ctx: Contexto; children: ReactNode }) {
           {ctx.texto}
         </p>
         <div className="mt-12 hidden lg:block">
-          <DemoMatch lado={ctx.publica ? "quem-publica" : "quem-faz"} />
+          <DemoMatch lado={ctx.demo ?? (ctx.publica ? "quem-publica" : "quem-faz")} />
         </div>
       </div>
 

@@ -148,7 +148,8 @@ export function BotaoCurtir({
     setDica(false);
     if (!logado) {
       // volta para a vaga com o quadro de curtir à mão (?curtir=1)
-      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1`)}`);
+      // no serviço, o /entrar diz "Entre para pedir o serviço"
+      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1${servico ? "&servico=1" : ""}`)}`);
       return;
     }
     if (respondido) {

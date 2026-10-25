@@ -144,7 +144,8 @@ export function PainelCurtir({
   function curtir() {
     setErro(null);
     if (!logado) {
-      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1`)}`);
+      // no serviço, o /entrar diz "Entre para pedir o serviço"
+      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1${servico ? "&servico=1" : ""}`)}`);
       return;
     }
     if (perguntas.length) {

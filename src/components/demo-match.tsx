@@ -55,14 +55,14 @@ const BOTAO: Record<Etapa, string> = {
   match: "border-transparent bg-cerrado text-on-cerrado",
 };
 
-/** O cartão de exemplo (igual ao card de anúncio do site), sem nada clicável. */
-export function CartaoDemo({ etapa }: { etapa: Etapa }) {
+/** O cartão de exemplo (igual ao card de anúncio do site), sem nada clicável; `servico`: um serviço com preço. */
+export function CartaoDemo({ etapa, servico = false }: { etapa: Etapa; servico?: boolean }) {
   return (
     <div aria-hidden className="pointer-events-none -rotate-2 select-none">
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-raised">
         <div className="flex min-h-6 flex-wrap gap-2">
           <Selo variante="novo">Novo</Selo>
-          <Selo>Diária</Selo>
+          <Selo>{servico ? "Serviço" : "Diária"}</Selo>
           {etapa === "match" && (
             <Selo variante="match" className="motion-safe:animate-[pk-surge_300ms_ease-out]">
               Deu match
@@ -70,14 +70,18 @@ export function CartaoDemo({ etapa }: { etapa: Etapa }) {
           )}
         </div>
         <div>
-          <p className="font-display text-h3">Ajudante de cozinha no almoço</p>
-          <p className="mt-0.5 text-body-sm text-ink-muted">Restaurante · Comércio</p>
+          <p className="font-display text-h3">
+            {servico ? "Eletricista: instalação e reparo" : "Ajudante de cozinha no almoço"}
+          </p>
+          <p className="mt-0.5 text-body-sm text-ink-muted">
+            {servico ? "Seu João · Pessoa" : "Restaurante · Comércio"}
+          </p>
         </div>
         <p className="flex items-center gap-1.5 text-body-sm text-ink-muted">
           <MapPin className="size-4 shrink-0 text-terra-text" fill="currentColor" stroke="var(--pk-surface-200)" />
           Setor Bueno, Goiânia · 2 km
         </p>
-        <p className="text-label">R$ 120 por dia, com almoço</p>
+        <p className="text-label">{servico ? "A partir de R$ 80 a visita" : "R$ 120 por dia, com almoço"}</p>
         <div className="flex items-center justify-between gap-3 border-t border-line pt-3 text-body-sm text-ink-muted">
           <span>há 2 horas</span>
           <span
@@ -88,7 +92,15 @@ export function CartaoDemo({ etapa }: { etapa: Etapa }) {
               className={`size-4 motion-safe:animate-[pk-pulsa_350ms_ease-out] ${etapa === "curtido" ? "text-like" : ""}`}
               fill={etapa === "curtir" ? "none" : "currentColor"}
             />
-            {etapa === "match" ? "Deu match" : etapa === "curtido" ? "Curtido" : "Curtir"}
+            {etapa === "match"
+              ? "Deu match"
+              : etapa === "curtido"
+                ? servico
+                  ? "Pedido enviado"
+                  : "Curtido"
+                : servico
+                  ? "Contratar"
+                  : "Curtir"}
           </span>
         </div>
       </div>
@@ -96,8 +108,10 @@ export function CartaoDemo({ etapa }: { etapa: Etapa }) {
   );
 }
 
-/** As legendas mudam conforme quem está entrando: quem procura trabalho ou quem publica. */
-const LEGENDAS: Record<"quem-faz" | "quem-publica", Record<Etapa, string>> = {
+type LadoDemo = "quem-faz" | "quem-publica" | "vitrine" | "pedido";
+
+/** As legendas mudam conforme quem está entrando: quem procura trabalho, quem publica, quem mostra ou pede serviço. */
+const LEGENDAS: Record<LadoDemo, Record<Etapa, string>> = {
   "quem-faz": {
     curtir: "Viu uma vaga que combina com você? Curta.",
     curtido: "Quem publicou vê seu perfil e pode curtir de volta.",
@@ -108,14 +122,24 @@ const LEGENDAS: Record<"quem-faz" | "quem-publica", Record<Etapa, string>> = {
     curtido: "Quem tem interesse curte ou pede, e você vê o perfil da pessoa.",
     match: "Aceitou? Deu match: o WhatsApp dos dois aparece.",
   },
+  vitrine: {
+    curtir: "Você mostra seus serviços, com o preço e onde atende.",
+    curtido: "Quem mora perto pede, e você vê o perfil da pessoa.",
+    match: "Aceitou? Deu match: o WhatsApp dos dois aparece.",
+  },
+  pedido: {
+    curtir: "Achou quem faz perto de você? Toque em Contratar.",
+    curtido: "O profissional vê seu perfil e decide se aceita.",
+    match: "Aceitou? Deu match: o WhatsApp dos dois aparece.",
+  },
 };
 
 /** Tela de entrar: o cartão com uma legenda que acompanha cada etapa. */
-export function DemoMatch({ lado = "quem-faz" }: { lado?: "quem-faz" | "quem-publica" }) {
+export function DemoMatch({ lado = "quem-faz" }: { lado?: LadoDemo }) {
   const etapa = useEtapasDemo();
   return (
     <figure className="w-full max-w-sm">
-      <CartaoDemo etapa={etapa} />
+      <CartaoDemo etapa={etapa} servico={lado === "vitrine" || lado === "pedido"} />
       <figcaption className="mt-6 flex min-h-12 items-start gap-2.5 text-body text-ink-muted">
         <MessageCircle
           aria-hidden
