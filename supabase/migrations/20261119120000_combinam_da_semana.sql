@@ -94,8 +94,10 @@ set search_path = ''
 as $$
 begin
   perform privado.exigir_admin();
+  -- com o "where id" (a linha única), como as outras: o Supabase recusa update sem where
   update public.config_site set combinam_semana = coalesce(p_ligado, false), atualizado_em = now(),
-         atualizado_por = (select auth.uid());
+         atualizado_por = (select auth.uid())
+   where id;
 end
 $$;
 revoke execute on function public.admin_ligar_combinam(boolean) from public, anon;
