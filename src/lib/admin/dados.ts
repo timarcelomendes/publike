@@ -268,11 +268,20 @@ export type AcessosSite = {
   hoje: number;
   com_conta_hoje: number;
   ontem: number;
-  /** média por dia dos 7 dias antes de hoje */
+  /** média por dia dos dias inteiros (até 7, sem hoje e sem o primeiro dia contado) */
   media_7d: number;
   /** o primeiro dia contado (null: nada ainda) */
   desde: string | null;
-  por_dia: { dia: string; visitantes: number }[];
+  /** quantos dias inteiros entraram na média (sem a migração 20261114120000: não vem) */
+  dias_na_media?: number;
+  /** a hora de agora, em Goiânia */
+  hora?: number;
+  /** ontem até a mesma hora (null: ontem ainda não tinha a hora guardada) */
+  ontem_ate_agora?: number | null;
+  paginas_por_visitante?: number | null;
+  /** % de quem viu só uma página, nos dias inteiros */
+  so_uma_pagina?: number | null;
+  por_dia: { dia: string; visitantes: number; com_conta?: number }[];
 };
 
 /** null: a contagem ainda não existe neste banco (falta rodar a migração 20261019250000). */
