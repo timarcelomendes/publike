@@ -29,7 +29,7 @@ import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
 import { BotaoCurtir } from "../../botao-curtir";
 import { CapaNoticia } from "../../noticias/capa";
-import { SeloMatch } from "../../match-vaga";
+import { ehOutraArea, SeloMatch } from "../../match-vaga";
 import { SeloVerificado } from "../../selo-verificado";
 import { Avatar } from "../../ui/basicos";
 
@@ -173,7 +173,11 @@ export function TicketDaVaga({
   // com o "Contato direto", os benefícios ficam todos no "+N" (cabe numa linha)
   const beneficios = todosBeneficios.slice(0, direto ? 0 : 1);
   const outros = todosBeneficios.length - beneficios.length;
-  const match = item.match && (item.match.nota ?? 0) > 0 && a.minha_curtida !== "match" ? item.match : null;
+  // a vaga de outra área fica sem selo na linha (o "Outra área" fica na página da vaga e no Descobrir)
+  const match =
+    item.match && (item.match.nota ?? 0) > 0 && !ehOutraArea(item.match) && a.minha_curtida !== "match"
+      ? item.match
+      : null;
   const etiquetas: ReactNode[] = [];
   if (modalidade) etiquetas.push(<li key="m">{modalidade}</li>);
   // quem curte já vê o WhatsApp: a etiqueta vem logo depois da contratação

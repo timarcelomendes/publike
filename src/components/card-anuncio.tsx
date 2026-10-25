@@ -18,7 +18,7 @@ import type { GanhoExtra } from "@/lib/vaga-extra";
 import { NotaDoProfissional } from "./avaliacoes";
 import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
 import { BotaoCurtir } from "./botao-curtir";
-import { SeloMatch, type MatchResumo } from "./match-vaga";
+import { ehOutraArea, SeloMatch, type MatchResumo } from "./match-vaga";
 import { Avatar, Selo } from "./ui/basicos";
 import { SeloVerificado } from "@/components/selo-verificado";
 
@@ -118,7 +118,9 @@ export function CardAnuncio({
   const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
   // depois do match, o "Deu match" já diz tudo (e não se confunde com o %); 0% no cartão
   // só desanima (o porquê fica na página da vaga)
-  const comMatch = match && (match.nota ?? 0) > 0 && anuncio.minha_curtida !== "match" ? match : null;
+  // a vaga de outra área fica sem selo na lista (o "Outra área" fica na página da vaga e no Descobrir)
+  const comMatch =
+    match && (match.nota ?? 0) > 0 && !ehOutraArea(match) && anuncio.minha_curtida !== "match" ? match : null;
   // "Outro" não diz nada sobre a contratação: sem etiqueta
   const modalidade =
     anuncio.tipo === "vaga" && anuncio.regime === "outro" ? null : rotuloModalidade(anuncio.tipo, anuncio.regime);
