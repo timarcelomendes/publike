@@ -4,19 +4,21 @@ import { Suspense, type ReactNode } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { ehModerador, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { vapidPublica } from "@/lib/servidor/ambiente";
-import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { modoDaConta } from "@/lib/servidor/modo";
+import { navegacaoDaConta } from "@/lib/servidor/navegacao";
 import { ehAdminLocal } from "@/lib/supabase/admin";
 import {
   BotaoEntrarCabecalho,
   BotaoPublicar,
+  CurriculoDaConta,
   PublicarDaConta,
   PublicarECurriculo,
   type CurriculoNoTopo,
 } from "./botao-publicar";
 import { EntradaComABusca, EntradaDaBusca } from "./busca-do-topo";
 import { BotaoInstalarApp } from "./instalar-app";
-import { LinkTopo } from "./nav-topo";
+import { NavDaConta } from "./nav-topo";
 import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
 import { BotaoAjudaTopo } from "./assistente/botao-ajuda-topo";
@@ -43,14 +45,10 @@ export function Cabecalho() {
           <NavPrincipal />
         </Suspense>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          {/* quem entrou tem o "Instalar o app" no menu da conta e publica pela caixa no alto do feed */}
-          <Suspense fallback={<BotaoInstalarApp variante="cabecalho" />}>
-            <InstalarDoTopo />
+          {/* quem entrou tem o "Instalar o app" e o tema (Aparência) no menu da conta */}
+          <Suspense fallback={<ExtrasDoVisitanteBase />}>
+            <ExtrasDoVisitante />
           </Suspense>
-          {/* no celular, o tema fica no menu da conta (Aparência): o topo só com o sino e a conta */}
-          <span className="hidden md:contents">
-            <BotaoTema />
-          </span>
           {/* No celular, "Publicar" fica na barra de baixo */}
           <Suspense fallback={<BotaoPublicar />}>
             <PublicarDoTopo />
@@ -76,12 +74,13 @@ function NavVisitante() {
   );
 }
 
-/** Quem entrou: a busca no topo e Início, Conversas (com as novas), Conexões e Notícias. */
+/**
+ * Quem entrou: a busca no topo e as abas da atividade da conta, as mesmas da barra de baixo do celular
+ * (as Conexões ficam nas Mensagens; as Notícias, no rodapé).
+ */
 async function NavPrincipal() {
-  const usuario = MODO_DEMO ? null : await obterUsuario();
-  if (!usuario) return <NavVisitante />;
-  const conversas = await conversasPorPessoa().catch(() => null);
-  const novas = (conversas ?? []).reduce((total, c) => total + (c.nao_lidas ?? 0), 0);
+  const conta = await navegacaoDaConta();
+  if (!conta) return <NavVisitante />;
   return (
     <>
       <form action="/" role="search" className="hidden min-w-0 flex-1 lg:flex lg:max-w-sm xl:max-w-md">
@@ -94,22 +93,7 @@ async function NavPrincipal() {
           </Suspense>
         </label>
       </form>
-      <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
-        <LinkTopo href="/">Início</LinkTopo>
-        <LinkTopo href="/painel/conversas">
-          Conversas
-          {novas > 0 && (
-            <span className="min-w-5 rounded-pill bg-like px-1.5 text-center text-caption leading-5 text-on-like">
-              {novas > 99 ? "99+" : novas}
-              <span className="sr-only"> novas</span>
-            </span>
-          )}
-        </LinkTopo>
-        <LinkTopo href="/painel/conexoes">Conexões</LinkTopo>
-        <span className="hidden xl:contents">
-          <LinkTopo href="/noticias">Notícias</LinkTopo>
-        </span>
-      </nav>
+      <NavDaConta modo={conta.modo} numeros={conta.numeros} />
     </>
   );
 }
@@ -128,20 +112,37 @@ function LinkAdmin() {
   );
 }
 
-/** O "Instalar app" do topo é do visitante: quem entrou acha no menu da conta (o topo fica com a busca). */
-async function InstalarDoTopo() {
+/** O "Instalar app" e o tema (só no computador: no celular, o topo fica com a Ajuda e o Entrar). */
+function ExtrasDoVisitanteBase() {
+  return (
+    <>
+      <BotaoInstalarApp variante="cabecalho" />
+      <span className="hidden md:contents">
+        <BotaoTema />
+      </span>
+    </>
+  );
+}
+
+/** O "Instalar app" e o tema do topo são do visitante: quem entrou acha os dois no menu da conta. */
+async function ExtrasDoVisitante() {
   const usuario = MODO_DEMO ? null : await obterUsuario();
-  return usuario ? null : <BotaoInstalarApp variante="cabecalho" />;
+  return usuario ? null : <ExtrasDoVisitanteBase />;
 }
 
 /**
- * "Publicar grátis" e, para quem procura trabalho, o "Currículo" do lado: só para o visitante.
- * Quem entrou publica pela caixa no alto do feed (como no LinkedIn) e tem o currículo no cartão
- * da conta. Quem quer contratar não vê o currículo.
+ * O botão da direita do topo. Visitante: "Publicar grátis" e, para quem procura trabalho, o
+ * "Currículo" do lado (quem quer contratar não vê o currículo). Quem entrou, pela atividade: quem
+ * procura trabalho tem o Currículo; quem contrata, o "Publicar vaga"; quem presta serviço publica na
+ * Vitrine, que está no menu do topo.
  */
 async function PublicarDoTopo() {
   const usuario = MODO_DEMO ? null : await obterUsuario();
-  if (usuario) return <PublicarDaConta />;
+  if (usuario) {
+    const modo = await modoDaConta().catch(() => "trabalhar" as const);
+    if (modo === "trabalhar") return <CurriculoDaConta />;
+    return modo === "contratar" ? <PublicarDaConta /> : null;
+  }
   return <PublicarECurriculo curriculo={await curriculoNoTopo()} />;
 }
 

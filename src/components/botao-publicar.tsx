@@ -21,17 +21,18 @@ export function BotaoPublicar() {
 }
 
 /**
- * "Publicar" do topo para quem entrou (no computador): com contorno, porque o terra da tela fica
+ * "Publicar vaga" do topo de quem contrata (no computador): com contorno, porque o terra da tela fica
  * com a ação principal de cada página (na home, o cartão do topo). No celular, a barra de baixo tem.
  */
 export function PublicarDaConta() {
   const caminho = usePathname();
   if (SEM_BOTAO.some((r) => r.test(caminho))) return null;
   return (
+    // entre o notebook pequeno e o grande, só o ícone (o topo tem as cinco abas e a busca)
     <div className="hidden lg:block">
-      <BotaoLink href="/publicar" variante="secundario" tamanho="sm">
+      <BotaoLink href="/publicar" variante="secundario" tamanho="sm" title="Publicar vaga">
         <Plus aria-hidden />
-        Publicar
+        <span className="max-xl:sr-only">Publicar vaga</span>
       </BotaoLink>
     </div>
   );
@@ -39,6 +40,21 @@ export function PublicarDaConta() {
 
 // Telas que já levam ao currículo (ou que não são para quem procura trabalho)
 const SEM_CURRICULO = [/^\/perfil\/curriculo/, /^\/talentos/, /^\/publicar/, /^\/entrar/, /^\/admin/];
+
+/** "Currículo" do topo de quem procura trabalho (no computador), com contorno como o "Publicar vaga". */
+export function CurriculoDaConta() {
+  const caminho = usePathname();
+  if (SEM_CURRICULO.some((r) => r.test(caminho))) return null;
+  return (
+    // entre o notebook pequeno e o grande, só o ícone (o topo tem as cinco abas e a busca)
+    <div className="hidden lg:block">
+      <BotaoLink href="/perfil/curriculo" variante="secundario" tamanho="sm" title="Currículo">
+        <FileUser aria-hidden />
+        <span className="max-xl:sr-only">Currículo</span>
+      </BotaoLink>
+    </div>
+  );
+}
 
 /** O que o topo oferece para o currículo: cadastrar, o seu (já aparece na aba Talentos) ou nada. */
 export type CurriculoNoTopo = "cadastrar" | "meu" | null;
