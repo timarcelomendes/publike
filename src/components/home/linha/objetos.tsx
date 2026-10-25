@@ -186,10 +186,11 @@ export function TicketDaVaga({
     );
   for (const b of beneficios) etiquetas.push(<li key={b}>{BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}</li>);
   if (outros > 0) {
-    // o "+N" mostra quais são ao passar o mouse ou tocar (fica por cima do link do cartão)
+    // o "+N" mostra quais são ao passar o mouse ou tocar: o balão sai da linha das etiquetas (cabe no
+    // cartão, mesmo com o "+N" no começo de uma linha) e só o "+N" fica por cima do link do cartão
     const nomes = todosBeneficios.slice(beneficios.length).map((x) => nomeBeneficio(x) ?? x);
     etiquetas.push(
-      <li key="mais" className="group/mais relative z-10">
+      <li key="mais" className="group/mais pointer-events-auto">
         <span
           tabIndex={0}
           className="cursor-help rounded-pill outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
@@ -202,7 +203,7 @@ export function TicketDaVaga({
         </span>
         <span
           aria-hidden
-          className="pointer-events-none absolute right-0 bottom-full mb-1.5 hidden w-max max-w-56 rounded-md bg-ink px-2.5 py-1.5 text-[12px] leading-4 font-semibold whitespace-normal text-surface-100 shadow-raised group-focus-within/mais:block group-hover/mais:block"
+          className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden w-max max-w-full rounded-md bg-ink px-2.5 py-1.5 text-[12px] leading-4 font-semibold whitespace-normal text-surface-100 shadow-raised group-focus-within/mais:block group-hover/mais:block"
         >
           {nomes.join(", ")}
         </span>
@@ -251,7 +252,8 @@ export function TicketDaVaga({
           <Resumo texto={item.resumo} />
           <Lugar item={item} tempoDe={tempoDe}>
             {(etiquetas.length > 0 || match) && (
-              <span className="flex flex-wrap items-center gap-1.5 text-ink [&_li]:whitespace-nowrap">
+              // a linha é a referência do balão do "+N"; o toque nas outras etiquetas segue para o link do cartão
+              <span className="pointer-events-none relative flex flex-wrap items-center gap-1.5 text-ink [&_li]:whitespace-nowrap">
                 {match && <SeloMatch match={match} />}
                 <ul className="contents [&>li]:rounded-pill [&>li]:bg-surface-100 [&>li]:px-2.5 [&>li]:py-0.5 [&>li]:text-[13px] [&>li]:leading-[18px] [&>li]:font-semibold">
                   {etiquetas}
