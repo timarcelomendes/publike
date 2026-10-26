@@ -23,7 +23,10 @@ export async function quemProcura(): Promise<Omit<Candidato, "respostas"> | null
 export async function requisitosDaLista(anuncios: AnuncioResumo[]): Promise<Map<string, DetalhesDaVaga>> {
   const ids = anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id);
   if (!ids.length) return new Map();
-  const vagas = await requisitosDasVagas(ids);
+  // de 100 em 100: a lista da linha pode ter mais de 200 (o endereço da consulta não fica comprido demais)
+  const partes: string[][] = [];
+  for (let i = 0; i < ids.length; i += 100) partes.push(ids.slice(i, i + 100));
+  const vagas = (await Promise.all(partes.map((p) => requisitosDasVagas(p)))).flat();
   return new Map(vagas.map((v) => [v.id, v]));
 }
 

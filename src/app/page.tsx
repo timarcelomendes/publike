@@ -210,7 +210,7 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
  */
 /**
  * Na home de quem entrou, a busca e as ordens da lista (Mais perto, Novas, Para você) trocam a linha
- * do tempo pela lista. "Mais relevantes" (o padrão) e "Últimas" não: elas só mudam a ordem da própria linha.
+ * do tempo pela lista. "Relevantes" (o padrão) e "Recentes" (`ultimas`) não: só mudam a ordem da própria linha.
  */
 function ordemDeLista(sp: Awaited<Parametros>) {
   const ordem = primeiro(sp.ordem);

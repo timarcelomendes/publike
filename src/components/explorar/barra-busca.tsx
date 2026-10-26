@@ -16,6 +16,7 @@ import {
   type QuemPublica,
   type Turno,
 } from "@/lib/filtros";
+import { guardarOrdemDaLinha } from "@/lib/linha-do-tempo";
 import { lembrarBusca } from "@/lib/ultima-busca";
 import type { Local } from "@/lib/regioes";
 import type { Regime } from "@/lib/tipos";
@@ -495,7 +496,7 @@ export function FiltrosLista({
   semOrdem?: boolean;
   /** a vitrine: no computador, a ordem fica na linha do título, junto do jeito de ver (OrdemDaLista) */
   ordemSoNoCelular?: boolean;
-  /** a linha do tempo: Mais relevantes (o padrão: a ordem das curtidas e aberturas) ou Últimas (a mais nova antes) */
+  /** a linha do tempo: Relevantes para você (o padrão: a ordem da pessoa) ou Recentes (a mais nova antes) */
   ordemDaLinha?: boolean;
   /** o painel dos filtros da linha do tempo: cada filtro com o nome em cima, em grade (nada rola de lado) */
   comRotulos?: boolean;
@@ -627,12 +628,16 @@ export function FiltrosLista({
         <Seletor
           aria-label="Ordem"
           value={filtros.ordem === "ultimas" ? "ultimas" : "relevantes"}
-          onChange={(e) => ir({ ordem: e.target.value === "ultimas" ? "ultimas" : "relevantes" })}
+          onChange={(e) => {
+            const ordem = e.target.value === "ultimas" ? "ultimas" : "relevantes";
+            guardarOrdemDaLinha(ordem);
+            ir({ ordem });
+          }}
           className={seletor}
           envoltorio="shrink-0"
         >
-          <option value="relevantes">Mais relevantes</option>
-          <option value="ultimas">Últimas</option>
+          <option value="relevantes">Relevantes para você</option>
+          <option value="ultimas">Recentes</option>
         </Seletor>
       )}
       {!semOrdem && (

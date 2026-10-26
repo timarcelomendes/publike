@@ -213,15 +213,16 @@ export async function LinhaDoTempo({
   const blocos: ReactNode[] = [];
   const contam: boolean[] = [];
   let n = 0;
-  for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes), d.aba === "tudo")) {
+  for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes, d.porQue), d.aba === "tudo")) {
     if (p.tipo === "dia") {
       blocos.push(
-        // "Mais relevantes": no celular, a ordem logo acima já diz (o título fica para o leitor de tela)
+        // "Relevantes para você": no celular, a ordem logo acima já diz (o título fica para o leitor de tela)
         <div key={p.chave} className={`${GRADE} items-center pt-2 ${p.chave === "relevantes" ? "max-sm:sr-only" : ""}`}>
           <span className="hidden sm:block" />
           <Ponto />
-          <h2 className="flex items-baseline gap-2.5 font-display text-[22px] leading-7 font-bold tracking-[-0.01em] sm:text-[24px] sm:leading-[30px]">
-            {p.titulo}
+          {/* o título numa linha só; o que vem ao lado (a data ou o porquê da ordem) quebra para baixo inteiro */}
+          <h2 className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 font-display text-[22px] leading-7 font-bold tracking-[-0.01em] sm:text-[24px] sm:leading-[30px]">
+            <span className="whitespace-nowrap">{p.titulo}</span>
             <span className="font-sans text-body-sm font-medium tracking-normal text-ink-muted">{p.data}</span>
           </h2>
         </div>,

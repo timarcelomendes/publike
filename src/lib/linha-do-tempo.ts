@@ -116,6 +116,17 @@ export function quandoFoi(quando: number, agora: number) {
   return soData.format(new Date(quando));
 }
 
+/**
+ * A última ordem que a pessoa escolheu na linha ("relevantes" ou "ultimas"): o botão da ordem guarda, e a
+ * home sem `?ordem=` abre nela.
+ */
+export const COOKIE_ORDEM_DA_LINHA = "publike_ordem_linha";
+
+/** Guarda a ordem escolhida (no navegador): a home sem `?ordem=` abre nela da próxima vez, neste aparelho. */
+export function guardarOrdemDaLinha(ordem: "relevantes" | "ultimas") {
+  document.cookie = `${COOKIE_ORDEM_DA_LINHA}=${ordem}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+}
+
 /** As partes da linha, na ordem: separador de dia, a marca e os itens. */
 export type ParteDaLinha<T> =
   | { tipo: "dia"; chave: string; titulo: string; data: string }
@@ -123,18 +134,20 @@ export type ParteDaLinha<T> =
   | { tipo: "item"; chave: string; item: ItemDaLinha<T> };
 
 /**
- * Ordena do mais novo para o mais antigo e põe os separadores de dia e a marca no lugar. Nas mais
- * relevantes, fica a ordem que veio (a do banco), com um título só, sem dias nem a marca.
+ * Ordena do mais novo para o mais antigo e põe os separadores de dia e a marca no lugar. Nas relevantes
+ * para você, fica a ordem que veio (a da pessoa), com um título só, sem dias nem a marca; `porQue` diz o
+ * que a ordem leva em conta.
  */
 export function montarLinha<T>(
   itens: ItemDaLinha<T>[],
   marca: number | null,
   agora: number,
   relevantes = false,
+  porQue: string | null = null,
 ): ParteDaLinha<T>[] {
   if (relevantes) {
     return [
-      { tipo: "dia", chave: "relevantes", titulo: "Mais relevantes", data: "mais curtidas e vistas em 30 dias" },
+      { tipo: "dia", chave: "relevantes", titulo: "Relevantes para você", data: porQue ?? "" },
       ...itens.map((item) => ({ tipo: "item" as const, chave: `${item.tipo}-${item.id}`, item })),
     ];
   }

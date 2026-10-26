@@ -4,6 +4,7 @@ import { Briefcase, Layers, MessageSquareText, SlidersHorizontal, Wrench, type L
 import Link from "next/link";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { escolherAbaDaHome } from "@/lib/acoes/home";
+import { guardarOrdemDaLinha } from "@/lib/linha-do-tempo";
 
 export const EVENTO_FILTROS = "publike-filtros-linha";
 
@@ -40,7 +41,7 @@ export function AbasDaLinha({
   textoDoRaio: string;
   /** os filtros da lista (FiltrosLista) e o "Limpar filtros" */
   filtros: ReactNode;
-  /** Últimas ou Mais relevantes (OrdemDaLinha): fora do painel, sempre à vista logo acima da lista */
+  /** Relevantes ou Recentes (OrdemDaLinha): fora do painel, sempre à vista logo acima da lista */
   ordem?: ReactNode;
 }) {
   const [aberto, setAberto] = useState(mudados > 0 || abrirFiltros);
@@ -139,7 +140,10 @@ export function AbasDaLinha({
   );
 }
 
-/** A ordem da linha do tempo, à vista (não dentro dos Filtros): Mais relevantes, o padrão, ou Últimas. */
+/**
+ * A ordem da linha do tempo, à vista (não dentro dos Filtros): Relevantes (para você: o currículo, perto de
+ * casa, o que a pessoa segue e o que é novo), o padrão, ou Recentes. A escolha fica guardada.
+ */
 export function OrdemDaLinha({
   relevantes,
   ultimas,
@@ -161,17 +165,19 @@ export function OrdemDaLinha({
           href={maisRelevantes}
           scroll={false}
           aria-current={relevantes ? "true" : undefined}
+          onClick={() => guardarOrdemDaLinha("relevantes")}
           className={opcao(relevantes)}
         >
-          Mais relevantes
+          Relevantes<span className="sr-only"> para você</span>
         </Link>
         <Link
           href={ultimas}
           scroll={false}
           aria-current={relevantes ? undefined : "true"}
+          onClick={() => guardarOrdemDaLinha("ultimas")}
           className={opcao(!relevantes)}
         >
-          Últimas
+          Recentes
         </Link>
       </span>
     </nav>

@@ -80,6 +80,32 @@ const HORARIOS: { valor: string; nome: string; teste: RegExp }[] = [
 
 const PEDE_CNH = /\bcnh\b|habilitac|motorista|\bmoto\b|motoboy|motociclista|entregador|carro proprio/;
 
+/**
+ * Quanto a vaga é da área da pessoa (0 a 30): o que ela faz, as experiências, os cursos e o que ela
+ * procura, no título (15 cada palavra) ou na descrição e na categoria (5). `exemplo`: a palavra que bateu.
+ * O "Para você" do Descobrir e o "Relevantes para você" da linha do tempo usam a mesma conta.
+ */
+export function pontosDaArea(
+  v: { titulo: string; descricao?: string | null; categoria: string },
+  q: Pick<QuemProcura, "servicos" | "cargos" | "cursos" | "curso" | "procuro">,
+) {
+  const dela = chaves([...q.servicos, ...q.cargos, ...q.cursos, q.curso ?? "", q.procuro ?? ""].join(" "));
+  const titulo = chaves(v.titulo);
+  const resto = chaves(`${v.descricao ?? ""} ${categoria(v.categoria).nome}`);
+  let area = 0;
+  let exemplo: string | null = null;
+  for (const [chave, palavra] of dela) {
+    if (titulo.has(chave)) {
+      area += 15;
+      exemplo ??= palavra;
+    } else if (resto.has(chave)) {
+      area += 5;
+      exemplo ??= palavra;
+    }
+  }
+  return { area: Math.min(30, area), exemplo };
+}
+
 export function pontuar(v: VagaDescobrir, q: QuemProcura | null, local: Local | null, ponto: { lat: number; lng: number } | null, agora: number): VagaIndicada {
   const motivos: Motivo[] = [];
   let nota = 0;
@@ -118,21 +144,7 @@ export function pontuar(v: VagaDescobrir, q: QuemProcura | null, local: Local | 
 
   // área: o que a pessoa faz, as experiências, os cursos e o que ela procura
   if (q) {
-    const dela = chaves([...q.servicos, ...q.cargos, ...q.cursos, q.curso ?? "", q.procuro ?? ""].join(" "));
-    const titulo = chaves(v.titulo);
-    const resto = chaves(`${v.descricao} ${categoria(v.categoria).nome}`);
-    let area = 0;
-    let exemplo: string | null = null;
-    for (const [chave, palavra] of dela) {
-      if (titulo.has(chave)) {
-        area += 15;
-        exemplo ??= palavra;
-      } else if (resto.has(chave)) {
-        area += 5;
-        exemplo ??= palavra;
-      }
-    }
-    area = Math.min(30, area);
+    const { area, exemplo } = pontosDaArea(v, q);
     nota += area;
     if (exemplo && area >= 10) motivos.push({ tipo: "area", texto: `Combina com “${exemplo}”` });
   }

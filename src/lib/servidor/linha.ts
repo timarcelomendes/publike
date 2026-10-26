@@ -1,17 +1,38 @@
 import "server-only";
+import { cookies } from "next/headers";
 import { cache } from "react";
 import { vagaNoTurno, type Aderencia } from "@/lib/aderencia";
 import {
   buscarAnuncios,
   listarMatches,
+  listarMinhasCurtidas,
+  minhasBuscasSalvas,
+  obterMeuCurriculo,
   obterMeuPerfil,
+  obterProcuro,
   obterUsuario,
   respostaDeQuemPublica,
   vagasSalvasEntre,
   type DetalhesDaVaga,
 } from "@/lib/dados";
+import { meusSeguidos } from "@/lib/dados-social";
+import { semAcento } from "@/lib/descobrir";
 import { lerFiltros, type Filtros } from "@/lib/filtros";
-import { ACEITE_NA_LINHA, marcaDaVisita, SESSAO_DA_HOME, novidades, type ItemDaLinha } from "@/lib/linha-do-tempo";
+import {
+  ACEITE_NA_LINHA,
+  COOKIE_ORDEM_DA_LINHA,
+  marcaDaVisita,
+  SESSAO_DA_HOME,
+  novidades,
+  type ItemDaLinha,
+} from "@/lib/linha-do-tempo";
+import {
+  categoriasDasCurtidas,
+  ordenarPorRelevancia,
+  porQueDaOrdem,
+  SEM_SINAIS,
+  type SinaisDaPessoa,
+} from "@/lib/relevancia";
 import { obterLocal } from "@/lib/local";
 import type { Local } from "@/lib/regioes";
 import { partirDoLocal } from "@/lib/servidor/busca-salva";
@@ -24,7 +45,7 @@ import { noticiasPublicadas } from "@/lib/servidor/noticias";
 import type { Noticia } from "@/lib/noticias";
 import { recadosDaLinha, type Recado } from "@/lib/servidor/recados";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import type { AnuncioResumo, Match } from "@/lib/tipos";
+import type { AnuncioResumo, Match, MeuPerfil } from "@/lib/tipos";
 import type { Resposta } from "@/lib/resposta";
 import type { OrigemMapa, PontoMapa } from "@/components/mapa/mapa-anuncios";
 import { deslocamentoCurto } from "@/lib/deslocamento";
@@ -168,8 +189,13 @@ export type DadosDaLinha = {
   aba: AbaDaLinha;
   /** os filtros da busca (a ordem: "ultimas", do mais novo para o mais antigo, ou "relevantes") */
   filtros: Filtros;
-  /** "Mais relevantes": os anúncios mais curtidos e abertos em 30 dias, na ordem do banco (sem dias nem a marca) */
+  /**
+   * "Relevantes para você": os anúncios na ordem desta pessoa (o currículo, perto de casa, o que ela segue
+   * e o que é novo: `ordenarPorRelevancia`), sem dias nem a marca
+   */
   relevantes: boolean;
+  /** nas relevantes, o que a ordem leva em conta (a linha embaixo do título) */
+  porQue: string | null;
   /** os mesmos, antes de partir da casa (para a barra e os links) */
   filtrosDaBusca: Filtros;
   tempoDe: "casa" | "voce" | null;
@@ -217,10 +243,10 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     ...lidos,
     tipo: aba === "vaga" || aba === "servico" ? aba : null,
     tudo: aba === "tudo" || aba === "recado",
-    // as mais relevantes (curtidas e aberturas dos últimos 30 dias), o padrão; ou, se a pessoa escolheu,
-    // do mais novo para o mais antigo, com as vagas curtidas na hora da última curtida. As outras ordens
-    // abrem a lista.
-    ordem: lidos.ordem === "ultimas" ? "ultimas" : "relevantes",
+    // "Relevantes para você" (o padrão) ou "Recentes" (do mais novo para o mais antigo, com as vagas
+    // curtidas na hora da última curtida): a da URL; sem ela, a última que a pessoa escolheu (o cookie,
+    // que o botão da ordem guarda). As outras ordens abrem a lista.
+    ordem: ordemDaLinha(primeiro(sp.ordem), (await cookies()).get(COOKIE_ORDEM_DA_LINHA)?.value),
     regime: aba === "servico" ? null : lidos.regime,
     turno: aba === "vaga" ? lidos.turno : null,
   };
@@ -240,7 +266,11 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
         ).catch(() => [])
       : null;
   const [encontrados, quem, matchesDaConta, recados, perfil] = await Promise.all([
-    aba === "recado" ? Promise.resolve([]) : buscarAnuncios(filtros, agora, local, usuarioId),
+    aba === "recado"
+      ? Promise.resolve([])
+      : relevantes
+        ? anunciosParaRelevantes(filtros, agora, local, usuarioId)
+        : buscarAnuncios(filtros, agora, local, usuarioId),
     usuario && (aba === "tudo" || aba === "vaga") ? quemProcura() : Promise.resolve(null),
     usuario ? listarMatches().catch(() => []) : Promise.resolve([]),
     usuario ? recadosDaLinha(filtros) : Promise.resolve([]),
@@ -248,18 +278,28 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   ]);
   const marca = marcaDaVisita(prefs.vistaEm, prefs.marcaEm, agora);
   const visitaNova = prefs.vistaEm !== null && agora - new Date(prefs.vistaEm).getTime() > SESSAO_DA_HOME;
-  const requisitos = await requisitosDaLista(encontrados).catch(() => null);
+  const [requisitos, sinais] = await Promise.all([
+    requisitosDaLista(encontrados).catch(() => null),
+    relevantes && usuario
+      ? sinaisDaPessoa(
+          perfil,
+          encontrados.map((a) => a.id),
+        ).catch(() => SEM_SINAIS)
+      : Promise.resolve(SEM_SINAIS),
+  ]);
   const turno = filtros.turno;
-  const anuncios = (
+  const filtrados =
     turno && requisitos
       ? encontrados.filter((a) => {
           const v = requisitos.get(a.id);
           return a.tipo === "vaga" && v !== undefined && vagaNoTurno(v, turno);
         })
-      : encontrados
-  ).slice(0, LIMITE);
+      : encontrados;
+  // o % de match de todas (nas relevantes, ele entra na ordem antes de cortar a lista)
   const matches =
-    usuarioId && quem && requisitos ? matchDasVagas(anuncios, requisitos, quem, usuarioId, agora) : new Map();
+    usuarioId && quem && requisitos ? matchDasVagas(filtrados, requisitos, quem, usuarioId, agora) : new Map();
+  const naOrdem = relevantes ? ordenarDaPessoa(filtrados, requisitos, sinais, matches, agora) : filtrados;
+  const anuncios = naOrdem.slice(0, LIMITE);
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId);
   const [resposta, salvas, logos, textosDosServicos] = await Promise.all([
     respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map<string, Resposta>()),
@@ -314,8 +354,12 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     quando: m.match_em,
     dados: { aceite: m, direto: diretos.has(m.anuncio_id) },
   }));
-  // nas mais relevantes, só os anúncios (na ordem do banco): aceites, recados e notícias não têm pontos
-  if (aba === "tudo" && !relevantes) itens.push(...aceites);
+  // os aceites: nas relevantes, em cima de tudo (ninguém é mais relevante do que quem aceitou você); nas
+  // recentes, na hora. Recados e notícias ficam só nas recentes (não têm como medir para a pessoa)
+  if (aba === "tudo") {
+    if (relevantes) itens.unshift(...aceites);
+    else itens.push(...aceites);
+  }
   // os recados no ar (e os da pessoa em revisão): em Tudo e em Recados
   const itensDeRecado: ItemDaLinha<DadoDaLinha>[] = recados.map((r) => ({
     tipo: "recado",
@@ -387,6 +431,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     aba,
     filtros,
     relevantes,
+    porQue: relevantes ? porQueDaOrdem(sinais, Boolean(quem)) : null,
     filtrosDaBusca,
     tempoDe: origemDoTempo(filtros, local),
     itens,
@@ -397,6 +442,85 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     autorTipo: perfil?.tipo ?? null,
   };
 });
+
+/** A ordem da linha: a da URL ("relevantes" ou "ultimas"); sem ela, a guardada; sem nada, as relevantes. */
+function ordemDaLinha(daUrl: string | undefined, guardada: string | undefined): "relevantes" | "ultimas" {
+  if (daUrl === "relevantes" || daUrl === "ultimas") return daUrl;
+  return guardada === "ultimas" ? "ultimas" : "relevantes";
+}
+
+/**
+ * Os anúncios para a ordem da pessoa: os mais novos e os mais perto (duas buscas, sem repetir), para a
+ * conta dela escolher entre eles. A ordem do banco ("relevantes") é a das curtidas de todos: aqui não serve.
+ */
+async function anunciosParaRelevantes(
+  filtros: Filtros,
+  agora: number,
+  local: Local | null,
+  usuarioId: string | null,
+): Promise<AnuncioResumo[]> {
+  const [novos, perto] = await Promise.all([
+    buscarAnuncios({ ...filtros, ordem: "ultimas" }, agora, local, usuarioId),
+    buscarAnuncios({ ...filtros, ordem: "perto" }, agora, local, usuarioId).catch(() => []),
+  ]);
+  const vistos = new Set(novos.map((a) => a.id));
+  return [...novos, ...perto.filter((a) => !vistos.has(a.id))];
+}
+
+/**
+ * O que a linha sabe da pessoa para a ordem dela: o que ela faz e procura (como no Descobrir), quem e onde
+ * ela segue, as buscas com aviso, as categorias do que já curtiu e as vagas salvas entre `ids`.
+ */
+async function sinaisDaPessoa(perfil: MeuPerfil | null, ids: string[]): Promise<SinaisDaPessoa> {
+  const [curriculo, procuro, seguidos, buscas, curtidas, salvas] = await Promise.all([
+    obterMeuCurriculo().catch(() => null),
+    obterProcuro().catch(() => null),
+    meusSeguidos().catch(() => []),
+    minhasBuscasSalvas().catch(() => []),
+    listarMinhasCurtidas().catch(() => []),
+    vagasSalvasEntre(ids).catch(() => new Set<string>()),
+  ]);
+  const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
+  return {
+    empresa,
+    eu: perfil?.id ?? null,
+    quem: empresa
+      ? null
+      : {
+          servicos: [
+            ...(perfil?.servicos ?? []),
+            ...(curriculo?.titulo ? [curriculo.titulo] : []),
+            ...(curriculo?.habilidades ?? []),
+          ],
+          cargos: curriculo?.experiencias.map((e) => e.cargo) ?? [],
+          cursos: curriculo?.cursos ?? [],
+          curso: curriculo?.curso ?? null,
+          escolaridade: curriculo?.escolaridade ?? null,
+          cnh: curriculo?.cnh ?? null,
+          disponibilidade: curriculo?.disponibilidade ?? [],
+          procuro,
+          temCurriculo: Boolean(curriculo),
+        },
+    autores: new Set(seguidos.map((x) => x.alvo_perfil).filter((x): x is string => Boolean(x))),
+    bairros: new Set(seguidos.map((x) => x.bairro_chave).filter((x): x is string => Boolean(x))),
+    buscas: buscas.map((b) => ({ texto: b.texto ? semAcento(b.texto).trim() || null : null, categoria: b.categoria })),
+    categorias: categoriasDasCurtidas(curtidas),
+    salvas,
+  };
+}
+
+/** Os anúncios na ordem da pessoa (a vaga leva a descrição, para a área de quem não tem currículo). */
+function ordenarDaPessoa(
+  anuncios: AnuncioResumo[],
+  requisitos: Map<string, DetalhesDaVaga> | null,
+  sinais: SinaisDaPessoa,
+  matches: Map<string, Aderencia>,
+  agora: number,
+): AnuncioResumo[] {
+  const porId = new Map(anuncios.map((a) => [a.id, a]));
+  const comDescricao = anuncios.map((a) => ({ ...a, descricao: requisitos?.get(a.id)?.descricao ?? null }));
+  return ordenarPorRelevancia(comDescricao, sinais, matches, agora).map((a) => porId.get(a.id)!);
+}
 
 /** A chave do `dadosDaLinha` a partir dos parâmetros da página. */
 export const chaveDaLinha = (sp: Parametros) =>

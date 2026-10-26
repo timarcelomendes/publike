@@ -177,7 +177,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
       : d.novas.tudo > 0
         ? `${d.novas.tudo === 1 ? "1 novidade" : `${d.novas.tudo > 99 ? "99+" : d.novas.tudo} novidades`} desde ${quandoFoi(d.marca, d.agora)}`
         : `Nada novo desde ${quandoFoi(d.marca, d.agora)}`;
-  // os links das abas e dos filtros: com "Mais relevantes", ela continua; sem, a linha é a das últimas
+  // os links das abas e dos filtros levam a ordem da linha (Relevantes ou Recentes): ela continua a mesma
   const base = { ...d.filtrosDaBusca, ordem: d.relevantes ? ("relevantes" as const) : ("ultimas" as const) };
   // a ordem fica à vista, fora dos Filtros: não conta como filtro mudado
   const mudados = filtrosMudados(d.filtrosDaBusca, true);
