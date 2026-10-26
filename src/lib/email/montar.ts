@@ -52,6 +52,22 @@ export function escaparHtml(texto: string) {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * O admin só abre no computador do dono (`npm run dev`), nunca no site publicado: os avisos para a
+ * equipe que levam ao admin (/admin/...) apontam para o endereço local. `PUBLIKE_ENDERECO_ADMIN` troca
+ * (ex.: outra porta); a moderação, que os moderadores abrem no site, continua no endereço do site.
+ */
+const ENDERECO_DO_ADMIN = (process.env.PUBLIKE_ENDERECO_ADMIN || "http://localhost:3000").replace(/\/+$/, "");
+const NO_SITE_PUBLICADO = /^\/admin\/(denuncias|anuncios)(\/|$|[?#])/;
+
+const DICA_ADMIN_LOCAL =
+  "Abre no seu computador, com o admin ligado (npm run dev). Se pedir, entre pelo link que aparece no terminal.";
+
+/** O link vai para o admin no computador do dono (e não para o site publicado)? */
+export function linkDoAdminLocal(link: string) {
+  return link.startsWith(`${ENDERECO_DO_ADMIN}/admin`);
+}
+
 /** Valores das variáveis como texto (o link é montado com o endereço do site). */
 export function valoresDoEmail(dados: unknown, siteUrl: string): Record<string, string> {
   const valores: Record<string, string> = {};
@@ -63,7 +79,8 @@ export function valoresDoEmail(dados: unknown, siteUrl: string): Record<string, 
   }
   const caminho =
     valores.caminho && valores.caminho.startsWith("/") && !valores.caminho.startsWith("//") ? valores.caminho : "/";
-  valores.link = `${siteUrl.replace(/\/+$/, "")}${caminho}`;
+  const doAdmin = caminho.startsWith("/admin") && !NO_SITE_PUBLICADO.test(caminho);
+  valores.link = `${doAdmin ? ENDERECO_DO_ADMIN : siteUrl.replace(/\/+$/, "")}${caminho}`;
   return valores;
 }
 
@@ -162,12 +179,15 @@ export function montarEmail(
   const partes = paragrafos(modelo.corpo, valores);
   const botao = modelo.botao?.trim() ? preencher(modelo.botao, valores).trim() : null;
   const link = valores.link;
+  // o admin é local: o botão só abre no computador com o Publike rodando
+  const dicaDoAdmin = botao && linkDoAdminLocal(link) ? DICA_ADMIN_LOCAL : null;
   const textoRodape = rodape(modelo, siteUrl, paraSair(dados));
 
   const links = extras.filter((x) => x.rotulo.trim() && /^https:\/\/[^\s"'<>\\]+$/.test(x.link));
   const texto = [
     ...partes,
     botao ? `${botao}: ${link}` : null,
+    dicaDoAdmin,
     ...links.map((x) => `${x.rotulo}: ${x.link}`),
     "—",
     textoRodape.texto,
@@ -185,6 +205,9 @@ export function montarEmail(
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 4px;"><tr><td style="border-radius:8px;background:${CORES.terra};">` +
       `<a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">${escaparHtml(botao)}</a>` +
       `</td></tr></table>`
+    : "";
+  const htmlDica = dicaDoAdmin
+    ? `<p style="margin:8px 0 0;font-size:13px;line-height:1.5;color:${CORES.apagado};">${escaparHtml(dicaDoAdmin)}</p>`
     : "";
   const htmlExtras = links
     .map(
@@ -209,7 +232,7 @@ export function montarEmail(
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
 ${cabecalho}
 <tr><td style="background:${CORES.cartao};border:1px solid ${CORES.linha};border-radius:12px;padding:28px 24px;">
-${htmlParagrafos}${htmlBotao}${htmlExtras}
+${htmlParagrafos}${htmlBotao}${htmlDica}${htmlExtras}
 </td></tr>
 <tr><td style="padding:16px 4px 0;font-size:13px;line-height:1.5;color:${CORES.apagado};">${textoRodape.html}</td></tr>
 </table>
