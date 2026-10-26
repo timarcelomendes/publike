@@ -2,6 +2,7 @@ import { z } from "zod";
 import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
 import { MAX_HABILIDADES } from "./talentos";
+import { arrumarEstudos, experienciaEmBranco } from "./estudos";
 import { lerNumeroBR } from "./numero";
 import { CAIXA_DO_PUBLIKE as CAIXA, noPublike, ONDE_FUNCIONA } from "./pracas";
 import {
@@ -645,7 +646,10 @@ const esquemaEstudo = z.object({
 
 export const esquemaCurriculo = z
   .object({
-    escolaridade: z.enum(VALORES_ESCOLARIDADE, { error: "Escolha até onde você estudou." }),
+    // opcional: sem ele o currículo salva assim mesmo (a força do currículo pede depois)
+    escolaridade: z
+      .union([z.enum(VALORES_ESCOLARIDADE), z.literal("")], { error: "Escolha até onde você estudou." })
+      .transform((v) => v || null),
     curso: z
       .string()
       .trim()
@@ -706,25 +710,34 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
     return { ok: false, erros: { geral: "Algo deu errado com o formulário. Recarregue a página." } };
   }
   const textoDe = (v: unknown) => (typeof v === "string" ? v : "");
-  const leitura = esquemaCurriculo.safeParse({
-    escolaridade: campo(formData, "escolaridade"),
-    curso: campo(formData, "curso") ?? "",
-    experiencias: (Array.isArray(experiencias) ? experiencias : []).map((x) => {
-      const o = (x ?? {}) as Record<string, unknown>;
-      return {
-        cargo: textoDe(o.cargo),
-        onde: textoDe(o.onde),
-        inicio: textoDe(o.inicio),
-        atual: o.atual === true,
-        fim: textoDe(o.fim) || null,
-        descricao: textoDe(o.descricao),
-      };
-    }),
-    estudos: (Array.isArray(estudos) ? estudos : []).map((x) => {
+  // o que ficou pela metade não trava: experiência em branco sai; estudo a mais pela metade sai ou vai
+  // para Cursos (arrumarEstudos, o mesmo que o formulário faz antes de mandar)
+  const listaDeCursos = (Array.isArray(cursos) ? cursos : []).map(textoDe).filter((c) => c.trim());
+  const arrumados = arrumarEstudos(
+    (Array.isArray(estudos) ? estudos : []).map((x) => {
       const o = (x ?? {}) as Record<string, unknown>;
       return { nivel: textoDe(o.nivel), curso: textoDe(o.curso) };
     }),
-    cursos: (Array.isArray(cursos) ? cursos : []).map(textoDe).filter((c) => c.trim()),
+    listaDeCursos,
+  );
+  const leitura = esquemaCurriculo.safeParse({
+    escolaridade: campo(formData, "escolaridade") ?? "",
+    curso: campo(formData, "curso") ?? "",
+    experiencias: (Array.isArray(experiencias) ? experiencias : [])
+      .map((x) => {
+        const o = (x ?? {}) as Record<string, unknown>;
+        return {
+          cargo: textoDe(o.cargo),
+          onde: textoDe(o.onde),
+          inicio: textoDe(o.inicio),
+          atual: o.atual === true,
+          fim: textoDe(o.fim) || null,
+          descricao: textoDe(o.descricao),
+        };
+      })
+      .filter((x) => !experienciaEmBranco(x)),
+    estudos: arrumados.estudos,
+    cursos: arrumados.cursos,
     cnh: campo(formData, "cnh") || null,
     disponibilidade: formData.getAll("disponibilidade").filter((v): v is string => typeof v === "string"),
     arquivo: campo(formData, "arquivo") || null,

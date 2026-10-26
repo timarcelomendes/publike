@@ -1,4 +1,4 @@
-import { ESCOLARIDADES, ESCOLARIDADES_COM_CURSO, MAX_ESTUDOS, nomeEscolaridade } from "./constantes";
+import { ESCOLARIDADES, ESCOLARIDADES_COM_CURSO, MAX_CURSOS, MAX_ESTUDOS, nomeEscolaridade } from "./constantes";
 import type { Estudo } from "./tipos";
 
 // Os estudos do currículo: "Até onde você estudou" (o mais alto, com o curso) e os outros
@@ -43,4 +43,41 @@ export function escolaridadeMaisAlta(c: { escolaridade: string | null; estudos?:
     (n): n is string => typeof n === "string" && ORDEM.includes(n),
   );
   return niveis.sort((a, b) => ORDEM.indexOf(b) - ORDEM.indexOf(a))[0] ?? null;
+}
+
+/**
+ * O que ficou pela metade nos estudos a mais não trava o currículo (salvar sempre dá certo): o estudo
+ * vazio sai, o curso sem nível de técnico, faculdade ou pós vai para Cursos (é um curso livre) e o nível
+ * sem curso sai (o "Até onde você estudou" já guarda o nível). `movidos`: os cursos que foram para Cursos.
+ */
+export function arrumarEstudos<T extends { nivel: string; curso: string }>(
+  estudos: T[],
+  cursos: string[],
+): { estudos: T[]; cursos: string[]; movidos: string[] } {
+  const ficam: T[] = [];
+  const lista = [...cursos];
+  const movidos: string[] = [];
+  for (const e of estudos) {
+    const curso = e.curso.replace(/\s+/g, " ").trim();
+    const comNivel = ESCOLARIDADES_COM_CURSO.includes(e.nivel);
+    if (comNivel && curso.length >= 2) ficam.push(e);
+    else if (!comNivel && curso.length >= 2) {
+      const jaTem = lista.some((c) => c.toLowerCase() === curso.toLowerCase());
+      if (!jaTem && lista.length < MAX_CURSOS) lista.push(curso.slice(0, 80));
+      movidos.push(curso);
+    }
+  }
+  return { estudos: ficam, cursos: lista, movidos };
+}
+
+/** A experiência que ficou em branco (tocou em "Pôr experiência" e não preencheu nada) não trava o salvar. */
+export function experienciaEmBranco(x: {
+  cargo: string;
+  onde: string;
+  inicio: string;
+  fim: string | null;
+  atual: boolean;
+  descricao: string;
+}) {
+  return !x.cargo.trim() && !x.onde.trim() && !x.inicio && !x.fim && !x.atual && !x.descricao.trim();
 }

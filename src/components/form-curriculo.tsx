@@ -47,7 +47,7 @@ import {
   MAX_FOTOS_CURRICULO,
   resumoDaLeitura,
 } from "@/lib/arquivo-curriculo";
-import { NIVEIS_DE_OUTRO_ESTUDO } from "@/lib/estudos";
+import { arrumarEstudos, experienciaEmBranco, NIVEIS_DE_OUTRO_ESTUDO } from "@/lib/estudos";
 import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
 import { AvisoAoSair } from "./ui/aviso-ao-sair";
@@ -673,6 +673,13 @@ export function FormCurriculo({
 
   function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // o que ficou pela metade não trava o salvar (o servidor faz o mesmo): o "Outro estudo" vazio ou
+    // sem curso sai, o curso sem nível vai para Cursos e a experiência em branco sai; a tela acompanha
+    const arrumados = arrumarEstudos(estudos, cursos);
+    const experienciasValidas = experiencias.filter((x) => !experienciaEmBranco(x));
+    if (arrumados.estudos.length !== estudos.length) setEstudos(arrumados.estudos);
+    if (arrumados.cursos.length !== cursos.length) setCursos(arrumados.cursos);
+    if (experienciasValidas.length !== experiencias.length) setExperiencias(experienciasValidas);
     if (semConta) {
       // sem conta: guarda no aparelho e entra; depois de entrar, a pessoa confere e salva
       const pendente = novoCurso.replace(/\s+/g, " ").trim();
@@ -685,9 +692,9 @@ export function FormCurriculo({
             : habilidades,
         escolaridade,
         curso,
-        estudos,
-        experiencias,
-        cursos: pendente.length >= 2 ? [...cursos, pendente] : cursos,
+        estudos: arrumados.estudos,
+        experiencias: experienciasValidas,
+        cursos: pendente.length >= 2 ? [...arrumados.cursos, pendente] : arrumados.cursos,
         cnh,
         disponibilidade,
         arquivo: null,
@@ -700,7 +707,7 @@ export function FormCurriculo({
     dados.set(
       "experiencias",
       JSON.stringify(
-        experiencias.map((x) => ({
+        experienciasValidas.map((x) => ({
           cargo: x.cargo,
           onde: x.onde,
           inicio: x.inicio,
@@ -712,8 +719,8 @@ export function FormCurriculo({
     );
     // o que ficou digitado e não foi adicionado também vale
     const pendente = novoCurso.replace(/\s+/g, " ").trim();
-    dados.set("cursos", JSON.stringify(pendente.length >= 2 ? [...cursos, pendente] : cursos));
-    dados.set("estudos", JSON.stringify(estudos.map(({ nivel, curso }) => ({ nivel, curso }))));
+    dados.set("cursos", JSON.stringify(pendente.length >= 2 ? [...arrumados.cursos, pendente] : arrumados.cursos));
+    dados.set("estudos", JSON.stringify(arrumados.estudos.map(({ nivel, curso }) => ({ nivel, curso }))));
     const habilidadePendente = novaHabilidade.replace(/\s+/g, " ").trim();
     dados.set(
       "habilidades",
@@ -927,6 +934,9 @@ export function FormCurriculo({
                     ))}
                   </Seletor>
                   {erro("nivel") && <MensagemErro>{erro("nivel")}</MensagemErro>}
+                  <p className="text-body-sm text-ink-muted">
+                    Técnico, faculdade ou pós. Curso livre (informática, NR-35…) vai em Cursos, mais abaixo.
+                  </p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Rotulo htmlFor={id("curso")}>Qual curso</Rotulo>

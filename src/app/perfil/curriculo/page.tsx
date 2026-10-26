@@ -224,6 +224,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
               no fim da página.
             </p>
           )}
+          {/* salvou sem dizer até onde estudou (não trava o salvar): o lembrete fica aqui */}
+          {curriculo && !curriculo.escolaridade && (
+            <p className="mt-2">
+              Falta dizer até onde você estudou: muitas vagas pedem.{" "}
+              <a href="#escolaridade" className="text-label underline">
+                Pôr agora
+              </a>
+            </p>
+          )}
           <p className="mt-3">
             <Link href="/?tipo=vaga" className="text-label underline">
               Ver vagas perto de mim
