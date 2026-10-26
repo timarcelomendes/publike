@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { AvisarEmpresa } from "@/components/admin/avisar-empresa";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
-import { Vazio } from "@/components/ui/basicos";
+import { Selo, Vazio } from "@/components/ui/basicos";
 import { empresasComGenteEsperando, type PessoaEsperando } from "@/lib/admin/dados";
 import { formatarTelefone, plural, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
@@ -30,6 +30,7 @@ async function Conteudo() {
   const agora = await agoraDaRequisicao();
   const empresas = await empresasComGenteEsperando(c, agora);
   const pessoas = empresas.reduce((t, e) => t + e.esperando.length + e.semConversa.length, 0);
+  const semEmail = empresas.filter((e) => e.semEmail).length;
 
   return (
     <Secao
@@ -44,6 +45,8 @@ async function Conteudo() {
         <>
           <p className="text-body-sm text-ink-muted">
             {plural(empresas.length, "empresa", "empresas")}, {plural(pessoas, "pessoa esperando", "pessoas esperando")}
+            {semEmail > 0 &&
+              `. ${semEmail === 1 ? "1 conta não tem e-mail e vem primeiro" : `${semEmail} contas não têm e-mail e vêm primeiro`}: só ficam sabendo pelo WhatsApp`}
             .
           </p>
           <ul className="flex flex-col gap-4">
@@ -59,8 +62,21 @@ async function Conteudo() {
                       {e.whatsapp ? ` · WhatsApp ${formatarTelefone(e.whatsapp)}` : " · sem WhatsApp"}
                     </span>
                   </span>
-                  <span className="text-body-sm text-ink-muted">espera desde {tempoRelativo(e.maisAntiga, agora)}</span>
+                  <span className="flex flex-col items-end gap-1 text-body-sm text-ink-muted">
+                    espera desde {tempoRelativo(e.maisAntiga, agora)}
+                    {e.avisadaEm && (
+                      <span className="text-caption text-cerrado-text">
+                        avisada {tempoRelativo(e.avisadaEm, agora)}
+                      </span>
+                    )}
+                  </span>
                 </div>
+                {e.semEmail && (
+                  <p className="flex flex-wrap items-center gap-2 text-body-sm text-ink-muted">
+                    <Selo variante="aviso">Sem e-mail</Selo>
+                    Não recebe os avisos por e-mail: só fica sabendo pelo WhatsApp.
+                  </p>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   {e.esperando.length > 0 && (
                     <Lista titulo="Curtiram e esperam o aceite" pessoas={e.esperando} agora={agora} />
@@ -69,7 +85,7 @@ async function Conteudo() {
                     <Lista titulo="Deram match, sem mensagem da empresa" pessoas={e.semConversa} agora={agora} />
                   )}
                 </div>
-                <AvisarEmpresa contaId={e.id} />
+                <AvisarEmpresa contaId={e.id} pessoas={e.esperando.length + e.semConversa.length} />
               </li>
             ))}
           </ul>

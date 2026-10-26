@@ -1,21 +1,23 @@
 "use client";
 
-import { Copy, MessageCircle } from "lucide-react";
+import { Check, Copy, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { mensagemParaEmpresaEsperando } from "@/lib/acoes/admin-esperando";
+import { marcarEmpresaAvisada, mensagemParaEmpresaEsperando } from "@/lib/acoes/admin-esperando";
 import { formatarTelefone } from "@/lib/formato";
 import { Botao } from "../ui/botao";
 
 /**
  * Admin › Esperando: monta a mensagem para a empresa (quem espera, o link) e abre o WhatsApp do admin
- * com ela pronta. Sem WhatsApp na conta, dá para copiar e mandar por outro lugar.
+ * com ela pronta. Sem WhatsApp na conta, dá para copiar e mandar por outro lugar. Abrir o WhatsApp ou
+ * copiar guarda a hora do aviso (`marcarEmpresaAvisada`), para a lista mostrar "avisada há…".
  */
-export function AvisarEmpresa({ contaId }: { contaId: string }) {
+export function AvisarEmpresa({ contaId, pessoas }: { contaId: string; pessoas: number }) {
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [gerado, setGerado] = useState<{ whatsapp: string | null; mensagem: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [avisada, setAvisada] = useState(false);
 
   async function gerar() {
     setGerando(true);
@@ -23,6 +25,12 @@ export function AvisarEmpresa({ contaId }: { contaId: string }) {
     const r = await chamarAcao(() => mensagemParaEmpresaEsperando(contaId));
     setGerando(false);
     if (r.ok) setGerado({ whatsapp: r.whatsapp, mensagem: r.mensagem });
+    else setErro(r.erro);
+  }
+
+  async function marcar() {
+    const r = await chamarAcao(() => marcarEmpresaAvisada(contaId, pessoas));
+    if (r.ok) setAvisada(true);
     else setErro(r.erro);
   }
 
@@ -51,6 +59,7 @@ export function AvisarEmpresa({ contaId }: { contaId: string }) {
             href={`https://wa.me/${zap}?text=${encodeURIComponent(gerado.mensagem)}`}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => void marcar()}
             className="inline-flex min-h-10 items-center gap-2 rounded-md bg-cerrado px-3.5 text-label text-on-cerrado"
           >
             <MessageCircle aria-hidden className="size-4" />
@@ -67,6 +76,7 @@ export function AvisarEmpresa({ contaId }: { contaId: string }) {
             try {
               await navigator.clipboard.writeText(gerado.mensagem);
               setCopiado(true);
+              void marcar();
             } catch {
               setCopiado(false);
             }
@@ -76,6 +86,17 @@ export function AvisarEmpresa({ contaId }: { contaId: string }) {
           {copiado ? "Copiada" : "Copiar a mensagem"}
         </Botao>
       </div>
+      {avisada && (
+        <p role="status" className="flex items-center gap-1.5 text-body-sm text-cerrado-text">
+          <Check aria-hidden className="size-4" />
+          Guardado: avisada agora.
+        </p>
+      )}
+      {erro && (
+        <p role="alert" className="text-body-sm text-danger">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

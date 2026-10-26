@@ -559,6 +559,10 @@ export type EmpresaEsperando = {
   semConversa: PessoaEsperando[];
   /** a espera mais antiga (a lista vem dela para a mais nova) */
   maisAntiga: string;
+  /** sem e-mail de login confirmado: não recebe os avisos por e-mail, só fica sabendo pelo WhatsApp */
+  semEmail: boolean;
+  /** a última vez que a equipe avisou pelo WhatsApp (Admin › Esperando); null sem aviso ou sem a migração */
+  avisadaEm: string | null;
 };
 
 /** "Maria Souza" → "Maria S." (o nome inteiro a empresa vê no Publike). */
@@ -671,6 +675,8 @@ export async function empresasComGenteEsperando(
         esperando: [],
         semConversa: [],
         maisAntiga: new Date(agora).toISOString(),
+        semEmail: false,
+        avisadaEm: null,
       };
       porEmpresa.set(id, e);
     }
@@ -684,5 +690,17 @@ export async function empresasComGenteEsperando(
     e.semConversa.sort(porData);
     e.maisAntiga = [...e.esperando, ...e.semConversa].map((p) => p.desde).sort()[0] ?? e.maisAntiga;
   }
-  return [...porEmpresa.values()].sort((a, b) => a.maisAntiga.localeCompare(b.maisAntiga));
+
+  // quem não tem e-mail de login só fica sabendo pelo WhatsApp: vem primeiro
+  const empresas = [...porEmpresa.values()];
+  const logins = await Promise.all(empresas.map((e) => c.auth.admin.getUserById(e.id)));
+  empresas.forEach((e, i) => {
+    const u = logins[i].data?.user;
+    e.semEmail = Boolean(u) && !(u!.email && u!.email_confirmed_at);
+  });
+  // o último aviso pelo WhatsApp (sem a migração 20261121120000, a lista sai sem ele)
+  const { data: avisos } = await c.rpc("admin_empresas_avisadas", { p_contas: empresas.map((e) => e.id) });
+  const avisoDe = new Map((avisos ?? []).map((a) => [a.conta_id, a.avisada_em]));
+  for (const e of empresas) e.avisadaEm = avisoDe.get(e.id) ?? null;
+  return empresas.sort((a, b) => Number(b.semEmail) - Number(a.semEmail) || a.maisAntiga.localeCompare(b.maisAntiga));
 }

@@ -56,3 +56,27 @@ export async function mensagemParaEmpresaEsperando(
   partes.push("Qualquer dúvida, é só responder aqui.");
   return { ok: true, whatsapp: empresa.whatsapp, mensagem: partes.join("\n\n") };
 }
+
+/**
+ * A equipe abriu o WhatsApp (ou copiou a mensagem) para a empresa: guarda a hora, para a lista mostrar
+ * "avisada há…" e ninguém mandar de novo sem querer. Sem a migração 20261121120000, só avisa que não guardou.
+ */
+export async function marcarEmpresaAvisada(
+  contaId: string,
+  pessoas: number,
+): Promise<{ ok: true; avisadaEm: string } | { ok: false; erro: string }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { data, error } = await c.rpc("admin_marcar_empresa_avisada", {
+    p_conta: contaId,
+    p_pessoas: Math.max(0, Math.round(pessoas) || 0),
+  });
+  if (error || !data) {
+    return {
+      ok: false,
+      erro: mensagemDeErro(error, "Não deu para guardar o aviso (falta a migração 20261121120000?)."),
+    };
+  }
+  return { ok: true, avisadaEm: data };
+}

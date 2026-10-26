@@ -1141,6 +1141,11 @@ export type Database = {
         Returns: string[];
       };
       admin_situacao_push: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_marcar_empresa_avisada: { Args: { p_conta: string; p_pessoas?: number }; Returns: string };
+      admin_empresas_avisadas: {
+        Args: { p_contas: string[] };
+        Returns: { conta_id: string; avisada_em: string; pessoas: number }[];
+      };
       salvar_inscricao_push: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_navegador?: string | null };
         Returns: undefined;
