@@ -13,6 +13,7 @@ import { BotaoGoogle } from "./botao-google";
 import { Aviso } from "./ui/basicos";
 import { Botao, classesBotaoRede } from "./ui/botao";
 import { classesEntrada } from "./ui/campo";
+import { CampoSenha } from "./ui/campo-senha";
 import { VerificacaoRobo } from "./verificacao-robo";
 
 type ErroAuth = { code?: string; message?: string; status?: number } | null;
@@ -594,14 +595,12 @@ export function FormEntrar({
             <label htmlFor="senha" className="text-label">
               Senha
             </label>
-            <input
+            <CampoSenha
               id="senha"
-              type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               autoComplete="current-password"
               required
-              className={classesEntrada}
             />
             <p className="text-body-sm text-ink-muted">
               A senha que você criou em Meu perfil. Ainda não tem? Entre pelo link no e-mail e crie lá.

@@ -6,7 +6,8 @@ import { useMemo, useState, type FormEvent } from "react";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
-import { Campo, classesEntrada } from "./ui/campo";
+import { Campo } from "./ui/campo";
+import { CampoSenha } from "./ui/campo-senha";
 
 /** A senha é opcional: pelo menos 8 caracteres (o Supabase pode pedir mais e avisa). */
 const MINIMO = 8;
@@ -51,6 +52,7 @@ export function SenhaDeAcesso({
   const [salvando, setSalvando] = useState(false);
   const [salva, setSalva] = useState(false);
   const [jaTem, setJaTem] = useState(temSenha);
+  const [verSenha, setVerSenha] = useState(false);
 
   async function salvar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,6 +77,7 @@ export function SenhaDeAcesso({
     }
     setSenha("");
     setRepetir("");
+    setVerSenha(false);
     setSalva(true);
     setJaTem(true);
   }
@@ -128,27 +131,34 @@ export function SenhaDeAcesso({
             erro={erros.senha}
             ajuda={`Pelo menos ${MINIMO} caracteres.`}
           >
-            <input
+            <CampoSenha
               id="senha-nova"
               name="senha-nova"
-              type="password"
               autoComplete="new-password"
               value={senha}
-              onChange={(e) => setSenha(e.target.value)}
+              onChange={(e) => {
+                setSenha(e.target.value);
+                if (erros.senha || erros.repetir) setErros({});
+              }}
               aria-invalid={Boolean(erros.senha)}
-              className={classesEntrada}
+              visivel={verSenha}
+              aoTrocar={setVerSenha}
             />
           </Campo>
           <Campo rotulo="Repita a senha" nome="senha-repetir" erro={erros.repetir}>
-            <input
+            {/* o "Ver" do campo de cima mostra os dois */}
+            <CampoSenha
               id="senha-repetir"
               name="senha-repetir"
-              type="password"
               autoComplete="new-password"
               value={repetir}
-              onChange={(e) => setRepetir(e.target.value)}
+              onChange={(e) => {
+                setRepetir(e.target.value);
+                if (erros.repetir) setErros({});
+              }}
               aria-invalid={Boolean(erros.repetir)}
-              className={classesEntrada}
+              visivel={verSenha}
+              semBotao
             />
           </Campo>
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
