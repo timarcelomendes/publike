@@ -1,12 +1,25 @@
 "use client";
 
-import { Briefcase, Layers, MessageSquareText, SlidersHorizontal, Wrench, type LucideIcon } from "lucide-react";
+import { Briefcase, Layers, MessageSquareText, SlidersHorizontal, Wrench, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { escolherAbaDaHome } from "@/lib/acoes/home";
 import { guardarOrdemDaLinha } from "@/lib/linha-do-tempo";
+import { Botao } from "../../ui/botao";
 
 export const EVENTO_FILTROS = "publike-filtros-linha";
+/** O painel dos filtros abriu ou fechou: o ícone do celular (BuscaERecado) acompanha. */
+const EVENTO_ESTADO_FILTROS = "publike-filtros-linha-estado";
+
+// o painel está aberto agora (o ícone do celular pode aparecer na tela depois do painel)
+let painelAberto = false;
+
+/** Para o ícone dos filtros no celular: se o painel está aberto, e o aviso quando muda. */
+export function assinarFiltrosDaLinha(avisar: () => void) {
+  window.addEventListener(EVENTO_ESTADO_FILTROS, avisar);
+  return () => window.removeEventListener(EVENTO_ESTADO_FILTROS, avisar);
+}
+export const filtrosDaLinhaAbertos = () => painelAberto;
 
 type Aba = "tudo" | "vaga" | "servico" | "recado";
 
@@ -49,8 +62,24 @@ export function AbasDaLinha({
   useEffect(() => {
     const alternar = () => setAberto((a) => !a);
     window.addEventListener(EVENTO_FILTROS, alternar);
-    return () => window.removeEventListener(EVENTO_FILTROS, alternar);
+    return () => {
+      window.removeEventListener(EVENTO_FILTROS, alternar);
+      painelAberto = false;
+      window.dispatchEvent(new Event(EVENTO_ESTADO_FILTROS));
+    };
   }, []);
+  useEffect(() => {
+    painelAberto = aberto;
+    window.dispatchEvent(new Event(EVENTO_ESTADO_FILTROS));
+  }, [aberto]);
+
+  // fechar pelo painel (o Fechar ou o Esc): o foco volta para o botão que abre os filtros
+  function fechar() {
+    setAberto(false);
+    [...document.querySelectorAll<HTMLElement>("[data-abre-filtros]")]
+      .find((b) => b.offsetParent !== null)
+      ?.focus({ preventScroll: true });
+  }
 
   // numa coluna estreita (no computador, a do meio da home tem 544px), os números das abas podem não caber
   // junto dos ícones: com muitos, as abas ficam só com o nome (a conta, em px, é por cima)
@@ -64,8 +93,11 @@ export function AbasDaLinha({
       type="button"
       aria-expanded={aberto}
       aria-controls={id}
+      data-abre-filtros
       onClick={() => setAberto((a) => !a)}
-      className={`min-h-[38px] shrink-0 items-center gap-1.5 rounded-pill whitespace-nowrap border border-line-strong bg-surface-200 px-3 text-label text-ink hover:bg-surface-300 ${classe}`}
+      className={`min-h-[38px] shrink-0 items-center gap-1.5 rounded-pill whitespace-nowrap border px-3 text-label text-ink ${
+        aberto ? "border-ink bg-surface-300" : "border-line-strong bg-surface-200 hover:bg-surface-300"
+      } ${classe}`}
     >
       <SlidersHorizontal aria-hidden className="size-4" />
       Filtros
@@ -129,10 +161,23 @@ export function AbasDaLinha({
         </nav>
       </div>
       {/* no celular, o Filtros é o ícone ao lado da busca (BuscaERecado), que avisa por EVENTO_FILTROS */}
+      {/* com o Fechar em cima (e o Esc): no celular, o ícone que abre fica lá no alto */}
       <div
         id={id}
+        role="region"
+        aria-label="Filtros da linha do tempo"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") fechar();
+        }}
         className={aberto ? "mt-3 rounded-lg border border-line bg-surface-200 p-3 shadow-card sm:p-4" : "hidden"}
       >
+        <div className="-mt-1 mb-2 flex items-center justify-between gap-3">
+          <p className="text-label text-ink">Filtros</p>
+          <Botao variante="fantasma" tamanho="sm" onClick={fechar} className="-mr-2">
+            <X aria-hidden />
+            Fechar<span className="sr-only"> os filtros</span>
+          </Botao>
+        </div>
         {filtros}
       </div>
       {ordem && <div className="mt-3">{ordem}</div>}

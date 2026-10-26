@@ -1,11 +1,11 @@
 "use client";
 
 import { PenLine, SlidersHorizontal } from "lucide-react";
-import { useEffect, useId, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useId, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
 import { COOKIE_CONVITE_RECADO, conviteRecadoContadoHoje, valorConviteRecadoFechado } from "@/lib/convite-recado";
 import { ConviteRecado, type TextoDoConvite } from "../../recados/convite-recado";
 import { EscreverRecado } from "../../recados/escrever-recado";
-import { EVENTO_FILTROS } from "./abas-da-linha";
+import { assinarFiltrosDaLinha, EVENTO_FILTROS, filtrosDaLinhaAbertos } from "./abas-da-linha";
 
 /**
  * No celular e no tablet, a busca, o Filtros (só no celular, um ícone: no tablet ele fica na linha das
@@ -30,6 +30,8 @@ export function BuscaERecado({
   const [aberto, setAberto] = useState(false);
   const [focar, setFocar] = useState(0);
   const [comConvite, setComConvite] = useState(Boolean(convite));
+  // o painel dos filtros (em AbasDaLinha) aberto: o ícone fica marcado (tocar de novo fecha)
+  const filtrosAbertos = useSyncExternalStore(assinarFiltrosDaLinha, filtrosDaLinhaAbertos, () => false);
 
   // conta uma vez por dia: volta em 7 dias, até 3 vezes (o servidor lê o cookie)
   function contarConvite() {
@@ -56,8 +58,12 @@ export function BuscaERecado({
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event(EVENTO_FILTROS))}
-          title="Filtros"
-          className="relative grid size-12 shrink-0 place-items-center rounded-pill border border-line bg-surface-200 text-ink hover:bg-surface-300 sm:hidden"
+          aria-expanded={filtrosAbertos}
+          data-abre-filtros
+          title={filtrosAbertos ? "Fechar os filtros" : "Filtros"}
+          className={`relative grid size-12 shrink-0 place-items-center rounded-pill border text-ink sm:hidden ${
+            filtrosAbertos ? "border-ink bg-surface-300" : "border-line bg-surface-200 hover:bg-surface-300"
+          }`}
         >
           <SlidersHorizontal aria-hidden className="size-[18px]" />
           <span className="sr-only">Filtros</span>
