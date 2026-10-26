@@ -8,4 +8,9 @@
 export const PACOTE_ANDROID = "org.publike.app";
 
 /** Formato "AA:BB:…" (32 pares). Vazio: a rota responde [] e o app abre com a barra do navegador. */
-export const DIGITAIS_ANDROID: string[] = [];
+export const DIGITAIS_ANDROID: string[] = [
+  // a chave de assinatura do app, que o Google Play guarda (o app instalado pela Play)
+  "4F:79:DD:4D:A3:E5:CC:39:A7:45:5F:A1:18:BA:BA:47:A6:B1:D3:6A:62:C6:6A:F7:EA:9C:78:7B:A3:E8:E0:19",
+  // a chave de envio, a do pacote gerado no PWABuilder em 26/10/2026
+  "EF:13:CC:99:1A:29:FD:A6:64:AF:EE:C4:B3:9E:30:70:9B:0B:FA:82:5C:B2:7B:1A:78:7F:76:BB:43:C6:24:01",
+];
