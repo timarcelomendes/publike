@@ -122,16 +122,21 @@ export default function PaginaAnuncio({ params, searchParams }: PageProps<"/anun
   );
 }
 
+// Um par da lista: dentro do <dl>, só um <div> com o <dt> e o <dd> (o ícone vai no <dt>, ao lado), para o
+// leitor de tela ler "Onde é: Setor Sul" (com o ícone num invólucro à parte, a lista não valia)
 function Fato({ icone: Icone, rotulo, children }: { icone: LucideIcon; rotulo: string; children: ReactNode }) {
   return (
-    <div className="flex gap-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-ink">
-        <Icone aria-hidden className="size-5" />
-      </span>
-      <div>
-        <dt className="text-body-sm text-ink-muted">{rotulo}</dt>
-        <dd className="text-label text-ink">{children}</dd>
-      </div>
+    <div className="relative min-h-10 pl-[52px]">
+      <dt className="text-body-sm text-ink-muted">
+        <span
+          aria-hidden
+          className="absolute top-0 left-0 flex size-10 items-center justify-center rounded-pill bg-surface-300 text-ink"
+        >
+          <Icone className="size-5" />
+        </span>
+        {rotulo}
+      </dt>
+      <dd className="text-label text-ink">{children}</dd>
     </div>
   );
 }
