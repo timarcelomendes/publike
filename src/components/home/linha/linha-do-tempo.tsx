@@ -103,7 +103,8 @@ function Item({
   /** a conexão com quem escreveu cada recado (para o Conectar no rodapé) */
   conexoes: Map<string, EstadoConexao>;
 }) {
-  const hora = horaNaLinha(Date.parse(item.quando), d.agora);
+  // nas mais relevantes não há o separador do dia: antes de hoje, "ontem" e "3 d" (e não "19:51")
+  const hora = horaNaLinha(Date.parse(item.quando), d.agora, d.relevantes);
   const dados = item.dados;
   return (
     <div className={`${GRADE} items-start`}>
@@ -215,7 +216,8 @@ export async function LinhaDoTempo({
   for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes), d.aba === "tudo")) {
     if (p.tipo === "dia") {
       blocos.push(
-        <div key={p.chave} className={`${GRADE} items-center pt-2`}>
+        // "Mais relevantes": no celular, a ordem logo acima já diz (o título fica para o leitor de tela)
+        <div key={p.chave} className={`${GRADE} items-center pt-2 ${p.chave === "relevantes" ? "max-sm:sr-only" : ""}`}>
           <span className="hidden sm:block" />
           <Ponto />
           <h2 className="flex items-baseline gap-2.5 font-display text-[22px] leading-7 font-bold tracking-[-0.01em] sm:text-[24px] sm:leading-[30px]">

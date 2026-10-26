@@ -65,14 +65,20 @@ function diasAtras(quando: number, agora: number) {
   return Math.round((a - q) / DIA);
 }
 
-/** A hora ao lado do item: hoje, "agora", "12 min", "3 h"; antes de hoje, a hora do relógio ("20:45"). */
-export function horaNaLinha(quando: number, agora: number) {
+/**
+ * A hora ao lado do item: hoje, "agora", "12 min", "3 h"; antes de hoje, a hora do relógio ("20:45"),
+ * porque o separador do dia está logo acima. `semDia` (as mais relevantes, sem separadores): antes de
+ * hoje, "ontem" e "3 d".
+ */
+export function horaNaLinha(quando: number, agora: number, semDia = false) {
   const passou = Math.max(0, agora - quando);
-  if (diasAtras(quando, agora) === 0) {
+  const dias = diasAtras(quando, agora);
+  if (dias <= 0) {
     if (passou < MINUTO) return "agora";
     if (passou < HORA) return `${Math.floor(passou / MINUTO)} min`;
     return `${Math.floor(passou / HORA)} h`;
   }
+  if (semDia) return dias === 1 ? "ontem" : `${dias} d`;
   return partes(quando).hora;
 }
 
