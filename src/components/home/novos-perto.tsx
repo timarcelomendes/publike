@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
 import { MODO_DEMO } from "@/lib/config";
@@ -92,6 +92,13 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
             </li>
           ))}
         </ul>
+        <Link
+          href="/painel/conexoes?aba=novas"
+          className="inline-flex items-center gap-1.5 text-label text-terra-text hover:text-ink"
+        >
+          Ver todas
+          <ArrowRight aria-hidden className="size-4" />
+        </Link>
       </section>
     );
   }
@@ -144,6 +151,21 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
           </div>
         </li>
       ))}
+      {/* no celular, o último quadrinho leva à lista toda (no tablet e no computador, o "Ver todas" do título) */}
+      {!vitrine && (
+        <li className="flex w-40 shrink-0 sm:hidden">
+          <Link
+            href="/painel/conexoes?aba=novas"
+            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong p-3.5 text-center text-label text-terra-text hover:bg-surface-200"
+          >
+            <ArrowRight aria-hidden className="size-6" />
+            Ver mais
+            {total > novos.length && (
+              <span className="text-[13px] leading-[18px] font-normal text-ink-muted">todas as {total}</span>
+            )}
+          </Link>
+        </li>
+      )}
     </ul>
   );
 
@@ -168,10 +190,15 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
 
   return (
     <section aria-labelledby="novos-perto-faixa" className="flex flex-col">
-      <h2 id="novos-perto-faixa" className="flex items-center gap-1.5 text-h3">
-        <Sparkles aria-hidden className="size-5 text-terra-text" />
-        Chegaram perto de você
-      </h2>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="novos-perto-faixa" className="flex items-center gap-1.5 text-h3">
+          <Sparkles aria-hidden className="size-5 text-terra-text" />
+          Chegaram perto de você
+        </h2>
+        <Link href="/painel/conexoes?aba=novas" className="shrink-0 text-label text-terra-text hover:text-ink">
+          Ver todas
+        </Link>
+      </div>
       {totalTexto && <p className="mt-0.5 text-body-sm text-ink-muted">{totalTexto}</p>}
       {cartoes}
     </section>

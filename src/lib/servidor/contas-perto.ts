@@ -104,7 +104,7 @@ export async function contasPerto({
     .from("perfis")
     .select("id, nome, tipo, foto, cidade, bairro, verificado, criado_em, suspenso_ate")
     .order("criado_em", { ascending: false })
-    .limit(dias ? 80 : 300);
+    .limit(dias ? Math.max(80, quantos) : 300);
   if (dias) consulta = consulta.gte("criado_em", new Date(agora - dias * 24 * 3600 * 1000).toISOString());
   if (quem === "pessoas") consulta = consulta.eq("tipo", "pessoa");
   if (quem === "empresas") consulta = consulta.neq("tipo", "pessoa");

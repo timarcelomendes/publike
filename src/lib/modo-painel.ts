@@ -135,6 +135,8 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel", nome: "Hoje", icone: "hoje" },
     { href: "/painel/curtidas?tipo=vaga", nome: "Candidaturas", icone: "curtidas" },
     MENSAGENS,
+    // quem procura trabalho também se conecta (gente e empresas perto): à vista, fora das Mensagens
+    { href: "/painel/conexoes", nome: "Conexões", icone: "conexoes" },
     { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
     { href: "/painel/seguindo", nome: "Avisos e seguindo", icone: "avisos" },
     { href: "/perfil/curriculo", nome: "Currículo", icone: "curriculo" },
@@ -297,6 +299,9 @@ export function secaoAtiva(
   const secoes = [...grupos.flatMap((g) => g.secoes), ...outras];
   // as Mensagens juntam as conversas, os matches e as conexões
   if (PAGINAS_DE_MENSAGENS.some((p) => caminho.startsWith(p))) {
+    // com as Conexões no menu (quem procura trabalho), a página delas acende as Conexões
+    const conexoes = caminho.startsWith("/painel/conexoes") && secoes.find((s) => s.href === "/painel/conexoes");
+    if (conexoes) return conexoes.href;
     return secoes.find((s) => s.href === MENSAGENS.href)?.href ?? null;
   }
   // a caixa na aba de entrevistas é o passo Entrevistas (comércio e empresa)

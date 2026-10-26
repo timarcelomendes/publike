@@ -30,14 +30,16 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Conexões", robots: { index: false } };
 
-// A rede da conta, em quatro abas: Pessoas (perto de você, com o Conectar), Empresas (comércios,
-// empresas e agências perto, com o Seguir), Seguindo (o que a conta segue e as buscas que avisam) e
+// A rede da conta, em cinco abas: Pessoas (perto de você, com o Conectar), Empresas (comércios,
+// empresas e agências perto, com o Seguir), Chegaram (quem entrou nos últimos 30 dias, a lista toda do
+// "Chegaram perto de você" da home), Seguindo (o que a conta segue e as buscas que avisam) e
 // Conectadas (os pedidos para responder, as conexões com o contato e a conversa, os pedidos que fiz
 // e os que não foram aceitos).
 
 const ABAS = [
   { valor: "pessoas", nome: "Pessoas" },
   { valor: "empresas", nome: "Empresas" },
+  { valor: "novas", nome: "Chegaram" },
   { valor: "seguindo", nome: "Seguindo" },
   { valor: "conectadas", nome: "Conectadas" },
 ] as const;
@@ -55,6 +57,11 @@ const FILTROS: Record<Aba, readonly { valor: string; nome: string }[]> = {
     { valor: "empresa", nome: "Empresas" },
     { valor: "agencia", nome: "Agências" },
   ],
+  novas: [
+    { valor: "pessoas", nome: "Pessoas" },
+    { valor: "empresas", nome: "Empresas" },
+    { valor: "bairro", nome: "No seu bairro" },
+  ],
   seguindo: [
     { valor: "empresas", nome: "Empresas" },
     { valor: "bairros", nome: "Bairros" },
@@ -71,12 +78,26 @@ const FILTROS: Record<Aba, readonly { valor: string; nome: string }[]> = {
   ],
 };
 
-/** O endereço da aba com o filtro e a busca. */
-function endereco(aba: Aba, f: string | null, q: string) {
+/** O endereço da aba com o filtro, a busca e quantas contas mostrar (`n`, o "Ver mais"). */
+function endereco(aba: Aba, f: string | null, q: string, n?: number) {
   const sp = new URLSearchParams({ aba });
   if (f) sp.set("f", f);
   if (q) sp.set("q", q);
+  if (n) sp.set("n", String(n));
   return `/painel/conexoes?${sp}`;
+}
+
+/** Quantas contas cada lista mostra de cada vez (o "Ver mais" traz mais tantas, até o fim). */
+const POR_VEZ = 40;
+
+/** "Ver mais": a mesma lista com mais contas (o endereço guarda quantas, para voltar no mesmo lugar). */
+function VerMais({ aba, f, q, ate, total }: { aba: Aba; f: string | null; q: string; ate: number; total: number }) {
+  if (total <= ate) return null;
+  return (
+    <BotaoLink href={endereco(aba, f, q, ate + POR_VEZ)} scroll={false} className="self-center">
+      Ver mais ({plural(total - ate, "falta", "faltam")})
+    </BotaoLink>
+  );
 }
 
 /** Para a busca: sem acento e em minúsculas ("Setor Bueno" acha "bueno"). */
@@ -231,6 +252,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/con
   const fPedido = primeiro(sp.f) ?? null;
   const f = FILTROS[aba].some((x) => x.valor === fPedido) ? fPedido : null;
   const q = (primeiro(sp.q) ?? "").trim().slice(0, 60);
+  // quantas contas a lista mostra (Pessoas, Empresas e Chegaram): de 40 em 40
+  const ate = Math.min(300, Math.max(POR_VEZ, Math.round(Number(primeiro(sp.n)) / POR_VEZ) * POR_VEZ || POR_VEZ));
   const numeros: Partial<Record<Aba, number>> = { seguindo: seguidos.length, conectadas };
 
   return (
@@ -275,9 +298,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/con
         </ul>
       </nav>
       {aba === "pessoas" ? (
-        <AbaPessoas empresa={empresa} f={f} q={q} />
+        <AbaPessoas empresa={empresa} f={f} q={q} ate={ate} />
       ) : aba === "empresas" ? (
-        <AbaEmpresas seguidos={seguidos} f={f} q={q} />
+        <AbaEmpresas seguidos={seguidos} f={f} q={q} ate={ate} />
+      ) : aba === "novas" ? (
+        <AbaNovas f={f} q={q} ate={ate} />
       ) : aba === "seguindo" ? (
         <AbaSeguindo seguidos={seguidos} f={f} q={q} />
       ) : lista ? (
@@ -336,7 +361,7 @@ const LISTA =
   "flex flex-col divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card";
 
 /** Pessoas perto, da mais perto para a mais longe, com o Conectar (ou como está a conexão). */
-async function AbaPessoas({ empresa, f, q }: { empresa: boolean; f: string | null; q: string }) {
+async function AbaPessoas({ empresa, f, q, ate }: { empresa: boolean; f: string | null; q: string; ate: number }) {
   const [{ contas: todas, agora }, local] = await Promise.all([
     contasPerto({ quem: "pessoas", quantos: 300 }),
     obterLocal(),
@@ -355,7 +380,8 @@ async function AbaPessoas({ empresa, f, q }: { empresa: boolean; f: string | nul
   const achadas = todas.filter((c) => bate(q, c.nome, c.bairro, c.cidade));
   const numeros: Record<string, number> = { novas: achadas.filter(nova).length };
   if (meuBairro) numeros.bairro = achadas.filter(noBairro).length;
-  const contas = achadas.filter((c) => (f === "bairro" ? noBairro(c) : f === "novas" ? nova(c) : true)).slice(0, 40);
+  const filtradas = achadas.filter((c) => (f === "bairro" ? noBairro(c) : f === "novas" ? nova(c) : true));
+  const contas = filtradas.slice(0, ate);
   const estados = await estadosDeConexao(contas.map((c) => c.id));
   return (
     <div className="flex flex-col gap-4">
@@ -390,6 +416,68 @@ async function AbaPessoas({ empresa, f, q }: { empresa: boolean; f: string | nul
           ))}
         </ul>
       )}
+      <VerMais aba="pessoas" f={f} q={q} ate={ate} total={filtradas.length} />
+    </div>
+  );
+}
+
+/**
+ * Quem chegou ao Publike nos últimos 30 dias (pessoas, comércios, empresas e agências), do mais perto
+ * para o mais longe, com o Conectar: a lista toda do "Chegaram perto de você" da home.
+ */
+async function AbaNovas({ f, q, ate }: { f: string | null; q: string; ate: number }) {
+  const [{ contas: todas, agora }, local] = await Promise.all([contasPerto({ dias: 30, quantos: 300 }), obterLocal()]);
+  if (!todas.length) {
+    return (
+      <Vazio icone={UsersRound} titulo="Ninguém chegou perto de você nos últimos 30 dias">
+        Quando gente e empresas do seu bairro entrarem no Publike, aparecem aqui.
+      </Vazio>
+    );
+  }
+  const meuBairro = local?.bairro ? `${local.cidade}|${chaveBairro(local.bairro)}` : null;
+  const passa = (c: ContaPerto, filtro: string | null) =>
+    filtro === "pessoas"
+      ? c.tipo === "pessoa"
+      : filtro === "empresas"
+        ? c.tipo !== "pessoa"
+        : filtro === "bairro"
+          ? meuBairro !== null && c.bairro !== null && `${c.cidade}|${chaveBairro(c.bairro)}` === meuBairro
+          : true;
+  const achadas = todas.filter((c) => bate(q, c.nome, c.bairro, c.cidade));
+  const numeros: Record<string, number> = Object.fromEntries(
+    FILTROS.novas.map((x) => [x.valor, achadas.filter((c) => passa(c, x.valor)).length]),
+  );
+  const filtradas = achadas.filter((c) => passa(c, f));
+  const contas = filtradas.slice(0, ate);
+  const estados = await estadosDeConexao(contas.map((c) => c.id));
+  return (
+    <div className="flex flex-col gap-4">
+      <BarraDeFiltros aba="novas" f={f} q={q} numeros={numeros} total={achadas.length} />
+      <p className="text-body-sm text-ink-muted">
+        {plural(achadas.length, "conta chegou", "contas chegaram")} perto de você nos últimos 30 dias.
+      </p>
+      {contas.length === 0 ? (
+        <NadaComFiltro aba="novas" f={f} q={q} />
+      ) : (
+        <ul aria-label="Quem chegou perto de você" className={LISTA}>
+          {contas.map((c) => (
+            <LinhaDeConta
+              key={c.id}
+              c={c}
+              detalhe={`${oQueE(c.tipo)} · ${formatarLugar(c.bairro, c.cidade)} · chegou ${tempoRelativo(c.criado_em, agora)}`}
+              acao={
+                <BotaoConectarCompacto
+                  outro={{ id: c.id, nome: c.nome, tipo: c.tipo }}
+                  estado={estados.get(c.id) ?? null}
+                  voltar="/painel/conexoes?aba=novas"
+                  jeito="pilula"
+                />
+              }
+            />
+          ))}
+        </ul>
+      )}
+      <VerMais aba="novas" f={f} q={q} ate={ate} total={filtradas.length} />
     </div>
   );
 }
@@ -399,10 +487,12 @@ async function AbaEmpresas({
   seguidos,
   f,
   q,
+  ate,
 }: {
   seguidos: Awaited<ReturnType<typeof meusSeguidos>>;
   f: string | null;
   q: string;
+  ate: number;
 }) {
   const { contas: todas } = await contasPerto({ quem: "empresas", quantos: 300 });
   if (!todas.length) {
@@ -430,7 +520,8 @@ async function AbaEmpresas({
   const numeros: Record<string, number> = Object.fromEntries(
     FILTROS.empresas.map((x) => [x.valor, achadas.filter((c) => passa(c, x.valor)).length]),
   );
-  const contas = achadas.filter((c) => passa(c, f)).slice(0, 40);
+  const filtradas = achadas.filter((c) => passa(c, f));
+  const contas = filtradas.slice(0, ate);
   return (
     <div className="flex flex-col gap-4">
       <BarraDeFiltros aba="empresas" f={f} q={q} numeros={numeros} total={achadas.length} />
@@ -463,6 +554,7 @@ async function AbaEmpresas({
           })}
         </ul>
       )}
+      <VerMais aba="empresas" f={f} q={q} ate={ate} total={filtradas.length} />
     </div>
   );
 }

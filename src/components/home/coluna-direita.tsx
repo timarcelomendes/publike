@@ -15,6 +15,9 @@ import { cidadeDaVisita } from "@/lib/servidor/cidade";
 // A coluna da direita do feed (computador grande; no celular, no meio da lista): quem
 // está contratando perto, com o Seguir (aviso de vaga nova), e os conteúdos do blog.
 
+/** A lista toda: as empresas perto que contratam agora (Conexões › Empresas). */
+const TODAS_CONTRATANDO = "/painel/conexoes?aba=empresas&f=contratando";
+
 const caixa = "flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card";
 
 export async function ContratandoPerto({
@@ -51,9 +54,16 @@ export async function ContratandoPerto({
     // no meio da linha (celular e tablet): uma faixa que rola de lado, como a das contas novas
     return (
       <section aria-labelledby="contratando-perto-faixa" className="flex flex-col">
-        <h2 id="contratando-perto-faixa" className="text-h3">
-          {titulo}
-        </h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="contratando-perto-faixa" className="text-h3">
+            {titulo}
+          </h2>
+          {usuario && (
+            <Link href={TODAS_CONTRATANDO} className="shrink-0 text-label text-terra-text hover:text-ink">
+              Ver todas
+            </Link>
+          )}
+        </div>
         {/* relative: o texto do leitor de tela (sr-only, absoluto) fica dentro da rolagem e não alarga a página */}
         <ul className="sem-barra relative -mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
           {empresas.map((e) => (
@@ -77,6 +87,18 @@ export async function ContratandoPerto({
               <div className="mt-auto">{seguir(e)}</div>
             </li>
           ))}
+          {/* o último quadrinho leva à lista toda (quem entrou: as empresas perto, contratando agora) */}
+          {usuario && (
+            <li className="flex w-40 shrink-0">
+              <Link
+                href={TODAS_CONTRATANDO}
+                className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong p-3.5 text-center text-label text-terra-text hover:bg-surface-200"
+              >
+                <ArrowRight aria-hidden className="size-6" />
+                Ver mais
+              </Link>
+            </li>
+          )}
         </ul>
       </section>
     );
@@ -116,6 +138,15 @@ export async function ContratandoPerto({
           </li>
         ))}
       </ul>
+      {usuario && (
+        <Link
+          href={TODAS_CONTRATANDO}
+          className="inline-flex items-center gap-1.5 text-label text-terra-text hover:text-ink"
+        >
+          Ver todas
+          <ArrowRight aria-hidden className="size-4" />
+        </Link>
+      )}
     </section>
   );
 }

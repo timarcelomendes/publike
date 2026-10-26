@@ -1,4 +1,16 @@
-import { BellRing, Eye, FileText, Heart, Hourglass, MessagesSquare, Search, Star, Store, Wrench } from "lucide-react";
+import {
+  BellRing,
+  Eye,
+  FileText,
+  Handshake,
+  Heart,
+  Hourglass,
+  MessagesSquare,
+  Search,
+  Star,
+  Store,
+  Wrench,
+} from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoVisaoGeral } from "@/components/painel/esqueleto";
@@ -279,6 +291,7 @@ function HojeTrabalhar({
   const vagas = (curtidas ?? []).filter((c) => c.tipo === "vaga");
   const entrevistaDe = new Map(entrevistas.map((e) => [e.anuncio_id, e]));
   const semCurriculo = curriculo !== null && curriculo.c === null;
+  const conectadas = (conexoes ?? []).filter((c) => c.status === "aceita").length;
   // o "Para fazer agora" (no alto das Candidaturas): aqui, só quantos são
   const cartoes = cartoesDeQuemProcura({
     perfil,
@@ -353,7 +366,7 @@ function HojeTrabalhar({
       nome: "Mensagens",
       icone: MessagesSquare,
       numero: contadores.mensagens,
-      texto: "Conversas, matches e conexões",
+      texto: "Conversas e matches",
       // no computador, o bloco fica ao lado das Candidaturas: as últimas conversas enchem a altura
       extra: recentes.length > 0 && (
         <ul className="hidden flex-col gap-2 border-t border-line pt-3 lg:flex">
@@ -370,6 +383,16 @@ function HojeTrabalhar({
           ))}
         </ul>
       ),
+    },
+    {
+      href: "/painel/conexoes",
+      nome: "Conexões",
+      icone: Handshake,
+      // os pedidos de conexão para responder
+      numero: (conexoes ?? []).filter((c) => c.status === "pendente" && !c.pedi).length,
+      texto: conectadas
+        ? `${plural(conectadas, "conexão", "conexões")} · conecte-se com mais gente perto`
+        : "Conecte-se com pessoas e empresas perto de você",
     },
     {
       href: "/painel/visitas",
