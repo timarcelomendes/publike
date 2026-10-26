@@ -104,7 +104,10 @@ export async function POST(request: NextRequest) {
   if (MODO_DEMO || !linkDeEntradaValido(tokenHash, tipo)) return voltarComErro("link");
 
   const supabase = await criarClienteServidor();
-  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: tipo as "email" | "email_change" });
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: tipo as "email" | "email_change" | "recovery",
+  });
   if (!error) return continuar();
   if (ehSuspensa(error)) return voltarComErro("suspensa");
   // Link já usado, mas a pessoa já entrou com ele (tocou duas vezes ou voltou

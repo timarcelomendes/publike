@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ExcluirConta, FormPerfil } from "@/components/form-perfil";
 import { SoComSupabase } from "@/components/so-com-supabase";
+import { SenhaDeAcesso } from "@/components/senha-de-acesso";
 import { TrocarEmail } from "@/components/trocar-email";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
@@ -207,6 +208,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
           confirmado={primeiro(sp.email) === "confirmado"}
         />
       )}
+      {/* opcional: quem prefere entrar com e-mail e senha */}
+      {perfil && <SenhaDeAcesso email={conta?.email || null} temSenha={conta?.user_metadata?.tem_senha === true} />}
       {perfil && <ExcluirConta />}
     </>
   );

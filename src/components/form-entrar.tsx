@@ -31,7 +31,7 @@ function traduzir(erro: ErroAuth) {
     return "Muitas tentativas seguidas. Espere um minuto e tente de novo.";
   }
   if (codigo === "invalid_credentials" || msg.includes("invalid login credentials")) {
-    return "E-mail ou senha errados. Confira e tente de novo.";
+    return "E-mail ou senha errados. Ainda não criou uma senha? Entre pelo link no e-mail e crie em Meu perfil.";
   }
   if (codigo === "email_not_confirmed" || msg.includes("email not confirmed")) {
     return "Este e-mail ainda não foi confirmado. Entre pelo link no e-mail.";
@@ -94,7 +94,7 @@ export function FormEntrar({
   cabecalho?: ReactNode;
 }) {
   const supabase = useMemo(() => criarClienteNavegador(), []);
-  // "senha": só para conta que tem senha, como a conta de teste da revisão da Play
+  // "senha": quem criou uma senha em Meu perfil (é opcional; o link no e-mail continua valendo)
   const [modo, setModo] = useState<"celular" | "email" | "senha">(comCelular && !emailInicial ? "celular" : "email");
   const [etapa, setEtapa] = useState<"pedir" | "codigo" | "email-enviado">("pedir");
   const [celular, setCelular] = useState("");
@@ -113,7 +113,9 @@ export function FormEntrar({
   const [tokenRobo, setTokenRobo] = useState<string | null>(null);
   const [rodada, setRodada] = useState(0);
   const [verificando, setVerificando] = useState(false);
-  const aguardando = useRef<"email" | "reenvio" | "celular" | "senha" | null>(null);
+  const aguardando = useRef<"email" | "reenvio" | "celular" | "senha" | "esqueci" | null>(null);
+  // "Esqueci a senha": o link para criar uma senha nova foi pedido
+  const [pediuSenhaNova, setPediuSenhaNova] = useState(false);
   // Reenvio do link: quando o botão volta a valer, quantas vezes foi e o resultado da última.
   const [liberaEm, setLiberaEm] = useState(0);
   const [agora, setAgora] = useState(0);
@@ -214,10 +216,11 @@ export function FormEntrar({
     else if (qual === "reenvio") void enviarLink(token, true);
     else if (qual === "celular") void enviarCodigo(token);
     else if (qual === "senha") void entrarComSenha(token);
+    else if (qual === "esqueci") void pedirSenhaNova(token);
   }
 
   /** Sem token ainda: o pedido espera a verificação terminar. */
-  function esperarVerificacao(qual: "email" | "reenvio" | "celular" | "senha") {
+  function esperarVerificacao(qual: "email" | "reenvio" | "celular" | "senha" | "esqueci") {
     if (!comVerificacao || tokenRobo) return false;
     aguardando.current = qual;
     setVerificando(true);
@@ -318,7 +321,7 @@ export function FormEntrar({
     await enviarLink(tokenRobo);
   }
 
-  /** Conta com senha (a de teste da revisão da Play): entra aqui mesmo, sem e-mail nem SMS. */
+  /** Quem criou uma senha em Meu perfil: entra aqui mesmo, sem esperar o e-mail. */
   async function entrarComSenha(token: string | null) {
     setCarregando(true);
     let error: ErroAuth = null;
@@ -349,6 +352,40 @@ export function FormEntrar({
     }
     if (esperarVerificacao("senha")) return;
     await entrarComSenha(tokenRobo);
+  }
+
+  /** "Esqueci a senha": o e-mail leva para Meu perfil › Senha, já com a pessoa dentro da conta. */
+  async function pedirSenhaNova(token: string | null) {
+    setCarregando(true);
+    let error: ErroAuth = null;
+    try {
+      ({ error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/callback?${new URLSearchParams({ next: "/perfil/senha" })}`,
+        ...(token ? { captchaToken: token } : {}),
+      }));
+    } catch {
+      error = { message: "rede" };
+    }
+    setCarregando(false);
+    novaVerificacao();
+    if (error) {
+      setErro(error.message === "rede" ? "Sem conexão agora. Confira sua internet e tente de novo." : traduzir(error));
+      return;
+    }
+    // aberto neste navegador, o link entra sozinho (veja /auth/confirmar)
+    document.cookie = `${COOKIE_PEDIU_LINK}=1; Max-Age=3600; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+    setPediuSenhaNova(true);
+  }
+
+  async function esqueciASenha() {
+    setErro(null);
+    setPediuSenhaNova(false);
+    if (!email.trim() || !email.includes("@")) {
+      setErro("Digite o seu e-mail acima e toque de novo em Esqueci a senha.");
+      return;
+    }
+    if (esperarVerificacao("esqueci")) return;
+    await pedirSenhaNova(tokenRobo);
   }
 
   const verificacao = comVerificacao && (
@@ -567,20 +604,35 @@ export function FormEntrar({
               className={classesEntrada}
             />
             <p className="text-body-sm text-ink-muted">
-              Só para contas que têm senha, como as de teste. As outras entram pelo link no e-mail.
+              A senha que você criou em Meu perfil. Ainda não tem? Entre pelo link no e-mail e crie lá.
             </p>
           </div>
           {erro && <Aviso tipo="erro">{erro}</Aviso>}
+          {pediuSenhaNova && !erro && (
+            <Aviso tipo="sucesso">
+              Se houver uma conta com {email.trim()}, mandamos um link para criar uma senha nova. Abra neste mesmo
+              navegador. Não chegou em alguns minutos? Veja a caixa de spam.
+            </Aviso>
+          )}
           <Botao type="submit" variante="primario" disabled={carregando || verificando} className="min-h-12">
             <KeyRound aria-hidden />
             {verificando ? "Confirmando que você não é um robô…" : carregando ? "Entrando…" : "Entrar"}
           </Botao>
           <button
             type="button"
+            onClick={esqueciASenha}
+            disabled={carregando || verificando}
+            className="min-h-11 text-label text-terra-text underline disabled:opacity-60"
+          >
+            Esqueci a senha
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setModo("email");
               setSenha("");
               setErro(null);
+              setPediuSenhaNova(false);
             }}
             className="min-h-11 text-label text-terra-text underline"
           >
@@ -628,7 +680,7 @@ export function FormEntrar({
               setModo("senha");
               setErro(null);
             }}
-            className="min-h-11 text-body-sm text-ink-muted underline"
+            className="min-h-11 text-label text-terra-text underline"
           >
             Entrar com senha
           </button>

@@ -1,8 +1,11 @@
 // Link de entrar por e-mail (modelos em supabase/emails/): o e-mail leva para
 // /auth/callback com token_hash e type, e a entrada acontece em /auth/confirmar.
 
-/** Tipos que o site aceita. Os modelos usam "email" (vale para entrar e para confirmar o cadastro). */
-const TIPOS = new Set(["email", "magiclink", "signup", "email_change"]);
+/**
+ * Tipos que o site aceita. Os modelos usam "email" (vale para entrar e para confirmar o cadastro) e
+ * "recovery" (o "Esqueci a senha": entra e leva para Meu perfil › Senha).
+ */
+const TIPOS = new Set(["email", "magiclink", "signup", "email_change", "recovery"]);
 
 /** O código do link, como o Supabase manda ("pkce_" na frente quando o pedido saiu do site). */
 const TOKEN = /^[A-Za-z0-9_-]{20,200}$/;

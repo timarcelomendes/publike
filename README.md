@@ -89,6 +89,7 @@ Abra **http://localhost:3000**. Uma faixa amarela avisa que é o modo demonstra�
 2. Os modelos de e-mail (**Authentication → Emails**) só podem ser editados depois de configurar um SMTP próprio (veja a nota abaixo). Com o SMTP pronto, cole os modelos do Publike:
    - **Magic link**: o conteúdo de `supabase/emails/entrar.html`, assunto "Seu link para entrar no Publike".
    - **Confirm signup**: o conteúdo de `supabase/emails/confirmar-cadastro.html`, assunto "Confirme seu e-mail no Publike".
+   - **Reset password**: o conteúdo de `supabase/emails/recuperar-senha.html`, assunto "Crie uma senha nova no Publike" (o "Esqueci a senha" do "Entrar com senha").
 
    Com esses modelos, o botão do e-mail leva para o próprio site (`/auth/callback` e depois `/auth/confirmar`), e o link funciona **em qualquer navegador ou celular**, não só no que pediu. A entrada só acontece quando a página abre num navegador de verdade: antivírus de e-mail e prévias de mensagem que apenas abrem o link não gastam a entrada. O texto pode ser mudado no Supabase à vontade; só mantenha o endereço do botão (`{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email`).
 
