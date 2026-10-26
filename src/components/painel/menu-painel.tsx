@@ -1,30 +1,6 @@
 "use client";
 
-import {
-  BadgeCheck,
-  BellRing,
-  Briefcase,
-  Building2,
-  CalendarDays,
-  Check,
-  ChevronDown,
-  Eye,
-  FileText,
-  Handshake,
-  Heart,
-  House,
-  Inbox,
-  Link2,
-  MessagesSquare,
-  Send,
-  Star,
-  Store,
-  UserSearch,
-  Users,
-  UsersRound,
-  Wrench,
-  type LucideIcon,
-} from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
@@ -39,29 +15,8 @@ import {
   type ModoPainel,
   type Secao,
 } from "@/lib/modo-painel";
-
-const ICONES: Record<Secao["icone"], LucideIcon> = {
-  hoje: House,
-  caixa: Inbox,
-  talentos: UserSearch,
-  candidatos: Users,
-  vagas: Briefcase,
-  conversas: MessagesSquare,
-  curtidas: Heart,
-  avisos: BellRing,
-  curriculo: FileText,
-  pedidos: Wrench,
-  vitrine: Store,
-  avaliacoes: Star,
-  clientes: Building2,
-  equipe: UsersRound,
-  conexoes: Handshake,
-  finalistas: Send,
-  contratados: BadgeCheck,
-  links: Link2,
-  entrevistas: CalendarDays,
-  visitas: Eye,
-};
+import { ICONES_DO_PAINEL as ICONES } from "./icones-do-painel";
+import { SemLinhaDoPainel } from "./sem-linha-do-painel";
 
 /**
  * O menu do painel, um espaço à parte (só a pessoa vê): no topo, de quem é e o que a conta faz; embaixo,
@@ -75,6 +30,7 @@ export function MenuPainel({
   tipoConta = null,
   contas = [],
   papel = "dono",
+  gradeNoHoje = false,
 }: {
   /** o que a conta faz (a principal primeiro): o menu mostra todas juntas, sem troca de modo */
   atividades: ModoPainel[];
@@ -86,6 +42,8 @@ export function MenuPainel({
   contas?: ContaDisponivel[];
   /** o papel na conta atual (quem é da equipe age pela agência) */
   papel?: PapelNaConta;
+  /** o Hoje é a grade das seções (quem procura trabalho): lá, no celular, a linha do menu sai */
+  gradeNoHoje?: boolean;
 }) {
   const caminho = usePathname() ?? "/painel";
   const busca = useSearchParams();
@@ -170,6 +128,9 @@ export function MenuPainel({
 
   return (
     <nav aria-label="Seções do painel" className="flex flex-col gap-3 lg:gap-5">
+      {/* no Hoje de quem procura trabalho, a grade faz o papel da linha no celular: some já na troca de página,
+          antes de a grade chegar (o menu sabe o endereço; a página ainda está carregando) */}
+      {gradeNoHoje && caminho === "/painel" && <SemLinhaDoPainel />}
       {/* o painel é um espaço à parte: diz de quem é e o que a conta faz (muda no perfil, não aqui) */}
       <div ref={caixa} className="relative">
         <div className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2">

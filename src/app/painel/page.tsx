@@ -1,38 +1,26 @@
-import {
-  Bell,
-  CalendarClock,
-  FileText,
-  Hourglass,
-  MessageCircle,
-  PartyPopper,
-  Search,
-  Sparkles,
-  Star,
-  Store,
-  UserRound,
-  Wrench,
-} from "lucide-react";
+import { BellRing, Eye, FileText, Heart, Hourglass, MessagesSquare, Search, Star, Store, Wrench } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoVisaoGeral } from "@/components/painel/esqueleto";
 import { Etapas, NumeroHoje, ParaFazerAgora, Saudacao, type Cartao } from "@/components/painel/hoje";
+import { cartoesDaConta, conversaDoModo, nomes, soma, talvez } from "@/components/painel/cartoes-hoje";
 import {
-  cartoesDeConexao,
-  cartoesDeMensagens,
-  conversaDoModo,
-  nomes,
-  soma,
-  talvez,
-} from "@/components/painel/cartoes-hoje";
+  andamento,
+  cartoesDeQuemProcura,
+  etapaDaCurtida,
+  type EntrevistaMinha,
+} from "@/components/painel/cartoes-de-quem-procura";
+import { GradeDoPainel, type BlocoDoPainel } from "@/components/painel/grade-do-painel";
 import { HojeContratar } from "@/components/painel/hoje-contratar";
+import { ICONES_DO_PAINEL } from "@/components/painel/icones-do-painel";
 import { ConviteNotificacoes } from "@/components/convite-notificacoes";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import type { Conexao } from "@/lib/conexoes";
-import { caminhoConversa, type ConversaPessoa } from "@/lib/conversas";
-import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu, type EtapaCandidato } from "@/lib/constantes";
+import type { ConversaPessoa } from "@/lib/conversas";
+import { esperaCurriculo, esperaResposta, type EtapaCandidato } from "@/lib/constantes";
 import {
   contarMinhasSalvas,
   listarMeusAnuncios,
@@ -43,15 +31,14 @@ import {
   minhasProximasEntrevistas,
   obterMeuCurriculo,
   obterMeuPerfil,
-  perfilCompleto,
 } from "@/lib/dados";
-import { formatarNumero, nomeCurtoDaConta, plural, tempoRelativo } from "@/lib/formato";
+import { formatarNumero, plural } from "@/lib/formato";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
 import { vapidPublica } from "@/lib/servidor/ambiente";
+import { contadoresDoPainel } from "@/lib/servidor/contadores-do-painel";
 import { atividadesDoMenu, modoDaConta } from "@/lib/servidor/modo";
 import { listarMeusCandidatos } from "@/lib/dados";
-import { MODOS, type ModoPainel } from "@/lib/modo-painel";
-import { dataDaEntrevista } from "@/lib/recrutamento";
+import { gruposDaConta, gruposDoModo, MODOS, outrasDaConta, type Contadores, type ModoPainel } from "@/lib/modo-painel";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { exigirUsuario } from "@/lib/sessao";
@@ -62,7 +49,7 @@ import type { Curriculo, MeuAnuncio, MeuPerfil, MinhaCurtida } from "@/lib/tipos
 // menu). Em cima, o que pede a pessoa agora, em cartões com a ação no próprio cartão;
 // embaixo, o andamento do modo. O banco não muda: tudo sai das leituras de sempre.
 //   Contratar ... candidatos para responder, entrevistas, vagas e a agenda
-//   Trabalhar ... aceites, entrevistas, cada candidatura com a etapa e o currículo
+//   Trabalhar ... a grade das seções (o "Para fazer agora" fica no alto das Candidaturas)
 //   Serviços .... pedidos para responder, a vitrine e as avaliações
 
 const DIA = 24 * 3600e3;
@@ -111,7 +98,7 @@ async function Conteudo() {
     const anuncios = await talvez(listarMeusAnuncios(), "os anúncios");
     pagina = <HojeServicos perfil={perfil} anuncios={anuncios} conversas={conversas} agora={agora} />;
   } else {
-    const [curtidas, etapas, curriculo, entrevistas, salvas, visivel, vitrine] = await Promise.all([
+    const [curtidas, etapas, curriculo, entrevistas, salvas, visivel, vitrine, contadores] = await Promise.all([
       talvez(listarMinhasCurtidas(), "as curtidas"),
       listarMinhasEtapas(),
       // { c: null } = ainda não tem currículo; null = não deu para ler
@@ -123,6 +110,8 @@ async function Conteudo() {
       contarMinhasSalvas(),
       meuCurriculoVisivel(),
       meuCurriculoNaVitrine(),
+      // os mesmos números do menu (mensagens, visitas e os das outras atividades)
+      contadoresDoPainel(),
     ]);
     pagina = (
       <HojeTrabalhar
@@ -136,6 +125,8 @@ async function Conteudo() {
         salvas={salvas}
         visivel={visivel}
         vitrine={vitrine}
+        atividades={atividades}
+        contadores={contadores}
         agora={agora}
       />
     );
@@ -157,8 +148,9 @@ async function Conteudo() {
         />
       )}
       {pagina}
-      {/* quem faz mais de uma coisa: o Hoje é o da atividade principal; as outras, num quadro curto */}
-      {atividades.length > 1 && (
+      {/* quem faz mais de uma coisa: o Hoje é o da atividade principal; as outras, num quadro curto (o
+          Painel de quem procura trabalho já mostra as seções delas na grade) */}
+      {atividades.length > 1 && modo !== "trabalhar" && (
         <Suspense fallback={null}>
           <OutrasAtividades outras={atividades.filter((a) => a !== modo)} />
         </Suspense>
@@ -231,67 +223,27 @@ async function OutrasAtividades({ outras }: { outras: ModoPainel[] }) {
   );
 }
 
-/** Os cartões que valem em todos os modos: perfil incompleto, mensagens novas e matches sem oi. */
-function cartoesDaConta(
-  perfil: MeuPerfil | null,
-  conversas: ConversaPessoa[] | null,
-  doModo: (c: ConversaPessoa) => boolean,
-): Cartao[] {
-  // match sem nenhuma mensagem ainda (a conversa é uma por pessoa: com mensagem de outra vaga, já tem oi)
-  const semOi = (conversas ?? []).filter((c) => doModo(c) && c.vagas.length > 0 && !c.ultima_texto);
-  const linkDaConversa = (lista: ConversaPessoa[]) =>
-    lista.length === 1 ? caminhoConversa(lista[0].outro_id) : "/painel/conversas";
-  const cartoes: Cartao[] = [...cartoesDeMensagens(conversas, doModo)];
-  if (semOi.length) {
-    cartoes.push({
-      icone: MessageCircle,
-      quando: "Conexão nova",
-      titulo: `${plural(semOi.length, "match", "matches")} sem conversa ainda`,
-      texto: `Mande um oi para ${nomes(semOi.map((c) => c.outro_nome))}`,
-      href: linkDaConversa(semOi),
-      acao: "Mandar um oi",
-    });
-  }
-  if (!perfilCompleto(perfil)) {
-    cartoes.push({
-      icone: UserRound,
-      quando: "Perfil",
-      titulo: "Complete seu perfil",
-      texto: "Com um WhatsApp ou e-mail você já pode publicar e curtir.",
-      href: "/perfil",
-      acao: "Completar",
-    });
-  }
-  return cartoes;
-}
-
 // ==================================================================== Trabalhar
 
-type EntrevistaMinha = Awaited<ReturnType<typeof minhasProximasEntrevistas>>[number];
+/** O que tem em cada seção das outras atividades (na grade do painel de quem procura trabalho). */
+const AJUDA_DAS_SECOES: Record<string, string> = {
+  "/painel/anuncios?tipo=servico": "Quem pediu seus serviços",
+  "/painel/servicos": "Seus serviços, fotos e preços",
+  "/painel/avaliacoes": "O que dizem do seu trabalho",
+  "/painel/anuncios?tipo=vaga": "As vagas que você publicou",
+  "/painel/caixa": "Quem curtiu as suas vagas",
+  "/painel/caixa?aba=entrevistas": "As entrevistas marcadas",
+  "/painel/contratados": "Quem você contratou",
+  "/talentos": "Quem procura trabalho perto",
+  "/painel/links": "Para levar gente às suas vagas",
+};
 
-/** Onde está cada candidatura, em 4 passos: curtiu, aceito, entrevista, contratado. */
-function andamento(c: MinhaCurtida, etapa: EtapaCandidato | null, entrevista: EntrevistaMinha | undefined) {
-  if (c.status === "dispensada") return { feitas: 1, atual: false, texto: "Não foi dessa vez", fim: true };
-  if (c.status === "desfeito") return { feitas: 1, atual: false, texto: "Match desfeito", fim: true };
-  if (etapa === "nao_seguiu") return { feitas: 2, atual: false, texto: "Encerrado", fim: true };
-  if (etapa === "contratado") return { feitas: 4, atual: false, texto: "Contratado! Parabéns", fim: false };
-  if (entrevista || etapa === "entrevista")
-    return {
-      feitas: 2,
-      atual: true,
-      texto: entrevista ? `Entrevista ${dataDaEntrevista(entrevista.quando)}` : "Em entrevista",
-      fim: false,
-    };
-  if (c.status === "match") return { feitas: 2, atual: true, texto: "Deu match: combinem a entrevista", fim: false };
-  if (esperaCurriculo(c)) return { feitas: 1, atual: true, texto: "Aceitou você: falta o currículo", fim: false };
-  return {
-    feitas: 1,
-    atual: true,
-    texto: etapa === "analise" ? `${c.autor_nome} está analisando` : `Esperando ${c.autor_nome} responder`,
-    fim: false,
-  };
-}
-
+/**
+ * O Painel de quem procura trabalho: a grade das seções, todas à vista, cada uma com o que tem lá. O
+ * "Para fazer agora" fica no alto das Candidaturas (aqui, o número no bloco delas). No celular, a grade
+ * faz o papel da linha do menu (o menu some nesta página: `gradeNoHoje` em MenuPainel). Quem faz mais de
+ * uma coisa vê as seções das outras atividades embaixo, com o nome de cada uma.
+ */
 function HojeTrabalhar({
   perfil,
   curtidas,
@@ -303,6 +255,8 @@ function HojeTrabalhar({
   salvas,
   visivel,
   vitrine,
+  atividades,
+  contadores,
   agora,
 }: {
   perfil: MeuPerfil | null;
@@ -317,117 +271,29 @@ function HojeTrabalhar({
   visivel: boolean;
   /** e o resumo aparece na aba Talentos da busca */
   vitrine: boolean;
+  /** o que a conta faz (Trabalhar primeiro) */
+  atividades: ModoPainel[];
+  contadores: Contadores;
   agora: number;
 }) {
   const vagas = (curtidas ?? []).filter((c) => c.tipo === "vaga");
-  const etapaDe = (c: MinhaCurtida) => etapaParaQuemCurtiu(c.tipo, c.status, etapas.get(c.anuncio_id)?.etapa);
-  const aceitas = vagas.filter(esperaCurriculo);
-  const tituloDe = new Map(vagas.map((v) => [v.anuncio_id, v]));
   const entrevistaDe = new Map(entrevistas.map((e) => [e.anuncio_id, e]));
   const semCurriculo = curriculo !== null && curriculo.c === null;
-
-  const cartoes: Cartao[] = [];
-  if (aceitas.length) {
-    cartoes.push({
-      icone: PartyPopper,
-      tom: "bom",
-      quando: "Boa notícia",
-      titulo: aceitas.length === 1 ? `${aceitas[0].autor_nome} aceitou você` : `${aceitas.length} vagas aceitaram você`,
-      texto: `Em ${nomes(aceitas.map((c) => c.titulo))}. Mande o currículo e o match sai na hora.`,
-      href:
-        aceitas.length === 1
-          ? `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${aceitas[0].anuncio_id}`)}`
-          : "/perfil/curriculo",
-      acao: "Mandar meu currículo",
-    });
-  }
-  const paraConfirmar = entrevistas.filter((e) => e.situacao === "marcada");
-  for (const e of entrevistas.filter((x) => new Date(x.quando).getTime() <= agora + 3 * DIA).slice(0, 2)) {
-    const v = tituloDe.get(e.anuncio_id);
-    const confirmar = e.situacao === "marcada";
-    cartoes.push({
-      icone: CalendarClock,
-      tom: confirmar ? "urgente" : "normal",
-      quando: dataDaEntrevista(e.quando),
-      titulo: `Entrevista${v ? ` para ${v.titulo}` : ""}`,
-      texto: confirmar
-        ? `${v?.autor_nome ?? "Quem publicou"} marcou: confirme que vai ou peça outro horário.`
-        : e.situacao === "remarcar"
-          ? "Você pediu outro horário: espere o novo dia."
-          : "Confirmada. Chegue uns minutos antes.",
-      href: `/anuncio/${e.anuncio_id}`,
-      acao: confirmar ? "Confirmar" : "Ver detalhes",
-    });
-  }
-  if (paraConfirmar.length > 2) {
-    cartoes.push({
-      icone: CalendarClock,
-      titulo: `${paraConfirmar.length} entrevistas para confirmar`,
-      href: "/painel/curtidas?tipo=vaga&etapa=entrevista",
-      acao: "Ver",
-    });
-  }
-  cartoes.push(...cartoesDaConta(perfil, conversas, conversaDoModo.trabalhar));
-  // match dos últimos 7 dias parado: ninguém escreveu na conversa depois do match. Quem nunca trocou
-  // mensagem já tem o "Mandar um oi" (cartoesDaConta); aqui fica quem já tinha conversado antes (a
-  // mensagem da curtida, outra vaga)
-  const parados = vagas.filter((c) => {
-    if (c.status !== "match" || !c.respondida_em || c.anuncio_status !== "ativo") return false;
-    const desde = new Date(c.respondida_em).getTime();
-    const etapa = etapaDe(c);
-    if (agora - desde > 7 * DIA || entrevistaDe.has(c.anuncio_id) || (etapa && etapa !== "analise")) return false;
-    const conversa = conversas?.find((x) => x.outro_id === c.autor_id);
-    if (!conversa?.ultima_texto) return false;
-    return !conversa.ultima_em || new Date(conversa.ultima_em).getTime() < desde;
+  // o "Para fazer agora" (no alto das Candidaturas): aqui, só quantos são
+  const cartoes = cartoesDeQuemProcura({
+    perfil,
+    curtidas,
+    etapas,
+    curriculo,
+    entrevistas,
+    conversas,
+    conexoes,
+    agora,
   });
-  if (parados.length) {
-    const nome = nomeCurtoDaConta(parados[0].autor_nome, parados[0].autor_tipo);
-    cartoes.push({
-      icone: MessageCircle,
-      tom: "bom",
-      quando: "Deu match",
-      titulo:
-        parados.length === 1 ? `Combine a entrevista com ${nome}` : `${parados.length} matches esperando a conversa`,
-      texto:
-        parados.length === 1
-          ? `Em ${parados[0].titulo}. Mande uma mensagem e combinem o dia e o horário.`
-          : `Em ${nomes(parados.map((c) => c.titulo))}. Mande uma mensagem e combinem a entrevista.`,
-      href: parados.length === 1 ? caminhoConversa(parados[0].autor_id) : "/painel/conversas",
-      acao: "Conversar",
-    });
-  }
-  cartoes.push(...cartoesDeConexao(conexoes));
-  if (semCurriculo && aceitas.length === 0) {
-    cartoes.push({
-      icone: FileText,
-      quando: "Currículo",
-      titulo: "Monte seu currículo",
-      texto: "Leva poucos minutos e mostra o seu % de match em cada vaga.",
-      href: "/perfil/curriculo",
-      acao: "Montar agora",
-    });
-  }
-  const vencendo = vagas.filter(
-    (c) =>
-      esperaResposta(c) &&
-      c.anuncio_status === "ativo" &&
-      new Date(c.expira_em).getTime() - agora < 3 * DIA &&
-      new Date(c.expira_em).getTime() > agora,
-  );
-  if (vencendo.length) {
-    cartoes.push({
-      icone: Hourglass,
-      quando: "Em breve",
-      titulo: `${plural(vencendo.length, "vaga que você curtiu sai", "vagas que você curtiu saem")} do ar`,
-      texto: `${nomes(vencendo.map((c) => c.titulo))}. Mande uma mensagem pelo anúncio, se tiver.`,
-      href: "/painel/curtidas?tipo=vaga&situacao=aguardando",
-      acao: "Ver as vagas",
-    });
-  }
 
   // as candidaturas: as que andam primeiro, depois as que esperam, as encerradas por último
   const lista = vagas
-    .map((c) => ({ c, a: andamento(c, etapaDe(c), entrevistaDe.get(c.anuncio_id)) }))
+    .map((c) => ({ c, a: andamento(c, etapaDaCurtida(c, etapas), entrevistaDe.get(c.anuncio_id)) }))
     .sort(
       (x, y) =>
         Number(x.a.fim) - Number(y.a.fim) ||
@@ -435,10 +301,143 @@ function HojeTrabalhar({
         new Date(y.c.curtido_em).getTime() - new Date(x.c.curtido_em).getTime(),
     );
   const ativas = lista.filter((x) => !x.a.fim).length;
-  const forca = curriculo ? forcaDoCurriculo(curriculo.c) : null;
+  const forca = curriculo?.c ? forcaDoCurriculo(curriculo.c) : null;
+  // as conversas mais recentes com mensagem (no computador, ao lado das Candidaturas)
+  const recentes = (conversas ?? [])
+    .filter((c) => c.ultima_texto)
+    .sort((a, b) => new Date(b.ultima_em ?? 0).getTime() - new Date(a.ultima_em ?? 0).getTime())
+    .slice(0, 2);
+
+  const deQuemProcura: BlocoDoPainel[] = [
+    {
+      href: "/painel/curtidas?tipo=vaga",
+      nome: "Candidaturas",
+      icone: Heart,
+      largo: true,
+      destaque: cartoes.length > 0,
+      // o que fazer primeiro; o andamento aparece embaixo, nas barras de cada uma
+      texto: cartoes.length
+        ? plural(cartoes.length, "coisa para fazer agora", "coisas para fazer agora")
+        : ativas
+          ? `${formatarNumero(ativas)} em andamento`
+          : vagas.length
+            ? "Nenhuma em andamento"
+            : "Curta as vagas que interessam e acompanhe cada uma aqui, da curtida à contratação",
+      extra: lista.length > 0 && (
+        <ul className="flex flex-col gap-3 border-t border-line pt-3">
+          {lista.slice(0, 3).map(({ c, a }) => (
+            <li key={c.anuncio_id} className="flex flex-col gap-1.5">
+              <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="text-body-sm font-semibold text-ink">{c.titulo}</span>
+                <span
+                  className={`text-body-sm ${
+                    !a.fim && (a.feitas >= 2 || esperaCurriculo(c))
+                      ? "font-semibold text-cerrado-text"
+                      : "text-ink-muted"
+                  }`}
+                >
+                  {a.texto}
+                </span>
+              </span>
+              <span aria-hidden>
+                <Etapas feitas={a.feitas} atual={a.atual} rotulo={a.texto} />
+              </span>
+            </li>
+          ))}
+          {lista.length > 3 && <li className="text-body-sm text-ink-muted">e mais {lista.length - 3}</li>}
+        </ul>
+      ),
+    },
+    {
+      href: "/painel/conversas",
+      nome: "Mensagens",
+      icone: MessagesSquare,
+      numero: contadores.mensagens,
+      texto: "Conversas, matches e conexões",
+      // no computador, o bloco fica ao lado das Candidaturas: as últimas conversas enchem a altura
+      extra: recentes.length > 0 && (
+        <ul className="hidden flex-col gap-2 border-t border-line pt-3 lg:flex">
+          {recentes.map((c) => (
+            <li key={c.outro_id} className="min-w-0 text-body-sm">
+              <span className={`block truncate ${c.nao_lidas ? "font-semibold text-ink" : "text-ink"}`}>
+                {c.outro_nome}
+              </span>
+              <span className="block truncate text-ink-muted">
+                {c.ultima_minha ? "Você: " : ""}
+                {c.ultima_texto}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    },
+    {
+      href: "/painel/visitas",
+      nome: "Quem viu seu perfil",
+      icone: Eye,
+      numero: contadores.visitas,
+      texto: "Quem abriu seu perfil e seu currículo",
+    },
+    {
+      href: "/painel/seguindo",
+      nome: "Avisos e seguindo",
+      icone: BellRing,
+      texto: "Avisos de vagas e quem você segue",
+    },
+    {
+      href: "/perfil/curriculo",
+      nome: "Currículo",
+      icone: FileText,
+      destaque: semCurriculo,
+      texto: semCurriculo
+        ? "Monte o seu: leva poucos minutos"
+        : forca
+          ? `${forca.pontos}% completo`
+          : "O seu currículo",
+      extra: forca && (
+        <span className="mt-auto flex flex-col gap-2">
+          <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-surface-300">
+            <span className={forca.pontos >= 80 ? "bg-cerrado" : "bg-ipe"} style={{ width: `${forca.pontos}%` }} />
+          </span>
+          <span className="text-body-sm text-ink-muted">
+            {vitrine
+              ? "Você aparece na aba Talentos"
+              : visivel
+                ? "Empresas da sua cidade acham você"
+                : "As empresas ainda não acham você"}
+          </span>
+        </span>
+      ),
+    },
+  ];
+
+  // quem faz mais de uma coisa: as seções das outras atividades, com o nome de cada uma (como no menu)
+  const jaNaGrade = new Set(["/painel", ...deQuemProcura.map((b) => b.href)]);
+  const outrasAtividades = atividades
+    .filter((m) => m !== "trabalhar")
+    .map((m) => ({
+      nome: MODOS.find((x) => x.valor === m)?.nome ?? m,
+      blocos: gruposDoModo(m, perfil?.tipo ?? null)
+        .flatMap((g) => g.secoes)
+        .filter((s) => !jaNaGrade.has(s.href) && jaNaGrade.add(s.href))
+        .map((s): BlocoDoPainel => {
+          const n = s.contador ? (contadores[s.contador] ?? 0) : 0;
+          const comoTexto = s.jeito === "texto";
+          return {
+            href: s.href,
+            nome: s.nome,
+            icone: ICONES_DO_PAINEL[s.icone],
+            numero: comoTexto ? 0 : n,
+            texto:
+              comoTexto && n > 0 && s.sufixo ? `${formatarNumero(n)} ${s.sufixo}` : (AJUDA_DAS_SECOES[s.href] ?? ""),
+          };
+        }),
+    }))
+    .filter((g) => g.blocos.length > 0);
+  const nomeDaAtividade = MODOS.find((x) => x.valor === "trabalhar")?.nome ?? "Trabalhar";
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <Saudacao
         nome={perfil?.nome ?? null}
         agora={agora}
@@ -455,148 +454,25 @@ function HojeTrabalhar({
           Suas candidaturas não apareceram agora. Tente de novo em instantes.
         </Aviso>
       )}
-      <ParaFazerAgora
-        itens={cartoes}
-        vazio="Tudo em dia. Quando alguém aceitar você ou marcar uma entrevista, aparece aqui."
+      <GradeDoPainel
+        titulo="As seções do seu painel"
+        grupos={[
+          { nome: outrasAtividades.length ? nomeDaAtividade : null, blocos: deQuemProcura },
+          ...outrasAtividades,
+        ]}
+        mais={[
+          // as vagas salvas no Descobrir, para decidir depois
+          ...(salvas
+            ? [
+                {
+                  href: "/descobrir?aba=salvas",
+                  nome: plural(salvas, "vaga salva para decidir", "vagas salvas para decidir"),
+                },
+              ]
+            : []),
+          ...outrasDaConta(atividades, gruposDaConta(atividades, perfil?.tipo ?? null)),
+        ]}
       />
-
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <section aria-labelledby="candidaturas" className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="candidaturas" className="text-h3">
-              Suas candidaturas
-              {ativas > 0 && <span className="text-ink-muted"> · {ativas} em andamento</span>}
-            </h2>
-            {vagas.length > 0 && (
-              <Link
-                href="/painel/curtidas?tipo=vaga"
-                className="text-label text-ink-muted underline underline-offset-2 hover:text-ink"
-              >
-                Ver todas
-              </Link>
-            )}
-          </div>
-          {vagas.length === 0 ? (
-            <div className="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface-200 p-5">
-              <p className="text-body text-ink">Você ainda não curtiu nenhuma vaga.</p>
-              <p className="text-body-sm text-ink-muted">
-                Curta as que interessam: quem publicou vê seu perfil e decide se aceita. Aqui você acompanha cada uma,
-                da curtida à contratação.
-              </p>
-              <BotaoLink href="/descobrir" tamanho="sm">
-                <Sparkles aria-hidden />
-                Descobrir vagas
-              </BotaoLink>
-            </div>
-          ) : (
-            <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
-              {lista.slice(0, 6).map(({ c, a }) => (
-                <li key={c.anuncio_id}>
-                  <Link
-                    href={`/anuncio/${c.anuncio_id}`}
-                    className="flex flex-col gap-2 px-4 py-3.5 transition-colors hover:bg-surface-300 sm:px-5"
-                  >
-                    <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                      <span className="text-label">{c.titulo}</span>
-                      <span className="text-body-sm text-ink-muted">
-                        {c.autor_nome} · {c.bairro} · curtiu {tempoRelativo(c.curtido_em, agora)}
-                      </span>
-                    </span>
-                    <Etapas feitas={a.feitas} atual={a.atual} rotulo={a.texto} />
-                    <span
-                      className={`text-body-sm ${
-                        a.fim
-                          ? "text-ink-muted"
-                          : a.feitas >= 2 || esperaCurriculo(c)
-                            ? "font-semibold text-cerrado-text"
-                            : "text-ink"
-                      }`}
-                    >
-                      {a.texto}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <aside className="flex flex-col gap-4">
-          {/* sem currículo, o convite já está em "Para fazer agora" (um convite só por tela) */}
-          {!semCurriculo && (
-            <section
-              aria-labelledby="seu-curriculo"
-              className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
-            >
-              <h2 id="seu-curriculo" className="text-h3">
-                Seu currículo
-              </h2>
-              {!forca ? (
-                <p className="text-body-sm text-ink-muted">Não deu para ver agora.</p>
-              ) : (
-                <>
-                  <p className="flex items-baseline gap-2">
-                    <span className="font-display text-h2 leading-none tabular-nums">{forca.pontos}%</span>
-                    <span className="text-body-sm text-ink-muted">completo</span>
-                  </p>
-                  <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-surface-300">
-                    <span
-                      className={forca.pontos >= 80 ? "bg-cerrado" : "bg-ipe"}
-                      style={{ width: `${forca.pontos}%` }}
-                    />
-                  </span>
-                  <p className="text-body-sm text-ink-muted">
-                    {forca.dica ??
-                      (curriculo?.c ? `Completo. Atualizado ${tempoRelativo(curriculo.c.atualizado_em, agora)}.` : "")}
-                  </p>
-                  <Link
-                    href="/perfil/curriculo"
-                    className="self-start text-label underline underline-offset-2 hover:text-terra-text"
-                  >
-                    {curriculo?.c ? "Melhorar o currículo" : "Montar o currículo"}
-                  </Link>
-                  {curriculo?.c && (
-                    <p className="border-t border-line pt-3 text-body-sm text-ink-muted">
-                      {vitrine ? (
-                        "Você aparece na aba Talentos: empresas de toda a região acham seu currículo e convidam você."
-                      ) : visivel ? (
-                        <>
-                          Empresas com vagas na sua cidade podem achar seu currículo e convidar você. Para toda a
-                          região,{" "}
-                          <Link href="/perfil/curriculo#vitrine-titulo" className="font-semibold text-ink underline">
-                            apareça na aba Talentos
-                          </Link>
-                          .
-                        </>
-                      ) : (
-                        <>
-                          Quer ser convidado para vagas?{" "}
-                          <Link href="/perfil/curriculo#talentos-titulo" className="font-semibold text-ink underline">
-                            Deixe as empresas encontrarem você
-                          </Link>
-                          .
-                        </>
-                      )}
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
-          )}
-
-          <nav aria-label="Atalhos de quem procura trabalho" className="flex flex-col gap-2">
-            <Atalho icone={Search} href="/?tipo=vaga&ordem=combina" titulo="Vagas que combinam com você" />
-            <Atalho icone={Bell} href="/painel/seguindo" titulo="Avisos de vagas e quem você segue" />
-            {salvas ? (
-              <Atalho
-                icone={Star}
-                href="/descobrir?aba=salvas"
-                titulo={`${plural(salvas, "vaga salva", "vagas salvas")} para decidir`}
-              />
-            ) : null}
-          </nav>
-        </aside>
-      </div>
     </div>
   );
 }

@@ -7,8 +7,10 @@ import { CaminhoDaCurtida } from "@/components/caminho-curtida";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
 import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
+import { paraFazerDeQuemProcura } from "@/components/painel/cartoes-de-quem-procura";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
+import { ParaFazerAgora } from "@/components/painel/hoje";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
@@ -45,6 +47,7 @@ import {
 } from "@/lib/formato";
 import { ContratacaoPublica } from "@/components/social/botoes";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
+import { atividadesDoMenu } from "@/lib/servidor/modo";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { MinhaCurtida, StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
@@ -83,7 +86,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/curtidas");
   const sp = await searchParams;
-  const [curtidas, desfeitos, etapas, bloqueios, publicas, curriculo, vistas] = await Promise.all([
+  const [curtidas, desfeitos, etapas, bloqueios, publicas, curriculo, vistas, atividades] = await Promise.all([
     listarMinhasCurtidas(),
     listarMeusDesfeitos(),
     listarMinhasEtapas(),
@@ -92,8 +95,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     obterMeuCurriculo().catch(() => null),
     // as candidaturas que a empresa já abriu (Quem viu seu perfil)
     minhasCandidaturasVistas(),
+    atividadesDoMenu(),
   ]);
   const agora = await agoraDaRequisicao();
+  // filtros: ?tipo=vaga|servico, ?situacao=aguardando|match|encerradas e ?etapa= (vêm da visão geral)
+  const pedidoTipo = primeiro(sp.tipo);
+  const tipo: TipoAnuncio | null = pedidoTipo === "vaga" || pedidoTipo === "servico" ? pedidoTipo : null;
+  // quem procura trabalho: o "Para fazer agora" (aceites, entrevistas, mensagens) no alto das Candidaturas
+  const paraFazer =
+    atividades.includes("trabalhar") && tipo !== "servico" ? await paraFazerDeQuemProcura(curtidas, etapas, agora) : [];
+  const fazerAgora = paraFazer.length > 0 && <ParaFazerAgora lista itens={paraFazer} vazio="" />;
   // sem currículo, as vagas que pedem um ganham o passo "Você manda o currículo" no caminho
   const [pedemCurriculo, diretos] = await Promise.all([
     curriculo
@@ -105,15 +116,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
 
   if (curtidas.length === 0) {
     return (
-      <Vazio icone={Heart} titulo="Você ainda não curtiu nada" acao={<BotaoLink href="/">Ver oportunidades</BotaoLink>}>
-        Curta as vagas que combinam com você ou peça um serviço a um profissional. Se a outra pessoa aceitar, dá match.
-      </Vazio>
+      <div className="flex flex-col gap-6">
+        {fazerAgora}
+        <Vazio
+          icone={Heart}
+          titulo="Você ainda não curtiu nada"
+          acao={<BotaoLink href="/">Ver oportunidades</BotaoLink>}
+        >
+          Curta as vagas que combinam com você ou peça um serviço a um profissional. Se a outra pessoa aceitar, dá
+          match.
+        </Vazio>
+      </div>
     );
   }
 
-  // filtros: ?tipo=vaga|servico, ?situacao=aguardando|match|encerradas e ?etapa= (vêm da visão geral)
-  const pedidoTipo = primeiro(sp.tipo);
-  const tipo: TipoAnuncio | null = pedidoTipo === "vaga" || pedidoTipo === "servico" ? pedidoTipo : null;
   const pedidaSituacao = primeiro(sp.situacao);
   const situacao = pedidaSituacao && pedidaSituacao in SITUACOES ? (pedidaSituacao as Situacao) : null;
   const pedidaEtapa = primeiro(sp.etapa);
@@ -157,6 +173,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
             : "Quem publicou decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."}
         </p>
       </div>
+      {fazerAgora && (
+        <>
+          <div className="mb-1">{fazerAgora}</div>
+          {/* depois do "Para fazer agora", a lista de sempre, com o título dela */}
+          <h2 className="text-h3">{tipo === "vaga" ? "Todas as candidaturas" : "Tudo o que você curtiu"}</h2>
+        </>
+      )}
 
       <nav
         aria-label="Filtrar curtidas"

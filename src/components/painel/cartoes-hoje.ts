@@ -1,11 +1,13 @@
-import { Handshake, MessagesSquare } from "lucide-react";
+import { Handshake, MessageCircle, MessagesSquare, UserRound } from "lucide-react";
 import { caminhoConexao, type Conexao } from "@/lib/conexoes";
 import { caminhoConversa, type ConversaPessoa } from "@/lib/conversas";
+import { perfilCompleto } from "@/lib/dados";
 import { plural } from "@/lib/formato";
+import type { MeuPerfil } from "@/lib/tipos";
 import type { Cartao } from "./hoje";
 
-// Os cartões de "Para fazer agora" que valem em mais de um lugar (a página Hoje do painel e a
-// home das empresas): pedidos de conexão e mensagens novas.
+// Os cartões de "Para fazer agora" que valem em mais de um lugar (a página Hoje do painel, as
+// Candidaturas e a home das empresas): pedidos de conexão, mensagens novas e o perfil.
 
 /** Uma leitura que, se falhar, não derruba a página (o número vira "–"). */
 export async function talvez<T>(leitura: Promise<T>, oQue: string): Promise<T | null> {
@@ -48,6 +50,40 @@ export const conversaDoModo = {
   trabalhar: (c: ConversaPessoa) => c.conectados || c.vagas.some((v) => v.papel === "curti" && v.tipo === "vaga"),
   servicos: (c: ConversaPessoa) => c.vagas.some((v) => v.papel === "publiquei" && v.tipo === "servico"),
 };
+
+/** Os cartões que valem em todos os modos: perfil incompleto, mensagens novas e matches sem oi. */
+export function cartoesDaConta(
+  perfil: MeuPerfil | null,
+  conversas: ConversaPessoa[] | null,
+  doModo: (c: ConversaPessoa) => boolean,
+): Cartao[] {
+  // match sem nenhuma mensagem ainda (a conversa é uma por pessoa: com mensagem de outra vaga, já tem oi)
+  const semOi = (conversas ?? []).filter((c) => doModo(c) && c.vagas.length > 0 && !c.ultima_texto);
+  const linkDaConversa = (lista: ConversaPessoa[]) =>
+    lista.length === 1 ? caminhoConversa(lista[0].outro_id) : "/painel/conversas";
+  const cartoes: Cartao[] = [...cartoesDeMensagens(conversas, doModo)];
+  if (semOi.length) {
+    cartoes.push({
+      icone: MessageCircle,
+      quando: "Conexão nova",
+      titulo: `${plural(semOi.length, "match", "matches")} sem conversa ainda`,
+      texto: `Mande um oi para ${nomes(semOi.map((c) => c.outro_nome))}`,
+      href: linkDaConversa(semOi),
+      acao: "Mandar um oi",
+    });
+  }
+  if (!perfilCompleto(perfil)) {
+    cartoes.push({
+      icone: UserRound,
+      quando: "Perfil",
+      titulo: "Complete seu perfil",
+      texto: "Com um WhatsApp ou e-mail você já pode publicar e curtir.",
+      href: "/perfil",
+      acao: "Completar",
+    });
+  }
+  return cartoes;
+}
 
 /** As mensagens novas, uma conversa por pessoa. */
 export function cartoesDeMensagens(
