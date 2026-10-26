@@ -107,6 +107,28 @@ export function centroDaCidade(cidade: Cidade) {
 }
 
 /**
+ * Mais ou menos quantos km, em linha reta, entre duas áreas: o centro da região (nas cidades com
+ * regiões, pelo bairro) ou o da cidade. É o "perto da vaga" da nota de aderência; null quando a
+ * cidade não é do Publike.
+ */
+export function distanciaEntreAreas(
+  a: { cidade: string; bairro?: string | null },
+  b: { cidade: string; bairro?: string | null },
+) {
+  const centro = (x: { cidade: string; bairro?: string | null }) => {
+    const regiao = x.bairro ? regiaoDoBairro(x.cidade, x.bairro) : null;
+    return regiao ? CENTRO_REGIAO[regiao] : (CENTRO_CIDADE[x.cidade as Cidade] ?? null);
+  };
+  const pa = centro(a);
+  const pb = centro(b);
+  if (!pa || !pb) return null;
+  // perto assim, a Terra é plana o bastante
+  const norte = (pb.lat - pa.lat) * 111.32;
+  const leste = (pb.lng - pa.lng) * 111.32 * Math.cos((((pa.lat + pb.lat) / 2) * Math.PI) / 180);
+  return Math.hypot(norte, leste);
+}
+
+/**
  * Onde a pessoa mora: o CEP de casa (guardado na conta), o que ela escolheu na
  * busca (guardado no navegador) ou o bairro do perfil. Com CEP há um ponto
  * (arredondado, ~300 m) e as distâncias saem da rua dela.

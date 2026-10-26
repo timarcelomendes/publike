@@ -1,6 +1,6 @@
 import { Check, CircleHelp, Plus, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
-import type { Aderencia } from "@/lib/aderencia";
+import { atendeEmParte, maisEmParte, type Aderencia } from "@/lib/aderencia";
 
 const itens = (n: number) => `${n} ${n === 1 ? "item" : "itens"}`;
 
@@ -22,7 +22,7 @@ export function NotaAderencia({ a, longo = false }: { a: Aderencia; longo?: bool
     a.nota >= 80 ? "bg-cerrado text-on-cerrado" : a.nota >= 50 ? "bg-ipe text-on-ipe" : "bg-surface-300 text-ink";
   return (
     <span
-      title={`Nota de aderência: atende ${a.atendidos} de ${itens(a.conferidos)} da vaga que deu para conferir`}
+      title={`Nota de aderência: atende ${a.atendidos} de ${itens(a.conferidos)} da vaga que deu para conferir${maisEmParte(a.emParte)}${a.teto ? ` (com poucos itens, a nota vai até ${a.teto}%)` : ""}`}
       className={`inline-flex shrink-0 items-center rounded-pill px-2 py-0.5 text-caption font-semibold tabular-nums ${cor}`}
     >
       {a.nota}%{longo && <span className="ml-1 font-normal">de aderência</span>}
@@ -30,7 +30,28 @@ export function NotaAderencia({ a, longo = false }: { a: Aderencia; longo?: bool
   );
 }
 
-/** O porquê da nota: cada coisa que a vaga pede, com o que a pessoa tem. */
+/**
+ * O item que bate em parte: o círculo preenchido no tanto que a pessoa atende (0,6: pouco mais da
+ * metade). Do tamanho e do traço dos ícones ao lado.
+ */
+export function IconeEmParte({ parte, className = "" }: { parte: number; className?: string }) {
+  const angulo = 2 * Math.PI * Math.min(Math.max(parte, 0.05), 0.95);
+  const x = (8 + 6 * Math.sin(angulo)).toFixed(2);
+  const y = (8 - 6 * Math.cos(angulo)).toFixed(2);
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      role="img"
+      aria-label={`Atende em parte (${Math.round(parte * 100)}%)`}
+      className={className}
+    >
+      <circle cx="8" cy="8" r="6.75" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d={`M8 8V2A6 6 0 ${angulo > Math.PI ? 1 : 0} 1 ${x} ${y}Z`} fill="currentColor" />
+    </svg>
+  );
+}
+
+/** O porquê da nota: cada coisa que a vaga pede, com o que a pessoa tem (o que bate em parte, com o quanto). */
 export function CriteriosDaAderencia({ a }: { a: Aderencia }) {
   return (
     <ul className="flex flex-col gap-1.5">
@@ -38,6 +59,8 @@ export function CriteriosDaAderencia({ a }: { a: Aderencia }) {
         <li key={k.nome} className="flex items-start gap-2 text-body-sm">
           {k.extra ? (
             <Plus aria-label="Ponto a mais" className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
+          ) : atendeEmParte(k) ? (
+            <IconeEmParte parte={k.parte ?? 0} className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
           ) : k.ok === true ? (
             <Check aria-label="Atende" className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
           ) : k.ok === false ? (
@@ -60,8 +83,9 @@ export function CriteriosDaAderencia({ a }: { a: Aderencia }) {
 }
 
 /**
- * Os itens e a conta da nota ("atende 3 de 4 itens"), com o que entra nela. Com poucos
- * itens para comparar, a dica de dizer mais na vaga (`editarVaga`: o link do editar).
+ * Os itens e a conta da nota ("atende 3 de 4 itens, e 1 em parte"), com o que entra nela. Com
+ * poucos itens para comparar, o teto da nota e a dica de dizer mais na vaga (`editarVaga`: o link
+ * do editar).
  */
 export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; editarVaga?: string | null }) {
   const semConta = a.criterios.length - a.conferidos;
@@ -77,7 +101,13 @@ export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; edi
         ) : a.conferidos ? (
           <>
             Atende <strong>{a.atendidos}</strong> de <strong>{itens(a.conferidos)}</strong> que deu para conferir
+            {a.emParte > 0 && (
+              <>
+                , e <strong>{a.emParte}</strong> em parte
+              </>
+            )}
             {semConta > 0 && ` (${itens(semConta)} sem informação ficam fora da conta)`}.
+            {a.teto && ` Com poucos itens para conferir, a nota vai até ${a.teto}%.`}
           </>
         ) : (
           "Nada que dê para conferir ainda: falta currículo ou resposta."
@@ -85,9 +115,10 @@ export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; edi
       </p>
       {a.criterios.length > 0 && <CriteriosDaAderencia a={a} />}
       <p className="text-body-sm text-ink-muted">
-        Entra o que a vaga pede comparado com o currículo, o perfil e as respostas: escolaridade, experiência (tempo e
-        função), CNH, horário, onde mora e as perguntas com a resposta que você procura. Os itens com “+” só somam. A
-        descrição da vaga não é lida, só os cursos que ela cita.
+        Entra o que a vaga pede comparado com o currículo, o perfil e as respostas: escolaridade, experiência (o tempo e
+        a função, que vale mais), CNH, horário, onde mora e as perguntas com a resposta que você procura. O que bate em
+        parte conta em parte: uma área parecida, parte do tempo ou do horário, morar um pouco mais longe. Os itens com
+        “+” só somam: as habilidades e os cursos que a vaga cita.
       </p>
       {pedidos <= 2 && editarVaga && (
         <p className="rounded-md bg-terra-soft px-3 py-2 text-body-sm text-terra-text">

@@ -41,7 +41,7 @@ export type CartaVaga = {
   lugar: string;
   distancia: string | null;
   /** o % de match com o currículo (a mesma conta da busca e da empresa); sem currículo ou com pouco para comparar, null */
-  match: { nota: number; atendidos: number; conferidos: number; outraArea?: boolean } | null;
+  match: { nota: number; atendidos: number; conferidos: number; emParte?: number; outraArea?: boolean } | null;
   motivos: Motivo[];
   pedeCurriculo: boolean;
   /** quem curte já vê o WhatsApp de quem publicou */
@@ -85,7 +85,7 @@ function Anel({ match }: { match: NonNullable<CartaVaga["match"]> }) {
   return (
     <div
       className="relative size-14 shrink-0"
-      title={`Seu currículo atende ${match.atendidos} de ${itens} que a vaga pede`}
+      title={`Seu currículo atende ${match.atendidos} de ${itens} que a vaga pede${match.emParte ? `, e ${match.emParte} em parte` : ""}`}
     >
       <svg viewBox="0 0 52 52" className="size-14 -rotate-90" aria-hidden>
         <circle cx="26" cy="26" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="5" />

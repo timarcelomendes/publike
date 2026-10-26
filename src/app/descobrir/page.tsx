@@ -96,7 +96,13 @@ function paraCarta(v: VagaIndicada, matches: Matches): CartaVaga {
     distancia: formatarDistancia(v.distanciaKm),
     match:
       m && m.nota !== null
-        ? { nota: m.nota, atendidos: m.atendidos, conferidos: m.conferidos, outraArea: ehOutraArea(m) }
+        ? {
+            nota: m.nota,
+            atendidos: m.atendidos,
+            conferidos: m.conferidos,
+            emParte: m.emParte,
+            outraArea: ehOutraArea(m),
+          }
         : null,
     motivos: v.motivos,
     pedeCurriculo: v.pede_curriculo,

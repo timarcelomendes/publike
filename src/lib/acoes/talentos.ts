@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { refresh } from "next/cache";
+import { atendeEmParte } from "@/lib/aderencia";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 import { listarCurriculosDosInteressados, obterAnuncio, obterUsuario } from "@/lib/dados";
@@ -61,7 +62,7 @@ export async function resumirCandidatoComIA(anuncioId: string, perfilId: string)
     "<comparacao>",
     ...c.aderencia.criterios.map(
       (k) =>
-        `- ${k.nome}: ${k.ok === true ? "atende" : k.ok === false ? "não atende" : "sem informação"} (${k.detalhe})`,
+        `- ${k.nome}: ${atendeEmParte(k) ? "atende em parte" : k.ok === true ? "atende" : k.ok === false ? "não atende" : "sem informação"} (${k.detalhe})`,
     ),
     "</comparacao>",
     "<curriculo>",

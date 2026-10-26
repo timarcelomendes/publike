@@ -59,9 +59,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
       eliminado: Boolean(c.aderencia?.eliminado),
       atendidos: c.aderencia?.atendidos ?? 0,
       conferidos: c.aderencia?.conferidos ?? 0,
+      emParte: c.aderencia?.emParte ?? 0,
       criterios: (c.aderencia?.criterios ?? [])
         .slice(0, 6)
-        .map((k) => ({ nome: k.nome, ok: k.ok, extra: k.extra, eliminatorio: k.eliminatorio })),
+        .map((k) => ({ nome: k.nome, ok: k.ok, parte: k.parte, extra: k.extra, eliminatorio: k.eliminatorio })),
       recado: c.mensagem,
       estudo: estudos.length ? estudos.join("; ") : null,
       titulo: c.curriculo?.titulo ?? null,

@@ -7,6 +7,7 @@ import { chamarAcao } from "@/lib/acao-segura";
 import { responderCurtida } from "@/lib/acoes/curtidas";
 import { Avatar } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
+import { IconeEmParte } from "./nota-aderencia";
 
 // Triagem rápida: quem espera resposta em cartões, um de cada vez. Arrastar para a
 // direita aceita, para a esquerda dispensa; os botões e as setas do teclado fazem o
@@ -25,7 +26,10 @@ export type CartaTriagem = {
   eliminado: boolean;
   atendidos: number;
   conferidos: number;
-  criterios: { nome: string; ok: boolean | null; extra?: boolean; eliminatorio?: boolean }[];
+  /** os itens que batem só em parte (a função de área parecida, parte do horário…) */
+  emParte: number;
+  /** `parte` abaixo de 1: atende em parte */
+  criterios: { nome: string; ok: boolean | null; parte?: number; extra?: boolean; eliminatorio?: boolean }[];
   recado: string | null;
   estudo: string | null;
   /** o que a pessoa faz ("Auxiliar de cozinha"), do currículo */
@@ -250,6 +254,7 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
                 </span>
                 <span className="text-body-sm text-ink-muted">
                   de aderência · atende {atual.atendidos} de {atual.conferidos}
+                  {atual.emParte > 0 && ` · ${atual.emParte} em parte`}
                 </span>
               </p>
               <ul className="flex flex-wrap gap-1.5">
@@ -260,6 +265,8 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
                   >
                     {k.extra ? (
                       <Plus aria-label="Ponto a mais" className="size-3.5 text-cerrado-text" />
+                    ) : k.ok === true && k.parte !== undefined && k.parte < 1 ? (
+                      <IconeEmParte parte={k.parte} className="size-3.5 text-cerrado-text" />
                     ) : k.ok === true ? (
                       <Check aria-label="Atende" className="size-3.5 text-cerrado-text" />
                     ) : k.ok === false ? (

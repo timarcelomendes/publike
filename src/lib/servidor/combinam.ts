@@ -63,6 +63,7 @@ export function comoCurriculo(dado: unknown): Curriculo | null {
     cursos: Array.isArray(c.cursos) ? (c.cursos as string[]) : [],
     estudos: Array.isArray(c.estudos) ? (c.estudos as Curriculo["estudos"]) : [],
     titulo: (c.titulo as string | null) ?? null,
+    habilidades: Array.isArray(c.habilidades) ? (c.habilidades as string[]) : [],
   } as Curriculo;
 }
 
