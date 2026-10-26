@@ -545,3 +545,144 @@ export async function matchesRecentes(c: ClienteBanco, desde: string | null): Pr
     };
   });
 }
+
+/** Uma pessoa esperando a empresa: o nome curto, a vaga e desde quando. */
+export type PessoaEsperando = { nome: string; vaga: string; desde: string };
+
+/** Uma empresa com gente esperando: quem curtiu e espera o aceite, e quem deu match e ainda não recebeu mensagem. */
+export type EmpresaEsperando = {
+  id: string;
+  nome: string;
+  tipo: string;
+  whatsapp: string | null;
+  esperando: PessoaEsperando[];
+  semConversa: PessoaEsperando[];
+  /** a espera mais antiga (a lista vem dela para a mais nova) */
+  maisAntiga: string;
+};
+
+/** "Maria Souza" → "Maria S." (o nome inteiro a empresa vê no Publike). */
+function nomeCurtoDoCandidato(nome: string) {
+  const partes = nome.trim().split(/\s+/);
+  return partes.length > 1 ? `${partes[0]} ${partes.at(-1)!.charAt(0).toUpperCase()}.` : partes[0];
+}
+
+/**
+ * As empresas com gente esperando, nas vagas no ar: quem curtiu e espera o aceite (sem o aceite que
+ * espera o currículo, que é com a pessoa) e quem deu match nos últimos 30 dias sem a empresa ter mandado
+ * mensagem. Para o admin avisar a empresa pelo WhatsApp (Admin › Esperando). `contaId`: só uma empresa.
+ */
+export async function empresasComGenteEsperando(
+  c: ClienteBanco,
+  agora: number,
+  contaId: string | null = null,
+): Promise<EmpresaEsperando[]> {
+  let qv = c
+    .from("anuncios")
+    .select("id, titulo, autor_id")
+    .eq("tipo", "vaga")
+    .eq("status", "ativo")
+    .gt("expira_em", new Date(agora).toISOString())
+    .limit(2000);
+  if (contaId) qv = qv.eq("autor_id", contaId);
+  const { data: vagas, error: ev } = await qv;
+  if (ev) falha("as vagas no ar", ev);
+  if (!vagas?.length) return [];
+  const vagaDe = new Map(vagas.map((v) => [v.id, v]));
+  const desde30 = new Date(agora - 30 * 24 * 3600e3).toISOString();
+  const { data: curtidas, error: ec } = await c
+    .from("curtidas")
+    .select("anuncio_id, perfil_id, status, criado_em, respondida_em, aceita_em")
+    .in(
+      "anuncio_id",
+      vagas.map((v) => v.id),
+    )
+    .in("status", ["pendente", "match"])
+    .limit(5000);
+  if (ec) falha("as curtidas das vagas no ar", ec);
+  const pendentes = (curtidas ?? []).filter((k) => k.status === "pendente" && !k.aceita_em);
+  const matches = (curtidas ?? []).filter((k) => k.status === "match" && (k.respondida_em ?? k.criado_em) >= desde30);
+
+  // os matches em que a empresa ainda não mandou mensagem (a conversa é uma por dupla: conta_a < conta_b)
+  const dupla = (a: string, b: string) => (a < b ? `${a}:${b}` : `${b}:${a}`);
+  const empresaDoMatch = (k: { anuncio_id: string }) => vagaDe.get(k.anuncio_id)!.autor_id;
+  const comMensagem = new Set<string>();
+  if (matches.length) {
+    const lados = [...new Set(matches.flatMap((k) => [k.perfil_id, empresaDoMatch(k)]))];
+    const { data: conversas, error: eco } = await c
+      .from("conversas")
+      .select("id, conta_a, conta_b")
+      .in("conta_a", lados)
+      .in("conta_b", lados)
+      .limit(5000);
+    if (eco) falha("as conversas dos matches", eco);
+    const queremos = new Set(matches.map((k) => dupla(k.perfil_id, empresaDoMatch(k))));
+    const daDupla = new Map(
+      (conversas ?? []).filter((x) => queremos.has(`${x.conta_a}:${x.conta_b}`)).map((x) => [x.id, x]),
+    );
+    if (daDupla.size) {
+      const { data: msgs, error: em } = await c
+        .from("mensagens")
+        .select("conversa_id, autor_id")
+        .in("conversa_id", [...daDupla.keys()])
+        .limit(20000);
+      if (em) falha("as mensagens dos matches", em);
+      // a dupla e quem escreveu: só a mensagem da empresa tira o match da lista (a da pessoa, não)
+      for (const m of msgs ?? []) {
+        const x = daDupla.get(m.conversa_id!);
+        if (x) comMensagem.add(`${x.conta_a}:${x.conta_b}>${m.autor_id}`);
+      }
+    }
+  }
+  const semConversa = matches.filter(
+    (k) => !comMensagem.has(`${dupla(k.perfil_id, empresaDoMatch(k))}>${empresaDoMatch(k)}`),
+  );
+
+  const idsPessoas = [...new Set([...pendentes, ...semConversa].map((k) => k.perfil_id))];
+  const idsEmpresas = [...new Set([...pendentes, ...semConversa].map(empresaDoMatch))];
+  if (!idsEmpresas.length) return [];
+  const [{ data: perfis, error: ep }, { data: contatos, error: ect }] = await Promise.all([
+    c
+      .from("perfis")
+      .select("id, nome, tipo")
+      .in("id", [...idsPessoas, ...idsEmpresas]),
+    c.from("contatos").select("perfil_id, whatsapp").in("perfil_id", idsEmpresas),
+  ]);
+  if (ep) falha("as contas", ep);
+  if (ect) falha("os contatos das empresas", ect);
+  const perfilDe = new Map((perfis ?? []).map((p) => [p.id, p]));
+  const zapDe = new Map((contatos ?? []).map((x) => [x.perfil_id, x.whatsapp]));
+
+  const porEmpresa = new Map<string, EmpresaEsperando>();
+  const pessoa = (k: { anuncio_id: string; perfil_id: string }, desde: string): PessoaEsperando => ({
+    nome: nomeCurtoDoCandidato(perfilDe.get(k.perfil_id)?.nome ?? "Alguém"),
+    vaga: vagaDe.get(k.anuncio_id)!.titulo,
+    desde,
+  });
+  const da = (id: string) => {
+    let e = porEmpresa.get(id);
+    if (!e) {
+      const p = perfilDe.get(id);
+      e = {
+        id,
+        nome: p?.nome ?? "Conta sem perfil",
+        tipo: p?.tipo ?? "empresa",
+        whatsapp: zapDe.get(id) ?? null,
+        esperando: [],
+        semConversa: [],
+        maisAntiga: new Date(agora).toISOString(),
+      };
+      porEmpresa.set(id, e);
+    }
+    return e;
+  };
+  for (const k of pendentes) da(empresaDoMatch(k)).esperando.push(pessoa(k, k.criado_em));
+  for (const k of semConversa) da(empresaDoMatch(k)).semConversa.push(pessoa(k, k.respondida_em ?? k.criado_em));
+  const porData = (a: PessoaEsperando, b: PessoaEsperando) => a.desde.localeCompare(b.desde);
+  for (const e of porEmpresa.values()) {
+    e.esperando.sort(porData);
+    e.semConversa.sort(porData);
+    e.maisAntiga = [...e.esperando, ...e.semConversa].map((p) => p.desde).sort()[0] ?? e.maisAntiga;
+  }
+  return [...porEmpresa.values()].sort((a, b) => a.maisAntiga.localeCompare(b.maisAntiga));
+}
