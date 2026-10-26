@@ -8,19 +8,35 @@ import { abaDoCaminho } from "./barra-inferior-ativa";
 import { abasDoTopo, type AbaInferior, type NumerosDaBarra } from "./barra-inferior-base";
 import { useMensagensNovas } from "./numero-do-chat";
 
-/** Link do menu do topo, sublinhado na página aberta (`ativo`; sem ele, pelo endereço). */
-export function LinkTopo({ href, ativo, children }: { href: string; ativo?: boolean; children: ReactNode }) {
+/**
+ * Link do menu do topo, sublinhado na página aberta (`ativo`; sem ele, pelo endereço). `destaque`: o
+ * Painel, num contorno leve com o ícone (sem o terra, que é da ação principal); aberto, o fundo escurece.
+ */
+export function LinkTopo({
+  href,
+  ativo,
+  destaque = false,
+  children,
+}: {
+  href: string;
+  ativo?: boolean;
+  destaque?: boolean;
+  children: ReactNode;
+}) {
   const caminho = usePathname() ?? "";
   const aceso = ativo ?? (href === "/" ? caminho === "/" : caminho.startsWith(href));
+  const estilo = destaque
+    ? `ml-2 rounded-pill border text-ink ${aceso ? "border-ink/30 bg-surface-300" : "border-line bg-surface-200 shadow-card"}`
+    : `rounded-md ${
+        aceso
+          ? "text-ink after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-pill after:bg-ink"
+          : "text-ink-muted"
+      }`;
   return (
     <Link
       href={href}
       aria-current={aceso ? "page" : undefined}
-      className={`relative inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-label whitespace-nowrap transition-colors hover:bg-surface-300 hover:text-ink ${
-        aceso
-          ? "text-ink after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-pill after:bg-ink"
-          : "text-ink-muted"
-      }`}
+      className={`relative inline-flex items-center gap-1.5 px-3 py-2 text-label whitespace-nowrap transition-colors hover:bg-surface-300 hover:text-ink ${estilo}`}
     >
       {children}
     </Link>
@@ -51,7 +67,8 @@ export function NavDaConta({ modo, numeros }: { modo: ModoPainel; numeros: Numer
   return (
     <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
       {abasDoTopo(modo, { ...numeros, mensagens }).map((a) => (
-        <LinkTopo key={a.id} href={a.href} ativo={ativa === a.id}>
+        <LinkTopo key={a.id} href={a.href} ativo={ativa === a.id} destaque={a.id === "painel"}>
+          {a.id === "painel" && <a.icone aria-hidden className="size-4" />}
           {a.nome}
           {a.numero ? (
             <span className="min-w-5 rounded-pill bg-like px-1.5 text-center text-caption leading-5 text-on-like tabular-nums">
