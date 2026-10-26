@@ -14,3 +14,11 @@ export const DIGITAIS_ANDROID: string[] = [
   // a chave de envio, a do pacote gerado no PWABuilder em 26/10/2026
   "EF:13:CC:99:1A:29:FD:A6:64:AF:EE:C4:B3:9E:30:70:9B:0B:FA:82:5C:B2:7B:1A:78:7F:76:BB:43:C6:24:01",
 ];
+
+/**
+ * O teste fechado da Play (conta pessoal: 12 testadores por 14 dias antes da produção). Quem entra no
+ * Grupo do Google vira testador; depois aceita o teste na Play e instala. A página /testar-app explica.
+ */
+export const GRUPO_TESTADORES = "https://groups.google.com/g/testadores-publike";
+export const ACEITAR_TESTE = `https://play.google.com/apps/testing/${PACOTE_ANDROID}`;
+export const APP_NA_PLAY = `https://play.google.com/store/apps/details?id=${PACOTE_ANDROID}`;
