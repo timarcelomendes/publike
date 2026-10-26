@@ -276,12 +276,11 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
         )}
       </section>
       {/* quem tem vaga no ar: um atalho para as vagas e os candidatos (o Início é o mesmo feed para todos) */}
+      {/* a margem vai na própria faixa (no celular, a "Suas vagas" não aparece e não deixa espaço) */}
       {!soOlhar && (
-        <div className="mt-3 sm:mt-4">
-          <Suspense fallback={null}>
-            <FaixaDeQuemContrata agora={d.agora} />
-          </Suspense>
-        </div>
+        <Suspense fallback={null}>
+          <FaixaDeQuemContrata agora={d.agora} />
+        </Suspense>
       )}
       <div aria-hidden className="h-3 sm:h-4" />
       <AbasDaLinha

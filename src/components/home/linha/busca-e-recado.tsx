@@ -1,8 +1,8 @@
 "use client";
 
 import { PenLine, SlidersHorizontal } from "lucide-react";
-import { useId, useState, type ComponentProps, type ReactNode } from "react";
-import { COOKIE_CONVITE_RECADO, valorConviteRecadoFechado } from "@/lib/convite-recado";
+import { useEffect, useId, useState, type ComponentProps, type ReactNode } from "react";
+import { COOKIE_CONVITE_RECADO, conviteRecadoContadoHoje, valorConviteRecadoFechado } from "@/lib/convite-recado";
 import { ConviteRecado, type TextoDoConvite } from "../../recados/convite-recado";
 import { EscreverRecado } from "../../recados/escrever-recado";
 import { EVENTO_FILTROS } from "./abas-da-linha";
@@ -31,11 +31,21 @@ export function BuscaERecado({
   const [focar, setFocar] = useState(0);
   const [comConvite, setComConvite] = useState(Boolean(convite));
 
-  // "Agora não": volta em 7 dias, até 3 vezes (o servidor lê o cookie)
-  function fecharConvite() {
+  // conta uma vez por dia: volta em 7 dias, até 3 vezes (o servidor lê o cookie)
+  function contarConvite() {
     const atual = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_CONVITE_RECADO}=([^;]*)`))?.[1];
-    const valor = valorConviteRecadoFechado(atual ? decodeURIComponent(atual) : null, Date.now());
+    const lido = atual ? decodeURIComponent(atual) : null;
+    if (conviteRecadoContadoHoje(lido, Date.now())) return;
+    const valor = valorConviteRecadoFechado(lido, Date.now());
     document.cookie = `${COOKIE_CONVITE_RECADO}=${encodeURIComponent(valor)}; path=/; max-age=${60 * 60 * 24 * 180}; samesite=lax`;
+  }
+  // o convite aparece uma vez: mostrado, já conta (na próxima abertura da home, não volta)
+  useEffect(() => {
+    if (convite) contarConvite();
+  }, [convite]);
+  // "Agora não": some na hora
+  function fecharConvite() {
+    contarConvite();
     setComConvite(false);
   }
   const id = useId();

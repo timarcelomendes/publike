@@ -29,7 +29,7 @@ export async function FaixaDeQuemContrata({ agora }: { agora: number }) {
     return (
       <section
         aria-label="Sua vaga"
-        className="flex flex-col gap-2 rounded-lg border border-cerrado/40 bg-cerrado/5 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4"
+        className="mt-3 flex flex-col gap-2 rounded-lg border border-cerrado/40 bg-cerrado/5 p-3 sm:mt-4 sm:flex-row sm:items-center sm:gap-3 sm:p-4"
       >
         <CircleCheck aria-hidden className="size-5 shrink-0 text-cerrado-text" />
         <p className="min-w-0 flex-1 text-body-sm text-ink">
@@ -48,10 +48,12 @@ export async function FaixaDeQuemContrata({ agora }: { agora: number }) {
     );
   }
 
+  // no celular e no tablet, os candidatos para responder já estão no menu (Candidatos, com o número) e
+  // no botão do topo: a faixa fica só no computador (a home do celular mostra a primeira vaga mais cedo)
   return (
     <section
       aria-label="Suas vagas"
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-surface-200 px-3 py-2.5 sm:px-4"
+      className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-surface-200 px-3 py-2.5 max-lg:hidden sm:px-4"
     >
       <Briefcase aria-hidden className="size-4 shrink-0 text-terra-text" />
       <p className="min-w-0 flex-1 text-body-sm text-ink">
