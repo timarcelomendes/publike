@@ -10,6 +10,7 @@ import {
   ESTILO_MAPA,
   mostrarNomesDasRuas,
   recolherCreditos,
+  useMapaAVista,
 } from "./maplibre";
 
 /**
@@ -35,8 +36,11 @@ export function MapaArea({
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const [falhou, setFalhou] = useState(false);
+  // o MapLibre só baixa com o mapa à vista (ou perto, ao rolar)
+  const aVista = useMapaAVista(caixa);
 
   useEffect(() => {
+    if (!aVista) return;
     let cancelado = false;
     let instancia: MapaML | null = null;
     carregarMapLibre()
@@ -96,7 +100,7 @@ export function MapaArea({
       cancelado = true;
       instancia?.remove();
     };
-  }, [lat, lng, raioKm, exato]);
+  }, [aVista, lat, lng, raioKm, exato]);
 
   return (
     <div className="relative h-56 overflow-hidden rounded-lg border border-line bg-surface-300 sm:h-64">

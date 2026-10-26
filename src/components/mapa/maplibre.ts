@@ -1,3 +1,4 @@
+import { useEffect, useState, type RefObject } from "react";
 import { MAPA_ESTILO } from "@/lib/config";
 
 // Carrega o MapLibre só no navegador e só quando um mapa aparece na tela.
@@ -16,6 +17,30 @@ export function carregarMapLibre() {
     });
   }
   return carregando;
+}
+
+/**
+ * O mapa está (ou fica) à vista? Só então vale baixar o MapLibre: a coluna do mapa da home, que só
+ * aparece no computador grande, e o mapa no pé da página da vaga não pesam no celular. Chegando perto
+ * ao rolar (300 px), já começa a carregar.
+ */
+export function useMapaAVista(caixa: RefObject<HTMLElement | null>) {
+  const [aVista, setAVista] = useState(false);
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el || aVista) return;
+    const olho = new IntersectionObserver(
+      (entradas) => {
+        if (!entradas.some((e) => e.isIntersecting)) return;
+        olho.disconnect();
+        setAVista(true);
+      },
+      { rootMargin: "300px 0px" },
+    );
+    olho.observe(el);
+    return () => olho.disconnect();
+  }, [caixa, aVista]);
+  return aVista;
 }
 
 export const ESTILO_MAPA = MAPA_ESTILO;

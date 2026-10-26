@@ -6,7 +6,15 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { hrefFiltros, raioDaBusca, type Filtros } from "@/lib/filtros";
-import { caixaDoRaio, carregarMapLibre, circulo, CORES_MAPA, ESTILO_MAPA, recolherCreditos } from "./maplibre";
+import {
+  caixaDoRaio,
+  carregarMapLibre,
+  circulo,
+  CORES_MAPA,
+  ESTILO_MAPA,
+  recolherCreditos,
+  useMapaAVista,
+} from "./maplibre";
 import { CAIXA_DO_PUBLIKE } from "@/lib/pracas";
 
 export type PontoMapa = {
@@ -215,9 +223,12 @@ export function MapaAnuncios({
   const [pronto, setPronto] = useState(false);
   const [falhou, setFalhou] = useState(false);
   const [movido, setMovido] = useState(false);
+  // o MapLibre só baixa com o mapa à vista: escondido (a coluna do mapa no celular), não pesa
+  const aVista = useMapaAVista(caixa);
 
-  // Cria o mapa uma vez
+  // Cria o mapa uma vez (quando ele aparece)
   useEffect(() => {
+    if (!aVista) return;
     let cancelado = false;
     let instancia: MapaML | null = null;
     let cartao: Popup | null = null;
@@ -397,7 +408,7 @@ export function MapaAnuncios({
     };
     // O mapa é criado uma vez; mudanças de filtro são tratadas abaixo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [aVista]);
 
   // Atualiza os anúncios quando a busca muda (as etiquetas são refeitas)
   useEffect(() => {
