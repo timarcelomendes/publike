@@ -132,7 +132,7 @@ export async function TalentosDaVaga({ vagas, agora }: { vagas: MeuAnuncio[]; ag
           </li>
         ))}
       </ul>
-      <VerTodos href={`/painel/talentos?vaga=${vaga.id}`}>Ver mais talentos</VerTodos>
+      <VerTodos href={`/talentos?vaga=${vaga.id}`}>Ver mais talentos</VerTodos>
     </section>
   );
 }

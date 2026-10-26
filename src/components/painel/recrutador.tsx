@@ -604,7 +604,7 @@ export async function PainelRecrutador({
                   icone: UserSearch,
                   titulo: "Veja quem tem currículo perto",
                   texto: "Na aba Talentos, convide quem combina, mesmo antes de publicar.",
-                  href: "/painel/talentos",
+                  href: "/talentos",
                   acao: "Ver talentos",
                 },
                 ...(agencia

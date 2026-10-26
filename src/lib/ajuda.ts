@@ -273,7 +273,7 @@ const INTERESSADOS: PassoJornada = {
     "Para cada pessoa: perfil, mensagem, currículo, respostas às perguntas e o % de match com a vaga.",
     "Curtir de volta (aceitar) dá match e libera o contato dos dois.",
     "Em Candidatos você vê os interessados de todas as vagas juntos, filtra e baixa a lista numa planilha.",
-    "No painel, em Talentos, aparecem pessoas da cidade da vaga que deixaram o currículo à vista das empresas: dá para convidar para a vaga, e a pessoa decide se curte.",
+    "Na aba Talentos, em “Para a sua vaga”, aparecem as pessoas que deixaram o currículo à vista das empresas, de quem mais combina com a vaga para quem menos combina: dá para convidar, e a pessoa decide se curte.",
   ],
   imagem: "interessados",
   link: { href: "/painel/candidatos", texto: "Candidatos" },

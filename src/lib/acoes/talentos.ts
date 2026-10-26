@@ -112,7 +112,7 @@ export async function convidarParaVaga(anuncioId: string, perfilId: string): Pro
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncioId) || !UUID.test(perfilId)) return { ok: false, erro: "Pedido inválido." };
   const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel/talentos" };
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/talentos" };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("convidar_para_vaga", { p_anuncio: anuncioId, p_perfil: perfilId });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para convidar agora.") };
@@ -149,7 +149,7 @@ export async function mudarVisibilidadeCurriculo(visivel: boolean): Promise<Resu
 
 /**
  * "Aparecer na aba Talentos": o resumo do currículo na busca, aberto a quem visita. Quem
- * aparece na aba também aparece para as empresas (Talentos do painel); sair das empresas
+ * aparece na aba também aparece para as empresas (o "Para a sua vaga"); sair das empresas
  * tira da aba (o banco apaga junto).
  */
 export async function mudarVitrineCurriculo(ligar: boolean): Promise<Resultado> {

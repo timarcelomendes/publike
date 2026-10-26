@@ -127,7 +127,7 @@ export const SECOES: Record<ModoPainel, Secao[]> = {
     { href: "/painel", nome: "Hoje", icone: "hoje" },
     { href: "/painel/caixa", nome: "Caixa de entrada", icone: "caixa", contador: "responder" },
     { href: "/painel/anuncios?tipo=vaga", nome: "Minhas vagas", icone: "vagas" },
-    { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
+    { href: "/talentos", nome: "Talentos", icone: "talentos" },
     MENSAGENS,
     { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
   ],
@@ -188,7 +188,7 @@ export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefi
     {
       nome: "Achar gente",
       secoes: [
-        { href: "/painel/talentos", nome: "Talentos", icone: "talentos" },
+        { href: "/talentos", nome: "Talentos", icone: "talentos" },
         { ...MENSAGENS, jeito: "pilula" },
         {
           href: "/painel/visitas",
@@ -235,7 +235,6 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
   if (
     caminho.startsWith("/painel/candidatos") ||
     caminho.startsWith("/painel/caixa") ||
-    caminho.startsWith("/painel/talentos") ||
     caminho.startsWith("/painel/clientes") ||
     caminho.startsWith("/painel/equipe") ||
     caminho.startsWith("/painel/finalistas") ||

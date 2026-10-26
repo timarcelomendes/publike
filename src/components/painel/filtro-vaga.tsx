@@ -14,8 +14,10 @@ export function FiltroVaga({
   aba = null,
   cliente = null,
   compacto = false,
+  todas = true,
 }: {
-  vagas: { id: string; titulo: string; total: number }[];
+  /** `total`: quantos candidatos, entre parênteses (sem ele, só o título) */
+  vagas: { id: string; titulo: string; total?: number }[];
   vaga: string | null;
   etapa: string | null;
   situacao?: string | null;
@@ -27,7 +29,11 @@ export function FiltroVaga({
   cliente?: string | null;
   /** na linha das abas (caixa de entrada): "Vaga: todas", da altura das abas e sem o rótulo em cima */
   compacto?: boolean;
+  /** com a opção "Todas as vagas" (sem ela, sempre uma vaga escolhida: o "Para a sua vaga" dos Talentos) */
+  todas?: boolean;
 }) {
+  const nome = (v: { titulo: string; total?: number }) =>
+    v.total === undefined ? v.titulo : `${v.titulo} (${v.total})`;
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const mudar = (valor: string) => {
@@ -55,10 +61,10 @@ export function FiltroVaga({
             : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
         }`}
       >
-        <option value="">Vaga: todas</option>
+        {todas && <option value="">Vaga: todas</option>}
         {vagas.map((v) => (
           <option key={v.id} value={v.id}>
-            {v.titulo} ({v.total})
+            {nome(v)}
           </option>
         ))}
       </Seletor>
@@ -76,10 +82,10 @@ export function FiltroVaga({
         onChange={(e) => mudar(e.target.value)}
         className={classesEntrada}
       >
-        <option value="">Todas as vagas</option>
+        {todas && <option value="">Todas as vagas</option>}
         {vagas.map((v) => (
           <option key={v.id} value={v.id}>
-            {v.titulo} ({v.total})
+            {nome(v)}
           </option>
         ))}
       </Seletor>

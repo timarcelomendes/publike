@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FileUser, Megaphone, Search, UserSearch } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileUser, Megaphone, Search, Sparkles, UserSearch } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -6,26 +6,34 @@ import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { ABA_TALENTOS, ABAS_ANUNCIOS, classesAba, classesGrupoAbas, MioloAba } from "@/components/explorar/abas";
 import { CartaoDaConta } from "@/components/home/cartao-da-conta";
 import { MolduraDaHome } from "@/components/home/moldura";
+import { FiltroVaga } from "@/components/painel/filtro-vaga";
+import { classesChip } from "@/components/painel/fluxo";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { CartaoTalento } from "@/components/talentos/cartao-talento";
+import { ParaAVaga } from "@/components/talentos/para-a-vaga";
 import { Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { classesEntrada, Seletor } from "@/components/ui/campo";
 import { MODO_DEMO } from "@/lib/config";
 import { CIDADES } from "@/lib/constantes";
-import { meuCurriculoNaVitrine, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { listarMeusAnuncios, meuCurriculoNaVitrine, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { formatarNumero, primeiro } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { buscarTalentos } from "@/lib/servidor/talentos";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
+import { agoraDaRequisicao } from "@/lib/tempo";
+import type { MeuAnuncio } from "@/lib/tipos";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // A aba Talentos: gente procurando trabalho onde o Publike funciona, que escolheu aparecer.
 // Aberta, mas só com o resumo; o currículo completo e o convite ficam na página de cada
 // um, para empresa, comércio e agência que entraram. Elas também pedem conexão daqui, sem
 // precisar de vaga (Conectar em cada cartão). Fora do Google (robots e noindex).
+// Quem tem vaga no ar abre em "Para a sua vaga" (`?vaga=`): quem mais combina com ela primeiro, com o %
+// e o Convidar (era a página Talentos do painel, que agora leva para cá); "Todos os talentos" (`?ver=todos`)
+// é a lista de sempre, e a busca por palavra procura em todos.
 
 export const metadata: Metadata = {
   title: "Talentos: gente procurando trabalho perto de você",
@@ -35,21 +43,45 @@ export const metadata: Metadata = {
 
 type Parametros = PageProps<"/talentos">["searchParams"];
 
-/** Os filtros da URL: o texto, a cidade e a página. */
+/**
+ * Os filtros da URL: o texto, a cidade e a página. Quem tem vaga no ar: `vaga` (a do "Para a sua vaga") e
+ * `todos` ("Todos os talentos", o `ver=todos`).
+ */
 function lerBusca(sp: Awaited<Parametros>) {
   const q = (primeiro(sp.q) ?? "").trim().slice(0, 60);
   const cidade = primeiro(sp.cidade);
   const pagina = Math.min(Math.max(Number(primeiro(sp.pagina)) || 1, 1), MAX_PAGINAS_TALENTOS);
-  return { q, cidade: cidade && (CIDADES as readonly string[]).includes(cidade) ? cidade : null, pagina };
+  return {
+    q,
+    cidade: cidade && (CIDADES as readonly string[]).includes(cidade) ? cidade : null,
+    pagina,
+    vaga: primeiro(sp.vaga) ?? null,
+    todos: primeiro(sp.ver) === "todos",
+  };
 }
 
-function hrefBusca(f: { q: string; cidade: string | null; pagina: number }) {
+function hrefBusca(f: { q: string; cidade: string | null; pagina: number; todos: boolean }) {
   const p = new URLSearchParams();
+  if (f.todos) p.set("ver", "todos");
   if (f.q) p.set("q", f.q);
   if (f.cidade) p.set("cidade", f.cidade);
   if (f.pagina > 1) p.set("pagina", String(f.pagina));
   const s = p.toString();
   return `/talentos${s ? `?${s}` : ""}`;
+}
+
+/** As vagas no ar da conta, da mais nova para a mais antiga (a mais nova abre o "Para a sua vaga"). */
+function vagasNoAr(anuncios: MeuAnuncio[], agora: number) {
+  return anuncios
+    .filter((a) => a.tipo === "vaga" && a.status === "ativo" && new Date(a.expira_em).getTime() > agora)
+    .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
+}
+
+/** As vagas no ar de quem entrou (com elas, o "Para a sua vaga"); quem visita não tem. */
+async function minhasVagasNoAr() {
+  if (MODO_DEMO || !(await obterUsuario())) return [];
+  const [anuncios, agora] = await Promise.all([listarMeusAnuncios().catch(() => []), agoraDaRequisicao()]);
+  return vagasNoAr(anuncios, agora);
 }
 
 export default function Talentos({ searchParams }: PageProps<"/talentos">) {
@@ -94,16 +126,12 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
       <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
         <Busca searchParams={searchParams} />
       </Suspense>
-      <p className="mt-3 text-body-sm text-ink-muted">
-        Gente procurando trabalho que escolheu aparecer aqui. Empresas, comércios e agências abrem o currículo completo,
-        pedem conexão (mesmo sem vaga aberta) e convidam para uma vaga.
-      </p>
       <Suspense fallback={null}>
         <ChamadaTalento />
       </Suspense>
-      <div className="mt-6">
+      <div className="mt-5">
         <Suspense fallback={<EsqueletoTalentos />}>
-          <Lista searchParams={searchParams} />
+          <Lista searchParams={searchParams} explicar />
         </Suspense>
       </div>
     </MolduraDaHome>
@@ -159,15 +187,20 @@ function TalentosAberta({ searchParams }: { searchParams: Parametros }) {
   );
 }
 
-/** O que procurar (cargo, habilidade, curso) e a cidade. Formulário simples: funciona sem JavaScript. */
+/**
+ * O que procurar (cargo, habilidade, curso) e a cidade. Formulário simples: funciona sem JavaScript. Quem
+ * tem vaga no ar busca em todos os talentos (e não no "Para a sua vaga").
+ */
 async function Busca({ searchParams }: { searchParams: Parametros }) {
-  const f = lerBusca(await searchParams);
+  const [sp, noAr] = await Promise.all([searchParams, minhasVagasNoAr()]);
+  const f = lerBusca(sp);
   return (
     <form
       role="search"
       action="/talentos"
       className="mt-3 flex flex-col gap-2 rounded-lg border border-line-strong bg-surface-200 p-1.5 shadow-card sm:mt-4 sm:flex-row sm:items-center"
     >
+      {noAr.length > 0 && <input type="hidden" name="ver" value="todos" />}
       <div className="flex min-w-0 flex-1 items-center gap-2 pl-2">
         <Search aria-hidden className="size-5 shrink-0 text-ink-muted" />
         <label htmlFor="busca-talentos" className="sr-only">
@@ -212,16 +245,40 @@ async function Busca({ searchParams }: { searchParams: Parametros }) {
   );
 }
 
-async function Lista({ searchParams }: { searchParams: Parametros }) {
+/**
+ * A lista: o "Para a sua vaga" ou a de todos os talentos. `explicar`: quem entrou vê, em cima da lista de
+ * todos, o que é a aba (quem visita já tem o texto no alto da página; no "Para a sua vaga", o título dele
+ * explica).
+ */
+async function Lista({ searchParams, explicar = false }: { searchParams: Parametros; explicar?: boolean }) {
   const f = lerBusca(await searchParams);
-  const [local, perfil, intencao] = await Promise.all([
+  const [local, perfil, intencao, noAr, agora] = await Promise.all([
     obterLocal().catch(() => null),
     obterMeuPerfil().catch(() => null),
     obterIntencao().catch(() => null),
+    minhasVagasNoAr(),
+    agoraDaRequisicao(),
   ]);
   const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
-  // quem respondeu "Procuro funcionário" (e ainda não entrou como empresa) vê o convite para publicar
-  const procuraFuncionario = !empresa && intencao === "contratar_pessoa";
+
+  // com vaga no ar e sem busca, abre no "Para a sua vaga" (a vaga do endereço ou a mais nova)
+  if (noAr.length && !f.todos && (f.vaga || (!f.q && !f.cidade))) {
+    const vaga = noAr.find((v) => v.id === f.vaga) ?? noAr[0];
+    return (
+      <div className="flex flex-col gap-5">
+        <QuaisTalentos vagas={noAr} vaga={vaga.id} />
+        <ParaAVaga
+          vaga={vaga}
+          pagina={f.pagina}
+          href={(n) => `/talentos?vaga=${vaga.id}${n > 1 ? `&pagina=${n}` : ""}`}
+          agora={agora}
+        />
+      </div>
+    );
+  }
+
+  // quem respondeu "Procuro funcionário" (e ainda não entrou como empresa nem tem vaga no ar) vê o convite para publicar
+  const procuraFuncionario = !empresa && !noAr.length && intencao === "contratar_pessoa";
   const resultado = MODO_DEMO
     ? { lista: [], total: 0 }
     : await buscarTalentos({ texto: f.q, cidade: f.cidade, bairro: local?.bairro || null, pagina: f.pagina });
@@ -241,6 +298,13 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {explicar && (
+        <p className="text-body-sm text-ink-muted">
+          Gente procurando trabalho que escolheu aparecer aqui. Empresas, comércios e agências abrem o currículo
+          completo, pedem conexão (mesmo sem vaga aberta) e convidam para uma vaga.
+        </p>
+      )}
+      {noAr.length > 0 && <QuaisTalentos vagas={noAr} vaga={null} />}
       {lista.length === 0 ? (
         f.pagina > 1 ? (
           <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm">
@@ -255,7 +319,9 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
             titulo={filtrado ? "Ninguém com essa busca ainda" : "Ninguém na aba Talentos ainda"}
             acao={
               filtrado ? (
-                <BotaoLink href="/talentos">Ver todos os talentos</BotaoLink>
+                <BotaoLink href={hrefBusca({ q: "", cidade: null, pagina: 1, todos: f.todos })}>
+                  Ver todos os talentos
+                </BotaoLink>
               ) : empresa ? null : (
                 <BotaoLink href="/perfil/curriculo?para=talentos">Cadastrar meu currículo</BotaoLink>
               )
@@ -335,7 +401,10 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
           <Megaphone aria-hidden className="size-5 shrink-0 text-ink-muted" />
           <p className="min-w-0 grow basis-64 text-body-sm">
             <span className="text-label">Achou alguém?</span> Toque em Conectar: não precisa ter vaga aberta. Quando a
-            pessoa aceita, aparecem o contato e a conversa. Ou abra o currículo e convide para uma vaga sua.
+            pessoa aceita, aparecem o contato e a conversa.{" "}
+            {noAr.length
+              ? "Ou abra o currículo e convide para uma vaga sua."
+              : "Com uma vaga no ar, você vê aqui quem mais combina com ela e convida direto."}
           </p>
           <div className="flex flex-wrap gap-2">
             <BotaoLink href="/painel/conexoes" tamanho="sm" variante="fantasma">
@@ -359,6 +428,46 @@ async function Lista({ searchParams }: { searchParams: Parametros }) {
           </BotaoLink>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Quem tem vaga no ar: "Para a sua vaga" (quem mais combina com ela, com o Convidar) ou "Todos os talentos".
+ * No "Para a sua vaga", com mais de uma vaga no ar, a escolha da vaga embaixo. `vaga`: a escolhida (no
+ * "Todos os talentos", null).
+ */
+function QuaisTalentos({ vagas, vaga }: { vagas: MeuAnuncio[]; vaga: string | null }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <nav aria-label="Quais talentos" className="flex flex-wrap gap-2">
+        <Link
+          href={vaga ? `/talentos?vaga=${vaga}` : "/talentos"}
+          scroll={false}
+          aria-current={vaga ? "page" : undefined}
+          className={classesChip(Boolean(vaga))}
+        >
+          <Sparkles aria-hidden className="size-4" />
+          {vagas.length === 1 ? "Para a sua vaga" : "Para as suas vagas"}
+        </Link>
+        <Link
+          href="/talentos?ver=todos"
+          scroll={false}
+          aria-current={vaga ? undefined : "page"}
+          className={classesChip(!vaga)}
+        >
+          Todos os talentos
+        </Link>
+      </nav>
+      {vaga && vagas.length > 1 && (
+        <FiltroVaga
+          vagas={vagas.map((v) => ({ id: v.id, titulo: v.titulo }))}
+          vaga={vaga}
+          etapa={null}
+          caminho="/talentos"
+          todas={false}
+        />
+      )}
     </div>
   );
 }

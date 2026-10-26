@@ -61,6 +61,8 @@ const nextConfig: NextConfig = {
       { source: "/servicos", destination: "/servicos/goiania", permanent: false },
       // a conversa era uma por vaga (anúncio + pessoa); agora é uma por pessoa (links antigos e e-mails)
       { source: "/painel/conversas/:anuncio/:outro", destination: "/painel/conversas/:outro", permanent: false },
+      // os Talentos do painel agora são o "Para a sua vaga" da aba Talentos (o ?vaga= vai junto)
+      { source: "/painel/talentos", destination: "/talentos", permanent: false },
     ];
   },
   async headers() {

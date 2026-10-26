@@ -60,7 +60,7 @@ export function Opcao({
 
 /**
  * Quem acha o currículo, além de quem anunciou uma vaga que a pessoa curtiu:
- *   "Deixar as empresas me encontrarem": quem tem vaga na cidade vê e convida (Talentos do painel).
+ *   "Deixar as empresas me encontrarem": quem tem vaga vê e convida (o "Para a sua vaga" da aba Talentos).
  *   "Aparecer na aba Talentos": o resumo na busca, aberto a quem visita; as empresas que
  *   entraram veem o currículo completo. Ligar a aba liga as empresas; desligar as empresas
  *   desliga a aba.

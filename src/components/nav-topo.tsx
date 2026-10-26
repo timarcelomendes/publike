@@ -32,8 +32,7 @@ export function LinkTopo({ href, ativo, children }: { href: string; ativo?: bool
  * quem presta serviço). O Publicar é o botão da direita, não uma aba.
  */
 function abaDoTopo(caminho: string, tipo: string | null, modo: ModoPainel): AbaInferior {
-  if (modo === "contratar" && (caminho.startsWith("/talentos") || caminho.startsWith("/painel/talentos")))
-    return "terceira";
+  if (modo === "contratar" && caminho.startsWith("/talentos")) return "terceira";
   if (modo === "servicos" && caminho.startsWith("/painel/servicos")) return "terceira";
   const aba = abaDoCaminho(caminho, tipo, modo);
   return aba === "publicar" ? null : aba;
