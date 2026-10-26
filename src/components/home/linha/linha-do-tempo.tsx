@@ -1,13 +1,4 @@
-import {
-  Briefcase,
-  CircleCheck,
-  Heart,
-  MapPinned,
-  MessageSquareText,
-  Newspaper,
-  Wrench,
-  type LucideIcon,
-} from "lucide-react";
+import { Briefcase, CircleCheck, Heart, MapPinned, MessageSquareText, Wrench, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { horaNaLinha, montarLinha, quandoFoi, recolherRecados, type ItemDaLinha } from "@/lib/linha-do-tempo";
@@ -19,7 +10,7 @@ import { RecadosRecolhidos } from "../../recados/recados-recolhidos";
 import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
 import { ListaDaLinha } from "./lista-da-linha";
-import { CartaoDaNoticia, CartaoDoAceite, CartaoDoServico, FaixaDeCurtidas, TicketDaVaga } from "./objetos";
+import { CartaoDoAceite, CartaoDoServico, FaixaDeCurtidas, TicketDaVaga } from "./objetos";
 import { RegistrarVisita } from "./registrar-visita";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
@@ -36,7 +27,6 @@ const NO = {
   // a vaga que as pessoas estão curtindo: o coração da curtida
   curtidas: "bg-like-soft text-like",
   // a notícia do Publike: o jornal, no tom neutro (não é anúncio nem conversa)
-  noticia: "bg-ink text-surface-100",
 };
 
 function No({ icone: Icone, tipo }: { icone: LucideIcon; tipo: keyof typeof NO }) {
@@ -113,11 +103,6 @@ function Item({
         <>
           <No icone={CircleCheck} tipo="aceite" />
           <CartaoDoAceite m={dados.aceite} hora={hora} usuarioId={d.usuarioId} direto={dados.direto} />
-        </>
-      ) : "noticia" in dados ? (
-        <>
-          <No icone={Newspaper} tipo="noticia" />
-          <CartaoDaNoticia n={dados.noticia} atualizada={dados.atualizada} hora={hora} />
         </>
       ) : "recado" in dados ? (
         <>

@@ -1,14 +1,4 @@
-import {
-  ArrowRight,
-  Bus,
-  CircleCheck,
-  Footprints,
-  Heart,
-  MapPin,
-  MessageCircle,
-  MessagesSquare,
-  Zap,
-} from "lucide-react";
+import { Bus, CircleCheck, Footprints, Heart, MapPin, MessageCircle, MessagesSquare, Zap } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { nomeBeneficio } from "@/lib/constantes";
@@ -23,12 +13,10 @@ import {
   urlDaFotoTrabalho,
 } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
-import { TEMAS_NOTICIA, type Noticia } from "@/lib/noticias";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
 import { BotaoCurtir } from "../../botao-curtir";
-import { CapaNoticia } from "../../noticias/capa";
 import { ehOutraArea, SeloMatch } from "../../match-vaga";
 import { SeloVerificado } from "../../selo-verificado";
 import { Avatar } from "../../ui/basicos";
@@ -484,41 +472,3 @@ export function CartaoDoAceite({
 
 /** O ícone do nó do aceite, no traço da linha. */
 export const IconeAceite = CircleCheck;
-
-/**
- * A notícia do Publike na linha do tempo: a capa (a foto ou o desenho do tema), o assunto, o título,
- * o resumo e o link para ler. Atualizada depois de publicada, ela sobe de novo com "Atualizada".
- */
-export function CartaoDaNoticia({ n, atualizada, hora }: { n: Noticia; atualizada: boolean; hora: string }) {
-  return (
-    <article className="relative flex flex-col overflow-hidden rounded-[18px] sm:flex-row border border-line bg-surface-200 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus">
-      <CapaNoticia n={n} className="aspect-[2/1] w-full shrink-0 sm:aspect-auto sm:w-[148px] sm:self-stretch" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-3.5 sm:px-5">
-        <div className="flex items-start gap-2">
-          <p className="min-w-0 flex-1 text-body-sm text-ink-muted">
-            <span className="font-semibold text-terra-text">Notícia</span>
-            {" · "}
-            {TEMAS_NOTICIA[n.tema]?.curto ?? n.tema}
-            {n.cidade && ` · ${n.cidade}`}
-            {atualizada && (
-              <span className="ml-1.5 rounded-pill bg-ipe px-2 py-px text-caption font-semibold text-on-ipe">
-                Atualizada
-              </span>
-            )}
-          </p>
-          <HoraNoCanto hora={hora} />
-        </div>
-        <h3 className="font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
-          <Link href={`/noticias/${n.slug}`} className="outline-none after:absolute after:inset-0 after:content-['']">
-            {n.titulo}
-          </Link>
-        </h3>
-        <p className="line-clamp-2 text-body-sm text-ink-muted">{n.resumo}</p>
-        <span className="mt-1 inline-flex items-center gap-1.5 text-label text-ink">
-          Ler a notícia
-          <ArrowRight aria-hidden className="size-4 text-terra-text" />
-        </span>
-      </div>
-    </article>
-  );
-}
