@@ -1131,6 +1131,11 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: string[] | null;
       };
+      // os avisos por tipo (20261120120000_avisos_por_tipo)
+      meus_avisos_desligados: { Args: Record<PropertyKey, never>; Returns: { grupo: string; canal: string }[] };
+      mudar_aviso: { Args: { p_grupo: string; p_canal: string; p_ligado: boolean }; Returns: undefined };
+      mudar_receber_emails: { Args: { p_ligado: boolean }; Returns: undefined };
+      sair_dos_avisos: { Args: { p_chave: string; p_grupo?: string | null }; Returns: string | null };
       salvar_meus_modos: {
         Args: { p_modos: string[] };
         Returns: string[];

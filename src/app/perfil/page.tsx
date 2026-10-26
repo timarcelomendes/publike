@@ -1,4 +1,4 @@
-import { ChevronRight, FileText } from "lucide-react";
+import { BellRing, ChevronRight, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -161,6 +161,22 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
         <div className="mt-8">
           <AtivarNotificacoes vapid={vapidPublica() ?? ""} jeito="cartao" />
         </div>
+      )}
+      {/* o que chega no e-mail e no celular, por tipo de aviso */}
+      {!completar && (
+        <Link
+          href="/perfil/avisos"
+          className="mt-4 flex items-center gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card hover:border-line-strong"
+        >
+          <BellRing aria-hidden className="size-6 shrink-0 text-terra-text" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-h3">Avisos e notificações</span>
+            <span className="block text-body-sm text-ink-muted">
+              Escolha o que chega no e-mail e no celular: mensagens, curtidas, vagas novas e as da semana.
+            </span>
+          </span>
+          <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />
+        </Link>
       )}
       {/* o currículo: para quem procura trabalho (ou ainda não marcou o que faz) */}
       {comCurriculo && (

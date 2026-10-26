@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BellRing,
   ChevronDown,
   CircleHelp,
   Eye,
@@ -165,6 +166,9 @@ export function MenuUsuario({
               )}
               <Item href="/painel/visitas" icone={Eye}>
                 Quem viu seu perfil
+              </Item>
+              <Item href="/perfil/avisos" icone={BellRing}>
+                Avisos e notificações
               </Item>
               {moderador && (
                 <Item href="/admin/denuncias" icone={ShieldCheck}>

@@ -195,7 +195,17 @@ export function Notificacoes({
           id="lista-avisos"
           className="absolute top-full right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:w-auto rounded-md border border-line bg-surface-200 p-2 shadow-raised"
         >
-          <p className="px-3 pt-1 pb-2 text-label">Avisos</p>
+          <div className="flex items-baseline justify-between gap-3 px-3 pt-1 pb-2">
+            <p className="text-label">Avisos</p>
+            {/* o que chega no e-mail e no celular, por tipo */}
+            <Link
+              href="/perfil/avisos"
+              onClick={() => setAberto(false)}
+              className="text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
+            >
+              Escolher os avisos
+            </Link>
+          </div>
           {vapid && <AtivarNotificacoes vapid={vapid} />}
           {itens.length === 0 ? (
             <p className="px-3 pb-3 text-body-sm text-ink-muted">
