@@ -29,7 +29,7 @@ const TRINTA_DIAS = 30 * 24 * 3600 * 1000;
 const ESPERA_MS = 12000;
 const EVENTO_ABRIR = "publike:instalar";
 // páginas onde o convite atrapalha
-const SEM_CONVITE = ["/entrar", "/auth", "/admin", "/perfil", "/publicar", "/painel/conversas/"];
+const SEM_CONVITE = ["/entrar", "/auth", "/admin", "/perfil", "/publicar", "/painel/conversas/", "/avisos"];
 
 // O pedido do navegador chega uma vez só, logo no começo do carregamento (antes do
 // React). O SCRIPT_PEDIDO (lib/instalar.ts), no <head>, guarda ele em window.__publikePedido.

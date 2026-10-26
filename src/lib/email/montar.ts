@@ -85,15 +85,61 @@ function paragrafos(corpo: string, valores: Record<string, string>) {
     .map((p) => preencher(p, valores));
 }
 
-function rodape(modelo: ModeloEmail, siteUrl: string) {
+/** A chave e o grupo do "parar de receber" que a fila põe nos dados (os avisos da conta e da moderação não têm). */
+export type ParaSair = { chave: string; grupo: string };
+
+const CHAVE_SAIR = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const GRUPO_SAIR = /^[a-z_]{3,20}$/;
+
+export function paraSair(dados: unknown): ParaSair | null {
+  if (!dados || typeof dados !== "object") return null;
+  const { sair, grupo_aviso: grupo } = dados as Record<string, unknown>;
+  if (typeof sair !== "string" || !CHAVE_SAIR.test(sair) || typeof grupo !== "string" || !GRUPO_SAIR.test(grupo))
+    return null;
+  return { chave: sair.toLowerCase(), grupo };
+}
+
+/**
+ * O endereço do "parar de receber": a página (o link do rodapé) ou a rota que desliga com um toque, sem
+ * abrir nada (o cabeçalho List-Unsubscribe, que o Gmail e o Yahoo usam).
+ */
+export function linkParaSair(siteUrl: string, sair: ParaSair, jeito: "pagina" | "um_toque" = "pagina") {
   const site = siteUrl.replace(/\/+$/, "");
+  const busca = new URLSearchParams({ c: sair.chave, g: sair.grupo });
+  return `${site}${jeito === "um_toque" ? "/api/avisos/sair" : "/avisos/sair"}?${busca}`;
+}
+
+/** O rodapé do e-mail, em texto e em HTML (com os links do "parar de receber" quando o aviso tem grupo). */
+function rodape(modelo: ModeloEmail, siteUrl: string, sair: ParaSair | null): { texto: string; html: string } {
+  const site = siteUrl.replace(/\/+$/, "");
+  const so = (texto: string) => ({ texto, html: escaparHtml(texto) });
   if (modelo.grupo === "equipe")
-    return "Aviso para a equipe do Publike. Quem recebe estes avisos é escolhido no admin.";
-  if (modelo.grupo === "sistema") return "Mensagem de teste enviada pelo admin do Publike.";
-  if (modelo.modelo.startsWith("conta_")) return "Este é um aviso sobre a sua conta no Publike.";
+    return so("Aviso para a equipe do Publike. Quem recebe estes avisos é escolhido no admin.");
+  if (modelo.grupo === "sistema") return so("Mensagem de teste enviada pelo admin do Publike.");
+  if (modelo.modelo.startsWith("conta_")) return so("Este é um aviso sobre a sua conta no Publike.");
   if (modelo.modelo === "mensagem_equipe")
-    return "Mensagem da equipe do Publike para a sua conta. Para responder, é só responder este e-mail.";
-  return `Você recebeu este aviso porque tem uma conta no Publike. Para não receber mais avisos por e-mail, desmarque a opção no seu perfil: ${site}/perfil`;
+    return so("Mensagem da equipe do Publike para a sua conta. Para responder, é só responder este e-mail.");
+  if (!sair) {
+    return so(
+      `Você recebeu este aviso porque tem uma conta no Publike. Para não receber mais avisos por e-mail, desmarque a opção no seu perfil: ${site}/perfil`,
+    );
+  }
+  const parar = linkParaSair(site, sair);
+  const escolher = `${site}/perfil/avisos`;
+  const link = (href: string, texto: string) =>
+    `<a href="${escaparHtml(href)}" style="color:${CORES.apagado};text-decoration:underline;">${escaparHtml(texto)}</a>`;
+  return {
+    // no texto, um link por linha (o ponto final não gruda no endereço)
+    texto: [
+      "Você recebeu este aviso porque tem uma conta no Publike.",
+      `Para parar de receber este tipo de aviso por e-mail: ${parar}`,
+      `Para escolher o que chega no e-mail e no celular: ${escolher}`,
+    ].join("\n"),
+    html:
+      `${escaparHtml("Você recebeu este aviso porque tem uma conta no Publike.")} ` +
+      `${link(parar, "Parar de receber este tipo de aviso por e-mail")}. ` +
+      `${escaparHtml("Para escolher o que chega no e-mail e no celular, abra ")}${link(escolher, "Avisos e notificações")}.`,
+  };
 }
 
 /** Link a mais embaixo do botão (ex.: "Adicionar ao Google Agenda" no e-mail da entrevista). */
@@ -116,7 +162,7 @@ export function montarEmail(
   const partes = paragrafos(modelo.corpo, valores);
   const botao = modelo.botao?.trim() ? preencher(modelo.botao, valores).trim() : null;
   const link = valores.link;
-  const textoRodape = rodape(modelo, siteUrl);
+  const textoRodape = rodape(modelo, siteUrl, paraSair(dados));
 
   const links = extras.filter((x) => x.rotulo.trim() && /^https:\/\/[^\s"'<>\\]+$/.test(x.link));
   const texto = [
@@ -124,7 +170,7 @@ export function montarEmail(
     botao ? `${botao}: ${link}` : null,
     ...links.map((x) => `${x.rotulo}: ${x.link}`),
     "—",
-    textoRodape,
+    textoRodape.texto,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -165,7 +211,7 @@ ${cabecalho}
 <tr><td style="background:${CORES.cartao};border:1px solid ${CORES.linha};border-radius:12px;padding:28px 24px;">
 ${htmlParagrafos}${htmlBotao}${htmlExtras}
 </td></tr>
-<tr><td style="padding:16px 4px 0;font-size:13px;line-height:1.5;color:${CORES.apagado};">${escaparHtml(textoRodape)}</td></tr>
+<tr><td style="padding:16px 4px 0;font-size:13px;line-height:1.5;color:${CORES.apagado};">${textoRodape.html}</td></tr>
 </table>
 </td></tr>
 </table>

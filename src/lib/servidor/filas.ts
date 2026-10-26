@@ -2,7 +2,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 import { conviteDoEmail } from "@/lib/agenda";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { logoPadraoDoEmail, montarEmail } from "@/lib/email/montar";
+import { linkParaSair, logoPadraoDoEmail, montarEmail, paraSair } from "@/lib/email/montar";
 import { EMAIL_DA_EQUIPE } from "@/lib/mensagem-equipe";
 import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { revisarAnuncio, revisarAvaliacao, revisarRecado, type DecisaoIA } from "@/lib/ia/tarefas";
@@ -133,6 +133,8 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
       try {
         // entrevista marcada, confirmada ou cancelada: o convite de agenda vai junto
         const convite = conviteDoEmail(item.dados, site, new Date());
+        // o "parar de receber" de um toque (Gmail e Yahoo): só nos avisos que a pessoa pode desligar
+        const sair = paraSair(item.dados);
         const email = montarEmail(
           { modelo: item.modelo, grupo: item.grupo, assunto: item.assunto, corpo: item.corpo, botao: item.botao },
           item.dados,
@@ -148,7 +150,15 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
           subject: email.assunto,
           text: email.texto,
           html: email.html,
-          headers: { "Auto-Submitted": "auto-generated" },
+          headers: {
+            "Auto-Submitted": "auto-generated",
+            ...(sair
+              ? {
+                  "List-Unsubscribe": `<${linkParaSair(site, sair, "um_toque")}>`,
+                  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                }
+              : {}),
+          },
           ...(convite
             ? { icalEvent: { method: convite.metodo, filename: "entrevista.ics", content: convite.ics } }
             : {}),
