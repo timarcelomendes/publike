@@ -10,7 +10,7 @@ import { useMensagensNovas } from "./numero-do-chat";
 
 /**
  * Link do menu do topo, sublinhado na página aberta (`ativo`; sem ele, pelo endereço). `destaque`: o
- * Painel, num contorno leve com o ícone (sem o terra, que é da ação principal); aberto, o fundo escurece.
+ * Painel, com o ícone e um fundo suave, sem contorno (o contorno é do botão Publicar, ao lado).
  */
 export function LinkTopo({
   href,
@@ -25,18 +25,17 @@ export function LinkTopo({
 }) {
   const caminho = usePathname() ?? "";
   const aceso = ativo ?? (href === "/" ? caminho === "/" : caminho.startsWith(href));
+  const sublinhado = "after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-pill after:bg-ink";
   const estilo = destaque
-    ? `ml-2 rounded-pill border text-ink ${aceso ? "border-ink/30 bg-surface-300" : "border-line bg-surface-200 shadow-card"}`
-    : `rounded-md ${
-        aceso
-          ? "text-ink after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-pill after:bg-ink"
-          : "text-ink-muted"
-      }`;
+    ? `bg-surface-300 text-ink ${aceso ? sublinhado : ""}`
+    : aceso
+      ? `text-ink ${sublinhado}`
+      : "text-ink-muted";
   return (
     <Link
       href={href}
       aria-current={aceso ? "page" : undefined}
-      className={`relative inline-flex items-center gap-1.5 px-3 py-2 text-label whitespace-nowrap transition-colors hover:bg-surface-300 hover:text-ink ${estilo}`}
+      className={`relative inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-label whitespace-nowrap transition-colors hover:bg-surface-300 hover:text-ink ${estilo}`}
     >
       {children}
     </Link>
