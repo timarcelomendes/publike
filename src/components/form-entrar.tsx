@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Mail, MailCheck, RotateCw, Smartphone } from "lucide-react";
+import { ArrowLeft, KeyRound, Mail, MailCheck, RotateCw, Smartphone } from "lucide-react";
 import Image from "next/image";
 import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ehNavegacao } from "@/lib/acao-segura";
@@ -29,6 +29,12 @@ function traduzir(erro: ErroAuth) {
   }
   if (erro?.status === 429 || codigo.includes("rate_limit") || msg.includes("rate limit") || msg.includes("security purposes")) {
     return "Muitas tentativas seguidas. Espere um minuto e tente de novo.";
+  }
+  if (codigo === "invalid_credentials" || msg.includes("invalid login credentials")) {
+    return "E-mail ou senha errados. Confira e tente de novo.";
+  }
+  if (codigo === "email_not_confirmed" || msg.includes("email not confirmed")) {
+    return "Este e-mail ainda não foi confirmado. Entre pelo link no e-mail.";
   }
   if (codigo === "otp_expired" || msg.includes("expired") || msg.includes("invalid") && msg.includes("token")) {
     return "Código errado ou vencido. Confira ou peça um novo.";
@@ -88,11 +94,13 @@ export function FormEntrar({
   cabecalho?: ReactNode;
 }) {
   const supabase = useMemo(() => criarClienteNavegador(), []);
-  const [modo, setModo] = useState<"celular" | "email">(comCelular && !emailInicial ? "celular" : "email");
+  // "senha": só para conta que tem senha, como a conta de teste da revisão da Play
+  const [modo, setModo] = useState<"celular" | "email" | "senha">(comCelular && !emailInicial ? "celular" : "email");
   const [etapa, setEtapa] = useState<"pedir" | "codigo" | "email-enviado">("pedir");
   const [celular, setCelular] = useState("");
   const [codigo, setCodigo] = useState("");
   const [email, setEmail] = useState(emailInicial ?? "");
+  const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(erroInicial ?? null);
   const [carregando, setCarregando] = useState(false);
   const [abrindo, setAbrindo] = useState<RedeSocial | null>(null);
@@ -105,7 +113,7 @@ export function FormEntrar({
   const [tokenRobo, setTokenRobo] = useState<string | null>(null);
   const [rodada, setRodada] = useState(0);
   const [verificando, setVerificando] = useState(false);
-  const aguardando = useRef<"email" | "reenvio" | "celular" | null>(null);
+  const aguardando = useRef<"email" | "reenvio" | "celular" | "senha" | null>(null);
   // Reenvio do link: quando o botão volta a valer, quantas vezes foi e o resultado da última.
   const [liberaEm, setLiberaEm] = useState(0);
   const [agora, setAgora] = useState(0);
@@ -205,10 +213,11 @@ export function FormEntrar({
     if (qual === "email") void enviarLink(token);
     else if (qual === "reenvio") void enviarLink(token, true);
     else if (qual === "celular") void enviarCodigo(token);
+    else if (qual === "senha") void entrarComSenha(token);
   }
 
   /** Sem token ainda: o pedido espera a verificação terminar. */
-  function esperarVerificacao(qual: "email" | "reenvio" | "celular") {
+  function esperarVerificacao(qual: "email" | "reenvio" | "celular" | "senha") {
     if (!comVerificacao || tokenRobo) return false;
     aguardando.current = qual;
     setVerificando(true);
@@ -307,6 +316,39 @@ export function FormEntrar({
     setErro(null);
     if (esperarVerificacao("email")) return;
     await enviarLink(tokenRobo);
+  }
+
+  /** Conta com senha (a de teste da revisão da Play): entra aqui mesmo, sem e-mail nem SMS. */
+  async function entrarComSenha(token: string | null) {
+    setCarregando(true);
+    let error: ErroAuth = null;
+    try {
+      ({ error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: senha,
+        options: token ? { captchaToken: token } : undefined,
+      }));
+    } catch {
+      error = { message: "rede" };
+    }
+    novaVerificacao();
+    if (error) {
+      setCarregando(false);
+      setErro(error.message === "rede" ? "Sem conexão agora. Confira sua internet e tente de novo." : traduzir(error));
+      return;
+    }
+    continuar();
+  }
+
+  async function pedirEntrarComSenha(e: FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    if (!email.trim() || !senha) {
+      setErro("Digite o e-mail e a senha.");
+      return;
+    }
+    if (esperarVerificacao("senha")) return;
+    await entrarComSenha(tokenRobo);
   }
 
   const verificacao = comVerificacao && (
@@ -494,6 +536,57 @@ export function FormEntrar({
             Prefiro entrar com e-mail
           </button>
         </form>
+      ) : modo === "senha" ? (
+        <form onSubmit={pedirEntrarComSenha} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="email-senha" className="text-label">
+              Seu e-mail
+            </label>
+            <input
+              id="email-senha"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              required
+              placeholder="voce@exemplo.com"
+              className={classesEntrada}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="senha" className="text-label">
+              Senha
+            </label>
+            <input
+              id="senha"
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              autoComplete="current-password"
+              required
+              className={classesEntrada}
+            />
+            <p className="text-body-sm text-ink-muted">
+              Só para contas que têm senha, como as de teste. As outras entram pelo link no e-mail.
+            </p>
+          </div>
+          {erro && <Aviso tipo="erro">{erro}</Aviso>}
+          <Botao type="submit" variante="primario" disabled={carregando || verificando} className="min-h-12">
+            <KeyRound aria-hidden />
+            {verificando ? "Confirmando que você não é um robô…" : carregando ? "Entrando…" : "Entrar"}
+          </Botao>
+          <button
+            type="button"
+            onClick={() => {
+              setModo("email");
+              setSenha("");
+              setErro(null);
+            }}
+            className="min-h-11 text-label text-terra-text underline"
+          >
+            Receber o link no e-mail
+          </button>
+        </form>
       ) : (
         <form onSubmit={pedirLink} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -529,6 +622,16 @@ export function FormEntrar({
               Prefiro entrar com o celular
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              setModo("senha");
+              setErro(null);
+            }}
+            className="min-h-11 text-body-sm text-ink-muted underline"
+          >
+            Entrar com senha
+          </button>
         </form>
       )}
       {verificacao}
