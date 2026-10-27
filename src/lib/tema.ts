@@ -6,7 +6,8 @@ export type Tema = "claro" | "auto" | "escuro";
 export const TEMAS: Tema[] = ["claro", "auto", "escuro"];
 export const CHAVE_TEMA = "publike_tema";
 export const EVENTO_TEMA = "publike:tema";
-/** cor da barra do navegador no celular, em cada tema */
-export const COR_BARRA = { claro: "#fbf7ef", escuro: "#17130f" } as const;
+/** cor da barra do navegador no celular, em cada tema: a mesma do topo do site (surface-200) */
+export const COR_BARRA = { claro: "#ffffff", escuro: "#221d18" } as const;
 
-export const SCRIPT_TEMA = `(function(){var t;try{t=localStorage.getItem("${CHAVE_TEMA}")}catch(e){}document.documentElement.dataset.tema=t==="escuro"||t==="auto"?t:"claro"})();`;
+// no escuro, também pinta a barra do celular assim que a página abre (sem esperar o botão do tema)
+export const SCRIPT_TEMA = `(function(){var t;try{t=localStorage.getItem("${CHAVE_TEMA}")}catch(e){}t=t==="escuro"||t==="auto"?t:"claro";document.documentElement.dataset.tema=t;if(t==="escuro"||(t==="auto"&&matchMedia("(prefers-color-scheme: dark)").matches))document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content","${COR_BARRA.escuro}")})})})();`;

@@ -34,8 +34,9 @@ function LinkNav({ href, children }: { href: string; children: ReactNode }) {
 }
 
 export function Cabecalho() {
+  // o topo é branco (surface-200), como a barra de baixo do celular; a página fica no creme
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-surface-100/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-line bg-surface-200/95 backdrop-blur-md">
       {/* na home de quem entrou (mais larga no computador grande), o topo acompanha a largura dela */}
       <Container className="flex h-16 items-center gap-2 xl:[body:has([data-pagina-larga])_&]:max-w-7xl">
         <Link href="/" aria-label="Publike, página inicial" className="mr-3 shrink-0 rounded-sm">

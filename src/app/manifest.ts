@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     background_color: "#fbf7ef",
-    theme_color: "#fbf7ef",
+    theme_color: "#ffffff",
     lang: "pt-BR",
     categories: ["business", "lifestyle"],
     // atalhos ao tocar e segurar o ícone (Android) ou com o botão direito (computador)
