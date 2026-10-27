@@ -1,9 +1,9 @@
 "use client";
 
-import { Bell, Mail, Send } from "lucide-react";
+import { Bell, ChevronDown, Mail, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { mandarMensagemDaEquipe, verRespostasDaEquipe } from "@/lib/acoes/admin-contas";
-import { formatarDataHora } from "@/lib/formato";
+import { formatarDataHora, plural } from "@/lib/formato";
 import { EMAIL_DA_EQUIPE, LIMITES_MENSAGEM_EQUIPE, type RespostaDaConta } from "@/lib/mensagem-equipe";
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada } from "../ui/campo";
@@ -154,33 +154,82 @@ export function MensagemDaEquipe({
         {mensagem}
       </div>
 
-      {enviadas.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 className="text-label">Já mandadas</h3>
-          <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
-            {enviadas.map((m) => (
-              <li key={m.id} className="flex flex-col gap-1 p-3 text-body-sm">
-                <span className="flex flex-wrap items-baseline justify-between gap-2">
-                  <strong>{m.assunto}</strong>
-                  <span className="text-ink-muted">
-                    {formatarDataHora(m.criado_em)} · {m.por_email ? "sino e e-mail" : "só sino"} ·{" "}
-                    {m.lida_em ? `lida ${formatarDataHora(m.lida_em)}` : "não lida"}
-                  </span>
-                </span>
-                <span className="whitespace-pre-line text-ink-muted">{m.texto}</span>
-                {m.respostas.map((r) => (
-                  <span key={r.id} className="mt-1 ml-4 flex flex-col gap-0.5 rounded-md bg-surface-300 px-3 py-2">
-                    <span className="text-ink-muted">
-                      {nome} respondeu · {formatarDataHora(r.criado_em)}
-                      {!r.vista_em && <span className="ml-2 rounded-pill bg-ipe px-2 py-0.5 text-on-ipe">Nova</span>}
+      {enviadas.length > 0 && <JaMandadas enviadas={enviadas} nome={nome} />}
+    </div>
+  );
+}
+
+/** Quantas aparecem antes do "Ver todas". */
+const NA_FRENTE = 5;
+
+/**
+ * As mensagens já mandadas, uma linha por mensagem (assunto, quando, por onde, se leu e as respostas); o texto
+ * abre no toque. A que tem resposta nova já vem aberta. As mais velhas ficam atrás do "Ver todas".
+ */
+function JaMandadas({ enviadas, nome }: { enviadas: MensagemEnviada[]; nome: string }) {
+  const [todas, setTodas] = useState(false);
+  const lista = todas ? enviadas : enviadas.slice(0, NA_FRENTE);
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-label">
+        Já mandadas <span className="font-normal text-ink-muted">({enviadas.length})</span>
+      </h3>
+      <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+        {lista.map((m) => {
+          const novas = m.respostas.filter((r) => !r.vista_em).length;
+          return (
+            <li key={m.id}>
+              <details open={novas > 0} className="group text-body-sm">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-3 py-2 hover:bg-surface-300 [&::-webkit-details-marker]:hidden">
+                  <ChevronDown
+                    aria-hidden
+                    className="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+                  />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-semibold">{m.assunto}</span>
+                    <span className="text-body-sm font-normal text-ink-muted sm:hidden">
+                      {formatarDataHora(m.criado_em)} · {m.lida_em ? "lida" : "não lida"}
                     </span>
-                    <span className="whitespace-pre-line text-ink">{r.texto}</span>
                   </span>
-                ))}
-              </li>
-            ))}
-          </ul>
-        </div>
+                  {m.respostas.length > 0 && (
+                    <span
+                      className={`shrink-0 rounded-pill px-2 py-0.5 text-caption ${novas ? "bg-ipe text-on-ipe" : "bg-surface-300 text-ink-muted"}`}
+                    >
+                      {novas
+                        ? plural(novas, "resposta nova", "respostas novas")
+                        : plural(m.respostas.length, "resposta", "respostas")}
+                    </span>
+                  )}
+                  <span className="hidden shrink-0 text-ink-muted sm:inline">
+                    {formatarDataHora(m.criado_em)} · {m.por_email ? "sino e e-mail" : "só sino"} ·{" "}
+                    {m.lida_em ? "lida" : "não lida"}
+                  </span>
+                </summary>
+                <div className="flex flex-col gap-2 px-3 pb-3 pl-10">
+                  <span className="text-ink-muted sm:hidden">
+                    {m.por_email ? "Foi para o sino e o e-mail." : "Foi só para o sino."}
+                  </span>
+                  {m.lida_em && <span className="text-ink-muted">Lida {formatarDataHora(m.lida_em)}.</span>}
+                  <span className="whitespace-pre-line text-ink-muted">{m.texto}</span>
+                  {m.respostas.map((r) => (
+                    <span key={r.id} className="flex flex-col gap-0.5 rounded-md bg-surface-300 px-3 py-2">
+                      <span className="text-ink-muted">
+                        {nome} respondeu · {formatarDataHora(r.criado_em)}
+                        {!r.vista_em && <span className="ml-2 rounded-pill bg-ipe px-2 py-0.5 text-on-ipe">Nova</span>}
+                      </span>
+                      <span className="whitespace-pre-line text-ink">{r.texto}</span>
+                    </span>
+                  ))}
+                </div>
+              </details>
+            </li>
+          );
+        })}
+      </ul>
+      {enviadas.length > NA_FRENTE && (
+        <Botao variante="fantasma" tamanho="sm" className="self-start" onClick={() => setTodas(!todas)}>
+          {todas ? "Mostrar só as mais novas" : `Ver todas (${enviadas.length})`}
+        </Botao>
       )}
     </div>
   );
