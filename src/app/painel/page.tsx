@@ -26,6 +26,7 @@ import { GradeDoPainel, type BlocoDoPainel } from "@/components/painel/grade-do-
 import { HojeContratar } from "@/components/painel/hoje-contratar";
 import { ICONES_DO_PAINEL } from "@/components/painel/icones-do-painel";
 import { ConviteNotificacoes } from "@/components/convite-notificacoes";
+import { ConviteTesteAndroid } from "@/components/convite-teste-android";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -152,6 +153,8 @@ async function Conteudo() {
           enviamos.
         </Aviso>
       )}
+      {/* o convite do teste fechado da Play (só no Android, fora do app instalado) */}
+      {!suspensa && <ConviteTesteAndroid />}
       {/* o convite das notificações no celular (só para quem ainda não ligou neste aparelho) */}
       {!suspensa && (
         <ConviteNotificacoes

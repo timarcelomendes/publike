@@ -19,6 +19,14 @@ export const DIGITAIS_ANDROID: string[] = [
  * O teste fechado da Play (conta pessoal: 12 testadores por 14 dias antes da produção). Quem entra no
  * Grupo do Google vira testador; depois aceita o teste na Play e instala. A página /testar-app explica.
  */
+/**
+ * Enquanto o teste fechado junta os testadores: no Android, o "Instalar app" e o convite de instalar levam
+ * ao /testar-app, e o Painel mostra o convite para testar. Depois da produção, desligue (false): o Android
+ * volta a instalar o site como app.
+ */
+export const TESTE_FECHADO = true;
+export const PAGINA_DO_TESTE = "/testar-app";
+
 export const GRUPO_TESTADORES = "https://groups.google.com/g/testadores-publike";
 export const ACEITAR_TESTE = `https://play.google.com/apps/testing/${PACOTE_ANDROID}`;
 export const APP_NA_PLAY = `https://play.google.com/store/apps/details?id=${PACOTE_ANDROID}`;

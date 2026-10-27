@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { avisoDeCookiesFechado } from "./aviso-cookies";
 import { classesBotao } from "./ui/botao";
+import { PAGINA_DO_TESTE, TESTE_FECHADO } from "@/lib/android";
 import { EVENTO_PEDIDO } from "@/lib/instalar";
 
 // "Instale o app do Publike" (PWA).
@@ -14,6 +15,7 @@ import { EVENTO_PEDIDO } from "@/lib/instalar";
 //   iPhone e iPad: a Apple não deixa o site instalar sozinho; mostramos o caminho
 //   (Compartilhar → Adicionar à Tela de Início).
 //   Safari no Mac: Arquivo → Adicionar ao Dock.
+//   Android durante o teste fechado da Play (TESTE_FECHADO): leva ao /testar-app, para instalar pela Play.
 // O convite aparece sozinho uma vez (depois de alguns segundos no site); quem toca
 // em "Agora não" só vê de novo em 30 dias. O "Instalar o app" do rodapé abre sempre.
 
@@ -22,7 +24,7 @@ type EventoInstalar = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-type Jeito = "botao" | "iphone" | "mac" | "menu" | "app-de-rede" | "outro" | "instalado";
+type Jeito = "play" | "botao" | "iphone" | "mac" | "menu" | "app-de-rede" | "outro" | "instalado";
 
 const DISPENSADO = "publike_instalar_dispensado";
 const TRINTA_DIAS = 30 * 24 * 3600 * 1000;
@@ -49,8 +51,14 @@ function emTelaCheia() {
   );
 }
 
+/** Celular ou tablet Android (o app da Play só existe para ele). */
+export function ehAndroid() {
+  return /Android/i.test(navigator.userAgent);
+}
+
 function jeitoDeInstalar(): Jeito {
   if (emTelaCheia()) return "instalado";
+  if (TESTE_FECHADO && ehAndroid()) return "play";
   lerPedidoAntecipado();
   if (pedido) return "botao";
   const ua = navigator.userAgent;
@@ -94,6 +102,10 @@ function lerPedidoAntecipado() {
 }
 
 async function instalarAgora() {
+  if (TESTE_FECHADO && ehAndroid()) {
+    window.location.assign(PAGINA_DO_TESTE);
+    return;
+  }
   lerPedidoAntecipado();
   const p = pedido;
   if (!p) {
@@ -209,11 +221,12 @@ export function ConviteInstalar() {
   useEffect(() => {
     if (aberto || dispensadoHaPouco()) return;
     if (SEM_CONVITE.some((c) => caminho.startsWith(c))) return;
+    if (caminho.startsWith(PAGINA_DO_TESTE)) return; // a própria página do teste
     // os dois ocupam o mesmo canto: primeiro o aviso de cookies
     if (!avisoDeCookiesFechado()) return;
     const espera = window.setTimeout(() => {
       const j = jeitoDeInstalar();
-      if (j !== "botao" && j !== "iphone" && j !== "mac") return;
+      if (j !== "play" && j !== "botao" && j !== "iphone" && j !== "mac") return;
       setJeito(j);
       setAberto("auto");
     }, ESPERA_MS);
@@ -264,6 +277,20 @@ export function ConviteInstalar() {
           <Explicacao jeito={jeito} />
         </div>
       </div>
+      {jeito === "play" && (
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button type="button" onClick={fechar} className={classesBotao("fantasma", "sm")}>
+            Agora não
+          </button>
+          <a
+            href={PAGINA_DO_TESTE}
+            onClick={() => aberto === "auto" && dispensar()}
+            className={classesBotao("primario", "sm")}
+          >
+            Quero testar
+          </a>
+        </div>
+      )}
       {jeito === "botao" && (
         <div className="mt-4 flex items-center justify-end gap-2">
           <button type="button" onClick={fechar} className={classesBotao("fantasma", "sm")}>
@@ -290,6 +317,12 @@ function Explicacao({ jeito }: { jeito: Jeito }) {
   const passo = "flex items-center gap-2 text-body-sm";
   const icone = "size-4 shrink-0 text-terra-text";
   switch (jeito) {
+    case "play":
+      return (
+        <p className="text-body-sm text-ink-muted">
+          O app está chegando ao Google Play. Entre no teste e instale pela Play: leva 2 minutos e é grátis.
+        </p>
+      );
     case "botao":
       return (
         <p className="text-body-sm text-ink-muted">
