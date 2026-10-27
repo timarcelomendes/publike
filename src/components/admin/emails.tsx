@@ -566,6 +566,11 @@ export type ConviteEmail = { modelo: string; recebem: number; ja_receberam: numb
 
 const CONVITES_EMAIL = [
   {
+    modelo: "convite_perfil",
+    nome: "Contas: concluir o perfil",
+    quem: "Quem criou a conta (pelo e-mail, Google ou LinkedIn) e parou antes de terminar o cadastro. Vai 1 hora depois da conta criada. Sem perfil, não tem nome nem aviso no sino.",
+  },
+  {
     modelo: "convite_curriculo",
     nome: "Pessoas: preencher o currículo",
     quem: "Quem procura trabalho e ainda não preencheu o currículo.",
@@ -610,9 +615,11 @@ export function ConvitesPorEmail({
           recebem: 0,
           ja_receberam: 0,
         };
-        const a = avisos
-          ? (avisos.find((x) => x.modelo === info.modelo) ?? { modelo: info.modelo, recebem: 0, ja_receberam: 0 })
-          : null;
+        // sem perfil não há sino: o convite de concluir o perfil é só por e-mail
+        const a =
+          avisos && info.modelo !== "convite_perfil"
+            ? (avisos.find((x) => x.modelo === info.modelo) ?? { modelo: info.modelo, recebem: 0, ja_receberam: 0 })
+            : null;
         return <LinhaConvite key={info.modelo} info={info} convite={c} aviso={a} sugestao={sugestao} />;
       })}
     </ul>

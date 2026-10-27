@@ -335,7 +335,14 @@ export async function enviarEmailDeTeste(_anterior: EstadoForm, formData: FormDa
   };
 }
 
-const CONVITES = ["convite_curriculo", "convite_empresa", "convite_agencia", "convite_servicos", "convite_vitrine"];
+const CONVITES = [
+  "convite_perfil",
+  "convite_curriculo",
+  "convite_empresa",
+  "convite_agencia",
+  "convite_servicos",
+  "convite_vitrine",
+];
 
 /** Convite por e-mail para o grupo todo: entra na fila e sai em levas de 50 (o resto, na próxima leva). */
 export async function enviarConviteEmail(modelo: string): Promise<Resultado> {
