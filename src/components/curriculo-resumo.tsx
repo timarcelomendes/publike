@@ -1,23 +1,13 @@
 import { FileText } from "lucide-react";
 import { nomeDisponibilidade } from "@/lib/constantes";
 import { textosDosEstudos } from "@/lib/estudos";
+import { mesesDoPeriodo, textoDoPeriodo } from "@/lib/experiencia";
 import type { Curriculo, Experiencia } from "@/lib/tipos";
 
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
-/** "2024-03" → "mar/2024" */
-function mes(valor: string) {
-  const [ano, m] = valor.split("-");
-  const i = Number(m) - 1;
-  return MESES[i] ? `${MESES[i]}/${ano}` : valor;
-}
-
-/** Quanto tempo ficou: "1 ano e 5 meses", "8 meses". */
-function duracao(inicio: string, fim: string | null, hoje: string) {
-  const [a1, m1] = inicio.split("-").map(Number);
-  const [a2, m2] = (fim ?? hoje).split("-").map(Number);
-  const total = (a2 - a1) * 12 + (m2 - m1) + 1;
-  if (!Number.isFinite(total) || total < 1) return null;
+/** Quanto tempo ficou: "1 ano e 5 meses", "8 meses" (sem as datas, nada). */
+function duracao(e: Experiencia, hoje: string) {
+  const total = mesesDoPeriodo(e, hoje);
+  if (!total) return null;
   const anos = Math.floor(total / 12);
   const meses = total % 12;
   const partes = [
@@ -28,17 +18,20 @@ function duracao(inicio: string, fim: string | null, hoje: string) {
 }
 
 function ItemExperiencia({ e, hoje }: { e: Experiencia; hoje: string }) {
-  const tempo = duracao(e.inicio, e.fim, hoje);
+  const tempo = duracao(e, hoje);
+  const periodo = textoDoPeriodo(e);
   return (
     <li className="flex flex-col gap-0.5">
       <p className="text-label">
         {e.cargo}
         {e.onde && <span className="font-normal text-ink-muted"> · {e.onde}</span>}
       </p>
-      <p className="text-body-sm text-ink-muted">
-        {mes(e.inicio)} – {e.fim ? mes(e.fim) : "atual"}
-        {tempo && ` (${tempo})`}
-      </p>
+      {periodo && (
+        <p className="text-body-sm text-ink-muted">
+          {periodo}
+          {tempo && ` (${tempo})`}
+        </p>
+      )}
       {e.descricao && <p className="text-body-sm">{e.descricao}</p>}
     </li>
   );

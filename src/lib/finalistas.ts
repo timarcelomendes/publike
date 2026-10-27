@@ -74,9 +74,10 @@ function curriculoDoLink(v: unknown): Curriculo | null {
       onde: texto(e.onde) ?? "",
       inicio: texto(e.inicio) ?? "",
       fim: texto(e.fim) || null,
+      ...(typeof e.atual === "boolean" ? { atual: e.atual } : {}),
       descricao: texto(e.descricao) ?? "",
     }))
-    .filter((e) => e.cargo && e.inicio);
+    .filter((e) => e.cargo);
   return {
     titulo: texto(c.titulo),
     habilidades: textos(c.habilidades),

@@ -1,5 +1,6 @@
 "use server";
 
+import { textoDoPeriodo } from "@/lib/experiencia";
 import { after } from "next/server";
 import { refresh } from "next/cache";
 import { atendeEmParte } from "@/lib/aderencia";
@@ -76,7 +77,7 @@ export async function resumirCandidatoComIA(anuncioId: string, perfilId: string)
     ...(cv.experiencias.length
       ? cv.experiencias.map(
           (e) =>
-            `- ${e.cargo} em ${e.onde}, de ${e.inicio} até ${e.fim ?? "hoje"}${e.descricao ? `: ${e.descricao}` : ""}`,
+            `- ${e.cargo}${e.onde ? ` em ${e.onde}` : ""}${textoDoPeriodo(e) ? `, ${textoDoPeriodo(e)}` : ", sem datas"}${e.descricao ? `: ${e.descricao}` : ""}`,
         )
       : ["- nenhuma (primeiro emprego)"]),
     "</curriculo>",

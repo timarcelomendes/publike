@@ -25,6 +25,7 @@
 // Pergunta eliminatória respondida diferente: nota 0. Nada para comparar: sem nota.
 // A descrição livre da vaga só é lida para achar as habilidades e os cursos que ela cita.
 
+import { trabalhaAqui, type Periodo as PeriodoDoTrabalho } from "./experiencia";
 import { DISPONIBILIDADES, ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
 import { escolaridadeMaisAlta } from "./estudos";
 import type { Turno } from "./filtros";
@@ -115,16 +116,16 @@ function numeroDoMes(t: string) {
   return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
 }
 
-/** Quantos meses durou um trabalho do currículo (o atual, até hoje). */
-function mesesDoTrabalho(e: { inicio: string; fim: string | null }, agora: number) {
+/** Quantos meses durou um trabalho do currículo (o atual, até hoje). Sem as datas, não conta tempo. */
+function mesesDoTrabalho(e: PeriodoDoTrabalho, agora: number) {
   const hoje = new Date(agora);
   const ini = numeroDoMes(e.inicio);
-  const fim = e.fim ? numeroDoMes(e.fim) : hoje.getUTCFullYear() * 12 + hoje.getUTCMonth();
+  const fim = trabalhaAqui(e) ? hoje.getUTCFullYear() * 12 + hoje.getUTCMonth() : e.fim ? numeroDoMes(e.fim) : null;
   return ini !== null && fim !== null && fim >= ini ? fim - ini + 1 : 0;
 }
 
 /** Quantos meses de experiência, somando as do currículo (até hoje nas atuais). */
-export function mesesDeExperiencia(experiencias: { inicio: string; fim: string | null }[], agora: number) {
+export function mesesDeExperiencia(experiencias: PeriodoDoTrabalho[], agora: number) {
   return experiencias.reduce((total, e) => total + mesesDoTrabalho(e, agora), 0);
 }
 
@@ -253,7 +254,14 @@ function areaEmComum(daVaga: string[], dele: string[]) {
 /** "Operadora de caixa · Supermercado X · até 12/2024" */
 function textoDoTrabalho(e: Curriculo["experiencias"][number]) {
   const mesAno = (t: string) => t.replace(/^(\d{4})-(\d{2}).*$/, "$2/$1");
-  return `${e.cargo}${e.onde ? ` · ${e.onde}` : ""} · ${e.fim ? `até ${mesAno(e.fim)}` : `desde ${mesAno(e.inicio)}`}`;
+  const quando = trabalhaAqui(e)
+    ? e.inicio
+      ? ` · desde ${mesAno(e.inicio)}`
+      : " · atual"
+    : e.fim
+      ? ` · até ${mesAno(e.fim)}`
+      : "";
+  return `${e.cargo}${e.onde ? ` · ${e.onde}` : ""}${quando}`;
 }
 
 /**

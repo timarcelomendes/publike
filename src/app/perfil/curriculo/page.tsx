@@ -18,7 +18,8 @@ import {
   obterMeuCurriculo,
   obterUsuario,
 } from "@/lib/dados";
-import { caminhoSeguro, primeiro, tempoRelativo } from "@/lib/formato";
+import { faltaData } from "@/lib/experiencia";
+import { caminhoSeguro, plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
 import type { MinhaCurtida } from "@/lib/tipos";
@@ -229,6 +230,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
             <p className="mt-2">
               Falta dizer até onde você estudou: muitas vagas pedem.{" "}
               <a href="#escolaridade" className="text-label underline">
+                Pôr agora
+              </a>
+            </p>
+          )}
+          {/* salvou experiência sem as datas (não trava): o lembrete fica aqui */}
+          {curriculo && curriculo.experiencias.some(faltaData) && (
+            <p className="mt-2">
+              Faltam as datas de{" "}
+              {plural(curriculo.experiencias.filter(faltaData).length, "experiência", "experiências")}. Com elas, quem
+              contrata vê quanto tempo você ficou em cada trabalho.{" "}
+              <a href="#experiencias" className="text-label underline">
                 Pôr agora
               </a>
             </p>

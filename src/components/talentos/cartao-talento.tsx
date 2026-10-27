@@ -55,7 +55,7 @@ export function CartaoTalento({ t, acao }: { t: TalentoResumo; acao?: ReactNode 
       <p className="flex items-start gap-2 text-body-sm">
         <Briefcase aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
         <span>
-          {textoDaExperiencia(t.meses_experiencia)}
+          {textoDaExperiencia(t.meses_experiencia, t.cargos.length > 0)}
           {t.cargos.length > 0 && <span className="text-ink-muted"> · {t.cargos.join(", ")}</span>}
         </span>
       </p>

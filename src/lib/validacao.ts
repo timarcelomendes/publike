@@ -611,9 +611,10 @@ const esquemaExperiencia = z
       .trim()
       .max(80, { error: "Use no máximo 80 letras." })
       .refine((t) => !temContato(t), { error: SEM_CONTATO }),
-    inicio: z.string().regex(MES, { error: "Diga o mês em que começou." }),
+    // as datas são opcionais: sem o mês, a experiência entra sem o período
+    inicio: z.union([z.string().regex(MES, { error: "Confira o mês em que começou." }), z.literal("")]),
     atual: z.boolean(),
-    fim: z.string().regex(MES, { error: "Diga o mês em que saiu." }).nullable(),
+    fim: z.string().regex(MES, { error: "Confira o mês em que saiu." }).nullable(),
     descricao: z
       .string()
       .trim()
@@ -621,10 +622,11 @@ const esquemaExperiencia = z
       .refine((t) => !temContatoNoTexto(t), { error: SEM_CONTATO }),
   })
   .superRefine((d, ctx) => {
-    if (!d.atual && !d.fim) ctx.addIssue({ code: "custom", path: ["fim"], message: "Diga o mês em que saiu ou marque “Trabalho aqui”." });
-    if (!d.atual && d.fim && d.fim < d.inicio) ctx.addIssue({ code: "custom", path: ["fim"], message: "A saída vem depois da entrada." });
+    if (!d.atual && d.inicio && d.fim && d.fim < d.inicio) {
+      ctx.addIssue({ code: "custom", path: ["fim"], message: "A saída vem depois da entrada." });
+    }
   })
-  .transform(({ atual, ...d }) => ({ ...d, fim: atual ? null : d.fim }));
+  .transform((d) => ({ ...d, fim: d.atual ? null : d.fim }));
 
 const mesmoEstudo = (a: { nivel: string; curso: string }, b: { nivel: string; curso: string }) =>
   a.nivel === b.nivel && a.curso.toLowerCase() === b.curso.toLowerCase();

@@ -87,7 +87,7 @@ export function CurriculoDoTalento({
             <p className="flex items-start gap-2 text-body">
               <Briefcase aria-hidden className="mt-1 size-4 shrink-0 text-ink-muted" />
               <span>
-                {textoDaExperiencia(resumo.meses_experiencia)}
+                {textoDaExperiencia(resumo.meses_experiencia, resumo.cargos.length > 0)}
                 {resumo.cargos.length > 0 && <span className="text-ink-muted"> · {resumo.cargos.join(", ")}</span>}
               </span>
             </p>

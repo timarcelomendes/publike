@@ -1,5 +1,6 @@
 "use client";
 
+import { trabalhaAqui } from "@/lib/experiencia";
 import {
   Camera,
   Check,
@@ -79,9 +80,22 @@ const chip = (ativo: boolean) =>
     ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-300 text-ink hover:border-line-strong"
   }`;
 
-function Secao({ titulo, descricao, children }: { titulo: string; descricao?: ReactNode; children: ReactNode }) {
+function Secao({
+  id,
+  titulo,
+  descricao,
+  children,
+}: {
+  id?: string;
+  titulo: string;
+  descricao?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
+    <section
+      id={id}
+      className="flex scroll-mt-24 flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
+    >
       <div>
         <h2 className="text-h3">{titulo}</h2>
         {descricao && <p className="mt-2 text-body-sm text-ink-muted">{descricao}</p>}
@@ -291,8 +305,9 @@ function LerCurriculoPronto({
             </p>
             {situacao.semData > 0 && (
               <p>
-                Complete as datas que faltam em{" "}
+                Se souber, ponha as datas que faltam em{" "}
                 {situacao.semData === 1 ? "uma experiência" : plural(situacao.semData, "experiência", "experiências")}.
+                Sem elas, o currículo salva do mesmo jeito, só não mostra quanto tempo você ficou.
               </p>
             )}
             {situacao.comPdf && <p>O PDF também ficou anexado ao currículo.</p>}
@@ -429,7 +444,7 @@ export function FormCurriculo({
           onde: e.onde,
           inicio: e.inicio,
           fim: e.fim ?? "",
-          atual: !e.fim,
+          atual: trabalhaAqui(e),
           descricao: e.descricao,
         })),
   );
@@ -967,6 +982,7 @@ export function FormCurriculo({
       </Secao>
 
       <Secao
+        id="experiencias"
         titulo="Onde você já trabalhou"
         descricao="Do mais recente para o mais antigo. Freelance e trabalho sem carteira também contam. Primeiro emprego? Pode deixar vazio e contar dos cursos."
       >
@@ -1020,7 +1036,9 @@ export function FormCurriculo({
                   {erro("onde") && <MensagemErro>{erro("onde")}</MensagemErro>}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Rotulo htmlFor={id("inicio")}>Entrou em</Rotulo>
+                  <Rotulo htmlFor={id("inicio")} opcional>
+                    Entrou em
+                  </Rotulo>
                   <input
                     id={id("inicio")}
                     type="month"
@@ -1033,7 +1051,9 @@ export function FormCurriculo({
                   {erro("inicio") && <MensagemErro>{erro("inicio")}</MensagemErro>}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Rotulo htmlFor={x.atual ? id("atual") : id("fim")}>Saiu em</Rotulo>
+                  <Rotulo htmlFor={x.atual ? id("atual") : id("fim")} opcional>
+                    Saiu em
+                  </Rotulo>
                   {!x.atual && (
                     <input
                       id={id("fim")}

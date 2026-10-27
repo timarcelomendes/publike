@@ -45,7 +45,18 @@ export type Match = LinhaDe<"meus_matches">;
 export type ItemModeracao = LinhaDe<"fila_moderacao">;
 
 /** Uma experiência no currículo. Datas no formato "2024-03"; fim null = trabalho atual. */
-export type Experiencia = { cargo: string; onde: string; inicio: string; fim: string | null; descricao: string };
+/**
+ * Uma experiência do currículo. As datas são opcionais: `inicio` vazio quando não se sabe o mês. `atual`
+ * ("Trabalho aqui") vem nas novas; nas antigas, fim vazio quer dizer atual (`trabalhaAqui`, em lib/experiencia).
+ */
+export type Experiencia = {
+  cargo: string;
+  onde: string;
+  inicio: string;
+  fim: string | null;
+  atual?: boolean;
+  descricao: string;
+};
 /** Um estudo a mais no currículo (além de "Até onde você estudou"): o nível e o curso. */
 export type Estudo = { nivel: string; curso: string };
 /** O currículo como as telas usam (experiências já tipadas). */

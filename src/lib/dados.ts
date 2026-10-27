@@ -474,7 +474,11 @@ export function lerExperiencias(valor: unknown): Experiencia[] {
   const t = (v: unknown) => (typeof v === "string" ? v : "");
   return valor.map((x) => {
     const o = (x ?? {}) as Record<string, unknown>;
-    return { cargo: t(o.cargo), onde: t(o.onde), inicio: t(o.inicio), fim: t(o.fim) || null, descricao: t(o.descricao) };
+    const inicio = t(o.inicio);
+    const fim = t(o.fim) || null;
+    // as antigas não guardam "atual": fim vazio com início é "trabalha aqui"
+    const atual = typeof o.atual === "boolean" ? o.atual : Boolean(inicio) && !fim;
+    return { cargo: t(o.cargo), onde: t(o.onde), inicio, fim: atual ? null : fim, atual, descricao: t(o.descricao) };
   });
 }
 

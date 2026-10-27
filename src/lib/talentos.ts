@@ -48,9 +48,12 @@ export type TalentoResumo = {
   atualizado_em: string;
 };
 
-/** "3 anos de experiência", "8 meses de experiência" ou "Primeiro emprego". */
-export function textoDaExperiencia(meses: number) {
-  if (!meses || meses < 1) return "Primeiro emprego";
+/**
+ * "3 anos de experiência", "8 meses de experiência", "Tem experiência" (pôs onde trabalhou, mas sem as datas)
+ * ou "Primeiro emprego".
+ */
+export function textoDaExperiencia(meses: number, temCargos = false) {
+  if (!meses || meses < 1) return temCargos ? "Tem experiência" : "Primeiro emprego";
   if (meses < 12) return `${meses} ${meses === 1 ? "mês" : "meses"} de experiência`;
   const anos = Math.floor(meses / 12);
   return `${anos} ${anos === 1 ? "ano" : "anos"} de experiência`;

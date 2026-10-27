@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { trabalhaAqui } from "@/lib/experiencia";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { TriagemRapida, type CartaTriagem } from "@/components/painel/triagem-rapida";
@@ -68,7 +69,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
       titulo: c.curriculo?.titulo ?? null,
       experiencias: (c.curriculo?.experiencias ?? [])
         .slice(0, 3)
-        .map((e) => [e.cargo, e.onde].filter(Boolean).join(" · ") + (e.fim ? "" : " (atual)")),
+        .map((e) => [e.cargo, e.onde].filter(Boolean).join(" · ") + (trabalhaAqui(e) ? " (atual)" : "")),
       temCurriculo: Boolean(c.curriculo),
       semCurriculo: c.semCurriculo,
       respostas: c.respostas,
