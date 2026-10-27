@@ -451,11 +451,22 @@ export async function emailsPorDia(c: ClienteBanco, dias = 7) {
   return data ?? [];
 }
 
-/** Quantos e-mails saíram desde a data (os créditos do ZeptoMail). null: banco sem a migração. */
-export async function emailsEnviadosDesde(c: ClienteBanco, desde: string) {
-  const { data, error } = await c.rpc("admin_emails_enviados_desde", { p_desde: desde });
+export type CreditosEmail = {
+  emails: number;
+  total: number | null;
+  vence_em: string | null;
+  contado_em: string;
+  enviados: number;
+};
+
+/**
+ * Os créditos do ZeptoMail: o saldo que a equipe informou e os enviados desde então. "vazio": ainda não
+ * informado; null: banco sem a migração 20261126120000.
+ */
+export async function creditosDoEmail(c: ClienteBanco): Promise<CreditosEmail | "vazio" | null> {
+  const { data, error } = await c.rpc("admin_creditos_email");
   if (error) return null;
-  return data ?? 0;
+  return data?.[0] ?? "vazio";
 }
 
 /** Os últimos e-mails de uma conta (para ver se chegou ou falhou). */

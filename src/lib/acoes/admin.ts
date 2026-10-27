@@ -224,6 +224,40 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
   return { ok: true, mensagem: "Configurações salvas." };
 }
 
+/** O saldo de e-mails do ZeptoMail e o próximo vencimento, como o ZeptoMail mostra (migração 20261126120000). */
+export async function salvarCreditosEmail(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const emails = Number(texto(formData, "emails").replace(/\D/g, ""));
+  if (!texto(formData, "emails") || !Number.isInteger(emails) || emails > 100_000_000) {
+    return { ok: false, erro: "Confira o saldo.", erros: { emails: "Ponha quantos e-mails o ZeptoMail mostra." } };
+  }
+  const total = texto(formData, "total") ? Number(texto(formData, "total").replace(/\D/g, "")) : null;
+  if (total !== null && (!Number.isInteger(total) || total < 1 || total < emails || total > 100_000_000)) {
+    return {
+      ok: false,
+      erro: "Confira o total.",
+      erros: { total: "O total é o número depois da barra (19450 / 20000)." },
+    };
+  }
+  const vence = texto(formData, "vence_em");
+  if (vence && !/^\d{4}-\d{2}-\d{2}$/.test(vence)) {
+    return { ok: false, erro: "Confira a data.", erros: { vence_em: "Confira a data do vencimento." } };
+  }
+  const { error } = await c.rpc("admin_salvar_creditos_email", {
+    p_emails: emails,
+    p_total: total,
+    p_vence_em: vence || null,
+  });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20261126120000_emails_enviados_desde.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return { ok: true, mensagem: "Saldo salvo. Daqui para frente, cada e-mail enviado sai dele." };
+}
+
 /** Liga ou desliga as vagas e os talentos que combinam, toda semana (migração 20261119120000). */
 export async function ligarCombinam(ligado: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();

@@ -1164,7 +1164,20 @@ export type Database = {
         Args: { p_dias?: number };
         Returns: { dia: string; enviados: number; falharam: number; na_fila: number }[];
       };
-      admin_emails_enviados_desde: { Args: { p_desde: string }; Returns: number };
+      admin_creditos_email: {
+        Args: Record<string, never>;
+        Returns: {
+          emails: number;
+          total: number | null;
+          vence_em: string | null;
+          contado_em: string;
+          enviados: number;
+        }[];
+      };
+      admin_salvar_creditos_email: {
+        Args: { p_emails: number; p_total: number | null; p_vence_em: string | null };
+        Returns: undefined;
+      };
       salvar_inscricao_push: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_navegador?: string | null };
         Returns: undefined;

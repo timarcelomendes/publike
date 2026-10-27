@@ -11,6 +11,7 @@ import {
   reenviarEmailsComFalha,
   restaurarModeloEmail,
   salvarConfigEmails,
+  salvarCreditosEmail,
   salvarLogoEmails,
   salvarModeloEmail,
   testarConviteEmail,
@@ -31,6 +32,7 @@ const salvarConfigEmailsProtegido = protegerAcao(salvarConfigEmails);
 const salvarLogoEmailsProtegido = protegerAcao(salvarLogoEmails);
 const salvarModeloEmailProtegido = protegerAcao(salvarModeloEmail);
 const testarConviteEmailProtegido = protegerAcao(testarConviteEmail);
+const salvarCreditosEmailProtegido = protegerAcao(salvarCreditosEmail);
 
 function Resultado({ estado }: { estado: EstadoForm }) {
   if (estado.erro) return <Aviso tipo="erro">{estado.erro}</Aviso>;
@@ -75,6 +77,72 @@ export function FormEmailTeste({ sugestao }: { sugestao: string }) {
         <Botao type="submit" disabled={enviando} className="sm:mb-px">
           <Send aria-hidden />
           {enviando ? "Enviando…" : "Enviar teste"}
+        </Botao>
+      </div>
+      <Resultado estado={estado} />
+    </form>
+  );
+}
+
+// ------------------------------------------------------------------ créditos do ZeptoMail
+
+/** O saldo de e-mails e o próximo vencimento, copiados da tela de créditos do ZeptoMail. */
+export function FormCreditosEmail({
+  emails,
+  total,
+  venceEm,
+}: {
+  emails: number | null;
+  total: number | null;
+  venceEm: string | null;
+}) {
+  const [estado, acao, enviando] = useActionState(salvarCreditosEmailProtegido, INICIAL);
+  const erros = estado.erros ?? {};
+  return (
+    <form action={acao} className="flex flex-col gap-3">
+      <p className="text-body-sm text-ink-muted">
+        Copie do ZeptoMail o que aparece em “credits left”: em “2 credits left (19450 / 20000)”, os disponíveis são
+        19450 e o total, 20000 (cada crédito vale 10.000 e-mails).
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <Campo rotulo="E-mails disponíveis" nome="emails" erro={erros.emails}>
+          <input
+            {...ligarCampo("emails", erros.emails)}
+            inputMode="numeric"
+            defaultValue={emails ?? ""}
+            required
+            autoComplete="off"
+            className={classesEntrada}
+          />
+        </Campo>
+        <Campo rotulo="Total" nome="total" erro={erros.total} opcional>
+          <input
+            {...ligarCampo("total", erros.total)}
+            inputMode="numeric"
+            defaultValue={total ?? ""}
+            autoComplete="off"
+            className={classesEntrada}
+          />
+        </Campo>
+        <Campo
+          rotulo="Próximo vencimento"
+          nome="vence_em"
+          erro={erros.vence_em}
+          opcional
+          ajuda="A data em vermelho no ZeptoMail."
+          className="col-span-2 sm:col-span-1"
+        >
+          <input
+            {...ligarCampo("vence_em", erros.vence_em, true)}
+            type="date"
+            defaultValue={venceEm ?? ""}
+            className={classesEntrada}
+          />
+        </Campo>
+      </div>
+      <div>
+        <Botao type="submit" tamanho="sm" disabled={enviando}>
+          {enviando ? "Salvando…" : "Salvar saldo"}
         </Botao>
       </div>
       <Resultado estado={estado} />

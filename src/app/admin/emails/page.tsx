@@ -7,6 +7,7 @@ import {
   BotoesFila,
   ConvitesPorEmail,
   FormConfigEmails,
+  FormCreditosEmail,
   FormEmailTeste,
   FormLogoEmails,
   TextosDosEmails,
@@ -19,10 +20,11 @@ import {
   avisosDeConvite,
   configDoSite,
   convitesPorEmail,
-  emailsEnviadosDesde,
+  creditosDoEmail,
   emailsPorDia,
   modelosDeEmail,
   ultimosEmails,
+  type CreditosEmail,
 } from "@/lib/admin/dados";
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
@@ -35,13 +37,6 @@ import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "E-mails" };
-
-/**
- * Os créditos do ZeptoMail (um por e-mail): o saldo e desde quando ele vale. A conta foi aprovada em
- * 27/10/2026 (sem o limite de 100 por dia) com 10.000 créditos. Ao comprar mais, ponha o novo saldo
- * (o que o ZeptoMail mostra) e a data da compra. null: sem os créditos à vista.
- */
-const CREDITOS: { saldo: number; desde: string } | null = { saldo: 10_000, desde: "2026-10-27T18:00:00-03:00" };
 
 // sub-abas: o que saiu, a configuração do envio, os convites e os textos (cada uma lê só o que mostra)
 const ABAS = [
@@ -107,7 +102,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
     aba === "convites" ? convitesPorEmail(c) : nada,
     aba === "convites" ? avisosDeConvite(c) : nada,
     aba === "enviados" ? emailsPorDia(c, 7) : nada,
-    aba === "enviados" && CREDITOS ? emailsEnviadosDesde(c, CREDITOS.desde) : nada,
+    aba === "enviados" ? creditosDoEmail(c) : nada,
   ]);
   // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
   const previa = aba === "semana" ? await mandarCombinamDaSemana({ simular: true }) : null;
@@ -246,7 +241,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
           descricao="Os e-mails saem logo depois de cada ação. Se o Zoho recusar, o site tenta de novo até três vezes."
           acoes={<BotoesFila temFalhas={temFalhas} />}
         >
-          {porDia && porDia.length > 0 && <EnviosPorDia dias={porDia} gastos={gastos} />}
+          {porDia && porDia.length > 0 && <EnviosPorDia dias={porDia} creditos={gastos} agora={agora} />}
           {fila.length === 0 ? (
             <p className="flex items-center gap-2 text-body-sm text-ink-muted">
               <MailWarning aria-hidden className="size-4" />
@@ -371,7 +366,15 @@ function corDosCreditos(usados: number, saldo: number) {
 const numero = new Intl.NumberFormat("pt-BR");
 
 /** Os totais do dia e dos últimos 7 dias, com os créditos do ZeptoMail, em cima da lista. */
-function EnviosPorDia({ dias, gastos }: { dias: DiaDeEnvio[]; gastos: number | null }) {
+function EnviosPorDia({
+  dias,
+  creditos,
+  agora,
+}: {
+  dias: DiaDeEnvio[];
+  creditos: CreditosEmail | "vazio" | null;
+  agora: number;
+}) {
   const hoje = dias[0];
   const topo = Math.max(...dias.map((d) => d.enviados), 1);
   return (
@@ -383,7 +386,7 @@ function EnviosPorDia({ dias, gastos }: { dias: DiaDeEnvio[]; gastos: number | n
           {hoje.falharam > 0 ? plural(hoje.falharam, "falhou", "falharam") : "Nenhuma falha"}
           {hoje.na_fila > 0 && ` · ${hoje.na_fila} na fila`}
         </p>
-        {CREDITOS && gastos !== null && <Creditos usados={gastos} saldo={CREDITOS.saldo} desde={CREDITOS.desde} />}
+        {creditos && <Creditos creditos={creditos} agora={agora} />}
       </div>
       <div>
         <p className="mb-2 text-label text-ink-muted">Últimos 7 dias</p>
@@ -412,34 +415,75 @@ function EnviosPorDia({ dias, gastos }: { dias: DiaDeEnvio[]; gastos: number | n
   );
 }
 
-/** Os créditos do ZeptoMail: quantos e-mails saíram desde a compra, do saldo. Sem créditos, os envios param. */
-function Creditos({ usados, saldo, desde }: { usados: number; saldo: number; desde: string }) {
-  const restam = Math.max(0, saldo - usados);
-  const [a, m, d] = desde.slice(0, 10).split("-");
+/** "08/11/2026" de "2026-11-08" (ou de um timestamp). */
+function dataCurta(valor: string) {
+  const [a, m, d] = valor.slice(0, 10).split("-");
+  return `${d}/${m}/${a}`;
+}
+
+/**
+ * Os créditos do ZeptoMail: o saldo que a equipe informou menos os e-mails enviados desde então, o próximo
+ * vencimento e o formulário para atualizar. Sem créditos, os envios param.
+ */
+function Creditos({ creditos, agora }: { creditos: CreditosEmail | "vazio"; agora: number }) {
+  const tem = creditos !== "vazio";
+  const restam = tem ? Math.max(0, creditos.emails - creditos.enviados) : 0;
+  // a barra cheia é o total do ZeptoMail (o "/ 20000"); sem ele, o saldo de quando foi informado
+  const cheio = tem ? (creditos.total ?? creditos.emails) : 0;
+  const hoje = new Date(agora).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const dias =
+    tem && creditos.vence_em ? Math.round((Date.parse(creditos.vence_em) - Date.parse(hoje)) / 86_400_000) : null;
   return (
     <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
       <p className="text-label text-ink-muted">Créditos do ZeptoMail</p>
-      <p className="text-body tabular-nums">
-        <strong className="font-semibold">{numero.format(usados)}</strong> de {numero.format(saldo)} usados
-      </p>
-      <div
-        role="meter"
-        aria-label="Créditos do ZeptoMail usados"
-        aria-valuemin={0}
-        aria-valuemax={saldo}
-        aria-valuenow={usados}
-        className="h-2 overflow-hidden rounded-pill bg-surface-300"
-      >
-        <div
-          className={`h-full rounded-pill ${corDosCreditos(usados, saldo)}`}
-          style={{ width: `${Math.min(100, (usados / saldo) * 100)}%` }}
+      {tem ? (
+        <>
+          <p className="text-body tabular-nums">
+            Restam <strong className="font-semibold">{numero.format(restam)}</strong>
+            {creditos.total ? ` de ${numero.format(creditos.total)}` : ""} e-mails
+          </p>
+          <div
+            role="meter"
+            aria-label="E-mails que ainda dá para enviar"
+            aria-valuemin={0}
+            aria-valuemax={cheio}
+            aria-valuenow={restam}
+            className="h-2 overflow-hidden rounded-pill bg-surface-300"
+          >
+            <div
+              className={`h-full rounded-pill ${corDosCreditos(cheio - restam, cheio)}`}
+              style={{ width: `${cheio ? Math.min(100, (restam / cheio) * 100) : 0}%` }}
+            />
+          </div>
+          <p className="text-body-sm text-ink-muted">
+            {numero.format(creditos.enviados)} enviados desde {dataCurta(creditos.contado_em)}, quando o saldo era{" "}
+            {numero.format(creditos.emails)}.
+            {restam === 0 && " Acabou: os e-mails param de sair até comprar mais no ZeptoMail."}
+          </p>
+          {dias !== null && creditos.vence_em && (
+            <p className={`text-body-sm ${dias <= 15 ? "text-danger" : "text-ink-muted"}`}>
+              {dias < 0
+                ? `Os créditos que venciam em ${dataCurta(creditos.vence_em)} já venceram: confira o saldo no ZeptoMail.`
+                : `Próximo vencimento: ${dataCurta(creditos.vence_em)}${dias === 0 ? ", hoje" : `, daqui a ${plural(dias, "dia", "dias")}`}. O que sobrar desses créditos se perde.`}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-body-sm text-ink-muted">
+          O ZeptoMail não deixa o site ler o saldo. Ponha aqui quantos e-mails ele mostra disponíveis, e o site desconta
+          cada envio.
+        </p>
+      )}
+      <details className="group" open={!tem}>
+        <summary className="cursor-pointer text-body-sm text-ink underline underline-offset-2 group-open:mb-3">
+          {tem ? "Atualizar o saldo" : "Informar o saldo"}
+        </summary>
+        <FormCreditosEmail
+          emails={tem ? restam : null}
+          total={tem ? creditos.total : null}
+          venceEm={tem ? creditos.vence_em : null}
         />
-      </div>
-      <p className="text-body-sm text-ink-muted">
-        {restam > 0
-          ? `Restam ${numero.format(restam)}, contando desde ${d}/${m}/${a}. Sem créditos, os e-mails param de sair: compre mais no ZeptoMail antes de acabar.`
-          : "Os créditos acabaram: os e-mails param de sair até comprar mais no ZeptoMail."}
-      </p>
+      </details>
     </div>
   );
 }
