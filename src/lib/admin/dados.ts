@@ -451,6 +451,13 @@ export async function emailsPorDia(c: ClienteBanco, dias = 7) {
   return data ?? [];
 }
 
+/** Quantos e-mails saíram desde a data (os créditos do ZeptoMail). null: banco sem a migração. */
+export async function emailsEnviadosDesde(c: ClienteBanco, desde: string) {
+  const { data, error } = await c.rpc("admin_emails_enviados_desde", { p_desde: desde });
+  if (error) return null;
+  return data ?? 0;
+}
+
 /** Os últimos e-mails de uma conta (para ver se chegou ou falhou). */
 export async function emailsDoUsuario(c: ClienteBanco, usuarioId: string, limite = 15) {
   const { data, error } = await c.rpc("admin_emails_do_usuario", { p_usuario: usuarioId, p_limite: limite });

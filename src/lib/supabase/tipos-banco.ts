@@ -1164,6 +1164,7 @@ export type Database = {
         Args: { p_dias?: number };
         Returns: { dia: string; enviados: number; falharam: number; na_fila: number }[];
       };
+      admin_emails_enviados_desde: { Args: { p_desde: string }; Returns: number };
       salvar_inscricao_push: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_navegador?: string | null };
         Returns: undefined;

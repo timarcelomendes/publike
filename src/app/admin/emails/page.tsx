@@ -19,6 +19,7 @@ import {
   avisosDeConvite,
   configDoSite,
   convitesPorEmail,
+  emailsEnviadosDesde,
   emailsPorDia,
   modelosDeEmail,
   ultimosEmails,
@@ -36,10 +37,11 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 export const metadata: Metadata = { title: "E-mails" };
 
 /**
- * O limite de e-mails por dia do ZeptoMail. Era 100 até a revisão da conta, aprovada em 27/10/2026: agora
- * vale o saldo de créditos (null, sem limite à vista). Se o ZeptoMail voltar a limitar, ponha o número.
+ * Os créditos do ZeptoMail (um por e-mail): o saldo e desde quando ele vale. A conta foi aprovada em
+ * 27/10/2026 (sem o limite de 100 por dia) com 10.000 créditos. Ao comprar mais, ponha o novo saldo
+ * (o que o ZeptoMail mostra) e a data da compra. null: sem os créditos à vista.
  */
-const LIMITE_POR_DIA: number | null = null;
+const CREDITOS: { saldo: number; desde: string } | null = { saldo: 10_000, desde: "2026-10-27T18:00:00-03:00" };
 
 // sub-abas: o que saiu, a configuração do envio, os convites e os textos (cada uma lê só o que mostra)
 const ABAS = [
@@ -97,7 +99,7 @@ function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
 async function Conteudo({ aba }: { aba: Aba }) {
   const c = await exigirAdminLocal();
   const nada = Promise.resolve(null);
-  const [config, modelos, fila, agora, convites, avisos, porDia] = await Promise.all([
+  const [config, modelos, fila, agora, convites, avisos, porDia, gastos] = await Promise.all([
     configDoSite(c),
     aba === "textos" ? modelosDeEmail(c) : Promise.resolve([]),
     ultimosEmails(c, 40),
@@ -105,6 +107,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
     aba === "convites" ? convitesPorEmail(c) : nada,
     aba === "convites" ? avisosDeConvite(c) : nada,
     aba === "enviados" ? emailsPorDia(c, 7) : nada,
+    aba === "enviados" && CREDITOS ? emailsEnviadosDesde(c, CREDITOS.desde) : nada,
   ]);
   // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
   const previa = aba === "semana" ? await mandarCombinamDaSemana({ simular: true }) : null;
@@ -243,7 +246,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
           descricao="Os e-mails saem logo depois de cada ação. Se o Zoho recusar, o site tenta de novo até três vezes."
           acoes={<BotoesFila temFalhas={temFalhas} />}
         >
-          {porDia && porDia.length > 0 && <EnviosPorDia dias={porDia} />}
+          {porDia && porDia.length > 0 && <EnviosPorDia dias={porDia} gastos={gastos} />}
           {fila.length === 0 ? (
             <p className="flex items-center gap-2 text-body-sm text-ink-muted">
               <MailWarning aria-hidden className="size-4" />
@@ -359,46 +362,28 @@ function nomeDoDia(dia: string, i: number) {
   return `${SEMANA[new Date(Date.UTC(a, m - 1, d)).getUTCDay()]} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
 }
 
-/** A cor da barra pelo quanto do limite já foi: verde, amarelo a partir de 80%, vermelho no limite. */
-function corDaBarra(n: number) {
-  if (!LIMITE_POR_DIA) return "bg-cerrado";
-  if (n >= LIMITE_POR_DIA) return "bg-danger";
-  return n >= LIMITE_POR_DIA * 0.8 ? "bg-ipe" : "bg-cerrado";
+/** A cor da barra dos créditos pelo quanto já foi: verde, amarelo a partir de 80%, vermelho no fim. */
+function corDosCreditos(usados: number, saldo: number) {
+  if (usados >= saldo) return "bg-danger";
+  return usados >= saldo * 0.8 ? "bg-ipe" : "bg-cerrado";
 }
 
-/** Os totais do dia (com o limite do ZeptoMail) e dos últimos 7 dias, em cima da lista. */
-function EnviosPorDia({ dias }: { dias: DiaDeEnvio[] }) {
+const numero = new Intl.NumberFormat("pt-BR");
+
+/** Os totais do dia e dos últimos 7 dias, com os créditos do ZeptoMail, em cima da lista. */
+function EnviosPorDia({ dias, gastos }: { dias: DiaDeEnvio[]; gastos: number | null }) {
   const hoje = dias[0];
-  const topo = Math.max(LIMITE_POR_DIA ?? 0, ...dias.map((d) => d.enviados), 1);
+  const topo = Math.max(...dias.map((d) => d.enviados), 1);
   return (
     <div className="mb-5 grid gap-5 rounded-lg border border-line bg-surface-100 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
       <div className="flex flex-col gap-2">
         <p className="text-label text-ink-muted">Enviados hoje</p>
-        <p className="text-h2 tabular-nums">
-          {hoje.enviados}
-          {LIMITE_POR_DIA && <span className="text-body text-ink-muted"> de {LIMITE_POR_DIA}</span>}
-        </p>
-        {LIMITE_POR_DIA && (
-          <div
-            role="meter"
-            aria-label="Enviados hoje, do limite do dia"
-            aria-valuemin={0}
-            aria-valuemax={LIMITE_POR_DIA}
-            aria-valuenow={hoje.enviados}
-            className="h-2 overflow-hidden rounded-pill bg-surface-300"
-          >
-            <div
-              className={`h-full rounded-pill ${corDaBarra(hoje.enviados)}`}
-              style={{ width: `${Math.min(100, (hoje.enviados / LIMITE_POR_DIA) * 100)}%` }}
-            />
-          </div>
-        )}
+        <p className="text-h2 tabular-nums">{hoje.enviados}</p>
         <p className="text-body-sm text-ink-muted">
           {hoje.falharam > 0 ? plural(hoje.falharam, "falhou", "falharam") : "Nenhuma falha"}
           {hoje.na_fila > 0 && ` · ${hoje.na_fila} na fila`}
-          {LIMITE_POR_DIA &&
-            `. Limite do ZeptoMail até a revisão da conta: o que passar de ${LIMITE_POR_DIA} no dia falha e dá para tentar de novo no dia seguinte.`}
         </p>
+        {CREDITOS && gastos !== null && <Creditos usados={gastos} saldo={CREDITOS.saldo} desde={CREDITOS.desde} />}
       </div>
       <div>
         <p className="mb-2 text-label text-ink-muted">Últimos 7 dias</p>
@@ -411,7 +396,7 @@ function EnviosPorDia({ dias }: { dias: DiaDeEnvio[] }) {
               <span className={i === 0 ? "font-semibold" : "text-ink-muted"}>{nomeDoDia(d.dia, i)}</span>
               <span aria-hidden className="h-2 overflow-hidden rounded-pill bg-surface-300">
                 <span
-                  className={`block h-full rounded-pill ${corDaBarra(d.enviados)}`}
+                  className="block h-full rounded-pill bg-cerrado"
                   style={{ width: `${(d.enviados / topo) * 100}%` }}
                 />
               </span>
@@ -423,6 +408,38 @@ function EnviosPorDia({ dias }: { dias: DiaDeEnvio[] }) {
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/** Os créditos do ZeptoMail: quantos e-mails saíram desde a compra, do saldo. Sem créditos, os envios param. */
+function Creditos({ usados, saldo, desde }: { usados: number; saldo: number; desde: string }) {
+  const restam = Math.max(0, saldo - usados);
+  const [a, m, d] = desde.slice(0, 10).split("-");
+  return (
+    <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
+      <p className="text-label text-ink-muted">Créditos do ZeptoMail</p>
+      <p className="text-body tabular-nums">
+        <strong className="font-semibold">{numero.format(usados)}</strong> de {numero.format(saldo)} usados
+      </p>
+      <div
+        role="meter"
+        aria-label="Créditos do ZeptoMail usados"
+        aria-valuemin={0}
+        aria-valuemax={saldo}
+        aria-valuenow={usados}
+        className="h-2 overflow-hidden rounded-pill bg-surface-300"
+      >
+        <div
+          className={`h-full rounded-pill ${corDosCreditos(usados, saldo)}`}
+          style={{ width: `${Math.min(100, (usados / saldo) * 100)}%` }}
+        />
+      </div>
+      <p className="text-body-sm text-ink-muted">
+        {restam > 0
+          ? `Restam ${numero.format(restam)}, contando desde ${d}/${m}/${a}. Sem créditos, os e-mails param de sair: compre mais no ZeptoMail antes de acabar.`
+          : "Os créditos acabaram: os e-mails param de sair até comprar mais no ZeptoMail."}
+      </p>
     </div>
   );
 }
