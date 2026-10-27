@@ -1,3 +1,5 @@
+import { Bell } from "lucide-react";
+import Link from "next/link";
 import { Secao } from "@/components/admin/ui";
 import { formatarNumero } from "@/lib/formato";
 import {
@@ -69,6 +71,13 @@ export function NumerosDoTesteApp({ linhas }: { linhas: Linha[] }) {
           )}
         </div>
       )}
+      <Link
+        href="/admin/comunicados?modelo=teste_app"
+        className="mt-4 inline-flex min-h-10 items-center gap-1.5 text-label underline underline-offset-2"
+      >
+        <Bell aria-hidden className="size-4" />
+        Convidar no sino quem usa Android
+      </Link>
     </Secao>
   );
 }

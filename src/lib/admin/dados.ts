@@ -458,6 +458,13 @@ export async function numerosDoTesteApp(c: ClienteBanco, dias = 30) {
   return data ?? [];
 }
 
+/** Os últimos comunicados mandados no sino. null: banco sem a migração 20261129120000. */
+export async function comunicadosMandados(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_comunicados", { p_limite: 20 });
+  if (error) return null;
+  return data ?? [];
+}
+
 export type CreditosEmail = {
   emails: number;
   total: number | null;

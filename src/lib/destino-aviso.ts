@@ -6,6 +6,8 @@ export type AvisoComDestino = {
   anuncio_id: string | null;
   ator_id: string | null;
   recado_id: string | null;
+  /** o link do comunicado da equipe (só caminho do site); os outros avisos não têm */
+  link?: string | null;
 };
 
 /**
@@ -14,6 +16,7 @@ export type AvisoComDestino = {
  */
 export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "mensagem_equipe") return "/painel/mensagens-da-equipe";
+  if (n.tipo === "comunicado") return n.link ?? "/";
   // as vagas e os talentos da semana: a lista pelo % de match e a aba Talentos
   if (n.tipo === "vagas_semana") return "/?tipo=vaga&ordem=combina";
   if (n.tipo === "talentos_semana") return "/talentos";

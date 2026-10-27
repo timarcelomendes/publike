@@ -80,6 +80,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // as vagas e os talentos que combinam, toda semana
   vagas_semana: Sparkles,
   talentos_semana: UserSearch,
+  // o comunicado que a equipe mandou para um público (Admin › Comunicados)
+  comunicado: Megaphone,
 };
 
 type Notificacao = {
@@ -91,6 +93,7 @@ type Notificacao = {
   lida: boolean;
   criado_em: string;
   recado_id: string | null;
+  link?: string | null;
 };
 
 /** Sino com avisos de curtida e de match, que chegam na hora (Supabase Realtime). */
@@ -113,7 +116,8 @@ export function Notificacoes({
     let ativo = true;
     supabase
       .from("notificacoes")
-      .select("id, tipo, anuncio_id, ator_id, texto, lida, criado_em, recado_id")
+      // tudo: o link do comunicado vem quando o banco tem a coluna (sem ela, a lista sai do mesmo jeito)
+      .select("*")
       .order("criado_em", { ascending: false })
       .limit(20)
       .then(({ data }) => {

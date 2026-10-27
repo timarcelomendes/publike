@@ -751,6 +751,8 @@ export type Database = {
           ator_id: string | null;
           /** o recado do aviso (Força, no ar, não publicado) */
           recado_id: string | null;
+          /** o link do comunicado da equipe (migração 20261129120000; antes dela, não vem) */
+          link?: string | null;
         };
         Insert: SemTabela;
         Update: { lida?: boolean };
@@ -1167,6 +1169,22 @@ export type Database = {
       admin_aparelho_do_usuario: {
         Args: { p_usuario: string };
         Returns: { navegador: string; app: boolean; quando: string }[];
+      };
+      admin_contar_comunicado: { Args: { p_publico: string; p_link?: string | null }; Returns: number };
+      admin_enviar_comunicado: {
+        Args: { p_publico: string; p_texto: string; p_link?: string | null };
+        Returns: number;
+      };
+      admin_comunicados: {
+        Args: { p_limite?: number };
+        Returns: {
+          id: number;
+          publico: string;
+          texto: string;
+          link: string | null;
+          total: number;
+          criado_em: string;
+        }[];
       };
       admin_numeros_teste_app: {
         Args: { p_dias?: number };

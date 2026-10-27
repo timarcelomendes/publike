@@ -258,6 +258,62 @@ export async function salvarCreditosEmail(_anterior: EstadoForm, formData: FormD
   return { ok: true, mensagem: "Saldo salvo. Daqui para frente, cada e-mail enviado sai dele." };
 }
 
+const PUBLICOS_COMUNICADO = ["todos", "pessoas", "empresas", "agencias", "android", "iphone", "computador"];
+const MIGRACAO_COMUNICADOS = "Rode antes a migração 20261129120000_comunicados.sql no Supabase.";
+
+/** O link do comunicado: só caminho do site ("/testar-app?de=sino"), ou nenhum. undefined: inválido. */
+function linkDoComunicado(valor: string) {
+  if (!valor) return null;
+  return /^\/([^/\\]|$)/.test(valor) && !/\s/.test(valor) && valor.length <= 300 ? valor : undefined;
+}
+
+/** Quantas contas recebem o comunicado agora (antes de mandar). */
+export async function contarComunicado(publico: string, link: string): Promise<Resultado & { total?: number }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!PUBLICOS_COMUNICADO.includes(publico)) return { ok: false, erro: "Escolha o público." };
+  const l = linkDoComunicado(link.trim());
+  if (l === undefined) return { ok: false, erro: "O link é um caminho do site, começando com /." };
+  const { data, error } = await c.rpc("admin_contar_comunicado", { p_publico: publico, p_link: l });
+  if (error) return { ok: false, erro: error.code === "PGRST202" ? MIGRACAO_COMUNICADOS : mensagemDeErro(error) };
+  return { ok: true, total: data ?? 0 };
+}
+
+/** O comunicado no sino de todas as contas do público (migração 20261129120000). */
+export async function enviarComunicado(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const publico = texto(formData, "publico");
+  const mensagem = texto(formData, "texto");
+  const link = linkDoComunicado(texto(formData, "link"));
+  if (!PUBLICOS_COMUNICADO.includes(publico)) {
+    return { ok: false, erro: "Escolha o público.", erros: { publico: "Escolha quem recebe." } };
+  }
+  if (mensagem.length < 10 || mensagem.length > 240) {
+    return { ok: false, erro: "Confira o texto.", erros: { texto: "Escreva de 10 a 240 letras." } };
+  }
+  if (link === undefined) {
+    return {
+      ok: false,
+      erro: "Confira o link.",
+      erros: { link: "Use um caminho do site, começando com / (ex.: /testar-app)." },
+    };
+  }
+  const { data: total, error } = await c.rpc("admin_enviar_comunicado", {
+    p_publico: publico,
+    p_texto: mensagem,
+    p_link: link,
+  });
+  if (error) return { ok: false, erro: error.code === "PGRST202" ? MIGRACAO_COMUNICADOS : mensagemDeErro(error) };
+  refresh();
+  return {
+    ok: true,
+    mensagem: total
+      ? `Comunicado no sino de ${total} conta(s).`
+      : "Ninguém recebeu: o público está vazio ou todos já receberam este link.",
+  };
+}
+
 /** Liga ou desliga as vagas e os talentos que combinam, toda semana (migração 20261119120000). */
 export async function ligarCombinam(ligado: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
