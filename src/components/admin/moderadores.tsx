@@ -1,12 +1,14 @@
 "use client";
 
-import { UserPlus } from "lucide-react";
+import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { useActionState } from "react";
 import { protegerAcao } from "@/lib/acao-segura";
-import { adicionarModerador } from "@/lib/acoes/admin";
+import { adicionarModerador, liberarPainelNoSite } from "@/lib/acoes/admin";
+
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
+import { useAcao } from "../ui/usar-acao";
 import { Campo, classesEntrada, ligarCampo } from "../ui/campo";
 
 const INICIAL: EstadoForm = { ok: false };
@@ -34,5 +36,19 @@ export function FormNovoModerador() {
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
       {estado.ok && estado.mensagem && <Aviso tipo="sucesso">{estado.mensagem}</Aviso>}
     </form>
+  );
+}
+
+/** Liga ou desliga o Painel no site (/equipe) para uma conta @publike.org. */
+export function BotaoPainelNoSite({ usuarioId, liberado }: { usuarioId: string; liberado: boolean }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => liberarPainelNoSite(usuarioId, !liberado))}>
+        {liberado ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+        {liberado ? "Tirar o acesso" : "Liberar o Painel"}
+      </Botao>
+      {mensagem}
+    </div>
   );
 }

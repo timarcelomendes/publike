@@ -15,11 +15,18 @@ import { LigarCombinam } from "@/components/admin/combinam";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
-import { avisosDeConvite, configDoSite, convitesPorEmail, modelosDeEmail, ultimosEmails } from "@/lib/admin/dados";
+import {
+  avisosDeConvite,
+  configDoSite,
+  convitesPorEmail,
+  emailsPorDia,
+  modelosDeEmail,
+  ultimosEmails,
+} from "@/lib/admin/dados";
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail } from "@/lib/email/montar";
-import { primeiro, tempoRelativo } from "@/lib/formato";
+import { plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { situacaoSmtp } from "@/lib/servidor/ambiente";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { situacaoFilas } from "@/lib/servidor/filas";
@@ -27,6 +34,12 @@ import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "E-mails" };
+
+/**
+ * O limite de e-mails por dia do ZeptoMail: 100 até a revisão da conta (pedida em 26/10/2026). Depois da
+ * aprovação, ponha o novo (ou null, sem limite à vista).
+ */
+const LIMITE_POR_DIA: number | null = 100;
 
 // sub-abas: o que saiu, a configuração do envio, os convites e os textos (cada uma lê só o que mostra)
 const ABAS = [
@@ -84,13 +97,14 @@ function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
 async function Conteudo({ aba }: { aba: Aba }) {
   const c = await exigirAdminLocal();
   const nada = Promise.resolve(null);
-  const [config, modelos, fila, agora, convites, avisos] = await Promise.all([
+  const [config, modelos, fila, agora, convites, avisos, porDia] = await Promise.all([
     configDoSite(c),
     aba === "textos" ? modelosDeEmail(c) : Promise.resolve([]),
     ultimosEmails(c, 40),
     agoraDaRequisicao(),
     aba === "convites" ? convitesPorEmail(c) : nada,
     aba === "convites" ? avisosDeConvite(c) : nada,
+    aba === "enviados" ? emailsPorDia(c, 7) : nada,
   ]);
   // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
   const previa = aba === "semana" ? await mandarCombinamDaSemana({ simular: true }) : null;
@@ -229,6 +243,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
           descricao="Os e-mails saem logo depois de cada ação. Se o Zoho recusar, o site tenta de novo até três vezes."
           acoes={<BotoesFila temFalhas={temFalhas} />}
         >
+          {porDia && porDia.length > 0 && <EnviosPorDia dias={porDia} />}
           {fila.length === 0 ? (
             <p className="flex items-center gap-2 text-body-sm text-ink-muted">
               <MailWarning aria-hidden className="size-4" />
@@ -329,5 +344,85 @@ function DaSemana({ previa }: { previa: Awaited<ReturnType<typeof mandarCombinam
         </Secao>
       )}
     </>
+  );
+}
+
+type DiaDeEnvio = { dia: string; enviados: number; falharam: number; na_fila: number };
+
+const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+/** "Hoje", "Ontem" ou "seg 20/10" (o dia vem como AAAA-MM-DD, no horário de Brasília). */
+function nomeDoDia(dia: string, i: number) {
+  if (i === 0) return "Hoje";
+  if (i === 1) return "Ontem";
+  const [a, m, d] = dia.split("-").map(Number);
+  return `${SEMANA[new Date(Date.UTC(a, m - 1, d)).getUTCDay()]} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+}
+
+/** A cor da barra pelo quanto do limite já foi: verde, amarelo a partir de 80%, vermelho no limite. */
+function corDaBarra(n: number) {
+  if (!LIMITE_POR_DIA) return "bg-cerrado";
+  if (n >= LIMITE_POR_DIA) return "bg-danger";
+  return n >= LIMITE_POR_DIA * 0.8 ? "bg-ipe" : "bg-cerrado";
+}
+
+/** Os totais do dia (com o limite do ZeptoMail) e dos últimos 7 dias, em cima da lista. */
+function EnviosPorDia({ dias }: { dias: DiaDeEnvio[] }) {
+  const hoje = dias[0];
+  const topo = Math.max(LIMITE_POR_DIA ?? 0, ...dias.map((d) => d.enviados), 1);
+  return (
+    <div className="mb-5 grid gap-5 rounded-lg border border-line bg-surface-100 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <div className="flex flex-col gap-2">
+        <p className="text-label text-ink-muted">Enviados hoje</p>
+        <p className="text-h2 tabular-nums">
+          {hoje.enviados}
+          {LIMITE_POR_DIA && <span className="text-body text-ink-muted"> de {LIMITE_POR_DIA}</span>}
+        </p>
+        {LIMITE_POR_DIA && (
+          <div
+            role="meter"
+            aria-label="Enviados hoje, do limite do dia"
+            aria-valuemin={0}
+            aria-valuemax={LIMITE_POR_DIA}
+            aria-valuenow={hoje.enviados}
+            className="h-2 overflow-hidden rounded-pill bg-surface-300"
+          >
+            <div
+              className={`h-full rounded-pill ${corDaBarra(hoje.enviados)}`}
+              style={{ width: `${Math.min(100, (hoje.enviados / LIMITE_POR_DIA) * 100)}%` }}
+            />
+          </div>
+        )}
+        <p className="text-body-sm text-ink-muted">
+          {hoje.falharam > 0 ? plural(hoje.falharam, "falhou", "falharam") : "Nenhuma falha"}
+          {hoje.na_fila > 0 && ` · ${hoje.na_fila} na fila`}
+          {LIMITE_POR_DIA &&
+            `. Limite do ZeptoMail até a revisão da conta: o que passar de ${LIMITE_POR_DIA} no dia falha e dá para tentar de novo no dia seguinte.`}
+        </p>
+      </div>
+      <div>
+        <p className="mb-2 text-label text-ink-muted">Últimos 7 dias</p>
+        <ul className="flex flex-col gap-1.5">
+          {dias.map((d, i) => (
+            <li
+              key={d.dia}
+              className="grid grid-cols-[4.5rem_minmax(0,1fr)_2.5rem_5.5rem] items-center gap-3 text-body-sm"
+            >
+              <span className={i === 0 ? "font-semibold" : "text-ink-muted"}>{nomeDoDia(d.dia, i)}</span>
+              <span aria-hidden className="h-2 overflow-hidden rounded-pill bg-surface-300">
+                <span
+                  className={`block h-full rounded-pill ${corDaBarra(d.enviados)}`}
+                  style={{ width: `${(d.enviados / topo) * 100}%` }}
+                />
+              </span>
+              <span className="text-right tabular-nums">{d.enviados}</span>
+              <span className="text-danger tabular-nums">
+                {d.falharam > 0 && plural(d.falharam, "falhou", "falharam")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

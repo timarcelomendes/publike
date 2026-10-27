@@ -437,6 +437,20 @@ export async function ultimosEmails(c: ClienteBanco, limite = 40) {
   return data ?? [];
 }
 
+/** As contas com e-mail @publike.org confirmado e se veem o Painel no site. Antes da migração, null. */
+export async function contasDoPainelNoSite(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_contas_painel_no_site");
+  if (error) return null;
+  return data ?? [];
+}
+
+/** Quantos e-mails saíram por dia (do mais novo ao mais velho). Antes da migração, null: a página segue sem. */
+export async function emailsPorDia(c: ClienteBanco, dias = 7) {
+  const { data, error } = await c.rpc("admin_emails_por_dia", { p_dias: dias });
+  if (error) return null;
+  return data ?? [];
+}
+
 /** Os últimos e-mails de uma conta (para ver se chegou ou falhou). */
 export async function emailsDoUsuario(c: ClienteBanco, usuarioId: string, limite = 15) {
   const { data, error } = await c.rpc("admin_emails_do_usuario", { p_usuario: usuarioId, p_limite: limite });

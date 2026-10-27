@@ -1146,6 +1146,24 @@ export type Database = {
         Args: { p_contas: string[] };
         Returns: { conta_id: string; avisada_em: string; pessoas: number }[];
       };
+      posso_ver_painel_no_site: { Args: Record<PropertyKey, never>; Returns: boolean };
+      painel_no_site: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_contas_painel_no_site: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          usuario_id: string;
+          email: string;
+          nome: string | null;
+          liberado: boolean;
+          liberado_em: string | null;
+          ultimo_acesso: string | null;
+        }[];
+      };
+      admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
+      admin_emails_por_dia: {
+        Args: { p_dias?: number };
+        Returns: { dia: string; enviados: number; falharam: number; na_fila: number }[];
+      };
       salvar_inscricao_push: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_navegador?: string | null };
         Returns: undefined;

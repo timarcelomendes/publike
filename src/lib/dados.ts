@@ -133,6 +133,16 @@ export const ehModerador = cache(async () => {
   return data === true;
 });
 
+/** Quem a equipe liberou (e-mail @publike.org, em Admin › Moderadores) vê os números do Painel em /equipe. */
+export const possoVerPainelNoSite = cache(async () => {
+  if (MODO_DEMO) return false;
+  const usuario = await obterUsuario();
+  if (!usuario) return false;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("posso_ver_painel_no_site");
+  return !error && data === true;
+});
+
 /** Botão "Melhorar texto": ligado no admin e com a chave da IA no servidor. */
 export const ajudaDaIADisponivel = cache(async () => {
   if (MODO_DEMO || !iaConfigurada()) return false;

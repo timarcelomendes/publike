@@ -168,6 +168,20 @@ export async function removerModerador(perfilId: string): Promise<Resultado> {
   return { ok: true, mensagem: "Pessoa tirada da moderação." };
 }
 
+/** Libera (ou tira) os números do Painel no site (/equipe) para uma conta com e-mail @publike.org. */
+export async function liberarPainelNoSite(usuarioId: string, liberar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_liberar_painel_no_site", { p_usuario: usuarioId, p_liberar: liberar });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
+  return {
+    ok: true,
+    mensagem: liberar ? "Pronto: essa conta já vê o Painel no site." : "Essa conta não vê mais o Painel no site.",
+  };
+}
+
 // ------------------------------------------------------------------ e-mails
 
 export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {

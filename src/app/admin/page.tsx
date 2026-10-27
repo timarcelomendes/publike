@@ -1,17 +1,13 @@
-import { Flag, Heart, Mail, Megaphone, MessageCircleHeart, ShieldAlert, UserRound, UserX } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { AcessosDoSite } from "@/components/admin/acessos";
-import { GraficoDias, Ranking } from "@/components/admin/grafico";
+import { NumerosDoPainel, NumerosDoPainelEmbaixo } from "@/components/admin/numeros-do-painel";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
 import { SaudeDoSite } from "@/components/admin/saude";
-import { Numero, Secao, Situacao } from "@/components/admin/ui";
+import { Secao, Situacao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
-import { categoria } from "@/lib/constantes";
-import { MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import {
   acessosDoSite,
   configDoSite,
@@ -25,8 +21,8 @@ import {
   ultimoResumo,
 } from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
-import { ehModerador } from "@/lib/dados";
-import { formatarNumero, plural, tempoRelativo } from "@/lib/formato";
+import { ehModerador, possoVerPainelNoSite } from "@/lib/dados";
+import { plural, tempoRelativo } from "@/lib/formato";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -44,6 +40,8 @@ export default function PainelAdmin() {
 async function Conteudo() {
   if (!(await ehAdminLocal())) {
     if (await ehModerador()) redirect("/admin/denuncias");
+    // no site publicado, quem a equipe liberou vê os números em /equipe
+    if (await possoVerPainelNoSite()) redirect("/equipe");
     notFound();
   }
   const c = criarClienteAdmin();
@@ -130,82 +128,7 @@ async function Conteudo() {
         </Aviso>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Numero
-          rotulo="Contas"
-          icone={UserRound}
-          valor={n.contas}
-          hoje={hoje.contas}
-          detalhe={`+${formatarNumero(n.contas_7d)} em 7 dias`}
-          href="/admin/usuarios"
-        />
-        <Numero
-          rotulo="Anúncios no ar"
-          icone={Megaphone}
-          valor={n.anuncios.no_ar}
-          hoje={hoje.anuncios}
-          textoHoje="publicados hoje"
-          detalhe={`${plural(n.anuncios.vagas_no_ar, "vaga", "vagas")} · ${plural(n.anuncios.servicos_no_ar, "serviço", "serviços")}`}
-          href="/admin/anuncios?status=ativo"
-        />
-        <Numero
-          rotulo="Curtidas em 7 dias"
-          icone={Heart}
-          valor={n.curtidas.novas_7d}
-          hoje={hoje.curtidas}
-          detalhe={`${formatarNumero(n.curtidas.total)} no total`}
-        />
-        <Numero
-          rotulo="Matches em 7 dias"
-          icone={MessageCircleHeart}
-          valor={n.curtidas.matches_7d}
-          hoje={hoje.matches}
-          detalhe={`${formatarNumero(n.curtidas.matches)} no total`}
-          href="/admin/matches"
-        />
-        <Numero
-          rotulo="Denúncias abertas"
-          icone={Flag}
-          valor={n.denuncias_abertas}
-          detalhe={`${plural(n.denuncias_7d, "chegou", "chegaram")} em 7 dias`}
-          href="/admin/denuncias"
-          alerta={n.denuncias_abertas > 0}
-        />
-        <Numero
-          rotulo="Em análise"
-          icone={ShieldAlert}
-          valor={n.anuncios.em_analise}
-          detalhe={`IA reteve ${formatarNumero(n.ia.retidos_7d)} em 7 dias`}
-          href="/admin/anuncios?status=em_analise"
-          alerta={n.anuncios.em_analise > 0}
-        />
-        <Numero
-          rotulo="Contas suspensas"
-          icone={UserX}
-          valor={n.suspensos + n.banidos}
-          detalhe={`${plural(n.banidos, "banida", "banidas")} de vez`}
-          href="/admin/usuarios?filtro=suspensos"
-        />
-        <Numero
-          rotulo="E-mails em 7 dias"
-          icone={Mail}
-          valor={n.emails.enviados_7d}
-          detalhe={
-            n.emails.falhas_7d
-              ? `${formatarNumero(n.emails.falhas_7d)} com falha`
-              : `${formatarNumero(n.emails.na_fila)} na fila`
-          }
-          href="/admin/emails"
-          alerta={n.emails.falhas_7d > 0}
-        />
-      </div>
-
-      <Secao
-        titulo="Quem abriu o site"
-        descricao="Pessoas diferentes por dia. Hoje se compara com ontem até a mesma hora."
-      >
-        <AcessosDoSite acessos={acessos} />
-      </Secao>
+      <NumerosDoPainel n={n} hoje={hoje} acessos={acessos} links />
 
       {config.ia_resumo && (
         <Secao
@@ -225,55 +148,7 @@ async function Conteudo() {
         </Secao>
       )}
 
-      <Secao titulo="Últimos 30 dias">
-        <GraficoDias dias={n.por_dia} />
-      </Secao>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Secao titulo="Categorias com mais anúncios no ar">
-          <Ranking itens={n.categorias.map((c) => ({ nome: categoria(c.nome).nome, n: c.n }))} />
-        </Secao>
-        <Secao titulo="Bairros com mais anúncios no ar">
-          <Ranking itens={n.bairros} />
-        </Secao>
-      </div>
-
-      {encerramentos && (
-        <Secao
-          titulo="Por que encerraram"
-          descricao="Últimos 30 dias, pela pergunta (opcional) do Encerrar. Vagas e serviços juntos."
-        >
-          {encerramentos.length ? (
-            <Ranking
-              itens={encerramentos.map((e) => ({
-                nome: `${MOTIVOS_ENCERRAMENTO[e.motivo as MotivoEncerramento] ?? e.motivo}${e.tipo === "servico" ? " (serviço)" : ""}`,
-                n: e.total,
-              }))}
-            />
-          ) : (
-            <p className="text-body-sm text-ink-muted">Ninguém respondeu ainda.</p>
-          )}
-        </Secao>
-      )}
-
-      <Secao titulo="Contas">
-        <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-4 lg:grid-cols-7">
-          {[
-            ["Pessoas", n.perfis.pessoa],
-            ["Comércios", n.perfis.comercio],
-            ["Empresas", n.perfis.empresa],
-            ["Agências", n.perfis.agencia ?? 0],
-            ["Verificadas", n.perfis.verificados],
-            ["Sem perfil", n.sem_perfil],
-            ["Entraram em 7 dias", n.acessos_7d],
-          ].map(([rotulo, valor]) => (
-            <div key={rotulo} className="flex flex-col">
-              <dt className="text-ink-muted">{rotulo}</dt>
-              <dd className="font-display text-h3">{formatarNumero(Number(valor))}</dd>
-            </div>
-          ))}
-        </dl>
-      </Secao>
+      <NumerosDoPainelEmbaixo n={n} encerramentos={encerramentos} />
 
       <Secao titulo="O que a equipe fez por último">
         {registro.length === 0 ? (
