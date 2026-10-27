@@ -65,7 +65,7 @@ export function ConviteTesteAndroid() {
           grátis.
         </p>
         <span>
-          <BotaoLink href={PAGINA_DO_TESTE} tamanho="sm" onClick={dispensar}>
+          <BotaoLink href={`${PAGINA_DO_TESTE}?de=painel`} tamanho="sm" onClick={dispensar}>
             Quero testar
           </BotaoLink>
         </span>

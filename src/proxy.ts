@@ -19,6 +19,7 @@ const SO_COM_LOGIN = [/^\/painel/, /^\/perfil$/, /^\/admin/, /^\/anuncio\/[^/]+\
 // e a chave secreta). A página confere tudo de novo; aqui só não pedimos login.
 const ADMIN_LOCAL =
   process.env.NODE_ENV === "development" && process.env.PUBLIKE_ADMIN === "1" && Boolean(process.env.SUPABASE_SECRET_KEY);
+const COOKIE_APARELHO = "publike_aparelho";
 const ENDERECO_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d{2,5})?$/i;
 
 // Páginas de busca (/vagas/goiania/limpeza): cidade ou área que não existe responde 404
@@ -105,6 +106,26 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
         supabase.rpc("contar_acesso", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),
       ).then(({ error }) => {
         if (error) console.warn(`Publike: não deu para contar o acesso: ${error.message}`);
+      }),
+    );
+  }
+
+  // quem entrou: o navegador deste acesso, para o admin ver o aparelho (no máximo a cada 6 horas por
+  // aparelho; aberto pelo app Android, sempre). O app abre o site com o referer android-app://.
+  const doApp = (request.headers.get("referer") ?? "").startsWith("android-app://");
+  if (logado && abriuPagina(request) && (doApp || !request.cookies.has(COOKIE_APARELHO))) {
+    resposta.cookies.set(COOKIE_APARELHO, doApp ? "app" : "1", {
+      maxAge: 6 * 3600,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: COOKIES_DA_SESSAO.secure,
+      path: "/",
+    });
+    evento.waitUntil(
+      Promise.resolve(
+        supabase.rpc("marcar_aparelho", { p_navegador: request.headers.get("user-agent") ?? "", p_app: doApp }),
+      ).then(({ error }) => {
+        if (error) console.warn(`Publike: não deu para guardar o aparelho: ${error.message}`);
       }),
     );
   }

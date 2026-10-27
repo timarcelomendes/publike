@@ -101,9 +101,12 @@ function lerPedidoAntecipado() {
   }
 }
 
+// o /testar-app conta de onde veio (src/lib/teste-app.ts)
+const TESTE_PELO_INSTALAR = `${PAGINA_DO_TESTE}?de=instalar`;
+
 async function instalarAgora() {
   if (TESTE_FECHADO && ehAndroid()) {
-    window.location.assign(PAGINA_DO_TESTE);
+    window.location.assign(new URL(TESTE_PELO_INSTALAR, window.location.href));
     return;
   }
   lerPedidoAntecipado();
@@ -283,7 +286,7 @@ export function ConviteInstalar() {
             Agora não
           </button>
           <a
-            href={PAGINA_DO_TESTE}
+            href={TESTE_PELO_INSTALAR}
             onClick={() => aberto === "auto" && dispensar()}
             className={classesBotao("primario", "sm")}
           >

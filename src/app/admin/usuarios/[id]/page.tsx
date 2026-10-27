@@ -23,6 +23,7 @@ import { classesBotao } from "@/components/ui/botao";
 import { formatarCnpj, linkReceita } from "@/lib/cnpj";
 import {
   advertenciasDe,
+  aparelhoDoUsuario,
   emailsDoUsuario,
   fichaUsuario,
   listarAnuncios,
@@ -31,6 +32,7 @@ import {
   modelosDeEmail,
   registroDaEquipe,
 } from "@/lib/admin/dados";
+import { descreverAparelho } from "@/lib/aparelho";
 import { LIMITES_CONTA, nomeMotivoDesfazer } from "@/lib/constantes";
 import { descreverAcao, NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import {
@@ -68,17 +70,19 @@ async function Conteudo({
   const c = await exigirAdminLocal();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora, mensagens] = await Promise.all([
-    fichaUsuario(c, id),
-    listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
-    registroDaEquipe(c, 20, id),
-    advertenciasDe(c, id),
-    matchesDesfeitosDe(c, id),
-    modelosDeEmail(c),
-    emailsDoUsuario(c, id),
-    agoraDaRequisicao(),
-    mensagensDaEquipeDe(c, id),
-  ]);
+  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora, mensagens, aparelho] =
+    await Promise.all([
+      fichaUsuario(c, id),
+      listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
+      registroDaEquipe(c, 20, id),
+      advertenciasDe(c, id),
+      matchesDesfeitosDe(c, id),
+      modelosDeEmail(c),
+      emailsDoUsuario(c, id),
+      agoraDaRequisicao(),
+      mensagensDaEquipeDe(c, id),
+      aparelhoDoUsuario(c, id),
+    ]);
   if (!u) notFound();
 
   const nome = u.perfil?.nome ?? u.email ?? u.telefone ?? "Conta sem nome";
@@ -287,6 +291,12 @@ async function Conteudo({
           </Dado>
           <Dado rotulo="Conta criada">{formatarDataHora(u.criado_em)}</Dado>
           <Dado rotulo="Último acesso">{u.ultimo_acesso ? tempoRelativo(u.ultimo_acesso, agora) : "Nunca entrou"}</Dado>
+          {aparelho && (
+            <Dado rotulo="Aparelho">
+              <span title={aparelho.navegador}>{descreverAparelho(aparelho.navegador, aparelho.app)}</span>
+              <span className="text-ink-muted"> · {tempoRelativo(aparelho.quando, agora)}</span>
+            </Dado>
+          )}
           <Dado rotulo="WhatsApp">{u.contato.whatsapp ? formatarTelefone(u.contato.whatsapp) : "—"}</Dado>
           <Dado rotulo="E-mail de contato">{u.contato.email ?? "—"}</Dado>
           <Dado rotulo="Avisos por e-mail">{u.contato.receber_emails ? "Recebe" : "Desligou"}</Dado>

@@ -1,9 +1,11 @@
 import { Download, MessageCircle, Smartphone, UserPlus, type LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
+import { ContarVisitaTesteApp, LinkDoTesteApp } from "@/components/numeros-teste-app";
 import { Container } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
 import { ACEITAR_TESTE, APP_NA_PLAY, GRUPO_TESTADORES } from "@/lib/android";
 import { SITE_URL } from "@/lib/config";
+import type { EventoTesteApp } from "@/lib/teste-app";
 
 export const metadata: Metadata = {
   title: "Teste o app do Publike no Android",
@@ -13,9 +15,18 @@ export const metadata: Metadata = {
 };
 
 // O convite do teste fechado da Play (conta pessoal: 12 testadores por 14 dias seguidos). Três passos,
-// cada um com o seu botão. Página estática: os links ficam em src/lib/android.ts.
+// cada um com o seu botão. Página estática: os links ficam em src/lib/android.ts. Conta quem abre (e de onde
+// veio, pelo ?de= do link) e os toques em cada passo, sem saber quem (src/lib/teste-app.ts).
 
-type Passo = { icone: LucideIcon; titulo: string; texto: string; botao: string; link: string; nota?: string };
+type Passo = {
+  icone: LucideIcon;
+  titulo: string;
+  texto: string;
+  botao: string;
+  link: string;
+  evento: EventoTesteApp;
+  nota?: string;
+};
 
 const PASSOS: Passo[] = [
   {
@@ -24,6 +35,7 @@ const PASSOS: Passo[] = [
     texto: "Use a mesma conta Google do seu celular Android. No grupo, toque em “Participar do grupo”.",
     botao: "Entrar no grupo",
     link: GRUPO_TESTADORES,
+    evento: "grupo",
     nota: "Só a equipe do Publike vê quem está no grupo. Ninguém recebe e-mail por causa dele.",
   },
   {
@@ -32,6 +44,7 @@ const PASSOS: Passo[] = [
     texto: "Abra o link e toque em “Tornar-se testador”.",
     botao: "Aceitar o teste",
     link: ACEITAR_TESTE,
+    evento: "aceitar",
     nota: "Apareceu que não está disponível? Espere uns minutos depois de entrar no grupo e abra de novo.",
   },
   {
@@ -41,14 +54,16 @@ const PASSOS: Passo[] = [
       "Instale o Publike pelo Google Play e fique com ele no celular por 14 dias. Abra de vez em quando: é o mesmo Publike de sempre, com as vagas perto de você.",
     botao: "Instalar no Google Play",
     link: APP_NA_PLAY,
+    evento: "instalar",
   },
 ];
 
-const CONVITE = `Me ajuda a colocar o Publike no Google Play? Leva 2 minutos: ${SITE_URL}/testar-app`;
+const CONVITE = `Me ajuda a colocar o Publike no Google Play? Leva 2 minutos: ${SITE_URL}/testar-app?de=whatsapp`;
 
 export default function TestarApp() {
   return (
     <Container className="max-w-2xl py-10 sm:py-14">
+      <ContarVisitaTesteApp />
       <h1 className="text-h1 sm:text-display">Teste o app do Publike no Android</h1>
       <p className="mt-4 text-body-lg text-ink-muted">
         O Publike está chegando ao Google Play. Antes, o Google pede que pelo menos 12 pessoas testem o app por 14 dias
@@ -56,7 +71,7 @@ export default function TestarApp() {
       </p>
 
       <ol className="mt-8 flex flex-col gap-4">
-        {PASSOS.map(({ icone: Icone, titulo, texto, botao, link, nota }, i) => (
+        {PASSOS.map(({ icone: Icone, titulo, texto, botao, link, evento, nota }, i) => (
           <li key={titulo} className="flex gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
             <span
               aria-hidden
@@ -70,14 +85,15 @@ export default function TestarApp() {
                 {titulo}
               </h2>
               <p className="mt-1 text-body text-ink-muted">{texto}</p>
-              <a
+              <LinkDoTesteApp
+                evento={evento}
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={classesBotao(i === 0 ? "primario" : "secundario", "md", "mt-4")}
               >
                 {botao}
-              </a>
+              </LinkDoTesteApp>
               {nota && <p className="mt-3 text-body-sm text-ink-muted">{nota}</p>}
             </div>
           </li>
@@ -95,7 +111,8 @@ export default function TestarApp() {
       <section className="mt-8">
         <h2 className="text-h3">Chame mais gente</h2>
         <p className="mt-1 text-body text-ink-muted">Quanto mais gente testar, mais rápido o app chega para todos.</p>
-        <a
+        <LinkDoTesteApp
+          evento="whatsapp"
           href={`https://wa.me/?text=${encodeURIComponent(CONVITE)}`}
           target="_blank"
           rel="noopener noreferrer"
@@ -103,7 +120,7 @@ export default function TestarApp() {
         >
           <MessageCircle aria-hidden />
           Mandar o convite no WhatsApp
-        </a>
+        </LinkDoTesteApp>
       </section>
     </Container>
   );

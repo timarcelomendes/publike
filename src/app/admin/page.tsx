@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { NumerosDoPainel, NumerosDoPainelEmbaixo } from "@/components/admin/numeros-do-painel";
+import { NumerosDoTesteApp } from "@/components/admin/numeros-teste-app";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
 import { SaudeDoSite } from "@/components/admin/saude";
 import { Secao, Situacao } from "@/components/admin/ui";
@@ -16,11 +17,13 @@ import {
   respostasNovasDaEquipe,
   numerosDeHoje,
   numerosDoPainel,
+  numerosDoTesteApp,
   registroDaEquipe,
   saudeDoSite,
   ultimoResumo,
 } from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
+import { TESTE_FECHADO } from "@/lib/android";
 import { ehModerador, possoVerPainelNoSite } from "@/lib/dados";
 import { plural, tempoRelativo } from "@/lib/formato";
 import { situacaoFilas } from "@/lib/servidor/filas";
@@ -45,18 +48,20 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos, respostas] = await Promise.all([
-    numerosDoPainel(c),
-    acessosDoSite(c),
-    configDoSite(c),
-    ultimoResumo(c),
-    registroDaEquipe(c, 10),
-    listarChavesServidor(c),
-    agoraDaRequisicao(),
-    saudeDoSite(c),
-    motivosDeEncerramento(c),
-    respostasNovasDaEquipe(c),
-  ]);
+  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos, respostas, testeApp] =
+    await Promise.all([
+      numerosDoPainel(c),
+      acessosDoSite(c),
+      configDoSite(c),
+      ultimoResumo(c),
+      registroDaEquipe(c, 10),
+      listarChavesServidor(c),
+      agoraDaRequisicao(),
+      saudeDoSite(c),
+      motivosDeEncerramento(c),
+      respostasNovasDaEquipe(c),
+      TESTE_FECHADO ? numerosDoTesteApp(c) : Promise.resolve(null),
+    ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
   const temChave = chaves.length > 0;
@@ -129,6 +134,8 @@ async function Conteudo() {
       )}
 
       <NumerosDoPainel n={n} hoje={hoje} acessos={acessos} links />
+
+      {testeApp && <NumerosDoTesteApp linhas={testeApp} />}
 
       {config.ia_resumo && (
         <Secao

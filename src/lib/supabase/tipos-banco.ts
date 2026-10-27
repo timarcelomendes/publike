@@ -1164,6 +1164,14 @@ export type Database = {
         Args: { p_dias?: number };
         Returns: { dia: string; enviados: number; falharam: number; na_fila: number }[];
       };
+      admin_aparelho_do_usuario: {
+        Args: { p_usuario: string };
+        Returns: { navegador: string; app: boolean; quando: string }[];
+      };
+      admin_numeros_teste_app: {
+        Args: { p_dias?: number };
+        Returns: { evento: string; origem: string; total: number; hoje: number }[];
+      };
       admin_creditos_email: {
         Args: Record<string, never>;
         Returns: {
@@ -1315,6 +1323,8 @@ export type Database = {
       };
       seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
       contar_banner: { Args: { p_banner: string; p_evento: string }; Returns: undefined };
+      contar_teste_app: { Args: { p_evento: string; p_origem: string }; Returns: undefined };
+      marcar_aparelho: { Args: { p_navegador: string; p_app?: boolean }; Returns: undefined };
       marcar_banner_visto: { Args: { p_banner: string; p_clicou?: boolean }; Returns: undefined };
       registrar_visita: { Args: { p_perfil: string; p_onde: string; p_anuncio?: string | null }; Returns: undefined };
       quem_viu_meu_perfil: {

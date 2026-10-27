@@ -451,6 +451,13 @@ export async function emailsPorDia(c: ClienteBanco, dias = 7) {
   return data ?? [];
 }
 
+/** Os números da página do teste do app (/testar-app), por passo e origem. null: banco sem a migração. */
+export async function numerosDoTesteApp(c: ClienteBanco, dias = 30) {
+  const { data, error } = await c.rpc("admin_numeros_teste_app", { p_dias: dias });
+  if (error) return null;
+  return data ?? [];
+}
+
 export type CreditosEmail = {
   emails: number;
   total: number | null;
@@ -467,6 +474,13 @@ export async function creditosDoEmail(c: ClienteBanco): Promise<CreditosEmail | 
   const { data, error } = await c.rpc("admin_creditos_email");
   if (error) return null;
   return data?.[0] ?? "vazio";
+}
+
+/** O navegador do último acesso da conta (e se foi pelo app). null: sem registro ou banco sem a migração. */
+export async function aparelhoDoUsuario(c: ClienteBanco, usuarioId: string) {
+  const { data, error } = await c.rpc("admin_aparelho_do_usuario", { p_usuario: usuarioId });
+  if (error) return null;
+  return data?.[0] ?? null;
 }
 
 /** Os últimos e-mails de uma conta (para ver se chegou ou falhou). */

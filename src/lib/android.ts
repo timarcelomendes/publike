@@ -27,6 +27,7 @@ export const DIGITAIS_ANDROID: string[] = [
 export const TESTE_FECHADO = true;
 export const PAGINA_DO_TESTE = "/testar-app";
 
-export const GRUPO_TESTADORES = "https://groups.google.com/g/testadores-publike";
-export const ACEITAR_TESTE = `https://play.google.com/apps/testing/${PACOTE_ANDROID}`;
-export const APP_NA_PLAY = `https://play.google.com/store/apps/details?id=${PACOTE_ANDROID}`;
+// hl=pt-BR: as páginas do Google abrem em português, mesmo com a conta ou o navegador em outra língua
+export const GRUPO_TESTADORES = "https://groups.google.com/g/testadores-publike?hl=pt-BR";
+export const ACEITAR_TESTE = `https://play.google.com/apps/testing/${PACOTE_ANDROID}?hl=pt-BR`;
+export const APP_NA_PLAY = `https://play.google.com/store/apps/details?id=${PACOTE_ANDROID}&hl=pt-BR`;
