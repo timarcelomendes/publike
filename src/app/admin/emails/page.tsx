@@ -36,10 +36,10 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 export const metadata: Metadata = { title: "E-mails" };
 
 /**
- * O limite de e-mails por dia do ZeptoMail: 100 até a revisão da conta (pedida em 26/10/2026). Depois da
- * aprovação, ponha o novo (ou null, sem limite à vista).
+ * O limite de e-mails por dia do ZeptoMail. Era 100 até a revisão da conta, aprovada em 27/10/2026: agora
+ * vale o saldo de créditos (null, sem limite à vista). Se o ZeptoMail voltar a limitar, ponha o número.
  */
-const LIMITE_POR_DIA: number | null = 100;
+const LIMITE_POR_DIA: number | null = null;
 
 // sub-abas: o que saiu, a configuração do envio, os convites e os textos (cada uma lê só o que mostra)
 const ABAS = [
