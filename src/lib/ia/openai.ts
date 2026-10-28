@@ -1,7 +1,7 @@
 import "server-only";
 import { chaveClaude, chaveIA, enderecoIA } from "@/lib/servidor/ambiente";
 import { criarClientePublico } from "@/lib/supabase/servidor";
-import { chamarClaude, ErroClaude } from "./claude";
+import { chamarClaude, ErroClaude, motivoDaApi } from "./claude";
 
 // Conversa com a IA: a da OpenAI (Responses API) ou o Claude (./claude.ts), conforme o modelo escolhido no
 // admin. As chaves ficam só no servidor. Com a reserva ligada (Admin › IA), quando a escolhida não tem chave,
@@ -146,7 +146,8 @@ function explicarErro(status: number, corpo: string) {
   }
   if (status === 429) return "A IA recebeu pedidos demais. Tente de novo em instantes.";
   if (status >= 500) return "A IA está fora do ar agora. Tente de novo em instantes.";
-  return `A IA não respondeu (código ${status}).`;
+  const motivo = motivoDaApi(corpo);
+  return `A IA recusou o pedido (código ${status}${motivo ? `: ${motivo}` : ""}).`;
 }
 
 type RespostaIA = { texto: string; parada: ParadaIA; modelo: string; fontes: string[] };
@@ -165,7 +166,14 @@ export async function chamarIA(p: Pedido): Promise<RespostaIA> {
   } catch (e) {
     if (e instanceof ErroIA && e.reserva && par && (await comReserva())) {
       console.warn(`Publike: ${escolhido.nome} falhou (${e.message}); usando ${par.nome}.`);
-      return chamarCom(par, p);
+      try {
+        return await chamarCom(par, p);
+      } catch (e2) {
+        // as duas falharam: a mensagem conta as duas, senão só aparece o erro da reserva
+        if (e2 instanceof ErroIA)
+          throw new ErroIA(`${escolhido.nome}: ${e.message} ${par.nome}: ${e2.message}`, e2.status);
+        throw e2;
+      }
     }
     throw e;
   }
@@ -257,6 +265,7 @@ async function chamarOpenAI(modelo: ModeloIA, p: Pedido): Promise<RespostaIA> {
 
   if (!resposta.ok) {
     const corpo = await resposta.text().catch(() => "");
+    console.error(`Publike: a OpenAI respondeu ${resposta.status}:`, motivoDaApi(corpo) || corpo.slice(0, 300));
     // chave recusada, sem créditos, pedidos demais ou fora do ar: a outra IA pode cobrir
     const reserva = [401, 403, 404, 429].includes(resposta.status) || resposta.status >= 500;
     throw new ErroIA(explicarErro(resposta.status, corpo), resposta.status, reserva);

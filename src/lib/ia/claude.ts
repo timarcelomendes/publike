@@ -69,9 +69,27 @@ function dataUrl(valor: string) {
   return m ? { tipo: m[1], dados: m[2] } : null;
 }
 
+/** A explicação da própria API ("messages.0.content.0: ..."), curta: diz o que foi recusado. */
+export function motivoDaApi(corpo: string) {
+  try {
+    const m = (JSON.parse(corpo) as { error?: { message?: unknown } }).error?.message;
+    return typeof m === "string" ? m.replace(/\s+/g, " ").trim().slice(0, 240) : "";
+  } catch {
+    return "";
+  }
+}
+
 function explicarErro(status: number, corpo: string) {
   const texto = corpo.toLowerCase();
-  if (texto.includes("credit balance")) return { msg: "A conta do Claude está sem créditos.", reserva: true };
+  const motivo = motivoDaApi(corpo);
+  if (texto.includes("credit balance") || status === 402)
+    return { msg: "A conta do Claude está sem créditos (ou com problema no pagamento).", reserva: true };
+  // limite de gastos definido no Console da Anthropic (Settings › Limits): a API responde 400
+  if (texto.includes("usage limit"))
+    return {
+      msg: "A conta do Claude chegou ao limite de gastos definido no Console da Anthropic (Settings › Limits).",
+      reserva: true,
+    };
   if (status === 401)
     return { msg: "A chave do Claude não foi aceita. Confira ANTHROPIC_API_KEY no servidor.", reserva: true };
   if (status === 403) return { msg: "A chave do Claude não tem permissão para usar este modelo.", reserva: true };
@@ -80,7 +98,7 @@ function explicarErro(status: number, corpo: string) {
   if (status === 429) return { msg: "O Claude recebeu pedidos demais. Tente de novo em instantes.", reserva: true };
   if (status === 529 || status >= 500)
     return { msg: "O Claude está fora do ar agora. Tente de novo em instantes.", reserva: true };
-  return { msg: `O Claude não respondeu (código ${status}).`, reserva: false };
+  return { msg: `O Claude recusou o pedido (código ${status}${motivo ? `: ${motivo}` : ""}).`, reserva: false };
 }
 
 type Bloco = {
@@ -163,6 +181,7 @@ export async function chamarClaude(
   if (!resposta.ok) {
     const texto = await resposta.text().catch(() => "");
     const { msg, reserva } = explicarErro(resposta.status, texto);
+    console.error(`Publike: o Claude respondeu ${resposta.status}:`, motivoDaApi(texto) || texto.slice(0, 300));
     throw new ErroClaude(msg, resposta.status, reserva);
   }
 
