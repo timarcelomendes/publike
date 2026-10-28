@@ -13,13 +13,25 @@ const LIMITE_FOTOS = 900 * 1024;
 export class ErroDaLeitura extends Error {}
 
 /** Manda o PDF para a pasta privada da conta no Storage e devolve o caminho. */
+/** A internet caiu no meio do envio ("Failed to fetch"): não é um "não" do Storage, vale tentar de novo. */
+function falhaDeConexao(e: unknown) {
+  const { name = "", message = "" } = (e ?? {}) as { name?: string; message?: string };
+  return /StorageUnknownError|failed to fetch|networkerror|load failed|network request failed/i.test(
+    `${name} ${message}`,
+  );
+}
+
 export async function enviarPdf(pdf: File, usuarioId: string) {
-  const caminho = `${usuarioId}/${Date.now()}.pdf`;
-  const { error } = await criarClienteNavegador()
-    .storage.from("curriculos")
-    .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
-  if (error) throw error;
-  return caminho;
+  // a internet do celular às vezes cai no meio do envio: tenta de novo sozinho, até 3 vezes ao todo
+  for (let tentativa = 1; ; tentativa++) {
+    const caminho = `${usuarioId}/${Date.now()}.pdf`;
+    const { error } = await criarClienteNavegador()
+      .storage.from("curriculos")
+      .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
+    if (!error) return caminho;
+    if (tentativa >= 3 || !falhaDeConexao(error)) throw error;
+    await new Promise((r) => setTimeout(r, 1500 * tentativa));
+  }
 }
 
 /** A foto do celular, menor (JPG de até `lado` px): a leitura aceita até 1 MB ao todo. */
