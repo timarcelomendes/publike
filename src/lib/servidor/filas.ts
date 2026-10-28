@@ -417,6 +417,20 @@ export async function liberarContatosParados(): Promise<{ liberadas: number; mot
   return { liberadas: Number(data ?? 0) };
 }
 
+/** As notícias de hoje num aviso só, no sino e no celular: a partir das 18h, uma vez por dia (migração 20261202120000). */
+export async function avisarNoticiasDoDia(): Promise<{ avisadas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisadas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_noticias", { p_chave: acesso.chave });
+  if (error) {
+    // banco sem a migração: nada a fazer
+    if (error.code === "PGRST202") return { avisadas: 0 };
+    console.error("Publike: falha ao avisar as notícias do dia:", error.message);
+    return { avisadas: 0, motivo: "Não foi possível avisar as notícias do dia." };
+  }
+  return { avisadas: Number(data ?? 0) };
+}
+
 export async function processarFilas() {
   try {
     const [ia, avaliacoes, recados] = await Promise.all([

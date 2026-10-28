@@ -151,13 +151,20 @@ export function FormAvisos({
                   <p className="text-label">{g.nome}</p>
                   <p className="mt-0.5 text-body-sm text-ink-muted">{g.ajuda}</p>
                 </div>
-                <Chave
-                  nome={g.nome}
-                  canal="email"
-                  ligado={!fora.has(`${valor}:email`)}
-                  desligada={!pode || acao.pendente || !emailsLigados || semEmail}
-                  aoMudar={() => mudar(valor, "email")}
-                />
+                {g.email ? (
+                  <Chave
+                    nome={g.nome}
+                    canal="email"
+                    ligado={!fora.has(`${valor}:email`)}
+                    desligada={!pode || acao.pendente || !emailsLigados || semEmail}
+                    aoMudar={() => mudar(valor, "email")}
+                  />
+                ) : (
+                  <span className="w-14 shrink-0 text-center text-body-sm text-ink-muted">
+                    <span aria-hidden>—</span>
+                    <span className="sr-only">Não chega no e-mail</span>
+                  </span>
+                )}
                 {g.celular ? (
                   <Chave
                     nome={g.nome}

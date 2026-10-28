@@ -1344,6 +1344,7 @@ export type Database = {
       };
       seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
       contar_banner: { Args: { p_banner: string; p_evento: string }; Returns: undefined };
+      servidor_avisar_noticias: { Args: { p_chave: string }; Returns: number };
       contar_teste_app: { Args: { p_evento: string; p_origem: string }; Returns: undefined };
       marcar_online: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
       marcar_aparelho: { Args: { p_navegador: string; p_app?: boolean }; Returns: undefined };

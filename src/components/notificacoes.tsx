@@ -31,6 +31,7 @@ import {
   Store,
   Eye,
   Megaphone,
+  Newspaper,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
@@ -82,6 +83,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   talentos_semana: UserSearch,
   // o comunicado que a equipe mandou para um público (Admin › Comunicados)
   comunicado: Megaphone,
+  // as notícias publicadas no dia, num aviso só
+  noticias_do_dia: Newspaper,
 };
 
 type Notificacao = {

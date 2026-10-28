@@ -1,5 +1,5 @@
 // Os grupos da página Avisos e notificações (/perfil/avisos): para cada um, a conta escolhe se ele
-// chega no e-mail e no celular. O sino mostra tudo. Os avisos da conta e da moderação não têm grupo e
+// chega no e-mail e no celular (o das notícias não tem e-mail). O sino mostra tudo. Os avisos da conta e da moderação não têm grupo e
 // chegam sempre. O banco tem a mesma lista (privado.grupo_do_aviso, em
 // supabase/migrations/20261120120000_avisos_por_tipo.sql): mudar um, mudar o outro.
 
@@ -9,30 +9,35 @@ export const GRUPOS_DE_AVISO = [
     nome: "Mensagens",
     ajuda: "Quando alguém manda mensagem para você.",
     celular: true,
+    email: true,
   },
   {
     valor: "andamento",
     nome: "Curtidas, matches e o andamento das vagas",
     ajuda: "Curtidas e pedidos, matches, entrevistas, convites para vagas, contratações e avaliações.",
     celular: true,
+    email: true,
   },
   {
     valor: "conexoes",
     nome: "Pedidos de conexão",
     ajuda: "Quando alguém quer se conectar com você ou aceita o seu pedido.",
     celular: true,
+    email: true,
   },
   {
     valor: "vagas_novas",
     nome: "Vagas novas",
     ajuda: "Das buscas que você salvou e das empresas que você segue.",
     celular: true,
+    email: true,
   },
   {
     valor: "semana",
     nome: "Vagas que combinam com você, toda semana",
     ajuda: "Às segundas, as vagas novas com bom % de match com o seu currículo.",
     celular: true,
+    email: true,
   },
   {
     valor: "convites",
@@ -40,6 +45,15 @@ export const GRUPOS_DE_AVISO = [
     ajuda: "Quando o Publike convida para montar o currículo, a vitrine ou a página da empresa.",
     // só por e-mail
     celular: false,
+    email: true,
+  },
+  {
+    valor: "noticias",
+    nome: "Notícias do Publike",
+    ajuda: "No fim do dia, um aviso com as notícias novas sobre trabalho e cursos na região.",
+    celular: true,
+    // só no sino e no celular
+    email: false,
   },
 ] as const;
 
