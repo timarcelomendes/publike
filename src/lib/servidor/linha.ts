@@ -127,15 +127,15 @@ export type AnuncioNaLinha = {
   salva: boolean | null;
   /** o começo da descrição (a introdução no cartão), numa linha só */
   resumo: string | null;
-  /** quantas pessoas curtiram a vaga (só a partir de 3; quem curtiu nunca aparece) e quando foi a última */
-  curtidas?: { total: number; ultima: string } | null;
+  /** quantas pessoas curtiram a vaga e quantas viraram match (só os números; quem curtiu nunca aparece) */
+  curtidas?: { total: number; matches: number; ultima: string } | null;
 };
 
-type CurtidasDaVaga = { total: number | null; ultima: string };
+type CurtidasDaVaga = { total: number | null; matches: number; ultima: string };
 
 /**
- * As curtidas das vagas: a hora da última de cada vaga curtida e o número, que o banco só devolve a
- * partir de 3 (nunca quem curtiu). Banco sem a migração: sem curtidas.
+ * As curtidas das vagas: a hora da última, o número e quantas viraram match (migração 20261205120000;
+ * nunca quem curtiu). Banco sem a migração: sem curtidas.
  */
 async function curtidasDasVagas(ids: string[]): Promise<Map<string, CurtidasDaVaga>> {
   if (!ids.length) return new Map();
@@ -144,20 +144,9 @@ async function curtidasDasVagas(ids: string[]): Promise<Map<string, CurtidasDaVa
     if (error.code !== "PGRST202") console.error(`Publike: falha ao contar as curtidas das vagas: ${error.message}`);
     return new Map();
   }
-  return new Map((data ?? []).map((l) => [l.anuncio_id, { total: l.curtidas, ultima: l.ultima }]));
-}
-
-/**
- * As vagas que sobem na linha: toda vaga curtida vale pela hora da última curtida. Essa é a hora da
- * vaga na linha e também a que conta como novidade: o que fica acima do "Você parou aqui" é novo.
- */
-function horasQueSobem(curtidas: Map<string, CurtidasDaVaga>) {
-  return new Map([...curtidas].map(([id, c]) => [id, c.ultima] as const));
-}
-
-/** A hora de uma vaga na linha: a da publicação ou, se ela subiu, a da última curtida. */
-function horaDaVaga(publicada: string, subiu: string | undefined) {
-  return subiu && Date.parse(subiu) > Date.parse(publicada) ? subiu : publicada;
+  return new Map(
+    (data ?? []).map((l) => [l.anuncio_id, { total: l.curtidas, matches: l.matches ?? 0, ultima: l.ultima }]),
+  );
 }
 
 export type DadoDaLinha =
@@ -285,7 +274,16 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   // o % de match de todas (nas relevantes, ele entra na ordem antes de cortar a lista)
   const matches =
     usuarioId && quem && requisitos ? matchDasVagas(filtrados, requisitos, quem, usuarioId, agora) : new Map();
-  const naOrdem = relevantes ? ordenarDaPessoa(filtrados, requisitos, sinais, matches, agora) : filtrados;
+  // nas relevantes, as curtidas recentes entram na ordem ("em alta"): contadas antes de cortar a lista
+  const curtidasDaOrdem =
+    relevantes && (aba === "tudo" || aba === "vaga")
+      ? await curtidasDasVagas(filtrados.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+          () => new Map<string, CurtidasDaVaga>(),
+        )
+      : null;
+  const naOrdem = relevantes
+    ? ordenarDaPessoa(filtrados, requisitos, sinais, matches, agora, curtidasDaOrdem)
+    : filtrados;
   const anuncios = naOrdem.slice(0, LIMITE);
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId);
   const [resposta, salvas, logos, textosDosServicos] = await Promise.all([
@@ -311,19 +309,18 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       },
     },
   }));
-  // as vagas que as pessoas curtiram: o número no cartão ("8 pessoas já curtiram", só a partir de 3)
-  // e a hora da última curtida, para onde a vaga sobe. Antes de contar as novidades: a vaga que subiu
-  // fica acima do "Você parou aqui" e conta como novidade (a saudação e as abas batem com a linha)
+  // as vagas que as pessoas curtiram: o número de curtidas e de matches no cartão. A vaga não muda de
+  // lugar em Recentes (vale a publicação); nas relevantes, as curtidas recentes já entraram na ordem
   if (aba === "tudo" || aba === "vaga") {
-    const curtidas = await curtidasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-      () => new Map<string, CurtidasDaVaga>(),
-    );
-    const sobem = horasQueSobem(curtidas);
+    const curtidas =
+      curtidasDaOrdem ??
+      (await curtidasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+        () => new Map<string, CurtidasDaVaga>(),
+      ));
     for (const i of itens) {
       const c = curtidas.get(i.id);
-      if (i.tipo !== "vaga" || !c || !("anuncio" in i.dados)) continue;
-      if (c.total !== null) i.dados.anuncio.curtidas = { total: c.total, ultima: c.ultima };
-      i.quando = horaDaVaga(i.quando, sobem.get(i.id));
+      if (i.tipo !== "vaga" || !c || !c.total || !("anuncio" in i.dados)) continue;
+      i.dados.anuncio.curtidas = { total: c.total, matches: c.matches, ultima: c.ultima };
     }
   }
   // os aceites de quem curtiu (o outro lado aceitou), dos últimos 7 dias, só em Tudo
@@ -374,11 +371,6 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
         usuarioId,
       ).catch(() => []));
     // as vagas que subiram contam pela hora da última curtida, como na linha
-    const sobemDeTodas = horasQueSobem(
-      await curtidasDasVagas(todos.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
-        () => new Map<string, CurtidasDaVaga>(),
-      ),
-    );
     novas = novidades(
       [
         ...todos.map(
@@ -386,7 +378,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
             ({
               tipo: a.tipo === "servico" ? "servico" : "vaga",
               id: a.id,
-              quando: a.tipo === "vaga" ? horaDaVaga(a.criado_em, sobemDeTodas.get(a.id)) : a.criado_em,
+              quando: a.criado_em,
               dados: null,
             }) as const,
         ),
@@ -422,8 +414,8 @@ function ordemDaLinha(daUrl: string | undefined, guardada: string | undefined): 
 }
 
 /**
- * Os anúncios para a ordem da pessoa: os mais novos e os mais perto (duas buscas, sem repetir), para a
- * conta dela escolher entre eles. A ordem do banco ("relevantes") é a das curtidas de todos: aqui não serve.
+ * Os anúncios para a ordem da pessoa: os mais novos, os mais perto e os mais curtidos (três buscas, sem
+ * repetir), para a conta dela escolher entre eles.
  */
 async function anunciosParaRelevantes(
   filtros: Filtros,
@@ -431,12 +423,14 @@ async function anunciosParaRelevantes(
   local: Local | null,
   usuarioId: string | null,
 ): Promise<AnuncioResumo[]> {
-  const [novos, perto] = await Promise.all([
+  const [novos, perto, emAlta] = await Promise.all([
     buscarAnuncios({ ...filtros, ordem: "ultimas" }, agora, local, usuarioId),
     buscarAnuncios({ ...filtros, ordem: "perto" }, agora, local, usuarioId).catch(() => []),
+    // as mais curtidas e abertas dos últimos 30 dias: a curtida recente conta na ordem da pessoa
+    buscarAnuncios({ ...filtros, ordem: "relevantes" }, agora, local, usuarioId).catch(() => []),
   ]);
-  const vistos = new Set(novos.map((a) => a.id));
-  return [...novos, ...perto.filter((a) => !vistos.has(a.id))];
+  const vistos = new Set<string>();
+  return [...novos, ...perto, ...emAlta].filter((a) => !vistos.has(a.id) && Boolean(vistos.add(a.id)));
 }
 
 /**
@@ -488,9 +482,17 @@ function ordenarDaPessoa(
   sinais: SinaisDaPessoa,
   matches: Map<string, Aderencia>,
   agora: number,
+  curtidas: Map<string, CurtidasDaVaga> | null = null,
 ): AnuncioResumo[] {
   const porId = new Map(anuncios.map((a) => [a.id, a]));
-  const comDescricao = anuncios.map((a) => ({ ...a, descricao: requisitos?.get(a.id)?.descricao ?? null }));
+  const comDescricao = anuncios.map((a) => {
+    const c = curtidas?.get(a.id);
+    return {
+      ...a,
+      descricao: requisitos?.get(a.id)?.descricao ?? null,
+      emAlta: c?.total ? { total: c.total, ultima: c.ultima } : null,
+    };
+  });
   return ordenarPorRelevancia(comDescricao, sinais, matches, agora).map((a) => porId.get(a.id)!);
 }
 

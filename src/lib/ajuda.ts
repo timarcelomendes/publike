@@ -208,7 +208,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Por que aparece “8 pessoas já curtiram esta vaga”?",
-        r: "Para você saber quais vagas estão sendo procuradas. Aparece só o número, a partir de 3 curtidas: quem curtiu nunca aparece para ninguém além de quem publicou a vaga.",
+        r: "Para você saber quais vagas estão sendo procuradas. Aparecem só os números de curtidas e de matches: quem curtiu nunca aparece para ninguém além de quem publicou a vaga.",
       },
       {
         p: "Como paro de receber e-mails?",

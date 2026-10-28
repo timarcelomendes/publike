@@ -1129,7 +1129,7 @@ export type Database = {
       };
       curtidas_das_vagas: {
         Args: { p_ids: string[] };
-        Returns: { anuncio_id: string; curtidas: number | null; ultima: string }[];
+        Returns: { anuncio_id: string; curtidas: number | null; matches?: number | null; ultima: string }[];
       };
       meus_modos: {
         Args: Record<PropertyKey, never>;

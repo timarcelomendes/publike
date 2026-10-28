@@ -284,8 +284,9 @@ export function TicketDaVaga({
 }
 
 /**
- * Em cima da vaga que as pessoas estão curtindo: quantas já curtiram (nunca quem) e o convite para
- * curtir também. Quem já curtiu se vê no número; quem publicou vê o atalho para os candidatos.
+ * Em cima da vaga que as pessoas estão curtindo: quantas já curtiram e quantas deram match (só os números,
+ * nunca quem) e o convite para curtir também. Quem já curtiu se vê no número; quem publicou vê o atalho
+ * para os candidatos.
  */
 export function FaixaDeCurtidas({ item, usuarioId }: { item: AnuncioNaLinha; usuarioId: string | null }) {
   const c = item.curtidas;
@@ -293,13 +294,25 @@ export function FaixaDeCurtidas({ item, usuarioId }: { item: AnuncioNaLinha; usu
   const a = item.anuncio;
   const proprio = usuarioId !== null && usuarioId === a.autor_id;
   const curti = a.minha_curtida != null;
+  const pessoas = (n: number) => (n === 1 ? "1 pessoa" : `${n} pessoas`);
+  const matches = c.matches > 0 ? (c.matches === 1 ? "1 match" : `${c.matches} matches`) : null;
+  const deramMatch = c.matches > 0 ? (c.matches === 1 ? "1 já deu match" : `${c.matches} já deram match`) : null;
+  const outros = c.total - 1;
   return (
     // o coração fica ao lado da primeira linha do texto, mesmo quando ele quebra
     <p className="flex items-start gap-1.5 px-1 text-body-sm text-ink">
       <Heart aria-hidden className="mt-0.5 size-4 shrink-0 fill-like text-like" />
       {proprio ? (
         <span className="min-w-0">
-          Sua vaga já tem <b className="font-semibold tabular-nums">{c.total} curtidas</b>.{" "}
+          Sua vaga já tem{" "}
+          <b className="font-semibold tabular-nums">{c.total === 1 ? "1 curtida" : `${c.total} curtidas`}</b>
+          {matches && (
+            <>
+              {" "}
+              e <b className="font-semibold tabular-nums">{matches}</b>
+            </>
+          )}
+          .{" "}
           <Link
             href={`/painel/anuncio/${a.id}`}
             className="font-semibold whitespace-nowrap text-ink underline underline-offset-2 hover:text-terra-text"
@@ -309,11 +322,21 @@ export function FaixaDeCurtidas({ item, usuarioId }: { item: AnuncioNaLinha; usu
         </span>
       ) : curti ? (
         <span className="min-w-0">
-          <b className="font-semibold">Você e mais {c.total - 1} pessoas</b> curtiram esta vaga
+          {outros > 0 ? (
+            <>
+              <b className="font-semibold">Você e mais {pessoas(outros)}</b> curtiram esta vaga
+            </>
+          ) : (
+            <>
+              <b className="font-semibold">Você</b> curtiu esta vaga
+            </>
+          )}
+          {deramMatch && <span className="text-ink-muted"> · {deramMatch}</span>}
         </span>
       ) : (
         <span className="min-w-0">
-          <b className="font-semibold tabular-nums">{c.total} pessoas</b> já curtiram esta vaga.{" "}
+          <b className="font-semibold tabular-nums">{pessoas(c.total)}</b> {c.total === 1 ? "já curtiu" : "já curtiram"}{" "}
+          esta vaga{deramMatch ? <span className="text-ink-muted"> · {deramMatch}</span> : null}.{" "}
           <span className="text-ink-muted">Curta também, se ela combina com você.</span>
         </span>
       )}

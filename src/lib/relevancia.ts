@@ -3,13 +3,15 @@ import { pontosDaArea, semAcento, type QuemProcura } from "./descobrir";
 import { chaveBairro } from "./regioes";
 
 // "Relevantes para você", na linha do tempo: a ordem de cada pessoa, e não a mesma para todos. Conta o
-// que diz respeito a ela, sem a popularidade geral (curtidas e aberturas dos outros):
+// que diz respeito a ela e, com peso menor, o que está em alta (as curtidas recentes da vaga):
 //   o currículo ........ o % de match com a vaga (0 a 35); sem currículo, a área do que faz e procura
 //                        (0 a 24); a vaga de outra área desce
 //   perto de casa ...... o bairro, a região e a distância (0 a 30)
 //   o que é novo ....... a publicação mais nova pesa mais (0 a 20; para empresa, 0 a 30)
 //   o interesse ........ quem ela segue, os bairros que segue, as buscas com aviso, as áreas do que já
 //                        curtiu e o que salvou (0 a 25)
+//   em alta ............ a vaga curtida nas últimas 24 horas, 3 dias ou 7 dias, mais com 3 curtidas
+//                        ou mais (0 a 15). Em Recentes a curtida não muda o lugar: vale a publicação
 // O que ela já curtiu desce (já está nas Candidaturas), e os anúncios dela também. Para empresa,
 // comércio e agência (sem currículo para comparar): perto, o que é novo e o interesse.
 
@@ -58,6 +60,8 @@ export type AnuncioParaRelevancia = {
   distancia_km: number | null;
   minha_curtida: string | null;
   descricao?: string | null;
+  /** as curtidas da vaga (o número e a hora da última), para os pontos "em alta" */
+  emAlta?: { total: number; ultima: string } | null;
 };
 
 /** As categorias do que a pessoa curtiu, cada uma com a parte do total (0 a 1). */
@@ -95,6 +99,14 @@ function pontosDeInteresse(a: AnuncioParaRelevancia, s: SinaisDaPessoa) {
   return Math.min(25, p);
 }
 
+/** Em alta (0 a 15): a vaga que as pessoas curtiram há pouco, mais se já tem 3 curtidas ou mais. */
+export function pontosEmAlta(c: { total: number; ultima: string } | null | undefined, agora: number) {
+  if (!c || c.total < 1) return 0;
+  const horas = (agora - Date.parse(c.ultima)) / 3600e3;
+  const recente = horas < 24 ? 10 : horas < 72 ? 6 : horas < 24 * 7 ? 3 : 0;
+  return Math.min(15, recente + (c.total >= 3 ? 5 : 0));
+}
+
 /** A experiência é de outra área (o mesmo "Outra área" do site). */
 function deOutraArea(m: Aderencia) {
   return m.criterios.some((c) => c.funcao && c.ok === false);
@@ -110,7 +122,7 @@ export function relevanciaParaVoce(
   match: Aderencia | null,
   agora: number,
 ) {
-  let nota = pontosDePerto(a) + pontosDeInteresse(a, s);
+  let nota = pontosDePerto(a) + pontosDeInteresse(a, s) + (a.tipo === "vaga" ? pontosEmAlta(a.emAlta, agora) : 0);
   const novo = pontosDeNovo(a.criado_em, agora);
   if (s.empresa) {
     nota += Math.round(novo * 1.5);
