@@ -52,6 +52,8 @@ export type ItemModeracao = LinhaDe<"fila_moderacao">;
 export type Experiencia = {
   cargo: string;
   onde: string;
+  /** a unidade ou o bairro da empresa ("Perimetral"), opcional */
+  unidade?: string;
   inicio: string;
   fim: string | null;
   atual?: boolean;

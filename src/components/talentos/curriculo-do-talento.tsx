@@ -56,6 +56,7 @@ export function CurriculoDoTalento({
       }}
       linkPdf={null}
       hoje={hoje}
+      empresas={cv.empresas}
     />
   ) : null;
 

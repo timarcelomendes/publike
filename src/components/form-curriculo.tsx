@@ -29,7 +29,8 @@ import {
   type ReactNode,
 } from "react";
 import { apagarCurriculo, lerCurriculoEnviado, salvarCurriculo, type LeituraDoArquivo } from "@/lib/acoes/curriculo";
-import { protegerAcao } from "@/lib/acao-segura";
+import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
+import { sugerirEmpresas } from "@/lib/acoes/empresas";
 import { detalheDoErro, relatarFalha } from "@/lib/falhas";
 import {
   CNHS,
@@ -65,6 +66,8 @@ type ItemExperiencia = {
   chave: string;
   cargo: string;
   onde: string;
+  /** a unidade ou o bairro (opcional; os rascunhos antigos não têm) */
+  unidade?: string;
   inicio: string;
   fim: string;
   atual: boolean;
@@ -442,12 +445,16 @@ export function FormCurriculo({
           chave: novaChave(),
           cargo: e.cargo,
           onde: e.onde,
+          unidade: e.unidade ?? "",
           inicio: e.inicio,
           fim: e.fim ?? "",
           atual: trabalhaAqui(e),
           descricao: e.descricao,
         })),
   );
+  // "Empresa ou lugar" sugere as empresas com conta no Publike e os nomes de 3 currículos ou mais
+  const [empresasSugeridas, setEmpresasSugeridas] = useState<string[]>([]);
+  const esperaEmpresas = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cursos, setCursos] = useState<string[]>(inicial?.cursos ?? semente?.cursos ?? []);
   const [novoCurso, setNovoCurso] = useState("");
   const [habilidades, setHabilidades] = useState<string[]>(inicial?.habilidades ?? semente?.habilidades ?? []);
@@ -472,7 +479,7 @@ export function FormCurriculo({
     escolaridade,
     curso,
     estudos.map((e) => [e.nivel, e.curso]),
-    experiencias.map((x) => [x.cargo, x.onde, x.inicio, x.fim, x.atual, x.descricao]),
+    experiencias.map((x) => [x.cargo, x.onde, x.unidade ?? "", x.inicio, x.fim, x.atual, x.descricao]),
     cursos,
     cnh,
     disponibilidade,
@@ -512,12 +519,22 @@ export function FormCurriculo({
     setExperiencias((lista) => lista.map((e) => (e.chave === chave ? { ...e, ...mudancas } : e)));
   }
 
+  function buscarEmpresas(texto: string) {
+    if (semConta || demo) return;
+    if (esperaEmpresas.current) clearTimeout(esperaEmpresas.current);
+    if (texto.trim().length < 2) return;
+    esperaEmpresas.current = setTimeout(async () => {
+      const r = await chamarAcao(() => sugerirEmpresas(texto));
+      if (r.ok) setEmpresasSugeridas(r.nomes);
+    }, 250);
+  }
+
   function adicionarExperiencia() {
     if (experiencias.length >= MAX_EXPERIENCIAS) return;
     const chave = novaChave();
     setExperiencias((lista) => [
       ...lista,
-      { chave, cargo: "", onde: "", inicio: "", fim: "", atual: false, descricao: "" },
+      { chave, cargo: "", onde: "", unidade: "", inicio: "", fim: "", atual: false, descricao: "" },
     ]);
     setTimeout(() => document.getElementById(`exp-${chave}-cargo`)?.focus(), 50);
   }
@@ -725,6 +742,7 @@ export function FormCurriculo({
         experienciasValidas.map((x) => ({
           cargo: x.cargo,
           onde: x.onde,
+          unidade: x.onde.trim() ? (x.unidade ?? "") : "",
           inicio: x.inicio,
           fim: x.atual ? null : x.fim,
           atual: x.atual,
@@ -986,6 +1004,12 @@ export function FormCurriculo({
         titulo="Onde você já trabalhou"
         descricao="Do mais recente para o mais antigo. Freelance e trabalho sem carteira também contam. Primeiro emprego? Pode deixar vazio e contar dos cursos."
       >
+        {/* as sugestões de "Empresa ou lugar" (uma lista para todas as experiências) */}
+        <datalist id="empresas-sugeridas">
+          {empresasSugeridas.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
         {experiencias.map((x, i) => {
           const id = (c: string) => `exp-${x.chave}-${c}`;
           const erro = (c: string) => erros[`experiencias.${i}.${c}`];
@@ -1027,14 +1051,40 @@ export function FormCurriculo({
                   <input
                     id={id("onde")}
                     value={x.onde}
-                    onChange={(e) => mudarExperiencia(x.chave, { onde: e.target.value })}
+                    onChange={(e) => {
+                      mudarExperiencia(x.chave, { onde: e.target.value });
+                      buscarEmpresas(e.target.value);
+                    }}
                     maxLength={80}
                     placeholder="Ex.: Padaria do Centro, casa de família"
+                    list={semConta || demo ? undefined : "empresas-sugeridas"}
+                    autoComplete="off"
                     aria-invalid={erro("onde") ? true : undefined}
                     className={classesEntrada}
                   />
                   {erro("onde") && <MensagemErro>{erro("onde")}</MensagemErro>}
                 </div>
+                {x.onde.trim() && (
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Rotulo htmlFor={id("unidade")} opcional>
+                      Unidade ou bairro
+                    </Rotulo>
+                    <input
+                      id={id("unidade")}
+                      value={x.unidade ?? ""}
+                      onChange={(e) => mudarExperiencia(x.chave, { unidade: e.target.value })}
+                      maxLength={60}
+                      placeholder="Ex.: Perimetral, Setor Bueno"
+                      aria-describedby={id("unidade-dica")}
+                      aria-invalid={erro("unidade") ? true : undefined}
+                      className={`${classesEntrada} sm:max-w-[calc(50%-0.5rem)]`}
+                    />
+                    <p id={id("unidade-dica")} className="text-body-sm text-ink-muted">
+                      Para empresa com mais de uma loja ou unidade.
+                    </p>
+                    {erro("unidade") && <MensagemErro>{erro("unidade")}</MensagemErro>}
+                  </div>
+                )}
                 <div className="flex flex-col gap-1.5">
                   <Rotulo htmlFor={id("inicio")} opcional>
                     Entrou em

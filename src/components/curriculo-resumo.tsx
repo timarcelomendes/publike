@@ -1,7 +1,10 @@
 import { FileText } from "lucide-react";
+import Link from "next/link";
+import { Avatar } from "@/components/ui/basicos";
 import { nomeDisponibilidade } from "@/lib/constantes";
 import { textosDosEstudos } from "@/lib/estudos";
 import { mesesDoPeriodo, textoDoPeriodo } from "@/lib/experiencia";
+import type { EmpresasDosTrabalhos, EmpresaDoTrabalho } from "@/lib/servidor/empresas";
 import type { Curriculo, Experiencia } from "@/lib/tipos";
 
 /** Quanto tempo ficou: "1 ano e 5 meses", "8 meses" (sem as datas, nada). */
@@ -17,15 +20,34 @@ function duracao(e: Experiencia, hoje: string) {
   return partes.join(" e ");
 }
 
-function ItemExperiencia({ e, hoje }: { e: Experiencia; hoje: string }) {
+function ItemExperiencia({ e, hoje, empresa }: { e: Experiencia; hoje: string; empresa?: EmpresaDoTrabalho }) {
   const tempo = duracao(e, hoje);
   const periodo = textoDoPeriodo(e);
+  const unidade = e.onde && e.unidade ? `, ${e.unidade}` : "";
   return (
     <li className="flex flex-col gap-0.5">
       <p className="text-label">
         {e.cargo}
-        {e.onde && <span className="font-normal text-ink-muted"> · {e.onde}</span>}
+        {e.onde && !empresa && (
+          <span className="font-normal text-ink-muted">
+            {" "}
+            · {e.onde}
+            {unidade}
+          </span>
+        )}
       </p>
+      {/* a empresa tem conta no Publike: o logo e o link do perfil dela */}
+      {e.onde && empresa && (
+        <p className="flex items-center gap-2 text-ink-muted">
+          <Avatar nome={empresa.nome} foto={empresa.foto} tamanho={20} forma="quadrada" />
+          <span>
+            <Link href={`/perfil/${empresa.id}`} className="text-ink underline-offset-2 hover:underline">
+              {e.onde}
+            </Link>
+            {unidade}
+          </span>
+        </p>
+      )}
       {periodo && (
         <p className="text-body-sm text-ink-muted">
           {periodo}
@@ -45,10 +67,13 @@ export function CurriculoResumo({
   curriculo,
   linkPdf,
   hoje,
+  empresas,
 }: {
   curriculo: Curriculo;
   linkPdf: string | null;
   hoje: string;
+  /** as empresas das experiências que têm conta no Publike (`empresasDosTrabalhos`) */
+  empresas?: EmpresasDosTrabalhos;
 }) {
   // o mais alto primeiro e, embaixo, os outros (técnico, outra faculdade, pós)
   const estudos = textosDosEstudos(curriculo);
@@ -97,7 +122,7 @@ export function CurriculoResumo({
         {curriculo.experiencias.length ? (
           <ul className="flex flex-col gap-3">
             {curriculo.experiencias.map((e, i) => (
-              <ItemExperiencia key={i} e={e} hoje={hoje} />
+              <ItemExperiencia key={i} e={e} hoje={hoje} empresa={empresas?.[e.onde.trim()]} />
             ))}
           </ul>
         ) : (

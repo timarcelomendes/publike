@@ -488,7 +488,16 @@ export function lerExperiencias(valor: unknown): Experiencia[] {
     const fim = t(o.fim) || null;
     // as antigas não guardam "atual": fim vazio com início é "trabalha aqui"
     const atual = typeof o.atual === "boolean" ? o.atual : Boolean(inicio) && !fim;
-    return { cargo: t(o.cargo), onde: t(o.onde), inicio, fim: atual ? null : fim, atual, descricao: t(o.descricao) };
+    const unidade = t(o.unidade);
+    return {
+      cargo: t(o.cargo),
+      onde: t(o.onde),
+      ...(unidade ? { unidade } : {}),
+      inicio,
+      fim: atual ? null : fim,
+      atual,
+      descricao: t(o.descricao),
+    };
   });
 }
 

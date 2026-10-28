@@ -74,10 +74,11 @@ export function arrumarEstudos<T extends { nivel: string; curso: string }>(
 export function experienciaEmBranco(x: {
   cargo: string;
   onde: string;
+  unidade?: string;
   inicio: string;
   fim: string | null;
   atual: boolean;
   descricao: string;
 }) {
-  return !x.cargo.trim() && !x.onde.trim() && !x.inicio && !x.fim && !x.atual && !x.descricao.trim();
+  return !x.cargo.trim() && !x.onde.trim() && !x.unidade?.trim() && !x.inicio && !x.fim && !x.atual && !x.descricao.trim();
 }

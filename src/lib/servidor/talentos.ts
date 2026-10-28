@@ -1,6 +1,7 @@
 import "server-only";
 import { MODO_DEMO } from "@/lib/config";
 import { listarMeusAnuncios, lerExperiencias } from "@/lib/dados";
+import { empresasDosTrabalhos, type EmpresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { estudosDoBanco } from "@/lib/estudos";
 import { TALENTOS_POR_PAGINA, type TalentoResumo } from "@/lib/talentos";
@@ -63,6 +64,8 @@ export type TalentoCompleto = {
   disponibilidade: string[];
   atualizado_em: string;
   estudos: Estudo[];
+  /** as empresas das experiências com conta no Publike (o logo e o link) */
+  empresas: EmpresasDosTrabalhos;
 };
 
 /** O currículo completo (empresa, comércio e agência). O erro vem em texto, para mostrar na página. */
@@ -76,11 +79,16 @@ export async function talentoCompleto(
     // as mensagens do banco já vêm em português (limite do dia, conta suspensa, só para empresas)
     return { ok: false, erro: error.code === "P0001" ? error.message : "Não deu para abrir o currículo agora." };
   }
+  if (!data) return { ok: true, talento: null };
+  const experiencias = lerExperiencias(data.experiencias);
   return {
     ok: true,
-    talento: data
-      ? { ...data, experiencias: lerExperiencias(data.experiencias), estudos: estudosDoBanco(data.estudos) }
-      : null,
+    talento: {
+      ...data,
+      experiencias,
+      estudos: estudosDoBanco(data.estudos),
+      empresas: await empresasDosTrabalhos(supabase, experiencias),
+    },
   };
 }
 

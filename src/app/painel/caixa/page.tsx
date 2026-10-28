@@ -17,6 +17,8 @@ import { ajudaDaIADisponivel } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
+import { empresasDosTrabalhos } from "@/lib/servidor/empresas";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { ABAS, montarCaixa, naAba, ordenar, type Aba, type ItemCaixa } from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -106,6 +108,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   const conexao = aberto ? ((await estadosDeConexao([aberto.perfil_id])).get(aberto.perfil_id) ?? null) : null;
   // contato direto: o match saiu na hora (sem aceite); a mensagem do WhatsApp leva o link da vaga
   const direto = aberto ? (await anunciosComContatoDireto([aberto.anuncio_id])).has(aberto.anuncio_id) : false;
+  // as empresas do currículo com conta no Publike: o logo e o link
+  const empresas = aberto?.curriculo
+    ? await empresasDosTrabalhos(await criarClienteServidor(), aberto.curriculo.experiencias)
+    : {};
 
   return (
     <div className="flex flex-col gap-5">
@@ -202,6 +208,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
           {aberto ? (
             <FichaCandidato
               c={aberto}
+              empresas={empresas}
               direto={direto}
               agora={agora}
               anterior={anterior}

@@ -39,7 +39,9 @@ import {
 } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
+import { empresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { exigirUsuario } from "@/lib/sessao";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
@@ -87,6 +89,13 @@ async function Conteudo({
   const agora = await agoraDaRequisicao();
   const hoje = new Date(agora).toISOString().slice(0, 7);
   const status = anuncio.status as StatusAnuncio;
+  // as empresas dos currículos com conta no Publike: o logo e o link
+  const empresas = curriculos.size
+    ? await empresasDosTrabalhos(
+        await criarClienteServidor(),
+        [...curriculos.values()].flatMap((c) => c.experiencias),
+      )
+    : {};
 
   return (
     <div className="flex flex-col gap-6">
@@ -270,7 +279,12 @@ async function Conteudo({
                           />
                         </summary>
                         <div className="border-t border-line p-3">
-                          <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} />
+                          <CurriculoResumo
+                            curriculo={curriculo}
+                            linkPdf={curriculo.link_pdf}
+                            hoje={hoje}
+                            empresas={empresas}
+                          />
                         </div>
                       </details>
                     ) : (

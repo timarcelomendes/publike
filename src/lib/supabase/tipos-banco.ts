@@ -1207,6 +1207,17 @@ export type Database = {
       admin_presenca: { Args: Record<string, never>; Returns: Json };
       admin_metricas_produto: { Args: Record<string, never>; Returns: Json };
       admin_tempo_paginas: { Args: Record<string, never>; Returns: Json };
+      admin_empresas_resumo: { Args: Record<string, never>; Returns: Json };
+      admin_empresas: {
+        Args: { p_busca?: string | null; p_filtro?: string; p_limite?: number; p_pagina?: number };
+        Returns: Json;
+      };
+      admin_empresas_repetidas: { Args: { p_limite?: number }; Returns: Json };
+      admin_empresa_juntar: { Args: { p_de: number; p_para: number }; Returns: string };
+      admin_empresa_tipo: { Args: { p_id: number; p_tipo: string }; Returns: undefined };
+      admin_empresa_nome: { Args: { p_id: number; p_nome: string }; Returns: string };
+      admin_empresa_ligar_perfil: { Args: { p_id: number; p_perfil: string | null }; Returns: string | null };
+      admin_empresas_diferentes: { Args: { p_a: number; p_b: number }; Returns: undefined };
       admin_contar_comunicado: { Args: { p_publico: string; p_link?: string | null }; Returns: number };
       admin_enviar_comunicado: {
         Args: { p_publico: string; p_texto: string; p_link?: string | null };
@@ -1381,6 +1392,11 @@ export type Database = {
       servidor_avisar_noticias: { Args: { p_chave: string }; Returns: number };
       contar_teste_app: { Args: { p_evento: string; p_origem: string }; Returns: undefined };
       contar_tempo: { Args: { p_pagina: string; p_de: number; p_ate: number }; Returns: undefined };
+      empresas_sugeridas: { Args: { p_texto: string }; Returns: { nome: string; com_conta: boolean }[] };
+      empresas_do_curriculo: {
+        Args: { p_nomes: string[] };
+        Returns: { pedido: string; perfil_id: string; nome: string; foto_url: string | null }[];
+      };
       marcar_online: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
       marcar_aparelho: { Args: { p_navegador: string; p_app?: boolean }; Returns: undefined };
       marcar_banner_visto: { Args: { p_banner: string; p_clicou?: boolean }; Returns: undefined };

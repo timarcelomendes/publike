@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
+import type { EmpresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { DesfazerMatch } from "@/components/desfazer-match";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { Avatar, Selo } from "@/components/ui/basicos";
@@ -57,8 +58,11 @@ export function FichaCandidato({
   comIA = false,
   conectar = null,
   direto = false,
+  empresas,
 }: {
   c: ItemCaixa;
+  /** as empresas do currículo com conta no Publike (o logo e o link) */
+  empresas?: EmpresasDosTrabalhos;
   /** a vaga tem contato direto: o match saiu na hora, sem aceite (a mensagem leva o link da vaga) */
   direto?: boolean;
   /** o botão Conectar com a pessoa (conexão sem vaga, que fica depois da vaga acabar) */
@@ -197,7 +201,7 @@ export function FichaCandidato({
 
       <Secao titulo="Currículo">
         {c.curriculo ? (
-          <CurriculoResumo curriculo={c.curriculo} linkPdf={c.curriculo.link_pdf} hoje={hoje} />
+          <CurriculoResumo curriculo={c.curriculo} linkPdf={c.curriculo.link_pdf} hoje={hoje} empresas={empresas} />
         ) : c.curriculoFalhou ? (
           <p className="text-body-sm text-ink-muted">
             Não deu para abrir o currículo agora. Tente de novo em instantes.

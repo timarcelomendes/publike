@@ -611,6 +611,13 @@ const esquemaExperiencia = z
       .trim()
       .max(80, { error: "Use no máximo 80 letras." })
       .refine((t) => !temContato(t), { error: SEM_CONTATO }),
+    // a unidade ou o bairro da empresa (opcional): separa as lojas de uma rede
+    unidade: z
+      .string()
+      .trim()
+      .max(60, { error: "Use no máximo 60 letras." })
+      .refine((t) => !temContato(t), { error: SEM_CONTATO })
+      .optional(),
     // as datas são opcionais: sem o mês, a experiência entra sem o período
     inicio: z.union([z.string().regex(MES, { error: "Confira o mês em que começou." }), z.literal("")]),
     atual: z.boolean(),
@@ -626,7 +633,7 @@ const esquemaExperiencia = z
       ctx.addIssue({ code: "custom", path: ["fim"], message: "A saída vem depois da entrada." });
     }
   })
-  .transform((d) => ({ ...d, fim: d.atual ? null : d.fim }));
+  .transform(({ unidade, ...d }) => ({ ...d, ...(unidade ? { unidade } : {}), fim: d.atual ? null : d.fim }));
 
 const mesmoEstudo = (a: { nivel: string; curso: string }, b: { nivel: string; curso: string }) =>
   a.nivel === b.nivel && a.curso.toLowerCase() === b.curso.toLowerCase();
@@ -731,6 +738,7 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
         return {
           cargo: textoDe(o.cargo),
           onde: textoDe(o.onde),
+          unidade: textoDe(o.unidade),
           inicio: textoDe(o.inicio),
           atual: o.atual === true,
           fim: textoDe(o.fim) || null,

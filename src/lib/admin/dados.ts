@@ -418,6 +418,77 @@ export async function tempoNasPaginas(c: ClienteBanco): Promise<TempoNasPaginas 
   return data as unknown as TempoNasPaginas;
 }
 
+/** Admin › Empresas (migração 20261209120000_empresas_catalogo.sql): os números do cadastro. */
+export type ResumoEmpresas = {
+  empresas: number;
+  com_conta: number;
+  nao_empresas: number;
+  /** com 30 pessoas ou mais: na parte B, só juntam com a mesma época ou a mesma unidade */
+  grandes: number;
+  curriculos: number;
+  trabalhos: number;
+  trabalhos_em_empresa: number;
+  /** os trabalhos numa empresa que está em 2 currículos ou mais */
+  trabalhos_juntos: number;
+  curriculos_com_empresa: number;
+  /** o número que decide a parte B: os currículos que teriam pelo menos um colega */
+  com_colega: number;
+};
+
+export type EmpresaDoAdmin = {
+  id: number;
+  nome: string;
+  chave: string;
+  tipo: "empresa" | "nao_empresa";
+  cnpj: string | null;
+  cidade: string | null;
+  pessoas: number;
+  perfil: { id: string; nome: string; foto_url: string | null } | null;
+  /** os outros nomes limpos que levam a ela */
+  nomes: string[];
+  /** sem conta ligada: as contas de empresa com o nome parecido */
+  contas_parecidas: { id: string; nome: string; cidade: string }[] | null;
+};
+
+export type EmpresasRepetidas = {
+  a: { id: number; nome: string; pessoas: number; com_conta: boolean };
+  b: { id: number; nome: string; pessoas: number; com_conta: boolean };
+  parecido: number;
+}[];
+
+export const FILTROS_EMPRESAS = ["todas", "sem_conta", "com_conta", "nao_empresa"] as const;
+export type FiltroEmpresas = (typeof FILTROS_EMPRESAS)[number];
+
+/** null: falta a migração 20261209120000. */
+export async function resumoDasEmpresas(c: ClienteBanco): Promise<ResumoEmpresas | null> {
+  const { data, error } = await c.rpc("admin_empresas_resumo");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha nos números das empresas: ${error.message}`);
+    return null;
+  }
+  return data as unknown as ResumoEmpresas;
+}
+
+export async function listarEmpresasDoAdmin(
+  c: ClienteBanco,
+  f: { busca?: string; filtro?: FiltroEmpresas; pagina?: number; limite?: number },
+): Promise<{ total: number; itens: EmpresaDoAdmin[] }> {
+  const { data, error } = await c.rpc("admin_empresas", {
+    p_busca: f.busca?.trim() || null,
+    p_filtro: f.filtro ?? "todas",
+    p_limite: f.limite ?? 50,
+    p_pagina: f.pagina ?? 1,
+  });
+  if (error) falha("as empresas", error);
+  return data as unknown as { total: number; itens: EmpresaDoAdmin[] };
+}
+
+export async function empresasRepetidas(c: ClienteBanco): Promise<EmpresasRepetidas> {
+  const { data, error } = await c.rpc("admin_empresas_repetidas", { p_limite: 20 });
+  if (error) falha("as empresas repetidas", error);
+  return (data ?? []) as unknown as EmpresasRepetidas;
+}
+
 /** null: a contagem ainda não existe neste banco (falta rodar a migração 20261019250000). */
 export async function acessosDoSite(c: ClienteBanco): Promise<AcessosSite | null> {
   const { data, error } = await c.rpc("admin_acessos_site");
