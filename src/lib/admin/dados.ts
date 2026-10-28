@@ -386,6 +386,38 @@ export async function metricasDeProduto(c: ClienteBanco): Promise<MetricasProdut
   return data as unknown as MetricasProduto;
 }
 
+/** As somas de um período do tempo nas páginas. */
+type SomaDoTempo = {
+  /** as vezes que uma página ficou na tela (a partir de 1 segundo) */
+  visitas: number;
+  segundos: number;
+  mais_de_10s: number;
+  mais_de_1min: number;
+};
+
+/** O tempo nas páginas (migração 20261208120000_tempo_na_pagina.sql): os últimos 7 dias, até hoje. */
+export type TempoNasPaginas = {
+  /** o primeiro dia contado; null: ainda nada */
+  desde: string | null;
+  /** os últimos 7 dias, com as pessoas que abriram o site em cada dia (somadas) */
+  semana: SomaDoTempo & { pessoas: number };
+  /** os 7 dias antes */
+  antes: SomaDoTempo & { pessoas: number };
+  /** as 12 páginas com mais tempo nos últimos 7 dias */
+  paginas: (SomaDoTempo & { pagina: string })[];
+  paginas_total: number;
+};
+
+/** null: falta a migração 20261208120000 (ou deu erro: o Painel segue sem o tempo). */
+export async function tempoNasPaginas(c: ClienteBanco): Promise<TempoNasPaginas | null> {
+  const { data, error } = await c.rpc("admin_tempo_paginas");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha no tempo nas páginas: ${error.message}`);
+    return null;
+  }
+  return data as unknown as TempoNasPaginas;
+}
+
 /** null: a contagem ainda não existe neste banco (falta rodar a migração 20261019250000). */
 export async function acessosDoSite(c: ClienteBanco): Promise<AcessosSite | null> {
   const { data, error } = await c.rpc("admin_acessos_site");

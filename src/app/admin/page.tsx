@@ -23,6 +23,7 @@ import {
   presencaNoSite,
   registroDaEquipe,
   saudeDoSite,
+  tempoNasPaginas,
   ultimoResumo,
 } from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
@@ -65,6 +66,7 @@ async function Conteudo() {
     testeApp,
     presenca,
     metricas,
+    tempo,
   ] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
@@ -79,6 +81,7 @@ async function Conteudo() {
     TESTE_FECHADO ? numerosDoTesteApp(c) : Promise.resolve(null),
     presencaNoSite(c),
     metricasDeProduto(c),
+    tempoNasPaginas(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -154,7 +157,7 @@ async function Conteudo() {
 
       <NumerosDoPainel n={n} hoje={hoje} acessos={acessos} presenca={presenca} links />
 
-      {metricas && <MetricasDeProduto m={metricas} />}
+      {metricas && <MetricasDeProduto m={metricas} tempo={tempo} />}
 
       {testeApp && <NumerosDoTesteApp linhas={testeApp} />}
 

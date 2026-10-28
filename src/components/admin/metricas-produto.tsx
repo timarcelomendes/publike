@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { Secao } from "./ui";
-import type { MetricasProduto } from "@/lib/admin/dados";
+import type { MetricasProduto, TempoNasPaginas } from "@/lib/admin/dados";
 import { formatarNumero, plural } from "@/lib/formato";
+import { nomeDaPagina } from "@/lib/nomes-das-paginas";
 
 // As métricas de produto do Painel (Admin › Painel e /equipe; migração 20261207120000_metricas_de_produto.sql):
-// a estrela-guia, os ativos, o crescimento, a ativação, a retenção, o churn, os funis e a liquidez das vagas.
-// Só números. Os gráficos são SVG simples, como os outros do admin, e cada um tem a tabela ao lado (ou
-// escondida para o leitor de tela).
+// a estrela-guia, os ativos, o crescimento, a ativação, a retenção, o churn, os funis, a liquidez das vagas
+// e o tempo nas páginas (migração 20261208120000_tempo_na_pagina.sql). Só números. Os gráficos são SVG
+// simples, como os outros do admin, e cada um tem a tabela ao lado (ou escondida para o leitor de tela).
 
 const pct = (n: number, d: number) => (d > 0 ? `${Math.round((100 * n) / d)}%` : "—");
 
@@ -225,7 +226,130 @@ function TabelaDeRetencao({ linhas }: { linhas: MetricasProduto["retencao"] }) {
   );
 }
 
-export function MetricasDeProduto({ m }: { m: MetricasProduto }) {
+/** "48 s", "3 min 20 s", "12 min", "1 h 5 min". */
+function duracao(segundos: number | null) {
+  if (segundos == null || !Number.isFinite(segundos)) return "—";
+  const s = Math.round(segundos);
+  if (s < 60) return `${s} s`;
+  const min = Math.floor(s / 60);
+  if (min < 10) return s % 60 ? `${min} min ${s % 60} s` : `${min} min`;
+  if (min < 60) return `${min} min`;
+  return min % 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${Math.floor(min / 60)} h`;
+}
+
+/** Os dias entre duas datas "aaaa-mm-dd". */
+const diasEntre = (de: string, ate: string) => Math.round((Date.parse(ate) - Date.parse(de)) / 86_400_000);
+
+/** O tempo nas páginas nos últimos 7 dias: a média, o tempo por pessoa, as saídas rápidas e as páginas. */
+function TempoDasPaginas({ t, hoje }: { t: TempoNasPaginas; hoje: string }) {
+  const s = t.semana;
+  const media = s.visitas > 0 ? s.segundos / s.visitas : null;
+  const mediaAntes = t.antes.visitas > 0 ? t.antes.segundos / t.antes.visitas : null;
+  const mudou =
+    media != null && mediaAntes != null ? variacao(Math.round(media), Math.round(mediaAntes), "semana") : null;
+  // a comparação só vale com as duas semanas inteiras contadas
+  const comecou = t.desde && diasEntre(t.desde, hoje) < 13 ? `Contando desde ${diaMes(t.desde)}` : null;
+  const outras = t.paginas_total - t.paginas.length;
+  const tempoDasOutras = s.segundos - t.paginas.reduce((soma, p) => soma + p.segundos, 0);
+  const saiuLogo = (x: { visitas: number; mais_de_10s: number }) => Math.max(0, x.visitas - x.mais_de_10s);
+  // a barra da página com mais tempo vai até o fim; o número ao lado é a parte do tempo todo
+  const maior = Math.max(1, ...t.paginas.map((p) => p.segundos));
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-label">Tempo nas páginas</h3>
+      {s.visitas === 0 ? (
+        <p className="text-body-sm text-ink-muted">Nada contado nos últimos 7 dias.{comecou && ` ${comecou}.`}</p>
+      ) : (
+        <>
+          <dl className="grid grid-cols-2 gap-3 text-body-sm lg:grid-cols-4">
+            {[
+              ["Tempo por página (média)", duracao(media), comecou ?? mudou],
+              [
+                "Tempo no site por pessoa",
+                duracao(s.pessoas > 0 ? s.segundos / s.pessoas : null),
+                "em cada dia, na média",
+              ],
+              ["Saíram em menos de 10 s", pct(saiuLogo(s), s.visitas), null],
+              ["Ficaram mais de 1 minuto", pct(s.mais_de_1min, s.visitas), null],
+            ].map(([rotulo, valor, detalhe]) => (
+              <div key={rotulo} className="flex flex-col">
+                <dt className="text-ink-muted">{rotulo}</dt>
+                <dd className="font-display text-h3">{valor}</dd>
+                {detalhe && <dd className="text-ink-muted">{detalhe}</dd>}
+              </div>
+            ))}
+          </dl>
+          <div className="-mx-1 max-w-3xl overflow-x-auto px-1">
+            <table className="w-full text-body-sm">
+              <caption className="pb-1 text-left text-ink-muted">
+                {`Onde as pessoas passam o tempo nos últimos 7 dias (${plural(s.visitas, "página vista", "páginas vistas")}).`}
+              </caption>
+              <thead>
+                <tr className="text-ink-muted">
+                  <th scope="col" className="py-1 pr-3 text-left font-normal">
+                    Página
+                  </th>
+                  <th scope="col" className="py-1 pl-3 text-right font-normal">
+                    Vistas
+                  </th>
+                  <th scope="col" className="py-1 pl-3 text-right font-normal">
+                    Média
+                  </th>
+                  <th scope="col" className="py-1 pl-3 text-right font-normal">
+                    Menos de 10&nbsp;s
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {t.paginas.map((p) => (
+                  <tr key={p.pagina} className="border-t border-line align-top">
+                    <th scope="row" className="py-2 pr-3 text-left font-normal">
+                      <span title={p.pagina}>{nomeDaPagina(p.pagina)}</span>
+                      <span className="mt-1 flex items-center gap-2">
+                        {/* no celular a coluna é estreita: fica só o número */}
+                        <span aria-hidden className="hidden w-full max-w-40 min-w-0 sm:flex">
+                          <span
+                            className="block h-1.5 rounded-pill bg-ink"
+                            style={{ width: `${Math.max(3, (100 * p.segundos) / maior)}%` }}
+                          />
+                        </span>
+                        <span className="text-caption font-normal whitespace-nowrap text-ink-muted tabular-nums">
+                          {pct(p.segundos, s.segundos)} do tempo
+                        </span>
+                      </span>
+                    </th>
+                    <td className="py-2 pl-3 text-right whitespace-nowrap tabular-nums">{formatarNumero(p.visitas)}</td>
+                    <td className="py-2 pl-3 text-right whitespace-nowrap tabular-nums">
+                      {duracao(p.visitas > 0 ? p.segundos / p.visitas : null)}
+                    </td>
+                    <td className="py-2 pl-3 text-right whitespace-nowrap tabular-nums">
+                      {pct(saiuLogo(p), p.visitas)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {outras > 0 && (
+                <tfoot>
+                  <tr className="border-t border-line text-ink-muted">
+                    <th scope="row" className="py-2 pr-3 text-left font-normal">
+                      Mais {plural(outras, "página", "páginas")}
+                    </th>
+                    <td colSpan={3} className="py-2 pl-3 text-right tabular-nums">
+                      {pct(tempoDasOutras, s.segundos)} do tempo
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: TempoNasPaginas | null }) {
   const s = m.semanas;
   const estaSemana = s.at(-1);
   const semanaAntes = s.at(-2);
@@ -374,6 +498,8 @@ export function MetricasDeProduto({ m }: { m: MetricasProduto }) {
         </p>
       </div>
 
+      {tempo && <TempoDasPaginas t={tempo} hoje={m.hoje} />}
+
       <details className="rounded-md bg-surface-300 p-4 text-body-sm">
         <summary className="cursor-pointer text-label">O que é cada número</summary>
         <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-5">
@@ -411,9 +537,17 @@ export function MetricasDeProduto({ m }: { m: MetricasProduto }) {
             <strong>De 8 a 37 dias</strong>: as contas, as vagas e as curtidas que já tiveram os 7 dias para acontecer
             (a ativação, o primeiro candidato, a resposta).
           </li>
+          {tempo && (
+            <li>
+              <strong>Tempo nas páginas</strong>: só o tempo com a página na tela e alguém mexendo nela (2 minutos sem
+              tocar, rolar, digitar nem mover o mouse param a conta), até 30 minutos por vez. A média divide o tempo
+              pelas vezes que as páginas foram vistas; o tempo por pessoa divide o tempo de cada dia pelas pessoas que
+              abriram o site no dia. Sem saber quem: o banco guarda só a soma por dia e por página.
+            </li>
+          )}
           <li>
-            Ficam de fora porque o site não guarda: tempo no site e sessões, NPS (a nota de satisfação, que ainda não
-            perguntamos), receita, CAC e LTV (sem cobrança ainda).
+            Ficam de fora porque o site não guarda: {tempo ? "sessões" : "tempo no site e sessões"}, NPS (a nota de
+            satisfação, que ainda não perguntamos), receita, CAC e LTV (sem cobrança ainda).
           </li>
         </ul>
       </details>

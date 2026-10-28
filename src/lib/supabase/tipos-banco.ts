@@ -1206,6 +1206,7 @@ export type Database = {
       };
       admin_presenca: { Args: Record<string, never>; Returns: Json };
       admin_metricas_produto: { Args: Record<string, never>; Returns: Json };
+      admin_tempo_paginas: { Args: Record<string, never>; Returns: Json };
       admin_contar_comunicado: { Args: { p_publico: string; p_link?: string | null }; Returns: number };
       admin_enviar_comunicado: {
         Args: { p_publico: string; p_texto: string; p_link?: string | null };
@@ -1379,6 +1380,7 @@ export type Database = {
       contar_banner: { Args: { p_banner: string; p_evento: string }; Returns: undefined };
       servidor_avisar_noticias: { Args: { p_chave: string }; Returns: number };
       contar_teste_app: { Args: { p_evento: string; p_origem: string }; Returns: undefined };
+      contar_tempo: { Args: { p_pagina: string; p_de: number; p_ate: number }; Returns: undefined };
       marcar_online: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
       marcar_aparelho: { Args: { p_navegador: string; p_app?: boolean }; Returns: undefined };
       marcar_banner_visto: { Args: { p_banner: string; p_clicou?: boolean }; Returns: undefined };

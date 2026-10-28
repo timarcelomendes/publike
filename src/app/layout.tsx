@@ -9,6 +9,7 @@ import { GoogleAds } from "@/components/google-ads";
 import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
+import { ContarTempo } from "@/components/contar-tempo";
 import { ConviteInstalar } from "@/components/instalar-app";
 import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/navegacao";
 import { RodapeDaPagina } from "@/components/rodape-da-pagina";
@@ -125,6 +126,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* os banners do admin (Admin › Banners), nas páginas que cada um escolheu; lê a conta e o endereço */}
         <Suspense fallback={null}>
           <BannerDaVisita />
+        </Suspense>
+        {/* o tempo de cada página na tela, sem saber quem (lib/tempo-na-pagina.ts); lê o endereço da página */}
+        <Suspense fallback={null}>
+          <ContarTempo />
         </Suspense>
       </body>
     </html>

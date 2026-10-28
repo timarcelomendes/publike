@@ -11,7 +11,7 @@ import {
 } from "@/components/admin/numeros-do-painel";
 import { MetricasDeProduto } from "@/components/admin/metricas-produto";
 import { Container, Selo } from "@/components/ui/basicos";
-import type { AcessosSite, MetricasProduto, NumerosPainel, PresencaSite } from "@/lib/admin/dados";
+import type { AcessosSite, MetricasProduto, NumerosPainel, PresencaSite, TempoNasPaginas } from "@/lib/admin/dados";
 import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -33,6 +33,8 @@ type PainelNoSite = {
   presenca?: PresencaSite | null;
   /** sem a migração 20261207120000: não vem */
   metricas?: MetricasProduto | null;
+  /** sem a migração 20261208120000: não vem */
+  tempo?: TempoNasPaginas | null;
   encerramentos: Encerramento[];
   matches_hoje: number;
 };
@@ -69,7 +71,7 @@ async function Conteudo() {
         Os mesmos números do Painel do admin, sem nomes e sem botões. Atualizam cada vez que você abre a página.
       </p>
       <NumerosDoPainel n={p.resumo} hoje={hoje} acessos={p.acessos} presenca={p.presenca ?? null} links={false} />
-      {p.metricas && <MetricasDeProduto m={p.metricas} />}
+      {p.metricas && <MetricasDeProduto m={p.metricas} tempo={p.tempo ?? null} />}
       <NumerosDoPainelEmbaixo n={p.resumo} encerramentos={p.encerramentos} />
     </div>
   );

@@ -31,6 +31,7 @@ export default function Privacidade() {
             "CEP de casa (opcional, em “Onde você mora?”): guardamos o CEP e um ponto arredondado, de uns 300 metros, só para medir a distância e o tempo de ônibus até as vagas. Ninguém mais vê. Sem conta, fica só no seu navegador. “Esquecer onde moro” apaga.",
             "Quando você usa “Perto de mim”, a localização serve só para a busca e não fica salva no seu perfil.",
             "Quantas vezes cada anúncio foi aberto, para a ordem “Mais relevantes”: uma vez por pessoa por dia, sem guardar quem. O endereço de internet e o navegador viram um código que muda todo dia, e nem o Publike consegue saber de quem era. Fica 30 dias.",
+            "Quanto tempo as páginas do site ficam na tela, para melhorar o que as pessoas mais usam: só a soma do dia por tipo de página (por exemplo, “página de vaga”), sem guardar quem, o endereço da página, o endereço de internet nem o aparelho. Nada fica guardado no seu navegador para isso.",
           ]}
         />
       </Secao>
