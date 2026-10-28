@@ -647,12 +647,17 @@ export function requisitosDaVaga(a: CamposDaVaga) {
  * O % de match de quem procura com a vaga: a mesma conta que a empresa vê, sem as
  * perguntas (a resposta que a empresa procura é só dela, e antes de curtir não há
  * resposta). Só quando dá para conferir onde a pessoa mora e mais alguma coisa que a vaga
- * pede: com a distância só (e os "+"), o número diria pouco.
+ * pede: com a distância só (e os "+"), o número diria pouco. E, se a vaga diz a função, só quando
+ * deu para conferir a função: o currículo sem trabalho nem título não diz se a pessoa é da área
+ * (sem isso, o horário e a cidade davam 85% de cozinheiro para quem é de TI). Sem o %, a linha do
+ * tempo usa a área do que a pessoa faz e procura.
  */
 export function matchComAVaga(vaga: CamposDaVaga, pessoa: Omit<Candidato, "respostas">, agora: number) {
   const a = calcularAderencia({ ...requisitosDaVaga(vaga), perguntas: [] }, { ...pessoa, respostas: {} }, agora);
   const daVaga = a.criterios.filter((k) => !k.extra && k.ok !== null).length;
-  return a.nota !== null && daVaga >= 2 ? a : null;
+  const semFuncao =
+    palavrasDaFuncao(vaga.titulo ?? "").length > 0 && !a.criterios.some((k) => k.funcao && k.ok !== null);
+  return a.nota !== null && daVaga >= 2 && !semFuncao ? a : null;
 }
 
 /** O turno no texto da vaga, para as vagas sem horário montado (as mais antigas). */
