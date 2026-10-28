@@ -303,6 +303,89 @@ export async function presencaNoSite(c: ClienteBanco): Promise<PresencaSite | nu
   return data as unknown as PresencaSite;
 }
 
+/** As métricas de produto do Painel (migração 20261207120000_metricas_de_produto.sql). Os dias são de Goiânia. */
+export type MetricasProduto = {
+  hoje: string;
+  /** desde quando "entrou no site" conta como uso (antes, só as ações); null: ainda não há registro */
+  desde: string | null;
+  ativos: {
+    dau_hoje: number;
+    /** a média dos 7 dias inteiros antes de hoje */
+    dau_media: number | null;
+    wau: number;
+    mau: number;
+    /** os 30 dias antes destes */
+    mau_antes: number;
+    mau_pessoas: number;
+    mau_empresas: number;
+    dias_por_conta: number | null;
+  };
+  /** 8 blocos de 7 dias, do mais antigo à semana que termina hoje */
+  semanas: {
+    inicio: string;
+    fim: string;
+    contas: number;
+    matches: number;
+    ativos: number;
+    curtidas: number;
+    vagas: number;
+  }[];
+  /** as contas criadas de 8 a 37 dias atrás */
+  ativacao: {
+    contas: number;
+    com_perfil: number;
+    ativadas: number;
+    pessoas: number;
+    pessoas_ativadas: number;
+    empresas: number;
+    empresas_ativadas: number;
+    mediana_horas: number | null;
+  };
+  /** por semana de cadastro: quantas usaram na 1ª a 4ª semana depois (null: a semana ainda não terminou) */
+  retencao: { inicio: string; fim: string; tamanho: number; semanas: (number | null)[] }[];
+  voltaram: Record<"1" | "7" | "30", { base: number; voltaram: number }>;
+  churn: { base: number; sairam: number };
+  /** as contas criadas nos últimos 30 dias */
+  funil: {
+    contas: number;
+    com_perfil: number;
+    pessoas: number;
+    curriculo: number;
+    curtiu: number;
+    match: number;
+    empresas: number;
+    vaga: number;
+    candidato: number;
+    aceitou: number;
+    visitas: number;
+  };
+  /** as vagas e as curtidas de 8 a 37 dias atrás */
+  liquidez: {
+    vagas: number;
+    com_candidato_7d: number;
+    mediana_horas_primeiro: number | null;
+    candidatos_media: number | null;
+    curtidas: number;
+    respondidas_7d: number;
+    mediana_horas_resposta: number | null;
+    matches: number;
+    preenchidas_publike: number;
+    encerradas_com_motivo: number;
+    vagas_no_ar: number;
+  };
+  engajamento: { acoes_7d: number; mensagens_7d: number };
+};
+
+/** null: falta a migração 20261207120000 (ou deu erro: o Painel segue sem as métricas). */
+export async function metricasDeProduto(c: ClienteBanco): Promise<MetricasProduto | null> {
+  const { data, error } = await c.rpc("admin_metricas_produto");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha nas métricas de produto: ${error.message}`);
+    return null;
+  }
+  return data as unknown as MetricasProduto;
+}
+
 /** null: a contagem ainda não existe neste banco (falta rodar a migração 20261019250000). */
 export async function acessosDoSite(c: ClienteBanco): Promise<AcessosSite | null> {
   const { data, error } = await c.rpc("admin_acessos_site");

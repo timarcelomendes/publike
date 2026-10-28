@@ -1205,6 +1205,7 @@ export type Database = {
         Returns: { navegador: string; app: boolean; quando: string }[];
       };
       admin_presenca: { Args: Record<string, never>; Returns: Json };
+      admin_metricas_produto: { Args: Record<string, never>; Returns: Json };
       admin_contar_comunicado: { Args: { p_publico: string; p_link?: string | null }; Returns: number };
       admin_enviar_comunicado: {
         Args: { p_publico: string; p_texto: string; p_link?: string | null };

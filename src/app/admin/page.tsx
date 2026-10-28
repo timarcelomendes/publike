@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { MetricasDeProduto } from "@/components/admin/metricas-produto";
 import { NumerosDoPainel, NumerosDoPainelEmbaixo } from "@/components/admin/numeros-do-painel";
 import { NumerosDoTesteApp } from "@/components/admin/numeros-teste-app";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
@@ -13,6 +14,7 @@ import {
   acessosDoSite,
   configDoSite,
   listarChavesServidor,
+  metricasDeProduto,
   motivosDeEncerramento,
   respostasNovasDaEquipe,
   numerosDeHoje,
@@ -49,21 +51,35 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos, respostas, testeApp, presenca] =
-    await Promise.all([
-      numerosDoPainel(c),
-      acessosDoSite(c),
-      configDoSite(c),
-      ultimoResumo(c),
-      registroDaEquipe(c, 10),
-      listarChavesServidor(c),
-      agoraDaRequisicao(),
-      saudeDoSite(c),
-      motivosDeEncerramento(c),
-      respostasNovasDaEquipe(c),
-      TESTE_FECHADO ? numerosDoTesteApp(c) : Promise.resolve(null),
-      presencaNoSite(c),
-    ]);
+  const [
+    n,
+    acessos,
+    config,
+    resumo,
+    registro,
+    chaves,
+    agora,
+    saude,
+    encerramentos,
+    respostas,
+    testeApp,
+    presenca,
+    metricas,
+  ] = await Promise.all([
+    numerosDoPainel(c),
+    acessosDoSite(c),
+    configDoSite(c),
+    ultimoResumo(c),
+    registroDaEquipe(c, 10),
+    listarChavesServidor(c),
+    agoraDaRequisicao(),
+    saudeDoSite(c),
+    motivosDeEncerramento(c),
+    respostasNovasDaEquipe(c),
+    TESTE_FECHADO ? numerosDoTesteApp(c) : Promise.resolve(null),
+    presencaNoSite(c),
+    metricasDeProduto(c),
+  ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
   const temChave = chaves.length > 0;
@@ -137,6 +153,8 @@ async function Conteudo() {
       )}
 
       <NumerosDoPainel n={n} hoje={hoje} acessos={acessos} presenca={presenca} links />
+
+      {metricas && <MetricasDeProduto m={metricas} />}
 
       {testeApp && <NumerosDoTesteApp linhas={testeApp} />}
 
