@@ -8,15 +8,16 @@ import { Selo } from "@/components/ui/basicos";
 import { configDoSite, decisoesDaIA, numerosDoPainel } from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { tempoRelativo } from "@/lib/formato";
-import { iaConfigurada, MODELOS_IA } from "@/lib/ia/openai";
+import { MODELOS_IA, modeloDaIA, temChave } from "@/lib/ia/openai";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "IA" };
 
-// Preço da OpenAI por milhão de tokens (entrada / saída), em dólar, em outubro de 2026.
-// GPT-6 Luna: US$ 0,10 / 0,50. GPT-6.1 Sol: US$ 2 / 10, e ele raciocina antes (gasta mais saída).
+// Preço por milhão de tokens (entrada / saída), em dólar, em outubro de 2026.
+// GPT-6 Luna e Claude Haiku 5.5: US$ 0,10 / 0,50. GPT-6.1 Sol e Claude Sonnet 5.5: US$ 2 / 10 (o Sol
+// raciocina antes e gasta mais saída). A busca na internet do Claude custa US$ 10 a cada mil buscas.
 const CUSTOS = [
   { tarefa: "Revisar um anúncio", luna: "US$ 0,15 a cada mil anúncios", sol: "cerca de US$ 6 a cada mil anúncios" },
   { tarefa: "Melhorar um texto", luna: "US$ 0,35 a cada mil pedidos", sol: "cerca de US$ 10 a cada mil pedidos" },
@@ -40,22 +41,38 @@ async function Conteudo() {
     agoraDaRequisicao(),
   ]);
   const filas = situacaoFilas();
-  const chave = iaConfigurada();
+  const chaves = { openai: temChave("openai"), claude: temChave("claude") };
+  const escolhido = modeloDaIA(config.ia_modelo);
 
   return (
     <div className="flex flex-col gap-6">
       <Secao
-        titulo="Chave da IA"
+        titulo="Chaves da IA"
         descricao={
           <>
-            A IA é da OpenAI. A chave fica só nas variáveis de ambiente do servidor (<code>OPENAI_API_KEY</code>),
-            nunca aqui. Crie a chave em platform.openai.com, em API keys, e ponha créditos na conta. O texto dos
-            anúncios não fica guardado na OpenAI.
+            A IA pode ser a da OpenAI ou o Claude, da Anthropic. As chaves ficam só nas variáveis de ambiente do
+            servidor, nunca aqui: <code>OPENAI_API_KEY</code> (crie em platform.openai.com, em API keys) e{" "}
+            <code>ANTHROPIC_API_KEY</code> (crie em platform.claude.com, em API keys). Ponha no <code>.env.local</code>{" "}
+            e na Vercel. Nenhuma das duas guarda o texto enviado nos modelos usados aqui.
           </>
         }
       >
         <div className="flex flex-col gap-2">
-          <Situacao ok={chave}>{chave ? "Chave configurada neste servidor." : "Falta OPENAI_API_KEY no .env.local."}</Situacao>
+          <Situacao ok={chaves.openai}>
+            {chaves.openai ? "Chave da OpenAI configurada neste servidor." : "Falta OPENAI_API_KEY neste servidor."}
+          </Situacao>
+          <Situacao ok={chaves.claude}>
+            {chaves.claude ? "Chave do Claude configurada neste servidor." : "Falta ANTHROPIC_API_KEY neste servidor."}
+          </Situacao>
+          <Situacao ok={chaves[escolhido.provedor]}>
+            {chaves[escolhido.provedor]
+              ? `O site usa o ${escolhido.nome}.`
+              : `O ${escolhido.nome} está escolhido, mas falta a chave dele${
+                  config.ia_reserva !== false && chaves[escolhido.provedor === "claude" ? "openai" : "claude"]
+                    ? ": a reserva cobre com a outra IA."
+                    : "."
+                }`}
+          </Situacao>
           <Situacao ok={Boolean(filas.acesso)}>
             {filas.acesso
               ? `A fila da IA roda com a ${filas.acesso}.`
@@ -73,10 +90,13 @@ async function Conteudo() {
       </Secao>
 
       <Secao titulo="Configurações">
-        <FormConfigIA config={config} modelos={MODELOS_IA} />
+        <FormConfigIA config={config} modelos={MODELOS_IA} chaves={chaves} />
       </Secao>
 
-      <Secao titulo="Quanto custa" descricao="Valores aproximados, cobrados pela OpenAI no cartão da conta de vocês.">
+      <Secao
+        titulo="Quanto custa"
+        descricao="Valores aproximados. O Claude Haiku 5.5 custa o mesmo que o Luna, e o Sonnet 5.5, o mesmo que o Sol: cada IA cobra na conta dela (no Claude, saem dos créditos)."
+      >
         <div className="-mx-5 overflow-x-auto sm:mx-0">
           <table className="w-full min-w-[32rem] text-left text-body-sm">
             <thead className="text-ink-muted">

@@ -15,7 +15,9 @@ export type ResultadoImportar = { ok: true; vagas: VagaImportada[] } | { ok: fal
 export async function importarVagas(formData: FormData): Promise<ResultadoImportar> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
-  if (!iaConfigurada()) return { ok: false, erro: "Falta a chave da IA (OPENAI_API_KEY) no .env.local." };
+  if (!iaConfigurada()) {
+    return { ok: false, erro: "Falta a chave da IA (OPENAI_API_KEY ou ANTHROPIC_API_KEY) no .env.local." };
+  }
 
   const arquivo = formData.get("imagem");
   const textoColado = typeof formData.get("texto") === "string" ? String(formData.get("texto")).trim() : "";

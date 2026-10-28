@@ -29,7 +29,7 @@ async function Conteudo() {
   ]);
   const filas = situacaoFilas();
   const falta = !filas.ia
-    ? "Falta a chave da IA (OPENAI_API_KEY) no .env.local."
+    ? "Falta a chave da IA (OPENAI_API_KEY ou ANTHROPIC_API_KEY) no .env.local."
     : !filas.acesso
       ? "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR) ou a chave secreta do Supabase no .env.local."
       : null;

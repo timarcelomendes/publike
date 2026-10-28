@@ -77,6 +77,16 @@ export function enderecoIA() {
   return (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").trim().replace(/\/+$/, "");
 }
 
+/** Chave da API do Claude (Anthropic). */
+export function chaveClaude() {
+  return (process.env.ANTHROPIC_API_KEY || "").trim();
+}
+
+/** Endereço da API do Claude. Só muda em teste; nunca vem do admin. */
+export function enderecoClaude() {
+  return (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").trim().replace(/\/+$/, "");
+}
+
 /**
  * Endereço do site nos links dos e-mails. Só um endereço público serve:
  * e-mail com link para localhost não abre no celular de ninguém.

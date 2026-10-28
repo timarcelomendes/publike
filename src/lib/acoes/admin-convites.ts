@@ -139,7 +139,9 @@ export async function lerConviteDaImagem(
   if (typeof imagem !== "string" || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(imagem))
     return { ok: false, erro: "Arquivo que não é imagem." };
   if (imagem.length > 2_000_000) return { ok: false, erro: "Imagem grande demais." };
-  if (!iaConfigurada()) return { ok: false, erro: "Falta a chave da IA (OPENAI_API_KEY) no .env.local." };
+  if (!iaConfigurada()) {
+    return { ok: false, erro: "Falta a chave da IA (OPENAI_API_KEY ou ANTHROPIC_API_KEY) no .env.local." };
+  }
   const { data: cfg } = await c.from("config_site").select("ia_modelo").limit(1).maybeSingle();
   let lida;
   try {

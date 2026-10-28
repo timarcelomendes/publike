@@ -11,7 +11,11 @@ import { Botao } from "../ui/botao";
 const INICIAL: EstadoForm = { ok: false };
 const salvarConfigIAProtegido = protegerAcao(salvarConfigIA);
 
-type Modelo = { id: string; nome: string; ajuda: string };
+type Modelo = { id: string; nome: string; ajuda: string; provedor: "openai" | "claude" };
+/** Quais IAs têm a chave neste servidor. */
+type Chaves = { openai: boolean; claude: boolean };
+
+const NOME_PROVEDOR = { openai: "OpenAI", claude: "Claude (Anthropic)" } as const;
 
 function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string; ajuda: string; inicial: boolean }) {
   return (
@@ -30,7 +34,15 @@ function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string;
   );
 }
 
-export function FormConfigIA({ config, modelos }: { config: ConfigSite; modelos: readonly Modelo[] }) {
+export function FormConfigIA({
+  config,
+  modelos,
+  chaves,
+}: {
+  config: ConfigSite;
+  modelos: readonly Modelo[];
+  chaves: Chaves;
+}) {
   const [estado, acao, enviando] = useActionState(salvarConfigIAProtegido, INICIAL);
   const atual = modelos.some((m) => m.id === config.ia_modelo) ? config.ia_modelo : modelos[0].id;
   return (
@@ -65,18 +77,49 @@ export function FormConfigIA({ config, modelos }: { config: ConfigSite; modelos:
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-label">Modelo</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {modelos.map((m) => (
-            <label
-              key={m.id}
-              className="flex cursor-pointer flex-col rounded-md border border-line-strong bg-surface-200 px-3 py-2.5 transition-colors has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
-            >
-              <input type="radio" name="ia_modelo" value={m.id} defaultChecked={m.id === atual} className="sr-only" />
-              <span className="text-label">{m.nome}</span>
-              <span className="text-body-sm text-ink-muted">{m.ajuda}</span>
-            </label>
-          ))}
-        </div>
+        <p className="text-body-sm text-ink-muted">Vale para tudo o que a IA faz no site.</p>
+        {(["openai", "claude"] as const).map((provedor) => (
+          <div key={provedor} className="flex flex-col gap-2">
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-body-sm font-medium">
+              {NOME_PROVEDOR[provedor]}
+              {!chaves[provedor] && <span className="font-normal text-ink-muted">· sem chave neste servidor</span>}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {modelos
+                .filter((m) => m.provedor === provedor)
+                .map((m) => (
+                  <label
+                    key={m.id}
+                    className="flex cursor-pointer flex-col rounded-md border border-line-strong bg-surface-200 px-3 py-2.5 transition-colors has-[:checked]:border-ink has-[:checked]:bg-surface-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+                  >
+                    <input
+                      type="radio"
+                      name="ia_modelo"
+                      value={m.id}
+                      defaultChecked={m.id === atual}
+                      className="sr-only"
+                    />
+                    <span className="text-label">{m.nome}</span>
+                    <span className="text-body-sm text-ink-muted">{m.ajuda}</span>
+                  </label>
+                ))}
+            </div>
+          </div>
+        ))}
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-1">
+        <legend className="mb-2 text-label">Reserva</legend>
+        <Opcao
+          nome="ia_reserva"
+          rotulo="Usar a outra IA quando a escolhida falhar"
+          ajuda={
+            chaves.openai && chaves.claude
+              ? "Se a escolhida ficar sem chave, sem créditos ou fora do ar, o pedido vai uma vez para o par dela na outra IA: Luna e Haiku, Sol e Sonnet."
+              : "Precisa das duas chaves no servidor. Com uma só, a reserva fica esperando."
+          }
+          inicial={config.ia_reserva ?? true}
+        />
       </fieldset>
 
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}

@@ -64,6 +64,28 @@ function abriuPagina(request: NextRequest) {
   return pagina && !ROBO.test(h.get("user-agent") ?? "");
 }
 
+// A troca de página dentro do site: o roteador do Next pede a página com o cabeçalho next-url (o proxy não
+// vê o "rsc"). O pré-carregamento dos links também passa: ele só acontece com a página aberta, então a
+// pessoa está on-line do mesmo jeito.
+function trocouDePagina(request: NextRequest) {
+  if (request.method !== "GET" || FORA_DA_CONTA.test(request.nextUrl.pathname)) return false;
+  const h = request.headers;
+  if (!h.has("next-url")) return false;
+  return !ROBO.test(h.get("user-agent") ?? "");
+}
+
+// quem está on-line: o cookie segura a marcação por 2 minutos (o admin conta os últimos 5)
+const COOKIE_ONLINE = "publike_online";
+function marcarCookieOnline(resposta: NextResponse) {
+  resposta.cookies.set(COOKIE_ONLINE, "1", {
+    maxAge: 120,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: COOKIES_DA_SESSAO.secure,
+    path: "/",
+  });
+}
+
 function ipDe(request: NextRequest) {
   const h = request.headers;
   return (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim();
@@ -100,12 +122,23 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
 
   const ip = ipDe(request);
   if (ip && abriuPagina(request)) {
-    // depois da resposta: a página não espera a conta
+    // depois da resposta: a página não espera a conta (contar_acesso também marca quem está on-line)
+    marcarCookieOnline(resposta);
     evento.waitUntil(
       Promise.resolve(
         supabase.rpc("contar_acesso", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),
       ).then(({ error }) => {
         if (error) console.warn(`Publike: não deu para contar o acesso: ${error.message}`);
+      }),
+    );
+  } else if (ip && trocouDePagina(request) && !request.cookies.has(COOKIE_ONLINE)) {
+    // a troca de página dentro do site: só "está on-line" (no máximo a cada 2 minutos por pessoa)
+    marcarCookieOnline(resposta);
+    evento.waitUntil(
+      Promise.resolve(
+        supabase.rpc("marcar_online", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),
+      ).then(({ error }) => {
+        if (error) console.warn(`Publike: não deu para marcar quem está on-line: ${error.message}`);
       }),
     );
   }

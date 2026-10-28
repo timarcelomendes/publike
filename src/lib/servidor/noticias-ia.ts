@@ -109,7 +109,9 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
   const acesso = acessoFila();
   if (!acesso)
     return { ok: false, erro: "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR) para gravar as notícias." };
-  if (!iaConfigurada()) return { ok: false, erro: "Falta a chave da IA no servidor (OPENAI_API_KEY)." };
+  if (!iaConfigurada()) {
+    return { ok: false, erro: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
+  }
   const { cliente, chave } = acesso;
 
   const { data: ctx, error: erroCtx } = await cliente.rpc("servidor_noticias_contexto", { p_chave: chave });

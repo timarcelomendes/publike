@@ -94,7 +94,8 @@ export default function Privacidade() {
         <p>
           Usamos serviços de terceiros só para isso: a Vercel (onde o site fica hospedado), o Supabase (banco de dados,
           login e fotos), o OpenFreeMap, com dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a
-          OpenAI (a IA que revisa o texto dos anúncios, ajuda a escrever e lê o currículo que você enviar), a Cloudflare
+          OpenAI e a Anthropic (as IAs que revisam o texto dos anúncios, ajudam a escrever e leem o currículo que você
+          enviar; o site usa uma delas de cada vez), a Cloudflare
           (a verificação contra robôs na hora de entrar), a BrasilAPI (que traz os dados públicos do CNPJ na Receita
           para preencher o perfil; só enviamos o número do CNPJ), o Google Ads (só se você aceitar os cookies de
           propaganda; veja Cookies) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
@@ -136,8 +137,8 @@ export default function Privacidade() {
       <Secao id="fora-do-brasil" titulo="Dados fora do Brasil">
         <p>
           Alguns dos serviços acima guardam ou processam dados em servidores fora do Brasil, como nos Estados Unidos
-          (por exemplo, a Vercel, a OpenAI e a Cloudflare). Mandamos para cada um só o necessário para a parte dele no
-          trabalho, e eles seguem regras de segurança e privacidade próprias.
+          (por exemplo, a Vercel, a OpenAI, a Anthropic e a Cloudflare). Mandamos para cada um só o necessário para a
+          parte dele no trabalho, e eles seguem regras de segurança e privacidade próprias.
         </p>
       </Secao>
 

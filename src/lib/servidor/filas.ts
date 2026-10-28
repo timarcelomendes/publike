@@ -188,7 +188,9 @@ export async function revisarAnunciosPendentes(limite = 5): Promise<ResultadoIA>
   const resultado: ResultadoIA = { revisados: 0, retidos: 0, erros: 0 };
   const acesso = acessoFila();
   if (!acesso) return { ...resultado, motivo: "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR)." };
-  if (!iaConfigurada()) return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY)." };
+  if (!iaConfigurada()) {
+    return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
+  }
   const { cliente, chave } = acesso;
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_revisoes_ia", { p_chave: chave, p_limite: limite });
@@ -237,7 +239,9 @@ export async function revisarAvaliacoesPendentes(limite = 5): Promise<ResultadoI
   const resultado: ResultadoIA = { revisados: 0, retidos: 0, erros: 0 };
   const acesso = acessoFila();
   if (!acesso) return { ...resultado, motivo: "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR)." };
-  if (!iaConfigurada()) return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY)." };
+  if (!iaConfigurada()) {
+    return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
+  }
   const { cliente, chave } = acesso;
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_avaliacoes_ia", {
@@ -288,7 +292,9 @@ export async function revisarRecadosPendentes(limite = 5): Promise<ResultadoIA> 
   const resultado: ResultadoIA = { revisados: 0, retidos: 0, erros: 0 };
   const acesso = acessoFila();
   if (!acesso) return { ...resultado, motivo: "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR)." };
-  if (!iaConfigurada()) return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY)." };
+  if (!iaConfigurada()) {
+    return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
+  }
   const { cliente, chave } = acesso;
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_recados_ia", { p_chave: chave, p_limite: limite });

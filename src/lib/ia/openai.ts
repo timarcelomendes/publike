@@ -1,17 +1,63 @@
 import "server-only";
-import { chaveIA, enderecoIA } from "@/lib/servidor/ambiente";
+import { chaveClaude, chaveIA, enderecoIA } from "@/lib/servidor/ambiente";
+import { criarClientePublico } from "@/lib/supabase/servidor";
+import { chamarClaude, ErroClaude } from "./claude";
 
-// Conversa com a API da OpenAI (Responses API). A chave fica só no servidor.
+// Conversa com a IA: a da OpenAI (Responses API) ou o Claude (./claude.ts), conforme o modelo escolhido no
+// admin. As chaves ficam só no servidor. Com a reserva ligada (Admin › IA), quando a escolhida não tem chave,
+// fica sem créditos ou sai do ar, o pedido vai uma vez para o par dela na outra IA (Luna ↔ Haiku, Sol ↔ Sonnet).
 
 /**
- * Modelos que o admin pode escolher. O Luna é o mais barato e dá conta do
- * recado. "esforco" é o quanto o modelo raciocina antes de responder: o Luna
- * responde direto; o Sol não aceita "none", e o mínimo dele é "low".
+ * Modelos que o admin pode escolher. O Luna e o Haiku são os mais baratos e dão conta do recado (mesmo preço).
+ * "esforco" é o quanto o modelo raciocina antes de responder: o Luna e o Haiku respondem direto; o Sol não
+ * aceita "none" (o mínimo é "low"), e o Sonnet só raciocina entre uma busca e outra.
  */
 export const MODELOS_IA = [
-  { id: "gpt-6-luna", nome: "GPT-6 Luna", ajuda: "Rápido e o mais barato. Recomendado.", esforco: "none" },
-  { id: "gpt-6.1-sol", nome: "GPT-6.1 Sol", ajuda: "Escreve melhor, custa de 20 a 40 vezes mais.", esforco: "low" },
+  {
+    id: "gpt-6-luna",
+    nome: "GPT-6 Luna",
+    ajuda: "Rápido e o mais barato. Recomendado.",
+    esforco: "none",
+    provedor: "openai",
+    par: "claude-haiku-5-5",
+  },
+  {
+    id: "gpt-6.1-sol",
+    nome: "GPT-6.1 Sol",
+    ajuda: "Escreve melhor, custa de 20 a 40 vezes mais.",
+    esforco: "low",
+    provedor: "openai",
+    par: "claude-sonnet-5-5",
+  },
+  {
+    id: "claude-haiku-5-5",
+    nome: "Claude Haiku 5.5",
+    ajuda: "Rápido, o mesmo preço do Luna. Gasta os créditos do Claude.",
+    esforco: "none",
+    provedor: "claude",
+    par: "gpt-6-luna",
+  },
+  {
+    id: "claude-sonnet-5-5",
+    nome: "Claude Sonnet 5.5",
+    ajuda: "Escreve melhor, o mesmo preço do Sol. Gasta os créditos do Claude.",
+    esforco: "low",
+    provedor: "claude",
+    par: "gpt-6.1-sol",
+  },
 ] as const;
+
+export type ProvedorIA = (typeof MODELOS_IA)[number]["provedor"];
+
+/** Tem a chave desta IA no servidor? */
+export function temChave(provedor: ProvedorIA) {
+  return Boolean(provedor === "claude" ? chaveClaude() : chaveIA());
+}
+
+const FALTA_CHAVE: Record<ProvedorIA, string> = {
+  openai: "Falta a chave da OpenAI no servidor (OPENAI_API_KEY).",
+  claude: "Falta a chave do Claude no servidor (ANTHROPIC_API_KEY).",
+};
 
 export type ModeloIA = (typeof MODELOS_IA)[number];
 
@@ -26,14 +72,32 @@ export class ErroIA extends Error {
   constructor(
     mensagem: string,
     readonly status?: number,
+    /** vale tentar com a outra IA (sem chave, sem créditos, fora do ar) */
+    readonly reserva = false,
   ) {
     super(mensagem);
     this.name = "ErroIA";
   }
 }
 
+/** Alguma IA tem chave neste servidor (a escolhida, ou a outra pela reserva). */
 export function iaConfigurada() {
-  return Boolean(chaveIA());
+  return Boolean(chaveIA() || chaveClaude());
+}
+
+// a reserva (Admin › IA) vem do banco: lida no máximo a cada minuto por servidor
+let reservaLida: { valor: boolean; em: number } | null = null;
+async function usarReserva() {
+  if (reservaLida && Date.now() - reservaLida.em < 60_000) return reservaLida.valor;
+  let valor = true;
+  try {
+    const { data, error } = await criarClientePublico().rpc("ia_reserva");
+    if (!error && typeof data === "boolean") valor = data;
+  } catch {
+    // sem banco (demonstração): a reserva fica ligada
+  }
+  reservaLida = { valor, em: Date.now() };
+  return valor;
 }
 
 type Pedido = {
@@ -85,12 +149,41 @@ function explicarErro(status: number, corpo: string) {
   return `A IA não respondeu (código ${status}).`;
 }
 
-export async function chamarIA(
-  p: Pedido,
-): Promise<{ texto: string; parada: ParadaIA; modelo: string; fontes: string[] }> {
+type RespostaIA = { texto: string; parada: ParadaIA; modelo: string; fontes: string[] };
+
+/** Manda o pedido para a IA do modelo escolhido; com a reserva ligada, o par na outra IA cobre a falha. */
+export async function chamarIA(p: Pedido): Promise<RespostaIA> {
+  const escolhido = modeloDaIA(p.modelo);
+  const par = MODELOS_IA.find((m) => m.id === escolhido.par);
+  const comReserva = async () => Boolean(par && temChave(par.provedor) && (await usarReserva()));
+  if (!temChave(escolhido.provedor)) {
+    if (par && (await comReserva())) return chamarCom(par, p);
+    throw new ErroIA(FALTA_CHAVE[escolhido.provedor]);
+  }
+  try {
+    return await chamarCom(escolhido, p);
+  } catch (e) {
+    if (e instanceof ErroIA && e.reserva && par && (await comReserva())) {
+      console.warn(`Publike: ${escolhido.nome} falhou (${e.message}); usando ${par.nome}.`);
+      return chamarCom(par, p);
+    }
+    throw e;
+  }
+}
+
+async function chamarCom(modelo: ModeloIA, p: Pedido): Promise<RespostaIA> {
+  if (modelo.provedor === "openai") return chamarOpenAI(modelo, p);
+  try {
+    return await chamarClaude({ ...p, modelo: modelo.id, raciocinio: modelo.esforco === "none" ? "sem" : "pouco" });
+  } catch (e) {
+    if (e instanceof ErroClaude) throw new ErroIA(e.message, e.status, e.reserva);
+    throw e;
+  }
+}
+
+async function chamarOpenAI(modelo: ModeloIA, p: Pedido): Promise<RespostaIA> {
   const chave = chaveIA();
-  if (!chave) throw new ErroIA("Falta a chave da IA no servidor (OPENAI_API_KEY).");
-  const modelo = modeloDaIA(p.modelo);
+  if (!chave) throw new ErroIA(FALTA_CHAVE.openai, undefined, true);
   // a busca na internet não funciona sem raciocínio: no mínimo "low"
   const esforco = p.buscaNaWeb && modelo.esforco === "none" ? "low" : modelo.esforco;
   // Com raciocínio ligado, o "pensar" também conta como saída: sobra espaço para a resposta.
@@ -155,12 +248,18 @@ export async function chamarIA(
     });
   } catch (e) {
     const tempo = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
-    throw new ErroIA(tempo ? "A IA demorou demais para responder." : "Não foi possível falar com a IA agora.");
+    throw new ErroIA(
+      tempo ? "A IA demorou demais para responder." : "Não foi possível falar com a IA agora.",
+      undefined,
+      true,
+    );
   }
 
   if (!resposta.ok) {
     const corpo = await resposta.text().catch(() => "");
-    throw new ErroIA(explicarErro(resposta.status, corpo), resposta.status);
+    // chave recusada, sem créditos, pedidos demais ou fora do ar: a outra IA pode cobrir
+    const reserva = [401, 403, 404, 429].includes(resposta.status) || resposta.status >= 500;
+    throw new ErroIA(explicarErro(resposta.status, corpo), resposta.status, reserva);
   }
 
   const json = (await resposta.json()) as RespostaOpenAI;

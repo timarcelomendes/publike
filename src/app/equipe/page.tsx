@@ -10,7 +10,7 @@ import {
   type Encerramento,
 } from "@/components/admin/numeros-do-painel";
 import { Container, Selo } from "@/components/ui/basicos";
-import type { AcessosSite, NumerosPainel } from "@/lib/admin/dados";
+import type { AcessosSite, NumerosPainel, PresencaSite } from "@/lib/admin/dados";
 import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -28,6 +28,8 @@ export const metadata: Metadata = {
 type PainelNoSite = {
   resumo: NumerosPainel;
   acessos: AcessosSite | null;
+  /** sem a migração 20261130120000: não vem */
+  presenca?: PresencaSite | null;
   encerramentos: Encerramento[];
   matches_hoje: number;
 };
@@ -63,7 +65,7 @@ async function Conteudo() {
       <p className="-mt-3 text-body-sm text-ink-muted">
         Os mesmos números do Painel do admin, sem nomes e sem botões. Atualizam cada vez que você abre a página.
       </p>
-      <NumerosDoPainel n={p.resumo} hoje={hoje} acessos={p.acessos} links={false} />
+      <NumerosDoPainel n={p.resumo} hoje={hoje} acessos={p.acessos} presenca={p.presenca ?? null} links={false} />
       <NumerosDoPainelEmbaixo n={p.resumo} encerramentos={p.encerramentos} />
     </div>
   );

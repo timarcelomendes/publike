@@ -284,6 +284,25 @@ export type AcessosSite = {
   por_dia: { dia: string; visitantes: number; com_conta?: number }[];
 };
 
+/** On-line agora e as contas que voltaram (migração 20261130120000). */
+export type PresencaSite = {
+  online: number;
+  online_com_conta: number;
+  contas_hoje: number;
+  voltaram_hoje: number;
+  contas_7d: number;
+  voltaram_7d: number;
+  /** o primeiro dia contado das contas (null: nada ainda) */
+  desde: string | null;
+};
+
+/** null: banco sem a migração 20261130120000. */
+export async function presencaNoSite(c: ClienteBanco): Promise<PresencaSite | null> {
+  const { data, error } = await c.rpc("admin_presenca");
+  if (error) return null;
+  return data as unknown as PresencaSite;
+}
+
 /** null: a contagem ainda não existe neste banco (falta rodar a migração 20261019250000). */
 export async function acessosDoSite(c: ClienteBanco): Promise<AcessosSite | null> {
   const { data, error } = await c.rpc("admin_acessos_site");

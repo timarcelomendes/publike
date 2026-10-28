@@ -1,8 +1,9 @@
 import { Flag, Heart, Mail, Megaphone, MessageCircleHeart, ShieldAlert, UserRound, UserX } from "lucide-react";
 import { AcessosDoSite } from "./acessos";
 import { GraficoDias, Ranking } from "./grafico";
+import { PresencaDoSite } from "./presenca";
 import { Numero, Secao } from "./ui";
-import type { AcessosSite, NumerosPainel } from "@/lib/admin/dados";
+import type { AcessosSite, NumerosPainel, PresencaSite } from "@/lib/admin/dados";
 import { categoria } from "@/lib/constantes";
 import { MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import { formatarNumero, plural } from "@/lib/formato";
@@ -25,11 +26,14 @@ export function NumerosDoPainel({
   n,
   hoje,
   acessos,
+  presenca = null,
   links,
 }: {
   n: NumerosPainel;
   hoje: NumerosDeHoje;
   acessos: AcessosSite | null;
+  /** on-line agora e as contas que voltaram (sem a migração 20261130120000: null, não aparece) */
+  presenca?: PresencaSite | null;
   links: boolean;
 }) {
   const ir = (href: string) => (links ? href : undefined);
@@ -104,6 +108,15 @@ export function NumerosDoPainel({
           alerta={n.emails.falhas_7d > 0}
         />
       </div>
+
+      {presenca && (
+        <Secao
+          titulo="On-line e quem voltou"
+          descricao="On-line é quem abriu ou trocou de página nos últimos 5 minutos. Voltar só se sabe de quem tem conta."
+        >
+          <PresencaDoSite presenca={presenca} />
+        </Secao>
+      )}
 
       <Secao
         titulo="Quem abriu o site"

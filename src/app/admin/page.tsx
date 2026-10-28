@@ -18,6 +18,7 @@ import {
   numerosDeHoje,
   numerosDoPainel,
   numerosDoTesteApp,
+  presencaNoSite,
   registroDaEquipe,
   saudeDoSite,
   ultimoResumo,
@@ -48,7 +49,7 @@ async function Conteudo() {
     notFound();
   }
   const c = criarClienteAdmin();
-  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos, respostas, testeApp] =
+  const [n, acessos, config, resumo, registro, chaves, agora, saude, encerramentos, respostas, testeApp, presenca] =
     await Promise.all([
       numerosDoPainel(c),
       acessosDoSite(c),
@@ -61,6 +62,7 @@ async function Conteudo() {
       motivosDeEncerramento(c),
       respostasNovasDaEquipe(c),
       TESTE_FECHADO ? numerosDoTesteApp(c) : Promise.resolve(null),
+      presencaNoSite(c),
     ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -114,7 +116,8 @@ async function Conteudo() {
             </Situacao>
             {config.ia_moderacao && (
               <Situacao ok={filas.ia}>
-                Chave da IA no servidor (OPENAI_API_KEY). <Link href="/admin/ia" className="underline">Ver IA</Link>
+                Chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY).{" "}
+                <Link href="/admin/ia" className="underline">Ver IA</Link>
               </Situacao>
             )}
           </div>
@@ -133,7 +136,7 @@ async function Conteudo() {
         </Aviso>
       )}
 
-      <NumerosDoPainel n={n} hoje={hoje} acessos={acessos} links />
+      <NumerosDoPainel n={n} hoje={hoje} acessos={acessos} presenca={presenca} links />
 
       {testeApp && <NumerosDoTesteApp linhas={testeApp} />}
 

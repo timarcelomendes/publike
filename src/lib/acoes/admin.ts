@@ -578,12 +578,16 @@ export async function salvarConfigIA(_anterior: EstadoForm, formData: FormData):
   if (!c) return { ok: false, erro: FORA };
   const modelo = texto(formData, "ia_modelo");
   if (!MODELOS_IA.some((m) => m.id === modelo)) return { ok: false, erro: "Escolha um dos modelos da lista." };
-  const { error } = await c.rpc("admin_salvar_config_ia", {
+  const base = {
     p_moderacao: marcado(formData, "ia_moderacao"),
     p_melhorar_texto: marcado(formData, "ia_melhorar_texto"),
     p_resumo: marcado(formData, "ia_resumo"),
     p_modelo: modelo,
-  });
+  };
+  let { error } = await c.rpc("admin_salvar_config_ia", { ...base, p_reserva: marcado(formData, "ia_reserva") });
+  // banco sem a migração da reserva (20261201120000): salva o resto
+  const semReserva = error?.code === "PGRST202";
+  if (semReserva) ({ error } = await c.rpc("admin_salvar_config_ia", base));
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   const { error: erroAssistente } = await c.rpc("admin_salvar_config_assistente", {
     p_ativo: marcado(formData, "chat_ativo"),
@@ -597,13 +601,21 @@ export async function salvarConfigIA(_anterior: EstadoForm, formData: FormData):
     };
   }
   if (erroAssistente) return { ok: false, erro: mensagemDeErro(erroAssistente) };
+  if (semReserva) {
+    return {
+      ok: false,
+      erro: "O resto foi salvo. Para ligar ou desligar a reserva, rode a migração 20261201120000_ia_reserva.sql no Supabase.",
+    };
+  }
   return { ok: true, mensagem: "Configurações da IA salvas. O botão do assistente muda em alguns minutos." };
 }
 
 export async function gerarResumoIA(): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
-  if (!iaConfigurada()) return { ok: false, erro: "Falta a chave da IA no servidor (OPENAI_API_KEY)." };
+  if (!iaConfigurada()) {
+    return { ok: false, erro: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
+  }
   const [{ data: dados, error }, { data: config }] = await Promise.all([
     c.rpc("admin_dados_para_resumo", { p_dias: 7 }),
     c.rpc("admin_config"),

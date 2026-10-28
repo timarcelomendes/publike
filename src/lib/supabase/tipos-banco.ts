@@ -725,6 +725,8 @@ export type Database = {
           ia_melhorar_texto: boolean;
           ia_resumo: boolean;
           ia_modelo: string;
+          /** com a escolhida sem chave, sem créditos ou fora do ar, usa o par na outra IA (migração 20261201120000) */
+          ia_reserva?: boolean;
           /** a IA procura notícias sobre trabalho (rascunhos para o admin aprovar) */
           ia_noticias?: boolean;
           noticias_ultima_busca?: string | null;
@@ -1170,6 +1172,7 @@ export type Database = {
         Args: { p_usuario: string };
         Returns: { navegador: string; app: boolean; quando: string }[];
       };
+      admin_presenca: { Args: Record<string, never>; Returns: Json };
       admin_contar_comunicado: { Args: { p_publico: string; p_link?: string | null }; Returns: number };
       admin_enviar_comunicado: {
         Args: { p_publico: string; p_texto: string; p_link?: string | null };
@@ -1342,6 +1345,7 @@ export type Database = {
       seguir_perfil: { Args: { p_perfil: string }; Returns: undefined };
       contar_banner: { Args: { p_banner: string; p_evento: string }; Returns: undefined };
       contar_teste_app: { Args: { p_evento: string; p_origem: string }; Returns: undefined };
+      marcar_online: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
       marcar_aparelho: { Args: { p_navegador: string; p_app?: boolean }; Returns: undefined };
       marcar_banner_visto: { Args: { p_banner: string; p_clicou?: boolean }; Returns: undefined };
       registrar_visita: { Args: { p_perfil: string; p_onde: string; p_anuncio?: string | null }; Returns: undefined };
@@ -2569,8 +2573,15 @@ export type Database = {
         };
         Returns: undefined;
       };
+      ia_reserva: { Args: Record<PropertyKey, never>; Returns: boolean };
       admin_salvar_config_ia: {
-        Args: { p_moderacao: boolean; p_melhorar_texto: boolean; p_resumo: boolean; p_modelo: string };
+        Args: {
+          p_moderacao: boolean;
+          p_melhorar_texto: boolean;
+          p_resumo: boolean;
+          p_modelo: string;
+          p_reserva?: boolean;
+        };
         Returns: undefined;
       };
       admin_modelos_email: {
