@@ -109,7 +109,8 @@ export default function Privacidade() {
           resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos fortes e o que
           conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. Se a empresa usa o
           Copiloto, a IA compara o currículo de quem está em Talentos ou curtiu a vaga com os critérios da vaga, sem nome,
-          foto ou contato; ela não recusa ninguém. No “Já tem currículo
+          foto ou contato; ela não recusa ninguém. Nos testes que uma vaga pede, quem publicou vê só o resultado e as
+          respostas do teste; eles são apagados 12 meses depois que a vaga sai do ar. No “Já tem currículo
           pronto?”, a IA recebe o PDF ou as fotos do currículo que você enviou, só para preencher os campos do seu
           currículo; no convite de quem publicou uma vaga, o currículo que você mandou para ela, só para isso também. No
           assistente de ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que

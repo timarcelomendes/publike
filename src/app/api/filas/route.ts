@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import {
   avisarNoticiasDoDia,
+  limparTestesAntigos,
   enviarEmailsPendentes,
   enviarPushPendentes,
   liberarContatosParados,
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  const [ia, avaliacoes, recados, parados, combinam, noticias] = await Promise.all([
+  const [ia, avaliacoes, recados, parados, combinam, noticias, testes] = await Promise.all([
     revisarAnunciosPendentes(20),
     revisarAvaliacoesPendentes(20),
     revisarRecadosPendentes(20),
@@ -38,6 +39,8 @@ export async function GET(request: Request) {
     mandarCombinamDaSemana(),
     // a partir das 18h: as notícias do dia num aviso só (sino e celular), uma vez por dia
     avisarNoticiasDoDia(),
+    // os resultados dos testes de vagas fora do ar há 12 meses
+    limparTestesAntigos(),
   ]);
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
@@ -51,6 +54,7 @@ export async function GET(request: Request) {
     parados.motivo,
     combinam.motivo,
     noticias.motivo,
+    testes.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {

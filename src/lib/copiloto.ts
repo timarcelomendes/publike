@@ -25,7 +25,7 @@ const PROIBIDOS: [RegExp, string][] = [
   ],
   [/\bsexo\b|g[eê]nero|\bhomens?\b|\bmulher(es)?\b|masculin|feminin/i, "Sexo e gênero não entram nos critérios."],
   [
-    /\bcasad[oa]s?\b|solteir|estado civil|\bfilhos?\b|gr[aá]vida|gravidez|gestante/i,
+    /(?<!venda )\bcasad[oa]s?\b|solteir|estado civil|\bfilhos?\b|gr[aá]vida|gravidez|gestante/i,
     "Estado civil, filhos e gravidez não entram nos critérios.",
   ],
   [/apar[eê]ncia|\bfotos?\b/i, "Aparência e foto não entram nos critérios."],

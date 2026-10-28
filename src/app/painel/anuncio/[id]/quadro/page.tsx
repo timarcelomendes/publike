@@ -1,4 +1,16 @@
-import { ArrowLeft, ChevronRight, Download, Eye, List, Pencil, Send, Sparkles, UserPlus, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  ClipboardCheck,
+  Download,
+  Eye,
+  List,
+  Pencil,
+  Send,
+  Sparkles,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -128,6 +140,10 @@ async function Conteudo({
               Chamar candidato de fora
             </BotaoLink>
           )}
+          <BotaoLink href={`/painel/anuncio/${id}/testes`} tamanho="sm">
+            <ClipboardCheck aria-hidden />
+            Testes
+          </BotaoLink>
           {copiloto && (
             <BotaoLink href={`/painel/anuncio/${id}/copiloto`} tamanho="sm">
               <Sparkles aria-hidden />

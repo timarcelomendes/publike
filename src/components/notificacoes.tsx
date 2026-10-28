@@ -55,6 +55,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   seguindo: BellRing,
   busca: SearchCheck,
   convite: Send,
+  teste_pedido: ClipboardCheck,
+  teste_feito: ClipboardCheck,
   recomendacao: ThumbsUp,
   contratacao: PartyPopper,
   aceite_curriculo: FileText,

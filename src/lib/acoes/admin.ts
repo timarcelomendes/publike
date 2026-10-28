@@ -201,6 +201,24 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
   };
 }
 
+/** Publica (ou volta para rascunho) um teste da Publike, depois de revisar (migração 20261204120000). */
+export async function publicarTeste(modeloId: string, publicar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(modeloId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_publicar_avaliacao", { p_modelo: modeloId, p_publicado: publicar });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20261204120000_avaliacoes.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: publicar ? "Publicado: as empresas já podem pôr este teste nas vagas." : "Voltou para rascunho.",
+  };
+}
+
 // ------------------------------------------------------------------ e-mails
 
 export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {

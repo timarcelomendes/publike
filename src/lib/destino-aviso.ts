@@ -18,6 +18,9 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "mensagem_equipe") return "/painel/mensagens-da-equipe";
   if (n.tipo === "comunicado") return n.link ?? "/";
   if (n.tipo === "noticias_do_dia") return "/noticias";
+  // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga
+  if (n.tipo === "teste_pedido") return "/testes";
+  if (n.tipo === "teste_feito" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/testes`;
   // as vagas e os talentos da semana: a lista pelo % de match e a aba Talentos
   if (n.tipo === "vagas_semana") return "/?tipo=vaga&ordem=combina";
   if (n.tipo === "talentos_semana") return "/talentos";

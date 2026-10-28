@@ -6,6 +6,7 @@ import {
   Bus,
   Footprints,
   CalendarClock,
+  ClipboardCheck,
   Clock,
   FileText,
   Flag,
@@ -99,6 +100,8 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
+import { meusTestesDaVaga, testesDaVaga } from "@/lib/servidor/testes";
+import { TestesParaMim } from "@/components/testes/testes-para-mim";
 
 export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -306,6 +309,14 @@ async function DetalheAnuncio({
     nomeExperiencia(anuncio.experiencia),
     anuncio.cnh ? `CNH ${anuncio.cnh}` : null,
   ].filter((r): r is string => Boolean(r));
+
+  // os testes Publike da vaga (migração 20261204120000): quem curtiu faz por aqui
+  const testes = vaga ? await testesDaVaga(anuncio.id) : [];
+  const meusTestes =
+    testes.length && paraQuemProcura && (anuncio.minha_curtida === "pendente" || anuncio.minha_curtida === "match")
+      ? await meusTestesDaVaga(anuncio.id)
+      : null;
+  const caixaDeTestes = meusTestes ? <TestesParaMim anuncioId={anuncio.id} testes={testes} meus={meusTestes} /> : null;
 
   const quadroAcao = (sufixo: string) =>
     proprio ? (
@@ -535,6 +546,15 @@ async function DetalheAnuncio({
                 {requisitos.join(" · ")}
               </Fato>
             )}
+            {testes.length > 0 && (
+              <Fato icone={ClipboardCheck} rotulo="Testes Publike">
+                {testes
+                  .map(
+                    (t) => `${t.titulo.replace(/^Teste prático Publike: /, "")}${t.obrigatoria ? "" : " (opcional)"}`,
+                  )
+                  .join(" · ")}
+              </Fato>
+            )}
             {perguntas.length > 0 && (
               <Fato icone={MessageCircleQuestion} rotulo="A empresa vai perguntar">
                 {perguntas.map((p) => p.nome).join(" · ")}
@@ -556,6 +576,7 @@ async function DetalheAnuncio({
           {/* No celular, curtir fica logo aqui; no computador, na coluna ao lado */}
           <div id="quadro-celular" className="mt-6 scroll-mt-24 lg:hidden">
             {quadroAcao("celular")}
+            {caixaDeTestes}
           </div>
           {!proprio && !(anuncio.preenchida_em && anuncio.minha_curtida !== "match") && (
             <BarraCurtirCelular
@@ -667,7 +688,10 @@ async function DetalheAnuncio({
         </article>
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-          <div className="hidden lg:block">{quadroAcao("lateral")}</div>
+          <div className="hidden lg:block">
+            {quadroAcao("lateral")}
+            {caixaDeTestes}
+          </div>
 
           <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4">
             <div className="flex items-center gap-3">

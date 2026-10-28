@@ -1165,6 +1165,24 @@ export type Database = {
       };
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      admin_avaliacoes_modelos: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          tipo: string;
+          area: string | null;
+          titulo: string;
+          publicado: boolean;
+          questoes: number;
+          vagas: number;
+          pedidas: number;
+          feitas: number;
+          media: number | null;
+        }[];
+      };
+      admin_avaliacao_modelo: { Args: { p_modelo: string }; Returns: Json };
+      admin_publicar_avaliacao: { Args: { p_modelo: string; p_publicado: boolean }; Returns: undefined };
+      admin_avaliacoes_uso: { Args: Record<string, never>; Returns: Json };
       admin_copiloto_contas: {
         Args: Record<string, never>;
         Returns: {
@@ -2313,6 +2331,80 @@ export type Database = {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
       };
+      /** os testes Publike (migração 20261204120000) */
+      avaliacoes_biblioteca: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          tipo: string;
+          area: string | null;
+          titulo: string;
+          descricao: string | null;
+          questoes: number;
+          da_casa: boolean;
+        }[];
+      };
+      avaliacao_modelo: { Args: { p_modelo: string }; Returns: Json };
+      avaliacao_salvar_da_casa: {
+        Args: { p_id: string | null; p_titulo: string; p_descricao: string | null; p_questoes: Json };
+        Returns: string;
+      };
+      avaliacao_apagar_da_casa: { Args: { p_id: string }; Returns: undefined };
+      avaliacoes_salvar_na_vaga: { Args: { p_anuncio: string; p_itens: Json }; Returns: undefined };
+      avaliacoes_da_vaga: {
+        Args: { p_anuncio: string };
+        Returns: {
+          modelo_id: string;
+          tipo: string;
+          titulo: string;
+          descricao: string | null;
+          questoes: number;
+          obrigatoria: boolean;
+          da_casa: boolean;
+        }[];
+      };
+      avaliacao_pedir: { Args: { p_anuncio: string; p_perfil: string; p_modelo: string }; Returns: string };
+      avaliacoes_resultados: {
+        Args: { p_anuncio: string };
+        Returns: {
+          id: string;
+          perfil_id: string;
+          modelo_id: string;
+          titulo: string;
+          tipo: string;
+          status: string;
+          vencida: boolean;
+          pontos: number | null;
+          maximo: number | null;
+          por_competencia: Json | null;
+          pedida_em: string;
+          feita_em: string | null;
+        }[];
+      };
+      avaliacao_respostas: { Args: { p_id: string }; Returns: Json };
+      avaliacao_da_vaga_para_mim: { Args: { p_anuncio: string; p_modelo: string }; Returns: string };
+      avaliacao_para_fazer: { Args: { p_id: string }; Returns: Json };
+      avaliacao_aceitar: { Args: { p_id: string }; Returns: undefined };
+      avaliacao_enviar: { Args: { p_id: string; p_respostas: Json }; Returns: Json };
+      minhas_avaliacoes: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          anuncio_id: string;
+          modelo_id: string;
+          vaga: string;
+          empresa: string;
+          titulo: string;
+          tipo: string;
+          status: string;
+          vencida: boolean;
+          prazo: string;
+          pontos: number | null;
+          maximo: number | null;
+          feita_em: string | null;
+        }[];
+      };
+      servidor_limpar_avaliacoes: { Args: { p_chave: string }; Returns: number };
       /** o copiloto (migração 20261203120000): só para as contas liberadas no admin */
       copiloto_liberado: { Args: Record<string, never>; Returns: boolean };
       copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };

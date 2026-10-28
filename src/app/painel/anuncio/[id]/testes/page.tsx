@@ -1,0 +1,172 @@
+import { ArrowLeft, ClipboardCheck } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { SoComSupabase } from "@/components/so-com-supabase";
+import { PedirTeste } from "@/components/testes/pedir-teste";
+import { TestesDaVaga } from "@/components/testes/testes-da-vaga";
+import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
+import { MODO_DEMO } from "@/lib/config";
+import { listarInteressados, obterAnuncio } from "@/lib/dados";
+import { tempoRelativo } from "@/lib/formato";
+import { bibliotecaDeTestes, resultadosDosTestes, testesDaVaga } from "@/lib/servidor/testes";
+import { exigirUsuario } from "@/lib/sessao";
+import { agoraDaRequisicao } from "@/lib/tempo";
+import {
+  competenciasDoResultado,
+  faixaDoResultado,
+  NAO_E_PSICOLOGICO,
+  SELO_CORTESIA,
+  textoDoResultado,
+} from "@/lib/testes";
+
+export const metadata: Metadata = { title: "Testes da vaga" };
+
+export default function TestesDaVagaPagina({ params }: PageProps<"/painel/anuncio/[id]/testes">) {
+  return (
+    <Suspense fallback={<EsqueletoLista />}>
+      <Conteudo params={params} />
+    </Suspense>
+  );
+}
+
+async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/testes">["params"] }) {
+  if (MODO_DEMO) return <SoComSupabase />;
+  const { id } = await params;
+  const usuario = await exigirUsuario(`/painel/anuncio/${id}/testes`);
+  const anuncio = await obterAnuncio(id);
+  if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
+  const [biblioteca, naVaga, resultados, interessados, agora] = await Promise.all([
+    bibliotecaDeTestes(),
+    testesDaVaga(id),
+    resultadosDosTestes(id),
+    listarInteressados(id).catch(() => []),
+    agoraDaRequisicao(),
+  ]);
+  const voltar = (
+    <Link
+      href={`/painel/anuncio/${id}/quadro`}
+      className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
+    >
+      <ArrowLeft aria-hidden className="size-4" />
+      Quadro da vaga
+    </Link>
+  );
+  if (biblioteca === null) {
+    return (
+      <div className="flex flex-col gap-4">
+        {voltar}
+        <Aviso tipo="alerta" titulo="Os testes ainda não estão disponíveis">
+          Tente de novo em instantes.
+        </Aviso>
+      </div>
+    );
+  }
+  const obrigatorios = naVaga.filter((t) => t.obrigatoria);
+  const candidatos = interessados.filter((p) => p.status !== "dispensada");
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        {voltar}
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-h2">Testes da vaga</h2>
+          <Selo variante="aviso">{SELO_CORTESIA}</Selo>
+        </div>
+        <p className="text-body text-ink-muted">
+          {anuncio.titulo}. Testes da marca Publike e os da sua empresa, feitos pelo celular.
+        </p>
+      </div>
+
+      <section aria-labelledby="titulo-escolha" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+        <h3 id="titulo-escolha" className="mb-3 flex items-center gap-2 text-h3">
+          <ClipboardCheck aria-hidden className="size-5 text-ink-muted" />
+          Testes desta vaga
+        </h3>
+        <TestesDaVaga
+          anuncioId={id}
+          biblioteca={biblioteca}
+          iniciais={naVaga.map((t) => ({ modelo_id: t.modelo_id, obrigatoria: t.obrigatoria }))}
+        />
+        <p className="mt-3 text-body-sm">
+          <Link href="/painel/testes" className="font-semibold underline underline-offset-2">
+            Ver a biblioteca e criar os testes da sua empresa
+          </Link>
+        </p>
+      </section>
+
+      <section aria-labelledby="titulo-resultados" className="flex flex-col gap-3">
+        <h3 id="titulo-resultados" className="text-h3">
+          Candidatos e resultados
+        </h3>
+        {candidatos.length === 0 ? (
+          <p className="text-body-sm text-ink-muted">Ninguém curtiu a vaga ainda.</p>
+        ) : (
+          <ul className="flex flex-col gap-3" aria-label="Candidatos e testes">
+            {candidatos.map((p) => {
+              const deles = resultados.filter((r) => r.perfil_id === p.perfil_id);
+              const faltam = obrigatorios.filter(
+                (t) => !deles.some((r) => r.modelo_id === t.modelo_id && r.status === "feita"),
+              );
+              const paraMandar = biblioteca
+                .filter((m) => !deles.some((r) => r.modelo_id === m.id))
+                .map((m) => ({ id: m.id, titulo: m.titulo }));
+              return (
+                <li key={p.perfil_id} className="rounded-lg border border-line bg-surface-200 p-4 shadow-card">
+                  <div className="flex items-center gap-3">
+                    <Avatar nome={p.nome} foto={p.foto} tamanho={40} />
+                    <div className="min-w-0 flex-1">
+                      <p className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/painel/anuncio/${id}/quadro?candidato=${p.perfil_id}`}
+                          className="text-label hover:underline"
+                        >
+                          {p.nome}
+                        </Link>
+                        {faltam.length > 0 && <Selo variante="contorno">Falta o teste</Selo>}
+                      </p>
+                      <p className="text-body-sm text-ink-muted">curtiu {tempoRelativo(p.curtido_em, agora)}</p>
+                    </div>
+                  </div>
+                  {deles.length > 0 && (
+                    <ul className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+                      {deles.map((r) => (
+                        <li key={r.id} className="flex flex-col gap-1">
+                          <p className="flex flex-wrap items-center justify-between gap-2 text-body-sm">
+                            <span className="font-semibold">{r.titulo}</span>
+                            {r.status === "feita" ? (
+                              <Link href={`/painel/anuncio/${id}/testes/${r.id}`} className="text-label underline">
+                                {textoDoResultado(r.tipo, r.pontos, r.maximo)} · ver respostas
+                              </Link>
+                            ) : (
+                              <span className="text-ink-muted">{r.vencida ? "o prazo acabou" : "ainda não fez"}</span>
+                            )}
+                          </p>
+                          {r.status === "feita" && competenciasDoResultado(r.por_competencia).length > 0 && (
+                            <p className="text-body-sm text-ink-muted">
+                              {competenciasDoResultado(r.por_competencia)
+                                .map((c) => `${c.nome}: ${faixaDoResultado(c.pontos, c.maximo)}`)
+                                .join(" · ")}
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {paraMandar.length > 0 && (
+                    <div className="mt-3">
+                      <PedirTeste anuncioId={id} perfilId={p.perfil_id} nome={p.nome} opcoes={paraMandar} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p className="text-body-sm text-ink-muted">{NAO_E_PSICOLOGICO}</p>
+      </section>
+    </div>
+  );
+}

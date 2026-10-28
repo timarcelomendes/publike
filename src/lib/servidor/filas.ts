@@ -431,6 +431,19 @@ export async function avisarNoticiasDoDia(): Promise<{ avisadas: number; motivo?
   return { avisadas: Number(data ?? 0) };
 }
 
+/** Os resultados dos testes Publike saem 12 meses depois que a vaga sai do ar (migração 20261204120000). */
+export async function limparTestesAntigos(): Promise<{ apagados: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { apagados: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_limpar_avaliacoes", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { apagados: 0 };
+    console.error("Publike: falha ao limpar os testes antigos:", error.message);
+    return { apagados: 0, motivo: "Não foi possível apagar os resultados antigos dos testes." };
+  }
+  return { apagados: Number(data ?? 0) };
+}
+
 export async function processarFilas() {
   try {
     const [ia, avaliacoes, recados] = await Promise.all([

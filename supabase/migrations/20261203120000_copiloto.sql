@@ -89,7 +89,7 @@ immutable
 set search_path = ''
 as $$
   select p_texto ~* ('(\midade\M|\m[0-9]{2} ?(a|e|até) ?[0-9]{2} anos|\m(até|acima de|maior de|menor de) [0-9]{2} anos'
-    || '|\mjove(m|ns)\M|\msexo\M|g[eê]nero|\mhomens?\M|\mmulher(es)?\M|masculin|feminin|\mcasad[oa]s?\M|solteir'
+    || '|\mjove(m|ns)\M|\msexo\M|g[eê]nero|\mhomens?\M|\mmulher(es)?\M|masculin|feminin|(?<!venda )\mcasad[oa]s?\M|solteir'
     || '|estado civil|\mfilhos?\M|gr[aá]vida|gravidez|gestante|apar[eê]ncia|religi|cor da pele|\mra[cç]a\M'
     || '|defici[eê]n|\mpcd\M|orienta[cç][aã]o sexual|nacionalidade|\mfotos?\M|nome limpo|\mspc\M|serasa|antecedentes)')
 $$;

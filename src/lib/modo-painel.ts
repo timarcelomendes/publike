@@ -100,7 +100,8 @@ export type Secao = {
     | "contratados"
     | "links"
     | "entrevistas"
-    | "visitas";
+    | "visitas"
+    | "testes";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
   jeito?: "pilula" | "pronto" | "texto";
@@ -205,6 +206,7 @@ export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefi
       nome: agencia ? "Agência" : "Sua empresa",
       secoes: [
         { href: "/painel/links", nome: "Links para divulgar", icone: "links" },
+        { href: "/painel/testes", nome: "Testes Publike", icone: "testes" },
         ...(agencia ? [EQUIPE] : []),
       ],
     },
@@ -241,7 +243,8 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/equipe") ||
     caminho.startsWith("/painel/finalistas") ||
     caminho.startsWith("/painel/contratados") ||
-    caminho.startsWith("/painel/links")
+    caminho.startsWith("/painel/links") ||
+    caminho.startsWith("/painel/testes")
   )
     return "contratar";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "servicos";

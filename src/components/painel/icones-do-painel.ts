@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building2,
   CalendarDays,
+  ClipboardCheck,
   Eye,
   FileText,
   Handshake,
@@ -45,4 +46,5 @@ export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   links: Link2,
   entrevistas: CalendarDays,
   visitas: Eye,
+  testes: ClipboardCheck,
 };
