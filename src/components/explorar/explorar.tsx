@@ -731,6 +731,7 @@ function AbasDaLista({ filtros, talentos = true }: { filtros: Filtros; talentos?
         // com uma busca por palavra, a aba Talentos já abre buscando por ela
         <Link
           href={filtros.q ? `${ABA_TALENTOS.href}?q=${encodeURIComponent(filtros.q)}` : ABA_TALENTOS.href}
+          scroll={false}
           className={classe(false)}
         >
           <ABA_TALENTOS.icone aria-hidden className="hidden size-4 sm:block lg:hidden xl:block" />

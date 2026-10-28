@@ -43,6 +43,7 @@ function SubAbas({ ativa, total }: { ativa: Aba; total: number | null }) {
           <Link
             key={id}
             href={id === "lista" ? "/admin/convites" : `/admin/convites?aba=${id}`}
+            scroll={false}
             aria-current={atual ? "page" : undefined}
             className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
               atual

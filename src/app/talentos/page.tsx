@@ -143,11 +143,11 @@ function Abas({ semAjuda = false }: { semAjuda?: boolean }) {
   return (
     <nav aria-label="O que você procura" className={`mt-3 sm:mt-5 ${classesGrupoAbas}`}>
       {ABAS_ANUNCIOS.map((a) => (
-        <Link key={a.nome} href={`/?tipo=${a.valor ?? "tudo"}`} className={classesAba(false)}>
+        <Link key={a.nome} href={`/?tipo=${a.valor ?? "tudo"}`} scroll={false} className={classesAba(false)}>
           <MioloAba aba={a} ativo={false} semAjuda={semAjuda} />
         </Link>
       ))}
-      <Link href={ABA_TALENTOS.href} aria-current="page" className={classesAba(true)}>
+      <Link href={ABA_TALENTOS.href} scroll={false} aria-current="page" className={classesAba(true)}>
         <MioloAba aba={ABA_TALENTOS} ativo semAjuda={semAjuda} />
       </Link>
     </nav>

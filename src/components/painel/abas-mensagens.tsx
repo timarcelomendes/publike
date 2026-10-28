@@ -36,6 +36,7 @@ export function AbasMensagensBase({
             <Link
               key={a.valor}
               href={a.href}
+              scroll={false}
               aria-current={marcada ? "page" : undefined}
               className={`relative inline-flex min-h-11 shrink-0 items-center gap-2 rounded-pill border px-4 text-label whitespace-nowrap transition-colors ${
                 marcada

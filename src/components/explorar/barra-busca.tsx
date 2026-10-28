@@ -372,7 +372,7 @@ export function BarraBusca({
               );
             })}
             {/* gente que procura trabalho: outra página (não são anúncios) */}
-            <Link href={ABA_TALENTOS.href} className={classesAba(false)}>
+            <Link href={ABA_TALENTOS.href} scroll={false} className={classesAba(false)}>
               <MioloAba aba={ABA_TALENTOS} ativo={false} semAjuda={contrata} />
             </Link>
           </div>

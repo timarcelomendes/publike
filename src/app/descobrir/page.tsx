@@ -241,6 +241,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/descobrir"
               <li key={valor}>
                 <Link
                   href={valor === "para-voce" ? "/descobrir" : `/descobrir?aba=${valor}`}
+                  scroll={false}
                   aria-current={atual ? "page" : undefined}
                   className={`inline-flex min-h-11 items-center gap-1.5 rounded-pill border px-4 text-label whitespace-nowrap transition-colors ${
                     atual ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"

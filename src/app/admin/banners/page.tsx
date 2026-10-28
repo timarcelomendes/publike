@@ -49,6 +49,7 @@ function SubAbas({ ativa, total, editando }: { ativa: "lista" | "form"; total: n
     <nav aria-label="Banners" className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
       <Link
         href="/admin/banners"
+        scroll={false}
         aria-current={ativa === "lista" ? "page" : undefined}
         className={classe(ativa === "lista")}
       >
@@ -64,6 +65,7 @@ function SubAbas({ ativa, total, editando }: { ativa: "lista" | "form"; total: n
       ) : (
         <Link
           href="/admin/banners?aba=novo"
+          scroll={false}
           aria-current={ativa === "form" ? "page" : undefined}
           className={classe(ativa === "form")}
         >

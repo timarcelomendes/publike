@@ -147,6 +147,7 @@ async function Conteudo({
                 <Link
                   key={a.valor}
                   href={href(a.valor)}
+                  scroll={false}
                   aria-current={a.valor === origem ? "page" : undefined}
                   className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-label ${
                     a.valor === origem ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
@@ -195,6 +196,7 @@ async function Conteudo({
                     <Link
                       key={f.valor}
                       href={href(origem, f.valor)}
+                      scroll={false}
                       aria-current={f.valor === filtro ? "page" : undefined}
                       className={`inline-flex min-h-10 items-center rounded-pill border px-3.5 text-label ${
                         f.valor === filtro

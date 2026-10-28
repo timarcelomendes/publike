@@ -41,6 +41,7 @@ export function PaginaDoDocumento({
           <Link
             key={d.href}
             href={d.href}
+            scroll={false}
             aria-current={d.href === atual ? "page" : undefined}
             className={
               d.href === atual

@@ -96,6 +96,7 @@ export async function CabecalhoDaVaga({
             <li key={a.aba}>
               <Link
                 href={a.href}
+                scroll={false}
                 aria-current={a.aba === aba ? "page" : undefined}
                 className={`-mb-px inline-flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-label ${
                   a.aba === aba ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
@@ -132,6 +133,7 @@ export function VistaDosCandidatos({ id, atual }: { id: string; atual: "quadro" 
           <Link
             key={o.vista}
             href={o.href}
+            scroll={false}
             aria-current={ativo ? "page" : undefined}
             className={`inline-flex min-h-9 items-center gap-1.5 rounded-pill px-3.5 text-label ${
               ativo ? "bg-ink text-surface-100" : "text-ink-muted hover:text-ink"

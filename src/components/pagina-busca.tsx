@@ -238,6 +238,7 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
               <li key={c.slug}>
                 <Link
                   href={caminhoDaBusca(tipo, cidade, c.slug)}
+                  scroll={false}
                   aria-current={area?.slug === c.slug ? "page" : undefined}
                   className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-body-sm transition-colors ${
                     area?.slug === c.slug

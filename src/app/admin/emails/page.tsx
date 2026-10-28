@@ -69,6 +69,7 @@ function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
           <Link
             key={id}
             href={id === "enviados" ? "/admin/emails" : `/admin/emails?aba=${id}`}
+            scroll={false}
             aria-current={atual ? "page" : undefined}
             className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
               atual

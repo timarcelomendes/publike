@@ -56,6 +56,7 @@ export function AbasAdminBase({ modo, ativa }: { modo: ModoAdmin; ativa: string 
           <Link
             key={a.href}
             href={a.href}
+            scroll={false}
             aria-current={atual ? "page" : undefined}
             className={`-mb-px inline-flex min-h-12 shrink-0 items-center border-b-2 px-3 text-label transition-colors ${
               atual ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"

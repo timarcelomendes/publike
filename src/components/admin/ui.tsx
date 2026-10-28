@@ -112,6 +112,7 @@ export function Filtros({
           <Link
             key={o.valor}
             href={link(o.valor)}
+            scroll={false}
             aria-current={ativo ? "page" : undefined}
             className={`inline-flex min-h-10 shrink-0 items-center rounded-pill border px-3.5 text-label transition-colors ${
               ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200 text-ink hover:bg-surface-300"

@@ -60,6 +60,7 @@ function SubAbas({ ativa, numeros }: { ativa: Aba; numeros: Record<Aba, number> 
           <Link
             key={id}
             href={`/admin/denuncias?aba=${id}`}
+            scroll={false}
             aria-current={atual ? "page" : undefined}
             className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
               atual

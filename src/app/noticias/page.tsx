@@ -68,13 +68,14 @@ async function Lista({ tema: pedido }: { tema?: string }) {
     <div className="flex flex-col gap-8">
       {temas.length > 1 && (
         <nav aria-label="Assuntos" className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-          <Link href="/noticias" className={chip(!tema)} aria-current={!tema ? "page" : undefined}>
+          <Link href="/noticias" scroll={false} className={chip(!tema)} aria-current={!tema ? "page" : undefined}>
             Todas
           </Link>
           {temas.map((t) => (
             <Link
               key={t}
               href={`/noticias?tema=${t}`}
+              scroll={false}
               className={chip(tema === t)}
               aria-current={tema === t ? "page" : undefined}
             >
