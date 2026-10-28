@@ -143,6 +143,16 @@ export const possoVerPainelNoSite = cache(async () => {
   return !error && data === true;
 });
 
+/** O copiloto de contratação (teste): só para as contas que o admin liberou. */
+export const copilotoLiberado = cache(async () => {
+  if (MODO_DEMO) return false;
+  const usuario = await obterUsuario();
+  if (!usuario) return false;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("copiloto_liberado");
+  return !error && data === true;
+});
+
 /** Botão "Melhorar texto": ligado no admin e com a chave da IA no servidor. */
 export const ajudaDaIADisponivel = cache(async () => {
   if (MODO_DEMO || !iaConfigurada()) return false;

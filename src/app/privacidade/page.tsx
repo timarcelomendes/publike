@@ -107,7 +107,9 @@ export default function Privacidade() {
           habilidades, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para pôr
           primeiro as que combinam com você; nunca seu nome ou contato. Se quem publicou a vaga que você curtiu pedir o
           resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos fortes e o que
-          conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. No “Já tem currículo
+          conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. Se a empresa usa o
+          Copiloto, a IA compara o currículo de quem está em Talentos ou curtiu a vaga com os critérios da vaga, sem nome,
+          foto ou contato; ela não recusa ninguém. No “Já tem currículo
           pronto?”, a IA recebe o PDF ou as fotos do currículo que você enviou, só para preencher os campos do seu
           currículo; no convite de quem publicou uma vaga, o currículo que você mandou para ela, só para isso também. No
           assistente de ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que

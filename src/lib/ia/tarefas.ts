@@ -35,7 +35,7 @@ export type AnuncioParaIA = {
   ganhos_extras?: unknown;
 };
 
-function descreverAnuncio(a: AnuncioParaIA) {
+export function descreverAnuncio(a: AnuncioParaIA) {
   const categoria = CATEGORIAS.find((c) => c.slug === a.categoria)?.nome ?? a.categoria;
   const linhas = [
     `Tipo: ${a.tipo === "vaga" ? "vaga de trabalho" : "serviço oferecido pela própria pessoa (profissional)"}`,

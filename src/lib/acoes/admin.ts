@@ -182,6 +182,25 @@ export async function liberarPainelNoSite(usuarioId: string, liberar: boolean): 
   };
 }
 
+/** Libera (ou tira) o copiloto de contratação, em teste, para uma conta (migração 20261203120000). */
+export async function liberarCopiloto(contaId: string, liberar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_liberar_copiloto", { p_conta: contaId, p_liberar: liberar });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20261203120000_copiloto.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: liberar
+      ? "Pronto: essa conta já vê o Copiloto nas vagas."
+      : "Essa conta não vê mais o Copiloto (os critérios e as leituras ficam guardados).",
+  };
+}
+
 // ------------------------------------------------------------------ e-mails
 
 export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {

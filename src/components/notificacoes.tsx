@@ -39,6 +39,8 @@ import { destinoDoAviso } from "@/lib/destino-aviso";
 import { AtivarNotificacoes } from "./notificacoes-celular";
 import { tempoRelativo } from "@/lib/formato";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { mudarVisibilidadeCurriculo } from "@/lib/acoes/talentos";
+import { useAcao } from "./ui/usar-acao";
 
 /** O ícone de cada tipo de aviso (o resto: escudo, da moderação). */
 const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -239,6 +241,7 @@ export function Notificacoes({
                         <span className="text-[13px] text-ink-muted">{tempoRelativo(n.criado_em, agora)}</span>
                       </span>
                     </Link>
+                    {n.tipo === "convite" && <PararConvites />}
                   </li>
                 );
               })}
@@ -246,6 +249,56 @@ export function Notificacoes({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** No aviso de convite: parar os convites com um toque (sai de Talentos; volta em Currículo quando quiser). */
+function PararConvites() {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [confirmar, setConfirmar] = useState(false);
+  const [feito, setFeito] = useState(false);
+  if (feito) return <div className="pb-2 pl-[42px] pr-3">{mensagem}</div>;
+  return (
+    <div className="flex flex-col gap-1 pb-2 pl-[42px] pr-3">
+      {confirmar ? (
+        <>
+          <p className="text-[13px] text-ink-muted">
+            Você sai de Talentos e as empresas não acham mais seu currículo. Pode voltar em Currículo quando quiser.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={pendente}
+              onClick={() =>
+                rodar(
+                  () => mudarVisibilidadeCurriculo(false),
+                  (r) => r.ok && setFeito(true),
+                )
+              }
+              className="min-h-9 rounded-sm px-2 text-[13px] font-semibold text-danger underline disabled:opacity-60"
+            >
+              Parar os convites
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmar(false)}
+              className="min-h-9 rounded-sm px-2 text-[13px] text-ink-muted underline"
+            >
+              Cancelar
+            </button>
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirmar(true)}
+          className="min-h-9 self-start rounded-sm text-[13px] text-ink-muted underline hover:text-ink"
+        >
+          Não quero mais convites
+        </button>
+      )}
+      {mensagem}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, Download, Eye, List, Pencil, Send, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, ChevronRight, Download, Eye, List, Pencil, Send, Sparkles, UserPlus, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,7 +12,7 @@ import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { STATUS_ANUNCIO } from "@/lib/constantes";
-import { obterAnuncio, obterMeuPerfil } from "@/lib/dados";
+import { copilotoLiberado, obterAnuncio, obterMeuPerfil } from "@/lib/dados";
 import { formatarLugar } from "@/lib/formato";
 import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
 import { montarQuadro } from "@/lib/servidor/quadro";
@@ -43,7 +43,7 @@ async function Conteudo({
   // ?candidato=<id>: abre já o cartão dessa pessoa (link da tela Candidatos)
   const abrir = typeof sp.candidato === "string" ? sp.candidato : null;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/quadro`);
-  const [anuncio, perfil] = await Promise.all([obterAnuncio(id), obterMeuPerfil()]);
+  const [anuncio, perfil, copiloto] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), copilotoLiberado()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
   const { cartoes, modelos } = await montarQuadro(anuncio, agora);
@@ -126,6 +126,12 @@ async function Conteudo({
             <BotaoLink href={`/painel/anuncio/${id}/convidar`} tamanho="sm">
               <UserPlus aria-hidden />
               Chamar candidato de fora
+            </BotaoLink>
+          )}
+          {copiloto && (
+            <BotaoLink href={`/painel/anuncio/${id}/copiloto`} tamanho="sm">
+              <Sparkles aria-hidden />
+              Copiloto
             </BotaoLink>
           )}
           <a

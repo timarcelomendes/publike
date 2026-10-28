@@ -2,6 +2,7 @@
 
 import { Check, Send } from "lucide-react";
 import { useState } from "react";
+import { convidarPeloCopiloto } from "@/lib/acoes/copiloto";
 import { convidarParaVaga } from "@/lib/acoes/talentos";
 import { useAcao } from "../ui/usar-acao";
 
@@ -10,10 +11,13 @@ export function BotaoConvidar({
   anuncioId,
   perfilId,
   convidado: jaConvidado,
+  copiloto = false,
 }: {
   anuncioId: string;
   perfilId: string;
   convidado: boolean;
+  /** pelo copiloto: com o limite de 3 convites por semana para cada pessoa */
+  copiloto?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [convidado, setConvidado] = useState(jaConvidado);
@@ -32,7 +36,7 @@ export function BotaoConvidar({
         disabled={pendente}
         onClick={() =>
           rodar(
-            () => convidarParaVaga(anuncioId, perfilId),
+            () => (copiloto ? convidarPeloCopiloto : convidarParaVaga)(anuncioId, perfilId),
             (r) => r.ok && setConvidado(true),
           )
         }

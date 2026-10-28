@@ -5,7 +5,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FormConfigIA } from "@/components/admin/ia";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
-import { configDoSite, decisoesDaIA, numerosDoPainel } from "@/lib/admin/dados";
+import { configDoSite, contasDoCopiloto, decisoesDaIA, numerosDoPainel } from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { tempoRelativo } from "@/lib/formato";
 import { MODELOS_IA, modeloDaIA, temChave } from "@/lib/ia/openai";
@@ -34,11 +34,12 @@ export default function IA() {
 
 async function Conteudo() {
   const c = await exigirAdminLocal();
-  const [config, decisoes, numeros, agora] = await Promise.all([
+  const [config, decisoes, numeros, agora, copiloto] = await Promise.all([
     configDoSite(c),
     decisoesDaIA(c, 40),
     numerosDoPainel(c),
     agoraDaRequisicao(),
+    contasDoCopiloto(c),
   ]);
   const filas = situacaoFilas();
   const chaves = { openai: temChave("openai"), claude: temChave("claude") };
@@ -92,6 +93,31 @@ async function Conteudo() {
       <Secao titulo="Configurações">
         <FormConfigIA config={config} modelos={MODELOS_IA} chaves={chaves} />
       </Secao>
+
+      {copiloto && (
+        <Secao
+          titulo="Copiloto (teste)"
+          descricao="As contas que veem o Copiloto nas vagas. Para liberar ou tirar, abra a conta em Usuários."
+        >
+          {copiloto.length ? (
+            <ul className="flex flex-col divide-y divide-line text-body-sm">
+              {copiloto.map((x) => (
+                <li key={x.conta_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <Link href={`/admin/usuarios/${x.conta_id}`} className="text-label underline">
+                    {x.nome}
+                  </Link>
+                  <span className="text-ink-muted">
+                    liberado {tempoRelativo(x.liberado_em, agora)} · {x.vagas} {x.vagas === 1 ? "vaga" : "vagas"} ·{" "}
+                    {x.leituras_30d} leituras e {x.convites_30d} convites em 30 dias
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-body-sm text-ink-muted">Nenhuma conta liberada ainda.</p>
+          )}
+        </Secao>
+      )}
 
       <Secao
         titulo="Quanto custa"

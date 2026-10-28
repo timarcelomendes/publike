@@ -28,6 +28,7 @@ import {
   type EtapaCandidato,
 } from "@/lib/constantes";
 import {
+  copilotoLiberado,
   listarCurriculosDosInteressados,
   listarDesfeitosDoAnuncio,
   listarEtapasDosCandidatos,
@@ -67,7 +68,7 @@ async function Conteudo({
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
   const perguntas = servico ? [] : perguntasDoBanco(anuncio.perguntas);
-  const [todos, curriculos, desfeitos, etapas, bloqueios, publicas, respostas] = await Promise.all([
+  const [todos, curriculos, desfeitos, etapas, bloqueios, publicas, respostas, copiloto] = await Promise.all([
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
     listarDesfeitosDoAnuncio(id),
@@ -75,6 +76,7 @@ async function Conteudo({
     listarMeusBloqueios(),
     minhasContratacoesPublicas(),
     perguntas.length ? listarRespostasDosCandidatos([id]) : Promise.resolve(new Map<string, Respostas>()),
+    servico ? Promise.resolve(false) : copilotoLiberado(),
   ]);
   // Cada interessado tem uma etapa (só quem publicou anota; quem curtiu vê a etapa); dá
   // para filtrar por ela. Esperando resposta, etapa adiante de "Em análise" não vale.
@@ -119,6 +121,14 @@ async function Conteudo({
               <Link href={`/painel/anuncio/${anuncio.id}/quadro`} className="font-semibold underline">
                 Ver como quadro
               </Link>{" "}
+              {copiloto && (
+                <>
+                  ·{" "}
+                  <Link href={`/painel/anuncio/${anuncio.id}/copiloto`} className="font-semibold underline">
+                    Copiloto
+                  </Link>{" "}
+                </>
+              )}
               ·{" "}
               <Link href="/painel/candidatos" className="underline">
                 Candidatos de todas as vagas

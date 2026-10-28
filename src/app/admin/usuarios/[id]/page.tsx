@@ -1,5 +1,6 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
+import { BotaoCopiloto } from "@/components/admin/copiloto";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -24,6 +25,7 @@ import { formatarCnpj, linkReceita } from "@/lib/cnpj";
 import {
   advertenciasDe,
   aparelhoDoUsuario,
+  contasDoCopiloto,
   emailsDoUsuario,
   fichaUsuario,
   listarAnuncios,
@@ -70,7 +72,7 @@ async function Conteudo({
   const c = await exigirAdminLocal();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora, mensagens, aparelho] =
+  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora, mensagens, aparelho, copiloto] =
     await Promise.all([
       fichaUsuario(c, id),
       listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
@@ -82,6 +84,7 @@ async function Conteudo({
       agoraDaRequisicao(),
       mensagensDaEquipeDe(c, id),
       aparelhoDoUsuario(c, id),
+      contasDoCopiloto(c),
     ]);
   if (!u) notFound();
 
@@ -353,6 +356,15 @@ async function Conteudo({
             </Aviso>
           )}
           <SeloVerificado usuarioId={u.id} verificado={u.perfil.verificado} agencia={u.perfil.tipo === "agencia"} />
+        </Secao>
+      )}
+
+      {u.perfil && copiloto && (
+        <Secao
+          titulo="Copiloto (teste)"
+          descricao="A IA que lê os currículos contra os critérios da vaga e busca em Talentos. Só as contas liberadas aqui veem o Copiloto nas vagas."
+        >
+          <BotaoCopiloto contaId={u.id} liberado={copiloto.some((x) => x.conta_id === u.id)} />
         </Secao>
       )}
 

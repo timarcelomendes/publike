@@ -1,0 +1,155 @@
+// O copiloto de contratação (teste; migração 20261203120000): os critérios da vaga, a leitura de
+// cada currículo contra eles (com o trecho como prova) e as travas. Vale no navegador e no servidor.
+
+export type CriterioCopiloto = { id: string; texto: string; obrigatorio: boolean };
+export type ResultadoCriterio = "atende" | "nao_atende" | "sem_info";
+export type LeituraCriterio = { id: string; resultado: ResultadoCriterio; trecho: string; explicacao: string };
+export type LeituraCopiloto = { criterios: LeituraCriterio[]; resumo: string; perguntas: string[] };
+export type OrigemCopiloto = "talento" | "candidato";
+
+export const MAX_CRITERIOS = 8;
+/** quantos currículos cada chamada lê (3 de cada vez) */
+export const LOTE_COPILOTO = 6;
+/** quantos currículos cada clique em "Buscar profissionais" lê */
+export const POR_CLIQUE_COPILOTO = 24;
+export const LIMITE_DIA_COPILOTO = 300;
+
+export const SEM_PROVA = "A IA não achou isso no currículo: confira na entrevista.";
+
+// O que a lei não deixa usar para escolher (Lei 9.029/1995) e o que o currículo não mostra. A mesma
+// lista de privado.copiloto_criterio_proibido.
+const PROIBIDOS: [RegExp, string][] = [
+  [
+    /\bidade\b|\b\d{2} ?(a|e|até) ?\d{2} anos|\b(até|acima de|maior de|menor de) \d{2} anos|\bjove(m|ns)\b/i,
+    "Idade não entra: o currículo não mostra e a lei não deixa escolher por idade. Se a vaga exige 18 anos, diga na descrição.",
+  ],
+  [/\bsexo\b|g[eê]nero|\bhomens?\b|\bmulher(es)?\b|masculin|feminin/i, "Sexo e gênero não entram nos critérios."],
+  [
+    /\bcasad[oa]s?\b|solteir|estado civil|\bfilhos?\b|gr[aá]vida|gravidez|gestante/i,
+    "Estado civil, filhos e gravidez não entram nos critérios.",
+  ],
+  [/apar[eê]ncia|\bfotos?\b/i, "Aparência e foto não entram nos critérios."],
+  [
+    /religi|cor da pele|\bra[cç]a\b|orienta[cç][aã]o sexual|nacionalidade/i,
+    "Isso não entra nos critérios: a lei não deixa escolher por isso.",
+  ],
+  [/defici[eê]n|\bpcd\b/i, "Deficiência e saúde não entram. Vaga só para PcD? Diga na descrição da vaga."],
+  [/nome limpo|\bspc\b|serasa|antecedentes/i, "Nome limpo e antecedentes não entram: o currículo não mostra."],
+];
+
+/** Por que o critério não pode, ou null se pode. */
+export function motivoProibido(texto: string): string | null {
+  for (const [re, motivo] of PROIBIDOS) if (re.test(texto)) return motivo;
+  return null;
+}
+
+/** Minúsculas, sem acento, sem pontuação e com um espaço só: para conferir o trecho no currículo. */
+export function normalizar(t: string) {
+  return t
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** O trecho que a IA citou está mesmo no currículo? */
+export function trechoNoTexto(trecho: string, texto: string) {
+  const t = normalizar(trecho);
+  return t.length >= 4 && ` ${normalizar(texto)} `.includes(` ${t} `);
+}
+
+export type AvaliacaoCopiloto = {
+  perfil_id: string;
+  origem: OrigemCopiloto;
+  versao: string;
+  curriculo_em: string;
+  leitura: LeituraCopiloto;
+  atende: number;
+  obrigatorios_ok: boolean;
+};
+
+/** A leitura guardada no banco (jsonb), só com o que tem forma de leitura. */
+export function leituraDoBanco(valor: unknown): LeituraCopiloto {
+  const o = (valor ?? {}) as Record<string, unknown>;
+  const texto = (v: unknown) => (typeof v === "string" ? v : "");
+  return {
+    criterios: (Array.isArray(o.criterios) ? o.criterios : []).map((c) => {
+      const k = (c ?? {}) as Record<string, unknown>;
+      const r = k.resultado === "atende" || k.resultado === "nao_atende" ? k.resultado : "sem_info";
+      return { id: texto(k.id), resultado: r, trecho: texto(k.trecho), explicacao: texto(k.explicacao) };
+    }),
+    resumo: texto(o.resumo),
+    perguntas: (Array.isArray(o.perguntas) ? o.perguntas : []).filter((p): p is string => typeof p === "string"),
+  };
+}
+
+/** Os números da leitura para os critérios de agora (o que atende e se atende todos os obrigatórios). */
+export function contarLeitura(criterios: CriterioCopiloto[], leitura: LeituraCopiloto) {
+  const de = new Map(leitura.criterios.map((c) => [c.id, c.resultado]));
+  const atende = criterios.filter((c) => de.get(c.id) === "atende").length;
+  const naoAtende = criterios.filter((c) => de.get(c.id) === "nao_atende").length;
+  const conferir = criterios.length - atende - naoAtende;
+  const obrigatorios = criterios.filter((c) => c.obrigatorio);
+  const obrigatoriosOk = obrigatorios.length > 0 && obrigatorios.every((c) => de.get(c.id) === "atende");
+  return { atende, naoAtende, conferir, obrigatorios: obrigatorios.length, obrigatoriosOk };
+}
+
+/** Quem atende os obrigatórios primeiro, depois quem atende mais e quem tem menos "não atende". */
+export function compararLeituras(
+  a: { atende: number; naoAtende: number; obrigatoriosOk: boolean; preNota: number },
+  b: { atende: number; naoAtende: number; obrigatoriosOk: boolean; preNota: number },
+) {
+  return (
+    Number(b.obrigatoriosOk) - Number(a.obrigatoriosOk) ||
+    b.atende - a.atende ||
+    a.naoAtende - b.naoAtende ||
+    b.preNota - a.preNota
+  );
+}
+
+/** Os critérios que vieram do banco (jsonb). */
+export function criteriosDoBanco(valor: unknown): CriterioCopiloto[] {
+  if (!Array.isArray(valor)) return [];
+  return valor
+    .flatMap((c) => {
+      const o = (c ?? {}) as Record<string, unknown>;
+      return typeof o.id === "string" && typeof o.texto === "string"
+        ? [{ id: o.id, texto: o.texto, obrigatorio: o.obrigatorio === true }]
+        : [];
+    })
+    .slice(0, MAX_CRITERIOS);
+}
+
+export type LinhaRegistro = {
+  acao: string;
+  quantos: number;
+  detalhe: string | null;
+  quem: string | null;
+  convidado: string | null;
+};
+
+/** Uma linha de "O que o copiloto fez". */
+export function textoDoRegistro(r: LinhaRegistro) {
+  const n = r.quantos;
+  let t: string;
+  if (r.acao === "criterios") {
+    const obrig = Number(r.detalhe ?? 0);
+    t = `Salvou ${n} ${n === 1 ? "critério" : "critérios"}${obrig ? ` (${obrig} ${obrig === 1 ? "obrigatório" : "obrigatórios"})` : ""}`;
+  } else if (r.acao === "avaliou") {
+    t = `Leu ${n} ${n === 1 ? "currículo" : "currículos"} de ${r.detalhe === "candidato" ? "candidatos" : "Talentos"}`;
+  } else if (r.acao === "convidou") {
+    t = `Convidou ${r.convidado ?? "uma pessoa"} para a vaga`;
+  } else {
+    const partes = (r.detalhe ?? "").split(",");
+    const ligadas = [
+      partes.includes("busca") && "a busca em Talentos",
+      partes.includes("triagem") && "a leitura dos candidatos",
+    ]
+      .filter(Boolean)
+      .join(" e ");
+    t = ligadas ? `Deixou ligada ${ligadas}` : "Desligou a busca e a leitura dos candidatos";
+    if (partes.includes("padrao")) t += " (padrão das próximas vagas)";
+  }
+  return r.quem ? `${r.quem}: ${t}` : t;
+}

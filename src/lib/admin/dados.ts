@@ -463,6 +463,13 @@ export async function contasDoPainelNoSite(c: ClienteBanco) {
   return data ?? [];
 }
 
+/** As contas com o copiloto (teste) liberado e o uso em 30 dias. Antes da migração, null. */
+export async function contasDoCopiloto(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_copiloto_contas");
+  if (error) return null;
+  return data ?? [];
+}
+
 /** Quantos e-mails saíram por dia (do mais novo ao mais velho). Antes da migração, null: a página segue sem. */
 export async function emailsPorDia(c: ClienteBanco, dias = 7) {
   const { data, error } = await c.rpc("admin_emails_por_dia", { p_dias: dias });

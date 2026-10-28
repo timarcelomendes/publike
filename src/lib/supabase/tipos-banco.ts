@@ -1164,6 +1164,19 @@ export type Database = {
         }[];
       };
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
+      admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      admin_copiloto_contas: {
+        Args: Record<string, never>;
+        Returns: {
+          conta_id: string;
+          nome: string;
+          tipo: string;
+          liberado_em: string;
+          vagas: number;
+          leituras_30d: number;
+          convites_30d: number;
+        }[];
+      };
       admin_emails_por_dia: {
         Args: { p_dias?: number };
         Returns: { dia: string; enviados: number; falharam: number; na_fila: number }[];
@@ -2299,6 +2312,54 @@ export type Database = {
       convidar_para_vaga: {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
+      };
+      /** o copiloto (migração 20261203120000): só para as contas liberadas no admin */
+      copiloto_liberado: { Args: Record<string, never>; Returns: boolean };
+      copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
+      copiloto_salvar_criterios: { Args: { p_anuncio: string; p_criterios: Json }; Returns: string };
+      copiloto_ligar: {
+        Args: { p_anuncio: string; p_triagem: boolean; p_busca: boolean; p_padrao: boolean };
+        Returns: undefined;
+      };
+      copiloto_reservar: { Args: { p_anuncio: string; p_origem: string; p_quantos: number }; Returns: number };
+      copiloto_guardar: {
+        Args: {
+          p_anuncio: string;
+          p_perfil: string;
+          p_origem: string;
+          p_versao: string;
+          p_curriculo_em: string;
+          p_resultado: Json;
+          p_atende: number;
+          p_obrigatorios_ok: boolean;
+          p_modelo: string;
+        };
+        Returns: undefined;
+      };
+      copiloto_avaliacoes: {
+        Args: { p_anuncio: string };
+        Returns: {
+          perfil_id: string;
+          origem: string;
+          versao: string;
+          curriculo_em: string;
+          resultado: Json;
+          atende: number;
+          obrigatorios_ok: boolean;
+          criado_em: string;
+        }[];
+      };
+      copiloto_convidar: { Args: { p_anuncio: string; p_perfil: string }; Returns: undefined };
+      copiloto_registro: {
+        Args: { p_anuncio: string; p_limite?: number };
+        Returns: {
+          acao: string;
+          quantos: number;
+          detalhe: string | null;
+          quem: string | null;
+          convidado: string | null;
+          criado_em: string;
+        }[];
       };
       /** a aba Talentos (aberta): só o resumo de quem está na vitrine */
       buscar_talentos: {
