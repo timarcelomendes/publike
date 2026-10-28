@@ -682,7 +682,8 @@ export async function listarMatches(): Promise<Match[]> {
   return data ?? [];
 }
 
-export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Perfil; anuncios: AnuncioDoPerfil[] } | null> => {
+/** O perfil público e os anúncios no ar (os 30 mais novos; a página "Vagas de…" pede até 200). */
+export const obterPerfilPublico = cache(async (id: string, limite = 30): Promise<{ perfil: Perfil; anuncios: AnuncioDoPerfil[] } | null> => {
   const agora = await agoraDaRequisicao();
   if (MODO_DEMO) {
     const perfil = demo.perfilDemo(id, agora);
@@ -705,7 +706,7 @@ export const obterPerfilPublico = cache(async (id: string): Promise<{ perfil: Pe
       .eq("status", "ativo")
       .gt("expira_em", new Date(agora).toISOString())
       .order("criado_em", { ascending: false })
-      .limit(30),
+      .limit(Math.min(Math.max(limite, 1), 200)),
   ]);
   if (error) falha("perfil", error);
   if (!perfil) return null;
