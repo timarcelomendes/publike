@@ -13,6 +13,7 @@ import { BotaoBloquear, DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { CabecalhoDaVaga, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -28,7 +29,6 @@ import {
   type EtapaCandidato,
 } from "@/lib/constantes";
 import {
-  copilotoLiberado,
   listarCurriculosDosInteressados,
   listarDesfeitosDoAnuncio,
   listarEtapasDosCandidatos,
@@ -68,7 +68,7 @@ async function Conteudo({
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
   const perguntas = servico ? [] : perguntasDoBanco(anuncio.perguntas);
-  const [todos, curriculos, desfeitos, etapas, bloqueios, publicas, respostas, copiloto] = await Promise.all([
+  const [todos, curriculos, desfeitos, etapas, bloqueios, publicas, respostas] = await Promise.all([
     listarInteressados(id),
     servico ? Promise.resolve(new Map<string, CurriculoDoInteressado>()) : listarCurriculosDosInteressados(id),
     listarDesfeitosDoAnuncio(id),
@@ -76,7 +76,6 @@ async function Conteudo({
     listarMeusBloqueios(),
     minhasContratacoesPublicas(),
     perguntas.length ? listarRespostasDosCandidatos([id]) : Promise.resolve(new Map<string, Respostas>()),
-    servico ? Promise.resolve(false) : copilotoLiberado(),
   ]);
   // Cada interessado tem uma etapa (só quem publicou anota; quem curtiu vê a etapa); dá
   // para filtrar por ela. Esperando resposta, etapa adiante de "Em análise" não vale.
@@ -91,52 +90,44 @@ async function Conteudo({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href="/painel/anuncios"
-          className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          Meus anúncios
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <Selo variante={status === "ativo" ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
-        </div>
-        <h2 className="mt-2 text-h2">{anuncio.titulo}</h2>
-        {anuncio.autor_tipo === "agencia" && (
-          <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
-        )}
-        <p className="mt-1 text-body-sm text-ink-muted">
-          <Link href={`/anuncio/${anuncio.id}`} className="underline">
-            Ver anúncio
-          </Link>{" "}
-          ·{" "}
-          <Link href={servico ? "/painel/servicos" : `/painel/anuncio/${anuncio.id}/editar`} className="underline">
-            Editar
+      {servico ? (
+        <div>
+          <Link
+            href="/painel/anuncios"
+            className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
+          >
+            <ArrowLeft aria-hidden className="size-4" />
+            Meus anúncios
           </Link>
-          {!servico && (
-            <>
-              {" "}
-              ·{" "}
-              <Link href={`/painel/anuncio/${anuncio.id}/quadro`} className="font-semibold underline">
-                Ver como quadro
-              </Link>{" "}
-              {copiloto && (
-                <>
-                  ·{" "}
-                  <Link href={`/painel/anuncio/${anuncio.id}/copiloto`} className="font-semibold underline">
-                    Copiloto
-                  </Link>{" "}
-                </>
-              )}
-              ·{" "}
-              <Link href="/painel/candidatos" className="underline">
-                Candidatos de todas as vagas
-              </Link>
-            </>
-          )}
-        </p>
-      </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <Selo variante={status === "ativo" ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
+          </div>
+          <h2 className="mt-2 text-h2">{anuncio.titulo}</h2>
+          <p className="mt-1 text-body-sm text-ink-muted">
+            <Link href={`/anuncio/${anuncio.id}`} className="underline">
+              Ver anúncio
+            </Link>{" "}
+            ·{" "}
+            <Link href="/painel/servicos" className="underline">
+              Editar
+            </Link>
+          </p>
+        </div>
+      ) : (
+        <>
+          <CabecalhoDaVaga
+            anuncio={anuncio}
+            aba="candidatos"
+            resumo={`${todos.length} ${todos.length === 1 ? "candidato" : "candidatos"}`}
+            nota={
+              anuncio.autor_tipo === "agencia" ? (
+                <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
+              ) : null
+            }
+          />
+          <VistaDosCandidatos id={anuncio.id} atual="lista" />
+        </>
+      )}
 
       {(status === "em_analise" || status === "removido") && (
         <Aviso tipo="alerta" titulo="Este anúncio está com a moderação">

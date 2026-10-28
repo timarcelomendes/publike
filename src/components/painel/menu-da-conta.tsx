@@ -1,5 +1,5 @@
 import { MODO_DEMO } from "@/lib/config";
-import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { copilotoLiberado, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { contadoresDoPainel } from "@/lib/servidor/contadores-do-painel";
 import { minhasContas } from "@/lib/servidor/equipe";
 import { atividadesDoMenu } from "@/lib/servidor/modo";
@@ -20,7 +20,7 @@ export async function MenuDaConta() {
       />
     );
   }
-  const [perfil, atividades, usuario, contas, contadores] = await Promise.all([
+  const [perfil, atividades, usuario, contas, contadores, copiloto] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     atividadesDoMenu(),
     obterUsuario(),
@@ -28,6 +28,7 @@ export async function MenuDaConta() {
     minhasContas().catch(() => []),
     // os mesmos números da grade do painel
     contadoresDoPainel(),
+    copilotoLiberado(),
   ]);
   return (
     <MenuPainel
@@ -39,6 +40,7 @@ export async function MenuDaConta() {
       papel={usuario?.papel ?? "dono"}
       // o Hoje de quem procura trabalho (a atividade principal) é a grade das seções
       gradeNoHoje={atividades[0] === "trabalhar"}
+      copiloto={copiloto}
     />
   );
 }

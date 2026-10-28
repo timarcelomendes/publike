@@ -16,9 +16,6 @@ export const COMPETENCIAS: Record<string, string> = {
 export const MAX_TESTES_NA_VAGA = 3;
 export const MAX_QUESTOES = 20;
 
-/** O aviso de que é um recurso pago, liberado como cortesia (decisão do usuário, 28/10/2026). */
-export const SELO_CORTESIA = "Recurso pago · grátis por cortesia";
-
 export const NAO_E_PSICOLOGICO =
   "Não é teste psicológico: mede o conhecimento da função e como a pessoa age em situações de trabalho. Ninguém é recusado pelo teste: o resultado ajuda quem decide.";
 

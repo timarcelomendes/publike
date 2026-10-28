@@ -1,4 +1,4 @@
-import { Building2, Heart, KanbanSquare, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
+import { Building2, ChevronRight, Eye, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -31,7 +31,7 @@ const TITULOS: Record<"todos" | TipoAnuncio, { titulo: string; texto: string }> 
   },
   vaga: {
     titulo: "Minhas vagas",
-    texto: "Quem curtir a vaga aparece nela. Toque em “candidatos” para ver quem foi e responder.",
+    texto: "Quem curtir a vaga aparece nela. Toque na vaga para ver os candidatos, responder e editar.",
   },
   servico: {
     titulo: "Seus serviços na vitrine",
@@ -279,7 +279,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                       {extra?.preenchida_em && <Selo variante="aviso">Vaga preenchida</Selo>}
                     </div>
                     <h3 className="text-h3">
-                      <Link href={`/anuncio/${a.id}`} className="underline-offset-2 hover:underline">
+                      {/* a vaga abre a página dela no painel (as abas); o serviço, o anúncio */}
+                      <Link
+                        href={a.tipo === "vaga" ? `/painel/anuncio/${a.id}/quadro` : `/anuncio/${a.id}`}
+                        className="underline-offset-2 hover:underline"
+                      >
                         {a.titulo}
                       </Link>
                     </h3>
@@ -295,13 +299,19 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                           candidatos={candidatos.filter((c) => c.anuncio_id === a.id)}
                           novas={a.curtidas_novas}
                         />
-                        <Link
-                          href={`/painel/anuncio/${a.id}/quadro`}
-                          className="inline-flex min-h-11 items-center gap-2 self-start text-label underline-offset-2 hover:underline"
-                        >
-                          <KanbanSquare aria-hidden className="size-4 text-ink-muted" />
-                          Abrir o quadro de candidatos
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <BotaoLink href={`/painel/anuncio/${a.id}/quadro`} tamanho="sm">
+                            Abrir a vaga
+                            <ChevronRight aria-hidden />
+                          </BotaoLink>
+                          <Link
+                            href={`/anuncio/${a.id}`}
+                            className="inline-flex min-h-10 items-center gap-1.5 text-body-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+                          >
+                            <Eye aria-hidden className="size-4" />
+                            Ver como o candidato vê
+                          </Link>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-3">
@@ -394,27 +404,17 @@ function EmpresaDaVagaNaLista({ empresa, nome }: { empresa: EmpresaNaVaga; nome:
 
 /**
  * A contratação de uma vaga, em números: candidatos → para responder → em análise →
- * entrevista → contratados. Cada número abre a lista de candidatos já filtrada.
+ * entrevista → contratados. Todo número abre a vaga (o quadro, com as colunas por etapa).
  */
 function FunilDaVaga({ id, candidatos, novas }: { id: string; candidatos: Candidatos; novas: number }) {
   const conta = (f: (c: Candidatos[number]) => boolean) => candidatos.filter(f).length;
-  const base = `/painel/candidatos?vaga=${id}`;
+  const vaga = `/painel/anuncio/${id}/quadro`;
   const passos = [
-    { nome: "Candidatos", numero: candidatos.length, href: `/painel/anuncio/${id}/quadro` },
-    {
-      nome: "Para responder",
-      numero: conta(esperaResposta),
-      href: `${base}&situacao=responder`,
-      destaque: true,
-    },
-    { nome: "Em análise", numero: conta((c) => c.etapa === "analise"), href: `${base}&etapa=analise` },
-    { nome: "Entrevista", numero: conta((c) => c.etapa === "entrevista"), href: `${base}&etapa=entrevista` },
-    {
-      nome: "Contratados",
-      numero: conta((c) => c.etapa === "contratado"),
-      href: `${base}&etapa=contratado`,
-      final: true,
-    },
+    { nome: "Candidatos", numero: candidatos.length, href: vaga },
+    { nome: "Para responder", numero: conta(esperaResposta), href: vaga, destaque: true },
+    { nome: "Em análise", numero: conta((c) => c.etapa === "analise"), href: vaga },
+    { nome: "Entrevista", numero: conta((c) => c.etapa === "entrevista"), href: vaga },
+    { nome: "Contratados", numero: conta((c) => c.etapa === "contratado"), href: vaga, final: true },
   ];
   return (
     <ol aria-label="Contratação desta vaga" className="grid grid-cols-3 gap-2 sm:grid-cols-5">

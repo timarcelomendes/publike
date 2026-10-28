@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Aviso, Selo } from "@/components/ui/basicos";
+import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { bibliotecaDeTestes } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
-import { NAO_E_PSICOLOGICO, SELO_CORTESIA } from "@/lib/testes";
+import { NAO_E_PSICOLOGICO } from "@/lib/testes";
 
 export const metadata: Metadata = { title: "Testes Publike" };
 
@@ -70,7 +71,7 @@ async function Conteudo() {
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-h2">Testes Publike</h2>
-          <Selo variante="aviso">{SELO_CORTESIA}</Selo>
+          <SeloCortesia />
         </div>
         <p className="text-body text-ink-muted">
           Ponha um teste na vaga e quem curtir faz pelo celular. Você vê o resultado no quadro de cada vaga, em Testes.

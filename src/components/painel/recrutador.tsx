@@ -700,7 +700,7 @@ export async function PainelRecrutador({
                             {contratado === 1 ? "contratado" : "contratados"}
                           </span>
                           <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-ink">
-                            Abrir o quadro
+                            Abrir a vaga
                             <ChevronRight aria-hidden className="size-4" />
                           </span>
                         </span>

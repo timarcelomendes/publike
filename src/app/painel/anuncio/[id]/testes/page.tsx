@@ -1,9 +1,11 @@
-import { ArrowLeft, ClipboardCheck } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
+import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { PedirTeste } from "@/components/testes/pedir-teste";
 import { TestesDaVaga } from "@/components/testes/testes-da-vaga";
@@ -14,13 +16,7 @@ import { tempoRelativo } from "@/lib/formato";
 import { bibliotecaDeTestes, resultadosDosTestes, testesDaVaga } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import {
-  competenciasDoResultado,
-  faixaDoResultado,
-  NAO_E_PSICOLOGICO,
-  SELO_CORTESIA,
-  textoDoResultado,
-} from "@/lib/testes";
+import { competenciasDoResultado, faixaDoResultado, NAO_E_PSICOLOGICO, textoDoResultado } from "@/lib/testes";
 
 export const metadata: Metadata = { title: "Testes da vaga" };
 
@@ -45,19 +41,11 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/te
     listarInteressados(id).catch(() => []),
     agoraDaRequisicao(),
   ]);
-  const voltar = (
-    <Link
-      href={`/painel/anuncio/${id}/quadro`}
-      className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
-    >
-      <ArrowLeft aria-hidden className="size-4" />
-      Quadro da vaga
-    </Link>
-  );
+  const cabecalho = <CabecalhoDaVaga anuncio={anuncio} aba="testes" />;
   if (biblioteca === null) {
     return (
       <div className="flex flex-col gap-4">
-        {voltar}
+        {cabecalho}
         <Aviso tipo="alerta" titulo="Os testes ainda não estão disponíveis">
           Tente de novo em instantes.
         </Aviso>
@@ -69,14 +57,11 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/te
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        {voltar}
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-h2">Testes da vaga</h2>
-          <Selo variante="aviso">{SELO_CORTESIA}</Selo>
-        </div>
-        <p className="text-body text-ink-muted">
-          {anuncio.titulo}. Testes da marca Publike e os da sua empresa, feitos pelo celular.
+      {cabecalho}
+      <div className="flex flex-wrap items-center gap-2">
+        <SeloCortesia />
+        <p className="text-body-sm text-ink-muted">
+          Testes da marca Publike e os da sua empresa. Quem curtir a vaga faz pelo celular.
         </p>
       </div>
 

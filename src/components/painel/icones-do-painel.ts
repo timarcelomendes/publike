@@ -14,6 +14,7 @@ import {
   Link2,
   MessagesSquare,
   Send,
+  Sparkles,
   Star,
   Store,
   UserSearch,
@@ -47,4 +48,5 @@ export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   entrevistas: CalendarDays,
   visitas: Eye,
   testes: ClipboardCheck,
+  copiloto: Sparkles,
 };

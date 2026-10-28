@@ -19,11 +19,12 @@ export function NivelDaSaude({ s }: { s: Saude }) {
   );
 }
 
-/** A saúde da vaga no quadro: a nota, o que está bom e o que falta, com o link para resolver. */
+/** A saúde da vaga no quadro, fechada numa linha: a nota e a primeira dica; aberta, o que falta, com o link para resolver. */
 export function SaudeDaVaga({ s }: { s: Saude }) {
   const n = NIVEIS[s.nivel];
   return (
-    <details open={s.nivel !== "boa"} className="group rounded-lg border border-line bg-surface-200">
+    // fechada: os candidatos vêm primeiro; o que falta abre num toque
+    <details className="group rounded-lg border border-line bg-surface-200">
       <summary className="flex min-h-14 cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
         <span className="text-h3">Saúde da vaga</span>
         <span className="flex items-center gap-2">

@@ -101,7 +101,8 @@ export type Secao = {
     | "links"
     | "entrevistas"
     | "visitas"
-    | "testes";
+    | "testes"
+    | "copiloto";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
   jeito?: "pilula" | "pronto" | "texto";
@@ -109,6 +110,8 @@ export type Secao = {
   passo?: number;
   /** o texto ao lado do número ("no ar") */
   sufixo?: string;
+  /** recurso pago liberado por cortesia (Copiloto e Testes Publike): ganha a pílula "Cortesia" */
+  cortesia?: boolean;
 };
 
 /** Um grupo de seções no menu (sem nome: o primeiro, com Hoje). `caminho`: os passos numerados. */
@@ -168,7 +171,14 @@ export function secoesDoModo(modo: ModoPainel, tipoConta: string | null | undefi
  * Os grupos do menu. Em Contratar, o caminho da vaga, sempre na mesma ordem: a agência tem
  * Clientes e Para o cliente; comércio e empresa, Entrevistas. Os outros modos, um grupo só.
  */
-export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefined): GrupoMenu[] {
+/** O que muda o menu de uma conta além do tipo: o copiloto (em teste) só nas contas liberadas. */
+export type ExtrasDoMenu = { copiloto?: boolean };
+
+export function gruposDoModo(
+  modo: ModoPainel,
+  tipoConta: string | null | undefined,
+  extras: ExtrasDoMenu = {},
+): GrupoMenu[] {
   if (modo !== "contratar") return [{ nome: null, secoes: SECOES[modo] }];
   const agencia = tipoConta === "agencia";
   const caminho: Omit<Secao, "passo">[] = agencia
@@ -191,6 +201,7 @@ export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefi
     {
       nome: "Achar gente",
       secoes: [
+        ...(extras.copiloto ? [{ href: "/painel/copiloto", nome: "Copiloto", icone: "copiloto", cortesia: true } as Secao] : []),
         { href: "/talentos", nome: "Talentos", icone: "talentos" },
         { ...MENSAGENS, jeito: "pilula" },
         {
@@ -206,7 +217,7 @@ export function gruposDoModo(modo: ModoPainel, tipoConta: string | null | undefi
       nome: agencia ? "Agência" : "Sua empresa",
       secoes: [
         { href: "/painel/links", nome: "Links para divulgar", icone: "links" },
-        { href: "/painel/testes", nome: "Testes Publike", icone: "testes" },
+        { href: "/painel/testes", nome: "Testes Publike", icone: "testes", cortesia: true },
         ...(agencia ? [EQUIPE] : []),
       ],
     },
@@ -244,7 +255,8 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/finalistas") ||
     caminho.startsWith("/painel/contratados") ||
     caminho.startsWith("/painel/links") ||
-    caminho.startsWith("/painel/testes")
+    caminho.startsWith("/painel/testes") ||
+    caminho.startsWith("/painel/copiloto")
   )
     return "contratar";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "servicos";
@@ -263,15 +275,19 @@ const COMUNS = ["/painel", "/painel/conversas", "/painel/visitas"];
  * atividade, o menu dela, como sempre; com mais, o comum no alto (Hoje, Mensagens, Quem viu seu
  * perfil) e o grupo de cada atividade com o nome dela em cima ("Contratar", "Trabalhar", "Serviços").
  */
-export function gruposDaConta(atividades: ModoPainel[], tipoConta: string | null | undefined): GrupoMenu[] {
-  if (atividades.length <= 1) return gruposDoModo(atividades[0] ?? "trabalhar", tipoConta);
-  const todas = atividades.flatMap((m) => gruposDoModo(m, tipoConta).flatMap((g) => g.secoes));
+export function gruposDaConta(
+  atividades: ModoPainel[],
+  tipoConta: string | null | undefined,
+  extras: ExtrasDoMenu = {},
+): GrupoMenu[] {
+  if (atividades.length <= 1) return gruposDoModo(atividades[0] ?? "trabalhar", tipoConta, extras);
+  const todas = atividades.flatMap((m) => gruposDoModo(m, tipoConta, extras).flatMap((g) => g.secoes));
   const comuns = COMUNS.map((href) => todas.find((s) => s.href === href)).filter((s): s is Secao => Boolean(s));
   const grupos: GrupoMenu[] = [{ nome: null, secoes: comuns }];
   for (const m of atividades) {
     const nome = MODOS.find((x) => x.valor === m)?.nome ?? m;
     let primeiro = true;
-    for (const g of gruposDoModo(m, tipoConta)) {
+    for (const g of gruposDoModo(m, tipoConta, extras)) {
       const secoes = g.secoes.filter((s) => !COMUNS.includes(s.href));
       if (!secoes.length) continue;
       grupos.push({ ...g, atividade: primeiro ? nome : undefined, secoes });

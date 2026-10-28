@@ -1,10 +1,12 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Link2, UserSearch } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Link2, Sparkles, UserSearch } from "lucide-react";
+import Link from "next/link";
 import { calcularAderencia, requisitosDaVaga } from "@/lib/aderencia";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
-import { obterAnuncio, talentosParaVaga } from "@/lib/dados";
+import { copilotoLiberado, obterAnuncio, talentosParaVaga } from "@/lib/dados";
 import { formatarLugar, plural, tempoRelativo } from "@/lib/formato";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 import { CurriculoResumo } from "../curriculo-resumo";
+import { SeloCortesia } from "../selo-cortesia";
 import { BotaoConvidar } from "../painel/botao-convidar";
 import { CriteriosDaAderencia, NotaAderencia } from "../painel/nota-aderencia";
 import { Aviso, Avatar, Vazio } from "../ui/basicos";
@@ -28,7 +30,11 @@ export async function ParaAVaga({
   href: (pagina: number) => string;
   agora: number;
 }) {
-  const [anuncio, lista] = await Promise.all([obterAnuncio(vaga.id), talentosParaVaga(vaga.id).catch(() => null)]);
+  const [anuncio, lista, copiloto] = await Promise.all([
+    obterAnuncio(vaga.id),
+    talentosParaVaga(vaga.id).catch(() => null),
+    copilotoLiberado(),
+  ]);
   if (!anuncio || !lista) {
     return (
       <Aviso tipo="alerta" titulo="Não deu para carregar os talentos agora">
@@ -96,6 +102,19 @@ export async function ParaAVaga({
           entrada.
         </p>
       </div>
+      {copiloto && (
+        <Link
+          href={`/painel/anuncio/${vaga.id}/copiloto`}
+          className="flex items-center gap-3 rounded-lg border border-terra/40 bg-terra-soft p-3 text-body-sm hover:border-terra"
+        >
+          <Sparkles aria-hidden className="size-5 shrink-0 text-terra-text" />
+          <span className="min-w-0 flex-1">
+            <b className="font-semibold">Copiloto:</b> a IA lê estes currículos contra os critérios da vaga e mostra o
+            trecho que comprova. <SeloCortesia curto className="align-middle" />
+          </span>
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-terra-text" />
+        </Link>
+      )}
       <ul aria-label={`Talentos para ${vaga.titulo}`} className="flex flex-col gap-3">
         {talentos.map(({ t, a }) => {
           const estudo = nomeEscolaridade(t.escolaridade);

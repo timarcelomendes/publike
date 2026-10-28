@@ -1,4 +1,4 @@
-import { ArrowLeft, Bot, History, ListChecks, Sparkles, UserSearch } from "lucide-react";
+import { Bot, History, ListChecks, Sparkles, UserSearch } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,6 +8,8 @@ import { EditorDeCriterios } from "@/components/copiloto/criterios";
 import { PartesDoCopiloto } from "@/components/copiloto/partes";
 import { RodarCopiloto } from "@/components/copiloto/rodar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
+import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
@@ -56,19 +58,11 @@ async function Conteudo({
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const config = await configDoCopiloto(id);
-  const voltar = (
-    <Link
-      href={`/painel/anuncio/${id}/quadro`}
-      className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
-    >
-      <ArrowLeft aria-hidden className="size-4" />
-      Quadro da vaga
-    </Link>
-  );
+  const cabecalho = <CabecalhoDaVaga anuncio={anuncio} aba="copiloto" />;
   if (!config?.liberado) {
     return (
       <div className="flex flex-col gap-4">
-        {voltar}
+        {cabecalho}
         <Vazio icone={Bot} titulo="O copiloto está em teste">
           Ele ainda não foi liberado para a sua conta. Quando for, aparece aqui e no quadro da vaga.
         </Vazio>
@@ -111,15 +105,12 @@ async function Conteudo({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        {voltar}
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-h2">Copiloto</h2>
-          <Selo variante="aviso">Teste</Selo>
-        </div>
-        <p className="text-body text-ink-muted">
-          {anuncio.titulo}. A IA lê cada currículo contra os critérios e mostra o trecho que comprova. Quem decide é
-          você.
+      {cabecalho}
+      <div className="flex flex-wrap items-center gap-2">
+        <SeloCortesia />
+        <Selo variante="contorno">Teste</Selo>
+        <p className="text-body-sm text-ink-muted">
+          A IA lê cada currículo contra os critérios e mostra o trecho que comprova. Quem decide é você.
         </p>
       </div>
 
