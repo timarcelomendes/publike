@@ -13,6 +13,7 @@ import { enviarEmailsPendentes, enviarPushPendentes, processarFilas } from "@/li
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerPerfil, lerServicos, registroDoAnuncio, UUID } from "@/lib/validacao";
+import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio";
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { areasSemRepetir } from "@/lib/constantes";
 import { LIMITES_MENSAGEM_EQUIPE } from "@/lib/mensagem-equipe";
@@ -197,8 +198,12 @@ export async function publicarEmNomeDe(
     return { ok: false, erro: "A conta está suspensa: não dá para publicar em nome dela." };
   }
 
+  // como na publicação normal: sem ponto no mapa, o meio do bairro; a confidencial (sem CEP, endereço nem
+  // pino na tela), o meio do bairro ou o centro da cidade; sem categoria ou descrição, as do título
+  const trocas = await completarAnuncio(formData);
   const leitura = lerAnuncio(formData);
-  if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
+  if (!leitura.ok)
+    return { ok: false, erro: "Confira os campos marcados.", erros: ajustarErros(leitura.erros, trocas) };
   const d = leitura.dados;
   if (d.tipo !== "vaga") return { ok: false, erro: "Pelo admin dá para publicar só vagas." };
 
