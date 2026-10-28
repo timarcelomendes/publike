@@ -46,7 +46,7 @@ export function EditorDeCriterios({ anuncioId, iniciais }: { anuncioId: string; 
       setLista(r.criterios);
       setErros({});
       setMudou(true);
-      setAviso({ ok: true, texto: "A IA sugeriu estes critérios. Ajuste o que quiser e salve." });
+      setAviso({ ok: true, texto: r.aviso ?? "A IA sugeriu estes critérios. Ajuste o que quiser e salve." });
     });
   }
 

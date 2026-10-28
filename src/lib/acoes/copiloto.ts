@@ -53,7 +53,37 @@ async function modeloEscolhido() {
   return modeloDaIA(data?.[0]?.ia_modelo).id;
 }
 
-export type RespostaCriterios = { ok: true; criterios: CriterioCopiloto[] } | { ok: false; erro: string };
+export type RespostaCriterios =
+  { ok: true; criterios: CriterioCopiloto[]; aviso?: string } | { ok: false; erro: string };
+
+/**
+ * Sem a IA (fora do ar ou sem resposta): os critérios que saem do que a vaga já diz (a função, a
+ * escolaridade, a experiência, a CNH e a jornada), para a pessoa não ficar com a lista vazia.
+ */
+function criteriosDaPropriaVaga(a: {
+  titulo: string;
+  escolaridade_minima: string | null;
+  experiencia: string | null;
+  cnh: string | null;
+  jornada: string | null;
+}): CriterioCopiloto[] {
+  const experiencia = a.experiencia && a.experiencia !== "sem" ? nomeExperiencia(a.experiencia) : null;
+  const titulo = a.titulo.replace(/\s+/g, " ").trim().slice(0, 80);
+  const lista = [
+    {
+      texto: `Experiência como ${titulo.charAt(0).toLowerCase()}${titulo.slice(1)}${experiencia ? ` (${experiencia.toLowerCase()})` : ""}`,
+      obrigatorio: Boolean(experiencia),
+    },
+    a.escolaridade_minima && nomeEscolaridade(a.escolaridade_minima)
+      ? { texto: `Escolaridade: ${nomeEscolaridade(a.escolaridade_minima)} ou mais`, obrigatorio: true }
+      : null,
+    a.cnh ? { texto: `CNH ${a.cnh}`, obrigatorio: true } : null,
+    a.jornada && nomeJornada(a.jornada)
+      ? { texto: `Pode trabalhar na jornada: ${nomeJornada(a.jornada)!.toLowerCase()}`, obrigatorio: false }
+      : null,
+  ].filter((c): c is { texto: string; obrigatorio: boolean } => Boolean(c) && !motivoProibido(c!.texto));
+  return lista.map((c, i) => ({ id: `c${i + 1}`, ...c }));
+}
 
 /** A IA sugere os critérios a partir da vaga. Não salva: a pessoa confere e salva. */
 export async function sugerirCriteriosComIA(anuncioId: string): Promise<RespostaCriterios> {
@@ -93,6 +123,14 @@ export async function sugerirCriteriosComIA(anuncioId: string): Promise<Resposta
     return { ok: true, criterios: await sugerirCriterios(texto, await modeloEscolhido()) };
   } catch (e) {
     console.error("Publike: o copiloto não sugeriu critérios:", e instanceof Error ? e.message : e);
+    const daVaga = criteriosDaPropriaVaga(a);
+    if (daVaga.length) {
+      return {
+        ok: true,
+        criterios: daVaga,
+        aviso: "A IA não respondeu agora: estes critérios saíram do que a vaga já diz. Ajuste o que quiser e salve.",
+      };
+    }
     return { ok: false, erro: "A IA não conseguiu sugerir agora. Tente de novo ou escreva os critérios." };
   }
 }

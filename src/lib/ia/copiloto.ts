@@ -50,28 +50,35 @@ const ESQUEMA_CRITERIOS = {
 
 /** Os critérios que a IA sugere para a vaga (sem os proibidos e sem repetidos), com ids c1, c2... */
 export async function sugerirCriterios(vaga: string, modelo: string): Promise<CriterioCopiloto[]> {
-  const r0 = await chamarIA({
-    modelo,
-    sistema: SISTEMA_CRITERIOS,
-    mensagem: `<vaga>\n${limpo(vaga)}\n</vaga>`,
-    maxTokens: 700,
-    esquema: { nome: "criterios_da_vaga", schema: ESQUEMA_CRITERIOS },
-  });
-  if (r0.parada === "recusa") throw new ErroIA("A IA não quis sugerir critérios para esta vaga.");
-  const r = lerJson<{ criterios?: unknown }>(r0.texto);
-  const vistos = new Set<string>();
-  const lista: CriterioCopiloto[] = [];
-  for (const c of Array.isArray(r.criterios) ? r.criterios : []) {
-    const o = (c ?? {}) as Record<string, unknown>;
-    const texto = frase(o.texto, 120);
-    const chave = normalizar(texto);
-    if (texto.length < 3 || vistos.has(chave) || motivoProibido(texto) || temContato(texto)) continue;
-    vistos.add(chave);
-    lista.push({ id: `c${lista.length + 1}`, texto, obrigatorio: o.obrigatorio === true });
-    if (lista.length >= Math.min(6, MAX_CRITERIOS)) break;
+  // a resposta vazia (acontece com o modelo que responde direto) ganha mais uma chance, com o pedido mais claro
+  for (const extra of [
+    "",
+    "\n\nDevolva pelo menos 3 critérios: a vaga sempre tem a função, e quase sempre o horário.",
+  ]) {
+    const r0 = await chamarIA({
+      modelo,
+      sistema: SISTEMA_CRITERIOS,
+      mensagem: `<vaga>\n${limpo(vaga)}\n</vaga>${extra}`,
+      maxTokens: 700,
+      esquema: { nome: "criterios_da_vaga", schema: ESQUEMA_CRITERIOS },
+    });
+    if (r0.parada === "recusa") throw new ErroIA("A IA não quis sugerir critérios para esta vaga.");
+    const r = lerJson<{ criterios?: unknown }>(r0.texto);
+    const vistos = new Set<string>();
+    const lista: CriterioCopiloto[] = [];
+    for (const c of Array.isArray(r.criterios) ? r.criterios : []) {
+      const o = (c ?? {}) as Record<string, unknown>;
+      const texto = frase(o.texto, 120);
+      const chave = normalizar(texto);
+      if (texto.length < 3 || vistos.has(chave) || motivoProibido(texto) || temContato(texto)) continue;
+      vistos.add(chave);
+      lista.push({ id: `c${lista.length + 1}`, texto, obrigatorio: o.obrigatorio === true });
+      if (lista.length >= Math.min(6, MAX_CRITERIOS)) break;
+    }
+    if (lista.length) return lista;
+    console.warn("Publike: o copiloto recebeu critérios vazios:", r0.texto.slice(0, 300));
   }
-  if (!lista.length) throw new ErroIA("A IA não achou critérios para esta vaga. Escreva os seus.");
-  return lista;
+  throw new ErroIA("A IA não achou critérios para esta vaga. Escreva os seus.");
 }
 
 // ------------------------------------------------------------------ leitura do currículo
