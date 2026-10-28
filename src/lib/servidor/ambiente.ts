@@ -82,6 +82,11 @@ export function chaveClaude() {
   return (process.env.ANTHROPIC_API_KEY || "").trim();
 }
 
+/** Workspace do Console da Anthropic (wrkspc_...): só para chave que não é de um workspace. Não é segredo. */
+export function workspaceClaude() {
+  return (process.env.ANTHROPIC_WORKSPACE_ID || "").trim();
+}
+
 /** Endereço da API do Claude. Só muda em teste; nunca vem do admin. */
 export function enderecoClaude() {
   return (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").trim().replace(/\/+$/, "");

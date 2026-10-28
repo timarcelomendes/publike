@@ -1,5 +1,5 @@
 import "server-only";
-import { chaveClaude, enderecoClaude } from "@/lib/servidor/ambiente";
+import { chaveClaude, enderecoClaude, workspaceClaude } from "@/lib/servidor/ambiente";
 import type { ParadaIA } from "./openai";
 
 // Conversa com a API do Claude (Anthropic, Messages API). A chave fica só no servidor.
@@ -90,6 +90,11 @@ function explicarErro(status: number, corpo: string) {
       msg: "A conta do Claude chegou ao limite de gastos definido no Console da Anthropic (Settings › Limits).",
       reserva: true,
     };
+  if (texto.includes("anthropic-workspace-id"))
+    return {
+      msg: "A chave do Claude não é de um workspace. Crie a chave dentro de um workspace no Console da Anthropic, ou ponha ANTHROPIC_WORKSPACE_ID no servidor.",
+      reserva: true,
+    };
   if (status === 401)
     return { msg: "A chave do Claude não foi aceita. Confira ANTHROPIC_API_KEY no servidor.", reserva: true };
   if (status === 403) return { msg: "A chave do Claude não tem permissão para usar este modelo.", reserva: true };
@@ -165,7 +170,13 @@ export async function chamarClaude(
   try {
     resposta = await fetch(`${enderecoClaude()}/v1/messages`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01" },
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": chave,
+        "anthropic-version": "2023-06-01",
+        // chave da organização (sem workspace): a API pede o workspace no pedido
+        ...(workspaceClaude() ? { "anthropic-workspace-id": workspaceClaude() } : {}),
+      },
       body: JSON.stringify(corpo),
       cache: "no-store",
       signal: AbortSignal.timeout(p.tempoLimite ?? 45_000),
