@@ -349,6 +349,16 @@ export function FormAnuncio({
     setLugarDoCliente(c.nome);
   }
 
+  // marcar ou desmarcar "Empresa confidencial" monta o "Onde é" de outro jeito (sem ou com o mapa): o bairro
+  // que já estava escrito vai junto, senão o campo novo voltava com o bairro de antes
+  function mudarConfidencial(valor: boolean) {
+    const campo = formulario.current?.elements.namedItem("bairro");
+    if (campo instanceof HTMLInputElement) {
+      const bairro = campo.value.trim();
+      setLugar((l) => (l.bairro === bairro ? l : { ...l, bairro }));
+    }
+    setConfidencial(valor);
+  }
   function aplicarSugestao(titulo: string, novaDescricao: string) {
     const campoTitulo = formulario.current?.elements.namedItem("titulo");
     if (campoTitulo instanceof HTMLInputElement) campoTitulo.value = titulo;
@@ -473,7 +483,7 @@ export function FormAnuncio({
             inicial={{ cliente_id: inicial.cliente_id ?? null, contratante: inicial.contratante ?? null }}
             erros={erros}
             confidencial={confidencial}
-            aoMudarConfidencial={setConfidencial}
+            aoMudarConfidencial={mudarConfidencial}
             aoEscolherCliente={usarLugarDoCliente}
             equipe={equipe}
             emNomeDe={emNomeDe}
