@@ -23,9 +23,12 @@ const vazia = (n: number): QuestaoTeste => ({
 export function EditorDeTeste({
   id,
   inicial,
+  vaga = null,
 }: {
   id: string | null;
   inicial?: { titulo: string; descricao: string | null; questoes: QuestaoTeste[] };
+  /** veio dos testes desta vaga: o teste novo volta para lá já escolhido */
+  vaga?: string | null;
 }) {
   const router = useRouter();
   const [titulo, setTitulo] = useState(inicial?.titulo ?? "");
@@ -49,7 +52,7 @@ export function EditorDeTeste({
       }
       setErros({});
       setAviso({ ok: true, texto: r.mensagem });
-      if (!id) router.push(`/painel/testes/${r.id}`);
+      if (!id) router.push(vaga ? `/painel/anuncio/${vaga}/testes?novo=${r.id}` : `/painel/testes/${r.id}`);
     });
   }
 
@@ -179,7 +182,7 @@ export function EditorDeTeste({
               confirmar
                 ? iniciar(async () => {
                     const r = await chamarAcao(() => apagarTesteDaCasa(id));
-                    if (r.ok) router.push("/painel/testes");
+                    if (r.ok) router.push(vaga ? `/painel/testes?vaga=${vaga}` : "/painel/testes");
                     else setAviso({ ok: false, texto: r.erro });
                   })
                 : setConfirmar(true)

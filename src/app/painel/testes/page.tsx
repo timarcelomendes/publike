@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
+import { comVaga, vagaDaVolta, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
@@ -16,22 +17,22 @@ export const metadata: Metadata = { title: "Testes Publike" };
 
 // A biblioteca de testes (migração 20261204120000): os da Publike e os da casa. Na vaga, em Testes da vaga.
 
-export default function Testes() {
+export default function Testes({ searchParams }: PageProps<"/painel/testes">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo />
+      <Conteudo searchParams={searchParams} />
     </Suspense>
   );
 }
 
 function Linha({
-  id,
+  href,
   titulo,
   descricao,
   questoes,
   extra,
 }: {
-  id: string;
+  href: string;
   titulo: string;
   descricao: string | null;
   questoes: number;
@@ -40,12 +41,13 @@ function Linha({
   return (
     <li>
       <Link
-        href={`/painel/testes/${id}`}
+        href={href}
         className="flex flex-col gap-0.5 rounded-lg border border-line bg-surface-200 p-4 hover:bg-surface-300"
       >
         <span className="text-label">{titulo}</span>
         <span className="text-body-sm text-ink-muted">
-          {questoes} questões{extra ? ` · ${extra}` : ""}
+          {questoes} {questoes === 1 ? "questão" : "questões"}
+          {extra ? ` · ${extra}` : ""}
           {descricao ? ` · ${descricao}` : ""}
         </span>
       </Link>
@@ -53,10 +55,12 @@ function Linha({
   );
 }
 
-async function Conteudo() {
+async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/testes">["searchParams"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
-  await exigirUsuario("/painel/testes");
-  const biblioteca = await bibliotecaDeTestes();
+  const sp = await searchParams;
+  const usuario = await exigirUsuario("/painel/testes");
+  // veio dos testes de uma vaga: a volta para ela, e os links daqui levam a vaga junto
+  const [biblioteca, vaga] = await Promise.all([bibliotecaDeTestes(), vagaDaVolta(sp.vaga, usuario.id)]);
   if (biblioteca === null) {
     return (
       <Aviso tipo="alerta" titulo="Os testes ainda não estão disponíveis">
@@ -68,6 +72,7 @@ async function Conteudo() {
   const casa = biblioteca.filter((m) => m.da_casa);
   return (
     <div className="flex flex-col gap-6">
+      {vaga && <VoltarParaVaga vaga={vaga} />}
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-h2">Testes Publike</h2>
@@ -88,7 +93,7 @@ async function Conteudo() {
             {publike.map((m) => (
               <Linha
                 key={m.id}
-                id={m.id}
+                href={comVaga(`/painel/testes/${m.id}`, vaga)}
                 titulo={m.titulo}
                 descricao={m.descricao}
                 questoes={m.questoes}
@@ -106,7 +111,7 @@ async function Conteudo() {
           <h3 id="titulo-casa" className="text-h3">
             Da sua empresa
           </h3>
-          <BotaoLink href="/painel/testes/novo" tamanho="sm">
+          <BotaoLink href={comVaga("/painel/testes/novo", vaga)} tamanho="sm">
             <Plus aria-hidden />
             Criar teste
           </BotaoLink>
@@ -114,7 +119,13 @@ async function Conteudo() {
         {casa.length ? (
           <ul className="grid gap-3 md:grid-cols-2">
             {casa.map((m) => (
-              <Linha key={m.id} id={m.id} titulo={m.titulo} descricao={m.descricao} questoes={m.questoes} />
+              <Linha
+                key={m.id}
+                href={comVaga(`/painel/testes/${m.id}`, vaga)}
+                titulo={m.titulo}
+                descricao={m.descricao}
+                questoes={m.questoes}
+              />
             ))}
           </ul>
         ) : (

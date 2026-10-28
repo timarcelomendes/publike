@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { EditorDeTeste } from "@/components/testes/editor-teste";
+import { comVaga, vagaDaVolta, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
 import { MODO_DEMO } from "@/lib/config";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -14,20 +15,27 @@ import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Teste" };
 
-export default function Teste({ params }: PageProps<"/painel/testes/[id]">) {
+export default function Teste({ params, searchParams }: PageProps<"/painel/testes/[id]">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo params={params} />
+      <Conteudo params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
 /** O teste da Publike (para conhecer, com as respostas) ou o da casa (para editar). */
-async function Conteudo({ params }: { params: PageProps<"/painel/testes/[id]">["params"] }) {
+async function Conteudo({
+  params,
+  searchParams,
+}: {
+  params: PageProps<"/painel/testes/[id]">["params"];
+  searchParams: PageProps<"/painel/testes/[id]">["searchParams"];
+}) {
   if (MODO_DEMO) return <SoComSupabase />;
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  await exigirUsuario(`/painel/testes/${id}`);
+  const usuario = await exigirUsuario(`/painel/testes/${id}`);
+  const vaga = await vagaDaVolta(sp.vaga, usuario.id);
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("avaliacao_modelo", { p_modelo: id });
   if (error || !data) notFound();
@@ -35,17 +43,24 @@ async function Conteudo({ params }: { params: PageProps<"/painel/testes/[id]">["
   const questoes = questoesDoBanco(m.questoes);
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href="/painel/testes"
-        className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Testes Publike
-      </Link>
+      <div className="flex flex-wrap items-center gap-x-5">
+        <Link
+          href={comVaga("/painel/testes", vaga)}
+          className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          Testes Publike
+        </Link>
+        {vaga && <VoltarParaVaga vaga={vaga} />}
+      </div>
       {m.da_casa ? (
         <>
           <h2 className="text-h2">Editar teste</h2>
-          <EditorDeTeste id={id} inicial={{ titulo: m.titulo, descricao: m.descricao, questoes }} />
+          <EditorDeTeste
+            id={id}
+            inicial={{ titulo: m.titulo, descricao: m.descricao, questoes }}
+            vaga={vaga?.id ?? null}
+          />
         </>
       ) : (
         <>

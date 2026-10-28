@@ -20,17 +20,23 @@ import { competenciasDoResultado, faixaDoResultado, NAO_E_PSICOLOGICO, textoDoRe
 
 export const metadata: Metadata = { title: "Testes da vaga" };
 
-export default function TestesDaVagaPagina({ params }: PageProps<"/painel/anuncio/[id]/testes">) {
+export default function TestesDaVagaPagina({ params, searchParams }: PageProps<"/painel/anuncio/[id]/testes">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo params={params} />
+      <Conteudo params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/testes">["params"] }) {
+async function Conteudo({
+  params,
+  searchParams,
+}: {
+  params: PageProps<"/painel/anuncio/[id]/testes">["params"];
+  searchParams: PageProps<"/painel/anuncio/[id]/testes">["searchParams"];
+}) {
   if (MODO_DEMO) return <SoComSupabase />;
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/testes`);
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
@@ -71,15 +77,20 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/te
           Testes desta vaga
         </h3>
         <TestesDaVaga
+          // de novo do zero quando a biblioteca muda (o teste que acabou de ser criado já vem escolhido)
+          key={`${biblioteca.length}-${typeof sp.novo === "string" ? sp.novo : ""}`}
           anuncioId={id}
           biblioteca={biblioteca}
           iniciais={naVaga.map((t) => ({ modelo_id: t.modelo_id, obrigatoria: t.obrigatoria }))}
+          novo={typeof sp.novo === "string" ? sp.novo : null}
         />
-        <p className="mt-3 text-body-sm">
-          <Link href="/painel/testes" className="font-semibold underline underline-offset-2">
-            Ver a biblioteca e criar os testes da sua empresa
-          </Link>
-        </p>
+        {biblioteca.length > 0 && (
+          <p className="mt-3 text-body-sm">
+            <Link href={`/painel/testes?vaga=${id}`} className="font-semibold underline underline-offset-2">
+              Ver a biblioteca e criar os testes da sua empresa
+            </Link>
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="titulo-resultados" className="flex flex-col gap-3">

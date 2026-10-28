@@ -1,10 +1,10 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { ClipboardList, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { salvarTestesDaVaga } from "@/lib/acoes/testes";
 import { MAX_TESTES_NA_VAGA } from "@/lib/testes";
-import { Botao } from "../ui/botao";
+import { Botao, BotaoLink } from "../ui/botao";
 import { Seletor, classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
@@ -15,17 +15,38 @@ export function TestesDaVaga({
   anuncioId,
   biblioteca,
   iniciais,
+  novo = null,
 }: {
   anuncioId: string;
   biblioteca: Modelo[];
   iniciais: { modelo_id: string; obrigatoria: boolean }[];
+  /** o teste que a empresa acabou de criar pela vaga: já vem escolhido */
+  novo?: string | null;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [itens, setItens] = useState(iniciais);
-  const [escolha, setEscolha] = useState("");
+  const [escolha, setEscolha] = useState(() =>
+    novo && biblioteca.some((m) => m.id === novo) && !iniciais.some((i) => i.modelo_id === novo) ? novo : "",
+  );
   const [mudou, setMudou] = useState(false);
   const nome = (id: string) => biblioteca.find((m) => m.id === id);
   const livres = biblioteca.filter((m) => !itens.some((i) => i.modelo_id === m.id));
+
+  // nenhum teste para escolher (os da Publike em revisão e nenhum da casa): o caminho é criar um
+  if (!biblioteca.length && !itens.length) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-body-sm text-ink-muted">
+          Ainda não há testes para escolher: os da Publike estão em revisão e aparecem aqui em breve. Enquanto isso,
+          crie um teste com as perguntas da sua empresa.
+        </p>
+        <BotaoLink href={`/painel/testes/novo?vaga=${anuncioId}`} tamanho="sm">
+          <ClipboardList aria-hidden />
+          Criar um teste da sua empresa
+        </BotaoLink>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -42,7 +63,8 @@ export function TestesDaVaga({
                   {m?.titulo ?? "Teste"}
                   <span className="font-normal text-ink-muted">
                     {" "}
-                    · {m?.questoes ?? "?"} questões{m?.da_casa ? " · da casa" : ""}
+                    · {m?.questoes ?? "?"} {m?.questoes === 1 ? "questão" : "questões"}
+                    {m?.da_casa ? " · da casa" : ""}
                   </span>
                 </span>
                 <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-body-sm">
