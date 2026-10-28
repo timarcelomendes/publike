@@ -1165,6 +1165,7 @@ export type Database = {
       };
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      admin_corrigir_nome: { Args: { p_usuario: string; p_nome: string }; Returns: string };
       admin_avaliacoes_modelos: {
         Args: Record<string, never>;
         Returns: {

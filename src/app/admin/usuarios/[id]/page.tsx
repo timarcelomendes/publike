@@ -1,6 +1,7 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
 import { BotaoCopiloto } from "@/components/admin/copiloto";
+import { FormNomeDaConta } from "@/components/admin/nome-da-conta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -316,6 +317,7 @@ async function Conteudo({
             </Link>
           }
         >
+          <FormNomeDaConta usuarioId={u.id} nome={u.perfil.nome} />
           <dl className="flex flex-col gap-3">
             <Dado rotulo="Onde">{formatarLugar(u.perfil.bairro, u.perfil.cidade)}</Dado>
             <Dado rotulo="No Publike desde">{formatarDataCurta(u.perfil.criado_em)}</Dado>
@@ -482,6 +484,8 @@ async function Conteudo({
               <li key={r.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2.5 text-body-sm">
                 <span>
                   <strong className="font-semibold">{r.quem}</strong> {descreverAcao(r.acao, true)}
+                  {/* "corrigiu o nome:" pede o que mudou ("Ana → Ana Souza") */}
+                  {descreverAcao(r.acao, true).endsWith(":") && r.rotulo && ` ${r.rotulo}`}
                   {typeof (r.detalhes as Record<string, unknown>)?.motivo === "string" &&
                     ` · “${(r.detalhes as Record<string, unknown>).motivo as string}”`}
                 </span>

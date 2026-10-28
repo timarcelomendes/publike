@@ -17,6 +17,7 @@ const ACOES: Record<string, string> = {
   verificar: "deu o selo de verificado para",
   tirar_verificado: "tirou o selo de verificado de",
   excluir_conta: "apagou a conta de",
+  corrigir_nome: "corrigiu o nome de",
   adicionar_moderador: "pôs na moderação",
   remover_moderador: "tirou da moderação",
   salvar_modelo: "mudou o texto do e-mail",
@@ -39,6 +40,7 @@ const ACOES_SEM_ALVO: Record<string, string> = {
   verificar: "deu o selo de verificado",
   tirar_verificado: "tirou o selo de verificado",
   excluir_conta: "apagou a conta",
+  corrigir_nome: "corrigiu o nome:",
   adicionar_moderador: "pôs na moderação",
   remover_moderador: "tirou da moderação",
 };

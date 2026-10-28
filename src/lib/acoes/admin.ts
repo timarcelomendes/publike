@@ -124,6 +124,26 @@ export async function mudarVerificado(usuarioId: string, verificado: boolean): P
   return { ok: true, mensagem: verificado ? "Selo de verificado ligado." : "Selo de verificado tirado." };
 }
 
+/** Corrige o nome da conta (perfil), com as regras do perfil; fica no registro da equipe (migração 20261206120000). */
+export async function corrigirNome(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const usuarioId = texto(formData, "usuario_id");
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Pedido inválido." };
+  const nome = texto(formData, "nome").replace(/\s+/g, " ");
+  if (nome.length < 2 || nome.length > 80) {
+    return { ok: false, erro: "Confira o nome.", erros: { nome: "Use de 2 a 80 letras." } };
+  }
+  const { data, error } = await c.rpc("admin_corrigir_nome", { p_usuario: usuarioId, p_nome: nome });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20261206120000_admin_corrigir_nome.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error), erros: { nome: mensagemDeErro(error) } };
+  }
+  refresh();
+  return { ok: true, mensagem: `Pronto: o nome agora é “${data ?? nome}”.` };
+}
+
 export async function excluirContaPeloAdmin(usuarioId: string, motivo: string): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
