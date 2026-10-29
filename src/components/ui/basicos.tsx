@@ -2,6 +2,7 @@ import { CircleAlert, CircleCheck, Info, TriangleAlert, type LucideIcon } from "
 import Image from "next/image";
 import type { ComponentProps, ReactNode } from "react";
 import { iniciais, nomeDaConta, urlDaFoto } from "@/lib/formato";
+import { FotoQuadrada } from "./foto-quadrada";
 import { LOGO, LOGO_LARGURA } from "./logo-caminhos";
 
 export function Container({ className = "", ...props }: ComponentProps<"div">) {
@@ -135,16 +136,8 @@ export function Avatar({
   const canto = quadrada ? "" : "rounded-pill";
   const raio = quadrada ? { borderRadius: Math.round(tamanho * 0.28) } : {};
   if (url && quadrada) {
-    // o logo inteiro, num quadro branco (logos são feitos para fundo claro, nos dois temas)
-    const folga = Math.max(2, Math.round(tamanho * 0.1));
-    return (
-      <span
-        className={`inline-flex shrink-0 items-center justify-center overflow-hidden bg-[#fff] shadow-[inset_0_0_0_1px_var(--pk-line)] ${className}`}
-        style={{ width: tamanho, height: tamanho, padding: folga, ...raio }}
-      >
-        <Image src={url} alt="" width={tamanho} height={tamanho} unoptimized className="size-full object-contain" />
-      </span>
-    );
+    // foto: preenche o quadro; logo largo: inteiro, num quadro branco (logos são feitos para fundo claro)
+    return <FotoQuadrada url={url} tamanho={tamanho} raio={raio} className={className} />;
   }
   if (url) {
     return (
