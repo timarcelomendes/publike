@@ -857,6 +857,10 @@ export type EmpresaEsperando = {
   semEmail: boolean;
   /** a última vez que a equipe avisou pelo WhatsApp (Admin › Esperando); null sem aviso ou sem a migração */
   avisadaEm: string | null;
+  /** nunca fez login (a conta foi criada pela equipe ou por convite e ninguém entrou) */
+  nuncaEntrou: boolean;
+  /** a última vez que a conta usou o Publike: o login ou a última página aberta (marcada a cada 6 h) */
+  ultimoAcesso: string | null;
 };
 
 /** "Maria Souza" → "Maria S." (o nome inteiro a empresa vê no Publike). */
@@ -971,6 +975,8 @@ export async function empresasComGenteEsperando(
         maisAntiga: new Date(agora).toISOString(),
         semEmail: false,
         avisadaEm: null,
+        nuncaEntrou: false,
+        ultimoAcesso: null,
       };
       porEmpresa.set(id, e);
     }
@@ -987,10 +993,19 @@ export async function empresasComGenteEsperando(
 
   // quem não tem e-mail de login só fica sabendo pelo WhatsApp: vem primeiro
   const empresas = [...porEmpresa.values()];
-  const logins = await Promise.all(empresas.map((e) => c.auth.admin.getUserById(e.id)));
+  const [logins, aparelhos] = await Promise.all([
+    Promise.all(empresas.map((e) => c.auth.admin.getUserById(e.id))),
+    // a última página aberta (o site marca a cada 6 h); sem registro, a sessão mais recente
+    Promise.all(empresas.map((e) => c.rpc("admin_aparelho_do_usuario", { p_usuario: e.id }))),
+  ]);
   empresas.forEach((e, i) => {
     const u = logins[i].data?.user;
     e.semEmail = Boolean(u) && !(u!.email && u!.email_confirmed_at);
+    e.nuncaEntrou = Boolean(u) && !u!.last_sign_in_at;
+    const visto = aparelhos[i].data?.[0]?.quando ?? null;
+    const login = u?.last_sign_in_at ?? null;
+    const quando = [login, visto].filter((x): x is string => Boolean(x)).map((x) => Date.parse(x));
+    e.ultimoAcesso = e.nuncaEntrou || !quando.length ? null : new Date(Math.max(...quando)).toISOString();
   });
   // o último aviso pelo WhatsApp (sem a migração 20261121120000, a lista sai sem ele)
   const { data: avisos } = await c.rpc("admin_empresas_avisadas", { p_contas: empresas.map((e) => e.id) });

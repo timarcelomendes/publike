@@ -6,7 +6,7 @@ import { AvisarEmpresa } from "@/components/admin/avisar-empresa";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Selo, Vazio } from "@/components/ui/basicos";
-import { empresasComGenteEsperando, type PessoaEsperando } from "@/lib/admin/dados";
+import { type EmpresaEsperando, empresasComGenteEsperando, type PessoaEsperando } from "@/lib/admin/dados";
 import { formatarTelefone, plural, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -49,6 +49,10 @@ async function Conteudo() {
               `. ${semEmail === 1 ? "1 conta não tem e-mail e vem primeiro" : `${semEmail} contas não têm e-mail e vêm primeiro`}: só ficam sabendo pelo WhatsApp`}
             .
           </p>
+          <p className="flex flex-wrap items-center gap-2 text-body-sm text-ink-muted">
+            <Selo variante="novo">Novo</Selo>
+            Cada empresa mostra se já entrou no Publike e quando foi a última vez (e se entrou depois do seu aviso).
+          </p>
           <ul className="flex flex-col gap-4">
             {empresas.map((e) => (
               <li key={e.id} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
@@ -69,6 +73,7 @@ async function Conteudo() {
                         avisada {tempoRelativo(e.avisadaEm, agora)}
                       </span>
                     )}
+                    <Acesso empresa={e} agora={agora} />
                   </span>
                 </div>
                 {e.semEmail && (
@@ -109,5 +114,21 @@ function Lista({ titulo, pessoas, agora }: { titulo: string; pessoas: PessoaEspe
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Se a empresa já entrou no Publike, quando foi a última vez e se foi depois do aviso pelo WhatsApp. */
+function Acesso({ empresa: e, agora }: { empresa: EmpresaEsperando; agora: number }) {
+  if (e.nuncaEntrou) return <Selo variante="aviso">Nunca entrou</Selo>;
+  if (!e.ultimoAcesso) return null;
+  const depoisDoAviso = e.avisadaEm ? e.ultimoAcesso > e.avisadaEm : null;
+  return (
+    <span
+      className={`text-caption ${depoisDoAviso === false ? "text-terra-text" : depoisDoAviso ? "text-cerrado-text" : ""}`}
+    >
+      entrou {tempoRelativo(e.ultimoAcesso, agora)}
+      {depoisDoAviso === true && " · depois do aviso"}
+      {depoisDoAviso === false && " · não voltou desde o aviso"}
+    </span>
   );
 }
