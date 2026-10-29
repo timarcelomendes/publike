@@ -7,6 +7,7 @@ import {
   ListChecks,
   Lock,
   MapPin,
+  Megaphone,
   Store,
   UserSearch,
   X,
@@ -103,6 +104,11 @@ const PAGO_POR_AI: { o: string; la: string; aqui: string }[] = [
     o: "Mais de uma vaga no ar",
     la: "Uma vaga grátis por vez",
     aqui: `Até ${LIMITES_CONTA.comum.noAr} vagas no ar`,
+  },
+  {
+    o: "Divulgação da vaga",
+    la: "Você paga o impulsionamento",
+    aqui: "Anúncios todo dia no Instagram, Facebook e Google, pagos pelo Publike",
   },
   {
     o: "Aparecer para quem procura",
@@ -202,6 +208,13 @@ export default function Empresas() {
               </li>
             ))}
           </ul>
+          <p className="mt-4 flex max-w-2xl items-start gap-2 rounded-md border-l-4 border-terra bg-terra-soft px-3 py-2 text-body">
+            <Megaphone aria-hidden className="mt-0.5 size-5 shrink-0 text-terra-text" />
+            <span>
+              <strong>Sua vaga chega a mais gente:</strong> o Publike faz anúncios pagos todos os dias no Instagram, no
+              Facebook e no Google, por nossa conta, para levar quem procura emprego até as vagas.
+            </span>
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <BotaoLink href="/publicar" variante="primario">
               Publicar vaga grátis
