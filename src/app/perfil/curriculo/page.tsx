@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CaminhoDaCurtida } from "@/components/caminho-curtida";
+import { AvisarBusca } from "@/components/explorar/avisar-busca";
 import { ApagarCurriculo, FormCurriculo } from "@/components/form-curriculo";
 import { VisibilidadeCurriculo } from "@/components/visibilidade-curriculo";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
@@ -15,6 +16,7 @@ import {
   listarMinhasCurtidas,
   meuCurriculoNaVitrine,
   meuCurriculoVisivel,
+  minhasBuscasSalvas,
   obterMeuCurriculo,
   obterUsuario,
 } from "@/lib/dados";
@@ -130,6 +132,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
     convite ? dadosDoConvite(convite).catch(() => null) : null,
   ]);
   const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : null;
+  // acabou de salvar e ainda não tem nenhum aviso de vaga: o convite para avisar de vagas do que a pessoa faz
+  const oQueFaz =
+    curriculo?.titulo?.trim().slice(0, 60) || curriculo?.experiencias[0]?.cargo?.trim().slice(0, 60) || "";
+  const semAviso =
+    primeiro(sp.salvo) === "1" && oQueFaz ? (await minhasBuscasSalvas().catch(() => [null])).length === 0 : false;
   // mandou o PDF e o currículo não foi salvo: o formulário já vem com ele
   const pdfNaoSalvo = !curriculo && !lido ? await meuPdfNaoSalvo() : null;
   const agora = await agoraDaRequisicao();
@@ -243,6 +250,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
               <a href="#experiencias" className="text-label underline">
                 Pôr agora
               </a>
+            </p>
+          )}
+          {semAviso && (
+            <p className="mt-3 flex flex-wrap items-center gap-x-2">
+              <span>Quer saber quando sair vaga de {oQueFaz} perto de você?</span>
+              <AvisarBusca caminho={`/?tipo=vaga&q=${encodeURIComponent(oQueFaz)}`} salvaId={null} logado />
             </p>
           )}
           <p className="mt-3">

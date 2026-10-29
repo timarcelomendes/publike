@@ -1,10 +1,11 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { cookies } from "next/headers";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { ETAPAS_CANDIDATO, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
-import { obterUsuario } from "@/lib/dados";
+import { categoria as categoriaDe, ETAPAS_CANDIDATO, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
+import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -12,8 +13,40 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerDesfazerMatch, temContato, UUID } from "@/lib/validacao";
 import { lerRespostas, perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
+import { salvarBusca } from "./buscas";
 
 const RESPONDER = (anuncioId: string) => `/anuncio/${anuncioId}?responder=1`;
+
+/** O aviso de vaga nova ligado sozinho na primeira curtida (o balão mostra e deixa parar). */
+export type AvisoLigado = { id: number; area: string };
+export type ResultadoCurtida = Resultado & { aviso?: AvisoLigado | null };
+
+// uma vez por navegador: quem parou o aviso (ou já tinha busca com aviso) não ganha outro
+const COOKIE_AVISO_AUTO = "publike_aviso_auto";
+
+/**
+ * Na primeira curtida de vaga de uma pessoa sem nenhuma busca com aviso: liga o aviso de vaga nova da área da
+ * vaga, perto de onde ela mora (o mesmo `salvarBusca` do "Me avise"). Vaga em "Outros" não liga (não há área).
+ */
+async function avisoDaPrimeiraCurtida(
+  supabase: Awaited<ReturnType<typeof criarClienteServidor>>,
+  categoria: string | null,
+): Promise<AvisoLigado | null> {
+  const jar = await cookies();
+  if (jar.get(COOKIE_AVISO_AUTO) || !categoria || categoria === "outros") return null;
+  const perfil = await obterMeuPerfil().catch(() => null);
+  if (perfil?.tipo !== "pessoa") return null;
+  const marcar = () => jar.set(COOKIE_AVISO_AUTO, "1", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  const { count } = await supabase.from("buscas_salvas").select("id", { count: "exact", head: true });
+  if (count === null || count > 0) {
+    if (count) marcar();
+    return null;
+  }
+  const r = await salvarBusca(`/?tipo=vaga&categoria=${categoria}`);
+  if (!r.ok || !r.id) return null;
+  marcar();
+  return { id: r.id, area: categoriaDe(categoria).nome };
+}
 
 /**
  * Curtir = "tenho interesse". Se a vaga tem perguntas, as respostas vão junto. Sem elas
@@ -23,7 +56,7 @@ export async function curtirAnuncio(
   anuncioId: string,
   mensagem: string | null = null,
   respostasBrutas: Respostas | null = null,
-): Promise<Resultado> {
+): Promise<ResultadoCurtida> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncioId)) return { ok: false, erro: "Anúncio não encontrado." };
   const voltar = `/anuncio/${anuncioId}`;
@@ -36,7 +69,11 @@ export async function curtirAnuncio(
   }
 
   const supabase = await criarClienteServidor();
-  const { data: alvo } = await supabase.from("anuncios").select("perguntas, tipo").eq("id", anuncioId).maybeSingle();
+  const { data: alvo } = await supabase
+    .from("anuncios")
+    .select("perguntas, tipo, categoria")
+    .eq("id", anuncioId)
+    .maybeSingle();
   const perguntas = perguntasDoBanco(alvo?.perguntas);
   let respostas: Respostas = {};
   if (perguntas.length) {
@@ -78,12 +115,15 @@ export async function curtirAnuncio(
     .eq("anuncio_id", anuncioId)
     .eq("perfil_id", usuario.id)
     .maybeSingle();
+  // primeira curtida de vaga: o aviso de vaga nova da mesma área já vem ligado
+  const aviso = alvo?.tipo === "vaga" ? await avisoDaPrimeiraCurtida(supabase, alvo.categoria).catch(() => null) : null;
   if (feita?.status === "match") {
-    return { ok: true, mensagem: "Deu match! O contato já está liberado: chame no WhatsApp." };
+    return { ok: true, mensagem: "Deu match! O contato já está liberado: chame no WhatsApp.", aviso };
   }
   return {
     ok: true,
     mensagem: "Pronto! Agora quem publicou decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu painel.",
+    aviso,
   };
 }
 

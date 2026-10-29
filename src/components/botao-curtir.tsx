@@ -4,7 +4,8 @@ import { Heart, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { curtirAnuncio, curtirDeNovo, descurtirAnuncio } from "@/lib/acoes/curtidas";
+import { curtirAnuncio, curtirDeNovo, descurtirAnuncio, type AvisoLigado } from "@/lib/acoes/curtidas";
+import { LinhaDoAvisoLigado } from "./aviso-ligado";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
 import { ConviteNotificacoes } from "./convite-notificacoes";
 
@@ -63,6 +64,8 @@ export function BotaoCurtir({
   // com o dedo ou o foco no balão (o convite das notificações está nele), ele não fecha sozinho
   const [segurar, setSegurar] = useState(false);
   const [dica, setDica] = useState(false);
+  // o aviso de vaga nova que a primeira curtida ligou (e se a pessoa parou)
+  const [aviso, setAviso] = useState<AvisoLigado | null>(null);
   const eu = useId();
   const caixa = useRef<HTMLDivElement>(null);
   const balao = useRef<HTMLDivElement>(null);
@@ -167,6 +170,7 @@ export function BotaoCurtir({
         if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
       } else if (curtindo) {
+        if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
         setExplicar(true);
       }
     });
@@ -231,6 +235,7 @@ export function BotaoCurtir({
               {quem || "quem publicou"} decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu
               painel.
             </p>
+            {aviso && <LinhaDoAvisoLigado aviso={aviso} className="border-t border-line pt-2.5" />}
             <ConviteNotificacoes
               jeito="balao"
               titulo="Saiba na hora"

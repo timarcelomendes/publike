@@ -7,10 +7,11 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { pedirConversa } from "@/lib/abrir-conversa";
 import { chamarAcao } from "@/lib/acao-segura";
 import { caminhoConversa } from "@/lib/conversas";
-import { curtirAnuncio, descurtirAnuncio } from "@/lib/acoes/curtidas";
+import { curtirAnuncio, descurtirAnuncio, type AvisoLigado } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
+import { LinhaDoAvisoLigado } from "../aviso-ligado";
 import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
 import { EntrevistaDoCandidato, type EntrevistaDoCandidato as Entrevista } from "./entrevista-candidato";
@@ -123,6 +124,8 @@ export function PainelCurtir({
   const [respostas, setRespostas] = useState<Respostas>({});
   const [faltando, setFaltando] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  // a primeira curtida numa vaga liga o aviso de vaga nova da mesma área
+  const [aviso, setAviso] = useState<AvisoLigado | null>(null);
   const [pendente, iniciar] = useTransition();
   const servico = tipo === "servico";
   const quadro = useRef<HTMLDivElement>(null);
@@ -161,7 +164,7 @@ export function PainelCurtir({
       if (!r.ok) {
         if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
-      }
+      } else if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
     });
   }
 
@@ -346,6 +349,7 @@ export function PainelCurtir({
             ? `Quando ${quem} responder, você recebe um aviso.`
             : `Quando ${quem} responder, você recebe um aviso e o contato aparece aqui e no seu painel.`}
         </p>
+        {aviso && <LinhaDoAvisoLigado aviso={aviso} />}
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
         {perguntas.length > 0 && (
           <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} />
