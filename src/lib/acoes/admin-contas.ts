@@ -185,13 +185,12 @@ export async function enviarAcessoPeloAdmin(usuarioId: string): Promise<Resultad
 }
 
 /** Publica uma vaga em nome da conta, como se ela mesma tivesse publicado. */
-export async function publicarEmNomeDe(
+/** Publica uma vaga em nome da conta (o formulário do admin). Não redireciona: quem chama decide. */
+async function gravarEmNomeDe(
+  c: ClienteBanco,
   usuarioId: string,
-  _anterior: EstadoForm,
   formData: FormData,
-): Promise<EstadoForm> {
-  const c = await clienteAdminOuNulo();
-  if (!c) return { ok: false, erro: FORA };
+): Promise<{ ok: true; id: string } | { ok: false; erro: string; erros?: Record<string, string> }> {
   if (!UUID.test(usuarioId)) return { ok: false, erro: "Conta não encontrada." };
   const { data: perfil } = await c.from("perfis").select("tipo, suspenso_ate").eq("id", usuarioId).maybeSingle();
   if (!perfil) return { ok: false, erro: "Esta conta ainda não tem perfil. Crie o perfil antes de publicar." };
@@ -223,11 +222,70 @@ export async function publicarEmNomeDe(
     return { ok: false, erro };
   }
   await salvarTriagem(c, data.id, d.triagem);
+  return { ok: true, id: data.id };
+}
 
+export async function publicarEmNomeDe(
+  usuarioId: string,
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const r = await gravarEmNomeDe(c, usuarioId, formData);
+  if (!r.ok) return r;
   // a IA revisa o texto logo depois, como em qualquer vaga
   after(processarFilas);
   revalidatePath("/");
-  redirect(`/admin/usuarios/${usuarioId}?publicada=${data.id}`);
+  redirect(`/admin/usuarios/${usuarioId}?publicada=${r.id}`);
+}
+
+/** Uma das outras vagas da lista importada: o que muda em relação à vaga do formulário. */
+export type OutraVaga = { titulo: string; descricao: string; categoria: string; vagas: number };
+
+export type ResultadoVarias =
+  | { ok: true; publicadas: number; falhas: { titulo: string; erro: string }[] }
+  | { ok: false; erro: string; campos?: string[] };
+
+/**
+ * Admin › Publicar vaga › "Publicar todas de uma vez": a vaga do formulário e as outras da lista importada.
+ * O salário, os benefícios, o horário, o endereço e o contato saem do formulário para todas; de cada uma
+ * mudam só o título, a descrição, a categoria e quantas pessoas.
+ */
+export async function publicarVariasEmNomeDe(
+  usuarioId: string,
+  formData: FormData,
+  outras: OutraVaga[],
+): Promise<ResultadoVarias> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!Array.isArray(outras) || outras.length > 12) return { ok: false, erro: "Vagas demais de uma vez (até 12)." };
+  // a primeira (a do formulário) precisa passar: os campos que valem para todas estão nela. Depois dela, o
+  // formulário já vem completo (o ponto do mapa do bairro, por exemplo) e serve de base para as outras
+  const primeira = await gravarEmNomeDe(c, usuarioId, formData);
+  if (!primeira.ok) return { ok: false, erro: primeira.erro, campos: Object.keys(primeira.erros ?? {}) };
+  const base = formData;
+  let publicadas = 1;
+  const falhas: { titulo: string; erro: string }[] = [];
+  for (const o of outras) {
+    const dados = new FormData();
+    for (const [k, v] of base.entries()) dados.append(k, v);
+    dados.set("titulo", String(o.titulo ?? "").slice(0, 90));
+    // sem descrição, o Publike escreve uma pelo título (como na publicação normal)
+    if (String(o.descricao ?? "").trim()) dados.set("descricao", String(o.descricao).slice(0, 3000));
+    else dados.delete("descricao");
+    dados.set("categoria", String(o.categoria ?? ""));
+    dados.set("vagas", String(Number.isInteger(o.vagas) && o.vagas > 0 && o.vagas <= 99 ? o.vagas : 1));
+    const r = await gravarEmNomeDe(c, usuarioId, dados);
+    if (r.ok) publicadas++;
+    else {
+      const campos = Object.values(r.erros ?? {}).join(" ");
+      falhas.push({ titulo: o.titulo || "Vaga sem título", erro: campos || r.erro });
+    }
+  }
+  after(processarFilas);
+  revalidatePath("/");
+  return { ok: true, publicadas, falhas };
 }
 
 /**

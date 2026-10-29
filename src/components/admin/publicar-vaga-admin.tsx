@@ -1,12 +1,14 @@
 "use client";
 
-import { Check, ClipboardPaste, Copy, ImageUp, Sparkles, X } from "lucide-react";
+import { Check, ClipboardPaste, Copy, ImageUp, Layers, Sparkles, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ComponentProps } from "react";
 import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
+import { publicarVariasEmNomeDe } from "@/lib/acoes/admin-contas";
 import { importarVagas } from "@/lib/acoes/admin-importar";
 import type { VagaImportada } from "@/lib/ia/importar-vaga";
-import { Aviso } from "../ui/basicos";
+import { Aviso, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 
@@ -40,6 +42,8 @@ async function encolher(arquivo: File): Promise<File> {
   }
   return arquivo;
 }
+
+const plural = (n: number) => (n === 1 ? "1 vaga da lista" : `${n} vagas da lista`);
 
 /** A vaga lida pela IA no lugar dos campos do formulário (o lugar da conta fica, se a foto não disser). */
 function aplicarImportada(v: VagaImportada, base: ValoresAnuncio, agencia: boolean): ValoresAnuncio {
@@ -159,6 +163,53 @@ export function PublicarVagaAdmin({
   }
 
   const vagaEmUso = importacao && usando !== null ? importacao.vagas[usando] : null;
+
+  // "Publicar todas de uma vez": a do formulário e as que ainda não foram publicadas da lista
+  const router = useRouter();
+  const [publicando, iniciarTodas] = useTransition();
+  const [resultadoTodas, setResultadoTodas] = useState<string | null>(null);
+  const faltam =
+    importacao && usando !== null
+      ? importacao.vagas.map((v, i) => ({ v, i })).filter(({ i }) => i !== usando && !importacao.usadas.includes(i))
+      : [];
+  const salarios = new Set(importacao?.vagas.map((v) => `${v.pagamento_valor ?? ""}-${v.pagamento_ate ?? ""}`));
+
+  function publicarTodas() {
+    const form = document.querySelector<HTMLFormElement>("#formulario-vaga form");
+    if (!form || !importacao || usando === null) return;
+    setResultadoTodas(null);
+    const dados = new FormData(form);
+    iniciarTodas(async () => {
+      const r = await publicarVariasEmNomeDe(
+        contaId,
+        dados,
+        faltam.map(({ v }) => ({ titulo: v.titulo, descricao: v.descricao, categoria: v.categoria, vagas: v.vagas })),
+      );
+      if (!r.ok) {
+        setResultadoTodas(
+          r.campos?.length
+            ? `A vaga do formulário não passou: confira ${r.campos.join(", ")}. Dica: clique em “Publicar” no formulário para ver os campos marcados.`
+            : r.erro,
+        );
+        return;
+      }
+      if (r.falhas.length) {
+        // as que deram certo saem da lista; as que falharam ficam para publicar uma a uma
+        const falharam = new Set(r.falhas.map((f) => f.titulo));
+        const usadas = importacao.vagas
+          .map((_, i) => i)
+          .filter((i) => !falharam.has(importacao.vagas[i].titulo || "Vaga sem título"));
+        guardar({ ...importacao, usadas });
+        setUsando(null);
+        setResultadoTodas(
+          `${r.publicadas} publicadas. Não deu: ${r.falhas.map((f) => `${f.titulo} (${f.erro})`).join("; ")}. Elas ficaram na lista.`,
+        );
+        return;
+      }
+      guardar(null);
+      router.push(`/admin/usuarios/${contaId}?publicadas=${r.publicadas}`);
+    });
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -305,7 +356,7 @@ export function PublicarVagaAdmin({
         <section aria-labelledby="importadas-titulo" className="flex flex-col gap-3 rounded-lg border border-line p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 id="importadas-titulo" className="text-h3">
-              {importacao.vagas.length} vagas na foto
+              {importacao.vagas.length} vagas no anúncio
             </h3>
             <Botao tamanho="sm" variante="fantasma" onClick={() => guardar(null)}>
               Limpar a lista
@@ -347,6 +398,43 @@ export function PublicarVagaAdmin({
               );
             })}
           </ul>
+          {faltam.length > 0 ? (
+            <div className="flex flex-col gap-2 rounded-md border-2 border-terra bg-terra-soft p-3">
+              <p className="flex flex-wrap items-center gap-2 text-label">
+                <Selo variante="novo">Novo</Selo>
+                Publicar todas de uma vez
+              </p>
+              <p className="text-body-sm">
+                Sai a vaga do formulário e mais {plural(faltam.length)}. O salário, os benefícios, o horário, o endereço
+                e o contato do formulário valem para todas; de cada uma mudam o título, a descrição, a categoria e
+                quantas pessoas.
+              </p>
+              {salarios.size > 1 && (
+                <p className="text-body-sm text-terra-text">
+                  Atenção: a IA leu salários diferentes entre as vagas. Todas vão sair com o salário do formulário.
+                </p>
+              )}
+              <div>
+                <Botao variante="primario" onClick={publicarTodas} disabled={publicando}>
+                  <Layers aria-hidden />
+                  {publicando ? "Publicando…" : `Publicar as ${faltam.length + 1} vagas`}
+                </Botao>
+              </div>
+              {resultadoTodas && (
+                <p role="alert" className="text-body-sm text-danger">
+                  {resultadoTodas}
+                </p>
+              )}
+            </div>
+          ) : (
+            usando === null &&
+            importacao.usadas.length < importacao.vagas.length && (
+              <p className="text-body-sm text-ink-muted">
+                Para publicar todas de uma vez: clique em “Usar esta” na primeira, confira o formulário (endereço,
+                salário, horário) e volte aqui.
+              </p>
+            )
+          )}
         </section>
       )}
 

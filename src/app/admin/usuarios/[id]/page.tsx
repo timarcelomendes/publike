@@ -149,6 +149,11 @@ async function Conteudo({
           </p>
         </Aviso>
       )}
+      {Number(primeiro(sp.publicadas)) > 0 && (
+        <Aviso tipo="sucesso" titulo={`${primeiro(sp.publicadas)} vagas publicadas em nome da conta.`}>
+          Elas aparecem na lista de anúncios desta conta, logo abaixo. Quando terminar, mande o acesso.
+        </Aviso>
+      )}
       {primeiro(sp.sem_email) === "1" && (
         <Aviso tipo="alerta" titulo="A conta ainda não tem como entrar">
           O Publike entra só pelo e-mail, e esta conta foi criada sem e-mail. Use “Mandar o acesso pelo WhatsApp”, logo

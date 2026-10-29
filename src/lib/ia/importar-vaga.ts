@@ -18,7 +18,7 @@ import { chamarIA, ErroIA, lerJson } from "./openai";
 // um post ou de um print do WhatsApp (ou o texto colado) e devolve as vagas que achou, com os campos
 // do formulário. Nada é publicado: a equipe confere e publica.
 
-export const MAX_VAGAS_IMPORTADAS = 6;
+export const MAX_VAGAS_IMPORTADAS = 10;
 
 /** Uma vaga lida pela IA, pronta para o formulário (só valores que o formulário aceita). */
 export type VagaImportada = {
@@ -124,6 +124,7 @@ Regras:
 - Use só o que está no anúncio. Não invente salário, benefício, requisito, horário, bairro nem nome de empresa. O que não estiver lá fica null ou vazio.
 - Título: o cargo, curto (até 70 caracteres), sem ponto final e sem caixa alta desnecessária. Ex.: "Auxiliar de cozinha".
 - Descrição: em português do Brasil, de 100 a 1000 caracteres, organizada em parágrafos curtos e listas com "- ": o que a pessoa vai fazer e o que pede. Pode reescrever para ficar claro, sem acrescentar nada.
+- Anúncio com uma lista de cargos e as mesmas condições para todos (salário, benefícios, horário, local): cada cargo é uma vaga, e cada uma leva as condições em comum. Se o anúncio não diz o que cada cargo faz, comece a descrição com uma ou duas frases simples sobre o dia a dia comum do cargo (ex.: auxiliar de padaria: "Ajudar no preparo de pães e salgados, na organização da produção e na limpeza do setor."), sem inventar requisito, e avise em "conferir": "Escrevi o que o cargo costuma fazer: confira".
 - Nada de telefone, e-mail, link, @ de rede social ou "mande currículo para": o contato aparece sozinho no Publike. Deixe de fora e avise em "conferir".
 - Nada que exclua pessoas por idade, gênero, aparência, cor, estado civil ou religião. Se o anúncio pedir isso, deixe de fora e avise em "conferir".
 - Salário: pagamento_valor em reais (número). Faixa "de 1.800 a 2.200": valor 1800 e pagamento_ate 2200. "A combinar" ou sem salário: null. pagamento_unidade: mes, dia, hora, semana ou servico.
