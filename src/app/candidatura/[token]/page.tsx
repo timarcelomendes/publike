@@ -10,7 +10,7 @@ import { LOGIN_CELULAR, MODO_DEMO } from "@/lib/config";
 import { TOKEN_CONVITE, type DadosDoConvite } from "@/lib/convite-candidato";
 import { obterAnuncio, obterMeuCurriculo, obterUsuario } from "@/lib/dados";
 import { formatarDataCurta, formatarLugar } from "@/lib/formato";
-import { jeitosDeEntrar } from "@/lib/login-social";
+import { comoEntrarPeloConvite } from "@/lib/login-social";
 import { dadosDoConvite } from "@/lib/servidor/convites-candidato";
 import { perguntasDoBanco } from "@/lib/vaga-extra";
 
@@ -127,7 +127,7 @@ async function Conteudo({ token }: { token: string }) {
               {/* só fala em celular quando a entrada pelo código por SMS está ligada (LOGIN_CELULAR) */}
               {LOGIN_CELULAR
                 ? "Entre com o número do seu celular (chega um código por SMS)."
-                : `Entre com ${jeitosDeEntrar()}: na primeira vez, a conta é criada na hora.`}
+                : `${comoEntrarPeloConvite()}: na primeira vez, a conta é criada na hora.`}
             </li>
             <li>
               {d.tem_curriculo

@@ -29,6 +29,18 @@ export function jeitosDeEntrar() {
   return jeitos.length > 1 ? `${jeitos.slice(0, -1).join(", ")} ou ${jeitos.at(-1)}` : jeitos[0];
 }
 
+/**
+ * O passo "entrar" dos convites, sem o celular: "Entre com o Google ou o LinkedIn, ou pelo link que chega no
+ * seu e-mail" (as redes que estão ligadas; sem nenhuma, só o link do e-mail).
+ */
+export function comoEntrarPeloConvite() {
+  const redes = REDES_ATIVAS.map((rede) => `o ${REDES[rede].nome}`);
+  const comRedes = redes.length > 1 ? `${redes.slice(0, -1).join(", ")} ou ${redes.at(-1)}` : redes[0];
+  return comRedes
+    ? `Entre com ${comRedes}, ou pelo link que chega no seu e-mail`
+    : "Entre pelo link que chega no seu e-mail";
+}
+
 export function ehRedeSocial(valor: unknown): valor is RedeSocial {
   return typeof valor === "string" && Object.hasOwn(REDES, valor);
 }
