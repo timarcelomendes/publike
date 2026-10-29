@@ -11,10 +11,15 @@ import {
   ACOES_BANNER,
   PAGINAS_BANNER,
   PUBLICOS_BANNER,
+  resumoDoFiltro,
+  temFiltro,
   type AcaoBanner,
+  type FiltroBanner,
   type PaginaBanner,
   type PublicoBanner,
 } from "@/lib/banners";
+import { categoria, TIPOS_CONTA } from "@/lib/constantes";
+import type { TipoConta } from "@/lib/tipos";
 import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
 import type { Database } from "@/lib/supabase/tipos-banco";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
@@ -87,9 +92,11 @@ function situacao(b: Banner, agora: number): { nome: string; variante: VarianteS
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/banners">["searchParams"] }) {
   const c = await exigirAdminLocal();
   const sp = await searchParams;
-  const [{ data, error }, { data: numeros }, agora] = await Promise.all([
+  const [{ data, error }, { data: numeros }, { data: escolhidas }, agora] = await Promise.all([
     c.from("banners").select("*").order("criado_em", { ascending: false }).limit(100),
     c.from("banner_numeros").select("banner_id, vistos, cliques, fechados"),
+    // sem a migração 20261214120000: nenhuma (a consulta falha e fica vazia)
+    c.from("banners_contas").select("banner_id, perfil_id"),
     agoraDaRequisicao(),
   ]);
   if (error) {
@@ -108,7 +115,28 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     s.fechados += n.fechados;
     somas.set(n.banner_id, s);
   }
+  const contasPorBanner = new Map<string, string[]>();
+  for (const e of escolhidas ?? [])
+    contasPorBanner.set(e.banner_id, [...(contasPorBanner.get(e.banner_id) ?? []), e.perfil_id]);
+  const filtroDe = (b: Banner): FiltroBanner => ({
+    tipos_conta: b.tipos_conta ?? [],
+    categorias: b.categorias ?? [],
+    curriculo: b.curriculo ?? null,
+    cidades: b.cidades ?? [],
+    conta_ate_dias: b.conta_ate_dias ?? null,
+    so_contas: b.so_contas ?? false,
+  });
+  const nomes = {
+    tipo: (t: string) => TIPOS_CONTA[t as TipoConta]?.minusculo ?? t,
+    area: (a: string) => categoria(a).nome,
+  };
   const editar = banners.find((b) => b.id === primeiro(sp.editar));
+  // as contas escolhidas do banner aberto, pelo e-mail (sem e-mail, o código)
+  const idsDoEditado = editar ? (contasPorBanner.get(editar.id) ?? []) : [];
+  const { data: emailsDoEditado } = idsDoEditado.length
+    ? await c.from("contatos").select("perfil_id, email").in("perfil_id", idsDoEditado)
+    : { data: [] as { perfil_id: string; email: string | null }[] };
+  const emailDe = new Map((emailsDoEditado ?? []).map((l) => [l.perfil_id, l.email]));
   // "?novo=1" é o endereço antigo do formulário
   const novo = primeiro(sp.aba) === "novo" || primeiro(sp.novo) === "1" || banners.length === 0;
   const aba = editar || novo ? "form" : "lista";
@@ -133,6 +161,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     busca_da_area: editar.busca_da_area ?? false,
     // sem a migração 20261213120000: sem imagem
     imagem: editar.imagem ?? null,
+    filtro: filtroDe(editar),
+    contas: idsDoEditado.map((i) => emailDe.get(i) || i).join("\n"),
   };
 
   return (
@@ -205,6 +235,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
                         {b.inicio ? ` · de ${formatarDataCurta(b.inicio)}` : ""}
                         {b.fim ? ` · até ${formatarDataCurta(diaDeBrasilia(b.fim, true) + "T12:00:00-03:00")}` : ""}
                       </p>
+                      {temFiltro(filtroDe(b)) && (
+                        <p className="text-body-sm">
+                          <span className="text-label">Só para:</span>{" "}
+                          {resumoDoFiltro(filtroDe(b), contasPorBanner.get(b.id)?.length ?? 0, nomes)}
+                        </p>
+                      )}
                       <p className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
                         <span className="inline-flex items-center gap-1.5">
                           <Eye aria-hidden className="size-4 text-ink-muted" />

@@ -10,8 +10,11 @@ import {
   PAGINAS_BANNER,
   PUBLICOS_BANNER,
   type AcaoBanner,
+  type FiltroBanner,
   type PublicoBanner,
+  temFiltro,
 } from "@/lib/banners";
+import { CATEGORIAS, CIDADES, LISTA_TIPOS_CONTA } from "@/lib/constantes";
 import { mensagemDeErro } from "@/lib/erros";
 import { prepararImagemBanner } from "@/lib/servidor/imagem-banner";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
@@ -22,6 +25,48 @@ import { UUID } from "@/lib/validacao";
 
 const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
+const SEM_MIGRACAO_FILTROS =
+  "Para escolher para quem, rode antes a migração 20261214120000_banners_filtros.sql no Supabase.";
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * As contas escolhidas, uma por linha (ou separadas por vírgula): o e-mail da conta ou o código dela (o do
+ * endereço no Admin › Usuários). Devolve os códigos e o que não foi achado.
+ */
+async function lerContas(
+  c: NonNullable<Awaited<ReturnType<typeof clienteAdminOuNulo>>>,
+  texto: string,
+): Promise<{ ids: string[]; naoAchadas: string[] }> {
+  const itens = [
+    ...new Set(
+      texto
+        .split(/[\s,;]+/)
+        .map((t) => t.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 500);
+  const ids = itens.filter((t) => ID.test(t)).map((t) => t.toLowerCase());
+  const emails = itens.filter((t) => EMAIL.test(t)).map((t) => t.toLowerCase());
+  const naoAchadas = itens.filter((t) => !ID.test(t) && !EMAIL.test(t));
+  const achados = new Set<string>();
+  if (ids.length) {
+    const { data } = await c.from("perfis").select("id").in("id", ids);
+    for (const p of data ?? []) achados.add(p.id);
+    naoAchadas.push(...ids.filter((i) => !achados.has(i)));
+  }
+  if (emails.length) {
+    const { data } = await c.from("contatos").select("perfil_id, email").not("email", "is", null);
+    const porEmail = new Map((data ?? []).map((l) => [String(l.email).toLowerCase(), l.perfil_id]));
+    for (const e of emails) {
+      const id = porEmail.get(e);
+      if (id) achados.add(id);
+      else naoAchadas.push(e);
+    }
+  }
+  return { ids: [...achados], naoAchadas };
+}
+
 const SEM_MIGRACAO_IMAGEM = "Para pôr imagem, rode antes a migração 20261213120000_banners_imagem.sql no Supabase.";
 
 function texto(formData: FormData, nome: string) {
@@ -93,6 +138,31 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
   if (fimTexto && !fim) erros.fim = "Confira a data.";
   if (inicio && fim && fim <= inicio) erros.fim = "O fim vem depois do começo.";
 
+  // para quem (além do público): tipos de conta, áreas, currículo, cidades, contas novas e contas escolhidas
+  const marcados = (nome: string, validos: readonly string[]) => [
+    ...new Set(formData.getAll(nome).filter((v): v is string => typeof v === "string" && validos.includes(v))),
+  ];
+  const curriculo = texto(formData, "curriculo");
+  const ateDias = texto(formData, "conta_ate_dias");
+  const contas = await lerContas(c, texto(formData, "contas"));
+  if (contas.naoAchadas.length) {
+    erros.contas = `Não achamos: ${contas.naoAchadas.slice(0, 5).join(", ")}${contas.naoAchadas.length > 5 ? "…" : ""}.`;
+  }
+  if (ateDias && !(Number.isInteger(Number(ateDias)) && Number(ateDias) >= 1 && Number(ateDias) <= 365)) {
+    erros.conta_ate_dias = "De 1 a 365 dias.";
+  }
+  const filtro: FiltroBanner = {
+    tipos_conta: marcados("tipos_conta", LISTA_TIPOS_CONTA),
+    categorias: marcados(
+      "categorias",
+      CATEGORIAS.filter((x) => x.slug !== "outros").map((x) => x.slug),
+    ),
+    curriculo: curriculo === "com" || curriculo === "sem" ? curriculo : null,
+    cidades: marcados("cidades", CIDADES),
+    conta_ate_dias: ateDias ? Number(ateDias) : null,
+    so_contas: contas.ids.length > 0,
+  };
+
   if (Object.keys(erros).length) return { ok: false, erro: "Confira os campos marcados.", erros };
 
   // a imagem do alto da janela: uma nova (ajustada e guardada no Storage), a de antes ou nenhuma
@@ -135,13 +205,31 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     busca_da_area: buscaDaArea,
     // sem imagem nenhuma, nem manda a coluna (os banners de texto salvam mesmo sem a migração 20261213)
     ...(imagem || atual || formData.get("imagem_tirar") === "1" ? { imagem } : {}),
+    // sem filtro nenhum (e sem ter tido antes), nem manda as colunas: salva mesmo sem a migração 20261214
+    ...(temFiltro(filtro) || formData.get("filtros_antes") === "1" ? filtro : {}),
     inicio,
     fim,
     ativo: formData.get("ativo") === "on",
   };
-  const { error } = id ? await c.from("banners").update(dados).eq("id", id) : await c.from("banners").insert(dados);
+  const { data: salvo, error } = id
+    ? await c.from("banners").update(dados).eq("id", id).select("id").single()
+    : await c.from("banners").insert(dados).select("id").single();
   if (error?.code === "PGRST204" && error.message.includes("imagem")) return { ok: false, erro: SEM_MIGRACAO_IMAGEM };
+  if (error?.code === "PGRST204") return { ok: false, erro: SEM_MIGRACAO_FILTROS };
   if (error) return { ok: false, erro: mensagemDeErro(error) };
+  // as contas escolhidas: troca a lista toda
+  if (temFiltro(filtro) || formData.get("filtros_antes") === "1") {
+    const { error: erroApagar } = await c.from("banners_contas").delete().eq("banner_id", salvo.id);
+    if (erroApagar)
+      return { ok: false, erro: `O banner salvou, mas as contas escolhidas não. ${SEM_MIGRACAO_FILTROS}` };
+    if (contas.ids.length) {
+      const { error: erroContas } = await c
+        .from("banners_contas")
+        .insert(contas.ids.map((perfil_id) => ({ banner_id: salvo.id, perfil_id })));
+      if (erroContas)
+        return { ok: false, erro: `O banner salvou, mas as contas escolhidas não: ${mensagemDeErro(erroContas)}` };
+    }
+  }
   redirect(`/admin/banners?salvo=${id ? "editado" : "novo"}`);
 }
 

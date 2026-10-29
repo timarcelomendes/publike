@@ -9,10 +9,14 @@ import {
   PAGINAS_BANNER,
   palavraDoLink,
   PUBLICOS_BANNER,
+  SEM_FILTRO,
+  temFiltro,
   type AcaoBanner,
+  type FiltroBanner,
   type PaginaBanner,
   type PublicoBanner,
 } from "@/lib/banners";
+import { CATEGORIAS, CIDADES, LISTA_TIPOS_CONTA, TIPOS_CONTA } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -37,6 +41,10 @@ export type BannerParaEditar = {
   busca_da_area: boolean;
   /** a imagem do alto da janela (Storage) */
   imagem: string | null;
+  /** para quem, além do público (migração 20261214) */
+  filtro: FiltroBanner;
+  /** as contas escolhidas: o e-mail (ou o código) de cada uma, uma por linha */
+  contas: string;
 };
 
 /**
@@ -292,6 +300,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             ))}
           </Seletor>
         </Campo>
+        <ParaQuem filtro={banner?.filtro ?? SEM_FILTRO} contas={banner?.contas ?? ""} erros={erros} />
         <fieldset className="flex flex-col gap-2" aria-describedby="paginas-ajuda">
           <legend className="mb-1.5 text-label">Onde abre</legend>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -501,5 +510,142 @@ export function AcoesBanner({ id, ativo }: { id: string; ativo: boolean }) {
       </div>
       {mensagem}
     </div>
+  );
+}
+
+const caixinha =
+  "inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-pill border border-line px-3 text-body-sm has-checked:border-ink has-checked:bg-surface-300";
+
+/**
+ * "Só para": além do público, o banner pode ir só para tipos de conta, áreas, quem tem (ou não) currículo,
+ * cidades, contas novas e contas escolhidas uma a uma. Com qualquer um, só quem entrou na conta vê.
+ */
+function ParaQuem({ filtro, contas, erros }: { filtro: FiltroBanner; contas: string; erros: Record<string, string> }) {
+  const tinha = temFiltro(filtro);
+  return (
+    <details open={tinha} className="group rounded-md border border-line">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-label">
+        <span>
+          Só para… <span className="font-normal text-ink-muted">(opcional)</span>
+        </span>
+        <span className="text-body-sm font-normal text-ink-muted group-open:hidden">
+          tipo de conta, área, currículo, cidade, contas novas ou escolhidas
+        </span>
+      </summary>
+      {tinha && <input type="hidden" name="filtros_antes" value="1" />}
+      <div className="flex flex-col gap-5 border-t border-line p-3">
+        <p className="text-body-sm text-ink-muted">
+          Vale junto com “Quem vê”. Com qualquer um destes, o banner aparece só para quem entrou na conta e combina com
+          todos os marcados. Nada marcado: todo mundo de “Quem vê”.
+        </p>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-label">Tipo de conta</legend>
+          <div className="flex flex-wrap gap-2">
+            {LISTA_TIPOS_CONTA.map((t) => (
+              <label key={t} className={caixinha}>
+                <input
+                  type="checkbox"
+                  name="tipos_conta"
+                  value={t}
+                  defaultChecked={filtro.tipos_conta.includes(t)}
+                  className="size-4 accent-[var(--pk-ink)]"
+                />
+                {TIPOS_CONTA[t].nome}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-label">Área</legend>
+          <p className="-mt-1 text-body-sm text-ink-muted">
+            Quem procura: a área do currículo. Quem contrata: as áreas das vagas dele.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIAS.filter((x) => x.slug !== "outros").map((x) => (
+              <label key={x.slug} className={caixinha}>
+                <input
+                  type="checkbox"
+                  name="categorias"
+                  value={x.slug}
+                  defaultChecked={filtro.categorias.includes(x.slug)}
+                  className="size-4 accent-[var(--pk-ink)]"
+                />
+                {x.nome}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-label">Currículo</legend>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ["", "Tanto faz"],
+              ["sem", "Só quem ainda não tem"],
+              ["com", "Só quem já tem"],
+            ].map(([valor, nome]) => (
+              <label key={valor} className={caixinha}>
+                <input
+                  type="radio"
+                  name="curriculo"
+                  value={valor}
+                  defaultChecked={(filtro.curriculo ?? "") === valor}
+                  className="size-4 accent-[var(--pk-ink)]"
+                />
+                {nome}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-label">Cidade da conta</legend>
+          <div className="flex flex-wrap gap-2">
+            {CIDADES.map((cidade) => (
+              <label key={cidade} className={caixinha}>
+                <input
+                  type="checkbox"
+                  name="cidades"
+                  value={cidade}
+                  defaultChecked={filtro.cidades.includes(cidade)}
+                  className="size-4 accent-[var(--pk-ink)]"
+                />
+                {cidade}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <Campo
+          rotulo="Só contas novas"
+          nome="conta_ate_dias"
+          opcional
+          erro={erros.conta_ate_dias}
+          ajuda="Criadas há até quantos dias (de 1 a 365). Vazio: qualquer conta."
+        >
+          <input
+            {...ligarCampo("conta_ate_dias", erros.conta_ate_dias, true)}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={365}
+            defaultValue={filtro.conta_ate_dias ?? ""}
+            className={`${classesEntrada} w-32`}
+          />
+        </Campo>
+        <Campo
+          rotulo="Contas escolhidas"
+          nome="contas"
+          opcional
+          erro={erros.contas}
+          ajuda="O e-mail de cada conta (ou o código, do endereço em Admin › Usuários), um por linha. Só elas veem. Ninguém de fora vê a lista."
+        >
+          <textarea
+            {...ligarCampo("contas", erros.contas, true)}
+            defaultValue={contas}
+            rows={3}
+            placeholder={"maria@email.com\njoao@email.com"}
+            className={`${classesEntrada} font-mono text-body-sm`}
+          />
+        </Campo>
+      </div>
+    </details>
   );
 }

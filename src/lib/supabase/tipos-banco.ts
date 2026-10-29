@@ -911,6 +911,13 @@ export type Database = {
           busca_da_area: boolean;
           /** a imagem no alto da janela (Storage, pasta banners; migração 20261213) */
           imagem: string | null;
+          /** para quem (migração 20261214) */
+          tipos_conta: string[];
+          categorias: string[];
+          curriculo: "com" | "sem" | null;
+          cidades: string[];
+          conta_ate_dias: number | null;
+          so_contas: boolean;
           criado_em: string;
           atualizado_em: string;
         };
@@ -929,6 +936,12 @@ export type Database = {
           atraso_segundos?: number;
           busca_da_area?: boolean;
           imagem?: string | null;
+          tipos_conta?: string[];
+          categorias?: string[];
+          curriculo?: "com" | "sem" | null;
+          cidades?: string[];
+          conta_ate_dias?: number | null;
+          so_contas?: boolean;
         };
         Update: {
           titulo?: string;
@@ -945,7 +958,19 @@ export type Database = {
           atraso_segundos?: number;
           busca_da_area?: boolean;
           imagem?: string | null;
+          tipos_conta?: string[];
+          categorias?: string[];
+          curriculo?: "com" | "sem" | null;
+          cidades?: string[];
+          conta_ate_dias?: number | null;
+          so_contas?: boolean;
         };
+        Relationships: [];
+      };
+      banners_contas: {
+        Row: { banner_id: string; perfil_id: string };
+        Insert: { banner_id: string; perfil_id: string };
+        Update: { banner_id?: string; perfil_id?: string };
         Relationships: [];
       };
       banners_vistos: {

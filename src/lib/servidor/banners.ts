@@ -11,17 +11,27 @@ import {
   podeMostrar,
   type AcaoBanner,
   type BannerNoAr,
+  type FiltroBanner,
+  paraQuemVe,
+  type QuemVeBanner,
+  temFiltro,
   type PaginaBanner,
   type Visto,
 } from "@/lib/banners";
 import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { categoriaSugerida } from "@/lib/categoria-sugerida";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { criarClientePublico, criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 /** A área de quem vê, para a busca do banner: o "o que você faz" do currículo ou o primeiro cargo. */
 async function areaDaConta(contaId: string): Promise<string | null> {
+  return (await curriculoDaConta(contaId)).area;
+}
+
+/** Se a conta tem currículo, e a área dele (o "o que você faz" ou o primeiro cargo). */
+async function curriculoDaConta(contaId: string): Promise<{ tem: boolean; area: string | null }> {
   const { data } = await (
     await criarClienteServidor()
   )
@@ -29,7 +39,11 @@ async function areaDaConta(contaId: string): Promise<string | null> {
     .select("titulo, experiencias")
     .eq("perfil_id", contaId)
     .maybeSingle();
-  if (!data) return null;
+  if (!data) return { tem: false, area: null };
+  return { tem: true, area: areaDoCurriculo(data) };
+}
+
+function areaDoCurriculo(data: { titulo: string | null; experiencias: unknown }): string | null {
   const titulo = data.titulo?.trim();
   if (titulo && titulo.length >= 2) return titulo.slice(0, 60);
   const experiencias = Array.isArray(data.experiencias) ? data.experiencias : [];
@@ -65,7 +79,7 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
       .in("publico", publicos)
       .order("criado_em", { ascending: false })
       .limit(30);
-  type Linha = {
+  type Linha = Partial<FiltroBanner> & {
     id: string;
     titulo: string;
     texto: string | null;
@@ -80,8 +94,11 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
   };
   const basicas = "id, titulo, texto, botao, acao, link, repetir_dias";
   const comPaginas = `${basicas}, paginas, atraso_segundos, busca_da_area`;
-  let { data, error } = await consulta(`${comPaginas}, imagem`).returns<Linha[]>();
-  // sem a migração 20261213120000: sem imagem; sem a 20261117120000: só a inicial, em 3 segundos
+  const comFiltros = `${comPaginas}, imagem, tipos_conta, categorias, curriculo, cidades, conta_ate_dias, so_contas`;
+  let { data, error } = await consulta(comFiltros).returns<Linha[]>();
+  // sem a migração 20261214120000: sem os filtros (para quem); sem a 20261213120000: sem imagem; sem a
+  // 20261117120000: só a inicial, em 3 segundos
+  if (error?.code === "42703") ({ data, error } = await consulta(`${comPaginas}, imagem`).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(comPaginas).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(basicas).returns<Linha[]>());
   if (error || !data?.length) return []; // sem a migração dos banners: nenhum
@@ -101,7 +118,18 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
       daConta.set(v.banner_id, { dia: diaDeHoje(Date.parse(v.visto_em)), clicou: v.clicou });
   }
   const hoje = diaDeHoje(agora);
+  const filtroDe = (b: Linha): FiltroBanner => ({
+    tipos_conta: b.tipos_conta ?? [],
+    categorias: b.categorias ?? [],
+    curriculo: b.curriculo ?? null,
+    cidades: b.cidades ?? [],
+    conta_ate_dias: b.conta_ate_dias ?? null,
+    so_contas: b.so_contas ?? false,
+  });
+  // para quem: só lido quando algum banner pede (quem tem conta; o visitante não passa de filtro nenhum)
+  const quem = usuario && perfil && data.some((b) => temFiltro(filtroDe(b))) ? await quemVe(usuario.id, perfil) : null;
   const podem = data
+    .filter((b) => paraQuemVe(b.id, filtroDe(b), quem, agora))
     .filter((b) => podeMostrar(b.repetir_dias, juntarVistos(doNavegador.get(b.id), daConta.get(b.id)), hoje))
     .slice(0, 8);
   // a busca pela área de quem vê (só lida quando algum banner pede)
@@ -119,4 +147,34 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
     atraso: b.atraso_segundos ?? ATRASO_PADRAO,
     imagem: b.imagem ?? null,
   }));
+}
+
+/**
+ * Quem está vendo, para os filtros do banner: o tipo e a cidade da conta, quando foi criada, se tem
+ * currículo, as áreas (a do currículo de quem procura; as das vagas de quem contrata) e os banners em
+ * que foi escolhida (banners_contas: cada conta lê só a própria linha).
+ */
+async function quemVe(
+  contaId: string,
+  perfil: { tipo: string; cidade: string; criado_em: string },
+): Promise<QuemVeBanner> {
+  const supabase = await criarClienteServidor();
+  const [curriculo, vagas, escolhida] = await Promise.all([
+    curriculoDaConta(contaId),
+    perfil.tipo === "pessoa"
+      ? Promise.resolve({ data: [] as { categoria: string }[] })
+      : supabase.from("anuncios").select("categoria").eq("autor_id", contaId).limit(50),
+    supabase.from("banners_contas").select("banner_id").eq("perfil_id", contaId),
+  ]);
+  const areas = new Set<string>((vagas.data ?? []).map((v) => v.categoria).filter((c) => c && c !== "outros"));
+  const daArea = curriculo.area ? categoriaSugerida(curriculo.area) : null;
+  if (daArea) areas.add(daArea);
+  return {
+    tipo: perfil.tipo,
+    cidade: perfil.cidade,
+    criadaEm: Date.parse(perfil.criado_em),
+    temCurriculo: curriculo.tem,
+    areas: [...areas],
+    escolhida: new Set((escolhida.data ?? []).map((e) => e.banner_id)),
+  };
 }
