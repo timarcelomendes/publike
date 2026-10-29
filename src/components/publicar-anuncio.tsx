@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle, MapPin, RotateCcw, Sparkles } from "lucide-react";
+import { CalendarClock, Check, Heart, ImageUp, LoaderCircle, MapPin, RotateCcw, Sparkles, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { ERRO_SEM_SALVAR, ehNavegacao } from "@/lib/acao-segura";
@@ -13,6 +13,7 @@ import { MODELOS_ANUNCIO, type ModeloAnuncio } from "@/lib/modelos-anuncio";
 import { lerNumeroBR } from "@/lib/numero";
 import {
   apagarRascunho,
+  CHAVE_COM_CONTA,
   formDataDoRascunho,
   guardarRascunho,
   lerRascunhoGuardado,
@@ -25,14 +26,21 @@ import { valoresDoConvite } from "@/lib/valores-convite";
 import { ArteDaVaga } from "./arte-da-vaga";
 import { AvisoConvite } from "./aviso-convite";
 import { FormAnuncio, type ValoresAnuncio } from "./form-anuncio";
-import { Aviso, Selo } from "./ui/basicos";
+import { Avatar, Aviso } from "./ui/basicos";
 import { jeitosDeEntrar } from "@/lib/login-social";
 
 // Publicar uma vaga: os modelos prontos em cima, a prévia de como a vaga aparece e,
 // para quem ainda não entrou, o rascunho guardado no aparelho. Depois de entrar
 // (?continuar=1), o rascunho é publicado sozinho.
 
-type Previa = { titulo: string; valor: string; regime: string | null; lugar: string };
+type Previa = {
+  titulo: string;
+  valor: string;
+  regime: string | null;
+  lugar: string;
+  comecaJa: boolean;
+  contatoDireto: boolean;
+};
 
 function lerPrevia(form: HTMLFormElement): Previa {
   const f = new FormData(form);
@@ -54,7 +62,9 @@ function lerPrevia(form: HTMLFormElement): Previa {
       { ate: ate != null && Number.isFinite(ate) ? ate : null, ganhos: ganhos.ok ? ganhos.lista : [] },
     ),
     regime: REGIMES[t("regime") as Regime]?.selo ?? null,
-    lugar: [t("bairro"), t("cidade")].filter(Boolean).join(" · "),
+    lugar: [t("bairro"), t("cidade")].filter(Boolean).join(", "),
+    comecaJa: t("comeca_ja") === "on",
+    contatoDireto: t("contato_direto") === "on",
   };
 }
 
@@ -122,7 +132,13 @@ export function PublicarAnuncio({
   enderecoPublico = false,
   convite = null,
   modelo: modeloPedido = null,
+  comecarConferindo = false,
+  autor = null,
 }: {
+  /** a vaga já veio pronta (Publicar parecida, convite com a vaga): abre no passo 5, Conferir */
+  comecarConferindo?: boolean;
+  /** o nome da conta, na prévia (sem conta: "Sua empresa") */
+  autor?: string | null;
   /** o modelo para abrir já aplicado (`/publicar?modelo=diarista`, do vazio de Serviços) */
   modelo?: string | null;
   inicial: ValoresAnuncio;
@@ -152,6 +168,12 @@ export function PublicarAnuncio({
   const [erro, setErro] = useState<string | null>(null);
   const [previa, setPrevia] = useState<Previa | null>(null);
   const tempo = useRef<number | null>(null);
+  // em passos: onde o formulário começa (5 quando a vaga veio pronta) e o passo aberto (para o rascunho)
+  const [passoDeComeco, setPassoDeComeco] = useState(comecarConferindo || convite?.pronta ? 5 : 1);
+  const passoAtual = useRef(passoDeComeco);
+  // os atalhos do passo 1: os modelos ou a foto da vaga (quem chega por /publicar#arte já vê a foto)
+  const [atalho, setAtalho] = useState<"modelo" | "foto" | null>(modeloInicial ? "modelo" : null);
+  const chaveDoRascunho = semConta ? undefined : CHAVE_COM_CONTA;
 
   const formulario = () => raiz.current?.querySelector("form") ?? null;
 
@@ -161,6 +183,17 @@ export function PublicarAnuncio({
     const t = window.setTimeout(() => abrir(), 0);
     return () => window.clearTimeout(t);
     function abrir() {
+      if (window.location.hash === "#arte") setAtalho("foto");
+      // quem já entrou guarda à parte o que estava escrevendo (volta no passo em que parou)
+      const comConta = !semConta && !continuar ? lerRascunhoGuardado(CHAVE_COM_CONTA) : null;
+      if (comConta && !convite && !modeloInicial && !comecarConferindo) {
+        setInicial(valoresDoRascunho(comConta, base));
+        setPassoDeComeco(comConta.passo ?? 1);
+        passoAtual.current = comConta.passo ?? 1;
+        setChave((c) => c + 1);
+        setAviso("restaurado");
+        return;
+      }
       const r = lerRascunhoGuardado();
       if (!r) return;
       // a vaga do convite vem pronta: o rascunho antigo deste aparelho não passa por cima dela
@@ -216,6 +249,8 @@ export function PublicarAnuncio({
         return;
       }
       setInicial(valoresDoRascunho(r, base));
+      setPassoDeComeco(r.passo ?? 1);
+      passoAtual.current = r.passo ?? 1;
       setChave((c) => c + 1);
       setAviso("restaurado");
     }
@@ -230,7 +265,7 @@ export function PublicarAnuncio({
       const f = formulario();
       if (!f) return;
       setPrevia(lerPrevia(f));
-      if (semConta) guardarRascunho(f);
+      guardarRascunho(f, chaveDoRascunho, passoAtual.current);
     }, 250);
   }
   useEffect(() => {
@@ -245,14 +280,27 @@ export function PublicarAnuncio({
     const atual = lugarDoFormulario(formulario(), base);
     setInicial(m ? aplicarModelo(m, atual) : { ...base, cidade: atual.cidade, bairro: atual.bairro });
     setModelo(m?.id ?? null);
+    setPassoDeComeco(1);
+    passoAtual.current = 1;
     setChave((c) => c + 1);
     setAviso(null);
+  }
+
+  // a cada passo, o rascunho guarda onde a pessoa está
+  function aoMudarPasso(n: number) {
+    passoAtual.current = n;
+    const f = formulario();
+    if (f) guardarRascunho(f, chaveDoRascunho, n);
   }
 
   // "Tem a arte da vaga?": o que a IA leu da imagem entra no formulário (o lugar já escrito fica)
   function aplicarArte(vaga: Parameters<typeof valoresDoConvite>[0]) {
     setInicial(valoresDoConvite(vaga, lugarDoFormulario(formulario(), base)));
     setModelo(null);
+    // a vaga veio pronta da imagem: abre no Conferir
+    setPassoDeComeco(5);
+    passoAtual.current = 5;
+    setAtalho(null);
     setChave((c) => c + 1);
     setAviso("lido");
   }
@@ -277,7 +325,16 @@ export function PublicarAnuncio({
   }
 
   return (
-    <div ref={raiz} onInput={aoMexer} onChange={aoMexer} className="flex flex-col gap-6">
+    <div
+      ref={raiz}
+      onInput={aoMexer}
+      onChange={aoMexer}
+      // ao publicar, o rascunho de quem tem conta sai (se der errado, o formulário continua preenchido)
+      onSubmitCapture={() => {
+        if (!semConta) apagarRascunho(CHAVE_COM_CONTA);
+      }}
+      className="flex flex-col gap-6"
+    >
       {convite && (
         <AvisoConvite token={convite.token} nome={convite.nome}>
           {convite.pronta
@@ -300,6 +357,7 @@ export function PublicarAnuncio({
             type="button"
             onClick={() => {
               apagarRascunho();
+              apagarRascunho(CHAVE_COM_CONTA);
               escolher(null);
             }}
             className="min-h-10 font-semibold underline underline-offset-2"
@@ -310,49 +368,13 @@ export function PublicarAnuncio({
       )}
       {aviso === "lido" && (
         <Aviso tipo="info" titulo="Preenchemos com o que estava na imagem">
-          Confira cada campo antes de publicar: o título, o valor, o que a vaga pede e o endereço.
+          Confira cada passo antes de publicar (toque em Editar): o título, o valor, o que a vaga pede e o endereço.
         </Aviso>
       )}
       {erro && (
         <Aviso tipo="alerta" titulo="Sua vaga ainda não foi publicada">
           {erro}
         </Aviso>
-      )}
-
-      {comModelos && ia && !semConta && <ArteDaVaga aoLer={aplicarArte} />}
-
-      {comModelos && (
-        <section aria-labelledby="modelos-titulo" className="flex flex-col gap-3">
-          <h2 id="modelos-titulo" className="flex items-center gap-2 text-h3">
-            <Sparkles aria-hidden className="size-5 text-ink-muted" />
-            Comece por um modelo
-          </h2>
-          <p className="-mt-1 text-body-sm text-ink-muted">
-            Vem com título, descrição e um valor para começar. Ajuste ao seu caso.
-          </p>
-          <ul className="flex flex-wrap gap-2">
-            {MODELOS_ANUNCIO.map((m) => {
-              const ativo = modelo === m.id;
-              return (
-                <li key={m.id}>
-                  <button
-                    type="button"
-                    aria-pressed={ativo}
-                    onClick={() => escolher(ativo ? null : m)}
-                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
-                      ativo
-                        ? "border-ink bg-ink text-surface-100"
-                        : "border-line bg-surface-300 hover:border-line-strong"
-                    }`}
-                  >
-                    {ativo && <Check aria-hidden className="size-4" />}
-                    {m.nome}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
       )}
 
       <FormAnuncio
@@ -366,33 +388,118 @@ export function PublicarAnuncio({
         contatoAgencia={contatoAgencia}
         clientes={clientes}
         enderecoPublico={enderecoPublico}
-        previa={previa?.titulo ? <PreviaDaVaga p={previa} /> : null}
+        previa={previa?.titulo ? <PreviaDaVaga p={previa} autor={autor || "Sua empresa"} /> : null}
         extras={convite ? { convite: convite.token } : undefined}
         jaMudou={aviso === "lido"}
+        passos
+        passoInicial={passoDeComeco}
+        aoMudarPasso={aoMudarPasso}
+        atalhos={
+          comModelos ? (
+            <div className="flex flex-col gap-3 rounded-lg bg-surface-300 p-3 sm:p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-label">Para ir mais rápido:</span>
+                <button
+                  type="button"
+                  aria-expanded={atalho === "modelo"}
+                  onClick={() => setAtalho((a) => (a === "modelo" ? null : "modelo"))}
+                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
+                    atalho === "modelo" ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200"
+                  }`}
+                >
+                  <Sparkles aria-hidden className="size-4" />
+                  Usar um modelo
+                </button>
+                {ia && !semConta && (
+                  <button
+                    type="button"
+                    aria-expanded={atalho === "foto"}
+                    onClick={() => setAtalho((a) => (a === "foto" ? null : "foto"))}
+                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
+                      atalho === "foto" ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200"
+                    }`}
+                  >
+                    <ImageUp aria-hidden className="size-4" />
+                    Mandar a foto da vaga
+                  </button>
+                )}
+              </div>
+              {atalho === "modelo" && (
+                <ul aria-label="Modelos de vaga" className="flex flex-wrap gap-2">
+                  {MODELOS_ANUNCIO.map((m) => {
+                    const ativo = modelo === m.id;
+                    return (
+                      <li key={m.id}>
+                        <button
+                          type="button"
+                          aria-pressed={ativo}
+                          onClick={() => escolher(ativo ? null : m)}
+                          className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+                            ativo
+                              ? "border-ink bg-ink text-surface-100"
+                              : "border-line bg-surface-200 hover:border-line-strong"
+                          }`}
+                        >
+                          {ativo && <Check aria-hidden className="size-4" />}
+                          {m.nome}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {atalho === "foto" && ia && !semConta && <ArteDaVaga aoLer={aplicarArte} />}
+            </div>
+          ) : null
+        }
       />
     </div>
   );
 }
 
-/** Como a vaga aparece na busca, com o que já foi escrito. */
-function PreviaDaVaga({ p }: { p: Previa }) {
+/** Como a vaga aparece no Início (o tíquete da linha do tempo), com o que já foi escrito. */
+function PreviaDaVaga({ p, autor }: { p: Previa; autor: string }) {
   return (
     <section aria-label="Prévia da vaga" className="flex flex-col gap-2">
-      <p className="text-label text-ink-muted">Assim sua vaga aparece na busca</p>
-      <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:max-w-md">
-        <p className="flex flex-wrap items-center gap-2">
-          <Selo variante="aviso">Vaga</Selo>
-          {p.regime && <Selo variante="contorno">{p.regime}</Selo>}
-        </p>
-        <p className="font-display text-h3 break-words">{p.titulo}</p>
-        <p className="text-label">{p.valor}</p>
-        {p.lugar && (
-          <p className="flex items-center gap-1.5 text-body-sm text-ink-muted">
-            <MapPin aria-hidden className="size-4 shrink-0" />
-            {p.lugar}
-          </p>
-        )}
+      <p className="text-label text-ink-muted">Assim sua vaga aparece</p>
+      <div className="grid grid-cols-[minmax(0,1fr)_8.5rem] overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
+        <div className="flex min-w-0 gap-3 p-3.5">
+          <Avatar nome={autor} tamanho={40} forma="quadrada" colorida />
+          <div className="min-w-0">
+            <p className="font-display text-[17px] leading-[22px] font-bold break-words">{p.titulo}</p>
+            <p className="truncate text-body-sm font-semibold">{autor}</p>
+            {p.lugar && (
+              <p className="mt-1 flex items-center gap-1 text-body-sm text-ink-muted">
+                <MapPin aria-hidden className="size-4 shrink-0 text-terra-text" />
+                <span className="truncate">{p.lugar}</span>
+              </p>
+            )}
+            <ul className="mt-2 flex flex-wrap gap-1.5 text-[13px] leading-[18px] font-semibold [&>li]:rounded-pill [&>li]:bg-surface-100 [&>li]:px-2.5 [&>li]:py-0.5">
+              {p.regime && <li>{p.regime}</li>}
+              {p.comecaJa && (
+                <li className="inline-flex items-center gap-1 bg-terra-soft! text-terra-text">
+                  <CalendarClock aria-hidden className="size-3.5" />
+                  Começa já
+                </li>
+              )}
+              {p.contatoDireto && (
+                <li className="inline-flex items-center gap-1 text-cerrado-text">
+                  <Zap aria-hidden className="size-3.5" />
+                  Contato direto
+                </li>
+              )}
+            </ul>
+          </div>
+        </div>
+        <div className="flex flex-col justify-center gap-2 border-l-2 border-dashed border-line bg-surface-300 p-3">
+          <p className="font-display text-[19px] leading-6 font-bold break-words">{p.valor}</p>
+          <span className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 text-label">
+            <Heart aria-hidden className="size-4" />
+            Curtir
+          </span>
+        </div>
       </div>
+      <p className="text-body-sm text-ink-muted">Muda enquanto você preenche.</p>
     </section>
   );
 }

@@ -125,9 +125,9 @@ export function errosPorCampo(erro: z.ZodError) {
 
 // ---------------------------------------------------------------- anúncio
 
-const SEM_REGIME = "Escolha o tipo de contratação: CLT, diária, freela…";
-const SEM_VALOR = "Escreva quanto paga ou marque “Valor a combinar”.";
-const SEM_CONTRATANTE = "Diga para qual empresa é a vaga ou marque “Empresa confidencial”.";
+export const SEM_REGIME = "Escolha o tipo de contratação: CLT, diária, freela…";
+export const SEM_VALOR = "Escreva quanto paga ou marque “Valor a combinar”.";
+export const SEM_CONTRATANTE = "Diga para qual empresa é a vaga ou marque “Empresa confidencial”.";
 const FORA_DO_PUBLIKE = `Marque um ponto em ${ONDE_FUNCIONA}.`;
 
 export const esquemaAnuncio = z
@@ -267,7 +267,7 @@ type ExtrasDaVaga = {
 export type DadosAnuncio = z.output<typeof esquemaAnuncio> & ExtrasDaVaga;
 
 /** "De 1.800 a 2.200": o fim é opcional e precisa ser maior que o começo. */
-function conferirFaixa(de: number | null, ate: number | null) {
+export function conferirFaixa(de: number | null, ate: number | null) {
   if (ate == null) return null;
   if (Number.isNaN(ate) || ate <= 0 || ate > 1_000_000) return "Confira o valor.";
   if (de != null && !Number.isNaN(de) && ate < de) return "O fim da faixa precisa ser maior que o começo.";

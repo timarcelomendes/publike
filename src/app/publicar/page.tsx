@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function Publicar({ searchParams }: PageProps<"/publicar">) {
   return (
-    <Container className="max-w-3xl py-8">
+    <Container className="max-w-5xl py-8">
       <h1 className="text-h2 sm:text-h1">Publicar grátis</h1>
       <p className="mt-2 mb-6 text-body text-ink-muted">
         Leva dois minutos e é grátis, sem plano e sem limite de candidatos, para a sua casa ou o seu negócio. Com o
@@ -178,6 +178,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       <PublicarAnuncio
         inicial={inicial}
         continuar={continuar}
+        comecarConferindo={Boolean(copia)}
+        autor={perfil.nome}
         comModelos={!copia && !convite}
         modelo={copia || convite ? null : modelo}
         ia={ia}

@@ -7,22 +7,28 @@ import type { TipoAnuncio } from "./tipos";
 import { lerGanhosExtras, lerHorario, perguntasDoBanco } from "./vaga-extra";
 
 const CHAVE = "publike_rascunho_vaga";
+/**
+ * O rascunho de quem já entrou (publicar em passos): fica à parte, porque o de quem não tem conta é
+ * publicado sozinho depois de entrar (`/publicar?continuar=1`), e este pode estar pela metade.
+ */
+export const CHAVE_COM_CONTA = "publike_rascunho_passos";
 /** Depois de uma semana, o rascunho não volta mais. */
 const VALIDADE = 7 * 24 * 3600e3;
 
-export type Rascunho = { salvo_em: number; campos: [string, string][] };
+/** `passo`: em que passo do publicar a pessoa estava (volta nele). */
+export type Rascunho = { salvo_em: number; campos: [string, string][]; passo?: number };
 
-export function guardarRascunho(form: HTMLFormElement) {
+export function guardarRascunho(form: HTMLFormElement, chave = CHAVE, passo?: number) {
   const campos: [string, string][] = [];
   for (const [k, v] of new FormData(form).entries()) if (typeof v === "string") campos.push([k, v]);
   try {
-    localStorage.setItem(CHAVE, JSON.stringify({ salvo_em: Date.now(), campos } satisfies Rascunho));
+    localStorage.setItem(chave, JSON.stringify({ salvo_em: Date.now(), campos, passo } satisfies Rascunho));
   } catch {}
 }
 
-export function lerRascunhoGuardado(): Rascunho | null {
+export function lerRascunhoGuardado(chave = CHAVE): Rascunho | null {
   try {
-    const bruto = localStorage.getItem(CHAVE);
+    const bruto = localStorage.getItem(chave);
     if (!bruto) return null;
     const r = JSON.parse(bruto) as Rascunho;
     if (!Array.isArray(r?.campos) || Date.now() - r.salvo_em > VALIDADE) return null;
@@ -33,9 +39,9 @@ export function lerRascunhoGuardado(): Rascunho | null {
   }
 }
 
-export function apagarRascunho() {
+export function apagarRascunho(chave = CHAVE) {
   try {
-    localStorage.removeItem(CHAVE);
+    localStorage.removeItem(chave);
   } catch {}
 }
 
