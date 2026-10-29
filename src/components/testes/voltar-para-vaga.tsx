@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { obterAnuncio } from "@/lib/dados";
 import { UUID } from "@/lib/validacao";
+import { BotaoLink } from "../ui/botao";
 
 /**
  * A vaga de onde a pessoa veio (`?vaga=` na biblioteca de testes), se for dela: para voltar aos testes da
@@ -17,6 +18,16 @@ export async function vagaDaVolta(vaga: unknown, usuarioId: string) {
 /** "?vaga=…" para os links da biblioteca, quando a pessoa veio de uma vaga. */
 export const comVaga = (href: string, vaga: { id: string } | null) =>
   vaga ? `${href}${href.includes("?") ? "&" : "?"}vaga=${vaga.id}` : href;
+
+/** "← Voltar para os testes": a biblioteca, com a vaga junto quando a pessoa veio de uma. */
+export function VoltarParaOsTestes({ vaga }: { vaga: { id: string } | null }) {
+  return (
+    <BotaoLink href={comVaga("/painel/testes", vaga)} tamanho="sm" className="self-start">
+      <ArrowLeft aria-hidden />
+      Voltar para os testes
+    </BotaoLink>
+  );
+}
 
 /** "← Voltar para a vaga: Auxiliar de cozinha" (os testes da vaga). */
 export function VoltarParaVaga({ vaga }: { vaga: { id: string; titulo: string } }) {

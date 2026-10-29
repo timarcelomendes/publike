@@ -1,12 +1,11 @@
-import { ArrowLeft, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { EditorDeTeste } from "@/components/testes/editor-teste";
-import { comVaga, vagaDaVolta, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
+import { vagaDaVolta, VoltarParaOsTestes, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
 import { MODO_DEMO } from "@/lib/config";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -43,16 +42,7 @@ async function Conteudo({
   const questoes = questoesDoBanco(m.questoes);
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-x-5">
-        <Link
-          href={comVaga("/painel/testes", vaga)}
-          className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          Testes Publike
-        </Link>
-        {vaga && <VoltarParaVaga vaga={vaga} />}
-      </div>
+      <Voltar vaga={vaga} />
       {m.da_casa ? (
         <>
           <h2 className="text-h2">Editar teste</h2>
@@ -100,8 +90,20 @@ async function Conteudo({
               );
             })}
           </ol>
+          {/* depois da última questão, a volta também, sem rolar até o alto */}
+          <Voltar vaga={vaga} />
         </>
       )}
+    </div>
+  );
+}
+
+/** A volta para os testes e, quando a pessoa veio de uma vaga, para a vaga. */
+function Voltar({ vaga }: { vaga: { id: string; titulo: string } | null }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+      <VoltarParaOsTestes vaga={vaga} />
+      {vaga && <VoltarParaVaga vaga={vaga} />}
     </div>
   );
 }
