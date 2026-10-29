@@ -9,7 +9,8 @@ export function BotaoCompartilhar({ titulo, texto }: { titulo: string; texto: st
   const [copiado, setCopiado] = useState(false);
 
   async function compartilhar() {
-    const url = window.location.href.split("?")[0];
+    // com a origem: quem cria a conta por esse link aparece em Admin › Campanhas
+    const url = `${window.location.href.split("?")[0]}?utm_source=compartilhar&utm_campaign=anuncio`;
     if (navigator.share) {
       try {
         await navigator.share({ title: titulo, text: texto, url });

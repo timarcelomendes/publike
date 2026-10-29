@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { curtirAnuncio, curtirDeNovo, descurtirAnuncio, type AvisoLigado } from "@/lib/acoes/curtidas";
+import { NuncaPague } from "./anuncio/nunca-pague";
 import { LinhaDoAvisoLigado } from "./aviso-ligado";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
 import { ConviteNotificacoes } from "./convite-notificacoes";
@@ -236,6 +237,7 @@ export function BotaoCurtir({
               painel.
             </p>
             {aviso && <LinhaDoAvisoLigado aviso={aviso} className="border-t border-line pt-2.5" />}
+            {!servico && <NuncaPague />}
             <ConviteNotificacoes
               jeito="balao"
               titulo="Saiba na hora"

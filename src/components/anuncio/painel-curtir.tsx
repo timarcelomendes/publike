@@ -12,6 +12,7 @@ import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
 import { LinhaDoAvisoLigado } from "../aviso-ligado";
+import { NuncaPague } from "./nunca-pague";
 import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
 import { EntrevistaDoCandidato, type EntrevistaDoCandidato as Entrevista } from "./entrevista-candidato";
@@ -350,6 +351,7 @@ export function PainelCurtir({
             : `Quando ${quem} responder, você recebe um aviso e o contato aparece aqui e no seu painel.`}
         </p>
         {aviso && <LinhaDoAvisoLigado aviso={aviso} />}
+        {!servico && <NuncaPague />}
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
         {perguntas.length > 0 && (
           <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} />
@@ -474,6 +476,7 @@ export function PainelCurtir({
         {pendente ? "Enviando…" : servico ? "Quero contratar" : "Curtir a vaga"}
       </button>
       {!logado && <p className="text-center text-body-sm text-ink-muted">Entrar é rápido, sem senha e grátis.</p>}
+      {!servico && <NuncaPague />}
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
     </div>
   );

@@ -461,6 +461,10 @@ async function DetalheAnuncio({
             {anuncio.autor_verificado && (
               <SeloVerificado agencia={agencia} />
             )}
+            {/* vaga de empresa com a conta conferida: dito por extenso, contra o medo de golpe */}
+            {vaga && anuncio.autor_verificado && !agencia && anuncio.autor_tipo !== "pessoa" && (
+              <span className="text-body-sm font-semibold text-cerrado-text">Empresa conferida pelo Publike</span>
+            )}
           </p>
           {nota && nota.total > 0 && (
             <p className="mt-1">
@@ -766,6 +770,7 @@ async function DetalheAnuncio({
               lugar={lugar}
               vaga={vaga}
               proprio={proprio}
+              valor={valor}
             />
           )}
 
