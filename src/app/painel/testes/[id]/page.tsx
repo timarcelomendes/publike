@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { OfertaRecurso } from "@/components/recurso-pago";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { EditorDeTeste } from "@/components/testes/editor-teste";
 import { vagaDaVolta, VoltarParaOsTestes, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
 import { MODO_DEMO } from "@/lib/config";
+import { recursosPagos } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { COMPETENCIAS, questoesDoBanco } from "@/lib/testes";
@@ -34,7 +36,9 @@ async function Conteudo({
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
   const usuario = await exigirUsuario(`/painel/testes/${id}`);
-  const vaga = await vagaDaVolta(sp.vaga, usuario.id);
+  const [vaga, recursos] = await Promise.all([vagaDaVolta(sp.vaga, usuario.id), recursosPagos()]);
+  // recurso pago (migração 20261215120000): sem ele, a oferta no lugar do teste
+  if (recursos && !recursos.testes.liberado) return <OfertaRecurso recurso="testes" estado={recursos.testes} />;
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("avaliacao_modelo", { p_modelo: id });
   if (error || !data) notFound();

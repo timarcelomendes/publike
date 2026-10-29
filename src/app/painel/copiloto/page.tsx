@@ -1,16 +1,18 @@
-import { Bot, ChevronRight, ListChecks, Plus, Search, Sparkles, UserCheck } from "lucide-react";
+import { ChevronRight, ListChecks, Plus, Search, Sparkles, UserCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Selo, Vazio } from "@/components/ui/basicos";
+import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { copilotoLiberado, listarMeusAnuncios } from "@/lib/dados";
+import { copilotoLiberado, listarMeusAnuncios, recursosPagos } from "@/lib/dados";
 import { formatarLugar, plural } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
+import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Copiloto" };
 
@@ -33,17 +35,13 @@ export default function Copiloto() {
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/copiloto");
-  const liberado = await copilotoLiberado();
-  if (!liberado) {
-    return (
-      <Vazio icone={Bot} titulo="O copiloto está em teste">
-        Ele ainda não foi liberado para a sua conta.
-      </Vazio>
-    );
-  }
+  const [liberado, recursos, agora] = await Promise.all([copilotoLiberado(), recursosPagos(), agoraDaRequisicao()]);
+  // recurso pago: sem ele, a oferta dos 15 dias grátis (migração 20261215120000)
+  if (!liberado) return <OfertaRecurso recurso="copiloto" estado={recursos?.copiloto ?? null} />;
   const vagas = (await listarMeusAnuncios().catch(() => [])).filter((a) => a.tipo === "vaga" && a.status === "ativo");
   return (
     <div className="flex flex-col gap-6">
+      <FaixaExperimento recurso="copiloto" estado={recursos?.copiloto} agora={agora} />
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="flex items-center gap-2 text-h2">
@@ -51,7 +49,6 @@ async function Conteudo() {
             Copiloto
           </h2>
           <SeloCortesia />
-          <Selo variante="contorno">Teste</Selo>
         </div>
         <p className="text-body text-ink-muted">
           Encontra os profissionais que combinam com a sua vaga e mostra o porquê. Quem decide é você.

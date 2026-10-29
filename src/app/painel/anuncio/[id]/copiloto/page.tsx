@@ -1,4 +1,4 @@
-import { Bot, History, ListChecks, Sparkles, Trophy } from "lucide-react";
+import { History, ListChecks, Sparkles, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,12 +9,13 @@ import { PartesDoCopiloto } from "@/components/copiloto/partes";
 import { RodarCopiloto } from "@/components/copiloto/rodar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
+import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
+import { Aviso } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { compararLeituras, contarLeitura, textoDoRegistro, type OrigemCopiloto } from "@/lib/copiloto";
-import { obterAnuncio } from "@/lib/dados";
+import { obterAnuncio, recursosPagos } from "@/lib/dados";
 import { tempoRelativo } from "@/lib/formato";
 import {
   avaliacoesDoCopiloto,
@@ -66,14 +67,12 @@ async function Conteudo({
     return (
       <div className="flex flex-col gap-4">
         {cabecalho}
-        <Vazio icone={Bot} titulo="O copiloto está em teste">
-          Ele ainda não foi liberado para a sua conta. Quando for, aparece aqui e no quadro da vaga.
-        </Vazio>
+        <OfertaRecurso recurso="copiloto" estado={(await recursosPagos())?.copiloto ?? null} />
       </div>
     );
   }
 
-  const agora = await agoraDaRequisicao();
+  const [agora, recursos] = await Promise.all([agoraDaRequisicao(), recursosPagos()]);
   // quem se candidatou e os Talentos num ranking só; "ver" filtra uma das origens
   const origens: OrigemCopiloto[] = [
     ...(config.triagem ? (["candidato"] as const) : []),
@@ -132,9 +131,9 @@ async function Conteudo({
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
+      <FaixaExperimento recurso="copiloto" estado={recursos?.copiloto} agora={agora} />
       <div className="flex flex-wrap items-center gap-2">
         <SeloCortesia />
-        <Selo variante="contorno">Teste</Selo>
         <p className="text-body-sm text-ink-muted">
           A IA lê cada currículo contra os critérios e mostra o trecho que comprova. Quem decide é você.
         </p>

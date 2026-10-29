@@ -5,7 +5,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FormConfigIA } from "@/components/admin/ia";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
-import { configDoSite, contasDoCopiloto, decisoesDaIA, numerosDoPainel } from "@/lib/admin/dados";
+import { configDoSite, contasDoCopiloto, decisoesDaIA, experimentosDosRecursos, numerosDoPainel } from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { tempoRelativo } from "@/lib/formato";
 import { MODELOS_IA, modeloDaIA, temChave } from "@/lib/ia/openai";
@@ -34,12 +34,13 @@ export default function IA() {
 
 async function Conteudo() {
   const c = await exigirAdminLocal();
-  const [config, decisoes, numeros, agora, copiloto] = await Promise.all([
+  const [config, decisoes, numeros, agora, copiloto, experimentos] = await Promise.all([
     configDoSite(c),
     decisoesDaIA(c, 40),
     numerosDoPainel(c),
     agoraDaRequisicao(),
     contasDoCopiloto(c),
+    experimentosDosRecursos(c),
   ]);
   const filas = situacaoFilas();
   const chaves = { openai: temChave("openai"), claude: temChave("claude") };
@@ -96,8 +97,8 @@ async function Conteudo() {
 
       {copiloto && (
         <Secao
-          titulo="Copiloto (teste)"
-          descricao="As contas que veem o Copiloto nas vagas. Para liberar ou tirar, abra a conta em Usuários."
+          titulo="Copiloto"
+          descricao="As contas com o Copiloto (sem prazo ou nos 15 dias grátis). Para liberar ou tirar, abra a conta em Usuários."
         >
           {copiloto.length ? (
             <ul className="flex flex-col divide-y divide-line text-body-sm">
@@ -115,6 +116,32 @@ async function Conteudo() {
             </ul>
           ) : (
             <p className="text-body-sm text-ink-muted">Nenhuma conta liberada ainda.</p>
+          )}
+        </Secao>
+      )}
+
+      {experimentos && (
+        <Secao
+          titulo="15 dias grátis do Copiloto e dos Testes"
+          descricao="Quem pediu para experimentar. Primeiro, quem tocou em “Quero continuar”: chame essas contas."
+        >
+          {experimentos.length ? (
+            <ul className="flex flex-col divide-y divide-line text-body-sm">
+              {experimentos.map((x) => (
+                <li key={`${x.conta_id}-${x.recurso}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <Link href={`/admin/usuarios/${x.conta_id}`} className="text-label underline">
+                    {x.nome}
+                  </Link>
+                  <span className="text-ink-muted">
+                    {x.recurso === "copiloto" ? "Copiloto" : "Testes"} · começou {tempoRelativo(x.inicio, agora)} ·{" "}
+                    {x.ativo ? "experimentando" : "acabou"}
+                    {x.quer_continuar_em ? ` · quer continuar (${tempoRelativo(x.quer_continuar_em, agora)})` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-body-sm text-ink-muted">Ninguém pediu os 15 dias grátis ainda.</p>
           )}
         </Secao>
       )}

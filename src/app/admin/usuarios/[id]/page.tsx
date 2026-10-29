@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
-import { BotaoCopiloto } from "@/components/admin/copiloto";
+import { BotaoCopiloto, BotaoTestes } from "@/components/admin/copiloto";
 import { FormNomeDaConta } from "@/components/admin/nome-da-conta";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -28,6 +28,7 @@ import {
   aparelhoDoUsuario,
   contasDoCopiloto,
   emailsDoUsuario,
+  recursosDaConta,
   fichaUsuario,
   listarAnuncios,
   matchesDesfeitosDe,
@@ -73,7 +74,7 @@ async function Conteudo({
   const c = await exigirAdminLocal();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora, mensagens, aparelho, copiloto] =
+  const [u, anuncios, registro, advertencias, desfeitos, modelos, emails, agora, mensagens, aparelho, copiloto, recursos] =
     await Promise.all([
       fichaUsuario(c, id),
       listarAnuncios(c, { busca: null, status: "todos", tipo: null, autor: id, pagina: 1 }),
@@ -86,6 +87,7 @@ async function Conteudo({
       mensagensDaEquipeDe(c, id),
       aparelhoDoUsuario(c, id),
       contasDoCopiloto(c),
+      recursosDaConta(c, id),
     ]);
   if (!u) notFound();
 
@@ -368,10 +370,33 @@ async function Conteudo({
 
       {u.perfil && copiloto && (
         <Secao
-          titulo="Copiloto (teste)"
-          descricao="A IA que lê os currículos contra os critérios da vaga e busca em Talentos. Só as contas liberadas aqui veem o Copiloto nas vagas."
+          titulo="Copiloto e Testes Publike"
+          descricao="Recursos pagos. A conta pode experimentar cada um por 15 dias grátis, uma vez; aqui você libera sem prazo ou tira."
         >
-          <BotaoCopiloto contaId={u.id} liberado={copiloto.some((x) => x.conta_id === u.id)} />
+          <div className="flex flex-col gap-4">
+            {(["copiloto", "testes"] as const).map((r) => {
+              const estado = recursos?.[r] ?? null;
+              // antes da migração 20261215120000, só o Copiloto, pela lista de antes
+              const liberado = recursos ? Boolean(estado?.liberado) : r === "copiloto" && copiloto.some((x) => x.conta_id === u.id);
+              const exp = recursos?.experimentos.find((e) => e.recurso === r);
+              return (
+                <div key={r} className="flex flex-col gap-2">
+                  <p className="text-label">{r === "copiloto" ? "Copiloto" : "Testes Publike"}</p>
+                  <p className="text-body-sm text-ink-muted">
+                    {liberado ? (estado?.ate ? `Nos 15 dias grátis, até ${formatarDataCurta(estado.ate)}.` : "Liberado sem prazo.") : "Não tem."}
+                    {exp
+                      ? ` Experimentou de ${formatarDataCurta(exp.inicio)} a ${formatarDataCurta(exp.fim)}${exp.quer_continuar_em ? "; pediu para continuar " + tempoRelativo(exp.quer_continuar_em, agora) : ""}.`
+                      : ""}
+                  </p>
+                  {r === "copiloto" ? (
+                    <BotaoCopiloto contaId={u.id} liberado={liberado && !estado?.ate} />
+                  ) : (
+                    <BotaoTestes contaId={u.id} liberado={liberado && !estado?.ate} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </Secao>
       )}
 

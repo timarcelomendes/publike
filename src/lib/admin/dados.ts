@@ -685,6 +685,24 @@ export async function contasDoCopiloto(c: ClienteBanco) {
   return data ?? [];
 }
 
+/** Copiloto e Testes de uma conta: liberado, prazo e os 15 dias grátis. Antes da migração, null. */
+export async function recursosDaConta(c: ClienteBanco, contaId: string) {
+  const { data, error } = await c.rpc("admin_recursos_da_conta", { p_conta: contaId });
+  if (error || !data) return null;
+  return data as {
+    copiloto: { ate: string | null; liberado: boolean } | null;
+    testes: { ate: string | null; liberado: boolean } | null;
+    experimentos: { recurso: string; inicio: string; fim: string; quer_continuar_em: string | null }[];
+  };
+}
+
+/** Quem pediu os 15 dias grátis (quem quer continuar primeiro). Antes da migração, null. */
+export async function experimentosDosRecursos(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_experimentos");
+  if (error) return null;
+  return data ?? [];
+}
+
 /** Quantos e-mails saíram por dia (do mais novo ao mais velho). Antes da migração, null: a página segue sem. */
 export async function emailsPorDia(c: ClienteBanco, dias = 7) {
   const { data, error } = await c.rpc("admin_emails_por_dia", { p_dias: dias });

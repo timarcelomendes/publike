@@ -5,13 +5,14 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
+import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { PedirTeste } from "@/components/testes/pedir-teste";
 import { TestesDaVaga } from "@/components/testes/testes-da-vaga";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { listarInteressados, obterAnuncio } from "@/lib/dados";
+import { listarInteressados, obterAnuncio, recursosPagos } from "@/lib/dados";
 import { tempoRelativo } from "@/lib/formato";
 import { bibliotecaDeTestes, resultadosDosTestes, testesDaVaga } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
@@ -40,13 +41,16 @@ async function Conteudo({
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/testes`);
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
-  const [biblioteca, naVaga, resultados, interessados, agora] = await Promise.all([
+  const [biblioteca, naVaga, resultados, interessados, agora, recursos] = await Promise.all([
     bibliotecaDeTestes(),
     testesDaVaga(id),
     resultadosDosTestes(id),
     listarInteressados(id).catch(() => []),
     agoraDaRequisicao(),
+    recursosPagos(),
   ]);
+  // recurso pago (migração 20261215120000): sem ele, a oferta no lugar da escolha; os resultados continuam
+  const fechado = recursos !== null && !recursos.testes.liberado;
   const cabecalho = <CabecalhoDaVaga anuncio={anuncio} aba="testes" />;
   if (biblioteca === null) {
     return (
@@ -64,6 +68,8 @@ async function Conteudo({
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
+      <FaixaExperimento recurso="testes" estado={recursos?.testes} agora={agora} />
+      {fechado && <OfertaRecurso recurso="testes" estado={recursos?.testes ?? null} />}
       <div className="flex flex-wrap items-center gap-2">
         <SeloCortesia />
         <p className="text-body-sm text-ink-muted">
@@ -71,27 +77,29 @@ async function Conteudo({
         </p>
       </div>
 
-      <section aria-labelledby="titulo-escolha" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-        <h3 id="titulo-escolha" className="mb-3 flex items-center gap-2 text-h3">
-          <ClipboardCheck aria-hidden className="size-5 text-ink-muted" />
-          Testes desta vaga
-        </h3>
-        <TestesDaVaga
-          // de novo do zero quando a biblioteca muda (o teste que acabou de ser criado já vem escolhido)
-          key={`${biblioteca.length}-${typeof sp.novo === "string" ? sp.novo : ""}`}
-          anuncioId={id}
-          biblioteca={biblioteca}
-          iniciais={naVaga.map((t) => ({ modelo_id: t.modelo_id, obrigatoria: t.obrigatoria }))}
-          novo={typeof sp.novo === "string" ? sp.novo : null}
-        />
-        {biblioteca.length > 0 && (
-          <p className="mt-3 text-body-sm">
-            <Link href={`/painel/testes?vaga=${id}`} className="font-semibold underline underline-offset-2">
-              Ver a biblioteca e criar os testes da sua empresa
-            </Link>
-          </p>
-        )}
-      </section>
+      {!fechado && (
+        <section aria-labelledby="titulo-escolha" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+          <h3 id="titulo-escolha" className="mb-3 flex items-center gap-2 text-h3">
+            <ClipboardCheck aria-hidden className="size-5 text-ink-muted" />
+            Testes desta vaga
+          </h3>
+          <TestesDaVaga
+            // de novo do zero quando a biblioteca muda (o teste que acabou de ser criado já vem escolhido)
+            key={`${biblioteca.length}-${typeof sp.novo === "string" ? sp.novo : ""}`}
+            anuncioId={id}
+            biblioteca={biblioteca}
+            iniciais={naVaga.map((t) => ({ modelo_id: t.modelo_id, obrigatoria: t.obrigatoria }))}
+            novo={typeof sp.novo === "string" ? sp.novo : null}
+          />
+          {biblioteca.length > 0 && (
+            <p className="mt-3 text-body-sm">
+              <Link href={`/painel/testes?vaga=${id}`} className="font-semibold underline underline-offset-2">
+                Ver a biblioteca e criar os testes da sua empresa
+              </Link>
+            </p>
+          )}
+        </section>
+      )}
 
       <section aria-labelledby="titulo-resultados" className="flex flex-col gap-3">
         <h3 id="titulo-resultados" className="text-h3">

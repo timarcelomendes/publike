@@ -3,15 +3,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { comVaga, vagaDaVolta, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
+import { recursosPagos } from "@/lib/dados";
 import { bibliotecaDeTestes } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
 import { NAO_E_PSICOLOGICO } from "@/lib/testes";
+import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Testes Publike" };
 
@@ -60,7 +63,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tes
   const sp = await searchParams;
   const usuario = await exigirUsuario("/painel/testes");
   // veio dos testes de uma vaga: a volta para ela, e os links daqui levam a vaga junto
-  const [biblioteca, vaga] = await Promise.all([bibliotecaDeTestes(), vagaDaVolta(sp.vaga, usuario.id)]);
+  const [biblioteca, vaga, recursos, agora] = await Promise.all([
+    bibliotecaDeTestes(),
+    vagaDaVolta(sp.vaga, usuario.id),
+    recursosPagos(),
+    agoraDaRequisicao(),
+  ]);
+  // recurso pago: sem ele, a oferta dos 15 dias grátis (migração 20261215120000)
+  if (recursos && !recursos.testes.liberado) {
+    return (
+      <div className="flex flex-col gap-6">
+        {vaga && <VoltarParaVaga vaga={vaga} />}
+        <OfertaRecurso recurso="testes" estado={recursos.testes} />
+      </div>
+    );
+  }
   if (biblioteca === null) {
     return (
       <Aviso tipo="alerta" titulo="Os testes ainda não estão disponíveis">
@@ -73,6 +90,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tes
   return (
     <div className="flex flex-col gap-6">
       {vaga && <VoltarParaVaga vaga={vaga} />}
+      <FaixaExperimento recurso="testes" estado={recursos?.testes} agora={agora} />
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-h2">Testes Publike</h2>

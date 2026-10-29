@@ -9,6 +9,7 @@ import { ETAPAS_CANDIDATO, etapaQueVale, VERSAO_TERMOS, type EtapaCandidato } fr
 import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
 import { raioDaBusca, type Filtros } from "./filtros";
+import { lerRecursos, type RecursosPagos } from "./recursos-pagos";
 import { chavesDaRegiao, type Local } from "./regioes";
 import { faltaColuna } from "./servidor/comeca-ja";
 import { fotosDosAutores } from "./servidor/fotos-autores";
@@ -152,6 +153,23 @@ export const copilotoLiberado = cache(async () => {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("copiloto_liberado");
   return !error && data === true;
+});
+
+/**
+ * O Copiloto e os Testes Publike da conta: liberado, até quando e se já experimentou os 15 dias grátis
+ * (migração 20261215120000). Sem a migração, null, e as páginas seguem como antes.
+ */
+export const recursosPagos = cache(async (): Promise<RecursosPagos | null> => {
+  if (MODO_DEMO) return null;
+  const usuario = await obterUsuario();
+  if (!usuario) return null;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("recursos_pagos");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler os recursos pagos: ${error.message}`);
+    return null;
+  }
+  return lerRecursos(data);
 });
 
 /** Botão "Melhorar texto": ligado no admin e com a chave da IA no servidor. */

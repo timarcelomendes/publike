@@ -1,6 +1,7 @@
-// Os recursos pagos liberados de graça, por cortesia (decisão do usuário, 28/10/2026): o Copiloto e os
-// Testes Publike. Só quem contrata vê a marca; quem procura emprego nunca paga e não vê.
+// O Copiloto e os Testes Publike são recursos pagos, com 15 dias grátis para experimentar (decisão do
+// usuário, 29/10/2026; antes, de 28/10, eram grátis por cortesia). Só quem contrata vê a marca; quem
+// procura emprego nunca paga e não vê.
 
-export const SELO_CORTESIA = "Recurso pago · grátis por cortesia";
-export const SELO_CORTESIA_CURTO = "Cortesia";
-export const EXPLICA_CORTESIA = "Recurso pago, liberado de graça por cortesia do Publike.";
+export const SELO_CORTESIA = "Recurso pago · 15 dias grátis";
+export const SELO_CORTESIA_CURTO = "15 dias grátis";
+export const EXPLICA_CORTESIA = "Recurso pago. Experimente de graça por 15 dias.";

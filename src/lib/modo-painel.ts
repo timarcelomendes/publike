@@ -110,7 +110,7 @@ export type Secao = {
   passo?: number;
   /** o texto ao lado do número ("no ar") */
   sufixo?: string;
-  /** recurso pago liberado por cortesia (Copiloto e Testes Publike): ganha a pílula "Cortesia" */
+  /** recurso pago (Copiloto e Testes Publike), com 15 dias grátis: ganha a pílula "15 dias grátis" */
   cortesia?: boolean;
 };
 
@@ -171,7 +171,7 @@ export function secoesDoModo(modo: ModoPainel, tipoConta: string | null | undefi
  * Os grupos do menu. Em Contratar, o caminho da vaga, sempre na mesma ordem: a agência tem
  * Clientes e Para o cliente; comércio e empresa, Entrevistas. Os outros modos, um grupo só.
  */
-/** O que muda o menu de uma conta além do tipo: o copiloto (em teste) só nas contas liberadas. */
+/** O que muda o menu de uma conta além do tipo: se a conta já tem o Copiloto (recurso pago). */
 export type ExtrasDoMenu = { copiloto?: boolean };
 
 export function gruposDoModo(
@@ -201,7 +201,8 @@ export function gruposDoModo(
     {
       nome: "Achar gente",
       secoes: [
-        ...(extras.copiloto ? [{ href: "/painel/copiloto", nome: "Copiloto", icone: "copiloto", cortesia: true } as Secao] : []),
+        // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (o selo some quando já tem)
+        { href: "/painel/copiloto", nome: "Copiloto", icone: "copiloto", cortesia: !extras.copiloto },
         { href: "/talentos", nome: "Talentos", icone: "talentos" },
         { ...MENSAGENS, jeito: "pilula" },
         {

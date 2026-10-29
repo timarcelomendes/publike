@@ -37,7 +37,7 @@ async function Conteudo() {
     <div className="flex flex-col gap-6">
       <Secao
         titulo="Testes da Publike"
-        descricao="Recurso pago, liberado como cortesia. Os testes entram como rascunho: abra, revise as questões e publique. Rascunho não aparece para as empresas."
+        descricao="Recurso pago: cada conta experimenta 15 dias grátis (ou você libera sem prazo em Usuários). Os testes entram como rascunho: abra, revise as questões e publique. Rascunho não aparece para as empresas."
       >
         <ul className="flex flex-col divide-y divide-line">
           {(modelos ?? []).map((m) => (

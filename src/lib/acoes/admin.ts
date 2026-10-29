@@ -217,8 +217,27 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta já vê o Copiloto nas vagas."
+      ? "Pronto: essa conta tem o Copiloto, sem prazo."
       : "Essa conta não vê mais o Copiloto (os critérios e as leituras ficam guardados).",
+  };
+}
+
+/** Libera os Testes Publike sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
+export async function liberarTestes(contaId: string, liberar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_liberar_testes", { p_conta: contaId, p_liberar: liberar });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20261215120000_experimentar.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: liberar
+      ? "Pronto: essa conta tem os Testes Publike, sem prazo."
+      : "Essa conta não tem mais os Testes Publike (os resultados ficam guardados).",
   };
 }
 

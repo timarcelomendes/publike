@@ -1198,6 +1198,21 @@ export type Database = {
       };
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      admin_recursos_da_conta: { Args: { p_conta: string }; Returns: Json };
+      admin_experimentos: {
+        Args: Record<string, never>;
+        Returns: {
+          conta_id: string;
+          nome: string;
+          tipo: string;
+          recurso: string;
+          inicio: string;
+          fim: string;
+          quer_continuar_em: string | null;
+          ativo: boolean;
+        }[];
+      };
       admin_corrigir_nome: { Args: { p_usuario: string; p_nome: string }; Returns: string };
       admin_avaliacoes_modelos: {
         Args: Record<string, never>;
@@ -2467,6 +2482,10 @@ export type Database = {
       servidor_limpar_avaliacoes: { Args: { p_chave: string }; Returns: number };
       /** o copiloto (migração 20261203120000): só para as contas liberadas no admin */
       copiloto_liberado: { Args: Record<string, never>; Returns: boolean };
+      testes_liberado: { Args: Record<string, never>; Returns: boolean };
+      recursos_pagos: { Args: Record<string, never>; Returns: Json };
+      experimentar_recurso: { Args: { p_recurso: string }; Returns: string };
+      quero_continuar: { Args: { p_recurso: string }; Returns: undefined };
       copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       copiloto_salvar_criterios: { Args: { p_anuncio: string; p_criterios: Json }; Returns: string };
       copiloto_ligar: {

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { OfertaRecurso } from "@/components/recurso-pago";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { EditorDeTeste } from "@/components/testes/editor-teste";
 import { vagaDaVolta, VoltarParaOsTestes, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
 import { MODO_DEMO } from "@/lib/config";
+import { recursosPagos } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Novo teste" };
@@ -21,7 +23,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tes
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/painel/testes/novo");
-  const vaga = await vagaDaVolta(sp.vaga, usuario.id);
+  const [vaga, recursos] = await Promise.all([vagaDaVolta(sp.vaga, usuario.id), recursosPagos()]);
+  if (recursos && !recursos.testes.liberado) return <OfertaRecurso recurso="testes" estado={recursos.testes} />;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
