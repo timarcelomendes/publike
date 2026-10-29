@@ -1,4 +1,13 @@
-import { CalendarClock, FileText, KanbanSquare, Mail, MessageCircle, Phone, ShieldAlert } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronDown,
+  FileText,
+  KanbanSquare,
+  Mail,
+  MessageCircle,
+  Phone,
+  ShieldAlert,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
@@ -17,11 +26,13 @@ import type { ItemCaixa } from "@/lib/servidor/caixa";
 import { AcoesInteressado } from "./acoes";
 import { ControlesDaFicha, EntrevistaDaFicha, ResumoDaIA, type EstadoFicha } from "./controles-ficha";
 import { EtapaDoCandidato } from "./etapa-candidato";
-import { DetalheDaAderencia, NotaAderencia } from "./nota-aderencia";
+import { DetalheDaAderencia, linhaDaAderencia, NotaAderencia } from "./nota-aderencia";
 
 // A ficha do candidato na caixa de entrada: quem é, a decisão com atalhos, e embaixo
 // tudo o que ajuda a decidir e a seguir (recado, entrevista, currículo, respostas, o
-// porquê da nota, contato e a etapa com a anotação).
+// porquê da nota, contato e a etapa com a anotação). Para a ficha não esticar, o
+// formulário da entrevista e o porquê da nota começam fechados, e o currículo mostra
+// os 3 primeiros trabalhos e 8 habilidades (o resto no "Ver mais").
 
 const SITUACAO: Record<EstadoFicha, { nome: string; variante: "aviso" | "match" | "contorno" | "neutro" }> = {
   responder: { nome: "Para responder", variante: "aviso" },
@@ -46,6 +57,25 @@ function Secao({ titulo, id, children }: { titulo: string; id?: string; children
       <h3 className="text-label">{titulo}</h3>
       {children}
     </section>
+  );
+}
+
+/** Uma seção que começa fechada (o porquê da nota): o título e a conta numa linha; tocar abre o resto. */
+function SecaoFechada({ titulo, linha, children }: { titulo: string; linha: string; children: ReactNode }) {
+  return (
+    <details className="group border-t border-line pt-2">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <span className="text-label">{titulo}</span>
+          <span className="text-body-sm text-ink-muted"> · {linha}</span>
+        </span>
+        <ChevronDown
+          aria-hidden
+          className="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="pt-1 pb-1">{children}</div>
+    </details>
   );
 }
 
@@ -201,7 +231,13 @@ export function FichaCandidato({
 
       <Secao titulo="Currículo">
         {c.curriculo ? (
-          <CurriculoResumo curriculo={c.curriculo} linkPdf={c.curriculo.link_pdf} hoje={hoje} empresas={empresas} />
+          <CurriculoResumo
+            curriculo={c.curriculo}
+            linkPdf={c.curriculo.link_pdf}
+            hoje={hoje}
+            empresas={empresas}
+            compacto
+          />
         ) : c.curriculoFalhou ? (
           <p className="text-body-sm text-ink-muted">
             Não deu para abrir o currículo agora. Tente de novo em instantes.
@@ -230,7 +266,7 @@ export function FichaCandidato({
       )}
 
       {c.aderencia && (
-        <Secao
+        <SecaoFechada
           titulo={
             c.aderencia.eliminado
               ? "Aderência à vaga: eliminado"
@@ -238,9 +274,10 @@ export function FichaCandidato({
                 ? `Aderência à vaga: ${c.aderencia.nota}%`
                 : "Aderência à vaga"
           }
+          linha={linhaDaAderencia(c.aderencia)}
         >
           <DetalheDaAderencia a={c.aderencia} editarVaga={`/painel/anuncio/${c.anuncio_id}/editar`} />
-        </Secao>
+        </SecaoFechada>
       )}
 
       {match && (c.whatsapp || c.email) && (

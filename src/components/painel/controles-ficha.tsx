@@ -1,6 +1,16 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Heart, Keyboard, Sparkles, Undo2, X } from "lucide-react";
+import {
+  CalendarPlus,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Keyboard,
+  Sparkles,
+  Undo2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
@@ -9,6 +19,7 @@ import { responderCurtida } from "@/lib/acoes/curtidas";
 import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
 import { SITE_URL } from "@/lib/config";
 import type { ResumoCandidato } from "@/lib/ia/tarefas";
+import { classesBotao } from "../ui/botao";
 import { EntrevistaMarcada, FormEntrevista } from "./recrutamento";
 
 // Os controles da ficha do candidato na caixa de entrada: responder (aceitar ou
@@ -129,6 +140,9 @@ export function ControlesDaFicha({
       else if (k === "c" && conversa) router.push(conversa);
       else if (k === "e" && estado === "match") {
         const alvo = document.getElementById("entrevista");
+        // o formulário começa fechado: abre antes de pôr o cursor no primeiro campo
+        const fechado = alvo?.querySelector("details:not([open])");
+        if (fechado instanceof HTMLDetailsElement) fechado.open = true;
         alvo?.scrollIntoView({ behavior: "smooth", block: "start" });
         alvo?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
       } else if (e.key === "?") setAjuda((a) => !a);
@@ -349,7 +363,7 @@ export function EntrevistaDaFicha({
       </div>
     );
   }
-  return (
+  const form = (
     <FormEntrevista
       anuncioId={anuncioId}
       perfilId={perfilId}
@@ -361,6 +375,24 @@ export function EntrevistaDaFicha({
         setMarcou(true);
       }}
     />
+  );
+  if (entrevista) return form;
+  // sem entrevista, o formulário fica fechado no botão (a ficha não estica); a tecla E abre
+  return (
+    <details className="group">
+      <summary
+        className={classesBotao(
+          "secundario",
+          "sm",
+          "w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden",
+        )}
+      >
+        <CalendarPlus aria-hidden />
+        Marcar entrevista
+        <ChevronDown aria-hidden className="transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="pt-3">{form}</div>
+    </details>
   );
 }
 

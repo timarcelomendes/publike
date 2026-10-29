@@ -82,6 +82,14 @@ export function CriteriosDaAderencia({ a }: { a: Aderencia }) {
   );
 }
 
+/** A conta numa linha, para a seção fechada da ficha: "atende 5 de 5 itens, e 1 em parte". */
+export function linhaDaAderencia(a: Aderencia) {
+  if (a.eliminado) return "respondeu diferente numa pergunta eliminatória";
+  if (!a.criterios.length) return "a vaga ainda não diz o que pede";
+  if (!a.conferidos) return "nada para conferir ainda";
+  return `atende ${a.atendidos} de ${itens(a.conferidos)}${a.emParte > 0 ? `, e ${a.emParte} em parte` : ""}`;
+}
+
 /**
  * Os itens e a conta da nota ("atende 3 de 4 itens, e 1 em parte"), com o que entra nela. Com
  * poucos itens para comparar, o teto da nota e a dica de dizer mais na vaga (`editarVaga`: o link
@@ -114,12 +122,19 @@ export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; edi
         )}
       </p>
       {a.criterios.length > 0 && <CriteriosDaAderencia a={a} />}
-      <p className="text-body-sm text-ink-muted">
-        Entra o que a vaga pede comparado com o currículo, o perfil e as respostas: escolaridade, experiência (o tempo e
-        a função, que vale mais), CNH, horário, onde mora e as perguntas com a resposta que você procura. O que bate em
-        parte conta em parte: uma área parecida, parte do tempo ou do horário, morar um pouco mais longe. Os itens com
-        “+” só somam: as habilidades e os cursos que a vaga cita.
-      </p>
+      {/* a explicação da conta é a mesma para todos: fica fechada, para não esticar a ficha */}
+      <details className="text-body-sm text-ink-muted">
+        <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
+          <CircleHelp aria-hidden className="size-4" />
+          Como a nota é feita
+        </summary>
+        <p>
+          Entra o que a vaga pede comparado com o currículo, o perfil e as respostas: escolaridade, experiência (o tempo
+          e a função, que vale mais), CNH, horário, onde mora e as perguntas com a resposta que você procura. O que bate
+          em parte conta em parte: uma área parecida, parte do tempo ou do horário, morar um pouco mais longe. Os itens
+          com “+” só somam: as habilidades e os cursos que a vaga cita.
+        </p>
+      </details>
       {pedidos <= 2 && editarVaga && (
         <p className="rounded-md bg-terra-soft px-3 py-2 text-body-sm text-terra-text">
           Poucos itens para comparar.{" "}
