@@ -21,18 +21,22 @@ import { esperaResposta } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { formatarLugar, formatarTelefone, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
+import { textosDosEstudos } from "@/lib/estudos";
+import { textoDoPeriodo } from "@/lib/experiencia";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
+import type { Curriculo } from "@/lib/tipos";
 import { AcoesInteressado } from "./acoes";
 import { ControlesDaFicha, EntrevistaDaFicha, ResumoDaIA, type EstadoFicha } from "./controles-ficha";
 import { EtapaDoCandidato } from "./etapa-candidato";
+import { JanelaDoCurriculo } from "./janela-curriculo";
 import { DetalheDaAderencia, linhaDaAderencia, NotaAderencia } from "./nota-aderencia";
 
 // A ficha do candidato na caixa de entrada: quem é, a decisão com atalhos, e embaixo
 // tudo o que ajuda a decidir e a seguir (recado, entrevista, currículo, respostas, o
 // porquê da nota, contato e a etapa com a anotação). Para a ficha não esticar, o
-// formulário da entrevista e o porquê da nota começam fechados, e o currículo mostra
-// os 3 primeiros trabalhos e 8 habilidades (o resto no "Ver mais").
+// formulário da entrevista e o porquê da nota começam fechados, e o currículo vem em
+// poucas linhas, com o inteiro numa janela ("Ver currículo completo").
 
 const SITUACAO: Record<EstadoFicha, { nome: string; variante: "aviso" | "match" | "contorno" | "neutro" }> = {
   responder: { nome: "Para responder", variante: "aviso" },
@@ -57,6 +61,44 @@ function Secao({ titulo, id, children }: { titulo: string; id?: string; children
       <h3 className="text-label">{titulo}</h3>
       {children}
     </section>
+  );
+}
+
+/** O currículo em poucas linhas, para decidir; o inteiro abre na janela ("Ver currículo completo"). */
+function ResumoDoCurriculo({ curriculo }: { curriculo: Curriculo }) {
+  const ultimo = curriculo.experiencias[0];
+  const outros = curriculo.experiencias.length - 1;
+  const habilidades = curriculo.habilidades ?? [];
+  const linhas: [string, string][] = [];
+  if (curriculo.titulo) linhas.push(["O que faz", curriculo.titulo]);
+  const estudo = textosDosEstudos(curriculo)[0];
+  if (estudo) linhas.push(["Estudos", estudo]);
+  linhas.push([
+    "Último trabalho",
+    ultimo
+      ? [
+          [ultimo.cargo, ultimo.onde].filter(Boolean).join(" · "),
+          textoDoPeriodo(ultimo),
+          outros > 0 ? `e mais ${outros} ${outros === 1 ? "trabalho" : "trabalhos"}` : "",
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : "Primeiro emprego",
+  ]);
+  if (habilidades.length)
+    linhas.push([
+      "Habilidades",
+      habilidades.slice(0, 5).join(", ") + (habilidades.length > 5 ? ` e mais ${habilidades.length - 5}` : ""),
+    ]);
+  return (
+    <dl className="grid gap-x-4 gap-y-1 text-body-sm sm:grid-cols-[auto_1fr]">
+      {linhas.map(([rotulo, valor]) => (
+        <div key={rotulo} className="contents">
+          <dt className="text-ink-muted">{rotulo}</dt>
+          <dd className="mb-1 sm:mb-0">{valor}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -147,9 +189,9 @@ export function FichaCandidato({
             )}
           </p>
         </div>
-        {conectar && <div className="hidden shrink-0 sm:block">{conectar}</div>}
       </header>
-      {conectar && <div className="sm:hidden">{conectar}</div>}
+      {/* o Conectar fica com os outros botões (no match, junto do Conversar), e o nome tem a largura toda */}
+      {conectar && !match && <div>{conectar}</div>}
 
       {estado === "moderacao" ? (
         <p className="flex items-start gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm text-ink-muted">
@@ -191,6 +233,7 @@ export function FichaCandidato({
               WhatsApp
             </a>
           )}
+          {conectar}
         </div>
       )}
       {estado === "aceita" && (
@@ -231,13 +274,12 @@ export function FichaCandidato({
 
       <Secao titulo="Currículo">
         {c.curriculo ? (
-          <CurriculoResumo
-            curriculo={c.curriculo}
-            linkPdf={c.curriculo.link_pdf}
-            hoje={hoje}
-            empresas={empresas}
-            compacto
-          />
+          <div className="flex flex-col gap-3">
+            <ResumoDoCurriculo curriculo={c.curriculo} />
+            <JanelaDoCurriculo nome={primeiro}>
+              <CurriculoResumo curriculo={c.curriculo} linkPdf={c.curriculo.link_pdf} hoje={hoje} empresas={empresas} />
+            </JanelaDoCurriculo>
+          </div>
         ) : c.curriculoFalhou ? (
           <p className="text-body-sm text-ink-muted">
             Não deu para abrir o currículo agora. Tente de novo em instantes.

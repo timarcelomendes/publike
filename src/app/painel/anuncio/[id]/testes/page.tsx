@@ -106,8 +106,17 @@ async function Conteudo({
               const faltam = obrigatorios.filter(
                 (t) => !deles.some((r) => r.modelo_id === t.modelo_id && r.status === "feita"),
               );
+              // os obrigatórios que ainda nem foram mandados (curtiu antes de o teste entrar na vaga)
+              const naoRecebeu = faltam.filter((t) => !deles.some((r) => r.modelo_id === t.modelo_id));
+              const fez = deles.filter((r) => r.status === "feita").length;
+              // no "Mandar teste", os obrigatórios que faltam vêm primeiro (já escolhidos)
               const paraMandar = biblioteca
                 .filter((m) => !deles.some((r) => r.modelo_id === m.id))
+                .sort(
+                  (a, b) =>
+                    Number(naoRecebeu.some((t) => t.modelo_id === b.id)) -
+                    Number(naoRecebeu.some((t) => t.modelo_id === a.id)),
+                )
                 .map((m) => ({ id: m.id, titulo: m.titulo }));
               return (
                 <li key={p.perfil_id} className="rounded-lg border border-line bg-surface-200 p-4 shadow-card">
@@ -121,12 +130,18 @@ async function Conteudo({
                         >
                           {p.nome}
                         </Link>
-                        {faltam.length > 0 && <Selo variante="contorno">Falta o teste</Selo>}
+                        {faltam.length > 0 ? (
+                          <Selo variante="contorno">
+                            {faltam.length === 1 ? "Falta 1 obrigatório" : `Faltam ${faltam.length} obrigatórios`}
+                          </Selo>
+                        ) : (
+                          fez > 0 && <Selo variante="match">{fez === 1 ? "Fez o teste" : "Fez os testes"}</Selo>
+                        )}
                       </p>
                       <p className="text-body-sm text-ink-muted">curtiu {tempoRelativo(p.curtido_em, agora)}</p>
                     </div>
                   </div>
-                  {deles.length > 0 && (
+                  {deles.length + naoRecebeu.length > 0 && (
                     <ul className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
                       {deles.map((r) => (
                         <li key={r.id} className="flex flex-col gap-1">
@@ -147,6 +162,14 @@ async function Conteudo({
                                 .join(" · ")}
                             </p>
                           )}
+                        </li>
+                      ))}
+                      {naoRecebeu.map((t) => (
+                        <li key={t.modelo_id}>
+                          <p className="flex flex-wrap items-center justify-between gap-2 text-body-sm">
+                            <span className="font-semibold">{t.titulo}</span>
+                            <span className="text-ink-muted">obrigatório · ainda não recebeu</span>
+                          </p>
                         </li>
                       ))}
                     </ul>
