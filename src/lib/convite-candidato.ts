@@ -1,5 +1,7 @@
 // Candidato de fora: quem publicou a vaga recebe um currículo por fora (WhatsApp, e-mail, em
-// mãos) e chama a pessoa pelo link. Sem dependências: serve no navegador e no servidor.
+// mãos) e chama a pessoa pelo link. Só usa o config (NEXT_PUBLIC): serve no navegador e no servidor.
+
+import { LOGIN_CELULAR } from "./config";
 
 /** O token do link (/candidatura/<token>). */
 export const TOKEN_CONVITE = /^[0-9a-f]{64}$/;
@@ -113,6 +115,7 @@ export function mensagemDoConvite({
     comCurriculo
       ? `Montamos seu currículo no Publike com o que você mandou, para a vaga “${vaga}”.`
       : `Queremos chamar você para a vaga “${vaga}” no Publike.`,
-    `Entre pelo link com o seu celular, confira e aceite: ${url}`,
+    // "com o seu celular" só quando dá para entrar pelo código por SMS
+    `Entre pelo link${LOGIN_CELULAR ? " com o seu celular" : ""}, confira e aceite: ${url}`,
   ].join(" ");
 }

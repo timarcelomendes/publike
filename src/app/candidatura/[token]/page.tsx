@@ -6,17 +6,19 @@ import { AceitarConvite, NaoQuero } from "@/components/convite-candidato/aceitar
 import { SeloVerificado } from "@/components/selo-verificado";
 import { Aviso, Avatar, Container, Esqueleto } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { MODO_DEMO } from "@/lib/config";
+import { LOGIN_CELULAR, MODO_DEMO } from "@/lib/config";
 import { TOKEN_CONVITE, type DadosDoConvite } from "@/lib/convite-candidato";
 import { obterAnuncio, obterMeuCurriculo, obterUsuario } from "@/lib/dados";
 import { formatarDataCurta, formatarLugar } from "@/lib/formato";
+import { jeitosDeEntrar } from "@/lib/login-social";
 import { dadosDoConvite } from "@/lib/servidor/convites-candidato";
 import { perguntasDoBanco } from "@/lib/vaga-extra";
 
 export const metadata: Metadata = { title: "Convite para uma vaga", robots: { index: false, follow: false } };
 
 // O link que a agência (ou quem publicou a vaga) manda para quem enviou o currículo por fora:
-// a pessoa entra com o celular, aceita e confere o currículo que veio pronto.
+// a pessoa entra (com o celular, quando o código por SMS está ligado), aceita e confere o
+// currículo que veio pronto.
 
 export default function Candidatura({ params }: PageProps<"/candidatura/[token]">) {
   return (
@@ -121,7 +123,12 @@ async function Conteudo({ token }: { token: string }) {
             Como aceitar
           </h2>
           <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-body">
-            <li>Entre com o número do seu celular (chega um código por SMS).</li>
+            <li>
+              {/* só fala em celular quando a entrada pelo código por SMS está ligada (LOGIN_CELULAR) */}
+              {LOGIN_CELULAR
+                ? "Entre com o número do seu celular (chega um código por SMS)."
+                : `Entre com ${jeitosDeEntrar()}: na primeira vez, a conta é criada na hora.`}
+            </li>
             <li>
               {d.tem_curriculo
                 ? `Confira o currículo que ${quem} montou com o que você mandou.`
@@ -134,7 +141,7 @@ async function Conteudo({ token }: { token: string }) {
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <BotaoLink href={`/entrar?next=${encodeURIComponent(aqui)}`} variante="primario">
-              Entrar com o celular
+              {LOGIN_CELULAR ? "Entrar com o celular" : "Entrar para aceitar"}
             </BotaoLink>
             <NaoQuero token={token} />
           </div>

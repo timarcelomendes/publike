@@ -6,10 +6,11 @@ import { AceitarEquipe, AgirComo } from "@/components/equipe/aceitar-equipe";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { Aviso, Avatar, Container, Esqueleto } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { MODO_DEMO } from "@/lib/config";
+import { LOGIN_CELULAR, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { PAPEIS_EQUIPE, TOKEN_EQUIPE, type DadosConviteEquipe } from "@/lib/equipe";
 import { formatarDataCurta } from "@/lib/formato";
+import { jeitosDeEntrar } from "@/lib/login-social";
 import { conviteEquipeDoToken } from "@/lib/servidor/equipe";
 
 export const metadata: Metadata = { title: "Convite para a equipe", robots: { index: false, follow: false } };
@@ -111,12 +112,15 @@ async function Conteudo({ token }: { token: string }) {
       ) : (
         <section className="flex flex-col gap-3">
           <p className="text-body">
-            Entre com o número do seu celular (chega um código por SMS). Se ainda não tem conta no Publike, ela é criada
-            na hora, de graça.
+            {/* só fala em celular quando a entrada pelo código por SMS está ligada (LOGIN_CELULAR) */}
+            {LOGIN_CELULAR
+              ? "Entre com o número do seu celular (chega um código por SMS)."
+              : `Entre com ${jeitosDeEntrar()}.`}{" "}
+            Se ainda não tem conta no Publike, ela é criada na hora, de graça.
           </p>
           <div>
             <BotaoLink href={`/entrar?next=${encodeURIComponent(aqui)}`} variante="primario">
-              Entrar com o celular
+              {LOGIN_CELULAR ? "Entrar com o celular" : "Entrar para aceitar"}
             </BotaoLink>
           </div>
         </section>
