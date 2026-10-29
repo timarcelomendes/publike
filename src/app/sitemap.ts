@@ -4,7 +4,7 @@ import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { CATEGORIAS } from "@/lib/constantes";
 import { CONTEUDOS } from "@/lib/conteudos";
 import { noticiasPublicadas } from "@/lib/servidor/noticias";
-import { caminhoDaBusca, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
+import { caminhoDaBusca, caminhoDoBairro, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
 import { cidadeDePraca, PRACAS } from "@/lib/pracas";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { criarClientePublico } from "@/lib/supabase/servidor";
@@ -25,6 +25,16 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "hourly",
         priority: cidadeDePraca(cidade) ? 0.9 : 0.8,
       });
+      // os bairros com vaga no ar (só vagas: /vagas/goiania/bairro/setor-bueno)
+      if (tipo === "vaga") {
+        const bairros = new Set(
+          daCidade.filter((a) => a.bairro && a.bairro !== cidade).map((a) => slugDaCidade(a.bairro as string)),
+        );
+        for (const slug of bairros) {
+          const b = daCidade.find((a) => a.bairro && slugDaCidade(a.bairro) === slug)?.bairro as string;
+          lista.push({ url: `${SITE_URL}${caminhoDoBairro(cidade, b)}`, changeFrequency: "daily", priority: 0.6 });
+        }
+      }
       for (const c of CATEGORIAS) {
         if (c.slug === "outros" || !daCidade.some((a) => a.categoria === c.slug)) continue;
         lista.push({

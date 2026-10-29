@@ -8,6 +8,7 @@ import { CATEGORIAS, type Categoria } from "@/lib/constantes";
 import {
   areaDoSlug,
   caminhoDaBusca,
+  caminhoDoBairro,
   cidadeDoSlug,
   CIDADES_PRINCIPAIS,
   descricaoDaBusca,
@@ -15,11 +16,13 @@ import {
   slugDaCidade,
   tituloDaBusca,
 } from "@/lib/paginas-busca";
+import { nomeDoBairro } from "@/lib/formato";
 import { pracaDaCidade } from "@/lib/pracas";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, TipoAnuncio } from "@/lib/tipos";
 import { CardAnuncio } from "./card-anuncio";
+import { AvisarBusca } from "./explorar/avisar-busca";
 import { DadosEstruturados } from "./dados-estruturados";
 import { BotaoLink } from "./ui/botao";
 import { Container } from "./ui/basicos";
@@ -124,7 +127,8 @@ export function PaginaDeBusca(busca: Busca) {
         </ol>
       </nav>
 
-      <h1 className="mt-3 max-w-4xl text-h1 sm:text-display">{titulo}</h1>
+      {/* página de uma área (a entrada dos anúncios do Google): título menor, para a lista caber na primeira tela */}
+      <h1 className={`mt-3 max-w-4xl ${area ? "text-h2 sm:text-h1" : "text-h1 sm:text-display"}`}>{titulo}</h1>
 
       <Suspense fallback={<ListaEsqueleto />}>
         <Conteudo {...busca} />
@@ -156,6 +160,18 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
     .map((c) => ({ cidade: c, total: contagemCidades.get(c) ?? 0 }))
     .filter((c) => c.total > 0 || (!area && CIDADES_PRINCIPAIS.includes(c.cidade)));
 
+  // na lista de vagas da cidade: os bairros com vaga no ar (cada um tem a sua página)
+  const porBairro = new Map<string, { nome: string; total: number }>();
+  if (vaga && !area) {
+    for (const a of daCidade) {
+      if (!a.bairro || a.bairro === cidade) continue;
+      const chave = slugDaCidade(a.bairro);
+      const atual = porBairro.get(chave);
+      porBairro.set(chave, { nome: atual?.nome ?? nomeDoBairro(a.bairro), total: (atual?.total ?? 0) + 1 });
+    }
+  }
+  const bairros = [...porBairro.values()].sort((x, y) => y.total - x.total || x.nome.localeCompare(y.nome, "pt-BR"));
+
   const verNoMapa = `/?tipo=${tipo}${area ? `&categoria=${area.slug}` : ""}`;
   const dados = [
     {
@@ -184,24 +200,41 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
     },
   ];
 
+  // vagas de uma área com vaga no ar: a lista vem logo, com uma linha só antes; o texto e os botões vão para baixo
+  const listaPrimeiro = vaga && area !== null && itens.length > 0;
+  const botoes = (
+    <div className="mt-5 flex flex-wrap gap-3">
+      <BotaoLink href={verNoMapa} variante="primario">
+        <MapPin aria-hidden />
+        Ver no mapa, perto de casa
+      </BotaoLink>
+      <BotaoLink href={vaga ? "/publicar" : "/painel/servicos"}>
+        {vaga ? "Publicar vaga grátis" : "Oferecer meus serviços"}
+      </BotaoLink>
+    </div>
+  );
+
   return (
     <>
       <DadosEstruturados dados={dados} />
-      <p className="mt-3 max-w-3xl text-body-lg text-ink-muted">
-        {introDaBusca(tipo, cidade, area?.nome ?? null, itens.length)}
-      </p>
-      <div className="mt-5 flex flex-wrap gap-3">
-        <BotaoLink href={verNoMapa} variante="primario">
-          <MapPin aria-hidden />
-          Ver no mapa, perto de casa
-        </BotaoLink>
-        <BotaoLink href={vaga ? "/publicar" : "/painel/servicos"}>
-          {vaga ? "Publicar vaga grátis" : "Oferecer meus serviços"}
-        </BotaoLink>
-      </div>
+      {listaPrimeiro ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-ink-muted">
+          <span>
+            {itens.length === 1 ? "1 vaga no ar" : `${itens.length} vagas no ar`}. Curtir é se candidatar, de graça.
+          </span>
+          <AvisarBusca caminho={verNoMapa} salvaId={null} logado={false} />
+        </div>
+      ) : (
+        <>
+          <p className="mt-3 max-w-3xl text-body-lg text-ink-muted">
+            {introDaBusca(tipo, cidade, area?.nome ?? null, itens.length)}
+          </p>
+          {botoes}
+        </>
+      )}
 
       {itens.length > 0 ? (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className={`${listaPrimeiro ? "mt-4" : "mt-8"} grid gap-4 sm:grid-cols-2 lg:grid-cols-3`}>
           {itens.map((a) => (
             <li key={a.id} className="grid">
               <CardAnuncio anuncio={a} agora={agora} usuarioId={null} />
@@ -228,6 +261,15 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
         </div>
       )}
 
+      {listaPrimeiro && (
+        <>
+          <p className="mt-8 max-w-3xl text-body text-ink-muted">
+            {introDaBusca(tipo, cidade, area?.nome ?? null, itens.length)}
+          </p>
+          {botoes}
+        </>
+      )}
+
       {porArea.length > 0 && (
         <section aria-labelledby="por-area" className="mt-12">
           <h2 id="por-area" className="text-h3">
@@ -249,6 +291,27 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
                   {c.nome}
                   <span className={area?.slug === c.slug ? "" : "text-ink-muted"}>({c.total})</span>
                 </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {bairros.length > 0 && (
+        <section aria-labelledby="por-bairro" className="mt-10">
+          <h2 id="por-bairro" className="text-h3">
+            Vagas em {cidade} por bairro
+          </h2>
+          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-body-sm">
+            {bairros.map((b) => (
+              <li key={b.nome}>
+                <Link
+                  href={caminhoDoBairro(cidade, b.nome)}
+                  className="underline underline-offset-2 hover:text-terra-text"
+                >
+                  {b.nome}
+                </Link>
+                <span className="text-ink-muted"> ({b.total})</span>
               </li>
             ))}
           </ul>

@@ -34,6 +34,11 @@ export function caminhoDaBusca(tipo: TipoAnuncio, cidade: string, area?: Categor
   return `/${PASTA[tipo]}/${slugDaCidade(cidade)}${area ? `/${area}` : ""}`;
 }
 
+/** A página das vagas de um bairro: /vagas/goiania/bairro/setor-bueno. */
+export function caminhoDoBairro(cidade: string, bairro: string) {
+  return `/vagas/${slugDaCidade(cidade)}/bairro/${slugDaCidade(bairro)}`;
+}
+
 /** "em Goiânia", "em Aparecida de Goiânia". */
 export function emCidade(cidade: string) {
   return `em ${cidade}`;

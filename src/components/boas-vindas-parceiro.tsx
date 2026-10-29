@@ -17,8 +17,9 @@ const CHAVE = "publike_boas_vindas";
 const VERSAO = "1";
 export const EVENTO_BOAS_VINDAS = "publike:boas-vindas";
 
-// Páginas onde a pessoa já sabe o que veio fazer (ou que são da equipe): sem aviso.
-const SEM_AVISO = /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|anuncio\/|email|versao)/;
+// Páginas onde a pessoa já sabe o que veio fazer (ou que são da equipe): sem aviso. As listas de vagas
+// (/vagas/goiania/alimentacao) são a entrada dos anúncios do Google: a lista aparece sem nada por cima.
+const SEM_AVISO = /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|anuncio\/|email|versao|vagas\/)/;
 
 function jaViu() {
   try {
