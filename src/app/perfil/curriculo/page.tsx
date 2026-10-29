@@ -21,6 +21,7 @@ import {
   obterUsuario,
 } from "@/lib/dados";
 import { faltaData } from "@/lib/experiencia";
+import { falaDisponivel } from "@/lib/ia/transcrever";
 import { caminhoSeguro, plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
@@ -280,6 +281,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         hoje={hoje}
         rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
         lerArquivo={ia}
+        ouvirFala={ia && falaDisponivel()}
         pdfGuardado={pdfNaoSalvo?.caminho ?? null}
       />
       {curriculo && <VisibilidadeCurriculo visivel={visivel} vitrine={vitrine} />}

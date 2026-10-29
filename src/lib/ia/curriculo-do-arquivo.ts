@@ -13,8 +13,9 @@ import { temContato, temContatoNoTexto } from "@/lib/validacao";
 import { chamarIA, ErroIA, lerJson } from "./openai";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
 
-// Lê o currículo que a pessoa já tem (PDF ou fotos da folha) e devolve os campos do currículo
-// do Publike, para ela conferir antes de salvar. Só o que está escrito, sem contato nenhum.
+// Lê o currículo que a pessoa já tem (PDF ou fotos da folha), ou o que ela contou falando, e devolve
+// os campos do currículo do Publike, para ela conferir antes de salvar. Só o que está escrito (ou foi
+// dito), sem contato nenhum.
 
 /** Os campos do formulário, já limpos. Vazio ("" ou lista vazia) é o que o arquivo não diz. */
 export type CurriculoLido = {
@@ -105,6 +106,28 @@ Regras:
 - "cursos": até ${MAX_CURSOS} cursos livres, técnicos, NR, informática ou idiomas (até 80 letras cada), com a carga horária se tiver: "Excel básico (20 h)".
 - "cnh": a categoria da carteira de motorista, só se o currículo disser.
 - "disponibilidade": só se o currículo disser quando a pessoa pode trabalhar.
+- Hoje é ${hoje} (AAAA-MM).`;
+}
+
+/** O mesmo currículo, mas do que a pessoa contou falando (a transcrição da fala). */
+function instrucoesDaFala(hoje: string) {
+  const escolaridades = ESCOLARIDADES.map((e) => `"${e.valor}" (${e.nome})`).join(", ");
+  return `Você ouve o que uma pessoa que procura trabalho contou sobre ela, em voz alta (recebe a transcrição da fala), e preenche o currículo dela no Publike, um site gratuito de vagas de ${ONDE_FUNCIONA}. A pessoa confere tudo antes de salvar.
+
+Regras:
+- Use só o que a pessoa disse. Não invente cargo, empresa, data, curso nem habilidade. O que ela não disse fica vazio ("" ou lista vazia).
+- A transcrição pode ter erro de escuta, repetição e frase solta: arrume a escrita (maiúsculas, acentos, nome de empresa e de cargo) sem mudar o sentido.
+- "e_curriculo": false se a pessoa não falou de trabalho, estudo, curso nem do que sabe fazer (fala vazia ou sobre outro assunto); aí deixe o resto vazio.
+- Nunca ponha telefone, e-mail, endereço, link, CPF, RG, data de nascimento, idade, estado civil nem o nome de outras pessoas em campo nenhum, mesmo que a pessoa fale.
+- "titulo": o trabalho que a pessoa procura, curto (até 60 letras), como "Auxiliar de cozinha" ou "Motorista". Se ela não disser, o trabalho mais recente.
+- "habilidades": até ${MAX_HABILIDADES}, curtas (até 40 letras cada), o que ela disse que sabe fazer: "Atendimento ao cliente", "Caixa", "Empilhadeira". Não repita os cursos.
+- "escolaridade": a mais alta, desta lista: ${escolaridades}. "Parei no primeiro ano" ou "estou fazendo o ensino médio" é "medio_incompleto"; "terminei o ensino médio" é "medio"; faculdade que ela ainda faz ou trancou é "superior_incompleto".
+- "curso": o nome do curso técnico, da faculdade ou da pós-graduação (até 80 letras), só para técnico, superior ou pós.
+- "outros_estudos": até ${MAX_ESTUDOS} outros cursos técnicos, faculdades ou pós-graduações, além do mais alto: o nível ("tecnico", "superior_incompleto", "superior" ou "pos") e o nome do curso.
+- "experiencias": até ${MAX_EXPERIENCIAS}, da mais recente para a mais antiga. "cargo" (até 80 letras) e "onde": o nome da empresa ou do lugar (até 80 letras); sem nome, o tipo de lugar ("Padaria", "Casa de família"). "inicio" e "fim" no formato AAAA-MM: conte a partir de hoje o que a pessoa disser solto ("faz dois anos", "saí no ano passado", "desde março"); só o ano: AAAA-01 no início e AAAA-12 no fim; sem como saber, "". "atual": true se ela ainda trabalha lá, com "fim" "". "descricao": o que ela fazia, em uma ou duas frases simples, sem "eu" (até 300 letras), como "Preparo de saladas e limpeza da cozinha.".
+- "cursos": até ${MAX_CURSOS} cursos livres, técnicos, NR, informática ou idiomas (até 80 letras cada), com a carga horária se ela disser.
+- "cnh": a categoria da carteira de motorista, só se ela disser ("carteira B"; "A e B" é "AB").
+- "disponibilidade": só se ela disser quando pode trabalhar.
 - Hoje é ${hoje} (AAAA-MM).`;
 }
 
@@ -223,6 +246,26 @@ export async function lerCurriculoDoArquivo(
     tempoLimite: 90_000,
   });
   if (parada === "recusa") throw new ErroIA("A IA não quis ler este arquivo.");
+  if (parada === "limite") throw new ErroIA("A resposta da IA ficou incompleta.");
+  const r = lerJson<Partial<Resposta>>(resposta);
+  if (!r.e_curriculo) return null;
+  return limparCurriculoLido(r, hoje);
+}
+
+/**
+ * Lê o currículo do que a pessoa contou falando (a transcrição; o áudio não chega aqui). Devolve null
+ * quando a fala não diz nada de trabalho nem de estudo. Erros da IA saem como ErroIA.
+ */
+export async function lerCurriculoDaFala(fala: string, modelo: string, hoje: string): Promise<CurriculoLido | null> {
+  const { texto: resposta, parada } = await chamarIA({
+    modelo,
+    sistema: instrucoesDaFala(hoje),
+    mensagem: `O que a pessoa contou:\n\n${fala.slice(0, 8000)}`,
+    maxTokens: 3000,
+    esquema: { nome: "curriculo_da_fala", schema: ESQUEMA },
+    tempoLimite: 60_000,
+  });
+  if (parada === "recusa") throw new ErroIA("A IA não quis ler esta fala.");
   if (parada === "limite") throw new ErroIA("A resposta da IA ficou incompleta.");
   const r = lerJson<Partial<Resposta>>(resposta);
   if (!r.e_curriculo) return null;

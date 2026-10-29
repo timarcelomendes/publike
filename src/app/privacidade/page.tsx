@@ -99,7 +99,8 @@ export default function Privacidade() {
           Usamos serviços de terceiros só para isso: a Vercel (onde o site fica hospedado), o Supabase (banco de dados,
           login e fotos), o OpenFreeMap, com dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a
           OpenAI e a Anthropic (as IAs que revisam o texto dos anúncios, ajudam a escrever e leem o currículo que você
-          enviar; o site usa uma delas de cada vez), a Cloudflare
+          enviar; o site usa uma delas de cada vez, e a gravação do currículo falado vira texto sempre na OpenAI), a
+          Cloudflare
           (a verificação contra robôs na hora de entrar), {SMS}a BrasilAPI (que traz os dados públicos do CNPJ
           na Receita
           para preencher o perfil; só enviamos o número do CNPJ), o Google Ads (só se você aceitar os cookies de
@@ -117,7 +118,9 @@ export default function Privacidade() {
           foto ou contato; ela não recusa ninguém. Nos testes que uma vaga pede, quem publicou vê só o resultado e as
           respostas do teste; eles são apagados 12 meses depois que a vaga sai do ar. No “Já tem currículo
           pronto?”, a IA recebe o PDF ou as fotos do currículo que você enviou, só para preencher os campos do seu
-          currículo; no convite de quem publicou uma vaga, o currículo que você mandou para ela, só para isso também. No
+          currículo. Se você contar falando, a gravação vai para a OpenAI só para virar texto, e a IA recebe esse texto
+          só para preencher os campos; a gravação não fica guardada no Publike. No convite de quem publicou uma vaga, a
+          IA recebe o currículo que você mandou para ela, só para isso também. No
           assistente de ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que
           você escolheu; nunca seu contato. A conversa fica só no seu navegador, não no Publike. O que você manda em
           Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você informar.

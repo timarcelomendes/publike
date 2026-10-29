@@ -8,8 +8,10 @@ import {
   FileUp,
   Info,
   LoaderCircle,
+  Mic,
   Plus,
   Sparkles,
+  Square,
   Trash2,
   Undo2,
   Upload,
@@ -21,8 +23,10 @@ import {
   startTransition,
   useActionState,
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
+  useSyncExternalStore,
   type ChangeEvent,
   type FormEvent,
   type KeyboardEvent,
@@ -50,6 +54,16 @@ import {
   resumoDaLeitura,
 } from "@/lib/arquivo-curriculo";
 import { arrumarEstudos, experienciaEmBranco, NIVEIS_DE_OUTRO_ESTUDO } from "@/lib/estudos";
+import {
+  comecarGravacao,
+  ErroDaFala,
+  lerGravacao,
+  MAX_SEGUNDOS_FALA,
+  MIN_SEGUNDOS_FALA,
+  podeGravarFala,
+  relogio,
+  type Gravacao,
+} from "@/lib/gravar-fala";
 import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
 import { AvisoAoSair } from "./ui/aviso-ao-sair";
@@ -170,13 +184,24 @@ const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um :
 
 type Situacao =
   | { tipo: "parado" }
-  | { tipo: "lendo" }
-  | { tipo: "pronto"; texto: string; semData: number; comPdf: boolean }
+  /** currículo falado: esperando a pessoa liberar o microfone, e gravando */
+  | { tipo: "pedindo" }
+  | { tipo: "gravando"; desde: number }
+  | { tipo: "lendo"; fala?: boolean }
+  | { tipo: "pronto"; texto: string; semData: number; comPdf: boolean; fala?: boolean }
   | { tipo: "erro"; texto: string };
+
+/** O navegador grava áudio (só no navegador: no servidor, não). */
+const nadaMuda = () => () => {};
+function useGravaAqui() {
+  return useSyncExternalStore(nadaMuda, podeGravarFala, () => false);
+}
 
 /**
  * "Já tem currículo pronto?": a pessoa manda o PDF (que fica anexado) ou até 3 fotos da folha
  * (que não ficam guardadas), a IA lê e o formulário vem preenchido. Nada é salvo até ela salvar.
+ * Com `ouvir`, também o currículo falado: a pessoa conta a experiência (até 3 minutos), a fala vira
+ * texto e a IA preenche; o áudio não fica guardado.
  */
 function LerCurriculoPronto({
   usuarioId,
@@ -186,6 +211,7 @@ function LerCurriculoPronto({
   aoDesfazer,
   aoMudarLendo,
   pdfGuardado = null,
+  ouvir = false,
 }: {
   usuarioId: string;
   /** a pessoa já tem currículo salvo: o convite é para trocar pelo mais novo */
@@ -197,34 +223,75 @@ function LerCurriculoPronto({
   aoMudarLendo: (lendo: boolean) => void;
   /** o PDF que a pessoa já mandou e não chegou a salvar: dá para ler de novo sem enviar outra vez */
   pdfGuardado?: string | null;
+  /** o currículo falado (a transcrição está ligada no servidor) */
+  ouvir?: boolean;
 }) {
   const [situacao, setSituacao] = useState<Situacao>({ tipo: "parado" });
   const seletorPdf = useRef<HTMLInputElement>(null);
   const seletorFoto = useRef<HTMLInputElement>(null);
   const aviso = useRef<HTMLDivElement>(null);
+  const terminei = useRef<HTMLButtonElement>(null);
+  const gravacao = useRef<Gravacao | null>(null);
+  // o relógio da gravação (Date.now() de quando o relógio andou)
+  const [agora, setAgora] = useState(0);
+  const gravaAqui = useGravaAqui();
+  const falar = ouvir && gravaAqui;
+  const gravandoDesde = situacao.tipo === "gravando" ? situacao.desde : null;
 
   // o resultado aparece na tela (a pessoa pode ter rolado a página enquanto lia)
   useEffect(() => {
     if (situacao.tipo === "pronto" || situacao.tipo === "erro") aviso.current?.focus();
   }, [situacao]);
 
-  async function ler(montar: () => Promise<{ dados: FormData; pdf: { caminho: string; nome: string } | null }>) {
-    setSituacao({ tipo: "lendo" });
+  // gravando: o "Terminei" já com o foco, o relógio andando e, em 3 minutos, para sozinho
+  const passarTempo = useEffectEvent(() => {
+    const instante = Date.now();
+    setAgora(instante);
+    if (gravandoDesde !== null && (instante - gravandoDesde) / 1000 >= MAX_SEGUNDOS_FALA) void terminarFala();
+  });
+  useEffect(() => {
+    if (gravandoDesde === null) return;
+    terminei.current?.focus();
+    const relogioAndando = window.setInterval(passarTempo, 500);
+    return () => window.clearInterval(relogioAndando);
+  }, [gravandoDesde]);
+  // saiu da página gravando: o microfone desliga
+  useEffect(() => () => gravacao.current?.cancelar(), []);
+
+  async function ler(
+    pedido:
+      { montar: () => Promise<{ dados: FormData; pdf: { caminho: string; nome: string } | null }> } | { fala: Blob },
+  ) {
+    const fala = "fala" in pedido;
+    setSituacao({ tipo: "lendo", fala });
     aoMudarLendo(true);
     let resultado: LeituraDoArquivo;
     let pdf: { caminho: string; nome: string } | null = null;
     try {
-      const pedido = await montar();
-      pdf = pedido.pdf;
-      resultado = await lerCurriculoEnviado(pedido.dados);
+      if ("fala" in pedido) resultado = await lerGravacao(pedido.fala);
+      else {
+        const enviado = await pedido.montar();
+        pdf = enviado.pdf;
+        resultado = await lerCurriculoEnviado(enviado.dados);
+      }
     } catch (e) {
+      const pronta = e instanceof ErroDaLeitura || e instanceof ErroDaFala;
       resultado = {
         ok: false,
-        erro: e instanceof ErroDaLeitura ? e.message : "Não deu para enviar o arquivo. Tente de novo.",
+        erro: pronta
+          ? e.message
+          : fala
+            ? "Não deu para enviar a gravação. Tente de novo."
+            : "Não deu para enviar o arquivo. Tente de novo.",
       };
       // o arquivo que não sobe (ou o pedido que não chega) a equipe precisa saber
-      if (!(e instanceof ErroDaLeitura)) {
-        relatarFalha({ onde: "curriculo", etapa: "arquivo", mensagem: resultado.erro, detalhe: `leitura · ${detalheDoErro(e)}` });
+      if (!pronta) {
+        relatarFalha({
+          onde: "curriculo",
+          etapa: fala ? "conexao" : "arquivo",
+          mensagem: resultado.erro,
+          detalhe: `${fala ? "fala" : "leitura"} · ${detalheDoErro(e)}`,
+        });
       }
     }
     aoMudarLendo(false);
@@ -235,7 +302,44 @@ function LerCurriculoPronto({
       texto: resumoDaLeitura(resultado.curriculo),
       semData: resultado.curriculo.experiencias.filter((x) => !x.inicio || (!x.atual && !x.fim)).length,
       comPdf: pdf !== null,
+      fala,
     });
+  }
+
+  async function comecarFala() {
+    setSituacao({ tipo: "pedindo" });
+    try {
+      gravacao.current = await comecarGravacao();
+    } catch (e) {
+      return setSituacao({
+        tipo: "erro",
+        texto: e instanceof ErroDaFala ? e.message : "Não deu para ligar o microfone. Tente de novo.",
+      });
+    }
+    const inicio = Date.now();
+    setAgora(inicio);
+    setSituacao({ tipo: "gravando", desde: inicio });
+  }
+
+  async function terminarFala() {
+    const g = gravacao.current;
+    if (!g || gravandoDesde === null) return;
+    gravacao.current = null;
+    const segundos = (Date.now() - gravandoDesde) / 1000;
+    const audio = await g.terminar();
+    if (segundos < MIN_SEGUNDOS_FALA) {
+      return setSituacao({
+        tipo: "erro",
+        texto: "Gravou pouquinho. Toque em “Contar falando” e conte com calma: dá até 3 minutos.",
+      });
+    }
+    void ler({ fala: audio });
+  }
+
+  function cancelarFala() {
+    gravacao.current?.cancelar();
+    gravacao.current = null;
+    setSituacao({ tipo: "parado" });
   }
 
   function escolherPdf(e: ChangeEvent<HTMLInputElement>) {
@@ -246,11 +350,13 @@ function LerCurriculoPronto({
     if (pdf.size > MAX_PDF_MB * 1024 * 1024) {
       return setSituacao({ tipo: "erro", texto: `O PDF pode ter no máximo ${MAX_PDF_MB} MB.` });
     }
-    void ler(async () => {
-      const caminho = await enviarPdf(pdf, usuarioId);
-      const dados = new FormData();
-      dados.set("pdf", caminho);
-      return { dados, pdf: { caminho, nome: pdf.name } };
+    void ler({
+      montar: async () => {
+        const caminho = await enviarPdf(pdf, usuarioId);
+        const dados = new FormData();
+        dados.set("pdf", caminho);
+        return { dados, pdf: { caminho, nome: pdf.name } };
+      },
     });
   }
 
@@ -264,15 +370,20 @@ function LerCurriculoPronto({
     if (fotos.some((f) => !f.type.startsWith("image/"))) {
       return setSituacao({ tipo: "erro", texto: "Escolha fotos (JPG ou PNG). Para PDF, use “Enviar PDF”." });
     }
-    void ler(async () => {
-      const menores = await fotosParaLeitura(fotos);
-      const dados = new FormData();
-      menores.forEach((b, i) => dados.append("foto", b, `pagina-${i + 1}.jpg`));
-      return { dados, pdf: null };
+    void ler({
+      montar: async () => {
+        const menores = await fotosParaLeitura(fotos);
+        const dados = new FormData();
+        menores.forEach((b, i) => dados.append("foto", b, `pagina-${i + 1}.jpg`));
+        return { dados, pdf: null };
+      },
     });
   }
 
   const lendo = situacao.tipo === "lendo";
+  // lendo, ou com o microfone ligado: os botões saem da frente
+  const ocupado = lendo || situacao.tipo === "pedindo" || situacao.tipo === "gravando";
+  const segundos = gravandoDesde !== null ? Math.max(0, (agora - gravandoDesde) / 1000) : 0;
   return (
     <section
       aria-labelledby="ler-curriculo"
@@ -284,28 +395,42 @@ function LerCurriculoPronto({
         </span>
         <div className="min-w-0">
           <h2 id="ler-curriculo" className="text-h3">
-            {compacto ? "Tem um currículo mais novo?" : "Já tem currículo pronto?"}
+            {compacto
+              ? "Tem um currículo mais novo?"
+              : falar
+                ? "Preencha falando ou com o currículo pronto"
+                : "Já tem currículo pronto?"}
           </h2>
           <p className="mt-1 text-body-sm text-ink-muted">
             {compacto
               ? "Envie o PDF ou a foto: o Publike lê e troca os campos aqui embaixo. Nada muda até você salvar."
-              : "Envie o PDF ou tire uma foto da folha. O Publike lê e preenche os campos para você. Depois é só conferir e salvar."}
+              : falar
+                ? "Conte sua experiência em voz alta, ou envie o PDF ou a foto da folha. O Publike preenche os campos para você. Depois é só conferir e salvar."
+                : "Envie o PDF ou tire uma foto da folha. O Publike lê e preenche os campos para você. Depois é só conferir e salvar."}
           </p>
         </div>
       </div>
 
       <div ref={aviso} tabIndex={-1} className="outline-none empty:hidden">
-        {lendo && (
+        {situacao.tipo === "pedindo" && (
+          <p role="status" className="flex items-center gap-2 text-label">
+            <Mic aria-hidden className="size-5 shrink-0" />
+            Toque em “Permitir” para o Publike usar o microfone.
+          </p>
+        )}
+        {situacao.tipo === "lendo" && (
           <p role="status" className="flex items-center gap-2 text-label">
             <LoaderCircle aria-hidden className="size-5 shrink-0 motion-safe:animate-spin" />
-            Lendo seu currículo… pode levar até um minuto.
+            {situacao.fala ? "Ouvindo o que você contou…" : "Lendo seu currículo…"} pode levar até um minuto.
           </p>
         )}
         {situacao.tipo === "pronto" && (
           <Aviso tipo="sucesso" titulo="Pronto! Confira os campos aqui embaixo.">
             <p>
-              Preenchemos {situacao.texto}. Ainda não está salvo: confira e toque em “{rotuloSalvar}”, embaixo da tela.
+              {`Preenchemos ${situacao.texto}${situacao.fala ? " com o que você contou" : ""}.`} Ainda não está salvo:
+              confira e toque em “{rotuloSalvar}”, embaixo da tela.
             </p>
+            {situacao.fala && <p>Veja se entendemos direito e corrija o que precisar.</p>}
             {situacao.semData > 0 && (
               <p>
                 Se souber, ponha as datas que faltam em{" "}
@@ -338,16 +463,55 @@ function LerCurriculoPronto({
         tabIndex={-1}
         aria-hidden
       />
-      {!lendo && (
+      {situacao.tipo === "gravando" && (
+        <div className="flex flex-col gap-3 rounded-md border border-line-strong bg-surface-100 p-4">
+          <p className="flex flex-wrap items-center gap-x-2 text-label">
+            <span aria-hidden className="size-3 shrink-0 rounded-pill bg-danger motion-safe:animate-pulse" />
+            <span role="status">Gravando</span>
+            <span aria-hidden className="text-ink-muted tabular-nums">
+              {relogio(segundos)} de {relogio(MAX_SEGUNDOS_FALA)}
+            </span>
+          </p>
+          <div className="text-body-sm">
+            <p>Conte do seu jeito, como se falasse com um amigo:</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              <li>que trabalho você procura;</li>
+              <li>onde trabalhou, o que fazia e por quanto tempo;</li>
+              <li>até onde estudou e os cursos que fez;</li>
+              <li>se tem carteira de motorista e quando pode trabalhar.</li>
+            </ul>
+            <p className="mt-1 text-ink-muted">Não precisa dizer telefone nem endereço.</p>
+          </div>
+          <div className="grid gap-2 sm:flex">
+            <Botao ref={terminei} variante="primario" onClick={() => void terminarFala()}>
+              <Square aria-hidden />
+              Terminei
+            </Botao>
+            <Botao variante="fantasma" onClick={cancelarFala}>
+              <X aria-hidden />
+              Cancelar
+            </Botao>
+          </div>
+        </div>
+      )}
+      {!ocupado && (
         // no celular, um botão por linha, na largura toda
         <div className="grid gap-2 sm:flex sm:flex-wrap">
+          {falar && (
+            <Botao variante="primario" onClick={() => void comecarFala()}>
+              <Mic aria-hidden />
+              {situacao.tipo === "pronto" && situacao.fala ? "Contar de novo" : "Contar falando"}
+            </Botao>
+          )}
           {pdfGuardado && situacao.tipo !== "pronto" && (
             <Botao
               onClick={() =>
-                void ler(async () => {
-                  const dados = new FormData();
-                  dados.set("pdf", pdfGuardado);
-                  return { dados, pdf: { caminho: pdfGuardado, nome: NOME_PDF_GUARDADO } };
+                void ler({
+                  montar: async () => {
+                    const dados = new FormData();
+                    dados.set("pdf", pdfGuardado);
+                    return { dados, pdf: { caminho: pdfGuardado, nome: NOME_PDF_GUARDADO } };
+                  },
                 })
               }
             >
@@ -357,7 +521,7 @@ function LerCurriculoPronto({
           )}
           <Botao onClick={() => seletorPdf.current?.click()}>
             <FileUp aria-hidden />
-            {situacao.tipo === "pronto" ? "Enviar outro PDF" : "Enviar PDF"}
+            {situacao.tipo === "pronto" && !situacao.fala ? "Enviar outro PDF" : "Enviar PDF"}
           </Botao>
           <Botao onClick={() => seletorFoto.current?.click()}>
             <Camera aria-hidden />
@@ -379,8 +543,9 @@ function LerCurriculoPronto({
       )}
       {(situacao.tipo === "parado" || situacao.tipo === "erro") && (
         <p className="text-body-sm text-ink-muted">
-          PDF de até {MAX_PDF_MB} MB ou até {MAX_FOTOS_CURRICULO} fotos, uma por página. Telefone, e-mail e endereço não
-          entram nos campos.
+          {falar && "Falando, até 3 minutos: o áudio vira texto e não fica guardado. "}
+          {falar ? "Ou o PDF" : "PDF"} de até {MAX_PDF_MB} MB ou até {MAX_FOTOS_CURRICULO} fotos, uma por página.
+          Telefone, e-mail e endereço não entram nos campos.
         </p>
       )}
     </section>
@@ -396,6 +561,7 @@ export function FormCurriculo({
   demo = false,
   rotuloSalvar = "Salvar currículo",
   lerArquivo = false,
+  ouvirFala = false,
   lido = null,
   pdfGuardado = null,
   semConta = false,
@@ -412,6 +578,8 @@ export function FormCurriculo({
   demo?: boolean;
   /** o texto do botão (ex.: "Salvar e mandar", quando uma vaga já aceitou e espera o currículo) */
   rotuloSalvar?: string;
+  /** o currículo falado, junto do "Já tem currículo pronto?" (com a transcrição ligada no servidor) */
+  ouvirFala?: boolean;
   /** "Já tem currículo pronto?": a IA lê o PDF ou a foto e preenche (com a ajuda da IA ligada) */
   lerArquivo?: boolean;
   /** sem currículo salvo: o formulário começa com o que já foi lido (o convite de quem publicou a vaga) */
@@ -782,6 +950,8 @@ export function FormCurriculo({
           aoDesfazer={antesDaLeitura ? desfazerLeitura : null}
           aoMudarLendo={setLendo}
           pdfGuardado={guardado}
+          // quem já tem currículo troca pelo mais novo; contar falando é para quem ainda não tem (não apaga o resto)
+          ouvir={ouvirFala && inicial === null}
         />
       )}
 

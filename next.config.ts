@@ -75,7 +75,8 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+          // o microfone só para o próprio site: o currículo falado (/perfil/curriculo)
+          { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(self)" },
           ...(process.env.NODE_ENV === "production"
             ? [{ key: "Content-Security-Policy-Report-Only", value: POLITICA_DE_CONTEUDO }]
             : []),
