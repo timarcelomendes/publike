@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AncoraAntiga } from "@/components/ancora-antiga";
 import { CanalDePedidos, Lista, PaginaDoDocumento, Secao } from "@/components/documentos-legais";
-import { CONTATO_EMAIL } from "@/lib/config";
+import { CONTATO_EMAIL, LOGIN_CELULAR } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Política de privacidade",
   description: "Que dados o Publike guarda, quem vê o quê, com quem compartilhamos e seus direitos pela LGPD.",
   alternates: { canonical: "/privacidade" },
 };
+
+// com a entrada pelo celular ligada, o provedor do SMS recebe o número (só para mandar o código de entrar)
+const SMS = LOGIN_CELULAR ? "o Twilio (que manda o código por SMS para entrar com o celular), " : "";
 
 export default function Privacidade() {
   return (
@@ -97,7 +100,8 @@ export default function Privacidade() {
           login e fotos), o OpenFreeMap, com dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a
           OpenAI e a Anthropic (as IAs que revisam o texto dos anúncios, ajudam a escrever e leem o currículo que você
           enviar; o site usa uma delas de cada vez), a Cloudflare
-          (a verificação contra robôs na hora de entrar), a BrasilAPI (que traz os dados públicos do CNPJ na Receita
+          (a verificação contra robôs na hora de entrar), {SMS}a BrasilAPI (que traz os dados públicos do CNPJ
+          na Receita
           para preencher o perfil; só enviamos o número do CNPJ), o Google Ads (só se você aceitar os cookies de
           propaganda; veja Cookies) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
         </p>
@@ -141,7 +145,9 @@ export default function Privacidade() {
       <Secao id="fora-do-brasil" titulo="Dados fora do Brasil">
         <p>
           Alguns dos serviços acima guardam ou processam dados em servidores fora do Brasil, como nos Estados Unidos
-          (por exemplo, a Vercel, a OpenAI, a Anthropic e a Cloudflare). Mandamos para cada um só o necessário para a
+          (por exemplo, a Vercel, a OpenAI, a Anthropic
+          {LOGIN_CELULAR ? ", a Cloudflare e o Twilio" : " e a Cloudflare"}).
+          Mandamos para cada um só o necessário para a
           parte dele no trabalho, e eles seguem regras de segurança e privacidade próprias.
         </p>
       </Secao>
