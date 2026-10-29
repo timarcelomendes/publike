@@ -13,6 +13,7 @@ import {
   type PublicoBanner,
 } from "@/lib/banners";
 import { mensagemDeErro } from "@/lib/erros";
+import { prepararImagemBanner } from "@/lib/servidor/imagem-banner";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
@@ -21,6 +22,7 @@ import { UUID } from "@/lib/validacao";
 
 const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
+const SEM_MIGRACAO_IMAGEM = "Para pôr imagem, rode antes a migração 20261213120000_banners_imagem.sql no Supabase.";
 
 function texto(formData: FormData, nome: string) {
   const v = formData.get(nome);
@@ -93,6 +95,33 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
 
   if (Object.keys(erros).length) return { ok: false, erro: "Confira os campos marcados.", erros };
 
+  // a imagem do alto da janela: uma nova (ajustada e guardada no Storage), a de antes ou nenhuma
+  const pasta = c.storage.from("banners");
+  const publicaDaPasta = pasta.getPublicUrl("").data.publicUrl;
+  const atual = texto(formData, "imagem_atual");
+  let imagem: string | null = atual && atual.startsWith(publicaDaPasta) ? atual : null;
+  if (formData.get("imagem_tirar") === "1") imagem = null;
+  const arquivo = formData.get("imagem_arquivo");
+  if (arquivo instanceof File && arquivo.size > 0) {
+    const pronta = await prepararImagemBanner(Buffer.from(await arquivo.arrayBuffer()));
+    if (!pronta.ok) return { ok: false, erro: pronta.erro, erros: { imagem: pronta.erro } };
+    const caminho = `banner-${Date.now()}.webp`;
+    const { error: erroEnvio } = await pasta.upload(caminho, pronta.webp, {
+      contentType: "image/webp",
+      cacheControl: "31536000",
+      upsert: false,
+    });
+    if (erroEnvio) {
+      console.error("Publike: não deu para guardar a imagem do banner:", erroEnvio.message);
+      return {
+        ok: false,
+        erro: `Não deu para guardar a imagem no Supabase. ${SEM_MIGRACAO_IMAGEM}`,
+        erros: { imagem: "Não deu para guardar." },
+      };
+    }
+    imagem = pasta.getPublicUrl(caminho).data.publicUrl;
+  }
+
   const dados = {
     titulo,
     texto: corpo || null,
@@ -104,11 +133,14 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     paginas: [...new Set(paginas)],
     atraso_segundos: atraso,
     busca_da_area: buscaDaArea,
+    // sem imagem nenhuma, nem manda a coluna (os banners de texto salvam mesmo sem a migração 20261213)
+    ...(imagem || atual || formData.get("imagem_tirar") === "1" ? { imagem } : {}),
     inicio,
     fim,
     ativo: formData.get("ativo") === "on",
   };
   const { error } = id ? await c.from("banners").update(dados).eq("id", id) : await c.from("banners").insert(dados);
+  if (error?.code === "PGRST204" && error.message.includes("imagem")) return { ok: false, erro: SEM_MIGRACAO_IMAGEM };
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   redirect(`/admin/banners?salvo=${id ? "editado" : "novo"}`);
 }

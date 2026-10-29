@@ -62,6 +62,8 @@ export type BannerNoAr = {
   paginas: PaginaBanner[];
   /** segundos depois de abrir a página */
   atraso: number;
+  /** a imagem do alto da janela (sem ela, o ícone da ação) */
+  imagem?: string | null;
 };
 
 /**

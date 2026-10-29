@@ -131,6 +131,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     paginas: (editar.paginas ?? ["inicio"]) as PaginaBanner[],
     atraso_segundos: editar.atraso_segundos ?? 3,
     busca_da_area: editar.busca_da_area ?? false,
+    // sem a migração 20261213120000: sem imagem
+    imagem: editar.imagem ?? null,
   };
 
   return (

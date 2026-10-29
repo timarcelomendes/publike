@@ -909,6 +909,8 @@ export type Database = {
           paginas: string[];
           atraso_segundos: number;
           busca_da_area: boolean;
+          /** a imagem no alto da janela (Storage, pasta banners; migração 20261213) */
+          imagem: string | null;
           criado_em: string;
           atualizado_em: string;
         };
@@ -926,6 +928,7 @@ export type Database = {
           paginas?: string[];
           atraso_segundos?: number;
           busca_da_area?: boolean;
+          imagem?: string | null;
         };
         Update: {
           titulo?: string;
@@ -941,6 +944,7 @@ export type Database = {
           paginas?: string[];
           atraso_segundos?: number;
           busca_da_area?: boolean;
+          imagem?: string | null;
         };
         Relationships: [];
       };

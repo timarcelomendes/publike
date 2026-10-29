@@ -170,20 +170,37 @@ export function BannerDaHome({ banner }: { banner: BannerNoAr }) {
       data-banner={banner.id}
       className="m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-lg border border-line-strong bg-surface-200 p-0 text-ink shadow-raised backdrop:bg-veu sm:m-auto sm:max-w-md sm:rounded-lg"
     >
-      <div className="flex flex-col gap-5 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <span className="flex size-12 items-center justify-center rounded-pill bg-terra-soft text-terra-text">
-            <Icone aria-hidden className="size-6" />
-          </span>
+      {/* com imagem: ela no alto, de ponta a ponta, e o fechar por cima */}
+      {banner.imagem && (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a imagem vem do Storage, já ajustada no admin */}
+          <img src={banner.imagem} alt="" className="block max-h-64 w-full bg-surface-300 object-cover" />
           <button
             type="button"
             onClick={() => fechar("fechou")}
             aria-label="Fechar"
-            className="-mt-1 -mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+            className="absolute top-3 right-3 inline-flex size-11 items-center justify-center rounded-pill bg-surface-200/90 text-ink shadow-card hover:bg-surface-200"
           >
             <X aria-hidden className="size-5" />
           </button>
         </div>
+      )}
+      <div className="flex flex-col gap-5 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
+        {!banner.imagem && (
+          <div className="flex items-start justify-between gap-4">
+            <span className="flex size-12 items-center justify-center rounded-pill bg-terra-soft text-terra-text">
+              <Icone aria-hidden className="size-6" />
+            </span>
+            <button
+              type="button"
+              onClick={() => fechar("fechou")}
+              aria-label="Fechar"
+              className="-mt-1 -mr-1 inline-flex size-11 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+            >
+              <X aria-hidden className="size-5" />
+            </button>
+          </div>
+        )}
 
         <div>
           <h2 id="banner-titulo" className="text-h2 text-balance">

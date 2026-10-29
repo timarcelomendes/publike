@@ -67,7 +67,7 @@ import {
 import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
 import { AvisoAoSair } from "./ui/aviso-ao-sair";
-import { Aviso } from "./ui/basicos";
+import { Aviso, Selo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { classesEntrada, MensagemErro, Seletor } from "./ui/campo";
 
@@ -400,6 +400,12 @@ function LerCurriculoPronto({
               : falar
                 ? "Preencha falando ou com o currículo pronto"
                 : "Já tem currículo pronto?"}
+            {/* o que é novo ganha a tag "Novo" (o currículo falado, de 29/10/2026) */}
+            {falar && !compacto && (
+              <Selo variante="novo" className="ml-2 align-middle">
+                Novo
+              </Selo>
+            )}
           </h2>
           <p className="mt-1 text-body-sm text-ink-muted">
             {compacto

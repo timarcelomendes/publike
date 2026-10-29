@@ -76,10 +76,13 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
     paginas?: string[];
     atraso_segundos?: number;
     busca_da_area?: boolean;
+    imagem?: string | null;
   };
   const basicas = "id, titulo, texto, botao, acao, link, repetir_dias";
-  let { data, error } = await consulta(`${basicas}, paginas, atraso_segundos, busca_da_area`).returns<Linha[]>();
-  // sem a migração 20261117120000: só a inicial, em 3 segundos
+  const comPaginas = `${basicas}, paginas, atraso_segundos, busca_da_area`;
+  let { data, error } = await consulta(`${comPaginas}, imagem`).returns<Linha[]>();
+  // sem a migração 20261213120000: sem imagem; sem a 20261117120000: só a inicial, em 3 segundos
+  if (error?.code === "42703") ({ data, error } = await consulta(comPaginas).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(basicas).returns<Linha[]>());
   if (error || !data?.length) return []; // sem a migração dos banners: nenhum
   const doNavegador = lerBannersVistos(jar.get(COOKIE_BANNERS)?.value);
@@ -114,5 +117,6 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
     repetir_dias: b.repetir_dias,
     paginas: (b.paginas?.length ? b.paginas : ["inicio"]).filter((x): x is PaginaBanner => x in PAGINAS_BANNER),
     atraso: b.atraso_segundos ?? ATRASO_PADRAO,
+    imagem: b.imagem ?? null,
   }));
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Briefcase, Check, ChevronDown, Wrench } from "lucide-react";
+import { ArrowRight, Briefcase, CalendarClock, Check, ChevronDown, Wrench } from "lucide-react";
 import Link from "next/link";
 import {
   startTransition,
@@ -51,7 +51,7 @@ import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
 import { trocarBairro } from "./mapa/seletor-local";
 import { AvisoAoSair, useFormularioMudou } from "./ui/aviso-ao-sair";
-import { Aviso } from "./ui/basicos";
+import { Aviso, Selo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo, MensagemErro, Seletor } from "./ui/campo";
 import { ResumoErros } from "./ui/resumo-erros";
@@ -990,18 +990,23 @@ export function FormAnuncio({
       )}
 
       {vaga && (
-        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4">
+        // em destaque (borda e fundo laranja, o ícone e a tag "Novo"): é a marca nova e a que mais chama gente
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border-2 border-terra bg-terra-soft p-4 has-[:checked]:shadow-raised">
           {/* o servidor só mexe no "Começa já" quando o formulário tem a caixa */}
           <input type="hidden" name="comeca_ja_enviado" value="1" />
           <input
             type="checkbox"
             name="comeca_ja"
             defaultChecked={inicial.comeca_ja ?? false}
-            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-terra)]"
           />
+          <CalendarClock aria-hidden className="mt-0.5 size-5 shrink-0 text-terra-text" />
           <span>
-            <span className="block text-label">Começa já: precisa de alguém para começar logo</span>
-            <span className="block text-body-sm text-ink-muted">
+            <span className="flex flex-wrap items-center gap-2 text-label">
+              Começa já: precisa de alguém para começar logo
+              <Selo variante="novo">Novo</Selo>
+            </span>
+            <span className="mt-0.5 block text-body-sm text-ink">
               A vaga ganha a etiqueta “Começa já”, e quem pode começar na hora acha pelo filtro. Desmarque quando a
               pressa passar.
             </span>
