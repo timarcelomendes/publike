@@ -60,8 +60,10 @@ import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { clientesDasVagas, listarMeusClientes } from "@/lib/servidor/clientes";
 import { entrevistasDasVagas, type Entrevista } from "@/lib/servidor/quadro";
+import { empresasDosTrabalhos, type EmpresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { obterTriagens } from "@/lib/servidor/triagem";
 import { exigirUsuario } from "@/lib/sessao";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
@@ -213,6 +215,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
     entrevistasDasVagas(vagasDaLista),
   ]);
 
+  // as empresas dos currículos com conta no Publike: o logo e o link
+  const empresas = await empresasDosTrabalhos(
+    await criarClienteServidor(),
+    [...curriculos.values()].flatMap((m) => (m ? [...m.values()].flatMap((cv) => cv.experiencias) : [])),
+  );
+
   // a nota de aderência (a mesma do quadro) e a entrevista em aberto de cada um
   const perguntasDe = new Map(
     vagasDaLista.map((id) => [
@@ -297,6 +305,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
       direto={Boolean(anuncios.get(c.anuncio_id)?.contato_direto)}
       curriculo={curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null}
       curriculoFalhou={c.tem_curriculo && curriculos.get(c.anuncio_id) === null}
+      empresas={empresas}
       desfeito={desfeitos.get(c.anuncio_id)?.get(c.perfil_id)}
       bloqueio={bloqueios.get(c.perfil_id)}
       publica={publicas.get(chave(c))}
@@ -497,8 +506,11 @@ function CartaoCandidato({
   aderencia,
   entrevista,
   direto,
+  empresas,
 }: {
   c: Candidato;
+  /** as empresas dos currículos com conta no Publike (o logo e o link) */
+  empresas: EmpresasDosTrabalhos;
   /** a vaga tem contato direto: o match saiu na hora, sem aceite (a mensagem leva o link da vaga) */
   direto: boolean;
   /** a lista está dividida em grupos com título (Para responder, Em andamento…) */
@@ -669,7 +681,7 @@ function CartaoCandidato({
         <div className="flex flex-col gap-3 border-t border-line px-4 py-4 sm:px-5">
           <Bloco titulo="Currículo" icone={<FileText aria-hidden className="size-4 shrink-0 text-ink-muted" />}>
             {curriculo ? (
-              <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} />
+              <CurriculoResumo curriculo={curriculo} linkPdf={curriculo.link_pdf} hoje={hoje} empresas={empresas} />
             ) : curriculoFalhou ? (
               <Link href={`/painel/anuncio/${c.anuncio_id}`} className="text-body-sm underline underline-offset-2">
                 Ver o currículo na vaga

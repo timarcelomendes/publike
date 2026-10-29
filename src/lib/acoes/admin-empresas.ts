@@ -3,6 +3,8 @@
 import { refresh } from "next/cache";
 import type { EmpresaDoAdmin } from "@/lib/admin/dados";
 import { mensagemDeErro } from "@/lib/erros";
+import { agruparEmpresasComIA } from "@/lib/ia/empresas";
+import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
@@ -12,6 +14,7 @@ import { UUID } from "@/lib/validacao";
 
 const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
 const SEM_MIGRACAO = "Rode a migração 20261209120000_empresas_catalogo.sql primeiro.";
+const SEM_MIGRACAO_CONTAS = "Rode a migração 20261210120000_empresas_contas.sql primeiro.";
 const ehId = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n > 0;
 
 function erroDoBanco(error: { code?: string; message: string }): Resultado {
@@ -97,6 +100,88 @@ export async function marcarEmpresasDiferentes(a: number, b: number): Promise<Re
   if (!ehId(a) || !ehId(b) || a === b) return { ok: false, erro: "Pedido inválido." };
   const { error } = await c.rpc("admin_empresas_diferentes", { p_a: a, p_b: b });
   if (error) return erroDoBanco(error);
+  refresh();
+  return { ok: true };
+}
+
+/** A conta de empresa sem ligar não é a empresa dos currículos: sai de "Contas para ligar". */
+export async function dispensarContaDaEmpresa(perfil: string, empresa: number): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(perfil) || !ehId(empresa)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_empresa_conta_dispensar", { p_perfil: perfil, p_empresa: empresa });
+  if (error) {
+    return { ok: false, erro: error.code === "PGRST202" ? SEM_MIGRACAO_CONTAS : mensagemDeErro(error) };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** Junta várias na que fica (o grupo que a IA sugeriu). */
+export async function juntarVariasEmpresas(para: number, de: number[]): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const lista = Array.isArray(de) ? [...new Set(de)].filter((n) => ehId(n) && n !== para).slice(0, 20) : [];
+  if (!ehId(para) || !lista.length) return { ok: false, erro: "Pedido inválido." };
+  let nome = "";
+  for (const id of lista) {
+    const { data, error } = await c.rpc("admin_empresa_juntar", { p_de: id, p_para: para });
+    if (error) {
+      refresh();
+      return erroDoBanco(error);
+    }
+    nome = data;
+  }
+  refresh();
+  return { ok: true, mensagem: `Pronto: agora é tudo “${nome}”.` };
+}
+
+export type SugestaoDaIA = {
+  ids: number[];
+  motivo: string;
+  empresas: { id: number; nome: string; pessoas: number; com_conta: boolean }[];
+};
+
+/** A IA olha os nomes das empresas mais citadas e sugere as que são a mesma. Só sugere. */
+export async function sugerirRepetidasComIA(): Promise<
+  { ok: true; grupos: SugestaoDaIA[] } | { ok: false; erro: string }
+> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!iaConfigurada()) {
+    return { ok: false, erro: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
+  }
+  const [{ data, error }, { data: config }] = await Promise.all([
+    c.rpc("admin_empresas_para_ia", { p_limite: 200 }),
+    c.rpc("admin_config"),
+  ]);
+  if (error) return { ok: false, erro: error.code === "PGRST202" ? SEM_MIGRACAO_CONTAS : mensagemDeErro(error) };
+  const empresas = (data ?? []).map((e) => ({ ...e, pessoas: Number(e.pessoas) }));
+  if (empresas.length < 2) return { ok: true, grupos: [] };
+  try {
+    const grupos = await agruparEmpresasComIA(empresas, modeloDaIA(config?.[0]?.ia_modelo).id);
+    const porId = new Map(empresas.map((e) => [e.id, e]));
+    return {
+      ok: true,
+      grupos: grupos.map((g) => ({ ...g, empresas: g.ids.map((id) => porId.get(id)!).filter(Boolean) })),
+    };
+  } catch (e) {
+    return { ok: false, erro: e instanceof ErroIA ? e.message : "A IA não conseguiu olhar as empresas agora." };
+  }
+}
+
+/** "Não são a mesma" no grupo da IA: cada par sai das sugestões (as de nomes parecidos também). */
+export async function marcarGrupoDiferente(ids: number[]): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const lista = Array.isArray(ids) ? [...new Set(ids)].filter(ehId).slice(0, 10) : [];
+  if (lista.length < 2) return { ok: false, erro: "Pedido inválido." };
+  for (let i = 0; i < lista.length; i++) {
+    for (let j = i + 1; j < lista.length; j++) {
+      const { error } = await c.rpc("admin_empresas_diferentes", { p_a: lista[i], p_b: lista[j] });
+      if (error) return erroDoBanco(error);
+    }
+  }
   refresh();
   return { ok: true };
 }

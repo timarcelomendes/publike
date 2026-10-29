@@ -1218,6 +1218,12 @@ export type Database = {
       admin_empresa_nome: { Args: { p_id: number; p_nome: string }; Returns: string };
       admin_empresa_ligar_perfil: { Args: { p_id: number; p_perfil: string | null }; Returns: string | null };
       admin_empresas_diferentes: { Args: { p_a: number; p_b: number }; Returns: undefined };
+      admin_empresas_contas_para_ligar: { Args: Record<string, never>; Returns: Json };
+      admin_empresa_conta_dispensar: { Args: { p_perfil: string; p_empresa: number }; Returns: undefined };
+      admin_empresas_para_ia: {
+        Args: { p_limite?: number };
+        Returns: { id: number; nome: string; pessoas: number; com_conta: boolean }[];
+      };
       admin_contar_comunicado: { Args: { p_publico: string; p_link?: string | null }; Returns: number };
       admin_enviar_comunicado: {
         Args: { p_publico: string; p_texto: string; p_link?: string | null };

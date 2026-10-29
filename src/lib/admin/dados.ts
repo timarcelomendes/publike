@@ -483,6 +483,22 @@ export async function listarEmpresasDoAdmin(
   return data as unknown as { total: number; itens: EmpresaDoAdmin[] };
 }
 
+/** Admin › Empresas › Contas para ligar (migração 20261210120000_empresas_contas.sql). */
+export type ContaParaLigar = {
+  perfil: { id: string; nome: string; cidade: string; foto: string | null; verificado: boolean; criado_em: string };
+  empresa: { id: number; nome: string; pessoas: number };
+};
+
+/** Sem a migração 20261210120000: lista vazia. */
+export async function contasParaLigar(c: ClienteBanco): Promise<ContaParaLigar[]> {
+  const { data, error } = await c.rpc("admin_empresas_contas_para_ligar");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha nas contas para ligar: ${error.message}`);
+    return [];
+  }
+  return (data ?? []) as unknown as ContaParaLigar[];
+}
+
 export async function empresasRepetidas(c: ClienteBanco): Promise<EmpresasRepetidas> {
   const { data, error } = await c.rpc("admin_empresas_repetidas", { p_limite: 20 });
   if (error) falha("as empresas repetidas", error);

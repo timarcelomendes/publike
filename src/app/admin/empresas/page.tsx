@@ -2,11 +2,12 @@ import { Building2, ChevronDown } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AcoesDaEmpresa, ParRepetido } from "@/components/admin/empresas";
+import { AcoesDaEmpresa, ContaParaLigarItem, ParRepetido, RepetidasDaIA } from "@/components/admin/empresas";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Busca, Filtros, linkCom, Paginacao, Secao, Situacao } from "@/components/admin/ui";
 import { Avatar, Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import {
+  contasParaLigar,
   empresasRepetidas,
   FILTROS_EMPRESAS,
   listarEmpresasDoAdmin,
@@ -102,9 +103,10 @@ async function Conteudo({ busca, filtro, pagina }: { busca: string; filtro: Filt
       </Aviso>
     );
   }
-  const [repetidas, lista] = await Promise.all([
+  const [repetidas, lista, contas] = await Promise.all([
     empresasRepetidas(c),
     listarEmpresasDoAdmin(c, { busca, filtro, pagina, limite: POR_PAGINA }),
+    contasParaLigar(c),
   ]);
   const atuais = { q: busca || null, f: filtro === "todas" ? null : filtro };
 
@@ -112,18 +114,34 @@ async function Conteudo({ busca, filtro, pagina }: { busca: string; filtro: Filt
     <div className="flex flex-col gap-6">
       <NumeroDaParteB r={resumo} />
 
-      {repetidas.length > 0 && (
+      {contas.length > 0 && (
         <Secao
-          titulo="Podem ser a mesma empresa"
-          descricao="Nomes parecidos, ou um que começa com o outro. Juntar leva os currículos e os jeitos de escrever para a que fica; a com conta no Publike fica sempre."
+          titulo="Contas para ligar"
+          descricao="Contas de empresa, comércio ou agência com o mesmo nome de uma empresa que os currículos já citam. Ligada, a conta aparece com o logo no currículo de quem trabalhou lá; por isso só a conta verificada liga sozinha. Confira se é a mesma empresa."
         >
+          <ul className="flex flex-col gap-3">
+            {contas.map((item) => (
+              <ContaParaLigarItem key={`${item.perfil.id}-${item.empresa.id}`} item={item} />
+            ))}
+          </ul>
+        </Secao>
+      )}
+
+      <Secao
+        titulo="Podem ser a mesma empresa"
+        descricao="Nomes parecidos, ou um que começa com o outro. Juntar leva os currículos e os jeitos de escrever para a que fica; a com conta no Publike fica sempre."
+      >
+        {repetidas.length > 0 ? (
           <ul className="flex flex-col gap-3">
             {repetidas.map((par) => (
               <ParRepetido key={`${par.a.id}-${par.b.id}`} par={par} />
             ))}
           </ul>
-        </Secao>
-      )}
+        ) : (
+          <p className="text-body-sm text-ink-muted">Nenhum nome parecido agora.</p>
+        )}
+        <RepetidasDaIA />
+      </Secao>
 
       <Secao
         titulo="Empresas"
