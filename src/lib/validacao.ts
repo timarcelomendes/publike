@@ -260,6 +260,8 @@ type ExtrasDaVaga = {
   horario_detalhe?: HorarioDetalhe | null;
   /** comissão, bônus, gorjeta... junto do valor */
   ganhos_extras?: GanhoExtra[];
+  /** "Começa já": precisa de alguém para começar logo (só quando o formulário tem a caixa) */
+  comeca_ja?: boolean;
 };
 
 export type DadosAnuncio = z.output<typeof esquemaAnuncio> & ExtrasDaVaga;
@@ -320,6 +322,7 @@ export function registroDoAnuncio(d: DadosAnuncio) {
     ...(d.beneficios_extras !== undefined ? { beneficios_extras: d.beneficios_extras } : {}),
     ...(d.horario_detalhe !== undefined ? { horario_detalhe: d.horario_detalhe } : {}),
     ...(d.ganhos_extras !== undefined ? { ganhos_extras: d.ganhos_extras } : {}),
+    ...(d.comeca_ja !== undefined ? { comeca_ja: d.comeca_ja } : {}),
     vagas: d.vagas,
     pede_curriculo: d.pede_curriculo,
     contato_direto: d.contato_direto,
@@ -454,6 +457,8 @@ function lerExtrasDaVaga(
 ): { ok: true; dados: ExtrasDaVaga } | { ok: false; erros: Record<string, string> } {
   const dados: ExtrasDaVaga = {};
   const erros: Record<string, string> = {};
+  // "Começa já": só o formulário que tem a caixa manda (o que não tem não mexe); serviço nunca
+  if (formData.has("comeca_ja_enviado")) dados.comeca_ja = vaga && formData.get("comeca_ja") === "on";
   if (formData.has("perguntas")) {
     const r = lerPerguntas(vaga ? campo(formData, "perguntas") : null);
     if (r.ok) {

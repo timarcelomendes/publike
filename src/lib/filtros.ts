@@ -42,6 +42,8 @@ export type Filtros = {
   regime: Regime | null;
   /** só vagas: de manhã, à tarde, à noite ou no fim de semana */
   turno: Turno | null;
+  /** só vagas: as que precisam de alguém para começar logo ("Começa já") */
+  ja?: boolean;
   raio: number;
   /** "Até X min de ônibus": quando há, vale no lugar do raio */
   tempo: number | null;
@@ -103,6 +105,7 @@ export function lerFiltros(sp: Parametros): Filtros {
     regime: regime && regime in REGIMES && tipo !== "servico" ? (regime as Regime) : null,
     // só em Vagas (sem tipo na URL, a intenção ainda pode abrir em Vagas: aplicarIntencao confere)
     turno: (tipo === "vaga" || !tipo) && TURNOS.some((t) => t.valor === turno) ? (turno as Turno) : null,
+    ja: (tipo === "vaga" || !tipo) && primeiro(sp.ja) === "1",
     raio: raio && (RAIOS as readonly number[]).includes(raio) ? raio : RAIO_PADRAO,
     tempo: tempo && (TEMPOS as readonly number[]).includes(tempo) ? tempo : null,
     ordem:
@@ -122,7 +125,13 @@ export function lerFiltros(sp: Parametros): Filtros {
  */
 export function aplicarIntencao(f: Filtros, tipoPadrao: TipoAnuncio | null): Filtros {
   const tipo = f.tipo || f.tudo || !tipoPadrao ? f.tipo : tipoPadrao;
-  return { ...f, tipo, regime: tipo === "servico" ? null : f.regime, turno: tipo === "vaga" ? f.turno : null };
+  return {
+    ...f,
+    tipo,
+    regime: tipo === "servico" ? null : f.regime,
+    turno: tipo === "vaga" ? f.turno : null,
+    ja: tipo === "vaga" ? f.ja : false,
+  };
 }
 
 /** Monta a URL só com o que difere do padrão: "/?tipo=vaga&raio=10". */
@@ -135,6 +144,7 @@ export function hrefFiltros(atual: Filtros, mudancas: Partial<Filtros> = {}) {
   if (f.categoria) p.set("categoria", f.categoria);
   if (f.regime && f.tipo !== "servico") p.set("regime", f.regime);
   if (f.turno && f.tipo === "vaga") p.set("turno", f.turno);
+  if (f.ja && f.tipo === "vaga") p.set("ja", "1");
   if (f.tempo) p.set("tempo", String(f.tempo));
   else if (f.raio !== RAIO_PADRAO) p.set("raio", String(f.raio));
   if (f.ordem !== "perto") p.set("ordem", f.ordem);
@@ -157,6 +167,7 @@ export function filtrosMudados(f: Filtros, ordemFora = false) {
   return [
     f.regime,
     f.turno,
+    f.ja,
     f.categoria,
     f.tempo || f.raio !== RAIO_PADRAO,
     !ordemFora && f.ordem !== "perto",
@@ -170,6 +181,7 @@ export const SEM_FILTROS: Partial<Filtros> = {
   categoria: null,
   regime: null,
   turno: null,
+  ja: false,
   raio: RAIO_PADRAO,
   tempo: null,
   meus: false,

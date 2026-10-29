@@ -12,6 +12,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerDenuncia, registroDoAnuncio, UUID } from "@/lib/validacao";
 import { salvarTriagem } from "@/lib/servidor/triagem";
+import { gravarVaga } from "@/lib/servidor/comeca-ja";
 
 export async function denunciarAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -71,7 +72,9 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
   const leitura = lerAnuncio(formData);
   if (!leitura.ok) return { ok: false, erro: "Confira os campos marcados.", erros: leitura.erros };
   const d = leitura.dados;
-  const { data, error } = await acesso.cliente.from("anuncios").update(registroDoAnuncio(d)).eq("id", id).select("id");
+  const { data, error } = await gravarVaga(registroDoAnuncio(d), (r) =>
+    acesso.cliente.from("anuncios").update(r).eq("id", id).select("id"),
+  );
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   if (!data?.length) return { ok: false, erro: "Anúncio não encontrado." };
   await salvarTriagem(acesso.cliente, id, d.triagem);

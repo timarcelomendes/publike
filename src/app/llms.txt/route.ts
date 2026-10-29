@@ -58,6 +58,7 @@ export async function GET() {
     `- [Como funciona](${link("/como-funciona")})`,
     `- [Por que é grátis](${link("/gratis")})`,
     `- [Para empresas](${link("/empresas")})`,
+    `- [Fim da escala 6x1: o que muda e como contratar](${link("/empresas/fim-da-6x1")})`,
     `- [Dicas e direitos de quem trabalha](${link("/conteudos")})`,
     "",
   ];

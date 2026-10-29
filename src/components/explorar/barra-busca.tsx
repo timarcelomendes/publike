@@ -578,6 +578,20 @@ export function FiltrosLista({
             ))}
           </Seletor>,
         )}
+      {filtros.tipo === "vaga" &&
+        rotulado(
+          "Começo",
+          <Seletor
+            aria-label="Quando começa"
+            value={filtros.ja ? "ja" : ""}
+            onChange={(e) => ir({ ja: e.target.value === "ja" })}
+            className={classe}
+            envoltorio={envoltorio}
+          >
+            <option value="">{comRotulos ? "Qualquer" : "Começo: qualquer"}</option>
+            <option value="ja">Começa já</option>
+          </Seletor>,
+        )}
       {rotulado(
         "Quem publicou",
         <Seletor

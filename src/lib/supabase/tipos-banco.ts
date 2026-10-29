@@ -426,6 +426,8 @@ export type Database = {
           atende: string[];
           pede_curriculo: boolean;
           contato_direto: boolean;
+          /** a vaga precisa de alguém para começar logo (migração 20261212) */
+          comeca_ja: boolean;
           preenchida_em: string | null;
           prazo_dias: number | null;
           /** vaga de agência: a empresa que contrata (null se confidencial) */
@@ -480,6 +482,7 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          comeca_ja?: boolean;
           prazo_dias?: number | null;
           preenchida_em?: string | null;
           contratante?: string | null;
@@ -525,6 +528,7 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          comeca_ja?: boolean;
           prazo_dias?: number | null;
           preenchida_em?: string | null;
           contratante?: string | null;

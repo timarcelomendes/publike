@@ -1,4 +1,15 @@
-import { Bus, HandCoins, Heart, ListChecks, Lock, MapPin, Store, UserSearch, type LucideIcon } from "lucide-react";
+import {
+  Bus,
+  CalendarClock,
+  HandCoins,
+  Heart,
+  ListChecks,
+  Lock,
+  MapPin,
+  Store,
+  UserSearch,
+  type LucideIcon,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/basicos";
@@ -140,6 +151,16 @@ export default function Empresas() {
             </BotaoLink>
             <BotaoLink href="#como">Ver como funciona</BotaoLink>
           </div>
+          <p className="mt-6 flex max-w-2xl items-start gap-2 text-body-sm text-ink-muted">
+            <CalendarClock aria-hidden className="mt-0.5 size-4 shrink-0 text-terra-text" />
+            <span>
+              O fim da escala 6x1 foi promulgado: a partir de dezembro, a jornada máxima cai para 42 horas por semana.{" "}
+              <Link href="/empresas/fim-da-6x1" className="text-ink underline underline-offset-2 hover:text-terra-text">
+                Veja o que muda e como cobrir a semana
+              </Link>
+              .
+            </span>
+          </p>
         </Container>
       </section>
 

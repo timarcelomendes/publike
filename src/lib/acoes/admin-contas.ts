@@ -17,6 +17,7 @@ import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { areasSemRepetir } from "@/lib/constantes";
 import { LIMITES_MENSAGEM_EQUIPE } from "@/lib/mensagem-equipe";
+import { gravarVaga } from "@/lib/servidor/comeca-ja";
 
 // Contas criadas pela equipe (quem pediu ajuda para entrar no Publike, como uma
 // agência que mandou a lista de vagas). Só no admin, no computador do dono.
@@ -207,11 +208,13 @@ export async function publicarEmNomeDe(
   const d = leitura.dados;
   if (d.tipo !== "vaga") return { ok: false, erro: "Pelo admin dá para publicar só vagas." };
 
-  const { data, error } = await c
-    .from("anuncios")
-    .insert({ ...registroDoAnuncio(d), tipo: d.tipo, autor_id: usuarioId })
-    .select("id")
-    .single();
+  const { data, error } = await gravarVaga(registroDoAnuncio(d), (r) =>
+    c
+      .from("anuncios")
+      .insert({ ...r, tipo: d.tipo, autor_id: usuarioId })
+      .select("id")
+      .single(),
+  );
   if (error) {
     const erro = mensagemDeErro(error);
     if (error.hint === "contratante" || error.hint === "pagamento_ate") {

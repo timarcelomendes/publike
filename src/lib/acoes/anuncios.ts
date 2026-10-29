@@ -15,6 +15,7 @@ import { lerAnuncio, registroDoAnuncio, UUID, type DadosAnuncio } from "@/lib/va
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio";
 import { vigiar, type Vigia } from "@/lib/servidor/falhas";
+import { gravarVaga } from "@/lib/servidor/comeca-ja";
 
 /**
  * Antes de entrar: confere o anúncio de quem ainda não tem conta (nada é salvo). Com
@@ -127,7 +128,9 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
 
   if (typeof id === "string" && id) {
     if (!UUID.test(id)) return { ok: false, erro: "Anúncio não encontrado." };
-    const { data, error } = await supabase.from("anuncios").update(registro).eq("id", id).select("id");
+    const { data, error } = await gravarVaga(registro, (r) =>
+      supabase.from("anuncios").update(r).eq("id", id).select("id"),
+    );
     if (error) {
       vigia.banco(error);
       return erroDoBanco(error);
@@ -138,11 +141,13 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     if (cliente) await cuidarDoCliente(supabase, cliente, d, false);
     destino = `/anuncio/${id}?salvo=1${erroTriagem ? "&triagem=0" : ""}`;
   } else {
-    const { data, error } = await supabase
-      .from("anuncios")
-      .insert({ ...registro, tipo: d.tipo })
-      .select("id")
-      .single();
+    const { data, error } = await gravarVaga(registro, (r) =>
+      supabase
+        .from("anuncios")
+        .insert({ ...r, tipo: d.tipo })
+        .select("id")
+        .single(),
+    );
     if (error) {
       if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/publicar");
       vigia.banco(error);

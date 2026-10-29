@@ -99,6 +99,7 @@ import { chaveBairro } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
+import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { meusTestesDaVaga, testesDaVaga } from "@/lib/servidor/testes";
 import { TestesParaMim } from "@/components/testes/testes-para-mim";
@@ -283,6 +284,7 @@ async function DetalheAnuncio({
   // pessoa pelo primeiro nome; comércio, empresa e agência pelo nome inteiro
   const nomeParaSeguir = anuncio.autor_tipo === "pessoa" ? primeiroNome : anuncio.autor_nome;
   const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
+  const comecaJa = vaga && anuncio.status === "ativo" && !anuncio.preenchida_em && (await comecaJaDaVaga(anuncio.id));
   // quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais)
   const resposta =
     vaga && !proprio
@@ -443,6 +445,12 @@ async function DetalheAnuncio({
               <Selo variante="aviso">
                 <UserCheck aria-hidden />
                 Vaga preenchida
+              </Selo>
+            )}
+            {comecaJa && (
+              <Selo variante="aviso">
+                <CalendarClock aria-hidden />
+                Começa já
               </Selo>
             )}
             {anuncio.contato_direto && anuncio.status === "ativo" && !anuncio.preenchida_em && (

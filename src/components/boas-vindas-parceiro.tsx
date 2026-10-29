@@ -18,8 +18,9 @@ const VERSAO = "1";
 export const EVENTO_BOAS_VINDAS = "publike:boas-vindas";
 
 // Páginas onde a pessoa já sabe o que veio fazer (ou que são da equipe): sem aviso. As listas de vagas
-// (/vagas/goiania/alimentacao) são a entrada dos anúncios do Google: a lista aparece sem nada por cima.
-const SEM_AVISO = /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|anuncio\/|email|versao|vagas\/)/;
+// (/vagas/goiania/alimentacao) e as páginas para empresas (/empresas/fim-da-6x1) são a entrada dos anúncios
+// do Google: a página aparece sem nada por cima.
+const SEM_AVISO = /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|anuncio\/|email|versao|vagas\/|empresas)/;
 
 function jaViu() {
   try {

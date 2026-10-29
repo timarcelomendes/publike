@@ -1,4 +1,4 @@
-import { Bus, Footprints, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
+import { Bus, CalendarClock, Footprints, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -38,6 +38,8 @@ export type ExtrasDaVaga = {
   preenchida?: boolean;
   /** quem curte já vê o WhatsApp de quem publicou, sem esperar o aceite */
   contatoDireto?: boolean;
+  /** precisa de alguém para começar logo */
+  comecaJa?: boolean;
   /** comissão, bônus, gorjeta... (vão junto do valor) */
   ganhos?: GanhoExtra[];
   /** o começo da descrição (duas linhas no cartão) */
@@ -152,6 +154,13 @@ export function CardAnuncio({
     etiquetas.push(
       <Etiqueta key="modalidade" className="bg-surface-300 text-ink group-data-[visao=lista]/visao:hidden">
         {modalidade}
+      </Etiqueta>,
+    );
+  if (extras?.comecaJa && !preenchida)
+    etiquetas.push(
+      <Etiqueta key="comeca" className="bg-terra-soft text-terra-text">
+        <CalendarClock aria-hidden className="mr-1 size-3.5" />
+        Começa já
       </Etiqueta>,
     );
   if (extras?.contatoDireto && !preenchida && !proprio)

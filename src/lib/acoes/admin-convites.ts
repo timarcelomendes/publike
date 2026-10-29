@@ -27,6 +27,7 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { areasSemRepetir } from "@/lib/constantes";
 import { PRACA_PADRAO } from "@/lib/pracas";
+import { gravarVaga } from "@/lib/servidor/comeca-ja";
 
 // Convites às empresas: importar a lista, marcar a situação e anotar. Só no admin.
 
@@ -278,11 +279,13 @@ export async function publicarConvitePeloAdmin(
   if ("erro" in conta) return { ok: false, erro: conta.erro };
   const { id: contaId, semEmail } = conta;
 
-  const { data: anuncio, error } = await c
-    .from("anuncios")
-    .insert({ ...registroDoAnuncio(d), tipo: d.tipo, autor_id: contaId })
-    .select("id")
-    .single();
+  const { data: anuncio, error } = await gravarVaga(registroDoAnuncio(d), (r) =>
+    c
+      .from("anuncios")
+      .insert({ ...r, tipo: d.tipo, autor_id: contaId })
+      .select("id")
+      .single(),
+  );
   if (error) {
     const erro = mensagemDeErro(error);
     if (error.hint === "contratante" || error.hint === "pagamento_ate") {

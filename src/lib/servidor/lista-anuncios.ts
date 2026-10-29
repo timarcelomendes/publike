@@ -40,6 +40,7 @@ export function extrasDe(v: DetalhesDaVaga | undefined) {
         expiraEm: v.expira_em,
         preenchida: Boolean(v.preenchida_em),
         contatoDireto: Boolean(v.contato_direto),
+        comecaJa: Boolean(v.comeca_ja),
         ganhos: ganhosDoBanco(v.ganhos_extras),
         resumo: v.descricao ? v.descricao.replace(/\s+/g, " ").trim().slice(0, 220) : null,
       }

@@ -225,6 +225,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     ordem: ordemDaLinha(primeiro(sp.ordem), (await cookies()).get(COOKIE_ORDEM_DA_LINHA)?.value),
     regime: aba === "servico" ? null : lidos.regime,
     turno: aba === "vaga" ? lidos.turno : null,
+    ja: aba === "vaga" ? lidos.ja : false,
   };
   const filtros = partirDoLocal(filtrosDaBusca, local, visita.praca.cidade);
   const relevantes = filtrosDaBusca.ordem === "relevantes";
@@ -264,11 +265,15 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       : Promise.resolve(SEM_SINAIS),
   ]);
   const turno = filtros.turno;
+  // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
+  const ja = filtros.ja;
   const filtrados =
-    turno && requisitos
+    (turno || ja) && requisitos
       ? encontrados.filter((a) => {
           const v = requisitos.get(a.id);
-          return a.tipo === "vaga" && v !== undefined && vagaNoTurno(v, turno);
+          return (
+            a.tipo === "vaga" && v !== undefined && (!turno || vagaNoTurno(v, turno)) && (!ja || Boolean(v.comeca_ja))
+          );
         })
       : encontrados;
   // o % de match de todas (nas relevantes, ele entra na ordem antes de cortar a lista)

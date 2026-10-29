@@ -10,6 +10,7 @@ import * as demo from "./demo";
 import { iaConfigurada } from "./ia/openai";
 import { raioDaBusca, type Filtros } from "./filtros";
 import { chavesDaRegiao, type Local } from "./regioes";
+import { faltaColuna } from "./servidor/comeca-ja";
 import { fotosDosAutores } from "./servidor/fotos-autores";
 import { criarClientePublico, criarClienteServidor } from "./supabase/servidor";
 import { agoraDaRequisicao } from "./tempo";
@@ -556,18 +557,21 @@ export type DetalhesDaVaga = CamposDaVaga & {
   ganhos_extras: unknown;
   /** quem curte já vê o WhatsApp de quem publicou (a etiqueta "Contato direto" no cartão) */
   contato_direto?: boolean;
+  /** precisa de alguém para começar logo (a etiqueta e o filtro "Começa já"; migração 20261212) */
+  comeca_ja?: boolean;
 };
+
+const COLUNAS_DOS_REQUISITOS =
+  "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em, preenchida_em, ganhos_extras, contato_direto";
 
 /** O que cada vaga pede (escolaridade, experiência, CNH, horário...), para o % de match e o cartão da busca. */
 export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[]> {
   if (MODO_DEMO || !ids.length) return [];
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase
-    .from("anuncios")
-    .select(
-      "id, titulo, descricao, escolaridade_minima, experiencia, cnh, cidade, bairro, jornada, horario_detalhe, horario, pede_curriculo, beneficios_lista, vagas, expira_em, preenchida_em, ganhos_extras, contato_direto",
-    )
-    .in("id", ids);
+  const ler = (colunas: string) => supabase.from("anuncios").select(colunas).in("id", ids).returns<DetalhesDaVaga[]>();
+  let { data, error } = await ler(`${COLUNAS_DOS_REQUISITOS}, comeca_ja`);
+  // sem a migração 20261212 (a coluna comeca_ja): lê sem ela (nenhuma vaga com "Começa já")
+  if (faltaColuna(error, "comeca_ja")) ({ data, error } = await ler(COLUNAS_DOS_REQUISITOS));
   if (error) falha("o que as vagas pedem", error);
   return data ?? [];
 }

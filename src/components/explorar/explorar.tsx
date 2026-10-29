@@ -222,11 +222,15 @@ export async function Explorar({
   // turno) e a linha de benefícios do cartão
   const requisitos = await requisitosDaLista(encontrados).catch(() => null);
   const turno = filtros.turno;
+  // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
+  const ja = filtros.ja;
   let anuncios =
-    turno && requisitos
+    (turno || ja) && requisitos
       ? encontrados.filter((a) => {
           const v = requisitos.get(a.id);
-          return a.tipo === "vaga" && v !== undefined && vagaNoTurno(v, turno);
+          return (
+            a.tipo === "vaga" && v !== undefined && (!turno || vagaNoTurno(v, turno)) && (!ja || Boolean(v.comeca_ja))
+          );
         })
       : encontrados;
   anuncios = anuncios.slice(0, LIMITE);
@@ -484,13 +488,15 @@ export async function Explorar({
           </>
         }
       >
-        {filtros.turno
-          ? "Nenhuma vaga neste horário por aqui. Tente outro horário ou uma distância maior."
-          : filtros.tipo === "servico"
-            ? "Ainda ninguém oferece isso perto de você. Publique o pedido grátis: quem faz e mora perto curte, e você escolhe."
-            : filtros.q || filtros.categoria
-              ? "Tente outra palavra, outra categoria ou uma distância maior."
-              : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
+        {filtros.ja
+          ? "Nenhuma vaga marcada como “Começa já” por aqui agora. Tire esse filtro para ver todas as vagas perto."
+          : filtros.turno
+            ? "Nenhuma vaga neste horário por aqui. Tente outro horário ou uma distância maior."
+            : filtros.tipo === "servico"
+              ? "Ainda ninguém oferece isso perto de você. Publique o pedido grátis: quem faz e mora perto curte, e você escolhe."
+              : filtros.q || filtros.categoria
+                ? "Tente outra palavra, outra categoria ou uma distância maior."
+                : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );
   // feed: a linha verde do match vem logo em cima dos cartões

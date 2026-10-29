@@ -76,6 +76,8 @@ export type ValoresAnuncio = {
   pede_curriculo?: boolean;
   /** quem curtir já recebe o contato (match na hora) */
   contato_direto?: boolean;
+  /** vaga: precisa de alguém para começar logo (a etiqueta e o filtro "Começa já") */
+  comeca_ja?: boolean;
   /** em quantos dias a vaga sai do ar sozinha; null: sem prazo (fica até ser encerrada) */
   prazo_dias?: number | null;
   /** vaga de agência: a empresa que contrata (vazio quando é confidencial) */
@@ -985,6 +987,26 @@ export function FormAnuncio({
           )}
           {erros.prazo_dias && <MensagemErro>{erros.prazo_dias}</MensagemErro>}
         </fieldset>
+      )}
+
+      {vaga && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4">
+          {/* o servidor só mexe no "Começa já" quando o formulário tem a caixa */}
+          <input type="hidden" name="comeca_ja_enviado" value="1" />
+          <input
+            type="checkbox"
+            name="comeca_ja"
+            defaultChecked={inicial.comeca_ja ?? false}
+            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+          />
+          <span>
+            <span className="block text-label">Começa já: precisa de alguém para começar logo</span>
+            <span className="block text-body-sm text-ink-muted">
+              A vaga ganha a etiqueta “Começa já”, e quem pode começar na hora acha pelo filtro. Desmarque quando a
+              pressa passar.
+            </span>
+          </span>
+        </label>
       )}
 
       {vaga && (
