@@ -1,6 +1,7 @@
 import {
   Bus,
   CalendarClock,
+  Check,
   HandCoins,
   Heart,
   ListChecks,
@@ -64,8 +65,8 @@ const MOTIVOS: Item[] = [
   },
   {
     icone: HandCoins,
-    titulo: "Grátis, sem plano",
-    texto: `Publicar, ver candidatos e conversar não custam nada. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} vagas no ar.`,
+    titulo: "Grátis, sem limite de candidatos",
+    texto: `Publicar, ver todos os candidatos e conversar no WhatsApp não custam nada: sem plano e sem pagar por currículo. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} vagas no ar.`,
   },
 ];
 
@@ -96,6 +97,10 @@ const PERGUNTAS = [
   {
     p: "Quanto custa publicar uma vaga?",
     r: "Nada. Publicar, ver quem curtiu, dar match e conversar são grátis para empresas de qualquer tamanho, do MEI e do comércio do bairro à indústria.",
+  },
+  {
+    p: "Tem limite de candidatos?",
+    r: "Não. Todo mundo que curtir a vaga aparece para você, com o perfil e o currículo de quem tem, e o WhatsApp dos dois aparece quando der match. Ver candidato e conversar não são pagos, nem depois de um número de contatos.",
   },
   {
     p: "Preciso ter CNPJ?",
@@ -145,6 +150,17 @@ export default function Empresas() {
             Da loja do bairro à empresa média: publique a vaga de graça em uns dois minutos. Quem mora perto vê
             primeiro, com o tempo de ônibus até aí, e você escolhe com quem conversar.
           </p>
+          <ul className="mt-5 flex flex-wrap gap-2" aria-label="O que é grátis">
+            {["Sem plano", "Sem limite de candidatos", "WhatsApp sem pagar"].map((t) => (
+              <li
+                key={t}
+                className="inline-flex items-center gap-1.5 rounded-pill bg-surface-300 px-3 py-1.5 text-label"
+              >
+                <Check aria-hidden className="size-4 text-cerrado-text" />
+                {t}
+              </li>
+            ))}
+          </ul>
           <div className="mt-6 flex flex-wrap gap-3">
             <BotaoLink href="/publicar" variante="primario">
               Publicar vaga grátis
