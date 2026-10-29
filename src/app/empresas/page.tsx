@@ -9,6 +9,7 @@ import {
   MapPin,
   Store,
   UserSearch,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
@@ -67,6 +68,46 @@ const MOTIVOS: Item[] = [
     icone: HandCoins,
     titulo: "Grátis, sem limite de candidatos",
     texto: `Publicar, ver todos os candidatos e conversar no WhatsApp não custam nada: sem plano e sem pagar por currículo. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} vagas no ar.`,
+  },
+];
+
+// O que os maiores sites de vaga cobram (ou limitam no plano grátis) e no Publike é grátis. Levantamento de
+// outubro de 2026 (claude/analise-competitiva.md no projeto). Sem nome de concorrente: o que eles cobram muda.
+const PAGO_POR_AI: { o: string; la: string; aqui: string }[] = [
+  {
+    o: "Ver o contato de todos os candidatos",
+    la: "No plano grátis, só de alguns",
+    aqui: "Todos, sem limite",
+  },
+  {
+    o: "Falar com o candidato no WhatsApp",
+    la: "Complemento pago",
+    aqui: "Grátis, quando dá match",
+  },
+  {
+    o: "Achar quem mora perto (bairro e distância)",
+    la: "Só nos planos pagos",
+    aqui: "Grátis, com o tempo de ônibus",
+  },
+  {
+    o: "Perguntas para o candidato e testes",
+    la: "Só nos planos pagos",
+    aqui: "Grátis",
+  },
+  {
+    o: "Selo de contratação urgente",
+    la: "Pago",
+    aqui: "Grátis: “Começa já”",
+  },
+  {
+    o: "Mais de uma vaga no ar",
+    la: "Uma vaga grátis por vez",
+    aqui: `Até ${LIMITES_CONTA.comum.noAr} vagas no ar`,
+  },
+  {
+    o: "Aparecer para quem procura",
+    la: "Destaque pago por clique",
+    aqui: "Quem mora perto vê primeiro, sem pagar",
   },
 ];
 
@@ -184,6 +225,58 @@ export default function Empresas() {
       </section>
 
       <Container className="py-10">
+        <section aria-labelledby="gratis-aqui" className="mb-12">
+          <h2 id="gratis-aqui" className="text-h2">
+            O que costuma ser pago por aí, aqui é grátis
+          </h2>
+          <p className="mt-2 max-w-2xl text-body text-ink-muted">
+            Nos maiores sites de vaga, o plano grátis limita ou cobra à parte o que mais ajuda a contratar. No Publike,
+            nada disso é pago.
+          </p>
+          <div className="mt-5 overflow-hidden rounded-lg border border-line">
+            <table className="w-full border-collapse text-left">
+              <caption className="sr-only">O que outros sites de vaga cobram e como é no Publike</caption>
+              <thead className="hidden bg-surface-300 text-label sm:table-header-group">
+                <tr>
+                  <th scope="col" className="px-4 py-3">
+                    Para contratar
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-ink-muted">
+                    Em outros sites
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    No Publike
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {PAGO_POR_AI.map(({ o, la, aqui }) => (
+                  <tr
+                    key={o}
+                    className="grid grid-cols-1 gap-1 border-t border-line bg-surface-200 px-4 py-3 first:border-t-0 sm:table-row sm:p-0"
+                  >
+                    <th scope="row" className="text-label sm:px-4 sm:py-3">
+                      {o}
+                    </th>
+                    <td className="flex items-center gap-1.5 text-body-sm text-ink-muted sm:table-cell sm:px-4 sm:py-3">
+                      <X aria-hidden className="size-4 shrink-0 text-danger sm:hidden" />
+                      <span className="sm:hidden">Em outros sites:</span>
+                      {la}
+                    </td>
+                    <td className="flex items-center gap-1.5 text-body-sm font-semibold text-cerrado-text sm:table-cell sm:px-4 sm:py-3">
+                      <Check aria-hidden className="size-4 shrink-0 sm:mr-1.5 sm:inline" />
+                      {aqui}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-caption text-ink-muted">
+            Levantamento do Publike nos planos grátis dos maiores sites de vaga do Brasil, em outubro de 2026.
+          </p>
+        </section>
+
         <section aria-labelledby="por-que">
           <h2 id="por-que" className="text-h2">
             Por que publicar no Publike
