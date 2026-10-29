@@ -196,32 +196,45 @@ export async function ligarPartesDoCopiloto(
 
 export type RespostaLote = { ok: true; lidos: number; faltam: number; falhas: number } | { ok: false; erro: string };
 
-/** Lê o próximo lote (até 6 currículos, 3 de cada vez) e guarda cada leitura. */
-export async function lerLoteDoCopiloto(anuncioId: string, origem: OrigemCopiloto): Promise<RespostaLote> {
-  if (origem !== "talento" && origem !== "candidato") return { ok: false, erro: "Pedido inválido." };
+/**
+ * Lê o próximo lote (até 6 currículos, 3 de cada vez) e guarda cada leitura. Com "todos", quem se candidatou
+ * vem primeiro e depois os Talentos, de quem mais parece combinar para quem menos (a pré-nota).
+ */
+export async function lerLoteDoCopiloto(anuncioId: string, origem: OrigemCopiloto | "todos"): Promise<RespostaLote> {
+  if (origem !== "talento" && origem !== "candidato" && origem !== "todos") {
+    return { ok: false, erro: "Pedido inválido." };
+  }
   const v = await minhaVaga(anuncioId);
   if ("erro" in v) return { ok: false, erro: v.erro };
   const { anuncio, config } = v;
   if (!config.criterios.length) return { ok: false, erro: "Salve os critérios primeiro." };
-  if (origem === "talento" ? !config.busca : !config.triagem) return { ok: false, erro: "Esta parte está desligada." };
+  const ligadas: OrigemCopiloto[] = [
+    ...(config.triagem ? (["candidato"] as const) : []),
+    ...(config.busca ? (["talento"] as const) : []),
+  ];
+  const origens = origem === "todos" ? ligadas : ligadas.filter((o) => o === origem);
+  if (!origens.length) return { ok: false, erro: "Esta parte está desligada." };
   if (!iaConfigurada()) return { ok: false, erro: "A ajuda da IA não está disponível agora." };
 
   const agora = Date.now();
-  const [pessoas, avaliacoes] = await Promise.all([
-    pessoasDoCopiloto(anuncio, origem, config.criterios, agora),
+  const [listas, avaliacoes] = await Promise.all([
+    Promise.all(origens.map((o) => pessoasDoCopiloto(anuncio, o, config.criterios, agora))),
     avaliacoesDoCopiloto(anuncioId),
   ]);
-  const fila = pessoas.filter((p) => p.curriculo && !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p));
+  const fila = listas.flat().filter((p) => p.curriculo && !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p));
   if (!fila.length) return { ok: true, lidos: 0, faltam: 0, falhas: 0 };
+  // a reserva (e o registro) é por origem: o lote leva só a origem do primeiro da fila
+  const daVez = fila[0].origem;
+  const mesmaOrigem = fila.filter((p) => p.origem === daVez);
 
   const supabase = await criarClienteServidor();
   const { data: pode, error } = await supabase.rpc("copiloto_reservar", {
     p_anuncio: anuncioId,
-    p_origem: origem,
-    p_quantos: Math.min(LOTE_COPILOTO, fila.length),
+    p_origem: daVez,
+    p_quantos: Math.min(LOTE_COPILOTO, mesmaOrigem.length),
   });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para ler agora.") };
-  const lote = fila.slice(0, pode ?? 0);
+  const lote = mesmaOrigem.slice(0, pode ?? 0);
   const modelo = await modeloEscolhido();
   let lidos = 0;
   let falhas = 0;
@@ -241,7 +254,7 @@ export async function lerLoteDoCopiloto(anuncioId: string, origem: OrigemCopilot
           const { error: e } = await supabase.rpc("copiloto_guardar", {
             p_anuncio: anuncioId,
             p_perfil: p.perfil_id,
-            p_origem: origem,
+            p_origem: p.origem,
             p_versao: config.versao,
             p_curriculo_em: p.curriculo!.atualizado_em,
             p_resultado: leitura as unknown as Json,

@@ -1,9 +1,9 @@
-import { Bot, History, ListChecks, Sparkles, UserSearch } from "lucide-react";
+import { Bot, History, ListChecks, Sparkles, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { CartaoDoCopiloto } from "@/components/copiloto/cartao";
+import { CartaoDoCopiloto, LinhaDoRanking } from "@/components/copiloto/cartao";
 import { EditorDeCriterios } from "@/components/copiloto/criterios";
 import { PartesDoCopiloto } from "@/components/copiloto/partes";
 import { RodarCopiloto } from "@/components/copiloto/rodar";
@@ -22,6 +22,7 @@ import {
   leituraAtual,
   pessoasDoCopiloto,
   registroDoCopiloto,
+  type PessoaDoCopiloto,
 } from "@/lib/servidor/copiloto";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -31,6 +32,8 @@ export const metadata: Metadata = { title: "Copiloto da vaga" };
 export const maxDuration = 60;
 
 type Filtro = "todos" | "obrigatorios" | "conferir";
+/** os primeiros do ranking aparecem inteiros; do 4º em diante, uma linha cada (toque abre) */
+const DESTAQUES = 3;
 const FILTROS: { valor: Filtro; nome: string }[] = [
   { valor: "todos", nome: "Todos" },
   { valor: "obrigatorios", nome: "Atendem os obrigatórios" },
@@ -71,37 +74,60 @@ async function Conteudo({
   }
 
   const agora = await agoraDaRequisicao();
-  const abas: { valor: OrigemCopiloto; nome: string }[] = [
-    ...(config.busca ? [{ valor: "talento" as const, nome: "Talentos para convidar" }] : []),
-    ...(config.triagem ? [{ valor: "candidato" as const, nome: "Candidatos da vaga" }] : []),
+  // quem se candidatou e os Talentos num ranking só; "ver" filtra uma das origens
+  const origens: OrigemCopiloto[] = [
+    ...(config.triagem ? (["candidato"] as const) : []),
+    ...(config.busca ? (["talento"] as const) : []),
   ];
   const pedida = sp.ver === "candidatos" ? "candidato" : sp.ver === "talentos" ? "talento" : null;
-  const origem = abas.find((a) => a.valor === pedida)?.valor ?? abas[0]?.valor ?? null;
+  const vista: OrigemCopiloto | null = pedida && origens.includes(pedida) ? pedida : null;
   const filtro: Filtro = FILTROS.some((f) => f.valor === sp.filtro) ? (sp.filtro as Filtro) : "todos";
   const temCriterios = config.criterios.length > 0;
 
-  const [pessoas, avaliacoes, registro] = await Promise.all([
-    origem && temCriterios ? pessoasDoCopiloto(anuncio, origem, config.criterios, agora) : Promise.resolve([]),
+  const [listas, avaliacoes, registro] = await Promise.all([
+    temCriterios
+      ? Promise.all(origens.map((o) => pessoasDoCopiloto(anuncio, o, config.criterios, agora)))
+      : Promise.resolve([] as PessoaDoCopiloto[][]),
     avaliacoesDoCopiloto(id),
     registroDoCopiloto(id),
   ]);
+  const pessoas = listas.flat();
   const comCurriculo = pessoas.filter((p) => p.curriculo);
+  const candidatos = pessoas.filter((p) => p.origem === "candidato");
+  const talentos = comCurriculo.filter((p) => p.origem === "talento");
+  const faltam = comCurriculo.filter((p) => !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p)).length;
   const lidas = comCurriculo
     .flatMap((p) => {
       const a = avaliacoes.get(p.perfil_id);
       if (!a) return [];
       const n = contarLeitura(config.criterios, a.leitura);
-      return [{ p, a, n, antiga: !leituraAtual(a, config.versao, p), preNota: p.preNota }];
+      return [{ p, a, n, antiga: !leituraAtual(a, config.versao, p) }];
     })
-    .sort((x, y) => compararLeituras({ ...x.n, preNota: x.preNota }, { ...y.n, preNota: y.preNota }));
-  const faltam = comCurriculo.filter((p) => !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p)).length;
-  const atendem = lidas.filter((l) => l.n.obrigatoriosOk).length;
-  const mostradas = lidas.filter((l) =>
+    .sort((x, y) => compararLeituras({ ...x.n, preNota: x.p.preNota }, { ...y.n, preNota: y.p.preNota }));
+  // a posição vale dentro da origem escolhida; o filtro de situação só esconde (a posição fica)
+  const ranking = lidas.filter((l) => !vista || l.p.origem === vista).map((l, i) => ({ ...l, posicao: i + 1 }));
+  const atendem = ranking.filter((l) => l.n.obrigatoriosOk).length;
+  const mostradas = ranking.filter((l) =>
     filtro === "obrigatorios" ? l.n.obrigatoriosOk : filtro === "conferir" ? l.n.conferir > 0 : true,
   );
-  const semCurriculo = origem === "candidato" ? pessoas.length - comCurriculo.length : 0;
-  const href = (o: OrigemCopiloto, f: Filtro = "todos") =>
-    `/painel/anuncio/${id}/copiloto?ver=${o === "talento" ? "talentos" : "candidatos"}${f === "todos" ? "" : `&filtro=${f}`}`;
+  const destaques = mostradas.slice(0, DESTAQUES);
+  const resto = mostradas.slice(DESTAQUES);
+  const semCurriculo = candidatos.length - candidatos.filter((p) => p.curriculo).length;
+  const href = (v: OrigemCopiloto | null, f: Filtro) => {
+    const q = new URLSearchParams();
+    if (v) q.set("ver", v === "talento" ? "talentos" : "candidatos");
+    if (f !== "todos") q.set("filtro", f);
+    const t = q.toString();
+    return `/painel/anuncio/${id}/copiloto${t ? `?${t}` : ""}`;
+  };
+  const chip = (ativo: boolean) =>
+    `inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
+      ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 hover:bg-surface-300"
+    }`;
+  const quantos = [
+    config.triagem && `${candidatos.length} ${candidatos.length === 1 ? "candidato" : "candidatos"}`,
+    config.busca && `${talentos.length} ${talentos.length === 1 ? "pessoa" : "pessoas"} em Talentos`,
+  ].filter(Boolean);
 
   return (
     <div className="flex flex-col gap-6">
@@ -132,32 +158,16 @@ async function Conteudo({
         <PartesDoCopiloto anuncioId={id} triagem={config.triagem} busca={config.busca} />
       </section>
 
-      {!origem ? (
+      {!origens.length ? (
         <Aviso tipo="info" titulo="As duas partes estão desligadas">
           Ligue a busca em Talentos ou a leitura dos candidatos para o copiloto trabalhar.
         </Aviso>
       ) : (
-        <section aria-labelledby="titulo-lista" className="flex flex-col gap-4">
-          <h3 id="titulo-lista" className="sr-only">
-            Quem o copiloto leu
+        <section aria-labelledby="titulo-ranking" className="flex flex-col gap-4">
+          <h3 id="titulo-ranking" className="flex items-center gap-2 text-h3">
+            <Trophy aria-hidden className="size-5 text-ink-muted" />
+            Ranking da vaga
           </h3>
-          {abas.length > 1 && (
-            <nav aria-label="O que ver" className="flex gap-1 border-b border-line">
-              {abas.map((a) => (
-                <Link
-                  key={a.valor}
-                  href={href(a.valor)}
-                  scroll={false}
-                  aria-current={a.valor === origem ? "page" : undefined}
-                  className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-label ${
-                    a.valor === origem ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  {a.nome}
-                </Link>
-              ))}
-            </nav>
-          )}
           {!temCriterios ? (
             <Aviso tipo="info" titulo="Salve os critérios para começar">
               Toque em “Sugerir com a IA” ou escreva os seus. Depois, o copiloto lê os currículos.
@@ -165,54 +175,78 @@ async function Conteudo({
           ) : (
             <>
               <div className="flex flex-col gap-3 rounded-lg bg-surface-300 p-4">
-                <p className="flex items-center gap-2 text-label">
-                  {origem === "talento" ? (
-                    <UserSearch aria-hidden className="size-5 text-ink-muted" />
-                  ) : (
-                    <Sparkles aria-hidden className="size-5 text-ink-muted" />
-                  )}
-                  {origem === "talento"
-                    ? `${comCurriculo.length} ${comCurriculo.length === 1 ? "pessoa" : "pessoas"} em Talentos para esta vaga`
-                    : `${pessoas.length} ${pessoas.length === 1 ? "candidato" : "candidatos"}`}
-                  {lidas.length > 0 && ` · ${lidas.length} lidos · ${atendem} atendem os obrigatórios`}
+                <p className="flex flex-wrap items-center gap-x-2 text-label">
+                  <Sparkles aria-hidden className="size-5 text-ink-muted" />
+                  {quantos.join(" e ")}
+                  {lidas.length > 0 && <span className="font-normal text-ink-muted">· {lidas.length} lidos</span>}
                 </p>
-                {origem === "talento" && (
-                  <p className="text-body-sm text-ink-muted">
-                    O copiloto lê primeiro quem mais parece combinar. Só aparece quem deixou o currículo visível para as
-                    empresas.
-                  </p>
-                )}
+                <p className="text-body-sm text-ink-muted">
+                  {config.triagem && config.busca
+                    ? "O copiloto lê primeiro quem se candidatou e depois os Talentos que mais parecem combinar."
+                    : config.busca
+                      ? "O copiloto lê primeiro os Talentos que mais parecem combinar."
+                      : "O copiloto lê o currículo de quem se candidatou."}
+                  {config.busca && " Em Talentos só aparece quem deixou o currículo visível para as empresas."}
+                </p>
                 {semCurriculo > 0 && (
                   <p className="text-body-sm text-ink-muted">
-                    {semCurriculo} sem currículo: veja as respostas deles no quadro.
+                    {semCurriculo} {semCurriculo === 1 ? "candidato sem currículo" : "candidatos sem currículo"}: veja
+                    as respostas no quadro.
                   </p>
                 )}
-                <RodarCopiloto anuncioId={id} origem={origem} faltam={faltam} lidos={lidas.length} />
+                <RodarCopiloto anuncioId={id} origem="todos" faltam={faltam} lidos={lidas.length} />
               </div>
 
               {lidas.length > 0 && (
-                <nav aria-label="Filtrar" className="flex flex-wrap gap-2">
-                  {FILTROS.map((f) => (
-                    <Link
-                      key={f.valor}
-                      href={href(origem, f.valor)}
-                      scroll={false}
-                      aria-current={f.valor === filtro ? "page" : undefined}
-                      className={`inline-flex min-h-10 items-center rounded-pill border px-3.5 text-label ${
-                        f.valor === filtro
-                          ? "border-ink bg-ink text-surface-100"
-                          : "border-line-strong bg-surface-200 hover:bg-surface-300"
-                      }`}
-                    >
-                      {f.nome}
-                    </Link>
-                  ))}
-                </nav>
+                <div className="flex flex-col gap-2">
+                  {origens.length > 1 && (
+                    <nav aria-label="Quem ver" className="flex flex-wrap gap-2">
+                      {[
+                        { v: null, nome: "Candidatos e Talentos" },
+                        { v: "candidato" as const, nome: "Candidatos" },
+                        { v: "talento" as const, nome: "Talentos" },
+                      ].map((o) => (
+                        <Link
+                          key={o.nome}
+                          href={href(o.v, filtro)}
+                          scroll={false}
+                          aria-current={o.v === vista ? "page" : undefined}
+                          className={chip(o.v === vista)}
+                        >
+                          {o.nome}
+                        </Link>
+                      ))}
+                    </nav>
+                  )}
+                  <nav aria-label="Filtrar" className="flex flex-wrap gap-2">
+                    {FILTROS.map((f) => (
+                      <Link
+                        key={f.valor}
+                        href={href(vista, f.valor)}
+                        scroll={false}
+                        aria-current={f.valor === filtro ? "page" : undefined}
+                        className={chip(f.valor === filtro)}
+                      >
+                        {f.nome}
+                      </Link>
+                    ))}
+                  </nav>
+                </div>
               )}
 
-              {mostradas.length > 0 ? (
-                <ul aria-label="Quem o copiloto leu" className="flex flex-col gap-3">
-                  {mostradas.map(({ p, a, n, antiga }) => (
+              {ranking.length > 0 && (
+                <p className="text-body-sm text-ink-muted">
+                  {atendem > 0
+                    ? `${atendem} de ${ranking.length} ${atendem === 1 ? "atende" : "atendem"} todos os obrigatórios. `
+                    : "Ninguém atende todos os obrigatórios ainda. "}
+                  Primeiro quem atende os obrigatórios, depois pela nota: o obrigatório vale o dobro e o que falta
+                  conferir vale a metade.
+                </p>
+              )}
+
+              {destaques.length > 0 && (
+                <ol aria-label="Os primeiros do ranking" className="flex flex-col gap-3">
+                  {destaques.map(({ p, a, n, antiga, posicao }) => (
                     <CartaoDoCopiloto
                       key={p.perfil_id}
                       anuncioId={id}
@@ -223,11 +257,33 @@ async function Conteudo({
                       numeros={n}
                       agora={agora}
                       vagaNoAr={anuncio.status === "ativo" && !anuncio.preenchida_em}
+                      posicao={posicao}
                     />
                   ))}
-                </ul>
-              ) : (
-                lidas.length > 0 && <p className="text-body-sm text-ink-muted">Ninguém neste filtro.</p>
+                </ol>
+              )}
+              {resto.length > 0 && (
+                <div className="rounded-lg border border-line bg-surface-200 px-4 sm:px-5">
+                  <ol aria-label="O resto do ranking">
+                    {resto.map(({ p, a, n, antiga, posicao }) => (
+                      <LinhaDoRanking
+                        key={p.perfil_id}
+                        anuncioId={id}
+                        pessoa={p}
+                        criterios={config.criterios}
+                        leitura={a.leitura}
+                        antiga={antiga}
+                        numeros={n}
+                        agora={agora}
+                        vagaNoAr={anuncio.status === "ativo" && !anuncio.preenchida_em}
+                        posicao={posicao}
+                      />
+                    ))}
+                  </ol>
+                </div>
+              )}
+              {lidas.length > 0 && !mostradas.length && (
+                <p className="text-body-sm text-ink-muted">Ninguém neste filtro.</p>
               )}
             </>
           )}

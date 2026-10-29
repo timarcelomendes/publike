@@ -8,7 +8,10 @@ import { lerLoteDoCopiloto } from "@/lib/acoes/copiloto";
 import { POR_CLIQUE_COPILOTO, type OrigemCopiloto } from "@/lib/copiloto";
 import { Botao } from "../ui/botao";
 
-/** "Buscar profissionais" / "Ler candidatos": lê em lotes até 24 currículos por clique, com o progresso. */
+/**
+ * "Ler os currículos": lê em lotes até 24 currículos por clique, com o progresso. Com "todos", quem se
+ * candidatou vem primeiro e depois os Talentos.
+ */
 export function RodarCopiloto({
   anuncioId,
   origem,
@@ -16,7 +19,7 @@ export function RodarCopiloto({
   lidos,
 }: {
   anuncioId: string;
-  origem: OrigemCopiloto;
+  origem: OrigemCopiloto | "todos";
   /** quantos ainda não têm leitura com os critérios de agora */
   faltam: number;
   lidos: number;
@@ -57,7 +60,8 @@ export function RodarCopiloto({
     router.refresh();
   }
 
-  const nome = origem === "talento" ? "Buscar profissionais" : "Ler candidatos";
+  const nome =
+    origem === "talento" ? "Buscar profissionais" : origem === "candidato" ? "Ler candidatos" : "Ler os currículos";
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">

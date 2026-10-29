@@ -128,16 +128,20 @@ const COMUNS = new Set(
   ),
 );
 
-/** Sem IA: a nota de aderência da vaga e as palavras dos critérios achadas no currículo (até 100). */
+/**
+ * Sem IA: a nota de aderência da vaga e as palavras dos critérios achadas no currículo (até 100). As siglas de
+ * 3 letras (SQL, UML, API) também contam: nas vagas de tecnologia, são boa parte do que a vaga pede.
+ */
 export function preNota(criterios: CriterioCopiloto[], texto: string, aderencia: number | null) {
   const cv = ` ${normalizar(texto)} `;
   const palavras = [
     ...new Set(
-      criterios.flatMap((c) =>
-        normalizar(c.texto)
+      criterios.flatMap((c) => [
+        ...normalizar(c.texto)
           .split(" ")
           .filter((p) => p.length >= 4 && !COMUNS.has(p)),
-      ),
+        ...[...c.texto.matchAll(/(?<![\p{L}\d])([A-Z]{3})s?(?![\p{L}\d])/gu)].map((m) => m[1].toLowerCase()),
+      ]),
     ),
   ];
   const achadas = palavras.filter((p) => cv.includes(` ${p}`)).length;

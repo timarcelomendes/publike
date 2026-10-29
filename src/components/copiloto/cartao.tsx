@@ -1,6 +1,6 @@
 import { Check, ChevronDown, CircleHelp, ExternalLink, MessageCircleQuestion, X } from "lucide-react";
 import Link from "next/link";
-import type { CriterioCopiloto, LeituraCopiloto, ResultadoCriterio } from "@/lib/copiloto";
+import type { CriterioCopiloto, LeituraCopiloto, NumerosDaLeitura, ResultadoCriterio } from "@/lib/copiloto";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
 import type { PessoaDoCopiloto } from "@/lib/servidor/copiloto";
 import { CurriculoResumo } from "../curriculo-resumo";
@@ -13,27 +13,74 @@ const RESULTADOS: Record<ResultadoCriterio, { nome: string; icone: typeof Check;
   sem_info: { nome: "Conferir", icone: CircleHelp, cor: "text-terra-text" },
 };
 
-/** Uma pessoa lida pelo copiloto: cada critério com o trecho do currículo que prova, e o que perguntar. */
-export function CartaoDoCopiloto({
-  anuncioId,
-  pessoa,
-  criterios,
-  leitura,
-  antiga,
-  numeros,
-  agora,
-  vagaNoAr,
-}: {
+type Props = {
   anuncioId: string;
   pessoa: PessoaDoCopiloto;
   criterios: CriterioCopiloto[];
   leitura: LeituraCopiloto;
   /** os critérios ou o currículo mudaram depois da leitura */
   antiga: boolean;
-  numeros: { atende: number; obrigatorios: number; obrigatoriosOk: boolean };
+  numeros: NumerosDaLeitura;
   agora: number;
   vagaNoAr: boolean;
-}) {
+  /** a posição no ranking (1, 2, 3…) */
+  posicao: number;
+};
+
+/** Se candidatou (curtiu a vaga) ou está em Talentos (dá para convidar). */
+function SeloDaOrigem({ origem }: { origem: PessoaDoCopiloto["origem"] }) {
+  return origem === "candidato" ? (
+    <Selo variante="like">Se candidatou</Selo>
+  ) : (
+    <Selo variante="contorno">Em Talentos</Selo>
+  );
+}
+
+/** O que o ranking diz dos obrigatórios. */
+function SeloDosObrigatorios({ n, total }: { n: NumerosDaLeitura; total: number }) {
+  if (n.obrigatoriosOk) {
+    return (
+      <Selo variante="match">
+        Atende {n.obrigatorios === 1 ? "o obrigatório" : `os ${n.obrigatorios} obrigatórios`}
+      </Selo>
+    );
+  }
+  if (n.grupo === 2) return <Selo variante="contorno">Falta obrigatório</Selo>;
+  if (n.grupo === 1) return <Selo variante="aviso">Conferir obrigatório</Selo>;
+  return (
+    <Selo variante="contorno">
+      Atende {n.atende} de {total}
+    </Selo>
+  );
+}
+
+/** "Atende 4 de 6 · falta: Scrum ou Kanban": o porquê da posição, numa linha. */
+function porqueDaPosicao(n: NumerosDaLeitura, total: number) {
+  const partes = [`Atende ${n.atende} de ${total}`];
+  if (n.faltam.length) partes.push(`não atende: ${n.faltam.join("; ")}`);
+  else if (n.aConferir.length) partes.push(`conferir: ${n.aConferir.join("; ")}`);
+  return partes.join(" · ");
+}
+
+function Nota({ valor, grande = false }: { valor: number; grande?: boolean }) {
+  return (
+    <span className="flex shrink-0 flex-col items-end leading-none" title="A nota do copiloto (0 a 100)">
+      <span className={`font-display tabular-nums ${grande ? "text-h2" : "text-h3"}`}>{valor}</span>
+      <span className="mt-1 text-caption font-normal text-ink-muted">nota</span>
+    </span>
+  );
+}
+
+/** Os critérios com o trecho que prova, o que perguntar, a ação e o currículo. */
+function Detalhes({
+  anuncioId,
+  pessoa,
+  criterios,
+  leitura,
+  antiga,
+  agora,
+  vagaNoAr,
+}: Omit<Props, "numeros" | "posicao">) {
   const de = new Map(leitura.criterios.map((c) => [c.id, c]));
   const cv = pessoa.curriculo;
   const acao =
@@ -51,32 +98,7 @@ export function CartaoDoCopiloto({
       </Link>
     );
   return (
-    <li className="rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5">
-      <div className="flex gap-3">
-        <Avatar nome={pessoa.nome} foto={pessoa.foto} tamanho={48} />
-        <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-2">
-            <span className="text-label">{pessoa.nome}</span>
-            {cv?.titulo && <span className="text-body-sm text-ink-muted">· {cv.titulo}</span>}
-            {numeros.obrigatoriosOk ? (
-              <Selo variante="match">
-                Atende {numeros.obrigatorios === 1 ? "o obrigatório" : `os ${numeros.obrigatorios} obrigatórios`}
-              </Selo>
-            ) : (
-              <Selo variante="contorno">
-                Atende {numeros.atende} de {criterios.length}
-              </Selo>
-            )}
-          </p>
-          <p className="text-body-sm text-ink-muted">
-            {formatarLugar(pessoa.bairro, pessoa.cidade)}
-            {cv && ` · currículo atualizado ${tempoRelativo(cv.atualizado_em, agora)}`}
-          </p>
-          {leitura.resumo && <p className="mt-1 text-body-sm">{leitura.resumo}</p>}
-        </div>
-        {acao && <div className="hidden shrink-0 sm:block">{acao}</div>}
-      </div>
-
+    <>
       {antiga && (
         <p className="mt-3 text-body-sm text-terra-text">Os critérios ou o currículo mudaram: leia de novo.</p>
       )}
@@ -119,13 +141,13 @@ export function CartaoDoCopiloto({
         </div>
       )}
 
-      {acao && <div className="mt-3 sm:hidden">{acao}</div>}
+      {acao && <div className="mt-3">{acao}</div>}
 
       {cv && (
-        <details className="group mt-3 border-t border-line pt-2">
+        <details className="group/cv mt-3 border-t border-line pt-2">
           <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-label text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
             Ver currículo
-            <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+            <ChevronDown aria-hidden className="size-4 transition-transform group-open/cv:rotate-180" />
           </summary>
           <div className="mt-2">
             <CurriculoResumo
@@ -136,6 +158,83 @@ export function CartaoDoCopiloto({
           </div>
         </details>
       )}
+    </>
+  );
+}
+
+/** Os primeiros do ranking: o cartão inteiro, com a posição, a nota e cada critério com o trecho que prova. */
+export function CartaoDoCopiloto(props: Props) {
+  const { pessoa, criterios, leitura, numeros, agora, posicao } = props;
+  const cv = pessoa.curriculo;
+  return (
+    <li className="rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5">
+      <div className="flex gap-3">
+        <span aria-label={`${posicao}º lugar`} className="w-8 shrink-0 pt-2 font-display text-h3 tabular-nums">
+          {posicao}º
+        </span>
+        <Avatar nome={pessoa.nome} foto={pessoa.foto} tamanho={48} />
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-label">{pessoa.nome}</span>
+            {cv?.titulo && <span className="text-body-sm text-ink-muted">{cv.titulo}</span>}
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-1.5">
+            <SeloDaOrigem origem={pessoa.origem} />
+            <SeloDosObrigatorios n={numeros} total={criterios.length} />
+          </p>
+          <p className="mt-1 text-body-sm text-ink-muted">
+            {formatarLugar(pessoa.bairro, pessoa.cidade)}
+            {cv && ` · currículo atualizado ${tempoRelativo(cv.atualizado_em, agora)}`}
+          </p>
+          {leitura.resumo && <p className="mt-1 text-body-sm">{leitura.resumo}</p>}
+          {!numeros.obrigatoriosOk && (numeros.faltam.length > 0 || numeros.aConferir.length > 0) && (
+            <p className="mt-1 text-body-sm text-ink-muted">{porqueDaPosicao(numeros, criterios.length)}</p>
+          )}
+        </div>
+        <Nota valor={numeros.nota} grande />
+      </div>
+      <Detalhes {...props} />
+    </li>
+  );
+}
+
+/** Do 4º em diante: uma linha com a posição, a nota e o porquê; tocar abre o mesmo que o cartão. */
+export function LinhaDoRanking(props: Props) {
+  const { pessoa, criterios, numeros, posicao } = props;
+  const cv = pessoa.curriculo;
+  return (
+    <li className="border-t border-line first:border-t-0">
+      <details className="group">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span aria-label={`${posicao}º lugar`} className="w-8 shrink-0 text-label tabular-nums text-ink-muted">
+            {posicao}º
+          </span>
+          <Avatar nome={pessoa.nome} foto={pessoa.foto} tamanho={32} />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-label">{pessoa.nome}</span>
+              {cv?.titulo && <span className="truncate text-body-sm text-ink-muted">{cv.titulo}</span>}
+              {pessoa.origem === "candidato" && <SeloDaOrigem origem="candidato" />}
+            </span>
+            <span className="line-clamp-2 text-body-sm text-ink-muted">
+              {porqueDaPosicao(numeros, criterios.length)}
+            </span>
+          </span>
+          <Nota valor={numeros.nota} />
+          <ChevronDown
+            aria-hidden
+            className="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <div className="pb-4 pl-11">
+          <p className="flex flex-wrap items-center gap-1.5">
+            <SeloDaOrigem origem={pessoa.origem} />
+            <SeloDosObrigatorios n={numeros} total={criterios.length} />
+          </p>
+          {props.leitura.resumo && <p className="mt-2 text-body-sm">{props.leitura.resumo}</p>}
+          <Detalhes {...props} />
+        </div>
+      </details>
     </li>
   );
 }

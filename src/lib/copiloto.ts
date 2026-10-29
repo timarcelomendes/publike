@@ -84,7 +84,13 @@ export function leituraDoBanco(valor: unknown): LeituraCopiloto {
   };
 }
 
-/** Os números da leitura para os critérios de agora (o que atende e se atende todos os obrigatórios). */
+/**
+ * O grupo no ranking: 0 atende todos os obrigatórios (ou a vaga não tem obrigatório), 1 falta conferir um
+ * obrigatório (a IA não achou no currículo), 2 não atende um obrigatório.
+ */
+export type GrupoDoRanking = 0 | 1 | 2;
+
+/** Os números da leitura para os critérios de agora: o que atende, a nota do ranking e os obrigatórios que faltam. */
 export function contarLeitura(criterios: CriterioCopiloto[], leitura: LeituraCopiloto) {
   const de = new Map(leitura.criterios.map((c) => [c.id, c.resultado]));
   const atende = criterios.filter((c) => de.get(c.id) === "atende").length;
@@ -92,19 +98,44 @@ export function contarLeitura(criterios: CriterioCopiloto[], leitura: LeituraCop
   const conferir = criterios.length - atende - naoAtende;
   const obrigatorios = criterios.filter((c) => c.obrigatorio);
   const obrigatoriosOk = obrigatorios.length > 0 && obrigatorios.every((c) => de.get(c.id) === "atende");
-  return { atende, naoAtende, conferir, obrigatorios: obrigatorios.length, obrigatoriosOk };
+  // os obrigatórios que não atende e os que falta conferir, para o ranking dizer o porquê
+  const faltam = obrigatorios.filter((c) => de.get(c.id) === "nao_atende").map((c) => c.texto);
+  const aConferir = obrigatorios.filter((c) => (de.get(c.id) ?? "sem_info") === "sem_info").map((c) => c.texto);
+  const grupo: GrupoDoRanking = faltam.length ? 2 : aConferir.length ? 1 : 0;
+  // a nota (0 a 100): o obrigatório vale o dobro; "conferir" conta a metade
+  const peso = (c: CriterioCopiloto) => (c.obrigatorio ? 2 : 1);
+  const valor = (c: CriterioCopiloto) => {
+    const r = de.get(c.id) ?? "sem_info";
+    return r === "atende" ? 1 : r === "nao_atende" ? 0 : 0.5;
+  };
+  const total = criterios.reduce((s, c) => s + peso(c), 0);
+  const nota = total ? Math.round((100 * criterios.reduce((s, c) => s + peso(c) * valor(c), 0)) / total) : 0;
+  return {
+    atende,
+    naoAtende,
+    conferir,
+    obrigatorios: obrigatorios.length,
+    obrigatoriosOk,
+    faltam,
+    aConferir,
+    grupo,
+    nota,
+  };
 }
 
-/** Quem atende os obrigatórios primeiro, depois quem atende mais e quem tem menos "não atende". */
+export type NumerosDaLeitura = ReturnType<typeof contarLeitura>;
+
+/**
+ * A ordem do ranking: primeiro quem atende todos os obrigatórios, depois quem só tem obrigatório para conferir,
+ * por último quem não atende um obrigatório; dentro de cada grupo, a nota, quem atende mais, quem tem menos
+ * "não atende" e, no empate, a pré-nota sem IA.
+ */
 export function compararLeituras(
-  a: { atende: number; naoAtende: number; obrigatoriosOk: boolean; preNota: number },
-  b: { atende: number; naoAtende: number; obrigatoriosOk: boolean; preNota: number },
+  a: Pick<NumerosDaLeitura, "grupo" | "nota" | "atende" | "naoAtende"> & { preNota: number },
+  b: Pick<NumerosDaLeitura, "grupo" | "nota" | "atende" | "naoAtende"> & { preNota: number },
 ) {
   return (
-    Number(b.obrigatoriosOk) - Number(a.obrigatoriosOk) ||
-    b.atende - a.atende ||
-    a.naoAtende - b.naoAtende ||
-    b.preNota - a.preNota
+    a.grupo - b.grupo || b.nota - a.nota || b.atende - a.atende || a.naoAtende - b.naoAtende || b.preNota - a.preNota
   );
 }
 
