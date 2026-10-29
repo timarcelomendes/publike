@@ -9,6 +9,7 @@
 
 import type { Beneficio, Categoria, Jornada } from "./constantes";
 import type { Regime, Unidade } from "./tipos";
+import { categoriaSugerida } from "./categoria-sugerida";
 
 export type ModeloAnuncio = {
   id: string;
@@ -163,29 +164,10 @@ export const MODELOS_ANUNCIO: ModeloAnuncio[] = [
   },
 ];
 
-// Sem categoria escolhida: a do título, pelas palavras do ofício (se nada bate, "Outros").
-const PALAVRAS: [Categoria, RegExp][] = [
-  ["alimentacao", /cozinh|chapeir|garç|garcon|pizza|padar|confeit|lanch|churras|bar(man|tender)|copeir|salgad/],
-  ["limpeza", /diarist|faxin|limpez|zelador|camareir|passadeir|lavadeir/],
-  ["construcao", /pedreir|servente|ajudante de obra|pintor|azulej|gesse|carpint|marceneir|obra|mestre de/],
-  ["eletrica-hidraulica", /eletricist|encanador|bombeiro hidr|hidr[aá]ulic/],
-  ["logistica", /entregad|motoboy|motorista|ajudante de carga|estoquist|almoxarif|conferent|carregad/],
-  ["comercio", /vendedor|atendente|caixa|repositor|balconist|promotor|frentista|loja/],
-  ["cuidados", /bab[aá]|cuidador|acompanhante|enfermag|t[eé]cnico de enferm/],
-  ["beleza", /cabeleir|manicure|pedicure|barbeir|esteticist|maquiad|depila/],
-  ["administrativo", /recepcion|administrativ|secret[aá]ri|auxiliar de escrit|telemarket|atendimento ao cliente/],
-  ["seguranca", /porteir|vigia|seguran[cç]a|vigilant/],
-  ["jardinagem", /jardin|piscin|ro[cç]ad/],
-  ["auto", /mec[aâ]nic|lavador|funilei|borrach|lava.?jato/],
-  ["educacao", /professor|aula|monitor|tutor/],
-  ["tecnologia", /programad|desenvolved|suporte t[eé]cnico|t[eé]cnico de inform|designer/],
-  ["industria", /operador de m[aá]quina|produ[cç][aã]o|costureir|soldador|torneir/],
-  ["eventos", /evento|festa|buffet|recrea/],
-];
-
+// Sem categoria escolhida: a do título, pelas palavras do ofício (se nada bate, "Outros"). As palavras ficam em
+// categoria-sugerida.ts, as mesmas da sugestão do formulário e do admin.
 export function categoriaPeloTitulo(titulo: string): Categoria {
-  const t = titulo.toLowerCase();
-  return PALAVRAS.find(([, r]) => r.test(t))?.[0] ?? "outros";
+  return categoriaSugerida(titulo) ?? "outros";
 }
 
 /** A descrição de quem deixou em branco, com o que a pessoa preencheu. */

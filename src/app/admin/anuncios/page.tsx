@@ -2,11 +2,12 @@ import { Megaphone } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ListaEmOutros } from "@/components/admin/em-outros";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Busca, Filtros, linkCom, Paginacao } from "@/components/admin/ui";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { Aviso, Vazio } from "@/components/ui/basicos";
-import { listarAnuncios, POR_PAGINA } from "@/lib/admin/dados";
+import { anunciosEmOutros, listarAnuncios, POR_PAGINA } from "@/lib/admin/dados";
 import { formatarNumero, primeiro } from "@/lib/formato";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -43,6 +44,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anun
   const acesso = await acessoDaEquipe();
   if (!acesso) notFound();
   const sp = await searchParams;
+  // "Em Outros" (só o admin): os anúncios sem área, com a sugestão pelo título e o botão de mudar
+  if (acesso.admin && primeiro(sp.area) === "outros") {
+    const emOutros = await anunciosEmOutros(acesso.cliente);
+    return (
+      <div className="flex flex-col gap-4">
+        <FiltroArea atual="outros" />
+        <p className="text-body-sm text-ink-muted" aria-live="polite">
+          {emOutros.length === 1 ? "1 anúncio" : `${formatarNumero(emOutros.length)} anúncios`} em Outros. Na área
+          certa, a vaga aparece no filtro, no aviso de vaga nova e na página da função.
+        </p>
+        {emOutros.length === 0 ? (
+          <Vazio icone={Megaphone} titulo="Nenhum anúncio em Outros">
+            Todos os anúncios no ar já estão numa área.
+          </Vazio>
+        ) : (
+          <ListaEmOutros anuncios={emOutros} />
+        )}
+      </div>
+    );
+  }
   const q = (primeiro(sp.q) ?? "").trim().slice(0, 80);
   const pedidoStatus = primeiro(sp.status) ?? "todos";
   const status = STATUS.some((s) => s.valor === pedidoStatus) ? pedidoStatus : "todos";
@@ -77,6 +98,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anun
         atual={tipo}
         link={(v) => linkCom("/admin/anuncios", atuais, { tipo: v === "todos" ? null : v, pagina: null })}
       />
+      {acesso.admin && <FiltroArea atual="todas" />}
       <p className="text-body-sm text-ink-muted" aria-live="polite">
         {total === 1 ? "1 anúncio" : `${formatarNumero(total)} anúncios`}
         {q && ` para “${q}”`}
@@ -99,5 +121,19 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anun
         link={(p) => linkCom("/admin/anuncios", atuais, { pagina: p > 1 ? String(p) : null })}
       />
     </div>
+  );
+}
+
+function FiltroArea({ atual }: { atual: "todas" | "outros" }) {
+  return (
+    <Filtros
+      rotulo="Área do anúncio"
+      opcoes={[
+        { valor: "todas", nome: "Todas as áreas" },
+        { valor: "outros", nome: "Em Outros" },
+      ]}
+      atual={atual}
+      link={(v) => (v === "outros" ? "/admin/anuncios?area=outros" : "/admin/anuncios")}
+    />
   );
 }

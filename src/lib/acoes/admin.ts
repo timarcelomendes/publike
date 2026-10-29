@@ -17,6 +17,7 @@ import {
   revisarAvaliacoesPendentes,
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
+import { SLUGS_CATEGORIAS } from "@/lib/constantes";
 import { ehStatusSugestao } from "@/lib/sugestoes";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -219,6 +220,19 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
       ? "Pronto: essa conta já vê o Copiloto nas vagas."
       : "Essa conta não vê mais o Copiloto (os critérios e as leituras ficam guardados).",
   };
+}
+
+/** Põe o anúncio em outra área (Admin › Anúncios › Em Outros). Entra no registro da equipe como "editar_anuncio". */
+export async function mudarCategoria(anuncioId: string, categoria: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(anuncioId) || !(SLUGS_CATEGORIAS as readonly string[]).includes(categoria)) {
+    return { ok: false, erro: "Pedido inválido." };
+  }
+  const { error } = await c.from("anuncios").update({ categoria }).eq("id", anuncioId);
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  // sem refresh: a linha fica com o "Agora em…" até recarregar (recarregada, a vaga sai da lista)
+  return { ok: true };
 }
 
 /** Publica (ou volta para rascunho) um teste da Publike, depois de revisar (migração 20261204120000). */

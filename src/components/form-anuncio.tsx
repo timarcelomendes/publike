@@ -17,9 +17,11 @@ import { guardarRascunho } from "@/lib/rascunho-anuncio";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
+import { categoriaSugerida } from "@/lib/categoria-sugerida";
 import { temLugar, type ClienteParaVaga } from "@/lib/clientes";
 import {
   BENEFICIOS,
+  categoria as nomeCategoria,
   CATEGORIAS,
   CIDADES,
   CNHS,
@@ -240,6 +242,9 @@ export function FormAnuncio({
   const [detalhes, setDetalhes] = useState(editando);
   const [unidade, setUnidade] = useState(inicial.pagamento_unidade ?? (inicial.tipo === "vaga" ? "mes" : "servico"));
   const [descricao, setDescricao] = useState(inicial.descricao);
+  // o título e a categoria, para sugerir a área quando fica em "Outros" (categoria-sugerida.ts)
+  const [tituloAtual, setTituloAtual] = useState(inicial.titulo);
+  const [categoriaAtual, setCategoriaAtual] = useState(inicial.categoria);
   const [cidade, setCidade] = useState(inicial.cidade);
   // o prazo da vaga: uma das opções, outro número de dias ou sem prazo
   const prazoInicial = inicial.prazo_dias === undefined ? 30 : inicial.prazo_dias;
@@ -362,8 +367,12 @@ export function FormAnuncio({
   function aplicarSugestao(titulo: string, novaDescricao: string) {
     const campoTitulo = formulario.current?.elements.namedItem("titulo");
     if (campoTitulo instanceof HTMLInputElement) campoTitulo.value = titulo;
+    setTituloAtual(titulo);
     setDescricao(novaDescricao);
   }
+
+  // ficou em "Outros" (escolhido, não em branco: em branco o título já decide) e o título diz a área
+  const sugerida = categoriaAtual === "outros" ? categoriaSugerida(tituloAtual, descricao) : null;
 
   // a cidade e o bairro (dentro do CEP e do mapa; na vaga confidencial, sozinhos)
   const camposDoLugar = (
@@ -470,6 +479,7 @@ export function FormAnuncio({
           <input
             {...ligarCampo("titulo", erros.titulo, true)}
             defaultValue={inicial.titulo}
+            onChange={(e) => setTituloAtual(e.target.value)}
             maxLength={90}
             required
             placeholder={vaga ? "Ex.: Auxiliar de cozinha para o turno da noite" : "Ex.: Pedreiro: reboco e contrapiso"}
@@ -663,7 +673,8 @@ export function FormAnuncio({
           <Campo rotulo="Categoria" nome="categoria" opcional erro={erros.categoria}>
             <Seletor
               {...ligarCampo("categoria", erros.categoria)}
-              defaultValue={inicial.categoria}
+              value={categoriaAtual}
+              onChange={(e) => setCategoriaAtual(e.target.value)}
               className={classesEntrada}
             >
               <option value="">Escolher pelo título</option>
@@ -673,6 +684,18 @@ export function FormAnuncio({
                 </option>
               ))}
             </Seletor>
+            {sugerida && (
+              <p role="status" className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm">
+                <span>Parece {nomeCategoria(sugerida).nome}.</span>
+                <button
+                  type="button"
+                  onClick={() => setCategoriaAtual(sugerida)}
+                  className="min-h-9 text-label text-terra-text underline underline-offset-2"
+                >
+                  Usar {nomeCategoria(sugerida).nome}
+                </button>
+              </p>
+            )}
           </Campo>
 
           <Campo

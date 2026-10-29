@@ -578,6 +578,19 @@ export async function listarAnuncios(
   return { itens: data ?? [], total: Number(data?.[0]?.total ?? 0) };
 }
 
+/** Os anúncios em "Outros" (no ar, em análise ou pausados), para o admin pôr na área certa. Os 200 mais novos. */
+export async function anunciosEmOutros(c: ClienteBanco) {
+  const { data, error } = await c
+    .from("anuncios")
+    .select("id, tipo, titulo, descricao, status, cidade, bairro, criado_em")
+    .eq("categoria", "outros")
+    .in("status", ["ativo", "em_analise", "pausado"])
+    .order("criado_em", { ascending: false })
+    .limit(200);
+  if (error) falha("os anúncios em Outros", error);
+  return data ?? [];
+}
+
 export async function fichaAnuncio(c: ClienteBanco, id: string) {
   const { data, error } = await c.rpc("admin_anuncio", { p_id: id });
   if (error) falha("o anúncio", error);
