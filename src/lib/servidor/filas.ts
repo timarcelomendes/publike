@@ -417,6 +417,24 @@ export async function liberarContatosParados(): Promise<{ liberadas: number; mot
   return { liberadas: Number(data ?? 0) };
 }
 
+/**
+ * Curtida sem resposta (migração 20261211120000): o lembrete para quem publicou em 24 h e em 72 h e, em 5 dias, o
+ * aviso com as vagas parecidas para quem curtiu. Das 8h às 20h; o banco não repete.
+ */
+export async function lembrarRespostas(): Promise<{ empresa: number; pessoa: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { empresa: 0, pessoa: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_lembrar_respostas", { p_chave: acesso.chave });
+  if (error) {
+    // banco sem a migração: nada a fazer
+    if (error.code === "PGRST202") return { empresa: 0, pessoa: 0 };
+    console.error("Publike: falha ao lembrar as curtidas sem resposta:", error.message);
+    return { empresa: 0, pessoa: 0, motivo: "Não foi possível lembrar as curtidas sem resposta." };
+  }
+  const r = (data ?? {}) as { empresa?: number; pessoa?: number };
+  return { empresa: Number(r.empresa ?? 0), pessoa: Number(r.pessoa ?? 0) };
+}
+
 /** As notícias de hoje num aviso só, no sino e no celular: a partir das 18h, uma vez por dia (migração 20261202120000). */
 export async function avisarNoticiasDoDia(): Promise<{ avisadas: number; motivo?: string }> {
   const acesso = acessoFila();

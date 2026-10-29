@@ -4,6 +4,7 @@ import {
   limparTestesAntigos,
   enviarEmailsPendentes,
   enviarPushPendentes,
+  lembrarRespostas,
   liberarContatosParados,
   revisarAnunciosPendentes,
   revisarAvaliacoesPendentes,
@@ -29,12 +30,14 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  const [ia, avaliacoes, recados, parados, combinam, noticias, testes] = await Promise.all([
+  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes] = await Promise.all([
     revisarAnunciosPendentes(20),
     revisarAvaliacoesPendentes(20),
     revisarRecadosPendentes(20),
     // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
     liberarContatosParados(),
+    // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
+    lembrarRespostas(),
     // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos
     mandarCombinamDaSemana(),
     // a partir das 18h: as notícias do dia num aviso só (sino e celular), uma vez por dia
@@ -52,6 +55,7 @@ export async function GET(request: Request) {
     avaliacoes.motivo,
     recados.motivo,
     parados.motivo,
+    lembretes.motivo,
     combinam.motivo,
     noticias.motivo,
     testes.motivo,
@@ -70,6 +74,7 @@ export async function GET(request: Request) {
       emails: { enviados: emails.enviados, falhas: emails.falhas },
       celular,
       contatos_liberados: parados.liberadas,
+      lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       combinam: { vagas: combinam.vagas, talentos: combinam.talentos, vistos: combinam.vistos },
       ia: { anuncios: ia, avaliacoes, recados },
     },

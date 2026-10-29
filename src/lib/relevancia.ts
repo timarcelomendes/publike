@@ -62,6 +62,8 @@ export type AnuncioParaRelevancia = {
   descricao?: string | null;
   /** as curtidas da vaga (o número e a hora da última), para os pontos "em alta" */
   emAlta?: { total: number; ultima: string } | null;
+  /** como quem publicou responde as curtidas (`resposta_de_quem_publica`; só com 5 curtidas ou mais) */
+  resposta?: { taxa: number; horas: number | null } | null;
 };
 
 /** As categorias do que a pessoa curtiu, cada uma com a parte do total (0 a 1). */
@@ -107,6 +109,16 @@ export function pontosEmAlta(c: { total: number; ultima: string } | null | undef
   return Math.min(15, recente + (c.total >= 3 ? 5 : 0));
 }
 
+/**
+ * Quem responde (−6 a 6): a vaga de quem responde 7 de cada 10 curtidas em até 2 dias sobe (o mesmo selo de quem
+ * responde rápido); a de quem quase não responde desce. Sem o número (menos de 5 curtidas), nada.
+ */
+export function pontosDeResposta(r: { taxa: number; horas: number | null } | null | undefined) {
+  if (!r) return 0;
+  if (r.taxa >= 0.7 && r.horas !== null && r.horas <= 48) return 6;
+  return r.taxa < 0.3 ? -6 : 0;
+}
+
 /** A experiência é de outra área (o mesmo "Outra área" do site). */
 function deOutraArea(m: Aderencia) {
   return m.criterios.some((c) => c.funcao && c.ok === false);
@@ -122,7 +134,10 @@ export function relevanciaParaVoce(
   match: Aderencia | null,
   agora: number,
 ) {
-  let nota = pontosDePerto(a) + pontosDeInteresse(a, s) + (a.tipo === "vaga" ? pontosEmAlta(a.emAlta, agora) : 0);
+  let nota =
+    pontosDePerto(a) +
+    pontosDeInteresse(a, s) +
+    (a.tipo === "vaga" ? pontosEmAlta(a.emAlta, agora) + pontosDeResposta(a.resposta) : 0);
   const novo = pontosDeNovo(a.criado_em, agora);
   if (s.empresa) {
     nota += Math.round(novo * 1.5);

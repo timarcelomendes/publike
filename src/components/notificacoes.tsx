@@ -32,6 +32,7 @@ import {
   Eye,
   Megaphone,
   Newspaper,
+  Hourglass,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
@@ -54,6 +55,9 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   entrevista_resposta: CalendarClock,
   seguindo: BellRing,
   busca: SearchCheck,
+  // curtida sem resposta: o lembrete para quem publicou e o aviso para quem curtiu
+  lembrete_curtida: Hourglass,
+  sem_resposta: SearchCheck,
   convite: Send,
   teste_pedido: ClipboardCheck,
   teste_feito: ClipboardCheck,

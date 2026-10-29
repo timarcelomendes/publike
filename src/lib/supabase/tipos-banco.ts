@@ -1282,6 +1282,7 @@ export type Database = {
       };
       servidor_inscricao_expirada: { Args: { p_chave: string; p_endpoint: string }; Returns: undefined };
       servidor_liberar_contatos_parados: { Args: { p_chave: string }; Returns: number };
+      servidor_lembrar_respostas: { Args: { p_chave: string }; Returns: Json };
       admin_ligar_combinam: { Args: { p_ligado: boolean }; Returns: undefined };
       servidor_combinam_situacao: {
         Args: { p_chave: string };

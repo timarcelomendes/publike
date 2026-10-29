@@ -31,7 +31,13 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "convite_empresa" || n.tipo === "convite_agencia") return "/painel";
   if (n.tipo === "convite_servicos") return `/perfil/${usuarioId}`;
   if (n.tipo === "convite_vitrine") return "/painel/servicos";
-  if (n.tipo === "curtida" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}`;
+  // a curtida abre a ficha de quem curtiu na Caixa de entrada, com o Aceitar e o Dispensar (a do serviço
+  // volta para o anúncio, na própria Caixa)
+  if (n.tipo === "curtida" && n.anuncio_id)
+    return n.ator_id ? `/painel/caixa?aba=responder&c=${n.anuncio_id}:${n.ator_id}` : `/painel/anuncio/${n.anuncio_id}`;
+  if (n.tipo === "lembrete_curtida" && n.anuncio_id) return `/painel/caixa?aba=responder&vaga=${n.anuncio_id}`;
+  // 5 dias sem resposta: as vagas parecidas (a mesma área, pela vaga)
+  if (n.tipo === "sem_resposta" && n.anuncio_id) return `/anuncio/${n.anuncio_id}/parecidas`;
   if (n.tipo === "match") return "/painel/matches";
   if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "avaliacao") return "/painel/avaliacoes";

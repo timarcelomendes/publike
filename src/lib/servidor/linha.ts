@@ -281,13 +281,21 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
           () => new Map<string, CurtidasDaVaga>(),
         )
       : null;
+  // e quem responde as curtidas sobe (o mesmo número do selo de quem responde rápido)
+  const respostaDaOrdem = curtidasDaOrdem
+    ? await respostaDeQuemPublica(
+        filtrados.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId).map((a) => a.autor_id),
+      ).catch(() => new Map<string, Resposta>())
+    : null;
   const naOrdem = relevantes
-    ? ordenarDaPessoa(filtrados, requisitos, sinais, matches, agora, curtidasDaOrdem)
+    ? ordenarDaPessoa(filtrados, requisitos, sinais, matches, agora, curtidasDaOrdem, respostaDaOrdem)
     : filtrados;
   const anuncios = naOrdem.slice(0, LIMITE);
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId);
   const [resposta, salvas, logos, textosDosServicos] = await Promise.all([
-    respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map<string, Resposta>()),
+    respostaDaOrdem
+      ? Promise.resolve(respostaDaOrdem)
+      : respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map<string, Resposta>()),
     usuarioId ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
     fotosDosAutores(anuncios.map((a) => a.autor_id)),
     descricoesDosServicos(anuncios.filter((a) => a.tipo === "servico").map((a) => a.id)),
@@ -483,6 +491,7 @@ function ordenarDaPessoa(
   matches: Map<string, Aderencia>,
   agora: number,
   curtidas: Map<string, CurtidasDaVaga> | null = null,
+  resposta: Map<string, Resposta> | null = null,
 ): AnuncioResumo[] {
   const porId = new Map(anuncios.map((a) => [a.id, a]));
   const comDescricao = anuncios.map((a) => {
@@ -491,6 +500,7 @@ function ordenarDaPessoa(
       ...a,
       descricao: requisitos?.get(a.id)?.descricao ?? null,
       emAlta: c?.total ? { total: c.total, ultima: c.ultima } : null,
+      resposta: resposta?.get(a.autor_id) ?? null,
     };
   });
   return ordenarPorRelevancia(comDescricao, sinais, matches, agora).map((a) => porId.get(a.id)!);

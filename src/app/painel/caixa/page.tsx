@@ -1,6 +1,7 @@
 import { ArrowLeft, List, Users, Zap } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -13,7 +14,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { ajudaDaIADisponivel } from "@/lib/dados";
+import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
@@ -41,10 +42,19 @@ export default function CaixaDeEntrada({ searchParams }: PageProps<"/painel/caix
 
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/caixa">["searchParams"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
-  await exigirUsuario("/painel/caixa");
+  const usuario = await exigirUsuario("/painel/caixa");
   const sp = await searchParams;
   const agora = await agoraDaRequisicao();
   const [itens, comIA] = await Promise.all([montarCaixa(agora), ajudaDaIADisponivel()]);
+
+  // o aviso da curtida de um serviço (a Caixa é só das vagas) abre o próprio anúncio
+  const pedidoDoAviso = primeiro(sp.c);
+  if (pedidoDoAviso && itens && !itens.some((c) => c.chave === pedidoDoAviso)) {
+    const anuncioId = pedidoDoAviso.split(":")[0];
+    const anuncio = UUID.test(anuncioId) ? await obterAnuncio(anuncioId) : null;
+    if (anuncio && anuncio.tipo === "servico" && anuncio.autor_id === usuario.id)
+      redirect(`/painel/anuncio/${anuncioId}`);
+  }
 
   if (!itens) {
     return (
