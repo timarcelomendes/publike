@@ -1,4 +1,14 @@
-import { Bus, CircleCheck, Footprints, Heart, MapPin, MessageCircle, MessagesSquare, Zap } from "lucide-react";
+import {
+  Bus,
+  CalendarClock,
+  CircleCheck,
+  Footprints,
+  Heart,
+  MapPin,
+  MessageCircle,
+  MessagesSquare,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { nomeBeneficio } from "@/lib/constantes";
@@ -158,8 +168,9 @@ export function TicketDaVaga({
   // as etiquetas numa linha só: a modalidade, o primeiro benefício e "+N" com o resto (a vaga mostra todos)
   const todosBeneficios = item.requisitos?.beneficios_lista ?? [];
   const direto = Boolean(item.requisitos?.contato_direto) && !preenchida && !proprio;
-  // com o "Contato direto", os benefícios ficam todos no "+N" (cabe numa linha)
-  const beneficios = todosBeneficios.slice(0, direto ? 0 : 1);
+  const comecaJa = Boolean(item.requisitos?.comeca_ja) && !preenchida;
+  // com o "Contato direto" ou o "Começa já", os benefícios ficam todos no "+N" (cabe numa linha)
+  const beneficios = todosBeneficios.slice(0, direto || comecaJa ? 0 : 1);
   const outros = todosBeneficios.length - beneficios.length;
   // a vaga de outra área fica sem selo na linha (o "Outra área" fica na página da vaga e no Descobrir)
   const match =
@@ -168,6 +179,14 @@ export function TicketDaVaga({
       : null;
   const etiquetas: ReactNode[] = [];
   if (modalidade) etiquetas.push(<li key="m">{modalidade}</li>);
+  // precisa de alguém para começar logo: antes do contato direto (é o que mais muda a decisão)
+  if (comecaJa)
+    etiquetas.push(
+      <li key="j" className="inline-flex items-center gap-1 bg-terra-soft! text-terra-text">
+        <CalendarClock aria-hidden className="size-3.5" />
+        Começa já
+      </li>,
+    );
   // quem curte já vê o WhatsApp: a etiqueta vem logo depois da contratação
   if (direto)
     etiquetas.push(
