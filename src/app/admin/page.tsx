@@ -33,6 +33,7 @@ import { TESTE_FECHADO } from "@/lib/android";
 import { ehModerador, possoVerPainelNoSite } from "@/lib/dados";
 import { plural, tempoRelativo } from "@/lib/formato";
 import { situacaoFilas } from "@/lib/servidor/filas";
+import { itensPagamentos, situacaoPagamentos, type ItemPagamento } from "@/lib/servidor/situacao-pagamentos";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -70,6 +71,7 @@ async function Conteudo() {
     metricas,
     tempo,
     funil,
+    pagamentos,
   ] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
@@ -86,6 +88,7 @@ async function Conteudo() {
     metricasDeProduto(c),
     tempoNasPaginas(c),
     funilDoPublicar(c),
+    situacaoPagamentos(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -96,6 +99,7 @@ async function Conteudo() {
   return (
     <div className="flex flex-col gap-6">
       {saude && <SaudeDoSite saude={saude} agora={agora} />}
+      <PagamentosNoPainel itens={itensPagamentos(pagamentos)} />
       {respostas && respostas.length > 0 && (
         <Secao
           titulo="Responderam a equipe"
@@ -207,3 +211,29 @@ async function Conteudo() {
   );
 }
 
+/** Os pagamentos no Painel: tudo em ordem numa linha; o que falta, item por item (o resto em Pagamentos). */
+function PagamentosNoPainel({ itens }: { itens: ItemPagamento[] }) {
+  const faltam = itens.filter((i) => !i.ok);
+  return (
+    <Secao
+      titulo="Pagamentos"
+      acoes={
+        <Link href="/admin/pagamentos" className="text-label underline underline-offset-2">
+          Ver pagamentos
+        </Link>
+      }
+    >
+      {faltam.length === 0 ? (
+        <Situacao ok>Tudo ok: o site no ar fala com o Asaas e os avisos estão chegando.</Situacao>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {faltam.map((i) => (
+            <Situacao key={i.texto} ok={false}>
+              {i.texto}
+            </Situacao>
+          ))}
+        </div>
+      )}
+    </Secao>
+  );
+}

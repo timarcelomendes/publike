@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
-import { after } from "next/server";
-import { tokenDoWebhook } from "@/lib/servidor/asaas";
+import { after, connection } from "next/server";
+import { chaveAceita, situacaoAsaas, tokenDoWebhook } from "@/lib/servidor/asaas";
 import { enviarPushPendentes } from "@/lib/servidor/filas";
 import { processarEvento } from "@/lib/servidor/pagamentos";
 
@@ -38,4 +38,25 @@ export async function POST(request: Request) {
   // os avisos de pagamento no celular
   after(() => enviarPushPendentes());
   return erro ? Response.json({ ok: false }, { status: 500 }) : Response.json({ ok: true });
+}
+
+/**
+ * Para o Admin › Pagamentos conferir o site no ar: só sim ou não (nunca a chave nem o token). A conferência da
+ * chave no Asaas fica guardada por 10 minutos.
+ */
+export async function GET() {
+  await connection();
+  const s = situacaoAsaas();
+  return Response.json(
+    {
+      publike: "pagamentos",
+      producao: s.producao,
+      chave: s.temChave,
+      chaveAceita: await chaveAceita(),
+      chaveDeOutroAmbiente: s.chaveDeOutroAmbiente,
+      token: s.temToken,
+      tokenComProblema: Boolean(s.problemaNoToken),
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

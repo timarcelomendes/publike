@@ -40,13 +40,59 @@ export function linkDoCheckout(id: string) {
   return `${raiz}/checkoutSession/show?id=${encodeURIComponent(id)}`;
 }
 
-/** O que o admin pode mostrar (sem a chave). */
+/** Só o começo e o fim, para conferir qual valor está posto sem mostrar o segredo inteiro. */
+export function mascarar(valor: string) {
+  if (!valor) return null;
+  if (valor.length <= 12) return `${"•".repeat(valor.length)} (${valor.length} caracteres)`;
+  return `${valor.slice(0, 6)}…${valor.slice(-4)} (${valor.length} caracteres)`;
+}
+
+/** O que o admin pode mostrar: posto ou não, a chave só mascarada, e o que está errado no token. */
 export function situacaoAsaas() {
+  const k = chave();
+  const t = tokenDoWebhook();
   return {
     ambiente: asaasProducao() ? "produção" : "teste (sandbox)",
-    temChave: asaasConfigurado(),
-    temToken: Boolean(tokenDoWebhook()),
+    producao: asaasProducao(),
+    temChave: Boolean(k),
+    chaveMascarada: mascarar(k),
+    // a chave de produção começa com $aact_prod_ e a do sandbox com $aact_hmlg_ (quando o prefixo existe)
+    chaveDeOutroAmbiente: Boolean(k) && (asaasProducao() ? /_hmlg_/.test(k) : /_prod_/.test(k)),
+    temToken: Boolean(t),
+    tokenMascarado: mascarar(t),
+    // o Asaas pede de 32 a 255 caracteres, sem espaço, e diferente da chave da API
+    problemaNoToken: !t
+      ? null
+      : t.length < 32
+        ? "curto: o Asaas pede 32 caracteres ou mais"
+        : /\s/.test(t)
+          ? "tem espaço"
+          : t === k
+            ? "é igual à chave da API"
+            : null,
   };
+}
+
+/** O token inteiro, para copiar e colar no painel do Asaas (só no Admin, no computador do dono). */
+export function tokenParaCopiar() {
+  return tokenDoWebhook();
+}
+
+let conferida: { em: number; ok: boolean | null } | null = null;
+
+/** A chave é aceita pelo Asaas? (uma consulta leve, guardada por 10 minutos) null: sem chave ou sem resposta. */
+export async function chaveAceita(): Promise<boolean | null> {
+  if (!chave()) return null;
+  if (conferida && Date.now() - conferida.em < 10 * 60_000) return conferida.ok;
+  let ok: boolean | null;
+  try {
+    await pedir("GET", "/customers?limit=1");
+    ok = true;
+  } catch (e) {
+    ok = e instanceof ErroAsaas && (e.status === 401 || e.status === 403) ? false : null;
+  }
+  conferida = { em: Date.now(), ok };
+  return ok;
 }
 
 export class ErroAsaas extends Error {

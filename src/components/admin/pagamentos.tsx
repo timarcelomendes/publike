@@ -173,3 +173,66 @@ export function TirarDoTeste({ conta }: { conta: string }) {
     </span>
   );
 }
+
+/** Um valor para copiar (o endereço do webhook, o token). `segredo`: escondido até tocar em Mostrar. */
+export function Copiar({ valor, rotulo, segredo = false }: { valor: string; rotulo: string; segredo?: boolean }) {
+  const [ver, setVer] = useState(!segredo);
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <code className="rounded-sm bg-surface-300 px-2 py-1 text-body-sm break-all">
+        {ver ? valor : "•".repeat(Math.min(valor.length, 24))}
+      </code>
+      {segredo && (
+        <Botao variante="fantasma" tamanho="sm" onClick={() => setVer((v) => !v)}>
+          {ver ? "Esconder" : "Mostrar"}
+        </Botao>
+      )}
+      <Botao
+        variante="secundario"
+        tamanho="sm"
+        aria-label={`Copiar ${rotulo}`}
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(valor);
+            setCopiado(true);
+            setTimeout(() => setCopiado(false), 2500);
+          } catch {
+            setVer(true);
+          }
+        }}
+      >
+        {copiado ? "Copiado" : "Copiar"}
+      </Botao>
+    </span>
+  );
+}
+
+/** Um token novo, feito aqui no navegador (não fica guardado): para pôr na Vercel e no Asaas, o mesmo nos dois. */
+export function GerarToken() {
+  const [token, setToken] = useState<string | null>(null);
+  return (
+    <span className="flex flex-col items-start gap-2">
+      <Botao
+        variante="secundario"
+        tamanho="sm"
+        onClick={() => {
+          const b = new Uint8Array(32);
+          crypto.getRandomValues(b);
+          setToken(Array.from(b, (x) => x.toString(16).padStart(2, "0")).join(""));
+        }}
+      >
+        Gerar um token
+      </Botao>
+      {token && (
+        <>
+          <Copiar valor={token} rotulo="o token novo" />
+          <span className="text-body-sm text-ink-muted">
+            Ponha este mesmo valor em ASAAS_WEBHOOK_TOKEN na Vercel (e no .env.local) e no campo Token do webhook no
+            Asaas. Ele não fica guardado aqui.
+          </span>
+        </>
+      )}
+    </span>
+  );
+}

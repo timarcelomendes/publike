@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { ConfigPagamentos, ContaDeTeste, EditarPlano, TirarDoTeste } from "@/components/admin/pagamentos";
-import { Secao } from "@/components/admin/ui";
+import {
+  ConfigPagamentos,
+  ContaDeTeste,
+  Copiar,
+  EditarPlano,
+  GerarToken,
+  TirarDoTeste,
+} from "@/components/admin/pagamentos";
+import { Secao, Situacao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
-import { formatarMoeda } from "@/lib/formato";
+import { formatarMoeda, tempoRelativo } from "@/lib/formato";
 import { NOME_CICLO, type Ciclo } from "@/lib/pagamentos";
 import { NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
-import { situacaoAsaas } from "@/lib/servidor/asaas";
+import { tokenParaCopiar } from "@/lib/servidor/asaas";
+import { itensPagamentos, situacaoPagamentos } from "@/lib/servidor/situacao-pagamentos";
+import { agoraDaRequisicao } from "@/lib/tempo";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Pagamentos" };
@@ -59,22 +68,113 @@ async function Conteudo() {
     );
   }
   const d = data as unknown as Dados;
-  const asaas = situacaoAsaas();
+  const [sit, agora] = await Promise.all([situacaoPagamentos(c), agoraDaRequisicao()]);
+  const noAr = sit.noAr;
+  const token = tokenParaCopiar();
   const ativas = d.assinaturas.filter((a) => a.situacao === "ativa");
   return (
     <div className="flex flex-col gap-6">
+      <Secao titulo="Está tudo ok?" descricao="O site no ar, perguntado agora, e os avisos do Asaas chegando.">
+        <div className="flex flex-col gap-2">
+          {itensPagamentos(sit).map((i) => (
+            <Situacao key={i.texto} ok={i.ok}>
+              {i.texto}
+            </Situacao>
+          ))}
+        </div>
+        {sit.avisos?.ultimo_aviso && (
+          <p className="text-body-sm text-ink-muted">
+            Último aviso: {sit.avisos.ultimo_tipo} {tempoRelativo(sit.avisos.ultimo_aviso, agora)}.
+          </p>
+        )}
+      </Secao>
+
       <Secao
-        titulo="Parceiro de pagamentos"
-        descricao="A chave e o token ficam na Vercel (ASAAS_API_KEY, ASAAS_WEBHOOK_TOKEN e ASAAS_AMBIENTE), nunca aqui."
+        titulo="Webhook"
+        descricao="No Asaas: Integrações › Webhooks › Adicionar. Cole o endereço e o token, versão v3, fila de sincronização ligada, e marque os eventos de cobranças, assinaturas, checkout e notas fiscais."
       >
-        <ul className="flex flex-col gap-1 text-body-sm">
-          <li>Ambiente: {asaas.ambiente}</li>
-          <li>Chave da API: {asaas.temChave ? "posta" : "falta"}</li>
-          <li>Token dos avisos: {asaas.temToken ? "posto" : "falta"}</li>
-          <li>
-            Endereço dos avisos (cadastre no Asaas): <code>/api/pagamentos/asaas</code> no endereço do site
-          </li>
-        </ul>
+        <dl className="flex flex-col gap-3 text-body-sm">
+          <div className="flex flex-col gap-1">
+            <dt className="text-label">Endereço</dt>
+            <dd>
+              {sit.webhook ? (
+                <Copiar valor={sit.webhook} rotulo="o endereço do webhook" />
+              ) : (
+                "Ponha PUBLIKE_URL_PUBLICA (o endereço do site no ar) no .env.local."
+              )}
+            </dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="text-label">Token (ASAAS_WEBHOOK_TOKEN)</dt>
+            <dd className="flex flex-col items-start gap-2">
+              {token ? (
+                <>
+                  <Copiar valor={token} rotulo="o token do webhook" segredo />
+                  <span className="text-ink-muted">
+                    Este é o do .env.local. Na Vercel tem de ser o mesmo valor.
+                    {sit.local.problemaNoToken ? ` Atenção: ${sit.local.problemaNoToken}.` : ""}
+                  </span>
+                </>
+              ) : (
+                <span className="text-ink-muted">Não está no .env.local deste computador.</span>
+              )}
+              <GerarToken />
+            </dd>
+          </div>
+        </dl>
+      </Secao>
+
+      <Secao
+        titulo="Chaves postas"
+        descricao="A chave e o token ficam no .env.local e na Vercel, nunca no banco. Aqui aparece só o começo e o fim."
+      >
+        <table className="w-full text-left text-body-sm">
+          <thead className="text-ink-muted">
+            <tr>
+              <th className="py-1 pr-3 font-normal">Variável</th>
+              <th className="py-1 pr-3 font-normal">Neste computador</th>
+              <th className="py-1 font-normal">No site no ar</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            <tr>
+              <td className="py-2 pr-3">ASAAS_API_KEY</td>
+              <td className="py-2 pr-3 break-all">{sit.local.chaveMascarada ?? "não posta"}</td>
+              <td className="py-2">
+                {!noAr?.respondeu
+                  ? "—"
+                  : !noAr.chave
+                    ? "não posta"
+                    : noAr.chaveAceita === false
+                      ? "recusada pelo Asaas"
+                      : "posta"}
+              </td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-3">ASAAS_WEBHOOK_TOKEN</td>
+              <td className="py-2 pr-3 break-all">{sit.local.tokenMascarado ?? "não posto"}</td>
+              <td className="py-2">
+                {!noAr?.respondeu
+                  ? "—"
+                  : !noAr.token
+                    ? "não posto"
+                    : noAr.tokenComProblema
+                      ? "fora do padrão"
+                      : "posto"}
+              </td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-3">ASAAS_AMBIENTE</td>
+              <td className="py-2 pr-3">{sit.local.ambiente}</td>
+              <td className="py-2">{!noAr?.respondeu ? "—" : noAr.producao ? "produção" : "teste (sandbox)"}</td>
+            </tr>
+          </tbody>
+        </table>
+        {!noAr?.respondeu && (
+          <p className="text-body-sm text-ink-muted">
+            “—”: o site no ar ainda não respondeu (ele só mostra sim ou não, nunca a chave). Faça o push.
+          </p>
+        )}
       </Secao>
 
       <Secao titulo="Preços" descricao="Cada recurso é assinado separado. O trimestral cobra os 3 meses juntos.">

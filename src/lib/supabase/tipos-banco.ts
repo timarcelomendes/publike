@@ -2547,6 +2547,7 @@ export type Database = {
         Returns: Json;
       };
       admin_pagamentos: { Args: Record<string, never>; Returns: Json };
+      admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
       admin_salvar_plano: { Args: { p_id: string; p_valor: number | null; p_ligado: boolean }; Returns: undefined };
       admin_config_pagamentos: {
         Args: { p_aberto: boolean; p_servico: string; p_e_codigo: boolean; p_descricao: string };
