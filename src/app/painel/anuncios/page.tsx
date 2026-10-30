@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, Eye, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
+import { Building2, ChevronRight, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -6,7 +6,6 @@ import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
 import { FiltroCliente } from "@/components/painel/filtro-cliente";
 import { CartaoRecolhivel } from "@/components/painel/cartao-recolhivel";
-import { MaisDoCartao } from "@/components/painel/mais-do-cartao";
 import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
@@ -320,8 +319,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                       );
                       if (a.tipo === "vaga" && candidatos) {
                         const daVaga = candidatos.filter((c) => c.anuncio_id === a.id);
-                        // contraído por padrão: as 4 etapas numa linha e a seta abre as caixas; "Abrir a vaga" e o
-                        // "Mais" ficam sempre à vista (a vaga vencida ou vencendo já abre o "Mais", com o Renovar)
+                        // contraído por padrão: as 4 etapas numa linha e a seta abre as caixas; os botões da vaga ficam
+                        // todos à vista, numa linha só (sem o "Mais")
                         return (
                           <>
                             <CartaoRecolhivel
@@ -335,33 +334,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                             >
                               <FunilDaVaga id={a.id} candidatos={daVaga} />
                             </CartaoRecolhivel>
-                            <MaisDoCartao
-                              aberto={podeRenovar}
-                              principal={
+                            <AcoesAnuncio
+                              compacto
+                              inicio={
                                 <BotaoLink href={`/painel/anuncio/${a.id}/quadro`} tamanho="sm">
                                   Abrir a vaga
                                   <ChevronRight aria-hidden />
                                 </BotaoLink>
                               }
-                            >
-                              <div className="flex flex-col gap-2">
-                                <Link
-                                  href={`/anuncio/${a.id}`}
-                                  className="inline-flex min-h-10 items-center gap-1.5 self-start text-label underline-offset-2 hover:underline"
-                                >
-                                  <Eye aria-hidden className="size-[18px] text-ink-muted" />
-                                  Ver como o candidato vê
-                                </Link>
-                                <AcoesAnuncio
-                                  id={a.id}
-                                  tipo={a.tipo}
-                                  status={status}
-                                  podeRenovar={podeRenovar}
-                                  prazoDias={extra ? extra.prazo_dias : 30}
-                                  preenchida={Boolean(extra?.preenchida_em)}
-                                />
-                              </div>
-                            </MaisDoCartao>
+                              id={a.id}
+                              tipo={a.tipo}
+                              status={status}
+                              podeRenovar={podeRenovar}
+                              prazoDias={extra ? extra.prazo_dias : 30}
+                              preenchida={Boolean(extra?.preenchida_em)}
+                            />
                           </>
                         );
                       }

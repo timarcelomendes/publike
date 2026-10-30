@@ -4,6 +4,7 @@ import {
   CircleStop,
   CopyPlus,
   DoorOpen,
+  Eye,
   FileText,
   Heart,
   Hourglass,
@@ -16,7 +17,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { excluirAnuncio, marcarVagaPreenchida, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
 import { MOTIVOS_DO_TIPO, MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
@@ -32,6 +33,8 @@ export function AcoesAnuncio({
   podeRenovar,
   prazoDias = null,
   preenchida = false,
+  compacto = false,
+  inicio = null,
 }: {
   id: string;
   tipo: string;
@@ -41,6 +44,13 @@ export function AcoesAnuncio({
   prazoDias?: number | null;
   /** a vaga foi marcada como preenchida */
   preenchida?: boolean;
+  /**
+   * o cartão em Vagas: tudo numa linha só, com o "Ver como o candidato vê". Os botões sem borda viram só o
+   * ícone quando a linha não tem espaço (o nome fica no title e no leitor de tela)
+   */
+  compacto?: boolean;
+  /** no começo da linha (o "Abrir a vaga") */
+  inicio?: ReactNode;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
@@ -50,10 +60,13 @@ export function AcoesAnuncio({
   const [motivo, setMotivo] = useState<MotivoEncerramento | null>(null);
   const [detalhe, setDetalhe] = useState("");
   const comModeracao = status === "em_analise" || status === "removido";
+  const nome = (texto: string) => (compacto ? { "aria-label": texto, title: texto } : {});
+  const rotulo = (texto: string) => (compacto ? <span className="hidden @[54rem]/acoes:inline">{texto}</span> : texto);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${compacto ? "@container/acoes" : ""}`}>
       <div className="flex flex-wrap items-center gap-2">
+        {inicio}
         {status === "ativo" && (
           <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => mudarStatusAnuncio(id, "pausado"))}>
             <Pause aria-hidden />
@@ -144,9 +157,15 @@ export function AcoesAnuncio({
               </div>
             </div>
           ) : (
-            <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={() => setConfirmarEncerrar(true)}>
+            <Botao
+              tamanho="sm"
+              variante="fantasma"
+              disabled={pendente}
+              onClick={() => setConfirmarEncerrar(true)}
+              {...nome("Encerrar")}
+            >
               <CircleStop aria-hidden />
-              Encerrar
+              {rotulo("Encerrar")}
             </Botao>
           ))}
         {!comModeracao && (
@@ -154,15 +173,22 @@ export function AcoesAnuncio({
             tamanho="sm"
             variante="fantasma"
             href={tipo === "servico" ? "/painel/servicos" : `/painel/anuncio/${id}/editar`}
+            {...nome("Editar")}
           >
             <Pencil aria-hidden />
-            Editar
+            {rotulo("Editar")}
           </BotaoLink>
         )}
         {!comModeracao && tipo === "vaga" && (
-          <BotaoLink tamanho="sm" variante="fantasma" href={`/publicar?copiar=${id}`}>
+          <BotaoLink tamanho="sm" variante="fantasma" href={`/publicar?copiar=${id}`} {...nome("Publicar parecida")}>
             <CopyPlus aria-hidden />
-            Publicar parecida
+            {rotulo("Publicar parecida")}
+          </BotaoLink>
+        )}
+        {compacto && (
+          <BotaoLink tamanho="sm" variante="fantasma" href={`/anuncio/${id}`} {...nome("Ver como o candidato vê")}>
+            <Eye aria-hidden />
+            {rotulo("Ver como o candidato vê")}
           </BotaoLink>
         )}
         {comModeracao ? null : confirmar ? (
@@ -176,9 +202,9 @@ export function AcoesAnuncio({
             </Botao>
           </span>
         ) : (
-          <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmar(true)}>
+          <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmar(true)} {...nome("Excluir")}>
             <Trash aria-hidden />
-            Excluir
+            {rotulo("Excluir")}
           </Botao>
         )}
       </div>
