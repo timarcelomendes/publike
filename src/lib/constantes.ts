@@ -205,7 +205,7 @@ export const REGIMES: Record<Regime, { nome: string; selo: string; ajuda: string
   diaria: { nome: "Diária", selo: "Diária", ajuda: "Paga por dia de trabalho" },
   freelance: { nome: "Freelance", selo: "Freelance", ajuda: "Trabalho pontual, por tarefa ou projeto" },
   produtividade: { nome: "Por produtividade / comissão", selo: "Comissão", ajuda: "Ganha por peça, por venda ou pelo que produzir" },
-  autonomo: { nome: "Autônomo (RPA)", selo: "Autônomo", ajuda: "Pessoa física sem CNPJ, paga por recibo (RPA)" },
+  autonomo: { nome: "Autônomo", selo: "Autônomo", ajuda: "Pessoa física sem CNPJ, paga por recibo (RPA)" },
   pj: { nome: "PJ / MEI", selo: "PJ", ajuda: "Contrato com CNPJ ou MEI" },
   outro: { nome: "Outro", selo: "Outro", ajuda: "Outra forma de contratação" },
 };
