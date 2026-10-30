@@ -6,6 +6,7 @@ import {
   CircleHelp,
   Eye,
   FileText,
+  Heart,
   Link2,
   LogOut,
   Moon,
@@ -14,6 +15,7 @@ import {
   Sun,
   SunMoon,
   UserRound,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -169,6 +171,13 @@ export function MenuUsuario({
               </Item>
               <Item href="/perfil/avisos" icone={BellRing}>
                 Avisos e notificações
+              </Item>
+              {/* saíram do "Mais" do painel (claude/plano-painel-simples.md): são da conta, não de contratar */}
+              <Item href="/painel/curtidas" icone={Heart}>
+                O que você curtiu
+              </Item>
+              <Item href="/painel/seguindo" icone={UsersRound}>
+                Seguindo
               </Item>
               {moderador && (
                 <Item href="/admin/denuncias" icone={ShieldCheck}>

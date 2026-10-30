@@ -303,7 +303,7 @@ export function MenuPainel({
         ))}
       </ul>
 
-      <div className="hidden flex-col gap-1 border-t border-line pt-3 lg:flex">
+      <div className={`hidden flex-col gap-1 border-t border-line pt-3 ${outras.length ? "lg:flex" : ""}`}>
         <p className="px-3 text-body-sm font-semibold text-ink-muted">Mais</p>
         <ul className="flex flex-col">
           {outras.map((o) => (

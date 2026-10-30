@@ -272,19 +272,13 @@ export function gruposDoModo(
 
 /** O resto do painel, no fim do menu (o que não é do modo aberto). Os matches ficam nas Mensagens. */
 export const OUTRAS: Record<ModoPainel, { href: string; nome: string }[]> = {
-  contratar: [
-    { href: "/painel/candidatos", nome: "Lista de candidatos e planilha" },
-    { href: "/painel/curtidas", nome: "O que você curtiu" },
-    { href: "/painel/seguindo", nome: "Seguindo" },
-  ],
+  // "O que você curtiu" e "Seguindo" ficam no menu da conta (o avatar, no alto)
+  contratar: [{ href: "/painel/candidatos", nome: "Lista de candidatos e planilha" }],
   trabalhar: [
     { href: "/painel/curtidas?tipo=servico", nome: "Serviços que você pediu" },
     { href: "/painel/anuncios", nome: "Meus anúncios" },
   ],
-  servicos: [
-    { href: "/painel/curtidas", nome: "O que você curtiu" },
-    { href: "/painel/seguindo", nome: "Seguindo" },
-  ],
+  servicos: [],
 };
 
 /**
