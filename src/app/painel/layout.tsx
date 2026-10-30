@@ -15,7 +15,10 @@ export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
       <h1 className="sr-only">Meu painel</h1>
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-10">
         {/* no celular, "‹ Painel" no alto das páginas (no Hoje, não) */}
-        <VoltarAoPainel />
+        {/* o endereço só existe na hora (usePathname): sem o Suspense, trava o prerender das páginas */}
+        <Suspense fallback={null}>
+          <VoltarAoPainel />
+        </Suspense>
         {/* nas Mensagens, o celular fica sem a linha do menu (elas marcam o html: SemLinhaDoPainel) */}
         <div className="lg:sticky lg:top-20 [html[data-sem-linha-painel]_&]:max-lg:hidden">
           <Suspense fallback={<MenuPainelEsqueleto />}>
