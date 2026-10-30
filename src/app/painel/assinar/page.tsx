@@ -1,6 +1,5 @@
 import { ChevronRight, ClipboardCheck, Layers, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -68,9 +67,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const hoje = diaBr(new Date());
   const dia = diaDaPrimeiraCobranca(produto, pag?.testes_ate, pag?.pago_ate);
   const primeiraCobranca = dia > hoje ? dia : null;
-
-  // nos recursos separados, o convite para o combo (quando está à venda e sai mais em conta)
-  const combo = !troca && produto !== "combo" && podeAssinarCombo(pag, recursos) ? planoDoCombo(pag) : null;
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
@@ -162,59 +158,95 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       {cabecalho}
-      {combo && combo.economia > 0 && (
-        <Link
-          href="/painel/assinar?recurso=combo"
-          className="flex items-center gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card hover:bg-surface-300"
-        >
-          <Layers aria-hidden className="size-6 shrink-0 text-terra-text" />
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="flex flex-wrap items-center gap-2 text-label">
-              Leve os dois no combo
-              <Selo variante="novo">Novo</Selo>
-            </span>
-            <span className="text-body-sm text-ink-muted">
-              Copiloto e Testes Publike por {formatarMoeda(combo.valor)} por mês, em vez de{" "}
-              {formatarMoeda(combo.separados)}.
-            </span>
-          </span>
-          <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />
-        </Link>
-      )}
       {corpo}
-      {!troca && <OutraOpcao produto={produto} />}
+      {!troca && <OutraOpcao produto={produto} pag={pag} comboAberto={podeAssinarCombo(pag, recursos)} />}
     </div>
   );
 }
 
-const LINK = "font-semibold text-terra-text underline underline-offset-2";
+const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: string }> = {
+  copiloto: {
+    titulo: "Copiloto",
+    texto: "A IA lê os currículos e mostra quem combina com a vaga, com a prova de cada ponto.",
+    botao: "Conhecer o Copiloto",
+  },
+  testes: {
+    titulo: "Testes Publike",
+    texto: "Saiba quem sabe antes da entrevista: o candidato faz o teste pelo celular.",
+    botao: "Conhecer os Testes",
+  },
+  combo: {
+    titulo: "Os dois no combo",
+    texto: "Copiloto e Testes Publike numa assinatura só, por menos que os dois separados.",
+    botao: "Ver o combo",
+  },
+};
 
-/** No pé da tela, o convite para o outro recurso (ou para o combo), dito pelo que ele resolve. */
-function OutraOpcao({ produto }: { produto: Produto }) {
-  const para = (p: Produto, texto: string) => (
-    <Link href={`/painel/assinar?recurso=${p}`} className={LINK}>
-      {texto}
-    </Link>
-  );
+/** No pé da tela, o convite para o outro recurso e para o combo (ou, no combo, para um só), com o preço. */
+function OutraOpcao({
+  produto,
+  pag,
+  comboAberto,
+}: {
+  produto: Produto;
+  pag: PagamentosDaConta | null;
+  /** o combo pode ser assinado agora (sem assinatura valendo) */
+  comboAberto: boolean;
+}) {
+  const mensal = (p: Produto) => pag?.planos.find((x) => x.recurso === p && x.ciclo === "MONTHLY")?.valor ?? null;
+  const ordem: Produto[] =
+    produto === "combo" ? ["copiloto", "testes"] : [produto === "copiloto" ? "testes" : "copiloto", "combo"];
+  const opcoes = ordem.filter((p) => pag?.planos.some((x) => x.recurso === p) && (p !== "combo" || comboAberto));
+  if (!opcoes.length) return null;
+  const combo = planoDoCombo(pag);
   return (
-    <p className="text-body-sm text-ink-muted">
-      {produto === "copiloto" ? (
-        <>
-          Quer saber quem sabe antes da entrevista? Conheça os {para("testes", "Testes Publike")} ou leve{" "}
-          {para("combo", "os dois no combo")} e pague menos.
-        </>
-      ) : produto === "testes" ? (
-        <>
-          Quer que a IA ache quem combina com a sua vaga? Conheça o {para("copiloto", "Copiloto")} ou leve{" "}
-          {para("combo", "os dois no combo")} e pague menos.
-        </>
-      ) : (
-        <>
-          Prefere começar com um só? Assine só o {para("copiloto", "Copiloto")} ou só os{" "}
-          {para("testes", "Testes Publike")}.
-        </>
-      )}
-    </p>
+    <section aria-labelledby="outra-opcao" className="flex flex-col gap-3">
+      <h3 id="outra-opcao" className="text-h3">
+        {produto === "combo" ? "Prefere começar com um só?" : "Contrate melhor com os dois"}
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {opcoes.map((p) => {
+          const o = OFERTA_CURTA[p];
+          const Icone = ICONE[p];
+          const valor = mensal(p);
+          return (
+            <div
+              key={p}
+              className={`flex flex-col gap-3 rounded-lg border bg-surface-200 p-5 shadow-card ${
+                p === "combo" ? "border-terra" : "border-line-strong"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft">
+                  <Icone aria-hidden className="size-5 text-terra-text" />
+                </span>
+                {p === "combo" && combo && combo.economia > 0 && (
+                  <Selo variante="novo">Economize {formatarMoeda(Math.round(combo.economia * 100) / 100)}</Selo>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <p className="text-label">{o.titulo}</p>
+                <p className="text-body-sm text-ink-muted">{o.texto}</p>
+              </div>
+              {valor != null && (
+                <p className="text-h3 tabular-nums">
+                  {formatarMoeda(valor)} <span className="text-body-sm font-normal text-ink-muted">por mês</span>
+                </p>
+              )}
+              <BotaoLink
+                href={`/painel/assinar?recurso=${p}`}
+                variante="secundario"
+                tamanho="sm"
+                className="mt-auto self-start"
+              >
+                {o.botao}
+                <ChevronRight aria-hidden />
+              </BotaoLink>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
