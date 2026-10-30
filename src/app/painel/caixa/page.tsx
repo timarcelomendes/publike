@@ -9,6 +9,7 @@ import { FichaCandidato } from "@/components/painel/ficha-candidato";
 import { RegistrarVisitaPerfil } from "@/components/visitas/registrar-visita";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
+import { CaminhoDasEtapas } from "@/components/painel/caminho-etapas";
 import { ItemDaLista } from "@/components/painel/item-caixa";
 import { OrdemDaCaixa } from "@/components/painel/ordem-caixa";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -39,6 +40,15 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Candidatos" };
+
+/** A linha embaixo do número de cada etapa, quando ninguém ali espera você. */
+const AJUDA_DA_ETAPA: Record<Aba, string> = {
+  novos: "Curtiram a vaga",
+  analise: "Você está olhando",
+  entrevista: "Com ou sem data",
+  contratados: "Fim do caminho",
+  nao_seguiu: "",
+};
 
 // Candidatos, numa página só (claude/plano-painel-simples.md, parte 2): as etapas no alto (Novos, Em análise,
 // Entrevista, Contratados, Não seguiu), a lista à esquerda e a ficha de quem está aberto à direita, com a
@@ -176,36 +186,33 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
         </div>
       </div>
 
-      {/* as abas e a vaga numa linha só, da mesma altura (a vaga na ponta direita); sem espaço para as duas, a vaga
-          desce inteira para a linha de baixo, sem cortar aba nenhuma. No celular, as abas rolam de lado e a vaga vem
-          embaixo. A aba sem ninguém fica apagada e sem o zero. */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-        <nav
-          aria-label="Etapas"
-          className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:max-w-full sm:px-0"
+      {/* o caminho do candidato, numerado como o passo a passo do Publicar (Novos → Em análise → Entrevista →
+          Contratados); o "Não seguiu" fica à parte, na linha da Vaga e da Ordem */}
+      <CaminhoDasEtapas
+        etapas={ABAS.filter((a) => a.valor !== "nao_seguiu").map((a) => ({
+          valor: a.valor,
+          nome: a.nome,
+          numero: contagem.get(a.valor) ?? 0,
+          espera: esperam.get(a.valor) ?? 0,
+          ajuda: AJUDA_DA_ETAPA[a.valor],
+          href: href({ aba: a.valor }),
+          ativa: a.valor === aba,
+        }))}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href={href({ aba: "nao_seguiu" })}
+          scroll={false}
+          aria-current={aba === "nao_seguiu" ? "page" : undefined}
+          className={classesChip(aba === "nao_seguiu", false, !(contagem.get("nao_seguiu") ?? 0))}
         >
-          {ABAS.map((a) => {
-            const n = contagem.get(a.valor) ?? 0;
-            const ativa = a.valor === aba;
-            const espera = esperam.get(a.valor) ?? 0;
-            const destaque = espera > 0;
-            return (
-              <Link
-                key={a.valor}
-                href={href({ aba: a.valor })}
-                scroll={false}
-                aria-current={ativa ? "page" : undefined}
-                className={classesChip(ativa, destaque, n === 0)}
-              >
-                {a.nome}
-                {n > 0 && <span className={ativa ? "text-surface-100/80" : destaque ? "" : "text-ink-muted"}>{n}</span>}
-                {espera > 0 && (
-                  <span className="sr-only">, {espera === 1 ? "1 espera você" : `${espera} esperam você`}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+          Não seguiu
+          {(contagem.get("nao_seguiu") ?? 0) > 0 && (
+            <span className={aba === "nao_seguiu" ? "text-surface-100/80" : "text-ink-muted"}>
+              {contagem.get("nao_seguiu")}
+            </span>
+          )}
+        </Link>
         <div className="flex flex-wrap gap-2 sm:ml-auto">
           {vagas.size > 1 && (
             <FiltroVaga
