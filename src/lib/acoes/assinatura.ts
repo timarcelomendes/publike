@@ -40,14 +40,20 @@ export type ResultadoAssinar = { ok: true; ir: string; externo?: boolean } | { o
 
 const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral" };
 
+// no computador (npm run dev), o motivo vai junto na tela, para achar o problema sem abrir o terminal
+const NO_COMPUTADOR = process.env.NODE_ENV !== "production";
+
 function erroParaTela(e: unknown) {
   if (e instanceof ErroAsaas) {
     console.error("Publike: pagamento recusado pelo parceiro:", e.status, e.detalhe);
     if (e.status === 400 && /cpf|cnpj/i.test(e.detalhe)) return "O parceiro de pagamentos não aceitou o CPF ou CNPJ.";
-    return e.message;
+    return NO_COMPUTADOR ? `${e.message} (${e.status}: ${e.detalhe})` : e.message;
   }
-  console.error("Publike: falha ao assinar:", e instanceof Error ? e.message : e);
-  return "Não deu para assinar agora. Tente de novo em instantes.";
+  const motivo = e instanceof Error ? e.message : String(e);
+  console.error("Publike: falha ao assinar:", motivo);
+  return NO_COMPUTADOR
+    ? `Não deu para assinar agora (${motivo.slice(0, 300)}).`
+    : "Não deu para assinar agora. Tente de novo em instantes.";
 }
 
 async function quemAssina(): Promise<{ erro: string } | { conta: string }> {
