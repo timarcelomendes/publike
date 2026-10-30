@@ -127,7 +127,7 @@ const PASSOS = [
     texto: "Quem se interessa curte a vaga, e você recebe um aviso no site e por e-mail.",
   },
   {
-    titulo: "Curta de volta e converse",
+    titulo: "Aceite e converse",
     texto: "Deu match, o WhatsApp dos dois aparece. Marque a entrevista e acompanhe tudo pelo painel.",
   },
 ];

@@ -312,7 +312,7 @@ export async function salvarEtapaCandidato(
               ? "Aceite o pedido primeiro: orçamento, agendamento e conclusão vêm depois."
               : curtida.aceita_em
                 ? "Falta o currículo: entrevista e contratação vêm depois do match, assim que ele chegar."
-                : "Curta de volta primeiro: entrevista e contratação vêm depois do match."
+                : "Aceite primeiro: entrevista e contratação vêm depois do match."
             : `Essa pessoa não está mais no processo ${servico ? "deste serviço" : "desta vaga"}.`,
       };
     }

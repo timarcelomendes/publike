@@ -25,7 +25,7 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
-export const metadata: Metadata = { title: "Caixa de entrada" };
+export const metadata: Metadata = { title: "Candidatos" };
 
 // A caixa de entrada de quem contrata: a lista à esquerda (por aba: para responder, em
 // andamento, entrevistas, mensagens novas, encerrados) e a ficha de quem está aberto
@@ -127,7 +127,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
-          <h2 className="text-h2">Caixa de entrada</h2>
+          <h2 className="text-h2">Candidatos</h2>
           <p className="mt-1 text-body text-ink-muted">
             Quem curtiu suas vagas, numa lista só. Abra a ficha, decida e siga para o próximo.
           </p>

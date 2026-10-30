@@ -354,7 +354,7 @@ export function CompositorMensagem({
       {semMatch > 0 && (
         <p className="rounded-md bg-terra-soft px-3 py-2 text-body-sm text-terra-text">
           {semMatch === perfis.length
-            ? "Ninguém aqui tem match ainda: a conversa só abre com o match. Mova para Entrevista ou curta de volta antes."
+            ? "Ninguém aqui tem match ainda: a conversa só abre com o match. Mova para Entrevista ou aceite antes."
             : `${semMatch} sem match ${semMatch === 1 ? "fica" : "ficam"} de fora: a conversa só abre com o match.`}
         </p>
       )}

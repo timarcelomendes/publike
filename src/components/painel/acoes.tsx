@@ -242,7 +242,7 @@ export function BotaoVagaPreenchida({ id, preenchida }: { id: string; preenchida
 }
 
 /**
- * Curtir de volta (dar match), dispensar ou desfazer. No serviço: aceitar ou recusar o pedido.
+ * Aceitar (dar match; na vaga, o mesmo que curtir de volta), dispensar ou desfazer. No serviço: aceitar ou recusar o pedido.
  * Na vaga que pede currículo, quem ainda não mandou pode ser aceito do mesmo jeito: a
  * pessoa recebe o pedido do currículo e o match sai sozinho quando ele chegar.
  */
@@ -336,7 +336,7 @@ export function AcoesInteressado({
       <div className="flex flex-wrap gap-2">
         {status === "pendente" && (
           <>
-            {botaoAceitar(servico ? "Aceitar" : "Curtir de volta")}
+            {botaoAceitar("Aceitar")}
             <Botao
               variante="fantasma"
               tamanho="sm"

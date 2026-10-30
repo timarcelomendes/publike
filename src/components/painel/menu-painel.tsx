@@ -135,83 +135,86 @@ export function MenuPainel({
       {/* no Hoje de quem procura trabalho, a grade faz o papel da linha no celular: some já na troca de página,
           antes de a grade chegar (o menu sabe o endereço; a página ainda está carregando) */}
       {gradeNoHoje && caminho === "/painel" && <SemLinhaDoPainel />}
-      {/* o painel é um espaço à parte: diz de quem é e o que a conta faz (muda no perfil, não aqui) */}
-      <div ref={caixa} className="relative">
-        <div className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2">
-          <span className="min-w-0 flex-1">
-            <span className="block text-caption text-ink-muted">
-              Seu painel · só você vê
-              {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
+      {/* quem é de uma equipe vê de quem é o painel e troca a conta aqui; a conta de uma pessoa só não precisa
+          do quadro (o que a conta faz muda no perfil): o menu começa logo (29/10/2026) */}
+      {(contas.length > 1 || papel !== "dono") && (
+        <div ref={caixa} className="relative">
+          <div className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2">
+            <span className="min-w-0 flex-1">
+              <span className="block text-caption text-ink-muted">
+                Seu painel · só você vê
+                {papel !== "dono" && ` · ${PAPEIS_EQUIPE[papel].nome}`}
+              </span>
+              {nome && <span className="block truncate text-label">{nome}</span>}
+              {atividades.length > 0 && (
+                <span className="block text-body-sm text-ink-muted">{textoDoQueFaz(atividades)}</span>
+              )}
             </span>
-            {nome && <span className="block truncate text-label">{nome}</span>}
-            {atividades.length > 0 && (
-              <span className="block text-body-sm text-ink-muted">{textoDoQueFaz(atividades)}</span>
-            )}
-          </span>
-          {contas.length > 1 ? (
-            <button
-              type="button"
-              aria-expanded={aberto}
-              aria-controls={idMenu}
-              onClick={() => setAberto((a) => !a)}
-              className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-body-sm text-ink-muted hover:bg-surface-300 hover:text-ink"
-            >
-              Agir como
-              <ChevronDown aria-hidden className={`size-4 transition-transform ${aberto ? "rotate-180" : ""}`} />
-            </button>
-          ) : papel === "dono" || papel === "admin" ? (
-            <Link
-              href="/perfil#modos"
-              className="shrink-0 text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
-            >
-              Mudar
-              <span className="sr-only"> o que você faz no Publike</span>
-            </Link>
-          ) : null}
-        </div>
-        {aberto && (
-          <div
-            id={idMenu}
-            className="absolute top-full right-0 left-0 z-40 mt-1 rounded-md border border-line-strong bg-surface-200 py-1 shadow-raised"
-          >
-            <ul aria-label="Contas" className="pb-1">
-              {contas.map((c) => (
-                <li key={c.conta_id}>
-                  <button
-                    type="button"
-                    aria-current={c.atual ? "true" : undefined}
-                    disabled={trocando}
-                    onClick={() => agirComo(c)}
-                    className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300 disabled:opacity-60"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-label">{c.nome}</span>
-                      <span className="block text-body-sm text-ink-muted">
-                        {c.papel === "dono" ? "Sua conta" : `Equipe · ${PAPEIS_EQUIPE[c.papel].nome}`}
-                      </span>
-                    </span>
-                    {c.atual && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {erroTroca && (
-              <p role="alert" className="px-4 py-2 text-body-sm text-danger">
-                {erroTroca}
-              </p>
-            )}
-            {(papel === "dono" || papel === "admin") && (
+            {contas.length > 1 ? (
+              <button
+                type="button"
+                aria-expanded={aberto}
+                aria-controls={idMenu}
+                onClick={() => setAberto((a) => !a)}
+                className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-body-sm text-ink-muted hover:bg-surface-300 hover:text-ink"
+              >
+                Agir como
+                <ChevronDown aria-hidden className={`size-4 transition-transform ${aberto ? "rotate-180" : ""}`} />
+              </button>
+            ) : papel === "dono" || papel === "admin" ? (
               <Link
                 href="/perfil#modos"
-                onClick={() => setAberto(false)}
-                className="flex min-h-11 items-center border-t border-line px-4 text-body-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+                className="shrink-0 text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
               >
-                Escolher o que você faz no Publike
+                Mudar
+                <span className="sr-only"> o que você faz no Publike</span>
               </Link>
-            )}
+            ) : null}
           </div>
-        )}
-      </div>
+          {aberto && (
+            <div
+              id={idMenu}
+              className="absolute top-full right-0 left-0 z-40 mt-1 rounded-md border border-line-strong bg-surface-200 py-1 shadow-raised"
+            >
+              <ul aria-label="Contas" className="pb-1">
+                {contas.map((c) => (
+                  <li key={c.conta_id}>
+                    <button
+                      type="button"
+                      aria-current={c.atual ? "true" : undefined}
+                      disabled={trocando}
+                      onClick={() => agirComo(c)}
+                      className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left hover:bg-surface-300 disabled:opacity-60"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-label">{c.nome}</span>
+                        <span className="block text-body-sm text-ink-muted">
+                          {c.papel === "dono" ? "Sua conta" : `Equipe · ${PAPEIS_EQUIPE[c.papel].nome}`}
+                        </span>
+                      </span>
+                      {c.atual && <Check aria-hidden className="size-5 shrink-0 text-cerrado-text" />}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {erroTroca && (
+                <p role="alert" className="px-4 py-2 text-body-sm text-danger">
+                  {erroTroca}
+                </p>
+              )}
+              {(papel === "dono" || papel === "admin") && (
+                <Link
+                  href="/perfil#modos"
+                  onClick={() => setAberto(false)}
+                  className="flex min-h-11 items-center border-t border-line px-4 text-body-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+                >
+                  Escolher o que você faz no Publike
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <ul className="sem-barra -mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-4 lg:overflow-visible lg:px-0">
         {grupos.map((g) => (
@@ -222,7 +225,9 @@ export function MenuPainel({
                 {g.atividade}
               </p>
             )}
-            {g.nome && <p className="hidden px-3 pb-1.5 text-body-sm font-semibold text-ink-muted lg:block">{g.nome}</p>}
+            {g.nome && (
+              <p className="hidden px-3 pb-1.5 text-body-sm font-semibold text-ink-muted lg:block">{g.nome}</p>
+            )}
             <ul
               className={`contents lg:relative lg:flex lg:flex-col lg:gap-0.5 ${
                 // o traço que liga os passos do caminho

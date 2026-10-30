@@ -129,8 +129,8 @@ const MENSAGENS: Secao = { href: "/painel/conversas", nome: "Mensagens", icone: 
 export const SECOES: Record<ModoPainel, Secao[]> = {
   contratar: [
     { href: "/painel", nome: "Hoje", icone: "hoje" },
-    { href: "/painel/caixa", nome: "Caixa de entrada", icone: "caixa", contador: "responder" },
-    { href: "/painel/anuncios?tipo=vaga", nome: "Minhas vagas", icone: "vagas" },
+    { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder" },
+    { href: "/painel/anuncios?tipo=vaga", nome: "Vagas", icone: "vagas" },
     { href: "/talentos", nome: "Talentos", icone: "talentos" },
     MENSAGENS,
     { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas" },
@@ -181,30 +181,77 @@ export function gruposDoModo(
 ): GrupoMenu[] {
   if (modo !== "contratar") return [{ nome: null, secoes: SECOES[modo] }];
   const agencia = tipoConta === "agencia";
-  const caminho: Omit<Secao, "passo">[] = agencia
+  const caminho: Secao[] = agencia
     ? [
         { href: "/painel/clientes", nome: "Clientes", icone: "clientes", contador: "clientes", jeito: "texto" },
-        { href: "/painel/anuncios?tipo=vaga", nome: "Vagas", icone: "vagas", contador: "vagasNoAr", jeito: "texto", sufixo: "no ar" },
+        {
+          href: "/painel/anuncios?tipo=vaga",
+          nome: "Vagas",
+          icone: "vagas",
+          contador: "vagasNoAr",
+          jeito: "texto",
+          sufixo: "no ar",
+        },
         { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder", jeito: "pilula" },
-        { href: "/painel/finalistas", nome: "Para o cliente", icone: "finalistas", contador: "prontos", jeito: "pronto" },
-        { href: "/painel/contratados", nome: "Contratados", icone: "contratados", contador: "contratados", jeito: "texto" },
+        {
+          href: "/painel/finalistas",
+          nome: "Para o cliente",
+          icone: "finalistas",
+          contador: "prontos",
+          jeito: "pronto",
+        },
+        {
+          href: "/painel/contratados",
+          nome: "Contratados",
+          icone: "contratados",
+          contador: "contratados",
+          jeito: "texto",
+        },
       ]
     : [
-        { href: "/painel/anuncios?tipo=vaga", nome: "Vagas", icone: "vagas", contador: "vagasNoAr", jeito: "texto", sufixo: "no ar" },
+        {
+          href: "/painel/anuncios?tipo=vaga",
+          nome: "Vagas",
+          icone: "vagas",
+          contador: "vagasNoAr",
+          jeito: "texto",
+          sufixo: "no ar",
+        },
         { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder", jeito: "pilula" },
-        { href: "/painel/caixa?aba=entrevistas", nome: "Entrevistas", icone: "entrevistas", contador: "entrevistas", jeito: "texto" },
-        { href: "/painel/contratados", nome: "Contratados", icone: "contratados", contador: "contratados", jeito: "texto" },
+        {
+          href: "/painel/caixa?aba=entrevistas",
+          nome: "Entrevistas",
+          icone: "entrevistas",
+          contador: "entrevistas",
+          jeito: "texto",
+        },
+        {
+          href: "/painel/contratados",
+          nome: "Contratados",
+          icone: "contratados",
+          contador: "contratados",
+          jeito: "texto",
+        },
       ];
+  // o menu só navega (29/10/2026, claude/plano-painel-simples.md): sem os números de passo; o caminho da vaga
+  // fica na horizontal, na Hoje e nas páginas de candidatos
   return [
-    { nome: null, secoes: [{ href: "/painel", nome: "Hoje", icone: "hoje" }] },
-    { nome: "O caminho da vaga", caminho: true, secoes: caminho.map((s, n) => ({ ...s, passo: n + 1 })) },
+    {
+      nome: null,
+      secoes: [{ href: "/painel", nome: "Hoje", icone: "hoje" }, ...caminho, { ...MENSAGENS, jeito: "pilula" }],
+    },
     {
       nome: "Achar gente",
       secoes: [
         // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (o selo some quando já tem)
         { href: "/painel/copiloto", nome: "Copiloto", icone: "copiloto", cortesia: !extras.copiloto },
         { href: "/talentos", nome: "Talentos", icone: "talentos" },
-        { ...MENSAGENS, jeito: "pilula" },
+      ],
+    },
+    {
+      nome: agencia ? "Agência" : "Sua empresa",
+      secoes: [
+        { href: "/painel/links", nome: "Links para divulgar", icone: "links" },
         {
           href: "/painel/visitas",
           nome: "Quem viu seu perfil",
@@ -212,12 +259,6 @@ export function gruposDoModo(
           contador: "visitas",
           jeito: "pilula",
         },
-      ],
-    },
-    {
-      nome: agencia ? "Agência" : "Sua empresa",
-      secoes: [
-        { href: "/painel/links", nome: "Links para divulgar", icone: "links" },
         { href: "/painel/testes", nome: "Testes Publike", icone: "testes", cortesia: true },
         ...(agencia ? [EQUIPE] : []),
       ],

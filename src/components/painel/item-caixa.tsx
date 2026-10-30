@@ -35,6 +35,11 @@ export function ItemDaLista({ c, agora, href, aberto }: { c: ItemCaixa; agora: n
               <CalendarClock aria-hidden className="size-4 shrink-0 text-ink-muted" />
               {dataDaEntrevista(c.entrevista.quando)}
             </span>
+          ) : c.status === "match" && c.etapa === "entrevista" && !encerrado ? (
+            <span className="mt-0.5 flex items-center gap-1.5 text-body-sm font-semibold text-terra-text">
+              <CalendarClock aria-hidden className="size-4 shrink-0" />
+              Entrevista sem data: marque na ficha
+            </span>
           ) : c.aceita ? (
             <span className="mt-0.5 block text-body-sm text-ink-muted">Aceito: esperando o currículo</span>
           ) : c.mensagem && !encerrado ? (

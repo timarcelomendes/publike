@@ -148,7 +148,7 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
         <p className="font-display text-h2">{total ? "Triagem feita!" : "Ninguém esperando"}</p>
         <p className="max-w-md text-body text-ink-muted">
           {total
-            ? `${aceitos} ${aceitos === 1 ? "aceito" : "aceitos"} e ${dispensados} ${dispensados === 1 ? "dispensado" : "dispensados"}.${pulados ? ` ${pulados} ${pulados === 1 ? "ficou" : "ficaram"} para depois, em “Para responder”.` : ""} Quem você aceitou está em “Em andamento”, pronto para a entrevista.`
+            ? `${aceitos} ${aceitos === 1 ? "aceito" : "aceitos"} e ${dispensados} ${dispensados === 1 ? "dispensado" : "dispensados"}.${pulados ? ` ${pulados} ${pulados === 1 ? "ficou" : "ficaram"} para depois, em “Novos”.` : ""} Quem você aceitou está em “Em andamento”, pronto para a entrevista.`
             : "Quando alguém curtir uma vaga sua, aparece aqui para você decidir."}
         </p>
         {ultima?.desfaz && (

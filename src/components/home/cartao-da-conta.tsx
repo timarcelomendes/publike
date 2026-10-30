@@ -213,7 +213,7 @@ export async function AtalhosDaConta() {
     ]);
     const candidatos = anuncios.filter((a) => a.tipo === "vaga").reduce((t, a) => t + (a.curtidas_novas ?? 0), 0);
     itens = [
-      { nome: "Minhas vagas", href: "/painel/anuncios?tipo=vaga", numero: candidatos, destaque: candidatos > 0 },
+      { nome: "Vagas", href: "/painel/anuncios?tipo=vaga", numero: candidatos, destaque: candidatos > 0 },
       {
         nome: "Serviços pedidos",
         href: "/painel/curtidas?tipo=servico",

@@ -69,7 +69,7 @@ import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 import { juntarTriagem, perguntasDoBanco, type Pergunta, type Respostas } from "@/lib/vaga-extra";
 
-export const metadata: Metadata = { title: "Candidatos" };
+export const metadata: Metadata = { title: "Lista de candidatos e planilha" };
 
 // A situação de cada candidato, do jeito que quem publicou age.
 // "aceita": você aceitou, e a vaga espera o currículo da pessoa para dar match.
@@ -320,7 +320,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
-          <h2 className="text-h2">Candidatos</h2>
+          <h2 className="text-h2">Lista de candidatos e planilha</h2>
           <p className="mt-1 text-body text-ink-muted">
             Todos que curtiram suas vagas. Responda quem está esperando, converse com quem deu match e acompanhe as
             entrevistas.

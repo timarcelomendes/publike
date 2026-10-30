@@ -193,7 +193,7 @@ export function ControlesDaFicha({
             className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong px-4 text-label hover:bg-surface-300 disabled:opacity-60"
           >
             <Undo2 aria-hidden className="size-[18px]" />
-            Voltar para Para responder
+            Voltar para Novos
           </button>
         )}
         <span className="ml-auto flex items-center gap-1">

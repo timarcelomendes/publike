@@ -30,7 +30,7 @@ const TITULOS: Record<"todos" | TipoAnuncio, { titulo: string; texto: string }> 
     texto: "Tudo o que você publicou. Quem se interessar curte; toque no número para ver quem foi e responder.",
   },
   vaga: {
-    titulo: "Minhas vagas",
+    titulo: "Vagas",
     texto: "Quem curtir a vaga aparece nela. Toque na vaga para ver os candidatos, responder e editar.",
   },
   servico: {
@@ -411,7 +411,7 @@ function FunilDaVaga({ id, candidatos, novas }: { id: string; candidatos: Candid
   const vaga = `/painel/anuncio/${id}/quadro`;
   const passos = [
     { nome: "Candidatos", numero: candidatos.length, href: vaga },
-    { nome: "Para responder", numero: conta(esperaResposta), href: vaga, destaque: true },
+    { nome: "Novos", numero: conta(esperaResposta), href: vaga, destaque: true },
     { nome: "Em análise", numero: conta((c) => c.etapa === "analise"), href: vaga },
     { nome: "Entrevista", numero: conta((c) => c.etapa === "entrevista"), href: vaga },
     { nome: "Contratados", numero: conta((c) => c.etapa === "contratado"), href: vaga, final: true },

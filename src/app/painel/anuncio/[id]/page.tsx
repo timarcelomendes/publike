@@ -140,7 +140,7 @@ async function Conteudo({
 
       {(status === "em_analise" || status === "removido") && (
         <Aviso tipo="alerta" titulo="Este anúncio está com a moderação">
-          Enquanto isso, não dá para {servico ? "aceitar pedidos" : "curtir de volta"} e os contatos ficam escondidos.
+          Enquanto isso, não dá para {servico ? "aceitar pedidos" : "aceitar candidatos"} e os contatos ficam escondidos.
         </Aviso>
       )}
 
@@ -209,7 +209,7 @@ async function Conteudo({
           <p className="text-body text-ink-muted">
             {servico
               ? "Quem quer contratar você. Você decide se aceita: o aceite conecta vocês, e a conversa e o WhatsApp aparecem para os dois."
-              : "Você decide quem aceitar. Curtir de volta conecta vocês: a conversa e o WhatsApp aparecem para os dois."}
+              : "Você decide quem aceitar. Aceitar conecta vocês: a conversa e o WhatsApp aparecem para os dois."}
           </p>
           <ul className="flex flex-col gap-4">
             {interessados.map((p) => {

@@ -39,7 +39,7 @@ export default function Publicar({ searchParams }: PageProps<"/publicar">) {
       <h1 className="text-h2 sm:text-h1">Publicar grátis</h1>
       <p className="mt-2 mb-6 text-body text-ink-muted">
         Leva dois minutos e é grátis, sem plano e sem limite de candidatos, para a sua casa ou o seu negócio. Com o
-        endereço certo, quem mora perto vê primeiro. Seu WhatsApp só aparece para quem você curtir de volta.
+        endereço certo, quem mora perto vê primeiro. Seu WhatsApp só aparece para quem você aceitar.
       </p>
       <Suspense fallback={<Esqueleto className="h-[60rem] w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />

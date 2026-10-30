@@ -38,7 +38,7 @@ import { equipeDaConta } from "@/lib/servidor/equipe";
 import { ComecePorAqui, FaixaDoCaminho, SeusClientes, type Passo, type PrimeiroPasso } from "./caminho-hoje";
 import { ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
 import { LinksParaMandar, type LinkParaMandar } from "./links-para-mandar";
-import { EsperandoResposta, MensagensRecentes, TalentosDaVaga } from "./hoje-extras";
+import { MensagensRecentes, TalentosDaVaga } from "./hoje-extras";
 import { NivelDaSaude } from "./saude-vaga";
 
 // Hoje, no modo Contratar (comércio, empresa e agência), pelo caminho da vaga:
@@ -441,9 +441,27 @@ export async function PainelRecrutador({
     href: "/painel/contratados",
     estado: contratados.length ? "feito" : "normal",
   };
+  // comércio e empresa: as etapas do candidato, com os mesmos nomes do quadro e das páginas de candidatos
+  // (Novos → Em análise → Entrevista → Contratados); as vagas no ar ficam em "Suas vagas" e no menu
+  const emAnalise = todos.filter((c) => c.etapa === "analise" && (c.status === "match" || c.status === "pendente"));
+  const passoNovos: Passo = {
+    ...passoCandidatos,
+    nome: "Novos",
+    texto: pendentes.length
+      ? `${esperando} ${pendentes.length === 1 ? "espera" : "esperam"} sua resposta`
+      : "Ninguém esperando resposta",
+  };
+  const passoEmAnalise: Passo = {
+    nome: "Em análise",
+    numero: emAnalise.length,
+    texto: emAnalise.length ? "Você está olhando" : "Leve quem interessa para Em análise",
+    acao: "Ver em análise",
+    href: "/painel/candidatos?etapa=analise",
+    estado: "normal",
+  };
   const passos = agencia
     ? [passoClientes, passoVagas, passoCandidatos, passoCliente, passoContratados]
-    : [{ ...passoVagas, nome: "Vagas no ar" }, passoCandidatos, passoEntrevistas, passoContratados];
+    : [passoNovos, passoEmAnalise, { ...passoEntrevistas, nome: "Entrevista" }, passoContratados];
   // um passo "agora" por vez: o primeiro que pede você
   const daVez = passos.findIndex((p) => p.estado === "agora");
   const faixa = passos.map((p, i) => (p.estado === "agora" && i !== daVez ? { ...p, estado: "normal" as const } : p));
@@ -545,9 +563,8 @@ export async function PainelRecrutador({
     ? agencia
       ? "Seu painel segue o caminho de cada vaga: do cliente ao contratado."
       : "Seu painel segue o caminho de cada vaga: da publicação ao contratado."
-    : `${plural(noAr.length, "vaga no ar", "vagas no ar")}${agencia && caminho.clientes ? ` para ${plural(caminho.clientes, "cliente", "clientes")}` : ""}.${
-        pendentes.length ? ` ${plural(pendentes.length, "candidato espera", "candidatos esperam")} você.` : ""
-      }`;
+    : // quem espera você já está na faixa do caminho e no "Para fazer agora": o resumo não repete
+      `${plural(noAr.length, "vaga no ar", "vagas no ar")}${agencia && caminho.clientes ? ` para ${plural(caminho.clientes, "cliente", "clientes")}` : ""}.`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -628,12 +645,6 @@ export async function PainelRecrutador({
             />
           )}
 
-          {pendentes.length > 0 && (
-            <Suspense fallback={null}>
-              <EsperandoResposta agora={agora} />
-            </Suspense>
-          )}
-
           {agencia && <SeusClientes clientes={caminho.listaClientes} vagas={caminho.vagas} />}
 
           {listaDeVagas.length > 0 && (
@@ -655,6 +666,9 @@ export async function PainelRecrutador({
                   const status = v.status as StatusAnuncio;
                   const responder = daVaga.filter(esperaResposta).length;
                   const entrevista = daVaga.filter((c) => c.etapa === "entrevista" && c.status === "match").length;
+                  const analise = daVaga.filter(
+                    (c) => c.etapa === "analise" && (c.status === "match" || c.status === "pendente"),
+                  ).length;
                   const contratado = daVaga.filter((c) => c.etapa === "contratado" && c.status === "match").length;
                   const total = Math.max(daVaga.length, 1);
                   const ativa = status === "ativo";
@@ -689,8 +703,12 @@ export async function PainelRecrutador({
                         )}
                         <span className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-ink-muted">
                           <span>
-                            <strong className={responder ? "text-terra-text" : "text-ink"}>{responder}</strong> para
-                            responder
+                            {/* as mesmas etapas da faixa do caminho e do quadro */}
+                            <strong className={responder ? "text-terra-text" : "text-ink"}>{responder}</strong>{" "}
+                            {responder === 1 ? "novo" : "novos"}
+                          </span>
+                          <span>
+                            <strong className="text-ink">{analise}</strong> em análise
                           </span>
                           <span>
                             <strong className="text-ink">{entrevista}</strong> em entrevista

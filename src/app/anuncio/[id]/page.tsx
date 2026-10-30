@@ -326,7 +326,7 @@ async function DetalheAnuncio({
         <p className="font-display text-h3">{vaga ? "Este anúncio é seu" : "Este serviço é seu"}</p>
         <p className="text-body-sm text-ink-muted">
           {vaga
-            ? "Veja quem curtiu e curta de volta para dar match."
+            ? "Veja quem curtiu e aceite para dar match."
             : "Veja quem quer contratar você e aceite para dar match."}
         </p>
         <BotaoLink href={`/painel/anuncio/${anuncio.id}`} variante="sucesso">

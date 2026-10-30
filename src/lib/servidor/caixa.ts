@@ -60,9 +60,9 @@ async function resumosGuardados(vagas: string[]) {
 export type Aba = "responder" | "andamento" | "entrevistas" | "mensagens" | "encerrados";
 
 export const ABAS: { valor: Aba; nome: string; vazio: string }[] = [
-  { valor: "responder", nome: "Para responder", vazio: "Ninguém esperando resposta: você está em dia." },
+  { valor: "responder", nome: "Novos", vazio: "Ninguém esperando resposta: você está em dia." },
   { valor: "andamento", nome: "Em andamento", vazio: "Ninguém em andamento. Quem você aceitar aparece aqui." },
-  { valor: "entrevistas", nome: "Entrevistas", vazio: "Nenhuma entrevista marcada." },
+  { valor: "entrevistas", nome: "Entrevistas", vazio: "Ninguém na etapa Entrevista." },
   { valor: "mensagens", nome: "Mensagens novas", vazio: "Nenhuma mensagem nova." },
   { valor: "encerrados", nome: "Encerrados", vazio: "Ninguém dispensado ou com match desfeito." },
 ];
@@ -72,7 +72,8 @@ const ABERTA = ["marcada", "confirmada", "remarcar"];
 export const naAba: Record<Aba, (c: ItemCaixa) => boolean> = {
   responder: (c) => esperaResposta(c),
   andamento: (c) => c.status === "match" || c.aceita,
-  entrevistas: (c) => Boolean(c.entrevista),
+  // quem está na etapa Entrevista, com ou sem data (o mesmo número do menu e da Hoje)
+  entrevistas: (c) => Boolean(c.entrevista) || (c.status === "match" && c.etapa === "entrevista"),
   mensagens: (c) => c.naoLidas > 0,
   encerrados: (c) => c.status === "dispensada" || c.status === "desfeito",
 };
@@ -88,7 +89,13 @@ export function ordenar(aba: Aba, lista: ItemCaixa[]) {
   const l = [...lista];
   if (aba === "responder") l.sort((a, b) => peso(b) - peso(a) || recente(b, a));
   else if (aba === "entrevistas")
-    l.sort((a, b) => new Date(a.entrevista!.quando).getTime() - new Date(b.entrevista!.quando).getTime());
+    // com data primeiro (da mais perto para a mais longe); sem data depois, quem entrou antes primeiro
+    l.sort((a, b) => {
+      if (a.entrevista && b.entrevista)
+        return new Date(a.entrevista.quando).getTime() - new Date(b.entrevista.quando).getTime();
+      if (a.entrevista || b.entrevista) return a.entrevista ? -1 : 1;
+      return recente(b, a);
+    });
   else if (aba === "mensagens") l.sort((a, b) => b.naoLidas - a.naoLidas || recente(a, b));
   else if (aba === "andamento")
     l.sort((a, b) => {
