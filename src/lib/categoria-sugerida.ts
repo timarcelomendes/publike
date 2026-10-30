@@ -14,27 +14,40 @@ const PALAVRAS: Record<Exclude<Categoria, "outros">, string> = {
   comercio:
     "vendedor, vendedora, vendas, caixa, repositor, repositora, operador de caixa, balconista, promotor, promotora, consultor de vendas, consultora de vendas, atendente de loja, loja, comercial, representante comercial, fiscal de loja, embalador, empacotador, atendente",
   administrativo:
-    "recepcao, recepcionista, telemarketing, auxiliar administrativo, assistente administrativo, administrativo, secretaria, secretario, financeiro, faturamento, fiscal, contabil, contador, departamento pessoal, recursos humanos, atendimento ao cliente, sac, escritorio, analista fiscal, jovem aprendiz, aprendiz, auxiliar de escritorio",
+    "recepcao, recepcionista, telemarketing, auxiliar administrativo, assistente administrativo, administrativo, secretaria, secretario, departamento pessoal, recursos humanos, atendimento ao cliente, sac, escritorio, jovem aprendiz, aprendiz, auxiliar de escritorio",
+  financeiro:
+    "financeiro, financeira, auxiliar financeiro, assistente financeiro, faturamento, fiscal, analista fiscal, contabil, contabilidade, auxiliar contabil, contador, contadora, cobranca, tesouraria, contas a pagar, contas a receber",
   logistica:
     "motorista, entregador, entregadora, motoboy, estoque, estoquista, almoxarife, almoxarifado, conferente, carregador, ajudante de carga, logistica, expedicao, inventario, rodotrem, caminhao, carreteiro, operador de empilhadeira, empilhadeira",
   construcao:
     "pedreiro, servente, servente de obras, mestre de obras, pintor, azulejista, gesseiro, carpinteiro, armador, obra, ajudante de obra, reforma, marceneiro, serralheiro, vidraceiro",
   "eletrica-hidraulica": "eletricista, encanador, bombeiro hidraulico, hidraulica, eletrica, instalador eletrico",
   limpeza:
-    "faxina, faxineira, faxineiro, diarista, domestica, zelador, zeladora, limpeza, auxiliar de limpeza, passadeira, lavadeira, lavanderia, camareira, governanta",
-  cuidados:
-    "cuidador, cuidadora, baba, acompanhante de idoso, tecnico de enfermagem, enfermagem, enfermeira, enfermeiro",
+    "faxina, faxineira, faxineiro, diarista, domestica, zelador, zeladora, limpeza, auxiliar de limpeza, passadeira, lavadeira, lavanderia, governanta",
+  cuidados: "cuidador, cuidadora, baba, acompanhante de idoso",
+  saude:
+    "tecnico de enfermagem, auxiliar de enfermagem, enfermagem, enfermeira, enfermeiro, farmacia, farmaceutico, farmaceutica, balconista de farmacia, atendente de farmacia, drogaria, auxiliar de saude bucal, dentista, consultorio, clinica, fisioterapeuta, psicologo, psicologa, nutricionista, tecnico de radiologia, laboratorio, hospital, recepcionista de clinica",
   beleza:
     "cabeleireiro, cabeleireira, manicure, pedicure, barbeiro, esteticista, maquiadora, depiladora, designer de sobrancelha, salao, barbearia",
   educacao: "professor, professora, monitor, monitora, auxiliar de sala, pedagoga, tutor, aulas",
+  esporte:
+    "personal trainer, educador fisico, professor de educacao fisica, academia, instrutor de musculacao, professor de natacao, natacao, recepcionista de academia, treinador, treinadora",
   tecnologia:
-    "programador, desenvolvedor, suporte tecnico, suporte, ti, informatica, software, internet, redes, analista de sistemas, tecnico de informatica, designer",
+    "programador, desenvolvedor, suporte tecnico, suporte, ti, informatica, software, internet, redes, analista de sistemas, tecnico de informatica",
+  marketing:
+    "marketing, social media, designer, designer grafico, fotografo, fotografa, videomaker, editor de video, redator, redatora, publicidade, trafego pago, copywriter",
   industria:
-    "operador de maquina, producao, auxiliar de producao, torneiro, torneiro mecanico, soldador, metalurgico, fresador, costureira, costureiro, industria, fabrica, montador, operador de producao",
-  eventos: "buffet, eventos, festa, festas, recreador, recreadora, dj, fotografo",
+    "operador de maquina, producao, auxiliar de producao, torneiro, torneiro mecanico, soldador, metalurgico, fresador, industria, fabrica, montador, operador de producao",
+  moda: "costureira, costureiro, costura, modelista, overloquista, bordadeira, alfaiate, confeccao, arremate, cortador de tecido",
+  agro: "trabalhador rural, rural, fazenda, tratorista, operador de colheitadeira, colheita, caseiro, retireiro, vaqueiro, agronomo, agricola, agropecuaria, granja, ordenhador",
+  eventos: "buffet, eventos, festa, festas, recreador, recreadora, dj",
+  hotelaria: "hotel, pousada, motel, camareira, recepcionista de hotel, mensageiro, guia de turismo, turismo",
   jardinagem: "jardineiro, jardinagem, piscineiro, piscina, paisagista, rocador",
+  pets: "banho e tosa, tosador, tosadora, banhista, pet shop, petshop, pet, passeador de caes, veterinario, veterinaria, auxiliar veterinario, adestrador",
   auto: "mecanico, mecanico diesel, lavador, lavador de carros, lava jato, funileiro, borracheiro, frentista, auto eletrica, autoeletrica, pintor automotivo, polidor, oficina",
   seguranca: "porteiro, portaria, vigia, vigilante, seguranca, controlador de acesso",
+  manutencao:
+    "tecnico de manutencao, manutencao, auxiliar de manutencao, montador de moveis, chaveiro, tecnico de refrigeracao, refrigeracao, ar condicionado, conserto, tecnico de celular, assistencia tecnica, marido de aluguel, tecnico de eletrodomesticos",
 };
 
 /** "Mecânico — Jardim Goiás" → "mecanico jardim goias": minúsculas, sem acento, só letras e espaço. */
