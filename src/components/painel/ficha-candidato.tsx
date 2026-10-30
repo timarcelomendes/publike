@@ -39,7 +39,7 @@ import { DetalheDaAderencia, linhaDaAderencia, NotaAderencia } from "./nota-ader
 // poucas linhas, com o inteiro numa janela ("Ver currículo completo").
 
 const SITUACAO: Record<EstadoFicha, { nome: string; variante: "aviso" | "match" | "contorno" | "neutro" }> = {
-  responder: { nome: "Para responder", variante: "aviso" },
+  responder: { nome: "Espera você", variante: "aviso" },
   aceita: { nome: "Esperando currículo", variante: "neutro" },
   match: { nome: "Deu match", variante: "match" },
   dispensada: { nome: "Dispensado", variante: "contorno" },

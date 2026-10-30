@@ -217,21 +217,8 @@ export function gruposDoModo(
           jeito: "texto",
           sufixo: "no ar",
         },
+        // Entrevista e Contratados são etapas de Candidatos (parte 2 do claude/plano-painel-simples.md)
         { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder", jeito: "pilula" },
-        {
-          href: "/painel/caixa?aba=entrevistas",
-          nome: "Entrevistas",
-          icone: "entrevistas",
-          contador: "entrevistas",
-          jeito: "texto",
-        },
-        {
-          href: "/painel/contratados",
-          nome: "Contratados",
-          icone: "contratados",
-          contador: "contratados",
-          jeito: "texto",
-        },
       ];
   // o menu só navega (29/10/2026, claude/plano-painel-simples.md): sem os números de passo; o caminho da vaga
   // fica na horizontal, na Hoje e nas páginas de candidatos
@@ -343,8 +330,11 @@ export function gruposDaConta(
 export function outrasDaConta(atividades: ModoPainel[], grupos: GrupoMenu[]): { href: string; nome: string }[] {
   const nosGrupos = new Set(grupos.flatMap((g) => g.secoes.map((s) => s.href)));
   const vistas = new Set<string>();
+  // a lista com o filtro de cliente fica só para a agência; nas outras contas, Candidatos já tem tudo
+  const agencia = nosGrupos.has("/painel/clientes");
   return atividades
     .flatMap((m) => OUTRAS[m])
+    .filter((o) => agencia || o.href !== "/painel/candidatos")
     .filter((o) => !nosGrupos.has(o.href) && !vistas.has(o.href) && vistas.add(o.href));
 }
 
@@ -354,7 +344,6 @@ export function secaoAtiva(
   outras: { href: string; nome: string }[],
   caminho: string,
   tipo: string | null,
-  aba: string | null = null,
 ): string | null {
   if (caminho === "/painel" || caminho === "/painel/") return "/painel";
   const secoes = [...grupos.flatMap((g) => g.secoes), ...outras];
@@ -364,11 +353,6 @@ export function secaoAtiva(
     const conexoes = caminho.startsWith("/painel/conexoes") && secoes.find((s) => s.href === "/painel/conexoes");
     if (conexoes) return conexoes.href;
     return secoes.find((s) => s.href === MENSAGENS.href)?.href ?? null;
-  }
-  // a caixa na aba de entrevistas é o passo Entrevistas (comércio e empresa)
-  if (caminho.startsWith("/painel/caixa") && aba === "entrevistas") {
-    const entrevistas = secoes.find((s) => s.href === "/painel/caixa?aba=entrevistas");
-    if (entrevistas) return entrevistas.href;
   }
   // a página de um anúncio (quem curtiu, quadro, editar) fica na lista de anúncios do modo
   if (caminho.startsWith("/painel/anuncio/")) {

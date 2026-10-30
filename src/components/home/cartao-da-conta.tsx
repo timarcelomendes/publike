@@ -344,7 +344,7 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
       { nome: "Painel de vagas", href: "/painel", icone: Briefcase, numero: noAr ? `${noAr} no ar` : null },
       {
         nome: "Candidatos esperando",
-        href: "/painel/caixa?aba=responder",
+        href: "/painel/caixa?aba=novos",
         icone: Inbox,
         numero: esperam ? String(esperam) : null,
         destaque: esperam > 0,

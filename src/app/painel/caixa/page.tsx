@@ -1,4 +1,4 @@
-import { ArrowLeft, List, Users, Zap } from "lucide-react";
+import { ArrowLeft, Download, Users, Zap } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -10,27 +10,41 @@ import { RegistrarVisitaPerfil } from "@/components/visitas/registrar-visita";
 import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
 import { ItemDaLista } from "@/components/painel/item-caixa";
+import { OrdemDaCaixa } from "@/components/painel/ordem-caixa";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Aviso, Vazio } from "@/components/ui/basicos";
-import { BotaoLink } from "@/components/ui/botao";
+import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
+import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
+import { esperaResposta } from "@/lib/constantes";
 import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
 import { primeiro } from "@/lib/formato";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { empresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
-import { ABAS, montarCaixa, naAba, ordenar, type Aba, type ItemCaixa } from "@/lib/servidor/caixa";
+import {
+  ABA_ANTIGA,
+  ABAS,
+  abaDe,
+  montarCaixa,
+  naAba,
+  ORDENS,
+  ordenar,
+  type Aba,
+  type ItemCaixa,
+  type Ordem,
+} from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Candidatos" };
 
-// A caixa de entrada de quem contrata: a lista à esquerda (por aba: para responder, em
-// andamento, entrevistas, mensagens novas, encerrados) e a ficha de quem está aberto
-// à direita, com a decisão e os atalhos de teclado. No celular, a lista e a ficha
-// viram duas telas; a triagem rápida (cartões de arrastar) fica num botão em cima.
+// Candidatos, numa página só (claude/plano-painel-simples.md, parte 2): as etapas no alto (Novos, Em análise,
+// Entrevista, Contratados, Não seguiu), a lista à esquerda e a ficha de quem está aberto à direita, com a
+// decisão e os atalhos de teclado. Vaga, Ordem, Planilha e Triagem rápida em cima. No celular, a lista e a
+// ficha viram duas telas. As mensagens novas ficam nas Mensagens; a antiga "Lista e planilha" e a página de
+// Contratados (fora da agência) trazem para cá.
 
 export default function CaixaDeEntrada({ searchParams }: PageProps<"/painel/caixa">) {
   return (
@@ -44,6 +58,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/caixa");
   const sp = await searchParams;
+  // a antiga aba "Mensagens novas": as conversas ficam nas Mensagens
+  if (primeiro(sp.aba) === "mensagens") redirect("/painel/conversas");
   const agora = await agoraDaRequisicao();
   const [itens, comIA] = await Promise.all([montarCaixa(agora), ajudaDaIADisponivel()]);
 
@@ -87,13 +103,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   const vaga = pedidaVaga && UUID.test(pedidaVaga) && vagas.has(pedidaVaga) ? pedidaVaga : null;
   const daVaga = vaga ? itens.filter((c) => c.anuncio_id === vaga) : itens;
   const contagem = new Map(ABAS.map((a) => [a.valor, daVaga.filter(naAba[a.valor]).length]));
-  const pedidaAba = primeiro(sp.aba);
-  const aba: Aba = ABAS.some((a) => a.valor === pedidaAba)
-    ? (pedidaAba as Aba)
-    : contagem.get("responder")
-      ? "responder"
-      : "andamento";
-  const lista = ordenar(aba, daVaga.filter(naAba[aba]));
+  // quem espera a sua resposta, em cada etapa (a marca "espera você")
+  const esperam = new Map(
+    ABAS.map((a) => [a.valor, daVaga.filter((c) => naAba[a.valor](c) && esperaResposta(c)).length]),
+  );
+  const pedidaAba = primeiro(sp.aba) ?? "";
+  const valida = ABAS.some((a) => a.valor === pedidaAba) ? (pedidaAba as Aba) : (ABA_ANTIGA[pedidaAba] ?? null);
+  // sem etapa pedida: a primeira em que alguém espera você; senão, a primeira com gente
+  // um link para uma pessoa (aviso, Hoje, quadro), sem a etapa: abre a etapa em que ela está
+  const daPessoa = !ABAS.some((a) => a.valor === pedidaAba) ? daVaga.find((c) => c.chave === primeiro(sp.c)) : null;
+  const aba: Aba =
+    (daPessoa ? abaDe(daPessoa) : null) ??
+    valida ??
+    ABAS.find((a) => esperam.get(a.valor))?.valor ??
+    ABAS.find((a) => contagem.get(a.valor))?.valor ??
+    "novos";
+  const pedidaOrdem = primeiro(sp.ordem) ?? "";
+  const ordem: Ordem = ORDENS.some((o) => o.valor === pedidaOrdem) ? (pedidaOrdem as Ordem) : "";
+  const lista = ordenar(aba, daVaga.filter(naAba[aba]), ordem);
 
   // quem está aberto: o pedido (mesmo fora da aba, depois de um "desfazer") ou o primeiro
   const pedido = primeiro(sp.c);
@@ -105,6 +132,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
     const q = new URLSearchParams();
     q.set("aba", mudar.aba ?? aba);
     if (vaga) q.set("vaga", vaga);
+    if (ordem) q.set("ordem", ordem);
     if (mudar.c) q.set("c", mudar.c);
     return `/painel/caixa?${q}`;
   };
@@ -113,7 +141,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   // depois de responder, abre o próximo que ainda espera (ou o anterior, se era o último)
   const seguinte = posicao >= 0 ? (lista[posicao + 1] ?? lista[posicao - 1] ?? null) : (lista[0] ?? null);
   const depois = href({ c: seguinte && seguinte.chave !== aberto?.chave ? seguinte.chave : null });
-  const paraResponder = contagem.get("responder") ?? 0;
+  const paraResponder = daVaga.filter(esperaResposta).length;
+  const planilha = `/painel/candidatos/planilha${vaga ? `?vaga=${vaga}` : ""}`;
   // a conexão com quem está aberto (fica depois da vaga acabar)
   const conexao = aberto ? ((await estadosDeConexao([aberto.perfil_id])).get(aberto.perfil_id) ?? null) : null;
   // contato direto: o match saiu na hora (sem aceite); a mensagem do WhatsApp leva o link da vaga
@@ -129,7 +158,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
         <div className="max-w-2xl">
           <h2 className="text-h2">Candidatos</h2>
           <p className="mt-1 text-body text-ink-muted">
-            Quem curtiu suas vagas, numa lista só. Abra a ficha, decida e siga para o próximo.
+            <Selo variante="novo">Novo</Selo> Quem curtiu suas vagas, por etapa. Abra a ficha, decida e siga para o
+            próximo.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -139,10 +169,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
               Triagem rápida ({paraResponder})
             </BotaoLink>
           )}
-          <BotaoLink href="/painel/candidatos" tamanho="sm" variante="fantasma">
-            <List aria-hidden />
-            Lista e planilha
-          </BotaoLink>
+          <a href={planilha} className={classesBotao("secundario", "sm")}>
+            <Download aria-hidden />
+            Baixar planilha
+          </a>
         </div>
       </div>
 
@@ -151,13 +181,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
           embaixo. A aba sem ninguém fica apagada e sem o zero. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
         <nav
-          aria-label="Abas da caixa de entrada"
+          aria-label="Etapas"
           className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:max-w-full sm:px-0"
         >
           {ABAS.map((a) => {
             const n = contagem.get(a.valor) ?? 0;
             const ativa = a.valor === aba;
-            const destaque = n > 0 && (a.valor === "responder" || a.valor === "mensagens");
+            const espera = esperam.get(a.valor) ?? 0;
+            const destaque = espera > 0;
             return (
               <Link
                 key={a.valor}
@@ -168,13 +199,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
               >
                 {a.nome}
                 {n > 0 && <span className={ativa ? "text-surface-100/80" : destaque ? "" : "text-ink-muted"}>{n}</span>}
+                {espera > 0 && (
+                  <span className="sr-only">, {espera === 1 ? "1 espera você" : `${espera} esperam você`}</span>
+                )}
               </Link>
             );
           })}
         </nav>
-        {vagas.size > 1 && (
-          <FiltroVaga compacto vagas={[...vagas.values()]} vaga={vaga} etapa={null} caminho="/painel/caixa" aba={aba} />
-        )}
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          {vagas.size > 1 && (
+            <FiltroVaga
+              compacto
+              vagas={[...vagas.values()]}
+              vaga={vaga}
+              etapa={null}
+              caminho="/painel/caixa"
+              aba={aba}
+            />
+          )}
+          {lista.length > 1 && <OrdemDaCaixa ordens={ORDENS} ordem={ordem} base={href({})} />}
+        </div>
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
@@ -240,7 +284,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
             />
           ) : (
             <p className="rounded-lg border border-dashed border-line-strong px-4 py-10 text-center text-body-sm text-ink-muted">
-              Nada aberto. Escolha alguém de outra aba.
+              Nada aberto. Escolha alguém de outra etapa.
             </p>
           )}
         </div>

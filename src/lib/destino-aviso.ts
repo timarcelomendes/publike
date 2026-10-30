@@ -34,8 +34,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   // a curtida abre a ficha de quem curtiu na Caixa de entrada, com o Aceitar e o Dispensar (a do serviço
   // volta para o anúncio, na própria Caixa)
   if (n.tipo === "curtida" && n.anuncio_id)
-    return n.ator_id ? `/painel/caixa?aba=responder&c=${n.anuncio_id}:${n.ator_id}` : `/painel/anuncio/${n.anuncio_id}`;
-  if (n.tipo === "lembrete_curtida" && n.anuncio_id) return `/painel/caixa?aba=responder&vaga=${n.anuncio_id}`;
+    return n.ator_id ? `/painel/caixa?c=${n.anuncio_id}:${n.ator_id}` : `/painel/anuncio/${n.anuncio_id}`;
+  if (n.tipo === "lembrete_curtida" && n.anuncio_id) return `/painel/caixa?aba=novos&vaga=${n.anuncio_id}`;
   // 5 dias sem resposta: as vagas parecidas (a mesma área, pela vaga)
   if (n.tipo === "sem_resposta" && n.anuncio_id) return `/anuncio/${n.anuncio_id}/parecidas`;
   if (n.tipo === "match") return "/painel/matches";

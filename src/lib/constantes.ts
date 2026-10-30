@@ -374,6 +374,23 @@ export function etapaParaQuemCurtiu(
 type PeDaCurtida = { status: string; aceita_em?: string | null };
 
 /**
+ * A etapa de um candidato de vaga nas abas de Candidatos e na faixa da Hoje: Novos, Em análise, Entrevista,
+ * Contratados ou Não seguiu (dispensado, match desfeito ou marcado "Não seguiu").
+ */
+export function abaDaEtapa(c: {
+  status: string;
+  etapa?: EtapaCandidato | string | null;
+}): "novos" | "analise" | "entrevista" | "contratados" | "nao_seguiu" {
+  if (c.status !== "pendente" && c.status !== "match") return "nao_seguiu";
+  const etapa = etapaQueVale("vaga", c.status, ((c.etapa as EtapaCandidato) ?? "novo") || "novo");
+  if (etapa === "analise") return "analise";
+  if (etapa === "entrevista") return "entrevista";
+  if (etapa === "contratado") return "contratados";
+  if (etapa === "nao_seguiu") return "nao_seguiu";
+  return "novos";
+}
+
+/**
  * Quem publicou aceitou, mas a vaga pede currículo e a pessoa ainda não mandou: o
  * status continua "pendente" e o match sai sozinho quando o currículo chegar.
  */

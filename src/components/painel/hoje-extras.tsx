@@ -1,9 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { esperaResposta } from "@/lib/constantes";
 import { caminhoConversa, type ConversaPessoa } from "@/lib/conversas";
 import { talentosParaVaga } from "@/lib/dados";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
-import { montarCaixa, naAba, ordenar } from "@/lib/servidor/caixa";
+import { montarCaixa, ordenar } from "@/lib/servidor/caixa";
 import type { MeuAnuncio } from "@/lib/tipos";
 import { Avatar } from "../ui/basicos";
 import { conversaDoModo } from "./cartoes-hoje";
@@ -26,7 +27,7 @@ function VerTodos({ href, children }: { href: string; children: string }) {
 /** As 5 primeiras pessoas da caixa que esperam resposta (a mesma ordem da caixa). */
 export async function EsperandoResposta({ agora }: { agora: number }) {
   const itens = await montarCaixa(agora).catch(() => null);
-  const lista = ordenar("responder", (itens ?? []).filter(naAba.responder));
+  const lista = ordenar("novos", (itens ?? []).filter(esperaResposta), "combina");
   if (!lista.length) return null;
   return (
     <section aria-labelledby="esperando-resposta" className="flex flex-col gap-3">
@@ -39,12 +40,12 @@ export async function EsperandoResposta({ agora }: { agora: number }) {
             key={c.chave}
             c={c}
             agora={agora}
-            href={`/painel/caixa?aba=responder&c=${encodeURIComponent(c.chave)}`}
+            href={`/painel/caixa?c=${encodeURIComponent(c.chave)}`}
             aberto={false}
           />
         ))}
       </ul>
-      <VerTodos href="/painel/caixa?aba=responder">{`Ver todos na caixa (${lista.length})`}</VerTodos>
+      <VerTodos href="/painel/caixa?aba=novos">{`Ver todos na caixa (${lista.length})`}</VerTodos>
     </section>
   );
 }

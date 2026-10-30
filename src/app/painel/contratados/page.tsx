@@ -1,6 +1,7 @@
 import { BadgeCheck, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -18,7 +19,7 @@ export const metadata: Metadata = { title: "Contratados" };
 
 // Contratados: quem foi contratado em todas as vagas, do mais recente ao mais antigo. Na
 // agência, com a colocação de cada um (taxa, garantia e se já recebeu), que antes só
-// aparecia na ficha de cada cliente.
+// aparecia na ficha de cada cliente. Fora da agência, leva à etapa Contratados de Candidatos.
 
 export default function Contratados() {
   return (
@@ -32,6 +33,8 @@ async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/contratados");
   const [caminho, agora] = await Promise.all([caminhoDaConta(), agoraDaRequisicao()]);
+  // fora da agência (sem colocações), Contratados é uma etapa de Candidatos
+  if (!caminho.agencia) redirect("/painel/caixa?aba=contratados");
   const colocacoes = caminho.agencia ? await colocacoesDasVagas() : new Map();
   const hoje = hojeEmBrasilia(agora);
   const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));

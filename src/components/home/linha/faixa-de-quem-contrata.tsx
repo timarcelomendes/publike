@@ -62,7 +62,7 @@ export async function FaixaDeQuemContrata({ agora }: { agora: number }) {
           <>
             {" · "}
             <Link
-              href="/painel/caixa?aba=responder"
+              href="/painel/caixa?aba=novos"
               className="font-semibold text-terra-text underline underline-offset-2"
             >
               {plural(esperam, "candidato para responder", "candidatos para responder")}

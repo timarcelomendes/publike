@@ -1,6 +1,6 @@
 import "server-only";
 import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
-import { esperaCurriculo, esperaResposta } from "@/lib/constantes";
+import { abaDaEtapa, esperaCurriculo, esperaResposta } from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
   listarMeusCandidatos,
@@ -17,7 +17,7 @@ import { obterTriagens } from "./triagem";
 
 // A caixa de entrada de quem contrata: todos os candidatos de todas as vagas, cada um
 // com o que a ficha precisa (aderência, currículo, respostas, entrevista em aberto e
-// mensagens novas). As abas separam o que pede você agora do que já anda.
+// mensagens novas). As abas são as etapas.
 
 export type Candidato = NonNullable<Awaited<ReturnType<typeof listarMeusCandidatos>>>[number];
 
@@ -57,25 +57,50 @@ async function resumosGuardados(vagas: string[]) {
   );
 }
 
-export type Aba = "responder" | "andamento" | "entrevistas" | "mensagens" | "encerrados";
+// As abas são as etapas do candidato, com os mesmos nomes em todo lugar (claude/plano-painel-simples.md):
+// Novos → Em análise → Entrevista → Contratados, e Não seguiu no fim. Quem espera a sua resposta fica
+// marcado ("espera você") na etapa em que está. As mensagens novas ficam nas Mensagens.
+export type Aba = "novos" | "analise" | "entrevista" | "contratados" | "nao_seguiu";
 
 export const ABAS: { valor: Aba; nome: string; vazio: string }[] = [
-  { valor: "responder", nome: "Novos", vazio: "Ninguém esperando resposta: você está em dia." },
-  { valor: "andamento", nome: "Em andamento", vazio: "Ninguém em andamento. Quem você aceitar aparece aqui." },
-  { valor: "entrevistas", nome: "Entrevistas", vazio: "Ninguém na etapa Entrevista." },
-  { valor: "mensagens", nome: "Mensagens novas", vazio: "Nenhuma mensagem nova." },
-  { valor: "encerrados", nome: "Encerrados", vazio: "Ninguém dispensado ou com match desfeito." },
+  { valor: "novos", nome: "Novos", vazio: "Ninguém novo. Quem curtir suas vagas aparece aqui." },
+  { valor: "analise", nome: "Em análise", vazio: "Ninguém em análise. Mude a etapa na ficha de quem interessa." },
+  { valor: "entrevista", nome: "Entrevista", vazio: "Ninguém na etapa Entrevista." },
+  { valor: "contratados", nome: "Contratados", vazio: "Ninguém contratado ainda." },
+  { valor: "nao_seguiu", nome: "Não seguiu", vazio: "Ninguém dispensado ou que não seguiu." },
 ];
+
+/** Os nomes antigos das abas (links de avisos e e-mails já mandados) → a aba de agora. */
+export const ABA_ANTIGA: Record<string, Aba> = {
+  responder: "novos",
+  andamento: "analise",
+  entrevistas: "entrevista",
+  encerrados: "nao_seguiu",
+};
+
+/** As ordens da lista ("" é a de cada aba). */
+export const ORDENS = [
+  { valor: "", nome: "Ordem: a da etapa" },
+  { valor: "combina", nome: "Ordem: mais combina" },
+  { valor: "recentes", nome: "Ordem: mais recentes" },
+  { valor: "antigos", nome: "Ordem: mais antigos" },
+] as const;
+export type Ordem = (typeof ORDENS)[number]["valor"];
 
 const ABERTA = ["marcada", "confirmada", "remarcar"];
 
+/** A aba de cada candidato (uma só). Com entrevista marcada, conta na Entrevista. */
+export function abaDe(c: ItemCaixa): Aba {
+  const aba = abaDaEtapa(c);
+  return c.entrevista && (aba === "novos" || aba === "analise") ? "entrevista" : aba;
+}
+
 export const naAba: Record<Aba, (c: ItemCaixa) => boolean> = {
-  responder: (c) => esperaResposta(c),
-  andamento: (c) => c.status === "match" || c.aceita,
-  // quem está na etapa Entrevista, com ou sem data (o mesmo número do menu e da Hoje)
-  entrevistas: (c) => Boolean(c.entrevista) || (c.status === "match" && c.etapa === "entrevista"),
-  mensagens: (c) => c.naoLidas > 0,
-  encerrados: (c) => c.status === "dispensada" || c.status === "desfeito",
+  novos: (c) => abaDe(c) === "novos",
+  analise: (c) => abaDe(c) === "analise",
+  entrevista: (c) => abaDe(c) === "entrevista",
+  contratados: (c) => abaDe(c) === "contratados",
+  nao_seguiu: (c) => abaDe(c) === "nao_seguiu",
 };
 
 /** Mais aderente primeiro; eliminado no fim; empate: quem curtiu antes espera mais. */
@@ -84,26 +109,23 @@ function peso(c: ItemCaixa) {
   return !a ? -1 : a.eliminado ? -2 : (a.nota ?? -1);
 }
 const recente = (a: ItemCaixa, b: ItemCaixa) => new Date(b.curtido_em).getTime() - new Date(a.curtido_em).getTime();
+const quandoEntrevista = (a: ItemCaixa, b: ItemCaixa) => {
+  if (a.entrevista && b.entrevista)
+    return new Date(a.entrevista.quando).getTime() - new Date(b.entrevista.quando).getTime();
+  if (a.entrevista || b.entrevista) return a.entrevista ? -1 : 1;
+  return 0;
+};
 
-export function ordenar(aba: Aba, lista: ItemCaixa[]) {
+export function ordenar(aba: Aba, lista: ItemCaixa[], ordem: Ordem = "") {
   const l = [...lista];
-  if (aba === "responder") l.sort((a, b) => peso(b) - peso(a) || recente(b, a));
-  else if (aba === "entrevistas")
-    // com data primeiro (da mais perto para a mais longe); sem data depois, quem entrou antes primeiro
-    l.sort((a, b) => {
-      if (a.entrevista && b.entrevista)
-        return new Date(a.entrevista.quando).getTime() - new Date(b.entrevista.quando).getTime();
-      if (a.entrevista || b.entrevista) return a.entrevista ? -1 : 1;
-      return recente(b, a);
-    });
-  else if (aba === "mensagens") l.sort((a, b) => b.naoLidas - a.naoLidas || recente(a, b));
-  else if (aba === "andamento")
-    l.sort((a, b) => {
-      if (a.entrevista && b.entrevista)
-        return new Date(a.entrevista.quando).getTime() - new Date(b.entrevista.quando).getTime();
-      if (a.entrevista || b.entrevista) return a.entrevista ? -1 : 1;
-      return recente(a, b);
-    });
+  // quem espera a sua resposta vem antes, em qualquer ordem
+  const espera = (a: ItemCaixa, b: ItemCaixa) => Number(esperaResposta(b)) - Number(esperaResposta(a));
+  if (ordem === "combina") l.sort((a, b) => espera(a, b) || peso(b) - peso(a) || recente(b, a));
+  else if (ordem === "recentes") l.sort((a, b) => espera(a, b) || recente(a, b));
+  else if (ordem === "antigos") l.sort((a, b) => espera(a, b) || recente(b, a));
+  else if (aba === "novos" || aba === "analise") l.sort((a, b) => espera(a, b) || peso(b) - peso(a) || recente(b, a));
+  // com data primeiro (da mais perto para a mais longe); sem data depois, quem entrou antes primeiro
+  else if (aba === "entrevista") l.sort((a, b) => quandoEntrevista(a, b) || recente(b, a));
   else l.sort(recente);
   return l;
 }

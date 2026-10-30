@@ -21,7 +21,7 @@ import { Suspense } from "react";
 import { Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
-import { esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
+import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
 import { ateQuando, formatarMoeda, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
@@ -169,7 +169,7 @@ export async function PainelRecrutador({
       texto: antigos.length
         ? `${plural(antigos.length, "espera", "esperam")} há mais de 2 dias. Responder em até 1 dia mostra o selo verde nas suas vagas.`
         : "Aceite quem interessa ou dispense com um toque: a pessoa recebe o aviso.",
-      href: "/painel/caixa?aba=responder",
+      href: "/painel/caixa?aba=novos",
       acao: "Responder agora",
     });
   }
@@ -191,7 +191,7 @@ export async function PainelRecrutador({
               .join(" · "),
       href: quadroDe(
         proximas.map((x) => x.anuncio_id),
-        "/painel/candidatos?etapa=entrevista",
+        "/painel/caixa?aba=entrevista",
       ),
       acao: "Ver no quadro",
     });
@@ -204,7 +204,7 @@ export async function PainelRecrutador({
       texto: "Abra o cartão e marque um novo dia: a pessoa recebe o aviso.",
       href: quadroDe(
         remarcar.map((x) => x.anuncio_id),
-        "/painel/candidatos?etapa=entrevista",
+        "/painel/caixa?aba=entrevista",
       ),
       acao: "Remarcar",
     });
@@ -217,7 +217,7 @@ export async function PainelRecrutador({
       texto: "Marque dia e hora: o candidato recebe o aviso e confirma pelo Publike.",
       href: quadroDe(
         semData.map((c) => c.anuncio_id),
-        "/painel/candidatos?etapa=entrevista",
+        "/painel/caixa?aba=entrevista",
       ),
       acao: "Marcar a data",
     });
@@ -402,7 +402,7 @@ export async function PainelRecrutador({
       ? `${esperando} ${pendentes.length === 1 ? "espera" : "esperam"} você`
       : "Ninguém esperando resposta",
     acao: pendentes.length ? "Responder agora" : "Ver candidatos",
-    href: pendentes.length ? "/painel/caixa?aba=responder" : "/painel/caixa",
+    href: pendentes.length ? "/painel/caixa?aba=novos" : "/painel/caixa",
     estado: pendentes.length ? "agora" : "normal",
   };
   const passoCliente: Passo = {
@@ -428,7 +428,7 @@ export async function PainelRecrutador({
         ? "Sem data marcada"
         : "Leve quem combina para Entrevista no quadro",
     acao: "Ver entrevistas",
-    href: "/painel/caixa?aba=entrevistas",
+    href: "/painel/caixa?aba=entrevista",
     estado: semData.length || remarcar.length ? "agora" : "normal",
   };
   const passoContratados: Passo = {
@@ -438,26 +438,37 @@ export async function PainelRecrutador({
       ? `${primeiroNome(ultimoContratado.perfil_id) || "Último"}, em ${tituloDe.get(ultimoContratado.anuncio_id) ?? "uma vaga"}`
       : "Ninguém contratado ainda",
     acao: agencia ? "Ver colocações" : "Ver contratados",
-    href: "/painel/contratados",
+    href: agencia ? "/painel/contratados" : "/painel/caixa?aba=contratados",
     estado: contratados.length ? "feito" : "normal",
   };
   // comércio e empresa: as etapas do candidato, com os mesmos nomes do quadro e das páginas de candidatos
   // (Novos → Em análise → Entrevista → Contratados); as vagas no ar ficam em "Suas vagas" e no menu
-  const emAnalise = todos.filter((c) => c.etapa === "analise" && (c.status === "match" || c.status === "pendente"));
+  // os mesmos números das etapas de Candidatos (abaDaEtapa); quem espera a sua resposta pode estar em Novos
+  // ou já marcado Em análise: cada bloco fala dos seus
+  const emAnalise = todos.filter((c) => abaDaEtapa(c) === "analise");
+  const novos = todos.filter((c) => abaDaEtapa(c) === "novos");
+  const esperamNos = (lista: typeof todos) => {
+    const quem = lista.filter(esperaResposta);
+    const nomes = nomesDe([...new Set(quem.map((c) => primeiroNome(c.perfil_id)).filter(Boolean))]);
+    return quem.length ? `${nomes} ${quem.length === 1 ? "espera" : "esperam"} sua resposta` : null;
+  };
+  const novosEsperam = esperamNos(novos);
+  const analiseEsperam = esperamNos(emAnalise);
   const passoNovos: Passo = {
-    ...passoCandidatos,
     nome: "Novos",
-    texto: pendentes.length
-      ? `${esperando} ${pendentes.length === 1 ? "espera" : "esperam"} sua resposta`
-      : "Ninguém esperando resposta",
+    numero: novos.length,
+    texto: novosEsperam ?? (novos.length ? "Aceitos: mude a etapa na ficha" : "Ninguém esperando resposta"),
+    acao: novosEsperam ? "Responder agora" : "Ver novos",
+    href: "/painel/caixa?aba=novos",
+    estado: novosEsperam ? "agora" : "normal",
   };
   const passoEmAnalise: Passo = {
     nome: "Em análise",
     numero: emAnalise.length,
-    texto: emAnalise.length ? "Você está olhando" : "Leve quem interessa para Em análise",
-    acao: "Ver em análise",
-    href: "/painel/candidatos?etapa=analise",
-    estado: "normal",
+    texto: analiseEsperam ?? (emAnalise.length ? "Você está olhando" : "Leve quem interessa para Em análise"),
+    acao: analiseEsperam ? "Responder agora" : "Ver em análise",
+    href: "/painel/caixa?aba=analise",
+    estado: analiseEsperam ? "agora" : "normal",
   };
   const passos = agencia
     ? [passoClientes, passoVagas, passoCandidatos, passoCliente, passoContratados]

@@ -123,7 +123,7 @@ export function ControlesDaFicha({
       const r = await chamarAcao(() => responderCurtida(u.anuncioId, u.perfilId, "pendente"));
       if (!r.ok) return setErro(r.erro);
       guardar(null);
-      router.push(`/painel/caixa?aba=responder&c=${u.anuncioId}:${u.perfilId}`, { scroll: false });
+      router.push(`/painel/caixa?c=${u.anuncioId}:${u.perfilId}`, { scroll: false });
     });
   }
 

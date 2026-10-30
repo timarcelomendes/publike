@@ -1,5 +1,6 @@
 import { CalendarClock, MessagesSquare } from "lucide-react";
 import Link from "next/link";
+import { esperaResposta } from "@/lib/constantes";
 import { tempoRelativo } from "@/lib/formato";
 import { dataDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
@@ -45,6 +46,11 @@ export function ItemDaLista({ c, agora, href, aberto }: { c: ItemCaixa; agora: n
           ) : c.mensagem && !encerrado ? (
             <span className="mt-0.5 line-clamp-1 text-body-sm text-ink">“{c.mensagem}”</span>
           ) : null}
+          {esperaResposta(c) && (
+            <span className="mt-1 mr-1.5 inline-flex rounded-pill bg-terra-soft px-2 text-caption leading-5 font-semibold text-terra-text">
+              Espera você
+            </span>
+          )}
           {c.naoLidas > 0 && (
             <span className="mt-1 inline-flex items-center gap-1 rounded-pill bg-ink px-2 text-caption leading-5 text-surface-100">
               <MessagesSquare aria-hidden className="size-3.5" />

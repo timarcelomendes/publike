@@ -164,11 +164,11 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
         )}
         <div className="flex flex-wrap justify-center gap-2">
           {aceitos > 0 && (
-            <BotaoLink href="/painel/caixa?aba=andamento" variante="primario">
+            <BotaoLink href="/painel/caixa?aba=novos" variante="primario">
               Ver quem você aceitou
             </BotaoLink>
           )}
-          <BotaoLink href="/painel/caixa">Voltar à caixa de entrada</BotaoLink>
+          <BotaoLink href="/painel/caixa">Voltar aos candidatos</BotaoLink>
         </div>
       </div>
     );
@@ -317,7 +317,7 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
           )}
 
           <Link
-            href={`/painel/caixa?aba=responder&c=${atual.anuncioId}:${atual.perfilId}`}
+            href={`/painel/caixa?c=${atual.anuncioId}:${atual.perfilId}`}
             className="self-start text-label underline underline-offset-2"
           >
             Ver a ficha completa
@@ -378,7 +378,7 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
       )}
       {ultima && !ultima.desfaz && ultima.decisao === "match" && ultima.confirmada && (
         <p role="status" className="text-center text-body-sm text-cerrado-text">
-          Deu match com {ultima.carta.nome.split(" ")[0]}! O contato está liberado na caixa de entrada.
+          Deu match com {ultima.carta.nome.split(" ")[0]}! O contato está liberado em Candidatos.
         </p>
       )}
       {erro && (

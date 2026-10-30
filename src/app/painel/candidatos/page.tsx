@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
@@ -119,6 +120,28 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/candidatos");
   const sp = await searchParams;
+  // fora da agência (o filtro de cliente), a lista entrou em Candidatos: leva à etapa pedida
+  if ((await obterMeuPerfil())?.tipo !== "agencia") {
+    const q = new URLSearchParams();
+    const etapa = primeiro(sp.etapa);
+    const aba =
+      primeiro(sp.situacao) === "responder"
+        ? "novos"
+        : (
+            {
+              novo: "novos",
+              analise: "analise",
+              entrevista: "entrevista",
+              contratado: "contratados",
+              nao_seguiu: "nao_seguiu",
+            } as Record<string, string>
+          )[etapa ?? ""];
+    if (aba) q.set("aba", aba);
+    const vaga = primeiro(sp.vaga);
+    if (vaga && UUID.test(vaga)) q.set("vaga", vaga);
+    const s = q.toString();
+    redirect(`/painel/caixa${s ? `?${s}` : ""}`);
+  }
   const pedidaVaga = primeiro(sp.vaga);
   const pedidaEtapa = primeiro(sp.etapa);
   const responder = primeiro(sp.situacao) === "responder";

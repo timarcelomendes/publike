@@ -188,7 +188,7 @@ async function OutrasAtividades({ outras }: { outras: ModoPainel[] }) {
         ? {
             nome,
             texto: `${plural(n, "candidato espera", "candidatos esperam")} sua resposta`,
-            href: "/painel/caixa?aba=responder",
+            href: "/painel/caixa?aba=novos",
             acao: "Responder",
           }
         : {
@@ -247,7 +247,7 @@ const AJUDA_DAS_SECOES: Record<string, string> = {
   "/painel/avaliacoes": "O que dizem do seu trabalho",
   "/painel/anuncios?tipo=vaga": "As vagas que você publicou",
   "/painel/caixa": "Quem curtiu as suas vagas",
-  "/painel/caixa?aba=entrevistas": "As entrevistas marcadas",
+  "/painel/caixa?aba=entrevista": "As entrevistas marcadas",
   "/painel/contratados": "Quem você contratou",
   "/talentos": "Quem procura trabalho perto",
   "/painel/links": "Para levar gente às suas vagas",

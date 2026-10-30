@@ -38,7 +38,7 @@ async function proximaAcao(): Promise<Acao | null> {
     return esperam
       ? {
           texto: `Responder ${plural(esperam, "candidato", "candidatos")}`,
-          href: "/painel/caixa?aba=responder",
+          href: "/painel/caixa?aba=novos",
           icone: Inbox,
         }
       : { texto: "Publicar vaga", href: "/publicar", icone: Plus };

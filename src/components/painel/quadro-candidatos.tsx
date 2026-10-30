@@ -373,7 +373,7 @@ function Cartao({
       {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito" || c.finalista || c.colocacao) && (
         <div className="flex flex-wrap gap-1.5">
           {c.status === "pendente" &&
-            (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Para responder</Selo>)}
+            (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
           {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
           {entrevistaAberta && e && (
             <Selo variante={SITUACOES_ENTREVISTA[e.situacao]?.tom ?? "aviso"}>
@@ -447,7 +447,7 @@ function DetalheCandidato({
             <NotaAderencia a={c.aderencia} />
             <Selo variante="contorno">{ETAPAS_CANDIDATO[c.coluna].nome}</Selo>
             {c.status === "pendente" &&
-              (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Para responder</Selo>)}
+              (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
             {match && <Selo variante="match">Deu match</Selo>}
           </p>
         </div>
@@ -463,7 +463,7 @@ function DetalheCandidato({
           Perfil
         </Link>
         <Link
-          href={`/painel/candidatos?vaga=${anuncioId}&q=${encodeURIComponent(primeiro)}`}
+          href={`/painel/caixa?c=${anuncioId}:${c.perfil_id}`}
           className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-line-strong px-3 text-label hover:bg-surface-300"
         >
           {c.temCurriculo ? "Currículo e anotações" : "Anotações"}

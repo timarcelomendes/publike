@@ -77,7 +77,7 @@ export function saudeDaVaga(
         ? `${numeros.esperandoMuito} esperando resposta há mais de 2 dias`
         : "Respostas em dia",
       dica: "Responder em até 1 dia mostra o selo verde de quem responde rápido na busca.",
-      href: `/painel/caixa?aba=responder&vaga=${v.id}`,
+      href: `/painel/caixa?aba=novos&vaga=${v.id}`,
       peso: 4,
     },
     {

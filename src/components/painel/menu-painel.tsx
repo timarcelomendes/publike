@@ -52,7 +52,6 @@ export function MenuPainel({
   const caminho = usePathname() ?? "/painel";
   const busca = useSearchParams();
   const tipo = busca?.get("tipo") ?? null;
-  const aba = busca?.get("aba") ?? null;
   const router = useRouter();
   // uma aba aberta desde antes de uma versão nova do site pode trazer o menu antigo sem a lista
   // (o erro "atividades.length" no navegador): sem ela, vale o menu de quem procura trabalho
@@ -60,7 +59,7 @@ export function MenuPainel({
   // todas as atividades da conta juntas, sem troca de modo na tela
   const grupos = gruposDaConta(atividades, tipoConta, { copiloto });
   const outras = outrasDaConta(atividades, grupos);
-  const ativa = secaoAtiva(grupos, outras, caminho, tipo, aba);
+  const ativa = secaoAtiva(grupos, outras, caminho, tipo);
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const idMenu = useId();

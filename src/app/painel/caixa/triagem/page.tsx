@@ -8,7 +8,8 @@ import { Aviso } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { textosDosEstudos } from "@/lib/estudos";
 import { formatarLugar, primeiro, tempoRelativo } from "@/lib/formato";
-import { montarCaixa, naAba, ordenar } from "@/lib/servidor/caixa";
+import { esperaResposta } from "@/lib/constantes";
+import { montarCaixa, ordenar } from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
@@ -42,8 +43,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   const pedida = primeiro(sp.vaga);
   const vaga = pedida && UUID.test(pedida) ? pedida : null;
   const fila = ordenar(
-    "responder",
-    itens.filter((c) => naAba.responder(c) && (!vaga || c.anuncio_id === vaga) && c.anuncio_status !== "em_analise"),
+    "novos",
+    itens.filter((c) => esperaResposta(c) && (!vaga || c.anuncio_id === vaga) && c.anuncio_status !== "em_analise"),
+    "combina",
   );
 
   const cartas: CartaTriagem[] = fila.map((c) => {

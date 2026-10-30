@@ -28,7 +28,7 @@ export async function mensagemParaEmpresaEsperando(
 
   const site = urlDosEmails() ?? "https://publike.org";
   const { data: u } = await c.auth.admin.getUserById(contaId);
-  let link = `${site}/painel/caixa${empresa.esperando.length ? "?aba=responder" : ""}`;
+  let link = `${site}/painel/caixa${empresa.esperando.length ? "?aba=novos" : ""}`;
   let comoEntrar = "Para ver os currículos e responder:";
   if (u?.user && !u.user.email) {
     const token = randomBytes(32).toString("hex");
