@@ -159,7 +159,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     );
   }
 
-  const outros = (["copiloto", "testes", "combo"] as Produto[]).filter((p) => p !== produto);
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       {cabecalho}
@@ -183,23 +182,39 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         </Link>
       )}
       {corpo}
-      {!troca && (
-        <p className="text-body-sm text-ink-muted">
-          Quer outra opção?{" "}
-          {outros.map((o, i) => (
-            <span key={o}>
-              {i > 0 && " ou "}
-              <Link
-                href={`/painel/assinar?recurso=${o}`}
-                className="font-semibold text-terra-text underline underline-offset-2"
-              >
-                {o === "combo" ? "o combo (os dois juntos)" : `o ${NOME_PRODUTO[o]}`}
-              </Link>
-            </span>
-          ))}
-        </p>
-      )}
+      {!troca && <OutraOpcao produto={produto} />}
     </div>
+  );
+}
+
+const LINK = "font-semibold text-terra-text underline underline-offset-2";
+
+/** No pé da tela, o convite para o outro recurso (ou para o combo), dito pelo que ele resolve. */
+function OutraOpcao({ produto }: { produto: Produto }) {
+  const para = (p: Produto, texto: string) => (
+    <Link href={`/painel/assinar?recurso=${p}`} className={LINK}>
+      {texto}
+    </Link>
+  );
+  return (
+    <p className="text-body-sm text-ink-muted">
+      {produto === "copiloto" ? (
+        <>
+          Quer saber quem sabe antes da entrevista? Conheça os {para("testes", "Testes Publike")} ou leve{" "}
+          {para("combo", "os dois no combo")} e pague menos.
+        </>
+      ) : produto === "testes" ? (
+        <>
+          Quer que a IA ache quem combina com a sua vaga? Conheça o {para("copiloto", "Copiloto")} ou leve{" "}
+          {para("combo", "os dois no combo")} e pague menos.
+        </>
+      ) : (
+        <>
+          Prefere começar com um só? Assine só o {para("copiloto", "Copiloto")} ou só os{" "}
+          {para("testes", "Testes Publike")}.
+        </>
+      )}
+    </p>
   );
 }
 
