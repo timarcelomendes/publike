@@ -1278,10 +1278,16 @@ export function FormAnuncio({
       )}
 
       {passos ? (
-        <div ref={topo} className="flex scroll-mt-24 flex-col gap-4">
-          <CabecalhoDosPassos passo={passo} maxPasso={maxPasso} irPara={irPara} sair={semConta ? "/" : "/painel"} />
+        <>
+          {/* os passos ficam presos no alto ao rolar, logo abaixo do cabeçalho do site (h-16) */}
+          <div
+            ref={topo}
+            className="sticky top-16 z-30 -mx-4 scroll-mt-24 border-b border-line bg-surface-100/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
+          >
+            <CabecalhoDosPassos passo={passo} maxPasso={maxPasso} irPara={irPara} sair={semConta ? "/" : "/painel"} />
+          </div>
           {passo < TOTAL_PASSOS && estado.erro && resumoErrosNoTopo}
-        </div>
+        </>
       ) : (
         <nav aria-label="Partes do formulário" className="flex flex-wrap gap-x-4 gap-y-1 text-label text-ink-muted">
           {nomesDosGrupos.map((nome, k) => (
@@ -1400,7 +1406,7 @@ export function FormAnuncio({
             </div>
           )}
         </div>
-        {passos && previa && <aside className="hidden lg:sticky lg:top-24 lg:block">{previa}</aside>}
+        {passos && previa && <aside className="hidden lg:sticky lg:top-40 lg:block">{previa}</aside>}
       </div>
 
       {/* a vaga nova que não chegou ao servidor já ficou guardada: recarregar não pergunta */}
