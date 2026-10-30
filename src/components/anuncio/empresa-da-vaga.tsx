@@ -82,7 +82,8 @@ export function EmpresaDaVaga({
               setEscolha(valor);
               const c = clientes?.find((x) => x.id === valor);
               if (c) {
-                aoMudarConfidencial(c.confidencial);
+                // o cliente confidencial marca sozinho; o "Empresa confidencial" já marcado não se desfaz
+                aoMudarConfidencial(c.confidencial || confidencial);
                 aoEscolherCliente(c);
               }
               if (valor === OUTRA) window.setTimeout(() => campoNome.current?.focus(), 0);

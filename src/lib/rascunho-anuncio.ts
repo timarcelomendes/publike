@@ -109,5 +109,14 @@ export function valoresDoRascunho(r: Rascunho, base: ValoresAnuncio): ValoresAnu
     endereco: um("endereco") || base.endereco,
     lat: coordenada("lat"),
     lng: coordenada("lng"),
+    // agência: a empresa da vaga (o cliente, o nome escrito ou "Empresa confidencial"). Sem isto, o rascunho
+    // voltava sem a marcação e o publicar pedia a empresa de novo (relato do Grupo Farol, 30/10/2026)
+    ...(r.campos.some(([c]) => c === "agencia")
+      ? {
+          cliente_id: um("cliente_id") || null,
+          contratante: um("contratante") ?? base.contratante ?? null,
+          contratante_confidencial: um("contratante_confidencial") === "on",
+        }
+      : {}),
   };
 }
