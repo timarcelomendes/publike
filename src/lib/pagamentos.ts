@@ -1,14 +1,32 @@
-import type { RecursoPago } from "./recursos-pagos";
+import type { RecursoPago, RecursosPagos } from "./recursos-pagos";
 
-// O que as telas de Assinar, Assinatura e Faturas leem do banco (migração 20261218120000).
+// O que as telas de Assinar, Assinatura e Faturas leem do banco (migração 20261218120000; o combo, 20261220120000).
+
+/** O que se assina: um recurso ou o combo (os dois numa assinatura só). */
+export type Produto = RecursoPago | "combo";
+
+export const NOME_PRODUTO: Record<Produto, string> = {
+  copiloto: "Copiloto",
+  testes: "Testes Publike",
+  combo: "Combo Copiloto + Testes",
+};
+
+export function ehProduto(x: unknown): x is Produto {
+  return x === "copiloto" || x === "testes" || x === "combo";
+}
+
+/** Os recursos que o produto libera. */
+export function recursosDo(p: Produto): RecursoPago[] {
+  return p === "combo" ? ["copiloto", "testes"] : [p];
+}
 
 export type Ciclo = "MONTHLY" | "QUARTERLY";
 
-export type Plano = { id: string; recurso: RecursoPago; ciclo: Ciclo; valor: number };
+export type Plano = { id: string; recurso: Produto; ciclo: Ciclo; valor: number };
 
 export type Assinatura = {
   id: string;
-  recurso: RecursoPago;
+  recurso: Produto;
   ciclo: Ciclo;
   valor: number;
   forma: "cartao" | "pix";
@@ -29,7 +47,7 @@ export type PagamentosDaConta = {
   cliente: { cpf_cnpj: string; nome: string; email: string | null } | null;
   testes_ate: Partial<Record<RecursoPago, string>> | null;
   /** até quando já está pago, por recurso (assinar de novo começa a cobrar daí) */
-  pago_ate: Partial<Record<RecursoPago, string>> | null;
+  pago_ate: Partial<Record<Produto, string>> | null;
 };
 
 export type SituacaoFatura = "pendente" | "paga" | "atrasada" | "estornada" | "recusada" | "cancelada";
@@ -37,7 +55,7 @@ export type SituacaoFatura = "pendente" | "paga" | "atrasada" | "estornada" | "r
 export type Fatura = {
   id: string;
   numero: number;
-  recurso: RecursoPago;
+  recurso: Produto;
   valor: number;
   vencimento: string;
   situacao: SituacaoFatura;
@@ -113,4 +131,39 @@ export function lerPagamentos(data: unknown): PagamentosDaConta | null {
 
 export function lerFaturas(data: unknown): Fatura[] {
   return Array.isArray(data) ? (data as Fatura[]).map((f) => ({ ...f, valor: Number(f.valor) })) : [];
+}
+
+/**
+ * Pode assinar o combo: os pagamentos abertos para a conta, o combo à venda e nenhuma assinatura valendo (quem
+ * assina um recurso cancela antes; o que já foi pago continua valendo). Liberado sem prazo nos dois: não paga.
+ */
+export function podeAssinarCombo(pag: PagamentosDaConta | null, recursos: RecursosPagos | null) {
+  if (!pag?.pode || !pag.planos.some((p) => p.recurso === "combo")) return false;
+  if (pag.assinaturas.some((a) => a.situacao !== "cancelada")) return false;
+  const semPrazo = (r: RecursoPago) => Boolean(recursos?.[r].liberado && !recursos[r].ate);
+  return !(semPrazo("copiloto") && semPrazo("testes"));
+}
+
+/** "AAAA-MM-DD" no horário de Brasília. */
+export function diaBr(d: Date) {
+  return d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
+/**
+ * O dia da 1ª cobrança: o maior entre hoje, o fim do teste grátis e o fim do que já está pago dos recursos que
+ * o produto libera (assinar de novo, trocar o cartão ou passar para o combo não cobra o mesmo período duas vezes).
+ */
+export function diaDaPrimeiraCobranca(
+  produto: Produto,
+  testesAte: Partial<Record<string, string>> | null | undefined,
+  pagoAte: Partial<Record<string, string>> | null | undefined,
+  agora = new Date(),
+) {
+  const hoje = diaBr(agora);
+  const chaves = new Set<string>([...recursosDo(produto), produto, "combo"]);
+  const datas = [...chaves]
+    .flatMap((k) => [recursosDo(produto).includes(k as RecursoPago) ? testesAte?.[k] : undefined, pagoAte?.[k]])
+    .filter((d): d is string => Boolean(d))
+    .map((d) => diaBr(new Date(d)));
+  return datas.reduce((m, d) => (d > m ? d : m), hoje);
 }

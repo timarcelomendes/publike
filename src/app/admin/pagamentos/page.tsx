@@ -12,8 +12,7 @@ import {
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { formatarMoeda, tempoRelativo } from "@/lib/formato";
-import { NOME_CICLO, type Ciclo } from "@/lib/pagamentos";
-import { NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
+import { NOME_CICLO, NOME_PRODUTO, type Ciclo, type Produto } from "@/lib/pagamentos";
 import { tokenParaCopiar } from "@/lib/servidor/asaas";
 import { itensPagamentos, situacaoPagamentos } from "@/lib/servidor/situacao-pagamentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -31,12 +30,12 @@ type Dados = {
     servico_nota_e_codigo: boolean;
     descricao_nota: string | null;
   };
-  planos: { id: string; recurso: RecursoPago; ciclo: Ciclo; valor: number | null; ligado: boolean }[];
+  planos: { id: string; recurso: Produto; ciclo: Ciclo; valor: number | null; ligado: boolean }[];
   teste: { conta_id: string; nome: string; email: string | null }[];
   assinaturas: {
     id: string;
     nome: string;
-    recurso: RecursoPago;
+    recurso: Produto;
     ciclo: Ciclo;
     valor: number;
     forma: string;
@@ -170,6 +169,12 @@ async function Conteudo() {
             </tr>
           </tbody>
         </table>
+        {!sit.local.temChave && (
+          <p className="text-body-sm text-ink-muted">
+            A chave do Asaas começa com <code>$</code>. No .env.local, ponha uma barra antes:{" "}
+            <code>ASAAS_API_KEY=\$aact_…</code>. Sem a barra, o site lê a chave vazia. Na Vercel, cole sem a barra.
+          </p>
+        )}
         {!noAr?.respondeu && (
           <p className="text-body-sm text-ink-muted">
             “—”: o site no ar ainda não respondeu (ele só mostra sim ou não, nunca a chave). Faça o push.
@@ -183,7 +188,7 @@ async function Conteudo() {
             <EditarPlano
               key={p.id}
               id={p.id}
-              nome={`${NOME_RECURSO[p.recurso]} · ${NOME_CICLO[p.ciclo].toLowerCase()}`}
+              nome={`${NOME_PRODUTO[p.recurso]} · ${NOME_CICLO[p.ciclo].toLowerCase()}`}
               valor={p.valor == null ? null : Number(p.valor)}
               ligado={p.ligado}
             />
@@ -231,7 +236,7 @@ async function Conteudo() {
             {d.assinaturas.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-body-sm">
                 <span>
-                  {a.nome} · {NOME_RECURSO[a.recurso]} · {NOME_CICLO[a.ciclo].toLowerCase()} ·{" "}
+                  {a.nome} · {NOME_PRODUTO[a.recurso]} · {NOME_CICLO[a.ciclo].toLowerCase()} ·{" "}
                   {formatarMoeda(Number(a.valor))} · {a.forma === "pix" ? "Pix" : "cartão"}
                 </span>
                 <span className="flex items-center gap-2">

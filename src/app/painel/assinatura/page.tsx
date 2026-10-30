@@ -11,8 +11,17 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario, recursosPagos } from "@/lib/dados";
 import { formatarMoeda, primeiro } from "@/lib/formato";
-import { dataDoDia, dataEHora, NOME_CICLO, POR_CICLO, type Assinatura } from "@/lib/pagamentos";
-import { NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
+import {
+  dataDoDia,
+  dataEHora,
+  NOME_CICLO,
+  NOME_PRODUTO,
+  podeAssinarCombo,
+  POR_CICLO,
+  type Assinatura,
+  type Produto,
+} from "@/lib/pagamentos";
+import { type RecursoPago } from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { sincronizarCliente } from "@/lib/servidor/pagamentos";
 import { exigirUsuario } from "@/lib/sessao";
@@ -74,7 +83,7 @@ function CartaoAssinatura({ a }: { a: Assinatura }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id={`ass-${a.id}`} className="text-h3">
-            {NOME_RECURSO[a.recurso]}
+            {NOME_PRODUTO[a.recurso]}
           </h3>
           <p className="text-body-sm text-ink-muted">
             {NOME_CICLO[a.ciclo]} · {formatarMoeda(a.valor)} {POR_CICLO[a.ciclo]}
@@ -132,7 +141,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const [pag, recursos, agora] = await Promise.all([pagamentosDaConta(), recursosPagos(), agoraDaRequisicao()]);
   const valendo = (pag?.assinaturas ?? []).filter((a) => a.situacao !== "cancelada");
   const canceladas = (pag?.assinaturas ?? []).filter((a) => a.situacao === "cancelada");
-  const aVenda = (["copiloto", "testes"] as RecursoPago[]).filter((r) => recursos?.[r]?.pode_assinar);
+  // o combo primeiro (os dois juntos saem mais em conta), depois cada recurso
+  const aVenda: Produto[] = [
+    ...(podeAssinarCombo(pag, recursos) ? (["combo"] as const) : []),
+    ...(["copiloto", "testes"] as RecursoPago[]).filter((r) => recursos?.[r]?.pode_assinar),
+  ];
   const aviso = volta ? VOLTA[volta] : null;
   const cartaoPendente = volta === "ok" && !valendo.some((a) => a.forma === "cartao");
 
@@ -173,7 +186,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
               : undefined
           }
         >
-          O Copiloto e os Testes Publike são assinados separados, por mês ou a cada 3 meses.
+          Assine o Copiloto, os Testes Publike ou os dois juntos no combo, por mês ou a cada 3 meses.
         </Vazio>
       ) : (
         <>
@@ -197,7 +210,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
             {canceladas.map((a) => (
               <li key={a.id} className="flex flex-wrap justify-between gap-2 py-2 text-body-sm">
                 <span>
-                  {NOME_RECURSO[a.recurso]} · {NOME_CICLO[a.ciclo].toLowerCase()} · {formatarMoeda(a.valor)}
+                  {NOME_PRODUTO[a.recurso]} · {NOME_CICLO[a.ciclo].toLowerCase()} · {formatarMoeda(a.valor)}
                 </span>
                 <span className="text-ink-muted">
                   {a.cancelada_em ? `cancelada em ${dataEHora(a.cancelada_em)}` : "cancelada"}

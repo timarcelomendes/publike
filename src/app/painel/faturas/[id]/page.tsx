@@ -12,8 +12,7 @@ import { Aviso, Logo } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { formatarDocumento } from "@/lib/documento";
 import { formatarMoeda } from "@/lib/formato";
-import { dataDoDia, dataEHora, emAberto, NOME_CICLO, numeroDaFatura } from "@/lib/pagamentos";
-import { NOME_RECURSO } from "@/lib/recursos-pagos";
+import { dataDoDia, dataEHora, emAberto, NOME_CICLO, NOME_PRODUTO, numeroDaFatura } from "@/lib/pagamentos";
 import { minhaFatura, qrDoPix } from "@/lib/servidor/faturas";
 import { exigirUsuario } from "@/lib/sessao";
 
@@ -117,7 +116,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/faturas/[id]">[
 
       {paga && (
         <Aviso tipo="sucesso" titulo="Pagamento confirmado" className="print:hidden">
-          O {NOME_RECURSO[f.recurso]} está liberado até {dataEHora(f.periodo_ate)}.
+          O {NOME_PRODUTO[f.recurso]} está liberado até {dataEHora(f.periodo_ate)}.
         </Aviso>
       )}
 
@@ -141,7 +140,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/faturas/[id]">[
             {f.conta.cpf_cnpj ? ` · ${formatarDocumento(f.conta.cpf_cnpj)}` : ""}
           </Linha>
           <Linha rotulo="O que é">
-            {NOME_RECURSO[f.recurso]}
+            {NOME_PRODUTO[f.recurso]}
             {f.ciclo ? ` · ${NOME_CICLO[f.ciclo].toLowerCase()}` : ""}
           </Linha>
           <Linha rotulo="Período">

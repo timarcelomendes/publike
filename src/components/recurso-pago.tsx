@@ -1,4 +1,5 @@
 import { Check, ClipboardCheck, CreditCard, Sparkles } from "lucide-react";
+import { NOME_PRODUTO, type Produto } from "@/lib/pagamentos";
 import { dataCurta, DIAS_GRATIS, diasRestantes, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
 import { BotaoExperimentar } from "./botao-experimentar";
 import { SeloCortesia } from "./selo-cortesia";
@@ -39,7 +40,7 @@ export function BotaoAssinar({
   variante = "primario",
   tamanho = "md",
 }: {
-  recurso: RecursoPago;
+  recurso: Produto;
   variante?: "primario" | "secundario";
   tamanho?: "md" | "sm";
 }) {
@@ -47,7 +48,7 @@ export function BotaoAssinar({
     <span className="flex flex-wrap items-center gap-2">
       <BotaoLink href={`/painel/assinar?recurso=${recurso}`} variante={variante} tamanho={tamanho}>
         <CreditCard aria-hidden />
-        Assinar o {NOME_RECURSO[recurso]}
+        {recurso === "combo" ? "Assinar o combo" : `Assinar o ${NOME_PRODUTO[recurso]}`}
       </BotaoLink>
       <Selo variante="novo">Novo</Selo>
     </span>

@@ -5,7 +5,8 @@ import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO, SITE_URL } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { documentoValido } from "@/lib/documento";
-import { ehRecursoPago, NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
+import { diaDaPrimeiraCobranca, ehProduto, NOME_PRODUTO, recursosDo, type Produto } from "@/lib/pagamentos";
+import type { RecursoPago } from "@/lib/recursos-pagos";
 import {
   asaasConfigurado,
   atualizarCliente,
@@ -19,7 +20,7 @@ import {
 import { enviarPushPendentes } from "@/lib/servidor/filas";
 import { acessoPagamentos, sincronizarAssinatura } from "@/lib/servidor/pagamentos";
 
-// Assinar o Copiloto ou os Testes Publike (claude/plano-checkout-asaas.md). O cartão é pago na página do
+// Assinar o Copiloto, os Testes Publike ou o combo dos dois (claude/plano-checkout-asaas.md). O cartão é pago na página do
 // parceiro (o número nunca passa pelo Publike); o Pix é mostrado aqui. O banco confere de novo quem pode.
 
 type Contexto = {
@@ -27,21 +28,17 @@ type Contexto = {
   nome: string | null;
   email: string | null;
   cliente: { asaas_id: string; cpf_cnpj: string; nome: string; email: string | null } | null;
-  planos: { id: string; recurso: RecursoPago; ciclo: "MONTHLY" | "QUARTERLY"; valor: number }[];
-  ativas: RecursoPago[];
+  planos: { id: string; recurso: Produto; ciclo: "MONTHLY" | "QUARTERLY"; valor: number }[];
+  /** as assinaturas valendo (ou o Pix esperando a 1ª fatura), pelo produto */
+  ativas: Produto[];
   sem_prazo: Record<RecursoPago, boolean>;
   testes_ate: Partial<Record<RecursoPago, string>> | null;
-  pago_ate: Partial<Record<RecursoPago, string>> | null;
+  pago_ate: Partial<Record<Produto, string>> | null;
 };
 
 export type ResultadoAssinar = { ok: true; ir: string; externo?: boolean } | { ok: false; erro: string };
 
 const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral" };
-
-/** "AAAA-MM-DD" no horário de Brasília. */
-function diaBr(d: Date) {
-  return d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-}
 
 function erroParaTela(e: unknown) {
   if (e instanceof ErroAsaas) {
@@ -58,7 +55,14 @@ async function quemAssina(): Promise<{ erro: string } | { conta: string }> {
   const usuario = await obterUsuario();
   if (!usuario) return { erro: "Entre na sua conta." };
   if (usuario.papel === "recrutador") return { erro: "Só quem administra a conta pode assinar." };
-  if (!asaasConfigurado()) return { erro: "Os pagamentos ainda não estão ligados." };
+  if (!asaasConfigurado())
+    return {
+      erro:
+        process.env.NODE_ENV === "production"
+          ? "Os pagamentos ainda não estão ligados."
+          : // no computador: a chave do Asaas começa com $, e o .env.local apaga o valor sem a barra antes
+            "Os pagamentos ainda não estão ligados neste computador: no .env.local, escreva a chave com uma barra antes do $ (ASAAS_API_KEY=\\$aact_…) e reinicie o site.",
+    };
   return { conta: usuario.id };
 }
 
@@ -92,12 +96,23 @@ export async function assinar(dados: {
     if (!ctx.pode) return { ok: false, erro: "A assinatura ainda não está aberta para a sua conta." };
     const plano = ctx.planos.find((p) => p.id === dados.plano);
     if (!plano) return { ok: false, erro: "Esse plano não está mais à venda. Atualize a página." };
-    if (ctx.sem_prazo[plano.recurso]) return { ok: false, erro: "Esse recurso já está liberado para a sua conta." };
+    if (recursosDo(plano.recurso).every((r) => ctx.sem_prazo[r]))
+      return { ok: false, erro: "Esse recurso já está liberado para a sua conta." };
     const troca = dados.troca === true && dados.forma === "cartao";
     if (dados.troca && !troca) return { ok: false, erro: "A troca é só para o cartão." };
     if (troca && !ctx.ativas.includes(plano.recurso)) return { ok: false, erro: "Não há assinatura para trocar." };
     if (!troca && ctx.ativas.includes(plano.recurso))
-      return { ok: false, erro: `Você já assina o ${NOME_RECURSO[plano.recurso]}. Veja em Assinatura.` };
+      return { ok: false, erro: `Você já assina o ${NOME_PRODUTO[plano.recurso]}. Veja em Assinatura.` };
+    // o combo e os recursos separados não valem juntos: cancela um para assinar o outro
+    const outra = ctx.ativas.find((x) => x !== plano.recurso && (x === "combo" || plano.recurso === "combo"));
+    if (!troca && outra)
+      return {
+        ok: false,
+        erro:
+          outra === "combo"
+            ? `O combo que você assina já inclui o ${NOME_PRODUTO[plano.recurso]}.`
+            : `Você assina o ${NOME_PRODUTO[outra]}. Cancele em Assinatura para passar para o combo (o que já foi pago continua valendo).`,
+      };
 
     // o cliente no parceiro (um por conta): nome, CPF ou CNPJ e e-mail da nota fiscal
     let cliente = ctx.cliente?.asaas_id ?? null;
@@ -124,16 +139,13 @@ export async function assinar(dados: {
     }
 
     // a 1ª cobrança: no fim do teste grátis ou do que já está pago (assinar de novo, trocar o cartão); senão, hoje
-    const hoje = diaBr(new Date());
-    const datas = [ctx.testes_ate?.[plano.recurso], ctx.pago_ate?.[plano.recurso]]
-      .filter((d): d is string => Boolean(d))
-      .map((d) => diaBr(new Date(d)));
-    const primeiro = datas.reduce((m, d) => (d > m ? d : m), hoje);
-    const nomeItem = `Publike · ${NOME_RECURSO[plano.recurso]} (${CICLO[plano.ciclo]})`;
+    const primeiro = diaDaPrimeiraCobranca(plano.recurso, ctx.testes_ate, ctx.pago_ate);
+    // o nome do item é como o banco liga a assinatura do checkout ("combo", "copiloto" ou "testes" no texto)
+    const nomeItem = `Publike · ${NOME_PRODUTO[plano.recurso]} (${CICLO[plano.ciclo]})`;
     const descricao =
       plano.ciclo === "QUARTERLY"
-        ? `${NOME_RECURSO[plano.recurso]} por 3 meses, renovado a cada 3 meses`
-        : `${NOME_RECURSO[plano.recurso]} por 1 mês, renovado todo mês`;
+        ? `${NOME_PRODUTO[plano.recurso]} por 3 meses, renovado a cada 3 meses`
+        : `${NOME_PRODUTO[plano.recurso]} por 1 mês, renovado todo mês`;
 
     if (dados.forma === "cartao") {
       const volta = `${SITE_URL}/painel/assinatura`;
@@ -211,7 +223,7 @@ export async function cancelarAssinatura(
     if (error) throw new Error(error.message);
     after(() => enviarPushPendentes());
     refresh();
-    const nome = ehRecursoPago(ass.recurso) ? NOME_RECURSO[ass.recurso as RecursoPago] : "recurso";
+    const nome = ehProduto(ass.recurso) ? NOME_PRODUTO[ass.recurso] : "recurso";
     return { ok: true, mensagem: `Assinatura cancelada. O ${nome} continua até o fim do que já foi pago.` };
   } catch (e) {
     return { ok: false, erro: erroParaTela(e) };

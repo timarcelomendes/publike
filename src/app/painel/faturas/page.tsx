@@ -9,8 +9,7 @@ import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { formatarMoeda } from "@/lib/formato";
-import { dataDoDia, emAberto, numeroDaFatura } from "@/lib/pagamentos";
-import { NOME_RECURSO } from "@/lib/recursos-pagos";
+import { dataDoDia, emAberto, NOME_PRODUTO, numeroDaFatura } from "@/lib/pagamentos";
 import { minhasFaturas } from "@/lib/servidor/faturas";
 import { exigirUsuario } from "@/lib/sessao";
 
@@ -69,7 +68,7 @@ async function Conteudo() {
                 >
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-label">{NOME_RECURSO[f.recurso]}</span>
+                      <span className="text-label">{NOME_PRODUTO[f.recurso]}</span>
                       <SeloDaFatura situacao={f.situacao} />
                     </span>
                     <span className="text-body-sm text-ink-muted">

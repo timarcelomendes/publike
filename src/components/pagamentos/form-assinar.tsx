@@ -7,8 +7,7 @@ import { chamarAcao } from "@/lib/acao-segura";
 import { assinar, type ResultadoAssinar } from "@/lib/acoes/assinatura";
 import { documentoValido, formatarDocumento } from "@/lib/documento";
 import { formatarMoeda } from "@/lib/formato";
-import { dataDoDia, MESES, NOME_CICLO, POR_CICLO, type Plano } from "@/lib/pagamentos";
-import { NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
+import { dataDoDia, MESES, NOME_CICLO, NOME_PRODUTO, POR_CICLO, type Plano, type Produto } from "@/lib/pagamentos";
 import { Campo, classesEntrada } from "../ui/campo";
 import { Botao } from "../ui/botao";
 
@@ -27,7 +26,7 @@ export function FormAssinar({
   inicial,
   troca = false,
 }: {
-  recurso: RecursoPago;
+  recurso: Produto;
   planos: Plano[];
   /** a data da 1ª cobrança, quando não é hoje (o fim do teste grátis ou do que já está pago) */
   primeiro: string | null;
@@ -197,7 +196,7 @@ export function FormAssinar({
         <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
           <p className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-body">
-              {NOME_RECURSO[recurso]} · {NOME_CICLO[escolhido.ciclo].toLowerCase()}
+              {NOME_PRODUTO[recurso]} · {NOME_CICLO[escolhido.ciclo].toLowerCase()}
             </span>
             <span className="text-h3 tabular-nums">{formatarMoeda(escolhido.valor)}</span>
           </p>
