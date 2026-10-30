@@ -5,13 +5,13 @@ import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
 import { FiltroCliente } from "@/components/painel/filtro-cliente";
-import { PaginaDeVagas } from "@/components/painel/pagina-de-vagas";
+import { MaisDoCartao } from "@/components/painel/mais-do-cartao";
 import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
-import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { esperaResposta, LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
+import { MODO_DEMO } from "@/lib/config";
+import { abaDaEtapa, esperaResposta, LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuPerfil } from "@/lib/dados";
 import { ateQuando, formatarLugar, primeiro, rotuloModalidade, semPrazo, tempoRelativo } from "@/lib/formato";
 import { empresasDasVagas, listarMeusClientes, type EmpresaNaVaga } from "@/lib/servidor/clientes";
@@ -291,27 +291,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                     <p className="text-body-sm text-ink-muted">
                       {formatarLugar(a.bairro, a.cidade)} · publicado {tempoRelativo(a.criado_em, agora)} ·{" "}
                       {status === "ativo" ? `no ar ${ateQuando(a.expira_em)}` : (STATUS_ANUNCIO[status]?.ajuda ?? "")}
+                      {a.tipo === "vaga" &&
+                        ` · ${a.curtidas_total} ${a.curtidas_total === 1 ? "candidato" : "candidatos"}`}
                     </p>
                     {a.tipo === "vaga" && candidatos ? (
                       <div className="flex flex-col gap-2">
-                        <FunilDaVaga
-                          id={a.id}
-                          candidatos={candidatos.filter((c) => c.anuncio_id === a.id)}
-                          novas={a.curtidas_novas}
-                        />
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          <BotaoLink href={`/painel/anuncio/${a.id}/quadro`} tamanho="sm">
-                            Abrir a vaga
-                            <ChevronRight aria-hidden />
-                          </BotaoLink>
-                          <Link
-                            href={`/anuncio/${a.id}`}
-                            className="inline-flex min-h-10 items-center gap-1.5 text-body-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline"
-                          >
-                            <Eye aria-hidden className="size-4" />
-                            Ver como o candidato vê
-                          </Link>
-                        </div>
+                        <FunilDaVaga id={a.id} candidatos={candidatos.filter((c) => c.anuncio_id === a.id)} />
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-3">
@@ -339,30 +324,62 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                         )}
                       </div>
                     )}
-                    <div className="border-t border-line pt-3">
-                      <AcoesAnuncio
-                        id={a.id}
-                        tipo={a.tipo}
-                        status={status}
-                        podeRenovar={podeRenovar}
-                        prazoDias={extra ? extra.prazo_dias : 30}
-                        preenchida={Boolean(extra?.preenchida_em)}
-                      />
-                    </div>
+                    {a.tipo === "vaga" && candidatos ? (
+                      // a vaga: "Abrir a vaga" e o resto no "Mais" (claude/plano-painel-simples.md, parte 3); a vaga
+                      // vencida ou vencendo já abre o "Mais", com o Renovar à vista
+                      <MaisDoCartao
+                        aberto={podeRenovar}
+                        principal={
+                          <BotaoLink href={`/painel/anuncio/${a.id}/quadro`} tamanho="sm">
+                            Abrir a vaga
+                            <ChevronRight aria-hidden />
+                          </BotaoLink>
+                        }
+                      >
+                        <div className="flex flex-col gap-2">
+                          <Link
+                            href={`/anuncio/${a.id}`}
+                            className="inline-flex min-h-10 items-center gap-1.5 self-start text-label underline-offset-2 hover:underline"
+                          >
+                            <Eye aria-hidden className="size-[18px] text-ink-muted" />
+                            Ver como o candidato vê
+                          </Link>
+                          <AcoesAnuncio
+                            id={a.id}
+                            tipo={a.tipo}
+                            status={status}
+                            podeRenovar={podeRenovar}
+                            prazoDias={extra ? extra.prazo_dias : 30}
+                            preenchida={Boolean(extra?.preenchida_em)}
+                          />
+                        </div>
+                      </MaisDoCartao>
+                    ) : (
+                      <div className="border-t border-line pt-3">
+                        <AcoesAnuncio
+                          id={a.id}
+                          tipo={a.tipo}
+                          status={status}
+                          podeRenovar={podeRenovar}
+                          prazoDias={extra ? extra.prazo_dias : 30}
+                          preenchida={Boolean(extra?.preenchida_em)}
+                        />
+                      </div>
+                    )}
                   </li>
                 );
               })}
             </ul>
           )}
-          {/* primeiro as vagas; o link e o quadro para o site vêm depois */}
-          {mostrarPagina && (
-            <PaginaDeVagas
-              perfilId={perfil.id}
-              nome={perfil.nome}
-              site={SITE_URL}
-              noAr={vagasNoAr}
-              comQuadro={contaPublica}
-            />
+          {/* a página de vagas (o link e o quadro para o site) fica só em Links para divulgar */}
+          {mostrarPagina && vagasNoAr > 0 && (
+            <p className="flex flex-wrap items-center gap-x-1.5 text-body-sm text-ink-muted">
+              <Megaphone aria-hidden className="size-4 shrink-0" />
+              Um link com todas as suas vagas abertas está em
+              <Link href="/painel/links" className="text-label text-ink underline underline-offset-2">
+                Links para divulgar
+              </Link>
+            </p>
           )}
         </>
       )}
@@ -403,21 +420,24 @@ function EmpresaDaVagaNaLista({ empresa, nome }: { empresa: EmpresaNaVaga; nome:
 }
 
 /**
- * A contratação de uma vaga, em números: candidatos → para responder → em análise →
- * entrevista → contratados. Todo número abre a vaga (o quadro, com as colunas por etapa).
+ * A contratação de uma vaga nas 4 etapas, com os nomes e as contas de Candidatos (`abaDaEtapa`). Cada número
+ * abre a etapa na vaga; em Novos, quem espera a sua resposta ganha a marca.
  */
-function FunilDaVaga({ id, candidatos, novas }: { id: string; candidatos: Candidatos; novas: number }) {
-  const conta = (f: (c: Candidatos[number]) => boolean) => candidatos.filter(f).length;
-  const vaga = `/painel/anuncio/${id}/quadro`;
+function FunilDaVaga({ id, candidatos }: { id: string; candidatos: Candidatos }) {
+  const da = (aba: ReturnType<typeof abaDaEtapa>) => candidatos.filter((c) => abaDaEtapa(c) === aba);
+  const passo = (aba: ReturnType<typeof abaDaEtapa>, nome: string, final = false) => {
+    const lista = da(aba);
+    const esperam = lista.filter(esperaResposta).length;
+    return { nome, numero: lista.length, href: `/painel/anuncio/${id}?etapa=${aba}`, destaque: esperam > 0, esperam, final };
+  };
   const passos = [
-    { nome: "Candidatos", numero: candidatos.length, href: vaga },
-    { nome: "Novos", numero: conta(esperaResposta), href: vaga, destaque: true },
-    { nome: "Em análise", numero: conta((c) => c.etapa === "analise"), href: vaga },
-    { nome: "Entrevista", numero: conta((c) => c.etapa === "entrevista"), href: vaga },
-    { nome: "Contratados", numero: conta((c) => c.etapa === "contratado"), href: vaga, final: true },
+    passo("novos", "Novos"),
+    passo("analise", "Em análise"),
+    passo("entrevista", "Entrevista"),
+    passo("contratados", "Contratados", true),
   ];
   return (
-    <ol aria-label="Contratação desta vaga" className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+    <ol aria-label="Contratação desta vaga" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {passos.map((p) => {
         const tem = p.numero > 0;
         const cor = !tem
@@ -434,18 +454,16 @@ function FunilDaVaga({ id, candidatos, novas }: { id: string; candidatos: Candid
           <>
             <span className={`flex items-center gap-1.5 font-display text-h3 leading-none ${cor}`}>
               {p.numero}
-              {p.nome === "Candidatos" && novas > 0 && (
-                <Selo variante="like">
-                  {novas} {novas === 1 ? "nova" : "novas"}
-                </Selo>
-              )}
+              {p.esperam ? (
+                <Selo variante="aviso">{p.esperam === 1 ? "1 espera você" : `${p.esperam} esperam você`}</Selo>
+              ) : null}
             </span>
             <span className={`mt-1 text-body-sm leading-tight ${tem ? "text-ink" : "text-ink-muted"}`}>{p.nome}</span>
           </>
         );
         return (
           <li key={p.nome}>
-            {tem || p.nome === "Candidatos" ? (
+            {tem ? (
               <Link href={p.href} className={`${caixa} transition-colors hover:border-line-strong`}>
                 {miolo}
               </Link>

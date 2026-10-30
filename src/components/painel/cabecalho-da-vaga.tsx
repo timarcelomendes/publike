@@ -3,20 +3,26 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { SITE_URL } from "@/lib/config";
 import { STATUS_ANUNCIO } from "@/lib/constantes";
-import { copilotoLiberado } from "@/lib/dados";
+import { recursosPagos } from "@/lib/dados";
 import { formatarLugar } from "@/lib/formato";
+import { marcaDoRecurso } from "@/lib/recursos-pagos";
+import type { Saude } from "@/lib/saude-vaga";
+import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio } from "@/lib/tipos";
 import { SeloCortesia } from "../selo-cortesia";
 import { Selo } from "../ui/basicos";
 import { CopiarLinkDaVaga } from "./links-para-mandar";
 import { MaisDaVaga } from "./mais-da-vaga";
+import { EtiquetaDaSaude } from "./saude-vaga";
 
 export type AbaDaVaga = "candidatos" | "copiloto" | "testes" | "editar";
 
 /**
  * O alto de toda página de uma vaga no painel: a volta para Vagas, o nome, onde e quantos candidatos, o
  * link da vaga, o "Mais" e as abas (Candidatos, Copiloto, Testes e Editar). Assim a vaga é um lugar só:
- * de qualquer aba se chega às outras.
+ * de qualquer aba se chega às outras. O Copiloto aparece em toda vaga (sem o recurso, a aba mostra a oferta), e
+ * a pílula segue a conta: "15 dias grátis", "faltam N dias" no teste, nada depois de liberado. A saúde da
+ * vaga é uma etiqueta ao lado do estado (abre o que falta).
  */
 export async function CabecalhoDaVaga({
   anuncio,
@@ -25,6 +31,7 @@ export async function CabecalhoDaVaga({
   cliente,
   acoes,
   nota,
+  saude,
 }: {
   anuncio: { id: string; titulo: string; status: string; cidade: string; bairro: string | null };
   aba: AbaDaVaga;
@@ -36,25 +43,27 @@ export async function CabecalhoDaVaga({
   acoes?: ReactNode;
   /** uma linha embaixo do nome (agência: o cliente em sigilo) */
   nota?: ReactNode;
+  /** a saúde da vaga (nas páginas de Candidatos) */
+  saude?: Saude | null;
 }) {
-  const copiloto = await copilotoLiberado();
+  const [recursos, agora] = await Promise.all([recursosPagos(), agoraDaRequisicao()]);
+  const marca = {
+    copiloto: marcaDoRecurso(recursos?.copiloto, agora).curto,
+    testes: marcaDoRecurso(recursos?.testes, agora).curto,
+  };
   const status = anuncio.status as StatusAnuncio;
   const noAr = status === "ativo";
   const id = anuncio.id;
-  const abas: { aba: AbaDaVaga; nome: string; href: string; icone?: ReactNode; cortesia?: boolean }[] = [
+  const abas: { aba: AbaDaVaga; nome: string; href: string; icone?: ReactNode; marca?: string | null }[] = [
     { aba: "candidatos", nome: "Candidatos", href: `/painel/anuncio/${id}/quadro` },
-    ...(copiloto
-      ? [
-          {
-            aba: "copiloto" as const,
-            nome: "Copiloto",
-            href: `/painel/anuncio/${id}/copiloto`,
-            icone: <Sparkles aria-hidden className="size-4 text-terra-text" />,
-            cortesia: true,
-          },
-        ]
-      : []),
-    { aba: "testes", nome: "Testes", href: `/painel/anuncio/${id}/testes`, cortesia: true },
+    {
+      aba: "copiloto",
+      nome: "Copiloto",
+      href: `/painel/anuncio/${id}/copiloto`,
+      icone: <Sparkles aria-hidden className="size-4 text-terra-text" />,
+      marca: marca.copiloto,
+    },
+    { aba: "testes", nome: "Testes", href: `/painel/anuncio/${id}/testes`, marca: marca.testes },
     { aba: "editar", nome: "Editar", href: `/painel/anuncio/${id}/editar` },
   ];
   return (
@@ -77,6 +86,7 @@ export async function CabecalhoDaVaga({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Selo variante={noAr ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
+            {saude && <EtiquetaDaSaude s={saude} />}
             <span className="text-body-sm text-ink-muted">
               {[formatarLugar(anuncio.bairro, anuncio.cidade), resumo].filter(Boolean).join(" · ")}
             </span>
@@ -104,7 +114,7 @@ export async function CabecalhoDaVaga({
               >
                 {a.icone}
                 {a.nome}
-                {a.cortesia && <SeloCortesia curto />}
+                {a.marca && <SeloCortesia curto texto={a.marca} />}
               </Link>
             </li>
           ))}
@@ -145,5 +155,25 @@ export function VistaDosCandidatos({ id, atual }: { id: string; atual: "quadro" 
         );
       })}
     </div>
+  );
+}
+
+/**
+ * "Ordenar pelo Copiloto" (claude/plano-painel-simples.md, parte 3): na lista e no quadro da vaga, quando a
+ * vaga já foi lida. Ligado, quem o Copiloto pôs na frente vem primeiro; desligado, a ordem de sempre.
+ */
+export function OrdemPeloCopiloto({ ativo, href }: { ativo: boolean; href: string }) {
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      aria-pressed={ativo}
+      className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+        ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+      }`}
+    >
+      <Sparkles aria-hidden className={`size-4 ${ativo ? "" : "text-terra-text"}`} />
+      Ordenar pelo Copiloto
+    </Link>
   );
 }

@@ -8,6 +8,7 @@ import {
   MessageCircle,
   MessagesSquare,
   Send,
+  Sparkles,
   UserPlus,
   X,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import {
   useOptimistic,
   useRef,
   useState,
+  useSyncExternalStore,
   useTransition,
   type DragEvent,
   type ReactNode,
@@ -79,6 +81,8 @@ export type CartaoQuadro = {
   finalista: RespostaCliente | null;
   /** agência: a colocação de quem foi contratado (o começo, a taxa e a garantia) */
   colocacao: Colocacao | null;
+  /** "Ordenar pelo Copiloto": a posição no ranking da vaga (só quando a vaga já foi lida) */
+  copiloto?: number | null;
 };
 
 export function QuadroCandidatos({
@@ -168,11 +172,7 @@ export function QuadroCandidatos({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p className="text-body-sm text-ink-muted">
-          Arraste o cartão para outra coluna ou use “Mover para”. Ir para Entrevista ou Contratado dá o match (o contato
-          aparece para os dois); “Não seguiu” dispensa quem ainda esperava resposta. Se a vaga pede currículo e a pessoa
-          ainda não mandou, ela recebe o pedido e o match sai quando ele chegar.
-        </p>
+        <DicaDoQuadro />
         {eliminados > 0 && (
           <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-label">
             <input
@@ -368,6 +368,12 @@ function Cartao({
           <p className="text-caption text-ink-muted">
             {formatarLugar(c.bairro, c.cidade)} · {tempoRelativo(c.curtido_em, agora)}
           </p>
+          {c.copiloto != null && (
+            <p className="mt-0.5 flex items-center gap-1 text-caption font-semibold text-terra-text">
+              <Sparkles aria-hidden className="size-3.5" />
+              {c.copiloto}º no Copiloto
+            </p>
+          )}
         </div>
       </div>
       {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito" || c.finalista || c.colocacao) && (
@@ -753,4 +759,55 @@ function Gaveta({
       <div className="p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">{aberta && children}</div>
     </dialog>
   );
+}
+
+const DICA_VISTA = "publike_dica_quadro";
+
+/**
+ * Como o quadro funciona, numa dica que aparece uma vez (claude/plano-painel-simples.md, parte 3): "Entendi" a
+ * esconde neste aparelho. Sem o armazenamento do navegador, ela aparece sempre (fecha até recarregar).
+ */
+function DicaDoQuadro() {
+  // a dica já vista vem do aparelho; no servidor, escondida (aparece na tela, se for a primeira vez)
+  const vista = useSyncExternalStore(ouvirArmazenamento, lerDicaVista, () => true);
+  const [fechada, setFechada] = useState(false);
+  if (vista || fechada) return null;
+  return (
+    <div
+      role="note"
+      className="flex w-full flex-col gap-2 rounded-md border border-line bg-surface-200 px-4 py-3 sm:flex-row sm:items-start sm:gap-4"
+    >
+      <p className="flex-1 text-body-sm text-ink-muted">
+        <span className="font-semibold text-ink">Dica:</span> arraste o cartão para outra coluna ou use “Mover para”. Ir
+        para Entrevista ou Contratado dá o match (o contato aparece para os dois); “Não seguiu” dispensa quem ainda
+        esperava resposta. Se a vaga pede currículo e a pessoa ainda não mandou, ela recebe o pedido e o match sai
+        quando ele chegar.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          setFechada(true);
+          try {
+            localStorage.setItem(DICA_VISTA, "1");
+          } catch {}
+        }}
+        className="inline-flex min-h-10 shrink-0 items-center self-start rounded-md border border-line-strong px-3.5 text-label hover:bg-surface-300"
+      >
+        Entendi
+      </button>
+    </div>
+  );
+}
+
+function ouvirArmazenamento(avisar: () => void) {
+  window.addEventListener("storage", avisar);
+  return () => window.removeEventListener("storage", avisar);
+}
+
+function lerDicaVista() {
+  try {
+    return Boolean(localStorage.getItem(DICA_VISTA));
+  } catch {
+    return false;
+  }
 }

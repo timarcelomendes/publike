@@ -12,6 +12,7 @@ import {
   secaoAtiva,
   textoDoQueFaz,
   type Contadores,
+  type ExtrasDoMenu,
   type ModoPainel,
   type Secao,
 } from "@/lib/modo-painel";
@@ -33,6 +34,7 @@ export function MenuPainel({
   papel = "dono",
   gradeNoHoje = false,
   copiloto = false,
+  pilulas,
 }: {
   /** o que a conta faz (a principal primeiro): o menu mostra todas juntas, sem troca de modo */
   atividades: ModoPainel[];
@@ -48,6 +50,8 @@ export function MenuPainel({
   gradeNoHoje?: boolean;
   /** o copiloto (em teste) liberado para a conta: entra em "Achar gente" */
   copiloto?: boolean;
+  /** as pílulas do Copiloto e dos Testes pelo estado da conta ("15 dias grátis", "faltam N dias", nada) */
+  pilulas?: ExtrasDoMenu["pilulas"];
 }) {
   const caminho = usePathname() ?? "/painel";
   const busca = useSearchParams();
@@ -57,7 +61,7 @@ export function MenuPainel({
   // (o erro "atividades.length" no navegador): sem ela, vale o menu de quem procura trabalho
   const atividades: ModoPainel[] = Array.isArray(recebidas) ? recebidas : ["trabalhar"];
   // todas as atividades da conta juntas, sem troca de modo na tela
-  const grupos = gruposDaConta(atividades, tipoConta, { copiloto });
+  const grupos = gruposDaConta(atividades, tipoConta, { copiloto, pilulas });
   const outras = outrasDaConta(atividades, grupos);
   const ativa = secaoAtiva(grupos, outras, caminho, tipo);
   const [aberto, setAberto] = useState(false);
@@ -272,7 +276,9 @@ export function MenuPainel({
                         {s.passo && <span className="sr-only">Passo {s.passo}: </span>}
                         {s.nome}
                       </span>
-                      {s.cortesia && <SeloCortesia curto />}
+                      {s.cortesia && (
+                        <SeloCortesia curto texto={typeof s.cortesia === "string" ? s.cortesia : undefined} />
+                      )}
                       {numero(s, atualSecao)}
                     </Link>
                   </li>

@@ -1,8 +1,10 @@
 import { MODO_DEMO } from "@/lib/config";
-import { copilotoLiberado, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { copilotoLiberado, obterMeuPerfil, obterUsuario, recursosPagos } from "@/lib/dados";
+import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { contadoresDoPainel } from "@/lib/servidor/contadores-do-painel";
 import { minhasContas } from "@/lib/servidor/equipe";
 import { atividadesDoMenu } from "@/lib/servidor/modo";
+import { agoraDaRequisicao } from "@/lib/tempo";
 import { MenuPainel } from "./menu-painel";
 
 /**
@@ -20,7 +22,7 @@ export async function MenuDaConta() {
       />
     );
   }
-  const [perfil, atividades, usuario, contas, contadores, copiloto] = await Promise.all([
+  const [perfil, atividades, usuario, contas, contadores, copiloto, recursos, agora] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     atividadesDoMenu(),
     obterUsuario(),
@@ -29,7 +31,16 @@ export async function MenuDaConta() {
     // os mesmos números da grade do painel
     contadoresDoPainel(),
     copilotoLiberado(),
+    recursosPagos(),
+    agoraDaRequisicao(),
   ]);
+  // a pílula segue a conta: "15 dias grátis", "faltam N dias" no teste, nada depois de liberado
+  const pilulas = recursos
+    ? {
+        copiloto: marcaDoRecurso(recursos.copiloto, agora).curto,
+        testes: marcaDoRecurso(recursos.testes, agora).curto,
+      }
+    : undefined;
   return (
     <MenuPainel
       atividades={atividades}
@@ -41,6 +52,7 @@ export async function MenuDaConta() {
       // o Hoje de quem procura trabalho (a atividade principal) é a grade das seções
       gradeNoHoje={atividades[0] === "trabalhar"}
       copiloto={copiloto}
+      pilulas={pilulas}
     />
   );
 }

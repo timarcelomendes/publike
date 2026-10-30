@@ -13,6 +13,7 @@ import { copilotoLiberado, listarMeusAnuncios, recursosPagos } from "@/lib/dados
 import { formatarLugar, plural } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
 export const metadata: Metadata = { title: "Copiloto" };
 
@@ -48,7 +49,7 @@ async function Conteudo() {
             <Sparkles aria-hidden className="size-6 text-terra-text" />
             Copiloto
           </h2>
-          <SeloCortesia />
+          <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} />
         </div>
         <p className="text-body text-ink-muted">
           Encontra os profissionais que combinam com a sua vaga e mostra o porquê. Quem decide é você.

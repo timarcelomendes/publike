@@ -3,19 +3,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { CabecalhoDaVaga, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
+import { CabecalhoDaVaga, OrdemPeloCopiloto, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { QuadroCandidatos } from "@/components/painel/quadro-candidatos";
-import { SaudeDaVaga } from "@/components/painel/saude-vaga";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { esperaResposta } from "@/lib/constantes";
-import { copilotoLiberado, obterAnuncio, obterMeuPerfil } from "@/lib/dados";
+import { obterAnuncio, obterMeuPerfil, recursosPagos } from "@/lib/dados";
 import { formatarLugar } from "@/lib/formato";
+import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
+import { ordemDoCopiloto } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
 import { saudeDasVagas } from "@/lib/servidor/saude";
 import { exigirUsuario } from "@/lib/sessao";
@@ -44,10 +45,18 @@ async function Conteudo({
   // ?candidato=<id>: abre já o cartão dessa pessoa (link da tela Candidatos)
   const abrir = typeof sp.candidato === "string" ? sp.candidato : null;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/quadro`);
-  const [anuncio, perfil, copiloto] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), copilotoLiberado()]);
+  const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const { cartoes, modelos } = await montarQuadro(anuncio, agora);
+  const [{ cartoes: daVaga, modelos }, posicoes] = await Promise.all([
+    montarQuadro(anuncio, agora),
+    ordemDoCopiloto(id),
+  ]);
+  // "Ordenar pelo Copiloto": quem foi lido vem na ordem do ranking; quem não foi, depois, na ordem de sempre
+  const peloCopiloto = Boolean(posicoes) && sp.ordem === "copiloto";
+  const cartoes = daVaga.map((c) => ({ ...c, copiloto: peloCopiloto ? (posicoes?.get(c.perfil_id) ?? null) : null }));
+  if (peloCopiloto) cartoes.sort((a, b) => (a.copiloto ?? Infinity) - (b.copiloto ?? Infinity));
+  const marcaCopiloto = marcaDoRecurso(recursos?.copiloto, agora).curto;
   const saude = (
     await saudeDasVagas(
       [anuncio],
@@ -76,7 +85,7 @@ async function Conteudo({
   ).length;
   const resumo = [
     `${cartoes.length} ${cartoes.length === 1 ? "candidato" : "candidatos"}`,
-    paraResponder ? `${paraResponder} para responder` : null,
+    paraResponder ? `${paraResponder} ${paraResponder === 1 ? "espera" : "esperam"} você` : null,
     agencia && finalistas > 0 ? `${finalistas} com o cliente` : null,
   ]
     .filter(Boolean)
@@ -88,6 +97,7 @@ async function Conteudo({
         anuncio={anuncio}
         aba="candidatos"
         resumo={resumo}
+        saude={saude}
         cliente={cliente}
         nota={
           agencia && anuncio.contratante_confidencial ? (
@@ -111,7 +121,7 @@ async function Conteudo({
           ) : null
         }
       />
-      {copiloto && cartoes.length === 0 && status === "ativo" && (
+      {cartoes.length === 0 && status === "ativo" && (
         <Link
           href={`/painel/anuncio/${id}/copiloto`}
           className="group flex items-center gap-3 rounded-lg border border-terra/40 bg-terra-soft p-4 hover:border-terra"
@@ -122,7 +132,7 @@ async function Conteudo({
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2 text-label">
               Ninguém se candidatou ainda? O Copiloto busca para você.
-              <SeloCortesia curto />
+              <SeloCortesia curto texto={marcaCopiloto} />
             </span>
             <span className="block text-body-sm text-ink-muted">
               Ele procura em Talentos quem combina com esta vaga e mostra o trecho do currículo que comprova.
@@ -133,17 +143,24 @@ async function Conteudo({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <VistaDosCandidatos id={id} atual="quadro" />
-        {copiloto && cartoes.length > 0 && (
-          <Link
-            href={`/painel/anuncio/${id}/copiloto?ver=candidatos`}
-            className="inline-flex min-h-10 items-center gap-1.5 text-label text-terra-text underline-offset-2 hover:underline"
-          >
-            <Sparkles aria-hidden className="size-4" />
-            Ler os candidatos com o Copiloto
-          </Link>
+        {posicoes ? (
+          <OrdemPeloCopiloto
+            ativo={peloCopiloto}
+            href={peloCopiloto ? `/painel/anuncio/${id}/quadro` : `/painel/anuncio/${id}/quadro?ordem=copiloto`}
+          />
+        ) : (
+          cartoes.length > 0 &&
+          recursos?.copiloto.liberado && (
+            <Link
+              href={`/painel/anuncio/${id}/copiloto?ver=candidatos`}
+              className="inline-flex min-h-10 items-center gap-1.5 text-label text-terra-text underline-offset-2 hover:underline"
+            >
+              <Sparkles aria-hidden className="size-4" />
+              Ler os candidatos com o Copiloto
+            </Link>
+          )
         )}
       </div>
-      {saude && <SaudeDaVaga s={saude} />}
       {cartoes.length === 0 ? (
         <Vazio icone={Users} titulo="Ninguém se candidatou ainda">
           Quem curtir a vaga aparece aqui, na coluna Novos. Copie o link da vaga ali em cima, ou mande a sua página de

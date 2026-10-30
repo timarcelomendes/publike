@@ -54,3 +54,23 @@ export function diasRestantes(ate: string, agora: number): number {
 export function dataCurta(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "America/Sao_Paulo" });
 }
+
+/**
+ * A marca do recurso pelo estado da conta (claude/plano-painel-simples.md, parte 3): "15 dias grátis" antes de
+ * experimentar, "faltam N dias" durante o teste e nada depois de liberado. `curto`: a pílula do menu e das
+ * abas; `longo`: o selo do alto das páginas (no teste, a faixa dos dias já diz). Sem o estado (antes da
+ * migração), a marca de sempre.
+ */
+export function marcaDoRecurso(
+  estado: EstadoRecurso | null | undefined,
+  agora: number,
+): { curto: string | null; longo: string | null } {
+  if (!estado) return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
+  if (estado.liberado) {
+    if (!estado.ate) return { curto: null, longo: null };
+    const n = diasRestantes(estado.ate, agora);
+    return { curto: n === 1 ? "falta 1 dia" : `faltam ${n} dias`, longo: null };
+  }
+  if (estado.pode_experimentar) return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
+  return { curto: "Recurso pago", longo: "Recurso pago" };
+}

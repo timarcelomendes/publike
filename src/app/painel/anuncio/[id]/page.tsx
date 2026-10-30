@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronDown, Download, FileText, Heart } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, FileText, Heart, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -13,14 +13,16 @@ import { BotaoBloquear, DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
-import { CabecalhoDaVaga, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
+import { CabecalhoDaVaga, OrdemPeloCopiloto, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import {
+  abaDaEtapa,
   ETAPAS_CANDIDATO,
   esperaCurriculo,
+  esperaResposta,
   etapaQueVale,
   etapasDoTipo,
   motivoParaOutro,
@@ -39,12 +41,25 @@ import {
 } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
 import { minhasContratacoesPublicas } from "@/lib/dados-social";
+import { ordemDoCopiloto } from "@/lib/servidor/copiloto";
 import { empresasDosTrabalhos } from "@/lib/servidor/empresas";
+import { saudeDasVagas } from "@/lib/servidor/saude";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
+
+type AbaDaEtapa = ReturnType<typeof abaDaEtapa>;
+
+/** As etapas da vaga, com os nomes de Candidatos. */
+const ETAPAS_DA_VAGA: { valor: AbaDaEtapa; nome: string }[] = [
+  { valor: "novos", nome: "Novos" },
+  { valor: "analise", nome: "Em análise" },
+  { valor: "entrevista", nome: "Entrevista" },
+  { valor: "contratados", nome: "Contratados" },
+  { valor: "nao_seguiu", nome: "Não seguiu" },
+];
 
 export default function Interessados({ params, searchParams }: PageProps<"/painel/anuncio/[id]">) {
   return (
@@ -63,7 +78,8 @@ async function Conteudo({
 }) {
   if (MODO_DEMO) return <SoComSupabase />;
   const { id } = await params;
-  const pedida = (await searchParams).etapa;
+  const sp = await searchParams;
+  const pedida = sp.etapa;
   const filtro = typeof pedida === "string" && pedida in ETAPAS_CANDIDATO ? (pedida as EtapaCandidato) : null;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}`);
   const anuncio = await obterAnuncio(id);
@@ -85,8 +101,47 @@ async function Conteudo({
     etapaQueVale(anuncio.tipo, p.status, etapas.get(p.perfil_id)?.etapa ?? "novo");
   const contagem = new Map<EtapaCandidato, number>();
   for (const p of todos) contagem.set(etapaDe(p), (contagem.get(etapaDe(p)) ?? 0) + 1);
-  const interessados = filtro ? todos.filter((p) => etapaDe(p) === filtro) : todos;
+  // vaga: as mesmas etapas de Candidatos e do quadro (Novos, Em análise, Entrevista, Contratados, Não seguiu;
+  // claude/plano-painel-simples.md, parte 3); ?etapa=novo e =contratado (links antigos) valem também
+  const ETAPA_ANTIGA: Record<string, AbaDaEtapa> = { novo: "novos", contratado: "contratados" };
+  const abaDe = (p: { perfil_id: string; status: string }) => abaDaEtapa({ status: p.status, etapa: etapaDe(p) });
+  const pedidaNaVaga =
+    typeof pedida === "string" ? (ETAPAS_DA_VAGA.find((e) => e.valor === pedida)?.valor ?? ETAPA_ANTIGA[pedida]) : null;
+  const filtroVaga = servico ? null : (pedidaNaVaga ?? null);
+  const naEtapa = new Map<AbaDaEtapa, number>();
+  for (const p of todos) naEtapa.set(abaDe(p), (naEtapa.get(abaDe(p)) ?? 0) + 1);
+  const filtrados = servico
+    ? filtro
+      ? todos.filter((p) => etapaDe(p) === filtro)
+      : todos
+    : filtroVaga
+      ? todos.filter((p) => abaDe(p) === filtroVaga)
+      : todos;
   const agora = await agoraDaRequisicao();
+  // "Ordenar pelo Copiloto" (a vaga já lida) e a saúde da vaga, para a etiqueta no alto
+  const [posicoes, saude] = servico
+    ? [null, null]
+    : await Promise.all([
+        ordemDoCopiloto(id),
+        saudeDasVagas(
+          [anuncio],
+          todos.map((p) => ({ anuncio_id: id, status: p.status, aceita_em: p.aceita_em, curtido_em: p.curtido_em })),
+          agora,
+        ).then((m) => m.get(id) ?? null),
+      ]);
+  const peloCopiloto = Boolean(posicoes) && sp.ordem === "copiloto";
+  const posicao = (p: { perfil_id: string }) => (peloCopiloto ? (posicoes?.get(p.perfil_id) ?? null) : null);
+  const interessados = peloCopiloto
+    ? [...filtrados].sort((a, b) => (posicao(a) ?? Infinity) - (posicao(b) ?? Infinity))
+    : filtrados;
+  const esperam = todos.filter(esperaResposta).length;
+  const linkDaEtapa = (e: AbaDaEtapa | null, ordem = peloCopiloto) => {
+    const q = new URLSearchParams();
+    if (e) q.set("etapa", e);
+    if (ordem) q.set("ordem", "copiloto");
+    const t = q.toString();
+    return `/painel/anuncio/${id}${t ? `?${t}` : ""}`;
+  };
   const hoje = new Date(agora).toISOString().slice(0, 7);
   const status = anuncio.status as StatusAnuncio;
   // as empresas dos currículos com conta no Publike: o logo e o link
@@ -127,14 +182,23 @@ async function Conteudo({
           <CabecalhoDaVaga
             anuncio={anuncio}
             aba="candidatos"
-            resumo={`${todos.length} ${todos.length === 1 ? "candidato" : "candidatos"}`}
+            resumo={[
+              `${todos.length} ${todos.length === 1 ? "candidato" : "candidatos"}`,
+              esperam ? `${esperam} ${esperam === 1 ? "espera" : "esperam"} você` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            saude={saude}
             nota={
               anuncio.autor_tipo === "agencia" ? (
                 <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
               ) : null
             }
           />
-          <VistaDosCandidatos id={anuncio.id} atual="lista" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <VistaDosCandidatos id={anuncio.id} atual="lista" />
+            {posicoes && <OrdemPeloCopiloto ativo={peloCopiloto} href={linkDaEtapa(filtroVaga, !peloCopiloto)} />}
+          </div>
         </>
       )}
 
@@ -146,28 +210,53 @@ async function Conteudo({
 
       {todos.length > 0 && (
         <div className="flex flex-col gap-3">
-          <nav aria-label="Filtrar por etapa" className="flex flex-wrap gap-2">
-            {[null, ...etapasDoTipo(anuncio.tipo)].map((e) => {
-              const ativo = filtro === e;
-              const total = e ? (contagem.get(e) ?? 0) : todos.length;
-              return (
-                <Link
-                  key={e ?? "todos"}
-                  href={e ? `/painel/anuncio/${anuncio.id}?etapa=${e}` : `/painel/anuncio/${anuncio.id}`}
-                  aria-current={ativo ? "page" : undefined}
-                  scroll={false}
-                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
-                    ativo
-                      ? "border-ink bg-ink text-surface-100"
-                      : "border-line bg-surface-300 text-ink hover:border-line-strong"
-                  }`}
-                >
-                  {e ? ETAPAS_CANDIDATO[e].nome : "Todos"}
-                  <span className={ativo ? "text-surface-100/80" : "text-ink-muted"}>{total}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          {!servico ? (
+            <nav aria-label="Etapas" className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 sm:mx-0 sm:px-0">
+              {[null, ...ETAPAS_DA_VAGA.map((e) => e.valor)].map((e) => {
+                const ativo = filtroVaga === e;
+                const total = e ? (naEtapa.get(e) ?? 0) : todos.length;
+                return (
+                  <Link
+                    key={e ?? "todos"}
+                    href={linkDaEtapa(e)}
+                    aria-current={ativo ? "page" : undefined}
+                    scroll={false}
+                    className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label whitespace-nowrap transition-colors ${
+                      ativo
+                        ? "border-ink bg-ink text-surface-100"
+                        : "border-line bg-surface-300 text-ink hover:border-line-strong"
+                    } ${!ativo && e && !total ? "text-ink-muted" : ""}`}
+                  >
+                    {e ? ETAPAS_DA_VAGA.find((x) => x.valor === e)?.nome : "Todos"}
+                    {total > 0 && <span className={ativo ? "text-surface-100/80" : "text-ink-muted"}>{total}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : (
+            <nav aria-label="Filtrar por etapa" className="flex flex-wrap gap-2">
+              {[null, ...etapasDoTipo(anuncio.tipo)].map((e) => {
+                const ativo = filtro === e;
+                const total = e ? (contagem.get(e) ?? 0) : todos.length;
+                return (
+                  <Link
+                    key={e ?? "todos"}
+                    href={e ? `/painel/anuncio/${anuncio.id}?etapa=${e}` : `/painel/anuncio/${anuncio.id}`}
+                    aria-current={ativo ? "page" : undefined}
+                    scroll={false}
+                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+                      ativo
+                        ? "border-ink bg-ink text-surface-100"
+                        : "border-line bg-surface-300 text-ink hover:border-line-strong"
+                    }`}
+                  >
+                    {e ? ETAPAS_CANDIDATO[e].nome : "Todos"}
+                    <span className={ativo ? "text-surface-100/80" : "text-ink-muted"}>{total}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-ink-muted">
             <span>
               {servico ? "Quem pediu" : "Quem curtiu"} vê a etapa e recebe um aviso quando ela muda. A anotação é só
@@ -234,10 +323,14 @@ async function Conteudo({
                         <Link href={`/perfil/${p.perfil_id}`} className="truncate underline-offset-2 hover:underline">
                           {p.nome}
                         </Link>
-                        {p.verificado && (
-                          <SeloVerificado agencia={p.tipo === "agencia"} />
-                        )}
+                        {p.verificado && <SeloVerificado agencia={p.tipo === "agencia"} />}
                       </p>
+                      {posicao(p) != null && (
+                        <p className="flex items-center gap-1 text-label text-terra-text">
+                          <Sparkles aria-hidden className="size-4" />
+                          {posicao(p)}º no Copiloto
+                        </p>
+                      )}
                       <p className="text-body-sm text-ink-muted">
                         {rotuloConta(p.tipo)} · {formatarLugar(p.bairro, p.cidade)} · no Publike desde{" "}
                         {formatarMesAno(p.membro_desde)}

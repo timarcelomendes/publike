@@ -27,6 +27,7 @@ import {
 } from "@/lib/servidor/copiloto";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
 export const metadata: Metadata = { title: "Copiloto da vaga" };
 // cada clique lê um lote de currículos com a IA
@@ -133,7 +134,7 @@ async function Conteudo({
       {cabecalho}
       <FaixaExperimento recurso="copiloto" estado={recursos?.copiloto} agora={agora} />
       <div className="flex flex-wrap items-center gap-2">
-        <SeloCortesia />
+        <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} />
         <p className="text-body-sm text-ink-muted">
           A IA lê cada currículo contra os critérios e mostra o trecho que comprova. Quem decide é você.
         </p>

@@ -18,6 +18,7 @@ import { bibliotecaDeTestes, resultadosDosTestes, testesDaVaga } from "@/lib/ser
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { competenciasDoResultado, faixaDoResultado, NAO_E_PSICOLOGICO, textoDoResultado } from "@/lib/testes";
+import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
 export const metadata: Metadata = { title: "Testes da vaga" };
 
@@ -71,7 +72,7 @@ async function Conteudo({
       <FaixaExperimento recurso="testes" estado={recursos?.testes} agora={agora} />
       {fechado && <OfertaRecurso recurso="testes" estado={recursos?.testes ?? null} />}
       <div className="flex flex-wrap items-center gap-2">
-        <SeloCortesia />
+        <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} />
         <p className="text-body-sm text-ink-muted">
           Testes da marca Publike e os da sua empresa. Quem curtir a vaga faz pelo celular.
         </p>

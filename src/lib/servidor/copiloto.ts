@@ -2,6 +2,8 @@ import "server-only";
 import { calcularAderencia, requisitosDaVaga } from "@/lib/aderencia";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 import {
+  compararLeituras,
+  contarLeitura,
   criteriosDoBanco,
   leituraDoBanco,
   normalizar,
@@ -47,6 +49,22 @@ export async function configDoCopiloto(anuncioId: string): Promise<ConfigCopilot
     padraoTriagem: o.padrao_triagem !== false,
     padraoBusca: o.padrao_busca !== false,
   };
+}
+
+/**
+ * "Ordenar pelo Copiloto" na lista e no quadro da vaga (claude/plano-painel-simples.md, parte 3): a posição de
+ * cada candidato já lido no ranking (1 é o primeiro), com a mesma ordem da aba Copiloto. null: a conta não tem o
+ * recurso, a vaga não tem critérios ou ninguém foi lido ainda.
+ */
+export async function ordemDoCopiloto(anuncioId: string): Promise<Map<string, number> | null> {
+  const config = await configDoCopiloto(anuncioId);
+  if (!config?.liberado || !config.criterios.length) return null;
+  const lidas = [...(await avaliacoesDoCopiloto(anuncioId)).values()]
+    .filter((a) => a.origem === "candidato")
+    .map((a) => ({ id: a.perfil_id, n: contarLeitura(config.criterios, a.leitura) }));
+  if (!lidas.length) return null;
+  lidas.sort((x, y) => compararLeituras({ ...x.n, preNota: 0 }, { ...y.n, preNota: 0 }));
+  return new Map(lidas.map((l, i) => [l.id, i + 1]));
 }
 
 /** As leituras guardadas da vaga, por pessoa. */

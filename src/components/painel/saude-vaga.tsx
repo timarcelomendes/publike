@@ -63,3 +63,52 @@ export function SaudeDaVaga({ s }: { s: Saude }) {
     </details>
   );
 }
+
+/**
+ * A saúde no alto da vaga, ao lado do estado (claude/plano-painel-simples.md, parte 3): uma etiqueta com o
+ * nível e a nota; tocar abre o que falta, com o link para resolver. Os candidatos vêm logo depois.
+ */
+export function EtiquetaDaSaude({ s }: { s: Saude }) {
+  const n = NIVEIS[s.nivel];
+  const itens = [...s.faltando, ...s.itens.filter((i) => i.ok)];
+  return (
+    <details className="group relative">
+      <summary
+        className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-2.5 text-body-sm font-semibold hover:bg-surface-300 [&::-webkit-details-marker]:hidden ${n.texto}`}
+      >
+        <span aria-hidden className={`size-2 rounded-pill ${n.barra}`} />
+        <span>
+          {n.nome} <span className="tabular-nums">· {s.nota}%</span>
+          <span className="sr-only">: a saúde da vaga. Abrir o que falta</span>
+        </span>
+        <ChevronDown aria-hidden className="size-4 text-ink-muted transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="absolute left-0 z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-line bg-surface-200 shadow-card">
+        <p className="border-b border-line px-4 py-2.5 text-label">Saúde da vaga</p>
+        <ul className="flex max-h-80 flex-col divide-y divide-line overflow-y-auto">
+          {itens.map((i) => (
+            <li key={i.chave} className="flex items-start gap-3 px-4 py-2.5">
+              {i.ok ? (
+                <Check aria-label="Em dia" className="mt-0.5 size-5 shrink-0 text-cerrado-text" />
+              ) : (
+                <X aria-label="Falta" className="mt-0.5 size-5 shrink-0 text-terra-text" />
+              )}
+              <span className="min-w-0 flex-1 text-body-sm">
+                <span className="font-semibold text-ink">{i.titulo}</span>
+                {!i.ok && <span className="block font-normal text-ink-muted">{i.dica}</span>}
+              </span>
+              {!i.ok && (
+                <Link
+                  href={i.href}
+                  className="shrink-0 text-label text-ink underline underline-offset-2 hover:text-terra-text"
+                >
+                  Resolver
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </details>
+  );
+}

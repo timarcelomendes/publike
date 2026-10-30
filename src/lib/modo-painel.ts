@@ -110,8 +110,11 @@ export type Secao = {
   passo?: number;
   /** o texto ao lado do número ("no ar") */
   sufixo?: string;
-  /** recurso pago (Copiloto e Testes Publike), com 15 dias grátis: ganha a pílula "15 dias grátis" */
-  cortesia?: boolean;
+  /**
+   * recurso pago (Copiloto e Testes Publike): a pílula que segue a conta ("15 dias grátis", "faltam N dias";
+   * `true`, o texto de sempre; sem ela, nada)
+   */
+  cortesia?: boolean | string;
 };
 
 /** Um grupo de seções no menu (sem nome: o primeiro, com Hoje). `caminho`: os passos numerados. */
@@ -172,7 +175,11 @@ export function secoesDoModo(modo: ModoPainel, tipoConta: string | null | undefi
  * Clientes e Para o cliente; comércio e empresa, Entrevistas. Os outros modos, um grupo só.
  */
 /** O que muda o menu de uma conta além do tipo: se a conta já tem o Copiloto (recurso pago). */
-export type ExtrasDoMenu = { copiloto?: boolean };
+export type ExtrasDoMenu = {
+  copiloto?: boolean;
+  /** as pílulas dos recursos pagos pelo estado da conta (`marcaDoRecurso`); sem elas, a de sempre */
+  pilulas?: { copiloto: string | null; testes: string | null };
+};
 
 export function gruposDoModo(
   modo: ModoPainel,
@@ -231,7 +238,12 @@ export function gruposDoModo(
       nome: "Achar gente",
       secoes: [
         // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (o selo some quando já tem)
-        { href: "/painel/copiloto", nome: "Copiloto", icone: "copiloto", cortesia: !extras.copiloto },
+        {
+          href: "/painel/copiloto",
+          nome: "Copiloto",
+          icone: "copiloto",
+          cortesia: extras.pilulas ? (extras.pilulas.copiloto ?? false) : !extras.copiloto,
+        },
         { href: "/talentos", nome: "Talentos", icone: "talentos" },
       ],
     },
@@ -246,7 +258,12 @@ export function gruposDoModo(
           contador: "visitas",
           jeito: "pilula",
         },
-        { href: "/painel/testes", nome: "Testes Publike", icone: "testes", cortesia: true },
+        {
+          href: "/painel/testes",
+          nome: "Testes Publike",
+          icone: "testes",
+          cortesia: extras.pilulas ? (extras.pilulas.testes ?? false) : true,
+        },
         ...(agencia ? [EQUIPE] : []),
       ],
     },
