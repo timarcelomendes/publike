@@ -72,7 +72,9 @@ export function EtiquetaDaSaude({ s }: { s: Saude }) {
   const n = NIVEIS[s.nivel];
   const itens = [...s.faltando, ...s.itens.filter((i) => i.ok)];
   return (
-    <details className="group relative">
+    // no celular, a janela abre a partir do começo da linha (a linha de cima é a referência): presa à etiqueta,
+    // ela passava da borda direita da tela
+    <details className="group max-sm:static sm:relative">
       <summary
         className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-2.5 text-body-sm font-semibold hover:bg-surface-300 [&::-webkit-details-marker]:hidden ${n.texto}`}
       >

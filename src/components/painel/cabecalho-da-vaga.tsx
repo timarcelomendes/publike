@@ -84,7 +84,7 @@ export async function CabecalhoDaVaga({
       </nav>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex flex-wrap items-center gap-2">
             <Selo variante={noAr ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
             {saude && <EtiquetaDaSaude s={saude} />}
             <span className="text-body-sm text-ink-muted">

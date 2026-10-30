@@ -22,7 +22,7 @@ export function SeloCortesia({
     return (
       <span
         title={teste ? "Teste grátis do recurso pago" : EXPLICA_CORTESIA}
-        className={`inline-flex shrink-0 items-center gap-1 rounded-pill bg-ipe px-1.5 py-0.5 text-[11px] leading-none font-semibold text-on-ipe ${className}`}
+        className={`relative inline-flex shrink-0 items-center gap-1 rounded-pill bg-ipe px-1.5 py-0.5 text-[11px] leading-none font-semibold text-on-ipe ${className}`}
       >
         <Gift aria-hidden className="size-3" />
         {teste && <span className="sr-only">Teste grátis: </span>}
@@ -34,7 +34,7 @@ export function SeloCortesia({
   return (
     <span
       title={EXPLICA_CORTESIA}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-pill bg-ipe px-2.5 py-1 text-caption whitespace-nowrap text-on-ipe uppercase ${className}`}
+      className={`relative inline-flex shrink-0 items-center gap-1 rounded-pill bg-ipe px-2.5 py-1 text-caption whitespace-nowrap text-on-ipe uppercase ${className}`}
     >
       <Gift aria-hidden className="size-3.5" />
       {texto ?? SELO_CORTESIA}
