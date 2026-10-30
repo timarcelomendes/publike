@@ -191,6 +191,19 @@ export async function motivosDeEncerramento(c: ClienteBanco, dias = 30) {
   return data ?? [];
 }
 
+/**
+ * O funil do publicar em passos (migração 20261216120000): quantas vezes cada passo abriu nos últimos dias e
+ * quantas vagas saíram por ele (o 6). null: banco sem a migração.
+ */
+export async function funilDoPublicar(c: ClienteBanco, dias = 30): Promise<Map<number, number> | null> {
+  const { data, error } = await c.rpc("admin_funil_publicar", { p_dias: dias });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler o funil do publicar:", error.message);
+    return null;
+  }
+  return new Map((data ?? []).map((l) => [Number(l.passo), Number(l.total)]));
+}
+
 export type SituacaoPush = {
   aparelhos: number;
   contas: number;

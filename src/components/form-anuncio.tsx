@@ -15,6 +15,7 @@ import {
 import { protegerAcao } from "@/lib/acao-segura";
 import { guardarRascunho } from "@/lib/rascunho-anuncio";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
+import { registrarPassoPublicar } from "@/lib/acoes/funil-publicar";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
 import { categoriaSugerida } from "@/lib/categoria-sugerida";
@@ -52,6 +53,7 @@ import { BeneficiosExtras, EditorPerguntas, GanhosExtras, MontarHorario } from "
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
 import { trocarBairro } from "./mapa/seletor-local";
+import { OutrosCargos } from "./outros-cargos";
 import { AvisoAoSair, useFormularioMudou } from "./ui/aviso-ao-sair";
 import { Aviso, Selo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
@@ -279,6 +281,13 @@ export function FormAnuncio({
   const formulario = useRef<HTMLFormElement>(null);
   // sair com a vaga mexida e não salva pergunta antes (o salvar leva para outra página)
   const mudouDesdeQueAbriu = useFormularioMudou(formulario);
+  // os números do publicar (sem saber quem): cada passo conta uma vez por página aberta
+  const passosContados = useRef(new Set<number>());
+  useEffect(() => {
+    if (!passos || !passo || passosContados.current.has(passo)) return;
+    passosContados.current.add(passo);
+    registrarPassoPublicar(passo).catch(() => {});
+  }, [passos, passo]);
   // vaga nova que não chegou ao servidor: o preenchido fica no aparelho e volta ao recarregar
   // (o /publicar traz o rascunho de volta)
   useEffect(() => {
@@ -1221,6 +1230,11 @@ export function FormAnuncio({
           </span>
         </label>
       )}
+
+      {/* várias vagas de uma vez: só ao publicar com conta (o rascunho de quem não tem conta não leva os cargos) */}
+      {passos && vaga && !editando && !semConta && <OutrosCargos />}
+      {/* a vaga que sair daqui conta no funil do publicar (o passo 6) */}
+      {passos && !editando && <input type="hidden" name="de_passos" value="1" />}
 
       {passos ? <div className="lg:hidden">{previa}</div> : previa}
       {estado.semSalvar && (

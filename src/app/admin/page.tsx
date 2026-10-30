@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { FunilDoPublicar } from "@/components/admin/funil-publicar";
 import { MetricasDeProduto } from "@/components/admin/metricas-produto";
 import { NumerosDoPainel, NumerosDoPainelEmbaixo } from "@/components/admin/numeros-do-painel";
 import { NumerosDoTesteApp } from "@/components/admin/numeros-teste-app";
@@ -13,6 +14,7 @@ import { Aviso } from "@/components/ui/basicos";
 import {
   acessosDoSite,
   configDoSite,
+  funilDoPublicar,
   listarChavesServidor,
   metricasDeProduto,
   motivosDeEncerramento,
@@ -67,6 +69,7 @@ async function Conteudo() {
     presenca,
     metricas,
     tempo,
+    funil,
   ] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
@@ -82,6 +85,7 @@ async function Conteudo() {
     presencaNoSite(c),
     metricasDeProduto(c),
     tempoNasPaginas(c),
+    funilDoPublicar(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -179,6 +183,7 @@ async function Conteudo() {
         </Secao>
       )}
 
+      {funil && <FunilDoPublicar funil={funil} />}
       <NumerosDoPainelEmbaixo n={n} encerramentos={encerramentos} />
 
       <Secao titulo="O que a equipe fez por último">

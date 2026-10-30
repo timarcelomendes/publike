@@ -132,6 +132,22 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
         </Aviso>
       )}
       {primeiro(sp.excluido) === "1" && <Aviso tipo="sucesso" titulo="Anúncio excluído." />}
+      {/* "Publicar também para outros cargos": as vagas que saíram de uma vez (e as que não) */}
+      {(() => {
+        const n = Number(primeiro(sp.publicadas));
+        if (!Number.isInteger(n) || n < 1 || n > 10) return null;
+        const falharam = (primeiro(sp.falharam) ?? "").split("|").filter(Boolean).slice(0, 9);
+        return (
+          <Aviso
+            tipo={falharam.length ? "alerta" : "sucesso"}
+            titulo={`Pronto: ${n} ${n === 1 ? "vaga publicada" : "vagas publicadas"}.`}
+          >
+            {falharam.length
+              ? `Não saíram: ${falharam.join(", ")}. Publique de novo pelo botão Publicar vaga, ou confira se passou do limite de vagas por dia.`
+              : "Cada uma tem a descrição pelo nome do cargo. Confira e edite pelo Mais de cada vaga."}
+          </Aviso>
+        );
+      })()}
       {anuncios.length === 0 ? (
         <Vazio
           icone={Megaphone}
@@ -428,7 +444,14 @@ function FunilDaVaga({ id, candidatos }: { id: string; candidatos: Candidatos })
   const passo = (aba: ReturnType<typeof abaDaEtapa>, nome: string, final = false) => {
     const lista = da(aba);
     const esperam = lista.filter(esperaResposta).length;
-    return { nome, numero: lista.length, href: `/painel/anuncio/${id}?etapa=${aba}`, destaque: esperam > 0, esperam, final };
+    return {
+      nome,
+      numero: lista.length,
+      href: `/painel/anuncio/${id}?etapa=${aba}`,
+      destaque: esperam > 0,
+      esperam,
+      final,
+    };
   };
   const passos = [
     passo("novos", "Novos"),

@@ -1426,6 +1426,14 @@ export type Database = {
         Args: { p_anuncio: string; p_motivo: string; p_detalhe?: string | null };
         Returns: undefined;
       };
+      registrar_passo_publicar: {
+        Args: { p_passo: number };
+        Returns: undefined;
+      };
+      admin_funil_publicar: {
+        Args: { p_dias?: number };
+        Returns: { passo: number; total: number }[];
+      };
       admin_motivos_encerramento: {
         Args: { p_dias?: number };
         Returns: { tipo: string; motivo: string; total: number; ultimo: string }[];

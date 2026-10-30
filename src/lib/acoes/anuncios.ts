@@ -167,12 +167,99 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     }
     destino = `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}`;
     if (d.tipo === "vaga") await marcarConversao("vaga");
+    // o funil do publicar em passos: a vaga saiu (só a contagem do dia; sem a migração, nada)
+    if (formData.get("de_passos") === "1") {
+      const { error: erroFunil } = await supabase.rpc("registrar_passo_publicar", { p_passo: 6 });
+      if (erroFunil && erroFunil.code !== "PGRST202")
+        console.error(`Publike: falha ao contar a vaga no funil: ${erroFunil.message}`);
+    }
+    // "Publicar também para outros cargos com as mesmas condições": uma vaga por cargo, e a lista em Vagas
+    const outros = d.tipo === "vaga" && !conviteValido(formData) ? lerOutrosCargos(formData, d.titulo) : [];
+    if (outros.length) {
+      const r = await publicarOutrosCargos(supabase, formData, outros, cliente, vigia);
+      const q = new URLSearchParams({ tipo: "vaga", publicadas: String(1 + r.publicadas) });
+      if (r.falhas.length)
+        q.set(
+          "falharam",
+          r.falhas
+            .map((f) => f.titulo)
+            .join("|")
+            .slice(0, 400),
+        );
+      destino = `/painel/anuncios?${q}`;
+    }
   }
 
   // com a moderação automática ligada, a IA revisa o texto logo depois
   after(processarFilas);
   revalidatePath("/");
   redirect(destino);
+}
+
+/** Quantos cargos a mais numa publicação (como no formulário). */
+const MAX_OUTROS_CARGOS = 9;
+
+const conviteValido = (formData: FormData) => {
+  const c = formData.get("convite");
+  return typeof c === "string" && /^[0-9a-f]{64}$/.test(c);
+};
+
+/** Os outros cargos escritos no passo 5: sem repetir o da vaga nem entre si, com pelo menos 5 letras. */
+function lerOutrosCargos(formData: FormData, titulo: string): string[] {
+  const vistos = new Set([titulo.trim().toLowerCase()]);
+  const lista: string[] = [];
+  for (const v of formData.getAll("outros_cargos")) {
+    const t = typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 90) : "";
+    if (t.length < 5 || vistos.has(t.toLowerCase())) continue;
+    vistos.add(t.toLowerCase());
+    lista.push(t);
+  }
+  return lista.slice(0, MAX_OUTROS_CARGOS);
+}
+
+/**
+ * Uma vaga para cada outro cargo, com o resto do formulário da primeira (pagamento, horário, local, prazo...).
+ * A descrição e a área saem do título de cada uma (`completarAnuncio`), e as regras são as mesmas (`lerAnuncio`
+ * e o banco, que confere o limite por dia). O que falhar volta pelo título.
+ */
+async function publicarOutrosCargos(
+  supabase: Awaited<ReturnType<typeof criarClienteServidor>>,
+  base: FormData,
+  cargos: string[],
+  cliente: string | null,
+  vigia: Vigia,
+): Promise<{ publicadas: number; falhas: { titulo: string; erro: string }[] }> {
+  let publicadas = 0;
+  const falhas: { titulo: string; erro: string }[] = [];
+  for (const titulo of cargos) {
+    const dados = new FormData();
+    for (const [k, v] of base.entries()) {
+      if (!["outros_cargos", "descricao", "categoria", "id", "convite", "cliente_novo"].includes(k)) dados.append(k, v);
+    }
+    dados.set("titulo", titulo);
+    if (cliente) dados.set("cliente_id", cliente);
+    await completarAnuncio(dados);
+    const leitura = lerAnuncio(dados);
+    if (!leitura.ok) {
+      falhas.push({ titulo, erro: Object.values(leitura.erros).join(" ") });
+      continue;
+    }
+    const { data, error } = await gravarVaga(registroDoAnuncio(leitura.dados), (r) =>
+      supabase
+        .from("anuncios")
+        .insert({ ...r, tipo: "vaga" })
+        .select("id")
+        .single(),
+    );
+    if (error || !data) {
+      if (error) vigia.parcial(`A vaga "${titulo}" não saiu.`, error);
+      falhas.push({ titulo, erro: mensagemDeErro(error) });
+      continue;
+    }
+    await salvarTriagem(supabase, data.id, leitura.dados.triagem);
+    publicadas++;
+  }
+  return { publicadas, falhas };
 }
 
 export async function mudarStatusAnuncio(
