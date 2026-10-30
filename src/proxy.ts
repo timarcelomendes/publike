@@ -86,6 +86,25 @@ function marcarCookieOnline(resposta: NextResponse) {
   });
 }
 
+// A conta do dia: o primeiro pedido de cada dia com a conta (a página, a troca de página ou a ação que vem logo
+// depois de entrar) marca a conta em contas_ativas, mesmo com a marcação de on-line (2 minutos) ainda valendo.
+// Sem isso, quem criava a conta e saía em 2 ou 3 minutos não contava: depois do login, o site leva à página
+// seguinte pela própria ação (sem pedir a página), e o /entrar já tinha marcado o on-line (30/10/2026).
+const COOKIE_CONTA_DIA = "publike_conta_dia";
+const DIA_EM_BRASILIA = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" });
+function marcaDaConta(conta: string) {
+  return `${conta.slice(0, 8)}.${DIA_EM_BRASILIA.format(new Date())}`;
+}
+function marcarContaDoDia(resposta: NextResponse, marca: string) {
+  resposta.cookies.set(COOKIE_CONTA_DIA, marca, {
+    maxAge: 24 * 3600,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: COOKIES_DA_SESSAO.secure,
+    path: "/",
+  });
+}
+
 function ipDe(request: NextRequest) {
   const h = request.headers;
   return (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim();
@@ -121,9 +140,13 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   marcarOrigem(request, resposta);
 
   const ip = ipDe(request);
+  const conta = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
+  const marca = conta ? marcaDaConta(conta) : null;
+  const contaJaContada = !marca || request.cookies.get(COOKIE_CONTA_DIA)?.value === marca;
   if (ip && abriuPagina(request)) {
     // depois da resposta: a página não espera a conta (contar_acesso também marca quem está on-line)
     marcarCookieOnline(resposta);
+    if (marca) marcarContaDoDia(resposta, marca);
     evento.waitUntil(
       Promise.resolve(
         supabase.rpc("contar_acesso", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),
@@ -131,9 +154,17 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
         if (error) console.warn(`Publike: não deu para contar o acesso: ${error.message}`);
       }),
     );
-  } else if (ip && trocouDePagina(request) && !request.cookies.has(COOKIE_ONLINE)) {
+  } else if (
+    ip &&
+    ((trocouDePagina(request) && !request.cookies.has(COOKIE_ONLINE)) ||
+      // a conta que ainda não contou hoje (a ação logo depois do login, a aba aberta da véspera)
+      (!contaJaContada &&
+        !FORA_DA_CONTA.test(request.nextUrl.pathname) &&
+        !ROBO.test(request.headers.get("user-agent") ?? "")))
+  ) {
     // a troca de página dentro do site: só "está on-line" (no máximo a cada 2 minutos por pessoa)
     marcarCookieOnline(resposta);
+    if (marca) marcarContaDoDia(resposta, marca);
     evento.waitUntil(
       Promise.resolve(
         supabase.rpc("marcar_online", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),

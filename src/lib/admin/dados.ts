@@ -305,6 +305,8 @@ export type PresencaSite = {
   voltaram_hoje: number;
   contas_7d: number;
   voltaram_7d: number;
+  /** as contas da equipe que entraram nos 7 dias, fora dos números (migração 20261217120000; antes, ausente) */
+  equipe_7d?: number;
   /** o primeiro dia contado das contas (null: nada ainda) */
   desde: string | null;
 };

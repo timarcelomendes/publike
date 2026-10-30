@@ -41,6 +41,13 @@ export function PresencaDoSite({ presenca }: { presenca: PresencaSite }) {
             : "contas que entraram em 2 dias ou mais"}
         </Cartao>
       </dl>
+      {typeof p.equipe_7d === "number" && (
+        <p className="text-caption text-ink-muted">
+          As contas da equipe (moderadores e quem vê o painel no site) ficam de fora das contas
+          {p.equipe_7d > 0 ? `: ${formatarNumero(p.equipe_7d)} entraram nos 7 dias` : ""}. O on-line não sabe de quem é,
+          e conta todo mundo.
+        </p>
+      )}
       {p.desde && (
         <p className="text-caption text-ink-muted">
           As contas que voltaram contam desde {p.desde.split("-").reverse().join("/")}: nos primeiros dias, o número de
