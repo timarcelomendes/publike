@@ -9,7 +9,7 @@ import { Aviso } from "./ui/basicos";
 import { Botao } from "./ui/botao";
 import { Campo, classesEntrada, ligarCampo } from "./ui/campo";
 
-/** O e-mail da empresa (ou da pessoa, na vitrine de serviços) no link de acesso: vira o login da conta. */
+/** O e-mail de quem vai cuidar da conta (o da pessoa, não o da empresa) no link de acesso: vira o login. */
 export function FormAcesso({ token, pessoal = false }: { token: string; pessoal?: boolean }) {
   const vincularProtegido = useMemo(() => protegerAcao(vincularEmailDoAcesso.bind(null, token)), [token]);
   const [estado, acao, enviando] = useActionState(vincularProtegido, { ok: false } as EstadoForm);
@@ -22,13 +22,19 @@ export function FormAcesso({ token, pessoal = false }: { token: string; pessoal?
   }
   return (
     <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
-      <Campo rotulo={pessoal ? "Seu e-mail" : "E-mail da empresa"} nome="email_empresa" erro={erros.email_empresa}>
+      {/* o e-mail de quem vai entrar (não o da empresa): muita gente punha o contato@ que ninguém lê */}
+      <Campo
+        rotulo="Seu e-mail"
+        nome="email_empresa"
+        erro={erros.email_empresa}
+        ajuda={pessoal ? undefined : "O seu, que você abre todo dia. Não precisa ser o da empresa."}
+      >
         <input
-          {...ligarCampo("email_empresa", erros.email_empresa)}
+          {...ligarCampo("email_empresa", erros.email_empresa, !pessoal)}
           type="email"
           autoComplete="email"
           inputMode="email"
-          placeholder={pessoal ? "seunome@gmail.com" : "contato@empresa.com.br"}
+          placeholder="seunome@gmail.com"
           className={classesEntrada}
         />
       </Campo>

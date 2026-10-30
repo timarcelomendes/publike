@@ -58,7 +58,7 @@ async function Conteudo({ token }: { token: string }) {
         <h1 className="text-h2">Olá, {a.nome}!</h1>
         <p className="mt-2 text-body text-ink-muted">
           {a.vaga
-            ? `A vaga de ${a.vaga} já está no ar no Publike. Para ver os candidatos e cuidar da vaga, coloque o e-mail da empresa. É por ele que vocês entram, sem senha: o link de entrar chega nele.`
+            ? `A vaga de ${a.vaga} já está no ar no Publike. Para ver os candidatos e cuidar da vaga, coloque o seu e-mail, o de quem vai cuidar da vaga (pode ser o seu Gmail). É por ele que você entra, sem senha: o link de entrar chega nele.`
             : "A sua conta no Publike já está pronta. Para cuidar dela (e colocar as fotos dos seus serviços), coloque o seu e-mail. É por ele que você entra, sem senha: o link de entrar chega nele."}
         </p>
       </div>
