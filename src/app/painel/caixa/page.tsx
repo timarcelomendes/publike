@@ -164,26 +164,43 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="max-w-2xl">
+      {/* as ações da página na linha do título, à direita e menores (no celular, "Triagem" e o ícone da planilha):
+          o caminho das etapas sobe e a lista aparece mais cedo */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-h2">Candidatos</h2>
-          <p className="mt-1 text-body text-ink-muted">
-            <Selo variante="novo">Novo</Selo> Quem curtiu suas vagas, por etapa. Abra a ficha, decida e siga para o
-            próximo.
-          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            {paraResponder > 0 && (
+              <BotaoLink
+                href={`/painel/caixa/triagem${vaga ? `?vaga=${vaga}` : ""}`}
+                variante="primario"
+                tamanho="sm"
+                aria-label={`Triagem rápida (${paraResponder})`}
+              >
+                <Zap aria-hidden />
+                <span aria-hidden>
+                  <span className="sm:hidden">Triagem</span>
+                  <span className="hidden sm:inline">Triagem rápida</span> ({paraResponder})
+                </span>
+              </BotaoLink>
+            )}
+            <a
+              href={planilha}
+              aria-label="Baixar planilha"
+              title="Baixar planilha"
+              className={classesBotao("secundario", "sm", "min-w-10 px-2.5 sm:px-3.5")}
+            >
+              <Download aria-hidden />
+              <span aria-hidden className="hidden sm:inline">
+                Planilha
+              </span>
+            </a>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {paraResponder > 0 && (
-            <BotaoLink href={`/painel/caixa/triagem${vaga ? `?vaga=${vaga}` : ""}`} variante="primario" tamanho="sm">
-              <Zap aria-hidden />
-              Triagem rápida ({paraResponder})
-            </BotaoLink>
-          )}
-          <a href={planilha} className={classesBotao("secundario", "sm")}>
-            <Download aria-hidden />
-            Baixar planilha
-          </a>
-        </div>
+        <p className="max-w-2xl text-body text-ink-muted">
+          <Selo variante="novo">Novo</Selo> Quem curtiu suas vagas, por etapa. Abra a ficha, decida e siga para o
+          próximo.
+        </p>
       </div>
 
       {/* o caminho do candidato, numerado como o passo a passo do Publicar (Novos → Em análise → Entrevista →
