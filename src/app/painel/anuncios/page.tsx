@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
 import { FiltroCliente } from "@/components/painel/filtro-cliente";
+import { CartaoRecolhivel } from "@/components/painel/cartao-recolhivel";
 import { MaisDoCartao } from "@/components/painel/mais-do-cartao";
 import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -279,109 +280,135 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                     key={a.id}
                     className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Selo
-                        variante={
-                          status === "ativo"
-                            ? "match"
-                            : status === "em_analise" || status === "removido"
-                              ? "perigo"
-                              : "contorno"
-                        }
-                      >
-                        {STATUS_ANUNCIO[status]?.nome ?? status}
-                      </Selo>
-                      <Selo>{rotuloModalidade(a.tipo, a.regime)}</Selo>
-                      {extra?.preenchida_em && <Selo variante="aviso">Vaga preenchida</Selo>}
-                    </div>
-                    <h3 className="text-h3">
-                      {/* a vaga abre a página dela no painel (as abas); o serviço, o anúncio */}
-                      <Link
-                        href={a.tipo === "vaga" ? `/painel/anuncio/${a.id}/quadro` : `/anuncio/${a.id}`}
-                        className="underline-offset-2 hover:underline"
-                      >
-                        {a.titulo}
-                      </Link>
-                    </h3>
-                    {empresa && <EmpresaDaVagaNaLista empresa={empresa} nome={nomeDoCliente} />}
-                    <p className="text-body-sm text-ink-muted">
-                      {formatarLugar(a.bairro, a.cidade)} · publicado {tempoRelativo(a.criado_em, agora)} ·{" "}
-                      {status === "ativo" ? `no ar ${ateQuando(a.expira_em)}` : (STATUS_ANUNCIO[status]?.ajuda ?? "")}
-                      {a.tipo === "vaga" &&
-                        ` · ${a.curtidas_total} ${a.curtidas_total === 1 ? "candidato" : "candidatos"}`}
-                    </p>
-                    {a.tipo === "vaga" && candidatos ? (
-                      <div className="flex flex-col gap-2">
-                        <FunilDaVaga id={a.id} candidatos={candidatos.filter((c) => c.anuncio_id === a.id)} />
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Link href={`/painel/anuncio/${a.id}`} className={classesBotao("secundario", "sm")}>
-                          <Heart aria-hidden className="text-like" fill={a.curtidas_total ? "currentColor" : "none"} />
-                          {a.curtidas_total}{" "}
-                          {a.tipo === "servico"
-                            ? a.curtidas_total === 1
-                              ? "pedido"
-                              : "pedidos"
-                            : a.curtidas_total === 1
-                              ? "candidato"
-                              : "candidatos"}
-                          {a.curtidas_novas > 0 && (
-                            <Selo variante="like">
-                              {a.curtidas_novas} {a.curtidas_novas === 1 ? "nova" : "novas"}
+                    {(() => {
+                      const cabecalho = (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Selo
+                              variante={
+                                status === "ativo"
+                                  ? "match"
+                                  : status === "em_analise" || status === "removido"
+                                    ? "perigo"
+                                    : "contorno"
+                              }
+                            >
+                              {STATUS_ANUNCIO[status]?.nome ?? status}
                             </Selo>
-                          )}
-                        </Link>
-                        {a.matches > 0 && (
-                          <span className="inline-flex items-center gap-1.5 text-label text-cerrado-text">
-                            <MessageCircleHeart aria-hidden className="size-[18px]" />
-                            {a.matches} {a.matches === 1 ? "match" : "matches"}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {a.tipo === "vaga" && candidatos ? (
-                      // a vaga: "Abrir a vaga" e o resto no "Mais" (claude/plano-painel-simples.md, parte 3); a vaga
-                      // vencida ou vencendo já abre o "Mais", com o Renovar à vista
-                      <MaisDoCartao
-                        aberto={podeRenovar}
-                        principal={
-                          <BotaoLink href={`/painel/anuncio/${a.id}/quadro`} tamanho="sm">
-                            Abrir a vaga
-                            <ChevronRight aria-hidden />
-                          </BotaoLink>
-                        }
-                      >
-                        <div className="flex flex-col gap-2">
-                          <Link
-                            href={`/anuncio/${a.id}`}
-                            className="inline-flex min-h-10 items-center gap-1.5 self-start text-label underline-offset-2 hover:underline"
-                          >
-                            <Eye aria-hidden className="size-[18px] text-ink-muted" />
-                            Ver como o candidato vê
-                          </Link>
-                          <AcoesAnuncio
-                            id={a.id}
-                            tipo={a.tipo}
-                            status={status}
-                            podeRenovar={podeRenovar}
-                            prazoDias={extra ? extra.prazo_dias : 30}
-                            preenchida={Boolean(extra?.preenchida_em)}
-                          />
-                        </div>
-                      </MaisDoCartao>
-                    ) : (
-                      <div className="border-t border-line pt-3">
-                        <AcoesAnuncio
-                          id={a.id}
-                          tipo={a.tipo}
-                          status={status}
-                          podeRenovar={podeRenovar}
-                          prazoDias={extra ? extra.prazo_dias : 30}
-                          preenchida={Boolean(extra?.preenchida_em)}
-                        />
-                      </div>
-                    )}
+                            <Selo>{rotuloModalidade(a.tipo, a.regime)}</Selo>
+                            {extra?.preenchida_em && <Selo variante="aviso">Vaga preenchida</Selo>}
+                          </div>
+                          <h3 className="text-h3">
+                            {/* a vaga abre a página dela no painel (as abas); o serviço, o anúncio */}
+                            <Link
+                              href={a.tipo === "vaga" ? `/painel/anuncio/${a.id}/quadro` : `/anuncio/${a.id}`}
+                              className="underline-offset-2 hover:underline"
+                            >
+                              {a.titulo}
+                            </Link>
+                          </h3>
+                          {empresa && <EmpresaDaVagaNaLista empresa={empresa} nome={nomeDoCliente} />}
+                          <p className="text-body-sm text-ink-muted">
+                            {formatarLugar(a.bairro, a.cidade)} · publicado {tempoRelativo(a.criado_em, agora)} ·{" "}
+                            {status === "ativo"
+                              ? `no ar ${ateQuando(a.expira_em)}`
+                              : (STATUS_ANUNCIO[status]?.ajuda ?? "")}
+                            {a.tipo === "vaga" &&
+                              ` · ${a.curtidas_total} ${a.curtidas_total === 1 ? "candidato" : "candidatos"}`}
+                          </p>
+                        </>
+                      );
+                      if (a.tipo === "vaga" && candidatos) {
+                        const daVaga = candidatos.filter((c) => c.anuncio_id === a.id);
+                        // contraído por padrão: as 4 etapas numa linha e a seta abre as caixas; "Abrir a vaga" e o
+                        // "Mais" ficam sempre à vista (a vaga vencida ou vencendo já abre o "Mais", com o Renovar)
+                        return (
+                          <>
+                            <CartaoRecolhivel
+                              titulo={a.titulo}
+                              resumo={
+                                <div className="flex flex-col gap-3">
+                                  {cabecalho}
+                                  <EtapasNaLinha id={a.id} candidatos={daVaga} />
+                                </div>
+                              }
+                            >
+                              <FunilDaVaga id={a.id} candidatos={daVaga} />
+                            </CartaoRecolhivel>
+                            <MaisDoCartao
+                              aberto={podeRenovar}
+                              principal={
+                                <BotaoLink href={`/painel/anuncio/${a.id}/quadro`} tamanho="sm">
+                                  Abrir a vaga
+                                  <ChevronRight aria-hidden />
+                                </BotaoLink>
+                              }
+                            >
+                              <div className="flex flex-col gap-2">
+                                <Link
+                                  href={`/anuncio/${a.id}`}
+                                  className="inline-flex min-h-10 items-center gap-1.5 self-start text-label underline-offset-2 hover:underline"
+                                >
+                                  <Eye aria-hidden className="size-[18px] text-ink-muted" />
+                                  Ver como o candidato vê
+                                </Link>
+                                <AcoesAnuncio
+                                  id={a.id}
+                                  tipo={a.tipo}
+                                  status={status}
+                                  podeRenovar={podeRenovar}
+                                  prazoDias={extra ? extra.prazo_dias : 30}
+                                  preenchida={Boolean(extra?.preenchida_em)}
+                                />
+                              </div>
+                            </MaisDoCartao>
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          {cabecalho}
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Link href={`/painel/anuncio/${a.id}`} className={classesBotao("secundario", "sm")}>
+                              <Heart
+                                aria-hidden
+                                className="text-like"
+                                fill={a.curtidas_total ? "currentColor" : "none"}
+                              />
+                              {a.curtidas_total}{" "}
+                              {a.tipo === "servico"
+                                ? a.curtidas_total === 1
+                                  ? "pedido"
+                                  : "pedidos"
+                                : a.curtidas_total === 1
+                                  ? "candidato"
+                                  : "candidatos"}
+                              {a.curtidas_novas > 0 && (
+                                <Selo variante="like">
+                                  {a.curtidas_novas} {a.curtidas_novas === 1 ? "nova" : "novas"}
+                                </Selo>
+                              )}
+                            </Link>
+                            {a.matches > 0 && (
+                              <span className="inline-flex items-center gap-1.5 text-label text-cerrado-text">
+                                <MessageCircleHeart aria-hidden className="size-[18px]" />
+                                {a.matches} {a.matches === 1 ? "match" : "matches"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="border-t border-line pt-3">
+                            <AcoesAnuncio
+                              id={a.id}
+                              tipo={a.tipo}
+                              status={status}
+                              podeRenovar={podeRenovar}
+                              prazoDias={extra ? extra.prazo_dias : 30}
+                              preenchida={Boolean(extra?.preenchida_em)}
+                            />
+                          </div>
+                        </>
+                      );
+                    })()}
                   </li>
                 );
               })}
@@ -431,6 +458,42 @@ function EmpresaDaVagaNaLista({ empresa, nome }: { empresa: EmpresaNaVaga; nome:
         <span>{empresa.contratante ?? (empresa.confidencial ? "Empresa confidencial" : "Empresa não informada")}</span>
       )}
       {cliente && empresa.confidencial && <span className="text-ink-muted">(confidencial na vaga)</span>}
+    </p>
+  );
+}
+
+/**
+ * As 4 etapas da vaga numa linha, no cartão contraído: o número de cada uma abre a etapa na vaga, e quem espera a
+ * sua resposta aparece em laranja ao lado da etapa em que está.
+ */
+function EtapasNaLinha({ id, candidatos }: { id: string; candidatos: Candidatos }) {
+  const etapas: [ReturnType<typeof abaDaEtapa>, string, string][] = [
+    ["novos", "novo", "novos"],
+    ["analise", "em análise", "em análise"],
+    ["entrevista", "em entrevista", "em entrevista"],
+    ["contratados", "contratado", "contratados"],
+  ];
+  return (
+    <p aria-label="Etapas desta vaga" className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-ink-muted">
+      {etapas.map(([aba, um, varios]) => {
+        const da = candidatos.filter((c) => abaDaEtapa(c) === aba);
+        const esperam = da.filter(esperaResposta).length;
+        return (
+          <Link
+            key={aba}
+            href={`/painel/anuncio/${id}?etapa=${aba}`}
+            className="inline-flex min-h-8 items-center gap-1 underline-offset-2 hover:text-ink hover:underline"
+          >
+            <strong className={`font-semibold ${da.length ? "text-ink" : ""}`}>{da.length}</strong>
+            {da.length === 1 ? um : varios}
+            {esperam > 0 && (
+              <span className="font-semibold text-terra-text">
+                ({esperam === 1 ? "1 espera você" : `${esperam} esperam você`})
+              </span>
+            )}
+          </Link>
+        );
+      })}
     </p>
   );
 }
