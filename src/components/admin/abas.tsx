@@ -17,6 +17,7 @@ const ABAS_ADMIN = [
   { href: "/admin/convites", nome: "Convites" },
   { href: "/admin/comunicados", nome: "Comunicados" },
   { href: "/admin/testes", nome: "Testes" },
+  { href: "/admin/pagamentos", nome: "Pagamentos" },
   { href: "/admin/noticias", nome: "Notícias" },
   { href: "/admin/campanhas", nome: "Campanhas" },
   { href: "/admin/banners", nome: "Banners" },

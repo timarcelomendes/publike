@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  CreditCard,
   FileCheck,
   FileText,
   Handshake,
@@ -46,6 +47,7 @@ import { useAcao } from "./ui/usar-acao";
 /** O ícone de cada tipo de aviso (o resto: escudo, da moderação). */
 const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   match: MessageCircleHeart,
+  pagamento: CreditCard,
   match_desfeito: HeartCrack,
   curtida: Heart,
   avaliacao: Star,

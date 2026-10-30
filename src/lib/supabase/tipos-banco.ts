@@ -2494,6 +2494,65 @@ export type Database = {
       recursos_pagos: { Args: Record<string, never>; Returns: Json };
       experimentar_recurso: { Args: { p_recurso: string }; Returns: string };
       quero_continuar: { Args: { p_recurso: string }; Returns: undefined };
+      // pagamentos (migração 20261218120000)
+      pagamentos_da_conta: { Args: Record<string, never>; Returns: Json };
+      minhas_faturas: { Args: Record<string, never>; Returns: Json };
+      minha_fatura: { Args: { p_id: string }; Returns: Json };
+      situacao_da_cobranca: { Args: { p_id: string }; Returns: string | null };
+      servidor_pagamento_contexto: { Args: { p_chave: string; p_conta: string }; Returns: Json };
+      servidor_pagamento_tentativa: { Args: { p_chave: string; p_conta: string }; Returns: boolean };
+      servidor_pagamento_cliente: {
+        Args: {
+          p_chave: string;
+          p_conta: string;
+          p_asaas_id: string;
+          p_cpf_cnpj: string;
+          p_nome: string;
+          p_email: string;
+        };
+        Returns: undefined;
+      };
+      servidor_pagamento_assinatura: {
+        Args: {
+          p_chave: string;
+          p_conta: string;
+          p_plano: string;
+          p_forma: string;
+          p_asaas_id: string;
+          p_checkout_id: string;
+          p_proxima: string;
+        };
+        Returns: string;
+      };
+      servidor_pagamento_vincular: { Args: { p_chave: string; p_sub: Json }; Returns: Json };
+      servidor_pagamento_cobranca: { Args: { p_chave: string; p_pag: Json }; Returns: Json };
+      servidor_pagamento_pix: {
+        Args: { p_chave: string; p_asaas_id: string; p_payload: string; p_expira: string | null };
+        Returns: undefined;
+      };
+      servidor_pagamento_nota_configurada: { Args: { p_chave: string; p_assinatura: string }; Returns: undefined };
+      servidor_pagamento_nota: { Args: { p_chave: string; p_nota: Json }; Returns: undefined };
+      servidor_pagamento_evento: { Args: { p_chave: string; p_id: string; p_tipo: string }; Returns: boolean };
+      servidor_pagamento_evento_fim: {
+        Args: { p_chave: string; p_id: string; p_erro: string | null };
+        Returns: undefined;
+      };
+      servidor_pagamento_da_conta: {
+        Args: { p_chave: string; p_conta: string; p_assinatura: string };
+        Returns: Json;
+      };
+      servidor_pagamento_cancelada: { Args: { p_chave: string; p_asaas_id: string }; Returns: undefined };
+      servidor_pagamento_cobranca_da_conta: {
+        Args: { p_chave: string; p_conta: string; p_cobranca: string };
+        Returns: Json;
+      };
+      admin_pagamentos: { Args: Record<string, never>; Returns: Json };
+      admin_salvar_plano: { Args: { p_id: string; p_valor: number | null; p_ligado: boolean }; Returns: undefined };
+      admin_config_pagamentos: {
+        Args: { p_aberto: boolean; p_servico: string; p_e_codigo: boolean; p_descricao: string };
+        Returns: undefined;
+      };
+      admin_pagamentos_teste: { Args: { p_conta: string; p_marcar: boolean }; Returns: undefined };
       copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       copiloto_salvar_criterios: { Args: { p_anuncio: string; p_criterios: Json }; Returns: string };
       copiloto_ligar: {

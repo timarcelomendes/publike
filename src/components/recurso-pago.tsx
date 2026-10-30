@@ -1,8 +1,9 @@
-import { Check, ClipboardCheck, Sparkles } from "lucide-react";
+import { Check, ClipboardCheck, CreditCard, Sparkles } from "lucide-react";
 import { dataCurta, DIAS_GRATIS, diasRestantes, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
 import { BotaoExperimentar } from "./botao-experimentar";
 import { SeloCortesia } from "./selo-cortesia";
-import { Aviso } from "./ui/basicos";
+import { Aviso, Selo } from "./ui/basicos";
+import { BotaoLink } from "./ui/botao";
 
 // O Copiloto e os Testes Publike são pagos, com 15 dias grátis (migração 20261215120000): a oferta, para
 // quem ainda não tem o recurso, e a faixa dos dias que faltam, para quem está experimentando.
@@ -31,6 +32,27 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
     ],
   },
 };
+
+/** Assinar o recurso (claude/plano-checkout-asaas.md): cartão ou Pix, em /painel/assinar. */
+export function BotaoAssinar({
+  recurso,
+  variante = "primario",
+  tamanho = "md",
+}: {
+  recurso: RecursoPago;
+  variante?: "primario" | "secundario";
+  tamanho?: "md" | "sm";
+}) {
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <BotaoLink href={`/painel/assinar?recurso=${recurso}`} variante={variante} tamanho={tamanho}>
+        <CreditCard aria-hidden />
+        Assinar o {NOME_RECURSO[recurso]}
+      </BotaoLink>
+      <Selo variante="novo">Novo</Selo>
+    </span>
+  );
+}
 
 /** Para quem ainda não tem o recurso. `estado` null: antes da migração (sem botão). */
 export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estado: EstadoRecurso | null }) {
@@ -68,6 +90,21 @@ export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estad
           <p className="text-body-sm text-ink-muted">
             Recurso pago. Abre na hora, sem cartão e sem compromisso. No {DIAS_GRATIS + 1}º dia, ele fecha sozinho.
           </p>
+          {estado.pode_assinar && (
+            <div className="mt-1">
+              <BotaoAssinar recurso={recurso} variante="secundario" />
+            </div>
+          )}
+        </div>
+      ) : estado.pode_assinar ? (
+        <div className="flex flex-col gap-2">
+          {acabou && (
+            <p className="text-body">
+              Seus {DIAS_GRATIS} dias grátis acabaram em {acabou}. O que você fez continua guardado.
+            </p>
+          )}
+          <BotaoAssinar recurso={recurso} />
+          <p className="text-body-sm text-ink-muted">Cartão ou Pix, mensal ou a cada 3 meses. Cancele quando quiser.</p>
         </div>
       ) : acabou ? (
         <div className="flex flex-col gap-2">
@@ -98,6 +135,27 @@ export function FaixaExperimento({
   agora: number;
 }) {
   if (!estado?.liberado || !estado.ate) return null;
+  const noTeste = Boolean(estado.fim_experimento && new Date(estado.fim_experimento).getTime() > agora);
+  if (estado.assinante) {
+    // no teste grátis, a assinatura já feita; depois, nada (a conta paga)
+    if (!noTeste || !estado.fim_experimento) return null;
+    return (
+      <Aviso tipo="sucesso" titulo="Assinatura feita">
+        O teste grátis vai até {dataCurta(estado.fim_experimento)}; a primeira cobrança vem nesse dia.
+      </Aviso>
+    );
+  }
+  if (!noTeste) {
+    // a assinatura cancelada: vale até o fim do que foi pago
+    return (
+      <Aviso tipo="info" titulo={`O ${NOME_RECURSO[recurso]} vai até ${dataCurta(estado.ate)}`}>
+        <span className="flex flex-col items-start gap-2">
+          <span>A assinatura foi cancelada. Depois dessa data, o que você fez fica guardado.</span>
+          {estado.pode_assinar && <BotaoAssinar recurso={recurso} tamanho="sm" variante="secundario" />}
+        </span>
+      </Aviso>
+    );
+  }
   const n = diasRestantes(estado.ate, agora);
   return (
     <Aviso tipo="info" titulo={`Teste grátis: ${n === 1 ? "falta 1 dia" : `faltam ${n} dias`}`}>
@@ -105,7 +163,9 @@ export function FaixaExperimento({
         <span>
           Vai até {dataCurta(estado.ate)}. Depois, o {NOME_RECURSO[recurso]} fecha, e o que você fez fica guardado.
         </span>
-        {estado.quer_continuar ? (
+        {estado.pode_assinar ? (
+          <BotaoAssinar recurso={recurso} tamanho="sm" />
+        ) : estado.quer_continuar ? (
           <span className="text-label">Você já pediu para continuar. A gente fala com você.</span>
         ) : (
           <BotaoExperimentar recurso={recurso} acao="continuar" tamanho="sm" />

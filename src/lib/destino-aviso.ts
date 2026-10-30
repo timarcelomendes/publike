@@ -17,6 +17,8 @@ export type AvisoComDestino = {
 export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "mensagem_equipe") return "/painel/mensagens-da-equipe";
   if (n.tipo === "comunicado") return n.link ?? "/";
+  // pagamentos: a fatura, a assinatura (o link vem do banco, só caminho do site)
+  if (n.tipo === "pagamento") return n.link?.startsWith("/painel/") ? n.link : "/painel/faturas";
   if (n.tipo === "noticias_do_dia") return "/noticias";
   // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga
   if (n.tipo === "teste_pedido") return "/testes";

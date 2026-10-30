@@ -13,6 +13,10 @@ export type EstadoRecurso = {
   fim_experimento: string | null;
   quer_continuar: boolean;
   pode_experimentar: boolean;
+  /** tem a assinatura valendo (migração 20261218120000) */
+  assinante: boolean;
+  /** pode assinar agora: pagamentos abertos para a conta e o plano à venda */
+  pode_assinar: boolean;
 };
 
 export type RecursosPagos = Record<RecursoPago, EstadoRecurso>;
@@ -34,6 +38,8 @@ function lerEstado(x: unknown): EstadoRecurso | null {
     fim_experimento: texto(o.fim_experimento),
     quer_continuar: o.quer_continuar === true,
     pode_experimentar: o.pode_experimentar === true,
+    assinante: o.assinante === true,
+    pode_assinar: o.pode_assinar === true,
   };
 }
 
@@ -67,7 +73,7 @@ export function marcaDoRecurso(
 ): { curto: string | null; longo: string | null } {
   if (!estado) return { curto: "15 dias grátis", longo: "Recurso pago · 15 dias grátis" };
   if (estado.liberado) {
-    if (!estado.ate) return { curto: null, longo: null };
+    if (!estado.ate || estado.assinante) return { curto: null, longo: null };
     const n = diasRestantes(estado.ate, agora);
     return { curto: n === 1 ? "falta 1 dia" : `faltam ${n} dias`, longo: null };
   }

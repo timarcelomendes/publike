@@ -3,6 +3,7 @@
 import {
   BellRing,
   ChevronDown,
+  CreditCard,
   CircleHelp,
   Eye,
   FileText,
@@ -165,6 +166,11 @@ export function MenuUsuario({
                     Sua página de vagas
                   </Item>
                 )
+              )}
+              {empresa && (
+                <Item href="/painel/assinatura" icone={CreditCard}>
+                  Assinatura e faturas
+                </Item>
               )}
               <Item href="/painel/visitas" icone={Eye}>
                 Quem viu seu perfil
