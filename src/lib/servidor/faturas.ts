@@ -18,6 +18,17 @@ export const pagamentosDaConta = cache(async () => {
   return lerPagamentos(data);
 });
 
+/** O celular e o endereço de cobrança já informados (para o cartão vir preenchido). Sem a migração: null. */
+export async function meuEnderecoDeCobranca(): Promise<{
+  telefone: string | null;
+  endereco: Partial<Record<"cep" | "rua" | "numero" | "complemento" | "bairro", string>> | null;
+} | null> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("meu_endereco_de_cobranca");
+  if (error || !data) return null;
+  return data as never;
+}
+
 export async function minhasFaturas() {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("minhas_faturas");

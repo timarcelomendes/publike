@@ -2548,6 +2548,11 @@ export type Database = {
       };
       admin_pagamentos: { Args: Record<string, never>; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
+      meu_endereco_de_cobranca: { Args: Record<string, never>; Returns: Json };
+      servidor_pagamento_endereco: {
+        Args: { p_chave: string; p_conta: string; p_telefone: string; p_endereco: Json };
+        Returns: undefined;
+      };
       admin_salvar_plano: { Args: { p_id: string; p_valor: number | null; p_ligado: boolean }; Returns: undefined };
       admin_config_pagamentos: {
         Args: { p_aberto: boolean; p_servico: string; p_e_codigo: boolean; p_descricao: string };

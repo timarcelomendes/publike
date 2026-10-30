@@ -4,9 +4,10 @@ import { CreditCard, LoaderCircle, LockKeyhole, QrCode } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { assinar, type ResultadoAssinar } from "@/lib/acoes/assinatura";
+import { assinar, buscarCepDeCobranca, type ResultadoAssinar } from "@/lib/acoes/assinatura";
 import { documentoValido, formatarDocumento } from "@/lib/documento";
-import { formatarMoeda } from "@/lib/formato";
+import { formatarMoeda, formatarTelefone } from "@/lib/formato";
+import { formatarCep } from "@/lib/cep";
 import { dataDoDia, MESES, NOME_CICLO, NOME_PRODUTO, POR_CICLO, type Plano, type Produto } from "@/lib/pagamentos";
 import { Campo, classesEntrada } from "../ui/campo";
 import { Botao } from "../ui/botao";
@@ -30,7 +31,14 @@ export function FormAssinar({
   planos: Plano[];
   /** a data da 1ª cobrança, quando não é hoje (o fim do teste grátis ou do que já está pago) */
   primeiro: string | null;
-  inicial: { documento: string; nome: string; email: string };
+  inicial: {
+    documento: string;
+    nome: string;
+    email: string;
+    /** o celular e o endereço de cobrança já informados (ou o WhatsApp da conta) */
+    telefone?: string;
+    endereco?: Partial<Record<"cep" | "rua" | "numero" | "complemento" | "bairro", string>> | null;
+  };
   troca?: boolean;
 }) {
   const router = useRouter();
@@ -42,6 +50,33 @@ export function FormAssinar({
   const [email, setEmail] = useState(inicial.email);
   const [erro, setErro] = useState<string | null>(null);
   const [erroDoc, setErroDoc] = useState<string | null>(null);
+  const [telefone, setTelefone] = useState(formatarTelefone(inicial.telefone ?? "") || (inicial.telefone ?? ""));
+  const [end, setEnd] = useState({
+    cep: formatarCep(inicial.endereco?.cep ?? ""),
+    rua: inicial.endereco?.rua ?? "",
+    numero: inicial.endereco?.numero ?? "",
+    complemento: inicial.endereco?.complemento ?? "",
+    bairro: inicial.endereco?.bairro ?? "",
+  });
+  const [cidade, setCidade] = useState<string | null>(null);
+  const [erroCep, setErroCep] = useState<string | null>(null);
+  const mudarEnd = (k: keyof typeof end, v: string) => setEnd((x) => ({ ...x, [k]: v }));
+
+  // o CEP completo preenche a rua, o bairro e a cidade (a pessoa confere e põe o número)
+  async function procurarCep(valor: string) {
+    const cep = valor.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+    setErroCep(null);
+    const r = await buscarCepDeCobranca(cep).catch(() => null);
+    if (!r) return;
+    if (!r.ok) {
+      setErroCep(r.erro);
+      return;
+    }
+    setCidade(`${r.cidade}${r.uf ? ` (${r.uf})` : ""}`);
+    setEnd((x) => ({ ...x, rua: r.rua ?? x.rua, bairro: r.bairro ?? x.bairro }));
+    if (r.rua) window.setTimeout(() => document.getElementById("cob-numero")?.focus(), 0);
+  }
   const [pendente, iniciar] = useTransition();
   const escolhido = ordenados.find((p) => p.id === plano);
   const mensal = ordenados.find((p) => p.ciclo === "MONTHLY");
@@ -57,7 +92,17 @@ export function FormAssinar({
     }
     setErroDoc(null);
     iniciar(async () => {
-      const r: ResultadoAssinar = await chamarAcao(() => assinar({ plano, forma: f, documento, nome, email, troca }));
+      const r: ResultadoAssinar = await chamarAcao(() =>
+        assinar({
+          plano,
+          forma: f,
+          documento,
+          nome,
+          email,
+          troca,
+          endereco: f === "cartao" ? { telefone, ...end } : undefined,
+        }),
+      );
       if (!r.ok) {
         setErro(r.erro);
         return;
@@ -191,6 +236,86 @@ export function FormAssinar({
           />
         </Campo>
       </fieldset>
+
+      {f === "cartao" && (
+        <fieldset className="flex flex-col gap-4">
+          <legend className="mb-1 text-label">Endereço de cobrança</legend>
+          <p className="-mt-2 text-body-sm text-ink-muted">
+            O parceiro de pagamentos pede para conferir o cartão. Fica guardado para a próxima vez.
+          </p>
+          <Campo rotulo="Celular, com DDD" nome="cob-telefone">
+            <input
+              id="cob-telefone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel-national"
+              value={telefone}
+              onChange={(e) => setTelefone(formatarTelefone(e.target.value) || e.target.value)}
+              placeholder="(62) 99999-9999"
+              className={`${classesEntrada} max-w-xs`}
+            />
+          </Campo>
+          <Campo rotulo="CEP" nome="cob-cep" erro={erroCep ?? undefined} ajuda={cidade ?? undefined}>
+            <input
+              id="cob-cep"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              value={end.cep}
+              onChange={(e) => {
+                const v = formatarCep(e.target.value);
+                mudarEnd("cep", v);
+                void procurarCep(v);
+              }}
+              aria-invalid={Boolean(erroCep)}
+              aria-describedby={erroCep ? "cob-cep-erro" : cidade ? "cob-cep-ajuda" : undefined}
+              placeholder="00000-000"
+              className={`${classesEntrada} max-w-[10rem] tabular-nums`}
+            />
+          </Campo>
+          <Campo rotulo="Rua" nome="cob-rua">
+            <input
+              id="cob-rua"
+              autoComplete="address-line1"
+              value={end.rua}
+              onChange={(e) => mudarEnd("rua", e.target.value)}
+              maxLength={120}
+              className={classesEntrada}
+            />
+          </Campo>
+          <div className="grid gap-4 sm:grid-cols-[8rem_minmax(0,1fr)]">
+            <Campo rotulo="Número" nome="cob-numero">
+              <input
+                id="cob-numero"
+                value={end.numero}
+                onChange={(e) => mudarEnd("numero", e.target.value)}
+                maxLength={12}
+                placeholder="S/N"
+                className={classesEntrada}
+              />
+            </Campo>
+            <Campo rotulo="Complemento" nome="cob-complemento" opcional>
+              <input
+                id="cob-complemento"
+                autoComplete="address-line2"
+                value={end.complemento}
+                onChange={(e) => mudarEnd("complemento", e.target.value)}
+                maxLength={60}
+                placeholder="Sala, quadra, lote"
+                className={classesEntrada}
+              />
+            </Campo>
+          </div>
+          <Campo rotulo="Bairro" nome="cob-bairro">
+            <input
+              id="cob-bairro"
+              value={end.bairro}
+              onChange={(e) => mudarEnd("bairro", e.target.value)}
+              maxLength={80}
+              className={classesEntrada}
+            />
+          </Campo>
+        </fieldset>
+      )}
 
       {escolhido && (
         <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">

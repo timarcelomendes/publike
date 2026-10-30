@@ -426,6 +426,17 @@ export async function consultarCep(valor: string, num?: string | null): Promise<
   };
 }
 
+/**
+ * Só o endereço de um CEP, de qualquer lugar do Brasil (o endereço de cobrança do cartão: a empresa pode ser
+ * de fora das cidades do Publike).
+ */
+export async function enderecoDeQualquerCep(valor: string): Promise<EnderecoDoCep | "nao_achado" | "indisponivel"> {
+  const cep = limparCep(valor);
+  if (!cepValido(cep)) return "nao_achado";
+  const achado = await enderecoDoCep(cep);
+  return typeof achado === "string" ? achado : achado.endereco;
+}
+
 /** Ponto do meio de um bairro (para medir a distância de quem não deu o CEP). */
 export async function centroDoBairro(bairro: string, cidade: string): Promise<Ponto | null> {
   const b = texto(bairro);

@@ -203,11 +203,36 @@ export function criarCliente(d: { nome: string; cpfCnpj: string; email: string |
   });
 }
 
-export function atualizarCliente(id: string, d: { nome: string; cpfCnpj: string; email: string | null }) {
+/** O endereço de cobrança e o celular (o checkout do cartão pede; a cidade o Asaas tira do CEP). */
+export type EnderecoCobranca = {
+  telefone: string;
+  cep: string;
+  rua: string;
+  numero: string;
+  complemento: string | null;
+  bairro: string;
+};
+
+export function atualizarCliente(
+  id: string,
+  d: { nome: string; cpfCnpj: string; email: string | null; endereco?: EnderecoCobranca | null },
+) {
+  const e = d.endereco;
   return pedir<ClienteAsaas>("POST", `/customers/${encodeURIComponent(id)}`, {
     name: d.nome,
     cpfCnpj: d.cpfCnpj,
     email: d.email || undefined,
+    ...(e
+      ? {
+          phone: e.telefone,
+          mobilePhone: e.telefone.length === 11 ? e.telefone : undefined,
+          postalCode: e.cep,
+          address: e.rua,
+          addressNumber: e.numero,
+          complement: e.complemento || undefined,
+          province: e.bairro,
+        }
+      : {}),
     notificationDisabled: true,
   });
 }

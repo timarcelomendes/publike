@@ -16,8 +16,10 @@ import {
   criarCliente,
   ErroAsaas,
   linkDoCheckout,
+  type EnderecoCobranca,
 } from "@/lib/servidor/asaas";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
+import { enderecoDeQualquerCep } from "@/lib/servidor/cep";
 import { enviarPushPendentes } from "@/lib/servidor/filas";
 import { acessoPagamentos, sincronizarAssinatura } from "@/lib/servidor/pagamentos";
 
@@ -82,6 +84,8 @@ export async function assinar(dados: {
   email: string;
   /** trocar o cartão (ou passar do Pix para o cartão) da assinatura que já vale */
   troca?: boolean;
+  /** no cartão: o celular e o endereço de cobrança (o checkout do parceiro pede) */
+  endereco?: { telefone: string; cep: string; rua: string; numero: string; complemento: string; bairro: string };
 }): Promise<ResultadoAssinar> {
   const q = await quemAssina();
   if ("erro" in q) return { ok: false, erro: q.erro };
@@ -93,6 +97,26 @@ export async function assinar(dados: {
   if (nome.length < 2) return { ok: false, erro: "Escreva o nome que vai na nota fiscal." };
   const email = dados.email.trim().slice(0, 200);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, erro: "Confira o e-mail." };
+  let endereco: EnderecoCobranca | null = null;
+  if (dados.forma === "cartao") {
+    const e = dados.endereco;
+    const so = (v: string | undefined, n: number) => (v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+    const telefone = (e?.telefone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+    const cep = (e?.cep ?? "").replace(/\D/g, "");
+    if (!/^\d{10,11}$/.test(telefone)) return { ok: false, erro: "Confira o celular, com o DDD." };
+    if (!/^\d{8}$/.test(cep)) return { ok: false, erro: "Confira o CEP (8 números)." };
+    endereco = {
+      telefone,
+      cep,
+      rua: so(e?.rua, 120),
+      numero: so(e?.numero, 12),
+      complemento: so(e?.complemento, 60) || null,
+      bairro: so(e?.bairro, 80),
+    };
+    if (endereco.rua.length < 2) return { ok: false, erro: "Escreva a rua do endereço de cobrança." };
+    if (!endereco.numero) return { ok: false, erro: "Escreva o número (ou S/N)." };
+    if (endereco.bairro.length < 2) return { ok: false, erro: "Escreva o bairro do endereço de cobrança." };
+  }
 
   try {
     const a = acessoPagamentos();
@@ -131,8 +155,12 @@ export async function assinar(dados: {
       (ctx.cliente.email ?? "") !== email;
     if (!cliente) {
       cliente = (await criarCliente({ nome, cpfCnpj: documento, email: email || null, ref: conta })).id;
-    } else if (mudou) {
+    } else if (mudou && !endereco) {
       await atualizarCliente(cliente, { nome, cpfCnpj: documento, email: email || null });
+    }
+    // no cartão: o celular e o endereço vão para o cliente no parceiro (e ficam para a próxima vez)
+    if (endereco) {
+      await atualizarCliente(cliente, { nome, cpfCnpj: documento, email: email || null, endereco });
     }
     if (mudou) {
       const { error: e2 } = await a.cliente.rpc("servidor_pagamento_cliente", {
@@ -144,6 +172,18 @@ export async function assinar(dados: {
         p_email: email,
       });
       if (e2) throw new Error(e2.message);
+    }
+    if (endereco) {
+      const { telefone, ...resto } = endereco;
+      const { error: e5 } = await a.cliente.rpc("servidor_pagamento_endereco", {
+        p_chave: a.chave,
+        p_conta: conta,
+        p_telefone: telefone,
+        p_endereco: resto,
+      });
+      // sem a migração do endereço: segue (só não vem preenchido na próxima vez)
+      if (e5 && e5.code !== "PGRST202")
+        console.error("Publike: não deu para guardar o endereço de cobrança:", e5.message);
     }
 
     // a 1ª cobrança: no fim do teste grátis ou do que já está pago (assinar de novo, trocar o cartão); senão, hoje
@@ -246,4 +286,17 @@ export async function cancelarAssinatura(
   } catch (e) {
     return { ok: false, erro: erroParaTela(e) };
   }
+}
+
+/** O endereço de um CEP de qualquer lugar (o endereço de cobrança do cartão), para preencher a rua e o bairro. */
+export async function buscarCepDeCobranca(
+  cep: string,
+): Promise<
+  { ok: true; rua: string | null; bairro: string | null; cidade: string; uf: string } | { ok: false; erro: string }
+> {
+  if (MODO_DEMO || !(await obterUsuario())) return { ok: false, erro: "Entre na sua conta." };
+  const r = await enderecoDeQualquerCep(String(cep ?? "").slice(0, 12));
+  if (r === "nao_achado") return { ok: false, erro: "Não achamos esse CEP. Confira os números." };
+  if (r === "indisponivel") return { ok: false, erro: "Não deu para consultar o CEP agora. Escreva o endereço." };
+  return { ok: true, rua: r.rua, bairro: r.bairro, cidade: r.cidade, uf: r.uf };
 }
