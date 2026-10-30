@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { after } from "next/server";
-import { MENSAGEM_DEMO, MODO_DEMO, SITE_URL } from "@/lib/config";
+import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { documentoValido } from "@/lib/documento";
 import { diaDaPrimeiraCobranca, ehProduto, NOME_PRODUTO, recursosDo, type Produto } from "@/lib/pagamentos";
@@ -17,6 +17,7 @@ import {
   ErroAsaas,
   linkDoCheckout,
 } from "@/lib/servidor/asaas";
+import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { enviarPushPendentes } from "@/lib/servidor/filas";
 import { acessoPagamentos, sincronizarAssinatura } from "@/lib/servidor/pagamentos";
 
@@ -157,7 +158,15 @@ export async function assinar(dados: {
         : `${NOME_PRODUTO[plano.recurso]} por 1 mês, renovado todo mês`;
 
     if (dados.forma === "cartao") {
-      const volta = `${SITE_URL}/painel/assinatura`;
+      // a volta do checkout: o Asaas só aceita endereço público (no computador, vale o do site no ar,
+      // PUBLIKE_URL_PUBLICA; a volta cai no site no ar, com a mesma conta)
+      const site = urlDosEmails();
+      if (!site)
+        return {
+          ok: false,
+          erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para o cartão voltar ao Publike.",
+        };
+      const volta = `${site}/painel/assinatura`;
       const ck = await criarCheckout({
         cliente,
         valor: Number(plano.valor),
