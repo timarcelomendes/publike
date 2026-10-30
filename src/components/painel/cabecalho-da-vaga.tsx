@@ -174,6 +174,7 @@ export function OrdemPeloCopiloto({ ativo, href }: { ativo: boolean; href: strin
     >
       <Sparkles aria-hidden className={`size-4 ${ativo ? "" : "text-terra-text"}`} />
       Ordenar pelo Copiloto
+      {!ativo && <Selo variante="novo">Novo</Selo>}
     </Link>
   );
 }
