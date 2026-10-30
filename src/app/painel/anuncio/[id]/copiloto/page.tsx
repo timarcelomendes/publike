@@ -243,6 +243,19 @@ async function Conteudo({
                   conferir vale a metade.
                 </p>
               )}
+              {lidas.some((l) => l.p.origem === "candidato") && (
+                // para decidir (aceitar, mover de etapa), a ordem do Copiloto vai para os Candidatos da vaga
+                <p className="text-body-sm">
+                  Para aceitar e mover os candidatos nessa ordem, use{" "}
+                  <Link
+                    href={`/painel/anuncio/${id}/quadro?ordem=copiloto`}
+                    className="text-label underline underline-offset-2"
+                  >
+                    Ordenar pelo Copiloto
+                  </Link>{" "}
+                  em Candidatos.
+                </p>
+              )}
 
               {destaques.length > 0 && (
                 <ol aria-label="Os primeiros do ranking" className="flex flex-col gap-3">

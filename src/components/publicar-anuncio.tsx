@@ -1,6 +1,17 @@
 "use client";
 
-import { CalendarClock, Check, Heart, ImageUp, LoaderCircle, MapPin, RotateCcw, Sparkles, Zap } from "lucide-react";
+import {
+  CalendarClock,
+  Check,
+  ClipboardPaste,
+  Heart,
+  ImageUp,
+  LoaderCircle,
+  MapPin,
+  RotateCcw,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { ERRO_SEM_SALVAR, ehNavegacao } from "@/lib/acao-segura";
@@ -24,9 +35,10 @@ import type { Regime } from "@/lib/tipos";
 import { ganhosDoBanco, lerGanhosExtras } from "@/lib/vaga-extra";
 import { valoresDoConvite } from "@/lib/valores-convite";
 import { ArteDaVaga } from "./arte-da-vaga";
+import { TextoDaVaga } from "./texto-da-vaga";
 import { AvisoConvite } from "./aviso-convite";
 import { FormAnuncio, type ValoresAnuncio } from "./form-anuncio";
-import { Avatar, Aviso } from "./ui/basicos";
+import { Avatar, Aviso, Selo } from "./ui/basicos";
 import { jeitosDeEntrar } from "@/lib/login-social";
 
 // Publicar uma vaga: os modelos prontos em cima, a prévia de como a vaga aparece e,
@@ -172,7 +184,9 @@ export function PublicarAnuncio({
   const [passoDeComeco, setPassoDeComeco] = useState(comecarConferindo || convite?.pronta ? 5 : 1);
   const passoAtual = useRef(passoDeComeco);
   // os atalhos do passo 1: os modelos ou a foto da vaga (quem chega por /publicar#arte já vê a foto)
-  const [atalho, setAtalho] = useState<"modelo" | "foto" | null>(modeloInicial ? "modelo" : null);
+  const [atalho, setAtalho] = useState<"modelo" | "texto" | "foto" | null>(modeloInicial ? "modelo" : null);
+  // "Colar o texto da vaga": quantas vagas a IA achou no texto (publica-se uma por vez)
+  const [doTexto, setDoTexto] = useState<number | null>(null);
   const chaveDoRascunho = semConta ? undefined : CHAVE_COM_CONTA;
 
   const formulario = () => raiz.current?.querySelector("form") ?? null;
@@ -294,7 +308,8 @@ export function PublicarAnuncio({
   }
 
   // "Tem a arte da vaga?": o que a IA leu da imagem entra no formulário (o lugar já escrito fica)
-  function aplicarArte(vaga: Parameters<typeof valoresDoConvite>[0]) {
+  function aplicarArte(vaga: Parameters<typeof valoresDoConvite>[0], total: number | null = null) {
+    setDoTexto(total);
     setInicial(valoresDoConvite(vaga, lugarDoFormulario(formulario(), base)));
     setModelo(null);
     // a vaga veio pronta da imagem: abre no Conferir
@@ -367,7 +382,13 @@ export function PublicarAnuncio({
         </div>
       )}
       {aviso === "lido" && (
-        <Aviso tipo="info" titulo="Preenchemos com o que estava na imagem">
+        <Aviso
+          tipo="info"
+          titulo={doTexto ? "Preenchemos com o que estava no texto" : "Preenchemos com o que estava na imagem"}
+        >
+          {doTexto && doTexto > 1
+            ? `Achamos ${doTexto} vagas no texto: publique esta e depois cole o texto de novo para a próxima. `
+            : ""}
           Confira cada passo antes de publicar (toque em Editar): o título, o valor, o que a vaga pede e o endereço.
         </Aviso>
       )}
@@ -413,6 +434,20 @@ export function PublicarAnuncio({
                 {ia && !semConta && (
                   <button
                     type="button"
+                    aria-expanded={atalho === "texto"}
+                    onClick={() => setAtalho((a) => (a === "texto" ? null : "texto"))}
+                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
+                      atalho === "texto" ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200"
+                    }`}
+                  >
+                    <ClipboardPaste aria-hidden className="size-4" />
+                    Colar o texto da vaga
+                    <Selo variante="novo">Novo</Selo>
+                  </button>
+                )}
+                {ia && !semConta && (
+                  <button
+                    type="button"
                     aria-expanded={atalho === "foto"}
                     onClick={() => setAtalho((a) => (a === "foto" ? null : "foto"))}
                     className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
@@ -448,7 +483,8 @@ export function PublicarAnuncio({
                   })}
                 </ul>
               )}
-              {atalho === "foto" && ia && !semConta && <ArteDaVaga aoLer={aplicarArte} />}
+              {atalho === "texto" && ia && !semConta && <TextoDaVaga aoLer={aplicarArte} />}
+              {atalho === "foto" && ia && !semConta && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
             </div>
           ) : null
         }

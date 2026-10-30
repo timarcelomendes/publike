@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Briefcase, CalendarClock, Check, Wrench } from "lucide-react";
+import { ArrowLeft, ArrowRight, Briefcase, CalendarClock, Check, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import {
   startTransition,
@@ -1265,7 +1265,7 @@ export function FormAnuncio({
 
       {passos ? (
         <div ref={topo} className="flex scroll-mt-24 flex-col gap-4">
-          <CabecalhoDosPassos passo={passo} maxPasso={maxPasso} irPara={irPara} />
+          <CabecalhoDosPassos passo={passo} maxPasso={maxPasso} irPara={irPara} sair={semConta ? "/" : "/painel"} />
           {passo < TOTAL_PASSOS && estado.erro && resumoErrosNoTopo}
         </div>
       ) : (
@@ -1417,10 +1417,13 @@ function CabecalhoDosPassos({
   passo,
   maxPasso,
   irPara,
+  sair,
 }: {
   passo: number;
   maxPasso: number;
   irPara: (n: number) => void;
+  /** no celular, o X para sair (o AvisoAoSair pergunta antes, se já escreveu algo) */
+  sair: string;
 }) {
   const atual = PASSOS_PUBLICAR[passo - 1];
   return (
@@ -1472,10 +1475,19 @@ function CabecalhoDosPassos({
         })}
       </ol>
       <div className="sm:hidden">
-        <p className="text-label">
-          Passo {passo} de {TOTAL_PASSOS} · {atual.nome}
-          {"opcional" in atual && atual.opcional && <span className="font-normal text-ink-muted"> (opcional)</span>}
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-label">
+            Passo {passo} de {TOTAL_PASSOS} · {atual.nome}
+            {"opcional" in atual && atual.opcional && <span className="font-normal text-ink-muted"> (opcional)</span>}
+          </p>
+          <Link
+            href={sair}
+            aria-label="Sair sem publicar"
+            className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+          >
+            <X aria-hidden className="size-5" />
+          </Link>
+        </div>
         <div
           role="progressbar"
           aria-label="Quanto falta"

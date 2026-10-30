@@ -675,12 +675,15 @@ export async function PainelRecrutador({
                 {listaDeVagas.map((v) => {
                   const daVaga = todos.filter((c) => c.anuncio_id === v.id);
                   const status = v.status as StatusAnuncio;
-                  const responder = daVaga.filter(esperaResposta).length;
-                  const entrevista = daVaga.filter((c) => c.etapa === "entrevista" && c.status === "match").length;
-                  const analise = daVaga.filter(
-                    (c) => c.etapa === "analise" && (c.status === "match" || c.status === "pendente"),
-                  ).length;
-                  const contratado = daVaga.filter((c) => c.etapa === "contratado" && c.status === "match").length;
+                  // as mesmas contas das etapas de Candidatos e da vaga (abaDaEtapa)
+                  const naEtapa = (aba: ReturnType<typeof abaDaEtapa>) =>
+                    daVaga.filter((c) => abaDaEtapa(c) === aba).length;
+                  const novosDaVaga = naEtapa("novos");
+                  // quem espera você entre os Novos (quem já está Em análise conta lá)
+                  const responder = daVaga.filter((c) => abaDaEtapa(c) === "novos" && esperaResposta(c)).length;
+                  const entrevista = naEtapa("entrevista");
+                  const analise = naEtapa("analise");
+                  const contratado = naEtapa("contratados");
                   const total = Math.max(daVaga.length, 1);
                   const ativa = status === "ativo";
                   const saude = ativa ? saudes.get(v.id) : undefined;
@@ -707,7 +710,8 @@ export async function PainelRecrutador({
                         </span>
                         {daVaga.length > 0 && (
                           <span aria-hidden className="flex h-2.5 overflow-hidden rounded-pill bg-surface-300">
-                            <span className="bg-terra" style={{ width: `${(100 * responder) / total}%` }} />
+                            <span className="bg-terra" style={{ width: `${(100 * novosDaVaga) / total}%` }} />
+                            <span className="bg-ink-muted/40" style={{ width: `${(100 * analise) / total}%` }} />
                             <span className="bg-ipe" style={{ width: `${(100 * entrevista) / total}%` }} />
                             <span className="bg-cerrado" style={{ width: `${(100 * contratado) / total}%` }} />
                           </span>
@@ -715,8 +719,14 @@ export async function PainelRecrutador({
                         <span className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-ink-muted">
                           <span>
                             {/* as mesmas etapas da faixa do caminho e do quadro */}
-                            <strong className={responder ? "text-terra-text" : "text-ink"}>{responder}</strong>{" "}
-                            {responder === 1 ? "novo" : "novos"}
+                            <strong className={responder ? "text-terra-text" : "text-ink"}>{novosDaVaga}</strong>{" "}
+                            {novosDaVaga === 1 ? "novo" : "novos"}
+                            {responder > 0 && (
+                              <span className="text-terra-text">
+                                {" "}
+                                ({responder === 1 ? "1 espera você" : `${responder} esperam você`})
+                              </span>
+                            )}
                           </span>
                           <span>
                             <strong className="text-ink">{analise}</strong> em análise
