@@ -85,7 +85,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* o toque num botão antes de a página ficar pronta não se perde (lib/toque-cedo.ts) */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TOQUE_CEDO }} />
       </head>
-      <body className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+      <body className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 [html[data-sem-barra]_&]:pb-0">
         <a
           href="#conteudo"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-surface-200 focus:px-4 focus:py-2 focus:shadow-raised"

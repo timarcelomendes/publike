@@ -45,6 +45,16 @@ import { jeitosDeEntrar } from "@/lib/login-social";
 // para quem ainda não entrou, o rascunho guardado no aparelho. Depois de entrar
 // (?continuar=1), o rascunho é publicado sozinho.
 
+/** A prévia antes de a pessoa escrever qualquer coisa (o título vira um texto de exemplo apagado). */
+const PREVIA_VAZIA: Previa = {
+  titulo: "",
+  valor: "Valor a combinar",
+  regime: null,
+  lugar: "",
+  comecaJa: false,
+  contatoDireto: false,
+};
+
 type Previa = {
   titulo: string;
   valor: string;
@@ -409,7 +419,13 @@ export function PublicarAnuncio({
         contatoAgencia={contatoAgencia}
         clientes={clientes}
         enderecoPublico={enderecoPublico}
-        previa={previa?.titulo ? <PreviaDaVaga p={previa} autor={autor || "Sua empresa"} /> : null}
+        // a prévia aparece desde o passo 1 (sem título ainda, um texto de exemplo apagado)
+        previa={
+          <PreviaDaVaga
+            p={previa?.titulo ? previa : { ...PREVIA_VAZIA, ...(previa ?? {}), titulo: "" }}
+            autor={autor || "Sua empresa"}
+          />
+        }
         extras={convite ? { convite: convite.token } : undefined}
         jaMudou={aviso === "lido"}
         passos
@@ -498,11 +514,15 @@ function PreviaDaVaga({ p, autor }: { p: Previa; autor: string }) {
   return (
     <section aria-label="Prévia da vaga" className="flex flex-col gap-2">
       <p className="text-label text-ink-muted">Assim sua vaga aparece</p>
-      <div className="grid grid-cols-[minmax(0,1fr)_8.5rem] overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
+      <div className="grid grid-cols-[minmax(0,1fr)_9.5rem] overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
         <div className="flex min-w-0 gap-3 p-3.5">
           <Avatar nome={autor} tamanho={40} forma="quadrada" colorida />
           <div className="min-w-0">
-            <p className="font-display text-[17px] leading-[22px] font-bold break-words">{p.titulo}</p>
+            <p
+              className={`font-display text-[17px] leading-[22px] font-bold break-words ${p.titulo ? "" : "text-ink-muted/70"}`}
+            >
+              {p.titulo || "O título da vaga aparece aqui"}
+            </p>
             <p className="truncate text-body-sm font-semibold">{autor}</p>
             {p.lugar && (
               <p className="mt-1 flex items-center gap-1 text-body-sm text-ink-muted">
@@ -528,7 +548,7 @@ function PreviaDaVaga({ p, autor }: { p: Previa; autor: string }) {
           </div>
         </div>
         <div className="flex flex-col justify-center gap-2 border-l-2 border-dashed border-line bg-surface-300 p-3">
-          <p className="font-display text-[19px] leading-6 font-bold break-words">{p.valor}</p>
+          <p className="font-display text-[17px] leading-[22px] font-bold break-words">{p.valor}</p>
           <span className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 text-label">
             <Heart aria-hidden className="size-4" />
             Curtir

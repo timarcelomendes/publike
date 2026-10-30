@@ -6,6 +6,7 @@ import { FormAnuncio, type ValoresAnuncio } from "@/components/form-anuncio";
 import { PublicarAnuncio } from "@/components/publicar-anuncio";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { SemBarraDeBaixo } from "@/components/sem-barra-de-baixo";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import {
   ajudaDaIADisponivel,
@@ -36,10 +37,11 @@ export const metadata: Metadata = {
 export default function Publicar({ searchParams }: PageProps<"/publicar">) {
   return (
     <Container className="max-w-5xl py-8">
-      <h1 className="text-h2 sm:text-h1">Publicar grátis</h1>
-      <p className="mt-2 mb-6 text-body text-ink-muted">
-        Leva dois minutos e é grátis, sem plano e sem limite de candidatos, para a sua casa ou o seu negócio. Com o
-        endereço certo, quem mora perto vê primeiro. Seu WhatsApp só aparece para quem você aceitar.
+      {/* o topo numa linha só: o passo a passo logo abaixo, e no celular o primeiro campo na primeira tela */}
+      <SemBarraDeBaixo />
+      <h1 className="text-h2">Publicar grátis</h1>
+      <p className="mt-1 mb-5 text-body-sm text-ink-muted sm:text-body">
+        Sem plano e sem limite de candidatos. Seu WhatsApp só aparece para quem você aceitar.
       </p>
       <Suspense fallback={<Esqueleto className="h-[60rem] w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />

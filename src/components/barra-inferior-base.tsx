@@ -141,7 +141,8 @@ export function BarraInferiorBase({ ativo, abas }: { ativo: AbaInferior; abas: I
   return (
     <nav
       aria-label="Navegação"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface-200/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+      // o Publicar em passos esconde a barra (html[data-sem-barra]): o Continuar fica preso embaixo no lugar dela
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface-200/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden [html[data-sem-barra]_&]:hidden"
     >
       <ul className="grid min-h-16" style={{ gridTemplateColumns: `repeat(${abas?.length ?? 5}, minmax(0, 1fr))` }}>
         {(abas ?? []).map(({ id, href, nome, icone: Icone, numero, leitor }) => {

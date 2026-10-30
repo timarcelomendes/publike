@@ -561,13 +561,15 @@ export function FormAnuncio({
           passo === n ? "flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6" : "hidden"
         }
       >
-        <h2 id={`passo-${n}-titulo`} className="text-h3">
+        {/* o nome do passo já está na linha dos passos, logo acima: aqui, só para o leitor de tela */}
+        <h2 id={`passo-${n}-titulo`} className="sr-only">
           {nomesDosGrupos[n - 1]}
-          {n === 4 && <span className="text-body-sm font-normal text-ink-muted"> (opcional)</span>}
+          {n === 4 && " (opcional)"}
         </h2>
         {conteudo}
         {n < TOTAL_PASSOS && (
-          <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 -mx-2 flex items-center gap-3 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-raised sm:static sm:mx-0 sm:border-0 sm:border-t sm:border-line sm:p-0 sm:pt-5 sm:shadow-none sm:rounded-none">
+          // no celular, presa embaixo e reta, como o rodapé do cartão (a barra do site some no Publicar)
+          <div className="sticky bottom-0 z-30 -mx-5 -mb-5 flex items-center gap-3 rounded-b-lg border-t border-line bg-surface-200/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:mb-0 sm:rounded-none sm:bg-transparent sm:p-0 sm:pt-5 sm:backdrop-blur-none">
             {n > 1 && (
               <Botao type="button" variante="secundario" onClick={() => irPara(n - 1)} aria-label="Voltar">
                 <ArrowLeft aria-hidden />
@@ -1277,18 +1279,7 @@ export function FormAnuncio({
         </Aviso>
       )}
 
-      {passos ? (
-        <>
-          {/* os passos ficam presos no alto ao rolar, logo abaixo do cabeçalho do site (h-16) */}
-          <div
-            ref={topo}
-            className="sticky top-16 z-30 -mx-4 scroll-mt-24 border-b border-line bg-surface-100/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
-          >
-            <CabecalhoDosPassos passo={passo} maxPasso={maxPasso} irPara={irPara} sair={semConta ? "/" : "/painel"} />
-          </div>
-          {passo < TOTAL_PASSOS && estado.erro && resumoErrosNoTopo}
-        </>
-      ) : (
+      {passos ? null : (
         <nav aria-label="Partes do formulário" className="flex flex-wrap gap-x-4 gap-y-1 text-label text-ink-muted">
           {nomesDosGrupos.map((nome, k) => (
             <a
@@ -1302,12 +1293,30 @@ export function FormAnuncio({
         </nav>
       )}
 
+      {/* em passos, duas colunas: os passos e o formulário à esquerda; a prévia à direita, desde o passo 1 */}
       <div
         className={
-          passos ? "flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8" : "contents"
+          passos ? "flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8" : "contents"
         }
       >
         <div className="flex min-w-0 flex-col gap-6">
+          {passos && (
+            <>
+              {/* os passos ficam presos no alto ao rolar, logo abaixo do cabeçalho do site (h-16) */}
+              <div
+                ref={topo}
+                className="sticky top-16 z-30 -mx-4 scroll-mt-24 border-b border-line bg-surface-100/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
+              >
+                <CabecalhoDosPassos
+                  passo={passo}
+                  maxPasso={maxPasso}
+                  irPara={irPara}
+                  sair={semConta ? "/" : "/painel"}
+                />
+              </div>
+              {passo < TOTAL_PASSOS && estado.erro && resumoErrosNoTopo}
+            </>
+          )}
           {grupo(1, conteudoDaVaga)}
           {grupo(2, conteudoDoPagamento)}
           {grupo(3, conteudoDoLugar)}
@@ -1323,50 +1332,47 @@ export function FormAnuncio({
                 Conferir e publicar
               </h2>
               {conteudoDaPublicacao}
-              <div
-                className={`flex flex-col gap-3 sm:flex-row sm:items-center ${passos ? "sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 -mx-1 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-raised sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" : ""}`}
-              >
-                {passos && (
-                  <Botao
-                    type="button"
-                    variante="secundario"
-                    onClick={() => irPara(passo - 1)}
-                    className="hidden sm:inline-flex"
-                  >
-                    <ArrowLeft aria-hidden />
-                    Voltar
-                  </Botao>
-                )}
-                <Botao type="submit" variante="primario" disabled={enviando} className="sm:min-w-56">
+              {/* no celular, presa embaixo numa linha só (voltar e publicar); o texto fica embaixo, fora da barra */}
+              <div className="sticky bottom-0 z-30 -mx-4 flex items-center gap-3 border-t border-line bg-surface-100/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                <Botao type="button" variante="secundario" onClick={() => irPara(passo - 1)} aria-label="Voltar">
+                  <ArrowLeft aria-hidden />
+                  <span className="hidden sm:inline">Voltar</span>
+                </Botao>
+                <Botao
+                  type="submit"
+                  variante="primario"
+                  disabled={enviando}
+                  className="flex-1 sm:flex-none sm:min-w-56"
+                >
                   {enviando ? (semConta ? "Conferindo…" : "Salvando…") : rotuloSalvar}
                 </Botao>
-                {emNomeDe ? (
-                  <p className="text-body-sm text-ink-muted">
-                    Fica no ar pelo prazo escolhido. Quem se candidatar aparece no painel de {emNomeDe}, que recebe os
-                    avisos por e-mail.
-                  </p>
-                ) : equipe ? (
-                  <p className="text-body-sm text-ink-muted">
-                    Quem publicou não recebe aviso da correção. A mudança fica no registro da equipe.
-                  </p>
-                ) : (
-                  <p className="text-body-sm text-ink-muted">
-                    {semConta ? `Depois é só entrar com ${jeitosDeEntrar()}: a vaga vai ao ar na hora. ` : ""}
-                    Grátis. Seu WhatsApp só aparece no match. Fica no ar pelo prazo que você escolher, e dá para
-                    renovar. Ao publicar, você concorda com as{" "}
-                    <Link href="/regras" className="underline">
-                      regras do Publike
-                    </Link>
-                    .
-                  </p>
-                )}
               </div>
+              {emNomeDe ? (
+                <p className="text-body-sm text-ink-muted">
+                  Fica no ar pelo prazo escolhido. Quem se candidatar aparece no painel de {emNomeDe}, que recebe os
+                  avisos por e-mail.
+                </p>
+              ) : equipe ? (
+                <p className="text-body-sm text-ink-muted">
+                  Quem publicou não recebe aviso da correção. A mudança fica no registro da equipe.
+                </p>
+              ) : (
+                <p className="text-body-sm text-ink-muted">
+                  {semConta ? `Depois é só entrar com ${jeitosDeEntrar()}: a vaga vai ao ar na hora. ` : ""}
+                  Grátis. Seu WhatsApp só aparece no match. Fica no ar pelo prazo que você escolher, e dá para renovar.
+                  Ao publicar, você concorda com as{" "}
+                  <Link href="/regras" className="underline">
+                    regras do Publike
+                  </Link>
+                  .
+                </p>
+              )}
             </section>
           ) : (
             <div id="secao-5" className="flex scroll-mt-24 flex-col gap-6">
               {conteudoDaPublicacao}
               <div
-                className={`flex flex-col gap-3 sm:flex-row sm:items-center ${passos ? "sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 -mx-1 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-raised sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" : ""}`}
+                className={`flex flex-col gap-3 sm:flex-row sm:items-center ${passos ? "sticky bottom-0 z-30 -mx-4 border-t border-line bg-surface-100/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none" : ""}`}
               >
                 {passos && (
                   <Botao
@@ -1406,7 +1412,7 @@ export function FormAnuncio({
             </div>
           )}
         </div>
-        {passos && previa && <aside className="hidden lg:sticky lg:top-40 lg:block">{previa}</aside>}
+        {passos && previa && <aside className="hidden lg:sticky lg:top-20 lg:block lg:pt-3">{previa}</aside>}
       </div>
 
       {/* a vaga nova que não chegou ao servidor já ficou guardada: recarregar não pergunta */}
