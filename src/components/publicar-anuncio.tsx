@@ -1,27 +1,34 @@
 "use client";
 
 import {
+  Briefcase,
   CalendarClock,
   Check,
+  Circle,
+  CircleCheck,
   ClipboardPaste,
   Heart,
   ImageUp,
   LoaderCircle,
+  LockKeyhole,
   MapPin,
   RotateCcw,
   Sparkles,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState, type ReactNode } from "react";
 import { ERRO_SEM_SALVAR, ehNavegacao } from "@/lib/acao-segura";
 import { conferirAnuncio, salvarAnuncio } from "@/lib/acoes/anuncios";
 import { detalheDoErro, relatarFalha } from "@/lib/falhas";
 import type { ClienteParaVaga } from "@/lib/clientes";
-import { REGIMES } from "@/lib/constantes";
-import { formatarValor } from "@/lib/formato";
+import { nomeBeneficio } from "@/lib/constantes";
+import { formatarLugar, rotuloModalidade } from "@/lib/formato";
 import { MODELOS_ANUNCIO, type ModeloAnuncio } from "@/lib/modelos-anuncio";
 import { lerNumeroBR } from "@/lib/numero";
+import { faltaNoPasso, passoDoCampo } from "@/lib/passos-publicar";
 import {
   apagarRascunho,
   CHAVE_COM_CONTA,
@@ -31,8 +38,8 @@ import {
   valoresDoRascunho,
   type Rascunho,
 } from "@/lib/rascunho-anuncio";
-import type { Regime } from "@/lib/tipos";
-import { ganhosDoBanco, lerGanhosExtras } from "@/lib/vaga-extra";
+import { ganhosDoBanco } from "@/lib/vaga-extra";
+import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import { valoresDoConvite } from "@/lib/valores-convite";
 import { ArteDaVaga } from "./arte-da-vaga";
 import { TextoDaVaga } from "./texto-da-vaga";
@@ -45,48 +52,90 @@ import { jeitosDeEntrar } from "@/lib/login-social";
 // para quem ainda não entrou, o rascunho guardado no aparelho. Depois de entrar
 // (?continuar=1), o rascunho é publicado sozinho.
 
-/** A prévia antes de a pessoa escrever qualquer coisa (o título vira um texto de exemplo apagado). */
-const PREVIA_VAZIA: Previa = {
-  titulo: "",
-  valor: "Valor a combinar",
-  regime: null,
-  lugar: "",
-  comecaJa: false,
-  contatoDireto: false,
+/** As partes do tíquete que um campo preenche (marcadas na prévia enquanto a pessoa escreve nele). */
+type Parte = "titulo" | "regime" | "valor" | "lugar" | "resumo" | "beneficio" | "comeca" | "direto";
+
+const PARTE_DO_CAMPO: Record<string, Parte> = {
+  titulo: "titulo",
+  regime: "regime",
+  combinar: "valor",
+  pagamento_valor: "valor",
+  pagamento_ate: "valor",
+  pagamento_unidade: "valor",
+  cidade: "lugar",
+  bairro: "lugar",
+  cep: "lugar",
+  endereco: "lugar",
+  descricao: "resumo",
+  beneficios_lista: "beneficio",
+  comeca_ja: "comeca",
+  contato_direto: "direto",
 };
+
+function parteDoCampo(alvo: EventTarget | null): Parte | null {
+  const nome = alvo instanceof HTMLElement ? alvo.getAttribute("name") : null;
+  return (nome && PARTE_DO_CAMPO[nome]) || null;
+}
 
 type Previa = {
   titulo: string;
-  valor: string;
-  regime: string | null;
+  /** o valor grande e o que ele quer dizer ("até R$ 2.200", "por mês"), como no canhoto do tíquete */
+  valor: { valor: string; partes: string[] };
+  modalidade: string | null;
   lugar: string;
+  /** o começo da descrição (o tíquete mostra 2 linhas) */
+  resumo: string;
+  beneficios: string[];
   comecaJa: boolean;
   contatoDireto: boolean;
+  confidencial: boolean;
+  /** os campos obrigatórios que ainda faltam (os de `faltaNoPasso`) */
+  falta: string[];
 };
 
-function lerPrevia(form: HTMLFormElement): Previa {
+/** A prévia antes de a pessoa escrever qualquer coisa (o título vira um texto de exemplo apagado). */
+const PREVIA_VAZIA: Previa = {
+  titulo: "",
+  valor: { valor: "A combinar", partes: [] },
+  modalidade: null,
+  lugar: "",
+  resumo: "",
+  beneficios: [],
+  comecaJa: false,
+  contatoDireto: false,
+  confidencial: false,
+  falta: ["titulo", "regime", "pagamento_valor", "bairro"],
+};
+
+function lerPrevia(form: HTMLFormElement, agencia: boolean): Previa {
   const f = new FormData(form);
   const t = (k: string) => {
     const v = f.get(k);
     return typeof v === "string" ? v.trim() : "";
   };
   const combinar = t("combinar") === "on";
-  const valor = lerNumeroBR(t("pagamento_valor"));
-  const ate = lerNumeroBR(t("pagamento_ate"));
-  const ganhos = lerGanhosExtras(t("ganhos_extras"));
+  const numero = (k: string) => {
+    const n = lerNumeroBR(t(k));
+    return !combinar && n != null && Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const regime = t("regime");
   return {
     titulo: t("titulo"),
-    valor: formatarValor(
-      combinar || valor == null || !Number.isFinite(valor) ? null : valor,
-      combinar ? null : t("pagamento_unidade") || null,
-      null,
-      false,
-      { ate: ate != null && Number.isFinite(ate) ? ate : null, ganhos: ganhos.ok ? ganhos.lista : [] },
-    ),
-    regime: REGIMES[t("regime") as Regime]?.selo ?? null,
-    lugar: [t("bairro"), t("cidade")].filter(Boolean).join(", "),
+    valor: valorEmDuas({
+      tipo: "vaga",
+      pagamento_valor: numero("pagamento_valor"),
+      pagamento_ate: numero("pagamento_ate"),
+      pagamento_unidade: combinar ? null : t("pagamento_unidade") || null,
+    }),
+    modalidade: regime && regime !== "outro" ? rotuloModalidade("vaga", regime) : null,
+    lugar: t("cidade") ? formatarLugar(t("bairro") || null, t("cidade")) : "",
+    resumo: t("descricao").replace(/\s+/g, " ").slice(0, 240),
+    beneficios: f.getAll("beneficios_lista").filter((b): b is string => typeof b === "string" && Boolean(b)),
     comecaJa: t("comeca_ja") === "on",
     contatoDireto: t("contato_direto") === "on",
+    confidencial: t("contratante_confidencial") === "on",
+    // o mesmo que o Continuar de cada passo confere
+    falta: [1, 2, 3].flatMap((n) => Object.keys(faltaNoPasso(n, f, { vaga: true, agencia }))),
   };
 }
 
@@ -156,7 +205,10 @@ export function PublicarAnuncio({
   modelo: modeloPedido = null,
   comecarConferindo = false,
   autor = null,
+  antes = null,
 }: {
+  /** no alto da coluna do formulário, antes dos avisos ("Procura trabalho?", "Vaga nova a partir de outra") */
+  antes?: ReactNode;
   /** a vaga já veio pronta (Publicar parecida, convite com a vaga): abre no passo 5, Conferir */
   comecarConferindo?: boolean;
   /** o nome da conta, na prévia (sem conta: "Sua empresa") */
@@ -189,6 +241,8 @@ export function PublicarAnuncio({
   const [aviso, setAviso] = useState<"restaurado" | "publicando" | "lido" | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [previa, setPrevia] = useState<Previa | null>(null);
+  // a parte da prévia que o campo em foco preenche (marcada no tíquete, ao lado)
+  const [foco, setFoco] = useState<Parte | null>(null);
   const tempo = useRef<number | null>(null);
   // em passos: onde o formulário começa (5 quando a vaga veio pronta) e o passo aberto (para o rascunho)
   const [passoDeComeco, setPassoDeComeco] = useState(comecarConferindo || convite?.pronta ? 5 : 1);
@@ -288,17 +342,17 @@ export function PublicarAnuncio({
     tempo.current = window.setTimeout(() => {
       const f = formulario();
       if (!f) return;
-      setPrevia(lerPrevia(f));
+      setPrevia(lerPrevia(f, agencia));
       guardarRascunho(f, chaveDoRascunho, passoAtual.current);
     }, 250);
   }
   useEffect(() => {
     const t = window.setTimeout(() => {
       const f = formulario();
-      if (f) setPrevia(lerPrevia(f));
+      if (f) setPrevia(lerPrevia(f, agencia));
     }, 0);
     return () => window.clearTimeout(t);
-  }, [chave]);
+  }, [chave, agencia]);
 
   function escolher(m: ModeloAnuncio | null) {
     const atual = lugarDoFormulario(formulario(), base);
@@ -349,17 +403,10 @@ export function PublicarAnuncio({
     );
   }
 
-  return (
-    <div
-      ref={raiz}
-      onInput={aoMexer}
-      onChange={aoMexer}
-      // ao publicar, o rascunho de quem tem conta sai (se der errado, o formulário continua preenchido)
-      onSubmitCapture={() => {
-        if (!semConta) apagarRascunho(CHAVE_COM_CONTA);
-      }}
-      className="flex flex-col gap-6"
-    >
+  // na coluna do formulário, embaixo do título e dos passos
+  const avisos = (
+    <>
+      {antes}
       {convite && (
         <AvisoConvite token={convite.token} nome={convite.nome}>
           {convite.pronta
@@ -369,7 +416,8 @@ export function PublicarAnuncio({
         </AvisoConvite>
       )}
       {semConta && !convite && (
-        <Aviso tipo="info" titulo="Não precisa de conta para começar">
+        // no computador, o recado fica embaixo da prévia, ao lado (o passo cabe na tela)
+        <Aviso tipo="info" titulo="Não precisa de conta para começar" className="lg:hidden">
           Preencha a vaga. No fim, é só entrar com {jeitosDeEntrar()} e ela vai ao ar na hora. O que você escreve fica
           guardado neste aparelho.
         </Aviso>
@@ -407,25 +455,53 @@ export function PublicarAnuncio({
           {erro}
         </Aviso>
       )}
+    </>
+  );
+  const p = previa ?? PREVIA_VAZIA;
+  const nome = autor || "Sua empresa";
+  const comIA = ia && !semConta;
+  const alternar = (qual: "modelo" | "texto" | "foto") => setAtalho((a) => (a === qual ? null : qual));
 
+  return (
+    <div
+      ref={raiz}
+      onInput={aoMexer}
+      onChange={aoMexer}
+      onFocus={(e) => setFoco(parteDoCampo(e.target))}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFoco(null);
+      }}
+      // ao publicar, o rascunho de quem tem conta sai (se der errado, o formulário continua preenchido)
+      onSubmitCapture={() => {
+        if (!semConta) apagarRascunho(CHAVE_COM_CONTA);
+      }}
+    >
       <FormAnuncio
         key={chave}
         inicial={inicial}
         acaoSalvar={semConta ? conferirAnuncio : salvarAnuncio}
         semConta={semConta}
         aposConferir={semConta ? seguirParaEntrar : undefined}
-        ia={ia && !semConta}
+        ia={comIA}
         agencia={agencia}
         contatoAgencia={contatoAgencia}
         clientes={clientes}
         enderecoPublico={enderecoPublico}
-        // a prévia aparece desde o passo 1 (sem título ainda, um texto de exemplo apagado)
-        previa={
-          <PreviaDaVaga
-            p={previa?.titulo ? previa : { ...PREVIA_VAZIA, ...(previa ?? {}), titulo: "" }}
-            autor={autor || "Sua empresa"}
+        titulo="Publicar grátis"
+        avisos={avisos}
+        // no celular, a prévia fica no passo 5; no computador, ao lado, desde o passo 1, no meio da tela
+        previa={<PreviaDaVaga p={p} autor={nome} />}
+        palco={({ maxPasso, irAoCampo }) => (
+          <PalcoDaVaga
+            p={p}
+            autor={nome}
+            foco={foco}
+            agencia={agencia}
+            semConta={semConta}
+            maxPasso={maxPasso}
+            irAoCampo={irAoCampo}
           />
-        }
+        )}
         extras={convite ? { convite: convite.token } : undefined}
         jaMudou={aviso === "lido"}
         passos
@@ -433,50 +509,45 @@ export function PublicarAnuncio({
         aoMudarPasso={aoMudarPasso}
         atalhos={
           comModelos ? (
-            <div className="flex flex-col gap-3 rounded-lg bg-surface-300 p-3 sm:p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-label">Para ir mais rápido:</span>
-                <button
-                  type="button"
-                  aria-expanded={atalho === "modelo"}
-                  onClick={() => setAtalho((a) => (a === "modelo" ? null : "modelo"))}
-                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
-                    atalho === "modelo" ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200"
-                  }`}
+            <div className="flex flex-col gap-2.5 border-b border-line pb-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className="text-label">Para ir mais rápido</p>
+                <p className="text-body-sm text-ink-muted">
+                  Oferece serviços?{" "}
+                  <Link href="/painel/servicos" className="underline underline-offset-2 hover:text-ink">
+                    Monte sua vitrine
+                  </Link>
+                </p>
+              </div>
+              {/* os três do mesmo tamanho, numa linha (no celular, o ícone em cima do nome) */}
+              <div className="grid grid-cols-3 gap-2">
+                <Atalho
+                  icone={Sparkles}
+                  ativo={atalho === "modelo"}
+                  empilhado={comIA}
+                  onClick={() => alternar("modelo")}
                 >
-                  <Sparkles aria-hidden className="size-4" />
-                  Usar um modelo
-                </button>
-                {ia && !semConta && (
-                  <button
-                    type="button"
-                    aria-expanded={atalho === "texto"}
-                    onClick={() => setAtalho((a) => (a === "texto" ? null : "texto"))}
-                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
-                      atalho === "texto" ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200"
-                    }`}
+                  Usar modelo
+                </Atalho>
+                {comIA && (
+                  <Atalho
+                    icone={ClipboardPaste}
+                    ativo={atalho === "texto"}
+                    empilhado
+                    novo
+                    onClick={() => alternar("texto")}
                   >
-                    <ClipboardPaste aria-hidden className="size-4" />
-                    Colar o texto da vaga
-                    <Selo variante="novo">Novo</Selo>
-                  </button>
+                    Colar texto
+                  </Atalho>
                 )}
-                {ia && !semConta && (
-                  <button
-                    type="button"
-                    aria-expanded={atalho === "foto"}
-                    onClick={() => setAtalho((a) => (a === "foto" ? null : "foto"))}
-                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label ${
-                      atalho === "foto" ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200"
-                    }`}
-                  >
-                    <ImageUp aria-hidden className="size-4" />
-                    Mandar a foto da vaga
-                  </button>
+                {comIA && (
+                  <Atalho icone={ImageUp} ativo={atalho === "foto"} empilhado onClick={() => alternar("foto")}>
+                    Enviar foto
+                  </Atalho>
                 )}
               </div>
               {atalho === "modelo" && (
-                <ul aria-label="Modelos de vaga" className="flex flex-wrap gap-2">
+                <ul aria-label="Modelos de vaga" className="flex flex-wrap gap-2 rounded-md bg-surface-300 p-3">
                   {MODELOS_ANUNCIO.map((m) => {
                     const ativo = modelo === m.id;
                     return (
@@ -499,8 +570,8 @@ export function PublicarAnuncio({
                   })}
                 </ul>
               )}
-              {atalho === "texto" && ia && !semConta && <TextoDaVaga aoLer={aplicarArte} />}
-              {atalho === "foto" && ia && !semConta && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
+              {atalho === "texto" && comIA && <TextoDaVaga aoLer={aplicarArte} />}
+              {atalho === "foto" && comIA && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
             </div>
           ) : null
         }
@@ -509,53 +580,343 @@ export function PublicarAnuncio({
   );
 }
 
-/** Como a vaga aparece no Início (o tíquete da linha do tempo), com o que já foi escrito. */
-function PreviaDaVaga({ p, autor }: { p: Previa; autor: string }) {
+/** Um atalho do passo 1 (modelo, texto ou foto): abre embaixo o que ele faz; tocar de novo fecha. */
+function Atalho({
+  icone: Icone,
+  ativo,
+  empilhado = false,
+  novo = false,
+  onClick,
+  children,
+}: {
+  icone: LucideIcon;
+  ativo: boolean;
+  /** no celular, o ícone em cima do nome (os três cabem numa linha) */
+  empilhado?: boolean;
+  novo?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
-    <section aria-label="Prévia da vaga" className="flex flex-col gap-2">
-      <p className="text-label text-ink-muted">Assim sua vaga aparece</p>
-      <div className="grid grid-cols-[minmax(0,1fr)_9.5rem] overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
-        <div className="flex min-w-0 gap-3 p-3.5">
-          <Avatar nome={autor} tamanho={40} forma="quadrada" colorida />
-          <div className="min-w-0">
-            <p
-              className={`font-display text-[17px] leading-[22px] font-bold break-words ${p.titulo ? "" : "text-ink-muted/70"}`}
-            >
-              {p.titulo || "O título da vaga aparece aqui"}
+    <button
+      type="button"
+      aria-expanded={ativo}
+      onClick={onClick}
+      className={`relative inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-label whitespace-nowrap transition-colors ${
+        empilhado ? "max-sm:min-h-16 max-sm:flex-col max-sm:gap-1 max-sm:px-2" : "max-sm:col-span-3"
+      } ${ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 hover:bg-surface-300"}`}
+    >
+      <Icone aria-hidden className="size-[18px] shrink-0" />
+      {children}
+      {/* pendurado na borda, como uma etiqueta: não aperta o nome */}
+      {novo && (
+        <Selo variante="novo" className="absolute -top-2.5 right-2 px-2! py-0.5!">
+          Novo
+        </Selo>
+      )}
+    </button>
+  );
+}
+
+// a parte que o campo em foco preenche fica marcada, como com um marca-texto amarelo (só no palco, ao lado do
+// formulário; no celular, a prévia não tem a marca). No texto, a marca segue as linhas (box-decoration-clone).
+const MARCA =
+  "rounded-[4px] box-decoration-clone transition-[background-color,box-shadow] duration-150 motion-reduce:transition-none";
+const EM_FOCO: Record<Parte, string> = {
+  titulo:
+    "group-data-[foco=titulo]/palco:bg-ipe/35 group-data-[foco=titulo]/palco:shadow-[0_0_0_3px_color-mix(in_srgb,var(--pk-ipe)_35%,transparent)]",
+  regime:
+    "group-data-[foco=regime]/palco:bg-ipe/35! group-data-[foco=regime]/palco:shadow-[0_0_0_3px_color-mix(in_srgb,var(--pk-ipe)_35%,transparent)]",
+  valor:
+    "group-data-[foco=valor]/palco:bg-ipe/35 group-data-[foco=valor]/palco:shadow-[0_0_0_4px_color-mix(in_srgb,var(--pk-ipe)_35%,transparent)]",
+  lugar:
+    "group-data-[foco=lugar]/palco:bg-ipe/35 group-data-[foco=lugar]/palco:shadow-[0_0_0_3px_color-mix(in_srgb,var(--pk-ipe)_35%,transparent)]",
+  // sem a borda a mais: cortado em 2 linhas, a borda da 3ª aparecia embaixo
+  resumo: "group-data-[foco=resumo]/palco:bg-ipe/35",
+  beneficio:
+    "group-data-[foco=beneficio]/palco:bg-ipe/35! group-data-[foco=beneficio]/palco:shadow-[0_0_0_3px_color-mix(in_srgb,var(--pk-ipe)_35%,transparent)]",
+  comeca:
+    "group-data-[foco=comeca]/palco:bg-ipe/35! group-data-[foco=comeca]/palco:shadow-[0_0_0_3px_color-mix(in_srgb,var(--pk-ipe)_35%,transparent)]",
+  direto:
+    "group-data-[foco=direto]/palco:bg-ipe/35! group-data-[foco=direto]/palco:shadow-[0_0_0_3px_color-mix(in_srgb,var(--pk-ipe)_35%,transparent)]",
+};
+
+/**
+ * O tíquete da vaga como na linha do tempo (TicketDaVaga, home/linha/objetos.tsx), com o que já foi escrito:
+ * o mesmo picote, o valor no canhoto e as etiquetas numa linha. No celular, o canhoto desce, como lá.
+ */
+function TiqueteDaPrevia({ p, autor }: { p: Previa; autor: string }) {
+  // as etiquetas como lá: com o "Começa já" ou o "Contato direto", os benefícios ficam todos no "+N"
+  const beneficios = p.beneficios.slice(0, p.comecaJa || p.contatoDireto ? 0 : 1);
+  const outros = p.beneficios.length - beneficios.length;
+  return (
+    <article className="tiquete grid min-w-0 grid-rows-[auto_var(--canhoto)] [--tom:var(--pk-tom-vaga)] sm:grid-cols-[minmax(0,1fr)_var(--canhoto)] sm:grid-rows-1 sm:rounded-lg">
+      <span aria-hidden className="tiquete-fundo" />
+      <span aria-hidden className="tiquete-picote" />
+      <div className="flex min-w-0 gap-3 p-3.5 sm:px-4 sm:py-3.5">
+        <Avatar nome={autor} tamanho={40} forma="quadrada" colorida />
+        <div className="min-w-0 flex-1">
+          <p
+            className={`font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] break-words sm:text-[19px] sm:leading-6 ${
+              p.titulo ? "" : "text-ink-muted/70"
+            }`}
+          >
+            <span className={`${MARCA} ${EM_FOCO.titulo}`}>{p.titulo || "O título da vaga aparece aqui"}</span>
+          </p>
+          <p className="truncate text-body-sm font-semibold">{autor}</p>
+          {p.resumo && (
+            <p className="mt-1 line-clamp-2 text-body-sm text-ink/80">
+              <span className={`${MARCA} ${EM_FOCO.resumo}`}>{p.resumo}</span>
             </p>
-            <p className="truncate text-body-sm font-semibold">{autor}</p>
-            {p.lugar && (
-              <p className="mt-1 flex items-center gap-1 text-body-sm text-ink-muted">
-                <MapPin aria-hidden className="size-4 shrink-0 text-terra-text" />
-                <span className="truncate">{p.lugar}</span>
-              </p>
-            )}
-            <ul className="mt-2 flex flex-wrap gap-1.5 text-[13px] leading-[18px] font-semibold [&>li]:rounded-pill [&>li]:bg-surface-100 [&>li]:px-2.5 [&>li]:py-0.5">
-              {p.regime && <li>{p.regime}</li>}
+          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body-sm text-ink-muted">
+            <span className="inline-flex items-center gap-1">
+              <MapPin aria-hidden className="size-4 shrink-0 text-terra-text" />
+              <span className={`${MARCA} ${EM_FOCO.lugar}`}>{p.lugar || "O bairro aparece aqui"}</span>
+            </span>
+            <ul className="flex flex-wrap items-center gap-1.5 text-ink [&>li]:rounded-pill [&>li]:bg-surface-100 [&>li]:px-2.5 [&>li]:py-0.5 [&>li]:text-[13px] [&>li]:leading-[18px] [&>li]:font-semibold [&>li]:whitespace-nowrap">
+              {p.modalidade ? (
+                <li className={`${MARCA} ${EM_FOCO.regime}`}>{p.modalidade}</li>
+              ) : (
+                // ainda sem o tipo: no foco do campo, o lugar dele aparece marcado
+                <li
+                  aria-hidden
+                  className={`hidden text-ink-muted group-data-[foco=regime]/palco:block ${MARCA} ${EM_FOCO.regime}`}
+                >
+                  Tipo de contratação
+                </li>
+              )}
               {p.comecaJa && (
-                <li className="inline-flex items-center gap-1 bg-terra-soft! text-terra-text">
+                <li
+                  className={`inline-flex items-center gap-1 bg-terra-soft! text-terra-text ${MARCA} ${EM_FOCO.comeca}`}
+                >
                   <CalendarClock aria-hidden className="size-3.5" />
                   Começa já
                 </li>
               )}
               {p.contatoDireto && (
-                <li className="inline-flex items-center gap-1 text-cerrado-text">
+                <li className={`inline-flex items-center gap-1 text-cerrado-text ${MARCA} ${EM_FOCO.direto}`}>
                   <Zap aria-hidden className="size-3.5" />
                   Contato direto
                 </li>
               )}
+              {beneficios.map((b) => (
+                <li key={b} className={`${MARCA} ${EM_FOCO.beneficio}`}>
+                  {BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}
+                </li>
+              ))}
+              {outros > 0 && <li className={`${MARCA} ${EM_FOCO.beneficio}`}>+{outros}</li>}
             </ul>
           </div>
         </div>
-        <div className="flex flex-col justify-center gap-2 border-l-2 border-dashed border-line bg-surface-300 p-3">
-          <p className="font-display text-[17px] leading-[22px] font-bold break-words">{p.valor}</p>
-          <span className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 text-label">
-            <Heart aria-hidden className="size-4" />
-            Curtir
+      </div>
+      {/* o canhoto: o valor e o Curtir */}
+      <div className="flex items-center justify-between gap-3 px-3.5 sm:flex-col sm:items-stretch sm:justify-center sm:gap-2.5 sm:p-3.5 sm:pl-5">
+        <p className={`flex items-baseline gap-1.5 sm:flex-col sm:gap-0 ${MARCA} ${EM_FOCO.valor}`}>
+          <span
+            className={`font-display font-extrabold tracking-[-0.02em] whitespace-nowrap tabular-nums ${
+              p.valor.partes.length
+                ? "text-[20px] leading-6 sm:text-[22px] sm:leading-[26px]"
+                : "text-[17px] leading-6 sm:text-[18px]"
+            }`}
+          >
+            {p.valor.valor}
           </span>
+          {p.valor.partes.length > 0 && (
+            <span className="text-body-sm text-ink-muted sm:leading-[18px]">
+              {p.valor.partes.map((x, i) => (
+                <span key={x} className="sm:block">
+                  {i > 0 && <span className="sm:hidden"> · </span>}
+                  {x}
+                </span>
+              ))}
+            </span>
+          )}
+        </p>
+        <span className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-4 text-label whitespace-nowrap">
+          <Heart aria-hidden className="size-4" />
+          Curtir
+        </span>
+      </div>
+    </article>
+  );
+}
+
+/** No celular (passo 5): o tíquete com o que já foi escrito. */
+function PreviaDaVaga({ p, autor }: { p: Previa; autor: string }) {
+  return (
+    <section aria-label="Prévia da vaga" className="flex flex-col gap-2">
+      <p className="text-label text-ink-muted">Assim sua vaga aparece</p>
+      <TiqueteDaPrevia p={p} autor={autor} />
+    </section>
+  );
+}
+
+/** O que a vaga precisa para publicar (o resto é opcional), na ordem dos passos. */
+const PARA_PUBLICAR = [
+  { campo: "titulo", nome: "Título", chaves: ["titulo"] },
+  { campo: "contratante", nome: "Empresa", chaves: ["contratante"] },
+  { campo: "regime", nome: "Tipo de contratação", chaves: ["regime"] },
+  { campo: "pagamento_valor", nome: "Valor", chaves: ["pagamento_valor", "pagamento_unidade", "pagamento_ate"] },
+  { campo: "bairro", nome: "Bairro", chaves: ["bairro"] },
+] as const;
+
+/**
+ * No computador, ao lado do formulário, da altura da tela: a vaga no meio, como aparece na linha do tempo
+ * (com o traço, o nó e outros anúncios apagados em volta), marcando a parte que o campo em foco preenche;
+ * embaixo, o que falta para publicar (tocar leva ao campo) e o que fica escondido.
+ */
+function PalcoDaVaga({
+  p,
+  autor,
+  foco,
+  agencia,
+  semConta,
+  maxPasso,
+  irAoCampo,
+}: {
+  p: Previa;
+  autor: string;
+  foco: Parte | null;
+  agencia: boolean;
+  semConta: boolean;
+  maxPasso: number;
+  irAoCampo: (campo: string) => void;
+}) {
+  const itens = PARA_PUBLICAR.filter((i) =>
+    i.campo === "contratante" ? agencia : i.campo === "bairro" ? !p.confidencial : true,
+  );
+  const falta = new Set(p.falta);
+  const pronto = (i: (typeof itens)[number]) => !i.chaves.some((c) => falta.has(c));
+  const feitos = itens.filter(pronto).length;
+  return (
+    <section
+      aria-label="Prévia da vaga"
+      data-foco={foco ?? undefined}
+      className="group/palco grid h-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border border-line bg-surface-300"
+    >
+      <div className="px-5 pt-4 xl:px-6 xl:pt-5">
+        <p className="text-label">Assim sua vaga aparece</p>
+        <p className="text-body-sm text-ink-muted">Na linha do tempo de quem mora perto.</p>
+      </div>
+      <div className="relative min-h-0">
+        {/* o traço da linha do tempo, que passa pelos nós (como na home) */}
+        <span aria-hidden className="absolute inset-y-0 left-10 hidden w-0.5 -translate-x-1/2 bg-line xl:block" />
+        <div className="absolute inset-0 grid grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 px-5 py-3 xl:px-6">
+          <div className="flex min-h-0 flex-col justify-end overflow-hidden">
+            <Fantasma tom="servico" className="opacity-35" />
+          </div>
+          <div className="grid items-start xl:grid-cols-[32px_minmax(0,1fr)] xl:gap-x-3">
+            <span
+              aria-hidden
+              className="relative z-[1] mt-2.5 hidden size-8 place-items-center rounded-pill bg-tom-vaga text-terra-text shadow-[0_0_0_4px_var(--pk-surface-300)] xl:grid"
+            >
+              <Briefcase className="size-4" />
+            </span>
+            <TiqueteDaPrevia p={p} autor={autor} />
+          </div>
+          <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
+            <Fantasma tom="vaga" className="opacity-50" />
+            <Fantasma tom="vaga" className="opacity-25" />
+          </div>
         </div>
       </div>
-      <p className="text-body-sm text-ink-muted">Muda enquanto você preenche.</p>
+      <div className="flex flex-col gap-2.5 border-t border-line px-5 py-4 xl:px-6">
+        <div className="flex items-center justify-between gap-3">
+          {feitos === itens.length ? (
+            <p className="flex items-center gap-1.5 text-label text-cerrado-text">
+              <CircleCheck aria-hidden className="size-4" />
+              Pronto para publicar
+            </p>
+          ) : (
+            <p className="text-label">Para publicar</p>
+          )}
+          <p className="text-body-sm text-ink-muted tabular-nums">
+            {feitos} de {itens.length}
+          </p>
+        </div>
+        <ul aria-label="O que a vaga precisa para publicar" className="flex flex-wrap gap-1.5">
+          {itens.map((i) => {
+            const ok = pronto(i);
+            // só leva aos passos já abertos (os outros chegam pelo Continuar)
+            const aberto = passoDoCampo(i.campo) <= maxPasso;
+            const classes = `inline-flex min-h-8 items-center gap-1.5 rounded-pill border px-3 text-label ${
+              ok ? "border-transparent bg-surface-200 text-ink" : "border-dashed border-line-strong text-ink-muted"
+            }`;
+            const conteudo = (
+              <>
+                {ok ? (
+                  <Check aria-hidden className="size-4 text-cerrado-text" />
+                ) : (
+                  <Circle aria-hidden className="size-3" />
+                )}
+                {i.nome}
+                <span className="sr-only">{ok ? " (pronto)" : " (falta)"}</span>
+              </>
+            );
+            return (
+              <li key={i.campo}>
+                {aberto ? (
+                  <button
+                    type="button"
+                    onClick={() => irAoCampo(i.campo)}
+                    className={`${classes} transition-colors hover:border-ink hover:text-ink`}
+                  >
+                    {conteudo}
+                  </button>
+                ) : (
+                  <span className={classes}>{conteudo}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <p className="flex items-start gap-2 text-body-sm text-ink-muted">
+          <LockKeyhole aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {p.contatoDireto
+            ? "Com o contato direto, quem curtir a vaga já vê seu WhatsApp."
+            : "Grátis e sem limite de candidatos. Seu WhatsApp só aparece para quem você aceitar."}
+        </p>
+        {semConta && (
+          <p className="text-body-sm text-ink-muted">
+            Sem conta, tudo bem: no fim, é só entrar com {jeitosDeEntrar()}. O que você escreve fica guardado neste
+            aparelho.
+          </p>
+        )}
+      </div>
     </section>
+  );
+}
+
+/** Outro anúncio da linha, apagado (só a forma: o palco mostra onde a vaga entra, entre as outras). */
+function Fantasma({ tom, className }: { tom: "vaga" | "servico"; className: string }) {
+  return (
+    <div aria-hidden className={`grid items-start xl:grid-cols-[32px_minmax(0,1fr)] xl:gap-x-3 ${className}`}>
+      <span
+        className={`relative z-[1] mt-2.5 hidden size-8 rounded-pill shadow-[0_0_0_4px_var(--pk-surface-300)] xl:block ${
+          tom === "vaga" ? "bg-tom-vaga" : "bg-tom-servico"
+        }`}
+      />
+      <div
+        className={`tiquete grid grid-cols-[minmax(0,1fr)_var(--canhoto)] rounded-lg ${
+          tom === "vaga" ? "[--tom:var(--pk-tom-vaga)]" : "[--tom:var(--pk-tom-servico)]"
+        }`}
+      >
+        <span className="tiquete-fundo" />
+        <span className="tiquete-picote" />
+        <div className="flex gap-3 px-4 py-3.5">
+          <span className="size-10 shrink-0 rounded-[11px] bg-surface-300" />
+          <span className="flex min-w-0 flex-1 flex-col gap-2 pt-0.5">
+            <span className="h-3.5 w-4/5 rounded-pill bg-surface-300" />
+            <span className="h-3 w-1/2 rounded-pill bg-surface-300" />
+            <span className="h-3 w-3/5 rounded-pill bg-surface-300" />
+          </span>
+        </div>
+        <div className="flex flex-col justify-center gap-2.5 p-3.5 pl-5">
+          <span className="h-4 w-3/4 rounded-pill bg-ink/10" />
+          <span className="h-9 rounded-pill border border-line-strong/40" />
+        </div>
+      </div>
+    </div>
   );
 }

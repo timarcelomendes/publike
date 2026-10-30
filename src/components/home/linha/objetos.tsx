@@ -14,15 +14,9 @@ import type { ReactNode } from "react";
 import { nomeBeneficio } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { deslocamentoCurto } from "@/lib/deslocamento";
-import {
-  formatarDistancia,
-  formatarLugar,
-  formatarMoeda,
-  linkWhatsApp,
-  rotuloModalidade,
-  urlDaFotoTrabalho,
-} from "@/lib/formato";
+import { formatarDistancia, formatarLugar, linkWhatsApp, rotuloModalidade, urlDaFotoTrabalho } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
+import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
@@ -36,31 +30,6 @@ import { Avatar } from "../../ui/basicos";
  * ler. Vaga = tíquete (o valor e o Curtir no canhoto); serviço = o cartão do profissional; aceite =
  * o cartão verde. A hora fica fora (na coluna da linha); no celular, no canto de cada um (`hora`).
  */
-
-const POR_UNIDADE: Record<string, string> = {
-  hora: "por hora",
-  dia: "a diária",
-  semana: "por semana",
-  mes: "por mês",
-  m2: "por m²",
-  visita: "a visita",
-  servico: "pelo serviço",
-};
-
-/** O valor grande e o que ele quer dizer, em duas partes ("R$ 1.800" e "por mês"). */
-function valorEmDuas(a: AnuncioNaLinha["anuncio"]) {
-  if (a.pagamento_valor == null || !a.pagamento_unidade) return { valor: "A combinar", unidade: null, partes: [] };
-  const ate = a.pagamento_ate != null && a.pagamento_ate > a.pagamento_valor ? a.pagamento_ate : null;
-  // no serviço, "a partir de" já diz tudo quando o valor é pelo serviço
-  const unidade =
-    a.tipo === "servico" && a.pagamento_unidade === "servico" ? null : (POR_UNIDADE[a.pagamento_unidade] ?? null);
-  const partes = [
-    a.tipo === "servico" ? "a partir de" : null,
-    ate ? `até ${formatarMoeda(ate)}` : null,
-    unidade,
-  ].filter((p): p is string => Boolean(p));
-  return { valor: formatarMoeda(a.pagamento_valor), unidade: partes.join(" · "), partes };
-}
 
 /**
  * O valor no canhoto: em Bricolage 800 e, embaixo, o que ele quer dizer ("a partir de", "até R$ 2.100",
@@ -92,8 +61,6 @@ function Valor({ a }: { a: AnuncioNaLinha["anuncio"] }) {
     </p>
   );
 }
-
-const BENEFICIO_CURTO: Record<string, string> = { vale_transporte: "VT", vale_refeicao: "VR", vale_alimentacao: "VA" };
 
 /** A hora no canto do objeto (só no celular: no computador ela fica na coluna da linha). */
 function HoraNoCanto({ hora, claro = false }: { hora: string; claro?: boolean }) {

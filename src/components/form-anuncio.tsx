@@ -197,6 +197,9 @@ export function FormAnuncio({
   passoInicial = 1,
   atalhos = null,
   aoMudarPasso,
+  titulo = null,
+  avisos = null,
+  palco,
 }: {
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
@@ -234,6 +237,15 @@ export function FormAnuncio({
   atalhos?: ReactNode;
   /** Em passos: a cada troca de passo (para guardar o rascunho com o passo). */
   aoMudarPasso?: (passo: number) => void;
+  /** Em passos: o título da página, no alto, na linha dos passos. */
+  titulo?: string | null;
+  /** Em passos: os avisos no alto da coluna do formulário (rascunho, convite, erro). */
+  avisos?: ReactNode;
+  /**
+   * Em passos, no computador: ao lado do formulário, no meio da tela (a prévia com o que falta). Recebe o
+   * passo mais longe já aberto e o "levar ao campo".
+   */
+  palco?: (p: { maxPasso: number; irAoCampo: (campo: string) => void }) => ReactNode;
 }) {
   const editando = Boolean(inicial.id);
   // a falha sem chegar ao servidor (site publicado de novo com a página aberta) vira aviso na tela
@@ -357,6 +369,21 @@ export function FormAnuncio({
     history.pushState({ ...history.state, passoPublicar: n }, "");
     aoMudarPasso?.(n);
     window.requestAnimationFrame(() => topo.current?.scrollIntoView({ block: "start" }));
+  }
+
+  // o que falta, ao lado: leva ao passo do campo (só aos já abertos) e põe o cursor nele
+  function irAoCampo(campo: string) {
+    const n = passoDoCampo(campo);
+    if (n > maxPasso) return;
+    irPara(n);
+    const nomes =
+      campo === "contratante" ? [campo, "cliente_id"] : campo === "pagamento_valor" ? [campo, "combinar"] : [campo];
+    window.setTimeout(() => {
+      for (const nome of nomes) {
+        const alvo = formulario.current?.querySelector<HTMLElement>(`[name="${nome}"]:not([type="hidden"])`);
+        if (alvo) return alvo.focus();
+      }
+    }, 60);
   }
 
   function continuar() {
@@ -568,8 +595,10 @@ export function FormAnuncio({
         </h2>
         {conteudo}
         {n < TOTAL_PASSOS && (
-          // no celular, presa embaixo e reta, como o rodapé do cartão (a barra do site some no Publicar)
-          <div className="sticky bottom-0 z-30 -mx-5 -mb-5 flex items-center gap-3 rounded-b-lg border-t border-line bg-surface-200/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:mb-0 sm:rounded-none sm:bg-transparent sm:p-0 sm:pt-5 sm:backdrop-blur-none">
+          // o rodapé do cartão, preso embaixo e reto: o Continuar fica sempre à vista, no celular (a barra do
+          // site some no Publicar) e no computador quando o passo não cabe na tela. Voltar à esquerda, seguir à
+          // direita.
+          <div className="sticky bottom-0 z-30 -mx-5 -mb-5 flex items-center gap-3 rounded-b-lg border-t border-line bg-surface-200/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:-mb-6 sm:px-6 sm:py-4">
             {n > 1 && (
               <Botao type="button" variante="secundario" onClick={() => irPara(n - 1)} aria-label="Voltar">
                 <ArrowLeft aria-hidden />
@@ -577,11 +606,16 @@ export function FormAnuncio({
               </Botao>
             )}
             {n === 4 && (
-              <Botao type="button" variante="fantasma" onClick={() => irPara(n + 1)}>
+              <Botao type="button" variante="fantasma" onClick={() => irPara(n + 1)} className="sm:ml-auto">
                 Pular
               </Botao>
             )}
-            <Botao type="button" variante="primario" onClick={continuar} className="flex-1 sm:flex-none sm:min-w-44">
+            <Botao
+              type="button"
+              variante="primario"
+              onClick={continuar}
+              className={`flex-1 sm:flex-none sm:min-w-44 ${n === 4 ? "" : "sm:ml-auto"}`}
+            >
               Continuar
               <ArrowRight aria-hidden />
             </Botao>
@@ -597,19 +631,9 @@ export function FormAnuncio({
   const conteudoDaVaga = (
     <>
       {passos && !editando && atalhos}
+      {/* em passos, o que é obrigatório fica ao lado (a lista do que falta) e o "Oferece serviços?", nos atalhos */}
       {passos ? (
-        !editando && (
-          <>
-            <input type="hidden" name="tipo" value="vaga" />
-            <p className="-mt-2 text-body-sm text-ink-muted">
-              Só são obrigatórios o título, o tipo de contratação, o valor e o bairro. Oferece serviços?{" "}
-              <Link href="/painel/servicos" className="underline underline-offset-2">
-                Monte sua vitrine
-              </Link>
-              .
-            </p>
-          </>
-        )
+        !editando && <input type="hidden" name="tipo" value="vaga" />
       ) : (
         <div className="flex flex-col gap-3">
           {editando ? (
@@ -676,34 +700,6 @@ export function FormAnuncio({
         />
       </Campo>
 
-      <Campo rotulo="Categoria" nome="categoria" opcional erro={erros.categoria}>
-        <Seletor
-          {...ligarCampo("categoria", erros.categoria)}
-          value={categoriaAtual}
-          onChange={(e) => setCategoriaAtual(e.target.value)}
-          className={classesEntrada}
-        >
-          <option value="">Escolher pelo título</option>
-          {CATEGORIAS.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.nome}
-            </option>
-          ))}
-        </Seletor>
-        {sugerida && (
-          <p role="status" className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm">
-            <span>Parece {nomeCategoria(sugerida).nome}.</span>
-            <button
-              type="button"
-              onClick={() => setCategoriaAtual(sugerida)}
-              className="min-h-9 text-label text-terra-text underline underline-offset-2"
-            >
-              Usar {nomeCategoria(sugerida).nome}
-            </button>
-          </p>
-        )}
-      </Campo>
-
       {vaga && agencia && (
         <EmpresaDaVaga
           clientes={clientes}
@@ -757,19 +753,49 @@ export function FormAnuncio({
         </fieldset>
       )}
 
-      {vaga && (
-        <Campo rotulo="Quantas pessoas" nome="vagas" erro={erros.vagas}>
-          <input
-            {...ligarCampo("vagas", erros.vagas)}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={999}
-            defaultValue={inicial.vagas}
+      {/* a categoria e quantas pessoas lado a lado: o passo cabe na tela do computador */}
+      <div className={vaga ? "grid gap-5 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-4" : "contents"}>
+        <Campo rotulo="Categoria" nome="categoria" opcional erro={erros.categoria}>
+          <Seletor
+            {...ligarCampo("categoria", erros.categoria)}
+            value={categoriaAtual}
+            onChange={(e) => setCategoriaAtual(e.target.value)}
             className={classesEntrada}
-          />
+          >
+            <option value="">Escolher pelo título</option>
+            {CATEGORIAS.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.nome}
+              </option>
+            ))}
+          </Seletor>
+          {sugerida && (
+            <p role="status" className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm">
+              <span>Parece {nomeCategoria(sugerida).nome}.</span>
+              <button
+                type="button"
+                onClick={() => setCategoriaAtual(sugerida)}
+                className="min-h-9 text-label text-terra-text underline underline-offset-2"
+              >
+                Usar {nomeCategoria(sugerida).nome}
+              </button>
+            </p>
+          )}
         </Campo>
-      )}
+        {vaga && (
+          <Campo rotulo="Quantas pessoas" nome="vagas" erro={erros.vagas}>
+            <input
+              {...ligarCampo("vagas", erros.vagas)}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={999}
+              defaultValue={inicial.vagas}
+              className={classesEntrada}
+            />
+          </Campo>
+        )}
+      </div>
     </>
   );
 
@@ -1293,30 +1319,33 @@ export function FormAnuncio({
         </nav>
       )}
 
-      {/* em passos, duas colunas: os passos e o formulário à esquerda; a prévia à direita, desde o passo 1 */}
+      {/* em passos: no alto, o título e os passos (presos ao rolar), na largura toda; embaixo, o formulário e, no
+          computador, a prévia ao lado, no meio da tela */}
       <div
         className={
-          passos ? "flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8" : "contents"
+          passos
+            ? "flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-start lg:gap-x-8 xl:grid-cols-[minmax(0,1fr)_29rem] xl:gap-x-10"
+            : "contents"
         }
       >
-        <div className="flex min-w-0 flex-col gap-6">
-          {passos && (
-            <>
-              {/* os passos ficam presos no alto ao rolar, logo abaixo do cabeçalho do site (h-16) */}
-              <div
-                ref={topo}
-                className="sticky top-16 z-30 -mx-4 scroll-mt-24 border-b border-line bg-surface-100/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
-              >
-                <CabecalhoDosPassos
-                  passo={passo}
-                  maxPasso={maxPasso}
-                  irPara={irPara}
-                  sair={semConta ? "/" : "/painel"}
-                />
-              </div>
-              {passo < TOTAL_PASSOS && estado.erro && resumoErrosNoTopo}
-            </>
-          )}
+        {passos && (
+          // logo abaixo do cabeçalho do site (h-16); no computador, com a altura certa (a prévia fica presa embaixo)
+          <div
+            ref={topo}
+            className="sticky top-16 z-30 -mx-4 scroll-mt-24 border-b border-line bg-surface-100/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:col-span-2 lg:mx-0 lg:flex lg:h-18 lg:items-center lg:px-0 lg:py-0"
+          >
+            <CabecalhoDosPassos
+              titulo={titulo}
+              passo={passo}
+              maxPasso={maxPasso}
+              irPara={irPara}
+              sair={semConta ? "/" : "/painel"}
+            />
+          </div>
+        )}
+        <div className="flex min-w-0 flex-col gap-5">
+          {passos && avisos}
+          {passos && passo < TOTAL_PASSOS && estado.erro && resumoErrosNoTopo}
           {grupo(1, conteudoDaVaga)}
           {grupo(2, conteudoDoPagamento)}
           {grupo(3, conteudoDoLugar)}
@@ -1332,8 +1361,8 @@ export function FormAnuncio({
                 Conferir e publicar
               </h2>
               {conteudoDaPublicacao}
-              {/* no celular, presa embaixo numa linha só (voltar e publicar); o texto fica embaixo, fora da barra */}
-              <div className="sticky bottom-0 z-30 -mx-4 flex items-center gap-3 border-t border-line bg-surface-100/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+              {/* presa embaixo numa linha só (voltar à esquerda, publicar à direita); o texto fica embaixo, fora da barra */}
+              <div className="sticky bottom-0 z-30 -mx-4 flex items-center gap-3 border-t border-line bg-surface-100/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6 sm:py-4 lg:mx-0 lg:px-0">
                 <Botao type="button" variante="secundario" onClick={() => irPara(passo - 1)} aria-label="Voltar">
                   <ArrowLeft aria-hidden />
                   <span className="hidden sm:inline">Voltar</span>
@@ -1342,7 +1371,7 @@ export function FormAnuncio({
                   type="submit"
                   variante="primario"
                   disabled={enviando}
-                  className="flex-1 sm:flex-none sm:min-w-56"
+                  className="flex-1 sm:ml-auto sm:flex-none sm:min-w-56"
                 >
                   {enviando ? (semConta ? "Conferindo…" : "Salvando…") : rotuloSalvar}
                 </Botao>
@@ -1412,7 +1441,13 @@ export function FormAnuncio({
             </div>
           )}
         </div>
-        {passos && previa && <aside className="hidden lg:sticky lg:top-20 lg:block lg:pt-3">{previa}</aside>}
+        {/* presa embaixo dos passos, da altura da tela: a prévia fica no meio dela. Até 1440 px, termina acima do
+            botão do canto (Chat), que fica por cima da coluna da direita */}
+        {passos && (palco || previa) && (
+          <aside className="hidden lg:sticky lg:top-[9.75rem] lg:block lg:h-[calc(100dvh-16rem)] lg:min-h-[30rem] min-[90rem]:h-[calc(100dvh-12.25rem)]">
+            {palco ? palco({ maxPasso, irAoCampo }) : previa}
+          </aside>
+        )}
       </div>
 
       {/* a vaga nova que não chegou ao servidor já ficou guardada: recarregar não pergunta */}
@@ -1438,13 +1473,19 @@ export function FormAnuncio({
   );
 }
 
-/** Os passos no alto: no computador, na horizontal (tocar num já aberto volta para ele); no celular, "Passo 2 de 5". */
+/**
+ * O título e os passos no alto. No computador, numa linha só: o título à esquerda e os passos na horizontal
+ * (tocar num já aberto volta para ele); no tablet, os passos sem o nome dos outros. No celular, o título com o
+ * X para sair, "Passo 2 de 5" e a barra.
+ */
 function CabecalhoDosPassos({
+  titulo,
   passo,
   maxPasso,
   irPara,
   sair,
 }: {
+  titulo: string | null;
   passo: number;
   maxPasso: number;
   irPara: (n: number) => void;
@@ -1453,8 +1494,22 @@ function CabecalhoDosPassos({
 }) {
   const atual = PASSOS_PUBLICAR[passo - 1];
   return (
-    <>
-      <ol aria-label="Passos para publicar" className="hidden items-center sm:flex">
+    <div className="flex w-full flex-col gap-1 sm:gap-2 lg:flex-row lg:items-center lg:gap-10">
+      <div className="flex items-center justify-between gap-2">
+        {titulo && (
+          <h1 className="font-display text-[19px] leading-6 font-bold tracking-[-0.01em] whitespace-nowrap lg:text-[22px] lg:leading-7">
+            {titulo}
+          </h1>
+        )}
+        <Link
+          href={sair}
+          aria-label="Sair sem publicar"
+          className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink sm:hidden"
+        >
+          <X aria-hidden className="size-5" />
+        </Link>
+      </div>
+      <ol aria-label="Passos para publicar" className="hidden min-w-0 flex-1 items-center sm:flex">
         {PASSOS_PUBLICAR.map((p, k) => {
           const feito = p.numero < passo;
           const agora = p.numero === passo;
@@ -1473,6 +1528,8 @@ function CabecalhoDosPassos({
               {feito ? <Check className="size-4" /> : p.numero}
             </span>
           );
+          // no tablet, só o passo de agora diz o nome (os outros, o número; o nome fica para o leitor de tela)
+          const nome = <span className={agora ? "" : "sr-only lg:not-sr-only lg:whitespace-nowrap!"}>{p.nome}</span>;
           return (
             <li key={p.numero} className={`flex items-center ${k < PASSOS_PUBLICAR.length - 1 ? "flex-1" : ""}`}>
               {pode ? (
@@ -1482,7 +1539,7 @@ function CabecalhoDosPassos({
                   className="flex min-h-11 items-center gap-2 text-label whitespace-nowrap hover:underline"
                 >
                   {marca}
-                  {p.nome}
+                  {nome}
                 </button>
               ) : (
                 <span
@@ -1490,7 +1547,7 @@ function CabecalhoDosPassos({
                   className={`flex min-h-11 items-center gap-2 text-label whitespace-nowrap ${agora ? "" : "text-ink-muted"}`}
                 >
                   {marca}
-                  {p.nome}
+                  {nome}
                 </span>
               )}
               {k < PASSOS_PUBLICAR.length - 1 && (
@@ -1501,19 +1558,10 @@ function CabecalhoDosPassos({
         })}
       </ol>
       <div className="sm:hidden">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-label">
-            Passo {passo} de {TOTAL_PASSOS} · {atual.nome}
-            {"opcional" in atual && atual.opcional && <span className="font-normal text-ink-muted"> (opcional)</span>}
-          </p>
-          <Link
-            href={sair}
-            aria-label="Sair sem publicar"
-            className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
-          >
-            <X aria-hidden className="size-5" />
-          </Link>
-        </div>
+        <p className="text-label">
+          Passo {passo} de {TOTAL_PASSOS} · {atual.nome}
+          {"opcional" in atual && atual.opcional && <span className="font-normal text-ink-muted"> (opcional)</span>}
+        </p>
         <div
           role="progressbar"
           aria-label="Quanto falta"
@@ -1525,7 +1573,7 @@ function CabecalhoDosPassos({
           <span className="block h-full rounded-pill bg-ink" style={{ width: `${(passo / TOTAL_PASSOS) * 100}%` }} />
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

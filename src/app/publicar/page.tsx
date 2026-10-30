@@ -36,14 +36,10 @@ export const metadata: Metadata = {
 
 export default function Publicar({ searchParams }: PageProps<"/publicar">) {
   return (
-    <Container className="max-w-5xl py-8">
-      {/* o topo numa linha só: o passo a passo logo abaixo, e no celular o primeiro campo na primeira tela */}
+    // o título fica na linha dos passos (no alto, presa ao rolar): o passo cabe na tela do computador
+    <Container className="pt-3 pb-10 sm:pt-4 lg:pb-6">
       <SemBarraDeBaixo />
-      <h1 className="text-h2">Publicar grátis</h1>
-      <p className="mt-1 mb-5 text-body-sm text-ink-muted sm:text-body">
-        Sem plano e sem limite de candidatos. Seu WhatsApp só aparece para quem você aceitar.
-      </p>
-      <Suspense fallback={<Esqueleto className="h-[60rem] w-full rounded-lg" />}>
+      <Suspense fallback={<Esqueleto className="h-[40rem] w-full rounded-lg" />}>
         <Conteudo searchParams={searchParams} />
       </Suspense>
     </Container>
@@ -54,6 +50,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   if (MODO_DEMO) {
     return (
       <>
+        <h1 className="text-h2">Publicar grátis</h1>
+        <p className="mt-1 mb-5 text-body-sm text-ink-muted sm:text-body">
+          Sem plano e sem limite de candidatos. Seu WhatsApp só aparece para quem você aceitar.
+        </p>
         <Aviso tipo="alerta" className="mb-6" titulo="Modo demonstração">
           {MENSAGEM_DEMO}
         </Aviso>
@@ -80,18 +80,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
     const intencao = await obterIntencao().catch(() => null);
     const contrata = intencao === "contratar_pessoa" || intencao === "contratar_servico";
     return (
-      <>
-        {!convite && !contrata && <ChamadaCurriculo />}
-        <PublicarAnuncio
-          inicial={convite?.rascunho ? valoresDoConvite(convite.rascunho, base) : base}
-          semConta
-          comModelos={!convite}
-          modelo={convite ? null : modelo}
-          // ainda não se sabe se a conta é de empresa: o endereço aparece como opcional
-          enderecoPublico="talvez"
-          convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
-        />
-      </>
+      <PublicarAnuncio
+        antes={!convite && !contrata ? <ChamadaCurriculo /> : null}
+        inicial={convite?.rascunho ? valoresDoConvite(convite.rascunho, base) : base}
+        semConta
+        comModelos={!convite}
+        modelo={convite ? null : modelo}
+        // ainda não se sabe se a conta é de empresa: o endereço aparece como opcional
+        enderecoPublico="talvez"
+        convite={convite && { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) }}
+      />
     );
   }
   const voltar = pedidaCopia
@@ -167,33 +165,38 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       clienteDaCopia && clientes?.some((c) => c.id === clienteDaCopia)
       ? { ...inicialSemCliente, cliente_id: clienteDaCopia }
       : inicialSemCliente;
+  const chamada = perfil.tipo === "pessoa" && !copia && !convite && !(await meuCurriculoNaVitrine().catch(() => false));
   return (
-    <>
-      {perfil.tipo === "pessoa" && !copia && !convite && !(await meuCurriculoNaVitrine().catch(() => false)) && (
-        <ChamadaCurriculo />
-      )}
-      {copia && (
-        <Aviso tipo="info" className="mb-6" titulo="Vaga nova a partir de outra">
-          Os campos vieram de “{copia.titulo}”. Mude o que for diferente e publique: a vaga antiga continua como está.
-        </Aviso>
-      )}
-      <PublicarAnuncio
-        inicial={inicial}
-        continuar={continuar}
-        comecarConferindo={Boolean(copia)}
-        autor={perfil.nome}
-        comModelos={!copia && !convite}
-        modelo={copia || convite ? null : modelo}
-        ia={ia}
-        agencia={agencia}
-        contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
-        clientes={clientes}
-        enderecoPublico={publico}
-        convite={
-          convite && !copia ? { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) } : null
-        }
-      />
-    </>
+    <PublicarAnuncio
+      // no alto da coluna do formulário, embaixo do título e dos passos
+      antes={
+        chamada || copia ? (
+          <>
+            {chamada && <ChamadaCurriculo />}
+            {copia && (
+              <Aviso tipo="info" titulo="Vaga nova a partir de outra">
+                Os campos vieram de “{copia.titulo}”. Mude o que for diferente e publique: a vaga antiga continua como
+                está.
+              </Aviso>
+            )}
+          </>
+        ) : null
+      }
+      inicial={inicial}
+      continuar={continuar}
+      comecarConferindo={Boolean(copia)}
+      autor={perfil.nome}
+      comModelos={!copia && !convite}
+      modelo={copia || convite ? null : modelo}
+      ia={ia}
+      agencia={agencia}
+      contatoAgencia={{ whatsapp: perfil.whatsapp, email: perfil.email }}
+      clientes={clientes}
+      enderecoPublico={publico}
+      convite={
+        convite && !copia ? { token: convite.token, nome: convite.nome, pronta: Boolean(convite.rascunho) } : null
+      }
+    />
   );
 }
 
@@ -203,7 +206,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
  */
 function ChamadaCurriculo() {
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-line-strong bg-surface-200 px-3 py-3 shadow-card sm:px-4">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line-strong bg-surface-200 px-3 py-3 shadow-card sm:px-4">
       <FileUser aria-hidden className="size-5 shrink-0 text-terra-text" />
       <p className="min-w-0 grow basis-56 text-body-sm">
         <span className="text-label">Procura trabalho?</span> Aqui é para publicar vaga ou serviço. Para as empresas
