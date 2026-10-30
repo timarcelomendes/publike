@@ -186,7 +186,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
               : undefined
           }
         >
-          Assine o Copiloto, os Testes Publike ou os dois juntos no combo, por mês ou a cada 3 meses.
+          Assine a Triagem com IA, os Testes Publike ou os dois juntos no combo, por mês ou a cada 3 meses.
         </Vazio>
       ) : (
         <>

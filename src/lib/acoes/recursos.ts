@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
-import { dataCurta, DIAS_GRATIS, ehRecursoPago, NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
+import { A_RECURSO, dataCurta, DIAS_GRATIS, ehRecursoPago, type RecursoPago } from "@/lib/recursos-pagos";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
@@ -26,7 +26,7 @@ export async function experimentarRecurso(recurso: RecursoPago): Promise<Resulta
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para liberar agora. Tente de novo.") };
   refresh();
   const ate = typeof data === "string" ? ` até ${dataCurta(data)}` : ` por ${DIAS_GRATIS} dias`;
-  return { ok: true, mensagem: `Pronto: ${NOME_RECURSO[recurso]} liberado${ate}.` };
+  return { ok: true, mensagem: `Pronto: acesso ${A_RECURSO[recurso]} liberado${ate}.` };
 }
 
 /** Depois dos 15 dias: avisa o Publike de que a conta quer continuar. */

@@ -116,7 +116,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/faturas/[id]">[
 
       {paga && (
         <Aviso tipo="sucesso" titulo="Pagamento confirmado" className="print:hidden">
-          O {NOME_PRODUTO[f.recurso]} está liberado até {dataEHora(f.periodo_ate)}.
+          {NOME_PRODUTO[f.recurso]}: liberado até {dataEHora(f.periodo_ate)}.
         </Aviso>
       )}
 

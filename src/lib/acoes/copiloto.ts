@@ -43,7 +43,7 @@ async function minhaVaga(anuncioId: string): Promise<MinhaVaga> {
   const anuncio = await obterAnuncio(anuncioId);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") return { erro: "Vaga não encontrada." };
   const config = await configDoCopiloto(anuncioId);
-  if (!config?.liberado) return { erro: "O copiloto está em teste e não está liberado para a sua conta." };
+  if (!config?.liberado) return { erro: "A Triagem com IA não está liberada para a sua conta." };
   return { anuncio, config };
 }
 

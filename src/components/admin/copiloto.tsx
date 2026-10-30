@@ -17,7 +17,7 @@ export function BotaoCopiloto({ contaId, liberado }: { contaId: string; liberado
         onClick={() => rodar(() => liberarCopiloto(contaId, !liberado))}
       >
         <Sparkles aria-hidden />
-        {liberado ? "Tirar o copiloto" : "Liberar o copiloto"}
+        {liberado ? "Tirar a Triagem com IA" : "Liberar a Triagem com IA"}
       </Botao>
       {mensagem}
     </div>

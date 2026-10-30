@@ -15,7 +15,7 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
-export const metadata: Metadata = { title: "Copiloto" };
+export const metadata: Metadata = { title: "Triagem com IA" };
 
 // O copiloto (teste; migração 20261203120000): a porta de entrada no menu do painel, com as vagas no ar.
 
@@ -47,7 +47,7 @@ async function Conteudo() {
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="flex items-center gap-2 text-h2">
             <Sparkles aria-hidden className="size-6 text-terra-text" />
-            Copiloto
+            Triagem com IA
           </h2>
           <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} />
         </div>
@@ -87,7 +87,7 @@ async function Conteudo() {
                     </span>
                   </span>
                   <span className="inline-flex shrink-0 items-center gap-1 text-label text-terra-text">
-                    Abrir o copiloto
+                    Abrir a triagem
                     <ChevronRight aria-hidden className="size-4" />
                   </span>
                 </Link>
@@ -105,7 +105,7 @@ async function Conteudo() {
               </BotaoLink>
             }
           >
-            Publique uma vaga e o copiloto busca quem combina com ela.
+            Publique uma vaga e a Triagem com IA busca quem combina com ela.
           </Vazio>
         )}
       </section>

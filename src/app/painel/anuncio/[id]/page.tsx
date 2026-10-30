@@ -328,7 +328,7 @@ async function Conteudo({
                       {posicao(p) != null && (
                         <p className="flex items-center gap-1 text-label text-terra-text">
                           <Sparkles aria-hidden className="size-4" />
-                          {posicao(p)}º no Copiloto
+                          {posicao(p)}º na triagem
                         </p>
                       )}
                       <p className="text-body-sm text-ink-muted">

@@ -240,7 +240,7 @@ export function gruposDoModo(
         // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (o selo some quando já tem)
         {
           href: "/painel/copiloto",
-          nome: "Copiloto",
+          nome: "Triagem com IA",
           icone: "copiloto",
           cortesia: extras.pilulas ? (extras.pilulas.copiloto ?? false) : !extras.copiloto,
         },

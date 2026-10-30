@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { documentoValido } from "@/lib/documento";
-import { diaDaPrimeiraCobranca, ehProduto, NOME_PRODUTO, recursosDo, type Produto } from "@/lib/pagamentos";
+import { diaDaPrimeiraCobranca, ehProduto, NOME_PRODUTO, O_PRODUTO, recursosDo, type Produto } from "@/lib/pagamentos";
 import type { RecursoPago } from "@/lib/recursos-pagos";
 import {
   asaasConfigurado,
@@ -42,7 +42,7 @@ type Contexto = {
 export type ResultadoAssinar = { ok: true; ir: string; externo?: boolean } | { ok: false; erro: string };
 
 const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral" };
-const CURTO: Record<Produto, string> = { copiloto: "Copiloto", testes: "Testes", combo: "Combo" };
+const CURTO: Record<Produto, string> = { copiloto: "Triagem", testes: "Testes", combo: "Combo" };
 
 // no computador (npm run dev), o motivo vai junto na tela, para achar o problema sem abrir o terminal
 const NO_COMPUTADOR = process.env.NODE_ENV !== "production";
@@ -134,7 +134,7 @@ export async function assinar(dados: {
     if (dados.troca && !troca) return { ok: false, erro: "A troca é só para o cartão." };
     if (troca && !ctx.ativas.includes(plano.recurso)) return { ok: false, erro: "Não há assinatura para trocar." };
     if (!troca && ctx.ativas.includes(plano.recurso))
-      return { ok: false, erro: `Você já assina o ${NOME_PRODUTO[plano.recurso]}. Veja em Assinatura.` };
+      return { ok: false, erro: `Você já assina ${O_PRODUTO[plano.recurso]}. Veja em Assinatura.` };
     // o combo e os recursos separados não valem juntos: cancela um para assinar o outro
     const outra = ctx.ativas.find((x) => x !== plano.recurso && (x === "combo" || plano.recurso === "combo"));
     if (!troca && outra)
@@ -142,8 +142,8 @@ export async function assinar(dados: {
         ok: false,
         erro:
           outra === "combo"
-            ? `O combo que você assina já inclui o ${NOME_PRODUTO[plano.recurso]}.`
-            : `Você assina o ${NOME_PRODUTO[outra]}. Cancele em Assinatura para passar para o combo (o que já foi pago continua valendo).`,
+            ? `O combo que você assina já inclui ${O_PRODUTO[plano.recurso]}.`
+            : `Você assina ${O_PRODUTO[outra]}. Cancele em Assinatura para passar para o combo (o que já foi pago continua valendo).`,
       };
 
     // o cliente no parceiro (um por conta): nome, CPF ou CNPJ e e-mail da nota fiscal

@@ -109,7 +109,7 @@ export async function ParaAVaga({
         >
           <Sparkles aria-hidden className="size-5 shrink-0 text-terra-text" />
           <span className="min-w-0 flex-1">
-            <b className="font-semibold">Copiloto:</b> a IA lê estes currículos contra os critérios da vaga e mostra o
+            <b className="font-semibold">Triagem com IA:</b> a IA lê estes currículos contra os critérios da vaga e mostra o
             trecho que comprova. <SeloCortesia curto className="align-middle" />
           </span>
           <ChevronRight aria-hidden className="size-4 shrink-0 text-terra-text" />

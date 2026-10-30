@@ -217,8 +217,8 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta tem o Copiloto, sem prazo."
-      : "Essa conta não vê mais o Copiloto (os critérios e as leituras ficam guardados).",
+      ? "Pronto: essa conta tem a Triagem com IA, sem prazo."
+      : "Essa conta não vê mais a Triagem com IA (os critérios e as leituras ficam guardados).",
   };
 }
 

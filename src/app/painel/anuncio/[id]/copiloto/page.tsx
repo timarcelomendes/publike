@@ -29,7 +29,7 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
-export const metadata: Metadata = { title: "Copiloto da vaga" };
+export const metadata: Metadata = { title: "Triagem com IA da vaga" };
 // cada clique lê um lote de currículos com a IA
 export const maxDuration = 60;
 
@@ -153,14 +153,14 @@ async function Conteudo({
 
       <section aria-labelledby="titulo-partes" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
         <h3 id="titulo-partes" className="mb-3 text-h3">
-          O que o copiloto faz nesta vaga
+          O que a triagem faz nesta vaga
         </h3>
         <PartesDoCopiloto anuncioId={id} triagem={config.triagem} busca={config.busca} />
       </section>
 
       {!origens.length ? (
         <Aviso tipo="info" titulo="As duas partes estão desligadas">
-          Ligue a busca em Talentos ou a leitura dos candidatos para o copiloto trabalhar.
+          Ligue a busca em Talentos ou a leitura dos candidatos para a triagem trabalhar.
         </Aviso>
       ) : (
         <section aria-labelledby="titulo-ranking" className="flex flex-col gap-4">
@@ -170,7 +170,7 @@ async function Conteudo({
           </h3>
           {!temCriterios ? (
             <Aviso tipo="info" titulo="Salve os critérios para começar">
-              Toque em “Sugerir com a IA” ou escreva os seus. Depois, o copiloto lê os currículos.
+              Toque em “Sugerir com a IA” ou escreva os seus. Depois, a IA lê os currículos.
             </Aviso>
           ) : (
             <>
@@ -182,10 +182,10 @@ async function Conteudo({
                 </p>
                 <p className="text-body-sm text-ink-muted">
                   {config.triagem && config.busca
-                    ? "O copiloto lê primeiro quem se candidatou e depois os Talentos que mais parecem combinar."
+                    ? "A IA lê primeiro quem se candidatou e depois os Talentos que mais parecem combinar."
                     : config.busca
-                      ? "O copiloto lê primeiro os Talentos que mais parecem combinar."
-                      : "O copiloto lê o currículo de quem se candidatou."}
+                      ? "A IA lê primeiro os Talentos que mais parecem combinar."
+                      : "A IA lê o currículo de quem se candidatou."}
                   {config.busca && " Em Talentos só aparece quem deixou o currículo visível para as empresas."}
                 </p>
                 {semCurriculo > 0 && (
@@ -251,7 +251,7 @@ async function Conteudo({
                     href={`/painel/anuncio/${id}/quadro?ordem=copiloto`}
                     className="text-label underline underline-offset-2"
                   >
-                    Ordenar pelo Copiloto
+                    Ordenar pela triagem
                   </Link>{" "}
                   em Candidatos.
                 </p>
@@ -305,7 +305,7 @@ async function Conteudo({
 
       <section aria-labelledby="titulo-registro" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
         <h3 id="titulo-registro" className="mb-2 flex items-center gap-2 text-h3">
-          <History aria-hidden className="size-5 text-ink-muted" />O que o copiloto fez
+          <History aria-hidden className="size-5 text-ink-muted" />O que a triagem fez
         </h3>
         {registro.length ? (
           <ul className="flex flex-col gap-1.5 text-body-sm">
@@ -320,7 +320,7 @@ async function Conteudo({
           <p className="text-body-sm text-ink-muted">Nada ainda.</p>
         )}
         <p className="mt-3 text-body-sm text-ink-muted">
-          O copiloto não recusa ninguém e cada pessoa recebe no máximo 3 convites por semana, somando todas as empresas.
+          A triagem não recusa ninguém e cada pessoa recebe no máximo 3 convites por semana, somando todas as empresas.
         </p>
       </section>
     </div>

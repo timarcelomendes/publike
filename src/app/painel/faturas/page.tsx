@@ -49,7 +49,7 @@ async function Conteudo() {
           titulo="Nenhuma fatura ainda"
           acao={<BotaoLink href="/painel/assinatura">Ver assinatura</BotaoLink>}
         >
-          Quando você assinar o Copiloto ou os Testes Publike, as faturas aparecem aqui.
+          Quando você assinar a Triagem com IA ou os Testes Publike, as faturas aparecem aqui.
         </Vazio>
       ) : (
         <>

@@ -113,8 +113,8 @@ export default function Privacidade() {
           habilidades, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para pôr
           primeiro as que combinam com você; nunca seu nome ou contato. Se quem publicou a vaga que você curtiu pedir o
           resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos fortes e o que
-          conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. Se a empresa usa o
-          Copiloto, a IA compara o currículo de quem está em Talentos ou curtiu a vaga com os critérios da vaga, sem nome,
+          conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. Se a empresa usa a
+          Triagem com IA, a IA compara o currículo de quem está em Talentos ou curtiu a vaga com os critérios da vaga, sem nome,
           foto ou contato; ela não recusa ninguém. Nos testes que uma vaga pede, quem publicou vê só o resultado e as
           respostas do teste; eles são apagados 12 meses depois que a vaga sai do ar. No “Já tem currículo
           pronto?”, a IA recebe o PDF ou as fotos do currículo que você enviou, só para preencher os campos do seu

@@ -121,3 +121,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Fechado: só as contas de `privado.pagamentos_teste` veem o Assinar, até o Admin ligar "Abrir para todas as contas" em Admin › Pagamentos. Os preços ficam no Admin, nunca no código.
 - A chave e o token ficam só na Vercel (`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`, `ASAAS_AMBIENTE`). `ASAAS_API_URL` e `ASAAS_CHECKOUT_URL` são só para teste (o e2e usa um Asaas falso).
 
+## "Triagem com IA" (antes "Copiloto"; 30/10/2026)
+- Na tela, o Copiloto se chama "Triagem com IA" (decisão do usuário: o nome tem de dizer o que faz). O combo é "Combo Triagem + Testes". No código, nas rotas (/painel/copiloto) e no banco, continua `copiloto`.
+- Nas frases, use `O_RECURSO`/`A_RECURSO` (recursos-pagos.ts) e `O_PRODUTO`/`DO_PRODUTO` (pagamentos.ts): "Assinar a Triagem com IA", "os Testes Publike". Não escreva "o ${nome}".
+

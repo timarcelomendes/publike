@@ -12,8 +12,10 @@ import { formatarMoeda, primeiro } from "@/lib/formato";
 import {
   diaBr,
   diaDaPrimeiraCobranca,
+  DO_PRODUTO,
   ehProduto,
   NOME_PRODUTO,
+  O_PRODUTO,
   podeAssinarCombo,
   recursosDo,
   type PagamentosDaConta,
@@ -31,7 +33,7 @@ const ICONE: Record<Produto, typeof Sparkles> = { copiloto: Sparkles, testes: Cl
 const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
-  combo: "O Copiloto e os Testes Publike numa assinatura só, por menos que os dois separados.",
+  combo: "A Triagem com IA e os Testes Publike numa assinatura só, por menos que os dois separados.",
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -74,9 +76,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
       <span className="flex size-10 items-center justify-center rounded-pill bg-terra-soft">
         <Icone aria-hidden className="size-5 text-terra-text" />
       </span>
-      <h2 className="text-h2">
-        {troca ? `Trocar o cartão do ${NOME_PRODUTO[produto]}` : `Assinar o ${NOME_PRODUTO[produto]}`}
-      </h2>
+      <h2 className="text-h2">{troca ? `Trocar o cartão ${DO_PRODUTO[produto]}` : `Assinar ${O_PRODUTO[produto]}`}</h2>
       <p className="text-body text-ink-muted">{FAZ[produto]}</p>
     </div>
   );
@@ -86,7 +86,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     corpo = (
       <Aviso tipo="info" titulo="A assinatura ainda não está aberta">
         {pag?.tipo === "pessoa"
-          ? "O Copiloto e os Testes Publike são para contas de comércio, empresa ou agência."
+          ? "A Triagem com IA e os Testes Publike são para contas de comércio, empresa ou agência."
           : "Logo você vai poder assinar por aqui. Enquanto isso, fale com o Publike."}
       </Aviso>
     );
@@ -97,7 +97,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         titulo={
           produto === "combo"
             ? "Os dois já estão liberados para a sua conta"
-            : `O ${NOME_PRODUTO[produto]} já está liberado para a sua conta`
+            : `${NOME_PRODUTO[produto]}: já liberado para a sua conta`
         }
       >
         Não há nada a pagar.
@@ -105,7 +105,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     );
   } else if (ativa && !troca) {
     corpo = (
-      <Aviso tipo="sucesso" titulo={`Você já assina o ${NOME_PRODUTO[produto]}`}>
+      <Aviso tipo="sucesso" titulo={`Você já assina ${O_PRODUTO[produto]}`}>
         <span className="flex flex-col items-start gap-2">
           <span>Veja a forma de pagamento, as próximas cobranças e as faturas em Assinatura.</span>
           <BotaoLink href="/painel/assinatura" tamanho="sm">
@@ -116,12 +116,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     );
   } else if (conflito && !troca) {
     corpo = (
-      <Aviso tipo="info" titulo={`Você assina o ${NOME_PRODUTO[conflito.recurso]}`}>
+      <Aviso tipo="info" titulo={`Você assina ${O_PRODUTO[conflito.recurso]}`}>
         <span className="flex flex-col items-start gap-2">
           <span>
             {produto === "combo"
               ? "Para passar para o combo, cancele essa assinatura em Assinatura. O que já foi pago continua valendo, e o combo começa a cobrar quando ele acabar."
-              : `O combo já inclui o ${NOME_PRODUTO[produto]}.`}
+              : `O combo já inclui ${O_PRODUTO[produto]}.`}
           </span>
           <BotaoLink href="/painel/assinatura" tamanho="sm">
             Ver assinatura
@@ -133,7 +133,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     corpo = <Aviso tipo="info" titulo="Não há assinatura para trocar o cartão" />;
   } else if (planos.length === 0) {
     corpo = (
-      <Aviso tipo="info" titulo={`O ${NOME_PRODUTO[produto]} ainda não está à venda`}>
+      <Aviso tipo="info" titulo={`${NOME_PRODUTO[produto]}: ainda não está à venda`}>
         Logo você vai poder assinar por aqui.
       </Aviso>
     );
@@ -169,9 +169,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
 
 const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: string }> = {
   copiloto: {
-    titulo: "Copiloto",
+    titulo: "Triagem com IA",
     texto: "A IA lê os currículos e mostra quem combina com a vaga, com a prova de cada ponto.",
-    botao: "Conhecer o Copiloto",
+    botao: "Conhecer a Triagem",
   },
   testes: {
     titulo: "Testes Publike",
@@ -180,7 +180,7 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
   },
   combo: {
     titulo: "Os dois no combo",
-    texto: "Copiloto e Testes Publike numa assinatura só, por menos que os dois separados.",
+    texto: "Triagem com IA e Testes Publike numa assinatura só, por menos que os dois separados.",
     botao: "Ver o combo",
   },
 };

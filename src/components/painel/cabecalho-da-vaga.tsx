@@ -58,7 +58,7 @@ export async function CabecalhoDaVaga({
     { aba: "candidatos", nome: "Candidatos", href: `/painel/anuncio/${id}/quadro` },
     {
       aba: "copiloto",
-      nome: "Copiloto",
+      nome: "Triagem com IA",
       href: `/painel/anuncio/${id}/copiloto`,
       icone: <Sparkles aria-hidden className="size-4 text-terra-text" />,
       marca: marca.copiloto,
@@ -173,7 +173,7 @@ export function OrdemPeloCopiloto({ ativo, href }: { ativo: boolean; href: strin
       }`}
     >
       <Sparkles aria-hidden className={`size-4 ${ativo ? "" : "text-terra-text"}`} />
-      Ordenar pelo Copiloto
+      Ordenar pela triagem
       {!ativo && <Selo variante="novo">Novo</Selo>}
     </Link>
   );

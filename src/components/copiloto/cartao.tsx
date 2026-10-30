@@ -64,7 +64,7 @@ function porqueDaPosicao(n: NumerosDaLeitura, total: number) {
 
 function Nota({ valor, grande = false }: { valor: number; grande?: boolean }) {
   return (
-    <span className="flex shrink-0 flex-col items-end leading-none" title="A nota do copiloto (0 a 100)">
+    <span className="flex shrink-0 flex-col items-end leading-none" title="A nota da triagem (0 a 100)">
       <span className={`font-display tabular-nums ${grande ? "text-h2" : "text-h3"}`}>{valor}</span>
       <span className="mt-1 text-caption font-normal text-ink-muted">nota</span>
     </span>

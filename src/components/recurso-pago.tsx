@@ -1,5 +1,5 @@
 import { Check, ClipboardCheck, CreditCard, Sparkles } from "lucide-react";
-import { NOME_PRODUTO, type Produto } from "@/lib/pagamentos";
+import { O_PRODUTO, type Produto } from "@/lib/pagamentos";
 import { dataCurta, DIAS_GRATIS, diasRestantes, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
 import { BotaoExperimentar } from "./botao-experimentar";
 import { SeloCortesia } from "./selo-cortesia";
@@ -11,9 +11,9 @@ import { BotaoLink } from "./ui/botao";
 
 const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string[] }> = {
   copiloto: {
-    titulo: "Copiloto: a IA que acha quem combina com a sua vaga",
+    titulo: "Triagem com IA: ache quem combina com a sua vaga",
     texto:
-      "Ele lê os currículos dos candidatos e de Talentos contra o que a vaga pede, e mostra o trecho do currículo que prova cada ponto. Quem decide é você.",
+      "A IA lê os currículos dos candidatos e de Talentos contra o que a vaga pede, e mostra o trecho do currículo que prova cada ponto. Quem decide é você.",
     itens: [
       "A IA sugere os critérios da vaga, e você ajusta",
       "Lê cada candidato e os currículos de quem mora perto",
@@ -48,7 +48,7 @@ export function BotaoAssinar({
     <span className="flex flex-wrap items-center gap-2">
       <BotaoLink href={`/painel/assinar?recurso=${recurso}`} variante={variante} tamanho={tamanho}>
         <CreditCard aria-hidden />
-        {recurso === "combo" ? "Assinar o combo" : `Assinar o ${NOME_PRODUTO[recurso]}`}
+        {recurso === "combo" ? "Assinar o combo" : `Assinar ${O_PRODUTO[recurso]}`}
       </BotaoLink>
       <Selo variante="novo">Novo</Selo>
     </span>
@@ -84,7 +84,7 @@ export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estad
         ))}
       </ul>
       {!estado ? (
-        <p className="text-body-sm text-ink-muted">O {NOME_RECURSO[recurso]} é um recurso pago. Fale com o Publike para liberar.</p>
+        <p className="text-body-sm text-ink-muted">{NOME_RECURSO[recurso]} é um recurso pago. Fale com o Publike para liberar.</p>
       ) : estado.pode_experimentar ? (
         <div className="flex flex-col gap-2">
           <BotaoExperimentar recurso={recurso} acao="experimentar" />
@@ -149,7 +149,7 @@ export function FaixaExperimento({
   if (!noTeste) {
     // a assinatura cancelada: vale até o fim do que foi pago
     return (
-      <Aviso tipo="info" titulo={`O ${NOME_RECURSO[recurso]} vai até ${dataCurta(estado.ate)}`}>
+      <Aviso tipo="info" titulo={`${NOME_RECURSO[recurso]}: vai até ${dataCurta(estado.ate)}`}>
         <span className="flex flex-col items-start gap-2">
           <span>A assinatura foi cancelada. Depois dessa data, o que você fez fica guardado.</span>
           {estado.pode_assinar && <BotaoAssinar recurso={recurso} tamanho="sm" variante="secundario" />}
@@ -161,9 +161,7 @@ export function FaixaExperimento({
   return (
     <Aviso tipo="info" titulo={`Teste grátis: ${n === 1 ? "falta 1 dia" : `faltam ${n} dias`}`}>
       <span className="flex flex-col items-start gap-2">
-        <span>
-          Vai até {dataCurta(estado.ate)}. Depois, o {NOME_RECURSO[recurso]} fecha, e o que você fez fica guardado.
-        </span>
+        <span>Vai até {dataCurta(estado.ate)}. Depois, o recurso fecha, e o que você fez fica guardado.</span>
         {estado.pode_assinar ? (
           <BotaoAssinar recurso={recurso} tamanho="sm" />
         ) : estado.quer_continuar ? (

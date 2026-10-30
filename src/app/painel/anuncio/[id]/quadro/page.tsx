@@ -131,7 +131,7 @@ async function Conteudo({
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2 text-label">
-              Ninguém se candidatou ainda? O Copiloto busca para você.
+              Ninguém se candidatou ainda? A Triagem com IA busca para você.
               <SeloCortesia curto texto={marcaCopiloto} />
             </span>
             <span className="block text-body-sm text-ink-muted">
@@ -156,7 +156,7 @@ async function Conteudo({
               className="inline-flex min-h-10 items-center gap-1.5 text-label text-terra-text underline-offset-2 hover:underline"
             >
               <Sparkles aria-hidden className="size-4" />
-              Ler os candidatos com o Copiloto
+              Ler os candidatos com a Triagem com IA
             </Link>
           )
         )}

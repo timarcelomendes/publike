@@ -21,7 +21,11 @@ export type EstadoRecurso = {
 
 export type RecursosPagos = Record<RecursoPago, EstadoRecurso>;
 
-export const NOME_RECURSO: Record<RecursoPago, string> = { copiloto: "Copiloto", testes: "Testes Publike" };
+export const NOME_RECURSO: Record<RecursoPago, string> = { copiloto: "Triagem com IA", testes: "Testes Publike" };
+/** Com o artigo, para as frases ("Assinar a Triagem com IA", "os Testes Publike"). */
+export const O_RECURSO: Record<RecursoPago, string> = { copiloto: "a Triagem com IA", testes: "os Testes Publike" };
+/** Com "a" craseado ("acesso à Triagem com IA", "aos Testes Publike"). */
+export const A_RECURSO: Record<RecursoPago, string> = { copiloto: "à Triagem com IA", testes: "aos Testes Publike" };
 
 export function ehRecursoPago(x: unknown): x is RecursoPago {
   return x === "copiloto" || x === "testes";

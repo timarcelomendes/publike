@@ -371,7 +371,7 @@ function Cartao({
           {c.copiloto != null && (
             <p className="mt-0.5 flex items-center gap-1 text-caption font-semibold text-terra-text">
               <Sparkles aria-hidden className="size-3.5" />
-              {c.copiloto}º no Copiloto
+              {c.copiloto}º na triagem
             </p>
           )}
         </div>
