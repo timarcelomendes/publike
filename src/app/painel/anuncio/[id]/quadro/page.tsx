@@ -3,7 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { CabecalhoDaVaga, OrdemPeloCopiloto, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
+import {
+  CabecalhoDaVaga,
+  OrdemPeloCopiloto,
+  OrdemPeloTeste,
+  VistaDosCandidatos,
+} from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { QuadroCandidatos } from "@/components/painel/quadro-candidatos";
 import { SeloCortesia } from "@/components/selo-cortesia";
@@ -19,8 +24,10 @@ import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
 import { ordemDoCopiloto } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
 import { saudeDasVagas } from "@/lib/servidor/saude";
+import { resultadosDosTestes } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { faixaDoTeste, nomeCurtoDoTeste, PESO_FAIXA, type FaixaDoTeste } from "@/lib/testes";
 import type { StatusAnuncio } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Quadro de candidatos" };
@@ -48,14 +55,32 @@ async function Conteudo({
   const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [{ cartoes: daVaga, modelos }, posicoes] = await Promise.all([
+  const [{ cartoes: daVaga, modelos }, posicoes, resultados] = await Promise.all([
     montarQuadro(anuncio, agora),
     ordemDoCopiloto(id),
+    resultadosDosTestes(id),
   ]);
+  // o Teste Prático de cada candidato: o resultado numa palavra no cartão e o "Ordenar pelo teste"
+  const testesDe = new Map<string, { titulo: string; faixa: FaixaDoTeste; nota: number }[]>();
+  for (const r of resultados) {
+    const faixa = r.status === "feita" ? faixaDoTeste(r.tipo, r.pontos, r.maximo) : null;
+    if (!faixa || !r.maximo) continue;
+    const item = { titulo: nomeCurtoDoTeste(r.titulo), faixa, nota: (r.pontos ?? 0) / r.maximo };
+    testesDe.set(r.perfil_id, [...(testesDe.get(r.perfil_id) ?? []), item]);
+  }
+  const peloTeste = testesDe.size > 0 && sp.ordem === "teste";
   // "Ordenar pelo Copiloto": quem foi lido vem na ordem do ranking; quem não foi, depois, na ordem de sempre
   const peloCopiloto = Boolean(posicoes) && sp.ordem === "copiloto";
-  const cartoes = daVaga.map((c) => ({ ...c, copiloto: peloCopiloto ? (posicoes?.get(c.perfil_id) ?? null) : null }));
+  const cartoes = daVaga.map((c) => ({
+    ...c,
+    copiloto: peloCopiloto ? (posicoes?.get(c.perfil_id) ?? null) : null,
+    testes: (testesDe.get(c.perfil_id) ?? []).map(({ titulo, faixa }) => ({ titulo, faixa })),
+  }));
   if (peloCopiloto) cartoes.sort((a, b) => (a.copiloto ?? Infinity) - (b.copiloto ?? Infinity));
+  // pelo teste: a melhor faixa primeiro (e, nela, mais acertos); quem não fez, no fim
+  const pesoDoTeste = (perfil: string) =>
+    Math.max(-1, ...(testesDe.get(perfil) ?? []).map((x) => PESO_FAIXA[x.faixa] * 10 + x.nota));
+  if (peloTeste) cartoes.sort((a, b) => pesoDoTeste(b.perfil_id) - pesoDoTeste(a.perfil_id));
   const marcaCopiloto = marcaDoRecurso(recursos?.copiloto, agora).curto;
   const saude = (
     await saudeDasVagas(
@@ -143,6 +168,14 @@ async function Conteudo({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <VistaDosCandidatos id={id} atual="quadro" />
+        {testesDe.size > 0 && (
+          <div className="ml-auto">
+            <OrdemPeloTeste
+              ativo={peloTeste}
+              href={peloTeste ? `/painel/anuncio/${id}/quadro` : `/painel/anuncio/${id}/quadro?ordem=teste`}
+            />
+          </div>
+        )}
         {posicoes ? (
           <OrdemPeloCopiloto
             ativo={peloCopiloto}

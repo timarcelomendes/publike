@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, KanbanSquare, List, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronRight, ClipboardCheck, KanbanSquare, List, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SITE_URL } from "@/lib/config";
@@ -162,6 +162,24 @@ export function VistaDosCandidatos({ id, atual }: { id: string; atual: "quadro" 
  * "Ordenar pelo Copiloto" (claude/plano-painel-simples.md, parte 3): na lista e no quadro da vaga, quando a
  * vaga já foi lida. Ligado, quem o Copiloto pôs na frente vem primeiro; desligado, a ordem de sempre.
  */
+/** "Ordenar pelo teste" (Teste Prático): acima do esperado primeiro; quem não fez, no fim. */
+export function OrdemPeloTeste({ ativo, href }: { ativo: boolean; href: string }) {
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      aria-pressed={ativo}
+      className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+        ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+      }`}
+    >
+      <ClipboardCheck aria-hidden className={`size-4 ${ativo ? "" : "text-cerrado-text"}`} />
+      Ordenar pelo teste
+      {!ativo && <Selo variante="novo">Novo</Selo>}
+    </Link>
+  );
+}
+
 export function OrdemPeloCopiloto({ ativo, href }: { ativo: boolean; href: string }) {
   return (
     <Link

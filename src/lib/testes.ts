@@ -86,6 +86,53 @@ export function nomeCurtoDoTeste(titulo: string) {
 export const NAO_E_PSICOLOGICO =
   "Não é teste psicológico: mede o conhecimento da função e como a pessoa age em situações de trabalho. Ninguém é recusado pelo teste: o resultado ajuda quem decide.";
 
+export type FaixaDoTeste = "acima" | "dentro" | "abaixo";
+export const NOME_FAIXA: Record<FaixaDoTeste, string> = {
+  acima: "Acima do esperado",
+  dentro: "Dentro do esperado",
+  abaixo: "Abaixo do esperado",
+};
+/** A ordem do "Ordenar pelo teste": acima, dentro, abaixo. */
+export const PESO_FAIXA: Record<FaixaDoTeste, number> = { acima: 3, dentro: 2, abaixo: 1 };
+
+/**
+ * O resultado do teste numa palavra, para a função (o mesmo de privado.faixa_do_teste, migração 20261225120000):
+ * acima de 90% dos acertos (85% nas situações), dentro de 60% para cima, abaixo do resto. É um sinal para quem
+ * decide; ninguém é recusado por ele.
+ */
+export function faixaDoTeste(tipo: string, pontos: number | null, maximo: number | null): FaixaDoTeste | null {
+  if (pontos == null || !maximo) return null;
+  const p = pontos / maximo;
+  return p >= (tipo === "situacoes" ? 0.85 : 0.9) ? "acima" : p >= 0.6 ? "dentro" : "abaixo";
+}
+
+/** 1 minuto por questão, no mínimo 5 (o mesmo de privado.limite_do_teste). */
+export function minutosDoTeste(questoes: number) {
+  return Math.max(5, questoes);
+}
+
+/** "7 min", "menos de 1 min" */
+export function tempoDoTeste(segundos: number | null | undefined) {
+  if (segundos == null) return null;
+  const min = Math.round(segundos / 60);
+  return min < 1 ? "menos de 1 min" : `${min} min`;
+}
+
+/** O que a empresa vê junto do resultado: quanto tempo levou, se passou do tempo e as saídas da tela. */
+export function detalhesDoTeste(r: {
+  tempo_segundos?: number | null;
+  fora_do_tempo?: boolean | null;
+  saidas?: number | null;
+}) {
+  return [
+    r.tempo_segundos != null ? `fez em ${tempoDoTeste(r.tempo_segundos)}` : null,
+    r.fora_do_tempo ? "passou do tempo" : null,
+    r.saidas ? `saiu da tela ${r.saidas === 1 ? "1 vez" : `${r.saidas} vezes`}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** Como o resultado aparece: sem palavra que julgue a pessoa. */
 export function faixaDoResultado(pontos: number, maximo: number) {
   const p = maximo > 0 ? pontos / maximo : 0;

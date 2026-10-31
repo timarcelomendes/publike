@@ -147,20 +147,27 @@ export async function comecarTesteDaVaga(anuncioId: string, modeloId: string): P
   return { ok: false, erro: "", ir: `/testes/${data}` };
 }
 
-export async function aceitarTeste(id: string): Promise<Resultado> {
+/** O "Começar": aceita as condições e o tempo começa a contar (mais tempo: o dobro). A página volta com as questões. */
+export async function aceitarTeste(id: string, maisTempo = false): Promise<Resultado> {
   const sem = await comConta();
   if (sem) return { ok: false, erro: sem.erro };
   if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
   const supabase = await criarClienteServidor();
-  const { error } = await supabase.rpc("avaliacao_aceitar", { p_id: id });
+  const { error } = await supabase.rpc("avaliacao_aceitar", { p_id: id, p_mais_tempo: maisTempo === true });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
+  refresh();
   return { ok: true };
 }
 
 export type RespostaEnvioTeste =
   { ok: true; pontos: number; maximo: number; por_competencia: unknown } | { ok: false; erro: string };
 
-export async function enviarTeste(id: string, respostas: Record<string, string>): Promise<RespostaEnvioTeste> {
+/** Manda as respostas e quantas vezes a pessoa saiu da tela; acabou o tempo, vale o que foi respondido. */
+export async function enviarTeste(
+  id: string,
+  respostas: Record<string, string>,
+  saidas = 0,
+): Promise<RespostaEnvioTeste> {
   const sem = await comConta();
   if (sem) return { ok: false, erro: sem.erro };
   if (!UUID.test(id) || typeof respostas !== "object" || !respostas) return { ok: false, erro: "Pedido inválido." };
@@ -170,7 +177,11 @@ export async function enviarTeste(id: string, respostas: Record<string, string>)
       .slice(0, 40),
   );
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase.rpc("avaliacao_enviar", { p_id: id, p_respostas: limpas });
+  const { data, error } = await supabase.rpc("avaliacao_enviar", {
+    p_id: id,
+    p_respostas: limpas,
+    p_saidas: Number.isInteger(saidas) ? Math.min(Math.max(saidas, 0), 1000) : 0,
+  });
   if (error || !data) return { ok: false, erro: mensagemDeErro(error, "Não deu para enviar agora. Tente de novo.") };
   after(processarFilas);
   const r = data as { pontos: number; maximo: number; por_competencia: unknown };

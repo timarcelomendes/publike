@@ -36,6 +36,7 @@ import { DECISOES_CLIENTE, type RespostaCliente } from "@/lib/finalistas";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
+import { NOME_FAIXA, type FaixaDoTeste } from "@/lib/testes";
 import { CaminhoDoAceite } from "../caminho-curtida";
 import { FormColocacao, SeloDaColocacao } from "./colocacao";
 import { DetalheDaAderencia, NotaAderencia } from "./nota-aderencia";
@@ -83,6 +84,14 @@ export type CartaoQuadro = {
   colocacao: Colocacao | null;
   /** "Ordenar pelo Copiloto": a posição no ranking da vaga (só quando a vaga já foi lida) */
   copiloto?: number | null;
+  /** o Teste Prático: o resultado numa palavra de cada teste feito (migração 20261225120000) */
+  testes?: { titulo: string; faixa: FaixaDoTeste }[];
+};
+
+const COR_FAIXA: Record<FaixaDoTeste, string> = {
+  acima: "text-cerrado-text",
+  dentro: "text-ink",
+  abaixo: "text-ink-muted",
 };
 
 export function QuadroCandidatos({
@@ -374,6 +383,15 @@ function Cartao({
               {c.copiloto}º na triagem
             </p>
           )}
+          {(c.testes ?? []).map((t, _, todos) => (
+            <p
+              key={t.titulo}
+              className={`mt-0.5 flex items-center gap-1 text-caption font-semibold ${COR_FAIXA[t.faixa]}`}
+            >
+              <ClipboardCheck aria-hidden className="size-3.5" />
+              {todos.length === 1 ? "Teste" : t.titulo}: {NOME_FAIXA[t.faixa].toLowerCase()}
+            </p>
+          ))}
         </div>
       </div>
       {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito" || c.finalista || c.colocacao) && (

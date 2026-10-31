@@ -9,7 +9,7 @@ import { tempoRelativo } from "@/lib/formato";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import { textoDoResultado } from "@/lib/testes";
+import { faixaDoTeste, NOME_FAIXA, textoDoResultado } from "@/lib/testes";
 
 export const metadata: Metadata = { title: "Meus testes", robots: { index: false } };
 
@@ -71,7 +71,7 @@ async function Conteudo() {
             </span>
             <span className="text-body-sm text-ink-muted">
               {t.status === "feita"
-                ? `${textoDoResultado(t.tipo, t.pontos, t.maximo)} · feito ${tempoRelativo(t.feita_em!, agora)}`
+                ? `${textoDoResultado(t.tipo, t.pontos, t.maximo)} · ${NOME_FAIXA[faixaDoTeste(t.tipo, t.pontos, t.maximo) ?? "dentro"].toLowerCase()} · feito ${tempoRelativo(t.feita_em!, agora)}`
                 : t.vencida
                   ? "O prazo acabou."
                   : `Faça até ${new Date(t.prazo).toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}.`}

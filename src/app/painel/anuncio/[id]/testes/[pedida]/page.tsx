@@ -11,7 +11,10 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import {
   COMPETENCIAS,
   competenciasDoResultado,
+  detalhesDoTeste,
   faixaDoResultado,
+  faixaDoTeste,
+  NOME_FAIXA,
   questoesDoBanco,
   textoDoResultado,
 } from "@/lib/testes";
@@ -43,7 +46,11 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/te
     maximo: number | null;
     por_competencia: unknown;
     questoes: unknown;
+    tempo_segundos?: number | null;
+    fora_do_tempo?: boolean | null;
+    saidas?: number | null;
   };
+  const faixa = r.status === "feita" ? faixaDoTeste(r.tipo, r.pontos, r.maximo) : null;
   const questoes = (Array.isArray(r.questoes) ? r.questoes : []) as { escolhida: string | null }[];
   const lista = questoesDoBanco(
     (Array.isArray(r.questoes) ? r.questoes : []).map((q: Record<string, unknown>, i: number) => ({
@@ -63,8 +70,15 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/te
       <div>
         <h2 className="text-h2">{r.titulo}</h2>
         <p className="mt-1 text-body text-ink-muted">
-          {r.status === "feita" ? textoDoResultado(r.tipo, r.pontos, r.maximo) : "Ainda não foi feito."}
+          {r.status === "feita"
+            ? [textoDoResultado(r.tipo, r.pontos, r.maximo), faixa ? NOME_FAIXA[faixa] : null]
+                .filter(Boolean)
+                .join(" · ")
+            : "Ainda não foi feito."}
         </p>
+        {r.status === "feita" && detalhesDoTeste(r) && (
+          <p className="text-body-sm text-ink-muted">{detalhesDoTeste(r)}</p>
+        )}
       </div>
       {competenciasDoResultado(r.por_competencia).length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -89,6 +103,9 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/te
               </p>
               {q.competencia && (
                 <p className="text-body-sm text-ink-muted">{COMPETENCIAS[q.competencia] ?? q.competencia}</p>
+              )}
+              {r.status === "feita" && !escolhida && (
+                <p className="mt-1 text-body-sm font-semibold text-terra-text">Em branco: o tempo acabou antes.</p>
               )}
               <ul className="mt-2 flex flex-col gap-1 text-body-sm">
                 {q.opcoes.map((o) => {

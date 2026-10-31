@@ -2462,13 +2462,18 @@ export type Database = {
           por_competencia: Json | null;
           pedida_em: string;
           feita_em: string | null;
+          /** migração 20261225120000: o tempo que levou, o limite, se passou dele e as saídas da tela */
+          tempo_segundos: number | null;
+          limite_minutos: number | null;
+          fora_do_tempo: boolean;
+          saidas: number;
         }[];
       };
       avaliacao_respostas: { Args: { p_id: string }; Returns: Json };
       avaliacao_da_vaga_para_mim: { Args: { p_anuncio: string; p_modelo: string }; Returns: string };
       avaliacao_para_fazer: { Args: { p_id: string }; Returns: Json };
-      avaliacao_aceitar: { Args: { p_id: string }; Returns: undefined };
-      avaliacao_enviar: { Args: { p_id: string; p_respostas: Json }; Returns: Json };
+      avaliacao_aceitar: { Args: { p_id: string; p_mais_tempo?: boolean }; Returns: Json };
+      avaliacao_enviar: { Args: { p_id: string; p_respostas: Json; p_saidas?: number }; Returns: Json };
       minhas_avaliacoes: {
         Args: Record<string, never>;
         Returns: {

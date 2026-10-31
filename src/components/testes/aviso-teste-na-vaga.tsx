@@ -36,8 +36,8 @@ export function AvisoTesteNaVaga({ anuncioId, titulo }: { anuncioId: string; tit
       ) : (
         <>
           <p className="text-body-sm text-ink-muted">
-            Quem se candidatar pode fazer pelo celular, em poucos minutos. O resultado aparece no quadro da vaga, e é
-            grátis. O teste é opcional: ninguém deixa de se candidatar por causa dele.
+            Quem se candidatar pode fazer pelo celular, em cerca de 10 minutos. O resultado aparece no quadro da vaga, e
+            é grátis. O teste é opcional: ninguém deixa de se candidatar por causa dele.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <BotaoLink href={`/painel/anuncio/${anuncioId}/testes`} tamanho="sm" variante="secundario">

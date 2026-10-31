@@ -19,8 +19,11 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import {
   competenciasDoResultado,
+  detalhesDoTeste,
   faixaDoResultado,
+  faixaDoTeste,
   NAO_E_PSICOLOGICO,
+  NOME_FAIXA,
   TESTES_DA_PUBLIKE,
   testeSugerido,
   textoDoResultado,
@@ -172,12 +175,19 @@ async function Conteudo({
                             <span className="font-semibold">{r.titulo}</span>
                             {r.status === "feita" ? (
                               <Link href={`/painel/anuncio/${id}/testes/${r.id}`} className="text-label underline">
-                                {textoDoResultado(r.tipo, r.pontos, r.maximo)} · ver respostas
+                                {[
+                                  textoDoResultado(r.tipo, r.pontos, r.maximo),
+                                  NOME_FAIXA[faixaDoTeste(r.tipo, r.pontos, r.maximo) ?? "dentro"].toLowerCase(),
+                                  "ver respostas",
+                                ].join(" · ")}
                               </Link>
                             ) : (
                               <span className="text-ink-muted">{r.vencida ? "o prazo acabou" : "ainda não fez"}</span>
                             )}
                           </p>
+                          {r.status === "feita" && detalhesDoTeste(r) && (
+                            <p className="text-body-sm text-ink-muted">{detalhesDoTeste(r)}</p>
+                          )}
                           {r.status === "feita" && competenciasDoResultado(r.por_competencia).length > 0 && (
                             <p className="text-body-sm text-ink-muted">
                               {competenciasDoResultado(r.por_competencia)
