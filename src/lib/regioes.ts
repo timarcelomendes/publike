@@ -7,7 +7,7 @@
  * mais próximos no OpenStreetMap (© colaboradores do OpenStreetMap, ODbL).
  * Nas outras cidades, a cidade inteira conta como uma região só.
  */
-import { CENTRO_GOIANIA } from "./config";
+import { CENTRO_ANAPOLIS, CENTRO_GOIANIA } from "./config";
 import { CIDADES, REGIOES, type Cidade, type Regiao } from "./constantes";
 
 export { REGIOES, type Regiao };
@@ -99,6 +99,12 @@ const CENTRO_CIDADE: Record<Cidade, { lat: number; lng: number }> = {
   "Nova Veneza": { lat: -16.3695, lng: -49.3168 },
   "Santo Antônio de Goiás": { lat: -16.4815, lng: -49.3096 },
   "Terezópolis de Goiás": { lat: -16.3945, lng: -49.0797 },
+  "Anápolis": CENTRO_ANAPOLIS,
+  "Abadiânia": { lat: -16.197, lng: -48.7057 },
+  "Campo Limpo de Goiás": { lat: -16.2971, lng: -49.0895 },
+  "Damolândia": { lat: -16.2544, lng: -49.3631 },
+  "Ouro Verde de Goiás": { lat: -16.2181, lng: -49.1942 },
+  "Petrolina de Goiás": { lat: -16.0968, lng: -49.3364 },
 };
 
 /** O centro de uma cidade: de onde a lista conta a distância de quem ainda não disse onde mora. */

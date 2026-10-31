@@ -1,4 +1,5 @@
 import "server-only";
+import { CIDADES_DAS_PRACAS } from "@/lib/pracas";
 import { chaveIA, enderecoIA } from "@/lib/servidor/ambiente";
 import { ErroIA } from "./openai";
 
@@ -23,7 +24,10 @@ export async function transcrever(audio: Blob, nome: string): Promise<string> {
   dados.set("language", "pt");
   dados.set("response_format", "text");
   // o assunto ajuda nas palavras de trabalho e nos nomes de Goiânia (sem pôr frases prontas na boca da pessoa)
-  dados.set("prompt", "Uma pessoa de Goiânia conta onde trabalhou, o que fazia, o que estudou e que trabalho procura.");
+  dados.set(
+    "prompt",
+    `Uma pessoa de ${CIDADES_DAS_PRACAS} conta onde trabalhou, o que fazia, o que estudou e que trabalho procura.`,
+  );
   let resposta: Response;
   try {
     resposta = await fetch(`${enderecoIA()}/audio/transcriptions`, {

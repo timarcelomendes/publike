@@ -33,9 +33,16 @@ export const TURNSTILE_SITE_KEY = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ??
 
 /** Praça Cívica, centro de Goiânia: ponto de partida das buscas. */
 export const CENTRO_GOIANIA = { lat: -16.6806, lng: -49.2563 } as const;
+export const CENTRO_ANAPOLIS = { lat: -16.3286, lng: -48.9534 } as const;
 
 /** Caixa da região metropolitana (a mesma regra do banco). */
 export const REGIAO = { latMin: -17.5, latMax: -15.9, lngMin: -50.3, lngMax: -48.4 } as const;
+
+/**
+ * Caixa de Anápolis e região (Abadiânia, Campo Limpo, Ouro Verde, Petrolina e Damolândia). Fica dentro da
+ * caixa do banco (a de cima), então o banco não muda.
+ */
+export const REGIAO_ANAPOLIS = { latMin: -16.5, latMax: -15.95, lngMin: -49.45, lngMax: -48.55 } as const;
 
 export const MENSAGEM_DEMO =
   "Este é o modo demonstração: nada é salvo. Para publicar de verdade, conecte o Supabase (veja o README).";

@@ -447,7 +447,7 @@ export function emLista(itens: readonly string[]) {
 }
 
 /**
- * As cidades onde o Publike funciona (hoje, a região metropolitana de Goiânia). Cada praça
+ * As cidades onde o Publike funciona (Goiânia e região, Anápolis e região). Cada praça
  * (`pracas.ts`) diz quais são as suas.
  */
 export const CIDADES = [
@@ -471,6 +471,13 @@ export const CIDADES = [
   "Nova Veneza",
   "Santo Antônio de Goiás",
   "Terezópolis de Goiás",
+  // Anápolis e região (a segunda praça, 31/10/2026)
+  "Anápolis",
+  "Abadiânia",
+  "Campo Limpo de Goiás",
+  "Damolândia",
+  "Ouro Verde de Goiás",
+  "Petrolina de Goiás",
 ] as const;
 export type Cidade = (typeof CIDADES)[number];
 

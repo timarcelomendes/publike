@@ -1,16 +1,26 @@
-import { CENTRO_GOIANIA, REGIAO } from "./config";
+import { CENTRO_ANAPOLIS, CENTRO_GOIANIA, REGIAO, REGIAO_ANAPOLIS } from "./config";
 import { CIDADES, emLista, type Cidade } from "./constantes";
 
 export { emLista };
 
 /**
- * Onde o Publike funciona: as praças. Hoje é uma só (Goiânia e região). Para chegar a outra
+ * Onde o Publike funciona: as praças (Goiânia e região; Anápolis e região, desde 31/10/2026). Para chegar a outra
  * cidade, ela entra aqui (com as cidades em volta, o centro e a caixa do mapa) e os bairros em
  * `bairros.ts`; no banco, a caixa da região aparece nas funções que conferem o ponto no mapa.
  * Os textos de "onde o Publike funciona" saem daqui (`ONDE_FUNCIONA`) e os de "perto de você",
  * da cidade de quem está vendo (`cidadeDaVisita`, em `servidor/cidade.ts`).
  */
 export type Ponto = { lat: number; lng: number };
+
+/** As cidades de Anápolis e região (Goianápolis e Nerópolis, no meio do caminho, ficam com Goiânia). */
+const CIDADES_DE_ANAPOLIS: readonly Cidade[] = [
+  "Anápolis",
+  "Abadiânia",
+  "Campo Limpo de Goiás",
+  "Damolândia",
+  "Ouro Verde de Goiás",
+  "Petrolina de Goiás",
+];
 export type Caixa = { latMin: number; latMax: number; lngMin: number; lngMax: number };
 
 export type Praca = {
@@ -35,10 +45,20 @@ export const PRACAS: readonly Praca[] = [
     nomeOficial: "Região Metropolitana de Goiânia",
     cidade: "Goiânia",
     uf: "GO",
-    cidades: CIDADES,
+    cidades: CIDADES.filter((c) => !CIDADES_DE_ANAPOLIS.includes(c)),
     vizinhas: ["Aparecida de Goiânia", "Senador Canedo", "Trindade", "Goianira"],
     centro: CENTRO_GOIANIA,
     caixa: REGIAO,
+  },
+  {
+    nome: "Anápolis e região",
+    nomeOficial: "Anápolis e região",
+    cidade: "Anápolis",
+    uf: "GO",
+    cidades: CIDADES_DE_ANAPOLIS,
+    vizinhas: ["Abadiânia", "Campo Limpo de Goiás", "Ouro Verde de Goiás", "Petrolina de Goiás"],
+    centro: CENTRO_ANAPOLIS,
+    caixa: REGIAO_ANAPOLIS,
   },
 ];
 
@@ -46,7 +66,8 @@ export const PRACAS: readonly Praca[] = [
 export const PRACA_PADRAO = PRACAS[0];
 
 /** Onde o Publike funciona, para os textos: "Goiânia e região" (com mais praças, "Goiânia, Anápolis e região"). */
-export const ONDE_FUNCIONA = PRACAS.length === 1 ? PRACAS[0].nome : `${emLista(PRACAS.map((p) => p.cidade))} e região`;
+export const ONDE_FUNCIONA =
+  PRACAS.length === 1 ? PRACAS[0].nome : `${PRACAS.map((p) => p.cidade).join(", ")} e região`;
 
 /** As cidades que dão nome às praças: "Goiânia" (com mais praças, "Goiânia e Anápolis"). */
 export const CIDADES_DAS_PRACAS = emLista(PRACAS.map((p) => p.cidade));
@@ -87,8 +108,14 @@ export function pracaDaCidade(cidade: string | null | undefined): Praca | null {
 
 const naCaixa = (p: Ponto, c: Caixa) => p.lat >= c.latMin && p.lat <= c.latMax && p.lng >= c.lngMin && p.lng <= c.lngMax;
 
+/** A praça de um ponto: entre as caixas que têm o ponto (a de Goiânia cobre a de Anápolis), a do centro mais perto. */
 export function pracaDoPonto(p: Ponto | null | undefined): Praca | null {
-  return p ? (PRACAS.find((praca) => naCaixa(p, praca.caixa)) ?? null) : null;
+  if (!p) return null;
+  const distancia = (c: Ponto) => (c.lat - p.lat) ** 2 + (c.lng - p.lng) ** 2;
+  return (
+    PRACAS.filter((praca) => naCaixa(p, praca.caixa)).sort((a, b) => distancia(a.centro) - distancia(b.centro))[0] ??
+    null
+  );
 }
 
 /** O ponto fica onde o Publike funciona? */
