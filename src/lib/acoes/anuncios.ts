@@ -16,6 +16,7 @@ import { salvarTriagem } from "@/lib/servidor/triagem";
 import { ajustarErros, completarAnuncio } from "@/lib/servidor/completar-anuncio";
 import { vigiar, type Vigia } from "@/lib/servidor/falhas";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
+import { porTesteSugerido } from "@/lib/servidor/testes";
 
 /**
  * Antes de entrar: confere o anúncio de quem ainda não tem conta (nada é salvo). Com
@@ -156,6 +157,8 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     const erroTriagem = await salvarTriagem(supabase, data.id, d.triagem);
     if (erroTriagem) vigia.parcial("A vaga foi publicada, mas as respostas da triagem não salvaram.", erroTriagem);
     if (cliente) await cuidarDoCliente(supabase, cliente, d, true);
+    // o Teste Prático que combina com a função já entra na vaga (grátis; a página da vaga diz e deixa tirar)
+    const comTeste = d.tipo === "vaga" && (await porTesteSugerido(supabase, data.id, d.titulo, d.categoria));
     // veio do link do convite: publicar é o aceite (o convite vira "Autorizou" no admin)
     const convite = formData.get("convite");
     if (typeof convite === "string" && /^[0-9a-f]{64}$/.test(convite)) {
@@ -165,7 +168,7 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
         vigia.parcial("A vaga foi publicada, mas o aceite do convite não ficou registrado.", erroConvite);
       }
     }
-    destino = `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}`;
+    destino = `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}${comTeste ? "&teste=1" : ""}`;
     if (d.tipo === "vaga") await marcarConversao("vaga");
     // o funil do publicar em passos: a vaga saiu (só a contagem do dia; sem a migração, nada)
     if (formData.get("de_passos") === "1") {
@@ -257,6 +260,7 @@ async function publicarOutrosCargos(
       continue;
     }
     await salvarTriagem(supabase, data.id, leitura.dados.triagem);
+    await porTesteSugerido(supabase, data.id, titulo, leitura.dados.categoria);
     publicadas++;
   }
   return { publicadas, falhas };

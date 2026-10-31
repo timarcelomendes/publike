@@ -16,16 +16,16 @@ export function SeloCortesia({
   texto?: string | null;
 }) {
   if (texto === null) return null;
-  // no teste grátis, "faltam 3 dias": o leitor de tela ouve de quê
+  // nos dias grátis, "faltam 3 dias": o leitor de tela ouve de quê
   const teste = Boolean(texto?.startsWith("falta"));
   if (curto) {
     return (
       <span
-        title={teste ? "Teste grátis do recurso pago" : EXPLICA_CORTESIA}
+        title={teste ? "Dias grátis do recurso pago" : EXPLICA_CORTESIA}
         className={`relative inline-flex shrink-0 items-center gap-1 rounded-pill bg-ipe px-1.5 py-0.5 text-[11px] leading-none font-semibold text-on-ipe ${className}`}
       >
         <Gift aria-hidden className="size-3" />
-        {teste && <span className="sr-only">Teste grátis: </span>}
+        {teste && <span className="sr-only">Dias grátis: </span>}
         {texto ?? SELO_CORTESIA_CURTO}
         {!teste && <span className="sr-only">: {EXPLICA_CORTESIA}</span>}
       </span>

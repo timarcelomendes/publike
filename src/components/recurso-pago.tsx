@@ -24,12 +24,12 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
   testes: {
     titulo: "Teste Prático: saiba quem sabe o serviço antes da entrevista",
     texto:
-      "Ponha um teste na vaga e quem curtir faz pelo celular. Você vê o resultado de cada candidato no quadro da vaga.",
+      "O teste da Publike que combina com a vaga já é grátis. Com o Teste Prático completo, você escolhe os testes e cria os seus.",
     itens: [
-      "Testes prontos da Publike: caixa, atendimento, vendas, cozinha, estoque e mais",
+      "Até 3 testes por vaga: caixa, atendimento, vendas, cozinha, estoque e mais",
       "Testes da sua empresa, com as perguntas que só vocês sabem fazer",
-      "O candidato faz pelo celular, junto com a candidatura",
-      "O resultado aparece no quadro da vaga",
+      "Mandar o teste para quem você quiser, mesmo depois de a pessoa se candidatar",
+      "O candidato faz pelo celular, e o resultado aparece no quadro da vaga",
     ],
   },
 };
@@ -142,7 +142,7 @@ export function FaixaExperimento({
     if (!noTeste || !estado.fim_experimento) return null;
     return (
       <Aviso tipo="sucesso" titulo="Assinatura feita">
-        O teste grátis vai até {dataCurta(estado.fim_experimento)}; a primeira cobrança vem nesse dia.
+        Os dias grátis vão até {dataCurta(estado.fim_experimento)}; a primeira cobrança vem nesse dia.
       </Aviso>
     );
   }
@@ -159,7 +159,7 @@ export function FaixaExperimento({
   }
   const n = diasRestantes(estado.ate, agora);
   return (
-    <Aviso tipo="info" titulo={`Teste grátis: ${n === 1 ? "falta 1 dia" : `faltam ${n} dias`}`}>
+    <Aviso tipo="info" titulo={`Dias grátis: ${n === 1 ? "falta 1" : `faltam ${n}`}`}>
       <span className="flex flex-col items-start gap-2">
         <span>Vai até {dataCurta(estado.ate)}. Depois, o recurso fecha, e o que você fez fica guardado.</span>
         {estado.pode_assinar ? (

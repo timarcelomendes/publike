@@ -17,7 +17,14 @@ import { tempoRelativo } from "@/lib/formato";
 import { bibliotecaDeTestes, resultadosDosTestes, testesDaVaga } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import { competenciasDoResultado, faixaDoResultado, NAO_E_PSICOLOGICO, textoDoResultado } from "@/lib/testes";
+import {
+  competenciasDoResultado,
+  faixaDoResultado,
+  NAO_E_PSICOLOGICO,
+  TESTES_DA_PUBLIKE,
+  testeSugerido,
+  textoDoResultado,
+} from "@/lib/testes";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
 export const metadata: Metadata = { title: "Testes da vaga" };
@@ -50,7 +57,8 @@ async function Conteudo({
     agoraDaRequisicao(),
     recursosPagos(),
   ]);
-  // recurso pago (migração 20261215120000): sem ele, a oferta no lugar da escolha; os resultados continuam
+  // recurso pago (migração 20261215120000): sem ele, 1 teste da Publike por vaga, grátis (migração 20261224120000),
+  // e a oferta dos extras; os resultados continuam
   const fechado = recursos !== null && !recursos.testes.liberado;
   const cabecalho = <CabecalhoDaVaga anuncio={anuncio} aba="testes" />;
   if (biblioteca === null) {
@@ -64,43 +72,48 @@ async function Conteudo({
     );
   }
   const obrigatorios = naVaga.filter((t) => t.obrigatoria);
+  const idSugerido = TESTES_DA_PUBLIKE[testeSugerido(anuncio.titulo, anuncio.categoria)];
+  const sugerido = biblioteca.find((m) => m.id === idSugerido) ?? null;
   const candidatos = interessados.filter((p) => p.status !== "dispensada");
 
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
       <FaixaExperimento recurso="testes" estado={recursos?.testes} agora={agora} />
-      {fechado && <OfertaRecurso recurso="testes" estado={recursos?.testes ?? null} />}
       <div className="flex flex-wrap items-center gap-2">
-        <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} />
+        {/* sem o recurso, a marca fica na oferta dos extras, mais abaixo (o teste sugerido é grátis) */}
+        {!fechado && <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} />}
         <p className="text-body-sm text-ink-muted">
-          Testes da marca Publike e os da sua empresa. Quem curtir a vaga faz pelo celular.
+          {fechado
+            ? "O teste da Publike que combina com a vaga é grátis. Quem curtir a vaga faz pelo celular."
+            : "Testes da marca Publike e os da sua empresa. Quem curtir a vaga faz pelo celular."}
         </p>
       </div>
 
-      {!fechado && (
-        <section aria-labelledby="titulo-escolha" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-          <h3 id="titulo-escolha" className="mb-3 flex items-center gap-2 text-h3">
-            <ClipboardCheck aria-hidden className="size-5 text-ink-muted" />
-            Testes desta vaga
-          </h3>
-          <TestesDaVaga
-            // de novo do zero quando a biblioteca muda (o teste que acabou de ser criado já vem escolhido)
-            key={`${biblioteca.length}-${typeof sp.novo === "string" ? sp.novo : ""}`}
-            anuncioId={id}
-            biblioteca={biblioteca}
-            iniciais={naVaga.map((t) => ({ modelo_id: t.modelo_id, obrigatoria: t.obrigatoria }))}
-            novo={typeof sp.novo === "string" ? sp.novo : null}
-          />
-          {biblioteca.length > 0 && (
-            <p className="mt-3 text-body-sm">
-              <Link href={`/painel/testes?vaga=${id}`} className="font-semibold underline underline-offset-2">
-                Ver a biblioteca e criar os testes da sua empresa
-              </Link>
-            </p>
-          )}
-        </section>
-      )}
+      <section aria-labelledby="titulo-escolha" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+        <h3 id="titulo-escolha" className="mb-3 flex items-center gap-2 text-h3">
+          <ClipboardCheck aria-hidden className="size-5 text-ink-muted" />
+          Testes desta vaga
+        </h3>
+        <TestesDaVaga
+          // de novo do zero quando a biblioteca muda (o teste que acabou de ser criado já vem escolhido)
+          key={`${biblioteca.length}-${typeof sp.novo === "string" ? sp.novo : ""}`}
+          anuncioId={id}
+          biblioteca={biblioteca}
+          iniciais={naVaga.map((t) => ({ modelo_id: t.modelo_id, obrigatoria: t.obrigatoria }))}
+          novo={typeof sp.novo === "string" ? sp.novo : null}
+          sugerido={sugerido}
+          gratis={fechado}
+        />
+        {!fechado && biblioteca.length > 0 && (
+          <p className="mt-3 text-body-sm">
+            <Link href={`/painel/testes?vaga=${id}`} className="font-semibold underline underline-offset-2">
+              Ver a biblioteca e criar os testes da sua empresa
+            </Link>
+          </p>
+        )}
+      </section>
+      {fechado && <OfertaRecurso recurso="testes" estado={recursos?.testes ?? null} />}
 
       <section aria-labelledby="titulo-resultados" className="flex flex-col gap-3">
         <h3 id="titulo-resultados" className="text-h3">
@@ -119,7 +132,8 @@ async function Conteudo({
               const naoRecebeu = faltam.filter((t) => !deles.some((r) => r.modelo_id === t.modelo_id));
               const fez = deles.filter((r) => r.status === "feita").length;
               // no "Mandar teste", os obrigatórios que faltam vêm primeiro (já escolhidos)
-              const paraMandar = biblioteca
+              // mandar o teste para alguém é um extra do recurso pago
+              const paraMandar = (fechado ? [] : biblioteca)
                 .filter((m) => !deles.some((r) => r.modelo_id === m.id))
                 .sort(
                   (a, b) =>

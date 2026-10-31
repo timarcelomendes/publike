@@ -102,6 +102,8 @@ import { SeloVerificado } from "@/components/selo-verificado";
 import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { meusTestesDaVaga, testesDaVaga } from "@/lib/servidor/testes";
+import { nomeCurtoDoTeste } from "@/lib/testes";
+import { AvisoTesteNaVaga } from "@/components/testes/aviso-teste-na-vaga";
 import { TestesParaMim } from "@/components/testes/testes-para-mim";
 
 export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): Promise<Metadata> {
@@ -403,6 +405,10 @@ async function DetalheAnuncio({
           // salvou, mas ainda não está para todo mundo (o aviso logo abaixo diz por quê)
           <Aviso tipo="sucesso" className="mt-4" titulo="Anúncio salvo." />
         ))}
+      {/* o Teste Prático que entrou na vaga ao publicar (?teste=1): qual é e como tirar */}
+      {primeiro(sp.publicado) === "1" && primeiro(sp.teste) === "1" && proprio && (
+        <AvisoTesteNaVaga anuncioId={anuncio.id} titulo={testes[0]?.titulo ?? null} />
+      )}
       {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" className="mt-4" titulo="Alterações salvas." />}
       {primeiro(sp.triagem) === "0" && proprio && (
         <Aviso tipo="alerta" className="mt-4" titulo="As respostas da triagem não salvaram">
@@ -562,7 +568,7 @@ async function DetalheAnuncio({
               <Fato icone={ClipboardCheck} rotulo="Teste Prático">
                 {testes
                   .map(
-                    (t) => `${t.titulo.replace(/^Teste [pP]rático( Publike)?: /, "")}${t.obrigatoria ? "" : " (opcional)"}`,
+                    (t) => `${nomeCurtoDoTeste(t.titulo)}${t.obrigatoria ? "" : " (opcional)"}`,
                   )
                   .join(" · ")}
               </Fato>
