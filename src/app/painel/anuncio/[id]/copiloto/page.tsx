@@ -14,6 +14,7 @@ import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
+import { NavegacaoDaPagina } from "@/components/ui/navegacao-da-pagina";
 import { MODO_DEMO } from "@/lib/config";
 import { compararLeituras, contarLeitura, funilDaTriagem, textoDoRegistro, type OrigemCopiloto } from "@/lib/copiloto";
 import { obterAnuncio, recursosPagos } from "@/lib/dados";
@@ -157,7 +158,24 @@ async function Conteudo({
         </p>
       </div>
 
-      <section aria-labelledby="titulo-criterios" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+      <NavegacaoDaPagina
+        rotulo="Assuntos da triagem"
+        assuntos={[
+          { id: "criterios", nome: "Critérios", numero: config.criterios.length },
+          { id: "o-que-faz", nome: "O que faz" },
+          ...(origens.length ? [{ id: "ranking", nome: "Ranking", numero: lidas.length }] : []),
+          ...(origens.length && temCriterios && vista !== "talento" && naoLidos.length
+            ? [{ id: "nao-lidos", nome: "Não lidos", numero: naoLidos.length }]
+            : []),
+          { id: "historico", nome: "Histórico" },
+        ]}
+      />
+
+      <section
+        id="criterios"
+        aria-labelledby="titulo-criterios"
+        className="scroll-mt-32 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+      >
         <h3 id="titulo-criterios" className="mb-1 flex items-center gap-2 text-h3">
           <ListChecks aria-hidden className="size-5 text-ink-muted" />
           Critérios da vaga
@@ -174,7 +192,11 @@ async function Conteudo({
         <EditorDeCriterios anuncioId={id} iniciais={config.criterios} />
       </section>
 
-      <section aria-labelledby="titulo-partes" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+      <section
+        id="o-que-faz"
+        aria-labelledby="titulo-partes"
+        className="scroll-mt-32 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+      >
         <h3 id="titulo-partes" className="mb-3 text-h3">
           O que a triagem faz nesta vaga
         </h3>
@@ -186,7 +208,7 @@ async function Conteudo({
           Ligue a busca em Talentos ou a leitura dos candidatos para a triagem trabalhar.
         </Aviso>
       ) : (
-        <section aria-labelledby="titulo-ranking" className="flex flex-col gap-4">
+        <section id="ranking" aria-labelledby="titulo-ranking" className="flex scroll-mt-32 flex-col gap-4">
           <h3 id="titulo-ranking" className="flex items-center gap-2 text-h3">
             <Trophy aria-hidden className="size-5 text-ink-muted" />
             Ranking da vaga
@@ -336,7 +358,7 @@ async function Conteudo({
               )}
 
               {vista !== "talento" && (naoLidos.length > 0 || funil.eliminados.length > 0) && (
-                <section aria-labelledby="titulo-nao-lidos" className="flex flex-col gap-3">
+                <section id="nao-lidos" aria-labelledby="titulo-nao-lidos" className="flex scroll-mt-32 flex-col gap-3">
                   <h4 id="titulo-nao-lidos" className="flex flex-wrap items-center gap-2 text-label">
                     <Filter aria-hidden className="size-5 text-ink-muted" />
                     Não lidos pela IA
@@ -387,7 +409,11 @@ async function Conteudo({
         </section>
       )}
 
-      <section aria-labelledby="titulo-registro" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+      <section
+        id="historico"
+        aria-labelledby="titulo-registro"
+        className="scroll-mt-32 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
+      >
         <h3 id="titulo-registro" className="mb-2 flex items-center gap-2 text-h3">
           <History aria-hidden className="size-5 text-ink-muted" />O que a triagem fez
         </h3>
