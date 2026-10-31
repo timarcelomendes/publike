@@ -559,10 +559,10 @@ async function DetalheAnuncio({
               </Fato>
             )}
             {testes.length > 0 && (
-              <Fato icone={ClipboardCheck} rotulo="Testes Publike">
+              <Fato icone={ClipboardCheck} rotulo="Teste Prático">
                 {testes
                   .map(
-                    (t) => `${t.titulo.replace(/^Teste prático Publike: /, "")}${t.obrigatoria ? "" : " (opcional)"}`,
+                    (t) => `${t.titulo.replace(/^Teste [pP]rático( Publike)?: /, "")}${t.obrigatoria ? "" : " (opcional)"}`,
                   )
                   .join(" · ")}
               </Fato>

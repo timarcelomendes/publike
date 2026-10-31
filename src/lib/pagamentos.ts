@@ -7,22 +7,22 @@ export type Produto = RecursoPago | "combo";
 
 export const NOME_PRODUTO: Record<Produto, string> = {
   copiloto: "Triagem com IA",
-  testes: "Testes Publike",
-  combo: "Combo Triagem + Testes",
+  testes: "Teste Prático",
+  combo: "Combo Triagem + Teste Prático",
 };
 
-/** Com o artigo, para as frases ("Assinar a Triagem com IA", "Você já assina os Testes Publike"). */
+/** Com o artigo, para as frases ("Assinar a Triagem com IA", "Você já assina o Teste Prático"). */
 export const O_PRODUTO: Record<Produto, string> = {
   copiloto: "a Triagem com IA",
-  testes: "os Testes Publike",
-  combo: "o combo Triagem + Testes",
+  testes: "o Teste Prático",
+  combo: "o combo Triagem + Teste Prático",
 };
 
 /** Com "de" ("o cartão da Triagem com IA"). */
 export const DO_PRODUTO: Record<Produto, string> = {
   copiloto: "da Triagem com IA",
-  testes: "dos Testes Publike",
-  combo: "do combo Triagem + Testes",
+  testes: "do Teste Prático",
+  combo: "do combo Triagem + Teste Prático",
 };
 
 export function ehProduto(x: unknown): x is Produto {

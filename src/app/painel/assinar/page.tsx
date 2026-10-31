@@ -26,14 +26,14 @@ import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Assinar", robots: { index: false } };
 
-// Assinar o Copiloto, os Testes Publike ou o combo dos dois (claude/plano-checkout-asaas.md): o plano, cartão ou Pix e os dados
+// Assinar a Triagem com IA, o Teste Prático ou o combo dos dois (claude/plano-checkout-asaas.md): o plano, cartão ou Pix e os dados
 // da nota. Com ?troca=1, só o cartão novo da assinatura que já vale.
 
 const ICONE: Record<Produto, typeof Sparkles> = { copiloto: Sparkles, testes: ClipboardCheck, combo: Layers };
 const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
-  combo: "A Triagem com IA e os Testes Publike numa assinatura só, por menos que os dois separados.",
+  combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -86,7 +86,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     corpo = (
       <Aviso tipo="info" titulo="A assinatura ainda não está aberta">
         {pag?.tipo === "pessoa"
-          ? "A Triagem com IA e os Testes Publike são para contas de comércio, empresa ou agência."
+          ? "A Triagem com IA e o Teste Prático são para contas de comércio, empresa ou agência."
           : "Logo você vai poder assinar por aqui. Enquanto isso, fale com o Publike."}
       </Aviso>
     );
@@ -174,13 +174,13 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     botao: "Conhecer a Triagem",
   },
   testes: {
-    titulo: "Testes Publike",
-    texto: "Saiba quem sabe antes da entrevista: o candidato faz o teste pelo celular.",
-    botao: "Conhecer os Testes",
+    titulo: "Teste Prático",
+    texto: "Saiba quem sabe o serviço antes da entrevista: o candidato faz o teste pelo celular.",
+    botao: "Conhecer o Teste Prático",
   },
   combo: {
     titulo: "Os dois no combo",
-    texto: "Triagem com IA e Testes Publike numa assinatura só, por menos que os dois separados.",
+    texto: "Triagem com IA e Teste Prático numa assinatura só, por menos que os dois separados.",
     botao: "Ver o combo",
   },
 };

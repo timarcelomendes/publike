@@ -1,4 +1,4 @@
-// O Copiloto e os Testes Publike são recursos pagos, com 15 dias grátis para experimentar (decisão do
+// A Triagem com IA e o Teste Prático são recursos pagos, com 15 dias grátis para experimentar (decisão do
 // usuário, 29/10/2026; antes, de 28/10, eram grátis por cortesia). Só quem contrata vê a marca; quem
 // procura emprego nunca paga e não vê.
 

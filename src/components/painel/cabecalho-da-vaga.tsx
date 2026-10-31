@@ -63,7 +63,7 @@ export async function CabecalhoDaVaga({
       icone: <Sparkles aria-hidden className="size-4 text-terra-text" />,
       marca: marca.copiloto,
     },
-    { aba: "testes", nome: "Testes", href: `/painel/anuncio/${id}/testes`, marca: marca.testes },
+    { aba: "testes", nome: "Teste Prático", href: `/painel/anuncio/${id}/testes`, marca: marca.testes },
     { aba: "editar", nome: "Editar", href: `/painel/anuncio/${id}/editar` },
   ];
   return (

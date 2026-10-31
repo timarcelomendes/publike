@@ -1,4 +1,4 @@
-// Copiloto e Testes Publike: recursos pagos, com 15 dias grátis para experimentar (decisão do usuário,
+// Triagem com IA (copiloto) e Teste Prático (testes): recursos pagos, com 15 dias grátis para experimentar (decisão do usuário,
 // 29/10/2026; migração 20261215120000). O banco confere de novo quem pode o quê.
 
 export const DIAS_GRATIS = 15;
@@ -21,11 +21,11 @@ export type EstadoRecurso = {
 
 export type RecursosPagos = Record<RecursoPago, EstadoRecurso>;
 
-export const NOME_RECURSO: Record<RecursoPago, string> = { copiloto: "Triagem com IA", testes: "Testes Publike" };
-/** Com o artigo, para as frases ("Assinar a Triagem com IA", "os Testes Publike"). */
-export const O_RECURSO: Record<RecursoPago, string> = { copiloto: "a Triagem com IA", testes: "os Testes Publike" };
-/** Com "a" craseado ("acesso à Triagem com IA", "aos Testes Publike"). */
-export const A_RECURSO: Record<RecursoPago, string> = { copiloto: "à Triagem com IA", testes: "aos Testes Publike" };
+export const NOME_RECURSO: Record<RecursoPago, string> = { copiloto: "Triagem com IA", testes: "Teste Prático" };
+/** Com o artigo, para as frases ("Assinar a Triagem com IA", "o Teste Prático"). */
+export const O_RECURSO: Record<RecursoPago, string> = { copiloto: "a Triagem com IA", testes: "o Teste Prático" };
+/** Com "a" craseado ("acesso à Triagem com IA", "ao Teste Prático"). */
+export const A_RECURSO: Record<RecursoPago, string> = { copiloto: "à Triagem com IA", testes: "ao Teste Prático" };
 
 export function ehRecursoPago(x: unknown): x is RecursoPago {
   return x === "copiloto" || x === "testes";

@@ -29,7 +29,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Assinatura", robots: { index: false } };
 
-// A assinatura do Copiloto e dos Testes Publike: a forma de pagar, a próxima cobrança, trocar o cartão e
+// A assinatura da Triagem com IA e do Teste Prático: a forma de pagar, a próxima cobrança, trocar o cartão e
 // cancelar (claude/plano-checkout-asaas.md). Na volta do cartão (?cartao=ok), confere no parceiro.
 
 export default function PaginaAssinatura({ searchParams }: PageProps<"/painel/assinatura">) {
@@ -186,7 +186,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
               : undefined
           }
         >
-          Assine a Triagem com IA, os Testes Publike ou os dois juntos no combo, por mês ou a cada 3 meses.
+          Assine a Triagem com IA, o Teste Prático ou os dois juntos no combo, por mês ou a cada 3 meses.
         </Vazio>
       ) : (
         <>

@@ -111,7 +111,7 @@ export type Secao = {
   /** o texto ao lado do número ("no ar") */
   sufixo?: string;
   /**
-   * recurso pago (Copiloto e Testes Publike): a pílula que segue a conta ("15 dias grátis", "faltam N dias";
+   * recurso pago (Triagem com IA e Teste Prático): a pílula que segue a conta ("15 dias grátis", "faltam N dias";
    * `true`, o texto de sempre; sem ela, nada)
    */
   cortesia?: boolean | string;
@@ -260,7 +260,7 @@ export function gruposDoModo(
         },
         {
           href: "/painel/testes",
-          nome: "Testes Publike",
+          nome: "Teste Prático",
           icone: "testes",
           cortesia: extras.pilulas ? (extras.pilulas.testes ?? false) : true,
         },

@@ -6,7 +6,7 @@ import { SeloCortesia } from "./selo-cortesia";
 import { Aviso, Selo } from "./ui/basicos";
 import { BotaoLink } from "./ui/botao";
 
-// O Copiloto e os Testes Publike são pagos, com 15 dias grátis (migração 20261215120000): a oferta, para
+// A Triagem com IA e o Teste Prático são pagos, com 15 dias grátis (migração 20261215120000): a oferta, para
 // quem ainda não tem o recurso, e a faixa dos dias que faltam, para quem está experimentando.
 
 const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string[] }> = {
@@ -22,7 +22,7 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
     ],
   },
   testes: {
-    titulo: "Testes Publike: saiba quem sabe antes da entrevista",
+    titulo: "Teste Prático: saiba quem sabe o serviço antes da entrevista",
     texto:
       "Ponha um teste na vaga e quem curtir faz pelo celular. Você vê o resultado de cada candidato no quadro da vaga.",
     itens: [

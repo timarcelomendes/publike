@@ -1,7 +1,7 @@
 import "server-only";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
-// Testes Publike (migração 20261204120000): o que as páginas leem do banco. Sem a migração, listas vazias.
+// Teste Prático (migração 20261204120000): o que as páginas leem do banco. Sem a migração, listas vazias.
 
 export async function testesDaVaga(anuncioId: string) {
   const supabase = await criarClienteServidor();

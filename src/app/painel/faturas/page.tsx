@@ -15,7 +15,7 @@ import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Faturas", robots: { index: false } };
 
-// As faturas do Copiloto e dos Testes Publike, da mais nova para a mais antiga: a situação, o recibo e a nota.
+// As faturas da Triagem com IA e do Teste Prático, da mais nova para a mais antiga: a situação, o recibo e a nota.
 
 export default function Faturas() {
   return (
@@ -49,7 +49,7 @@ async function Conteudo() {
           titulo="Nenhuma fatura ainda"
           acao={<BotaoLink href="/painel/assinatura">Ver assinatura</BotaoLink>}
         >
-          Quando você assinar a Triagem com IA ou os Testes Publike, as faturas aparecem aqui.
+          Quando você assinar a Triagem com IA ou o Teste Prático, as faturas aparecem aqui.
         </Vazio>
       ) : (
         <>

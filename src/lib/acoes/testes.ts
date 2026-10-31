@@ -13,7 +13,7 @@ import { MAX_QUESTOES, MAX_TESTES_NA_VAGA, type QuestaoTeste } from "@/lib/teste
 import type { Resultado } from "@/lib/tipos";
 import { temContato, UUID } from "@/lib/validacao";
 
-// Testes Publike (migração 20261204120000). O banco confere de novo quem pode o quê e corrige os testes.
+// Teste Prático (migração 20261204120000). O banco confere de novo quem pode o quê e corrige os testes.
 
 async function comConta(): Promise<{ erro: string } | null> {
   if (MODO_DEMO) return { erro: MENSAGEM_DEMO };

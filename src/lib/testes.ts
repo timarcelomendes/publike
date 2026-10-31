@@ -1,4 +1,4 @@
-// Testes Publike (migração 20261204120000): o teste prático da função e as situações de trabalho que a
+// Teste Prático (migração 20261204120000): o teste prático da função e as situações de trabalho que a
 // empresa ou agência põe na vaga, e os testes da casa. Não é teste psicológico. Vale no navegador e no servidor.
 
 export type TipoTeste = "pratico" | "situacoes";

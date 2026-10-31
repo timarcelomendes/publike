@@ -17,7 +17,7 @@ import { NAO_E_PSICOLOGICO } from "@/lib/testes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 
-export const metadata: Metadata = { title: "Testes Publike" };
+export const metadata: Metadata = { title: "Teste Prático" };
 
 // A biblioteca de testes (migração 20261204120000): os da Publike e os da casa. Na vaga, em Testes da vaga.
 
@@ -94,11 +94,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tes
       <FaixaExperimento recurso="testes" estado={recursos?.testes} agora={agora} />
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-h2">Testes Publike</h2>
+          <h2 className="text-h2">Teste Prático</h2>
           <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} />
         </div>
         <p className="text-body text-ink-muted">
-          Ponha um teste na vaga e quem curtir faz pelo celular. Você vê o resultado no quadro de cada vaga, em Testes.
+          Ponha um teste na vaga e quem curtir faz pelo celular. Você vê o resultado no quadro de cada vaga, em Teste
+          Prático.
         </p>
       </div>
 

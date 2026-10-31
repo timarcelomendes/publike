@@ -2,7 +2,7 @@ import { Gift } from "lucide-react";
 import { EXPLICA_CORTESIA, SELO_CORTESIA, SELO_CORTESIA_CURTO } from "@/lib/cortesia";
 
 /**
- * A marca dos recursos pagos liberados por cortesia (Copiloto e Testes Publike). `curto`: a pílula pequena
+ * A marca dos recursos pagos liberados por cortesia (Triagem com IA e Teste Prático). `curto`: a pílula pequena
  * do menu e das abas; senão, o selo com o texto inteiro, no alto das páginas. `texto`: o do estado da conta
  * (`marcaDoRecurso`); null não mostra nada, e sem ele vale o texto de sempre.
  */

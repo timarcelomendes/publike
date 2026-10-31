@@ -23,7 +23,7 @@ import { enderecoDeQualquerCep } from "@/lib/servidor/cep";
 import { enviarPushPendentes } from "@/lib/servidor/filas";
 import { acessoPagamentos, sincronizarAssinatura } from "@/lib/servidor/pagamentos";
 
-// Assinar o Copiloto, os Testes Publike ou o combo dos dois (claude/plano-checkout-asaas.md). O cartão é pago na página do
+// Assinar a Triagem com IA, o Teste Prático ou o combo dos dois (claude/plano-checkout-asaas.md). O cartão é pago na página do
 // parceiro (o número nunca passa pelo Publike); o Pix é mostrado aqui. O banco confere de novo quem pode.
 
 type Contexto = {
@@ -42,7 +42,7 @@ type Contexto = {
 export type ResultadoAssinar = { ok: true; ir: string; externo?: boolean } | { ok: false; erro: string };
 
 const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral" };
-const CURTO: Record<Produto, string> = { copiloto: "Triagem", testes: "Testes", combo: "Combo" };
+const CURTO: Record<Produto, string> = { copiloto: "Triagem", testes: "Teste Prático", combo: "Combo" };
 
 // no computador (npm run dev), o motivo vai junto na tela, para achar o problema sem abrir o terminal
 const NO_COMPUTADOR = process.env.NODE_ENV !== "production";
@@ -188,10 +188,12 @@ export async function assinar(dados: {
 
     // a 1ª cobrança: no fim do teste grátis ou do que já está pago (assinar de novo, trocar o cartão); senão, hoje
     const primeiro = diaDaPrimeiraCobranca(plano.recurso, ctx.testes_ate, ctx.pago_ate);
-    // o nome do item é como o banco liga a assinatura do checkout ("combo", "copiloto" ou "testes" no texto)
+    // o nome do item é como o banco liga a assinatura do checkout ("combo", "triagem" ou "teste" no texto)
     const nomeItem = `Publike · ${NOME_PRODUTO[plano.recurso]} (${CICLO[plano.ciclo]})`;
-    // no checkout, o nome do item tem no máximo 30 letras (o Asaas recusa o resto): "Publike Combo (trimestral)"
-    const nomeCurto = `Publike ${CURTO[plano.recurso]} (${CICLO[plano.ciclo]})`;
+    // no checkout, o nome do item tem no máximo 30 letras (o Asaas recusa o resto): "Publike Combo (trimestral)";
+    // quando não cabe ("Publike Teste Prático (trimestral)"), vai sem o ciclo, que está na descrição
+    const comCiclo = `Publike ${CURTO[plano.recurso]} (${CICLO[plano.ciclo]})`;
+    const nomeCurto = comCiclo.length <= 30 ? comCiclo : `Publike ${CURTO[plano.recurso]}`;
     const descricao =
       plano.ciclo === "QUARTERLY"
         ? `${NOME_PRODUTO[plano.recurso]} por 3 meses, renovado a cada 3 meses`

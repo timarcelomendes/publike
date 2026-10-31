@@ -222,7 +222,7 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
   };
 }
 
-/** Libera os Testes Publike sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
+/** Libera o Teste Prático sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
 export async function liberarTestes(contaId: string, liberar: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
@@ -236,8 +236,8 @@ export async function liberarTestes(contaId: string, liberar: boolean): Promise<
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta tem os Testes Publike, sem prazo."
-      : "Essa conta não tem mais os Testes Publike (os resultados ficam guardados).",
+      ? "Pronto: essa conta tem o Teste Prático, sem prazo."
+      : "Essa conta não tem mais o Teste Prático (os resultados ficam guardados).",
   };
 }
 

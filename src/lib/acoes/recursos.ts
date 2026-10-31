@@ -8,7 +8,7 @@ import { A_RECURSO, dataCurta, DIAS_GRATIS, ehRecursoPago, type RecursoPago } fr
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 
-// Os 15 dias grátis do Copiloto e dos Testes Publike (migração 20261215120000).
+// Os 15 dias grátis da Triagem com IA e do Teste Prático (migração 20261215120000).
 
 async function comConta(): Promise<string | null> {
   if (MODO_DEMO) return MENSAGEM_DEMO;

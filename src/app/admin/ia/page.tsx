@@ -122,7 +122,7 @@ async function Conteudo() {
 
       {experimentos && (
         <Secao
-          titulo="15 dias grátis da Triagem com IA e dos Testes"
+          titulo="15 dias grátis da Triagem com IA e do Teste Prático"
           descricao="Quem pediu para experimentar. Primeiro, quem tocou em “Quero continuar”: chame essas contas."
         >
           {experimentos.length ? (
@@ -133,7 +133,7 @@ async function Conteudo() {
                     {x.nome}
                   </Link>
                   <span className="text-ink-muted">
-                    {x.recurso === "copiloto" ? "Triagem com IA" : "Testes"} · começou {tempoRelativo(x.inicio, agora)} ·{" "}
+                    {x.recurso === "copiloto" ? "Triagem com IA" : "Teste Prático"} · começou {tempoRelativo(x.inicio, agora)} ·{" "}
                     {x.ativo ? "experimentando" : "acabou"}
                     {x.quer_continuar_em ? ` · quer continuar (${tempoRelativo(x.quer_continuar_em, agora)})` : ""}
                   </span>

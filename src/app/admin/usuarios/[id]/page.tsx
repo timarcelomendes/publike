@@ -370,7 +370,7 @@ async function Conteudo({
 
       {u.perfil && copiloto && (
         <Secao
-          titulo="Triagem com IA e Testes Publike"
+          titulo="Triagem com IA e Teste Prático"
           descricao="Recursos pagos. A conta pode experimentar cada um por 15 dias grátis, uma vez; aqui você libera sem prazo ou tira."
         >
           <div className="flex flex-col gap-4">
@@ -381,7 +381,7 @@ async function Conteudo({
               const exp = recursos?.experimentos.find((e) => e.recurso === r);
               return (
                 <div key={r} className="flex flex-col gap-2">
-                  <p className="text-label">{r === "copiloto" ? "Triagem com IA" : "Testes Publike"}</p>
+                  <p className="text-label">{r === "copiloto" ? "Triagem com IA" : "Teste Prático"}</p>
                   <p className="text-body-sm text-ink-muted">
                     {liberado ? (estado?.ate ? `Nos 15 dias grátis, até ${formatarDataCurta(estado.ate)}.` : "Liberado sem prazo.") : "Não tem."}
                     {exp

@@ -156,7 +156,7 @@ export const copilotoLiberado = cache(async () => {
 });
 
 /**
- * O Copiloto e os Testes Publike da conta: liberado, até quando e se já experimentou os 15 dias grátis
+ * A Triagem com IA e o Teste Prático da conta: liberado, até quando e se já experimentou os 15 dias grátis
  * (migração 20261215120000). Sem a migração, null, e as páginas seguem como antes.
  */
 export const recursosPagos = cache(async (): Promise<RecursosPagos | null> => {

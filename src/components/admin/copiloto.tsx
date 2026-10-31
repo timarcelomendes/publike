@@ -24,7 +24,7 @@ export function BotaoCopiloto({ contaId, liberado }: { contaId: string; liberado
   );
 }
 
-/** Libera os Testes Publike sem prazo, ou tira. */
+/** Libera o Teste Prático sem prazo, ou tira. */
 export function BotaoTestes({ contaId, liberado }: { contaId: string; liberado: boolean }) {
   const { rodar, pendente, mensagem } = useAcao();
   return (
@@ -36,7 +36,7 @@ export function BotaoTestes({ contaId, liberado }: { contaId: string; liberado: 
         onClick={() => rodar(() => liberarTestes(contaId, !liberado))}
       >
         <ClipboardCheck aria-hidden />
-        {liberado ? "Tirar os Testes" : "Liberar os Testes"}
+        {liberado ? "Tirar o Teste Prático" : "Liberar o Teste Prático"}
       </Botao>
       {mensagem}
     </div>
