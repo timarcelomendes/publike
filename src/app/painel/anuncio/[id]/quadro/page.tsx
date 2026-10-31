@@ -3,12 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import {
-  CabecalhoDaVaga,
-  OrdemPeloCopiloto,
-  OrdemPeloTeste,
-  VistaDosCandidatos,
-} from "@/components/painel/cabecalho-da-vaga";
+import { CabecalhoDaVaga, OrdemQuemChamar, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { QuadroCandidatos } from "@/components/painel/quadro-candidatos";
 import { SeloCortesia } from "@/components/selo-cortesia";
@@ -27,7 +22,8 @@ import { saudeDasVagas } from "@/lib/servidor/saude";
 import { resultadosDosTestes } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import { faixaDoTeste, nomeCurtoDoTeste, PESO_FAIXA, type FaixaDoTeste } from "@/lib/testes";
+import { compararParaChamar, porqueChamar } from "@/lib/quem-chamar";
+import { faixaDoTeste, nomeCurtoDoTeste, type FaixaDoTeste } from "@/lib/testes";
 import type { StatusAnuncio } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Quadro de candidatos" };
@@ -69,20 +65,30 @@ async function Conteudo({
     const item = { titulo: nomeCurtoDoTeste(r.titulo), faixa, nota: (r.pontos ?? 0) / r.maximo };
     testesDe.set(r.perfil_id, [...(testesDe.get(r.perfil_id) ?? []), item]);
   }
-  const peloTeste = testesDe.size > 0 && sp.ordem === "teste";
-  // "Ordenar pelo Copiloto": quem foi lido vem na ordem do ranking; quem não foi, depois, na ordem de sempre
-  const peloCopiloto = Boolean(posicoes) && sp.ordem === "copiloto";
+  // "Quem chamar primeiro" (?ordem=chamar; os links antigos ?ordem=copiloto e ?ordem=teste dão a mesma ordem):
+  // a Triagem, o Teste Prático, o % de match e quem espera há mais tempo, com o porquê no cartão
+  const peloChamar = sp.ordem === "chamar" || sp.ordem === "copiloto" || sp.ordem === "teste";
   const cartoes = daVaga.map((c) => ({
     ...c,
-    copiloto: peloCopiloto ? (posicoes?.get(c.perfil_id) ?? null) : null,
+    copiloto: null,
     testes: (testesDe.get(c.perfil_id) ?? []).map(({ titulo, faixa }) => ({ titulo, faixa })),
     triagem: triagem?.get(c.perfil_id) ?? null,
   }));
-  if (peloCopiloto) cartoes.sort((a, b) => (a.copiloto ?? Infinity) - (b.copiloto ?? Infinity));
-  // pelo teste: a melhor faixa primeiro (e, nela, mais acertos); quem não fez, no fim
-  const pesoDoTeste = (perfil: string) =>
-    Math.max(-1, ...(testesDe.get(perfil) ?? []).map((x) => PESO_FAIXA[x.faixa] * 10 + x.nota));
-  if (peloTeste) cartoes.sort((a, b) => pesoDoTeste(b.perfil_id) - pesoDoTeste(a.perfil_id));
+  if (peloChamar) cartoes.sort(compararParaChamar);
+  const ordenados = cartoes.map((c, i) =>
+    peloChamar
+      ? {
+          ...c,
+          // a Triagem e o teste já têm linha própria no cartão: aqui vai o resto do porquê (match, espera)
+          chamar: {
+            posicao: i + 1,
+            porque: porqueChamar(c, agora)
+              .filter((m) => !m.startsWith("atende") && !m.startsWith("teste:"))
+              .join(" · "),
+          },
+        }
+      : c,
+  );
   const marcaCopiloto = marcaDoRecurso(recursos?.copiloto, agora).curto;
   const saude = (
     await saudeDasVagas(
@@ -170,30 +176,22 @@ async function Conteudo({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <VistaDosCandidatos id={id} atual="quadro" />
-        {testesDe.size > 0 && (
+        {cartoes.length > 1 && (
           <div className="ml-auto">
-            <OrdemPeloTeste
-              ativo={peloTeste}
-              href={peloTeste ? `/painel/anuncio/${id}/quadro` : `/painel/anuncio/${id}/quadro?ordem=teste`}
+            <OrdemQuemChamar
+              ativo={peloChamar}
+              href={peloChamar ? `/painel/anuncio/${id}/quadro` : `/painel/anuncio/${id}/quadro?ordem=chamar`}
             />
           </div>
         )}
-        {posicoes ? (
-          <OrdemPeloCopiloto
-            ativo={peloCopiloto}
-            href={peloCopiloto ? `/painel/anuncio/${id}/quadro` : `/painel/anuncio/${id}/quadro?ordem=copiloto`}
-          />
-        ) : (
-          cartoes.length > 0 &&
-          recursos?.copiloto.liberado && (
-            <Link
-              href={`/painel/anuncio/${id}/copiloto?ver=candidatos`}
-              className="inline-flex min-h-10 items-center gap-1.5 text-label text-terra-text underline-offset-2 hover:underline"
-            >
-              <Sparkles aria-hidden className="size-4" />
-              Ler os candidatos com a Triagem com IA
-            </Link>
-          )
+        {!posicoes && cartoes.length > 0 && recursos?.copiloto.liberado && (
+          <Link
+            href={`/painel/anuncio/${id}/copiloto?ver=candidatos`}
+            className="inline-flex min-h-10 items-center gap-1.5 text-label text-terra-text underline-offset-2 hover:underline"
+          >
+            <Sparkles aria-hidden className="size-4" />
+            Ler os candidatos com a Triagem com IA
+          </Link>
         )}
       </div>
       {cartoes.length === 0 ? (
@@ -207,7 +205,7 @@ async function Conteudo({
           vaga={anuncio.titulo}
           empresa={perfil?.nome ?? anuncio.autor_nome}
           endereco={endereco}
-          cartoes={cartoes}
+          cartoes={ordenados}
           modelos={modelos}
           agora={agora}
           abrir={abrir}

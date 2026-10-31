@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, ClipboardCheck, KanbanSquare, List, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronRight, KanbanSquare, List, ListOrdered, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SITE_URL } from "@/lib/config";
@@ -162,8 +162,11 @@ export function VistaDosCandidatos({ id, atual }: { id: string; atual: "quadro" 
  * "Ordenar pelo Copiloto" (claude/plano-painel-simples.md, parte 3): na lista e no quadro da vaga, quando a
  * vaga já foi lida. Ligado, quem o Copiloto pôs na frente vem primeiro; desligado, a ordem de sempre.
  */
-/** "Ordenar pelo teste" (Teste Prático): acima do esperado primeiro; quem não fez, no fim. */
-export function OrdemPeloTeste({ ativo, href }: { ativo: boolean; href: string }) {
+/**
+ * "Quem chamar primeiro" (plano da Triagem, item 2): a Triagem, o Teste Prático, o % de match e quem espera há mais
+ * tempo numa ordem só. Ficou no lugar do "Ordenar pela triagem" e do "Ordenar pelo teste" no quadro.
+ */
+export function OrdemQuemChamar({ ativo, href }: { ativo: boolean; href: string }) {
   return (
     <Link
       href={href}
@@ -173,8 +176,8 @@ export function OrdemPeloTeste({ ativo, href }: { ativo: boolean; href: string }
         ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
       }`}
     >
-      <ClipboardCheck aria-hidden className={`size-4 ${ativo ? "" : "text-cerrado-text"}`} />
-      Ordenar pelo teste
+      <ListOrdered aria-hidden className={`size-4 ${ativo ? "" : "text-terra-text"}`} />
+      Quem chamar primeiro
       {!ativo && <Selo variante="novo">Novo</Selo>}
     </Link>
   );

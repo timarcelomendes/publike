@@ -89,6 +89,8 @@ export type CartaoQuadro = {
   testes?: { titulo: string; faixa: FaixaDoTeste }[];
   /** a Triagem com IA já leu o currículo com os critérios de agora (migração 20261227120000) */
   triagem?: TriagemNoCartao | null;
+  /** "Quem chamar primeiro": a posição e o porquê (só com a ordem ligada) */
+  chamar?: { posicao: number; porque: string } | null;
 };
 
 const COR_FAIXA: Record<FaixaDoTeste, string> = {
@@ -384,6 +386,11 @@ function Cartao({
             <p className="mt-0.5 flex items-center gap-1 text-caption font-semibold text-terra-text">
               <Sparkles aria-hidden className="size-3.5" />
               {c.copiloto}º na triagem
+            </p>
+          )}
+          {c.chamar && (
+            <p className="mt-0.5 text-caption font-semibold text-terra-text">
+              {c.chamar.posicao}º para chamar{c.chamar.porque ? ` · ${c.chamar.porque}` : ""}
             </p>
           )}
           {c.triagem && (
