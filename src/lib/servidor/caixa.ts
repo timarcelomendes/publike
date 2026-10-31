@@ -8,6 +8,7 @@ import {
   obterAnuncio,
 } from "@/lib/dados";
 import type { ResumoCandidato } from "@/lib/ia/tarefas";
+import { ENTREVISTA_ABERTA } from "@/lib/recrutamento";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta } from "@/lib/vaga-extra";
@@ -87,7 +88,7 @@ export const ORDENS = [
 ] as const;
 export type Ordem = (typeof ORDENS)[number]["valor"];
 
-const ABERTA = ["marcada", "confirmada", "remarcar"];
+const ABERTA = ENTREVISTA_ABERTA;
 
 /** A aba de cada candidato (uma só). Com entrevista marcada, conta na Entrevista. */
 export function abaDe(c: ItemCaixa): Aba {

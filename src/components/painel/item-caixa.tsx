@@ -2,7 +2,7 @@ import { CalendarClock, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { esperaResposta } from "@/lib/constantes";
 import { tempoRelativo } from "@/lib/formato";
-import { dataDaEntrevista } from "@/lib/recrutamento";
+import { quandoDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
 import { Avatar } from "../ui/basicos";
 import { NotaAderencia } from "./nota-aderencia";
@@ -34,7 +34,7 @@ export function ItemDaLista({ c, agora, href, aberto }: { c: ItemCaixa; agora: n
           {c.entrevista ? (
             <span className="mt-0.5 flex items-center gap-1.5 text-body-sm font-semibold">
               <CalendarClock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              {dataDaEntrevista(c.entrevista.quando)}
+              {quandoDaEntrevista(c.entrevista)}
             </span>
           ) : c.status === "match" && c.etapa === "entrevista" && !encerrado ? (
             <span className="mt-0.5 flex items-center gap-1.5 text-body-sm font-semibold text-terra-text">

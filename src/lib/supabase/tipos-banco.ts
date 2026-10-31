@@ -20,6 +20,8 @@ export type Database = {
           local: string | null;
           obs: string | null;
           situacao: string;
+          /** migração 20270102120000: os horários para o candidato escolher (situação `escolher`) */
+          opcoes?: string[] | null;
           criado_em: string;
           atualizado_em: string;
         };
@@ -1760,6 +1762,20 @@ export type Database = {
         };
         Returns: string;
       };
+      /** migração 20270102120000: o candidato escolhe o horário */
+      oferecer_horarios: {
+        Args: {
+          p_anuncio: string;
+          p_perfil: string;
+          p_opcoes: string[];
+          p_formato: string;
+          p_local?: string | null;
+          p_obs?: string | null;
+          p_duracao?: number;
+        };
+        Returns: string;
+      };
+      escolher_horario: { Args: { p_id: string; p_quando: string }; Returns: undefined };
       mudar_entrevista: { Args: { p_id: string; p_situacao: string }; Returns: undefined };
       responder_entrevista: { Args: { p_id: string; p_resposta: string }; Returns: undefined };
       contar_visita: { Args: { p_anuncio: string }; Returns: undefined };
@@ -2647,6 +2663,7 @@ export type Database = {
       mudar_whatsapp: { Args: { p_aceito: boolean; p_origem: string }; Returns: undefined };
       salvar_retorno: { Args: { p_ligado: boolean; p_texto: string | null }; Returns: undefined };
       servidor_retornos: { Args: { p_chave: string; p_agora?: string }; Returns: number };
+      servidor_lembretes_entrevista: { Args: { p_chave: string; p_agora?: string }; Returns: number };
       copiloto_ler_mais: { Args: { p_anuncio: string }; Returns: number };
       copiloto_salvar_criterios: { Args: { p_anuncio: string; p_criterios: Json }; Returns: string };
       copiloto_ligar: {

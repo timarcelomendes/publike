@@ -451,6 +451,22 @@ export async function enviarRetornos(): Promise<{ enviados: number; motivo?: str
   return { enviados: Number(data ?? 0) };
 }
 
+/**
+ * O lembrete na véspera da entrevista, das 18h às 22h (Brasília), para o candidato e para quem marcou (migração
+ * 20270102120000). Sem a migração, nada (e sem `motivo`).
+ */
+export async function lembrarEntrevistas(): Promise<{ lembradas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { lembradas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_lembretes_entrevista", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { lembradas: 0 };
+    console.error("Publike: falha ao lembrar as entrevistas:", error.message);
+    return { lembradas: 0, motivo: "Não foi possível lembrar as entrevistas de amanhã." };
+  }
+  return { lembradas: Number(data ?? 0) };
+}
+
 /** As notícias de hoje num aviso só, no sino e no celular: a partir das 18h, uma vez por dia (migração 20261202120000). */
 export async function avisarNoticiasDoDia(): Promise<{ avisadas: number; motivo?: string }> {
   const acesso = acessoFila();

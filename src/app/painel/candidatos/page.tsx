@@ -96,7 +96,7 @@ const ORDEM_GRUPOS: Grupo[] = ["responder", "andamento", "encerrados"];
 const grupoDe = (c: { status: string; aceita_em?: string | null }): Grupo =>
   esperaResposta(c) ? "responder" : c.status === "dispensada" || c.status === "desfeito" ? "encerrados" : "andamento";
 
-const ENTREVISTA_ABERTA = ["marcada", "confirmada", "remarcar"];
+const ENTREVISTA_ABERTA = ["marcada", "confirmada", "remarcar", "escolher"];
 
 /** Sem acento e em minúsculas, para a busca pelo nome. */
 const simples = (s: string) =>

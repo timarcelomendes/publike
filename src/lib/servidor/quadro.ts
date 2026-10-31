@@ -30,6 +30,8 @@ export type Entrevista = {
   local: string | null;
   obs: string | null;
   situacao: string;
+  /** os horários oferecidos, enquanto o candidato escolhe (migração 20270102120000) */
+  opcoes?: string[] | null;
 };
 
 export type CartaoDoQuadro = {
@@ -65,7 +67,8 @@ export async function entrevistasDaVaga(anuncioId: string): Promise<Map<string, 
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("entrevistas")
-    .select("id, perfil_id, anuncio_id, quando, duracao_min, formato, local, obs, situacao")
+    // tudo: com a migração 20270102120000 vêm também os horários para escolher (opcoes)
+    .select("*")
     .eq("anuncio_id", anuncioId)
     .order("atualizado_em", { ascending: true });
   if (error) {

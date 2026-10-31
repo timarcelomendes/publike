@@ -1,11 +1,13 @@
 "use client";
 
 import { CalendarCheck, CalendarClock } from "lucide-react";
-import { responderEntrevista } from "@/lib/acoes/recrutamento";
+import { useState } from "react";
+import { escolherHorario, responderEntrevista } from "@/lib/acoes/recrutamento";
 import { eventoDaEntrevista } from "@/lib/agenda";
 import { SITE_URL } from "@/lib/config";
 import {
   dataDaEntrevista,
+  ENTREVISTA_ABERTA,
   FORMATOS_ENTREVISTA,
   SITUACOES_ENTREVISTA,
   type FormatoEntrevista,
@@ -24,9 +26,14 @@ export type EntrevistaDoCandidato = {
   situacao: string;
   duracao_min?: number | null;
   atualizado_em?: string | null;
+  /** os horários para escolher (situação `escolher`) */
+  opcoes?: string[] | null;
 };
 
-/** Para quem se candidatou: a entrevista marcada, com confirmar presença ou pedir para remarcar. */
+/**
+ * Para quem se candidatou: a entrevista marcada, com confirmar presença ou pedir para remarcar. Com horários para
+ * escolher, um botão por horário (escolher já confirma) e "Nenhum serve".
+ */
 export function EntrevistaDoCandidato({
   e,
   vaga,
@@ -40,7 +47,11 @@ export function EntrevistaDoCandidato({
   anuncioId: string;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
-  const aberta = ["marcada", "confirmada", "remarcar"].includes(e.situacao);
+  const aberta = ENTREVISTA_ABERTA.includes(e.situacao);
+  const escolher = e.situacao === "escolher";
+  // a hora de abrir a página: os horários que já passaram somem
+  const [agora] = useState(() => Date.now());
+  const opcoes = (e.opcoes ?? []).filter((o) => new Date(o).getTime() > agora);
   const situacao = SITUACOES_ENTREVISTA[e.situacao] ?? SITUACOES_ENTREVISTA.marcada;
   const formato = FORMATOS_ENTREVISTA[e.formato as FormatoEntrevista];
   const video = e.formato === "video" && e.local?.startsWith("https://");
@@ -48,9 +59,15 @@ export function EntrevistaDoCandidato({
     <div className="flex flex-col gap-2 rounded-md bg-surface-200 p-3 text-ink">
       <p className="flex flex-wrap items-center gap-2 text-label">
         <CalendarClock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-        Entrevista: {dataDaEntrevista(e.quando)}
-        <Selo variante={e.situacao === "marcada" ? "aviso" : situacao.tom}>
-          {e.situacao === "marcada" ? "Confirme" : e.situacao === "remarcar" ? "Remarcação pedida" : situacao.nome}
+        {escolher ? "Entrevista: escolha o horário" : `Entrevista: ${dataDaEntrevista(e.quando)}`}
+        <Selo variante={e.situacao === "marcada" || escolher ? "aviso" : situacao.tom}>
+          {e.situacao === "marcada"
+            ? "Confirme"
+            : escolher
+              ? "Escolha"
+              : e.situacao === "remarcar"
+                ? "Remarcação pedida"
+                : situacao.nome}
         </Selo>
       </p>
       <p className="text-body-sm">
@@ -66,12 +83,38 @@ export function EntrevistaDoCandidato({
         )}
       </p>
       {e.obs && <p className="text-body-sm text-ink-muted">{e.obs}</p>}
-      {aberta && (
+      {escolher && (
+        <div className="flex flex-col gap-2">
+          <p className="text-body-sm">Toque no horário que fica melhor para você. A entrevista já fica confirmada.</p>
+          {opcoes.length ? (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Horários para escolher">
+              {opcoes.map((o) => (
+                <Botao key={o} tamanho="sm" disabled={pendente} onClick={() => rodar(() => escolherHorario(e.id, o))}>
+                  <CalendarCheck aria-hidden />
+                  {dataDaEntrevista(o)}
+                </Botao>
+              ))}
+            </div>
+          ) : (
+            <p className="text-body-sm text-ink-muted">Os horários já passaram. Peça outros.</p>
+          )}
+          <Botao
+            tamanho="sm"
+            variante="fantasma"
+            className="self-start"
+            disabled={pendente}
+            onClick={() => rodar(() => responderEntrevista(e.id, "remarcar"))}
+          >
+            Nenhum serve: pedir outros
+          </Botao>
+        </div>
+      )}
+      {aberta && !escolher && (
         <BotoesAgenda
           evento={eventoDaEntrevista(e, { vaga, empresa, para: "candidato", url: `${SITE_URL}/anuncio/${anuncioId}` })}
         />
       )}
-      {aberta && (
+      {aberta && !escolher && (
         <div className="flex flex-wrap gap-2">
           {e.situacao !== "confirmada" && (
             <Botao

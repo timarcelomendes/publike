@@ -50,6 +50,22 @@ export const MODELOS_WHATSAPP = [
     botao: "Confirmar",
   },
   {
+    nome: "escolher_horario",
+    para: "candidato",
+    quando: "a empresa mandou horários para escolher",
+    variaveis: ["nome", "vaga"],
+    texto: "Oi, {{1}}! Chegaram horários para a sua entrevista para {{2}}. Escolha o melhor pelo Publike.",
+    botao: "Escolher o horário",
+  },
+  {
+    nome: "lembrete_entrevista",
+    para: "candidato",
+    quando: "véspera da entrevista, às 18h",
+    variaveis: ["nome", "vaga", "quando e onde"],
+    texto: "Oi, {{1}}! Amanhã tem a sua entrevista para {{2}}: {{3}}. Se não for dar, avise pelo Publike.",
+    botao: "Ver a entrevista",
+  },
+  {
     nome: "andamento",
     para: "candidato",
     quando: "mudou de etapa",
@@ -106,6 +122,13 @@ export function mensagemDoMomento(d: {
       texto: `Olá, ${primeiro}! Aqui é da ${d.empresa}. Que bom ter você com a gente na vaga de ${d.vaga}. Vamos combinar o primeiro dia?`,
       rotulo: "Mandar no WhatsApp",
       comLink: false,
+    };
+  }
+  if (d.entrevista?.situacao === "escolher") {
+    return {
+      texto: `Olá, ${primeiro}! Aqui é da ${d.empresa}. Mandei alguns horários para a sua entrevista na vaga de ${d.vaga}. Escolha o melhor para você no Publike:`,
+      rotulo: "Avisar dos horários no WhatsApp",
+      comLink: true,
     };
   }
   if (d.entrevista && EM_ABERTO.includes(d.entrevista.situacao)) {

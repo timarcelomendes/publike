@@ -6,7 +6,7 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
-import { FORMATOS_ENTREVISTA, preencherModelo } from "@/lib/recrutamento";
+import { FORMATOS_ENTREVISTA, MAX_HORARIOS, preencherModelo } from "@/lib/recrutamento";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
@@ -267,6 +267,90 @@ export async function mudarEntrevista(id: string, situacao: "cancelada" | "reali
   if (situacao === "cancelada") after(processarFilas);
   refresh();
   return { ok: true };
+}
+
+/** "2026-10-22T14:00" (Brasília, o campo datetime-local) em data; null se não for uma data. */
+function horaDeBrasilia(campo: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(campo ?? "")) return null;
+  // Brasília não tem horário de verão desde 2019: -03:00 o ano todo
+  const d = new Date(`${campo}:00-03:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Oferece de 2 a 5 horários para o candidato escolher (migração 20270102120000). Quem ainda não tem match ganha o
+ * match antes, como em "Marcar entrevista".
+ */
+export async function oferecerHorarios(d: Omit<DadosEntrevista, "quando"> & { opcoes: string[] }): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(d.anuncioId) || !UUID.test(d.perfilId)) return { ok: false, erro: "Pedido inválido." };
+  if (!(d.formato in FORMATOS_ENTREVISTA)) return { ok: false, erro: "Escolha como vai ser a entrevista." };
+  const datas = (Array.isArray(d.opcoes) ? d.opcoes : []).slice(0, MAX_HORARIOS).map(horaDeBrasilia);
+  if (datas.some((x) => !x)) return { ok: false, erro: "Preencha o dia e a hora de cada horário." };
+  const unicos = [...new Set(datas.map((x) => x!.toISOString()))];
+  if (unicos.length < 2) return { ok: false, erro: "Ofereça pelo menos 2 horários diferentes." };
+  const local = (d.local ?? "").trim().slice(0, 300);
+  const obs = (d.obs ?? "").trim().slice(0, 500);
+  if (temContato(obs))
+    return { ok: false, erro: "Tire telefone e e-mail da observação: o contato já aparece no match." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const supabase = await criarClienteServidor();
+  const { data: curtida } = await supabase
+    .from("curtidas")
+    .select("status")
+    .eq("anuncio_id", d.anuncioId)
+    .eq("perfil_id", d.perfilId)
+    .maybeSingle();
+  if (curtida && curtida.status !== "match") {
+    const { data, error } = await supabase.rpc("responder_curtida", {
+      p_anuncio: d.anuncioId,
+      p_perfil: d.perfilId,
+      p_decisao: "match",
+    });
+    if (error) return { ok: false, erro: mensagemDeErro(error) };
+    if (data === "aceita") {
+      after(processarFilas);
+      refresh();
+      return {
+        ok: false,
+        erro: "Esta vaga pede currículo e a pessoa ainda não mandou. Ela foi aceita e recebeu o pedido: quando mandar, dá match e aí você manda os horários.",
+      };
+    }
+  }
+  const { error } = await supabase.rpc("oferecer_horarios", {
+    p_anuncio: d.anuncioId,
+    p_perfil: d.perfilId,
+    p_opcoes: unicos,
+    p_formato: d.formato,
+    p_local: d.formato === "telefone" ? null : local,
+    p_obs: obs || null,
+    p_duracao: Math.min(480, Math.max(10, Math.round(Number(d.duracao) || 30))),
+  });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Escolher o horário ainda não está ligado. Tente mais tarde." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Horários enviados. O candidato escolhe um e você recebe o aviso." };
+}
+
+/** O candidato escolhe um dos horários oferecidos (vira entrevista confirmada). */
+export async function escolherHorario(id: string, quando: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const data = new Date(quando);
+  if (!UUID.test(id) || Number.isNaN(data.getTime())) return { ok: false, erro: "Pedido inválido." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("escolher_horario", { p_id: id, p_quando: data.toISOString() });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  // o aviso para quem publicou sai por e-mail
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Horário escolhido. A entrevista está confirmada." };
 }
 
 /** O candidato confirma presença ou pede para remarcar. */

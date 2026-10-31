@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import {
   avisarNoticiasDoDia,
   enviarRetornos,
+  lembrarEntrevistas,
   limparTestesAntigos,
   enviarEmailsPendentes,
   enviarPushPendentes,
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes, triagem, retornos] =
+  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes, triagem, retornos, vespera] =
     await Promise.all([
       revisarAnunciosPendentes(20),
       revisarAvaliacoesPendentes(20),
@@ -51,6 +52,8 @@ export async function GET(request: Request) {
       triagemAutomatica(),
       // quem foi dispensado há 15 minutos recebe o retorno (das 8h às 20h)
       enviarRetornos(),
+      // das 18h às 22h: o lembrete da entrevista de amanhã, para o candidato e para quem marcou
+      lembrarEntrevistas(),
     ]);
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
@@ -68,6 +71,7 @@ export async function GET(request: Request) {
     testes.motivo,
     triagem.motivo,
     retornos.motivo,
+    vespera.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -88,6 +92,7 @@ export async function GET(request: Request) {
       ia: { anuncios: ia, avaliacoes, recados },
       triagem: { criterios: triagem.montados, lidos: triagem.lidos },
       retornos: retornos.enviados,
+      entrevistas_lembradas: vespera.lembradas,
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },
   );

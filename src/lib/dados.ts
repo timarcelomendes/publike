@@ -382,7 +382,7 @@ export async function minhaEntrevista(anuncioId: string) {
   const supabase = await criarClienteServidor();
   const { data } = await supabase
     .from("entrevistas")
-    .select("id, quando, formato, local, obs, situacao, duracao_min, atualizado_em")
+    .select("*")
     .eq("anuncio_id", anuncioId)
     .eq("perfil_id", usuario.id)
     .order("atualizado_em", { ascending: false })
@@ -401,7 +401,7 @@ export async function minhasProximasEntrevistas(agora: number) {
     .from("entrevistas")
     .select("id, anuncio_id, quando, formato, situacao")
     .eq("perfil_id", usuario.id)
-    .in("situacao", ["marcada", "confirmada", "remarcar"])
+    .in("situacao", ["marcada", "confirmada", "remarcar", "escolher"])
     .gte("quando", new Date(agora - 2 * 3600e3).toISOString())
     .order("quando")
     .limit(10);

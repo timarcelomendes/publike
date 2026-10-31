@@ -75,7 +75,19 @@ export const SITUACOES_ENTREVISTA: Record<string, { nome: string; tom: "aviso" |
   cancelada: { nome: "Cancelada", tom: "contorno" },
   realizada: { nome: "Realizada", tom: "contorno" },
   faltou: { nome: "Não compareceu", tom: "perigo" },
+  escolher: { nome: "Escolhendo o horário", tom: "aviso" },
 };
+
+/** A entrevista ainda em aberto: marcada, confirmada, com remarcação pedida ou com horários para escolher. */
+export const ENTREVISTA_ABERTA = ["marcada", "confirmada", "remarcar", "escolher"];
+
+/** Até quantos horários a empresa oferece para o candidato escolher. */
+export const MAX_HORARIOS = 5;
+
+/** A data da entrevista para mostrar: "qua, 22/10 às 14h", ou "horário a escolher" enquanto o candidato escolhe. */
+export function quandoDaEntrevista(e: { quando: string; situacao: string }) {
+  return e.situacao === "escolher" ? "horário a escolher" : dataDaEntrevista(e.quando);
+}
 
 /** "qua, 22/10 às 14h" no horário de Brasília. */
 export function dataDaEntrevista(iso: string) {

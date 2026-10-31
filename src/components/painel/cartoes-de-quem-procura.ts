@@ -4,7 +4,7 @@ import { esperaCurriculo, esperaResposta, etapaParaQuemCurtiu, type EtapaCandida
 import { caminhoConversa, type ConversaPessoa } from "@/lib/conversas";
 import { minhasProximasEntrevistas, obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
 import { nomeCurtoDaConta, plural } from "@/lib/formato";
-import { dataDaEntrevista } from "@/lib/recrutamento";
+import { dataDaEntrevista, quandoDaEntrevista } from "@/lib/recrutamento";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import type { Curriculo, MeuPerfil, MinhaCurtida } from "@/lib/tipos";
@@ -29,7 +29,7 @@ export function andamento(c: MinhaCurtida, etapa: EtapaCandidato | null, entrevi
     return {
       feitas: 2,
       atual: true,
-      texto: entrevista ? `Entrevista ${dataDaEntrevista(entrevista.quando)}` : "Em entrevista",
+      texto: entrevista ? `Entrevista ${quandoDaEntrevista(entrevista)}` : "Em entrevista",
       fim: false,
     };
   if (c.status === "match") return { feitas: 2, atual: true, texto: "Deu match: combinem a entrevista", fim: false };
@@ -92,22 +92,29 @@ export function cartoesDeQuemProcura({
       acao: "Mandar meu currículo",
     });
   }
-  const paraConfirmar = entrevistas.filter((e) => e.situacao === "marcada");
-  for (const e of entrevistas.filter((x) => new Date(x.quando).getTime() <= agora + 3 * DIA).slice(0, 2)) {
+  const paraConfirmar = entrevistas.filter((e) => e.situacao === "marcada" || e.situacao === "escolher");
+  // com horários para escolher, entra sempre (o `quando` é só o primeiro horário)
+  const proximas = entrevistas.filter(
+    (x) => x.situacao === "escolher" || new Date(x.quando).getTime() <= agora + 3 * DIA,
+  );
+  for (const e of proximas.slice(0, 2)) {
     const v = tituloDe.get(e.anuncio_id);
-    const confirmar = e.situacao === "marcada";
+    const escolher = e.situacao === "escolher";
+    const confirmar = e.situacao === "marcada" || escolher;
     cartoes.push({
       icone: CalendarClock,
       tom: confirmar ? "urgente" : "normal",
-      quando: dataDaEntrevista(e.quando),
+      quando: escolher ? "Escolha o horário" : dataDaEntrevista(e.quando),
       titulo: `Entrevista${v ? ` para ${v.titulo}` : ""}`,
-      texto: confirmar
-        ? `${v?.autor_nome ?? "Quem publicou"} marcou: confirme que vai ou peça outro horário.`
-        : e.situacao === "remarcar"
-          ? "Você pediu outro horário: espere o novo dia."
-          : "Confirmada. Chegue uns minutos antes.",
+      texto: escolher
+        ? `${v?.autor_nome ?? "Quem publicou"} mandou alguns horários: escolha o melhor para você.`
+        : confirmar
+          ? `${v?.autor_nome ?? "Quem publicou"} marcou: confirme que vai ou peça outro horário.`
+          : e.situacao === "remarcar"
+            ? "Você pediu outro horário: espere o novo dia."
+            : "Confirmada. Chegue uns minutos antes.",
       href: `/anuncio/${e.anuncio_id}`,
-      acao: confirmar ? "Confirmar" : "Ver detalhes",
+      acao: escolher ? "Escolher" : confirmar ? "Confirmar" : "Ver detalhes",
     });
   }
   if (paraConfirmar.length > 2) {

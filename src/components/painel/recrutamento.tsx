@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, Send, Trash } from "lucide-react";
+import { CalendarPlus, Plus, Send, Trash, X } from "lucide-react";
 import { useId, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import {
@@ -8,11 +8,14 @@ import {
   mandarMensagemEmMassa,
   marcarEntrevista,
   mudarEntrevista,
+  oferecerHorarios,
   salvarModeloMensagem,
 } from "@/lib/acoes/recrutamento";
 import {
   dataDaEntrevista,
+  ENTREVISTA_ABERTA,
   FORMATOS_ENTREVISTA,
+  MAX_HORARIOS,
   preencherModelo,
   SITUACOES_ENTREVISTA,
   type FormatoEntrevista,
@@ -37,6 +40,8 @@ type EntrevistaResumo = {
   situacao: string;
   duracao_min?: number | null;
   atualizado_em?: string | null;
+  /** os horários oferecidos (situação `escolher`) */
+  opcoes?: string[] | null;
 };
 
 /** "2026-10-22T14:00" (Brasília) a partir da data guardada, para o campo de data e hora. */
@@ -53,6 +58,14 @@ function paraCampo(iso: string | null) {
   }).format(d);
   const [dia, hora] = p.split(" ");
   return `${dia}T${iso ? hora : "09:00"}`;
+}
+
+/** Os horários que já vêm no "Deixar escolher": amanhã às 9h e às 14h, depois de amanhã às 9h. */
+function horariosIniciais(atual: EntrevistaResumo | null) {
+  if (atual?.opcoes?.length) return atual.opcoes.map((o) => paraCampo(o));
+  const amanha = paraCampo(null).slice(0, 10);
+  const depois = paraCampo(new Date(Date.now() + 48 * 3600e3).toISOString()).slice(0, 10);
+  return [`${amanha}T09:00`, `${amanha}T14:00`, `${depois}T09:00`];
 }
 
 /** Formulário de marcar (ou remarcar) a entrevista. */
@@ -78,6 +91,9 @@ export function FormEntrevista({
   const [local, setLocal] = useState(atual?.local ?? (formato === "presencial" ? endereco : ""));
   const [obs, setObs] = useState(atual?.obs ?? "");
   const [duracao, setDuracao] = useState("30");
+  // "Deixar o candidato escolher": de 2 a 5 horários no lugar de um só
+  const [escolher, setEscolher] = useState(atual?.situacao === "escolher");
+  const [horarios, setHorarios] = useState<string[]>(() => horariosIniciais(atual));
   const { rodar, pendente, mensagem } = useAcao();
   const info = FORMATOS_ENTREVISTA[formato];
 
@@ -91,30 +107,86 @@ export function FormEntrevista({
       className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
+        const dados = { anuncioId, perfilId, formato, local, obs, duracao: Number(duracao) };
         rodar(
-          () => marcarEntrevista({ anuncioId, perfilId, quando, formato, local, obs, duracao: Number(duracao) }),
+          () => (escolher ? oferecerHorarios({ ...dados, opcoes: horarios }) : marcarEntrevista({ ...dados, quando })),
           (r) => r.ok && aoTerminar?.(),
         );
       }}
     >
       <p className="text-body-sm text-ink-muted">
-        {nome.split(" ")[0]} recebe o aviso e uma mensagem na conversa com os detalhes, e confirma a presença pelo
-        Publike. {atual ? "Mudar a data remarca a entrevista." : "Se ainda não deu match, o match acontece agora."}
+        {escolher
+          ? `${nome.split(" ")[0]} recebe os horários, escolhe um pelo Publike e você recebe o aviso. Na véspera, os dois recebem um lembrete.`
+          : `${nome.split(" ")[0]} recebe o aviso e uma mensagem na conversa com os detalhes, e confirma a presença pelo Publike.`}{" "}
+        {atual ? "Mudar a data remarca a entrevista." : "Se ainda não deu match, o match acontece agora."}
       </p>
+      <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-label">
+        <input
+          type="checkbox"
+          checked={escolher}
+          onChange={(e) => setEscolher(e.target.checked)}
+          className="size-5 accent-[var(--pk-ink)]"
+        />
+        Deixar {nome.split(" ")[0]} escolher o horário
+        <Selo variante="novo">Novo</Selo>
+      </label>
+      {escolher && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-label">
+            Horários que servem para você <span className="font-normal text-ink-muted">(de 2 a {MAX_HORARIOS})</span>
+          </legend>
+          {horarios.map((h, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                aria-label={`Horário ${i + 1}`}
+                value={h}
+                onChange={(e) => setHorarios((l) => l.map((x, j) => (j === i ? e.target.value : x)))}
+                required
+                className={`${classesEntrada} sm:max-w-xs`}
+              />
+              {horarios.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => setHorarios((l) => l.filter((_, j) => j !== i))}
+                  aria-label={`Tirar o horário ${i + 1}`}
+                  className="inline-flex size-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-300 hover:text-ink"
+                >
+                  <X aria-hidden className="size-4" />
+                </button>
+              )}
+            </div>
+          ))}
+          {horarios.length < MAX_HORARIOS && (
+            <Botao
+              type="button"
+              tamanho="sm"
+              variante="fantasma"
+              className="self-start"
+              onClick={() => setHorarios((l) => [...l, l[l.length - 1] ?? paraCampo(null)])}
+            >
+              <Plus aria-hidden />
+              Mais um horário
+            </Botao>
+          )}
+        </fieldset>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={`${base}-quando`} className="text-label">
-            Dia e hora
-          </label>
-          <input
-            id={`${base}-quando`}
-            type="datetime-local"
-            value={quando}
-            onChange={(e) => setQuando(e.target.value)}
-            required
-            className={classesEntrada}
-          />
-        </div>
+        {!escolher && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${base}-quando`} className="text-label">
+              Dia e hora
+            </label>
+            <input
+              id={`${base}-quando`}
+              type="datetime-local"
+              value={quando}
+              onChange={(e) => setQuando(e.target.value)}
+              required
+              className={classesEntrada}
+            />
+          </div>
+        )}
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${base}-duracao`} className="text-label">
             Duração
@@ -185,7 +257,13 @@ export function FormEntrevista({
       <div>
         <Botao type="submit" variante="primario" tamanho="sm" disabled={pendente}>
           <CalendarPlus aria-hidden />
-          {pendente ? "Marcando…" : atual ? "Remarcar entrevista" : "Marcar entrevista"}
+          {pendente
+            ? "Enviando…"
+            : escolher
+              ? "Mandar os horários"
+              : atual
+                ? "Remarcar entrevista"
+                : "Marcar entrevista"}
         </Botao>
       </div>
       {mensagem}
@@ -206,19 +284,27 @@ export function EntrevistaMarcada({
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const situacao = SITUACOES_ENTREVISTA[entrevista.situacao] ?? SITUACOES_ENTREVISTA.marcada;
-  const aberta = ["marcada", "confirmada", "remarcar"].includes(entrevista.situacao);
+  const aberta = ENTREVISTA_ABERTA.includes(entrevista.situacao);
+  const escolhendo = entrevista.situacao === "escolher";
   return (
     <div className="flex flex-col gap-2">
       <p className="flex flex-wrap items-center gap-2 text-label">
-        {dataDaEntrevista(entrevista.quando)}
+        {escolhendo ? "Horários enviados" : dataDaEntrevista(entrevista.quando)}
         <Selo variante={situacao.tom}>{situacao.nome}</Selo>
       </p>
+      {escolhendo && entrevista.opcoes?.length ? (
+        <ul className="flex flex-col gap-0.5 text-body-sm">
+          {entrevista.opcoes.map((o) => (
+            <li key={o}>{dataDaEntrevista(o)}</li>
+          ))}
+        </ul>
+      ) : null}
       <p className="text-body-sm text-ink-muted">
         {FORMATOS_ENTREVISTA[entrevista.formato as FormatoEntrevista]?.nome ?? ""}
         {entrevista.local ? `: ${entrevista.local}` : ""}
         {entrevista.obs ? ` · ${entrevista.obs}` : ""}
       </p>
-      {aberta && agenda && (
+      {aberta && !escolhendo && agenda && (
         <BotoesAgenda
           evento={eventoDaEntrevista(entrevista, {
             vaga: agenda.vaga,
@@ -232,24 +318,28 @@ export function EntrevistaMarcada({
         {aberta && (
           <>
             <Botao tamanho="sm" onClick={aoRemarcar}>
-              Remarcar
+              {escolhendo ? "Mudar os horários" : "Remarcar"}
             </Botao>
-            <Botao
-              tamanho="sm"
-              variante="fantasma"
-              disabled={pendente}
-              onClick={() => rodar(() => mudarEntrevista(entrevista.id, "realizada"))}
-            >
-              Foi realizada
-            </Botao>
-            <Botao
-              tamanho="sm"
-              variante="fantasma"
-              disabled={pendente}
-              onClick={() => rodar(() => mudarEntrevista(entrevista.id, "faltou"))}
-            >
-              Não compareceu
-            </Botao>
+            {!escolhendo && (
+              <>
+                <Botao
+                  tamanho="sm"
+                  variante="fantasma"
+                  disabled={pendente}
+                  onClick={() => rodar(() => mudarEntrevista(entrevista.id, "realizada"))}
+                >
+                  Foi realizada
+                </Botao>
+                <Botao
+                  tamanho="sm"
+                  variante="fantasma"
+                  disabled={pendente}
+                  onClick={() => rodar(() => mudarEntrevista(entrevista.id, "faltou"))}
+                >
+                  Não compareceu
+                </Botao>
+              </>
+            )}
             <Botao
               tamanho="sm"
               variante="fantasma"

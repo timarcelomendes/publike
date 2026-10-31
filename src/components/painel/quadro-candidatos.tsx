@@ -36,7 +36,13 @@ import { caminhoConversa } from "@/lib/conversas";
 import { DECISOES_CLIENTE, quemAvalia, type RespostaCliente } from "@/lib/finalistas";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
-import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
+import {
+  COLUNAS_QUADRO,
+  ENTREVISTA_ABERTA,
+  quandoDaEntrevista,
+  SITUACOES_ENTREVISTA,
+  type ModeloMensagem,
+} from "@/lib/recrutamento";
 import { NOME_FAIXA, type FaixaDoTeste } from "@/lib/testes";
 import type { TriagemNoCartao } from "@/lib/servidor/copiloto";
 import { CaminhoDoAceite } from "../caminho-curtida";
@@ -442,7 +448,7 @@ function Cartao({
   agencia: boolean;
 }) {
   const e = c.entrevista;
-  const entrevistaAberta = e && ["marcada", "confirmada", "remarcar"].includes(e.situacao);
+  const entrevistaAberta = e && ENTREVISTA_ABERTA.includes(e.situacao);
   return (
     <article
       draggable
@@ -522,7 +528,7 @@ function Cartao({
           {entrevistaAberta && e && (
             <Selo variante={SITUACOES_ENTREVISTA[e.situacao]?.tom ?? "aviso"}>
               <CalendarClock aria-hidden />
-              {dataDaEntrevista(e.quando)}
+              {quandoDaEntrevista(e)}
             </Selo>
           )}
           {c.finalista && <SeloDoCliente r={c.finalista} agencia={agencia} />}
@@ -706,7 +712,9 @@ function DetalheCandidato({
             {marcou && (
               <div className="flex flex-col items-start gap-2">
                 <p role="status" className="text-body-sm text-cerrado-text">
-                  Entrevista marcada. O candidato recebeu o aviso e a mensagem na conversa.
+                  {e.situacao === "escolher"
+                    ? "Horários enviados. O candidato escolhe um e você recebe o aviso."
+                    : "Entrevista marcada. O candidato recebeu o aviso e a mensagem na conversa."}
                 </p>
                 {c.whatsapp && (
                   <BotaoWhatsappDoMomento
@@ -735,7 +743,7 @@ function DetalheCandidato({
             anuncioId={anuncioId}
             perfilId={c.perfil_id}
             nome={c.nome}
-            atual={e && ["marcada", "confirmada", "remarcar"].includes(e.situacao) ? e : null}
+            atual={e && ENTREVISTA_ABERTA.includes(e.situacao) ? e : null}
             endereco={endereco}
             aoTerminar={() => {
               setMarcando(false);

@@ -52,6 +52,9 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "etapa") return "/painel/curtidas";
   if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
+  // o lembrete da véspera: o candidato vai à vaga; quem marcou, ao quadro
+  if (n.tipo === "entrevista_lembrete" && n.anuncio_id)
+    return n.link?.startsWith("/") ? n.link : `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "finalistas" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/finalistas`;
   if (n.tipo === "convite_candidato" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/convidar`;
   if (n.tipo === "equipe") return "/painel/equipe";

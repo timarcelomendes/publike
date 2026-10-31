@@ -24,7 +24,7 @@ import { fraseDaEntrevista } from "@/lib/whatsapp";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { textosDosEstudos } from "@/lib/estudos";
 import { textoDoPeriodo } from "@/lib/experiencia";
-import { dataDaEntrevista } from "@/lib/recrutamento";
+import { quandoDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
 import type { Curriculo } from "@/lib/tipos";
 import { AcoesInteressado } from "./acoes";
@@ -185,7 +185,7 @@ export function FichaCandidato({
             {c.entrevista && (
               <span className="inline-flex items-center gap-1.5 text-body-sm font-semibold">
                 <CalendarClock aria-hidden className="size-4 text-ink-muted" />
-                Entrevista {dataDaEntrevista(c.entrevista.quando)}
+                Entrevista {quandoDaEntrevista(c.entrevista)}
               </span>
             )}
           </p>
