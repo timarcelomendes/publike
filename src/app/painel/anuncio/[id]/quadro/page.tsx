@@ -18,6 +18,7 @@ import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
 import { ordemDoCopiloto, triagemDosCandidatos } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
+import { retornoDaConta } from "@/lib/servidor/retorno";
 import { saudeDasVagas } from "@/lib/servidor/saude";
 import { resultadosDosTestes } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
@@ -51,11 +52,12 @@ async function Conteudo({
   const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem] = await Promise.all([
+  const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno] = await Promise.all([
     montarQuadro(anuncio, agora),
     ordemDoCopiloto(id),
     resultadosDosTestes(id),
     triagemDosCandidatos(id),
+    retornoDaConta(),
   ]);
   // o Teste Prático de cada candidato: o resultado numa palavra no cartão e o "Ordenar pelo teste"
   const testesDe = new Map<string, { titulo: string; faixa: FaixaDoTeste; nota: number }[]>();
@@ -211,6 +213,7 @@ async function Conteudo({
           abrir={abrir}
           agencia={agencia}
           contatoDireto={Boolean(anuncio.contato_direto)}
+          retorno={retorno}
         />
       )}
     </div>

@@ -21,6 +21,7 @@ import { CurtirDeNovo, DesfazerMatch } from "../desfazer-match";
 import { Aviso } from "../ui/basicos";
 import { Botao, BotaoLink } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
+import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
 
 type Props = {
   idCampo: string;
@@ -352,6 +353,9 @@ export function PainelCurtir({
         </p>
         {aviso && <LinhaDoAvisoLigado aviso={aviso} />}
         {!servico && <NuncaPague />}
+        {!servico && (
+          <AceiteWhatsapp origem="curtir" rotulo="Quero receber o andamento pelo WhatsApp" esconderSeAceito />
+        )}
         {mensagem && <p className="rounded-md bg-surface-200 p-3 text-body-sm italic">“{mensagem}”</p>}
         {perguntas.length > 0 && (
           <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} />

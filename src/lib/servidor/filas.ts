@@ -435,6 +435,22 @@ export async function lembrarRespostas(): Promise<{ empresa: number; pessoa: num
   return { empresa: Number(r.empresa ?? 0), pessoa: Number(r.pessoa ?? 0) };
 }
 
+/**
+ * O retorno a quem não seguiu (migração 20261230120000): as dispensas de 15 minutos atrás viram o aviso
+ * `dispensada`, das 8h às 20h. Sem a migração, nada (e sem `motivo`, para a tarefa não responder 500).
+ */
+export async function enviarRetornos(): Promise<{ enviados: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { enviados: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_retornos", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { enviados: 0 };
+    console.error("Publike: falha ao mandar os retornos:", error.message);
+    return { enviados: 0, motivo: "Não foi possível mandar os retornos de quem não seguiu." };
+  }
+  return { enviados: Number(data ?? 0) };
+}
+
 /** As notícias de hoje num aviso só, no sino e no celular: a partir das 18h, uma vez por dia (migração 20261202120000). */
 export async function avisarNoticiasDoDia(): Promise<{ avisadas: number; motivo?: string }> {
   const acesso = acessoFila();

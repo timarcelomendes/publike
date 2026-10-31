@@ -14,6 +14,7 @@ import { ParaFazerAgora } from "@/components/painel/hoje";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
+import { retornosRecebidos } from "@/lib/servidor/retorno";
 import { minhasCandidaturasVistas } from "@/lib/servidor/visitas";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -106,12 +107,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     atividades.includes("trabalhar") && tipo !== "servico" ? await paraFazerDeQuemProcura(curtidas, etapas, agora) : [];
   const fazerAgora = paraFazer.length > 0 && <ParaFazerAgora lista itens={paraFazer} vazio="" />;
   // sem currículo, as vagas que pedem um ganham o passo "Você manda o currículo" no caminho
-  const [pedemCurriculo, diretos] = await Promise.all([
+  const [pedemCurriculo, diretos, retornos] = await Promise.all([
     curriculo
       ? new Set<string>()
       : vagasQuePedemCurriculo(curtidas.filter((c) => c.tipo === "vaga" && esperaResposta(c)).map((c) => c.anuncio_id)),
     // contato direto: o match saiu na hora (sem aceite); a mensagem do WhatsApp leva o link do anúncio
     anunciosComContatoDireto(curtidas.filter((c) => c.status === "match").map((c) => c.anuncio_id)),
+    // o retorno de quem dispensou (migração 20261230120000), para "Não foi dessa vez"
+    curtidas.some((c) => c.status === "dispensada") ? retornosRecebidos() : new Map<string, string>(),
   ]);
 
   if (curtidas.length === 0) {
@@ -308,6 +311,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                     passoDoCurriculo={c.status === "pendente" && pedemCurriculo.has(c.anuncio_id)}
                     className="rounded-md border border-line bg-surface-100 p-3"
                   />
+                )}
+                {c.status === "dispensada" && retornos.get(c.anuncio_id) && (
+                  <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
+                    <p className="text-body-sm">{retornos.get(c.anuncio_id)}</p>
+                    <Link
+                      href={`/anuncio/${c.anuncio_id}/parecidas`}
+                      className="inline-flex min-h-10 items-center self-start text-label underline underline-offset-2"
+                    >
+                      Ver vagas parecidas
+                    </Link>
+                  </div>
                 )}
                 {/* aceito, falta o currículo: o próximo passo é com a pessoa */}
                 {esperaCurriculo(c) && (

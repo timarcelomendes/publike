@@ -20,6 +20,7 @@ import { classesBotao } from "@/components/ui/botao";
 import { esperaResposta } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { formatarLugar, formatarTelefone, linkWhatsApp, tempoRelativo } from "@/lib/formato";
+import { fraseDaEntrevista } from "@/lib/whatsapp";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { textosDosEstudos } from "@/lib/estudos";
 import { textoDoPeriodo } from "@/lib/experiencia";
@@ -221,7 +222,10 @@ export function FichaCandidato({
                 c.whatsapp,
                 // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
                 mensagemComLink(
-                  `Olá, ${primeiro}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
+                  // com entrevista marcada, o WhatsApp já leva o dia, a hora e o lugar (parte 2 do plano do retorno)
+                  c.entrevista
+                    ? `Olá, ${primeiro}! Sobre a vaga de ${c.anuncio_titulo}: sua entrevista ficou para ${fraseDaEntrevista(c.entrevista)}. Pode confirmar por aqui?`
+                    : `Olá, ${primeiro}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
                   linkDoMatch({ anuncioId: c.anuncio_id, perfilId: c.perfil_id, para: "quem_curtiu", direto }),
                 ),
               )}
@@ -230,7 +234,7 @@ export function FichaCandidato({
               className={classesBotao("sucesso", "sm")}
             >
               <MessageCircle aria-hidden />
-              WhatsApp
+              {c.entrevista ? "Avisar da entrevista no WhatsApp" : "WhatsApp"}
             </a>
           )}
           {conectar}

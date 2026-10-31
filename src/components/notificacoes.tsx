@@ -60,6 +60,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // curtida sem resposta: o lembrete para quem publicou e o aviso para quem curtiu
   lembrete_curtida: Hourglass,
   sem_resposta: SearchCheck,
+  dispensada: SearchCheck,
   convite: Send,
   teste_pedido: ClipboardCheck,
   teste_feito: ClipboardCheck,

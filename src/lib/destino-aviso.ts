@@ -40,6 +40,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "lembrete_curtida" && n.anuncio_id) return `/painel/caixa?aba=novos&vaga=${n.anuncio_id}`;
   // 5 dias sem resposta: as vagas parecidas (a mesma área, pela vaga)
   if (n.tipo === "sem_resposta" && n.anuncio_id) return `/anuncio/${n.anuncio_id}/parecidas`;
+  // o retorno de quem não seguiu: as vagas parecidas (migração 20261230120000)
+  if (n.tipo === "dispensada" && n.anuncio_id) return `/anuncio/${n.anuncio_id}/parecidas`;
   if (n.tipo === "match") return "/painel/matches";
   if (n.tipo === "match_desfeito" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "avaliacao") return "/painel/avaliacoes";

@@ -47,6 +47,7 @@ export default function Privacidade() {
             "Quem publicou pode marcar em que etapa cada pessoa está (numa vaga: em análise, entrevista, contratado, não seguiu; num serviço: orçamento enviado, agendado, concluído, não seguiu). Quem curtiu vê a etapa e recebe um aviso quando ela muda. Quem publicou também pode escrever uma anotação, que fica só com ele, e baixar a lista de uma vaga numa planilha, só para organizar a seleção. Na planilha, o WhatsApp e o e-mail só aparecem depois do match, como na tela.",
             "Depois do match, os dois podem conversar pelo Publike. Só vocês dois leem a conversa; ela some para os dois se o match for desfeito e é apagada junto com a conta. O aviso de mensagem nova (no site e por e-mail) não leva o texto da mensagem.",
             "Seu WhatsApp e seu e-mail de contato só aparecem para a outra pessoa de um match.",
+            "Se você marcar “Receber pelo WhatsApp” (em Avisos e notificações, ao curtir uma vaga ou no quadro de candidatos), o Publike manda os avisos do andamento (para empresas, os candidatos novos) pelo WhatsApp oficial, no número do seu perfil. Esses avisos começam em breve. Para parar, é só desmarcar.",
             "Recomendações que escrevem para você só aparecem no seu perfil depois que você aprova, e você pode esconder qualquer uma depois.",
             "O CNPJ de agência, comércio ou empresa aparece no perfil e nos anúncios, para quem usa o site conferir na Receita.",
             "Denúncias só a moderação vê. Quem publicou não sabe quem denunciou.",

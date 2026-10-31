@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import {
   avisarNoticiasDoDia,
+  enviarRetornos,
   limparTestesAntigos,
   enviarEmailsPendentes,
   enviarPushPendentes,
@@ -31,23 +32,26 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes, triagem] = await Promise.all([
-    revisarAnunciosPendentes(20),
-    revisarAvaliacoesPendentes(20),
-    revisarRecadosPendentes(20),
-    // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
-    liberarContatosParados(),
-    // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
-    lembrarRespostas(),
-    // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos
-    mandarCombinamDaSemana(),
-    // a partir das 18h: as notícias do dia num aviso só (sino e celular), uma vez por dia
-    avisarNoticiasDoDia(),
-    // os resultados dos testes de vagas fora do ar há 12 meses
-    limparTestesAntigos(),
-    // a Triagem com IA lê sozinha: os critérios das vagas novas e as candidaturas que chegaram
-    triagemAutomatica(),
-  ]);
+  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes, triagem, retornos] =
+    await Promise.all([
+      revisarAnunciosPendentes(20),
+      revisarAvaliacoesPendentes(20),
+      revisarRecadosPendentes(20),
+      // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
+      liberarContatosParados(),
+      // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
+      lembrarRespostas(),
+      // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos
+      mandarCombinamDaSemana(),
+      // a partir das 18h: as notícias do dia num aviso só (sino e celular), uma vez por dia
+      avisarNoticiasDoDia(),
+      // os resultados dos testes de vagas fora do ar há 12 meses
+      limparTestesAntigos(),
+      // a Triagem com IA lê sozinha: os critérios das vagas novas e as candidaturas que chegaram
+      triagemAutomatica(),
+      // quem foi dispensado há 15 minutos recebe o retorno (das 8h às 20h)
+      enviarRetornos(),
+    ]);
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
 
@@ -63,6 +67,7 @@ export async function GET(request: Request) {
     noticias.motivo,
     testes.motivo,
     triagem.motivo,
+    retornos.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -82,6 +87,7 @@ export async function GET(request: Request) {
       combinam: { vagas: combinam.vagas, talentos: combinam.talentos, vistos: combinam.vistos },
       ia: { anuncios: ia, avaliacoes, recados },
       triagem: { criterios: triagem.montados, lidos: triagem.lidos },
+      retornos: retornos.enviados,
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },
   );

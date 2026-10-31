@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { FormAvisos } from "@/components/avisos/form-avisos";
+import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
+import { meuWhatsapp } from "@/lib/acoes/whatsapp";
 import { AtivarNotificacoes } from "@/components/notificacoes-celular";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
@@ -33,9 +35,10 @@ async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/perfil/avisos");
   const supabase = await criarClienteServidor();
-  const [perfil, { data: desligados, error }] = await Promise.all([
+  const [perfil, { data: desligados, error }, whatsapp] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     supabase.rpc("meus_avisos_desligados"),
+    meuWhatsapp(),
   ]);
   if (error) {
     console.error(`Publike: falha ao ler os avisos desligados: ${error.message}`);
@@ -59,6 +62,22 @@ async function Conteudo() {
         semEmail={!usuario.email}
         pode={usuario.papel === "dono" || usuario.papel === "admin"}
       />
+      {whatsapp && whatsapp.pode && (
+        <section aria-labelledby="titulo-whatsapp" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+          <h2 id="titulo-whatsapp" className="mb-2 text-h3">
+            WhatsApp
+          </h2>
+          <AceiteWhatsapp
+            inicial={whatsapp}
+            origem="avisos"
+            rotulo={
+              perfil && perfil.tipo !== "pessoa"
+                ? "Receber os candidatos novos pelo WhatsApp"
+                : "Receber o andamento das candidaturas pelo WhatsApp"
+            }
+          />
+        </section>
+      )}
       {/* o celular é por aparelho: cada um liga o seu */}
       {vapid && <AtivarNotificacoes vapid={vapid} jeito="cartao" />}
       <p className="text-body-sm text-ink-muted">

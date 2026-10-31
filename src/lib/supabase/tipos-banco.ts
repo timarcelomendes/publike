@@ -2642,6 +2642,11 @@ export type Database = {
       };
       admin_pagamentos_teste: { Args: { p_conta: string; p_marcar: boolean }; Returns: undefined };
       copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
+      retorno_da_conta: { Args: Record<PropertyKey, never>; Returns: Json };
+      whatsapp_da_conta: { Args: Record<PropertyKey, never>; Returns: Json };
+      mudar_whatsapp: { Args: { p_aceito: boolean; p_origem: string }; Returns: undefined };
+      salvar_retorno: { Args: { p_ligado: boolean; p_texto: string | null }; Returns: undefined };
+      servidor_retornos: { Args: { p_chave: string; p_agora?: string }; Returns: number };
       copiloto_ler_mais: { Args: { p_anuncio: string }; Returns: number };
       copiloto_salvar_criterios: { Args: { p_anuncio: string; p_criterios: Json }; Returns: string };
       copiloto_ligar: {

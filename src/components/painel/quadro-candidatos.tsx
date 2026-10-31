@@ -45,6 +45,10 @@ import { Avatar, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { CompositorMensagem, EntrevistaMarcada, FormEntrevista } from "./recrutamento";
+import { FormRetorno } from "./retorno";
+import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
+import { montarRetorno, type RetornoDaConta } from "@/lib/retorno";
+import { mensagemDoMomento } from "@/lib/whatsapp";
 
 // Quadro de candidatos de uma vaga (como um Kanban): uma coluna por etapa, os mais
 // aderentes em cima. Arraste o cartão para outra coluna (ou use "Mover para"), marque
@@ -110,6 +114,7 @@ export function QuadroCandidatos({
   abrir = null,
   agencia = false,
   contatoDireto = false,
+  retorno = null,
 }: {
   anuncioId: string;
   vaga: string;
@@ -124,6 +129,8 @@ export function QuadroCandidatos({
   abrir?: string | null;
   /** agência: mandar os finalistas ao cliente */
   agencia?: boolean;
+  /** o retorno a quem não seguiu (null: sem a migração 20261230120000) */
+  retorno?: RetornoDaConta | null;
 }) {
   const [lista, mover] = useOptimistic(cartoes, (atual, m: { ids: string[]; coluna: EtapaCandidato }) =>
     atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna } : c)),
@@ -137,9 +144,13 @@ export function QuadroCandidatos({
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const [esconderEliminados, setEsconderEliminados] = useState(false);
   const [sobre, setSobre] = useState<EtapaCandidato | null>(null);
+  const [gavetaRetorno, setGavetaRetorno] = useState(false);
+  const [dispensarEliminados, setDispensarEliminados] = useState(false);
 
   const visiveis = esconderEliminados ? lista.filter((c) => !c.aderencia.eliminado) : lista;
   const eliminados = lista.filter((c) => c.aderencia.eliminado).length;
+  // os eliminados pelas perguntas que ainda não saíram: "Dispensar os N eliminados" leva todos para Não seguiu
+  const paraDispensar = lista.filter((c) => c.aderencia.eliminado && c.coluna !== "nao_seguiu");
   const atual = lista.find((c) => c.perfil_id === aberto) ?? null;
 
   function moverPara(ids: string[], coluna: EtapaCandidato) {
@@ -198,6 +209,27 @@ export function QuadroCandidatos({
             Esconder eliminados ({eliminados})
           </label>
         )}
+        {paraDispensar.length > 0 && (
+          <Botao tamanho="sm" variante="secundario" onClick={() => setDispensarEliminados(true)}>
+            {paraDispensar.length === 1 ? "Dispensar o eliminado" : `Dispensar os ${paraDispensar.length} eliminados`}
+          </Botao>
+        )}
+        {retorno && (
+          <button
+            type="button"
+            onClick={() => setGavetaRetorno(true)}
+            className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted underline underline-offset-2 hover:text-ink"
+          >
+            Retorno a quem não seguir: {retorno.ligado ? "ligado" : "desligado"}
+            <Selo variante="novo">Novo</Selo>
+          </button>
+        )}
+        <AceiteWhatsapp
+          origem="quadro"
+          rotulo="Receber os candidatos novos no WhatsApp (em breve)"
+          esconderSeAceito
+          compacto
+        />
       </div>
       {aviso && (
         <p role="status" className={`text-body-sm ${aviso.ok ? "text-cerrado-text" : "text-danger"}`}>
@@ -290,6 +322,58 @@ export function QuadroCandidatos({
         </div>
       )}
 
+      {retorno && (
+        <Gaveta aberta={gavetaRetorno} fechar={() => setGavetaRetorno(false)} titulo="Retorno a quem não seguir">
+          <FormRetorno
+            retorno={retorno}
+            exemplo={{ nome: lista[0]?.nome ?? "Ana", vaga, empresa }}
+            aoSalvar={() => setGavetaRetorno(false)}
+          />
+        </Gaveta>
+      )}
+
+      <Gaveta
+        aberta={dispensarEliminados}
+        fechar={() => setDispensarEliminados(false)}
+        titulo="Dispensar os eliminados"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-body-sm">
+            {paraDispensar.length === 1 ? "1 pessoa não passou" : `${paraDispensar.length} pessoas não passaram`} numa
+            pergunta eliminatória: {paraDispensar.map((c) => c.nome.split(" ")[0]).join(", ")}.
+          </p>
+          {retorno?.ligado ? (
+            <div className="rounded-md bg-surface-300 p-3">
+              <p className="text-caption text-ink-muted">Cada uma recebe, 15 minutos depois</p>
+              <p className="mt-1 text-body-sm">
+                {montarRetorno(retorno.texto, { nome: paraDispensar[0]?.nome ?? "", vaga, empresa })}
+              </p>
+            </div>
+          ) : (
+            <p className="text-body-sm text-ink-muted">O retorno está desligado: ninguém recebe aviso.</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Botao
+              variante="primario"
+              tamanho="sm"
+              disabled={pendente}
+              onClick={() => {
+                setDispensarEliminados(false);
+                moverPara(
+                  paraDispensar.map((c) => c.perfil_id),
+                  "nao_seguiu",
+                );
+              }}
+            >
+              Dispensar {paraDispensar.length === 1 ? "1 pessoa" : `${paraDispensar.length} pessoas`}
+            </Botao>
+            <Botao tamanho="sm" variante="fantasma" onClick={() => setDispensarEliminados(false)}>
+              Cancelar
+            </Botao>
+          </div>
+        </div>
+      </Gaveta>
+
       <Gaveta aberta={mensagemEmMassa} fechar={() => setMensagemEmMassa(false)} titulo="Mensagem para os selecionados">
         <CompositorMensagem
           anuncioId={anuncioId}
@@ -321,6 +405,7 @@ export function QuadroCandidatos({
             enviarAoCliente={() => enviarAoCliente([atual.perfil_id])}
             pendente={pendente}
             direto={contatoDireto}
+            retorno={retorno?.texto ?? null}
           />
         )}
       </Gaveta>
@@ -461,8 +546,11 @@ function DetalheCandidato({
   enviarAoCliente,
   pendente,
   direto,
+  retorno,
 }: {
   c: CartaoQuadro;
+  /** o texto do retorno da conta (o WhatsApp de quem não seguiu) */
+  retorno: string | null;
   /** contato direto: o match saiu na hora, sem aceite */
   direto: boolean;
   anuncioId: string;
@@ -524,22 +612,14 @@ function DetalheCandidato({
           </Link>
         )}
         {match && c.whatsapp && (
-          <a
-            href={linkWhatsApp(
-              c.whatsapp,
-              // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
-              mensagemComLink(
-                `Olá, ${primeiro}! Aqui é da ${empresa}, sobre a vaga de ${vaga} no Publike.`,
-                linkDoMatch({ anuncioId, perfilId: c.perfil_id, para: "quem_curtiu", direto }),
-              ),
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-cerrado px-3 text-label text-on-cerrado hover:brightness-110"
-          >
-            <MessageCircle aria-hidden className="size-4" />
-            WhatsApp
-          </a>
+          <BotaoWhatsappDoMomento
+            c={c}
+            anuncioId={anuncioId}
+            vaga={vaga}
+            empresa={empresa}
+            direto={direto}
+            retorno={retorno}
+          />
         )}
       </div>
 
@@ -610,9 +690,21 @@ function DetalheCandidato({
         ) : e && !marcando ? (
           <>
             {marcou && (
-              <p role="status" className="text-body-sm text-cerrado-text">
-                Entrevista marcada. O candidato recebeu o aviso e a mensagem na conversa.
-              </p>
+              <div className="flex flex-col items-start gap-2">
+                <p role="status" className="text-body-sm text-cerrado-text">
+                  Entrevista marcada. O candidato recebeu o aviso e a mensagem na conversa.
+                </p>
+                {c.whatsapp && (
+                  <BotaoWhatsappDoMomento
+                    c={c}
+                    anuncioId={anuncioId}
+                    vaga={vaga}
+                    empresa={empresa}
+                    direto={direto}
+                    retorno={retorno}
+                  />
+                )}
+              </div>
             )}
             <EntrevistaMarcada
               entrevista={e}
@@ -850,4 +942,39 @@ function lerDicaVista() {
   } catch {
     return false;
   }
+}
+
+/** O WhatsApp da empresa com a mensagem do momento (a entrevista, Contratado, o retorno), só depois do match. */
+function BotaoWhatsappDoMomento({
+  c,
+  anuncioId,
+  vaga,
+  empresa,
+  direto,
+  retorno,
+}: {
+  c: CartaoQuadro;
+  anuncioId: string;
+  vaga: string;
+  empresa: string;
+  direto: boolean;
+  retorno: string | null;
+}) {
+  if (!c.whatsapp) return null;
+  const m = mensagemDoMomento({ nome: c.nome, empresa, vaga, coluna: c.coluna, entrevista: c.entrevista, retorno });
+  // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
+  const texto = m.comLink
+    ? mensagemComLink(m.texto, linkDoMatch({ anuncioId, perfilId: c.perfil_id, para: "quem_curtiu", direto }))
+    : m.texto;
+  return (
+    <a
+      href={linkWhatsApp(c.whatsapp, texto)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-cerrado px-3 text-label text-on-cerrado hover:brightness-110"
+    >
+      <MessageCircle aria-hidden className="size-4" />
+      {m.rotulo}
+    </a>
+  );
 }
