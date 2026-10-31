@@ -39,10 +39,13 @@ export function BotaoAssinar({
   recurso,
   variante = "primario",
   tamanho = "md",
+  novo = true,
 }: {
   recurso: Produto;
   variante?: "primario" | "secundario";
   tamanho?: "md" | "sm";
+  /** o selo "Novo" ao lado (na faixa dos dias grátis, a aba já mostra os dias: sem o selo) */
+  novo?: boolean;
 }) {
   return (
     <span className="flex flex-wrap items-center gap-2">
@@ -50,7 +53,7 @@ export function BotaoAssinar({
         <CreditCard aria-hidden />
         {recurso === "combo" ? "Assinar o combo" : `Assinar ${O_PRODUTO[recurso]}`}
       </BotaoLink>
-      <Selo variante="novo">Novo</Selo>
+      {novo && <Selo variante="novo">Novo</Selo>}
     </span>
   );
 }
@@ -158,18 +161,26 @@ export function FaixaExperimento({
     );
   }
   const n = diasRestantes(estado.ate, agora);
+  // uma faixa baixa: a aba já mostra os dias que faltam, e o trabalho da tela vem logo abaixo
   return (
-    <Aviso tipo="info" titulo={`Dias grátis: ${n === 1 ? "falta 1" : `faltam ${n}`}`}>
-      <span className="flex flex-col items-start gap-2">
-        <span>Vai até {dataCurta(estado.ate)}. Depois, o recurso fecha, e o que você fez fica guardado.</span>
-        {estado.pode_assinar ? (
-          <BotaoAssinar recurso={recurso} tamanho="sm" />
-        ) : estado.quer_continuar ? (
-          <span className="text-label">Você já pediu para continuar. A gente fala com você.</span>
-        ) : (
-          <BotaoExperimentar recurso={recurso} acao="continuar" tamanho="sm" />
-        )}
-      </span>
-    </Aviso>
+    <div
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-md border border-line bg-surface-300 px-4 py-2.5"
+    >
+      <p className="text-body-sm">
+        <span className="text-label">Dias grátis até {dataCurta(estado.ate)}</span>
+        <span className="text-ink-muted">
+          {" "}
+          ({n === 1 ? "falta 1" : `faltam ${n}`}). Depois, o que você fez fica guardado.
+        </span>
+      </p>
+      {estado.pode_assinar ? (
+        <BotaoAssinar recurso={recurso} tamanho="sm" variante="secundario" novo={false} />
+      ) : estado.quer_continuar ? (
+        <span className="text-label">Você já pediu para continuar. A gente fala com você.</span>
+      ) : (
+        <BotaoExperimentar recurso={recurso} acao="continuar" tamanho="sm" />
+      )}
+    </div>
   );
 }

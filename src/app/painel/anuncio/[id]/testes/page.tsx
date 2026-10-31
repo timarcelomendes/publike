@@ -24,6 +24,7 @@ import {
   faixaDoTeste,
   NAO_E_PSICOLOGICO,
   NOME_FAIXA,
+  nomeCurtoDoTeste,
   TESTES_DA_PUBLIKE,
   testeSugerido,
   textoDoResultado,
@@ -63,6 +64,8 @@ async function Conteudo({
   // recurso pago (migração 20261215120000): sem ele, 1 teste da Publike por vaga, grátis (migração 20261224120000),
   // e a oferta dos extras; os resultados continuam
   const fechado = recursos !== null && !recursos.testes.liberado;
+  const fim = recursos?.testes.fim_experimento;
+  const nosDiasGratis = Boolean(fim && new Date(fim).getTime() > agora);
   const cabecalho = <CabecalhoDaVaga anuncio={anuncio} aba="testes" />;
   if (biblioteca === null) {
     return (
@@ -78,26 +81,38 @@ async function Conteudo({
   const idSugerido = TESTES_DA_PUBLIKE[testeSugerido(anuncio.titulo, anuncio.categoria)];
   const sugerido = biblioteca.find((m) => m.id === idSugerido) ?? null;
   const candidatos = interessados.filter((p) => p.status !== "dispensada");
+  const feitas: Record<string, number> = {};
+  for (const r of resultados) if (r.status === "feita") feitas[r.modelo_id] = (feitas[r.modelo_id] ?? 0) + 1;
 
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
       <FaixaExperimento recurso="testes" estado={recursos?.testes} agora={agora} />
-      <div className="flex flex-wrap items-center gap-2">
-        {/* sem o recurso, a marca fica na oferta dos extras, mais abaixo (o teste sugerido é grátis) */}
-        {!fechado && <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} />}
-        <p className="text-body-sm text-ink-muted">
-          {fechado
-            ? "O teste da Publike que combina com a vaga é grátis. Quem curtir a vaga faz pelo celular."
-            : "Testes da marca Publike e os da sua empresa. Quem curtir a vaga faz pelo celular."}
-        </p>
-      </div>
+      {/* nos dias grátis, a faixa acima já diz os dias; a marca só aparece fora deles (cortesia, admin) */}
+      {!fechado && !nosDiasGratis && <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} />}
 
       <section aria-labelledby="titulo-escolha" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-        <h3 id="titulo-escolha" className="mb-3 flex items-center gap-2 text-h3">
-          <ClipboardCheck aria-hidden className="size-5 text-ink-muted" />
-          Testes desta vaga
-        </h3>
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+          <div className="flex flex-col gap-1">
+            <h3 id="titulo-escolha" className="flex items-center gap-2 text-h3">
+              <ClipboardCheck aria-hidden className="size-5 text-ink-muted" />
+              Testes desta vaga
+            </h3>
+            <p className="text-body-sm text-ink-muted">
+              {fechado
+                ? "O teste da Publike que combina com a vaga é grátis."
+                : "Até 3 testes: os da Publike e os da sua empresa."}
+            </p>
+          </div>
+          {!fechado && biblioteca.length > 0 && (
+            <Link
+              href={`/painel/testes?vaga=${id}`}
+              className="inline-flex min-h-10 items-center text-label underline underline-offset-2"
+            >
+              Criar teste da sua empresa
+            </Link>
+          )}
+        </div>
         <TestesDaVaga
           // de novo do zero quando a biblioteca muda (o teste que acabou de ser criado já vem escolhido)
           key={`${biblioteca.length}-${typeof sp.novo === "string" ? sp.novo : ""}`}
@@ -107,14 +122,8 @@ async function Conteudo({
           novo={typeof sp.novo === "string" ? sp.novo : null}
           sugerido={sugerido}
           gratis={fechado}
+          feitas={feitas}
         />
-        {!fechado && biblioteca.length > 0 && (
-          <p className="mt-3 text-body-sm">
-            <Link href={`/painel/testes?vaga=${id}`} className="font-semibold underline underline-offset-2">
-              Ver a biblioteca e criar os testes da sua empresa
-            </Link>
-          </p>
-        )}
       </section>
       {fechado && <OfertaRecurso recurso="testes" estado={recursos?.testes ?? null} />}
 
@@ -143,7 +152,7 @@ async function Conteudo({
                     Number(naoRecebeu.some((t) => t.modelo_id === b.id)) -
                     Number(naoRecebeu.some((t) => t.modelo_id === a.id)),
                 )
-                .map((m) => ({ id: m.id, titulo: m.titulo }));
+                .map((m) => ({ id: m.id, titulo: nomeCurtoDoTeste(m.titulo) }));
               return (
                 <li key={p.perfil_id} className="rounded-lg border border-line bg-surface-200 p-4 shadow-card">
                   <div className="flex items-center gap-3">
@@ -172,7 +181,7 @@ async function Conteudo({
                       {deles.map((r) => (
                         <li key={r.id} className="flex flex-col gap-1">
                           <p className="flex flex-wrap items-center justify-between gap-2 text-body-sm">
-                            <span className="font-semibold">{r.titulo}</span>
+                            <span className="font-semibold">{nomeCurtoDoTeste(r.titulo)}</span>
                             {r.status === "feita" ? (
                               <Link href={`/painel/anuncio/${id}/testes/${r.id}`} className="text-label underline">
                                 {[
@@ -200,7 +209,7 @@ async function Conteudo({
                       {naoRecebeu.map((t) => (
                         <li key={t.modelo_id}>
                           <p className="flex flex-wrap items-center justify-between gap-2 text-body-sm">
-                            <span className="font-semibold">{t.titulo}</span>
+                            <span className="font-semibold">{nomeCurtoDoTeste(t.titulo)}</span>
                             <span className="text-ink-muted">obrigatório · ainda não recebeu</span>
                           </p>
                         </li>

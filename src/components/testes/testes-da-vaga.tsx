@@ -1,15 +1,18 @@
 "use client";
 
-import { ClipboardList, Plus, X } from "lucide-react";
+import { ClipboardList, Clock, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { salvarTestesDaVaga } from "@/lib/acoes/testes";
-import { MAX_TESTES_NA_VAGA } from "@/lib/testes";
-import { Selo } from "../ui/basicos";
+import { MAX_TESTES_NA_VAGA, minutosDoTeste, nomeCurtoDoTeste } from "@/lib/testes";
+import { Aviso, Selo } from "../ui/basicos";
 import { Botao, BotaoLink } from "../ui/botao";
 import { Seletor, classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
 type Modelo = { id: string; titulo: string; questoes: number; da_casa: boolean; tipo: string };
+
+/** acima disso, somando os obrigatórios, muita gente desiste da vaga */
+const MINUTOS_DEMAIS = 20;
 
 /**
  * Os testes da vaga (até 3): escolher da biblioteca e dizer se é opcional ou obrigatório. Sem o recurso, 1 teste
@@ -22,6 +25,7 @@ export function TestesDaVaga({
   novo = null,
   sugerido = null,
   gratis = false,
+  feitas = {},
 }: {
   anuncioId: string;
   biblioteca: Modelo[];
@@ -32,6 +36,8 @@ export function TestesDaVaga({
   sugerido?: Modelo | null;
   /** sem o recurso: 1 teste da Publike por vaga, grátis */
   gratis?: boolean;
+  /** quantos candidatos já fizeram cada teste (pelo id do teste) */
+  feitas?: Record<string, number>;
 }) {
   const limite = gratis ? 1 : MAX_TESTES_NA_VAGA;
   const { rodar, pendente, mensagem } = useAcao();
@@ -42,6 +48,13 @@ export function TestesDaVaga({
   const [mudou, setMudou] = useState(false);
   const nome = (id: string) => biblioteca.find((m) => m.id === id);
   const livres = biblioteca.filter((m) => !itens.some((i) => i.modelo_id === m.id));
+  const minutos = (id: string) => minutosDoTeste(nome(id)?.questoes ?? 0);
+  const total = itens.reduce((t, i) => t + minutos(i.modelo_id), 0);
+  const totalObrigatorio = itens.filter((i) => i.obrigatoria).reduce((t, i) => t + minutos(i.modelo_id), 0);
+  const mudar = (id: string, obrigatoria: boolean) => {
+    setItens((l) => l.map((x) => (x.modelo_id === id ? { ...x, obrigatoria } : x)));
+    setMudou(true);
+  };
 
   // nenhum teste para escolher (os da Publike em revisão e nenhum da casa): o caminho é criar um
   if (!biblioteca.length && !itens.length) {
@@ -62,51 +75,75 @@ export function TestesDaVaga({
   return (
     <div className="flex flex-col gap-3">
       {itens.length > 0 ? (
-        <ul className="flex flex-col gap-2" aria-label="Testes desta vaga">
-          {itens.map((i) => {
-            const m = nome(i.modelo_id);
-            return (
-              <li
-                key={i.modelo_id}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line bg-surface-200 px-3 py-2"
-              >
-                <span className="min-w-0 flex-1 text-label">
-                  {m?.titulo ?? "Teste"}
-                  <span className="font-normal text-ink-muted">
-                    {" "}
-                    · {m?.questoes ?? "?"} {m?.questoes === 1 ? "questão" : "questões"}
-                    {m?.da_casa ? " · da casa" : ""}
-                  </span>
-                </span>
-                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-body-sm">
-                  <input
-                    type="checkbox"
-                    checked={i.obrigatoria}
-                    onChange={(e) => {
-                      setItens((l) =>
-                        l.map((x) => (x.modelo_id === i.modelo_id ? { ...x, obrigatoria: e.target.checked } : x)),
-                      );
+        <>
+          <p className="flex flex-wrap items-center gap-x-2 text-body-sm text-ink-muted">
+            <Clock aria-hidden className="size-4" />
+            {itens.length === 1 ? "1 teste" : `${itens.length} testes`}: cerca de {total} min para o candidato
+            {totalObrigatorio > 0 && totalObrigatorio < total && ` (${totalObrigatorio} min obrigatórios)`}
+          </p>
+          <ul
+            className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface-100"
+            aria-label="Testes desta vaga"
+          >
+            {itens.map((i) => {
+              const m = nome(i.modelo_id);
+              const fizeram = feitas[i.modelo_id] ?? 0;
+              return (
+                <li key={i.modelo_id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-3 sm:px-4">
+                  <div className="min-w-0 flex-1 basis-56">
+                    <p className="text-label">{m ? nomeCurtoDoTeste(m.titulo) : "Teste"}</p>
+                    <p className="text-body-sm text-ink-muted">
+                      {m?.questoes ?? "?"} {m?.questoes === 1 ? "questão" : "questões"} · cerca de{" "}
+                      {minutos(i.modelo_id)} min · {m?.da_casa ? "da sua empresa" : "da Publike"}
+                      {fizeram > 0 && ` · ${fizeram === 1 ? "1 fez" : `${fizeram} fizeram`}`}
+                    </p>
+                  </div>
+                  <div
+                    role="radiogroup"
+                    aria-label={`Como pedir ${m ? nomeCurtoDoTeste(m.titulo) : "o teste"}`}
+                    className="inline-flex rounded-pill border border-line-strong bg-surface-200 p-0.5"
+                  >
+                    {[
+                      { valor: false, nome: "Opcional" },
+                      { valor: true, nome: "Obrigatório" },
+                    ].map((o) => (
+                      <button
+                        key={o.nome}
+                        type="button"
+                        role="radio"
+                        aria-checked={i.obrigatoria === o.valor}
+                        onClick={() => i.obrigatoria !== o.valor && mudar(i.modelo_id, o.valor)}
+                        className={`min-h-9 rounded-pill px-3 text-label transition-colors ${
+                          i.obrigatoria === o.valor ? "bg-ink text-surface-100" : "text-ink-muted hover:text-ink"
+                        }`}
+                      >
+                        {o.nome}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Tirar ${m ? nomeCurtoDoTeste(m.titulo) : "o teste"} da vaga`}
+                    title="Tirar da vaga"
+                    onClick={() => {
+                      setItens((l) => l.filter((x) => x.modelo_id !== i.modelo_id));
                       setMudou(true);
                     }}
-                    className="size-4 accent-[var(--pk-ink)]"
-                  />
-                  Obrigatório
-                </label>
-                <button
-                  type="button"
-                  aria-label={`Tirar ${m?.titulo ?? "o teste"}`}
-                  onClick={() => {
-                    setItens((l) => l.filter((x) => x.modelo_id !== i.modelo_id));
-                    setMudou(true);
-                  }}
-                  className="inline-flex size-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-300 hover:text-ink"
-                >
-                  <X aria-hidden className="size-[18px]" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    className="inline-flex size-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-300 hover:text-ink"
+                  >
+                    <X aria-hidden className="size-[18px]" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {totalObrigatorio > MINUTOS_DEMAIS && (
+            <Aviso tipo="alerta">
+              São {totalObrigatorio} min de teste obrigatório. Teste longo faz gente desistir da vaga: deixe obrigatório
+              só o mais importante e os outros como opcionais.
+            </Aviso>
+          )}
+        </>
       ) : (
         <p className="text-body-sm text-ink-muted">A vaga ainda não tem teste.</p>
       )}
@@ -144,6 +181,9 @@ export function TestesDaVaga({
             Pôr na vaga
           </Botao>
         </div>
+      )}
+      {!gratis && itens.length >= limite && (
+        <p className="text-body-sm text-ink-muted">A vaga já tem {limite} testes, o máximo. Tire um para pôr outro.</p>
       )}
       {itens.length < limite && livres.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
@@ -201,8 +241,8 @@ export function TestesDaVaga({
         </p>
       )}
       <p className="text-body-sm text-ink-muted">
-        Quem curtir a vaga vê os testes e faz pelo celular. Obrigatório não recusa ninguém: mostra que a empresa pede o
-        teste, e o candidato aparece como “falta o teste” até fazer.
+        Quem curtir a vaga faz os testes pelo celular. Obrigatório não recusa ninguém: o candidato aparece como “falta o
+        teste” até fazer.
       </p>
     </div>
   );
