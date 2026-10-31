@@ -51,7 +51,8 @@ export type DadosDoLink = {
   /** quem abriu é a própria agência ("ver como o cliente"): não responde nem conta como aberto */
   previa: boolean;
   expira_em: string;
-  agencia: { nome: string; foto: string | null; verificado: boolean };
+  /** quem mandou o link; `ehAgencia` false: empresa ou comércio mandando ao gestor (sem o tipo: agência) */
+  agencia: { nome: string; foto: string | null; verificado: boolean; ehAgencia: boolean };
   vaga: { titulo: string; cidade: string; bairro: string | null; regime: string | null; cliente: string | null } | null;
   finalistas: FinalistaDoLink[];
 };
@@ -127,7 +128,12 @@ export function lerDadosDoLink(json: unknown): DadosDoLink | null {
     situacao,
     previa: d.previa === true,
     expira_em: texto(d.expira_em) ?? "",
-    agencia: { nome: texto(ag.nome) ?? "A agência", foto: texto(ag.foto), verificado: ag.verificado === true },
+    agencia: {
+      nome: texto(ag.nome) ?? "A agência",
+      foto: texto(ag.foto),
+      verificado: ag.verificado === true,
+      ehAgencia: ag.tipo === undefined || ag.tipo === null || ag.tipo === "agencia",
+    },
     vaga: vg
       ? {
           titulo: texto(vg.titulo) ?? "",
@@ -139,6 +145,32 @@ export function lerDadosDoLink(json: unknown): DadosDoLink | null {
       : null,
     finalistas,
   };
+}
+
+/**
+ * Quem avalia os finalistas: o cliente (agência) ou o gestor (empresa e comércio, que mandam o link ao dono, ao
+ * gerente ou a quem vai trabalhar com a pessoa). As palavras das telas saem daqui.
+ */
+export function quemAvalia(agencia: boolean) {
+  return agencia
+    ? {
+        quem: "o cliente",
+        Quem: "O cliente",
+        titulo: "Finalistas para o cliente",
+        enviar: "Enviar ao cliente",
+        para: "para o cliente",
+        ao: "ao cliente",
+        secao: "Cliente",
+      }
+    : {
+        quem: "o gestor",
+        Quem: "O gestor",
+        titulo: "Finalistas para avaliar",
+        enviar: "Mandar para avaliar",
+        para: "para avaliar",
+        ao: "ao gestor",
+        secao: "Finalistas",
+      };
 }
 
 /** "3 para entrevistar · 1 não segue · 2 sem resposta" */

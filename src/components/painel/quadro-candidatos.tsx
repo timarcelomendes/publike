@@ -3,6 +3,7 @@
 import {
   CalendarClock,
   ClipboardCheck,
+  Columns3,
   ExternalLink,
   GripVertical,
   MessageCircle,
@@ -32,7 +33,7 @@ import { SITE_URL } from "@/lib/config";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
-import { DECISOES_CLIENTE, type RespostaCliente } from "@/lib/finalistas";
+import { DECISOES_CLIENTE, quemAvalia, type RespostaCliente } from "@/lib/finalistas";
 import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
@@ -127,7 +128,7 @@ export function QuadroCandidatos({
   contatoDireto?: boolean;
   /** abre já o cartão desta pessoa (vindo de “Abrir no quadro”, na tela Candidatos) */
   abrir?: string | null;
-  /** agência: mandar os finalistas ao cliente */
+  /** agência: os finalistas vão ao cliente (fora dela, ao gestor) */
   agencia?: boolean;
   /** o retorno a quem não seguiu (null: sem a migração 20261230120000) */
   retorno?: RetornoDaConta | null;
@@ -273,6 +274,7 @@ export function QuadroCandidatos({
                       alternar={() => alternar(c.perfil_id)}
                       abrir={() => setAberto(c.perfil_id)}
                       moverPara={(coluna) => moverPara([c.perfil_id], coluna)}
+                      agencia={agencia}
                     />
                   </li>
                 ))}
@@ -310,11 +312,20 @@ export function QuadroCandidatos({
             <Send aria-hidden />
             Mandar mensagem
           </Botao>
-          {agencia && (
-            <Botao tamanho="sm" disabled={pendente} onClick={() => enviarAoCliente(selecionados)}>
-              <ClipboardCheck aria-hidden />
-              Enviar ao cliente
-            </Botao>
+          <Botao tamanho="sm" disabled={pendente} onClick={() => enviarAoCliente(selecionados)}>
+            <ClipboardCheck aria-hidden />
+            {quemAvalia(agencia).enviar}
+            {!agencia && <Selo variante="novo">Novo</Selo>}
+          </Botao>
+          {selecionados.length >= 2 && selecionados.length <= 4 && (
+            <Link
+              href={`/painel/anuncio/${anuncioId}/comparar?p=${selecionados.join(",")}`}
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300"
+            >
+              <Columns3 aria-hidden className="size-[18px]" />
+              Comparar
+              <Selo variante="novo">Novo</Selo>
+            </Link>
           )}
           <Botao tamanho="sm" variante="fantasma" onClick={() => setSelecionados([])}>
             Limpar
@@ -420,6 +431,7 @@ function Cartao({
   alternar,
   abrir,
   moverPara,
+  agencia,
 }: {
   c: CartaoQuadro;
   agora: number;
@@ -427,6 +439,7 @@ function Cartao({
   alternar: () => void;
   abrir: () => void;
   moverPara: (coluna: EtapaCandidato) => void;
+  agencia: boolean;
 }) {
   const e = c.entrevista;
   const entrevistaAberta = e && ["marcada", "confirmada", "remarcar"].includes(e.situacao);
@@ -512,7 +525,7 @@ function Cartao({
               {dataDaEntrevista(e.quando)}
             </Selo>
           )}
-          {c.finalista && <SeloDoCliente r={c.finalista} />}
+          {c.finalista && <SeloDoCliente r={c.finalista} agencia={agencia} />}
           {c.colocacao && <SeloDaColocacao c={c.colocacao} agora={agora} />}
         </div>
       )}
@@ -650,11 +663,12 @@ function DetalheCandidato({
         </Secao>
       )}
 
-      {agencia && (
-        <Secao titulo="Cliente">
+      {(agencia || match || c.finalista) && (
+        <Secao titulo={quemAvalia(agencia).secao}>
           <ClienteDoCandidato
             c={c}
             anuncioId={anuncioId}
+            agencia={agencia}
             agora={agora}
             enviarAoCliente={enviarAoCliente}
             pendente={pendente}
@@ -748,26 +762,28 @@ function DetalheCandidato({
   );
 }
 
-/** No cartão: o candidato está com o cliente, e o que ele respondeu. */
-function SeloDoCliente({ r }: { r: RespostaCliente }) {
-  if (!r.decisao) return <Selo variante="contorno">Com o cliente</Selo>;
+/** No cartão: o candidato está com o cliente (ou o gestor), e o que ele respondeu. */
+function SeloDoCliente({ r, agencia }: { r: RespostaCliente; agencia: boolean }) {
+  if (!r.decisao) return <Selo variante="contorno">{agencia ? "Com o cliente" : "Nos finalistas"}</Selo>;
   return (
     <Selo variante={DECISOES_CLIENTE[r.decisao].selo} title={r.comentario ?? undefined}>
-      Cliente: {DECISOES_CLIENTE[r.decisao].nome.toLowerCase()}
+      {agencia ? "Cliente" : "Gestor"}: {DECISOES_CLIENTE[r.decisao].nome.toLowerCase()}
     </Selo>
   );
 }
 
-/** Na gaveta (agência): mandar ao cliente, ou o que o cliente respondeu. */
+/** Na gaveta: mandar ao cliente (agência) ou ao gestor, ou o que ele respondeu. */
 function ClienteDoCandidato({
   c,
   anuncioId,
+  agencia,
   agora,
   enviarAoCliente,
   pendente,
 }: {
   c: CartaoQuadro;
   anuncioId: string;
+  agencia: boolean;
   agora: number;
   enviarAoCliente: () => void;
   pendente: boolean;
@@ -786,7 +802,11 @@ function ClienteDoCandidato({
   );
   if (!f) {
     if (c.status !== "match") {
-      return <p className="text-body-sm text-ink-muted">Depois do match, dá para mandar {primeiro} ao cliente.</p>;
+      return (
+        <p className="text-body-sm text-ink-muted">
+          Depois do match, dá para mandar {primeiro} {quemAvalia(agencia).ao}.
+        </p>
+      );
     }
     return (
       <div className="flex flex-col items-start gap-2">
@@ -795,7 +815,7 @@ function ClienteDoCandidato({
           Pôr nos finalistas
         </Botao>
         <p className="text-body-sm text-ink-muted">
-          O cliente vê o currículo (sem contato) e o seu parecer, e responde pelo link. {lista}
+          {quemAvalia(agencia).Quem} vê o currículo (sem contato) e o seu parecer, e responde pelo link. {lista}
         </p>
       </div>
     );
@@ -803,7 +823,7 @@ function ClienteDoCandidato({
   return (
     <div className="flex flex-col gap-2 text-body-sm">
       <p className="flex flex-wrap items-center gap-2">
-        <SeloDoCliente r={f} />
+        <SeloDoCliente r={f} agencia={agencia} />
         {f.decidido_em && (
           <span className="text-ink-muted">
             {f.quem ? `${f.quem}, ` : ""}

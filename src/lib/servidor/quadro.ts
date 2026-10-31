@@ -155,5 +155,5 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       (b.aderencia.nota ?? -1) - (a.aderencia.nota ?? -1) ||
       new Date(a.curtido_em).getTime() - new Date(b.curtido_em).getTime(),
   );
-  return { cartoes, modelos, temTriagem: perguntas.some((q) => q.esperada) };
+  return { cartoes, modelos, temTriagem: perguntas.some((q) => q.esperada), curriculos };
 }

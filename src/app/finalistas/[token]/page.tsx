@@ -15,8 +15,8 @@ import type { Regime } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Finalistas da vaga", robots: { index: false, follow: false } };
 
-// A página que a agência manda ao cliente (sem conta, pelo link): os finalistas da vaga com o
-// currículo (sem contato), as respostas e o parecer da agência; o cliente responde cada um.
+// A página que a agência manda ao cliente, ou a empresa ao gestor (sem conta, pelo link): os finalistas da vaga
+// com o currículo (sem contato), as respostas e o parecer; quem recebe responde cada um.
 // Dá para imprimir ou salvar em PDF (só o conteúdo, sem o topo e o rodapé do site).
 
 export default function FinalistasDoCliente({ params }: PageProps<"/finalistas/[token]">) {
@@ -68,7 +68,7 @@ async function Conteudo({ token }: { token: string }) {
 function LinkQueNaoVale() {
   return (
     <Aviso tipo="alerta" titulo="Este link não vale">
-      Confira se copiou o link inteiro ou peça um novo para a agência.
+      Confira se copiou o link inteiro ou peça um novo para quem mandou.
     </Aviso>
   );
 }
@@ -77,12 +77,15 @@ function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string
   const vaga = d.vaga!;
   const regime = vaga.regime && vaga.regime in REGIMES ? REGIMES[vaga.regime as Regime].nome : null;
   const n = d.finalistas.length;
+  const ehAgencia = d.agencia.ehAgencia;
   return (
     <div className="flex flex-col gap-6">
       {d.previa && (
         <p data-nao-imprimir className="flex items-start gap-2 rounded-md bg-surface-300 px-4 py-3 text-body-sm">
           <Eye aria-hidden className="mt-0.5 size-4 shrink-0" />
-          Você está vendo como o cliente vê. Só o cliente responde; as respostas dele aparecem no seu painel.
+          {ehAgencia
+            ? "Você está vendo como o cliente vê. Só o cliente responde; as respostas dele aparecem no seu painel."
+            : "Você está vendo como o gestor vê. Só quem recebe o link responde; as respostas aparecem no seu painel."}
         </p>
       )}
       <header className="flex flex-col gap-4 border-b border-line pb-5">
@@ -91,9 +94,11 @@ function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-label">
               {d.agencia.nome}
-              {d.agencia.verificado && <SeloVerificado agencia />}
+              {d.agencia.verificado && <SeloVerificado agencia={ehAgencia} />}
             </p>
-            <p className="text-body-sm text-ink-muted">Seleção de candidatos</p>
+            <p className="text-body-sm text-ink-muted">
+              {ehAgencia ? "Seleção de candidatos" : "Finalistas para avaliar"}
+            </p>
           </div>
         </div>
         <div>
@@ -126,7 +131,15 @@ function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string
       ) : (
         <ol className="flex flex-col gap-5">
           {d.finalistas.map((f, i) => (
-            <Finalista key={f.id} f={f} numero={i + 1} token={token} hoje={hoje} previa={d.previa} />
+            <Finalista
+              key={f.id}
+              f={f}
+              numero={i + 1}
+              token={token}
+              hoje={hoje}
+              previa={d.previa}
+              remetente={ehAgencia ? "a agência" : d.agencia.nome}
+            />
           ))}
         </ol>
       )}
@@ -134,7 +147,8 @@ function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string
       <footer className="border-t border-line pt-4 text-caption text-ink-muted">
         <p>
           Lista enviada por {d.agencia.nome} pelo Publike. Os dados destes candidatos são para esta seleção: não repasse
-          a outras pessoas nem use para outra finalidade (LGPD). Telefone e e-mail ficam com a agência.
+          a outras pessoas nem use para outra finalidade (LGPD). Telefone e e-mail ficam com{" "}
+          {ehAgencia ? "a agência" : d.agencia.nome}.
         </p>
       </footer>
     </div>
@@ -147,12 +161,15 @@ function Finalista({
   token,
   hoje,
   previa,
+  remetente,
 }: {
   f: FinalistaDoLink;
   numero: number;
   token: string;
   hoje: string;
   previa: boolean;
+  /** "a agência" ou o nome da empresa */
+  remetente: string;
 }) {
   const decisao = f.decisao ? DECISOES_CLIENTE[f.decisao] : null;
   return (
@@ -169,7 +186,9 @@ function Finalista({
 
       {f.parecer && (
         <section className="flex flex-col gap-1.5 rounded-md bg-surface-300 p-4">
-          <h3 className="text-caption text-ink-muted uppercase">Parecer da agência</h3>
+          <h3 className="text-caption text-ink-muted uppercase">
+            {remetente === "a agência" ? "Parecer da agência" : "Parecer"}
+          </h3>
           <p className="text-body whitespace-pre-line">{f.parecer}</p>
         </section>
       )}
@@ -204,12 +223,13 @@ function Finalista({
             id={f.id}
             nome={f.nome}
             inicial={{ decisao: f.decisao, comentario: f.comentario, quem: f.quem }}
+            remetente={remetente}
           />
         </div>
       )}
       {previa && (decisao || f.comentario) && (
         <p className="border-t border-line pt-4 text-body-sm">
-          Resposta do cliente: <span className="font-semibold">{decisao?.nome ?? "sem resposta"}</span>
+          Resposta: <span className="font-semibold">{decisao?.nome ?? "sem resposta"}</span>
           {f.comentario ? ` · “${f.comentario}”` : ""}
         </p>
       )}

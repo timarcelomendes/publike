@@ -17,17 +17,18 @@ import { Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
-import { DECISOES_CLIENTE, resumoDasRespostas } from "@/lib/finalistas";
+import { DECISOES_CLIENTE, quemAvalia, resumoDasRespostas } from "@/lib/finalistas";
 import { formatarLugar, plural, tempoRelativo } from "@/lib/formato";
 import { finalistasDaVaga, linkDosFinalistas } from "@/lib/servidor/finalistas";
 import { montarQuadro } from "@/lib/servidor/quadro";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
-export const metadata: Metadata = { title: "Finalistas para o cliente" };
+export const metadata: Metadata = { title: "Finalistas" };
 
-// A agência monta a lista de finalistas de uma vaga para o cliente: o link que vai para ele,
-// o parecer de cada pessoa, a resposta do cliente e quem mais (com match) pode ir.
+// A lista de finalistas de uma vaga: a agência manda ao cliente; a empresa e o comércio, ao gestor (o dono, o
+// gerente, quem vai trabalhar com a pessoa). O link que vai para ele, o parecer de cada pessoa, a resposta e quem
+// mais (com match) pode ir. As palavras saem de `quemAvalia`.
 
 export default function Finalistas({ params }: PageProps<"/painel/anuncio/[id]/finalistas">) {
   return (
@@ -45,6 +46,8 @@ async function Conteudo({ id }: { id: string }) {
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
+  const agencia = anuncio.autor_tipo === "agencia";
+  const w = quemAvalia(agencia);
   const [{ cartoes }, finalistas, link, comIA] = await Promise.all([
     montarQuadro(anuncio, agora),
     finalistasDaVaga(id),
@@ -62,9 +65,9 @@ async function Conteudo({ id }: { id: string }) {
   const vencido = link ? new Date(link.expira_em).getTime() < agora : false;
   const aberto =
     link?.aberto_em && link.aberturas > 0
-      ? `o cliente abriu ${link.aberturas === 1 ? "1 vez" : `${link.aberturas} vezes`}, a última ${tempoRelativo(link.aberto_em, agora)}`
+      ? `${w.quem} abriu ${link.aberturas === 1 ? "1 vez" : `${link.aberturas} vezes`}, a última ${tempoRelativo(link.aberto_em, agora)}`
       : link
-        ? "o cliente ainda não abriu"
+        ? `${w.quem} ainda não abriu`
         : null;
 
   return (
@@ -77,11 +80,12 @@ async function Conteudo({ id }: { id: string }) {
           <ArrowLeft aria-hidden className="size-4" />
           Quadro de candidatos
         </Link>
-        <h2 className="mt-1 text-h2">Finalistas para o cliente</h2>
+        <h2 className="mt-1 flex flex-wrap items-center gap-2 text-h2">
+          {w.titulo}
+          {!agencia && <Selo variante="novo">Novo</Selo>}
+        </h2>
         <p className="mt-1 text-body text-ink-muted">{anuncio.titulo}</p>
-        {anuncio.autor_tipo === "agencia" && (
-          <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
-        )}
+        {agencia && <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />}
       </div>
 
       <section
@@ -90,19 +94,22 @@ async function Conteudo({ id }: { id: string }) {
       >
         <h3 id="link-cliente" className="flex items-center gap-2 text-h3">
           <Send aria-hidden className="size-5 text-ink-muted" />
-          Link para o cliente
+          {agencia ? "Link para o cliente" : "Link para quem vai avaliar"}
         </h3>
         <p className="text-body-sm text-ink-muted">
-          O cliente abre sem criar conta e vê de cada finalista o currículo, as respostas da vaga e o seu parecer. Ele
-          responde “Quero entrevistar” ou “Não seguir”, com um comentário, e você recebe o aviso. Telefone, e-mail,
-          WhatsApp e o PDF do currículo não aparecem para ele: o contato fica com você. A página dá para imprimir ou
-          salvar em PDF.
+          {agencia
+            ? "O cliente abre sem criar conta"
+            : "Mande para o dono, o gerente ou quem vai trabalhar com a pessoa. Ele abre sem criar conta"}{" "}
+          e vê de cada finalista o currículo, as respostas da vaga e o seu parecer. Ele responde “Quero entrevistar” ou
+          “Não seguir”, com um comentário, e você recebe o aviso. Telefone, e-mail, WhatsApp e o PDF do currículo não
+          aparecem para ele: o contato fica com você. A página dá para imprimir ou salvar em PDF.
         </p>
         <LinkDoCliente
           anuncioId={id}
           site={SITE_URL}
           vaga={anuncio.titulo}
           agencia={anuncio.autor_nome}
+          ehAgencia={agencia}
           link={link ? { token: link.token, expira_em: link.expira_em } : null}
           vencido={vencido}
           aberto={aberto}
@@ -129,8 +136,8 @@ async function Conteudo({ id }: { id: string }) {
               </BotaoLink>
             }
           >
-            Escolha aqui embaixo quem vai para o cliente, ou marque no quadro e toque em “Enviar ao cliente”. Só quem
-            deu match pode ir.
+            Escolha aqui embaixo quem vai {w.para}, ou marque no quadro e toque em “{w.enviar}”. Só quem deu match pode
+            ir.
           </Vazio>
         ) : (
           <ol className="flex flex-col gap-3">
@@ -158,21 +165,21 @@ async function Conteudo({ id }: { id: string }) {
                         ) : decisao ? (
                           <Selo variante={decisao.selo}>{decisao.nome}</Selo>
                         ) : (
-                          <Selo variante="contorno">Sem resposta do cliente</Selo>
+                          <Selo variante="contorno">Sem resposta</Selo>
                         )}
                       </p>
                     </div>
                   </div>
                   {saiu && (
                     <p className="text-body-sm text-ink-muted">
-                      {c.nome.split(" ")[0]} desfez o match e não aparece mais para o cliente.
+                      {c.nome.split(" ")[0]} desfez o match e não aparece mais para {w.quem}.
                     </p>
                   )}
                   {(f.comentario || (f.decisao && f.quem)) && (
                     <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">
                       {f.comentario && <p>“{f.comentario}”</p>}
                       <p className="mt-1 text-caption text-ink-muted">
-                        {f.quem ?? "O cliente"}
+                        {f.quem ?? w.Quem}
                         {f.decidido_em ? `, ${tempoRelativo(f.decidido_em, agora)}` : ""}
                       </p>
                     </blockquote>
@@ -183,6 +190,7 @@ async function Conteudo({ id }: { id: string }) {
                     nome={c.nome}
                     inicial={f.parecer}
                     comIA={comIA && c.temCurriculo}
+                    ehAgencia={agencia}
                   />
                   <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
                     <BotaoLink
@@ -193,7 +201,7 @@ async function Conteudo({ id }: { id: string }) {
                       <KanbanSquare aria-hidden />
                       Abrir no quadro
                     </BotaoLink>
-                    <TirarFinalista anuncioId={id} perfilId={f.perfil_id} nome={c.nome} />
+                    <TirarFinalista anuncioId={id} perfilId={f.perfil_id} nome={c.nome} ehAgencia={agencia} />
                   </div>
                 </li>
               );
@@ -209,12 +217,13 @@ async function Conteudo({ id }: { id: string }) {
         {podemIr.length === 0 ? (
           <p className="text-body-sm text-ink-muted">
             {cartoes.some((c) => c.status === "pendente")
-              ? "Só quem deu match pode ir para o cliente. Responda os candidatos no quadro: quem você aceitar aparece aqui."
+              ? `Só quem deu match pode ir ${w.para}. Responda os candidatos no quadro: quem você aceitar aparece aqui.`
               : "Todos os que deram match já estão na lista."}
           </p>
         ) : (
           <AdicionarFinalistas
             anuncioId={id}
+            ehAgencia={agencia}
             candidatos={podemIr.map((c) => ({
               perfil_id: c.perfil_id,
               nome: c.nome,

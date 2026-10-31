@@ -27,13 +27,16 @@ function guardarNome(nome: string) {
   } catch {}
 }
 
-/** "Quero entrevistar" ou "Não seguir" (salva na hora) e um comentário para a agência. */
+/** "Quero entrevistar" ou "Não seguir" (salva na hora) e um comentário para a agência (ou a empresa). */
 export function RespostaDoCliente({
   token,
   id,
   nome,
   inicial,
+  remetente = "a agência",
 }: {
+  /** quem mandou o link: "a agência" ou o nome da empresa */
+  remetente?: string;
   token: string;
   id: string;
   /** o nome do finalista (para os rótulos) */
@@ -113,7 +116,7 @@ export function RespostaDoCliente({
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={idComentario} className="text-body-sm text-ink-muted">
-            Comentário para a agência (opcional)
+            Comentário para {remetente} (opcional)
           </label>
           <textarea
             id={idComentario}
@@ -128,7 +131,7 @@ export function RespostaDoCliente({
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex min-w-48 flex-1 flex-col gap-1.5">
             <label htmlFor={idQuem} className="text-body-sm text-ink-muted">
-              Seu nome (opcional, para a agência saber quem respondeu)
+              Seu nome (opcional, para {remetente} saber quem respondeu)
             </label>
             <input
               id={idQuem}

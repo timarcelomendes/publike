@@ -25,13 +25,13 @@ function idsValidos(ids: unknown): string[] {
 export async function adicionarFinalistas(anuncioId: string, perfis: string[]): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const ids = idsValidos(perfis);
-  if (!UUID.test(anuncioId) || !ids.length) return { ok: false, erro: "Escolha quem vai para o cliente." };
+  if (!UUID.test(anuncioId) || !ids.length) return { ok: false, erro: "Escolha quem vai para os finalistas." };
   if (ids.length > 100) return { ok: false, erro: "Escolha até 100 pessoas de uma vez." };
   if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta." };
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("adicionar_finalistas", { p_anuncio: anuncioId, p_perfis: ids });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
-  // o aviso de cada um (o currículo foi para a empresa) vai por e-mail
+  // agência: o aviso de cada um (o currículo foi para a empresa) vai por e-mail
   after(processarFilas);
   refresh();
   const n = data ?? 0;
@@ -55,7 +55,7 @@ export async function tirarFinalista(anuncioId: string, perfilId: string): Promi
   const { error } = await supabase.rpc("tirar_finalista", { p_anuncio: anuncioId, p_perfil: perfilId });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
-  return { ok: true, mensagem: "Saiu da lista do cliente." };
+  return { ok: true, mensagem: "Saiu dos finalistas." };
 }
 
 export async function salvarParecer(anuncioId: string, perfilId: string, parecer: string): Promise<Resultado> {

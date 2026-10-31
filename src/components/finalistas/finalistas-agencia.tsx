@@ -6,13 +6,13 @@ import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { adicionarFinalistas, mexerNoLink, salvarParecer, tirarFinalista } from "@/lib/acoes/finalistas";
 import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
-import { LIMITES_FINALISTAS } from "@/lib/finalistas";
+import { LIMITES_FINALISTAS, quemAvalia } from "@/lib/finalistas";
 import { Avatar } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 
-// A agência cuidando dos finalistas de uma vaga: o link para o cliente, o parecer de cada
-// pessoa e quem mais pode ir para a lista.
+// Os finalistas de uma vaga: o link para o cliente (agência) ou para o gestor (empresa e comércio), o parecer de
+// cada pessoa e quem mais pode ir para a lista.
 
 function Aviso({ r }: { r: { ok: boolean; texto: string } | null }) {
   if (!r) return null;
@@ -36,6 +36,7 @@ export function LinkDoCliente({
   site,
   vaga,
   agencia,
+  ehAgencia = true,
   link,
   vencido,
   aberto,
@@ -44,7 +45,9 @@ export function LinkDoCliente({
   /** o endereço do site, para montar o link inteiro */
   site: string;
   vaga: string;
+  /** o nome da conta que manda */
   agencia: string;
+  ehAgencia?: boolean;
   link: { token: string; expira_em: string } | null;
   vencido: boolean;
   /** "aberto 3 vezes, a última há 2 h" (null: o cliente ainda não abriu) */
@@ -55,6 +58,7 @@ export function LinkDoCliente({
   const [copiado, setCopiado] = useState(false);
   const [trocando, setTrocando] = useState(false);
   const url = link ? `${site}/finalistas/${link.token}` : null;
+  const w = quemAvalia(ehAgencia);
 
   function mexer(acao: "pegar" | "renovar" | "trocar") {
     setAviso(null);
@@ -91,14 +95,16 @@ export function LinkDoCliente({
       <div className="flex flex-col items-start gap-3">
         <Botao variante="primario" disabled={pendente} onClick={() => mexer("pegar")}>
           <Link2 aria-hidden />
-          {pendente ? "Criando…" : "Criar o link para o cliente"}
+          {pendente ? "Criando…" : ehAgencia ? "Criar o link para o cliente" : "Criar o link para avaliar"}
         </Botao>
         <Aviso r={aviso} />
       </div>
     );
   }
 
-  const textoWhats = `Olá! Seguem os finalistas para a vaga de ${vaga}, selecionados pela ${agencia}. Veja cada um e responda por aqui: ${url}`;
+  const textoWhats = ehAgencia
+    ? `Olá! Seguem os finalistas para a vaga de ${vaga}, selecionados pela ${agencia}. Veja cada um e responda por aqui: ${url}`
+    : `Olá! Separei os finalistas para a vaga de ${vaga}. Dá uma olhada em cada um e responde por aqui quem você quer entrevistar: ${url}`;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -129,13 +135,13 @@ export function LinkDoCliente({
             className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300"
           >
             <ExternalLink aria-hidden className="size-[18px]" />
-            Ver como o cliente
+            {ehAgencia ? "Ver como o cliente" : "Ver como o gestor"}
           </Link>
         </div>
       </div>
       <p className={`text-body-sm ${vencido ? "font-semibold text-danger" : "text-ink-muted"}`}>
         {vencido
-          ? `O link venceu em ${diaMes(link.expira_em)}: o cliente não consegue abrir.`
+          ? `O link venceu em ${diaMes(link.expira_em)}: ${w.quem} não consegue abrir.`
           : `Vale até ${diaMes(link.expira_em)}`}
         {aberto && !vencido && <span className="font-normal text-ink-muted"> · {aberto}</span>}
       </p>
@@ -170,20 +176,23 @@ export function LinkDoCliente({
   );
 }
 
-/** O parecer da agência sobre um finalista, que o cliente lê. */
+/** O parecer sobre um finalista, que o cliente (ou o gestor) lê. */
 export function ParecerDoFinalista({
   anuncioId,
   perfilId,
   nome,
   inicial,
   comIA,
+  ehAgencia = true,
 }: {
   anuncioId: string;
   perfilId: string;
   nome: string;
   inicial: string | null;
   comIA: boolean;
+  ehAgencia?: boolean;
 }) {
+  const w = quemAvalia(ehAgencia);
   const [texto, setTexto] = useState(inicial ?? "");
   const [salvo, setSalvo] = useState(inicial ?? "");
   const [pendente, iniciar] = useTransition();
@@ -223,7 +232,7 @@ export function ParecerDoFinalista({
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-label">
-        Seu parecer para o cliente
+        Seu parecer {ehAgencia ? "para o cliente" : "para quem vai avaliar"}
       </label>
       <textarea
         id={id}
@@ -249,14 +258,24 @@ export function ParecerDoFinalista({
         </span>
       </div>
       {mudou && !pendente && (
-        <p className="text-caption text-ink-muted">Ainda não salvo: o cliente vê o último parecer salvo.</p>
+        <p className="text-caption text-ink-muted">Ainda não salvo: {w.quem} vê o último parecer salvo.</p>
       )}
       <Aviso r={aviso} />
     </div>
   );
 }
 
-export function TirarFinalista({ anuncioId, perfilId, nome }: { anuncioId: string; perfilId: string; nome: string }) {
+export function TirarFinalista({
+  anuncioId,
+  perfilId,
+  nome,
+  ehAgencia = true,
+}: {
+  anuncioId: string;
+  perfilId: string;
+  nome: string;
+  ehAgencia?: boolean;
+}) {
   const [pendente, iniciar] = useTransition();
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -270,7 +289,7 @@ export function TirarFinalista({ anuncioId, perfilId, nome }: { anuncioId: strin
   }
   return (
     <span className="flex flex-wrap items-center gap-2 text-body-sm">
-      {nome.split(" ")[0]} some da página do cliente, com a resposta dele.
+      {nome.split(" ")[0]} some da página {ehAgencia ? "do cliente" : "de quem avalia"}, com a resposta dele.
       <Botao
         tamanho="sm"
         variante="perigo"
@@ -300,8 +319,10 @@ export function TirarFinalista({ anuncioId, perfilId, nome }: { anuncioId: strin
 export function AdicionarFinalistas({
   anuncioId,
   candidatos,
+  ehAgencia = true,
 }: {
   anuncioId: string;
+  ehAgencia?: boolean;
   candidatos: { perfil_id: string; nome: string; foto: string | null; detalhe: string }[];
 }) {
   const [marcados, setMarcados] = useState<string[]>([]);
@@ -344,7 +365,9 @@ export function AdicionarFinalistas({
           <UserPlus aria-hidden />
           {pendente ? "Pondo na lista…" : marcados.length > 1 ? `Pôr ${marcados.length} na lista` : "Pôr na lista"}
         </Botao>
-        <span className="text-body-sm text-ink-muted">Cada um recebe um aviso: o currículo foi para a empresa.</span>
+        {ehAgencia && (
+          <span className="text-body-sm text-ink-muted">Cada um recebe um aviso: o currículo foi para a empresa.</span>
+        )}
       </div>
       <Aviso r={aviso} />
     </div>

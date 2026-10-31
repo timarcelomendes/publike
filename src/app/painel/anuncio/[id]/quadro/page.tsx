@@ -121,7 +121,7 @@ async function Conteudo({
   const resumo = [
     `${cartoes.length} ${cartoes.length === 1 ? "candidato" : "candidatos"}`,
     paraResponder ? `${paraResponder} ${paraResponder === 1 ? "espera" : "esperam"} você` : null,
-    agencia && finalistas > 0 ? `${finalistas} com o cliente` : null,
+    finalistas > 0 ? `${finalistas} ${agencia ? "com o cliente" : "nos finalistas"}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -152,6 +152,11 @@ async function Conteudo({
                 : finalistas
                   ? `Finalistas para o cliente (${finalistas})`
                   : "Finalistas para o cliente"}
+            </BotaoLink>
+          ) : finalistas ? (
+            <BotaoLink href={`/painel/anuncio/${id}/finalistas`} tamanho="sm" variante="secundario">
+              <Send aria-hidden />
+              Finalistas para avaliar ({finalistas})
             </BotaoLink>
           ) : null
         }

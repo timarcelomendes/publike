@@ -35,7 +35,7 @@ const NOMES: Record<string, string> = {
   "/painel/anuncio/[id]/convidar": "Painel › Chamar candidato de fora",
   "/painel/anuncio/[id]/copiloto": "Painel › Triagem com IA da vaga",
   "/painel/anuncio/[id]/editar": "Painel › Editar anúncio",
-  "/painel/anuncio/[id]/finalistas": "Painel › Finalistas para o cliente",
+  "/painel/anuncio/[id]/finalistas": "Painel › Finalistas",
   "/painel/anuncio/[id]/quadro": "Painel › Quadro de candidatos",
   "/painel/anuncio/[id]/testes": "Painel › Teste Prático da vaga",
   "/painel/anuncio/[id]/testes/[pedida]": "Painel › Respostas do teste",
