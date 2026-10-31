@@ -215,3 +215,66 @@ export function funilDaTriagem<
     );
   return { naVez: ordem.slice(0, Math.max(0, teto)), abaixo: ordem.slice(Math.max(0, teto)), eliminados };
 }
+
+/** quantos o ranking abre sozinho, no máximo */
+export const ABERTOS_NO_RANKING = 3;
+/** sem obrigatórios na vaga, só abre sozinho quem tem a nota a partir daqui */
+const NOTA_PARA_ABRIR = 70;
+
+export type GrupoNaTela<T> = {
+  grupo: GrupoDoRanking;
+  itens: (T & { aberto: boolean })[];
+  /** quem não atende um obrigatório: o obrigatório que mais falta, e em quantos */
+  maisFalta: { texto: string; quantos: number } | null;
+};
+
+/**
+ * O ranking na tela, por prioridade: quem atende os obrigatórios, quem tem obrigatório para conferir e quem não
+ * atende um obrigatório (vaga sem obrigatório: um grupo só, pela nota). Todos começam fechados, menos os que
+ * valem abrir: os 3 primeiros que atendem os obrigatórios; sem ninguém assim, o 1º para conferir; na vaga sem
+ * obrigatório, os 3 primeiros com nota 70 ou mais. Quem não atende um obrigatório nunca abre sozinho.
+ */
+export function gruposDoRanking<T extends { n: NumerosDaLeitura }>(
+  ranking: T[],
+  temObrigatorios: boolean,
+): GrupoNaTela<T>[] {
+  if (!temObrigatorios) {
+    return ranking.length
+      ? [
+          {
+            grupo: 0,
+            itens: ranking.map((l, i) => ({ ...l, aberto: i < ABERTOS_NO_RANKING && l.n.nota >= NOTA_PARA_ABRIR })),
+            maisFalta: null,
+          },
+        ]
+      : [];
+  }
+  const de = (g: GrupoDoRanking) => ranking.filter((l) => l.n.grupo === g);
+  const [ok, conferir, falta] = [de(0), de(1), de(2)];
+  const contagem = new Map<string, number>();
+  for (const l of falta) for (const t of l.n.faltam) contagem.set(t, (contagem.get(t) ?? 0) + 1);
+  const [texto, quantos] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+  const grupos: GrupoNaTela<T>[] = [
+    { grupo: 0, itens: ok.map((l, i) => ({ ...l, aberto: i < ABERTOS_NO_RANKING })), maisFalta: null },
+    {
+      grupo: 1,
+      itens: conferir.map((l, i) => ({ ...l, aberto: !ok.length && i === 0 })),
+      maisFalta: null,
+    },
+    {
+      grupo: 2,
+      itens: falta.map((l) => ({ ...l, aberto: false })),
+      maisFalta: quantos > 0 ? { texto, quantos } : null,
+    },
+  ];
+  return grupos.filter((g) => g.itens.length > 0);
+}
+
+/** O texto de um critério para caber numa linha: corta numa palavra e põe "…". */
+export function textoCurto(texto: string, max = 60) {
+  const t = texto.replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const corte = t.slice(0, max);
+  const espaco = corte.lastIndexOf(" ");
+  return `${(espaco > max * 0.6 ? corte.slice(0, espaco) : corte).replace(/[\s,;:.(]+$/, "")}…`;
+}
