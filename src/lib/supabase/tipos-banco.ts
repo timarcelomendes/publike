@@ -2497,6 +2497,49 @@ export type Database = {
       copiloto_liberado: { Args: Record<string, never>; Returns: boolean };
       /** migração 20261226120000: a vaga usa a Triagem com IA (o aviso para o candidato) */
       vaga_usa_triagem: { Args: { p_anuncio: string }; Returns: boolean };
+      /** migração 20261227120000: a Triagem lê sozinha (só pela chave do servidor) */
+      servidor_copiloto_vagas_sem_criterios: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { anuncio_id: string; conta_id: string; vaga: Json }[];
+      };
+      servidor_copiloto_criterios_automaticos: {
+        Args: { p_chave: string; p_anuncio: string; p_criterios: Json };
+        Returns: string | null;
+      };
+      servidor_copiloto_fila: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: {
+          anuncio_id: string;
+          conta_id: string;
+          perfil_id: string;
+          versao: string;
+          criterios: Json;
+          vaga_titulo: string;
+          vaga_descricao: string | null;
+          perguntas: Json;
+          curriculo: Json;
+          curriculo_em: string;
+          nome: string | null;
+          bairro: string | null;
+          cidade: string | null;
+          respostas: Json;
+          mensagem: string | null;
+        }[];
+      };
+      servidor_copiloto_guardar: {
+        Args: {
+          p_chave: string;
+          p_anuncio: string;
+          p_perfil: string;
+          p_versao: string;
+          p_curriculo_em: string;
+          p_resultado: Json;
+          p_atende: number;
+          p_obrigatorios_ok: boolean;
+          p_modelo: string;
+        };
+        Returns: boolean;
+      };
       testes_liberado: { Args: Record<string, never>; Returns: boolean };
       recursos_pagos: { Args: Record<string, never>; Returns: Json };
       experimentar_recurso: { Args: { p_recurso: string }; Returns: string };

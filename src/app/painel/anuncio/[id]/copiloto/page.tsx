@@ -12,7 +12,7 @@ import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
 import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Aviso } from "@/components/ui/basicos";
+import { Aviso, Selo } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { compararLeituras, contarLeitura, textoDoRegistro, type OrigemCopiloto } from "@/lib/copiloto";
 import { obterAnuncio, recursosPagos } from "@/lib/dados";
@@ -136,7 +136,8 @@ async function Conteudo({
       <div className="flex flex-wrap items-center gap-2">
         <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} />
         <p className="text-body-sm text-ink-muted">
-          A IA lê cada currículo contra os critérios e mostra o trecho que comprova. Quem decide é você.
+          A IA lê sozinha cada candidato que chega, contra os critérios, e mostra o trecho que comprova. Quem decide é
+          você.
         </p>
       </div>
 
@@ -148,6 +149,12 @@ async function Conteudo({
         <p className="mb-3 text-body-sm text-ink-muted">
           O que a pessoa precisa ter para esta vaga. Obrigatório é o que não dá para abrir mão.
         </p>
+        {config.automaticos && (
+          <p className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-terra-soft px-3 py-2 text-body-sm">
+            A IA montou estes critérios pela vaga. Ajuste se quiser: a leitura refaz sozinha.
+            <Selo variante="novo">Novo</Selo>
+          </p>
+        )}
         <EditorDeCriterios anuncioId={id} iniciais={config.criterios} />
       </section>
 

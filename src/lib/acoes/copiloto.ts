@@ -3,7 +3,6 @@
 import { after } from "next/server";
 import { refresh } from "next/cache";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { nomeEscolaridade, nomeExperiencia, nomeJornada } from "@/lib/constantes";
 import {
   contarLeitura,
   LOTE_COPILOTO,
@@ -16,14 +15,13 @@ import { obterAnuncio, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { lerCurriculo, sugerirCriterios } from "@/lib/ia/copiloto";
 import { iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
-import { descreverAnuncio } from "@/lib/ia/tarefas";
 import { avaliacoesDoCopiloto, configDoCopiloto, leituraAtual, pessoasDoCopiloto } from "@/lib/servidor/copiloto";
 import { processarFilas } from "@/lib/servidor/filas";
+import { criteriosDaPropriaVaga, textoDaVagaParaCriterios } from "@/lib/servidor/triagem-automatica";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
-import { perguntasDoBanco } from "@/lib/vaga-extra";
 
 // O copiloto de contratação (teste; migração 20261203120000). O banco confere de novo se a vaga é
 // da conta e se a conta está liberada.
@@ -56,35 +54,6 @@ async function modeloEscolhido() {
 export type RespostaCriterios =
   { ok: true; criterios: CriterioCopiloto[]; aviso?: string } | { ok: false; erro: string };
 
-/**
- * Sem a IA (fora do ar ou sem resposta): os critérios que saem do que a vaga já diz (a função, a
- * escolaridade, a experiência, a CNH e a jornada), para a pessoa não ficar com a lista vazia.
- */
-function criteriosDaPropriaVaga(a: {
-  titulo: string;
-  escolaridade_minima: string | null;
-  experiencia: string | null;
-  cnh: string | null;
-  jornada: string | null;
-}): CriterioCopiloto[] {
-  const experiencia = a.experiencia && a.experiencia !== "sem" ? nomeExperiencia(a.experiencia) : null;
-  const titulo = a.titulo.replace(/\s+/g, " ").trim().slice(0, 80);
-  const lista = [
-    {
-      texto: `Experiência como ${titulo.charAt(0).toLowerCase()}${titulo.slice(1)}${experiencia ? ` (${experiencia.toLowerCase()})` : ""}`,
-      obrigatorio: Boolean(experiencia),
-    },
-    a.escolaridade_minima && nomeEscolaridade(a.escolaridade_minima)
-      ? { texto: `Escolaridade: ${nomeEscolaridade(a.escolaridade_minima)} ou mais`, obrigatorio: true }
-      : null,
-    a.cnh ? { texto: `CNH ${a.cnh}`, obrigatorio: true } : null,
-    a.jornada && nomeJornada(a.jornada)
-      ? { texto: `Pode trabalhar na jornada: ${nomeJornada(a.jornada)!.toLowerCase()}`, obrigatorio: false }
-      : null,
-  ].filter((c): c is { texto: string; obrigatorio: boolean } => Boolean(c) && !motivoProibido(c!.texto));
-  return lista.map((c, i) => ({ id: `c${i + 1}`, ...c }));
-}
-
 /** A IA sugere os critérios a partir da vaga. Não salva: a pessoa confere e salva. */
 export async function sugerirCriteriosComIA(anuncioId: string): Promise<RespostaCriterios> {
   const v = await minhaVaga(anuncioId);
@@ -94,31 +63,7 @@ export async function sugerirCriteriosComIA(anuncioId: string): Promise<Resposta
   const { error: limite } = await supabase.rpc("usar_ia_resumo");
   if (limite) return { ok: false, erro: mensagemDeErro(limite) };
   const a = v.anuncio;
-  const pede = [
-    a.escolaridade_minima && `Escolaridade mínima: ${nomeEscolaridade(a.escolaridade_minima) ?? a.escolaridade_minima}`,
-    a.experiencia && `Experiência: ${nomeExperiencia(a.experiencia) ?? a.experiencia}`,
-    a.cnh && `CNH: ${a.cnh}`,
-    a.jornada && `Jornada: ${nomeJornada(a.jornada) ?? a.jornada}`,
-    ...perguntasDoBanco(a.perguntas).map((q) => `Pergunta para quem se candidata: ${q.nome}`),
-  ].filter(Boolean);
-  const texto = [
-    descreverAnuncio({
-      tipo: a.tipo,
-      titulo: a.titulo,
-      descricao: a.descricao,
-      categoria: a.categoria,
-      regime: a.regime,
-      pagamento_valor: a.pagamento_valor,
-      pagamento_unidade: a.pagamento_unidade,
-      beneficios: a.beneficios,
-      horario: a.horario,
-      vagas: a.vagas,
-      cidade: a.cidade,
-      bairro: a.bairro,
-      ganhos_extras: a.ganhos_extras,
-    }),
-    ...pede,
-  ].join("\n");
+  const texto = textoDaVagaParaCriterios(a);
   try {
     return { ok: true, criterios: await sugerirCriterios(texto, await modeloEscolhido()) };
   } catch (e) {

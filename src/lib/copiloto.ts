@@ -164,9 +164,14 @@ export type LinhaRegistro = {
 export function textoDoRegistro(r: LinhaRegistro) {
   const n = r.quantos;
   let t: string;
-  if (r.acao === "criterios") {
+  if (r.acao === "criterios" && r.detalhe?.startsWith("automatico")) {
+    // os critérios que a IA montou sozinha pela vaga (migração 20261227120000)
+    t = `A IA montou ${n} ${n === 1 ? "critério" : "critérios"} pela vaga`;
+  } else if (r.acao === "criterios") {
     const obrig = Number(r.detalhe ?? 0);
     t = `Salvou ${n} ${n === 1 ? "critério" : "critérios"}${obrig ? ` (${obrig} ${obrig === 1 ? "obrigatório" : "obrigatórios"})` : ""}`;
+  } else if (r.acao === "avaliou" && r.detalhe === "automatico") {
+    t = `Leu sozinha ${n} ${n === 1 ? "candidatura" : "candidaturas"}`;
   } else if (r.acao === "avaliou") {
     t = `Leu ${n} ${n === 1 ? "currículo" : "currículos"} de ${r.detalhe === "candidato" ? "candidatos" : "Talentos"}`;
   } else if (r.acao === "convidou") {

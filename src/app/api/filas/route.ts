@@ -11,6 +11,7 @@ import {
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
+import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
 
 // A garantia das filas: a tarefa agendada do GitHub (.github/workflows/filas.yml) chama a cada 5 minutos,
 // com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes] = await Promise.all([
+  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes, triagem] = await Promise.all([
     revisarAnunciosPendentes(20),
     revisarAvaliacoesPendentes(20),
     revisarRecadosPendentes(20),
@@ -44,6 +45,8 @@ export async function GET(request: Request) {
     avisarNoticiasDoDia(),
     // os resultados dos testes de vagas fora do ar há 12 meses
     limparTestesAntigos(),
+    // a Triagem com IA lê sozinha: os critérios das vagas novas e as candidaturas que chegaram
+    triagemAutomatica(),
   ]);
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
@@ -59,6 +62,7 @@ export async function GET(request: Request) {
     combinam.motivo,
     noticias.motivo,
     testes.motivo,
+    triagem.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -77,6 +81,7 @@ export async function GET(request: Request) {
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       combinam: { vagas: combinam.vagas, talentos: combinam.talentos, vistos: combinam.vistos },
       ia: { anuncios: ia, avaliacoes, recados },
+      triagem: { criterios: triagem.montados, lidos: triagem.lidos },
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },
   );

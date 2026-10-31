@@ -9,6 +9,7 @@ import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
+import { lerCandidatosNovos } from "@/lib/servidor/triagem-automatica";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerDesfazerMatch, temContato, UUID } from "@/lib/validacao";
@@ -105,6 +106,8 @@ export async function curtirAnuncio(
   }
 
   after(processarFilas);
+  // a Triagem com IA lê a candidatura logo (só na vaga de quem tem o recurso; o banco confere)
+  if (alvo?.tipo === "vaga") after(() => lerCandidatosNovos(3));
   // candidatura a vaga vale para a campanha (Google Ads)
   if (alvo?.tipo === "vaga") await marcarConversao("candidatura");
   refresh();

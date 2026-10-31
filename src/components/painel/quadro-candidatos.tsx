@@ -37,6 +37,7 @@ import { formatarLugar, linkWhatsApp, tempoRelativo } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { COLUNAS_QUADRO, dataDaEntrevista, SITUACOES_ENTREVISTA, type ModeloMensagem } from "@/lib/recrutamento";
 import { NOME_FAIXA, type FaixaDoTeste } from "@/lib/testes";
+import type { TriagemNoCartao } from "@/lib/servidor/copiloto";
 import { CaminhoDoAceite } from "../caminho-curtida";
 import { FormColocacao, SeloDaColocacao } from "./colocacao";
 import { DetalheDaAderencia, NotaAderencia } from "./nota-aderencia";
@@ -86,6 +87,8 @@ export type CartaoQuadro = {
   copiloto?: number | null;
   /** o Teste Prático: o resultado numa palavra de cada teste feito (migração 20261225120000) */
   testes?: { titulo: string; faixa: FaixaDoTeste }[];
+  /** a Triagem com IA já leu o currículo com os critérios de agora (migração 20261227120000) */
+  triagem?: TriagemNoCartao | null;
 };
 
 const COR_FAIXA: Record<FaixaDoTeste, string> = {
@@ -381,6 +384,18 @@ function Cartao({
             <p className="mt-0.5 flex items-center gap-1 text-caption font-semibold text-terra-text">
               <Sparkles aria-hidden className="size-3.5" />
               {c.copiloto}º na triagem
+            </p>
+          )}
+          {c.triagem && (
+            <p
+              className={`mt-0.5 flex items-center gap-1 text-caption font-semibold ${
+                c.triagem.obrigatoriosOk ? "text-cerrado-text" : c.triagem.grupo === 2 ? "text-ink-muted" : "text-ink"
+              }`}
+            >
+              <Sparkles aria-hidden className="size-3.5" />
+              {c.triagem.obrigatoriosOk
+                ? "Triagem: atende os obrigatórios"
+                : `Triagem: atende ${c.triagem.atende} de ${c.triagem.total}`}
             </p>
           )}
           {(c.testes ?? []).map((t, _, todos) => (

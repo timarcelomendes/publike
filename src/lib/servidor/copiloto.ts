@@ -29,6 +29,8 @@ export type ConfigCopiloto = {
   busca: boolean;
   padraoTriagem: boolean;
   padraoBusca: boolean;
+  /** os critérios foram montados pela IA e a pessoa ainda não salvou os dela (migração 20261227120000) */
+  automaticos: boolean;
 };
 
 /** A vaga usa a Triagem com IA (o aviso para quem se candidata). Sem a migração 20261226120000, não. */
@@ -56,6 +58,7 @@ export async function configDoCopiloto(anuncioId: string): Promise<ConfigCopilot
     busca: o.busca !== false,
     padraoTriagem: o.padrao_triagem !== false,
     padraoBusca: o.padrao_busca !== false,
+    automaticos: o.automaticos === true,
   };
 }
 
@@ -74,6 +77,29 @@ export async function ordemDoCopiloto(anuncioId: string): Promise<Map<string, nu
   lidas.sort((x, y) => compararLeituras({ ...x.n, preNota: 0 }, { ...y.n, preNota: 0 }));
   return new Map(lidas.map((l, i) => [l.id, i + 1]));
 }
+
+/**
+ * A Triagem no cartão do quadro (item 1 do plano da Triagem): de cada candidato já lido com os critérios de agora,
+ * quantos atende e se atende os obrigatórios. null: a conta não tem o recurso ou a vaga não tem critérios.
+ */
+export async function triagemDosCandidatos(anuncioId: string): Promise<Map<string, TriagemNoCartao> | null> {
+  const config = await configDoCopiloto(anuncioId);
+  if (!config?.liberado || !config.criterios.length) return null;
+  const lidas = [...(await avaliacoesDoCopiloto(anuncioId)).values()].filter(
+    (a) => a.origem === "candidato" && a.versao === config.versao,
+  );
+  return new Map(
+    lidas.map((a) => {
+      const n = contarLeitura(config.criterios, a.leitura);
+      return [
+        a.perfil_id,
+        { atende: n.atende, total: config.criterios.length, obrigatoriosOk: n.obrigatoriosOk, grupo: n.grupo },
+      ];
+    }),
+  );
+}
+
+export type TriagemNoCartao = { atende: number; total: number; obrigatoriosOk: boolean; grupo: 0 | 1 | 2 };
 
 /** As leituras guardadas da vaga, por pessoa. */
 export async function avaliacoesDoCopiloto(anuncioId: string): Promise<Map<string, AvaliacaoCopiloto>> {
