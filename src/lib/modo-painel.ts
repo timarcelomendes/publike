@@ -102,7 +102,8 @@ export type Secao = {
     | "entrevistas"
     | "visitas"
     | "testes"
-    | "copiloto";
+    | "copiloto"
+    | "assinatura";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
   jeito?: "pilula" | "pronto" | "texto";
@@ -265,6 +266,8 @@ export function gruposDoModo(
           cortesia: extras.pilulas ? (extras.pilulas.testes ?? false) : true,
         },
         ...(agencia ? [EQUIPE] : []),
+        // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
+        { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura" },
       ],
     },
   ];
@@ -296,7 +299,10 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/contratados") ||
     caminho.startsWith("/painel/links") ||
     caminho.startsWith("/painel/testes") ||
-    caminho.startsWith("/painel/copiloto")
+    caminho.startsWith("/painel/copiloto") ||
+    caminho.startsWith("/painel/assinatura") ||
+    caminho.startsWith("/painel/assinar") ||
+    caminho.startsWith("/painel/faturas")
   )
     return "contratar";
   if (caminho.startsWith("/painel/servicos") || caminho.startsWith("/painel/avaliacoes")) return "servicos";
@@ -364,6 +370,10 @@ export function secaoAtiva(
     const conexoes = caminho.startsWith("/painel/conexoes") && secoes.find((s) => s.href === "/painel/conexoes");
     if (conexoes) return conexoes.href;
     return secoes.find((s) => s.href === MENSAGENS.href)?.href ?? null;
+  }
+  // assinar e as faturas são da Assinatura
+  if (caminho.startsWith("/painel/assinar") || caminho.startsWith("/painel/faturas")) {
+    return secoes.find((s) => s.href === "/painel/assinatura")?.href ?? null;
   }
   // a página de um anúncio (quem curtiu, quadro, editar) fica na lista de anúncios do modo
   if (caminho.startsWith("/painel/anuncio/")) {

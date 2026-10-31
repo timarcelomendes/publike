@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarDays,
   ClipboardCheck,
+  CreditCard,
   Eye,
   FileText,
   Handshake,
@@ -49,4 +50,5 @@ export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   visitas: Eye,
   testes: ClipboardCheck,
   copiloto: Sparkles,
+  assinatura: CreditCard,
 };

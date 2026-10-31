@@ -21,7 +21,7 @@ import {
   type Assinatura,
   type Produto,
 } from "@/lib/pagamentos";
-import { type RecursoPago } from "@/lib/recursos-pagos";
+import { dataCurta, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { sincronizarCliente } from "@/lib/servidor/pagamentos";
 import { exigirUsuario } from "@/lib/sessao";
@@ -128,6 +128,19 @@ function CartaoAssinatura({ a }: { a: Assinatura }) {
   );
 }
 
+/** Como cada recurso está na conta, numa linha: liberado pelo Publike, nos dias grátis, assinado ou fechado. */
+function situacaoDoRecurso(e: EstadoRecurso | undefined, agora: number): { texto: string; ok: boolean } {
+  if (!e) return { texto: "Fechado", ok: false };
+  if (e.assinante) return { texto: "Assinado", ok: true };
+  if (e.liberado && !e.ate) return { texto: "Liberado pelo Publike, sem prazo. Nada a pagar.", ok: true };
+  if (e.liberado && e.ate) {
+    const gratis = e.fim_experimento && new Date(e.fim_experimento).getTime() > agora;
+    return { texto: gratis ? `Dias grátis até ${dataCurta(e.ate)}` : `Vale até ${dataCurta(e.ate)}`, ok: true };
+  }
+  if (e.experimentou) return { texto: "Os dias grátis acabaram", ok: false };
+  return { texto: "Fechado: dá para experimentar 15 dias grátis", ok: false };
+}
+
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/assinatura">["searchParams"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/assinatura");
@@ -160,6 +173,30 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           Ver faturas
         </Link>
       </div>
+
+      {recursos && (
+        <section aria-labelledby="titulo-recursos" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
+          <h3 id="titulo-recursos" className="mb-2 text-label">
+            Seus recursos
+          </h3>
+          <ul className="flex flex-col divide-y divide-line">
+            {(["copiloto", "testes"] as RecursoPago[]).map((r) => {
+              const s = situacaoDoRecurso(recursos[r], agora);
+              return (
+                <li key={r} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
+                  <Link
+                    href={r === "copiloto" ? "/painel/copiloto" : "/painel/testes"}
+                    className="text-label hover:underline"
+                  >
+                    {NOME_RECURSO[r]}
+                  </Link>
+                  <span className={`text-body-sm ${s.ok ? "text-ink" : "text-ink-muted"}`}>{s.texto}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {cartaoPendente ? (
         <Aviso tipo="info" titulo="Confirmando o cartão">
