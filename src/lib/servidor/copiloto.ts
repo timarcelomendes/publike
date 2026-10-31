@@ -31,6 +31,8 @@ export type ConfigCopiloto = {
   padraoBusca: boolean;
   /** os critérios foram montados pela IA e a pessoa ainda não salvou os dela (migração 20261227120000) */
   automaticos: boolean;
+  /** quantos candidatos a IA lê, pela pré-nota (migração 20261228120000; antes dela, todos) */
+  teto: number;
 };
 
 /** A vaga usa a Triagem com IA (o aviso para quem se candidata). Sem a migração 20261226120000, não. */
@@ -59,6 +61,7 @@ export async function configDoCopiloto(anuncioId: string): Promise<ConfigCopilot
     padraoTriagem: o.padrao_triagem !== false,
     padraoBusca: o.padrao_busca !== false,
     automaticos: o.automaticos === true,
+    teto: typeof o.teto === "number" ? o.teto : Number.MAX_SAFE_INTEGER,
   };
 }
 
@@ -214,6 +217,9 @@ export type PessoaDoCopiloto = {
   convidado: boolean;
   /** candidato: pendente, match, recusado... */
   status: string | null;
+  /** candidato: ficou fora por uma pergunta eliminatória (a IA não lê) */
+  eliminado: boolean;
+  curtido_em: string | null;
 };
 
 /** Quem o copiloto pode ler na vaga: os talentos (até 500) ou os candidatos com currículo. */
@@ -258,6 +264,8 @@ export async function pessoasDoCopiloto(
           preNota: preNota(criterios, texto, nota),
           convidado: t.convidado,
           status: null,
+          eliminado: false,
+          curtido_em: null,
         };
       })
       .sort((a, b) => b.preNota - a.preNota);
@@ -286,6 +294,8 @@ export async function pessoasDoCopiloto(
       preNota: preNota(criterios, texto, c.aderencia.nota),
       convidado: false,
       status: c.status,
+      eliminado: c.aderencia.eliminado,
+      curtido_em: c.curtido_em,
     };
   });
 }

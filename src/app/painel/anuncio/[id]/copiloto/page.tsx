@@ -1,4 +1,4 @@
-import { History, ListChecks, Sparkles, Trophy } from "lucide-react";
+import { Filter, History, ListChecks, Sparkles, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { CartaoDoCopiloto, LinhaDoRanking } from "@/components/copiloto/cartao";
 import { EditorDeCriterios } from "@/components/copiloto/criterios";
 import { PartesDoCopiloto } from "@/components/copiloto/partes";
+import { LerMaisNaTriagem } from "@/components/copiloto/ler-mais";
 import { RodarCopiloto } from "@/components/copiloto/rodar";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
@@ -14,7 +15,7 @@ import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
-import { compararLeituras, contarLeitura, textoDoRegistro, type OrigemCopiloto } from "@/lib/copiloto";
+import { compararLeituras, contarLeitura, funilDaTriagem, textoDoRegistro, type OrigemCopiloto } from "@/lib/copiloto";
 import { obterAnuncio, recursosPagos } from "@/lib/dados";
 import { tempoRelativo } from "@/lib/formato";
 import {
@@ -36,6 +37,8 @@ export const maxDuration = 60;
 type Filtro = "todos" | "obrigatorios" | "conferir";
 /** os primeiros do ranking aparecem inteiros; do 4º em diante, uma linha cada (toque abre) */
 const DESTAQUES = 3;
+/** os não lidos pela IA que a aba mostra (o resto está em Candidatos) */
+const MOSTRAR_NAO_LIDOS = 100;
 const FILTROS: { valor: Filtro; nome: string }[] = [
   { valor: "todos", nome: "Todos" },
   { valor: "obrigatorios", nome: "Atendem os obrigatórios" },
@@ -95,7 +98,20 @@ async function Conteudo({
   const comCurriculo = pessoas.filter((p) => p.curriculo);
   const candidatos = pessoas.filter((p) => p.origem === "candidato");
   const talentos = comCurriculo.filter((p) => p.origem === "talento");
-  const faltam = comCurriculo.filter((p) => !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p)).length;
+  // o funil: dos candidatos com currículo, a IA lê só os primeiros pela pré-nota (até o teto), nunca o eliminado
+  const funil = funilDaTriagem(
+    comCurriculo.filter((p) => p.origem === "candidato"),
+    config.teto,
+  );
+  const naVez = new Set(funil.naVez.map((p) => p.perfil_id));
+  const naoLidos = funil.abaixo
+    .map((p, i) => ({ p, posicao: funil.naVez.length + i + 1 }))
+    .filter(({ p }) => !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p));
+  const faltam = comCurriculo.filter(
+    (p) =>
+      (p.origem === "talento" || naVez.has(p.perfil_id)) &&
+      !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p),
+  ).length;
   const lidas = comCurriculo
     .flatMap((p) => {
       const a = avaliacoes.get(p.perfil_id);
@@ -195,13 +211,26 @@ async function Conteudo({
                       : "A IA lê o currículo de quem se candidatou."}
                   {config.busca && " Em Talentos só aparece quem deixou o currículo visível para as empresas."}
                 </p>
+                {config.triagem && candidatos.length > config.teto && (
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm">
+                    <Selo variante="novo">Novo</Selo>
+                    Com muitos candidatos, a IA lê os {config.teto} que mais combinam com a vaga pelo % de match e pelas
+                    palavras dos critérios. Os outros ficam abaixo, na mesma ordem.
+                  </p>
+                )}
                 {semCurriculo > 0 && (
                   <p className="text-body-sm text-ink-muted">
                     {semCurriculo} {semCurriculo === 1 ? "candidato sem currículo" : "candidatos sem currículo"}: veja
                     as respostas no quadro.
                   </p>
                 )}
-                <RodarCopiloto anuncioId={id} origem="todos" faltam={faltam} lidos={lidas.length} />
+                <RodarCopiloto
+                  anuncioId={id}
+                  origem="todos"
+                  faltam={faltam}
+                  lidos={lidas.length}
+                  semFaltar={naoLidos.length ? `Os ${config.teto} primeiros já foram lidos.` : undefined}
+                />
               </div>
 
               {lidas.length > 0 && (
@@ -304,6 +333,54 @@ async function Conteudo({
               )}
               {lidas.length > 0 && !mostradas.length && (
                 <p className="text-body-sm text-ink-muted">Ninguém neste filtro.</p>
+              )}
+
+              {vista !== "talento" && (naoLidos.length > 0 || funil.eliminados.length > 0) && (
+                <section aria-labelledby="titulo-nao-lidos" className="flex flex-col gap-3">
+                  <h4 id="titulo-nao-lidos" className="flex flex-wrap items-center gap-2 text-label">
+                    <Filter aria-hidden className="size-5 text-ink-muted" />
+                    Não lidos pela IA
+                    <Selo variante="novo">Novo</Selo>
+                  </h4>
+                  {naoLidos.length > 0 && (
+                    <>
+                      <p className="text-body-sm text-ink-muted">
+                        {naoLidos.length} {naoLidos.length === 1 ? "candidato ficou" : "candidatos ficaram"} depois dos{" "}
+                        {config.teto} primeiros. A ordem é pelo % de match e pelas palavras dos critérios, sem a IA.
+                      </p>
+                      <div className="rounded-lg border border-line bg-surface-200 px-4 sm:px-5">
+                        <ol aria-label="Não lidos pela IA">
+                          {naoLidos.slice(0, MOSTRAR_NAO_LIDOS).map(({ p, posicao }) => (
+                            <li
+                              key={p.perfil_id}
+                              className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line py-2 last:border-b-0"
+                            >
+                              <span className="w-8 text-label text-ink-muted">{posicao}º</span>
+                              <span className="text-label">{p.nome}</span>
+                              <span className="text-body-sm text-ink-muted">pré-nota {p.preNota}</span>
+                              <Selo className="ml-auto">não lido pela IA</Selo>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                      {naoLidos.length > MOSTRAR_NAO_LIDOS && (
+                        <p className="text-body-sm text-ink-muted">
+                          E mais {naoLidos.length - MOSTRAR_NAO_LIDOS}. Veja todos em Candidatos.
+                        </p>
+                      )}
+                      <LerMaisNaTriagem anuncioId={id} abaixo={naoLidos.length} />
+                    </>
+                  )}
+                  {funil.eliminados.length > 0 && (
+                    <p className="text-body-sm text-ink-muted">
+                      {funil.eliminados.length}{" "}
+                      {funil.eliminados.length === 1
+                        ? "candidato ficou fora por uma pergunta eliminatória"
+                        : "candidatos ficaram fora por uma pergunta eliminatória"}
+                      : a IA não lê. Eles continuam em Candidatos.
+                    </p>
+                  )}
+                </section>
               )}
             </>
           )}

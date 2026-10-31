@@ -1,18 +1,20 @@
 import "server-only";
+import { calcularAderencia, requisitosDaVaga, type CamposDaVaga } from "@/lib/aderencia";
 import { nomeEscolaridade, nomeExperiencia, nomeJornada } from "@/lib/constantes";
-import { contarLeitura, criteriosDoBanco, motivoProibido, type CriterioCopiloto } from "@/lib/copiloto";
+import { contarLeitura, criteriosDoBanco, funilDaTriagem, motivoProibido, type CriterioCopiloto } from "@/lib/copiloto";
 import { lerCurriculo, sugerirCriterios } from "@/lib/ia/copiloto";
 import { iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { descreverAnuncio } from "@/lib/ia/tarefas";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { Curriculo } from "@/lib/tipos";
-import { perguntasDoBanco, textoDaResposta } from "@/lib/vaga-extra";
-import { semNome, textoDoCurriculo } from "./copiloto";
+import { juntarTriagem, perguntasDoBanco, textoDaResposta, type Respostas } from "@/lib/vaga-extra";
+import { preNota, semNome, textoDoCurriculo } from "./copiloto";
 import { acessoFila } from "./filas";
 
 // A Triagem com IA lê sozinha (claude/plano-triagem-automatica.md, item 1; migração 20261227120000): a vaga sem
 // critérios ganha os que a IA monta pela vaga, e cada candidato com currículo é lido quando chega. Só nas contas
 // com o recurso liberado (o banco confere). Roda na tarefa das filas (/api/filas) e logo depois de curtir.
+// Com muitos candidatos, a IA lê só os primeiros pela pré-nota (o funil, migração 20261228120000).
 
 /** O que a vaga diz, como a IA lê para sugerir os critérios. */
 export type VagaParaCriterios = {
@@ -141,61 +143,109 @@ export async function montarCriteriosAutomaticos(limite = 5): Promise<{ montados
   return { montados };
 }
 
-/** Quem se candidatou e ainda não foi lido: a IA lê (3 de cada vez) e o banco guarda. */
-export async function lerCandidatosNovos(limite = 12): Promise<{ lidos: number; motivo?: string }> {
+/**
+ * Quem se candidatou e ainda não foi lido, pelo funil (migração 20261228120000): vaga por vaga, sem IA, as
+ * eliminatórias tiram quem ficou fora e a pré-nota ordena o resto; a IA lê (3 de cada vez) só quem está dentro
+ * do teto da vaga e ainda não tem leitura. "limite" é quantas leituras cabem nesta rodada, somando as vagas.
+ */
+export async function lerCandidatosNovos(limite = 12, anuncioId?: string): Promise<{ lidos: number; motivo?: string }> {
   const acesso = acessoFila();
   if (!acesso) return { lidos: 0 };
   const modelo = await iaDaTriagem(acesso);
   if (!modelo) return { lidos: 0 };
   const { cliente, chave } = acesso;
-  const { data, error } = await cliente.rpc("servidor_copiloto_fila", { p_chave: chave, p_limite: limite });
+  const { data: vagas, error } = await cliente.rpc("servidor_copiloto_vagas_para_ler", {
+    p_chave: chave,
+    p_limite: 5,
+    ...(anuncioId ? { p_anuncio: anuncioId } : {}),
+  });
   if (error) {
     if (error.code === "PGRST202") return { lidos: 0 };
     console.error("Publike: falha ao ler a fila da Triagem:", error.message);
     return { lidos: 0, motivo: "Não foi possível ler a fila da Triagem." };
   }
-  const fila = data ?? [];
   let lidos = 0;
-  for (let i = 0; i < fila.length; i += 3) {
-    await Promise.all(
-      fila.slice(i, i + 3).map(async (p) => {
-        try {
-          const criterios = criteriosDoBanco(p.criterios);
-          if (!criterios.length) return;
-          const cv = p.curriculo as unknown as Omit<Curriculo, "arquivo">;
-          const r = (p.respostas ?? {}) as Record<string, unknown>;
-          const respostas = perguntasDoBanco(p.perguntas).map((q) => ({
-            pergunta: q.nome,
-            resposta: textoDaResposta(q, r[q.id] as Parameters<typeof textoDaResposta>[1]),
-          }));
-          // a IA nunca recebe nome, foto nem contato
-          const texto = semNome(
-            textoDoCurriculo(cv, { bairro: p.bairro, cidade: p.cidade ?? "", respostas, recado: p.mensagem }),
-            p.nome,
-          );
-          const { modelo: usado, ...leitura } = await lerCurriculo(
-            { vaga: { titulo: p.vaga_titulo, descricao: p.vaga_descricao ?? "" }, criterios, curriculo: texto },
-            modelo,
-          );
-          const n = contarLeitura(criterios, leitura);
-          const { data: ok, error: e } = await cliente.rpc("servidor_copiloto_guardar", {
-            p_chave: chave,
-            p_anuncio: p.anuncio_id,
-            p_perfil: p.perfil_id,
-            p_versao: p.versao,
-            p_curriculo_em: p.curriculo_em,
-            p_resultado: leitura as unknown as Json,
-            p_atende: n.atende,
-            p_obrigatorios_ok: n.obrigatoriosOk,
-            p_modelo: usado,
-          });
-          if (e) throw new Error(e.message);
-          if (ok) lidos++;
-        } catch (e) {
-          console.error("Publike: a Triagem não leu uma candidatura:", e instanceof Error ? e.message : e);
-        }
-      }),
-    );
+  let orcamento = Math.max(0, limite);
+  const restamDaConta = new Map<string, number>();
+  for (const v of vagas ?? []) {
+    if (orcamento <= 0) break;
+    const criterios = criteriosDoBanco(v.criterios);
+    if (!criterios.length) continue;
+    // a hora antes de ler a lista (com folga para o relógio): quem chegar no meio entra na próxima rodada
+    const conferidaEm = new Date(Date.now() - 60_000).toISOString();
+    const { data: lista, error: e1 } = await cliente.rpc("servidor_copiloto_candidatos_da_vaga", {
+      p_chave: chave,
+      p_anuncio: v.anuncio_id,
+    });
+    if (e1) {
+      console.error("Publike: falha ao ler os candidatos da Triagem:", e1.message);
+      continue;
+    }
+    const vaga = v.vaga as unknown as CamposDaVaga & { perguntas: unknown };
+    const perguntas = juntarTriagem(perguntasDoBanco(vaga.perguntas), v.triagem_perguntas);
+    const requisitos = { ...requisitosDaVaga(vaga), perguntas };
+    const agora = Date.now();
+    const pessoas = (lista ?? []).map((p) => {
+      const cv = p.curriculo as unknown as Omit<Curriculo, "arquivo">;
+      const r = (p.respostas ?? {}) as Respostas;
+      const aderencia = calcularAderencia(
+        requisitos,
+        { curriculo: cv, respostas: r, cidade: p.cidade, bairro: p.bairro },
+        agora,
+      );
+      const respostas = perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) }));
+      // a IA nunca recebe nome, foto nem contato
+      const texto = semNome(
+        textoDoCurriculo(cv, { bairro: p.bairro, cidade: p.cidade ?? "", respostas, recado: p.mensagem }),
+        p.nome,
+      );
+      return { ...p, texto, eliminado: aderencia.eliminado, preNota: preNota(criterios, texto, aderencia.nota) };
+    });
+    const faltam = funilDaTriagem(pessoas, v.teto).naVez.filter((p) => !p.lido);
+    const restam = restamDaConta.get(v.conta_id) ?? v.restam;
+    const daVez = faltam.slice(0, Math.min(orcamento, restam));
+    let falhas = 0;
+    for (let i = 0; i < daVez.length; i += 3) {
+      await Promise.all(
+        daVez.slice(i, i + 3).map(async (p) => {
+          try {
+            const { modelo: usado, ...leitura } = await lerCurriculo(
+              { vaga: { titulo: vaga.titulo, descricao: vaga.descricao ?? "" }, criterios, curriculo: p.texto },
+              modelo,
+            );
+            const n = contarLeitura(criterios, leitura);
+            const { data: ok, error: e } = await cliente.rpc("servidor_copiloto_guardar", {
+              p_chave: chave,
+              p_anuncio: v.anuncio_id,
+              p_perfil: p.perfil_id,
+              p_versao: v.versao,
+              p_curriculo_em: p.curriculo_em,
+              p_resultado: leitura as unknown as Json,
+              p_atende: n.atende,
+              p_obrigatorios_ok: n.obrigatoriosOk,
+              p_modelo: usado,
+            });
+            if (e) throw new Error(e.message);
+            if (ok) lidos++;
+            else falhas++;
+          } catch (e) {
+            falhas++;
+            console.error("Publike: a Triagem não leu uma candidatura:", e instanceof Error ? e.message : e);
+          }
+        }),
+      );
+    }
+    orcamento -= daVez.length;
+    restamDaConta.set(v.conta_id, Math.max(0, restam - daVez.length));
+    // tudo o que cabia no teto foi lido: a vaga só volta para a fila com novidade
+    if (daVez.length === faltam.length && !falhas) {
+      const { error: e2 } = await cliente.rpc("servidor_copiloto_vaga_conferida", {
+        p_chave: chave,
+        p_anuncio: v.anuncio_id,
+        p_em: conferidaEm,
+      });
+      if (e2) console.error("Publike: não deu para marcar a vaga da Triagem:", e2.message);
+    }
   }
   return { lidos };
 }

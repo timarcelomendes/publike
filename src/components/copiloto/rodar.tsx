@@ -17,12 +17,15 @@ export function RodarCopiloto({
   origem,
   faltam,
   lidos,
+  semFaltar,
 }: {
   anuncioId: string;
   origem: OrigemCopiloto | "todos";
   /** quantos ainda não têm leitura com os critérios de agora */
   faltam: number;
   lidos: number;
+  /** o texto quando não falta ninguém (o funil: "Os 50 primeiros já foram lidos") */
+  semFaltar?: string;
 }) {
   const router = useRouter();
   const [rodando, setRodando] = useState(false);
@@ -83,7 +86,7 @@ export function RodarCopiloto({
           </Botao>
         ) : (
           <p className="text-body-sm text-ink-muted">
-            {lidos ? "Todos já foram lidos com estes critérios." : "Ninguém para ler ainda."}
+            {semFaltar ?? (lidos ? "Todos já foram lidos com estes critérios." : "Ninguém para ler ainda.")}
           </p>
         )}
       </div>

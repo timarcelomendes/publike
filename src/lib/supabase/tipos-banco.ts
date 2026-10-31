@@ -2526,6 +2526,38 @@ export type Database = {
           mensagem: string | null;
         }[];
       };
+      servidor_copiloto_vagas_para_ler: {
+        Args: { p_chave: string; p_limite?: number; p_anuncio?: string };
+        Returns: {
+          anuncio_id: string;
+          conta_id: string;
+          vaga: Json;
+          triagem_perguntas: Json;
+          criterios: Json;
+          versao: string;
+          teto: number;
+          restam: number;
+        }[];
+      };
+      servidor_copiloto_candidatos_da_vaga: {
+        Args: { p_chave: string; p_anuncio: string };
+        Returns: {
+          perfil_id: string;
+          curtido_em: string;
+          curriculo: Json;
+          curriculo_em: string;
+          nome: string | null;
+          bairro: string | null;
+          cidade: string | null;
+          respostas: Json;
+          mensagem: string | null;
+          lido: boolean;
+        }[];
+      };
+      servidor_copiloto_vaga_conferida: {
+        Args: { p_chave: string; p_anuncio: string; p_em: string };
+        Returns: undefined;
+      };
       servidor_copiloto_guardar: {
         Args: {
           p_chave: string;
@@ -2610,6 +2642,7 @@ export type Database = {
       };
       admin_pagamentos_teste: { Args: { p_conta: string; p_marcar: boolean }; Returns: undefined };
       copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
+      copiloto_ler_mais: { Args: { p_anuncio: string }; Returns: number };
       copiloto_salvar_criterios: { Args: { p_anuncio: string; p_criterios: Json }; Returns: string };
       copiloto_ligar: {
         Args: { p_anuncio: string; p_triagem: boolean; p_busca: boolean; p_padrao: boolean };

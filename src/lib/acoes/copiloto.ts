@@ -5,6 +5,7 @@ import { refresh } from "next/cache";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import {
   contarLeitura,
+  funilDaTriagem,
   LOTE_COPILOTO,
   MAX_CRITERIOS,
   motivoProibido,
@@ -17,7 +18,11 @@ import { lerCurriculo, sugerirCriterios } from "@/lib/ia/copiloto";
 import { iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { avaliacoesDoCopiloto, configDoCopiloto, leituraAtual, pessoasDoCopiloto } from "@/lib/servidor/copiloto";
 import { processarFilas } from "@/lib/servidor/filas";
-import { criteriosDaPropriaVaga, textoDaVagaParaCriterios } from "@/lib/servidor/triagem-automatica";
+import {
+  criteriosDaPropriaVaga,
+  lerCandidatosNovos,
+  textoDaVagaParaCriterios,
+} from "@/lib/servidor/triagem-automatica";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { Resultado } from "@/lib/tipos";
@@ -166,7 +171,17 @@ export async function lerLoteDoCopiloto(anuncioId: string, origem: OrigemCopilot
     Promise.all(origens.map((o) => pessoasDoCopiloto(anuncio, o, config.criterios, agora))),
     avaliacoesDoCopiloto(anuncioId),
   ]);
-  const fila = listas.flat().filter((p) => p.curriculo && !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p));
+  // o funil: dos candidatos, a IA lê só os primeiros pela pré-nota (até o teto da vaga), nunca o eliminado
+  const naVez = new Set(
+    funilDaTriagem(
+      listas.flat().filter((p) => p.origem === "candidato" && p.curriculo),
+      config.teto,
+    ).naVez.map((p) => p.perfil_id),
+  );
+  const fila = listas
+    .flat()
+    .filter((p) => p.curriculo && !leituraAtual(avaliacoes.get(p.perfil_id), config.versao, p))
+    .filter((p) => p.origem === "talento" || naVez.has(p.perfil_id));
   if (!fila.length) return { ok: true, lidos: 0, faltam: 0, falhas: 0 };
   // a reserva (e o registro) é por origem: o lote leva só a origem do primeiro da fila
   const daVez = fila[0].origem;
@@ -218,6 +233,21 @@ export async function lerLoteDoCopiloto(anuncioId: string, origem: OrigemCopilot
   }
   if (!lidos && falhas) return { ok: false, erro: "A IA não conseguiu ler agora. Tente de novo em instantes." };
   return { ok: true, lidos, faltam: Math.max(0, fila.length - lidos - falhas), falhas };
+}
+
+/**
+ * "Ler mais 50" (o funil da Triagem, migração 20261228120000): a IA passa a ler mais 50 candidatos da vaga, os
+ * próximos pela pré-nota. A leitura começa logo depois (e a tarefa das filas continua, se faltar).
+ */
+export async function lerMaisNaTriagem(anuncioId: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("copiloto_ler_mais", { p_anuncio: anuncioId });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para pedir agora.") };
+  after(() => lerCandidatosNovos(24, anuncioId));
+  refresh();
+  return { ok: true };
 }
 
 /** O Convidar do copiloto: o mesmo convite, com o limite de 3 por semana para cada pessoa. */

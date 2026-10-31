@@ -107,7 +107,7 @@ export async function curtirAnuncio(
 
   after(processarFilas);
   // a Triagem com IA lê a candidatura logo (só na vaga de quem tem o recurso; o banco confere)
-  if (alvo?.tipo === "vaga") after(() => lerCandidatosNovos(3));
+  if (alvo?.tipo === "vaga") after(() => lerCandidatosNovos(3, anuncioId));
   // candidatura a vaga vale para a campanha (Google Ads)
   if (alvo?.tipo === "vaga") await marcarConversao("candidatura");
   refresh();

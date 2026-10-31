@@ -13,6 +13,8 @@ export const LOTE_COPILOTO = 6;
 /** quantos currículos cada clique em "Buscar profissionais" lê */
 export const POR_CLIQUE_COPILOTO = 24;
 export const LIMITE_DIA_COPILOTO = 300;
+/** quantos a IA lê de cada vaga no começo, e quanto cada "Ler mais" aumenta (migração 20261228120000) */
+export const TETO_LEITURA = 50;
 
 export const SEM_PROVA = "A IA não achou isso no currículo: confira na entrevista.";
 
@@ -174,6 +176,9 @@ export function textoDoRegistro(r: LinhaRegistro) {
     t = `Leu sozinha ${n} ${n === 1 ? "candidatura" : "candidaturas"}`;
   } else if (r.acao === "avaliou") {
     t = `Leu ${n} ${n === 1 ? "currículo" : "currículos"} de ${r.detalhe === "candidato" ? "candidatos" : "Talentos"}`;
+  } else if (r.acao === "ler_mais") {
+    const teto = Number((r.detalhe ?? "").replace("teto:", ""));
+    t = `Pediu para a IA ler mais ${n}${teto ? ` (até ${teto} candidatos)` : ""}`;
   } else if (r.acao === "convidou") {
     t = `Convidou ${r.convidado ?? "uma pessoa"} para a vaga`;
   } else {
@@ -188,4 +193,25 @@ export function textoDoRegistro(r: LinhaRegistro) {
     if (partes.includes("padrao")) t += " (padrão das próximas vagas)";
   }
   return r.quem ? `${r.quem}: ${t}` : t;
+}
+
+/**
+ * O funil da Triagem (migração 20261228120000): sem IA, as perguntas eliminatórias tiram quem ficou fora e a
+ * pré-nota ordena o resto (a maior primeiro; no empate, quem chegou antes, e
+ * depois o id, para a aba e a tarefa darem a mesma ordem). A IA lê só os primeiros, até o teto
+ * da vaga: quem chega depois só entra se ficar acima do último que cabe no teto. Vale na aba e na tarefa.
+ */
+export function funilDaTriagem<
+  T extends { perfil_id: string; preNota: number; eliminado: boolean; curtido_em?: string | null },
+>(pessoas: T[], teto: number): { naVez: T[]; abaixo: T[]; eliminados: T[] } {
+  const eliminados = pessoas.filter((p) => p.eliminado);
+  const ordem = pessoas
+    .filter((p) => !p.eliminado)
+    .sort(
+      (a, b) =>
+        b.preNota - a.preNota ||
+        new Date(a.curtido_em ?? 0).getTime() - new Date(b.curtido_em ?? 0).getTime() ||
+        (a.perfil_id < b.perfil_id ? -1 : a.perfil_id > b.perfil_id ? 1 : 0),
+    );
+  return { naVez: ordem.slice(0, Math.max(0, teto)), abaixo: ordem.slice(Math.max(0, teto)), eliminados };
 }
