@@ -1,9 +1,20 @@
-import { ArrowLeft, ChevronRight, KanbanSquare, List, ListOrdered, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  ClipboardCheck,
+  Inbox,
+  KanbanSquare,
+  List,
+  ListOrdered,
+  Pencil,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SITE_URL } from "@/lib/config";
 import { STATUS_ANUNCIO } from "@/lib/constantes";
-import { recursosPagos } from "@/lib/dados";
+import { contarCandidatosDaVaga, recursosPagos } from "@/lib/dados";
 import { formatarLugar } from "@/lib/formato";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import type { Saude } from "@/lib/saude-vaga";
@@ -46,7 +57,11 @@ export async function CabecalhoDaVaga({
   /** a saúde da vaga (nas páginas de Candidatos) */
   saude?: Saude | null;
 }) {
-  const [recursos, agora] = await Promise.all([recursosPagos(), agoraDaRequisicao()]);
+  const [recursos, agora, candidatos] = await Promise.all([
+    recursosPagos(),
+    agoraDaRequisicao(),
+    contarCandidatosDaVaga(anuncio.id),
+  ]);
   const marca = {
     copiloto: marcaDoRecurso(recursos?.copiloto, agora).curto,
     testes: marcaDoRecurso(recursos?.testes, agora).curto,
@@ -54,17 +69,37 @@ export async function CabecalhoDaVaga({
   const status = anuncio.status as StatusAnuncio;
   const noAr = status === "ativo";
   const id = anuncio.id;
-  const abas: { aba: AbaDaVaga; nome: string; href: string; icone?: ReactNode; marca?: string | null }[] = [
-    { aba: "candidatos", nome: "Candidatos", href: `/painel/anuncio/${id}/quadro` },
+  // as abas de ver a vaga à esquerda, todas com ícone; o Editar, que muda a vaga, à direita, separado
+  const abas: {
+    aba: AbaDaVaga;
+    nome: string;
+    href: string;
+    icone: LucideIcon;
+    numero?: number | null;
+    marca?: string | null;
+  }[] = [
+    {
+      aba: "candidatos",
+      nome: "Candidatos",
+      href: `/painel/anuncio/${id}/quadro`,
+      icone: Inbox,
+      numero: candidatos,
+    },
     {
       aba: "copiloto",
       nome: "Triagem com IA",
       href: `/painel/anuncio/${id}/copiloto`,
-      icone: <Sparkles aria-hidden className="size-4 text-terra-text" />,
+      icone: Sparkles,
       marca: marca.copiloto,
     },
-    { aba: "testes", nome: "Teste Prático", href: `/painel/anuncio/${id}/testes`, marca: marca.testes },
-    { aba: "editar", nome: "Editar", href: `/painel/anuncio/${id}/editar` },
+    {
+      aba: "testes",
+      nome: "Teste Prático",
+      href: `/painel/anuncio/${id}/testes`,
+      icone: ClipboardCheck,
+      marca: marca.testes,
+    },
+    { aba: "editar", nome: "Editar", href: `/painel/anuncio/${id}/editar`, icone: Pencil },
   ];
   return (
     <div className="flex flex-col gap-3">
@@ -101,23 +136,42 @@ export async function CabecalhoDaVaga({
         </div>
       </div>
       <nav aria-label="Partes da vaga" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <ul className="flex min-w-max gap-1 border-b border-line">
-          {abas.map((a) => (
-            <li key={a.aba}>
-              <Link
-                href={a.href}
-                scroll={false}
-                aria-current={a.aba === aba ? "page" : undefined}
-                className={`-mb-px inline-flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-label ${
-                  a.aba === aba ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
-                }`}
-              >
-                {a.icone}
-                {a.nome}
-                {a.marca && <SeloCortesia curto texto={a.marca} />}
-              </Link>
-            </li>
-          ))}
+        <ul className="flex min-w-max gap-1 border-b border-line sm:gap-2">
+          {abas.map((a) => {
+            const ativa = a.aba === aba;
+            const Icone = a.icone;
+            return (
+              <li key={a.aba} className={a.aba === "editar" ? "sm:ml-auto" : undefined}>
+                <Link
+                  href={a.href}
+                  scroll={false}
+                  aria-current={ativa ? "page" : undefined}
+                  className={`group -mb-px inline-flex min-h-12 items-center gap-2 border-b-[3px] px-3 text-label transition-colors ${
+                    ativa
+                      ? "border-ink text-ink"
+                      : "border-transparent text-ink-muted hover:border-line-strong hover:text-ink"
+                  }`}
+                >
+                  <Icone
+                    aria-hidden
+                    className={`size-[18px] ${ativa ? "text-ink" : "text-ink-muted group-hover:text-ink"}`}
+                  />
+                  {a.nome}
+                  {a.numero != null && a.numero > 0 && (
+                    <span
+                      className={`min-w-6 rounded-pill px-1.5 text-center text-caption leading-6 tabular-nums ${
+                        ativa ? "bg-ink text-surface-100" : "bg-surface-300 text-ink"
+                      }`}
+                    >
+                      {a.numero > 99 ? "99+" : a.numero}
+                      <span className="sr-only"> {a.numero === 1 ? "candidato" : "candidatos"}</span>
+                    </span>
+                  )}
+                  {a.marca && <SeloCortesia curto texto={a.marca} />}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </div>

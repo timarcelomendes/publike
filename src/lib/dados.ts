@@ -313,6 +313,18 @@ export async function aceitoEsperandoMeuCurriculo(anuncioId: string): Promise<bo
   return (await aceitasEsperandoCurriculo()).has(`${anuncioId}:${usuario.id}`);
 }
 
+/** Quantos candidatos a vaga tem (sem os dispensados), para a aba Candidatos. null: não deu para contar. */
+export const contarCandidatosDaVaga = cache(async (anuncioId: string): Promise<number | null> => {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return null;
+  const supabase = await criarClienteServidor();
+  const { count, error } = await supabase
+    .from("curtidas")
+    .select("perfil_id", { count: "exact", head: true })
+    .eq("anuncio_id", anuncioId)
+    .neq("status", "dispensada");
+  return error ? null : count;
+});
+
 export async function listarInteressados(anuncioId: string): Promise<Interessado[]> {
   const supabase = await criarClienteServidor();
   const [{ data, error }, aceitas] = await Promise.all([
