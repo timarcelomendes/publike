@@ -204,7 +204,11 @@ async function Conteudo({
       {cartoes.length === 0 ? (
         <Vazio icone={Users} titulo="Ninguém se candidatou ainda">
           Quem curtir a vaga aparece aqui, na coluna Novos. Copie o link da vaga ali em cima, ou mande a sua página de
-          vagas (em Links para divulgar). Recebeu um currículo por fora? Use “Chamar candidato de fora”, em Mais.
+          vagas (em Links para divulgar). Recebeu um currículo por fora? Use “Chamar candidato de fora”, em Mais. Ou{" "}
+          <Link href={`/painel/anuncio/${id}/convidar#chamar-de-novo`} className="underline underline-offset-2">
+            chame quem já se candidatou às suas vagas
+          </Link>
+          .
         </Vazio>
       ) : (
         <QuadroCandidatos

@@ -19,6 +19,36 @@ export async function convitesDaVaga(anuncioId: string): Promise<ConviteDaVaga[]
   return (data ?? []).map(({ curriculo, ...c }) => ({ ...c, tem_curriculo: curriculo !== null }));
 }
 
+export type CandidatoDeAntes = {
+  perfil_id: string;
+  nome: string;
+  foto: string | null;
+  cidade: string;
+  bairro: string | null;
+  /** a vaga antiga e até onde a pessoa chegou nela */
+  vaga: string;
+  ate_onde: "finalista" | "entrevista" | "match";
+  candidatou_em: string;
+  convidado: boolean;
+};
+
+/**
+ * Chamar de novo (migração 20270103120000): quem se candidatou a outra vaga minha nos últimos 6 meses, chegou ao
+ * match, não foi contratado e deixou o currículo visível em Talentos. null: o banco ainda não tem a migração.
+ */
+export async function candidatosDeAntes(anuncioId: string): Promise<CandidatoDeAntes[] | null> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("candidatos_de_antes", { p_anuncio: anuncioId });
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler os candidatos de antes: ${error.message}`);
+    return null;
+  }
+  return (data ?? []).map((c) => ({
+    ...c,
+    ate_onde: c.ate_onde === "finalista" || c.ate_onde === "entrevista" ? c.ate_onde : "match",
+  }));
+}
+
 /** O convite do link, com o login de quem abriu (quem convidou vê a prévia). */
 export async function dadosDoConvite(token: string) {
   if (!TOKEN_CONVITE.test(token)) return null;

@@ -1,19 +1,20 @@
-import { ArrowLeft, Mailbox, UserPlus } from "lucide-react";
+import { ArrowLeft, History, Mailbox, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ChamarCandidato, ListaDeConvites } from "@/components/convite-candidato/chamar-candidato";
+import { ChamarDeNovo } from "@/components/convite-candidato/chamar-de-novo";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Aviso } from "@/components/ui/basicos";
+import { Aviso, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { DIAS_DO_CONVITE, situacaoNaLista } from "@/lib/convite-candidato";
 import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
 import { plural } from "@/lib/formato";
-import { convitesDaVaga } from "@/lib/servidor/convites-candidato";
+import { candidatosDeAntes, convitesDaVaga } from "@/lib/servidor/convites-candidato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -38,7 +39,11 @@ async function Conteudo({ id }: { id: string }) {
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [convites, comIA] = await Promise.all([convitesDaVaga(id), ajudaDaIADisponivel().catch(() => false)]);
+  const [convites, comIA, deAntes] = await Promise.all([
+    convitesDaVaga(id),
+    ajudaDaIADisponivel().catch(() => false),
+    candidatosDeAntes(id),
+  ]);
   const noAr = anuncio.status === "ativo" && new Date(anuncio.expira_em).getTime() > agora && !anuncio.preenchida_em;
   const esperando = convites.filter((c) => situacaoNaLista(c, agora) === "valido").length;
 
@@ -92,6 +97,29 @@ async function Conteudo({ id }: { id: string }) {
           </Aviso>
         )}
       </section>
+
+      {deAntes && noAr && (
+        <section id="chamar-de-novo" aria-labelledby="de-antes" className="flex scroll-mt-32 flex-col gap-3">
+          <div>
+            <h3 id="de-antes" className="flex flex-wrap items-center gap-2 text-h3">
+              <History aria-hidden className="size-5 text-ink-muted" />
+              Já se candidataram às suas vagas
+              <Selo variante="novo">Novo</Selo>
+            </h3>
+            <p className="mt-1 text-body-sm text-ink-muted">
+              Quem você aceitou em outra vaga nos últimos 6 meses, não foi contratado e deixou o currículo visível em
+              Talentos. Os que foram mais longe vêm primeiro. A pessoa recebe o convite e decide se curte a vaga.
+            </p>
+          </div>
+          {deAntes.length ? (
+            <ChamarDeNovo anuncioId={id} candidatos={deAntes} agora={agora} />
+          ) : (
+            <p className="text-body-sm text-ink-muted">
+              Ninguém por enquanto: só aparece quem você aceitou em outra vaga e deixou o currículo visível.
+            </p>
+          )}
+        </section>
+      )}
 
       <section aria-labelledby="convites" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

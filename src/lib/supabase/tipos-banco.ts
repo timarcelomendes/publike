@@ -1776,6 +1776,21 @@ export type Database = {
         Returns: string;
       };
       escolher_horario: { Args: { p_id: string; p_quando: string }; Returns: undefined };
+      /** migração 20270103120000: quem já se candidatou a outra vaga da conta (Chamar de novo) */
+      candidatos_de_antes: {
+        Args: { p_anuncio: string };
+        Returns: {
+          perfil_id: string;
+          nome: string;
+          foto: string | null;
+          cidade: string;
+          bairro: string | null;
+          vaga: string;
+          ate_onde: string;
+          candidatou_em: string;
+          convidado: boolean;
+        }[];
+      };
       mudar_entrevista: { Args: { p_id: string; p_situacao: string }; Returns: undefined };
       responder_entrevista: { Args: { p_id: string; p_resposta: string }; Returns: undefined };
       contar_visita: { Args: { p_anuncio: string }; Returns: undefined };
