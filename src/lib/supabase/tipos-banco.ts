@@ -2495,6 +2495,8 @@ export type Database = {
       servidor_limpar_avaliacoes: { Args: { p_chave: string }; Returns: number };
       /** o copiloto (migração 20261203120000): só para as contas liberadas no admin */
       copiloto_liberado: { Args: Record<string, never>; Returns: boolean };
+      /** migração 20261226120000: a vaga usa a Triagem com IA (o aviso para o candidato) */
+      vaga_usa_triagem: { Args: { p_anuncio: string }; Returns: boolean };
       testes_liberado: { Args: Record<string, never>; Returns: boolean };
       recursos_pagos: { Args: Record<string, never>; Returns: Json };
       experimentar_recurso: { Args: { p_recurso: string }; Returns: string };

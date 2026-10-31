@@ -31,6 +31,14 @@ export type ConfigCopiloto = {
   padraoBusca: boolean;
 };
 
+/** A vaga usa a Triagem com IA (o aviso para quem se candidata). Sem a migração 20261226120000, não. */
+export async function vagaUsaTriagem(anuncioId: string): Promise<boolean> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("vaga_usa_triagem", { p_anuncio: anuncioId });
+  if (error && error.code !== "PGRST202") console.error(`Publike: falha ao ler a Triagem da vaga: ${error.message}`);
+  return data === true;
+}
+
 /** A configuração do copiloto na vaga (null se a migração ainda não rodou). */
 export async function configDoCopiloto(anuncioId: string): Promise<ConfigCopiloto | null> {
   const supabase = await criarClienteServidor();

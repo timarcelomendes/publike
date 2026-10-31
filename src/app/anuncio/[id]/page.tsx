@@ -105,6 +105,8 @@ import { meusTestesDaVaga, testesDaVaga } from "@/lib/servidor/testes";
 import { nomeCurtoDoTeste } from "@/lib/testes";
 import { AvisoTesteNaVaga } from "@/components/testes/aviso-teste-na-vaga";
 import { TestesParaMim } from "@/components/testes/testes-para-mim";
+import { AvisoTriagem } from "@/components/anuncio/aviso-triagem";
+import { vagaUsaTriagem } from "@/lib/servidor/copiloto";
 
 export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -321,6 +323,8 @@ async function DetalheAnuncio({
       ? await meusTestesDaVaga(anuncio.id)
       : null;
   const caixaDeTestes = meusTestes ? <TestesParaMim anuncioId={anuncio.id} testes={testes} meus={meusTestes} /> : null;
+  // a empresa usa a Triagem com IA: quem vê a vaga (e se candidata) fica sabendo (migração 20261226120000)
+  const avisoTriagem = vaga && !proprio && (await vagaUsaTriagem(anuncio.id)) ? <AvisoTriagem /> : null;
 
   const quadroAcao = (sufixo: string) =>
     proprio ? (
@@ -595,6 +599,7 @@ async function DetalheAnuncio({
           <div id="quadro-celular" className="mt-6 scroll-mt-24 lg:hidden">
             {quadroAcao("celular")}
             {caixaDeTestes}
+            {avisoTriagem}
           </div>
           {!proprio && !(anuncio.preenchida_em && anuncio.minha_curtida !== "match") && (
             <BarraCurtirCelular
@@ -709,6 +714,7 @@ async function DetalheAnuncio({
           <div className="hidden lg:block">
             {quadroAcao("lateral")}
             {caixaDeTestes}
+            {avisoTriagem}
           </div>
 
           <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4">

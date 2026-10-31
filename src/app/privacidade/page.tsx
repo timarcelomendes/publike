@@ -106,7 +106,7 @@ export default function Privacidade() {
           para preencher o perfil; só enviamos o número do CNPJ), o Google Ads (só se você aceitar os cookies de
           propaganda; veja Cookies) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
         </p>
-        <p>
+        <p id="ia" className="scroll-mt-24">
           A IA recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome da
           empresa contratante), nunca seu contato. Quando ela acha um anúncio suspeito, ele sai do ar até uma pessoa da
           moderação olhar. No Descobrir, a IA recebe o que você escreveu em “O que você procura?”, o que você faz, as
@@ -115,7 +115,9 @@ export default function Privacidade() {
           resumo da IA, ela recebe a vaga, o currículo, as respostas e o recado, para apontar pontos fortes e o que
           conferir; nunca seu nome, foto ou contato, e ela não decide nada: quem decide é a pessoa. Se a empresa usa a
           Triagem com IA, a IA compara o currículo de quem está em Talentos ou curtiu a vaga com os critérios da vaga, sem nome,
-          foto ou contato; ela não recusa ninguém. Nos testes que uma vaga pede, quem publicou vê só o resultado e as
+          foto ou contato; ela não recusa ninguém. Na vaga, avisamos quando a empresa usa a Triagem com IA. Quer que
+          uma pessoa reveja? Escreva para o Publike em Sugestões e erros.
+          Nos testes que uma vaga pede, quem publicou vê só o resultado e as
           respostas do teste; eles são apagados 12 meses depois que a vaga sai do ar. No “Já tem currículo
           pronto?”, a IA recebe o PDF ou as fotos do currículo que você enviou, só para preencher os campos do seu
           currículo. Se você contar falando, a gravação vai para a OpenAI só para virar texto, e a IA recebe esse texto
