@@ -56,6 +56,8 @@ import { CompositorMensagem, EntrevistaMarcada, FormEntrevista } from "./recruta
 import { FormRetorno } from "./retorno";
 import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
 import { VideoNaFicha } from "../video/video-na-ficha";
+import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
+import { SITUACOES_PROPOSTA, type Proposta } from "@/lib/proposta";
 import { AvaliacaoDoTime } from "../avaliacao/avaliacao-time";
 import { textoDaMedia, type AvaliacaoNoQuadro, type Competencia } from "@/lib/avaliacao-time";
 import { moverNoQuadro } from "@/lib/acoes/etapas-proprias";
@@ -118,6 +120,8 @@ export type CartaoQuadro = {
   subetapa?: string | null;
   /** desde quando está na coluna (migração 20270108120000) */
   desde?: string | null;
+  /** a proposta (migração 20270110120000; undefined: sem a migração) */
+  proposta?: Proposta | null;
 };
 
 /** Uma coluna do quadro: uma etapa de hoje ou uma própria da conta (que fica dentro da etapa de hoje dela). */
@@ -620,7 +624,8 @@ function Cartao({
         c.finalista ||
         c.colocacao ||
         c.video ||
-        c.avaliacao) && (
+        c.avaliacao ||
+        (c.proposta && c.proposta.situacao !== "cancelada")) && (
         <div className="flex flex-wrap gap-1.5">
           {c.status === "pendente" &&
             (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
@@ -635,6 +640,11 @@ function Cartao({
           {c.colocacao && <SeloDaColocacao c={c.colocacao} agora={agora} />}
           {c.video && (
             <Selo variante={SITUACOES_VIDEO[c.video.situacao].tom}>{SITUACOES_VIDEO[c.video.situacao].nome}</Selo>
+          )}
+          {c.proposta && c.proposta.situacao !== "cancelada" && (
+            <Selo variante={SITUACOES_PROPOSTA[c.proposta.situacao].tom}>
+              {SITUACOES_PROPOSTA[c.proposta.situacao].nome}
+            </Selo>
           )}
           {c.avaliacao && c.avaliacao.total > 0 && (
             <Selo
@@ -850,6 +860,18 @@ function DetalheCandidato({
             video={c.video ?? null}
             liberado={video.liberado}
             agora={agora}
+          />
+        </Secao>
+      )}
+
+      {c.proposta !== undefined && match && (
+        <Secao titulo="Proposta">
+          <PropostaNaFicha
+            anuncioId={anuncioId}
+            perfilId={c.perfil_id}
+            nome={c.nome}
+            endereco={endereco}
+            proposta={c.proposta}
           />
         </Secao>
       )}

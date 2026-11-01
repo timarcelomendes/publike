@@ -1202,6 +1202,12 @@ export type Database = {
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       /** migração 20270108120000: etapas próprias e horários livres */
+      /** migração 20270110120000: a proposta */
+      fazer_proposta: { Args: { p_anuncio: string; p_perfil: string; p_dados: Json }; Returns: string };
+      cancelar_proposta: { Args: { p_anuncio: string; p_perfil: string }; Returns: undefined };
+      propostas_da_vaga: { Args: { p_anuncio: string }; Returns: Json[] };
+      minha_proposta: { Args: { p_anuncio: string }; Returns: Json };
+      responder_proposta: { Args: { p_anuncio: string; p_aceitar: boolean; p_motivo?: string }; Returns: string };
       /** migração 20270109120000: as automações e os números */
       automacoes_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       salvar_automacoes: {

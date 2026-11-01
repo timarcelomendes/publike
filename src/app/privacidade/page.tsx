@@ -138,6 +138,12 @@ export default function Privacidade() {
           nota e não decide nada. Na página da entrevista, “Apagar meus vídeos” apaga os vídeos, as respostas e o resumo
           na hora.
         </p>
+        <p id="proposta" className="scroll-mt-24">
+          Proposta de trabalho: quando a empresa manda uma proposta pelo Publike, guardamos o que ela escreveu (o
+          salário, o início, o horário, os benefícios, o recado e o primeiro dia) e a sua resposta, com a data e a hora.
+          A resposta é um registro, não uma assinatura eletrônica. A lista do primeiro dia diz só o que levar: o Publike
+          não pede nem guarda números de CPF, RG, PIS ou conta bancária.
+        </p>
         <p>
           Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}
           <Link href="/perfil" className="underline">

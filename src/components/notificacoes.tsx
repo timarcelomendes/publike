@@ -4,6 +4,7 @@ import {
   Bell,
   CreditCard,
   FileCheck,
+  FileSignature,
   FileText,
   Handshake,
   Heart,
@@ -60,6 +61,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   video_pedido: Video,
   video_enviado: Video,
   parados: Hourglass,
+  proposta: FileSignature,
+  proposta_resposta: FileSignature,
   seguindo: BellRing,
   busca: SearchCheck,
   // curtida sem resposta: o lembrete para quem publicou e o aviso para quem curtiu

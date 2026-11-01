@@ -56,6 +56,10 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "video_pedido" && n.anuncio_id) return `/entrevista-video/${n.anuncio_id}`;
   if (n.tipo === "video_enviado" && n.anuncio_id)
     return `/painel/anuncio/${n.anuncio_id}/quadro${n.ator_id ? `?candidato=${n.ator_id}` : ""}`;
+  // a proposta: o candidato vai à proposta; a empresa, ao candidato no quadro (migração 20270110120000)
+  if (n.tipo === "proposta" && n.anuncio_id) return `/proposta/${n.anuncio_id}`;
+  if (n.tipo === "proposta_resposta" && n.anuncio_id)
+    return `/painel/anuncio/${n.anuncio_id}/quadro${n.ator_id ? `?candidato=${n.ator_id}` : ""}`;
   // a automação "Lembrar dos parados": o quadro da vaga (migração 20270109120000)
   if (n.tipo === "parados" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
   // o lembrete da véspera: o candidato vai à vaga; quem marcou, ao quadro

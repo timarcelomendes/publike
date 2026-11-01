@@ -22,6 +22,7 @@ import { sugestoesDeCompetencias } from "@/lib/avaliacao-time";
 import { avaliacoesTimeDaVaga, fichaDaVaga } from "@/lib/servidor/avaliacao-time";
 import { dailyConfigurado } from "@/lib/servidor/daily";
 import { etapasProprias, ondeEstaDesde } from "@/lib/servidor/etapas-proprias";
+import { propostasDaVaga } from "@/lib/servidor/proposta";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { retornoDaConta } from "@/lib/servidor/retorno";
 import { saudeDasVagas } from "@/lib/servidor/saude";
@@ -57,8 +58,8 @@ async function Conteudo({
   const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  // as etapas próprias e o tempo na etapa (migração 20270108120000; sem ela, null)
-  const proprias = Promise.all([etapasProprias(), ondeEstaDesde(id)]);
+  // as etapas próprias e o tempo na etapa (migração 20270108120000; sem ela, null) e as propostas
+  const proprias = Promise.all([etapasProprias(), ondeEstaDesde(id), propostasDaVaga(id)]);
   const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno, videos, ficha, avaliacoes] =
     await Promise.all([
       montarQuadro(anuncio, agora),
@@ -72,7 +73,7 @@ async function Conteudo({
       fichaDaVaga(id),
       avaliacoesTimeDaVaga(id),
     ]);
-  const [etapas, desde] = await proprias;
+  const [etapas, desde, propostas] = await proprias;
   // o Teste Prático de cada candidato: o resultado numa palavra no cartão e o "Ordenar pelo teste"
   const testesDe = new Map<string, { titulo: string; faixa: FaixaDoTeste; nota: number }[]>();
   for (const r of resultados) {
@@ -93,6 +94,8 @@ async function Conteudo({
     avaliacao: avaliacoes?.get(c.perfil_id) ?? null,
     subetapa: desde?.get(c.perfil_id)?.subetapa ?? null,
     desde: desde?.get(c.perfil_id)?.desde ?? null,
+    // a proposta (migração 20270110120000; sem ela, undefined e a ficha não mostra)
+    proposta: propostas ? (propostas.get(c.perfil_id) ?? null) : undefined,
   }));
   if (peloChamar) cartoes.sort(compararParaChamar);
   const ordenados = cartoes.map((c, i) =>
