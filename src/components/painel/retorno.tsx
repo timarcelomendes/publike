@@ -35,7 +35,7 @@ export function FormRetorno({
     <div className="flex flex-col gap-4">
       <p className="text-body-sm text-ink-muted">
         Quem você dispensa recebe este texto 15 minutos depois (dá para desfazer antes), das 8h às 20h, no aviso do
-        Publike, no celular e no e-mail, com as vagas parecidas. Vale para todas as suas vagas. Quem já deu match e vai
+        Publike, no celular e no e-mail, com as vagas parecidas. Vale para todas as suas vagas. Quem já foi aceito e vai
         para “Não seguiu” recebe o mesmo texto.
       </p>
       <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-label">

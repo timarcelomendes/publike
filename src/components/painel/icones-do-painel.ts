@@ -24,6 +24,7 @@ import {
   Users,
   UsersRound,
   Video,
+  Workflow,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -54,6 +55,7 @@ export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   testes: ClipboardCheck,
   copiloto: Sparkles,
   video: Video,
+  automacoes: Workflow,
   etapas: Columns3,
   numeros: BarChart3,
   assinatura: CreditCard,

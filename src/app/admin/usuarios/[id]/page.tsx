@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
-import { BotaoCopiloto, BotaoTestes, BotaoVideo } from "@/components/admin/copiloto";
+import { BotaoAutomacoes, BotaoCopiloto, BotaoTestes, BotaoVideo } from "@/components/admin/copiloto";
 import { NOME_RECURSO } from "@/lib/recursos-pagos";
 import { FormNomeDaConta } from "@/components/admin/nome-da-conta";
 import type { Metadata } from "next";
@@ -375,11 +375,11 @@ async function Conteudo({
 
       {u.perfil && copiloto && (
         <Secao
-          titulo="Triagem com IA, Teste Prático e Entrevista em vídeo"
+          titulo="Recursos pagos"
           descricao="Recursos pagos. A conta pode experimentar cada um por 15 dias grátis, uma vez; aqui você libera sem prazo ou tira."
         >
           <div className="flex flex-col gap-4">
-            {(["copiloto", "testes", "video"] as const).map((r) => {
+            {(["copiloto", "testes", "video", "automacoes"] as const).map((r) => {
               const estado = recursos?.[r] ?? null;
               // antes da migração 20261215120000, só o Copiloto, pela lista de antes
               const liberado = recursos ? Boolean(estado?.liberado) : r === "copiloto" && copiloto.some((x) => x.conta_id === u.id);
@@ -397,8 +397,10 @@ async function Conteudo({
                     <BotaoCopiloto contaId={u.id} liberado={liberado && !estado?.ate} />
                   ) : r === "testes" ? (
                     <BotaoTestes contaId={u.id} liberado={liberado && !estado?.ate} />
-                  ) : (
+                  ) : r === "video" ? (
                     <BotaoVideo contaId={u.id} liberado={liberado && !estado?.ate} />
+                  ) : (
+                    <BotaoAutomacoes contaId={u.id} liberado={liberado && !estado?.ate} />
                   )}
                 </div>
               );

@@ -5,8 +5,12 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CircleCheckBig,
+  ClipboardCheck,
+  Clock3,
   Heart,
   Keyboard,
+  PartyPopper,
   Sparkles,
   Undo2,
   X,
@@ -15,10 +19,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
+import { mudarStatusAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
+import { moverCandidatos } from "@/lib/acoes/recrutamento";
+import { pedirTeste } from "@/lib/acoes/testes";
 import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
 import { SITE_URL } from "@/lib/config";
+import type { VideoNoQuadro } from "@/lib/entrevista-video";
 import type { ResumoCandidato } from "@/lib/ia/tarefas";
+import type { Proposta } from "@/lib/proposta";
+import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
+import { useAcao } from "../ui/usar-acao";
+import { VideoNaFicha } from "../video/video-na-ficha";
 import { classesBotao } from "../ui/botao";
 import { EntrevistaMarcada, FormEntrevista } from "./recrutamento";
 
@@ -62,6 +74,26 @@ const digitando = (e: KeyboardEvent) => {
   );
 };
 
+/** A etapa da ficha, com os nomes de Candidatos (`abaDaEtapa`). */
+export type AbaDaFicha = "novos" | "analise" | "entrevista" | "contratados" | "nao_seguiu";
+
+/** O que a folha de "Chamar" e a de "Contratado" precisam (claude/plano-fluxo-contratar.md, partes 3 a 5). */
+export type ExtrasDaFicha = {
+  aba: AbaDaFicha;
+  entrevista: EntrevistaResumo | null;
+  agora: number;
+  vaga: { titulo: string; noAr: boolean; quantas: number; contratados: number };
+  endereco: string;
+  /** a chamada pelo Publike (Entrevista em vídeo liberada e a Daily configurada) */
+  aoVivo: boolean;
+  video: { liberado: boolean; atual: VideoNoQuadro | null };
+  /** os testes da vaga, para "Pedir o teste antes" */
+  testes: { id: string; titulo: string }[];
+  proposta: Proposta | null;
+};
+
+type Feito = { texto: string; voltar?: () => Promise<{ ok: boolean; erro?: string }> } | null;
+
 export function ControlesDaFicha({
   anuncioId,
   perfilId,
@@ -72,7 +104,10 @@ export function ControlesDaFicha({
   proximo,
   depois,
   conversa,
+  base = "/painel/caixa",
+  extras = null,
 }: {
+  base?: string;
   anuncioId: string;
   perfilId: string;
   nome: string;
@@ -83,13 +118,26 @@ export function ControlesDaFicha({
   /** para onde ir depois de responder (o próximo da lista, que ainda espera) */
   depois: string;
   conversa: string | null;
+  /** sem eles (a ficha antiga), só Aceitar e Dispensar */
+  extras?: ExtrasDaFicha | null;
 }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [ajuda, setAjuda] = useState(false);
+  // a folha aberta: "chamar" (entrevista, vídeo, teste) ou "contratado" (proposta e vaga completa)
+  const [folha, setFolha] = useState<"chamar" | "contratado" | null>(null);
+  const [feito, setFeito] = useState<Feito>(null);
   const desfazer = useUltima();
   const primeiro = nome.split(" ")[0];
+  const aba = extras?.aba ?? "novos";
+  const entrevista = extras?.entrevista ?? null;
+  const passou =
+    entrevista && entrevista.situacao !== "escolher" && extras
+      ? new Date(entrevista.quando).getTime() < extras.agora
+      : false;
+  // a vaga completou as pessoas que pediu: a folha do contratado sugere encerrar (desligado, nada fecha sozinho)
+  const completa = extras ? extras.vaga.contratados >= extras.vaga.quantas : false;
 
   function responder(decisao: "match" | "dispensada") {
     setErro(null);
@@ -110,7 +158,7 @@ export function ControlesDaFicha({
             ? `${primeiro} foi dispensado.`
             : aceitaSemCurriculo
               ? `Aceito: ${primeiro} recebeu o pedido do currículo.`
-              : `Deu match com ${primeiro}! O contato está liberado.`,
+              : `${primeiro} foi aceito. O contato está liberado.`,
       });
       router.push(depois, { scroll: false });
     });
@@ -123,9 +171,62 @@ export function ControlesDaFicha({
       const r = await chamarAcao(() => responderCurtida(u.anuncioId, u.perfilId, "pendente"));
       if (!r.ok) return setErro(r.erro);
       guardar(null);
-      router.push(`/painel/caixa?c=${u.anuncioId}:${u.perfilId}`, { scroll: false });
+      router.push(`${base}?c=${u.anuncioId}:${u.perfilId}`, { scroll: false });
     });
   }
+
+  /** Leva para uma etapa (Ver depois, Contratar, Não seguiu), com o Desfazer de volta para a de antes. */
+  function mover(destino: "analise" | "contratado" | "nao_seguiu", texto: string) {
+    setErro(null);
+    const antes =
+      aba === "contratados" ? "contratado" : aba === "nao_seguiu" ? "nao_seguiu" : aba === "novos" ? "novo" : aba;
+    iniciar(async () => {
+      const r = await chamarAcao(() => moverCandidatos(anuncioId, [perfilId], destino));
+      if (!r.ok) return setErro(r.erro);
+      if (!r.feitos) return setErro(r.falhas[0]?.erro ?? "Não deu para mudar agora.");
+      setFeito({
+        texto,
+        voltar: async () => {
+          const v = await chamarAcao(() => moverCandidatos(anuncioId, [perfilId], antes, { semMensagem: true }));
+          return v.ok ? { ok: true } : { ok: false, erro: v.erro };
+        },
+      });
+      if (destino === "contratado") setFolha("contratado");
+      router.refresh();
+    });
+  }
+
+  function encerrarVaga() {
+    setErro(null);
+    iniciar(async () => {
+      const r = await chamarAcao(() => mudarStatusAnuncio(anuncioId, "encerrado", { motivo: "contratei_publike" }));
+      if (!r.ok) return setErro(r.erro);
+      setFeito({
+        texto: "A vaga saiu do ar, como “contratei pelo Publike”.",
+        voltar: async () => {
+          const v = await chamarAcao(() => mudarStatusAnuncio(anuncioId, "ativo"));
+          return v.ok ? { ok: true } : { ok: false, erro: v.erro };
+        },
+      });
+      router.refresh();
+    });
+  }
+
+  function desfazerFeito() {
+    const f = feito;
+    if (!f?.voltar) return;
+    iniciar(async () => {
+      const r = await f.voltar!();
+      if (!r.ok) return setErro(r.erro ?? "Não deu para desfazer.");
+      setFeito(null);
+      setFolha(null);
+      router.refresh();
+    });
+  }
+
+  const responde = estado === "responder" || estado === "desfeito";
+  const noProcesso = estado === "match" && aba !== "contratados" && aba !== "nao_seguiu";
+  const podeChamar = Boolean(extras) && (responde || (noProcesso && !entrevista));
 
   useEffect(() => {
     function tecla(e: KeyboardEvent) {
@@ -134,15 +235,13 @@ export function ControlesDaFicha({
       // a navegação conta como pendente: tecla repetida não pula ninguém
       if (k === "j" && proximo) iniciar(() => router.push(proximo, { scroll: false }));
       else if (k === "k" && anterior) iniciar(() => router.push(anterior, { scroll: false }));
-      else if (k === "a" && (estado === "responder" || estado === "desfeito")) responder("match");
+      else if (k === "a" && responde) responder("match");
       else if (k === "d" && estado === "responder") responder("dispensada");
       else if (k === "z" && ultima?.desfaz) voltar();
       else if (k === "c" && conversa) router.push(conversa);
+      else if (k === "e" && podeChamar) setFolha("chamar");
       else if (k === "e" && estado === "match") {
         const alvo = document.getElementById("entrevista");
-        // o formulário começa fechado: abre antes de pôr o cursor no primeiro campo
-        const fechado = alvo?.querySelector("details:not([open])");
-        if (fechado instanceof HTMLDetailsElement) fechado.open = true;
         alvo?.scrollIntoView({ behavior: "smooth", block: "start" });
         alvo?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
       } else if (e.key === "?") setAjuda((a) => !a);
@@ -153,10 +252,42 @@ export function ControlesDaFicha({
     return () => window.removeEventListener("keydown", tecla);
   });
 
+  const principal =
+    "inline-flex min-h-11 items-center gap-2 rounded-pill bg-terra px-4 text-label text-on-terra transition-colors hover:bg-terra-hover disabled:opacity-60";
+  const secundario =
+    "inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-surface-300 disabled:opacity-60";
+  const leve =
+    "inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-label text-ink transition-colors hover:bg-surface-300 disabled:opacity-60";
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {(estado === "responder" || estado === "desfeito") && (
+      {/* no celular, os atalhos ficam presos embaixo (acima da barra), no alcance do polegar, enquanto a ficha rola */}
+      <div className="flex flex-wrap items-center gap-2 max-md:sticky max-md:bottom-[calc(4rem+env(safe-area-inset-bottom))] max-md:z-10 max-md:-mx-4 max-md:border-t max-md:border-line max-md:bg-surface-200/95 max-md:px-4 max-md:py-2 max-md:backdrop-blur-md">
+        {podeChamar && (
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => setFolha(folha === "chamar" ? null : "chamar")}
+            aria-expanded={folha === "chamar"}
+            className={principal}
+          >
+            <CalendarPlus aria-hidden className="size-[18px]" />
+            {responde ? "Chamar para entrevista" : "Marcar a entrevista"}
+            <Tecla>E</Tecla>
+          </button>
+        )}
+        {responde && extras && aba !== "analise" && (
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => mover("analise", `${primeiro} foi para Em análise.`)}
+            className={secundario}
+          >
+            <Clock3 aria-hidden className="size-[18px]" />
+            Ver depois
+          </button>
+        )}
+        {responde && !extras && (
           <button
             type="button"
             disabled={pendente}
@@ -164,20 +295,59 @@ export function ControlesDaFicha({
             className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
           >
             <Heart aria-hidden className="size-[18px] text-like" />
-            {estado === "desfeito" ? "Dar match de novo" : "Aceitar"}
+            {estado === "desfeito" ? "Aceitar de novo" : "Aceitar"}
             <Tecla>A</Tecla>
           </button>
         )}
         {estado === "responder" && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => responder("dispensada")}
-            className="inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-label text-ink transition-colors hover:bg-surface-300 disabled:opacity-60"
-          >
+          <button type="button" disabled={pendente} onClick={() => responder("dispensada")} className={leve}>
             <X aria-hidden className="size-[18px]" />
             Dispensar
             <Tecla>D</Tecla>
+          </button>
+        )}
+        {noProcesso && extras && (
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => mover("contratado", `${primeiro} foi contratado.`)}
+            className={entrevista && !passou ? secundario : podeChamar ? secundario : principal}
+          >
+            <PartyPopper aria-hidden className="size-[18px]" />
+            Contratar
+          </button>
+        )}
+        {noProcesso && extras && (
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => mover("nao_seguiu", `${primeiro} não segue no processo.`)}
+            className={leve}
+          >
+            <X aria-hidden className="size-[18px]" />
+            Não seguiu
+          </button>
+        )}
+        {estado === "match" && extras && aba === "contratados" && (
+          <button
+            type="button"
+            onClick={() => setFolha(folha === "contratado" ? null : "contratado")}
+            aria-expanded={folha === "contratado"}
+            className={secundario}
+          >
+            <PartyPopper aria-hidden className="size-[18px] text-cerrado-text" />
+            Contratado: proposta e vaga
+          </button>
+        )}
+        {estado === "match" && extras && aba === "nao_seguiu" && (
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => mover("analise", `${primeiro} voltou para Em análise.`)}
+            className={secundario}
+          >
+            <Undo2 aria-hidden className="size-[18px]" />
+            Voltar para Em análise
           </button>
         )}
         {estado === "dispensada" && (
@@ -190,7 +360,7 @@ export function ControlesDaFicha({
                 if (!r.ok) setErro(r.erro);
               })
             }
-            className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong px-4 text-label hover:bg-surface-300 disabled:opacity-60"
+            className={secundario}
           >
             <Undo2 aria-hidden className="size-[18px]" />
             Voltar para Novos
@@ -214,23 +384,96 @@ export function ControlesDaFicha({
           </button>
         </span>
       </div>
-      {semCurriculo && (estado === "responder" || estado === "desfeito") && (
+      {responde && extras && (
+        <button
+          type="button"
+          disabled={pendente}
+          onClick={() => responder("match")}
+          className="-mt-1 inline-flex min-h-9 items-center gap-1.5 self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60"
+        >
+          {estado === "desfeito" ? "Só aceitar de novo" : "Só aceitar, sem marcar a entrevista"}
+          <Tecla>A</Tecla>
+        </button>
+      )}
+      {semCurriculo && responde && (
         <p className="text-body-sm text-ink-muted">
-          A vaga pede currículo e {semCurriculo} ainda não mandou. Aceitando, {semCurriculo} recebe o pedido e o match
+          A vaga pede currículo e {semCurriculo} ainda não mandou. Aceitando, {semCurriculo} recebe o pedido e o contato
           sai quando o currículo chegar.
         </p>
       )}
+
+      {folha === "chamar" && extras && (
+        <FolhaChamar
+          anuncioId={anuncioId}
+          perfilId={perfilId}
+          nome={nome}
+          responde={responde}
+          extras={extras}
+          aoFechar={() => setFolha(null)}
+        />
+      )}
+      {folha === "contratado" && extras && (
+        <section
+          aria-label="Contratado"
+          className="flex flex-col gap-4 rounded-lg border border-cerrado/40 bg-surface-100 p-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-label">{primeiro} foi contratado: o que mais?</h3>
+            <button
+              type="button"
+              onClick={() => setFolha(null)}
+              aria-label="Fechar"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+            >
+              <X aria-hidden className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-label">A proposta (opcional)</p>
+            <PropostaNaFicha
+              anuncioId={anuncioId}
+              perfilId={perfilId}
+              nome={nome}
+              endereco={extras.endereco}
+              proposta={extras.proposta}
+            />
+          </div>
+          {extras.vaga.noAr && (
+            <div className="flex flex-col gap-2 border-t border-line pt-3">
+              <p className="text-body-sm">
+                {completa
+                  ? `A vaga está completa: ${extras.vaga.contratados} de ${extras.vaga.quantas} ${extras.vaga.quantas === 1 ? "pessoa contratada" : "pessoas contratadas"}.`
+                  : `${extras.vaga.contratados} de ${extras.vaga.quantas} contratados. A vaga continua no ar.`}
+              </p>
+              {completa && (
+                <button type="button" disabled={pendente} onClick={encerrarVaga} className={`${secundario} self-start`}>
+                  <CircleCheckBig aria-hidden className="size-[18px] text-cerrado-text" />
+                  Encerrar a vaga
+                </button>
+              )}
+              <p className="text-caption text-ink-muted">
+                Para marcar a vaga como preenchida sozinha quando completar, ligue em{" "}
+                <Link href={`/painel/anuncio/${anuncioId}/automacoes`} className="underline underline-offset-2">
+                  Automações
+                </Link>
+                .
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
       {ajuda && (
         <ul
           aria-label="Atalhos de teclado"
           className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-md bg-surface-300 px-4 py-3 text-body-sm sm:grid-cols-4"
         >
           {[
+            ["E", extras ? "chamar para entrevista" : "entrevista"],
             ["A", "aceitar"],
             ["D", "dispensar"],
             ["J", "próximo"],
             ["K", "anterior"],
-            ["E", "entrevista"],
             ["C", "conversar"],
             ["Z", "desfazer"],
             ["?", "mostrar ou esconder"],
@@ -247,6 +490,32 @@ export function ControlesDaFicha({
       {erro && (
         <p role="alert" className="text-body-sm text-danger">
           {erro}
+        </p>
+      )}
+      {feito && (
+        <p
+          role="status"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-ink px-4 py-2.5 text-body-sm text-surface-100"
+        >
+          <span className="flex-1">{feito.texto}</span>
+          {feito.voltar && (
+            <button
+              type="button"
+              disabled={pendente}
+              onClick={desfazerFeito}
+              className="inline-flex min-h-9 items-center gap-1.5 font-semibold underline underline-offset-2"
+            >
+              Desfazer
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setFeito(null)}
+            aria-label="Fechar o aviso"
+            className="inline-flex size-9 items-center justify-center rounded-pill hover:bg-surface-100/10"
+          >
+            <X aria-hidden className="size-4" />
+          </button>
         </p>
       )}
       {desfazer && (desfazer.anuncioId !== anuncioId || desfazer.perfilId !== perfilId || estado !== "responder") && (
@@ -279,6 +548,95 @@ export function ControlesDaFicha({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * A folha de "Chamar para entrevista": diz o que acontece e traz o jeito de marcar (o dia e a hora, ou os horários
+ * para o candidato escolher, com os livres da conta), a entrevista gravada e o teste antes, cada um opcional.
+ */
+function FolhaChamar({
+  anuncioId,
+  perfilId,
+  nome,
+  responde,
+  extras,
+  aoFechar,
+}: {
+  anuncioId: string;
+  perfilId: string;
+  nome: string;
+  responde: boolean;
+  extras: ExtrasDaFicha;
+  aoFechar: () => void;
+}) {
+  const primeiro = nome.split(" ")[0];
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <section
+      aria-label={`Chamar ${primeiro} para a entrevista`}
+      className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface-100 p-4"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h3 className="text-label">Chamar {primeiro} para a entrevista</h3>
+          <p className="text-body-sm text-ink-muted">
+            {responde ? `${primeiro} é aceito e o contato fica liberado. ` : ""}Marque o dia e a hora, ou mande alguns
+            horários para {primeiro} escolher.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={aoFechar}
+          aria-label="Fechar"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+        >
+          <X aria-hidden className="size-4" />
+        </button>
+      </div>
+      <FormEntrevista
+        anuncioId={anuncioId}
+        perfilId={perfilId}
+        nome={nome}
+        atual={extras.entrevista}
+        endereco={extras.endereco}
+        aoVivo={extras.aoVivo}
+        aoTerminar={aoFechar}
+      />
+      {(extras.video.liberado || extras.testes.length > 0) && (
+        <div className="flex flex-col gap-3 border-t border-line pt-3">
+          <p className="text-label">Antes da conversa, se quiser</p>
+          {extras.video.liberado && (
+            <VideoNaFicha
+              anuncioId={anuncioId}
+              perfilId={perfilId}
+              nome={nome}
+              video={extras.video.atual}
+              liberado
+              agora={extras.agora}
+            />
+          )}
+          {extras.testes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-body-sm text-ink-muted">Pedir o Teste Prático:</span>
+              {extras.testes.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  disabled={pendente}
+                  onClick={() => rodar(() => pedirTeste(anuncioId, perfilId, t.id))}
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-pill border border-line-strong px-3.5 text-label hover:bg-surface-300 disabled:opacity-60"
+                >
+                  <ClipboardCheck aria-hidden className="size-4 text-ink-muted" />
+                  {t.titulo}
+                </button>
+              ))}
+            </div>
+          )}
+          {mensagem}
+        </div>
+      )}
+    </section>
   );
 }
 

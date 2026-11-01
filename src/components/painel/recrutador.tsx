@@ -15,6 +15,7 @@ import {
   UsersRound,
   UserRoundX,
   Wallet,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -63,9 +64,14 @@ type Candidato = {
 const DIA = 24 * 3600e3;
 
 async function dadosExtras(vagas: string[], agora: number) {
-  if (!vagas.length) return { visitas: new Map<string, number>(), entrevistas: [] as EntrevistaPainel[] };
+  if (!vagas.length)
+    return {
+      visitas: new Map<string, number>(),
+      entrevistas: [] as EntrevistaPainel[],
+      passadas: [] as EntrevistaPainel[],
+    };
   const supabase = await criarClienteServidor();
-  const [{ data: visitas }, { data: entrevistas }] = await Promise.all([
+  const [{ data: visitas }, { data: entrevistas }, { data: passadas }] = await Promise.all([
     supabase.from("anuncio_visitas").select("anuncio_id, total").in("anuncio_id", vagas),
     supabase
       .from("entrevistas")
@@ -75,10 +81,20 @@ async function dadosExtras(vagas: string[], agora: number) {
       .gte("quando", new Date(agora - 2 * 3600e3).toISOString())
       .order("quando")
       .limit(50),
+    // as que já aconteceram (30 dias): quem foi entrevistado e espera a decisão
+    supabase
+      .from("entrevistas")
+      .select("id, anuncio_id, perfil_id, quando, situacao")
+      .in("anuncio_id", vagas)
+      .in("situacao", ["marcada", "confirmada"])
+      .lt("quando", new Date(agora).toISOString())
+      .gte("quando", new Date(agora - 30 * 864e5).toISOString())
+      .limit(200),
   ]);
   return {
     visitas: new Map((visitas ?? []).map((v) => [v.anuncio_id, v.total])),
     entrevistas: (entrevistas ?? []) as EntrevistaPainel[],
+    passadas: (passadas ?? []) as EntrevistaPainel[],
   };
 }
 
@@ -116,7 +132,7 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas }, respostas, completas, colocacoes, caminho, equipe] = await Promise.all([
+  const [{ visitas, entrevistas, passadas }, respostas, completas, colocacoes, caminho, equipe] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -158,6 +174,20 @@ export async function PainelRecrutador({
     return unicos.length === 1 ? `/painel/anuncio/${unicos[0]}/quadro` : seVarias;
   };
   const primeiroNome = (id: string) => (nomeDe.get(id) ?? "").split(" ")[0];
+
+  // o dia em três números (claude/plano-fluxo-contratar.md, parte 7): cada um abre a mesa na etapa
+  const diaBR = (t: number | string) => new Date(t).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const entrevistasHoje = entrevistas.filter(
+    (e) => e.situacao !== "remarcar" && diaBR(e.quando) === diaBR(agora) && new Date(e.quando).getTime() >= agora,
+  ).length;
+  const naEntrevista = new Set(
+    todos.filter((c) => c.etapa === "entrevista" && c.status === "match").map((c) => `${c.anuncio_id}:${c.perfil_id}`),
+  );
+  const paraDecidir = new Set(
+    passadas
+      .filter((e) => naEntrevista.has(`${e.anuncio_id}:${e.perfil_id}`))
+      .map((e) => `${e.anuncio_id}:${e.perfil_id}`),
+  ).size;
 
   const cartoes: Cartao[] = [];
   if (pendentes.length) {
@@ -618,6 +648,8 @@ export async function PainelRecrutador({
         }
       />
 
+      {!contaNova && <ResumoDoDia pendentes={pendentes.length} hojeN={entrevistasHoje} decidir={paraDecidir} />}
+
       {contaNova ? <ComecePorAqui passos={primeiros} /> : <FaixaDoCaminho passos={faixa} />}
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -864,5 +896,48 @@ export async function PainelRecrutador({
         </aside>
       </div>
     </div>
+  );
+}
+
+/**
+ * O dia em três números, logo abaixo do bom dia (claude/plano-fluxo-contratar.md, parte 7): para responder, as
+ * entrevistas de hoje e quem já foi entrevistado e espera a decisão. Cada número abre Candidatos na etapa; o
+ * "Decidir agora" abre o um por um. Sem nada para fazer, não aparece (o "Para fazer agora" já diz "tudo em dia").
+ */
+function ResumoDoDia({ pendentes, hojeN, decidir }: { pendentes: number; hojeN: number; decidir: number }) {
+  const itens = [
+    pendentes > 0 && { n: pendentes, texto: "para responder", href: "/painel/caixa?aba=novos", destaque: true },
+    hojeN > 0 && {
+      n: hojeN,
+      texto: hojeN === 1 ? "entrevista hoje" : "entrevistas hoje",
+      href: "/painel/caixa?aba=entrevista",
+    },
+    decidir > 0 && { n: decidir, texto: "para decidir", href: "/painel/caixa?aba=entrevista" },
+  ].filter((x): x is { n: number; texto: string; href: string; destaque?: boolean } => Boolean(x));
+  if (!itens.length) return null;
+  return (
+    <nav
+      aria-label="O seu dia"
+      className="-mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-surface-200 px-4 py-3"
+    >
+      <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-1">
+        {itens.map((i) => (
+          <li key={i.texto}>
+            <Link href={i.href} className="group inline-flex min-h-9 items-baseline gap-1.5 text-body">
+              <span className={`text-h3 tabular-nums ${i.destaque ? "text-terra-text" : ""}`}>{i.n}</span>
+              <span className="text-ink-muted underline-offset-2 group-hover:text-ink group-hover:underline">
+                {i.texto}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {pendentes > 0 && (
+        <BotaoLink href="/painel/caixa/triagem" variante="secundario" tamanho="sm">
+          <Zap aria-hidden />
+          Decidir agora
+        </BotaoLink>
+      )}
+    </nav>
   );
 }

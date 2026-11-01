@@ -1,7 +1,7 @@
 "use client";
 
-import { ClipboardCheck, Sparkles, Video } from "lucide-react";
-import { liberarCopiloto, liberarTestes, liberarVideo } from "@/lib/acoes/admin";
+import { ClipboardCheck, Sparkles, Video, Workflow } from "lucide-react";
+import { liberarAutomacoes, liberarCopiloto, liberarTestes, liberarVideo } from "@/lib/acoes/admin";
 import { Botao } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
 
@@ -56,6 +56,25 @@ export function BotaoVideo({ contaId, liberado }: { contaId: string; liberado: b
       >
         <Video aria-hidden />
         {liberado ? "Tirar a Entrevista em vídeo" : "Liberar a Entrevista em vídeo"}
+      </Botao>
+      {mensagem}
+    </div>
+  );
+}
+
+/** Libera as Automações sob medida sem prazo, ou tira (migração 20270114120000). */
+export function BotaoAutomacoes({ contaId, liberado }: { contaId: string; liberado: boolean }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Botao
+        tamanho="sm"
+        variante={liberado ? "secundario" : "primario"}
+        disabled={pendente}
+        onClick={() => rodar(() => liberarAutomacoes(contaId, !liberado))}
+      >
+        <Workflow aria-hidden />
+        {liberado ? "Tirar as Automações sob medida" : "Liberar as Automações sob medida"}
       </Botao>
       {mensagem}
     </div>

@@ -345,7 +345,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
         <div className="max-w-2xl">
           <h2 className="text-h2">Lista de candidatos e planilha</h2>
           <p className="mt-1 text-body text-ink-muted">
-            Todos que curtiram suas vagas. Responda quem está esperando, converse com quem deu match e acompanhe as
+            Todos que se candidataram às suas vagas. Responda quem está esperando, converse com quem foi aceito e acompanhe as
             entrevistas.
           </p>
         </div>

@@ -28,7 +28,17 @@ import { quandoDaEntrevista } from "@/lib/recrutamento";
 import type { ItemCaixa } from "@/lib/servidor/caixa";
 import type { Curriculo } from "@/lib/tipos";
 import { AcoesInteressado } from "./acoes";
-import { ControlesDaFicha, EntrevistaDaFicha, ResumoDaIA, type EstadoFicha } from "./controles-ficha";
+import { Conversa } from "@/components/conversa/conversa";
+import type { MensagemConversa } from "@/lib/dados";
+import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
+import { VideoNaFicha } from "../video/video-na-ficha";
+import {
+  ControlesDaFicha,
+  EntrevistaDaFicha,
+  ResumoDaIA,
+  type EstadoFicha,
+  type ExtrasDaFicha,
+} from "./controles-ficha";
 import { EtapaDoCandidato } from "./etapa-candidato";
 import { JanelaDoCurriculo } from "./janela-curriculo";
 import { DetalheDaAderencia, linhaDaAderencia, NotaAderencia } from "./nota-aderencia";
@@ -42,9 +52,9 @@ import { DetalheDaAderencia, linhaDaAderencia, NotaAderencia } from "./nota-ader
 const SITUACAO: Record<EstadoFicha, { nome: string; variante: "aviso" | "match" | "contorno" | "neutro" }> = {
   responder: { nome: "Espera você", variante: "aviso" },
   aceita: { nome: "Esperando currículo", variante: "neutro" },
-  match: { nome: "Deu match", variante: "match" },
+  match: { nome: "Aceito", variante: "match" },
   dispensada: { nome: "Dispensado", variante: "contorno" },
-  desfeito: { nome: "Match desfeito", variante: "contorno" },
+  desfeito: { nome: "Desfez o aceite", variante: "contorno" },
   moderacao: { nome: "Vaga na moderação", variante: "contorno" },
 };
 
@@ -132,8 +142,19 @@ export function FichaCandidato({
   conectar = null,
   direto = false,
   empresas,
+  base = "/painel/caixa",
+  extras = null,
+  conversa: conversaDaFicha = null,
+  euId = null,
 }: {
   c: ItemCaixa;
+  /** o próximo passo (as folhas de Chamar e de Contratado); sem eles, só Aceitar e Dispensar */
+  extras?: ExtrasDaFicha | null;
+  /** a conversa com a pessoa (depois do aceite), para escrever ali mesmo */
+  conversa?: { conversaId: string; mensagens: MensagemConversa[] } | null;
+  euId?: string | null;
+  /** a página da mesa (Candidatos ou a vaga): o "Desfazer" volta para ela */
+  base?: string;
   /** as empresas do currículo com conta no Publike (o logo e o link) */
   empresas?: EmpresasDosTrabalhos;
   /** a vaga tem contato direto: o match saiu na hora, sem aceite (a mensagem leva o link da vaga) */
@@ -148,7 +169,13 @@ export function FichaCandidato({
   depois: string;
 }) {
   const estado = estadoDe(c);
-  const situacao = SITUACAO[estado];
+  // aceito e na etapa Contratados: o selo diz Contratado
+  const situacao =
+    estado === "match" && extras?.aba === "contratados"
+      ? { nome: "Contratado", variante: "match" as const }
+      : estado === "match" && extras?.aba === "nao_seguiu"
+        ? { nome: "Não seguiu", variante: "contorno" as const }
+        : SITUACAO[estado];
   const primeiro = c.nome.split(" ")[0];
   const match = estado === "match";
   const encerrado = estado === "dispensada" || estado === "desfeito";
@@ -210,6 +237,8 @@ export function FichaCandidato({
           proximo={proximo}
           depois={depois}
           conversa={conversa}
+          base={base}
+          extras={extras}
         />
       )}
 
@@ -257,7 +286,7 @@ export function FichaCandidato({
         </Secao>
       )}
 
-      {match && (
+      {match && (!extras || c.entrevista) && (
         <Secao titulo="Entrevista" id="entrevista">
           <EntrevistaDaFicha
             anuncioId={c.anuncio_id}
@@ -266,6 +295,46 @@ export function FichaCandidato({
             vaga={c.anuncio_titulo}
             entrevista={c.entrevista}
             endereco={c.endereco}
+          />
+        </Secao>
+      )}
+
+      {match && conversaDaFicha && euId && (
+        <Secao titulo={`Conversa com ${primeiro}`} id="conversa">
+          <div className="flex h-96 flex-col overflow-hidden rounded-md border border-line">
+            <Conversa
+              outroId={c.perfil_id}
+              conversaId={conversaDaFicha.conversaId}
+              euId={euId}
+              outroNome={c.nome}
+              iniciais={conversaDaFicha.mensagens}
+              compacto
+            />
+          </div>
+        </Secao>
+      )}
+
+      {extras?.video.atual && (
+        <Secao titulo="Entrevista em vídeo">
+          <VideoNaFicha
+            anuncioId={c.anuncio_id}
+            perfilId={c.perfil_id}
+            nome={c.nome}
+            video={extras.video.atual}
+            liberado={extras.video.liberado}
+            agora={agora}
+          />
+        </Secao>
+      )}
+
+      {extras?.proposta && extras.aba !== "contratados" && (
+        <Secao titulo="Proposta">
+          <PropostaNaFicha
+            anuncioId={c.anuncio_id}
+            perfilId={c.perfil_id}
+            nome={c.nome}
+            endereco={c.endereco}
+            proposta={extras.proposta}
           />
         </Secao>
       )}

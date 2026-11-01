@@ -1,5 +1,5 @@
 // Automações por vaga e os números do processo (claude/plano-recursos-concorrentes.md, parte 6; migrações
-// 20270109120000 e 20270111120000).
+// 20270109120000, 20270111120000 e 20270114120000).
 
 import type { FormatoEntrevista } from "./recrutamento";
 
@@ -11,7 +11,7 @@ export const ETAPAS_COM_MENSAGEM = {
 export type EtapaComMensagem = keyof typeof ETAPAS_COM_MENSAGEM;
 
 export type RegraFeita =
-  "dispensar" | "mensagem" | "parado" | "recado" | "triagem" | "encerrar" | "preenchida" | "horarios";
+  "dispensar" | "mensagem" | "parado" | "recado" | "triagem" | "encerrar" | "preenchida" | "horarios" | "completa";
 const REGRAS_FEITAS: RegraFeita[] = [
   "dispensar",
   "mensagem",
@@ -21,6 +21,7 @@ const REGRAS_FEITAS: RegraFeita[] = [
   "encerrar",
   "preenchida",
   "horarios",
+  "completa",
 ];
 
 export type FeitoDaAutomacao = {
@@ -45,6 +46,8 @@ export type RegrasDaVaga = {
   /** o retorno a quem ficou em Novos sem resposta há N dias (null: desligado) */
   encerrarDias: number | null;
   encerrarAoPreencher: boolean;
+  /** marcar a vaga como preenchida quando os contratados chegam ao "Quantas pessoas" */
+  preencherAoCompletar: boolean;
   horarios: HorariosAutomaticos | null;
   /** o "Pedir a todo novo candidato" da Entrevista em vídeo */
   videoATodos: boolean;
@@ -61,6 +64,8 @@ export type Automacoes = RegrasDaVaga & {
   retornoLigado: boolean;
   /** a conta tem horários livres cadastrados */
   temHorarios: boolean;
+  /** a conta tem as Automações sob medida (o texto, os prazos, as regras com condição, copiar) */
+  sobMedida: boolean;
   /** as vagas novas usam as regras desta vaga (origem) ou de outra */
   padrao: { origem: string | null; titulo: string | null } | null;
   outrasNoAr: number;
@@ -72,6 +77,24 @@ export type Automacoes = RegrasDaVaga & {
 /** O recado que vem escrito ao ligar "Confirmar que a candidatura chegou". */
 export const RECADO_PADRAO =
   "Oi, {nome}! Aqui é {empresa}: recebemos a sua candidatura para {vaga}. Vamos olhar com atenção e responder em até 5 dias.";
+
+/** O lembrete e o retorno das automações prontas (outros prazos são das Automações sob medida). */
+export const PARADO_PRONTO = 5;
+export const ENCERRAR_PRONTO = 7;
+
+/** O que só as Automações sob medida fazem (o banco confere igual em `aplicar_automacoes`): null se cabe nas prontas. */
+export function precisaDoSobMedida(r: RegrasDaVaga, antes: RegrasDaVaga): string | null {
+  if (Object.keys(r.mensagens).length && JSON.stringify(r.mensagens) !== JSON.stringify(antes.mensagens))
+    return "a mensagem pronta por etapa";
+  if (r.dispensarEliminados && !antes.dispensarEliminados) return "dispensar pela pergunta eliminatória";
+  if (r.triagemParaAnalise && !antes.triagemParaAnalise) return "a Triagem com IA mandar para Em análise";
+  if (r.recado !== null && r.recado.trim() !== RECADO_PADRAO && r.recado !== antes.recado) return "o texto do recado";
+  if (r.paradoDias !== null && r.paradoDias !== PARADO_PRONTO && r.paradoDias !== antes.paradoDias)
+    return "o prazo do lembrete";
+  if (r.encerrarDias !== null && r.encerrarDias !== ENCERRAR_PRONTO && r.encerrarDias !== antes.encerrarDias)
+    return "o prazo do retorno";
+  return null;
+}
 
 export const FORMATOS_AUTOMATICOS: FormatoEntrevista[] = ["presencial", "telefone", "video", "publike"];
 
@@ -102,6 +125,7 @@ export function lerAutomacoes(x: unknown): Automacoes {
     triagemParaAnalise: o.triagem_para_analise === true,
     encerrarDias: numero(o.encerrar_dias, 3, 60),
     encerrarAoPreencher: o.encerrar_ao_preencher === true,
+    preencherAoCompletar: o.preencher_ao_completar === true,
     horarios:
       h && formato
         ? {
@@ -117,6 +141,7 @@ export function lerAutomacoes(x: unknown): Automacoes {
     testes: Number(o.testes) || 0,
     retornoLigado: o.retorno_ligado !== false,
     temHorarios: o.tem_horarios === true,
+    sobMedida: o.sob_medida === true,
     padrao: p
       ? {
           origem: typeof p.origem === "string" ? p.origem : null,
@@ -162,6 +187,8 @@ export function textoDoFeito(f: FeitoDaAutomacao, proprias: Map<string, string> 
       return "saiu do processo quando a vaga foi preenchida";
     case "horarios":
       return "recebeu os seus horários livres para escolher";
+    case "completa":
+      return "foi contratado e completou a vaga: ela foi marcada como preenchida";
   }
 }
 
@@ -196,9 +223,10 @@ export function regrasLigadas(r: RegrasDaVaga) {
     r.paradoDias !== null,
     r.encerrarDias !== null,
     r.encerrarAoPreencher,
+    r.preencherAoCompletar,
   ].filter(Boolean).length;
 }
-export const TOTAL_DE_REGRAS = 9;
+export const TOTAL_DE_REGRAS = 10;
 
 export const PERIODOS_NUMEROS = { "30": "Últimos 30 dias", "90": "Últimos 90 dias", tudo: "Desde o começo" } as const;
 export type PeriodoNumeros = keyof typeof PERIODOS_NUMEROS;

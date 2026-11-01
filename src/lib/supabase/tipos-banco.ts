@@ -1348,6 +1348,7 @@ export type Database = {
       servidor_video_prazos: { Args: { p_chave: string; p_agora?: string }; Returns: number };
       /** migração 20270104120000 */
       admin_liberar_video: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      admin_liberar_automacoes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       video_liberado: { Args: Record<string, never>; Returns: boolean };
       admin_recursos_da_conta: { Args: { p_conta: string }; Returns: Json };
       admin_experimentos: {

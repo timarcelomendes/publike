@@ -5,6 +5,7 @@ import {
   ListFilter,
   MailCheck,
   MessageSquareText,
+  PartyPopper,
   Reply,
   Sparkles,
   Workflow,
@@ -17,13 +18,16 @@ import { Suspense } from "react";
 import { EditorAutomacoes } from "@/components/automacoes/editor-automacoes";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { BotaoAssinar, FaixaExperimento } from "@/components/recurso-pago";
+import { BotaoExperimentar } from "@/components/botao-experimentar";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { textoDoFeito, type RegraFeita } from "@/lib/automacoes";
 import { MODO_DEMO } from "@/lib/config";
-import { obterAnuncio, obterMeuPerfil } from "@/lib/dados";
+import { obterAnuncio, obterMeuPerfil, recursosPagos } from "@/lib/dados";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
 import type { FormatoEntrevista } from "@/lib/recrutamento";
+import { dataCurta, DIAS_GRATIS, type EstadoRecurso } from "@/lib/recursos-pagos";
 import { automacoesDaVaga } from "@/lib/servidor/automacoes";
 import { dailyConfigurado } from "@/lib/servidor/daily";
 import { etapasProprias } from "@/lib/servidor/etapas-proprias";
@@ -34,7 +38,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 export const metadata: Metadata = { title: "Automações da vaga" };
 
 // As regras da vaga, pelo momento do processo, e o registro do que fizeram (migrações 20270109120000 e
-// 20270111120000).
+// 20270111120000; as Automações sob medida, 20270114120000).
 
 const ICONE_DA_REGRA: Record<RegraFeita, LucideIcon> = {
   recado: MailCheck,
@@ -45,6 +49,7 @@ const ICONE_DA_REGRA: Record<RegraFeita, LucideIcon> = {
   parado: Hourglass,
   encerrar: Reply,
   preenchida: CircleCheckBig,
+  completa: PartyPopper,
 };
 
 export default function AutomacoesDaVaga({ params }: PageProps<"/painel/anuncio/[id]/automacoes">) {
@@ -63,13 +68,15 @@ async function Conteudo({ id }: { id: string }) {
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const supabase = await criarClienteServidor();
-  const [regras, proprias, perfil, { data: modelos }, agora] = await Promise.all([
+  const [regras, proprias, perfil, { data: modelos }, agora, recursos] = await Promise.all([
     automacoesDaVaga(id),
     etapasProprias(),
     obterMeuPerfil(),
     supabase.from("modelos_mensagem").select("id, nome").order("criado_em"),
     agoraDaRequisicao(),
+    recursosPagos(),
   ]);
+  const sobMedida = recursos?.automacoes.indisponivel ? null : (recursos?.automacoes ?? null);
   const cabecalho = <CabecalhoDaVaga anuncio={anuncio} aba="automacoes" />;
   if (!regras) {
     return (
@@ -105,6 +112,13 @@ async function Conteudo({ id }: { id: string }) {
         </p>
       </div>
       <div className="max-w-3xl">
+        {regras.sobMedida ? (
+          <FaixaExperimento recurso="automacoes" estado={sobMedida} agora={agora} />
+        ) : (
+          sobMedida && <OfertaSobMedida estado={sobMedida} />
+        )}
+      </div>
+      <div className="max-w-3xl">
         <EditorAutomacoes
           anuncioId={id}
           inicial={regras}
@@ -114,6 +128,7 @@ async function Conteudo({ id }: { id: string }) {
           endereco={endereco}
           vaga={anuncio.titulo}
           empresa={perfil?.nome ?? anuncio.autor_nome}
+          quantas={Math.max(1, anuncio.vagas ?? 1)}
         />
       </div>
 
@@ -149,5 +164,43 @@ async function Conteudo({ id }: { id: string }) {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * Sem as Automações sob medida: as prontas são grátis (cada regra liga e desliga, com o texto e os prazos do
+ * Publike); o resto, com o cadeado, abre com os 15 dias grátis ou a assinatura. Nada é imposto: tudo começa
+ * desligado.
+ */
+function OfertaSobMedida({ estado }: { estado: EstadoRecurso }) {
+  const acabou = estado.experimentou && estado.fim_experimento ? dataCurta(estado.fim_experimento) : null;
+  return (
+    <section
+      aria-labelledby="sob-medida"
+      className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+    >
+      <div className="flex min-w-0 flex-col gap-1">
+        <h3 id="sob-medida" className="flex flex-wrap items-center gap-2 text-label">
+          As automações prontas são grátis
+          <Selo variante="novo">Novo</Selo>
+        </h3>
+        <p className="text-body-sm text-ink-muted">
+          {acabou
+            ? `Seus ${DIAS_GRATIS} dias das Automações sob medida acabaram em ${acabou}. O que você já tinha salvo continua valendo.`
+            : "Com as Automações sob medida, você escreve o recado, escolhe os prazos, manda uma mensagem em cada etapa e usa as mesmas regras em todas as vagas."}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col items-start gap-2">
+        {estado.pode_experimentar ? (
+          <BotaoExperimentar recurso="automacoes" acao="experimentar" tamanho="sm" />
+        ) : estado.pode_assinar ? (
+          <BotaoAssinar recurso="automacoes" tamanho="sm" variante="secundario" novo={false} />
+        ) : estado.quer_continuar ? (
+          <span className="text-body-sm text-cerrado-text">A gente fala com você em breve.</span>
+        ) : estado.experimentou ? (
+          <BotaoExperimentar recurso="automacoes" acao="continuar" tamanho="sm" />
+        ) : null}
+      </div>
+    </section>
   );
 }

@@ -43,6 +43,8 @@ export function DesfazerMatch({
   const caixa = useRef<HTMLDivElement>(null);
   const erros = estado.erros ?? {};
   const primeiroNome = outroNome.split(" ")[0];
+  // quem contrata fala em aceite (claude/plano-fluxo-contratar.md, parte 8); quem procura, em match
+  const nomeDaAcao = autorDaVaga ? "Desfazer o aceite" : "Desfazer match";
   const motivos = MOTIVOS_DESFAZER.filter((m) => !("soAutorVaga" in m) || autorDaVaga);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function DesfazerMatch({
         }`}
       >
         <HeartCrack aria-hidden className="size-4" />
-        Desfazer match
+        {nomeDaAcao}
       </button>
     );
   }
@@ -71,7 +73,9 @@ export function DesfazerMatch({
   return (
     <div ref={caixa} className="flex flex-col gap-4 rounded-md border border-line-strong bg-surface-200 p-4 text-ink">
       <div>
-        <p className="text-label">Desfazer o match com {primeiroNome}?</p>
+        <p className="text-label">
+          {autorDaVaga ? `Desfazer o aceite de ${primeiroNome}?` : `Desfazer o match com ${primeiroNome}?`}
+        </p>
         <p className="mt-1 text-body-sm text-ink-muted">
           O WhatsApp de vocês some para os dois na hora. {primeiroNome} recebe um aviso com o motivo.
         </p>
@@ -160,7 +164,7 @@ export function DesfazerMatch({
         )}
         <div className="flex flex-wrap gap-2">
           <Botao type="submit" variante="perigo" disabled={enviando}>
-            {enviando ? "Desfazendo…" : "Desfazer match"}
+            {enviando ? "Desfazendo…" : nomeDaAcao}
           </Botao>
           <Botao variante="fantasma" onClick={() => setAberto(false)} disabled={enviando}>
             Cancelar

@@ -11,7 +11,6 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { esperaResposta } from "@/lib/constantes";
 import { obterAnuncio, obterMeuPerfil, recursosPagos } from "@/lib/dados";
 import { formatarLugar } from "@/lib/formato";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
@@ -136,23 +135,15 @@ async function Conteudo({
   ).length;
   const cliente = agencia ? await clienteDaVagaComNome(id) : null;
 
-  const paraResponder = cartoes.filter((c) =>
-    esperaResposta({ status: c.status, aceita_em: c.aceita ? c.curtido_em : null }),
-  ).length;
-  const resumo = [
-    `${cartoes.length} ${cartoes.length === 1 ? "candidato" : "candidatos"}`,
-    paraResponder ? `${paraResponder} ${paraResponder === 1 ? "espera" : "esperam"} você` : null,
-    finalistas > 0 ? `${finalistas} ${agencia ? "com o cliente" : "nos finalistas"}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // quantos são e quem espera a resposta já estão na linha dos números do alto (CabecalhoDaVaga)
+  const extra = finalistas > 0 ? `${finalistas} ${agencia ? "com o cliente" : "nos finalistas"}` : null;
 
   return (
     <div className="flex flex-col gap-5">
       <CabecalhoDaVaga
         anuncio={anuncio}
         aba="candidatos"
-        resumo={resumo}
+        extra={extra}
         saude={saude}
         cliente={cliente}
         nota={

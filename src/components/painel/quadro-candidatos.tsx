@@ -629,7 +629,7 @@ function Cartao({
         <div className="flex flex-wrap gap-1.5">
           {c.status === "pendente" &&
             (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
-          {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
+          {c.status === "desfeito" && <Selo variante="contorno">Desfez o aceite</Selo>}
           {entrevistaAberta && e && (
             <Selo variante={SITUACOES_ENTREVISTA[e.situacao]?.tom ?? "aviso"}>
               <CalendarClock aria-hidden />
@@ -734,7 +734,7 @@ function DetalheCandidato({
             </Selo>
             {c.status === "pendente" &&
               (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
-            {match && <Selo variante="match">Deu match</Selo>}
+            {match && <Selo variante="match">Aceito</Selo>}
           </p>
         </div>
       </div>
@@ -878,7 +878,9 @@ function DetalheCandidato({
 
       <Secao titulo="Entrevista">
         {c.aceita ? (
-          <p className="text-body-sm text-ink-muted">Dá para marcar assim que der match, quando o currículo chegar.</p>
+          <p className="text-body-sm text-ink-muted">
+            Dá para marcar assim que a pessoa for aceita, quando o currículo chegar.
+          </p>
         ) : e && !marcando ? (
           <>
             {marcou && (
@@ -928,7 +930,7 @@ function DetalheCandidato({
 
       <Secao titulo="Mensagem">
         {c.aceita ? (
-          <p className="text-body-sm text-ink-muted">A conversa abre com o match, assim que o currículo chegar.</p>
+          <p className="text-body-sm text-ink-muted">A conversa abre com o aceite, assim que o currículo chegar.</p>
         ) : (
           <CompositorMensagem
             anuncioId={anuncioId}
@@ -1125,9 +1127,9 @@ function DicaDoQuadro() {
     >
       <p className="flex-1 text-body-sm text-ink-muted">
         <span className="font-semibold text-ink">Dica:</span> arraste o cartão para outra coluna ou use “Mover para”. Ir
-        para Entrevista ou Contratado dá o match (o contato aparece para os dois); “Não seguiu” dispensa quem ainda
-        esperava resposta. Se a vaga pede currículo e a pessoa ainda não mandou, ela recebe o pedido e o match sai
-        quando ele chegar.
+        para Entrevista ou Contratado aceita a pessoa (o contato aparece para os dois); “Não seguiu” dispensa quem ainda
+        esperava resposta. Se a vaga pede currículo e a pessoa ainda não mandou, ela recebe o pedido e é aceita quando
+        ele chegar.
       </p>
       <button
         type="button"

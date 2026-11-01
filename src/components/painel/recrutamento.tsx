@@ -139,7 +139,7 @@ export function FormEntrevista({
         {escolher
           ? `${nome.split(" ")[0]} recebe os horários, escolhe um pelo Publike e você recebe o aviso. Na véspera, os dois recebem um lembrete.`
           : `${nome.split(" ")[0]} recebe o aviso e uma mensagem na conversa com os detalhes, e confirma a presença pelo Publike.`}{" "}
-        {atual ? "Mudar a data remarca a entrevista." : "Se ainda não deu match, o match acontece agora."}
+        {atual ? "Mudar a data remarca a entrevista." : "Se ainda não foi aceito, é aceito agora."}
       </p>
       <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-label">
         <input

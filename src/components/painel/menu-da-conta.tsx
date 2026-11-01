@@ -41,6 +41,7 @@ export async function MenuDaConta() {
         testes: marcaDoRecurso(recursos.testes, agora).curto,
         // sem a migração 20270104120000, a Entrevista em vídeo não entra no menu (undefined)
         video: recursos.video.indisponivel ? undefined : marcaDoRecurso(recursos.video, agora).curto,
+        automacoes: recursos.automacoes.indisponivel ? undefined : marcaDoRecurso(recursos.automacoes, agora).curto,
       }
     : undefined;
   return (

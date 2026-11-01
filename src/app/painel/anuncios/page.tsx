@@ -1,12 +1,22 @@
 import { Building2, ChevronRight, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
 import { FiltroCliente } from "@/components/painel/filtro-cliente";
 import { CartaoRecolhivel } from "@/components/painel/cartao-recolhivel";
 import { Segmentos } from "@/components/painel/segmentos";
+import {
+  achaNaBusca,
+  ControlesDasVagas,
+  COOKIE_VISAO_VAGAS,
+  numerosDaVaga,
+  VagasEmLinhas,
+  type OrdemDasVagas,
+  type VisaoDasVagas,
+} from "@/components/painel/vagas-em-linhas";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
@@ -67,7 +77,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
     listarMeusCandidatos(),
     // o prazo escolhido e a marcação de preenchida de cada vaga
     criarClienteServidor().then((c) =>
-      c.from("anuncios").select("id, prazo_dias, preenchida_em").eq("autor_id", usuario.id).eq("tipo", "vaga"),
+      c.from("anuncios").select("id, prazo_dias, preenchida_em, vagas").eq("autor_id", usuario.id).eq("tipo", "vaga"),
     ),
     // agência: os clientes e para quem é cada vaga
     obterMeuPerfil().then((p) =>
@@ -104,19 +114,40 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   const situacao = pedidaSituacao && pedidaSituacao in SITUACOES ? (pedidaSituacao as Situacao) : null;
   const naSituacao = (a: (typeof anuncios)[number], s: Situacao) =>
     (SITUACOES[s].status as readonly string[]).includes(a.status);
-  const lista = situacao ? doTipo.filter((a) => naSituacao(a, situacao)) : doTipo;
+  // a busca pelo nome, a ordem e o jeito de ver (claude/plano-fluxo-contratar.md, parte 2); a visão fica guardada
+  const q = (primeiro(sp.q) ?? "").slice(0, 80);
+  const ordem: OrdemDasVagas = primeiro(sp.ordem) === "esperando" ? "esperando" : "recentes";
+  const pedidaVisao = primeiro(sp.visao) ?? (await cookies()).get(COOKIE_VISAO_VAGAS)?.value;
+  const visao: VisaoDasVagas = pedidaVisao === "linhas" ? "linhas" : "cartoes";
+  const esperamNa = (id: string) => (candidatos ? numerosDaVaga(id, candidatos).esperam : 0);
+  const lista = (situacao ? doTipo.filter((a) => naSituacao(a, situacao)) : doTipo)
+    .filter((a) => achaNaBusca(a.titulo, q))
+    .sort((a, b) => (ordem === "esperando" ? esperamNa(b.id) - esperamNa(a.id) : 0));
   // quem só publicou vagas (o comum em empresa, comércio e agência) vê "Minhas vagas", como na aba
   const { titulo, texto } = TITULOS[tipo ?? (servicos === 0 ? "vaga" : "todos")];
   // o link de cada chip troca só o seu filtro e mantém o outro
-  const filtro = (mudar: { tipo?: TipoAnuncio | null; situacao?: Situacao | null; cliente?: string | null }) => {
-    const q = new URLSearchParams();
+  const filtro = (mudar: {
+    tipo?: TipoAnuncio | null;
+    situacao?: Situacao | null;
+    cliente?: string | null;
+    ordem?: OrdemDasVagas;
+    visao?: VisaoDasVagas;
+    q?: string | null;
+  }) => {
+    const p = new URLSearchParams();
     const t = mudar.tipo !== undefined ? mudar.tipo : tipo;
     const s = mudar.situacao !== undefined ? mudar.situacao : situacao;
     const c = mudar.cliente !== undefined ? mudar.cliente : cliente;
-    if (t) q.set("tipo", t);
-    if (s) q.set("situacao", s);
-    if (c) q.set("cliente", c);
-    const texto = q.toString();
+    const o = mudar.ordem ?? ordem;
+    const v = mudar.visao ?? visao;
+    const busca = mudar.q !== undefined ? mudar.q : q;
+    if (t) p.set("tipo", t);
+    if (s) p.set("situacao", s);
+    if (c) p.set("cliente", c);
+    if (o !== "recentes") p.set("ordem", o);
+    if (mudar.visao) p.set("visao", v);
+    if (busca) p.set("q", busca);
+    const texto = p.toString();
     return `/painel/anuncios${texto ? `?${texto}` : ""}`;
   };
   // empresa, comércio e agência põem as vagas no site; quem é pessoa só tem o link
@@ -235,7 +266,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                 ))}
             </div>
           )}
-          {lista.length === 0 && cliente ? (
+          {tipo !== "servico" && vagas > 1 && (
+            <ControlesDasVagas
+              q={q}
+              ordem={ordem}
+              visao={visao}
+              href={filtro}
+              manter={{ tipo, situacao, cliente, ordem: ordem === "recentes" ? null : ordem }}
+              comBusca={vagas >= 6 || Boolean(q)}
+            />
+          )}
+          {lista.length === 0 && q ? (
+            <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm text-ink">
+              Nenhuma vaga com “{q}” no nome.{" "}
+              <Link href={filtro({ q: null })} className="font-semibold underline underline-offset-2">
+                Limpar a busca
+              </Link>
+            </p>
+          ) : lista.length === 0 && cliente ? (
             <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm text-ink">
               {`Nenhuma vaga ${situacao ? `${situacao === "pausados" ? "pausada" : SITUACOES[situacao].nome.toLowerCase()} ` : ""}de ${nomeDoCliente.get(cliente)}.`}{" "}
               <Link href={`/publicar?cliente=${cliente}`} className="font-semibold underline underline-offset-2">
@@ -265,6 +313,36 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                 ? "Diga o que você faz e onde atende. Quem precisa vê seus serviços perto de casa e chama você."
                 : "Publique a vaga de graça e veja quem curte. Você escolhe com quem conversar."}
             </Vazio>
+          ) : visao === "linhas" && tipo !== "servico" && candidatos ? (
+            <>
+              <VagasEmLinhas
+                vagas={lista
+                  .filter((a) => a.tipo === "vaga")
+                  .map((a) => ({
+                    id: a.id,
+                    titulo: a.titulo,
+                    status: a.status,
+                    quantas: extraDe.get(a.id)?.vagas ?? 1,
+                  }))}
+                candidatos={candidatos}
+                clienteDe={
+                  empresas
+                    ? (id) => {
+                        const e = empresas.get(id);
+                        return e?.cliente ? (nomeDoCliente.get(e.cliente) ?? null) : (e?.contratante ?? null);
+                      }
+                    : undefined
+                }
+              />
+              {lista.some((a) => a.tipo === "servico") && (
+                <p className="text-body-sm text-ink-muted">
+                  Os serviços aparecem nos cartões.{" "}
+                  <Link href={filtro({ visao: "cartoes" })} className="underline underline-offset-2">
+                    Ver em cartões
+                  </Link>
+                </p>
+              )}
+            </>
           ) : (
             <ul aria-label="Lista de anúncios" className="flex flex-col gap-4">
               {lista.map((a) => {

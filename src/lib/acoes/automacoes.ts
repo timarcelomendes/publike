@@ -33,6 +33,7 @@ export async function salvarRegrasAutomacao(anuncioId: string, regras: RegrasDaV
       triagem_para_analise: regras.triagemParaAnalise === true,
       encerrar_dias: dias(regras.encerrarDias),
       encerrar_ao_preencher: regras.encerrarAoPreencher === true,
+      preencher_ao_completar: regras.preencherAoCompletar === true,
       horarios:
         h && FORMATOS_AUTOMATICOS.includes(h.formato)
           ? { formato: h.formato, local: (h.local ?? "").trim().slice(0, 300), duracao: dias(h.duracao) ?? 30 }

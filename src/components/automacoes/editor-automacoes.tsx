@@ -10,8 +10,10 @@ import {
   Hourglass,
   ListFilter,
   LoaderCircle,
+  LockKeyhole,
   MailCheck,
   MessageSquareText,
+  PartyPopper,
   Plus,
   Reply,
   Sparkles,
@@ -26,7 +28,9 @@ import { salvarModeloMensagem } from "@/lib/acoes/recrutamento";
 import {
   ETAPAS_COM_MENSAGEM,
   faltaParaSalvar,
+  ENCERRAR_PRONTO,
   montarRecado,
+  PARADO_PRONTO,
   RECADO_PADRAO,
   regrasLigadas,
   TOTAL_DE_REGRAS,
@@ -52,12 +56,23 @@ function soAsRegras(a: Automacoes): RegrasDaVaga {
     triagemParaAnalise: a.triagemParaAnalise,
     encerrarDias: a.encerrarDias,
     encerrarAoPreencher: a.encerrarAoPreencher,
+    preencherAoCompletar: a.preencherAoCompletar,
     horarios: a.horarios,
     videoATodos: a.videoATodos,
   };
 }
 
 const vezes = (n: number) => (n === 1 ? "1 vez" : `${n} vezes`);
+
+/** O que só as Automações sob medida mudam: o cadeado e o porquê (a oferta fica no alto da página). */
+function Trava({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex items-start gap-1.5 text-body-sm text-ink-muted">
+      <LockKeyhole aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <span>{children}</span>
+    </span>
+  );
+}
 
 /** O liga-desliga de cada regra (um botão com o papel de "switch"). */
 function Interruptor({
@@ -112,10 +127,13 @@ function Regra({
   aviso,
   contagem,
   controle,
+  novo = false,
   children,
 }: {
   icone: LucideIcon;
   titulo: string;
+  /** o selo "Novo" ao lado do nome */
+  novo?: boolean;
   descricao: ReactNode;
   ligada: boolean;
   mudar?: (v: boolean) => void;
@@ -145,6 +163,12 @@ function Regra({
           <div className="flex items-start justify-between gap-3">
             <h4 id={`${id}-titulo`} className="min-w-0 pt-2.5 text-label">
               {titulo}
+              {novo && (
+                <>
+                  {" "}
+                  <Selo variante="novo">Novo</Selo>
+                </>
+              )}
             </h4>
             {controle ??
               (mudar && (
@@ -363,6 +387,7 @@ export function EditorAutomacoes({
   endereco,
   vaga,
   empresa,
+  quantas,
 }: {
   anuncioId: string;
   inicial: Automacoes;
@@ -374,6 +399,8 @@ export function EditorAutomacoes({
   endereco: string;
   vaga: string;
   empresa: string;
+  /** o "Quantas pessoas" da vaga */
+  quantas: number;
 }) {
   const [regras, setRegras] = useState<RegrasDaVaga>(() => soAsRegras(inicial));
   const [comMensagens, setComMensagens] = useState(Object.keys(inicial.mensagens).length > 0);
@@ -441,6 +468,9 @@ export function EditorAutomacoes({
   const agiu = Object.values(inicial.contagem).reduce((s, n) => s + (n ?? 0), 0);
   const conta = (r: RegraFeita) => inicial.contagem[r] ?? 0;
   const padraoDaqui = inicial.padrao?.origem === anuncioId;
+  // sem as Automações sob medida: as prontas (o texto e os prazos do Publike); o que já estava salvo continua
+  const medida = inicial.sobMedida;
+  const soSobMedida = (o_que: string) => !medida && <Trava>{o_que} é das Automações sob medida.</Trava>;
 
   return (
     <div className="flex flex-col gap-6">
@@ -480,10 +510,15 @@ export function EditorAutomacoes({
             value={regras.recado ?? ""}
             rows={3}
             maxLength={400}
+            readOnly={!medida}
             onChange={(e) => mudar({ recado: e.target.value }, 900)}
-            className={`${classesEntrada} min-h-24 [field-sizing:content]`}
+            className={`${classesEntrada} min-h-24 [field-sizing:content] ${medida ? "" : "text-ink-muted"}`}
           />
-          <Marcadores campo={recado} mudar={(t) => mudar({ recado: t }, 900)} />
+          {medida ? (
+            <Marcadores campo={recado} mudar={(t) => mudar({ recado: t }, 900)} />
+          ) : (
+            soSobMedida("Escrever o seu recado")
+          )}
           {regras.recado && (
             <p className="rounded-md bg-surface-300 p-3 text-body-sm">
               <span className="text-ink-muted">Assim chega: </span>
@@ -498,14 +533,16 @@ export function EditorAutomacoes({
           ligada={regras.dispensarEliminados}
           mudar={(v) => mudar({ dispensarEliminados: v })}
           falta={
-            !inicial.temEliminatoria && (
-              <>
-                <span>Esta vaga ainda não tem pergunta eliminatória.</span>
-                <Caminho href={`/painel/anuncio/${id}/editar#perguntas-da-vaga`}>
-                  Marcar uma nas perguntas da vaga
-                </Caminho>
-              </>
-            )
+            !medida && !regras.dispensarEliminados
+              ? soSobMedida("Dispensar pela pergunta eliminatória")
+              : !inicial.temEliminatoria && (
+                  <>
+                    <span>Esta vaga ainda não tem pergunta eliminatória.</span>
+                    <Caminho href={`/painel/anuncio/${id}/editar#perguntas-da-vaga`}>
+                      Marcar uma nas perguntas da vaga
+                    </Caminho>
+                  </>
+                )
           }
           aviso={semRetorno}
           contagem={conta("dispensar")}
@@ -517,7 +554,9 @@ export function EditorAutomacoes({
           ligada={regras.triagemParaAnalise}
           mudar={(v) => mudar({ triagemParaAnalise: v })}
           falta={
-            !inicial.triagem.liberada ? (
+            !medida && !regras.triagemParaAnalise ? (
+              soSobMedida("Levar para Em análise pela Triagem")
+            ) : !inicial.triagem.liberada ? (
               <>
                 <span>Precisa da Triagem com IA, que tem 15 dias grátis para testar.</span>
                 <Caminho href={`/painel/anuncio/${id}/copiloto`}>Conhecer a Triagem com IA</Caminho>
@@ -586,12 +625,14 @@ export function EditorAutomacoes({
             if (!v) mudar({ mensagens: {} });
           }}
           falta={
-            modelos.length === 0 && (
-              <>
-                <span>Você ainda não tem mensagens prontas.</span>
-                <NovaMensagem primeira aoCriar={() => setComMensagens(true)} />
-              </>
-            )
+            !medida && !comMensagens
+              ? soSobMedida("A mensagem pronta por etapa")
+              : modelos.length === 0 && (
+                  <>
+                    <span>Você ainda não tem mensagens prontas.</span>
+                    <NovaMensagem primeira aoCriar={() => setComMensagens(true)} />
+                  </>
+                )
           }
           contagem={conta("mensagem")}
         >
@@ -708,14 +749,15 @@ export function EditorAutomacoes({
           titulo="Lembrar você dos candidatos parados"
           descricao="Quem ficar parado em Novos, Em análise ou Entrevista gera um aviso para você, uma vez por parada."
           ligada={regras.paradoDias !== null}
-          mudar={(v) => mudar({ paradoDias: v ? 5 : null })}
+          mudar={(v) => mudar({ paradoDias: v ? PARADO_PRONTO : null })}
           contagem={conta("parado")}
         >
           <label className="flex flex-wrap items-center gap-2 text-body-sm">
             Depois de
             <Seletor
               aria-label="Dias parado"
-              value={String(regras.paradoDias ?? 5)}
+              disabled={!medida}
+              value={String(regras.paradoDias ?? PARADO_PRONTO)}
               onChange={(e) => mudar({ paradoDias: Number(e.target.value) })}
               className={classesEntrada}
               envoltorio="w-32"
@@ -728,13 +770,14 @@ export function EditorAutomacoes({
             </Seletor>
             na mesma etapa
           </label>
+          {soSobMedida("Mudar o prazo")}
         </Regra>
         <Regra
           icone={Reply}
           titulo="Dar o retorno a quem ficou sem resposta"
           descricao="Quem ficar em Novos sem a sua resposta vai para Não seguiu e recebe o seu retorno. Ninguém fica esperando para sempre."
           ligada={regras.encerrarDias !== null}
-          mudar={(v) => mudar({ encerrarDias: v ? 7 : null })}
+          mudar={(v) => mudar({ encerrarDias: v ? ENCERRAR_PRONTO : null })}
           aviso={semRetorno}
           contagem={conta("encerrar")}
         >
@@ -742,7 +785,8 @@ export function EditorAutomacoes({
             Depois de
             <Seletor
               aria-label="Dias sem resposta"
-              value={String(regras.encerrarDias ?? 7)}
+              disabled={!medida}
+              value={String(regras.encerrarDias ?? ENCERRAR_PRONTO)}
               onChange={(e) => mudar({ encerrarDias: Number(e.target.value) })}
               className={classesEntrada}
               envoltorio="w-32"
@@ -755,6 +799,7 @@ export function EditorAutomacoes({
             </Seletor>
             sem resposta
           </label>
+          {soSobMedida("Mudar o prazo")}
           {regras.recado && /\b\d+\s*dias?\b/.test(regras.recado) && (
             <p className="text-caption text-ink-muted">
               Confira se o prazo bate com o que o recado de recebimento promete.
@@ -764,6 +809,15 @@ export function EditorAutomacoes({
       </Grupo>
 
       <Grupo titulo="Quando a vaga fecha">
+        <Regra
+          icone={PartyPopper}
+          titulo="Marcar a vaga como preenchida quando completar"
+          novo
+          descricao={`Quando ${quantas === 1 ? "você contratar a pessoa da vaga" : `os contratados chegarem a ${quantas}, o “Quantas pessoas” da vaga`}, ela é marcada como preenchida e quem se candidatou recebe o aviso, como no botão. A vaga continua aberta para você.`}
+          ligada={regras.preencherAoCompletar}
+          mudar={(v) => mudar({ preencherAoCompletar: v })}
+          contagem={conta("completa")}
+        />
         <Regra
           icone={CircleCheckBig}
           titulo="Encerrar o processo de quem ficou"
@@ -785,7 +839,7 @@ export function EditorAutomacoes({
           <Botao
             tamanho="sm"
             variante="secundario"
-            disabled={pendenteOutras || inicial.outrasNoAr === 0 || estado?.tipo === "salvando"}
+            disabled={!medida || pendenteOutras || inicial.outrasNoAr === 0 || estado?.tipo === "salvando"}
             onClick={() =>
               iniciarOutras(async () => {
                 setAvisoOutras(null);
@@ -816,7 +870,7 @@ export function EditorAutomacoes({
           <Interruptor
             ligado={padraoDaqui}
             rotulo={`${id}-novas`}
-            desabilitado={pendenteOutras}
+            desabilitado={pendenteOutras || (!medida && !padraoDaqui)}
             mudar={(v) =>
               iniciarOutras(async () => {
                 setAvisoOutras(null);
@@ -826,6 +880,7 @@ export function EditorAutomacoes({
             }
           />
         </div>
+        {soSobMedida("Usar as regras em outras vagas")}
         {avisoOutras && (
           <p
             role={avisoOutras.ok ? "status" : "alert"}

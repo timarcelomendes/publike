@@ -1,4 +1,4 @@
-import { ChevronRight, ClipboardCheck, Layers, Sparkles, Video } from "lucide-react";
+import { ChevronRight, ClipboardCheck, Layers, Sparkles, Video, Workflow } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
@@ -34,12 +34,15 @@ const ICONE: Record<Produto, typeof Sparkles> = {
   testes: ClipboardCheck,
   combo: Layers,
   video: Video,
+  automacoes: Workflow,
 };
 const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
   combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
   video: "O candidato grava as respostas pelo celular e a IA resume; e a entrevista ao vivo, sem instalar nada.",
+  automacoes:
+    "As automações da vaga do seu jeito: o seu texto, os seus prazos, a mensagem por etapa e as mesmas regras em todas as vagas.",
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -194,6 +197,11 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "Ouça todos os candidatos sem marcar horário: eles gravam as respostas e a IA resume.",
     botao: "Conhecer a Entrevista em vídeo",
   },
+  automacoes: {
+    titulo: "Automações sob medida",
+    texto: "As automações da vaga do seu jeito: o seu texto, os seus prazos e as mesmas regras em todas as vagas.",
+    botao: "Conhecer as Automações sob medida",
+  },
 };
 
 /** No pé da tela, o convite para o outro recurso e para o combo (ou, no combo, para um só), com o preço. */
@@ -209,7 +217,7 @@ function OutraOpcao({
 }) {
   const mensal = (p: Produto) => pag?.planos.find((x) => x.recurso === p && x.ciclo === "MONTHLY")?.valor ?? null;
   const ordem: Produto[] =
-    produto === "combo" || produto === "video"
+    produto === "combo" || produto === "video" || produto === "automacoes"
       ? ["copiloto", "testes"]
       : [produto === "copiloto" ? "testes" : "copiloto", "combo"];
   const opcoes = ordem.filter((p) => pag?.planos.some((x) => x.recurso === p) && (p !== "combo" || comboAberto));
@@ -220,7 +228,7 @@ function OutraOpcao({
       <h3 id="outra-opcao" className="text-h3">
         {produto === "combo"
           ? "Prefere começar com um só?"
-          : produto === "video"
+          : produto === "video" || produto === "automacoes"
             ? "Os outros recursos"
             : "Contrate melhor com os dois"}
       </h3>

@@ -242,6 +242,26 @@ export async function liberarVideo(contaId: string, liberar: boolean): Promise<R
   };
 }
 
+/** Libera as Automações sob medida sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
+export async function liberarAutomacoes(contaId: string, liberar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_liberar_automacoes", { p_conta: contaId, p_liberar: liberar });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270114120000_automacoes_sob_medida.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: liberar
+      ? "Pronto: essa conta tem as Automações sob medida, sem prazo."
+      : "Essa conta voltou para as automações prontas (o que já estava salvo nas vagas continua valendo).",
+  };
+}
+
 /** Libera o Teste Prático sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
 export async function liberarTestes(contaId: string, liberar: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();

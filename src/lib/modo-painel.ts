@@ -106,6 +106,7 @@ export type Secao = {
     | "video"
     | "etapas"
     | "numeros"
+    | "automacoes"
     | "assinatura";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
@@ -183,7 +184,8 @@ export type ExtrasDoMenu = {
   copiloto?: boolean;
   /** as pílulas dos recursos pagos pelo estado da conta (`marcaDoRecurso`); sem elas, a de sempre */
   /** `video` undefined: o banco ainda sem a Entrevista em vídeo (fica fora do menu) */
-  pilulas?: { copiloto: string | null; testes: string | null; video?: string | null };
+  /** `automacoes` undefined: o banco ainda sem as Automações sob medida (migração 20270114120000) */
+  pilulas?: { copiloto: string | null; testes: string | null; video?: string | null; automacoes?: string | null };
 };
 
 export function gruposDoModo(
@@ -283,6 +285,17 @@ export function gruposDoModo(
         EQUIPE,
         // as etapas próprias do quadro e os horários livres (migração 20270108120000)
         { href: "/painel/etapas", nome: "Etapas e horários", icone: "etapas" },
+        // as Automações sob medida (migração 20270114120000): as prontas, de graça, ficam em cada vaga
+        ...(extras.pilulas && extras.pilulas.automacoes !== undefined
+          ? [
+              {
+                href: "/painel/automacoes",
+                nome: "Automações",
+                icone: "automacoes" as const,
+                cortesia: extras.pilulas.automacoes ?? false,
+              },
+            ]
+          : []),
         // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
         { href: "/painel/numeros", nome: "Números", icone: "numeros" },
         // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
@@ -320,6 +333,7 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/testes") ||
     caminho.startsWith("/painel/copiloto") ||
     caminho.startsWith("/painel/video") ||
+    caminho.startsWith("/painel/automacoes") ||
     caminho.startsWith("/painel/etapas") ||
     caminho.startsWith("/painel/numeros") ||
     caminho.startsWith("/painel/assinatura") ||

@@ -1,4 +1,4 @@
-import { Check, ClipboardCheck, CreditCard, Sparkles, Video } from "lucide-react";
+import { Check, ClipboardCheck, CreditCard, Sparkles, Video, Workflow } from "lucide-react";
 import { O_PRODUTO, type Produto } from "@/lib/pagamentos";
 import { dataCurta, DIAS_GRATIS, diasRestantes, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
 import { BotaoExperimentar } from "./botao-experimentar";
@@ -43,12 +43,25 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
       "E a entrevista ao vivo pelo Publike, com um toque",
     ],
   },
+  automacoes: {
+    titulo: "Automações sob medida: o processo da vaga do seu jeito",
+    texto:
+      "As automações prontas já são grátis em toda vaga, com o texto e os prazos do Publike. Sob medida, você escreve e escolhe o resto.",
+    itens: [
+      "O seu recado para quem se candidata, com o nome da pessoa e da vaga",
+      "Os seus prazos para o lembrete dos parados e o retorno a quem ficou sem resposta",
+      "Uma mensagem pronta para cada etapa, inclusive as suas etapas próprias",
+      "Dispensar pela pergunta eliminatória e a Triagem com IA mandar para Em análise",
+      "As mesmas regras em todas as vagas no ar e nas novas, com um toque",
+    ],
+  },
 };
 
 const ICONE_RECURSO: Record<RecursoPago, typeof Sparkles> = {
   copiloto: Sparkles,
   testes: ClipboardCheck,
   video: Video,
+  automacoes: Workflow,
 };
 
 /** Assinar o recurso (claude/plano-checkout-asaas.md): cartão ou Pix, em /painel/assinar. */

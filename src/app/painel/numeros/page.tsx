@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { CaminhoDosCandidatos, DeOndeVieram, TemposDoProcesso } from "@/components/painel/numeros-do-processo";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { diasDoPeriodo, nomeDaOrigem, PERIODOS_NUMEROS, taxa, textoDoTempo } from "@/lib/automacoes";
+import { diasDoPeriodo, PERIODOS_NUMEROS, textoDoTempo } from "@/lib/automacoes";
 import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil } from "@/lib/dados";
-import { numerosDoProcesso, numerosOrigem, type NumerosDaVaga } from "@/lib/servidor/automacoes";
+import { numerosDoProcesso, numerosOrigem } from "@/lib/servidor/automacoes";
 import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Números do processo" };
@@ -26,14 +27,6 @@ export default function Numeros({ searchParams }: PageProps<"/painel/numeros">) 
     </Suspense>
   );
 }
-
-const ETAPAS_DO_FUNIL: { chave: keyof NumerosDaVaga; nome: string }[] = [
-  { chave: "candidatos", nome: "Se candidataram" },
-  { chave: "respondidos", nome: "Receberam resposta" },
-  { chave: "analise", nome: "Em análise ou depois" },
-  { chave: "entrevista", nome: "Chegaram à entrevista" },
-  { chave: "contratados", nome: "Contratados" },
-];
 
 async function Conteudo({ periodo: pedido }: { periodo?: string }) {
   if (MODO_DEMO) return <SoComSupabase />;
@@ -97,84 +90,9 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
         </Vazio>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Tempo titulo="Até a primeira resposta" valor={textoDoTempo(total.horas_resposta, "h")} />
-            <Tempo titulo="Até a entrevista" valor={textoDoTempo(total.dias_entrevista, "d")} />
-            <Tempo titulo="Até contratar" valor={textoDoTempo(total.dias_contratar, "d")} />
-          </div>
-          <p className="-mt-3 text-caption text-ink-muted">
-            A mediana: metade das candidaturas levou menos que isso, contando do dia em que a pessoa se candidatou.
-          </p>
-
-          <section
-            aria-labelledby="funil"
-            className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5"
-          >
-            <h3 id="funil" className="text-h3">
-              O caminho dos candidatos
-            </h3>
-            <ol className="flex flex-col gap-3">
-              {ETAPAS_DO_FUNIL.map((e, i) => {
-                const n = Number(total[e.chave]);
-                const antes = i > 0 ? Number(total[ETAPAS_DO_FUNIL[i - 1].chave]) : null;
-                return (
-                  <li key={e.chave} className="grid grid-cols-[minmax(0,11rem)_1fr] items-center gap-3 text-body-sm">
-                    <span className="text-label">{e.nome}</span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        aria-hidden
-                        className="h-6 min-w-1 rounded-sm bg-terra"
-                        style={{ width: `${Math.max(1, (n / total.candidatos) * 100) * 0.8}%` }}
-                      />
-                      <span className="tabular-nums">
-                        <span className="text-label">{n}</span>
-                        {antes !== null && antes > 0 && (
-                          <span className="text-ink-muted"> · {taxa(n, antes)} da etapa anterior</span>
-                        )}
-                      </span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-            {total.nao_seguiu > 0 && (
-              <p className="text-body-sm text-ink-muted">
-                {total.nao_seguiu} {total.nao_seguiu === 1 ? "pessoa não seguiu" : "pessoas não seguiram"}.
-              </p>
-            )}
-          </section>
-
-          {origens.length > 0 && (
-            <section aria-labelledby="origem" className="flex flex-col gap-3">
-              <h3 id="origem" className="text-h3">
-                De onde vieram
-              </h3>
-              <div className="overflow-x-auto rounded-lg border border-line bg-surface-200">
-                <table className="w-full min-w-[32rem] text-left text-body-sm">
-                  <thead className="text-caption text-ink-muted">
-                    <tr className="border-b border-line">
-                      <th className="px-4 py-2.5 font-normal">Origem</th>
-                      <th className="px-4 py-2.5 text-right font-normal">Candidatos</th>
-                      <th className="px-4 py-2.5 text-right font-normal">Entrevista</th>
-                      <th className="px-4 py-2.5 text-right font-normal">Contratados</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line tabular-nums">
-                    {origens.map((o) => (
-                      <tr key={o.origem}>
-                        <th scope="row" className="px-4 py-2.5 text-label">
-                          {nomeDaOrigem(o.origem)}
-                        </th>
-                        <td className="px-4 py-2.5 text-right">{o.candidatos}</td>
-                        <td className="px-4 py-2.5 text-right">{o.entrevista}</td>
-                        <td className="px-4 py-2.5 text-right">{o.contratados}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
+          <TemposDoProcesso linha={total} />
+          <CaminhoDosCandidatos linha={total} />
+          {origens.length > 0 && <DeOndeVieram origens={origens} />}
 
           <section aria-labelledby="por-vaga" className="flex flex-col gap-3">
             <h3 id="por-vaga" className="text-h3">
@@ -198,7 +116,7 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
                     <tr key={v.anuncio_id}>
                       <th scope="row" className="px-4 py-2.5 font-normal">
                         <Link
-                          href={`/painel/anuncio/${v.anuncio_id}/quadro`}
+                          href={`/painel/anuncio/${v.anuncio_id}/numeros`}
                           className="text-label underline-offset-2 hover:underline"
                         >
                           {v.titulo}
@@ -219,15 +137,6 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
           </section>
         </>
       )}
-    </div>
-  );
-}
-
-function Tempo({ titulo, valor }: { titulo: string; valor: string }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-lg border border-line bg-surface-200 p-4">
-      <span className="text-body-sm text-ink-muted">{titulo}</span>
-      <span className="text-h2 tabular-nums">{valor}</span>
     </div>
   );
 }

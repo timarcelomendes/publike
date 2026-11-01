@@ -13,6 +13,7 @@ import { BotaoBloquear, DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { MesaDeCandidatos } from "@/components/painel/mesa-candidatos";
 import { CabecalhoDaVaga, OrdemPeloCopiloto, VistaDosCandidatos } from "@/components/painel/cabecalho-da-vaga";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -22,7 +23,6 @@ import {
   abaDaEtapa,
   ETAPAS_CANDIDATO,
   esperaCurriculo,
-  esperaResposta,
   etapaQueVale,
   etapasDoTipo,
   motivoParaOutro,
@@ -37,6 +37,7 @@ import {
   listarInteressados,
   listarMeusBloqueios,
   listarRespostasDosCandidatos,
+  ajudaDaIADisponivel,
   obterAnuncio,
 } from "@/lib/dados";
 import { formatarLugar, formatarMesAno, rotuloConta, tempoRelativo } from "@/lib/formato";
@@ -44,6 +45,7 @@ import { minhasContratacoesPublicas } from "@/lib/dados-social";
 import { ordemDoCopiloto } from "@/lib/servidor/copiloto";
 import { empresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { saudeDasVagas } from "@/lib/servidor/saude";
+import { montarCaixa } from "@/lib/servidor/caixa";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -85,6 +87,9 @@ async function Conteudo({
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id) notFound();
   const servico = anuncio.tipo === "servico";
+  // a vaga de empresa e comércio: a mesma mesa de Candidatos, já filtrada (claude/plano-fluxo-contratar.md, parte 1);
+  // a agência continua com esta lista (o cliente e os finalistas), e o serviço também
+  if (!servico && anuncio.autor_tipo !== "agencia") return <MesaDaVaga anuncio={anuncio} sp={sp} euId={usuario.id} />;
   const perguntas = servico ? [] : perguntasDoBanco(anuncio.perguntas);
   const [todos, curriculos, desfeitos, etapas, bloqueios, publicas, respostas] = await Promise.all([
     listarInteressados(id),
@@ -134,7 +139,6 @@ async function Conteudo({
   const interessados = peloCopiloto
     ? [...filtrados].sort((a, b) => (posicao(a) ?? Infinity) - (posicao(b) ?? Infinity))
     : filtrados;
-  const esperam = todos.filter(esperaResposta).length;
   const linkDaEtapa = (e: AbaDaEtapa | null, ordem = peloCopiloto) => {
     const q = new URLSearchParams();
     if (e) q.set("etapa", e);
@@ -182,12 +186,6 @@ async function Conteudo({
           <CabecalhoDaVaga
             anuncio={anuncio}
             aba="candidatos"
-            resumo={[
-              `${todos.length} ${todos.length === 1 ? "candidato" : "candidatos"}`,
-              esperam ? `${esperam} ${esperam === 1 ? "espera" : "esperam"} você` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
             saude={saude}
             nota={
               anuncio.autor_tipo === "agencia" ? (
@@ -336,15 +334,17 @@ async function Conteudo({
                         {formatarMesAno(p.membro_desde)}
                       </p>
                       <p className="text-body-sm text-ink-muted">
-                        {servico ? "Pediu" : "Curtiu"} {tempoRelativo(p.curtido_em, agora)}
+                        {servico ? "Pediu" : "Candidatou-se"} {tempoRelativo(p.curtido_em, agora)}
                       </p>
                     </div>
-                    {p.status === "match" && <Selo variante="match">Deu match</Selo>}
+                    {p.status === "match" && <Selo variante="match">{servico ? "Deu match" : "Aceito"}</Selo>}
                     {esperaCurriculo(p) && semCurriculo && <Selo>Esperando currículo</Selo>}
                     {p.status === "dispensada" && (
                       <Selo variante="contorno">{servico ? "Recusado" : "Dispensado"}</Selo>
                     )}
-                    {p.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
+                    {p.status === "desfeito" && (
+                      <Selo variante="contorno">{servico ? "Match desfeito" : "Desfez o aceite"}</Selo>
+                    )}
                   </div>
                   {p.mensagem && (
                     <blockquote className="rounded-md bg-surface-300 p-3 text-body-sm">“{p.mensagem}”</blockquote>
@@ -473,6 +473,58 @@ async function Conteudo({
             })}
           </ul>
         </>
+      )}
+    </div>
+  );
+}
+
+/** A aba Candidatos da vaga (Lista): a mesa de Candidatos só com os candidatos desta vaga. */
+async function MesaDaVaga({
+  anuncio,
+  sp,
+  euId,
+}: {
+  euId: string;
+  anuncio: NonNullable<Awaited<ReturnType<typeof obterAnuncio>>>;
+  sp: Awaited<PageProps<"/painel/anuncio/[id]">["searchParams"]>;
+}) {
+  const agora = await agoraDaRequisicao();
+  const [todos, comIA] = await Promise.all([montarCaixa(agora), ajudaDaIADisponivel()]);
+  const itens = (todos ?? []).filter((c) => c.anuncio_id === anuncio.id);
+  const saude = (
+    await saudeDasVagas(
+      [anuncio],
+      itens.map((c) => ({
+        anuncio_id: anuncio.id,
+        status: c.status,
+        aceita_em: c.aceita_em,
+        curtido_em: c.curtido_em,
+      })),
+      agora,
+    )
+  ).get(anuncio.id);
+  return (
+    <div className="flex flex-col gap-5">
+      <CabecalhoDaVaga anuncio={anuncio} aba="candidatos" saude={saude} />
+      <VistaDosCandidatos id={anuncio.id} atual="lista" />
+      {!todos ? (
+        <Aviso tipo="alerta" titulo="Não deu para carregar os candidatos agora">
+          Tente de novo em instantes.
+        </Aviso>
+      ) : itens.length === 0 ? (
+        <Vazio icone={Heart} titulo="Ninguém se candidatou ainda">
+          Quem se candidatar aparece aqui, pelo que fazer agora. Divulgue a vaga com o “Copiar o link da vaga”, no alto.
+        </Vazio>
+      ) : (
+        <MesaDeCandidatos
+          itens={itens}
+          sp={sp}
+          agora={agora}
+          comIA={comIA}
+          base={`/painel/anuncio/${anuncio.id}`}
+          vagaFixa={anuncio.id}
+          euId={euId}
+        />
       )}
     </div>
   );

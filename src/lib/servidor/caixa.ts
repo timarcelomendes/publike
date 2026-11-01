@@ -39,6 +39,9 @@ export type ItemCaixa = Candidato & {
   endereco: string;
   /** o resumo da IA já feito para este currículo (some quando o currículo muda) */
   resumo: ResumoCandidato | null;
+  /** quantas pessoas a vaga quer contratar e se está no ar (a folha do contratado) */
+  vagaQuantas: number;
+  vagaNoAr: boolean;
 };
 
 /** Os resumos da IA guardados das minhas vagas, por "anúncio:perfil". */
@@ -179,6 +182,8 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
       entrevista: e && c.status === "match" && ABERTA.includes(e.situacao) ? e : null,
       naoLidas: naoLidas.get(c.perfil_id) ?? 0,
       endereco: a ? [a.endereco, a.bairro, a.cidade].filter(Boolean).join(", ") : "",
+      vagaQuantas: Math.max(1, a?.vagas ?? 1),
+      vagaNoAr: a?.status === "ativo",
       resumo:
         resumo && cv && new Date(resumo.curriculo_em).getTime() === new Date(cv.atualizado_em).getTime()
           ? resumo.conteudo

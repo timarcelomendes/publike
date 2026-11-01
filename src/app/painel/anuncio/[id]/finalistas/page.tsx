@@ -136,7 +136,7 @@ async function Conteudo({ id }: { id: string }) {
               </BotaoLink>
             }
           >
-            Escolha aqui embaixo quem vai {w.para}, ou marque no quadro e toque em “{w.enviar}”. Só quem deu match pode
+            Escolha aqui embaixo quem vai {w.para}, ou marque no quadro e toque em “{w.enviar}”. Só quem foi aceito pode
             ir.
           </Vazio>
         ) : (
@@ -217,7 +217,7 @@ async function Conteudo({ id }: { id: string }) {
         {podemIr.length === 0 ? (
           <p className="text-body-sm text-ink-muted">
             {cartoes.some((c) => c.status === "pendente")
-              ? `Só quem deu match pode ir ${w.para}. Responda os candidatos no quadro: quem você aceitar aparece aqui.`
+              ? `Só quem foi aceito pode ir ${w.para}. Responda os candidatos no quadro: quem você aceitar aparece aqui.`
               : "Todos os que deram match já estão na lista."}
           </p>
         ) : (
