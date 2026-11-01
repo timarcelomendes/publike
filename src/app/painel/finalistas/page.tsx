@@ -1,4 +1,4 @@
-import { Building2, Send } from "lucide-react";
+import { Building2, Link2, ListChecks, Send, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -92,7 +92,7 @@ async function Conteudo() {
                     >
                       {v.anuncio.titulo}
                     </Link>
-                    <p className="text-body-sm text-ink-muted">Para {cliente}</p>
+                    <p className="text-body-sm text-ink-muted">{v.clienteId ? `Para ${cliente}` : "Sem cliente"}</p>
                   </div>
                   <Selo variante={estado.tom}>{estado.nome}</Selo>
                 </div>
@@ -115,7 +115,13 @@ async function Conteudo() {
                     tamanho="sm"
                     variante={v.prontos.length && !v.link ? "primario" : "secundario"}
                   >
-                    <Send aria-hidden />
+                    {!v.link ? (
+                      <Link2 aria-hidden />
+                    ) : v.prontos.length ? (
+                      <UserPlus aria-hidden />
+                    ) : (
+                      <ListChecks aria-hidden />
+                    )}
                     {!v.link
                       ? "Montar o link"
                       : v.prontos.length
@@ -123,11 +129,15 @@ async function Conteudo() {
                         : "Abrir a lista"}
                   </BotaoLink>
                   {url && (
-                    <BotoesDoLink
-                      url={url}
-                      nome={`Finalistas de ${v.anuncio.titulo}`}
-                      mensagem={`Os finalistas para ${v.anuncio.titulo}`}
-                    />
+                    <>
+                      <span aria-hidden className="mx-1 hidden h-6 w-px bg-line sm:block" />
+                      <BotoesDoLink
+                        url={url}
+                        nome={`Finalistas de ${v.anuncio.titulo}`}
+                        mensagem={`Os finalistas para ${v.anuncio.titulo}`}
+                        comNome
+                      />
+                    </>
                   )}
                 </div>
               </li>
