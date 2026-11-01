@@ -245,7 +245,7 @@ export async function marcarEntrevista(d: DadosEntrevista): Promise<Resultado> {
     p_perfil: d.perfilId,
     p_quando: quando.toISOString(),
     p_formato: d.formato,
-    p_local: d.formato === "telefone" ? null : local,
+    p_local: d.formato === "telefone" || d.formato === "publike" ? null : local,
     p_obs: obs || null,
     p_duracao: Math.min(480, Math.max(10, Math.round(Number(d.duracao) || 30))),
   });
@@ -323,7 +323,7 @@ export async function oferecerHorarios(d: Omit<DadosEntrevista, "quando"> & { op
     p_perfil: d.perfilId,
     p_opcoes: unicos,
     p_formato: d.formato,
-    p_local: d.formato === "telefone" ? null : local,
+    p_local: d.formato === "telefone" || d.formato === "publike" ? null : local,
     p_obs: obs || null,
     p_duracao: Math.min(480, Math.max(10, Math.round(Number(d.duracao) || 30))),
   });

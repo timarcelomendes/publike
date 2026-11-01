@@ -24,7 +24,9 @@ export function fraseDaEntrevista(e: EntrevistaDoMomento) {
       ? `por vídeo${e.local ? `: ${e.local}` : ""}`
       : e.formato === "telefone"
         ? "por telefone (eu ligo nesse horário)"
-        : `presencial${e.local ? `, na ${e.local}` : ""}`;
+        : e.formato === "publike"
+          ? "por vídeo pelo Publike (o botão de entrar aparece na página da vaga)"
+          : `presencial${e.local ? `, na ${e.local}` : ""}`;
   return `${dataDaEntrevista(e.quando)}, ${onde}`;
 }
 

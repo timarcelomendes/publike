@@ -18,6 +18,7 @@ import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
 import { ordemDoCopiloto, triagemDosCandidatos } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
+import { dailyConfigurado } from "@/lib/servidor/daily";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { retornoDaConta } from "@/lib/servidor/retorno";
 import { saudeDasVagas } from "@/lib/servidor/saude";
@@ -227,7 +228,11 @@ async function Conteudo({
           agencia={agencia}
           contatoDireto={Boolean(anuncio.contato_direto)}
           retorno={retorno}
-          video={videos && recursos && !recursos.video.indisponivel ? { liberado: recursos.video.liberado } : null}
+          video={
+            videos && recursos && !recursos.video.indisponivel
+              ? { liberado: recursos.video.liberado, aoVivo: dailyConfigurado() }
+              : null
+          }
         />
       )}
     </div>

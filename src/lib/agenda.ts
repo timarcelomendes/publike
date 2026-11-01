@@ -1,6 +1,7 @@
 // Entrevista na agenda: o convite (.ics) que vai anexo no e-mail e que a pessoa baixa no site,
 // e o link "Adicionar ao Google Agenda". Sem dependências: serve no navegador e no servidor.
 
+import { SITE_URL } from "./config";
 import { FORMATOS_ENTREVISTA, type FormatoEntrevista } from "./recrutamento";
 
 export type EventoAgenda = {
@@ -148,7 +149,9 @@ export function eventoDaEntrevista(
     duracaoMin: e.duracao_min || DURACAO_PADRAO,
     titulo,
     descricao,
-    local: e.formato === "telefone" ? "Por telefone" : e.local,
+    // pelo Publike: o link da página da entrevista (a sala abre 15 minutos antes)
+    local:
+      e.formato === "telefone" ? "Por telefone" : e.formato === "publike" ? `${SITE_URL}/entrevista/${e.id}` : e.local,
     url,
     cancelado: e.situacao === "cancelada",
     // segundos desde 2026: cresce a cada mudança e cabe num número pequeno

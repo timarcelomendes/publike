@@ -1201,6 +1201,9 @@ export type Database = {
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      /** migração 20270106120000: a entrevista ao vivo */
+      entrevista_para_entrar: { Args: { p_id: string }; Returns: Json };
+      entrevista_guardar_sala: { Args: { p_id: string; p_sala: string }; Returns: undefined };
       /** migração 20270105120000: a entrevista gravada */
       video_config: { Args: { p_anuncio: string }; Returns: Json };
       video_salvar_config: {

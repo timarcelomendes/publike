@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarCheck, CalendarClock } from "lucide-react";
+import { CalendarCheck, CalendarClock, Video } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { escolherHorario, responderEntrevista } from "@/lib/acoes/recrutamento";
 import { eventoDaEntrevista } from "@/lib/agenda";
@@ -83,6 +84,15 @@ export function EntrevistaDoCandidato({
         )}
       </p>
       {e.obs && <p className="text-body-sm text-ink-muted">{e.obs}</p>}
+      {aberta && !escolher && e.formato === "publike" && (
+        <Link
+          href={`/entrevista/${e.id}`}
+          className="inline-flex min-h-10 items-center gap-2 self-start rounded-md bg-cerrado px-3.5 text-label text-on-cerrado hover:brightness-110"
+        >
+          <Video aria-hidden className="size-[18px]" />
+          Entrar na entrevista
+        </Link>
+      )}
       {escolher && (
         <div className="flex flex-col gap-2">
           <p className="text-body-sm">Toque no horário que fica melhor para você. A entrevista já fica confirmada.</p>

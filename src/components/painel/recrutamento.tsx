@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarPlus, Plus, Send, Trash, X } from "lucide-react";
+import { CalendarPlus, Plus, Send, Trash, Video, X } from "lucide-react";
+import Link from "next/link";
 import { useId, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import {
@@ -76,6 +77,7 @@ export function FormEntrevista({
   atual,
   endereco,
   aoTerminar,
+  aoVivo = false,
 }: {
   anuncioId: string;
   perfilId: string;
@@ -83,6 +85,8 @@ export function FormEntrevista({
   atual: EntrevistaResumo | null;
   /** o endereço da vaga, para já vir preenchido no presencial */
   endereco: string;
+  /** a chamada pelo Publike está disponível (Entrevista em vídeo e a Daily configurada) */
+  aoVivo?: boolean;
   aoTerminar?: () => void;
 }) {
   const base = useId();
@@ -208,21 +212,28 @@ export function FormEntrevista({
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-label">Como vai ser</legend>
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(FORMATOS_ENTREVISTA) as FormatoEntrevista[]).map((f) => (
-            <label
-              key={f}
-              className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
-            >
-              <input
-                type="radio"
-                name={`${base}-formato`}
-                checked={formato === f}
-                onChange={() => trocarFormato(f)}
-                className="sr-only"
-              />
-              {FORMATOS_ENTREVISTA[f].nome}
-            </label>
-          ))}
+          {(Object.keys(FORMATOS_ENTREVISTA) as FormatoEntrevista[])
+            .filter((f) => f !== "publike" || aoVivo || formato === "publike")
+            .map((f) => (
+              <label
+                key={f}
+                className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+              >
+                <input
+                  type="radio"
+                  name={`${base}-formato`}
+                  checked={formato === f}
+                  onChange={() => trocarFormato(f)}
+                  className="sr-only"
+                />
+                {FORMATOS_ENTREVISTA[f].nome}
+                {f === "publike" && (
+                  <Selo variante="novo" className="ml-1.5">
+                    Novo
+                  </Selo>
+                )}
+              </label>
+            ))}
         </div>
       </fieldset>
       {info.campo && (
@@ -304,6 +315,15 @@ export function EntrevistaMarcada({
         {entrevista.local ? `: ${entrevista.local}` : ""}
         {entrevista.obs ? ` · ${entrevista.obs}` : ""}
       </p>
+      {aberta && entrevista.formato === "publike" && (
+        <Link
+          href={`/entrevista/${entrevista.id}`}
+          className="inline-flex min-h-10 items-center gap-2 self-start rounded-md bg-cerrado px-3.5 text-label text-on-cerrado hover:brightness-110"
+        >
+          <Video aria-hidden className="size-[18px]" />
+          {escolhendo ? "A sala da entrevista" : "Entrar na entrevista"}
+        </Link>
+      )}
       {aberta && !escolhendo && agenda && (
         <BotoesAgenda
           evento={eventoDaEntrevista(entrevista, {

@@ -65,6 +65,8 @@ export const FORMATOS_ENTREVISTA = {
   presencial: { nome: "Presencial", campo: "Endereço", exemplo: "Rua 10, 250, Setor Oeste (sala 3)" },
   video: { nome: "Por vídeo", campo: "Link da chamada", exemplo: "https://meet.google.com/abc-defg-hij" },
   telefone: { nome: "Por telefone", campo: "", exemplo: "" },
+  // a chamada dentro do Publike (migração 20270106120000; recurso Entrevista em vídeo)
+  publike: { nome: "Pelo Publike (vídeo)", campo: "", exemplo: "" },
 } as const;
 export type FormatoEntrevista = keyof typeof FORMATOS_ENTREVISTA;
 

@@ -146,7 +146,7 @@ export function QuadroCandidatos({
   /** o retorno a quem não seguiu (null: sem a migração 20261230120000) */
   retorno?: RetornoDaConta | null;
   /** a Entrevista em vídeo: a conta tem o recurso (null: o banco ainda sem a migração) */
-  video?: { liberado: boolean } | null;
+  video?: { liberado: boolean; aoVivo?: boolean } | null;
 }) {
   const [lista, mover] = useOptimistic(cartoes, (atual, m: { ids: string[]; coluna: EtapaCandidato }) =>
     atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna } : c)),
@@ -604,7 +604,7 @@ function DetalheCandidato({
   c: CartaoQuadro;
   /** o texto do retorno da conta (o WhatsApp de quem não seguiu) */
   retorno: string | null;
-  video: { liberado: boolean } | null;
+  video: { liberado: boolean; aoVivo?: boolean } | null;
   /** contato direto: o match saiu na hora, sem aceite */
   direto: boolean;
   anuncioId: string;
@@ -793,6 +793,7 @@ function DetalheCandidato({
             nome={c.nome}
             atual={e && ENTREVISTA_ABERTA.includes(e.situacao) ? e : null}
             endereco={endereco}
+            aoVivo={Boolean(video?.liberado && video.aoVivo)}
             aoTerminar={() => {
               setMarcando(false);
               setMarcou(true);
@@ -936,18 +937,31 @@ function Gaveta({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // o fechar do desmontar (abaixo) não é a pessoa fechando: não mexe no estado
+  const fechouSozinha = useRef(false);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
     if (aberta && !d.open) d.showModal();
     if (!aberta && d.open) d.close();
+    // ao sair da página por um link de dentro da gaveta, o Next guarda a página escondida (Activity): a gaveta
+    // aberta ficaria por cima da página nova, travando os toques
+    return () => {
+      if (d.open) {
+        fechouSozinha.current = true;
+        d.close();
+      }
+    };
   }, [aberta]);
   const id = useMemo(() => `gaveta-${titulo.replace(/\W+/g, "-").toLowerCase()}`, [titulo]);
   return (
     <dialog
       ref={ref}
       aria-labelledby={id}
-      onClose={fechar}
+      onClose={() => {
+        if (fechouSozinha.current) fechouSozinha.current = false;
+        else fechar();
+      }}
       onClick={(e) => e.target === e.currentTarget && fechar()}
       className="m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-lg border border-line-strong bg-surface-200 p-0 text-ink shadow-raised backdrop:bg-veu sm:mt-0 sm:mr-0 sm:ml-auto sm:h-dvh sm:max-h-dvh sm:w-[34rem] sm:rounded-none sm:rounded-l-lg"
     >
