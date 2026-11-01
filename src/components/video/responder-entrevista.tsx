@@ -11,9 +11,10 @@ import {
   Square,
   Trash2,
   Video,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import {
   apagarMinhaEntrevistaVideo,
@@ -392,6 +393,7 @@ function Gravador({
   const [contagem, setContagem] = useState(3);
   const [gravacao, setGravacao] = useState<{ blob: Blob; url: string; duracao: number; ext: string } | null>(null);
   const [regravou, setRegravou] = useState(false);
+  const [ligada, setLigada] = useState(false);
   const ao_vivo = useRef<HTMLVideoElement>(null);
   const fluxo = useRef<MediaStream | null>(null);
   const gravador = useRef<MediaRecorder | null>(null);
@@ -405,6 +407,7 @@ function Gravador({
     relogio.current = null;
     fluxo.current?.getTracks().forEach((t) => t.stop());
     fluxo.current = null;
+    setLigada(false);
   }
   useEffect(() => () => desligar(), []);
   useEffect(
@@ -434,6 +437,8 @@ function Gravador({
         ao_vivo.current.srcObject = fluxo.current;
         await ao_vivo.current.play().catch(() => undefined);
       }
+      setLigada(true);
+      setEstado("parado");
       return true;
     } catch {
       setEstado("parado");
@@ -520,93 +525,156 @@ function Gravador({
   }
 
   const falta = Math.max(0, entrevista.segundos - segundos);
+  // Modo foco (01/11/2026): com a câmera ligada (e até enviar), a gravação ocupa a tela toda, no celular e no
+  // computador, com a página parada atrás. Fechar desliga a câmera (não durante a gravação nem o envio).
+  const foco = ligada || estado !== "parado";
+  const podeFechar = estado === "parado" || estado === "conferindo";
+  function fecharFoco() {
+    desligar();
+    setGravacao(null);
+    setEstado("parado");
+  }
+  const fecharComEsc = useEffectEvent((ev: KeyboardEvent) => {
+    if (ev.key === "Escape" && podeFechar) fecharFoco();
+  });
+  useEffect(() => {
+    if (!foco) return;
+    const html = document.documentElement;
+    const antes = html.style.overflow;
+    html.style.overflow = "hidden";
+    const esc = (ev: KeyboardEvent) => fecharComEsc(ev);
+    window.addEventListener("keydown", esc);
+    return () => {
+      html.style.overflow = antes;
+      window.removeEventListener("keydown", esc);
+    };
+  }, [foco]);
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="relative overflow-hidden rounded-md bg-ink">
-        {estado === "conferindo" || estado === "enviando" ? (
-          <video src={gravacao?.url} controls playsInline className="aspect-[4/3] w-full bg-ink object-contain" />
-        ) : (
-          <video
-            ref={ao_vivo}
-            muted
-            playsInline
-            aria-label="A sua câmera"
-            className="aspect-[4/3] w-full -scale-x-100 bg-ink object-cover"
-          />
+    <div
+      role={foco ? "dialog" : undefined}
+      aria-modal={foco ? true : undefined}
+      aria-label={foco ? `Gravar a resposta da pergunta ${pergunta.ordem}` : undefined}
+      className={
+        foco
+          ? "fixed inset-0 z-[90] flex flex-col bg-surface-100 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6"
+          : "flex flex-col gap-3"
+      }
+    >
+      <div className={foco ? "mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3" : "contents"}>
+        {foco && (
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-label text-ink-muted">Pergunta {pergunta.ordem}</p>
+              {pergunta.texto && <p className="text-body-lg">{pergunta.texto}</p>}
+            </div>
+            {podeFechar && (
+              <button
+                type="button"
+                onClick={fecharFoco}
+                aria-label="Fechar a câmera"
+                className="inline-flex size-11 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-ink hover:bg-surface-200"
+              >
+                <X aria-hidden className="size-5" />
+              </button>
+            )}
+          </div>
         )}
-        {estado === "contando" && (
-          <span
-            aria-live="assertive"
-            className="absolute inset-0 flex items-center justify-center text-[64px] font-semibold text-surface-100"
-          >
-            {contagem}
-          </span>
-        )}
-        {estado === "gravando" && (
-          <span
-            role="timer"
-            aria-live="off"
-            className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-pill bg-danger px-2.5 py-1 text-caption text-surface-100 tabular-nums"
-          >
-            <span aria-hidden className="size-2 rounded-pill bg-surface-100" />
-            Gravando · falta {textoDoTempo(falta)}
-          </span>
-        )}
-      </div>
-      {erro && (
-        <p role="alert" className="text-body-sm text-danger">
-          {erro}
-        </p>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        {estado === "parado" && (
-          <>
-            <Botao tamanho="sm" variante="primario" onClick={comecar}>
-              <Camera aria-hidden />
-              Começar a gravar
-            </Botao>
-            <Botao
-              tamanho="sm"
-              variante="fantasma"
-              onClick={() => void ligarCamera().then((ok) => ok && setEstado("parado"))}
-            >
-              Testar a câmera
-            </Botao>
-          </>
-        )}
-        {estado === "preparando" && <span className="text-body-sm text-ink-muted">Abrindo a câmera…</span>}
-        {estado === "gravando" && (
-          <Botao tamanho="sm" variante="primario" onClick={parar}>
-            <Square aria-hidden />
-            Parar
-          </Botao>
-        )}
-        {(estado === "conferindo" || estado === "enviando") && (
-          <>
-            <Botao tamanho="sm" variante="primario" disabled={estado === "enviando"} onClick={enviar}>
-              <Send aria-hidden />
-              {estado === "enviando" ? "Enviando o vídeo…" : "Enviar esta resposta"}
-            </Botao>
-            {podeRegravar && !regravou && estado === "conferindo" && (
+        <div
+          className={`relative overflow-hidden rounded-md bg-ink ${foco ? "min-h-0 flex-1" : "aspect-[4/3] w-full"}`}
+        >
+          {estado === "conferindo" || estado === "enviando" ? (
+            <video src={gravacao?.url} controls playsInline className="size-full bg-ink object-contain" />
+          ) : (
+            <video
+              ref={ao_vivo}
+              muted
+              playsInline
+              aria-label="A sua câmera"
+              className="size-full -scale-x-100 bg-ink object-cover"
+            />
+          )}
+          {!ligada && (estado === "parado" || estado === "preparando") && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-300 p-4 text-center">
               <Botao
                 tamanho="sm"
-                variante="fantasma"
-                onClick={() => {
-                  setRegravou(true);
-                  setGravacao(null);
-                  setEstado("parado");
-                }}
+                variante="primario"
+                disabled={estado === "preparando"}
+                onClick={() => void ligarCamera()}
               >
-                <RotateCcw aria-hidden />
-                Gravar de novo
+                <Camera aria-hidden />
+                {estado === "preparando" ? "Abrindo a câmera…" : "Ativar a câmera"}
               </Botao>
-            )}
-          </>
+              <p className="max-w-xs text-body-sm text-ink-muted">
+                O navegador vai pedir a câmera e o microfone: toque em Permitir.
+              </p>
+            </div>
+          )}
+          {estado === "contando" && (
+            <span
+              aria-live="assertive"
+              className="absolute inset-0 flex items-center justify-center text-[64px] font-semibold text-surface-100"
+            >
+              {contagem}
+            </span>
+          )}
+          {estado === "gravando" && (
+            <span
+              role="timer"
+              aria-live="off"
+              className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-pill bg-danger px-2.5 py-1 text-caption text-surface-100 tabular-nums"
+            >
+              <span aria-hidden className="size-2 rounded-pill bg-surface-100" />
+              Gravando · falta {textoDoTempo(falta)}
+            </span>
+          )}
+        </div>
+        {erro && (
+          <p role="alert" className="text-body-sm text-danger">
+            {erro}
+          </p>
         )}
+        <div className="flex flex-wrap items-center gap-2">
+          {estado === "parado" && ligada && (
+            <Botao tamanho="sm" variante="primario" onClick={comecar}>
+              <Video aria-hidden />
+              Começar a gravar
+            </Botao>
+          )}
+          {estado === "gravando" && (
+            <Botao tamanho="sm" variante="primario" onClick={parar}>
+              <Square aria-hidden />
+              Parar
+            </Botao>
+          )}
+          {(estado === "conferindo" || estado === "enviando") && (
+            <>
+              <Botao tamanho="sm" variante="primario" disabled={estado === "enviando"} onClick={enviar}>
+                <Send aria-hidden />
+                {estado === "enviando" ? "Enviando o vídeo…" : "Enviar esta resposta"}
+              </Botao>
+              {podeRegravar && !regravou && estado === "conferindo" && (
+                <Botao
+                  tamanho="sm"
+                  variante="fantasma"
+                  onClick={() => {
+                    setRegravou(true);
+                    setGravacao(null);
+                    setEstado("parado");
+                    void ligarCamera();
+                  }}
+                >
+                  <RotateCcw aria-hidden />
+                  Gravar de novo
+                </Botao>
+              )}
+            </>
+          )}
+        </div>
+        <p className="text-caption text-ink-muted">
+          Até {textoDoTempo(entrevista.segundos)}. Fale olhando para a câmera, num lugar com luz e sem barulho.
+        </p>
       </div>
-      <p className="text-caption text-ink-muted">
-        Até {textoDoTempo(entrevista.segundos)}. Fale olhando para a câmera, num lugar com luz e sem barulho.
-      </p>
     </div>
   );
 }
