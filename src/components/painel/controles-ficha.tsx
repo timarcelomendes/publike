@@ -256,7 +256,7 @@ export function ControlesDaFicha({
   });
 
   // o "Mais" (o Só aceitar, o Conectar e os atalhos) fecha com um toque fora ou com Esc
-  const soAtalhos = !((responde && extras) || conectar);
+  const soAtalhos = !((responde && extras) || (noProcesso && extras) || conectar);
   useEffect(() => {
     if (!mais) return;
     function fora(e: PointerEvent) {
@@ -335,17 +335,6 @@ export function ControlesDaFicha({
             Contratar
           </button>
         )}
-        {noProcesso && extras && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => mover("nao_seguiu", `${primeiro} não segue no processo.`)}
-            className={leve}
-          >
-            <X aria-hidden className="size-[18px]" />
-            Não seguiu
-          </button>
-        )}
         {estado === "match" && extras && aba === "contratados" && (
           <button
             type="button"
@@ -413,6 +402,20 @@ export function ControlesDaFicha({
                 >
                   <Heart aria-hidden className="size-4 shrink-0 text-like" />
                   {estado === "desfeito" ? "Só aceitar de novo" : "Só aceitar, sem marcar a entrevista"}
+                </button>
+              )}
+              {noProcesso && extras && (
+                <button
+                  type="button"
+                  disabled={pendente}
+                  onClick={() => {
+                    setMais(false);
+                    mover("nao_seguiu", `${primeiro} não segue no processo.`);
+                  }}
+                  className="flex min-h-11 items-center gap-2 rounded-md px-3 text-left text-body-sm hover:bg-surface-300 disabled:opacity-60"
+                >
+                  <X aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                  Não seguiu no processo
                 </button>
               )}
               {conectar && (
