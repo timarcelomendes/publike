@@ -350,6 +350,7 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
     vaga: {
       titulo: aberto.anuncio_titulo,
       noAr: aberto.vagaNoAr,
+      preenchida: aberto.vagaPreenchida,
       quantas: aberto.vagaQuantas,
       contratados: itens.filter((c) => c.anuncio_id === aberto.anuncio_id && abaDe(c) === "contratados").length,
     },

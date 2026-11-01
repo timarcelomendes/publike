@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     num(v.dias_entrevista),
     num(v.dias_contratar),
   ]);
-  linhas.push([], ["De onde vieram", "", "Candidatos", "", "", "Entrevista", "Contratados"]);
+  linhas.push([], ["Origem dos candidatos", "", "Candidatos", "", "", "Entrevista", "Contratados"]);
   for (const o of origens)
     linhas.push([
       nomeDaOrigem(o.origem),

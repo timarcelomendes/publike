@@ -19,7 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { mudarStatusAnuncio } from "@/lib/acoes/anuncios";
+import { marcarVagaPreenchida } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
 import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { pedirTeste } from "@/lib/acoes/testes";
@@ -82,7 +82,7 @@ export type ExtrasDaFicha = {
   aba: AbaDaFicha;
   entrevista: EntrevistaResumo | null;
   agora: number;
-  vaga: { titulo: string; noAr: boolean; quantas: number; contratados: number };
+  vaga: { titulo: string; noAr: boolean; preenchida: boolean; quantas: number; contratados: number };
   endereco: string;
   /** a chamada pelo Publike (Entrevista em vídeo liberada e a Daily configurada) */
   aoVivo: boolean;
@@ -196,18 +196,13 @@ export function ControlesDaFicha({
     });
   }
 
-  function encerrarVaga() {
+  // a vaga completa: preenchida, e quem ficou recebe o aviso (o aviso não volta: sem Desfazer; reabrir fica na vaga)
+  function marcarPreenchida() {
     setErro(null);
     iniciar(async () => {
-      const r = await chamarAcao(() => mudarStatusAnuncio(anuncioId, "encerrado", { motivo: "contratei_publike" }));
+      const r = await chamarAcao(() => marcarVagaPreenchida(anuncioId, true));
       if (!r.ok) return setErro(r.erro);
-      setFeito({
-        texto: "A vaga saiu do ar, como “contratei pelo Publike”.",
-        voltar: async () => {
-          const v = await chamarAcao(() => mudarStatusAnuncio(anuncioId, "ativo"));
-          return v.ok ? { ok: true } : { ok: false, erro: v.erro };
-        },
-      });
+      setFeito({ texto: r.mensagem ?? "Vaga marcada como preenchida." });
       router.refresh();
     });
   }
@@ -438,7 +433,12 @@ export function ControlesDaFicha({
               proposta={extras.proposta}
             />
           </div>
-          {extras.vaga.noAr && (
+          {extras.vaga.noAr && extras.vaga.preenchida && (
+            <p className="flex items-center gap-1.5 border-t border-line pt-3 text-body-sm">
+              <CircleCheckBig aria-hidden className="size-4 text-cerrado-text" />A vaga está marcada como preenchida.
+            </p>
+          )}
+          {extras.vaga.noAr && !extras.vaga.preenchida && (
             <div className="flex flex-col gap-2 border-t border-line pt-3">
               <p className="text-body-sm">
                 {completa
@@ -446,10 +446,21 @@ export function ControlesDaFicha({
                   : `${extras.vaga.contratados} de ${extras.vaga.quantas} contratados. A vaga continua no ar.`}
               </p>
               {completa && (
-                <button type="button" disabled={pendente} onClick={encerrarVaga} className={`${secundario} self-start`}>
-                  <CircleCheckBig aria-hidden className="size-[18px] text-cerrado-text" />
-                  Encerrar a vaga
-                </button>
+                <div className="flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    disabled={pendente}
+                    onClick={marcarPreenchida}
+                    className={`${secundario} self-start`}
+                  >
+                    <CircleCheckBig aria-hidden className="size-[18px] text-cerrado-text" />
+                    Marcar como preenchida
+                  </button>
+                  <p className="text-caption text-ink-muted">
+                    Quem ficou recebe o aviso de que a vaga foi preenchida, com as outras vagas perto. Para só tirar do
+                    ar, use o Encerrar da vaga.
+                  </p>
+                </div>
               )}
               <p className="text-caption text-ink-muted">
                 Para marcar a vaga como preenchida sozinha quando completar, ligue em{" "}

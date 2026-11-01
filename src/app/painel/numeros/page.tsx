@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
-import { CaminhoDosCandidatos, DeOndeVieram, TemposDoProcesso } from "@/components/painel/numeros-do-processo";
+import { FunilDeContratacao, DeOndeVieram, TemposDoProcesso } from "@/components/painel/numeros-do-processo";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -91,12 +91,12 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
       ) : (
         <>
           <TemposDoProcesso linha={total} />
-          <CaminhoDosCandidatos linha={total} />
+          <FunilDeContratacao linha={total} />
           {origens.length > 0 && <DeOndeVieram origens={origens} />}
 
           <section aria-labelledby="por-vaga" className="flex flex-col gap-3">
             <h3 id="por-vaga" className="text-h3">
-              Por vaga
+              Resultado por vaga
             </h3>
             <div className="overflow-x-auto rounded-lg border border-line bg-surface-200">
               <table className="w-full min-w-[44rem] text-left text-body-sm">

@@ -6,7 +6,7 @@ import { Suspense, type ReactNode } from "react";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { GraficoDeCandidaturas, type ColunaDoGrafico } from "@/components/painel/grafico-candidaturas";
-import { CaminhoDosCandidatos, DeOndeVieram, TemposDoProcesso } from "@/components/painel/numeros-do-processo";
+import { FunilDeContratacao, DeOndeVieram, TemposDoProcesso } from "@/components/painel/numeros-do-processo";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -203,7 +203,7 @@ async function Conteudo({ id }: { id: string }) {
           />
           {linha && linha.candidatos > 0 && (
             <>
-              <CaminhoDosCandidatos linha={linha} />
+              <FunilDeContratacao linha={linha} />
               <TemposDoProcesso linha={linha} />
             </>
           )}

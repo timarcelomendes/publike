@@ -42,6 +42,8 @@ export type ItemCaixa = Candidato & {
   /** quantas pessoas a vaga quer contratar e se está no ar (a folha do contratado) */
   vagaQuantas: number;
   vagaNoAr: boolean;
+  /** a vaga já foi marcada como preenchida */
+  vagaPreenchida: boolean;
 };
 
 /** Os resumos da IA guardados das minhas vagas, por "anúncio:perfil". */
@@ -184,6 +186,7 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
       endereco: a ? [a.endereco, a.bairro, a.cidade].filter(Boolean).join(", ") : "",
       vagaQuantas: Math.max(1, a?.vagas ?? 1),
       vagaNoAr: a?.status === "ativo",
+      vagaPreenchida: Boolean(a?.preenchida_em),
       resumo:
         resumo && cv && new Date(resumo.curriculo_em).getTime() === new Date(cv.atualizado_em).getTime()
           ? resumo.conteudo
