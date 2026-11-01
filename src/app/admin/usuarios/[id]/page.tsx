@@ -27,6 +27,7 @@ import { formatarCnpj, linkReceita } from "@/lib/cnpj";
 import {
   advertenciasDe,
   aparelhoDoUsuario,
+  contaApagada,
   contasDoCopiloto,
   emailsDoUsuario,
   recursosDaConta,
@@ -52,6 +53,8 @@ import {
   tempoRelativo,
 } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { quantoDurou, type ContaApagada } from "@/lib/conta-apagada";
+import { dataHora } from "@/lib/planilha";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
@@ -90,7 +93,8 @@ async function Conteudo({
       contasDoCopiloto(c),
       recursosDaConta(c, id),
     ]);
-  if (!u) notFound();
+  // a conta não existe mais: o rastro de quem apagou e quando (migração 20270113120000), no lugar da página vazia
+  if (!u) return <ContaQueNaoExisteMais apagada={await contaApagada(c, id)} />;
 
   const nome = u.perfil?.nome ?? u.email ?? u.telefone ?? "Conta sem nome";
   const s = u.suspensao;
@@ -530,6 +534,55 @@ async function Conteudo({
       )}
 
       <ExcluirContaAdmin usuarioId={u.id} nome={nome} />
+    </div>
+  );
+}
+
+/** A página de uma conta apagada: quem apagou, quando, quanto durou e o motivo (sem nome nem contato). */
+function ContaQueNaoExisteMais({ apagada }: { apagada: ContaApagada | null }) {
+  const durou = apagada ? quantoDurou(apagada.criada_em, apagada.apagada_em) : null;
+  return (
+    <div className="flex max-w-2xl flex-col gap-5">
+      <Link
+        href="/admin/usuarios"
+        className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Usuários
+      </Link>
+      <h2 className="text-h2">Esta conta não existe mais</h2>
+      {apagada ? (
+        <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5">
+          <p className="text-body">
+            {apagada.por === "pessoa" ? "A própria pessoa apagou a conta" : "A equipe apagou a conta"} em{" "}
+            {dataHora(apagada.apagada_em)}
+            {durou ? `, ${durou} depois de criar` : ""}.
+          </p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-body-sm">
+            <dt className="text-ink-muted">Tipo</dt>
+            <dd className="first-letter:uppercase">{apagada.tipo ? rotuloConta(apagada.tipo) : "Sem perfil"}</dd>
+            <dt className="text-ink-muted">Cidade</dt>
+            <dd>{apagada.cidade ?? "—"}</dd>
+            <dt className="text-ink-muted">Criada em</dt>
+            <dd>{apagada.criada_em ? dataHora(apagada.criada_em) : "—"}</dd>
+            <dt className="text-ink-muted">Motivo</dt>
+            <dd>
+              {apagada.por === "pessoa" ? (apagada.motivo ?? "Não quis dizer.") : (apagada.motivo_da_equipe ?? "—")}
+            </dd>
+          </dl>
+          <p className="text-caption text-ink-muted">
+            O nome e o contato não ficam guardados depois que a conta é apagada (LGPD). Este registro some em 12 meses.
+          </p>
+        </section>
+      ) : (
+        <p className="text-body text-ink-muted">
+          Não há registro de como ela foi apagada: foi antes de 1/11/2026, quando o registro começou, ou foi um cadastro
+          desfeito na hora porque não deu certo.
+        </p>
+      )}
+      <Link href="/admin/usuarios/apagadas" className="self-start text-label underline underline-offset-2">
+        Ver todas as contas apagadas
+      </Link>
     </div>
   );
 }

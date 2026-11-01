@@ -191,7 +191,7 @@ export default function Privacidade() {
           itens={[
             "Anúncios saem das buscas no fim do prazo escolhido ao publicar (30 dias, se nada foi escolhido), a não ser que você renove. Vaga “sem prazo” fica até ser encerrada.",
             "Avisos (curtidas e matches) são apagados depois de 90 dias. O registro dos e-mails enviados, depois de 30 dias.",
-            "Quando você exclui a conta, apagamos na hora seu perfil, contato, foto, currículo, anúncios, curtidas e matches.",
+            "Quando você exclui a conta, apagamos na hora seu perfil, contato, foto, currículo, anúncios, curtidas e matches. Fica só um registro sem nome e sem contato (o tipo de conta, a cidade, as datas e o motivo, se você quiser contar), que some em 12 meses.",
             "O registro do que a moderação fez (por exemplo, a remoção de um anúncio ou a suspensão de uma conta) fica guardado para a segurança do site, mesmo depois que a conta é excluída.",
           ]}
         />

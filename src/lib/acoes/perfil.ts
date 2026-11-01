@@ -8,6 +8,7 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { VERSAO_TERMOS } from "@/lib/constantes";
 import { aceitePendente, obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { consultarCnpj } from "@/lib/servidor/brasilapi";
+import { montarMotivo } from "@/lib/conta-apagada";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_INTENCAO } from "@/lib/intencao";
@@ -177,7 +178,11 @@ export async function excluirConta(_anterior: EstadoForm, formData: FormData): P
   if (!(await apagarArquivosDaPessoa(supabase, usuario.id))) {
     return { ok: false, erro: "Não foi possível apagar suas fotos agora. Tente de novo." };
   }
-  const { error } = await supabase.rpc("excluir_minha_conta");
+  // o motivo (opcional) fica no rastro da conta apagada, sem nome nem contato (migração 20270113120000)
+  const motivo = montarMotivo(formData.get("motivo"), formData.get("motivo_texto"));
+  let { error } = await supabase.rpc("excluir_minha_conta", { p_motivo: motivo });
+  // o banco ainda sem a migração: a de antes, sem o motivo
+  if (error?.code === "PGRST202") ({ error } = await supabase.rpc("excluir_minha_conta"));
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível excluir agora. Tente de novo.") };
 
   await supabase.auth.signOut().catch(() => undefined);

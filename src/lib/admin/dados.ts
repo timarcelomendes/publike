@@ -5,6 +5,7 @@ import { pdfNaoSalvoDe } from "@/lib/servidor/curriculo-pendente";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { lerRespostas } from "@/lib/mensagem-equipe";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
+import { lerContaApagada, type ContaApagada } from "@/lib/conta-apagada";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -1047,4 +1048,24 @@ export async function empresasComGenteEsperando(
   const avisoDe = new Map((avisos ?? []).map((a) => [a.conta_id, a.avisada_em]));
   for (const e of empresas) e.avisadaEm = avisoDe.get(e.id) ?? null;
   return empresas.sort((a, b) => Number(b.semEmail) - Number(a.semEmail) || a.maisAntiga.localeCompare(b.maisAntiga));
+}
+
+/** O rastro de uma conta apagada (migração 20270113120000). null: sem rastro ou o banco sem a migração. */
+export async function contaApagada(c: ClienteBanco, id: string): Promise<ContaApagada | null> {
+  const { data, error } = await c.rpc("admin_conta_apagada", { p_id: id });
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler a conta apagada: ${error.message}`);
+    return null;
+  }
+  return lerContaApagada(data);
+}
+
+/** As contas apagadas dos últimos dias. null: o banco sem a migração 20270113120000. */
+export async function contasApagadas(c: ClienteBanco, dias = 90): Promise<ContaApagada[] | null> {
+  const { data, error } = await c.rpc("admin_contas_apagadas", { p_dias: dias });
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler as contas apagadas: ${error.message}`);
+    return null;
+  }
+  return ((data ?? []) as unknown[]).map(lerContaApagada).filter((x): x is ContaApagada => x !== null);
 }

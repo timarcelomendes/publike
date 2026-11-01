@@ -24,6 +24,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { excluirConta, salvarPerfil } from "@/lib/acoes/perfil";
+import { MOTIVOS_SAIDA } from "@/lib/conta-apagada";
 import { protegerAcao } from "@/lib/acao-segura";
 import { BAIRROS } from "@/lib/bairros";
 import { bairroDaReceita, formatarCnpj, limparCnpj, nomeDaReceita, type DadosCnpj } from "@/lib/cnpj";
@@ -797,6 +798,24 @@ export function ExcluirConta() {
         <p className="text-body-sm">
           Isso apaga de vez seu perfil, seus anúncios, suas curtidas e seus matches. Não dá para desfazer.
         </p>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-label">
+            Por que você está saindo? <span className="font-normal text-ink-muted">(opcional)</span>
+          </legend>
+          {MOTIVOS_SAIDA.map((m) => (
+            <label key={m.valor} className="flex min-h-9 cursor-pointer items-center gap-3 text-body-sm">
+              <input type="radio" name="motivo" value={m.valor} className="size-5 accent-[var(--pk-ink)]" />
+              {m.nome}
+            </label>
+          ))}
+          <label htmlFor="motivo-texto" className="mt-1 text-body-sm text-ink-muted">
+            Quer contar mais? (opcional)
+          </label>
+          <textarea id="motivo-texto" name="motivo_texto" rows={2} maxLength={300} className={classesEntrada} />
+          <p className="text-caption text-ink-muted">
+            A resposta fica sem o seu nome e sem o seu contato, só para melhorar o Publike.
+          </p>
+        </fieldset>
         <label className="flex items-start gap-3 text-body-sm">
           <input type="checkbox" name="confirmar" className="mt-0.5 size-5 accent-[var(--pk-danger)]" />
           Entendi e quero excluir minha conta.

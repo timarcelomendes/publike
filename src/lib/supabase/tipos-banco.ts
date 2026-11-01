@@ -430,6 +430,9 @@ export type Database = {
           contato_direto: boolean;
           /** a vaga precisa de alguém para começar logo (migração 20261212) */
           comeca_ja: boolean;
+          /** migração 20270112120000: a latitude e a longitude de `local`, geradas ao gravar */
+          geo_lat: number | null;
+          geo_lng: number | null;
           preenchida_em: string | null;
           prazo_dias: number | null;
           /** vaga de agência: a empresa que contrata (null se confidencial) */
@@ -1202,6 +1205,9 @@ export type Database = {
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       /** migração 20270108120000: etapas próprias e horários livres */
+      /** migração 20270113120000: o rastro das contas apagadas */
+      admin_conta_apagada: { Args: { p_id: string }; Returns: Json };
+      admin_contas_apagadas: { Args: { p_dias?: number }; Returns: Json[] };
       /** migração 20270111120000: mais automações */
       salvar_regras_automacao: { Args: { p_anuncio: string; p_regras: Json }; Returns: undefined };
       copiar_automacoes: { Args: { p_anuncio: string }; Returns: number };
@@ -2501,10 +2507,10 @@ export type Database = {
         Args: { p_cnpj: string };
         Returns: boolean;
       };
-      excluir_minha_conta: {
-        Args: Record<PropertyKey, never>;
-        Returns: undefined;
-      };
+      excluir_minha_conta:
+        | { Args: Record<PropertyKey, never>; Returns: undefined }
+        /** migração 20270113120000: com o motivo (opcional) */
+        | { Args: { p_motivo: string | null }; Returns: undefined };
       fila_moderacao: {
         Args: Record<PropertyKey, never>;
         Returns: {

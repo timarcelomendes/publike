@@ -78,10 +78,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
         atual={filtro}
         link={(v) => linkCom("/admin/usuarios", atuais, { filtro: v === "todos" ? null : v, pagina: null })}
       />
-      <p className="text-body-sm text-ink-muted" aria-live="polite">
-        {total === 1 ? "1 conta" : `${formatarNumero(total)} contas`}
-        {q && ` para “${q}”`}
-      </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-body-sm text-ink-muted" aria-live="polite">
+          {total === 1 ? "1 conta" : `${formatarNumero(total)} contas`}
+          {q && ` para “${q}”`}
+        </p>
+        {/* as que não existem mais: quem apagou, quando e por quê (migração 20270113120000) */}
+        <Link href="/admin/usuarios/apagadas" className="text-label text-ink-muted underline underline-offset-2">
+          Contas apagadas
+        </Link>
+      </div>
 
       {itens.length === 0 ? (
         <Vazio icone={UsersRound} titulo="Nenhuma conta encontrada">
