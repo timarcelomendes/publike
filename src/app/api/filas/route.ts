@@ -36,38 +36,40 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
-  // a automação da vaga: o lembrete dos candidatos parados há N dias (das 8h às 20h), junto com as outras
-  const lembrandoParados = lembrarParados();
-  const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes, triagem, retornos, vespera, video] =
-    await Promise.all([
-      revisarAnunciosPendentes(20),
-      revisarAvaliacoesPendentes(20),
-      revisarRecadosPendentes(20),
-      // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
-      liberarContatosParados(),
-      // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
-      lembrarRespostas(),
-      // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos
-      mandarCombinamDaSemana(),
-      // a partir das 18h: as notícias do dia num aviso só (sino e celular), uma vez por dia
-      avisarNoticiasDoDia(),
-      // os resultados dos testes de vagas fora do ar há 12 meses
-      limparTestesAntigos(),
-      // a Triagem com IA lê sozinha: os critérios das vagas novas e as candidaturas que chegaram
-      triagemAutomatica(),
-      // quem foi dispensado há 15 minutos recebe o retorno (das 8h às 20h)
-      enviarRetornos(),
-      // das 18h às 22h: o lembrete da entrevista de amanhã, para o candidato e para quem marcou
-      lembrarEntrevistas(),
-      // a entrevista em vídeo: vence quem não respondeu em 5 dias e lembra quando faltam 2
-      prazosDaEntrevistaVideo(),
-    ]);
-  const automacoes = await lembrandoParados;
+  // Uma tarefa de cada vez (01/11/2026): todas juntas abriam mais de 10 consultas ao mesmo tempo, e o banco pequeno
+  // (Nano, 0,5 GB de memória) ficou sem memória e caiu. Passou de 40 s, o resto fica para a próxima rodada (sem
+  // contar como problema).
+  const inicio = Date.now();
+  const comTempo = async <T>(f: () => Promise<T>): Promise<Partial<T>> => (Date.now() - inicio > 40_000 ? {} : f());
+  const ia = await comTempo(() => revisarAnunciosPendentes(20));
+  // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
+  const parados = await comTempo(() => liberarContatosParados());
+  // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
+  const lembretes = await comTempo(() => lembrarRespostas());
+  // quem foi dispensado há 15 minutos recebe o retorno (das 8h às 20h)
+  const retornos = await comTempo(() => enviarRetornos());
+  // das 18h às 22h: o lembrete da entrevista de amanhã, para o candidato e para quem marcou
+  const vespera = await comTempo(() => lembrarEntrevistas());
+  // a entrevista em vídeo: vence quem não respondeu em 5 dias e lembra quando faltam 2
+  const video = await comTempo(() => prazosDaEntrevistaVideo());
+  // a automação da vaga: o lembrete dos candidatos parados há N dias (das 8h às 20h)
+  const automacoes = await comTempo(() => lembrarParados());
+  // a Triagem com IA lê sozinha: os critérios das vagas novas e as candidaturas que chegaram
+  const triagem = await comTempo(() => triagemAutomatica());
   // as Automações personalizadas: os de tempo, as mensagens que esperavam e a fila (depois da Triagem, que pode
   // ter lido currículos)
-  const regras = await regrasComOTempo();
-  // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
-  const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
+  const regras = await comTempo(() => regrasComOTempo());
+  const avaliacoes = await comTempo(() => revisarAvaliacoesPendentes(20));
+  const recados = await comTempo(() => revisarRecadosPendentes(20));
+  // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos
+  const combinam = await comTempo(() => mandarCombinamDaSemana());
+  // a partir das 18h: as notícias do dia num aviso só (sino e celular), uma vez por dia
+  const noticias = await comTempo(() => avisarNoticiasDoDia());
+  // os resultados dos testes de vagas fora do ar há 12 meses
+  const testes = await comTempo(() => limparTestesAntigos());
+  // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
+  const emails = await enviarEmailsPendentes(20);
+  const celular = await enviarPushPendentes(50);
 
   const problemas = [
     emails.motivo,
