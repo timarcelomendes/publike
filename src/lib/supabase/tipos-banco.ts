@@ -1201,6 +1201,17 @@ export type Database = {
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      /** migração 20270108120000: etapas próprias e horários livres */
+      etapas_proprias: { Args: Record<string, never>; Returns: Json };
+      salvar_etapas_proprias: { Args: { p_etapas: Json }; Returns: undefined };
+      marcar_subetapa: { Args: { p_anuncio: string; p_perfis: string[]; p_subetapa: string | null }; Returns: number };
+      onde_esta_desde: {
+        Args: { p_anuncio: string };
+        Returns: { perfil_id: string; subetapa: string | null; desde: string }[];
+      };
+      meus_horarios_livres: { Args: Record<string, never>; Returns: Json };
+      salvar_horarios_livres: { Args: { p_faixas: Json }; Returns: undefined };
+      horarios_ocupados: { Args: { p_dias?: number }; Returns: { inicio: string; fim: string }[] };
       /** migração 20270107120000: a avaliação em time */
       ficha_avaliacao: { Args: { p_anuncio: string }; Returns: Json };
       salvar_ficha_avaliacao: { Args: { p_anuncio: string; p_competencias: string[] }; Returns: undefined };

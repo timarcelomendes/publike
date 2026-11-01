@@ -1,4 +1,4 @@
-import { ChevronRight, Send, Sparkles, Users } from "lucide-react";
+import { ChevronRight, Columns3, Send, Sparkles, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,7 +8,7 @@ import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { QuadroCandidatos } from "@/components/painel/quadro-candidatos";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Vazio } from "@/components/ui/basicos";
+import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { esperaResposta } from "@/lib/constantes";
@@ -21,6 +21,7 @@ import { montarQuadro } from "@/lib/servidor/quadro";
 import { sugestoesDeCompetencias } from "@/lib/avaliacao-time";
 import { avaliacoesTimeDaVaga, fichaDaVaga } from "@/lib/servidor/avaliacao-time";
 import { dailyConfigurado } from "@/lib/servidor/daily";
+import { etapasProprias, ondeEstaDesde } from "@/lib/servidor/etapas-proprias";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { retornoDaConta } from "@/lib/servidor/retorno";
 import { saudeDasVagas } from "@/lib/servidor/saude";
@@ -56,6 +57,8 @@ async function Conteudo({
   const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
+  // as etapas próprias e o tempo na etapa (migração 20270108120000; sem ela, null)
+  const proprias = Promise.all([etapasProprias(), ondeEstaDesde(id)]);
   const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno, videos, ficha, avaliacoes] =
     await Promise.all([
       montarQuadro(anuncio, agora),
@@ -69,6 +72,7 @@ async function Conteudo({
       fichaDaVaga(id),
       avaliacoesTimeDaVaga(id),
     ]);
+  const [etapas, desde] = await proprias;
   // o Teste Prático de cada candidato: o resultado numa palavra no cartão e o "Ordenar pelo teste"
   const testesDe = new Map<string, { titulo: string; faixa: FaixaDoTeste; nota: number }[]>();
   for (const r of resultados) {
@@ -87,6 +91,8 @@ async function Conteudo({
     triagem: triagem?.get(c.perfil_id) ?? null,
     video: videos?.get(c.perfil_id) ?? null,
     avaliacao: avaliacoes?.get(c.perfil_id) ?? null,
+    subetapa: desde?.get(c.perfil_id)?.subetapa ?? null,
+    desde: desde?.get(c.perfil_id)?.desde ?? null,
   }));
   if (peloChamar) cartoes.sort(compararParaChamar);
   const ordenados = cartoes.map((c, i) =>
@@ -195,6 +201,16 @@ async function Conteudo({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <VistaDosCandidatos id={id} atual="quadro" />
+        {etapas && (
+          <Link
+            href="/painel/etapas"
+            className="inline-flex min-h-10 items-center gap-1.5 text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+          >
+            <Columns3 aria-hidden className="size-4" />
+            {etapas.length ? "Etapas do quadro" : "Criar etapas suas"}
+            <Selo variante="novo">Novo</Selo>
+          </Link>
+        )}
         {cartoes.length > 1 && (
           <div className="ml-auto">
             <OrdemQuemChamar
@@ -241,6 +257,7 @@ async function Conteudo({
               : null
           }
           time={ficha ? { ficha, sugestoes: sugestoesDeCompetencias(anuncio.titulo) } : null}
+          etapas={etapas}
         />
       )}
     </div>

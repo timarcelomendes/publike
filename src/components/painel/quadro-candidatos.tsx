@@ -58,6 +58,8 @@ import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
 import { VideoNaFicha } from "../video/video-na-ficha";
 import { AvaliacaoDoTime } from "../avaliacao/avaliacao-time";
 import { textoDaMedia, type AvaliacaoNoQuadro, type Competencia } from "@/lib/avaliacao-time";
+import { moverNoQuadro } from "@/lib/acoes/etapas-proprias";
+import { chaveDaSubetapa, DIAS_PARADO, textoDesde, type EtapaPropria } from "@/lib/etapas-proprias";
 import { SITUACOES_VIDEO, type VideoNoQuadro } from "@/lib/entrevista-video";
 import { pedirVideo } from "@/lib/acoes/entrevista-video";
 import { montarRetorno, type RetornoDaConta } from "@/lib/retorno";
@@ -112,7 +114,35 @@ export type CartaoQuadro = {
   video?: VideoNoQuadro | null;
   /** a avaliação do time (migração 20270107120000) */
   avaliacao?: AvaliacaoNoQuadro | null;
+  /** a etapa própria em que está (migração 20270108120000) */
+  subetapa?: string | null;
+  /** desde quando está na coluna (migração 20270108120000) */
+  desde?: string | null;
 };
+
+/** Uma coluna do quadro: uma etapa de hoje ou uma própria da conta (que fica dentro da etapa de hoje dela). */
+type ColunaDoQuadro = { chave: string; etapa: EtapaCandidato; sub: string | null; nome: string; ajuda: string };
+
+function montarColunas(proprias: EtapaPropria[] | null): ColunaDoQuadro[] {
+  return COLUNAS_QUADRO.flatMap((col) => [
+    { chave: col.etapa, etapa: col.etapa, sub: null, nome: col.nome, ajuda: col.ajuda },
+    ...(proprias ?? [])
+      .filter((p) => p.base === col.etapa)
+      .map((p) => ({
+        chave: chaveDaSubetapa(p.id),
+        etapa: col.etapa,
+        sub: p.id,
+        nome: p.nome,
+        ajuda: `Dentro de ${col.nome}`,
+      })),
+  ]);
+}
+
+/** A coluna do cartão: a própria, se ela ainda é da etapa em que a pessoa está. */
+function chaveDoCartao(c: CartaoQuadro, colunas: ColunaDoQuadro[]) {
+  const sub = c.subetapa ? colunas.find((col) => col.sub === c.subetapa) : null;
+  return sub && sub.etapa === c.coluna ? sub.chave : c.coluna;
+}
 
 const COR_FAIXA: Record<FaixaDoTeste, string> = {
   acima: "text-cerrado-text",
@@ -134,6 +164,7 @@ export function QuadroCandidatos({
   retorno = null,
   video = null,
   time = null,
+  etapas = null,
 }: {
   anuncioId: string;
   vaga: string;
@@ -154,9 +185,14 @@ export function QuadroCandidatos({
   video?: { liberado: boolean; aoVivo?: boolean } | null;
   /** a avaliação do time: a ficha da vaga e as sugestões (null: sem a migração 20270107120000) */
   time?: { ficha: Competencia[]; sugestoes: string[] } | null;
+  /** as etapas próprias da conta (null: sem a migração 20270108120000) */
+  etapas?: EtapaPropria[] | null;
 }) {
-  const [lista, mover] = useOptimistic(cartoes, (atual, m: { ids: string[]; coluna: EtapaCandidato }) =>
-    atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna } : c)),
+  const colunas = montarColunas(etapas);
+  const [lista, mover] = useOptimistic(
+    cartoes,
+    (atual, m: { ids: string[]; coluna: EtapaCandidato; sub: string | null; desde: string }) =>
+      atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna, subetapa: m.sub, desde: m.desde } : c)),
   );
   const [pendente, iniciar] = useTransition();
   const [selecionados, setSelecionados] = useState<string[]>([]);
@@ -166,7 +202,7 @@ export function QuadroCandidatos({
   const [mensagemEmMassa, setMensagemEmMassa] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const [esconderEliminados, setEsconderEliminados] = useState(false);
-  const [sobre, setSobre] = useState<EtapaCandidato | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
   const [gavetaRetorno, setGavetaRetorno] = useState(false);
   const [dispensarEliminados, setDispensarEliminados] = useState(false);
 
@@ -176,14 +212,22 @@ export function QuadroCandidatos({
   const paraDispensar = lista.filter((c) => c.aderencia.eliminado && c.coluna !== "nao_seguiu");
   const atual = lista.find((c) => c.perfil_id === aberto) ?? null;
 
-  function moverPara(ids: string[], coluna: EtapaCandidato) {
-    const mudam = ids.filter((id) => lista.find((c) => c.perfil_id === id)?.coluna !== coluna);
+  function moverPara(ids: string[], chave: string) {
+    const destino = colunas.find((col) => col.chave === chave);
+    if (!destino) return;
+    const coluna = destino.etapa;
+    const mudam = ids.filter((id) => {
+      const c = lista.find((x) => x.perfil_id === id);
+      return c && chaveDoCartao(c, colunas) !== chave;
+    });
     if (!mudam.length) return;
     setAviso(null);
     iniciar(async () => {
-      mover({ ids: mudam, coluna });
+      mover({ ids: mudam, coluna, sub: destino.sub, desde: new Date(agora).toISOString() });
       // sem chegar ao servidor, os cartões voltam para a coluna de antes e o aviso aparece
-      const r = await chamarAcao(() => moverCandidatos(anuncioId, mudam, coluna));
+      const r = await chamarAcao(() =>
+        etapas?.length ? moverNoQuadro(anuncioId, mudam, chave, coluna) : moverCandidatos(anuncioId, mudam, coluna),
+      );
       if (!r.ok) setAviso({ ok: false, texto: r.erro });
       else {
         const falhas = r.falhas.map((f) => `${f.perfil}: ${f.erro}`).join(" ");
@@ -211,7 +255,7 @@ export function QuadroCandidatos({
     });
   }
 
-  function soltar(e: DragEvent, coluna: EtapaCandidato) {
+  function soltar(e: DragEvent, coluna: string) {
     e.preventDefault();
     setSobre(null);
     const id = e.dataTransfer.getData("text/plain");
@@ -274,20 +318,20 @@ export function QuadroCandidatos({
         aria-busy={pendente}
         className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0"
       >
-        {COLUNAS_QUADRO.map((col) => {
-          const daColuna = visiveis.filter((c) => c.coluna === col.etapa);
+        {colunas.map((col) => {
+          const daColuna = visiveis.filter((c) => chaveDoCartao(c, colunas) === col.chave);
           return (
             <section
-              key={col.etapa}
+              key={col.chave}
               aria-label={`${col.nome}: ${daColuna.length}`}
               onDragOver={(e) => {
                 e.preventDefault();
-                setSobre(col.etapa);
+                setSobre(col.chave);
               }}
-              onDragLeave={() => setSobre((s) => (s === col.etapa ? null : s))}
-              onDrop={(e) => soltar(e, col.etapa)}
+              onDragLeave={() => setSobre((s) => (s === col.chave ? null : s))}
+              onDrop={(e) => soltar(e, col.chave)}
               className={`flex w-[82vw] max-w-80 shrink-0 snap-start flex-col gap-2 rounded-lg border p-2.5 transition-colors sm:w-64 xl:w-auto xl:min-w-[12rem] xl:flex-1 ${
-                sobre === col.etapa ? "border-ink bg-surface-300" : "border-line bg-surface-100"
+                sobre === col.chave ? "border-ink bg-surface-300" : "border-line bg-surface-100"
               }`}
             >
               <header className="flex items-baseline justify-between gap-2 px-1 pt-1">
@@ -305,6 +349,7 @@ export function QuadroCandidatos({
                       alternar={() => alternar(c.perfil_id)}
                       abrir={() => setAberto(c.perfil_id)}
                       moverPara={(coluna) => moverPara([c.perfil_id], coluna)}
+                      colunas={colunas}
                       agencia={agencia}
                     />
                   </li>
@@ -328,13 +373,13 @@ export function QuadroCandidatos({
           <Seletor
             aria-label="Mover os selecionados para"
             value=""
-            onChange={(e) => e.target.value && moverPara(selecionados, e.target.value as EtapaCandidato)}
+            onChange={(e) => e.target.value && moverPara(selecionados, e.target.value)}
             className={`${classesEntrada} min-h-10 py-1 text-body-sm`}
             envoltorio="w-48"
           >
             <option value="">Mover para…</option>
-            {COLUNAS_QUADRO.map((col) => (
-              <option key={col.etapa} value={col.etapa}>
+            {colunas.map((col) => (
+              <option key={col.chave} value={col.chave}>
                 {col.nome}
               </option>
             ))}
@@ -449,6 +494,7 @@ export function QuadroCandidatos({
             modelos={modelos}
             agora={agora}
             moverPara={(coluna) => moverPara([atual.perfil_id], coluna)}
+            colunas={colunas}
             agencia={agencia}
             enviarAoCliente={() => enviarAoCliente([atual.perfil_id])}
             pendente={pendente}
@@ -470,6 +516,7 @@ function Cartao({
   alternar,
   abrir,
   moverPara,
+  colunas,
   agencia,
 }: {
   c: CartaoQuadro;
@@ -477,11 +524,17 @@ function Cartao({
   marcado: boolean;
   alternar: () => void;
   abrir: () => void;
-  moverPara: (coluna: EtapaCandidato) => void;
+  moverPara: (chave: string) => void;
+  colunas: ColunaDoQuadro[];
   agencia: boolean;
 }) {
   const e = c.entrevista;
   const entrevistaAberta = e && ENTREVISTA_ABERTA.includes(e.situacao);
+  const chave = chaveDoCartao(c, colunas);
+  const dias = c.desde ? Math.floor((agora - new Date(c.desde).getTime()) / 86_400_000) : 0;
+  // parado demais onde ainda há o que decidir
+  const parado =
+    c.desde && dias >= DIAS_PARADO && (c.coluna === "novo" || c.coluna === "analise" || c.coluna === "entrevista");
   return (
     <article
       draggable
@@ -542,6 +595,14 @@ function Cartao({
                 : `Triagem: atende ${c.triagem.atende} de ${c.triagem.total}`}
             </p>
           )}
+          {c.desde && (
+            <p
+              className={`mt-0.5 text-caption ${parado ? "font-semibold text-danger" : "text-ink-muted"}`}
+              title="Tempo nesta coluna"
+            >
+              {parado ? `Parado há ${dias} dias` : `Nesta etapa ${textoDesde(c.desde, agora)}`}
+            </p>
+          )}
           {(c.testes ?? []).map((t, _, todos) => (
             <p
               key={t.titulo}
@@ -590,15 +651,17 @@ function Cartao({
       <Seletor
         aria-label={`Mover ${c.nome} para`}
         value=""
-        onChange={(ev) => ev.target.value && moverPara(ev.target.value as EtapaCandidato)}
+        onChange={(ev) => ev.target.value && moverPara(ev.target.value)}
         className={`${classesEntrada} min-h-9 py-1 text-body-sm`}
       >
         <option value="">Mover para…</option>
-        {COLUNAS_QUADRO.filter((col) => col.etapa !== c.coluna).map((col) => (
-          <option key={col.etapa} value={col.etapa}>
-            {col.nome}
-          </option>
-        ))}
+        {colunas
+          .filter((col) => col.chave !== chave)
+          .map((col) => (
+            <option key={col.chave} value={col.chave}>
+              {col.nome}
+            </option>
+          ))}
       </Seletor>
     </article>
   );
@@ -613,6 +676,7 @@ function DetalheCandidato({
   modelos,
   agora,
   moverPara,
+  colunas,
   agencia,
   enviarAoCliente,
   pendente,
@@ -634,7 +698,8 @@ function DetalheCandidato({
   endereco: string;
   modelos: ModeloMensagem[];
   agora: number;
-  moverPara: (coluna: EtapaCandidato) => void;
+  moverPara: (chave: string) => void;
+  colunas: ColunaDoQuadro[];
   agencia: boolean;
   enviarAoCliente: () => void;
   pendente: boolean;
@@ -654,7 +719,9 @@ function DetalheCandidato({
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-2">
             <NotaAderencia a={c.aderencia} />
-            <Selo variante="contorno">{ETAPAS_CANDIDATO[c.coluna].nome}</Selo>
+            <Selo variante="contorno">
+              {colunas.find((col) => col.chave === chaveDoCartao(c, colunas))?.nome ?? ETAPAS_CANDIDATO[c.coluna].nome}
+            </Selo>
             {c.status === "pendente" &&
               (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
             {match && <Selo variante="match">Deu match</Selo>}
@@ -711,11 +778,13 @@ function DetalheCandidato({
 
       <Secao titulo="Mover para">
         <div className="flex flex-wrap gap-2">
-          {COLUNAS_QUADRO.filter((col) => col.etapa !== c.coluna).map((col) => (
-            <Botao key={col.etapa} tamanho="sm" onClick={() => moverPara(col.etapa)}>
-              {col.nome}
-            </Botao>
-          ))}
+          {colunas
+            .filter((col) => col.chave !== chaveDoCartao(c, colunas))
+            .map((col) => (
+              <Botao key={col.chave} tamanho="sm" onClick={() => moverPara(col.chave)}>
+                {col.nome}
+              </Botao>
+            ))}
         </div>
       </Secao>
 

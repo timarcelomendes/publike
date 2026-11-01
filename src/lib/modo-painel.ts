@@ -104,6 +104,7 @@ export type Secao = {
     | "testes"
     | "copiloto"
     | "video"
+    | "etapas"
     | "assinatura";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
@@ -279,6 +280,8 @@ export function gruposDoModo(
         },
         // a equipe: agência e, desde a avaliação em time (migração 20270107120000), empresa e comércio
         EQUIPE,
+        // as etapas próprias do quadro e os horários livres (migração 20270108120000)
+        { href: "/painel/etapas", nome: "Etapas e horários", icone: "etapas" },
         // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
         { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura" },
       ],
@@ -314,6 +317,7 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/testes") ||
     caminho.startsWith("/painel/copiloto") ||
     caminho.startsWith("/painel/video") ||
+    caminho.startsWith("/painel/etapas") ||
     caminho.startsWith("/painel/assinatura") ||
     caminho.startsWith("/painel/assinar") ||
     caminho.startsWith("/painel/faturas")

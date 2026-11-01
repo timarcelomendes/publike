@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarPlus, Plus, Send, Trash, Video, X } from "lucide-react";
+import { CalendarCheck, CalendarPlus, Plus, Send, Trash, Video, X } from "lucide-react";
 import Link from "next/link";
 import { useId, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
+import { proximosHorariosLivres } from "@/lib/acoes/etapas-proprias";
 import {
   apagarModeloMensagem,
   mandarMensagemEmMassa,
@@ -100,6 +101,22 @@ export function FormEntrevista({
   const [horarios, setHorarios] = useState<string[]>(() => horariosIniciais(atual));
   const { rodar, pendente, mensagem } = useAcao();
   const info = FORMATOS_ENTREVISTA[formato];
+  // "Usar meus horários livres": os próximos horários vagos das faixas da conta (migração 20270108120000)
+  const [livres, setLivres] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [buscando, iniciarBusca] = useTransition();
+
+  function usarHorariosLivres() {
+    setLivres(null);
+    iniciarBusca(async () => {
+      const r = await chamarAcao(() => proximosHorariosLivres(Number(duracao)));
+      if (!r.ok) return setLivres({ ok: false, texto: r.erro });
+      if (!r.temFaixas) return setLivres({ ok: false, texto: "Você ainda não cadastrou os seus horários livres." });
+      if (r.horarios.length < 2)
+        return setLivres({ ok: false, texto: "Não sobrou horário livre nas próximas 3 semanas." });
+      setHorarios(r.horarios.slice(0, MAX_HORARIOS));
+      setLivres({ ok: true, texto: `${r.horarios.length} horários vagos preenchidos. Confira antes de enviar.` });
+    });
+  }
 
   function trocarFormato(f: FormatoEntrevista) {
     setFormato(f);
@@ -172,6 +189,24 @@ export function FormEntrevista({
               <Plus aria-hidden />
               Mais um horário
             </Botao>
+          )}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Botao type="button" tamanho="sm" variante="secundario" disabled={buscando} onClick={usarHorariosLivres}>
+              <CalendarCheck aria-hidden />
+              {buscando ? "Buscando…" : "Usar meus horários livres"}
+              <Selo variante="novo">Novo</Selo>
+            </Botao>
+            <Link href="/painel/etapas#horarios" className="text-body-sm text-ink-muted underline underline-offset-2">
+              Meus horários livres
+            </Link>
+          </div>
+          {livres && (
+            <p
+              role={livres.ok ? "status" : "alert"}
+              className={`text-body-sm ${livres.ok ? "text-cerrado-text" : "text-danger"}`}
+            >
+              {livres.texto}
+            </p>
           )}
         </fieldset>
       )}
