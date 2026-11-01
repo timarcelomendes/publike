@@ -7,7 +7,6 @@ import { abrirConversaDaJanela, conversasDaJanela } from "@/lib/acoes/mensagens"
 import type { PedidoConversa } from "@/lib/abrir-conversa";
 import { caminhoConversa, origemDaConversa, vagaDoCurriculo, type ConversaPessoa } from "@/lib/conversas";
 import type { MensagemConversa } from "@/lib/dados";
-import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
 import { Avatar } from "../ui/basicos";
 import { Conversa } from "./conversa";
 
@@ -25,8 +24,10 @@ function quando(iso: string | null) {
 }
 
 /**
- * As conversas da conta, para o número de não lidas no botão do chat e para a lista.
- * Atualiza quando chega mensagem (Realtime) e, se ele cair, a cada minuto.
+ * As conversas da conta, para o número de não lidas no botão do chat e para a lista. Atualiza quando o sino recebe
+ * o aviso de mensagem nova (o evento `publike:aviso` de notificacoes.tsx) e, com a página à vista, a cada minuto.
+ * Sem canal ao vivo próprio (01/11/2026): ouvir todas as mensagens sem filtro fazia o banco conferir a permissão de
+ * cada pessoa conectada a cada mensagem, e ajudou a esgotar a memória do banco.
  */
 export function useConversasDoChat(usuarioId: string | null) {
   const [conversas, setConversas] = useState<ConversaPessoa[] | null>(null);
@@ -45,24 +46,20 @@ export function useConversasDoChat(usuarioId: string | null) {
   useEffect(() => {
     if (!usuarioId) return;
     void carregar();
-    const supabase = criarClienteNavegador();
     let espera: ReturnType<typeof setTimeout> | null = null;
-    // o canal entra já com o login (sem ele, o Realtime não manda as mensagens de quem entrou)
-    const fechar = ouvirAoVivo(supabase, (s) =>
-      s
-        .channel(`chat-conversas-${usuarioId}`)
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens" }, () => {
-          if (espera) clearTimeout(espera);
-          espera = setTimeout(() => void carregar(), 800);
-        }),
-    );
+    const aviso = (e: Event) => {
+      if ((e as CustomEvent<{ tipo?: string }>).detail?.tipo !== "mensagem") return;
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(() => void carregar(), 800);
+    };
+    window.addEventListener("publike:aviso", aviso);
     const relogio = setInterval(() => {
       if (document.visibilityState === "visible") void carregar();
     }, 60_000);
     return () => {
       clearInterval(relogio);
       if (espera) clearTimeout(espera);
-      fechar();
+      window.removeEventListener("publike:aviso", aviso);
     };
   }, [carregar, usuarioId]);
 

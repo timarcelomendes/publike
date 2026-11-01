@@ -154,7 +154,12 @@ export function Notificacoes({
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "notificacoes", filter: `destinatario_id=eq.${usuarioId}` },
-          (mudanca) => setItens((atual) => [mudanca.new as Notificacao, ...atual].slice(0, 20)),
+          (mudanca) => {
+            const nova = mudanca.new as Notificacao;
+            setItens((atual) => [nova, ...atual].slice(0, 20));
+            // a janela de conversas atualiza com o aviso de mensagem (ela não tem canal ao vivo próprio)
+            window.dispatchEvent(new CustomEvent("publike:aviso", { detail: { tipo: nova.tipo } }));
+          },
         ),
     );
     return () => {
