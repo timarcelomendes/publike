@@ -7,7 +7,7 @@ import { abrirConversaDaJanela, conversasDaJanela } from "@/lib/acoes/mensagens"
 import type { PedidoConversa } from "@/lib/abrir-conversa";
 import { caminhoConversa, origemDaConversa, vagaDoCurriculo, type ConversaPessoa } from "@/lib/conversas";
 import type { MensagemConversa } from "@/lib/dados";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
 import { Avatar } from "../ui/basicos";
 import { Conversa } from "./conversa";
 
@@ -47,20 +47,22 @@ export function useConversasDoChat(usuarioId: string | null) {
     void carregar();
     const supabase = criarClienteNavegador();
     let espera: ReturnType<typeof setTimeout> | null = null;
-    const canal = supabase
-      .channel(`chat-conversas-${usuarioId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens" }, () => {
-        if (espera) clearTimeout(espera);
-        espera = setTimeout(() => void carregar(), 800);
-      })
-      .subscribe();
+    // o canal entra já com o login (sem ele, o Realtime não manda as mensagens de quem entrou)
+    const fechar = ouvirAoVivo(supabase, (s) =>
+      s
+        .channel(`chat-conversas-${usuarioId}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens" }, () => {
+          if (espera) clearTimeout(espera);
+          espera = setTimeout(() => void carregar(), 800);
+        }),
+    );
     const relogio = setInterval(() => {
       if (document.visibilityState === "visible") void carregar();
     }, 60_000);
     return () => {
       clearInterval(relogio);
       if (espera) clearTimeout(espera);
-      supabase.removeChannel(canal);
+      fechar();
     };
   }, [carregar, usuarioId]);
 

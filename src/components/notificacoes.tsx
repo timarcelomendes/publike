@@ -43,7 +43,7 @@ import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "
 import { destinoDoAviso } from "@/lib/destino-aviso";
 import { AtivarNotificacoes } from "./notificacoes-celular";
 import { tempoRelativo } from "@/lib/formato";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
 import { mudarVisibilidadeCurriculo } from "@/lib/acoes/talentos";
 import { useAcao } from "./ui/usar-acao";
 
@@ -147,17 +147,19 @@ export function Notificacoes({
       .then(({ data }) => {
         if (ativo && data) setItens(data);
       });
-    const canal = supabase
-      .channel(`notificacoes-${usuarioId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notificacoes", filter: `destinatario_id=eq.${usuarioId}` },
-        (mudanca) => setItens((atual) => [mudanca.new as Notificacao, ...atual].slice(0, 20)),
-      )
-      .subscribe();
+    // o canal entra já com o login (sem ele, o Realtime recusa o filtro e o aviso só aparece ao recarregar)
+    const fechar = ouvirAoVivo(supabase, (s) =>
+      s
+        .channel(`notificacoes-${usuarioId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "notificacoes", filter: `destinatario_id=eq.${usuarioId}` },
+          (mudanca) => setItens((atual) => [mudanca.new as Notificacao, ...atual].slice(0, 20)),
+        ),
+    );
     return () => {
       ativo = false;
-      supabase.removeChannel(canal);
+      fechar();
     };
   }, [usuarioId]);
 

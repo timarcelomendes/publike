@@ -20,7 +20,7 @@ import {
 } from "@/lib/acoes/mensagens";
 import { MAX_PDF_MB } from "@/lib/constantes";
 import type { MensagemConversa } from "@/lib/dados";
-import { criarClienteNavegador } from "@/lib/supabase/navegador";
+import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
 import { MensagemErro } from "../ui/campo";
 
 function hora(iso: string) {
@@ -80,34 +80,42 @@ export function Conversa({
     ler();
     const supabase = criarClienteNavegador();
     const filtro = `conversa_id=eq.${conversaId}`;
-    const canal = supabase
-      .channel(`conversa-${conversaId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens", filter: filtro }, (mudanca) => {
-        const nova = mudanca.new as MensagemConversa;
-        setMensagens((atual) => (atual.some((m) => m.id === nova.id) ? atual : [...atual, nova]));
-        if (nova.autor_id !== euId) ler();
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "mensagens", filter: filtro }, (mudanca) => {
-        const mudou = mudanca.new as MensagemConversa;
-        // "lida" aparece na hora em que a outra pessoa abre a conversa
-        // e o currículo anexado (entra logo depois da mensagem)
-        setMensagens((atual) =>
-          atual.map((m) =>
-            m.id === mudou.id
-              ? {
-                  ...m,
-                  lida_em: mudou.lida_em,
-                  anexo: mudou.anexo ?? m.anexo,
-                  anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
-                }
-              : m,
-          ),
-        );
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(canal);
-    };
+    // o canal entra já com o login (sem ele, o Realtime recusa o filtro)
+    const fechar = ouvirAoVivo(supabase, (s) =>
+      s
+        .channel(`conversa-${conversaId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "mensagens", filter: filtro },
+          (mudanca) => {
+            const nova = mudanca.new as MensagemConversa;
+            setMensagens((atual) => (atual.some((m) => m.id === nova.id) ? atual : [...atual, nova]));
+            if (nova.autor_id !== euId) ler();
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "mensagens", filter: filtro },
+          (mudanca) => {
+            const mudou = mudanca.new as MensagemConversa;
+            // "lida" aparece na hora em que a outra pessoa abre a conversa
+            // e o currículo anexado (entra logo depois da mensagem)
+            setMensagens((atual) =>
+              atual.map((m) =>
+                m.id === mudou.id
+                  ? {
+                      ...m,
+                      lida_em: mudou.lida_em,
+                      anexo: mudou.anexo ?? m.anexo,
+                      anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
+                    }
+                  : m,
+              ),
+            );
+          },
+        ),
+    );
+    return fechar;
   }, [conversaId, euId]);
 
   // desce até a última mensagem
