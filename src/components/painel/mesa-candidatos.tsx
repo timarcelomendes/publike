@@ -3,9 +3,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { FichaCandidato } from "@/components/painel/ficha-candidato";
-import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { ItemDaLista } from "@/components/painel/item-caixa";
 import { OrdemDaCaixa } from "@/components/painel/ordem-caixa";
+import { AbasLeves } from "@/components/painel/segmentos";
+import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
 import { RegistrarVisitaPerfil } from "@/components/visitas/registrar-visita";
 import { esperaResposta } from "@/lib/constantes";
 import { primeiro } from "@/lib/formato";
@@ -168,7 +169,7 @@ export async function MesaDeCandidatos({
         // no celular, com alguém aberto, os filtros saem e a ficha sobe
         <div className={`flex flex-wrap items-center gap-2 ${escolhido ? "max-lg:hidden" : ""}`}>
           {!vagaFixa && vagas.size > 1 && (
-            // poucas vagas: os botões à vista; muitas: a caixa de escolher
+            // poucas vagas: abas de texto; muitas: a lista que abre
             <FiltroDeVaga
               vagas={listaDeVagas}
               vaga={vaga}
@@ -352,7 +353,10 @@ function vagaHref(base: string, vaga: string | null, ordem: Ordem) {
   return texto ? `${base}?${texto}` : base;
 }
 
-/** Até 6 vagas, os botões à vista; mais que isso, a caixa de escolher (agência e quem tem muitas vagas). */
+/**
+ * Até 4 vagas, abas de texto (o mesmo jeito leve dos filtros de Vagas); mais que isso, uma lista que abre (agência e
+ * quem tem muitas vagas). A ordem escolhida vai junto.
+ */
 function FiltroDeVaga({
   vagas,
   vaga,
@@ -364,29 +368,25 @@ function FiltroDeVaga({
   total: number;
   href: (vaga: string | null) => string;
 }) {
-  if (vagas.length > 6) return <FiltroVaga compacto vagas={vagas} vaga={vaga} etapa={null} caminho="/painel/caixa" />;
-  const chip = (ativo: boolean) =>
-    `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
-      ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-    }`;
+  if (vagas.length > 4)
+    return (
+      <SeletorDeLinks
+        rotulo="Vaga"
+        atual={href(vaga)}
+        opcoes={[
+          { nome: `Todas as vagas (${total})`, href: href(null) },
+          ...vagas.map((v) => ({ nome: `${v.titulo} (${v.total})`, href: href(v.id) })),
+        ]}
+      />
+    );
   return (
-    <nav aria-label="Vaga" className="flex flex-wrap gap-2">
-      <Link href={href(null)} scroll={false} aria-current={!vaga ? "page" : undefined} className={chip(!vaga)}>
-        Todas as vagas <span className={!vaga ? "text-surface-100/80" : "text-ink-muted"}>{total}</span>
-      </Link>
-      {vagas.map((v) => (
-        <Link
-          key={v.id}
-          href={href(v.id)}
-          scroll={false}
-          aria-current={vaga === v.id ? "page" : undefined}
-          className={chip(vaga === v.id)}
-        >
-          <span className="max-w-[14rem] truncate">{v.titulo}</span>
-          <span className={vaga === v.id ? "text-surface-100/80" : "text-ink-muted"}>{v.total}</span>
-        </Link>
-      ))}
-    </nav>
+    <AbasLeves
+      rotulo="Vaga"
+      opcoes={[
+        { nome: "Todas as vagas", numero: total, href: href(null), ativo: !vaga },
+        ...vagas.map((v) => ({ nome: v.titulo, numero: v.total, href: href(v.id), ativo: vaga === v.id })),
+      ]}
+    />
   );
 }
 

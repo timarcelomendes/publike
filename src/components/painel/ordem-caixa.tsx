@@ -30,7 +30,7 @@ export function OrdemDaCaixa({
         iniciar(() => router.push(`${url.pathname}${url.search}`, { scroll: false }));
       }}
       envoltorio="min-w-0 shrink-0 self-start sm:self-auto"
-      className="field-sizing-content min-h-10 max-w-full rounded-pill border border-line-strong bg-surface-200 pl-4 text-label text-ink transition-colors hover:bg-surface-300 disabled:opacity-60"
+      className="field-sizing-content min-h-10 max-w-full rounded-pill border border-line bg-transparent pl-4 text-label text-ink transition-colors hover:bg-surface-300 disabled:opacity-60"
     >
       {ordens.map((o) => (
         <option key={o.valor} value={o.valor}>
