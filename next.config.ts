@@ -8,6 +8,8 @@ const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 // o Google Ads (só carrega depois do aceite dos cookies, google-ads.tsx): imagens e conexões das conversões
 const GOOGLE_ADS =
   "https://www.googletagmanager.com https://www.google.com https://www.google.com.br https://googleads.g.doubleclick.net https://www.googleadservices.com";
+// a entrevista ao vivo (Daily): a chamada abre num iframe da conta da Daily
+const DAILY = "https://*.daily.co";
 const POLITICA_DE_CONTEUDO = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net",
@@ -15,7 +17,9 @@ const POLITICA_DE_CONTEUDO = [
   `img-src 'self' data: blob: ${SUPABASE} https://tiles.openfreemap.org https://*.googleusercontent.com https://live.staticflickr.com https://*.staticflickr.com https://upload.wikimedia.org https://pixabay.com https://cdn.pixabay.com ${GOOGLE_ADS}`,
   "font-src 'self'",
   `connect-src 'self' ${SUPABASE} ${SUPABASE.replace(/^http/, "ws")} https://tiles.openfreemap.org https://accounts.google.com https://challenges.cloudflare.com ${GOOGLE_ADS}`,
-  "frame-src https://accounts.google.com https://challenges.cloudflare.com https://td.doubleclick.net https://www.googletagmanager.com",
+  `frame-src https://accounts.google.com https://challenges.cloudflare.com https://td.doubleclick.net https://www.googletagmanager.com ${DAILY}`,
+  // os vídeos da entrevista gravada (a gravação na hora e o link assinado do Storage)
+  `media-src 'self' blob: ${SUPABASE}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
@@ -75,8 +79,12 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
-          // o microfone só para o próprio site: o currículo falado (/perfil/curriculo)
-          { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(self)" },
+          // a câmera e o microfone só para o próprio site (o currículo falado e a entrevista gravada) e para a chamada
+          // da Daily (a entrevista ao vivo abre num iframe de <conta>.daily.co, sala-da-entrevista.tsx)
+          {
+            key: "Permissions-Policy",
+            value: `camera=(self "${DAILY}"), microphone=(self "${DAILY}"), display-capture=(self "${DAILY}"), geolocation=(self)`,
+          },
           ...(process.env.NODE_ENV === "production"
             ? [{ key: "Content-Security-Policy-Report-Only", value: POLITICA_DE_CONTEUDO }]
             : []),
