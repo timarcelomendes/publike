@@ -51,3 +51,33 @@ export function Segmentos({ rotulo, opcoes }: { rotulo: string; opcoes: Segmento
     </nav>
   );
 }
+
+/**
+ * A mesma escolha, mais leve: só o texto e o número, com a escolhida num fundo claro. As opções vazias (0) somem,
+ * menos a escolhida. Para os filtros do alto de Vagas, que não podem pesar mais que a lista.
+ */
+export function AbasLeves({ rotulo, opcoes }: { rotulo: string; opcoes: Segmento[] }) {
+  return (
+    <nav aria-label={rotulo} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <ul className="inline-flex min-w-max items-center gap-0.5">
+        {opcoes
+          .filter((o) => o.numero !== 0 || o.ativo)
+          .map((o) => (
+            <li key={o.href}>
+              <Link
+                href={o.href}
+                scroll={false}
+                aria-current={o.ativo ? "page" : undefined}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill px-3 text-label whitespace-nowrap transition-colors ${
+                  o.ativo ? "bg-surface-300 text-ink" : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {o.nome}
+                {o.numero !== undefined && <span className="text-ink-muted tabular-nums">{o.numero}</span>}
+              </Link>
+            </li>
+          ))}
+      </ul>
+    </nav>
+  );
+}

@@ -1,9 +1,11 @@
-import { Search } from "lucide-react";
+import { LayoutGrid, List, Search } from "lucide-react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import type { StatusAnuncio } from "@/lib/tipos";
 import { classesEntrada } from "../ui/campo";
 import { LembrarVisaoDasVagas } from "./lembrar-visao-vagas";
+import { SeletorDeLinks } from "./seletor-de-links";
 
 // As Vagas para quem tem muitas (claude/plano-fluxo-contratar.md, parte 2): a busca pelo nome, a ordem "com gente
 // esperando primeiro" e a visão em linhas (uma vaga por linha, com os números que abrem a vaga já na etapa).
@@ -31,7 +33,10 @@ export function achaNaBusca(titulo: string, q: string) {
   return !q || semAcento(titulo).includes(semAcento(q.trim()));
 }
 
-/** A busca, a ordem e a troca Cartões | Linhas, numa linha só. */
+/**
+ * Os filtros de Vagas numa linha leve: à esquerda a situação (`antes`), à direita o cliente (`extra`), a ordem e a
+ * troca Cartões | Linhas em ícones; a busca, com muitas vagas, embaixo.
+ */
 export function ControlesDasVagas({
   q,
   ordem,
@@ -39,6 +44,9 @@ export function ControlesDasVagas({
   href,
   manter,
   comBusca,
+  comOrdem = true,
+  antes,
+  extra,
 }: {
   q: string;
   ordem: OrdemDasVagas;
@@ -48,15 +56,50 @@ export function ControlesDasVagas({
   /** os filtros que vão junto na busca */
   manter: Record<string, string | null>;
   comBusca: boolean;
+  /** a ordem e a troca de visão (com mais de uma vaga) */
+  comOrdem?: boolean;
+  antes?: ReactNode;
+  extra?: ReactNode;
 }) {
-  const chip = (ativo: boolean) =>
-    `inline-flex min-h-10 items-center rounded-pill border px-3.5 text-label transition-colors ${
-      ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-    }`;
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {antes}
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          {extra}
+          {comOrdem && (
+            <>
+              <SeletorDeLinks
+                rotulo="Ordem das vagas"
+                atual={href({ ordem })}
+                opcoes={[
+                  { nome: "Ordem: mais recentes", href: href({ ordem: "recentes" }) },
+                  { nome: "Ordem: gente esperando primeiro", href: href({ ordem: "esperando" }) },
+                ]}
+              />
+              <nav aria-label="Ver as vagas em" className="inline-flex rounded-pill bg-surface-300 p-0.5">
+                {(["cartoes", "linhas"] as const).map((v) => (
+                  <LembrarVisaoDasVagas
+                    key={v}
+                    visao={v}
+                    href={href({ visao: v })}
+                    ativa={visao === v}
+                    nome={v === "cartoes" ? "Cartões" : "Linhas"}
+                  >
+                    {v === "cartoes" ? (
+                      <LayoutGrid aria-hidden className="size-4" />
+                    ) : (
+                      <List aria-hidden className="size-4" />
+                    )}
+                  </LembrarVisaoDasVagas>
+                ))}
+              </nav>
+            </>
+          )}
+        </div>
+      </div>
       {comBusca && (
-        <form action="/painel/anuncios" role="search" className="relative min-w-0 flex-1 basis-56">
+        <form action="/painel/anuncios" role="search" className="relative max-w-md">
           {Object.entries(manter).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
           <Search
             aria-hidden
@@ -72,35 +115,6 @@ export function ControlesDasVagas({
           />
         </form>
       )}
-      <nav aria-label="Ordem das vagas" className="flex gap-2">
-        <Link
-          href={href({ ordem: "recentes" })}
-          scroll={false}
-          aria-current={ordem === "recentes" ? "page" : undefined}
-          className={chip(ordem === "recentes")}
-        >
-          Mais recentes
-        </Link>
-        <Link
-          href={href({ ordem: "esperando" })}
-          scroll={false}
-          aria-current={ordem === "esperando" ? "page" : undefined}
-          className={chip(ordem === "esperando")}
-        >
-          Gente esperando primeiro
-        </Link>
-      </nav>
-      <nav aria-label="Ver as vagas em" className="inline-flex rounded-pill border border-line p-1 sm:ml-auto">
-        {(["cartoes", "linhas"] as const).map((v) => (
-          <LembrarVisaoDasVagas
-            key={v}
-            visao={v}
-            href={href({ visao: v })}
-            ativa={visao === v}
-            nome={v === "cartoes" ? "Cartões" : "Linhas"}
-          />
-        ))}
-      </nav>
     </div>
   );
 }

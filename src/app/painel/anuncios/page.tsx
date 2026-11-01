@@ -5,9 +5,9 @@ import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
-import { FiltroCliente } from "@/components/painel/filtro-cliente";
+import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
 import { CartaoRecolhivel } from "@/components/painel/cartao-recolhivel";
-import { Segmentos } from "@/components/painel/segmentos";
+import { AbasLeves } from "@/components/painel/segmentos";
 import {
   achaNaBusca,
   ControlesDasVagas,
@@ -207,73 +207,71 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
               </BotaoLink>
             )}
           </div>
-          {/* os filtros numa faixa só: a situação (uma escolha, sem ×), o tipo (só para quem tem
-              vagas e serviços) e, na agência, o cliente (com o logo; muitos clientes: a lista) */}
-          {(doTipo.length > 1 || situacao || (vagas > 0 && servicos > 0) || clientesComVagas.length > 1 || cliente) && (
-            <div className="flex flex-col gap-2.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3">
-              {(doTipo.length > 1 || situacao) && (
-                <Segmentos
-                  rotulo="Filtrar pela situação"
-                  opcoes={[
-                    { nome: "Todas", numero: doTipo.length, href: filtro({ situacao: null }), ativo: !situacao },
-                    ...(Object.keys(SITUACOES) as Situacao[]).map((s) => ({
-                      nome: SITUACOES[s].nome,
-                      numero: doTipo.filter((a) => naSituacao(a, s)).length,
-                      href: filtro({ situacao: s }),
-                      ativo: situacao === s,
-                    })),
-                  ]}
-                />
-              )}
-              {vagas > 0 && servicos > 0 && (
-                <Segmentos
-                  rotulo="Filtrar anúncios"
-                  opcoes={[
-                    { nome: "Vagas e serviços", href: filtro({ tipo: null }), ativo: !tipo },
-                    { nome: "Vagas", numero: vagas, href: filtro({ tipo: "vaga" }), ativo: tipo === "vaga" },
-                    {
-                      nome: "Serviços",
-                      numero: servicos,
-                      href: filtro({ tipo: "servico" }),
-                      ativo: tipo === "servico",
-                    },
-                  ]}
-                />
-              )}
-              {(clientesComVagas.length > 1 || cliente) &&
-                tipo !== "servico" &&
-                (clientesComVagas.length <= 6 ? (
-                  <Segmentos
-                    rotulo="Filtrar pelo cliente"
-                    opcoes={[
-                      { nome: "Todos os clientes", href: filtro({ cliente: null }), ativo: !cliente },
-                      ...clientesComVagas.map((c) => ({
-                        nome: c.nome,
-                        numero: c.total,
-                        href: filtro({ cliente: c.id }),
-                        ativo: cliente === c.id,
-                        avatar: { nome: c.nome },
-                      })),
-                    ]}
-                  />
-                ) : (
-                  <FiltroCliente
-                    clientes={clientesComVagas}
-                    cliente={cliente}
-                    caminho="/painel/anuncios"
-                    manter={{ tipo, situacao }}
-                  />
-                ))}
-            </div>
-          )}
-          {tipo !== "servico" && vagas > 1 && (
+          {/* os filtros numa linha leve (01/11/2026): a situação em abas de texto (sem as vazias), o tipo (só para
+              quem tem vagas e serviços); à direita, na agência, o cliente numa lista, a ordem e a visão em ícones */}
+          {(doTipo.length > 1 ||
+            situacao ||
+            (vagas > 0 && servicos > 0) ||
+            clientesComVagas.length > 1 ||
+            cliente ||
+            (tipo !== "servico" && vagas > 1)) && (
             <ControlesDasVagas
               q={q}
               ordem={ordem}
               visao={visao}
               href={filtro}
               manter={{ tipo, situacao, cliente, ordem: ordem === "recentes" ? null : ordem }}
-              comBusca={vagas >= 6 || Boolean(q)}
+              comBusca={tipo !== "servico" && (vagas >= 6 || Boolean(q))}
+              comOrdem={tipo !== "servico" && vagas > 1}
+              antes={
+                <>
+                  {(doTipo.length > 1 || situacao) && (
+                    <AbasLeves
+                      rotulo="Filtrar pela situação"
+                      opcoes={[
+                        { nome: "Todas", numero: doTipo.length, href: filtro({ situacao: null }), ativo: !situacao },
+                        ...(Object.keys(SITUACOES) as Situacao[]).map((s) => ({
+                          nome: SITUACOES[s].nome,
+                          numero: doTipo.filter((a) => naSituacao(a, s)).length,
+                          href: filtro({ situacao: s }),
+                          ativo: situacao === s,
+                        })),
+                      ]}
+                    />
+                  )}
+                  {vagas > 0 && servicos > 0 && (
+                    <AbasLeves
+                      rotulo="Filtrar anúncios"
+                      opcoes={[
+                        { nome: "Vagas e serviços", href: filtro({ tipo: null }), ativo: !tipo },
+                        { nome: "Vagas", numero: vagas, href: filtro({ tipo: "vaga" }), ativo: tipo === "vaga" },
+                        {
+                          nome: "Serviços",
+                          numero: servicos,
+                          href: filtro({ tipo: "servico" }),
+                          ativo: tipo === "servico",
+                        },
+                      ]}
+                    />
+                  )}
+                </>
+              }
+              extra={
+                (clientesComVagas.length > 1 || cliente) &&
+                tipo !== "servico" && (
+                  <SeletorDeLinks
+                    rotulo="Filtrar pelo cliente"
+                    atual={filtro({ cliente })}
+                    opcoes={[
+                      { nome: "Todos os clientes", href: filtro({ cliente: null }) },
+                      ...clientesComVagas.map((c) => ({
+                        nome: `${c.nome} (${c.total})`,
+                        href: filtro({ cliente: c.id }),
+                      })),
+                    ]}
+                  />
+                )
+              }
             />
           )}
           {lista.length === 0 && q ? (
