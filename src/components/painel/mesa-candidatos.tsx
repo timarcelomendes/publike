@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
@@ -36,10 +36,10 @@ import { feitasDasRegras } from "@/lib/servidor/regras-tela";
 import { DicaUmaVez } from "../ui/dica-uma-vez";
 
 // A mesa de candidatos (claude/plano-fluxo-contratar.md, parte 1): a mesma tela no menu Candidatos (todas as vagas,
-// com o filtro de vaga) e na aba Candidatos de cada vaga (já filtrada). A lista é uma rolagem só, com as etapas em
-// seções que dizem o que fazer (Novos, Entrevista, Em análise; Contratados e Não seguiu fechados no fim), e a ficha
-// de quem está aberto ao lado (no celular, a lista e a ficha viram duas telas). `?aba=` (ou `?etapa=`, da vaga)
-// mostra só uma etapa, com o "Ver todas as etapas".
+// com o filtro de vaga) e na aba Candidatos de cada vaga (já filtrada). As etapas ficam numa linha no alto, na ordem
+// do caminho (Novos → Em análise → Entrevista → Contratados, e Não seguiu à parte), com quantos tem em cada uma; a
+// etapa escolhida (`?aba=`, ou `?etapa=` na vaga) lista os candidatos embaixo, um por linha, e a ficha de quem está
+// aberto fica ao lado (no celular, a lista e a ficha viram duas telas). Sem etapa pedida, abre na que pede ação.
 
 type Busca = Record<string, string | string[] | undefined>;
 
@@ -52,9 +52,8 @@ const O_QUE_FAZER: Record<Aba, string> = {
   nao_seguiu: "dispensados e quem não seguiu",
 };
 
-/** A ordem das seções: o que pede uma ação primeiro; Contratados e Não seguiu começam fechados. */
-const ORDEM_DAS_SECOES: Aba[] = ["novos", "entrevista", "analise", "contratados", "nao_seguiu"];
-const FECHADAS: Aba[] = ["contratados", "nao_seguiu"];
+/** As etapas no alto, na ordem do caminho; Não seguiu fica à parte, no fim. */
+const CAMINHO: Aba[] = ["novos", "analise", "entrevista", "contratados"];
 
 /** Na Entrevista: o horário que já passou, o que vem, quem escolhe o horário e quem ainda não tem data. */
 function grupoDaEntrevista(c: ItemCaixa, agora: number): "passou" | "marcada" | "sem_data" {
@@ -110,15 +109,26 @@ export async function MesaDeCandidatos({
     : (ETAPA_ANTIGA[pedidaAba] ?? null);
   const pedidaOrdem = primeiro(sp.ordem) ?? "";
   const ordem: Ordem = ORDENS.some((o) => o.valor === pedidaOrdem) ? (pedidaOrdem as Ordem) : "";
-  const secoes = ORDEM_DAS_SECOES.filter((a) => !so || a === so).map((aba) => ({
-    aba,
-    lista: ordenar(aba, daVaga.filter(naAba[aba]), ordem),
-  }));
-  // a ordem de passar (anterior e próximo): a das seções abertas, de cima para baixo
-  const emOrdem = secoes.flatMap((s) => s.lista);
-
+  const porEtapa = Object.fromEntries(
+    ABAS.map((a) => [a.valor, ordenar(a.valor, daVaga.filter(naAba[a.valor]), ordem)]),
+  ) as Record<Aba, ItemCaixa[]>;
   const pedido = primeiro(sp.c);
   const escolhido = Boolean(pedido && itens.some((c) => c.chave === pedido));
+  const daPessoa = escolhido ? (itens.find((c) => c.chave === pedido) ?? null) : null;
+  // a etapa da lista: a pedida; senão a de quem foi aberto; senão a que pede ação (quem espera, a entrevista que
+  // já passou), e por fim a primeira com alguém
+  const passou = porEtapa.entrevista.some((c) => grupoDaEntrevista(c, agora) === "passou");
+  const atual: Aba =
+    so ??
+    (daPessoa ? abaDe(daPessoa) : null) ??
+    (porEtapa.novos.length
+      ? "novos"
+      : passou
+        ? "entrevista"
+        : ((["analise", "entrevista", "contratados", "nao_seguiu"] as Aba[]).find((a) => porEtapa[a].length) ??
+          "novos"));
+  // a ordem de passar (anterior e próximo): a da etapa aberta
+  const emOrdem = porEtapa[atual];
   const aberto: ItemCaixa | null = escolhido
     ? (itens.find((c) => c.chave === pedido) ?? null)
     : (emOrdem.find(esperaResposta) ?? emOrdem[0] ?? null);
@@ -126,7 +136,7 @@ export async function MesaDeCandidatos({
 
   const href = (mudar: { aba?: Aba | null; c?: string | null }) => {
     const q = new URLSearchParams();
-    const aba = mudar.aba !== undefined ? mudar.aba : so;
+    const aba = mudar.aba !== undefined ? mudar.aba : atual;
     if (aba) q.set(vagaFixa ? "etapa" : "aba", aba);
     if (vaga && !vagaFixa) q.set("vaga", vaga);
     if (ordem) q.set("ordem", ordem);
@@ -154,7 +164,7 @@ export async function MesaDeCandidatos({
 
   return (
     <div className="flex flex-col gap-4">
-      {(!vagaFixa && vagas.size > 1) || acima || so ? (
+      {(!vagaFixa && vagas.size > 1) || acima || emOrdem.length > 1 ? (
         // no celular, com alguém aberto, os filtros saem e a ficha sobe
         <div className={`flex flex-wrap items-center gap-2 ${escolhido ? "max-lg:hidden" : ""}`}>
           {!vagaFixa && vagas.size > 1 && (
@@ -165,15 +175,6 @@ export async function MesaDeCandidatos({
               total={itens.length}
               href={(v) => vagaHref(base, v, ordem)}
             />
-          )}
-          {so && (
-            <Link
-              href={href({ aba: null, c: aberto?.chave ?? null })}
-              scroll={false}
-              className="inline-flex min-h-10 items-center text-label text-ink-muted underline underline-offset-2 hover:text-ink"
-            >
-              Ver todas as etapas
-            </Link>
           )}
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
             {emOrdem.length > 1 && <OrdemDaCaixa ordens={ORDENS} ordem={ordem} base={href({})} />}
@@ -189,73 +190,37 @@ export async function MesaDeCandidatos({
         </DicaUmaVez>
       )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+      <EtapasNoAlto
+        porEtapa={porEtapa}
+        atual={atual}
+        href={(aba) => href({ aba, c: null })}
+        esconderNoCelular={escolhido}
+      />
+
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className={escolhido ? "hidden lg:block" : ""}>
           <div
-            aria-label="Candidatos por etapa"
+            aria-label={`Candidatos em ${ABAS.find((a) => a.valor === atual)?.nome ?? atual}`}
             role="region"
-            className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 lg:max-h-[calc(100dvh-9rem)] lg:overflow-y-auto"
+            className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto"
           >
-            {secoes.map(({ aba, lista }) => {
-              const nome = ABAS.find((a) => a.valor === aba)?.nome ?? aba;
-              const esperam = lista.filter(esperaResposta).length;
-              // fechada: Contratados e Não seguiu, menos quando quem está aberto mora nela ou é a única pedida
-              const aberta = !FECHADAS.includes(aba) || so === aba || (aberto ? abaDe(aberto) === aba : false);
-              return (
-                <details key={aba} open={aberta} className="group border-b border-line last:border-b-0">
-                  <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 bg-surface-100 px-4 py-2 [&::-webkit-details-marker]:hidden">
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2 text-label">
-                        {nome}
-                        <span className="min-w-6 rounded-pill bg-surface-300 px-1.5 text-center text-caption leading-6 tabular-nums">
-                          {lista.length}
-                        </span>
-                        {esperam > 0 && (
-                          <span className="rounded-pill bg-terra-soft px-2 text-caption leading-6 font-semibold text-terra-text">
-                            {esperam === 1 ? "1 espera você" : `${esperam} esperam você`}
-                          </span>
-                        )}
-                      </span>
-                      <span className="block text-body-sm text-ink-muted">{O_QUE_FAZER[aba]}</span>
-                    </span>
-                    <ChevronDown
-                      aria-hidden
-                      className="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
-                    />
-                  </summary>
-                  {lista.length === 0 ? (
-                    <p className="px-4 py-3 text-body-sm text-ink-muted">{ABAS.find((a) => a.valor === aba)?.vazio}</p>
-                  ) : aba === "entrevista" ? (
-                    GRUPOS_DA_ENTREVISTA.map((g) => {
-                      const doGrupo = lista.filter((c) => grupoDaEntrevista(c, agora) === g.valor);
-                      if (!doGrupo.length) return null;
-                      return (
-                        <div key={g.valor}>
-                          <p
-                            className={`border-t border-line px-4 pt-2 pb-1 text-caption ${
-                              g.valor === "passou" ? "text-terra-text" : "text-ink-muted"
-                            }`}
-                          >
-                            {g.nome}
-                          </p>
-                          <ul className="flex flex-col divide-y divide-line">
-                            {doGrupo.map((c) => (
-                              <ItemDaLista
-                                key={c.chave}
-                                c={c}
-                                agora={agora}
-                                href={href({ c: c.chave })}
-                                aberto={c === aberto}
-                                comVaga={!vaga}
-                              />
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <ul className="flex flex-col divide-y divide-line border-t border-line">
-                      {lista.map((c) => (
+            {emOrdem.length === 0 ? (
+              <p className="px-4 py-6 text-body-sm text-ink-muted">{ABAS.find((a) => a.valor === atual)?.vazio}</p>
+            ) : atual === "entrevista" ? (
+              GRUPOS_DA_ENTREVISTA.map((g) => {
+                const doGrupo = emOrdem.filter((c) => grupoDaEntrevista(c, agora) === g.valor);
+                if (!doGrupo.length) return null;
+                return (
+                  <div key={g.valor} className="border-b border-line last:border-b-0">
+                    <p
+                      className={`px-4 pt-2.5 pb-1 text-caption ${
+                        g.valor === "passou" ? "font-semibold text-terra-text" : "text-ink-muted"
+                      }`}
+                    >
+                      {g.nome}
+                    </p>
+                    <ul className="flex flex-col divide-y divide-line">
+                      {doGrupo.map((c) => (
                         <ItemDaLista
                           key={c.chave}
                           c={c}
@@ -266,10 +231,23 @@ export async function MesaDeCandidatos({
                         />
                       ))}
                     </ul>
-                  )}
-                </details>
-              );
-            })}
+                  </div>
+                );
+              })
+            ) : (
+              <ul className="flex flex-col divide-y divide-line">
+                {emOrdem.map((c) => (
+                  <ItemDaLista
+                    key={c.chave}
+                    c={c}
+                    agora={agora}
+                    href={href({ c: c.chave })}
+                    aberto={c === aberto}
+                    comVaga={!vaga}
+                  />
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
@@ -408,6 +386,68 @@ function FiltroDeVaga({
           <span className={vaga === v.id ? "text-surface-100/80" : "text-ink-muted"}>{v.total}</span>
         </Link>
       ))}
+    </nav>
+  );
+}
+
+/**
+ * As etapas numa linha no alto, na ordem do caminho, com quantos tem em cada uma (e quantos esperam você em Novos);
+ * a escolhida fica marcada e lista os candidatos embaixo. Não seguiu fica à parte, depois de um traço. No celular, a
+ * linha rola de lado dentro dela mesma.
+ */
+function EtapasNoAlto({
+  porEtapa,
+  atual,
+  href,
+  esconderNoCelular,
+}: {
+  porEtapa: Record<Aba, ItemCaixa[]>;
+  atual: Aba;
+  href: (aba: Aba) => string;
+  esconderNoCelular: boolean;
+}) {
+  const item = (aba: Aba) => {
+    const nome = ABAS.find((a) => a.valor === aba)?.nome ?? aba;
+    const lista = porEtapa[aba];
+    const esperam = lista.filter(esperaResposta).length;
+    const ativa = aba === atual;
+    return (
+      <Link
+        href={href(aba)}
+        scroll={false}
+        aria-current={ativa ? "page" : undefined}
+        className={`flex min-h-16 min-w-[8.5rem] shrink-0 snap-start flex-col justify-center gap-0.5 rounded-md px-3.5 py-2 transition-colors lg:min-w-0 lg:flex-1 ${
+          ativa ? "bg-ink text-surface-100" : "hover:bg-surface-300"
+        }`}
+      >
+        <span className="flex items-baseline gap-2">
+          <span className="font-display text-h3 tabular-nums">{lista.length}</span>
+          <span className="text-label">{nome}</span>
+        </span>
+        <span className={`text-caption ${ativa ? "text-surface-100/80" : "text-ink-muted"}`}>
+          {esperam > 0 ? (
+            <span className={ativa ? "font-semibold" : "font-semibold text-terra-text"}>
+              {esperam === 1 ? "1 espera você" : `${esperam} esperam você`}
+            </span>
+          ) : (
+            O_QUE_FAZER[aba]
+          )}
+        </span>
+      </Link>
+    );
+  };
+  return (
+    <nav aria-label="Etapas" className={esconderNoCelular ? "max-lg:hidden" : ""}>
+      <div className="flex snap-x items-stretch gap-1 overflow-x-auto rounded-lg border border-line bg-surface-200 p-1.5 [scrollbar-width:thin]">
+        {CAMINHO.map((aba, i) => (
+          <div key={aba} className="flex shrink-0 items-center gap-1 lg:min-w-0 lg:flex-1">
+            {i > 0 && <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />}
+            {item(aba)}
+          </div>
+        ))}
+        <span aria-hidden className="mx-1 w-px shrink-0 self-stretch bg-line" />
+        <div className="flex shrink-0 lg:min-w-0 lg:flex-1">{item("nao_seguiu")}</div>
+      </div>
     </nav>
   );
 }
