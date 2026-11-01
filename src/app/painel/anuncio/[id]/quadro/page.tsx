@@ -1,4 +1,4 @@
-import { ChevronRight, Columns3, Send, Sparkles, Users, Workflow } from "lucide-react";
+import { ChevronRight, Columns3, Send, Sparkles, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -214,14 +214,6 @@ async function Conteudo({
             <Selo variante="novo">Novo</Selo>
           </Link>
         )}
-        <Link
-          href={`/painel/anuncio/${id}/automacoes`}
-          className="inline-flex min-h-10 items-center gap-1.5 text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline"
-        >
-          <Workflow aria-hidden className="size-4" />
-          Automações
-          <Selo variante="novo">Novo</Selo>
-        </Link>
         {cartoes.length > 1 && (
           <div className="ml-auto">
             <OrdemQuemChamar

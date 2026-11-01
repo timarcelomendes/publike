@@ -9,6 +9,7 @@ import {
   Pencil,
   Sparkles,
   Video,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -25,9 +26,10 @@ import { SeloCortesia } from "../selo-cortesia";
 import { Selo } from "../ui/basicos";
 import { CopiarLinkDaVaga } from "./links-para-mandar";
 import { MaisDaVaga } from "./mais-da-vaga";
+import { RolagemDasAbas } from "./rolagem-das-abas";
 import { EtiquetaDaSaude } from "./saude-vaga";
 
-export type AbaDaVaga = "candidatos" | "copiloto" | "testes" | "video" | "editar";
+export type AbaDaVaga = "candidatos" | "copiloto" | "testes" | "video" | "automacoes" | "editar";
 
 /**
  * O alto de toda página de uma vaga no painel: a volta para Vagas, o nome, onde e quantos candidatos, o
@@ -113,6 +115,8 @@ export async function CabecalhoDaVaga({
           },
         ]
       : []),
+    // as automações da vaga (migrações 20270109120000 e 20270111120000)
+    { aba: "automacoes", nome: "Automações", href: `/painel/anuncio/${id}/automacoes`, icone: Workflow },
     { aba: "editar", nome: "Editar", href: `/painel/anuncio/${id}/editar`, icone: Pencil },
   ];
   return (
@@ -149,7 +153,7 @@ export async function CabecalhoDaVaga({
           <MaisDaVaga id={id} noAr={noAr} />
         </div>
       </div>
-      <nav aria-label="Partes da vaga" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <RolagemDasAbas rotulo="Partes da vaga">
         <ul className="flex min-w-max gap-1 border-b border-line sm:gap-2">
           {abas.map((a) => {
             const ativa = a.aba === aba;
@@ -187,7 +191,7 @@ export async function CabecalhoDaVaga({
             );
           })}
         </ul>
-      </nav>
+      </RolagemDasAbas>
     </div>
   );
 }

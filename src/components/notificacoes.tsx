@@ -35,6 +35,7 @@ import {
   Megaphone,
   Newspaper,
   Hourglass,
+  MailCheck,
   Video,
 } from "lucide-react";
 import Link from "next/link";
@@ -63,6 +64,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   parados: Hourglass,
   proposta: FileSignature,
   proposta_resposta: FileSignature,
+  candidatura_recebida: MailCheck,
   seguindo: BellRing,
   busca: SearchCheck,
   // curtida sem resposta: o lembrete para quem publicou e o aviso para quem curtiu

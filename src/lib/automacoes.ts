@@ -1,5 +1,7 @@
-// Automações por vaga e os números do processo (claude/plano-recursos-concorrentes.md, parte 6; migração
-// 20270109120000).
+// Automações por vaga e os números do processo (claude/plano-recursos-concorrentes.md, parte 6; migrações
+// 20270109120000 e 20270111120000).
+
+import type { FormatoEntrevista } from "./recrutamento";
 
 export const ETAPAS_COM_MENSAGEM = {
   analise: "Em análise",
@@ -8,55 +10,195 @@ export const ETAPAS_COM_MENSAGEM = {
 } as const;
 export type EtapaComMensagem = keyof typeof ETAPAS_COM_MENSAGEM;
 
+export type RegraFeita =
+  "dispensar" | "mensagem" | "parado" | "recado" | "triagem" | "encerrar" | "preenchida" | "horarios";
+const REGRAS_FEITAS: RegraFeita[] = [
+  "dispensar",
+  "mensagem",
+  "parado",
+  "recado",
+  "triagem",
+  "encerrar",
+  "preenchida",
+  "horarios",
+];
+
 export type FeitoDaAutomacao = {
   perfil_id: string;
   nome: string;
-  regra: "dispensar" | "mensagem" | "parado";
+  regra: RegraFeita;
   detalhe: string;
   feito_em: string;
 };
 
-export type Automacoes = {
+export type HorariosAutomaticos = { formato: FormatoEntrevista; local: string | null; duracao: number };
+
+/** O que a empresa liga e desliga (e manda para salvar). */
+export type RegrasDaVaga = {
   dispensarEliminados: boolean;
-  mensagens: Partial<Record<EtapaComMensagem, string>>;
+  /** a etapa (`analise`, `entrevista`, `contratado` ou `sub:<id>` de uma etapa própria) e o id da mensagem pronta */
+  mensagens: Record<string, string>;
   paradoDias: number | null;
+  /** o recado de recebimento (null: desligado) */
+  recado: string | null;
+  triagemParaAnalise: boolean;
+  /** o retorno a quem ficou em Novos sem resposta há N dias (null: desligado) */
+  encerrarDias: number | null;
+  encerrarAoPreencher: boolean;
+  horarios: HorariosAutomaticos | null;
+  /** o "Pedir a todo novo candidato" da Entrevista em vídeo */
+  videoATodos: boolean;
+};
+
+export type Automacoes = RegrasDaVaga & {
   /** a vaga tem pergunta eliminatória (sem ela, a regra não tem o que fazer) */
   temEliminatoria: boolean;
+  triagem: { liberada: boolean; obrigatorios: number };
+  video: { liberado: boolean; perguntas: number };
+  /** quantos testes a vaga pede a quem se candidata */
+  testes: number;
+  /** o retorno da conta está ligado (sem ele, quem é dispensado não recebe aviso) */
+  retornoLigado: boolean;
+  /** a conta tem horários livres cadastrados */
+  temHorarios: boolean;
+  /** as vagas novas usam as regras desta vaga (origem) ou de outra */
+  padrao: { origem: string | null; titulo: string | null } | null;
+  outrasNoAr: number;
+  /** quantas vezes cada regra agiu nesta vaga */
+  contagem: Partial<Record<RegraFeita, number>>;
   registro: FeitoDaAutomacao[];
+};
+
+/** O recado que vem escrito ao ligar "Confirmar que a candidatura chegou". */
+export const RECADO_PADRAO =
+  "Oi, {nome}! Aqui é {empresa}: recebemos a sua candidatura para {vaga}. Vamos olhar com atenção e responder em até 5 dias.";
+
+export const FORMATOS_AUTOMATICOS: FormatoEntrevista[] = ["presencial", "telefone", "video", "publike"];
+
+const numero = (x: unknown, min: number, max: number) => {
+  const n = Number(x);
+  return x !== null && x !== undefined && x !== "" && Number.isInteger(n) && n >= min && n <= max ? n : null;
 };
 
 export function lerAutomacoes(x: unknown): Automacoes {
   const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
   const m = (o.mensagens && typeof o.mensagens === "object" ? o.mensagens : {}) as Record<string, unknown>;
-  const mensagens: Automacoes["mensagens"] = {};
-  for (const k of Object.keys(ETAPAS_COM_MENSAGEM) as EtapaComMensagem[])
-    if (typeof m[k] === "string") mensagens[k] = m[k] as string;
-  const dias = Number(o.parado_dias);
+  const mensagens: Record<string, string> = {};
+  for (const [k, v] of Object.entries(m)) if (typeof v === "string" && v) mensagens[k] = v;
+  const h = (o.horarios && typeof o.horarios === "object" ? o.horarios : null) as Record<string, unknown> | null;
+  const formato =
+    h && FORMATOS_AUTOMATICOS.includes(h.formato as FormatoEntrevista) ? (h.formato as FormatoEntrevista) : null;
+  const t = (o.triagem && typeof o.triagem === "object" ? o.triagem : {}) as Record<string, unknown>;
+  const v = (o.video && typeof o.video === "object" ? o.video : {}) as Record<string, unknown>;
+  const p = (o.padrao && typeof o.padrao === "object" ? o.padrao : null) as Record<string, unknown> | null;
+  const c = (o.contagem && typeof o.contagem === "object" ? o.contagem : {}) as Record<string, unknown>;
+  const contagem: Automacoes["contagem"] = {};
+  for (const r of REGRAS_FEITAS) if (Number(c[r]) > 0) contagem[r] = Number(c[r]);
   return {
     dispensarEliminados: o.dispensar_eliminados === true,
     mensagens,
-    paradoDias: Number.isInteger(dias) && dias >= 2 && dias <= 30 ? dias : null,
+    paradoDias: numero(o.parado_dias, 2, 30),
+    recado: typeof o.recado === "string" && o.recado.trim() ? o.recado : null,
+    triagemParaAnalise: o.triagem_para_analise === true,
+    encerrarDias: numero(o.encerrar_dias, 3, 60),
+    encerrarAoPreencher: o.encerrar_ao_preencher === true,
+    horarios:
+      h && formato
+        ? {
+            formato,
+            local: typeof h.local === "string" && h.local ? h.local : null,
+            duracao: numero(h.duracao, 15, 180) ?? 30,
+          }
+        : null,
+    videoATodos: v.a_todos === true,
     temEliminatoria: o.tem_eliminatoria === true,
+    triagem: { liberada: t.liberada === true, obrigatorios: Number(t.obrigatorios) || 0 },
+    video: { liberado: v.liberado === true, perguntas: Number(v.perguntas) || 0 },
+    testes: Number(o.testes) || 0,
+    retornoLigado: o.retorno_ligado !== false,
+    temHorarios: o.tem_horarios === true,
+    padrao: p
+      ? {
+          origem: typeof p.origem === "string" ? p.origem : null,
+          titulo: typeof p.titulo === "string" ? p.titulo : null,
+        }
+      : null,
+    outrasNoAr: Number(o.outras_no_ar) || 0,
+    contagem,
     registro: (Array.isArray(o.registro) ? o.registro : [])
       .filter((r): r is Record<string, unknown> => Boolean(r) && typeof r === "object")
-      .filter((r) => r.regra === "dispensar" || r.regra === "mensagem" || r.regra === "parado")
+      .filter((r) => REGRAS_FEITAS.includes(r.regra as RegraFeita))
       .map((r) => ({
         perfil_id: String(r.perfil_id),
         nome: String(r.nome ?? ""),
-        regra: r.regra as FeitoDaAutomacao["regra"],
+        regra: r.regra as RegraFeita,
         detalhe: String(r.detalhe ?? ""),
         feito_em: String(r.feito_em),
       })),
   };
 }
 
-/** O que a regra fez, numa frase ("Dispensada pela pergunta eliminatória"). */
-export function textoDoFeito(f: FeitoDaAutomacao) {
-  if (f.regra === "dispensar") return "dispensado pela pergunta eliminatória, com o retorno";
-  if (f.regra === "mensagem")
-    return `recebeu a mensagem de ${ETAPAS_COM_MENSAGEM[f.detalhe as EtapaComMensagem] ?? "etapa"}`;
-  return "entrou no lembrete de parados";
+/** O nome de uma etapa com mensagem: as de hoje e as próprias da conta (`sub:<id>`). */
+export function nomeDaEtapaComMensagem(chave: string, proprias: Map<string, string>) {
+  return ETAPAS_COM_MENSAGEM[chave as EtapaComMensagem] ?? proprias.get(chave) ?? "uma etapa";
 }
+
+/** O que a regra fez, numa frase ("dispensado pela pergunta eliminatória"). */
+export function textoDoFeito(f: FeitoDaAutomacao, proprias: Map<string, string> = new Map()) {
+  switch (f.regra) {
+    case "dispensar":
+      return "foi dispensado pela pergunta eliminatória e recebeu o retorno";
+    case "mensagem":
+      return `recebeu a mensagem de ${nomeDaEtapaComMensagem(f.detalhe, proprias)}`;
+    case "parado":
+      return "entrou no lembrete de parados";
+    case "recado":
+      return "recebeu o recado de que a candidatura chegou";
+    case "triagem":
+      return "foi para Em análise pela Triagem com IA";
+    case "encerrar":
+      return "ficou sem resposta em Novos e recebeu o retorno";
+    case "preenchida":
+      return "saiu do processo quando a vaga foi preenchida";
+    case "horarios":
+      return "recebeu os seus horários livres para escolher";
+  }
+}
+
+/** O recado como a pessoa recebe (o mesmo que o banco monta). */
+export function montarRecado(texto: string, d: { nome: string; vaga: string; empresa: string }) {
+  return texto
+    .replaceAll("{nome}", d.nome.split(" ")[0] || d.nome)
+    .replaceAll("{vaga}", d.vaga)
+    .replaceAll("{empresa}", d.empresa)
+    .slice(0, 300);
+}
+
+/** O que falta para salvar (o banco recusaria): o texto do aviso, ou null. */
+export function faltaParaSalvar(r: RegrasDaVaga): string | null {
+  if (r.recado !== null && r.recado.trim().length < 10) return "Escreva o recado (pelo menos 10 letras).";
+  if (r.horarios?.formato === "presencial" && !r.horarios.local?.trim())
+    return "Escreva o endereço da entrevista presencial.";
+  if (r.horarios?.formato === "video" && !/^https:\/\//i.test(r.horarios.local?.trim() ?? ""))
+    return "Cole o link da chamada (começa com https://).";
+  return null;
+}
+
+/** Quantas regras estão ligadas (o Teste Prático, que fica na aba dele, não conta). */
+export function regrasLigadas(r: RegrasDaVaga) {
+  return [
+    r.recado !== null,
+    r.dispensarEliminados,
+    r.triagemParaAnalise,
+    r.videoATodos,
+    Object.keys(r.mensagens).length > 0,
+    r.horarios !== null,
+    r.paradoDias !== null,
+    r.encerrarDias !== null,
+    r.encerrarAoPreencher,
+  ].filter(Boolean).length;
+}
+export const TOTAL_DE_REGRAS = 9;
 
 export const PERIODOS_NUMEROS = { "30": "Últimos 30 dias", "90": "Últimos 90 dias", tudo: "Desde o começo" } as const;
 export type PeriodoNumeros = keyof typeof PERIODOS_NUMEROS;

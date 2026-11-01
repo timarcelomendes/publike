@@ -44,11 +44,24 @@ export async function moverNoQuadro(
   const sub = chave.startsWith("sub:") ? chave.slice(4) : null;
   if (!UUID.test(anuncioId) || (sub && !UUID.test(sub)) || !(base in ETAPAS_CANDIDATO))
     return { ok: false, erro: "Pedido inválido." };
-  const r = await moverCandidatos(anuncioId, perfis, base);
+  const r = await moverCandidatos(anuncioId, perfis, base, { semMensagem: Boolean(sub) });
   if (!r.ok) return r;
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("marcar_subetapa", { p_anuncio: anuncioId, p_perfis: perfis, p_subetapa: sub });
   if (error && error.code !== "PGRST202") return { ok: false, erro: mensagemDeErro(error) };
+  // a mensagem automática da etapa própria (migração 20270111120000; sem ela, nada)
+  if (sub && r.feitos) {
+    const { data: enviadas } = await supabase.rpc("automacao_mensagem_ao_mover", {
+      p_anuncio: anuncioId,
+      p_perfis: perfis,
+      p_etapa: chave,
+    });
+    const n = Number(enviadas ?? 0);
+    if (n)
+      r.mensagem = [r.mensagem, `A mensagem automática da etapa foi para ${n === 1 ? "1 pessoa" : `${n} pessoas`}.`]
+        .filter(Boolean)
+        .join(" ");
+  }
   refresh();
   return r;
 }

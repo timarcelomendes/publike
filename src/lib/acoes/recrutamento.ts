@@ -7,6 +7,7 @@ import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { FORMATOS_ENTREVISTA, MAX_HORARIOS, preencherModelo } from "@/lib/recrutamento";
+import { oferecerHorariosAutomaticos } from "@/lib/servidor/automacoes";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
@@ -34,7 +35,13 @@ function idsValidos(ids: unknown): string[] {
  * pede currículo, quem ainda não mandou fica aceito, esperando o currículo: recebe o
  * pedido, e o match (e a etapa) vêm quando ele chegar.
  */
-export async function moverCandidatos(anuncioId: string, perfis: string[], destino: string): Promise<ResultadoEmMassa> {
+export async function moverCandidatos(
+  anuncioId: string,
+  perfis: string[],
+  destino: string,
+  // ao mover para uma etapa própria, a mensagem automática é a dela (moverNoQuadro), não a da etapa de hoje
+  opcoes: { semMensagem?: boolean } = {},
+): Promise<ResultadoEmMassa> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const ids = idsValidos(perfis).slice(0, MAX_DE_UMA_VEZ);
   if (!UUID.test(anuncioId) || !ids.length || !(destino in ETAPAS_CANDIDATO))
@@ -113,8 +120,9 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
   }
   // a automação da vaga: a mensagem pronta da etapa, uma vez por pessoa (migração 20270109120000; sem ela, nada)
   let automaticas = 0;
-  if (feitos && (etapa === "analise" || etapa === "entrevista" || etapa === "contratado")) {
-    const movidos = ids.filter((id) => !falhas.some((f) => f.perfil === id));
+  let comHorarios = 0;
+  const movidos = ids.filter((id) => !falhas.some((f) => f.perfil === id) && !aceitos.includes(id));
+  if (feitos && !opcoes?.semMensagem && (etapa === "analise" || etapa === "entrevista" || etapa === "contratado")) {
     const { data: enviadas } = await supabase.rpc("automacao_mensagem_ao_mover", {
       p_anuncio: anuncioId,
       p_perfis: movidos,
@@ -122,6 +130,8 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
     });
     automaticas = Number(enviadas ?? 0);
   }
+  // a automação dos horários livres: quem chega em Entrevista sem entrevista em aberto escolhe um horário vago
+  if (feitos && etapa === "entrevista") comHorarios = await oferecerHorariosAutomaticos(supabase, anuncioId, movidos);
   if (feitos || aceitos.length) after(processarFilas);
   refresh();
   const nome = ETAPAS_CANDIDATO[etapa].nome;
@@ -139,6 +149,9 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
           : "",
       automaticas
         ? `A mensagem automática da etapa foi para ${automaticas === 1 ? "1 pessoa" : `${automaticas} pessoas`}.`
+        : "",
+      comHorarios
+        ? `Os seus horários livres foram para ${comHorarios === 1 ? "1 pessoa" : `${comHorarios} pessoas`} escolher.`
         : "",
     ]
       .filter(Boolean)

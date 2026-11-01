@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Plus, X } from "lucide-react";
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   DIAS_SEMANA,
   ESCALAS,
@@ -51,6 +51,11 @@ type PerguntaEditada = Pergunta & { novaOpcao: string };
 export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?: string }) {
   const base = useId();
   const [lista, setLista] = useState<PerguntaEditada[]>(inicial.map((p) => ({ ...p, novaOpcao: "" })));
+  const caixa = useRef<HTMLFieldSetElement>(null);
+  // o link "Marcar uma nas perguntas da vaga" (Automações): o formulário chega depois, então rola aqui
+  useEffect(() => {
+    if (window.location.hash === "#perguntas-da-vaga") caixa.current?.scrollIntoView({ block: "start" });
+  }, []);
 
   const mudar = (id: string, parte: Partial<PerguntaEditada>) =>
     setLista((l) => l.map((p) => (p.id === id ? { ...p, ...parte } : p)));
@@ -81,7 +86,7 @@ export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?:
   );
 
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset id="perguntas-da-vaga" ref={caixa} className="flex scroll-mt-24 flex-col gap-3">
       <legend className="mb-1 text-label">
         Perguntas para o candidato <span className="font-normal text-ink-muted">(opcional)</span>
       </legend>
