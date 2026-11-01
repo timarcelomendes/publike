@@ -16,7 +16,7 @@ import {
   dataEHora,
   NOME_CICLO,
   NOME_PRODUTO,
-  podeAssinarCombo,
+  podeAssinarPacote,
   POR_CICLO,
   type Assinatura,
   type Produto,
@@ -29,7 +29,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Assinatura", robots: { index: false } };
 
-// A assinatura da Triagem com IA e do Teste Prático: a forma de pagar, a próxima cobrança, trocar o cartão e
+// A assinatura dos recursos pagos, do combo e do Plano Completo: a forma de pagar, a próxima cobrança, trocar o cartão e
 // cancelar (claude/plano-checkout-asaas.md). Na volta do cartão (?cartao=ok), confere no parceiro.
 
 export default function PaginaAssinatura({ searchParams }: PageProps<"/painel/assinatura">) {
@@ -154,9 +154,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const [pag, recursos, agora] = await Promise.all([pagamentosDaConta(), recursosPagos(), agoraDaRequisicao()]);
   const valendo = (pag?.assinaturas ?? []).filter((a) => a.situacao !== "cancelada");
   const canceladas = (pag?.assinaturas ?? []).filter((a) => a.situacao === "cancelada");
-  // o combo primeiro (os dois juntos saem mais em conta), depois cada recurso
+  // o Plano Completo primeiro (os quatro juntos saem mais em conta), depois o combo e cada recurso
   const aVenda: Produto[] = [
-    ...(podeAssinarCombo(pag, recursos) ? (["combo"] as const) : []),
+    ...(podeAssinarPacote(pag, recursos, "completo") ? (["completo"] as const) : []),
+    ...(podeAssinarPacote(pag, recursos, "combo") ? (["combo"] as const) : []),
     ...RECURSOS_PAGOS.filter((r) => recursos?.[r]?.pode_assinar),
   ];
   const aviso = volta ? VOLTA[volta] : null;
@@ -220,7 +221,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
               : undefined
           }
         >
-          Assine a Triagem com IA, o Teste Prático ou os dois juntos no combo, por mês ou a cada 3 meses.
+          Assine um recurso, o combo Triagem + Teste Prático ou o Plano Completo, com os quatro, por mês ou a cada 3
+          meses.
         </Vazio>
       ) : (
         <>

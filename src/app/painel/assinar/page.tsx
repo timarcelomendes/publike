@@ -1,4 +1,4 @@
-import { ChevronRight, ClipboardCheck, Layers, Sparkles, Video, Workflow } from "lucide-react";
+import { ChevronRight, ClipboardCheck, Layers, PackageCheck, Sparkles, Video, Workflow } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
@@ -13,11 +13,14 @@ import {
   diaBr,
   diaDaPrimeiraCobranca,
   DO_PRODUTO,
+  economiaDoPacote,
   ehProduto,
+  jaInclui,
   NOME_PRODUTO,
   O_PRODUTO,
-  podeAssinarCombo,
+  podeAssinarPacote,
   recursosDo,
+  seCruzam,
   type PagamentosDaConta,
   type Produto,
 } from "@/lib/pagamentos";
@@ -26,13 +29,14 @@ import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Assinar", robots: { index: false } };
 
-// Assinar a Triagem com IA, o Teste Prático ou o combo dos dois (claude/plano-checkout-asaas.md): o plano, cartão ou Pix e os dados
-// da nota. Com ?troca=1, só o cartão novo da assinatura que já vale.
+// Assinar um recurso, o combo (Triagem + Teste Prático) ou o Plano Completo (os quatro), claude/plano-checkout-asaas.md:
+// o plano, cartão ou Pix e os dados da nota. Com ?troca=1, só o cartão novo da assinatura que já vale.
 
 const ICONE: Record<Produto, typeof Sparkles> = {
   copiloto: Sparkles,
   testes: ClipboardCheck,
   combo: Layers,
+  completo: PackageCheck,
   video: Video,
   automacoes: Workflow,
 };
@@ -40,6 +44,8 @@ const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
   combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
+  completo:
+    "Os quatro numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas, por menos que separados.",
   video: "O candidato grava as respostas pelo celular e a IA resume; e a entrevista ao vivo, sem instalar nada.",
   automacoes:
     "As suas regras: quando algo acontece, se a pessoa atende o que você escolher, o Publike faz o que você mandar.",
@@ -70,9 +76,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const planos = (pag?.planos ?? []).filter((p) => p.recurso === produto);
   const valendo = (pag?.assinaturas ?? []).filter((a) => a.situacao !== "cancelada");
   const ativa = valendo.find((a) => a.recurso === produto && a.situacao === "ativa");
-  // o combo e os recursos separados não valem juntos
-  const conflito =
-    produto === "combo" ? valendo.find((a) => a.recurso !== "combo") : valendo.find((a) => a.recurso === "combo");
+  // dois produtos que liberam um mesmo recurso (o combo ou o Plano Completo e os separados) não valem juntos
+  const conflito = valendo.find((a) => a.recurso !== produto && seCruzam(a.recurso, produto));
   const semPrazo = recursosDo(produto).every((r) => recursos?.[r].liberado && !recursos[r].ate);
 
   // a 1ª cobrança: o fim do teste grátis ou do período já pago (o servidor calcula de novo)
@@ -106,7 +111,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         titulo={
           produto === "combo"
             ? "Os dois já estão liberados para a sua conta"
-            : `${NOME_PRODUTO[produto]}: já liberado para a sua conta`
+            : produto === "completo"
+              ? "Os quatro já estão liberados para a sua conta"
+              : `${NOME_PRODUTO[produto]}: já liberado para a sua conta`
         }
       >
         Não há nada a pagar.
@@ -128,9 +135,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
       <Aviso tipo="info" titulo={`Você assina ${O_PRODUTO[conflito.recurso]}`}>
         <span className="flex flex-col items-start gap-2">
           <span>
-            {produto === "combo"
-              ? "Para passar para o combo, cancele essa assinatura em Assinatura. O que já foi pago continua valendo, e o combo começa a cobrar quando ele acabar."
-              : `O combo já inclui ${O_PRODUTO[produto]}.`}
+            {jaInclui(conflito.recurso, produto)
+              ? `${maiuscula(O_PRODUTO[conflito.recurso])} já inclui ${O_PRODUTO[produto]}.`
+              : `Para passar para ${O_PRODUTO[produto]}, cancele essa assinatura em Assinatura. O que já foi pago continua valendo, e ${O_PRODUTO[produto]} começa a cobrar quando ele acabar.`}
           </span>
           <BotaoLink href="/painel/assinatura" tamanho="sm">
             Ver assinatura
@@ -171,7 +178,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     <div className="flex max-w-2xl flex-col gap-6">
       {cabecalho}
       {corpo}
-      {!troca && <OutraOpcao produto={produto} pag={pag} comboAberto={podeAssinarCombo(pag, recursos)} />}
+      {!troca && (
+        <OutraOpcao
+          produto={produto}
+          pag={pag}
+          abertos={{
+            completo: podeAssinarPacote(pag, recursos, "completo"),
+            combo: podeAssinarPacote(pag, recursos, "combo"),
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -192,6 +208,12 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "Triagem com IA e Teste Prático numa assinatura só, por menos que os dois separados.",
     botao: "Ver o combo",
   },
+  completo: {
+    titulo: "Plano Completo",
+    texto:
+      "Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas, por menos que separados.",
+    botao: "Ver o Plano Completo",
+  },
   video: {
     titulo: "Entrevista em vídeo",
     texto: "Ouça todos os candidatos sem marcar horário: eles gravam as respostas e a IA resume.",
@@ -204,53 +226,66 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
   },
 };
 
-/** No pé da tela, o convite para o outro recurso e para o combo (ou, no combo, para um só), com o preço. */
+/** As outras opções de cada tela: no Plano Completo, os recursos separados; nas outras, o Plano Completo e mais duas. */
+const OUTRAS: Record<Produto, Produto[]> = {
+  completo: ["copiloto", "testes", "video", "automacoes"],
+  copiloto: ["completo", "testes", "combo"],
+  testes: ["completo", "copiloto", "combo"],
+  combo: ["completo", "copiloto", "testes"],
+  video: ["completo", "automacoes", "copiloto"],
+  automacoes: ["completo", "video", "copiloto"],
+};
+
+const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+/**
+ * No pé da tela, as outras opções com o preço: o Plano Completo em destaque, na largura toda, com quanto economiza;
+ * o combo e os recursos separados embaixo. Um pacote só aparece quando dá para assinar agora (sem assinatura que se
+ * cruze com ele).
+ */
 function OutraOpcao({
   produto,
   pag,
-  comboAberto,
+  abertos,
 }: {
   produto: Produto;
   pag: PagamentosDaConta | null;
-  /** o combo pode ser assinado agora (sem assinatura valendo) */
-  comboAberto: boolean;
+  abertos: { completo: boolean; combo: boolean };
 }) {
   const mensal = (p: Produto) => pag?.planos.find((x) => x.recurso === p && x.ciclo === "MONTHLY")?.valor ?? null;
-  const ordem: Produto[] =
-    produto === "combo" || produto === "video" || produto === "automacoes"
-      ? ["copiloto", "testes"]
-      : [produto === "copiloto" ? "testes" : "copiloto", "combo"];
-  const opcoes = ordem.filter((p) => pag?.planos.some((x) => x.recurso === p) && (p !== "combo" || comboAberto));
+  const opcoes = OUTRAS[produto].filter(
+    (p) => pag?.planos.some((x) => x.recurso === p) && (p === "completo" || p === "combo" ? abertos[p] : true),
+  );
   if (!opcoes.length) return null;
-  const combo = planoDoCombo(pag);
   return (
     <section aria-labelledby="outra-opcao" className="flex flex-col gap-3">
       <h3 id="outra-opcao" className="text-h3">
-        {produto === "combo"
-          ? "Prefere começar com um só?"
-          : produto === "video" || produto === "automacoes"
-            ? "Os outros recursos"
-            : "Contrate melhor com os dois"}
+        {produto === "completo" ? "Prefere começar com um só?" : "Outras opções"}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">
         {opcoes.map((p) => {
           const o = OFERTA_CURTA[p];
           const Icone = ICONE[p];
           const valor = mensal(p);
+          const destaque = p === "completo";
+          const pacote = p === "completo" || p === "combo" ? economiaDoPacote(pag, p) : null;
           return (
             <div
               key={p}
               className={`flex flex-col gap-3 rounded-lg border bg-surface-200 p-5 shadow-card ${
-                p === "combo" ? "border-terra" : "border-line-strong"
+                destaque ? "border-terra sm:col-span-2" : "border-line-strong"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft">
                   <Icone aria-hidden className="size-5 text-terra-text" />
                 </span>
-                {p === "combo" && combo && combo.economia > 0 && (
-                  <Selo variante="novo">Economize {formatarMoeda(Math.round(combo.economia * 100) / 100)}</Selo>
-                )}
+                <span className="flex flex-wrap justify-end gap-1.5">
+                  {pacote && pacote.economia > 0 && (
+                    <Selo variante="match">Economize {formatarMoeda(pacote.economia)} por mês</Selo>
+                  )}
+                  {destaque && <Selo variante="novo">Novo</Selo>}
+                </span>
               </div>
               <div className="flex flex-col gap-1">
                 <p className="text-label">{o.titulo}</p>
@@ -259,6 +294,11 @@ function OutraOpcao({
               {valor != null && (
                 <p className="text-h3 tabular-nums">
                   {formatarMoeda(valor)} <span className="text-body-sm font-normal text-ink-muted">por mês</span>
+                  {pacote && pacote.economia > 0 && (
+                    <span className="ml-2 text-body-sm font-normal text-ink-muted line-through">
+                      {formatarMoeda(pacote.separados)}
+                    </span>
+                  )}
                 </p>
               )}
               <BotaoLink
@@ -276,14 +316,4 @@ function OutraOpcao({
       </div>
     </section>
   );
-}
-
-/** O combo mensal e quanto os dois mensais custam separados (sem o mensal dos dois, sem comparação). */
-function planoDoCombo(pag: PagamentosDaConta | null) {
-  const mensal = (r: Produto) => pag?.planos.find((p) => p.recurso === r && p.ciclo === "MONTHLY")?.valor;
-  const valor = mensal("combo");
-  const c = mensal("copiloto");
-  const t = mensal("testes");
-  if (valor == null || c == null || t == null) return null;
-  return { valor, separados: c + t, economia: c + t - valor };
 }

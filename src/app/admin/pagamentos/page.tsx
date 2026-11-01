@@ -182,7 +182,10 @@ async function Conteudo() {
         )}
       </Secao>
 
-      <Secao titulo="Preços" descricao="Cada recurso é assinado separado. O trimestral cobra os 3 meses juntos.">
+      <Secao
+        titulo="Preços"
+        descricao="Cada recurso, o combo (Triagem + Teste Prático) e o Plano Completo (os quatro). O trimestral cobra os 3 meses juntos."
+      >
         <div className="flex flex-col divide-y divide-line">
           {d.planos.map((p) => (
             <EditarPlano

@@ -2,13 +2,20 @@ import type { RecursoPago, RecursosPagos } from "./recursos-pagos";
 
 // O que as telas de Assinar, Assinatura e Faturas leem do banco (migração 20261218120000; o combo, 20261220120000).
 
-/** O que se assina: um recurso ou o combo (os dois numa assinatura só). */
-export type Produto = RecursoPago | "combo";
+/**
+ * O que se assina: um recurso, o combo (a Triagem e o Teste Prático numa assinatura só) ou o Plano Completo (os
+ * quatro recursos numa assinatura só; migração 20270116120000).
+ */
+export type Produto = RecursoPago | "combo" | "completo";
+
+/** Os pacotes: liberam mais de um recurso. */
+export const PACOTES = ["completo", "combo"] as const;
 
 export const NOME_PRODUTO: Record<Produto, string> = {
   copiloto: "Triagem com IA",
   testes: "Teste Prático",
   combo: "Combo Triagem + Teste Prático",
+  completo: "Plano Completo",
   video: "Entrevista em vídeo",
   automacoes: "Automações personalizadas",
 };
@@ -18,6 +25,7 @@ export const O_PRODUTO: Record<Produto, string> = {
   copiloto: "a Triagem com IA",
   testes: "o Teste Prático",
   combo: "o combo Triagem + Teste Prático",
+  completo: "o Plano Completo",
   video: "a Entrevista em vídeo",
   automacoes: "as Automações personalizadas",
 };
@@ -27,17 +35,31 @@ export const DO_PRODUTO: Record<Produto, string> = {
   copiloto: "da Triagem com IA",
   testes: "do Teste Prático",
   combo: "do combo Triagem + Teste Prático",
+  completo: "do Plano Completo",
   video: "da Entrevista em vídeo",
   automacoes: "das Automações personalizadas",
 };
 
 export function ehProduto(x: unknown): x is Produto {
-  return x === "copiloto" || x === "testes" || x === "combo" || x === "video" || x === "automacoes";
+  return x === "copiloto" || x === "testes" || x === "combo" || x === "completo" || x === "video" || x === "automacoes";
 }
 
 /** Os recursos que o produto libera. */
 export function recursosDo(p: Produto): RecursoPago[] {
+  if (p === "completo") return ["copiloto", "testes", "video", "automacoes"];
   return p === "combo" ? ["copiloto", "testes"] : [p];
+}
+
+/** Dois produtos que liberam um mesmo recurso não valem juntos (cancela um para assinar o outro). */
+export function seCruzam(a: Produto, b: Produto) {
+  const de = recursosDo(b);
+  return recursosDo(a).some((r) => de.includes(r));
+}
+
+/** O primeiro libera tudo o que o segundo libera ("o Plano Completo já inclui a Triagem com IA"). */
+export function jaInclui(pacote: Produto, p: Produto) {
+  const de = recursosDo(pacote);
+  return recursosDo(p).every((r) => de.includes(r));
 }
 
 export type Ciclo = "MONTHLY" | "QUARTERLY";
@@ -154,14 +176,29 @@ export function lerFaturas(data: unknown): Fatura[] {
 }
 
 /**
- * Pode assinar o combo: os pagamentos abertos para a conta, o combo à venda e nenhuma assinatura valendo (quem
- * assina um recurso cancela antes; o que já foi pago continua valendo). Liberado sem prazo nos dois: não paga.
+ * Pode assinar o pacote (o combo ou o Plano Completo): os pagamentos abertos para a conta, o pacote à venda e
+ * nenhuma assinatura valendo que se cruze com ele (quem assina um recurso cancela antes; o que já foi pago continua
+ * valendo). Liberado sem prazo em todos os recursos do pacote: não paga.
  */
-export function podeAssinarCombo(pag: PagamentosDaConta | null, recursos: RecursosPagos | null) {
-  if (!pag?.pode || !pag.planos.some((p) => p.recurso === "combo")) return false;
-  if (pag.assinaturas.some((a) => a.situacao !== "cancelada")) return false;
-  const semPrazo = (r: RecursoPago) => Boolean(recursos?.[r].liberado && !recursos[r].ate);
-  return !(semPrazo("copiloto") && semPrazo("testes"));
+export function podeAssinarPacote(
+  pag: PagamentosDaConta | null,
+  recursos: RecursosPagos | null,
+  pacote: (typeof PACOTES)[number],
+) {
+  if (!pag?.pode || !pag.planos.some((p) => p.recurso === pacote)) return false;
+  if (pag.assinaturas.some((a) => a.situacao !== "cancelada" && seCruzam(a.recurso, pacote))) return false;
+  const semPrazo = (r: RecursoPago) => Boolean(recursos?.[r]?.liberado && !recursos[r].ate);
+  return !recursosDo(pacote).every(semPrazo);
+}
+
+/** O mensal do pacote e quanto os recursos dele custam separados, por mês (sem algum preço, sem comparação). */
+export function economiaDoPacote(pag: PagamentosDaConta | null, pacote: (typeof PACOTES)[number]) {
+  const mensal = (r: Produto) => pag?.planos.find((p) => p.recurso === r && p.ciclo === "MONTHLY")?.valor;
+  const valor = mensal(pacote);
+  const partes = recursosDo(pacote).map(mensal);
+  if (valor == null || partes.some((x) => x == null)) return null;
+  const separados = partes.reduce<number>((t, x) => t + (x ?? 0), 0);
+  return { valor, separados, economia: Math.round((separados - valor) * 100) / 100 };
 }
 
 /** "AAAA-MM-DD" no horário de Brasília. */
@@ -180,7 +217,8 @@ export function diaDaPrimeiraCobranca(
   agora = new Date(),
 ) {
   const hoje = diaBr(agora);
-  const chaves = new Set<string>([...recursosDo(produto), produto, "combo"]);
+  // o que já foi pago do próprio produto, dos recursos dele e dos pacotes que liberam algum deles
+  const chaves = new Set<string>([...recursosDo(produto), produto, ...PACOTES.filter((x) => seCruzam(x, produto))]);
   const datas = [...chaves]
     .flatMap((k) => [recursosDo(produto).includes(k as RecursoPago) ? testesAte?.[k] : undefined, pagoAte?.[k]])
     .filter((d): d is string => Boolean(d))

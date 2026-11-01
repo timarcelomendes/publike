@@ -5,7 +5,16 @@ import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { documentoValido } from "@/lib/documento";
-import { diaDaPrimeiraCobranca, ehProduto, NOME_PRODUTO, O_PRODUTO, recursosDo, type Produto } from "@/lib/pagamentos";
+import {
+  diaDaPrimeiraCobranca,
+  ehProduto,
+  jaInclui,
+  NOME_PRODUTO,
+  O_PRODUTO,
+  recursosDo,
+  seCruzam,
+  type Produto,
+} from "@/lib/pagamentos";
 import type { RecursoPago } from "@/lib/recursos-pagos";
 import {
   asaasConfigurado,
@@ -42,10 +51,12 @@ type Contexto = {
 export type ResultadoAssinar = { ok: true; ir: string; externo?: boolean } | { ok: false; erro: string };
 
 const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral" };
+const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const CURTO: Record<Produto, string> = {
   copiloto: "Triagem",
   testes: "Teste Prático",
   combo: "Combo",
+  completo: "Plano Completo",
   video: "Entrevista em vídeo",
   automacoes: "Automações personalizadas",
 };
@@ -141,15 +152,15 @@ export async function assinar(dados: {
     if (troca && !ctx.ativas.includes(plano.recurso)) return { ok: false, erro: "Não há assinatura para trocar." };
     if (!troca && ctx.ativas.includes(plano.recurso))
       return { ok: false, erro: `Você já assina ${O_PRODUTO[plano.recurso]}. Veja em Assinatura.` };
-    // o combo e os recursos separados não valem juntos: cancela um para assinar o outro
-    const outra = ctx.ativas.find((x) => x !== plano.recurso && (x === "combo" || plano.recurso === "combo"));
+    // dois produtos que liberam um mesmo recurso (o combo ou o Plano Completo e os recursos separados) não valem
+    // juntos: cancela um para assinar o outro
+    const outra = ctx.ativas.find((x) => x !== plano.recurso && ehProduto(x) && seCruzam(x, plano.recurso));
     if (!troca && outra)
       return {
         ok: false,
-        erro:
-          outra === "combo"
-            ? `O combo que você assina já inclui ${O_PRODUTO[plano.recurso]}.`
-            : `Você assina ${O_PRODUTO[outra]}. Cancele em Assinatura para passar para o combo (o que já foi pago continua valendo).`,
+        erro: jaInclui(outra, plano.recurso)
+          ? `${maiuscula(O_PRODUTO[outra])} que você assina já inclui ${O_PRODUTO[plano.recurso]}.`
+          : `Você assina ${O_PRODUTO[outra]}. Cancele em Assinatura para passar para ${O_PRODUTO[plano.recurso]} (o que já foi pago continua valendo).`,
       };
 
     // o cliente no parceiro (um por conta): nome, CPF ou CNPJ e e-mail da nota fiscal
@@ -194,7 +205,7 @@ export async function assinar(dados: {
 
     // a 1ª cobrança: no fim do teste grátis ou do que já está pago (assinar de novo, trocar o cartão); senão, hoje
     const primeiro = diaDaPrimeiraCobranca(plano.recurso, ctx.testes_ate, ctx.pago_ate);
-    // o nome do item é como o banco liga a assinatura do checkout ("combo", "triagem" ou "teste" no texto)
+    // o nome do item é como o banco liga a assinatura do checkout ("completo", "combo", "triagem" ou "teste" no texto)
     const nomeItem = `Publike · ${NOME_PRODUTO[plano.recurso]} (${CICLO[plano.ciclo]})`;
     // no checkout, o nome do item tem no máximo 30 letras (o Asaas recusa o resto): "Publike Combo (trimestral)";
     // quando não cabe ("Publike Teste Prático (trimestral)"), vai sem o ciclo, que está na descrição
