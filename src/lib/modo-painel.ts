@@ -103,6 +103,7 @@ export type Secao = {
     | "visitas"
     | "testes"
     | "copiloto"
+    | "video"
     | "assinatura";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
@@ -179,7 +180,8 @@ export function secoesDoModo(modo: ModoPainel, tipoConta: string | null | undefi
 export type ExtrasDoMenu = {
   copiloto?: boolean;
   /** as pílulas dos recursos pagos pelo estado da conta (`marcaDoRecurso`); sem elas, a de sempre */
-  pilulas?: { copiloto: string | null; testes: string | null };
+  /** `video` undefined: o banco ainda sem a Entrevista em vídeo (fica fora do menu) */
+  pilulas?: { copiloto: string | null; testes: string | null; video?: string | null };
 };
 
 export function gruposDoModo(
@@ -245,6 +247,16 @@ export function gruposDoModo(
           icone: "copiloto",
           cortesia: extras.pilulas ? (extras.pilulas.copiloto ?? false) : !extras.copiloto,
         },
+        ...(extras.pilulas && extras.pilulas.video !== undefined
+          ? [
+              {
+                href: "/painel/video",
+                nome: "Entrevista em vídeo",
+                icone: "video" as const,
+                cortesia: extras.pilulas.video ?? false,
+              },
+            ]
+          : []),
         { href: "/talentos", nome: "Talentos", icone: "talentos" },
       ],
     },
@@ -300,6 +312,7 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/links") ||
     caminho.startsWith("/painel/testes") ||
     caminho.startsWith("/painel/copiloto") ||
+    caminho.startsWith("/painel/video") ||
     caminho.startsWith("/painel/assinatura") ||
     caminho.startsWith("/painel/assinar") ||
     caminho.startsWith("/painel/faturas")

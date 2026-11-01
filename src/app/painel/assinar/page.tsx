@@ -1,4 +1,4 @@
-import { ChevronRight, ClipboardCheck, Layers, Sparkles } from "lucide-react";
+import { ChevronRight, ClipboardCheck, Layers, Sparkles, Video } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
@@ -29,11 +29,17 @@ export const metadata: Metadata = { title: "Assinar", robots: { index: false } }
 // Assinar a Triagem com IA, o Teste Prático ou o combo dos dois (claude/plano-checkout-asaas.md): o plano, cartão ou Pix e os dados
 // da nota. Com ?troca=1, só o cartão novo da assinatura que já vale.
 
-const ICONE: Record<Produto, typeof Sparkles> = { copiloto: Sparkles, testes: ClipboardCheck, combo: Layers };
+const ICONE: Record<Produto, typeof Sparkles> = {
+  copiloto: Sparkles,
+  testes: ClipboardCheck,
+  combo: Layers,
+  video: Video,
+};
 const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
   combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
+  video: "O candidato grava as respostas pelo celular e a IA resume; e a entrevista ao vivo, sem instalar nada.",
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -183,6 +189,11 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "Triagem com IA e Teste Prático numa assinatura só, por menos que os dois separados.",
     botao: "Ver o combo",
   },
+  video: {
+    titulo: "Entrevista em vídeo",
+    texto: "Ouça todos os candidatos sem marcar horário: eles gravam as respostas e a IA resume.",
+    botao: "Conhecer a Entrevista em vídeo",
+  },
 };
 
 /** No pé da tela, o convite para o outro recurso e para o combo (ou, no combo, para um só), com o preço. */
@@ -198,14 +209,20 @@ function OutraOpcao({
 }) {
   const mensal = (p: Produto) => pag?.planos.find((x) => x.recurso === p && x.ciclo === "MONTHLY")?.valor ?? null;
   const ordem: Produto[] =
-    produto === "combo" ? ["copiloto", "testes"] : [produto === "copiloto" ? "testes" : "copiloto", "combo"];
+    produto === "combo" || produto === "video"
+      ? ["copiloto", "testes"]
+      : [produto === "copiloto" ? "testes" : "copiloto", "combo"];
   const opcoes = ordem.filter((p) => pag?.planos.some((x) => x.recurso === p) && (p !== "combo" || comboAberto));
   if (!opcoes.length) return null;
   const combo = planoDoCombo(pag);
   return (
     <section aria-labelledby="outra-opcao" className="flex flex-col gap-3">
       <h3 id="outra-opcao" className="text-h3">
-        {produto === "combo" ? "Prefere começar com um só?" : "Contrate melhor com os dois"}
+        {produto === "combo"
+          ? "Prefere começar com um só?"
+          : produto === "video"
+            ? "Os outros recursos"
+            : "Contrate melhor com os dois"}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">
         {opcoes.map((p) => {

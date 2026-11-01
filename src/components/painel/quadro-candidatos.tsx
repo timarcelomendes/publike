@@ -11,6 +11,7 @@ import {
   Send,
   Sparkles,
   UserPlus,
+  Video,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -54,6 +55,9 @@ import { classesEntrada, Seletor } from "../ui/campo";
 import { CompositorMensagem, EntrevistaMarcada, FormEntrevista } from "./recrutamento";
 import { FormRetorno } from "./retorno";
 import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
+import { VideoNaFicha } from "../video/video-na-ficha";
+import { SITUACOES_VIDEO, type VideoNoQuadro } from "@/lib/entrevista-video";
+import { pedirVideo } from "@/lib/acoes/entrevista-video";
 import { montarRetorno, type RetornoDaConta } from "@/lib/retorno";
 import { mensagemDoMomento } from "@/lib/whatsapp";
 
@@ -102,6 +106,8 @@ export type CartaoQuadro = {
   triagem?: TriagemNoCartao | null;
   /** "Quem chamar primeiro": a posição e o porquê (só com a ordem ligada) */
   chamar?: { posicao: number; porque: string } | null;
+  /** a entrevista em vídeo (migração 20270105120000) */
+  video?: VideoNoQuadro | null;
 };
 
 const COR_FAIXA: Record<FaixaDoTeste, string> = {
@@ -122,6 +128,7 @@ export function QuadroCandidatos({
   agencia = false,
   contatoDireto = false,
   retorno = null,
+  video = null,
 }: {
   anuncioId: string;
   vaga: string;
@@ -138,6 +145,8 @@ export function QuadroCandidatos({
   agencia?: boolean;
   /** o retorno a quem não seguiu (null: sem a migração 20261230120000) */
   retorno?: RetornoDaConta | null;
+  /** a Entrevista em vídeo: a conta tem o recurso (null: o banco ainda sem a migração) */
+  video?: { liberado: boolean } | null;
 }) {
   const [lista, mover] = useOptimistic(cartoes, (atual, m: { ids: string[]; coluna: EtapaCandidato }) =>
     atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna } : c)),
@@ -181,6 +190,15 @@ export function QuadroCandidatos({
     setAviso(null);
     iniciar(async () => {
       const r = await chamarAcao(() => adicionarFinalistas(anuncioId, ids));
+      setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
+      if (r.ok) setSelecionados([]);
+    });
+  }
+
+  function pedirVideoAosMarcados(ids: string[]) {
+    setAviso(null);
+    iniciar(async () => {
+      const r = await chamarAcao(() => pedirVideo(anuncioId, ids));
       setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Pronto." } : { ok: false, texto: r.erro });
       if (r.ok) setSelecionados([]);
     });
@@ -323,6 +341,12 @@ export function QuadroCandidatos({
             {quemAvalia(agencia).enviar}
             {!agencia && <Selo variante="novo">Novo</Selo>}
           </Botao>
+          {video?.liberado && (
+            <Botao tamanho="sm" disabled={pendente} onClick={() => pedirVideoAosMarcados(selecionados)}>
+              <Video aria-hidden />
+              Pedir entrevista em vídeo
+            </Botao>
+          )}
           {selecionados.length >= 2 && selecionados.length <= 4 && (
             <Link
               href={`/painel/anuncio/${anuncioId}/comparar?p=${selecionados.join(",")}`}
@@ -423,6 +447,7 @@ export function QuadroCandidatos({
             pendente={pendente}
             direto={contatoDireto}
             retorno={retorno?.texto ?? null}
+            video={video}
           />
         )}
       </Gaveta>
@@ -520,7 +545,12 @@ function Cartao({
           ))}
         </div>
       </div>
-      {(c.status === "pendente" || entrevistaAberta || c.status === "desfeito" || c.finalista || c.colocacao) && (
+      {(c.status === "pendente" ||
+        entrevistaAberta ||
+        c.status === "desfeito" ||
+        c.finalista ||
+        c.colocacao ||
+        c.video) && (
         <div className="flex flex-wrap gap-1.5">
           {c.status === "pendente" &&
             (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
@@ -533,6 +563,9 @@ function Cartao({
           )}
           {c.finalista && <SeloDoCliente r={c.finalista} agencia={agencia} />}
           {c.colocacao && <SeloDaColocacao c={c.colocacao} agora={agora} />}
+          {c.video && (
+            <Selo variante={SITUACOES_VIDEO[c.video.situacao].tom}>{SITUACOES_VIDEO[c.video.situacao].nome}</Selo>
+          )}
         </div>
       )}
       <Seletor
@@ -566,10 +599,12 @@ function DetalheCandidato({
   pendente,
   direto,
   retorno,
+  video,
 }: {
   c: CartaoQuadro;
   /** o texto do retorno da conta (o WhatsApp de quem não seguiu) */
   retorno: string | null;
+  video: { liberado: boolean } | null;
   /** contato direto: o match saiu na hora, sem aceite */
   direto: boolean;
   anuncioId: string;
@@ -701,6 +736,19 @@ function DetalheCandidato({
               </div>
             ))}
           </dl>
+        </Secao>
+      )}
+
+      {video && (c.status === "pendente" || c.status === "match" || c.video) && (
+        <Secao titulo="Entrevista em vídeo">
+          <VideoNaFicha
+            anuncioId={anuncioId}
+            perfilId={c.perfil_id}
+            nome={c.nome}
+            video={c.video ?? null}
+            liberado={video.liberado}
+            agora={agora}
+          />
         </Secao>
       )}
 

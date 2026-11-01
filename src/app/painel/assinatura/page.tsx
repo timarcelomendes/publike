@@ -21,7 +21,7 @@ import {
   type Assinatura,
   type Produto,
 } from "@/lib/pagamentos";
-import { dataCurta, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
+import { dataCurta, NOME_RECURSO, PAGINA_DO_RECURSO, RECURSOS_PAGOS, type EstadoRecurso } from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { sincronizarCliente } from "@/lib/servidor/pagamentos";
 import { exigirUsuario } from "@/lib/sessao";
@@ -157,7 +157,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   // o combo primeiro (os dois juntos saem mais em conta), depois cada recurso
   const aVenda: Produto[] = [
     ...(podeAssinarCombo(pag, recursos) ? (["combo"] as const) : []),
-    ...(["copiloto", "testes"] as RecursoPago[]).filter((r) => recursos?.[r]?.pode_assinar),
+    ...RECURSOS_PAGOS.filter((r) => recursos?.[r]?.pode_assinar),
   ];
   const aviso = volta ? VOLTA[volta] : null;
   const cartaoPendente = volta === "ok" && !valendo.some((a) => a.forma === "cartao");
@@ -180,14 +180,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
             Seus recursos
           </h3>
           <ul className="flex flex-col divide-y divide-line">
-            {(["copiloto", "testes"] as RecursoPago[]).map((r) => {
+            {RECURSOS_PAGOS.filter((r) => !recursos[r].indisponivel).map((r) => {
               const s = situacaoDoRecurso(recursos[r], agora);
               return (
                 <li key={r} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
-                  <Link
-                    href={r === "copiloto" ? "/painel/copiloto" : "/painel/testes"}
-                    className="text-label hover:underline"
-                  >
+                  <Link href={PAGINA_DO_RECURSO[r]} className="text-label hover:underline">
                     {NOME_RECURSO[r]}
                   </Link>
                   <span className={`text-body-sm ${s.ok ? "text-ink" : "text-ink-muted"}`}>{s.texto}</span>

@@ -18,6 +18,7 @@ import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
 import { ordemDoCopiloto, triagemDosCandidatos } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
+import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { retornoDaConta } from "@/lib/servidor/retorno";
 import { saudeDasVagas } from "@/lib/servidor/saude";
 import { resultadosDosTestes } from "@/lib/servidor/testes";
@@ -52,12 +53,14 @@ async function Conteudo({
   const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno] = await Promise.all([
+  const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno, videos] = await Promise.all([
     montarQuadro(anuncio, agora),
     ordemDoCopiloto(id),
     resultadosDosTestes(id),
     triagemDosCandidatos(id),
     retornoDaConta(),
+    // a entrevista em vídeo (migração 20270105120000; sem ela, null)
+    videosDaVaga(id),
   ]);
   // o Teste Prático de cada candidato: o resultado numa palavra no cartão e o "Ordenar pelo teste"
   const testesDe = new Map<string, { titulo: string; faixa: FaixaDoTeste; nota: number }[]>();
@@ -75,6 +78,7 @@ async function Conteudo({
     copiloto: null,
     testes: (testesDe.get(c.perfil_id) ?? []).map(({ titulo, faixa }) => ({ titulo, faixa })),
     triagem: triagem?.get(c.perfil_id) ?? null,
+    video: videos?.get(c.perfil_id) ?? null,
   }));
   if (peloChamar) cartoes.sort(compararParaChamar);
   const ordenados = cartoes.map((c, i) =>
@@ -223,6 +227,7 @@ async function Conteudo({
           agencia={agencia}
           contatoDireto={Boolean(anuncio.contato_direto)}
           retorno={retorno}
+          video={videos && recursos && !recursos.video.indisponivel ? { liberado: recursos.video.liberado } : null}
         />
       )}
     </div>

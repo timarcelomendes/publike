@@ -467,6 +467,22 @@ export async function lembrarEntrevistas(): Promise<{ lembradas: number; motivo?
   return { lembradas: Number(data ?? 0) };
 }
 
+/**
+ * A entrevista em vídeo (migração 20270105120000): vence o pedido de quem não respondeu em 5 dias e lembra, uma vez,
+ * quando faltam 2 dias (das 8h às 20h). Sem a migração, nada (e sem `motivo`).
+ */
+export async function prazosDaEntrevistaVideo(): Promise<{ lembradas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { lembradas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_video_prazos", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { lembradas: 0 };
+    console.error("Publike: falha nos prazos da entrevista em vídeo:", error.message);
+    return { lembradas: 0, motivo: "Não foi possível conferir os prazos das entrevistas em vídeo." };
+  }
+  return { lembradas: Number(data ?? 0) };
+}
+
 /** As notícias de hoje num aviso só, no sino e no celular: a partir das 18h, uma vez por dia (migração 20261202120000). */
 export async function avisarNoticiasDoDia(): Promise<{ avisadas: number; motivo?: string }> {
   const acesso = acessoFila();

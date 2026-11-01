@@ -42,7 +42,12 @@ type Contexto = {
 export type ResultadoAssinar = { ok: true; ir: string; externo?: boolean } | { ok: false; erro: string };
 
 const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral" };
-const CURTO: Record<Produto, string> = { copiloto: "Triagem", testes: "Teste Prático", combo: "Combo" };
+const CURTO: Record<Produto, string> = {
+  copiloto: "Triagem",
+  testes: "Teste Prático",
+  combo: "Combo",
+  video: "Entrevista em vídeo",
+};
 
 // no computador (npm run dev), o motivo vai junto na tela, para achar o problema sem abrir o terminal
 const NO_COMPUTADOR = process.env.NODE_ENV !== "production";

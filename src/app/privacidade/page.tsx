@@ -129,6 +129,15 @@ export default function Privacidade() {
           você escolheu; nunca seu contato. A conversa fica só no seu navegador, não no Publike. O que você manda em
           Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você informar.
         </p>
+        <p id="entrevista-video" className="scroll-mt-24">
+          Entrevista em vídeo: se a empresa de uma vaga que você curtiu pedir, você grava as respostas pelo celular (ou
+          escreve, quando a empresa deixa; em vaga exclusiva para PCD, sempre). Os vídeos ficam guardados no Publike, e
+          só você e a empresa da vaga veem, até 6 meses depois que a vaga sai do ar; depois disso, são apagados. Para
+          resumir, a gravação vai para a OpenAI só para virar texto, e a IA recebe esse texto e a vaga, sem seu nome,
+          foto ou contato. A IA lê só o que você disse: ela não avalia rosto, voz, sotaque nem jeito de falar, não dá
+          nota e não decide nada. Na página da entrevista, “Apagar meus vídeos” apaga os vídeos, as respostas e o resumo
+          na hora.
+        </p>
         <p>
           Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}
           <Link href="/perfil" className="underline">

@@ -707,6 +707,8 @@ export async function recursosDaConta(c: ClienteBanco, contaId: string) {
   return data as {
     copiloto: { ate: string | null; liberado: boolean } | null;
     testes: { ate: string | null; liberado: boolean } | null;
+    /** migração 20270104120000 */
+    video?: { ate: string | null; liberado: boolean } | null;
     experimentos: { recurso: string; inicio: string; fim: string; quer_continuar_em: string | null }[];
   };
 }

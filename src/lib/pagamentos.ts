@@ -9,6 +9,7 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   copiloto: "Triagem com IA",
   testes: "Teste Prático",
   combo: "Combo Triagem + Teste Prático",
+  video: "Entrevista em vídeo",
 };
 
 /** Com o artigo, para as frases ("Assinar a Triagem com IA", "Você já assina o Teste Prático"). */
@@ -16,6 +17,7 @@ export const O_PRODUTO: Record<Produto, string> = {
   copiloto: "a Triagem com IA",
   testes: "o Teste Prático",
   combo: "o combo Triagem + Teste Prático",
+  video: "a Entrevista em vídeo",
 };
 
 /** Com "de" ("o cartão da Triagem com IA"). */
@@ -23,10 +25,11 @@ export const DO_PRODUTO: Record<Produto, string> = {
   copiloto: "da Triagem com IA",
   testes: "do Teste Prático",
   combo: "do combo Triagem + Teste Prático",
+  video: "da Entrevista em vídeo",
 };
 
 export function ehProduto(x: unknown): x is Produto {
-  return x === "copiloto" || x === "testes" || x === "combo";
+  return x === "copiloto" || x === "testes" || x === "combo" || x === "video";
 }
 
 /** Os recursos que o produto libera. */

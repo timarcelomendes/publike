@@ -1,4 +1,4 @@
-import { Check, ClipboardCheck, CreditCard, Sparkles } from "lucide-react";
+import { Check, ClipboardCheck, CreditCard, Sparkles, Video } from "lucide-react";
 import { O_PRODUTO, type Produto } from "@/lib/pagamentos";
 import { dataCurta, DIAS_GRATIS, diasRestantes, NOME_RECURSO, type EstadoRecurso, type RecursoPago } from "@/lib/recursos-pagos";
 import { BotaoExperimentar } from "./botao-experimentar";
@@ -32,6 +32,23 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
       "O candidato faz pelo celular, e o resultado aparece no quadro da vaga",
     ],
   },
+  video: {
+    titulo: "Entrevista em vídeo: ouça todos sem marcar horário",
+    texto:
+      "O candidato grava as respostas pelo celular, quando puder, e a IA transcreve e resume o que ele disse. Quem decide é você.",
+    itens: [
+      "Você escolhe de 2 a 6 perguntas, com sugestões pela vaga",
+      "O candidato grava pelo celular, sem instalar nada",
+      "A IA transcreve e resume cada resposta",
+      "E a entrevista ao vivo pelo Publike, com um toque",
+    ],
+  },
+};
+
+const ICONE_RECURSO: Record<RecursoPago, typeof Sparkles> = {
+  copiloto: Sparkles,
+  testes: ClipboardCheck,
+  video: Video,
 };
 
 /** Assinar o recurso (claude/plano-checkout-asaas.md): cartão ou Pix, em /painel/assinar. */
@@ -61,7 +78,7 @@ export function BotaoAssinar({
 /** Para quem ainda não tem o recurso. `estado` null: antes da migração (sem botão). */
 export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estado: EstadoRecurso | null }) {
   const o = OFERTA[recurso];
-  const Icone = recurso === "copiloto" ? Sparkles : ClipboardCheck;
+  const Icone = ICONE_RECURSO[recurso];
   const acabou = estado?.experimentou && estado.fim_experimento ? dataCurta(estado.fim_experimento) : null;
   return (
     <section

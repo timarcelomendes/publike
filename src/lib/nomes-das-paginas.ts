@@ -63,6 +63,7 @@ const NOMES: Record<string, string> = {
   "/painel/seguindo": "Painel › Seguindo",
   "/painel/servicos": "Painel › Meus serviços",
   "/painel/testes": "Painel › Teste Prático",
+  "/painel/video": "Painel › Entrevista em vídeo",
   "/painel/testes/[id]": "Painel › Um teste",
   "/painel/testes/novo": "Painel › Novo teste",
   "/painel/visitas": "Painel › Quem viu seu perfil",

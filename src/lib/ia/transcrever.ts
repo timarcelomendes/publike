@@ -14,8 +14,11 @@ export function falaDisponivel() {
   return Boolean(chaveIA());
 }
 
-/** Transcreve o áudio em português. Erros saem como ErroIA. */
-export async function transcrever(audio: Blob, nome: string): Promise<string> {
+/**
+ * Transcreve o áudio (ou o vídeo: webm e mp4 servem) em português. Erros saem como ErroIA. `assunto`: a frase que
+ * ajuda nas palavras (sem ela, a do currículo falado).
+ */
+export async function transcrever(audio: Blob, nome: string, assunto?: string): Promise<string> {
   const chave = chaveIA();
   if (!chave) throw new ErroIA("A transcrição não está disponível agora.");
   const dados = new FormData();
@@ -26,7 +29,8 @@ export async function transcrever(audio: Blob, nome: string): Promise<string> {
   // o assunto ajuda nas palavras de trabalho e nos nomes de Goiânia (sem pôr frases prontas na boca da pessoa)
   dados.set(
     "prompt",
-    `Uma pessoa de ${CIDADES_DAS_PRACAS} conta onde trabalhou, o que fazia, o que estudou e que trabalho procura.`,
+    assunto ??
+      `Uma pessoa de ${CIDADES_DAS_PRACAS} conta onde trabalhou, o que fazia, o que estudou e que trabalho procura.`,
   );
   let resposta: Response;
   try {

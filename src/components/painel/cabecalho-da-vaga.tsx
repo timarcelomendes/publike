@@ -8,6 +8,7 @@ import {
   ListOrdered,
   Pencil,
   Sparkles,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,7 +27,7 @@ import { CopiarLinkDaVaga } from "./links-para-mandar";
 import { MaisDaVaga } from "./mais-da-vaga";
 import { EtiquetaDaSaude } from "./saude-vaga";
 
-export type AbaDaVaga = "candidatos" | "copiloto" | "testes" | "editar";
+export type AbaDaVaga = "candidatos" | "copiloto" | "testes" | "video" | "editar";
 
 /**
  * O alto de toda página de uma vaga no painel: a volta para Vagas, o nome, onde e quantos candidatos, o
@@ -65,6 +66,7 @@ export async function CabecalhoDaVaga({
   const marca = {
     copiloto: marcaDoRecurso(recursos?.copiloto, agora).curto,
     testes: marcaDoRecurso(recursos?.testes, agora).curto,
+    video: marcaDoRecurso(recursos?.video, agora).curto,
   };
   const status = anuncio.status as StatusAnuncio;
   const noAr = status === "ativo";
@@ -99,6 +101,18 @@ export async function CabecalhoDaVaga({
       icone: ClipboardCheck,
       marca: marca.testes,
     },
+    // sem a migração 20270104120000, a aba não aparece
+    ...(recursos && !recursos.video.indisponivel
+      ? [
+          {
+            aba: "video" as const,
+            nome: "Entrevista em vídeo",
+            href: `/painel/anuncio/${id}/video`,
+            icone: Video,
+            marca: marca.video,
+          },
+        ]
+      : []),
     { aba: "editar", nome: "Editar", href: `/painel/anuncio/${id}/editar`, icone: Pencil },
   ];
   return (

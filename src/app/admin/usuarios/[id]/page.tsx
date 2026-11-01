@@ -1,6 +1,7 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
-import { BotaoCopiloto, BotaoTestes } from "@/components/admin/copiloto";
+import { BotaoCopiloto, BotaoTestes, BotaoVideo } from "@/components/admin/copiloto";
+import { NOME_RECURSO } from "@/lib/recursos-pagos";
 import { FormNomeDaConta } from "@/components/admin/nome-da-conta";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -370,18 +371,18 @@ async function Conteudo({
 
       {u.perfil && copiloto && (
         <Secao
-          titulo="Triagem com IA e Teste Prático"
+          titulo="Triagem com IA, Teste Prático e Entrevista em vídeo"
           descricao="Recursos pagos. A conta pode experimentar cada um por 15 dias grátis, uma vez; aqui você libera sem prazo ou tira."
         >
           <div className="flex flex-col gap-4">
-            {(["copiloto", "testes"] as const).map((r) => {
+            {(["copiloto", "testes", "video"] as const).map((r) => {
               const estado = recursos?.[r] ?? null;
               // antes da migração 20261215120000, só o Copiloto, pela lista de antes
               const liberado = recursos ? Boolean(estado?.liberado) : r === "copiloto" && copiloto.some((x) => x.conta_id === u.id);
               const exp = recursos?.experimentos.find((e) => e.recurso === r);
               return (
                 <div key={r} className="flex flex-col gap-2">
-                  <p className="text-label">{r === "copiloto" ? "Triagem com IA" : "Teste Prático"}</p>
+                  <p className="text-label">{NOME_RECURSO[r]}</p>
                   <p className="text-body-sm text-ink-muted">
                     {liberado ? (estado?.ate ? `Nos 15 dias grátis, até ${formatarDataCurta(estado.ate)}.` : "Liberado sem prazo.") : "Não tem."}
                     {exp
@@ -390,8 +391,10 @@ async function Conteudo({
                   </p>
                   {r === "copiloto" ? (
                     <BotaoCopiloto contaId={u.id} liberado={liberado && !estado?.ate} />
-                  ) : (
+                  ) : r === "testes" ? (
                     <BotaoTestes contaId={u.id} liberado={liberado && !estado?.ate} />
+                  ) : (
+                    <BotaoVideo contaId={u.id} liberado={liberado && !estado?.ate} />
                   )}
                 </div>
               );

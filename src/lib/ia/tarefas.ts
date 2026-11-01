@@ -387,3 +387,55 @@ export async function resumirCandidato(dados: string, modelo: string): Promise<R
   if (resumo.length < 20 || temContato(resumo)) throw new ErroIA("O resumo da IA não saiu certo. Tente de novo.");
   return { resumo, fortes: lista(r.fortes), conferir: lista(r.conferir), perguntas: lista(r.perguntas), modelo: r0.modelo };
 }
+
+/** O resumo da entrevista gravada (migração 20270105120000): só o que a pessoa disse, sem nota. */
+export type ResumoEntrevistaVideo = { resumo: string; fortes: string[]; conferir: string[] };
+
+const SISTEMA_ENTREVISTA_VIDEO = `Você ajuda quem publicou uma vaga no Publike (${ONDE_FUNCIONA}, ${UFS}) a ler rápido uma entrevista que o candidato gravou.
+Recebe a vaga e, para cada pergunta, a resposta (a transcrição do que a pessoa falou, ou o texto que ela escreveu). Escreva em português do Brasil, simples e direto:
+- "resumo": 2 ou 3 frases sobre o que a pessoa contou que importa para ESTA vaga;
+- "fortes": até 3 pontos fortes das respostas, curtos;
+- "conferir": até 3 coisas para conferir numa conversa (o que ficou vago, o que a vaga pede e a pessoa não falou), curtas.
+Regras que não podem ser quebradas:
+- Use só o que está nas respostas. Não invente nada. A transcrição pode ter erros: não julgue a pessoa por eles.
+- Julgue só o conteúdo. Nunca comente nem tente adivinhar aparência, voz, sotaque, jeito de falar, nervosismo, idade, gênero, cor, origem, religião, estado civil, filhos, deficiência, saúde ou orientação, e não use isso para julgar.
+- Resposta curta ou simples não é defeito: diga o que dá para conferir.
+- Sem nota, sem "recomendo contratar" ou "não contratar": quem decide é a pessoa.
+- Sem telefone, e-mail ou link.`;
+
+const ESQUEMA_ENTREVISTA_VIDEO = {
+  type: "object",
+  properties: {
+    resumo: { type: "string" },
+    fortes: { type: "array", items: { type: "string" } },
+    conferir: { type: "array", items: { type: "string" } },
+  },
+  required: ["resumo", "fortes", "conferir"],
+  additionalProperties: false,
+};
+
+export async function resumirEntrevistaVideo(
+  dados: string,
+  modelo: string,
+): Promise<ResumoEntrevistaVideo & { modelo: string }> {
+  const r0 = await chamarIA({
+    modelo,
+    sistema: SISTEMA_ENTREVISTA_VIDEO,
+    mensagem: dados,
+    maxTokens: 700,
+    esquema: { nome: "resumo_entrevista_video", schema: ESQUEMA_ENTREVISTA_VIDEO },
+  });
+  if (r0.parada === "recusa") throw new ErroIA("A IA não quis resumir esta entrevista.");
+  if (r0.parada === "limite") throw new ErroIA("O resumo ficou comprido demais. Tente de novo.");
+  const r = lerJson<Record<string, unknown>>(r0.texto);
+  const frase = (v: unknown, max: number) =>
+    typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
+  const lista = (v: unknown) =>
+    (Array.isArray(v) ? v : [])
+      .map((x) => frase(x, 200))
+      .filter((x) => x.length >= 3 && !temContato(x))
+      .slice(0, 3);
+  const resumo = frase(r.resumo, 600);
+  if (resumo.length < 20 || temContato(resumo)) throw new ErroIA("O resumo da IA não saiu certo. Tente de novo.");
+  return { resumo, fortes: lista(r.fortes), conferir: lista(r.conferir), modelo: r0.modelo };
+}

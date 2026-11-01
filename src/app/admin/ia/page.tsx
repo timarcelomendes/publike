@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
@@ -133,7 +134,7 @@ async function Conteudo() {
                     {x.nome}
                   </Link>
                   <span className="text-ink-muted">
-                    {x.recurso === "copiloto" ? "Triagem com IA" : "Teste Prático"} · começou {tempoRelativo(x.inicio, agora)} ·{" "}
+                    {NOME_RECURSO[x.recurso as RecursoPago] ?? x.recurso} · começou {tempoRelativo(x.inicio, agora)} ·{" "}
                     {x.ativo ? "experimentando" : "acabou"}
                     {x.quer_continuar_em ? ` · quer continuar (${tempoRelativo(x.quer_continuar_em, agora)})` : ""}
                   </span>

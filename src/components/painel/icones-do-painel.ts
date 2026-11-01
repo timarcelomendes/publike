@@ -21,6 +21,7 @@ import {
   UserSearch,
   Users,
   UsersRound,
+  Video,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -50,5 +51,6 @@ export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   visitas: Eye,
   testes: ClipboardCheck,
   copiloto: Sparkles,
+  video: Video,
   assinatura: CreditCard,
 };

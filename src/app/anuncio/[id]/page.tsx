@@ -1,3 +1,5 @@
+import { AvisoVideoPedido } from "@/components/video/aviso-video-pedido";
+import { minhaEntrevistaVideo } from "@/lib/servidor/entrevista-video";
 import {
   Accessibility,
   Banknote,
@@ -323,6 +325,12 @@ async function DetalheAnuncio({
       ? await meusTestesDaVaga(anuncio.id)
       : null;
   const caixaDeTestes = meusTestes ? <TestesParaMim anuncioId={anuncio.id} testes={testes} meus={meusTestes} /> : null;
+  // a entrevista em vídeo que a empresa pediu (migração 20270105120000)
+  const meuVideo =
+    vaga && paraQuemProcura && (anuncio.minha_curtida === "pendente" || anuncio.minha_curtida === "match")
+      ? await minhaEntrevistaVideo(anuncio.id)
+      : null;
+  const caixaDeVideo = meuVideo ? <AvisoVideoPedido anuncioId={anuncio.id} e={meuVideo} /> : null;
   // a empresa usa a Triagem com IA: quem vê a vaga (e se candidata) fica sabendo (migração 20261226120000)
   const avisoTriagem = vaga && !proprio && (await vagaUsaTriagem(anuncio.id)) ? <AvisoTriagem /> : null;
 
@@ -598,6 +606,7 @@ async function DetalheAnuncio({
           {/* No celular, curtir fica logo aqui; no computador, na coluna ao lado */}
           <div id="quadro-celular" className="mt-6 scroll-mt-24 lg:hidden">
             {quadroAcao("celular")}
+            {caixaDeVideo}
             {caixaDeTestes}
             {avisoTriagem}
           </div>
@@ -713,6 +722,7 @@ async function DetalheAnuncio({
         <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
           <div className="hidden lg:block">
             {quadroAcao("lateral")}
+            {caixaDeVideo}
             {caixaDeTestes}
             {avisoTriagem}
           </div>

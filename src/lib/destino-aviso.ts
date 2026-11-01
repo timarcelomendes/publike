@@ -52,6 +52,10 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "etapa") return "/painel/curtidas";
   if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   if (n.tipo === "entrevista_resposta" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
+  // a entrevista em vídeo: o candidato vai gravar; a empresa, ao candidato no quadro
+  if (n.tipo === "video_pedido" && n.anuncio_id) return `/entrevista-video/${n.anuncio_id}`;
+  if (n.tipo === "video_enviado" && n.anuncio_id)
+    return `/painel/anuncio/${n.anuncio_id}/quadro${n.ator_id ? `?candidato=${n.ator_id}` : ""}`;
   // o lembrete da véspera: o candidato vai à vaga; quem marcou, ao quadro
   if (n.tipo === "entrevista_lembrete" && n.anuncio_id)
     return n.link?.startsWith("/") ? n.link : `/anuncio/${n.anuncio_id}`;

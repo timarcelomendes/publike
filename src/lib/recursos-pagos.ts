@@ -3,7 +3,18 @@
 
 export const DIAS_GRATIS = 15;
 
-export type RecursoPago = "copiloto" | "testes";
+/** `video`: a Entrevista em vídeo (migração 20270104120000; plano em claude/plano-recursos-concorrentes.md). */
+export type RecursoPago = "copiloto" | "testes" | "video";
+
+/** Todos os recursos pagos, na ordem das telas. */
+export const RECURSOS_PAGOS: RecursoPago[] = ["copiloto", "testes", "video"];
+
+/** A página de cada recurso no painel. */
+export const PAGINA_DO_RECURSO: Record<RecursoPago, string> = {
+  copiloto: "/painel/copiloto",
+  testes: "/painel/testes",
+  video: "/painel/video",
+};
 
 export type EstadoRecurso = {
   liberado: boolean;
@@ -17,18 +28,32 @@ export type EstadoRecurso = {
   assinante: boolean;
   /** pode assinar agora: pagamentos abertos para a conta e o plano à venda */
   pode_assinar: boolean;
+  /** o banco ainda não tem o recurso (a migração não rodou): as telas escondem */
+  indisponivel?: boolean;
 };
 
 export type RecursosPagos = Record<RecursoPago, EstadoRecurso>;
 
-export const NOME_RECURSO: Record<RecursoPago, string> = { copiloto: "Triagem com IA", testes: "Teste Prático" };
+export const NOME_RECURSO: Record<RecursoPago, string> = {
+  copiloto: "Triagem com IA",
+  testes: "Teste Prático",
+  video: "Entrevista em vídeo",
+};
 /** Com o artigo, para as frases ("Assinar a Triagem com IA", "o Teste Prático"). */
-export const O_RECURSO: Record<RecursoPago, string> = { copiloto: "a Triagem com IA", testes: "o Teste Prático" };
+export const O_RECURSO: Record<RecursoPago, string> = {
+  copiloto: "a Triagem com IA",
+  testes: "o Teste Prático",
+  video: "a Entrevista em vídeo",
+};
 /** Com "a" craseado ("acesso à Triagem com IA", "ao Teste Prático"). */
-export const A_RECURSO: Record<RecursoPago, string> = { copiloto: "à Triagem com IA", testes: "ao Teste Prático" };
+export const A_RECURSO: Record<RecursoPago, string> = {
+  copiloto: "à Triagem com IA",
+  testes: "ao Teste Prático",
+  video: "à Entrevista em vídeo",
+};
 
 export function ehRecursoPago(x: unknown): x is RecursoPago {
-  return x === "copiloto" || x === "testes";
+  return x === "copiloto" || x === "testes" || x === "video";
 }
 
 function lerEstado(x: unknown): EstadoRecurso | null {
@@ -53,7 +78,20 @@ export function lerRecursos(data: unknown): RecursosPagos | null {
   const o = data as Record<string, unknown>;
   const copiloto = lerEstado(o.copiloto);
   const testes = lerEstado(o.testes);
-  return copiloto && testes ? { copiloto, testes } : null;
+  if (!copiloto || !testes) return null;
+  // sem a migração 20270104120000, o vídeo vem fechado e sem botão (o resto segue igual)
+  const video = lerEstado(o.video) ?? {
+    liberado: false,
+    ate: null,
+    experimentou: false,
+    fim_experimento: null,
+    quer_continuar: false,
+    pode_experimentar: false,
+    assinante: false,
+    pode_assinar: false,
+    indisponivel: true,
+  };
+  return { copiloto, testes, video };
 }
 
 /** Quantos dias faltam (arredonda para cima: no último dia, "falta 1 dia"). */

@@ -1201,6 +1201,53 @@ export type Database = {
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      /** migração 20270105120000: a entrevista gravada */
+      video_config: { Args: { p_anuncio: string }; Returns: Json };
+      video_salvar_config: {
+        Args: {
+          p_anuncio: string;
+          p_perguntas: string[];
+          p_segundos: number;
+          p_segunda_chance: boolean;
+          p_aceita_texto: boolean;
+          p_pedir_a_todos: boolean;
+        };
+        Returns: undefined;
+      };
+      video_pedir: { Args: { p_anuncio: string; p_perfis: string[] }; Returns: number };
+      video_da_vaga: {
+        Args: { p_anuncio: string };
+        Returns: {
+          id: string;
+          perfil_id: string;
+          situacao: string;
+          pedida_em: string;
+          prazo: string;
+          enviada_em: string | null;
+          resumo: Json | null;
+          videos_apagados: boolean;
+        }[];
+      };
+      video_da_entrevista: { Args: { p_id: string }; Returns: Json };
+      video_minha: { Args: { p_anuncio: string }; Returns: Json };
+      video_ver_pergunta: { Args: { p_id: string; p_pergunta: string }; Returns: string };
+      video_registrar: {
+        Args: { p_id: string; p_pergunta: string; p_caminho: string; p_duracao: number };
+        Returns: string | null;
+      };
+      video_responder_texto: { Args: { p_id: string; p_pergunta: string; p_texto: string }; Returns: string | null };
+      video_enviar: { Args: { p_id: string }; Returns: string[] };
+      video_apagar: { Args: { p_id: string }; Returns: string[] };
+      video_vencidos: { Args: { p_limite?: number }; Returns: { entrevista_id: string; caminho: string }[] };
+      video_marcar_apagados: { Args: { p_ids: string[] }; Returns: undefined };
+      servidor_video_guardar_ia: {
+        Args: { p_chave: string; p_id: string; p_transcricoes: Json; p_resumo: Json | null };
+        Returns: undefined;
+      };
+      servidor_video_prazos: { Args: { p_chave: string; p_agora?: string }; Returns: number };
+      /** migração 20270104120000 */
+      admin_liberar_video: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      video_liberado: { Args: Record<string, never>; Returns: boolean };
       admin_recursos_da_conta: { Args: { p_conta: string }; Returns: Json };
       admin_experimentos: {
         Args: Record<string, never>;

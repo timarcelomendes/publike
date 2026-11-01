@@ -222,6 +222,26 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
   };
 }
 
+/** Libera a Entrevista em vídeo sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
+export async function liberarVideo(contaId: string, liberar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_liberar_video", { p_conta: contaId, p_liberar: liberar });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270104120000_recurso_video.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: liberar
+      ? "Pronto: essa conta tem a Entrevista em vídeo, sem prazo."
+      : "Essa conta não tem mais a Entrevista em vídeo (as entrevistas feitas ficam guardadas).",
+  };
+}
+
 /** Libera o Teste Prático sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
 export async function liberarTestes(contaId: string, liberar: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
