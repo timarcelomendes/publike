@@ -10,7 +10,8 @@ import {
   Clock3,
   Heart,
   Keyboard,
-  MoreHorizontal,
+  MessageCircle,
+  MessagesSquare,
   PartyPopper,
   Sparkles,
   Undo2,
@@ -18,7 +19,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { marcarVagaPreenchida } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
@@ -106,11 +108,11 @@ export function ControlesDaFicha({
   conversa,
   base = "/painel/caixa",
   extras = null,
-  conectar = null,
+  contato = null,
 }: {
   base?: string;
-  /** o Conectar (conexão sem vaga): fica no "Mais", com o Só aceitar e os atalhos */
-  conectar?: ReactNode;
+  /** depois do aceite: o WhatsApp (o link com a mensagem pronta) e a conversa (na própria ficha ou na página) */
+  contato?: ContatoDaFicha | null;
   anuncioId: string;
   perfilId: string;
   nome: string;
@@ -128,8 +130,6 @@ export function ControlesDaFicha({
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [ajuda, setAjuda] = useState(false);
-  const [mais, setMais] = useState(false);
-  const caixaMais = useRef<HTMLDivElement>(null);
   // a folha aberta: "chamar" (entrevista, vídeo, teste) ou "contratado" (proposta e vaga completa)
   const [folha, setFolha] = useState<"chamar" | "contratado" | null>(null);
   const [feito, setFeito] = useState<Feito>(null);
@@ -224,6 +224,13 @@ export function ControlesDaFicha({
     });
   }
 
+  // a conversa na própria ficha: rola até ela e põe o cursor no campo
+  function irParaConversa() {
+    const alvo = document.getElementById("conversa");
+    alvo?.scrollIntoView({ behavior: "smooth", block: "start" });
+    alvo?.querySelector<HTMLElement>("textarea, input")?.focus({ preventScroll: true });
+  }
+
   const responde = estado === "responder" || estado === "desfeito";
   const noProcesso = estado === "match" && aba !== "contratados" && aba !== "nao_seguiu";
   const podeChamar = Boolean(extras) && (responde || (noProcesso && !entrevista));
@@ -238,6 +245,7 @@ export function ControlesDaFicha({
       else if (k === "a" && responde) responder("match");
       else if (k === "d" && estado === "responder") responder("dispensada");
       else if (k === "z" && ultima?.desfaz) voltar();
+      else if (k === "c" && contato?.conversaNaFicha) irParaConversa();
       else if (k === "c" && conversa) router.push(conversa);
       else if (k === "e" && podeChamar) {
         setFolha("chamar");
@@ -255,190 +263,168 @@ export function ControlesDaFicha({
     return () => window.removeEventListener("keydown", tecla);
   });
 
-  // o "Mais" (o Só aceitar, o Conectar e os atalhos) fecha com um toque fora ou com Esc
-  const soAtalhos = !((responde && extras) || (noProcesso && extras) || conectar);
-  useEffect(() => {
-    if (!mais) return;
-    function fora(e: PointerEvent) {
-      if (!caixaMais.current?.contains(e.target as Node)) setMais(false);
-    }
-    function esc(e: KeyboardEvent) {
-      if (e.key === "Escape") setMais(false);
-    }
-    document.addEventListener("pointerdown", fora);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("pointerdown", fora);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [mais]);
-
-  const principal =
-    "inline-flex min-h-11 items-center gap-2 rounded-pill bg-terra px-4 text-label text-on-terra transition-colors hover:bg-terra-hover disabled:opacity-60";
   const secundario =
     "inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-surface-300 disabled:opacity-60";
-  const leve =
-    "inline-flex min-h-11 items-center gap-2 rounded-pill px-4 text-label text-ink transition-colors hover:bg-surface-300 disabled:opacity-60";
+
+  // A linha de ações (01/11/2026): botões do mesmo tamanho, o ícone em cima e o nome embaixo, numa linha só (até 4).
+  // O principal (terra) vem primeiro e o "não" por último; depois do aceite, o contato entra no meio.
+  const contatos: ReactNode[] = [];
+  if (estado === "match" && contato) {
+    if (!contato.whatsapp || !contato.conversaNaFicha)
+      contatos.push(
+        <Acao
+          key="conversar"
+          icone={MessagesSquare}
+          rotulo="Conversar"
+          dica="Conversar no Publike (tecla C)"
+          selo={contato.naoLidas}
+          {...(contato.conversaNaFicha ? { onClick: irParaConversa } : { href: conversa })}
+        />,
+      );
+    if (contato.whatsapp)
+      contatos.push(
+        <Acao
+          key="whatsapp"
+          icone={MessageCircle}
+          cor="text-cerrado-text"
+          rotulo="WhatsApp"
+          dica={entrevista ? "Avisar da entrevista no WhatsApp" : "Chamar no WhatsApp"}
+          href={contato.whatsapp}
+          externo
+        />,
+      );
+  }
+  const chamar = podeChamar ? (
+    <Acao
+      key="chamar"
+      principal
+      icone={CalendarPlus}
+      rotulo={responde ? "Chamar para entrevista" : "Marcar a entrevista"}
+      dica="Atalho: tecla E"
+      onClick={() => setFolha(folha === "chamar" ? null : "chamar")}
+      expandido={folha === "chamar"}
+      disabled={pendente}
+    />
+  ) : null;
+  const acoes: ReactNode[] = [];
+  if (responde) {
+    if (chamar) acoes.push(chamar);
+    acoes.push(
+      <Acao
+        key="aceitar"
+        principal={!extras}
+        icone={Heart}
+        cor="text-like"
+        rotulo={estado === "desfeito" ? "Aceitar de novo" : extras ? "Só aceitar" : "Aceitar"}
+        dica={extras ? "Aceitar sem marcar a entrevista: o contato fica liberado (tecla A)" : "Atalho: tecla A"}
+        onClick={() => responder("match")}
+        disabled={pendente}
+      />,
+    );
+    if (extras && aba !== "analise")
+      acoes.push(
+        <Acao
+          key="depois"
+          icone={Clock3}
+          rotulo="Ver depois"
+          dica="Passa para Em análise"
+          onClick={() => mover("analise", `${primeiro} foi para Em análise.`)}
+          disabled={pendente}
+        />,
+      );
+    if (estado === "responder")
+      acoes.push(
+        <Acao
+          key="dispensar"
+          icone={X}
+          rotulo="Dispensar"
+          dica="Atalho: tecla D"
+          onClick={() => responder("dispensada")}
+          disabled={pendente}
+        />,
+      );
+  } else if (noProcesso && extras) {
+    // o Contratar é o principal quando não falta a entrevista: sem marcar e já passou
+    const contratarPrincipal = !podeChamar && !(entrevista && !passou);
+    const contratar = (
+      <Acao
+        key="contratar"
+        principal={contratarPrincipal}
+        icone={PartyPopper}
+        rotulo="Contratar"
+        onClick={() => mover("contratado", `${primeiro} foi contratado.`)}
+        disabled={pendente}
+      />
+    );
+    if (chamar) acoes.push(chamar);
+    if (contratarPrincipal) acoes.push(contratar);
+    acoes.push(...contatos);
+    if (!contratarPrincipal) acoes.push(contratar);
+    acoes.push(
+      <Acao
+        key="nao-seguiu"
+        icone={X}
+        rotulo="Não seguiu"
+        dica="Tira do processo (dá para voltar)"
+        onClick={() => mover("nao_seguiu", `${primeiro} não segue no processo.`)}
+        disabled={pendente}
+      />,
+    );
+  } else if (estado === "match" && extras && aba === "contratados") {
+    acoes.push(
+      <Acao
+        key="contratado"
+        icone={PartyPopper}
+        cor="text-cerrado-text"
+        rotulo="Proposta e vaga"
+        dica="Contratado: a proposta e a vaga"
+        onClick={() => setFolha(folha === "contratado" ? null : "contratado")}
+        expandido={folha === "contratado"}
+      />,
+      ...contatos,
+    );
+  } else if (estado === "match" && extras && aba === "nao_seguiu") {
+    acoes.push(
+      <Acao
+        key="voltar"
+        icone={Undo2}
+        rotulo="Voltar para Em análise"
+        onClick={() => mover("analise", `${primeiro} voltou para Em análise.`)}
+        disabled={pendente}
+      />,
+      ...contatos,
+    );
+  } else if (estado === "match") {
+    acoes.push(...contatos);
+  } else if (estado === "dispensada") {
+    acoes.push(
+      <Acao
+        key="novos"
+        icone={Undo2}
+        rotulo="Voltar para Novos"
+        onClick={() =>
+          iniciar(async () => {
+            const r = await chamarAcao(() => responderCurtida(anuncioId, perfilId, "pendente"));
+            if (!r.ok) setErro(r.erro);
+          })
+        }
+        disabled={pendente}
+      />,
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
-      {/* no celular, os atalhos ficam presos embaixo (acima da barra), no alcance do polegar, enquanto a ficha rola */}
-      <div className="flex flex-wrap items-center gap-2 max-md:sticky max-md:bottom-[calc(4rem+env(safe-area-inset-bottom))] max-md:z-10 max-md:-mx-4 max-md:border-t max-md:border-line max-md:bg-surface-200/95 max-md:px-4 max-md:py-2 max-md:backdrop-blur-md">
-        {podeChamar && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => setFolha(folha === "chamar" ? null : "chamar")}
-            aria-expanded={folha === "chamar"}
-            className={principal}
-          >
-            <CalendarPlus aria-hidden className="size-[18px]" />
-            {responde ? "Chamar para entrevista" : "Marcar a entrevista"}
-          </button>
-        )}
-        {responde && extras && aba !== "analise" && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => mover("analise", `${primeiro} foi para Em análise.`)}
-            className={secundario}
-          >
-            <Clock3 aria-hidden className="size-[18px]" />
-            Ver depois
-          </button>
-        )}
-        {responde && !extras && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => responder("match")}
-            className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
-          >
-            <Heart aria-hidden className="size-[18px] text-like" />
-            {estado === "desfeito" ? "Aceitar de novo" : "Aceitar"}
-          </button>
-        )}
-        {estado === "responder" && (
-          <button type="button" disabled={pendente} onClick={() => responder("dispensada")} className={leve}>
-            <X aria-hidden className="size-[18px]" />
-            Dispensar
-          </button>
-        )}
-        {noProcesso && extras && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => mover("contratado", `${primeiro} foi contratado.`)}
-            className={entrevista && !passou ? secundario : podeChamar ? secundario : principal}
-          >
-            <PartyPopper aria-hidden className="size-[18px]" />
-            Contratar
-          </button>
-        )}
-        {estado === "match" && extras && aba === "contratados" && (
-          <button
-            type="button"
-            onClick={() => setFolha(folha === "contratado" ? null : "contratado")}
-            aria-expanded={folha === "contratado"}
-            className={secundario}
-          >
-            <PartyPopper aria-hidden className="size-[18px] text-cerrado-text" />
-            Contratado: proposta e vaga
-          </button>
-        )}
-        {estado === "match" && extras && aba === "nao_seguiu" && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() => mover("analise", `${primeiro} voltou para Em análise.`)}
-            className={secundario}
-          >
-            <Undo2 aria-hidden className="size-[18px]" />
-            Voltar para Em análise
-          </button>
-        )}
-        {estado === "dispensada" && (
-          <button
-            type="button"
-            disabled={pendente}
-            onClick={() =>
-              iniciar(async () => {
-                const r = await chamarAcao(() => responderCurtida(anuncioId, perfilId, "pendente"));
-                if (!r.ok) setErro(r.erro);
-              })
-            }
-            className={secundario}
-          >
-            <Undo2 aria-hidden className="size-[18px]" />
-            Voltar para Novos
-          </button>
-        )}
-        <div ref={caixaMais} className={`relative ml-auto ${soAtalhos ? "max-lg:hidden" : ""}`}>
-          <button
-            type="button"
-            onClick={() => setMais((m) => !m)}
-            aria-expanded={mais}
-            aria-label="Mais opções"
-            title="Mais opções"
-            className="inline-flex size-11 items-center justify-center rounded-pill text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink"
-          >
-            <MoreHorizontal aria-hidden className="size-5" />
-          </button>
-          {mais && (
-            <div
-              role="group"
-              aria-label="Mais opções"
-              className="absolute right-0 z-20 mt-1 flex w-72 flex-col gap-1 rounded-lg border border-line bg-surface-100 p-2 shadow-card max-md:bottom-full max-md:mb-2 max-md:mt-0"
-            >
-              {responde && extras && (
-                <button
-                  type="button"
-                  disabled={pendente}
-                  onClick={() => {
-                    setMais(false);
-                    responder("match");
-                  }}
-                  className="flex min-h-11 items-center gap-2 rounded-md px-3 text-left text-body-sm hover:bg-surface-300 disabled:opacity-60"
-                >
-                  <Heart aria-hidden className="size-4 shrink-0 text-like" />
-                  {estado === "desfeito" ? "Só aceitar de novo" : "Só aceitar, sem marcar a entrevista"}
-                </button>
-              )}
-              {noProcesso && extras && (
-                <button
-                  type="button"
-                  disabled={pendente}
-                  onClick={() => {
-                    setMais(false);
-                    mover("nao_seguiu", `${primeiro} não segue no processo.`);
-                  }}
-                  className="flex min-h-11 items-center gap-2 rounded-md px-3 text-left text-body-sm hover:bg-surface-300 disabled:opacity-60"
-                >
-                  <X aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                  Não seguiu no processo
-                </button>
-              )}
-              {conectar && (
-                <div className="flex flex-col gap-1 rounded-md px-3 py-2">
-                  <p className="text-caption text-ink-muted">Para manter o contato depois da vaga</p>
-                  {conectar}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setMais(false);
-                  setAjuda((x) => !x);
-                }}
-                className="hidden min-h-11 items-center gap-2 rounded-md px-3 text-left text-body-sm hover:bg-surface-300 lg:flex"
-              >
-                <Keyboard aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                {ajuda ? "Esconder os atalhos do teclado" : "Atalhos do teclado"}
-              </button>
-            </div>
-          )}
+      {acoes.length > 0 && (
+        // no celular, a linha fica presa embaixo (acima da barra), no alcance do polegar, enquanto a ficha rola
+        <div
+          role="group"
+          aria-label="O que fazer"
+          className="flex gap-1.5 max-md:sticky max-md:bottom-[calc(4rem+env(safe-area-inset-bottom))] max-md:z-10 max-md:-mx-4 max-md:border-t max-md:border-line max-md:bg-surface-200/95 max-md:px-4 max-md:py-2 max-md:backdrop-blur-md"
+        >
+          {acoes}
         </div>
-      </div>
+      )}
       {semCurriculo && responde && (
         <p className="text-body-sm text-ink-muted">
           A vaga pede currículo e {semCurriculo} ainda não mandou. Aceitando, {semCurriculo} recebe o pedido e o contato
@@ -523,30 +509,7 @@ export function ControlesDaFicha({
         </section>
       )}
 
-      {ajuda && (
-        <ul
-          aria-label="Atalhos de teclado"
-          className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-md bg-surface-300 px-4 py-3 text-body-sm sm:grid-cols-4"
-        >
-          {[
-            ["E", extras ? "chamar para entrevista" : "entrevista"],
-            ["A", "aceitar"],
-            ["D", "dispensar"],
-            ["J", "próximo"],
-            ["K", "anterior"],
-            ["C", "conversar"],
-            ["Z", "desfazer"],
-            ["?", "mostrar ou esconder"],
-          ].map(([t, o]) => (
-            <li key={t} className="flex items-center gap-2">
-              <kbd className="min-w-5 rounded-sm border border-line-strong bg-surface-200 px-1 text-center font-sans text-caption leading-5">
-                {t}
-              </kbd>
-              {o}
-            </li>
-          ))}
-        </ul>
-      )}
+      {ajuda && <ListaDeAtalhos extras={Boolean(extras)} />}
       {erro && (
         <p role="alert" className="text-body-sm text-danger">
           {erro}
@@ -698,6 +661,134 @@ function FolhaChamar({
         </div>
       )}
     </section>
+  );
+}
+
+export type ContatoDaFicha = {
+  /** o link do WhatsApp, com a mensagem pronta */
+  whatsapp: string | null;
+  naoLidas: number;
+  /** a conversa aparece na própria ficha (o Conversar rola até ela) */
+  conversaNaFicha: boolean;
+};
+
+/**
+ * Um botão da linha de ações da ficha: todos do mesmo tamanho, o ícone em cima e o nome embaixo (até duas linhas). O
+ * principal leva o terra; os outros, o creme do fundo.
+ */
+function Acao({
+  icone: Icone,
+  rotulo,
+  dica,
+  principal = false,
+  cor = "text-ink-muted",
+  selo = 0,
+  onClick,
+  href,
+  externo = false,
+  disabled = false,
+  expandido,
+}: {
+  icone: LucideIcon;
+  rotulo: string;
+  dica?: string;
+  principal?: boolean;
+  cor?: string;
+  /** mensagens novas (o número no canto) */
+  selo?: number;
+  onClick?: () => void;
+  href?: string | null;
+  externo?: boolean;
+  disabled?: boolean;
+  expandido?: boolean;
+}) {
+  const classe = `relative flex min-h-[4.5rem] max-w-36 min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-label leading-[1.15] transition-colors disabled:opacity-60 ${
+    principal
+      ? "bg-terra text-on-terra hover:bg-terra-hover aria-expanded:bg-terra-hover"
+      : "bg-surface-100 text-ink hover:bg-surface-300 aria-expanded:bg-surface-300"
+  }`;
+  const miolo = (
+    <>
+      <Icone aria-hidden className={`size-5 shrink-0 ${principal ? "" : cor}`} />
+      <span className="text-balance">{rotulo}</span>
+      {selo > 0 && (
+        <span className="absolute top-1 right-1 inline-flex min-w-5 items-center justify-center rounded-pill bg-like px-1.5 text-caption text-on-like">
+          {selo}
+          <span className="sr-only"> {selo === 1 ? "mensagem nova" : "mensagens novas"}</span>
+        </span>
+      )}
+    </>
+  );
+  if (href && externo)
+    return (
+      <a href={href} title={dica} target="_blank" rel="noopener noreferrer" className={classe}>
+        {miolo}
+      </a>
+    );
+  if (href)
+    return (
+      <Link href={href} title={dica} className={classe}>
+        {miolo}
+      </Link>
+    );
+  return (
+    <button
+      type="button"
+      title={dica}
+      onClick={onClick}
+      disabled={disabled}
+      aria-expanded={expandido}
+      className={classe}
+    >
+      {miolo}
+    </button>
+  );
+}
+
+/** Os atalhos do teclado da ficha (a tecla ? mostra no alto; o "Atalhos do teclado" do pé, embaixo). */
+function ListaDeAtalhos({ extras }: { extras: boolean }) {
+  return (
+    <ul
+      aria-label="Atalhos de teclado"
+      className="grid basis-full grid-cols-2 gap-x-6 gap-y-1 rounded-md bg-surface-300 px-4 py-3 text-body-sm"
+    >
+      {[
+        ["E", extras ? "chamar para entrevista" : "entrevista"],
+        ["A", "aceitar"],
+        ["D", "dispensar"],
+        ["J", "próximo"],
+        ["K", "anterior"],
+        ["C", "conversar"],
+        ["Z", "desfazer"],
+        ["?", "mostrar ou esconder"],
+      ].map(([t, o]) => (
+        <li key={t} className="flex items-center gap-2">
+          <kbd className="min-w-5 rounded-sm border border-line-strong bg-surface-200 px-1 text-center font-sans text-caption leading-5">
+            {t}
+          </kbd>
+          {o}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** "Atalhos do teclado", no pé da ficha (só no computador). */
+export function BotaoAtalhos({ extras }: { extras: boolean }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAberto((a) => !a)}
+        aria-expanded={aberto}
+        className="hidden min-h-10 items-center gap-1.5 text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline lg:inline-flex"
+      >
+        <Keyboard aria-hidden className="size-4" />
+        Atalhos do teclado
+      </button>
+      {aberto && <ListaDeAtalhos extras={extras} />}
+    </>
   );
 }
 

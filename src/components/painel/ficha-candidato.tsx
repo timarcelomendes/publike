@@ -4,19 +4,17 @@ import {
   FileText,
   KanbanSquare,
   Mail,
-  MessageCircle,
+  MessagesSquare,
   Phone,
   ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BotaoConversar } from "@/components/botao-conversar";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import type { EmpresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { DesfazerMatch } from "@/components/desfazer-match";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { Avatar, Selo } from "@/components/ui/basicos";
-import { classesBotao } from "@/components/ui/botao";
 import { esperaResposta } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { formatarLugar, formatarTelefone, linkWhatsApp, tempoRelativo } from "@/lib/formato";
@@ -35,6 +33,7 @@ import { DesfazerRegra } from "../automacoes/desfazer-regra";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { VideoNaFicha } from "../video/video-na-ficha";
 import {
+  BotaoAtalhos,
   ControlesDaFicha,
   NavegarFichas,
   EntrevistaDaFicha,
@@ -183,6 +182,9 @@ export function FichaCandidato({
   const match = estado === "match";
   const encerrado = estado === "dispensada" || estado === "desfeito";
   const conversa = match ? caminhoConversa(c.perfil_id) : null;
+  const conversaNaFicha = Boolean(match && conversaDaFicha && euId);
+  // com o WhatsApp na linha de ações e a conversa aqui embaixo, as mensagens novas avisam no alto
+  const avisarMensagens = conversaNaFicha && Boolean(c.whatsapp) && (c.naoLidas ?? 0) > 0;
   const hoje = new Date(agora).toISOString().slice(0, 7);
 
   return (
@@ -190,37 +192,47 @@ export function FichaCandidato({
       aria-label={`Ficha de ${c.nome}`}
       className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-6"
     >
-      <header className="flex gap-3 sm:gap-4">
-        <Avatar nome={c.nome} foto={c.foto} tamanho={56} />
-        <div className="min-w-0 flex-1">
-          <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 font-display text-h3 sm:text-h2">
-            <Link href={`/perfil/${c.perfil_id}`} className="break-words underline-offset-4 hover:underline">
-              {c.nome}
-            </Link>
-            {c.verificado && <SeloVerificado />}
-          </h2>
-          <p className="mt-0.5 text-body-sm text-ink-muted">
-            <Link
-              href={`/painel/anuncio/${c.anuncio_id}/quadro?candidato=${c.perfil_id}`}
-              className="text-ink underline underline-offset-2"
-            >
-              {c.anuncio_titulo}
-            </Link>
-            {" · "}
-            {formatarLugar(c.bairro, c.cidade)} · curtiu {tempoRelativo(c.curtido_em, agora)}
-          </p>
-          <p className="mt-2 flex flex-wrap items-center gap-2">
-            {c.aderencia && !encerrado && <NotaAderencia a={c.aderencia} longo />}
-            <Selo variante={situacao.variante}>{situacao.nome}</Selo>
-            {c.entrevista && (
-              <span className="inline-flex items-center gap-1.5 text-body-sm font-semibold">
-                <CalendarClock aria-hidden className="size-4 text-ink-muted" />
-                Entrevista {quandoDaEntrevista(c.entrevista)}
-              </span>
-            )}
-          </p>
+      {/* o anterior e o próximo ficam ao lado do nome; o que vem embaixo dele usa a largura toda */}
+      <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 sm:gap-x-4">
+        <div className="row-span-3">
+          <Avatar nome={c.nome} foto={c.foto} tamanho={56} />
         </div>
+        <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 self-center font-display text-h3 sm:text-h2">
+          <Link href={`/perfil/${c.perfil_id}`} className="break-words underline-offset-4 hover:underline">
+            {c.nome}
+          </Link>
+          {c.verificado && <SeloVerificado />}
+        </h2>
         <NavegarFichas anterior={anterior} proximo={proximo} />
+        <p className="col-span-2 col-start-2 mt-0.5 text-body-sm text-ink-muted">
+          <Link
+            href={`/painel/anuncio/${c.anuncio_id}/quadro?candidato=${c.perfil_id}`}
+            className="text-ink underline underline-offset-2"
+          >
+            {c.anuncio_titulo}
+          </Link>
+          {" · "}
+          {formatarLugar(c.bairro, c.cidade)} · curtiu {tempoRelativo(c.curtido_em, agora)}
+        </p>
+        <p className="col-span-2 col-start-2 mt-2 flex flex-wrap items-center gap-2">
+          {c.aderencia && !encerrado && <NotaAderencia a={c.aderencia} longo />}
+          <Selo variante={situacao.variante}>{situacao.nome}</Selo>
+          {avisarMensagens && (
+            <a
+              href="#conversa"
+              className="inline-flex items-center gap-1.5 rounded-pill bg-like-soft px-2.5 py-0.5 text-body-sm font-semibold text-like-text underline-offset-2 hover:underline"
+            >
+              <MessagesSquare aria-hidden className="size-4" />
+              {c.naoLidas === 1 ? "1 mensagem nova" : `${c.naoLidas} mensagens novas`}
+            </a>
+          )}
+          {c.entrevista && (
+            <span className="inline-flex items-center gap-1.5 text-body-sm font-semibold">
+              <CalendarClock aria-hidden className="size-4 text-ink-muted" />
+              Entrevista {quandoDaEntrevista(c.entrevista)}
+            </span>
+          )}
+        </p>
       </header>
 
       {estado === "moderacao" ? (
@@ -241,36 +253,30 @@ export function FichaCandidato({
           conversa={conversa}
           base={base}
           extras={extras}
-          conectar={conectar}
+          contato={
+            match
+              ? {
+                  whatsapp: c.whatsapp
+                    ? linkWhatsApp(
+                        c.whatsapp,
+                        // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
+                        mensagemComLink(
+                          // com entrevista marcada, o WhatsApp já leva o dia, a hora e o lugar
+                          c.entrevista
+                            ? `Olá, ${primeiro}! Sobre a vaga de ${c.anuncio_titulo}: sua entrevista ficou para ${fraseDaEntrevista(c.entrevista)}. Pode confirmar por aqui?`
+                            : `Olá, ${primeiro}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
+                          linkDoMatch({ anuncioId: c.anuncio_id, perfilId: c.perfil_id, para: "quem_curtiu", direto }),
+                        ),
+                      )
+                    : null,
+                  naoLidas: c.naoLidas ?? 0,
+                  conversaNaFicha: conversaNaFicha,
+                }
+              : null
+          }
         />
       )}
 
-      {match && (
-        <div className="flex flex-wrap items-center gap-2">
-          <BotaoConversar outroId={c.perfil_id} naoLidas={c.naoLidas} />
-          {c.whatsapp && (
-            <a
-              href={linkWhatsApp(
-                c.whatsapp,
-                // o link: a curtida aceita (para a pessoa) ou, no contato direto, a vaga
-                mensagemComLink(
-                  // com entrevista marcada, o WhatsApp já leva o dia, a hora e o lugar (parte 2 do plano do retorno)
-                  c.entrevista
-                    ? `Olá, ${primeiro}! Sobre a vaga de ${c.anuncio_titulo}: sua entrevista ficou para ${fraseDaEntrevista(c.entrevista)}. Pode confirmar por aqui?`
-                    : `Olá, ${primeiro}! Vi que você curtiu “${c.anuncio_titulo}” no Publike. Vamos conversar?`,
-                  linkDoMatch({ anuncioId: c.anuncio_id, perfilId: c.perfil_id, para: "quem_curtiu", direto }),
-                ),
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={classesBotao("sucesso", "sm")}
-            >
-              <MessageCircle aria-hidden />
-              {c.entrevista ? "Avisar da entrevista no WhatsApp" : "WhatsApp"}
-            </a>
-          )}
-        </div>
-      )}
       {estado === "aceita" && (
         <AcoesInteressado
           anuncioId={c.anuncio_id}
@@ -464,6 +470,8 @@ export function FichaCandidato({
           Abrir no quadro da vaga
         </Link>
         {match && <DesfazerMatch anuncioId={c.anuncio_id} perfilId={c.perfil_id} outroNome={c.nome} autorDaVaga />}
+        {conectar}
+        <BotaoAtalhos extras={Boolean(extras)} />
       </div>
     </article>
   );
