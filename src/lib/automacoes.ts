@@ -64,7 +64,7 @@ export type Automacoes = RegrasDaVaga & {
   retornoLigado: boolean;
   /** a conta tem horários livres cadastrados */
   temHorarios: boolean;
-  /** a conta tem as Automações sob medida (o texto, os prazos, as regras com condição, copiar) */
+  /** a conta tem as Automações personalizadas (o texto, os prazos, as regras com condição, copiar) */
   sobMedida: boolean;
   /** as vagas novas usam as regras desta vaga (origem) ou de outra */
   padrao: { origem: string | null; titulo: string | null } | null;
@@ -78,11 +78,11 @@ export type Automacoes = RegrasDaVaga & {
 export const RECADO_PADRAO =
   "Oi, {nome}! Aqui é {empresa}: recebemos a sua candidatura para {vaga}. Vamos olhar com atenção e responder em até 5 dias.";
 
-/** O lembrete e o retorno das automações prontas (outros prazos são das Automações sob medida). */
+/** O lembrete e o retorno das automações prontas (outros prazos são das Automações personalizadas). */
 export const PARADO_PRONTO = 5;
 export const ENCERRAR_PRONTO = 7;
 
-/** O que só as Automações sob medida fazem (o banco confere igual em `aplicar_automacoes`): null se cabe nas prontas. */
+/** O que só as Automações personalizadas fazem (o banco confere igual em `aplicar_automacoes`): null se cabe nas prontas. */
 export function precisaDoSobMedida(r: RegrasDaVaga, antes: RegrasDaVaga): string | null {
   if (Object.keys(r.mensagens).length && JSON.stringify(r.mensagens) !== JSON.stringify(antes.mensagens))
     return "a mensagem pronta por etapa";
@@ -211,22 +211,18 @@ export function faltaParaSalvar(r: RegrasDaVaga): string | null {
   return null;
 }
 
-/** Quantas regras estão ligadas (o Teste Prático, que fica na aba dele, não conta). */
+/** Quantas das automações prontas estão ligadas. */
 export function regrasLigadas(r: RegrasDaVaga) {
   return [
     r.recado !== null,
-    r.dispensarEliminados,
-    r.triagemParaAnalise,
-    r.videoATodos,
-    Object.keys(r.mensagens).length > 0,
     r.horarios !== null,
     r.paradoDias !== null,
     r.encerrarDias !== null,
-    r.encerrarAoPreencher,
     r.preencherAoCompletar,
   ].filter(Boolean).length;
 }
-export const TOTAL_DE_REGRAS = 10;
+/** As 5 automações prontas e grátis (decisão do Marcelo, 01/11/2026); o resto são as regras personalizadas. */
+export const TOTAL_DE_REGRAS = 5;
 
 export const PERIODOS_NUMEROS = { "30": "Últimos 30 dias", "90": "Últimos 90 dias", tudo: "Desde o começo" } as const;
 export type PeriodoNumeros = keyof typeof PERIODOS_NUMEROS;
@@ -253,7 +249,12 @@ export function nomeDaOrigem(origem: string) {
 export function textoDoTempo(valor: number | null, unidade: "h" | "d") {
   if (valor == null) return "—";
   const n = Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-  if (unidade === "h") return valor < 1 ? "menos de 1 h" : `${n} h`;
+  if (unidade === "h") {
+    if (valor < 1) return "menos de 1 h";
+    // de 2 dias para cima, em dias ("97,2 h" vira "4 dias")
+    if (valor >= 48) return `${Math.round(valor / 24)} dias`;
+    return `${Math.round(valor)} h`;
+  }
   return valor < 1 ? "menos de 1 dia" : Number(valor) === 1 ? "1 dia" : `${n} dias`;
 }
 

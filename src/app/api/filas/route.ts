@@ -15,6 +15,7 @@ import {
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
+import { regrasComOTempo } from "@/lib/servidor/regras";
 import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
 
 // A garantia das filas: a tarefa agendada do GitHub (.github/workflows/filas.yml) chama a cada 5 minutos,
@@ -62,6 +63,9 @@ export async function GET(request: Request) {
       prazosDaEntrevistaVideo(),
     ]);
   const automacoes = await lembrandoParados;
+  // as Automações personalizadas: os de tempo, as mensagens que esperavam e a fila (depois da Triagem, que pode
+  // ter lido currículos)
+  const regras = await regrasComOTempo();
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
 
@@ -81,6 +85,7 @@ export async function GET(request: Request) {
     vespera.motivo,
     video.motivo,
     automacoes.motivo,
+    regras.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -104,6 +109,7 @@ export async function GET(request: Request) {
       entrevistas_lembradas: vespera.lembradas,
       video_lembrados: video.lembradas,
       parados_lembrados: automacoes.lembrados,
+      regras: { agiram: regras.agiram, mensagens: regras.mensagens },
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },
   );

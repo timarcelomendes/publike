@@ -42,7 +42,7 @@ const FAZ: Record<Produto, string> = {
   combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
   video: "O candidato grava as respostas pelo celular e a IA resume; e a entrevista ao vivo, sem instalar nada.",
   automacoes:
-    "As automações da vaga do seu jeito: o seu texto, os seus prazos, a mensagem por etapa e as mesmas regras em todas as vagas.",
+    "As suas regras: quando algo acontece, se a pessoa atende o que você escolher, o Publike faz o que você mandar.",
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -198,9 +198,9 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     botao: "Conhecer a Entrevista em vídeo",
   },
   automacoes: {
-    titulo: "Automações sob medida",
-    texto: "As automações da vaga do seu jeito: o seu texto, os seus prazos e as mesmas regras em todas as vagas.",
-    botao: "Conhecer as Automações sob medida",
+    titulo: "Automações personalizadas",
+    texto: "Monte as suas regras: dispense quem não tem o obrigatório e adiante quem combina, sozinho.",
+    botao: "Conhecer as Automações personalizadas",
   },
 };
 

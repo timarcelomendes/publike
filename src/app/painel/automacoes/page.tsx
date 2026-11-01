@@ -2,6 +2,7 @@ import { ChevronRight, Workflow } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { SuasRegras } from "@/components/automacoes/suas-regras";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -9,14 +10,17 @@ import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { recursosPagos } from "@/lib/dados";
+import { equipeDaConta } from "@/lib/servidor/equipe";
+import { regrasDaConta } from "@/lib/servidor/regras-tela";
+import { bibliotecaDeTestes } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Automações" };
 
-// As automações de todas as vagas (claude/plano-fluxo-contratar.md, parte 6): as prontas são grátis em cada vaga;
-// as Automações sob medida (migração 20270114120000) mostram aqui a oferta dos 15 dias grátis ou os dias que faltam.
+// As automações de todas as vagas (claude/plano-regras-personalizadas.md): as suas regras (Automações
+// personalizadas, migração 20270115120000), os modelos e as vagas, cada uma com as 5 prontas e grátis.
 
 export default function Automacoes() {
   return (
@@ -29,34 +33,50 @@ export default function Automacoes() {
 async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/automacoes");
-  const [recursos, agora, supabase] = await Promise.all([recursosPagos(), agoraDaRequisicao(), criarClienteServidor()]);
+  const [recursos, agora, supabase, regras, testes, equipe] = await Promise.all([
+    recursosPagos(),
+    agoraDaRequisicao(),
+    criarClienteServidor(),
+    regrasDaConta(),
+    bibliotecaDeTestes(),
+    equipeDaConta().catch(() => null),
+  ]);
   const estado = recursos?.automacoes.indisponivel ? null : (recursos?.automacoes ?? null);
   const { data: vagas } = await supabase
     .from("anuncios")
     .select("id, titulo, status, expira_em")
     .eq("autor_id", usuario.id)
     .eq("tipo", "vaga")
-    .eq("status", "ativo")
     .order("criado_em", { ascending: false })
-    .limit(50);
-  const noAr = (vagas ?? []).filter((v) => new Date(v.expira_em).getTime() > agora);
+    .limit(100);
+  const todas = vagas ?? [];
+  const noAr = todas.filter((v) => v.status === "ativo" && new Date(v.expira_em).getTime() > agora);
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-h2">Automações</h2>
           <Selo variante="novo">Novo</Selo>
         </div>
-        <p className="max-w-2xl text-body text-ink-muted">
-          O Publike faz sozinho o que você faria à mão: confirmar que a candidatura chegou, lembrar você de quem está
-          parado, dar o retorno a quem ficou sem resposta, marcar a vaga como preenchida quando completar. Tudo começa
-          desligado; você liga em cada vaga, e as prontas são grátis.
+        <p className="text-body text-ink-muted">
+          O Publike faz sozinho o que você faria à mão. As 5 prontas são grátis e ficam em cada vaga. Com as Automações
+          personalizadas, você monta as suas regras: quando algo acontece, se a pessoa atende o que você escolher, o
+          Publike faz o que você mandar. Tudo começa desligado.
         </p>
       </div>
       {estado?.liberado ? (
         <FaixaExperimento recurso="automacoes" estado={estado} agora={agora} />
       ) : (
         <OfertaRecurso recurso="automacoes" estado={estado} />
+      )}
+      {regras && todas.length > 0 && (
+        <SuasRegras
+          regras={regras}
+          liberado={Boolean(estado?.liberado)}
+          vagas={Object.fromEntries(todas.map((v) => [v.id, v.titulo]))}
+          testes={Object.fromEntries((testes ?? []).map((t) => [t.id, t.titulo]))}
+          equipe={Object.fromEntries((equipe ?? []).map((m) => [m.membro_id, m.nome]))}
+        />
       )}
       {noAr.length === 0 ? (
         <Vazio
@@ -68,13 +88,19 @@ async function Conteudo() {
             </BotaoLink>
           }
         >
-          As automações ficam em cada vaga.
+          As automações agem nos candidatos das suas vagas.
         </Vazio>
       ) : (
         <section aria-labelledby="vagas-automacoes" className="flex flex-col gap-3">
-          <h3 id="vagas-automacoes" className="text-h3">
-            Escolha a vaga
-          </h3>
+          <div className="flex flex-col gap-0.5">
+            <h3 id="vagas-automacoes" className="text-h3">
+              As prontas, em cada vaga
+            </h3>
+            <p className="text-body-sm text-ink-muted">
+              Confirmar a candidatura, lembrar dos parados, dar o retorno, oferecer os horários livres e marcar a vaga
+              como preenchida.
+            </p>
+          </div>
           <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
             {noAr.map((v) => (
               <li key={v.id}>

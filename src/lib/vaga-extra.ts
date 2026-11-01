@@ -6,6 +6,8 @@
 // - horário montado: escala, dias, turnos e uma observação.
 // Serve para o formulário (navegador), a validação e as páginas (servidor).
 
+import { motivoProibido } from "./copiloto";
+
 export const TIPOS_PERGUNTA = {
   sim_nao: { nome: "Sim ou não", exemplo: "Tem disponibilidade para viajar?" },
   texto: { nome: "Resposta curta", exemplo: "Qual sistema de caixa você já usou?" },
@@ -103,15 +105,12 @@ export function lerPerguntas(bruto: unknown): { ok: true; perguntas: Pergunta[] 
         : tipo === "opcoes" && typeof p.esperada === "string" && opcoes.includes(p.esperada)
           ? p.esperada
           : null;
-    perguntas.push({
-      id,
-      nome,
-      tipo,
-      opcoes,
-      obrigatoria: p.obrigatoria === true,
-      esperada,
-      eliminatoria: esperada !== null && p.eliminatoria === true,
-    });
+    const eliminatoria = esperada !== null && p.eliminatoria === true;
+    // a pergunta que tira alguém da vaga não pode ser sobre idade, filhos, estado civil e parecidos (a mesma lista
+    // da Triagem com IA e das regras, claude/plano-regras-personalizadas.md)
+    const proibido = eliminatoria ? motivoProibido(nome) : null;
+    if (proibido) return { ok: false, erro: `“${nome}” não pode tirar ninguém da vaga: ${proibido}` };
+    perguntas.push({ id, nome, tipo, opcoes, obrigatoria: p.obrigatoria === true, esperada, eliminatoria });
   }
   return { ok: true, perguntas };
 }

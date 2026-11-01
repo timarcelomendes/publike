@@ -44,15 +44,15 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
     ],
   },
   automacoes: {
-    titulo: "Automações sob medida: o processo da vaga do seu jeito",
+    titulo: "Automações personalizadas: monte as suas regras",
     texto:
-      "As automações prontas já são grátis em toda vaga, com o texto e os prazos do Publike. Sob medida, você escreve e escolhe o resto.",
+      "As 5 automações prontas já são grátis em toda vaga. Com as personalizadas, você diz quando o Publike age, para quem e o que ele faz.",
     itens: [
-      "O seu recado para quem se candidata, com o nome da pessoa e da vaga",
-      "Os seus prazos para o lembrete dos parados e o retorno a quem ficou sem resposta",
-      "Uma mensagem pronta para cada etapa, inclusive as suas etapas próprias",
-      "Dispensar pela pergunta eliminatória e a Triagem com IA mandar para Em análise",
-      "As mesmas regras em todas as vagas no ar e nas novas, com um toque",
+      "Dispensar sozinho quem não tem o obrigatório, pela resposta, pela distância ou pelo que combina",
+      "Adiantar quem combina: mover para Em análise, chamar para a entrevista ou pedir o teste",
+      "A mensagem certa em cada etapa, do seu jeito e na hora que você escolher",
+      "Avisar você ou alguém da equipe quando algo acontece",
+      "As mesmas regras em todas as vagas, ou nas de um cliente, com a prévia de quem elas pegariam",
     ],
   },
 };

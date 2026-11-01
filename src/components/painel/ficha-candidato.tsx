@@ -20,6 +20,7 @@ import { classesBotao } from "@/components/ui/botao";
 import { esperaResposta } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { formatarLugar, formatarTelefone, linkWhatsApp, tempoRelativo } from "@/lib/formato";
+import { textoDoQueFez } from "@/lib/regras";
 import { fraseDaEntrevista } from "@/lib/whatsapp";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { textosDosEstudos } from "@/lib/estudos";
@@ -30,6 +31,7 @@ import type { Curriculo } from "@/lib/tipos";
 import { AcoesInteressado } from "./acoes";
 import { Conversa } from "@/components/conversa/conversa";
 import type { MensagemConversa } from "@/lib/dados";
+import { DesfazerRegra } from "../automacoes/desfazer-regra";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { VideoNaFicha } from "../video/video-na-ficha";
 import {
@@ -336,6 +338,26 @@ export function FichaCandidato({
             endereco={c.endereco}
             proposta={extras.proposta}
           />
+        </Secao>
+      )}
+
+      {extras?.regras && extras.regras.length > 0 && (
+        <Secao titulo="O que as suas regras fizeram">
+          <ul className="flex flex-col gap-2">
+            {extras.regras.map((f) => (
+              <li key={f.id} className="flex items-start justify-between gap-3 text-body-sm">
+                <p className="min-w-0">
+                  <span className="text-label">“{f.regra}”</span>: {primeiro} {textoDoQueFez(f.feitas)}
+                  <span className="text-ink-muted">
+                    {" "}
+                    · {tempoRelativo(f.feito_em, extras.agora)}
+                    {f.desfeito_em ? " · desfeito" : ""}
+                  </span>
+                </p>
+                {!f.desfeito_em && <DesfazerRegra feita={f.id} nome={primeiro} />}
+              </li>
+            ))}
+          </ul>
         </Secao>
       )}
 

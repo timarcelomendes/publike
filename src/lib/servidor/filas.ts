@@ -525,6 +525,10 @@ export async function limparTestesAntigos(): Promise<{ apagados: number; motivo?
 
 export async function processarFilas() {
   try {
+    // as Automações personalizadas primeiro: o que elas fazem também vira aviso e e-mail (import aqui: o motor
+    // usa o acessoFila deste arquivo)
+    const regras = await import("./regras").then((m) => m.processarRegras()).catch(() => null);
+    if (regras?.motivo) console.warn(`Publike: ${regras.motivo}`);
     const [ia, avaliacoes, recados] = await Promise.all([
       revisarAnunciosPendentes(),
       revisarAvaliacoesPendentes(),

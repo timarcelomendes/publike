@@ -184,7 +184,7 @@ export type ExtrasDoMenu = {
   copiloto?: boolean;
   /** as pílulas dos recursos pagos pelo estado da conta (`marcaDoRecurso`); sem elas, a de sempre */
   /** `video` undefined: o banco ainda sem a Entrevista em vídeo (fica fora do menu) */
-  /** `automacoes` undefined: o banco ainda sem as Automações sob medida (migração 20270114120000) */
+  /** `automacoes` undefined: o banco ainda sem as Automações personalizadas (migração 20270114120000) */
   pilulas?: { copiloto: string | null; testes: string | null; video?: string | null; automacoes?: string | null };
 };
 
@@ -285,7 +285,7 @@ export function gruposDoModo(
         EQUIPE,
         // as etapas próprias do quadro e os horários livres (migração 20270108120000)
         { href: "/painel/etapas", nome: "Etapas e horários", icone: "etapas" },
-        // as Automações sob medida (migração 20270114120000): as prontas, de graça, ficam em cada vaga
+        // as Automações personalizadas (migração 20270114120000): as prontas, de graça, ficam em cada vaga
         ...(extras.pilulas && extras.pilulas.automacoes !== undefined
           ? [
               {

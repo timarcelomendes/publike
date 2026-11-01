@@ -32,6 +32,7 @@ import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { propostasDaVaga } from "@/lib/servidor/proposta";
 import { testesDaVaga } from "@/lib/servidor/testes";
 import { UUID } from "@/lib/validacao";
+import { feitasDasRegras } from "@/lib/servidor/regras-tela";
 import { DicaUmaVez } from "../ui/dica-uma-vez";
 
 // A mesa de candidatos (claude/plano-fluxo-contratar.md, parte 1): a mesma tela no menu Candidatos (todas as vagas,
@@ -335,12 +336,13 @@ export async function MesaDeCandidatos({
  * contratados), a chamada pelo Publike, a entrevista gravada, os testes da vaga, a proposta e a conversa.
  */
 async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: number) {
-  const [recursos, videos, testes, propostas, conversa] = await Promise.all([
+  const [recursos, videos, testes, propostas, conversa, regras] = await Promise.all([
     recursosPagos(),
     videosDaVaga(aberto.anuncio_id),
     testesDaVaga(aberto.anuncio_id),
     propostasDaVaga(aberto.anuncio_id),
     aberto.status === "match" ? conversaCom(aberto.perfil_id) : Promise.resolve(null),
+    feitasDasRegras(aberto.anuncio_id, aberto.perfil_id),
   ]);
   const videoLiberado = Boolean(recursos?.video.liberado);
   const ficha: ExtrasDaFicha = {
@@ -359,6 +361,7 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
     video: { liberado: videoLiberado, atual: videos?.get(aberto.perfil_id) ?? null },
     testes: testes.map((t) => ({ id: t.modelo_id, titulo: t.titulo })),
     proposta: propostas?.get(aberto.perfil_id) ?? null,
+    regras,
   };
   return { ficha, conversa: conversa ? { conversaId: conversa.conversaId, mensagens: conversa.mensagens } : null };
 }

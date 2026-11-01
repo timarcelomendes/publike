@@ -29,6 +29,29 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** as Automações personalizadas (migração 20270115120000): só a conta lê; salvar e ligar pelas funções */
+      regras: {
+        Row: {
+          id: string;
+          conta_id: string;
+          nome: string;
+          ligada: boolean;
+          ligada_em: string | null;
+          vale_em: string;
+          anuncio_id: string | null;
+          cliente_id: string | null;
+          gatilho: Json;
+          condicoes: Json;
+          acoes: Json;
+          modelo: string | null;
+          criada_por: string | null;
+          criada_em: string;
+          atualizada_em: string;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       modelos_mensagem: {
         Row: { id: string; autor_id: string; nome: string; texto: string; criado_em: string };
         Insert: { nome: string; texto: string };
@@ -1210,6 +1233,14 @@ export type Database = {
       admin_contas_apagadas: { Args: { p_dias?: number }; Returns: Json[] };
       /** migração 20270111120000: mais automações */
       salvar_regras_automacao: { Args: { p_anuncio: string; p_regras: Json }; Returns: undefined };
+      salvar_regra: { Args: { p_id: string | null; p_regra: Json }; Returns: string };
+      ligar_regra: { Args: { p_id: string; p_ligar: boolean }; Returns: undefined };
+      apagar_regra: { Args: { p_id: string }; Returns: undefined };
+      regra_rodar_agora: { Args: { p_id: string }; Returns: number };
+      regras_feitas_da_vaga: { Args: { p_anuncio: string; p_perfil?: string | null }; Returns: Json };
+      regra_marcar_desfeita: { Args: { p_feita: number }; Returns: Json };
+      regras_previa_dados: { Args: { p_anuncios: string[] }; Returns: Json };
+      regras_agiram: { Args: Record<string, never>; Returns: Json };
       copiar_automacoes: { Args: { p_anuncio: string }; Returns: number };
       usar_automacoes_nas_novas: { Args: { p_anuncio: string; p_usar: boolean }; Returns: undefined };
       automacao_anotar_horarios: { Args: { p_anuncio: string; p_perfil: string }; Returns: boolean };
@@ -2827,6 +2858,21 @@ export type Database = {
       mudar_whatsapp: { Args: { p_aceito: boolean; p_origem: string }; Returns: undefined };
       salvar_retorno: { Args: { p_ligado: boolean; p_texto: string | null }; Returns: undefined };
       servidor_retornos: { Args: { p_chave: string; p_agora?: string }; Returns: number };
+      servidor_regras_pendentes: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
+      servidor_regra_horarios: { Args: { p_chave: string; p_conta: string }; Returns: Json };
+      servidor_regra_agir: {
+        Args: {
+          p_chave: string;
+          p_regra: string;
+          p_evento: number;
+          p_anuncio: string;
+          p_perfil: string;
+          p_indices: number[];
+          p_extras?: Json;
+        };
+        Returns: Json;
+      };
+      servidor_regras_tempo: { Args: { p_chave: string; p_agora?: string }; Returns: Json };
       servidor_lembretes_entrevista: { Args: { p_chave: string; p_agora?: string }; Returns: number };
       copiloto_ler_mais: { Args: { p_anuncio: string }; Returns: number };
       copiloto_salvar_criterios: { Args: { p_anuncio: string; p_criterios: Json }; Returns: string };

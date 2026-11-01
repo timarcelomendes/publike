@@ -90,6 +90,14 @@ export type ExtrasDaFicha = {
   /** os testes da vaga, para "Pedir o teste antes" */
   testes: { id: string; titulo: string }[];
   proposta: Proposta | null;
+  /** o que as Automações personalizadas fizeram com a pessoa nesta vaga (com o Desfazer) */
+  regras?: {
+    id: number;
+    regra: string;
+    feitas: { tipo: string; resultado: string; etapa?: string | null }[];
+    feito_em: string;
+    desfeito_em: string | null;
+  }[];
 };
 
 type Feito = { texto: string; voltar?: () => Promise<{ ok: boolean; erro?: string }> } | null;

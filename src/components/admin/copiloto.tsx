@@ -62,7 +62,7 @@ export function BotaoVideo({ contaId, liberado }: { contaId: string; liberado: b
   );
 }
 
-/** Libera as Automações sob medida sem prazo, ou tira (migração 20270114120000). */
+/** Libera as Automações personalizadas sem prazo, ou tira (migração 20270114120000). */
 export function BotaoAutomacoes({ contaId, liberado }: { contaId: string; liberado: boolean }) {
   const { rodar, pendente, mensagem } = useAcao();
   return (
@@ -74,7 +74,7 @@ export function BotaoAutomacoes({ contaId, liberado }: { contaId: string; libera
         onClick={() => rodar(() => liberarAutomacoes(contaId, !liberado))}
       >
         <Workflow aria-hidden />
-        {liberado ? "Tirar as Automações sob medida" : "Liberar as Automações sob medida"}
+        {liberado ? "Tirar as Automações personalizadas" : "Liberar as Automações personalizadas"}
       </Botao>
       {mensagem}
     </div>

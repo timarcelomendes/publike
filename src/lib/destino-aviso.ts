@@ -63,6 +63,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "proposta_resposta" && n.anuncio_id)
     return `/painel/anuncio/${n.anuncio_id}/quadro${n.ator_id ? `?candidato=${n.ator_id}` : ""}`;
   // a automação "Lembrar dos parados": o quadro da vaga (migração 20270109120000)
+  // o aviso de uma regra das Automações personalizadas leva à ficha da pessoa (migração 20270115120000)
+  if (n.tipo === "parados" && n.link?.startsWith("/painel/")) return n.link;
   if (n.tipo === "parados" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/quadro`;
   // o lembrete da véspera: o candidato vai à vaga; quem marcou, ao quadro
   if (n.tipo === "entrevista_lembrete" && n.anuncio_id)

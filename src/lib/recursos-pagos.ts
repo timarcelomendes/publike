@@ -5,7 +5,7 @@ export const DIAS_GRATIS = 15;
 
 /** `video`: a Entrevista em vídeo (migração 20270104120000; plano em claude/plano-recursos-concorrentes.md). */
 export type RecursoPago = "copiloto" | "testes" | "video" | "automacoes";
-/** As ferramentas de avaliar da vaga (a aba Avaliar); `automacoes` (as Automações sob medida, migração
+/** As ferramentas de avaliar da vaga (a aba Avaliar); `automacoes` (as Automações personalizadas, migração
  * 20270114120000) mora na aba Automações. */
 export type FerramentaDeAvaliar = Exclude<RecursoPago, "automacoes">;
 
@@ -42,21 +42,21 @@ export const NOME_RECURSO: Record<RecursoPago, string> = {
   copiloto: "Triagem com IA",
   testes: "Teste Prático",
   video: "Entrevista em vídeo",
-  automacoes: "Automações sob medida",
+  automacoes: "Automações personalizadas",
 };
 /** Com o artigo, para as frases ("Assinar a Triagem com IA", "o Teste Prático"). */
 export const O_RECURSO: Record<RecursoPago, string> = {
   copiloto: "a Triagem com IA",
   testes: "o Teste Prático",
   video: "a Entrevista em vídeo",
-  automacoes: "as Automações sob medida",
+  automacoes: "as Automações personalizadas",
 };
 /** Com "a" craseado ("acesso à Triagem com IA", "ao Teste Prático"). */
 export const A_RECURSO: Record<RecursoPago, string> = {
   copiloto: "à Triagem com IA",
   testes: "ao Teste Prático",
   video: "à Entrevista em vídeo",
-  automacoes: "às Automações sob medida",
+  automacoes: "às Automações personalizadas",
 };
 
 export function ehRecursoPago(x: unknown): x is RecursoPago {
