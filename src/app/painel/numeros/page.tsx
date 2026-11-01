@@ -13,7 +13,7 @@ import { obterMeuPerfil } from "@/lib/dados";
 import { numerosDoProcesso, numerosOrigem } from "@/lib/servidor/automacoes";
 import { exigirUsuario } from "@/lib/sessao";
 
-export const metadata: Metadata = { title: "Números do processo" };
+export const metadata: Metadata = { title: "Resultados" };
 
 // Os números do processo (claude/plano-recursos-concorrentes.md, parte 6; migração 20270109120000): o funil, os
 // tempos e de onde vieram os candidatos, de todas as vagas e de cada uma.
@@ -51,10 +51,12 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="flex flex-wrap items-center gap-2 text-h2">
-            Números do processo
+            Resultados
             <Selo variante="novo">Novo</Selo>
           </h2>
-          <p className="mt-1 text-body text-ink-muted">Quanto tempo leva e onde as pessoas ficam pelo caminho.</p>
+          <p className="mt-1 text-body text-ink-muted">
+            Quanto tempo leva para contratar e onde as pessoas ficam pelo caminho.
+          </p>
         </div>
         <BotaoLink href={`/painel/numeros/planilha?periodo=${periodo}`} tamanho="sm" prefetch={false}>
           <Download aria-hidden />

@@ -297,7 +297,7 @@ export function gruposDoModo(
             ]
           : []),
         // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
-        { href: "/painel/numeros", nome: "Números", icone: "numeros" },
+        { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
         // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
         { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura" },
       ],

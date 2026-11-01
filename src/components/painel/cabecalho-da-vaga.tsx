@@ -50,7 +50,7 @@ export const ICONE_DA_FERRAMENTA: Record<FerramentaDeAvaliar, LucideIcon> = {
  * espera a resposta, em análise, em entrevista, contratados); "Editar a vaga", "Copiar o link da vaga" e o
  * "Mais"; e as 4 abas, que cabem na largura do painel e do celular: Candidatos, Avaliar (a Triagem com IA, o
  * Teste Prático e a Entrevista em vídeo, numa linha embaixo das abas quando se está numa delas), Automações e
- * Números. A pílula dos recursos pagos segue a conta (`marcaDoRecurso`).
+ * Resultados. A pílula dos recursos pagos segue a conta (`marcaDoRecurso`).
  */
 export async function CabecalhoDaVaga({
   anuncio,
@@ -138,7 +138,7 @@ export async function CabecalhoDaVaga({
     },
     {
       chave: "numeros",
-      nome: "Números",
+      nome: "Resultados",
       href: `/painel/anuncio/${id}/numeros`,
       icone: BarChart3,
       ativa: aba === "numeros",

@@ -18,7 +18,7 @@ import { candidaturasDaVaga, visitasDaVaga } from "@/lib/servidor/numeros-da-vag
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
-export const metadata: Metadata = { title: "Números da vaga" };
+export const metadata: Metadata = { title: "Resultados da vaga" };
 
 // A aba Números da vaga (pedido de 01/11/2026): como a vaga está indo, numa frase (quantos se candidataram,
 // quantas visitas, quando chegaram), as candidaturas dia a dia e as partes de /painel/numeros só desta vaga
@@ -153,7 +153,7 @@ async function Conteudo({ id }: { id: string }) {
         <div className="flex max-w-2xl flex-col gap-2">
           <h2 className="flex flex-wrap items-center gap-2 text-h2">
             <BarChart3 aria-hidden className="size-6 text-ink-muted" />
-            Números da vaga
+            Resultados da vaga
             <Selo variante="novo">Novo</Selo>
           </h2>
           <p className="text-body-lg text-ink-muted">
@@ -177,7 +177,7 @@ async function Conteudo({ id }: { id: string }) {
           href="/painel/numeros"
           className="inline-flex min-h-10 items-center text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
         >
-          Números de todas as vagas
+          Resultados de todas as vagas
         </Link>
       </div>
 
