@@ -56,6 +56,8 @@ import { CompositorMensagem, EntrevistaMarcada, FormEntrevista } from "./recruta
 import { FormRetorno } from "./retorno";
 import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
 import { VideoNaFicha } from "../video/video-na-ficha";
+import { AvaliacaoDoTime } from "../avaliacao/avaliacao-time";
+import { textoDaMedia, type AvaliacaoNoQuadro, type Competencia } from "@/lib/avaliacao-time";
 import { SITUACOES_VIDEO, type VideoNoQuadro } from "@/lib/entrevista-video";
 import { pedirVideo } from "@/lib/acoes/entrevista-video";
 import { montarRetorno, type RetornoDaConta } from "@/lib/retorno";
@@ -108,6 +110,8 @@ export type CartaoQuadro = {
   chamar?: { posicao: number; porque: string } | null;
   /** a entrevista em vídeo (migração 20270105120000) */
   video?: VideoNoQuadro | null;
+  /** a avaliação do time (migração 20270107120000) */
+  avaliacao?: AvaliacaoNoQuadro | null;
 };
 
 const COR_FAIXA: Record<FaixaDoTeste, string> = {
@@ -129,6 +133,7 @@ export function QuadroCandidatos({
   contatoDireto = false,
   retorno = null,
   video = null,
+  time = null,
 }: {
   anuncioId: string;
   vaga: string;
@@ -147,6 +152,8 @@ export function QuadroCandidatos({
   retorno?: RetornoDaConta | null;
   /** a Entrevista em vídeo: a conta tem o recurso (null: o banco ainda sem a migração) */
   video?: { liberado: boolean; aoVivo?: boolean } | null;
+  /** a avaliação do time: a ficha da vaga e as sugestões (null: sem a migração 20270107120000) */
+  time?: { ficha: Competencia[]; sugestoes: string[] } | null;
 }) {
   const [lista, mover] = useOptimistic(cartoes, (atual, m: { ids: string[]; coluna: EtapaCandidato }) =>
     atual.map((c) => (m.ids.includes(c.perfil_id) ? { ...c, coluna: m.coluna } : c)),
@@ -448,6 +455,7 @@ export function QuadroCandidatos({
             direto={contatoDireto}
             retorno={retorno?.texto ?? null}
             video={video}
+            time={time}
           />
         )}
       </Gaveta>
@@ -550,7 +558,8 @@ function Cartao({
         c.status === "desfeito" ||
         c.finalista ||
         c.colocacao ||
-        c.video) && (
+        c.video ||
+        c.avaliacao) && (
         <div className="flex flex-wrap gap-1.5">
           {c.status === "pendente" &&
             (c.aceita ? <Selo>Esperando currículo</Selo> : <Selo variante="aviso">Espera você</Selo>)}
@@ -565,6 +574,16 @@ function Cartao({
           {c.colocacao && <SeloDaColocacao c={c.colocacao} agora={agora} />}
           {c.video && (
             <Selo variante={SITUACOES_VIDEO[c.video.situacao].tom}>{SITUACOES_VIDEO[c.video.situacao].nome}</Selo>
+          )}
+          {c.avaliacao && c.avaliacao.total > 0 && (
+            <Selo
+              variante="contorno"
+              title={c.avaliacao.avaliei ? "A média das notas do time" : "Avalie para ver as notas"}
+            >
+              {c.avaliacao.avaliei && c.avaliacao.media != null
+                ? `Time: ${textoDaMedia(c.avaliacao.media)}`
+                : `${c.avaliacao.total} ${c.avaliacao.total === 1 ? "avaliação" : "avaliações"}`}
+            </Selo>
           )}
         </div>
       )}
@@ -600,11 +619,13 @@ function DetalheCandidato({
   direto,
   retorno,
   video,
+  time,
 }: {
   c: CartaoQuadro;
   /** o texto do retorno da conta (o WhatsApp de quem não seguiu) */
   retorno: string | null;
   video: { liberado: boolean; aoVivo?: boolean } | null;
+  time: { ficha: Competencia[]; sugestoes: string[] } | null;
   /** contato direto: o match saiu na hora, sem aceite */
   direto: boolean;
   anuncioId: string;
@@ -736,6 +757,18 @@ function DetalheCandidato({
               </div>
             ))}
           </dl>
+        </Secao>
+      )}
+
+      {time && (c.status === "pendente" || c.status === "match") && (
+        <Secao titulo="Avaliação do time">
+          <AvaliacaoDoTime
+            anuncioId={anuncioId}
+            perfilId={c.perfil_id}
+            nome={c.nome}
+            ficha={time.ficha}
+            sugestoes={time.sugestoes}
+          />
         </Secao>
       )}
 

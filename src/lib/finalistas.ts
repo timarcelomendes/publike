@@ -2,6 +2,7 @@
 // ao cliente, que vê os currículos (sem contato), o parecer da agência e responde.
 // Peças usadas no navegador e no servidor.
 
+import { lerCompetencias, type Competencia } from "./avaliacao-time";
 import { estudosDoBanco } from "./estudos";
 import type { Curriculo, Experiencia } from "./tipos";
 import { perguntasDoBanco, textoDaResposta, type Pergunta } from "./vaga-extra";
@@ -55,6 +56,8 @@ export type DadosDoLink = {
   agencia: { nome: string; foto: string | null; verificado: boolean; ehAgencia: boolean };
   vaga: { titulo: string; cidade: string; bairro: string | null; regime: string | null; cliente: string | null } | null;
   finalistas: FinalistaDoLink[];
+  /** a ficha de avaliação da vaga (migração 20270107120000): o gestor avalia ponto a ponto */
+  competencias: Competencia[];
 };
 
 /** O link que o cliente abre. */
@@ -144,6 +147,7 @@ export function lerDadosDoLink(json: unknown): DadosDoLink | null {
         }
       : null,
     finalistas,
+    competencias: lerCompetencias(d.competencias),
   };
 }
 

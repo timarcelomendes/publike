@@ -277,7 +277,8 @@ export function gruposDoModo(
           icone: "testes",
           cortesia: extras.pilulas ? (extras.pilulas.testes ?? false) : true,
         },
-        ...(agencia ? [EQUIPE] : []),
+        // a equipe: agência e, desde a avaliação em time (migração 20270107120000), empresa e comércio
+        EQUIPE,
         // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
         { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura" },
       ],

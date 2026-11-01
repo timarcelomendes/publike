@@ -1201,6 +1201,43 @@ export type Database = {
       admin_liberar_painel_no_site: { Args: { p_usuario: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
+      /** migração 20270107120000: a avaliação em time */
+      ficha_avaliacao: { Args: { p_anuncio: string }; Returns: Json };
+      salvar_ficha_avaliacao: { Args: { p_anuncio: string; p_competencias: string[] }; Returns: undefined };
+      avaliar_candidato: {
+        Args: {
+          p_anuncio: string;
+          p_perfil: string;
+          p_notas: Json;
+          p_recomendacao: string;
+          p_comentario?: string | null;
+        };
+        Returns: undefined;
+      };
+      avaliacoes_do_candidato: { Args: { p_anuncio: string; p_perfil: string }; Returns: Json };
+      avaliacoes_time_da_vaga: {
+        Args: { p_anuncio: string };
+        Returns: {
+          perfil_id: string;
+          total: number;
+          avaliei: boolean;
+          media: number | null;
+          seguir: number | null;
+          talvez: number | null;
+          nao_seguir: number | null;
+        }[];
+      };
+      avaliar_pelo_link: {
+        Args: {
+          p_token: string;
+          p_id: string;
+          p_quem: string;
+          p_notas: Json;
+          p_recomendacao: string;
+          p_comentario?: string | null;
+        };
+        Returns: string;
+      };
       /** migração 20270106120000: a entrevista ao vivo */
       entrevista_para_entrar: { Args: { p_id: string }; Returns: Json };
       entrevista_guardar_sala: { Args: { p_id: string; p_sala: string }; Returns: undefined };

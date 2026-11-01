@@ -2,7 +2,9 @@ import { Eye, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
+import { AvaliarPeloLink } from "@/components/avaliacao/avaliar-pelo-link";
 import { BotaoImprimir, RespostaDoCliente } from "@/components/finalistas/resposta-cliente";
+import type { Competencia } from "@/lib/avaliacao-time";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { Aviso, Avatar, Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
@@ -139,6 +141,7 @@ function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string
               hoje={hoje}
               previa={d.previa}
               remetente={ehAgencia ? "a agência" : d.agencia.nome}
+              competencias={d.competencias}
             />
           ))}
         </ol>
@@ -162,8 +165,10 @@ function Finalista({
   hoje,
   previa,
   remetente,
+  competencias,
 }: {
   f: FinalistaDoLink;
+  competencias: Competencia[];
   numero: number;
   token: string;
   hoje: string;
@@ -217,7 +222,7 @@ function Finalista({
       )}
 
       {!previa && (
-        <div className="border-t border-line pt-4">
+        <div className="flex flex-col gap-4 border-t border-line pt-4">
           <RespostaDoCliente
             token={token}
             id={f.id}
@@ -225,6 +230,9 @@ function Finalista({
             inicial={{ decisao: f.decisao, comentario: f.comentario, quem: f.quem }}
             remetente={remetente}
           />
+          {competencias.length > 0 && (
+            <AvaliarPeloLink token={token} id={f.id} nome={f.nome} competencias={competencias} />
+          )}
         </div>
       )}
       {previa && (decisao || f.comentario) && (

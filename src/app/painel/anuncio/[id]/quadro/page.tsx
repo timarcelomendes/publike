@@ -18,6 +18,8 @@ import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { clienteDaVagaComNome } from "@/lib/servidor/clientes";
 import { ordemDoCopiloto, triagemDosCandidatos } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
+import { sugestoesDeCompetencias } from "@/lib/avaliacao-time";
+import { avaliacoesTimeDaVaga, fichaDaVaga } from "@/lib/servidor/avaliacao-time";
 import { dailyConfigurado } from "@/lib/servidor/daily";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { retornoDaConta } from "@/lib/servidor/retorno";
@@ -54,15 +56,19 @@ async function Conteudo({
   const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno, videos] = await Promise.all([
-    montarQuadro(anuncio, agora),
-    ordemDoCopiloto(id),
-    resultadosDosTestes(id),
-    triagemDosCandidatos(id),
-    retornoDaConta(),
-    // a entrevista em vídeo (migração 20270105120000; sem ela, null)
-    videosDaVaga(id),
-  ]);
+  const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno, videos, ficha, avaliacoes] =
+    await Promise.all([
+      montarQuadro(anuncio, agora),
+      ordemDoCopiloto(id),
+      resultadosDosTestes(id),
+      triagemDosCandidatos(id),
+      retornoDaConta(),
+      // a entrevista em vídeo (migração 20270105120000; sem ela, null)
+      videosDaVaga(id),
+      // a avaliação do time (migração 20270107120000; sem ela, null)
+      fichaDaVaga(id),
+      avaliacoesTimeDaVaga(id),
+    ]);
   // o Teste Prático de cada candidato: o resultado numa palavra no cartão e o "Ordenar pelo teste"
   const testesDe = new Map<string, { titulo: string; faixa: FaixaDoTeste; nota: number }[]>();
   for (const r of resultados) {
@@ -80,6 +86,7 @@ async function Conteudo({
     testes: (testesDe.get(c.perfil_id) ?? []).map(({ titulo, faixa }) => ({ titulo, faixa })),
     triagem: triagem?.get(c.perfil_id) ?? null,
     video: videos?.get(c.perfil_id) ?? null,
+    avaliacao: avaliacoes?.get(c.perfil_id) ?? null,
   }));
   if (peloChamar) cartoes.sort(compararParaChamar);
   const ordenados = cartoes.map((c, i) =>
@@ -233,6 +240,7 @@ async function Conteudo({
               ? { liberado: recursos.video.liberado, aoVivo: dailyConfigurado() }
               : null
           }
+          time={ficha ? { ficha, sugestoes: sugestoesDeCompetencias(anuncio.titulo) } : null}
         />
       )}
     </div>

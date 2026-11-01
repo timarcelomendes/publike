@@ -19,6 +19,8 @@ import { formatarLugar } from "@/lib/formato";
 import { obterAnuncio } from "@/lib/dados";
 import { triagemDosCandidatos } from "@/lib/servidor/copiloto";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
+import { avaliacoesTimeDaVaga } from "@/lib/servidor/avaliacao-time";
+import { textoDaMedia } from "@/lib/avaliacao-time";
 import { SITUACOES_VIDEO } from "@/lib/entrevista-video";
 import { montarQuadro } from "@/lib/servidor/quadro";
 import { resultadosDosTestes } from "@/lib/servidor/testes";
@@ -33,7 +35,7 @@ export const metadata: Metadata = { title: "Comparar candidatos" };
 // teste, os itens da vaga, as respostas, os últimos trabalhos e o estudo, com Entrevista e Não seguir em cada um.
 // As linhas ficam alinhadas entre as colunas (subgrid); no celular, uma pessoa por vez, deslizando de lado.
 
-const LINHAS = 10;
+const LINHAS = 11;
 
 export default function Comparar({ params, searchParams }: PageProps<"/painel/anuncio/[id]/comparar">) {
   return (
@@ -51,12 +53,14 @@ async function Conteudo({ id, p }: { id: string; p: string }) {
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [{ cartoes, curriculos }, resultados, triagem, videos] = await Promise.all([
+  const [{ cartoes, curriculos }, resultados, triagem, videos, avaliacoes] = await Promise.all([
     montarQuadro(anuncio, agora),
     resultadosDosTestes(id),
     triagemDosCandidatos(id),
     // a entrevista em vídeo (migração 20270105120000; sem ela, null)
     videosDaVaga(id),
+    // a avaliação do time (migração 20270107120000; sem ela, null)
+    avaliacoesTimeDaVaga(id),
   ]);
   const pedidos = [...new Set(p.split(","))].slice(0, 4);
   const pessoas = pedidos.flatMap((pid) => cartoes.filter((c) => c.perfil_id === pid));
@@ -106,6 +110,7 @@ async function Conteudo({ id, p }: { id: string; p: string }) {
           const testes = resultados.filter((r) => r.perfil_id === c.perfil_id && r.status === "feita");
           const t = triagem?.get(c.perfil_id) ?? null;
           const v = videos?.get(c.perfil_id) ?? null;
+          const av = avaliacoes?.get(c.perfil_id) ?? null;
           const decisao = c.finalista?.decisao ? DECISOES_CLIENTE[c.finalista.decisao] : null;
           const a = c.aderencia;
           const respostas = c.respostas.filter((r) => r.resposta);
@@ -168,6 +173,27 @@ async function Conteudo({ id, p }: { id: string; p: string }) {
                   </ul>
                 ) : (
                   <Nada>Não fez</Nada>
+                )}
+              </Celula>
+
+              <Celula titulo="Avaliação do time">
+                {!av || !av.total ? (
+                  <Nada>Ninguém avaliou</Nada>
+                ) : av.avaliei ? (
+                  <p className="text-body-sm">
+                    Média {textoDaMedia(av.media)} de 5 ·{" "}
+                    {[
+                      av.seguir ? `${av.seguir} seguir` : "",
+                      av.talvez ? `${av.talvez} talvez` : "",
+                      av.nao_seguir ? `${av.nao_seguir} não seguir` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                ) : (
+                  <Nada>
+                    {av.total} {av.total === 1 ? "avaliação" : "avaliações"}: avalie no quadro para ver
+                  </Nada>
                 )}
               </Celula>
 

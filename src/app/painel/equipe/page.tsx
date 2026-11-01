@@ -31,13 +31,16 @@ async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/painel/equipe");
   const perfil = await obterMeuPerfil();
-  if (perfil?.tipo !== "agencia") {
+  // a equipe é de quem contrata: agência e, desde a migração 20270107120000, empresa e comércio
+  if (!perfil || perfil.tipo === "pessoa") {
     return (
-      <Vazio icone={Users} titulo="Equipe é para agência de emprego e RH">
-        Na agência, cada pessoa da equipe entra com o próprio celular e cuida das vagas e dos candidatos pela agência.
+      <Vazio icone={Users} titulo="Equipe é para quem contrata">
+        Na empresa, no comércio e na agência, cada pessoa da equipe entra com o próprio celular e cuida das vagas e dos
+        candidatos pela conta.
       </Vazio>
     );
   }
+  const ehAgencia = perfil.tipo === "agencia";
   const agora = await agoraDaRequisicao();
   const pode = administra(usuario.papel);
   const [membros, convites, atividades] = await Promise.all([
@@ -60,14 +63,15 @@ async function Conteudo() {
       <div>
         <h2 className="text-h2">Equipe</h2>
         <p className="mt-1 text-body text-ink-muted">
-          Cada pessoa entra com o próprio celular e age pela {agencia}: vagas, candidatos, entrevistas, conversas e
-          clientes. O que cada uma faz fica anotado aqui embaixo.
+          Cada pessoa entra com o próprio celular e age pela {agencia}: vagas, candidatos, entrevistas, conversas
+          {ehAgencia ? " e clientes" : " e a avaliação de cada candidato"}. O que cada uma faz fica anotado aqui
+          embaixo.
         </p>
       </div>
 
       {usuario.papel === "recrutador" && (
         <Aviso tipo="info" titulo="Você é recrutador nesta equipe">
-          Quem administra a {agencia} convida e tira pessoas e muda o perfil da agência.
+          Quem administra a {agencia} convida e tira pessoas e muda o perfil {ehAgencia ? "da agência" : "da conta"}.
         </Aviso>
       )}
 
