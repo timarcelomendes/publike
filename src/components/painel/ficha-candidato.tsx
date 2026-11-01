@@ -36,6 +36,7 @@ import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { VideoNaFicha } from "../video/video-na-ficha";
 import {
   ControlesDaFicha,
+  NavegarFichas,
   EntrevistaDaFicha,
   ResumoDaIA,
   type EstadoFicha,
@@ -219,9 +220,8 @@ export function FichaCandidato({
             )}
           </p>
         </div>
+        <NavegarFichas anterior={anterior} proximo={proximo} />
       </header>
-      {/* o Conectar fica com os outros botões (no match, junto do Conversar), e o nome tem a largura toda */}
-      {conectar && !match && <div>{conectar}</div>}
 
       {estado === "moderacao" ? (
         <p className="flex items-start gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm text-ink-muted">
@@ -241,6 +241,7 @@ export function FichaCandidato({
           conversa={conversa}
           base={base}
           extras={extras}
+          conectar={conectar}
         />
       )}
 
@@ -268,7 +269,6 @@ export function FichaCandidato({
               {c.entrevista ? "Avisar da entrevista no WhatsApp" : "WhatsApp"}
             </a>
           )}
-          {conectar}
         </div>
       )}
       {estado === "aceita" && (

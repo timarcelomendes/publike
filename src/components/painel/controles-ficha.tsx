@@ -10,6 +10,7 @@ import {
   Clock3,
   Heart,
   Keyboard,
+  MoreHorizontal,
   PartyPopper,
   Sparkles,
   Undo2,
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { marcarVagaPreenchida } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
@@ -54,15 +55,6 @@ function useUltima() {
 }
 
 export type EstadoFicha = "responder" | "aceita" | "match" | "dispensada" | "desfeito" | "moderacao";
-
-/** Uma tecla de atalho no botão (some no celular). */
-function Tecla({ children }: { children: string }) {
-  return (
-    <kbd className="hidden min-w-5 rounded-sm border border-line-strong px-1 text-center font-sans text-caption leading-5 text-ink-muted lg:inline-block">
-      {children}
-    </kbd>
-  );
-}
 
 const digitando = (e: KeyboardEvent) => {
   const t = e.target as HTMLElement | null;
@@ -114,8 +106,11 @@ export function ControlesDaFicha({
   conversa,
   base = "/painel/caixa",
   extras = null,
+  conectar = null,
 }: {
   base?: string;
+  /** o Conectar (conexão sem vaga): fica no "Mais", com o Só aceitar e os atalhos */
+  conectar?: ReactNode;
   anuncioId: string;
   perfilId: string;
   nome: string;
@@ -133,6 +128,8 @@ export function ControlesDaFicha({
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [ajuda, setAjuda] = useState(false);
+  const [mais, setMais] = useState(false);
+  const caixaMais = useRef<HTMLDivElement>(null);
   // a folha aberta: "chamar" (entrevista, vídeo, teste) ou "contratado" (proposta e vaga completa)
   const [folha, setFolha] = useState<"chamar" | "contratado" | null>(null);
   const [feito, setFeito] = useState<Feito>(null);
@@ -242,8 +239,11 @@ export function ControlesDaFicha({
       else if (k === "d" && estado === "responder") responder("dispensada");
       else if (k === "z" && ultima?.desfaz) voltar();
       else if (k === "c" && conversa) router.push(conversa);
-      else if (k === "e" && podeChamar) setFolha("chamar");
-      else if (k === "e" && estado === "match") {
+      else if (k === "e" && podeChamar) {
+        setFolha("chamar");
+        // a folha abre com o cursor no primeiro campo (o dia e a hora)
+        setTimeout(() => document.querySelector<HTMLElement>("#folha-chamar input[type=datetime-local]")?.focus(), 50);
+      } else if (k === "e" && estado === "match") {
         const alvo = document.getElementById("entrevista");
         alvo?.scrollIntoView({ behavior: "smooth", block: "start" });
         alvo?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
@@ -254,6 +254,24 @@ export function ControlesDaFicha({
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
   });
+
+  // o "Mais" (o Só aceitar, o Conectar e os atalhos) fecha com um toque fora ou com Esc
+  const soAtalhos = !((responde && extras) || conectar);
+  useEffect(() => {
+    if (!mais) return;
+    function fora(e: PointerEvent) {
+      if (!caixaMais.current?.contains(e.target as Node)) setMais(false);
+    }
+    function esc(e: KeyboardEvent) {
+      if (e.key === "Escape") setMais(false);
+    }
+    document.addEventListener("pointerdown", fora);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", fora);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [mais]);
 
   const principal =
     "inline-flex min-h-11 items-center gap-2 rounded-pill bg-terra px-4 text-label text-on-terra transition-colors hover:bg-terra-hover disabled:opacity-60";
@@ -276,7 +294,6 @@ export function ControlesDaFicha({
           >
             <CalendarPlus aria-hidden className="size-[18px]" />
             {responde ? "Chamar para entrevista" : "Marcar a entrevista"}
-            <Tecla>E</Tecla>
           </button>
         )}
         {responde && extras && aba !== "analise" && (
@@ -299,14 +316,12 @@ export function ControlesDaFicha({
           >
             <Heart aria-hidden className="size-[18px] text-like" />
             {estado === "desfeito" ? "Aceitar de novo" : "Aceitar"}
-            <Tecla>A</Tecla>
           </button>
         )}
         {estado === "responder" && (
           <button type="button" disabled={pendente} onClick={() => responder("dispensada")} className={leve}>
             <X aria-hidden className="size-[18px]" />
             Dispensar
-            <Tecla>D</Tecla>
           </button>
         )}
         {noProcesso && extras && (
@@ -369,35 +384,58 @@ export function ControlesDaFicha({
             Voltar para Novos
           </button>
         )}
-        <span className="ml-auto flex items-center gap-1">
-          <NavLink href={anterior} rotulo="Anterior" tecla="K">
-            <ChevronLeft aria-hidden className="size-5" />
-          </NavLink>
-          <NavLink href={proximo} rotulo="Próximo" tecla="J">
-            <ChevronRight aria-hidden className="size-5" />
-          </NavLink>
+        <div ref={caixaMais} className={`relative ml-auto ${soAtalhos ? "max-lg:hidden" : ""}`}>
           <button
             type="button"
-            onClick={() => setAjuda((a) => !a)}
-            aria-expanded={ajuda}
-            aria-label="Atalhos de teclado"
-            className="hidden size-10 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink lg:inline-flex"
+            onClick={() => setMais((m) => !m)}
+            aria-expanded={mais}
+            aria-label="Mais opções"
+            title="Mais opções"
+            className="inline-flex size-11 items-center justify-center rounded-pill text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink"
           >
-            <Keyboard aria-hidden className="size-5" />
+            <MoreHorizontal aria-hidden className="size-5" />
           </button>
-        </span>
+          {mais && (
+            <div
+              role="group"
+              aria-label="Mais opções"
+              className="absolute right-0 z-20 mt-1 flex w-72 flex-col gap-1 rounded-lg border border-line bg-surface-100 p-2 shadow-card max-md:bottom-full max-md:mb-2 max-md:mt-0"
+            >
+              {responde && extras && (
+                <button
+                  type="button"
+                  disabled={pendente}
+                  onClick={() => {
+                    setMais(false);
+                    responder("match");
+                  }}
+                  className="flex min-h-11 items-center gap-2 rounded-md px-3 text-left text-body-sm hover:bg-surface-300 disabled:opacity-60"
+                >
+                  <Heart aria-hidden className="size-4 shrink-0 text-like" />
+                  {estado === "desfeito" ? "Só aceitar de novo" : "Só aceitar, sem marcar a entrevista"}
+                </button>
+              )}
+              {conectar && (
+                <div className="flex flex-col gap-1 rounded-md px-3 py-2">
+                  <p className="text-caption text-ink-muted">Para manter o contato depois da vaga</p>
+                  {conectar}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setMais(false);
+                  setAjuda((x) => !x);
+                }}
+                className="hidden min-h-11 items-center gap-2 rounded-md px-3 text-left text-body-sm hover:bg-surface-300 lg:flex"
+              >
+                <Keyboard aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                {ajuda ? "Esconder os atalhos do teclado" : "Atalhos do teclado"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-      {responde && extras && (
-        <button
-          type="button"
-          disabled={pendente}
-          onClick={() => responder("match")}
-          className="-mt-1 inline-flex min-h-9 items-center gap-1.5 self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink disabled:opacity-60"
-        >
-          {estado === "desfeito" ? "Só aceitar de novo" : "Só aceitar, sem marcar a entrevista"}
-          <Tecla>A</Tecla>
-        </button>
-      )}
       {semCurriculo && responde && (
         <p className="text-body-sm text-ink-muted">
           A vaga pede currículo e {semCurriculo} ainda não mandou. Aceitando, {semCurriculo} recebe o pedido e o contato
@@ -593,6 +631,7 @@ function FolhaChamar({
   const { rodar, pendente, mensagem } = useAcao();
   return (
     <section
+      id="folha-chamar"
       aria-label={`Chamar ${primeiro} para a entrevista`}
       className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface-100 p-4"
     >
@@ -656,6 +695,21 @@ function FolhaChamar({
         </div>
       )}
     </section>
+  );
+}
+
+/** O anterior e o próximo da lista (as teclas K e J), no alto da ficha. */
+export function NavegarFichas({ anterior, proximo }: { anterior: string | null; proximo: string | null }) {
+  if (!anterior && !proximo) return null;
+  return (
+    <nav aria-label="Outros candidatos" className="flex shrink-0 items-start gap-0.5">
+      <NavLink href={anterior} rotulo="Anterior" tecla="K">
+        <ChevronLeft aria-hidden className="size-5" />
+      </NavLink>
+      <NavLink href={proximo} rotulo="Próximo" tecla="J">
+        <ChevronRight aria-hidden className="size-5" />
+      </NavLink>
+    </nav>
   );
 }
 
