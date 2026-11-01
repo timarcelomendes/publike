@@ -483,6 +483,19 @@ export async function prazosDaEntrevistaVideo(): Promise<{ lembradas: number; mo
   return { lembradas: Number(data ?? 0) };
 }
 
+/** A automação "Lembrar dos parados": um aviso por vaga para quem publicou, das 8h às 20h (migração 20270109120000). */
+export async function lembrarParados(): Promise<{ lembrados: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { lembrados: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_automacoes_parados", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { lembrados: 0 };
+    console.error("Publike: falha no lembrete dos parados:", error.message);
+    return { lembrados: 0, motivo: "Não foi possível lembrar dos candidatos parados." };
+  }
+  return { lembrados: Number(data ?? 0) };
+}
+
 /** As notícias de hoje num aviso só, no sino e no celular: a partir das 18h, uma vez por dia (migração 20261202120000). */
 export async function avisarNoticiasDoDia(): Promise<{ avisadas: number; motivo?: string }> {
   const acesso = acessoFila();

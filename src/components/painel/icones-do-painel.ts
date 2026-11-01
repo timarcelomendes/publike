@@ -1,5 +1,6 @@
 import {
   BadgeCheck,
+  BarChart3,
   BellRing,
   Briefcase,
   Building2,
@@ -54,5 +55,6 @@ export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   copiloto: Sparkles,
   video: Video,
   etapas: Columns3,
+  numeros: BarChart3,
   assinatura: CreditCard,
 };

@@ -111,6 +111,17 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
       .in("id", [...falhas.map((f) => f.perfil), ...aceitos]);
     for (const p of data ?? []) nomes.set(p.id, p.nome.split(" ")[0]);
   }
+  // a automação da vaga: a mensagem pronta da etapa, uma vez por pessoa (migração 20270109120000; sem ela, nada)
+  let automaticas = 0;
+  if (feitos && (etapa === "analise" || etapa === "entrevista" || etapa === "contratado")) {
+    const movidos = ids.filter((id) => !falhas.some((f) => f.perfil === id));
+    const { data: enviadas } = await supabase.rpc("automacao_mensagem_ao_mover", {
+      p_anuncio: anuncioId,
+      p_perfis: movidos,
+      p_etapa: etapa,
+    });
+    automaticas = Number(enviadas ?? 0);
+  }
   if (feitos || aceitos.length) after(processarFilas);
   refresh();
   const nome = ETAPAS_CANDIDATO[etapa].nome;
@@ -126,6 +137,9 @@ export async function moverCandidatos(anuncioId: string, perfis: string[], desti
         : quemAceitou.length > 1
           ? `${listaDeNomes(quemAceitou)} receberam o seu aceite e o pedido do currículo, que esta vaga pede. Quando mandarem, dá match e você move para ${nome}.`
           : "",
+      automaticas
+        ? `A mensagem automática da etapa foi para ${automaticas === 1 ? "1 pessoa" : `${automaticas} pessoas`}.`
+        : "",
     ]
       .filter(Boolean)
       .join(" "),

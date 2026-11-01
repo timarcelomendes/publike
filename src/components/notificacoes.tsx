@@ -59,6 +59,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   entrevista_lembrete: CalendarClock,
   video_pedido: Video,
   video_enviado: Video,
+  parados: Hourglass,
   seguindo: BellRing,
   busca: SearchCheck,
   // curtida sem resposta: o lembrete para quem publicou e o aviso para quem curtiu

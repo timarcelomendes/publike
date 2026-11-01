@@ -4,6 +4,7 @@ import {
   enviarRetornos,
   lembrarEntrevistas,
   prazosDaEntrevistaVideo,
+  lembrarParados,
   limparTestesAntigos,
   enviarEmailsPendentes,
   enviarPushPendentes,
@@ -34,6 +35,8 @@ export async function GET(request: Request) {
   if (!autorizado(request.headers.get("authorization"))) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401 });
   }
+  // a automação da vaga: o lembrete dos candidatos parados há N dias (das 8h às 20h), junto com as outras
+  const lembrandoParados = lembrarParados();
   const [ia, avaliacoes, recados, parados, lembretes, combinam, noticias, testes, triagem, retornos, vespera, video] =
     await Promise.all([
       revisarAnunciosPendentes(20),
@@ -58,6 +61,7 @@ export async function GET(request: Request) {
       // a entrevista em vídeo: vence quem não respondeu em 5 dias e lembra quando faltam 2
       prazosDaEntrevistaVideo(),
     ]);
+  const automacoes = await lembrandoParados;
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto
   const [emails, celular] = await Promise.all([enviarEmailsPendentes(20), enviarPushPendentes(50)]);
 
@@ -76,6 +80,7 @@ export async function GET(request: Request) {
     retornos.motivo,
     vespera.motivo,
     video.motivo,
+    automacoes.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -98,6 +103,7 @@ export async function GET(request: Request) {
       retornos: retornos.enviados,
       entrevistas_lembradas: vespera.lembradas,
       video_lembrados: video.lembradas,
+      parados_lembrados: automacoes.lembrados,
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },
   );

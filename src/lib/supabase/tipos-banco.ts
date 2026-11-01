@@ -1202,6 +1202,39 @@ export type Database = {
       admin_liberar_copiloto: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       admin_liberar_testes: { Args: { p_conta: string; p_liberar: boolean }; Returns: undefined };
       /** migração 20270108120000: etapas próprias e horários livres */
+      /** migração 20270109120000: as automações e os números */
+      automacoes_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
+      salvar_automacoes: {
+        Args: { p_anuncio: string; p_dispensar: boolean; p_mensagens: Json; p_parado_dias: number | null };
+        Returns: undefined;
+      };
+      automacao_mensagem_ao_mover: {
+        Args: { p_anuncio: string; p_perfis: string[]; p_etapa: string };
+        Returns: number;
+      };
+      servidor_automacoes_parados: { Args: { p_chave: string; p_agora?: string }; Returns: number };
+      numeros_do_processo: {
+        Args: { p_dias?: number | null };
+        Returns: {
+          anuncio_id: string;
+          titulo: string;
+          status: string;
+          criado_em: string;
+          candidatos: number;
+          respondidos: number;
+          analise: number;
+          entrevista: number;
+          contratados: number;
+          nao_seguiu: number;
+          horas_resposta: number | null;
+          dias_entrevista: number | null;
+          dias_contratar: number | null;
+        }[];
+      };
+      numeros_origem: {
+        Args: { p_dias?: number | null; p_anuncio?: string | null };
+        Returns: { origem: string; candidatos: number; entrevista: number; contratados: number }[];
+      };
       etapas_proprias: { Args: Record<string, never>; Returns: Json };
       salvar_etapas_proprias: { Args: { p_etapas: Json }; Returns: undefined };
       marcar_subetapa: { Args: { p_anuncio: string; p_perfis: string[]; p_subetapa: string | null }; Returns: number };
