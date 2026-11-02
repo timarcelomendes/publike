@@ -113,7 +113,14 @@ export type DadosCard = Pick<
 };
 
 /** Anúncio na página de perfil: o serviço traz as fotos e onde atende (vitrine). */
-export type AnuncioDoPerfil = DadosCard & { fotos: string[]; atende: string[] };
+export type AnuncioDoPerfil = DadosCard & {
+  fotos: string[];
+  atende: string[];
+  pagamento_ate?: number | null;
+  /** vaga de agência: para qual empresa é (ou confidencial) */
+  contratante?: string | null;
+  contratante_confidencial?: boolean;
+};
 
 export type Perfil = {
   id: string;

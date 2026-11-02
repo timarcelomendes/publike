@@ -2,25 +2,31 @@ import { ArrowLeft, Megaphone, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
-import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
+import { Suspense } from "react";
 import { CardAnuncio } from "@/components/card-anuncio";
-import { SeloVerificado } from "@/components/selo-verificado";
+import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
 import { BotaoSeguir } from "@/components/social/botoes";
-import { Avatar, Container, Esqueleto, Vazio } from "@/components/ui/basicos";
+import { Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
-import { categoria, REGIMES, TIPOS_CONTA } from "@/lib/constantes";
+import { TopoDaEmpresa } from "@/components/vagas-da-empresa/topo";
+import { SITE_URL } from "@/lib/config";
+import { categoria, REGIMES } from "@/lib/constantes";
 import { semAcento } from "@/lib/descobrir";
-import { obterPerfilPublico, obterUsuario } from "@/lib/dados";
+import { obterPerfilPublico, obterUsuario, requisitosDasVagas, type DetalhesDaVaga } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, plural } from "@/lib/formato";
+import { extrasDe, matchDasVagas, quemProcura } from "@/lib/servidor/lista-anuncios";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import type { AnuncioDoPerfil, Regime, TipoConta } from "@/lib/tipos";
+import type { AnuncioDoPerfil, AnuncioResumo, Regime } from "@/lib/tipos";
+import { linkDasVagas, textoDasVagas } from "@/lib/vagas-da-empresa";
 
-// "Todas as vagas" de uma empresa, comércio ou agência: o link que ela põe na
-// bio do Instagram, no status do WhatsApp ou no site. Só as vagas no ar (até 200), com os filtros:
-// a palavra (no título, na área e no bairro), a área, o bairro e o tipo de contratação. Cada grupo de
-// filtro só aparece quando separa alguma coisa (duas áreas ou mais, por exemplo); tocar de novo tira.
+// "Todas as vagas" de uma empresa, comércio ou agência: o link que ela põe na bio do Instagram, no status do
+// WhatsApp ou no site (claude/plano-pagina-de-vagas.md, parte 1). No alto, a marca: a logo grande, o nome, quantas
+// vagas e o Sobre, com o "Mandar no WhatsApp" (a lista pronta). Embaixo, as vagas no ar (até 200), sem repetir a
+// empresa em cada cartão (na agência, para qual empresa é), com os benefícios, o Começa já e o % de match de quem
+// tem currículo. Os filtros (a palavra, a área, a contratação e o bairro) numa linha; cada um só aparece quando
+// separa alguma coisa. A imagem do link (WhatsApp, redes) fica em opengraph-image.tsx.
 
 const LIMITE = 200;
 type Filtros = { q: string; area: string; bairro: string; regime: string };
@@ -37,7 +43,7 @@ function filtrar(vagas: AnuncioDoPerfil[], f: Filtros) {
     if (f.bairro && a.bairro !== f.bairro) return false;
     if (f.regime && a.regime !== f.regime) return false;
     if (!palavras.length) return true;
-    const texto = semAcento(`${a.titulo} ${categoria(a.categoria).nome} ${a.bairro}`);
+    const texto = semAcento(`${a.titulo} ${categoria(a.categoria).nome} ${a.bairro} ${a.contratante ?? ""}`);
     return palavras.every((p) => texto.includes(p));
   });
 }
@@ -52,15 +58,26 @@ function contar(vagas: AnuncioDoPerfil[], campo: (a: AnuncioDoPerfil) => string 
   return [...n].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], "pt-BR"));
 }
 
+/** Para qual empresa é a vaga de agência (o nome, ou "empresa confidencial"). */
+function paraQuem(a: AnuncioDoPerfil) {
+  return a.contratante ?? (a.contratante_confidencial ? "empresa confidencial" : null);
+}
+
 export async function generateMetadata({ params }: PageProps<"/perfil/[id]/vagas">): Promise<Metadata> {
   const { id } = await params;
   const dados = await obterPerfilPublico(id, LIMITE);
   if (!dados) return { title: "Vagas não encontradas", robots: { index: false } };
   const total = dados.anuncios.filter((a) => a.tipo === "vaga").length;
+  const lugar = formatarLugar(dados.perfil.bairro, dados.perfil.cidade);
+  const titulo = total
+    ? `${dados.perfil.nome} está contratando: ${plural(total, "vaga aberta", "vagas abertas")}`
+    : `Vagas de ${dados.perfil.nome}`;
+  const descricao = `${total ? plural(total, "vaga aberta", "vagas abertas") : "Vagas"} de ${dados.perfil.nome} no Publike: ${lugar}. Candidate-se de graça.`;
   return {
     title: `Vagas de ${dados.perfil.nome}`,
-    description: `${total ? plural(total, "vaga aberta", "vagas abertas") : "Vagas"} de ${dados.perfil.nome} no Publike: ${formatarLugar(dados.perfil.bairro, dados.perfil.cidade)}. Candidate-se de graça.`,
+    description: descricao,
     alternates: { canonical: `/perfil/${id}/vagas` },
+    openGraph: { title: titulo, description: descricao, url: `/perfil/${id}/vagas` },
   };
 }
 
@@ -72,6 +89,27 @@ export default function VagasDaEmpresa({ params, searchParams }: PageProps<"/per
       </Suspense>
     </Container>
   );
+}
+
+/** O que cada vaga pede (benefícios, quantas pessoas, Começa já...), de 100 em 100. */
+async function detalhesDas(ids: string[]) {
+  const partes: string[][] = [];
+  for (let i = 0; i < ids.length; i += 100) partes.push(ids.slice(i, i + 100));
+  const lidas = await Promise.all(partes.map((p) => requisitosDasVagas(p).catch(() => [] as DetalhesDaVaga[])));
+  return new Map(lidas.flat().map((v) => [v.id, v]));
+}
+
+/** As curtidas de quem está olhando nestas vagas (o cartão mostra "Deu match" e o coração cheio). */
+async function minhasCurtidasEm(ids: string[], usuarioId: string | null) {
+  if (!usuarioId || !ids.length) return new Map<string, string>();
+  const { data } = await (
+    await criarClienteServidor()
+  )
+    .from("curtidas")
+    .select("anuncio_id, status")
+    .eq("perfil_id", usuarioId)
+    .in("anuncio_id", ids.slice(0, 200));
+  return new Map((data ?? []).map((c) => [c.anuncio_id, c.status]));
 }
 
 async function Conteudo({
@@ -91,11 +129,26 @@ async function Conteudo({
   const { perfil } = dados;
   const agora = await agoraDaRequisicao();
   const vagas = dados.anuncios.filter((a) => a.tipo === "vaga");
-  const filtros = lerFiltros(sp);
-  const mostradas = filtrar(vagas, filtros);
-  const filtrando = Boolean(filtros.q || filtros.area || filtros.bairro || filtros.regime);
   const meu = usuario?.id === perfil.id;
-  const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
+  const ids = vagas.map((a) => a.id);
+  const [detalhes, curtidas, quem] = await Promise.all([
+    detalhesDas(ids),
+    meu ? Promise.resolve(new Map<string, string>()) : minhasCurtidasEm(ids, usuario?.id ?? null),
+    usuario && !meu ? quemProcura() : Promise.resolve(null),
+  ]);
+  const comCurtida = vagas.map((a) => ({ ...a, minha_curtida: curtidas.get(a.id) ?? a.minha_curtida }));
+  const matches =
+    quem && usuario
+      ? matchDasVagas(comCurtida as unknown as AnuncioResumo[], detalhes, quem, usuario.id, agora)
+      : new Map();
+  const filtros = lerFiltros(sp);
+  const mostradas = filtrar(comCurtida, filtros);
+  const filtrando = Boolean(filtros.q || filtros.area || filtros.bairro || filtros.regime);
+  const agencia = perfil.tipo === "agencia";
+  const empresas = agencia ? new Set(vagas.map((a) => a.contratante).filter(Boolean)).size : 0;
+  const whatsapp = `https://wa.me/?text=${encodeURIComponent(
+    textoDasVagas(perfil.nome, vagas, linkDasVagas(SITE_URL, perfil.id, "whatsapp")),
+  )}`;
 
   return (
     <>
@@ -106,35 +159,26 @@ async function Conteudo({
         <ArrowLeft aria-hidden className="size-4" />
         Perfil de {perfil.nome}
       </Link>
-      <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center">
-        <Avatar nome={perfil.nome} foto={perfil.foto} tamanho={64} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-h2 sm:text-h1">
-            Vagas de <span className="break-words">{perfil.nome}</span>
-            {perfil.verificado && (
-              <SeloVerificado agencia={perfil.tipo === "agencia"} className="ml-2 inline size-6 align-[-0.15em]" />
-            )}
-          </h1>
-          <p className="mt-1 text-body text-ink-muted">
-            {tipo.nome} · {formatarLugar(perfil.bairro, perfil.cidade)} ·{" "}
-            {vagas.length ? plural(vagas.length, "vaga aberta", "vagas abertas") : "nenhuma vaga aberta"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 self-start sm:self-center">
-          <BotaoCompartilhar
-            titulo={`Vagas de ${perfil.nome}`}
-            texto={`Vagas abertas de ${perfil.nome} no Publike. Candidate-se de graça:`}
-          />
-          {!meu && (
-            <BotaoSeguir
-              alvo={{ perfil: perfil.id }}
-              seguidoId={seguidos.find((s) => s.alvo_perfil === perfil.id)?.id ?? null}
-              logado={usuario !== null}
-              voltar={`/perfil/${perfil.id}/vagas`}
-              rotulo="Seguir"
-            />
-          )}
-        </div>
+      <div className="mt-2">
+        <TopoDaEmpresa
+          perfil={perfil}
+          vagas={vagas.length}
+          empresas={empresas}
+          meu={meu}
+          whatsapp={whatsapp}
+          textoCompartilhar={textoDasVagas(perfil.nome, vagas, "", { curto: true }).replace(/:\s*$/, ":")}
+          seguir={
+            meu ? null : (
+              <BotaoSeguir
+                alvo={{ perfil: perfil.id }}
+                seguidoId={seguidos.find((s) => s.alvo_perfil === perfil.id)?.id ?? null}
+                logado={usuario !== null}
+                voltar={`/perfil/${perfil.id}/vagas`}
+                rotulo="Seguir"
+              />
+            )
+          }
+        />
       </div>
 
       {vagas.length > 1 && <FiltrosDasVagas base={`/perfil/${perfil.id}/vagas`} vagas={vagas} filtros={filtros} />}
@@ -158,6 +202,10 @@ async function Conteudo({
                   anuncio={{ ...a, autor_foto: perfil.foto }}
                   agora={agora}
                   usuarioId={usuario?.id ?? null}
+                  extras={extrasDe(detalhes.get(a.id))}
+                  match={matches.get(a.id) ?? null}
+                  semAutor
+                  para={agencia ? paraQuem(a) : null}
                 />
               </li>
             ))}
@@ -176,59 +224,50 @@ async function Conteudo({
       </div>
 
       <p className="mt-8 text-body-sm text-ink-muted">
-        Para se candidatar, abra a vaga e toque no coração. O Publike é grátis para quem procura trabalho.
+        Para se candidatar, abra a vaga e toque em Curtir. O Publike é grátis para quem procura trabalho.
       </p>
     </>
   );
 }
 
-/** O link com um filtro trocado (o mesmo de novo tira). */
-function linkCom(base: string, f: Filtros, campo: keyof Filtros, valor: string) {
-  const novo = { ...f, [campo]: f[campo] === valor ? "" : valor };
+/** O link com um filtro escolhido ("" tira o filtro). */
+function linkPara(base: string, f: Filtros, campo: keyof Filtros, valor: string) {
+  const novo = { ...f, [campo]: valor };
   const q = new URLSearchParams(Object.entries(novo).filter(([, v]) => v));
   return q.size ? `${base}?${q}` : base;
 }
 
-function Chip({ href, ativo, children }: { href: string; ativo: boolean; children: ReactNode }) {
-  return (
-    <Link
-      href={href}
-      scroll={false}
-      aria-current={ativo ? "true" : undefined}
-      className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label whitespace-nowrap transition-colors ${
-        ativo ? "border-ink bg-ink text-surface-100" : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-      }`}
-    >
-      {children}
-    </Link>
-  );
-}
-
-/** A busca por palavra (com 6 vagas ou mais) e os grupos de filtro que separam alguma coisa. */
+/**
+ * Os filtros numa linha (01/11/2026): a busca por palavra (com 6 vagas ou mais) e uma lista que abre para cada
+ * grupo que separa alguma coisa (a área, a contratação e o bairro), com quantas vagas tem cada opção.
+ */
 function FiltrosDasVagas({ base, vagas, filtros }: { base: string; vagas: AnuncioDoPerfil[]; filtros: Filtros }) {
   const grupos = [
     {
       campo: "area" as const,
       nome: "Área",
+      todas: "Todas as áreas",
       opcoes: contar(vagas, (a) => a.categoria).map(([v, n]) => ({ v, nome: categoria(v).nome, n })),
     },
     {
       campo: "regime" as const,
       nome: "Contratação",
+      todas: "Toda contratação",
       opcoes: contar(vagas, (a) => a.regime).map(([v, n]) => ({ v, nome: REGIMES[v as Regime]?.selo ?? v, n })),
     },
     {
       campo: "bairro" as const,
       nome: "Bairro",
+      todas: "Todos os bairros",
       opcoes: contar(vagas, (a) => a.bairro).map(([v, n]) => ({ v, nome: v, n })),
     },
   ].filter((g) => g.opcoes.length > 1 || g.opcoes.some((o) => o.v === filtros[g.campo]));
   const busca = vagas.length >= 6 || Boolean(filtros.q);
   if (!busca && !grupos.length) return null;
   return (
-    <section aria-label="Filtrar as vagas" className="mt-8 flex flex-col gap-3">
+    <section aria-label="Filtrar as vagas" className="mt-6 flex flex-wrap items-center gap-2">
       {busca && (
-        <form action={base} className="flex max-w-xl gap-2" role="search">
+        <form action={base} className="flex min-w-0 basis-full gap-2 sm:basis-80" role="search">
           {(["area", "bairro", "regime"] as const).map((c) =>
             filtros[c] ? <input key={c} type="hidden" name={c} value={filtros[c]} /> : null,
           )}
@@ -247,32 +286,27 @@ function FiltrosDasVagas({ base, vagas, filtros }: { base: string; vagas: Anunci
               defaultValue={filtros.q}
               maxLength={80}
               placeholder="Cargo, área ou bairro"
-              className="min-h-11 w-full rounded-md border border-line-strong bg-surface-200 pr-3 pl-9 text-body"
+              className="min-h-10 w-full rounded-pill border border-line-strong bg-surface-200 pr-3 pl-9 text-body-sm"
             />
           </div>
           <button
             type="submit"
-            className="min-h-11 rounded-md border border-line-strong bg-surface-200 px-4 text-label hover:bg-surface-300"
+            className="min-h-10 rounded-pill border border-line-strong bg-surface-200 px-4 text-label hover:bg-surface-300"
           >
             Procurar
           </button>
         </form>
       )}
       {grupos.map((g) => (
-        <div key={g.campo} className="flex flex-col gap-1.5">
-          <p className="text-body-sm text-ink-muted">{g.nome}</p>
-          <nav
-            aria-label={g.nome}
-            className="sem-barra relative -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0"
-          >
-            {g.opcoes.map((o) => (
-              <Chip key={o.v} href={linkCom(base, filtros, g.campo, o.v)} ativo={filtros[g.campo] === o.v}>
-                {o.nome}
-                <span className={filtros[g.campo] === o.v ? "text-surface-100/80" : "text-ink-muted"}>{o.n}</span>
-              </Chip>
-            ))}
-          </nav>
-        </div>
+        <SeletorDeLinks
+          key={g.campo}
+          rotulo={g.nome}
+          atual={linkPara(base, filtros, g.campo, filtros[g.campo])}
+          opcoes={[
+            { nome: g.todas, href: linkPara(base, filtros, g.campo, "") },
+            ...g.opcoes.map((o) => ({ nome: `${o.nome} (${o.n})`, href: linkPara(base, filtros, g.campo, o.v) })),
+          ]}
+        />
       ))}
     </section>
   );

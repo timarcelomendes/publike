@@ -731,7 +731,7 @@ export const obterPerfilPublico = cache(async (id: string, limite = 30): Promise
     supabase
       .from("anuncios")
       .select(
-        "id, tipo, titulo, categoria, regime, pagamento_valor, pagamento_unidade, beneficios, cidade, bairro, criado_em, oficio, fotos, atende",
+        "id, tipo, titulo, categoria, regime, pagamento_valor, pagamento_unidade, pagamento_ate, beneficios, cidade, bairro, criado_em, oficio, fotos, atende, contratante, contratante_confidencial",
       )
       .eq("autor_id", id)
       .eq("status", "ativo")

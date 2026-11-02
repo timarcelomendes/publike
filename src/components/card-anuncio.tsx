@@ -93,6 +93,8 @@ export function CardAnuncio({
   extras = null,
   salva = null,
   minha = null,
+  semAutor = false,
+  para = null,
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -111,6 +113,10 @@ export function CardAnuncio({
   salva?: boolean | null;
   /** A própria vaga: curtidas e quantas esperam resposta. */
   minha?: MinhaVaga | null;
+  /** Na página de vagas da própria empresa: sem a logo e o nome (que já estão no alto), só há quanto tempo. */
+  semAutor?: boolean;
+  /** Vaga de agência: para qual empresa é ("Spoleto"; confidencial: "empresa confidencial"). */
+  para?: string | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -219,24 +225,33 @@ export function CardAnuncio({
             seloPrincipal || comMatch ? "" : "group-data-[visao=grade]/visao:hidden"
           }`}
         >
-          <span className="contents group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
-            <Avatar
-              nome={anuncio.autor_nome}
-              foto={anuncio.autor_foto}
-              tamanho={44}
-              forma={anuncio.autor_tipo === "pessoa" ? "redonda" : "quadrada"}
-              colorida
-            />
-          </span>
-          <div className="min-w-0 flex-1 group-data-[visao=grade]/visao:hidden">
-            <p className="flex items-center gap-1 text-label">
-              <span className="truncate">{anuncio.autor_nome}</span>
-              {anuncio.autor_verificado && <SeloVerificado agencia={anuncio.autor_tipo === "agencia"} />}
+          {semAutor ? (
+            <p className="min-w-0 flex-1 truncate text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden">
+              {para ? `Para ${para} · ` : ""}
+              {tempoRelativo(anuncio.criado_em, agora)}
             </p>
-            <p className="truncate text-body-sm text-ink-muted group-data-[visao=lista]/visao:hidden">
-              <span>{tipoCurto(anuncio.autor_tipo, servico)}</span> · {tempoRelativo(anuncio.criado_em, agora)}
-            </p>
-          </div>
+          ) : (
+            <>
+              <span className="contents group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
+                <Avatar
+                  nome={anuncio.autor_nome}
+                  foto={anuncio.autor_foto}
+                  tamanho={44}
+                  forma={anuncio.autor_tipo === "pessoa" ? "redonda" : "quadrada"}
+                  colorida
+                />
+              </span>
+              <div className="min-w-0 flex-1 group-data-[visao=grade]/visao:hidden">
+                <p className="flex items-center gap-1 text-label">
+                  <span className="truncate">{anuncio.autor_nome}</span>
+                  {anuncio.autor_verificado && <SeloVerificado agencia={anuncio.autor_tipo === "agencia"} />}
+                </p>
+                <p className="truncate text-body-sm text-ink-muted group-data-[visao=lista]/visao:hidden">
+                  <span>{tipoCurto(anuncio.autor_tipo, servico)}</span> · {tempoRelativo(anuncio.criado_em, agora)}
+                </p>
+              </div>
+            </>
+          )}
           {seloPrincipal && (
             <span className="shrink-0 self-start group-data-[visao=lista]/visao:hidden">{seloPrincipal}</span>
           )}
