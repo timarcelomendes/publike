@@ -1,7 +1,7 @@
 "use client";
 
-import { ClipboardCheck, Sparkles, Video, Workflow } from "lucide-react";
-import { liberarAutomacoes, liberarCopiloto, liberarTestes, liberarVideo } from "@/lib/acoes/admin";
+import { ClipboardCheck, Palette, Sparkles, Video, Workflow } from "lucide-react";
+import { liberarAutomacoes, liberarCopiloto, liberarPaginaDeVagas, liberarTestes, liberarVideo } from "@/lib/acoes/admin";
 import { Botao } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
 
@@ -75,6 +75,25 @@ export function BotaoAutomacoes({ contaId, liberado }: { contaId: string; libera
       >
         <Workflow aria-hidden />
         {liberado ? "Tirar as Automações personalizadas" : "Liberar as Automações personalizadas"}
+      </Botao>
+      {mensagem}
+    </div>
+  );
+}
+
+/** Libera a página de carreiras sem prazo, ou tira a liberação da equipe (migração 20270117120000). */
+export function BotaoPaginaDeVagas({ contaId, liberado }: { contaId: string; liberado: boolean }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Botao
+        tamanho="sm"
+        variante={liberado ? "secundario" : "primario"}
+        disabled={pendente}
+        onClick={() => rodar(() => liberarPaginaDeVagas(contaId, !liberado))}
+      >
+        <Palette aria-hidden />
+        {liberado ? "Tirar a página de carreiras" : "Liberar a página de carreiras"}
       </Botao>
       {mensagem}
     </div>

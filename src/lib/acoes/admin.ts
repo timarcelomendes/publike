@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
-import { refresh, revalidatePath } from "next/cache";
+import { refresh, revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { LOGO_EMAIL } from "@/lib/email/montar";
@@ -219,6 +219,27 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
     mensagem: liberar
       ? "Pronto: essa conta tem a Triagem com IA, sem prazo."
       : "Essa conta não vê mais a Triagem com IA (os critérios e as leituras ficam guardados).",
+  };
+}
+
+/** Libera a página de carreiras sem prazo (ou tira a liberação da equipe), migração 20270117120000. */
+export async function liberarPaginaDeVagas(contaId: string, liberar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_liberar_pagina_de_vagas", { p_conta: contaId, p_liberar: liberar });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270117120000_pagina_de_vagas.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  updateTag(`vagas-da-empresa-${contaId}`);
+  refresh();
+  return {
+    ok: true,
+    mensagem: liberar
+      ? "Pronto: essa conta tem a página de carreiras, sem prazo."
+      : "A liberação da equipe saiu (a conta continua liberada se tiver mais de 10 vagas ou assinatura).",
   };
 }
 

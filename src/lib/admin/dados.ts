@@ -716,6 +716,13 @@ export async function recursosDaConta(c: ClienteBanco, contaId: string) {
   };
 }
 
+/** A página de carreiras da conta (migração 20270117120000). Antes da migração, null. */
+export async function paginaDeVagasDaConta(c: ClienteBanco, contaId: string) {
+  const { data, error } = await c.rpc("admin_pagina_de_vagas", { p_conta: contaId });
+  if (error || !data) return null;
+  return data as { liberada: boolean; pela_equipe: boolean; vagas_publicadas: number; apelido: string | null };
+}
+
 /** Quem pediu os 15 dias grátis (quem quer continuar primeiro). Antes da migração, null. */
 export async function experimentosDosRecursos(c: ClienteBanco) {
   const { data, error } = await c.rpc("admin_experimentos");

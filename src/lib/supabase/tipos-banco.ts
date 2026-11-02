@@ -1050,6 +1050,14 @@ export type Database = {
         Args: { p_apelido: string };
         Returns: string | null;
       };
+      admin_pagina_de_vagas: {
+        Args: { p_conta: string };
+        Returns: Json;
+      };
+      admin_liberar_pagina_de_vagas: {
+        Args: { p_conta: string; p_liberar: boolean };
+        Returns: undefined;
+      };
       salvar_pagina_de_vagas: {
         Args: {
           p_cor: string | null;

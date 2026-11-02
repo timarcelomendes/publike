@@ -4,7 +4,8 @@
 -- (até 600 letras), até 6 benefícios em destaque e um endereço curto (publike.org/v/apelido).
 -- Quem lê a página não lê a tabela: lê por pagina_de_vagas_publica(), que só devolve a personalização enquanto a
 -- conta está liberada (a assinatura que acabou não deixa a página com a cor e a capa). Grava só a própria conta
--- (o dono ou o admin da agência), por salvar_pagina_de_vagas(), que confere a liberação.
+-- (o dono ou o admin da agência), por salvar_pagina_de_vagas(), que confere a liberação. A equipe também libera
+-- sem prazo uma conta em Admin › Usuários (admin_liberar_pagina_de_vagas).
 -- A capa fica no Storage público das fotos (avatars/<id-de-quem-enviou>/capa/<número>.jpg).
 -- Pode rodar de novo. Rode depois de 20270116120000_plano_completo.sql.
 
@@ -30,7 +31,8 @@ grant select on public.paginas_de_vagas to authenticated;
 
 -- 2. Quem está liberado -------------------------------------------------------------------------------------------
 -- Mais de 10 vagas publicadas (no ar, pausada, encerrada, vencida; a removida pela moderação não conta) ou uma cobrança paga que ainda vale
--- (como em recalcular_recurso_pago: o período pago e mais 3 dias). Os dias grátis (privado.experimentos) não contam.
+-- (como em recalcular_recurso_pago: o período pago e mais 3 dias), ou liberada pela equipe (cortesia). Os dias grátis
+-- (privado.experimentos) não contam.
 create or replace function privado.vagas_publicadas(p_conta uuid)
 returns integer
 language sql
@@ -42,6 +44,15 @@ as $$
    where a.autor_id = p_conta and a.tipo = 'vaga' and a.status <> 'removido'
 $$;
 
+-- Liberada pela equipe (Admin › Usuários › conta › Página de carreiras), sem prazo ou até `ate`.
+create table if not exists privado.paginas_de_vagas_cortesia (
+  conta_id uuid primary key references public.perfis (id) on delete cascade,
+  liberada_em timestamptz not null default now(),
+  ate timestamptz,
+  motivo text check (motivo is null or char_length(motivo) <= 200)
+);
+revoke all on privado.paginas_de_vagas_cortesia from public, anon, authenticated;
+
 create or replace function privado.pagina_de_vagas_liberada(p_conta uuid)
 returns boolean
 language sql
@@ -51,6 +62,8 @@ set search_path = ''
 as $$
   select exists (select 1 from public.perfis p where p.id = p_conta and p.tipo <> 'pessoa')
      and (privado.vagas_publicadas(p_conta) > 10
+          or exists (select 1 from privado.paginas_de_vagas_cortesia x
+                      where x.conta_id = p_conta and (x.ate is null or x.ate > now()))
           or exists (select 1 from privado.cobrancas c
                       where c.conta_id = p_conta and c.situacao = 'paga'
                         and c.periodo_ate + interval '3 days' >= now()))
@@ -173,7 +186,48 @@ exception
 end
 $$;
 
--- 5. Permissões ---------------------------------------------------------------------------------------------------
+-- 5. Admin: liberar sem prazo (ou tirar) e ver a situação da conta ---------------------------------------------
+create or replace function public.admin_pagina_de_vagas(p_conta uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'liberada', privado.pagina_de_vagas_liberada(p_conta),
+    'pela_equipe', exists (select 1 from privado.paginas_de_vagas_cortesia x
+                            where x.conta_id = p_conta and (x.ate is null or x.ate > now())),
+    'vagas_publicadas', privado.vagas_publicadas(p_conta),
+    'apelido', (select p.apelido from public.paginas_de_vagas p where p.conta_id = p_conta)
+  )
+$$;
+
+create or replace function public.admin_liberar_pagina_de_vagas(p_conta uuid, p_liberar boolean)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_liberar then
+    if not exists (select 1 from public.perfis p where p.id = p_conta and p.tipo <> 'pessoa') then
+      raise exception 'Só conta de empresa, comércio ou agência tem página de carreiras.' using errcode = 'P0001';
+    end if;
+    insert into privado.paginas_de_vagas_cortesia (conta_id, motivo) values (p_conta, 'Admin')
+    on conflict (conta_id) do update set ate = null, liberada_em = now();
+  else
+    delete from privado.paginas_de_vagas_cortesia where conta_id = p_conta;
+  end if;
+end
+$$;
+
+revoke all on function public.admin_pagina_de_vagas(uuid), public.admin_liberar_pagina_de_vagas(uuid, boolean)
+  from public, anon, authenticated;
+grant execute on function public.admin_pagina_de_vagas(uuid), public.admin_liberar_pagina_de_vagas(uuid, boolean)
+  to service_role;
+
+-- 6. Permissões ---------------------------------------------------------------------------------------------------
 revoke all on function privado.vagas_publicadas(uuid), privado.pagina_de_vagas_liberada(uuid) from public, anon, authenticated;
 revoke all on function public.minha_pagina_de_vagas(), public.salvar_pagina_de_vagas(text, text, text, text[], text)
   from public, anon;

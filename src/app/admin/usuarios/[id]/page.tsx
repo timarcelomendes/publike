@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
-import { BotaoAutomacoes, BotaoCopiloto, BotaoTestes, BotaoVideo } from "@/components/admin/copiloto";
+import { BotaoAutomacoes, BotaoCopiloto, BotaoPaginaDeVagas, BotaoTestes, BotaoVideo } from "@/components/admin/copiloto";
 import { NOME_RECURSO } from "@/lib/recursos-pagos";
 import { FormNomeDaConta } from "@/components/admin/nome-da-conta";
 import type { Metadata } from "next";
@@ -30,6 +30,7 @@ import {
   contaApagada,
   contasDoCopiloto,
   emailsDoUsuario,
+  paginaDeVagasDaConta,
   recursosDaConta,
   fichaUsuario,
   listarAnuncios,
@@ -95,6 +96,8 @@ async function Conteudo({
     ]);
   // a conta não existe mais: o rastro de quem apagou e quando (migração 20270113120000), no lugar da página vazia
   if (!u) return <ContaQueNaoExisteMais apagada={await contaApagada(c, id)} />;
+  // a página de carreiras (migração 20270117120000): só para quem contrata
+  const paginaDeVagas = u.perfil && u.perfil.tipo !== "pessoa" ? await paginaDeVagasDaConta(c, id) : null;
 
   const nome = u.perfil?.nome ?? u.email ?? u.telefone ?? "Conta sem nome";
   const s = u.suspensao;
@@ -405,6 +408,26 @@ async function Conteudo({
                 </div>
               );
             })}
+          </div>
+        </Secao>
+      )}
+
+      {u.perfil && u.perfil.tipo !== "pessoa" && paginaDeVagas && (
+        <Secao
+          titulo="Página de carreiras"
+          descricao="Libera sozinha com mais de 10 vagas publicadas ou com uma assinatura paga. Aqui você libera sem prazo (cortesia, teste) ou tira."
+        >
+          <div className="flex flex-col gap-2">
+            <p className="text-body-sm text-ink-muted">
+              {paginaDeVagas.pela_equipe
+                ? "Liberada pela equipe, sem prazo."
+                : paginaDeVagas.liberada
+                  ? "Liberada pelas vagas ou pela assinatura."
+                  : "Não liberada."}{" "}
+              {paginaDeVagas.vagas_publicadas} vagas publicadas.
+              {paginaDeVagas.apelido ? ` Endereço curto: /v/${paginaDeVagas.apelido}.` : ""}
+            </p>
+            <BotaoPaginaDeVagas contaId={u.id} liberado={paginaDeVagas.pela_equipe} />
           </div>
         </Secao>
       )}
