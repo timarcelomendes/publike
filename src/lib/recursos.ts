@@ -24,15 +24,28 @@ export type IconeRecurso =
   | "planilha"
   | "predio"
   | "cadeado"
-  | "celular";
+  | "celular"
+  | "microfone"
+  | "horario"
+  | "video"
+  | "teste"
+  | "retorno"
+  | "automacao"
+  | "proposta"
+  | "resultados"
+  | "comeca"
+  | "copiar";
 
-export type Recurso = { icone: IconeRecurso; titulo: string; texto: string };
+/** `novo`: a tag "Novo" no cartão (tire umas semanas depois que a coisa nasceu). */
+export type Recurso = { icone: IconeRecurso; titulo: string; texto: string; novo?: boolean };
 
 export type Perfil = {
   valor: Intencao;
   aba: string;
   resumo: string;
   recursos: Recurso[];
+  /** os recursos pagos, à parte (quem contrata): 15 dias grátis para experimentar */
+  extras?: { titulo: string; texto: string; recursos: Recurso[] };
   acao: { texto: string; href: string };
 };
 
@@ -40,52 +53,73 @@ export const PERFIS: Perfil[] = [
   {
     valor: "trabalho",
     aba: "Procuro trabalho",
-    resumo: "Ache trabalho perto de casa e fale direto com quem contrata.",
+    resumo: "Ache trabalho perto de casa, fale direto com quem contrata e saiba sempre em que pé está.",
     recursos: [
       {
         icone: "mapa",
         titulo: "Vagas perto de casa",
-        texto: "No mapa ou em lista, as mais perto aparecem primeiro.",
-      },
-      {
-        icone: "onibus",
-        titulo: "Tempo de ônibus",
-        texto: "Cada vaga mostra quanto tempo você leva de casa até lá.",
-      },
-      {
-        icone: "maleta",
-        titulo: "Carteira, diária ou freelance",
-        texto: "Escolha o tipo de trabalho e até onde você topa ir.",
-      },
-      {
-        icone: "descobrir",
-        titulo: "Descobrir",
-        texto: "Vagas uma por uma: deslize para o lado e curta as que combinam.",
+        texto: "No mapa ou em lista, as mais perto aparecem primeiro, com o tempo de ônibus até lá.",
       },
       {
         icone: "coracao",
         titulo: "Curtiu, deu match",
-        texto: "Se quem publicou curtir você de volta, o WhatsApp aparece para os dois.",
+        texto: "Curtir é se candidatar. Se quem publicou aceitar, o WhatsApp aparece para os dois.",
       },
       {
-        icone: "curriculo",
-        titulo: "Currículo em minutos",
-        texto: "Preencha uma vez. Quem anunciou a vaga que você curtiu vê junto com seu perfil.",
+        icone: "microfone",
+        titulo: "Currículo falando",
+        texto: "Conte em voz alta o que você faz e o Publike preenche o currículo. Ou mande o PDF ou a foto.",
+        novo: true,
+      },
+      {
+        icone: "horario",
+        titulo: "Você escolhe o horário",
+        texto: "A empresa oferece horários e você marca a entrevista que cabe no seu dia, com lembrete na véspera.",
+        novo: true,
+      },
+      {
+        icone: "video",
+        titulo: "Entrevista pelo celular",
+        texto: "Algumas empresas pedem respostas em vídeo: você grava pelo celular, na hora que puder.",
+        novo: true,
+      },
+      {
+        icone: "teste",
+        titulo: "Teste Prático",
+        texto: "Mostre que sabe o serviço num teste de 10 minutos pelo celular e saia na frente.",
+        novo: true,
+      },
+      {
+        icone: "retorno",
+        titulo: "Sempre tem resposta",
+        texto: "Se a vaga não seguir com você, o Publike avisa e mostra vagas parecidas perto.",
+        novo: true,
+      },
+      {
+        icone: "aviso",
+        titulo: "Aviso de vaga nova",
+        texto: "Curtiu uma vaga? Avisamos quando aparecer outra parecida perto de você.",
+      },
+      {
+        icone: "comeca",
+        titulo: "Começa já",
+        texto: "Precisa começar logo? Filtre as vagas que começam já.",
+        novo: true,
       },
       {
         icone: "pessoas",
         titulo: "Apareça na aba Talentos",
-        texto: "Se quiser, as empresas da região acham seu currículo e convidam você.",
+        texto: "Se quiser, as empresas da região acham o seu currículo e convidam você.",
       },
       {
         icone: "etapas",
         titulo: "Saiba em que pé está",
-        texto: "Veja a etapa de cada vaga: entrevista, aprovado, contratado.",
+        texto: "Veja a etapa de cada candidatura: em análise, entrevista, contratado.",
       },
       {
         icone: "conversa",
         titulo: "Chat no Publike",
-        texto: "Depois do match, combine a entrevista sem sair do site.",
+        texto: "Depois do match, combine tudo sem sair do site.",
       },
     ],
     acao: { texto: "Ver vagas perto de mim", href: "/?tipo=vaga" },
@@ -169,17 +203,19 @@ export const PERFIS: Perfil[] = [
   {
     valor: "contratar_pessoa",
     aba: "Procuro funcionário",
-    resumo: "Publique a vaga de graça e contrate gente que mora perto.",
+    resumo: "Publique a vaga de graça, contrate gente que mora perto e acompanhe cada candidato até a contratação.",
     recursos: [
       {
         icone: "megafone",
         titulo: "Vaga no ar em minutos",
-        texto: "Carteira, temporária, diária ou freelance. Publicar é grátis.",
+        texto: "Cole o texto ou mande a foto da vaga e a IA preenche. Publicar é grátis.",
+        novo: true,
       },
       {
-        icone: "texto",
-        titulo: "Ajuda para escrever",
-        texto: "O botão “Melhorar texto com IA” deixa o anúncio claro e completo.",
+        icone: "copiar",
+        titulo: "Vários cargos de uma vez",
+        texto: "Mesmas condições para caixa, repositor e atendente? Uma vaga para cada, num passo só.",
+        novo: true,
       },
       {
         icone: "mapa",
@@ -187,9 +223,34 @@ export const PERFIS: Perfil[] = [
         texto: "Cada pessoa vê o tempo de ônibus de casa até o trabalho.",
       },
       {
-        icone: "pessoas",
-        titulo: "Veja quem curtiu",
-        texto: "Perfil, currículo e o que cada pessoa faz. Curta de volta quem combina.",
+        icone: "etapas",
+        titulo: "Candidatos em etapas",
+        texto: "Novos, Em análise, Entrevista e Contratados, com a ficha de cada um e o próximo passo.",
+        novo: true,
+      },
+      {
+        icone: "horario",
+        titulo: "O candidato escolhe o horário",
+        texto: "Ofereça os seus horários livres: o candidato escolhe e os dois recebem lembrete.",
+        novo: true,
+      },
+      {
+        icone: "retorno",
+        titulo: "Retorno a quem não seguiu",
+        texto: "Quem não seguiu recebe o aviso com outras vagas. Sua empresa fica bem falada.",
+        novo: true,
+      },
+      {
+        icone: "automacao",
+        titulo: "Automações prontas",
+        texto: "Recado de recebido, lembrete dos parados, retorno: ligue cada um com um toque.",
+        novo: true,
+      },
+      {
+        icone: "proposta",
+        titulo: "Proposta e contratação",
+        texto: "Mande a proposta pelo Publike e marque a vaga como preenchida quando completar.",
+        novo: true,
       },
       {
         icone: "curriculo",
@@ -197,21 +258,51 @@ export const PERFIS: Perfil[] = [
         texto: "Veja quem procura trabalho perto e convide para a sua vaga.",
       },
       {
-        icone: "planilha",
-        titulo: "Etapas e planilha",
-        texto: "Marque entrevista, aprovado, contratado. Baixe a lista de candidatos.",
+        icone: "resultados",
+        titulo: "Resultados",
+        texto: "Quantos se candidataram, quantos você chamou e em quantos dias contratou.",
+        novo: true,
       },
       {
         icone: "conversa",
-        titulo: "Chat no Publike",
-        texto: "Depois do match, marque a entrevista sem sair do site.",
+        titulo: "Chat e WhatsApp",
+        texto: "Depois do aceite, converse pelo Publike ou chame no WhatsApp com a mensagem pronta.",
       },
       {
         icone: "predio",
-        titulo: "Empresa ou agência",
-        texto: "Do MEI à indústria. Agência e RH publicam com CNPJ, também de graça.",
+        titulo: "Empresa, agência e equipe",
+        texto: "Do MEI à indústria. Chame a sua equipe para avaliar os candidatos junto.",
       },
     ],
+    extras: {
+      titulo: "Para ir mais longe",
+      texto:
+        "Recursos pagos, para quem contrata muito. Experimente cada um por 15 dias grátis, ou assine os quatro no Plano Completo.",
+      recursos: [
+        {
+          icone: "texto",
+          titulo: "Triagem com IA",
+          texto: "A IA lê os currículos contra o que a vaga pede e mostra quem chamar primeiro.",
+        },
+        {
+          icone: "teste",
+          titulo: "Teste Prático",
+          texto: "Até 3 testes por vaga e os testes da sua empresa. O teste sugerido na vaga é grátis.",
+        },
+        {
+          icone: "video",
+          titulo: "Entrevista em vídeo",
+          texto: "O candidato grava as respostas e a IA resume. Ou a entrevista ao vivo, sem instalar nada.",
+          novo: true,
+        },
+        {
+          icone: "automacao",
+          titulo: "Automações personalizadas",
+          texto: "Monte as suas regras: quando, para quem e o que o Publike faz sozinho.",
+          novo: true,
+        },
+      ],
+    },
     acao: { texto: "Publicar vaga grátis", href: "/publicar" },
   },
 ];

@@ -49,7 +49,7 @@ export function EntendaOPublike() {
           O que dá para fazer no Publike
         </h2>
         <p className="mt-2 mb-6 max-w-2xl text-body text-ink-muted sm:text-body-lg">
-          Escolha o seu caso e veja, em poucas palavras, como o Publike ajuda. Tudo de graça.
+          Escolha o seu caso e veja como o Publike ajuda. Procurar trabalho, publicar vaga e conversar é grátis, sempre.
         </p>
         <RecursosDoPublike linkDetalhes />
 

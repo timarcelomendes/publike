@@ -5,6 +5,17 @@ import {
   Briefcase,
   Building2,
   Bus,
+  CalendarClock,
+  ChartColumn,
+  ClipboardCheck,
+  Copy,
+  Gift,
+  Handshake,
+  Mic,
+  Reply,
+  Video,
+  Workflow,
+  Zap,
   FileText,
   FileUser,
   HandHelping,
@@ -31,6 +42,7 @@ import Link from "next/link";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import type { Intencao } from "@/lib/intencao";
 import { PARA_TODOS, PERFIS, type IconeRecurso } from "@/lib/recursos";
+import { Selo } from "./ui/basicos";
 import { classesBotao } from "./ui/botao";
 
 const ICONES: Record<IconeRecurso, LucideIcon> = {
@@ -55,6 +67,16 @@ const ICONES: Record<IconeRecurso, LucideIcon> = {
   predio: Building2,
   cadeado: Lock,
   celular: Smartphone,
+  microfone: Mic,
+  horario: CalendarClock,
+  video: Video,
+  teste: ClipboardCheck,
+  retorno: Reply,
+  automacao: Workflow,
+  proposta: Handshake,
+  resultados: ChartColumn,
+  comeca: Zap,
+  copiar: Copy,
 };
 
 const ICONES_PERFIL: Record<Intencao, LucideIcon> = {
@@ -145,7 +167,10 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
                   <Icone aria-hidden className="size-5" />
                 </span>
                 <span className="flex flex-col gap-0.5">
-                  <span className="text-label">{r.titulo}</span>
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label">
+                    {r.titulo}
+                    {r.novo && <Selo variante="novo">Novo</Selo>}
+                  </span>
                   <span className="text-body-sm text-ink-muted">{r.texto}</span>
                 </span>
               </li>
@@ -160,6 +185,40 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
           >
             Ver mais {perfil.recursos.length - 4}
           </button>
+        )}
+        {perfil.extras && (
+          <section
+            aria-labelledby={`${base}-extras`}
+            className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface-100 p-4 sm:p-5"
+          >
+            <div className="flex flex-col gap-1">
+              <h3 id={`${base}-extras`} className="flex flex-wrap items-center gap-2 text-h3">
+                {perfil.extras.titulo}
+                <Selo variante="aviso">
+                  <Gift aria-hidden />
+                  15 dias grátis
+                </Selo>
+              </h3>
+              <p className="max-w-2xl text-body-sm text-ink-muted">{perfil.extras.texto}</p>
+            </div>
+            <ul className="grid gap-x-5 gap-y-3 sm:grid-cols-2">
+              {perfil.extras.recursos.map((r) => {
+                const Icone = ICONES[r.icone];
+                return (
+                  <li key={r.titulo} className="flex gap-3">
+                    <Icone aria-hidden className="mt-0.5 size-5 shrink-0 text-terra-text" />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label">
+                        {r.titulo}
+                        {r.novo && <Selo variante="novo">Novo</Selo>}
+                      </span>
+                      <span className="text-body-sm text-ink-muted">{r.texto}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <Link href={perfil.acao.href} className={classesBotao("primario")}>
