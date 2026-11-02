@@ -29,6 +29,44 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** Admin › Novidades (migração 20270122120000): só o admin (service_role); o site lê por novidades_do_publike */
+      novidades: {
+        Row: {
+          id: string;
+          titulo: string;
+          texto: string;
+          link: string | null;
+          botao: string | null;
+          para: string;
+          dia: string;
+          publicada: boolean;
+          criada_em: string;
+          atualizada_em: string;
+        };
+        Insert: {
+          id?: string;
+          titulo: string;
+          texto: string;
+          link?: string | null;
+          botao?: string | null;
+          para?: string;
+          dia?: string;
+          publicada?: boolean;
+          criada_em?: string;
+          atualizada_em?: string;
+        };
+        Update: {
+          titulo?: string;
+          texto?: string;
+          link?: string | null;
+          botao?: string | null;
+          para?: string;
+          dia?: string;
+          publicada?: boolean;
+          atualizada_em?: string;
+        };
+        Relationships: [];
+      };
       /** a página de carreiras personalizada (migração 20270117120000): a conta lê a sua; o resto pelas funções */
       paginas_de_vagas: {
         Row: {
@@ -1058,6 +1096,8 @@ export type Database = {
           link: string | null;
           imagem: string | null;
           quando: string;
+          /** migração 20270122120000: todos, pessoas ou empresas */
+          para?: string;
         }[];
       };
       pagina_de_vagas_publica: {

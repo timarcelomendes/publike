@@ -100,7 +100,8 @@ const ICONES: Record<AcaoBanner, LucideIcon> = {
 
 /** Criar (sem `banner`) ou editar um banner, com a prévia de como fica a janela (ou o cartão). */
 export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
-  const id = banner?.id ?? null;
+  // sem id (vazio): um banner novo já preenchido (o "Fazer banner" de Admin › Novidades)
+  const id = banner?.id || null;
   const salvarProtegido = useMemo(() => protegerAcao(salvarBanner.bind(null, id)), [id]);
   const [estado, acao, enviando] = useActionState(salvarProtegido, {
     ok: false,

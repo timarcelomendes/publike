@@ -177,10 +177,13 @@ export function CartaoDoPublike({
               )}
             </>
           ) : (
-            <Link href={banner.link ?? "/"} onClick={clicou} className={classesBotao("primario", "sm")}>
-              {banner.botao}
-              <ArrowRight aria-hidden />
-            </Link>
+            // sem botão: uma novidade de Admin › Novidades sem link
+            banner.botao && (
+              <Link href={banner.link ?? "/"} onClick={clicou} className={classesBotao("primario", "sm")}>
+                {banner.botao}
+                <ArrowRight aria-hidden />
+              </Link>
+            )
           )}
         </div>
       </div>

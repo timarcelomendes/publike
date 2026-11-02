@@ -10,6 +10,7 @@ import { classesBotao } from "@/components/ui/botao";
 import {
   ACOES_BANNER,
   PAGINAS_BANNER,
+  SEM_FILTRO,
   PUBLICOS_BANNER,
   resumoDoFiltro,
   temFiltro,
@@ -24,6 +25,7 @@ import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
 import type { Database } from "@/lib/supabase/tipos-banco";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Banners" };
 
@@ -131,6 +133,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     area: (a: string) => categoria(a).nome,
   };
   const editar = banners.find((b) => b.id === primeiro(sp.editar));
+  // "Fazer banner" de Admin › Novidades: um banner novo, no formato cartão, preenchido com a novidade
+  const idDaNovidade = primeiro(sp.novidade);
+  const { data: daNovidade } =
+    !editar && idDaNovidade && UUID.test(idDaNovidade)
+      ? await c.from("novidades").select("titulo, texto, link, botao, para").eq("id", idDaNovidade).maybeSingle()
+      : { data: null };
   // as contas escolhidas do banner aberto, pelo e-mail (sem e-mail, o código)
   const idsDoEditado = editar ? (contasPorBanner.get(editar.id) ?? []) : [];
   const { data: emailsDoEditado } = idsDoEditado.length
@@ -138,7 +146,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     : { data: [] as { perfil_id: string; email: string | null }[] };
   const emailDe = new Map((emailsDoEditado ?? []).map((l) => [l.perfil_id, l.email]));
   // "?novo=1" é o endereço antigo do formulário
-  const novo = primeiro(sp.aba) === "novo" || primeiro(sp.novo) === "1" || banners.length === 0;
+  const novo = primeiro(sp.aba) === "novo" || primeiro(sp.novo) === "1" || Boolean(daNovidade) || banners.length === 0;
   const aba = editar || novo ? "form" : "lista";
   const salvo = primeiro(sp.salvo);
   const noAr = banners.filter((b) => situacao(b, agora).nome === "No ar");
@@ -168,6 +176,33 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     em_novidades: editar.em_novidades ?? false,
   };
 
+  const preenchido: BannerParaEditar | undefined =
+    paraEditar ||
+    (daNovidade
+      ? {
+          id: "",
+          titulo: daNovidade.titulo,
+          texto: daNovidade.texto.length > 240 ? `${daNovidade.texto.slice(0, 239).trimEnd()}…` : daNovidade.texto,
+          botao: daNovidade.link ? (daNovidade.botao ?? "Ver") : "Ver as novidades",
+          acao: "link",
+          link: daNovidade.link ?? "/novidades",
+          publico: daNovidade.para === "pessoas" ? "pessoas" : daNovidade.para === "empresas" ? "empresas" : "todos",
+          repetir_dias: null,
+          ativo: true,
+          inicio: "",
+          fim: "",
+          paginas: ["inicio"],
+          atraso_segundos: 3,
+          busca_da_area: false,
+          imagem: null,
+          filtro: SEM_FILTRO,
+          contas: "",
+          formato: "cartao",
+          // a novidade já está em /novidades
+          em_novidades: false,
+        }
+      : undefined);
+
   return (
     <div className="flex flex-col gap-6">
       <SubAbas ativa={aba} total={banners.length} editando={editar?.titulo ?? null} />
@@ -189,7 +224,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
             )
           }
         >
-          <FormBanner key={editar?.id ?? "novo"} banner={paraEditar} />
+          {daNovidade && !editar && (
+            <Aviso tipo="info" titulo="Preenchido com a novidade">
+              Confira o formato, quem vê e as datas antes de criar. O banner não volta a aparecer em Novidades, porque a
+              novidade já está lá.
+            </Aviso>
+          )}
+          <FormBanner key={editar?.id ?? idDaNovidade ?? "novo"} banner={preenchido} />
         </Secao>
       )}
       {aba === "lista" && (

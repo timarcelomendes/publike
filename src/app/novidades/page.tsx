@@ -5,6 +5,7 @@ import { MarcarNovidadesVistas } from "@/components/novidades/marcar-vistas";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { formatarData } from "@/lib/formato";
+import { PARA_NOVIDADE } from "@/lib/novidades";
 import { novidadesDoPublike } from "@/lib/servidor/novidades";
 
 export const metadata: Metadata = {
@@ -13,8 +14,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/novidades" },
 };
 
-// Novidades do Publike: os banners marcados "Também em Novidades" no admin, da mais nova para a mais
-// antiga, inclusive os que já saíram do ar (claude/plano-novidades-do-publike.md, parte 2).
+// Novidades do Publike: as principais evoluções, escritas em Admin › Novidades, e os banners marcados "Também em
+// Novidades" (inclusive os que já saíram do ar), da mais nova para a mais antiga (claude/plano-novidades-do-publike.md).
 export default async function Novidades() {
   const lista = await novidadesDoPublike();
   return (
@@ -34,7 +35,13 @@ export default async function Novidades() {
           <ul className="mx-auto flex max-w-3xl flex-col gap-5">
             {lista.map((n) => (
               <li key={n.id}>
-                <CartaoDoPublike banner={n} jeito="pagina" data={formatarData(n.quando)} />
+                <CartaoDoPublike
+                  banner={n}
+                  jeito="pagina"
+                  data={
+                    n.para === "todos" ? formatarData(n.quando) : `${formatarData(n.quando)} · ${PARA_NOVIDADE[n.para]}`
+                  }
+                />
               </li>
             ))}
           </ul>

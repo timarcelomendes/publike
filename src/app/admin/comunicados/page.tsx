@@ -5,11 +5,22 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao } from "@/components/admin/ui";
 import { Aviso } from "@/components/ui/basicos";
 import { comunicadosMandados } from "@/lib/admin/dados";
-import { MODELOS_COMUNICADO, nomeDoPublico } from "@/lib/comunicados";
+import { MODELOS_COMUNICADO, nomeDoPublico, type PublicoComunicado } from "@/lib/comunicados";
 import { formatarDataHora, primeiro } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Comunicados" };
+
+/** O recado de uma novidade: "Título: texto" (até 240 letras) e o link dela (sem link, /novidades). */
+function recadoDaNovidade(n: { titulo: string; texto: string; link: string | null; para: string }) {
+  const tudo = `${n.titulo}: ${n.texto}`;
+  return {
+    publico: (n.para === "pessoas" ? "pessoas" : n.para === "empresas" ? "empresas" : "todos") as PublicoComunicado,
+    texto: tudo.length > 240 ? `${tudo.slice(0, 239).trimEnd()}…` : tudo,
+    link: n.link ?? "/novidades",
+  };
+}
 
 // Admin › Comunicados: um aviso no sino para um público (todas as contas, pessoas, empresas, agências ou pelo
 // aparelho), com o histórico do que já saiu. ?modelo= abre um comunicado pronto (o convite do teste do app).
@@ -18,16 +29,22 @@ export default function Comunicados({ searchParams }: PageProps<"/admin/comunica
   return (
     <Suspense fallback={<EsqueletoAdmin />}>
       {searchParams.then((sp) => (
-        <Conteudo modelo={primeiro(sp.modelo) ?? null} />
+        <Conteudo modelo={primeiro(sp.modelo) ?? null} novidade={primeiro(sp.novidade) ?? null} />
       ))}
     </Suspense>
   );
 }
 
-async function Conteudo({ modelo }: { modelo: string | null }) {
+async function Conteudo({ modelo, novidade }: { modelo: string | null; novidade: string | null }) {
   const c = await exigirAdminLocal();
-  const mandados = await comunicadosMandados(c);
-  const inicial = modelo ? (MODELOS_COMUNICADO[modelo] ?? null) : null;
+  const [mandados, { data: daNovidade }] = await Promise.all([
+    comunicadosMandados(c),
+    // "Mandar no sino" de Admin › Novidades: o recado preenchido com a novidade
+    novidade && UUID.test(novidade)
+      ? c.from("novidades").select("titulo, texto, link, para").eq("id", novidade).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const inicial = daNovidade ? recadoDaNovidade(daNovidade) : modelo ? (MODELOS_COMUNICADO[modelo] ?? null) : null;
   return (
     <div className="flex flex-col gap-6">
       <Secao
@@ -39,7 +56,7 @@ async function Conteudo({ modelo }: { modelo: string | null }) {
             Rode a migração 20261129120000_comunicados.sql no Supabase.
           </Aviso>
         ) : (
-          <FormComunicado key={modelo ?? "novo"} inicial={inicial} />
+          <FormComunicado key={novidade ?? modelo ?? "novo"} inicial={inicial} />
         )}
       </Secao>
 

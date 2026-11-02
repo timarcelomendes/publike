@@ -3,14 +3,15 @@ import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 import type { AcaoBanner, BannerNoAr } from "@/lib/banners";
 import { MODO_DEMO } from "@/lib/config";
-import { COOKIE_NOVIDADES, temNovidadeNova } from "@/lib/novidades";
+import { COOKIE_NOVIDADES, paraDaNovidade, temNovidadeNova, type ParaNovidade } from "@/lib/novidades";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 
-export type Novidade = BannerNoAr & { quando: string };
+/** `botao` vazio: a novidade não tem link (o cartão fica sem botão). */
+export type Novidade = BannerNoAr & { quando: string; para: ParaNovidade };
 
 /**
- * As novidades do Publike, da mais nova para a mais antiga (as mesmas para todo mundo: ficam guardadas
- * por alguns minutos). Sem a migração 20270118120000, nenhuma.
+ * As novidades do Publike (as de Admin › Novidades e os banners marcados), da mais nova para a mais antiga
+ * (as mesmas para todo mundo: ficam guardadas por alguns minutos). Sem a migração 20270118120000, nenhuma.
  */
 export async function novidadesDoPublike(): Promise<Novidade[]> {
   "use cache";
@@ -28,7 +29,7 @@ export async function novidadesDoPublike(): Promise<Novidade[]> {
     id: n.id,
     titulo: n.titulo,
     texto: n.texto,
-    botao: n.botao,
+    botao: n.botao ?? "",
     acao: n.acao as AcaoBanner,
     link: n.link,
     repetir_dias: null,
@@ -38,6 +39,7 @@ export async function novidadesDoPublike(): Promise<Novidade[]> {
     formato: "cartao",
     novidades: true,
     quando: n.quando,
+    para: paraDaNovidade(n.para),
   }));
 }
 
