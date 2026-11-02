@@ -1,11 +1,10 @@
-import { Download, MessageCircle, Smartphone, UserPlus, type LucideIcon } from "lucide-react";
+import { Globe, Info, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import { ContarVisitaTesteApp, LinkDoTesteApp } from "@/components/numeros-teste-app";
+import { PassosDoTesteApp } from "@/components/passos-teste-app";
 import { Container } from "@/components/ui/basicos";
-import { classesBotao } from "@/components/ui/botao";
-import { ACEITAR_TESTE, APP_NA_PLAY, GRUPO_TESTADORES } from "@/lib/android";
+import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
-import type { EventoTesteApp } from "@/lib/teste-app";
 
 export const metadata: Metadata = {
   title: "Teste o app do Publike no Android",
@@ -14,49 +13,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/testar-app" },
 };
 
-// O convite do teste fechado da Play (conta pessoal: 12 testadores por 14 dias seguidos). Três passos,
-// cada um com o seu botão. Página estática: os links ficam em src/lib/android.ts. Conta quem abre (e de onde
-// veio, pelo ?de= do link) e os toques em cada passo, sem saber quem (src/lib/teste-app.ts).
-
-type Passo = {
-  icone: LucideIcon;
-  titulo: string;
-  texto: string;
-  botao: string;
-  link: string;
-  evento: EventoTesteApp;
-  nota?: string;
-};
-
-const PASSOS: Passo[] = [
-  {
-    icone: UserPlus,
-    titulo: "Entre no grupo dos testadores",
-    texto: "Use a mesma conta Google do seu celular Android. No grupo, toque em “Participar do grupo”.",
-    botao: "Entrar no grupo",
-    link: GRUPO_TESTADORES,
-    evento: "grupo",
-    nota: "Só a equipe do Publike vê quem está no grupo. Ninguém recebe e-mail por causa dele.",
-  },
-  {
-    icone: Smartphone,
-    titulo: "Aceite o teste no Google Play",
-    texto: "Abra o link e toque em “Tornar-se testador”.",
-    botao: "Aceitar o teste",
-    link: ACEITAR_TESTE,
-    evento: "aceitar",
-    nota: "Apareceu que não está disponível? Espere uns minutos depois de entrar no grupo e abra de novo.",
-  },
-  {
-    icone: Download,
-    titulo: "Instale e use por 14 dias",
-    texto:
-      "Instale o Publike pelo Google Play e fique com ele no celular por 14 dias. Abra de vez em quando: é o mesmo Publike de sempre, com as vagas perto de você.",
-    botao: "Instalar no Google Play",
-    link: APP_NA_PLAY,
-    evento: "instalar",
-  },
-];
+// O convite do teste fechado da Play (conta pessoal: 12 testadores por 14 dias seguidos). No alto, por que são
+// 3 passos (quem chega pelo "Instalar app" queria só instalar) e "Prefiro usar pelo site"; os passos, em ordem
+// (PassosDoTesteApp: o Instalar só abre depois do Aceitar). Página estática: os links ficam em src/lib/android.ts.
+// Conta quem abre (e de onde veio, pelo ?de= do link) e os toques em cada passo, sem saber quem (src/lib/teste-app.ts).
 
 const CONVITE = `Me ajuda a colocar o Publike no Google Play? Leva 2 minutos: ${SITE_URL}/testar-app?de=whatsapp`;
 
@@ -70,35 +30,23 @@ export default function TestarApp() {
         seguidos. Leva 2 minutos, é de graça e ajuda muita gente a achar trabalho perto de casa.
       </p>
 
-      <ol className="mt-8 flex flex-col gap-4">
-        {PASSOS.map(({ icone: Icone, titulo, texto, botao, link, evento, nota }, i) => (
-          <li key={titulo} className="flex gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
-            <span
-              aria-hidden
-              className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-label"
-            >
-              {i + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="flex items-center gap-2 text-h3">
-                <Icone aria-hidden className="size-5 shrink-0 text-terra-text" />
-                {titulo}
-              </h2>
-              <p className="mt-1 text-body text-ink-muted">{texto}</p>
-              <LinkDoTesteApp
-                evento={evento}
-                href={link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={classesBotao(i === 0 ? "primario" : "secundario", "md", "mt-4")}
-              >
-                {botao}
-              </LinkDoTesteApp>
-              {nota && <p className="mt-3 text-body-sm text-ink-muted">{nota}</p>}
-            </div>
-          </li>
-        ))}
-      </ol>
+      <div className="mt-6 flex gap-3 rounded-lg bg-surface-300 p-4">
+        <Info aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" />
+        <div className="flex flex-col gap-3">
+          <p className="text-body">
+            <strong>Por que não é só instalar?</strong> Enquanto está em teste, o Google Play só mostra o app para quem
+            entrou no grupo e aceitou o teste. Faça os 3 passos em ordem: são 3 toques.
+          </p>
+          <div>
+            <BotaoLink href="/" variante="fantasma" tamanho="sm">
+              <Globe aria-hidden />
+              Prefiro usar pelo site
+            </BotaoLink>
+          </div>
+        </div>
+      </div>
+
+      <PassosDoTesteApp />
 
       <section className="mt-8 rounded-lg border border-line bg-surface-200 p-5">
         <h2 className="text-h3">Tem iPhone?</h2>

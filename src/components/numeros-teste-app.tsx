@@ -39,7 +39,15 @@ export function ContarVisitaTesteApp() {
   return null;
 }
 
-/** Um link da página do teste que conta o toque antes de sair. */
-export function LinkDoTesteApp({ evento, ...props }: ComponentProps<"a"> & { evento: EventoTesteApp }) {
-  return <a {...props} onClick={() => contar(evento)} />;
+/** Um link da página do teste que conta o toque antes de sair (e chama o `onClick` de quem usa, se tiver). */
+export function LinkDoTesteApp({ evento, onClick, ...props }: ComponentProps<"a"> & { evento: EventoTesteApp }) {
+  return (
+    <a
+      {...props}
+      onClick={(e) => {
+        contar(evento);
+        onClick?.(e);
+      }}
+    />
+  );
 }
