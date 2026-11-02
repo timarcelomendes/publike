@@ -1,59 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { contaDeTestePagamentos, salvarConfigPagamentos, salvarPlano } from "@/lib/acoes/admin-pagamentos";
+import { contaDeTestePagamentos, salvarConfigPagamentos } from "@/lib/acoes/admin-pagamentos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
-// Admin › Pagamentos: o preço de cada plano, abrir para todos, as contas de teste e o serviço da nota.
-
-export function EditarPlano({
-  id,
-  nome,
-  valor,
-  ligado,
-}: {
-  id: string;
-  nome: string;
-  valor: number | null;
-  ligado: boolean;
-}) {
-  const [preco, setPreco] = useState(valor != null ? valor.toFixed(2).replace(".", ",") : "");
-  const [venda, setVenda] = useState(ligado);
-  const { rodar, pendente, mensagem } = useAcao();
-  return (
-    <form
-      className="flex flex-wrap items-end gap-3 py-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        rodar(() => salvarPlano(id, preco, venda));
-      }}
-    >
-      <label className="flex flex-col gap-1">
-        <span className="text-label">{nome}</span>
-        <span className="flex items-center gap-2">
-          <span className="text-body-sm text-ink-muted">R$</span>
-          <input
-            value={preco}
-            onChange={(e) => setPreco(e.target.value)}
-            inputMode="decimal"
-            placeholder="sem preço"
-            aria-label={`Preço de ${nome}`}
-            className={`${classesEntrada} w-32 tabular-nums`}
-          />
-        </span>
-      </label>
-      <label className="flex min-h-11 items-center gap-2 text-body-sm">
-        <input type="checkbox" checked={venda} onChange={(e) => setVenda(e.target.checked)} className="size-4" />À venda
-      </label>
-      <Botao type="submit" tamanho="sm" disabled={pendente}>
-        Salvar
-      </Botao>
-      <div className="basis-full">{mensagem}</div>
-    </form>
-  );
-}
+// Admin › Pagamentos: abrir para todos, as contas de teste e o serviço da nota (os preços: tabela-de-precos.tsx).
 
 export function ConfigPagamentos({
   aberto,

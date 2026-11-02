@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import {
-  ConfigPagamentos,
-  ContaDeTeste,
-  Copiar,
-  EditarPlano,
-  GerarToken,
-  TirarDoTeste,
-} from "@/components/admin/pagamentos";
+import { ConfigPagamentos, ContaDeTeste, Copiar, GerarToken, TirarDoTeste } from "@/components/admin/pagamentos";
+import { TabelaDePrecos } from "@/components/admin/tabela-de-precos";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { formatarMoeda, tempoRelativo } from "@/lib/formato";
@@ -184,19 +178,9 @@ async function Conteudo() {
 
       <Secao
         titulo="Preços"
-        descricao="Cada recurso, o combo (Triagem + Teste Prático) e o Plano Completo (os quatro). O trimestral cobra os 3 meses juntos."
+        descricao="Cada recurso, o combo (Triagem + Teste Prático) e o Plano Completo (os quatro). O de 3 meses cobra os 3 meses juntos. A coluna da conta mostra o desconto e avisa quando um pacote sai mais caro que as partes."
       >
-        <div className="flex flex-col divide-y divide-line">
-          {d.planos.map((p) => (
-            <EditarPlano
-              key={p.id}
-              id={p.id}
-              nome={`${NOME_PRODUTO[p.recurso]} · ${NOME_CICLO[p.ciclo].toLowerCase()}`}
-              valor={p.valor == null ? null : Number(p.valor)}
-              ligado={p.ligado}
-            />
-          ))}
-        </div>
+        <TabelaDePrecos planos={d.planos.map((p) => ({ ...p, valor: p.valor == null ? null : Number(p.valor) }))} />
       </Secao>
 
       <Secao titulo="Quem pode assinar e nota fiscal">
