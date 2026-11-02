@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og";
 import { formatarLugar, plural, urlDaFoto } from "@/lib/formato";
-import { vagasDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
-import { criarClientePublico } from "@/lib/supabase/servidor";
+import { totalDeVagasNoAr, vagasDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
 import { valorCurto } from "@/lib/vagas-da-empresa";
 
 // A imagem do link da página de vagas da empresa (WhatsApp, Facebook, LinkedIn): a logo, o nome, "está contratando",
@@ -21,30 +20,13 @@ const iniciais = (nome: string) =>
     .map((p) => p[0]!.toUpperCase())
     .join("");
 
-/** Quantas vagas estão no ar (o quadro só traz as 30 mais novas). */
-async function totalDeVagas(id: string, lidas: number) {
-  if (lidas < 30) return lidas;
-  try {
-    const { count } = await criarClientePublico()
-      .from("anuncios")
-      .select("id", { count: "exact", head: true })
-      .eq("autor_id", id)
-      .eq("tipo", "vaga")
-      .eq("status", "ativo")
-      .gt("expira_em", new Date().toISOString());
-    return count ?? lidas;
-  } catch {
-    return lidas;
-  }
-}
-
 export default async function Imagem({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const quadro = await vagasDaEmpresa(id).catch(() => null);
   const nome = quadro ? curto(quadro.perfil.nome, 42) : "Publike";
   const foto = urlDaFoto(quadro?.perfil.foto);
   const vagas = quadro?.vagas ?? [];
-  const total = quadro ? await totalDeVagas(id, vagas.length) : 0;
+  const total = quadro ? await totalDeVagasNoAr(id, vagas.length) : 0;
   const primeiras = vagas.slice(0, 3);
   return new ImageResponse(
     <div

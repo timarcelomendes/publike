@@ -11,6 +11,7 @@ import { UUID } from "@/lib/validacao";
 export type VagaDoQuadro = {
   id: string;
   titulo: string;
+  categoria: string;
   regime: string | null;
   pagamento_valor: number | null;
   pagamento_unidade: string | null;
@@ -33,6 +34,14 @@ export async function vagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> 
   // 15 minutos ("default"): com "minutes", a página era regravada a cada minuto na Vercel
   cacheLife("default");
   cacheTag(`vagas-da-empresa-${id}`);
+  return lerVagasDaEmpresa(id);
+}
+
+/**
+ * As mesmas vagas lidas agora, sem guardar: para o cartaz e as imagens do kit, que a empresa abre logo depois de
+ * publicar (com o guardado, a vaga nova só entrava depois de alguns minutos).
+ */
+export async function lerVagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> {
   if (MODO_DEMO || !UUID.test(id)) return null;
   const cliente = criarClientePublico();
   const agora = new Date().toISOString();
@@ -41,7 +50,7 @@ export async function vagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> 
     cliente
       .from("anuncios")
       .select(
-        "id, titulo, regime, pagamento_valor, pagamento_unidade, pagamento_ate, comissao, beneficios, cidade, bairro, vagas, criado_em",
+        "id, titulo, categoria, regime, pagamento_valor, pagamento_unidade, pagamento_ate, comissao, beneficios, cidade, bairro, vagas, criado_em",
       )
       .eq("autor_id", id)
       .eq("tipo", "vaga")
@@ -58,4 +67,21 @@ export async function vagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> 
     perfil: { id: perfil.id, nome: perfil.nome, tipo: perfil.tipo, foto: perfil.foto, verificado: perfil.verificado },
     vagas: suspensa ? [] : ((vagas ?? []) as VagaDoQuadro[]),
   };
+}
+
+/** Quantas vagas estão no ar (o quadro traz só as 30 mais novas): para "N vagas abertas" nas imagens. */
+export async function totalDeVagasNoAr(id: string, lidas: number) {
+  if (lidas < 30) return lidas;
+  try {
+    const { count } = await criarClientePublico()
+      .from("anuncios")
+      .select("id", { count: "exact", head: true })
+      .eq("autor_id", id)
+      .eq("tipo", "vaga")
+      .eq("status", "ativo")
+      .gt("expira_em", new Date().toISOString());
+    return count ?? lidas;
+  } catch {
+    return lidas;
+  }
 }

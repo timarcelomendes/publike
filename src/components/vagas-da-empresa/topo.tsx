@@ -95,7 +95,7 @@ export function TopoDaEmpresa({
               </Link>
             )}
             <Link
-              href="/painel/links"
+              href="/painel/links#kit"
               className="inline-flex min-h-10 items-center gap-1.5 underline underline-offset-2"
             >
               <Megaphone aria-hidden className="size-4 text-terra-text" />

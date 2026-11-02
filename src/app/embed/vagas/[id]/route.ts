@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { SITE_URL } from "@/lib/config";
 import { escaparHtml } from "@/lib/email/montar";
-import { formatarLugar, rotuloModalidade, valorDoAnuncio } from "@/lib/formato";
+import { categoria } from "@/lib/constantes";
+import { formatarLugar, rotuloModalidade, urlDaFoto, valorDoAnuncio } from "@/lib/formato";
 import { vagasDaEmpresa, type VagaDoQuadro } from "@/lib/servidor/vagas-da-empresa";
 
 // Quadro de vagas para o site da empresa: ela cola o código do painel
@@ -29,9 +30,15 @@ html,body{margin:0;background:var(--fundo);color:var(--tinta)}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.45;padding:2px}
 a{color:inherit}
 a:focus-visible{outline:2px solid var(--foco);outline-offset:2px;border-radius:6px}
-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+header{display:flex;align-items:center;gap:12px;margin:0 0 12px}
+header img{width:48px;height:48px;border-radius:12px;object-fit:cover;background:#fff;border:1px solid var(--borda);flex-shrink:0}
 h1{font-size:1.15rem;line-height:1.3;margin:0}
-.conta{color:var(--apagado);font-size:.875rem}
+.conta{display:block;color:var(--apagado);font-size:.875rem}
+.filtros{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.filtros input,.filtros select{font:inherit;font-size:.9375rem;min-height:40px;border:1px solid var(--borda);border-radius:999px;background:var(--cartao);color:var(--tinta);padding:0 14px}
+.filtros input{flex:1 1 14rem;min-width:0}
+.filtros :focus-visible{outline:2px solid var(--foco);outline-offset:1px}
+.nada{display:none;margin:0 0 10px;color:var(--apagado);font-size:.875rem}
 ul{list-style:none;margin:0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))}
 li{display:flex;flex-direction:column;gap:6px;background:var(--cartao);border:1px solid var(--borda);border-radius:12px;padding:14px 16px}
 h2{font-size:1rem;line-height:1.3;margin:0}
@@ -51,10 +58,23 @@ const script = (quadro: string) => `(function(){var q=${JSON.stringify(quadro)},
 function a(){var h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(h!==u){u=h;parent.postMessage({publike:"altura",quadro:q,altura:h},"*")}}
 addEventListener("load",a);if(window.ResizeObserver)new ResizeObserver(a).observe(document.documentElement);a()})();`;
 
+// A busca e a área no quadro (com 6 vagas ou mais): esconde os cartões que não batem, sem recarregar.
+const FILTRO = `(function(){var b=document.getElementById("pk-busca"),a=document.getElementById("pk-area"),n=document.getElementById("pk-nada");
+function s(t){return(t||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase()}
+function f(){var p=s(b.value).split(/\\s+/).filter(Boolean),c=a?a.value:"",v=0;document.querySelectorAll("li[data-texto]").forEach(function(l){var ok=(!c||l.getAttribute("data-area")===c)&&p.every(function(x){return l.getAttribute("data-texto").indexOf(x)>=0});l.style.display=ok?"":"none";if(ok)v++});n.style.display=v?"none":"block"}
+b.addEventListener("input",f);if(a)a.addEventListener("change",f)})();`;
+
+const semAcento = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
 function cartao(v: VagaDoQuadro) {
   const link = `${SITE_URL}/anuncio/${v.id}?${ORIGEM}`;
   const valor = valorDoAnuncio({ tipo: "vaga", ...v });
-  return `<li>
+  const texto = semAcento(`${v.titulo} ${categoria(v.categoria).nome} ${v.bairro}`);
+  return `<li data-area="${escaparHtml(v.categoria)}" data-texto="${escaparHtml(texto)}">
 <span class="selo">${escaparHtml(rotuloModalidade("vaga", v.regime))}</span>
 <h2><a href="${link}" target="_blank" rel="noopener">${escaparHtml(v.titulo)}</a></h2>
 <p class="info">${escaparHtml(formatarLugar(v.bairro, v.cidade))}${v.vagas > 1 ? ` · ${v.vagas} vagas` : ""}</p>
@@ -71,6 +91,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/embed/vagas/
   const limite = Math.min(30, Math.max(1, Number.parseInt(sp.get("limite") ?? "", 10) || 30));
   const quadro = /^[a-z0-9-]{1,40}$/i.test(sp.get("quadro") ?? "") ? (sp.get("quadro") as string) : "";
   const comTitulo = sp.get("titulo") !== "0";
+  const comBusca = sp.get("busca") !== "0";
 
   const dados = await vagasDaEmpresa(id);
   const cabecalhos = {
@@ -95,9 +116,21 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/embed/vagas/
   const { perfil, vagas } = dados;
   const pagVagas = `${SITE_URL}/perfil/${perfil.id}/vagas?${ORIGEM}`;
   const mostradas = vagas.slice(0, limite);
+  const foto = urlDaFoto(perfil.foto);
   const titulo = comTitulo
-    ? `<header><h1>Vagas abertas${vagas.length ? ` (${vagas.length})` : ""}</h1><span class="conta">${escaparHtml(perfil.nome)}</span></header>`
+    ? `<header>${foto ? `<img src="${escaparHtml(foto)}" alt="">` : ""}<div><h1>Vagas abertas${vagas.length ? ` (${vagas.length})` : ""}</h1><span class="conta">${escaparHtml(perfil.nome)}</span></div></header>`
     : "";
+  const areas = [...new Set(mostradas.map((v) => v.categoria))];
+  const filtros =
+    comBusca && mostradas.length >= 6
+      ? `<div class="filtros" role="search"><input id="pk-busca" type="search" placeholder="Procurar cargo ou bairro" aria-label="Procurar nas vagas">${
+          areas.length > 1
+            ? `<select id="pk-area" aria-label="Área"><option value="">Todas as áreas</option>${areas
+                .map((a) => `<option value="${escaparHtml(a)}">${escaparHtml(categoria(a).nome)}</option>`)
+                .join("")}</select>`
+            : ""
+        }</div><p id="pk-nada" class="nada" role="status">Nenhuma vaga com essa busca.</p>`
+      : "";
   const lista = mostradas.length
     ? `<ul>${mostradas.map(cartao).join("")}</ul>`
     : `<p class="vazio">Nenhuma vaga aberta agora. <a href="${pagVagas}" target="_blank" rel="noopener">Siga ${escaparHtml(perfil.nome)} no Publike</a> para saber das próximas.</p>`;
@@ -107,9 +140,12 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/embed/vagas/
       : "";
   const rodape = `<footer><a href="${pagVagas}" target="_blank" rel="noopener" aria-label="Publike">${logo(tema)}</a><span>Vagas no Publike, grátis para quem procura e para quem contrata${mais}</span></footer>`;
 
-  return new Response(pagina(`Vagas de ${perfil.nome}`, titulo + lista + rodape, tema, quadro), {
-    headers: cabecalhos,
-  });
+  return new Response(
+    pagina(`Vagas de ${perfil.nome}`, titulo + filtros + lista + rodape, tema, quadro, filtros ? FILTRO : ""),
+    {
+      headers: cabecalhos,
+    },
+  );
 }
 
 function logo(tema: "claro" | "escuro" | "auto") {
@@ -119,11 +155,11 @@ function logo(tema: "claro" | "escuro" | "auto") {
   return `<picture><source srcset="${SITE_URL}/logo/publike-logo-escuro.svg" media="(prefers-color-scheme: dark)">${img(false)}</picture>`;
 }
 
-function pagina(titulo: string, miolo: string, tema: "claro" | "escuro" | "auto", quadro: string) {
+function pagina(titulo: string, miolo: string, tema: "claro" | "escuro" | "auto", quadro: string, extra = "") {
   return `<!doctype html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>${escaparHtml(titulo)} · Publike</title><base target="_blank"><style>${estilo(tema)}</style></head>
-<body>${miolo}<script>${script(quadro)}</script></body>
+<body>${miolo}<script>${script(quadro)}${extra}</script></body>
 </html>`;
 }

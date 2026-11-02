@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { BotoesDoLink } from "@/components/painel/links-para-mandar";
+import { KitDeDivulgacao } from "@/components/painel/kit-de-divulgacao";
 import { PaginaDeVagas } from "@/components/painel/pagina-de-vagas";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Vazio } from "@/components/ui/basicos";
@@ -13,12 +14,13 @@ import { ateQuando, plural } from "@/lib/formato";
 import { caminhoDaConta } from "@/lib/servidor/caminho";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { linkDasVagas, textoDasVagas } from "@/lib/vagas-da-empresa";
 
 export const metadata: Metadata = { title: "Links para divulgar" };
 
 // Links para divulgar: tudo o que a conta manda para fora num lugar só. A página com todas as
-// vagas (e o código para o site), o link de cada vaga no ar e, na agência, os links de
-// finalistas para os clientes.
+// vagas, o kit de divulgação (o texto para os grupos, as imagens, o cartaz e o quadro para o
+// site), o link de cada vaga no ar e, na agência, os links de finalistas para os clientes.
 
 export default function Links() {
   return (
@@ -36,6 +38,12 @@ async function Conteudo() {
   const noAr = caminho.vagas.filter((v) => v.anuncio.status === "ativo");
   const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));
   const finalistas = caminho.vagas.filter((v) => v.link && Date.parse(v.link.expira_em) >= agora);
+  // as vagas no ar de agora, para o texto pronto (o mesmo do "Mandar no WhatsApp" da página de vagas)
+  const vagasNoAr = noAr
+    .filter((v) => v.anuncio.tipo === "vaga" && Date.parse(v.anuncio.expira_em) > agora)
+    .map((v) => v.anuncio);
+  const texto = (origem: string, curto = false) =>
+    textoDasVagas(perfil.nome, vagasNoAr, linkDasVagas(SITE_URL, perfil.id, origem), { curto });
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,11 +55,14 @@ async function Conteudo() {
         </p>
       </div>
 
-      <PaginaDeVagas
+      <PaginaDeVagas perfilId={perfil.id} site={SITE_URL} noAr={caminho.vagasNoAr} texto={texto("whatsapp")} />
+
+      <KitDeDivulgacao
         perfilId={perfil.id}
-        nome={perfil.nome}
         site={SITE_URL}
-        noAr={caminho.vagasNoAr}
+        textoCompleto={texto("grupos")}
+        textoCurto={texto("grupos", true)}
+        vagas={vagasNoAr.slice(0, 30).map((a) => ({ id: a.id, titulo: a.titulo }))}
         comQuadro={perfil.tipo !== "pessoa"}
       />
 
