@@ -130,6 +130,8 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
   const [repetir, setRepetir] = useState(banner?.repetir_dias != null);
   const [daArea, setDaArea] = useState(banner?.busca_da_area ?? false);
   const [formato, setFormato] = useState<FormatoBanner>(banner?.formato ?? "janela");
+  // escolher o destaque põe "Quem vê" em "Todo mundo" (dá para mudar depois)
+  const [publico, setPublico] = useState<PublicoBanner>(banner?.publico ?? "todos");
   const cartao = formato === "cartao";
   // o destaque: na faixa do alto da inicial de quem não tem conta (computador), girando com as 3 vagas novas
   const destaque = formato === "destaque";
@@ -192,7 +194,10 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
                 name="formato"
                 value={f}
                 checked={formato === f}
-                onChange={() => setFormato(f)}
+                onChange={() => {
+                  setFormato(f);
+                  if (f === "destaque") setPublico("todos");
+                }}
                 className="mt-0.5 size-4 shrink-0 accent-[var(--pk-ink)]"
               />
               <span>
@@ -386,7 +391,8 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
         >
           <Seletor
             {...ligarCampo("publico", erros.publico, destaque)}
-            defaultValue={banner?.publico ?? "todos"}
+            value={publico}
+            onChange={(e) => setPublico(e.target.value as PublicoBanner)}
             className={classesEntrada}
           >
             {(Object.keys(PUBLICOS_BANNER) as PublicoBanner[]).map((p) => (

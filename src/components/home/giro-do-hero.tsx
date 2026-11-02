@@ -111,8 +111,10 @@ export function GiroDoHero({ vagas, destaques }: { vagas: ReactNode | null; dest
       onPointerLeave={() => setEmCima(false)}
       className="hidden lg:block"
     >
-      {/* todas na mesma casa da grade: a coluna fica com a altura da maior e não pula na troca */}
-      <div className="grid" aria-live={giraSozinho ? "off" : "polite"}>
+      {/* todas na mesma casa da grade: a coluna fica com a altura da maior e não pula na troca. A coluna é
+          minmax(0, 1fr): sem isso, o título comprido de uma vaga (que não quebra, corta com reticências) alarga a
+          grade para fora da faixa */}
+      <div className="grid grid-cols-[minmax(0,1fr)]" aria-live={giraSozinho ? "off" : "polite"}>
         {vezes.map((v, i) => {
           const daVez = i === atual;
           return (
@@ -123,7 +125,7 @@ export function GiroDoHero({ vagas, destaques }: { vagas: ReactNode | null; dest
               aria-label={`${i + 1} de ${total}: ${nomeDa(v)}`}
               aria-hidden={!daVez}
               inert={!daVez}
-              className={`flex flex-col justify-center transition-[opacity,visibility] duration-500 [grid-area:1/1] motion-reduce:transition-none ${
+              className={`flex min-w-0 flex-col justify-center transition-[opacity,visibility] duration-500 [grid-area:1/1] motion-reduce:transition-none ${
                 daVez ? "visible opacity-100" : "invisible opacity-0"
               }`}
             >
