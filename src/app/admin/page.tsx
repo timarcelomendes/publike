@@ -6,7 +6,7 @@ import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FunilDoPublicar } from "@/components/admin/funil-publicar";
 import { MetricasDeProduto } from "@/components/admin/metricas-produto";
 import { NumerosDoPainel, NumerosDoPainelEmbaixo } from "@/components/admin/numeros-do-painel";
-import { NumerosDoTesteApp } from "@/components/admin/numeros-teste-app";
+import { ContasNoApp, NumerosDoTesteApp } from "@/components/admin/numeros-teste-app";
 import { BotaoResumoIA } from "@/components/admin/resumo-ia";
 import { SaudeDoSite } from "@/components/admin/saude";
 import { Secao, Situacao } from "@/components/admin/ui";
@@ -168,6 +168,7 @@ async function Conteudo() {
       {metricas && <MetricasDeProduto m={metricas} tempo={tempo} />}
 
       {testeApp && <NumerosDoTesteApp linhas={testeApp} />}
+      {TESTE_FECHADO && <ContasNoApp c={c} />}
 
       {config.ia_resumo && (
         <Secao

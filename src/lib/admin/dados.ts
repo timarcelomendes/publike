@@ -744,6 +744,13 @@ export async function numerosDoTesteApp(c: ClienteBanco, dias = 30) {
   return data ?? [];
 }
 
+/** Quem já abriu o Publike pelo app Android (aceitou o teste e instalou). null: banco sem a migração 20270119120000. */
+export async function contasNoApp(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_contas_no_app");
+  if (error) return null;
+  return data ?? [];
+}
+
 /** Os últimos comunicados mandados no sino. null: banco sem a migração 20261129120000. */
 export async function comunicadosMandados(c: ClienteBanco) {
   const { data, error } = await c.rpc("admin_comunicados", { p_limite: 20 });

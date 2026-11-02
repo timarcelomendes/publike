@@ -1547,6 +1547,19 @@ export type Database = {
         Args: { p_dias?: number };
         Returns: { evento: string; origem: string; total: number; hoje: number }[];
       };
+      /** migração 20270119120000: quem já abriu pelo app Android */
+      admin_contas_no_app: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          conta_id: string;
+          nome: string | null;
+          tipo: string | null;
+          email: string | null;
+          primeiro_em: string;
+          ultimo_em: string;
+          vezes: number;
+        }[];
+      };
       admin_creditos_email: {
         Args: Record<string, never>;
         Returns: {

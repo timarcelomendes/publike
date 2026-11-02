@@ -1,7 +1,9 @@
-import { Bell } from "lucide-react";
+import { Bell, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { Secao } from "@/components/admin/ui";
-import { formatarNumero } from "@/lib/formato";
+import { contasNoApp } from "@/lib/admin/dados";
+import { formatarDataCurta, formatarNumero } from "@/lib/formato";
+import type { ClienteBanco } from "@/lib/supabase/admin";
 import {
   EVENTOS_TESTE_APP,
   NOMES_EVENTOS_TESTE_APP,
@@ -78,6 +80,40 @@ export function NumerosDoTesteApp({ linhas }: { linhas: Linha[] }) {
         <Bell aria-hidden className="size-4" />
         Convidar no sino quem usa Android
       </Link>
+    </Secao>
+  );
+}
+
+/**
+ * Quem já abriu o Publike pelo app Android: o app só instala para quem aceitou o teste fechado, então é a lista de
+ * quem está testando (a Play Console mostra só o total). Quem aceitou e ainda não abriu o app não aparece.
+ */
+export async function ContasNoApp({ c }: { c: ClienteBanco }) {
+  const contas = await contasNoApp(c);
+  if (contas === null) return null;
+  return (
+    <Secao
+      titulo={`Já abriram pelo app (${formatarNumero(contas.length)})`}
+      descricao="Contas que abriram o Publike pelo app instalado da Play: aceitaram o teste e instalaram. A Play precisa de 12 por 14 dias seguidos. Quem aceitou e ainda não abriu o app (ou abriu sem entrar na conta) não aparece."
+    >
+      {contas.length === 0 ? (
+        <p className="text-body-sm text-ink-muted">Nenhuma conta abriu pelo app ainda.</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-line">
+          {contas.map((x) => (
+            <li key={x.conta_id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-body-sm">
+              <Smartphone aria-hidden className="size-4 shrink-0 text-ink-muted" />
+              <Link href={`/admin/usuarios/${x.conta_id}`} className="font-semibold underline underline-offset-2">
+                {x.nome ?? x.email ?? "Conta sem nome"}
+              </Link>
+              {x.email && x.nome && <span className="text-ink-muted">{x.email}</span>}
+              <span className="ml-auto text-ink-muted tabular-nums">
+                desde {formatarDataCurta(x.primeiro_em)} · última vez {formatarDataCurta(x.ultimo_em)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Secao>
   );
 }
