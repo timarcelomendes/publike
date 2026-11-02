@@ -35,7 +35,8 @@ export type VagaDaImagem = VagaParaTexto & { id: string };
 export type VagaSozinha = VagaDaImagem & { regime: string | null; beneficios_lista: string[]; vagas: number };
 
 let fontes: Promise<{ name: string; data: Buffer; weight: 400 | 700; style: "normal" }[]> | null = null;
-function lerFontes() {
+/** As letras do site para o ImageResponse (também as Vagas do dia, em imagens-do-dia.tsx). */
+export function lerFontes() {
   fontes ??= (async () => {
     const pasta = join(process.cwd(), "src/assets/fontes");
     const [texto, forte, titulo] = await Promise.all(
