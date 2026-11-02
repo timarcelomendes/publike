@@ -23,4 +23,12 @@ export const MODELOS_COMUNICADO: Record<string, { publico: PublicoComunicado; te
       "Ajude a lançar o app do Publike no Google Play: teste no seu Android por 14 dias. Leva 2 minutos e é de graça.",
     link: "/testar-app?de=sino",
   },
+  // 02/11/2026: para quem tentou e parou no "não está disponível" (o Instalar antes do Aceitar). O link é outro
+  // (o `&tentar=2`), para chegar também a quem já recebeu o primeiro convite.
+  teste_app_de_novo: {
+    publico: "android",
+    texto:
+      "Tentou instalar o app do Publike e o Google Play disse que não está disponível? Agora a página mostra a ordem certa: entre no grupo, aceite o teste e só depois instale.",
+    link: "/testar-app?de=sino&tentar=2",
+  },
 };
