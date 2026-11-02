@@ -16,6 +16,7 @@ import { obterPerfilPublico, obterUsuario, requisitosDasVagas, type DetalhesDaVa
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, plural } from "@/lib/formato";
 import { extrasDe, matchDasVagas, quemProcura } from "@/lib/servidor/lista-anuncios";
+import { marcaDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioDoPerfil, AnuncioResumo, Regime } from "@/lib/tipos";
@@ -120,10 +121,11 @@ async function Conteudo({
   searchParams: PageProps<"/perfil/[id]/vagas">["searchParams"];
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const [dados, usuario, seguidos] = await Promise.all([
+  const [dados, usuario, seguidos, marca] = await Promise.all([
     obterPerfilPublico(id, LIMITE),
     obterUsuario(),
     meusSeguidos(),
+    marcaDaEmpresa(id),
   ]);
   if (!dados) notFound();
   const { perfil } = dados;
@@ -147,7 +149,7 @@ async function Conteudo({
   const agencia = perfil.tipo === "agencia";
   const empresas = agencia ? new Set(vagas.map((a) => a.contratante).filter(Boolean)).size : 0;
   const whatsapp = `https://wa.me/?text=${encodeURIComponent(
-    textoDasVagas(perfil.nome, vagas, linkDasVagas(SITE_URL, perfil.id, "whatsapp")),
+    textoDasVagas(perfil.nome, vagas, linkDasVagas(SITE_URL, perfil.id, "whatsapp", marca?.apelido)),
   )}`;
 
   return (
@@ -165,6 +167,7 @@ async function Conteudo({
           vagas={vagas.length}
           empresas={empresas}
           meu={meu}
+          marca={marca}
           whatsapp={whatsapp}
           textoCompartilhar={textoDasVagas(perfil.nome, vagas, "", { curto: true }).replace(/:\s*$/, ":")}
           seguir={

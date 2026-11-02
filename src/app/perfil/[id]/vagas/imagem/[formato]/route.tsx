@@ -14,11 +14,11 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/perfil/[id]/
   if (!quadro) return new Response("Não encontrado", { status: 404 });
   const vagas = quadro.vagas.map((v) => ({ ...v, tipo: "vaga" }));
   const total = await totalDeVagasNoAr(id, vagas.length);
-  const link = linkDasVagas(SITE_URL, id, formato === "status" ? "status" : "post");
+  const link = linkDasVagas(SITE_URL, id, formato === "status" ? "status" : "post", quadro.marca?.apelido);
   const arquivo = request.nextUrl.searchParams.has("baixar")
     ? `vagas-${nomeDeArquivo(quadro.perfil.nome)}-${formato}.png`
     : null;
-  const empresa = { nome: quadro.perfil.nome, foto: quadro.perfil.foto };
+  const empresa = { nome: quadro.perfil.nome, foto: quadro.perfil.foto, cor: quadro.marca?.cor };
   return formato === "status"
     ? imagemStatus(empresa, vagas, total, link, arquivo)
     : imagemPost(empresa, vagas, total, link, arquivo);

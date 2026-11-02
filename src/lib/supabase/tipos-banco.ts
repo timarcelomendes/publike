@@ -29,6 +29,21 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** a página de carreiras personalizada (migração 20270117120000): a conta lê a sua; o resto pelas funções */
+      paginas_de_vagas: {
+        Row: {
+          conta_id: string;
+          cor: string | null;
+          capa: string | null;
+          texto: string | null;
+          beneficios: string[];
+          apelido: string | null;
+          atualizada_em: string;
+        };
+        Insert: SemTabela;
+        Update: SemTabela;
+        Relationships: [];
+      };
       /** as Automações personalizadas (migração 20270115120000): só a conta lê; salvar e ligar pelas funções */
       regras: {
         Row: {
@@ -1016,6 +1031,35 @@ export type Database = {
     };
     Views: SemTabela;
     Functions: {
+      /** migração 20270117120000: a página de carreiras da conta (liberada, vagas publicadas, a personalização) */
+      minha_pagina_de_vagas: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      pagina_de_vagas_publica: {
+        Args: { p_conta: string };
+        Returns: {
+          cor: string | null;
+          capa: string | null;
+          texto: string | null;
+          beneficios: string[];
+          apelido: string | null;
+        }[];
+      };
+      conta_do_apelido: {
+        Args: { p_apelido: string };
+        Returns: string | null;
+      };
+      salvar_pagina_de_vagas: {
+        Args: {
+          p_cor: string | null;
+          p_capa: string | null;
+          p_texto: string | null;
+          p_beneficios: string[];
+          p_apelido: string | null;
+        };
+        Returns: undefined;
+      };
       buscar_anuncios: {
         Args: {
           p_lat?: number;

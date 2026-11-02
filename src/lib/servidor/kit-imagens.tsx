@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { BENEFICIOS, REGIMES } from "@/lib/constantes";
 import { formatarLugar, nomeDoBairro, plural, urlDaFoto } from "@/lib/formato";
+import { corLegivel, corValida } from "@/lib/marca";
 import { qrDataUrl } from "@/lib/qr";
 import type { Regime } from "@/lib/tipos";
 import { valorCurto, type VagaParaTexto } from "@/lib/vagas-da-empresa";
@@ -26,7 +27,10 @@ const COR = {
   verde: "#2f6b3d",
 };
 
-export type Empresa = { nome: string; foto: string | null };
+/** `cor`: a cor da marca (página de carreiras liberada); sem ela, a terracota do Publike. */
+export type Empresa = { nome: string; foto: string | null; cor?: string | null };
+
+const destaque = (empresa: Empresa) => corLegivel(empresa.cor);
 export type VagaDaImagem = VagaParaTexto & { id: string };
 export type VagaSozinha = VagaDaImagem & { regime: string | null; beneficios_lista: string[]; vagas: number };
 
@@ -92,7 +96,7 @@ function Logo({ empresa, tamanho }: { empresa: Empresa; tamanho: number }) {
         width: tamanho,
         height: tamanho,
         borderRadius: raio,
-        background: COR.terra,
+        background: destaque(empresa),
         color: "#fff",
         fontFamily: "Bricolage",
         fontSize: Math.round(tamanho * 0.4),
@@ -122,7 +126,7 @@ function Cabecalho({ empresa, total, logo, nome }: { empresa: Empresa; total: nu
         >
           {n}
         </div>
-        <div style={{ display: "flex", fontSize: Math.round(nome * 0.58), fontWeight: 700, color: COR.terra }}>
+        <div style={{ display: "flex", fontSize: Math.round(nome * 0.58), fontWeight: 700, color: destaque(empresa) }}>
           {total ? `está contratando · ${plural(total, "vaga", "vagas")}` : "está contratando"}
         </div>
       </div>
@@ -153,6 +157,12 @@ function LinhaDaVaga({ v, fonte }: { v: VagaDaImagem; fonte: number }) {
   );
 }
 
+/** O endereço para escrever à mão: "publike.org/v/apelido" com o endereço curto; senão só "publike.org". */
+export function enderecoVisivel(link: string) {
+  const caminho = new URL(link).pathname;
+  return caminho.startsWith("/v/") ? `publike.org${caminho}` : "publike.org";
+}
+
 /** O QR Code com o convite ao lado. */
 function Convite({ link, qr, fonte, texto }: { link: string; qr: number; fonte: number; texto: string }) {
   return (
@@ -176,15 +186,17 @@ function Convite({ link, qr, fonte, texto }: { link: string; qr: number; fonte: 
           Aponte a câmera do celular
         </div>
         <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: Math.round(fonte * 1.1), color: COR.tinta }}>
-          publike.org
+          {enderecoVisivel(link)}
         </div>
       </div>
     </div>
   );
 }
 
-const base = (padding: number) =>
+/** O fundo creme; com a cor da marca, uma faixa dela no alto. */
+const base = (padding: number, empresa: Empresa) =>
   ({
+    ...(corValida(empresa.cor) ? { borderTop: `18px solid ${empresa.cor}` } : {}),
     width: "100%",
     height: "100%",
     display: "flex",
@@ -219,7 +231,7 @@ export async function imagemStatus(
   // com poucas vagas, letras maiores: a tela do Status é alta e ficava vazia no meio
   const fonte = mostradas.length <= 3 ? 54 : 44;
   return responder(
-    <div style={base(80)}>
+    <div style={base(80, empresa)}>
       <Cabecalho empresa={empresa} total={total} logo={176} nome={72} />
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 96, lineHeight: 1, marginBottom: 18 }}>
@@ -231,7 +243,7 @@ export async function imagemStatus(
           <div style={{ display: "flex", fontSize: 44, color: COR.apagado }}>As vagas novas aparecem no link.</div>
         )}
         {total > mostradas.length && (
-          <div style={{ display: "flex", fontSize: 38, fontWeight: 700, color: COR.terra, paddingLeft: 8 }}>
+          <div style={{ display: "flex", fontSize: 38, fontWeight: 700, color: destaque(empresa), paddingLeft: 8 }}>
             {`e mais ${plural(total - mostradas.length, "vaga", "vagas")}`}
           </div>
         )}
@@ -253,14 +265,14 @@ export async function imagemPost(
 ) {
   const mostradas = vagas.slice(0, total > 4 ? 3 : 4);
   return responder(
-    <div style={base(64)}>
+    <div style={base(64, empresa)}>
       <Cabecalho empresa={empresa} total={total} logo={128} nome={60} />
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {mostradas.map((v) => (
           <LinhaDaVaga key={v.id} v={v} fonte={36} />
         ))}
         {total > mostradas.length && (
-          <div style={{ display: "flex", fontSize: 32, fontWeight: 700, color: COR.terra, paddingLeft: 8 }}>
+          <div style={{ display: "flex", fontSize: 32, fontWeight: 700, color: destaque(empresa), paddingLeft: 8 }}>
             {`e mais ${plural(total - mostradas.length, "vaga", "vagas")}`}
           </div>
         )}
@@ -283,10 +295,10 @@ export async function imagemDaVaga(empresa: Empresa, v: VagaSozinha, link: strin
     .filter((s): s is string => Boolean(s))
     .slice(0, 4);
   return responder(
-    <div style={base(64)}>
+    <div style={base(64, empresa)}>
       <Cabecalho empresa={empresa} total={0} logo={112} nome={52} />
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-        <div style={{ display: "flex", fontSize: 30, fontWeight: 700, color: COR.terra }}>VAGA DE EMPREGO</div>
+        <div style={{ display: "flex", fontSize: 30, fontWeight: 700, color: destaque(empresa) }}>VAGA DE EMPREGO</div>
         <div
           style={{
             display: "flex",

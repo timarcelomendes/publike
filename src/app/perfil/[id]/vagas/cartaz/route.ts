@@ -1,7 +1,9 @@
 import { SITE_URL } from "@/lib/config";
 import { escaparHtml } from "@/lib/email/montar";
 import { nomeDoBairro, plural, urlDaFoto } from "@/lib/formato";
+import { corLegivel } from "@/lib/marca";
 import { qrSvg } from "@/lib/qr";
+import { enderecoVisivel } from "@/lib/servidor/kit-imagens";
 import { lerVagasDaEmpresa, totalDeVagasNoAr } from "@/lib/servidor/vagas-da-empresa";
 import { linkDasVagas, valorCurto } from "@/lib/vagas-da-empresa";
 
@@ -42,7 +44,9 @@ export async function GET(_request: Request, ctx: RouteContext<"/perfil/[id]/vag
   const vagas = quadro.vagas.map((v) => ({ ...v, tipo: "vaga" }));
   const total = await totalDeVagasNoAr(id, vagas.length);
   const mostradas = vagas.slice(0, total > 6 ? 5 : 6);
-  const link = linkDasVagas(SITE_URL, id, "cartaz");
+  const link = linkDasVagas(SITE_URL, id, "cartaz", quadro.marca?.apelido);
+  // a cor da marca (página de carreiras liberada) no lugar da terracota do Publike
+  const cor = corLegivel(quadro.marca?.cor);
   const foto = urlDaFoto(perfil.foto);
   const logo = foto
     ? `<img class="logo" src="${escaparHtml(foto)}" alt="">`
@@ -66,14 +70,14 @@ export async function GET(_request: Request, ctx: RouteContext<"/perfil/[id]/vag
     : `<p class="mais">As vagas abertas aparecem no link, sempre em dia.</p>`;
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Cartaz: ${escaparHtml(perfil.nome)} está contratando</title><style>${ESTILO}</style></head>
+<title>Cartaz: ${escaparHtml(perfil.nome)} está contratando</title><style>${ESTILO.replaceAll("#a2441f", cor)}${quadro.marca?.cor ? `.folha{border-top:5mm solid ${quadro.marca.cor}}` : ""}</style></head>
 <body>
 <div class="barra"><button type="button" onclick="print()">Imprimir ou salvar em PDF</button><a href="${SITE_URL}/painel/links">Voltar ao painel</a></div>
 <main class="folha">
 <div class="topo">${logo}<p class="nome">${escaparHtml(perfil.nome)}</p></div>
 <h1>Estamos <span>contratando</span></h1>
 ${lista}
-<div class="qr">${qrSvg(link)}<p><strong>Candidate-se de graça</strong>Aponte a câmera do celular para ver as vagas e se candidatar no Publike.<small>publike.org · ${escaparHtml(plural(total, "vaga aberta", "vagas abertas"))}</small></p></div>
+<div class="qr">${qrSvg(link)}<p><strong>Candidate-se de graça</strong>Aponte a câmera do celular para ver as vagas e se candidatar no Publike.<small>${escaparHtml(enderecoVisivel(link))} · ${escaparHtml(plural(total, "vaga aberta", "vagas abertas"))}</small></p></div>
 </main>
 </body></html>`;
   return new Response(html, {

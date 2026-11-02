@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { MODO_DEMO } from "@/lib/config";
+import type { Marca } from "@/lib/marca";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 
@@ -27,7 +28,18 @@ export type VagaDoQuadro = {
 export type QuadroDeVagas = {
   perfil: { id: string; nome: string; tipo: string; foto: string | null; verificado: boolean };
   vagas: VagaDoQuadro[];
+  /** a página de carreiras personalizada (a cor, a capa, o apelido), só com a conta liberada */
+  marca: Marca | null;
 };
+
+/** A personalização da página de carreiras, só enquanto a conta está liberada (o banco confere). */
+export async function marcaDaEmpresa(id: string): Promise<Marca | null> {
+  if (MODO_DEMO || !UUID.test(id)) return null;
+  const { data, error } = await criarClientePublico().rpc("pagina_de_vagas_publica", { p_conta: id }).maybeSingle();
+  // antes da migração 20270117120000 a função não existe: a página fica como a de todos
+  if (error) return null;
+  return data ? { ...data, beneficios: data.beneficios ?? [] } : null;
+}
 
 export async function vagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> {
   "use cache";
@@ -45,7 +57,7 @@ export async function lerVagasDaEmpresa(id: string): Promise<QuadroDeVagas | nul
   if (MODO_DEMO || !UUID.test(id)) return null;
   const cliente = criarClientePublico();
   const agora = new Date().toISOString();
-  const [{ data: perfil }, { data: vagas, error }] = await Promise.all([
+  const [{ data: perfil }, { data: vagas, error }, marca] = await Promise.all([
     cliente.from("perfis").select("id, nome, tipo, foto, verificado, suspenso_ate").eq("id", id).maybeSingle(),
     cliente
       .from("anuncios")
@@ -58,6 +70,7 @@ export async function lerVagasDaEmpresa(id: string): Promise<QuadroDeVagas | nul
       .gt("expira_em", agora)
       .order("criado_em", { ascending: false })
       .limit(30),
+    marcaDaEmpresa(id),
   ]);
   if (error) console.error(`Publike: falha ao ler as vagas do quadro: ${error.message}`);
   // só empresa, comércio e agência têm quadro de vagas (pessoa física não)
@@ -66,6 +79,7 @@ export async function lerVagasDaEmpresa(id: string): Promise<QuadroDeVagas | nul
   return {
     perfil: { id: perfil.id, nome: perfil.nome, tipo: perfil.tipo, foto: perfil.foto, verificado: perfil.verificado },
     vagas: suspensa ? [] : ((vagas ?? []) as VagaDoQuadro[]),
+    marca: suspensa ? null : marca,
   };
 }
 

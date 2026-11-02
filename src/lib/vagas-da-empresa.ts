@@ -20,9 +20,13 @@ export function valorCurto(v: VagaParaTexto) {
   return d.unidade ? `${d.valor} ${d.unidade}` : d.valor;
 }
 
-/** O link da página de vagas com a origem (quem cria a conta por ele aparece em Admin › Campanhas). */
-export function linkDasVagas(site: string, perfilId: string, origem: string) {
-  return `${site}/perfil/${perfilId}/vagas?utm_source=${origem}&utm_campaign=vagas-empresa`;
+/**
+ * O link da página de vagas com a origem (quem cria a conta por ele aparece em Admin › Campanhas). Com a página de
+ * carreiras liberada e um apelido, o endereço curto (publike.org/v/apelido).
+ */
+export function linkDasVagas(site: string, perfilId: string, origem: string, apelido?: string | null) {
+  const caminho = apelido ? `/v/${apelido}` : `/perfil/${perfilId}/vagas`;
+  return `${site}${caminho}?utm_source=${origem}&utm_campaign=vagas-empresa`;
 }
 
 /**

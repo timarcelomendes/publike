@@ -84,7 +84,7 @@ export function KitDeDivulgacao({
           className={`${classesEntrada} resize-y text-body-sm`}
         />
         <div className="flex flex-wrap gap-2">
-          <BotaoCopiar texto={texto} rotulo="Copiar texto" principal />
+          <BotaoCopiar texto={texto} rotulo="Copiar texto" />
           <a
             href={`https://wa.me/?text=${encodeURIComponent(texto)}`}
             target="_blank"

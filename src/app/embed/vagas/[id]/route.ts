@@ -3,6 +3,7 @@ import { SITE_URL } from "@/lib/config";
 import { escaparHtml } from "@/lib/email/montar";
 import { categoria } from "@/lib/constantes";
 import { formatarLugar, rotuloModalidade, urlDaFoto, valorDoAnuncio } from "@/lib/formato";
+import { corValida, textoSobre } from "@/lib/marca";
 import { vagasDaEmpresa, type VagaDoQuadro } from "@/lib/servidor/vagas-da-empresa";
 
 // Quadro de vagas para o site da empresa: ela cola o código do painel
@@ -21,9 +22,11 @@ const CORES = {
     "--fundo:transparent;--cartao:#221c16;--borda:#3a3129;--tinta:#f5efe6;--apagado:#b5a998;--terra:#d4501a;--terra-hover:#e0612b;--selo:#2e2620;--foco:#f5b301",
 };
 
-function estilo(tema: "claro" | "escuro" | "auto") {
-  const base = tema === "escuro" ? CORES.escuro : CORES.claro;
-  const auto = tema === "auto" ? `@media (prefers-color-scheme:dark){:root{${CORES.escuro}}}` : "";
+function estilo(tema: "claro" | "escuro" | "auto", cor: string | null) {
+  // a cor da marca (página de carreiras liberada) nos botões, com o texto que se lê em cima dela
+  const marca = corValida(cor) ? `--terra:${cor};--terra-hover:${cor};--sobre-terra:${textoSobre(cor)};` : "";
+  const base = (tema === "escuro" ? CORES.escuro : CORES.claro) + (marca ? `;${marca}` : "");
+  const auto = tema === "auto" ? `@media (prefers-color-scheme:dark){:root{${CORES.escuro};${marca}}}` : "";
   return `:root{${base}}${auto}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--fundo);color:var(--tinta)}
@@ -46,7 +49,7 @@ h2 a{text-decoration:none}h2 a:hover{text-decoration:underline}
 .selo{align-self:flex-start;background:var(--selo);border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:600}
 .info{margin:0;color:var(--apagado);font-size:.875rem}
 .valor{margin:0;font-size:.875rem;font-weight:600}
-.botao{margin-top:auto;align-self:flex-start;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;background:var(--terra);color:#fff;font-weight:600;font-size:.875rem;text-decoration:none}
+.botao{margin-top:auto;align-self:flex-start;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;background:var(--terra);color:var(--sobre-terra,#fff);font-weight:600;font-size:.875rem;text-decoration:none}
 .botao:hover{background:var(--terra-hover)}
 .vazio{background:var(--cartao);border:1px dashed var(--borda);border-radius:12px;padding:18px 16px;color:var(--apagado);margin:0}
 footer{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.8125rem;color:var(--apagado)}
@@ -114,7 +117,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/embed/vagas/
   }
 
   const { perfil, vagas } = dados;
-  const pagVagas = `${SITE_URL}/perfil/${perfil.id}/vagas?${ORIGEM}`;
+  const pagVagas = `${SITE_URL}${dados.marca?.apelido ? `/v/${dados.marca.apelido}` : `/perfil/${perfil.id}/vagas`}?${ORIGEM}`;
   const mostradas = vagas.slice(0, limite);
   const foto = urlDaFoto(perfil.foto);
   const titulo = comTitulo
@@ -141,7 +144,14 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/embed/vagas/
   const rodape = `<footer><a href="${pagVagas}" target="_blank" rel="noopener" aria-label="Publike">${logo(tema)}</a><span>Vagas no Publike, grátis para quem procura e para quem contrata${mais}</span></footer>`;
 
   return new Response(
-    pagina(`Vagas de ${perfil.nome}`, titulo + filtros + lista + rodape, tema, quadro, filtros ? FILTRO : ""),
+    pagina(
+      `Vagas de ${perfil.nome}`,
+      titulo + filtros + lista + rodape,
+      tema,
+      quadro,
+      filtros ? FILTRO : "",
+      dados.marca?.cor ?? null,
+    ),
     {
       headers: cabecalhos,
     },
@@ -155,11 +165,18 @@ function logo(tema: "claro" | "escuro" | "auto") {
   return `<picture><source srcset="${SITE_URL}/logo/publike-logo-escuro.svg" media="(prefers-color-scheme: dark)">${img(false)}</picture>`;
 }
 
-function pagina(titulo: string, miolo: string, tema: "claro" | "escuro" | "auto", quadro: string, extra = "") {
+function pagina(
+  titulo: string,
+  miolo: string,
+  tema: "claro" | "escuro" | "auto",
+  quadro: string,
+  extra = "",
+  cor: string | null = null,
+) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>${escaparHtml(titulo)} · Publike</title><base target="_blank"><style>${estilo(tema)}</style></head>
+<title>${escaparHtml(titulo)} · Publike</title><base target="_blank"><style>${estilo(tema, cor)}</style></head>
 <body>${miolo}<script>${script(quadro)}${extra}</script></body>
 </html>`;
 }

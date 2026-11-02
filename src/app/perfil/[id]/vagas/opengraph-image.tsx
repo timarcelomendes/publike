@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { formatarLugar, plural, urlDaFoto } from "@/lib/formato";
+import { corLegivel } from "@/lib/marca";
 import { totalDeVagasNoAr, vagasDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
 import { valorCurto } from "@/lib/vagas-da-empresa";
 
@@ -28,6 +29,7 @@ export default async function Imagem({ params }: { params: Promise<{ id: string 
   const vagas = quadro?.vagas ?? [];
   const total = quadro ? await totalDeVagasNoAr(id, vagas.length) : 0;
   const primeiras = vagas.slice(0, 3);
+  const terra = corLegivel(quadro?.marca?.cor);
   return new ImageResponse(
     <div
       style={{
@@ -59,7 +61,7 @@ export default async function Imagem({ params }: { params: Promise<{ id: string 
               width: 140,
               height: 140,
               borderRadius: 24,
-              background: "#a2441f",
+              background: terra,
               color: "#fff",
               fontSize: 60,
               fontWeight: 800,
@@ -72,7 +74,7 @@ export default async function Imagem({ params }: { params: Promise<{ id: string 
           <div style={{ display: "flex", fontSize: nome.length > 26 ? 50 : 62, fontWeight: 800, lineHeight: 1.05 }}>
             {nome}
           </div>
-          <div style={{ display: "flex", fontSize: 36, color: "#a2441f", fontWeight: 700 }}>
+          <div style={{ display: "flex", fontSize: 36, color: terra, fontWeight: 700 }}>
             {total ? `está contratando · ${plural(total, "vaga aberta", "vagas abertas")}` : "Vagas no Publike"}
           </div>
         </div>

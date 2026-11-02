@@ -50,14 +50,17 @@ export function PaginaDeVagas({
   site,
   noAr,
   texto,
+  apelido = null,
 }: {
   perfilId: string;
   site: string;
   noAr: number;
   /** a mensagem do WhatsApp: as vagas e o link (textoDasVagas) */
   texto: string;
+  /** com a página de carreiras liberada: o endereço curto (publike.org/v/apelido) */
+  apelido?: string | null;
 }) {
-  const link = `${site}/perfil/${perfilId}/vagas`;
+  const link = apelido ? `${site}/v/${apelido}` : `${site}/perfil/${perfilId}/vagas`;
   const whatsapp = `https://wa.me/?text=${encodeURIComponent(texto)}`;
 
   return (

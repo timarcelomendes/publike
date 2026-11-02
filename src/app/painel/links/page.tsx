@@ -1,4 +1,5 @@
-import { Link2 } from "lucide-react";
+import { Link2, Palette } from "lucide-react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -6,12 +7,13 @@ import { BotoesDoLink } from "@/components/painel/links-para-mandar";
 import { KitDeDivulgacao } from "@/components/painel/kit-de-divulgacao";
 import { PaginaDeVagas } from "@/components/painel/pagina-de-vagas";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Vazio } from "@/components/ui/basicos";
+import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { obterMeuPerfil } from "@/lib/dados";
 import { ateQuando, plural } from "@/lib/formato";
 import { caminhoDaConta } from "@/lib/servidor/caminho";
+import { marcaDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { linkDasVagas, textoDasVagas } from "@/lib/vagas-da-empresa";
@@ -35,6 +37,7 @@ async function Conteudo() {
   await exigirUsuario("/painel/links");
   const [perfil, caminho, agora] = await Promise.all([obterMeuPerfil(), caminhoDaConta(), agoraDaRequisicao()]);
   if (!perfil) return null;
+  const marca = perfil.tipo === "pessoa" ? null : await marcaDaEmpresa(perfil.id);
   const noAr = caminho.vagas.filter((v) => v.anuncio.status === "ativo");
   const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));
   const finalistas = caminho.vagas.filter((v) => v.link && Date.parse(v.link.expira_em) >= agora);
@@ -43,7 +46,7 @@ async function Conteudo() {
     .filter((v) => v.anuncio.tipo === "vaga" && Date.parse(v.anuncio.expira_em) > agora)
     .map((v) => v.anuncio);
   const texto = (origem: string, curto = false) =>
-    textoDasVagas(perfil.nome, vagasNoAr, linkDasVagas(SITE_URL, perfil.id, origem), { curto });
+    textoDasVagas(perfil.nome, vagasNoAr, linkDasVagas(SITE_URL, perfil.id, origem, marca?.apelido), { curto });
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,7 +58,33 @@ async function Conteudo() {
         </p>
       </div>
 
-      <PaginaDeVagas perfilId={perfil.id} site={SITE_URL} noAr={caminho.vagasNoAr} texto={texto("whatsapp")} />
+      <PaginaDeVagas
+        perfilId={perfil.id}
+        site={SITE_URL}
+        noAr={caminho.vagasNoAr}
+        texto={texto("whatsapp")}
+        apelido={marca?.apelido ?? null}
+      />
+
+      {perfil.tipo !== "pessoa" && (
+        <Link
+          href="/painel/links/pagina"
+          className="flex items-center gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card hover:bg-surface-300 sm:p-5"
+        >
+          <Palette aria-hidden className="size-5 shrink-0 text-ink-muted" />
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-2 text-label">
+              Página de carreiras
+              <Selo variante="novo">Novo</Selo>
+            </span>
+            <span className="block text-body-sm text-ink-muted">
+              {marca
+                ? "A cor da marca, a capa, por que trabalhar aí e o endereço curto."
+                : "Com a cara da empresa: cor da marca, capa, benefícios e endereço curto. Libera com mais de 10 vagas publicadas ou com uma assinatura."}
+            </span>
+          </span>
+        </Link>
+      )}
 
       <KitDeDivulgacao
         perfilId={perfil.id}
