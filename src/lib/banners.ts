@@ -1,8 +1,11 @@
-// Banners: um aviso em janela (popup) criado no admin, para ver vagas novas, uma busca de vagas, uma
-// página do site ou compartilhar o Publike, nas páginas escolhidas (a inicial, por padrão), depois
-// de alguns segundos. Um por vez, uma vez por navegador (o cookie guarda os que já apareceram).
+// Banners: um aviso criado no admin, para ver vagas novas, uma busca de vagas, uma página do site ou
+// compartilhar o Publike. Em dois formatos: a janela (popup), nas páginas escolhidas (a inicial, por
+// padrão), depois de alguns segundos; ou o cartão "Do Publike", no meio da lista da página inicial
+// (quem não tem conta) e da linha do tempo (quem tem). Uma vez por navegador, ou de novo a cada N dias
+// (o cookie guarda os que já apareceram).
 // Banco: migrações 20261029120000_banners.sql, 20261117120000_banners_paginas_e_atraso.sql,
-// 20261213120000_banners_imagem.sql e 20261214120000_banners_filtros.sql (para quem).
+// 20261213120000_banners_imagem.sql, 20261214120000_banners_filtros.sql (para quem) e
+// 20270118120000_novidades_do_publike.sql (o formato e /novidades).
 
 export const ACOES_BANNER = {
   novas: "Ver as vagas novas",
@@ -20,6 +23,13 @@ export const PUBLICOS_BANNER = {
   empresas: "Quem contrata (comércio, empresa, agência ou visitante que procura funcionário)",
 } as const;
 export type PublicoBanner = keyof typeof PUBLICOS_BANNER;
+
+/** Como o banner aparece (migração 20270118120000; sem ela, todos são janela). */
+export const FORMATOS_BANNER = {
+  janela: "Janela por cima da página",
+  cartao: "Cartão “Do Publike” no meio da lista",
+} as const;
+export type FormatoBanner = keyof typeof FORMATOS_BANNER;
 
 /** Onde o banner pode abrir. */
 export const PAGINAS_BANNER = {
@@ -139,6 +149,10 @@ export type BannerNoAr = {
   atraso: number;
   /** a imagem do alto da janela (sem ela, o ícone da ação) */
   imagem?: string | null;
+  /** a janela (nas páginas e depois da espera) ou o cartão "Do Publike" (no meio da lista) */
+  formato: FormatoBanner;
+  /** também em /novidades (fica lá depois que sair do ar) */
+  novidades?: boolean;
 };
 
 /**

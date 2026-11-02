@@ -11,6 +11,7 @@ import {
   Link2,
   LogOut,
   Moon,
+  Megaphone,
   Newspaper,
   ShieldCheck,
   Sun,
@@ -92,6 +93,7 @@ export function MenuUsuario({
   temPerfil,
   moderador,
   empresa = false,
+  novidade = false,
 }: {
   nome: string;
   foto: string | null;
@@ -100,6 +102,8 @@ export function MenuUsuario({
   moderador: boolean;
   /** comércio, empresa ou agência: a página de vagas no lugar do currículo */
   empresa?: boolean;
+  /** tem novidade do Publike que a pessoa ainda não viu em /novidades (o ponto) */
+  novidade?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -127,9 +131,17 @@ export function MenuUsuario({
         onClick={() => setAberto((v) => !v)}
         className="flex min-h-11 items-center gap-1 rounded-pill p-1 hover:bg-surface-300"
       >
-        <Avatar nome={nome} foto={foto} tamanho={34} />
+        <span className="relative">
+          <Avatar nome={nome} foto={foto} tamanho={34} />
+          {novidade && (
+            <span
+              aria-hidden
+              className="absolute -top-0.5 -right-0.5 size-3 rounded-pill bg-terra shadow-[0_0_0_2px_var(--pk-surface-100)]"
+            />
+          )}
+        </span>
         <ChevronDown aria-hidden className="hidden size-4 text-ink-muted sm:block" />
-        <span className="sr-only">Menu da conta</span>
+        <span className="sr-only">Menu da conta{novidade ? " (tem novidade do Publike)" : ""}</span>
       </button>
       {aberto && (
         <div
@@ -199,6 +211,16 @@ export function MenuUsuario({
               {/* as Notícias saíram do topo: ficam aqui e no rodapé */}
               <Item href="/noticias" icone={Newspaper}>
                 Notícias
+              </Item>
+              <Item href="/novidades" icone={Megaphone}>
+                <span className="flex flex-1 items-center justify-between gap-2">
+                  Novidades do Publike
+                  {novidade && (
+                    <span className="rounded-pill bg-terra px-2 py-0.5 text-[12px] leading-4 font-bold text-on-terra">
+                      Nova
+                    </span>
+                  )}
+                </span>
               </Item>
               <Item href="/ajuda" icone={CircleHelp}>
                 Ajuda

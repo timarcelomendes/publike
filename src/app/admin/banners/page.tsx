@@ -163,6 +163,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     imagem: editar.imagem ?? null,
     filtro: filtroDe(editar),
     contas: idsDoEditado.map((i) => emailDe.get(i) || i).join("\n"),
+    // sem a migração 20270118120000: janela, fora de Novidades
+    formato: editar.formato === "cartao" ? "cartao" : "janela",
+    em_novidades: editar.em_novidades ?? false,
   };
 
   return (
@@ -170,14 +173,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
       <SubAbas ativa={aba} total={banners.length} editando={editar?.titulo ?? null} />
       {salvo && aba === "lista" && (
         <Aviso tipo="sucesso" titulo={salvo === "novo" ? "Banner criado" : "Banner salvo"}>
-          Quem abrir a página inicial vê o banner depois de 3 segundos.
+          Quem abrir as páginas escolhidas vê o banner (o cartão, no meio da lista e da linha do tempo).
         </Aviso>
       )}
       {aba === "form" && (
         <Secao
           id="formulario"
           titulo={editar ? "Editar o banner" : "Novo banner"}
-          descricao="Uma janela nas páginas que você escolher, alguns segundos depois de abrir. Na visita em que já apareceu outra janela (as boas-vindas, a pergunta da inicial, o aviso de cookies ou outro banner), o banner fica para a próxima."
+          descricao="Uma janela nas páginas que você escolher, alguns segundos depois de abrir (na visita em que já apareceu outra janela, fica para a próxima), ou um cartão “Do Publike” no meio da lista da inicial e da linha do tempo, como um patrocinado."
           acoes={
             banners.length > 0 && (
               <Link href="/admin/banners" className={classesBotao("fantasma", "sm")}>
@@ -230,8 +233,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
                         {b.repetir_dias === null
                           ? " · só uma vez"
                           : ` · de novo a cada ${b.repetir_dias} ${b.repetir_dias === 1 ? "dia" : "dias"}`}
-                        {` · ${(b.paginas ?? ["inicio"]).map((p) => PAGINAS_BANNER[p as PaginaBanner] ?? p).join(", ")}`}
-                        {` · depois de ${b.atraso_segundos ?? 3} s`}
+                        {b.formato === "cartao"
+                          ? " · cartão na lista e na linha do tempo"
+                          : ` · ${(b.paginas ?? ["inicio"]).map((p) => PAGINAS_BANNER[p as PaginaBanner] ?? p).join(", ")} · depois de ${b.atraso_segundos ?? 3} s`}
+                        {b.em_novidades ? " · também em Novidades" : ""}
                         {b.inicio ? ` · de ${formatarDataCurta(b.inicio)}` : ""}
                         {b.fim ? ` · até ${formatarDataCurta(diaDeBrasilia(b.fim, true) + "T12:00:00-03:00")}` : ""}
                       </p>

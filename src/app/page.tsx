@@ -12,6 +12,7 @@ import { NovosPerto } from "@/components/home/novos-perto";
 import { CombinamComVoce } from "@/components/home/combinam";
 import { LateralDaLinha } from "@/components/home/linha/lateral-da-linha";
 import { LinhaDoTempo } from "@/components/home/linha/linha-do-tempo";
+import { CartaoDaVisita } from "@/components/cartao-da-visita";
 import { TopoDaConta } from "@/components/home/linha/topo-da-conta";
 import { EsqueletoCards } from "@/components/card-anuncio";
 import { ColunaDoMapa } from "@/components/explorar/visao-explorar";
@@ -94,7 +95,14 @@ function HomeVisitante({ searchParams }: { searchParams: Parametros }) {
       />
       <div id="vagas" className="mt-2 scroll-mt-20 sm:mt-4">
         <Suspense fallback={<ExplorarEsqueleto />}>
-          <Explorar searchParams={searchParams} />
+          <Explorar
+            searchParams={searchParams}
+            doPublike={
+              <Suspense fallback={null}>
+                <CartaoDaVisita jeito="lista" />
+              </Suspense>
+            }
+          />
         </Suspense>
       </div>
       <Suspense fallback={null}>
@@ -244,7 +252,18 @@ async function CentroDaLinha({
           <CombinamComVoce />
         </Suspense>
       )}
-      <LinhaDoTempo searchParams={searchParams} meio={meio} soOlhar={soOlhar} />
+      <LinhaDoTempo
+        searchParams={searchParams}
+        meio={meio}
+        soOlhar={soOlhar}
+        doPublike={
+          soOlhar ? null : (
+            <Suspense fallback={null}>
+              <CartaoDaVisita jeito="linha" />
+            </Suspense>
+          )
+        }
+      />
     </>
   );
 }

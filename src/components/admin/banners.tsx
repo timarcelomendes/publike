@@ -6,6 +6,7 @@ import { protegerAcao } from "@/lib/acao-segura";
 import { apagarBanner, ligarBanner, salvarBanner } from "@/lib/acoes/admin-banners";
 import {
   ACOES_BANNER,
+  FORMATOS_BANNER,
   PAGINAS_BANNER,
   palavraDoLink,
   PUBLICOS_BANNER,
@@ -13,12 +14,13 @@ import {
   temFiltro,
   type AcaoBanner,
   type FiltroBanner,
+  type FormatoBanner,
   type PaginaBanner,
   type PublicoBanner,
 } from "@/lib/banners";
 import { CATEGORIAS, CIDADES, LISTA_TIPOS_CONTA, TIPOS_CONTA } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
-import { Aviso } from "../ui/basicos";
+import { Aviso, Simbolo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { Campo, classesEntrada, ligarCampo, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -45,6 +47,10 @@ export type BannerParaEditar = {
   filtro: FiltroBanner;
   /** as contas escolhidas: o e-mail (ou o código) de cada uma, uma por linha */
   contas: string;
+  /** a janela ou o cartão "Do Publike" (migração 20270118) */
+  formato: FormatoBanner;
+  /** também em /novidades */
+  em_novidades: boolean;
 };
 
 /**
@@ -80,7 +86,7 @@ const ICONES: Record<AcaoBanner, LucideIcon> = {
   compartilhar: Share2,
 };
 
-/** Criar (sem `banner`) ou editar um banner, com a prévia de como fica a janela. */
+/** Criar (sem `banner`) ou editar um banner, com a prévia de como fica a janela (ou o cartão). */
 export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
   const id = banner?.id ?? null;
   const salvarProtegido = useMemo(() => protegerAcao(salvarBanner.bind(null, id)), [id]);
@@ -96,6 +102,8 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
   const [botaoMexido, setBotaoMexido] = useState(Boolean(banner));
   const [repetir, setRepetir] = useState(banner?.repetir_dias != null);
   const [daArea, setDaArea] = useState(banner?.busca_da_area ?? false);
+  const [formato, setFormato] = useState<FormatoBanner>(banner?.formato ?? "janela");
+  const cartao = formato === "cartao";
   // a imagem: a que já está salva, ou a escolhida agora (só a prévia no navegador)
   const [imagemSalva, setImagemSalva] = useState(banner?.imagem ?? null);
   const [escolhida, setEscolhida] = useState<{ arquivo: File; previa: string } | null>(null);
@@ -141,6 +149,34 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             {estado.erro}
           </Aviso>
         )}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-label">Formato</legend>
+          <input type="hidden" name="formato_antes" value={banner?.formato ?? "janela"} />
+          {(Object.keys(FORMATOS_BANNER) as FormatoBanner[]).map((f) => (
+            <label
+              key={f}
+              className="flex min-h-11 cursor-pointer items-start gap-3 rounded-sm border border-line px-3 py-2.5 has-checked:border-ink"
+            >
+              <input
+                type="radio"
+                name="formato"
+                value={f}
+                checked={formato === f}
+                onChange={() => setFormato(f)}
+                className="mt-0.5 size-4 shrink-0 accent-[var(--pk-ink)]"
+              />
+              <span>
+                <span className="block text-body">{FORMATOS_BANNER[f]}</span>
+                <span className="block text-body-sm text-ink-muted">
+                  {f === "janela"
+                    ? "Abre por cima, nas páginas e depois da espera que você escolher."
+                    : "Como um patrocinado: na lista da página inicial (sem conta) e na linha do tempo (com conta), depois dos 3 primeiros. Conta como visto quando fica metade na tela por 1 segundo e some depois."}
+                </span>
+              </span>
+            </label>
+          ))}
+          {erros.formato && <p className="text-body-sm text-danger">{erros.formato}</p>}
+        </fieldset>
         <Campo rotulo="Título" nome="titulo" erro={erros.titulo}>
           <input
             {...ligarCampo("titulo", erros.titulo)}
@@ -167,8 +203,10 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             Imagem <span className="font-normal text-ink-muted">(opcional)</span>
           </span>
           <span className="text-body-sm text-ink-muted">
-            Vai no alto da janela, de ponta a ponta. Melhor deitada (como 16:9), sem texto miúdo: no celular ela fica
-            com uns 360 px de largura.
+            {cartao
+              ? "No cartão, vai em cima no celular e à esquerda no computador."
+              : "Vai no alto da janela, de ponta a ponta."}{" "}
+            Melhor deitada (como 16:9), sem texto miúdo: no celular ela fica com uns 360 px de largura.
           </span>
           <input type="hidden" name="imagem_atual" value={imagemSalva ?? ""} />
           {!imagemNaPrevia && banner?.imagem && <input type="hidden" name="imagem_tirar" value="1" />}
@@ -301,7 +339,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
           </Seletor>
         </Campo>
         <ParaQuem filtro={banner?.filtro ?? SEM_FILTRO} contas={banner?.contas ?? ""} erros={erros} />
-        <fieldset className="flex flex-col gap-2" aria-describedby="paginas-ajuda">
+        <fieldset className={cartao ? "hidden" : "flex flex-col gap-2"} aria-describedby="paginas-ajuda">
           <legend className="mb-1.5 text-label">Onde abre</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {(Object.keys(PAGINAS_BANNER) as PaginaBanner[]).map((p) => (
@@ -328,6 +366,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             </p>
           )}
         </fieldset>
+        <div className={cartao ? "hidden" : "contents"}>
         <Campo
           rotulo="Espera para abrir"
           nome="atraso_segundos"
@@ -346,6 +385,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             <span className="text-body">segundos</span>
           </span>
         </Campo>
+        </div>
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1.5 text-label">Quantas vezes aparece</legend>
           <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm border border-line px-3 has-checked:border-ink">
@@ -414,6 +454,22 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             />
           </Campo>
         </div>
+        <input type="hidden" name="novidades_antes" value={banner?.em_novidades ? "1" : ""} />
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-sm border border-line px-3 py-2.5 has-checked:border-ink">
+          <input
+            type="checkbox"
+            name="em_novidades"
+            defaultChecked={banner?.em_novidades ?? false}
+            className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+          />
+          <span>
+            <span className="block text-body">Também em Novidades</span>
+            <span className="block text-body-sm text-ink-muted">
+              Fica na página /novidades (“Novidades do Publike”), mesmo depois que sair do ar. Desligado, sai de lá
+              também.
+            </span>
+          </span>
+        </label>
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             type="checkbox"
@@ -421,7 +477,9 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             defaultChecked={banner?.ativo ?? true}
             className="size-5 accent-[var(--pk-ink)]"
           />
-          <span className="text-body">Ligado (aparece nas páginas escolhidas)</span>
+          <span className="text-body">
+            {cartao ? "Ligado (aparece na lista e na linha do tempo)" : "Ligado (aparece nas páginas escolhidas)"}
+          </span>
         </label>
         <div>
           <Botao type="submit" variante="primario" disabled={enviando}>
@@ -436,7 +494,39 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
           <Eye aria-hidden className="size-4" />
           Prévia
         </p>
-        <div aria-hidden className="rounded-lg bg-veu p-4">
+        {cartao && (
+          <div aria-hidden className="rounded-lg bg-surface-100 p-4">
+            <div className="relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
+              {imagemNaPrevia && (
+                // eslint-disable-next-line @next/next/no-img-element -- a prévia da imagem escolhida
+                <img src={imagemNaPrevia} alt="" className="block max-h-40 w-full object-cover" />
+              )}
+              <span className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-pill bg-surface-200/90">
+                <X className="size-4 text-ink-muted" />
+              </span>
+              <div className="flex flex-col gap-3 p-4">
+                <span className="inline-flex items-center gap-1.5 text-label">
+                  <Simbolo altura={18} />
+                  Do Publike
+                </span>
+                <div>
+                  <p className="font-display text-[17px] leading-[22px] font-bold text-balance">
+                    {titulo || "Título do banner"}
+                  </p>
+                  {texto && <p className="mt-1 text-body-sm whitespace-pre-line text-ink-muted">{texto}</p>}
+                </div>
+                <span className="inline-flex min-h-10 items-center gap-2 self-start rounded-md bg-terra px-3.5 text-label text-on-terra">
+                  {botao || "Botão"}
+                  <ArrowRight className="size-4" />
+                </span>
+              </div>
+            </div>
+            <p className="mt-3 text-body-sm text-ink-muted">
+              No computador, a imagem fica à esquerda e o cartão vai de ponta a ponta da lista.
+            </p>
+          </div>
+        )}
+        <div aria-hidden className={cartao ? "hidden" : "rounded-lg bg-veu p-4"}>
           <div className="flex flex-col gap-4 overflow-hidden rounded-lg border border-line-strong bg-surface-200 p-5 shadow-raised">
             {imagemNaPrevia ? (
               <div className="relative -mx-5 -mt-5">

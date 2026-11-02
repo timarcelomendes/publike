@@ -53,18 +53,18 @@ function cookieDosBanners() {
 }
 
 /** Já apareceu neste navegador (hoje, ou "só uma vez", ou tocou no botão)? */
-function jaViu(banner: BannerNoAr) {
+export function jaViu(banner: BannerNoAr) {
   const visto = lerBannersVistos(decodeURIComponent(cookieDosBanners())).get(banner.id);
   return !podeMostrar(banner.repetir_dias, visto, diaDeHoje(Date.now()));
 }
 
 /** Guarda que este navegador viu o banner hoje (ou tocou no botão), por um ano. */
-function marcarVisto(id: string, clicou = false) {
+export function marcarVisto(id: string, clicou = false) {
   const valor = valorComBannerVisto(decodeURIComponent(cookieDosBanners()), id, diaDeHoje(Date.now()), clicou);
   document.cookie = `${COOKIE_BANNERS}=${encodeURIComponent(valor)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
-function contar(id: string, evento: "visto" | "clique" | "fechou") {
+export function contar(id: string, evento: "visto" | "clique" | "fechou") {
   const corpo = JSON.stringify({ id, evento });
   try {
     if (navigator.sendBeacon?.("/api/banners", new Blob([corpo], { type: "application/json" }))) return;

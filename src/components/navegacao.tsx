@@ -57,6 +57,9 @@ export function Rodape() {
           <Link href="/noticias" className={link}>
             Notícias
           </Link>
+          <Link href="/novidades" className={link}>
+            Novidades do Publike
+          </Link>
           <Link href="/?tipo=servico" className={link}>
             Serviços
           </Link>

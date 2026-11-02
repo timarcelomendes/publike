@@ -161,6 +161,7 @@ export async function Explorar({
   acimaDoMapa = null,
   abasDaBusca = false,
   contrata = false,
+  doPublike = null,
 }: {
   searchParams: Parametros;
   variante?: "vitrine" | "feed";
@@ -179,6 +180,8 @@ export async function Explorar({
    * trabalho (o % de match, o convite para o currículo e o "Oferecer meus serviços")
    */
   contrata?: boolean;
+  /** o cartão "Do Publike" (só na vitrine de quem não tem conta, sem busca por palavra) */
+  doPublike?: ReactNode;
 }) {
   const feed = variante === "feed";
   const parametros = await searchParams;
@@ -372,6 +375,7 @@ export async function Explorar({
             : "grid grid-flow-row-dense grid-cols-1 gap-4 sm:grid-cols-2 group-data-[visao=blocos]/visao:lg:grid-cols-3 group-data-[visao=grade]/visao:grid-cols-2 group-data-[visao=grade]/visao:gap-3 group-data-[visao=grade]/visao:sm:grid-cols-3 group-data-[visao=grade]/visao:lg:grid-cols-4 group-data-[visao=lista]/visao:grid-cols-1 group-data-[visao=lista]/visao:gap-2"
         }
         itens={anuncios.map((a) => ({ id: a.id, lat: a.lat, lng: a.lng }))}
+        entre={!feed && !usuario && !busca && !filtros.meus ? doPublike : null}
         cartoes={anuncios.map((a) => (
           <Fragment key={a.id}>
             <CardAnuncio

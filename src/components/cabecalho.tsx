@@ -1,3 +1,4 @@
+import { haNovidadeNova } from "@/lib/servidor/novidades";
 import { Laptop, Search } from "lucide-react";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
@@ -165,7 +166,11 @@ async function AreaUsuario() {
       </>
     );
   }
-  const [perfil, moderador] = await Promise.all([obterMeuPerfil(), ehModerador()]);
+  const [perfil, moderador, novidade] = await Promise.all([
+    obterMeuPerfil(),
+    ehModerador(),
+    haNovidadeNova().catch(() => false),
+  ]);
   return (
     <>
       {adminLocal && <LinkAdmin />}
@@ -178,6 +183,7 @@ async function AreaUsuario() {
         temPerfil={Boolean(perfil)}
         moderador={moderador}
         empresa={Boolean(perfil && perfil.tipo !== "pessoa")}
+        novidade={novidade}
       />
     </>
   );

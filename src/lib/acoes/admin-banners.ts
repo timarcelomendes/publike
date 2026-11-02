@@ -1,10 +1,11 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   ACOES_BANNER,
   caminhoDoSite,
+  FORMATOS_BANNER,
   LINK_VAGAS_NOVAS,
   linkDaBusca,
   PAGINAS_BANNER,
@@ -67,6 +68,8 @@ async function lerContas(
   return { ids: [...achados], naoAchadas };
 }
 
+const SEM_MIGRACAO_CARTAO =
+  "Para o cartão Do Publike e as Novidades, rode antes a migração 20270118120000_novidades_do_publike.sql no Supabase.";
 const SEM_MIGRACAO_IMAGEM = "Para pôr imagem, rode antes a migração 20261213120000_banners_imagem.sql no Supabase.";
 
 function texto(formData: FormData, nome: string) {
@@ -125,10 +128,23 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     }
   }
 
-  const paginas = formData.getAll("paginas").filter((p): p is string => typeof p === "string" && p in PAGINAS_BANNER);
-  if (!paginas.length) erros.paginas = "Escolha pelo menos uma página.";
-  const atraso = Number(texto(formData, "atraso_segundos") || "3");
-  if (!Number.isInteger(atraso) || atraso < 0 || atraso > 60) erros.atraso_segundos = "De 0 a 60 segundos.";
+  // o cartão não usa as páginas nem a espera (ficam guardadas como estavam, para voltar à janela)
+  const formatoTexto = texto(formData, "formato") || "janela";
+  const formato = formatoTexto in FORMATOS_BANNER ? (formatoTexto as keyof typeof FORMATOS_BANNER) : null;
+  if (!formato) erros.formato = "Escolha o formato.";
+  const janela = formato !== "cartao";
+  let paginas = formData.getAll("paginas").filter((p): p is string => typeof p === "string" && p in PAGINAS_BANNER);
+  if (!paginas.length && janela) erros.paginas = "Escolha pelo menos uma página.";
+  if (!paginas.length) paginas = ["inicio"];
+  let atraso = Number(texto(formData, "atraso_segundos") || "3");
+  if (!Number.isInteger(atraso) || atraso < 0 || atraso > 60) {
+    if (janela) erros.atraso_segundos = "De 0 a 60 segundos.";
+    else atraso = 3;
+  }
+  const emNovidades = formData.get("em_novidades") === "on";
+  // só manda as colunas novas quando precisa: a janela de sempre salva mesmo sem a migração 20270118
+  const comNovidades =
+    !janela || emNovidades || texto(formData, "formato_antes") === "cartao" || texto(formData, "novidades_antes") === "1";
 
   const inicioTexto = texto(formData, "inicio");
   const fimTexto = texto(formData, "fim");
@@ -207,6 +223,7 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     ...(imagem || atual || formData.get("imagem_tirar") === "1" ? { imagem } : {}),
     // sem filtro nenhum (e sem ter tido antes), nem manda as colunas: salva mesmo sem a migração 20261214
     ...(temFiltro(filtro) || formData.get("filtros_antes") === "1" ? filtro : {}),
+    ...(comNovidades ? { formato: formato ?? "janela", em_novidades: emNovidades } : {}),
     inicio,
     fim,
     ativo: formData.get("ativo") === "on",
@@ -215,6 +232,8 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     ? await c.from("banners").update(dados).eq("id", id).select("id").single()
     : await c.from("banners").insert(dados).select("id").single();
   if (error?.code === "PGRST204" && error.message.includes("imagem")) return { ok: false, erro: SEM_MIGRACAO_IMAGEM };
+  if (error?.code === "PGRST204" && /formato|em_novidades/.test(error.message))
+    return { ok: false, erro: SEM_MIGRACAO_CARTAO };
   if (error?.code === "PGRST204") return { ok: false, erro: SEM_MIGRACAO_FILTROS };
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   // as contas escolhidas: troca a lista toda
@@ -230,6 +249,8 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
         return { ok: false, erro: `O banner salvou, mas as contas escolhidas não: ${mensagemDeErro(erroContas)}` };
     }
   }
+  // a página /novidades (no site rodando aqui; na Vercel, em até 15 minutos)
+  updateTag("novidades");
   redirect(`/admin/banners?salvo=${id ? "editado" : "novo"}`);
 }
 
@@ -241,6 +262,7 @@ export async function ligarBanner(id: string, ativo: boolean): Promise<Resultado
   const { error } = await c.from("banners").update({ ativo }).eq("id", id);
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
+  updateTag("novidades");
   return { ok: true, mensagem: ativo ? "Banner ligado." : "Banner desligado." };
 }
 
@@ -252,5 +274,6 @@ export async function apagarBanner(id: string): Promise<Resultado> {
   const { error } = await c.from("banners").delete().eq("id", id);
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
+  updateTag("novidades");
   return { ok: true, mensagem: "Banner apagado." };
 }

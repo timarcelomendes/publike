@@ -29,6 +29,7 @@ const NOMES: Record<string, string> = {
   "/gratis": "O Publike é grátis",
   "/missao": "Nossa missão",
   "/noticias": "Notícias",
+  "/novidades": "Novidades do Publike",
   "/noticias/[slug]": "Uma notícia",
   "/painel": "Painel",
   "/painel/anuncio/[id]": "Painel › Vaga",

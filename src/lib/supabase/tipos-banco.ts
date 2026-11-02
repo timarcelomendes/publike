@@ -961,6 +961,10 @@ export type Database = {
           cidades: string[];
           conta_ate_dias: number | null;
           so_contas: boolean;
+          /** "janela" ou "cartao" (o cartão Do Publike na lista e na linha do tempo; migração 20270118) */
+          formato: "janela" | "cartao";
+          /** também em /novidades (migração 20270118) */
+          em_novidades: boolean;
           criado_em: string;
           atualizado_em: string;
         };
@@ -985,6 +989,8 @@ export type Database = {
           cidades?: string[];
           conta_ate_dias?: number | null;
           so_contas?: boolean;
+          formato?: "janela" | "cartao";
+          em_novidades?: boolean;
         };
         Update: {
           titulo?: string;
@@ -1007,6 +1013,8 @@ export type Database = {
           cidades?: string[];
           conta_ate_dias?: number | null;
           so_contas?: boolean;
+          formato?: "janela" | "cartao";
+          em_novidades?: boolean;
         };
         Relationships: [];
       };
@@ -1035,6 +1043,19 @@ export type Database = {
       minha_pagina_de_vagas: {
         Args: Record<PropertyKey, never>;
         Returns: Json;
+      };
+      novidades_do_publike: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          titulo: string;
+          texto: string | null;
+          botao: string;
+          acao: string;
+          link: string | null;
+          imagem: string | null;
+          quando: string;
+        }[];
       };
       pagina_de_vagas_publica: {
         Args: { p_conta: string };

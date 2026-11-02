@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import {
   ATRASO_PADRAO,
   COOKIE_BANNERS,
@@ -11,6 +12,7 @@ import {
   podeMostrar,
   type AcaoBanner,
   type BannerNoAr,
+  type FormatoBanner,
   type FiltroBanner,
   paraQuemVe,
   type QuemVeBanner,
@@ -55,12 +57,25 @@ function areaDoCurriculo(data: { titulo: string | null; experiencias: unknown })
 }
 
 /**
- * Os banners que podem aparecer para quem chega, do mais novo para o mais antigo: ligados (dentro das
+ * As janelas que podem aparecer para quem chega, do mais novo para o mais antigo: ligados (dentro das
  * datas), para o público dela (visitante, conta de pessoa ou de empresa) e que ela ainda pode ver (nunca
  * visto, ou com repetição e já passados os dias, sem ter tocado no botão). Conta o que o navegador e a
  * conta (em qualquer aparelho) já viram. O navegador escolhe o primeiro da página aberta.
  */
 export async function bannersDaVisita(): Promise<BannerNoAr[]> {
+  return (await bannersQuePodem()).filter((b) => b.formato === "janela").slice(0, 8);
+}
+
+/**
+ * O cartão "Do Publike" que entra no meio da lista (sem conta) ou da linha do tempo (com conta): o
+ * mais novo que a pessoa ainda pode ver. Não usa as páginas nem a espera da janela.
+ */
+export async function cartaoDaVisita(): Promise<BannerNoAr | null> {
+  return (await bannersQuePodem().catch(() => [])).find((b) => b.formato === "cartao") ?? null;
+}
+
+/** Os banners (janelas e cartões) que a pessoa pode ver: uma leitura só por requisição. */
+const bannersQuePodem = cache(async (): Promise<BannerNoAr[]> => {
   if (MODO_DEMO) return [];
   const [usuario, jar, agora] = await Promise.all([obterUsuario(), cookies(), agoraDaRequisicao()]);
   const perfil = usuario ? await obterMeuPerfil().catch(() => null) : null;
@@ -91,13 +106,16 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
     atraso_segundos?: number;
     busca_da_area?: boolean;
     imagem?: string | null;
+    formato?: string;
+    em_novidades?: boolean;
   };
   const basicas = "id, titulo, texto, botao, acao, link, repetir_dias";
   const comPaginas = `${basicas}, paginas, atraso_segundos, busca_da_area`;
   const comFiltros = `${comPaginas}, imagem, tipos_conta, categorias, curriculo, cidades, conta_ate_dias, so_contas`;
-  let { data, error } = await consulta(comFiltros).returns<Linha[]>();
-  // sem a migração 20261214120000: sem os filtros (para quem); sem a 20261213120000: sem imagem; sem a
+  let { data, error } = await consulta(`${comFiltros}, formato, em_novidades`).returns<Linha[]>();
+  // sem a migração 20270118120000: todos são janela, e nenhum em /novidades; sem a 20261214120000: sem os filtros (para quem); sem a 20261213120000: sem imagem; sem a
   // 20261117120000: só a inicial, em 3 segundos
+  if (error?.code === "42703") ({ data, error } = await consulta(comFiltros).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(`${comPaginas}, imagem`).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(comPaginas).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(basicas).returns<Linha[]>());
@@ -131,7 +149,7 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
   const podem = data
     .filter((b) => paraQuemVe(b.id, filtroDe(b), quem, agora))
     .filter((b) => podeMostrar(b.repetir_dias, juntarVistos(doNavegador.get(b.id), daConta.get(b.id)), hoje))
-    .slice(0, 8);
+    .slice(0, 12);
   // a busca pela área de quem vê (só lida quando algum banner pede)
   const area =
     usuario && podem.some((b) => b.acao === "busca" && b.busca_da_area) ? await areaDaConta(usuario.id) : null;
@@ -146,8 +164,10 @@ export async function bannersDaVisita(): Promise<BannerNoAr[]> {
     paginas: (b.paginas?.length ? b.paginas : ["inicio"]).filter((x): x is PaginaBanner => x in PAGINAS_BANNER),
     atraso: b.atraso_segundos ?? ATRASO_PADRAO,
     imagem: b.imagem ?? null,
+    formato: (b.formato === "cartao" ? "cartao" : "janela") as FormatoBanner,
+    novidades: b.em_novidades ?? false,
   }));
-}
+});
 
 /**
  * Quem está vendo, para os filtros do banner: o tipo e a cidade da conta, quando foi criada, se tem

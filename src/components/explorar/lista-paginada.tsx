@@ -35,6 +35,7 @@ export function ListaPaginada({
   itens,
   cartoes,
   depois,
+  entre,
   className,
 }: {
   itens: { id: string; lat: number; lng: number }[];
@@ -42,6 +43,11 @@ export function ListaPaginada({
   cartoes: ReactNode[];
   /** o que vem no fim da lista (avisos), na última página */
   depois?: ReactNode;
+  /**
+   * o que entra uma vez no meio da primeira página, depois do 3º cartão (o cartão "Do Publike"): de ponta a
+   * ponta da grade, que é densa, fica logo embaixo da primeira linha cheia e não toma o lugar de um anúncio
+   */
+  entre?: ReactNode;
   className: string;
 }) {
   const area = useAreaDoMapa();
@@ -79,8 +85,11 @@ export function ListaPaginada({
       )}
       {desta.length > 0 && (
         <div className={className}>
-          {desta.map((it) => (
-            <Fragment key={it.id}>{cartoes[it.i]}</Fragment>
+          {desta.map((it, i) => (
+            <Fragment key={it.id}>
+              {cartoes[it.i]}
+              {n === 1 && entre && i === Math.min(desta.length, 3) - 1 && entre}
+            </Fragment>
           ))}
           {n === paginas && depois}
         </div>
