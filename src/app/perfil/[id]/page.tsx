@@ -7,6 +7,7 @@ import { Suspense, type ReactNode } from "react";
 import { ListaAvaliacoes, NotaDoProfissional } from "@/components/avaliacoes";
 import { CardAnuncio } from "@/components/card-anuncio";
 import { CnpjDoPerfil } from "@/components/cnpj-agencia";
+import { AvisoSemCurriculo } from "@/components/curriculo/sem-curriculo";
 import { SecaoRecados } from "@/components/recados/secao-recados";
 import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { BotaoSeguir } from "@/components/social/botoes";
@@ -74,7 +75,9 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
   const pessoa = perfil.tipo === "pessoa";
   // a própria pessoa: o que ela faz (o que marcou no perfil e o título do currículo)
   const [modos, curriculo] =
-    meu && pessoa ? await Promise.all([modosMarcados(), obterMeuCurriculo().catch(() => null)]) : [null, null];
+    meu && pessoa ? await Promise.all([modosMarcados(), obterMeuCurriculo().catch(() => undefined)]) : [null, null];
+  // quem procura trabalho e ainda não tem currículo: o botão vira "Fazer meu currículo" e o aviso aparece no alto
+  const semCurriculo = Boolean(modos?.includes("trabalhar")) && curriculo === null;
   const oQueFaz = modos ? textoDoQueFaz(modos, curriculo?.titulo) : null;
   const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
   const suspensa = Boolean(perfil.suspenso_ate && new Date(perfil.suspenso_ate).getTime() > agora);
@@ -123,9 +126,9 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
         {meu ? (
           <div className="flex flex-wrap gap-2 self-start sm:self-center">
             {perfil.tipo === "pessoa" && modos?.includes("trabalhar") && (
-              <BotaoLink href="/perfil/curriculo" tamanho="sm">
+              <BotaoLink href="/perfil/curriculo" tamanho="sm" variante={semCurriculo ? "primario" : undefined}>
                 <FileText aria-hidden />
-                Meu currículo
+                {semCurriculo ? "Fazer meu currículo" : "Meu currículo"}
               </BotaoLink>
             )}
             <BotaoLink href="/perfil" tamanho="sm">
@@ -146,6 +149,8 @@ async function Conteudo({ params }: { params: PageProps<"/perfil/[id]">["params"
           </div>
         )}
       </div>
+
+      {semCurriculo && <AvisoSemCurriculo onde="perfil" className="mt-6 max-w-3xl" />}
 
       {!meu && !suspensa && (
         <Suspense fallback={null}>

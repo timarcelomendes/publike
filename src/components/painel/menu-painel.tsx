@@ -16,6 +16,7 @@ import {
   type ModoPainel,
   type Secao,
 } from "@/lib/modo-painel";
+import { PilulaFaltaCurriculo } from "../curriculo/sem-curriculo";
 import { SeloCortesia } from "../selo-cortesia";
 import { ICONES_DO_PAINEL as ICONES } from "./icones-do-painel";
 import { SemLinhaDoPainel } from "./sem-linha-do-painel";
@@ -35,6 +36,7 @@ export function MenuPainel({
   gradeNoHoje = false,
   copiloto = false,
   pilulas,
+  semCurriculo = false,
 }: {
   /** o que a conta faz (a principal primeiro): o menu mostra todas juntas, sem troca de modo */
   atividades: ModoPainel[];
@@ -52,6 +54,8 @@ export function MenuPainel({
   copiloto?: boolean;
   /** as pílulas do Copiloto e dos Testes pelo estado da conta ("15 dias grátis", "faltam N dias", nada) */
   pilulas?: ExtrasDoMenu["pilulas"];
+  /** quem procura trabalho sem currículo: "Falta" ao lado de Currículo */
+  semCurriculo?: boolean;
 }) {
   const caminho = usePathname() ?? "/painel";
   const busca = useSearchParams();
@@ -279,6 +283,7 @@ export function MenuPainel({
                       {s.cortesia && (
                         <SeloCortesia curto texto={typeof s.cortesia === "string" ? s.cortesia : undefined} />
                       )}
+                      {semCurriculo && s.href === "/perfil/curriculo" && <PilulaFaltaCurriculo />}
                       {numero(s, atualSecao)}
                     </Link>
                   </li>

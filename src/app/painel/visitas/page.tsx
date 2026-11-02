@@ -11,6 +11,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { OpcoesVisitas } from "@/components/visitas/opcoes-visitas";
 import { MarcarVisitasVistas } from "@/components/visitas/registrar-visita";
 import { MODO_DEMO } from "@/lib/config";
+import { AvisoSemCurriculo } from "@/components/curriculo/sem-curriculo";
 import { forcaDoCurriculo } from "@/lib/curriculo-forca";
 import { obterMeuCurriculo, obterMeuPerfil } from "@/lib/dados";
 import { formatarLugar, plural, primeiro, tempoRelativo } from "@/lib/formato";
@@ -59,11 +60,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/vis
     resumoDasVisitas(),
     minhasOpcoesDeVisitas(),
     agoraDaRequisicao(),
-    obterMeuCurriculo().catch(() => null),
+    // undefined: não deu para ler (sem o aviso de "sem currículo")
+    obterMeuCurriculo().catch(() => undefined),
   ]);
   // com o currículo em 100%, o vazio não pede para completar o que já está completo
-  const curriculoCompleto = forcaDoCurriculo(curriculo).pontos >= 100;
+  const curriculoCompleto = forcaDoCurriculo(curriculo ?? null).pontos >= 100;
   const pessoa = !perfil || perfil.tipo === "pessoa";
+  const semCurriculo = pessoa && curriculo === null;
   const comNome = visitantes.filter((v) => v.visitante_id !== null);
   const escondidos = visitantes.length - comNome.length;
   const empresas = comNome.filter((v) => v.tipo !== "pessoa");
@@ -85,6 +88,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/vis
             : "Pessoas e empresas que abriram a página da sua conta nos últimos 30 dias."}
         </p>
       </div>
+      {semCurriculo && <AvisoSemCurriculo onde="visitas" />}
 
       {visitantes.length > 0 || resumo.anonimas > 0 ? (
         <p className="text-body">

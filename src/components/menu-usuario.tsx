@@ -28,6 +28,7 @@ import { esquecerBusca } from "@/lib/ultima-busca";
 import { mudarConversa } from "./assistente/conversa-estado";
 import { BotaoInstalarApp } from "./instalar-app";
 import { definirTema, useTema } from "./tema";
+import { PilulaFaltaCurriculo } from "./curriculo/sem-curriculo";
 import { Avatar } from "./ui/basicos";
 
 function Item({ href, icone: Icone, children }: { href: string; icone: LucideIcon; children: ReactNode }) {
@@ -94,6 +95,7 @@ export function MenuUsuario({
   moderador,
   empresa = false,
   novidade = false,
+  semCurriculo = false,
 }: {
   nome: string;
   foto: string | null;
@@ -104,6 +106,8 @@ export function MenuUsuario({
   empresa?: boolean;
   /** tem novidade do Publike que a pessoa ainda não viu em /novidades (o ponto) */
   novidade?: boolean;
+  /** conta de pessoa sem currículo: "Falta" no item e o ponto no avatar */
+  semCurriculo?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -133,7 +137,7 @@ export function MenuUsuario({
       >
         <span className="relative">
           <Avatar nome={nome} foto={foto} tamanho={34} />
-          {novidade && (
+          {(novidade || semCurriculo) && (
             <span
               aria-hidden
               className="absolute -top-0.5 -right-0.5 size-3 rounded-pill bg-terra shadow-[0_0_0_2px_var(--pk-surface-100)]"
@@ -141,7 +145,9 @@ export function MenuUsuario({
           )}
         </span>
         <ChevronDown aria-hidden className="hidden size-4 text-ink-muted sm:block" />
-        <span className="sr-only">Menu da conta{novidade ? " (tem novidade do Publike)" : ""}</span>
+        <span className="sr-only">
+          Menu da conta{semCurriculo ? " (falta o seu currículo)" : novidade ? " (tem novidade do Publike)" : ""}
+        </span>
       </button>
       {aberto && (
         <div
@@ -170,7 +176,10 @@ export function MenuUsuario({
               </Item>
               {!empresa ? (
                 <Item href="/perfil/curriculo" icone={FileText}>
-                  Currículo
+                  <span className="flex flex-1 items-center justify-between gap-2">
+                    Currículo
+                    {semCurriculo && <PilulaFaltaCurriculo />}
+                  </span>
                 </Item>
               ) : (
                 temPerfil && (

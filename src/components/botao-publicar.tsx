@@ -42,15 +42,21 @@ export function PublicarDaConta() {
 const SEM_CURRICULO = [/^\/perfil\/curriculo/, /^\/talentos/, /^\/publicar/, /^\/entrar/, /^\/admin/];
 
 /** "Currículo" do topo de quem procura trabalho (no computador), com contorno como o "Publicar vaga". */
-export function CurriculoDaConta() {
+export function CurriculoDaConta({ falta = false }: { falta?: boolean }) {
   const caminho = usePathname();
   if (SEM_CURRICULO.some((r) => r.test(caminho))) return null;
   return (
-    // entre o notebook pequeno e o grande, só o ícone (o topo tem as cinco abas e a busca)
+    // entre o notebook pequeno e o grande, só o ícone (o topo tem as cinco abas e a busca); sem currículo, em
+    // destaque e com o texto sempre
     <div className="hidden lg:block">
-      <BotaoLink href="/perfil/curriculo" variante="secundario" tamanho="sm" title="Currículo">
+      <BotaoLink
+        href="/perfil/curriculo"
+        variante={falta ? "primario" : "secundario"}
+        tamanho="sm"
+        title={falta ? "Você ainda não tem currículo" : "Currículo"}
+      >
         <FileUser aria-hidden />
-        <span className="max-xl:sr-only">Currículo</span>
+        <span className={falta ? "" : "max-xl:sr-only"}>{falta ? "Fazer currículo" : "Currículo"}</span>
       </BotaoLink>
     </div>
   );

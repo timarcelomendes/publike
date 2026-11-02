@@ -1,5 +1,5 @@
 import { MODO_DEMO } from "@/lib/config";
-import { copilotoLiberado, obterMeuPerfil, obterUsuario, recursosPagos } from "@/lib/dados";
+import { copilotoLiberado, obterMeuCurriculo, obterMeuPerfil, obterUsuario, recursosPagos } from "@/lib/dados";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { contadoresDoPainel } from "@/lib/servidor/contadores-do-painel";
 import { minhasContas } from "@/lib/servidor/equipe";
@@ -22,7 +22,7 @@ export async function MenuDaConta() {
       />
     );
   }
-  const [perfil, atividades, usuario, contas, contadores, copiloto, recursos, agora] = await Promise.all([
+  const [perfil, atividades, usuario, contas, contadores, copiloto, recursos, agora, curriculo] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     atividadesDoMenu(),
     obterUsuario(),
@@ -33,6 +33,8 @@ export async function MenuDaConta() {
     copilotoLiberado(),
     recursosPagos(),
     agoraDaRequisicao(),
+    // undefined: não deu para ler (sem o "Falta")
+    obterMeuCurriculo().catch(() => undefined),
   ]);
   // a pílula segue a conta: "15 dias grátis", "faltam N dias" no teste, nada depois de liberado
   const pilulas = recursos
@@ -56,6 +58,7 @@ export async function MenuDaConta() {
       gradeNoHoje={atividades[0] === "trabalhar"}
       copiloto={copiloto}
       pilulas={pilulas}
+      semCurriculo={perfil?.tipo === "pessoa" && atividades.includes("trabalhar") && curriculo === null}
     />
   );
 }

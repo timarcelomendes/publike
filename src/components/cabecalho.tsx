@@ -3,7 +3,7 @@ import { Laptop, Search } from "lucide-react";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { MODO_DEMO } from "@/lib/config";
-import { ehModerador, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { ehModerador, obterMeuCurriculo, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { vapidPublica } from "@/lib/servidor/ambiente";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { modoDaConta } from "@/lib/servidor/modo";
@@ -142,10 +142,17 @@ async function PublicarDoTopo() {
   const usuario = MODO_DEMO ? null : await obterUsuario();
   if (usuario) {
     const modo = await modoDaConta().catch(() => "trabalhar" as const);
-    if (modo === "trabalhar") return <CurriculoDaConta />;
+    if (modo === "trabalhar") return <CurriculoDaConta falta={await semCurriculo()} />;
     return modo === "contratar" ? <PublicarDaConta /> : null;
   }
   return <PublicarECurriculo curriculo={await curriculoNoTopo()} />;
+}
+
+/** Conta de pessoa sem currículo (o topo e o menu da conta avisam). Na falha de leitura, não avisa. */
+async function semCurriculo() {
+  const perfil = await obterMeuPerfil().catch(() => null);
+  if (perfil?.tipo !== "pessoa") return false;
+  return (await obterMeuCurriculo().catch(() => undefined)) === null;
 }
 
 async function curriculoNoTopo(): Promise<CurriculoNoTopo> {
@@ -166,10 +173,11 @@ async function AreaUsuario() {
       </>
     );
   }
-  const [perfil, moderador, novidade] = await Promise.all([
+  const [perfil, moderador, novidade, falta] = await Promise.all([
     obterMeuPerfil(),
     ehModerador(),
     haNovidadeNova().catch(() => false),
+    semCurriculo(),
   ]);
   return (
     <>
@@ -184,6 +192,7 @@ async function AreaUsuario() {
         moderador={moderador}
         empresa={Boolean(perfil && perfil.tipo !== "pessoa")}
         novidade={novidade}
+        semCurriculo={falta}
       />
     </>
   );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { CaminhoDaCurtida } from "@/components/caminho-curtida";
+import { AvisoSemCurriculo } from "@/components/curriculo/sem-curriculo";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
 import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
@@ -93,7 +94,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     listarMinhasEtapas(),
     listarMeusBloqueios(),
     minhasContratacoesPublicas(),
-    obterMeuCurriculo().catch(() => null),
+    // undefined: não deu para ler (sem o aviso de "sem currículo")
+    obterMeuCurriculo().catch(() => undefined),
     // as candidaturas que a empresa já abriu (Quem viu seu perfil)
     minhasCandidaturasVistas(),
     atividadesDoMenu(),
@@ -106,6 +108,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   const paraFazer =
     atividades.includes("trabalhar") && tipo !== "servico" ? await paraFazerDeQuemProcura(curtidas, etapas, agora) : [];
   const fazerAgora = paraFazer.length > 0 && <ParaFazerAgora lista itens={paraFazer} vazio="" />;
+  // sem currículo, o aviso no alto (a empresa vê só o nome e a foto)
+  const semCurriculo = curriculo === null && atividades.includes("trabalhar") && tipo !== "servico" && (
+    <AvisoSemCurriculo onde="candidaturas" />
+  );
   // sem currículo, as vagas que pedem um ganham o passo "Você manda o currículo" no caminho
   const [pedemCurriculo, diretos, retornos] = await Promise.all([
     curriculo
@@ -120,6 +126,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   if (curtidas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
+        {semCurriculo}
         {fazerAgora}
         <Vazio
           icone={Heart}
@@ -176,6 +183,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
             : "Quem publicou decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."}
         </p>
       </div>
+      {semCurriculo}
       {fazerAgora && (
         <>
           <div className="mb-1">{fazerAgora}</div>
