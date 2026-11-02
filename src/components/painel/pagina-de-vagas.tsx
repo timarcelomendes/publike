@@ -42,7 +42,7 @@ export function BotaoCopiar({
 }
 
 /**
- * "Sua página de vagas" em Links para divulgar: o link com todas as vagas abertas da conta (/perfil/<id>/vagas),
+ * "O link da página" em Página de vagas (/painel/links): o link com todas as vagas abertas da conta (/perfil/<id>/vagas),
  * para copiar, mandar no WhatsApp (com a lista das vagas, `texto`) ou abrir.
  */
 export function PaginaDeVagas({
@@ -70,8 +70,7 @@ export function PaginaDeVagas({
     >
       <div>
         <h3 id="pagina-de-vagas" className="flex items-center gap-2 text-h3">
-          <Link2 aria-hidden className="size-5 shrink-0 text-ink-muted" />
-          Sua página de vagas
+          <Link2 aria-hidden className="size-5 shrink-0 text-ink-muted" />O link da página
         </h3>
         <p className="mt-1 text-body-sm text-ink-muted">
           Um link com todas as suas vagas abertas ({noAr} agora), sempre em dia: vaga nova entra sozinha, vaga encerrada

@@ -76,7 +76,7 @@ export async function ParaAVaga({
         acao={
           <BotaoLink href="/painel/links" tamanho="sm">
             <Link2 aria-hidden />
-            Links para divulgar
+            Divulgar a vaga
           </BotaoLink>
         }
       >

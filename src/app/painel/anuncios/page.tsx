@@ -477,13 +477,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
               })}
             </ul>
           )}
-          {/* a página de vagas (o link e o quadro para o site) fica só em Links para divulgar */}
+          {/* a página de vagas (o link, o kit e o quadro para o site) fica em Página de vagas */}
           {mostrarPagina && vagasNoAr > 0 && (
             <p className="flex flex-wrap items-center gap-x-1.5 text-body-sm text-ink-muted">
               <Megaphone aria-hidden className="size-4 shrink-0" />
               Um link com todas as suas vagas abertas está em
               <Link href="/painel/links" className="text-label text-ink underline underline-offset-2">
-                Links para divulgar
+                Página de vagas
               </Link>
             </p>
           )}

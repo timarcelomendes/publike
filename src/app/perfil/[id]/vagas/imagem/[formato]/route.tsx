@@ -4,7 +4,7 @@ import { imagemPost, imagemStatus, nomeDeArquivo } from "@/lib/servidor/kit-imag
 import { lerVagasDaEmpresa, totalDeVagasNoAr } from "@/lib/servidor/vagas-da-empresa";
 import { linkDasVagas } from "@/lib/vagas-da-empresa";
 
-// As imagens das vagas da empresa para baixar e postar (kit de divulgação em Links para divulgar):
+// As imagens das vagas da empresa para baixar e postar (kit de divulgação em Página de vagas):
 // /perfil/<id>/vagas/imagem/status (1080×1920) e /post (1080×1080). Com ?baixar=1, vem como arquivo.
 
 export async function GET(request: NextRequest, ctx: RouteContext<"/perfil/[id]/vagas/imagem/[formato]">) {

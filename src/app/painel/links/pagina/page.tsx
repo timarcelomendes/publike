@@ -47,7 +47,7 @@ async function Conteudo() {
         className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
-        Links para divulgar
+        Página de vagas
       </Link>
       <div>
         <h2 className="flex flex-wrap items-center gap-2 text-h2">

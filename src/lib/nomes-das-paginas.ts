@@ -59,7 +59,7 @@ const NOMES: Record<string, string> = {
   "/painel/curtidas": "Painel › Candidaturas",
   "/painel/equipe": "Painel › Equipe",
   "/painel/finalistas": "Painel › Para o cliente",
-  "/painel/links": "Painel › Links para divulgar",
+  "/painel/links": "Painel › Página de vagas",
   "/painel/matches": "Painel › Matches",
   "/painel/mensagens-da-equipe": "Painel › Mensagens da equipe",
   "/painel/seguindo": "Painel › Seguindo",

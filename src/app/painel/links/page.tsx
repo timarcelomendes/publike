@@ -23,9 +23,9 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { linkDasVagas, textoDasVagas } from "@/lib/vagas-da-empresa";
 import { diaPorExtenso, lerIdsDoDia, ordenarVagasDoDia, VAGAS_MARCADAS } from "@/lib/vagas-do-dia";
 
-export const metadata: Metadata = { title: "Links para divulgar" };
+export const metadata: Metadata = { title: "Página de vagas" };
 
-// Links para divulgar: tudo o que a conta manda para fora num lugar só. A página com todas as
+// Página de vagas (antes "Links para divulgar"; 02/11/2026): tudo o que a conta manda para fora num lugar só. A página com todas as
 // vagas, o kit de divulgação (o texto para os grupos, o carrossel e os stories do Instagram, o
 // Status, o cartaz e o quadro para o site), o link de cada vaga no ar e, na agência, os links de
 // finalistas para os clientes.
@@ -63,10 +63,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/lin
   return (
     <div className="flex flex-col gap-6">
       <div className="max-w-2xl">
-        <h2 className="text-h2">Links para divulgar</h2>
+        <h2 className="text-h2">Página de vagas</h2>
         <p className="mt-1 text-body text-ink-muted">
-          Copie e mande no WhatsApp, nos grupos do bairro, no Instagram ou no site. Quem tocar no link chega na vaga, e
-          quem curtir aparece na sua caixa de candidatos.
+          Um endereço com todas as suas vagas abertas, sempre em dia, e tudo para divulgar: o texto para os grupos, as
+          imagens para o Status e o Instagram, o cartaz para imprimir e o quadro para o seu site. Quem curtir uma vaga
+          aparece em Candidatos.
         </p>
       </div>
 

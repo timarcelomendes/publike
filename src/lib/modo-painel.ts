@@ -267,7 +267,7 @@ export function gruposDoModo(
     {
       nome: agencia ? "Agência" : "Sua empresa",
       secoes: [
-        { href: "/painel/links", nome: "Links para divulgar", icone: "links" },
+        { href: "/painel/links", nome: "Página de vagas", icone: "links" },
         {
           href: "/painel/visitas",
           nome: "Quem viu seu perfil",
