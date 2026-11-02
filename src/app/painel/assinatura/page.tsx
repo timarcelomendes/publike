@@ -14,10 +14,14 @@ import { formatarMoeda, primeiro } from "@/lib/formato";
 import {
   dataDoDia,
   dataEHora,
+  economiaDoPacote,
+  jaInclui,
   NOME_CICLO,
   NOME_PRODUTO,
+  O_PRODUTO,
   podeAssinarPacote,
   POR_CICLO,
+  seCruzam,
   type Assinatura,
   type Produto,
 } from "@/lib/pagamentos";
@@ -160,6 +164,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     ...(podeAssinarPacote(pag, recursos, "combo") ? (["combo"] as const) : []),
     ...RECURSOS_PAGOS.filter((r) => recursos?.[r]?.pode_assinar),
   ];
+  // quem assina um recurso que o Plano Completo inclui não vê o "Assinar" dele (não valem juntos): mostra a troca
+  const trocaCompleto =
+    pag?.pode && pag.planos.some((p) => p.recurso === "completo") && !aVenda.includes("completo")
+      ? (valendo.find(
+          (a) => a.recurso !== "completo" && seCruzam(a.recurso, "completo") && !jaInclui(a.recurso, "completo"),
+        ) ?? null)
+      : null;
   const aviso = volta ? VOLTA[volta] : null;
   const cartaoPendente = volta === "ok" && !valendo.some((a) => a.forma === "cartao");
 
@@ -229,6 +240,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           {valendo.map((a) => (
             <CartaoAssinatura key={a.id} a={a} />
           ))}
+          {trocaCompleto && <TrocarPeloCompleto atual={trocaCompleto} economia={economiaDoPacote(pag, "completo")} />}
           {aVenda.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {aVenda.map((r) => (
@@ -258,5 +270,40 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         </details>
       )}
     </div>
+  );
+}
+
+/**
+ * O Plano Completo para quem já assina um recurso que ele inclui (02/11/2026): os dois não valem juntos, então em vez
+ * do "Assinar" vem o caminho da troca: cancelar o de agora (o que foi pago continua valendo) e assinar o Completo, que
+ * começa a cobrar quando o pago acabar (a página de assinar explica de novo).
+ */
+function TrocarPeloCompleto({ atual, economia }: { atual: Assinatura; economia: ReturnType<typeof economiaDoPacote> }) {
+  return (
+    <section
+      aria-labelledby="trocar-completo"
+      className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:p-6"
+    >
+      <h3 id="trocar-completo" className="flex flex-wrap items-center gap-2 text-h3">
+        Plano Completo
+        <Selo variante="novo">Novo</Selo>
+      </h3>
+      <p className="text-body text-ink-muted">
+        A Triagem com IA, o Teste Prático, a Entrevista em vídeo e as Automações numa assinatura só
+        {economia
+          ? `: ${formatarMoeda(economia.valor)} por mês (separados, ${formatarMoeda(economia.separados)}).`
+          : "."}
+      </p>
+      <p className="text-body-sm">
+        Ele inclui {O_PRODUTO[atual.recurso]}, que você já assina. Para trocar, cancele {O_PRODUTO[atual.recurso]} acima
+        {atual.proxima_cobranca ? ` (o que já foi pago vale até ${dataDoDia(atual.proxima_cobranca)})` : ""} e assine o
+        Plano Completo: ele começa a cobrar quando o pago acabar.
+      </p>
+      <div>
+        <BotaoLink href="/painel/assinar?recurso=completo" variante="secundario" tamanho="sm">
+          Ver o Plano Completo
+        </BotaoLink>
+      </div>
+    </section>
   );
 }
