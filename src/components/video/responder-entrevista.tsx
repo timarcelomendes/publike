@@ -32,7 +32,7 @@ import {
   type MinhaEntrevistaVideo,
 } from "@/lib/entrevista-video";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
-import { Aviso, Selo } from "../ui/basicos";
+import { Avatar, Aviso, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 
@@ -57,10 +57,13 @@ export function ResponderEntrevistaVideo({
   entrevista,
   anuncioId,
   euId,
+  logo = null,
 }: {
   entrevista: MinhaEntrevistaVideo;
   anuncioId: string;
   euId: string;
+  /** o logo de quem contrata (no alto do modo foco) */
+  logo?: string | null;
 }) {
   const router = useRouter();
   const [perguntas, setPerguntas] = useState<Pergunta[]>(entrevista.perguntas);
@@ -137,6 +140,7 @@ export function ResponderEntrevistaVideo({
           <li key={p.id}>
             <CartaoPergunta
               p={p}
+              logo={logo}
               entrevista={e}
               euId={euId}
               aberta={aberta === p.id}
@@ -188,6 +192,7 @@ export function ResponderEntrevistaVideo({
 
 function CartaoPergunta({
   p,
+  logo,
   entrevista,
   euId,
   aberta,
@@ -196,6 +201,7 @@ function CartaoPergunta({
   atualizar,
 }: {
   p: Pergunta;
+  logo: string | null;
   entrevista: MinhaEntrevistaVideo;
   euId: string;
   aberta: boolean;
@@ -293,6 +299,7 @@ function CartaoPergunta({
               <p className="text-body-sm text-ink-muted">Você já gravou esta resposta.</p>
             ) : (
               <Gravador
+                logo={logo}
                 entrevista={entrevista}
                 pergunta={p}
                 euId={euId}
@@ -374,12 +381,14 @@ type Estado = "parado" | "preparando" | "contando" | "gravando" | "conferindo" |
 
 /** A câmera da frente, a contagem de 3 s, a gravação com o relógio e a conferência antes de enviar. */
 function Gravador({
+  logo,
   entrevista,
   pergunta,
   euId,
   podeRegravar,
   aoGuardar,
 }: {
+  logo: string | null;
   entrevista: MinhaEntrevistaVideo;
   pergunta: Pergunta;
   euId: string;
@@ -564,8 +573,11 @@ function Gravador({
       <div className={foco ? "mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3" : "contents"}>
         {foco && (
           <div className="flex items-start gap-3">
+            <Avatar nome={entrevista.empresa} foto={logo} tamanho={44} forma="quadrada" />
             <div className="min-w-0 flex-1">
-              <p className="text-label text-ink-muted">Pergunta {pergunta.ordem}</p>
+              <p className="text-label text-ink-muted">
+                {entrevista.empresa} · Pergunta {pergunta.ordem}
+              </p>
               {pergunta.texto && <p className="text-body-lg">{pergunta.texto}</p>}
             </div>
             {podeFechar && (

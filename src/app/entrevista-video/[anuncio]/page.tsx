@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
+import { Avatar, Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { ResponderEntrevistaVideo } from "@/components/video/responder-entrevista";
 import { MODO_DEMO } from "@/lib/config";
+import { obterAnuncio } from "@/lib/dados";
 import { minhaEntrevistaVideo } from "@/lib/servidor/entrevista-video";
 import { exigirUsuario } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
@@ -29,7 +30,12 @@ async function Conteudo({ params }: { params: PageProps<"/entrevista-video/[anun
   const { anuncio } = await params;
   if (!UUID.test(anuncio)) notFound();
   const usuario = await exigirUsuario(`/entrevista-video/${anuncio}`);
-  const entrevista = await minhaEntrevistaVideo(anuncio);
+  const [entrevista, vaga] = await Promise.all([
+    minhaEntrevistaVideo(anuncio),
+    // o logo de quem contrata, o mesmo da página da vaga (vaga fora do ar: as iniciais)
+    obterAnuncio(anuncio).catch(() => null),
+  ]);
+  const logo = vaga?.autor_foto ?? null;
   if (!entrevista) {
     return (
       <Aviso tipo="info" titulo="Nenhuma entrevista em vídeo para esta vaga">
@@ -42,13 +48,16 @@ async function Conteudo({ params }: { params: PageProps<"/entrevista-video/[anun
   }
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <p className="text-body-sm text-ink-muted">
-          {entrevista.empresa} · {entrevista.vaga}
-        </p>
-        <h1 className="mt-1 text-h2">Entrevista em vídeo</h1>
+      <div className="flex items-center gap-3">
+        <Avatar nome={entrevista.empresa} foto={logo} tamanho={56} forma="quadrada" />
+        <div className="min-w-0">
+          <p className="text-body-sm text-ink-muted">
+            {entrevista.empresa} · {entrevista.vaga}
+          </p>
+          <h1 className="mt-0.5 text-h2">Entrevista em vídeo</h1>
+        </div>
       </div>
-      <ResponderEntrevistaVideo entrevista={entrevista} anuncioId={anuncio} euId={usuario.id} />
+      <ResponderEntrevistaVideo entrevista={entrevista} anuncioId={anuncio} euId={usuario.id} logo={logo} />
     </div>
   );
 }
