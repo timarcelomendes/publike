@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copiar-worker-mapa.mjs",
+    "predev": "node scripts/conferir-dependencias.mjs && node scripts/copiar-worker-mapa.mjs",
     "dev": "next dev -H 127.0.0.1",
-    "predev:rede": "node scripts/copiar-worker-mapa.mjs",
+    "predev:rede": "node scripts/conferir-dependencias.mjs && node scripts/copiar-worker-mapa.mjs",
     "dev:rede": "PUBLIKE_ADMIN=0 next dev -H 0.0.0.0",
     "prebuild": "node scripts/copiar-worker-mapa.mjs",
     "build": "next build",
