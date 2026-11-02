@@ -1,42 +1,46 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Download, Plus, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BotaoCopiar } from "../painel/pagina-de-vagas";
 import { classesBotao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { REGIMES } from "@/lib/constantes";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
 import type { Regime } from "@/lib/tipos";
-import {
-  legendaDoDia,
-  linkDaBio,
-  linkDoStory,
-  MAX_VAGAS_DO_DIA,
-  valorDaVagaDoDia,
-  type VagaDoDia,
-} from "@/lib/vagas-do-dia";
-
-const IMAGENS = "/admin/vagas-do-dia/imagem";
+import { legendaDoDia, MAX_VAGAS_DO_DIA, tituloDaEmpresa, valorDaVagaDoDia, type VagaDoDia } from "@/lib/vagas-do-dia";
 
 /**
- * Admin › Vagas do dia: escolher e ordenar as vagas (a ordem é a do carrossel e da legenda), ver as imagens que o
- * site desenha, copiar a legenda e os links e baixar tudo num .zip. A escolha fica no endereço (?v=), então
+ * O carrossel e os stories do Instagram, montados com as vagas no ar: escolher e ordenar (a ordem é a do carrossel
+ * e da legenda), ver as imagens que o site desenha, copiar a legenda e os links e baixar tudo num .zip. Em Admin ›
+ * Vagas do dia (assinatura do Publike) e no kit de divulgação (a da empresa). A escolha fica no endereço (?v=):
  * recarregar a página não perde nada.
  */
-export function VagasDoDia({
+export function CarrosselDoInstagram({
   candidatas,
   iniciais,
   dia,
-  site,
   agora,
+  rotas,
+  links,
+  nomeDaConta,
+  ajudaDaBio,
 }: {
   candidatas: VagaDoDia[];
   iniciais: string[];
   dia: string;
-  site: string;
   agora: number;
+  /** de onde vêm as imagens ("/admin/vagas-do-dia/imagem") e o .zip */
+  rotas: { imagens: string; baixar: string };
+  /** o link da bio e o de cada story (o começo e o fim, em volta do código da vaga) */
+  links: { bio: string; story: [string, string] };
+  /** no kit: o nome da conta (a legenda diz "X está contratando", e o nome não se repete em cada vaga); sem ele, a
+   * legenda é a do Publike ("Vagas do dia em Goiânia e região") */
+  nomeDaConta?: string;
+  ajudaDaBio?: ReactNode;
 }) {
+  const IMAGENS = rotas.imagens;
+  const linkDoStory = (id: string) => `${links.story[0]}${id}${links.story[1]}`;
   const [ordem, setOrdem] = useState<string[]>(iniciais);
   // as imagens seguem a escolha com um respiro: cada clique não pede todas de novo ao servidor
   const [estavel, setEstavel] = useState<string[]>(iniciais);
@@ -56,8 +60,12 @@ export function VagasDoDia({
   const cheio = ordem.length >= MAX_VAGAS_DO_DIA;
   const nasImagens = estavel.flatMap((id) => porId.get(id) ?? []);
   const total = nasImagens.length;
-  const legenda = legendaDoDia(escolhidas, dia);
-  const bio = linkDaBio(site);
+  const legenda = legendaDoDia(
+    escolhidas,
+    dia,
+    nomeDaConta ? tituloDaEmpresa(nomeDaConta, escolhidas.length) : undefined,
+  );
+  const bio = links.bio;
 
   const tirar = (id: string) => setOrdem((o) => o.filter((x) => x !== id));
   const por = (id: string) =>
@@ -77,7 +85,7 @@ export function VagasDoDia({
       v.regime ? REGIMES[v.regime as Regime]?.selo : null,
       valorDaVagaDoDia(v),
       formatarLugar(v.bairro, v.cidade),
-      v.quem ?? "Pessoa física",
+      nomeDaConta ? (v.quem && v.quem !== nomeDaConta ? (v.quem === "Empresa confidencial" ? v.quem : `Para ${v.quem}`) : null) : (v.quem ?? "Pessoa física"),
       tempoRelativo(v.criado_em, agora),
     ]
       .filter(Boolean)
@@ -178,7 +186,7 @@ export function VagasDoDia({
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap gap-2">
             <a
-              href={`/admin/vagas-do-dia/baixar?ids=${ordem.join(",")}`}
+              href={`${rotas.baixar}?ids=${ordem.join(",")}`}
               download
               className={classesBotao("primario", "md")}
             >
@@ -256,7 +264,7 @@ export function VagasDoDia({
                   src={`${IMAGENS}/story?id=${v.id}`}
                   nome={v.titulo}
                   proporcao="aspect-[9/16]"
-                  link={linkDoStory(site, v.id)}
+                  link={linkDoStory(v.id)}
                 />
               ))}
             </div>
@@ -279,10 +287,7 @@ export function VagasDoDia({
             <div>
               <BotaoCopiar texto={bio} rotulo="Copiar o link" />
             </div>
-            <p className="text-body-sm text-ink-muted">
-              Basta pôr uma vez. Quem criar a conta por ele aparece em Admin › Campanhas como instagram:bio; pelos
-              stories, como instagram:stories.
-            </p>
+            {ajudaDaBio && <p className="text-body-sm text-ink-muted">{ajudaDaBio}</p>}
           </section>
 
           <details className="rounded-md border border-line bg-surface-100">
@@ -295,6 +300,7 @@ export function VagasDoDia({
               </li>
               <li>Stories: um por vaga, cada um com o adesivo Link da vaga dele.</li>
               <li>Do computador, o Meta Business Suite publica e agenda o carrossel.</li>
+              <li>Comente e responda quem perguntar: comentário faz o post chegar a mais gente.</li>
               <li>Mesmo horário todo dia ajuda quem segue a criar o hábito de olhar.</li>
             </ul>
           </details>

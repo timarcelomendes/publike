@@ -1,10 +1,10 @@
 import type { NextRequest } from "next/server";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
-import { pacoteDoDia } from "@/lib/servidor/imagens-do-dia";
+import { DO_PUBLIKE, pacoteDoDia } from "@/lib/servidor/imagens-do-dia";
 import { vagasEscolhidas } from "@/lib/servidor/vagas-do-dia";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import { diaEmNumeros, diaPorExtenso, lerIdsDoDia } from "@/lib/vagas-do-dia";
+import { diaEmNumeros, diaPorExtenso, legendaDoDia, lerIdsDoDia, linkDaBio, linkDoStory } from "@/lib/vagas-do-dia";
 
 // "Baixar tudo" de Admin › Vagas do dia (?ids=a,b,c, na ordem do carrossel): o .zip de pacoteDoDia, com o
 // carrossel, os stories, a legenda e os links. Só no admin, como a página.
@@ -17,7 +17,15 @@ export async function GET(request: NextRequest) {
   const vagas = await vagasEscolhidas(criarClienteAdmin(), ids, new Date(agora).toISOString());
   if (!vagas.length) return new Response("Escolha pelo menos uma vaga que esteja no ar.", { status: 400 });
 
-  const zip = await pacoteDoDia(vagas, diaPorExtenso(agora), urlDosEmails() ?? "https://publike.org", new Date(agora));
+  const dia = diaPorExtenso(agora);
+  const site = urlDosEmails() ?? "https://publike.org";
+  const zip = await pacoteDoDia(
+    vagas,
+    dia,
+    DO_PUBLIKE,
+    { legenda: legendaDoDia(vagas, dia), bio: linkDaBio(site), linkDoStory: (id) => linkDoStory(site, id) },
+    new Date(agora),
+  );
   return new Response(new Blob([zip]), {
     headers: {
       "content-type": "application/zip",

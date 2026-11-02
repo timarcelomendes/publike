@@ -2,8 +2,8 @@ import "server-only";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import type { VagaDoDia } from "@/lib/vagas-do-dia";
 
-// As vagas de Admin › Vagas do dia, lidas com a chave do admin: só vaga no ar (ativa, sem "preenchida", dentro do
-// prazo) e de conta que não está suspensa.
+// As vagas do carrossel do Instagram: em Admin › Vagas do dia (com a chave do admin, de todas as contas) e no kit de
+// divulgação (as da própria conta). Só vaga no ar (ativa, sem "preenchida", dentro do prazo) de conta não suspensa.
 
 const BASE =
   "id, titulo, regime, pagamento_valor, pagamento_unidade, pagamento_ate, comissao, cidade, bairro, vagas, " +
@@ -86,19 +86,40 @@ export async function vagasNovasNoAr(c: ClienteBanco, desde: string, agora: stri
   return linhas.filter(noAr(agora)).map(paraVaga);
 }
 
-/** As vagas escolhidas, na ordem pedida; as que saíram do ar ficam de fora. */
-export async function vagasEscolhidas(c: ClienteBanco, ids: string[], agora: string): Promise<VagaDoDia[]> {
-  if (!ids.length) return [];
+/** As vagas no ar de uma conta (o kit de divulgação), as mais novas primeiro (até 60). */
+export async function vagasNoArDaConta(c: ClienteBanco, conta: string, agora: string): Promise<VagaDoDia[]> {
   const linhas = await ler((colunas) =>
     c
       .from("anuncios")
       .select(colunas)
+      .eq("autor_id", conta)
+      .eq("tipo", "vaga")
+      .eq("status", "ativo")
+      .is("preenchida_em", null)
+      .gt("expira_em", agora)
+      .order("criado_em", { ascending: false })
+      .limit(60),
+  );
+  return linhas.filter(noAr(agora)).map(paraVaga);
+}
+
+/** As vagas escolhidas, na ordem pedida; as que saíram do ar ficam de fora. Com `conta`, só as dela. */
+export async function vagasEscolhidas(
+  c: ClienteBanco,
+  ids: string[],
+  agora: string,
+  conta?: string,
+): Promise<VagaDoDia[]> {
+  if (!ids.length) return [];
+  const linhas = await ler((colunas) => {
+    const consulta = c.from("anuncios").select(colunas);
+    return (conta ? consulta.eq("autor_id", conta) : consulta)
       .in("id", ids)
       .eq("tipo", "vaga")
       .eq("status", "ativo")
       .is("preenchida_em", null)
-      .gt("expira_em", agora),
-  );
+      .gt("expira_em", agora);
+  });
   const porId = new Map(linhas.filter(noAr(agora)).map((l) => [l.id, paraVaga(l)]));
   return ids.flatMap((id) => porId.get(id) ?? []);
 }

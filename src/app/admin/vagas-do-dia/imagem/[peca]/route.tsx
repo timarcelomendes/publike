@@ -28,19 +28,19 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
 
   if (peca === "fim") {
     const total = numero(sp.get("total"), 1);
-    return fimDoDia(baixar ? `${doisDigitos(total + 2)}-como-se-candidatar.png` : null);
+    return fimDoDia(undefined, baixar ? `${doisDigitos(total + 2)}-como-se-candidatar.png` : null);
   }
   if (peca === "capa") {
     const vagas = await vagasEscolhidas(criarClienteAdmin(), lerIdsDoDia(sp.get("ids")), agoraIso);
-    return capaDoDia(vagas, diaPorExtenso(agora), baixar ? "01-capa.png" : null);
+    return capaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "01-capa.png" : null);
   }
   if (peca === "vaga" || peca === "story") {
     const [v] = await vagasEscolhidas(criarClienteAdmin(), lerIdsDoDia(sp.get("id")), agoraIso);
     if (!v) return naoEncontrado();
-    if (peca === "story") return storyDoDia(v, baixar ? `story-${nomeDeArquivo(v.titulo)}.png` : null);
+    if (peca === "story") return storyDoDia(v, undefined, baixar ? `story-${nomeDeArquivo(v.titulo)}.png` : null);
     const n = numero(sp.get("n"), 1);
     const total = Math.max(numero(sp.get("total"), n), n);
-    return vagaDoDia(v, n, total, baixar ? `${doisDigitos(n + 1)}-${nomeDeArquivo(v.titulo)}.png` : null);
+    return vagaDoDia(v, n, total, undefined, baixar ? `${doisDigitos(n + 1)}-${nomeDeArquivo(v.titulo)}.png` : null);
   }
   return naoEncontrado();
 }

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { BotoesDoLink } from "@/components/painel/links-para-mandar";
+import { CarrosselDoInstagram } from "@/components/instagram/carrossel";
 import { KitDeDivulgacao } from "@/components/painel/kit-de-divulgacao";
 import { PaginaDeVagas } from "@/components/painel/pagina-de-vagas";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -11,28 +12,33 @@ import { Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { obterMeuPerfil } from "@/lib/dados";
-import { ateQuando, plural } from "@/lib/formato";
+import { ateQuando, plural, primeiro } from "@/lib/formato";
 import { caminhoDaConta } from "@/lib/servidor/caminho";
+import { instagramDaConta } from "@/lib/servidor/instagram-da-conta";
+import { vagasNoArDaConta } from "@/lib/servidor/vagas-do-dia";
 import { marcaDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
 import { exigirUsuario } from "@/lib/sessao";
+import { criarClientePublico } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { linkDasVagas, textoDasVagas } from "@/lib/vagas-da-empresa";
+import { diaPorExtenso, lerIdsDoDia, ordenarVagasDoDia, VAGAS_MARCADAS } from "@/lib/vagas-do-dia";
 
 export const metadata: Metadata = { title: "Links para divulgar" };
 
 // Links para divulgar: tudo o que a conta manda para fora num lugar só. A página com todas as
-// vagas, o kit de divulgação (o texto para os grupos, as imagens, o cartaz e o quadro para o
-// site), o link de cada vaga no ar e, na agência, os links de finalistas para os clientes.
+// vagas, o kit de divulgação (o texto para os grupos, o carrossel e os stories do Instagram, o
+// Status, o cartaz e o quadro para o site), o link de cada vaga no ar e, na agência, os links de
+// finalistas para os clientes.
 
-export default function Links() {
+export default function Links({ searchParams }: PageProps<"/painel/links">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
-      <Conteudo />
+      <Conteudo searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Conteudo() {
+async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/links">["searchParams"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/links");
   const [perfil, caminho, agora] = await Promise.all([obterMeuPerfil(), caminhoDaConta(), agoraDaRequisicao()]);
@@ -45,6 +51,12 @@ async function Conteudo() {
   const vagasNoAr = noAr
     .filter((v) => v.anuncio.tipo === "vaga" && Date.parse(v.anuncio.expira_em) > agora)
     .map((v) => v.anuncio);
+  // o Instagram do kit: empresa, comércio e agência, com as vagas no ar da conta (a escolha fica em ?v=)
+  const instagram = perfil.tipo === "pessoa" ? null : await instagramDaConta();
+  const paraOInstagram = instagram
+    ? ordenarVagasDoDia(await vagasNoArDaConta(criarClientePublico(), instagram.conta, new Date(agora).toISOString()))
+    : [];
+  const pedidas = lerIdsDoDia(primeiro((await searchParams).v)).filter((id) => paraOInstagram.some((v) => v.id === id));
   const texto = (origem: string, curto = false) =>
     textoDasVagas(perfil.nome, vagasNoAr, linkDasVagas(SITE_URL, perfil.id, origem, marca?.apelido), { curto });
 
@@ -93,6 +105,21 @@ async function Conteudo() {
         textoCurto={texto("grupos", true)}
         vagas={vagasNoAr.slice(0, 30).map((a) => ({ id: a.id, titulo: a.titulo }))}
         comQuadro={perfil.tipo !== "pessoa"}
+        instagram={
+          instagram &&
+          paraOInstagram.length > 0 && (
+            <CarrosselDoInstagram
+              candidatas={paraOInstagram}
+              iniciais={pedidas.length ? pedidas : paraOInstagram.slice(0, VAGAS_MARCADAS).map((v) => v.id)}
+              dia={diaPorExtenso(agora)}
+              agora={agora}
+              rotas={{ imagens: "/painel/links/instagram/imagem", baixar: "/painel/links/instagram/baixar" }}
+              links={{ bio: instagram.bio, story: instagram.story }}
+              nomeDaConta={instagram.nome}
+              ajudaDaBio="Ponha este link na bio do Instagram da empresa: ele abre a página com todas as suas vagas. Quem se candidatar aparece na sua caixa de candidatos."
+            />
+          )
+        }
       />
 
       <section aria-labelledby="links-das-vagas" className="flex flex-col gap-3">

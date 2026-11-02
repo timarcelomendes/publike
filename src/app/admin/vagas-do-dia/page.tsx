@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Filtros, linkCom, Secao } from "@/components/admin/ui";
-import { VagasDoDia } from "@/components/admin/vagas-do-dia";
+import { CarrosselDoInstagram } from "@/components/instagram/carrossel";
 import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { primeiro } from "@/lib/formato";
@@ -11,7 +11,15 @@ import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { vagasEscolhidas, vagasNovasNoAr } from "@/lib/servidor/vagas-do-dia";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import { diaPorExtenso, lerIdsDoDia, ordenarVagasDoDia, PERIODOS_DO_DIA, VAGAS_MARCADAS } from "@/lib/vagas-do-dia";
+import {
+  diaPorExtenso,
+  lerIdsDoDia,
+  linkDaBio,
+  linkDoStory,
+  ordenarVagasDoDia,
+  PERIODOS_DO_DIA,
+  VAGAS_MARCADAS,
+} from "@/lib/vagas-do-dia";
 
 export const metadata: Metadata = { title: "Vagas do dia" };
 
@@ -41,6 +49,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
     ? pedidas.filter((id) => candidatas.some((v) => v.id === id))
     : novas.slice(0, VAGAS_MARCADAS).map((v) => v.id);
   const outrosPeriodos = PERIODOS_DO_DIA.filter((p) => p.horas > periodo.horas);
+  const site = urlDosEmails() ?? "https://publike.org";
+  const [antes, depois] = linkDoStory(site, "@").split("@");
 
   return (
     <Secao
@@ -74,12 +84,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
           Só entram vagas no ar: ativas, sem “vaga preenchida” e dentro do prazo.
         </Vazio>
       ) : (
-        <VagasDoDia
+        <CarrosselDoInstagram
           candidatas={candidatas}
           iniciais={iniciais}
           dia={diaPorExtenso(agora)}
-          site={urlDosEmails() ?? "https://publike.org"}
           agora={agora}
+          rotas={{ imagens: `${BASE}/imagem`, baixar: `${BASE}/baixar` }}
+          links={{ bio: linkDaBio(site), story: [antes!, depois!] }}
+          ajudaDaBio="Basta pôr uma vez. Quem criar a conta por ele aparece em Admin › Campanhas como instagram:bio; pelos stories, como instagram:stories."
         />
       )}
     </Secao>

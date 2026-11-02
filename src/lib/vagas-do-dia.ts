@@ -99,20 +99,20 @@ export function linhaDaVaga(v: VagaDoDia) {
 }
 
 /**
- * A legenda do carrossel: o dia, as vagas na ordem das imagens (o número ajuda quem comenta "quero a 3"), como se
- * candidatar, o pedido para mandar a quem procura e até 5 hashtags. Passou do limite do Instagram, as últimas vagas
- * viram "e mais N".
+ * A legenda do carrossel: o título (o do Publike, "Vagas do dia em Goiânia e região (dia)", ou o da empresa), as vagas
+ * na ordem das imagens (o número ajuda quem comenta "quero a 3"), como se candidatar, o pedido para mandar a quem
+ * procura e até 5 hashtags. Passou do limite do Instagram, as últimas vagas viram "e mais N".
  */
-export function legendaDoDia(vagas: VagaDoDia[], dia: string) {
+export function legendaDoDia(vagas: VagaDoDia[], dia: string, titulo?: string) {
   const montar = (mostradas: number) => {
     const resto = vagas.length - mostradas;
     return [
-      `Vagas do dia em Goiânia e região (${dia})`,
+      titulo ?? `Vagas do dia em Goiânia e região (${dia})`,
       "",
       ...vagas.slice(0, mostradas).map((v, i) => `${i + 1}. ${linhaDaVaga(v)}`),
       ...(resto > 0 ? [`E mais ${resto} ${resto === 1 ? "vaga" : "vagas"} nas imagens.`] : []),
       "",
-      "Para se candidatar: toque no link da bio, entre de graça e curta a vaga. A empresa recebe na hora.",
+      "Para se candidatar: toque no link da bio, entre de graça e curta a vaga. Quem contrata recebe na hora.",
       "Conhece alguém procurando trabalho? Mande este post.",
       "",
       "Nunca pague para conseguir trabalho.",
@@ -124,6 +124,11 @@ export function legendaDoDia(vagas: VagaDoDia[], dia: string) {
   let texto = montar(mostradas);
   while (texto.length > MAX_LEGENDA && mostradas > 1) texto = montar(--mostradas);
   return texto;
+}
+
+/** O título da legenda da empresa: "Loja Bom Preço está contratando: 4 vagas abertas". */
+export function tituloDaEmpresa(nome: string, vagas: number) {
+  return `${nome} está contratando: ${vagas} ${vagas === 1 ? "vaga aberta" : "vagas abertas"}`;
 }
 
 /**
@@ -144,13 +149,13 @@ export const linkDaBio = (site: string) => linkDoInstagram(site, "/?tipo=vaga", 
 export const linkDoStory = (site: string, id: string) => linkDoInstagram(site, `/anuncio/${id}`, "stories");
 
 /** O texto com o link de cada story, na ordem dos arquivos, e o da bio (vai no .zip). */
-export function textoDosLinks(vagas: VagaDoDia[], site: string) {
+export function textoDosLinks(vagas: VagaDoDia[], linkDaVaga: (id: string) => string, bio: string) {
   return [
     "Links para o adesivo de cada story (na ordem dos arquivos da pasta stories):",
     "",
-    ...vagas.flatMap((v, i) => [`${String(i + 1).padStart(2, "0")}. ${v.titulo}`, linkDoStory(site, v.id), ""]),
+    ...vagas.flatMap((v, i) => [`${String(i + 1).padStart(2, "0")}. ${v.titulo}`, linkDaVaga(v.id), ""]),
     "Link da bio:",
-    linkDaBio(site),
+    bio,
     "",
   ].join("\n");
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { Download, Image as ImageIcon, MessageCircle, Printer } from "lucide-react";
-import { useState } from "react";
+import { Download, GalleryHorizontal, Image as ImageIcon, MessageCircle, Printer } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { classesBotao } from "../ui/botao";
 import { Selo } from "../ui/basicos";
 import { classesEntrada } from "../ui/campo";
@@ -9,8 +9,9 @@ import { BotaoCopiar, QuadroParaOSite } from "./pagina-de-vagas";
 
 /**
  * O kit de divulgação em Links para divulgar (claude/plano-pagina-de-vagas.md, parte 2), grátis para todas as contas:
- * o texto pronto para os grupos (curto e completo), as imagens para o Status e o feed (e uma por vaga), o cartaz A4
- * com QR Code e o quadro de vagas para o site da empresa.
+ * o texto pronto para os grupos (curto e completo), o carrossel e os stories do Instagram (empresa, comércio e
+ * agência: `instagram`), a imagem do Status do WhatsApp, o cartaz A4 com QR Code e o quadro de vagas para o site.
+ * Sem o Instagram (pessoa), ficam as imagens de antes: o Status, o post do feed e uma por vaga.
  */
 export function KitDeDivulgacao({
   perfilId,
@@ -19,6 +20,7 @@ export function KitDeDivulgacao({
   textoCompleto,
   vagas,
   comQuadro,
+  instagram,
 }: {
   perfilId: string;
   site: string;
@@ -26,6 +28,8 @@ export function KitDeDivulgacao({
   textoCompleto: string;
   vagas: { id: string; titulo: string }[];
   comQuadro: boolean;
+  /** o carrossel e os stories (CarrosselDoInstagram), montado na página com as vagas da conta */
+  instagram?: ReactNode;
 }) {
   const [forma, setForma] = useState<"completo" | "curto">("completo");
   const texto = forma === "completo" ? textoCompleto : textoCurto;
@@ -43,7 +47,7 @@ export function KitDeDivulgacao({
           <Selo variante="novo">Novo</Selo>
         </h3>
         <p className="mt-1 text-body-sm text-ink-muted">
-          Tudo pronto para mandar nos grupos, postar no Status e no Instagram, colar na porta e pôr no site. Sempre com
+          Tudo pronto para mandar nos grupos, postar no Instagram e no Status, colar na porta e pôr no site. Sempre com
           as vagas abertas de agora.
         </p>
       </div>
@@ -98,6 +102,37 @@ export function KitDeDivulgacao({
         <p className="text-body-sm text-ink-muted">Serve também no Facebook, no LinkedIn e no Telegram.</p>
       </div>
 
+      {instagram && (
+        <div className="flex flex-col gap-3">
+          <div>
+            <h4 className="flex items-center gap-2 text-label">
+              <GalleryHorizontal aria-hidden className="size-4 shrink-0 text-ink-muted" />
+              Instagram: carrossel e stories
+              <Selo variante="novo">Novo</Selo>
+            </h4>
+            <p className="mt-1 text-body-sm text-ink-muted">
+              Escolha as vagas e a ordem: o carrossel do feed (uma vaga por imagem), um story por vaga e a legenda saem
+              prontos, com a sua marca.
+            </p>
+          </div>
+          {instagram}
+        </div>
+      )}
+
+      {instagram ? (
+        <div className="flex flex-col gap-3">
+          <h4 className="text-label">Status do WhatsApp</h4>
+          <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+            <Previa
+              src={`${imagens}/status`}
+              nome="Status com as vagas"
+              detalhe="1080 × 1920, com o QR Code"
+              proporcao="aspect-[9/16]"
+              baixar={`${imagens}/status?baixar=1`}
+            />
+          </div>
+        </div>
+      ) : (
       <div className="flex flex-col gap-3">
         <h4 className="text-label">Imagens para postar</h4>
         <div className="grid grid-cols-2 gap-3 sm:max-w-md">
@@ -149,6 +184,7 @@ export function KitDeDivulgacao({
           </details>
         )}
       </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <h4 className="text-label">Cartaz para imprimir</h4>
