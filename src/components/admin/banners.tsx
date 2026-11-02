@@ -1,6 +1,18 @@
 "use client";
 
-import { ArrowRight, Eye, ImagePlus, Power, Search, Share2, Sparkles, Trash2, X, type LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  ExternalLink,
+  Eye,
+  ImagePlus,
+  Power,
+  Search,
+  Share2,
+  Sparkles,
+  Trash2,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { startTransition, useActionState, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { protegerAcao } from "@/lib/acao-segura";
 import { apagarBanner, ligarBanner, salvarBanner } from "@/lib/acoes/admin-banners";
@@ -21,7 +33,7 @@ import {
 import { CATEGORIAS, CIDADES, LISTA_TIPOS_CONTA, TIPOS_CONTA } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso, Simbolo } from "../ui/basicos";
-import { Botao } from "../ui/botao";
+import { Botao, classesBotao } from "../ui/botao";
 import { Campo, classesEntrada, ligarCampo, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
@@ -98,6 +110,9 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
   const [titulo, setTitulo] = useState(banner?.titulo ?? "");
   const [texto, setTexto] = useState(banner?.texto ?? "");
   const [botao, setBotao] = useState(banner?.botao ?? BOTAO_SUGERIDO.novas);
+  const [caminho, setCaminho] = useState(banner?.acao === "link" ? (banner.link ?? "") : "");
+  // "Testar o link" só abre página do Publike (começa com uma barra só), como o banco aceita
+  const caminhoValido = /^\/(?!\/)\S*$/.test(caminho.trim());
   // o texto do botão acompanha a ação enquanto ninguém mexeu nele
   const [botaoMexido, setBotaoMexido] = useState(Boolean(banner));
   const [repetir, setRepetir] = useState(banner?.repetir_dias != null);
@@ -298,13 +313,32 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             erro={erros.caminho}
             ajuda="Só páginas do Publike, começando com /. Ex.: /vagas/goiania ou /talentos."
           >
-            <input
-              {...ligarCampo("caminho", erros.caminho, true)}
-              defaultValue={banner?.acao === "link" ? (banner.link ?? "") : ""}
-              maxLength={300}
-              placeholder="/vagas/goiania"
-              className={classesEntrada}
-            />
+            <span className="flex flex-col gap-2 sm:flex-row">
+              <input
+                {...ligarCampo("caminho", erros.caminho, true)}
+                value={caminho}
+                onChange={(e) => setCaminho(e.target.value)}
+                maxLength={300}
+                placeholder="/vagas/goiania"
+                className={`${classesEntrada} sm:flex-1`}
+              />
+              {caminhoValido ? (
+                <a
+                  href={caminho.trim()}
+                  target="_blank"
+                  rel="noopener"
+                  className={classesBotao("secundario", "md", "shrink-0")}
+                >
+                  <ExternalLink aria-hidden />
+                  Testar o link
+                </a>
+              ) : (
+                <Botao variante="secundario" disabled className="shrink-0">
+                  <ExternalLink aria-hidden />
+                  Testar o link
+                </Botao>
+              )}
+            </span>
           </Campo>
         )}
         {tipo === "compartilhar" && (
