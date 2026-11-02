@@ -8,6 +8,7 @@ import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { VagasEmLinhas } from "@/components/vagas-da-empresa/linhas";
 import { TopoDaEmpresa } from "@/components/vagas-da-empresa/topo";
 import { SITE_URL } from "@/lib/config";
 import { categoria, REGIMES } from "@/lib/constantes";
@@ -15,12 +16,13 @@ import { semAcento } from "@/lib/descobrir";
 import { obterPerfilPublico, obterUsuario, requisitosDasVagas, type DetalhesDaVaga } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, plural } from "@/lib/formato";
+import { corLegivel, corValida } from "@/lib/marca";
 import { extrasDe, matchDasVagas, quemProcura } from "@/lib/servidor/lista-anuncios";
 import { marcaDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioDoPerfil, AnuncioResumo, Regime } from "@/lib/tipos";
-import { linkDasVagas, textoDasVagas } from "@/lib/vagas-da-empresa";
+import { linkDasVagas, textoDasVagas, valorCurto } from "@/lib/vagas-da-empresa";
 
 // "Todas as vagas" de uma empresa, comércio ou agência: o link que ela põe na bio do Instagram, no status do
 // WhatsApp ou no site (claude/plano-pagina-de-vagas.md, parte 1). No alto, a marca: a logo grande, o nome, quantas
@@ -30,11 +32,19 @@ import { linkDasVagas, textoDasVagas } from "@/lib/vagas-da-empresa";
 // separa alguma coisa. A imagem do link (WhatsApp, redes) fica em opengraph-image.tsx.
 
 const LIMITE = 200;
-type Filtros = { q: string; area: string; bairro: string; regime: string };
+/** `ver`: linhas ou cartões (sem escolher: linhas com mais de 6 vagas). Não é filtro: só muda o jeito de mostrar. */
+type Filtros = { q: string; area: string; bairro: string; regime: string; ver: string };
 
 function lerFiltros(sp: Record<string, string | string[] | undefined>): Filtros {
   const um = (v: string | string[] | undefined) => (typeof v === "string" ? v.trim().slice(0, 80) : "");
-  return { q: um(sp.q), area: um(sp.area), bairro: um(sp.bairro), regime: um(sp.regime) };
+  const ver = um(sp.ver);
+  return {
+    q: um(sp.q),
+    area: um(sp.area),
+    bairro: um(sp.bairro),
+    regime: um(sp.regime),
+    ver: ver === "linhas" || ver === "cartoes" ? ver : "",
+  };
 }
 
 function filtrar(vagas: AnuncioDoPerfil[], f: Filtros) {
@@ -146,6 +156,7 @@ async function Conteudo({
   const filtros = lerFiltros(sp);
   const mostradas = filtrar(comCurtida, filtros);
   const filtrando = Boolean(filtros.q || filtros.area || filtros.bairro || filtros.regime);
+  const emLinhas = filtros.ver ? filtros.ver === "linhas" : vagas.length > 6;
   const agencia = perfil.tipo === "agencia";
   const empresas = agencia ? new Set(vagas.map((a) => a.contratante).filter(Boolean)).size : 0;
   const whatsapp = `https://wa.me/?text=${encodeURIComponent(
@@ -197,7 +208,26 @@ async function Conteudo({
             </Link>
           </p>
         )}
-        {mostradas.length ? (
+        {vagas.length > 1 && <JeitoDeVer base={`/perfil/${perfil.id}/vagas`} filtros={filtros} emLinhas={emLinhas} />}
+        {mostradas.length && emLinhas ? (
+          <VagasEmLinhas
+            cor={corValida(marca?.cor) ? corLegivel(marca.cor) : null}
+            vagas={mostradas.map((a) => {
+              const extra = extrasDe(detalhes.get(a.id));
+              return {
+                id: a.id,
+                titulo: a.titulo,
+                valor: valorCurto(a),
+                lugar: formatarLugar(a.bairro, a.cidade),
+                regime: a.regime ? (REGIMES[a.regime as Regime]?.selo ?? null) : null,
+                para: agencia ? paraQuem(a) : null,
+                comecaJa: Boolean(extra?.comecaJa),
+                pessoas: extra?.vagas ?? 1,
+                nota: matches.get(a.id)?.nota ?? null,
+              };
+            })}
+          />
+        ) : mostradas.length ? (
           <ul aria-label="Vagas abertas" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {mostradas.map((a) => (
               <li key={a.id} className="contents">
@@ -271,7 +301,7 @@ function FiltrosDasVagas({ base, vagas, filtros }: { base: string; vagas: Anunci
     <section aria-label="Filtrar as vagas" className="mt-6 flex flex-wrap items-center gap-2">
       {busca && (
         <form action={base} className="flex min-w-0 basis-full gap-2 sm:basis-80" role="search">
-          {(["area", "bairro", "regime"] as const).map((c) =>
+          {(["area", "bairro", "regime", "ver"] as const).map((c) =>
             filtros[c] ? <input key={c} type="hidden" name={c} value={filtros[c]} /> : null,
           )}
           <label htmlFor="busca-vagas" className="sr-only">
@@ -312,5 +342,33 @@ function FiltrosDasVagas({ base, vagas, filtros }: { base: string; vagas: Anunci
         />
       ))}
     </section>
+  );
+}
+
+/** Lista ou cartões: o jeito de ver as vagas (o resto do endereço fica). */
+function JeitoDeVer({ base, filtros, emLinhas }: { base: string; filtros: Filtros; emLinhas: boolean }) {
+  const opcoes = [
+    { valor: "linhas", nome: "Lista", ativo: emLinhas },
+    { valor: "cartoes", nome: "Cartões", ativo: !emLinhas },
+  ];
+  return (
+    <nav aria-label="Jeito de ver as vagas" className="mb-3 flex justify-end">
+      <ul className="inline-flex items-center gap-0.5">
+        {opcoes.map((o) => (
+          <li key={o.valor}>
+            <Link
+              href={linkPara(base, filtros, "ver", o.valor)}
+              scroll={false}
+              aria-current={o.ativo ? "true" : undefined}
+              className={`inline-flex min-h-10 items-center rounded-pill px-3 text-label transition-colors ${
+                o.ativo ? "bg-surface-300 text-ink" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              {o.nome}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

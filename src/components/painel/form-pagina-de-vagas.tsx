@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ExternalLink, ImagePlus, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink, ImagePlus, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
@@ -15,6 +15,7 @@ import { Botao, classesBotao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 
 const MAX_TEXTO = 600;
+const MAX_FOTOS = 3;
 
 /** "Crescere Gestão" → "crescere-gestao": o apelido sugerido, sem acento, minúsculo, com hífen. */
 function limparApelido(t: string) {
@@ -28,9 +29,9 @@ function limparApelido(t: string) {
 }
 
 /**
- * A página de carreiras personalizada (Links para divulgar › Página de carreiras): a cor da marca, a capa, o "Por
- * que trabalhar aqui", até 6 benefícios e o endereço curto. A capa sobe do navegador para a pasta de quem envia
- * (avatars/<pessoa>/capa/<número>.jpg); o salvar manda tudo de uma vez.
+ * A página de carreiras personalizada (Página de vagas › Página de carreiras): a cor da marca, até 3 fotos (a
+ * primeira é a capa), o título, o "Por que trabalhar aqui", até 6 benefícios e o endereço curto. As fotos sobem do
+ * navegador para a pasta de quem envia (avatars/<pessoa>/capa/<número>.jpg); o salvar manda tudo de uma vez.
  */
 export function FormPaginaDeVagas({
   inicial,
@@ -47,7 +48,8 @@ export function FormPaginaDeVagas({
 }) {
   const router = useRouter();
   const [cor, setCor] = useState<string | null>(inicial?.cor ?? null);
-  const [capa, setCapa] = useState<string | null>(inicial?.capa ?? null);
+  const [fotos, setFotos] = useState<string[]>(inicial?.fotos ?? (inicial?.capa ? [inicial.capa] : []));
+  const [titulo, setTitulo] = useState(inicial?.titulo ?? "");
   const [texto, setTexto] = useState(inicial?.texto ?? "");
   const [beneficios, setBeneficios] = useState<string[]>(inicial?.beneficios ?? []);
   const [novo, setNovo] = useState("");
@@ -58,25 +60,36 @@ export function FormPaginaDeVagas({
   const sugestoes = BENEFICIOS.map((b) => b.nome).filter((b) => !beneficios.includes(b));
   const apelidoLimpo = limparApelido(apelido).replace(/^-|-$/g, "");
 
-  async function enviarCapa(e: ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
+  /** Sobe as fotos escolhidas (uma ou várias), até completar 3. */
+  async function enviarFotos(e: ChangeEvent<HTMLInputElement>) {
+    const arquivos = [...(e.target.files ?? [])].filter((a) => a.type.startsWith("image/"));
     e.target.value = "";
-    if (!arquivo || !arquivo.type.startsWith("image/")) return;
+    const cabem = arquivos.slice(0, MAX_FOTOS - fotos.length);
+    if (!cabem.length) return;
     setEnviando(true);
     setRetorno(null);
     try {
-      const imagem = await reduzirImagem(arquivo, 1600);
-      const caminho = `${pessoaId}/capa/${Date.now()}.jpg`;
-      const { error } = await criarClienteNavegador()
-        .storage.from("avatars")
-        .upload(caminho, imagem, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
-      if (error) throw error;
-      setCapa(caminho);
+      const novas: string[] = [];
+      for (const [i, arquivo] of cabem.entries()) {
+        const imagem = await reduzirImagem(arquivo, 1600);
+        const caminho = `${pessoaId}/capa/${Date.now() + i}.jpg`;
+        const { error } = await criarClienteNavegador()
+          .storage.from("avatars")
+          .upload(caminho, imagem, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
+        if (error) throw error;
+        novas.push(caminho);
+      }
+      setFotos((atuais) => [...atuais, ...novas].slice(0, MAX_FOTOS));
     } catch {
-      setRetorno({ ok: false, texto: "Não deu para enviar a capa. Tente outra foto (até 2 MB depois de reduzida)." });
+      setRetorno({ ok: false, texto: "Não deu para enviar a foto. Tente outra (até 2 MB depois de reduzida)." });
     } finally {
       setEnviando(false);
     }
+  }
+
+  /** Passa a foto para a primeira posição (a capa). */
+  function primeira(f: string) {
+    setFotos((atuais) => [f, ...atuais.filter((x) => x !== f)]);
   }
 
   function incluir(b: string) {
@@ -89,13 +102,14 @@ export function FormPaginaDeVagas({
   async function salvar() {
     setSalvando(true);
     setRetorno(null);
-    const r = await chamarAcao(() => salvarPaginaDeVagas({ cor, capa, texto, beneficios, apelido: apelidoLimpo }));
+    const r = await chamarAcao(() =>
+      salvarPaginaDeVagas({ cor, titulo, fotos, texto, beneficios, apelido: apelidoLimpo }),
+    );
     setSalvando(false);
     if (!r.ok && "ir" in r && r.ir) router.push(r.ir);
     setRetorno(r.ok ? { ok: true, texto: r.mensagem ?? "Página salva." } : { ok: false, texto: r.erro });
   }
 
-  const urlCapa = urlDaFoto(capa);
   return (
     <div className="flex flex-col gap-6">
       <fieldset className="flex flex-col gap-3">
@@ -141,40 +155,89 @@ export function FormPaginaDeVagas({
       </fieldset>
 
       <div className="flex flex-col gap-3">
-        <h3 className="text-label">Capa</h3>
+        <h3 className="text-label">Fotos no alto da página</h3>
         <p className="-mt-2 text-body-sm text-ink-muted">
-          Uma foto da equipe, da loja ou do lugar de trabalho. Fica larga no alto da página (bem vinda na horizontal).
+          Até 3: a equipe, a loja, o lugar de trabalho. A primeira fica maior (é a capa); deitadas ficam melhor.
         </p>
-        {urlCapa ? (
-          // eslint-disable-next-line @next/next/no-img-element -- a capa acabou de subir para o Storage
-          <img
-            src={urlCapa}
-            alt="A capa escolhida"
-            className="aspect-[4/1] w-full rounded-md border border-line object-cover"
-          />
+        {fotos.length > 0 ? (
+          <ul aria-label="Fotos escolhidas" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {fotos.map((f, i) => (
+              <li key={f} className="flex flex-col gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element -- a foto acabou de subir para o Storage */}
+                <img
+                  src={urlDaFoto(f) ?? ""}
+                  alt={i === 0 ? "Foto 1 (capa)" : `Foto ${i + 1}`}
+                  className="aspect-[3/2] w-full rounded-md border border-line object-cover"
+                />
+                <div className="flex flex-wrap gap-1">
+                  {i > 0 && (
+                    <Botao
+                      variante="fantasma"
+                      tamanho="sm"
+                      onClick={() => primeira(f)}
+                      aria-label={`Pôr a foto ${i + 1} como capa`}
+                    >
+                      <ArrowLeft aria-hidden />
+                      Capa
+                    </Botao>
+                  )}
+                  <Botao
+                    variante="fantasma"
+                    tamanho="sm"
+                    onClick={() => setFotos((atuais) => atuais.filter((x) => x !== f))}
+                    aria-label={`Tirar a foto ${i + 1}`}
+                  >
+                    <Trash2 aria-hidden />
+                    Tirar
+                  </Botao>
+                </div>
+              </li>
+            ))}
+          </ul>
         ) : (
           <div className="flex aspect-[4/1] w-full items-center justify-center rounded-md border border-dashed border-line-strong bg-surface-100 text-body-sm text-ink-muted">
-            Sem capa
+            Sem fotos
           </div>
         )}
-        <div className="flex flex-wrap gap-2">
-          <label className={`${classesBotao("secundario", "sm")} cursor-pointer has-focus-visible:outline-2`}>
-            <ImagePlus aria-hidden />
-            {enviando ? "Enviando…" : urlCapa ? "Trocar a capa" : "Escolher a capa"}
-            <input type="file" accept="image/*" className="sr-only" onChange={enviarCapa} disabled={enviando} />
-          </label>
-          {urlCapa && (
-            <Botao variante="fantasma" tamanho="sm" onClick={() => setCapa(null)}>
-              <Trash2 aria-hidden />
-              Tirar a capa
-            </Botao>
-          )}
-        </div>
+        {fotos.length < MAX_FOTOS && (
+          <div>
+            <label className={`${classesBotao("secundario", "sm")} cursor-pointer has-focus-visible:outline-2`}>
+              <ImagePlus aria-hidden />
+              {enviando ? "Enviando…" : fotos.length ? "Pôr mais fotos" : "Escolher fotos"}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={enviarFotos}
+                disabled={enviando}
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="titulo-pagina" className="text-label">
+          Título
+        </label>
+        <input
+          id="titulo-pagina"
+          value={titulo}
+          maxLength={80}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder="Vem construir com a gente!"
+          className={classesEntrada}
+          aria-describedby="titulo-ajuda"
+        />
+        <p id="titulo-ajuda" className="text-body-sm text-ink-muted">
+          Uma frase sua acima do texto. Em branco, fica “Por que trabalhar aqui”.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="por-que" className="text-label">
-          Por que trabalhar aqui
+          Texto: por que trabalhar aqui
         </label>
         <textarea
           id="por-que"

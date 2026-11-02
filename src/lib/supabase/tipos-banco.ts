@@ -38,6 +38,9 @@ export type Database = {
           texto: string | null;
           beneficios: string[];
           apelido: string | null;
+          /** migração 20270120120000: o título próprio e até 3 fotos (a capa é a primeira) */
+          titulo: string | null;
+          fotos: string[];
           atualizada_em: string;
         };
         Insert: SemTabela;
@@ -1065,6 +1068,9 @@ export type Database = {
           texto: string | null;
           beneficios: string[];
           apelido: string | null;
+          /** migração 20270120120000 */
+          titulo: string | null;
+          fotos: string[];
         }[];
       };
       conta_do_apelido: {
@@ -1082,7 +1088,8 @@ export type Database = {
       salvar_pagina_de_vagas: {
         Args: {
           p_cor: string | null;
-          p_capa: string | null;
+          p_titulo: string | null;
+          p_fotos: string[];
           p_texto: string | null;
           p_beneficios: string[];
           p_apelido: string | null;

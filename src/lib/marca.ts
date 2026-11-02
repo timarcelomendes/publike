@@ -3,10 +3,15 @@
 
 export type Marca = {
   cor: string | null;
+  /** a primeira das fotos (o que lia a capa continua valendo) */
   capa: string | null;
   texto: string | null;
   beneficios: string[];
   apelido: string | null;
+  /** o título acima do texto ("Vem construir com a gente!"); sem ele, "Por que trabalhar aqui" */
+  titulo: string | null;
+  /** até 3 fotos no alto da página (migração 20270120120000) */
+  fotos: string[];
 };
 
 /** As cores para escolher (a empresa acha a mais perto da logo). Guardadas em minúsculas, como o banco pede. */

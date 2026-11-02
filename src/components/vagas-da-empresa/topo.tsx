@@ -13,8 +13,9 @@ import { SobreDaEmpresa } from "./sobre";
 
 // O alto da página de vagas da empresa (claude/plano-pagina-de-vagas.md, parte 1): a logo grande, o nome, quantas
 // vagas estão abertas, o Sobre e os botões para mandar a página adiante. Para o dono, o que falta (a logo) e o
-// caminho do kit de divulgação. Com a página de carreiras liberada (parte 3, `marca`): a capa ou a faixa na cor da
-// marca e, embaixo, o "Por que trabalhar aqui" com os benefícios em destaque.
+// caminho do kit de divulgação. Com a página de carreiras liberada (parte 3, `marca`): até 3 fotos no alto (a primeira
+// maior; no celular, só ela) ou a faixa na cor da marca e, embaixo, o título da empresa (ou "Por que trabalhar aqui")
+// com o texto e os benefícios em destaque.
 
 export function TopoDaEmpresa({
   perfil,
@@ -42,8 +43,12 @@ export function TopoDaEmpresa({
 }) {
   const tipo = TIPOS_CONTA[(perfil.tipo as TipoConta) in TIPOS_CONTA ? (perfil.tipo as TipoConta) : "pessoa"];
   const cor = corValida(marca?.cor) ? marca.cor : null;
-  const capa = urlDaFoto(marca?.capa);
-  const porQue = marca?.texto?.trim() || marca?.beneficios.length ? marca : null;
+  const fotos = (marca?.fotos.length ? marca.fotos : marca?.capa ? [marca.capa] : [])
+    .map((f) => urlDaFoto(f))
+    .filter((f): f is string => Boolean(f))
+    .slice(0, 3);
+  const capa = fotos[0] ?? null;
+  const porQue = marca?.texto?.trim() || marca?.beneficios.length || marca?.titulo?.trim() ? marca : null;
   return (
     <>
       <header
@@ -51,10 +56,32 @@ export function TopoDaEmpresa({
         style={cor && !capa ? { borderTop: `6px solid ${cor}` } : undefined}
       >
         {capa && (
-          <div className="-mx-5 -mt-5 sm:-mx-7 sm:-mt-7" style={cor ? { borderBottom: `4px solid ${cor}` } : undefined}>
-            {/* a capa é de quem publicou (Storage público), sem o otimizador de imagens */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={capa} alt="" className="aspect-[3/1] w-full object-cover sm:aspect-[4/1]" />
+          <div
+            className={`-mx-5 -mt-5 grid gap-1 sm:-mx-7 sm:-mt-7 ${
+              fotos.length === 3
+                ? "sm:h-72 sm:grid-cols-3 sm:grid-rows-2"
+                : fotos.length === 2
+                  ? "sm:h-72 sm:grid-cols-3"
+                  : ""
+            }`}
+            style={cor ? { borderBottom: `4px solid ${cor}` } : undefined}
+          >
+            {/* as fotos são de quem publicou (Storage público), sem o otimizador de imagens */}
+            {fotos.map((f, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={f}
+                src={f}
+                alt=""
+                className={
+                  i === 0
+                    ? `aspect-[3/1] h-full w-full object-cover ${
+                        fotos.length === 1 ? "sm:aspect-[4/1]" : "sm:col-span-2 sm:aspect-auto"
+                      } ${fotos.length === 3 ? "sm:row-span-2" : ""}`
+                    : "hidden h-full min-h-0 w-full object-cover sm:block"
+                }
+              />
+            ))}
           </div>
         )}
         {/* a logo ao lado do nome; no celular menor, e os botões embaixo na largura toda (não espremidos ao lado dela) */}
@@ -118,7 +145,7 @@ export function TopoDaEmpresa({
                 className="inline-flex min-h-10 items-center gap-1.5 underline underline-offset-2"
               >
                 <Palette aria-hidden className="size-4 text-terra-text" />
-                {marca ? "Mudar a cor, a capa e o texto" : "Personalizar a página"}
+                {marca ? "Mudar a cor, as fotos e o texto" : "Personalizar a página"}
               </Link>
               <Link
                 href="/painel/links#kit"
@@ -137,7 +164,7 @@ export function TopoDaEmpresa({
           className="mt-4 flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:p-7"
         >
           <h2 id="por-que-trabalhar" className="font-display text-h3" style={{ color: corLegivel(cor) }}>
-            Por que trabalhar aqui
+            {porQue.titulo?.trim() || "Por que trabalhar aqui"}
           </h2>
           {porQue.texto?.trim() && <p className="max-w-[70ch] text-body whitespace-pre-line">{porQue.texto.trim()}</p>}
           {porQue.beneficios.length > 0 && (

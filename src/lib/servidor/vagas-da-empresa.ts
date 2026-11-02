@@ -38,7 +38,10 @@ export async function marcaDaEmpresa(id: string): Promise<Marca | null> {
   const { data, error } = await criarClientePublico().rpc("pagina_de_vagas_publica", { p_conta: id }).maybeSingle();
   // antes da migração 20270117120000 a função não existe: a página fica como a de todos
   if (error) return null;
-  return data ? { ...data, beneficios: data.beneficios ?? [] } : null;
+  if (!data) return null;
+  // antes da migração 20270120120000 não vêm o título e as fotos: a capa vira a única foto
+  const fotos = data.fotos ?? (data.capa ? [data.capa] : []);
+  return { ...data, beneficios: data.beneficios ?? [], titulo: data.titulo ?? null, fotos };
 }
 
 export async function vagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> {
