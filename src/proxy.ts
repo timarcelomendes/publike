@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { PACOTE_ANDROID } from "@/lib/android";
 import { COOKIES_DA_SESSAO } from "@/lib/config";
 import { COOKIE_ORIGEM, DURACAO_ORIGEM, origemDoLink } from "@/lib/origem";
 import { areaDoSlug, cidadeDoSlug } from "@/lib/paginas-busca";
@@ -175,8 +176,9 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   }
 
   // quem entrou: o navegador deste acesso, para o admin ver o aparelho (no máximo a cada 6 horas por
-  // aparelho; aberto pelo app Android, sempre). O app abre o site com o referer android-app://.
-  const doApp = (request.headers.get("referer") ?? "").startsWith("android-app://");
+  // aparelho; aberto pelo app Android, sempre). O app abre o site com o referer android-app://org.publike.app;
+  // outros apps também mandam android-app:// (Gmail, app do Google, WhatsApp) e não contam como o app (02/11/2026).
+  const doApp = (request.headers.get("referer") ?? "").startsWith(`android-app://${PACOTE_ANDROID}`);
   if (logado && abriuPagina(request) && (doApp || !request.cookies.has(COOKIE_APARELHO))) {
     resposta.cookies.set(COOKIE_APARELHO, doApp ? "app" : "1", {
       maxAge: 6 * 3600,
