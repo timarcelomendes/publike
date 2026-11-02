@@ -10,6 +10,7 @@ import {
   linkDaBusca,
   PAGINAS_BANNER,
   PUBLICOS_BANNER,
+  SEM_FILTRO,
   type AcaoBanner,
   type FiltroBanner,
   type PublicoBanner,
@@ -71,6 +72,8 @@ async function lerContas(
 const SEM_MIGRACAO_CARTAO =
   "Para o cartão Do Publike e as Novidades, rode antes a migração 20270118120000_novidades_do_publike.sql no Supabase.";
 const SEM_MIGRACAO_IMAGEM = "Para pôr imagem, rode antes a migração 20261213120000_banners_imagem.sql no Supabase.";
+const SEM_MIGRACAO_DESTAQUE =
+  "Para o destaque no alto da inicial, rode antes a migração 20270123120000_banners_destaque.sql no Supabase.";
 
 function texto(formData: FormData, nome: string) {
   const v = formData.get(nome);
@@ -119,20 +122,24 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     if (!link) erros.caminho = "Use um endereço do Publike começando com /, como /vagas/goiania.";
   }
 
+  // o cartão e o destaque não usam as páginas nem a espera (ficam guardadas como estavam, para voltar à janela);
+  // o destaque também não usa o "quantas vezes" nem o "Só para" (é vitrine, só para quem não tem conta)
+  const formatoTexto = texto(formData, "formato") || "janela";
+  const formato = formatoTexto in FORMATOS_BANNER ? (formatoTexto as keyof typeof FORMATOS_BANNER) : null;
+  if (!formato) erros.formato = "Escolha o formato.";
+  const janela = formato === "janela";
+  const destaque = formato === "destaque";
+
   // null: só uma vez; N: de novo a cada N dias (até tocar no botão)
   let repetirDias: number | null = null;
   if (texto(formData, "repetir") === "dias") {
     repetirDias = Number(texto(formData, "repetir_dias"));
     if (!Number.isInteger(repetirDias) || repetirDias < 1 || repetirDias > 90) {
-      erros.repetir_dias = "Escolha de 1 a 90 dias.";
+      if (destaque) repetirDias = null;
+      else erros.repetir_dias = "Escolha de 1 a 90 dias.";
     }
   }
 
-  // o cartão não usa as páginas nem a espera (ficam guardadas como estavam, para voltar à janela)
-  const formatoTexto = texto(formData, "formato") || "janela";
-  const formato = formatoTexto in FORMATOS_BANNER ? (formatoTexto as keyof typeof FORMATOS_BANNER) : null;
-  if (!formato) erros.formato = "Escolha o formato.";
-  const janela = formato !== "cartao";
   let paginas = formData.getAll("paginas").filter((p): p is string => typeof p === "string" && p in PAGINAS_BANNER);
   if (!paginas.length && janela) erros.paginas = "Escolha pelo menos uma página.";
   if (!paginas.length) paginas = ["inicio"];
@@ -144,7 +151,10 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
   const emNovidades = formData.get("em_novidades") === "on";
   // só manda as colunas novas quando precisa: a janela de sempre salva mesmo sem a migração 20270118
   const comNovidades =
-    !janela || emNovidades || texto(formData, "formato_antes") === "cartao" || texto(formData, "novidades_antes") === "1";
+    !janela ||
+    emNovidades ||
+    (texto(formData, "formato_antes") || "janela") !== "janela" ||
+    texto(formData, "novidades_antes") === "1";
 
   const inicioTexto = texto(formData, "inicio");
   const fimTexto = texto(formData, "fim");
@@ -160,11 +170,12 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
   ];
   const curriculo = texto(formData, "curriculo");
   const ateDias = texto(formData, "conta_ate_dias");
-  const contas = await lerContas(c, texto(formData, "contas"));
+  // o destaque não tem "Só para": nem confere as contas escolhidas (o campo fica escondido no formulário)
+  const contas = destaque ? { ids: [], naoAchadas: [] } : await lerContas(c, texto(formData, "contas"));
   if (contas.naoAchadas.length) {
     erros.contas = `Não achamos: ${contas.naoAchadas.slice(0, 5).join(", ")}${contas.naoAchadas.length > 5 ? "…" : ""}.`;
   }
-  if (ateDias && !(Number.isInteger(Number(ateDias)) && Number(ateDias) >= 1 && Number(ateDias) <= 365)) {
+  if (!destaque && ateDias && !(Number.isInteger(Number(ateDias)) && Number(ateDias) >= 1 && Number(ateDias) <= 365)) {
     erros.conta_ate_dias = "De 1 a 365 dias.";
   }
   const filtro: FiltroBanner = {
@@ -178,6 +189,8 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     conta_ate_dias: ateDias ? Number(ateDias) : null,
     so_contas: contas.ids.length > 0,
   };
+  // o destaque não tem "Só para" (é só para quem ainda não tem conta): grava sem filtro
+  if (destaque) Object.assign(filtro, SEM_FILTRO);
 
   if (Object.keys(erros).length) return { ok: false, erro: "Confira os campos marcados.", erros };
 
@@ -232,6 +245,8 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     ? await c.from("banners").update(dados).eq("id", id).select("id").single()
     : await c.from("banners").insert(dados).select("id").single();
   if (error?.code === "PGRST204" && error.message.includes("imagem")) return { ok: false, erro: SEM_MIGRACAO_IMAGEM };
+  if (error?.code === "23514" && destaque && error.message.includes("formato"))
+    return { ok: false, erro: SEM_MIGRACAO_DESTAQUE };
   if (error?.code === "PGRST204" && /formato|em_novidades/.test(error.message))
     return { ok: false, erro: SEM_MIGRACAO_CARTAO };
   if (error?.code === "PGRST204") return { ok: false, erro: SEM_MIGRACAO_FILTROS };

@@ -1002,8 +1002,9 @@ export type Database = {
           cidades: string[];
           conta_ate_dias: number | null;
           so_contas: boolean;
-          /** "janela" ou "cartao" (o cartão Do Publike na lista e na linha do tempo; migração 20270118) */
-          formato: "janela" | "cartao";
+          /** "janela", "cartao" (o cartão Do Publike na lista e na linha do tempo; migração 20270118) ou "destaque" (no alto
+           * da inicial, no computador; migração 20270123) */
+          formato: "janela" | "cartao" | "destaque";
           /** também em /novidades (migração 20270118) */
           em_novidades: boolean;
           criado_em: string;
@@ -1030,7 +1031,7 @@ export type Database = {
           cidades?: string[];
           conta_ate_dias?: number | null;
           so_contas?: boolean;
-          formato?: "janela" | "cartao";
+          formato?: "janela" | "cartao" | "destaque";
           em_novidades?: boolean;
         };
         Update: {
@@ -1054,7 +1055,7 @@ export type Database = {
           cidades?: string[];
           conta_ate_dias?: number | null;
           so_contas?: boolean;
-          formato?: "janela" | "cartao";
+          formato?: "janela" | "cartao" | "destaque";
           em_novidades?: boolean;
         };
         Relationships: [];

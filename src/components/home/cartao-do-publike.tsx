@@ -12,7 +12,8 @@ import { contar, jaViu, marcarVisto } from "./banner-da-home";
 // inicial (quem não tem conta) e da linha do tempo (quem tem), como um anúncio patrocinado. Conta como
 // visto quando fica com metade na tela por 1 segundo; dali em diante não volta (só uma vez) ou volta
 // depois dos dias do banner, até tocar no botão. O X fecha na hora. Em /novidades (`jeito="pagina"`),
-// fica sempre, sem X e sem contar.
+// fica sempre, sem X e sem contar. No alto da inicial (`jeito="destaque"`, o giro do computador), fica sempre,
+// sem X: quem conta o visto é o giro (quando é a vez dele na tela), e o cartão conta só o toque no botão.
 
 // os cartões na tela agora: o que marcou "visto" enquanto está na tela continua nela; montado de novo
 // (o voltar do navegador traz a lista antiga), o que já foi visto não aparece (e a lista não pula)
@@ -29,17 +30,20 @@ export function CartaoDoPublike({
   novidades = false,
 }: {
   banner: BannerNoAr;
-  jeito: "lista" | "linha" | "pagina";
+  jeito: "lista" | "linha" | "pagina" | "destaque";
   /** em /novidades: o dia ("2 de novembro") */
   data?: string | null;
   /** o banner também está em /novidades: "Do Publike" leva para lá */
   novidades?: boolean;
 }) {
   const pagina = jeito === "pagina";
+  const destaque = jeito === "destaque";
+  // sempre na tela, sem X e sem o visto do cartão: /novidades e o destaque do alto da inicial
+  const fixo = pagina || destaque;
   // no servidor (e na primeira pintura) aparece: o servidor só manda o que a pessoa ainda pode ver
   const jaVisto = useSyncExternalStore(
     nada,
-    () => !pagina && !naTela.has(banner.id) && jaViu(banner),
+    () => !fixo && !naTela.has(banner.id) && jaViu(banner),
     () => false,
   );
   const [fechado, setFechado] = useState(false);
@@ -50,7 +54,7 @@ export function CartaoDoPublike({
   // visto: metade na tela por 1 segundo (rolar rápido por cima não conta)
   useEffect(() => {
     const el = caixa.current;
-    if (pagina || jaVisto || !el || typeof IntersectionObserver === "undefined") return;
+    if (fixo || jaVisto || !el || typeof IntersectionObserver === "undefined") return;
     let espera: number | undefined;
     const olho = new IntersectionObserver(
       ([e]) => {
@@ -73,12 +77,14 @@ export function CartaoDoPublike({
       olho.disconnect();
       naTela.delete(banner.id);
     };
-  }, [banner.id, jaVisto, pagina]);
+  }, [banner.id, jaVisto, fixo]);
 
   if (jaVisto || fechado) return null;
 
   function clicou() {
     if (pagina) return;
+    // o destaque não some depois do toque (é vitrine): só conta
+    if (destaque) return contar(banner.id, "clique");
     naTela.add(banner.id);
     contar(banner.id, "clique");
     marcarVisto(banner.id, true);
@@ -122,20 +128,26 @@ export function CartaoDoPublike({
       ref={caixa}
       aria-label={`Do Publike: ${banner.titulo}`}
       data-cartao-publike={banner.id}
-      className={`relative flex min-w-0 flex-col overflow-hidden border border-line bg-surface-200 shadow-card ${
-        jeito === "linha" ? "rounded-[18px]" : "rounded-lg"
-      } ${jeito === "lista" ? "col-span-full" : ""} ${banner.imagem ? "sm:flex-row" : ""}`}
+      className={`relative flex min-w-0 flex-col overflow-hidden border border-line bg-surface-200 ${
+        destaque ? "shadow-raised" : "shadow-card"
+      } ${jeito === "linha" || destaque ? "rounded-[18px]" : "rounded-lg"} ${jeito === "lista" ? "col-span-full" : ""} ${
+        banner.imagem && !destaque ? "sm:flex-row" : ""
+      }`}
     >
       {banner.imagem && (
         // eslint-disable-next-line @next/next/no-img-element -- a imagem vem do Storage, já ajustada no admin
         <img
           src={banner.imagem}
           alt=""
-          className="block max-h-48 w-full shrink-0 bg-surface-300 object-cover sm:max-h-none sm:w-56 sm:self-stretch"
+          className={
+            destaque
+              ? "block h-36 w-full shrink-0 bg-surface-300 object-cover"
+              : "block max-h-48 w-full shrink-0 bg-surface-300 object-cover sm:max-h-none sm:w-56 sm:self-stretch"
+          }
         />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 sm:p-5">
-        <p className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 ${pagina ? "" : "pr-9"}`}>
+        <p className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 ${fixo ? "" : "pr-9"}`}>
           {novidades && !pagina ? (
             <Link href="/novidades" className="relative z-[1] hover:underline">
               {selo}
@@ -146,10 +158,18 @@ export function CartaoDoPublike({
           {data && <span className="text-body-sm text-ink-muted">· {data}</span>}
         </p>
         <div>
-          <h3 className="font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] text-balance sm:text-[19px] sm:leading-6">
+          <h3
+            className={`font-display font-bold tracking-[-0.01em] text-balance ${
+              destaque ? "text-[20px] leading-[26px]" : "text-[17px] leading-[22px] sm:text-[19px] sm:leading-6"
+            }`}
+          >
             {banner.titulo}
           </h3>
-          {banner.texto && <p className="mt-1 text-body-sm whitespace-pre-line text-ink-muted">{banner.texto}</p>}
+          {banner.texto && (
+            <p className={`mt-1 text-body-sm text-ink-muted ${destaque ? "line-clamp-3" : "whitespace-pre-line"}`}>
+              {banner.texto}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {banner.acao === "compartilhar" ? (
@@ -187,7 +207,7 @@ export function CartaoDoPublike({
           )}
         </div>
       </div>
-      {!pagina && (
+      {!fixo && (
         <button
           type="button"
           onClick={fechar}

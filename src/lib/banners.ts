@@ -1,11 +1,12 @@
 // Banners: um aviso criado no admin, para ver vagas novas, uma busca de vagas, uma página do site ou
-// compartilhar o Publike. Em dois formatos: a janela (popup), nas páginas escolhidas (a inicial, por
-// padrão), depois de alguns segundos; ou o cartão "Do Publike", no meio da lista da página inicial
-// (quem não tem conta) e da linha do tempo (quem tem). Uma vez por navegador, ou de novo a cada N dias
-// (o cookie guarda os que já apareceram).
+// compartilhar o Publike. Em três formatos: a janela (popup), nas páginas escolhidas (a inicial, por
+// padrão), depois de alguns segundos; o cartão "Do Publike", no meio da lista da página inicial
+// (quem não tem conta) e da linha do tempo (quem tem); ou o destaque, na faixa do alto da inicial de
+// quem não tem conta, no computador, girando com as 3 vagas novas. A janela e o cartão aparecem uma vez
+// por navegador, ou de novo a cada N dias (o cookie guarda os que já apareceram); o destaque fica nas datas.
 // Banco: migrações 20261029120000_banners.sql, 20261117120000_banners_paginas_e_atraso.sql,
 // 20261213120000_banners_imagem.sql, 20261214120000_banners_filtros.sql (para quem) e
-// 20270118120000_novidades_do_publike.sql (o formato e /novidades).
+// 20270118120000_novidades_do_publike.sql (o formato e /novidades) e 20270123120000_banners_destaque.sql (o destaque).
 
 export const ACOES_BANNER = {
   novas: "Ver as vagas novas",
@@ -24,11 +25,16 @@ export const PUBLICOS_BANNER = {
 } as const;
 export type PublicoBanner = keyof typeof PUBLICOS_BANNER;
 
-/** Como o banner aparece (migração 20270118120000; sem ela, todos são janela). */
+/** Como o banner aparece (migração 20270118120000; sem ela, todos são janela; o destaque, migração 20270123120000). */
 export const FORMATOS_BANNER = {
   janela: "Janela por cima da página",
   cartao: "Cartão “Do Publike” no meio da lista",
+  destaque: "Destaque no alto da inicial (computador)",
 } as const;
+
+/** Quantos destaques cada visitante vê no alto da inicial (os mais novos do público dele), e de quanto em quanto. */
+export const DESTAQUES_NO_ALTO = 4;
+export const SEGUNDOS_DO_DESTAQUE = 8;
 export type FormatoBanner = keyof typeof FORMATOS_BANNER;
 
 /** Onde o banner pode abrir. */

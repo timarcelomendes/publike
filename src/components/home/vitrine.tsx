@@ -6,9 +6,12 @@ import { Avatar, Container, fundoDoNome, Selo } from "../ui/basicos";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
 import { distanciaKm } from "@/lib/descobrir";
 import { type Local, pontoDoLocal } from "@/lib/regioes";
+import { destaquesDaVisita } from "@/lib/servidor/banners";
+import { GiroDoHero } from "./giro-do-hero";
 
 // A home de quem não entrou na conta (direção B): a faixa clara (papel da marca) com a busca e, no
-// computador, três vagas novas inclinadas ao lado. A lista de sempre vem logo abaixo.
+// computador, três vagas novas inclinadas ao lado (com destaques do admin no ar, girando com eles). A lista
+// de sempre vem logo abaixo.
 
 /** Quantas vagas e quantos serviços estão no ar na praça (só com muitos, para não parecer vazio). */
 async function NoAr({ cidade }: { cidade: string }) {
@@ -60,7 +63,7 @@ export async function HeroVitrine({ busca }: { busca: ReactNode }) {
           <div className="text-ink sm:max-w-xl">{busca}</div>
         </div>
         <Suspense fallback={null}>
-          <DestaquesDoHero cidade={cidade} />
+          <ColunaDoHero cidade={cidade} />
         </Suspense>
       </section>
     </Container>
@@ -85,9 +88,19 @@ function escolherDestaques(vagas: AnuncioNoAr[]) {
 
 const GIROS = ["-rotate-2", "rotate-[1.5deg]", "-rotate-1"];
 
-async function DestaquesDoHero({ cidade }: { cidade: string }) {
-  const destaques = escolherDestaques(await anunciosNoAr("vaga", cidade));
-  if (destaques.length < 2) return null;
+/**
+ * A coluna da direita (só no computador): as 3 vagas novas e, com destaques no ar (Admin › Banners, formato
+ * "Destaque no alto da inicial"), o giro entre elas e até 4 destaques, começando pelas vagas.
+ */
+async function ColunaDoHero({ cidade }: { cidade: string }) {
+  const [vagas, banners] = await Promise.all([anunciosNoAr("vaga", cidade), destaquesDaVisita().catch(() => [])]);
+  const escolhidas = escolherDestaques(vagas);
+  const pilha = escolhidas.length >= 2 ? <PilhaDeVagas destaques={escolhidas} /> : null;
+  if (!banners.length) return pilha;
+  return <GiroDoHero vagas={pilha} destaques={banners} />;
+}
+
+function PilhaDeVagas({ destaques }: { destaques: AnuncioNoAr[] }) {
   return (
     <ul aria-label="Vagas novas" className="hidden flex-col gap-3 lg:flex">
       {destaques.map((v, i) => (

@@ -4,6 +4,7 @@ import { cache } from "react";
 import {
   ATRASO_PADRAO,
   COOKIE_BANNERS,
+  DESTAQUES_NO_ALTO,
   diaDeHoje,
   juntarVistos,
   lerBannersVistos,
@@ -74,7 +75,15 @@ export async function cartaoDaVisita(): Promise<BannerNoAr | null> {
   return (await bannersQuePodem().catch(() => [])).find((b) => b.formato === "cartao") ?? null;
 }
 
-/** Os banners (janelas e cartões) que a pessoa pode ver: uma leitura só por requisição. */
+/**
+ * Os destaques do alto da inicial (quem não tem conta, no computador): até 4, os mais novos do público de quem vê.
+ * São vitrine: não seguem o "só uma vez" nem o "a cada N dias" (ficam no ar dentro das datas).
+ */
+export async function destaquesDaVisita(): Promise<BannerNoAr[]> {
+  return (await bannersQuePodem()).filter((b) => b.formato === "destaque").slice(0, DESTAQUES_NO_ALTO);
+}
+
+/** Os banners (janelas, cartões e destaques) que a pessoa pode ver: uma leitura só por requisição. */
 const bannersQuePodem = cache(async (): Promise<BannerNoAr[]> => {
   if (MODO_DEMO) return [];
   const [usuario, jar, agora] = await Promise.all([obterUsuario(), cookies(), agoraDaRequisicao()]);
@@ -148,7 +157,12 @@ const bannersQuePodem = cache(async (): Promise<BannerNoAr[]> => {
   const quem = usuario && perfil && data.some((b) => temFiltro(filtroDe(b))) ? await quemVe(usuario.id, perfil) : null;
   const podem = data
     .filter((b) => paraQuemVe(b.id, filtroDe(b), quem, agora))
-    .filter((b) => podeMostrar(b.repetir_dias, juntarVistos(doNavegador.get(b.id), daConta.get(b.id)), hoje))
+    // o destaque é vitrine: aparece mesmo já visto
+    .filter(
+      (b) =>
+        b.formato === "destaque" ||
+        podeMostrar(b.repetir_dias, juntarVistos(doNavegador.get(b.id), daConta.get(b.id)), hoje),
+    )
     .slice(0, 12);
   // a busca pela área de quem vê (só lida quando algum banner pede)
   const area =
@@ -164,7 +178,7 @@ const bannersQuePodem = cache(async (): Promise<BannerNoAr[]> => {
     paginas: (b.paginas?.length ? b.paginas : ["inicio"]).filter((x): x is PaginaBanner => x in PAGINAS_BANNER),
     atraso: b.atraso_segundos ?? ATRASO_PADRAO,
     imagem: b.imagem ?? null,
-    formato: (b.formato === "cartao" ? "cartao" : "janela") as FormatoBanner,
+    formato: (b.formato === "cartao" || b.formato === "destaque" ? b.formato : "janela") as FormatoBanner,
     novidades: b.em_novidades ?? false,
   }));
 });
