@@ -121,6 +121,25 @@ export function perfilCompleto(perfil: MeuPerfil | null) {
 }
 
 /**
+ * Antes de aceitar um candidato (o contato da empresa vai para ele): o WhatsApp e, de quem contrata, o e-mail.
+ * null: pode aceitar. Quem é da equipe (recrutador) não mexe no perfil da conta: pede a quem administra. O admin
+ * (no computador, pelas telas do admin) não passa por aqui.
+ */
+export async function faltaContatoParaAceitar(voltar: string): Promise<{ erro: string; ir?: string } | null> {
+  const [usuario, perfil] = await Promise.all([obterUsuario(), obterMeuPerfil().catch(() => null)]);
+  if (!usuario || perfilCompleto(perfil)) return null;
+  const oQue = perfil?.tipo === "pessoa" ? "o WhatsApp" : "o WhatsApp e o e-mail";
+  if (usuario.papel === "recrutador")
+    return {
+      erro: `Para aceitar candidatos, a conta precisa de ${oQue}. Peça a quem administra a conta para completar o perfil.`,
+    };
+  return {
+    erro: `Para aceitar, complete o perfil com ${oQue}: é o contato que o candidato recebe.`,
+    ir: `/perfil?completar=1&next=${encodeURIComponent(voltar)}`,
+  };
+}
+
+/**
  * Logo depois de entrar só se pede o perfil de quem não tem nenhum contato (a conta nova): a conta antiga sem o
  * WhatsApp ou o e-mail completa na próxima ação (perfilCompleto), sem travar a entrada.
  */

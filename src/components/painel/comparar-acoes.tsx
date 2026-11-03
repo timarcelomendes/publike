@@ -29,7 +29,8 @@ export function AcoesDoComparar({
     setAviso(null);
     iniciar(async () => {
       const r = await chamarAcao(() => moverCandidatos(anuncioId, [perfilId], destino));
-      if (!r.ok) setAviso({ ok: false, texto: r.erro });
+      if (!r.ok && "ir" in r && r.ir) router.push(r.ir);
+      else if (!r.ok) setAviso({ ok: false, texto: r.erro });
       else if (r.falhas.length) setAviso({ ok: false, texto: r.falhas.map((f) => f.erro).join(" ") });
       else {
         setAviso({ ok: true, texto: r.mensagem });

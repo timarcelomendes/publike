@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
-import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { faltaContatoParaAceitar, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { FORMATOS_ENTREVISTA, MAX_HORARIOS, preencherModelo } from "@/lib/recrutamento";
 import { oferecerHorariosAutomaticos } from "@/lib/servidor/automacoes";
@@ -22,7 +22,7 @@ const MAX_DE_UMA_VEZ = 100;
 
 type Falha = { perfil: string; erro: string };
 export type ResultadoEmMassa =
-  { ok: true; feitos: number; falhas: Falha[]; mensagem: string } | { ok: false; erro: string };
+  { ok: true; feitos: number; falhas: Falha[]; mensagem: string } | { ok: false; erro: string; ir?: string };
 
 function idsValidos(ids: unknown): string[] {
   return Array.isArray(ids) ? [...new Set(ids.filter((i): i is string => typeof i === "string" && UUID.test(i)))] : [];
@@ -55,6 +55,14 @@ export async function moverCandidatos(
     supabase.from("curtidas").select("perfil_id, status").eq("anuncio_id", anuncioId).in("perfil_id", ids),
     supabase.rpc("etapas_dos_candidatos", { p_anuncio: anuncioId }),
   ]);
+  // Entrevista ou Contratado aceita quem ainda não foi aceito: antes, o contato da empresa (WhatsApp e e-mail)
+  if (
+    (etapa === "entrevista" || etapa === "contratado") &&
+    (curtidas ?? []).some((c) => ["pendente", "dispensada", "desfeito"].includes(c.status))
+  ) {
+    const falta = await faltaContatoParaAceitar(`/painel/anuncio/${anuncioId}`);
+    if (falta) return { ok: false, ...falta };
+  }
   const notas = new Map((etapas ?? []).map((e) => [e.perfil_id, e.nota]));
   const nomes = new Map<string, string>();
   const falhas: Falha[] = [];

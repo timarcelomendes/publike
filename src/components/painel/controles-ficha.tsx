@@ -188,6 +188,8 @@ export function ControlesDaFicha({
       aba === "contratados" ? "contratado" : aba === "nao_seguiu" ? "nao_seguiu" : aba === "novos" ? "novo" : aba;
     iniciar(async () => {
       const r = await chamarAcao(() => moverCandidatos(anuncioId, [perfilId], destino));
+      // falta o contato da conta para aceitar: vai completar o perfil
+      if (!r.ok && "ir" in r && r.ir) return router.push(r.ir);
       if (!r.ok) return setErro(r.erro);
       if (!r.feitos) return setErro(r.falhas[0]?.erro ?? "Não deu para mudar agora.");
       setFeito({

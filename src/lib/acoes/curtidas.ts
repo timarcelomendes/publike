@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { categoria as categoriaDe, ETAPAS_CANDIDATO, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
-import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
+import { faltaContatoParaAceitar, obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -187,6 +187,11 @@ export async function responderCurtida(
   }
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/painel" };
+  // aceitar libera o contato da empresa: antes, o WhatsApp (e o e-mail de quem contrata)
+  if (decisao === "match") {
+    const falta = await faltaContatoParaAceitar(`/painel/anuncio/${anuncioId}`);
+    if (falta) return { ok: false, ...falta };
+  }
 
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("responder_curtida", {
