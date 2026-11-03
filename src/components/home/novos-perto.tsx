@@ -7,6 +7,7 @@ import { contasPerto, nomeNaLista, oQueE } from "@/lib/servidor/contas-perto";
 import { BotaoConectarCompacto } from "../conexoes/botao-conectar-compacto";
 import { SeloVerificado } from "../selo-verificado";
 import { Avatar, Container } from "../ui/basicos";
+import { BotaoLink } from "../ui/botao";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
 
 const DIAS = 30;
@@ -14,7 +15,7 @@ const DIAS = 30;
 /**
  * Onde a lista aparece: "coluna", embaixo do cartão da conta (computador); "faixa", uma linha que
  * rola de lado (no meio da linha do tempo no celular e na home de quem contrata); "vitrine", a
- * seção da home do visitante (o Conectar leva a entrar na conta).
+ * seção da home do visitante (só quantas contas chegaram, com o convite para entrar).
  */
 type Jeito = "coluna" | "faixa" | "vitrine";
 // a coluna fica presa ao rolar: 4 contas para caber na tela junto do cartão da conta
@@ -42,6 +43,36 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
   // a coluna e a faixa são de quem entrou; a vitrine, de quem ainda não entrou
   if ((jeito === "vitrine") === logado || !novos.length) return null;
   const totalTexto = textoDoTotal(total, novos.length);
+
+  // na vitrine, só o número (02/11/2026, claude/plano-home-visitante.md, item 6): os nomes das pessoas, com um
+  // Conectar que o visitante não usa, não convenciam ninguém. Com menos de 20, nada (número pequeno parece vazio).
+  if (jeito === "vitrine") {
+    if (total < 20) return null;
+    const { praca } = await cidadeDaVisita();
+    return (
+      <Container className="mt-12 sm:mt-16">
+        <section
+          aria-labelledby="novos-no-publike"
+          className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:flex-row sm:items-center sm:gap-6 sm:p-6"
+        >
+          <p className="font-display text-[48px] leading-none font-extrabold tracking-[-0.02em] tabular-nums sm:text-[56px]">
+            {total}
+          </p>
+          <div className="min-w-0 flex-1">
+            <h2 id="novos-no-publike" className="text-h3">
+              Pessoas e empresas chegaram no Publike em {praca.nome} nos últimos {DIAS} dias
+            </h2>
+            <p className="mt-1 text-body text-ink-muted">
+              Quem procura trabalho, quem contrata e quem presta serviço. Entrar é grátis.
+            </p>
+          </div>
+          <BotaoLink href="/entrar" variante="secundario" className="shrink-0 self-start sm:self-center">
+            Criar minha conta grátis
+          </BotaoLink>
+        </section>
+      </Container>
+    );
+  }
 
   if (jeito === "coluna") {
     return (
@@ -103,23 +134,16 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
     );
   }
 
-  const vitrine = jeito === "vitrine";
   const cartoes = (
     <ul
       // relative: o texto do leitor de tela (sr-only, absoluto) fica dentro da rolagem e não alarga a página
-      className={`sem-barra relative -mx-4 flex gap-3 overflow-x-auto px-4 pb-1 ${
-        vitrine
-          ? "mt-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5"
-          : // no celular rola de lado; do tablet em diante, uma grade de até 5 (o resto fica para o celular)
-            "mt-3 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 md:grid-cols-4 lg:grid-cols-5 sm:[&>li:nth-child(n+6)]:hidden"
-      }`}
+      // no celular rola de lado; do tablet em diante, uma grade de até 5 (o resto fica para o celular)
+      className="sem-barra relative -mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 md:grid-cols-4 lg:grid-cols-5 sm:[&>li:nth-child(n+6)]:hidden"
     >
       {novos.map((n) => (
         <li
           key={n.id}
-          className={`flex shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface-200 p-3.5 text-center shadow-card ${
-            vitrine ? "w-44 sm:w-auto" : "w-40 sm:w-auto"
-          }`}
+          className="flex w-40 shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface-200 p-3.5 text-center shadow-card sm:w-auto"
         >
           <Link
             href={`/perfil/${n.id}`}
@@ -152,41 +176,20 @@ export async function NovosPerto({ jeito = "coluna" }: { jeito?: Jeito }) {
         </li>
       ))}
       {/* no celular, o último quadrinho leva à lista toda (no tablet e no computador, o "Ver todas" do título) */}
-      {!vitrine && (
-        <li className="flex w-40 shrink-0 sm:hidden">
-          <Link
-            href="/painel/conexoes?aba=novas"
-            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong p-3.5 text-center text-label text-terra-text hover:bg-surface-200"
-          >
-            <ArrowRight aria-hidden className="size-6" />
-            Ver mais
-            {total > novos.length && (
-              <span className="text-[13px] leading-[18px] font-normal text-ink-muted">todas as {total}</span>
-            )}
-          </Link>
-        </li>
-      )}
+      <li className="flex w-40 shrink-0 sm:hidden">
+        <Link
+          href="/painel/conexoes?aba=novas"
+          className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong p-3.5 text-center text-label text-terra-text hover:bg-surface-200"
+        >
+          <ArrowRight aria-hidden className="size-6" />
+          Ver mais
+          {total > novos.length && (
+            <span className="text-[13px] leading-[18px] font-normal text-ink-muted">todas as {total}</span>
+          )}
+        </Link>
+      </li>
     </ul>
   );
-
-  if (vitrine) {
-    // a praça toda (a lista vem de todas as cidades dela): "Goiânia e região"
-    const { praca } = await cidadeDaVisita();
-    return (
-      <Container className="mt-12 sm:mt-16">
-        <section aria-labelledby="novos-no-publike">
-          <h2 id="novos-no-publike" className="text-h2 sm:text-[28px] sm:leading-[34px]">
-            Chegaram no Publike em {praca.nome}
-          </h2>
-          <p className="mt-1 text-body text-ink-muted">
-            {totalTexto ?? "Gente e empresas que entraram nos últimos 30 dias."} Conecte-se para conversar e indicar
-            trabalho.
-          </p>
-          {cartoes}
-        </section>
-      </Container>
-    );
-  }
 
   return (
     <section aria-labelledby="novos-perto-faixa" className="flex flex-col">

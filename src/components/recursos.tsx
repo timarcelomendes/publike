@@ -93,12 +93,21 @@ const ICONES_PERFIL: Record<Intencao, LucideIcon> = {
  */
 export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: Intencao; linkDetalhes?: boolean }) {
   const [atual, setAtual] = useState<Intencao>(inicial);
-  // na página inicial, no celular: só os 4 primeiros (a lista inteira passava de uma tela)
+  // na página inicial: só os 4 primeiros (a lista inteira passava de uma tela; 02/11/2026, também no computador,
+  // claude/plano-home-visitante.md, item 8)
   const [todos, setTodos] = useState(false);
   const curto = linkDetalhes && !todos;
   const base = useId();
   const abas = useRef<(HTMLButtonElement | null)[]>([]);
   const perfil = PERFIS.find((p) => p.valor === atual) ?? PERFIS[0];
+  // o selo "Novo" em no máximo 2 por perfil (os primeiros da lista): com 7, ele deixava de chamar atenção
+  const novos = new Set(
+    [...perfil.recursos, ...(perfil.extras?.recursos ?? [])]
+      .filter((r) => r.novo)
+      .slice(0, 2)
+      .map((r) => r.titulo),
+  );
+  const quantos = curto ? Math.min(4, perfil.recursos.length) : perfil.recursos.length;
 
   // setas trocam de aba (padrão de abas acessíveis)
   function teclas(e: KeyboardEvent, i: number) {
@@ -151,16 +160,14 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
         className="flex flex-col gap-5"
       >
         <p className="max-w-2xl text-body-lg">{perfil.resumo}</p>
-        <ul
-          className={`grid gap-2 sm:grid-cols-2 sm:gap-3 ${perfil.recursos.length % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}
-        >
+        <ul className={`grid gap-2 sm:grid-cols-2 sm:gap-3 ${quantos % 3 === 0 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
           {perfil.recursos.map((r, i) => {
             const Icone = ICONES[r.icone];
             return (
               <li
                 key={r.titulo}
                 className={`flex gap-3 rounded-lg border border-line bg-surface-200 p-3 shadow-card sm:flex-col sm:gap-2 sm:p-4 ${
-                  curto && i >= 4 ? "max-sm:hidden" : ""
+                  i >= quantos ? "hidden" : ""
                 }`}
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-terra-soft text-terra-text">
@@ -169,7 +176,7 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
                 <span className="flex flex-col gap-0.5">
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label">
                     {r.titulo}
-                    {r.novo && <Selo variante="novo">Novo</Selo>}
+                    {novos.has(r.titulo) && <Selo variante="novo">Novo</Selo>}
                   </span>
                   <span className="text-body-sm text-ink-muted">{r.texto}</span>
                 </span>
@@ -181,7 +188,7 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
           <button
             type="button"
             onClick={() => setTodos(true)}
-            className="-mt-2 self-start text-label text-terra-text underline underline-offset-2 sm:hidden"
+            className="-mt-2 self-start text-label text-terra-text underline underline-offset-2"
           >
             Ver mais {perfil.recursos.length - 4}
           </button>
@@ -210,7 +217,7 @@ export function RecursosPorPerfil({ inicial, linkDetalhes = false }: { inicial: 
                     <span className="flex flex-col gap-0.5">
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label">
                         {r.titulo}
-                        {r.novo && <Selo variante="novo">Novo</Selo>}
+                        {novos.has(r.titulo) && <Selo variante="novo">Novo</Selo>}
                       </span>
                       <span className="text-body-sm text-ink-muted">{r.texto}</span>
                     </span>
