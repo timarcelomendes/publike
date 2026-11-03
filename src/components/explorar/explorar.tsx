@@ -25,6 +25,7 @@ import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
 import {
   formatarDistancia,
   formatarLugar,
+  plural,
   primeiro,
   rotuloConta,
   rotuloModalidade,
@@ -226,7 +227,11 @@ export async function Explorar({
   const avisar = filtros.tipo === "vaga" && !filtros.meus && !contrata;
   // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
   const procuraTrabalho = !contrata && (intencao === null || intencao === "trabalho" || intencao === "talento");
-  const [encontrados, proximoPasso, publica, quem, salvas] = await Promise.all([
+  // o raio esconde os anúncios mais longe sem a pessoa perceber (de Goiânia, Anápolis fica a mais de 50 km): a
+  // mesma busca até o maior raio diz quantos ficaram de fora e de onde (03/11/2026)
+  const maiorRaio = RAIOS[RAIOS.length - 1];
+  const veLonge = !filtros.meus && !filtros.tempo && filtros.raio < maiorRaio;
+  const [encontrados, proximoPasso, publica, quem, salvas, ateOMaior] = await Promise.all([
     buscarAnuncios(
       ordemDaBusca === filtros.ordem ? filtros : { ...filtros, ordem: ordemDaBusca },
       agora,
@@ -238,7 +243,38 @@ export async function Explorar({
     usuario && !filtros.meus ? temAnuncioNoAr(usuario.id).catch(() => false) : Promise.resolve(filtros.meus),
     usuario && procuraTrabalho && !filtros.meus && filtros.tipo !== "servico" ? quemProcura() : Promise.resolve(null),
     usuario && avisar ? minhasBuscasSalvas().catch(() => []) : Promise.resolve([]),
+    veLonge
+      ? buscarAnuncios({ ...filtros, raio: maiorRaio, ordem: "perto" }, agora, local, usuario?.id ?? null).catch(
+          () => [],
+        )
+      : Promise.resolve([]),
   ]);
+  // os de fora do raio: quantos e as cidades (as mais perto primeiro)
+  const dentro = new Set(encontrados.map((a) => a.id));
+  const deLonge = (ateOMaior as typeof encontrados).filter(
+    (a) => !dentro.has(a.id) && (a.distancia_km ?? 0) > filtros.raio && (!filtros.turno || a.tipo === "vaga"),
+  );
+  const cidadesDeLonge = [...new Set(deLonge.map((a) => a.cidade).filter(Boolean))].slice(0, 3);
+  const maisLonge =
+    deLonge.length > 0 ? (
+      <p className="flex flex-wrap items-center gap-x-2 rounded-md border border-ipe/60 bg-ipe/15 px-3 py-2 text-body-sm">
+        <MapPinned aria-hidden className="size-4 shrink-0 text-ink-muted" />
+        <span>
+          Mostrando até {filtros.raio} km. Há mais {plural(deLonge.length, "anúncio", "anúncios")} mais longe
+          {cidadesDeLonge.length
+            ? ` (${cidadesDeLonge.join(", ")}${deLonge.length > cidadesDeLonge.length ? "…" : ""})`
+            : ""}
+          .
+        </span>
+        <Link
+          href={hrefFiltros(filtros, { raio: maiorRaio })}
+          scroll={false}
+          className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+        >
+          Ver também
+        </Link>
+      </p>
+    ) : null;
   // o que cada vaga pede e oferece: para o % de match, o turno (a busca do banco não filtra
   // turno) e a linha de benefícios do cartão
   const requisitos = await requisitosDaLista(encontrados).catch(() => null);
@@ -337,7 +373,6 @@ export async function Explorar({
           ? `${n >= LIMITE ? `${LIMITE}+` : n} ${nome[1]}`
           : // com poucas, o número não ajuda: só o que é ("Vagas perto de você")
             `${nome[1][0].toUpperCase()}${nome[1].slice(1)} perto de você`;
-  const maiorRaio = RAIOS[RAIOS.length - 1];
   // na busca por palavra: "Resultados para “mecânico”", com quantos são embaixo
   const tituloDaLista = busca ? (n === 0 ? `Nada encontrado para “${termo}”` : `Resultados para “${termo}”`) : contagem;
   const quantos =
@@ -639,6 +674,8 @@ export async function Explorar({
                 )}
               </p>
             )}
+            {/* o raio escondeu anúncios mais longe: diz quantos e de onde, com o link para ver */}
+            {maisLonge && <div className="mt-2 w-full">{maisLonge}</div>}
             {busca && (
               <Link
                 href={hrefFiltros(filtros, { q: "" })}

@@ -5,7 +5,8 @@ import { primeiro } from "./formato";
 import type { Regime, TipoAnuncio } from "./tipos";
 import { noPublike, PRACA_PADRAO } from "./pracas";
 
-export const RAIOS = [5, 10, 25, 50] as const;
+// 100 km: toda a região (Anápolis, Abadiânia…): o banco não passa disso (buscar_anuncios)
+export const RAIOS = [5, 10, 25, 50, 100] as const;
 export const RAIO_PADRAO = 25;
 
 export type Origem = "centro" | "gps" | "mapa";
