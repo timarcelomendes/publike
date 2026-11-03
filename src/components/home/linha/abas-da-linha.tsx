@@ -14,6 +14,9 @@ const EVENTO_ESTADO_FILTROS = "publike-filtros-linha-estado";
 // o painel está aberto agora (o ícone do celular pode aparecer na tela depois do painel)
 let painelAberto = false;
 
+/** O painel dos filtros já abriu sozinho uma vez neste aparelho (com filtro mudado): não abre de novo. */
+const FILTROS_JA_ABRIRAM = "publike_filtros_ja_abriram";
+
 /** Para o ícone dos filtros no celular: se o painel está aberto, e o aviso quando muda. */
 export function assinarFiltrosDaLinha(avisar: () => void) {
   window.addEventListener(EVENTO_ESTADO_FILTROS, avisar);
@@ -57,8 +60,21 @@ export function AbasDaLinha({
   /** Relevantes ou Recentes (OrdemDaLinha): fora do painel, sempre à vista logo acima da lista */
   ordem?: ReactNode;
 }) {
-  const [aberto, setAberto] = useState(mudados > 0 || abrirFiltros);
+  // com filtro mudado, o painel abre sozinho só na primeira vez neste aparelho (para a pessoa ver o que está
+  // valendo); depois fica fechado, e o número no botão Filtros avisa (03/11/2026). "Informe seu CEP" sempre abre.
+  const [aberto, setAberto] = useState(abrirFiltros);
   const id = useId();
+  useEffect(() => {
+    if (mudados === 0 || abrirFiltros) return;
+    try {
+      if (localStorage.getItem(FILTROS_JA_ABRIRAM)) return;
+      localStorage.setItem(FILTROS_JA_ABRIRAM, "1");
+    } catch {
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- o localStorage só existe no navegador
+    setAberto(true);
+  }, [mudados, abrirFiltros]);
   useEffect(() => {
     const alternar = () => setAberto((a) => !a);
     window.addEventListener(EVENTO_FILTROS, alternar);
