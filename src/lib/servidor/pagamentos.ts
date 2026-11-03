@@ -53,7 +53,7 @@ function textoDoErro(e: unknown) {
   return String(e).slice(0, 480);
 }
 
-async function vincular(a: Acesso, sub: AssinaturaAsaas): Promise<Vinculo | null> {
+async function vincular(a: Acesso, sandbox: boolean, sub: AssinaturaAsaas): Promise<Vinculo | null> {
   const { data, error } = await a.cliente.rpc("servidor_pagamento_vincular", {
     p_chave: a.chave,
     p_sub: sub as unknown as Json,
@@ -63,7 +63,7 @@ async function vincular(a: Acesso, sub: AssinaturaAsaas): Promise<Vinculo | null
   // o cartão novo (troca): a assinatura antiga sai do Asaas, para não cobrar duas vezes
   for (const antiga of v?.trocadas ?? []) {
     try {
-      await cancelarAssinaturaAsaas(antiga);
+      await cancelarAssinaturaAsaas(sandbox, antiga);
     } catch (e) {
       console.error("Publike: não deu para cancelar a assinatura trocada:", textoDoErro(e));
     }
@@ -72,13 +72,21 @@ async function vincular(a: Acesso, sub: AssinaturaAsaas): Promise<Vinculo | null
 }
 
 /** A nota fiscal da assinatura, uma vez (o serviço vem do Admin; sem ele, fica para depois). */
-async function garantirNota(a: Acesso, v: { conta: string; assinatura_id: string; asaas_id: string }) {
+async function garantirNota(
+  a: Acesso,
+  sandbox: boolean,
+  v: { conta: string; assinatura_id: string; asaas_id: string },
+) {
   const { data } = await a.cliente.rpc("servidor_pagamento_contexto", { p_chave: a.chave, p_conta: v.conta });
   const nota = (data as { nota?: { servico: string; e_codigo: boolean; descricao: string | null } | null } | null)
     ?.nota;
   if (!nota?.servico) return;
   try {
-    await configurarNota(v.asaas_id, { servico: nota.servico, ehCodigo: nota.e_codigo, descricao: nota.descricao });
+    await configurarNota(sandbox, v.asaas_id, {
+      servico: nota.servico,
+      ehCodigo: nota.e_codigo,
+      descricao: nota.descricao,
+    });
     await a.cliente.rpc("servidor_pagamento_nota_configurada", { p_chave: a.chave, p_assinatura: v.assinatura_id });
   } catch (e) {
     // a cobrança segue; a nota tenta de novo no próximo aviso
@@ -87,7 +95,12 @@ async function garantirNota(a: Acesso, v: { conta: string; assinatura_id: string
 }
 
 /** Grava a cobrança (como o Asaas devolveu) e, no Pix em aberto, o código para pagar. */
-export async function gravarCobranca(a: Acesso, pag: CobrancaAsaas, recusada = false): Promise<Gravada | null> {
+export async function gravarCobranca(
+  a: Acesso,
+  sandbox: boolean,
+  pag: CobrancaAsaas,
+  recusada = false,
+): Promise<Gravada | null> {
   if (!pag.subscription) return null;
   let { data, error } = await a.cliente.rpc("servidor_pagamento_cobranca", {
     p_chave: a.chave,
@@ -96,7 +109,7 @@ export async function gravarCobranca(a: Acesso, pag: CobrancaAsaas, recusada = f
   if (error) throw new Error(error.message);
   if (!data) {
     // a assinatura do checkout do cartão ainda não estava ligada: liga e grava de novo
-    const v = await vincular(a, await lerAssinatura(pag.subscription));
+    const v = await vincular(a, sandbox, await lerAssinatura(sandbox, pag.subscription));
     if (!v) return null;
     ({ data, error } = await a.cliente.rpc("servidor_pagamento_cobranca", {
       p_chave: a.chave,
@@ -108,7 +121,7 @@ export async function gravarCobranca(a: Acesso, pag: CobrancaAsaas, recusada = f
   const g = data as Gravada;
   if (g.forma === "pix" && !g.tem_pix && (g.situacao === "pendente" || g.situacao === "atrasada")) {
     try {
-      const pix = await pixDaCobranca(pag.id);
+      const pix = await pixDaCobranca(sandbox, pag.id);
       await a.cliente.rpc("servidor_pagamento_pix", {
         p_chave: a.chave,
         p_asaas_id: pag.id,
@@ -120,12 +133,12 @@ export async function gravarCobranca(a: Acesso, pag: CobrancaAsaas, recusada = f
     }
   }
   if (!g.nota_configurada && g.assinatura_asaas) {
-    await garantirNota(a, { conta: g.conta, assinatura_id: g.assinatura_id, asaas_id: g.assinatura_asaas });
+    await garantirNota(a, sandbox, { conta: g.conta, assinatura_id: g.assinatura_id, asaas_id: g.assinatura_asaas });
   }
   // o Pix que nunca foi pago (a assinatura ainda não valeu) e venceu: a assinatura sai do Asaas
   if (g.situacao === "atrasada" && g.assinatura_situacao === "pendente" && g.assinatura_asaas) {
     try {
-      await cancelarAssinaturaAsaas(g.assinatura_asaas);
+      await cancelarAssinaturaAsaas(sandbox, g.assinatura_asaas);
     } catch (e) {
       console.error("Publike: não deu para cancelar a assinatura sem pagamento:", textoDoErro(e));
     }
@@ -135,19 +148,19 @@ export async function gravarCobranca(a: Acesso, pag: CobrancaAsaas, recusada = f
 }
 
 /** A assinatura inteira: liga, grava as cobranças e a nota. */
-export async function sincronizarAssinatura(a: Acesso, sub: AssinaturaAsaas) {
-  const v = await vincular(a, sub);
+export async function sincronizarAssinatura(a: Acesso, sandbox: boolean, sub: AssinaturaAsaas) {
+  const v = await vincular(a, sandbox, sub);
   if (!v) return null;
   const cobrancas: Gravada[] = [];
   if (sub.deleted || (sub.status && sub.status.toUpperCase() === "INACTIVE")) {
     await a.cliente.rpc("servidor_pagamento_cancelada", { p_chave: a.chave, p_asaas_id: sub.id });
     return { ...v, cobrancas };
   }
-  for (const pag of await cobrancasDaAssinatura(sub.id)) {
-    const g = await gravarCobranca(a, pag);
+  for (const pag of await cobrancasDaAssinatura(sandbox, sub.id)) {
+    const g = await gravarCobranca(a, sandbox, pag);
     if (g) cobrancas.push(g);
   }
-  if (!v.nota_configurada && !cobrancas.some((c) => c.nota_configurada)) await garantirNota(a, v);
+  if (!v.nota_configurada && !cobrancas.some((c) => c.nota_configurada)) await garantirNota(a, sandbox, v);
   return { ...v, cobrancas };
 }
 
@@ -155,12 +168,14 @@ export async function sincronizarAssinatura(a: Acesso, sub: AssinaturaAsaas) {
 export async function sincronizarCliente(conta: string) {
   const a = acessoPagamentos();
   const { data } = await a.cliente.rpc("servidor_pagamento_contexto", { p_chave: a.chave, p_conta: conta });
-  const cliente = (data as { cliente?: { asaas_id: string } | null } | null)?.cliente?.asaas_id;
-  if (!cliente) return;
-  for (const sub of await assinaturasDoCliente(cliente)) {
+  // o cliente é de uma conta do Asaas só (a de produção ou, na conta de teste, a sandbox)
+  const c = (data as { cliente?: { asaas_id: string; sandbox?: boolean } | null } | null)?.cliente;
+  if (!c?.asaas_id) return;
+  const sandbox = c.sandbox === true;
+  for (const sub of await assinaturasDoCliente(sandbox, c.asaas_id)) {
     if (sub.deleted) continue;
     try {
-      await sincronizarAssinatura(a, sub);
+      await sincronizarAssinatura(a, sandbox, sub);
     } catch (e) {
       console.error("Publike: não deu para conferir a assinatura na volta do checkout:", textoDoErro(e));
     }
@@ -177,8 +192,11 @@ type Evento = {
 
 const RECUSA = new Set(["PAYMENT_CREDIT_CARD_CAPTURE_REFUSED", "PAYMENT_REPROVED_BY_RISK_ANALYSIS"]);
 
-/** Um aviso do Asaas. Devolve o erro (para o Asaas mandar de novo) ou null. */
-export async function processarEvento(evento: Evento): Promise<string | null> {
+/**
+ * Um aviso do Asaas. Devolve o erro (para o Asaas mandar de novo) ou null. `sandbox`: veio da conta sandbox
+ * (pelo token), e tudo é lido lá.
+ */
+export async function processarEvento(evento: Evento, sandbox = false): Promise<string | null> {
   const id = evento.id || "";
   const tipo = evento.event || "";
   if (!id || !tipo) return null;
@@ -193,15 +211,15 @@ export async function processarEvento(evento: Evento): Promise<string | null> {
   let erro: string | null = null;
   try {
     if (tipo.startsWith("PAYMENT_") && evento.payment?.id) {
-      await gravarCobranca(a, await lerCobranca(evento.payment.id), RECUSA.has(tipo));
+      await gravarCobranca(a, sandbox, await lerCobranca(sandbox, evento.payment.id), RECUSA.has(tipo));
     } else if (tipo.startsWith("SUBSCRIPTION_") && evento.subscription?.id) {
       if (tipo === "SUBSCRIPTION_DELETED" || tipo === "SUBSCRIPTION_INACTIVATED") {
         await a.cliente.rpc("servidor_pagamento_cancelada", { p_chave: a.chave, p_asaas_id: evento.subscription.id });
       } else {
-        await sincronizarAssinatura(a, await lerAssinatura(evento.subscription.id));
+        await sincronizarAssinatura(a, sandbox, await lerAssinatura(sandbox, evento.subscription.id));
       }
     } else if (tipo.startsWith("INVOICE_") && evento.invoice?.id) {
-      const nota = await lerNota(evento.invoice.id);
+      const nota = await lerNota(sandbox, evento.invoice.id);
       await a.cliente.rpc("servidor_pagamento_nota", { p_chave: a.chave, p_nota: nota as unknown as Json });
     }
     // os do checkout (CHECKOUT_PAID e os outros) chegam também como SUBSCRIPTION_CREATED e PAYMENT_*

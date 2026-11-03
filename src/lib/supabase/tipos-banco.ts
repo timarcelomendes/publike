@@ -2945,6 +2945,7 @@ export type Database = {
           p_cpf_cnpj: string;
           p_nome: string;
           p_email: string;
+          p_sandbox?: boolean;
         };
         Returns: undefined;
       };
@@ -2957,9 +2958,11 @@ export type Database = {
           p_asaas_id: string;
           p_checkout_id: string;
           p_proxima: string;
+          p_sandbox?: boolean;
         };
         Returns: string;
       };
+      servidor_pagamento_no_sandbox: { Args: { p_chave: string; p_conta: string }; Returns: boolean };
       servidor_pagamento_vincular: { Args: { p_chave: string; p_sub: Json }; Returns: Json };
       servidor_pagamento_cobranca: { Args: { p_chave: string; p_pag: Json }; Returns: Json };
       servidor_pagamento_pix: {
@@ -2995,6 +2998,7 @@ export type Database = {
         Returns: undefined;
       };
       admin_pagamentos_teste: { Args: { p_conta: string; p_marcar: boolean }; Returns: undefined };
+      admin_pagamentos_teste_sandbox: { Args: { p_conta: string; p_sandbox: boolean }; Returns: undefined };
       copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       retorno_da_conta: { Args: Record<PropertyKey, never>; Returns: Json };
       whatsapp_da_conta: { Args: Record<PropertyKey, never>; Returns: Json };

@@ -3,7 +3,7 @@ import { cache } from "react";
 import { obterUsuario } from "@/lib/dados";
 import { lerFaturas, lerPagamentos, type FaturaCompleta } from "@/lib/pagamentos";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
-import { ErroAsaas, lerNota, pixDaCobranca } from "./asaas";
+import { asaasProducao, ErroAsaas, lerNota, pixDaCobranca } from "./asaas";
 import { acessoPagamentos } from "./pagamentos";
 
 // As leituras das telas de Assinar, Assinatura e Faturas (só a conta logada; o banco confere).
@@ -48,6 +48,26 @@ export async function minhaFatura(id: string): Promise<FaturaCompleta | null> {
   return { ...f, valor: Number(f.valor) };
 }
 
+/**
+ * A conta logada é de teste e paga no sandbox do Asaas (com o site em produção): a tela de assinar avisa que
+ * nada é cobrado de verdade.
+ */
+export async function pagoNoSandbox(): Promise<boolean> {
+  if (!asaasProducao()) return false;
+  const usuario = await obterUsuario();
+  if (!usuario) return false;
+  try {
+    const a = acessoPagamentos();
+    const { data, error } = await a.cliente.rpc("servidor_pagamento_no_sandbox", {
+      p_chave: a.chave,
+      p_conta: usuario.id,
+    });
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
 /** O QR do Pix da fatura em aberto, lido na hora (a imagem não fica no banco). */
 export async function qrDoPix(cobranca: string): Promise<{ imagem: string; codigo: string } | null> {
   const usuario = await obterUsuario();
@@ -59,9 +79,9 @@ export async function qrDoPix(cobranca: string): Promise<{ imagem: string; codig
       p_conta: usuario.id,
       p_cobranca: cobranca,
     });
-    const c = data as { asaas_id: string; forma: string; situacao: string } | null;
+    const c = data as { asaas_id: string; forma: string; situacao: string; sandbox?: boolean } | null;
     if (!c || c.forma !== "pix" || !["pendente", "atrasada"].includes(c.situacao)) return null;
-    const pix = await pixDaCobranca(c.asaas_id);
+    const pix = await pixDaCobranca(c.sandbox === true, c.asaas_id);
     if (!/^[A-Za-z0-9+/=]+$/.test(pix.encodedImage)) return null;
     return { imagem: `data:image/png;base64,${pix.encodedImage}`, codigo: pix.payload };
   } catch (e) {
@@ -81,9 +101,9 @@ export async function pdfDaNota(cobranca: string): Promise<{ pdf: ArrayBuffer; n
       p_conta: usuario.id,
       p_cobranca: cobranca,
     });
-    const id = (data as { nota_asaas: string | null } | null)?.nota_asaas;
-    if (!id) return null;
-    const nota = await lerNota(id);
+    const c = data as { nota_asaas: string | null; sandbox?: boolean } | null;
+    if (!c?.nota_asaas) return null;
+    const nota = await lerNota(c.sandbox === true, c.nota_asaas);
     if (!nota.pdfUrl || !/^https?:\/\//.test(nota.pdfUrl)) return null;
     const r = await fetch(nota.pdfUrl, { cache: "no-store", signal: AbortSignal.timeout(30_000) });
     if (!r.ok) return null;

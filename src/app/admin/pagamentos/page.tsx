@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { ConfigPagamentos, ContaDeTeste, Copiar, GerarToken, TirarDoTeste } from "@/components/admin/pagamentos";
+import {
+  ConfigPagamentos,
+  ContaDeTeste,
+  Copiar,
+  GerarToken,
+  SandboxDaConta,
+  TirarDoTeste,
+} from "@/components/admin/pagamentos";
 import { TabelaDePrecos } from "@/components/admin/tabela-de-precos";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
@@ -25,7 +32,8 @@ type Dados = {
     descricao_nota: string | null;
   };
   planos: { id: string; recurso: Produto; ciclo: Ciclo; valor: number | null; ligado: boolean }[];
-  teste: { conta_id: string; nome: string; email: string | null }[];
+  /** sandbox: sem a migração 20270125120000, undefined */
+  teste: { conta_id: string; nome: string; email: string | null; sandbox?: boolean }[];
   assinaturas: {
     id: string;
     nome: string;
@@ -36,6 +44,7 @@ type Dados = {
     situacao: string;
     proxima_cobranca: string | null;
     atrasadas: number;
+    sandbox?: boolean;
   }[];
   por_mes: number;
   notas_com_erro: { asaas_id: string; erro: string | null; nome: string; em: string }[];
@@ -64,7 +73,9 @@ async function Conteudo() {
   const [sit, agora] = await Promise.all([situacaoPagamentos(c), agoraDaRequisicao()]);
   const noAr = sit.noAr;
   const token = tokenParaCopiar();
-  const ativas = d.assinaturas.filter((a) => a.situacao === "ativa");
+  const tokenSandbox = tokenParaCopiar(true);
+  const temSandbox = d.teste.some((t) => t.sandbox !== undefined);
+  const ativas = d.assinaturas.filter((a) => a.situacao === "ativa" && !a.sandbox);
   return (
     <div className="flex flex-col gap-6">
       <Secao titulo="Está tudo ok?" descricao="O site no ar, perguntado agora, e os avisos do Asaas chegando.">
@@ -115,6 +126,30 @@ async function Conteudo() {
             </dd>
           </div>
         </dl>
+        <div className="flex flex-col gap-2 border-t border-line pt-4 text-body-sm">
+          <h3 className="text-label">A conta sandbox (das contas de teste)</h3>
+          <p className="text-ink-muted">
+            Com o site em produção, as contas de teste marcadas “No sandbox” pagam na sua conta sandbox do Asaas. Lá
+            (sandbox.asaas.com) cadastre outro webhook com o mesmo endereço e outro token, e ponha na Vercel a chave da
+            API do sandbox em ASAAS_SANDBOX_API_KEY e esse token em ASAAS_SANDBOX_WEBHOOK_TOKEN. Os dois tokens têm de
+            ser diferentes: é por ele que o Publike sabe de qual conta veio o aviso.
+          </p>
+          <div className="flex flex-col items-start gap-2">
+            <span className="text-label">Token do sandbox (ASAAS_SANDBOX_WEBHOOK_TOKEN)</span>
+            {tokenSandbox ? (
+              <>
+                <Copiar valor={tokenSandbox} rotulo="o token do webhook do sandbox" segredo />
+                <span className="text-ink-muted">
+                  Este é o do .env.local. Na Vercel tem de ser o mesmo valor.
+                  {sit.local.sandbox.problemaNoToken ? ` Atenção: ${sit.local.sandbox.problemaNoToken}.` : ""}
+                </span>
+              </>
+            ) : (
+              <span className="text-ink-muted">Não está no .env.local deste computador.</span>
+            )}
+            <GerarToken variavel="ASAAS_SANDBOX_WEBHOOK_TOKEN" />
+          </div>
+        </div>
       </Secao>
 
       <Secao
@@ -157,6 +192,36 @@ async function Conteudo() {
               </td>
             </tr>
             <tr>
+              <td className="py-2 pr-3">ASAAS_SANDBOX_API_KEY</td>
+              <td className="py-2 pr-3 break-all">{sit.local.sandbox.chaveMascarada ?? "não posta"}</td>
+              <td className="py-2">
+                {!noAr?.respondeu
+                  ? "—"
+                  : !noAr.sandbox
+                    ? "não usada (o site está no sandbox)"
+                    : !noAr.sandbox.chave
+                      ? "não posta"
+                      : noAr.sandbox.chaveAceita === false
+                        ? "recusada pelo Asaas"
+                        : "posta"}
+              </td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-3">ASAAS_SANDBOX_WEBHOOK_TOKEN</td>
+              <td className="py-2 pr-3 break-all">{sit.local.sandbox.tokenMascarado ?? "não posto"}</td>
+              <td className="py-2">
+                {!noAr?.respondeu
+                  ? "—"
+                  : !noAr.sandbox
+                    ? "não usado (o site está no sandbox)"
+                    : !noAr.sandbox.token
+                      ? "não posto"
+                      : noAr.sandbox.tokenComProblema
+                        ? "fora do padrão ou igual ao de produção"
+                        : "posto"}
+              </td>
+            </tr>
+            <tr>
               <td className="py-2 pr-3">ASAAS_AMBIENTE</td>
               <td className="py-2 pr-3">{sit.local.ambiente}</td>
               <td className="py-2">{!noAr?.respondeu ? "—" : noAr.producao ? "produção" : "teste (sandbox)"}</td>
@@ -194,8 +259,13 @@ async function Conteudo() {
 
       <Secao
         titulo="Contas de teste"
-        descricao="Enquanto está fechado, só estas contas veem o Assinar (comércio, empresa ou agência)."
+        descricao="Enquanto está fechado, só estas contas veem o Assinar (comércio, empresa ou agência). Com o site em produção, as marcadas “No sandbox” pagam na conta sandbox do Asaas: nada é cobrado. Desmarque para a compra de verdade."
       >
+        {!temSandbox && d.teste.length > 0 && (
+          <Aviso tipo="alerta" titulo="Rode a migração do sandbox">
+            Para escolher o sandbox por conta, rode a migração 20270125120000_pagamentos_sandbox.sql.
+          </Aviso>
+        )}
         <ContaDeTeste />
         {d.teste.length > 0 && (
           <ul className="flex flex-col divide-y divide-line">
@@ -205,7 +275,10 @@ async function Conteudo() {
                   {t.nome}
                   {t.email ? <span className="text-ink-muted"> · {t.email}</span> : null}
                 </span>
-                <TirarDoTeste conta={t.conta_id} />
+                <span className="flex items-start gap-3">
+                  {t.sandbox !== undefined && <SandboxDaConta conta={t.conta_id} nome={t.nome} sandbox={t.sandbox} />}
+                  <TirarDoTeste conta={t.conta_id} />
+                </span>
               </li>
             ))}
           </ul>
@@ -214,7 +287,7 @@ async function Conteudo() {
 
       <Secao
         titulo="Assinaturas"
-        descricao={`${ativas.length} ativas · ${formatarMoeda(Number(d.por_mes))} por mês (o trimestral dividido por 3)`}
+        descricao={`${ativas.length} ativas · ${formatarMoeda(Number(d.por_mes))} por mês (o trimestral dividido por 3; as do sandbox não contam)`}
       >
         {d.assinaturas.length === 0 ? (
           <p className="text-body-sm text-ink-muted">Nenhuma ainda.</p>
@@ -227,6 +300,7 @@ async function Conteudo() {
                   {formatarMoeda(Number(a.valor))} · {a.forma === "pix" ? "Pix" : "cartão"}
                 </span>
                 <span className="flex items-center gap-2">
+                  {a.sandbox && <Selo variante="contorno">Sandbox</Selo>}
                   {a.atrasadas > 0 && <Selo variante="perigo">Em atraso</Selo>}
                   <Selo variante={a.situacao === "ativa" ? "match" : "contorno"}>{a.situacao}</Selo>
                 </span>

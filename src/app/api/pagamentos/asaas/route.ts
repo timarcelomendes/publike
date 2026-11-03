@@ -1,26 +1,17 @@
-import { timingSafeEqual } from "node:crypto";
 import { after, connection } from "next/server";
-import { chaveAceita, situacaoAsaas, tokenDoWebhook } from "@/lib/servidor/asaas";
+import { chaveAceita, contaDoAviso, situacaoAsaas } from "@/lib/servidor/asaas";
 import { enviarPushPendentes } from "@/lib/servidor/filas";
 import { processarEvento } from "@/lib/servidor/pagamentos";
 
 // Os avisos do Asaas (o "webhook", cadastrado no painel do Asaas com o token de ASAAS_WEBHOOK_TOKEN). O aviso
 // só diz o que olhar: a cobrança, a assinatura e a nota são sempre lidas de novo na API do Asaas. Erro: 500,
-// e o Asaas manda de novo (o mesmo aviso não é gravado duas vezes).
+// e o Asaas manda de novo (o mesmo aviso não é gravado duas vezes). A conta sandbox (das contas de teste) usa
+// o mesmo endereço com o seu token (ASAAS_SANDBOX_WEBHOOK_TOKEN): é o token que diz de qual conta veio.
 export const maxDuration = 60;
 
-function autorizado(veio: string | null) {
-  const token = tokenDoWebhook();
-  if (token.length < 16 || !veio) return false;
-  const a = Buffer.from(token);
-  const b = Buffer.from(veio);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 export async function POST(request: Request) {
-  if (!autorizado(request.headers.get("asaas-access-token"))) {
-    return Response.json({ ok: false }, { status: 401 });
-  }
+  const conta = contaDoAviso(request.headers.get("asaas-access-token"));
+  if (!conta) return Response.json({ ok: false }, { status: 401 });
   let evento: unknown;
   try {
     evento = await request.json();
@@ -30,7 +21,7 @@ export async function POST(request: Request) {
   if (!evento || typeof evento !== "object") return Response.json({ ok: false }, { status: 400 });
   let erro: string | null;
   try {
-    erro = await processarEvento(evento as Parameters<typeof processarEvento>[0]);
+    erro = await processarEvento(evento as Parameters<typeof processarEvento>[0], conta.sandbox);
   } catch (e) {
     erro = e instanceof Error ? e.message : String(e);
     console.error("Publike: aviso de pagamento sem processar:", erro.slice(0, 300));
@@ -47,6 +38,7 @@ export async function POST(request: Request) {
 export async function GET() {
   await connection();
   const s = situacaoAsaas();
+  const sb = s.sandbox;
   return Response.json(
     {
       publike: "pagamentos",
@@ -56,6 +48,16 @@ export async function GET() {
       chaveDeOutroAmbiente: s.chaveDeOutroAmbiente,
       token: s.temToken,
       tokenComProblema: Boolean(s.problemaNoToken),
+      // a conta sandbox das contas de teste (só com o site em produção)
+      sandbox: s.producao
+        ? {
+            chave: sb.temChave,
+            chaveAceita: sb.temChave ? await chaveAceita(true) : null,
+            chaveDeOutroAmbiente: sb.chaveDeOutroAmbiente,
+            token: sb.temToken,
+            tokenComProblema: Boolean(sb.problemaNoToken),
+          }
+        : null,
     },
     { headers: { "Cache-Control": "no-store" } },
   );

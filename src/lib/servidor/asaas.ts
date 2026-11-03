@@ -1,4 +1,5 @@
 import "server-only";
+import { timingSafeEqual } from "node:crypto";
 
 // O parceiro de pagamentos (Asaas; claude/plano-checkout-asaas.md). Só o servidor fala com ele, com a chave
 // da conta posta na Vercel (ASAAS_API_KEY, nunca no código nem no banco). O número do cartão nunca passa por
@@ -10,33 +11,49 @@ import "server-only";
 //   ASAAS_WEBHOOK_TOKEN o token que o Asaas manda nos avisos (header asaas-access-token)
 //   ASAAS_API_URL       (só em teste) outro endereço da API
 //   ASAAS_CHECKOUT_URL  (só em teste) outro endereço da página do checkout
+//
+// As contas de teste marcadas "no sandbox" (Admin › Pagamentos) pagam na conta sandbox do Asaas mesmo com o
+// site em produção (claude/plano-pagamentos-sandbox.md). Com ASAAS_AMBIENTE=producao:
+//
+//   ASAAS_SANDBOX_API_KEY       a chave da API da conta sandbox
+//   ASAAS_SANDBOX_WEBHOOK_TOKEN o token do webhook da conta sandbox (diferente do de produção: é por ele que
+//                               o aviso diz de qual conta veio)
+//
+// Cada chamada recebe `sandbox`: a conta de teste paga no sandbox (ou a assinatura foi feita lá). Com o site
+// em sandbox, tudo já é sandbox e as variáveis ASAAS_SANDBOX_* não são usadas.
 
 export function asaasProducao() {
   return (process.env.ASAAS_AMBIENTE || "").trim().toLowerCase() === "producao";
 }
 
-function chave() {
-  return (process.env.ASAAS_API_KEY || "").trim();
+const env = (nome: string) => (process.env[nome] || "").trim();
+
+/** A conta do Asaas de cada chamada: a principal (ASAAS_AMBIENTE) ou, com o site em produção, a sandbox. */
+function credenciais(sandbox: boolean) {
+  if (sandbox && asaasProducao())
+    return { producao: false, chave: env("ASAAS_SANDBOX_API_KEY"), token: env("ASAAS_SANDBOX_WEBHOOK_TOKEN") };
+  return { producao: asaasProducao(), chave: env("ASAAS_API_KEY"), token: env("ASAAS_WEBHOOK_TOKEN") };
 }
 
 export function tokenDoWebhook() {
-  return (process.env.ASAAS_WEBHOOK_TOKEN || "").trim();
+  return credenciais(false).token;
 }
 
-export function asaasConfigurado() {
-  return Boolean(chave());
+/** As chamadas por esta conta do Asaas podem ser feitas (a chave está posta). */
+export function asaasConfigurado(sandbox = false) {
+  return Boolean(credenciais(sandbox).chave);
 }
 
-function base() {
-  const propria = (process.env.ASAAS_API_URL || "").trim().replace(/\/+$/, "");
+function base(producao: boolean) {
+  const propria = env("ASAAS_API_URL").replace(/\/+$/, "");
   if (propria) return propria;
-  return asaasProducao() ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
+  return producao ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
 }
 
 /** A página onde quem assina paga com o cartão. */
-export function linkDoCheckout(id: string) {
-  const propria = (process.env.ASAAS_CHECKOUT_URL || "").trim().replace(/\/+$/, "");
-  const raiz = propria || (asaasProducao() ? "https://asaas.com" : "https://sandbox.asaas.com");
+export function linkDoCheckout(sandbox: boolean, id: string) {
+  const propria = env("ASAAS_CHECKOUT_URL").replace(/\/+$/, "");
+  const raiz = propria || (credenciais(sandbox).producao ? "https://asaas.com" : "https://sandbox.asaas.com");
   return `${raiz}/checkoutSession/show?id=${encodeURIComponent(id)}`;
 }
 
@@ -47,51 +64,84 @@ export function mascarar(valor: string) {
   return `${valor.slice(0, 6)}…${valor.slice(-4)} (${valor.length} caracteres)`;
 }
 
+// o Asaas pede de 32 a 255 caracteres, sem espaço, e diferente da chave da API
+function problemaDoToken(t: string, k: string) {
+  if (!t) return null;
+  if (t.length < 32) return "curto: o Asaas pede 32 caracteres ou mais";
+  if (/\s/.test(t)) return "tem espaço";
+  if (t === k) return "é igual à chave da API";
+  return null;
+}
+
 /** O que o admin pode mostrar: posto ou não, a chave só mascarada, e o que está errado no token. */
 export function situacaoAsaas() {
-  const k = chave();
-  const t = tokenDoWebhook();
+  const { chave: k, token: t } = credenciais(false);
+  const producao = asaasProducao();
+  const sk = env("ASAAS_SANDBOX_API_KEY");
+  const st = env("ASAAS_SANDBOX_WEBHOOK_TOKEN");
   return {
-    ambiente: asaasProducao() ? "produção" : "teste (sandbox)",
-    producao: asaasProducao(),
+    ambiente: producao ? "produção" : "teste (sandbox)",
+    producao,
     temChave: Boolean(k),
     chaveMascarada: mascarar(k),
     // a chave de produção começa com $aact_prod_ e a do sandbox com $aact_hmlg_ (quando o prefixo existe)
-    chaveDeOutroAmbiente: Boolean(k) && (asaasProducao() ? /_hmlg_/.test(k) : /_prod_/.test(k)),
+    chaveDeOutroAmbiente: Boolean(k) && (producao ? /_hmlg_/.test(k) : /_prod_/.test(k)),
     temToken: Boolean(t),
     tokenMascarado: mascarar(t),
-    // o Asaas pede de 32 a 255 caracteres, sem espaço, e diferente da chave da API
-    problemaNoToken: !t
-      ? null
-      : t.length < 32
-        ? "curto: o Asaas pede 32 caracteres ou mais"
-        : /\s/.test(t)
-          ? "tem espaço"
-          : t === k
-            ? "é igual à chave da API"
-            : null,
+    problemaNoToken: problemaDoToken(t, k),
+    // a conta sandbox das contas de teste (só conta com o site em produção)
+    sandbox: {
+      temChave: Boolean(sk),
+      chaveMascarada: mascarar(sk),
+      chaveDeOutroAmbiente: /_prod_/.test(sk),
+      temToken: Boolean(st),
+      tokenMascarado: mascarar(st),
+      problemaNoToken: st && st === t ? "é igual ao token de produção" : problemaDoToken(st, sk),
+    },
   };
 }
 
 /** O token inteiro, para copiar e colar no painel do Asaas (só no Admin, no computador do dono). */
-export function tokenParaCopiar() {
-  return tokenDoWebhook();
+export function tokenParaCopiar(sandbox = false) {
+  return sandbox ? env("ASAAS_SANDBOX_WEBHOOK_TOKEN") : tokenDoWebhook();
 }
 
-let conferida: { em: number; ok: boolean | null } | null = null;
+/**
+ * De qual conta do Asaas veio o aviso, pelo token: null quando não bate com nenhum. Com o site em produção,
+ * o token do sandbox também vale (e o aviso é lido no sandbox).
+ */
+export function contaDoAviso(veio: string | null): { sandbox: boolean } | null {
+  if (!veio) return null;
+  const igual = (token: string) => {
+    if (token.length < 16) return false;
+    const a = Buffer.from(token);
+    const b = Buffer.from(veio);
+    return a.length === b.length && timingSafeEqual(a, b);
+  };
+  if (igual(credenciais(false).token)) return { sandbox: false };
+  if (asaasProducao() && igual(credenciais(true).token)) return { sandbox: true };
+  return null;
+}
+
+const conferida: Record<"principal" | "sandbox", { em: number; ok: boolean | null } | null> = {
+  principal: null,
+  sandbox: null,
+};
 
 /** A chave é aceita pelo Asaas? (uma consulta leve, guardada por 10 minutos) null: sem chave ou sem resposta. */
-export async function chaveAceita(): Promise<boolean | null> {
-  if (!chave()) return null;
-  if (conferida && Date.now() - conferida.em < 10 * 60_000) return conferida.ok;
+export async function chaveAceita(sandbox = false): Promise<boolean | null> {
+  if (!credenciais(sandbox).chave) return null;
+  const qual = sandbox ? "sandbox" : "principal";
+  const c = conferida[qual];
+  if (c && Date.now() - c.em < 10 * 60_000) return c.ok;
   let ok: boolean | null;
   try {
-    await pedir("GET", "/customers?limit=1");
+    await pedir(sandbox, "GET", "/customers?limit=1");
     ok = true;
   } catch (e) {
     ok = e instanceof ErroAsaas && (e.status === 401 || e.status === 403) ? false : null;
   }
-  conferida = { em: Date.now(), ok };
+  conferida[qual] = { em: Date.now(), ok };
   return ok;
 }
 
@@ -106,12 +156,22 @@ export class ErroAsaas extends Error {
   }
 }
 
-async function pedir<T>(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
-  const k = chave();
-  if (!k) throw new ErroAsaas("Pagamentos não configurados.", 0, "sem ASAAS_API_KEY");
+async function pedir<T>(
+  sandbox: boolean,
+  metodo: "GET" | "POST" | "DELETE",
+  caminho: string,
+  corpo?: unknown,
+): Promise<T> {
+  const { chave: k, producao } = credenciais(sandbox);
+  if (!k)
+    throw new ErroAsaas(
+      "Pagamentos não configurados.",
+      0,
+      sandbox && asaasProducao() ? "sem ASAAS_SANDBOX_API_KEY" : "sem ASAAS_API_KEY",
+    );
   let r: Response;
   try {
-    r = await fetch(`${base()}${caminho}`, {
+    r = await fetch(`${base(producao)}${caminho}`, {
       method: metodo,
       headers: {
         access_token: k,
@@ -192,8 +252,11 @@ type Lista<T> = { data: T[] };
 
 // ------------------------------------------------------------------ chamadas
 
-export function criarCliente(d: { nome: string; cpfCnpj: string; email: string | null; ref: string }) {
-  return pedir<ClienteAsaas>("POST", "/customers", {
+export function criarCliente(
+  sandbox: boolean,
+  d: { nome: string; cpfCnpj: string; email: string | null; ref: string },
+) {
+  return pedir<ClienteAsaas>(sandbox, "POST", "/customers", {
     name: d.nome,
     cpfCnpj: d.cpfCnpj,
     email: d.email || undefined,
@@ -214,11 +277,12 @@ export type EnderecoCobranca = {
 };
 
 export function atualizarCliente(
+  sandbox: boolean,
   id: string,
   d: { nome: string; cpfCnpj: string; email: string | null; endereco?: EnderecoCobranca | null },
 ) {
   const e = d.endereco;
-  return pedir<ClienteAsaas>("POST", `/customers/${encodeURIComponent(id)}`, {
+  return pedir<ClienteAsaas>(sandbox, "POST", `/customers/${encodeURIComponent(id)}`, {
     name: d.nome,
     cpfCnpj: d.cpfCnpj,
     email: d.email || undefined,
@@ -237,15 +301,18 @@ export function atualizarCliente(
   });
 }
 
-export function criarAssinaturaPix(d: {
-  cliente: string;
-  valor: number;
-  ciclo: "MONTHLY" | "QUARTERLY";
-  primeiro: string;
-  descricao: string;
-  ref: string;
-}) {
-  return pedir<AssinaturaAsaas>("POST", "/subscriptions", {
+export function criarAssinaturaPix(
+  sandbox: boolean,
+  d: {
+    cliente: string;
+    valor: number;
+    ciclo: "MONTHLY" | "QUARTERLY";
+    primeiro: string;
+    descricao: string;
+    ref: string;
+  },
+) {
+  return pedir<AssinaturaAsaas>(sandbox, "POST", "/subscriptions", {
     customer: d.cliente,
     billingType: "PIX",
     value: d.valor,
@@ -256,45 +323,51 @@ export function criarAssinaturaPix(d: {
   });
 }
 
-export function lerAssinatura(id: string) {
-  return pedir<AssinaturaAsaas>("GET", `/subscriptions/${encodeURIComponent(id)}`);
+export function lerAssinatura(sandbox: boolean, id: string) {
+  return pedir<AssinaturaAsaas>(sandbox, "GET", `/subscriptions/${encodeURIComponent(id)}`);
 }
 
-export async function assinaturasDoCliente(cliente: string) {
+export async function assinaturasDoCliente(sandbox: boolean, cliente: string) {
   const r = await pedir<Lista<AssinaturaAsaas>>(
+    sandbox,
     "GET",
     `/subscriptions?customer=${encodeURIComponent(cliente)}&limit=20`,
   );
   return r?.data ?? [];
 }
 
-export async function cobrancasDaAssinatura(id: string) {
-  const r = await pedir<Lista<CobrancaAsaas>>("GET", `/subscriptions/${encodeURIComponent(id)}/payments?limit=20`);
+export async function cobrancasDaAssinatura(sandbox: boolean, id: string) {
+  const r = await pedir<Lista<CobrancaAsaas>>(
+    sandbox,
+    "GET",
+    `/subscriptions/${encodeURIComponent(id)}/payments?limit=20`,
+  );
   return r?.data ?? [];
 }
 
-export function cancelarAssinaturaAsaas(id: string) {
-  return pedir<{ deleted?: boolean }>("DELETE", `/subscriptions/${encodeURIComponent(id)}`);
+export function cancelarAssinaturaAsaas(sandbox: boolean, id: string) {
+  return pedir<{ deleted?: boolean }>(sandbox, "DELETE", `/subscriptions/${encodeURIComponent(id)}`);
 }
 
-export function lerCobranca(id: string) {
-  return pedir<CobrancaAsaas>("GET", `/payments/${encodeURIComponent(id)}`);
+export function lerCobranca(sandbox: boolean, id: string) {
+  return pedir<CobrancaAsaas>(sandbox, "GET", `/payments/${encodeURIComponent(id)}`);
 }
 
-export function pixDaCobranca(id: string) {
-  return pedir<PixAsaas>("GET", `/payments/${encodeURIComponent(id)}/pixQrCode`);
+export function pixDaCobranca(sandbox: boolean, id: string) {
+  return pedir<PixAsaas>(sandbox, "GET", `/payments/${encodeURIComponent(id)}/pixQrCode`);
 }
 
-export function lerNota(id: string) {
-  return pedir<NotaAsaas>("GET", `/invoices/${encodeURIComponent(id)}`);
+export function lerNota(sandbox: boolean, id: string) {
+  return pedir<NotaAsaas>(sandbox, "GET", `/invoices/${encodeURIComponent(id)}`);
 }
 
 /** A nota fiscal de cada cobrança paga da assinatura, emitida pelo Asaas (o serviço vem do Admin). */
 export function configurarNota(
+  sandbox: boolean,
   assinatura: string,
   d: { servico: string; ehCodigo: boolean; descricao: string | null },
 ) {
-  return pedir<unknown>("POST", `/subscriptions/${encodeURIComponent(assinatura)}/invoiceSettings`, {
+  return pedir<unknown>(sandbox, "POST", `/subscriptions/${encodeURIComponent(assinatura)}/invoiceSettings`, {
     ...(d.ehCodigo ? { municipalServiceCode: d.servico } : { municipalServiceId: d.servico }),
     effectiveDatePeriod: "ON_PAYMENT_CONFIRMATION",
     observations: d.descricao || undefined,
@@ -308,16 +381,19 @@ export function configurarNota(
  * O checkout do cartão (a página do Asaas): a assinatura nasce lá, quando o cartão passa. `primeiro` é a data
  * da primeira cobrança (no teste grátis, o fim do teste).
  */
-export function criarCheckout(d: {
-  cliente: string;
-  valor: number;
-  ciclo: "MONTHLY" | "QUARTERLY";
-  primeiro: string;
-  nome: string;
-  descricao: string;
-  voltar: { ok: string; cancelou: string; expirou: string };
-}) {
-  return pedir<{ id: string }>("POST", "/checkouts", {
+export function criarCheckout(
+  sandbox: boolean,
+  d: {
+    cliente: string;
+    valor: number;
+    ciclo: "MONTHLY" | "QUARTERLY";
+    primeiro: string;
+    nome: string;
+    descricao: string;
+    voltar: { ok: string; cancelou: string; expirou: string };
+  },
+) {
+  return pedir<{ id: string }>(sandbox, "POST", "/checkouts", {
     billingTypes: ["CREDIT_CARD"],
     chargeTypes: ["RECURRENT"],
     minutesToExpire: 60,

@@ -18,6 +18,7 @@ import {
 import type { RecursoPago } from "@/lib/recursos-pagos";
 import {
   asaasConfigurado,
+  asaasProducao,
   atualizarCliente,
   cancelarAssinaturaAsaas,
   criarAssinaturaPix,
@@ -39,7 +40,9 @@ type Contexto = {
   pode: boolean;
   nome: string | null;
   email: string | null;
-  cliente: { asaas_id: string; cpf_cnpj: string; nome: string; email: string | null } | null;
+  cliente: { asaas_id: string; cpf_cnpj: string; nome: string; email: string | null; sandbox?: boolean } | null;
+  /** a conta de teste paga na conta sandbox do Asaas (Admin › Pagamentos) */
+  sandbox?: boolean;
   planos: { id: string; recurso: Produto; ciclo: "MONTHLY" | "QUARTERLY"; valor: number }[];
   /** as assinaturas valendo (ou o Pix esperando a 1ª fatura), pelo produto */
   ativas: Produto[];
@@ -143,6 +146,13 @@ export async function assinar(dados: {
     if (error || !data) throw new Error(error?.message ?? "sem contexto");
     const ctx = data as unknown as Contexto;
     if (!ctx.pode) return { ok: false, erro: "A assinatura ainda não está aberta para a sua conta." };
+    // a conta de teste no sandbox paga na conta sandbox do Asaas (com o site em produção; senão, tudo já é sandbox)
+    const sandbox = ctx.sandbox === true && asaasProducao();
+    if (!asaasConfigurado(sandbox))
+      return {
+        ok: false,
+        erro: "Esta conta de teste paga no sandbox, mas a chave do sandbox (ASAAS_SANDBOX_API_KEY) não está posta.",
+      };
     const plano = ctx.planos.find((p) => p.id === dados.plano);
     if (!plano) return { ok: false, erro: "Esse plano não está mais à venda. Atualize a página." };
     if (recursosDo(plano.recurso).every((r) => ctx.sem_prazo[r]))
@@ -163,21 +173,24 @@ export async function assinar(dados: {
           : `Você assina ${O_PRODUTO[outra]}. Cancele em Assinatura para passar para ${O_PRODUTO[plano.recurso]} (o que já foi pago continua valendo).`,
       };
 
-    // o cliente no parceiro (um por conta): nome, CPF ou CNPJ e e-mail da nota fiscal
-    let cliente = ctx.cliente?.asaas_id ?? null;
+    // o cliente no parceiro (um por conta): nome, CPF ou CNPJ e e-mail da nota fiscal. O cliente guardado é de
+    // uma conta do Asaas só: quando a conta de teste passa do sandbox para a produção (ou volta), nasce outro
+    const doOutroLado = Boolean(ctx.cliente) && (ctx.cliente?.sandbox === true) !== sandbox;
+    let cliente = doOutroLado ? null : (ctx.cliente?.asaas_id ?? null);
     const mudou =
       !ctx.cliente ||
+      doOutroLado ||
       ctx.cliente.cpf_cnpj !== documento ||
       ctx.cliente.nome !== nome ||
       (ctx.cliente.email ?? "") !== email;
     if (!cliente) {
-      cliente = (await criarCliente({ nome, cpfCnpj: documento, email: email || null, ref: conta })).id;
+      cliente = (await criarCliente(sandbox, { nome, cpfCnpj: documento, email: email || null, ref: conta })).id;
     } else if (mudou && !endereco) {
-      await atualizarCliente(cliente, { nome, cpfCnpj: documento, email: email || null });
+      await atualizarCliente(sandbox, cliente, { nome, cpfCnpj: documento, email: email || null });
     }
     // no cartão: o celular e o endereço vão para o cliente no parceiro (e ficam para a próxima vez)
     if (endereco) {
-      await atualizarCliente(cliente, { nome, cpfCnpj: documento, email: email || null, endereco });
+      await atualizarCliente(sandbox, cliente, { nome, cpfCnpj: documento, email: email || null, endereco });
     }
     if (mudou) {
       const { error: e2 } = await a.cliente.rpc("servidor_pagamento_cliente", {
@@ -187,6 +200,7 @@ export async function assinar(dados: {
         p_cpf_cnpj: documento,
         p_nome: nome,
         p_email: email,
+        p_sandbox: sandbox,
       });
       if (e2) throw new Error(e2.message);
     }
@@ -226,7 +240,7 @@ export async function assinar(dados: {
           erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para o cartão voltar ao Publike.",
         };
       const volta = `${site}/painel/assinatura`;
-      const ck = await criarCheckout({
+      const ck = await criarCheckout(sandbox, {
         cliente,
         valor: Number(plano.valor),
         ciclo: plano.ciclo,
@@ -243,12 +257,13 @@ export async function assinar(dados: {
         p_asaas_id: "",
         p_checkout_id: ck.id,
         p_proxima: primeiro,
+        p_sandbox: sandbox,
       });
       if (e3) throw new Error(e3.message);
-      return { ok: true, ir: linkDoCheckout(ck.id), externo: true };
+      return { ok: true, ir: linkDoCheckout(sandbox, ck.id), externo: true };
     }
 
-    const sub = await criarAssinaturaPix({
+    const sub = await criarAssinaturaPix(sandbox, {
       cliente,
       valor: Number(plano.valor),
       ciclo: plano.ciclo,
@@ -264,9 +279,10 @@ export async function assinar(dados: {
       p_asaas_id: sub.id,
       p_checkout_id: "",
       p_proxima: primeiro,
+      p_sandbox: sandbox,
     });
     if (e4) throw new Error(e4.message);
-    const gravadas = await sincronizarAssinatura(a, sub);
+    const gravadas = await sincronizarAssinatura(a, sandbox, sub);
     after(() => enviarPushPendentes());
     const aberta = gravadas?.cobrancas.find((c) => c.situacao === "pendente");
     return { ok: true, ir: aberta ? `/painel/faturas/${aberta.cobranca_id}?pix=1` : "/painel/assinatura?pix=ok" };
@@ -289,10 +305,10 @@ export async function cancelarAssinatura(
       p_conta: q.conta,
       p_assinatura: id,
     });
-    const ass = data as { asaas_id: string | null; situacao: string; recurso: string } | null;
+    const ass = data as { asaas_id: string | null; situacao: string; recurso: string; sandbox?: boolean } | null;
     if (!ass || !ass.asaas_id) return { ok: false, erro: "Assinatura não encontrada." };
     if (ass.situacao === "cancelada") return { ok: true, mensagem: "Essa assinatura já estava cancelada." };
-    await cancelarAssinaturaAsaas(ass.asaas_id);
+    await cancelarAssinaturaAsaas(ass.sandbox === true, ass.asaas_id);
     const { error } = await a.cliente.rpc("servidor_pagamento_cancelada", {
       p_chave: a.chave,
       p_asaas_id: ass.asaas_id,

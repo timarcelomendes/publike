@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { contaDeTestePagamentos, salvarConfigPagamentos } from "@/lib/acoes/admin-pagamentos";
+import { useState, useTransition } from "react";
+import {
+  contaDeTestePagamentos,
+  procurarContasParaTeste,
+  salvarConfigPagamentos,
+  sandboxDaContaDeTeste,
+  type ContaAchada,
+} from "@/lib/acoes/admin-pagamentos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -76,37 +82,137 @@ export function ConfigPagamentos({
   );
 }
 
+/**
+ * Pôr uma conta no teste: procura pelo nome, celular ou e-mail (só as que podem assinar) e escolhe. Marcado
+ * "no sandbox", ela paga na conta sandbox do Asaas, mesmo com o site em produção.
+ */
 export function ContaDeTeste() {
-  const [conta, setConta] = useState("");
+  const [texto, setTexto] = useState("");
+  const [sandbox, setSandbox] = useState(true);
+  const [achadas, setAchadas] = useState<ContaAchada[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [procurando, iniciar] = useTransition();
   const { rodar, pendente, mensagem } = useAcao();
   return (
-    <form
-      className="flex flex-col gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        rodar(
-          () => contaDeTestePagamentos(conta, true),
-          (r) => r.ok && setConta(""),
-        );
-      }}
-    >
-      <label htmlFor="conta-teste-pag" className="text-label">
-        Pôr uma conta no teste
-      </label>
-      <div className="flex flex-wrap gap-2">
-        <input
-          id="conta-teste-pag"
-          value={conta}
-          onChange={(e) => setConta(e.target.value)}
-          placeholder="e-mail de login ou código da conta"
-          className={`${classesEntrada} max-w-sm`}
-        />
-        <Botao type="submit" tamanho="sm" disabled={pendente}>
-          Pôr no teste
-        </Botao>
-      </div>
+    <div className="flex flex-col gap-3">
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setErro(null);
+          iniciar(async () => {
+            const r = await procurarContasParaTeste(texto);
+            if (r.ok) setAchadas(r.contas);
+            else {
+              setAchadas(null);
+              setErro(r.erro);
+            }
+          });
+        }}
+      >
+        <label htmlFor="conta-teste-pag" className="text-label">
+          Pôr uma conta no teste
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <input
+            id="conta-teste-pag"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="nome, celular ou e-mail"
+            className={`${classesEntrada} max-w-sm`}
+          />
+          <Botao type="submit" tamanho="sm" variante="secundario" disabled={procurando}>
+            Procurar
+          </Botao>
+        </div>
+        <label className="flex items-start gap-2 text-body-sm">
+          <input
+            type="checkbox"
+            checked={sandbox}
+            onChange={(e) => setSandbox(e.target.checked)}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            Pagar no sandbox
+            <span className="block text-ink-muted">
+              Nada é cobrado de verdade: use os cartões de teste do Asaas. Desmarcado, a cobrança é real.
+            </span>
+          </span>
+        </label>
+        {erro && <p className="text-body-sm text-danger">{erro}</p>}
+      </form>
+      {achadas && achadas.length === 0 && (
+        <p className="text-body-sm text-ink-muted">
+          Nenhum comércio, empresa ou agência com esse nome, celular ou e-mail.
+        </p>
+      )}
+      {achadas && achadas.length > 0 && (
+        <ul aria-label="Contas achadas" className="flex flex-col divide-y divide-line rounded-md border border-line">
+          {achadas.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-body-sm">
+              <span>
+                {c.nome}
+                <span className="text-ink-muted">
+                  {" "}
+                  · {NOME_DO_TIPO[c.tipo] ?? c.tipo}
+                  {c.contato ? ` · ${c.contato}` : ""}
+                </span>
+              </span>
+              <Botao
+                tamanho="sm"
+                disabled={pendente}
+                aria-label={`Pôr ${c.nome} no teste`}
+                onClick={() =>
+                  rodar(
+                    () => contaDeTestePagamentos(c.id, true, sandbox),
+                    (r) => {
+                      if (r.ok) {
+                        setAchadas(null);
+                        setTexto("");
+                      }
+                    },
+                  )
+                }
+              >
+                Pôr no teste
+              </Botao>
+            </li>
+          ))}
+        </ul>
+      )}
       {mensagem}
-    </form>
+    </div>
+  );
+}
+
+const NOME_DO_TIPO: Record<string, string> = { comercio: "comércio", empresa: "empresa", agencia: "agência" };
+
+/** Na lista das contas de teste: paga no sandbox ou na produção. */
+export function SandboxDaConta({ conta, nome, sandbox }: { conta: string; nome: string; sandbox: boolean }) {
+  const [marcado, setMarcado] = useState(sandbox);
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <span className="flex flex-col gap-1">
+      <label className="flex items-center gap-2 text-body-sm">
+        <input
+          type="checkbox"
+          checked={marcado}
+          disabled={pendente}
+          aria-label={`${nome} paga no sandbox`}
+          onChange={(e) => {
+            const v = e.target.checked;
+            setMarcado(v);
+            rodar(
+              () => sandboxDaContaDeTeste(conta, v),
+              (r) => !r.ok && setMarcado(!v),
+            );
+          }}
+          className="size-4"
+        />
+        No sandbox
+      </label>
+      {mensagem}
+    </span>
   );
 }
 
@@ -162,7 +268,7 @@ export function Copiar({ valor, rotulo, segredo = false }: { valor: string; rotu
 }
 
 /** Um token novo, feito aqui no navegador (não fica guardado): para pôr na Vercel e no Asaas, o mesmo nos dois. */
-export function GerarToken() {
+export function GerarToken({ variavel = "ASAAS_WEBHOOK_TOKEN" }: { variavel?: string }) {
   const [token, setToken] = useState<string | null>(null);
   return (
     <span className="flex flex-col items-start gap-2">
@@ -181,8 +287,8 @@ export function GerarToken() {
         <>
           <Copiar valor={token} rotulo="o token novo" />
           <span className="text-body-sm text-ink-muted">
-            Ponha este mesmo valor em ASAAS_WEBHOOK_TOKEN na Vercel (e no .env.local) e no campo Token do webhook no
-            Asaas. Ele não fica guardado aqui.
+            Ponha este mesmo valor em {variavel} na Vercel (e no .env.local) e no campo Token do webhook no Asaas. Ele
+            não fica guardado aqui.
           </span>
         </>
       )}

@@ -24,7 +24,7 @@ import {
   type PagamentosDaConta,
   type Produto,
 } from "@/lib/pagamentos";
-import { meuEnderecoDeCobranca, pagamentosDaConta } from "@/lib/servidor/faturas";
+import { meuEnderecoDeCobranca, pagamentosDaConta, pagoNoSandbox } from "@/lib/servidor/faturas";
 import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Assinar", robots: { index: false } };
@@ -66,11 +66,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const produto: Produto = ehProduto(pedido) ? pedido : "copiloto";
   const troca = primeiro(sp.troca) === "1";
   await exigirUsuario(`/painel/assinar?recurso=${produto}`);
-  const [pag, recursos, perfil, cobranca] = await Promise.all([
+  const [pag, recursos, perfil, cobranca, sandbox] = await Promise.all([
     pagamentosDaConta(),
     recursosPagos(),
     obterMeuPerfil().catch(() => null),
     meuEnderecoDeCobranca(),
+    pagoNoSandbox(),
   ]);
   const Icone = ICONE[produto];
   const planos = (pag?.planos ?? []).filter((p) => p.recurso === produto);
@@ -177,6 +178,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       {cabecalho}
+      {sandbox && pag?.pode && (
+        // a conta de teste no sandbox (Admin › Pagamentos): o checkout e o Pix são os de teste do Asaas
+        <Aviso tipo="alerta" titulo="Conta de teste: pagamento no sandbox">
+          Nada é cobrado de verdade. No cartão, use um cartão de teste do Asaas; o Pix é de teste e não paga com o app
+          do banco.
+        </Aviso>
+      )}
       {corpo}
       {!troca && (
         <OutraOpcao

@@ -14,6 +14,14 @@ export type NoAr = {
   chaveDeOutroAmbiente?: boolean;
   token?: boolean;
   tokenComProblema?: boolean;
+  /** a conta sandbox das contas de teste (null: o site não está em produção) */
+  sandbox?: {
+    chave: boolean;
+    chaveAceita: boolean | null;
+    chaveDeOutroAmbiente: boolean;
+    token: boolean;
+    tokenComProblema: boolean;
+  } | null;
 };
 
 export type Avisos = {
@@ -24,6 +32,8 @@ export type Avisos = {
   aberto: boolean;
   planos_a_venda: number;
   contas_teste: number;
+  /** contas de teste que pagam no sandbox (sem a migração 20270125120000: undefined) */
+  contas_sandbox?: number;
   servico_nota: boolean;
   ativas: number;
 };
@@ -89,6 +99,24 @@ export function itensPagamentos(s: SituacaoPagamentos): ItemPagamento[] {
           ? "O token do webhook na Vercel está fora do que o Asaas aceita (32 caracteres ou mais, sem espaço, diferente da chave)."
           : "Token do webhook posto na Vercel.",
     });
+    // com o site em produção, as contas de teste no sandbox pagam na conta sandbox do Asaas
+    const sb = n.sandbox;
+    const noSandbox = a?.contas_sandbox ?? 0;
+    if (n.producao && sb && (noSandbox > 0 || sb.chave || sb.token)) {
+      const falta = [!sb.chave && "ASAAS_SANDBOX_API_KEY", !sb.token && "ASAAS_SANDBOX_WEBHOOK_TOKEN"].filter(Boolean);
+      itens.push({
+        ok: falta.length === 0 && sb.chaveAceita !== false && !sb.chaveDeOutroAmbiente && !sb.tokenComProblema,
+        texto: falta.length
+          ? `Sandbox das contas de teste: na Vercel, falta ${falta.join(" e ")}.`
+          : sb.chaveAceita === false
+            ? "Sandbox das contas de teste: o Asaas recusou a chave do sandbox posta na Vercel."
+            : sb.chaveDeOutroAmbiente
+              ? "Sandbox das contas de teste: a chave em ASAAS_SANDBOX_API_KEY é de produção."
+              : sb.tokenComProblema
+                ? "Sandbox das contas de teste: o token do sandbox está fora do padrão ou é igual ao de produção (tem de ser outro)."
+                : `Sandbox das contas de teste ligado${noSandbox ? `: ${noSandbox} conta(s) pagam no sandbox` : ""}.`,
+      });
+    }
   }
   if (a) {
     itens.push({
