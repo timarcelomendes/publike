@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Link2, Sparkles, UserSearch } from "lucide-react";
 import Link from "next/link";
-import { calcularAderencia, requisitosDaVaga } from "@/lib/aderencia";
+import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 import { copilotoLiberado, obterAnuncio, talentosParaVaga } from "@/lib/dados";
 import { formatarLugar, plural, tempoRelativo } from "@/lib/formato";
@@ -18,6 +18,19 @@ import { BotaoLink } from "../ui/botao";
  * ao abrir, o currículo e o porquê da nota. Quem já curtiu a vaga não aparece (está nos candidatos). Sem o
  * contato e com o nome encurtado: o contato sai só no match.
  */
+/**
+ * Tem aderência à vaga (03/11/2026): já trabalhou na função, numa área parecida ou fez um curso dela (a
+ * experiência na função em 50% ou mais). Só as habilidades escritas não bastam, e bater a cidade, o horário e a
+ * escolaridade sem nada da função também não ("Atendente de Copom" para "Analista de sistemas"). Vaga sem
+ * função reconhecida no título: 50% ou mais de nota. Quem foi eliminado por um requisito fica de fora.
+ */
+function temAderencia(a: Aderencia) {
+  if (a.eliminado) return false;
+  const funcao = a.criterios.find((k) => k.funcao);
+  if (!funcao) return (a.nota ?? 0) >= 50;
+  return funcao.ok === true && (funcao.parte ?? 1) >= 0.5;
+}
+
 export async function ParaAVaga({
   vaga,
   pagina,
@@ -66,7 +79,25 @@ export async function ParaAVaga({
         agora,
       ),
     }))
+    .filter(({ a }) => temAderencia(a))
     .sort((x, y) => (y.a.nota ?? -1) - (x.a.nota ?? -1));
+
+  if (todos.length === 0 && lista.length > 0) {
+    return (
+      <Vazio
+        icone={UserSearch}
+        titulo={`Ninguém em Talentos com experiência para “${vaga.titulo}” ainda`}
+        acao={
+          <BotaoLink href="/talentos?ver=todos" tamanho="sm" variante="secundario">
+            Ver todos os talentos
+          </BotaoLink>
+        }
+      >
+        Aqui só aparece quem já trabalhou na função, numa área parecida ou fez um curso dela. Divulgue o link da vaga
+        ou procure em todos os talentos.
+      </Vazio>
+    );
+  }
 
   if (todos.length === 0) {
     return (
@@ -98,8 +129,8 @@ export async function ParaAVaga({
           {plural(todos.length, "pessoa", "pessoas")} para “{vaga.titulo}”
         </h2>
         <p className="mt-1 text-body-sm text-ink-muted">
-          Quem mais combina com a vaga vem primeiro. Convide: a pessoa vê a vaga e, se curtir, chega na sua caixa de
-          entrada.
+          Só quem tem experiência ou curso na função, quem mais combina primeiro. Convide: a pessoa vê a vaga e, se
+          curtir, chega na sua caixa de entrada.
         </p>
       </div>
       {copiloto && (
