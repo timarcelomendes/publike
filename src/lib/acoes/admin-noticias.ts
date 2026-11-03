@@ -35,7 +35,7 @@ export async function buscarNoticiasAgora(): Promise<Resultado> {
     ok: true,
     mensagem:
       r.novas === 0
-        ? "A IA não achou notícia nova que valesse. Tente mais tarde."
+        ? "A IA não achou notícia nova que valesse. Embaixo, em Última busca, o que ela fez."
         : `${r.novas === 1 ? "1 notícia nova chegou" : `${r.novas} notícias novas chegaram`} para você revisar.`,
   };
 }

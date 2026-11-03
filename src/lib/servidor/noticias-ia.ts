@@ -160,6 +160,7 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
 
   let itens: ItemIA[] = [];
   let fontes: string[] = [];
+  let buscas: number | undefined;
   try {
     const r = await chamarIA({
       modelo: contexto.modelo ?? "",
@@ -177,6 +178,7 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
       throw new ErroIA(r.parada === "limite" ? "A resposta da IA ficou longa demais." : "A IA não respondeu.");
     itens = lerJson<{ noticias: ItemIA[] }>(r.texto).noticias ?? [];
     fontes = r.fontes;
+    buscas = r.buscas;
   } catch (e) {
     const erro = e instanceof ErroIA ? e.message : "A busca de notícias falhou.";
     await cliente.rpc("servidor_salvar_noticias", { p_chave: chave, p_itens: [], p_erro: erro });
@@ -187,13 +189,18 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
   // que ainda não está na lista e que não é velha.
   const abertas = new Set(fontes.map(normalizarUrl));
   const limiteData = hojeEmBrasilia(agora - 20 * 86400e3);
+  // por que cada sugestão ficou de fora (vai no aviso do admin)
+  const fora = { fonte: 0, repetida: 0, antiga: 0, tema: 0 };
   const aceitas = itens
     .filter((i) => {
       const url = normalizarUrl(i.fonte_url ?? "");
-      if (!/^https:\/\//.test(url) || !abertas.has(url) || jaVistas.has(url)) return false;
-      if (new URL(url).pathname.length < 2) return false;
-      if (i.fonte_data && /^\d{4}-\d{2}-\d{2}$/.test(i.fonte_data) && i.fonte_data < limiteData) return false;
-      return LISTA_TEMAS_NOTICIA.includes(i.tema);
+      if (!/^https:\/\//.test(url) || !abertas.has(url)) return void fora.fonte++, false;
+      if (jaVistas.has(url)) return void fora.repetida++, false;
+      if (new URL(url).pathname.length < 2) return void fora.fonte++, false;
+      if (i.fonte_data && /^\d{4}-\d{2}-\d{2}$/.test(i.fonte_data) && i.fonte_data < limiteData)
+        return void fora.antiga++, false;
+      if (!LISTA_TEMAS_NOTICIA.includes(i.tema)) return void fora.tema++, false;
+      return true;
     })
     .slice(0, 8)
     .map((i) => ({
@@ -216,12 +223,24 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
   }
 
   const descartadas = itens.length - aceitas.length;
+  // o que a IA fez, para entender uma busca que voltou vazia
+  const fez = `${buscas !== undefined ? `${buscas} busca(s), ` : ""}${fontes.length} página(s) aberta(s), ${itens.length} sugestão(ões)`;
+  const motivos = [
+    fora.fonte && `${fora.fonte} sem a fonte confirmada`,
+    fora.repetida && `${fora.repetida} já na lista`,
+    fora.antiga && `${fora.antiga} antiga(s)`,
+    fora.tema && `${fora.tema} fora dos temas`,
+  ].filter(Boolean);
+  const aviso = descartadas
+    ? `A IA fez ${fez}; ${descartadas} ficaram de fora (${motivos.join(", ")}).`
+    : aceitas.length === 0
+      ? `A IA fez ${fez}.`
+      : null;
+  if (!aceitas.length) console.warn(`Publike: busca de notícias sem nada novo: ${aviso}`);
   const { data: novas, error } = await cliente.rpc("servidor_salvar_noticias", {
     p_chave: chave,
     p_itens: comFoto,
-    p_erro: descartadas
-      ? `${descartadas} sugestão(ões) da IA ficaram de fora (fonte não confirmada, repetida ou antiga).`
-      : null,
+    p_erro: aviso,
   });
   if (error) return { ok: false, erro: "Não deu para guardar as notícias." };
   await completar();

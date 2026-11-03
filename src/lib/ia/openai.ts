@@ -151,7 +151,8 @@ function explicarErro(status: number, corpo: string) {
   return `A IA recusou o pedido (código ${status}${motivo ? `: ${motivo}` : ""}).`;
 }
 
-type RespostaIA = { texto: string; parada: ParadaIA; modelo: string; fontes: string[] };
+/** buscas: quantas buscas na internet a IA fez (para explicar uma busca que voltou vazia) */
+type RespostaIA = { texto: string; parada: ParadaIA; modelo: string; fontes: string[]; buscas?: number };
 
 /** Manda o pedido para a IA do modelo escolhido; com a reserva ligada, o par na outra IA cobre a falha. */
 export async function chamarIA(p: Pedido): Promise<RespostaIA> {
@@ -280,8 +281,10 @@ async function chamarOpenAI(modelo: ModeloIA, p: Pedido): Promise<RespostaIA> {
   let texto = "";
   let recusou = false;
   const fontes = new Set<string>();
+  let buscas = 0;
   for (const item of json.output ?? []) {
     if (item.type === "web_search_call") {
+      buscas++;
       for (const f of item.action?.sources ?? []) if (f.url) fontes.add(f.url);
       continue;
     }
@@ -301,7 +304,7 @@ async function chamarOpenAI(modelo: ModeloIA, p: Pedido): Promise<RespostaIA> {
     // sem espaço para terminar, ou cortada pelo filtro de conteúdo da OpenAI
     parada = json.incomplete_details?.reason === "max_output_tokens" ? "limite" : "recusa";
   }
-  return { texto: texto.trim(), parada, modelo: modelo.id, fontes: [...fontes] };
+  return { texto: texto.trim(), parada, modelo: modelo.id, fontes: [...fontes], buscas };
 }
 
 /** Lê a resposta em JSON (saída estruturada). */

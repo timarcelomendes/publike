@@ -117,7 +117,7 @@ type RespostaClaude = { content?: Bloco[]; stop_reason?: string | null };
 
 export async function chamarClaude(
   p: PedidoClaude,
-): Promise<{ texto: string; parada: ParadaIA; modelo: string; fontes: string[] }> {
+): Promise<{ texto: string; parada: ParadaIA; modelo: string; fontes: string[]; buscas: number }> {
   const chave = chaveClaude();
   if (!chave) throw new ErroClaude("Falta a chave do Claude no servidor (ANTHROPIC_API_KEY).", undefined, true);
 
@@ -167,6 +167,43 @@ export async function chamarClaude(
       : {}),
   };
 
+  // com a busca na internet, o Claude pode pausar no meio ("pause_turn", muitas buscas seguidas): manda de novo
+  // com o que ele já fez, até 3 vezes, para ele terminar a resposta
+  const mensagens = corpo.messages as Record<string, unknown>[];
+  const fontes = new Set<string>();
+  let buscas = 0;
+  let json: RespostaClaude = {};
+  for (let vez = 0; vez < 4; vez++) {
+    json = await pedirAoClaude(corpo, chave, p.tempoLimite);
+    for (const b of json.content ?? []) {
+      if (b.type === "server_tool_use") buscas++;
+      if (b.type === "web_search_tool_result" && Array.isArray(b.content))
+        for (const r of b.content) if (r.url) fontes.add(r.url);
+    }
+    if (json.stop_reason !== "pause_turn") break;
+    mensagens.push({ role: "assistant", content: json.content ?? [] });
+  }
+  // o texto da resposta final (a de antes da pausa é só o caminho)
+  let texto = "";
+  for (const b of json.content ?? []) {
+    if (b.type !== "text" || typeof b.text !== "string") continue;
+    texto += b.text;
+    for (const c of b.citations ?? []) if (c.url) fontes.add(c.url);
+  }
+  const parada: ParadaIA =
+    json.stop_reason === "refusal"
+      ? "recusa"
+      : json.stop_reason === "max_tokens" || json.stop_reason === "pause_turn"
+        ? "limite"
+        : null;
+  return { texto: texto.trim(), parada, modelo: p.modelo, fontes: [...fontes], buscas };
+}
+
+async function pedirAoClaude(
+  corpo: Record<string, unknown>,
+  chave: string,
+  tempoLimite: number | undefined,
+): Promise<RespostaClaude> {
   let resposta: Response;
   try {
     resposta = await fetch(`${enderecoClaude()}/v1/messages`, {
@@ -180,7 +217,7 @@ export async function chamarClaude(
       },
       body: JSON.stringify(corpo),
       cache: "no-store",
-      signal: AbortSignal.timeout(p.tempoLimite ?? 45_000),
+      signal: AbortSignal.timeout(tempoLimite ?? 45_000),
     });
   } catch (e) {
     const tempo = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
@@ -197,19 +234,5 @@ export async function chamarClaude(
     throw new ErroClaude(msg, resposta.status, reserva);
   }
 
-  const json = (await resposta.json()) as RespostaClaude;
-  let texto = "";
-  const fontes = new Set<string>();
-  for (const b of json.content ?? []) {
-    if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
-      for (const r of b.content) if (r.url) fontes.add(r.url);
-      continue;
-    }
-    if (b.type !== "text" || typeof b.text !== "string") continue;
-    texto += b.text;
-    for (const c of b.citations ?? []) if (c.url) fontes.add(c.url);
-  }
-  const parada: ParadaIA =
-    json.stop_reason === "refusal" ? "recusa" : json.stop_reason === "max_tokens" ? "limite" : null;
-  return { texto: texto.trim(), parada, modelo: p.modelo, fontes: [...fontes] };
+  return (await resposta.json()) as RespostaClaude;
 }
