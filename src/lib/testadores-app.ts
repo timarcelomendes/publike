@@ -25,7 +25,20 @@ export const whatsappDoTestador = (t: Testador) => t.whatsapp || t.conta_whatsap
 
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] || nome;
 
-export function mensagemWhatsappDoTeste(t: Pick<Testador, "nome" | "email">) {
+/** "convite": a primeira mensagem; "lembrete": para quem entrou no grupo e parou antes de aceitar e instalar. */
+export type TipoDeMensagem = "convite" | "lembrete";
+
+export function mensagemWhatsappDoTeste(t: Pick<Testador, "nome" | "email">, tipo: TipoDeMensagem = "convite") {
+  if (tipo === "lembrete")
+    return [
+      `Oi, ${primeiroNome(t.nome)}! Vi que você entrou no grupo de testes do app do Publike, muito obrigado!`,
+      "",
+      "Falta só aceitar o teste e instalar, são 2 toques no celular Android:",
+      `1. Toque aqui e depois em "Quero participar": ${ACEITAR_TESTE}`,
+      `2. Depois instale pelo Google Play: ${APP_NA_PLAY}`,
+      "",
+      `Use a conta Google ${t.email}. Se já instalou, pode ignorar esta mensagem, e obrigado de novo!`,
+    ].join("\n");
   return [
     `Oi, ${primeiroNome(t.nome)}! Tudo bem? Coloquei seu e-mail na lista de quem testa o app do Publike no Google Play.`,
     "",
@@ -41,7 +54,22 @@ export function mensagemWhatsappDoTeste(t: Pick<Testador, "nome" | "email">) {
 
 export const ASSUNTO_EMAIL_DO_TESTE = "Seu convite para testar o app do Publike";
 
-export function mensagemEmailDoTeste(t: Pick<Testador, "nome" | "email">) {
+export function mensagemEmailDoTeste(t: Pick<Testador, "nome" | "email">, tipo: TipoDeMensagem = "convite") {
+  if (tipo === "lembrete")
+    return [
+      `Oi, ${primeiroNome(t.nome)}!`,
+      "",
+      "Vi que você entrou no grupo de testes do app do Publike, muito obrigado! Falta só aceitar o teste e instalar.",
+      "",
+      `No celular Android, com a conta Google ${t.email}:`,
+      `1. Abra o link e toque em "Quero participar": ${ACEITAR_TESTE}`,
+      `2. Depois instale pelo Google Play: ${APP_NA_PLAY}`,
+      "",
+      "Se já instalou, pode ignorar este e-mail. O Google pede que o app fique instalado por 14 dias seguidos.",
+      "",
+      "Obrigado!",
+      "Marcelo, do Publike",
+    ].join("\n");
   return [
     `Oi, ${primeiroNome(t.nome)}!`,
     "",
@@ -61,8 +89,9 @@ export function mensagemEmailDoTeste(t: Pick<Testador, "nome" | "email">) {
   ].join("\n");
 }
 
-export function linkEmailDoTeste(t: Pick<Testador, "nome" | "email">) {
-  return `mailto:${encodeURIComponent(t.email)}?subject=${encodeURIComponent(ASSUNTO_EMAIL_DO_TESTE)}&body=${encodeURIComponent(mensagemEmailDoTeste(t))}`;
+export function linkEmailDoTeste(t: Pick<Testador, "nome" | "email">, tipo: TipoDeMensagem = "convite") {
+  const assunto = tipo === "lembrete" ? "Falta só um passo para testar o app do Publike" : ASSUNTO_EMAIL_DO_TESTE;
+  return `mailto:${encodeURIComponent(t.email)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(mensagemEmailDoTeste(t, tipo))}`;
 }
 
 const EMAIL = /[^\s,;<>()"']+@[^\s,;<>()"']+\.[^\s,;<>()"']+/;

@@ -4,7 +4,13 @@ import { Mail, MessageCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { apagarTestador, marcarConviteTestador, salvarTestadores } from "@/lib/acoes/admin-testadores";
 import { linkWhatsApp } from "@/lib/formato";
-import { linkEmailDoTeste, mensagemWhatsappDoTeste, whatsappDoTestador, type Testador } from "@/lib/testadores-app";
+import {
+  linkEmailDoTeste,
+  mensagemWhatsappDoTeste,
+  whatsappDoTestador,
+  type Testador,
+  type TipoDeMensagem,
+} from "@/lib/testadores-app";
 import { Botao, classesBotao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -49,7 +55,7 @@ export function FormTestadores() {
 }
 
 /** Os dois convites de uma pessoa: abre o WhatsApp ou o e-mail com a mensagem pronta e marca que foi mandado. */
-export function ConvitesDoTestador({ t }: { t: Testador }) {
+export function ConvitesDoTestador({ t, tipo = "convite" }: { t: Testador; tipo?: TipoDeMensagem }) {
   const marcar = (canal: "whatsapp" | "email") => void marcarConviteTestador(t.id, canal).catch(() => {});
   const whatsapp = whatsappDoTestador(t);
   // o nome da conta do Publike (o de verdade) vale mais que o da lista, que pode ter vindo do e-mail
@@ -58,7 +64,7 @@ export function ConvitesDoTestador({ t }: { t: Testador }) {
     <span className="flex flex-wrap gap-1.5">
       {whatsapp && (
         <a
-          href={linkWhatsApp(whatsapp, mensagemWhatsappDoTeste(quem))}
+          href={linkWhatsApp(whatsapp, mensagemWhatsappDoTeste(quem, tipo))}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => marcar("whatsapp")}
@@ -70,7 +76,7 @@ export function ConvitesDoTestador({ t }: { t: Testador }) {
         </a>
       )}
       <a
-        href={linkEmailDoTeste(quem)}
+        href={linkEmailDoTeste(quem, tipo)}
         onClick={() => marcar("email")}
         className={classesBotao(t.email_em || whatsapp ? "secundario" : "primario", "sm")}
         aria-label={`Mandar o convite por e-mail para ${t.nome}`}
