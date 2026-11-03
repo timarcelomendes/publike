@@ -45,7 +45,7 @@ async function Conteudo() {
     <div className="flex flex-col gap-6">
       <Secao
         titulo="Testadores do app"
-        descricao="O teste fechado na Play pela lista de e-mails, sem o Grupo do Google. 1) Ponha as pessoas aqui. 2) Copie os e-mails e cole na Play Console (Teste fechado › Testadores › Listas de e-mail) e salve. 3) Espere uns minutos e mande o convite de cada um: o botão abre o WhatsApp ou o e-mail com a mensagem pronta, e você envia."
+        descricao="O teste fechado na Play pela lista de e-mails, sem o Grupo do Google. 1) Ponha as pessoas aqui (quem pede em publike.org/testar-app, no “Quero testar”, entra sozinho). 2) Copie os e-mails e cole na Play Console (Teste fechado › Testadores › Listas de e-mail) e salve. 3) Espere uns minutos e mande o convite de cada um: o botão abre o WhatsApp ou o e-mail com a mensagem pronta, e você envia."
       >
         <FormTestadores />
       </Secao>
@@ -99,6 +99,7 @@ async function Conteudo() {
                       {t.whatsapp_em && <Selo variante="match">WhatsApp {tempoRelativo(t.whatsapp_em, agora)}</Selo>}
                       {t.email_em && <Selo variante="match">E-mail {tempoRelativo(t.email_em, agora)}</Selo>}
                       {!t.whatsapp_em && !t.email_em && <Selo variante="contorno">Sem convite</Selo>}
+                      {t.origem === "site" && <Selo variante="contorno">Pediu pelo site</Selo>}
                     </span>
                   </span>
                   <span className="flex items-center gap-2">

@@ -16,6 +16,8 @@ export type Testador = {
   conta_id?: string | null;
   conta_nome?: string | null;
   conta_whatsapp?: string | null;
+  /** "site": a pessoa pediu no /testar-app (migração 20270129120000) */
+  origem?: "admin" | "site";
 };
 
 /** O WhatsApp para o convite: o da lista ou, sem ele, o da conta do Publike com o mesmo e-mail. */

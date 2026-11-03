@@ -2,6 +2,7 @@ import { Globe, Info, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import { ContarVisitaTesteApp, LinkDoTesteApp } from "@/components/numeros-teste-app";
 import { PassosDoTesteApp } from "@/components/passos-teste-app";
+import { QueroTestar } from "@/components/quero-testar";
 import { Container } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
@@ -47,6 +48,15 @@ export default function TestarApp() {
       </div>
 
       <PassosDoTesteApp />
+
+      <section id="quero-testar" className="mt-8 scroll-mt-24 rounded-lg border border-line bg-surface-200 p-5">
+        <h2 className="text-h3">Prefere receber o link no WhatsApp?</h2>
+        <p className="mt-1 mb-4 text-body text-ink-muted">
+          Sem entrar em grupo: deixe o e-mail da sua conta Google e a equipe do Publike manda o link do teste no seu
+          WhatsApp. Precisa ter conta no Publike.
+        </p>
+        <QueroTestar />
+      </section>
 
       <section className="mt-8 rounded-lg border border-line bg-surface-200 p-5">
         <h2 className="text-h3">Tem iPhone?</h2>

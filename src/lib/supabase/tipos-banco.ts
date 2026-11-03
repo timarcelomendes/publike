@@ -3007,6 +3007,7 @@ export type Database = {
       };
       admin_retorno_empresas: { Args: { p_desde: string | null }; Returns: Json };
       admin_retorno_da_empresa: { Args: { p_conta: string; p_desde: string | null }; Returns: Json };
+      quero_testar_app: { Args: { p_email: string }; Returns: undefined };
       admin_testadores_app: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_salvar_testadores_app: { Args: { p_lista: Json }; Returns: number };
       admin_marcar_convite_testador: { Args: { p_id: string; p_canal: string }; Returns: undefined };
