@@ -49,6 +49,9 @@ export async function usarLeituraDaVaga(): Promise<{ modelo: string } | { erro: 
   });
   if (error) {
     if (error.code !== "PGRST202") console.error("Publike: não deu para contar a leitura sem conta:", error.message);
+    // no computador, o motivo de verdade (sem a migração, quem não entrou não usa a IA)
+    if (error.code === "PGRST202" && process.env.NODE_ENV !== "production")
+      return { erro: "Falta rodar a migração 20270126120000_ia_sem_conta.sql no banco para ler sem conta." };
     return { erro: "Entre na sua conta para usar a leitura da IA." };
   }
   if (pode !== true) return { erro: ACABOU_SEM_CONTA };
