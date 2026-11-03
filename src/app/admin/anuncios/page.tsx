@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ListaEmOutros } from "@/components/admin/em-outros";
+import { ListaParaConferir } from "@/components/admin/para-conferir";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Busca, Filtros, linkCom, Paginacao } from "@/components/admin/ui";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { Aviso, Vazio } from "@/components/ui/basicos";
-import { anunciosEmOutros, listarAnuncios, POR_PAGINA } from "@/lib/admin/dados";
+import { anunciosEmOutros, anunciosParaConferir, listarAnuncios, POR_PAGINA } from "@/lib/admin/dados";
 import { formatarNumero, primeiro } from "@/lib/formato";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -45,6 +46,26 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anun
   if (!acesso) notFound();
   const sp = await searchParams;
   // "Em Outros" (só o admin): os anúncios sem área, com a sugestão pelo título e o botão de mudar
+  // "Para conferir" (só o admin): título gritando, outro estado no texto, outra cidade no título
+  if (acesso.admin && primeiro(sp.area) === "conferir") {
+    const lista = await anunciosParaConferir(acesso.cliente);
+    return (
+      <div className="flex flex-col gap-4">
+        <FiltroArea atual="conferir" />
+        <p className="text-body-sm text-ink-muted" aria-live="polite">
+          {lista.length === 1 ? "1 anúncio" : `${formatarNumero(lista.length)} anúncios`} para conferir. Na vitrine,
+          título gritando, vaga de outro estado e cidade trocada tiram a confiança de quem chega.
+        </p>
+        {lista.length === 0 ? (
+          <Vazio icone={Megaphone} titulo="Nada para conferir">
+            Os anúncios no ar estão com o título em letra normal e no lugar certo.
+          </Vazio>
+        ) : (
+          <ListaParaConferir anuncios={lista} />
+        )}
+      </div>
+    );
+  }
   if (acesso.admin && primeiro(sp.area) === "outros") {
     const emOutros = await anunciosEmOutros(acesso.cliente);
     return (
@@ -124,16 +145,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anun
   );
 }
 
-function FiltroArea({ atual }: { atual: "todas" | "outros" }) {
+function FiltroArea({ atual }: { atual: "todas" | "outros" | "conferir" }) {
   return (
     <Filtros
       rotulo="Área do anúncio"
       opcoes={[
         { valor: "todas", nome: "Todas as áreas" },
         { valor: "outros", nome: "Em Outros" },
+        { valor: "conferir", nome: "Para conferir" },
       ]}
       atual={atual}
-      link={(v) => (v === "outros" ? "/admin/anuncios?area=outros" : "/admin/anuncios")}
+      link={(v) => (v === "todas" ? "/admin/anuncios" : `/admin/anuncios?area=${v}`)}
     />
   );
 }

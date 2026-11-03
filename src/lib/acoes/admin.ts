@@ -22,6 +22,7 @@ import { ehStatusSugestao } from "@/lib/sugestoes";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { tituloLegivel } from "@/lib/conferir-anuncio";
 
 // Ações do admin. Todas conferem antes se o admin está aberto no computador
 // do dono (modo dev, PUBLIKE_ADMIN=1, chave secreta e endereço local).
@@ -313,6 +314,20 @@ export async function mudarCategoria(anuncioId: string, categoria: string): Prom
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   // sem refresh: a linha fica com o "Agora em…" até recarregar (recarregada, a vaga sai da lista)
   return { ok: true };
+}
+
+/** Admin › Anúncios › Para conferir: o título todo em maiúsculas em letra normal (tituloLegivel). */
+export async function arrumarTituloDoAnuncio(anuncioId: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
+  const { data, error } = await c.from("anuncios").select("titulo").eq("id", anuncioId).maybeSingle();
+  if (error || !data) return { ok: false, erro: error ? mensagemDeErro(error) : "Anúncio não encontrado." };
+  const titulo = tituloLegivel(data.titulo);
+  if (titulo === data.titulo) return { ok: true, mensagem: "O título já estava bom." };
+  const { error: erro } = await c.from("anuncios").update({ titulo }).eq("id", anuncioId);
+  if (erro) return { ok: false, erro: mensagemDeErro(erro) };
+  return { ok: true, mensagem: `Agora: ${titulo}` };
 }
 
 /** Publica (ou volta para rascunho) um teste da Publike, depois de revisar (migração 20261204120000). */

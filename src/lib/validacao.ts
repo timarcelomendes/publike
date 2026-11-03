@@ -44,6 +44,7 @@ import {
   VALORES_MOTIVO_DESFAZER,
   VALORES_ESCOLARIDADE,
 } from "./constantes";
+import { tituloLegivel } from "./conferir-anuncio";
 
 // A mesma regra do banco (public.tem_contato): contato só aparece no match.
 const TELEFONE = /(\(?\d{2}\)?[ .-]?)?9?\d{4}[ .-]?\d{4}/;
@@ -307,7 +308,8 @@ function camposDaVaga(d: {
 /** Os campos que a vaga grava no banco (publicar, editar e a correção da equipe). */
 export function registroDoAnuncio(d: DadosAnuncio) {
   return {
-    titulo: d.titulo,
+    // o título todo em maiúsculas sai em letra normal (02/11/2026, claude/plano-home-visitante.md, item 2)
+    titulo: tituloLegivel(d.titulo),
     descricao: d.descricao,
     categoria: d.categoria,
     regime: d.regime,

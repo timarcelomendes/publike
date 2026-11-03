@@ -6,6 +6,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { lerRespostas } from "@/lib/mensagem-equipe";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { lerContaApagada, type ContaApagada } from "@/lib/conta-apagada";
+import { motivosParaConferir } from "@/lib/conferir-anuncio";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -605,6 +606,21 @@ export async function anunciosEmOutros(c: ClienteBanco) {
     .limit(200);
   if (error) falha("os anúncios em Outros", error);
   return data ?? [];
+}
+
+/**
+ * Admin › Anúncios › Para conferir: os anúncios no ar com título gritando, outro estado no texto ou outra cidade
+ * da região no título (src/lib/conferir-anuncio.ts), do mais novo para o mais antigo.
+ */
+export async function anunciosParaConferir(c: ClienteBanco) {
+  const { data, error } = await c
+    .from("anuncios")
+    .select("id, tipo, titulo, descricao, status, cidade, bairro, criado_em")
+    .in("status", ["ativo", "em_analise", "pausado"])
+    .order("criado_em", { ascending: false })
+    .limit(600);
+  if (error) falha("os anúncios para conferir", error);
+  return (data ?? []).map((a) => ({ ...a, motivos: motivosParaConferir(a) })).filter((a) => a.motivos.length > 0);
 }
 
 export async function fichaAnuncio(c: ClienteBanco, id: string) {
