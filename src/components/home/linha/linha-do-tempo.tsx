@@ -10,6 +10,7 @@ import { RecadosRecolhidos } from "../../recados/recados-recolhidos";
 import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
 import { ListaDaLinha } from "./lista-da-linha";
+import { FimDoRaio, RaioDaLinha } from "./raio-da-linha";
 import { CartaoDoAceite, CartaoDoServico, FaixaDeCurtidas, TicketDaVaga } from "./objetos";
 import { RegistrarVisita } from "./registrar-visita";
 
@@ -172,6 +173,7 @@ export async function LinhaDoTempo({
     const maior = RAIOS[RAIOS.length - 1];
     return (
       <section aria-label="Linha do tempo" className="flex flex-col gap-3">
+        <RaioDaLinha d={d} />
         {d.aba === "recado" ? (
           <Vazio icone={MessageSquareText} titulo="Nenhum recado por aqui ainda">
             Escreva o primeiro: conte o que você procura ou quem você está contratando.
@@ -182,8 +184,11 @@ export async function LinhaDoTempo({
             titulo={d.aba === "servico" ? "Nenhum serviço por aqui ainda" : "Nada por aqui ainda"}
             acao={
               (d.filtros.tempo || d.filtros.raio < maior) && (
-                <BotaoLink href={hrefFiltros(d.filtrosDaBusca, { raio: maior, tempo: null })} scroll={false}>
-                  Buscar até {maior} km
+                <BotaoLink
+                  href={hrefFiltros(d.filtrosDaBusca, { raio: d.maisLonge?.faixas[0]?.raio ?? maior, tempo: null })}
+                  scroll={false}
+                >
+                  Buscar até {d.maisLonge?.faixas[0]?.raio ?? maior} km
                 </BotaoLink>
               )
             }
@@ -263,11 +268,15 @@ export async function LinhaDoTempo({
   }
 
   return (
-    <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
-      {/* o traço da linha, no meio da coluna dos nós */}
-      <span aria-hidden className="absolute top-3 bottom-0 left-[71px] hidden w-0.5 rounded-pill bg-line sm:block" />
-      <ListaDaLinha partes={blocos} contam={contam} />
-      <RegistrarVisita />
-    </section>
+    <>
+      {/* até onde a linha busca, à vista (e o que ficou de fora) */}
+      <RaioDaLinha d={d} />
+      <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
+        {/* o traço da linha, no meio da coluna dos nós */}
+        <span aria-hidden className="absolute top-3 bottom-0 left-[71px] hidden w-0.5 rounded-pill bg-line sm:block" />
+        <ListaDaLinha partes={blocos} contam={contam} fim={<FimDoRaio d={d} />} />
+        <RegistrarVisita />
+      </section>
+    </>
   );
 }

@@ -10,7 +10,16 @@ const PASSO = 20;
  * A linha mostra 20 itens e o "Ver mais" traz mais 20. `partes` vem do servidor já na ordem
  * (separadores de dia, a marca e os itens); `contam` diz quais partes são itens.
  */
-export function ListaDaLinha({ partes, contam }: { partes: ReactNode[]; contam: boolean[] }) {
+export function ListaDaLinha({
+  partes,
+  contam,
+  fim = null,
+}: {
+  partes: ReactNode[];
+  contam: boolean[];
+  /** o que vem no fim, quando a linha já mostra tudo (o "Exibir mais" do raio) */
+  fim?: ReactNode;
+}) {
   const [ate, setAte] = useState(PASSO);
   let itens = 0;
   let corte = partes.length;
@@ -39,6 +48,7 @@ export function ListaDaLinha({ partes, contam }: { partes: ReactNode[]; contam: 
           </button>
         </div>
       )}
+      {corte >= partes.length && fim}
     </>
   );
 }

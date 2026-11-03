@@ -17,7 +17,7 @@ import {
 } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
 import { semAcento } from "@/lib/descobrir";
-import { lerFiltros, type Filtros } from "@/lib/filtros";
+import { lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import {
   ACEITE_NA_LINHA,
   COOKIE_ORDEM_DA_LINHA,
@@ -35,7 +35,7 @@ import {
 } from "@/lib/relevancia";
 import { obterLocal } from "@/lib/local";
 import type { Local } from "@/lib/regioes";
-import { partirDoLocal } from "@/lib/servidor/busca-salva";
+import { partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
@@ -183,7 +183,14 @@ export type DadosDaLinha = {
   novas: { tudo: number; vaga: number; servico: number; recado: number };
   /** a pessoa pode escrever recado (tem conta) e o que ela faz ("pessoa" escreve o que procura) */
   autorTipo: string | null;
+  /** de onde conta a distância ("da sua casa", "do meio de Setor Bueno"), para a linha do raio */
+  origemDoRaio: string;
+  /** o que o raio deixou de fora: quantos há em cada distância maior e de que cidades (null: nada de fora) */
+  maisLonge: MaisLonge | null;
 };
+
+/** O que ficou fora do raio: `faixas` = quantos aparecem a mais com cada raio maior (só os que somam). */
+export type MaisLonge = { total: number; cidades: string[]; faixas: { raio: number; quantos: number }[] };
 
 type Parametros = Record<string, string | string[] | undefined>;
 
@@ -242,6 +249,13 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
           usuarioId,
         ).catch(() => [])
       : null;
+  // o raio esconde os anúncios mais longe sem a pessoa perceber (de Goiânia, Anápolis fica a mais de 50 km): a
+  // mesma busca até o maior raio diz quantos ficaram de fora e de onde (03/11/2026)
+  const maiorRaio = RAIOS[RAIOS.length - 1];
+  const ateOMaior =
+    aba !== "recado" && !filtros.tempo && filtros.raio < maiorRaio
+      ? buscarAnuncios({ ...filtros, raio: maiorRaio, ordem: "perto" }, agora, local, usuarioId).catch(() => [])
+      : Promise.resolve([] as AnuncioResumo[]);
   const [encontrados, quem, matchesDaConta, recados, perfil] = await Promise.all([
     aba === "recado"
       ? Promise.resolve([])
@@ -401,6 +415,21 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       marca,
     );
   }
+  // os de fora do raio (com o turno, só vagas): quantos, por faixa de distância, e as cidades mais perto
+  const dentro = new Set(encontrados.map((a) => a.id));
+  const deLonge = (await ateOMaior).filter(
+    (a) => !dentro.has(a.id) && (a.distancia_km ?? 0) > filtros.raio && (!filtros.turno || a.tipo === "vaga"),
+  );
+  const faixas = RAIOS.filter((r) => r > filtros.raio)
+    .map((r) => ({ raio: r, quantos: deLonge.filter((a) => (a.distancia_km ?? 0) <= r).length }))
+    .filter((f, i, todas) => f.quantos > 0 && (i === 0 || f.quantos > todas[i - 1].quantos));
+  const maisLonge: MaisLonge | null = deLonge.length
+    ? {
+        total: deLonge.length,
+        cidades: [...new Set(deLonge.map((a) => a.cidade).filter(Boolean))].slice(0, 3),
+        faixas,
+      }
+    : null;
   return {
     agora,
     local,
@@ -417,6 +446,8 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     visitaNova,
     novas,
     autorTipo: perfil?.tipo ?? null,
+    origemDoRaio: textoDaOrigem(filtros, local, visita.praca.cidade),
+    maisLonge,
   };
 });
 
