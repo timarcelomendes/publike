@@ -15,7 +15,7 @@ import {
   vagasSalvasEntre,
 } from "@/lib/dados";
 import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
-import { tipoDaIntencao, type Intencao } from "@/lib/intencao";
+import { tipoPadraoDaVisita, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { modosMarcados } from "@/lib/servidor/modo";
 import { modeloDaPalavra } from "@/lib/modelos-anuncio";
@@ -116,8 +116,14 @@ export async function BuscaExplorar({
   contrata?: boolean;
 }) {
   const sp = await searchParams;
-  const [local, intencao, visita] = await Promise.all([obterLocal(), obterIntencao(), cidadeDaVisita()]);
-  const filtros = aplicarIntencao(lerFiltros(await comPertoGuardado(sp)), tipoDaIntencao(intencao));
+  const [local, intencao, visita, usuario] = await Promise.all([
+    obterLocal(),
+    obterIntencao(),
+    cidadeDaVisita(),
+    obterUsuario(),
+  ]);
+  const lidos = lerFiltros(await comPertoGuardado(sp));
+  const filtros = aplicarIntencao(lidos, tipoPadraoDaVisita(intencao, Boolean(usuario), lidos.q));
   return (
     <BarraBusca
       filtros={filtros}
@@ -193,7 +199,8 @@ export async function Explorar({
     soOlharComoPessoa(),
     cidadeDaVisita(),
   ]);
-  const filtrosDaBusca = aplicarIntencao(lerFiltros(await comPertoGuardado(parametros)), tipoDaIntencao(intencao));
+  const lidos = lerFiltros(await comPertoGuardado(parametros));
+  const filtrosDaBusca = aplicarIntencao(lidos, tipoPadraoDaVisita(intencao, Boolean(usuario), lidos.q));
   // sem dizer onde mora, a lista conta do centro da cidade principal da praça (a cidade adivinhada
   // pelo endereço de internet fica só nos textos: se errar, não esconde vaga)
   const filtros = partirDoLocal(filtrosDaBusca, local, visita.praca.cidade);

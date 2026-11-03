@@ -15,17 +15,15 @@ import { GiroDoHero } from "./giro-do-hero";
 // computador, três vagas novas inclinadas ao lado (com destaques do admin no ar, girando com eles). A lista
 // de sempre vem logo abaixo.
 
-/** Quantas vagas e quantos serviços estão no ar na praça (só com muitos, para não parecer vazio). */
+/**
+ * Quantas vagas estão no ar na praça, só com 20 ou mais (número pequeno passa a ideia de vazio). Os serviços
+ * saíram da conta (02/11/2026, claude/plano-home-visitante.md, item 5): "e 6 serviços" diminuía a frase.
+ */
 async function NoAr({ cidade }: { cidade: string }) {
-  const [vagas, servicos] = await Promise.all([anunciosNoAr("vaga", cidade), anunciosNoAr("servico", cidade)]);
-  if (vagas.length + servicos.length < 20) return null;
-  // a leitura traz até 200 de cada
-  const n = (x: number) => (x >= 200 ? "200+" : String(x));
-  return (
-    <span className="hidden lg:inline">
-      {n(vagas.length)} vagas e {n(servicos.length)} serviços no ar.{" "}
-    </span>
-  );
+  const vagas = await anunciosNoAr("vaga", cidade);
+  if (vagas.length < 20) return null;
+  // a leitura traz até 200
+  return <span className="hidden lg:inline">{vagas.length >= 200 ? "200+" : vagas.length} vagas no ar. </span>;
 }
 
 /**

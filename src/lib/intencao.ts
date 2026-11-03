@@ -75,6 +75,16 @@ export const PAGINA_DA_INTENCAO: Partial<Record<Intencao, string>> = {
 };
 
 /** A aba que a busca abre para cada resposta (null = Tudo). */
+/**
+ * A aba que abre para quem ainda não tem conta nem respondeu o que quer, sem busca por palavra: Vagas (02/11/2026,
+ * claude/plano-home-visitante.md, item 5). Quase todo visitante procura trabalho, e os poucos serviços no meio das
+ * vagas passavam a ideia de vazio. "Tudo" continua a um toque (tipo=tudo no endereço).
+ */
+export function tipoPadraoDaVisita(intencao: Intencao | null, logado: boolean, busca: string): TipoAnuncio | null {
+  if (intencao !== null || logado || busca.trim()) return tipoDaIntencao(intencao);
+  return "vaga";
+}
+
 export function tipoDaIntencao(intencao: Intencao | null): TipoAnuncio | null {
   if (intencao === "trabalho" || intencao === "talento") return "vaga";
   if (intencao === "contratar_servico") return "servico";
