@@ -137,14 +137,20 @@ export async function chamarClaude(
   }
   conteudo.push({ type: "text", text: p.mensagem });
 
+  // Com a busca na internet, o formato fixo (output_config) faz o Claude responder o JSON direto, sem buscar
+  // (03/11/2026: "0 buscas" nas notícias). Aí o formato vai nas instruções e a resposta final é lida como JSON.
+  const formatoNoTexto = Boolean(p.buscaNaWeb && p.esquema);
+  const sistema = formatoNoTexto
+    ? `${p.sistema}\n\nPrimeiro faça as buscas na internet (a ferramenta web_search), quantas precisar. No fim, responda só com um JSON válido, sem texto antes nem depois, neste formato (JSON Schema):\n${JSON.stringify(p.esquema!.schema)}`
+    : p.sistema;
   const corpo: Record<string, unknown> = {
     model: p.modelo,
-    system: p.sistema,
+    system: sistema,
     max_tokens: p.buscaNaWeb ? p.maxTokens + 2000 : p.maxTokens,
     messages: [{ role: "user", content: conteudo }],
     // o Haiku responde direto; o Sonnet só raciocina entre uma busca e outra
     thinking: { type: p.raciocinio === "sem" ? "disabled" : "between_tools" },
-    ...(p.esquema
+    ...(p.esquema && !formatoNoTexto
       ? { output_config: { format: { type: "json_schema", schema: esquemaParaClaude(p.esquema.schema) } } }
       : {}),
     ...(p.buscaNaWeb
@@ -184,11 +190,17 @@ export async function chamarClaude(
     mensagens.push({ role: "assistant", content: json.content ?? [] });
   }
   // o texto da resposta final (a de antes da pausa é só o caminho)
+  // a resposta é o texto depois da última busca (o de antes é o caminho: "Vou procurar…")
+  const blocos = json.content ?? [];
+  let desde = 0;
+  blocos.forEach((b, i) => {
+    if (b.type === "web_search_tool_result") desde = i + 1;
+  });
   let texto = "";
-  for (const b of json.content ?? []) {
+  for (const [i, b] of blocos.entries()) {
     if (b.type !== "text" || typeof b.text !== "string") continue;
-    texto += b.text;
     for (const c of b.citations ?? []) if (c.url) fontes.add(c.url);
+    if (i >= desde) texto += b.text;
   }
   const parada: ParadaIA =
     json.stop_reason === "refusal"
