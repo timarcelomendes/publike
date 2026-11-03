@@ -813,7 +813,8 @@ export function normalizarWhatsapp(valor: string) {
 
 const SEM_CONTATO_PERFIL = "Tire o telefone, e-mail ou link. O contato aparece sozinho quando der match.";
 
-export const esquemaPerfil = z
+/** O perfil como o admin cria e edita (no admin, o e-mail de quem contrata continua opcional). */
+const esquemaPerfilAdmin = z
   .object({
     nome: z
       .string()
@@ -861,9 +862,6 @@ export const esquemaPerfil = z
   })
   .superRefine((d, ctx) => {
     if (d.tipo === "pessoa") return;
-    // quem contrata: o e-mail é por onde chegam os avisos dos candidatos e a nota fiscal
-    if (!d.email)
-      ctx.addIssue({ code: "custom", path: ["email"], message: "Informe o e-mail: é por ele que chegam os avisos." });
     if (!d.cnpj) {
       if (d.tipo === "agencia") ctx.addIssue({ code: "custom", path: ["cnpj"], message: "Informe o CNPJ da agência." });
     } else if (!cnpjValido(d.cnpj)) {
@@ -872,15 +870,22 @@ export const esquemaPerfil = z
   })
   .transform((d) => ({ ...d, cnpj: d.tipo === "pessoa" ? null : d.cnpj || null }));
 
+/** O perfil que a própria conta salva: quem contrata precisa do e-mail (os avisos dos candidatos e a nota fiscal). */
+export const esquemaPerfil = esquemaPerfilAdmin.superRefine((d, ctx) => {
+  if (d.tipo !== "pessoa" && !d.email)
+    ctx.addIssue({ code: "custom", path: ["email"], message: "Informe o e-mail: é por ele que chegam os avisos." });
+});
+
 export type DadosPerfil = z.output<typeof esquemaPerfil>;
 
-export function lerPerfil(formData: FormData) {
+/** `admin`: as telas do admin (criar conta, publicar pela empresa), onde o e-mail de quem contrata é opcional. */
+export function lerPerfil(formData: FormData, { admin = false }: { admin?: boolean } = {}) {
   const servicos = (campo(formData, "servicos") ?? "")
     .split(/[,;\n]/)
     .map((s) => s.trim())
     .filter((s) => s.length >= 2)
     .slice(0, 12);
-  return esquemaPerfil.safeParse({
+  return (admin ? esquemaPerfilAdmin : esquemaPerfil).safeParse({
     nome: campo(formData, "nome") ?? "",
     tipo: campo(formData, "tipo"),
     cidade: campo(formData, "cidade"),

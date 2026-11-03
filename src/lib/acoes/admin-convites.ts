@@ -444,7 +444,7 @@ async function garantirConta(
     perfil.set("cidade", cidade);
     perfil.set("bairro", bairro);
     perfil.set("receber_emails", "on");
-    const lp = lerPerfil(perfil);
+    const lp = lerPerfil(perfil, { admin: true });
     if (!lp.success) {
       const e = errosPorCampo(lp.error);
       const [campo, msg] = Object.entries(e)[0] ?? ["", "Confira os dados da conta."];

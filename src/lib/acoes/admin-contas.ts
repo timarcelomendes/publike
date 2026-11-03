@@ -42,7 +42,7 @@ export async function criarContaPeloAdmin(_anterior: EstadoForm, formData: FormD
   // o e-mail de contato (o que aparece no match) é o de login, se não vier outro
   if (!String(formData.get("email") ?? "").trim()) formData.set("email", login);
   formData.set("receber_emails", "on");
-  const leitura = lerPerfil(formData);
+  const leitura = lerPerfil(formData, { admin: true });
   const erros: Record<string, string> = leitura.success ? {} : errosPorCampo(leitura.error);
   if (!EMAIL.test(login)) erros.login = "Confira o e-mail.";
   if (!leitura.success || Object.keys(erros).length) return { ok: false, erro: "Confira os campos marcados.", erros };
@@ -118,7 +118,7 @@ export async function criarPerfilPeloAdmin(
   // o e-mail de contato (o que aparece no match) é o de login, se não vier outro
   if (!String(formData.get("email") ?? "").trim() && conta.email) formData.set("email", conta.email);
   formData.set("receber_emails", "on");
-  const leitura = lerPerfil(formData);
+  const leitura = lerPerfil(formData, { admin: true });
   if (!leitura.success) return { ok: false, erro: "Confira os campos marcados.", erros: errosPorCampo(leitura.error) };
   const d = leitura.data;
 
