@@ -33,6 +33,7 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
+import { marcaDeContato } from "@/lib/contato-candidato";
 import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { MODO_DEMO } from "@/lib/config";
 import {
@@ -642,6 +643,7 @@ function CartaoCandidato({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={classesBotao("sucesso", "sm")}
+                {...marcaDeContato(c.anuncio_id, c.perfil_id, "whatsapp")}
               >
                 <MessageCircle aria-hidden />
                 WhatsApp

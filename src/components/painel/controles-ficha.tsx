@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { marcaDeContato } from "@/lib/contato-candidato";
 import { chamarAcao } from "@/lib/acao-segura";
 import { marcarVagaPreenchida } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
@@ -291,6 +292,7 @@ export function ControlesDaFicha({
           dica={entrevista ? "Avisar da entrevista no WhatsApp" : "Chamar no WhatsApp"}
           href={contato.whatsapp}
           externo
+          marca={marcaDeContato(anuncioId, perfilId, "whatsapp")}
         />,
       );
   }
@@ -686,6 +688,7 @@ function Acao({
   onClick,
   href,
   externo = false,
+  marca,
   disabled = false,
   expandido,
 }: {
@@ -699,6 +702,8 @@ function Acao({
   onClick?: () => void;
   href?: string | null;
   externo?: boolean;
+  /** o link de contato com o candidato (Admin › Retorno conta o toque) */
+  marca?: Record<string, string>;
   disabled?: boolean;
   expandido?: boolean;
 }) {
@@ -721,7 +726,7 @@ function Acao({
   );
   if (href && externo)
     return (
-      <a href={href} title={dica} target="_blank" rel="noopener noreferrer" className={classe}>
+      <a href={href} title={dica} target="_blank" rel="noopener noreferrer" className={classe} {...marca}>
         {miolo}
       </a>
     );

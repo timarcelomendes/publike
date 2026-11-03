@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
+import { marcaDeContato } from "@/lib/contato-candidato";
 import type { EmpresasDosTrabalhos } from "@/lib/servidor/empresas";
 import { DesfazerMatch } from "@/components/desfazer-match";
 import { SeloVerificado } from "@/components/selo-verificado";
@@ -430,6 +431,7 @@ export function FichaCandidato({
               <a
                 href={`tel:+${c.whatsapp}`}
                 className="inline-flex min-h-10 items-center gap-1.5 underline-offset-2 hover:underline"
+                {...marcaDeContato(c.anuncio_id, c.perfil_id, "telefone")}
               >
                 <Phone aria-hidden className="size-4 text-ink-muted" />
                 {formatarTelefone(c.whatsapp)}
@@ -439,6 +441,7 @@ export function FichaCandidato({
               <a
                 href={`mailto:${c.email}`}
                 className="inline-flex min-h-10 items-center gap-1.5 break-all underline-offset-2 hover:underline"
+                {...marcaDeContato(c.anuncio_id, c.perfil_id, "email")}
               >
                 <Mail aria-hidden className="size-4 shrink-0 text-ink-muted" />
                 {c.email}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ContarContato } from "@/components/contar-contato";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { MenuPainelEsqueleto } from "@/components/painel/menu-painel";
 import { VoltarAoPainel } from "@/components/painel/voltar-ao-painel";
@@ -26,6 +27,8 @@ export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
           </Suspense>
         </div>
         <div className="min-w-0">{children}</div>
+        {/* o toque no WhatsApp, telefone ou e-mail de um candidato (Admin › Retorno) */}
+        <ContarContato />
       </div>
     </Container>
   );

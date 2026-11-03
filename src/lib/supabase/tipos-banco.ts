@@ -3001,6 +3001,12 @@ export type Database = {
         Args: { p_aberto: boolean; p_servico: string; p_e_codigo: boolean; p_descricao: string };
         Returns: undefined;
       };
+      registrar_contato_candidato: {
+        Args: { p_anuncio: string; p_perfil: string; p_canal: string };
+        Returns: undefined;
+      };
+      admin_retorno_empresas: { Args: { p_desde: string | null }; Returns: Json };
+      admin_retorno_da_empresa: { Args: { p_conta: string; p_desde: string | null }; Returns: Json };
       admin_pagamentos_teste: { Args: { p_conta: string; p_marcar: boolean }; Returns: undefined };
       admin_pagamentos_teste_sandbox: { Args: { p_conta: string; p_sandbox: boolean }; Returns: undefined };
       copiloto_da_vaga: { Args: { p_anuncio: string }; Returns: Json };

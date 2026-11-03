@@ -9,6 +9,7 @@ const ABAS_ADMIN = [
   { href: "/admin", nome: "Painel" },
   { href: "/admin/usuarios", nome: "Usuários" },
   { href: "/admin/empresas", nome: "Empresas" },
+  { href: "/admin/retorno", nome: "Retorno" },
   { href: "/admin/anuncios", nome: "Anúncios" },
   { href: "/admin/esperando", nome: "Esperando" },
   { href: "/admin/denuncias", nome: "Denúncias" },

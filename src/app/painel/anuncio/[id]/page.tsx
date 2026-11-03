@@ -436,6 +436,7 @@ async function Conteudo({
                         <BotoesContato
                           whatsapp={p.whatsapp}
                           email={p.email}
+                          candidatura={{ anuncioId: anuncio.id, perfilId: p.perfil_id }}
                           // o link: o pedido ou a curtida aceita (para a pessoa) ou, no contato direto, o anúncio
                           mensagem={mensagemComLink(
                             servico

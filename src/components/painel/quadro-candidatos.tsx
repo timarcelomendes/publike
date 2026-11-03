@@ -26,6 +26,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
+import { marcaDeContato } from "@/lib/contato-candidato";
 import { chamarAcao } from "@/lib/acao-segura";
 import type { Aderencia } from "@/lib/aderencia";
 import { adicionarFinalistas, tirarFinalista } from "@/lib/acoes/finalistas";
@@ -1187,6 +1188,7 @@ function BotaoWhatsappDoMomento({
       href={linkWhatsApp(c.whatsapp, texto)}
       target="_blank"
       rel="noopener noreferrer"
+      {...marcaDeContato(anuncioId, c.perfil_id, "whatsapp")}
       className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-cerrado px-3 text-label text-on-cerrado hover:brightness-110"
     >
       <MessageCircle aria-hidden className="size-4" />
