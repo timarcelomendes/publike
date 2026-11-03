@@ -15,6 +15,7 @@ import {
   diaPorExtenso,
   lerIdsDoDia,
   linkDaBio,
+  linkDoFimDosStories,
   linkDoStory,
   ordenarVagasDoDia,
   PERIODOS_DO_DIA,
@@ -90,7 +91,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vaga
           dia={diaPorExtenso(agora)}
           agora={agora}
           rotas={{ imagens: `${BASE}/imagem`, baixar: `${BASE}/baixar` }}
-          links={{ bio: linkDaBio(site), story: [antes!, depois!] }}
+          links={{ bio: linkDaBio(site), story: [antes!, depois!], fimDosStories: linkDoFimDosStories(site) }}
           ajudaDaBio="Basta pôr uma vez. Quem criar a conta por ele aparece em Admin › Campanhas como instagram:bio; pelos stories, como instagram:stories."
         />
       )}

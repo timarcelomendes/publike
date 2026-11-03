@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { capaDoDia, fimDoDia, storyDoDia, vagaDoDia } from "@/lib/servidor/imagens-do-dia";
+import { capaDoDia, fimDoDia, storyCapaDoDia, storyDoDia, storyFimDoDia, vagaDoDia } from "@/lib/servidor/imagens-do-dia";
 import { instagramDaConta } from "@/lib/servidor/instagram-da-conta";
 import { nomeDeArquivo } from "@/lib/servidor/kit-imagens";
 import { vagasEscolhidas } from "@/lib/servidor/vagas-do-dia";
@@ -8,7 +8,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { diaPorExtenso, lerIdsDoDia } from "@/lib/vagas-do-dia";
 
 // As imagens do Instagram do kit de divulgação (Links para divulgar), com a marca da empresa e só as vagas no ar
-// da própria conta: capa?ids=a,b,c · vaga?id=a&n=1&total=12 · fim?total=12 · story?id=a (&baixar=1 baixa).
+// da própria conta: capa?ids=a,b,c · vaga?id=a&n=1&total=12 · fim?total=12 · story?id=a · story-capa?ids=a,b,c · story-fim (&baixar=1 baixa).
 
 const naoEncontrado = () => new Response("Não encontrado", { status: 404 });
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
@@ -32,6 +32,11 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/painel/links
   if (peca === "fim") {
     const total = numero(sp.get("total"), 1);
     return fimDoDia(conta.assinatura, baixar ? `${marca}-${doisDigitos(total + 2)}-como-se-candidatar.png` : null);
+  }
+  if (peca === "story-fim") return storyFimDoDia(conta.assinatura, baixar ? `${marca}-story-mais-vagas.png` : null);
+  if (peca === "story-capa") {
+    const vagas = await ler(lerIdsDoDia(sp.get("ids")));
+    return storyCapaDoDia(vagas, diaPorExtenso(agora), conta.assinatura, baixar ? `${marca}-story-capa.png` : null);
   }
   if (peca === "capa") {
     const vagas = await ler(lerIdsDoDia(sp.get("ids")));

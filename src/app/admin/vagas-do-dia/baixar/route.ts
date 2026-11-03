@@ -4,7 +4,15 @@ import { DO_PUBLIKE, pacoteDoDia } from "@/lib/servidor/imagens-do-dia";
 import { vagasEscolhidas } from "@/lib/servidor/vagas-do-dia";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import { diaEmNumeros, diaPorExtenso, legendaDoDia, lerIdsDoDia, linkDaBio, linkDoStory } from "@/lib/vagas-do-dia";
+import {
+  diaEmNumeros,
+  diaPorExtenso,
+  legendaDoDia,
+  lerIdsDoDia,
+  linkDaBio,
+  linkDoFimDosStories,
+  linkDoStory,
+} from "@/lib/vagas-do-dia";
 
 // "Baixar tudo" de Admin › Vagas do dia (?ids=a,b,c, na ordem do carrossel): o .zip de pacoteDoDia, com o
 // carrossel, os stories, a legenda e os links. Só no admin, como a página.
@@ -23,7 +31,12 @@ export async function GET(request: NextRequest) {
     vagas,
     dia,
     DO_PUBLIKE,
-    { legenda: legendaDoDia(vagas, dia), bio: linkDaBio(site), linkDoStory: (id) => linkDoStory(site, id) },
+    {
+      legenda: legendaDoDia(vagas, dia),
+      bio: linkDaBio(site),
+      linkDoStory: (id) => linkDoStory(site, id),
+      fimDosStories: linkDoFimDosStories(site),
+    },
     new Date(agora),
   );
   return new Response(new Blob([zip]), {

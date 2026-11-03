@@ -147,13 +147,26 @@ export const linkDaBio = (site: string) => linkDoInstagram(site, "/?tipo=vaga", 
 
 /** O link do adesivo de cada story: a página da vaga, onde está o Curtir. */
 export const linkDoStory = (site: string, id: string) => linkDoInstagram(site, `/anuncio/${id}`, "stories");
+/** O link do último story ("mais vagas"): todas as vagas, contado como dos stories (e não da bio). */
+export const linkDoFimDosStories = (site: string) => linkDoInstagram(site, "/?tipo=vaga", "stories");
 
 /** O texto com o link de cada story, na ordem dos arquivos, e o da bio (vai no .zip). */
-export function textoDosLinks(vagas: VagaDoDia[], linkDaVaga: (id: string) => string, bio: string) {
+export function textoDosLinks(
+  vagas: VagaDoDia[],
+  linkDaVaga: (id: string) => string,
+  bio: string,
+  /** o link do último story (sem ele, o da bio) */
+  fim: string = bio,
+) {
   return [
     "Links para o adesivo de cada story (na ordem dos arquivos da pasta stories):",
     "",
+    "00. Capa: sem link",
+    "",
     ...vagas.flatMap((v, i) => [`${String(i + 1).padStart(2, "0")}. ${v.titulo}`, linkDaVaga(v.id), ""]),
+    `${String(vagas.length + 1).padStart(2, "0")}. Mais vagas:`,
+    fim,
+    "",
     "Link da bio:",
     bio,
     "",

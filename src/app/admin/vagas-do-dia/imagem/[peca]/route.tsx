@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { capaDoDia, fimDoDia, storyDoDia, vagaDoDia } from "@/lib/servidor/imagens-do-dia";
+import { capaDoDia, fimDoDia, storyCapaDoDia, storyDoDia, storyFimDoDia, vagaDoDia } from "@/lib/servidor/imagens-do-dia";
 import { nomeDeArquivo } from "@/lib/servidor/kit-imagens";
 import { vagasEscolhidas } from "@/lib/servidor/vagas-do-dia";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
@@ -7,7 +7,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import { diaPorExtenso, lerIdsDoDia } from "@/lib/vagas-do-dia";
 
 // As imagens de Admin › Vagas do dia, uma por endereço e só no admin, como a página:
-//   capa?ids=a,b,c · vaga?id=a&n=1&total=12 · fim?total=12 · story?id=a
+//   capa?ids=a,b,c · vaga?id=a&n=1&total=12 · fim?total=12 · story?id=a · story-capa?ids=a,b,c · story-fim
 // Com &baixar=1, vem como arquivo, com o número da ordem do carrossel no nome.
 
 const naoEncontrado = () => new Response("Não encontrado", { status: 404 });
@@ -29,6 +29,11 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
   if (peca === "fim") {
     const total = numero(sp.get("total"), 1);
     return fimDoDia(undefined, baixar ? `${doisDigitos(total + 2)}-como-se-candidatar.png` : null);
+  }
+  if (peca === "story-fim") return storyFimDoDia(undefined, baixar ? "story-mais-vagas.png" : null);
+  if (peca === "story-capa") {
+    const vagas = await vagasEscolhidas(criarClienteAdmin(), lerIdsDoDia(sp.get("ids")), agoraIso);
+    return storyCapaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "story-capa.png" : null);
   }
   if (peca === "capa") {
     const vagas = await vagasEscolhidas(criarClienteAdmin(), lerIdsDoDia(sp.get("ids")), agoraIso);

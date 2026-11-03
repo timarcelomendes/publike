@@ -554,17 +554,147 @@ export async function storyDoDia(v: VagaDoDia, a: Assinatura = DO_PUBLIKE, arqui
   );
 }
 
+/**
+ * A capa dos stories (1080 × 1920), antes do primeiro: "Vagas de hoje" (Publike) ou "Estamos contratando" (empresa),
+ * quantas e as primeiras, com o "toque para ver" (no story, tocar passa para o próximo).
+ */
+export async function storyCapaDoDia(
+  vagas: VagaDoDia[],
+  dia: string,
+  a: Assinatura = DO_PUBLIKE,
+  arquivo: string | null = null,
+) {
+  const publike = a.tipo === "publike";
+  const mostradas = vagas.slice(0, 6);
+  const resto = vagas.length - mostradas.length;
+  const quantas = vagas.length
+    ? plural(vagas.length, publike ? "vaga" : "vaga aberta", publike ? "vagas" : "vagas abertas")
+    : "";
+  return imagem(
+    <div style={fundo("210px 72px 150px", a)}>
+      <Topo
+        logo={await logoDa(a)}
+        a={a}
+        altura={publike ? 70 : 56}
+        direita={<Pilula texto={publike ? "HOJE" : "VAGAS ABERTAS"} fonte={32} cor="ipe" />}
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div
+          style={{ display: "flex", fontFamily: "Bricolage", fontSize: publike ? 132 : 128, lineHeight: 0.95, letterSpacing: -4 }}
+        >
+          {publike ? "Vagas de hoje" : "Estamos contratando"}
+        </div>
+        <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 60, color: destaque(a), lineHeight: 1.1 }}>
+          {publike ? (quantas ? `${quantas} em Goiânia e região` : "em Goiânia e região") : quantas}
+        </div>
+        <div style={{ display: "flex", fontSize: 40, color: COR.apagado }}>{maiuscula(dia)}</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {mostradas.map((v) => (
+          <div
+            key={v.id}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              background: COR.cartao,
+              border: `3px solid ${COR.borda}`,
+              borderRadius: 30,
+              padding: "22px 32px",
+            }}
+          >
+            <div style={{ display: "flex", fontSize: 44, fontWeight: 700, lineHeight: 1.15 }}>{curto(v.titulo, 34)}</div>
+            <div style={{ display: "flex", fontSize: 33, color: COR.apagado }}>
+              {curto(`${valorCurto(v.pagamento_valor, v.pagamento_unidade)} · ${lugar(v)}`, 50)}
+            </div>
+          </div>
+        ))}
+        {resto > 0 && (
+          <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: destaque(a), paddingLeft: 8 }}>
+            {`e mais ${plural(resto, "vaga", "vagas")}`}
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18 }}>
+        <div style={{ display: "flex", fontSize: 48, fontWeight: 700, color: destaque(a) }}>Toque para ver cada uma</div>
+        <img src={paraOLado(destaque(a))} alt="" width={60} height={60} />
+      </div>
+    </div>,
+    STORY,
+    arquivo,
+  );
+}
+
+/**
+ * O último story (1080 × 1920): "Mais vagas perto de você" (Publike) ou "Veja todas as nossas vagas" (empresa), os
+ * três passos e, embaixo, o lugar do adesivo de link (o link da bio: todas as vagas).
+ */
+export async function storyFimDoDia(a: Assinatura = DO_PUBLIKE, arquivo: string | null = null) {
+  const publike = a.tipo === "publike";
+  const cheia = corCheia(a);
+  return imagem(
+    <div style={fundo("210px 72px 110px", a)}>
+      <Topo logo={await logoDa(a)} a={a} altura={publike ? 70 : 56} direita={null} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+        <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 132, lineHeight: 0.95, letterSpacing: -3 }}>
+          {publike ? "Mais vagas perto de você" : "Veja todas as nossas vagas"}
+        </div>
+        {PASSOS.map((p, i) => (
+          <div key={p.titulo} style={{ display: "flex", alignItems: "center", gap: 30 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 88,
+                height: 88,
+                borderRadius: 999,
+                background: cheia,
+                color: textoSobre(cheia),
+                fontFamily: "Bricolage",
+                fontSize: 50,
+                flexShrink: 0,
+              }}
+            >
+              {String(i + 1)}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+              <div style={{ display: "flex", fontSize: 46, fontWeight: 700 }}>
+                {i === 0 ? "Toque no link abaixo" : p.titulo}
+              </div>
+              <div style={{ display: "flex", fontSize: 34, color: COR.apagado }}>
+                {i === 2 && !publike ? "Recebemos na hora e respondemos por lá." : p.texto}
+              </div>
+            </div>
+          </div>
+        ))}
+        <div style={{ display: "flex", fontSize: 36, fontWeight: 700, color: COR.like }}>
+          Nunca pague para conseguir trabalho.
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, minHeight: 360 }}>
+        <div style={{ display: "flex", fontSize: 46, fontWeight: 700, color: destaque(a) }}>
+          {publike ? "Toque no link e veja todas" : "Toque no link"}
+        </div>
+        <img src={paraBaixo(destaque(a))} alt="" width={64} height={64} />
+      </div>
+    </div>,
+    STORY,
+    arquivo,
+  );
+}
+
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
 
 /**
  * O "Baixar tudo": o carrossel numerado na ordem de postar (carrossel/01-capa.png … o "como se candidatar" por
- * último), um story por vaga (stories/), a legenda e os links dos adesivos, num .zip.
+ * último), os stories (stories/: a capa, um por vaga e o "mais vagas"), a legenda e os links dos adesivos, num .zip.
  */
 export async function pacoteDoDia(
   vagas: VagaDoDia[],
   dia: string,
   a: Assinatura,
-  textos: { legenda: string; bio: string; linkDoStory: (id: string) => string },
+  textos: { legenda: string; bio: string; linkDoStory: (id: string) => string; fimDosStories?: string },
   quando: Date,
 ) {
   const total = vagas.length;
@@ -578,12 +708,15 @@ export async function pacoteDoDia(
     });
   }
   arquivos.push({ nome: `carrossel/${doisDigitos(total + 2)}-como-se-candidatar.png`, dados: await png(fimDoDia(a)) });
+  // os stories: a capa (00), um por vaga e o fim, com o link da bio
+  arquivos.push({ nome: "stories/00-capa.png", dados: await png(storyCapaDoDia(vagas, dia, a)) });
   for (const [i, v] of vagas.entries()) {
     arquivos.push({ nome: `stories/${doisDigitos(i + 1)}-${nomeDeArquivo(v.titulo)}.png`, dados: await png(storyDoDia(v, a)) });
   }
+  arquivos.push({ nome: `stories/${doisDigitos(total + 1)}-mais-vagas.png`, dados: await png(storyFimDoDia(a)) });
   const texto = new TextEncoder();
   arquivos.push({ nome: "legenda.txt", dados: texto.encode(`${textos.legenda}\n`) });
-  arquivos.push({ nome: "links-dos-stories.txt", dados: texto.encode(textoDosLinks(vagas, textos.linkDoStory, textos.bio)) });
+  arquivos.push({ nome: "links-dos-stories.txt", dados: texto.encode(textoDosLinks(vagas, textos.linkDoStory, textos.bio, textos.fimDosStories)) });
   return montarZip(arquivos, quando);
 }
 

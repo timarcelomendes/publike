@@ -33,7 +33,7 @@ export function CarrosselDoInstagram({
   /** de onde vêm as imagens ("/admin/vagas-do-dia/imagem") e o .zip */
   rotas: { imagens: string; baixar: string };
   /** o link da bio e o de cada story (o começo e o fim, em volta do código da vaga) */
-  links: { bio: string; story: [string, string] };
+  links: { bio: string; story: [string, string]; fimDosStories?: string };
   /** no kit: o nome da conta (a legenda diz "X está contratando", e o nome não se repete em cada vaga); sem ele, a
    * legenda é a do Publike ("Vagas do dia em Goiânia e região") */
   nomeDaConta?: string;
@@ -196,7 +196,8 @@ export function CarrosselDoInstagram({
             <BotaoCopiar texto={legenda} rotulo="Copiar a legenda" />
           </div>
           <p className="-mt-3 text-body-sm text-ink-muted">
-            O .zip traz o carrossel na ordem de postar, um story por vaga, a legenda e os links dos stories.
+            O .zip traz o carrossel na ordem de postar, os stories (a capa, um por vaga e o “mais vagas”), a legenda e
+            os links dos stories.
           </p>
 
           <section aria-labelledby="dia-carrossel" className="flex flex-col gap-3">
@@ -251,13 +252,20 @@ export function CarrosselDoInstagram({
           <section aria-labelledby="dia-stories" className="flex flex-col gap-3">
             <h3 id="dia-stories" className="text-label">
               Stories{" "}
-              <span className="font-normal text-ink-muted">· um por vaga, 1080 × 1920</span>
+              <span className="font-normal text-ink-muted">
+                · a capa, um por vaga e o “mais vagas”, 1080 × 1920
+              </span>
             </h3>
             <p className="text-body-sm text-ink-muted">
-              Em cada story, ponha o adesivo Link em cima da seta, com o link da vaga: ele abre a página onde a pessoa
-              curte.
+              Poste nesta ordem. Em cada vaga, ponha o adesivo Link em cima da seta, com o link da vaga: ele abre a
+              página onde a pessoa curte. No último, o link de todas as vagas. A capa não leva link.
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              <Previa
+                src={`${IMAGENS}/story-capa?ids=${estavel.join(",")}`}
+                nome="Capa"
+                proporcao="aspect-[9/16]"
+              />
               {nasImagens.map((v) => (
                 <Previa
                   key={v.id}
@@ -267,6 +275,12 @@ export function CarrosselDoInstagram({
                   link={linkDoStory(v.id)}
                 />
               ))}
+              <Previa
+                src={`${IMAGENS}/story-fim?total=${total}`}
+                nome="Mais vagas"
+                proporcao="aspect-[9/16]"
+                link={links.fimDosStories ?? bio}
+              />
             </div>
           </section>
 
@@ -298,7 +312,10 @@ export function CarrosselDoInstagram({
               <li>
                 Carrossel: no Instagram, + › Post, marque as imagens na ordem dos números (01, 02…) e cole a legenda.
               </li>
-              <li>Stories: um por vaga, cada um com o adesivo Link da vaga dele.</li>
+              <li>
+                Stories: a capa, um por vaga (cada um com o adesivo Link da vaga dele) e o “mais vagas”, com o link de
+                todas as vagas.
+              </li>
               <li>Do computador, o Meta Business Suite publica e agenda o carrossel.</li>
               <li>Comente e responda quem perguntar: comentário faz o post chegar a mais gente.</li>
               <li>Mesmo horário todo dia ajuda quem segue a criar o hábito de olhar.</li>
