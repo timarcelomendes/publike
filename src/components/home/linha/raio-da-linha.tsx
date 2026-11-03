@@ -37,8 +37,9 @@ function cidades(c: string[], total: number) {
 }
 
 /**
- * Até onde a linha busca, sempre à vista (03/11/2026): o raio ficava escondido em Filtros e a pessoa achava que
- * via tudo. Os raios em botões (o atual marcado), de onde conta, e, se ficou algo de fora, quantos e de onde.
+ * Até onde a linha busca, à vista (03/11/2026): o raio ficava escondido em Filtros e a pessoa achava que via tudo.
+ * Se ficou algo de fora: os raios em botões (o atual marcado), de onde conta, quantos ficaram e de onde. Se não,
+ * só "Até 25 km da sua casa · Mudar" (o Mudar abre os botões).
  */
 export function RaioDaLinha({ d }: { d: DadosDaLinha }) {
   return d.aba === "recado" ? null : <RaioDaBusca r={daLinha(d)} />;
@@ -50,56 +51,73 @@ export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
   const [um, varios] = nomeDoItem(d.tipo);
   const longe = d.maisLonge;
   const proximo = longe?.faixas[0];
+  const botoes = (
+    <nav aria-label="Até onde buscar" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <span className="inline-flex items-center gap-1 text-body-sm font-semibold text-ink">
+        <MapPinned aria-hidden className="size-4 shrink-0 text-ink-muted" />
+        Até onde
+      </span>
+      <span className="flex flex-wrap gap-1">
+        {f.tempo && (
+          <span
+            aria-current="true"
+            className="inline-flex min-h-9 items-center rounded-pill bg-ink px-3 text-body-sm font-semibold text-surface-100"
+          >
+            {nomeDoTempo(f.tempo)}
+          </span>
+        )}
+        {RAIOS.map((r) => {
+          const atual = !f.tempo && f.raio === r;
+          return (
+            <Link
+              key={r}
+              href={hrefFiltros(d.base, { raio: r, tempo: null })}
+              scroll={false}
+              aria-current={atual ? "true" : undefined}
+              className={`inline-flex min-h-9 items-center rounded-pill border px-3 text-body-sm tabular-nums ${
+                atual
+                  ? "border-ink bg-ink font-semibold text-surface-100"
+                  : "border-line-strong bg-surface-100 text-ink hover:bg-surface-300"
+              }`}
+            >
+              {r} km
+            </Link>
+          );
+        })}
+      </span>
+      <span className="text-body-sm text-ink-muted">{d.origem}</span>
+    </nav>
+  );
+  const distancia = f.tempo ? nomeDoTempo(f.tempo) : `Até ${f.raio} km`;
+  // nada de fora: só uma linha curta, e o Mudar abre os raios (sem script: <details>)
+  if (!longe || !proximo)
+    return (
+      <details className={`group pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
+        <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 text-body-sm text-ink-muted [&::-webkit-details-marker]:hidden">
+          <MapPinned aria-hidden className="size-4 shrink-0" />
+          <span>
+            <span className="font-semibold text-ink">{distancia}</span> {d.origem} ·{" "}
+            <span className="font-semibold text-ink underline underline-offset-2 group-open:hidden">Mudar</span>
+            <span className="hidden font-semibold text-ink underline underline-offset-2 group-open:inline">Fechar</span>
+          </span>
+        </summary>
+        <div className="pt-1.5">{botoes}</div>
+      </details>
+    );
   return (
     <div className={`flex flex-col gap-1.5 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
-      <nav aria-label="Até onde buscar" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <span className="inline-flex items-center gap-1 text-body-sm font-semibold text-ink">
-          <MapPinned aria-hidden className="size-4 shrink-0 text-ink-muted" />
-          Até onde
-        </span>
-        <span className="flex flex-wrap gap-1">
-          {f.tempo && (
-            <span
-              aria-current="true"
-              className="inline-flex min-h-9 items-center rounded-pill bg-ink px-3 text-body-sm font-semibold text-surface-100"
-            >
-              {nomeDoTempo(f.tempo)}
-            </span>
-          )}
-          {RAIOS.map((r) => {
-            const atual = !f.tempo && f.raio === r;
-            return (
-              <Link
-                key={r}
-                href={hrefFiltros(d.base, { raio: r, tempo: null })}
-                scroll={false}
-                aria-current={atual ? "true" : undefined}
-                className={`inline-flex min-h-9 items-center rounded-pill border px-3 text-body-sm tabular-nums ${
-                  atual
-                    ? "border-ink bg-ink font-semibold text-surface-100"
-                    : "border-line-strong bg-surface-100 text-ink hover:bg-surface-300"
-                }`}
-              >
-                {r} km
-              </Link>
-            );
-          })}
-        </span>
-        <span className="text-body-sm text-ink-muted">{d.origem}</span>
-      </nav>
-      {longe && proximo && (
-        <p className="text-body-sm text-ink-muted">
-          Mostrando só até {f.raio} km. Há mais {plural(longe.total, um, varios)} mais longe
-          {cidades(longe.cidades, longe.total)}.{" "}
-          <Link
-            href={hrefFiltros(d.base, { raio: proximo.raio })}
-            scroll={false}
-            className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
-          >
-            Exibir mais
-          </Link>
-        </p>
-      )}
+      {botoes}
+      <p className="text-body-sm text-ink-muted">
+        Mostrando só até {f.raio} km. Há mais {plural(longe.total, um, varios)} mais longe
+        {cidades(longe.cidades, longe.total)}.{" "}
+        <Link
+          href={hrefFiltros(d.base, { raio: proximo.raio })}
+          scroll={false}
+          className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+        >
+          Exibir mais
+        </Link>
+      </p>
     </div>
   );
 }
