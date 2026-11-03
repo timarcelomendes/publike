@@ -15,6 +15,25 @@ create table if not exists privado.testadores_app (
 alter table privado.testadores_app enable row level security;
 revoke all on privado.testadores_app from public, anon, authenticated;
 
+-- a conta do Publike com o mesmo e-mail (o de entrar ou o de contato): o nome e o WhatsApp dela
+create or replace function privado.conta_do_testador(p_email text)
+returns table (conta_id uuid, nome text, whatsapp text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.id, p.nome, ct.whatsapp
+    from public.perfis p
+    left join public.contatos ct on ct.perfil_id = p.id
+   where p.id in (select u.id from auth.users u where lower(u.email) = lower(p_email))
+      or lower(ct.email) = lower(p_email)
+   order by ct.whatsapp is null, p.criado_em
+   limit 1
+$$;
+revoke execute on function privado.conta_do_testador(text) from public, anon, authenticated;
+
+-- a lista, com a conta do Publike de cada um (o WhatsApp da conta vale quando o da lista está vazio)
 create or replace function public.admin_testadores_app()
 returns jsonb
 language sql
@@ -22,7 +41,11 @@ stable
 security definer
 set search_path = ''
 as $$
-  select coalesce(jsonb_agg(to_jsonb(t) order by t.criado_em, t.nome), '[]'::jsonb) from privado.testadores_app t
+  select coalesce(jsonb_agg(to_jsonb(t) || jsonb_build_object(
+           'conta_id', c.conta_id, 'conta_nome', c.nome, 'conta_whatsapp', c.whatsapp)
+           order by t.criado_em, t.nome), '[]'::jsonb)
+    from privado.testadores_app t
+    left join lateral privado.conta_do_testador(t.email) c on true
 $$;
 
 -- a lista colada: [{nome, email, whatsapp}]; o mesmo e-mail atualiza o nome e o WhatsApp. Devolve quantos entraram.

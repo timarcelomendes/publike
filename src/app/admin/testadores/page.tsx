@@ -1,5 +1,6 @@
 import { Smartphone } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Copiar } from "@/components/admin/pagamentos";
@@ -9,7 +10,7 @@ import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { ACEITAR_TESTE } from "@/lib/android";
 import { formatarTelefone, tempoRelativo } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
-import type { Testador } from "@/lib/testadores-app";
+import { whatsappDoTestador, type Testador } from "@/lib/testadores-app";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Testadores do app" };
@@ -78,7 +79,21 @@ async function Conteudo() {
                     <span className="text-label">{t.nome}</span>
                     <span className="text-body-sm break-all text-ink-muted">
                       {t.email}
-                      {t.whatsapp ? ` · ${formatarTelefone(t.whatsapp)}` : " · sem WhatsApp"}
+                      {whatsappDoTestador(t)
+                        ? ` · ${formatarTelefone(whatsappDoTestador(t)!)}${t.whatsapp ? "" : " (da conta)"}`
+                        : " · sem WhatsApp"}
+                    </span>
+                    <span className="text-caption text-ink-muted">
+                      {t.conta_id ? (
+                        <>
+                          Conta no Publike:{" "}
+                          <Link href={`/admin/usuarios/${t.conta_id}`} className="underline-offset-2 hover:underline">
+                            {t.conta_nome}
+                          </Link>
+                        </>
+                      ) : (
+                        "Sem conta no Publike com este e-mail"
+                      )}
                     </span>
                     <span className="mt-1 flex flex-wrap gap-1.5">
                       {t.whatsapp_em && <Selo variante="match">WhatsApp {tempoRelativo(t.whatsapp_em, agora)}</Selo>}

@@ -4,7 +4,7 @@ import { Mail, MessageCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { apagarTestador, marcarConviteTestador, salvarTestadores } from "@/lib/acoes/admin-testadores";
 import { linkWhatsApp } from "@/lib/formato";
-import { linkEmailDoTeste, mensagemWhatsappDoTeste, type Testador } from "@/lib/testadores-app";
+import { linkEmailDoTeste, mensagemWhatsappDoTeste, whatsappDoTestador, type Testador } from "@/lib/testadores-app";
 import { Botao, classesBotao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -51,11 +51,14 @@ export function FormTestadores() {
 /** Os dois convites de uma pessoa: abre o WhatsApp ou o e-mail com a mensagem pronta e marca que foi mandado. */
 export function ConvitesDoTestador({ t }: { t: Testador }) {
   const marcar = (canal: "whatsapp" | "email") => void marcarConviteTestador(t.id, canal).catch(() => {});
+  const whatsapp = whatsappDoTestador(t);
+  // o nome da conta do Publike (o de verdade) vale mais que o da lista, que pode ter vindo do e-mail
+  const quem = { nome: t.conta_nome || t.nome, email: t.email };
   return (
     <span className="flex flex-wrap gap-1.5">
-      {t.whatsapp && (
+      {whatsapp && (
         <a
-          href={linkWhatsApp(t.whatsapp, mensagemWhatsappDoTeste(t))}
+          href={linkWhatsApp(whatsapp, mensagemWhatsappDoTeste(quem))}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => marcar("whatsapp")}
@@ -67,9 +70,9 @@ export function ConvitesDoTestador({ t }: { t: Testador }) {
         </a>
       )}
       <a
-        href={linkEmailDoTeste(t)}
+        href={linkEmailDoTeste(quem)}
         onClick={() => marcar("email")}
-        className={classesBotao(t.email_em || t.whatsapp ? "secundario" : "primario", "sm")}
+        className={classesBotao(t.email_em || whatsapp ? "secundario" : "primario", "sm")}
         aria-label={`Mandar o convite por e-mail para ${t.nome}`}
       >
         <Mail aria-hidden />

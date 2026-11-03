@@ -12,7 +12,14 @@ export type Testador = {
   whatsapp_em: string | null;
   email_em: string | null;
   criado_em: string;
+  /** a conta do Publike com o mesmo e-mail (migração 20270128120000, de novo) */
+  conta_id?: string | null;
+  conta_nome?: string | null;
+  conta_whatsapp?: string | null;
 };
+
+/** O WhatsApp para o convite: o da lista ou, sem ele, o da conta do Publike com o mesmo e-mail. */
+export const whatsappDoTestador = (t: Testador) => t.whatsapp || t.conta_whatsapp || null;
 
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] || nome;
 
