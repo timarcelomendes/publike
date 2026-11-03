@@ -16,7 +16,8 @@ export type PedidoClaude = {
   imagens?: string[];
   arquivos?: { nome: string; dados: string }[];
   esquema?: { nome: string; schema: Record<string, unknown> };
-  buscaNaWeb?: { cidade: string; regiao: string };
+  /** maxBuscas: quantas buscas a IA pode fazer (padrão 5) */
+  buscaNaWeb?: { cidade: string; regiao: string; maxBuscas?: number };
   tempoLimite?: number;
 };
 
@@ -152,7 +153,7 @@ export async function chamarClaude(
             {
               type: "web_search_20250305",
               name: "web_search",
-              max_uses: 5,
+              max_uses: Math.min(Math.max(p.buscaNaWeb.maxBuscas ?? 5, 1), 15),
               user_location: {
                 type: "approximate",
                 city: p.buscaNaWeb.cidade,

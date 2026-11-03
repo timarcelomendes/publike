@@ -7,7 +7,7 @@ import { buscarFoto, fotosConfiguradas } from "./fotos-noticias";
 
 // As notícias são da praça principal (Goiânia e região, com as fontes de Goiás). Com outra praça,
 // a busca roda uma vez para cada uma, com as cidades e as fontes de lá.
-// A IA procura notícias sobre trabalho em Goiânia e região e escreve um resumo
+// A IA procura notícias sobre trabalho no Brasil e em Goiânia e região e escreve um resumo
 // curto de cada uma. Tudo entra como rascunho: só vai para o site quando o
 // admin aprova. Roda pelo agendamento do servidor (/api/noticias/buscar) ou
 // pelo botão "Buscar agora" do admin.
@@ -73,34 +73,48 @@ function hojeEmBrasilia(agora: number) {
 }
 
 function instrucoes(hoje: string) {
-  return `Você é o editor de notícias do Publike, um site grátis de vagas e serviços de Goiânia e região (Goiás). Hoje é ${hoje}.
+  const ano = hoje.slice(0, 4);
+  return `Você é o editor de notícias do Publike, um site grátis de vagas e serviços de Goiânia e região (Goiás) para quem procura trabalho, presta serviço ou contrata. Hoje é ${hoje}.
 
-Procure na internet notícias publicadas nos últimos 7 dias sobre trabalho, emprego e mercado de trabalho. Primeiro as de Goiânia e da região metropolitana (Aparecida de Goiânia, Senador Canedo, Trindade, Goianira, Anápolis e vizinhas) e de Goiás; depois as do Brasil que mudam algo para quem trabalha, presta serviço ou contrata aqui. Vale qualquer notícia desse assunto, por exemplo:
-- vagas: feirões e mutirões de emprego, Sine, Mais Empregos, empresas que vão abrir, ampliar ou contratar;
-- demissões, fechamento de empresas, greves e acordos de categorias (com o que muda para o trabalhador);
-- salários: salário mínimo, pisos e reajustes de categorias, renda média;
-- números do emprego e da economia de Goiás e do Brasil (Caged, IBGE, desemprego, informalidade) e dos setores que mais empregam aqui (comércio, serviços, construção, indústria, agronegócio);
-- direitos e leis: CLT, jornada e escala de trabalho, FGTS, seguro-desemprego, férias, 13º, INSS e aposentadoria de quem trabalha;
-- trabalho por conta própria: MEI, autônomos, trabalho por aplicativo, crédito e apoio para pequeno negócio;
-- qualificação: cursos gratuitos (Senai, Senac, Cotec, IFG, prefeituras), jovem aprendiz, estágio, primeiro emprego;
-- concursos e processos seletivos com inscrições abertas;
-- inclusão no trabalho: mulheres, pessoas com deficiência, pessoas acima de 50 anos;
+Procure na internet notícias publicadas nos últimos 7 dias sobre emprego, mão de obra, leis do trabalho e oportunidades. Vale o Brasil todo: o que muda a vida de quem trabalha ou contrata em qualquer lugar do país (leis, salário mínimo, benefícios, números do emprego, concursos nacionais, programas do governo) é tão importante quanto as notícias de Goiás. As de Goiânia, da região metropolitana (Aparecida de Goiânia, Senador Canedo, Trindade, Goianira, Anápolis e vizinhas) e de Goiás entram quando houver.
+
+Faça várias buscas diferentes, uma por assunto, por exemplo:
+- "Caged emprego ${ano}", "desemprego IBGE Pnad", "mercado de trabalho Brasil";
+- "projeto de lei trabalhista", "fim da escala 6x1", "jornada de trabalho Câmara Senado", "CLT mudança";
+- "salário mínimo ${Number(ano) + 1}", "reajuste piso categoria", "FGTS saque", "seguro-desemprego", "INSS trabalhador";
+- "concurso público inscrições abertas", "processo seletivo inscrições";
+- "cursos gratuitos qualificação profissional", "jovem aprendiz", "programa primeiro emprego", "Pé-de-Meia";
+- "MEI ${ano}", "trabalho por aplicativo regulamentação", "crédito pequeno negócio";
+- "feirão de emprego Goiânia", "vagas Sine Goiás", "empresa vai contratar Goiás".
+
+Vale qualquer notícia desse assunto:
+- vagas e contratações: feirões e mutirões de emprego, Sine, empresas que vão abrir, ampliar ou contratar muita gente, contratações de fim de ano;
+- leis e direitos: projetos e leis que mudam a CLT, a jornada, a escala de trabalho, FGTS, seguro-desemprego, férias, 13º, INSS, aposentadoria, trabalho por aplicativo; decisões da Justiça do Trabalho que valem para muita gente;
+- salários e renda: salário mínimo, pisos e reajustes de categorias, renda média;
+- números do emprego e da economia (Caged, IBGE, desemprego, informalidade) e dos setores que mais empregam (comércio, serviços, construção, indústria, agronegócio);
+- demissões, fechamento de empresas, greves e acordos de categorias, com o que muda para o trabalhador;
+- falta de mão de obra e profissões em alta;
+- trabalho por conta própria: MEI, autônomos, aplicativos, crédito e apoio para pequeno negócio;
+- qualificação: cursos gratuitos (Senai, Senac, Sebrae, institutos federais, governos), jovem aprendiz, estágio, primeiro emprego;
+- concursos e processos seletivos com inscrições abertas (nacionais ou de Goiás);
+- inclusão no trabalho: mulheres, pessoas com deficiência, pessoas acima de 50 anos, jovens;
 - tecnologia e mudanças no jeito de trabalhar (inteligência artificial, trabalho remoto) quando afetam empregos de verdade.
 
 Regras:
 - Só notícias reais que você abriu nesta busca. "fonte_url" é o endereço exato da matéria, nunca a página inicial do site.
-- Prefira fontes oficiais (goias.gov.br, goiania.go.gov.br, gov.br) e jornais (O Popular, Jornal Opção, Mais Goiás, g1 Goiás). Para lei, direito e benefício, só fonte oficial do governo.
+- Fontes boas: as oficiais (gov.br, Ministério do Trabalho, Agência Brasil, Agência Senado, Agência Câmara, TST, IBGE, goias.gov.br, goiania.go.gov.br) e os jornais grandes (g1, Folha, Estadão, O Globo, UOL, CNN Brasil, Valor, InfoMoney, Exame, O Popular, Jornal Opção, Mais Goiás). Para lei e benefício, prefira a fonte oficial ou um jornal grande; nunca blog ou site de "dicas".
+- Projeto de lei não é lei: diga em que pé está (proposto, aprovado na Câmara, no Senado, sancionado) e não diga que já vale.
 - Escreva com as suas palavras, sem copiar frases da matéria. Linguagem simples, frases curtas, sem gíria, para quem lê no celular.
 - Não invente data, valor, endereço, horário nem requisito: se a matéria não diz, não diga.
 - "titulo": até 100 caracteres, direto ("Feirão oferece 800 vagas em Aparecida neste sábado").
 - "resumo": uma ou duas frases (até 250 caracteres).
-- "corpo": dois a quatro parágrafos curtos, separados por uma linha em branco, com o que, quando, onde e como participar.
+- "corpo": dois a quatro parágrafos curtos, separados por uma linha em branco, com o que muda, para quem, quando e o que fazer.
 - "pratico": uma frase com o que a pessoa faz com isso ("Leve RG, CPF e carteira de trabalho."). Vazio se não houver.
 - "cidade": a cidade da notícia ou "" se for de Goiás ou do Brasil todo.
 - "tema": vagas (vagas, feirões, contratações), cursos, concursos, direitos (leis, benefícios, salário mínimo), eventos, ou mercado (números, economia, setores, demissões, greves, tecnologia e o resto).
 - "fonte_data": a data da matéria no formato AAAA-MM-DD, ou "" se não souber.
 - "foto_busca": duas a quatro palavras em inglês para achar uma foto real que combine com o assunto, como numa notícia de jornal ("construction workers", "job fair crowd", "students classroom"). Sem nome de pessoa, de empresa ou de lugar.
-- No máximo 8 notícias, das mais úteis para as menos, com pelo menos metade de Goiás quando houver. Nada de notícia de crime, política partidária, fofoca, propaganda ou vaga de um único anúncio. Se não achar nada que preste, devolva a lista vazia.`;
+- De 4 a 8 notícias, das mais úteis para as menos, misturando os assuntos. Uma notícia nova sobre um assunto que já está na lista vale quando traz um fato novo (o projeto foi votado, saiu o resultado, abriu a inscrição). Nada de notícia de crime, política partidária, fofoca, propaganda ou vaga de um único anúncio. Só devolva a lista vazia se de fato não houver nada novo.`;
 }
 
 export type ResultadoBusca = { ok: true; novas: number; pulou?: string } | { ok: false; erro: string };
@@ -151,11 +165,12 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
       modelo: contexto.modelo ?? "",
       sistema: instrucoes(hojeEmBrasilia(agora)),
       mensagem: lista
-        ? `Estas já estão na nossa lista. Não traga de novo, nem outra matéria sobre o mesmo assunto:\n${lista}`
+        ? `Estas já estão na nossa lista. Não traga a mesma matéria de novo, nem outra igual sem fato novo:\n${lista}`
         : "Ainda não temos nenhuma notícia na lista.",
       maxTokens: 5000,
       esquema: { nome: "noticias", schema: ESQUEMA },
-      buscaNaWeb: { cidade: "Goiânia", regiao: "Goiás" },
+      // várias buscas: uma por assunto (Brasil e Goiás)
+      buscaNaWeb: { cidade: "Goiânia", regiao: "Goiás", maxBuscas: 10 },
       tempoLimite: 180_000,
     });
     if (r.parada)

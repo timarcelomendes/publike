@@ -114,7 +114,8 @@ type Pedido = {
   /** Saída estruturada: nome e esquema JSON da resposta. Sem esquema, a resposta é texto livre. */
   esquema?: { nome: string; schema: Record<string, unknown> };
   /** Deixa a IA pesquisar na internet, a partir deste lugar (as notícias). */
-  buscaNaWeb?: { cidade: string; regiao: string };
+  /** maxBuscas: só a Claude usa (a OpenAI decide sozinha quantas buscas faz) */
+  buscaNaWeb?: { cidade: string; regiao: string; maxBuscas?: number };
   /** Em milissegundos (padrão 45 s; a busca na internet demora mais). */
   tempoLimite?: number;
 };
