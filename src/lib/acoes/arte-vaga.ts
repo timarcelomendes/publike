@@ -2,14 +2,11 @@
 
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { rascunhoValido, type RascunhoConvite } from "@/lib/convites";
-import { obterUsuario } from "@/lib/dados";
-import { mensagemDeErro } from "@/lib/erros";
-import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
+import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
 import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
+import { ACABOU_SEM_CONTA, usarLeituraDaVaga } from "@/lib/servidor/cota-leitura-vaga";
 import { registrarFalha, textoDoErro } from "@/lib/servidor/falhas";
 import { TIPOS_DE_FOTO } from "@/lib/servidor/ler-curriculo";
-import { clienteAdminOuNulo } from "@/lib/supabase/admin";
-import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 // "Tem a arte da vaga?": quem publica manda a foto do anúncio (a arte que postou numa rede social)
 // e a IA preenche a vaga. Nada é salvo aqui: a pessoa confere o formulário e publica.
@@ -22,7 +19,7 @@ const MAX_BYTES = 1024 * 1024;
 export async function lerArteDaVaga(dados: FormData): Promise<LeituraDaArte> {
   const leitura = await lerArte(dados);
   // a imagem que não serve fica só registrada; a falha da IA chega à equipe (no catch, abaixo)
-  if (!leitura.ok && leitura.erro !== MENSAGEM_DEMO && !falhouNaIA.has(leitura)) {
+  if (!leitura.ok && leitura.erro !== MENSAGEM_DEMO && leitura.erro !== ACABOU_SEM_CONTA && !falhouNaIA.has(leitura)) {
     await registrarFalha({ onde: "vaga", etapa: "validacao", mensagem: leitura.erro, detalhe: "arte da vaga" });
   }
   return leitura;
@@ -34,8 +31,6 @@ const falhouNaIA = new WeakSet<object>();
 async function lerArte(dados: FormData): Promise<LeituraDaArte> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!iaConfigurada()) return { ok: false, erro: "A leitura da imagem não está disponível agora." };
-  const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre na sua conta para continuar." };
 
   const foto = dados.get("foto");
   if (!(foto instanceof File) || foto.size === 0) return { ok: false, erro: "Escolha a imagem da vaga." };
@@ -43,19 +38,10 @@ async function lerArte(dados: FormData): Promise<LeituraDaArte> {
   const bytes = Buffer.from(await foto.arrayBuffer());
   if (!TIPOS_DE_FOTO[foto.type]?.(bytes)) return { ok: false, erro: "Mande a imagem em JPG ou PNG." };
 
-  // a mesma cota da ajuda da IA (o admin, no computador dele, não gasta)
-  const supabase = await criarClienteServidor();
-  let modelo = MODELO_PADRAO;
-  const admin = await clienteAdminOuNulo();
-  if (admin) {
-    const { data } = await admin.rpc("admin_config");
-    modelo = data?.[0]?.ia_modelo ?? modelo;
-  } else {
-    const { error } = await supabase.rpc("usar_ia_texto");
-    if (error) return { ok: false, erro: mensagemDeErro(error) };
-    const { data } = await supabase.rpc("config_publica");
-    modelo = data?.[0]?.ia_modelo ?? modelo;
-  }
+  // com conta, a cota da ajuda da IA; sem conta, a do visitante (o login fica para quando publicar)
+  const cota = await usarLeituraDaVaga();
+  if ("erro" in cota) return { ok: false, erro: cota.erro };
+  const modelo = cota.modelo;
 
   try {
     const nome = typeof dados.get("nome") === "string" ? String(dados.get("nome")) : "";

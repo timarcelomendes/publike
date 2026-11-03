@@ -93,7 +93,8 @@ async function PortaDeQuemContrata() {
             {" "}
             ou{" "}
             <Link
-              href={`/entrar?next=${encodeURIComponent("/publicar#arte")}`}
+              // sem login: a IA lê a foto e o login só é pedido ao publicar
+              href="/publicar#arte"
               className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
             >
               mande a foto da vaga

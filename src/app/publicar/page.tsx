@@ -77,13 +77,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   if (!pedidaCopia && !(await obterUsuario())) {
     // a cidade de quem vê (onde disse que mora ou pelo endereço de internet)
     const base = vazio((await cidadeDaVisita()).cidade, "");
-    const intencao = await obterIntencao().catch(() => null);
+    const [intencao, ia] = await Promise.all([obterIntencao().catch(() => null), ajudaDaIADisponivel()]);
     const contrata = intencao === "contratar_pessoa" || intencao === "contratar_servico";
     return (
       <PublicarAnuncio
         antes={!convite && !contrata ? <ChamadaCurriculo /> : null}
         inicial={convite?.rascunho ? valoresDoConvite(convite.rascunho, base) : base}
         semConta
+        // a foto e o texto da vaga também sem conta (o login só ao publicar)
+        ia={ia}
         comModelos={!convite}
         modelo={convite ? null : modelo}
         // ainda não se sabe se a conta é de empresa: o endereço aparece como opcional

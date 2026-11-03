@@ -2731,6 +2731,10 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
       };
+      servidor_usar_ia_visitante: {
+        Args: { p_chave: string; p_quem: string; p_limite: number; p_teto: number };
+        Returns: boolean;
+      };
       servidor_usar_assistente: {
         Args: { p_chave: string; p_quem: string; p_limite: number };
         Returns: boolean;

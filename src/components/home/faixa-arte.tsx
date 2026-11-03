@@ -4,8 +4,8 @@ import { iaLigadaNoSite } from "@/lib/dados";
 import { Container } from "../ui/basicos";
 
 /**
- * "Tem a arte da vaga? Mande a foto.": leva ao quadro da foto no Publicar (que precisa da
- * conta: quem não entrou passa por Entrar antes). Só com a leitura por IA ligada.
+ * "Tem a arte da vaga? Mande a foto.": leva ao quadro da foto no Publicar (também sem conta: a IA lê a foto e o
+ * login só é pedido ao publicar). Só com a leitura por IA ligada.
  */
 export async function FaixaArte({ logado }: { logado: boolean }) {
   if (!(await iaLigadaNoSite())) return null;

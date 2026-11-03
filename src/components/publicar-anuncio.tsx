@@ -222,7 +222,7 @@ export function PublicarAnuncio({
   continuar?: boolean;
   /** vaga nova do zero (não "publicar parecida") */
   comModelos?: boolean;
-  /** a ajuda da IA está ligada: "Melhorar texto" e "Tem a arte da vaga?" (só com conta) */
+  /** a ajuda da IA está ligada: "Melhorar texto" (só com conta), o texto e a foto da vaga (também sem conta) */
   ia?: boolean;
   agencia?: boolean;
   contatoAgencia?: { whatsapp: string | null; email: string | null } | null;
@@ -459,7 +459,9 @@ export function PublicarAnuncio({
   );
   const p = previa ?? PREVIA_VAZIA;
   const nome = autor || "Sua empresa";
+  // "Melhorar texto" só com conta; a foto e o texto da vaga também sem conta (o login fica para quando publicar)
   const comIA = ia && !semConta;
+  const lerComIA = ia;
   const alternar = (qual: "modelo" | "texto" | "foto") => setAtalho((a) => (a === qual ? null : qual));
 
   return (
@@ -524,12 +526,12 @@ export function PublicarAnuncio({
                 <Atalho
                   icone={Sparkles}
                   ativo={atalho === "modelo"}
-                  empilhado={comIA}
+                  empilhado={lerComIA}
                   onClick={() => alternar("modelo")}
                 >
                   Usar modelo
                 </Atalho>
-                {comIA && (
+                {lerComIA && (
                   <Atalho
                     icone={ClipboardPaste}
                     ativo={atalho === "texto"}
@@ -540,7 +542,7 @@ export function PublicarAnuncio({
                     Colar texto
                   </Atalho>
                 )}
-                {comIA && (
+                {lerComIA && (
                   <Atalho icone={ImageUp} ativo={atalho === "foto"} empilhado onClick={() => alternar("foto")}>
                     Enviar foto
                   </Atalho>
@@ -570,8 +572,8 @@ export function PublicarAnuncio({
                   })}
                 </ul>
               )}
-              {atalho === "texto" && comIA && <TextoDaVaga aoLer={aplicarArte} />}
-              {atalho === "foto" && comIA && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
+              {atalho === "texto" && lerComIA && <TextoDaVaga aoLer={aplicarArte} />}
+              {atalho === "foto" && lerComIA && <ArteDaVaga aoLer={(v) => aplicarArte(v)} />}
             </div>
           ) : null
         }
