@@ -153,7 +153,8 @@ export function MenuUsuario({
       {aberto && (
         <div
           id="menu-conta"
-          className="absolute top-full right-0 mt-2 w-72 rounded-md border border-line bg-surface-200 p-2 shadow-raised"
+          // cabe na tela (o cabeçalho em cima e, no celular, a barra de baixo): o resto, como o Sair, rola dentro
+          className="absolute top-full right-0 mt-2 max-h-[calc(100dvh-10rem-env(safe-area-inset-bottom))] w-72 overflow-y-auto overscroll-contain rounded-md border border-line bg-surface-200 p-2 shadow-raised md:max-h-[calc(100dvh-5.5rem)]"
         >
           <nav aria-label="Conta" className="flex flex-col" onClick={() => setAberto(false)}>
             {/* no alto, quem é: o nome leva ao perfil que os outros veem */}
