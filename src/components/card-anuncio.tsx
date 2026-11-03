@@ -223,9 +223,9 @@ export function CardAnuncio({
     >
       {vagas > 1 && (
         // o raio de dentro do cartão (o de fora menos a borda)
-        // no cartão largo (o feed), uma capa com a pílula; no estreito, uma faixa
-        <p className="flex items-center rounded-t-[21px] bg-ipe px-4 py-1.5 sm:px-5 @lg:h-24 @lg:items-end @lg:px-6 @lg:pb-4 group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
-          <span className="inline-flex items-center gap-1.5 text-caption text-on-ipe uppercase @lg:rounded-pill @lg:bg-surface-200 @lg:px-3 @lg:py-1.5 @lg:text-ink @lg:shadow-card">
+        // uma faixa no alto do cartão (02/11/2026: o cartão largo deixou de crescer, a capa alta saiu)
+        <p className="flex items-center rounded-t-[21px] bg-ipe px-4 py-1.5 sm:px-5 group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
+          <span className="inline-flex items-center gap-1.5 text-caption text-on-ipe uppercase">
             <Users aria-hidden className="size-3.5 shrink-0" />
             Contratando {vagas} pessoas
           </span>
@@ -233,7 +233,7 @@ export function CardAnuncio({
       )}
 
       {/* Na lista, as partes entram direto na grade do cartão (display: contents) */}
-      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5 @lg:gap-3.5 @lg:p-6 group-data-[visao=grade]/visao:gap-2 group-data-[visao=grade]/visao:p-3 group-data-[visao=grade]/visao:sm:p-4 group-data-[visao=lista]/visao:contents">
+      <div className="flex flex-1 flex-col gap-2.5 p-4 group-data-[visao=grade]/visao:gap-2 group-data-[visao=grade]/visao:p-3 group-data-[visao=grade]/visao:sm:p-4 group-data-[visao=lista]/visao:contents">
         {/* Quem publicou. Na grade, só os selos; na lista, só o nome. */}
         <div
           className={`flex items-center gap-3 group-data-[visao=lista]/visao:col-start-1 ${
@@ -251,7 +251,7 @@ export function CardAnuncio({
                 <Avatar
                   nome={anuncio.autor_nome}
                   foto={anuncio.autor_foto}
-                  tamanho={44}
+                  tamanho={40}
                   forma={anuncio.autor_tipo === "pessoa" ? "redonda" : "quadrada"}
                   colorida
                 />
@@ -280,7 +280,7 @@ export function CardAnuncio({
 
         <div className="flex items-start gap-3 group-data-[visao=lista]/visao:col-start-1 group-data-[visao=lista]/visao:row-start-1">
           <div className="min-w-0 flex-1">
-            <h3 className="text-h3 sm:text-[20px] sm:leading-[26px] @lg:text-[26px] @lg:leading-[32px] group-data-[visao=grade]/visao:line-clamp-2 group-data-[visao=grade]/visao:text-label group-data-[visao=lista]/visao:truncate group-data-[visao=lista]/visao:text-label group-data-[visao=lista]/visao:sm:text-body-lg">
+            <h3 className="text-h3 group-data-[visao=grade]/visao:line-clamp-2 group-data-[visao=grade]/visao:text-label group-data-[visao=lista]/visao:truncate group-data-[visao=lista]/visao:text-label group-data-[visao=lista]/visao:sm:text-body-lg">
               <Link
                 href={`/anuncio/${anuncio.id}`}
                 className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
@@ -361,7 +361,7 @@ export function CardAnuncio({
         )}
 
         {temRodape && (
-          <div className="mt-auto flex items-center gap-2 border-t border-line pt-3 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
+          <div className="mt-auto flex items-center gap-2 border-t border-line pt-2.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
             {comMatch && (
               <span className="shrink-0 group-data-[visao=lista]/visao:hidden">
                 <SeloMatch match={comMatch} />
