@@ -8,6 +8,7 @@ import {
   Eye,
   FileText,
   Heart,
+  Images as Instagram,
   Link2,
   LogOut,
   Moon,
@@ -209,6 +210,11 @@ export function MenuUsuario({
               {moderador && (
                 <Item href="/admin/denuncias" icone={ShieldCheck}>
                   Moderação
+                </Item>
+              )}
+              {moderador && (
+                <Item href="/admin/vagas-do-dia" icone={Instagram}>
+                  Vagas do dia (Instagram)
                 </Item>
               )}
             </div>

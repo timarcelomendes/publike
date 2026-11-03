@@ -8,8 +8,8 @@ import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { primeiro } from "@/lib/formato";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
-import { vagasEscolhidas, vagasNovasNoAr } from "@/lib/servidor/vagas-do-dia";
-import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { notFound } from "next/navigation";
+import { acessoVagasDoDia, vagasEscolhidas, vagasNovasNoAr } from "@/lib/servidor/vagas-do-dia";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import {
   diaPorExtenso,
@@ -35,7 +35,9 @@ export default function PaginaVagasDoDia({ searchParams }: PageProps<"/admin/vag
 }
 
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/vagas-do-dia">["searchParams"] }) {
-  const c = await exigirAdminLocal();
+  // o admin no computador ou um moderador logado (também pelo celular)
+  const c = await acessoVagasDoDia();
+  if (!c) notFound();
   const sp = await searchParams;
   const periodo = PERIODOS_DO_DIA.find((p) => p.valor === primeiro(sp.periodo)) ?? PERIODOS_DO_DIA[0];
   const agora = await agoraDaRequisicao();

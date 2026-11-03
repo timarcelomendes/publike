@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Download, Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Plus, Share2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BotaoCopiar } from "../painel/pagina-de-vagas";
 import { classesBotao } from "../ui/botao";
@@ -92,7 +92,8 @@ export function CarrosselDoInstagram({
       .join(" · ");
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start">
+    // no celular, uma coluna que não cresce com os títulos (sem o minmax, a lista passava da tela)
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <h3 className="flex items-baseline justify-between gap-2 text-label">
@@ -258,7 +259,8 @@ export function CarrosselDoInstagram({
             </h3>
             <p className="text-body-sm text-ink-muted">
               Poste nesta ordem. Em cada vaga, ponha o adesivo Link em cima da seta, com o link da vaga: ele abre a
-              página onde a pessoa curte. No último, o link de todas as vagas. A capa não leva link.
+              página onde a pessoa curte. No último, o link de todas as vagas. A capa não leva link. No celular, “Postar”
+              copia o link e abre o compartilhar: escolha Instagram › Story e cole o link no adesivo.
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               <Previa
@@ -355,6 +357,7 @@ function Previa({
       <figcaption className="flex min-w-0 flex-col gap-1.5">
         <span className="truncate text-body-sm">{nome}</span>
         <div className="flex flex-wrap gap-1.5">
+          <PostarNoCelular src={src} nome={nome} link={link} />
           <a href={`${src}&baixar=1`} download className={classesBotao("secundario", "sm")}>
             <Download aria-hidden />
             Baixar
@@ -363,5 +366,76 @@ function Previa({
         </div>
       </figcaption>
     </figure>
+  );
+}
+
+/** O celular sabe mandar imagem para outro app (o Instagram) pelo compartilhar do aparelho. */
+function compartilhaImagem() {
+  try {
+    return (
+      typeof navigator !== "undefined" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [new File([new Uint8Array(1)], "teste.png", { type: "image/png" })] })
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * No celular, "Postar": copia o link do adesivo e abre o compartilhar do aparelho com a imagem (escolha o Instagram ›
+ * Story e cole o link no adesivo Link). Sem o compartilhar com arquivo (o computador), não aparece. A imagem é
+ * desenhada na hora: se ela demorar e o aparelho não deixar abrir o compartilhar depois da espera, o botão pede um
+ * segundo toque, já com a imagem pronta.
+ */
+function PostarNoCelular({ src, nome, link }: { src: string; nome: string; link?: string }) {
+  const [pode, setPode] = useState(false);
+  const [estado, setEstado] = useState<"pronto" | "carregando" | "de-novo">("pronto");
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  useEffect(() => {
+    // depois de montar: no servidor e no 1º desenho, sem o botão (o mesmo HTML dos dois lados)
+    const t = window.setTimeout(() => setPode(compartilhaImagem()), 0);
+    return () => window.clearTimeout(t);
+  }, []);
+  if (!pode) return null;
+
+  async function compartilhar(f: File) {
+    try {
+      await navigator.share({ files: [f] });
+      setEstado("pronto");
+    } catch (e) {
+      // sem a permissão do toque (a imagem demorou): o próximo toque abre na hora
+      setEstado(e instanceof DOMException && e.name === "NotAllowedError" ? "de-novo" : "pronto");
+    }
+  }
+
+  async function postar() {
+    if (link) navigator.clipboard?.writeText(link).catch(() => {});
+    if (arquivo) return compartilhar(arquivo);
+    setEstado("carregando");
+    try {
+      const r = await fetch(src, { cache: "no-store" });
+      if (!r.ok) throw new Error(String(r.status));
+      const f = new File([await r.blob()], `${nome.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase() || "story"}.png`, {
+        type: "image/png",
+      });
+      setArquivo(f);
+      await compartilhar(f);
+    } catch {
+      setEstado("pronto");
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={postar}
+      disabled={estado === "carregando"}
+      className={classesBotao("primario", "sm")}
+      aria-label={`Postar: ${nome}${link ? " (copia o link do adesivo)" : ""}`}
+    >
+      <Share2 aria-hidden />
+      {estado === "carregando" ? "Abrindo…" : estado === "de-novo" ? "Toque para postar" : "Postar"}
+    </button>
   );
 }

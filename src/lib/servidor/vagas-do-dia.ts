@@ -1,5 +1,7 @@
 import "server-only";
-import type { ClienteBanco } from "@/lib/supabase/admin";
+import { ehModerador } from "@/lib/dados";
+import { criarClienteAdmin, ehAdminLocal, type ClienteBanco } from "@/lib/supabase/admin";
+import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { VagaDoDia } from "@/lib/vagas-do-dia";
 
 // As vagas do carrossel do Instagram: em Admin › Vagas do dia (com a chave do admin, de todas as contas) e no kit de
@@ -67,6 +69,16 @@ async function ler(montar: (colunas: string) => PromiseLike<{ data: unknown; err
     return [];
   }
   return (data ?? []) as Linha[];
+}
+
+/**
+ * Quem monta as Vagas do dia: o admin (no computador dele, com a chave do admin) ou um moderador logado, no site no
+ * ar e pelo celular. O moderador lê com a chave pública: só vaga no ar, que já é pública. null: nenhum dos dois.
+ */
+export async function acessoVagasDoDia(): Promise<ClienteBanco | null> {
+  if (await ehAdminLocal()) return criarClienteAdmin();
+  if (await ehModerador()) return criarClientePublico();
+  return null;
 }
 
 /** As vagas no ar publicadas desde `desde`, as mais novas primeiro (até 60). */
