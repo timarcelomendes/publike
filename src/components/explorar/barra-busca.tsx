@@ -485,6 +485,7 @@ export function FiltrosLista({
   ordemSoNoCelular = false,
   ordemDaLinha = false,
   comRotulos = false,
+  semLugar = false,
 }: {
   filtros: Filtros;
   soMeus?: boolean;
@@ -500,6 +501,8 @@ export function FiltrosLista({
   ordemDaLinha?: boolean;
   /** o painel dos filtros da linha do tempo: cada filtro com o nome em cima, em grade (nada rola de lado) */
   comRotulos?: boolean;
+  /** sem lugar (a vitrine sem casa nem GPS): a ordem mostra as mais novas, sem "Mais perto" */
+  semLugar?: boolean;
 }) {
   const [ir, pendente] = useIrPara(filtros);
   const Faixa = comRotulos ? FiltrosEmGrade : quebrar ? FiltrosEmLinhas : FaixaRolavel;
@@ -660,6 +663,7 @@ export function FiltrosLista({
           combina={combina}
           ir={ir}
           envoltorio={ordemSoNoCelular ? "shrink-0 lg:hidden" : "shrink-0"}
+          semLugar={semLugar}
         />
       )}
     </Faixa>
@@ -671,21 +675,25 @@ function SeletorOrdem({
   combina,
   ir,
   envoltorio,
+  semLugar = false,
 }: {
   filtros: Filtros;
   combina: boolean;
   ir: (mudancas: Partial<Filtros>) => void;
   envoltorio: string;
+  /** sem casa, GPS nem ponto no mapa: a lista vem pelas mais novas e "Mais perto" (do centro) sai da lista */
+  semLugar?: boolean;
 }) {
+  const ordem = filtros.ordem === "combina" && !combina ? "perto" : filtros.ordem;
   return (
     <Seletor
       aria-label="Ordem"
-      value={filtros.ordem === "combina" && !combina ? "perto" : filtros.ordem}
+      value={semLugar && ordem === "perto" ? "recentes" : ordem}
       onChange={(e) => ir({ ordem: e.target.value as Ordem })}
       className={seletor}
       envoltorio={envoltorio}
     >
-      <option value="perto">Mais perto</option>
+      {!semLugar && <option value="perto">Mais perto</option>}
       <option value="recentes">Mais recentes</option>
       <option value="relevantes">Mais relevantes</option>
       {combina && <option value="combina">Combina mais</option>}
@@ -697,9 +705,17 @@ function SeletorOrdem({
  * A ordem da lista sozinha, para a linha do título no computador (na vitrine, junto do jeito de
  * ver): a linha das abas fica só com os filtros e cabe inteira. No celular, ela fica nos filtros.
  */
-export function OrdemDaLista({ filtros, combina = false }: { filtros: Filtros; combina?: boolean }) {
+export function OrdemDaLista({
+  filtros,
+  combina = false,
+  semLugar = false,
+}: {
+  filtros: Filtros;
+  combina?: boolean;
+  semLugar?: boolean;
+}) {
   const [ir] = useIrPara(filtros);
-  return <SeletorOrdem filtros={filtros} combina={combina} ir={ir} envoltorio="shrink-0" />;
+  return <SeletorOrdem filtros={filtros} combina={combina} ir={ir} envoltorio="shrink-0" semLugar={semLugar} />;
 }
 
 /** "Só os meus": quem publicou vê na busca (lista e mapa) só os próprios anúncios. Fica junto dos filtros. */

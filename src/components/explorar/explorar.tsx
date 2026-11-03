@@ -204,6 +204,12 @@ export async function Explorar({
   // em cima ficam Tudo, Vagas e Serviços, e o que tem a palavra no título vem primeiro)
   const termo = filtros.q.trim();
   const busca = termo.length > 0;
+  // sem lugar nenhum (nem casa, nem GPS, nem ponto no mapa), "Mais perto" contaria do centro da cidade e poria na
+  // frente as vagas antigas do centro: na vitrine, as mais novas vêm primeiro (02/11/2026, claude/plano-home-visitante.md).
+  // Vale só para a busca do banco e para o que o seletor mostra: o endereço continua sem ordem, e quem diz onde
+  // mora volta ao "Mais perto".
+  const semLugar = !feed && !local && filtros.origem === "centro" && !busca;
+  const ordemDaBusca = semLugar && filtros.ordem === "perto" ? "recentes" : filtros.ordem;
   // quem contrata vê a lista sempre como a de uma busca
   const comoBusca = busca || contrata;
   // no feed, a ordem fica nos atalhos (Para você, Mais perto, Novas); serviços não têm atalho de ordem.
@@ -214,7 +220,12 @@ export async function Explorar({
   // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
   const procuraTrabalho = !contrata && (intencao === null || intencao === "trabalho" || intencao === "talento");
   const [encontrados, proximoPasso, publica, quem, salvas] = await Promise.all([
-    buscarAnuncios(filtros, agora, local, usuario?.id ?? null),
+    buscarAnuncios(
+      ordemDaBusca === filtros.ordem ? filtros : { ...filtros, ordem: ordemDaBusca },
+      agora,
+      local,
+      usuario?.id ?? null,
+    ),
     proximoPassoDa(intencao, Boolean(usuario)),
     // "Só os meus" só para quem tem anúncio no ar (quem só procura não precisa dele)
     usuario && !filtros.meus ? temAnuncioNoAr(usuario.id).catch(() => false) : Promise.resolve(filtros.meus),
@@ -387,7 +398,7 @@ export async function Explorar({
               tempoDe={tempoDe}
               match={matches.get(a.id) ?? null}
               resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
-              extras={extrasDe(requisitos?.get(a.id))}
+              extras={extrasDe(requisitos?.get(a.id), false)}
               salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}
               minha={soOlhar ? null : (minhaPorId.get(a.id) ?? null)}
             />
@@ -658,6 +669,7 @@ export async function Explorar({
             quebrar={feed}
             semOrdem={ordemFora}
             ordemSoNoCelular={!feed}
+            semLugar={semLugar}
           />
         }
         lista={listaComPerguntas}
@@ -665,7 +677,7 @@ export async function Explorar({
         origem={origem}
         filtros={filtros}
         abas={feed ? null : atalhos}
-        ordem={feed ? null : <OrdemDaLista filtros={filtros} combina={Boolean(quem)} />}
+        ordem={feed ? null : <OrdemDaLista filtros={filtros} combina={Boolean(quem)} semLugar={semLugar} />}
         padrao={feed ? (comoBusca ? "lista" : "blocos") : undefined}
         busca={feed && comoBusca}
         inicial={visaoDaLista}

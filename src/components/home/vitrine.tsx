@@ -1,5 +1,7 @@
+import { BriefcaseBusiness } from "lucide-react";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { iaLigadaNoSite } from "@/lib/dados";
 import { formatarLugar, valorCurto, valorDoAnuncio } from "@/lib/formato";
 import { anunciosNoAr, type AnuncioNoAr } from "@/lib/servidor/paginas-busca";
 import { Avatar, Container, fundoDoNome, Selo } from "../ui/basicos";
@@ -61,12 +63,48 @@ export async function HeroVitrine({ busca }: { busca: ReactNode }) {
             </a>
           </p>
           <div className="text-ink sm:max-w-xl">{busca}</div>
+          <Suspense fallback={null}>
+            <PortaDeQuemContrata />
+          </Suspense>
         </div>
         <Suspense fallback={null}>
           <ColunaDoHero cidade={cidade} />
         </Suspense>
       </section>
     </Container>
+  );
+}
+
+/**
+ * A porta de quem contrata na faixa do alto (02/11/2026, claude/plano-home-visitante.md): a faixa fala com quem
+ * procura trabalho, e o "Mande a foto da vaga" ficava lá no fim da página. Só a partir do tablet: no celular,
+ * nada entre o título e os anúncios (o Publicar fica na barra de baixo).
+ */
+async function PortaDeQuemContrata() {
+  const foto = await iaLigadaNoSite().catch(() => false);
+  return (
+    <p className="hidden items-center gap-2 text-body text-ink-muted sm:flex">
+      <BriefcaseBusiness aria-hidden className="size-5 shrink-0 text-terra-text" />
+      <span>
+        Está contratando?{" "}
+        <Link href="/publicar" className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text">
+          Publique a vaga grátis
+        </Link>
+        {foto && (
+          <>
+            {" "}
+            ou{" "}
+            <Link
+              href={`/entrar?next=${encodeURIComponent("/publicar#arte")}`}
+              className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+            >
+              mande a foto da vaga
+            </Link>
+          </>
+        )}
+        .
+      </span>
+    </p>
   );
 }
 
@@ -135,9 +173,11 @@ function PilhaDeVagas({ destaques }: { destaques: AnuncioNoAr[] }) {
 /**
  * "Novas": as 4 vagas mais novas, uma por empresa, com a capa na cor de quem publicou, sem as que
  * já estão no topo da página. Com o lugar de quem vê (CEP, bairro ou perfil), só as de perto (até
- * 10 km; com poucas, até 25 km) e o título diz "perto de você"; sem lugar, são as da praça toda.
+ * 10 km; com poucas, até 25 km) e o título diz "perto de você"; sem lugar, não aparece (02/11/2026).
  */
 export async function NovasHoje({ local }: { local: Local | null }) {
+  // sem lugar, a lista de cima já vem pelas mais novas (Explorar, semLugar): a seção só repetiria
+  if (!local) return null;
   const { praca } = await cidadeDaVisita();
   const todas = await anunciosNoAr("vaga", praca.cidade);
   const noTopo = new Set(escolherDestaques(todas).map((v) => v.id));

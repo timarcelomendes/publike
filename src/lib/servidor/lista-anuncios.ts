@@ -30,8 +30,11 @@ export async function requisitosDaLista(anuncios: AnuncioResumo[]): Promise<Map<
   return new Map(vagas.map((v) => [v.id, v]));
 }
 
-/** A linha de benefícios do cartão (vaga). */
-export function extrasDe(v: DetalhesDaVaga | undefined) {
+/**
+ * A linha de benefícios do cartão (vaga). `comResumo` false: sem o começo da descrição (a lista do Explorar, onde
+ * ele repetia o título e o salário e alongava o cartão; a descrição fica na página da vaga).
+ */
+export function extrasDe(v: DetalhesDaVaga | undefined, comResumo = true) {
   return v
     ? {
         pedeCurriculo: v.pede_curriculo,
@@ -42,7 +45,7 @@ export function extrasDe(v: DetalhesDaVaga | undefined) {
         contatoDireto: Boolean(v.contato_direto),
         comecaJa: Boolean(v.comeca_ja),
         ganhos: ganhosDoBanco(v.ganhos_extras),
-        resumo: v.descricao ? v.descricao.replace(/\s+/g, " ").trim().slice(0, 220) : null,
+        resumo: comResumo && v.descricao ? v.descricao.replace(/\s+/g, " ").trim().slice(0, 220) : null,
       }
     : null;
 }

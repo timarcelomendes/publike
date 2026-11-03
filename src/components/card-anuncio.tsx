@@ -23,6 +23,8 @@ import { Avatar, Selo } from "./ui/basicos";
 import { SeloVerificado } from "@/components/selo-verificado";
 
 const DOIS_DIAS = 48 * 3600 * 1000;
+/** Quantas etiquetas o cartão mostra antes do "+N". */
+const MAX_ETIQUETAS = 4;
 const DIA = 24 * 3600 * 1000;
 
 /** No cartão, os benefícios mais comuns com o nome curto. */
@@ -169,13 +171,13 @@ export function CardAnuncio({
         Começa já
       </Etiqueta>,
     );
-  if (extras?.contatoDireto && !preenchida && !proprio)
+  if (prazo) {
     etiquetas.push(
-      <Etiqueta key="direto" className="bg-surface-300 text-cerrado-text">
-        <Zap aria-hidden className="mr-1 size-3.5" />
-        Contato direto
+      <Etiqueta key="prazo" className="bg-surface-300 text-terra-text">
+        {prazo}
       </Etiqueta>,
     );
+  }
   if (pertoDeCasa === 0) {
     etiquetas.push(
       <Etiqueta key="perto" className="bg-terra-soft text-terra-text">
@@ -189,14 +191,27 @@ export function CardAnuncio({
       </Etiqueta>,
     );
   }
+  if (extras?.contatoDireto && !preenchida && !proprio)
+    etiquetas.push(
+      <Etiqueta key="direto" className="bg-surface-300 text-cerrado-text">
+        <Zap aria-hidden className="mr-1 size-3.5" />
+        Contato direto
+      </Etiqueta>,
+    );
   for (const b of extras?.beneficios.slice(0, 3) ?? []) {
     etiquetas.push(<Etiqueta key={b}>{BENEFICIO_CURTO[b] ?? nomeBeneficio(b) ?? b}</Etiqueta>);
   }
   if (extras?.pedeCurriculo) etiquetas.push(<Etiqueta key="curriculo">Pede currículo</Etiqueta>);
-  if (prazo) {
-    etiquetas.push(
-      <Etiqueta key="prazo" className="bg-surface-300 text-terra-text">
-        {prazo}
+  // no máximo 4 etiquetas (o resto, "+2", fica na página da vaga): com 8, o cartão virava uma parede de pílulas
+  // (02/11/2026, claude/plano-home-visitante.md). Com uma a mais só, ela aparece no lugar do "+1".
+  if (etiquetas.length > MAX_ETIQUETAS + 1) {
+    const escondidas = etiquetas.length - MAX_ETIQUETAS;
+    etiquetas.splice(
+      MAX_ETIQUETAS,
+      escondidas,
+      <Etiqueta key="mais" className="text-ink-muted ring-1 ring-line-strong ring-inset">
+        +{escondidas}
+        <span className="sr-only"> na página da vaga</span>
       </Etiqueta>,
     );
   }
