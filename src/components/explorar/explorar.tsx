@@ -21,11 +21,10 @@ import { modosMarcados } from "@/lib/servidor/modo";
 import { modeloDaPalavra } from "@/lib/modelos-anuncio";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { visaoInicialDaBusca, visaoInicialDaLista } from "@/lib/servidor/visao";
-import { deslocamentoCurto, nomeDoTempo } from "@/lib/deslocamento";
+import { deslocamentoCurto } from "@/lib/deslocamento";
 import {
   formatarDistancia,
   formatarLugar,
-  plural,
   primeiro,
   rotuloConta,
   rotuloModalidade,
@@ -48,6 +47,7 @@ import { AvisarBusca } from "./avisar-busca";
 import { BarraBusca, FiltrosLista, OrdemDaLista } from "./barra-busca";
 import type { ProximoPasso } from "./intencao";
 import { PerguntasNaLista } from "./perguntas-na-lista";
+import { FimDoRaioDaBusca, RaioDaBusca, type DadosDoRaio } from "../home/linha/raio-da-linha";
 import { ListaPaginada } from "./lista-paginada";
 import { VisaoExplorar } from "./visao-explorar";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
@@ -254,27 +254,24 @@ export async function Explorar({
   const deLonge = (ateOMaior as typeof encontrados).filter(
     (a) => !dentro.has(a.id) && (a.distancia_km ?? 0) > filtros.raio && (!filtros.turno || a.tipo === "vaga"),
   );
-  const cidadesDeLonge = [...new Set(deLonge.map((a) => a.cidade).filter(Boolean))].slice(0, 3);
-  const maisLonge =
-    deLonge.length > 0 ? (
-      <p className="flex flex-wrap items-center gap-x-2 rounded-md border border-ipe/60 bg-ipe/15 px-3 py-2 text-body-sm">
-        <MapPinned aria-hidden className="size-4 shrink-0 text-ink-muted" />
-        <span>
-          Mostrando até {filtros.raio} km. Há mais {plural(deLonge.length, "anúncio", "anúncios")} mais longe
-          {cidadesDeLonge.length
-            ? ` (${cidadesDeLonge.join(", ")}${deLonge.length > cidadesDeLonge.length ? "…" : ""})`
-            : ""}
-          .
-        </span>
-        <Link
-          href={hrefFiltros(filtros, { raio: maiorRaio })}
-          scroll={false}
-          className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
-        >
-          Ver também
-        </Link>
-      </p>
-    ) : null;
+  const faixas = RAIOS.filter((r) => r > filtros.raio)
+    .map((r) => ({ raio: r, quantos: deLonge.filter((a) => (a.distancia_km ?? 0) <= r).length }))
+    .filter((f, i, todas) => f.quantos > 0 && (i === 0 || f.quantos > todas[i - 1].quantos));
+  // até onde a busca vai, à vista (como na linha do tempo), e o que ficou de fora
+  const raio: DadosDoRaio = {
+    filtros,
+    base: filtros,
+    origem: textoDaOrigem(filtros, local, visita.praca.cidade),
+    maisLonge: deLonge.length
+      ? {
+          total: deLonge.length,
+          cidades: [...new Set(deLonge.map((a) => a.cidade).filter(Boolean))].slice(0, 3),
+          faixas,
+        }
+      : null,
+    tipo: filtros.tipo,
+  };
+  const mostraRaio = !filtros.meus;
   // o que cada vaga pede e oferece: para o % de match, o turno (a busca do banco não filtra
   // turno) e a linha de benefícios do cartão
   const requisitos = await requisitosDaLista(encontrados).catch(() => null);
@@ -448,6 +445,8 @@ export async function Explorar({
         ))}
         depois={
           <>
+            {/* acabou o raio, mas há mais longe: Exibir mais */}
+            {mostraRaio && <FimDoRaioDaBusca r={raio} />}
             {poucas && (
               <aside
                 aria-label="Poucas vagas por aqui"
@@ -481,7 +480,7 @@ export async function Explorar({
                       Ver só as vagas e receber aviso
                     </Link>
                   )}
-                  {!filtros.tempo && filtros.raio < maiorRaio && (
+                  {!filtros.tempo && filtros.raio < maiorRaio && !raio.maisLonge && (
                     <Link
                       href={hrefFiltros(filtros, { raio: maiorRaio })}
                       scroll={false}
@@ -633,49 +632,47 @@ export async function Explorar({
         subtitulo={
           <div className="flex flex-wrap items-center gap-x-3">
             {feed ? (
-              // no feed, curto: de onde e até onde
-              <p className="text-body-sm text-ink-muted">
-                {quantos && <>{quantos} · </>}
-                {combina && <>Do que mais combina com seu currículo · </>}
-                {!combina && local?.ponto && filtros.origem === "centro" && <>Do mais perto ao mais longe · </>}
-                {/* sem o CEP de casa (só o bairro), o nome do bairro diz mais que "da Região Sudoeste" */}
-                {local && !local.ponto && filtros.origem === "centro" ? (
-                  <>
-                    {local.bairro} e região · em até {filtros.raio} km
-                  </>
-                ) : (
-                  <>
-                    {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                    {textoDaOrigem(filtros, local, visita.praca.cidade)}
-                  </>
-                )}
+              // no feed, curto (a distância e de onde ficam na linha do raio, logo embaixo)
+              <p className="text-body-sm text-ink-muted empty:hidden">
+                {[
+                  quantos,
+                  combina && "Do que mais combina com seu currículo",
+                  !combina && local?.ponto && filtros.origem === "centro" && "Do mais perto ao mais longe",
+                  !mostraRaio && local && !local.ponto && filtros.origem === "centro" && `${local.bairro} e região`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             ) : null}
             {feed ? null : (
-              <p className="text-body-sm text-ink-muted">
-                {quantos && <>{quantos} · </>}
-                {combina && <>Do que mais combina com seu currículo · </>}
-                {!combina && !filtros.meus && local && !local.ponto && (
-                  <>Primeiro: {passosDaPrioridade(local).join(" › ")} · </>
-                )}
-                {!combina && !filtros.meus && local?.ponto && filtros.origem === "centro" && (
-                  <>Do mais perto ao mais longe · </>
-                )}
-                {filtros.meus ? (
-                  <>
-                    Só os seus anúncios no ar, do mais perto ao mais longe{" "}
-                    {textoDaOrigem(filtros, local, visita.praca.cidade)}
-                  </>
-                ) : (
-                  <>
-                    {filtros.tempo ? nomeDoTempo(filtros.tempo).toLowerCase() : `em até ${filtros.raio} km`}{" "}
-                    {textoDaOrigem(filtros, local, visita.praca.cidade)}
-                  </>
-                )}
+              // as partes que valem, com " · " entre elas (a distância e de onde ficam na linha do raio, logo embaixo)
+              <p className="text-body-sm text-ink-muted empty:hidden">
+                {[
+                  quantos,
+                  combina && "Do que mais combina com seu currículo",
+                  !combina &&
+                    !filtros.meus &&
+                    local &&
+                    !local.ponto &&
+                    `Primeiro: ${passosDaPrioridade(local).join(" › ")}`,
+                  !combina &&
+                    !filtros.meus &&
+                    local?.ponto &&
+                    filtros.origem === "centro" &&
+                    "Do mais perto ao mais longe",
+                  filtros.meus &&
+                    `Só os seus anúncios no ar, do mais perto ao mais longe ${textoDaOrigem(filtros, local, visita.praca.cidade)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             )}
-            {/* o raio escondeu anúncios mais longe: diz quantos e de onde, com o link para ver */}
-            {maisLonge && <div className="mt-2 w-full">{maisLonge}</div>}
+            {/* até onde a busca vai (os raios em botões) e, se o raio escondeu anúncios, quantos e de onde */}
+            {mostraRaio && (
+              <div className="mt-2 w-full">
+                <RaioDaBusca r={raio} />
+              </div>
+            )}
             {busca && (
               <Link
                 href={hrefFiltros(filtros, { q: "" })}
