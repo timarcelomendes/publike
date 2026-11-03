@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { categoria as categoriaDe, ETAPAS_CANDIDATO, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
-import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -63,6 +63,14 @@ export async function curtirAnuncio(
   const voltar = `/anuncio/${anuncioId}`;
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre para curtir.", ir: `/entrar?next=${encodeURIComponent(voltar)}` };
+  // o WhatsApp (e, de quem contrata, o e-mail) antes de curtir: a conta antiga sem ele completa agora
+  if (!perfilCompleto(await obterMeuPerfil().catch(() => null))) {
+    return {
+      ok: false,
+      erro: "Complete seu perfil com um WhatsApp para curtir.",
+      ir: `/perfil?completar=1&next=${encodeURIComponent(voltar)}`,
+    };
+  }
 
   const texto = (mensagem ?? "").trim().slice(0, 280) || null;
   if (temContato(texto)) {

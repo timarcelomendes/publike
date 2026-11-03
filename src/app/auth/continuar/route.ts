@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
+import { obterMeuPerfil, obterUsuario, perfilParaEntrar } from "@/lib/dados";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_ORIGEM } from "@/lib/origem";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   const perfil = await obterMeuPerfil();
   const resposta = NextResponse.redirect(
-    perfilCompleto(perfil) ? `${base}${proximo}` : `${base}/perfil?completar=1&next=${encodeURIComponent(proximo)}`,
+    perfilParaEntrar(perfil) ? `${base}${proximo}` : `${base}/perfil?completar=1&next=${encodeURIComponent(proximo)}`,
   );
   // já serviu: quem entra de novo depois não conta outra vez
   if (origem !== undefined) resposta.cookies.delete(COOKIE_ORIGEM);

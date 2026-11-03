@@ -308,7 +308,7 @@ export function FormPerfil({
 
   const camposEmail = (
     <>
-      <Campo rotulo="E-mail de contato" nome="email" opcional erro={erros.email}>
+      <Campo rotulo="E-mail de contato" nome="email" opcional={tipo === "pessoa"} erro={erros.email}>
         <input
           {...ligarCampo("email", erros.email)}
           type="email"
@@ -421,7 +421,9 @@ export function FormPerfil({
     >
       {completar && (
         <Aviso tipo="info" titulo="Falta pouco!">
-          Complete seu perfil para publicar e curtir. Seu WhatsApp só aparece para quem der match com você.
+          {tipo === "pessoa"
+            ? "Complete seu perfil com o WhatsApp para publicar e curtir. Ele só aparece para quem der match com você."
+            : "Complete com o WhatsApp e o e-mail para publicar e responder candidatos. Só aparecem para quem der match com você."}
         </Aviso>
       )}
       {proximo && <input type="hidden" name="next" value={proximo} />}
@@ -673,6 +675,8 @@ export function FormPerfil({
           <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
             {campoWhatsapp}
             <p className="-mt-3 text-body-sm text-ink-muted">Só aparece para quem der match com você.</p>
+            {/* quem contrata: o e-mail também é obrigatório (os avisos e a nota fiscal) */}
+            {tipo !== "pessoa" && camposEmail}
           </section>
           {/* o resto fica para depois: os campos continuam no formulário (vão com o que já vem marcado) */}
           <details
@@ -683,7 +687,9 @@ export function FormPerfil({
               <span className="min-w-0 flex-1">
                 <span className="block text-label">Mais sobre você (opcional)</span>
                 <span className="block text-body-sm text-ink-muted">
-                  Foto, e-mail, o que você faz e uma apresentação.
+                  {tipo === "pessoa"
+                    ? "Foto, e-mail, o que você faz e uma apresentação."
+                    : "Foto, área de atuação e uma apresentação."}
                 </span>
               </span>
               <ChevronDown
@@ -693,7 +699,7 @@ export function FormPerfil({
             </summary>
             <div className="flex flex-col gap-5 border-t border-line p-5 sm:p-6">
               {blocoFoto}
-              {camposEmail}
+              {tipo === "pessoa" && camposEmail}
               {secaoSobre}
             </div>
           </details>

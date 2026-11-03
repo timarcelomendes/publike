@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { VERSAO_TERMOS } from "@/lib/constantes";
-import { aceitePendente, obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
+import { aceitePendente, obterMeuPerfil, obterUsuario, perfilParaEntrar } from "@/lib/dados";
 import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { montarMotivo } from "@/lib/conta-apagada";
 import { mensagemDeErro } from "@/lib/erros";
@@ -222,6 +222,6 @@ export async function irDepoisDoLogin(proximo: string) {
   }
   const perfil = await obterMeuPerfil();
   atualizarCabecalho();
-  if (!perfilCompleto(perfil)) redirect(`/perfil?completar=1&next=${encodeURIComponent(destino)}`);
+  if (!perfilParaEntrar(perfil)) redirect(`/perfil?completar=1&next=${encodeURIComponent(destino)}`);
   redirect(destino);
 }

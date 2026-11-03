@@ -110,8 +110,21 @@ export const obterMeuPerfil = cache(async (): Promise<MeuPerfil | null> => {
   };
 });
 
-/** Perfil pronto para publicar e curtir: tem nome e um WhatsApp. */
+/**
+ * Perfil pronto para publicar e curtir (03/11/2026): todo mundo com WhatsApp; quem contrata (comércio, empresa,
+ * agência) também com e-mail, por onde chegam os avisos e a nota fiscal. Quem não tem é levado a completar na
+ * próxima ação (publicar, curtir, entrar).
+ */
 export function perfilCompleto(perfil: MeuPerfil | null) {
+  if (!perfil?.whatsapp) return false;
+  return perfil.tipo === "pessoa" || Boolean(perfil.email);
+}
+
+/**
+ * Logo depois de entrar só se pede o perfil de quem não tem nenhum contato (a conta nova): a conta antiga sem o
+ * WhatsApp ou o e-mail completa na próxima ação (perfilCompleto), sem travar a entrada.
+ */
+export function perfilParaEntrar(perfil: MeuPerfil | null) {
   return Boolean(perfil && (perfil.whatsapp || perfil.email));
 }
 

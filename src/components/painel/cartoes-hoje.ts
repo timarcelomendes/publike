@@ -77,7 +77,10 @@ export function cartoesDaConta(
       icone: UserRound,
       quando: "Perfil",
       titulo: "Complete seu perfil",
-      texto: "Com um WhatsApp ou e-mail você já pode publicar e curtir.",
+      texto:
+        perfil?.tipo && perfil.tipo !== "pessoa"
+          ? "Com o WhatsApp e o e-mail você publica e responde candidatos."
+          : "Com o seu WhatsApp você já pode publicar e curtir.",
       href: "/perfil",
       acao: "Completar",
     });

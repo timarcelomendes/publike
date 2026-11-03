@@ -861,6 +861,9 @@ export const esquemaPerfil = z
   })
   .superRefine((d, ctx) => {
     if (d.tipo === "pessoa") return;
+    // quem contrata: o e-mail é por onde chegam os avisos dos candidatos e a nota fiscal
+    if (!d.email)
+      ctx.addIssue({ code: "custom", path: ["email"], message: "Informe o e-mail: é por ele que chegam os avisos." });
     if (!d.cnpj) {
       if (d.tipo === "agencia") ctx.addIssue({ code: "custom", path: ["cnpj"], message: "Informe o CNPJ da agência." });
     } else if (!cnpjValido(d.cnpj)) {
