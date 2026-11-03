@@ -21,7 +21,7 @@ import { primeiro } from "@/lib/formato";
 import { EntendaOPublike } from "@/components/inicio";
 import { ContratacoesNaHome } from "@/components/social/secoes";
 import { Container, Esqueleto } from "@/components/ui/basicos";
-import { SITE_URL } from "@/lib/config";
+import { REDES_DO_PUBLIKE, SITE_URL } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { obterLocal } from "@/lib/local";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
@@ -46,6 +46,8 @@ const DADOS_SITE = [
     logo: `${SITE_URL}/logo/publike-icone-1024.png`,
     description: `Ferramenta gratuita para gerar emprego em ${ONDE_FUNCIONA}: vagas, diárias, freelances e profissionais do bairro.`,
     areaServed: PRACAS.map((p) => ({ "@type": "AdministrativeArea", name: `${p.nomeOficial}, ${p.uf}` })),
+    // as páginas do Publike nas redes (o Google liga o site a elas)
+    sameAs: [REDES_DO_PUBLIKE.instagram, REDES_DO_PUBLIKE.facebook],
   },
 ];
 

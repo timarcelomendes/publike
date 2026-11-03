@@ -14,6 +14,12 @@ export const MAPA_ESTILO =
 
 export const CONTATO_EMAIL = process.env.NEXT_PUBLIC_CONTATO_EMAIL || "";
 
+/** As páginas do Publike nas redes: no rodapé (siga o Publike) e para o Google (sameAs da organização). */
+export const REDES_DO_PUBLIKE = {
+  instagram: "https://www.instagram.com/publike.br",
+  facebook: "https://www.facebook.com/profile.php?id=61595104667647",
+} as const;
+
 /** Formas de entrar. E-mail sempre funciona; as outras precisam ser ativadas no Supabase (veja o README). */
 export const LOGIN_GOOGLE = process.env.NEXT_PUBLIC_LOGIN_GOOGLE === "true";
 export const LOGIN_FACEBOOK = process.env.NEXT_PUBLIC_LOGIN_FACEBOOK === "true";

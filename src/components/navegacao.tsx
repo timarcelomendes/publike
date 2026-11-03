@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BarraInferiorAtiva } from "./barra-inferior-ativa";
 import { BarraInferiorBase } from "./barra-inferior-base";
 import { BotaoInstalarApp } from "./instalar-app";
+import { RedesDoPublike } from "./redes-do-publike";
 import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { Container, Logo } from "./ui/basicos";
 import { navegacaoDaConta } from "@/lib/servidor/navegacao";
@@ -37,6 +38,9 @@ export function Rodape() {
             Uma ferramenta do povo para gerar emprego: trabalho perto de casa, de graça.
           </p>
           <p className="mt-3 font-display text-h3">Publicou, curtiu, trabalhou.</p>
+          <div className="mt-4">
+            <RedesDoPublike />
+          </div>
         </div>
         <nav aria-label="Rodapé" className="grid grid-cols-2 gap-x-10 gap-y-3 text-body-sm">
           <Link href="/?tipo=vaga" className={link}>
@@ -136,6 +140,9 @@ export function RodapeCurto() {
         <Link href="/sugerir" className={link}>
           Sugestões e erros
         </Link>
+        <span className="ml-auto">
+          <RedesDoPublike curto />
+        </span>
       </Container>
     </footer>
   );
