@@ -6,6 +6,7 @@ import { EmpresasContratando } from "@/components/home/empresas-contratando";
 import { FaixaArte } from "@/components/home/faixa-arte";
 import { ServicosDoBairro } from "@/components/home/servicos-do-bairro";
 import { HeroVitrine, NovasHoje } from "@/components/home/vitrine";
+import { ContarFunilDaVitrine } from "@/components/home/contar-funil";
 import { CartaoDaConta } from "@/components/home/cartao-da-conta";
 import { ContratandoPerto } from "@/components/home/coluna-direita";
 import { NovosPerto } from "@/components/home/novos-perto";
@@ -86,6 +87,7 @@ async function HomeDaVisita({ searchParams }: { searchParams: Parametros }) {
 function HomeVisitante({ searchParams }: { searchParams: Parametros }) {
   return (
     <>
+      <ContarFunilDaVitrine />
       <HeroVitrine
         busca={
           <Suspense fallback={<BuscaEsqueleto />}>

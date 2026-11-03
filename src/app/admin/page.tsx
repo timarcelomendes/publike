@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FunilDoPublicar } from "@/components/admin/funil-publicar";
+import { FunilDoVisitante } from "@/components/admin/funil-visitante";
 import { MetricasDeProduto } from "@/components/admin/metricas-produto";
 import { NumerosDoPainel, NumerosDoPainelEmbaixo } from "@/components/admin/numeros-do-painel";
 import { ContasNoApp, NumerosDoTesteApp } from "@/components/admin/numeros-teste-app";
@@ -15,6 +16,7 @@ import {
   acessosDoSite,
   configDoSite,
   funilDoPublicar,
+  funilDoVisitante,
   listarChavesServidor,
   metricasDeProduto,
   motivosDeEncerramento,
@@ -72,6 +74,7 @@ async function Conteudo() {
     tempo,
     funil,
     pagamentos,
+    funilVisitante,
   ] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
@@ -89,6 +92,7 @@ async function Conteudo() {
     tempoNasPaginas(c),
     funilDoPublicar(c),
     situacaoPagamentos(c),
+    funilDoVisitante(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -188,6 +192,7 @@ async function Conteudo() {
         </Secao>
       )}
 
+      {funilVisitante && <FunilDoVisitante funil={funilVisitante} />}
       {funil && <FunilDoPublicar funil={funil} />}
       <NumerosDoPainelEmbaixo n={n} encerramentos={encerramentos} />
 

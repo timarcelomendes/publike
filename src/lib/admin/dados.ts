@@ -206,6 +206,19 @@ export async function funilDoPublicar(c: ClienteBanco, dias = 30): Promise<Map<n
   return new Map((data ?? []).map((l) => [Number(l.passo), Number(l.total)]));
 }
 
+/**
+ * O funil de quem chega sem conta (migração 20270124120000), nos últimos dias: home, curtir, publicar, curriculo,
+ * entrar (toques na home) e contas, curtiu, publicou (as contas criadas no período). null: banco sem a migração.
+ */
+export async function funilDoVisitante(c: ClienteBanco, dias = 7): Promise<Map<string, number> | null> {
+  const { data, error } = await c.rpc("admin_funil_visitante", { p_dias: dias });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler o funil de quem chega:", error.message);
+    return null;
+  }
+  return new Map((data ?? []).map((l) => [l.etapa, Number(l.total)]));
+}
+
 export type SituacaoPush = {
   aparelhos: number;
   contas: number;

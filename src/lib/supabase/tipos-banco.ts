@@ -1750,6 +1750,15 @@ export type Database = {
         Args: { p_dias?: number };
         Returns: { passo: number; total: number }[];
       };
+      /** o funil de quem chega sem conta (migração 20270124120000) */
+      registrar_funil_visitante: {
+        Args: { p_evento: string };
+        Returns: undefined;
+      };
+      admin_funil_visitante: {
+        Args: { p_dias?: number };
+        Returns: { etapa: string; total: number }[];
+      };
       admin_motivos_encerramento: {
         Args: { p_dias?: number };
         Returns: { tipo: string; motivo: string; total: number; ultimo: string }[];

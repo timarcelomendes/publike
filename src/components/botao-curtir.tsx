@@ -191,6 +191,8 @@ export function BotaoCurtir({
         onClick={clicar}
         disabled={pendente}
         aria-pressed={curtido}
+        // o funil de quem chega sem conta (ContarFunilDaVitrine)
+        data-funil={logado ? undefined : "curtir"}
         title={!servico && !curtido ? "Curtir é se candidatar a esta vaga" : undefined}
         aria-describedby={dica ? `${eu}-dica` : undefined}
         className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors disabled:opacity-70 ${estilo}`}
