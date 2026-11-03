@@ -17,6 +17,13 @@ export function nomeDoPublico(id: string) {
 
 /** Comunicados prontos, para abrir o formulário preenchido (?modelo=). */
 export const MODELOS_COMUNICADO: Record<string, { publico: PublicoComunicado; texto: string; link: string }> = {
+  // 03/11/2026: o "Quero testar" do /testar-app (o link chega no WhatsApp, sem o Grupo do Google)
+  teste_app_whatsapp: {
+    publico: "android",
+    texto:
+      "Falta pouco para o app do Publike chegar ao Google Play! Ajude testando no seu Android por 14 dias: deixe o e-mail da sua conta Google e a gente manda o link no seu WhatsApp.",
+    link: "/testar-app?de=sino#quero-testar",
+  },
   teste_app: {
     publico: "android",
     texto:
