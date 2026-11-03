@@ -11,6 +11,7 @@ import { BotaoConvidar } from "../painel/botao-convidar";
 import { CriteriosDaAderencia, NotaAderencia } from "../painel/nota-aderencia";
 import { Aviso, Avatar, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
+import { classesChip } from "../painel/fluxo";
 
 /**
  * "Para a sua vaga", na aba Talentos de quem tem vaga no ar: quem deixou as empresas acharem o currículo,
@@ -31,17 +32,35 @@ function temAderencia(a: Aderencia) {
   return funcao.ok === true && (funcao.parte ?? 1) >= 0.5;
 }
 
+/**
+ * O nível rígido ("Atende a vaga"): trabalhou na mesma função (não só área parecida ou curso), nenhum item da vaga
+ * que dá para conferir fica de fora (escolaridade, tempo de experiência, CNH, horário, distância: cada um inteiro,
+ * nada "em parte") e a nota em 70% ou mais. O que o currículo não diz ("?") não conta contra.
+ */
+function atendeAVaga(a: Aderencia) {
+  if (!temAderencia(a)) return false;
+  const funcao = a.criterios.find((k) => k.funcao);
+  if (funcao && !(funcao.ok === true && (funcao.parte ?? 1) >= 1)) return false;
+  const falta = a.criterios.some((k) => !k.extra && (k.ok === false || (k.ok === true && (k.parte ?? 1) < 1)));
+  return !falta && (a.nota ?? 0) >= 70;
+}
+
+export type NivelDaSugestao = "leve" | "rigida";
+
 export async function ParaAVaga({
   vaga,
   pagina,
   href,
   agora,
+  nivel = "leve",
 }: {
   vaga: { id: string; titulo: string };
   pagina: number;
-  /** o endereço de cada página desta lista */
-  href: (pagina: number) => string;
+  /** o endereço de cada página desta lista, no nível pedido */
+  href: (pagina: number, nivel: NivelDaSugestao) => string;
   agora: number;
+  /** leve: experiência, área parecida ou curso na função; rígida: a mesma função e todos os itens da vaga */
+  nivel?: NivelDaSugestao;
 }) {
   const [anuncio, lista, copiloto] = await Promise.all([
     obterAnuncio(vaga.id),
@@ -56,7 +75,7 @@ export async function ParaAVaga({
     );
   }
   const requisitos = { ...requisitosDaVaga(anuncio), perguntas: [] };
-  const todos = lista
+  const comAderencia = lista
     .map((t) => ({
       t,
       a: calcularAderencia(
@@ -81,6 +100,50 @@ export async function ParaAVaga({
     }))
     .filter(({ a }) => temAderencia(a))
     .sort((x, y) => (y.a.nota ?? -1) - (x.a.nota ?? -1));
+  const rigidos = comAderencia.filter(({ a }) => atendeAVaga(a));
+  const todos = nivel === "rigida" ? rigidos : comAderencia;
+  const niveis = (
+    <div role="group" aria-label="Quanto o currículo precisa combinar" className="flex flex-wrap gap-2">
+      <Link
+        href={href(1, "leve")}
+        aria-current={nivel === "leve" ? "true" : undefined}
+        className={classesChip(nivel === "leve")}
+        scroll={false}
+      >
+        Mais gente
+        <span className="tabular-nums opacity-70">{comAderencia.length}</span>
+      </Link>
+      <Link
+        href={href(1, "rigida")}
+        aria-current={nivel === "rigida" ? "true" : undefined}
+        className={classesChip(nivel === "rigida")}
+        scroll={false}
+      >
+        Atende a vaga
+        <span className="tabular-nums opacity-70">{rigidos.length}</span>
+      </Link>
+    </div>
+  );
+
+  if (nivel === "rigida" && rigidos.length === 0 && comAderencia.length > 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        {niveis}
+        <Vazio
+          icone={UserSearch}
+          titulo={`Ninguém atende tudo o que “${vaga.titulo}” pede ainda`}
+          acao={
+            <BotaoLink href={href(1, "leve")} tamanho="sm" variante="secundario">
+              Ver {plural(comAderencia.length, "pessoa", "pessoas")} que chegam perto
+            </BotaoLink>
+          }
+        >
+          Aqui só entra quem já trabalhou na mesma função e atende cada item da vaga (escolaridade, tempo de experiência,
+          CNH, horário e distância).
+        </Vazio>
+      </div>
+    );
+  }
 
   if (todos.length === 0 && lista.length > 0) {
     return (
@@ -129,10 +192,13 @@ export async function ParaAVaga({
           {plural(todos.length, "pessoa", "pessoas")} para “{vaga.titulo}”
         </h2>
         <p className="mt-1 text-body-sm text-ink-muted">
-          Só quem tem experiência ou curso na função, quem mais combina primeiro. Convide: a pessoa vê a vaga e, se
-          curtir, chega na sua caixa de entrada.
+          {nivel === "rigida"
+            ? "Só quem já trabalhou na mesma função e atende cada item da vaga."
+            : "Quem tem experiência, área parecida ou curso na função, quem mais combina primeiro."}{" "}
+          Convide: a pessoa vê a vaga e, se curtir, chega na sua caixa de entrada.
         </p>
       </div>
+      {niveis}
       {copiloto && (
         <Link
           href={`/painel/anuncio/${vaga.id}/copiloto`}
@@ -218,7 +284,7 @@ export async function ParaAVaga({
       {paginas > 1 && (
         <nav aria-label="Páginas" className="flex items-center justify-center gap-3">
           {aqui > 1 ? (
-            <BotaoLink href={href(aqui - 1)} tamanho="sm" variante="fantasma">
+            <BotaoLink href={href(aqui - 1, nivel)} tamanho="sm" variante="fantasma">
               <ChevronLeft aria-hidden />
               Anterior
             </BotaoLink>
@@ -229,7 +295,7 @@ export async function ParaAVaga({
             Página {aqui} de {paginas}
           </span>
           {aqui < paginas ? (
-            <BotaoLink href={href(aqui + 1)} tamanho="sm" variante="fantasma">
+            <BotaoLink href={href(aqui + 1, nivel)} tamanho="sm" variante="fantasma">
               Próxima
               <ChevronRight aria-hidden />
             </BotaoLink>

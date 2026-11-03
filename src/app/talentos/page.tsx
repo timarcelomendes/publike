@@ -57,6 +57,8 @@ function lerBusca(sp: Awaited<Parametros>) {
     pagina,
     vaga: primeiro(sp.vaga) ?? null,
     todos: primeiro(sp.ver) === "todos",
+    // "Para a sua vaga": a sugestão leve (padrão) ou a rígida (`nivel=rigida`)
+    nivel: primeiro(sp.nivel) === "rigida" ? ("rigida" as const) : ("leve" as const),
   };
 }
 
@@ -270,8 +272,11 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
         <ParaAVaga
           vaga={vaga}
           pagina={f.pagina}
-          href={(n) => `/talentos?vaga=${vaga.id}${n > 1 ? `&pagina=${n}` : ""}`}
+          href={(n, nivel) =>
+            `/talentos?vaga=${vaga.id}${nivel === "rigida" ? "&nivel=rigida" : ""}${n > 1 ? `&pagina=${n}` : ""}`
+          }
           agora={agora}
+          nivel={f.nivel}
         />
       </div>
     );
