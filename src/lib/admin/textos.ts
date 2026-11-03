@@ -67,6 +67,7 @@ export const CATEGORIAS_IA: Record<string, string> = {
   ofensa: "Ofensa",
   ameaca: "Ameaça",
   dados_pessoais: "Dados pessoais",
+  fora_da_regiao: "Fora da região",
   outro: "Outro",
 };
 

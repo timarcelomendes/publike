@@ -77,7 +77,8 @@ Retenha só quando houver sinal claro de:
 - discriminação proibida por lei: excluir por cor, raça, sexo, gênero, orientação sexual, religião, idade, deficiência, estado civil, gravidez ou aparência (inclui exigir "boa aparência");
 - trabalho infantil: menores de 16 anos (fora aprendiz a partir de 14) ou menores de 18 em trabalho noturno, perigoso ou insalubre;
 - trabalho degradante ou análogo à escravidão: sem pagamento, jornada exaustiva, reter documentos, alojamento preso ao emprego;
-- conteúdo sexual, ofensivo ou ilegal (drogas, armas), ou spam e propaganda que não é vaga nem serviço.
+- conteúdo sexual, ofensivo ou ilegal (drogas, armas), ou spam e propaganda que não é vaga nem serviço;
+- vaga fora da região: o texto diz com clareza que o trabalho é em outro estado (fora de ${UFS}), como "estágio em Pernambuco" ou "vaga em São Paulo - SP", mesmo que o Local informado seja daqui. Categoria "fora_da_regiao". Rua, avenida ou bairro com nome de estado ("Rua Bahia", "Av. São Paulo") não conta, e trabalho remoto também não.
 
 Num serviço, quem publica é o próprio profissional mostrando o que faz (pedreiro, diarista, manicure...). Isso é normal.
 Numa vaga de agência de emprego ou RH, é normal recrutar para outra empresa e dizer o nome dela ou que ela é confidencial. Mas a agência não pode cobrar nada de quem se candidata (cadastro, entrevista, currículo, teste, curso ou exame): se cobrar, retenha como cobrança.

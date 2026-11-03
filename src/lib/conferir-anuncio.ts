@@ -122,7 +122,14 @@ export function outrasCidadesNoTitulo(titulo: string, cidade: string) {
   });
 }
 
-export type MotivoConferir = { tipo: "gritando" | "estado" | "cidade"; texto: string };
+export type MotivoConferir = { tipo: "gritando" | "estado" | "cidade" | "recado"; texto: string };
+
+/** A descrição começa como recado de quem recruta ("Meu nome é Thais e faço parte…"), e não pela vaga. */
+export function descricaoDeRecado(descricao: string | null) {
+  return /^\s*(?:ol[áa][,!.\s]+|oi[,!.\s]+|bom dia[,!.\s]+|boa tarde[,!.\s]+)?(?:meu nome [ée]|me chamo|eu sou (?:a|o) |sou (?:a|o) [\p{Lu}][\p{L}]+ e )/iu.test(
+    descricao ?? "",
+  );
+}
 
 /** Por que o anúncio precisa de um olhar (vazio: está bom). */
 export function motivosParaConferir(a: { titulo: string; descricao: string | null; cidade: string }): MotivoConferir[] {
@@ -130,6 +137,8 @@ export function motivosParaConferir(a: { titulo: string; descricao: string | nul
   if (tituloGritando(a.titulo)) motivos.push({ tipo: "gritando", texto: "Título todo em maiúsculas" });
   const estados = outrosEstados(`${a.titulo} ${a.descricao ?? ""}`);
   if (estados.length) motivos.push({ tipo: "estado", texto: `Fala de outro estado: ${estados.join(", ")}` });
+  if (descricaoDeRecado(a.descricao))
+    motivos.push({ tipo: "recado", texto: "A descrição começa como recado (“Meu nome é…”), e não pela vaga" });
   const cidades = outrasCidadesNoTitulo(a.titulo, a.cidade);
   if (cidades.length)
     motivos.push({ tipo: "cidade", texto: `O título fala de ${cidades.join(", ")}, e a vaga está em ${a.cidade}` });
