@@ -1699,6 +1699,26 @@ export type Database = {
       };
       /** 20270130120000: "Volte a contratar" (as empresas sem vaga no ar) */
       admin_ligar_reativar: { Args: { p_ligado: boolean }; Returns: undefined };
+      /** 20270201120000: todos os e-mails em Admin › E-mails */
+      admin_ligar_email: { Args: { p_modelo: string; p_ligado: boolean }; Returns: undefined };
+      admin_emails_catalogo: {
+        Args: Record<string, never>;
+        Returns: {
+          chave: string;
+          grupo: string;
+          ordem: number;
+          nome: string;
+          descricao: string;
+          assunto: string;
+          ligado: boolean;
+          enviados_7: number;
+          enviados_30: number;
+          falhas_30: number;
+          cancelados_30: number;
+          na_fila: number;
+          ultimo: string | null;
+        }[];
+      };
       servidor_reativar_situacao: { Args: { p_chave: string }; Returns: boolean };
       admin_metricas_crescimento: { Args: Record<string, never>; Returns: Json };
       /** 20270131120000: o salário do mercado (Novo Caged) */

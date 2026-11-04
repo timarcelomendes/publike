@@ -1,4 +1,4 @@
-import { FileText, MailCheck, MailWarning, Send, Settings, Sparkles } from "lucide-react";
+import { FileText, ListChecks, MailCheck, MailWarning, Send, Settings, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -13,11 +13,13 @@ import {
   TextosDosEmails,
 } from "@/components/admin/emails";
 import { LigarCombinam } from "@/components/admin/combinam";
+import { LigarEmail } from "@/components/admin/emails-catalogo";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
 import {
   avisosDeConvite,
+  catalogoDeEmails,
   configDoSite,
   convitesPorEmail,
   creditosDoEmail,
@@ -25,10 +27,12 @@ import {
   modelosDeEmail,
   ultimosEmails,
   type CreditosEmail,
+  type LinhaDoCatalogo,
 } from "@/lib/admin/dados";
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail } from "@/lib/email/montar";
+import { GRUPOS_DO_CATALOGO, quemRecebe, regrasDoEmail } from "@/lib/emails/catalogo";
 import { plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { situacaoSmtp } from "@/lib/servidor/ambiente";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
@@ -41,6 +45,7 @@ export const metadata: Metadata = { title: "E-mails" };
 // sub-abas: o que saiu, a configuração do envio, os convites e os textos (cada uma lê só o que mostra)
 const ABAS = [
   { id: "enviados", nome: "Enviados", icone: MailCheck },
+  { id: "todos", nome: "Todos os e-mails", icone: ListChecks },
   { id: "configuracoes", nome: "Configurações", icone: Settings },
   { id: "convites", nome: "Convites", icone: Send },
   { id: "semana", nome: "Da semana", icone: Sparkles },
@@ -95,7 +100,7 @@ function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
 async function Conteudo({ aba }: { aba: Aba }) {
   const c = await exigirAdminLocal();
   const nada = Promise.resolve(null);
-  const [config, modelos, fila, agora, convites, avisos, porDia, gastos] = await Promise.all([
+  const [config, modelos, fila, agora, convites, avisos, porDia, gastos, catalogo] = await Promise.all([
     configDoSite(c),
     aba === "textos" ? modelosDeEmail(c) : Promise.resolve([]),
     ultimosEmails(c, 40),
@@ -104,6 +109,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
     aba === "convites" ? avisosDeConvite(c) : nada,
     aba === "enviados" ? emailsPorDia(c, 7) : nada,
     aba === "enviados" ? creditosDoEmail(c) : nada,
+    aba === "todos" ? catalogoDeEmails(c) : nada,
   ]);
   // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
   const previa = aba === "semana" ? await mandarCombinamDaSemana({ simular: true }) : null;
@@ -199,6 +205,8 @@ async function Conteudo({ aba }: { aba: Aba }) {
           </Secao>
         </>
       )}
+
+      {aba === "todos" && <Catalogo catalogo={catalogo} ligados={config.emails_ativos} agora={agora} />}
 
       {aba === "semana" && previa && <DaSemana previa={previa} />}
 
@@ -536,5 +544,100 @@ function Creditos({ creditos, agora }: { creditos: CreditosEmail | "vazio"; agor
         />
       </details>
     </div>
+  );
+}
+
+/** Todos os e-mails, por quem recebe: o que dispara, as regras, a chave e os números de 30 dias. */
+function Catalogo({
+  catalogo,
+  ligados,
+  agora,
+}: {
+  catalogo: LinhaDoCatalogo[] | null;
+  ligados: boolean;
+  agora: number;
+}) {
+  if (!catalogo) {
+    return (
+      <Secao titulo="Todos os e-mails">
+        <Situacao ok={false}>
+          Rode antes a migração <code>20270201120000_central_de_emails.sql</code> no Supabase.
+        </Situacao>
+      </Secao>
+    );
+  }
+  const linhas = catalogo.filter((l) => l.grupo !== "sistema").map((l) => ({ ...l, ...quemRecebe(l.chave, l.grupo) }));
+  const desligados = linhas.filter((l) => !l.ligado).length;
+  return (
+    <>
+      <Secao
+        titulo="Todos os e-mails"
+        descricao="Cada e-mail que o Publike manda, por quem recebe: o que dispara, as regras, a chave de ligar e o que saiu nos últimos 30 dias. Desligado, o e-mail para de sair na hora (o aviso no sino continua). O texto de cada um fica em Textos."
+      >
+        <div className="flex flex-col gap-2">
+          {!ligados && (
+            <Situacao ok={false}>
+              O envio de e-mails está desligado em Configurações: nada sai, mesmo com as chaves abaixo ligadas.
+            </Situacao>
+          )}
+          <p className="text-body-sm text-ink-muted">
+            {plural(linhas.length, "e-mail", "e-mails")}
+            {desligados ? `, ${plural(desligados, "desligado", "desligados")}` : ", todos ligados"}.
+          </p>
+        </div>
+      </Secao>
+      {GRUPOS_DO_CATALOGO.map((g) => {
+        const doGrupo = linhas.filter((l) => l.grupo === g.id);
+        if (!doGrupo.length) return null;
+        return (
+          <Secao key={g.id} titulo={g.titulo} descricao={g.ajuda}>
+            <ul className="flex flex-col divide-y divide-line" aria-label={g.titulo}>
+              {doGrupo.map((l) => (
+                <li
+                  key={l.chave}
+                  id={`email-${l.chave}`}
+                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="flex flex-wrap items-center gap-2 text-label">
+                      {l.nome}
+                      {!l.ligado && <Selo variante="perigo">Desligado</Selo>}
+                    </p>
+                    <p className="max-w-prose text-body-sm">{l.descricao}</p>
+                    <ul className="flex flex-col text-body-sm text-ink-muted">
+                      {regrasDoEmail(l.chave, l.grupo).map((r) => (
+                        <li key={r}>{r}</li>
+                      ))}
+                      {l.tambem.length > 0 && <li>Também vai para {l.tambem.join(" e ")}.</li>}
+                    </ul>
+                    <p className="text-body-sm">
+                      <span className="tabular-nums">
+                        {plural(l.enviados_7, "enviado", "enviados")} em 7 dias, {l.enviados_30} em 30
+                      </span>
+                      {l.falhas_30 > 0 && (
+                        <span className="text-danger">, {plural(l.falhas_30, "falha", "falhas")}</span>
+                      )}
+                      {l.cancelados_30 > 0 && <span>, {l.cancelados_30} cancelados</span>}
+                      {l.na_fila > 0 && <span>, {l.na_fila} na fila</span>}
+                      {". "}
+                      <span className="text-ink-muted">
+                        {l.ultimo ? `Último: ${tempoRelativo(l.ultimo, agora)}.` : "Nenhum enviado ainda."}
+                      </span>{" "}
+                      <Link
+                        href={`/admin/emails?aba=textos#modelo-${l.chave}`}
+                        className="text-label underline underline-offset-2"
+                      >
+                        Ver o texto
+                      </Link>
+                    </p>
+                  </div>
+                  <LigarEmail modelo={l.chave} nome={l.nome} ligado={l.ligado} />
+                </li>
+              ))}
+            </ul>
+          </Secao>
+        );
+      })}
+    </>
   );
 }

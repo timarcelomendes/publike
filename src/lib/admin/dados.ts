@@ -730,6 +730,17 @@ export async function avisosDeConvite(c: ClienteBanco) {
   return data ?? [];
 }
 
+/** Todos os modelos de e-mail com a chave e os números de 30 dias (migração 20270201120000). Sem ela, null. */
+export async function catalogoDeEmails(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_emails_catalogo");
+  if (error) {
+    if (error.code === "PGRST202") return null;
+    falha("os e-mails", error);
+  }
+  return data ?? [];
+}
+export type LinhaDoCatalogo = NonNullable<Awaited<ReturnType<typeof catalogoDeEmails>>>[number];
+
 export async function ultimosEmails(c: ClienteBanco, limite = 40) {
   const { data, error } = await c.rpc("admin_fila_emails", { p_limite: limite });
   if (error) falha("a fila de e-mails", error);

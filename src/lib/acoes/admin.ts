@@ -369,21 +369,24 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
   if (nome.length < 2 || nome.length > 60) {
     return { ok: false, erro: "Confira o nome do remetente.", erros: { remetente_nome: "Use de 2 a 60 letras." } };
   }
+  // as chaves de cada e-mail ficam em Admin › E-mails › Todos: aqui vão como estão
+  const { data: atual, error: erroAtual } = await c.rpc("admin_config");
+  const cfg = atual?.[0];
+  if (erroAtual || !cfg) return { ok: false, erro: "Não deu para ler as configurações. Tente de novo." };
   const { error } = await c.rpc("admin_salvar_config_emails", {
     p_emails_ativos: marcado(formData, "emails_ativos"),
     p_remetente_nome: nome,
     p_responder_para: responder || null,
-    p_email_curtida: marcado(formData, "email_curtida"),
-    p_email_match: marcado(formData, "email_match"),
-    p_email_moderacao: marcado(formData, "email_moderacao"),
-    p_email_conta: marcado(formData, "email_conta"),
+    p_email_curtida: cfg.email_curtida,
+    p_email_match: cfg.email_match,
+    p_email_moderacao: cfg.email_moderacao,
+    p_email_conta: cfg.email_conta,
     p_avisos_para: avisos,
-    p_aviso_denuncia: marcado(formData, "aviso_denuncia"),
-    p_aviso_cadastro: marcado(formData, "aviso_cadastro"),
-    p_aviso_retirado: marcado(formData, "aviso_retirado"),
-    p_email_boas_vindas: marcado(formData, "email_boas_vindas"),
-    // a opção só aparece com a migração das falhas (20261104120000); sem ela, nem vai
-    ...(formData.has("tem_aviso_falha") ? { p_aviso_falha: marcado(formData, "aviso_falha") } : {}),
+    p_aviso_denuncia: cfg.aviso_denuncia,
+    p_aviso_cadastro: cfg.aviso_cadastro,
+    p_aviso_retirado: cfg.aviso_retirado,
+    p_email_boas_vindas: cfg.email_boas_vindas ?? true,
+    ...(cfg.aviso_falha !== undefined && cfg.aviso_falha !== null ? { p_aviso_falha: cfg.aviso_falha } : {}),
   });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
@@ -500,6 +503,21 @@ export async function ligarCombinam(ligado: boolean): Promise<Resultado> {
 }
 
 /** Liga ou desliga o "Volte a contratar", para as empresas sem vaga no ar (migração 20270130120000). */
+/** Liga ou desliga um e-mail (Admin › E-mails › Todos; migração 20270201120000). */
+export async function ligarEmail(modelo: string, ligado: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!/^[a-z_]{3,40}$/.test(String(modelo ?? ""))) return { ok: false, erro: "Esse e-mail não existe." };
+  const { error } = await c.rpc("admin_ligar_email", { p_modelo: modelo, p_ligado: Boolean(ligado) });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20270201120000_central_de_emails.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return { ok: true, mensagem: ligado ? "Ligado." : "Desligado: este e-mail não sai mais." };
+}
+
 export async function ligarReativar(ligado: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };

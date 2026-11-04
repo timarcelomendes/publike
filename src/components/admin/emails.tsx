@@ -1,7 +1,8 @@
 "use client";
 
 import { Bell, HandHeart, ImageUp, Mail, RefreshCw, RotateCcw, Send } from "lucide-react";
-import { useActionState, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import Link from "next/link";
 import { protegerAcao } from "@/lib/acao-segura";
 import {
   enviarAvisoConvite,
@@ -188,34 +189,13 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
         </Campo>
       </div>
 
-      <fieldset className="flex flex-col gap-1">
-        <legend className="mb-2 text-label">Avisos para quem usa o site</legend>
-        <Opcao
-          nome="email_boas_vindas"
-          rotulo="Boas-vindas"
-          ajuda="Quando a pessoa cria a conta: os próximos passos de acordo com o perfil (procurar trabalho, publicar a primeira vaga ou publicar as vagas da agência)."
-          inicial={config.email_boas_vindas ?? true}
-        />
-        <Opcao
-          nome="email_curtida"
-          rotulo="Curtida"
-          ajuda="No máximo um e-mail a cada 30 minutos por pessoa."
-          inicial={config.email_curtida}
-        />
-        <Opcao nome="email_match" rotulo="Match" inicial={config.email_match} />
-        <Opcao
-          nome="email_moderacao"
-          rotulo="Moderação"
-          ajuda="Anúncio em análise, removido ou liberado."
-          inicial={config.email_moderacao}
-        />
-        <Opcao
-          nome="email_conta"
-          rotulo="Conta"
-          ajuda="Suspensão, banimento e reativação. Vai mesmo para quem desligou os avisos."
-          inicial={config.email_conta}
-        />
-      </fieldset>
+      <p className="text-body-sm">
+        Quais e-mails saem, para as pessoas e para a equipe, fica em{" "}
+        <Link href="/admin/emails?aba=todos" className="text-label underline underline-offset-2">
+          Todos os e-mails
+        </Link>
+        .
+      </p>
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-label">Avisos para a equipe</legend>
@@ -232,37 +212,6 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
             className={classesEntrada}
           />
         </Campo>
-        <div className="flex flex-col gap-1">
-          <Opcao
-            nome="aviso_denuncia"
-            rotulo="Nova denúncia"
-            ajuda="No máximo um por anúncio a cada hora."
-            inicial={config.aviso_denuncia}
-          />
-          <Opcao
-            nome="aviso_cadastro"
-            rotulo="Novo cadastro"
-            ajuda="Quando alguém cria o perfil."
-            inicial={config.aviso_cadastro}
-          />
-          <Opcao
-            nome="aviso_retirado"
-            rotulo="Anúncio tirado do ar"
-            ajuda="Quando as denúncias ou a IA tiram um anúncio do ar."
-            inicial={config.aviso_retirado}
-          />
-          {config.aviso_falha !== undefined && (
-            <>
-              <input type="hidden" name="tem_aviso_falha" value="1" />
-              <Opcao
-                nome="aviso_falha"
-                rotulo="Falha na vaga ou no currículo"
-                ajuda="Erro ao publicar vaga ou salvar currículo (no máximo um por falha igual a cada 15 minutos) e quem erra o mesmo formulário 3 vezes. Tudo fica em Falhas."
-                inicial={config.aviso_falha}
-              />
-            </>
-          )}
-        </div>
       </fieldset>
 
       <Resultado estado={estado} />
@@ -557,6 +506,16 @@ export function TextosDosEmails({
     { chave: "equipe", titulo: "Para a equipe" },
     { chave: "sistema", titulo: "Outros" },
   ];
+  // vindo do catálogo ("Texto"): abre o modelo do link e desce até ele
+  useEffect(() => {
+    const alvo = window.location.hash.startsWith("#modelo-")
+      ? document.getElementById(window.location.hash.slice(1))
+      : null;
+    if (alvo instanceof HTMLDetailsElement) {
+      alvo.open = true;
+      alvo.scrollIntoView({ block: "start" });
+    }
+  }, []);
   return (
     <div className="flex flex-col gap-6">
       {grupos.map((g) => {
@@ -566,7 +525,11 @@ export function TextosDosEmails({
           <div key={g.chave} className="flex flex-col gap-2">
             <h3 className="text-label text-ink-muted">{g.titulo}</h3>
             {lista.map((m) => (
-              <details key={m.chave} className="group rounded-md border border-line">
+              <details
+                key={m.chave}
+                id={`modelo-${m.chave}`}
+                className="group scroll-mt-24 rounded-md border border-line"
+              >
                 <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 marker:hidden">
                   <span className="flex min-w-0 flex-col">
                     <span className="flex flex-wrap items-center gap-2 text-label">
