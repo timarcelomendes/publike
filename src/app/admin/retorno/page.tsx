@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { PerguntarNosMatches } from "@/components/admin/matches-sem-contato";
 import { Filtros, linkCom, Secao } from "@/components/admin/ui";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { formatarNumero, primeiro, rotuloConta, tempoRelativo } from "@/lib/formato";
@@ -105,6 +106,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
         []) as unknown as Candidatura[])
     : [];
   const nomePeriodo = PERIODOS.find((p) => p.valor === periodo)!.nome.toLowerCase();
+  // os matches sem contato, para o botão das perguntas (migração 20270202120000; sem ela, a seção não aparece)
+  const semContato = (await c.rpc("admin_matches_sem_contato")).data as unknown as SemContato | null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -147,6 +150,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
         )}
       </Secao>
 
+      {semContato && <MatchesSemContato s={semContato} agora={agora} />}
+
       {conta && (
         <Secao
           id="candidaturas"
@@ -169,6 +174,66 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/reto
         </Secao>
       )}
     </div>
+  );
+}
+
+type SemContato = {
+  contas: number;
+  matches: number;
+  perguntas: number;
+  prontas: number;
+  exemplos: { nome: string; quantos: number; perguntaveis: number; avisada_em: string | null }[];
+};
+
+/** Os aceitos sem contato em vaga no ar, com o botão que pergunta no chat e avisa as empresas. */
+function MatchesSemContato({ s, agora }: { s: SemContato; agora: number }) {
+  return (
+    <Secao
+      id="sem-contato"
+      titulo="Matches sem contato"
+      descricao="Aceitos em vaga no ar nos últimos 60 dias, sem mensagem nem contato da empresa. O botão faz no chat as perguntas do match a quem ainda não recebeu (“Ainda tem interesse em…?”; as respostas chegam para a empresa) e avisa cada empresa, no máximo uma vez a cada 7 dias."
+      acoes={<PerguntarNosMatches perguntas={s.perguntas} prontas={s.prontas} />}
+    >
+      {s.matches === 0 ? (
+        <p className="text-body-sm text-ink-muted">Nenhum match esperando contato agora.</p>
+      ) : (
+        <>
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Numero
+              rotulo="Matches sem contato"
+              valor={formatarNumero(s.matches)}
+              detalhe={s.contas === 1 ? "de 1 empresa" : `de ${formatarNumero(s.contas)} empresas`}
+              alerta
+            />
+            <Numero
+              rotulo="Recebem as perguntas"
+              valor={formatarNumero(s.perguntas)}
+              detalhe="ainda não receberam no chat"
+            />
+            <Numero
+              rotulo="Empresas para avisar"
+              valor={formatarNumero(s.prontas)}
+              detalhe="sem aviso nos últimos 7 dias"
+            />
+          </dl>
+          <ul
+            aria-label="As empresas com mais gente esperando"
+            className="flex flex-col divide-y divide-line text-body-sm"
+          >
+            {s.exemplos.map((e) => (
+              <li key={e.nome} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2">
+                <span className="font-semibold">{e.nome}</span>
+                <span className="text-ink-muted">
+                  {e.quantos === 1 ? "1 esperando" : `${e.quantos} esperando`}
+                  {e.perguntaveis ? ` · ${e.perguntaveis} recebem as perguntas` : ""}
+                  {e.avisada_em ? ` · avisada ${tempoRelativo(e.avisada_em, agora)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Secao>
   );
 }
 

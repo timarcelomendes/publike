@@ -46,6 +46,9 @@ export async function GET(request: Request) {
   const ia = await comTempo(() => revisarAnunciosPendentes(20));
   // curtida parada há 48 h numa vaga de quem nunca entrou: o "Deu match" sai junto com os e-mails abaixo
   const parados = await comTempo(() => liberarContatosParados());
+  // as perguntas do match (as dos contatos liberados agora e as que não saíram logo depois da ação): antes das
+  // tarefas demoradas, para não ficarem sem tempo
+  const perguntas = await comTempo(() => perguntarNosMatches(50));
   // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
   const lembretes = await comTempo(() => lembrarRespostas());
   // quem foi dispensado há 15 minutos recebe o retorno (das 8h às 20h)
@@ -61,8 +64,6 @@ export async function GET(request: Request) {
   // as Automações personalizadas: os de tempo, as mensagens que esperavam e a fila (depois da Triagem, que pode
   // ter lido currículos)
   const regras = await comTempo(() => regrasComOTempo());
-  // as perguntas do match que não saíram logo depois da ação
-  const perguntas = await comTempo(() => perguntarNosMatches());
   const avaliacoes = await comTempo(() => revisarAvaliacoesPendentes(20));
   const recados = await comTempo(() => revisarRecadosPendentes(20));
   // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos

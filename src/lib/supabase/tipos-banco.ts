@@ -3177,6 +3177,8 @@ export type Database = {
       };
       responder_pergunta_do_chat: { Args: { p_mensagem: number; p_opcao: number }; Returns: Json };
       respostas_do_chat_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
+      admin_matches_sem_contato: { Args: Record<string, never>; Returns: Json };
+      admin_avisar_matches_sem_contato: { Args: Record<string, never>; Returns: Json };
       servidor_regra_horarios: { Args: { p_chave: string; p_conta: string }; Returns: Json };
       servidor_regra_agir: {
         Args: {

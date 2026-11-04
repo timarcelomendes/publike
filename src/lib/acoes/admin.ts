@@ -17,6 +17,7 @@ import {
   revisarAvaliacoesPendentes,
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
+import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { SLUGS_CATEGORIAS } from "@/lib/constantes";
 import { ehStatusSugestao } from "@/lib/sugestoes";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
@@ -592,6 +593,42 @@ export async function ligarReativar(ligado: boolean): Promise<Resultado> {
     mensagem: ligado
       ? "Ligado: sai toda segunda, a partir das 9h, para quem está sem vaga no ar."
       : "Desligado: nada mais sai.",
+  };
+}
+
+/**
+ * Os matches sem contato (Admin › Retorno; claude/plano-match-no-chat.md, parte 2): as perguntas do match no chat de
+ * quem ainda não recebeu e um aviso por empresa (no máximo um a cada 7 dias). O robô manda as primeiras logo depois
+ * e o resto nas rodadas de 5 minutos.
+ */
+export async function perguntarNosMatchesSemContato(): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { data, error } = await c.rpc("admin_avisar_matches_sem_contato");
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20270202120000_perguntas_no_match.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  const r = (data ?? {}) as { perguntas?: number; avisadas?: number };
+  const perguntas = Number(r.perguntas) || 0;
+  const avisadas = Number(r.avisadas) || 0;
+  after(async () => {
+    await perguntarNosMatches(50);
+    await processarFilas();
+  });
+  refresh();
+  if (!perguntas && !avisadas) return { ok: true, mensagem: "Nada para mandar agora." };
+  return {
+    ok: true,
+    mensagem: `Pronto: ${[
+      perguntas
+        ? `as perguntas vão para ${perguntas === 1 ? "1 pessoa" : `${perguntas} pessoas`} (em até 5 minutos)`
+        : "",
+      avisadas ? `${avisadas === 1 ? "1 empresa foi avisada" : `${avisadas} empresas foram avisadas`}` : "",
+    ]
+      .filter(Boolean)
+      .join(" e ")}.`,
   };
 }
 

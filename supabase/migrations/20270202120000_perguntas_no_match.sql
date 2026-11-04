@@ -627,6 +627,19 @@ begin
   update privado.perguntas_do_match
      set situacao = 'perguntando', perguntas = v_lista, perguntado_em = now()
    where anuncio_id = p_anuncio and perfil_id = p_perfil;
+  -- no match, o aviso do match já falou das perguntas; nos matches sem contato (Admin › Retorno), o aviso de
+  -- mensagem nova (um só até abrir a conversa, como no chat)
+  if q.origem = 'retomada' and not exists (
+    select 1 from public.notificacoes n
+     where n.destinatario_id = p_perfil and n.tipo = 'mensagem' and n.ator_id = a.autor_id and not n.lida
+  ) then
+    insert into public.notificacoes (destinatario_id, tipo, ator_id, texto)
+    select p_perfil, 'mensagem', a.autor_id,
+           left(coalesce(privado.nome_nas_conversas(d.id, d.nome, d.tipo), 'Quem publicou')
+                || ' quer saber se você ainda tem interesse em “' || a.titulo
+                || '”. Responda no chat as perguntas rápidas.', 300)
+      from public.perfis d where d.id = a.autor_id;
+  end if;
   insert into privado.automacoes_feitas (anuncio_id, perfil_id, regra, detalhe)
   values (p_anuncio, p_perfil, 'perguntas', q.origem)
   on conflict do nothing;
@@ -788,27 +801,323 @@ revoke execute on function public.responder_pergunta_do_chat(bigint, integer),
 grant execute on function public.responder_pergunta_do_chat(bigint, integer), public.respostas_do_chat_da_vaga(uuid)
   to authenticated;
 
--- 8. Os matches sem contato ------------------------------------------------------------------------------------
--- os matches ativos sem contato, por conta (a mesma regra do Admin › Retorno: sem mensagem e sem contato anotado)
-create or replace function privado.matches_sem_contato()
-returns table (conta uuid, quantos integer, pessoas text[], avisada_em timestamptz)
+-- 8. Os matches sem contato (Admin › Retorno) e os números sem as mensagens automáticas ---------------------------
+
+-- o Retorno: a mensagem automática não é contato da empresa nem a última ação dela
+create or replace function privado.retorno_das_candidaturas(p_desde timestamptz, p_conta uuid)
+returns table (
+  anuncio_id uuid,
+  perfil_id uuid,
+  autor_id uuid,
+  status text,
+  etapa text,
+  criado_em timestamptz,
+  respondida_em timestamptz,
+  vista_em timestamptz,
+  mensagens bigint,
+  ultima_mensagem timestamptz,
+  contato_em timestamptz,
+  avisada boolean,
+  respondida boolean,
+  com_contato boolean
+)
 language sql
 stable
 security definer
 set search_path = ''
 as $$
-  select r.autor_id, count(*)::integer,
-         (array_agg(coalesce(split_part(p.nome, ' ', 1), 'Alguém') || ' (' || a.titulo || ')' order by r.respondida_em desc))[1:5],
-         (select max(n.criado_em) from public.notificacoes n
-           where n.destinatario_id = r.autor_id and n.tipo = 'matches_sem_contato')
-    from privado.retorno_das_candidaturas(now() - interval '10 years', null) r
-    join public.perfis p on p.id = r.perfil_id
+  with c as (
+    select cu.anuncio_id, cu.perfil_id, a.autor_id, cu.status, cu.criado_em, cu.respondida_em
+      from public.curtidas cu
+      join public.anuncios a on a.id = cu.anuncio_id
+     where a.tipo = 'vaga'
+       and (p_desde is null or cu.criado_em >= p_desde)
+       and (p_conta is null or a.autor_id = p_conta)
+  ), x as (
+    select c.*,
+           (select e.etapa from public.etapas_candidatos e
+             where e.anuncio_id = c.anuncio_id and e.perfil_id = c.perfil_id) as etapa,
+           (select v.vista_em from privado.candidaturas_vistas v
+             where v.anuncio_id = c.anuncio_id and v.perfil_id = c.perfil_id) as vista_em,
+           -- as mensagens da empresa (ou da equipe dela) para a pessoa, fora as automáticas (as perguntas do match): na conversa da vaga ou na conversa direta
+           (select count(*) from public.mensagens m
+             where m.autor_id <> c.perfil_id and not m.automatica
+               and ((m.anuncio_id = c.anuncio_id and m.perfil_id = c.perfil_id)
+                    or (m.conversa_id in (select cv.id from public.conversas cv
+                                           where (cv.conta_a = c.autor_id and cv.conta_b = c.perfil_id)
+                                              or (cv.conta_b = c.autor_id and cv.conta_a = c.perfil_id))
+                        and m.criado_em >= c.criado_em))) as mensagens,
+           (select max(m.criado_em) from public.mensagens m
+             where m.autor_id <> c.perfil_id and not m.automatica
+               and ((m.anuncio_id = c.anuncio_id and m.perfil_id = c.perfil_id)
+                    or (m.conversa_id in (select cv.id from public.conversas cv
+                                           where (cv.conta_a = c.autor_id and cv.conta_b = c.perfil_id)
+                                              or (cv.conta_b = c.autor_id and cv.conta_a = c.perfil_id))
+                        and m.criado_em >= c.criado_em))) as ultima_mensagem,
+           (select min(h.em) from privado.historico_etapas h
+             where h.anuncio_id = c.anuncio_id and h.perfil_id = c.perfil_id and h.o_que like 'contato:%') as contato_em,
+           -- a pessoa recebeu o aviso do match, da etapa ou da dispensa (o retorno automático)
+           exists (select 1 from public.notificacoes n
+                    where n.destinatario_id = c.perfil_id and n.anuncio_id = c.anuncio_id
+                      and n.tipo in ('match', 'dispensada', 'etapa', 'entrevista', 'contratacao')) as avisada
+      from c
+  )
+  select x.anuncio_id, x.perfil_id, x.autor_id, x.status, x.etapa, x.criado_em, x.respondida_em, x.vista_em,
+         x.mensagens, x.ultima_mensagem, x.contato_em, x.avisada,
+         (x.status <> 'pendente' or coalesce(x.etapa, 'novo') <> 'novo' or x.mensagens > 0) as respondida,
+         (x.mensagens > 0 or x.contato_em is not null) as com_contato
+    from x
+$$;
+
+-- os números do produto: a mensagem automática não é alguém usando o Publike
+create or replace function public.admin_metricas_produto()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  hoje date := (now() at time zone 'America/Sao_Paulo')::date;
+  v jsonb;
+begin
+  perform privado.exigir_admin();
+
+  with
+  contas as (
+    select u.id, u.created_at as criada_em, (u.created_at at time zone 'America/Sao_Paulo')::date as criada, p.tipo
+      from auth.users u
+      left join public.perfis p on p.id = u.id
+  ),
+  -- um dia de uso por conta (os últimos 120 dias)
+  uso as (
+    select distinct q.conta_id, q.dia
+      from (
+        select a.conta_id, a.dia from privado.contas_ativas a where a.dia > hoje - 120
+        union all
+        select cu.perfil_id, (cu.criado_em at time zone 'America/Sao_Paulo')::date
+          from public.curtidas cu where cu.criado_em > now() - interval '120 days'
+        union all
+        select an.autor_id, (cu.respondida_em at time zone 'America/Sao_Paulo')::date
+          from public.curtidas cu join public.anuncios an on an.id = cu.anuncio_id
+         where cu.respondida_em > now() - interval '120 days'
+        union all
+        select an.autor_id, (an.criado_em at time zone 'America/Sao_Paulo')::date
+          from public.anuncios an where an.criado_em > now() - interval '120 days'
+        union all
+        select m.autor_id, (m.criado_em at time zone 'America/Sao_Paulo')::date
+          from public.mensagens m where m.criado_em > now() - interval '120 days' and not m.automatica
+        union all
+        select cv.perfil_id, (cv.atualizado_em at time zone 'America/Sao_Paulo')::date
+          from public.curriculos cv where cv.atualizado_em > now() - interval '120 days'
+        union all
+        select x.pedida_por, (x.criado_em at time zone 'America/Sao_Paulo')::date
+          from public.conexoes x where x.criado_em > now() - interval '120 days'
+        union all
+        select c.id, c.criada from contas c where c.criada > hoje - 120
+      ) q
+      join contas c on c.id = q.conta_id
+     where q.dia > hoje - 120 and q.dia <= hoje
+  ),
+  -- 8 blocos de 7 dias, o 0 termina hoje
+  semanas as (
+    select k, hoje - 7 * k - 6 as inicio, hoje - 7 * k as fim from generate_series(0, 7) k
+  ),
+  -- a primeira ação de valor de cada conta criada entre 37 e 8 dias atrás (a semana dela já terminou):
+  -- quem procura, o currículo ou a primeira curtida; quem contrata ou presta serviço, o primeiro anúncio
+  coorte_ativacao as (
+    select c.id, c.criada_em, c.tipo,
+           least(
+             case when c.tipo = 'pessoa' then (select min(cv.criado_em) from public.curriculos cv where cv.perfil_id = c.id) end,
+             case when c.tipo = 'pessoa' then (select min(cu.criado_em) from public.curtidas cu where cu.perfil_id = c.id) end,
+             (select min(an.criado_em) from public.anuncios an where an.autor_id = c.id)
+           ) as primeira
+      from contas c
+     where c.criada between hoje - 37 and hoje - 8
+  ),
+  -- quem criou a conta nos últimos 30 dias, para os funis
+  novas as (
+    select c.id, c.tipo,
+           exists (select 1 from public.curriculos cv where cv.perfil_id = c.id) as curriculo,
+           exists (select 1 from public.curtidas cu join public.anuncios an on an.id = cu.anuncio_id
+                    where cu.perfil_id = c.id and an.tipo = 'vaga') as curtiu,
+           exists (select 1 from public.curtidas cu join public.anuncios an on an.id = cu.anuncio_id
+                    where cu.perfil_id = c.id and an.tipo = 'vaga' and cu.status = 'match') as match_pessoa,
+           exists (select 1 from public.anuncios an where an.autor_id = c.id and an.tipo = 'vaga') as vaga,
+           exists (select 1 from public.curtidas cu join public.anuncios an on an.id = cu.anuncio_id
+                    where an.autor_id = c.id and an.tipo = 'vaga') as candidato,
+           exists (select 1 from public.curtidas cu join public.anuncios an on an.id = cu.anuncio_id
+                    where an.autor_id = c.id and an.tipo = 'vaga' and cu.status = 'match') as aceitou
+      from contas c
+     where c.criada > hoje - 30
+  ),
+  -- as vagas publicadas entre 37 e 8 dias atrás (os 7 dias delas já passaram)
+  vagas_coorte as (
+    select an.id, an.criado_em,
+           (select min(cu.criado_em) from public.curtidas cu where cu.anuncio_id = an.id) as primeira,
+           (select count(*) from public.curtidas cu where cu.anuncio_id = an.id) as candidatos
+      from public.anuncios an
+     where an.tipo = 'vaga' and an.status <> 'removido'
+       and (an.criado_em at time zone 'America/Sao_Paulo')::date between hoje - 37 and hoje - 8
+  ),
+  -- as curtidas em vagas feitas entre 37 e 8 dias atrás (a resposta teve 7 dias)
+  curtidas_coorte as (
+    select cu.criado_em, cu.respondida_em, cu.status
+      from public.curtidas cu join public.anuncios an on an.id = cu.anuncio_id and an.tipo = 'vaga'
+     where (cu.criado_em at time zone 'America/Sao_Paulo')::date between hoje - 37 and hoje - 8
+  ),
+  por_dia as (select u.dia, count(*)::numeric as n from uso u group by u.dia)
+  select jsonb_build_object(
+    'hoje', hoje,
+    -- desde quando "entrou no site" conta (antes, só as ações)
+    'desde', (select min(a.dia) from privado.contas_ativas a),
+    'ativos', jsonb_build_object(
+      'dau_hoje', (select count(*) from uso u where u.dia = hoje),
+      -- a média dos 7 dias inteiros antes de hoje (dia sem ninguém conta zero)
+      'dau_media', (select round(avg(coalesce(d.n, 0)), 1)
+                      from generate_series(hoje - 7, hoje - 1, interval '1 day') g(dia)
+                      left join por_dia d on d.dia = g.dia::date),
+      'wau', (select count(distinct u.conta_id) from uso u where u.dia > hoje - 7),
+      'mau', (select count(distinct u.conta_id) from uso u where u.dia > hoje - 30),
+      'mau_antes', (select count(distinct u.conta_id) from uso u where u.dia between hoje - 59 and hoje - 30),
+      'mau_pessoas', (select count(distinct u.conta_id) from uso u join contas c on c.id = u.conta_id
+                       where u.dia > hoje - 30 and c.tipo = 'pessoa'),
+      'mau_empresas', (select count(distinct u.conta_id) from uso u join contas c on c.id = u.conta_id
+                        where u.dia > hoje - 30 and c.tipo in ('empresa', 'comercio', 'agencia')),
+      -- quantos dias, em média, cada conta ativa usou o Publike no mês
+      'dias_por_conta', (select round(avg(x.n), 1) from (
+                           select u.conta_id, count(*) as n from uso u where u.dia > hoje - 30 group by u.conta_id) x)
+    ),
+    'semanas', (select coalesce(jsonb_agg(jsonb_build_object(
+        'inicio', s.inicio,
+        'fim', s.fim,
+        'contas', (select count(*) from contas c where c.criada between s.inicio and s.fim),
+        'matches', (select count(*) from public.curtidas cu
+                     where cu.status = 'match'
+                       and (coalesce(cu.respondida_em, cu.criado_em) at time zone 'America/Sao_Paulo')::date
+                           between s.inicio and s.fim),
+        'ativos', (select count(distinct u.conta_id) from uso u where u.dia between s.inicio and s.fim),
+        'curtidas', (select count(*) from public.curtidas cu
+                      where (cu.criado_em at time zone 'America/Sao_Paulo')::date between s.inicio and s.fim),
+        'vagas', (select count(*) from public.anuncios an
+                   where an.tipo = 'vaga' and (an.criado_em at time zone 'America/Sao_Paulo')::date
+                         between s.inicio and s.fim)
+      ) order by s.k desc), '[]'::jsonb) from semanas s),
+    'ativacao', (select jsonb_build_object(
+        'contas', count(*),
+        'com_perfil', count(*) filter (where a.tipo is not null),
+        'ativadas', count(*) filter (where a.primeira <= a.criada_em + interval '7 days'),
+        'pessoas', count(*) filter (where a.tipo = 'pessoa'),
+        'pessoas_ativadas', count(*) filter (where a.tipo = 'pessoa' and a.primeira <= a.criada_em + interval '7 days'),
+        'empresas', count(*) filter (where a.tipo in ('empresa', 'comercio', 'agencia')),
+        'empresas_ativadas', count(*) filter (where a.tipo in ('empresa', 'comercio', 'agencia')
+                                                and a.primeira <= a.criada_em + interval '7 days'),
+        'mediana_horas', round((percentile_cont(0.5) within group (
+                           order by greatest(0, extract(epoch from a.primeira - a.criada_em) / 3600))
+                           filter (where a.primeira <= a.criada_em + interval '7 days'))::numeric, 1)
+      ) from coorte_ativacao a),
+    -- por semana de cadastro: o tamanho e quantos usaram na 1ª, 2ª, 3ª e 4ª semana depois
+    -- (null: a semana ainda não terminou para todos dessa turma)
+    'retencao', (select coalesce(jsonb_agg(jsonb_build_object(
+        'inicio', s.inicio,
+        'fim', s.fim,
+        'tamanho', (select count(*) from contas c where c.criada between s.inicio and s.fim),
+        'semanas', (select jsonb_agg(
+            case when s.fim + 7 * w + 6 <= hoje - 1 then (
+              select count(*) from contas c
+               where c.criada between s.inicio and s.fim
+                 and exists (select 1 from uso u where u.conta_id = c.id
+                              and u.dia between c.criada + 7 * w and c.criada + 7 * w + 6))
+            end order by w) from generate_series(1, 4) w)
+      ) order by s.k desc), '[]'::jsonb) from semanas s),
+    -- voltou em até 1, 7 e 30 dias (as contas dos últimos 90 dias que já tiveram esse tempo)
+    'voltaram', (select jsonb_object_agg(n::text, jsonb_build_object(
+        'base', (select count(*) from contas c where c.criada between hoje - 90 and hoje - n - 1),
+        'voltaram', (select count(*) from contas c
+                      where c.criada between hoje - 90 and hoje - n - 1
+                        and exists (select 1 from uso u where u.conta_id = c.id
+                                     and u.dia between c.criada + 1 and c.criada + n))
+      )) from unnest(array[1, 7, 30]) n),
+    'churn', jsonb_build_object(
+      'base', (select count(distinct u.conta_id) from uso u where u.dia between hoje - 59 and hoje - 30),
+      'sairam', (select count(*) from (select distinct u.conta_id from uso u where u.dia between hoje - 59 and hoje - 30) a
+                  where not exists (select 1 from uso u2 where u2.conta_id = a.conta_id and u2.dia > hoje - 30))
+    ),
+    'funil', (select jsonb_build_object(
+        'contas', count(*),
+        'com_perfil', count(*) filter (where n.tipo is not null),
+        'pessoas', count(*) filter (where n.tipo = 'pessoa'),
+        'curriculo', count(*) filter (where n.tipo = 'pessoa' and n.curriculo),
+        'curtiu', count(*) filter (where n.tipo = 'pessoa' and n.curtiu),
+        'match', count(*) filter (where n.tipo = 'pessoa' and n.match_pessoa),
+        'empresas', count(*) filter (where n.tipo in ('empresa', 'comercio', 'agencia')),
+        'vaga', count(*) filter (where n.tipo in ('empresa', 'comercio', 'agencia') and n.vaga),
+        'candidato', count(*) filter (where n.tipo in ('empresa', 'comercio', 'agencia') and n.candidato),
+        'aceitou', count(*) filter (where n.tipo in ('empresa', 'comercio', 'agencia') and n.aceitou),
+        -- visitas de quem não entrou na conta (uma por pessoa por dia), nos 30 dias
+        'visitas', (select count(*) from privado.acessos_site s where s.dia > hoje - 30 and not s.com_conta)
+      ) from novas n),
+    'liquidez', jsonb_build_object(
+      'vagas', (select count(*) from vagas_coorte),
+      'com_candidato_7d', (select count(*) from vagas_coorte x where x.primeira <= x.criado_em + interval '7 days'),
+      'mediana_horas_primeiro', (select round((percentile_cont(0.5) within group (
+                                    order by extract(epoch from x.primeira - x.criado_em) / 3600))::numeric, 1)
+                                   from vagas_coorte x where x.primeira is not null),
+      'candidatos_media', (select round(avg(x.candidatos), 1) from vagas_coorte x),
+      'curtidas', (select count(*) from curtidas_coorte),
+      'respondidas_7d', (select count(*) from curtidas_coorte y where y.respondida_em <= y.criado_em + interval '7 days'),
+      'mediana_horas_resposta', (select round((percentile_cont(0.5) within group (
+                                    order by extract(epoch from y.respondida_em - y.criado_em) / 3600))::numeric, 1)
+                                   from curtidas_coorte y where y.respondida_em is not null),
+      'matches', (select count(*) from curtidas_coorte y where y.status = 'match'),
+      'preenchidas_publike', (select count(*) from privado.encerramentos e
+                               where e.tipo = 'vaga' and e.motivo = 'contratei_publike' and e.criado_em > now() - interval '30 days'),
+      'encerradas_com_motivo', (select count(*) from privado.encerramentos e
+                                 where e.tipo = 'vaga' and e.criado_em > now() - interval '30 days'),
+      'vagas_no_ar', (select count(*) from public.anuncios an
+                       where an.tipo = 'vaga' and an.status = 'ativo' and an.expira_em > now())
+    ),
+    'engajamento', jsonb_build_object(
+      'acoes_7d', (select (select count(*) from public.curtidas cu where cu.criado_em > now() - interval '7 days')
+                        + (select count(*) from public.mensagens m where m.criado_em > now() - interval '7 days' and not m.automatica)
+                        + (select count(*) from public.anuncios an where an.criado_em > now() - interval '7 days')
+                        + (select count(*) from public.conexoes x where x.criado_em > now() - interval '7 days')),
+      'mensagens_7d', (select count(*) from public.mensagens m where m.criado_em > now() - interval '7 days' and not m.automatica)
+    )
+  ) into v;
+  return v;
+end
+$$;
+
+-- os aceitos em vaga no ar nos últimos 60 dias, sem mensagem nem contato da empresa (a regra do Retorno), fora de
+-- Contratados e de Não seguiu. perguntavel: ainda não recebeu as perguntas e a vaga pergunta.
+drop function if exists privado.matches_sem_contato();
+create or replace function privado.matches_sem_contato()
+returns table (conta uuid, anuncio_id uuid, perfil_id uuid, nome text, vaga text, aceito_em timestamptz,
+               perguntavel boolean)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select r.autor_id, r.anuncio_id, r.perfil_id, p.nome, a.titulo, r.respondida_em,
+         privado.perguntas_no_match_valem(r.anuncio_id, r.perfil_id)
+           and not exists (select 1 from privado.perguntas_do_match q
+                            where q.anuncio_id = r.anuncio_id and q.perfil_id = r.perfil_id)
+    from privado.retorno_das_candidaturas(now() - interval '1 year', null) r
     join public.anuncios a on a.id = r.anuncio_id
+    join public.perfis dono on dono.id = a.autor_id
+    join public.perfis p on p.id = r.perfil_id
    where r.status = 'match' and not r.com_contato
-   group by r.autor_id
+     and coalesce(r.etapa, '') not in ('contratado', 'nao_seguiu')
+     and r.respondida_em > now() - interval '60 days'
+     and a.status = 'ativo' and a.expira_em > now() and a.preenchida_em is null
+     and not coalesce(dono.suspenso_ate > now(), false)
+     and not privado.ha_bloqueio(a.autor_id, r.perfil_id)
 $$;
 revoke execute on function privado.matches_sem_contato() from public, anon, authenticated;
 
+-- a prévia: quantos, de quantas empresas, quantos vão receber as perguntas e quantas empresas dá para avisar agora
 create or replace function public.admin_matches_sem_contato()
 returns jsonb
 language plpgsql
@@ -816,44 +1125,76 @@ stable
 security definer
 set search_path = ''
 as $$
+declare
+  v jsonb;
 begin
   perform privado.exigir_admin();
-  return jsonb_build_object(
-    'contas', (select count(*) from privado.matches_sem_contato()),
-    'matches', (select coalesce(sum(quantos), 0) from privado.matches_sem_contato()),
-    'prontas', (select count(*) from privado.matches_sem_contato()
-                 where avisada_em is null or avisada_em < now() - interval '7 days'),
-    'exemplos', (select coalesce(jsonb_agg(jsonb_build_object('nome', p.nome, 'quantos', m.quantos,
-                                                              'pessoas', m.pessoas, 'avisada_em', m.avisada_em)
-                                           order by m.quantos desc), '[]'::jsonb)
-                   from (select * from privado.matches_sem_contato() order by quantos desc limit 8) m
-                   join public.perfis p on p.id = m.conta));
+  with m as (select * from privado.matches_sem_contato()),
+  c as (
+    select m.conta, count(*) as quantos, count(*) filter (where m.perguntavel) as perguntaveis,
+           (select max(n.criado_em) from public.notificacoes n
+             where n.destinatario_id = m.conta and n.tipo = 'matches_sem_contato') as avisada_em
+      from m group by m.conta)
+  select jsonb_build_object(
+    'contas', (select count(*) from c),
+    'matches', (select count(*) from m),
+    'perguntas', (select count(*) from m where m.perguntavel),
+    'prontas', (select count(*) from c where c.avisada_em is null or c.avisada_em < now() - interval '7 days'),
+    'exemplos', coalesce((
+      select jsonb_agg(jsonb_build_object('nome', p.nome, 'quantos', x.quantos, 'perguntaveis', x.perguntaveis,
+                                          'avisada_em', x.avisada_em) order by x.quantos desc, p.nome)
+        from (select * from c order by c.quantos desc limit 8) x
+        join public.perfis p on p.id = x.conta), '[]'::jsonb))
+    into v;
+  return v;
 end
 $$;
 revoke execute on function public.admin_matches_sem_contato() from public, anon;
 grant execute on function public.admin_matches_sem_contato() to authenticated, service_role;
 
+-- manda: as perguntas no chat de quem ainda não recebeu ("Ainda tem interesse em …?"; o robô monta e manda) e um
+-- aviso por empresa (no máximo um a cada 7 dias). Devolve {perguntas, avisadas}.
 create or replace function public.admin_avisar_matches_sem_contato()
-returns integer
+returns jsonb
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  n integer := 0;
-  m record;
+  v_perguntas integer := 0;
+  v_avisadas integer := 0;
+  c record;
 begin
   perform privado.exigir_admin();
-  for m in select * from privado.matches_sem_contato()
-            where avisada_em is null or avisada_em < now() - interval '7 days' loop
+  insert into privado.perguntas_do_match (anuncio_id, perfil_id, origem)
+  select m.anuncio_id, m.perfil_id, 'retomada' from privado.matches_sem_contato() m where m.perguntavel
+  on conflict (anuncio_id, perfil_id) do nothing;
+  get diagnostics v_perguntas = row_count;
+  for c in
+    select m.conta, count(*)::integer as quantos,
+           count(*) filter (where exists (select 1 from privado.perguntas_do_match q
+                                           where q.anuncio_id = m.anuncio_id and q.perfil_id = m.perfil_id
+                                             and q.origem = 'retomada' and q.criado_em = now()))::integer
+             as perguntadas,
+           (array_agg(coalesce(nullif(split_part(m.nome, ' ', 1), ''), 'Alguém') || ' (' || m.vaga || ')'
+                      order by m.aceito_em desc))[1:5] as pessoas,
+           (select max(n.criado_em) from public.notificacoes n
+             where n.destinatario_id = m.conta and n.tipo = 'matches_sem_contato') as avisada_em
+      from privado.matches_sem_contato() m
+     group by m.conta
+  loop
+    continue when c.avisada_em is not null and c.avisada_em > now() - interval '7 days';
     insert into public.notificacoes (destinatario_id, tipo, texto)
-    values (m.conta, 'matches_sem_contato',
-            left(case when m.quantos = 1 then '1 pessoa deu match com você e espera o seu contato: '
-                      else m.quantos || ' pessoas deram match com você e esperam o seu contato: ' end
-                 || array_to_string(m.pessoas, ', ') || case when m.quantos > 5 then ' e outras.' else '.' end, 300));
-    n := n + 1;
+    values (c.conta, 'matches_sem_contato',
+            left(case when c.quantos = 1 then '1 pessoa deu match com você e espera o seu contato: '
+                      else c.quantos || ' pessoas deram match com você e esperam o seu contato: ' end
+                 || array_to_string(c.pessoas, ', ') || case when c.quantos > 5 then ' e outras.' else '.' end
+                 || case when c.perguntadas > 0
+                         then ' Perguntamos no chat o que a vaga precisa; as respostas chegam para você.'
+                         else '' end, 300));
+    v_avisadas := v_avisadas + 1;
   end loop;
-  return n;
+  return jsonb_build_object('perguntas', v_perguntas, 'avisadas', v_avisadas);
 end
 $$;
 revoke execute on function public.admin_avisar_matches_sem_contato() from public, anon;
