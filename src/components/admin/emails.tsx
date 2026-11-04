@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, HandHeart, ImageUp, Mail, RefreshCw, RotateCcw, Send } from "lucide-react";
+import { Bell, HandHeart, ImageUp, Mail, Power, RefreshCw, RotateCcw, Send } from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { protegerAcao } from "@/lib/acao-segura";
@@ -8,7 +8,9 @@ import {
   enviarAvisoConvite,
   enviarConviteEmail,
   enviarEmailDeTeste,
+  ligarEmailsDoSite,
   processarFilasAgora,
+  reenviarEmail,
   reenviarEmailsComFalha,
   restaurarModeloEmail,
   salvarConfigEmails,
@@ -158,12 +160,6 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
   const erros = estado.erros ?? {};
   return (
     <form action={acao} className="flex flex-col gap-6">
-      <Opcao
-        nome="emails_ativos"
-        rotulo="Mandar e-mails do site"
-        ajuda="Desligado, nenhum aviso sai por e-mail (os avisos do sino continuam)."
-        inicial={config.emails_ativos}
-      />
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Nome do remetente" nome="remetente_nome" erro={erros.remetente_nome}>
           <input
@@ -190,7 +186,11 @@ export function FormConfigEmails({ config }: { config: ConfigSite }) {
       </div>
 
       <p className="text-body-sm">
-        Quais e-mails saem, para as pessoas e para a equipe, fica em{" "}
+        Ligar e desligar todos os e-mails fica na{" "}
+        <Link href="/admin/emails" className="text-label underline underline-offset-2">
+          Visão geral
+        </Link>
+        ; quais e-mails saem, para as pessoas e para a equipe, em{" "}
         <Link href="/admin/emails?aba=todos" className="text-label underline underline-offset-2">
           Todos os e-mails
         </Link>
@@ -555,6 +555,39 @@ export function TextosDosEmails({
 }
 
 // ------------------------------------------------------------------ fila
+
+/** O liga e desliga geral: desligado, nenhum e-mail sai (o sino continua). */
+export function LigarEmailsDoSite({ ligado }: { ligado: boolean }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Botao
+        tamanho="sm"
+        variante={ligado ? "perigo" : "sucesso"}
+        disabled={pendente}
+        onClick={() => rodar(() => ligarEmailsDoSite(!ligado))}
+      >
+        <Power aria-hidden />
+        {ligado ? "Desligar todos os e-mails" : "Ligar os e-mails"}
+      </Botao>
+      {mensagem}
+    </div>
+  );
+}
+
+/** "Mandar de novo" de um e-mail que falhou, na linha dele em Enviados. */
+export function MandarDeNovo({ id }: { id: number }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="mt-1.5 flex flex-col items-start gap-1">
+      <Botao tamanho="sm" variante="secundario" disabled={pendente} onClick={() => rodar(() => reenviarEmail(id))}>
+        <RotateCcw aria-hidden />
+        Mandar de novo
+      </Botao>
+      {mensagem}
+    </div>
+  );
+}
 
 export function BotoesFila({ temFalhas }: { temFalhas: boolean }) {
   const { rodar, pendente, mensagem } = useAcao();

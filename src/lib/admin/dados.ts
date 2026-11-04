@@ -768,6 +768,21 @@ export async function ultimosEmails(c: ClienteBanco, limite = 40) {
   return data ?? [];
 }
 
+/** Os filtros de Admin › E-mails › Enviados: o e-mail (a chave do modelo), a situação e parte do endereço ou do nome. */
+export type FiltrosEnviados = { modelo: string | null; situacao: string | null; busca: string | null };
+
+/** Os e-mails da fila com os filtros, o mais novo primeiro (até 100). null: banco sem a migração 20270203120000. */
+export async function emailsEnviados(c: ClienteBanco, f: FiltrosEnviados) {
+  const { data, error } = await c.rpc("admin_emails_enviados", {
+    p_modelo: f.modelo,
+    p_status: f.situacao,
+    p_busca: f.busca,
+    p_limite: 100,
+  });
+  if (error) return null;
+  return data ?? [];
+}
+
 /** As contas com e-mail @publike.org confirmado e se veem o Painel no site. Antes da migração, null. */
 export async function contasDoPainelNoSite(c: ClienteBanco) {
   const { data, error } = await c.rpc("admin_contas_painel_no_site");

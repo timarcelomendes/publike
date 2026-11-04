@@ -375,7 +375,8 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
   const cfg = atual?.[0];
   if (erroAtual || !cfg) return { ok: false, erro: "Não deu para ler as configurações. Tente de novo." };
   const { error } = await c.rpc("admin_salvar_config_emails", {
-    p_emails_ativos: marcado(formData, "emails_ativos"),
+    // o liga e desliga geral fica na Visão geral (ligarEmailsDoSite): aqui vai como está
+    p_emails_ativos: cfg.emails_ativos,
     p_remetente_nome: nome,
     p_responder_para: responder || null,
     p_email_curtida: cfg.email_curtida,
@@ -796,6 +797,56 @@ export async function testarConviteEmail(_anterior: EstadoForm, formData: FormDa
   refresh();
   if (estado?.[0]?.status === "enviado") return { ok: true, mensagem: `Teste enviado para ${para}.` };
   return { ok: false, erro: `O e-mail ficou na fila: ${estado?.[0]?.erro ?? "veja em Últimos e-mails"}` };
+}
+
+/** O liga e desliga geral dos e-mails do site (Admin › E-mails › Visão geral); o resto da configuração fica igual. */
+export async function ligarEmailsDoSite(ligado: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { data: atual, error: erroAtual } = await c.rpc("admin_config");
+  const cfg = atual?.[0];
+  if (erroAtual || !cfg) return { ok: false, erro: "Não deu para ler as configurações. Tente de novo." };
+  const { error } = await c.rpc("admin_salvar_config_emails", {
+    p_emails_ativos: ligado === true,
+    p_remetente_nome: cfg.remetente_nome,
+    p_responder_para: cfg.responder_para,
+    p_email_curtida: cfg.email_curtida,
+    p_email_match: cfg.email_match,
+    p_email_moderacao: cfg.email_moderacao,
+    p_email_conta: cfg.email_conta,
+    p_avisos_para: cfg.avisos_para,
+    p_aviso_denuncia: cfg.aviso_denuncia,
+    p_aviso_cadastro: cfg.aviso_cadastro,
+    p_aviso_retirado: cfg.aviso_retirado,
+    p_email_boas_vindas: cfg.email_boas_vindas ?? true,
+    ...(cfg.aviso_falha !== undefined && cfg.aviso_falha !== null ? { p_aviso_falha: cfg.aviso_falha } : {}),
+  });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  if (ligado) after(processarFilas);
+  refresh();
+  return {
+    ok: true,
+    mensagem: ligado
+      ? "Ligados: os e-mails voltam a sair, com as chaves de cada um."
+      : "Desligados: nenhum e-mail sai (o sino continua).",
+  };
+}
+
+/** Manda de novo um e-mail que falhou (Admin › E-mails › Enviados). */
+export async function reenviarEmail(id: number): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!Number.isSafeInteger(id)) return { ok: false, erro: "Pedido inválido." };
+  const { data, error } = await c.rpc("admin_reenviar_email", { p_id: id });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20270203120000_emails_enviados.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  if (!data) return { ok: false, erro: "Este e-mail não está mais com falha." };
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Voltou para a fila: sai em instantes." };
 }
 
 export async function reenviarEmailsComFalha(): Promise<Resultado> {

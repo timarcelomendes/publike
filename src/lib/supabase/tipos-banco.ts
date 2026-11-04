@@ -3561,6 +3561,22 @@ export type Database = {
           enviado_em: string | null;
         }[];
       };
+      admin_emails_enviados: {
+        Args: { p_modelo?: string | null; p_status?: string | null; p_busca?: string | null; p_limite?: number };
+        Returns: {
+          id: number;
+          modelo: string;
+          para: string;
+          usuario_id: string | null;
+          nome: string | null;
+          status: string;
+          tentativas: number;
+          erro: string | null;
+          criado_em: string;
+          enviado_em: string | null;
+        }[];
+      };
+      admin_reenviar_email: { Args: { p_id: number }; Returns: boolean };
       admin_reenviar_emails: {
         Args: Record<PropertyKey, never>;
         Returns: number;

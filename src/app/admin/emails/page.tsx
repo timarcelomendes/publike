@@ -1,4 +1,4 @@
-import { FileText, ListChecks, MailCheck, MailWarning, Send, Settings, Sparkles } from "lucide-react";
+import { FileText, Gauge, ListChecks, MailCheck, MailWarning, Send, Settings, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -10,6 +10,8 @@ import {
   FormCreditosEmail,
   FormEmailTeste,
   FormLogoEmails,
+  LigarEmailsDoSite,
+  MandarDeNovo,
   TextosDosEmails,
 } from "@/components/admin/emails";
 import { LigarCombinam } from "@/components/admin/combinam";
@@ -17,6 +19,8 @@ import { FormParametrosEmail, IntervaloEmail, LigarEmail } from "@/components/ad
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
+import { Botao } from "@/components/ui/botao";
+import { classesEntrada } from "@/components/ui/campo";
 import {
   avisosDeConvite,
   catalogoDeEmails,
@@ -24,10 +28,12 @@ import {
   parametrosDeEmail,
   convitesPorEmail,
   creditosDoEmail,
+  emailsEnviados,
   emailsPorDia,
   modelosDeEmail,
   ultimosEmails,
   type CreditosEmail,
+  type FiltrosEnviados,
   type LinhaDoCatalogo,
   type ParametrosEmail,
 } from "@/lib/admin/dados";
@@ -44,24 +50,47 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "E-mails" };
 
-// sub-abas: o que saiu, a configuração do envio, os convites e os textos (cada uma lê só o que mostra)
+// sub-abas (claude/plano-central-de-emails.md, parte 4): o dia e o liga e desliga geral, todos os e-mails, o que
+// saiu, os convites, os da semana, os textos e a configuração do envio (cada uma lê só o que mostra)
 const ABAS = [
-  { id: "enviados", nome: "Enviados", icone: MailCheck },
+  { id: "visao", nome: "Visão geral", icone: Gauge },
   { id: "todos", nome: "Todos os e-mails", icone: ListChecks },
-  { id: "configuracoes", nome: "Configurações", icone: Settings },
+  { id: "enviados", nome: "Enviados", icone: MailCheck },
   { id: "convites", nome: "Convites", icone: Send },
   { id: "semana", nome: "Da semana", icone: Sparkles },
   { id: "textos", nome: "Textos", icone: FileText },
+  { id: "configuracoes", nome: "Configurações", icone: Settings },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
+
+/** As situações do filtro de Enviados ("fila": na fila ou enviando). */
+const SITUACOES_ENVIADOS = [
+  { valor: "", nome: "Todas" },
+  { valor: "enviado", nome: "Enviados" },
+  { valor: "fila", nome: "Na fila" },
+  { valor: "falhou", nome: "Falharam" },
+  { valor: "cancelado", nome: "Cancelados" },
+] as const;
+
+/** Os filtros de Enviados no endereço: ?tipo=<chave do e-mail>&situacao=<situação>&q=<endereço ou nome>. */
+function filtrosDe(sp: Record<string, string | string[] | undefined>): FiltrosEnviados {
+  const modelo = primeiro(sp.tipo)?.trim() ?? "";
+  const situacao = primeiro(sp.situacao)?.trim() ?? "";
+  const busca = primeiro(sp.q)?.trim() ?? "";
+  return {
+    modelo: /^[a-z_]{2,40}$/.test(modelo) ? modelo : null,
+    situacao: SITUACOES_ENVIADOS.some((s) => s.valor !== "" && s.valor === situacao) ? situacao : null,
+    busca: busca ? busca.slice(0, 120) : null,
+  };
+}
 
 export default function Emails({ searchParams }: PageProps<"/admin/emails">) {
   return (
     <Suspense fallback={<EsqueletoAdmin />}>
       {searchParams.then((sp) => {
         const pedida = primeiro(sp.aba);
-        const aba: Aba = ABAS.some((a) => a.id === pedida) ? (pedida as Aba) : "enviados";
-        return <Conteudo aba={aba} />;
+        const aba: Aba = ABAS.some((a) => a.id === pedida) ? (pedida as Aba) : "visao";
+        return <Conteudo aba={aba} filtros={filtrosDe(sp)} />;
       })}
     </Suspense>
   );
@@ -69,13 +98,15 @@ export default function Emails({ searchParams }: PageProps<"/admin/emails">) {
 
 function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
   return (
-    <nav aria-label="E-mails" className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+    // relative: o texto só para leitores de tela do número de falhas (absolute) fica dentro da faixa que rola, sem
+    // alargar a página no celular
+    <nav aria-label="E-mails" className="sem-barra relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
       {ABAS.map(({ id, nome, icone: Icone }) => {
         const atual = id === ativa;
         return (
           <Link
             key={id}
-            href={id === "enviados" ? "/admin/emails" : `/admin/emails?aba=${id}`}
+            href={id === "visao" ? "/admin/emails" : `/admin/emails?aba=${id}`}
             scroll={false}
             aria-current={atual ? "page" : undefined}
             className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-pill border px-3.5 text-label transition-colors ${
@@ -99,21 +130,23 @@ function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
   );
 }
 
-async function Conteudo({ aba }: { aba: Aba }) {
+async function Conteudo({ aba, filtros }: { aba: Aba; filtros: FiltrosEnviados }) {
   const c = await exigirAdminLocal();
   const nada = Promise.resolve(null);
-  const [config, modelos, fila, agora, convites, avisos, porDia, gastos, catalogo, numeros] = await Promise.all([
-    configDoSite(c),
-    aba === "textos" ? modelosDeEmail(c) : Promise.resolve([]),
-    ultimosEmails(c, 40),
-    agoraDaRequisicao(),
-    aba === "convites" ? convitesPorEmail(c) : nada,
-    aba === "convites" ? avisosDeConvite(c) : nada,
-    aba === "enviados" ? emailsPorDia(c, 7) : nada,
-    aba === "enviados" ? creditosDoEmail(c) : nada,
-    aba === "todos" || aba === "convites" ? catalogoDeEmails(c) : nada,
-    aba === "todos" ? parametrosDeEmail(c) : nada,
-  ]);
+  const [config, modelos, fila, agora, convites, avisos, porDia, gastos, catalogo, numeros, enviados] =
+    await Promise.all([
+      configDoSite(c),
+      aba === "textos" ? modelosDeEmail(c) : Promise.resolve([]),
+      ultimosEmails(c, 40),
+      agoraDaRequisicao(),
+      aba === "convites" ? convitesPorEmail(c) : nada,
+      aba === "convites" ? avisosDeConvite(c) : nada,
+      aba === "visao" ? emailsPorDia(c, 7) : nada,
+      aba === "visao" ? creditosDoEmail(c) : nada,
+      aba === "todos" || aba === "convites" || aba === "enviados" ? catalogoDeEmails(c) : nada,
+      aba === "todos" ? parametrosDeEmail(c) : nada,
+      aba === "enviados" ? emailsEnviados(c, filtros) : nada,
+    ]);
   // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
   const previa = aba === "semana" ? await mandarCombinamDaSemana({ simular: true }) : null;
   const smtp = situacaoSmtp();
@@ -127,8 +160,35 @@ async function Conteudo({ aba }: { aba: Aba }) {
   return (
     <div className="flex flex-col gap-6">
       <SubAbas ativa={aba} falhas={fila.filter((e) => e.status === "falhou").length} />
-      {aba === "configuracoes" && (
+      {aba === "visao" && (
         <>
+          <Secao
+            titulo="Hoje"
+            descricao="Os e-mails saem logo depois de cada ação e nas rodadas de 5 minutos. Se o Zoho recusar, o site tenta de novo até três vezes."
+            acoes={<BotoesFila temFalhas={temFalhas} />}
+          >
+            <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <Situacao ok={config.emails_ativos}>
+                {config.emails_ativos
+                  ? "E-mails ligados: saem os que estão ligados em Todos os e-mails."
+                  : "E-mails desligados: nenhum sai (os avisos do sino continuam)."}
+              </Situacao>
+              <LigarEmailsDoSite ligado={config.emails_ativos} />
+            </div>
+            {porDia && porDia.length > 0 && <EnviosPorDia dias={porDia} creditos={gastos} agora={agora} />}
+            {temFalhas && (
+              <p className="text-body-sm">
+                <Link
+                  href="/admin/emails?aba=enviados&situacao=falhou"
+                  className="text-label underline underline-offset-2"
+                >
+                  Ver os que falharam
+                </Link>
+                , com o motivo e o “Mandar de novo”.
+              </p>
+            )}
+          </Secao>
+
           <Secao
             titulo="Envio pelo Zoho CPaaS"
             descricao={
@@ -194,7 +254,11 @@ async function Conteudo({ aba }: { aba: Aba }) {
             </div>
             <FormEmailTeste sugestao={config.avisos_para[0] ?? ""} />
           </Secao>
+        </>
+      )}
 
+      {aba === "configuracoes" && (
+        <>
           <Secao id="configuracoes" titulo="O que é enviado">
             <FormConfigEmails config={config} />
           </Secao>
@@ -254,59 +318,145 @@ async function Conteudo({ aba }: { aba: Aba }) {
 
       {aba === "enviados" && (
         <Secao
-          titulo="Últimos e-mails"
-          descricao="Os e-mails saem logo depois de cada ação. Se o Zoho recusar, o site tenta de novo até três vezes."
+          titulo="Enviados"
+          descricao="Todos os e-mails da fila, o mais novo primeiro (até 100). O que falhou pode ser mandado de novo; o que está desligado em Todos os e-mails sai como cancelado."
           acoes={<BotoesFila temFalhas={temFalhas} />}
         >
-          {porDia && porDia.length > 0 && <EnviosPorDia dias={porDia} creditos={gastos} agora={agora} />}
-          {fila.length === 0 ? (
+          <FiltrosDosEnviados filtros={filtros} catalogo={catalogo} />
+          {enviados === null ? (
+            <Situacao ok={false}>
+              Rode antes a migração <code>20270203120000_emails_enviados.sql</code> no Supabase para filtrar e mandar de
+              novo.
+            </Situacao>
+          ) : enviados.length === 0 ? (
             <p className="flex items-center gap-2 text-body-sm text-ink-muted">
               <MailWarning aria-hidden className="size-4" />
-              Nenhum e-mail ainda.
+              {filtros.modelo || filtros.situacao || filtros.busca
+                ? "Nenhum e-mail com esses filtros."
+                : "Nenhum e-mail ainda."}
             </p>
           ) : (
-            <div className="-mx-5 overflow-x-auto sm:mx-0">
-              <table className="w-full min-w-[40rem] text-left text-body-sm">
-                <thead className="text-ink-muted">
-                  <tr className="border-b border-line">
-                    <th scope="col" className="px-5 py-2 font-semibold sm:px-2">
-                      Aviso
-                    </th>
-                    <th scope="col" className="px-2 py-2 font-semibold">
-                      Para
-                    </th>
-                    <th scope="col" className="px-2 py-2 font-semibold">
-                      Situação
-                    </th>
-                    <th scope="col" className="px-2 py-2 font-semibold">
-                      Quando
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fila.map((e) => (
-                    <tr key={e.id} className="border-b border-line align-top last:border-0">
-                      <td className="px-5 py-2.5 sm:px-2">{NOMES_MODELOS_EMAIL[e.modelo] ?? e.modelo}</td>
-                      <td className="px-2 py-2.5 break-all">{e.para}</td>
-                      <td className="px-2 py-2.5">
-                        <Selo
-                          variante={e.status === "enviado" ? "match" : e.status === "falhou" ? "perigo" : "contorno"}
-                        >
-                          {STATUS_EMAIL[e.status] ?? e.status}
-                        </Selo>
-                        {e.erro && <p className="mt-1 max-w-xs text-ink-muted">{e.erro}</p>}
-                      </td>
-                      <td className="px-2 py-2.5 whitespace-nowrap text-ink-muted">
-                        {tempoRelativo(e.enviado_em ?? e.criado_em, agora)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TabelaEnviados linhas={enviados} catalogo={catalogo} agora={agora} />
           )}
         </Secao>
       )}
+    </div>
+  );
+}
+
+/** Os filtros de Enviados: o e-mail, a situação e o endereço ou o nome da conta (no endereço da página). */
+function FiltrosDosEnviados({ filtros, catalogo }: { filtros: FiltrosEnviados; catalogo: LinhaDoCatalogo[] | null }) {
+  const tipos = [...(catalogo ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const filtrando = Boolean(filtros.modelo || filtros.situacao || filtros.busca);
+  return (
+    <form action="/admin/emails" className="flex flex-wrap items-end gap-3" aria-label="Filtrar os e-mails">
+      <input type="hidden" name="aba" value="enviados" />
+      <label className="flex flex-col gap-1">
+        <span className="text-label">E-mail</span>
+        <select name="tipo" defaultValue={filtros.modelo ?? ""} className={`${classesEntrada} max-w-72`}>
+          <option value="">Todos</option>
+          {tipos.map((l) => (
+            <option key={l.chave} value={l.chave}>
+              {l.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-label">Situação</span>
+        <select name="situacao" defaultValue={filtros.situacao ?? ""} className={`${classesEntrada} max-w-44`}>
+          {SITUACOES_ENVIADOS.map((s) => (
+            <option key={s.valor} value={s.valor}>
+              {s.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-label">Para</span>
+        <input
+          type="search"
+          name="q"
+          defaultValue={filtros.busca ?? ""}
+          placeholder="E-mail ou nome da conta"
+          className={`${classesEntrada} max-w-64`}
+        />
+      </label>
+      <Botao type="submit" variante="secundario">
+        Filtrar
+      </Botao>
+      {filtrando && (
+        <Link href="/admin/emails?aba=enviados" className="mb-3 text-body-sm underline underline-offset-2">
+          Limpar os filtros
+        </Link>
+      )}
+    </form>
+  );
+}
+
+type LinhaEnviada = NonNullable<Awaited<ReturnType<typeof emailsEnviados>>>[number];
+
+/** A lista de Enviados: o e-mail, para quem (com a conta), a situação com o motivo e o "Mandar de novo", e quando. */
+function TabelaEnviados({
+  linhas,
+  catalogo,
+  agora,
+}: {
+  linhas: LinhaEnviada[];
+  catalogo: LinhaDoCatalogo[] | null;
+  agora: number;
+}) {
+  const nomes = new Map((catalogo ?? []).map((l) => [l.chave, l.nome]));
+  return (
+    <div className="-mx-5 overflow-x-auto sm:mx-0">
+      <table className="w-full min-w-[44rem] text-left text-body-sm">
+        <thead className="text-ink-muted">
+          <tr className="border-b border-line">
+            <th scope="col" className="px-5 py-2 font-semibold sm:px-2">
+              E-mail
+            </th>
+            <th scope="col" className="px-2 py-2 font-semibold">
+              Para
+            </th>
+            <th scope="col" className="px-2 py-2 font-semibold">
+              Situação
+            </th>
+            <th scope="col" className="px-2 py-2 font-semibold">
+              Quando
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhas.map((e) => (
+            <tr key={e.id} className="border-b border-line align-top last:border-0">
+              <td className="px-5 py-2.5 sm:px-2">
+                {nomes.get(e.modelo) ?? NOMES_MODELOS_EMAIL[e.modelo] ?? e.modelo}
+              </td>
+              <td className="px-2 py-2.5">
+                <span className="block break-all">{e.para}</span>
+                {e.usuario_id && e.nome && (
+                  <Link
+                    href={`/admin/usuarios/${e.usuario_id}`}
+                    className="text-caption text-ink-muted underline underline-offset-2"
+                  >
+                    {e.nome}
+                  </Link>
+                )}
+              </td>
+              <td className="px-2 py-2.5">
+                <Selo variante={e.status === "enviado" ? "match" : e.status === "falhou" ? "perigo" : "contorno"}>
+                  {STATUS_EMAIL[e.status] ?? e.status}
+                </Selo>
+                {e.erro && <p className="mt-1 max-w-xs text-ink-muted">{e.erro}</p>}
+                {e.status === "falhou" && <MandarDeNovo id={e.id} />}
+              </td>
+              <td className="px-2 py-2.5 whitespace-nowrap text-ink-muted">
+                {tempoRelativo(e.enviado_em ?? e.criado_em, agora)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
