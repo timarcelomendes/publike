@@ -71,7 +71,8 @@ export function grupoParaConta(valor: GrupoDeAviso, empresa: boolean) {
     return {
       ...grupo,
       nome: "Talentos que combinam com as suas vagas, toda semana",
-      ajuda: "Às segundas, currículos da aba Talentos que combinam com as suas vagas no ar.",
+      ajuda:
+        "Às segundas, os números das suas vagas no ar e os currículos da aba Talentos que combinam com elas (sem vaga no ar, com as vagas de antes).",
     };
   }
   return grupo;

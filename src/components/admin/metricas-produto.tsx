@@ -485,6 +485,18 @@ export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: Te
             ["Vagas no ar", formatarNumero(l.vagas_no_ar)],
             ["Pessoas ativas por vaga no ar", pessoasPorVaga],
             ["Mensagens em 7 dias", formatarNumero(m.engajamento.mensagens_7d)],
+            ...(m.crescimento
+              ? [
+                  ["Vagas com 3+ candidatos em 48 h", pct(m.crescimento.com_3_48h, m.crescimento.vagas_48h)],
+                  ["Publicaram de novo (60 dias)", pct(m.crescimento.publicaram_de_novo, m.crescimento.contas_base)],
+                  [
+                    "Voltaram depois do Volte a contratar",
+                    m.crescimento.reativar_avisos
+                      ? `${formatarNumero(m.crescimento.reativar_voltaram)} de ${formatarNumero(m.crescimento.reativar_avisos)}`
+                      : "—",
+                  ],
+                ]
+              : []),
           ].map(([rotulo, valor]) => (
             <div key={rotulo} className="flex flex-col">
               <dt className="text-ink-muted">{rotulo}</dt>
@@ -496,6 +508,15 @@ export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: Te
           As vagas publicadas e as curtidas feitas de 8 a 37 dias atrás (os 7 dias delas já passaram). Preenchidas: quem
           encerrou a vaga dizendo &ldquo;Contratei alguém pelo Publike&rdquo;, de todas que disseram o motivo.
         </p>
+        {m.crescimento && (
+          <p className="text-body-sm text-ink-muted">
+            3+ em 48 h: as vagas publicadas de 3 a 32 dias atrás ({formatarNumero(m.crescimento.com_1_48h)} de{" "}
+            {formatarNumero(m.crescimento.vagas_48h)} tiveram pelo menos 1). Publicaram de novo: das empresas que
+            publicaram de 60 a 150 dias atrás, as que publicaram outra vaga em até 60 dias. Volte a contratar: os avisos
+            dos últimos 90 dias e depois de quantos a empresa publicou em até 14 dias (o aviso recente ainda pode
+            virar).
+          </p>
+        )}
       </div>
 
       {tempo && <TempoDasPaginas t={tempo} hoje={m.hoje} />}

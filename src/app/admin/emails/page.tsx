@@ -322,6 +322,34 @@ function DaSemana({ previa }: { previa: Awaited<ReturnType<typeof mandarCombinam
       </Secao>
       {!semMigracao && (
         <Secao
+          titulo="Volte a contratar"
+          descricao={
+            <>
+              <Selo variante="novo">Novo</Selo> Na mesma segunda: a empresa, o comércio ou a agência sem vaga no ar (a
+              última saiu há 14 dias ou mais, nos últimos 6 meses) recebe os currículos da aba Talentos que combinam com
+              as vagas de antes, com o botão “Publicar de novo” (a vaga abre preenchida). Só sai com 3 talentos ou mais,
+              no máximo a cada 4 semanas, e para depois de 3 avisos sem publicar. Quem desligou os talentos da semana em
+              Avisos não recebe.
+            </>
+          }
+        >
+          {previa.reativarLigado === undefined ? (
+            <Situacao ok={false}>
+              Rode antes a migração <code>20270130120000_crescimento_empresas.sql</code> no Supabase.
+            </Situacao>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <Situacao ok={previa.reativarLigado}>
+                {previa.reativarLigado ? "Ligado." : "Desligado: nada sai até você ligar."} O texto do e-mail fica na
+                aba Textos: “Volte a contratar”.
+              </Situacao>
+              <LigarCombinam ligado={previa.reativarLigado} reativar />
+            </div>
+          )}
+        </Secao>
+      )}
+      {!semMigracao && (
+        <Secao
           titulo={`Prévia da semana de ${segunda}`}
           descricao="A mesma conta do envio, sem mandar nada, com quem ainda não recebeu nesta semana. Os exemplos não dizem para quem iriam."
         >
@@ -330,10 +358,32 @@ function DaSemana({ previa }: { previa: Awaited<ReturnType<typeof mandarCombinam
               <strong>{previa.vagas}</strong> {previa.vagas === 1 ? "pessoa receberia" : "pessoas receberiam"} vagas e{" "}
               <strong>{previa.talentos}</strong> {previa.talentos === 1 ? "conta receberia" : "contas receberiam"}{" "}
               talentos, de {previa.vistos} {previa.vistos === 1 ? "conta vista" : "contas vistas"}.
+              {previa.reativarLigado !== undefined && (
+                <>
+                  {" "}
+                  No Volte a contratar, <strong>{previa.reativar}</strong>{" "}
+                  {previa.reativar === 1 ? "conta sem vaga no ar receberia" : "contas sem vaga no ar receberiam"}.
+                </>
+              )}
+              {previa.resumos > 0 && (
+                <>
+                  {" "}
+                  Sem talento novo, <strong>{previa.resumos}</strong>{" "}
+                  {previa.resumos === 1 ? "conta receberia" : "contas receberiam"} só o resumo das vagas.
+                </>
+              )}
             </p>
             {(previa.exemplos ?? []).map((x, i) => (
               <div key={i} className="flex flex-col gap-1 rounded-md border border-line bg-surface-100 p-3">
-                <p className="text-label">{x.tipo === "vagas_semana" ? "Vagas" : "Talentos"}</p>
+                <p className="text-label">
+                  {x.tipo === "vagas_semana"
+                    ? "Vagas"
+                    : x.tipo === "talentos_reativar"
+                      ? "Volte a contratar"
+                      : x.tipo === "resumo_vagas"
+                        ? "Só o resumo das vagas"
+                        : "Talentos"}
+                </p>
                 <p className="text-body-sm">{x.texto}</p>
                 <p className="text-body-sm whitespace-pre-line text-ink-muted">{x.lista}</p>
               </div>

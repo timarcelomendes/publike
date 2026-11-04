@@ -103,6 +103,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   convite_vitrine: "Convite: montar a vitrine",
   vagas_semana: "Vagas que combinam (toda semana)",
   talentos_semana: "Talentos que combinam (toda semana)",
+  talentos_reativar: "Volte a contratar (sem vaga no ar)",
 };
 
 export const STATUS_EMAIL: Record<string, string> = {

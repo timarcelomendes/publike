@@ -102,6 +102,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // as vagas e os talentos que combinam, toda semana
   vagas_semana: Sparkles,
   talentos_semana: UserSearch,
+  talentos_reativar: UserSearch,
   // o comunicado que a equipe mandou para um público (Admin › Comunicados)
   comunicado: Megaphone,
   // as notícias publicadas no dia, num aviso só

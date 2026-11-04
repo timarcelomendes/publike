@@ -803,6 +803,8 @@ export type Database = {
           email_boas_vindas: boolean;
           /** 20261119120000: vagas e talentos que combinam, toda semana */
           combinam_semana?: boolean;
+          /** 20270130120000: "Volte a contratar", para as empresas sem vaga no ar */
+          reativar_empresas?: boolean;
           avisos_para: string[];
           aviso_denuncia: boolean;
           aviso_cadastro: boolean;
@@ -1694,6 +1696,26 @@ export type Database = {
           p_dados: Json;
         };
         Returns: boolean;
+      };
+      /** 20270130120000: "Volte a contratar" (as empresas sem vaga no ar) */
+      admin_ligar_reativar: { Args: { p_ligado: boolean }; Returns: undefined };
+      servidor_reativar_situacao: { Args: { p_chave: string }; Returns: boolean };
+      admin_metricas_crescimento: { Args: Record<string, never>; Returns: Json };
+      servidor_resumo_das_vagas: {
+        Args: { p_chave: string; p_contas: string[] };
+        Returns: {
+          conta_id: string;
+          anuncio_id: string;
+          titulo: string;
+          visitas: number;
+          curtidas: number;
+          esperando: number;
+          movimento: boolean;
+        }[];
+      };
+      servidor_reativar_empresas: {
+        Args: { p_chave: string; p_semana: string; p_limite?: number };
+        Returns: { perfil_id: string; vagas: Json | null; ja: string[] }[];
       };
       admin_mandar_mensagem_equipe: {
         Args: { p_conta: string; p_assunto: string; p_texto: string; p_email: boolean };

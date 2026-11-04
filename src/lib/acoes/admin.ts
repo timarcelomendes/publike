@@ -499,6 +499,25 @@ export async function ligarCombinam(ligado: boolean): Promise<Resultado> {
   };
 }
 
+/** Liga ou desliga o "Volte a contratar", para as empresas sem vaga no ar (migração 20270130120000). */
+export async function ligarReativar(ligado: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { error } = await c.rpc("admin_ligar_reativar", { p_ligado: ligado });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20270130120000_crescimento_empresas.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: ligado
+      ? "Ligado: sai toda segunda, a partir das 9h, para quem está sem vaga no ar."
+      : "Desligado: nada mais sai.",
+  };
+}
+
 const SEM_MIGRACAO_LOGO = "Confira se a migração 20261009290000_logo_emails.sql já rodou no Supabase.";
 
 /**

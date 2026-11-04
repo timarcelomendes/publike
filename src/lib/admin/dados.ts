@@ -404,16 +404,36 @@ export type MetricasProduto = {
     vagas_no_ar: number;
   };
   engajamento: { acoes_7d: number; mensagens_7d: number };
+  /** 20270130120000: os números do plano de crescimento (sem a migração, fica de fora) */
+  crescimento?: {
+    vagas_48h: number;
+    com_1_48h: number;
+    com_3_48h: number;
+    contas_base: number;
+    publicaram_de_novo: number;
+    reativar_avisos: number;
+    reativar_voltaram: number;
+  };
 };
 
 /** null: falta a migração 20261207120000 (ou deu erro: o Painel segue sem as métricas). */
 export async function metricasDeProduto(c: ClienteBanco): Promise<MetricasProduto | null> {
-  const { data, error } = await c.rpc("admin_metricas_produto");
+  const [{ data, error }, crescimento] = await Promise.all([
+    c.rpc("admin_metricas_produto"),
+    c.rpc("admin_metricas_crescimento"),
+  ]);
   if (error) {
     if (error.code !== "PGRST202") console.error(`Publike: falha nas métricas de produto: ${error.message}`);
     return null;
   }
-  return data as unknown as MetricasProduto;
+  if (crescimento.error && crescimento.error.code !== "PGRST202")
+    console.error(`Publike: falha nos números do crescimento: ${crescimento.error.message}`);
+  return {
+    ...(data as unknown as MetricasProduto),
+    crescimento: crescimento.error
+      ? undefined
+      : (crescimento.data as unknown as NonNullable<MetricasProduto["crescimento"]>),
+  };
 }
 
 /** As somas de um período do tempo nas páginas. */

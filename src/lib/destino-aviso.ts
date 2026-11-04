@@ -25,7 +25,10 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "teste_feito" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/testes`;
   // as vagas e os talentos da semana: a lista pelo % de match e a aba Talentos
   if (n.tipo === "vagas_semana") return "/?tipo=vaga&ordem=combina";
-  if (n.tipo === "talentos_semana") return "/talentos";
+  // o resumo da segunda sem talento novo leva a vaga: abre o quadro dela
+  if (n.tipo === "talentos_semana") return n.anuncio_id ? `/painel/anuncio/${n.anuncio_id}/quadro` : "/talentos";
+  // "Volte a contratar": publicar de novo a vaga de antes (já preenchido)
+  if (n.tipo === "talentos_reativar") return n.anuncio_id ? `/publicar?copiar=${n.anuncio_id}` : "/publicar";
   if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
   if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
   if (n.tipo === "visitas_novidade") return "/painel/visitas#opcoes";

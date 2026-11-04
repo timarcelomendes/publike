@@ -259,6 +259,11 @@ export const EXEMPLOS_EMAIL: Record<string, string> = {
   caminho: "/painel",
   // as vagas e os talentos da semana
   quantas: "3 vagas combinam",
+  // "Volte a contratar" e o resumo das vagas (20270130120000)
+  vaga: "Atendente de loja",
+  resumo:
+    "• Atendente de loja: 23 visitas, 4 curtidas, 2 esperando resposta\n• Auxiliar de cozinha: 8 visitas, ainda sem curtida",
+  destaque: "2 pessoas esperam sua resposta",
   lista:
     "• Auxiliar de cozinha, Padaria Pão Quente, Setor Sul: 88% de match\n• Atendente de balcão, Padaria Pão Quente, Setor Sul: 81% de match\n• Repositor, Supermercado Bom Preço, Campinas: 74% de match",
 };
