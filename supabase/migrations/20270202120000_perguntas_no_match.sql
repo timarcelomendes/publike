@@ -1152,6 +1152,9 @@ $$;
 revoke execute on function public.admin_matches_sem_contato() from public, anon;
 grant execute on function public.admin_matches_sem_contato() to authenticated, service_role;
 
+-- a primeira versão devolvia integer: sai antes, para a nova poder devolver jsonb
+drop function if exists public.admin_avisar_matches_sem_contato();
+
 -- manda: as perguntas no chat de quem ainda não recebeu ("Ainda tem interesse em …?"; o robô monta e manda) e um
 -- aviso por empresa (no máximo um a cada 7 dias). Devolve {perguntas, avisadas}.
 create or replace function public.admin_avisar_matches_sem_contato()
