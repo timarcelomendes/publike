@@ -678,3 +678,15 @@ export function vagaNoTurno(v: CamposDaVaga, turno: Turno) {
   if (periodos.length) return (periodos as string[]).includes(turno);
   return TURNO_NO_TEXTO[turno].test(simples(`${v.titulo} ${v.horario ?? ""} ${v.descricao}`));
 }
+
+/** A CNH que a pessoa tem cobre a que a vaga pede (D cobre C e B; AB é A e B)? Sem CNH, não. */
+export function cnhCobre(tem: string | null | undefined, pede: string) {
+  if (!tem) return false;
+  const t = categorias(tem);
+  return [...categorias(pede)].every((x) => t.has(x));
+}
+
+/** Os períodos em que a vaga pede que a pessoa possa trabalhar (o horário montado e a jornada), como no match. */
+export function periodosPedidos(v: Pick<CamposDaVaga, "jornada" | "horario_detalhe">): string[] {
+  return periodosDaVaga(v.jornada, horarioDoBanco(v.horario_detalhe));
+}

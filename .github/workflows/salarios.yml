@@ -1,0 +1,134 @@
+# Salário do mercado (claude/plano-salario-e-curriculo.md, parte 1): toda segunda, confere se o Ministério do Trabalho
+# publicou um mês novo do Novo Caged. Se publicou, baixa os meses que faltam (só os arquivos de movimentação),
+# filtra Goiás, junta os 12 últimos meses, conta as faixas de salário por função e região
+# (scripts/salarios/caged.mjs) e manda para o site (POST /api/salarios). O site guarda só a tabela final.
+# Os meses já filtrados ficam no cache do GitHub (poucos MB), para não baixar tudo de novo.
+#
+# Usa o mesmo segredo das filas, em Settings › Secrets and variables › Actions:
+#   - segredo PUBLIKE_CRON_SECRET: o mesmo valor de CRON_SECRET na Vercel (Production);
+#   - variável PUBLIKE_URL (opcional): o endereço do site, se não for https://publike.org.
+# Para rodar já (ou refazer tudo, sem o cache): Actions › Salários do mercado › Run workflow.
+name: Salários do mercado
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      refazer:
+        description: "Baixar e contar os 12 meses de novo, mesmo sem mês novo"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: salarios-do-mercado
+  cancel-in-progress: false
+
+jobs:
+  salarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SEGREDO: ${{ secrets.PUBLIKE_CRON_SECRET }}
+      SITE: ${{ vars.PUBLIKE_URL || 'https://publike.org' }}
+      FTP: ftp://ftp.mtps.gov.br/pdet/microdados/NOVO%20CAGED
+      REFAZER: ${{ inputs.refazer || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: O que o site já tem
+        id: site
+        run: |
+          if [ -z "$SEGREDO" ]; then
+            echo "::error title=Falta o segredo::Crie o segredo PUBLIKE_CRON_SECRET (o mesmo CRON_SECRET da Vercel)."
+            exit 1
+          fi
+          curl -sS --fail-with-body --max-time 60 -H "Authorization: Bearer $SEGREDO" "$SITE/api/salarios" -o site.json
+          node -e '
+            const s = require("./site.json");
+            require("fs").writeFileSync("pracas.json", JSON.stringify(s.pracas));
+            const ate = (s.situacao && s.situacao.ate) || "";
+            console.log("O site tem até:", ate || "nada ainda");
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, "ate=" + ate.slice(0, 7).replace("-", "") + "\n");
+          '
+
+      - name: Os meses publicados no Caged
+        id: meses
+        run: |
+          ano=$(date -u +%Y)
+          : > publicados.txt
+          for a in $((ano - 1)) $ano; do
+            curl -sS --max-time 120 --list-only "$FTP/$a/" | tr -d '\r' | grep -E '^[0-9]{6}$' >> publicados.txt || true
+          done
+          sort -u publicados.txt -o publicados.txt
+          ultimo=$(tail -n1 publicados.txt)
+          if [ -z "$ultimo" ]; then
+            echo "::error title=FTP do Caged::Não deu para listar as pastas do Caged no FTP do Ministério ($FTP)."
+            exit 1
+          fi
+          tail -n12 publicados.txt > meses.txt
+          echo "Último mês publicado: $ultimo; os 12 meses: $(tr '\n' ' ' < meses.txt)"
+          echo "ultimo=$ultimo" >> "$GITHUB_OUTPUT"
+          if [ "$ultimo" = "${{ steps.site.outputs.ate }}" ] && [ "$REFAZER" != "true" ]; then
+            echo "novo=nao" >> "$GITHUB_OUTPUT"
+            echo "Nada de novo: o site já tem até $ultimo."
+          else
+            echo "novo=sim" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Os meses já filtrados (cache)
+        if: steps.meses.outputs.novo == 'sim' && env.REFAZER != 'true'
+        uses: actions/cache@v4
+        with:
+          path: caged-go
+          key: caged-go-v1-${{ steps.meses.outputs.ultimo }}
+          restore-keys: caged-go-v1-
+
+      - name: Baixar e filtrar os meses que faltam
+        if: steps.meses.outputs.novo == 'sim'
+        run: |
+          command -v 7z > /dev/null || sudo apt-get install -y p7zip-full
+          mkdir -p caged-go
+          while read -r mes; do
+            [ -s "caged-go/go-$mes.tsv" ] && { echo "$mes: já filtrado"; continue; }
+            rm -rf baixados && mkdir baixados
+            for tipo in CAGEDMOV CAGEDFOR; do
+              arquivo="$tipo$mes.7z"
+              if curl -sS --fail --max-time 1800 --retry 3 -o "baixados/$arquivo" "$FTP/${mes:0:4}/$mes/$arquivo"; then
+                7z e -y -o"baixados" "baixados/$arquivo" > /dev/null
+                rm -f "baixados/$arquivo"
+              elif [ "$tipo" = "CAGEDMOV" ]; then
+                echo "::error title=Caged $mes::Não deu para baixar $arquivo."
+                exit 1
+              fi
+            done
+            node scripts/salarios/caged.mjs filtrar "caged-go/go-$mes.tsv" baixados/*.txt
+            rm -rf baixados
+          done < meses.txt
+          # só os 12 meses da conta ficam no cache
+          for f in caged-go/go-*.tsv; do
+            mes=$(basename "$f" .tsv | sed 's/go-//')
+            grep -qx "$mes" meses.txt || rm -f "$f"
+          done
+
+      - name: Contar as faixas e mandar para o site
+        if: steps.meses.outputs.novo == 'sim'
+        run: |
+          curl -sS --fail --max-time 120 -o ibge.json "https://servicodados.ibge.gov.br/api/v1/localidades/estados/52/municipios" \
+            || curl -sS --fail --max-time 120 -o ibge.json "https://raw.githubusercontent.com/kelvins/municipios-brasileiros/main/csv/municipios.csv"
+          node scripts/salarios/caged.mjs calcular salarios.json --pracas pracas.json --municipios ibge.json caged-go/go-*.tsv
+          resposta=$(curl -sS --max-time 120 -w '\n%{http_code}' -X POST -H "Authorization: Bearer $SEGREDO" \
+            -H "Content-Type: application/json" --data-binary @salarios.json "$SITE/api/salarios" || true)
+          codigo=$(printf '%s' "$resposta" | tail -n1)
+          echo "$resposta" | sed '$d'
+          if [ "$codigo" != "200" ]; then
+            echo "::error title=Salários::O site respondeu $codigo ao receber as faixas."
+            exit 1
+          fi

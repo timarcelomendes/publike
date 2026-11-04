@@ -31,6 +31,7 @@ type Vaga = {
   criado_em: string;
   descricao: string | null;
   pagamento_valor: number | null;
+  pagamento_unidade?: string | null;
   beneficios: string | null;
   beneficios_lista?: string[] | null;
   beneficios_extras?: string[] | null;
@@ -45,11 +46,17 @@ type Vaga = {
 
 const DIA = 24 * 3600e3;
 
+/** A faixa do mercado da função da vaga (Novo Caged, claude/plano-salario-e-curriculo.md, parte 3). */
+export type MercadoDaVaga = { p25: number; p75: number; regiao: string };
+
+const reais = (v: number) => `R$ ${(Math.round(v / 10) * 10).toLocaleString("pt-BR")}`;
+
 export function saudeDaVaga(
   v: Vaga,
   numeros: { visitas: number; candidatos: number; esperandoMuito: number },
   triagem: Triagem,
   agora: number,
+  mercado: MercadoDaVaga | null = null,
 ): Saude {
   const editar = `/painel/anuncio/${v.id}/editar`;
   const comResposta = juntarTriagem(perguntasDoBanco(v.perguntas), triagem).filter((q) => q.esperada);
@@ -80,14 +87,7 @@ export function saudeDaVaga(
       href: `/painel/caixa?aba=novos&vaga=${v.id}`,
       peso: 4,
     },
-    {
-      chave: "salario",
-      ok: v.pagamento_valor !== null,
-      titulo: v.pagamento_valor !== null ? "Diz o salário" : "Sem o salário",
-      dica: "Vaga com salário recebe mais curtidas: quem procura filtra por ele.",
-      href: editar,
-      peso: 3,
-    },
+    salarioDaVaga(v, mercado, editar),
     {
       chave: "horario",
       ok: Boolean(v.horario_detalhe || v.jornada || v.horario),
@@ -146,4 +146,41 @@ export function saudeDaVaga(
   const nota = Math.round((100 * pontos) / total);
   const faltando = itens.filter((i) => !i.ok).sort((a, b) => b.peso - a.peso);
   return { nota, nivel: nota >= 80 ? "boa" : nota >= 55 ? "atencao" : "fraca", itens, faltando };
+}
+
+/**
+ * O item do salário: sem salário, falta; com a faixa do mercado da função e o salário por mês abaixo dela (menos
+ * que 3 em cada 4 contratações pagam), também falta, com a faixa na dica.
+ */
+function salarioDaVaga(v: Vaga, mercado: MercadoDaVaga | null, editar: string): ItemSaude {
+  const faixa = mercado ? `a maioria paga entre ${reais(mercado.p25)} e ${reais(mercado.p75)} por mês` : null;
+  if (v.pagamento_valor === null)
+    return {
+      chave: "salario",
+      ok: false,
+      titulo: "Sem o salário",
+      dica: faixa
+        ? `Vaga com salário recebe mais curtidas. Para esta função em ${mercado!.regiao}, ${faixa}.`
+        : "Vaga com salário recebe mais curtidas: quem procura filtra por ele.",
+      href: editar,
+      peso: 3,
+    };
+  const abaixo = mercado && (v.pagamento_unidade ?? "mes") === "mes" && v.pagamento_valor < mercado.p25;
+  if (abaixo)
+    return {
+      chave: "salario",
+      ok: false,
+      titulo: "Salário abaixo do mercado",
+      dica: `Para esta função em ${mercado!.regiao}, ${faixa}. Vaga abaixo disso costuma receber menos candidatos.`,
+      href: editar,
+      peso: 3,
+    };
+  return {
+    chave: "salario",
+    ok: true,
+    titulo: "Diz o salário",
+    dica: "Vaga com salário recebe mais curtidas: quem procura filtra por ele.",
+    href: editar,
+    peso: 3,
+  };
 }

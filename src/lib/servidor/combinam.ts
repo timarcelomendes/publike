@@ -18,8 +18,8 @@ import { acessoFila } from "./filas";
 // O resumo da vaga (a mesma migração): os talentos da semana levam os números de cada vaga no ar; sem talento
 // novo, mas com movimento na semana, sai só o resumo (o aviso leva ao quadro da vaga).
 
-/** A nota mínima para entrar na lista. */
-const MINIMO = 70;
+/** A nota mínima para entrar na lista (e para "combina" em Seu currículo no mercado). */
+export const MINIMO = 70;
 /** Quantas vagas ou talentos no máximo por aviso. */
 const ATE = 5;
 /** O "Volte a contratar" só sai com pelo menos tantos talentos que combinam. */
@@ -100,12 +100,12 @@ const CONTA_DO_TIPO = { vagas_semana: "vagas", talentos_semana: "talentos", tale
 type Curriculo = NonNullable<Candidato["curriculo"]>;
 
 /** A experiência é de outra área: o número baixo não diz nada (o mesmo "Outra área" do site). */
-function outraArea(a: Aderencia) {
+export function outraArea(a: Aderencia) {
   return a.criterios.some((c) => c.funcao && c.ok === false);
 }
 
 /** As cidades da praça de quem vê (Goiânia e a região); fora das praças, só a própria cidade. */
-function cidadesPerto(cidade: string | null): readonly string[] {
+export function cidadesPerto(cidade: string | null): readonly string[] {
   if (!cidade) return [];
   return pracaDaCidade(cidade)?.cidades ?? [cidade];
 }

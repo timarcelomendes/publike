@@ -3,6 +3,7 @@ import {
   Briefcase,
   Eye,
   FileText,
+  Gauge,
   Handshake,
   Heart,
   ImagePlus,
@@ -28,6 +29,8 @@ import {
 } from "@/lib/dados";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { resumoDasVisitas } from "@/lib/servidor/visitas";
+import { notaDoCurriculo } from "@/lib/servidor/curriculo-mercado";
+import type { Curriculo as CurriculoSalvo } from "@/lib/tipos";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
 import { textoDoQueFaz } from "@/lib/modo-painel";
 import { modosMarcados } from "@/lib/servidor/modo";
@@ -132,10 +135,19 @@ async function PaginaDeVagas({ id, empresa, semLogo }: { id: string; empresa: bo
   );
 }
 
+/** A nota do currículo (Seu currículo no mercado), para o cartão: só com currículo salvo. */
+async function notaDaConta(curriculo: CurriculoSalvo | null | undefined) {
+  if (!curriculo) return null;
+  const [perfil, agora] = await Promise.all([obterMeuPerfil().catch(() => null), agoraDaRequisicao()]);
+  if (!perfil) return null;
+  return notaDoCurriculo({ id: perfil.id, cidade: perfil.cidade, bairro: perfil.bairro }, curriculo, agora);
+}
+
 async function Curriculo() {
   const curriculo = await obterMeuCurriculo().catch(() => undefined);
   if (curriculo === undefined) return null;
   const forca = forcaDoCurriculo(curriculo);
+  const nota = await notaDaConta(curriculo);
   return (
     <div className="flex flex-col gap-2 border-t border-line pt-3">
       {curriculo?.titulo && <p className="text-body-sm text-ink">{curriculo.titulo}</p>}
@@ -147,6 +159,17 @@ async function Curriculo() {
         <span className={forca.pontos >= 80 ? "bg-cerrado" : "bg-ipe"} style={{ width: `${forca.pontos}%` }} />
       </span>
       {forca.dica && <p className="text-body-sm text-ink-muted">{forca.dica}</p>}
+      {nota && (
+        <Link
+          href="/perfil/curriculo#mercado"
+          className="flex items-baseline justify-between gap-2 text-body-sm hover:underline"
+        >
+          <span className="text-ink-muted">Nota do currículo</span>
+          <span>
+            <strong className="tabular-nums">{nota.valor}</strong> <span className="text-ink-muted">{nota.nivel}</span>
+          </span>
+        </Link>
+      )}
       <Link
         href="/perfil/curriculo"
         className="self-start text-label underline underline-offset-2 hover:text-terra-text"
@@ -376,11 +399,16 @@ async function LinksDaLinha({ id, uso }: { id: string; uso: string }) {
     ]);
     barra = forcaDoCurriculo(curriculo).pontos;
     const candidaturas = curtidas.filter((c) => c.tipo === "vaga").length;
+    const nota = await notaDaConta(curriculo);
     links = [
       // sem currículo, a barra vazia não convida: no lugar dela, a ação
       barra === 0
         ? { nome: "Montar o currículo", href: "/perfil/curriculo", icone: FileText, numero: "5 min", chamada: true }
         : { nome: "Meu currículo", href: "/perfil/curriculo", icone: FileText, numero: `${barra}%` },
+      // a nota do currículo no mercado (só a pessoa vê): leva ao cartão em Meu currículo
+      ...(nota
+        ? [{ nome: "Nota do currículo", href: "/perfil/curriculo#mercado", icone: Gauge, numero: String(nota.valor) }]
+        : []),
       // o mesmo nome do painel e da barra de baixo
       {
         nome: "Candidaturas",

@@ -40,6 +40,7 @@ import type { EstadoForm, Regime, TipoAnuncio } from "@/lib/tipos";
 import { lerNumeroBR } from "@/lib/numero";
 import { faltaNoPasso, PASSOS_PUBLICAR, primeiroPassoComErro, TOTAL_PASSOS, passoDoCampo } from "@/lib/passos-publicar";
 import { formatarValor } from "@/lib/formato";
+import type { FuncaoParaForm } from "@/lib/funcao-cbo";
 import {
   ganhosDoBanco,
   lerHorario,
@@ -48,7 +49,9 @@ import {
   type HorarioDetalhe,
   type Pergunta,
 } from "@/lib/vaga-extra";
+import { CargoNaCarteira } from "./anuncio/cargo-na-carteira";
 import { EmpresaDaVaga } from "./anuncio/empresa-da-vaga";
+import { SalarioDoMercado } from "./anuncio/salario-do-mercado";
 import { BeneficiosExtras, EditorPerguntas, GanhosExtras, MontarHorario } from "./anuncio/extras-da-vaga";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
 import { LocalComCep } from "./mapa/local-com-cep";
@@ -106,6 +109,8 @@ export type ValoresAnuncio = {
   perguntas?: Pergunta[];
   beneficios_extras?: string[];
   horario_detalhe?: HorarioDetalhe | null;
+  /** vaga: o cargo na carteira (a ocupação da CBO): a faixa de salário do mercado vem por ele */
+  funcao?: FuncaoParaForm | null;
   cidade: string;
   bairro: string;
   /** comércio, empresa e agência: o endereço que aparece na vaga */
@@ -264,6 +269,8 @@ export function FormAnuncio({
   const [descricao, setDescricao] = useState(inicial.descricao);
   // o título e a categoria, para sugerir a área quando fica em "Outros" (categoria-sugerida.ts)
   const [tituloAtual, setTituloAtual] = useState(inicial.titulo);
+  // o cargo na carteira (CBO): sugerido pelo título ou escolhido; a faixa do mercado (passo 2) usa
+  const [funcao, setFuncao] = useState<FuncaoParaForm | null>(inicial.funcao ?? null);
   const [categoriaAtual, setCategoriaAtual] = useState(inicial.categoria);
   const [cidade, setCidade] = useState(inicial.cidade);
   // o prazo da vaga: uma das opções, outro número de dias ou sem prazo
@@ -468,6 +475,21 @@ export function FormAnuncio({
   }
 
   const valor = emTexto(inicial.pagamento_valor);
+  // o valor digitado, para comparar com a faixa do mercado (SalarioDoMercado)
+  const [valorDigitado, setValorDigitado] = useState(valor);
+  // "Usar R$ 1.780": tira o "a combinar", põe o valor no campo (por mês) e avisa o formulário que mudou
+  function usarValorDoMercado(v: number) {
+    setCombinar(false);
+    setUnidade("mes");
+    const texto = v.toLocaleString("pt-BR");
+    setValorDigitado(texto);
+    window.setTimeout(() => {
+      const campo = document.getElementById("pagamento_valor") as HTMLInputElement | null;
+      if (!campo) return;
+      campo.value = texto;
+      campo.dispatchEvent(new Event("input", { bubbles: true }));
+    }, 0);
+  }
 
   // O que já está escrito no formulário vai para a IA como rascunho.
   function lerRascunho(): RascunhoAnuncio {
@@ -699,6 +721,9 @@ export function FormAnuncio({
           className={classesEntrada}
         />
       </Campo>
+      {vaga && !equipe && (
+        <CargoNaCarteira titulo={tituloAtual} descricao={descricao} valor={funcao} aoMudar={setFuncao} />
+      )}
 
       {vaga && agencia && (
         <EmpresaDaVaga
@@ -826,6 +851,7 @@ export function FormAnuncio({
               <input
                 {...ligarCampo("pagamento_valor", erros.pagamento_valor)}
                 defaultValue={valor}
+                onChange={(e) => setValorDigitado(e.target.value)}
                 inputMode="decimal"
                 placeholder={vaga ? "1.900" : "300"}
                 className={`${classesEntrada} pl-10`}
@@ -869,6 +895,16 @@ export function FormAnuncio({
         <p className="-mt-2 text-body-sm text-ink-muted">
           Para mostrar uma faixa, preencha o “Até”: aparece “de R$ 1.800 a R$ 2.200”.
         </p>
+      )}
+
+      {vaga && !equipe && (
+        <SalarioDoMercado
+          funcao={funcao}
+          cidade={cidade}
+          valor={combinar ? null : lerNumeroBR(valorDigitado)}
+          unidade={unidade}
+          aoUsar={usarValorDoMercado}
+        />
       )}
 
       {vaga && (

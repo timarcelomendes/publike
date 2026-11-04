@@ -66,6 +66,7 @@ import {
 } from "@/lib/gravar-fala";
 import { HABILIDADES_SUGERIDAS, MAX_HABILIDADES } from "@/lib/talentos";
 import type { Curriculo, EstadoForm } from "@/lib/tipos";
+import { MelhorarCurriculoComIA } from "./melhorar-curriculo-ia";
 import { AvisoAoSair } from "./ui/aviso-ao-sair";
 import { Aviso, Selo } from "./ui/basicos";
 import { Botao } from "./ui/botao";
@@ -571,6 +572,7 @@ export function FormCurriculo({
   lido = null,
   pdfGuardado = null,
   semConta = false,
+  melhorarComIA = false,
 }: {
   inicial: Curriculo | null;
   /** mês atual ("2026-10"), vindo do servidor: limite das datas */
@@ -597,6 +599,8 @@ export function FormCurriculo({
    * guarda no aparelho e leva ao /entrar; depois de entrar, o formulário volta preenchido.
    */
   semConta?: boolean;
+  /** "Melhorar com a IA": sugestões de texto e perguntas (com a ajuda da IA ligada) */
+  melhorarComIA?: boolean;
 }) {
   const router = useRouter();
   const [estado, acao, enviando] = useActionState(salvarCurriculoProtegido, ESTADO_INICIAL);
@@ -958,6 +962,34 @@ export function FormCurriculo({
           pdfGuardado={guardado}
           // quem já tem currículo troca pelo mais novo; contar falando é para quem ainda não tem (não apaga o resto)
           ouvir={ouvirFala && inicial === null}
+        />
+      )}
+
+      {melhorarComIA && !demo && !semConta && (
+        <MelhorarCurriculoComIA
+          ler={() => ({
+            titulo,
+            habilidades,
+            escolaridade,
+            curso,
+            cnh,
+            disponibilidade,
+            cursos,
+            experiencias: experiencias.map((x) => ({
+              cargo: x.cargo,
+              onde: x.onde,
+              inicio: x.inicio,
+              fim: x.fim ?? "",
+              atual: x.atual,
+              descricao: x.descricao,
+            })),
+          })}
+          experiencias={experiencias}
+          aoUsarTitulo={(t) => setTitulo(t.slice(0, 60))}
+          aoUsarDescricao={(chave, t) => mudarExperiencia(chave, { descricao: t.slice(0, 300) })}
+          aoUsarHabilidades={(itens) =>
+            setHabilidades((l) => [...new Set([...l, ...itens])].slice(0, MAX_HABILIDADES))
+          }
         />
       )}
 
@@ -1336,6 +1368,7 @@ export function FormCurriculo({
       </Secao>
 
       <Secao
+        id="cursos"
         titulo="Cursos"
         descricao="Cursos livres e técnicos, NR, informática, idiomas, máquinas que sabe operar… Um de cada vez."
       >
@@ -1398,7 +1431,7 @@ export function FormCurriculo({
           </Seletor>
           {erros.cnh && <MensagemErro>{erros.cnh}</MensagemErro>}
         </div>
-        <fieldset className="flex flex-col gap-2">
+        <fieldset id="horarios" className="flex scroll-mt-24 flex-col gap-2">
           <legend className="mb-2 text-label">
             Quando você pode trabalhar <span className="font-normal text-ink-muted">(marque quantos quiser)</span>
           </legend>

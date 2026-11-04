@@ -15,6 +15,7 @@ import {
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
+import { funcoesDasVagas } from "@/lib/servidor/funcao";
 import { regrasComOTempo } from "@/lib/servidor/regras";
 import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
 
@@ -67,6 +68,8 @@ export async function GET(request: Request) {
   const noticias = await comTempo(() => avisarNoticiasDoDia());
   // os resultados dos testes de vagas fora do ar há 12 meses
   const testes = await comTempo(() => limparTestesAntigos());
+  // a função (CBO) das vagas que ainda não têm: as regras do título e, com a IA ligada, a IA (para a faixa de salário)
+  const funcoes = await comTempo(() => funcoesDasVagas(15));
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
   const emails = await enviarEmailsPendentes(20);
   const celular = await enviarPushPendentes(50);
@@ -80,6 +83,7 @@ export async function GET(request: Request) {
     parados.motivo,
     lembretes.motivo,
     combinam.motivo,
+    funcoes.motivo,
     noticias.motivo,
     testes.motivo,
     triagem.motivo,
@@ -104,6 +108,7 @@ export async function GET(request: Request) {
       celular,
       contatos_liberados: parados.liberadas,
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
+      funcoes: funcoes.achadas,
       combinam: {
         vagas: combinam.vagas,
         talentos: combinam.talentos,

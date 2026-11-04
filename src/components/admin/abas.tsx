@@ -13,6 +13,7 @@ const ABAS_ADMIN = [
   { href: "/admin/anuncios", nome: "Anúncios" },
   { href: "/admin/esperando", nome: "Esperando" },
   { href: "/admin/vagas-paradas", nome: "Vagas paradas" },
+  { href: "/admin/salarios", nome: "Salários" },
   { href: "/admin/denuncias", nome: "Denúncias" },
   { href: "/admin/sugestoes", nome: "Sugestões" },
   { href: "/admin/falhas", nome: "Falhas" },

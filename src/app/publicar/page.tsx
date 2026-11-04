@@ -28,6 +28,7 @@ import { temLugar } from "@/lib/clientes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { ONDE_FUNCIONA, PRACA_PADRAO } from "@/lib/pracas";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
+import { funcaoSalvaDaVaga } from "@/lib/servidor/funcao";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
@@ -126,15 +127,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
     !["em_analise", "removido"].includes(original.status)
       ? original
       : null;
-  const [triagem, clienteDaCopia] = await Promise.all([
+  const [triagem, clienteDaCopia, funcaoDaCopia] = await Promise.all([
     copia ? obterTriagem(copia.id) : {},
     copia && clientes ? clienteDaVaga(copia.id) : null,
+    // "Publicar parecida" e o "Volte a contratar": o cargo na carteira da vaga de antes também
+    copia ? funcaoSalvaDaVaga(copia.id) : null,
   ]);
   // a vaga é para este cliente: o nome, o jeito (confidencial ou não) e o lugar vêm dele
   const cliente = clientePedido ? (clientes?.find((c) => c.id === clientePedido) ?? null) : null;
   // comércio e empresa: a próxima vaga já vem com o endereço da última
   const inicialSemConvite = copia
-    ? valoresDoAnuncio(copia, { copiar: true, triagem })
+    ? { ...valoresDoAnuncio(copia, { copiar: true, triagem }), funcao: funcaoDaCopia }
     : ultimo
       ? {
           ...vazio(ultimo.cidade, ultimo.bairro),

@@ -73,6 +73,7 @@ export default function Privacidade() {
             "O PDF vai do jeito que você enviar. Se tiver telefone, e-mail ou endereço, quem anunciou a vaga vê esses dados.",
             "Se você usar “Tem a arte da vaga?” ao publicar, a imagem vai para a IA só para preencher os campos da vaga. Nada é publicado antes de você conferir, e a imagem não fica guardada no Publike.",
             "Se você usar “Já tem currículo pronto?”, o PDF ou as fotos vão para a IA só para preencher os campos, e nada é salvo antes de você conferir. Telefone, e-mail e endereço não entram nos campos. As fotos não ficam guardadas no Publike; o PDF fica anexado ao currículo, e você pode tirar.",
+            "A IA pode ler o seu currículo para sugerir melhorias, só quando você pede (“Melhorar com a IA”, em Meu currículo). Ela recebe o que está no formulário, sem seu nome, foto, bairro ou contato, e nada é salvo antes de você escolher o que usar. A faixa salarial vem de dados públicos do Ministério do Trabalho (Novo Caged). A nota do currículo e o que abre mais vagas são só seus: nenhuma empresa vê.",
             "Se você mandou seu currículo por fora (WhatsApp, e-mail ou em mãos) para quem publicou uma vaga, essa pessoa ou agência pode chamar você pelo Publike. A IA lê o PDF ou a foto só para montar os campos do currículo, sem telefone nem e-mail, e o arquivo não fica guardado. O que foi lido fica no convite até você aceitar e salvar o seu, dizer que não tem interesse ou o convite vencer (14 dias). Você só entra na vaga se aceitar.",
             "Você corrige ou apaga o currículo quando quiser, em Meu perfil > Meu currículo. Excluir a conta apaga junto.",
           ]}
@@ -124,7 +125,9 @@ export default function Privacidade() {
           pronto?”, a IA recebe o PDF ou as fotos do currículo que você enviou, só para preencher os campos do seu
           currículo. Se você contar falando, a gravação vai para a OpenAI só para virar texto, e a IA recebe esse texto
           só para preencher os campos; a gravação não fica guardada no Publike. No convite de quem publicou uma vaga, a
-          IA recebe o currículo que você mandou para ela, só para isso também. No
+          IA recebe o currículo que você mandou para ela, só para isso também. No “Melhorar com a IA”, ela recebe o que
+          está no formulário do seu currículo e o texto de vagas parecidas, só quando você pede; nunca seu nome, foto
+          ou contato. No
           assistente de ajuda, a IA recebe as mensagens da conversa e, se você entrou, seu primeiro nome e o bairro que
           você escolheu; nunca seu contato. A conversa fica só no seu navegador, não no Publike. O que você manda em
           Sugestões e erros fica guardado para a equipe ler, com o e-mail, se você informar.

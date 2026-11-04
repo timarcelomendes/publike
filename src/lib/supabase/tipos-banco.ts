@@ -1701,6 +1701,87 @@ export type Database = {
       admin_ligar_reativar: { Args: { p_ligado: boolean }; Returns: undefined };
       servidor_reativar_situacao: { Args: { p_chave: string }; Returns: boolean };
       admin_metricas_crescimento: { Args: Record<string, never>; Returns: Json };
+      /** 20270131120000: o salário do mercado (Novo Caged) */
+      servidor_salarios_salvar: {
+        Args: { p_chave: string; p_de: string; p_ate: string; p_linhas: Json };
+        Returns: number;
+      };
+      servidor_salarios_situacao: { Args: { p_chave: string }; Returns: Json };
+      admin_salarios_salvar: { Args: { p_de: string; p_ate: string; p_linhas: Json }; Returns: number };
+      admin_salarios_situacao: { Args: Record<string, never>; Returns: Json };
+      admin_salarios_de: {
+        Args: { p_cbos: string[] };
+        Returns: {
+          regiao: string;
+          cbo: string;
+          de: string;
+          ate: string;
+          n: number;
+          p25: number;
+          p50: number;
+          p75: number;
+        }[];
+      };
+      media_da_funcao_no_publike: {
+        Args: { p_cbo: string; p_cidades: string[]; p_sem_autor?: string | null };
+        Returns: { n: number; media: number | null }[];
+      };
+      servidor_vagas_do_mercado: {
+        Args: { p_chave: string; p_dias?: number };
+        Returns: {
+          id: string;
+          autor_id: string;
+          titulo: string;
+          descricao: string;
+          escolaridade_minima: string | null;
+          experiencia: string | null;
+          cnh: string | null;
+          cidade: string;
+          bairro: string | null;
+          jornada: string | null;
+          horario_detalhe: Json | null;
+          horario: string | null;
+          pagamento_valor: number | null;
+          pagamento_unidade: string | null;
+          cbo: string | null;
+          criado_em: string;
+          no_ar: boolean;
+        }[];
+      };
+      definir_funcao_da_vaga: { Args: { p_anuncio: string; p_cbo: string | null }; Returns: undefined };
+      funcoes_das_vagas: {
+        Args: { p_ids: string[] };
+        Returns: { anuncio_id: string; cbo: string; origem: string }[];
+      };
+      servidor_vagas_sem_funcao: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { id: string; titulo: string; descricao: string | null }[];
+      };
+      servidor_definir_funcao: {
+        Args: { p_chave: string; p_anuncio: string; p_cbo: string | null; p_origem: string };
+        Returns: undefined;
+      };
+      servidor_funcao_guardada: {
+        Args: { p_chave: string; p_titulo: string };
+        Returns: { cbo: string | null; origem: string }[];
+      };
+      servidor_guardar_funcao: {
+        Args: { p_chave: string; p_titulo: string; p_cbo: string | null; p_origem: string };
+        Returns: undefined;
+      };
+      salario_da_funcao: {
+        Args: { p_cbo: string; p_regiao?: string };
+        Returns: {
+          regiao: string;
+          cbo: string;
+          de: string;
+          ate: string;
+          n: number;
+          p25: number;
+          p50: number;
+          p75: number;
+        }[];
+      };
       servidor_resumo_das_vagas: {
         Args: { p_chave: string; p_contas: string[] };
         Returns: {

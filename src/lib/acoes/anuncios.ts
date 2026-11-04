@@ -92,6 +92,21 @@ async function cuidarDoCliente(supabase: Banco, clienteId: string, d: DadosAnunc
  * Publica um anúncio novo ou salva a edição de um existente. Qualquer falha (preenchimento, banco,
  * erro no meio) fica registrada e chega à equipe (src/lib/servidor/falhas.ts).
  */
+/**
+ * O "Cargo na carteira" (a ocupação da CBO da vaga, claude/plano-salario-e-curriculo.md, parte 2): só quando o
+ * formulário manda o campo; vazio tira a escolha (o robô das filas volta a sugerir pelo título). Sem a migração
+ * 20270131120000, nada acontece.
+ */
+async function guardarCargo(supabase: Banco, anuncioId: string, formData: FormData) {
+  if (!formData.has("cbo")) return;
+  const cbo = String(formData.get("cbo") ?? "").replace(/\D/g, "");
+  const { error } = await supabase.rpc("definir_funcao_da_vaga", {
+    p_anuncio: anuncioId,
+    p_cbo: cbo.length === 6 ? cbo : null,
+  });
+  if (error && error.code !== "PGRST202") console.error(`Publike: falha ao guardar o cargo da vaga: ${error.message}`);
+}
+
 export async function salvarAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   return vigiar("vaga", (vigia) => publicarOuSalvar(formData, vigia));
 }
@@ -139,6 +154,7 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     if (!data?.length) return { ok: false, erro: "Não encontramos esse anúncio entre os seus." };
     const erroTriagem = await salvarTriagem(supabase, id, d.triagem);
     if (erroTriagem) vigia.parcial("A vaga salvou, mas as respostas da triagem não.", erroTriagem);
+    await guardarCargo(supabase, id, formData);
     if (cliente) await cuidarDoCliente(supabase, cliente, d, false);
     destino = `/anuncio/${id}?salvo=1${erroTriagem ? "&triagem=0" : ""}`;
   } else {
@@ -156,6 +172,7 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     }
     const erroTriagem = await salvarTriagem(supabase, data.id, d.triagem);
     if (erroTriagem) vigia.parcial("A vaga foi publicada, mas as respostas da triagem não salvaram.", erroTriagem);
+    await guardarCargo(supabase, data.id, formData);
     if (cliente) await cuidarDoCliente(supabase, cliente, d, true);
     // o Teste Prático que combina com a função já entra na vaga (grátis; a página da vaga diz e deixa tirar)
     const comTeste = d.tipo === "vaga" && (await porTesteSugerido(supabase, data.id, d.titulo, d.categoria));

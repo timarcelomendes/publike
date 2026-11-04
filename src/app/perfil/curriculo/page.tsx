@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CaminhoDaCurtida } from "@/components/caminho-curtida";
+import { CurriculoNoMercado } from "@/components/curriculo-no-mercado";
 import { AvisarBusca } from "@/components/explorar/avisar-busca";
 import { ApagarCurriculo, FormCurriculo } from "@/components/form-curriculo";
 import { VisibilidadeCurriculo } from "@/components/visibilidade-curriculo";
@@ -271,6 +272,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
           Ninguém mais vê. Se quiser, preencha de novo abaixo.
         </Aviso>
       )}
+      {/* a nota, a faixa de salário e o que abre mais vagas (só a pessoa vê) */}
+      {curriculo && (
+        <Suspense fallback={<Esqueleto className="mb-6 h-80 w-full rounded-lg" />}>
+          <CurriculoNoMercado
+            pessoa={{ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }}
+            curriculo={curriculo}
+            agora={agora}
+            ia={ia}
+          />
+        </Suspense>
+      )}
       <FormCurriculo
         key={curriculo?.atualizado_em ?? (lido ? "convite" : "novo")}
         inicial={curriculo}
@@ -283,6 +295,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         lerArquivo={ia}
         ouvirFala={ia && falaDisponivel()}
         pdfGuardado={pdfNaoSalvo?.caminho ?? null}
+        melhorarComIA={ia}
       />
       {curriculo && <VisibilidadeCurriculo visivel={visivel} vitrine={vitrine} />}
       {curriculo && <ApagarCurriculo />}
