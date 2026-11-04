@@ -200,6 +200,10 @@ export async function enviarConviteEmail(id: string, assinatura: string): Promis
       ok: false,
       erro: "O envio de e-mail não está configurado neste computador (SMTP no .env.local). Use Copiar mensagem.",
     };
+  // a chave fica em Admin › E-mails › Todos os e-mails (migração 20270201120000)
+  const { data: ligado, error: semChave } = await c.rpc("admin_email_ligado", { p_modelo: "convite_convidado" });
+  if (!semChave && ligado === false)
+    return { ok: false, erro: "O convite por e-mail está desligado em Admin › E-mails › Todos os e-mails." };
   const { data: conv } = await c.from("convites").select("*").eq("id", id).maybeSingle();
   if (!conv) return { ok: false, erro: "Este convite não existe mais. Atualize a página." };
   const convite = conv as unknown as Convite;
@@ -234,6 +238,14 @@ export async function enviarConviteEmail(id: string, assinatura: string): Promis
   } finally {
     transporte.close();
   }
+  // para os números e Enviados de Admin › E-mails
+  const { error: semRegistro } = await c.rpc("admin_registrar_email_direto", {
+    p_modelo: "convite_convidado",
+    p_para: para,
+    p_usuario: null,
+  });
+  if (semRegistro && semRegistro.code !== "PGRST202")
+    console.error("Publike: o convite saiu, mas não ficou registrado:", semRegistro.message);
   if (convite.status === "a_enviar") {
     await c.from("convites").update({ status: "enviada", enviada_em: new Date().toISOString() }).eq("id", id);
   }

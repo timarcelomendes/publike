@@ -18,6 +18,12 @@
 --   * enfileirar_email, servidor_combinam_situacao e servidor_reativar_empresas leem de lá;
 --     servidor_parametros_email dá os números ao site; admin_salvar_parametros_email e
 --     admin_intervalo_email gravam.
+--
+-- Parte 3 · os e-mails que saem na hora, sem a fila, entram no catálogo (a chave, os números e Enviados):
+--   * modelos novos: 'conta_acesso' (conta criada pela equipe), 'conta_acesso_link' (link para entrar, pedido à
+--     equipe) e 'convite_convidado' (o convite de Admin › Convites para empresa de fora; o texto continua lá).
+--   * admin_email_ligado: o site confere a chave antes de mandar; admin_registrar_email_direto: grava o envio
+--     como enviado (sem o link de entrar).
 
 create table if not exists privado.regras_email (
   modelo text primary key references public.modelos_email (chave) on delete cascade,
@@ -454,5 +460,74 @@ end
 $$;
 revoke execute on function public.admin_intervalo_email(text, integer) from public, anon;
 grant execute on function public.admin_intervalo_email(text, integer) to authenticated, service_role;
+
+
+-- Parte 3 · os e-mails que saem na hora (sem a fila)
+insert into public.modelos_email
+  (chave, grupo, ordem, nome, descricao, variaveis, assunto, corpo, botao, assunto_padrao, corpo_padrao, botao_padrao)
+values
+  ('conta_acesso', 'usuarios', 95, 'Acesso: conta criada pela equipe',
+   'Quando a equipe cria a conta em Admin › Contas e manda o link de entrar. Sai na hora, sem a fila: o link vale pouco tempo e não fica guardado.',
+   array['nome', 'email', 'publicados'],
+   'Sua conta no Publike está pronta',
+   E'Olá, {{nome}}!\n\nCriamos a sua conta no Publike, o mural de vagas e serviços, como combinamos.\n\n{{publicados}}\n\nToque no botão para entrar. Não precisa de senha. No primeiro acesso, confira os seus dados e aceite as regras e a política de privacidade.\n\nO link vale por pouco tempo e funciona uma vez. Se ele vencer, entre em publike.org/entrar com este e-mail ({{email}}) e peça um link novo.\n\nNão pediu esta conta? É só ignorar este e-mail ou responder avisando, que a gente apaga.',
+   'Entrar no Publike',
+   'Sua conta no Publike está pronta',
+   E'Olá, {{nome}}!\n\nCriamos a sua conta no Publike, o mural de vagas e serviços, como combinamos.\n\n{{publicados}}\n\nToque no botão para entrar. Não precisa de senha. No primeiro acesso, confira os seus dados e aceite as regras e a política de privacidade.\n\nO link vale por pouco tempo e funciona uma vez. Se ele vencer, entre em publike.org/entrar com este e-mail ({{email}}) e peça um link novo.\n\nNão pediu esta conta? É só ignorar este e-mail ou responder avisando, que a gente apaga.',
+   'Entrar no Publike'),
+  ('conta_acesso_link', 'usuarios', 96, 'Acesso: link para entrar',
+   'Quando a equipe manda de novo o link de entrar, pela ficha da conta (a pessoa pediu ajuda para entrar). Sai na hora, sem a fila.',
+   array['nome', 'email', 'publicados'],
+   'Seu link para entrar no Publike',
+   E'Olá, {{nome}}!\n\nAqui está o seu link para entrar no Publike. Não precisa de senha.\n\n{{publicados}}\n\nO link vale por pouco tempo e funciona uma vez. Se ele vencer, entre em publike.org/entrar com este e-mail ({{email}}) e peça um link novo.',
+   'Entrar no Publike',
+   'Seu link para entrar no Publike',
+   E'Olá, {{nome}}!\n\nAqui está o seu link para entrar no Publike. Não precisa de senha.\n\n{{publicados}}\n\nO link vale por pouco tempo e funciona uma vez. Se ele vencer, entre em publike.org/entrar com este e-mail ({{email}}) e peça um link novo.',
+   'Entrar no Publike'),
+  ('convite_convidado', 'usuarios', 97, 'Convite: empresa de fora',
+   'O convite de Admin › Convites para a empresa que ainda não está no Publike (achada num anúncio ou num arquivo). Sai na hora, pelo botão de cada convidado; o texto e a assinatura ficam lá.',
+   array['nome'],
+   'Convite para publicar as suas vagas no Publike',
+   'O texto deste convite é montado em Admin › Convites, com as vagas da empresa e a sua assinatura.',
+   null,
+   'Convite para publicar as suas vagas no Publike',
+   'O texto deste convite é montado em Admin › Convites, com as vagas da empresa e a sua assinatura.',
+   null)
+on conflict (chave) do nothing;
+insert into privado.regras_email (modelo) values ('conta_acesso'), ('conta_acesso_link'), ('convite_convidado')
+on conflict (modelo) do nothing;
+
+create or replace function public.admin_email_ligado(p_modelo text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform privado.exigir_admin();
+  return privado.email_ligado(p_modelo);
+end
+$$;
+revoke execute on function public.admin_email_ligado(text) from public, anon;
+grant execute on function public.admin_email_ligado(text) to authenticated, service_role;
+
+create or replace function public.admin_registrar_email_direto(p_modelo text, p_para text, p_usuario uuid default null)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform privado.exigir_admin();
+  if p_modelo not in ('conta_acesso', 'conta_acesso_link', 'convite_convidado') then
+    raise exception 'Esse e-mail passa pela fila.' using errcode = 'P0001';
+  end if;
+  insert into privado.fila_emails (modelo, para, usuario_id, dados, status, tentativas, enviado_em)
+  values (p_modelo, lower(btrim(p_para)), p_usuario, '{}'::jsonb, 'enviado', 1, now());
+end
+$$;
+revoke execute on function public.admin_registrar_email_direto(text, text, uuid) from public, anon;
+grant execute on function public.admin_registrar_email_direto(text, text, uuid) to authenticated, service_role;
 
 notify pgrst, 'reload schema';

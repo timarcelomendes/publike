@@ -34,7 +34,7 @@ import {
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
 import { logoPadraoDoEmail } from "@/lib/email/montar";
-import { GRUPOS_DO_CATALOGO, quemRecebe, regrasDoEmail } from "@/lib/emails/catalogo";
+import { GRUPOS_DO_CATALOGO, quemRecebe, regrasDoEmail, SAEM_NA_HORA } from "@/lib/emails/catalogo";
 import { plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { situacaoSmtp } from "@/lib/servidor/ambiente";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
@@ -111,7 +111,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
     aba === "convites" ? avisosDeConvite(c) : nada,
     aba === "enviados" ? emailsPorDia(c, 7) : nada,
     aba === "enviados" ? creditosDoEmail(c) : nada,
-    aba === "todos" ? catalogoDeEmails(c) : nada,
+    aba === "todos" || aba === "convites" ? catalogoDeEmails(c) : nada,
     aba === "todos" ? parametrosDeEmail(c) : nada,
   ]);
   // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
@@ -233,6 +233,8 @@ async function Conteudo({ aba }: { aba: Aba }) {
           >
             <BoasVindasPendentes />
           </Secao>
+
+          <ForaDaFila catalogo={catalogo} agora={agora} />
         </>
       )}
 
@@ -242,7 +244,8 @@ async function Conteudo({ aba }: { aba: Aba }) {
           descricao="Mude o assunto, o texto e o botão de cada aviso. Os próximos e-mails já saem com o texto novo."
         >
           <TextosDosEmails
-            modelos={modelos}
+            // o texto do convite para empresa de fora é montado em Admin › Convites
+            modelos={modelos.filter((m) => !SAEM_NA_HORA[m.chave]?.texto)}
             siteUrl={SITE_URL}
             logo={logoLigada ? (logoPropria ?? logoPadrao) : null}
           />
@@ -640,10 +643,10 @@ function Catalogo({
                         {l.ultimo ? `Último: ${tempoRelativo(l.ultimo, agora)}.` : "Nenhum enviado ainda."}
                       </span>{" "}
                       <Link
-                        href={`/admin/emails?aba=textos#modelo-${l.chave}`}
+                        href={SAEM_NA_HORA[l.chave]?.texto?.href ?? `/admin/emails?aba=textos#modelo-${l.chave}`}
                         className="text-label underline underline-offset-2"
                       >
-                        Ver o texto
+                        {SAEM_NA_HORA[l.chave]?.texto?.nome ?? "Ver o texto"}
                       </Link>
                     </p>
                     {l.grupo !== "equipe" && !l.chave.startsWith("conta_") && l.chave !== "mensagem_equipe" && (
@@ -657,6 +660,52 @@ function Catalogo({
           </Secao>
         );
       })}
+    </>
+  );
+}
+
+/** Os convites que saem por outras telas: o da empresa de fora (Admin › Convites) e o dos testadores. */
+function ForaDaFila({ catalogo, agora }: { catalogo: LinhaDoCatalogo[] | null; agora: number }) {
+  const convite = catalogo?.find((l) => l.chave === "convite_convidado");
+  return (
+    <>
+      <Secao
+        titulo="Convites para empresas de fora"
+        descricao="Para a empresa que ainda não está no Publike, achada num anúncio ou num arquivo. A lista, o texto e a assinatura ficam em Admin › Convites; o e-mail sai na hora pelo botão de cada convidado. A chave fica em Todos os e-mails."
+      >
+        <div className="flex flex-col gap-2">
+          {convite ? (
+            <Situacao ok={convite.ligado}>
+              {convite.ligado ? "Ligado." : "Desligado: o botão de e-mail dos convidados não manda nada."}{" "}
+              {plural(convite.enviados_30, "convite enviado", "convites enviados")} em 30 dias
+              {convite.ultimo ? `, o último ${tempoRelativo(convite.ultimo, agora)}` : ""}.
+            </Situacao>
+          ) : (
+            <Situacao ok={false}>
+              Rode antes a migração <code>20270201120000_central_de_emails.sql</code> no Supabase.
+            </Situacao>
+          )}
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
+            <Link href="/admin/convites" className="text-label underline underline-offset-2">
+              Abrir os convidados
+            </Link>
+            <Link
+              href="/admin/emails?aba=todos#email-convite_convidado"
+              className="text-label underline underline-offset-2"
+            >
+              Ligar ou desligar
+            </Link>
+          </p>
+        </div>
+      </Secao>
+      <Secao
+        titulo="Convite dos testadores do app"
+        descricao="O convite do teste fechado na Play abre o WhatsApp ou o programa de e-mail do seu computador, com a mensagem pronta, e você envia. Por isso ele não passa pelo Publike nem entra nos números daqui."
+      >
+        <Link href="/admin/testadores" className="text-label underline underline-offset-2">
+          Abrir os testadores
+        </Link>
+      </Secao>
     </>
   );
 }

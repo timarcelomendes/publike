@@ -70,6 +70,19 @@ const QUEM: Record<string, QuemRecebe[]> = {
   conta_suspensa: ["todos"],
   conta_banida: ["todos"],
   conta_reativada: ["todos"],
+  conta_acesso: ["todos"],
+  conta_acesso_link: ["todos"],
+  convite_convidado: ["contrata"],
+};
+
+/** Os que saem na hora, sem a fila: o texto (ou a ação) fica noutra tela. */
+export const SAEM_NA_HORA: Record<string, { regra: string; texto?: { href: string; nome: string } }> = {
+  conta_acesso: { regra: "Sai na hora pela ficha da conta, sem a fila (o link vale pouco tempo)." },
+  conta_acesso_link: { regra: "Sai na hora pela ficha da conta, sem a fila (o link vale pouco tempo)." },
+  convite_convidado: {
+    regra: "Sai na hora pelo botão de cada convidado em Admin › Convites, sem a fila.",
+    texto: { href: "/admin/convites", nome: "Ver em Convites" },
+  },
 };
 
 const NOME_DO_GRUPO: Record<QuemRecebe, string> = {
@@ -113,6 +126,7 @@ export function regrasDoEmail(
   if (grupoDoBanco === "equipe") return ["Vai para os e-mails da equipe."];
   if (grupoDoBanco === "sistema") return ["Sai só pelo botão de teste."];
   if (chave === "mensagem_equipe") return ["Sai pela ficha da conta, quando a equipe escreve."];
+  if (SAEM_NA_HORA[chave]) return [SAEM_NA_HORA[chave].regra];
   const r: string[] = [];
   if (intervalo) r.push(`No máximo 1 a cada ${textoDoIntervalo(intervalo)} por pessoa.`);
   if (DA_SEMANA.has(chave)) {

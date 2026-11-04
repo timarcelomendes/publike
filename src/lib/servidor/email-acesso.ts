@@ -54,6 +54,11 @@ export async function mandarEmailDeAcesso(
 ): Promise<ResultadoAcesso> {
   const smtp = configSmtp();
   if (!smtp) return { ok: false, erro: "Falta configurar o e-mail do site (SMTP_SERVIDOR, SMTP_USUARIO, SMTP_SENHA)." };
+  // a chave e o texto ficam em Admin › E-mails (migração 20270201120000; sem ela, vale o texto daqui)
+  const chave = dados.primeiro ? "conta_acesso" : "conta_acesso_link";
+  const { data: ligado, error: semChave } = await c.rpc("admin_email_ligado", { p_modelo: chave });
+  if (!semChave && ligado === false)
+    return { ok: false, erro: "Este e-mail está desligado em Admin › E-mails › Todos os e-mails." };
   // o link precisa abrir no site publicado, não no seu computador
   const site = urlDosEmails();
   if (!site) return { ok: false, erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para montar o link." };
@@ -77,8 +82,15 @@ export async function mandarEmailDeAcesso(
       `A sua vitrine de serviços já está no ar${dados.servicos > 1 ? `, com ${dados.servicos} serviços` : ""}. Quem mora perto encontra você e chama pelo WhatsApp; pelo painel você troca preços, fotos e horários.`,
   ];
   const publicados = partes.filter(Boolean).join(" ");
+  const padrao = dados.primeiro ? MODELO_PRIMEIRO : MODELO_DE_NOVO;
+  // o texto editado em Admin › E-mails › Textos (sem ele, o daqui)
+  const { data: modelos } = await c.rpc("admin_modelos_email");
+  const doBanco = (modelos ?? []).find((m) => m.chave === chave);
+  const modelo: ModeloEmail = doBanco
+    ? { ...padrao, assunto: doBanco.assunto, corpo: doBanco.corpo, botao: doBanco.botao }
+    : padrao;
   const email = montarEmail(
-    dados.primeiro ? MODELO_PRIMEIRO : MODELO_DE_NOVO,
+    modelo,
     { nome: dados.nome, email: dados.email, publicados, caminho: `/auth/callback?${params}` },
     site,
     await logoDosEmails(c, site),
@@ -110,5 +122,13 @@ export async function mandarEmailDeAcesso(
   } finally {
     transporte.close();
   }
+  // para os números e Enviados de Admin › E-mails (sem o link)
+  const { error: semRegistro } = await c.rpc("admin_registrar_email_direto", {
+    p_modelo: chave,
+    p_para: dados.email,
+    p_usuario: null,
+  });
+  if (semRegistro && semRegistro.code !== "PGRST202")
+    console.error("Publike: o e-mail de acesso saiu, mas não ficou registrado:", semRegistro.message);
   return { ok: true };
 }

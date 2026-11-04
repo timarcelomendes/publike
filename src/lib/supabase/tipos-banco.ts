@@ -1702,6 +1702,11 @@ export type Database = {
       /** 20270201120000: todos os e-mails em Admin › E-mails */
       admin_ligar_email: { Args: { p_modelo: string; p_ligado: boolean }; Returns: undefined };
       admin_intervalo_email: { Args: { p_modelo: string; p_minutos: number | null }; Returns: undefined };
+      admin_email_ligado: { Args: { p_modelo: string }; Returns: boolean };
+      admin_registrar_email_direto: {
+        Args: { p_modelo: string; p_para: string; p_usuario?: string | null };
+        Returns: undefined;
+      };
       admin_parametros_email: { Args: Record<string, never>; Returns: Json };
       servidor_parametros_email: { Args: { p_chave: string }; Returns: Json };
       admin_salvar_parametros_email: {
