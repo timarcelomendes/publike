@@ -11,7 +11,16 @@ export const ETAPAS_COM_MENSAGEM = {
 export type EtapaComMensagem = keyof typeof ETAPAS_COM_MENSAGEM;
 
 export type RegraFeita =
-  "dispensar" | "mensagem" | "parado" | "recado" | "triagem" | "encerrar" | "preenchida" | "horarios" | "completa";
+  | "dispensar"
+  | "mensagem"
+  | "parado"
+  | "recado"
+  | "triagem"
+  | "encerrar"
+  | "preenchida"
+  | "horarios"
+  | "completa"
+  | "perguntas";
 const REGRAS_FEITAS: RegraFeita[] = [
   "dispensar",
   "mensagem",
@@ -22,6 +31,7 @@ const REGRAS_FEITAS: RegraFeita[] = [
   "preenchida",
   "horarios",
   "completa",
+  "perguntas",
 ];
 
 export type FeitoDaAutomacao = {
@@ -51,6 +61,8 @@ export type RegrasDaVaga = {
   horarios: HorariosAutomaticos | null;
   /** o "Pedir a todo novo candidato" da Entrevista em vídeo */
   videoATodos: boolean;
+  /** no match, o chat pergunta o que a vaga precisa (ligada por padrão; claude/plano-match-no-chat.md) */
+  perguntarNoMatch: boolean;
 };
 
 export type Automacoes = RegrasDaVaga & {
@@ -135,6 +147,7 @@ export function lerAutomacoes(x: unknown): Automacoes {
           }
         : null,
     videoATodos: v.a_todos === true,
+    perguntarNoMatch: o.perguntar_no_match !== false,
     temEliminatoria: o.tem_eliminatoria === true,
     triagem: { liberada: t.liberada === true, obrigatorios: Number(t.obrigatorios) || 0 },
     video: { liberado: v.liberado === true, perguntas: Number(v.perguntas) || 0 },
@@ -189,6 +202,10 @@ export function textoDoFeito(f: FeitoDaAutomacao, proprias: Map<string, string> 
       return "recebeu os seus horários livres para escolher";
     case "completa":
       return "foi contratado e completou a vaga: ela foi marcada como preenchida";
+    case "perguntas":
+      return f.detalhe === "retomada"
+        ? "recebeu no chat as perguntas da vaga, pelo aviso dos matches sem contato"
+        : "recebeu no chat as perguntas da vaga, no match";
   }
 }
 
@@ -219,10 +236,14 @@ export function regrasLigadas(r: RegrasDaVaga) {
     r.paradoDias !== null,
     r.encerrarDias !== null,
     r.preencherAoCompletar,
+    r.perguntarNoMatch,
   ].filter(Boolean).length;
 }
-/** As 5 automações prontas e grátis (decisão do Marcelo, 01/11/2026); o resto são as regras personalizadas. */
-export const TOTAL_DE_REGRAS = 5;
+/**
+ * As 6 automações prontas e grátis (decisão do Marcelo, 01/11/2026; a de perguntar no match, 04/11/2026); o resto
+ * são as regras personalizadas.
+ */
+export const TOTAL_DE_REGRAS = 6;
 
 export const PERIODOS_NUMEROS = { "30": "Últimos 30 dias", "90": "Últimos 90 dias", tudo: "Desde o começo" } as const;
 export type PeriodoNumeros = keyof typeof PERIODOS_NUMEROS;

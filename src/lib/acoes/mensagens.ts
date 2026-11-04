@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { obterUsuario, type MensagemConversa } from "@/lib/dados";
+import { COLUNAS_DA_MENSAGEM, obterUsuario, type MensagemConversa } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { conversaCom, conversasPorPessoa } from "@/lib/servidor/conversas";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -61,14 +61,39 @@ export async function anexarCurriculoNaConversa(
   });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para mandar o currículo agora.") };
   after(processarFilas);
-  const { data: m } = await supabase
-    .from("mensagens")
-    .select("id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome")
-    .eq("id", data)
-    .maybeSingle();
+  const { data: m } = await supabase.from("mensagens").select(COLUNAS_DA_MENSAGEM).eq("id", data).maybeSingle();
   return m
     ? { ok: true, mensagem: m }
     : { ok: false, erro: "O currículo foi, mas a conversa não atualizou. Abra de novo." };
+}
+
+/**
+ * O toque numa pergunta do match (migração 20270202120000): a resposta entra na conversa e vem a próxima pergunta
+ * ou, na última, o agradecimento (e quem publicou recebe o resumo). Devolve as mensagens novas, para a conversa
+ * mostrar na hora mesmo sem o canal ao vivo.
+ */
+export async function responderPerguntaDoChat(
+  mensagemId: number,
+  opcao: number,
+): Promise<{ ok: true; mensagens: MensagemConversa[] } | { ok: false; erro: string }> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!Number.isSafeInteger(mensagemId) || !Number.isInteger(opcao) || opcao < 0 || opcao > 9) {
+    return { ok: false, erro: "Pedido inválido." };
+  }
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("responder_pergunta_do_chat", { p_mensagem: mensagemId, p_opcao: opcao });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para responder agora. Tente de novo.") };
+  // o aviso para quem publicou (no fim) sai pela fila
+  after(processarFilas);
+  const ids = ((data as { mensagens?: unknown } | null)?.mensagens ?? []) as number[];
+  const { data: novas } = await supabase
+    .from("mensagens")
+    .select(COLUNAS_DA_MENSAGEM)
+    .in("id", [mensagemId, ...ids.filter(Number.isSafeInteger)])
+    .order("id");
+  return { ok: true, mensagens: novas ?? [] };
 }
 
 /** Link do currículo anexado numa mensagem (só os dois da conversa; vale 10 minutos). */

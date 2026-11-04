@@ -529,6 +529,9 @@ export async function processarFilas() {
     // usa o acessoFila deste arquivo)
     const regras = await import("./regras").then((m) => m.processarRegras()).catch(() => null);
     if (regras?.motivo) console.warn(`Publike: ${regras.motivo}`);
+    // as perguntas do match: a conversa começa logo depois do aceite (import aqui pelo mesmo motivo)
+    const perguntas = await import("./perguntas-do-match").then((m) => m.perguntarNosMatches()).catch(() => null);
+    if (perguntas?.motivo) console.warn(`Publike: ${perguntas.motivo}`);
     const [ia, avaliacoes, recados] = await Promise.all([
       revisarAnunciosPendentes(),
       revisarAvaliacoesPendentes(),

@@ -123,6 +123,8 @@ export type CartaoQuadro = {
   desde?: string | null;
   /** a proposta (migração 20270110120000; undefined: sem a migração) */
   proposta?: Proposta | null;
+  /** as respostas às perguntas que o chat fez no match (migração 20270202120000) */
+  chat?: { rotulo: string; resposta: string | null }[];
 };
 
 /** Uma coluna do quadro: uma etapa de hoje ou uma própria da conta (que fica dentro da etapa de hoje dela). */
@@ -833,6 +835,21 @@ function DetalheCandidato({
                 <dt className="text-ink-muted">{r.pergunta}</dt>
                 <dd className={r.resposta ? "font-semibold" : "text-ink-muted italic"}>
                   {r.resposta || "Não respondeu"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Secao>
+      )}
+
+      {c.chat && c.chat.length > 0 && (
+        <Secao titulo="Respostas no chat">
+          <dl className="flex flex-col gap-1.5 text-body-sm">
+            {c.chat.map((r) => (
+              <div key={r.rotulo}>
+                <dt className="text-ink-muted">{r.rotulo}</dt>
+                <dd className={r.resposta ? "font-semibold" : "text-ink-muted italic"}>
+                  {r.resposta ?? "Sem resposta ainda"}
                 </dd>
               </div>
             ))}

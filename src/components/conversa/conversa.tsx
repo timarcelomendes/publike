@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Paperclip, SendHorizontal } from "lucide-react";
+import { Bot, Check, FileText, Paperclip, SendHorizontal } from "lucide-react";
 import {
   useEffect,
   useEffectEvent,
@@ -17,9 +17,11 @@ import {
   enviarMensagemPara,
   linkDoAnexo,
   marcarConversaLidaCom,
+  responderPerguntaDoChat,
 } from "@/lib/acoes/mensagens";
 import { MAX_PDF_MB } from "@/lib/constantes";
 import type { MensagemConversa } from "@/lib/dados";
+import { lerPerguntaDaMensagem } from "@/lib/perguntas-do-match";
 import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
 import { MensagemErro } from "../ui/campo";
 
@@ -108,6 +110,8 @@ export function Conversa({
                       lida_em: mudou.lida_em,
                       anexo: mudou.anexo ?? m.anexo,
                       anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
+                      // a pergunta do match respondida (o botão escolhido)
+                      pergunta: mudou.pergunta ?? m.pergunta,
                     }
                   : m,
               ),
@@ -139,6 +143,30 @@ export function Conversa({
       setTexto("");
       setMensagens((atual) => (atual.some((m) => m.id === r.mensagem.id) ? atual : [...atual, r.mensagem]));
     });
+  }
+
+  // as perguntas do match: um toque responde (a resposta e a próxima pergunta voltam da ação)
+  const [respondendo, setRespondendo] = useState<number | null>(null);
+
+  async function responder(m: MensagemConversa, opcao: number) {
+    if (respondendo !== null) return;
+    setErro(null);
+    setRespondendo(m.id);
+    try {
+      const r = await chamarAcao(() => responderPerguntaDoChat(m.id, opcao));
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      setMensagens((atual) => {
+        const porId = new Map(r.mensagens.map((x) => [x.id, x]));
+        const juntas = atual.map((x) => porId.get(x.id) ?? x);
+        for (const x of r.mensagens) if (!atual.some((y) => y.id === x.id)) juntas.push(x);
+        return juntas.sort((a, b) => a.criado_em.localeCompare(b.criado_em) || a.id - b.id);
+      });
+    } finally {
+      setRespondendo(null);
+    }
   }
 
   // currículo pelo chat: só quem curtiu uma vaga da outra pessoa (vai para a curtida dela)
@@ -207,6 +235,7 @@ export function Conversa({
           mensagens.map((m, i) => {
             const minha = m.autor_id === euId;
             const novoDia = i === 0 || dia(mensagens[i - 1].criado_em) !== dia(m.criado_em);
+            const pergunta = m.automatica ? lerPerguntaDaMensagem(m.pergunta) : null;
             return (
               <div key={m.id} className="flex flex-col">
                 {novoDia && (
@@ -222,6 +251,14 @@ export function Conversa({
                   }`}
                 >
                   <span className="sr-only">{minha ? "Você" : primeiroNome}: </span>
+                  {m.automatica && (
+                    <span
+                      className={`mb-0.5 flex items-center gap-1 text-caption ${minha ? "text-surface-100/70" : "text-ink-muted"}`}
+                    >
+                      <Bot aria-hidden className="size-3.5 shrink-0" />
+                      {pergunta ? "Pergunta automática" : "Mensagem automática"}
+                    </span>
+                  )}
                   {m.anexo ? (
                     <button
                       type="button"
@@ -240,6 +277,18 @@ export function Conversa({
                     </button>
                   ) : (
                     m.texto
+                  )}
+                  {pergunta && (
+                    <BotoesDaPergunta
+                      opcoes={pergunta.opcoes}
+                      resposta={pergunta.resposta}
+                      // quem responde é quem recebeu a pergunta; quem publicou vê os botões e o que foi escolhido
+                      podeResponder={!minha}
+                      ocupado={respondendo !== null}
+                      escolher={(opcao) => void responder(m, opcao)}
+                      escuro={minha}
+                      esperando={`Esperando a resposta de ${primeiroNome}.`}
+                    />
                   )}
                   <span
                     className={`mt-0.5 block text-right text-[12px] ${minha ? "text-surface-100/70" : "text-ink-muted"}`}
@@ -308,5 +357,81 @@ export function Conversa({
         </div>
       </form>
     </div>
+  );
+}
+
+/** Os botões de uma pergunta do match: um toque responde; depois, o escolhido fica marcado. */
+function BotoesDaPergunta({
+  opcoes,
+  resposta,
+  podeResponder,
+  ocupado,
+  escolher,
+  escuro,
+  esperando,
+}: {
+  opcoes: string[];
+  resposta: number | null;
+  podeResponder: boolean;
+  ocupado: boolean;
+  escolher: (opcao: number) => void;
+  /** a bolha escura (de quem publicou) */
+  escuro: boolean;
+  esperando: string;
+}) {
+  if (!podeResponder) {
+    return (
+      <span className="mt-2 flex flex-col gap-1.5 whitespace-normal">
+        <span className="flex flex-wrap gap-1.5">
+          {opcoes.map((o, i) => (
+            <span
+              key={o}
+              className={`inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-caption ${
+                i === resposta
+                  ? escuro
+                    ? "border-surface-100 bg-surface-100 text-ink"
+                    : "border-ink bg-ink text-surface-100"
+                  : escuro
+                    ? "border-surface-100/30 text-surface-100/80"
+                    : "border-line-strong text-ink-muted"
+              }`}
+            >
+              {i === resposta && <Check aria-hidden className="size-3.5" />}
+              {o}
+              {i === resposta && <span className="sr-only"> (a resposta)</span>}
+            </span>
+          ))}
+        </span>
+        {resposta === null && (
+          <span className={`text-caption ${escuro ? "text-surface-100/70" : "text-ink-muted"}`}>{esperando}</span>
+        )}
+      </span>
+    );
+  }
+  return (
+    <span role="group" aria-label="Responda com um toque" className="mt-2 flex flex-wrap gap-2 whitespace-normal">
+      {opcoes.map((o, i) => {
+        const escolhida = i === resposta;
+        return (
+          <button
+            key={o}
+            type="button"
+            disabled={resposta !== null || ocupado}
+            aria-pressed={escolhida}
+            onClick={() => escolher(i)}
+            className={`inline-flex min-h-10 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+              escolhida
+                ? "border-ink bg-ink text-surface-100"
+                : resposta !== null
+                  ? "border-line text-ink-muted opacity-60"
+                  : "border-line-strong bg-surface-100 text-ink hover:border-ink hover:bg-surface-200 disabled:opacity-60"
+            }`}
+          >
+            {escolhida && <Check aria-hidden className="size-4" />}
+            {o}
+          </button>
+        );
+      })}
+    </span>
   );
 }

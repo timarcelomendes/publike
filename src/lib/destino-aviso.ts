@@ -29,6 +29,12 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "talentos_semana") return n.anuncio_id ? `/painel/anuncio/${n.anuncio_id}/quadro` : "/talentos";
   // "Volte a contratar": publicar de novo a vaga de antes (já preenchido)
   if (n.tipo === "talentos_reativar") return n.anuncio_id ? `/publicar?copiar=${n.anuncio_id}` : "/publicar";
+  // deu match (ou respondeu às perguntas do match): a ficha da pessoa no quadro da vaga; os sem contato, a lista
+  if (n.tipo === "match_empresa" || n.tipo === "respostas_match")
+    return n.anuncio_id && n.ator_id
+      ? `/painel/anuncio/${n.anuncio_id}/quadro?candidato=${n.ator_id}`
+      : "/painel/matches";
+  if (n.tipo === "matches_sem_contato") return "/painel/matches";
   if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
   if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
   if (n.tipo === "visitas_novidade") return "/painel/visitas#opcoes";

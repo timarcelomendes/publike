@@ -39,6 +39,7 @@ export async function salvarRegrasAutomacao(anuncioId: string, regras: RegrasDaV
           ? { formato: h.formato, local: (h.local ?? "").trim().slice(0, 300), duracao: dias(h.duracao) ?? 30 }
           : null,
       video_a_todos: regras.videoATodos === true,
+      perguntar_no_match: regras.perguntarNoMatch !== false,
     },
   });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar as automações.") };

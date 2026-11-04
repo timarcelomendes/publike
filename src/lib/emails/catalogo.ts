@@ -19,6 +19,9 @@ export const GRUPOS_DO_CATALOGO: { id: QuemRecebe; titulo: string; ajuda: string
 /** Quem recebe cada e-mail; o primeiro é o grupo em que ele aparece. Sem a chave aqui, entra em "todas as contas". */
 const QUEM: Record<string, QuemRecebe[]> = {
   curtida: ["contrata", "presta"],
+  match_empresa: ["contrata"],
+  respostas_match: ["contrata"],
+  matches_sem_contato: ["contrata"],
   lembrete_curtida: ["contrata"],
   parados: ["contrata"],
   proposta_resposta: ["contrata"],

@@ -9,7 +9,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { marcaDeContato } from "@/lib/contato-candidato";
 import type { EmpresasDosTrabalhos } from "@/lib/servidor/empresas";
@@ -30,6 +30,7 @@ import type { Curriculo } from "@/lib/tipos";
 import { AcoesInteressado } from "./acoes";
 import { Conversa } from "@/components/conversa/conversa";
 import type { MensagemConversa } from "@/lib/dados";
+import { lerPerguntaDaMensagem, type PerguntaNaMensagem } from "@/lib/perguntas-do-match";
 import { DesfazerRegra } from "../automacoes/desfazer-regra";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { VideoNaFicha } from "../video/video-na-ficha";
@@ -117,6 +118,29 @@ function ResumoDoCurriculo({ curriculo }: { curriculo: Curriculo }) {
 }
 
 /** Uma seção que começa fechada (o porquê da nota): o título e a conta numa linha; tocar abre o resto. */
+/** As respostas às perguntas que o chat fez no match, para ler de relance (a conversa inteira vem logo abaixo). */
+function RespostasDoChat({ mensagens, anuncioId }: { mensagens: MensagemConversa[]; anuncioId: string }) {
+  const perguntas = mensagens
+    .filter((m) => m.automatica && m.anuncio_id === anuncioId)
+    .map((m) => lerPerguntaDaMensagem(m.pergunta))
+    .filter((p): p is PerguntaNaMensagem => p !== null);
+  if (!perguntas.length) return null;
+  return (
+    <Secao titulo="Respostas no chat">
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-body-sm">
+        {perguntas.map((p) => (
+          <Fragment key={p.chave}>
+            <dt className="text-ink-muted">{p.rotulo}</dt>
+            <dd>
+              {p.resposta === null ? <span className="text-ink-muted">Sem resposta ainda</span> : p.opcoes[p.resposta]}
+            </dd>
+          </Fragment>
+        ))}
+      </dl>
+    </Secao>
+  );
+}
+
 function SecaoFechada({ titulo, linha, children }: { titulo: string; linha: string; children: ReactNode }) {
   return (
     <details className="group border-t border-line pt-2">
@@ -306,6 +330,10 @@ export function FichaCandidato({
             endereco={c.endereco}
           />
         </Secao>
+      )}
+
+      {match && conversaDaFicha && euId && (
+        <RespostasDoChat mensagens={conversaDaFicha.mensagens} anuncioId={c.anuncio_id} />
       )}
 
       {match && conversaDaFicha && euId && (

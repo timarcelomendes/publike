@@ -527,7 +527,17 @@ export type MensagemConversa = {
   /** currículo anexado pelo chat (PDF no Storage, pasta de quem mandou) */
   anexo?: string | null;
   anexo_nome?: string | null;
+  /** a vaga de onde a mensagem veio (null: mandada direto na conversa) */
+  anuncio_id?: string | null;
+  /** o Publike mandou em nome de quem publicou (as perguntas do match) */
+  automatica?: boolean;
+  /** a pergunta do match, com os botões (lerPerguntaDaMensagem) */
+  pergunta?: unknown;
 };
+
+/** As colunas da mensagem que a conversa mostra. */
+export const COLUNAS_DA_MENSAGEM =
+  "id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome, anuncio_id, automatica, pergunta";
 
 /** Experiências vindas do banco (jsonb), já no formato das telas. */
 export function lerExperiencias(valor: unknown): Experiencia[] {

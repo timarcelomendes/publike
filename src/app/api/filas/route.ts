@@ -16,6 +16,7 @@ import {
 } from "@/lib/servidor/filas";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { funcoesDasVagas } from "@/lib/servidor/funcao";
+import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { regrasComOTempo } from "@/lib/servidor/regras";
 import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
 
@@ -60,6 +61,8 @@ export async function GET(request: Request) {
   // as Automações personalizadas: os de tempo, as mensagens que esperavam e a fila (depois da Triagem, que pode
   // ter lido currículos)
   const regras = await comTempo(() => regrasComOTempo());
+  // as perguntas do match que não saíram logo depois da ação
+  const perguntas = await comTempo(() => perguntarNosMatches());
   const avaliacoes = await comTempo(() => revisarAvaliacoesPendentes(20));
   const recados = await comTempo(() => revisarRecadosPendentes(20));
   // segunda, a partir das 9h: as vagas e os talentos que combinam (ligado no admin), aos poucos
@@ -92,6 +95,7 @@ export async function GET(request: Request) {
     video.motivo,
     automacoes.motivo,
     regras.motivo,
+    perguntas.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -123,6 +127,7 @@ export async function GET(request: Request) {
       video_lembrados: video.lembradas,
       parados_lembrados: automacoes.lembrados,
       regras: { agiram: regras.agiram, mensagens: regras.mensagens },
+      perguntas_do_match: perguntas.perguntados,
     },
     { status: ok ? 200 : 500, headers: { "cache-control": "no-store" } },
   );

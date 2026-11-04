@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { lerVagasDaConversa, type ConversaPessoa } from "@/lib/conversas";
-import type { MensagemConversa } from "@/lib/dados";
+import { COLUNAS_DA_MENSAGEM, type MensagemConversa } from "@/lib/dados";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Database } from "@/lib/supabase/tipos-banco";
 import { UUID } from "@/lib/validacao";
@@ -55,7 +55,7 @@ export async function conversaCom(
   if (!linha || !conversaId) return null;
   const { data, error } = await supabase
     .from("mensagens")
-    .select("id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome")
+    .select(COLUNAS_DA_MENSAGEM)
     .eq("conversa_id", conversaId)
     .order("criado_em", { ascending: false })
     .order("id", { ascending: false })

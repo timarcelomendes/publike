@@ -7,6 +7,7 @@ import {
   Hourglass,
   LoaderCircle,
   MailCheck,
+  MessageCircleQuestion,
   PartyPopper,
   Reply,
   type LucideIcon,
@@ -45,6 +46,7 @@ function soAsRegras(a: Automacoes): RegrasDaVaga {
     preencherAoCompletar: a.preencherAoCompletar,
     horarios: a.horarios,
     videoATodos: a.videoATodos,
+    perguntarNoMatch: a.perguntarNoMatch,
   };
 }
 
@@ -354,6 +356,23 @@ export function EditorAutomacoes({
             {montarRecado(RECADO_PADRAO, { nome: "Ana Souza", vaga, empresa })}
           </p>
           <SeuJeito href={`/painel/automacoes/regra?modelo=seu-recado&vaga=${id}`}>Quer o seu texto?</SeuJeito>
+        </Regra>
+      </Grupo>
+
+      <Grupo titulo="Quando der match">
+        <Regra
+          icone={MessageCircleQuestion}
+          titulo="Perguntar no chat o que a vaga precisa"
+          novo
+          descricao="Logo depois do match, o chat faz até 3 perguntas curtas, de um toque: o que a vaga pede e o currículo não mostra (CNH, experiência, horário, escolaridade) e quando a pessoa pode começar. As respostas chegam para você num aviso."
+          ligada={regras.perguntarNoMatch}
+          mudar={(v) => mudar({ perguntarNoMatch: v })}
+          contagem={conta("perguntas")}
+        >
+          <p className="rounded-md bg-surface-300 p-3 text-body-sm">
+            <span className="text-ink-muted">Assim começa: </span>
+            Deu match em “{vaga}”! Para adiantar, 3 perguntas rápidas.
+          </p>
         </Regra>
       </Grupo>
 

@@ -876,6 +876,10 @@ export type Database = {
           lida_em: string | null;
           anexo: string | null;
           anexo_nome: string | null;
+          /** o Publike mandou em nome de quem publicou (as perguntas do match) */
+          automatica: boolean;
+          /** a pergunta do match: {chave, rotulo, opcoes, resposta} */
+          pergunta: Json | null;
         };
         Insert: SemTabela;
         Update: SemTabela;
@@ -3166,6 +3170,13 @@ export type Database = {
       salvar_retorno: { Args: { p_ligado: boolean; p_texto: string | null }; Returns: undefined };
       servidor_retornos: { Args: { p_chave: string; p_agora?: string }; Returns: number };
       servidor_regras_pendentes: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
+      servidor_perguntas_para_montar: { Args: { p_chave: string; p_limite?: number }; Returns: Json };
+      servidor_comecar_perguntas: {
+        Args: { p_chave: string; p_anuncio: string; p_perfil: string; p_perguntas: Json };
+        Returns: number;
+      };
+      responder_pergunta_do_chat: { Args: { p_mensagem: number; p_opcao: number }; Returns: Json };
+      respostas_do_chat_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       servidor_regra_horarios: { Args: { p_chave: string; p_conta: string }; Returns: Json };
       servidor_regra_agir: {
         Args: {

@@ -11,6 +11,7 @@ import {
   HeartCrack,
   ListChecks,
   MessageCircleHeart,
+  MessageCircleQuestion,
   MessagesSquare,
   Send,
   ShieldCheck,
@@ -103,6 +104,10 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   vagas_semana: Sparkles,
   talentos_semana: UserSearch,
   talentos_reativar: UserSearch,
+  // deu match: o aviso para quem publicou, e os matches que esperam o contato
+  match_empresa: MessageCircleHeart,
+  respostas_match: MessageCircleQuestion,
+  matches_sem_contato: MessageCircleHeart,
   // o comunicado que a equipe mandou para um público (Admin › Comunicados)
   comunicado: Megaphone,
   // as notícias publicadas no dia, num aviso só

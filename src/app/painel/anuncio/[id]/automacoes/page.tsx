@@ -4,6 +4,7 @@ import {
   Hourglass,
   ListFilter,
   MailCheck,
+  MessageCircleQuestion,
   MessageSquareText,
   PartyPopper,
   Reply,
@@ -56,6 +57,7 @@ const ICONE_DA_REGRA: Record<RegraFeita, LucideIcon> = {
   encerrar: Reply,
   preenchida: CircleCheckBig,
   completa: PartyPopper,
+  perguntas: MessageCircleQuestion,
 };
 
 export default function AutomacoesDaVaga({ params }: PageProps<"/painel/anuncio/[id]/automacoes">) {
