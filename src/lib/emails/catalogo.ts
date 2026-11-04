@@ -87,33 +87,43 @@ export function quemRecebe(chave: string, grupoDoBanco: string): { grupo: QuemRe
   return { grupo: lista[0], tambem: lista.slice(1).map((g) => NOME_DO_GRUPO[g]) };
 }
 
-/** Os limites de frequência de hoje (fixos no banco; a parte 2 do plano deixa mudar). */
-const POR_30_MIN = new Set([
-  "curtida",
-  "etapa",
-  "contratacao",
-  "recomendacao",
-  "seguindo",
-  "mensagem",
-  "convite",
-  "lembrete_curtida",
-]);
+export const DIAS_DA_SEMANA = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"] as const;
+
+/** "30 min", "20 h", "2 dias". */
+export function textoDoIntervalo(minutos: number) {
+  if (minutos % 1440 === 0) return minutos === 1440 ? "1 dia" : `${minutos / 1440} dias`;
+  if (minutos % 60 === 0) return `${minutos / 60} h`;
+  return `${minutos} min`;
+}
+
+/** Os números que valem para todos os e-mails (Admin › E-mails › Todos › Regras gerais). */
+export type NumerosDosEmails = { por_dia: number; semana_dia: number; semana_hora: number };
+
 const DA_SEMANA = new Set(["vagas_semana", "talentos_semana", "resumo_vagas", "talentos_reativar"]);
 const DE_CONTA = new Set(["conta_suspensa", "conta_banida", "conta_reativada"]);
 const DE_MODERACAO = new Set(["em_analise", "removido", "liberado"]);
 
 /** As regras de frequência e de quem recebe que valem para o e-mail, em frases curtas. */
-export function regrasDoEmail(chave: string, grupoDoBanco: string): string[] {
+export function regrasDoEmail(
+  chave: string,
+  grupoDoBanco: string,
+  intervalo: number | null,
+  numeros: NumerosDosEmails | null,
+): string[] {
   if (grupoDoBanco === "equipe") return ["Vai para os e-mails da equipe."];
   if (grupoDoBanco === "sistema") return ["Sai só pelo botão de teste."];
   if (chave === "mensagem_equipe") return ["Sai pela ficha da conta, quando a equipe escreve."];
   const r: string[] = [];
-  if (POR_30_MIN.has(chave)) r.push("No máximo 1 a cada 30 min por pessoa.");
-  if (chave === "busca") r.push("No máximo 1 a cada 20 h por pessoa.");
-  if (DA_SEMANA.has(chave)) r.push("Toda segunda, a partir das 9h, também com a chave de Da semana ligada.");
+  if (intervalo) r.push(`No máximo 1 a cada ${textoDoIntervalo(intervalo)} por pessoa.`);
+  if (DA_SEMANA.has(chave)) {
+    const dia = DIAS_DA_SEMANA[(numeros?.semana_dia ?? 1) - 1] ?? "segunda";
+    r.push(
+      `${(numeros?.semana_dia ?? 1) >= 6 ? "Todo" : "Toda"} ${dia}, a partir das ${numeros?.semana_hora ?? 9}h, também com a chave de Da semana ligada.`,
+    );
+  }
   if (DE_CONTA.has(chave)) r.push("Vai mesmo para quem desligou os avisos.");
-  else if (DE_MODERACAO.has(chave)) r.push("Fora do limite de 30 por dia.");
-  else r.push("Até 30 e-mails por dia por pessoa, somando todos.");
+  else if (DE_MODERACAO.has(chave)) r.push("Fora do limite por dia.");
+  else r.push(`Até ${numeros?.por_dia ?? 30} e-mails por dia por pessoa, somando todos.`);
   if (!DE_CONTA.has(chave)) r.push("Respeita o que a pessoa desligou em Avisos.");
   return r;
 }

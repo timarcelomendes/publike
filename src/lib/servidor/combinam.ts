@@ -22,7 +22,7 @@ import { acessoFila } from "./filas";
 export const MINIMO = 70;
 /** Quantas vagas ou talentos no máximo por aviso. */
 const ATE = 5;
-/** O "Volte a contratar" só sai com pelo menos tantos talentos que combinam. */
+/** O "Volte a contratar" só sai com pelo menos tantos talentos que combinam (sem o número do admin). */
 const MINIMO_REATIVAR = 3;
 
 type TipoCombinam = "vagas_semana" | "talentos_semana" | "talentos_reativar";
@@ -389,11 +389,15 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
       p_limite: simular ? 200 : 50,
     });
     if (eParadas) falhas.push(eParadas.message);
+    // o mínimo de talentos fica em Admin › E-mails › Todos (migração 20270201120000)
+    const { data: parametros } = await cliente.rpc("servidor_parametros_email", { p_chave: chave });
+    const minimo = Number((parametros as { reativar_minimo_talentos?: number } | null)?.reativar_minimo_talentos);
+    const minimoReativar = Number.isInteger(minimo) && minimo >= 1 ? minimo : MINIMO_REATIVAR;
     for (const e of eParadas ? [] : (paradas ?? [])) {
       const antigas = (Array.isArray(e.vagas) ? e.vagas : []) as unknown as (CamposDaVaga & { id: string })[];
       // todos os que combinam (para o número), e a lista com os que mais combinam
       const todos = escolherTalentos(e.perfil_id, antigas, comCurriculo, new Set(e.ja ?? []), agora, 1000);
-      const boas = todos.length >= MINIMO_REATIVAR ? todos.slice(0, ATE) : [];
+      const boas = todos.length >= minimoReativar ? todos.slice(0, ATE) : [];
       // a vaga de antes com mais gente que combina (no empate, a mais recente): a do "Publicar de novo"
       const porVaga = new Map<string, number>();
       for (const x of todos) porVaga.set(x.vagaId, (porVaga.get(x.vagaId) ?? 0) + 1);

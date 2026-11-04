@@ -393,6 +393,65 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
   return { ok: true, mensagem: "Configurações salvas." };
 }
 
+/** Os números dos e-mails: o limite por dia, o dia e a hora da semana e o Volte a contratar (20270201120000). */
+const NUMEROS_EMAIL = {
+  por_dia: { de: 1, ate: 200, nome: "o limite por dia" },
+  semana_dia: { de: 1, ate: 7, nome: "o dia da semana" },
+  semana_hora: { de: 0, ate: 23, nome: "a hora" },
+  reativar_sem_vaga_dias: { de: 1, ate: 90, nome: "os dias sem vaga no ar" },
+  reativar_janela_dias: { de: 30, ate: 365, nome: "os dias das vagas de antes" },
+  reativar_intervalo_dias: { de: 7, ate: 90, nome: "os dias entre avisos" },
+  reativar_max_seguidos: { de: 1, ate: 10, nome: "os avisos seguidos" },
+  reativar_minimo_talentos: { de: 1, ate: 10, nome: "o mínimo de talentos" },
+} as const;
+
+export async function salvarParametrosEmail(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const valores = {} as Record<keyof typeof NUMEROS_EMAIL, number>;
+  const erros: Record<string, string> = {};
+  for (const [campo, regra] of Object.entries(NUMEROS_EMAIL) as [keyof typeof NUMEROS_EMAIL, (typeof NUMEROS_EMAIL)[keyof typeof NUMEROS_EMAIL]][]) {
+    const n = Number(texto(formData, campo));
+    if (!Number.isInteger(n) || n < regra.de || n > regra.ate) erros[campo] = `Use de ${regra.de} a ${regra.ate}.`;
+    else valores[campo] = n;
+  }
+  if (Object.keys(erros).length) return { ok: false, erro: "Confira os números.", erros };
+  const { error } = await c.rpc("admin_salvar_parametros_email", {
+    p_por_dia: valores.por_dia,
+    p_semana_dia: valores.semana_dia,
+    p_semana_hora: valores.semana_hora,
+    p_reativar_sem_vaga_dias: valores.reativar_sem_vaga_dias,
+    p_reativar_janela_dias: valores.reativar_janela_dias,
+    p_reativar_intervalo_dias: valores.reativar_intervalo_dias,
+    p_reativar_max_seguidos: valores.reativar_max_seguidos,
+    p_reativar_minimo_talentos: valores.reativar_minimo_talentos,
+  });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20270201120000_central_de_emails.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return { ok: true, mensagem: "Números salvos. Valem a partir do próximo e-mail." };
+}
+
+/** No máximo 1 e-mail do modelo a cada N minutos para a mesma pessoa (null: sem limite). */
+export async function mudarIntervaloEmail(modelo: string, minutos: number | null): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!/^[a-z_]{3,40}$/.test(String(modelo ?? ""))) return { ok: false, erro: "Esse e-mail não existe." };
+  if (minutos !== null && (!Number.isInteger(minutos) || minutos < 1 || minutos > 10080))
+    return { ok: false, erro: "Use de 1 minuto a 7 dias, ou deixe em branco para não ter limite." };
+  const { error } = await c.rpc("admin_intervalo_email", { p_modelo: modelo, p_minutos: minutos });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode antes a migração 20270201120000_central_de_emails.sql no Supabase." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return { ok: true, mensagem: minutos === null ? "Sem limite de frequência." : "Frequência salva." };
+}
+
 /** O saldo de e-mails do ZeptoMail e o próximo vencimento, como o ZeptoMail mostra (migração 20261126120000). */
 export async function salvarCreditosEmail(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const c = await clienteAdminOuNulo();

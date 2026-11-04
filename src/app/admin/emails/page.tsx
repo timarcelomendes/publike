@@ -13,7 +13,7 @@ import {
   TextosDosEmails,
 } from "@/components/admin/emails";
 import { LigarCombinam } from "@/components/admin/combinam";
-import { LigarEmail } from "@/components/admin/emails-catalogo";
+import { FormParametrosEmail, IntervaloEmail, LigarEmail } from "@/components/admin/emails-catalogo";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
@@ -21,6 +21,7 @@ import {
   avisosDeConvite,
   catalogoDeEmails,
   configDoSite,
+  parametrosDeEmail,
   convitesPorEmail,
   creditosDoEmail,
   emailsPorDia,
@@ -28,6 +29,7 @@ import {
   ultimosEmails,
   type CreditosEmail,
   type LinhaDoCatalogo,
+  type ParametrosEmail,
 } from "@/lib/admin/dados";
 import { NOMES_MODELOS_EMAIL, STATUS_EMAIL } from "@/lib/admin/textos";
 import { SITE_URL } from "@/lib/config";
@@ -100,7 +102,7 @@ function SubAbas({ ativa, falhas }: { ativa: Aba; falhas: number }) {
 async function Conteudo({ aba }: { aba: Aba }) {
   const c = await exigirAdminLocal();
   const nada = Promise.resolve(null);
-  const [config, modelos, fila, agora, convites, avisos, porDia, gastos, catalogo] = await Promise.all([
+  const [config, modelos, fila, agora, convites, avisos, porDia, gastos, catalogo, numeros] = await Promise.all([
     configDoSite(c),
     aba === "textos" ? modelosDeEmail(c) : Promise.resolve([]),
     ultimosEmails(c, 40),
@@ -110,6 +112,7 @@ async function Conteudo({ aba }: { aba: Aba }) {
     aba === "enviados" ? emailsPorDia(c, 7) : nada,
     aba === "enviados" ? creditosDoEmail(c) : nada,
     aba === "todos" ? catalogoDeEmails(c) : nada,
+    aba === "todos" ? parametrosDeEmail(c) : nada,
   ]);
   // a prévia das vagas e talentos da semana: a mesma conta, sem mandar nada
   const previa = aba === "semana" ? await mandarCombinamDaSemana({ simular: true }) : null;
@@ -206,7 +209,9 @@ async function Conteudo({ aba }: { aba: Aba }) {
         </>
       )}
 
-      {aba === "todos" && <Catalogo catalogo={catalogo} ligados={config.emails_ativos} agora={agora} />}
+      {aba === "todos" && (
+        <Catalogo catalogo={catalogo} numeros={numeros} ligados={config.emails_ativos} agora={agora} />
+      )}
 
       {aba === "semana" && previa && <DaSemana previa={previa} />}
 
@@ -550,10 +555,12 @@ function Creditos({ creditos, agora }: { creditos: CreditosEmail | "vazio"; agor
 /** Todos os e-mails, por quem recebe: o que dispara, as regras, a chave e os números de 30 dias. */
 function Catalogo({
   catalogo,
+  numeros,
   ligados,
   agora,
 }: {
   catalogo: LinhaDoCatalogo[] | null;
+  numeros: ParametrosEmail | null;
   ligados: boolean;
   agora: number;
 }) {
@@ -586,6 +593,15 @@ function Catalogo({
           </p>
         </div>
       </Secao>
+      {numeros && (
+        <Secao
+          id="numeros"
+          titulo="Regras gerais"
+          descricao="Os números que valem para vários e-mails. A frequência de cada um fica na linha dele, mais abaixo."
+        >
+          <FormParametrosEmail numeros={numeros} />
+        </Secao>
+      )}
       {GRUPOS_DO_CATALOGO.map((g) => {
         const doGrupo = linhas.filter((l) => l.grupo === g.id);
         if (!doGrupo.length) return null;
@@ -605,7 +621,7 @@ function Catalogo({
                     </p>
                     <p className="max-w-prose text-body-sm">{l.descricao}</p>
                     <ul className="flex flex-col text-body-sm text-ink-muted">
-                      {regrasDoEmail(l.chave, l.grupo).map((r) => (
+                      {regrasDoEmail(l.chave, l.grupo, l.intervalo_min, numeros).map((r) => (
                         <li key={r}>{r}</li>
                       ))}
                       {l.tambem.length > 0 && <li>Também vai para {l.tambem.join(" e ")}.</li>}
@@ -630,6 +646,9 @@ function Catalogo({
                         Ver o texto
                       </Link>
                     </p>
+                    {l.grupo !== "equipe" && !l.chave.startsWith("conta_") && l.chave !== "mensagem_equipe" && (
+                      <IntervaloEmail modelo={l.chave} nome={l.nome} minutos={l.intervalo_min} />
+                    )}
                   </div>
                   <LigarEmail modelo={l.chave} nome={l.nome} ligado={l.ligado} />
                 </li>

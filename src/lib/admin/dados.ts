@@ -741,6 +741,27 @@ export async function catalogoDeEmails(c: ClienteBanco) {
 }
 export type LinhaDoCatalogo = NonNullable<Awaited<ReturnType<typeof catalogoDeEmails>>>[number];
 
+/** Os números dos e-mails (Admin › E-mails › Todos). Sem a migração, null. */
+export type ParametrosEmail = {
+  por_dia: number;
+  semana_dia: number;
+  semana_hora: number;
+  reativar_sem_vaga_dias: number;
+  reativar_janela_dias: number;
+  reativar_intervalo_dias: number;
+  reativar_max_seguidos: number;
+  reativar_minimo_talentos: number;
+  atualizado_em: string;
+};
+export async function parametrosDeEmail(c: ClienteBanco): Promise<ParametrosEmail | null> {
+  const { data, error } = await c.rpc("admin_parametros_email");
+  if (error) {
+    if (error.code === "PGRST202") return null;
+    falha("os números dos e-mails", error);
+  }
+  return (data as unknown as ParametrosEmail | null) ?? null;
+}
+
 export async function ultimosEmails(c: ClienteBanco, limite = 40) {
   const { data, error } = await c.rpc("admin_fila_emails", { p_limite: limite });
   if (error) falha("a fila de e-mails", error);

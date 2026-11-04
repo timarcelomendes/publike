@@ -8,6 +8,16 @@
 --   * admin_ligar_email: liga e desliga, e mantém as colunas antigas de config_site iguais (os gatilhos dos
 --     avisos da equipe ainda leem de lá).
 --   * admin_emails_catalogo: cada modelo com a chave e os números (7 e 30 dias, falhas, o último).
+--
+-- Parte 2 · os números que eram fixos, editáveis em Admin › E-mails › Todos (começam com os valores de antes):
+--   * regras_email.intervalo_min: no máximo 1 e-mail do modelo a cada N minutos para a mesma pessoa (30 para os
+--     avisos que se repetem, 20 h para a busca salva; sem número, sem limite).
+--   * privado.parametros_email (uma linha): o limite por dia por pessoa (30), o dia e a hora dos e-mails da
+--     semana (segunda, 9h), e as regras do Volte a contratar (14 dias sem vaga, vagas dos últimos 180 dias,
+--     um aviso a cada 28 dias, até 3 seguidos sem publicar, mínimo de 3 talentos).
+--   * enfileirar_email, servidor_combinam_situacao e servidor_reativar_empresas leem de lá;
+--     servidor_parametros_email dá os números ao site; admin_salvar_parametros_email e
+--     admin_intervalo_email gravam.
 
 create table if not exists privado.regras_email (
   modelo text primary key references public.modelos_email (chave) on delete cascade,
@@ -16,6 +26,24 @@ create table if not exists privado.regras_email (
   atualizado_por uuid
 );
 alter table privado.regras_email enable row level security;
+alter table privado.regras_email add column if not exists intervalo_min integer
+  check (intervalo_min is null or intervalo_min between 1 and 10080);
+
+create table if not exists privado.parametros_email (
+  id boolean primary key default true check (id),
+  por_dia integer not null default 30 check (por_dia between 1 and 200),
+  semana_dia smallint not null default 1 check (semana_dia between 1 and 7),
+  semana_hora smallint not null default 9 check (semana_hora between 0 and 23),
+  reativar_sem_vaga_dias integer not null default 14 check (reativar_sem_vaga_dias between 1 and 90),
+  reativar_janela_dias integer not null default 180 check (reativar_janela_dias between 30 and 365),
+  reativar_intervalo_dias integer not null default 28 check (reativar_intervalo_dias between 7 and 90),
+  reativar_max_seguidos integer not null default 3 check (reativar_max_seguidos between 1 and 10),
+  reativar_minimo_talentos integer not null default 3 check (reativar_minimo_talentos between 1 and 10),
+  atualizado_em timestamptz not null default now(),
+  atualizado_por uuid
+);
+alter table privado.parametros_email enable row level security;
+insert into privado.parametros_email (id) values (true) on conflict (id) do nothing;
 
 -- como está hoje: as chaves antigas viram as chaves dos modelos
 insert into privado.regras_email (modelo, ligado)
@@ -35,6 +63,11 @@ select m.chave,
   from public.modelos_email m
   cross join (select * from public.config_site limit 1) c
 on conflict (modelo) do nothing;
+update privado.regras_email r
+   set intervalo_min = case when r.modelo = 'busca' then 1200 else 30 end
+ where r.intervalo_min is null and r.atualizado_por is null
+   and r.modelo in ('busca', 'curtida', 'etapa', 'contratacao', 'recomendacao', 'seguindo', 'mensagem', 'convite',
+                    'lembrete_curtida');
 
 -- o modelo está ligado (sem linha, ligado: um modelo novo nasce ligado)
 create or replace function privado.email_ligado(p_modelo text)
@@ -61,6 +94,7 @@ declare
   de_conta boolean := p_modelo in ('conta_suspensa', 'conta_banida', 'conta_reativada');
   v_grupo text := privado.grupo_do_aviso(p_modelo);
   v_sair jsonb := '{}'::jsonb;
+  v_intervalo integer;
 begin
   select * into cfg from public.config_site limit 1;
   if not found or not cfg.emails_ativos then
@@ -81,26 +115,20 @@ begin
   if v_grupo is not null and privado.aviso_desligado(p_usuario, p_modelo, 'email') then
     return;
   end if;
-  -- vaga nova de uma busca com aviso: o sino avisa cada uma; o e-mail, no máximo um a cada 20 horas
-  if p_modelo = 'busca' and exists (
+  -- no máximo um e-mail do modelo a cada N minutos para a mesma pessoa (Admin › E-mails › Todos)
+  select r.intervalo_min into v_intervalo from privado.regras_email r where r.modelo = p_modelo;
+  if v_intervalo is not null and exists (
     select 1 from privado.fila_emails f
-     where f.usuario_id = p_usuario and f.modelo = 'busca' and f.criado_em > now() - interval '20 hours'
+     where f.usuario_id = p_usuario and f.modelo = p_modelo
+       and f.criado_em > now() - make_interval(mins => v_intervalo)
   ) then
     return;
   end if;
-  -- avisos que podem se repetir: no máximo um do mesmo tipo a cada 30 minutos para a mesma pessoa
-  if p_modelo in ('curtida', 'etapa', 'contratacao', 'recomendacao', 'seguindo', 'mensagem', 'convite',
-                  'lembrete_curtida') and exists (
-    select 1 from privado.fila_emails f
-     where f.usuario_id = p_usuario and f.modelo = p_modelo and f.criado_em > now() - interval '30 minutes'
-  ) then
-    return;
-  end if;
-  -- e no máximo 30 e-mails por dia para a mesma pessoa (avisos de conta e de moderação passam sempre)
+  -- e o limite por dia para a mesma pessoa (avisos de conta e de moderação passam sempre)
   if not de_conta and p_modelo not in ('em_analise', 'removido', 'liberado') and (
     select count(*) from privado.fila_emails f
      where f.usuario_id = p_usuario and f.criado_em > now() - interval '1 day'
-  ) >= 30 then
+  ) >= coalesce((select pe.por_dia from privado.parametros_email pe), 30) then
     return;
   end if;
   -- só para o e-mail de login confirmado (nunca para um endereço que a pessoa só digitou)
@@ -219,8 +247,10 @@ revoke execute on function public.admin_ligar_email(text, boolean) from public, 
 grant execute on function public.admin_ligar_email(text, boolean) to authenticated, service_role;
 
 -- Admin: o catálogo, com a chave e os números de cada modelo
+drop function if exists public.admin_emails_catalogo();
 create or replace function public.admin_emails_catalogo()
 returns table (chave text, grupo text, ordem smallint, nome text, descricao text, assunto text, ligado boolean,
+               intervalo_min integer,
                enviados_7 integer, enviados_30 integer, falhas_30 integer, cancelados_30 integer,
                na_fila integer, ultimo timestamptz)
 language plpgsql
@@ -231,6 +261,7 @@ begin
   perform privado.exigir_admin();
   return query
   select m.chave, m.grupo, m.ordem, m.nome, m.descricao, m.assunto, privado.email_ligado(m.chave),
+         (select r.intervalo_min from privado.regras_email r where r.modelo = m.chave),
          coalesce(f.enviados_7, 0)::integer, coalesce(f.enviados_30, 0)::integer, coalesce(f.falhas_30, 0)::integer,
          coalesce(f.cancelados_30, 0)::integer, coalesce(f.na_fila, 0)::integer, f.ultimo
     from public.modelos_email m
@@ -251,5 +282,177 @@ end
 $$;
 revoke execute on function public.admin_emails_catalogo() from public, anon;
 grant execute on function public.admin_emails_catalogo() to authenticated, service_role;
+
+
+-- Parte 2 · o dia e a hora dos e-mails da semana (a de 20261119120000, com o dia e a hora de parametros_email;
+-- a "semana" continua sendo a segunda, a chave dos envios)
+create or replace function public.servidor_combinam_situacao(p_chave text)
+returns table (ligado boolean, semana date, pode boolean)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  agora timestamp := now() at time zone 'America/Sao_Paulo';
+  segunda date := date_trunc('week', agora)::date;
+  pe privado.parametros_email;
+  dia date;
+begin
+  perform privado.exigir_servidor(p_chave);
+  select * into pe from privado.parametros_email limit 1;
+  dia := segunda + (coalesce(pe.semana_dia, 1) - 1);
+  return query
+  select coalesce((select c.combinam_semana from public.config_site c limit 1), false),
+         segunda,
+         agora::date = dia and agora >= dia + make_time(coalesce(pe.semana_hora, 9), 0, 0);
+end
+$$;
+
+-- Parte 2 · as regras do Volte a contratar (a de 20270130120000, com os números de parametros_email)
+create or replace function public.servidor_reativar_empresas(p_chave text, p_semana date, p_limite integer default 50)
+returns table (perfil_id uuid, vagas jsonb, ja uuid[])
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  pe privado.parametros_email;
+begin
+  perform privado.exigir_servidor(p_chave);
+  select * into pe from privado.parametros_email limit 1;
+  return query
+  with saidas as (
+    select a.*,
+           case when a.preenchida_em is not null then a.preenchida_em
+                when a.expira_em <= now() then a.expira_em
+                else a.atualizado_em end as saiu_em
+      from public.anuncios a
+     where a.tipo = 'vaga' and a.status not in ('em_analise', 'removido', 'pausado')
+       and (a.status in ('encerrado', 'expirado') or a.preenchida_em is not null or a.expira_em <= now())
+  ), contas as (
+    select p.id, max(s.saiu_em) as ultima
+      from public.perfis p
+      join saidas s on s.autor_id = p.id
+     where p.tipo in ('empresa', 'comercio', 'agencia') and not coalesce(p.suspenso_ate > now(), false)
+     group by p.id
+  )
+  select c.id,
+         (select jsonb_agg(jsonb_build_object(
+                   'id', v.id, 'titulo', v.titulo, 'descricao', v.descricao,
+                   'escolaridade_minima', v.escolaridade_minima, 'experiencia', v.experiencia, 'cnh', v.cnh,
+                   'cidade', v.cidade, 'bairro', v.bairro, 'jornada', v.jornada,
+                   'horario_detalhe', v.horario_detalhe, 'horario', v.horario) order by v.saiu_em desc)
+            from (select * from saidas s where s.autor_id = c.id
+                     and s.saiu_em > now() - make_interval(days => coalesce(pe.reativar_janela_dias, 180))
+                   order by s.saiu_em desc limit 5) v),
+         array(select cu.perfil_id from public.curtidas cu join public.anuncios a on a.id = cu.anuncio_id
+                where a.autor_id = c.id
+               union select x.talento_id from public.conexoes x where x.empresa_id = c.id
+               union select unnest(e.ids) from privado.combinam_enviados e
+                      where e.conta_id = c.id and e.tipo in ('talentos_semana', 'talentos_reativar'))
+    from contas c
+   where c.ultima > now() - make_interval(days => coalesce(pe.reativar_janela_dias, 180))
+     and c.ultima <= now() - make_interval(days => coalesce(pe.reativar_sem_vaga_dias, 14))
+     -- sem vaga no ar, pausada ou esperando a moderação
+     and not exists (select 1 from public.anuncios a
+                      where a.autor_id = c.id and a.tipo = 'vaga' and a.preenchida_em is null
+                        and a.status in ('ativo', 'pausado', 'em_analise') and a.expira_em > now())
+     -- nada nesta semana (nem a conta vista sem talento bom)
+     and not exists (select 1 from privado.combinam_enviados e
+                      where e.semana = p_semana and e.conta_id = c.id and e.tipo = 'talentos_reativar')
+     -- um aviso a cada N dias
+     and not exists (select 1 from privado.combinam_enviados e
+                      where e.conta_id = c.id and e.tipo = 'talentos_reativar' and cardinality(e.ids) > 0
+                        and e.criado_em > now() - make_interval(days => coalesce(pe.reativar_intervalo_dias, 28)))
+     -- e até N seguidos sem publicar (conta a partir da vaga mais nova da conta)
+     and (select count(*) from privado.combinam_enviados e
+           where e.conta_id = c.id and e.tipo = 'talentos_reativar' and cardinality(e.ids) > 0
+             and e.criado_em > (select max(a.criado_em) from public.anuncios a
+                                 where a.autor_id = c.id and a.tipo = 'vaga')) < coalesce(pe.reativar_max_seguidos, 3)
+   order by c.id
+   limit least(greatest(coalesce(p_limite, 50), 1), 200);
+end
+$$;
+
+-- Parte 2 · os números para o site (o mínimo de talentos do Volte a contratar é contado no site)
+create or replace function public.servidor_parametros_email(p_chave text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform privado.exigir_servidor(p_chave);
+  return (select to_jsonb(pe) - 'id' - 'atualizado_por' from privado.parametros_email pe limit 1);
+end
+$$;
+revoke execute on function public.servidor_parametros_email(text) from public;
+grant execute on function public.servidor_parametros_email(text) to anon, authenticated, service_role;
+
+-- Parte 2 · Admin: os números e o intervalo de cada e-mail
+create or replace function public.admin_parametros_email()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform privado.exigir_admin();
+  return (select to_jsonb(pe) - 'id' - 'atualizado_por' from privado.parametros_email pe limit 1);
+end
+$$;
+revoke execute on function public.admin_parametros_email() from public, anon;
+grant execute on function public.admin_parametros_email() to authenticated, service_role;
+
+create or replace function public.admin_salvar_parametros_email(
+  p_por_dia integer, p_semana_dia integer, p_semana_hora integer, p_reativar_sem_vaga_dias integer,
+  p_reativar_janela_dias integer, p_reativar_intervalo_dias integer, p_reativar_max_seguidos integer,
+  p_reativar_minimo_talentos integer)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform privado.exigir_admin();
+  insert into privado.parametros_email (id) values (true) on conflict (id) do nothing;
+  update privado.parametros_email
+     set por_dia = p_por_dia, semana_dia = p_semana_dia, semana_hora = p_semana_hora,
+         reativar_sem_vaga_dias = p_reativar_sem_vaga_dias, reativar_janela_dias = p_reativar_janela_dias,
+         reativar_intervalo_dias = p_reativar_intervalo_dias, reativar_max_seguidos = p_reativar_max_seguidos,
+         reativar_minimo_talentos = p_reativar_minimo_talentos,
+         atualizado_em = now(), atualizado_por = (select auth.uid())
+   where id;
+exception
+  when check_violation then
+    raise exception 'Confira os números: algum está fora do permitido.' using errcode = 'P0001';
+end
+$$;
+revoke execute on function public.admin_salvar_parametros_email(integer, integer, integer, integer, integer, integer, integer, integer) from public, anon;
+grant execute on function public.admin_salvar_parametros_email(integer, integer, integer, integer, integer, integer, integer, integer) to authenticated, service_role;
+
+create or replace function public.admin_intervalo_email(p_modelo text, p_minutos integer)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform privado.exigir_admin();
+  if p_minutos is not null and (p_minutos < 1 or p_minutos > 10080) then
+    raise exception 'Use de 1 minuto a 7 dias (ou deixe em branco, sem limite).' using errcode = 'P0001';
+  end if;
+  if not exists (select 1 from public.modelos_email m where m.chave = p_modelo) then
+    raise exception 'Esse e-mail não existe.' using errcode = 'P0001';
+  end if;
+  insert into privado.regras_email (modelo, intervalo_min, atualizado_em, atualizado_por)
+  values (p_modelo, p_minutos, now(), (select auth.uid()))
+  on conflict (modelo) do update
+    set intervalo_min = excluded.intervalo_min, atualizado_em = excluded.atualizado_em,
+        atualizado_por = excluded.atualizado_por;
+end
+$$;
+revoke execute on function public.admin_intervalo_email(text, integer) from public, anon;
+grant execute on function public.admin_intervalo_email(text, integer) to authenticated, service_role;
 
 notify pgrst, 'reload schema';

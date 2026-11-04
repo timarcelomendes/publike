@@ -1701,6 +1701,22 @@ export type Database = {
       admin_ligar_reativar: { Args: { p_ligado: boolean }; Returns: undefined };
       /** 20270201120000: todos os e-mails em Admin › E-mails */
       admin_ligar_email: { Args: { p_modelo: string; p_ligado: boolean }; Returns: undefined };
+      admin_intervalo_email: { Args: { p_modelo: string; p_minutos: number | null }; Returns: undefined };
+      admin_parametros_email: { Args: Record<string, never>; Returns: Json };
+      servidor_parametros_email: { Args: { p_chave: string }; Returns: Json };
+      admin_salvar_parametros_email: {
+        Args: {
+          p_por_dia: number;
+          p_semana_dia: number;
+          p_semana_hora: number;
+          p_reativar_sem_vaga_dias: number;
+          p_reativar_janela_dias: number;
+          p_reativar_intervalo_dias: number;
+          p_reativar_max_seguidos: number;
+          p_reativar_minimo_talentos: number;
+        };
+        Returns: undefined;
+      };
       admin_emails_catalogo: {
         Args: Record<string, never>;
         Returns: {
@@ -1711,6 +1727,7 @@ export type Database = {
           descricao: string;
           assunto: string;
           ligado: boolean;
+          intervalo_min: number | null;
           enviados_7: number;
           enviados_30: number;
           falhas_30: number;
