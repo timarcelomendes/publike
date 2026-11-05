@@ -61,7 +61,7 @@ export async function CurriculoNoMercado({
         </p>
       </div>
 
-      <Nota nota={nota} funcao={funcao?.nome ?? null} />
+      <Nota nota={nota} funcao={funcao?.nome ?? null} comProfissao={Boolean(curriculo.titulo?.trim())} />
 
       {faixa && funcao && (
         <div className="flex flex-col gap-1 border-t border-line pt-4">
@@ -83,7 +83,7 @@ export async function CurriculoNoMercado({
               </strong>{" "}
               com o seu currículo (70% ou mais).{" "}
               <Link href="/?tipo=vaga&ordem=combina" className="text-label underline underline-offset-2">
-                Ver as vagas
+                {m.combinam === 1 ? "Ver a vaga" : "Ver as vagas"}
               </Link>
             </>
           ) : (
@@ -124,7 +124,16 @@ export async function CurriculoNoMercado({
 }
 
 /** A nota com a barra dos níveis e de onde ela vem. */
-function Nota({ nota, funcao }: { nota: NotaDoCurriculo; funcao: string | null }) {
+function Nota({
+  nota,
+  funcao,
+  comProfissao,
+}: {
+  nota: NotaDoCurriculo;
+  funcao: string | null;
+  /** "O que você faz" preenchido: sem a função reconhecida, não adianta pedir a profissão de novo */
+  comProfissao: boolean;
+}) {
   const proximo = NIVEIS.find((n) => n.de > nota.valor);
   const cheio = nota.valor >= 70 ? "bg-cerrado" : "bg-ink";
   return (
@@ -172,10 +181,12 @@ function Nota({ nota, funcao }: { nota: NotaDoCurriculo; funcao: string | null }
       </div>
       <p className="max-w-prose text-body-sm text-ink-muted">
         {nota.mercado
-          ? `Metade da nota é o quanto o currículo está completo (${nota.completo} de 100). A outra metade vem das vagas de ${funcao ?? "a sua função"} perto de você nos últimos 60 dias: você atende tudo o que pedem ${nota.mercado.atende} de ${nota.mercado.vagas}.`
+          ? `Metade da nota é o quanto o currículo está completo (${nota.completo} de 100). A outra metade vem das vagas ${funcao ? `de ${funcao}` : "da sua função"} perto de você nos últimos 60 dias: você atende tudo o que pedem ${nota.mercado.atende} de ${nota.mercado.vagas}.`
           : funcao
             ? `Ainda há poucas vagas de ${funcao} perto de você para comparar. Por enquanto, a nota é o quanto o currículo está completo.`
-            : "Para comparar com as vagas, diga a sua profissão em “O que você faz” (como Auxiliar de cozinha ou Vendedora). Por enquanto, a nota é o quanto o currículo está completo."}
+            : comProfissao
+              ? "Ainda há poucas vagas da sua área perto de você para comparar. Por enquanto, a nota é o quanto o currículo está completo."
+              : "Para comparar com as vagas, diga a sua profissão em “O que você faz” (como Auxiliar de cozinha ou Vendedora). Por enquanto, a nota é o quanto o currículo está completo."}
       </p>
     </div>
   );

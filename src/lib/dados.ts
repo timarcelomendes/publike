@@ -237,6 +237,8 @@ export async function buscarAnuncios(
   local: Local | null = null,
   /** com `f.meus`: só os anúncios desta conta */
   autorId: string | null = null,
+  /** `tudo`: até o que o banco deixa (200), como o "Só os meus" (o "Combina mais", que filtra depois) */
+  { tudo = false }: { tudo?: boolean } = {},
 ): Promise<AnuncioResumo[]> {
   if (f.meus && !autorId) return [];
   if (MODO_DEMO) {
@@ -256,7 +258,7 @@ export async function buscarAnuncios(
     // "combina" ordena depois, pelo % de match (aqui vem do mais perto)
     p_ordem: f.ordem === "recentes" || f.ordem === "relevantes" || f.ordem === "ultimas" ? f.ordem : "perto",
     // com turno ou quem publicou, o filtro vem depois: busca mais para sobrarem bastantes
-    p_limite: f.meus || f.turno || f.quem ? 200 : 120,
+    p_limite: tudo || f.meus || f.turno || f.quem ? 200 : 120,
     p_cidade: local?.cidade ?? null,
     p_bairro: local?.bairro || null,
     p_bairros_regiao: local?.regiao ? chavesDaRegiao(local.regiao) : null,

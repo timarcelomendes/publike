@@ -169,9 +169,20 @@ const GENERICAS = new Set(
     "nos nas pela pelo uma umas uns area setor geral gerais servicos servico pessoa profissional funcionario " +
     "funcionaria colaborador colaboradora trabalho emprego teste etapas ii iii " +
     // onde e como se trabalha, não a função ("Vendedor interno e online")
-    "interno interna externo externa online presencial remoto remota hibrido hibrida home office loja"
+    "interno interna externo externa online presencial remoto remota hibrido hibrida home office loja " +
+    // o tipo do cargo, como "analista" (05/11/2026, claude/plano-vagas-que-combinam.md): "Consultor de
+    // Implantação de Sistemas" dava 100% em "Consultor de vendas" só pela palavra
+    "consultor consultora especialista diretor diretora manager lead head owner specialist " +
+    // a equipe, não a função: "Product Chapter Lead" dava "área parecida" com chapeiro (as 4 letras de "chap")
+    "chapter squad tribe"
   ).split(" "),
 );
+
+/**
+ * "Serviços gerais" (e "ASG") é a função de limpeza e conservação, não duas palavras genéricas: sem isso,
+ * "Auxiliar de serviços gerais" não dizia a função e dava 100% a quem é de outra área.
+ */
+const LIMPEZA = /\b(servicos? gerais|asg)\b/g;
 
 /** Raízes curtas que confundem funções diferentes: pedem mais letras em comum. */
 const RAIZES_AMBIGUAS = new Set("serv elet inst mont prod cont tran info manu mant cons".split(" "));
@@ -185,6 +196,7 @@ const RAIZES_AMBIGUAS_5 = new Set("produ compr opera admin comer contr inter mer
 /** As palavras que dizem a função: sem acento, sem as genéricas, com 4 letras ou mais. */
 function palavrasDaFuncao(texto: string) {
   return simples(texto)
+    .replace(LIMPEZA, "limpeza")
     .split(/[^a-z0-9]+/)
     .filter((p) => p.length >= 4 && !GENERICAS.has(p));
 }
@@ -292,6 +304,11 @@ function funcaoNoCurriculo(
     return { parte: 0.4, detalhe: `Nas habilidades: ${habilidade} (sem trabalho na função)`, usado: habilidade };
   }
   return { parte: 0, detalhe: `Nenhum trabalho parecido com “${tituloDaVaga}” no currículo` };
+}
+
+/** O currículo diz o que a pessoa faz: algum trabalho ou a profissão (no primeiro emprego, a função não conta). */
+function temHistorico(cv: CurriculoDoCandidato | null | undefined) {
+  return Boolean(cv && (cv.experiencias.length || cv.titulo));
 }
 
 /**
@@ -480,7 +497,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     });
   }
 
-  // a função da vaga, pelo título ("Auxiliar de serviços gerais" não diz qual é)
+  // a função da vaga, pelo título ("Auxiliar II" não diz qual é)
   const funcaoDaVaga = vaga.titulo && palavrasDaFuncao(vaga.titulo).length ? vaga.titulo : null;
 
   // Tempo de experiência: o tempo na função (o de área parecida conta a metade); com parte do tempo,
@@ -507,8 +524,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
   // sem: fica de fora (o primeiro emprego não é contado contra).
   let usadoNaFuncao: string | undefined;
   if (funcaoDaVaga) {
-    const temHistorico = Boolean(cv && (cv.experiencias.length || cv.titulo));
-    if (meses || temHistorico) {
+    if (meses || temHistorico(cv)) {
       const f = cv ? funcaoNoCurriculo(funcaoDaVaga, cv) : null;
       usadoNaFuncao = f?.usado;
       criterios.push({
@@ -649,15 +665,18 @@ export function requisitosDaVaga(a: CamposDaVaga) {
  * resposta). Só quando dá para conferir onde a pessoa mora e mais alguma coisa que a vaga
  * pede: com a distância só (e os "+"), o número diria pouco. E, se a vaga diz a função, só quando
  * deu para conferir a função: o currículo sem trabalho nem título não diz se a pessoa é da área
- * (sem isso, o horário e a cidade davam 85% de cozinheiro para quem é de TI). Sem o %, a linha do
- * tempo usa a área do que a pessoa faz e procura.
+ * (sem isso, o horário e a cidade davam 85% de cozinheiro para quem é de TI). Se o título não diz a
+ * função ("Auxiliar", "Jovem aprendiz"), só para quem procura o primeiro emprego: para quem já trabalhou
+ * ou tem uma profissão no currículo, não dá para dizer que a vaga é da área dela (05/11/2026: dava 100%
+ * de "Auxiliar" a quem é de TI). Sem o %, a linha do tempo usa a área do que a pessoa faz e procura.
  */
 export function matchComAVaga(vaga: CamposDaVaga, pessoa: Omit<Candidato, "respostas">, agora: number) {
   const a = calcularAderencia({ ...requisitosDaVaga(vaga), perguntas: [] }, { ...pessoa, respostas: {} }, agora);
   const daVaga = a.criterios.filter((k) => !k.extra && k.ok !== null).length;
-  const semFuncao =
-    palavrasDaFuncao(vaga.titulo ?? "").length > 0 && !a.criterios.some((k) => k.funcao && k.ok !== null);
-  return a.nota !== null && daVaga >= 2 && !semFuncao ? a : null;
+  const dizAFuncao = palavrasDaFuncao(vaga.titulo ?? "").length > 0;
+  const semFuncao = dizAFuncao && !a.criterios.some((k) => k.funcao && k.ok !== null);
+  const tituloVago = !dizAFuncao && temHistorico(pessoa.curriculo);
+  return a.nota !== null && daVaga >= 2 && !semFuncao && !tituloVago ? a : null;
 }
 
 /** O turno no texto da vaga, para as vagas sem horário montado (as mais antigas). */

@@ -9,6 +9,7 @@ import {
   meuCurriculoNaVitrine,
   minhasBuscasSalvas,
   obterMeuCurriculo,
+  obterMeuPerfil,
   obterUsuario,
   respostaDeQuemPublica,
   temAnuncioNoAr,
@@ -51,12 +52,18 @@ import { FimDoRaioDaBusca, RaioDaBusca, type DadosDoRaio } from "../home/linha/r
 import { ListaPaginada } from "./lista-paginada";
 import { VisaoExplorar } from "./visao-explorar";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
+import { MINIMO as NOTA_QUE_COMBINA, outraArea } from "@/lib/servidor/combinam";
+import { vagasQueCombinam } from "@/lib/servidor/curriculo-mercado";
+import { pracaDaCidade } from "@/lib/pracas";
 import { comPertoGuardado } from "@/lib/servidor/perto";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
 /** Quantos anúncios a busca traz (a lista mostra de 12 em 12, e o mapa todos). */
 const LIMITE = 120;
+
+/** Combina: 70% ou mais e não "Outra área" (a conta do cartão "Seu currículo no mercado"). */
+const combinaNaLista = (m: Aderencia | undefined) => Boolean(m && (m.nota ?? 0) >= NOTA_QUE_COMBINA && !outraArea(m));
 
 /**
  * O próximo passo de quem respondeu "O que você quer fazer no Publike?", ao lado da
@@ -225,29 +232,51 @@ export async function Explorar({
   const ordemFora = feed && filtros.tipo !== "servico" && !comoBusca;
   // o aviso de vaga nova é de quem procura trabalho (quem contrata não segue vagas dos outros)
   const avisar = filtros.tipo === "vaga" && !filtros.meus && !contrata;
-  // o % de match é para quem procura trabalho (ou ainda não disse o que quer)
+  // quem procura trabalho (ou ainda não disse o que quer): o convite para o currículo e o "Poucas vagas por aqui"
   const procuraTrabalho = !contrata && (intencao === null || intencao === "trabalho" || intencao === "talento");
+  // o % de match é de quem tem currículo, qualquer que seja a resposta da conta (05/11/2026: antes, só de quem
+  // procura trabalho, e o "Ver as vagas" do currículo abria sem % para quem tinha respondido outra coisa)
+  const comMatch = Boolean(usuario) && !contrata && !filtros.meus && filtros.tipo !== "servico";
+  // "Combina mais" (o "Ver as vagas" do currículo, o "Para você" e o aviso de segunda): só as vagas que combinam,
+  // as mesmas do cartão "Seu currículo no mercado", com o mesmo número (claude/plano-vagas-que-combinam.md). Com
+  // currículo, a busca vai até o maior raio: o cartão conta as vagas da região toda. Sem currículo, a lista de sempre,
+  // com o aviso (antes, caía calada em "mais perto").
+  const paraVoce = filtros.ordem === "combina" && comMatch;
+  const quemAntes = paraVoce ? await quemProcura() : null;
+  const soAsQueCombinam = quemAntes !== null;
   // o raio esconde os anúncios mais longe sem a pessoa perceber (de Goiânia, Anápolis fica a mais de 50 km): a
   // mesma busca até o maior raio diz quantos ficaram de fora e de onde (03/11/2026)
   const maiorRaio = RAIOS[RAIOS.length - 1];
-  const veLonge = !filtros.meus && !filtros.tempo && filtros.raio < maiorRaio;
-  const [encontrados, proximoPasso, publica, quem, salvas, ateOMaior] = await Promise.all([
+  const veLonge = !filtros.meus && !filtros.tempo && filtros.raio < maiorRaio && !soAsQueCombinam;
+  const [encontrados, proximoPasso, publica, quem, salvas, ateOMaior, combinamNoCartao] = await Promise.all([
     buscarAnuncios(
-      ordemDaBusca === filtros.ordem ? filtros : { ...filtros, ordem: ordemDaBusca },
+      soAsQueCombinam
+        ? { ...filtros, raio: maiorRaio, tempo: null }
+        : ordemDaBusca === filtros.ordem
+          ? filtros
+          : { ...filtros, ordem: ordemDaBusca },
       agora,
       local,
       usuario?.id ?? null,
+      { tudo: soAsQueCombinam },
     ),
     proximoPassoDa(intencao, Boolean(usuario)),
     // "Só os meus" só para quem tem anúncio no ar (quem só procura não precisa dele)
     usuario && !filtros.meus ? temAnuncioNoAr(usuario.id).catch(() => false) : Promise.resolve(filtros.meus),
-    usuario && procuraTrabalho && !filtros.meus && filtros.tipo !== "servico" ? quemProcura() : Promise.resolve(null),
+    paraVoce ? Promise.resolve(quemAntes) : comMatch ? quemProcura() : Promise.resolve(null),
     usuario && avisar ? minhasBuscasSalvas().catch(() => []) : Promise.resolve([]),
     veLonge
       ? buscarAnuncios({ ...filtros, raio: maiorRaio, ordem: "perto" }, agora, local, usuario?.id ?? null).catch(
           () => [],
         )
       : Promise.resolve([]),
+    usuario && quemAntes?.curriculo
+      ? vagasQueCombinam(
+          { id: usuario.id, cidade: quemAntes.cidade, bairro: quemAntes.bairro ?? null },
+          quemAntes.curriculo,
+          agora,
+        )
+      : Promise.resolve(null),
   ]);
   // os de fora do raio: quantos e as cidades (as mais perto primeiro)
   const dentro = new Set(encontrados.map((a) => a.id));
@@ -271,29 +300,42 @@ export async function Explorar({
       : null,
     tipo: filtros.tipo,
   };
-  const mostraRaio = !filtros.meus;
+  // "Combina mais" não tem raio: são as vagas da região que o cartão do currículo conta
+  const mostraRaio = !filtros.meus && !soAsQueCombinam;
+  // "Combina mais": só as que o cartão conta (sem a conta do cartão, por uma falha, as da lista com 70% ou mais)
+  const doCartao = soAsQueCombinam && combinamNoCartao ? encontrados.filter((a) => combinamNoCartao.has(a.id)) : null;
   // o que cada vaga pede e oferece: para o % de match, o turno (a busca do banco não filtra
   // turno) e a linha de benefícios do cartão
-  const requisitos = await requisitosDaLista(encontrados).catch(() => null);
+  const requisitos = await requisitosDaLista(doCartao ?? encontrados).catch(() => null);
   const turno = filtros.turno;
   // "Começa já" também é filtrado aqui (a busca do banco não sabe dele)
   const ja = filtros.ja;
   let anuncios =
     (turno || ja) && requisitos
-      ? encontrados.filter((a) => {
+      ? (doCartao ?? encontrados).filter((a) => {
           const v = requisitos.get(a.id);
           return (
             a.tipo === "vaga" && v !== undefined && (!turno || vagaNoTurno(v, turno)) && (!ja || Boolean(v.comeca_ja))
           );
         })
-      : encontrados;
-  anuncios = anuncios.slice(0, LIMITE);
-  const matches =
-    usuario && quem && requisitos
+      : (doCartao ?? encontrados);
+  // sem o cartão, o % da lista decide quais combinam (antes de cortar: as que combinam podem estar longe)
+  const daLista =
+    soAsQueCombinam && !doCartao && usuario && quem && requisitos
       ? matchDasVagas(anuncios, requisitos, quem, usuario.id, agora)
-      : new Map<string, Aderencia>();
-  // "Combina mais": do maior % para o menor (sem %, depois, na ordem de perto)
-  const combina = filtros.ordem === "combina" && matches.size > 0;
+      : null;
+  if (daLista) anuncios = anuncios.filter((a) => combinaNaLista(daLista.get(a.id)));
+  anuncios = anuncios.slice(0, LIMITE);
+  // o % de cada cartão: no "Combina mais", o do cartão do currículo (o mesmo número das duas telas)
+  const matches: Map<string, Aderencia> =
+    doCartao && combinamNoCartao
+      ? new Map(anuncios.map((a) => [a.id, combinamNoCartao.get(a.id)!] as const))
+      : (daLista ??
+        (usuario && quem && requisitos
+          ? matchDasVagas(anuncios, requisitos, quem, usuario.id, agora)
+          : new Map<string, Aderencia>()));
+  // "Combina mais": do maior % para o menor (no mesmo %, do mais perto ao mais longe)
+  const combina = soAsQueCombinam;
   if (combina) {
     anuncios = anuncios
       .map((a, i) => ({ a, i, nota: matches.get(a.id)?.nota ?? -1 }))
@@ -371,7 +413,17 @@ export async function Explorar({
           : // com poucas, o número não ajuda: só o que é ("Vagas perto de você")
             `${nome[1][0].toUpperCase()}${nome[1].slice(1)} perto de você`;
   // na busca por palavra: "Resultados para “mecânico”", com quantos são embaixo
-  const tituloDaLista = busca ? (n === 0 ? `Nada encontrado para “${termo}”` : `Resultados para “${termo}”`) : contagem;
+  const tituloDaLista = busca
+    ? n === 0
+      ? `Nada encontrado para “${termo}”`
+      : `Resultados para “${termo}”`
+    : combina
+      ? n === 0
+        ? "Vagas que combinam com seu currículo"
+        : `${n} ${n === 1 ? "vaga combina" : "vagas combinam"} com seu currículo`
+      : contagem;
+  // onde ficam as vagas que combinam (as cidades que o cartão do currículo conta)
+  const regiaoDoCartao = quem ? (pracaDaCidade(quem.cidade)?.nome ?? quem.cidade ?? null) : null;
   const quantos =
     busca && n > 0
       ? `${n >= LIMITE ? `${LIMITE}+` : n} ${
@@ -408,11 +460,15 @@ export async function Explorar({
       </div>
     );
   // Poucas vagas (o começo): no fim da lista, o aviso de vaga nova e a distância maior, para quem procura trabalho
-  const poucas = n > 0 && n < 10 && !filtros.meus && filtros.tipo !== "servico" && procuraTrabalho;
+  const poucas = n > 0 && n < 10 && !filtros.meus && filtros.tipo !== "servico" && procuraTrabalho && !combina;
   // No fim da lista, o convite para quem tem vaga: no começo, são as vagas que mais faltam.
   // Não aparece para quem já disse que procura trabalho ou oferece serviços, nem para quem já tem anúncio no ar.
   const convidarQuemContrata =
-    !filtros.meus && filtros.tipo !== "servico" && !publica && (intencao === null || intencao === "contratar_pessoa");
+    !filtros.meus &&
+    filtros.tipo !== "servico" &&
+    !publica &&
+    !combina &&
+    (intencao === null || intencao === "contratar_pessoa");
 
   const lista =
     n > 0 ? (
@@ -447,6 +503,18 @@ export async function Explorar({
           <>
             {/* acabou o raio, mas há mais longe: Exibir mais */}
             {mostraRaio && <FimDoRaioDaBusca r={raio} />}
+            {combina && (
+              <p className="col-span-full text-body-sm text-ink-muted">
+                Essas são as vagas que combinam com o seu currículo.{" "}
+                <Link
+                  href={hrefFiltros(filtros, { ordem: "perto" })}
+                  scroll={false}
+                  className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+                >
+                  Ver todas as vagas perto de você
+                </Link>
+              </p>
+            )}
             {poucas && (
               <aside
                 aria-label="Poucas vagas por aqui"
@@ -496,6 +564,23 @@ export async function Explorar({
           </>
         }
       />
+    ) : combina ? (
+      <Vazio
+        icone={Percent}
+        titulo="Nenhuma vaga perto combina com seu currículo agora"
+        acao={
+          <>
+            <BotaoLink href={hrefFiltros(filtros, { ordem: "perto" })} scroll={false} variante="primario">
+              Ver todas as vagas perto
+            </BotaoLink>
+            <BotaoLink href="/perfil/curriculo">Melhorar o currículo</BotaoLink>
+          </>
+        }
+      >
+        {busca || filtros.turno || filtros.ja || filtros.categoria || filtros.regime || filtros.quem
+          ? "Com estes filtros, nenhuma das vagas que combinam com você aparece. Tire um filtro para ver mais."
+          : `Quando entrar uma vaga da sua área${regiaoDoCartao ? ` em ${regiaoDoCartao}` : ""}, ela aparece aqui. Com a sua profissão e as experiências no currículo, o Publike acha as vagas certas para você.`}
+      </Vazio>
     ) : filtros.meus ? (
       <Vazio
         icone={SearchX}
@@ -555,6 +640,35 @@ export async function Explorar({
                 : "Ainda não há anúncios nesta área. Que tal ser o primeiro a publicar?"}
       </Vazio>
     );
+  // "Combina mais" sem currículo (ou sem entrar): a lista de sempre, dizendo por quê e o que fazer
+  const pedeCurriculo =
+    filtros.ordem === "combina" &&
+    !contrata &&
+    !filtros.meus &&
+    filtros.tipo !== "servico" &&
+    !soAsQueCombinam &&
+    (!usuario || (await obterMeuPerfil().catch(() => null))?.tipo === "pessoa");
+  const avisoDoCurriculo = pedeCurriculo ? (
+    <Aviso titulo="Ponha seu currículo para ver as vagas que combinam com você">
+      <p>
+        Com ele, o Publike mostra as vagas da sua área, com o % de cada uma. Por enquanto, a lista mostra todas as vagas
+        perto.
+      </p>
+      <div className="mt-2">
+        <BotaoLink
+          href={
+            usuario
+              ? `/perfil/curriculo?next=${encodeURIComponent(hrefFiltros(filtros))}`
+              : `/entrar?next=${encodeURIComponent(hrefFiltros(filtros))}`
+          }
+          variante="primario"
+          tamanho="sm"
+        >
+          {usuario ? "Pôr meu currículo" : "Entrar"}
+        </BotaoLink>
+      </div>
+    </Aviso>
+  ) : null;
   // feed: a linha verde do match vem logo em cima dos cartões
   const fortes = [...matches.values()].filter((m) => (m.nota ?? 0) >= 80).length;
   const linhaDoMatch =
@@ -576,11 +690,13 @@ export async function Explorar({
   const listaComPerguntas =
     n === 0 && perguntas ? (
       <div className="flex flex-col gap-4">
+        {avisoDoCurriculo}
         {lista}
         <div className="empty:hidden">{perguntas}</div>
       </div>
-    ) : perguntas || linhaDoMatch ? (
+    ) : perguntas || linhaDoMatch || avisoDoCurriculo ? (
       <div className="flex flex-col gap-4">
+        {avisoDoCurriculo}
         {linhaDoMatch}
         {perguntas && <div className="empty:hidden">{perguntas}</div>}
         {lista}
@@ -636,9 +752,15 @@ export async function Explorar({
               <p className="text-body-sm text-ink-muted empty:hidden">
                 {[
                   quantos,
-                  combina && "Do que mais combina com seu currículo",
+                  combina && regiaoDoCartao,
+                  combina && "70% ou mais, do maior para o menor",
                   !combina && local?.ponto && filtros.origem === "centro" && "Do mais perto ao mais longe",
-                  !mostraRaio && local && !local.ponto && filtros.origem === "centro" && `${local.bairro} e região`,
+                  !combina &&
+                    !mostraRaio &&
+                    local &&
+                    !local.ponto &&
+                    filtros.origem === "centro" &&
+                    `${local.bairro} e região`,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -649,7 +771,8 @@ export async function Explorar({
               <p className="text-body-sm text-ink-muted empty:hidden">
                 {[
                   quantos,
-                  combina && "Do que mais combina com seu currículo",
+                  combina && regiaoDoCartao,
+                  combina && "70% ou mais, do maior para o menor",
                   !combina &&
                     !filtros.meus &&
                     local &&
@@ -683,7 +806,8 @@ export async function Explorar({
               </Link>
             )}
             {/* com poucas vagas, o aviso fica no fim da lista (no bloco "Poucas vagas por aqui") */}
-            {avisar && !poucas && (
+            {/* no "Combina mais", não: o aviso guarda a busca, e avisaria de toda vaga nova perto, não só das que combinam */}
+            {avisar && !poucas && !combina && (
               <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
             )}
             {/* o % de match chama para a conta e o currículo (quem procura trabalho já tem o atalho na lista) */}

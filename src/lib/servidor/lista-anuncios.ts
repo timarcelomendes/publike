@@ -13,7 +13,9 @@ import { ganhosDoBanco } from "@/lib/vaga-extra";
 export async function quemProcura(): Promise<Omit<Candidato, "respostas"> | null> {
   try {
     const [curriculo, perfil] = await Promise.all([obterMeuCurriculo(), obterMeuPerfil()]);
-    return curriculo && perfil ? { curriculo, cidade: perfil.cidade, bairro: perfil.bairro } : null;
+    // só a conta de pessoa procura trabalho (empresa, comércio e agência não têm o % de match, nem com um currículo
+    // que tenha ficado de quando a conta era de pessoa)
+    return curriculo && perfil?.tipo === "pessoa" ? { curriculo, cidade: perfil.cidade, bairro: perfil.bairro } : null;
   } catch {
     return null;
   }

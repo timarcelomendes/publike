@@ -8,6 +8,7 @@ import {
   requisitosDaVaga,
   type Aderencia,
   type CamposDaVaga,
+  type Candidato,
 } from "@/lib/aderencia";
 import { normalizarTexto, ocupacao } from "@/lib/cbo";
 import { DISPONIBILIDADES, ESCOLARIDADES } from "@/lib/constantes";
@@ -244,7 +245,20 @@ const salariosPorMes = (vagas: VagaDoMercado[]) =>
   vagas.filter((v) => v.pagamento_unidade === "mes" && (v.pagamento_valor ?? 0) > 0).map((v) => v.pagamento_valor!);
 const media = (l: number[]) => l.reduce((t, x) => t + x, 0) / l.length;
 
-/** O que mais abre vaga, uma mudança de cada vez, nas vagas no ar perto (até 3, só as que somam). */
+/**
+ * A vaga é da área da pessoa: a função dela ou uma parecida (só um curso ou uma habilidade não bastam). Sem a função
+ * para conferir (o primeiro emprego), vale.
+ */
+function daArea(a: Aderencia) {
+  const f = a.criterios.find((k) => k.funcao);
+  return !f || (f.parte ?? (f.ok ? 1 : 0)) >= 0.6;
+}
+
+/**
+ * O que mais abre vaga, uma mudança de cada vez, nas vagas no ar perto (até 3, só as que somam). Só contam as vagas
+ * da área da pessoa: o curso conta meia função, e o "curso de empilhadeira" levava a 70% a vaga de empilhadeira de
+ * quem é de TI (05/11/2026, claude/plano-vagas-que-combinam.md).
+ */
 function mudancasQueAbrem(
   cv: Curriculo,
   pessoa: Pessoa,
@@ -256,6 +270,20 @@ function mudancasQueAbrem(
     const m = matchComAVaga(v, { curriculo: c, cidade: pessoa.cidade, bairro: pessoa.bairro }, agora);
     return Boolean(m && (m.nota ?? 0) >= NOTA_QUE_COMBINA && !outraArea(m));
   };
+  // a área com o currículo de hoje (a mudança não pode ser o que põe a vaga na área)
+  const naArea = new Set(
+    noAr
+      .filter((v) =>
+        daArea(
+          calcularAderencia(
+            { ...requisitosDaVaga(v), perguntas: [] },
+            { curriculo: cv, cidade: pessoa.cidade, bairro: pessoa.bairro, respostas: {} },
+            agora,
+          ),
+        ),
+      )
+      .map((v) => v.id),
+  );
   const comSalario = salariosPorMes(noAr.filter((v) => combinamAgora.has(v.id)));
   // a mudança nas vagas que ela mexe: as que passam a combinar menos as que deixam (um horário dito pela primeira
   // vez pode tirar alguma)
@@ -265,7 +293,7 @@ function mudancasQueAbrem(
     for (const v of vagas) {
       const antes = combinamAgora.has(v.id);
       const depois = combina(v, novo);
-      if (depois && !antes) novas.push(v);
+      if (depois && !antes && naArea.has(v.id)) novas.push(v);
       else if (antes && !depois) perdidas++;
     }
     const daNova = salariosPorMes(novas);
@@ -345,6 +373,37 @@ function mudancasQueAbrem(
 
 // ------------------------------------------------------------------ as telas
 
+type CurriculoDaConta = NonNullable<Candidato["curriculo"]>;
+
+/** Das vagas, as que combinam com o currículo (70% ou mais, sem "Outra área"), com o % de cada uma. */
+function combinamCom(vagas: VagaDoMercado[], pessoa: Pessoa, cv: CurriculoDaConta, agora: number) {
+  const combinam = new Map<string, Aderencia>();
+  for (const v of vagas) {
+    const m = matchComAVaga(v, { curriculo: cv, cidade: pessoa.cidade, bairro: pessoa.bairro }, agora);
+    if (m && (m.nota ?? 0) >= NOTA_QUE_COMBINA && !outraArea(m)) combinam.set(v.id, m);
+  }
+  return combinam;
+}
+
+/**
+ * As vagas no ar perto que combinam com o currículo, com o % de cada uma: as mesmas que o cartão "Seu currículo no
+ * mercado" conta, para o "Combina mais" da lista mostrar as mesmas e com o mesmo número
+ * (claude/plano-vagas-que-combinam.md). Com falha, null.
+ */
+export async function vagasQueCombinam(
+  pessoa: Pessoa,
+  cv: CurriculoDaConta,
+  agora: number,
+): Promise<Map<string, Aderencia> | null> {
+  try {
+    const noAr = (await vagasPerto(pessoa)).filter((v) => v.no_ar);
+    return combinamCom(noAr, pessoa, cv, agora);
+  } catch (e) {
+    console.error(`Publike: falha nas vagas que combinam: ${e instanceof Error ? e.message : String(e)}`);
+    return null;
+  }
+}
+
 /** O cartão de Meu currículo: a faixa, as vagas que combinam, o que abre mais vagas e a nota. Com falha, null. */
 export async function curriculoNoMercado(
   pessoa: Pessoa,
@@ -355,14 +414,7 @@ export async function curriculoNoMercado(
     const [vagas, funcao] = await Promise.all([vagasPerto(pessoa), funcaoDaPessoa(cv)]);
     const faixa = funcao ? await faixaDaFuncao(funcao.cbo, pessoa.cidade) : null;
     const noAr = vagas.filter((v) => v.no_ar);
-    const combinamAgora = new Set(
-      noAr
-        .filter((v) => {
-          const m = matchComAVaga(v, { curriculo: cv, cidade: pessoa.cidade, bairro: pessoa.bairro }, agora);
-          return Boolean(m && (m.nota ?? 0) >= NOTA_QUE_COMBINA && !outraArea(m));
-        })
-        .map((v) => v.id),
-    );
+    const combinamAgora = new Set(combinamCom(noAr, pessoa, cv, agora).keys());
     return {
       funcao,
       faixa,
