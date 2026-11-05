@@ -2,10 +2,11 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { categoria, REGIMES } from "@/lib/constantes";
 import type { QuemProcura, VagaIndicada } from "@/lib/descobrir";
-import { chamarIA, lerJson, MODELO_PADRAO } from "@/lib/ia/openai";
+import { chamarIA, lerJson } from "@/lib/ia/openai";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Regime } from "@/lib/tipos";
 import { ONDE_FUNCIONA, UFS } from "@/lib/pracas";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // "Para você" com IA: as regras escolhem as melhores vagas e a IA lê o que a
 // pessoa procura e a experiência dela para dar uma nota a cada uma. A nota
@@ -86,7 +87,7 @@ export async function notasDaIA(q: QuemProcura, vagas: VagaIndicada[], usuarioId
     const { data: liberado, error } = await supabase.rpc("usar_ia_indicacoes");
     if (error || !liberado) return null;
     const { data: config } = await supabase.rpc("config_publica");
-    const modelo = config?.[0]?.ia_modelo ?? MODELO_PADRAO;
+    const modelo = modeloPara(config?.[0], "descobrir");
 
     const lista = escolhidas.map((v, i) => descreverVaga(v, i + 1)).join("\n\n");
     const { texto, parada } = await chamarIA({

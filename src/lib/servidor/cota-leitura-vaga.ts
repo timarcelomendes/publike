@@ -1,11 +1,11 @@
 import "server-only";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
-import { MODELO_PADRAO } from "@/lib/ia/openai";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import { criarClienteServidor, criarClientePublico } from "@/lib/supabase/servidor";
 import { acessoFila } from "./filas";
 import { dentroDoLimite, embaralhar, enderecoDeQuemPediu } from "./limite";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // A cota da leitura da vaga pela IA (a foto e o texto colado, no passo 1 do publicar). Com conta: a cota da ajuda
 // da IA da conta (o admin, no computador dele, não gasta). Sem conta (migração 20270126120000): por endereço de
@@ -25,13 +25,13 @@ export async function usarLeituraDaVaga(): Promise<{ modelo: string } | { erro: 
     const admin = await clienteAdminOuNulo();
     if (admin) {
       const { data } = await admin.rpc("admin_config");
-      return { modelo: data?.[0]?.ia_modelo ?? MODELO_PADRAO };
+      return { modelo: modeloPara(data?.[0], "ler") };
     }
     const supabase = await criarClienteServidor();
     const { error } = await supabase.rpc("usar_ia_texto");
     if (error) return { erro: mensagemDeErro(error) };
     const { data } = await supabase.rpc("config_publica");
-    return { modelo: data?.[0]?.ia_modelo ?? MODELO_PADRAO };
+    return { modelo: modeloPara(data?.[0], "ler") };
   }
 
   const quem = `ip:${embaralhar(await enderecoDeQuemPediu())}`;
@@ -56,5 +56,5 @@ export async function usarLeituraDaVaga(): Promise<{ modelo: string } | { erro: 
   }
   if (pode !== true) return { erro: ACABOU_SEM_CONTA };
   const { data } = await criarClientePublico().rpc("config_publica");
-  return { modelo: data?.[0]?.ia_modelo ?? MODELO_PADRAO };
+  return { modelo: modeloPara(data?.[0], "ler") };
 }

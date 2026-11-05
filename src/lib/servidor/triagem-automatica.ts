@@ -3,13 +3,14 @@ import { calcularAderencia, requisitosDaVaga, type CamposDaVaga } from "@/lib/ad
 import { nomeEscolaridade, nomeExperiencia, nomeJornada } from "@/lib/constantes";
 import { contarLeitura, criteriosDoBanco, funilDaTriagem, motivoProibido, type CriterioCopiloto } from "@/lib/copiloto";
 import { lerCurriculo, sugerirCriterios } from "@/lib/ia/copiloto";
-import { iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
+import { iaConfigurada } from "@/lib/ia/openai";
 import { descreverAnuncio } from "@/lib/ia/tarefas";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { Curriculo } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta, type Respostas } from "@/lib/vaga-extra";
 import { preNota, semNome, textoDoCurriculo } from "./copiloto";
 import { acessoFila } from "./filas";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // A Triagem com IA lê sozinha (claude/plano-triagem-automatica.md, item 1; migração 20261227120000): a vaga sem
 // critérios ganha os que a IA monta pela vaga, e cada candidato com currículo é lido quando chega. Só nas contas
@@ -102,7 +103,7 @@ async function iaDaTriagem(acesso: Acesso): Promise<string | null> {
   if (!iaConfigurada()) return null;
   const { data } = await acesso.cliente.rpc("config_publica");
   const c = data?.[0];
-  return c?.ia_melhorar_texto ? modeloDaIA(c.ia_modelo).id : null;
+  return c?.ia_melhorar_texto ? modeloPara(c, "empresa") : null;
 }
 
 /** As vagas novas das contas com a Triagem, sem critérios: a IA monta pela vaga (sem a IA, os da própria vaga). */

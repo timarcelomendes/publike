@@ -8,13 +8,14 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 import { listarCurriculosDosInteressados, obterAnuncio, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
-import { iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
+import { iaConfigurada } from "@/lib/ia/openai";
 import { resumirCandidato, type ResumoCandidato } from "@/lib/ia/tarefas";
 import { processarFilas } from "@/lib/servidor/filas";
 import { montarQuadro } from "@/lib/servidor/quadro";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // Painel 2.0, entrega 3: o resumo do candidato pela IA, os convites de Talentos e a
 // escolha de quem deixa as empresas acharem o currículo.
@@ -49,7 +50,7 @@ export async function resumirCandidatoComIA(anuncioId: string, perfilId: string)
   const { error: limite } = await supabase.rpc("usar_ia_resumo");
   if (limite) return { ok: false, erro: mensagemDeErro(limite) };
   const { data: config } = await supabase.rpc("config_publica");
-  const modelo = config?.[0]?.ia_modelo ?? MODELO_PADRAO;
+  const modelo = modeloPara(config?.[0], "empresa");
 
   // a vaga, o que dá para comparar e o currículo; sem nome, foto nem contato
   const { cartoes } = await montarQuadro(anuncio, Date.now());

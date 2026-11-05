@@ -1,5 +1,6 @@
 "use client";
 
+import { IA } from "@/components/apelido-da-ia";
 import { Check, Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 import { melhorarCurriculoComIA } from "@/lib/acoes/curriculo-ia";
@@ -65,17 +66,28 @@ export function MelhorarCurriculoComIA({
         </span>
         <div className="min-w-0">
           <h2 id="melhorar-com-ia-titulo" className="text-h3">
-            Melhorar com a IA
+            Melhorar <IA forma="com" />
           </h2>
           <p className="mt-1 max-w-prose text-body-sm text-ink-muted">
-            A IA lê o que está neste formulário e sugere textos e perguntas para o currículo combinar com mais vagas. Só
-            quando você pede, sem seu nome, foto ou contato. Nada é salvo sozinho: você escolhe o que usar.
+            <IA forma="Nome" /> lê o que está neste formulário e sugere textos e perguntas para o currículo combinar com
+            mais vagas. Só quando você pede, sem seu nome, foto ou contato. Nada é salvo sozinho: você escolhe o que
+            usar.
           </p>
         </div>
       </div>
       <Botao tamanho="sm" disabled={pendente} onClick={pedir} className="self-start">
         <Sparkles aria-hidden />
-        {pendente ? "A IA está lendo o seu currículo…" : resposta ? "Pedir outras sugestões" : "Melhorar com a IA"}
+        {pendente ? (
+          <>
+            <IA forma="Nome" /> está lendo o seu currículo…
+          </>
+        ) : resposta ? (
+          "Pedir outras sugestões"
+        ) : (
+          <>
+            Melhorar <IA forma="com" />
+          </>
+        )}
       </Botao>
       {erro && (
         <p role="alert" className="text-body-sm text-danger">

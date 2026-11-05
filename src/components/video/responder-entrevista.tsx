@@ -1,5 +1,6 @@
 "use client";
 
+import { IA } from "@/components/apelido-da-ia";
 import {
   Camera,
   CheckCircle2,
@@ -124,8 +125,8 @@ export function ResponderEntrevistaVideo({
         <ul className="ml-5 list-disc text-ink-muted">
           <li>Os vídeos são gravados e só {e.empresa} e você veem.</li>
           <li>
-            A IA transcreve e resume só o que você disse. Ela não avalia o seu rosto, a sua voz, o seu jeito de falar
-            nem nada além da resposta. Quem decide é uma pessoa da empresa.
+            <IA forma="Nome" /> transcreve e resume só o que você disse, sem avaliar o seu rosto, a sua voz, o seu jeito
+            de falar nem nada além da resposta. Quem decide é uma pessoa da empresa.
           </li>
           <li>Os vídeos ficam guardados até 6 meses depois que a vaga sai do ar. Dá para apagar quando quiser.</li>
           {e.aceita_texto && <li>Se não puder gravar, dá para responder por escrito.</li>}

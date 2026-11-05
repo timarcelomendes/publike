@@ -4,10 +4,11 @@ import { refresh } from "next/cache";
 import type { EmpresaDoAdmin } from "@/lib/admin/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { agruparEmpresasComIA } from "@/lib/ia/empresas";
-import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
+import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // Admin › Empresas (migração 20261209120000_empresas_catalogo.sql): juntar os nomes da mesma empresa, marcar o que
 // não é empresa, corrigir o nome e ligar ao perfil da empresa no Publike. Tudo fica no registro da equipe.
@@ -159,7 +160,7 @@ export async function sugerirRepetidasComIA(): Promise<
   const empresas = (data ?? []).map((e) => ({ ...e, pessoas: Number(e.pessoas) }));
   if (empresas.length < 2) return { ok: true, grupos: [] };
   try {
-    const grupos = await agruparEmpresasComIA(empresas, modeloDaIA(config?.[0]?.ia_modelo).id);
+    const grupos = await agruparEmpresasComIA(empresas, modeloPara(config?.[0], "admin"));
     const porId = new Map(empresas.map((e) => [e.id, e]));
     return {
       ok: true,

@@ -1,5 +1,6 @@
 "use client";
 
+import { IA } from "@/components/apelido-da-ia";
 import { Play, RefreshCw, Sparkles, Video } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -84,7 +85,7 @@ export function VideoNaFicha({
     if (!liberado) {
       return (
         <p className="text-body-sm text-ink-muted">
-          Com a Entrevista em vídeo, {primeiro} grava as respostas pelo celular e a IA resume.{" "}
+          Com a Entrevista em vídeo, {primeiro} grava as respostas pelo celular e <IA /> resume.{" "}
           <Link href="/painel/video" className="text-label underline underline-offset-2">
             Conhecer
           </Link>
@@ -139,7 +140,13 @@ export function VideoNaFicha({
           {(!video.resumo || (assistir && !assistir.resumo)) && (
             <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={refazer} className="self-start">
               <Sparkles aria-hidden />
-              {pendente ? "A IA está lendo…" : "Fazer a transcrição e o resumo"}
+              {pendente ? (
+                <>
+                  <IA forma="Nome" /> está lendo…
+                </>
+              ) : (
+                "Fazer a transcrição e o resumo"
+              )}
             </Botao>
           )}
         </>
@@ -154,7 +161,7 @@ function ResumoDaIA({ resumo }: { resumo: NonNullable<VideoNoQuadro["resumo"]> }
     <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
       <p className="flex items-center gap-1.5 text-label">
         <Sparkles aria-hidden className="size-4 text-terra-text" />
-        Resumo da IA
+        Resumo <IA forma="de" />
       </p>
       <p>{resumo.resumo}</p>
       {resumo.fortes.length > 0 && (
@@ -177,7 +184,9 @@ function ResumoDaIA({ resumo }: { resumo: NonNullable<VideoNoQuadro["resumo"]> }
           </ul>
         </div>
       )}
-      <p className="text-caption text-ink-muted">A IA lê só o que a pessoa disse. Quem decide é você.</p>
+      <p className="text-caption text-ink-muted">
+        <IA forma="Nome" /> lê só o que a pessoa disse. Quem decide é você.
+      </p>
     </div>
   );
 }

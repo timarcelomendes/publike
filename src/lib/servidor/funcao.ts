@@ -3,8 +3,9 @@ import { buscarOcupacoes, normalizarTexto, ocupacao, type Ocupacao } from "@/lib
 import { funcaoPeloTitulo, type FuncaoParaForm } from "@/lib/funcao-cbo";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { escolherFuncaoComIA } from "@/lib/ia/funcao";
-import { iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
+import { iaConfigurada } from "@/lib/ia/openai";
 import { acessoFila } from "./filas";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // A função (CBO) de uma vaga (claude/plano-salario-e-curriculo.md, parte 2): as regras do título primeiro; sem
 // elas, o que a IA já achou para o mesmo título; sem isso, a IA (quando `modelo` vem), que escolhe numa lista curta
@@ -72,7 +73,7 @@ export async function modeloDaFuncao(acesso: Acesso | null = acessoFila()): Prom
   if (!acesso || !iaConfigurada()) return null;
   const { data } = await acesso.cliente.rpc("config_publica");
   const c = data?.[0];
-  return c?.ia_melhorar_texto ? modeloDaIA(c.ia_modelo).id : null;
+  return c?.ia_melhorar_texto ? modeloPara(c, "funcao") : null;
 }
 
 /** O robô das filas: acha a função das vagas que ainda não têm (as mais novas primeiro). */

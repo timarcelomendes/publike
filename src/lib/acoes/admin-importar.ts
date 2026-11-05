@@ -1,8 +1,9 @@
 "use server";
 
-import { iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
+import { iaConfigurada } from "@/lib/ia/openai";
 import { lerVagasImportadas, type VagaImportada } from "@/lib/ia/importar-vaga";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // Admin › Publicar vaga em nome de uma conta › "Importar com a IA" (foto ou texto colado).
 
@@ -33,7 +34,7 @@ export async function importarVagas(formData: FormData): Promise<ResultadoImport
   if (textoColado.length > 6000) return { ok: false, erro: "Texto grande demais: cole até 6.000 letras." };
 
   const { data } = await c.rpc("admin_config");
-  const modelo = data?.[0]?.ia_modelo ?? MODELO_PADRAO;
+  const modelo = modeloPara(data?.[0], "ler");
   try {
     const vagas = await lerVagasImportadas({ imagem, textoColado }, modelo);
     if (!vagas.length) return { ok: false, erro: "A IA não achou vaga de trabalho nesse material." };

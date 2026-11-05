@@ -1,5 +1,6 @@
 "use client";
 
+import { IA } from "@/components/apelido-da-ia";
 import {
   CalendarPlus,
   ChevronDown,
@@ -958,10 +959,17 @@ export function ResumoDaIA({
           className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300 disabled:opacity-60"
         >
           <Sparkles aria-hidden className="size-[18px]" />
-          {pendente ? "Lendo o currículo…" : "Resumir com IA"}
+          {pendente ? (
+            "Lendo o currículo…"
+          ) : (
+            <>
+              Resumir <IA forma="com" />
+            </>
+          )}
         </button>
         <p className="text-body-sm text-ink-muted">
-          A IA lê o currículo e as respostas e diz os pontos fortes, o que conferir e perguntas para a entrevista.
+          <IA forma="Nome" /> lê o currículo e as respostas e diz os pontos fortes, o que conferir e perguntas para a
+          entrevista.
         </p>
         {erro && (
           <p role="alert" className="text-body-sm text-danger">
@@ -988,7 +996,9 @@ export function ResumoDaIA({
       {lista("Pontos fortes para a vaga", resumo.fortes)}
       {lista("Para conferir", resumo.conferir)}
       {lista("Perguntas para a entrevista", resumo.perguntas)}
-      <p className="text-caption text-ink-muted">Feito pela IA a partir do currículo: confira antes de decidir.</p>
+      <p className="text-caption text-ink-muted">
+        Feito <IA forma="por" /> a partir do currículo: confira antes de decidir.
+      </p>
     </div>
   );
 }

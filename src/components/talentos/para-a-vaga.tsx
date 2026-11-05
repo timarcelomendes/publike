@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Link2, Sparkles, UserSearch } from "lucide-react";
+import { IA } from "@/components/apelido-da-ia";
 import Link from "next/link";
 import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
@@ -206,8 +207,8 @@ export async function ParaAVaga({
         >
           <Sparkles aria-hidden className="size-5 shrink-0 text-terra-text" />
           <span className="min-w-0 flex-1">
-            <b className="font-semibold">Triagem com IA:</b> a IA lê estes currículos contra os critérios da vaga e mostra o
-            trecho que comprova. <SeloCortesia curto className="align-middle" />
+            <b className="font-semibold">Triagem com IA:</b> <IA /> lê estes currículos contra os critérios da vaga e
+            mostra o trecho que comprova. <SeloCortesia curto className="align-middle" />
           </span>
           <ChevronRight aria-hidden className="size-4 shrink-0 text-terra-text" />
         </Link>

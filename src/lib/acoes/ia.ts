@@ -8,6 +8,7 @@ import { sugerirTexto, type AnuncioParaIA } from "@/lib/ia/tarefas";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { PRACA_PADRAO } from "@/lib/pracas";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 export type SugestaoTexto = { ok: true; titulo: string; descricao: string } | { ok: false; erro: string };
 
@@ -45,7 +46,7 @@ export async function melhorarTextoAnuncio(rascunho: RascunhoAnuncio): Promise<S
   const admin = await clienteAdminOuNulo();
   if (admin) {
     const { data } = await admin.rpc("admin_config");
-    modelo = data?.[0]?.ia_modelo ?? modelo;
+    modelo = modeloPara(data?.[0], "textos");
   } else {
     const usuario = await obterUsuario();
     if (!usuario) return { ok: false, erro: "Entre na sua conta para usar a ajuda da IA." };
@@ -53,7 +54,7 @@ export async function melhorarTextoAnuncio(rascunho: RascunhoAnuncio): Promise<S
     const { error } = await supabase.rpc("usar_ia_texto");
     if (error) return { ok: false, erro: mensagemDeErro(error) };
     const { data } = await supabase.rpc("config_publica");
-    modelo = data?.[0]?.ia_modelo ?? modelo;
+    modelo = modeloPara(data?.[0], "textos");
   }
 
   try {

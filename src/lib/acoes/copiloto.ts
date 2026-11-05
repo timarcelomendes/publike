@@ -15,7 +15,7 @@ import {
 import { obterAnuncio, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { lerCurriculo, sugerirCriterios } from "@/lib/ia/copiloto";
-import { iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
+import { iaConfigurada } from "@/lib/ia/openai";
 import { avaliacoesDoCopiloto, configDoCopiloto, leituraAtual, pessoasDoCopiloto } from "@/lib/servidor/copiloto";
 import { processarFilas } from "@/lib/servidor/filas";
 import {
@@ -27,6 +27,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // O copiloto de contratação (teste; migração 20261203120000). O banco confere de novo se a vaga é
 // da conta e se a conta está liberada.
@@ -53,7 +54,7 @@ async function minhaVaga(anuncioId: string): Promise<MinhaVaga> {
 async function modeloEscolhido() {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.rpc("config_publica");
-  return modeloDaIA(data?.[0]?.ia_modelo).id;
+  return modeloPara(data?.[0], "empresa");
 }
 
 export type RespostaCriterios =

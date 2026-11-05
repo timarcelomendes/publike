@@ -1,5 +1,6 @@
 "use client";
 
+import { IA, useFalasDaIA } from "@/components/apelido-da-ia";
 import { Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 import { melhorarTextoAnuncio, type RascunhoAnuncio } from "@/lib/acoes/ia";
@@ -13,6 +14,7 @@ export function MelhorarTexto({
   lerRascunho: () => RascunhoAnuncio;
   aplicar: (titulo: string, descricao: string) => void;
 }) {
+  const ia = useFalasDaIA();
   const [pendente, iniciar] = useTransition();
   const [sugestao, setSugestao] = useState<{ titulo: string; descricao: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -32,9 +34,11 @@ export function MelhorarTexto({
       <div className="flex flex-wrap items-center gap-3">
         <Botao tamanho="sm" disabled={pendente} onClick={pedir}>
           <Sparkles aria-hidden />
-          {pendente ? "A IA está escrevendo…" : sugestao ? "Pedir outra sugestão" : "Melhorar texto com IA"}
+          {pendente ? `${ia.Nome} está escrevendo…` : sugestao ? "Pedir outra sugestão" : `Melhorar texto ${ia.com}`}
         </Botao>
-        <p className="text-body-sm text-ink-muted">A IA reescreve o título e a descrição. Você decide se usa.</p>
+        <p className="text-body-sm text-ink-muted">
+          <IA forma="Nome" /> reescreve o título e a descrição. Você decide se usa.
+        </p>
       </div>
       {erro && (
         <p role="alert" className="text-body-sm text-danger">
@@ -43,7 +47,9 @@ export function MelhorarTexto({
       )}
       {sugestao && (
         <div role="status" className="flex flex-col gap-3 rounded-md bg-surface-300 p-4">
-          <p className="text-caption text-ink-muted uppercase">Sugestão da IA</p>
+          <p className="text-caption text-ink-muted uppercase">
+            Sugestão <IA forma="de" />
+          </p>
           <p className="text-label">{sugestao.titulo}</p>
           <p className="text-body whitespace-pre-line">{sugestao.descricao}</p>
           <div className="flex flex-wrap gap-2">

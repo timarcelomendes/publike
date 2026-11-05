@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ApelidoEntreParenteses } from "@/components/apelido-da-ia";
 import Link from "next/link";
 import { AncoraAntiga } from "@/components/ancora-antiga";
 import { CanalDePedidos, Lista, PaginaDoDocumento, Secao } from "@/components/documentos-legais";
@@ -102,7 +103,7 @@ export default function Privacidade() {
           Usamos serviços de terceiros só para isso: a Vercel (onde o site fica hospedado), o Supabase (banco de dados,
           login e fotos), o OpenFreeMap, com dados do OpenStreetMap (mapas), o Zoho (envio dos e-mails de aviso), a
           OpenAI e a Anthropic (as IAs que revisam o texto dos anúncios, ajudam a escrever e leem o currículo que você
-          enviar; o site usa uma delas de cada vez, e a gravação do currículo falado vira texto sempre na OpenAI), a
+          enviar; o site usa uma delas em cada tarefa, e a gravação do currículo falado vira texto sempre na OpenAI), a
           Cloudflare
           (a verificação contra robôs na hora de entrar), {SMS}a BrasilAPI (que traz os dados públicos do CNPJ
           na Receita
@@ -110,7 +111,8 @@ export default function Privacidade() {
           propaganda; veja Cookies) e, se você escolher entrar com eles, Google, Facebook ou LinkedIn.
         </p>
         <p id="ia" className="scroll-mt-24">
-          A IA recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome da
+          A IA do Publike
+          <ApelidoEntreParenteses /> recebe só o texto do anúncio (título, descrição, valor, horário, bairro e, na vaga de agência, o nome da
           empresa contratante), nunca seu contato. Quando ela acha um anúncio suspeito, ele sai do ar até uma pessoa da
           moderação olhar. No Descobrir, a IA recebe o que você escreveu em “O que você procura?”, o que você faz, as
           habilidades, as experiências, os cursos, a CNH e os horários do currículo, e o texto das vagas, só para pôr

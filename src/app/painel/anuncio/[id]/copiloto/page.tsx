@@ -1,4 +1,6 @@
 import { ChevronDown, Filter, History, ListChecks, Sparkles, Trophy } from "lucide-react";
+import { IA } from "@/components/apelido-da-ia";
+import { falasDaIANoServidor } from "@/lib/servidor/apelido-ia";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -74,6 +76,7 @@ async function Conteudo({
 }) {
   if (MODO_DEMO) return <SoComSupabase />;
   const [{ id }, sp] = await Promise.all([params, searchParams]);
+  const ia = await falasDaIANoServidor();
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/copiloto`);
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
@@ -155,8 +158,8 @@ async function Conteudo({
       <div className="flex flex-wrap items-center gap-2">
         <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} />
         <p className="text-body-sm text-ink-muted">
-          A IA lê sozinha cada candidato que chega, contra os critérios, e mostra o trecho que comprova. Quem decide é
-          você.
+          <IA forma="Nome" /> lê sozinha cada candidato que chega, contra os critérios, e mostra o trecho que comprova.
+          Quem decide é você.
         </p>
       </div>
 
@@ -187,7 +190,7 @@ async function Conteudo({
         </p>
         {config.automaticos && (
           <p className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-terra-soft px-3 py-2 text-body-sm">
-            A IA montou estes critérios pela vaga. Ajuste se quiser: a leitura refaz sozinha.
+            <IA forma="Nome" /> montou estes critérios pela vaga. Ajuste se quiser: a leitura refaz sozinha.
             <Selo variante="novo">Novo</Selo>
           </p>
         )}
@@ -217,7 +220,7 @@ async function Conteudo({
           </h3>
           {!temCriterios ? (
             <Aviso tipo="info" titulo="Salve os critérios para começar">
-              Toque em “Sugerir com a IA” ou escreva os seus. Depois, a IA lê os currículos.
+              Toque em “Sugerir <IA forma="com" />” ou escreva os seus. Depois, <IA /> lê os currículos.
             </Aviso>
           ) : (
             <>
@@ -229,17 +232,17 @@ async function Conteudo({
                 </p>
                 <p className="text-body-sm text-ink-muted">
                   {config.triagem && config.busca
-                    ? "A IA lê primeiro quem se candidatou e depois os Talentos que mais parecem combinar."
+                    ? `${ia.Nome} lê primeiro quem se candidatou e depois os Talentos que mais parecem combinar.`
                     : config.busca
-                      ? "A IA lê primeiro os Talentos que mais parecem combinar."
-                      : "A IA lê o currículo de quem se candidatou."}
+                      ? `${ia.Nome} lê primeiro os Talentos que mais parecem combinar.`
+                      : `${ia.Nome} lê o currículo de quem se candidatou.`}
                   {config.busca && " Em Talentos só aparece quem deixou o currículo visível para as empresas."}
                 </p>
                 {config.triagem && candidatos.length > config.teto && (
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm">
                     <Selo variante="novo">Novo</Selo>
-                    Com muitos candidatos, a IA lê os {config.teto} que mais combinam com a vaga pelo % de match e pelas
-                    palavras dos critérios. Os outros ficam abaixo, na mesma ordem.
+                    Com muitos candidatos, <IA /> lê os {config.teto} que mais combinam com a vaga pelo % de match e
+                    pelas palavras dos critérios. Os outros ficam abaixo, na mesma ordem.
                   </p>
                 )}
                 {semCurriculo > 0 && (
@@ -383,17 +386,17 @@ async function Conteudo({
                 <section id="nao-lidos" aria-labelledby="titulo-nao-lidos" className="flex scroll-mt-32 flex-col gap-3">
                   <h4 id="titulo-nao-lidos" className="flex flex-wrap items-center gap-2 text-label">
                     <Filter aria-hidden className="size-5 text-ink-muted" />
-                    Não lidos pela IA
+                    Não lidos <IA forma="por" />
                     <Selo variante="novo">Novo</Selo>
                   </h4>
                   {naoLidos.length > 0 && (
                     <>
                       <p className="text-body-sm text-ink-muted">
                         {naoLidos.length} {naoLidos.length === 1 ? "candidato ficou" : "candidatos ficaram"} depois dos{" "}
-                        {config.teto} primeiros. A ordem é pelo % de match e pelas palavras dos critérios, sem a IA.
+                        {config.teto} primeiros. A ordem é pelo % de match e pelas palavras dos critérios, sem <IA />.
                       </p>
                       <div className="rounded-lg border border-line bg-surface-200 px-4 sm:px-5">
-                        <ol aria-label="Não lidos pela IA">
+                        <ol aria-label={`Não lidos ${ia.por}`}>
                           {naoLidos.slice(0, MOSTRAR_NAO_LIDOS).map(({ p, posicao }) => (
                             <li
                               key={p.perfil_id}
@@ -402,7 +405,9 @@ async function Conteudo({
                               <span className="w-8 text-label text-ink-muted">{posicao}º</span>
                               <span className="text-label">{p.nome}</span>
                               <span className="text-body-sm text-ink-muted">pré-nota {p.preNota}</span>
-                              <Selo className="ml-auto">não lido pela IA</Selo>
+                              <Selo className="ml-auto">
+                                não lido <IA forma="por" />
+                              </Selo>
                             </li>
                           ))}
                         </ol>
@@ -421,7 +426,7 @@ async function Conteudo({
                       {funil.eliminados.length === 1
                         ? "candidato ficou fora por uma pergunta eliminatória"
                         : "candidatos ficaram fora por uma pergunta eliminatória"}
-                      : a IA não lê. Eles continuam em Candidatos.
+                      : <IA /> não lê. Eles continuam em Candidatos.
                     </p>
                   )}
                 </section>

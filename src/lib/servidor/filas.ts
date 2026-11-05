@@ -1,4 +1,5 @@
 import "server-only";
+import { modelosEscolhidos } from "@/lib/ia/funcionalidades";
 import nodemailer from "nodemailer";
 import { conviteDoEmail } from "@/lib/agenda";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
@@ -182,6 +183,12 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
 
 // ------------------------------------------------------------------ IA
 
+/** O modelo escolhido para a Revisão, se houver (claude/plano-ia-por-funcionalidade.md). */
+async function modeloDaRevisao(cliente: ClienteBanco): Promise<string | null> {
+  const { data } = await cliente.rpc("config_publica");
+  return modelosEscolhidos(data?.[0]).revisao ?? null;
+}
+
 export type ResultadoIA = { revisados: number; retidos: number; erros: number; motivo?: string };
 
 export async function revisarAnunciosPendentes(limite = 5): Promise<ResultadoIA> {
@@ -192,6 +199,8 @@ export async function revisarAnunciosPendentes(limite = 5): Promise<ResultadoIA>
     return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
   }
   const { cliente, chave } = acesso;
+  // o modelo escolhido para a revisão em Admin › IA (sem escolha, o padrão que a fila traz)
+  const revisao = await modeloDaRevisao(cliente);
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_revisoes_ia", { p_chave: chave, p_limite: limite });
   if (error) {
@@ -204,7 +213,7 @@ export async function revisarAnunciosPendentes(limite = 5): Promise<ResultadoIA>
       let decisao: DecisaoIA | null = null;
       let falha = "Erro ao falar com a IA.";
       try {
-        decisao = await revisarAnuncio(item, item.modelo);
+        decisao = await revisarAnuncio(item, revisao ?? item.modelo);
       } catch (e) {
         if (e instanceof ErroIA) falha = e.message;
         console.error(`Publike: a IA não revisou o anúncio ${item.anuncio_id}:`, textoDoErro(e));
@@ -218,7 +227,7 @@ export async function revisarAnunciosPendentes(limite = 5): Promise<ResultadoIA>
         p_decisao: decisao ? decisao.decisao : "erro",
         p_categorias: decisao ? decisao.categorias : [],
         p_explicacao: decisao ? decisao.explicacao : falha,
-        p_modelo: decisao ? decisao.modelo : modeloDaIA(item.modelo).id,
+        p_modelo: decisao ? decisao.modelo : modeloDaIA(revisao ?? item.modelo).id,
       });
       if (erroBanco) {
         console.error(`Publike: não deu para gravar a revisão do anúncio ${item.anuncio_id}:`, erroBanco.message);
@@ -243,6 +252,8 @@ export async function revisarAvaliacoesPendentes(limite = 5): Promise<ResultadoI
     return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
   }
   const { cliente, chave } = acesso;
+  // o modelo escolhido para a revisão em Admin › IA (sem escolha, o padrão que a fila traz)
+  const revisao = await modeloDaRevisao(cliente);
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_avaliacoes_ia", {
     p_chave: chave,
@@ -258,7 +269,7 @@ export async function revisarAvaliacoesPendentes(limite = 5): Promise<ResultadoI
       let decisao: DecisaoIA | null = null;
       let falha = "Erro ao falar com a IA.";
       try {
-        decisao = await revisarAvaliacao(item, item.modelo);
+        decisao = await revisarAvaliacao(item, revisao ?? item.modelo);
       } catch (e) {
         if (e instanceof ErroIA) falha = e.message;
         console.error(`Publike: a IA não revisou a avaliação ${item.avaliacao_id}:`, textoDoErro(e));
@@ -271,7 +282,7 @@ export async function revisarAvaliacoesPendentes(limite = 5): Promise<ResultadoI
         p_decisao: decisao ? decisao.decisao : "erro",
         p_categorias: decisao ? decisao.categorias : [],
         p_explicacao: decisao ? decisao.explicacao : falha,
-        p_modelo: decisao ? decisao.modelo : modeloDaIA(item.modelo).id,
+        p_modelo: decisao ? decisao.modelo : modeloDaIA(revisao ?? item.modelo).id,
       });
       if (erroBanco) {
         console.error(`Publike: não deu para gravar a revisão da avaliação ${item.avaliacao_id}:`, erroBanco.message);
@@ -296,6 +307,8 @@ export async function revisarRecadosPendentes(limite = 5): Promise<ResultadoIA> 
     return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
   }
   const { cliente, chave } = acesso;
+  // o modelo escolhido para a revisão em Admin › IA (sem escolha, o padrão que a fila traz)
+  const revisao = await modeloDaRevisao(cliente);
 
   const { data: itens, error } = await cliente.rpc("servidor_pegar_recados_ia", { p_chave: chave, p_limite: limite });
   if (error) {
@@ -309,7 +322,7 @@ export async function revisarRecadosPendentes(limite = 5): Promise<ResultadoIA> 
       let decisao: DecisaoIA | null = null;
       let falha = "Erro ao falar com a IA.";
       try {
-        decisao = await revisarRecado(item, item.modelo);
+        decisao = await revisarRecado(item, revisao ?? item.modelo);
       } catch (e) {
         if (e instanceof ErroIA) falha = e.message;
         console.error(`Publike: a IA não revisou o recado ${item.recado_id}:`, textoDoErro(e));
@@ -321,7 +334,7 @@ export async function revisarRecadosPendentes(limite = 5): Promise<ResultadoIA> 
         p_decisao: decisao ? decisao.decisao : "erro",
         p_categorias: decisao ? decisao.categorias : [],
         p_explicacao: decisao ? decisao.explicacao : falha,
-        p_modelo: decisao ? decisao.modelo : modeloDaIA(item.modelo).id,
+        p_modelo: decisao ? decisao.modelo : modeloDaIA(revisao ?? item.modelo).id,
       });
       if (erroBanco) {
         console.error(`Publike: não deu para gravar a revisão do recado ${item.recado_id}:`, erroBanco.message);

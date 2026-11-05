@@ -9,6 +9,7 @@ import { assistenteDisponivel, responderAssistente } from "@/lib/servidor/assist
 import { acessoFila } from "@/lib/servidor/filas";
 import { dentroDoLimite, embaralhar, enderecoDeQuemPediu } from "@/lib/servidor/limite";
 import { criarClientePublico } from "@/lib/supabase/servidor";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 const DESLIGADO = "O assistente não está disponível agora. Veja as respostas na página de ajuda.";
 
@@ -80,7 +81,7 @@ export async function perguntarAoAssistente(historico: unknown): Promise<Respost
     const r = await responderAssistente(
       conversa,
       { logada: Boolean(usuario), nome: perfil?.nome?.split(" ")[0] ?? null, local },
-      config?.[0]?.ia_modelo ?? null,
+      modeloPara(config?.[0], "chat"),
     );
     return { ok: true, ...r };
   } catch (e) {

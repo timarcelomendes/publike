@@ -7,11 +7,11 @@ import {
   lerCurriculoDoArquivo,
   type CurriculoLido,
 } from "@/lib/ia/curriculo-do-arquivo";
-import { MODELO_PADRAO } from "@/lib/ia/openai";
 import { transcrever } from "@/lib/ia/transcrever";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { criarClienteServidor } from "@/lib/supabase/servidor";
 import { CAMINHO_CURRICULO } from "@/lib/validacao";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // A leitura do currículo pronto (PDF ou fotos da folha) pela IA, para a própria pessoa ("Já tem
 // currículo pronto?") e para quem publicou a vaga (o candidato de fora). E o currículo falado: a
@@ -125,12 +125,12 @@ async function modeloComCota(
   const admin = await clienteAdminOuNulo();
   if (admin) {
     const { data } = await admin.rpc("admin_config");
-    return { ok: true, modelo: data?.[0]?.ia_modelo ?? MODELO_PADRAO };
+    return { ok: true, modelo: modeloPara(data?.[0], "ler") };
   }
   const { error } = await supabase.rpc("usar_ia_texto");
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   const { data } = await supabase.rpc("config_publica");
-  return { ok: true, modelo: data?.[0]?.ia_modelo ?? MODELO_PADRAO };
+  return { ok: true, modelo: modeloPara(data?.[0], "ler") };
 }
 
 /** O áudio do currículo falado: de 3 KB (um segundo, mais ou menos) a 4 MB (o limite da Vercel é 4,5 MB). */

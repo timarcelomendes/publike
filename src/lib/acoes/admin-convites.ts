@@ -15,7 +15,7 @@ import {
 } from "@/lib/convites";
 import { configSmtp, urlDosEmails } from "@/lib/servidor/ambiente";
 import { mensagemDeErro } from "@/lib/erros";
-import { ErroIA, iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
+import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
 import { lerVagaDaImagem } from "@/lib/ia/vaga-da-imagem";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -28,6 +28,7 @@ import { salvarTriagem } from "@/lib/servidor/triagem";
 import { areasSemRepetir } from "@/lib/constantes";
 import { PRACA_PADRAO } from "@/lib/pracas";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // Convites às empresas: importar a lista, marcar a situação e anotar. Só no admin.
 
@@ -143,10 +144,10 @@ export async function lerConviteDaImagem(
   if (!iaConfigurada()) {
     return { ok: false, erro: "Falta a chave da IA (OPENAI_API_KEY ou ANTHROPIC_API_KEY) no .env.local." };
   }
-  const { data: cfg } = await c.from("config_site").select("ia_modelo").limit(1).maybeSingle();
+  const { data: cfg } = await c.from("config_site").select("*").limit(1).maybeSingle();
   let lida;
   try {
-    lida = await lerVagaDaImagem(imagem, String(nomeArquivo ?? ""), cfg?.ia_modelo ?? MODELO_PADRAO);
+    lida = await lerVagaDaImagem(imagem, String(nomeArquivo ?? ""), modeloPara(cfg, "ler"));
   } catch (e) {
     return { ok: false, erro: e instanceof ErroIA ? e.message : "A IA não conseguiu ler esta imagem." };
   }

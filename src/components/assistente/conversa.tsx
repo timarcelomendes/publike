@@ -1,5 +1,6 @@
 "use client";
 
+import { useFalasDaIA } from "@/components/apelido-da-ia";
 import {
   ArrowUp,
   BadgeCheck,
@@ -140,6 +141,7 @@ export function Conversa({
   className?: string;
 }) {
   const conversa = useConversa();
+  const ia = useFalasDaIA();
   const caminho = usePathname() ?? "/";
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -207,13 +209,15 @@ export function Conversa({
         ref={lista}
         role="log"
         aria-live="polite"
-        aria-label="Conversa com o assistente"
+        aria-label={`Conversa ${ia.comOAssistente}`}
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-5"
       >
         {boasVindas && (
           <div className="flex flex-col items-center gap-2 px-2 pb-1 text-center">
             <AvatarAssistente grande />
-            <p className="font-display text-h3">Oi! Qual é a sua dúvida?</p>
+            <p className="font-display text-h3">
+              {ia.apelido ? `Oi! Sou ${ia.apelido}. Qual é a sua dúvida?` : "Oi! Qual é a sua dúvida?"}
+            </p>
             <p className="max-w-xs text-body-sm text-ink-muted">
               Pergunte do seu jeito: respondo suas dúvidas sobre o Publike e encontro a resposta na hora. Se você
               entrar, também procuro vagas, serviços e empresas para você.
@@ -261,7 +265,7 @@ export function Conversa({
             <AvatarAssistente />
             <p
               className="flex items-center gap-1 rounded-2xl rounded-tl-md border border-line bg-surface-200 px-4 py-3.5"
-              aria-label="O assistente está escrevendo"
+              aria-label={`${ia.OAssistente} está escrevendo`}
             >
               {[0, 150, 300].map((atraso) => (
                 <span
@@ -325,7 +329,7 @@ export function Conversa({
           </button>
         </div>
         <p className="mt-2 text-center text-caption text-ink-muted">
-          O assistente pode errar. Não mande senha, documentos ou dados de cartão.
+          {ia.OAssistente} pode errar. Não mande senha, documentos ou dados de cartão.
         </p>
       </form>
     </div>

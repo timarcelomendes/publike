@@ -1,5 +1,6 @@
 "use client";
 
+import { useFalasDaIA } from "@/components/apelido-da-ia";
 import { Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
@@ -10,6 +11,7 @@ import { Botao } from "../ui/botao";
 /** "Ler mais 50" (o funil da Triagem): a IA passa a ler os próximos 50 candidatos pela pré-nota. */
 export function LerMaisNaTriagem({ anuncioId, abaixo }: { anuncioId: string; abaixo: number }) {
   const [pendente, iniciar] = useTransition();
+  const ia = useFalasDaIA();
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const quantos = Math.min(TETO_LEITURA, abaixo);
   return (
@@ -27,7 +29,7 @@ export function LerMaisNaTriagem({ anuncioId, abaixo }: { anuncioId: string; aba
                 r.ok
                   ? {
                       ok: true,
-                      texto: `Pronto: a IA vai ler mais ${quantos}. Em alguns minutos eles entram no ranking.`,
+                      texto: `Pronto: ${ia.nome} vai ler mais ${quantos}. Em alguns minutos eles entram no ranking.`,
                     }
                   : { ok: false, texto: r.erro },
               );

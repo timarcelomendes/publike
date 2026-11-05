@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { LOGO_EMAIL } from "@/lib/email/montar";
 import { mensagemDeErro } from "@/lib/erros";
-import { ErroIA, iaConfigurada, MODELOS_IA, modeloDaIA } from "@/lib/ia/openai";
+import { ErroIA, iaConfigurada, MODELOS_IA } from "@/lib/ia/openai";
 import { escreverResumo } from "@/lib/ia/tarefas";
 import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { prepararLogoEmail } from "@/lib/servidor/logo-email";
@@ -24,6 +24,9 @@ import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 import { tituloLegivel } from "@/lib/conferir-anuncio";
+import { modeloPara } from "@/lib/ia/funcionalidades";
+import { FUNCIONALIDADES_IA, limparApelido } from "@/lib/ia-nomes";
+import { TAG_APELIDO_IA } from "@/lib/servidor/apelido-ia";
 
 // Ações do admin. Todas conferem antes se o admin está aberto no computador
 // do dono (modo dev, PUBLIKE_ADMIN=1, chave secreta e endereço local).
@@ -951,6 +954,29 @@ export async function salvarConfigIA(_anterior: EstadoForm, formData: FormData):
     };
   }
   if (erroAssistente) return { ok: false, erro: mensagemDeErro(erroAssistente) };
+  // o modelo de cada funcionalidade e o apelido (claude/plano-ia-por-funcionalidade.md)
+  const modelos: Record<string, string> = {};
+  for (const f of FUNCIONALIDADES_IA) {
+    const m = texto(formData, `modelo_${f.id}`);
+    if (m && MODELOS_IA.some((x) => x.id === m)) modelos[f.id] = m;
+  }
+  const apelidoBruto = texto(formData, "ia_apelido");
+  const apelido = limparApelido(apelidoBruto);
+  if (apelidoBruto && !apelido) {
+    return { ok: false, erro: "O resto foi salvo. O apelido da IA tem até 20 letras (pode ter espaço e hífen)." };
+  }
+  const { error: erroModelos } = await c.rpc("admin_salvar_ia_por_funcionalidade", {
+    p_modelos: modelos,
+    p_apelido: apelido,
+  });
+  updateTag(TAG_APELIDO_IA);
+  if (erroModelos?.code === "PGRST202") {
+    return {
+      ok: false,
+      erro: "O resto foi salvo. Para o modelo de cada funcionalidade e o apelido, rode a migração 20270208120000_ia_por_funcionalidade.sql no Supabase.",
+    };
+  }
+  if (erroModelos) return { ok: false, erro: mensagemDeErro(erroModelos) };
   if (semReserva) {
     return {
       ok: false,
@@ -972,7 +998,7 @@ export async function gerarResumoIA(): Promise<Resultado> {
   ]);
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   try {
-    const resumo = await escreverResumo(dados, modeloDaIA(config?.[0]?.ia_modelo).id);
+    const resumo = await escreverResumo(dados, modeloPara(config?.[0], "admin"));
     const { error: erroSalvar } = await c.rpc("admin_salvar_resumo", {
       p_texto: resumo.texto,
       p_dias: 7,

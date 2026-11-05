@@ -1,5 +1,6 @@
 "use client";
 
+import { useFalasDaIA } from "@/components/apelido-da-ia";
 import { MessageCircleQuestion, Search } from "lucide-react";
 import { useState } from "react";
 import type { TemaAjuda } from "@/lib/ajuda";
@@ -12,6 +13,7 @@ const normalizar = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toL
 /** As perguntas da ajuda, por tema, com uma busca que filtra enquanto digita. */
 export function ListaAjuda({ temas }: { temas: TemaAjuda[] }) {
   const [busca, setBusca] = useState("");
+  const ia = useFalasDaIA();
   // o assistente só aparece na página quando está ligado
   const temAssistente = useTemConversaNaTela();
   const termos = normalizar(busca)
@@ -85,12 +87,12 @@ export function ListaAjuda({ temas }: { temas: TemaAjuda[] }) {
         <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-line-strong p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-body">
             {filtrados.length
-              ? "Não é bem isso? O assistente responde sua dúvida na hora."
-              : "O assistente responde sua dúvida e encontra a resposta na hora."}
+              ? `Não é bem isso? ${ia.OAssistente} responde sua dúvida na hora.`
+              : `${ia.OAssistente} responde sua dúvida e encontra a resposta na hora.`}
           </p>
           <Botao onClick={perguntarAoAssistente} className="shrink-0">
             <MessageCircleQuestion aria-hidden />
-            Perguntar ao assistente
+            Perguntar {ia.aoAssistente}
           </Botao>
         </div>
       )}

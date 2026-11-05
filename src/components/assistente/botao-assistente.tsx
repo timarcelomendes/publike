@@ -1,5 +1,6 @@
 "use client";
 
+import { useFalasDaIA } from "@/components/apelido-da-ia";
 import { MessageCircleQuestion, MessagesSquare, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -90,6 +91,7 @@ function useSoIcone() {
 export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioId: string | null }) {
   const caminho = usePathname() ?? "/";
   const [aberto, setAberto] = useState(false);
+  const ia = useFalasDaIA();
   const botao = useRef<HTMLButtonElement>(null);
   const quemAbriu = useRef<HTMLElement | null>(null);
   const area = useAreaVisivel(aberto);
@@ -218,7 +220,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Chat do Publike"
+            aria-label={ia.apelido ? `Chat do Publike, com ${ia.apelido}` : "Chat do Publike"}
             style={estilo}
             // um link da conversa leva para outra página: a conversa fecha
             onClickCapture={(e) => {
@@ -265,7 +267,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
                     className="flex size-10 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
                   >
                     <RotateCcw aria-hidden className="size-[18px]" />
-                    <span className="sr-only">Nova conversa com o assistente</span>
+                    <span className="sr-only">Nova conversa {ia.comOAssistente}</span>
                   </button>
                 )}
                 <button

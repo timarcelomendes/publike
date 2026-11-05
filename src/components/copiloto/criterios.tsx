@@ -1,5 +1,6 @@
 "use client";
 
+import { IA, useFalasDaIA } from "@/components/apelido-da-ia";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
@@ -22,6 +23,7 @@ export function EditorDeCriterios({ anuncioId, iniciais }: { anuncioId: string; 
   const [erros, setErros] = useState<Record<string, string>>({});
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const [mudou, setMudou] = useState(false);
+  const ia = useFalasDaIA();
   const [sugerindo, iniciarSugestao] = useTransition();
   const [salvando, iniciarSalvar] = useTransition();
 
@@ -46,7 +48,7 @@ export function EditorDeCriterios({ anuncioId, iniciais }: { anuncioId: string; 
       setLista(r.criterios);
       setErros({});
       setMudou(true);
-      setAviso({ ok: true, texto: r.aviso ?? "A IA sugeriu estes critérios. Ajuste o que quiser e salve." });
+      setAviso({ ok: true, texto: r.aviso ?? `${ia.Nome} sugeriu estes critérios. Ajuste o que quiser e salve.` });
     });
   }
 
@@ -129,7 +131,7 @@ export function EditorDeCriterios({ anuncioId, iniciais }: { anuncioId: string; 
         )}
         <Botao tamanho="sm" onClick={sugerir} disabled={sugerindo || salvando}>
           <Sparkles aria-hidden />
-          {sugerindo ? "Sugerindo…" : "Sugerir com a IA"}
+          {sugerindo ? "Sugerindo…" : `Sugerir ${ia.com}`}
         </Botao>
         <Botao tamanho="sm" variante="primario" onClick={salvar} disabled={salvando || sugerindo || !mudou}>
           {salvando ? "Salvando…" : "Salvar critérios"}
@@ -141,8 +143,8 @@ export function EditorDeCriterios({ anuncioId, iniciais }: { anuncioId: string; 
         </p>
       )}
       <p className="text-body-sm text-ink-muted">
-        Idade, sexo, foto, estado civil, deficiência e endereço não entram: a IA não lê isso, e a lei não deixa escolher
-        por isso.
+        Idade, sexo, foto, estado civil, deficiência e endereço não entram: <IA /> não lê isso, e a lei não deixa
+        escolher por isso.
       </p>
     </div>
   );

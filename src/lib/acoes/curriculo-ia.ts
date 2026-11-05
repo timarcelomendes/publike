@@ -18,10 +18,11 @@ import {
   type SugestaoCurriculo,
   type VagaParaIA,
 } from "@/lib/ia/curriculo-melhorar";
-import { iaConfigurada, MODELO_PADRAO } from "@/lib/ia/openai";
+import { iaConfigurada } from "@/lib/ia/openai";
 import { vagasDaFuncaoPerto, type VagaDoMercado } from "@/lib/servidor/curriculo-mercado";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { MAX_HABILIDADES } from "@/lib/talentos";
+import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // "Melhorar com a IA" em Meu currículo (claude/plano-salario-e-curriculo.md, parte 4). Só quando a pessoa pede, com a
 // cota da ajuda da IA (usar_ia_texto: ligada no admin, 20 por dia). Nada é salvo aqui: as sugestões voltam para o
@@ -100,7 +101,7 @@ export async function melhorarCurriculoComIA(rascunho: CurriculoParaIA): Promise
     supabase.rpc("config_publica"),
     obterMeuPerfil().catch(() => null),
   ]);
-  const modelo = config?.[0]?.ia_modelo ?? MODELO_PADRAO;
+  const modelo = modeloPara(config?.[0], "textos");
   // o que as vagas da mesma função perto pedem (dados públicos das vagas): a IA pergunta o que falta
   const vagas: VagaParaIA[] = perfil
     ? (

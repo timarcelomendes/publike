@@ -1,4 +1,5 @@
 import { Lock, Sparkles } from "lucide-react";
+import { IA } from "@/components/apelido-da-ia";
 import Link from "next/link";
 import { plural } from "@/lib/formato";
 import { fonteDaFaixa, nomeDaRegiao, reaisDaFaixa } from "@/lib/salarios";
@@ -113,9 +114,9 @@ export async function CurriculoNoMercado({
           <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <span>
             <a href="#melhorar-com-ia" className="text-label underline underline-offset-2">
-              Melhorar com a IA
+              Melhorar <IA forma="com" />
             </a>
-            : a IA lê o seu currículo e sugere textos e perguntas, só quando você pede.
+            : <IA /> lê o seu currículo e sugere textos e perguntas, só quando você pede.
           </span>
         </p>
       )}

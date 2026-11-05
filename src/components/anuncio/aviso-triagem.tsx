@@ -1,4 +1,5 @@
 import { Sparkles } from "lucide-react";
+import { IA } from "@/components/apelido-da-ia";
 import Link from "next/link";
 import { Selo } from "../ui/basicos";
 
@@ -16,8 +17,8 @@ export function AvisoTriagem() {
           <Selo variante="novo">Novo</Selo>
         </p>
         <p className="text-ink-muted">
-          A IA compara o seu currículo com o que a vaga pede, sem nome, foto nem contato. Quem decide é uma pessoa. Quer
-          que uma pessoa reveja?{" "}
+          <IA forma="Nome" /> compara o seu currículo com o que a vaga pede, sem nome, foto nem contato. Quem decide é
+          uma pessoa. Quer que uma pessoa reveja?{" "}
           <Link href="/sugerir" className="font-semibold text-ink underline underline-offset-2">
             Escreva para o Publike
           </Link>

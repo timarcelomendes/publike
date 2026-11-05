@@ -815,6 +815,9 @@ export type Database = {
           ia_melhorar_texto: boolean;
           ia_resumo: boolean;
           ia_modelo: string;
+          /** {funcionalidade: modelo} (20270208120000) */
+          ia_modelos?: Json;
+          ia_apelido?: string | null;
           /** com a escolhida sem chave, sem créditos ou fora do ar, usa o par na outra IA (migração 20261201120000) */
           ia_reserva?: boolean;
           /** a IA procura notícias sobre trabalho (rascunhos para o admin aprovar) */
@@ -2871,9 +2874,13 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
       };
+      admin_salvar_ia_por_funcionalidade: {
+        Args: { p_modelos: Json; p_apelido: string | null };
+        Returns: undefined;
+      };
       config_publica: {
         Args: Record<PropertyKey, never>;
-        Returns: { ia_melhorar_texto: boolean; ia_modelo: string }[];
+        Returns: { ia_melhorar_texto: boolean; ia_modelo: string; ia_modelos: Json; ia_apelido: string | null }[];
       };
       logo_emails: {
         Args: Record<PropertyKey, never>;

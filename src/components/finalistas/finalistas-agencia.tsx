@@ -1,5 +1,6 @@
 "use client";
 
+import { useFalasDaIA } from "@/components/apelido-da-ia";
 import { Check, Copy, ExternalLink, Link2, MessageCircle, RefreshCw, Sparkles, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -194,6 +195,7 @@ export function ParecerDoFinalista({
 }) {
   const w = quemAvalia(ehAgencia);
   const [texto, setTexto] = useState(inicial ?? "");
+  const ia = useFalasDaIA();
   const [salvo, setSalvo] = useState(inicial ?? "");
   const [pendente, iniciar] = useTransition();
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -225,7 +227,7 @@ export function ParecerDoFinalista({
         ? `\n\nPontos fortes:\n${r.resumo.fortes.map((f) => `- ${f}`).join("\n")}`
         : "";
       setTexto(`${r.resumo.resumo}${fortes}`.slice(0, LIMITES_FINALISTAS.parecer));
-      setAviso({ ok: true, texto: "Feito pela IA: confira, ajuste e salve." });
+      setAviso({ ok: true, texto: `Feito ${ia.por}: confira, ajuste e salve.` });
     });
   }
 
@@ -250,7 +252,7 @@ export function ParecerDoFinalista({
         {comIA && (
           <Botao tamanho="sm" variante="fantasma" disabled={pendente} onClick={comecarComIA}>
             <Sparkles aria-hidden />
-            {texto.trim() ? "Refazer com a IA" : "Começar com a IA"}
+            {texto.trim() ? `Refazer ${ia.com}` : `Começar ${ia.com}`}
           </Botao>
         )}
         <span className="ml-auto text-caption text-ink-muted">

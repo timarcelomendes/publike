@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { ProvedorDoApelido } from "@/components/apelido-da-ia";
+import { apelidoDaIA } from "@/lib/servidor/apelido-ia";
 import localFont from "next/font/local";
 import { Suspense } from "react";
 import { Assistente } from "@/components/assistente/assistente";
@@ -68,7 +70,9 @@ async function RodapeDaConta() {
   return <RodapeDaPagina completo={<Rodape />} curto={<RodapeCurto />} logado={Boolean(usuario)} />;
 }
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // o apelido da IA (Admin › IA), para as telas dizerem "Melhorar com Ipê" (guardado por horas)
+  const apelido = await apelidoDaIA();
   return (
     // o SCRIPT_TEMA marca data-tema no <html> antes do React (por isso o suppressHydrationWarning)
     <html
@@ -86,51 +90,53 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TOQUE_CEDO }} />
       </head>
       <body className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 [html[data-sem-barra]_&]:pb-0">
-        <a
-          href="#conteudo"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-surface-200 focus:px-4 focus:py-2 focus:shadow-raised"
-        >
-          Pular para o conteúdo
-        </a>
-        <Cabecalho />
-        {/* empresa, comércio ou agência vendo como pessoa: a faixa do "só olhar" (lê o cookie e a conta) */}
-        <Suspense fallback={null}>
-          <SoOlharDaConta />
-        </Suspense>
-        {MODO_DEMO && <AvisoDemo />}
-        <main id="conteudo" className="flex-1">
-          {children}
-        </main>
-        {/* lê o endereço da página e a conta (quem entrou, painel e perfil: rodapé curto; entrar: sem rodapé) */}
-        <Suspense fallback={null}>
-          <RodapeDaConta />
-        </Suspense>
-        <BarraInferior />
-        <Assistente />
-        {/* lê o endereço da página: no build, precisa estar num Suspense */}
-        <Suspense fallback={null}>
-          <BoasVindasParceiro />
-          <AvisoCookies />
-          {/* só carrega o Google depois do "Aceitar" no aviso de cookies */}
-          <GoogleAds />
-        </Suspense>
-        <AvisoAtualizacao />
-        {/* o "salvo" de uma ação que levou para outra página (lib/aviso-depois.ts); lê o endereço da página */}
-        <Suspense fallback={null}>
-          <AvisoDepois />
-        </Suspense>
-        {/* lê o endereço da página: no build, precisa estar num Suspense */}
-        <Suspense fallback={null}>
-          <ConviteInstalar />
-        </Suspense>
-        {/* os banners do admin (Admin › Banners), nas páginas que cada um escolheu; lê a conta e o endereço */}
-        <Suspense fallback={null}>
-          <BannerDaVisita />
-        </Suspense>
-        {/* o tempo de cada página na tela, sem saber quem (lib/tempo-na-pagina.ts); lê o endereço da página */}
-        <Suspense fallback={null}>
-          <ContarTempo />
-        </Suspense>
+        <ProvedorDoApelido apelido={apelido}>
+          <a
+            href="#conteudo"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-surface-200 focus:px-4 focus:py-2 focus:shadow-raised"
+          >
+            Pular para o conteúdo
+          </a>
+          <Cabecalho />
+          {/* empresa, comércio ou agência vendo como pessoa: a faixa do "só olhar" (lê o cookie e a conta) */}
+          <Suspense fallback={null}>
+            <SoOlharDaConta />
+          </Suspense>
+          {MODO_DEMO && <AvisoDemo />}
+          <main id="conteudo" className="flex-1">
+            {children}
+          </main>
+          {/* lê o endereço da página e a conta (quem entrou, painel e perfil: rodapé curto; entrar: sem rodapé) */}
+          <Suspense fallback={null}>
+            <RodapeDaConta />
+          </Suspense>
+          <BarraInferior />
+          <Assistente />
+          {/* lê o endereço da página: no build, precisa estar num Suspense */}
+          <Suspense fallback={null}>
+            <BoasVindasParceiro />
+            <AvisoCookies />
+            {/* só carrega o Google depois do "Aceitar" no aviso de cookies */}
+            <GoogleAds />
+          </Suspense>
+          <AvisoAtualizacao />
+          {/* o "salvo" de uma ação que levou para outra página (lib/aviso-depois.ts); lê o endereço da página */}
+          <Suspense fallback={null}>
+            <AvisoDepois />
+          </Suspense>
+          {/* lê o endereço da página: no build, precisa estar num Suspense */}
+          <Suspense fallback={null}>
+            <ConviteInstalar />
+          </Suspense>
+          {/* os banners do admin (Admin › Banners), nas páginas que cada um escolheu; lê a conta e o endereço */}
+          <Suspense fallback={null}>
+            <BannerDaVisita />
+          </Suspense>
+          {/* o tempo de cada página na tela, sem saber quem (lib/tempo-na-pagina.ts); lê o endereço da página */}
+          <Suspense fallback={null}>
+            <ContarTempo />
+          </Suspense>
+        </ProvedorDoApelido>
       </body>
     </html>
   );

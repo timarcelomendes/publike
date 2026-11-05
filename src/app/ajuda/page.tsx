@@ -1,4 +1,6 @@
 import { MessageSquareText } from "lucide-react";
+import { IA } from "@/components/apelido-da-ia";
+import { falasDaIANoServidor } from "@/lib/servidor/apelido-ia";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -131,8 +133,9 @@ async function JornadasDoPerfil() {
 
 /** O que fazer quando a pergunta não está na lista: o assistente, quando está ligado, ou a equipe. */
 async function NaoAchou() {
+  const ia = await falasDaIANoServidor();
   return (await assistenteDisponivel())
-    ? "Não achou a sua? Pergunte ao assistente, que responde na hora, ou fale com a equipe."
+    ? `Não achou a sua? Pergunte ${ia.aoAssistente}, que responde na hora, ou fale com a equipe.`
     : "Não achou a sua? Fale com a equipe.";
 }
 
@@ -148,10 +151,10 @@ async function ConversaSeDisponivel() {
         <AvatarAssistente />
         <div className="min-w-0">
           <h2 id="titulo-assistente" className="font-display text-label">
-            Pergunte ao assistente
+            Pergunte <IA forma="aoAssistente" />
           </h2>
           <p className="text-body-sm text-ink-muted">
-            Ele responde suas dúvidas e encontra a resposta na hora. Com conta, também procura vagas, serviços e
+            Responde suas dúvidas e encontra a resposta na hora. Com conta, também procura vagas, serviços e
             empresas.
           </p>
         </div>
