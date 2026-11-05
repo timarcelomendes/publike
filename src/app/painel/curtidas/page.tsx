@@ -8,16 +8,16 @@ import { AvisoSemCurriculo } from "@/components/curriculo/sem-curriculo";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
 import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
-import { paraFazerDeQuemProcura } from "@/components/painel/cartoes-de-quem-procura";
+import { andamento, etapaDaCurtida, paraFazerDeQuemProcura } from "@/components/painel/cartoes-de-quem-procura";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
-import { ParaFazerAgora } from "@/components/painel/hoje";
+import { Etapas, ParaFazerAgora } from "@/components/painel/hoje";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { retornosRecebidos } from "@/lib/servidor/retorno";
 import { minhasCandidaturasVistas } from "@/lib/servidor/visitas";
-import { Selo, Vazio } from "@/components/ui/basicos";
+import { Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import {
@@ -35,6 +35,7 @@ import {
   listarMeusDesfeitos,
   listarMinhasCurtidas,
   listarMinhasEtapas,
+  minhasProximasEntrevistas,
   obterMeuCurriculo,
   vagasQuePedemCurriculo,
 } from "@/lib/dados";
@@ -101,6 +102,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     atividadesDoMenu(),
   ]);
   const agora = await agoraDaRequisicao();
+  // as entrevistas marcadas, para o andamento de cada candidatura ("Entrevista qui, 12/11 às 14h")
+  const entrevistaDe = new Map(
+    (await minhasProximasEntrevistas(agora).catch(() => [])).map((e) => [e.anuncio_id, e] as const),
+  );
   // filtros: ?tipo=vaga|servico, ?situacao=aguardando|match|encerradas e ?etapa= (vêm da visão geral)
   const pedidoTipo = primeiro(sp.tipo);
   const tipo: TipoAnuncio | null = pedidoTipo === "vaga" || pedidoTipo === "servico" ? pedidoTipo : null;
@@ -159,7 +164,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   const doTipo = tipo ? curtidas.filter((c) => c.tipo === tipo) : curtidas;
   const lista = doTipo
     .filter((c) => !situacao || naSituacao(situacao, c))
-    .filter((c) => !etapa || etapaDe(c)?.etapa === etapa);
+    .filter((c) => !etapa || etapaDe(c)?.etapa === etapa)
+    // as encerradas (não foi dessa vez, match desfeito, processo encerrado) por último, como no Hoje
+    .map((c) => ({ c, fim: andamento(c, etapaDaCurtida(c, etapas), undefined).fim }))
+    .sort((x, y) => Number(x.fim) - Number(y.fim))
+    .map((x) => x.c);
 
   const link = (mudar: { tipo?: TipoAnuncio | null; situacao?: Situacao | null; etapa?: EtapaCandidato | null }) => {
     const q = new URLSearchParams();
@@ -265,53 +274,110 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
             const etapaVisivel = etapaDe(c);
             // a empresa já abriu a candidatura (só enquanto espera a resposta)
             const vista = esperaResposta(c) && vistas.has(c.anuncio_id);
+            // vaga: o andamento em 4 passos, como no Hoje (claude/plano-candidaturas-no-celular.md); serviço: os selos
+            const a =
+              c.tipo === "vaga" ? andamento(c, etapaDaCurtida(c, etapas), entrevistaDe.get(c.anuncio_id)) : null;
+            const anda = a && !a.fim && (a.feitas >= 2 || esperaCurriculo(c));
+            const titulo = noAr ? (
+              <Link href={`/anuncio/${c.anuncio_id}`} className="underline-offset-2 hover:underline">
+                {c.titulo}
+              </Link>
+            ) : (
+              c.titulo
+            );
             return (
               <li
                 key={c.anuncio_id}
-                className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+                className={`flex flex-col gap-3 rounded-lg border border-line p-4 sm:p-5 ${
+                  a?.fim ? "bg-surface-100" : "bg-surface-200 shadow-card"
+                }`}
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  {c.status === "match" && <Selo variante="match">Deu match</Selo>}
-                  {esperaResposta(c) && <Selo variante="like">Aguardando aceite</Selo>}
-                  {vista && <Selo variante="contorno">Vista pela empresa</Selo>}
-                  {esperaCurriculo(c) && <Selo variante="aviso">Falta o currículo</Selo>}
-                  {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
-                  {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
-                  {etapaVisivel && (
-                    <Selo
-                      variante={
-                        etapaVisivel.etapa === "contratado" || etapaVisivel.etapa === "concluido"
-                          ? "match"
-                          : etapaVisivel.etapa === "nao_seguiu"
-                            ? "contorno"
-                            : "aviso"
-                      }
-                    >
-                      {ETAPAS_CANDIDATO[etapaVisivel.etapa].paraQuemCurtiu}
-                    </Selo>
-                  )}
-                  <Selo>{rotuloModalidade(c.tipo, c.regime)}</Selo>
-                  {!noAr && (
-                    <Selo variante="contorno">
-                      {STATUS_ANUNCIO[c.anuncio_status as StatusAnuncio]?.nome ?? "Fora do ar"}
-                    </Selo>
-                  )}
-                </div>
-                <h3 className="text-h3">
-                  {noAr ? (
-                    <Link href={`/anuncio/${c.anuncio_id}`} className="underline-offset-2 hover:underline">
-                      {c.titulo}
-                    </Link>
-                  ) : (
-                    c.titulo
-                  )}
-                </h3>
-                <p className="text-body-sm text-ink-muted">
-                  {c.autor_nome} · {rotuloConta(c.autor_tipo)} · {formatarLugar(c.bairro, c.cidade)}
-                </p>
-                <p className="text-label">{valorDoAnuncio(c)}</p>
+                {a ? (
+                  <>
+                    <div className="flex items-start gap-3">
+                      <Avatar
+                        nome={c.autor_nome}
+                        foto={c.autor_foto}
+                        tamanho={44}
+                        forma={c.autor_tipo === "pessoa" ? "redonda" : "quadrada"}
+                        colorida
+                        className={a.fim ? "opacity-60" : ""}
+                      />
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <h3 className={`text-h3 ${a.fim ? "text-ink-muted" : ""}`}>{titulo}</h3>
+                        <p className="text-body-sm text-ink-muted">
+                          {c.autor_nome} · {formatarLugar(c.bairro, c.cidade)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <p
+                        className={`text-body-sm ${anda ? "font-semibold text-cerrado-text" : a.fim ? "text-ink-muted" : "text-ink"}`}
+                      >
+                        {a.texto}
+                      </p>
+                      <span aria-hidden className={a.fim ? "opacity-50 grayscale" : ""}>
+                        <Etapas feitas={a.feitas} atual={a.atual} rotulo={a.texto} />
+                      </span>
+                    </div>
+                    {/* só o que a barra não diz ("Falta o currículo" já está na linha verde e no quadro de mandar) */}
+                    {(vista || !noAr) && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {vista && <Selo variante="contorno">Vista pela empresa</Selo>}
+                        {!noAr && (
+                          <Selo variante="contorno">
+                            {STATUS_ANUNCIO[c.anuncio_status as StatusAnuncio]?.nome ?? "Fora do ar"}
+                          </Selo>
+                        )}
+                      </div>
+                    )}
+                    {!a.fim && (
+                      <p className="text-label">
+                        {valorDoAnuncio(c)}
+                        <span className="font-normal text-ink-muted"> · {rotuloModalidade(c.tipo, c.regime)}</span>
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {c.status === "match" && <Selo variante="match">Deu match</Selo>}
+                      {esperaResposta(c) && <Selo variante="like">Aguardando aceite</Selo>}
+                      {vista && <Selo variante="contorno">Vista pela empresa</Selo>}
+                      {esperaCurriculo(c) && <Selo variante="aviso">Falta o currículo</Selo>}
+                      {c.status === "dispensada" && <Selo variante="contorno">Não foi dessa vez</Selo>}
+                      {c.status === "desfeito" && <Selo variante="contorno">Match desfeito</Selo>}
+                      {etapaVisivel && (
+                        <Selo
+                          variante={
+                            etapaVisivel.etapa === "contratado" || etapaVisivel.etapa === "concluido"
+                              ? "match"
+                              : etapaVisivel.etapa === "nao_seguiu"
+                                ? "contorno"
+                                : "aviso"
+                          }
+                        >
+                          {ETAPAS_CANDIDATO[etapaVisivel.etapa].paraQuemCurtiu}
+                        </Selo>
+                      )}
+                      <Selo>{rotuloModalidade(c.tipo, c.regime)}</Selo>
+                      {!noAr && (
+                        <Selo variante="contorno">
+                          {STATUS_ANUNCIO[c.anuncio_status as StatusAnuncio]?.nome ?? "Fora do ar"}
+                        </Selo>
+                      )}
+                    </div>
+                    <h3 className="text-h3">{titulo}</h3>
+                    <p className="text-body-sm text-ink-muted">
+                      {c.autor_nome} · {rotuloConta(c.autor_tipo)} · {formatarLugar(c.bairro, c.cidade)}
+                    </p>
+                    <p className="text-label">{valorDoAnuncio(c)}</p>
+                  </>
+                )}
                 {/* quem publicou decide se aceita; só com o aceite vocês se conectam */}
-                {(esperaResposta(c) || c.status === "dispensada") && (
+                {/* na vaga, a barra já mostra o caminho: o quadro só quando falta o currículo para seguir */}
+                {(esperaResposta(c) || c.status === "dispensada") &&
+                  (!a || (c.status === "pendente" && pedemCurriculo.has(c.anuncio_id))) && (
                   <CaminhoDaCurtida
                     situacao={c.status as "pendente" | "dispensada"}
                     quem={c.autor_nome}
@@ -338,7 +404,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                       <PartyPopper aria-hidden className="size-[18px] shrink-0 text-terra-text" />
                       {c.autor_nome} aceitou você! Falta só o seu currículo.
                     </p>
-                    <CaminhoDaCurtida situacao="aceita" quem={c.autor_nome} />
+                    {/* na vaga, a barra já mostra o caminho */}
+                    {!a && <CaminhoDaCurtida situacao="aceita" quem={c.autor_nome} />}
                     <BotaoLink
                       href={`/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${c.anuncio_id}`)}`}
                       variante="primario"
@@ -361,7 +428,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                 )}
                 {c.status === "match" && (
                   <div className="flex flex-col gap-2 rounded-md bg-surface-300 p-3">
-                    <p className="text-label text-cerrado-text">Deu match! Agora é só conversar.</p>
+                    {/* na vaga, a linha verde da barra já diz */}
+                    {!a && <p className="text-label text-cerrado-text">Deu match! Agora é só conversar.</p>}
                     <p className="text-body-sm">
                       {diretos.has(c.anuncio_id)
                         ? `${c.autor_nome} libera o contato para quem se interessa: vocês estão conectados.`
