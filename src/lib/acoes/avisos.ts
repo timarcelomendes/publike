@@ -21,6 +21,20 @@ export async function mudarAviso(grupo: string, canal: CanalDeAviso, ligado: boo
   return { ok: true };
 }
 
+/**
+ * Liga ou desliga a confirmação de leitura da conta (Avisos e notificações › Conversas; migração 20270205120000):
+ * desligada, quem mandou não vê quando a conta leu, e a conta também não vê a dos outros.
+ */
+export async function mudarConfirmacaoDeLeitura(ligada: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (typeof ligada !== "boolean") return { ok: false, erro: "Pedido inválido." };
+  if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/avisos" };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("mudar_confirmacao_de_leitura", { p_ligada: ligada });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora. Tente de novo.") };
+  return { ok: true };
+}
+
 /** Liga de novo o "Receber avisos por e-mail" do perfil (pela página Avisos e notificações). */
 export async function ligarEmails(): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };

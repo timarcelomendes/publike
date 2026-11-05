@@ -2574,6 +2574,8 @@ export type Database = {
         }[];
       };
       marcar_conversa_nao_lida_com: { Args: { p_outro: string }; Returns: undefined };
+      minha_confirmacao_de_leitura: { Args: Record<PropertyKey, never>; Returns: boolean };
+      mudar_confirmacao_de_leitura: { Args: { p_ligada: boolean }; Returns: undefined };
       abrir_conversa_com: {
         Args: { p_outro: string };
         Returns: string | null;

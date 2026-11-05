@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { ConfirmacaoDeLeitura } from "@/components/avisos/confirmacao-de-leitura";
 import { FormAvisos } from "@/components/avisos/form-avisos";
 import { AceiteWhatsapp } from "@/components/whatsapp/aceite-whatsapp";
 import { meuWhatsapp } from "@/lib/acoes/whatsapp";
@@ -35,10 +36,11 @@ async function Conteudo() {
   if (MODO_DEMO) return <SoComSupabase />;
   const usuario = await exigirUsuario("/perfil/avisos");
   const supabase = await criarClienteServidor();
-  const [perfil, { data: desligados, error }, whatsapp] = await Promise.all([
+  const [perfil, { data: desligados, error }, whatsapp, leitura] = await Promise.all([
     obterMeuPerfil().catch(() => null),
     supabase.rpc("meus_avisos_desligados"),
     meuWhatsapp(),
+    supabase.rpc("minha_confirmacao_de_leitura"),
   ]);
   if (error) {
     console.error(`Publike: falha ao ler os avisos desligados: ${error.message}`);
@@ -88,6 +90,13 @@ async function Conteudo() {
         </Link>
         .
       </p>
+      {/* sem a migração 20270205120000, a seção não aparece */}
+      {!leitura.error && (
+        <ConfirmacaoDeLeitura
+          ligada={leitura.data !== false}
+          pode={usuario.papel === "dono" || usuario.papel === "admin"}
+        />
+      )}
     </div>
   );
 }

@@ -342,7 +342,12 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
     proposta: propostas?.get(aberto.perfil_id) ?? null,
     regras,
   };
-  return { ficha, conversa: conversa ? { conversaId: conversa.conversaId, mensagens: conversa.mensagens } : null };
+  return {
+    ficha,
+    conversa: conversa
+      ? { conversaId: conversa.conversaId, mensagens: conversa.mensagens, verLida: conversa.verLida }
+      : null,
+  };
 }
 
 function vagaHref(base: string, vaga: string | null, ordem: Ordem) {

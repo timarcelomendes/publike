@@ -35,17 +35,20 @@ export const conversasPorPessoa = cache(async (): Promise<ConversaPessoa[] | nul
 });
 
 /**
- * A conversa com uma conta, com as últimas 300 mensagens (das vagas e da conexão, juntas).
- * null: não há match nem conexão com ela; undefined: não deu para ler.
+ * A conversa com uma conta, com as últimas 300 mensagens (das vagas e da conexão, juntas), e se eu vejo o "lida"
+ * (a confirmação de leitura da minha conta). null: não há match nem conexão com ela; undefined: não deu para ler.
  */
 export async function conversaCom(
   outroId: string,
-): Promise<{ conversa: ConversaPessoa; conversaId: string; mensagens: MensagemConversa[] } | null | undefined> {
+): Promise<
+  { conversa: ConversaPessoa; conversaId: string; mensagens: MensagemConversa[]; verLida: boolean } | null | undefined
+> {
   if (MODO_DEMO || !UUID.test(outroId)) return null;
   const supabase = await criarClienteServidor();
-  const [lista, aberta] = await Promise.all([
+  const [lista, aberta, leitura] = await Promise.all([
     supabase.rpc("conversas_por_pessoa", { p_outro: outroId }),
     supabase.rpc("abrir_conversa_com", { p_outro: outroId }),
+    supabase.rpc("minha_confirmacao_de_leitura"),
   ]);
   if (lista.error || aberta.error) {
     console.error(`Publike: falha ao abrir a conversa: ${(lista.error ?? aberta.error)?.message}`);
@@ -65,5 +68,11 @@ export async function conversaCom(
     console.error(`Publike: falha ao ler a conversa: ${error.message}`);
     return undefined;
   }
-  return { conversa: lerConversa(linha), conversaId, mensagens: (data ?? []).reverse() };
+  // com a confirmação de leitura desligada (sem a migração 20270205120000, vale ligada), as minhas mensagens
+  // não mostram o "lida" (nem o que já tinha aparecido antes): quem desliga também não vê o dos outros
+  const verLida = leitura.error ? true : leitura.data !== false;
+  const mensagens = (data ?? [])
+    .reverse()
+    .map((m) => (verLida || m.autor_id === linha.outro_id ? m : { ...m, lida_em: null }));
+  return { conversa: lerConversa(linha), conversaId, mensagens, verLida };
 }

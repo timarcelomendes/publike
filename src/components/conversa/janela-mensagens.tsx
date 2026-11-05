@@ -93,6 +93,7 @@ type Aberta = {
     mensagens: MensagemConversa[];
     vagaDoCurriculo: string | null;
     conexao: boolean;
+    verLida: boolean;
   } | null;
 };
 
@@ -104,6 +105,7 @@ function dadosDaAberta(r: NonNullable<Awaited<ReturnType<typeof abrirConversaDaJ
     mensagens: r.mensagens,
     vagaDoCurriculo: vagaDoCurriculo(r.conversa),
     conexao: r.conversa.vagas.length === 0,
+    verLida: r.verLida,
   };
 }
 
@@ -220,6 +222,7 @@ export function PainelConversas({
             iniciais={aberta.dados.mensagens}
             vagaDoCurriculo={aberta.dados.vagaDoCurriculo}
             conexao={aberta.dados.conexao}
+            verLida={aberta.dados.verLida}
             compacto
           />
         ) : (

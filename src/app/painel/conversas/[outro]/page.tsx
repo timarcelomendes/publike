@@ -135,6 +135,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conversas/[outr
         iniciais={mensagens}
         vagaDoCurriculo={vagaDoCurriculo(c)}
         conexao={c.vagas.length === 0}
+        verLida={dados.verLida}
       />
       <p className="text-body-sm text-ink-muted">
         Só vocês dois leem esta conversa. Nunca pague para conseguir trabalho e não mande senha nem foto de documento

@@ -50,6 +50,7 @@ export function Conversa({
   compacto = false,
   vagaDoCurriculo = null,
   conexao = false,
+  verLida = true,
 }: {
   /** a outra conta da conversa */
   outroId: string;
@@ -64,6 +65,8 @@ export function Conversa({
   vagaDoCurriculo?: string | null;
   /** a conversa vem só da conexão (sem vaga em comum): muda o texto da conversa vazia */
   conexao?: boolean;
+  /** a confirmação de leitura da minha conta: desligada, as minhas mensagens não mostram o "lida" */
+  verLida?: boolean;
 }) {
   const idCampo = useId();
   const [mensagens, setMensagens] = useState<MensagemConversa[]>(iniciais);
@@ -107,7 +110,7 @@ export function Conversa({
                 m.id === mudou.id
                   ? {
                       ...m,
-                      lida_em: mudou.lida_em,
+                      lida_em: verLida ? mudou.lida_em : null,
                       anexo: mudou.anexo ?? m.anexo,
                       anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
                       // a pergunta do match respondida (o botão escolhido)
@@ -120,7 +123,7 @@ export function Conversa({
         ),
     );
     return fechar;
-  }, [conversaId, euId]);
+  }, [conversaId, euId, verLida]);
 
   // desce até a última mensagem
   useEffect(() => {

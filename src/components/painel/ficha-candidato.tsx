@@ -178,7 +178,7 @@ export function FichaCandidato({
   /** o próximo passo (as folhas de Chamar e de Contratado); sem eles, só Aceitar e Dispensar */
   extras?: ExtrasDaFicha | null;
   /** a conversa com a pessoa (depois do aceite), para escrever ali mesmo */
-  conversa?: { conversaId: string; mensagens: MensagemConversa[] } | null;
+  conversa?: { conversaId: string; mensagens: MensagemConversa[]; verLida?: boolean } | null;
   euId?: string | null;
   /** a página da mesa (Candidatos ou a vaga): o "Desfazer" volta para ela */
   base?: string;
@@ -346,6 +346,7 @@ export function FichaCandidato({
               outroNome={c.nome}
               iniciais={conversaDaFicha.mensagens}
               compacto
+              verLida={conversaDaFicha.verLida}
             />
           </div>
         </Secao>
