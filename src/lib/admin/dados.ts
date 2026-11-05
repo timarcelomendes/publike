@@ -574,8 +574,30 @@ export async function listarUsuarios(c: ClienteBanco, busca: string | null, filt
     p_deslocamento: (pagina - 1) * POR_PAGINA,
   });
   if (error) falha("as contas", error);
-  const itens = data ?? [];
+  const itens = await comUltimoAcesso(c, data ?? []);
   return { itens, total: Number(itens[0]?.total ?? 0), curriculos: await curriculoDasContas(c, itens) };
+}
+
+/**
+ * O último acesso de verdade: o mais recente entre o login e a última página aberta (quem fica logado por semanas não
+ * passa pelo login de novo; migração 20270213120000). Sem a migração, fica o login.
+ */
+async function comUltimoAcesso<T extends { id: string; ultimo_acesso: string | null }>(
+  c: ClienteBanco,
+  itens: T[],
+): Promise<T[]> {
+  if (!itens.length) return itens;
+  const { data, error } = await c.rpc("admin_ultimos_acessos", { p_ids: itens.map((u) => u.id) });
+  if (error) return itens;
+  const de = new Map((data ?? []).map((x) => [x.id, x.ultimo_acesso]));
+  return itens.map((u) => ({ ...u, ultimo_acesso: maisRecente(u.ultimo_acesso, de.get(u.id) ?? null) }));
+}
+
+/** A data mais recente das duas (ISO), ou null. */
+export function maisRecente(a: string | null | undefined, b: string | null | undefined) {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
 }
 
 /**

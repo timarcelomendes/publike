@@ -27,6 +27,7 @@ import { formatarCnpj, linkReceita } from "@/lib/cnpj";
 import {
   advertenciasDe,
   aparelhoDoUsuario,
+  maisRecente,
   contaApagada,
   contasDoCopiloto,
   emailsDoUsuario,
@@ -96,6 +97,8 @@ async function Conteudo({
     ]);
   // a conta não existe mais: o rastro de quem apagou e quando (migração 20270113120000), no lugar da página vazia
   if (!u) return <ContaQueNaoExisteMais apagada={await contaApagada(c, id)} />;
+  // o último acesso: o login ou a última página aberta (quem fica logado não passa pelo login de novo)
+  const ultimoAcesso = maisRecente(u.ultimo_acesso, aparelho?.quando);
   // a página de carreiras (migração 20270117120000): só para quem contrata
   const paginaDeVagas = u.perfil && u.perfil.tipo !== "pessoa" ? await paginaDeVagasDaConta(c, id) : null;
 
@@ -210,7 +213,7 @@ async function Conteudo({
           }
         >
           {u.email ? (
-            <EnviarAcesso usuarioId={u.id} jaEntrou={Boolean(u.ultimo_acesso)} />
+            <EnviarAcesso usuarioId={u.id} jaEntrou={Boolean(ultimoAcesso)} />
           ) : (
             <AcessoPorWhatsapp usuarioId={u.id} />
           )}
@@ -309,7 +312,13 @@ async function Conteudo({
             {(u.provedores.length ? u.provedores : [u.provedor]).map(nomeDoProvedor).join(", ")}
           </Dado>
           <Dado rotulo="Conta criada">{formatarDataHora(u.criado_em)}</Dado>
-          <Dado rotulo="Último acesso">{u.ultimo_acesso ? tempoRelativo(u.ultimo_acesso, agora) : "Nunca entrou"}</Dado>
+          {/* o login ou a última página aberta (o aparelho), o que for mais recente */}
+          <Dado rotulo="Último acesso">
+            {ultimoAcesso ? tempoRelativo(ultimoAcesso, agora) : "Nunca entrou"}
+            {u.ultimo_acesso && ultimoAcesso !== u.ultimo_acesso && (
+              <span className="text-ink-muted"> · último login {tempoRelativo(u.ultimo_acesso, agora)}</span>
+            )}
+          </Dado>
           {aparelho && (
             <Dado rotulo="Aparelho">
               <span title={aparelho.navegador}>{descreverAparelho(aparelho.navegador, aparelho.app)}</span>
