@@ -75,6 +75,7 @@ const NOMES: Record<string, string> = {
   "/perfil/[id]": "Perfil de uma conta",
   "/perfil/[id]/vagas": "Vagas de uma conta",
   "/perfil/avisos": "Avisos e notificações",
+  "/perfil/preferencias": "Preferências",
   "/perfil/curriculo": "Meu currículo",
   "/perfil/senha": "Senha de acesso",
   "/privacidade": "Política de privacidade",

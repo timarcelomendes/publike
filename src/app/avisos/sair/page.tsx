@@ -33,7 +33,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/avisos/sai
       <Vazio
         icone={MailX}
         titulo="Este link não vale mais"
-        acao={<BotaoLink href="/perfil/avisos">Escolher os avisos</BotaoLink>}
+        acao={<BotaoLink href="/perfil/preferencias#avisos">Escolher os avisos</BotaoLink>}
       >
         Entre na sua conta para escolher o que chega no e-mail e no celular.
       </Vazio>

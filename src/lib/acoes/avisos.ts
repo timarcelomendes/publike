@@ -8,13 +8,14 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 
-/** Liga ou desliga um grupo de avisos no e-mail ou no celular (a página Avisos e notificações). */
+/** Liga ou desliga um grupo de avisos no e-mail ou no celular (Preferências › Avisos). */
 export async function mudarAviso(grupo: string, canal: CanalDeAviso, ligado: boolean): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!ehGrupoDeAviso(grupo) || (canal !== "email" && canal !== "celular")) {
     return { ok: false, erro: "Aviso desconhecido. Atualize a página." };
   }
-  if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/avisos" };
+  if (!(await obterUsuario()))
+    return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/preferencias" };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("mudar_aviso", { p_grupo: grupo, p_canal: canal, p_ligado: ligado });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora. Tente de novo.") };
@@ -22,23 +23,25 @@ export async function mudarAviso(grupo: string, canal: CanalDeAviso, ligado: boo
 }
 
 /**
- * Liga ou desliga a confirmação de leitura da conta (Avisos e notificações › Conversas; migração 20270205120000):
+ * Liga ou desliga a confirmação de leitura da conta (Preferências › Conversas; migração 20270205120000):
  * desligada, quem mandou não vê quando a conta leu, e a conta também não vê a dos outros.
  */
 export async function mudarConfirmacaoDeLeitura(ligada: boolean): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (typeof ligada !== "boolean") return { ok: false, erro: "Pedido inválido." };
-  if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/avisos" };
+  if (!(await obterUsuario()))
+    return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/preferencias" };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("mudar_confirmacao_de_leitura", { p_ligada: ligada });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora. Tente de novo.") };
   return { ok: true };
 }
 
-/** Liga de novo o "Receber avisos por e-mail" do perfil (pela página Avisos e notificações). */
+/** Liga de novo o "Receber avisos por e-mail" do perfil (por Preferências › Avisos). */
 export async function ligarEmails(): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/avisos" };
+  if (!(await obterUsuario()))
+    return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/perfil/preferencias" };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("mudar_receber_emails", { p_ligado: true });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para ligar agora. Tente de novo.") };

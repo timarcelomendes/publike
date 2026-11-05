@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BellRing,
   ChevronDown,
   CreditCard,
   CircleHelp,
@@ -14,6 +13,7 @@ import {
   Moon,
   Megaphone,
   Newspaper,
+  Settings,
   ShieldCheck,
   Sun,
   SunMoon,
@@ -198,8 +198,8 @@ export function MenuUsuario({
               <Item href="/painel/visitas" icone={Eye}>
                 Quem viu seu perfil
               </Item>
-              <Item href="/perfil/avisos" icone={BellRing}>
-                Avisos e notificações
+              <Item href="/perfil/preferencias" icone={Settings}>
+                Preferências
               </Item>
               {/* saíram do "Mais" do painel (claude/plano-painel-simples.md): são da conta, não de contratar */}
               <Item href="/painel/curtidas" icone={Heart}>

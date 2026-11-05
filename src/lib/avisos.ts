@@ -1,4 +1,4 @@
-// Os grupos da página Avisos e notificações (/perfil/avisos): para cada um, a conta escolhe se ele
+// Os grupos de Preferências › Avisos (/perfil/preferencias): para cada um, a conta escolhe se ele
 // chega no e-mail e no celular (o das notícias não tem e-mail). O sino mostra tudo. Os avisos da conta e da moderação não têm grupo e
 // chegam sempre. O banco tem a mesma lista (privado.grupo_do_aviso, em
 // supabase/migrations/20261120120000_avisos_por_tipo.sql): mudar um, mudar o outro.

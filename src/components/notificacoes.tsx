@@ -240,7 +240,7 @@ export function Notificacoes({
             <p className="text-label">Avisos</p>
             {/* o que chega no e-mail e no celular, por tipo */}
             <Link
-              href="/perfil/avisos"
+              href="/perfil/preferencias#avisos"
               onClick={() => setAberto(false)}
               className="text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
             >

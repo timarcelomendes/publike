@@ -132,9 +132,9 @@ export function FormAvisos({
         className="overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card"
       >
         <div className="flex items-end gap-2 border-b border-line px-4 pt-4 pb-3 sm:px-5">
-          <h2 id="avisos-titulo" className="min-w-0 flex-1 text-h3">
+          <h3 id="avisos-titulo" className="min-w-0 flex-1 text-h3">
             O que chega para você
-          </h2>
+          </h3>
           <span aria-hidden className="w-14 shrink-0 text-center text-body-sm font-semibold text-ink-muted">
             E-mail
           </span>

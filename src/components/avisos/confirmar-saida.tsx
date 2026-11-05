@@ -31,10 +31,10 @@ export function ConfirmarSaida({ chave, grupo, nome }: { chave: string; grupo: s
           Não chega mais por e-mail: <strong>{nomeDoQueSai(saiu) ?? nome}</strong>.
         </p>
         <p className="mt-2 text-body-sm text-ink-muted">
-          Os avisos continuam no sino do Publike. Mudou de ideia? Ligue de novo em Avisos e notificações.
+          Os avisos continuam no sino do Publike. Mudou de ideia? Ligue de novo em Preferências.
         </p>
         <div className="mt-5">
-          <BotaoLink href="/perfil/avisos" variante="secundario">
+          <BotaoLink href="/perfil/preferencias#avisos" variante="secundario">
             Escolher os avisos
           </BotaoLink>
         </div>

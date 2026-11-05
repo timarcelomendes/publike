@@ -67,6 +67,8 @@ const nextConfig: NextConfig = {
       { source: "/painel/conversas/:anuncio/:outro", destination: "/painel/conversas/:outro", permanent: false },
       // os Talentos do painel agora são o "Para a sua vaga" da aba Talentos (o ?vaga= vai junto)
       { source: "/painel/talentos", destination: "/talentos", permanent: false },
+      // "Avisos e notificações" virou Preferências (os links dos e-mails já enviados)
+      { source: "/perfil/avisos", destination: "/perfil/preferencias", permanent: true },
     ];
   },
   async headers() {

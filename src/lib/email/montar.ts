@@ -142,7 +142,7 @@ function rodape(modelo: ModeloEmail, siteUrl: string, sair: ParaSair | null): { 
     );
   }
   const parar = linkParaSair(site, sair);
-  const escolher = `${site}/perfil/avisos`;
+  const escolher = `${site}/perfil/preferencias`;
   const link = (href: string, texto: string) =>
     `<a href="${escaparHtml(href)}" style="color:${CORES.apagado};text-decoration:underline;">${escaparHtml(texto)}</a>`;
   return {
@@ -155,7 +155,7 @@ function rodape(modelo: ModeloEmail, siteUrl: string, sair: ParaSair | null): { 
     html:
       `${escaparHtml("Você recebeu este aviso porque tem uma conta no Publike.")} ` +
       `${link(parar, "Parar de receber este tipo de aviso por e-mail")}. ` +
-      `${escaparHtml("Para escolher o que chega no e-mail e no celular, abra ")}${link(escolher, "Avisos e notificações")}.`,
+      `${escaparHtml("Para escolher o que chega no e-mail e no celular, abra ")}${link(escolher, "Preferências")}.`,
   };
 }
 

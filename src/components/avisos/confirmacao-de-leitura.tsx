@@ -5,7 +5,7 @@ import { mudarConfirmacaoDeLeitura } from "@/lib/acoes/avisos";
 import { useAcao } from "../ui/usar-acao";
 
 /**
- * Avisos e notificações › Conversas › Confirmação de leitura (claude/plano-confirmacao-de-leitura.md). Ligada (o
+ * Preferências › Conversas › Confirmação de leitura (claude/plano-confirmacao-de-leitura.md). Ligada (o
  * padrão), quem mandou vê quando a conta leu: os dois tiques. Desligada, ninguém vê, e a conta também não vê a dos
  * outros. Muda na hora e volta atrás se não salvar. `pode`: na conta com equipe, só o dono e quem administra.
  */
@@ -24,10 +24,7 @@ export function ConfirmacaoDeLeitura({ ligada: inicial, pode }: { ligada: boolea
   }
 
   return (
-    <section aria-labelledby="titulo-conversas" className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-      <h2 id="titulo-conversas" className="mb-3 text-h3">
-        Conversas
-      </h2>
+    <div className="rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
       <div className="flex items-center gap-4">
         <div className="min-w-0 flex-1">
           <p id="confirmacao-de-leitura" className="text-label">
@@ -60,6 +57,6 @@ export function ConfirmacaoDeLeitura({ ligada: inicial, pode }: { ligada: boolea
       </div>
       {!pode && <p className="mt-3 text-body-sm text-ink-muted">Só quem administra a agência muda isto.</p>}
       {acao.mensagem}
-    </section>
+    </div>
   );
 }
