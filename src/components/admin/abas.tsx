@@ -202,11 +202,8 @@ export function MenuAdmin({ numeros }: { numeros: NumerosDoMenu }) {
         aria-label="Seções do admin"
         className="sem-barra hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
       >
-        <Link href="/admin" className="mb-4 flex items-center gap-2 px-3" aria-label="Publike Admin: Painel">
+        <Link href="/admin" className="mb-4 flex items-center gap-2 px-3" aria-label="Publike: Painel do admin">
           <Logo altura={26} />
-          <span className="rounded-pill bg-surface-300 px-2 py-0.5 text-caption font-semibold text-ink-muted">
-            Admin
-          </span>
         </Link>
         {lista}
       </nav>
