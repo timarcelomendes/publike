@@ -108,6 +108,12 @@ const simples = (s: string) =>
     .toLowerCase()
     .trim();
 
+/**
+ * No celular os filtros rolam de lado e os últimos ficam escondidos: os que não têm ninguém vão para o fim (os com
+ * gente ficam à vista, na ordem das etapas). No computador eles quebram linha e ficam na ordem de sempre.
+ */
+const VAZIO_NO_FIM = "max-sm:order-last";
+
 export default function Candidatos({ searchParams }: PageProps<"/painel/candidatos">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
@@ -425,7 +431,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
             href={link({ responder: true })}
             scroll={false}
             aria-current={responder ? "page" : undefined}
-            className={classesChip(responder, paraResponder > 0)}
+            className={`${classesChip(responder, paraResponder > 0)} ${paraResponder > 0 || responder ? "" : VAZIO_NO_FIM}`}
           >
             Para responder
             <span className={responder ? "text-surface-100/80" : paraResponder > 0 ? "" : "text-ink-muted"}>
@@ -434,13 +440,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
           </Link>
           {[null, ...etapasDoTipo("vaga")].map((e) => {
             const ativo = !responder && etapa === e;
+            const vazio = e !== null && !(contagem.get(e) ?? 0);
             return (
               <Link
                 key={e ?? "todos"}
                 href={link({ etapa: e })}
                 scroll={false}
                 aria-current={ativo ? "page" : undefined}
-                className={classesChip(ativo)}
+                className={`${classesChip(ativo)} ${vazio && !ativo ? VAZIO_NO_FIM : ""}`}
               >
                 {e ? ETAPAS_CANDIDATO[e].nome : "Todos"}
                 <span className={ativo ? "text-surface-100/80" : "text-ink-muted"}>

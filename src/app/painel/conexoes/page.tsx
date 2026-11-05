@@ -331,7 +331,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/con
             const n = numeros[a.valor];
             const pedidos = a.valor === "conectadas" ? paraResponder : 0;
             return (
-              <li key={a.valor} className="shrink-0">
+              // no celular as abas rolam de lado e a última fica escondida: a que tem pedido para responder vem
+              // primeiro (no computador cabem todas, na ordem de sempre)
+              <li key={a.valor} className={`shrink-0 ${pedidos > 0 ? "max-sm:order-first" : ""}`}>
                 <Link
                   href={`/painel/conexoes?aba=${a.valor}`}
                   aria-current={atual ? "page" : undefined}
