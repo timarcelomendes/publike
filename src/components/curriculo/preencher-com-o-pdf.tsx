@@ -133,7 +133,7 @@ export function PreencherComOPdf({
     return (
       <div className="flex flex-col gap-2">
         {erro}
-        <Botao tamanho="sm" variante="fantasma" onClick={() => void preencher()} className="self-start">
+        <Botao onClick={() => void preencher()} className="self-start">
           {erro ? <RotateCcw aria-hidden /> : <Sparkles aria-hidden />}
           {erro ? "Tentar de novo" : "Preencher os campos com este PDF"}
         </Botao>
