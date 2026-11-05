@@ -7,6 +7,7 @@ import { lerRespostas } from "@/lib/mensagem-equipe";
 import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { lerContaApagada, type ContaApagada } from "@/lib/conta-apagada";
 import { motivosParaConferir } from "@/lib/conferir-anuncio";
+import { faltaColuna } from "@/lib/servidor/comeca-ja";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -1002,6 +1003,8 @@ export async function matchesRecentes(c: ClienteBanco, desde: string | null): Pr
 export type CurtidaAdmin = {
   quando: string;
   respondida_em: string | null;
+  /** quem respondeu (migração 20270215120000): empresa, pessoa, direto, automacao, regra ou publike; null: não se sabe */
+  respondida_por: string | null;
   /** pendente; aceita (o aceite saiu, falta o currículo); match; dispensada; desfeito */
   situacao: "pendente" | "aceita" | "match" | "dispensada" | "desfeito";
   curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null } | null;
@@ -1011,13 +1014,25 @@ export type CurtidaAdmin = {
 
 /** As curtidas feitas desde `desde` (null: todas), da mais nova para a mais antiga (até 500), com o que aconteceu. */
 export async function curtidasRecentes(c: ClienteBanco, desde: string | null): Promise<CurtidaAdmin[]> {
-  let q = c
-    .from("curtidas")
-    .select("anuncio_id, perfil_id, status, aceita_em, respondida_em, criado_em")
-    .order("criado_em", { ascending: false })
-    .limit(500);
-  if (desde) q = q.gte("criado_em", desde);
-  const { data, error } = await q;
+  const ler = (colunas: string) => {
+    let q = c.from("curtidas").select(colunas).order("criado_em", { ascending: false }).limit(500);
+    if (desde) q = q.gte("criado_em", desde);
+    return q.returns<
+      {
+        anuncio_id: string;
+        perfil_id: string;
+        status: string;
+        aceita_em: string | null;
+        respondida_em: string | null;
+        criado_em: string;
+        respondida_por?: string | null;
+      }[]
+    >();
+  };
+  const colunas = "anuncio_id, perfil_id, status, aceita_em, respondida_em, criado_em";
+  let { data, error } = await ler(`${colunas}, respondida_por`);
+  // sem a migração 20270215120000 (a coluna respondida_por): sem quem respondeu
+  if (faltaColuna(error, "respondida_por")) ({ data, error } = await ler(colunas));
   if (error) falha("as curtidas", error);
   const linhas = data ?? [];
   const idsAnuncios = [...new Set(linhas.map((l) => l.anuncio_id))];
@@ -1046,6 +1061,7 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
     return {
       quando: l.criado_em,
       respondida_em: l.respondida_em ?? l.aceita_em ?? null,
+      respondida_por: l.respondida_por ?? null,
       situacao,
       curtiu: porPerfil.get(l.perfil_id) ?? null,
       anuncio: a ? { id: a.id, titulo: a.titulo, tipo: a.tipo } : null,

@@ -43,6 +43,16 @@ const SITUACOES: Record<
   dispensada: { nome: "Não foi dessa vez" },
   desfeito: { nome: "Match desfeito" },
 };
+/** Quem respondeu (migração 20270215120000; as antigas são uma estimativa pelo que ficou registrado). */
+const POR: Record<string, string> = {
+  empresa: "pela empresa",
+  pessoa: "pela pessoa",
+  direto: "na hora (contato direto)",
+  automacao: "por uma automação da vaga",
+  regra: "por uma regra da empresa",
+  publike: "pelo Publike (48 h sem resposta)",
+};
+
 const COR: Record<CurtidaAdmin["situacao"], string> = {
   pendente: "bg-like",
   aceita: "bg-terra",
@@ -269,6 +279,7 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                       title={new Date(m.respondida_em).toLocaleString("pt-BR")}
                     >
                       respondida {tempoRelativo(m.respondida_em, agora)}
+                      {m.respondida_por && POR[m.respondida_por] ? ` ${POR[m.respondida_por]}` : ""}
                     </span>
                   )}
                 </span>
