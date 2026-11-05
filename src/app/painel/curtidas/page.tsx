@@ -11,7 +11,7 @@ import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfaze
 import { andamento, etapaDaCurtida, paraFazerDeQuemProcura } from "@/components/painel/cartoes-de-quem-procura";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
-import { Etapas, ParaFazerAgora } from "@/components/painel/hoje";
+import { Etapas, NumeroHoje, ParaFazerAgora } from "@/components/painel/hoje";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
@@ -41,7 +41,9 @@ import {
 } from "@/lib/dados";
 import {
   formatarLugar,
+  formatarNumero,
   nomeCurtoDaConta,
+  plural,
   primeiro,
   rotuloConta,
   rotuloModalidade,
@@ -182,6 +184,39 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     return `/painel/curtidas${texto ? `?${texto}` : ""}`;
   };
 
+  // os números no alto (as vagas; como os blocos do Hoje): cada um abre a lista com o filtro
+  const dasVagas = curtidas.filter((c) => c.tipo === "vaga");
+  const numeros = tipo !== "servico" && dasVagas.length > 0 && (
+    <section aria-label="Números das suas candidaturas" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <NumeroHoje
+        nome="Em andamento"
+        valor={formatarNumero(dasVagas.filter((c) => !andamento(c, etapaDaCurtida(c, etapas), undefined).fim).length)}
+        ajuda={`de ${plural(dasVagas.length, "candidatura", "candidaturas")}`}
+        href={link({ tipo: "vaga", situacao: null, etapa: null })}
+      />
+      <NumeroHoje
+        nome="Esperando resposta"
+        valor={formatarNumero(dasVagas.filter(esperaResposta).length)}
+        ajuda={(() => {
+          const vistasN = dasVagas.filter((c) => esperaResposta(c) && vistas.has(c.anuncio_id)).length;
+          return vistasN ? `${plural(vistasN, "vista", "vistas")} pela empresa` : "ninguém abriu ainda";
+        })()}
+        href={link({ tipo: "vaga", situacao: "aguardando", etapa: null })}
+      />
+      <NumeroHoje
+        nome="Deu match"
+        valor={formatarNumero(dasVagas.filter((c) => c.status === "match").length)}
+        ajuda="conversa e WhatsApp liberados"
+        href={link({ tipo: "vaga", situacao: "match", etapa: null })}
+      />
+      <NumeroHoje
+        nome="Entrevistas"
+        valor={formatarNumero(dasVagas.filter((c) => entrevistaDe.has(c.anuncio_id)).length)}
+        ajuda="marcadas daqui para frente"
+      />
+    </section>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <div className="max-w-2xl">
@@ -193,6 +228,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
         </p>
       </div>
       {semCurriculo}
+      {numeros}
       {fazerAgora && (
         <>
           <div className="mb-1">{fazerAgora}</div>
