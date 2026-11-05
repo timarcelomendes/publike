@@ -28,6 +28,8 @@ export const GRUPOS_ADMIN: { nome: string | null; secoes: Secao[] }[] = [
     nome: "Vagas e candidatos",
     secoes: [
       { href: "/admin/anuncios", nome: "Anúncios" },
+      { href: "/admin/curtidas", nome: "Curtidas" },
+      { href: "/admin/matches", nome: "Matches" },
       { href: "/admin/esperando", nome: "Esperando" },
       { href: "/admin/vagas-paradas", nome: "Vagas paradas" },
       { href: "/admin/retorno", nome: "Retorno" },

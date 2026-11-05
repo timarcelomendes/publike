@@ -998,6 +998,56 @@ export async function matchesRecentes(c: ClienteBanco, desde: string | null): Pr
   });
 }
 
+/** Uma curtida no admin: quem curtiu, o anúncio, quem publicou e como ficou (o aceite, o match, a recusa). */
+export type CurtidaAdmin = {
+  quando: string;
+  respondida_em: string | null;
+  /** pendente; aceita (o aceite saiu, falta o currículo); match; dispensada; desfeito */
+  situacao: "pendente" | "aceita" | "match" | "dispensada" | "desfeito";
+  curtiu: { id: string; nome: string; tipo: string; bairro: string | null } | null;
+  anuncio: { id: string; titulo: string; tipo: string } | null;
+  publicou: { id: string; nome: string; tipo: string } | null;
+};
+
+/** As curtidas feitas desde `desde` (null: todas), da mais nova para a mais antiga (até 500), com o que aconteceu. */
+export async function curtidasRecentes(c: ClienteBanco, desde: string | null): Promise<CurtidaAdmin[]> {
+  let q = c
+    .from("curtidas")
+    .select("anuncio_id, perfil_id, status, aceita_em, respondida_em, criado_em")
+    .order("criado_em", { ascending: false })
+    .limit(500);
+  if (desde) q = q.gte("criado_em", desde);
+  const { data, error } = await q;
+  if (error) falha("as curtidas", error);
+  const linhas = data ?? [];
+  const idsAnuncios = [...new Set(linhas.map((l) => l.anuncio_id))];
+  const { data: anuncios, error: e1 } = idsAnuncios.length
+    ? await c.from("anuncios").select("id, titulo, tipo, autor_id").in("id", idsAnuncios)
+    : { data: [], error: null };
+  if (e1) falha("os anúncios das curtidas", e1);
+  const porAnuncio = new Map((anuncios ?? []).map((a) => [a.id, a]));
+  const idsPerfis = [...new Set([...linhas.map((l) => l.perfil_id), ...(anuncios ?? []).map((a) => a.autor_id)])];
+  const { data: perfis, error: e2 } = idsPerfis.length
+    ? await c.from("perfis").select("id, nome, tipo, bairro").in("id", idsPerfis)
+    : { data: [], error: null };
+  if (e2) falha("as contas das curtidas", e2);
+  const porPerfil = new Map((perfis ?? []).map((p) => [p.id, p]));
+  return linhas.map((l) => {
+    const a = porAnuncio.get(l.anuncio_id) ?? null;
+    const autor = a ? (porPerfil.get(a.autor_id) ?? null) : null;
+    const situacao: CurtidaAdmin["situacao"] =
+      l.status === "pendente" ? (l.aceita_em ? "aceita" : "pendente") : (l.status as CurtidaAdmin["situacao"]);
+    return {
+      quando: l.criado_em,
+      respondida_em: l.respondida_em ?? l.aceita_em ?? null,
+      situacao,
+      curtiu: porPerfil.get(l.perfil_id) ?? null,
+      anuncio: a ? { id: a.id, titulo: a.titulo, tipo: a.tipo } : null,
+      publicou: autor ? { id: autor.id, nome: autor.nome, tipo: autor.tipo } : null,
+    };
+  });
+}
+
 /** Uma pessoa esperando a empresa: o nome curto, a vaga e desde quando. */
 export type PessoaEsperando = { nome: string; vaga: string; desde: string };
 

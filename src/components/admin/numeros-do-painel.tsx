@@ -63,6 +63,7 @@ export function NumerosDoPainel({
           valor={n.curtidas.novas_7d}
           hoje={hoje.curtidas}
           detalhe={`${formatarNumero(n.curtidas.total)} no total`}
+          href={ir("/admin/curtidas")}
         />
         <Numero
           rotulo="Matches em 7 dias"
