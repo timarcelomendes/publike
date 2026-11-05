@@ -17,13 +17,16 @@ import {
   enviarMensagemPara,
   linkDoAnexo,
   marcarConversaLidaCom,
+  responderEntrevistaNaConversa,
   responderPerguntaDoChat,
 } from "@/lib/acoes/mensagens";
 import { MAX_PDF_MB } from "@/lib/constantes";
 import type { MensagemConversa } from "@/lib/dados";
+import { lerEntrevistaDaMensagem } from "@/lib/entrevista-na-conversa";
 import { lerPerguntaDaMensagem } from "@/lib/perguntas-do-match";
 import { criarClienteNavegador, ouvirAoVivo } from "@/lib/supabase/navegador";
 import { MensagemErro } from "../ui/campo";
+import { EntrevistaNaConversa, type RespostaDaEntrevista } from "./entrevista-na-conversa";
 
 function hora(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", {
@@ -115,6 +118,8 @@ export function Conversa({
                       anexo_nome: mudou.anexo_nome ?? m.anexo_nome,
                       // a pergunta do match respondida (o botão escolhido)
                       pergunta: mudou.pergunta ?? m.pergunta,
+                      // a entrevista confirmada, remarcada ou cancelada
+                      entrevista: mudou.entrevista ?? m.entrevista,
                     }
                   : m,
               ),
@@ -151,6 +156,16 @@ export function Conversa({
   // as perguntas do match: um toque responde (a resposta e a próxima pergunta voltam da ação)
   const [respondendo, setRespondendo] = useState<number | null>(null);
 
+  /** As mensagens que voltam de uma resposta: a mudada fica no lugar, a nova entra na ordem. */
+  function juntar(novas: MensagemConversa[]) {
+    setMensagens((atual) => {
+      const porId = new Map(novas.map((x) => [x.id, x]));
+      const juntas = atual.map((x) => porId.get(x.id) ?? x);
+      for (const x of novas) if (!atual.some((y) => y.id === x.id)) juntas.push(x);
+      return juntas.sort((a, b) => a.criado_em.localeCompare(b.criado_em) || a.id - b.id);
+    });
+  }
+
   async function responder(m: MensagemConversa, opcao: number) {
     if (respondendo !== null) return;
     setErro(null);
@@ -161,12 +176,24 @@ export function Conversa({
         setErro(r.erro);
         return;
       }
-      setMensagens((atual) => {
-        const porId = new Map(r.mensagens.map((x) => [x.id, x]));
-        const juntas = atual.map((x) => porId.get(x.id) ?? x);
-        for (const x of r.mensagens) if (!atual.some((y) => y.id === x.id)) juntas.push(x);
-        return juntas.sort((a, b) => a.criado_em.localeCompare(b.criado_em) || a.id - b.id);
-      });
+      juntar(r.mensagens);
+    } finally {
+      setRespondendo(null);
+    }
+  }
+
+  // a entrevista na conversa: confirmar, pedir outro horário ou escolher um horário (a resposta entra na conversa)
+  async function responderEntrevista(m: MensagemConversa, r: RespostaDaEntrevista) {
+    if (respondendo !== null) return;
+    setErro(null);
+    setRespondendo(m.id);
+    try {
+      const feito = await chamarAcao(() => responderEntrevistaNaConversa(m.id, r.resposta, r.quando));
+      if (!feito.ok) {
+        setErro(feito.erro);
+        return;
+      }
+      juntar(feito.mensagens);
     } finally {
       setRespondendo(null);
     }
@@ -239,6 +266,7 @@ export function Conversa({
             const minha = m.autor_id === euId;
             const novoDia = i === 0 || dia(mensagens[i - 1].criado_em) !== dia(m.criado_em);
             const pergunta = m.automatica ? lerPerguntaDaMensagem(m.pergunta) : null;
+            const entrevista = lerEntrevistaDaMensagem(m.entrevista);
             return (
               <div key={m.id} className="flex flex-col">
                 {novoDia && (
@@ -291,6 +319,17 @@ export function Conversa({
                       escolher={(opcao) => void responder(m, opcao)}
                       escuro={minha}
                       esperando={`Esperando a resposta de ${primeiroNome}.`}
+                    />
+                  )}
+                  {entrevista && (
+                    <EntrevistaNaConversa
+                      e={entrevista}
+                      candidato={!minha}
+                      nome={primeiroNome}
+                      empresa={outroNome}
+                      anuncioId={m.anuncio_id ?? null}
+                      ocupado={respondendo !== null}
+                      responder={(r) => void responderEntrevista(m, r)}
                     />
                   )}
                   <span

@@ -98,6 +98,49 @@ export async function responderPerguntaDoChat(
   return { ok: true, mensagens: novas ?? [] };
 }
 
+/**
+ * O toque na mensagem da entrevista (migração 20270206120000): confirmar presença, pedir outro horário ou escolher
+ * um dos horários, com a mesma regra da página da vaga. A resposta entra na conversa; devolve a mensagem da
+ * entrevista (com a situação nova) e a resposta, para a conversa mostrar na hora.
+ */
+export async function responderEntrevistaNaConversa(
+  mensagemId: number,
+  resposta: "confirmada" | "remarcar" | "escolher",
+  quando?: string,
+): Promise<{ ok: true; mensagens: MensagemConversa[] } | { ok: false; erro: string }> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const horario = quando ? new Date(quando) : null;
+  if (
+    !Number.isSafeInteger(mensagemId) ||
+    !["confirmada", "remarcar", "escolher"].includes(resposta) ||
+    (resposta === "escolher" && (!horario || Number.isNaN(horario.getTime())))
+  ) {
+    return { ok: false, erro: "Pedido inválido." };
+  }
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("responder_entrevista_no_chat", {
+    p_mensagem: mensagemId,
+    p_resposta: resposta,
+    p_quando: resposta === "escolher" && horario ? horario.toISOString() : null,
+  });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Ainda não dá para responder por aqui. Responda na página da vaga." };
+    return { ok: false, erro: mensagemDeErro(error, "Não deu para responder agora. Tente de novo.") };
+  }
+  // o aviso para quem marcou sai por e-mail (confirmada: com o convite para a agenda)
+  after(processarFilas);
+  const ids = ((data as { mensagens?: unknown } | null)?.mensagens ?? []) as number[];
+  const { data: mudadas } = await supabase
+    .from("mensagens")
+    .select(COLUNAS_DA_MENSAGEM)
+    .in("id", [mensagemId, ...ids.filter(Number.isSafeInteger)])
+    .order("id");
+  return { ok: true, mensagens: mudadas ?? [] };
+}
+
 /** Link do currículo anexado numa mensagem (só os dois da conversa; vale 10 minutos). */
 export async function linkDoAnexo(mensagemId: number): Promise<string | null> {
   if (MODO_DEMO || !Number.isSafeInteger(mensagemId)) return null;

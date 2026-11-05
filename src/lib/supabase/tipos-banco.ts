@@ -880,6 +880,8 @@ export type Database = {
           automatica: boolean;
           /** a pergunta do match: {chave, rotulo, opcoes, resposta} */
           pergunta: Json | null;
+          /** a entrevista da mensagem, com a situação (migração 20270206120000) */
+          entrevista: Json | null;
         };
         Insert: SemTabela;
         Update: SemTabela;
@@ -3181,6 +3183,10 @@ export type Database = {
         Returns: number;
       };
       responder_pergunta_do_chat: { Args: { p_mensagem: number; p_opcao: number }; Returns: Json };
+      responder_entrevista_no_chat: {
+        Args: { p_mensagem: number; p_resposta: string; p_quando?: string | null };
+        Returns: Json;
+      };
       respostas_do_chat_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       admin_matches_sem_contato: { Args: Record<string, never>; Returns: Json };
       admin_avisar_matches_sem_contato: { Args: Record<string, never>; Returns: Json };

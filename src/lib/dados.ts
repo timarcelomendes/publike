@@ -533,11 +533,13 @@ export type MensagemConversa = {
   automatica?: boolean;
   /** a pergunta do match, com os botões (lerPerguntaDaMensagem) */
   pergunta?: unknown;
+  /** a entrevista marcada ou os horários para escolher, com a situação (lerEntrevistaDaMensagem) */
+  entrevista?: unknown;
 };
 
 /** As colunas da mensagem que a conversa mostra. */
 export const COLUNAS_DA_MENSAGEM =
-  "id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome, anuncio_id, automatica, pergunta";
+  "id, autor_id, texto, criado_em, lida_em, anexo, anexo_nome, anuncio_id, automatica, pergunta, entrevista";
 
 /** Experiências vindas do banco (jsonb), já no formato das telas. */
 export function lerExperiencias(valor: unknown): Experiencia[] {
