@@ -1,7 +1,18 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  ChevronDown,
+  Mail,
+  Megaphone,
+  Settings,
+  ShieldCheck,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
+import { Logo } from "@/components/ui/basicos";
 import { usePathname } from "next/navigation";
 
 export type ModoAdmin = "admin" | "moderador" | null;
@@ -12,10 +23,11 @@ type Secao = { href: string; nome: string };
  * As seções do admin, em grupos (claude/plano-avisos-de-liberacao-e-menu-admin.md, parte 2): o menu da coluna da
  * esquerda no computador e o "Seções" no celular. Os endereços são os de sempre.
  */
-export const GRUPOS_ADMIN: { nome: string | null; secoes: Secao[] }[] = [
+export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Secao[] }[] = [
   { nome: null, secoes: [{ href: "/admin", nome: "Painel" }] },
   {
     nome: "Contas",
+    icone: Users,
     secoes: [
       { href: "/admin/usuarios", nome: "Usuários" },
       { href: "/admin/empresas", nome: "Empresas" },
@@ -26,6 +38,7 @@ export const GRUPOS_ADMIN: { nome: string | null; secoes: Secao[] }[] = [
   },
   {
     nome: "Vagas e candidatos",
+    icone: BriefcaseBusiness,
     secoes: [
       { href: "/admin/anuncios", nome: "Anúncios" },
       { href: "/admin/curtidas", nome: "Curtidas" },
@@ -38,6 +51,7 @@ export const GRUPOS_ADMIN: { nome: string | null; secoes: Secao[] }[] = [
   },
   {
     nome: "Moderação",
+    icone: ShieldCheck,
     secoes: [
       { href: "/admin/denuncias", nome: "Denúncias" },
       { href: "/admin/testes", nome: "Testes" },
@@ -47,6 +61,7 @@ export const GRUPOS_ADMIN: { nome: string | null; secoes: Secao[] }[] = [
   },
   {
     nome: "Comunicação",
+    icone: Mail,
     secoes: [
       { href: "/admin/emails", nome: "E-mails" },
       { href: "/admin/comunicados", nome: "Comunicados" },
@@ -56,15 +71,17 @@ export const GRUPOS_ADMIN: { nome: string | null; secoes: Secao[] }[] = [
   },
   {
     nome: "Divulgação",
+    icone: Megaphone,
     secoes: [
       { href: "/admin/vagas-do-dia", nome: "Vagas do dia" },
       { href: "/admin/campanhas", nome: "Campanhas" },
       { href: "/admin/banners", nome: "Banners" },
     ],
   },
-  { nome: "Dinheiro", secoes: [{ href: "/admin/pagamentos", nome: "Pagamentos" }] },
+  { nome: "Dinheiro", icone: Wallet, secoes: [{ href: "/admin/pagamentos", nome: "Pagamentos" }] },
   {
     nome: "Sistema",
+    icone: Settings,
     secoes: [
       { href: "/admin/ia", nome: "IA" },
       { href: "/admin/chaves", nome: "Chaves" },
@@ -140,13 +157,17 @@ export function MenuAdmin({ numeros }: { numeros: NumerosDoMenu }) {
   const ativa = abaAtiva(caminho, ABAS_ADMIN);
   const nomeAtivo = ABAS_ADMIN.find((a) => a.href === ativa)?.nome ?? "Painel";
   const lista = (
-    <ul className="flex flex-col gap-4">
+    <ul className="flex flex-col">
       {GRUPOS_ADMIN.map((g) => (
-        <li key={g.nome ?? "inicio"}>
+        // cada grupo separado por um traço, com o ícone e o nome em destaque; as seções embaixo, recuadas
+        <li key={g.nome ?? "inicio"} className={g.nome ? "mt-3 border-t border-line pt-3" : ""}>
           {g.nome && (
-            <p className="px-3 pb-1 text-caption font-semibold tracking-wide text-ink-muted uppercase">{g.nome}</p>
+            <p className="flex items-center gap-2 px-3 pb-1.5 text-label font-bold text-ink">
+              {g.icone && <g.icone aria-hidden className="size-[18px] shrink-0 text-terra-text" />}
+              {g.nome}
+            </p>
           )}
-          <ul className="flex flex-col gap-0.5">
+          <ul className={`flex flex-col gap-0.5 ${g.nome ? "pl-[26px]" : ""}`}>
             {g.secoes.map((s) => {
               const atual = s.href === ativa;
               const n = numeros[s.href] ?? 0;
@@ -181,6 +202,12 @@ export function MenuAdmin({ numeros }: { numeros: NumerosDoMenu }) {
         aria-label="Seções do admin"
         className="sem-barra hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
       >
+        <Link href="/admin" className="mb-4 flex items-center gap-2 px-3" aria-label="Publike Admin: Painel">
+          <Logo altura={26} />
+          <span className="rounded-pill bg-surface-300 px-2 py-0.5 text-caption font-semibold text-ink-muted">
+            Admin
+          </span>
+        </Link>
         {lista}
       </nav>
       {/* no celular: um botão que abre a lista (fecha ao trocar de seção, pela key) */}
