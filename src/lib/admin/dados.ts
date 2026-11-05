@@ -89,6 +89,8 @@ export type FichaUsuario = {
   provedores: string[];
   criado_em: string;
   ultimo_acesso: string | null;
+  /** o último login (migração 20270216120000; antes dela, o último acesso já é o login) */
+  ultimo_login?: string | null;
   login_bloqueado_ate: string | null;
   perfil: {
     nome: string;

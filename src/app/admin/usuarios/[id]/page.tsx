@@ -99,6 +99,7 @@ async function Conteudo({
   if (!u) return <ContaQueNaoExisteMais apagada={await contaApagada(c, id)} />;
   // o último acesso: o login ou a última página aberta (quem fica logado não passa pelo login de novo)
   const ultimoAcesso = maisRecente(u.ultimo_acesso, aparelho?.quando);
+  const ultimoLogin = u.ultimo_login !== undefined ? u.ultimo_login : u.ultimo_acesso;
   // a página de carreiras (migração 20270117120000): só para quem contrata
   const paginaDeVagas = u.perfil && u.perfil.tipo !== "pessoa" ? await paginaDeVagasDaConta(c, id) : null;
 
@@ -315,8 +316,8 @@ async function Conteudo({
           {/* o login ou a última página aberta (o aparelho), o que for mais recente */}
           <Dado rotulo="Último acesso">
             {ultimoAcesso ? tempoRelativo(ultimoAcesso, agora) : "Nunca entrou"}
-            {u.ultimo_acesso && ultimoAcesso !== u.ultimo_acesso && (
-              <span className="text-ink-muted"> · último login {tempoRelativo(u.ultimo_acesso, agora)}</span>
+            {ultimoLogin && ultimoAcesso !== ultimoLogin && (
+              <span className="text-ink-muted"> · último login {tempoRelativo(ultimoLogin, agora)}</span>
             )}
           </Dado>
           {aparelho && (
