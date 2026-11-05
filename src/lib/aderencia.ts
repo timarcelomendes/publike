@@ -306,6 +306,27 @@ function funcaoNoCurriculo(
   return { parte: 0, detalhe: `Nenhum trabalho parecido com “${tituloDaVaga}” no currículo` };
 }
 
+/** Os programas que o título diz sem dizer a função ("Jovem aprendiz", "Estágio"): parecidos entre si. */
+const PROGRAMAS = /\b(aprendiz|estagi\w*|trainee)\b/;
+
+/**
+ * O quanto dois títulos de vaga são da mesma função, pela mesma conta do %: alguma palavra da função com a mesma raiz
+ * (1), a mesma área de trabalho (0,6) ou nada (0). Título que não diz a função só é parecido com outro do mesmo
+ * programa ("Jovem aprendiz" com "Aprendiz administrativo"). As vagas parecidas da tela da vaga
+ * (claude/plano-carrossel-na-vaga.md).
+ */
+export function funcaoParecida(titulo: string, outro: string): number {
+  const a = palavrasDaFuncao(titulo);
+  const b = palavrasDaFuncao(outro);
+  if (!a.length) {
+    const programa = PROGRAMAS.exec(simples(titulo))?.[1];
+    return programa && PROGRAMAS.exec(simples(outro))?.[1]?.slice(0, 5) === programa.slice(0, 5) ? 1 : 0;
+  }
+  if (!b.length) return 0;
+  if (batem(a, b)) return 1;
+  return areaEmComum(a, b) ? 0.6 : 0;
+}
+
 /** O currículo diz o que a pessoa faz: algum trabalho ou a profissão (no primeiro emprego, a função não conta). */
 function temHistorico(cv: CurriculoDoCandidato | null | undefined) {
   return Boolean(cv && (cv.experiencias.length || cv.titulo));

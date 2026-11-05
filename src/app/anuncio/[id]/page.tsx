@@ -97,6 +97,7 @@ import { distanciaKm } from "@/lib/descobrir";
 import { deslocamentoCurto, deslocamentos, formatarMinutos } from "@/lib/deslocamento";
 import { meusSeguidos } from "@/lib/dados-social";
 import { obterLocal } from "@/lib/local";
+import { VagasDaVaga } from "@/components/anuncio/vagas-da-vaga";
 import { chaveBairro } from "@/lib/regioes";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
@@ -270,10 +271,10 @@ async function DetalheAnuncio({
   const temCurriculo = paraQuemProcura ? curriculo !== null : null;
   // o % de match com o currículo (com pouco para comparar, não aparece)
   const perfil = curriculo ? await obterMeuPerfil().catch(() => null) : null;
-  const match =
-    curriculo && perfil
-      ? matchComAVaga(anuncio, { curriculo, cidade: perfil.cidade, bairro: perfil.bairro }, agora)
-      : null;
+  // só conta de pessoa (como a lista, em quemProcura): empresa não tem % de match
+  const quem =
+    curriculo && perfil?.tipo === "pessoa" ? { curriculo, cidade: perfil.cidade, bairro: perfil.bairro } : null;
+  const match = quem ? matchComAVaga(anuncio, quem, agora) : null;
   // quem publicou já aceitou e falta o currículo (vaga que pede): o próximo passo é mandar
   const aceita =
     anuncio.minha_curtida === "pendente" && anuncio.pede_curriculo && (await aceitoEsperandoMeuCurriculo(anuncio.id));
@@ -844,6 +845,23 @@ async function DetalheAnuncio({
           )}
         </aside>
       </div>
+      {/* no fim, as vagas parecidas e as outras de quem publicou (não para quem publicou) */}
+      {vaga && !proprio && (
+        <Suspense fallback={null}>
+          <VagasDaVaga
+            vaga={{
+              id: anuncio.id,
+              titulo: anuncio.titulo,
+              autor_id: anuncio.autor_id,
+              cidade: anuncio.cidade,
+              lat: anuncio.lat,
+              lng: anuncio.lng,
+            }}
+            ve={{ quem, usuarioId: usuario?.id ?? null, ponto: local?.ponto ?? null }}
+            agora={agora}
+          />
+        </Suspense>
+      )}
     </Container>
   );
 }
