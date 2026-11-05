@@ -182,50 +182,120 @@ type SemContato = {
   matches: number;
   perguntas: number;
   prontas: number;
-  exemplos: { nome: string; quantos: number; perguntaveis: number; avisada_em: string | null }[];
+  // da migração 20270207120000 (sem ela, a tela fica como antes)
+  aceitos?: number;
+  contas_aceitos?: number;
+  direto?: number;
+  nunca_entraram?: number;
+  mandadas?: number;
+  responderam?: number;
+  na_fila?: number;
+  exemplos: {
+    nome: string;
+    quantos: number;
+    perguntaveis: number;
+    avisada_em: string | null;
+    direto?: number;
+    responderam?: number;
+    nunca_entrou?: boolean;
+  }[];
 };
 
-/** Os aceitos sem contato em vaga no ar, com o botão que pergunta no chat e avisa as empresas. */
+/** O número que veio do banco (0 se não veio: a tela nunca mostra NaN). */
+function num(x: unknown) {
+  return typeof x === "number" && Number.isFinite(x) ? x : 0;
+}
+
+/**
+ * Os aceitos sem contato em vaga no ar, com o botão que pergunta no chat e avisa as empresas. Os de vaga de contato
+ * direto (curtir já é o match e o WhatsApp é liberado) ficam à parte; as perguntas mostram o que já foi mandado.
+ */
 function MatchesSemContato({ s, agora }: { s: SemContato; agora: number }) {
+  const novo = typeof s.aceitos === "number";
+  const aceitos = novo ? num(s.aceitos) : num(s.matches);
+  const contas = novo ? num(s.contas_aceitos) : num(s.contas);
+  const direto = num(s.direto);
+  const paraMandar = num(s.perguntas);
+  const detalhePerguntas = [
+    `${formatarNumero(num(s.responderam))} responderam`,
+    num(s.na_fila) ? `${formatarNumero(num(s.na_fila))} na fila` : "",
+    paraMandar ? `${formatarNumero(paraMandar)} para mandar` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <Secao
       id="sem-contato"
       titulo="Matches sem contato"
-      descricao="Aceitos em vaga no ar nos últimos 60 dias, sem mensagem nem contato da empresa. O botão faz no chat as perguntas do match a quem ainda não recebeu (“Ainda tem interesse em…?”; as respostas chegam para a empresa) e avisa cada empresa, no máximo uma vez a cada 7 dias."
-      acoes={<PerguntarNosMatches perguntas={s.perguntas} prontas={s.prontas} />}
+      descricao="Aceitos em vaga no ar nos últimos 60 dias, sem mensagem nem contato da empresa pelo Publike. Nas vagas de contato direto, curtir já é o match e o WhatsApp é liberado: o contato pode ter sido por lá. O botão faz no chat as perguntas do match a quem ainda não recebeu (“Ainda tem interesse em…?”; as respostas ficam na conversa e na ficha do candidato) e avisa cada empresa, no máximo uma vez a cada 7 dias."
+      acoes={<PerguntarNosMatches perguntas={paraMandar} prontas={num(s.prontas)} />}
     >
-      {s.matches === 0 ? (
+      {num(s.matches) === 0 ? (
         <p className="text-body-sm text-ink-muted">Nenhum match esperando contato agora.</p>
       ) : (
         <>
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <dl className={`grid grid-cols-2 gap-3 ${novo ? "lg:grid-cols-4" : "sm:grid-cols-3"}`}>
             <Numero
               rotulo="Matches sem contato"
-              valor={formatarNumero(s.matches)}
-              detalhe={s.contas === 1 ? "de 1 empresa" : `de ${formatarNumero(s.contas)} empresas`}
-              alerta
+              valor={formatarNumero(aceitos)}
+              detalhe={
+                novo
+                  ? `a empresa aceitou e não chamou${contas ? ` (${contas === 1 ? "1 empresa" : `${formatarNumero(contas)} empresas`})` : ""}`
+                  : contas === 1
+                    ? "de 1 empresa"
+                    : `de ${formatarNumero(contas)} empresas`
+              }
+              alerta={aceitos > 0}
             />
-            <Numero
-              rotulo="Recebem as perguntas"
-              valor={formatarNumero(s.perguntas)}
-              detalhe="ainda não receberam no chat"
-            />
+            {novo && (
+              <Numero
+                rotulo="Contato direto"
+                valor={formatarNumero(direto)}
+                detalhe="o WhatsApp já foi liberado no match"
+              />
+            )}
+            {novo ? (
+              <Numero rotulo="Perguntas mandadas" valor={formatarNumero(num(s.mandadas))} detalhe={detalhePerguntas} />
+            ) : (
+              <Numero
+                rotulo="Recebem as perguntas"
+                valor={formatarNumero(paraMandar)}
+                detalhe="ainda não receberam no chat"
+              />
+            )}
             <Numero
               rotulo="Empresas para avisar"
-              valor={formatarNumero(s.prontas)}
+              valor={formatarNumero(num(s.prontas))}
               detalhe="sem aviso nos últimos 7 dias"
             />
           </dl>
+          {novo && num(s.nunca_entraram) > 0 && (
+            <p className="text-body-sm text-ink-muted">
+              {num(s.nunca_entraram) === 1
+                ? "1 empresa nunca entrou no Publike: o aviso e as respostas ficam esperando ela entrar."
+                : `${formatarNumero(num(s.nunca_entraram))} empresas nunca entraram no Publike: o aviso e as respostas ficam esperando elas entrarem.`}
+            </p>
+          )}
           <ul
             aria-label="As empresas com mais gente esperando"
             className="flex flex-col divide-y divide-line text-body-sm"
           >
             {s.exemplos.map((e) => (
               <li key={e.nome} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2">
-                <span className="font-semibold">{e.nome}</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{e.nome}</span>
+                  {e.nunca_entrou && <Selo title="A conta nunca entrou no Publike">Nunca entrou</Selo>}
+                </span>
                 <span className="text-ink-muted">
-                  {e.quantos === 1 ? "1 esperando" : `${e.quantos} esperando`}
-                  {e.perguntaveis ? ` · ${e.perguntaveis} recebem as perguntas` : ""}
+                  {num(e.quantos) === 1 ? "1 esperando" : `${formatarNumero(num(e.quantos))} esperando`}
+                  {num(e.direto) ? ` · ${formatarNumero(num(e.direto))} de contato direto` : ""}
+                  {novo
+                    ? num(e.responderam)
+                      ? ` · ${num(e.responderam) === 1 ? "1 respondeu" : `${formatarNumero(num(e.responderam))} responderam`}`
+                      : ""
+                    : num(e.perguntaveis)
+                      ? ` · ${formatarNumero(num(e.perguntaveis))} recebem as perguntas`
+                      : ""}
                   {e.avisada_em ? ` · avisada ${tempoRelativo(e.avisada_em, agora)}` : ""}
                 </span>
               </li>
