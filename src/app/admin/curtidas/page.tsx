@@ -48,7 +48,7 @@ const SITUACOES: Record<
 const POR: Record<string, { humano: boolean; texto: string }> = {
   empresa: { humano: true, texto: "a empresa (ou a equipe dela) respondeu" },
   pessoa: { humano: true, texto: "quem publicou respondeu" },
-  direto: { humano: false, texto: "o anúncio tem contato direto: virou match na hora, ninguém respondeu" },
+  direto: { humano: false, texto: "o anúncio tem contato direto: aceita na hora, sem ninguém responder" },
   automacao: { humano: false, texto: "uma automação da vaga respondeu" },
   regra: { humano: false, texto: "uma regra da empresa respondeu" },
   publike: { humano: false, texto: "o Publike fechou depois de 48 h sem resposta" },
@@ -278,7 +278,7 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                     {SITUACOES[m.situacao].nome}
                   </span>
                   {m.situacao !== "pendente" && m.respondida_em && (
-                    <span className="flex flex-col gap-0.5 text-caption text-ink-muted">
+                    <span className="flex flex-col gap-0.5 text-caption font-normal text-ink-muted">
                       {m.respondida_por && POR[m.respondida_por] && (
                         // humano ou automático em destaque; o porquê embaixo
                         <span className="font-semibold text-ink">
