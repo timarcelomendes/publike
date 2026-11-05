@@ -2,6 +2,7 @@ import "server-only";
 import { matchComAVaga, type Aderencia, type CamposDaVaga, type Candidato } from "@/lib/aderencia";
 import { formatarLugar } from "@/lib/formato";
 import { pracaDaCidade } from "@/lib/pracas";
+import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
 import { acessoFila } from "./filas";
 
 // Vagas e talentos que combinam, toda semana (migração 20261119120000). Na segunda, a partir das 9h,
@@ -290,10 +291,14 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
         { data: [], error: null },
       ];
   if (eVagas || ePessoas) falhas.push((eVagas ?? ePessoas)!.message);
-  for (const p of eVagas ? [] : (pessoas ?? [])) {
+  // o % pelo contexto: a função que a IA leu de cada vaga e de cada experiência (claude/plano-match-pelo-contexto.md)
+  const vagasComCbo = await comFuncaoDasVagas((vagas ?? []) as VagaParaCombinar[]);
+  const listaDePessoas = eVagas ? [] : (pessoas ?? []);
+  const cvsDasPessoas = await comFuncoes(listaDePessoas.map((p) => comoCurriculo(p.curriculo)));
+  for (const [i, p] of listaDePessoas.entries()) {
     const boas = escolherVagas(
-      { id: p.perfil_id, cidade: p.cidade, bairro: p.bairro, curriculo: comoCurriculo(p.curriculo) },
-      (vagas ?? []) as VagaParaCombinar[],
+      { id: p.perfil_id, cidade: p.cidade, bairro: p.bairro, curriculo: cvsDasPessoas[i] },
+      vagasComCbo,
       new Set(p.ja ?? []),
       agora,
     );
@@ -327,9 +332,20 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (eEmpresas || eTalentos) falhas.push((eEmpresas ?? eTalentos)!.message);
-  const comCurriculo = (eTalentos ? [] : (talentos ?? []))
+  const semCbo = (eTalentos ? [] : (talentos ?? []))
     .map((t) => ({ ...t, cv: comoCurriculo(t.curriculo) }))
     .filter((t): t is typeof t & { cv: Curriculo } => t.cv !== null);
+  const cvsComCbo = await comFuncoes(semCbo.map((t) => t.cv));
+  const comCurriculo = semCbo.map((t, i) => ({ ...t, cv: cvsComCbo[i] }));
+  // a função de cada vaga das contas (uma leitura para todas)
+  const cboDasVagas = async (listas: unknown[]) => {
+    const todas = listas.flatMap((l) => (Array.isArray(l) ? (l as { id: string }[]) : []));
+    return new Map((await comFuncaoDasVagas(todas)).map((v) => [v.id, (v as { cbo?: string | null }).cbo ?? null]));
+  };
+  const comCboDe = (lista: unknown, cbos: Map<string, string | null>) =>
+    (Array.isArray(lista) ? lista : []).map((v: CamposDaVaga & { id: string }) =>
+      v.cbo || !cbos.get(v.id) ? v : { ...v, cbo: cbos.get(v.id) },
+    ) as (CamposDaVaga & { id: string })[];
   // os números das vagas no ar de cada conta (sem a migração 20270130120000, sai sem o resumo)
   const numeros = new Map<string, NumerosDaVaga[]>();
   if (!eTalentos && empresas?.length) {
@@ -340,11 +356,12 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
     if (eResumo && eResumo.code !== "PGRST202") falhas.push(eResumo.message);
     for (const v of eResumo ? [] : (vagasNoAr ?? [])) numeros.set(v.conta_id, [...(numeros.get(v.conta_id) ?? []), v]);
   }
+  const cbosDasEmpresas = await cboDasVagas(eTalentos ? [] : (empresas ?? []).map((e) => e.vagas));
   for (const e of eTalentos ? [] : (empresas ?? [])) {
     const resumo = resumoDasVagas(numeros.get(e.perfil_id) ?? []);
     const boas = escolherTalentos(
       e.perfil_id,
-      (Array.isArray(e.vagas) ? e.vagas : []) as unknown as (CamposDaVaga & { id: string })[],
+      comCboDe(e.vagas, cbosDasEmpresas),
       comCurriculo,
       new Set(e.ja ?? []),
       agora,
@@ -393,8 +410,9 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
     const { data: parametros } = await cliente.rpc("servidor_parametros_email", { p_chave: chave });
     const minimo = Number((parametros as { reativar_minimo_talentos?: number } | null)?.reativar_minimo_talentos);
     const minimoReativar = Number.isInteger(minimo) && minimo >= 1 ? minimo : MINIMO_REATIVAR;
+    const cbosDasParadas = await cboDasVagas(eParadas ? [] : (paradas ?? []).map((e) => e.vagas));
     for (const e of eParadas ? [] : (paradas ?? [])) {
-      const antigas = (Array.isArray(e.vagas) ? e.vagas : []) as unknown as (CamposDaVaga & { id: string })[];
+      const antigas = comCboDe(e.vagas, cbosDasParadas);
       // todos os que combinam (para o número), e a lista com os que mais combinam
       const todos = escolherTalentos(e.perfil_id, antigas, comCurriculo, new Set(e.ja ?? []), agora, 1000);
       const boas = todos.length >= minimoReativar ? todos.slice(0, ATE) : [];

@@ -16,6 +16,7 @@ import { textosDosEstudos } from "@/lib/estudos";
 import { textoDoPeriodo } from "@/lib/experiencia";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { AnuncioCompleto, Curriculo } from "@/lib/tipos";
+import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
 import { montarQuadro } from "./quadro";
 
 // O copiloto (teste): o que a tela e as ações leem do banco, o texto do currículo que a IA recebe
@@ -230,10 +231,15 @@ export async function pessoasDoCopiloto(
   agora: number,
 ): Promise<PessoaDoCopiloto[]> {
   if (origem === "talento") {
-    const requisitos = { ...requisitosDaVaga(anuncio), perguntas: [] };
     const lista = await talentosParaVaga(anuncio.id).catch(() => []);
+    // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (claude/plano-match-pelo-contexto.md)
+    const [[vagaComCbo], experiencias] = await Promise.all([
+      comFuncaoDasVagas([anuncio]),
+      comFuncoes(lista.map((t) => ({ experiencias: t.experiencias }))),
+    ]);
+    const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [] };
     return lista
-      .map((t) => {
+      .map((t, i) => {
         const curriculo = {
           escolaridade: t.escolaridade,
           curso: t.curso,
@@ -248,7 +254,12 @@ export async function pessoasDoCopiloto(
         };
         const nota = calcularAderencia(
           requisitos,
-          { curriculo, respostas: {}, cidade: t.cidade, bairro: t.bairro },
+          {
+            curriculo: { ...curriculo, experiencias: experiencias[i].experiencias ?? t.experiencias },
+            respostas: {},
+            cidade: t.cidade,
+            bairro: t.bairro,
+          },
           agora,
         ).nota;
         const texto = semNome(textoDoCurriculo(curriculo, { bairro: t.bairro, cidade: t.cidade }), t.nome);

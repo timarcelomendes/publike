@@ -19,6 +19,7 @@ import { faixaDoBanco, regiaoDaCidade, type FaixaSalarial } from "@/lib/salarios
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { Curriculo } from "@/lib/tipos";
 import { cidadesPerto, MINIMO as NOTA_QUE_COMBINA, outraArea } from "./combinam";
+import { comFuncoesDoCurriculo } from "./funcoes-pelo-contexto";
 import { acessoFila } from "./filas";
 
 // "Seu currículo no mercado" (claude/plano-salario-e-curriculo.md, parte 4), em Meu currículo e no cartão da conta:
@@ -396,8 +397,13 @@ export async function vagasQueCombinam(
   agora: number,
 ): Promise<Map<string, Aderencia> | null> {
   try {
-    const noAr = (await vagasPerto(pessoa)).filter((v) => v.no_ar);
-    return combinamCom(noAr, pessoa, cv, agora);
+    const [vagas, comCbo] = await Promise.all([vagasPerto(pessoa), comFuncoesDoCurriculo(cv)]);
+    return combinamCom(
+      vagas.filter((v) => v.no_ar),
+      pessoa,
+      comCbo,
+      agora,
+    );
   } catch (e) {
     console.error(`Publike: falha nas vagas que combinam: ${e instanceof Error ? e.message : String(e)}`);
     return null;
@@ -407,11 +413,16 @@ export async function vagasQueCombinam(
 /** O cartão de Meu currículo: a faixa, as vagas que combinam, o que abre mais vagas e a nota. Com falha, null. */
 export async function curriculoNoMercado(
   pessoa: Pessoa,
-  cv: Curriculo,
+  curriculo: Curriculo,
   agora: number,
 ): Promise<CurriculoNoMercado | null> {
   try {
-    const [vagas, funcao] = await Promise.all([vagasPerto(pessoa), funcaoDaPessoa(cv)]);
+    // o % pelo contexto: a função que a IA leu de cada experiência (uma cópia; o formulário não vê)
+    const [vagas, funcao, cv] = await Promise.all([
+      vagasPerto(pessoa),
+      funcaoDaPessoa(curriculo),
+      comFuncoesDoCurriculo(curriculo),
+    ]);
     const faixa = funcao ? await faixaDaFuncao(funcao.cbo, pessoa.cidade) : null;
     const noAr = vagas.filter((v) => v.no_ar);
     const combinamAgora = new Set(combinamCom(noAr, pessoa, cv, agora).keys());
@@ -429,9 +440,17 @@ export async function curriculoNoMercado(
 }
 
 /** Só a nota (o cartão da conta na home). Com falha, null. */
-export async function notaDoCurriculo(pessoa: Pessoa, cv: Curriculo, agora: number): Promise<NotaDoCurriculo | null> {
+export async function notaDoCurriculo(
+  pessoa: Pessoa,
+  curriculo: Curriculo,
+  agora: number,
+): Promise<NotaDoCurriculo | null> {
   try {
-    const [vagas, funcao] = await Promise.all([vagasPerto(pessoa), funcaoDaPessoa(cv)]);
+    const [vagas, funcao, cv] = await Promise.all([
+      vagasPerto(pessoa),
+      funcaoDaPessoa(curriculo),
+      comFuncoesDoCurriculo(curriculo),
+    ]);
     return calcularNota(cv, funcao, vagas, agora);
   } catch (e) {
     console.error(`Publike: falha na nota do currículo: ${e instanceof Error ? e.message : String(e)}`);

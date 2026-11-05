@@ -17,6 +17,7 @@ import {
 import { distanciaEntreAreas } from "@/lib/regioes";
 import { perguntasDoBanco, respostasDoBanco } from "@/lib/vaga-extra";
 import { acessoFila } from "./filas";
+import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
 
 // O motor das Automações personalizadas (claude/plano-regras-personalizadas.md; migração 20270115120000): lê a fila
 // dos acontecimentos, confere as condições aqui (o % que combina e a distância só existem no código do site) e pede
@@ -40,6 +41,22 @@ type Pendente = {
   triagem: boolean | null;
 };
 
+/** O % pelo contexto: a função que a IA leu da vaga e de cada experiência (claude/plano-match-pelo-contexto.md). */
+async function comContexto(lista: Pendente[]): Promise<Pendente[]> {
+  if (!lista.length) return lista;
+  const [vagas, cvs] = await Promise.all([
+    comFuncaoDasVagas(lista.flatMap((p) => (p.vaga ? [p.vaga] : []))),
+    comFuncoes(lista.map((p) => (p.curriculo ? { experiencias: lerExperiencias(p.curriculo.experiencias) } : null))),
+  ]);
+  const vagaDe = new Map(vagas.map((v) => [v.id, v]));
+  return lista.map((p, i) => ({
+    ...p,
+    vaga: p.vaga ? (vagaDe.get(p.vaga.id) ?? p.vaga) : null,
+    // as experiências já lidas (com o `cbo` do robô): contextoDe lê de novo, e lerExperiencias guardaria só o texto
+    curriculo: p.curriculo ? { ...p.curriculo, experiencias: cvs[i]?.experiencias ?? [] } : null,
+  }));
+}
+
 /** O que a regra precisa saber da pessoa, a partir do que o banco mandou. */
 function contextoDe(p: Pendente, agora: number): ContextoDaPessoa {
   const perguntas = perguntasDoBanco(p.vaga?.perguntas);
@@ -47,7 +64,11 @@ function contextoDe(p: Pendente, agora: number): ContextoDaPessoa {
   const cv = p.curriculo
     ? {
         escolaridade: (p.curriculo.escolaridade as string | null) ?? null,
-        experiencias: lerExperiencias(p.curriculo.experiencias),
+        // com o `cbo` que comContexto pôs (lerExperiencias jogaria fora)
+        experiencias: lerExperiencias(p.curriculo.experiencias).map((e, i) => {
+          const cbo = (p.curriculo?.experiencias as { cbo?: string }[] | undefined)?.[i]?.cbo;
+          return cbo ? { ...e, cbo } : e;
+        }),
         cnh: (p.curriculo.cnh as string | null) ?? null,
         disponibilidade: (p.curriculo.disponibilidade as string[] | null) ?? [],
         cursos: (p.curriculo.cursos as string[] | null) ?? [],
@@ -101,7 +122,7 @@ export async function processarRegras(voltas = 3): Promise<{ agiram: number; mot
       if (error.code === "PGRST202") return { agiram };
       return { agiram, motivo: `Regras: ${error.message}` };
     }
-    const lista = (Array.isArray(data) ? data : []) as unknown as Pendente[];
+    const lista = await comContexto((Array.isArray(data) ? data : []) as unknown as Pendente[]);
     if (!lista.length) break;
     for (const p of lista) {
       const ctx = contextoDe(p, agora);

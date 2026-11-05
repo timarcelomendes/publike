@@ -15,6 +15,7 @@ import { juntarTriagem, perguntasDoBanco, textoDaResposta } from "@/lib/vaga-ext
 import { conversasPorPessoa } from "./conversas";
 import { entrevistasDasVagas, type Entrevista } from "./quadro";
 import { obterTriagens } from "./triagem";
+import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
 
 // A caixa de entrada de quem contrata: todos os candidatos de todas as vagas, cada um
 // com o que a ficha precisa (aderência, currículo, respostas, entrevista em aberto e
@@ -154,6 +155,15 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
   ]);
   // a conversa é uma por pessoa: as não lidas são as da pessoa (de qualquer vaga ou da conexão)
   const naoLidas = new Map((conversas ?? []).map((c) => [c.outro_id, c.nao_lidas]));
+  // o % pelo contexto: a função que a IA leu de cada vaga e de cada experiência (cópias só para a conta; a tela
+  // recebe o currículo como está)
+  const todosOsCvs = [...curriculos.values()].flatMap((m) => (m ? [...m.values()] : []));
+  const [vagasComCbo, cvsComCbo] = await Promise.all([
+    comFuncaoDasVagas([...anuncios.values()].filter((a): a is NonNullable<typeof a> => Boolean(a))),
+    comFuncoes(todosOsCvs),
+  ]);
+  const vagaComCbo = new Map(vagasComCbo.map((v) => [v.id, v]));
+  const cvComCbo = new Map(todosOsCvs.map((cv, i) => [cv, cvsComCbo[i]]));
 
   return todos.map((c) => {
     const chave = `${c.anuncio_id}:${c.perfil_id}`;
@@ -176,8 +186,8 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
       respostas: perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) })),
       aderencia: a
         ? calcularAderencia(
-            { ...requisitosDaVaga(a), perguntas },
-            { curriculo: cv, respostas: r, cidade: c.cidade, bairro: c.bairro },
+            { ...requisitosDaVaga(vagaComCbo.get(a.id) ?? a), perguntas },
+            { curriculo: (cv && cvComCbo.get(cv)) ?? cv, respostas: r, cidade: c.cidade, bairro: c.bairro },
             agora,
           )
         : null,

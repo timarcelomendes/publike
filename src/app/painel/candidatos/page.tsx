@@ -69,6 +69,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { CurriculoDoInteressado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-contexto";
 import { juntarTriagem, perguntasDoBanco, type Pergunta, type Respostas } from "@/lib/vaga-extra";
 
 export const metadata: Metadata = { title: "Lista de candidatos e planilha" };
@@ -253,16 +254,27 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
     ]),
   );
   const chave = (c: Candidato) => `${c.anuncio_id}:${c.perfil_id}`;
+  // o % pelo contexto: a função que a IA leu de cada vaga e de cada experiência (cópias, só para a conta)
+  const todosOsCvs = [...curriculos.values()].flatMap((m) => (m ? [...m.values()] : []));
+  const [vagasComCbo, cvsComCbo] = await Promise.all([
+    comFuncaoDasVagas([...anuncios.values()].filter((a): a is NonNullable<typeof a> => Boolean(a))),
+    comFuncoes(todosOsCvs),
+  ]);
+  const vagaComCbo = new Map(vagasComCbo.map((v) => [v.id, v]));
+  const cvComCbo = new Map(todosOsCvs.map((cv, i) => [cv, cvsComCbo[i]]));
   const aderencias = new Map<string, Aderencia | null>();
   for (const c of lista) {
-    const a = anuncios.get(c.anuncio_id);
+    const a = vagaComCbo.get(c.anuncio_id) ?? anuncios.get(c.anuncio_id);
     aderencias.set(
       chave(c),
       a
         ? calcularAderencia(
             { ...requisitosDaVaga(a), perguntas: perguntasDe.get(c.anuncio_id) ?? [] },
             {
-              curriculo: curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null,
+              curriculo: (() => {
+                const cv = curriculos.get(c.anuncio_id)?.get(c.perfil_id) ?? null;
+                return cv ? (cvComCbo.get(cv) ?? cv) : null;
+              })(),
               respostas: respostas.get(chave(c)) ?? {},
               cidade: c.cidade,
               bairro: c.bairro,

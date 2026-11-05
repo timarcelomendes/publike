@@ -13,6 +13,7 @@ import { CriteriosDaAderencia, NotaAderencia } from "../painel/nota-aderencia";
 import { Aviso, Avatar, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
 import { classesChip } from "../painel/fluxo";
+import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-contexto";
 
 /**
  * "Para a sua vaga", na aba Talentos de quem tem vaga no ar: quem deixou as empresas acharem o currículo,
@@ -75,16 +76,21 @@ export async function ParaAVaga({
       </Aviso>
     );
   }
-  const requisitos = { ...requisitosDaVaga(anuncio), perguntas: [] };
+  // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (claude/plano-match-pelo-contexto.md)
+  const [[vagaComCbo], experiencias] = await Promise.all([
+    comFuncaoDasVagas([anuncio]),
+    comFuncoes(lista.map((t) => ({ experiencias: t.experiencias }))),
+  ]);
+  const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [] };
   const comAderencia = lista
-    .map((t) => ({
+    .map((t, i) => ({
       t,
       a: calcularAderencia(
         requisitos,
         {
           curriculo: {
             escolaridade: t.escolaridade,
-            experiencias: t.experiencias,
+            experiencias: experiencias[i].experiencias ?? t.experiencias,
             cursos: t.cursos,
             cnh: t.cnh,
             disponibilidade: t.disponibilidade,

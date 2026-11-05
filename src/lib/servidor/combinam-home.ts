@@ -12,6 +12,7 @@ import {
   type TalentoParaCombinar,
   type VagaParaCombinar,
 } from "./combinam";
+import { comFuncaoDasVagas, comFuncoes, comFuncoesDoCurriculo } from "./funcoes-pelo-contexto";
 import { acessoFila } from "./filas";
 
 // O "Combinam com você" da home de quem entrou: a mesma conta do aviso da semana (src/lib/servidor/combinam.ts),
@@ -31,7 +32,8 @@ async function vagasDoMes(): Promise<VagaParaCombinar[]> {
   const { data, error } = await acesso.cliente.rpc("servidor_combinam_vagas", { p_chave: acesso.chave, p_dias: 30 });
   // banco sem a migração 20261119120000: sem a lista (e nada fica guardado)
   if (error) throw new Error(error.message);
-  return (data ?? []) as VagaParaCombinar[];
+  // a função (CBO) que a IA leu de cada vaga: o % pelo contexto (claude/plano-match-pelo-contexto.md)
+  return comFuncaoDasVagas((data ?? []) as VagaParaCombinar[]);
 }
 
 async function talentosDaAba(): Promise<TalentoParaCombinar[]> {
@@ -41,10 +43,13 @@ async function talentosDaAba(): Promise<TalentoParaCombinar[]> {
   if (!acesso) return [];
   const { data, error } = await acesso.cliente.rpc("servidor_combinam_talentos", { p_chave: acesso.chave });
   if (error) throw new Error(error.message);
-  return (data ?? []).flatMap((t) => {
+  const talentos = (data ?? []).flatMap((t) => {
     const cv = comoCurriculo(t.curriculo);
     return cv ? [{ perfil_id: t.perfil_id, nome: t.nome, cidade: t.cidade, bairro: t.bairro, cv }] : [];
   });
+  // a função que a IA leu de cada experiência (o % pelo contexto)
+  const cvs = await comFuncoes(talentos.map((t) => t.cv));
+  return talentos.map((t, i) => ({ ...t, cv: cvs[i] }));
 }
 
 export type VagaQueCombina = {
@@ -83,7 +88,8 @@ export async function vagasQueCombinamComigo(perfil: {
     ]);
     if (!curriculo) return [];
     const ja = new Set([...curtidas.map((c) => c.anuncio_id), ...(dispensas.data ?? []).map((d) => d.anuncio_id)]);
-    return escolherVagas({ ...perfil, curriculo: comoCurriculo(curriculo) }, vagas, ja, agora, NA_HOME).map(
+    const cv = await comFuncoesDoCurriculo(comoCurriculo(curriculo));
+    return escolherVagas({ ...perfil, curriculo: cv }, vagas, ja, agora, NA_HOME).map(
       ({ v, m }) => ({
         id: v.id,
         titulo: v.titulo,

@@ -87,3 +87,29 @@ export function buscarOcupacoes(texto: string, limite = 10): OcupacaoAchada[] {
     .sort((a, b) => b.pontos - a.pontos || a.nome.length - b.nome.length)
     .slice(0, Math.max(1, Math.min(limite, 50)));
 }
+
+/**
+ * As ocupações cujo nome (ou sinônimo) aparece inteiro num texto longo: a descrição de uma vaga, o "o que você fazia"
+ * de uma experiência (claude/plano-match-pelo-contexto.md). O contrário de `buscarOcupacoes`, que precisa do texto
+ * curto. Ocupação de uma palavra só, ou só de palavras genéricas, não conta (diz pouco num texto longo).
+ */
+export function ocupacoesNoTexto(texto: string, limite = 8): OcupacaoAchada[] {
+  const doTexto = palavras(texto.slice(0, 1500));
+  if (doTexto.length < 2) return [];
+  const raizes = new Set(doTexto.map(raiz));
+  const inteiro = normalizarTexto(texto.slice(0, 1500));
+  const achadas: OcupacaoAchada[] = [];
+  for (const { o, textos } of TEXTOS) {
+    let melhor: { pontos: number; pelo: string } | null = null;
+    for (const t of textos) {
+      if (t.palavras.length < 2 || t.palavras.every((p) => GENERICAS.has(p))) continue;
+      if (!t.palavras.every((p) => raizes.has(raiz(p)) || doTexto.some((q) => mesmaPalavra(p, q)))) continue;
+      const pontos = t.palavras.length + (inteiro.includes(t.normal) ? 2 : 0);
+      if (!melhor || pontos > melhor.pontos) melhor = { pontos, pelo: t.texto };
+    }
+    if (melhor) achadas.push({ ...o, ...melhor });
+  }
+  return achadas
+    .sort((a, b) => b.pontos - a.pontos || a.nome.length - b.nome.length)
+    .slice(0, Math.max(1, Math.min(limite, 30)));
+}

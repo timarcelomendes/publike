@@ -1805,11 +1805,27 @@ export type Database = {
         Returns: { anuncio_id: string; cbo: string; origem: string }[];
       };
       servidor_vagas_sem_funcao: {
-        Args: { p_chave: string; p_limite?: number };
+        Args: { p_chave: string; p_limite?: number; p_com_contexto?: boolean };
         Returns: { id: string; titulo: string; descricao: string | null }[];
       };
       servidor_definir_funcao: {
-        Args: { p_chave: string; p_anuncio: string; p_cbo: string | null; p_origem: string };
+        Args: { p_chave: string; p_anuncio: string; p_cbo: string | null; p_origem: string; p_contexto?: boolean };
+        Returns: undefined;
+      };
+      funcoes_das_experiencias: {
+        Args: { p_chaves: string[] };
+        Returns: { chave: string; cbo: string }[];
+      };
+      servidor_curriculos_para_ler: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { perfil_id: string; atualizado_em: string; experiencias: Json }[];
+      };
+      servidor_guardar_funcoes_das_experiencias: {
+        Args: { p_chave: string; p_linhas: Json };
+        Returns: undefined;
+      };
+      servidor_marcar_curriculo_lido: {
+        Args: { p_chave: string; p_perfil: string; p_em: string };
         Returns: undefined;
       };
       servidor_funcao_guardada: {

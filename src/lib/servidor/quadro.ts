@@ -9,12 +9,13 @@ import {
 } from "@/lib/dados";
 import { colunaDoCandidato, MODELOS_PRONTOS, type ModeloMensagem } from "@/lib/recrutamento";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
-import type { AnuncioCompleto } from "@/lib/tipos";
+import type { AnuncioCompleto, CurriculoDoInteressado } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta, type Pergunta } from "@/lib/vaga-extra";
 import type { Colocacao } from "@/lib/colocacoes";
 import type { RespostaCliente } from "@/lib/finalistas";
 import { colocacoesDasVagas } from "./colocacoes";
 import { finalistasDaVaga } from "./finalistas";
+import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
 import { obterTriagem } from "./triagem";
 
 // Tudo o que o quadro de candidatos de uma vaga precisa, montado no servidor:
@@ -121,7 +122,11 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       colocacoesDasVagas([id]),
     ]);
   const perguntas: Pergunta[] = juntarTriagem(perguntasDoBanco(anuncio.perguntas), triagem);
-  const vaga = { ...requisitosDaVaga(anuncio), perguntas };
+  // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (cópias, só para a conta)
+  const doBanco = [...(curriculos as Map<string, CurriculoDoInteressado>).values()];
+  const [[vagaComCbo], comCbo] = await Promise.all([comFuncaoDasVagas([anuncio]), comFuncoes(doBanco)]);
+  const cvComCbo = new Map(doBanco.map((cv, i) => [cv, comCbo[i]]));
+  const vaga = { ...requisitosDaVaga(vagaComCbo), perguntas };
 
   const cartoes: CartaoDoQuadro[] = interessados.map((p) => {
     const e = etapas.get(p.perfil_id);
@@ -142,7 +147,11 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       etapa,
       coluna: colunaDoCandidato(p.status, etapa),
       anotacao: e?.nota ?? null,
-      aderencia: calcularAderencia(vaga, { curriculo: cv, respostas: r, cidade: p.cidade, bairro: p.bairro }, agora),
+      aderencia: calcularAderencia(
+        vaga,
+        { curriculo: (cv && cvComCbo.get(cv)) ?? cv, respostas: r, cidade: p.cidade, bairro: p.bairro },
+        agora,
+      ),
       respostas: perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) })),
       entrevista: entrevistas.get(p.perfil_id) ?? null,
       temCurriculo: Boolean(cv),

@@ -39,6 +39,7 @@ import type {
 import { estudosDoBanco } from "./estudos";
 import { UUID } from "./validacao";
 import { perguntasDoBanco, respostasDoBanco, type Pergunta, type Respostas } from "./vaga-extra";
+import { comFuncaoDasVagas } from "./servidor/funcoes-pelo-contexto";
 
 // Leituras do banco usadas pelas páginas (sempre no servidor).
 // No modo demonstração, devolvem os dados de exemplo de demo.ts.
@@ -637,7 +638,8 @@ export async function requisitosDasVagas(ids: string[]): Promise<DetalhesDaVaga[
   // sem a migração 20261212 (a coluna comeca_ja): lê sem ela (nenhuma vaga com "Começa já")
   if (faltaColuna(error, "comeca_ja")) ({ data, error } = await ler(COLUNAS_DOS_REQUISITOS));
   if (error) falha("o que as vagas pedem", error);
-  return data ?? [];
+  // a função (CBO) que a IA leu da vaga: o % pelo contexto (claude/plano-match-pelo-contexto.md)
+  return comFuncaoDasVagas(data ?? []);
 }
 
 /** Link temporário (1 hora) para abrir o PDF de um currículo. */

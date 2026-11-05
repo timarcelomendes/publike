@@ -48,6 +48,7 @@ import { MatchDaVaga, SeloMatch } from "@/components/match-vaga";
 import { Aviso, Avatar, Container, Esqueleto, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { matchComAVaga } from "@/lib/aderencia";
+import { comFuncaoDasVagas, comFuncoesDoCurriculo } from "@/lib/servidor/funcoes-pelo-contexto";
 import { SITE_URL } from "@/lib/config";
 import {
   categoria,
@@ -272,9 +273,12 @@ async function DetalheAnuncio({
   // o % de match com o currículo (com pouco para comparar, não aparece)
   const perfil = curriculo ? await obterMeuPerfil().catch(() => null) : null;
   // só conta de pessoa (como a lista, em quemProcura): empresa não tem % de match
+  // o % pelo contexto: a função que a IA leu de cada experiência e da vaga (cópias; o currículo não muda)
   const quem =
-    curriculo && perfil?.tipo === "pessoa" ? { curriculo, cidade: perfil.cidade, bairro: perfil.bairro } : null;
-  const match = quem ? matchComAVaga(anuncio, quem, agora) : null;
+    curriculo && perfil?.tipo === "pessoa"
+      ? { curriculo: await comFuncoesDoCurriculo(curriculo), cidade: perfil.cidade, bairro: perfil.bairro }
+      : null;
+  const match = quem ? matchComAVaga((await comFuncaoDasVagas([anuncio]))[0], quem, agora) : null;
   // quem publicou já aceitou e falta o currículo (vaga que pede): o próximo passo é mandar
   const aceita =
     anuncio.minha_curtida === "pendente" && anuncio.pede_curriculo && (await aceitoEsperandoMeuCurriculo(anuncio.id));

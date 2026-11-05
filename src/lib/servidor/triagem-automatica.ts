@@ -10,6 +10,7 @@ import type { Curriculo } from "@/lib/tipos";
 import { juntarTriagem, perguntasDoBanco, textoDaResposta, type Respostas } from "@/lib/vaga-extra";
 import { preNota, semNome, textoDoCurriculo } from "./copiloto";
 import { acessoFila } from "./filas";
+import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // A Triagem com IA lê sozinha (claude/plano-triagem-automatica.md, item 1; migração 20261227120000): a vaga sem
@@ -184,14 +185,19 @@ export async function lerCandidatosNovos(limite = 12, anuncioId?: string): Promi
     }
     const vaga = v.vaga as unknown as CamposDaVaga & { perguntas: unknown };
     const perguntas = juntarTriagem(perguntasDoBanco(vaga.perguntas), v.triagem_perguntas);
-    const requisitos = { ...requisitosDaVaga(vaga), perguntas };
+    // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (claude/plano-match-pelo-contexto.md)
+    const [[vagaComCbo], cvsComCbo] = await Promise.all([
+      comFuncaoDasVagas([{ ...vaga, id: v.anuncio_id }]),
+      comFuncoes((lista ?? []).map((p) => p.curriculo as unknown as Omit<Curriculo, "arquivo"> | null)),
+    ]);
+    const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas };
     const agora = Date.now();
-    const pessoas = (lista ?? []).map((p) => {
+    const pessoas = (lista ?? []).map((p, i) => {
       const cv = p.curriculo as unknown as Omit<Curriculo, "arquivo">;
       const r = (p.respostas ?? {}) as Respostas;
       const aderencia = calcularAderencia(
         requisitos,
-        { curriculo: cv, respostas: r, cidade: p.cidade, bairro: p.bairro },
+        { curriculo: cvsComCbo[i] ?? cv, respostas: r, cidade: p.cidade, bairro: p.bairro },
         agora,
       );
       const respostas = perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) }));

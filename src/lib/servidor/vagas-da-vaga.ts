@@ -1,6 +1,7 @@
 import "server-only";
 import { funcaoParecida, matchComAVaga, type Aderencia, type Candidato } from "@/lib/aderencia";
 import { obterPerfilPublico, requisitosDasVagas, type DetalhesDaVaga } from "@/lib/dados";
+import { comFuncaoDasVagas } from "./funcoes-pelo-contexto";
 import { distanciaKm } from "@/lib/descobrir";
 import { cidadesPerto, outraArea } from "./combinam";
 import { anunciosNoAr } from "./paginas-busca";
@@ -62,21 +63,24 @@ async function porcentos(ids: string[], ve: QuemVe, agora: number): Promise<Map<
 }
 
 /**
- * As vagas parecidas: no ar, na mesma praça, da mesma função (a mesma conta do %: a palavra da função ou a área de
- * trabalho), sem esta e sem as de quem publicou (essas vão na outra faixa) e sem as de quem vê. Primeiro a mesma
+ * As vagas parecidas: no ar, na mesma praça, da mesma função (a mesma conta do %: a família da CBO que a IA leu das
+ * duas e, sem ela, a palavra da função ou a área de trabalho), sem esta e sem as de quem publicou (essas vão na outra faixa) e sem as de quem vê. Primeiro a mesma
  * função, depois a área parecida; em cada uma, o maior % (com currículo) e depois a mais perto.
  */
 export async function vagasParecidas(vaga: VagaDaTela, ve: QuemVe, agora: number): Promise<VagaDaFaixa[]> {
   const praca = new Set(cidadesPerto(vaga.cidade));
   const todas = await anunciosNoAr("vaga", vaga.cidade).catch(() => []);
   const origem = ve.ponto ?? (vaga.lat != null && vaga.lng != null ? { lat: vaga.lat, lng: vaga.lng } : null);
-  const parecidas = todas
-    .filter(
-      (a) => a.id !== vaga.id && a.autor_id !== vaga.autor_id && a.autor_id !== ve.usuarioId && praca.has(a.cidade),
-    )
+  const daPraca = todas.filter(
+    (a) => a.id !== vaga.id && a.autor_id !== vaga.autor_id && a.autor_id !== ve.usuarioId && praca.has(a.cidade),
+  );
+  // a função (CBO) que a IA leu de cada uma (o contexto): a mesma família vale mais que o título parecido
+  const comCbo = await comFuncaoDasVagas([{ id: vaga.id }, ...daPraca.map((a) => ({ id: a.id }))]);
+  const cboDe = new Map(comCbo.map((x) => [x.id, (x as { cbo?: string | null }).cbo ?? null]));
+  const parecidas = daPraca
     .map((a) => ({
       a,
-      parecida: funcaoParecida(vaga.titulo, a.titulo),
+      parecida: funcaoParecida(vaga.titulo, a.titulo, { daVaga: cboDe.get(vaga.id), daOutra: cboDe.get(a.id) }),
       km: origem ? distanciaKm(origem.lat, origem.lng, a.lat, a.lng) : null,
     }))
     .filter((x) => x.parecida > 0);

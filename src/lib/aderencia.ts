@@ -83,6 +83,8 @@ function comParte(parte: number): Pick<Criterio, "ok" | "parte"> {
 type Vaga = {
   titulo?: string;
   descricao?: string;
+  /** a função da vaga na CBO, lida do texto todo (claude/plano-match-pelo-contexto.md) */
+  cbo?: string | null;
   escolaridade_minima: string | null;
   experiencia: string | null;
   cnh: string | null;
@@ -282,20 +284,74 @@ function textoDoTrabalho(e: Curriculo["experiencias"][number]) {
  * raiz; nada disso (0, "Outra área"). `usado`: o curso ou a habilidade que contou (não soma de novo
  * no "+").
  */
+/** A função da vaga: o título e, quando a IA leu o texto todo, a ocupação da CBO. */
+type FuncaoDaVaga = { titulo: string; cbo: string | null };
+
+/**
+ * Pela CBO: a mesma ocupação (os 6 dígitos), a mesma família (os 4: "Vendedor de comércio varejista" e "Repositor
+ * de mercadorias", 5211), o mesmo subgrupo (os 3) ou outra; sem CBO de um lado, null.
+ */
+function pelaCbo(daVaga: string | null, doTrabalho: string | null | undefined) {
+  if (!daVaga || !doTrabalho) return null;
+  if (doTrabalho === daVaga) return "exata";
+  if (doTrabalho.slice(0, 4) === daVaga.slice(0, 4)) return "familia";
+  if (doTrabalho.slice(0, 3) === daVaga.slice(0, 3)) return "parecida";
+  return "outras";
+}
+
+/**
+ * Um trabalho do currículo diante da função da vaga (claude/plano-match-pelo-contexto.md). Com a ocupação da CBO
+ * dos dois lados (lida do texto todo), ela decide: a mesma ocupação é a mesma função; a mesma família só com o
+ * título complementando (uma palavra da função em comum), senão é parecida; o mesmo subgrupo, parecida. Sem a CBO de um dos lados, a conta das palavras de antes; mas, com o currículo já lido e a vaga
+ * também, a palavra sozinha não faz a mesma função ("Analista de Produtos" não é "Repositor de produtos").
+ */
+function tipoDoTrabalho(
+  vaga: FuncaoDaVaga,
+  cargo: string,
+  cbo: string | null | undefined,
+  lido: boolean,
+): { tipo: "mesma" | "parecida" | "outras"; area?: string } {
+  const porCbo = pelaCbo(vaga.cbo, cbo);
+  const daVaga = palavrasDaFuncao(vaga.titulo);
+  const doCargo = palavrasDaFuncao(cargo);
+  if (porCbo === "exata") return { tipo: "mesma" };
+  if (porCbo === "familia") return { tipo: daVaga.length && batem(daVaga, doCargo) ? "mesma" : "parecida" };
+  if (porCbo === "parecida") return { tipo: "parecida" };
+  const area = daVaga.length ? areaEmComum(daVaga, doCargo) : null;
+  if (porCbo === null && daVaga.length && batem(daVaga, doCargo)) {
+    return { tipo: vaga.cbo && lido ? "parecida" : "mesma" };
+  }
+  return area ? { tipo: "parecida", area } : { tipo: "outras" };
+}
+
+/** O currículo já passou pela leitura da IA (alguma experiência tem a ocupação da CBO). */
+const curriculoLido = (cv: Pick<CurriculoDoCandidato, "experiencias">) => cv.experiencias.some((e) => e.cbo);
+
 function funcaoNoCurriculo(
-  tituloDaVaga: string,
+  vaga: FuncaoDaVaga,
   cv: CurriculoDoCandidato,
 ): { parte: number; detalhe: string; usado?: string } {
+  const tituloDaVaga = vaga.titulo;
   const daVaga = palavrasDaFuncao(tituloDaVaga);
-  const bate = (texto: string) => batem(daVaga, palavrasDaFuncao(texto));
-  const mesma = cv.experiencias.find((e) => bate(e.cargo));
-  if (mesma) return { parte: 1, detalhe: `Trabalhou como ${textoDoTrabalho(mesma)}` };
-  if (cv.titulo && bate(cv.titulo)) return { parte: 1, detalhe: `No currículo: ${cv.titulo}` };
-  for (const e of cv.experiencias) {
-    const area = areaEmComum(daVaga, palavrasDaFuncao(e.cargo));
-    if (area) return { parte: 0.6, detalhe: `Trabalhou como ${textoDoTrabalho(e)} (área parecida: ${area})` };
+  const bate = (texto: string) => daVaga.length > 0 && batem(daVaga, palavrasDaFuncao(texto));
+  const lido = curriculoLido(cv);
+  const tipos = cv.experiencias.map((e) => ({ e, t: tipoDoTrabalho(vaga, e.cargo, e.cbo, lido) }));
+  const mesma = tipos.find((x) => x.t.tipo === "mesma");
+  if (mesma) return { parte: 1, detalhe: `Trabalhou como ${textoDoTrabalho(mesma.e)}` };
+  // a profissão de "O que você faz" não passa pela IA: com a vaga e o currículo lidos, a palavra dá "parecida"
+  if (cv.titulo && bate(cv.titulo)) {
+    return vaga.cbo && lido
+      ? { parte: 0.6, detalhe: `No currículo: ${cv.titulo} (função parecida)` }
+      : { parte: 1, detalhe: `No currículo: ${cv.titulo}` };
   }
-  const area = cv.titulo ? areaEmComum(daVaga, palavrasDaFuncao(cv.titulo)) : null;
+  const parecida = tipos.find((x) => x.t.tipo === "parecida");
+  if (parecida) {
+    return {
+      parte: 0.6,
+      detalhe: `Trabalhou como ${textoDoTrabalho(parecida.e)} (${parecida.t.area ? `área parecida: ${parecida.t.area}` : "função parecida"})`,
+    };
+  }
+  const area = cv.titulo && daVaga.length ? areaEmComum(daVaga, palavrasDaFuncao(cv.titulo)) : null;
   if (area) return { parte: 0.6, detalhe: `No currículo: ${cv.titulo} (área parecida: ${area})` };
   const curso = (cv.cursos ?? []).find(bate);
   if (curso) return { parte: 0.5, detalhe: `Fez o curso: ${curso} (sem trabalho na função)`, usado: curso };
@@ -315,7 +371,17 @@ const PROGRAMAS = /\b(aprendiz|estagi\w*|trainee)\b/;
  * programa ("Jovem aprendiz" com "Aprendiz administrativo"). As vagas parecidas da tela da vaga
  * (claude/plano-carrossel-na-vaga.md).
  */
-export function funcaoParecida(titulo: string, outro: string): number {
+export function funcaoParecida(
+  titulo: string,
+  outro: string,
+  /** a ocupação da CBO das duas (pelo contexto): a mesma família vale 1, o mesmo subgrupo 0,6 */
+  cbos?: { daVaga?: string | null; daOutra?: string | null },
+): number {
+  const porCbo = pelaCbo(cbos?.daVaga ?? null, cbos?.daOutra);
+  if (porCbo === "exata") return 1;
+  if (porCbo === "familia") return batem(palavrasDaFuncao(titulo), palavrasDaFuncao(outro)) ? 1 : 0.6;
+  if (porCbo === "parecida") return 0.6;
+  if (porCbo === "outras") return 0;
   const a = palavrasDaFuncao(titulo);
   const b = palavrasDaFuncao(outro);
   if (!a.length) {
@@ -340,14 +406,10 @@ function temHistorico(cv: CurriculoDoCandidato | null | undefined) {
 export const PESO_DA_FUNCAO = 0.6;
 
 /** Os meses dos trabalhos do currículo: na função da vaga, em área parecida e nas outras. */
-function mesesNaFuncao(tituloDaVaga: string, experiencias: Curriculo["experiencias"], agora: number) {
-  const daVaga = palavrasDaFuncao(tituloDaVaga);
+function mesesNaFuncao(vaga: FuncaoDaVaga, experiencias: Curriculo["experiencias"], agora: number) {
   const meses = { mesma: 0, parecida: 0, outras: 0 };
-  for (const e of experiencias) {
-    const doCargo = palavrasDaFuncao(e.cargo);
-    const tipo = batem(daVaga, doCargo) ? "mesma" : areaEmComum(daVaga, doCargo) ? "parecida" : "outras";
-    meses[tipo] += mesesDoTrabalho(e, agora);
-  }
+  const lido = curriculoLido({ experiencias });
+  for (const e of experiencias) meses[tipoDoTrabalho(vaga, e.cargo, e.cbo, lido).tipo] += mesesDoTrabalho(e, agora);
   return meses;
 }
 
@@ -518,8 +580,12 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     });
   }
 
-  // a função da vaga, pelo título ("Auxiliar II" não diz qual é)
-  const funcaoDaVaga = vaga.titulo && palavrasDaFuncao(vaga.titulo).length ? vaga.titulo : null;
+  // a função da vaga: a ocupação da CBO lida do texto todo ou, sem ela, o título ("Auxiliar II" não diz qual é)
+  const cboDaVaga = vaga.cbo && /^\d{6}$/.test(vaga.cbo) ? vaga.cbo : null;
+  const funcaoDaVaga: FuncaoDaVaga | null =
+    cboDaVaga || (vaga.titulo && palavrasDaFuncao(vaga.titulo).length)
+      ? { titulo: vaga.titulo ?? "", cbo: cboDaVaga }
+      : null;
 
   // Tempo de experiência: o tempo na função (o de área parecida conta a metade); com parte do tempo,
   // vale parte. Vaga que não diz a função: todo o tempo de trabalho.
@@ -663,6 +729,8 @@ export type CamposDaVaga = {
   horario_detalhe: unknown;
   /** o horário em texto ("Seg a sex, 8h às 17h"): só para o filtro de turno */
   horario?: string | null;
+  /** a função da vaga na CBO (privado.funcoes_das_vagas), quando o servidor já pôs */
+  cbo?: string | null;
 };
 
 /** O que a vaga pede, para a nota (as perguntas vêm à parte: a resposta procurada é só da empresa). */
@@ -677,6 +745,7 @@ export function requisitosDaVaga(a: CamposDaVaga) {
     bairro: a.bairro,
     jornada: a.jornada,
     horario: horarioDoBanco(a.horario_detalhe),
+    cbo: a.cbo ?? null,
   };
 }
 
@@ -694,7 +763,7 @@ export function requisitosDaVaga(a: CamposDaVaga) {
 export function matchComAVaga(vaga: CamposDaVaga, pessoa: Omit<Candidato, "respostas">, agora: number) {
   const a = calcularAderencia({ ...requisitosDaVaga(vaga), perguntas: [] }, { ...pessoa, respostas: {} }, agora);
   const daVaga = a.criterios.filter((k) => !k.extra && k.ok !== null).length;
-  const dizAFuncao = palavrasDaFuncao(vaga.titulo ?? "").length > 0;
+  const dizAFuncao = Boolean(vaga.cbo) || palavrasDaFuncao(vaga.titulo ?? "").length > 0;
   const semFuncao = dizAFuncao && !a.criterios.some((k) => k.funcao && k.ok !== null);
   const tituloVago = !dizAFuncao && temHistorico(pessoa.curriculo);
   return a.nota !== null && daVaga >= 2 && !semFuncao && !tituloVago ? a : null;

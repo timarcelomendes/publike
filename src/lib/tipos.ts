@@ -58,6 +58,11 @@ export type Experiencia = {
   fim: string | null;
   atual?: boolean;
   descricao: string;
+  /**
+   * a ocupação da CBO que a IA leu do cargo e do "o que você fazia" (claude/plano-match-pelo-contexto.md); o servidor
+   * põe na hora de calcular o %, não fica no currículo
+   */
+  cbo?: string | null;
 };
 /** Um estudo a mais no currículo (além de "Até onde você estudou"): o nível e o curso. */
 export type Estudo = { nivel: string; curso: string };
