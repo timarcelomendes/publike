@@ -338,8 +338,34 @@
   }
 }
 
+/* Ao aparecer, a bolinha chega balançando (cresce e gira de um lado para o outro); depois o halo respira */
+@keyframes pk-chegada {
+  0% {
+    transform: scale(0.6) rotate(-25deg);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(1.12) rotate(16deg);
+    opacity: 1;
+  }
+  55% {
+    transform: scale(1) rotate(-12deg);
+  }
+  72% {
+    transform: rotate(7deg);
+  }
+  86% {
+    transform: rotate(-3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
 @utility pk-halo {
-  animation: pk-halo 2.4s ease-out infinite;
+  animation:
+    pk-chegada 0.9s ease-out 0.3s both,
+    pk-halo 2.4s ease-out 1.2s infinite;
   @media (prefers-reduced-motion: reduce) {
     animation: none;
   }
