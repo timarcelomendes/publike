@@ -24,25 +24,36 @@ export function textoDisponibilidade(lista: string[]) {
 /**
  * Uma pessoa na aba Talentos: o que faz, onde mora (bairro), a experiência (os cargos, sem as
  * empresas) e as habilidades. Sem foto e com o nome encurtado; o cartão todo abre a página dela.
- * `acao` (o botão Conectar, para empresas) fica por cima do link do cartão.
+ * `acao` (o botão Conectar, para empresas) fica por cima do link do cartão. `previa`: o cartão que a
+ * pessoa vê na tela do currículo enquanto preenche (sem o link e sem o título na lista de títulos da página).
  */
-export function CartaoTalento({ t, acao }: { t: TalentoResumo; acao?: ReactNode }) {
+export function CartaoTalento({ t, acao, previa = false }: { t: TalentoResumo; acao?: ReactNode; previa?: boolean }) {
   const estudo = nomeEscolaridade(t.escolaridade);
   const turnos = textoDisponibilidade(t.disponibilidade);
   const habilidades = t.habilidades.length ? t.habilidades : t.cursos;
   return (
-    <article className="relative flex h-full flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus sm:p-5">
+    <article
+      className={`relative flex h-full flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5 ${
+        previa
+          ? ""
+          : "transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus"
+      }`}
+    >
       <div className="flex items-start gap-3">
         <Avatar nome={t.nome} tamanho={44} />
         <div className="min-w-0 flex-1">
-          <h2 className="text-h3 break-words">
-            <Link
-              href={`/talentos/${t.perfil_id}`}
-              className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
-            >
-              {tituloDoTalento(t)}
-            </Link>
-          </h2>
+          {previa ? (
+            <p className="text-h3 break-words">{tituloDoTalento(t)}</p>
+          ) : (
+            <h2 className="text-h3 break-words">
+              <Link
+                href={`/talentos/${t.perfil_id}`}
+                className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
+              >
+                {tituloDoTalento(t)}
+              </Link>
+            </h2>
+          )}
           <p className="flex items-center gap-1 text-body-sm text-ink-muted">
             <span className="shrink-0">{t.nome}</span>
             <span aria-hidden>·</span>

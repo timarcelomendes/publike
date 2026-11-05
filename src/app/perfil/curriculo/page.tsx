@@ -5,8 +5,7 @@ import { Suspense } from "react";
 import { CaminhoDaCurtida } from "@/components/caminho-curtida";
 import { CurriculoNoMercado } from "@/components/curriculo-no-mercado";
 import { AvisarBusca } from "@/components/explorar/avisar-busca";
-import { ApagarCurriculo, FormCurriculo } from "@/components/form-curriculo";
-import { VisibilidadeCurriculo } from "@/components/visibilidade-curriculo";
+import { FormCurriculo } from "@/components/form-curriculo";
 import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { esperaCurriculo } from "@/lib/constantes";
@@ -24,6 +23,7 @@ import {
 import { faltaData } from "@/lib/experiencia";
 import { falaDisponivel } from "@/lib/ia/transcrever";
 import { caminhoSeguro, plural, primeiro, tempoRelativo } from "@/lib/formato";
+import { nomeNaLista } from "@/lib/servidor/contas-perto";
 import { curriculoDoConvite, dadosDoConvite } from "@/lib/servidor/convites-candidato";
 import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
 import type { MinhaCurtida } from "@/lib/tipos";
@@ -35,21 +35,23 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// A tela do currículo (claude/plano-tela-do-curriculo.md): o formulário e, ao lado no computador (no celular, no
+// alto ou antes de salvar), o cartão da aba Talentos que muda enquanto a pessoa preenche. Os avisos do alto e
+// "Seu currículo no mercado" vão para a coluna do formulário.
+
 export default function PaginaCurriculo({ searchParams }: PageProps<"/perfil/curriculo">) {
   return (
-    <Container className="max-w-2xl py-8">
+    <Container className="max-w-2xl py-8 lg:max-w-5xl">
       <Link href="/perfil" className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" />
         Meu perfil
       </Link>
       <h1 className="mt-1 text-h2 sm:text-h1">Meu currículo</h1>
-      <p className="mt-2 mb-6 text-body text-ink-muted">
-        Para vagas com carteira, estágio e temporárias. Preencha uma vez: ele aparece no seu perfil, as empresas da
-        região acham você e, quando você curtir uma vaga, quem anunciou vê seu currículo junto com o seu perfil.
-      </p>
-      <Suspense fallback={<Esqueleto className="h-[56rem] w-full rounded-lg" />}>
-        <Conteudo searchParams={searchParams} />
-      </Suspense>
+      <div className="mt-2">
+        <Suspense fallback={<Esqueleto className="mt-4 h-[56rem] w-full rounded-lg" />}>
+          <Conteudo searchParams={searchParams} />
+        </Suspense>
+      </div>
     </Container>
   );
 }
@@ -61,18 +63,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
 
   if (MODO_DEMO) {
     return (
-      <>
-        <Aviso tipo="alerta" className="mb-6" titulo="Modo demonstração">
-          {MENSAGEM_DEMO}
-        </Aviso>
-        <FormCurriculo
-          inicial={null}
-          usuarioId="00000000-0000-0000-0000-000000000000"
-          linkPdf={null}
-          hoje={hoje}
-          demo
-        />
-      </>
+      <FormCurriculo
+        inicial={null}
+        usuarioId="00000000-0000-0000-0000-000000000000"
+        linkPdf={null}
+        hoje={hoje}
+        demo
+        avisos={
+          <Aviso tipo="alerta" titulo="Modo demonstração">
+            {MENSAGEM_DEMO}
+          </Aviso>
+        }
+      />
     );
   }
 
@@ -84,20 +86,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   // sem conta: dá para preencher; o salvar guarda no aparelho e pede para entrar (o convite pede conta)
   if (!convite && !(await obterUsuario())) {
     return (
-      <>
-        <Aviso tipo="info" className="mb-6" titulo="Preencha agora, entre só para salvar">
-          O que você preencher fica guardado neste aparelho. No fim, toque em “Entrar e salvar o currículo”: depois de
-          entrar, ele volta preenchido para você conferir e salvar.
-        </Aviso>
-        <FormCurriculo
-          inicial={null}
-          usuarioId=""
-          linkPdf={null}
-          hoje={hoje}
-          rotuloSalvar="Entrar e salvar o currículo"
-          semConta
-        />
-      </>
+      <FormCurriculo
+        inicial={null}
+        usuarioId=""
+        linkPdf={null}
+        hoje={hoje}
+        rotuloSalvar="Entrar e salvar o currículo"
+        semConta
+        avisos={
+          <Aviso tipo="info" titulo="Preencha agora, entre só para salvar">
+            O que você preencher fica guardado neste aparelho. No fim, toque em “Entrar e salvar o currículo”: depois de
+            entrar, ele volta preenchido para você conferir e salvar.
+          </Aviso>
+        }
+      />
     );
   }
   const { usuario, perfil } = await exigirPerfilCompleto(
@@ -112,7 +114,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   // currículo é de pessoa: comércio, empresa e agência contratam (quem age pela agência também cai aqui)
   if (perfil.tipo !== "pessoa") {
     return (
-      <Aviso tipo="info" titulo="Currículo é para quem procura trabalho">
+      <Aviso tipo="info" titulo="Currículo é para quem procura trabalho" className="mt-4 max-w-2xl">
         <p>
           Esta conta é de {perfil.tipo === "agencia" ? "agência" : perfil.tipo === "empresa" ? "empresa" : "comércio"}:
           aqui não tem currículo. Para procurar trabalho, entre com a sua conta de pessoa.
@@ -149,15 +151,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
   const depoisDeSalvar =
     proximo || (paraTalentos && !vitrine && !aceitas.length ? "/perfil/curriculo?salvo=1#quem-acha" : "");
 
-  return (
+  const avisos = (
     <>
       {aceitas.length > 0 && <AceitasEsperando aceitas={aceitas} temCurriculo={curriculo !== null} />}
       {paraTalentos && !vitrine && (
-        <Aviso tipo="info" className="mb-6" titulo="Para aparecer na aba Talentos">
+        <Aviso tipo="info" titulo="Para aparecer na aba Talentos">
           {curriculo ? (
             // já tem currículo, mas escondeu da aba: o caminho é ligar de novo
             <p>
-              Seu currículo está escondido da aba. No fim da página, ligue{" "}
+              Seu currículo está escondido da aba. Em “Quem vê seu currículo”, no fim da página, ligue{" "}
               <a href="#quem-acha" className="text-label underline">
                 “Aparecer na aba Talentos”
               </a>
@@ -177,22 +179,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
           </p>
         </Aviso>
       )}
-      {!curriculo && !paraTalentos && (
-        // currículo novo já aparece: a pessoa sabe antes de salvar
-        <p className="mb-6 rounded-md bg-surface-300 px-4 py-3 text-body-sm">
-          Ao salvar, seu currículo aparece para as empresas da região e na aba Talentos, com o nome encurtado e sem
-          telefone, e-mail nem o PDF. Prefere não aparecer? Depois de salvar, é só desligar no fim da página.
-        </p>
-      )}
       {paraTalentos && vitrine && (
-        <Aviso tipo="sucesso" className="mb-6" titulo="Você já aparece na aba Talentos">
+        <Aviso tipo="sucesso" titulo="Você já aparece na aba Talentos">
           <Link href={`/talentos/${usuario.id}`} className="text-label underline">
             Ver como você aparece
           </Link>
         </Aviso>
       )}
       {pdfNaoSalvo && (
-        <Aviso tipo="alerta" className="mb-6" titulo="Seu currículo ainda não foi salvo">
+        <Aviso tipo="alerta" titulo="Seu currículo ainda não foi salvo">
           <p>
             Você mandou o PDF{pdfNaoSalvo.enviadoEm ? ` ${tempoRelativo(pdfNaoSalvo.enviadoEm, agora)}` : ""}, mas o
             currículo não chegou a ser salvo. O PDF já está aqui embaixo.
@@ -202,13 +197,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         </Aviso>
       )}
       {lido && dadosConvite && (
-        <Aviso tipo="info" className="mb-6" titulo="Seu currículo já veio preenchido">
+        <Aviso tipo="info" titulo="Seu currículo já veio preenchido">
           {dadosConvite.quem.nome} montou com o currículo que você mandou. Confira tudo, corrija o que precisar e salve
           no fim da página.
         </Aviso>
       )}
       {primeiro(sp.salvo) === "1" && (
-        <Aviso tipo="sucesso" className="mb-6" titulo="Currículo salvo!">
+        <Aviso tipo="sucesso" titulo="Currículo salvo!">
           <p>
             Agora é só curtir as vagas que combinam com você. Quem anunciou vê seu currículo e, se curtir de volta, o
             WhatsApp dos dois aparece.
@@ -219,9 +214,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
               <Link href={`/talentos/${usuario.id}`} className="text-label underline">
                 ver como aparece
               </Link>
-              ). Prefere não aparecer? Desligue no{" "}
+              ). Prefere não aparecer? Desligue em{" "}
               <a href="#quem-acha" className="text-label underline">
-                fim da página
+                Quem vê seu currículo
               </a>
               .
             </p>
@@ -231,7 +226,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
               <a href="#quem-acha" className="text-label underline">
                 “Aparecer na aba Talentos”
               </a>{" "}
-              no fim da página.
+              em Quem vê seu currículo.
             </p>
           )}
           {/* salvou sem dizer até onde estudou (não trava o salvar): o lembrete fica aqui */}
@@ -268,38 +263,51 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
         </Aviso>
       )}
       {primeiro(sp.apagado) === "1" && (
-        <Aviso tipo="info" className="mb-6" titulo="Currículo apagado">
+        <Aviso tipo="info" titulo="Currículo apagado">
           Ninguém mais vê. Se quiser, preencha de novo abaixo.
         </Aviso>
       )}
-      {/* a nota, a faixa de salário e o que abre mais vagas (só a pessoa vê) */}
-      {curriculo && (
-        <Suspense fallback={<Esqueleto className="mb-6 h-80 w-full rounded-lg" />}>
-          <CurriculoNoMercado
-            pessoa={{ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }}
-            curriculo={curriculo}
-            agora={agora}
-            ia={ia}
-          />
-        </Suspense>
-      )}
-      <FormCurriculo
-        key={curriculo?.atualizado_em ?? (lido ? "convite" : "novo")}
-        inicial={curriculo}
-        lido={lido}
-        usuarioId={usuario.id}
-        linkPdf={linkPdf}
-        proximo={depoisDeSalvar}
-        hoje={hoje}
-        rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
-        lerArquivo={ia}
-        ouvirFala={ia && falaDisponivel()}
-        pdfGuardado={pdfNaoSalvo?.caminho ?? null}
-        melhorarComIA={ia}
-      />
-      {curriculo && <VisibilidadeCurriculo visivel={visivel} vitrine={vitrine} />}
-      {curriculo && <ApagarCurriculo />}
     </>
+  );
+
+  return (
+    <FormCurriculo
+      key={curriculo?.atualizado_em ?? (lido ? "convite" : "novo")}
+      inicial={curriculo}
+      lido={lido}
+      usuarioId={usuario.id}
+      linkPdf={linkPdf}
+      proximo={depoisDeSalvar}
+      hoje={hoje}
+      rotuloSalvar={aceitas.length ? "Salvar e mandar o currículo" : undefined}
+      lerArquivo={ia}
+      ouvirFala={ia && falaDisponivel()}
+      pdfGuardado={pdfNaoSalvo?.caminho ?? null}
+      melhorarComIA={ia}
+      // o cartão como as empresas veem: o nome encurtado (como no banco) e o lugar do perfil
+      pessoa={{
+        id: usuario.id,
+        nome: nomeNaLista({ nome: perfil.nome, tipo: "pessoa" }),
+        bairro: perfil.bairro,
+        cidade: perfil.cidade,
+      }}
+      quemVe={curriculo ? { visivel, vitrine } : null}
+      salvo={curriculo ? tempoRelativo(curriculo.atualizado_em, agora) : null}
+      avisos={avisos}
+      mercado={
+        // a nota, a faixa de salário e o que abre mais vagas (só a pessoa vê)
+        curriculo && (
+          <Suspense fallback={<Esqueleto className="h-80 w-full rounded-lg" />}>
+            <CurriculoNoMercado
+              pessoa={{ id: usuario.id, cidade: perfil.cidade, bairro: perfil.bairro }}
+              curriculo={curriculo}
+              agora={agora}
+              ia={ia}
+            />
+          </Suspense>
+        )
+      }
+    />
   );
 }
 
@@ -310,7 +318,7 @@ function AceitasEsperando({ aceitas, temCurriculo }: { aceitas: MinhaCurtida[]; 
   return (
     <section
       aria-labelledby="aceitas-titulo"
-      className="mb-6 flex flex-col gap-3 rounded-lg border-2 border-terra bg-surface-200 p-4 shadow-card sm:p-5"
+      className="flex flex-col gap-3 rounded-lg border-2 border-terra bg-surface-200 p-4 shadow-card sm:p-5"
     >
       <h2 id="aceitas-titulo" className="flex items-center gap-2 font-display text-h3">
         <PartyPopper aria-hidden className="size-5 shrink-0 text-terra-text" />

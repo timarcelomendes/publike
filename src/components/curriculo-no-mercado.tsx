@@ -49,7 +49,7 @@ export async function CurriculoNoMercado({
     <section
       id="mercado"
       aria-labelledby="mercado-titulo"
-      className="mb-6 flex scroll-mt-24 flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:p-6"
+      className="flex scroll-mt-24 flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:p-6"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="mercado-titulo" className="font-display text-h3">

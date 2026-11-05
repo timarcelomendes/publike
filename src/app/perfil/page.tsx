@@ -190,7 +190,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil">["
           <span className="min-w-0 flex-1">
             <span className="block text-h3">Meu currículo</span>
             <span className="block text-body-sm text-ink-muted">
-              Para vagas com carteira e estágio. Só vê quem anunciou uma vaga que você curtiu.
+              Para vagas com carteira e estágio: é o que as empresas veem de você.
             </span>
           </span>
           <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted" />

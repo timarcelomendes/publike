@@ -18,6 +18,7 @@ export function MelhorarCurriculoComIA({
   aoUsarTitulo,
   aoUsarDescricao,
   aoUsarHabilidades,
+  aoAbrirExperiencia,
 }: {
   /** o que está no formulário agora */
   ler: () => CurriculoParaIA;
@@ -25,6 +26,8 @@ export function MelhorarCurriculoComIA({
   aoUsarTitulo: (texto: string) => void;
   aoUsarDescricao: (chave: string, texto: string) => void;
   aoUsarHabilidades: (itens: string[]) => void;
+  /** abre a experiência no formulário e leva até "O que você fazia" (as experiências ficam numa linha) */
+  aoAbrirExperiencia?: (chave: string) => void;
 }) {
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
@@ -123,7 +126,15 @@ export function MelhorarCurriculoComIA({
                     {exp ? (
                       <>
                         {", em "}
-                        <a href={`#exp-${exp.chave}-descricao`} className="text-label underline underline-offset-2">
+                        <a
+                          href={`#exp-${exp.chave}-descricao`}
+                          onClick={(e) => {
+                            if (!aoAbrirExperiencia) return;
+                            e.preventDefault();
+                            aoAbrirExperiencia(exp.chave);
+                          }}
+                          className="text-label underline underline-offset-2"
+                        >
                           O que você fazia
                         </a>
                       </>
@@ -145,6 +156,11 @@ export function MelhorarCurriculoComIA({
                             ? "#habilidades-titulo"
                             : `#exp-${exp?.chave}-descricao`
                       }
+                      onClick={(e) => {
+                        if (s.tipo !== "descricao" || !exp || !aoAbrirExperiencia) return;
+                        e.preventDefault();
+                        aoAbrirExperiencia(exp.chave);
+                      }}
                       className="text-label underline underline-offset-2"
                     >
                       Ver no formulário
