@@ -115,6 +115,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   noticias_do_dia: Newspaper,
   // uma funcionalidade liberada (a página de carreiras pela meta, ou o que a equipe liberou)
   liberacao: Gift,
+  // o candidato que combina com a vaga de quem contrata
+  talento_combina: UserSearch,
 };
 
 type Notificacao = {

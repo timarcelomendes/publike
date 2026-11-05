@@ -21,6 +21,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "pagamento") return n.link?.startsWith("/painel/") ? n.link : "/painel/faturas";
   if (n.tipo === "noticias_do_dia") return "/noticias";
   // a funcionalidade liberada: a página dela (o link vem do banco, só caminho do site)
+  // o candidato que combina: a ficha dele em Talentos
+  if (n.tipo === "talento_combina") return n.ator_id ? `/talentos/${n.ator_id}` : "/talentos";
   if (n.tipo === "liberacao") return n.link?.startsWith("/painel/") ? n.link : "/painel";
   // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga
   if (n.tipo === "teste_pedido") return "/testes";

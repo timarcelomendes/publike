@@ -1004,9 +1004,9 @@ export type CurtidaAdmin = {
   respondida_em: string | null;
   /** pendente; aceita (o aceite saiu, falta o currículo); match; dispensada; desfeito */
   situacao: "pendente" | "aceita" | "match" | "dispensada" | "desfeito";
-  curtiu: { id: string; nome: string; tipo: string; bairro: string | null } | null;
+  curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null } | null;
   anuncio: { id: string; titulo: string; tipo: string } | null;
-  publicou: { id: string; nome: string; tipo: string } | null;
+  publicou: { id: string; nome: string; tipo: string; acesso: string | null } | null;
 };
 
 /** As curtidas feitas desde `desde` (null: todas), da mais nova para a mais antiga (até 500), com o que aconteceu. */
@@ -1031,7 +1031,13 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
     ? await c.from("perfis").select("id, nome, tipo, bairro").in("id", idsPerfis)
     : { data: [], error: null };
   if (e2) falha("as contas das curtidas", e2);
-  const porPerfil = new Map((perfis ?? []).map((p) => [p.id, p]));
+  // o último acesso de cada conta (o login ou a última página aberta; sem a migração 20270213120000, nada)
+  const { data: acessos, error: e3 } = idsPerfis.length
+    ? await c.rpc("admin_ultimos_acessos", { p_ids: idsPerfis })
+    : { data: [], error: null };
+  if (e3 && e3.code !== "PGRST202") falha("o último acesso das contas", e3);
+  const acessoDe = new Map((acessos ?? []).map((x) => [x.id, x.ultimo_acesso]));
+  const porPerfil = new Map((perfis ?? []).map((p) => [p.id, { ...p, acesso: acessoDe.get(p.id) ?? null }]));
   return linhas.map((l) => {
     const a = porAnuncio.get(l.anuncio_id) ?? null;
     const autor = a ? (porPerfil.get(a.autor_id) ?? null) : null;
@@ -1043,7 +1049,7 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
       situacao,
       curtiu: porPerfil.get(l.perfil_id) ?? null,
       anuncio: a ? { id: a.id, titulo: a.titulo, tipo: a.tipo } : null,
-      publicou: autor ? { id: autor.id, nome: autor.nome, tipo: autor.tipo } : null,
+      publicou: autor ? { id: autor.id, nome: autor.nome, tipo: autor.tipo, acesso: autor.acesso } : null,
     };
   });
 }

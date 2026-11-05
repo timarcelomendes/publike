@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Filtros, linkCom, Secao } from "@/components/admin/ui";
-import { Selo, Vazio } from "@/components/ui/basicos";
+import { Vazio } from "@/components/ui/basicos";
 import {
   curtidasRecentes,
   inicioDeHoje,
@@ -35,13 +35,20 @@ const PERIODOS = [
 
 const SITUACOES: Record<
   CurtidaAdmin["situacao"],
-  { nome: string; variante: "like" | "aviso" | "match" | "contorno" }
+  { nome: string }
 > = {
-  pendente: { nome: "Esperando o aceite", variante: "like" },
-  aceita: { nome: "Aceita, sem currículo", variante: "aviso" },
-  match: { nome: "Deu match", variante: "match" },
-  dispensada: { nome: "Não foi dessa vez", variante: "contorno" },
-  desfeito: { nome: "Match desfeito", variante: "contorno" },
+  pendente: { nome: "Esperando o aceite" },
+  aceita: { nome: "Aceita, sem currículo" },
+  match: { nome: "Deu match" },
+  dispensada: { nome: "Não foi dessa vez" },
+  desfeito: { nome: "Match desfeito" },
+};
+const COR: Record<CurtidaAdmin["situacao"], string> = {
+  pendente: "bg-like",
+  aceita: "bg-terra",
+  match: "bg-cerrado",
+  dispensada: "bg-line-strong",
+  desfeito: "bg-line-strong",
 };
 const FILTROS = [
   { valor: "todas", nome: "Todas" },
@@ -165,8 +172,10 @@ async function Conteudo({
 
 function Conta({
   c,
+  agora,
 }: {
-  c: { id: string; nome: string; tipo: string } | null;
+  c: { id: string; nome: string; tipo: string; acesso: string | null } | null;
+  agora: number;
 }) {
   if (!c) return <span className="text-ink-muted">Conta excluída</span>;
   return (
@@ -178,6 +187,13 @@ function Conta({
         {c.nome}
       </Link>
       <span className="text-caption text-ink-muted">{rotuloConta(c.tipo)}</span>
+      {/* o último acesso: o login ou a última página aberta */}
+      <span
+        className="text-caption text-ink-muted"
+        title={c.acesso ? new Date(c.acesso).toLocaleString("pt-BR") : undefined}
+      >
+        {c.acesso ? `entrou ${tempoRelativo(c.acesso, agora)}` : "nunca entrou"}
+      </span>
     </span>
   );
 }
@@ -185,7 +201,7 @@ function Conta({
 function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
   return (
     <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[52rem] text-left text-body-sm">
+      <table className="w-full min-w-[44rem] text-left text-body-sm">
         <thead className="text-label text-ink-muted">
           <tr className="border-b border-line">
             <th scope="col" className="py-2 pr-3 font-medium">
@@ -218,7 +234,7 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                 {tempoRelativo(m.quando, agora)}
               </td>
               <td className="py-2 pr-3">
-                <Conta c={m.curtiu} />
+                <Conta c={m.curtiu} agora={agora} />
               </td>
               <td className="py-2 pr-3">
                 {m.anuncio ? (
@@ -238,13 +254,15 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                 )}
               </td>
               <td className="py-2 pr-3">
-                <Conta c={m.publicou} />
+                <Conta c={m.publicou} agora={agora} />
               </td>
               <td className="py-2">
-                <span className="flex flex-col items-start gap-1">
-                  <Selo variante={SITUACOES[m.situacao].variante}>
+                <span className="flex min-w-[9rem] flex-col items-start gap-1">
+                  {/* a bolinha na cor da situação e o nome (quebra a linha; o selo não cabia na coluna) */}
+                  <span className="font-semibold">
+                    <span aria-hidden className={`mr-1.5 inline-block size-2 rounded-pill align-middle ${COR[m.situacao]}`} />
                     {SITUACOES[m.situacao].nome}
-                  </Selo>
+                  </span>
                   {m.situacao !== "pendente" && m.respondida_em && (
                     <span
                       className="text-caption text-ink-muted"

@@ -17,6 +17,7 @@ import {
 } from "@/lib/servidor/filas";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { funcoesDasVagas, funcoesDosCurriculos } from "@/lib/servidor/funcao";
+import { avisarTalentosQueCombinam } from "@/lib/servidor/talentos-que-combinam";
 import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { regrasComOTempo } from "@/lib/servidor/regras";
 import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
@@ -79,6 +80,8 @@ export async function GET(request: Request) {
   const funcoesCv = await comTempo(() => funcoesDosCurriculos(8));
   // a página de carreiras liberada pela meta (mais de 10 vagas): o aviso, uma vez (sai junto com os e-mails abaixo)
   const liberacoes = await comTempo(() => avisarLiberacoesPorMeta());
+  // quem contrata: o candidato que combina com a vaga (dos currículos que mudaram desde a última rodada)
+  const talentos = await comTempo(() => avisarTalentosQueCombinam());
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
   const emails = await enviarEmailsPendentes(20);
   const celular = await enviarPushPendentes(50);
@@ -95,6 +98,7 @@ export async function GET(request: Request) {
     funcoes.motivo,
     funcoesCv.motivo,
     liberacoes.motivo,
+    talentos.motivo,
     noticias.motivo,
     testes.motivo,
     triagem.motivo,
@@ -123,6 +127,7 @@ export async function GET(request: Request) {
       funcoes: funcoes.achadas,
       funcoesCurriculos: funcoesCv.lidos,
       liberacoes: liberacoes.avisadas,
+      talentos: talentos.avisados,
       combinam: {
         vagas: combinam.vagas,
         talentos: combinam.talentos,

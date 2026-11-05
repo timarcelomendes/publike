@@ -1848,6 +1848,33 @@ export type Database = {
         Args: { p_chave: string };
         Returns: number;
       };
+      servidor_talentos_mudados: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: {
+          perfil_id: string;
+          nome: string;
+          cidade: string | null;
+          bairro: string | null;
+          curriculo: Json;
+          atualizado_em: string;
+        }[];
+      };
+      servidor_talentos_lidos_ate: {
+        Args: { p_chave: string; p_ate: string };
+        Returns: undefined;
+      };
+      servidor_contas_com_vagas: {
+        Args: { p_chave: string };
+        Returns: { conta_id: string; vagas: Json; ja: string[] | null }[];
+      };
+      servidor_avisar_talento: {
+        Args: { p_chave: string; p_conta: string; p_anuncio: string; p_perfil: string; p_texto: string };
+        Returns: boolean;
+      };
+      admin_ultimos_acessos: {
+        Args: { p_ids: string[] };
+        Returns: { id: string; ultimo_acesso: string | null }[];
+      };
       admin_uso_da_ia: {
         Args: { p_dias?: number };
         Returns: {
