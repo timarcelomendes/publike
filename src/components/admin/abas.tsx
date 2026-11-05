@@ -202,8 +202,9 @@ export function MenuAdmin({ numeros }: { numeros: NumerosDoMenu }) {
         aria-label="Seções do admin"
         className="sem-barra hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
       >
-        <Link href="/admin" className="mb-4 flex items-center gap-2 px-3" aria-label="Publike: Painel do admin">
+        <Link href="/admin" className="mb-4 flex items-center gap-2 px-3" aria-label="Publike Admin: Painel">
           <Logo altura={26} />
+          <SeloAdmin />
         </Link>
         {lista}
       </nav>
@@ -221,5 +222,12 @@ export function MenuAdmin({ numeros }: { numeros: NumerosDoMenu }) {
         </nav>
       </details>
     </>
+  );
+}
+
+/** O selo "Admin" ao lado da logo (no menu lateral e, no celular, no alto da página). */
+export function SeloAdmin() {
+  return (
+    <span className="rounded-pill bg-surface-300 px-2 py-0.5 text-caption font-semibold text-ink-muted">Admin</span>
   );
 }

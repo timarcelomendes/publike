@@ -1,9 +1,10 @@
 import { KeyRound, Laptop } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
-import { AbasAdmin, MenuAdmin, type ModoAdmin } from "@/components/admin/abas";
+import Link from "next/link";
+import { AbasAdmin, MenuAdmin, SeloAdmin, type ModoAdmin } from "@/components/admin/abas";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { Aviso, Container, Selo } from "@/components/ui/basicos";
+import { Aviso, Container, Logo } from "@/components/ui/basicos";
 import { ehModerador } from "@/lib/dados";
 import { numerosDoPainel } from "@/lib/admin/dados";
 import { adminSemCookie, ehAdminLocal, exigirAdminLocal } from "@/lib/supabase/admin";
@@ -70,16 +71,27 @@ async function MenuComNumeros() {
 }
 
 function Topo({ modo }: { modo: ModoAdmin }) {
+  if (modo === "admin") {
+    // o admin: a logo com o selo Admin (no computador ela fica no alto do menu lateral) e, à direita, discreto,
+    // o lembrete de que só abre neste computador
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="sr-only">Admin</h1>
+        <Link href="/admin" className="flex items-center gap-2 lg:invisible" aria-label="Publike Admin: Painel">
+          <Logo altura={24} />
+          <SeloAdmin />
+        </Link>
+        <p className="flex items-center gap-1.5 text-caption font-normal text-ink-muted">
+          <Laptop aria-hidden className="size-3.5 shrink-0" />
+          Só neste computador
+        </p>
+      </div>
+    );
+  }
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-h2 sm:text-h1">{modo === "moderador" ? "Moderação" : "Admin"}</h1>
-        {modo === "admin" && (
-          <Selo>
-            <Laptop aria-hidden />
-            Só neste computador
-          </Selo>
-        )}
       </div>
       {modo && <AbasAdmin modo={modo} />}
     </>
