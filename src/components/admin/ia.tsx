@@ -37,7 +37,7 @@ function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string;
 
 /** As chamadas dos últimos 30 dias de cada funcionalidade e o custo estimado (pelos tokens e pelo preço do modelo). */
 export type UsoDaFuncionalidade = Partial<
-  Record<string, { chamadas: number; falhas: number; dolares: number; semPreco: boolean }>
+  Record<string, { chamadas: number; falhas: number; buscas: number; dolares: number; semPreco: boolean }>
 >;
 
 const dolares = (v: number) =>
@@ -52,6 +52,7 @@ function textoDoUso(u: UsoDaFuncionalidade[string]) {
   if (!u || (!u.chamadas && !u.falhas)) return "Nenhuma chamada em 30 dias";
   const partes = [
     `${u.chamadas.toLocaleString("pt-BR")} ${u.chamadas === 1 ? "chamada" : "chamadas"} em 30 dias`,
+    u.buscas ? `${u.buscas.toLocaleString("pt-BR")} ${u.buscas === 1 ? "busca" : "buscas"} na internet` : null,
     u.semPreco ? null : dolares(u.dolares),
     u.falhas ? `${u.falhas.toLocaleString("pt-BR")} ${u.falhas === 1 ? "falhou" : "falharam"}` : null,
   ];
@@ -60,11 +61,12 @@ function textoDoUso(u: UsoDaFuncionalidade[string]) {
 
 /** O total de todas as funcionalidades. */
 function somar(uso: UsoDaFuncionalidade) {
-  const total = { chamadas: 0, falhas: 0, dolares: 0, semPreco: false };
+  const total = { chamadas: 0, falhas: 0, buscas: 0, dolares: 0, semPreco: false };
   for (const u of Object.values(uso)) {
     if (!u) continue;
     total.chamadas += u.chamadas;
     total.falhas += u.falhas;
+    total.buscas += u.buscas;
     total.dolares += u.dolares;
     total.semPreco ||= u.semPreco;
   }
@@ -187,6 +189,16 @@ export function FormConfigIA({
               </label>
             );
           })}
+          {uso && (
+            // a transcrição não tem escolha de modelo (só a OpenAI transcreve): só o uso
+            <div className="flex flex-col gap-1">
+              <span className="text-label">Transcrição de áudio</span>
+              <span className="text-body-sm text-ink-muted">
+                O currículo falado e as respostas da entrevista em vídeo (sempre no gpt-4o-mini-transcribe).
+              </span>
+              <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso.transcricao)}</span>
+            </div>
+          )}
         </div>
       </fieldset>
 

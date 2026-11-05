@@ -12,11 +12,16 @@ import { chaveDoServidor, chaveSecretaSupabase } from "./ambiente";
 /** Espera no máximo isso pelo banco (a pessoa está esperando a resposta da IA). */
 const ESPERA = 1500;
 
+/** As funcionalidades com escolha de modelo (Admin › IA) e a transcrição de áudio (só a OpenAI, sem escolha). */
+export type FuncionalidadeDoUso = FuncionalidadeIA | "transcricao";
+
 export async function contarUsoDaIA(
-  funcionalidade: FuncionalidadeIA,
+  funcionalidade: FuncionalidadeDoUso,
   modelo: string,
   tokens: { entrada: number; saida: number } | null,
   falhou = false,
+  /** as buscas na internet da chamada (cobradas à parte) */
+  buscas = 0,
 ) {
   // como as filas (acessoFila): a chave do servidor ou, no computador de quem desenvolve, a chave secreta
   const chave = chaveDoServidor();
@@ -30,6 +35,7 @@ export async function contarUsoDaIA(
         p_falhou: falhou,
         p_entrada: Math.round(tokens?.entrada ?? 0),
         p_saida: Math.round(tokens?.saida ?? 0),
+        p_buscas: Math.round(buscas),
       })
       .then(({ error }) => {
         if (error && error.code !== "PGRST202") console.error("Publike: falha ao contar o uso da IA:", error.message);

@@ -1836,6 +1836,7 @@ export type Database = {
           p_falhou?: boolean;
           p_entrada?: number;
           p_saida?: number;
+          p_buscas?: number;
         };
         Returns: undefined;
       };
@@ -1848,6 +1849,7 @@ export type Database = {
           falhas: number;
           tokens_entrada: number;
           tokens_saida: number;
+          buscas: number;
         }[];
       };
       servidor_funcao_guardada: {

@@ -57,6 +57,9 @@ export const MODELOS_IA = [
   },
 ] as const;
 
+/** Cada busca na internet, em dólar (US$ 10 a cada mil, na OpenAI e no Claude, em outubro de 2026). */
+export const PRECO_BUSCA = 0.01;
+
 export type ProvedorIA = (typeof MODELOS_IA)[number]["provedor"];
 
 /** Tem a chave desta IA no servidor? */
@@ -182,7 +185,7 @@ type RespostaIA = {
 export async function chamarIA(p: Pedido): Promise<RespostaIA> {
   try {
     const r = await chamarComReserva(p);
-    await contarUsoDaIA(p.funcionalidade, r.modelo, r.tokens ?? null);
+    await contarUsoDaIA(p.funcionalidade, r.modelo, r.tokens ?? null, false, r.buscas ?? 0);
     return r;
   } catch (e) {
     await contarUsoDaIA(p.funcionalidade, modeloDaIA(p.modelo).id, null, true);
