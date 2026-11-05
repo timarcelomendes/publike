@@ -94,9 +94,9 @@ export function BarraCurtirCelular({
           <button
             type="button"
             onClick={irAoQuadro}
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-pill bg-like px-5 text-label font-semibold text-on-like shadow-card transition-transform hover:brightness-95 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-pill bg-like px-5 text-label text-on-like hover:brightness-110"
           >
-            <Heart aria-hidden className="size-4" fill="currentColor" />
+            <Heart aria-hidden className="size-4" />
             {servico ? "Quero contratar" : "Curtir a vaga"}
           </button>
         )}
