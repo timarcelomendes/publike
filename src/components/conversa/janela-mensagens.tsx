@@ -9,6 +9,7 @@ import { caminhoConversa, origemDaConversa, vagaDoCurriculo, type ConversaPessoa
 import type { MensagemConversa } from "@/lib/dados";
 import { Avatar } from "../ui/basicos";
 import { Conversa } from "./conversa";
+import { MenuDaConversa } from "./menu-da-conversa";
 
 // As conversas dentro do chat do canto da tela, ao lado da Ajuda (botao-assistente.tsx): uma por
 // pessoa (vagas em comum e conexão juntas), com busca e não lidas, e a conversa aberta ali mesmo,
@@ -56,15 +57,24 @@ export function useConversasDoChat(usuarioId: string | null) {
     const relogio = setInterval(() => {
       if (document.visibilityState === "visible") void carregar();
     }, 60_000);
+    // voltando à aba (a conversa pode ter sido lida no celular ou em outra aba): as não lidas na hora
+    const voltou = () => {
+      if (document.visibilityState === "visible") void carregar();
+    };
+    document.addEventListener("visibilitychange", voltou);
     return () => {
       clearInterval(relogio);
       if (espera) clearTimeout(espera);
       window.removeEventListener("publike:aviso", aviso);
+      document.removeEventListener("visibilitychange", voltou);
     };
   }, [carregar, usuarioId]);
 
   const marcarLida = useCallback((outroId: string) => {
-    setConversas((atual) => atual?.map((c) => (c.outro_id === outroId ? { ...c, nao_lidas: 0 } : c)) ?? null);
+    setConversas(
+      (atual) =>
+        atual?.map((c) => (c.outro_id === outroId ? { ...c, nao_lidas: 0, marcada_nao_lida: false } : c)) ?? null,
+    );
   }, []);
 
   const naoLidas = (conversas ?? []).reduce((t, c) => t + (c.nao_lidas ?? 0), 0);
@@ -252,11 +262,11 @@ export function PainelConversas({
           </li>
         ) : (
           filtradas.map((c) => (
-            <li key={c.outro_id}>
+            <li key={c.outro_id} className="relative">
               <button
                 type="button"
                 onClick={() => void abrir(c)}
-                className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left hover:bg-surface-300"
+                className="flex w-full items-start gap-2.5 py-2.5 pr-12 pl-3 text-left hover:bg-surface-300"
               >
                 <Avatar nome={c.outro_nome} foto={c.outro_foto} tamanho={40} />
                 <span className="min-w-0 flex-1">
@@ -277,11 +287,19 @@ export function PainelConversas({
                 </span>
                 {c.nao_lidas > 0 && (
                   <span
-                    aria-label={`${c.nao_lidas} não lidas`}
+                    aria-label={c.marcada_nao_lida ? "Marcada como não lida" : `${c.nao_lidas} não lidas`}
                     className="mt-2 size-2.5 shrink-0 rounded-full bg-like"
                   />
                 )}
               </button>
+              <div className="absolute top-1/2 right-1 -translate-y-1/2">
+                <MenuDaConversa
+                  outroId={c.outro_id}
+                  outroNome={c.outro_nome}
+                  naoLida={c.nao_lidas > 0}
+                  aoMudar={(lida) => (lida ? marcarLida(c.outro_id) : void carregar())}
+                />
+              </div>
             </li>
           ))
         )}

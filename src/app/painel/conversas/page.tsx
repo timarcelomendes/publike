@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AbasMensagens, AbasMensagensBase } from "@/components/painel/abas-mensagens";
+import { MenuDaConversa } from "@/components/conversa/menu-da-conversa";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -63,15 +64,15 @@ async function Conteudo() {
       <p className="text-body text-ink-muted">
         Uma conversa por pessoa, sem trocar número: o que veio das vagas e da conexão fica junto. Só vocês dois leem.
       </p>
-      <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
+      <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200 shadow-card">
         {conversas.map((c) => {
           // a etapa aparece quando a conversa vem de uma vaga só
           const unica = c.vagas.length === 1 ? c.vagas[0] : null;
           return (
-            <li key={c.outro_id}>
+            <li key={c.outro_id} className="relative first:rounded-t-lg last:rounded-b-lg">
               <Link
                 href={caminhoConversa(c.outro_id)}
-                className="flex gap-3 p-4 transition-colors hover:bg-surface-300"
+                className="flex gap-3 rounded-[inherit] py-4 pr-14 pl-4 transition-colors hover:bg-surface-300"
               >
                 <Avatar nome={c.outro_nome} foto={c.outro_foto} tamanho={48} />
                 <div className="min-w-0 flex-1">
@@ -95,15 +96,23 @@ async function Conteudo() {
                           : "Conectados! Mande a primeira mensagem."}
                     </p>
                     {unica && unica.etapa !== "novo" && <Selo variante="contorno">{etapaParaMim(unica)}</Selo>}
-                    {c.nao_lidas > 0 && (
-                      <span className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-pill bg-like px-1.5 text-caption text-on-like">
-                        {c.nao_lidas}
-                        <span className="sr-only"> {c.nao_lidas === 1 ? "mensagem nova" : "mensagens novas"}</span>
-                      </span>
+                    {c.marcada_nao_lida ? (
+                      // marcada como não lida: a bolinha, sem número
+                      <span aria-label="Marcada como não lida" className="size-3 shrink-0 rounded-full bg-like" />
+                    ) : (
+                      c.nao_lidas > 0 && (
+                        <span className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-pill bg-like px-1.5 text-caption text-on-like">
+                          {c.nao_lidas}
+                          <span className="sr-only"> {c.nao_lidas === 1 ? "mensagem nova" : "mensagens novas"}</span>
+                        </span>
+                      )
                     )}
                   </div>
                 </div>
               </Link>
+              <div className="absolute top-3 right-2">
+                <MenuDaConversa outroId={c.outro_id} outroNome={c.outro_nome} naoLida={c.nao_lidas > 0} />
+              </div>
             </li>
           );
         })}

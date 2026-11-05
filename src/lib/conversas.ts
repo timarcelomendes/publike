@@ -35,6 +35,8 @@ export type ConversaPessoa = {
   ultima_em: string | null;
   ultima_minha: boolean;
   nao_lidas: number;
+  /** marcada como não lida por mim (a bolinha sem número; conta como uma em nao_lidas) */
+  marcada_nao_lida: boolean;
 };
 
 /** Onde fica a conversa com uma conta. */

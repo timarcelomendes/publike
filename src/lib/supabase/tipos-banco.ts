@@ -2569,8 +2569,11 @@ export type Database = {
           ultima_em: string | null;
           ultima_minha: boolean | null;
           nao_lidas: number;
+          /** 20270204120000: marcada como não lida (conta como uma em nao_lidas) */
+          marcada_nao_lida?: boolean | null;
         }[];
       };
+      marcar_conversa_nao_lida_com: { Args: { p_outro: string }; Returns: undefined };
       abrir_conversa_com: {
         Args: { p_outro: string };
         Returns: string | null;

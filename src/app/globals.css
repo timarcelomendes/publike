@@ -47,6 +47,8 @@
   --pk-cerrado-text: #1f6f4a;
   --pk-danger: #b42318;
   --pk-focus: #1f6f4a;
+  /* o "lida" da conversa, sobre a bolha das minhas mensagens (escura no claro, clara no escuro) */
+  --pk-lida: #f5b301;
   --pk-shadow-card: 0 1px 2px rgba(31, 26, 20, 0.06), 0 6px 20px rgba(31, 26, 20, 0.06);
   --pk-shadow-raised: 0 2px 4px rgba(31, 26, 20, 0.08), 0 14px 36px rgba(31, 26, 20, 0.12);
   /* Botões de login social: as mesmas cores que o botão oficial do Google desenha */
@@ -87,6 +89,8 @@
   --pk-cerrado-text: #5cc493;
   --pk-danger: #f97066;
   --pk-focus: #f5b301;
+  /* o "lida" da conversa, sobre a bolha das minhas mensagens (escura no claro, clara no escuro) */
+  --pk-lida: #1f6f4a;
   --pk-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
   --pk-shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.55);
   --pk-veu: rgba(0, 0, 0, 0.62);
@@ -121,6 +125,8 @@
     --pk-cerrado-text: #5cc493;
     --pk-danger: #f97066;
     --pk-focus: #f5b301;
+    /* o "lida" da conversa, sobre a bolha das minhas mensagens (escura no claro, clara no escuro) */
+    --pk-lida: #1f6f4a;
     --pk-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
     --pk-shadow-raised: 0 8px 28px rgba(0, 0, 0, 0.55);
     --pk-veu: rgba(0, 0, 0, 0.62);
@@ -142,6 +148,7 @@
   --color-line-strong: var(--pk-line-strong);
   --color-ink: var(--pk-ink);
   --color-ink-muted: var(--pk-ink-muted);
+  --color-lida: var(--pk-lida);
   --color-veu: var(--pk-veu);
   --color-like: var(--pk-like);
   --color-on-like: var(--pk-on-like);

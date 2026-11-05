@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { COLUNAS_DA_MENSAGEM, obterUsuario, type MensagemConversa } from "@/lib/dados";
@@ -7,6 +8,7 @@ import { mensagemDeErro } from "@/lib/erros";
 import { conversaCom, conversasPorPessoa } from "@/lib/servidor/conversas";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 
 type Enviada =
@@ -112,6 +114,26 @@ export async function marcarConversaLidaCom(outroId: string): Promise<void> {
   if (MODO_DEMO || !UUID.test(outroId)) return;
   const supabase = await criarClienteServidor();
   await supabase.rpc("marcar_conversa_lida_com", { p_outro: outroId });
+}
+
+/**
+ * "Marcar como lida" e "Marcar como não lida", no menu de cada conversa (claude/plano-lida-nao-lida.md). A não lida
+ * vale só para mim: o "lida" de quem mandou continua.
+ */
+export async function mudarLeituraDaConversa(outroId: string, lida: boolean): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(outroId)) return { ok: false, erro: "Pedido inválido." };
+  const supabase = await criarClienteServidor();
+  const { error } = lida
+    ? await supabase.rpc("marcar_conversa_lida_com", { p_outro: outroId })
+    : await supabase.rpc("marcar_conversa_nao_lida_com", { p_outro: outroId });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Ainda não dá para marcar como não lida. Tente mais tarde." };
+    return { ok: false, erro: mensagemDeErro(error, "Não deu para marcar agora. Tente de novo.") };
+  }
+  refresh();
+  return { ok: true, mensagem: lida ? "Marcada como lida." : "Marcada como não lida." };
 }
 
 // ---------------------------------------------------------------- janela de mensagens

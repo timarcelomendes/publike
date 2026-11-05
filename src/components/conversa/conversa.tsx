@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Check, FileText, Paperclip, SendHorizontal } from "lucide-react";
+import { Bot, Check, CheckCheck, FileText, Paperclip, SendHorizontal } from "lucide-react";
 import {
   useEffect,
   useEffectEvent,
@@ -291,10 +291,17 @@ export function Conversa({
                     />
                   )}
                   <span
-                    className={`mt-0.5 block text-right text-[12px] ${minha ? "text-surface-100/70" : "text-ink-muted"}`}
+                    className={`mt-0.5 flex items-center justify-end gap-1 text-[12px] ${minha ? "text-surface-100/70" : "text-ink-muted"}`}
                   >
                     {hora(m.criado_em)}
-                    {minha && m.lida_em ? " · lida" : ""}
+                    {/* as minhas: um tique enviada, dois (coloridos) lida, na hora em que a outra pessoa abre */}
+                    {minha &&
+                      (m.lida_em ? (
+                        <CheckCheck aria-hidden className="size-4 text-lida" />
+                      ) : (
+                        <Check aria-hidden className="size-4" />
+                      ))}
+                    {minha && <span className="sr-only">{m.lida_em ? ", lida" : ", enviada"}</span>}
                   </span>
                 </div>
               </div>

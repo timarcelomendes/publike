@@ -19,6 +19,7 @@ function lerConversa(l: Linha): ConversaPessoa {
     outro_na_vitrine: l.outro_na_vitrine === true,
     ultima_minha: l.ultima_minha === true,
     nao_lidas: l.nao_lidas ?? 0,
+    marcada_nao_lida: l.marcada_nao_lida === true,
   };
 }
 
