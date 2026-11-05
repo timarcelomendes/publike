@@ -43,14 +43,15 @@ const SITUACOES: Record<
   dispensada: { nome: "Não foi dessa vez" },
   desfeito: { nome: "Match desfeito" },
 };
-/** Quem respondeu (migração 20270215120000; as antigas são uma estimativa pelo que ficou registrado). */
-const POR: Record<string, string> = {
-  empresa: "pela empresa",
-  pessoa: "pela pessoa",
-  direto: "na hora (contato direto)",
-  automacao: "por uma automação da vaga",
-  regra: "por uma regra da empresa",
-  publike: "pelo Publike (48 h sem resposta)",
+/** Quem respondeu (migração 20270215120000; as antigas são uma estimativa pelo que ficou registrado). Humano: alguém
+ * clicou; automático: ninguém clicou (a IA não responde curtidas). */
+const POR: Record<string, { humano: boolean; texto: string }> = {
+  empresa: { humano: true, texto: "a empresa (ou a equipe dela) respondeu" },
+  pessoa: { humano: true, texto: "quem publicou respondeu" },
+  direto: { humano: false, texto: "o anúncio tem contato direto: virou match na hora, ninguém respondeu" },
+  automacao: { humano: false, texto: "uma automação da vaga respondeu" },
+  regra: { humano: false, texto: "uma regra da empresa respondeu" },
+  publike: { humano: false, texto: "o Publike fechou depois de 48 h sem resposta" },
 };
 
 const COR: Record<CurtidaAdmin["situacao"], string> = {
@@ -106,6 +107,8 @@ async function Conteudo({
   const conta = (s: CurtidaAdmin["situacao"]) =>
     todas.filter((x) => x.situacao === s).length;
   const respondidas = todas.filter((x) => x.situacao !== "pendente").length;
+  const humanas = todas.filter((x) => x.respondida_por && POR[x.respondida_por]?.humano).length;
+  const automaticas = todas.filter((x) => x.respondida_por && POR[x.respondida_por] && !POR[x.respondida_por].humano).length;
   const noPeriodo =
     periodo === "tudo"
       ? ""
@@ -163,7 +166,8 @@ async function Conteudo({
             {noPeriodo}
             {todas.length >= 500 ? " (as 500 mais novas)" : ""}:{" "}
             {formatarNumero(respondidas)} respondidas (
-            {Math.round((100 * respondidas) / todas.length)}%),{" "}
+            {Math.round((100 * respondidas) / todas.length)}%: {formatarNumero(humanas)} por uma pessoa e{" "}
+            {formatarNumero(automaticas)} automáticas),{" "}
             {plural(conta("match"), "match", "matches")} e{" "}
             {formatarNumero(conta("pendente"))} esperando o aceite.
           </p>
@@ -274,12 +278,18 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                     {SITUACOES[m.situacao].nome}
                   </span>
                   {m.situacao !== "pendente" && m.respondida_em && (
-                    <span
-                      className="text-caption text-ink-muted"
-                      title={new Date(m.respondida_em).toLocaleString("pt-BR")}
-                    >
-                      respondida {tempoRelativo(m.respondida_em, agora)}
-                      {m.respondida_por && POR[m.respondida_por] ? ` ${POR[m.respondida_por]}` : ""}
+                    <span className="flex flex-col gap-0.5 text-caption text-ink-muted">
+                      {m.respondida_por && POR[m.respondida_por] && (
+                        // humano ou automático em destaque; o porquê embaixo
+                        <span className="font-semibold text-ink">
+                          {POR[m.respondida_por].humano ? "Humano" : "Automático"}
+                        </span>
+                      )}
+                      <span title={new Date(m.respondida_em).toLocaleString("pt-BR")}>
+                        {m.respondida_por && POR[m.respondida_por]
+                          ? `${POR[m.respondida_por].texto}, ${tempoRelativo(m.respondida_em, agora)}`
+                          : `respondida ${tempoRelativo(m.respondida_em, agora)}`}
+                      </span>
                     </span>
                   )}
                 </span>
