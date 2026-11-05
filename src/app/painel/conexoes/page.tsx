@@ -1,4 +1,15 @@
-import { Building2, Clock, Handshake, MessageCircle, Search, UserPlus, UsersRound, X } from "lucide-react";
+import {
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Handshake,
+  MessageCircle,
+  Search,
+  UserPlus,
+  UsersRound,
+  X,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -78,25 +89,73 @@ const FILTROS: Record<Aba, readonly { valor: string; nome: string }[]> = {
   ],
 };
 
-/** O endereço da aba com o filtro, a busca e quantas contas mostrar (`n`, o "Ver mais"). */
-function endereco(aba: Aba, f: string | null, q: string, n?: number) {
+/** O endereço da aba com o filtro, a busca e a página (da 2 em diante). */
+function endereco(aba: Aba, f: string | null, q: string, pagina = 1) {
   const sp = new URLSearchParams({ aba });
   if (f) sp.set("f", f);
   if (q) sp.set("q", q);
-  if (n) sp.set("n", String(n));
+  if (pagina > 1) sp.set("pagina", String(pagina));
   return `/painel/conexoes?${sp}`;
 }
 
-/** Quantas contas cada lista mostra de cada vez (o "Ver mais" traz mais tantas, até o fim). */
-const POR_VEZ = 40;
+/** Quantas contas cada página mostra (claude/plano-conexoes-paginadas.md). */
+const POR_PAGINA = 20;
 
-/** "Ver mais": a mesma lista com mais contas (o endereço guarda quantas, para voltar no mesmo lugar). */
-function VerMais({ aba, f, q, ate, total }: { aba: Aba; f: string | null; q: string; ate: number; total: number }) {
-  if (total <= ate) return null;
+/** A página pedida, dentro das que existem, e o pedaço da lista que ela mostra. */
+function paginar(total: number, pedida: number) {
+  const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+  const pagina = Math.min(Math.max(1, pedida), paginas);
+  const de = (pagina - 1) * POR_PAGINA;
+  return { pagina, paginas, de, ate: Math.min(total, de + POR_PAGINA) };
+}
+
+/** "21 a 40 de 141", em cima da lista (só com mais de uma página). */
+function Faixa({ de, ate, total }: { de: number; ate: number; total: number }) {
+  if (total <= POR_PAGINA) return null;
   return (
-    <BotaoLink href={endereco(aba, f, q, ate + POR_VEZ)} scroll={false} className="self-center">
-      Ver mais ({plural(total - ate, "falta", "faltam")})
-    </BotaoLink>
+    <p className="text-body-sm text-ink-muted tabular-nums">
+      {de + 1} a {ate} de {total}
+    </p>
+  );
+}
+
+/** "Anterior · Página 2 de 8 · Próxima", embaixo da lista (como na busca de Talentos). */
+function Paginas({
+  aba,
+  f,
+  q,
+  pagina,
+  paginas,
+}: {
+  aba: Aba;
+  f: string | null;
+  q: string;
+  pagina: number;
+  paginas: number;
+}) {
+  if (paginas <= 1) return null;
+  return (
+    <nav aria-label="Páginas" className="flex items-center justify-center gap-3">
+      {pagina > 1 ? (
+        <BotaoLink href={endereco(aba, f, q, pagina - 1)} tamanho="sm" variante="fantasma">
+          <ChevronLeft aria-hidden />
+          Anterior
+        </BotaoLink>
+      ) : (
+        <span className="w-24" />
+      )}
+      <span className="text-body-sm text-ink-muted tabular-nums">
+        Página {pagina} de {paginas}
+      </span>
+      {pagina < paginas ? (
+        <BotaoLink href={endereco(aba, f, q, pagina + 1)} tamanho="sm" variante="fantasma">
+          Próxima
+          <ChevronRight aria-hidden />
+        </BotaoLink>
+      ) : (
+        <span className="w-24" />
+      )}
+    </nav>
   );
 }
 
@@ -252,8 +311,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/con
   const fPedido = primeiro(sp.f) ?? null;
   const f = FILTROS[aba].some((x) => x.valor === fPedido) ? fPedido : null;
   const q = (primeiro(sp.q) ?? "").trim().slice(0, 60);
-  // quantas contas a lista mostra (Pessoas, Empresas e Chegaram): de 40 em 40
-  const ate = Math.min(300, Math.max(POR_VEZ, Math.round(Number(primeiro(sp.n)) / POR_VEZ) * POR_VEZ || POR_VEZ));
+  // a página das listas (Pessoas, Empresas, Chegaram e as suas conexões): de 20 em 20
+  const pagina = Math.max(1, Math.floor(Number(primeiro(sp.pagina))) || 1);
   const numeros: Partial<Record<Aba, number>> = { seguindo: seguidos.length, conectadas };
 
   return (
@@ -298,15 +357,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/con
         </ul>
       </nav>
       {aba === "pessoas" ? (
-        <AbaPessoas empresa={empresa} f={f} q={q} ate={ate} />
+        <AbaPessoas empresa={empresa} f={f} q={q} pagina={pagina} />
       ) : aba === "empresas" ? (
-        <AbaEmpresas seguidos={seguidos} f={f} q={q} ate={ate} />
+        <AbaEmpresas seguidos={seguidos} f={f} q={q} pagina={pagina} />
       ) : aba === "novas" ? (
-        <AbaNovas f={f} q={q} ate={ate} />
+        <AbaNovas f={f} q={q} pagina={pagina} />
       ) : aba === "seguindo" ? (
         <AbaSeguindo seguidos={seguidos} f={f} q={q} />
       ) : lista ? (
-        <AbaConectadas lista={lista} empresa={empresa} agora={agora} f={f} q={q} />
+        <AbaConectadas lista={lista} empresa={empresa} agora={agora} f={f} q={q} pagina={pagina} />
       ) : (
         <Aviso tipo="alerta" titulo="Não deu para carregar as conexões agora">
           Tente de novo em instantes.
@@ -361,7 +420,17 @@ const LISTA =
   "flex flex-col divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card";
 
 /** Pessoas perto, da mais perto para a mais longe, com o Conectar (ou como está a conexão). */
-async function AbaPessoas({ empresa, f, q, ate }: { empresa: boolean; f: string | null; q: string; ate: number }) {
+async function AbaPessoas({
+  empresa,
+  f,
+  q,
+  pagina,
+}: {
+  empresa: boolean;
+  f: string | null;
+  q: string;
+  pagina: number;
+}) {
   const [{ contas: todas, agora }, local] = await Promise.all([
     contasPerto({ quem: "pessoas", quantos: 300 }),
     obterLocal(),
@@ -381,7 +450,8 @@ async function AbaPessoas({ empresa, f, q, ate }: { empresa: boolean; f: string 
   const numeros: Record<string, number> = { novas: achadas.filter(nova).length };
   if (meuBairro) numeros.bairro = achadas.filter(noBairro).length;
   const filtradas = achadas.filter((c) => (f === "bairro" ? noBairro(c) : f === "novas" ? nova(c) : true));
-  const contas = filtradas.slice(0, ate);
+  const pg = paginar(filtradas.length, pagina);
+  const contas = filtradas.slice(pg.de, pg.ate);
   const estados = await estadosDeConexao(contas.map((c) => c.id));
   return (
     <div className="flex flex-col gap-4">
@@ -398,25 +468,28 @@ async function AbaPessoas({ empresa, f, q, ate }: { empresa: boolean; f: string 
       {contas.length === 0 ? (
         <NadaComFiltro aba="pessoas" f={f} q={q} />
       ) : (
-        <ul aria-label="Pessoas perto de você" className={LISTA}>
-          {contas.map((c) => (
-            <LinhaDeConta
-              key={c.id}
-              c={c}
-              detalhe={`${oQueE(c.tipo)} · ${formatarLugar(c.bairro, c.cidade)}`}
-              acao={
-                <BotaoConectarCompacto
-                  outro={{ id: c.id, nome: c.nome, tipo: c.tipo }}
-                  estado={estados.get(c.id) ?? null}
-                  voltar="/painel/conexoes?aba=pessoas"
-                  jeito="pilula"
-                />
-              }
-            />
-          ))}
-        </ul>
+        <>
+          <Faixa de={pg.de} ate={pg.ate} total={filtradas.length} />
+          <ul aria-label="Pessoas perto de você" className={LISTA}>
+            {contas.map((c) => (
+              <LinhaDeConta
+                key={c.id}
+                c={c}
+                detalhe={`${oQueE(c.tipo)} · ${formatarLugar(c.bairro, c.cidade)}`}
+                acao={
+                  <BotaoConectarCompacto
+                    outro={{ id: c.id, nome: c.nome, tipo: c.tipo }}
+                    estado={estados.get(c.id) ?? null}
+                    voltar={endereco("pessoas", f, q, pg.pagina)}
+                    jeito="pilula"
+                  />
+                }
+              />
+            ))}
+          </ul>
+        </>
       )}
-      <VerMais aba="pessoas" f={f} q={q} ate={ate} total={filtradas.length} />
+      <Paginas aba="pessoas" f={f} q={q} pagina={pg.pagina} paginas={pg.paginas} />
     </div>
   );
 }
@@ -425,7 +498,7 @@ async function AbaPessoas({ empresa, f, q, ate }: { empresa: boolean; f: string 
  * Quem chegou ao Publike nos últimos 30 dias (pessoas, comércios, empresas e agências), do mais perto
  * para o mais longe, com o Conectar: a lista toda do "Chegaram perto de você" da home.
  */
-async function AbaNovas({ f, q, ate }: { f: string | null; q: string; ate: number }) {
+async function AbaNovas({ f, q, pagina }: { f: string | null; q: string; pagina: number }) {
   const [{ contas: todas, agora }, local] = await Promise.all([contasPerto({ dias: 30, quantos: 300 }), obterLocal()]);
   if (!todas.length) {
     return (
@@ -448,7 +521,8 @@ async function AbaNovas({ f, q, ate }: { f: string | null; q: string; ate: numbe
     FILTROS.novas.map((x) => [x.valor, achadas.filter((c) => passa(c, x.valor)).length]),
   );
   const filtradas = achadas.filter((c) => passa(c, f));
-  const contas = filtradas.slice(0, ate);
+  const pg = paginar(filtradas.length, pagina);
+  const contas = filtradas.slice(pg.de, pg.ate);
   const estados = await estadosDeConexao(contas.map((c) => c.id));
   return (
     <div className="flex flex-col gap-4">
@@ -459,25 +533,28 @@ async function AbaNovas({ f, q, ate }: { f: string | null; q: string; ate: numbe
       {contas.length === 0 ? (
         <NadaComFiltro aba="novas" f={f} q={q} />
       ) : (
-        <ul aria-label="Quem chegou perto de você" className={LISTA}>
-          {contas.map((c) => (
-            <LinhaDeConta
-              key={c.id}
-              c={c}
-              detalhe={`${oQueE(c.tipo)} · ${formatarLugar(c.bairro, c.cidade)} · chegou ${tempoRelativo(c.criado_em, agora)}`}
-              acao={
-                <BotaoConectarCompacto
-                  outro={{ id: c.id, nome: c.nome, tipo: c.tipo }}
-                  estado={estados.get(c.id) ?? null}
-                  voltar="/painel/conexoes?aba=novas"
-                  jeito="pilula"
-                />
-              }
-            />
-          ))}
-        </ul>
+        <>
+          <Faixa de={pg.de} ate={pg.ate} total={filtradas.length} />
+          <ul aria-label="Quem chegou perto de você" className={LISTA}>
+            {contas.map((c) => (
+              <LinhaDeConta
+                key={c.id}
+                c={c}
+                detalhe={`${oQueE(c.tipo)} · ${formatarLugar(c.bairro, c.cidade)} · chegou ${tempoRelativo(c.criado_em, agora)}`}
+                acao={
+                  <BotaoConectarCompacto
+                    outro={{ id: c.id, nome: c.nome, tipo: c.tipo }}
+                    estado={estados.get(c.id) ?? null}
+                    voltar={endereco("novas", f, q, pg.pagina)}
+                    jeito="pilula"
+                  />
+                }
+              />
+            ))}
+          </ul>
+        </>
       )}
-      <VerMais aba="novas" f={f} q={q} ate={ate} total={filtradas.length} />
+      <Paginas aba="novas" f={f} q={q} pagina={pg.pagina} paginas={pg.paginas} />
     </div>
   );
 }
@@ -487,12 +564,12 @@ async function AbaEmpresas({
   seguidos,
   f,
   q,
-  ate,
+  pagina,
 }: {
   seguidos: Awaited<ReturnType<typeof meusSeguidos>>;
   f: string | null;
   q: string;
-  ate: number;
+  pagina: number;
 }) {
   const { contas: todas } = await contasPerto({ quem: "empresas", quantos: 300 });
   if (!todas.length) {
@@ -521,7 +598,8 @@ async function AbaEmpresas({
     FILTROS.empresas.map((x) => [x.valor, achadas.filter((c) => passa(c, x.valor)).length]),
   );
   const filtradas = achadas.filter((c) => passa(c, f));
-  const contas = filtradas.slice(0, ate);
+  const pg = paginar(filtradas.length, pagina);
+  const contas = filtradas.slice(pg.de, pg.ate);
   return (
     <div className="flex flex-col gap-4">
       <BarraDeFiltros aba="empresas" f={f} q={q} numeros={numeros} total={achadas.length} />
@@ -531,30 +609,33 @@ async function AbaEmpresas({
       {contas.length === 0 ? (
         <NadaComFiltro aba="empresas" f={f} q={q} />
       ) : (
-        <ul aria-label="Empresas perto de você" className={LISTA}>
-          {contas.map((c) => {
-            const n = noAr.get(c.id) ?? 0;
-            return (
-              <LinhaDeConta
-                key={c.id}
-                c={c}
-                detalhe={`${n ? plural(n, "vaga no ar", "vagas no ar") : oQueE(c.tipo)} · ${formatarLugar(c.bairro, c.cidade)}`}
-                acao={
-                  <BotaoSeguir
-                    alvo={{ perfil: c.id }}
-                    seguidoId={seguidos.find((s) => s.alvo_perfil === c.id)?.id ?? null}
-                    logado
-                    voltar="/painel/conexoes?aba=empresas"
-                    rotulo="Seguir"
-                    rotuloSeguindo="Seguindo"
-                  />
-                }
-              />
-            );
-          })}
-        </ul>
+        <>
+          <Faixa de={pg.de} ate={pg.ate} total={filtradas.length} />
+          <ul aria-label="Empresas perto de você" className={LISTA}>
+            {contas.map((c) => {
+              const n = noAr.get(c.id) ?? 0;
+              return (
+                <LinhaDeConta
+                  key={c.id}
+                  c={c}
+                  detalhe={`${n ? plural(n, "vaga no ar", "vagas no ar") : oQueE(c.tipo)} · ${formatarLugar(c.bairro, c.cidade)}`}
+                  acao={
+                    <BotaoSeguir
+                      alvo={{ perfil: c.id }}
+                      seguidoId={seguidos.find((s) => s.alvo_perfil === c.id)?.id ?? null}
+                      logado
+                      voltar={endereco("empresas", f, q, pg.pagina)}
+                      rotulo="Seguir"
+                      rotuloSeguindo="Seguindo"
+                    />
+                  }
+                />
+              );
+            })}
+          </ul>
+        </>
       )}
-      <VerMais aba="empresas" f={f} q={q} ate={ate} total={filtradas.length} />
+      <Paginas aba="empresas" f={f} q={q} pagina={pg.pagina} paginas={pg.paginas} />
     </div>
   );
 }
@@ -602,12 +683,15 @@ function AbaConectadas({
   agora,
   f,
   q,
+  pagina,
 }: {
   lista: Conexao[];
   empresa: boolean;
   agora: number;
   f: string | null;
   q: string;
+  /** a página das suas conexões (os pedidos ficam todos à vista) */
+  pagina: number;
 }) {
   if (todas.length === 0) return empresa ? <VazioEmpresa /> : <VazioTalento />;
   const achadas = todas.filter((c) => bate(q, c.outro_nome, c.outro_bairro, c.outro_cidade));
@@ -624,7 +708,9 @@ function AbaConectadas({
   // com um filtro, só o que passa nele (cada um na sua parte)
   const lista = f ? achadas.filter(passa[f]) : achadas;
   const recebidos = lista.filter(passa.responder);
-  const conexoes = lista.filter(passa.conectadas);
+  const todasConexoes = lista.filter(passa.conectadas);
+  const pg = paginar(todasConexoes.length, pagina);
+  const conexoes = todasConexoes.slice(pg.de, pg.ate);
   const enviados = lista.filter(passa.enviados);
   const naoAceitos = lista.filter(passa.naoaceitos);
 
@@ -661,8 +747,9 @@ function AbaConectadas({
         </Secao>
       )}
 
+      {conexoes.length > 0 && <Faixa de={pg.de} ate={pg.ate} total={todasConexoes.length} />}
       {conexoes.length > 0 && (
-        <Secao id="conectados" titulo={conexoes.length === 1 ? "Sua conexão" : "Suas conexões"}>
+        <Secao id="conectados" titulo={todasConexoes.length === 1 ? "Sua conexão" : "Suas conexões"}>
           {conexoes.map((c) => (
             <li key={c.id}>
               <Link href={caminhoConexao(c.outro_id)} className="flex gap-3 p-4 transition-colors hover:bg-surface-300">
@@ -690,6 +777,7 @@ function AbaConectadas({
           ))}
         </Secao>
       )}
+      {conexoes.length > 0 && <Paginas aba="conectadas" f={f} q={q} pagina={pg.pagina} paginas={pg.paginas} />}
 
       {enviados.length > 0 && (
         <Secao id="enviados" titulo="Pedidos que você fez">
