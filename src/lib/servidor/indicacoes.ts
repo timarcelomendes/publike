@@ -91,6 +91,7 @@ export async function notasDaIA(q: QuemProcura, vagas: VagaIndicada[], usuarioId
 
     const lista = escolhidas.map((v, i) => descreverVaga(v, i + 1)).join("\n\n");
     const { texto, parada } = await chamarIA({
+      funcionalidade: "descobrir",
       modelo,
       sistema: SISTEMA,
       mensagem: `<pessoa>\n${pessoa}\n</pessoa>\n\n<vagas>\n${lista}\n</vagas>\n\nResponda com o número da vaga (o que está entre colchetes) no campo id.`,

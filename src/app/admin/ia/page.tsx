@@ -3,10 +3,17 @@ import { NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { FormConfigIA } from "@/components/admin/ia";
+import { FormConfigIA, type UsoDaFuncionalidade } from "@/components/admin/ia";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
-import { configDoSite, contasDoCopiloto, decisoesDaIA, experimentosDosRecursos, numerosDoPainel } from "@/lib/admin/dados";
+import {
+  configDoSite,
+  contasDoCopiloto,
+  decisoesDaIA,
+  experimentosDosRecursos,
+  numerosDoPainel,
+  usoDaIA,
+} from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { tempoRelativo } from "@/lib/formato";
 import { MODELOS_IA, modeloDaIA, temChave } from "@/lib/ia/openai";
@@ -25,6 +32,22 @@ const CUSTOS = [
   { tarefa: "Resumo do painel", luna: "menos de US$ 0,001 cada", sol: "cerca de US$ 0,01 cada" },
 ];
 
+/** As chamadas e o custo estimado de cada funcionalidade nos últimos 30 dias (null: sem a migração). */
+function usoPorFuncionalidade(uso: Awaited<ReturnType<typeof usoDaIA>>): UsoDaFuncionalidade | null {
+  if (!uso) return null;
+  const porFuncionalidade: UsoDaFuncionalidade = {};
+  for (const u of uso) {
+    const preco = MODELOS_IA.find((m) => m.id === u.modelo)?.preco ?? null;
+    const atual = porFuncionalidade[u.funcionalidade] ?? { chamadas: 0, falhas: 0, dolares: 0, semPreco: false };
+    atual.chamadas += Number(u.chamadas);
+    atual.falhas += Number(u.falhas);
+    if (preco) atual.dolares += (Number(u.tokens_entrada) * preco.entrada + Number(u.tokens_saida) * preco.saida) / 1e6;
+    else if (Number(u.chamadas)) atual.semPreco = true;
+    porFuncionalidade[u.funcionalidade] = atual;
+  }
+  return porFuncionalidade;
+}
+
 export default function IA() {
   return (
     <Suspense fallback={<EsqueletoAdmin />}>
@@ -35,13 +58,14 @@ export default function IA() {
 
 async function Conteudo() {
   const c = await exigirAdminLocal();
-  const [config, decisoes, numeros, agora, copiloto, experimentos] = await Promise.all([
+  const [config, decisoes, numeros, agora, copiloto, experimentos, uso] = await Promise.all([
     configDoSite(c),
     decisoesDaIA(c, 40),
     numerosDoPainel(c),
     agoraDaRequisicao(),
     contasDoCopiloto(c),
     experimentosDosRecursos(c),
+    usoDaIA(c, 30).catch(() => null),
   ]);
   const filas = situacaoFilas();
   const chaves = { openai: temChave("openai"), claude: temChave("claude") };
@@ -93,7 +117,7 @@ async function Conteudo() {
       </Secao>
 
       <Secao titulo="Configurações">
-        <FormConfigIA config={config} modelos={MODELOS_IA} chaves={chaves} />
+        <FormConfigIA config={config} modelos={MODELOS_IA} chaves={chaves} uso={usoPorFuncionalidade(uso)} />
       </Secao>
 
       {copiloto && (

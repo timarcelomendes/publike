@@ -1,6 +1,8 @@
 import "server-only";
 import { chaveClaude, chaveIA, enderecoIA } from "@/lib/servidor/ambiente";
 import { criarClientePublico } from "@/lib/supabase/servidor";
+import type { FuncionalidadeIA } from "@/lib/ia-nomes";
+import { contarUsoDaIA } from "@/lib/servidor/uso-da-ia";
 import { chamarClaude, ErroClaude, motivoDaApi } from "./claude";
 
 // Conversa com a IA: a da OpenAI (Responses API) ou o Claude (./claude.ts), conforme o modelo escolhido no
@@ -15,6 +17,8 @@ import { chamarClaude, ErroClaude, motivoDaApi } from "./claude";
 export const MODELOS_IA = [
   {
     id: "gpt-6-luna",
+    /** dólares por milhão de tokens (entrada / saída), em outubro de 2026 */
+    preco: { entrada: 0.1, saida: 0.5 },
     nome: "GPT-6 Luna",
     ajuda: "Rápido e o mais barato. Recomendado.",
     esforco: "none",
@@ -23,6 +27,8 @@ export const MODELOS_IA = [
   },
   {
     id: "gpt-6.1-sol",
+    /** dólares por milhão de tokens (entrada / saída), em outubro de 2026 */
+    preco: { entrada: 2, saida: 10 },
     nome: "GPT-6.1 Sol",
     ajuda: "Escreve melhor, custa de 20 a 40 vezes mais.",
     esforco: "low",
@@ -31,6 +37,8 @@ export const MODELOS_IA = [
   },
   {
     id: "claude-haiku-5-5",
+    /** dólares por milhão de tokens (entrada / saída), em outubro de 2026 */
+    preco: { entrada: 0.1, saida: 0.5 },
     nome: "Claude Haiku 5.5",
     ajuda: "Rápido, o mesmo preço do Luna. Gasta os créditos do Claude.",
     esforco: "none",
@@ -39,6 +47,8 @@ export const MODELOS_IA = [
   },
   {
     id: "claude-sonnet-5-5",
+    /** dólares por milhão de tokens (entrada / saída), em outubro de 2026 */
+    preco: { entrada: 2, saida: 10 },
     nome: "Claude Sonnet 5.5",
     ajuda: "Escreve melhor, o mesmo preço do Sol. Gasta os créditos do Claude.",
     esforco: "low",
@@ -102,6 +112,8 @@ async function usarReserva() {
 
 type Pedido = {
   modelo: string;
+  /** de qual funcionalidade é a chamada (Admin › IA conta as chamadas e o custo de cada uma) */
+  funcionalidade: FuncionalidadeIA;
   sistema: string;
   mensagem: string;
   maxTokens: number;
@@ -132,6 +144,7 @@ type ItemSaida = {
 };
 type RespostaOpenAI = {
   status?: string;
+  usage?: { input_tokens?: number; output_tokens?: number };
   incomplete_details?: { reason?: string } | null;
   output?: ItemSaida[];
   output_text?: string;
@@ -152,10 +165,32 @@ function explicarErro(status: number, corpo: string) {
 }
 
 /** buscas: quantas buscas na internet a IA fez (para explicar uma busca que voltou vazia) */
-type RespostaIA = { texto: string; parada: ParadaIA; modelo: string; fontes: string[]; buscas?: number };
+type RespostaIA = {
+  texto: string;
+  parada: ParadaIA;
+  modelo: string;
+  fontes: string[];
+  buscas?: number;
+  /** os tokens que a chamada gastou (para o custo no Admin › IA) */
+  tokens?: { entrada: number; saida: number };
+};
 
-/** Manda o pedido para a IA do modelo escolhido; com a reserva ligada, o par na outra IA cobre a falha. */
+/**
+ * Manda o pedido para a IA do modelo escolhido; com a reserva ligada, o par na outra IA cobre a falha. Cada chamada
+ * conta no uso da funcionalidade (só os números: o modelo que respondeu e os tokens).
+ */
 export async function chamarIA(p: Pedido): Promise<RespostaIA> {
+  try {
+    const r = await chamarComReserva(p);
+    await contarUsoDaIA(p.funcionalidade, r.modelo, r.tokens ?? null);
+    return r;
+  } catch (e) {
+    await contarUsoDaIA(p.funcionalidade, modeloDaIA(p.modelo).id, null, true);
+    throw e;
+  }
+}
+
+async function chamarComReserva(p: Pedido): Promise<RespostaIA> {
   const escolhido = modeloDaIA(p.modelo);
   const par = MODELOS_IA.find((m) => m.id === escolhido.par);
   const comReserva = async () => Boolean(par && temChave(par.provedor) && (await usarReserva()));
@@ -304,7 +339,14 @@ async function chamarOpenAI(modelo: ModeloIA, p: Pedido): Promise<RespostaIA> {
     // sem espaço para terminar, ou cortada pelo filtro de conteúdo da OpenAI
     parada = json.incomplete_details?.reason === "max_output_tokens" ? "limite" : "recusa";
   }
-  return { texto: texto.trim(), parada, modelo: modelo.id, fontes: [...fontes], buscas };
+  return {
+    texto: texto.trim(),
+    parada,
+    modelo: modelo.id,
+    fontes: [...fontes],
+    buscas,
+    tokens: { entrada: json.usage?.input_tokens ?? 0, saida: json.usage?.output_tokens ?? 0 },
+  };
 }
 
 /** Lê a resposta em JSON (saída estruturada). */

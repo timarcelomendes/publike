@@ -251,6 +251,7 @@ export async function lerVagasImportadas(
 ): Promise<VagaImportada[]> {
   const temTexto = Boolean(textoColado?.trim());
   const { texto: resposta, parada } = await chamarIA({
+    funcionalidade: "ler",
     modelo,
     sistema: SISTEMA,
     mensagem: temTexto

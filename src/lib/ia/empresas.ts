@@ -41,6 +41,7 @@ export async function agruparEmpresasComIA(empresas: EmpresaParaIA[], modelo: st
   const limpo = (t: string) => t.replace(/[<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
   const lista = empresas.map((e) => `${e.id}: ${limpo(e.nome)}`).join("\n");
   const { texto } = await chamarIA({
+    funcionalidade: "admin",
     modelo,
     sistema: SISTEMA,
     mensagem: `<empresas>\n${lista}\n</empresas>`,

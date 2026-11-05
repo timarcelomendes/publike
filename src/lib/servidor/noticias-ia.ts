@@ -163,6 +163,7 @@ export async function buscarNoticias({ forcar = false, agora = Date.now() } = {}
   let buscas: number | undefined;
   try {
     const r = await chamarIA({
+      funcionalidade: "admin",
       modelo: contexto.modelo ?? "",
       sistema: instrucoes(hojeEmBrasilia(agora)),
       mensagem: lista

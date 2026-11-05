@@ -913,6 +913,16 @@ export async function decisoesDaIA(c: ClienteBanco, limite = 40) {
   return data ?? [];
 }
 
+/** As chamadas da IA de cada funcionalidade e modelo nos últimos dias (sem a migração 20270210120000: nada). */
+export async function usoDaIA(c: ClienteBanco, dias = 30) {
+  const { data, error } = await c.rpc("admin_uso_da_ia", { p_dias: dias });
+  if (error) {
+    if (error.code === "PGRST202") return null;
+    falha("o uso da IA", error);
+  }
+  return data ?? [];
+}
+
 export async function ultimoResumo(c: ClienteBanco) {
   const { data, error } = await c.rpc("admin_ultimo_resumo");
   if (error) falha("o resumo da IA", error);

@@ -113,11 +113,22 @@ type Bloco = {
   citations?: { type?: string; url?: string }[];
   content?: { type?: string; url?: string }[] | { type?: string };
 };
-type RespostaClaude = { content?: Bloco[]; stop_reason?: string | null };
+type RespostaClaude = {
+  content?: Bloco[];
+  stop_reason?: string | null;
+  usage?: { input_tokens?: number; output_tokens?: number };
+};
 
 export async function chamarClaude(
   p: PedidoClaude,
-): Promise<{ texto: string; parada: ParadaIA; modelo: string; fontes: string[]; buscas: number }> {
+): Promise<{
+  texto: string;
+  parada: ParadaIA;
+  modelo: string;
+  fontes: string[];
+  buscas: number;
+  tokens: { entrada: number; saida: number };
+}> {
   const chave = chaveClaude();
   if (!chave) throw new ErroClaude("Falta a chave do Claude no servidor (ANTHROPIC_API_KEY).", undefined, true);
 
@@ -178,9 +189,13 @@ export async function chamarClaude(
   const mensagens = corpo.messages as Record<string, unknown>[];
   const fontes = new Set<string>();
   let buscas = 0;
+  // os tokens de todas as voltas (cada uma é cobrada)
+  const tokens = { entrada: 0, saida: 0 };
   let json: RespostaClaude = {};
   for (let vez = 0; vez < 4; vez++) {
     json = await pedirAoClaude(corpo, chave, p.tempoLimite);
+    tokens.entrada += json.usage?.input_tokens ?? 0;
+    tokens.saida += json.usage?.output_tokens ?? 0;
     for (const b of json.content ?? []) {
       if (b.type === "server_tool_use") buscas++;
       if (b.type === "web_search_tool_result" && Array.isArray(b.content))
@@ -208,7 +223,7 @@ export async function chamarClaude(
       : json.stop_reason === "max_tokens" || json.stop_reason === "pause_turn"
         ? "limite"
         : null;
-  return { texto: texto.trim(), parada, modelo: p.modelo, fontes: [...fontes], buscas };
+  return { texto: texto.trim(), parada, modelo: p.modelo, fontes: [...fontes], buscas, tokens };
 }
 
 async function pedirAoClaude(

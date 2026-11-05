@@ -1828,6 +1828,28 @@ export type Database = {
         Args: { p_chave: string; p_perfil: string; p_em: string };
         Returns: undefined;
       };
+      servidor_contar_uso_da_ia: {
+        Args: {
+          p_chave: string;
+          p_funcionalidade: string;
+          p_modelo: string;
+          p_falhou?: boolean;
+          p_entrada?: number;
+          p_saida?: number;
+        };
+        Returns: undefined;
+      };
+      admin_uso_da_ia: {
+        Args: { p_dias?: number };
+        Returns: {
+          funcionalidade: string;
+          modelo: string;
+          chamadas: number;
+          falhas: number;
+          tokens_entrada: number;
+          tokens_saida: number;
+        }[];
+      };
       servidor_funcao_guardada: {
         Args: { p_chave: string; p_titulo: string };
         Returns: { cbo: string | null; origem: string }[];

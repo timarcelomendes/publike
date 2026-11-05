@@ -103,6 +103,7 @@ Regras:
 /** Lê uma imagem (data: URL). Erros da IA saem como ErroIA. */
 export async function lerVagaDaImagem(imagem: string, nomeArquivo: string, modelo: string): Promise<LeituraDaImagem> {
   const { texto, parada } = await chamarIA({
+    funcionalidade: "ler",
     modelo,
     sistema: instrucoes(),
     mensagem: `Imagem: ${nomeArquivo.slice(0, 120)}`,

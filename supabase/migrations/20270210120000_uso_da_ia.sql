@@ -1,0 +1,83 @@
+-- Quantas chamadas cada funcionalidade da IA fez (05/11/2026; claude/plano-ia-por-funcionalidade.md, a parte que
+-- tinha ficado para depois): por dia, funcionalidade e modelo, com os tokens (para o custo) e as falhas. Só os
+-- números: nada do texto, de quem pediu nem da resposta. Fica 400 dias. Pode rodar de novo.
+
+create table if not exists privado.uso_da_ia (
+  dia date not null default (now() at time zone 'America/Sao_Paulo')::date,
+  funcionalidade text not null check (funcionalidade ~ '^[a-z]{2,20}$'),
+  modelo text not null check (char_length(modelo) between 1 and 60),
+  chamadas integer not null default 0,
+  falhas integer not null default 0,
+  tokens_entrada bigint not null default 0,
+  tokens_saida bigint not null default 0,
+  primary key (dia, funcionalidade, modelo)
+);
+alter table privado.uso_da_ia enable row level security;
+revoke all on privado.uso_da_ia from public, anon, authenticated;
+
+-- o servidor conta uma chamada (feita ou que falhou)
+create or replace function public.servidor_contar_uso_da_ia(
+  p_chave text,
+  p_funcionalidade text,
+  p_modelo text,
+  p_falhou boolean default false,
+  p_entrada integer default 0,
+  p_saida integer default 0
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  hoje date := (now() at time zone 'America/Sao_Paulo')::date;
+begin
+  perform privado.exigir_servidor(p_chave);
+  if coalesce(p_funcionalidade, '') !~ '^[a-z]{2,20}$' or char_length(coalesce(p_modelo, '')) not between 1 and 60 then
+    raise exception 'Uso inválido.' using errcode = '22023';
+  end if;
+  insert into privado.uso_da_ia as u (dia, funcionalidade, modelo, chamadas, falhas, tokens_entrada, tokens_saida)
+  values (
+    hoje, p_funcionalidade, p_modelo,
+    case when p_falhou then 0 else 1 end, case when p_falhou then 1 else 0 end,
+    greatest(coalesce(p_entrada, 0), 0), greatest(coalesce(p_saida, 0), 0)
+  )
+  on conflict (dia, funcionalidade, modelo) do update
+     set chamadas = u.chamadas + excluded.chamadas,
+         falhas = u.falhas + excluded.falhas,
+         tokens_entrada = u.tokens_entrada + excluded.tokens_entrada,
+         tokens_saida = u.tokens_saida + excluded.tokens_saida;
+  -- de vez em quando, o que passou de 400 dias sai
+  if random() < 0.01 then
+    delete from privado.uso_da_ia where dia < hoje - 400;
+  end if;
+end
+$$;
+
+-- o Admin › IA: o total de cada funcionalidade e modelo nos últimos dias
+create or replace function public.admin_uso_da_ia(p_dias integer default 30)
+returns table (funcionalidade text, modelo text, chamadas bigint, falhas bigint, tokens_entrada bigint, tokens_saida bigint)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+#variable_conflict use_column
+begin
+  perform privado.exigir_admin();
+  return query
+  select u.funcionalidade, u.modelo, sum(u.chamadas)::bigint, sum(u.falhas)::bigint,
+         sum(u.tokens_entrada)::bigint, sum(u.tokens_saida)::bigint
+    from privado.uso_da_ia u
+   where u.dia > (now() at time zone 'America/Sao_Paulo')::date - least(greatest(coalesce(p_dias, 30), 1), 400)
+   group by u.funcionalidade, u.modelo;
+end
+$$;
+
+revoke execute on function public.servidor_contar_uso_da_ia(text, text, text, boolean, integer, integer),
+  public.admin_uso_da_ia(integer) from public;
+grant execute on function public.servidor_contar_uso_da_ia(text, text, text, boolean, integer, integer)
+  to anon, authenticated, service_role;
+grant execute on function public.admin_uso_da_ia(integer) to authenticated, service_role;
+
+notify pgrst, 'reload schema';

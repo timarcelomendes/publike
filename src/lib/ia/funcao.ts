@@ -46,6 +46,7 @@ export async function escolherFuncaoComIA(
     .map((o) => `${o.cbo}: ${o.nome}${o.sinonimos.length ? ` (também: ${o.sinonimos.slice(0, 4).join("; ")})` : ""}`)
     .join("\n");
   const { texto } = await chamarIA({
+    funcionalidade: "funcao",
     modelo,
     sistema: tipo === "vaga" ? SISTEMA : SISTEMA_EXPERIENCIA,
     mensagem:

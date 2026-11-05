@@ -35,14 +35,53 @@ function Opcao({ nome, rotulo, ajuda, inicial }: { nome: string; rotulo: string;
   );
 }
 
+/** As chamadas dos últimos 30 dias de cada funcionalidade e o custo estimado (pelos tokens e pelo preço do modelo). */
+export type UsoDaFuncionalidade = Partial<
+  Record<string, { chamadas: number; falhas: number; dolares: number; semPreco: boolean }>
+>;
+
+const dolares = (v: number) =>
+  v === 0
+    ? "US$ 0"
+    : v < 0.01
+      ? "menos de US$ 0,01"
+      : `cerca de US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** "1.234 chamadas em 30 dias · cerca de US$ 0,42 · 3 falharam" */
+function textoDoUso(u: UsoDaFuncionalidade[string]) {
+  if (!u || (!u.chamadas && !u.falhas)) return "Nenhuma chamada em 30 dias";
+  const partes = [
+    `${u.chamadas.toLocaleString("pt-BR")} ${u.chamadas === 1 ? "chamada" : "chamadas"} em 30 dias`,
+    u.semPreco ? null : dolares(u.dolares),
+    u.falhas ? `${u.falhas.toLocaleString("pt-BR")} ${u.falhas === 1 ? "falhou" : "falharam"}` : null,
+  ];
+  return partes.filter(Boolean).join(" · ");
+}
+
+/** O total de todas as funcionalidades. */
+function somar(uso: UsoDaFuncionalidade) {
+  const total = { chamadas: 0, falhas: 0, dolares: 0, semPreco: false };
+  for (const u of Object.values(uso)) {
+    if (!u) continue;
+    total.chamadas += u.chamadas;
+    total.falhas += u.falhas;
+    total.dolares += u.dolares;
+    total.semPreco ||= u.semPreco;
+  }
+  return total;
+}
+
 export function FormConfigIA({
   config,
   modelos,
   chaves,
+  uso,
 }: {
   config: ConfigSite;
   modelos: readonly Modelo[];
   chaves: Chaves;
+  /** null: sem a migração do uso (não mostra a contagem) */
+  uso: UsoDaFuncionalidade | null;
 }) {
   const [estado, acao, enviando] = useActionState(salvarConfigIAProtegido, INICIAL);
   const atual = modelos.some((m) => m.id === config.ia_modelo) ? config.ia_modelo : modelos[0].id;
@@ -118,7 +157,13 @@ export function FormConfigIA({
         <legend className="mb-1 text-label">Modelo de cada funcionalidade</legend>
         <p className="text-body-sm text-ink-muted">
           Ponha num modelo que escreve melhor só o que precisa (o chat, por exemplo) e deixe o resto no mais barato.
+          {uso && " Embaixo de cada uma, as chamadas dos últimos 30 dias e o custo estimado pelos tokens."}
         </p>
+        {uso && (
+          <p className="text-label">
+            {textoDoUso(somar(uso)).replace("em 30 dias", "em 30 dias, no total")}
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           {FUNCIONALIDADES_IA.map((f) => {
             const escolhido = escolhas[f.id];
@@ -138,6 +183,7 @@ export function FormConfigIA({
                     </option>
                   ))}
                 </select>
+                {uso && <span className="text-body-sm text-ink-muted tabular-nums">{textoDoUso(uso[f.id])}</span>}
               </label>
             );
           })}

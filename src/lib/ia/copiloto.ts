@@ -56,6 +56,7 @@ export async function sugerirCriterios(vaga: string, modelo: string): Promise<Cr
     "\n\nDevolva pelo menos 3 critérios: a vaga sempre tem a função, e quase sempre o horário.",
   ]) {
     const r0 = await chamarIA({
+      funcionalidade: "empresa",
       modelo,
       sistema: SISTEMA_CRITERIOS,
       mensagem: `<vaga>\n${limpo(vaga)}\n</vaga>${extra}`,
@@ -144,6 +145,7 @@ export async function lerCurriculo(
     "</curriculo>",
   ].join("\n");
   const r0 = await chamarIA({
+    funcionalidade: "empresa",
     modelo,
     sistema: SISTEMA_LEITURA,
     mensagem,
