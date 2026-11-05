@@ -552,6 +552,22 @@ export async function avisarLiberacoesPorMeta(): Promise<{ avisadas: number; mot
   return { avisadas: Number(data ?? 0) };
 }
 
+/**
+ * As consultas de salário pelas vagas (claude/plano-consulta-de-salarios.md; migração 20270218120000): 2 a cada 5
+ * vagas novas de quem contrata, com o aviso no sino. Devolve quantas contas ganharam.
+ */
+export async function darConsultasDeSalario(): Promise<{ contas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { contas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_creditos_salario", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { contas: 0 };
+    console.error("Publike: falha ao dar as consultas de salário:", error.message);
+    return { contas: 0, motivo: "Não foi possível dar as consultas de salário pelas vagas." };
+  }
+  return { contas: Number(data ?? 0) };
+}
+
 export async function processarFilas() {
   try {
     // as Automações personalizadas primeiro: o que elas fazem também vira aviso e e-mail (import aqui: o motor

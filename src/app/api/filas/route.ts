@@ -9,6 +9,7 @@ import {
   enviarEmailsPendentes,
   enviarPushPendentes,
   avisarLiberacoesPorMeta,
+  darConsultasDeSalario,
   lembrarRespostas,
   liberarContatosParados,
   revisarAnunciosPendentes,
@@ -82,6 +83,8 @@ export async function GET(request: Request) {
   const liberacoes = await comTempo(() => avisarLiberacoesPorMeta());
   // quem contrata: o candidato que combina com a vaga (dos currículos que mudaram desde a última rodada)
   const talentos = await comTempo(() => avisarTalentosQueCombinam());
+  // quem contrata: 2 consultas de salário a cada 5 vagas novas (o aviso sai junto com os e-mails abaixo)
+  const consultasSalario = await comTempo(() => darConsultasDeSalario());
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
   const emails = await enviarEmailsPendentes(20);
   const celular = await enviarPushPendentes(50);
@@ -99,6 +102,7 @@ export async function GET(request: Request) {
     funcoesCv.motivo,
     liberacoes.motivo,
     talentos.motivo,
+    consultasSalario.motivo,
     noticias.motivo,
     testes.motivo,
     triagem.motivo,
@@ -128,6 +132,7 @@ export async function GET(request: Request) {
       funcoesCurriculos: funcoesCv.lidos,
       liberacoes: liberacoes.avisadas,
       talentos: talentos.avisados,
+      consultasSalario: consultasSalario.contas,
       combinam: {
         vagas: combinam.vagas,
         talentos: combinam.talentos,

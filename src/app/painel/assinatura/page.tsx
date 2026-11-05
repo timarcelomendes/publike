@@ -232,7 +232,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
               : undefined
           }
         >
-          Assine um recurso, o combo Triagem + Teste Prático ou o Plano Completo, com os quatro, por mês ou a cada 3
+          Assine um recurso, o combo Triagem + Teste Prático ou o Plano Completo, com todos, por mês ou a cada 3
           meses.
         </Vazio>
       ) : (

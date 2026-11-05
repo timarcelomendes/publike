@@ -1,4 +1,4 @@
-import { ChevronRight, ClipboardCheck, Layers, PackageCheck, Sparkles, Video, Workflow } from "lucide-react";
+import { ChevronRight, ClipboardCheck, HandCoins, Layers, PackageCheck, Sparkles, Video, Workflow } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
@@ -39,16 +39,19 @@ const ICONE: Record<Produto, typeof Sparkles> = {
   completo: PackageCheck,
   video: Video,
   automacoes: Workflow,
+  salarios: HandCoins,
 };
 const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
   combo: "A Triagem com IA e o Teste Prático numa assinatura só, por menos que os dois separados.",
   completo:
-    "Os quatro numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas, por menos que separados.",
+    "Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas e Consulta de salários, por menos que separados.",
   video: "O candidato grava as respostas pelo celular e a IA resume; e a entrevista ao vivo, sem instalar nada.",
   automacoes:
     "As suas regras: quando algo acontece, se a pessoa atende o que você escolher, o Publike faz o que você mandar.",
+  salarios:
+    "Consultas sem limite: quanto o mercado paga para cada função, o que as vagas do Publike oferecem e quantos talentos combinam.",
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -113,7 +116,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           produto === "combo"
             ? "Os dois já estão liberados para a sua conta"
             : produto === "completo"
-              ? "Os quatro já estão liberados para a sua conta"
+              ? "Todos já estão liberados para a sua conta"
               : `${NOME_PRODUTO[produto]}: já liberado para a sua conta`
         }
       >
@@ -219,7 +222,7 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
   completo: {
     titulo: "Plano Completo",
     texto:
-      "Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas, por menos que separados.",
+      "Tudo numa assinatura só: Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas e Consulta de salários, por menos que separados.",
     botao: "Ver o Plano Completo",
   },
   video: {
@@ -232,16 +235,22 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "Monte as suas regras: dispense quem não tem o obrigatório e adiante quem combina, sozinho.",
     botao: "Conhecer as Automações personalizadas",
   },
+  salarios: {
+    titulo: "Consulta de salários",
+    texto: "Quanto o mercado paga para cada função, com a fonte, e quanto oferecer para fechar rápido. Sem limite.",
+    botao: "Conhecer a Consulta de salários",
+  },
 };
 
 /** As outras opções de cada tela: no Plano Completo, os recursos separados; nas outras, o Plano Completo e mais duas. */
 const OUTRAS: Record<Produto, Produto[]> = {
-  completo: ["copiloto", "testes", "video", "automacoes"],
+  completo: ["copiloto", "testes", "video", "automacoes", "salarios"],
   copiloto: ["completo", "testes", "combo"],
   testes: ["completo", "copiloto", "combo"],
   combo: ["completo", "copiloto", "testes"],
   video: ["completo", "automacoes", "copiloto"],
   automacoes: ["completo", "video", "copiloto"],
+  salarios: ["completo", "copiloto", "automacoes"],
 };
 
 const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);

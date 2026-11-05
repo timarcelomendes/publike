@@ -277,7 +277,7 @@ export const PERFIS: Perfil[] = [
     extras: {
       titulo: "Para ir mais longe",
       texto:
-        "Recursos pagos, para quem contrata muito. Experimente cada um por 15 dias grátis, ou assine os quatro no Plano Completo.",
+        "Recursos pagos, para quem contrata muito. Experimente cada um por 15 dias grátis, ou assine todos no Plano Completo.",
       recursos: [
         {
           icone: "texto",

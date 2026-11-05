@@ -107,6 +107,7 @@ export type Secao = {
     | "etapas"
     | "numeros"
     | "automacoes"
+    | "salarios"
     | "assinatura";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
@@ -262,6 +263,8 @@ export function gruposDoModo(
             ]
           : []),
         { href: "/talentos", nome: "Talentos", icone: "talentos" },
+        // a consulta de salários (migração 20270218120000): as consultas grátis e a assinatura
+        { href: "/painel/salarios", nome: "Salários", icone: "salarios" },
       ],
     },
     {
@@ -336,6 +339,7 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/automacoes") ||
     caminho.startsWith("/painel/etapas") ||
     caminho.startsWith("/painel/numeros") ||
+    caminho.startsWith("/painel/salarios") ||
     caminho.startsWith("/painel/assinatura") ||
     caminho.startsWith("/painel/assinar") ||
     caminho.startsWith("/painel/faturas")

@@ -1898,6 +1898,12 @@ export type Database = {
         Args: { p_chave: string; p_titulo: string; p_cbo: string | null; p_origem: string };
         Returns: undefined;
       };
+      // a consulta de salários (migração 20270218120000)
+      salarios_da_conta: { Args: Record<string, never>; Returns: Json };
+      consultar_salario: { Args: { p_cbo: string }; Returns: Json };
+      consulta_de_salario: { Args: { p_cbo: string; p_cidades: string[] }; Returns: Json };
+      experiencias_da_vitrine: { Args: { p_cidades: string[] }; Returns: { perfil_id: string; experiencias: Json }[] };
+      servidor_creditos_salario: { Args: { p_chave: string }; Returns: number };
       salario_da_funcao: {
         Args: { p_cbo: string; p_regiao?: string };
         Returns: {

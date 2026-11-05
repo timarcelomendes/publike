@@ -36,7 +36,16 @@ export type EstadoRecurso = {
   indisponivel?: boolean;
 };
 
-export type RecursosPagos = Record<RecursoPago, EstadoRecurso>;
+/**
+ * O que uma assinatura libera: os recursos com dias grátis e a Consulta de salários (`salarios`, migração
+ * 20270218120000), que não tem dias grátis (tem as consultas grátis) e por isso fica fora de `RecursoPago`.
+ */
+export type Liberavel = RecursoPago | "salarios";
+
+export type RecursosPagos = Record<RecursoPago, EstadoRecurso> & {
+  /** a Consulta de salários (sem a migração 20270218120000, fechada) */
+  salarios: EstadoRecurso;
+};
 
 export const NOME_RECURSO: Record<RecursoPago, string> = {
   copiloto: "Triagem com IA",
@@ -98,7 +107,13 @@ export function lerRecursos(data: unknown): RecursosPagos | null {
     pode_assinar: false,
     indisponivel: true,
   });
-  return { copiloto, testes, video: lerEstado(o.video) ?? fechado(), automacoes: lerEstado(o.automacoes) ?? fechado() };
+  return {
+    copiloto,
+    testes,
+    video: lerEstado(o.video) ?? fechado(),
+    automacoes: lerEstado(o.automacoes) ?? fechado(),
+    salarios: lerEstado(o.salarios) ?? fechado(),
+  };
 }
 
 /** Quantos dias faltam (arredonda para cima: no último dia, "falta 1 dia"). */

@@ -1,4 +1,4 @@
-import type { RecursoPago, RecursosPagos } from "./recursos-pagos";
+import type { Liberavel, RecursoPago, RecursosPagos } from "./recursos-pagos";
 
 // O que as telas de Assinar, Assinatura e Faturas leem do banco (migração 20261218120000; o combo, 20261220120000).
 
@@ -6,7 +6,7 @@ import type { RecursoPago, RecursosPagos } from "./recursos-pagos";
  * O que se assina: um recurso, o combo (a Triagem e o Teste Prático numa assinatura só) ou o Plano Completo (os
  * quatro recursos numa assinatura só; migração 20270116120000).
  */
-export type Produto = RecursoPago | "combo" | "completo";
+export type Produto = RecursoPago | "combo" | "completo" | "salarios";
 
 /** Os pacotes: liberam mais de um recurso. */
 export const PACOTES = ["completo", "combo"] as const;
@@ -18,6 +18,7 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   completo: "Plano Completo",
   video: "Entrevista em vídeo",
   automacoes: "Automações personalizadas",
+  salarios: "Consulta de salários",
 };
 
 /** Com o artigo, para as frases ("Assinar a Triagem com IA", "Você já assina o Teste Prático"). */
@@ -28,6 +29,7 @@ export const O_PRODUTO: Record<Produto, string> = {
   completo: "o Plano Completo",
   video: "a Entrevista em vídeo",
   automacoes: "as Automações personalizadas",
+  salarios: "a Consulta de salários",
 };
 
 /** Com "de" ("o cartão da Triagem com IA"). */
@@ -38,15 +40,24 @@ export const DO_PRODUTO: Record<Produto, string> = {
   completo: "do Plano Completo",
   video: "da Entrevista em vídeo",
   automacoes: "das Automações personalizadas",
+  salarios: "da Consulta de salários",
 };
 
 export function ehProduto(x: unknown): x is Produto {
-  return x === "copiloto" || x === "testes" || x === "combo" || x === "completo" || x === "video" || x === "automacoes";
+  return (
+    x === "copiloto" ||
+    x === "testes" ||
+    x === "combo" ||
+    x === "completo" ||
+    x === "video" ||
+    x === "automacoes" ||
+    x === "salarios"
+  );
 }
 
 /** Os recursos que o produto libera. */
-export function recursosDo(p: Produto): RecursoPago[] {
-  if (p === "completo") return ["copiloto", "testes", "video", "automacoes"];
+export function recursosDo(p: Produto): Liberavel[] {
+  if (p === "completo") return ["copiloto", "testes", "video", "automacoes", "salarios"];
   return p === "combo" ? ["copiloto", "testes"] : [p];
 }
 
@@ -187,7 +198,7 @@ export function podeAssinarPacote(
 ) {
   if (!pag?.pode || !pag.planos.some((p) => p.recurso === pacote)) return false;
   if (pag.assinaturas.some((a) => a.situacao !== "cancelada" && seCruzam(a.recurso, pacote))) return false;
-  const semPrazo = (r: RecursoPago) => Boolean(recursos?.[r]?.liberado && !recursos[r].ate);
+  const semPrazo = (r: Liberavel) => Boolean(recursos?.[r]?.liberado && !recursos[r].ate);
   return !recursosDo(pacote).every(semPrazo);
 }
 

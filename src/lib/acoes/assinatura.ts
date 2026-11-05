@@ -15,7 +15,7 @@ import {
   seCruzam,
   type Produto,
 } from "@/lib/pagamentos";
-import type { RecursoPago } from "@/lib/recursos-pagos";
+import type { Liberavel, RecursoPago } from "@/lib/recursos-pagos";
 import {
   asaasConfigurado,
   asaasProducao,
@@ -46,7 +46,7 @@ type Contexto = {
   planos: { id: string; recurso: Produto; ciclo: "MONTHLY" | "QUARTERLY"; valor: number }[];
   /** as assinaturas valendo (ou o Pix esperando a 1ª fatura), pelo produto */
   ativas: Produto[];
-  sem_prazo: Record<RecursoPago, boolean>;
+  sem_prazo: Partial<Record<Liberavel, boolean>>;
   testes_ate: Partial<Record<RecursoPago, string>> | null;
   pago_ate: Partial<Record<Produto, string>> | null;
 };
@@ -62,6 +62,7 @@ const CURTO: Record<Produto, string> = {
   completo: "Plano Completo",
   video: "Entrevista em vídeo",
   automacoes: "Automações personalizadas",
+  salarios: "Consulta de salários",
 };
 
 // no computador (npm run dev), o motivo vai junto na tela, para achar o problema sem abrir o terminal
