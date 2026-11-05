@@ -474,9 +474,10 @@ export function PainelCurtir({
         type="button"
         onClick={curtir}
         disabled={pendente}
-        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-5 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
+        // a ação da tela: cheio, na cor da curtida (o resto do painel fica neutro)
+        className="inline-flex min-h-14 w-full items-center justify-center gap-2.5 rounded-pill bg-like px-5 text-[17px] leading-6 font-semibold text-on-like shadow-card transition-[filter,transform] hover:brightness-95 active:scale-[0.98] disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
       >
-        <Heart aria-hidden className="size-5 text-like" />
+        <Heart aria-hidden className="size-5" fill="currentColor" />
         {pendente ? "Enviando…" : servico ? "Quero contratar" : "Curtir a vaga"}
       </button>
       {!logado && <p className="text-center text-body-sm text-ink-muted">Entrar é rápido, sem senha e grátis.</p>}
