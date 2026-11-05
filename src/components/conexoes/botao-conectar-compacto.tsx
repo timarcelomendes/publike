@@ -72,9 +72,14 @@ export function BotaoConectarCompacto({
     return (
       <Link
         href={caminhoConexao(outro.id)}
-        className={`${estadoBase} text-terra-text hover:underline hover:underline-offset-2`}
+        className={`${estadoBase} ${
+          // só o ícone: a bolinha terra respira e as mãos se apertam (chama para responder)
+          jeito === "icone"
+            ? "pk-halo bg-terra text-on-terra transition-colors hover:bg-terra-hover"
+            : "text-terra-text hover:underline hover:underline-offset-2"
+        }`}
       >
-        <Handshake aria-hidden className={icone} />
+        <Handshake aria-hidden className={`${icone} ${jeito === "icone" ? "pk-aperto" : ""}`} />
         <span className={texto}>Responder pedido</span>
         <span className="sr-only"> de {nome}</span>
       </Link>

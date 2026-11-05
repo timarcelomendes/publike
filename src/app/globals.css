@@ -295,6 +295,56 @@
   }
 }
 
+/* O pedido de conexão para responder (src/components/conexoes/botao-conectar-compacto.tsx): as mãos dão um aperto
+   de tempos em tempos e a bolinha em volta respira na cor terra. Sem movimento para quem pediu menos movimento. */
+@keyframes pk-aperto {
+  0%,
+  62%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  67% {
+    transform: translateY(-2.5px) rotate(-16deg);
+  }
+  73% {
+    transform: translateY(2px) rotate(12deg);
+  }
+  79% {
+    transform: translateY(-2px) rotate(-12deg);
+  }
+  85% {
+    transform: translateY(1px) rotate(8deg);
+  }
+  91% {
+    transform: translateY(0) rotate(-3deg);
+  }
+}
+
+@keyframes pk-halo {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--pk-terra) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 9px color-mix(in srgb, var(--pk-terra) 0%, transparent);
+  }
+}
+
+@utility pk-aperto {
+  animation: pk-aperto 2.4s ease-in-out infinite;
+  transform-origin: 50% 70%;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility pk-halo {
+  animation: pk-halo 2.4s ease-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 /* Linha de chips com rolagem lateral, sem barra visível */
 @utility sem-barra {
   scrollbar-width: none;
