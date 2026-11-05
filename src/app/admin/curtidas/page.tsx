@@ -1,4 +1,4 @@
-import { Heart } from "lucide-react";
+import { Heart, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -54,6 +54,9 @@ const POR: Record<string, { humano: boolean; texto: string }> = {
   publike: { humano: false, texto: "o Publike fechou depois de 48 h sem resposta" },
 };
 
+/** O botão tocado: "no WhatsApp", "pelo telefone", "por e-mail". */
+const CANAL: Record<string, string> = { whatsapp: "no WhatsApp", telefone: "pelo telefone", email: "por e-mail" };
+
 const COR: Record<CurtidaAdmin["situacao"], string> = {
   pendente: "bg-like",
   aceita: "bg-terra",
@@ -107,6 +110,8 @@ async function Conteudo({
   const conta = (s: CurtidaAdmin["situacao"]) =>
     todas.filter((x) => x.situacao === s).length;
   const respondidas = todas.filter((x) => x.situacao !== "pendente").length;
+  // os matches em que alguém tocou no WhatsApp, no telefone ou no e-mail
+  const comContato = todas.filter((x) => x.situacao === "match" && (x.contatos.empresa || x.contatos.pessoa)).length;
   const humanas = todas.filter((x) => x.respondida_por && POR[x.respondida_por]?.humano).length;
   const automaticas = todas.filter((x) => x.respondida_por && POR[x.respondida_por] && !POR[x.respondida_por].humano).length;
   const noPeriodo =
@@ -170,6 +175,8 @@ async function Conteudo({
             {formatarNumero(automaticas)} automáticas),{" "}
             {plural(conta("match"), "match", "matches")} e{" "}
             {formatarNumero(conta("pendente"))} esperando o aceite.
+            {conta("match") > 0 &&
+              ` Em ${formatarNumero(comContato)} ${comContato === 1 ? "match" : "dos matches"}, alguém tocou no WhatsApp, no telefone ou no e-mail.`}
           </p>
         )}
         {lista.length === 0 ? (
@@ -292,6 +299,22 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                       </span>
                     </span>
                   )}
+                  {/* o último toque de cada lado nos botões de contato (o que acontece no WhatsApp, o Publike não vê) */}
+                  {(["empresa", "pessoa"] as const).map((lado) => {
+                    const t = m.contatos[lado];
+                    if (!t) return null;
+                    return (
+                      <span
+                        key={lado}
+                        className="flex items-center gap-1 text-caption font-normal text-ink"
+                        title={new Date(t.em).toLocaleString("pt-BR")}
+                      >
+                        <MessageCircle aria-hidden className="size-3.5 shrink-0 text-cerrado-text" />
+                        {lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} {CANAL[t.canal]}{" "}
+                        {tempoRelativo(t.em, agora)}
+                      </span>
+                    );
+                  })}
                 </span>
               </td>
             </tr>

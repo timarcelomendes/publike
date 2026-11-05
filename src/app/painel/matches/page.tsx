@@ -103,7 +103,13 @@ async function Conteudo() {
                 </Link>
               </p>
               <BotaoConversar outroId={m.outro_id} />
-              <BotoesContato whatsapp={m.outro_whatsapp} email={m.outro_email} mensagem={mensagem} />
+              <BotoesContato
+                whatsapp={m.outro_whatsapp}
+                email={m.outro_email}
+                mensagem={mensagem}
+                // o toque no contato fica no histórico da candidatura, dos dois lados (Admin › Curtidas)
+                candidatura={{ anuncioId: m.anuncio_id, perfilId: m.papel === "publiquei" ? m.outro_id : usuario.id }}
+              />
               {m.papel === "curti" && m.anuncio_tipo === "servico" && (
                 <Link
                   href={`/anuncio/${m.anuncio_id}/avaliar`}

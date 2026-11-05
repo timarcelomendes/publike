@@ -13,7 +13,10 @@ export function BotoesContato({
   whatsapp: string | null;
   email: string | null;
   mensagem: string;
-  /** a empresa falando com um candidato: Admin › Retorno conta o toque em cada botão */
+  /**
+   * a candidatura (a vaga e quem curtiu): o toque em cada botão fica no histórico dela, o da empresa (Admin ›
+   * Retorno e Curtidas) e o da pessoa chamando quem publicou (Admin › Curtidas; migração 20270219120000)
+   */
   candidatura?: { anuncioId: string; perfilId: string };
 }) {
   const marca = (canal: "whatsapp" | "telefone" | "email") =>

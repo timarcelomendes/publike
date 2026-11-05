@@ -1874,6 +1874,11 @@ export type Database = {
         Args: { p_chave: string; p_conta: string; p_anuncio: string; p_perfil: string; p_texto: string };
         Returns: boolean;
       };
+      // os toques nos botões de contato (migração 20270219120000)
+      admin_contatos_das_curtidas: {
+        Args: { p_anuncios: string[] };
+        Returns: { anuncio_id: string; perfil_id: string; lado: string; canal: string; em: string }[];
+      };
       admin_ultimos_acessos: {
         Args: { p_ids: string[] };
         Returns: { id: string; ultimo_acesso: string | null }[];

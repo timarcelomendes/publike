@@ -2,9 +2,10 @@ import { MODO_DEMO } from "@/lib/config";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 
-// A empresa tocou no WhatsApp, no telefone ou no e-mail de um candidato (src/components/contar-contato.tsx): o
-// navegador avisa (navigator.sendBeacon, que chega mesmo indo para outro app) e o banco guarda no histórico da
-// candidatura, para Admin › Retorno saber que houve contato. O banco confere de novo que a vaga é da conta.
+// A empresa tocou no WhatsApp, no telefone ou no e-mail de um candidato, ou a pessoa no de quem publicou
+// (src/components/contar-contato.tsx): o navegador avisa (navigator.sendBeacon, que chega mesmo indo para outro app)
+// e o banco guarda no histórico da candidatura, para Admin › Retorno e Curtidas saberem que houve contato. O banco
+// confere de novo de que lado é (a vaga da conta ou a curtida da própria pessoa, já aceita).
 
 const CANAIS = new Set(["whatsapp", "telefone", "email"]);
 

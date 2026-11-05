@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 
-// Quando a empresa toca no WhatsApp, no telefone ou no e-mail de um candidato (os links marcados com
-// data-contato="<anúncio>:<perfil>" e data-canal), o site avisa o servidor (/api/contato-candidato), para Admin ›
-// Retorno saber que houve contato fora do Publike. Um ouvinte só, no painel, para todos esses botões.
+// Quando a empresa toca no WhatsApp, no telefone ou no e-mail de um candidato, ou a pessoa no de quem publicou (os
+// links marcados com data-contato="<anúncio>:<quem curtiu>" e data-canal), o site avisa o servidor
+// (/api/contato-candidato), para Admin › Retorno e Curtidas saberem que houve contato fora do Publike. O banco vê de
+// que lado é. Um ouvinte só, no painel, para todos esses botões.
 
 export function ContarContato() {
   useEffect(() => {

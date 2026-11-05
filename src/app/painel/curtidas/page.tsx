@@ -486,6 +486,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                           servico: c.tipo === "servico",
                         }),
                       )}
+                      // o toque da pessoa no contato de quem publicou (Admin › Curtidas; migração 20270219120000)
+                      candidatura={{ anuncioId: c.anuncio_id, perfilId: usuario.id }}
                     />
                     {/* desfazer e denunciar na mesma linha (o formulário do desfazer abre embaixo) */}
                     <div className="flex flex-wrap items-start gap-x-1">

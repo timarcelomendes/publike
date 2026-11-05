@@ -1034,7 +1034,15 @@ export type CurtidaAdmin = {
   curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null } | null;
   anuncio: { id: string; titulo: string; tipo: string } | null;
   publicou: { id: string; nome: string; tipo: string; acesso: string | null } | null;
+  /**
+   * o último toque de cada lado nos botões de contato (WhatsApp, telefone, e-mail): a empresa chamando a pessoa e a
+   * pessoa chamando quem publicou (a da pessoa só a partir da migração 20270219120000)
+   */
+  contatos: { empresa: ToqueDeContato | null; pessoa: ToqueDeContato | null };
 };
+
+/** Um toque num botão de contato: o canal e quando. */
+export type ToqueDeContato = { canal: "whatsapp" | "telefone" | "email"; em: string };
 
 /** As curtidas feitas desde `desde` (null: todas), da mais nova para a mais antiga (até 500), com o que aconteceu. */
 export async function curtidasRecentes(c: ClienteBanco, desde: string | null): Promise<CurtidaAdmin[]> {
@@ -1077,6 +1085,14 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
   if (e3 && e3.code !== "PGRST202") falha("o último acesso das contas", e3);
   const acessoDe = new Map((acessos ?? []).map((x) => [x.id, x.ultimo_acesso]));
   const porPerfil = new Map((perfis ?? []).map((p) => [p.id, { ...p, acesso: acessoDe.get(p.id) ?? null }]));
+  // os toques nos botões de contato (sem a migração 20270219120000, nenhum)
+  const { data: toques, error: e4 } = idsAnuncios.length
+    ? await c.rpc("admin_contatos_das_curtidas", { p_anuncios: idsAnuncios })
+    : { data: [], error: null };
+  if (e4 && e4.code !== "PGRST202") falha("os contatos das curtidas", e4);
+  const toqueDe = new Map<string, ToqueDeContato>();
+  for (const t of toques ?? [])
+    toqueDe.set(`${t.anuncio_id}:${t.perfil_id}:${t.lado}`, { canal: t.canal as ToqueDeContato["canal"], em: t.em });
   return linhas.map((l) => {
     const a = porAnuncio.get(l.anuncio_id) ?? null;
     const autor = a ? (porPerfil.get(a.autor_id) ?? null) : null;
@@ -1090,6 +1106,10 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
       curtiu: porPerfil.get(l.perfil_id) ?? null,
       anuncio: a ? { id: a.id, titulo: a.titulo, tipo: a.tipo } : null,
       publicou: autor ? { id: autor.id, nome: autor.nome, tipo: autor.tipo, acesso: autor.acesso } : null,
+      contatos: {
+        empresa: toqueDe.get(`${l.anuncio_id}:${l.perfil_id}:empresa`) ?? null,
+        pessoa: toqueDe.get(`${l.anuncio_id}:${l.perfil_id}:pessoa`) ?? null,
+      },
     };
   });
 }
