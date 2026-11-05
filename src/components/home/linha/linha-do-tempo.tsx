@@ -145,13 +145,15 @@ const QUEM_SO_OLHA = "so-olhar";
  * A linha do tempo da home: vagas, serviços, recados e aceites, do mais novo para o mais antigo,
  * com os separadores de dia e a marca "Você parou aqui". No Tudo, depois de 2 recados seguidos, o
  * resto recolhe. `meio`: o que entra uma vez depois do 4º item, só no celular (quem está
- * contratando; no computador, fica em cima do mapa). `doPublike`: o cartão "Do Publike", depois do 3º item.
+ * contratando; no computador, fica em cima do mapa). `doPublike`: o cartão "Do Publike", depois do 3º item;
+ * `noTopo`: o cartão "Do Publike" no formato topo, antes do primeiro item.
  */
 export async function LinhaDoTempo({
   searchParams,
   meio = null,
   soOlhar = false,
   doPublike = null,
+  noTopo = null,
 }: {
   searchParams: Parametros;
   meio?: ReactNode;
@@ -159,6 +161,8 @@ export async function LinhaDoTempo({
   soOlhar?: boolean;
   /** o cartão "Do Publike" (um banner no formato cartão), como um item a mais */
   doPublike?: ReactNode;
+  /** o cartão "Do Publike" no topo da linha (um banner no formato topo), antes de tudo */
+  noTopo?: ReactNode;
 }) {
   const daConta = await dadosDaLinha(chaveDaLinha(await searchParams));
   const d = soOlhar && daConta.usuarioId ? { ...daConta, usuarioId: QUEM_SO_OLHA } : daConta;
@@ -206,6 +210,14 @@ export async function LinhaDoTempo({
   const blocos: ReactNode[] = [];
   const contam: boolean[] = [];
   let n = 0;
+  if (noTopo) {
+    blocos.push(
+      <div key="no-topo" className="empty:hidden">
+        {noTopo}
+      </div>,
+    );
+    contam.push(false);
+  }
   for (const p of recolherRecados(montarLinha(d.itens, d.marca, d.agora, d.relevantes, d.porQue), d.aba === "tudo")) {
     if (p.tipo === "dia") {
       blocos.push(

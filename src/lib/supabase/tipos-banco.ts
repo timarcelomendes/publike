@@ -1015,7 +1015,8 @@ export type Database = {
           so_contas: boolean;
           /** "janela", "cartao" (o cartão Do Publike na lista e na linha do tempo; migração 20270118) ou "destaque" (no alto
            * da inicial, no computador; migração 20270123) */
-          formato: "janela" | "cartao" | "destaque";
+          formato: "janela" | "cartao" | "destaque" | "topo";
+          formatos: string[] | null;
           /** também em /novidades (migração 20270118) */
           em_novidades: boolean;
           criado_em: string;
@@ -1042,7 +1043,8 @@ export type Database = {
           cidades?: string[];
           conta_ate_dias?: number | null;
           so_contas?: boolean;
-          formato?: "janela" | "cartao" | "destaque";
+          formato?: "janela" | "cartao" | "destaque" | "topo";
+          formatos?: string[] | null;
           em_novidades?: boolean;
         };
         Update: {
@@ -1066,7 +1068,8 @@ export type Database = {
           cidades?: string[];
           conta_ate_dias?: number | null;
           so_contas?: boolean;
-          formato?: "janela" | "cartao" | "destaque";
+          formato?: "janela" | "cartao" | "destaque" | "topo";
+          formatos?: string[] | null;
           em_novidades?: boolean;
         };
         Relationships: [];

@@ -10,6 +10,7 @@ import { classesBotao } from "@/components/ui/botao";
 import {
   ACOES_BANNER,
   DESTAQUES_NO_ALTO,
+  formatosDoBanner,
   PAGINAS_BANNER,
   SEM_FILTRO,
   PUBLICOS_BANNER,
@@ -152,7 +153,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
   const salvo = primeiro(sp.salvo);
   const noAr = banners.filter((b) => situacao(b, agora).nome === "No ar");
   // o alto da inicial mostra até 4 destaques por visitante: os mais novos do público dele
-  const destaquesNoAr = noAr.filter((b) => b.formato === "destaque").length;
+  const destaquesNoAr = noAr.filter((b) => formatosDoBanner(b).includes("destaque")).length;
 
   const paraEditar: BannerParaEditar | undefined = editar && {
     id: editar.id,
@@ -174,8 +175,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
     imagem: editar.imagem ?? null,
     filtro: filtroDe(editar),
     contas: idsDoEditado.map((i) => emailDe.get(i) || i).join("\n"),
-    // sem a migração 20270118120000: janela, fora de Novidades
-    formato: editar.formato === "cartao" || editar.formato === "destaque" ? editar.formato : "janela",
+    // sem a migração 20270118120000: janela, fora de Novidades; sem a 20270217120000: o formato de antes
+    formatos: formatosDoBanner(editar),
     em_novidades: editar.em_novidades ?? false,
   };
 
@@ -200,7 +201,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
           imagem: null,
           filtro: SEM_FILTRO,
           contas: "",
-          formato: "cartao",
+          formatos: ["cartao"],
           // a novidade já está em /novidades
           em_novidades: false,
         }
@@ -212,14 +213,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
       {salvo && aba === "lista" && (
         <Aviso tipo="sucesso" titulo={salvo === "novo" ? "Banner criado" : "Banner salvo"}>
           Quem abrir as páginas escolhidas vê o banner (o cartão, no meio da lista e da linha do tempo; o destaque, no
-          alto da inicial, no computador).
+          alto da inicial, no computador; o topo, no alto da linha do tempo).
         </Aviso>
       )}
       {aba === "form" && (
         <Secao
           id="formulario"
           titulo={editar ? "Editar o banner" : "Novo banner"}
-          descricao="Uma janela nas páginas que você escolher, alguns segundos depois de abrir (na visita em que já apareceu outra janela, fica para a próxima), um cartão “Do Publike” no meio da lista da inicial e da linha do tempo, como um patrocinado, ou um destaque no alto da inicial, no computador, girando com as vagas novas."
+          descricao="Uma janela nas páginas que você escolher, alguns segundos depois de abrir (na visita em que já apareceu outra janela, fica para a próxima), um cartão “Do Publike” no meio da lista da inicial e da linha do tempo, como um patrocinado, um destaque no alto da inicial, no computador, girando com as vagas novas, ou um cartão no topo da linha do tempo de quem tem conta. O mesmo banner pode estar em mais de um."
           acoes={
             banners.length > 0 && (
               <Link href="/admin/banners" className={classesBotao("fantasma", "sm")}>
@@ -281,16 +282,22 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
                             ? ` (${b.link})`
                             : ""}{" "}
                         · botão “{b.botao}” · {PUBLICOS_BANNER[b.publico as PublicoBanner] ?? b.publico}
-                        {b.formato === "destaque"
+                        {formatosDoBanner(b).join() === "destaque"
                           ? ""
                           : b.repetir_dias === null
                             ? " · só uma vez"
                             : ` · de novo a cada ${b.repetir_dias} ${b.repetir_dias === 1 ? "dia" : "dias"}`}
-                        {b.formato === "cartao"
-                          ? " · cartão na lista e na linha do tempo"
-                          : b.formato === "destaque"
-                            ? " · destaque no alto da inicial (computador)"
-                            : ` · ${(b.paginas ?? ["inicio"]).map((p) => PAGINAS_BANNER[p as PaginaBanner] ?? p).join(", ")} · depois de ${b.atraso_segundos ?? 3} s`}
+                        {formatosDoBanner(b)
+                          .map((f) =>
+                            f === "cartao"
+                              ? " · cartão no meio da lista e da linha do tempo"
+                              : f === "destaque"
+                                ? " · destaque no alto da inicial (computador)"
+                                : f === "topo"
+                                  ? " · no topo da linha do tempo"
+                                  : ` · janela em ${(b.paginas ?? ["inicio"]).map((p) => PAGINAS_BANNER[p as PaginaBanner] ?? p).join(", ")}, depois de ${b.atraso_segundos ?? 3} s`,
+                          )
+                          .join("")}
                         {b.em_novidades ? " · também em Novidades" : ""}
                         {b.inicio ? ` · de ${formatarDataCurta(b.inicio)}` : ""}
                         {b.fim ? ` · até ${formatarDataCurta(diaDeBrasilia(b.fim, true) + "T12:00:00-03:00")}` : ""}

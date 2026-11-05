@@ -75,6 +75,9 @@ const SEM_MIGRACAO_IMAGEM = "Para pôr imagem, rode antes a migração 202612131
 const SEM_MIGRACAO_DESTAQUE =
   "Para o destaque no alto da inicial, rode antes a migração 20270123120000_banners_destaque.sql no Supabase.";
 
+const SEM_MIGRACAO_FORMATOS =
+  "Para marcar mais de um formato ou o topo da linha do tempo, rode antes a migração 20270217120000_banner_em_varios_formatos.sql no Supabase.";
+
 function texto(formData: FormData, nome: string) {
   const v = formData.get(nome);
   return typeof v === "string" ? v.trim() : "";
@@ -122,13 +125,18 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     if (!link) erros.caminho = "Use um endereço do Publike começando com /, como /vagas/goiania.";
   }
 
-  // o cartão e o destaque não usam as páginas nem a espera (ficam guardadas como estavam, para voltar à janela);
-  // o destaque também não usa o "quantas vezes" nem o "Só para" (é vitrine, só para quem não tem conta)
-  const formatoTexto = texto(formData, "formato") || "janela";
-  const formato = formatoTexto in FORMATOS_BANNER ? (formatoTexto as keyof typeof FORMATOS_BANNER) : null;
-  if (!formato) erros.formato = "Escolha o formato.";
-  const janela = formato === "janela";
-  const destaque = formato === "destaque";
+  // um ou mais formatos (migração 20270217120000). As páginas e a espera são só da janela (sem ela, ficam guardadas
+  // como estavam, para voltar); o "quantas vezes" e o "Só para" não valem para o destaque (é vitrine, só para quem
+  // não tem conta): só destaque marcado, nem os usa
+  const pedidos = formData.getAll("formatos").filter((f): f is string => typeof f === "string");
+  const formatos = (Object.keys(FORMATOS_BANNER) as (keyof typeof FORMATOS_BANNER)[]).filter((f) => pedidos.includes(f));
+  if (!formatos.length) erros.formatos = "Marque pelo menos um formato.";
+  const formato = formatos[0] ?? "janela";
+  const janela = formatos.includes("janela");
+  const destaque = formatos.length === 1 && formatos[0] === "destaque";
+  // a coluna nova vai sempre que não é só a janela (agora ou antes); sem a migração 20270217120000, um formato só
+  // salva mesmo assim (sem a coluna, mais abaixo)
+  const comFormatos = formatos.join() !== "janela" || (texto(formData, "formatos_antes") || "janela") !== "janela";
 
   // null: só uma vez; N: de novo a cada N dias (até tocar no botão)
   let repetirDias: number | null = null;
@@ -153,7 +161,7 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
   const comNovidades =
     !janela ||
     emNovidades ||
-    (texto(formData, "formato_antes") || "janela") !== "janela" ||
+    (texto(formData, "formatos_antes") || "janela") !== "janela" ||
     texto(formData, "novidades_antes") === "1";
 
   const inicioTexto = texto(formData, "inicio");
@@ -236,21 +244,32 @@ export async function salvarBanner(id: string | null, _anterior: EstadoForm, for
     ...(imagem || atual || formData.get("imagem_tirar") === "1" ? { imagem } : {}),
     // sem filtro nenhum (e sem ter tido antes), nem manda as colunas: salva mesmo sem a migração 20261214
     ...(temFiltro(filtro) || formData.get("filtros_antes") === "1" ? filtro : {}),
-    ...(comNovidades ? { formato: formato ?? "janela", em_novidades: emNovidades } : {}),
+    ...(comNovidades ? { formato, em_novidades: emNovidades } : {}),
+    ...(comFormatos ? { formatos } : {}),
     inicio,
     fim,
     ativo: formData.get("ativo") === "on",
   };
-  const { data: salvo, error } = id
-    ? await c.from("banners").update(dados).eq("id", id).select("id").single()
-    : await c.from("banners").insert(dados).select("id").single();
+  const gravar = (d: typeof dados) =>
+    id
+      ? c.from("banners").update(d).eq("id", id).select("id").single()
+      : c.from("banners").insert(d).select("id").single();
+  let { data: salvo, error } = await gravar(dados);
+  // sem a migração 20270217120000: um formato só (e não o topo) salva sem a lista
+  if (error?.code === "PGRST204" && error.message.includes("formatos") && formatos.length === 1 && formato !== "topo") {
+    const { formatos: _semLista, ...semLista } = dados as typeof dados & { formatos?: unknown };
+    void _semLista;
+    ({ data: salvo, error } = await gravar(semLista));
+  }
   if (error?.code === "PGRST204" && error.message.includes("imagem")) return { ok: false, erro: SEM_MIGRACAO_IMAGEM };
-  if (error?.code === "23514" && destaque && error.message.includes("formato"))
+  if ((error?.code === "PGRST204" && error.message.includes("formatos")) || (error?.code === "23514" && formato === "topo"))
+    return { ok: false, erro: SEM_MIGRACAO_FORMATOS };
+  if (error?.code === "23514" && formatos.includes("destaque") && error.message.includes("formato"))
     return { ok: false, erro: SEM_MIGRACAO_DESTAQUE };
   if (error?.code === "PGRST204" && /formato|em_novidades/.test(error.message))
     return { ok: false, erro: SEM_MIGRACAO_CARTAO };
   if (error?.code === "PGRST204") return { ok: false, erro: SEM_MIGRACAO_FILTROS };
-  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  if (error || !salvo) return { ok: false, erro: error ? mensagemDeErro(error) : "Não deu para salvar o banner." };
   // as contas escolhidas: troca a lista toda
   if (temFiltro(filtro) || formData.get("filtros_antes") === "1") {
     const { error: erroApagar } = await c.from("banners_contas").delete().eq("banner_id", salvo.id);

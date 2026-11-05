@@ -25,17 +25,31 @@ export const PUBLICOS_BANNER = {
 } as const;
 export type PublicoBanner = keyof typeof PUBLICOS_BANNER;
 
-/** Como o banner aparece (migração 20270118120000; sem ela, todos são janela; o destaque, migração 20270123120000). */
+/**
+ * Como o banner aparece (migração 20270118120000; sem ela, todos são janela; o destaque, migração 20270123120000; o
+ * topo e vários de uma vez, migração 20270217120000).
+ */
 export const FORMATOS_BANNER = {
   janela: "Janela por cima da página",
   cartao: "Cartão “Do Publike” no meio da lista",
   destaque: "Destaque no alto da inicial (computador)",
+  topo: "Topo da linha do tempo",
 } as const;
 
 /** Quantos destaques cada visitante vê no alto da inicial (os mais novos do público dele), e de quanto em quanto. */
 export const DESTAQUES_NO_ALTO = 4;
 export const SEGUNDOS_DO_DESTAQUE = 8;
 export type FormatoBanner = keyof typeof FORMATOS_BANNER;
+
+/**
+ * Os formatos de um banner, na ordem da lista acima: a coluna `formatos` (migração 20270217120000) ou, sem ela, o
+ * `formato` de antes. Nunca vazia (sem nada válido, a janela).
+ */
+export function formatosDoBanner(b: { formatos?: readonly string[] | null; formato?: string | null }): FormatoBanner[] {
+  const pedidos: readonly string[] = b.formatos?.length ? b.formatos : [b.formato ?? "janela"];
+  const lista = (Object.keys(FORMATOS_BANNER) as FormatoBanner[]).filter((f) => pedidos.includes(f));
+  return lista.length ? lista : ["janela"];
+}
 
 /** Onde o banner pode abrir. */
 export const PAGINAS_BANNER = {
@@ -155,8 +169,10 @@ export type BannerNoAr = {
   atraso: number;
   /** a imagem do alto da janela (sem ela, o ícone da ação) */
   imagem?: string | null;
-  /** a janela (nas páginas e depois da espera) ou o cartão "Do Publike" (no meio da lista) */
+  /** o primeiro dos formatos (o que a prévia e /novidades usam) */
   formato: FormatoBanner;
+  /** onde aparece: a janela, o cartão no meio da lista, o destaque e o topo da linha do tempo (um ou mais) */
+  formatos?: FormatoBanner[];
   /** também em /novidades (fica lá depois que sair do ar) */
   novidades?: boolean;
 };

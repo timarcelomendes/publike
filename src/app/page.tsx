@@ -267,6 +267,13 @@ async function CentroDaLinha({
             </Suspense>
           )
         }
+        noTopo={
+          soOlhar ? null : (
+            <Suspense fallback={null}>
+              <CartaoDaVisita jeito="topo" />
+            </Suspense>
+          )
+        }
       />
     </>
   );

@@ -61,8 +61,8 @@ export type BannerParaEditar = {
   filtro: FiltroBanner;
   /** as contas escolhidas: o e-mail (ou o código) de cada uma, uma por linha */
   contas: string;
-  /** a janela ou o cartão "Do Publike" (migração 20270118) */
-  formato: FormatoBanner;
+  /** onde aparece, um ou mais: a janela, o cartão "Do Publike", o destaque e o topo da linha do tempo (migração 20270217) */
+  formatos: FormatoBanner[];
   /** também em /novidades */
   em_novidades: boolean;
 };
@@ -107,6 +107,15 @@ const AJUDA_DO_FORMATO: Record<FormatoBanner, string> = {
     "Como um patrocinado: na lista da página inicial (sem conta) e na linha do tempo (com conta), depois dos 3 primeiros. Conta como visto quando fica metade na tela por 1 segundo e some depois.",
   destaque:
     "Na faixa do alto da página inicial de quem ainda não tem conta, só no computador, girando com as 3 vagas novas. Fica no ar dentro das datas.",
+  topo: "Primeiro item da linha do tempo de quem tem conta, antes de tudo. Conta como visto quando fica metade na tela por 1 segundo; o X fecha.",
+};
+
+/** O nome curto de cada formato, nas abas da prévia. */
+const ABA_DO_FORMATO: Record<FormatoBanner, string> = {
+  janela: "Janela",
+  cartao: "Meio da lista",
+  destaque: "Destaque",
+  topo: "Topo da linha",
 };
 
 /** Criar (sem `banner`) ou editar um banner, com a prévia de como fica a janela (ou o cartão). */
@@ -129,13 +138,24 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
   const [botaoMexido, setBotaoMexido] = useState(Boolean(banner));
   const [repetir, setRepetir] = useState(banner?.repetir_dias != null);
   const [daArea, setDaArea] = useState(banner?.busca_da_area ?? false);
-  const [formato, setFormato] = useState<FormatoBanner>(banner?.formato ?? "janela");
+  const [formatos, setFormatos] = useState<FormatoBanner[]>(banner?.formatos?.length ? banner.formatos : ["janela"]);
   // escolher o destaque põe "Quem vê" em "Todo mundo" (dá para mudar depois)
   const [publico, setPublico] = useState<PublicoBanner>(banner?.publico ?? "todos");
-  const cartao = formato === "cartao";
   // o destaque: na faixa do alto da inicial de quem não tem conta (computador), girando com as 3 vagas novas
-  const destaque = formato === "destaque";
-  const semJanela = formato !== "janela";
+  const destaque = formatos.includes("destaque");
+  // só o destaque: sem o "Só para" e sem o "quantas vezes" (é vitrine)
+  const soDestaque = formatos.length === 1 && destaque;
+  const semJanela = !formatos.includes("janela");
+  // a prévia: a aba escolhida, se ainda está marcada; senão, o primeiro formato
+  const [abaDaPrevia, setAbaDaPrevia] = useState<FormatoBanner>(formatos[0] ?? "janela");
+  const previa = formatos.includes(abaDaPrevia) ? abaDaPrevia : (formatos[0] ?? "janela");
+  const ordem = Object.keys(FORMATOS_BANNER) as FormatoBanner[];
+  function marcarFormato(f: FormatoBanner, ligado: boolean) {
+    setFormatos((antes) => ordem.filter((x) => (x === f ? ligado : antes.includes(x))));
+    if (ligado) setAbaDaPrevia(f);
+    // escolher o destaque põe "Quem vê" em "Todo mundo" (dá para mudar depois)
+    if (ligado && f === "destaque" && formatos.length === 0) setPublico("todos");
+  }
   // a imagem: a que já está salva, ou a escolhida agora (só a prévia no navegador)
   const [imagemSalva, setImagemSalva] = useState(banner?.imagem ?? null);
   const [escolhida, setEscolhida] = useState<{ arquivo: File; previa: string } | null>(null);
@@ -181,24 +201,26 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             {estado.erro}
           </Aviso>
         )}
-        <fieldset className="flex flex-col gap-2">
+        <fieldset className="flex flex-col gap-2" aria-describedby="formatos-ajuda">
           <legend className="mb-1.5 text-label">Formato</legend>
-          <input type="hidden" name="formato_antes" value={banner?.formato ?? "janela"} />
-          {(Object.keys(FORMATOS_BANNER) as FormatoBanner[]).map((f) => (
+          <p id="formatos-ajuda" className="-mt-1 text-body-sm text-ink-muted">
+            Marque um ou mais. Quem viu o banner em um formato não vê de novo em outro (conforme as vezes que ele
+            aparece, mais abaixo).
+          </p>
+          <input type="hidden" name="formatos_antes" value={(banner?.formatos ?? ["janela"]).join(",")} />
+          {ordem.map((f) => (
             <label
               key={f}
               className="flex min-h-11 cursor-pointer items-start gap-3 rounded-sm border border-line px-3 py-2.5 has-checked:border-ink"
             >
               <input
-                type="radio"
-                name="formato"
+                type="checkbox"
+                name="formatos"
                 value={f}
-                checked={formato === f}
-                onChange={() => {
-                  setFormato(f);
-                  if (f === "destaque") setPublico("todos");
-                }}
-                className="mt-0.5 size-4 shrink-0 accent-[var(--pk-ink)]"
+                checked={formatos.includes(f)}
+                onChange={(e) => marcarFormato(f, e.target.checked)}
+                aria-invalid={erros.formatos ? true : undefined}
+                className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
               />
               <span>
                 <span className="block text-body">{FORMATOS_BANNER[f]}</span>
@@ -206,7 +228,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
               </span>
             </label>
           ))}
-          {erros.formato && <p className="text-body-sm text-danger">{erros.formato}</p>}
+          {erros.formatos && <p className="text-body-sm text-danger">{erros.formatos}</p>}
         </fieldset>
         <Campo rotulo="Título" nome="titulo" erro={erros.titulo}>
           <input
@@ -234,14 +256,11 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             Imagem <span className="font-normal text-ink-muted">(opcional)</span>
           </span>
           <span className="text-body-sm text-ink-muted">
-            {cartao
-              ? "No cartão, vai em cima no celular e à esquerda no computador."
-              : destaque
-                ? "No destaque, vai no alto do cartão, de ponta a ponta, com 144 px de altura (cortada no meio)."
-                : "Vai no alto da janela, de ponta a ponta."}{" "}
-            {destaque
-              ? "Melhor deitada, sem texto miúdo: ela fica com uns 420 px de largura."
-              : "Melhor deitada (como 16:9), sem texto miúdo: no celular ela fica com uns 360 px de largura."}
+            {formatos.includes("janela") && "Na janela, vai no alto, de ponta a ponta. "}
+            {(formatos.includes("cartao") || formatos.includes("topo")) &&
+              "No cartão, vai em cima no celular e à esquerda no computador. "}
+            {destaque && "No destaque, vai no alto do cartão, de ponta a ponta, com 144 px de altura (cortada no meio). "}
+            Melhor deitada (como 16:9), sem texto miúdo: no celular ela fica com uns 360 px de largura.
           </span>
           <input type="hidden" name="imagem_atual" value={imagemSalva ?? ""} />
           {!imagemNaPrevia && banner?.imagem && <input type="hidden" name="imagem_tirar" value="1" />}
@@ -386,11 +405,13 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
           ajuda={
             destaque
               ? "No destaque, só quem ainda não tem conta: “Todo mundo” e “Quem ainda não tem conta” dão no mesmo; os outros dois seguem a resposta de “O que você quer fazer”."
-              : undefined
+              : formatos.includes("topo") && formatos.length === 1
+                ? "O topo da linha do tempo é só para quem tem conta: “Quem ainda não tem conta” não vê."
+                : undefined
           }
         >
           <Seletor
-            {...ligarCampo("publico", erros.publico, destaque)}
+            {...ligarCampo("publico", erros.publico, Boolean(destaque || formatos.includes("topo")))}
             value={publico}
             onChange={(e) => setPublico(e.target.value as PublicoBanner)}
             className={classesEntrada}
@@ -402,8 +423,8 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             ))}
           </Seletor>
         </Campo>
-        {/* o destaque é só para quem não tem conta: sem o "Só para" (escondido, para voltar a outro formato sem perder) */}
-        <div className={destaque ? "hidden" : "contents"}>
+        {/* só o destaque (só para quem não tem conta): sem o "Só para" (escondido, para voltar a outro formato sem perder) */}
+        <div className={soDestaque ? "hidden" : "contents"}>
           <ParaQuem filtro={banner?.filtro ?? SEM_FILTRO} contas={banner?.contas ?? ""} erros={erros} />
         </div>
         <fieldset className={semJanela ? "hidden" : "flex flex-col gap-2"} aria-describedby="paginas-ajuda">
@@ -455,12 +476,13 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
         </div>
         {destaque && (
           <p className="rounded-md bg-surface-300 px-3 py-2.5 text-body-sm">
-            O destaque é vitrine: fica no ar dentro das datas, para todo visitante, sem “Só para” e sem “só uma vez”.
+            O destaque é vitrine: fica no ar dentro das datas, para todo visitante, sem “Só para” e sem “só uma vez”
+            {soDestaque ? "" : " (esses valem só para os outros formatos marcados)"}.
             Começa pelas 3 vagas novas e troca a cada {SEGUNDOS_DO_DESTAQUE} segundos; cada visitante vê até{" "}
             {DESTAQUES_NO_ALTO} destaques, os mais novos.
           </p>
         )}
-        <fieldset className={destaque ? "hidden" : "flex flex-col gap-2"}>
+        <fieldset className={soDestaque ? "hidden" : "flex flex-col gap-2"}>
           <legend className="mb-1.5 text-label">Quantas vezes aparece</legend>
           <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm border border-line px-3 has-checked:border-ink">
             <input
@@ -552,11 +574,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             className="size-5 accent-[var(--pk-ink)]"
           />
           <span className="text-body">
-            {cartao
-              ? "Ligado (aparece na lista e na linha do tempo)"
-              : destaque
-                ? "Ligado (aparece no alto da inicial, no computador)"
-                : "Ligado (aparece nas páginas escolhidas)"}
+            Ligado (aparece nos formatos marcados)
           </span>
         </label>
         <div>
@@ -572,7 +590,27 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
           <Eye aria-hidden className="size-4" />
           Prévia
         </p>
-        {cartao && (
+        {formatos.length > 1 && (
+          // uma aba por formato marcado
+          <div role="group" aria-label="Ver a prévia de" className="flex flex-wrap gap-1.5">
+            {formatos.map((f) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={previa === f}
+                onClick={() => setAbaDaPrevia(f)}
+                className={`min-h-9 rounded-pill border px-3 text-body-sm transition-colors ${
+                  previa === f
+                    ? "border-ink bg-ink text-surface-100"
+                    : "border-line bg-surface-200 text-ink hover:bg-surface-300"
+                }`}
+              >
+                {ABA_DO_FORMATO[f]}
+              </button>
+            ))}
+          </div>
+        )}
+        {(previa === "cartao" || previa === "topo") && (
           <div aria-hidden className="rounded-lg bg-surface-100 p-4">
             <div className="relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 shadow-card">
               {imagemNaPrevia && (
@@ -600,11 +638,14 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
               </div>
             </div>
             <p className="mt-3 text-body-sm text-ink-muted">
+              {previa === "topo"
+                ? "No alto da linha do tempo de quem tem conta, antes do primeiro item. "
+                : "Na lista da inicial e na linha do tempo, depois dos 3 primeiros. "}
               No computador, a imagem fica à esquerda e o cartão vai de ponta a ponta da lista.
             </p>
           </div>
         )}
-        {destaque && (
+        {previa === "destaque" && (
           <div aria-hidden className="rounded-lg bg-surface-300 p-4">
             <div className="flex flex-col overflow-hidden rounded-[18px] border border-line bg-surface-200 shadow-raised">
               {imagemNaPrevia && (
@@ -638,7 +679,7 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
             </p>
           </div>
         )}
-        <div aria-hidden className={semJanela ? "hidden" : "rounded-lg bg-veu p-4"}>
+        <div aria-hidden className={previa !== "janela" ? "hidden" : "rounded-lg bg-veu p-4"}>
           <div className="flex flex-col gap-4 overflow-hidden rounded-lg border border-line-strong bg-surface-200 p-5 shadow-raised">
             {imagemNaPrevia ? (
               <div className="relative -mx-5 -mt-5">

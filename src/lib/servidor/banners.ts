@@ -13,7 +13,7 @@ import {
   podeMostrar,
   type AcaoBanner,
   type BannerNoAr,
-  type FormatoBanner,
+  formatosDoBanner,
   type FiltroBanner,
   paraQuemVe,
   type QuemVeBanner,
@@ -64,15 +64,28 @@ function areaDoCurriculo(data: { titulo: string | null; experiencias: unknown })
  * conta (em qualquer aparelho) já viram. O navegador escolhe o primeiro da página aberta.
  */
 export async function bannersDaVisita(): Promise<BannerNoAr[]> {
-  return (await bannersQuePodem()).filter((b) => b.formato === "janela").slice(0, 8);
+  return (await bannersQuePodem()).filter((b) => b.formatos?.includes("janela")).slice(0, 8);
 }
 
 /**
  * O cartão "Do Publike" que entra no meio da lista (sem conta) ou da linha do tempo (com conta): o
- * mais novo que a pessoa ainda pode ver. Não usa as páginas nem a espera da janela.
+ * mais novo que a pessoa ainda pode ver. Não usa as páginas nem a espera da janela. Na linha do tempo, o banner
+ * que já está no topo dela não entra também no meio (`linha`).
  */
-export async function cartaoDaVisita(): Promise<BannerNoAr | null> {
-  return (await bannersQuePodem().catch(() => [])).find((b) => b.formato === "cartao") ?? null;
+export async function cartaoDaVisita(linha = false): Promise<BannerNoAr | null> {
+  const noTopo = linha ? await topoDaVisita() : null;
+  return (
+    (await bannersQuePodem().catch(() => [])).find((b) => b.formatos?.includes("cartao") && b.id !== noTopo?.id) ??
+    null
+  );
+}
+
+/**
+ * O cartão "Do Publike" no topo da linha do tempo (quem tem conta), antes do primeiro item: o mais novo com o
+ * formato topo que a pessoa ainda pode ver. Conta o visto e o X como o cartão do meio.
+ */
+export async function topoDaVisita(): Promise<BannerNoAr | null> {
+  return (await bannersQuePodem().catch(() => [])).find((b) => b.formatos?.includes("topo")) ?? null;
 }
 
 /**
@@ -80,7 +93,7 @@ export async function cartaoDaVisita(): Promise<BannerNoAr | null> {
  * São vitrine: não seguem o "só uma vez" nem o "a cada N dias" (ficam no ar dentro das datas).
  */
 export async function destaquesDaVisita(): Promise<BannerNoAr[]> {
-  return (await bannersQuePodem()).filter((b) => b.formato === "destaque").slice(0, DESTAQUES_NO_ALTO);
+  return (await bannersQuePodem()).filter((b) => b.formatos?.includes("destaque")).slice(0, DESTAQUES_NO_ALTO);
 }
 
 /** Os banners (janelas, cartões e destaques) que a pessoa pode ver: uma leitura só por requisição. */
@@ -116,14 +129,17 @@ const bannersQuePodem = cache(async (): Promise<BannerNoAr[]> => {
     busca_da_area?: boolean;
     imagem?: string | null;
     formato?: string;
+    formatos?: string[] | null;
     em_novidades?: boolean;
   };
   const basicas = "id, titulo, texto, botao, acao, link, repetir_dias";
   const comPaginas = `${basicas}, paginas, atraso_segundos, busca_da_area`;
   const comFiltros = `${comPaginas}, imagem, tipos_conta, categorias, curriculo, cidades, conta_ate_dias, so_contas`;
-  let { data, error } = await consulta(`${comFiltros}, formato, em_novidades`).returns<Linha[]>();
-  // sem a migração 20270118120000: todos são janela, e nenhum em /novidades; sem a 20261214120000: sem os filtros (para quem); sem a 20261213120000: sem imagem; sem a
+  let { data, error } = await consulta(`${comFiltros}, formato, formatos, em_novidades`).returns<Linha[]>();
+  // sem a migração 20270217120000: um formato só (o `formato`); sem a 20270118120000: todos são janela, e nenhum em /novidades; sem a 20261214120000: sem os filtros (para quem); sem a 20261213120000: sem imagem; sem a
   // 20261117120000: só a inicial, em 3 segundos
+  if (error?.code === "42703")
+    ({ data, error } = await consulta(`${comFiltros}, formato, em_novidades`).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(comFiltros).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(`${comPaginas}, imagem`).returns<Linha[]>());
   if (error?.code === "42703") ({ data, error } = await consulta(comPaginas).returns<Linha[]>());
@@ -155,14 +171,17 @@ const bannersQuePodem = cache(async (): Promise<BannerNoAr[]> => {
   });
   // para quem: só lido quando algum banner pede (quem tem conta; o visitante não passa de filtro nenhum)
   const quem = usuario && perfil && data.some((b) => temFiltro(filtroDe(b))) ? await quemVe(usuario.id, perfil) : null;
+  // o visto é um só por banner, em qualquer formato. O destaque é vitrine: aparece mesmo já visto e sem o "Só para"
+  // (é só para quem não tem conta); fora disso, o banner fica só como destaque
   const podem = data
-    .filter((b) => paraQuemVe(b.id, filtroDe(b), quem, agora))
-    // o destaque é vitrine: aparece mesmo já visto
-    .filter(
-      (b) =>
-        b.formato === "destaque" ||
-        podeMostrar(b.repetir_dias, juntarVistos(doNavegador.get(b.id), daConta.get(b.id)), hoje),
-    )
+    .flatMap((b) => {
+      const formatos = formatosDoBanner(b);
+      const livre =
+        paraQuemVe(b.id, filtroDe(b), quem, agora) &&
+        podeMostrar(b.repetir_dias, juntarVistos(doNavegador.get(b.id), daConta.get(b.id)), hoje);
+      const restam = livre ? formatos : formatos.filter((f) => f === "destaque");
+      return restam.length ? [{ ...b, formatos: restam }] : [];
+    })
     .slice(0, 12);
   // a busca pela área de quem vê (só lida quando algum banner pede)
   const area =
@@ -178,7 +197,8 @@ const bannersQuePodem = cache(async (): Promise<BannerNoAr[]> => {
     paginas: (b.paginas?.length ? b.paginas : ["inicio"]).filter((x): x is PaginaBanner => x in PAGINAS_BANNER),
     atraso: b.atraso_segundos ?? ATRASO_PADRAO,
     imagem: b.imagem ?? null,
-    formato: (b.formato === "cartao" || b.formato === "destaque" ? b.formato : "janela") as FormatoBanner,
+    formato: b.formatos[0],
+    formatos: b.formatos,
     novidades: b.em_novidades ?? false,
   }));
 });
