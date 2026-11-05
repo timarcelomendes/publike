@@ -208,6 +208,25 @@ export async function liberarPainelNoSite(usuarioId: string, liberar: boolean): 
   };
 }
 
+/**
+ * O aviso "liberado para você" (sino, celular e e-mail; migração 20270212120000), uma vez por conta e funcionalidade
+ * (de novo só depois de 90 dias). Sem a migração ou com falha, a liberação vale assim mesmo.
+ */
+async function avisarLiberacao(
+  c: NonNullable<Awaited<ReturnType<typeof clienteAdminOuNulo>>>,
+  contaId: string,
+  funcionalidade: "pagina_de_vagas" | "copiloto" | "testes" | "video" | "automacoes",
+) {
+  const { data, error } = await c.rpc("admin_avisar_liberacao", { p_conta: contaId, p_funcionalidade: funcionalidade });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao avisar a liberação:", error.message);
+    return false;
+  }
+  // o e-mail e o celular saem pelas filas
+  if (data) after(processarFilas);
+  return Boolean(data);
+}
+
 /** Libera (ou tira) o copiloto de contratação, em teste, para uma conta (migração 20261203120000). */
 export async function liberarCopiloto(contaId: string, liberar: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
@@ -218,11 +237,12 @@ export async function liberarCopiloto(contaId: string, liberar: boolean): Promis
     if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20261203120000_copiloto.sql primeiro." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
+  const avisou = liberar && (await avisarLiberacao(c, contaId, "copiloto"));
   refresh();
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta tem a Triagem com IA, sem prazo."
+      ? "Pronto: essa conta tem a Triagem com IA, sem prazo." + (avisou ? " Ela recebeu o aviso." : "")
       : "Essa conta não vê mais a Triagem com IA (os critérios e as leituras ficam guardados).",
   };
 }
@@ -239,11 +259,12 @@ export async function liberarPaginaDeVagas(contaId: string, liberar: boolean): P
     return { ok: false, erro: mensagemDeErro(error) };
   }
   updateTag(`vagas-da-empresa-${contaId}`);
+  const avisou = liberar && (await avisarLiberacao(c, contaId, "pagina_de_vagas"));
   refresh();
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta tem a página de carreiras, sem prazo."
+      ? "Pronto: essa conta tem a página de carreiras, sem prazo." + (avisou ? " Ela recebeu o aviso." : "")
       : "A liberação da equipe saiu (a conta continua liberada se tiver mais de 10 vagas ou assinatura).",
   };
 }
@@ -259,11 +280,12 @@ export async function liberarVideo(contaId: string, liberar: boolean): Promise<R
       return { ok: false, erro: "Rode a migração 20270104120000_recurso_video.sql primeiro." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
+  const avisou = liberar && (await avisarLiberacao(c, contaId, "video"));
   refresh();
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta tem a Entrevista em vídeo, sem prazo."
+      ? "Pronto: essa conta tem a Entrevista em vídeo, sem prazo." + (avisou ? " Ela recebeu o aviso." : "")
       : "Essa conta não tem mais a Entrevista em vídeo (as entrevistas feitas ficam guardadas).",
   };
 }
@@ -279,11 +301,12 @@ export async function liberarAutomacoes(contaId: string, liberar: boolean): Prom
       return { ok: false, erro: "Rode a migração 20270114120000_automacoes_sob_medida.sql primeiro." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
+  const avisou = liberar && (await avisarLiberacao(c, contaId, "automacoes"));
   refresh();
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta tem as Automações personalizadas, sem prazo."
+      ? "Pronto: essa conta tem as Automações personalizadas, sem prazo." + (avisou ? " Ela recebeu o aviso." : "")
       : "Essa conta voltou para as automações prontas (o que já estava salvo nas vagas continua valendo).",
   };
 }
@@ -298,11 +321,12 @@ export async function liberarTestes(contaId: string, liberar: boolean): Promise<
     if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20261215120000_experimentar.sql primeiro." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
+  const avisou = liberar && (await avisarLiberacao(c, contaId, "testes"));
   refresh();
   return {
     ok: true,
     mensagem: liberar
-      ? "Pronto: essa conta tem o Teste Prático, sem prazo."
+      ? "Pronto: essa conta tem o Teste Prático, sem prazo." + (avisou ? " Ela recebeu o aviso." : "")
       : "Essa conta não tem mais o Teste Prático (os resultados ficam guardados).",
   };
 }

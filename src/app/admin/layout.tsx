@@ -1,11 +1,12 @@
 import { KeyRound, Laptop } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
-import { AbasAdmin, type ModoAdmin } from "@/components/admin/abas";
+import { AbasAdmin, MenuAdmin, type ModoAdmin } from "@/components/admin/abas";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Aviso, Container, Selo } from "@/components/ui/basicos";
 import { ehModerador } from "@/lib/dados";
-import { adminSemCookie, ehAdminLocal } from "@/lib/supabase/admin";
+import { numerosDoPainel } from "@/lib/admin/dados";
+import { adminSemCookie, ehAdminLocal, exigirAdminLocal } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = {
   title: { default: "Admin", template: "%s · Admin · Publike" },
@@ -35,11 +36,36 @@ async function ConteudoComModo({ children }: { children: ReactNode }) {
   // Moderador com login entra na moderação; o admin pede o link do terminal.
   const modo: ModoAdmin = (await ehAdminLocal()) ? "admin" : (await ehModerador()) ? "moderador" : null;
   if (!modo && (await adminSemCookie())) return <AbrirPeloTerminal />;
+  if (modo !== "admin") {
+    return (
+      <>
+        <Topo modo={modo} />
+        <div className="mt-6">{children}</div>
+      </>
+    );
+  }
+  // o admin: o menu da lateral (no celular, o "Seções" no alto) e a página ao lado
   return (
     <>
       <Topo modo={modo} />
-      <div className="mt-6">{children}</div>
+      <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <Suspense fallback={<MenuAdmin numeros={{}} />}>
+          <MenuComNumeros />
+        </Suspense>
+        <div className="min-w-0">{children}</div>
+      </div>
     </>
+  );
+}
+
+/** O menu com os números do que espera a equipe (sem eles se o resumo falhar). */
+async function MenuComNumeros() {
+  const c = await exigirAdminLocal().catch(() => null);
+  const n = c ? await numerosDoPainel(c).catch(() => null) : null;
+  return (
+    <MenuAdmin
+      numeros={n ? { "/admin/denuncias": n.denuncias_abertas, "/admin/anuncios": n.ia?.na_fila ?? 0 } : {}}
+    />
   );
 }
 

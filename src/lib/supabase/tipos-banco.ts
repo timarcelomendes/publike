@@ -1840,6 +1840,14 @@ export type Database = {
         };
         Returns: undefined;
       };
+      admin_avisar_liberacao: {
+        Args: { p_conta: string; p_funcionalidade: string };
+        Returns: boolean;
+      };
+      servidor_avisar_liberacoes: {
+        Args: { p_chave: string };
+        Returns: number;
+      };
       admin_uso_da_ia: {
         Args: { p_dias?: number };
         Returns: {

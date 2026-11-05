@@ -20,6 +20,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   // pagamentos: a fatura, a assinatura (o link vem do banco, só caminho do site)
   if (n.tipo === "pagamento") return n.link?.startsWith("/painel/") ? n.link : "/painel/faturas";
   if (n.tipo === "noticias_do_dia") return "/noticias";
+  // a funcionalidade liberada: a página dela (o link vem do banco, só caminho do site)
+  if (n.tipo === "liberacao") return n.link?.startsWith("/painel/") ? n.link : "/painel";
   // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga
   if (n.tipo === "teste_pedido") return "/testes";
   if (n.tipo === "teste_feito" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/testes`;

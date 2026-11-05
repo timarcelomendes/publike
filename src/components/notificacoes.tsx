@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Gift,
   Bell,
   CreditCard,
   FileCheck,
@@ -112,6 +113,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   comunicado: Megaphone,
   // as notícias publicadas no dia, num aviso só
   noticias_do_dia: Newspaper,
+  // uma funcionalidade liberada (a página de carreiras pela meta, ou o que a equipe liberou)
+  liberacao: Gift,
 };
 
 type Notificacao = {

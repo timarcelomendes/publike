@@ -536,6 +536,22 @@ export async function limparTestesAntigos(): Promise<{ apagados: number; motivo?
   return { apagados: Number(data ?? 0) };
 }
 
+/**
+ * O aviso "Sua página de carreiras está liberada" para as contas que passaram de 10 vagas publicadas (migração
+ * 20270212120000; uma vez por conta). O e-mail e o celular saem com os outros avisos.
+ */
+export async function avisarLiberacoesPorMeta(): Promise<{ avisadas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisadas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_liberacoes", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { avisadas: 0 };
+    console.error("Publike: falha ao avisar as liberações:", error.message);
+    return { avisadas: 0, motivo: "Não foi possível avisar as funcionalidades liberadas." };
+  }
+  return { avisadas: Number(data ?? 0) };
+}
+
 export async function processarFilas() {
   try {
     // as Automações personalizadas primeiro: o que elas fazem também vira aviso e e-mail (import aqui: o motor

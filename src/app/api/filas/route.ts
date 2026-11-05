@@ -8,6 +8,7 @@ import {
   limparTestesAntigos,
   enviarEmailsPendentes,
   enviarPushPendentes,
+  avisarLiberacoesPorMeta,
   lembrarRespostas,
   liberarContatosParados,
   revisarAnunciosPendentes,
@@ -76,6 +77,8 @@ export async function GET(request: Request) {
   const funcoes = await comTempo(() => funcoesDasVagas(15));
   // a função de cada experiência dos currículos que mudaram, com a IA ligada (o % pelo contexto)
   const funcoesCv = await comTempo(() => funcoesDosCurriculos(8));
+  // a página de carreiras liberada pela meta (mais de 10 vagas): o aviso, uma vez (sai junto com os e-mails abaixo)
+  const liberacoes = await comTempo(() => avisarLiberacoesPorMeta());
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
   const emails = await enviarEmailsPendentes(20);
   const celular = await enviarPushPendentes(50);
@@ -91,6 +94,7 @@ export async function GET(request: Request) {
     combinam.motivo,
     funcoes.motivo,
     funcoesCv.motivo,
+    liberacoes.motivo,
     noticias.motivo,
     testes.motivo,
     triagem.motivo,
@@ -118,6 +122,7 @@ export async function GET(request: Request) {
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       funcoes: funcoes.achadas,
       funcoesCurriculos: funcoesCv.lidos,
+      liberacoes: liberacoes.avisadas,
       combinam: {
         vagas: combinam.vagas,
         talentos: combinam.talentos,
