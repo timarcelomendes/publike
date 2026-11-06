@@ -3,7 +3,9 @@
 import { Ban, Heart, HeartCrack, Undo2 } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
-import { bloquearPessoa, curtirDeNovo, desfazerMatch } from "@/lib/acoes/curtidas";
+import { useRouter } from "next/navigation";
+import { abrirConversaDoMatch } from "@/lib/abrir-conversa";
+import { bloquearPessoa, curtirDeNovo, desfazerMatch, type ConversaDoMatch } from "@/lib/acoes/curtidas";
 import { MOTIVOS_DESFAZER } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
@@ -177,6 +179,7 @@ export function DesfazerMatch({
 
 /** Match desfeito: quem curtiu pode curtir de novo (se quem publicou não bloqueou). */
 export function CurtirDeNovo({ anuncioId, servico = false }: { anuncioId: string; servico?: boolean }) {
+  const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -190,8 +193,14 @@ export function CurtirDeNovo({ anuncioId, servico = false }: { anuncioId: string
           iniciar(async () => {
             setErro(null);
             const r = await chamarAcao(() => curtirDeNovo(anuncioId));
-            if (r.ok) setOk(r.mensagem ?? "Pronto!");
-            else setErro(r.erro);
+            if (!r.ok) {
+              setErro(r.erro);
+              return;
+            }
+            setOk(r.mensagem ?? "Pronto!");
+            // deu match de novo (contato direto): a conversa com quem publicou abre sozinha
+            const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
+            if (conversa) abrirConversaDoMatch(conversa, (caminho) => router.push(caminho));
           })
         }
         className="inline-flex min-h-11 items-center gap-2 self-start rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"

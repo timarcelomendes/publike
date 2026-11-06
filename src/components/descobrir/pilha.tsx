@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
 import { abrirConversaDoMatch } from "@/lib/abrir-conversa";
 import { chamarAcao } from "@/lib/acao-segura";
-import { curtirAnuncio, type ContatoDaCurtida } from "@/lib/acoes/curtidas";
+import { curtirAnuncio, type ContatoDaCurtida, type ConversaDoMatch } from "@/lib/acoes/curtidas";
 import { passarVaga, salvarVaga, verPassadasDeNovo } from "@/lib/acoes/descobrir";
 import { linkWhatsApp } from "@/lib/formato";
 import type { Motivo } from "@/lib/descobrir";
@@ -278,9 +278,10 @@ export function PilhaDeVagas({
           // contato direto: deu match na hora; sugere chamar no WhatsApp, com a mensagem pronta
           const contato = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
           // deu match: a conversa com quem publicou abre sozinha
-          if (contato?.autorId)
+          const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
+          if (conversa)
             abrirConversaDoMatch(
-              { outroId: contato.autorId, outroNome: contato.autorNome || carta.quem, titulo: contato.titulo },
+              { ...conversa, outroNome: conversa.outroNome || carta.quem, titulo: conversa.titulo || carta.titulo },
               (caminho) => router.push(caminho),
             );
           if (contato) {

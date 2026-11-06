@@ -11,6 +11,7 @@ import {
   descurtirAnuncio,
   type AvisoLigado,
   type ContatoDaCurtida,
+  type ConversaDoMatch,
 } from "@/lib/acoes/curtidas";
 import { abrirConversaDoMatch, pedirConversa } from "@/lib/abrir-conversa";
 import { caminhoConversa } from "@/lib/conversas";
@@ -197,10 +198,11 @@ export function BotaoCurtir({
         const novo = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
         setContato(novo);
         setExplicar(true);
-        // deu match: a conversa com quem publicou abre sozinha
-        if (novo?.autorId)
+        // deu match (curtindo ou curtindo de novo): a conversa com quem publicou abre sozinha
+        const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
+        if (conversa)
           abrirConversaDoMatch(
-            { outroId: novo.autorId, outroNome: novo.autorNome || quem || "", titulo: novo.titulo },
+            { ...conversa, outroNome: conversa.outroNome || quem || "" },
             (caminho) => router.push(caminho),
           );
       }
