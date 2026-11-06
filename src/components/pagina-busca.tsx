@@ -8,10 +8,12 @@ import { CATEGORIAS, type Categoria } from "@/lib/constantes";
 import {
   areaDoSlug,
   caminhoDaBusca,
+  caminhoDasRecentes,
   caminhoDoBairro,
   cidadeDoSlug,
   CIDADES_PRINCIPAIS,
   descricaoDaBusca,
+  DIAS_RECENTES,
   introDaBusca,
   slugDaCidade,
   tituloDaBusca,
@@ -248,6 +250,13 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
             {introDaBusca(tipo, cidade, area?.nome ?? null, itens.length)}
           </p>
           {botoes}
+          {vaga && !area && (
+            <p className="mt-4 text-body">
+              <Link href={caminhoDasRecentes(cidade)} className="font-semibold underline underline-offset-2">
+                Só as dos últimos {DIAS_RECENTES} dias
+              </Link>
+            </p>
+          )}
         </>
       )}
 

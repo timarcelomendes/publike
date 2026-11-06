@@ -4,7 +4,14 @@ import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { CATEGORIAS } from "@/lib/constantes";
 import { CONTEUDOS } from "@/lib/conteudos";
 import { noticiasPublicadas } from "@/lib/servidor/noticias";
-import { caminhoDaBusca, caminhoDoBairro, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
+import {
+  caminhoDaBusca,
+  caminhoDasRecentes,
+  caminhoDoBairro,
+  cidadeDoSlug,
+  CIDADES_PRINCIPAIS,
+  slugDaCidade,
+} from "@/lib/paginas-busca";
 import { cidadeDePraca, PRACAS } from "@/lib/pracas";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { paginasDeFuncao } from "@/lib/servidor/paginas-funcao";
@@ -27,6 +34,10 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "hourly",
         priority: cidadeDePraca(cidade) ? 0.9 : 0.8,
       });
+      // as vagas novas da cidade (/vagas/goiania/ultimos-3-dias), nas cidades principais
+      if (tipo === "vaga" && CIDADES_PRINCIPAIS.includes(cidade)) {
+        lista.push({ url: `${SITE_URL}${caminhoDasRecentes(cidade)}`, changeFrequency: "daily", priority: 0.7 });
+      }
       // os bairros com vaga no ar (só vagas: /vagas/goiania/bairro/setor-bueno)
       if (tipo === "vaga") {
         const bairros = new Set(

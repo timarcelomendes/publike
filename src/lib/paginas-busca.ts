@@ -39,6 +39,13 @@ export function caminhoDoBairro(cidade: string, bairro: string) {
   return `/vagas/${slugDaCidade(cidade)}/bairro/${slugDaCidade(bairro)}`;
 }
 
+/** As vagas novas da cidade (claude/plano-vagas-dos-ultimos-3-dias.md): /vagas/goiania/ultimos-3-dias. */
+export const SLUG_RECENTES = "ultimos-3-dias";
+export const DIAS_RECENTES = 3;
+export function caminhoDasRecentes(cidade: string) {
+  return `/vagas/${slugDaCidade(cidade)}/${SLUG_RECENTES}`;
+}
+
 /** "em Goiânia", "em Aparecida de Goiânia". */
 export function emCidade(cidade: string) {
   return `em ${cidade}`;

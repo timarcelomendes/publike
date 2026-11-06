@@ -3,7 +3,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 import { PACOTE_ANDROID } from "@/lib/android";
 import { COOKIES_DA_SESSAO } from "@/lib/config";
 import { COOKIE_ORIGEM, DURACAO_ORIGEM, origemDoLink } from "@/lib/origem";
-import { areaDoSlug, cidadeDoSlug } from "@/lib/paginas-busca";
+import { areaDoSlug, cidadeDoSlug, SLUG_RECENTES } from "@/lib/paginas-busca";
 import { funcaoDaListaPeloSlug } from "@/lib/funcoes-das-paginas";
 
 // Roda antes de cada página: renova a sessão do Supabase (cookies) e
@@ -33,7 +33,9 @@ function buscaInexistente(pathname: string) {
   const area = m[2] ? areaDoSlug(m[2]) : null;
   // nas vagas, o nome também pode ser de uma função (/vagas/goiania/frentista: claude/plano-vagas-por-funcao.md)
   const funcao = m[2] && pathname.startsWith("/vagas/") ? funcaoDaListaPeloSlug(m[2]) : null;
-  return !cidadeDoSlug(m[1]) || (m[2] !== undefined && !funcao && (!area || area.slug === "outros"));
+  // e as vagas novas da cidade (/vagas/goiania/ultimos-3-dias: claude/plano-vagas-dos-ultimos-3-dias.md)
+  const recentes = m[2] === SLUG_RECENTES && pathname.startsWith("/vagas/");
+  return !cidadeDoSlug(m[1]) || (m[2] !== undefined && !funcao && !recentes && (!area || area.slug === "outros"));
 }
 
 // Chegou pelo link de uma campanha (?utm_source=google&utm_campaign=servicos): guarda só
