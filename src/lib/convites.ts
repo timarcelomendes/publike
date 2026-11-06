@@ -341,13 +341,13 @@ export function mensagemConvite(
   const pedido = link
     ? pronta
       ? escolher(s, "pronta", [
-          `Já deixei a vaga pronta no site. É só abrir, conferir e tocar em Publicar ${ENTRAR}:\n${link}`,
-          `A vaga já está montada no site: falta só vocês conferirem e tocarem em Publicar ${ENTRAR}:\n${link}`,
-          `Deixei tudo pronto. Abrindo o link, é só conferir a vaga e tocar em Publicar ${ENTRAR}:\n${link}`,
+          `Para adiantar, já deixei a vaga escrita com o que vi no anúncio. Vocês abrem o link, conferem, mudam o que quiserem e tocam em Publicar ${ENTRAR}:\n${link}`,
+          `A vaga já está escrita no site com o que vi no anúncio: vocês só conferem, ajustam se precisar e tocam em Publicar ${ENTRAR}:\n${link}`,
+          `Deixei a vaga escrita para vocês. Abrindo o link, é só conferir, ajustar o que quiserem e tocar em Publicar ${ENTRAR}:\n${link}`,
         ])
       : escolher(s, "link", [
-          `Para publicar, é só abrir o link, escrever a vaga e tocar em Publicar ${ENTRAR}:\n${link}`,
-          `É rapidinho: abra o link, escreva a vaga e toque em Publicar ${ENTRAR}:\n${link}`,
+          `Vocês mesmos publicam em 2 minutos: abram o link, escrevam a vaga e toquem em Publicar ${ENTRAR}:\n${link}`,
+          `É rapidinho e vocês mesmos fazem: abram o link, escrevam a vaga e toquem em Publicar ${ENTRAR}:\n${link}`,
         ])
     : null;
   const vagas = juntar(c.vagas.map(minusculo));
@@ -375,11 +375,18 @@ export function mensagemConvite(
       // para uma pessoa só: sem o "Como vão?"
       `${ola}, ${c.nome}! ${escolher(s, "tudo", ["Tudo bem?", "Tudo certo?"])} ${apresenta}`,
       servicos
-        ? escolher(s, "pede", [
-            `Vi que você faz ${servicos}. Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`,
-            `Vi que você trabalha com ${servicos}. Quer que eu monte a sua vitrine no Publike, de graça? Quem procura ${minusculo(c.vagas[0])} perto de você te acha pelo site e chama no WhatsApp.`,
-          ])
-        : "Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa do seu serviço perto de você te encontra pelo site e chama no WhatsApp.",
+        ? link
+          ? escolher(s, "pede", [
+              `Vi que você faz ${servicos}. Você pode montar a sua vitrine de serviços no Publike, sem custo: quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`,
+              `Vi que você trabalha com ${servicos}. Que tal montar a sua vitrine no Publike? É de graça, e quem procura ${minusculo(c.vagas[0])} perto de você te acha pelo site e chama no WhatsApp.`,
+            ])
+          : escolher(s, "pede", [
+              `Vi que você faz ${servicos}. Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa de ${minusculo(c.vagas[0])} perto de você te encontra pelo site e chama no WhatsApp.`,
+              `Vi que você trabalha com ${servicos}. Quer que eu monte a sua vitrine no Publike, de graça? Quem procura ${minusculo(c.vagas[0])} perto de você te acha pelo site e chama no WhatsApp.`,
+            ])
+        : link
+          ? "Você pode montar a sua vitrine de serviços no Publike, sem custo: quem precisa do seu serviço perto de você te encontra pelo site e chama no WhatsApp."
+          : "Posso montar a sua vitrine de serviços no Publike, sem custo? Quem precisa do seu serviço perto de você te encontra pelo site e chama no WhatsApp.",
       pontos([
         ["É grátis: sem plano, sem taxa e sem comissão.", "Não custa nada: sem plano, sem taxa e sem comissão."],
         [
@@ -390,8 +397,8 @@ export function mensagemConvite(
       ]),
       link
         ? pronta
-          ? `Já deixei a sua vitrine pronta no site. É só abrir, conferir e tocar em Salvar ${ENTRAR}:\n${link}`
-          : `Para aparecer, é só abrir o link, escrever o seu serviço e tocar em Salvar ${ENTRAR}:\n${link}`
+          ? `Para adiantar, já deixei a sua vitrine escrita. Você abre o link, confere, muda o que quiser e toca em Salvar ${ENTRAR}:\n${link}`
+          : `Você mesmo monta em 2 minutos: abra o link, escreva o seu serviço e toque em Salvar ${ENTRAR}:\n${link}`
         : `Se quiser, é só responder "pode" e me dizer o bairro onde você atende. Eu monto a vitrine e te mando o link para entrar e conferir.`,
       fecha,
     ].join("\n\n");
@@ -400,11 +407,18 @@ export function mensagemConvite(
     return [
       abre,
       vagas
-        ? escolher(s, "pede", [
-            `Vi que vocês estão com vaga de ${vagas}. Posso publicar ${essa} no Publike em nome da agência, sem custo?`,
-            `Vi o anúncio de ${vagas} de vocês. Querem que eu publique ${essa} no Publike em nome da agência? É sem custo.`,
-          ])
-        : "Posso publicar as vagas de vocês no Publike em nome da agência, sem custo?",
+        ? link
+          ? escolher(s, "pede", [
+              `Vi que vocês estão com vaga de ${vagas}. Vocês podem publicar ${essa} no Publike em nome da agência, sem custo.`,
+              `Vi o anúncio de ${vagas} de vocês. Que tal publicar ${essa} no Publike em nome da agência? É sem custo.`,
+            ])
+          : escolher(s, "pede", [
+              `Vi que vocês estão com vaga de ${vagas}. Posso publicar ${essa} no Publike em nome da agência, sem custo?`,
+              `Vi o anúncio de ${vagas} de vocês. Querem que eu publique ${essa} no Publike em nome da agência? É sem custo.`,
+            ])
+        : link
+          ? "Vocês podem publicar as vagas de vocês no Publike em nome da agência, sem custo."
+          : "Posso publicar as vagas de vocês no Publike em nome da agência, sem custo?",
       pontos([
         [
           `Não concorremos com agências: a vaga sai com o nome de vocês e o selo "Vaga de agência".`,
@@ -424,20 +438,28 @@ export function mensagemConvite(
   return [
     abre,
     vagas
-      ? escolher(s, "pede", [
-          `Vi que vocês estão contratando ${vagas}. Posso publicar ${essa} no Publike, sem custo, para mais gente da região ficar sabendo?`,
-          `Vi o anúncio de ${vagas} de vocês. Posso divulgar ${essa} no Publike, de graça, para chegar a mais gente da região?`,
-          `Soube que vocês procuram ${vagas}. Querem que eu publique ${essa} no Publike? É sem custo e mais gente da região fica sabendo.`,
-        ])
-      : "Posso publicar as vagas de vocês no Publike, sem custo, para mais gente da região ficar sabendo?",
+      ? link
+        ? escolher(s, "pede", [
+            `Vi que vocês estão contratando ${vagas}. Vocês podem publicar ${essa} no Publike, de graça, e receber os candidatos direto, sem intermediário.`,
+            `Vi o anúncio de ${vagas} de vocês. Que tal publicar ${essa} no Publike? É de graça, leva 2 minutos e mais gente da região fica sabendo.`,
+            `Soube que vocês procuram ${vagas}. Publiquem ${essa} no Publike: é sem custo e chega a mais gente da região.`,
+          ])
+        : escolher(s, "pede", [
+            `Vi que vocês estão contratando ${vagas}. Posso publicar ${essa} no Publike, sem custo, para mais gente da região ficar sabendo?`,
+            `Vi o anúncio de ${vagas} de vocês. Posso divulgar ${essa} no Publike, de graça, para chegar a mais gente da região?`,
+            `Soube que vocês procuram ${vagas}. Querem que eu publique ${essa} no Publike? É sem custo e mais gente da região fica sabendo.`,
+          ])
+      : link
+        ? "Vocês podem publicar as vagas de vocês no Publike, de graça, e receber os candidatos direto."
+        : "Posso publicar as vagas de vocês no Publike, sem custo, para mais gente da região ficar sabendo?",
     pontos([
       [
         "É grátis para a empresa e para o candidato: sem plano e sem taxa.",
         "Não custa nada, nem para a empresa nem para o candidato: sem plano e sem taxa.",
       ],
       [
-        "Não somos agência: quem se interessa curte a vaga, e vocês decidem com quem conversar. Ao aceitar, o contato é direto com vocês.",
-        "Não somos agência: quem tem interesse curte a vaga e vocês escolhem com quem conversar. Aceitou, o contato é direto com vocês.",
+        "Não somos agência: a vaga fica na conta de vocês. Quem se interessa curte, e vocês decidem com quem conversar. Ao aceitar, o contato é direto.",
+        "Não somos agência: vocês cuidam da vaga pela própria conta. Quem tem interesse curte e vocês escolhem com quem conversar.",
       ],
       [
         "A vaga aparece primeiro para quem mora perto, com a distância e o tempo de ônibus até a empresa.",
@@ -471,8 +493,8 @@ export function mensagemConviteAgrupada(
   return [
     `${escolher(s, "ola", ["Olá", "Oi"])}! ${escolher(s, "tudo", ["Tudo bem?", "Tudo certo?", "Como vão?"])} ${quem} (publike.org), um site gratuito de vagas e serviços de ${ONDE_FUNCIONA}.`,
     escolher(s, "pede", [
-      `Vi que vocês estão com vagas abertas. Posso publicar no Publike, sem custo? Já deixei cada uma pronta no site: é só abrir o link, conferir e tocar em Publicar ${ENTRAR}.`,
-      `Vi as vagas abertas de vocês. Querem que eu publique no Publike? É sem custo, e cada uma já está pronta no site: é só abrir o link, conferir e tocar em Publicar ${ENTRAR}.`,
+      `Vi que vocês estão com vagas abertas. Vocês podem publicar no Publike, sem custo. Para adiantar, deixei cada uma escrita no site: é só abrir o link, conferir, ajustar o que quiserem e tocar em Publicar ${ENTRAR}.`,
+      `Vi as vagas abertas de vocês. Que tal publicar no Publike? É sem custo, e cada uma já está escrita no site: vocês abrem o link, conferem e tocam em Publicar ${ENTRAR}.`,
     ]),
     itens,
     agencia

@@ -1024,14 +1024,16 @@ function CartaoConvite({
         </p>
       )}
 
-      {!c.anuncio_id && c.status !== "recusou" && c.status !== "sem_contato" && (
-        // disse "sim" no WhatsApp mas não abriu o link: o admin publica por ela
+      {!c.anuncio_id && (c.status === "enviada" || c.status === "autorizou") && (
+        // o foco é a própria empresa publicar pelo link; só se ela pedir, o admin publica por ela
         <Link
           href={`/admin/convites/${c.id}/${c.tipo === "prestador" ? "vitrine" : "publicar"}`}
-          className={`${classesBotao("secundario", "sm")} self-start`}
+          className="inline-flex min-h-9 items-center gap-1.5 self-start text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
         >
-          <UserPlus aria-hidden />
-          {c.tipo === "prestador" ? "Disse sim? Montar a vitrine por ele" : "Disse sim? Publicar por ela"}
+          <UserPlus aria-hidden className="size-4" />
+          {c.tipo === "prestador"
+            ? "Pediu para a gente montar? Montar a vitrine por ele"
+            : "Pediu para a gente publicar? Publicar por ela"}
         </Link>
       )}
 
