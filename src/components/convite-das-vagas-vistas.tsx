@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { salvarBusca } from "@/lib/acoes/buscas";
 import { registrarFunilVisitante } from "@/lib/acoes/funil-visitante";
+import { pedirEntrar } from "./folha-de-entrar";
 
 // O convite que acompanha o que a pessoa vê (claude/plano-visitante-que-entra.md): na página da vaga, para quem está
 // sem conta, o site guarda só neste aparelho a área das vagas abertas. Na segunda vaga da mesma área, um cartão fixo
@@ -159,7 +160,14 @@ export function ConviteDasVagasVistas({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-13">
         <Link
           href={`/entrar?next=${encodeURIComponent(volta)}`}
-          onClick={() => void registrarFunilVisitante("convite_tocou").catch(() => {})}
+          onClick={(e) => {
+            void registrarFunilVisitante("convite_tocou").catch(() => {});
+            // a folha de entrar por cima da página; sem ela, o link leva ao /entrar
+            if (pedirEntrar({ proximo: volta })) {
+              e.preventDefault();
+              setAberto(false);
+            }
+          }}
           className="inline-flex min-h-11 items-center gap-2 rounded-pill bg-terra px-5 text-label text-on-terra hover:opacity-90"
         >
           Receber as novas

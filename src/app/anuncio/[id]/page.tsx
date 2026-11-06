@@ -399,7 +399,9 @@ async function DetalheAnuncio({
         perguntas={perguntas}
         minhasRespostas={respostasDoBanco(anuncio.minhas_respostas)}
         pedirRespostas={primeiro(sp.responder) === "1"}
-        continuarCurtida={primeiro(sp.curtir) === "1"}
+        continuarCurtida={primeiro(sp.curtir) === "1" || primeiro(sp.curtir) === "auto"}
+        // voltou da folha de entrar (claude/plano-curtir-sem-pagina-de-entrar.md): a curtida sai sozinha
+        curtirSozinho={primeiro(sp.curtir) === "auto"}
         autorId={anuncio.autor_id}
         entrevista={entrevista}
         contatoDireto={anuncio.contato_direto && anuncio.status === "ativo"}
@@ -819,7 +821,14 @@ async function DetalheAnuncio({
           )}
 
           <div className="flex flex-wrap justify-start gap-2">
-            {vaga && !proprio && <BotaoSalvarVaga anuncioId={anuncio.id} salva={salva} logado={usuario !== null} />}
+            {vaga && !proprio && (
+              <BotaoSalvarVaga
+                anuncioId={anuncio.id}
+                salva={salva}
+                logado={usuario !== null}
+                salvarSozinho={primeiro(sp.salvar) === "1"}
+              />
+            )}
             <BotaoCompartilhar titulo={anuncio.titulo} texto={`${anuncio.titulo} · ${lugar} · Publike`} />
           </div>
 

@@ -20,6 +20,7 @@ import { NuncaPague } from "./anuncio/nunca-pague";
 import { LinhaDoAvisoLigado } from "./aviso-ligado";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
 import { ConviteNotificacoes } from "./convite-notificacoes";
+import { pedirEntrar } from "./folha-de-entrar";
 
 // A dica "Curtir é se candidatar" (curtir aqui não é reagir, como numa rede social): aparece uma
 // vez por navegador, no primeiro botão de vaga que fica inteiro na tela, depois das boas-vindas.
@@ -170,9 +171,11 @@ export function BotaoCurtir({
     setExplicar(false);
     setDica(false);
     if (!logado) {
-      // volta para a vaga com o quadro de curtir à mão (?curtir=1)
-      // no serviço, o /entrar diz "Entre para pedir o serviço"
-      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1${servico ? "&servico=1" : ""}`)}`);
+      // a folha de entrar por cima da página (claude/plano-curtir-sem-pagina-de-entrar.md); sem ela, o /entrar (no
+      // serviço, "Entre para pedir o serviço"). Depois de entrar, volta para a vaga e a curtida sai sozinha
+      // (?curtir=auto; com perguntas da empresa, o quadro aparece com elas)
+      const proximo = `/anuncio/${anuncioId}?curtir=auto${servico ? "&servico=1" : ""}`;
+      if (!pedirEntrar({ proximo })) router.push(`/entrar?next=${encodeURIComponent(proximo)}`);
       return;
     }
     if (respondido) {

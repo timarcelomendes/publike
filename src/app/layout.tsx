@@ -13,6 +13,7 @@ import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
 import { EntrarNumToque } from "@/components/entrar-num-toque";
+import { FolhaDeEntrar } from "@/components/folha-de-entrar";
 import { ContarTempo } from "@/components/contar-tempo";
 import { ConviteInstalar } from "@/components/instalar-app";
 import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/navegacao";
@@ -22,6 +23,7 @@ import { GOOGLE_CLIENT_ID, MODO_DEMO, SITE_URL } from "@/lib/config";
 import { COOKIE_SAIU } from "@/lib/entrar-sozinho";
 import { obterUsuario } from "@/lib/dados";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
+import { redesParaEntrar } from "@/lib/login-social-servidor";
 import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
 import { SCRIPT_TOQUE_CEDO } from "@/lib/toque-cedo";
 import "./globals.css";
@@ -115,9 +117,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </Suspense>
           <BarraInferior />
           <Assistente />
-          {/* quem está sem conta: o "Continuar como Fulano" do Google num toque (lê a conta) */}
+          {/* quem está sem conta: o "Continuar como Fulano" do Google num toque e a folha de entrar (lê a conta) */}
           <Suspense fallback={null}>
-            <EntrarNumToqueSemConta />
+            <ParaQuemEstaSemConta />
           </Suspense>
           {/* lê o endereço da página: no build, precisa estar num Suspense */}
           <Suspense fallback={null}>
@@ -149,10 +151,19 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   );
 }
 
-/** O "entrar num toque" do Google, só para quem está sem conta (claude/plano-visitante-que-entra.md). */
-async function EntrarNumToqueSemConta() {
-  if (MODO_DEMO || !GOOGLE_CLIENT_ID || (await obterUsuario())) return null;
+/**
+ * Só para quem está sem conta (claude/plano-visitante-que-entra.md e claude/plano-curtir-sem-pagina-de-entrar.md): o
+ * "entrar num toque" do Google e a folha de entrar, que os botões (Curtir, Salvar, Me avise) abrem por cima da página.
+ */
+async function ParaQuemEstaSemConta() {
+  if (MODO_DEMO || (await obterUsuario())) return null;
+  const redes = await redesParaEntrar();
   // quem tocou em "Sair" neste navegador não entra sozinho: o quadro aparece, mas pede o toque
   const saiu = (await cookies()).has(COOKIE_SAIU);
-  return <EntrarNumToque clientId={GOOGLE_CLIENT_ID} automatico={!saiu} />;
+  return (
+    <>
+      {GOOGLE_CLIENT_ID && <EntrarNumToque clientId={GOOGLE_CLIENT_ID} automatico={!saiu} />}
+      {redes.length > 0 && <FolhaDeEntrar redes={redes} googleClientId={GOOGLE_CLIENT_ID} />}
+    </>
+  );
 }

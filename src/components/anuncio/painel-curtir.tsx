@@ -18,6 +18,7 @@ import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
 import { LinhaDoAvisoLigado } from "../aviso-ligado";
+import { pedirEntrar, tirarPedidoDoEndereco } from "../folha-de-entrar";
 import { NuncaPague } from "./nunca-pague";
 import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
@@ -59,6 +60,8 @@ type Props = {
   pedirRespostas?: boolean;
   /** tocou em Curtir sem conta, entrou e voltou (?curtir=1): o quadro aparece com o botão à mão */
   continuarCurtida?: boolean;
+  /** voltou da folha de entrar (?curtir=auto): sem perguntas da empresa, a curtida sai sozinha */
+  curtirSozinho?: boolean;
   /** quem publicou: depois do match, a conversa no Chat do Publike é com ele */
   autorId?: string | null;
   /** depois do match: a entrevista que a empresa marcou */
@@ -68,6 +71,9 @@ type Props = {
   /** a vaga é só pelo chat do Publike: depois do match, a conversa é no chat (sem o WhatsApp de quem publicou) */
   soChat?: boolean;
 };
+
+/** As curtidas que já saíram sozinhas nesta visita (o quadro aparece duas vezes e o efeito pode rodar de novo). */
+const curtidasSozinhas = new Set<string>();
 
 /** O currículo, que volta para a vaga depois de salvar. */
 const linkDoCurriculo = (anuncioId: string) => `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`;
@@ -126,6 +132,7 @@ export function PainelCurtir({
   minhasRespostas = {},
   pedirRespostas = false,
   continuarCurtida = false,
+  curtirSozinho = false,
   autorId = null,
   entrevista = null,
   contatoDireto = false,
@@ -151,6 +158,18 @@ export function PainelCurtir({
     el.scrollIntoView({ block: "center" });
     botaoCurtir.current?.focus({ preventScroll: true });
   }, [continuar]);
+  // voltou da folha de entrar (?curtir=auto) e a vaga não tem perguntas: a curtida que a pessoa pediu sai sozinha, uma
+  // vez, pelo quadro que está à mostra (a página tem o quadro duas vezes: celular e computador)
+  const sozinha = continuar && curtirSozinho && perguntas.length === 0;
+  useEffect(() => {
+    const el = quadro.current;
+    if (!sozinha || !el || el.offsetParent === null) return;
+    if (curtidasSozinhas.has(anuncioId)) return;
+    curtidasSozinhas.add(anuncioId);
+    tirarPedidoDoEndereco("curtir");
+    curtir();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- uma vez, na volta da folha de entrar
+  }, [sozinha, anuncioId]);
   // quem decide se aceita (e, com o aceite, vocês se conectam)
   const quem = autorNome || (servico ? "O profissional" : "Quem publicou");
   // vaga que pede currículo, para quem ainda não mandou: entra o passo do currículo
@@ -159,8 +178,9 @@ export function PainelCurtir({
   function curtir() {
     setErro(null);
     if (!logado) {
-      // no serviço, o /entrar diz "Entre para pedir o serviço"
-      router.push(`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}?curtir=1${servico ? "&servico=1" : ""}`)}`);
+      // a folha de entrar por cima da página; sem ela, o /entrar (no serviço, "Entre para pedir o serviço")
+      const proximo = `/anuncio/${anuncioId}?curtir=auto${servico ? "&servico=1" : ""}`;
+      if (!pedirEntrar({ proximo })) router.push(`/entrar?next=${encodeURIComponent(proximo)}`);
       return;
     }
     if (perguntas.length) {
@@ -428,7 +448,9 @@ export function PainelCurtir({
     >
       {continuar && (
         <p role="status" className="rounded-md bg-like-soft px-3 py-2 text-label text-like-text">
-          Pronto, você entrou. Falta só tocar em “{servico ? "Quero contratar" : "Curtir a vaga"}”.
+          {pendente || (sozinha && !erro)
+            ? `Pronto, você entrou. Enviando ${servico ? "o seu pedido" : "a sua curtida"}…`
+            : `Pronto, você entrou. Falta só tocar em “${servico ? "Quero contratar" : "Curtir a vaga"}”.`}
         </p>
       )}
       <div>

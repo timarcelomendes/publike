@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apagarBusca, salvarBusca } from "@/lib/acoes/buscas";
+import { pedirEntrar } from "../folha-de-entrar";
 import { useAcao } from "../ui/usar-acao";
 
 /** O "Me avise" sem conta volta do /entrar com avisar=1: o aviso é criado uma vez só, mesmo com dois botões na página. */
@@ -52,7 +53,14 @@ export function AvisarBusca({
     // a volta traz avisar=1, e o aviso sai sozinho depois de entrar
     const volta = `${caminho}${caminho.includes("?") ? "&" : "?"}avisar=1`;
     return (
-      <Link href={`/entrar?next=${encodeURIComponent(volta)}`} className={link}>
+      <Link
+        href={`/entrar?next=${encodeURIComponent(volta)}`}
+        // a folha de entrar por cima da página (claude/plano-curtir-sem-pagina-de-entrar.md); sem ela, o /entrar
+        onClick={(e) => {
+          if (pedirEntrar({ proximo: volta })) e.preventDefault();
+        }}
+        className={link}
+      >
         <BellPlus aria-hidden className="size-4 shrink-0" />
         Me avise de vagas assim
       </Link>
