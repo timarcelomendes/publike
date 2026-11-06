@@ -65,8 +65,13 @@ export function BotaoCurtir({
   className?: string;
 }) {
   const router = useRouter();
-  const [atual, setAtual] = useOptimistic(status);
+  const [otimista, setAtual] = useOptimistic(status);
+  // o que o servidor respondeu ("Deu match!" no contato direto, ou o descurtir), até a lista trazer o status novo:
+  // a lista nem sempre recarrega na hora, e o botão ficava "Curtido" com o balão dizendo "Deu match!"
+  const [confirmado, setConfirmado] = useState<{ de: string | null; valor: string | null } | null>(null);
   const [pendente, iniciar] = useTransition();
+  // durante a ação, o otimista; depois, a resposta do servidor (se a lista ainda não trouxe o status novo)
+  const atual = !pendente && confirmado && confirmado.de === status ? confirmado.valor : otimista;
   const [erro, setErro] = useState<string | null>(null);
   const [explicar, setExplicar] = useState(false);
   // com o dedo ou o foco no balão (o convite das notificações está nele), ele não fecha sozinho
@@ -177,6 +182,10 @@ export function BotaoCurtir({
       const r = await chamarAcao(() =>
         desfeito ? curtirDeNovo(anuncioId) : curtido ? descurtirAnuncio(anuncioId) : curtirAnuncio(anuncioId),
       );
+      if (r.ok) {
+        const virouMatch = curtindo && "mensagem" in r && typeof r.mensagem === "string" && r.mensagem.startsWith("Deu match");
+        setConfirmado({ de: status, valor: curtindo ? (virouMatch ? "match" : "pendente") : null });
+      }
       if (!r.ok) {
         if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
