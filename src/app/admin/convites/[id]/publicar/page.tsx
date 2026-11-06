@@ -68,8 +68,13 @@ async function Conteudo({ id }: { id: string }) {
         Convites
       </Link>
       <h2 className="text-h2">Publicar a vaga de {convite.nome}</h2>
-      <p className="-mt-3 text-body text-ink-muted">
-        Para quando a empresa disse “sim” mas não abriu o link. Confira a vaga (veio do anúncio dela) e publique:{" "}
+      <Aviso tipo="alerta" titulo="Último recurso">
+        As empresas que a gente cadastra quase nunca entram para ver os candidatos, mesmo as que têm mais vagas. Antes
+        de publicar por ela, mande o link de novo e peça que ela mesma toque em Publicar: leva 2 minutos, e a conta e os
+        candidatos ficam com ela.
+      </Aviso>
+      <p className="text-body text-ink-muted">
+        Só para quando a empresa pediu que a gente publicasse. Confira a vaga (veio do anúncio dela) e publique:{" "}
         {conta
           ? `ela sai na conta ${conta.nome}.`
           : "a conta da empresa é criada agora, com os dados abaixo, e a vaga sai no nome dela."}{" "}
