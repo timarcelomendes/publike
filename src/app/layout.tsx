@@ -11,12 +11,13 @@ import { GoogleAds } from "@/components/google-ads";
 import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
+import { EntrarNumToque } from "@/components/entrar-num-toque";
 import { ContarTempo } from "@/components/contar-tempo";
 import { ConviteInstalar } from "@/components/instalar-app";
 import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/navegacao";
 import { RodapeDaPagina } from "@/components/rodape-da-pagina";
 import { SoOlharDaConta } from "@/components/so-olhar-da-conta";
-import { MODO_DEMO, SITE_URL } from "@/lib/config";
+import { GOOGLE_CLIENT_ID, MODO_DEMO, SITE_URL } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
@@ -112,6 +113,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </Suspense>
           <BarraInferior />
           <Assistente />
+          {/* quem está sem conta: o "Continuar como Fulano" do Google num toque (lê a conta) */}
+          <Suspense fallback={null}>
+            <EntrarNumToqueSemConta />
+          </Suspense>
           {/* lê o endereço da página: no build, precisa estar num Suspense */}
           <Suspense fallback={null}>
             <BoasVindasParceiro />
@@ -140,4 +145,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </body>
     </html>
   );
+}
+
+/** O "entrar num toque" do Google, só para quem está sem conta (claude/plano-visitante-que-entra.md). */
+async function EntrarNumToqueSemConta() {
+  if (MODO_DEMO || !GOOGLE_CLIENT_ID || (await obterUsuario())) return null;
+  return <EntrarNumToque clientId={GOOGLE_CLIENT_ID} />;
 }

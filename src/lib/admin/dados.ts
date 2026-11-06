@@ -222,6 +222,23 @@ export async function funilDoVisitante(c: ClienteBanco, dias = 7): Promise<Map<s
   return new Map((data ?? []).map((l) => [l.etapa, Number(l.total)]));
 }
 
+/** Por onde chegam (claude/plano-visitante-que-entra.md): por porta, quem chegou sem conta, quantos ficaram e
+ * quantos entraram na conta no mesmo dia. null: banco sem a migração 20270226120000. */
+export type PortaDeEntrada = { porta: string; visitantes: number; ficaram: number; entraram: number };
+export async function portasDeEntrada(c: ClienteBanco, dias = 7): Promise<PortaDeEntrada[] | null> {
+  const { data, error } = await c.rpc("admin_portas_de_entrada", { p_dias: dias });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as portas de entrada:", error.message);
+    return null;
+  }
+  return (data ?? []).map((l) => ({
+    porta: l.porta,
+    visitantes: Number(l.visitantes),
+    ficaram: Number(l.ficaram),
+    entraram: Number(l.entraram),
+  }));
+}
+
 export type SituacaoPush = {
   aparelhos: number;
   contas: number;

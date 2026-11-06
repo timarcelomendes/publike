@@ -6,7 +6,18 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 // O funil de quem chega sem conta (migração 20270124120000): soma 1 no evento do dia, sem saber quem foi. Sem a
 // migração (ou com o banco fora), não faz nada: é só número.
 
-const EVENTOS = new Set(["home", "curtir", "publicar", "curriculo", "entrar"]);
+// os quatro últimos: o "entrar num toque" e o convite das vagas vistas (migração 20270226120000)
+const EVENTOS = new Set([
+  "home",
+  "curtir",
+  "publicar",
+  "curriculo",
+  "entrar",
+  "toque_mostrou",
+  "toque_entrou",
+  "convite_mostrou",
+  "convite_tocou",
+]);
 
 export async function registrarFunilVisitante(evento: string): Promise<void> {
   if (MODO_DEMO || !EVENTOS.has(evento)) return;

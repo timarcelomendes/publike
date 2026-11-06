@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { FunilDoPublicar } from "@/components/admin/funil-publicar";
-import { FunilDoVisitante } from "@/components/admin/funil-visitante";
+import { FunilDoVisitante, PortasDeEntrada } from "@/components/admin/funil-visitante";
 import { MetricasDeProduto } from "@/components/admin/metricas-produto";
 import { NumerosDoPainel, NumerosDoPainelEmbaixo } from "@/components/admin/numeros-do-painel";
 import { ContasNoApp, NumerosDoTesteApp } from "@/components/admin/numeros-teste-app";
@@ -17,6 +17,7 @@ import {
   configDoSite,
   funilDoPublicar,
   funilDoVisitante,
+  portasDeEntrada,
   listarChavesServidor,
   metricasDeProduto,
   motivosDeEncerramento,
@@ -75,6 +76,7 @@ async function Conteudo() {
     funil,
     pagamentos,
     funilVisitante,
+    portas,
   ] = await Promise.all([
     numerosDoPainel(c),
     acessosDoSite(c),
@@ -93,6 +95,7 @@ async function Conteudo() {
     funilDoPublicar(c),
     situacaoPagamentos(c),
     funilDoVisitante(c),
+    portasDeEntrada(c),
   ]);
   const hoje = await numerosDeHoje(c, n, agora);
   const filas = situacaoFilas();
@@ -192,6 +195,7 @@ async function Conteudo() {
         </Secao>
       )}
 
+      {portas && <PortasDeEntrada portas={portas} />}
       {funilVisitante && <FunilDoVisitante funil={funilVisitante} />}
       {funil && <FunilDoPublicar funil={funil} />}
       <NumerosDoPainelEmbaixo n={n} encerramentos={encerramentos} />

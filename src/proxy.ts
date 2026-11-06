@@ -111,6 +111,22 @@ function marcarContaDoDia(resposta: NextResponse, marca: string) {
   });
 }
 
+/**
+ * Conta o acesso (ou marca o on-line) com o caminho, para a porta de entrada (claude/plano-visitante-que-entra.md).
+ * Sem a migração 20270226120000 o banco não conhece o p_caminho: conta do jeito antigo.
+ */
+async function contarNoBanco(
+  supabase: ReturnType<typeof createServerClient>,
+  qual: "contar_acesso" | "marcar_online",
+  ip: string,
+  request: NextRequest,
+) {
+  const base = { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" };
+  const r = await supabase.rpc(qual, { ...base, p_caminho: request.nextUrl.pathname.slice(0, 300) });
+  if (r.error?.code === "PGRST202") return supabase.rpc(qual, base);
+  return r;
+}
+
 function ipDe(request: NextRequest) {
   const h = request.headers;
   return (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim();
@@ -154,9 +170,7 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
     marcarCookieOnline(resposta);
     if (marca) marcarContaDoDia(resposta, marca);
     evento.waitUntil(
-      Promise.resolve(
-        supabase.rpc("contar_acesso", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),
-      ).then(({ error }) => {
+      contarNoBanco(supabase, "contar_acesso", ip, request).then(({ error }) => {
         if (error) console.warn(`Publike: não deu para contar o acesso: ${error.message}`);
       }),
     );
@@ -172,9 +186,7 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
     marcarCookieOnline(resposta);
     if (marca) marcarContaDoDia(resposta, marca);
     evento.waitUntil(
-      Promise.resolve(
-        supabase.rpc("marcar_online", { p_ip: ip, p_navegador: request.headers.get("user-agent") ?? "" }),
-      ).then(({ error }) => {
+      contarNoBanco(supabase, "marcar_online", ip, request).then(({ error }) => {
         if (error) console.warn(`Publike: não deu para marcar quem está on-line: ${error.message}`);
       }),
     );

@@ -15,6 +15,9 @@ type RespostaGoogle = { credential?: string };
 type GoogleId = {
   initialize: (opcoes: Record<string, unknown>) => void;
   renderButton: (elemento: HTMLElement, opcoes: Record<string, unknown>) => void;
+  /** o "entrar num toque" (One Tap), entrar-num-toque.tsx */
+  prompt: () => void;
+  cancel: () => void;
 };
 
 declare global {
@@ -26,7 +29,10 @@ declare global {
 const SCRIPT = "https://accounts.google.com/gsi/client";
 let carregando: Promise<GoogleId> | null = null;
 
-function carregarGoogle(): Promise<GoogleId> {
+/** Quem fez o último initialize (o botão ou o "entrar num toque"): o Google guarda só um callback por página. */
+export const donoDoGoogle = { atual: "" as "" | "botao" | "toque" };
+
+export function carregarGoogle(): Promise<GoogleId> {
   if (window.google?.accounts?.id) return Promise.resolve(window.google.accounts.id);
   carregando ??= new Promise<GoogleId>((resolver, rejeitar) => {
     const script = document.createElement("script");
@@ -47,7 +53,7 @@ function carregarGoogle(): Promise<GoogleId> {
 }
 
 /** Texto aleatório de uso único. O Google recebe a impressão (SHA-256); o Supabase, o original. */
-async function novoNonce() {
+export async function novoNonce() {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   const nonce = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "");
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(nonce));
@@ -82,6 +88,7 @@ export function BotaoGoogle({
       try {
         const [id, { nonce, hex }] = await Promise.all([carregarGoogle(), novoNonce()]);
         if (cancelado) return;
+        donoDoGoogle.atual = "botao";
         id.initialize({
           client_id: clientId,
           nonce: hex,

@@ -2018,6 +2018,10 @@ export type Database = {
         Args: { p_dias?: number };
         Returns: { etapa: string; total: number }[];
       };
+      admin_portas_de_entrada: {
+        Args: { p_dias?: number };
+        Returns: { porta: string; visitantes: number; ficaram: number; entraram: number }[];
+      };
       admin_motivos_encerramento: {
         Args: { p_dias?: number };
         Returns: { tipo: string; motivo: string; total: number; ultimo: string }[];
@@ -2044,7 +2048,7 @@ export type Database = {
         Args: { p_nomes: string[] };
         Returns: { pedido: string; perfil_id: string; nome: string; foto_url: string | null }[];
       };
-      marcar_online: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
+      marcar_online: { Args: { p_ip: string; p_navegador: string; p_caminho?: string | null }; Returns: undefined };
       marcar_aparelho: { Args: { p_navegador: string; p_app?: boolean }; Returns: undefined };
       marcar_banner_visto: { Args: { p_banner: string; p_clicou?: boolean }; Returns: undefined };
       registrar_visita: { Args: { p_perfil: string; p_onde: string; p_anuncio?: string | null }; Returns: undefined };
@@ -2380,7 +2384,7 @@ export type Database = {
       mudar_entrevista: { Args: { p_id: string; p_situacao: string }; Returns: undefined };
       responder_entrevista: { Args: { p_id: string; p_resposta: string }; Returns: undefined };
       contar_visita: { Args: { p_anuncio: string }; Returns: undefined };
-      contar_acesso: { Args: { p_ip: string; p_navegador: string }; Returns: undefined };
+      contar_acesso: { Args: { p_ip: string; p_navegador: string; p_caminho?: string | null }; Returns: undefined };
       contar_abertura: { Args: { p_anuncio: string; p_ip: string; p_navegador: string }; Returns: undefined };
       adicionar_finalistas: { Args: { p_anuncio: string; p_perfis: string[] }; Returns: number };
       tirar_finalista: { Args: { p_anuncio: string; p_perfil: string }; Returns: undefined };

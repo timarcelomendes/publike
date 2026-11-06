@@ -32,6 +32,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { Suspense, type ReactNode } from "react";
+import { ConviteDasVagasVistas, PARAMETRO_DA_VOLTA } from "@/components/convite-das-vagas-vistas";
+import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { BarraCurtirCelular } from "@/components/anuncio/barra-curtir-celular";
 import { ContarAbertura } from "@/components/anuncio/contar-abertura";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
@@ -862,6 +864,18 @@ async function DetalheAnuncio({
           <LinkDaFuncao id={anuncio.id} cidade={anuncio.cidade} />
         </Suspense>
       )}
+      {/* sem conta: na segunda vaga da mesma área, o convite para receber as novas; com conta, voltando do convite,
+          o aviso da área é criado (claude/plano-visitante-que-entra.md) */}
+      {vaga && !proprio && anuncio.status === "ativo" && (!usuario || primeiro(sp[PARAMETRO_DA_VOLTA]) === "1") && (
+        <Suspense fallback={null}>
+          <ConviteDaArea
+            logado={usuario !== null}
+            anuncioId={anuncio.id}
+            area={anuncio.categoria}
+            cidade={anuncio.cidade}
+          />
+        </Suspense>
+      )}
       {/* no fim, as vagas parecidas e as outras de quem publicou (não para quem publicou) */}
       {vaga && !proprio && (
         <Suspense fallback={null}>
@@ -916,5 +930,30 @@ function EsqueletoAnuncio() {
         <Esqueleto className="h-64 w-full rounded-lg" />
       </div>
     </Container>
+  );
+}
+
+/** O convite das vagas vistas, com quantas vagas da área estão no ar na cidade (a lista em cache das buscas). */
+async function ConviteDaArea({
+  logado,
+  anuncioId,
+  area,
+  cidade,
+}: {
+  logado: boolean;
+  anuncioId: string;
+  area: string;
+  cidade: string;
+}) {
+  const total = (await anunciosNoAr("vaga", cidade)).filter((a) => a.categoria === area && a.cidade === cidade).length;
+  return (
+    <ConviteDasVagasVistas
+      logado={logado}
+      anuncioId={anuncioId}
+      area={area}
+      nomeDaArea={categoria(area).nome}
+      cidade={cidade}
+      total={total}
+    />
   );
 }
