@@ -293,6 +293,11 @@ export function PilhaDeVagas({
             },
             (caminho) => router.push(caminho),
           );
+          if (contato?.soChat) {
+            // a vaga só pelo chat do Publike: a conversa já abriu no chat
+            setAviso({ texto: `Deu match em “${carta.titulo}”! A conversa com ${carta.quem} é pelo chat do Publike.` });
+            return;
+          }
           if (contato) {
             setAviso({
               texto: `Deu match em “${carta.titulo}”! ${carta.quem} libera o contato para quem se candidata: mande uma mensagem agora e se apresente.`,

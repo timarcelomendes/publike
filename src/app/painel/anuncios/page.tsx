@@ -25,6 +25,7 @@ import { abaDaEtapa, esperaResposta, LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuPerfil } from "@/lib/dados";
 import { ateQuando, formatarLugar, primeiro, rotuloModalidade, semPrazo, tempoRelativo } from "@/lib/formato";
 import { empresasDasVagas, listarMeusClientes, type EmpresaNaVaga } from "@/lib/servidor/clientes";
+import { minhasVagasSoPeloChat } from "@/lib/servidor/contato-por";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -71,7 +72,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   if (MODO_DEMO) return <SoComSupabase />;
   const sp = await searchParams;
   const usuario = await exigirUsuario("/painel/anuncios");
-  const [anuncios, perfil, candidatos, extras, daAgencia] = await Promise.all([
+  const [anuncios, perfil, candidatos, extras, daAgencia, soPeloChat] = await Promise.all([
     listarMeusAnuncios(),
     obterMeuPerfil(),
     listarMeusCandidatos(),
@@ -83,6 +84,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
     obterMeuPerfil().then((p) =>
       p?.tipo === "agencia" ? Promise.all([listarMeusClientes(), empresasDasVagas(usuario.id)]) : null,
     ),
+    // as vagas em que a conversa é só pelo chat do Publike (a etiqueta)
+    minhasVagasSoPeloChat(usuario.id),
   ]);
   const [clientes, empresas] = daAgencia ?? [null, null];
   const nomeDoCliente = new Map((clientes ?? []).map((c) => [c.id, c.nome]));
@@ -372,6 +375,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                             </Selo>
                             <Selo>{rotuloModalidade(a.tipo, a.regime)}</Selo>
                             {extra?.preenchida_em && <Selo variante="aviso">Vaga preenchida</Selo>}
+                            {soPeloChat.has(a.id) && <Selo variante="contorno">Só pelo chat</Selo>}
                           </div>
                           <h3 className="text-h3">
                             {/* a vaga abre a página dela no painel (as abas); o serviço, o anúncio */}

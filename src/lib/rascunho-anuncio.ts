@@ -94,6 +94,7 @@ export function valoresDoRascunho(r: Rascunho, base: ValoresAnuncio): ValoresAnu
     pcd: um("pcd") || null,
     pede_curriculo: um("pede_curriculo") === "on",
     contato_direto: um("contato_direto") === "on",
+    contato_por: um("contato_por") === "chat" ? "chat" : "ambos",
     prazo_dias:
       um("prazo") === "sem"
         ? null

@@ -507,6 +507,8 @@ export type Database = {
           atende: string[];
           pede_curriculo: boolean;
           contato_direto: boolean;
+          /** depois do match: 'ambos' (chat e o contato de quem publicou) ou 'chat' (só o chat do Publike) */
+          contato_por: string;
           /** a vaga precisa de alguém para começar logo (migração 20261212) */
           comeca_ja: boolean;
           /** migração 20270112120000: a latitude e a longitude de `local`, geradas ao gravar */
@@ -566,6 +568,7 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          contato_por?: string;
           comeca_ja?: boolean;
           prazo_dias?: number | null;
           preenchida_em?: string | null;
@@ -612,6 +615,7 @@ export type Database = {
           atende?: string[];
           pede_curriculo?: boolean;
           contato_direto?: boolean;
+          contato_por?: string;
           comeca_ja?: boolean;
           prazo_dias?: number | null;
           preenchida_em?: string | null;
@@ -2299,6 +2303,8 @@ export type Database = {
           respondida_em: string | null;
           autor_whatsapp: string | null;
           autor_email: string | null;
+          /** a vaga é só pelo chat do Publike (sem o contato de quem publicou; migração 20270221120000) */
+          so_chat?: boolean;
         }[];
       };
       meus_matches: {
@@ -2317,6 +2323,8 @@ export type Database = {
           outro_whatsapp: string | null;
           outro_email: string | null;
           match_em: string;
+          /** do lado de quem curtiu, a vaga é só pelo chat do Publike (migração 20270221120000) */
+          so_chat?: boolean;
         }[];
       };
       marcar_entrevista: {

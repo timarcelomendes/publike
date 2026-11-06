@@ -358,6 +358,35 @@ function ChamarAgora({
     }
   };
   const [primeira, ...resto] = contato.mensagem.split("\n");
+  const conversar = contato.autorId && (
+    // o Chat do canto abre com a conversa (sem o Chat na página, a conversa em tela cheia)
+    <Link
+      href={caminhoConversa(contato.autorId)}
+      onClick={(e) => {
+        if (
+          contato.autorId &&
+          pedirConversa({ outroId: contato.autorId, outroNome: contato.autorNome || quem || "", titulo: contato.titulo })
+        )
+          e.preventDefault();
+      }}
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink hover:bg-surface-300"
+    >
+      <MessagesSquare aria-hidden className="size-5 text-cerrado-text" />
+      Conversar pelo chat
+    </Link>
+  );
+  // a vaga só pelo chat do Publike (ou quem publicou sem contato): a conversa é no chat
+  if (contato.soChat || (!contato.whatsapp && !contato.email)) {
+    return (
+      <div className="flex flex-col gap-2.5">
+        <p>
+          <strong>Deu match!</strong> A conversa com {contato.autorNome || quem || "quem publicou"} é pelo chat do
+          Publike. Mande uma mensagem e se apresente.
+        </p>
+        {conversar}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-2.5">
       <p>
@@ -388,23 +417,7 @@ function ChamarAgora({
           </a>
         )
       )}
-      {contato.autorId && (
-        // o Chat do canto abre com a conversa (sem o Chat na página, a conversa em tela cheia)
-        <Link
-          href={caminhoConversa(contato.autorId)}
-          onClick={(e) => {
-            if (
-              contato.autorId &&
-              pedirConversa({ outroId: contato.autorId, outroNome: contato.autorNome || quem || "", titulo: contato.titulo })
-            )
-              e.preventDefault();
-          }}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink hover:bg-surface-300"
-        >
-          <MessagesSquare aria-hidden className="size-5 text-cerrado-text" />
-          Conversar pelo chat
-        </Link>
-      )}
+      {conversar}
       <p className="text-caption font-normal text-ink-muted">
         A mensagem já vai pronta{resto.length ? ", com o link do anúncio" : ""}. Dá para mudar antes de enviar.
       </p>

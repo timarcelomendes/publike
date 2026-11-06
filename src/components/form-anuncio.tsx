@@ -67,6 +67,21 @@ import { jeitosDeEntrar } from "@/lib/login-social";
 /** Os tipos de contratação que aparecem primeiro (os outros ficam em "Outros tipos"). */
 const REGIMES_PRINCIPAIS: Regime[] = ["clt", "diaria", "freelance", "temporario", "estagio", "aprendiz"];
 
+/** Depois do match, como os candidatos falam com quem publicou a vaga. */
+const CONTATO_POR = [
+  {
+    valor: "ambos",
+    nome: "Pelo chat do Publike e pelo WhatsApp",
+    ajuda: "Quem der match vê o seu WhatsApp e pode chamar direto, além de conversar no chat.",
+  },
+  {
+    valor: "chat",
+    nome: "Só pelo chat do Publike",
+    ajuda:
+      "Seu WhatsApp, telefone e e-mail ficam guardados: a conversa é toda no chat. Você continua vendo o contato de quem curtiu.",
+  },
+] as const;
+
 export type ValoresAnuncio = {
   id?: string;
   tipo: TipoAnuncio;
@@ -83,6 +98,8 @@ export type ValoresAnuncio = {
   pede_curriculo?: boolean;
   /** quem curtir já recebe o contato (match na hora) */
   contato_direto?: boolean;
+  /** depois do match: o chat e o WhatsApp ("ambos", o padrão) ou só o chat do Publike */
+  contato_por?: "ambos" | "chat";
   /** vaga: precisa de alguém para começar logo (a etiqueta e o filtro "Começa já") */
   comeca_ja?: boolean;
   /** em quantos dias a vaga sai do ar sozinha; null: sem prazo (fica até ser encerrada) */
@@ -1286,13 +1303,40 @@ export function FormAnuncio({
             className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
           />
           <span>
-            <span className="block text-label">Contato direto: quem curtir já recebe o WhatsApp</span>
+            <span className="block text-label">Contato direto: quem curtir já dá match</span>
             <span className="block text-body-sm text-ink-muted">
               Sem esperar você aceitar, e você vê o contato de quem curtiu. Mais rápido, mas chegam mais contatos.
               Desligado, você escolhe quem aceita.
             </span>
           </span>
         </label>
+      )}
+
+      {vaga && (
+        // depois do match: o chat e o WhatsApp de quem publicou, ou só o chat (claude/plano-so-chat-ou-whatsapp.md)
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-label">Depois do match, como os candidatos falam com você?</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {CONTATO_POR.map((o) => (
+              <label
+                key={o.valor}
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-surface-200 p-4 transition-colors has-[:checked]:border-ink has-[:checked]:shadow-raised has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+              >
+                <input
+                  type="radio"
+                  name="contato_por"
+                  value={o.valor}
+                  defaultChecked={(inicial.contato_por ?? "ambos") === o.valor}
+                  className="mt-0.5 size-5 shrink-0 accent-[var(--pk-ink)]"
+                />
+                <span>
+                  <span className="block text-label">{o.nome}</span>
+                  <span className="block text-body-sm text-ink-muted">{o.ajuda}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       )}
 
       {/* várias vagas de uma vez: só ao publicar com conta (o rascunho de quem não tem conta não leva os cargos) */}

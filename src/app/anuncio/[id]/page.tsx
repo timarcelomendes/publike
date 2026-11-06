@@ -104,6 +104,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
+import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { meusTestesDaVaga, testesDaVaga } from "@/lib/servidor/testes";
 import { nomeCurtoDoTeste } from "@/lib/testes";
@@ -296,6 +297,8 @@ async function DetalheAnuncio({
   const nomeParaSeguir = anuncio.autor_tipo === "pessoa" ? primeiroNome : anuncio.autor_nome;
   const salva = vaga && usuario && !proprio ? await vagaSalva(anuncio.id) : false;
   const comecaJa = vaga && anuncio.status === "ativo" && !anuncio.preenchida_em && (await comecaJaDaVaga(anuncio.id));
+  // depois do match, só pelo chat do Publike (sem o contato de quem publicou; claude/plano-so-chat-ou-whatsapp.md)
+  const soChat = vaga && !proprio && (await contatoPorDaVaga(anuncio.id)) === "chat";
   // quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais)
   const resposta =
     vaga && !proprio
@@ -395,6 +398,7 @@ async function DetalheAnuncio({
         autorId={anuncio.autor_id}
         entrevista={entrevista}
         contatoDireto={anuncio.contato_direto && anuncio.status === "ativo"}
+        soChat={soChat}
       />
     );
 

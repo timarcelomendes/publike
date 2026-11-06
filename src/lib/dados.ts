@@ -855,7 +855,16 @@ export async function contatoDoMatch(anuncioId: string) {
   if (MODO_DEMO) return null;
   const curtidas = await listarMinhasCurtidas();
   const c = curtidas.find((x) => x.anuncio_id === anuncioId && x.status === "match");
-  return c ? { whatsapp: c.autor_whatsapp, email: c.autor_email, autorId: c.autor_id, autorNome: c.autor_nome } : null;
+  return c
+    ? {
+        whatsapp: c.autor_whatsapp,
+        email: c.autor_email,
+        autorId: c.autor_id,
+        autorNome: c.autor_nome,
+        // a vaga só pelo chat do Publike: o banco não manda o contato (migração 20270221120000)
+        soChat: Boolean(c.so_chat),
+      }
+    : null;
 }
 
 // ---------------------------------------------------------------- Descobrir

@@ -1,6 +1,6 @@
 "use client";
 
-import { HeartHandshake, MessageCircle } from "lucide-react";
+import { HeartHandshake, MessageCircle, MessagesSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import {
@@ -29,8 +29,22 @@ export function PerguntaDoMatch() {
   const id = useId();
   const janela = useRef<HTMLDialogElement>(null);
   const [pedido, setPedido] = useState<PedidoDoMatch | null>(null);
+  // a resposta da pergunta só pelo chat: "Abrir a conversa" abre o Chat; "Agora não" só fecha
+  const abrirAoFechar = useRef(false);
 
-  const aoDarMatch = useEffectEvent((e: Event) => setPedido((e as CustomEvent<PedidoDoMatch>).detail));
+  // os matches desta visita que já tiveram a resposta da tela (a pergunta ao entrar não repete nenhum deles)
+  const tratados = useRef(new Set<string>());
+  const aoDarMatch = useEffectEvent((e: Event) => {
+    const novo = (e as CustomEvent<PedidoDoMatch>).detail;
+    tratados.current.add(novo.anuncioId);
+    if (novo.whatsapp) {
+      setPedido(novo);
+      return;
+    }
+    // sem o WhatsApp (a vaga só pelo chat): a conversa abre direto, e o match fica como perguntado
+    marcarMatchPerguntado(novo.anuncioId).catch(() => {});
+    if (novo.conversa) abrirConversaDoMatch(novo.conversa, (caminho) => router.push(caminho));
+  });
   useEffect(() => {
     marcarPerguntaDoMatchNaPagina(true);
     const ouvir = (e: Event) => aoDarMatch(e);
@@ -48,7 +62,7 @@ export function PerguntaDoMatch() {
     // um respiro depois de a página abrir; outra janela aberta (as boas-vindas, instalar o app) fica para a próxima
     const espera = window.setTimeout(async () => {
       const achado = await matchParaPerguntar().catch(() => null);
-      if (!vivo || !achado || document.querySelector("dialog[open]")) return;
+      if (!vivo || !achado || tratados.current.has(achado.anuncioId) || document.querySelector("dialog[open]")) return;
       setPedido((atual) => atual ?? achado);
     }, 1500);
     return () => {
@@ -64,23 +78,36 @@ export function PerguntaDoMatch() {
     marcarMatchPerguntado(pedido.anuncioId).catch(() => {});
   }, [pedido]);
 
-  // fechou (respondeu, "Agora não", Esc ou toque fora): a conversa abre no Chat
+  // fechou (respondeu, "Agora não", Esc ou toque fora): a conversa abre no Chat. Na vaga só pelo chat, só quando a
+  // pessoa pediu ("Abrir a conversa"); o "Agora não" fica valendo.
   function fechou() {
     const conversa = pedido?.conversa;
+    const abrir = pedido?.whatsapp ? true : abrirAoFechar.current;
+    abrirAoFechar.current = false;
     setPedido(null);
-    if (conversa) abrirConversaDoMatch(conversa, (caminho) => router.push(caminho));
+    if (conversa && abrir) abrirConversaDoMatch(conversa, (caminho) => router.push(caminho));
   }
 
   function contarToque() {
     if (!pedido) return;
     const corpo = new Blob(
-      [JSON.stringify({ anuncio: pedido.anuncioId, perfil: pedido.perfilId, canal: "whatsapp" })],
+      [
+        JSON.stringify({
+          anuncio: pedido.anuncioId,
+          perfil: pedido.perfilId,
+          canal: "whatsapp",
+        }),
+      ],
       { type: "application/json" },
     );
     try {
       if (!navigator.sendBeacon?.("/api/contato-candidato", corpo)) throw new Error("sem beacon");
     } catch {
-      fetch("/api/contato-candidato", { method: "POST", body: corpo, keepalive: true }).catch(() => {});
+      fetch("/api/contato-candidato", {
+        method: "POST",
+        body: corpo,
+        keepalive: true,
+      }).catch(() => {});
     }
   }
 
@@ -99,7 +126,7 @@ export function PerguntaDoMatch() {
       }}
       className="m-0 mt-auto w-full max-w-none rounded-t-lg border border-line-strong bg-surface-200 p-0 text-ink shadow-raised backdrop:bg-veu sm:m-auto sm:max-w-md sm:rounded-lg"
     >
-      {pedido?.whatsapp && (
+      {pedido && (pedido.whatsapp || pedido.soChat) && (
         <div className="flex flex-col gap-5 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
           <div className="flex flex-col gap-3">
             <span
@@ -115,29 +142,55 @@ export function PerguntaDoMatch() {
               {pedido.direto === false
                 ? // o match veio do aceite (a pergunta ao entrar)
                   `${pedido.conversa?.outroNome || "Quem publicou"} aceitou ${pedido.servico ? "o seu pedido" : "a sua candidatura"}${pedido.conversa?.titulo ? ` em “${pedido.conversa.titulo}”` : ""}.`
-                : `${pedido.conversa?.outroNome || "Quem publicou"} libera o WhatsApp para quem se ${pedido.servico ? "interessa" : "candidata"}.`}{" "}
-              A mensagem já vai pronta
-              {resto.length ? `, com o link ${pedido.servico ? "do anúncio" : "da vaga"}` : ""}. Dá para mudar antes de
-              enviar.
+                : pedido.soChat
+                  ? `${pedido.conversa?.outroNome || "Quem publicou"} conversa com quem se ${pedido.servico ? "interessa" : "candidata"}${pedido.conversa?.titulo ? ` em “${pedido.conversa.titulo}”` : ""}.`
+                  : `${pedido.conversa?.outroNome || "Quem publicou"} libera o WhatsApp para quem se ${pedido.servico ? "interessa" : "candidata"}.`}{" "}
+              {pedido.soChat ? (
+                "A conversa é pelo chat do Publike: mande uma mensagem e se apresente."
+              ) : (
+                <>
+                  A mensagem já vai pronta
+                  {resto.length ? `, com o link ${pedido.servico ? "do anúncio" : "da vaga"}` : ""}. Dá para mudar antes
+                  de enviar.
+                </>
+              )}
             </p>
           </div>
-          {primeira && <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">“{primeira}”</p>}
+          {primeira && !pedido.soChat && (
+            <p className="rounded-md bg-surface-300 p-3 text-body-sm italic">“{primeira}”</p>
+          )}
           <div className="flex flex-col gap-3">
-            <a
-              href={linkWhatsApp(pedido.whatsapp, pedido.mensagem)}
-              target="_blank"
-              rel="noopener noreferrer"
-              autoFocus
-              onClick={() => {
-                contarToque();
-                // fecha depois do clique: o link abre o WhatsApp antes
-                window.setTimeout(() => janela.current?.close(), 0);
-              }}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-pill bg-cerrado px-5 text-label text-on-cerrado hover:brightness-110"
-            >
-              <MessageCircle aria-hidden className="size-5" />
-              Chamar no WhatsApp
-            </a>
+            {pedido.soChat || !pedido.whatsapp ? (
+              // a vaga só pelo chat do Publike: abrir a conversa no Chat
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  abrirAoFechar.current = true;
+                  janela.current?.close();
+                }}
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-pill bg-cerrado px-5 text-label text-on-cerrado hover:brightness-110"
+              >
+                <MessagesSquare aria-hidden className="size-5" />
+                Abrir a conversa
+              </button>
+            ) : (
+              <a
+                href={linkWhatsApp(pedido.whatsapp, pedido.mensagem)}
+                target="_blank"
+                rel="noopener noreferrer"
+                autoFocus
+                onClick={() => {
+                  contarToque();
+                  // fecha depois do clique: o link abre o WhatsApp antes
+                  window.setTimeout(() => janela.current?.close(), 0);
+                }}
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-pill bg-cerrado px-5 text-label text-on-cerrado hover:brightness-110"
+              >
+                <MessageCircle aria-hidden className="size-5" />
+                Chamar no WhatsApp
+              </a>
+            )}
             <Botao variante="fantasma" onClick={() => janela.current?.close()} className="w-full">
               Agora não
             </Botao>

@@ -10,6 +10,7 @@ import { iaConfigurada } from "@/lib/ia/openai";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
+import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 import { obterTriagem } from "@/lib/servidor/triagem";
 
@@ -32,7 +33,11 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
   if (!UUID.test(id)) notFound();
   const { data: a } = await acesso.cliente.rpc("obter_anuncio", { p_id: id }).maybeSingle();
   if (!a) notFound();
-  const [triagem, comecaJa] = await Promise.all([obterTriagem(id, acesso.cliente), comecaJaDaVaga(id, acesso.cliente)]);
+  const [triagem, comecaJa, contatoPor] = await Promise.all([
+    obterTriagem(id, acesso.cliente),
+    comecaJaDaVaga(id, acesso.cliente),
+    contatoPorDaVaga(id, acesso.cliente),
+  ]);
 
   return (
     <>
@@ -53,7 +58,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
         acaoSalvar={salvarAnuncioDaEquipe}
         agencia={a.autor_tipo === "agencia"}
         enderecoPublico={a.autor_tipo !== "pessoa"}
-        inicial={{ ...valoresDoAnuncio(a, { triagem }), comeca_ja: comecaJa }}
+        inicial={{ ...valoresDoAnuncio(a, { triagem }), comeca_ja: comecaJa, contato_por: contatoPor }}
       />
     </>
   );

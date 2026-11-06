@@ -53,6 +53,8 @@ export type PedidoDoMatch = {
   servico?: boolean;
   /** false: o match veio do aceite de quem publicou (a pergunta ao entrar); sem: o contato direto */
   direto?: boolean;
+  /** a vaga é só pelo chat do Publike (sem o WhatsApp): a pergunta oferece abrir a conversa */
+  soChat?: boolean;
 };
 
 let perguntaNaPagina = false;
@@ -67,7 +69,9 @@ export function marcarPerguntaDoMatchNaPagina(sim: boolean) {
  * toque dela, com a mensagem pronta); respondida a pergunta, ou sem o WhatsApp, a conversa abre no Chat.
  */
 export function avisarDeuMatch(pedido: PedidoDoMatch, ir: (caminho: string) => void) {
-  if (pedido.whatsapp && perguntaNaPagina) {
+  // a pergunta decide: com o WhatsApp, pergunta; sem ele (só pelo chat), abre a conversa e marca o match como
+  // perguntado (para a pergunta não aparecer depois, ao entrar)
+  if (perguntaNaPagina) {
     window.dispatchEvent(new CustomEvent<PedidoDoMatch>(EVENTO_DEU_MATCH, { detail: pedido }));
     return;
   }

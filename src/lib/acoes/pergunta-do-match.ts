@@ -15,13 +15,15 @@ type MatchDoBanco = {
   autor_id: string;
   autor_nome: string | null;
   whatsapp: string | null;
+  /** a vaga é só pelo chat do Publike (migração 20270221120000): sem o WhatsApp */
+  so_chat?: boolean | null;
 };
 
 /**
  * A pergunta do match ao entrar (06/11/2026): o match mais novo de quem curtiu, com o WhatsApp de quem publicou
- * liberado, que ainda não teve a pergunta "Quer falar agora?" (nem conversa começada). A mensagem pronta é a mesma
- * do resto do site: no contato direto, "Me candidatei…"; no aceite, "Deu match no Publike em…". Sem match, ou sem a
- * migração 20270220120000 no banco, null: nada aparece.
+ * liberado (ou de vaga só pelo chat do Publike), que ainda não teve a pergunta "Quer falar agora?" (nem conversa
+ * começada). A mensagem pronta é a mesma do resto do site: no contato direto, "Me candidatei…"; no aceite, "Deu
+ * match no Publike em…". Sem match, ou sem a migração 20270220120000 no banco, null: nada aparece.
  */
 export async function matchParaPerguntar(): Promise<PedidoDoMatch | null> {
   if (MODO_DEMO) return null;
@@ -31,7 +33,8 @@ export async function matchParaPerguntar(): Promise<PedidoDoMatch | null> {
   const { data, error } = await supabase.rpc("match_para_perguntar");
   if (error || !data || typeof data !== "object" || Array.isArray(data)) return null;
   const m = data as unknown as MatchDoBanco;
-  if (!m.whatsapp || !UUID.test(m.anuncio_id) || !UUID.test(m.autor_id)) return null;
+  const soChat = Boolean(m.so_chat);
+  if ((!m.whatsapp && !soChat) || !UUID.test(m.anuncio_id) || !UUID.test(m.autor_id)) return null;
   const titulo = m.titulo ?? "";
   const servico = m.tipo === "servico";
   const direto = Boolean(m.direto);
@@ -42,15 +45,22 @@ export async function matchParaPerguntar(): Promise<PedidoDoMatch | null> {
     : `Olá! Deu match no Publike em “${titulo}”. Podemos ${servico ? "combinar" : "conversar"}?`;
   return {
     conversa: { outroId: m.autor_id, outroNome: m.autor_nome ?? "", titulo },
-    whatsapp: m.whatsapp,
+    whatsapp: soChat ? null : m.whatsapp,
     mensagem: mensagemComLink(
       texto,
-      linkDoMatch({ anuncioId: m.anuncio_id, perfilId: usuario.id, para: "quem_publicou", direto, servico }),
+      linkDoMatch({
+        anuncioId: m.anuncio_id,
+        perfilId: usuario.id,
+        para: "quem_publicou",
+        direto,
+        servico,
+      }),
     ),
     anuncioId: m.anuncio_id,
     perfilId: usuario.id,
     servico,
     direto,
+    soChat,
   };
 }
 

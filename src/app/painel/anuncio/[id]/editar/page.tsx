@@ -9,6 +9,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { ajudaDaIADisponivel, obterAnuncio, obterMeuPerfil } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
 import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
+import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
@@ -35,11 +36,12 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
   // os serviços são editados juntos, no cadastro "Meus serviços"
   if (anuncio.tipo === "servico") redirect("/painel/servicos");
   const agencia = anuncio.autor_tipo === "agencia";
-  const [triagem, cliente, comecaJa, funcao] = await Promise.all([
+  const [triagem, cliente, comecaJa, funcao, contatoPor] = await Promise.all([
     obterTriagem(id),
     agencia ? clienteDaVaga(id) : null,
     comecaJaDaVaga(id),
     funcaoSalvaDaVaga(id),
+    contatoPorDaVaga(id),
   ]);
   // a lista de clientes traz o desta vaga, mesmo arquivado
   const clientes = agencia ? await clientesParaVaga(cliente) : null;
@@ -66,6 +68,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
               cliente_id: clientes ? cliente : null,
               comeca_ja: comecaJa,
               funcao,
+              contato_por: contatoPor,
             }}
           />
         )}

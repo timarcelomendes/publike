@@ -21,6 +21,7 @@ import { exigirPerfilCompleto } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 import { conviteDoLink } from "@/lib/servidor/convite-do-link";
+import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { valoresDoConvite } from "@/lib/valores-convite";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
@@ -127,17 +128,23 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
     !["em_analise", "removido"].includes(original.status)
       ? original
       : null;
-  const [triagem, clienteDaCopia, funcaoDaCopia] = await Promise.all([
+  const [triagem, clienteDaCopia, funcaoDaCopia, contatoPorDaCopia] = await Promise.all([
     copia ? obterTriagem(copia.id) : {},
     copia && clientes ? clienteDaVaga(copia.id) : null,
     // "Publicar parecida" e o "Volte a contratar": o cargo na carteira da vaga de antes também
     copia ? funcaoSalvaDaVaga(copia.id) : null,
+    // e o jeito de conversar depois do match (só pelo chat, ou chat e WhatsApp)
+    copia ? contatoPorDaVaga(copia.id) : null,
   ]);
   // a vaga é para este cliente: o nome, o jeito (confidencial ou não) e o lugar vêm dele
   const cliente = clientePedido ? (clientes?.find((c) => c.id === clientePedido) ?? null) : null;
   // comércio e empresa: a próxima vaga já vem com o endereço da última
   const inicialSemConvite = copia
-    ? { ...valoresDoAnuncio(copia, { copiar: true, triagem }), funcao: funcaoDaCopia }
+    ? {
+        ...valoresDoAnuncio(copia, { copiar: true, triagem }),
+        funcao: funcaoDaCopia,
+        ...(contatoPorDaCopia ? { contato_por: contatoPorDaCopia } : {}),
+      }
     : ultimo
       ? {
           ...vazio(ultimo.cidade, ultimo.bairro),

@@ -106,6 +106,7 @@ async function Conteudo() {
               <BotoesContato
                 whatsapp={m.outro_whatsapp}
                 email={m.outro_email}
+                soChat={Boolean(m.so_chat)}
                 mensagem={mensagem}
                 // o toque no contato fica no histórico da candidatura, dos dois lados (Admin › Curtidas)
                 candidatura={{ anuncioId: m.anuncio_id, perfilId: m.papel === "publiquei" ? m.outro_id : usuario.id }}

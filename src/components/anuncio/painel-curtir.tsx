@@ -65,6 +65,8 @@ type Props = {
   entrevista?: Entrevista | null;
   /** quem publicou liberou o contato: curtir já é match */
   contatoDireto?: boolean;
+  /** a vaga é só pelo chat do Publike: depois do match, a conversa é no chat (sem o WhatsApp de quem publicou) */
+  soChat?: boolean;
 };
 
 /** O currículo, que volta para a vaga depois de salvar. */
@@ -127,6 +129,7 @@ export function PainelCurtir({
   autorId = null,
   entrevista = null,
   contatoDireto = false,
+  soChat = false,
 }: Props) {
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -181,7 +184,11 @@ export function PainelCurtir({
         const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
         avisarDeuMatch(
           {
-            conversa: conversa && { ...conversa, outroNome: conversa.outroNome || quem, titulo: conversa.titulo || titulo },
+            conversa: conversa && {
+              ...conversa,
+              outroNome: conversa.outroNome || quem,
+              titulo: conversa.titulo || titulo,
+            },
             whatsapp: contatoNovo?.whatsapp ?? null,
             mensagem: contatoNovo?.mensagem ?? "",
             anuncioId,
@@ -210,9 +217,11 @@ export function PainelCurtir({
           Deu match! Agora é só conversar.
         </p>
         <p className="text-body-sm opacity-90">
-          {contatoDireto
-            ? `${quem} libera o contato para quem se interessa: vocês estão conectados.`
-            : `${quem} aceitou e vocês estão conectados.`}{" "}
+          {soChat
+            ? `${contatoDireto ? `${quem} conversa com quem se interessa` : `${quem} aceitou`}: a conversa de vocês é pelo chat do Publike.`
+            : contatoDireto
+              ? `${quem} libera o contato para quem se interessa: vocês estão conectados.`
+              : `${quem} aceitou e vocês estão conectados.`}{" "}
           {servico
             ? "Combinem o serviço, o endereço, o preço e o melhor dia."
             : "Mande uma mensagem e se apresente: combinem os detalhes, o endereço e o melhor horário."}
@@ -233,24 +242,27 @@ export function PainelCurtir({
             Conversar pelo chat do Publike
           </Link>
         )}
-        <div className="rounded-md bg-surface-200 p-3">
-          <BotoesContato
-            whatsapp={contato?.whatsapp ?? null}
-            email={contato?.email ?? null}
-            // o link: o aceite (a ficha, para quem publicou) ou, no contato direto, o anúncio
-            mensagem={mensagemComLink(
-              `Olá! Deu match no Publike em “${titulo}”. Podemos conversar?`,
-              linkDoMatch({
-                anuncioId,
-                perfilId: usuarioId ?? "",
-                para: "quem_publicou",
-                direto: contatoDireto,
-                servico,
-              }),
-            )}
-            candidatura={usuarioId ? { anuncioId, perfilId: usuarioId } : undefined}
-          />
-        </div>
+        {/* só pelo chat: sem os botões de contato (o chat fica logo acima) */}
+        {!soChat && (
+          <div className="rounded-md bg-surface-200 p-3">
+            <BotoesContato
+              whatsapp={contato?.whatsapp ?? null}
+              email={contato?.email ?? null}
+              // o link: o aceite (a ficha, para quem publicou) ou, no contato direto, o anúncio
+              mensagem={mensagemComLink(
+                `Olá! Deu match no Publike em “${titulo}”. Podemos conversar?`,
+                linkDoMatch({
+                  anuncioId,
+                  perfilId: usuarioId ?? "",
+                  para: "quem_publicou",
+                  direto: contatoDireto,
+                  servico,
+                }),
+              )}
+              candidatura={usuarioId ? { anuncioId, perfilId: usuarioId } : undefined}
+            />
+          </div>
+        )}
         {servico && (
           <Link
             href={`/anuncio/${anuncioId}/avaliar`}
@@ -332,12 +344,12 @@ export function PainelCurtir({
             {quem} aceitou você!
           </p>
           <p className="text-body-sm">
-            Falta só um passo: esta vaga pede currículo. Mande o seu e o match sai na hora, com a conversa e o WhatsApp
-            de vocês aqui.
+            Falta só um passo: esta vaga pede currículo. Mande o seu e o match sai na hora, com a conversa
+            {soChat ? " no chat do Publike" : " e o WhatsApp de vocês aqui"}.
           </p>
         </div>
         <div className="rounded-md border border-line bg-surface-100 p-3">
-          <CaminhoDaCurtida situacao="aceita" quem={quem} />
+          <CaminhoDaCurtida situacao="aceita" quem={quem} soChat={soChat} />
         </div>
         <div className="flex flex-col gap-1.5">
           <BotaoLink href={linkDoCurriculo(anuncioId)} variante="primario" className="min-h-12 w-full">
@@ -371,7 +383,13 @@ export function PainelCurtir({
           {servico ? "Pedido enviado" : "Você curtiu e se candidatou"}
         </p>
         <div className="rounded-md bg-surface-200 p-3">
-          <CaminhoDaCurtida situacao="pendente" quem={quem} servico={servico} passoDoCurriculo={passoDoCurriculo} />
+          <CaminhoDaCurtida
+            situacao="pendente"
+            quem={quem}
+            servico={servico}
+            passoDoCurriculo={passoDoCurriculo}
+            soChat={soChat}
+          />
         </div>
         <p className="text-body-sm">
           {passoDoCurriculo
@@ -424,7 +442,8 @@ export function PainelCurtir({
             <p className="min-w-0 text-body">
               <span className="block text-label text-cerrado-text">Contato direto</span>
               {servico ? "Ao tocar em Quero contratar" : "Ao curtir"}, você e{" "}
-              <strong className="font-semibold">{quem}</strong> trocam o WhatsApp{" "}
+              <strong className="font-semibold">{quem}</strong>{" "}
+              {soChat ? "começam a conversar no chat do Publike" : "trocam o WhatsApp"}{" "}
               <strong className="font-semibold">na hora</strong>, sem esperar o aceite.
             </p>
           </div>
@@ -434,6 +453,7 @@ export function PainelCurtir({
             quem={quem}
             servico={servico}
             passoDoCurriculo={passoDoCurriculo}
+            soChat={soChat}
             className="mt-3"
           />
         )}

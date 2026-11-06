@@ -475,6 +475,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                     <BotoesContato
                       whatsapp={c.autor_whatsapp}
                       email={c.autor_email}
+                      soChat={Boolean(c.so_chat)}
                       // o link: o aceite (a ficha, para quem publicou) ou, no contato direto, o anúncio
                       mensagem={mensagemComLink(
                         `Olá! Deu match no Publike em “${c.titulo}”. Podemos conversar?`,

@@ -45,6 +45,8 @@ export type ContatoDaCurtida = {
   autorId: string | null;
   autorNome: string | null;
   titulo: string;
+  /** a vaga é só pelo chat do Publike: sem o WhatsApp nem o e-mail de quem publicou; a conversa é no chat */
+  soChat: boolean;
 };
 
 // uma vez por navegador: quem parou o aviso (ou já tinha busca com aviso) não ganha outro
@@ -76,6 +78,13 @@ async function avisoDaPrimeiraCurtida(
 
 type AlvoDaCurtida = { tipo: string; titulo: string; autor_id: string } | null;
 
+/** "Deu match!": na vaga só pelo chat, a conversa é no chat; nas outras, o contato já está liberado. */
+function mensagemDoMatch(contato: ContatoDaCurtida | null) {
+  return contato?.soChat
+    ? "Deu match! A conversa é pelo chat do Publike."
+    : "Deu match! O contato já está liberado: chame no WhatsApp.";
+}
+
 /**
  * Deu match na hora (contato direto, curtindo ou curtindo de novo): o contato de quem publicou com a mensagem pronta
  * e a conversa que a tela abre sozinha no Chat. A conversa não depende do contato: sem ele (ou se a leitura falhar),
@@ -88,8 +97,7 @@ async function oQueAbreNoMatch(
 ): Promise<{ contato: ContatoDaCurtida | null; conversa: ConversaDoMatch | null }> {
   const supabase = await criarClienteServidor();
   const anuncio =
-    alvo ??
-    (await supabase.from("anuncios").select("tipo, titulo, autor_id").eq("id", anuncioId).maybeSingle()).data;
+    alvo ?? (await supabase.from("anuncios").select("tipo, titulo, autor_id").eq("id", anuncioId).maybeSingle()).data;
   const c = await contatoDoMatch(anuncioId).catch(() => null);
   const servico = anuncio?.tipo === "servico";
   const titulo = anuncio?.titulo ?? "";
@@ -106,6 +114,7 @@ async function oQueAbreNoMatch(
         titulo,
         whatsapp: c.whatsapp,
         email: c.email,
+        soChat: c.soChat,
         perfilId,
         mensagem: mensagemComLink(
           servico
@@ -186,11 +195,8 @@ export async function curtirAnuncio(
         .eq("perfil_id", usuario.id)
         .maybeSingle();
       if (ja?.status === "match") {
-        return {
-          ok: true,
-          mensagem: "Deu match! O contato já está liberado: chame no WhatsApp.",
-          ...(await oQueAbreNoMatch(anuncioId, usuario.id, alvo)),
-        };
+        const abre = await oQueAbreNoMatch(anuncioId, usuario.id, alvo);
+        return { ok: true, mensagem: mensagemDoMatch(abre.contato), ...abre };
       }
       return { ok: true };
     }
@@ -216,12 +222,8 @@ export async function curtirAnuncio(
   const aviso = alvo?.tipo === "vaga" ? await avisoDaPrimeiraCurtida(supabase, alvo.categoria).catch(() => null) : null;
   if (feita?.status === "match") {
     // o contato já liberado: a tela sugere mandar a mensagem agora, com o texto pronto, e abre a conversa
-    return {
-      ok: true,
-      mensagem: "Deu match! O contato já está liberado: chame no WhatsApp.",
-      aviso,
-      ...(await oQueAbreNoMatch(anuncioId, usuario.id, alvo)),
-    };
+    const abre = await oQueAbreNoMatch(anuncioId, usuario.id, alvo);
+    return { ok: true, mensagem: mensagemDoMatch(abre.contato), aviso, ...abre };
   }
   return {
     ok: true,
@@ -376,10 +378,13 @@ export async function curtirDeNovo(anuncioId: string, mensagem: string | null = 
     .maybeSingle();
   // contato direto: o match volta na hora, com o contato e a conversa (que a tela abre sozinha)
   if (feita?.status === "match") {
+    const abre = await oQueAbreNoMatch(anuncioId, usuario.id, null);
     return {
       ok: true,
-      mensagem: "Deu match de novo! O contato já está liberado.",
-      ...(await oQueAbreNoMatch(anuncioId, usuario.id, null)),
+      mensagem: abre.contato?.soChat
+        ? "Deu match de novo! A conversa é pelo chat do Publike."
+        : "Deu match de novo! O contato já está liberado.",
+      ...abre,
     };
   }
   return { ok: true, mensagem: "Pronto! Se a outra pessoa topar, dá match de novo." };

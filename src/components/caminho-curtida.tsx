@@ -103,6 +103,7 @@ export function CaminhoDaCurtida({
   quem,
   servico = false,
   passoDoCurriculo = false,
+  soChat = false,
   className = "",
 }: {
   situacao: SituacaoDaCurtida;
@@ -111,8 +112,12 @@ export function CaminhoDaCurtida({
   servico?: boolean;
   /** a vaga pede currículo e a pessoa ainda não mandou */
   passoDoCurriculo?: boolean;
+  /** a vaga é só pelo chat do Publike: a conversa aparece, o WhatsApp de quem publicou não */
+  soChat?: boolean;
   className?: string;
 }) {
+  // o que a conexão libera: a conversa e o WhatsApp, ou (só pelo chat) a conversa no chat
+  const libera = soChat ? "A conversa no chat do Publike" : "A conversa e o WhatsApp";
   const aceitou = situacao === "aceita" || situacao === "match" || situacao === "desfeito";
   const comCurriculo =
     !servico && (situacao === "aceita" || (passoDoCurriculo && (situacao === "antes" || situacao === "pendente")));
@@ -151,23 +156,23 @@ export function CaminhoDaCurtida({
 
   const conexao: Passo =
     situacao === "match"
-      ? { estado: "feito", texto: "Vocês estão conectados", ajuda: "A conversa e o WhatsApp estão liberados" }
+      ? { estado: "feito", texto: "Vocês estão conectados", ajuda: `${libera} ${soChat ? "está liberada" : "estão liberados"}` }
       : situacao === "desfeito"
         ? { estado: "nao", texto: "A conexão foi desfeita", ajuda: "O contato não aparece mais" }
         : situacao === "dispensada"
           ? { estado: "nao", texto: "Vocês não se conectaram", ajuda: "Seu contato não foi mostrado" }
           : situacao === "aceita"
-            ? { estado: "depois", texto: "Vocês se conectam", ajuda: "A conversa e o WhatsApp aparecem para os dois" }
+            ? { estado: "depois", texto: "Vocês se conectam", ajuda: `${libera} ${soChat ? "abre" : "aparecem"} para os dois` }
             : comCurriculo
               ? {
                   estado: "depois",
                   texto: "Vocês se conectam",
-                  ajuda: "Com o aceite e o currículo, a conversa e o WhatsApp aparecem para os dois",
+                  ajuda: `Com o aceite e o currículo, ${libera.toLowerCase()} ${soChat ? "abre" : "aparecem"} para os dois`,
                 }
               : {
                   estado: "depois",
                   texto: "Se aceitar, vocês se conectam",
-                  ajuda: "A conversa e o WhatsApp aparecem para os dois",
+                  ajuda: `${libera} ${soChat ? "abre" : "aparecem"} para os dois`,
                 };
 
   return (
