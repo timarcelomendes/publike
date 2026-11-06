@@ -2,14 +2,20 @@ import {
   Bus,
   CalendarClock,
   Check,
+  ClipboardCheck,
   HandCoins,
   Heart,
   ListChecks,
   Lock,
   MapPin,
   Megaphone,
+  MessagesSquare,
+  Scale,
+  Sparkles,
   Store,
   UserSearch,
+  Video,
+  Workflow,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -56,9 +62,22 @@ const MOTIVOS: Item[] = [
     link: { href: "/talentos", texto: "Ver os talentos" },
   },
   {
+    icone: Scale,
+    titulo: "Saiba quanto pagar",
+    texto:
+      "Ao publicar, o Publike mostra quanto o mercado paga para a função com carteira na sua região, pelos dados do Ministério do Trabalho (Novo Caged).",
+  },
+  {
+    icone: MessagesSquare,
+    titulo: "O chat faz as primeiras perguntas",
+    texto:
+      "Deu match, o chat do Publike já pergunta CNH, horário e quando a pessoa pode começar, e você recebe o resumo das respostas.",
+  },
+  {
     icone: Lock,
     titulo: "Seu WhatsApp não fica exposto",
-    texto: "O contato só aparece quando dá match, e só para as duas pessoas. Nada de mensagem de quem nem leu a vaga.",
+    texto:
+      "O contato só aparece quando dá match, e só para as duas pessoas. Se preferir, a vaga pode ser só pelo chat do Publike.",
   },
   {
     icone: ListChecks,
@@ -91,9 +110,9 @@ const PAGO_POR_AI: { o: string; la: string; aqui: string }[] = [
     aqui: "Grátis, com o tempo de ônibus",
   },
   {
-    o: "Perguntas para o candidato e testes",
+    o: "Perguntas para o candidato",
     la: "Só nos planos pagos",
-    aqui: "Grátis",
+    aqui: "Grátis, e no match o chat pergunta sozinho",
   },
   {
     o: "Selo de contratação urgente",
@@ -132,6 +151,40 @@ const PASSOS = [
   },
 ];
 
+// Os recursos pagos, para quem contrata muito (claude/plano-pagina-empresas-novembro.md). Sem preço: ele fica em
+// Admin › Pagamentos e muda.
+const RECURSOS_PAGOS: Item[] = [
+  {
+    icone: Scale,
+    titulo: "Consulta de salários",
+    texto:
+      "Para cada função: a faixa em Goiânia, Anápolis e Goiás, o que as vagas do Publike oferecem, quanto oferecer para fechar rápido e quantos talentos já trabalharam nela. Vem com 5 consultas grátis, e cada 5 vagas novas dão mais 2.",
+  },
+  {
+    icone: Sparkles,
+    titulo: "Triagem com IA",
+    texto:
+      "Lê todos os currículos e separa quem atende os requisitos da vaga, sem olhar nome, foto ou contato. Quem decide é você.",
+  },
+  {
+    icone: ClipboardCheck,
+    titulo: "Teste Prático",
+    texto: "O candidato responde um teste curto da função, e você já recebe a nota de cada um.",
+  },
+  {
+    icone: Video,
+    titulo: "Entrevista em vídeo",
+    texto:
+      "Gravada: o candidato responde pelo celular no prazo que você escolher, e a IA transcreve e resume. Ou ao vivo, dentro do Publike, sem Zoom nem Meet.",
+  },
+  {
+    icone: Workflow,
+    titulo: "Automações personalizadas",
+    texto:
+      "Regras do tipo “quem mora a até 5 km e tem CNH vai para Em análise e recebe a mensagem”, sem ninguém precisar fazer na mão.",
+  },
+];
+
 // os tipos de vaga que dá para publicar (menos "outro")
 const TIPOS_DE_VAGA = Object.entries(REGIMES)
   .filter(([chave]) => chave !== "outro")
@@ -160,6 +213,10 @@ const PERGUNTAS = [
   {
     p: "Quanto tempo a vaga fica no ar?",
     r: "Você escolhe ao publicar: 15, 30, 60, 90 dias, outro prazo ou sem prazo (fica até você encerrar). Contratou? Marque “Vaga preenchida”: a vaga continua no site com a marcação e quem curtiu recebe o aviso.",
+  },
+  {
+    p: "O que é pago no Publike?",
+    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários), e o Plano Completo junta todos.",
   },
   {
     p: "Onde o Publike funciona?",
@@ -332,6 +389,34 @@ export default function Empresas() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section aria-labelledby="contrata-muito" className="mt-12">
+          <h2 id="contrata-muito" className="flex flex-wrap items-center gap-2 text-h2">
+            Para quem contrata muito
+            <Selo variante="novo">Novo</Selo>
+          </h2>
+          <p className="mt-2 max-w-2xl text-body text-ink-muted">
+            Publicar continua grátis. Para RH, agência e empresa com muitas vagas, estes recursos tiram o trabalho
+            repetido. Cada um dá para experimentar de graça, e o Plano Completo junta todos.
+          </p>
+          <ul className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {RECURSOS_PAGOS.map(({ icone: Icone, titulo, texto }) => (
+              <li key={titulo} className="flex gap-4 rounded-lg border border-line bg-surface-200 p-5">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300">
+                  <Icone aria-hidden className="size-5 text-terra-text" />
+                </span>
+                <div>
+                  <h3 className="text-label">{titulo}</h3>
+                  <p className="mt-1 text-body-sm text-ink-muted">{texto}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-body-sm text-ink-muted">
+            15 dias grátis na Triagem, no Teste, na Entrevista em vídeo e nas Automações; na Consulta de salários, as
+            consultas grátis. Depois, assine só o que usar.
+          </p>
         </section>
 
         <section aria-labelledby="tipos" className="mt-12 max-w-3xl">
