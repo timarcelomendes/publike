@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { assistenteDisponivel } from "@/lib/servidor/assistente";
+import { PerguntaDoMatch } from "../pergunta-do-match";
 import { BotaoAssistente } from "./botao-assistente";
 
 /**
@@ -20,5 +21,11 @@ async function SeDisponivel() {
   const [ajuda, usuario] = await Promise.all([assistenteDisponivel(), MODO_DEMO ? null : obterUsuario()]);
   // sem assistente e sem conta, não há o que mostrar no chat
   if (!ajuda && !usuario) return null;
-  return <BotaoAssistente ajuda={ajuda} usuarioId={usuario?.id ?? null} />;
+  return (
+    <>
+      <BotaoAssistente ajuda={ajuda} usuarioId={usuario?.id ?? null} />
+      {/* deu match com o WhatsApp liberado: "Quer falar agora?" (antes da conversa abrir no Chat) */}
+      {usuario && <PerguntaDoMatch />}
+    </>
+  );
 }

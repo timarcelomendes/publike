@@ -13,7 +13,7 @@ import {
   type ContatoDaCurtida,
   type ConversaDoMatch,
 } from "@/lib/acoes/curtidas";
-import { abrirConversaDoMatch, abrirWhatsAppDoMatch, pedirConversa } from "@/lib/abrir-conversa";
+import { avisarDeuMatch, pedirConversa } from "@/lib/abrir-conversa";
 import { caminhoConversa } from "@/lib/conversas";
 import { linkWhatsApp } from "@/lib/formato";
 import { NuncaPague } from "./anuncio/nunca-pague";
@@ -198,15 +198,20 @@ export function BotaoCurtir({
         const novo = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
         setContato(novo);
         setExplicar(true);
-        // deu match (curtindo ou curtindo de novo): o WhatsApp de quem publicou, com a mensagem pronta, e a conversa
-        // no Chat abrem sozinhos
-        if (novo?.whatsapp) abrirWhatsAppDoMatch(linkWhatsApp(novo.whatsapp, novo.mensagem));
+        // deu match (curtindo ou curtindo de novo): "Quer falar agora?" com o WhatsApp de quem publicou e, depois, a
+        // conversa no Chat
         const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
-        if (conversa)
-          abrirConversaDoMatch(
-            { ...conversa, outroNome: conversa.outroNome || quem || "" },
-            (caminho) => router.push(caminho),
-          );
+        avisarDeuMatch(
+          {
+            conversa: conversa && { ...conversa, outroNome: conversa.outroNome || quem || "" },
+            whatsapp: novo?.whatsapp ?? null,
+            mensagem: novo?.mensagem ?? "",
+            anuncioId,
+            perfilId: novo?.perfilId ?? "",
+            servico,
+          },
+          (caminho) => router.push(caminho),
+        );
       }
     });
   }

@@ -35,17 +35,40 @@ export function abrirConversaDoMatch(pedido: PedidoConversa, ir: (caminho: strin
   if (!pedirConversa(pedido)) ir(`/painel/conversas/${pedido.outroId}`);
 }
 
+// Deu match com o WhatsApp de quem publicou liberado: a pergunta "Quer falar agora?" (PerguntaDoMatch, no Chat do
+// canto) e, respondida, a conversa no Chat.
+export const EVENTO_DEU_MATCH = "publike:deu-match";
+
+export type PedidoDoMatch = {
+  /** a conversa com quem publicou, que abre no Chat depois da pergunta */
+  conversa: PedidoConversa | null;
+  /** o WhatsApp de quem publicou (sem ele, não pergunta: só abre a conversa) */
+  whatsapp: string | null;
+  /** a mensagem pronta (a 1ª linha aparece na pergunta; a 2ª é o link da vaga) */
+  mensagem: string;
+  /** para contar o toque no WhatsApp (Admin › Curtidas) */
+  anuncioId: string;
+  perfilId: string;
+  servico?: boolean;
+};
+
+let perguntaNaPagina = false;
+
+/** A pergunta do match avisa que está na página (e quando sai). */
+export function marcarPerguntaDoMatchNaPagina(sim: boolean) {
+  perguntaNaPagina = sim;
+}
+
 /**
- * Deu match com o WhatsApp de quem publicou liberado: o WhatsApp abre sozinho numa aba nova (no celular, o app), com
- * a mensagem pronta. O navegador só deixa abrir logo depois do toque; se barrar (o iPhone costuma barrar), o botão
- * "Chamar no WhatsApp" continua na tela. Não conta como toque em Admin › Curtidas (lá, só quem toca no botão).
+ * Deu match: com o WhatsApp de quem publicou liberado, pergunta se a pessoa quer falar agora (o WhatsApp abre no
+ * toque dela, com a mensagem pronta); respondida a pergunta, ou sem o WhatsApp, a conversa abre no Chat.
  */
-export function abrirWhatsAppDoMatch(link: string) {
-  try {
-    window.open(link, "_blank", "noopener,noreferrer");
-  } catch {
-    // barrado: fica o botão
+export function avisarDeuMatch(pedido: PedidoDoMatch, ir: (caminho: string) => void) {
+  if (pedido.whatsapp && perguntaNaPagina) {
+    window.dispatchEvent(new CustomEvent<PedidoDoMatch>(EVENTO_DEU_MATCH, { detail: pedido }));
+    return;
   }
+  if (pedido.conversa) abrirConversaDoMatch(pedido.conversa, ir);
 }
 
 // No celular, quem tem conta abre o Chat pelo ícone do cabeçalho (o botão do canto some, para não

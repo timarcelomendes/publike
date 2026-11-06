@@ -19,7 +19,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
-import { abrirConversaDoMatch, abrirWhatsAppDoMatch } from "@/lib/abrir-conversa";
+import { avisarDeuMatch } from "@/lib/abrir-conversa";
 import { chamarAcao } from "@/lib/acao-segura";
 import { curtirAnuncio, type ContatoDaCurtida, type ConversaDoMatch } from "@/lib/acoes/curtidas";
 import { passarVaga, salvarVaga, verPassadasDeNovo } from "@/lib/acoes/descobrir";
@@ -277,14 +277,22 @@ export function PilhaDeVagas({
         if (gesto === "curtir") {
           // contato direto: deu match na hora; sugere chamar no WhatsApp, com a mensagem pronta
           const contato = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
-          // deu match: o WhatsApp de quem publicou, com a mensagem pronta, e a conversa no Chat abrem sozinhos
-          if (contato?.whatsapp) abrirWhatsAppDoMatch(linkWhatsApp(contato.whatsapp, contato.mensagem));
+          // deu match: "Quer falar agora?" com o WhatsApp de quem publicou e, depois, a conversa no Chat
           const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
-          if (conversa)
-            abrirConversaDoMatch(
-              { ...conversa, outroNome: conversa.outroNome || carta.quem, titulo: conversa.titulo || carta.titulo },
-              (caminho) => router.push(caminho),
-            );
+          avisarDeuMatch(
+            {
+              conversa: conversa && {
+                ...conversa,
+                outroNome: conversa.outroNome || carta.quem,
+                titulo: conversa.titulo || carta.titulo,
+              },
+              whatsapp: contato?.whatsapp ?? null,
+              mensagem: contato?.mensagem ?? "",
+              anuncioId: carta.id,
+              perfilId: contato?.perfilId ?? "",
+            },
+            (caminho) => router.push(caminho),
+          );
           if (contato) {
             setAviso({
               texto: `Deu match em “${carta.titulo}”! ${carta.quem} libera o contato para quem se candidata: mande uma mensagem agora e se apresente.`,
