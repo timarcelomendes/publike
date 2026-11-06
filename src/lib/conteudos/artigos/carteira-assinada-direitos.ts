@@ -62,6 +62,11 @@ export const conteudo: Conteudo = {
       botao: "Calcular a rescisão",
       href: "/calculadora-rescisao",
     },
+    {
+      t: "p",
+      texto:
+        "Pediu demissão ou estava na experiência? Veja a [rescisão por pedido de demissão](/calculadora-rescisao/pedido-de-demissao) e a [rescisão do contrato de experiência](/calculadora-rescisao/contrato-de-experiencia), com um exemplo de cada.",
+    },
     { t: "h2", texto: "Confira tudo na Carteira de Trabalho Digital" },
     {
       t: "p",

@@ -4,6 +4,7 @@ import { CalculadoraRescisao } from "@/components/calculadora-rescisao";
 import { DadosEstruturados } from "@/components/dados-estruturados";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
+import { CASOS_RESCISAO } from "@/lib/rescisao-casos";
 import { ANO_DAS_TABELAS } from "@/lib/tabelas-trabalhistas";
 
 // A calculadora de rescisão completa (claude/plano-calculadora-rescisao.md): o básico (saldo, aviso, 13º, férias, multa)
@@ -98,7 +99,28 @@ export default function PaginaCalculadoraRescisao() {
 
       <CalculadoraRescisao />
 
-      <section aria-labelledby="fora" className="mt-14 max-w-3xl print:hidden">
+      <section aria-labelledby="por-caso" className="mt-14 max-w-3xl print:hidden">
+        <h2 id="por-caso" className="text-h3">
+          Calcule pelo seu caso
+        </h2>
+        <p className="mt-2 text-body text-ink-muted">
+          Cada caso tem a calculadora já marcada, o que entra e o que não entra, e um exemplo resolvido.
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {CASOS_RESCISAO.map((c) => (
+            <li key={c.slug}>
+              <Link
+                href={`/calculadora-rescisao/${c.slug}`}
+                className="inline-flex min-h-11 items-center rounded-pill border border-line-strong px-4 text-body-sm hover:bg-surface-200"
+              >
+                {c.nome}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="fora" className="mt-10 max-w-3xl print:hidden">
         <h2 id="fora" className="text-h3">
           O que fica fora do cálculo
         </h2>

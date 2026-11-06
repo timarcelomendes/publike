@@ -66,7 +66,7 @@ export const conteudo: Conteudo = {
       titulo: "Confira o valor da sua rescisão",
       texto: "Saldo, aviso prévio, férias, 13º, FGTS e multa, com a conta de cada valor. Grátis e sem cadastro.",
       botao: "Calcular a rescisão",
-      href: "/calculadora-rescisao",
+      href: "/calculadora-rescisao/demissao-sem-justa-causa",
     },
     { t: "h2", texto: "Seguro não é para ficar parado" },
     {

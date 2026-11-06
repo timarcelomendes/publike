@@ -135,10 +135,18 @@ function periodosCompletos(admissao: string, ultimo: string) {
   return Math.max(0, anos);
 }
 
-export function CalculadoraRescisao() {
-  const [f, setF] = useState<Form>(VAZIO);
+/** Como a calculadora abre numa página de caso (/calculadora-rescisao/<caso>): a saída e a doméstica da página passam
+ * por cima do que estava guardado; o resto das respostas guardadas continua valendo. */
+export type InicialRescisao = { saida?: TipoSaida; domestico?: boolean; outros?: boolean };
+
+export function CalculadoraRescisao({ inicial }: { inicial?: InicialRescisao } = {}) {
+  const daPagina: Partial<Form> = {
+    ...(inicial?.saida ? { saida: inicial.saida } : {}),
+    ...(inicial?.domestico ? { domestico: true } : {}),
+  };
+  const [f, setF] = useState<Form>(() => ({ ...VAZIO, ...daPagina }));
   const [lido, setLido] = useState(false);
-  const [verOutros, setVerOutros] = useState(false);
+  const [verOutros, setVerOutros] = useState(!!inicial?.outros);
   const [resultadoVisivel, setResultadoVisivel] = useState(false);
 
   // no celular o resultado fica embaixo do formulário: enquanto ele não aparece na tela, uma barra mostra o líquido
@@ -154,9 +162,10 @@ export function CalculadoraRescisao() {
     try {
       const g = localStorage.getItem(CHAVE);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- lido do navegador depois de montar
-      if (g) setF({ ...VAZIO, ...(JSON.parse(g) as Partial<Form>) });
+      if (g) setF({ ...VAZIO, ...(JSON.parse(g) as Partial<Form>), ...daPagina });
     } catch {}
     setLido(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao montar
   }, []);
   useEffect(() => {
     if (!lido) return;
@@ -235,7 +244,7 @@ export function CalculadoraRescisao() {
     try {
       localStorage.removeItem(CHAVE);
     } catch {}
-    setF(VAZIO);
+    setF({ ...VAZIO, ...daPagina });
   };
 
   const rotulo = "text-label";
