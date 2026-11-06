@@ -111,7 +111,11 @@ async function Conteudo({
     todas.filter((x) => x.situacao === s).length;
   const respondidas = todas.filter((x) => x.situacao !== "pendente").length;
   // os matches em que alguém tocou no WhatsApp, no telefone ou no e-mail
-  const comContato = todas.filter((x) => x.situacao === "match" && (x.contatos.empresa || x.contatos.pessoa)).length;
+  // (o "agora não" da pessoa não é contato)
+  const chamou = (t: CurtidaAdmin["contatos"]["pessoa"]) => Boolean(t && t.canal !== "descartou");
+  const comContato = todas.filter(
+    (x) => x.situacao === "match" && (chamou(x.contatos.empresa) || chamou(x.contatos.pessoa)),
+  ).length;
   const humanas = todas.filter((x) => x.respondida_por && POR[x.respondida_por]?.humano).length;
   const automaticas = todas.filter((x) => x.respondida_por && POR[x.respondida_por] && !POR[x.respondida_por].humano).length;
   const noPeriodo =
@@ -310,8 +314,17 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                         title={new Date(t.em).toLocaleString("pt-BR")}
                       >
                         <MessageCircle aria-hidden className="size-3.5 shrink-0 text-cerrado-text" />
-                        {lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} {CANAL[t.canal]}{" "}
-                        {tempoRelativo(t.em, agora)}
+                        {t.canal === "descartou" ? (
+                          <>
+                            A pessoa disse “agora não” ao WhatsApp {tempoRelativo(t.em, agora)}: o chat abriu com as
+                            perguntas
+                          </>
+                        ) : (
+                          <>
+                            {lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} {CANAL[t.canal]}{" "}
+                            {tempoRelativo(t.em, agora)}
+                          </>
+                        )}
                       </span>
                     );
                   })}

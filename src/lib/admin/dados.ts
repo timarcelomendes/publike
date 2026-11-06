@@ -1042,7 +1042,8 @@ export type CurtidaAdmin = {
 };
 
 /** Um toque num botão de contato: o canal e quando. */
-export type ToqueDeContato = { canal: "whatsapp" | "telefone" | "email"; em: string };
+/** descartou: a pessoa disse "agora não" ao WhatsApp do match (claude/plano-agora-nao-no-whatsapp.md) */
+export type ToqueDeContato = { canal: "whatsapp" | "telefone" | "email" | "descartou"; em: string };
 
 /** As curtidas feitas desde `desde` (null: todas), da mais nova para a mais antiga (até 500), com o que aconteceu. */
 export async function curtidasRecentes(c: ClienteBanco, desde: string | null): Promise<CurtidaAdmin[]> {

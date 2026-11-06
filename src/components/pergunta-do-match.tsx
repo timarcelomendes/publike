@@ -31,6 +31,8 @@ export function PerguntaDoMatch() {
   const [pedido, setPedido] = useState<PedidoDoMatch | null>(null);
   // a resposta da pergunta só pelo chat: "Abrir a conversa" abre o Chat; "Agora não" só fecha
   const abrirAoFechar = useRef(false);
+  // tocou no "Chamar no WhatsApp" (sem o toque, fechar é o "agora não", que fica registrado)
+  const tocouNoWhatsApp = useRef(false);
 
   // os matches desta visita que já tiveram a resposta da tela (a pergunta ao entrar não repete nenhum deles)
   const tratados = useRef(new Set<string>());
@@ -78,24 +80,29 @@ export function PerguntaDoMatch() {
     marcarMatchPerguntado(pedido.anuncioId).catch(() => {});
   }, [pedido]);
 
-  // fechou (respondeu, "Agora não", Esc ou toque fora): a conversa abre no Chat. Na vaga só pelo chat, só quando a
-  // pessoa pediu ("Abrir a conversa"); o "Agora não" fica valendo.
+  // fechou (respondeu, "Agora não", Esc ou toque fora): a conversa abre no Chat, com as perguntas do match. Com o
+  // WhatsApp, fechar sem tocar nele é o "agora não", que fica em Admin › Curtidas
+  // (claude/plano-agora-nao-no-whatsapp.md).
+  // Na vaga só pelo chat, a conversa abre só quando a pessoa pediu ("Abrir a conversa"); o "Agora não" fica valendo.
   function fechou() {
     const conversa = pedido?.conversa;
     const abrir = pedido?.whatsapp ? true : abrirAoFechar.current;
+    if (pedido?.whatsapp && !pedido.soChat && !tocouNoWhatsApp.current) contar("descartou");
     abrirAoFechar.current = false;
+    tocouNoWhatsApp.current = false;
     setPedido(null);
     if (conversa && abrir) abrirConversaDoMatch(conversa, (caminho) => router.push(caminho));
   }
 
-  function contarToque() {
+  // o toque no WhatsApp ou o "agora não", no histórico da candidatura (chega mesmo indo para outro app)
+  function contar(canal: "whatsapp" | "descartou") {
     if (!pedido) return;
     const corpo = new Blob(
       [
         JSON.stringify({
           anuncio: pedido.anuncioId,
           perfil: pedido.perfilId,
-          canal: "whatsapp",
+          canal,
         }),
       ],
       { type: "application/json" },
@@ -181,7 +188,8 @@ export function PerguntaDoMatch() {
                 rel="noopener noreferrer"
                 autoFocus
                 onClick={() => {
-                  contarToque();
+                  tocouNoWhatsApp.current = true;
+                  contar("whatsapp");
                   // fecha depois do clique: o link abre o WhatsApp antes
                   window.setTimeout(() => janela.current?.close(), 0);
                 }}

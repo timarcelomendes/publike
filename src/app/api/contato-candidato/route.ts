@@ -7,7 +7,8 @@ import { UUID } from "@/lib/validacao";
 // e o banco guarda no histórico da candidatura, para Admin › Retorno e Curtidas saberem que houve contato. O banco
 // confere de novo de que lado é (a vaga da conta ou a curtida da própria pessoa, já aceita).
 
-const CANAIS = new Set(["whatsapp", "telefone", "email"]);
+// "descartou": a pessoa fechou o "Quer falar agora?" do match sem chamar no WhatsApp (o banco só aceita do lado dela)
+const CANAIS = new Set(["whatsapp", "telefone", "email", "descartou"]);
 
 export async function POST(request: Request) {
   if (MODO_DEMO) return new Response(null, { status: 204 });
