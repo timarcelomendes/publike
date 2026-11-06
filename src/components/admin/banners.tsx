@@ -5,6 +5,7 @@ import {
   ExternalLink,
   Eye,
   ImagePlus,
+  LayoutGrid,
   Power,
   Search,
   Share2,
@@ -119,7 +120,10 @@ const ABA_DO_FORMATO: Record<FormatoBanner, string> = {
 };
 
 /** Criar (sem `banner`) ou editar um banner, com a prévia de como fica a janela (ou o cartão). */
-export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
+/** Uma vaga no ar para gerar a imagem do banner (claude/plano-banner-com-vagas.md). */
+export type VagaParaBanner = { id: string; titulo: string; quem: string | null; lugar: string };
+
+export function FormBanner({ banner, vagas = [] }: { banner?: BannerParaEditar; vagas?: VagaParaBanner[] }) {
   // sem id (vazio): um banner novo já preenchido (o "Fazer banner" de Admin › Novidades)
   const id = banner?.id || null;
   const salvarProtegido = useMemo(() => protegerAcao(salvarBanner.bind(null, id)), [id]);
@@ -170,6 +174,15 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
     if (!/^image\/(png|jpeg|webp)$/.test(arquivo.type)) return setErroImagem("Escolha uma imagem PNG, JPG ou WebP.");
     if (escolhida) URL.revokeObjectURL(escolhida.previa);
     setEscolhida({ arquivo, previa: URL.createObjectURL(arquivo) });
+  }
+
+  // a imagem gerada com 1, 2 ou 3 vagas entra como se tivesse vindo do computador
+  const [gerando, setGerando] = useState(false);
+  function usarImagemGerada(arquivo: File) {
+    setErroImagem(null);
+    if (escolhida) URL.revokeObjectURL(escolhida.previa);
+    setEscolhida({ arquivo, previa: URL.createObjectURL(arquivo) });
+    setGerando(false);
   }
 
   function tirarImagem() {
@@ -276,6 +289,12 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
                 className="sr-only"
               />
             </label>
+            {vagas.length > 0 && (
+              <Botao variante="secundario" aria-expanded={gerando} onClick={() => setGerando((g) => !g)}>
+                <LayoutGrid aria-hidden />
+                Gerar com vagas
+              </Botao>
+            )}
             {imagemNaPrevia && (
               <Botao variante="fantasma" onClick={tirarImagem}>
                 <Trash2 aria-hidden />
@@ -283,6 +302,14 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
               </Botao>
             )}
           </div>
+          {gerando && (
+            <GerarComVagas
+              vagas={vagas}
+              soCartao={!formatos.includes("janela") && !destaque}
+              usar={usarImagemGerada}
+              fechar={() => setGerando(false)}
+            />
+          )}
           {(erroImagem || erros.imagem) && (
             <p role="alert" className="text-body-sm text-danger">
               {erroImagem ?? erros.imagem}
@@ -718,6 +745,161 @@ export function FormBanner({ banner }: { banner?: BannerParaEditar }) {
 }
 
 /** Ligar, desligar e apagar (apagar pede um segundo toque). */
+const MAX_VAGAS_NO_BANNER = 3;
+
+/**
+ * Gerar a imagem do banner com 1, 2 ou 3 vagas no ar (claude/plano-banner-com-vagas.md): a busca, as vagas para
+ * marcar (a ordem de marcar é a ordem na imagem), a prévia e o "Usar esta imagem", que põe a imagem no banner como
+ * se tivesse vindo do computador.
+ */
+function GerarComVagas({
+  vagas,
+  soCartao,
+  usar,
+  fechar,
+}: {
+  vagas: VagaParaBanner[];
+  soCartao: boolean;
+  usar: (arquivo: File) => void;
+  fechar: () => void;
+}) {
+  const [busca, setBusca] = useState("");
+  const [marcadas, setMarcadas] = useState<string[]>([]);
+  const [baixando, setBaixando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const termo = busca
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  const semAcento = (t: string) =>
+    t
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const lista = termo
+    ? vagas.filter((v) => semAcento(`${v.titulo} ${v.quem ?? ""} ${v.lugar}`).includes(termo))
+    : vagas;
+  const endereco = marcadas.length ? `/admin/banners/imagem?ids=${marcadas.join(",")}` : null;
+
+  function marcar(id: string, ligado: boolean) {
+    setErro(null);
+    setMarcadas((antes) => (ligado ? [...antes, id].slice(0, MAX_VAGAS_NO_BANNER) : antes.filter((x) => x !== id)));
+  }
+
+  async function usarEsta() {
+    if (!endereco) return;
+    setBaixando(true);
+    setErro(null);
+    try {
+      const resposta = await fetch(endereco);
+      if (!resposta.ok) throw new Error(String(resposta.status));
+      const blob = await resposta.blob();
+      usar(new File([blob], "banner-vagas.png", { type: "image/png" }));
+    } catch {
+      setErro("Não deu para gerar a imagem. Confira se as vagas ainda estão no ar e tente de novo.");
+    } finally {
+      setBaixando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-100 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-label">Gerar a imagem com vagas</span>
+          <span className="text-body-sm text-ink-muted">
+            Marque de 1 a 3 vagas no ar. A ordem em que você marca é a ordem na imagem.
+          </span>
+        </div>
+        <Botao variante="fantasma" tamanho="sm" onClick={fechar} aria-label="Fechar">
+          <X aria-hidden />
+        </Botao>
+      </div>
+      <label className="relative flex">
+        <span className="sr-only">Buscar vaga</span>
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
+        <input
+          type="search"
+          className={`${classesEntrada} pl-9`}
+          placeholder="Título, empresa ou bairro"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
+      </label>
+      <ul className="flex max-h-72 flex-col divide-y divide-line overflow-y-auto rounded-md border border-line bg-surface-200">
+        {lista.length === 0 && <li className="px-3 py-3 text-body-sm text-ink-muted">Nenhuma vaga com essa busca.</li>}
+        {lista.map((v) => {
+          const posicao = marcadas.indexOf(v.id);
+          const cheio = posicao < 0 && marcadas.length >= MAX_VAGAS_NO_BANNER;
+          return (
+            <li key={v.id}>
+              <label
+                className={`flex min-h-11 items-center gap-3 px-3 py-2 ${cheio ? "opacity-50" : "cursor-pointer hover:bg-surface-300"}`}
+              >
+                <input
+                  type="checkbox"
+                  className="size-4 accent-cerrado"
+                  checked={posicao >= 0}
+                  disabled={cheio}
+                  onChange={(e) => marcar(v.id, e.target.checked)}
+                />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-body-sm font-semibold">{v.titulo}</span>
+                  <span className="truncate text-caption text-ink-muted">
+                    {v.quem ? `${v.quem} · ${v.lugar}` : v.lugar}
+                  </span>
+                </span>
+                {posicao >= 0 && (
+                  <span
+                    aria-label={`${posicao + 1}ª na imagem`}
+                    className="grid size-6 shrink-0 place-items-center rounded-full bg-cerrado text-caption font-semibold text-on-cerrado"
+                  >
+                    {posicao + 1}
+                  </span>
+                )}
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      {endereco && (
+        <div className="flex flex-col gap-2">
+          <span className="text-label">
+            Prévia com {marcadas.length === 1 ? "1 vaga" : `${marcadas.length} vagas`}
+          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- a imagem gerada na hora pelo servidor */}
+          <img
+            key={endereco}
+            src={endereco}
+            alt={`Banner com ${marcadas.length === 1 ? "1 vaga" : `${marcadas.length} vagas`}`}
+            width={1600}
+            height={900}
+            className="block h-auto w-full rounded-md border border-line bg-surface-300"
+          />
+          {soCartao && marcadas.length > 1 && (
+            <p className="text-body-sm text-ink-muted">
+              No cartão, no computador, a imagem fica estreita à esquerda e os lados são cortados: para o cartão, 1 vaga
+              fica melhor.
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Botao onClick={usarEsta} disabled={baixando}>
+              <ImagePlus aria-hidden />
+              {baixando ? "Gerando…" : "Usar esta imagem"}
+            </Botao>
+          </div>
+        </div>
+      )}
+      {erro && (
+        <p role="alert" className="text-body-sm text-danger">
+          {erro}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AcoesBanner({ id, ativo }: { id: string; ativo: boolean }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);

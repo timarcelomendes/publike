@@ -920,3 +920,127 @@ export async function pacoteDoDia(
   return montarZip(arquivos, quando);
 }
 
+
+const BANNER = { width: 1600, height: 900 };
+
+/** O tamanho das letras e da logo de cada cartão do banner, por quantas vagas vão nele. */
+const MEDIDAS_DO_BANNER = {
+  1: { largura: 1120, logo: 150, titulo: 92, maxTitulo: 44, linha: 40, maxLinha: 58, valor: 44, gap: 40, padding: "48px 56px" },
+  2: { largura: 660, logo: 112, titulo: 62, maxTitulo: 38, linha: 32, maxLinha: 38, valor: 36, gap: 26, padding: "40px 40px" },
+  3: { largura: 452, logo: 96, titulo: 48, maxTitulo: 34, linha: 28, maxLinha: 30, valor: 32, gap: 22, padding: "34px 30px" },
+} as const;
+
+/**
+ * A imagem de um banner com 1, 2 ou 3 vagas (claude/plano-banner-com-vagas.md), em 1600 × 900: os cartões como a
+ * pilha da inicial do site, levemente girados. Com uma vaga, um cartão grande deitado; com duas ou três, lado a lado.
+ * O conteúdo fica no meio, longe das bordas de cima e de baixo (o destaque corta a imagem com 144 px de altura).
+ */
+export async function bannerDeVagas(vagas: VagaDoDia[], arquivo: string | null = null) {
+  const lista = vagas.slice(0, 3);
+  const quantas = Math.max(1, lista.length) as 1 | 2 | 3;
+  const m = MEDIDAS_DO_BANNER[quantas];
+  const uma = quantas === 1;
+  const logo = await lerLogo();
+  return imagem(
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 44,
+        width: "100%",
+        height: "100%",
+        padding: "0 72px",
+        background: COR.fundo,
+        color: COR.tinta,
+        fontFamily: "Figtree",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+        <img src={logo} alt="" width={larguraDaLogo(52)} height={52} />
+        <Pilula texto={uma ? "VAGA ABERTA" : "VAGAS ABERTAS"} fonte={28} cor="ipe" />
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "stretch", gap: 36, width: "100%" }}>
+        {lista.map((v, i) => {
+          const { grande, embaixo } = valor(v);
+          const linha = v.quem ? `${v.quem} · ${lugar(v)}` : lugar(v);
+          return (
+            <div
+              key={v.id}
+              style={{
+                display: "flex",
+                flexDirection: uma ? "row" : "column",
+                alignItems: uma ? "center" : "flex-start",
+                gap: m.gap,
+                width: m.largura,
+                background: COR.cartao,
+                border: `3px solid ${COR.borda}`,
+                borderRadius: 40,
+                padding: m.padding,
+                boxShadow: "0 18px 40px rgba(31, 26, 20, 0.12)",
+                transform: `rotate(${GIROS_DO_TRIO[i]}deg)`,
+              }}
+            >
+              <LogoDaVaga v={v} tamanho={m.logo} />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  minWidth: 0,
+                  ...(uma ? { flex: 1 } : { width: "100%" }),
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    fontFamily: "Bricolage",
+                    fontSize: uma ? tamanhoDoTitulo(v.titulo, m.titulo) : m.titulo,
+                    lineHeight: 1.04,
+                    letterSpacing: uma ? -2 : -1,
+                  }}
+                >
+                  {curto(v.titulo, m.maxTitulo)}
+                </div>
+                {uma ? (
+                  <div style={{ display: "flex", fontSize: m.linha, color: COR.apagado, lineHeight: 1.2 }}>
+                    {curto(linha, m.maxLinha)}
+                  </div>
+                ) : (
+                  // lado a lado, quem contrata e o lugar em duas linhas (numa só, o bairro era cortado)
+                  <div style={{ display: "flex", flexDirection: "column", fontSize: m.linha, color: COR.apagado, lineHeight: 1.25 }}>
+                    {v.quem && <div style={{ display: "flex" }}>{curto(v.quem, m.maxLinha)}</div>}
+                    <div style={{ display: "flex" }}>{curto(lugar(v), m.maxLinha)}</div>
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      background: COR.selo,
+                      color: COR.cerrado,
+                      borderRadius: 999,
+                      padding: `6px ${Math.round(m.valor * 0.6)}px`,
+                      fontSize: m.valor,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {curto(grande, 26)}
+                  </div>
+                  {uma && embaixo && (
+                    <div style={{ display: "flex", fontSize: Math.round(m.valor * 0.75), color: COR.apagado }}>
+                      {embaixo}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>,
+    BANNER,
+    arquivo,
+  );
+}

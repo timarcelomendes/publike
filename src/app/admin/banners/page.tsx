@@ -23,9 +23,10 @@ import {
 } from "@/lib/banners";
 import { categoria, TIPOS_CONTA } from "@/lib/constantes";
 import type { TipoConta } from "@/lib/tipos";
-import { formatarDataCurta, formatarNumero, primeiro } from "@/lib/formato";
+import { formatarDataCurta, formatarNumero, nomeDoBairro, primeiro } from "@/lib/formato";
 import type { Database } from "@/lib/supabase/tipos-banco";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { vagasNovasNoAr } from "@/lib/servidor/vagas-do-dia";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
@@ -207,6 +208,23 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
         }
       : undefined);
 
+  // as vagas no ar dos últimos 60 dias, para gerar a imagem com 1, 2 ou 3 delas (claude/plano-banner-com-vagas.md)
+  const vagasParaImagem =
+    aba === "form"
+      ? (
+          await vagasNovasNoAr(
+            c,
+            new Date(agora - 60 * 24 * 3600 * 1000).toISOString(),
+            new Date(agora).toISOString(),
+          ).catch(() => [])
+        ).map((v) => ({
+          id: v.id,
+          titulo: v.titulo,
+          quem: v.quem,
+          lugar: !v.bairro || v.bairro === v.cidade ? v.cidade : `${nomeDoBairro(v.bairro)}, ${v.cidade}`,
+        }))
+      : [];
+
   return (
     <div className="flex flex-col gap-6">
       <SubAbas ativa={aba} total={banners.length} editando={editar?.titulo ?? null} />
@@ -235,7 +253,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/bann
               novidade já está lá.
             </Aviso>
           )}
-          <FormBanner key={editar?.id ?? idDaNovidade ?? "novo"} banner={preenchido} />
+          <FormBanner key={editar?.id ?? idDaNovidade ?? "novo"} banner={preenchido} vagas={vagasParaImagem} />
         </Secao>
       )}
       {aba === "lista" && (
