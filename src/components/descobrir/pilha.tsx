@@ -20,8 +20,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { curtirAnuncio } from "@/lib/acoes/curtidas";
+import { curtirAnuncio, type ContatoDaCurtida } from "@/lib/acoes/curtidas";
 import { passarVaga, salvarVaga, verPassadasDeNovo } from "@/lib/acoes/descobrir";
+import { linkWhatsApp } from "@/lib/formato";
 import type { Motivo } from "@/lib/descobrir";
 import { Selo } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
@@ -273,6 +274,15 @@ export function PilhaDeVagas({
           return;
         }
         if (gesto === "curtir") {
+          // contato direto: deu match na hora; sugere chamar no WhatsApp, com a mensagem pronta
+          const contato = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
+          if (contato?.whatsapp) {
+            setAviso({
+              texto: `Deu match em “${carta.titulo}”! ${carta.quem} libera o contato para quem se candidata: mande uma mensagem agora e se apresente.`,
+              link: { href: linkWhatsApp(contato.whatsapp, contato.mensagem), nome: "Chamar no WhatsApp" },
+            });
+            return;
+          }
           setAviso(
             carta.pedeCurriculo && !temCurriculo
               ? {

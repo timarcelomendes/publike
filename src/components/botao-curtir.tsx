@@ -1,10 +1,17 @@
 "use client";
 
-import { Heart, X } from "lucide-react";
+import { Heart, Mail, MessageCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { curtirAnuncio, curtirDeNovo, descurtirAnuncio, type AvisoLigado } from "@/lib/acoes/curtidas";
+import {
+  curtirAnuncio,
+  curtirDeNovo,
+  descurtirAnuncio,
+  type AvisoLigado,
+  type ContatoDaCurtida,
+} from "@/lib/acoes/curtidas";
+import { linkWhatsApp } from "@/lib/formato";
 import { NuncaPague } from "./anuncio/nunca-pague";
 import { LinhaDoAvisoLigado } from "./aviso-ligado";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
@@ -67,6 +74,8 @@ export function BotaoCurtir({
   const [dica, setDica] = useState(false);
   // o aviso de vaga nova que a primeira curtida ligou (e se a pessoa parou)
   const [aviso, setAviso] = useState<AvisoLigado | null>(null);
+  // contato direto: deu match na hora; o balão sugere chamar quem publicou no WhatsApp, com a mensagem pronta
+  const [contato, setContato] = useState<ContatoDaCurtida | null>(null);
   const eu = useId();
   const caixa = useRef<HTMLDivElement>(null);
   const balao = useRef<HTMLDivElement>(null);
@@ -120,10 +129,11 @@ export function BotaoCurtir({
   }, [explicar]);
 
   useEffect(() => {
-    if (!explicar || segurar) return;
+    // com o contato liberado, o balão fica até a pessoa chamar ou fechar
+    if (!explicar || segurar || contato) return;
     const t = setTimeout(() => setExplicar(false), 9000);
     return () => clearTimeout(t);
-  }, [explicar, segurar]);
+  }, [explicar, segurar, contato]);
 
   // match desfeito: dá para curtir de novo (o servidor recusa se a outra pessoa bloqueou)
   const desfeito = atual === "desfeito";
@@ -172,6 +182,7 @@ export function BotaoCurtir({
         else setErro(r.erro);
       } else if (curtindo) {
         if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
+        setContato("contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null);
         setExplicar(true);
       }
     });
@@ -233,11 +244,15 @@ export function BotaoCurtir({
           className="absolute right-0 bottom-full z-20 mb-2 flex w-64 scroll-mt-36 items-start gap-2 rounded-md border border-line-strong bg-surface-200 p-3 text-body-sm text-ink shadow-raised"
         >
           <div className="flex min-w-0 flex-col gap-2.5">
-            <p>
-              <strong>{servico ? "Pedido enviado!" : "Curtido: você se candidatou!"}</strong> Agora{" "}
-              {quem || "quem publicou"} decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu
-              painel.
-            </p>
+            {contato ? (
+              <ChamarAgora contato={contato} anuncioId={anuncioId} quem={quem} servico={servico} />
+            ) : (
+              <p>
+                <strong>{servico ? "Pedido enviado!" : "Curtido: você se candidatou!"}</strong> Agora{" "}
+                {quem || "quem publicou"} decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu
+                painel.
+              </p>
+            )}
             {aviso && <LinhaDoAvisoLigado aviso={aviso} className="border-t border-line pt-2.5" />}
             {!servico && <NuncaPague />}
             <ConviteNotificacoes
@@ -285,6 +300,69 @@ export function BotaoCurtir({
           <span aria-hidden className="absolute right-7 -bottom-1.5 size-3 rotate-45 bg-ink" />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Contato direto: a curtida virou match na hora. Sugere chamar quem publicou já, com a mensagem pronta (o WhatsApp;
+ * sem ele, o e-mail). O toque fica no histórico da candidatura (Admin › Curtidas), como no painel.
+ */
+function ChamarAgora({
+  contato,
+  anuncioId,
+  quem,
+  servico,
+}: {
+  contato: ContatoDaCurtida;
+  anuncioId: string;
+  quem: string | null | undefined;
+  servico: boolean;
+}) {
+  const contar = (canal: "whatsapp" | "email") => {
+    try {
+      const corpo = new Blob([JSON.stringify({ anuncio: anuncioId, perfil: contato.perfilId, canal })], {
+        type: "application/json",
+      });
+      navigator.sendBeacon?.("/api/contato-candidato", corpo);
+    } catch {
+      // contar é o de menos: o WhatsApp abre do mesmo jeito
+    }
+  };
+  const [primeira, ...resto] = contato.mensagem.split("\n");
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p>
+        <strong>Deu match!</strong> {quem || "Quem publicou"} libera o contato para quem se{" "}
+        {servico ? "interessa" : "candidata"}. Mande uma mensagem agora e se apresente:
+      </p>
+      <p className="rounded-md bg-surface-300 p-2.5 text-body-sm italic">“{primeira}”</p>
+      {contato.whatsapp ? (
+        <a
+          href={linkWhatsApp(contato.whatsapp, contato.mensagem)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => contar("whatsapp")}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-pill bg-cerrado px-4 text-label text-on-cerrado hover:opacity-90"
+        >
+          <MessageCircle aria-hidden className="size-5" />
+          Chamar no WhatsApp
+        </a>
+      ) : (
+        contato.email && (
+          <a
+            href={`mailto:${contato.email}?subject=${encodeURIComponent("Pelo Publike")}&body=${encodeURIComponent(contato.mensagem)}`}
+            onClick={() => contar("email")}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-pill bg-cerrado px-4 text-label text-on-cerrado hover:opacity-90"
+          >
+            <Mail aria-hidden className="size-5" />
+            Mandar e-mail
+          </a>
+        )
+      )}
+      <p className="text-caption font-normal text-ink-muted">
+        A mensagem já vai pronta{resto.length ? ", com o link do anúncio" : ""}. Dá para mudar antes de enviar.
+      </p>
     </div>
   );
 }

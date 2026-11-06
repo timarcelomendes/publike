@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { categoria as categoriaDe, ETAPAS_CANDIDATO, etapasPermitidas, type EtapaCandidato } from "@/lib/constantes";
-import { faltaContatoParaAceitar, obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
+import { contatoDoMatch, faltaContatoParaAceitar, obterMeuPerfil, obterUsuario, perfilCompleto } from "@/lib/dados";
+import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -20,7 +21,17 @@ const RESPONDER = (anuncioId: string) => `/anuncio/${anuncioId}?responder=1`;
 
 /** O aviso de vaga nova ligado sozinho na primeira curtida (o balão mostra e deixa parar). */
 export type AvisoLigado = { id: number; area: string };
-export type ResultadoCurtida = Resultado & { aviso?: AvisoLigado | null };
+export type ResultadoCurtida = Resultado & {
+  aviso?: AvisoLigado | null;
+  /**
+   * contato direto (o match sai na hora): o WhatsApp e o e-mail de quem publicou e a mensagem pronta, para a tela
+   * sugerir chamar já (05/11/2026)
+   */
+  contato?: ContatoDaCurtida | null;
+};
+
+/** O contato de quem publicou logo depois de curtir (só quando já deu match) e a mensagem pronta. */
+export type ContatoDaCurtida = { whatsapp: string | null; email: string | null; mensagem: string; perfilId: string };
 
 // uma vez por navegador: quem parou o aviso (ou já tinha busca com aviso) não ganha outro
 const COOKIE_AVISO_AUTO = "publike_aviso_auto";
@@ -80,7 +91,7 @@ export async function curtirAnuncio(
   const supabase = await criarClienteServidor();
   const { data: alvo } = await supabase
     .from("anuncios")
-    .select("perguntas, tipo, categoria")
+    .select("perguntas, tipo, categoria, titulo")
     .eq("id", anuncioId)
     .maybeSingle();
   const perguntas = perguntasDoBanco(alvo?.perguntas);
@@ -129,7 +140,25 @@ export async function curtirAnuncio(
   // primeira curtida de vaga: o aviso de vaga nova da mesma área já vem ligado
   const aviso = alvo?.tipo === "vaga" ? await avisoDaPrimeiraCurtida(supabase, alvo.categoria).catch(() => null) : null;
   if (feita?.status === "match") {
-    return { ok: true, mensagem: "Deu match! O contato já está liberado: chame no WhatsApp.", aviso };
+    // o contato já liberado: a tela sugere mandar a mensagem agora, com o texto pronto
+    const c = await contatoDoMatch(anuncioId).catch(() => null);
+    const servico = alvo?.tipo === "servico";
+    const titulo = alvo?.titulo ?? "";
+    const contato: ContatoDaCurtida | null =
+      c && (c.whatsapp || c.email)
+        ? {
+            whatsapp: c.whatsapp,
+            email: c.email,
+            perfilId: usuario.id,
+            mensagem: mensagemComLink(
+              servico
+                ? `Olá! Pedi o seu serviço “${titulo}” pelo Publike. Podemos combinar?`
+                : `Olá! Me candidatei à vaga “${titulo}” pelo Publike. Podemos conversar?`,
+              linkDoMatch({ anuncioId, perfilId: usuario.id, para: "quem_publicou", direto: true, servico }),
+            ),
+          }
+        : null;
+    return { ok: true, mensagem: "Deu match! O contato já está liberado: chame no WhatsApp.", aviso, contato };
   }
   return {
     ok: true,

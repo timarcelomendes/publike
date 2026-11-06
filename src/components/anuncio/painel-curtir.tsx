@@ -15,6 +15,7 @@ import { LinhaDoAvisoLigado } from "../aviso-ligado";
 import { NuncaPague } from "./nunca-pague";
 import { CaminhoDaCurtida } from "../caminho-curtida";
 import { BotoesContato } from "../contato";
+import { ContarContato } from "../contar-contato";
 import { EntrevistaDoCandidato, type EntrevistaDoCandidato as Entrevista } from "./entrevista-candidato";
 import { CamposDasPerguntas, faltandoResponder, SuasRespostas } from "./perguntas-da-vaga";
 import { CurtirDeNovo, DesfazerMatch } from "../desfazer-match";
@@ -191,8 +192,10 @@ export function PainelCurtir({
             : `${quem} aceitou e vocês estão conectados.`}{" "}
           {servico
             ? "Combinem o serviço, o endereço, o preço e o melhor dia."
-            : "Combinem os detalhes, o endereço e o melhor horário."}
+            : "Mande uma mensagem e se apresente: combinem os detalhes, o endereço e o melhor horário."}
         </p>
+        {/* o toque no WhatsApp ou no e-mail fica no histórico da candidatura (Admin › Curtidas) */}
+        <ContarContato />
         {entrevista && <EntrevistaDoCandidato e={entrevista} vaga={titulo} empresa={autorNome} anuncioId={anuncioId} />}
         {autorId && (
           // no Chat do canto da tela, sem sair da página (sem o Chat, a conversa em tela cheia)
@@ -222,6 +225,7 @@ export function PainelCurtir({
                 servico,
               }),
             )}
+            candidatura={usuarioId ? { anuncioId, perfilId: usuarioId } : undefined}
           />
         </div>
         {servico && (
