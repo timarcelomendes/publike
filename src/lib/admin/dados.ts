@@ -1202,6 +1202,9 @@ export async function empresasComGenteEsperando(
         .from("mensagens")
         .select("conversa_id, autor_id")
         .in("conversa_id", [...daDupla.keys()])
+        // as perguntas do match saem em nome da vaga, mas quem escreveu foi o Publike: não são resposta da empresa
+        // (claude/plano-esperando-sem-mensagem-automatica.md)
+        .eq("automatica", false)
         .limit(20000);
       if (em) falha("as mensagens dos matches", em);
       // a dupla e quem escreveu: só a mensagem da empresa tira o match da lista (a da pessoa, não)
@@ -1211,8 +1214,20 @@ export async function empresasComGenteEsperando(
       }
     }
   }
+  // a empresa tocou no WhatsApp, no telefone ou no e-mail do candidato: também é contato (sem a migração
+  // 20270219120000, nenhum)
+  const empresaChamou = new Set<string>();
+  if (matches.length) {
+    const { data: toques, error: et } = await c.rpc("admin_contatos_das_curtidas", {
+      p_anuncios: [...new Set(matches.map((k) => k.anuncio_id))],
+    });
+    if (et && et.code !== "PGRST202") falha("os contatos dos matches", et);
+    for (const t of toques ?? []) if (t.lado === "empresa") empresaChamou.add(`${t.anuncio_id}:${t.perfil_id}`);
+  }
   const semConversa = matches.filter(
-    (k) => !comMensagem.has(`${dupla(k.perfil_id, empresaDoMatch(k))}>${empresaDoMatch(k)}`),
+    (k) =>
+      !comMensagem.has(`${dupla(k.perfil_id, empresaDoMatch(k))}>${empresaDoMatch(k)}`) &&
+      !empresaChamou.has(`${k.anuncio_id}:${k.perfil_id}`),
   );
 
   const idsPessoas = [...new Set([...pendentes, ...semConversa].map((k) => k.perfil_id))];
