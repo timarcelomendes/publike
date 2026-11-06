@@ -86,8 +86,8 @@ async function Conteudo({ id }: { id: string }) {
                 <SeloCortesia texto={marcaDoRecurso(estado, agora).longo} />
               </h3>
               <p className="text-body-sm text-ink-muted">
-                O candidato grava as respostas pelo celular, quando puder, em até 5 dias. A IA transcreve e resume o que
-                ele disse, sem avaliar o rosto, a voz ou o jeito de falar. Quem decide é você.
+                O candidato grava as respostas pelo celular, quando puder, em até {config.dias} dias. A IA transcreve e
+                resume o que ele disse, sem avaliar o rosto, a voz ou o jeito de falar. Quem decide é você.
               </p>
             </div>
             <FormPerguntasVideo anuncioId={id} config={config} sugestoes={sugestoesDePerguntas(anuncio.titulo)} />

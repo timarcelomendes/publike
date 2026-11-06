@@ -1,7 +1,9 @@
 import "server-only";
 import {
   BUCKET_VIDEO,
+  DIAS_PARA_RESPONDER,
   lerResumoVideo,
+  PRAZOS_PARA_RESPONDER,
   type ConfigVideo,
   type EntrevistaParaAssistir,
   type MinhaEntrevistaVideo,
@@ -41,6 +43,7 @@ export async function configVideo(anuncioId: string): Promise<ConfigVideo | null
     segunda_chance: o.segunda_chance !== false,
     aceita_texto: o.aceita_texto !== false,
     pedir_a_todos: o.pedir_a_todos === true,
+    dias: (PRAZOS_PARA_RESPONDER as readonly number[]).includes(Number(o.dias)) ? Number(o.dias) : DIAS_PARA_RESPONDER,
     pcd: o.pcd === true,
     liberado: o.liberado === true,
   };

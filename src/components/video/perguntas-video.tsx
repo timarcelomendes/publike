@@ -4,7 +4,14 @@ import { Plus, Save, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { salvarConfigVideo } from "@/lib/acoes/entrevista-video";
-import { MAX_PERGUNTAS, MIN_PERGUNTAS, TEMPOS_RESPOSTA, textoDoTempo, type ConfigVideo } from "@/lib/entrevista-video";
+import {
+  MAX_PERGUNTAS,
+  MIN_PERGUNTAS,
+  PRAZOS_PARA_RESPONDER,
+  TEMPOS_RESPOSTA,
+  textoDoTempo,
+  type ConfigVideo,
+} from "@/lib/entrevista-video";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 
@@ -22,6 +29,7 @@ export function FormPerguntasVideo({
     config.perguntas.length ? config.perguntas.map((p) => p.texto) : sugestoes.slice(0, 3),
   );
   const [segundos, setSegundos] = useState(String(config.segundos));
+  const [dias, setDias] = useState(String(config.dias));
   const [segundaChance, setSegundaChance] = useState(config.segunda_chance);
   const [aceitaTexto, setAceitaTexto] = useState(config.aceita_texto);
   const [pedirATodos, setPedirATodos] = useState(config.pedir_a_todos);
@@ -44,6 +52,7 @@ export function FormPerguntasVideo({
               segunda_chance: segundaChance,
               aceita_texto: aceitaTexto,
               pedir_a_todos: pedirATodos,
+              dias: Number(dias),
             }),
           );
           setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Salvo." } : { ok: false, texto: r.erro });
@@ -136,6 +145,21 @@ export function FormPerguntasVideo({
               </option>
             ))}
           </Seletor>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="video-dias" className="text-label">
+            Prazo para gravar
+          </label>
+          <Seletor id="video-dias" value={dias} onChange={(e) => setDias(e.target.value)} className={classesEntrada}>
+            {PRAZOS_PARA_RESPONDER.map((n) => (
+              <option key={n} value={n}>
+                {n} dias depois do pedido
+              </option>
+            ))}
+          </Seletor>
+          <p className="text-body-sm text-ink-muted">
+            Vale para os próximos pedidos. Quem já recebeu fica com o prazo de antes.
+          </p>
         </div>
       </div>
 

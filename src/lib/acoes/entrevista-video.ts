@@ -4,7 +4,13 @@ import { refresh } from "next/cache";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { obterAnuncio, obterUsuario } from "@/lib/dados";
-import { BUCKET_VIDEO, MAX_PERGUNTAS, type EntrevistaParaAssistir } from "@/lib/entrevista-video";
+import {
+  BUCKET_VIDEO,
+  DIAS_PARA_RESPONDER,
+  MAX_PERGUNTAS,
+  PRAZOS_PARA_RESPONDER,
+  type EntrevistaParaAssistir,
+} from "@/lib/entrevista-video";
 import { mensagemDeErro } from "@/lib/erros";
 import { entrevistaParaAssistir, limparVideosVencidos, processarIAVideo } from "@/lib/servidor/entrevista-video";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -19,7 +25,14 @@ const ID_PERGUNTA = /^p[1-6]$/;
 /** Salva as perguntas e as regras da entrevista da vaga. */
 export async function salvarConfigVideo(
   anuncioId: string,
-  d: { perguntas: string[]; segundos: number; segunda_chance: boolean; aceita_texto: boolean; pedir_a_todos: boolean },
+  d: {
+    perguntas: string[];
+    segundos: number;
+    segunda_chance: boolean;
+    aceita_texto: boolean;
+    pedir_a_todos: boolean;
+    dias: number;
+  },
 ): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
@@ -31,15 +44,21 @@ export async function salvarConfigVideo(
     )
     .filter(Boolean)
     .slice(0, MAX_PERGUNTAS);
+  const dias = (PRAZOS_PARA_RESPONDER as readonly number[]).includes(Number(d.dias))
+    ? Number(d.dias)
+    : DIAS_PARA_RESPONDER;
   const supabase = await criarClienteServidor();
-  const { error } = await supabase.rpc("video_salvar_config", {
+  const args = {
     p_anuncio: anuncioId,
     p_perguntas: perguntas,
     p_segundos: Math.round(Number(d.segundos) || 90),
     p_segunda_chance: Boolean(d.segunda_chance),
     p_aceita_texto: Boolean(d.aceita_texto),
     p_pedir_a_todos: Boolean(d.pedir_a_todos),
-  });
+  };
+  let { error } = await supabase.rpc("video_salvar_config", { ...args, p_dias: dias });
+  // sem a migração 20270225120000, salva sem o prazo (fica nos 5 dias)
+  if (error?.code === "PGRST202") ({ error } = await supabase.rpc("video_salvar_config", args));
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora.") };
   refresh();
   return { ok: true, mensagem: "Perguntas salvas." };

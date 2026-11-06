@@ -6,8 +6,9 @@ export const MIN_PERGUNTAS = 2;
 export const MAX_PERGUNTAS = 6;
 /** Quanto tempo a pessoa tem para cada resposta. */
 export const TEMPOS_RESPOSTA = [30, 60, 90, 120, 180] as const;
-/** Dias para responder depois do pedido. */
+/** Dias para responder depois do pedido (o padrão) e os prazos que a vaga pode escolher (migração 20270225120000). */
 export const DIAS_PARA_RESPONDER = 5;
+export const PRAZOS_PARA_RESPONDER = [2, 3, 5, 7, 10] as const;
 /** O bucket privado dos vídeos. */
 export const BUCKET_VIDEO = "entrevistas-video";
 /** Uns 4 MB por minuto: cabe na transcrição (até 25 MB) mesmo na resposta de 3 minutos. */
@@ -31,6 +32,8 @@ export type ConfigVideo = {
   segunda_chance: boolean;
   aceita_texto: boolean;
   pedir_a_todos: boolean;
+  /** os dias para gravar depois do pedido */
+  dias: number;
   /** vaga exclusiva para PCD: a resposta por texto fica sempre ligada */
   pcd: boolean;
   liberado: boolean;

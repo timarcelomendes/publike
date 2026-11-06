@@ -100,7 +100,7 @@ export function VideoNaFicha({
           <Selo variante="novo">Novo</Selo>
         </Botao>
         <p className="text-body-sm text-ink-muted">
-          {primeiro} recebe as perguntas da vaga e grava as respostas pelo celular em até 5 dias.
+          {primeiro} recebe as perguntas da vaga e grava as respostas pelo celular, no prazo da vaga.
         </p>
         {mensagem}
       </div>
@@ -116,7 +116,7 @@ export function VideoNaFicha({
           {video.enviada_em
             ? `respondeu ${tempoRelativo(video.enviada_em, agora)}`
             : video.situacao === "vencida"
-              ? "o prazo de 5 dias acabou"
+              ? "o prazo acabou"
               : `pedido ${tempoRelativo(video.pedida_em, agora)}`}
         </span>
       </p>
