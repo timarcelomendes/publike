@@ -105,6 +105,9 @@ import type { AnuncioCompleto, Regime, StatusAnuncio } from "@/lib/tipos";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
 import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
+import { funcaoDaVaga } from "@/lib/servidor/paginas-funcao";
+import { caminhoDaFuncao } from "@/lib/funcoes-das-paginas";
+import { cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { meusTestesDaVaga, testesDaVaga } from "@/lib/servidor/testes";
 import { nomeCurtoDoTeste } from "@/lib/testes";
@@ -853,6 +856,12 @@ async function DetalheAnuncio({
           )}
         </aside>
       </div>
+      {/* a página da função na cidade ("Mais vagas de frentista em Goiânia": claude/plano-vagas-por-funcao.md) */}
+      {vaga && anuncio.status === "ativo" && (
+        <Suspense fallback={null}>
+          <LinkDaFuncao id={anuncio.id} cidade={anuncio.cidade} />
+        </Suspense>
+      )}
       {/* no fim, as vagas parecidas e as outras de quem publicou (não para quem publicou) */}
       {vaga && !proprio && (
         <Suspense fallback={null}>
@@ -871,6 +880,24 @@ async function DetalheAnuncio({
         </Suspense>
       )}
     </Container>
+  );
+}
+
+/** "Mais vagas de frentista em Goiânia" e o salário da região, na página da função (só quando a vaga tem função). */
+async function LinkDaFuncao({ id, cidade }: { id: string; cidade: string }) {
+  if (!cidadeDoSlug(slugDaCidade(cidade))) return null;
+  const funcao = await funcaoDaVaga(id, cidade);
+  if (!funcao) return null;
+  return (
+    <p className="mt-8 text-body">
+      <Link
+        href={caminhoDaFuncao(cidade, funcao.slug)}
+        className="font-semibold text-terra-text underline-offset-2 hover:underline"
+      >
+        Mais vagas de {funcao.nome} em {cidade}
+      </Link>
+      <span className="text-ink-muted"> e quanto se paga na região</span>
+    </p>
   );
 }
 

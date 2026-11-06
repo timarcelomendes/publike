@@ -19,6 +19,8 @@ import {
 import { nomeDoBairro } from "@/lib/formato";
 import { pracaDaCidade } from "@/lib/pracas";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
+import { funcoesDasVagasDaPraca } from "@/lib/servidor/paginas-funcao";
+import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, TipoAnuncio } from "@/lib/tipos";
 import { CardAnuncio } from "./card-anuncio";
@@ -139,7 +141,11 @@ export function PaginaDeBusca(busca: Busca) {
 
 async function Conteudo({ tipo, cidade, area }: Busca) {
   // os da praça desta cidade
-  const [todos, agora] = await Promise.all([anunciosNoAr(tipo, cidade), agoraDaRequisicao()]);
+  const [todos, agora, funcoesDasVagas] = await Promise.all([
+    anunciosNoAr(tipo, cidade),
+    agoraDaRequisicao(),
+    tipo === "vaga" ? funcoesDasVagasDaPraca(cidade) : Promise.resolve({} as Record<string, string>),
+  ]);
   const daCidade = todos.filter((a) => a.cidade === cidade);
   const itens = area ? daCidade.filter((a) => a.categoria === area.slug) : daCidade;
   const vaga = tipo === "vaga";
@@ -171,6 +177,18 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
     }
   }
   const bairros = [...porBairro.values()].sort((x, y) => y.total - x.total || x.nome.localeCompare(y.nome, "pt-BR"));
+
+  // as funções das vagas desta lista (cada uma tem a sua página: /vagas/goiania/frentista)
+  const porFuncao = new Map<string, { slug: string; nome: string; total: number }>();
+  if (vaga) {
+    for (const a of itens) {
+      const cbo = funcoesDasVagas[a.id];
+      const f = funcaoDaListaPeloCbo(cbo);
+      if (!f) continue;
+      porFuncao.set(f.slug, { slug: f.slug, nome: f.nome, total: (porFuncao.get(f.slug)?.total ?? 0) + 1 });
+    }
+  }
+  const funcoes = [...porFuncao.values()].sort((x, y) => y.total - x.total || x.nome.localeCompare(y.nome, "pt-BR"));
 
   const verNoMapa = `/?tipo=${tipo}${area ? `&categoria=${area.slug}` : ""}`;
   const dados = [
@@ -291,6 +309,27 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
                   {c.nome}
                   <span className={area?.slug === c.slug ? "" : "text-ink-muted"}>({c.total})</span>
                 </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {funcoes.length > 0 && (
+        <section aria-labelledby="por-funcao" className="mt-10">
+          <h2 id="por-funcao" className="text-h3">
+            {area ? `Vagas de ${area.nome.toLowerCase()} em ${cidade}` : `Vagas em ${cidade}`} por função
+          </h2>
+          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-body-sm">
+            {funcoes.map((f) => (
+              <li key={f.slug}>
+                <Link
+                  href={caminhoDaFuncao(cidade, f.slug)}
+                  className="underline underline-offset-2 hover:text-terra-text"
+                >
+                  {comMaiuscula(f.nome)}
+                </Link>
+                <span className="text-ink-muted"> ({f.total})</span>
               </li>
             ))}
           </ul>

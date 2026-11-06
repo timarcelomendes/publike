@@ -7,6 +7,8 @@ import { noticiasPublicadas } from "@/lib/servidor/noticias";
 import { caminhoDaBusca, caminhoDoBairro, cidadeDoSlug, CIDADES_PRINCIPAIS, slugDaCidade } from "@/lib/paginas-busca";
 import { cidadeDePraca, PRACAS } from "@/lib/pracas";
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
+import { paginasDeFuncao } from "@/lib/servidor/paginas-funcao";
+import { caminhoDaFuncao } from "@/lib/funcoes-das-paginas";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { TipoAnuncio } from "@/lib/tipos";
 
@@ -86,6 +88,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...paginas,
     ...(await paginasDeBusca()),
+    // as vagas por função e cidade: com vaga no ar, ou só com o salário nas cidades de praça
+    ...(await paginasDeFuncao().catch(() => [])).map((f) => ({
+      url: `${SITE_URL}${caminhoDaFuncao(f.cidade, f.funcao.slug)}`,
+      changeFrequency: "daily" as const,
+      priority: f.vagas > 0 ? 0.7 : 0.5,
+    })),
     ...(await noticiasPublicadas(500)).map((n) => ({
       url: `${SITE_URL}/noticias/${n.slug}`,
       lastModified: n.publicar_em ? new Date(n.publicar_em).toISOString() : undefined,
