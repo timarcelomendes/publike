@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CurriculoSimples } from "@/components/curriculo-simples";
 import { DadosEstruturados } from "@/components/dados-estruturados";
+import { CompartilharPagina } from "@/components/compartilhar-pagina";
+import { MaisDoPublike } from "@/components/mais-do-publike";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 
@@ -70,6 +72,12 @@ export default function PaginaCurriculoSimples() {
           Preencha, veja pronto ao lado e baixe em PDF. Uma página, sem cadastro e sem pagar nada: é o currículo que
           quem contrata em Goiânia consegue ler em um minuto.
         </p>
+        <div className="mt-4">
+          <CompartilharPagina
+            caminho="/curriculo-simples"
+            texto="Monte um currículo simples grátis e baixe em PDF, sem cadastro:"
+          />
+        </div>
       </div>
 
       <CurriculoSimples />
@@ -121,6 +129,8 @@ export default function PaginaCurriculoSimples() {
           ))}
         </dl>
       </section>
+
+      <MaisDoPublike atual="curriculo" />
     </Container>
   );
 }

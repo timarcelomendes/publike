@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalculadoraRescisao } from "@/components/calculadora-rescisao";
 import { DadosEstruturados } from "@/components/dados-estruturados";
+import { CompartilharPagina } from "@/components/compartilhar-pagina";
+import { MaisDoPublike } from "@/components/mais-do-publike";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { CASOS_RESCISAO } from "@/lib/rescisao-casos";
@@ -89,6 +91,12 @@ export default function PaginaCalculadoraRescisao() {
           O cálculo completo do seu acerto: aviso prévio proporcional, médias de horas extras, férias vencidas e em
           dobro, 13º, FGTS e multa, com o INSS e o IR de {ANO_DAS_TABELAS} verba por verba. Cada valor vem com a conta.
         </p>
+        <div className="mt-4">
+          <CompartilharPagina
+            caminho="/calculadora-rescisao"
+            texto="Calcule a sua rescisão grátis, com a conta de cada valor:"
+          />
+        </div>
         <p className="mt-4 rounded-md border-l-4 border-ipe bg-surface-200 px-4 py-3 text-body">
           <strong>É uma estimativa, use como sugestão.</strong> Os resultados podem não ser precisos: qualquer detalhe
           do contrato de trabalho, da convenção coletiva da sua categoria ou uma informação que faltou aqui muda os
@@ -164,6 +172,8 @@ export default function PaginaCalculadoraRescisao() {
           TST.
         </p>
       </section>
+
+      <MaisDoPublike atual="rescisao" />
     </Container>
   );
 }

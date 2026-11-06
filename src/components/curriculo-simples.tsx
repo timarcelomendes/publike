@@ -71,6 +71,73 @@ function mes(valor: string) {
   return ano && m ? `${MESES[m - 1]}/${ano}` : "";
 }
 
+/** "032024" → "03/2024", enquanto digita */
+function mascaraMes(t: string) {
+  const d = t.replace(/\D/g, "").slice(0, 6);
+  return d.length <= 2 ? d : `${d.slice(0, 2)}/${d.slice(2)}`;
+}
+/** "03/2024" → "2024-03"; "" se não for um mês de verdade */
+function mesIso(t: string) {
+  const m = /^(\d{2})\/(\d{4})$/.exec(t);
+  if (!m) return "";
+  const mm = Number(m[1]);
+  const a = Number(m[2]);
+  return mm >= 1 && mm <= 12 && a >= 1950 && a <= 2100 ? `${m[2]}-${m[1]}` : "";
+}
+const isoParaMes = (iso: string) => (/^\d{4}-\d{2}$/.test(iso) ? `${iso.slice(5)}/${iso.slice(0, 4)}` : "");
+
+/** Mês e ano digitados (mm/aaaa), sem o calendário do navegador: mais rápido, principalmente para anos atrás. */
+function CampoMes({
+  rotulo,
+  valor,
+  mudar,
+  desligado = false,
+}: {
+  rotulo: string;
+  valor: string;
+  mudar: (iso: string) => void;
+  desligado?: boolean;
+}) {
+  const id = useId();
+  const [texto, setTexto] = useState(() => isoParaMes(valor));
+  // quando o valor muda por fora (dados guardados, "Trabalho aqui", apagar), o campo acompanha
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o valor de fora
+    if (mesIso(texto) !== valor) setTexto(isoParaMes(valor));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só quando o valor de fora muda
+  }, [valor]);
+  const erro = texto.length === 7 && !mesIso(texto);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-label">
+        {rotulo}
+      </label>
+      <input
+        id={id}
+        className={classesEntrada}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="mm/aaaa"
+        maxLength={7}
+        disabled={desligado}
+        value={desligado ? "" : texto}
+        aria-invalid={erro || undefined}
+        aria-describedby={erro ? `${id}-erro` : undefined}
+        onChange={(x) => {
+          const t = mascaraMes(x.target.value);
+          setTexto(t);
+          mudar(mesIso(t));
+        }}
+      />
+      {erro && (
+        <span id={`${id}-erro`} className="text-body-sm text-danger">
+          Confira o mês (01 a 12) e o ano.
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** "(62) 99999-0000" enquanto digita */
 function telefone(valor: string) {
   const d = valor.replace(/\D/g, "").slice(0, 11);
@@ -240,25 +307,13 @@ export function CurriculoSimples() {
                     placeholder="Padaria do bairro"
                   />
                 </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className={rotulo}>Começou em</span>
-                  <input
-                    type="month"
-                    className={classesEntrada}
-                    value={e.inicio}
-                    onChange={(x) => mudaExp(e.chave, { inicio: x.target.value })}
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className={rotulo}>Saiu em</span>
-                  <input
-                    type="month"
-                    className={classesEntrada}
-                    value={e.atual ? "" : e.fim}
-                    disabled={e.atual}
-                    onChange={(x) => mudaExp(e.chave, { fim: x.target.value })}
-                  />
-                </label>
+                <CampoMes rotulo="Começou em" valor={e.inicio} mudar={(v) => mudaExp(e.chave, { inicio: v })} />
+                <CampoMes
+                  rotulo="Saiu em"
+                  valor={e.atual ? "" : e.fim}
+                  desligado={e.atual}
+                  mudar={(v) => mudaExp(e.chave, { fim: v })}
+                />
               </div>
               <label className="flex min-h-11 items-center gap-2 text-body-sm">
                 <input

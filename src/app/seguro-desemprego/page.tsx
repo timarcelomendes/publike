@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DadosEstruturados } from "@/components/dados-estruturados";
 import { SeguroDesemprego } from "@/components/seguro-desemprego";
+import { CompartilharPagina } from "@/components/compartilhar-pagina";
+import { MaisDoPublike } from "@/components/mais-do-publike";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { formatarMoeda } from "@/lib/formato";
@@ -84,6 +86,12 @@ export default function PaginaSeguroDesemprego() {
           Responda algumas perguntas e veja se tem direito, quantas parcelas e o valor pela tabela de {ANO_DA_TABELA}.
           Leva um minuto.
         </p>
+        <div className="mt-4">
+          <CompartilharPagina
+            caminho="/seguro-desemprego"
+            texto="Veja se você tem direito ao seguro-desemprego, quantas parcelas e de quanto:"
+          />
+        </div>
       </div>
 
       <SeguroDesemprego />
@@ -116,6 +124,8 @@ export default function PaginaSeguroDesemprego() {
           .
         </p>
       </section>
+
+      <MaisDoPublike atual="seguro" />
     </Container>
   );
 }

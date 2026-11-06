@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CalculadoraRescisao } from "@/components/calculadora-rescisao";
 import { DadosEstruturados } from "@/components/dados-estruturados";
+import { CompartilharPagina } from "@/components/compartilhar-pagina";
+import { MaisDoPublike } from "@/components/mais-do-publike";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { calcularRescisao, dataBr } from "@/lib/rescisao";
@@ -94,6 +96,12 @@ function Conteudo({ slug }: { slug: string }) {
         </nav>
         <h1 className="mt-2 text-h2 sm:text-h1">{c.h1}</h1>
         <p className="mt-3 text-body-lg text-ink-muted">{c.chamada}</p>
+        <div className="mt-4">
+          <CompartilharPagina
+            caminho={`/calculadora-rescisao/${c.slug}`}
+            texto={`${c.h1}: calcule grátis, com a conta de cada valor:`}
+          />
+        </div>
         <p className="mt-4 rounded-md border-l-4 border-ipe bg-surface-200 px-4 py-3 text-body">
           <strong>É uma estimativa, use como sugestão.</strong> Os resultados podem não ser precisos: qualquer detalhe
           do contrato de trabalho, da convenção coletiva da sua categoria ou uma informação que faltou aqui muda os
@@ -197,6 +205,8 @@ function Conteudo({ slug }: { slug: string }) {
           </p>
         </section>
       </div>
+
+      <MaisDoPublike atual="rescisao" />
     </Container>
   );
 }
