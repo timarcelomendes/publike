@@ -3,19 +3,21 @@ import { ehModerador } from "@/lib/dados";
 import { criarClienteAdmin, ehAdminLocal, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { VagaDoDia } from "@/lib/vagas-do-dia";
+import { fotosDosAutores } from "./fotos-autores";
 
 // As vagas do carrossel do Instagram: em Admin › Vagas do dia (com a chave do admin, de todas as contas) e no kit de
 // divulgação (as da própria conta). Só vaga no ar (ativa, sem "preenchida", dentro do prazo) de conta não suspensa.
 
 const BASE =
-  "id, titulo, categoria, regime, pagamento_valor, pagamento_unidade, pagamento_ate, comissao, cidade, bairro, vagas, " +
+  "id, autor_id, titulo, categoria, regime, pagamento_valor, pagamento_unidade, pagamento_ate, comissao, cidade, bairro, vagas, " +
   "beneficios_lista, criado_em, contratante, contratante_confidencial, " +
   "autor:perfis!anuncios_autor_id_fkey(nome, tipo, verificado, suspenso_ate)";
 // "Começa já" veio na migração 20261212120000_comeca_ja.sql: sem ela, a leitura segue sem o selo
 const COM_COMECA_JA = `${BASE}, comeca_ja`;
 
 type Autor = { nome: string; tipo: string; verificado: boolean; suspenso_ate: string | null };
-type Linha = Omit<VagaDoDia, "quem" | "agencia" | "verificada" | "comeca_ja"> & {
+type Linha = Omit<VagaDoDia, "quem" | "agencia" | "verificada" | "comeca_ja" | "foto"> & {
+  autor_id: string;
   comeca_ja?: boolean | null;
   contratante: string | null;
   contratante_confidencial: boolean;
@@ -133,6 +135,12 @@ export async function vagasEscolhidas(
       .is("preenchida_em", null)
       .gt("expira_em", agora);
   });
-  const porId = new Map(linhas.filter(noAr(agora)).map((l) => [l.id, paraVaga(l)]));
+  // a logo de quem publicou (para o story com três vagas); pessoa física fica sem
+  const fotos = await fotosDosAutores(linhas.map((l) => l.autor_id));
+  const porId = new Map(
+    linhas
+      .filter(noAr(agora))
+      .map((l) => [l.id, { ...paraVaga(l), foto: autorDa(l)?.tipo === "pessoa" ? null : (fotos[l.autor_id] ?? null) }]),
+  );
   return ids.flatMap((id) => porId.get(id) ?? []);
 }

@@ -9,7 +9,7 @@ import { lerFontes, nomeDeArquivo } from "@/lib/servidor/kit-imagens";
 import { montarZip, type ArquivoDoZip } from "@/lib/servidor/zip";
 import type { Regime } from "@/lib/tipos";
 import { valorEmDuas } from "@/lib/valor-do-tiquete";
-import { textoDosLinks, type TextoDaCapa, type VagaDoDia } from "@/lib/vagas-do-dia";
+import { emTrios, textoDosLinks, textoDosLinksDosTrios, type TextoDaCapa, type VagaDoDia } from "@/lib/vagas-do-dia";
 
 /* eslint-disable @next/next/no-img-element -- o ImageResponse (Satori) só desenha <img> */
 
@@ -563,6 +563,161 @@ export async function storyDoDia(v: VagaDoDia, a: Assinatura = DO_PUBLIKE, arqui
   );
 }
 
+/** As cores das iniciais de quem publicou, quando não tem logo (a mesma conta, sempre a mesma cor). */
+const CORES_DAS_INICIAIS = [COR.terra, COR.cerrado, "#7c3aed", "#0f766e", "#b45309", "#1d4ed8"];
+function corDasIniciais(nome: string) {
+  let soma = 0;
+  for (const letra of nome) soma = (soma * 31 + (letra.codePointAt(0) ?? 0)) % 9973;
+  return CORES_DAS_INICIAIS[soma % CORES_DAS_INICIAIS.length]!;
+}
+
+/** A logo de quem publicou (a foto do perfil) ou as iniciais coloridas; pessoa física, redonda e sem nome. */
+function LogoDaVaga({ v, tamanho }: { v: VagaDoDia; tamanho: number }) {
+  const foto = urlDaFoto(v.foto ?? null);
+  const nome = v.quem ?? v.titulo;
+  const raio = v.quem ? Math.round(tamanho * 0.24) : tamanho;
+  if (foto) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          width: tamanho,
+          height: tamanho,
+          borderRadius: raio,
+          background: "#fff",
+          border: `3px solid ${COR.borda}`,
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        <img src={foto} alt="" width={tamanho} height={tamanho} style={{ objectFit: "cover" }} />
+      </div>
+    );
+  }
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: tamanho,
+        height: tamanho,
+        borderRadius: raio,
+        background: corDasIniciais(nome),
+        color: "#fff",
+        fontFamily: "Bricolage",
+        fontSize: Math.round(tamanho * 0.4),
+        flexShrink: 0,
+      }}
+    >
+      {iniciais(nome)}
+    </div>
+  );
+}
+
+/** Os giros dos cartões, como a pilha de vagas do alto da inicial do site. */
+const GIROS_DO_TRIO = [-2, 1.5, -1];
+
+/**
+ * Três vagas num story só (1080 × 1920), como a pilha de vagas do alto da inicial do site: cada uma num cartão
+ * levemente girado, com a logo de quem publicou, o título, quem e onde, e o valor. O adesivo de link vai embaixo,
+ * com o link de todas as vagas (são três: não há uma página só). `n` e `total`: "1 de 4" no selo.
+ */
+export async function storyTrioDoDia(
+  vagas: VagaDoDia[],
+  n: number,
+  total: number,
+  a: Assinatura = DO_PUBLIKE,
+  arquivo: string | null = null,
+  texto?: TextoDaCapa,
+) {
+  const publike = a.tipo === "publike";
+  const titulo = texto?.titulo ?? "Vagas do dia";
+  return imagem(
+    <div style={fundo("210px 72px 110px", a)}>
+      <Topo
+        logo={await logoDa(a)}
+        a={a}
+        altura={publike ? 70 : 56}
+        direita={<Pilula texto={total > 1 ? `${n} DE ${total}` : (texto?.selo ?? "HOJE")} fonte={32} cor="ipe" />}
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            fontFamily: "Bricolage",
+            fontSize: tamanhoDoTitulo(publike ? titulo : "Estamos contratando", 112),
+            lineHeight: 0.95,
+            letterSpacing: -3,
+          }}
+        >
+          {publike ? titulo : "Estamos contratando"}
+        </div>
+        {publike && (
+          <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 50, color: destaque(a), lineHeight: 1.1 }}>
+            em {texto?.lugar ?? "Goiânia e região"}
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 34, padding: "0 6px" }}>
+        {vagas.slice(0, 3).map((v, i) => {
+          const { grande } = valor(v);
+          const quem = publike ? v.quem : null;
+          return (
+            <div
+              key={v.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 30,
+                background: COR.cartao,
+                border: `3px solid ${COR.borda}`,
+                borderRadius: 40,
+                padding: "34px 34px",
+                boxShadow: "0 18px 40px rgba(31, 26, 20, 0.12)",
+                transform: `rotate(${GIROS_DO_TRIO[i]}deg)`,
+              }}
+            >
+              <LogoDaVaga v={v} tamanho={112} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 50, lineHeight: 1.05 }}>
+                  {curto(v.titulo, 40)}
+                </div>
+                <div style={{ display: "flex", fontSize: 32, color: COR.apagado }}>
+                  {curto(quem ? `${quem} · ${lugar(v)}` : lugar(v), 44)}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignSelf: "flex-start",
+                    marginTop: 6,
+                    background: COR.selo,
+                    color: COR.cerrado,
+                    borderRadius: 999,
+                    padding: "6px 20px",
+                    fontSize: 32,
+                    fontWeight: 700,
+                  }}
+                >
+                  {curto(grande, 30)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, minHeight: 300 }}>
+        <div style={{ display: "flex", fontSize: 46, fontWeight: 700, color: destaque(a) }}>
+          Toque no link e veja as vagas
+        </div>
+        <img src={paraBaixo(destaque(a))} alt="" width={64} height={64} />
+      </div>
+    </div>,
+    STORY,
+    arquivo,
+  );
+}
+
 /**
  * A capa dos stories (1080 × 1920), antes do primeiro: "Vagas de hoje" (Publike) ou "Estamos contratando" (empresa),
  * quantas e as primeiras, com o "toque para ver" (no story, tocar passa para o próximo).
@@ -717,6 +872,8 @@ export async function pacoteDoDia(
   quando: Date,
   /** o título, onde e quando das capas (Admin › Vagas do dia) */
   capa?: TextoDaCapa,
+  /** 3: os stories com três vagas cada (a pilha da inicial), em vez de um por vaga */
+  porStory: 1 | 3 = 1,
 ) {
   const total = vagas.length;
   // uma imagem por vez: o desenho usa o processador, e em paralelo não fica mais rápido
@@ -731,13 +888,31 @@ export async function pacoteDoDia(
   arquivos.push({ nome: `carrossel/${doisDigitos(total + 2)}-como-se-candidatar.png`, dados: await png(fimDoDia(a)) });
   // os stories: a capa (00), um por vaga e o fim, com o link da bio
   arquivos.push({ nome: "stories/00-capa.png", dados: await png(storyCapaDoDia(vagas, dia, a, null, capa)) });
-  for (const [i, v] of vagas.entries()) {
-    arquivos.push({ nome: `stories/${doisDigitos(i + 1)}-${nomeDeArquivo(v.titulo)}.png`, dados: await png(storyDoDia(v, a)) });
+  const trios = porStory === 3 ? emTrios(vagas) : [];
+  if (trios.length) {
+    for (const [i, trio] of trios.entries()) {
+      arquivos.push({
+        nome: `stories/${doisDigitos(i + 1)}-tres-vagas.png`,
+        dados: await png(storyTrioDoDia(trio, i + 1, trios.length, a, null, capa)),
+      });
+    }
+  } else {
+    for (const [i, v] of vagas.entries()) {
+      arquivos.push({ nome: `stories/${doisDigitos(i + 1)}-${nomeDeArquivo(v.titulo)}.png`, dados: await png(storyDoDia(v, a)) });
+    }
   }
-  arquivos.push({ nome: `stories/${doisDigitos(total + 1)}-mais-vagas.png`, dados: await png(storyFimDoDia(a)) });
+  const ultimo = trios.length ? trios.length + 1 : total + 1;
+  arquivos.push({ nome: `stories/${doisDigitos(ultimo)}-mais-vagas.png`, dados: await png(storyFimDoDia(a)) });
   const texto = new TextEncoder();
   arquivos.push({ nome: "legenda.txt", dados: texto.encode(`${textos.legenda}\n`) });
-  arquivos.push({ nome: "links-dos-stories.txt", dados: texto.encode(textoDosLinks(vagas, textos.linkDoStory, textos.bio, textos.fimDosStories)) });
+  arquivos.push({
+    nome: "links-dos-stories.txt",
+    dados: texto.encode(
+      trios.length
+        ? textoDosLinksDosTrios(trios, textos.fimDosStories ?? textos.bio, textos.bio)
+        : textoDosLinks(vagas, textos.linkDoStory, textos.bio, textos.fimDosStories),
+    ),
+  });
   return montarZip(arquivos, quando);
 }
 

@@ -8,7 +8,7 @@ import { classesEntrada } from "../ui/campo";
 import { REGIMES } from "@/lib/constantes";
 import { formatarLugar, tempoRelativo } from "@/lib/formato";
 import type { Regime } from "@/lib/tipos";
-import { legendaDoDia, MAX_VAGAS_DO_DIA, tituloDaEmpresa, valorDaVagaDoDia, type VagaDoDia } from "@/lib/vagas-do-dia";
+import { emTrios, legendaDoDia, MAX_VAGAS_DO_DIA, tituloDaEmpresa, valorDaVagaDoDia, type VagaDoDia } from "@/lib/vagas-do-dia";
 
 /**
  * O carrossel e os stories do Instagram, montados com as vagas no ar: escolher e ordenar (a ordem é a do carrossel
@@ -73,6 +73,9 @@ export function CarrosselDoInstagram({
     doPost?.hashtags,
   );
   const extra = doPost?.consulta ?? "";
+  // os stories: um por vaga ou três por story (a pilha de vagas da inicial do site); só no Admin › Vagas do dia
+  const [porStory, setPorStory] = useState<1 | 3>(1);
+  const trios = doPost && porStory === 3 ? emTrios(nasImagens) : [];
   const bio = links.bio;
 
   const tirar = (id: string) => setOrdem((o) => o.filter((x) => x !== id));
@@ -195,7 +198,7 @@ export function CarrosselDoInstagram({
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap gap-2">
             <a
-              href={`${rotas.baixar}?ids=${ordem.join(",")}${extra}`}
+              href={`${rotas.baixar}?ids=${ordem.join(",")}${extra}${trios.length ? "&stories=3" : ""}`}
               download
               className={classesBotao("primario", "md")}
             >
@@ -262,12 +265,33 @@ export function CarrosselDoInstagram({
             <h3 id="dia-stories" className="text-label">
               Stories{" "}
               <span className="font-normal text-ink-muted">
-                · a capa, um por vaga e o “mais vagas”, 1080 × 1920
+                · a capa, {trios.length ? "três vagas por story" : "um por vaga"} e o “mais vagas”, 1080 × 1920
               </span>
             </h3>
+            {doPost && (
+              <div role="group" aria-label="Vagas em cada story" className="flex flex-wrap gap-2">
+                {([1, 3] as const).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={porStory === n}
+                    onClick={() => setPorStory(n)}
+                    className={`min-h-10 rounded-pill border px-3.5 text-label transition-colors ${
+                      porStory === n
+                        ? "border-ink bg-ink text-surface-100"
+                        : "border-line bg-surface-200 text-ink hover:bg-surface-300"
+                    }`}
+                  >
+                    {n === 1 ? "Uma vaga por story" : "3 vagas por story"}
+                  </button>
+                ))}
+              </div>
+            )}
             <p className="text-body-sm text-ink-muted">
-              Poste nesta ordem. Em cada vaga, ponha o adesivo Link em cima da seta, com o link da vaga: ele abre a
-              página onde a pessoa curte. No último, o link de todas as vagas. A capa não leva link. No celular, “Postar”
+              Poste nesta ordem.{" "}
+              {trios.length
+                ? "Em cada story, ponha o adesivo Link em cima da seta, com o link de todas as vagas (são três vagas em cada um)."
+                : "Em cada vaga, ponha o adesivo Link em cima da seta, com o link da vaga: ele abre a página onde a pessoa curte. No último, o link de todas as vagas."} A capa não leva link. No celular, “Postar”
               copia o link e abre o compartilhar: escolha Instagram › Story e cole o link no adesivo.
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
@@ -276,15 +300,26 @@ export function CarrosselDoInstagram({
                 nome="Capa"
                 proporcao="aspect-[9/16]"
               />
-              {nasImagens.map((v) => (
-                <Previa
-                  key={v.id}
-                  src={`${IMAGENS}/story?id=${v.id}`}
-                  nome={v.titulo}
-                  proporcao="aspect-[9/16]"
-                  link={linkDoStory(v.id)}
-                />
-              ))}
+              {trios.length
+                ? trios.map((t, i) => (
+                    <Previa
+                      key={t.map((v) => v.id).join()}
+                      src={`${IMAGENS}/story-trio?ids=${t.map((v) => v.id).join(",")}&n=${i + 1}&total=${trios.length}${extra}`}
+                      nome={`${i + 1} · ${t.length === 1 ? "1 vaga" : `${t.length} vagas`}`}
+                      proporcao="aspect-[9/16]"
+                      // são três vagas: o adesivo leva a todas
+                      link={links.fimDosStories ?? bio}
+                    />
+                  ))
+                : nasImagens.map((v) => (
+                    <Previa
+                      key={v.id}
+                      src={`${IMAGENS}/story?id=${v.id}`}
+                      nome={v.titulo}
+                      proporcao="aspect-[9/16]"
+                      link={linkDoStory(v.id)}
+                    />
+                  ))}
               <Previa
                 src={`${IMAGENS}/story-fim?total=${total}`}
                 nome="Mais vagas"

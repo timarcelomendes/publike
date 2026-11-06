@@ -1,5 +1,13 @@
 import type { NextRequest } from "next/server";
-import { capaDoDia, fimDoDia, storyCapaDoDia, storyDoDia, storyFimDoDia, vagaDoDia } from "@/lib/servidor/imagens-do-dia";
+import {
+  capaDoDia,
+  fimDoDia,
+  storyCapaDoDia,
+  storyDoDia,
+  storyFimDoDia,
+  storyTrioDoDia,
+  vagaDoDia,
+} from "@/lib/servidor/imagens-do-dia";
 import { nomeDeArquivo } from "@/lib/servidor/kit-imagens";
 import { acessoVagasDoDia, vagasEscolhidas } from "@/lib/servidor/vagas-do-dia";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -8,6 +16,7 @@ import { diaPorExtenso, lerIdsDoDia, textoDaCapa } from "@/lib/vagas-do-dia";
 // As imagens de Admin › Vagas do dia, uma por endereço e só para quem abre a página (admin ou moderador):
 //   capa?ids=a,b,c · vaga?id=a&n=1&total=12 · fim?total=12 · story?id=a · story-capa?ids=a,b,c · story-fim
 // As capas também leem o título (&titulo=), a praça (&cidade=) e o período (&periodo=) da página.
+//   story-trio?ids=a,b,c&n=1&total=4: três vagas num story (a pilha da inicial do site), o 1º de 4
 // Com &baixar=1, vem como arquivo, com o número da ordem do carrossel no nome.
 
 const naoEncontrado = () => new Response("Não encontrado", { status: 404 });
@@ -37,6 +46,13 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
   if (peca === "story-capa") {
     const vagas = await vagasEscolhidas(c, lerIdsDoDia(sp.get("ids")), agoraIso);
     return storyCapaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "story-capa.png" : null, capa);
+  }
+  if (peca === "story-trio") {
+    const vagas = await vagasEscolhidas(c, lerIdsDoDia(sp.get("ids")).slice(0, 3), agoraIso);
+    if (!vagas.length) return naoEncontrado();
+    const n = numero(sp.get("n"), 1);
+    const total = Math.max(numero(sp.get("total"), n), n);
+    return storyTrioDoDia(vagas, n, total, undefined, baixar ? `story-${doisDigitos(n)}-tres-vagas.png` : null, capa);
   }
   if (peca === "capa") {
     const vagas = await vagasEscolhidas(c, lerIdsDoDia(sp.get("ids")), agoraIso);

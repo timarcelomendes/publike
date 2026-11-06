@@ -31,6 +31,8 @@ export type VagaDoDia = {
   agencia: string | null;
   /** a conta que publicou tem o selo de conferida */
   verificada: boolean;
+  /** a logo de quem publicou (o story com três vagas); vaga de pessoa física fica sem */
+  foto?: string | null;
 };
 
 /** Os períodos, cada um com o título que sugere para o post (dá para trocar). */
@@ -328,6 +330,34 @@ export function textoDosLinks(
     ...vagas.flatMap((v, i) => [`${String(i + 1).padStart(2, "0")}. ${v.titulo}`, linkDaVaga(v.id), ""]),
     `${String(vagas.length + 1).padStart(2, "0")}. Mais vagas:`,
     fim,
+    "",
+    "Link da bio:",
+    bio,
+    "",
+  ].join("\n");
+}
+
+/** As vagas de três em três, na ordem do carrossel (o story com três vagas; a última pode ter uma ou duas). */
+export function emTrios<T>(vagas: T[]): T[][] {
+  const trios: T[][] = [];
+  for (let i = 0; i < vagas.length; i += 3) trios.push(vagas.slice(i, i + 3));
+  return trios;
+}
+
+/** O texto dos links quando os stories têm três vagas: todos levam a todas as vagas. */
+export function textoDosLinksDosTrios(trios: VagaDoDia[][], todas: string, bio: string) {
+  return [
+    "Links para o adesivo de cada story (na ordem dos arquivos da pasta stories):",
+    "",
+    "00. Capa: sem link",
+    "",
+    ...trios.flatMap((t, i) => [
+      `${String(i + 1).padStart(2, "0")}. ${t.map((v) => v.titulo).join(", ")}`,
+      todas,
+      "",
+    ]),
+    `${String(trios.length + 1).padStart(2, "0")}. Mais vagas:`,
+    todas,
     "",
     "Link da bio:",
     bio,

@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
     },
     new Date(agora),
     capa,
+    // "3 vagas por story" (a pilha da inicial), escolhido na página
+    sp.get("stories") === "3" ? 3 : 1,
   );
   // "vagas-da-semana-2026-11-05.zip"
   const nome = nomeDeArquivo(capa.titulo) || "vagas-do-dia";
