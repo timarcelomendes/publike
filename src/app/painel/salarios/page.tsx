@@ -161,12 +161,103 @@ async function Conteudo({
       ) : q ? (
         <Achadas q={q} regiao={regiao} consultadas={conta.consultadas} />
       ) : (
-        <p className="text-body-sm text-ink-muted">
-          Escreva a função como você chama no dia a dia. O Publike acha o nome
-          oficial dela (a CBO, a mesma da carteira de trabalho).
-        </p>
+        <ComoFunciona />
+      )}
+      {!cbo && !conta.assinante && (
+        <SuasConsultas consultadas={conta.consultadas} />
       )}
     </div>
+  );
+}
+
+// a consulta fica salva por 30 dias: abrir a mesma função de novo não gasta
+const DIAS_SALVA = 30;
+
+/** Até quando a consulta aberta em `em` fica salva ("12/12"). */
+function salvaAte(em: string) {
+  return new Date(Date.parse(em) + DIAS_SALVA * 24 * 3600e3).toLocaleDateString(
+    "pt-BR",
+    { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" },
+  );
+}
+
+/** O que é grátis e o que gasta, em três passos (claude/plano-salarios-mais-claro.md). */
+function ComoFunciona() {
+  const passos = [
+    {
+      titulo: "Busque a função",
+      texto:
+        "Escreva como você chama no dia a dia; o Publike acha o nome da carteira (a CBO).",
+      preco: "Grátis",
+    },
+    {
+      titulo: "Veja quanto a maioria paga",
+      texto: "A faixa da sua região aparece ao lado de cada função.",
+      preco: "Grátis",
+    },
+    {
+      titulo: "Abra a consulta completa",
+      texto:
+        "Quanto oferecer, as regiões, o que as vagas do Publike pagam e os talentos. Fica salva por 30 dias.",
+      preco: "1 consulta",
+    },
+  ];
+  return (
+    <section aria-labelledby="como-funciona" className="flex flex-col gap-3">
+      <h3 id="como-funciona" className="text-label">
+        Como funciona
+      </h3>
+      <ol className="flex flex-col gap-3">
+        {passos.map((p, i) => (
+          <li key={p.titulo} className="flex items-start gap-3">
+            <span
+              aria-hidden
+              className="flex size-7 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-label tabular-nums"
+            >
+              {i + 1}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="text-label">{p.titulo}</span>
+                <span className="text-body-sm text-ink-muted">{p.preco}</span>
+              </span>
+              <span className="text-body-sm text-ink-muted">{p.texto}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** As funções abertas nos últimos 30 dias: reabrem sem gastar. */
+function SuasConsultas({ consultadas }: { consultadas: Map<string, string> }) {
+  const lista = [...consultadas.entries()]
+    .map(([cbo, em]) => ({ o: ocupacao(cbo), cbo, em }))
+    .filter((x) => x.o !== null)
+    .sort((a, b) => b.em.localeCompare(a.em));
+  if (!lista.length) return null;
+  return (
+    <section aria-labelledby="suas-consultas" className="flex flex-col gap-2">
+      <h3 id="suas-consultas" className="text-label">
+        Suas consultas
+      </h3>
+      <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+        {lista.map(({ o, cbo, em }) => (
+          <li key={cbo}>
+            <Link
+              href={`/painel/salarios?cbo=${cbo}`}
+              className="flex flex-col gap-0.5 px-4 py-3 hover:bg-surface-300 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            >
+              <span className="text-label">{o!.nome}</span>
+              <span className="shrink-0 text-body-sm text-ink-muted">
+                Salva até {salvaAte(em)}: abrir não gasta
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -259,7 +350,8 @@ async function Achadas({
   return (
     <section aria-label="Funções achadas" className="flex flex-col gap-2">
       <p className="text-body-sm text-ink-muted">
-        Escolha a função. Ver a faixa não gasta consulta.
+        Escolha a função para ver mais. Ver a faixa é grátis; a consulta
+        completa usa 1 consulta.
       </p>
       <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
         {lista.map((o, i) => {
@@ -275,7 +367,7 @@ async function Achadas({
                   <span className="text-caption text-ink-muted">
                     CBO {codigoCbo(o.cbo)}
                     {consultadas.has(o.cbo)
-                      ? " · consultada nos últimos 30 dias"
+                      ? ` · salva até ${salvaAte(consultadas.get(o.cbo)!)}: abrir não gasta`
                       : ""}
                   </span>
                 </span>
@@ -347,12 +439,20 @@ async function Funcao({
         <>
           <FaixaDaPraca faixa={faixa} />
           {completa ? (
-            <Completa
-              faixa={faixa}
-              completa={completa}
-              talentos={talentos}
-              cidadeDaPraca={nomeDaRegiao(regiao)}
-            />
+            <>
+              {conta.consultadas.has(cbo) && !conta.assinante && (
+                <p className="text-body-sm text-cerrado-text">
+                  Consulta salva até {salvaAte(conta.consultadas.get(cbo)!)}.
+                  Abrir de novo não gasta.
+                </p>
+              )}
+              <Completa
+                faixa={faixa}
+                completa={completa}
+                talentos={talentos}
+                cidadeDaPraca={nomeDaRegiao(regiao)}
+              />
+            </>
           ) : (
             <Bloqueada
               cbo={cbo}
