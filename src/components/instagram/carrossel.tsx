@@ -25,6 +25,7 @@ export function CarrosselDoInstagram({
   links,
   nomeDaConta,
   ajudaDaBio,
+  doPost,
 }: {
   candidatas: VagaDoDia[];
   iniciais: string[];
@@ -38,6 +39,11 @@ export function CarrosselDoInstagram({
    * legenda é a do Publike ("Vagas do dia em Goiânia e região") */
   nomeDaConta?: string;
   ajudaDaBio?: ReactNode;
+  /**
+   * Admin › Vagas do dia: o que vai junto no endereço das capas e do .zip (o título, a praça, o período e as áreas,
+   * "&titulo=…&cidade=…"), a primeira linha da legenda e as hashtags (com a da área)
+   */
+  doPost?: { consulta: string; titulo: string; hashtags: string };
 }) {
   const IMAGENS = rotas.imagens;
   const linkDoStory = (id: string) => `${links.story[0]}${id}${links.story[1]}`;
@@ -63,8 +69,10 @@ export function CarrosselDoInstagram({
   const legenda = legendaDoDia(
     escolhidas,
     dia,
-    nomeDaConta ? tituloDaEmpresa(nomeDaConta, escolhidas.length) : undefined,
+    nomeDaConta ? tituloDaEmpresa(nomeDaConta, escolhidas.length) : doPost?.titulo,
+    doPost?.hashtags,
   );
+  const extra = doPost?.consulta ?? "";
   const bio = links.bio;
 
   const tirar = (id: string) => setOrdem((o) => o.filter((x) => x !== id));
@@ -187,7 +195,7 @@ export function CarrosselDoInstagram({
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap gap-2">
             <a
-              href={`${rotas.baixar}?ids=${ordem.join(",")}`}
+              href={`${rotas.baixar}?ids=${ordem.join(",")}${extra}`}
               download
               className={classesBotao("primario", "md")}
             >
@@ -210,7 +218,7 @@ export function CarrosselDoInstagram({
             </h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               <Previa
-                src={`${IMAGENS}/capa?ids=${estavel.join(",")}`}
+                src={`${IMAGENS}/capa?ids=${estavel.join(",")}${extra}`}
                 nome="1 · Capa"
                 proporcao="aspect-[4/5]"
               />
@@ -264,7 +272,7 @@ export function CarrosselDoInstagram({
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               <Previa
-                src={`${IMAGENS}/story-capa?ids=${estavel.join(",")}`}
+                src={`${IMAGENS}/story-capa?ids=${estavel.join(",")}${extra}`}
                 nome="Capa"
                 proporcao="aspect-[9/16]"
               />

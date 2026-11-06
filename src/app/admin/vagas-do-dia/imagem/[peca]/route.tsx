@@ -3,10 +3,11 @@ import { capaDoDia, fimDoDia, storyCapaDoDia, storyDoDia, storyFimDoDia, vagaDoD
 import { nomeDeArquivo } from "@/lib/servidor/kit-imagens";
 import { acessoVagasDoDia, vagasEscolhidas } from "@/lib/servidor/vagas-do-dia";
 import { agoraDaRequisicao } from "@/lib/tempo";
-import { diaPorExtenso, lerIdsDoDia } from "@/lib/vagas-do-dia";
+import { diaPorExtenso, lerIdsDoDia, textoDaCapa } from "@/lib/vagas-do-dia";
 
 // As imagens de Admin › Vagas do dia, uma por endereço e só para quem abre a página (admin ou moderador):
 //   capa?ids=a,b,c · vaga?id=a&n=1&total=12 · fim?total=12 · story?id=a · story-capa?ids=a,b,c · story-fim
+// As capas também leem o título (&titulo=), a praça (&cidade=) e o período (&periodo=) da página.
 // Com &baixar=1, vem como arquivo, com o número da ordem do carrossel no nome.
 
 const naoEncontrado = () => new Response("Não encontrado", { status: 404 });
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
   const baixar = sp.has("baixar");
   const agora = await agoraDaRequisicao();
   const agoraIso = new Date(agora).toISOString();
+  const capa = textoDaCapa({ titulo: sp.get("titulo"), cidade: sp.get("cidade"), periodo: sp.get("periodo") }, agora);
 
   if (peca === "fim") {
     const total = numero(sp.get("total"), 1);
@@ -34,11 +36,11 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
   if (peca === "story-fim") return storyFimDoDia(undefined, baixar ? "story-mais-vagas.png" : null);
   if (peca === "story-capa") {
     const vagas = await vagasEscolhidas(c, lerIdsDoDia(sp.get("ids")), agoraIso);
-    return storyCapaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "story-capa.png" : null);
+    return storyCapaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "story-capa.png" : null, capa);
   }
   if (peca === "capa") {
     const vagas = await vagasEscolhidas(c, lerIdsDoDia(sp.get("ids")), agoraIso);
-    return capaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "01-capa.png" : null);
+    return capaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "01-capa.png" : null, capa);
   }
   if (peca === "vaga" || peca === "story") {
     const [v] = await vagasEscolhidas(c, lerIdsDoDia(sp.get("id")), agoraIso);

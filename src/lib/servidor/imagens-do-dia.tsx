@@ -9,7 +9,7 @@ import { lerFontes, nomeDeArquivo } from "@/lib/servidor/kit-imagens";
 import { montarZip, type ArquivoDoZip } from "@/lib/servidor/zip";
 import type { Regime } from "@/lib/tipos";
 import { valorEmDuas } from "@/lib/valor-do-tiquete";
-import { textoDosLinks, type VagaDoDia } from "@/lib/vagas-do-dia";
+import { textoDosLinks, type TextoDaCapa, type VagaDoDia } from "@/lib/vagas-do-dia";
 
 /* eslint-disable @next/next/no-img-element -- o ImageResponse (Satori) só desenha <img> */
 
@@ -337,7 +337,16 @@ async function imagem(jsx: React.ReactElement, tamanho: { width: number; height:
 }
 
 /** A capa do carrossel: "Vagas do dia" (Publike) ou "Estamos contratando" (empresa), quantas e as 4 primeiras. */
-export async function capaDoDia(vagas: VagaDoDia[], dia: string, a: Assinatura = DO_PUBLIKE, arquivo: string | null = null) {
+export async function capaDoDia(
+  vagas: VagaDoDia[],
+  dia: string,
+  a: Assinatura = DO_PUBLIKE,
+  arquivo: string | null = null,
+  /** o título, onde e quando (Admin › Vagas do dia; sem ele, "Vagas do dia" em Goiânia e região, hoje) */
+  texto?: TextoDaCapa,
+) {
+  const titulo = texto?.titulo ?? "Vagas do dia";
+  const onde = texto?.lugar ?? "Goiânia e região";
   const mostradas = vagas.slice(0, 4);
   const resto = vagas.length - mostradas.length;
   const publike = a.tipo === "publike";
@@ -355,17 +364,17 @@ export async function capaDoDia(vagas: VagaDoDia[], dia: string, a: Assinatura =
           style={{
             display: "flex",
             fontFamily: "Bricolage",
-            fontSize: publike ? 150 : 128,
+            fontSize: publike ? tamanhoDoTitulo(titulo, 150) : 128,
             lineHeight: 0.92,
             letterSpacing: -4,
           }}
         >
-          {publike ? "Vagas do dia" : "Estamos contratando"}
+          {publike ? titulo : "Estamos contratando"}
         </div>
         <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 56, color: destaque(a), lineHeight: 1.1 }}>
-          {publike ? (quantas ? `${quantas} em Goiânia e região` : "em Goiânia e região") : quantas}
+          {publike ? (quantas ? `${quantas} em ${onde}` : `em ${onde}`) : quantas}
         </div>
-        <div style={{ display: "flex", fontSize: 38, color: COR.apagado }}>{maiuscula(dia)}</div>
+        <div style={{ display: "flex", fontSize: 38, color: COR.apagado }}>{maiuscula(texto?.quando ?? dia)}</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {mostradas.map((v) => (
@@ -563,7 +572,11 @@ export async function storyCapaDoDia(
   dia: string,
   a: Assinatura = DO_PUBLIKE,
   arquivo: string | null = null,
+  /** o título, onde, quando e o selo (Admin › Vagas do dia; sem ele, "Vagas de hoje" em Goiânia e região) */
+  texto?: TextoDaCapa,
 ) {
+  const titulo = texto?.titulo ?? "Vagas de hoje";
+  const onde = texto?.lugar ?? "Goiânia e região";
   const publike = a.tipo === "publike";
   const mostradas = vagas.slice(0, 6);
   const resto = vagas.length - mostradas.length;
@@ -576,18 +589,24 @@ export async function storyCapaDoDia(
         logo={await logoDa(a)}
         a={a}
         altura={publike ? 70 : 56}
-        direita={<Pilula texto={publike ? "HOJE" : "VAGAS ABERTAS"} fonte={32} cor="ipe" />}
+        direita={<Pilula texto={publike ? (texto?.selo ?? "HOJE") : "VAGAS ABERTAS"} fonte={32} cor="ipe" />}
       />
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div
-          style={{ display: "flex", fontFamily: "Bricolage", fontSize: publike ? 132 : 128, lineHeight: 0.95, letterSpacing: -4 }}
+          style={{
+            display: "flex",
+            fontFamily: "Bricolage",
+            fontSize: publike ? tamanhoDoTitulo(titulo, 132) : 128,
+            lineHeight: 0.95,
+            letterSpacing: -4,
+          }}
         >
-          {publike ? "Vagas de hoje" : "Estamos contratando"}
+          {publike ? titulo : "Estamos contratando"}
         </div>
         <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 60, color: destaque(a), lineHeight: 1.1 }}>
-          {publike ? (quantas ? `${quantas} em Goiânia e região` : "em Goiânia e região") : quantas}
+          {publike ? (quantas ? `${quantas} em ${onde}` : `em ${onde}`) : quantas}
         </div>
-        <div style={{ display: "flex", fontSize: 40, color: COR.apagado }}>{maiuscula(dia)}</div>
+        <div style={{ display: "flex", fontSize: 40, color: COR.apagado }}>{maiuscula(texto?.quando ?? dia)}</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {mostradas.map((v) => (
@@ -696,11 +715,13 @@ export async function pacoteDoDia(
   a: Assinatura,
   textos: { legenda: string; bio: string; linkDoStory: (id: string) => string; fimDosStories?: string },
   quando: Date,
+  /** o título, onde e quando das capas (Admin › Vagas do dia) */
+  capa?: TextoDaCapa,
 ) {
   const total = vagas.length;
   // uma imagem por vez: o desenho usa o processador, e em paralelo não fica mais rápido
   const png = async (pedido: Promise<Response>) => new Uint8Array(await (await pedido).arrayBuffer());
-  const arquivos: ArquivoDoZip[] = [{ nome: "carrossel/01-capa.png", dados: await png(capaDoDia(vagas, dia, a)) }];
+  const arquivos: ArquivoDoZip[] = [{ nome: "carrossel/01-capa.png", dados: await png(capaDoDia(vagas, dia, a, null, capa)) }];
   for (const [i, v] of vagas.entries()) {
     arquivos.push({
       nome: `carrossel/${doisDigitos(i + 2)}-${nomeDeArquivo(v.titulo)}.png`,
@@ -709,7 +730,7 @@ export async function pacoteDoDia(
   }
   arquivos.push({ nome: `carrossel/${doisDigitos(total + 2)}-como-se-candidatar.png`, dados: await png(fimDoDia(a)) });
   // os stories: a capa (00), um por vaga e o fim, com o link da bio
-  arquivos.push({ nome: "stories/00-capa.png", dados: await png(storyCapaDoDia(vagas, dia, a)) });
+  arquivos.push({ nome: "stories/00-capa.png", dados: await png(storyCapaDoDia(vagas, dia, a, null, capa)) });
   for (const [i, v] of vagas.entries()) {
     arquivos.push({ nome: `stories/${doisDigitos(i + 1)}-${nomeDeArquivo(v.titulo)}.png`, dados: await png(storyDoDia(v, a)) });
   }

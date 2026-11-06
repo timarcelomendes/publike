@@ -8,7 +8,7 @@ import type { VagaDoDia } from "@/lib/vagas-do-dia";
 // divulgação (as da própria conta). Só vaga no ar (ativa, sem "preenchida", dentro do prazo) de conta não suspensa.
 
 const BASE =
-  "id, titulo, regime, pagamento_valor, pagamento_unidade, pagamento_ate, comissao, cidade, bairro, vagas, " +
+  "id, titulo, categoria, regime, pagamento_valor, pagamento_unidade, pagamento_ate, comissao, cidade, bairro, vagas, " +
   "beneficios_lista, criado_em, contratante, contratante_confidencial, " +
   "autor:perfis!anuncios_autor_id_fkey(nome, tipo, verificado, suspenso_ate)";
 // "Começa já" veio na migração 20261212120000_comeca_ja.sql: sem ela, a leitura segue sem o selo
@@ -38,6 +38,7 @@ function paraVaga(l: Linha): VagaDoDia {
   return {
     id: l.id,
     titulo: l.titulo.trim(),
+    categoria: l.categoria ?? null,
     regime: l.regime,
     pagamento_valor: l.pagamento_valor,
     pagamento_unidade: l.pagamento_unidade,
@@ -81,7 +82,7 @@ export async function acessoVagasDoDia(): Promise<ClienteBanco | null> {
   return null;
 }
 
-/** As vagas no ar publicadas desde `desde`, as mais novas primeiro (até 60). */
+/** As vagas no ar publicadas desde `desde`, as mais novas primeiro (até 300: a página filtra por área e cidade). */
 export async function vagasNovasNoAr(c: ClienteBanco, desde: string, agora: string): Promise<VagaDoDia[]> {
   const linhas = await ler((colunas) =>
     c
@@ -93,7 +94,7 @@ export async function vagasNovasNoAr(c: ClienteBanco, desde: string, agora: stri
       .gt("expira_em", agora)
       .gte("criado_em", desde)
       .order("criado_em", { ascending: false })
-      .limit(60),
+      .limit(300),
   );
   return linhas.filter(noAr(agora)).map(paraVaga);
 }
