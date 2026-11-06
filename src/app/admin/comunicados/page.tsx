@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { FormComunicado } from "@/components/admin/comunicados";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
@@ -11,6 +12,9 @@ import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Comunicados" };
+
+// os comunicados prontos com nome (os do teste do app abrem pelo link de Admin › Testadores)
+const PRONTOS = Object.entries(MODELOS_COMUNICADO).filter(([, m]) => m.nome);
 
 /** O recado de uma novidade: "Título: texto" (até 240 letras) e o link dela (sem link, /novidades). */
 function recadoDaNovidade(n: { titulo: string; texto: string; link: string | null; para: string }) {
@@ -56,7 +60,24 @@ async function Conteudo({ modelo, novidade }: { modelo: string | null; novidade:
             Rode a migração 20261129120000_comunicados.sql no Supabase.
           </Aviso>
         ) : (
-          <FormComunicado key={novidade ?? modelo ?? "novo"} inicial={inicial} />
+          <>
+            <p className="text-body-sm text-ink-muted">
+              Começar de um pronto:{" "}
+              {PRONTOS.map(([id, m], i) => (
+                <span key={id}>
+                  {i > 0 && " · "}
+                  <Link
+                    href={`/admin/comunicados?modelo=${id}`}
+                    aria-current={modelo === id ? "true" : undefined}
+                    className="text-ink underline underline-offset-2 aria-[current=true]:font-bold"
+                  >
+                    {m.nome}
+                  </Link>
+                </span>
+              ))}
+            </p>
+            <FormComunicado key={novidade ?? modelo ?? "novo"} inicial={inicial} />
+          </>
         )}
       </Secao>
 

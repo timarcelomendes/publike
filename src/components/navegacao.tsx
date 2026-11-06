@@ -6,6 +6,7 @@ import { BarraInferiorBase } from "./barra-inferior-base";
 import { BotaoInstalarApp } from "./instalar-app";
 import { RedesDoPublike } from "./redes-do-publike";
 import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
+import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloSlug } from "@/lib/funcoes-das-paginas";
 import { Container, Logo } from "./ui/basicos";
 import { navegacaoDaConta } from "@/lib/servidor/navegacao";
 
@@ -26,6 +27,22 @@ async function BarraDoModo() {
   const conta = await navegacaoDaConta();
   return <BarraInferiorAtiva modo={conta?.modo ?? null} numeros={conta?.numeros} />;
 }
+
+// as funções mais procuradas, com link fixo no rodapé (claude/plano-rodape-e-comunicados-organicos.md)
+const FUNCOES_DO_RODAPE = [
+  "frentista",
+  "auxiliar-de-cozinha",
+  "operador-de-empilhadeira",
+  "motorista-entregador",
+  "manicure",
+  "vendedor",
+  "operador-de-caixa",
+  "repositor",
+  "auxiliar-de-producao",
+  "faxineira",
+  "porteiro",
+  "recepcionista",
+].flatMap((s) => funcaoDaListaPeloSlug(s) ?? []);
 
 export function Rodape() {
   const link = "text-ink-muted hover:text-ink hover:underline";
@@ -115,6 +132,17 @@ export function Rodape() {
             ))}
           </nav>
         ))}
+        <nav aria-label="Vagas por função">
+          <span className="text-ink">Vagas por função em Goiânia:</span>{" "}
+          {FUNCOES_DO_RODAPE.map((f, i) => (
+            <span key={f.slug}>
+              {i > 0 && <span className="text-ink-muted"> · </span>}
+              <Link href={caminhoDaFuncao("Goiânia", f.slug)} className={link}>
+                {comMaiuscula(f.nome)}
+              </Link>
+            </span>
+          ))}
+        </nav>
       </Container>
       <Container className="border-t border-line py-4 text-body-sm text-ink-muted">
         Feito em Goiânia.{" "}

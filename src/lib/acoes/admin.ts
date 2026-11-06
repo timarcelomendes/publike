@@ -20,6 +20,7 @@ import {
 import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { SLUGS_CATEGORIAS } from "@/lib/constantes";
 import { ehStatusSugestao } from "@/lib/sugestoes";
+import { PUBLICOS_COMUNICADO as PUBLICOS_DO_COMUNICADO } from "@/lib/comunicados";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
@@ -515,8 +516,16 @@ export async function salvarCreditosEmail(_anterior: EstadoForm, formData: FormD
   return { ok: true, mensagem: "Saldo salvo. Daqui para frente, cada e-mail enviado sai dele." };
 }
 
-const PUBLICOS_COMUNICADO = ["todos", "pessoas", "empresas", "agencias", "android", "iphone", "computador"];
+const PUBLICOS_COMUNICADO = PUBLICOS_DO_COMUNICADO.map((p) => p.id as string);
 const MIGRACAO_COMUNICADOS = "Rode antes a migração 20261129120000_comunicados.sql no Supabase.";
+const MIGRACAO_SEM_CURRICULO = "Rode antes a migração 20270223120000_comunicado_sem_curriculo.sql no Supabase.";
+
+/** O erro do banco no comunicado; o público "pessoas sem currículo" pede a migração dele. */
+function erroDoComunicado(error: { code?: string; message: string }, publico: string) {
+  if (error.code === "PGRST202") return MIGRACAO_COMUNICADOS;
+  if (publico === "pessoas_sem_curriculo" && /desconhecido/i.test(error.message)) return MIGRACAO_SEM_CURRICULO;
+  return mensagemDeErro(error);
+}
 
 /** O link do comunicado: só caminho do site ("/testar-app?de=sino"), ou nenhum. undefined: inválido. */
 function linkDoComunicado(valor: string) {
@@ -532,7 +541,7 @@ export async function contarComunicado(publico: string, link: string): Promise<R
   const l = linkDoComunicado(link.trim());
   if (l === undefined) return { ok: false, erro: "O link é um caminho do site, começando com /." };
   const { data, error } = await c.rpc("admin_contar_comunicado", { p_publico: publico, p_link: l });
-  if (error) return { ok: false, erro: error.code === "PGRST202" ? MIGRACAO_COMUNICADOS : mensagemDeErro(error) };
+  if (error) return { ok: false, erro: erroDoComunicado(error, publico) };
   return { ok: true, total: data ?? 0 };
 }
 
@@ -561,7 +570,7 @@ export async function enviarComunicado(_anterior: EstadoForm, formData: FormData
     p_texto: mensagem,
     p_link: link,
   });
-  if (error) return { ok: false, erro: error.code === "PGRST202" ? MIGRACAO_COMUNICADOS : mensagemDeErro(error) };
+  if (error) return { ok: false, erro: erroDoComunicado(error, publico) };
   refresh();
   return {
     ok: true,
