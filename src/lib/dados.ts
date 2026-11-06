@@ -855,7 +855,7 @@ export async function contatoDoMatch(anuncioId: string) {
   if (MODO_DEMO) return null;
   const curtidas = await listarMinhasCurtidas();
   const c = curtidas.find((x) => x.anuncio_id === anuncioId && x.status === "match");
-  return c ? { whatsapp: c.autor_whatsapp, email: c.autor_email } : null;
+  return c ? { whatsapp: c.autor_whatsapp, email: c.autor_email, autorId: c.autor_id, autorNome: c.autor_nome } : null;
 }
 
 // ---------------------------------------------------------------- Descobrir

@@ -1,6 +1,7 @@
 "use client";
 
-import { Heart, Mail, MessageCircle, X } from "lucide-react";
+import { Heart, Mail, MessageCircle, MessagesSquare, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useOptimistic, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
@@ -11,6 +12,8 @@ import {
   type AvisoLigado,
   type ContatoDaCurtida,
 } from "@/lib/acoes/curtidas";
+import { pedirConversa } from "@/lib/abrir-conversa";
+import { caminhoConversa } from "@/lib/conversas";
 import { linkWhatsApp } from "@/lib/formato";
 import { NuncaPague } from "./anuncio/nunca-pague";
 import { LinhaDoAvisoLigado } from "./aviso-ligado";
@@ -368,6 +371,23 @@ function ChamarAgora({
             Mandar e-mail
           </a>
         )
+      )}
+      {contato.autorId && (
+        // o Chat do canto abre com a conversa (sem o Chat na página, a conversa em tela cheia)
+        <Link
+          href={caminhoConversa(contato.autorId)}
+          onClick={(e) => {
+            if (
+              contato.autorId &&
+              pedirConversa({ outroId: contato.autorId, outroNome: contato.autorNome || quem || "", titulo: contato.titulo })
+            )
+              e.preventDefault();
+          }}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-4 text-label text-ink hover:bg-surface-300"
+        >
+          <MessagesSquare aria-hidden className="size-5 text-cerrado-text" />
+          Conversar pelo chat
+        </Link>
       )}
       <p className="text-caption font-normal text-ink-muted">
         A mensagem já vai pronta{resto.length ? ", com o link do anúncio" : ""}. Dá para mudar antes de enviar.

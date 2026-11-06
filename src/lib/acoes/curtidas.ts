@@ -31,7 +31,16 @@ export type ResultadoCurtida = Resultado & {
 };
 
 /** O contato de quem publicou logo depois de curtir (só quando já deu match) e a mensagem pronta. */
-export type ContatoDaCurtida = { whatsapp: string | null; email: string | null; mensagem: string; perfilId: string };
+export type ContatoDaCurtida = {
+  whatsapp: string | null;
+  email: string | null;
+  mensagem: string;
+  perfilId: string;
+  /** quem publicou: o "Conversar pelo chat" abre a conversa com ela */
+  autorId: string | null;
+  autorNome: string | null;
+  titulo: string;
+};
 
 // uma vez por navegador: quem parou o aviso (ou já tinha busca com aviso) não ganha outro
 const COOKIE_AVISO_AUTO = "publike_aviso_auto";
@@ -144,20 +153,22 @@ export async function curtirAnuncio(
     const c = await contatoDoMatch(anuncioId).catch(() => null);
     const servico = alvo?.tipo === "servico";
     const titulo = alvo?.titulo ?? "";
-    const contato: ContatoDaCurtida | null =
-      c && (c.whatsapp || c.email)
-        ? {
-            whatsapp: c.whatsapp,
-            email: c.email,
-            perfilId: usuario.id,
-            mensagem: mensagemComLink(
-              servico
-                ? `Olá! Pedi o seu serviço “${titulo}” pelo Publike. Podemos combinar?`
-                : `Olá! Me candidatei à vaga “${titulo}” pelo Publike. Podemos conversar?`,
-              linkDoMatch({ anuncioId, perfilId: usuario.id, para: "quem_publicou", direto: true, servico }),
-            ),
-          }
-        : null;
+    const contato: ContatoDaCurtida | null = c
+      ? {
+          autorId: c.autorId ?? null,
+          autorNome: c.autorNome ?? null,
+          titulo,
+          whatsapp: c.whatsapp,
+          email: c.email,
+          perfilId: usuario.id,
+          mensagem: mensagemComLink(
+            servico
+              ? `Olá! Pedi o seu serviço “${titulo}” pelo Publike. Podemos combinar?`
+              : `Olá! Me candidatei à vaga “${titulo}” pelo Publike. Podemos conversar?`,
+            linkDoMatch({ anuncioId, perfilId: usuario.id, para: "quem_publicou", direto: true, servico }),
+          ),
+        }
+      : null;
     return { ok: true, mensagem: "Deu match! O contato já está liberado: chame no WhatsApp.", aviso, contato };
   }
   return {
