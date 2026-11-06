@@ -1916,6 +1916,15 @@ export type Database = {
       consulta_de_salario: { Args: { p_cbo: string; p_cidades: string[] }; Returns: Json };
       experiencias_da_vitrine: { Args: { p_cidades: string[] }; Returns: { perfil_id: string; experiencias: Json }[] };
       servidor_creditos_salario: { Args: { p_chave: string }; Returns: number };
+      // avisar o Google das vagas (20270222120000_google_vagas.sql)
+      servidor_vagas_para_o_google: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { anuncio_id: string; no_ar: boolean }[];
+      };
+      servidor_vaga_avisada_ao_google: {
+        Args: { p_chave: string; p_anuncio: string; p_no_ar: boolean };
+        Returns: undefined;
+      };
       salario_da_funcao: {
         Args: { p_cbo: string; p_regiao?: string };
         Returns: {
