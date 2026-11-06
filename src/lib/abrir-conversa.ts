@@ -27,6 +27,14 @@ export function pedirConversa(pedido: PedidoConversa) {
   return true;
 }
 
+/**
+ * Deu match: a conversa abre sozinha, sem a pessoa precisar tocar em nada. Com o Chat na página, no Chat do canto
+ * (o "Deu match!" continua na tela, com o WhatsApp); sem ele, a conversa em tela cheia.
+ */
+export function abrirConversaDoMatch(pedido: PedidoConversa, ir: (caminho: string) => void) {
+  if (!pedirConversa(pedido)) ir(`/painel/conversas/${pedido.outroId}`);
+}
+
 // No celular, quem tem conta abre o Chat pelo ícone do cabeçalho (o botão do canto some, para não
 // cobrir os cartões). O ícone pede para abrir e o Chat conta as mensagens não lidas para ele.
 export const EVENTO_ABRIR_CHAT = "publike:abrir-chat";

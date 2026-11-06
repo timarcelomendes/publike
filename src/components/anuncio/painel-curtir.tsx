@@ -4,10 +4,10 @@ import { FileText, Heart, HeartCrack, MessagesSquare, PartyPopper, Star, Zap } f
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { pedirConversa } from "@/lib/abrir-conversa";
+import { abrirConversaDoMatch, pedirConversa } from "@/lib/abrir-conversa";
 import { chamarAcao } from "@/lib/acao-segura";
 import { caminhoConversa } from "@/lib/conversas";
-import { curtirAnuncio, descurtirAnuncio, type AvisoLigado } from "@/lib/acoes/curtidas";
+import { curtirAnuncio, descurtirAnuncio, type AvisoLigado, type ContatoDaCurtida } from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
@@ -167,7 +167,16 @@ export function PainelCurtir({
       if (!r.ok) {
         if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
-      } else if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
+      } else {
+        if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
+        // deu match na hora (contato direto): a conversa com quem publicou abre sozinha
+        const contatoNovo = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
+        if (contatoNovo?.autorId)
+          abrirConversaDoMatch(
+            { outroId: contatoNovo.autorId, outroNome: contatoNovo.autorNome || quem, titulo },
+            (caminho) => router.push(caminho),
+          );
+      }
     });
   }
 

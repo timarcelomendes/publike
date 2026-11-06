@@ -12,7 +12,7 @@ import {
   type AvisoLigado,
   type ContatoDaCurtida,
 } from "@/lib/acoes/curtidas";
-import { pedirConversa } from "@/lib/abrir-conversa";
+import { abrirConversaDoMatch, pedirConversa } from "@/lib/abrir-conversa";
 import { caminhoConversa } from "@/lib/conversas";
 import { linkWhatsApp } from "@/lib/formato";
 import { NuncaPague } from "./anuncio/nunca-pague";
@@ -194,8 +194,15 @@ export function BotaoCurtir({
         else setErro(r.erro);
       } else if (curtindo) {
         if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
-        setContato("contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null);
+        const novo = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
+        setContato(novo);
         setExplicar(true);
+        // deu match: a conversa com quem publicou abre sozinha
+        if (novo?.autorId)
+          abrirConversaDoMatch(
+            { outroId: novo.autorId, outroNome: novo.autorNome || quem || "", titulo: novo.titulo },
+            (caminho) => router.push(caminho),
+          );
       }
     });
   }
