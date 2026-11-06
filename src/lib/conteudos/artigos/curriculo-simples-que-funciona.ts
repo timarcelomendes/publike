@@ -18,6 +18,13 @@ export const conteudo: Conteudo = {
       texto:
         "E a hora é boa para isso. Segundo o **Novo Caged**, do Ministério do Trabalho, Goiás criou **50.529 empregos com carteira** de janeiro a agosto de 2026. Tem vaga abrindo. O que falta, muitas vezes, é o empregador conhecer você.",
     },
+    {
+      t: "chamada",
+      titulo: "Monte o seu agora, de graça",
+      texto: "Preencha os cinco campos, veja o currículo pronto ao lado e baixe em PDF, sem cadastro.",
+      botao: "Fazer meu currículo simples",
+      href: "/curriculo-simples",
+    },
     { t: "numero", valor: "50.529", rotulo: "empregos com carteira criados em Goiás de janeiro a agosto de 2026", fonte: 1 },
     { t: "h2", texto: "O modelo: cinco partes e pronto" },
     {

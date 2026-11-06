@@ -58,6 +58,9 @@ export function Rodape() {
           <Link href="/conteudos" className={link}>
             Conteúdos sobre trabalho
           </Link>
+          <Link href="/curriculo-simples" className={link}>
+            Currículo simples grátis
+          </Link>
           <Link href="/noticias" className={link}>
             Notícias
           </Link>
