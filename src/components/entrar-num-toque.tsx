@@ -9,11 +9,13 @@ import { criarClienteNavegador } from "@/lib/supabase/navegador";
 import { avisoDeCookiesFechado, EVENTO_AVISO_COOKIES } from "./aviso-cookies";
 import { carregarGoogle, donoDoGoogle, novoNonce } from "./botao-google";
 
-// Entrar com o Google num toque (One Tap; claude/plano-visitante-que-entra.md): para quem está sem conta, na página
-// da vaga, na inicial e nas buscas, o quadro do próprio Google ("Continuar como Fulano") aparece no canto. Só para
-// quem está logado no Google naquele navegador; se a pessoa fechar, o Google espera antes de mostrar de novo. Pedimos
-// depois de 8 segundos na página, com o aviso de cookies já fechado e sem outra janela aberta. Quem entra segue o
-// caminho de sempre (irDepoisDoLogin): conta nova completa o perfil e aceita as regras; depois volta para a página.
+// Entrar com o Google num toque (One Tap; claude/plano-visitante-que-entra.md), com o login automático para quem já
+// entrou com o Google antes (auto_select; desligado para quem tocou em "Sair" neste navegador). Para quem está sem
+// conta, na página da vaga, na inicial e nas buscas, o quadro do próprio Google ("Continuar como Fulano") aparece no
+// canto. Só para quem está logado no Google naquele navegador; se a pessoa fechar, o Google espera antes de mostrar
+// de novo. Pedimos depois de 8 segundos na página, com o aviso de cookies já fechado e sem outra janela aberta. Quem
+// entra segue o caminho de sempre (irDepoisDoLogin): conta nova completa o perfil e aceita as regras; depois volta
+// para a página.
 
 const ESPERA_MS = 8000;
 
@@ -22,7 +24,7 @@ function paginaDoToque(caminho: string) {
   return caminho === "/" || /^\/anuncio\/[^/]+$/.test(caminho) || /^\/(vagas|servicos)(\/|$)/.test(caminho);
 }
 
-export function EntrarNumToque({ clientId }: { clientId: string }) {
+export function EntrarNumToque({ clientId, automatico = false }: { clientId: string; automatico?: boolean }) {
   const caminho = usePathname();
 
   useEffect(() => {
@@ -49,6 +51,8 @@ export function EntrarNumToque({ clientId }: { clientId: string }) {
             context: "signin",
             itp_support: true,
             use_fedcm_for_prompt: true,
+            // quem já entrou com o Google entra sozinho na volta (sem toque); quem tocou em "Sair" não
+            auto_select: automatico,
             cancel_on_tap_outside: false,
             callback: (r: { credential?: string }) => {
               if (r.credential) void entrar(r.credential, nonce);
@@ -77,7 +81,7 @@ export function EntrarNumToque({ clientId }: { clientId: string }) {
       window.removeEventListener(EVENTO_AVISO_COOKIES, comecar);
       window.google?.accounts?.id?.cancel();
     };
-  }, [clientId, caminho]);
+  }, [clientId, caminho, automatico]);
 
   return null;
 }

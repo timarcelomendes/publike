@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ProvedorDoApelido } from "@/components/apelido-da-ia";
 import { apelidoDaIA } from "@/lib/servidor/apelido-ia";
 import localFont from "next/font/local";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { Assistente } from "@/components/assistente/assistente";
 import { AvisoCookies } from "@/components/aviso-cookies";
@@ -18,6 +19,7 @@ import { AvisoDemo, BarraInferior, Rodape, RodapeCurto } from "@/components/nave
 import { RodapeDaPagina } from "@/components/rodape-da-pagina";
 import { SoOlharDaConta } from "@/components/so-olhar-da-conta";
 import { GOOGLE_CLIENT_ID, MODO_DEMO, SITE_URL } from "@/lib/config";
+import { COOKIE_SAIU } from "@/lib/entrar-sozinho";
 import { obterUsuario } from "@/lib/dados";
 import { SCRIPT_PEDIDO } from "@/lib/instalar";
 import { COR_BARRA, SCRIPT_TEMA } from "@/lib/tema";
@@ -150,5 +152,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 /** O "entrar num toque" do Google, só para quem está sem conta (claude/plano-visitante-que-entra.md). */
 async function EntrarNumToqueSemConta() {
   if (MODO_DEMO || !GOOGLE_CLIENT_ID || (await obterUsuario())) return null;
-  return <EntrarNumToque clientId={GOOGLE_CLIENT_ID} />;
+  // quem tocou em "Sair" neste navegador não entra sozinho: o quadro aparece, mas pede o toque
+  const saiu = (await cookies()).has(COOKIE_SAIU);
+  return <EntrarNumToque clientId={GOOGLE_CLIENT_ID} automatico={!saiu} />;
 }

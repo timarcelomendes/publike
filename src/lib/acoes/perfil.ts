@@ -11,6 +11,7 @@ import { consultarCnpj } from "@/lib/servidor/brasilapi";
 import { montarMotivo } from "@/lib/conta-apagada";
 import { mensagemDeErro } from "@/lib/erros";
 import { caminhoSeguro } from "@/lib/formato";
+import { COOKIE_SAIU, DURACAO_SAIU } from "@/lib/entrar-sozinho";
 import { COOKIE_INTENCAO } from "@/lib/intencao";
 import { lerModos, modosDoTipo } from "@/lib/modo-painel";
 import { COOKIE_ORIGEM } from "@/lib/origem";
@@ -187,6 +188,8 @@ export async function excluirConta(_anterior: EstadoForm, formData: FormData): P
 
   await supabase.auth.signOut().catch(() => undefined);
   (await cookies()).delete(COOKIE_INTENCAO);
+  // a conta não existe mais: o Google não tenta entrar sozinho com ela
+  (await cookies()).set(COOKIE_SAIU, "1", { maxAge: DURACAO_SAIU, httpOnly: true, sameSite: "lax", path: "/" });
   atualizarCabecalho();
   redirect("/?conta=excluida");
 }
@@ -202,6 +205,8 @@ export async function sair() {
   loja.delete(COOKIE_INTENCAO);
   loja.delete(COOKIE_LOCAL);
   loja.delete(COOKIE_SO_OLHAR);
+  // saiu: o Google não entra sozinho de novo neste navegador (até a pessoa entrar outra vez)
+  loja.set(COOKIE_SAIU, "1", { maxAge: DURACAO_SAIU, httpOnly: true, sameSite: "lax", path: "/" });
   atualizarCabecalho();
   redirect("/");
 }

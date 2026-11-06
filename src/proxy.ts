@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { COOKIE_SAIU } from "@/lib/entrar-sozinho";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { PACOTE_ANDROID } from "@/lib/android";
 import { COOKIES_DA_SESSAO } from "@/lib/config";
@@ -160,6 +161,8 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   const logado = Boolean(data?.claims?.sub);
 
   marcarOrigem(request, resposta);
+  // entrou de novo (por qualquer jeito): o login automático do Google volta a valer
+  if (logado && request.cookies.has(COOKIE_SAIU)) resposta.cookies.delete(COOKIE_SAIU);
 
   const ip = ipDe(request);
   const conta = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
