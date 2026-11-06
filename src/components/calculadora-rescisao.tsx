@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronDown, FileDown, Info, Trash2 } from "lucide-react";
+import { Check, ChevronDown, FileDown, Info, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import {
   calcularRescisao,
   dataBr,
@@ -119,6 +119,9 @@ const MESES = [
   "dezembro",
 ];
 
+// as quatro saídas mais comuns ficam à vista; as outras, em "Outros casos"
+const SAIDAS_COMUNS: TipoSaida[] = ["sem_justa_causa", "pedido", "acordo", "justa_causa"];
+
 const COM_AVISO_DO_PATRAO: TipoSaida[] = ["sem_justa_causa", "indireta", "acordo", "culpa_reciproca"];
 const DE_PRAZO: TipoSaida[] = ["prazo_fim", "prazo_antes_empresa", "prazo_antes_empregado"];
 
@@ -135,6 +138,17 @@ function periodosCompletos(admissao: string, ultimo: string) {
 export function CalculadoraRescisao() {
   const [f, setF] = useState<Form>(VAZIO);
   const [lido, setLido] = useState(false);
+  const [verOutros, setVerOutros] = useState(false);
+  const [resultadoVisivel, setResultadoVisivel] = useState(false);
+
+  // no celular o resultado fica embaixo do formulário: enquanto ele não aparece na tela, uma barra mostra o líquido
+  useEffect(() => {
+    const el = document.getElementById("resultado-rescisao-folha");
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const o = new IntersectionObserver(([e]) => setResultadoVisivel(e.isIntersecting), { rootMargin: "0px 0px -30% 0px" });
+    o.observe(el);
+    return () => o.disconnect();
+  }, []);
 
   useEffect(() => {
     try {
@@ -151,6 +165,7 @@ export function CalculadoraRescisao() {
     } catch {}
   }, [f, lido]);
 
+  const mostrarOutros = verOutros || (!!f.saida && !SAIDAS_COMUNS.includes(f.saida));
   const muda = <K extends keyof Form>(k: K, v: Form[K]) => setF((x) => ({ ...x, [k]: v }));
 
   // o aviso que faz sentido para a saída
@@ -231,24 +246,35 @@ export function CalculadoraRescisao() {
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       <form className="flex flex-col gap-8 print:hidden" onSubmit={(e) => e.preventDefault()}>
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-h3">1. Como você saiu</legend>
-          {SAIDAS.map((s) => (
-            <label key={s.valor} className={opcao}>
-              <input
-                type="radio"
-                name="saida"
-                className="mt-1 accent-cerrado"
-                checked={f.saida === s.valor}
-                onChange={() => muda("saida", s.valor)}
-              />
-              <span className="flex flex-col">
-                <span>{s.nome}</span>
-                {s.ajuda && <span className={ajuda}>{s.ajuda}</span>}
-              </span>
-            </label>
-          ))}
-          <label className="mt-2 flex items-start gap-3 text-body">
+        <Passo numero={1} titulo="Como você saiu" pronto={!!f.saida}>
+          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Como você saiu">
+            {SAIDAS.filter((s) => SAIDAS_COMUNS.includes(s.valor) || mostrarOutros).map((s) => (
+              <label key={s.valor} className={opcao}>
+                <input
+                  type="radio"
+                  name="saida"
+                  className="mt-1 accent-cerrado"
+                  checked={f.saida === s.valor}
+                  onChange={() => muda("saida", s.valor)}
+                />
+                <span className="flex flex-col">
+                  <span>{s.nome}</span>
+                  {s.ajuda && <span className={ajuda}>{s.ajuda}</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+          {!mostrarOutros && (
+            <button
+              type="button"
+              onClick={() => setVerOutros(true)}
+              className="inline-flex items-start gap-1 self-start text-left text-body-sm font-semibold text-cerrado underline underline-offset-2"
+            >
+              Outros casos: experiência, rescisão indireta, culpa recíproca, falecimento
+              <ChevronDown aria-hidden className="size-4" />
+            </button>
+          )}
+          <label className="flex items-start gap-3 text-body">
             <input
               type="checkbox"
               className="mt-1 size-4 accent-cerrado"
@@ -259,31 +285,18 @@ export function CalculadoraRescisao() {
               Era empregada ou empregado doméstico <span className={ajuda}>(em casa de família)</span>
             </span>
           </label>
-        </fieldset>
+        </Passo>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-h3">2. As datas</legend>
+        <Passo numero={2} titulo="As datas" pronto={!!f.admissao && !!f.ultimoDia}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className={rotulo}>Admissão</span>
-              <input
-                type="date"
-                className={classesEntrada}
-                value={f.admissao}
-                onChange={(e) => muda("admissao", e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={rotulo}>
-                {avisoAtual === "indenizado" && avisos.length ? "Dia em que recebeu o aviso" : "Último dia de trabalho"}
-              </span>
-              <input
-                type="date"
-                className={classesEntrada}
-                value={f.ultimoDia}
-                onChange={(e) => muda("ultimoDia", e.target.value)}
-              />
-            </label>
+            <CampoData rotulo="Dia em que foi contratado" valor={f.admissao} mudar={(v) => muda("admissao", v)} />
+            <CampoData
+              rotulo={
+                avisoAtual === "indenizado" && avisos.length ? "Dia em que recebeu o aviso" : "Último dia de trabalho"
+              }
+              valor={f.ultimoDia}
+              mudar={(v) => muda("ultimoDia", v)}
+            />
           </div>
           {avisos.length > 0 && (
             <div className="flex flex-col gap-2">
@@ -307,15 +320,11 @@ export function CalculadoraRescisao() {
           )}
           {DE_PRAZO.includes(f.saida as TipoSaida) && (
             <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className={rotulo}>Data prevista para o fim do contrato</span>
-                <input
-                  type="date"
-                  className={classesEntrada}
-                  value={f.fimPrevisto}
-                  onChange={(e) => muda("fimPrevisto", e.target.value)}
-                />
-              </label>
+              <CampoData
+                rotulo="Data prevista para o fim do contrato"
+                valor={f.fimPrevisto}
+                mudar={(v) => muda("fimPrevisto", v)}
+              />
               {f.saida !== "prazo_fim" && (
                 <label className="flex items-start gap-3 text-body">
                   <input
@@ -334,20 +343,21 @@ export function CalculadoraRescisao() {
               )}
             </div>
           )}
-        </fieldset>
+        </Passo>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-h3">3. O salário</legend>
+        <Passo numero={3} titulo="O salário" pronto={salario > 0}>
           {!f.porHora ? (
             <label className="flex flex-col gap-1.5">
               <span className={rotulo}>Salário por mês, antes dos descontos</span>
-              <input
-                className={classesEntrada}
-                inputMode="decimal"
-                placeholder="2.500,00"
-                value={f.salario}
-                onChange={(e) => muda("salario", e.target.value)}
-              />
+              <ComReais>
+                <input
+                  className={`${classesEntrada} pl-10`}
+                  inputMode="decimal"
+                  placeholder="2.500,00"
+                  value={f.salario}
+                  onChange={(e) => muda("salario", e.target.value)}
+                />
+              </ComReais>
             </label>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -380,12 +390,15 @@ export function CalculadoraRescisao() {
             />
             Ganho por hora
           </label>
-        </fieldset>
+        </Passo>
 
         <div className="flex flex-col gap-2">
-          <h2 className="text-h3">Mais detalhes</h2>
+          <h2 className="text-h3">
+            Mais detalhes <span className="text-body font-normal text-ink-muted">(opcional)</span>
+          </h2>
           <p className={ajuda}>
-            Opcionais, mas deixam o cálculo mais certo. Quanto mais você preenche, mais perto do seu acerto.
+            O resultado já sai sem isto. Abra só o que vale para você: cada parte deixa o cálculo mais perto do seu
+            acerto.
           </p>
           <Parte titulo="Adicionais e médias">
             <label className="flex flex-col gap-1.5">
@@ -467,15 +480,11 @@ export function CalculadoraRescisao() {
               valor={f.faltasPeriodo}
               mudar={(v) => muda("faltasPeriodo", v)}
             />
-            <label className="flex flex-col gap-1.5">
-              <span className={rotulo}>Ficou mais de 6 meses afastado pelo INSS? Dia em que voltou</span>
-              <input
-                type="date"
-                className={classesEntrada}
-                value={f.voltaAfastamento}
-                onChange={(e) => muda("voltaAfastamento", e.target.value)}
-              />
-            </label>
+            <CampoData
+              rotulo="Ficou mais de 6 meses afastado pelo INSS? Dia em que voltou"
+              valor={f.voltaAfastamento}
+              mudar={(v) => muda("voltaAfastamento", v)}
+            />
           </Parte>
           <Parte titulo="13º salário">
             <Dinheiro
@@ -590,9 +599,27 @@ export function CalculadoraRescisao() {
           </span>
         </p>
         {!r ? (
-          <p className="mt-4 rounded-lg border border-dashed border-line-strong p-6 text-body text-ink-muted">
-            Preencha como você saiu, as datas e o salário para ver o cálculo.
-          </p>
+          <div className="mt-4 rounded-lg border border-dashed border-line-strong p-5">
+            <p className="text-body">Para ver o cálculo, falta:</p>
+            <ul className="mt-2 flex flex-col gap-1.5 text-body">
+              {[
+                { feito: !!f.saida, texto: "1. Como você saiu" },
+                { feito: !!f.admissao && !!f.ultimoDia, texto: "2. As datas" },
+                { feito: salario > 0, texto: "3. O salário" },
+              ].map((p) => (
+                <li key={p.texto} className={`flex items-center gap-2 ${p.feito ? "text-ink-muted line-through" : ""}`}>
+                  <span
+                    aria-hidden
+                    className={`grid size-5 place-items-center rounded-full border ${p.feito ? "border-cerrado bg-cerrado text-on-cerrado" : "border-line-strong"}`}
+                  >
+                    {p.feito && <Check className="size-3.5" />}
+                  </span>
+                  {p.texto}
+                  {p.feito && <span className="sr-only">(preenchido)</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : !r.ok ? (
           <p role="alert" className="mt-4 rounded-lg border border-danger p-4 text-body text-danger">
             {r.erro}
@@ -677,6 +704,22 @@ export function CalculadoraRescisao() {
         )}
       </section>
 
+      {r?.ok && !resultadoVisivel && (
+        <a
+          href="#resultado-rescisao-folha"
+          className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex items-center justify-between gap-3 rounded-lg bg-cerrado px-4 py-3 text-on-cerrado shadow-lg md:bottom-4 lg:hidden print:hidden"
+        >
+          <span className="flex flex-col">
+            <span className="text-body-sm opacity-90">Líquido a receber</span>
+            <span className="text-h3 font-bold tabular-nums">{reais(r.liquido)}</span>
+          </span>
+          <span className="inline-flex items-center gap-1 text-body-sm font-semibold">
+            Ver o cálculo
+            <ChevronDown aria-hidden className="size-4" />
+          </span>
+        </a>
+      )}
+
       {/* na impressão, só o resultado */}
       <style>{`
         @media print {
@@ -687,6 +730,109 @@ export function CalculadoraRescisao() {
           #resultado-rescisao-folha { position: absolute; inset: 0 auto auto 0; width: 100%; }
         }
       `}</style>
+    </div>
+  );
+}
+
+function Passo({
+  numero,
+  titulo,
+  pronto,
+  children,
+}: {
+  numero: number;
+  titulo: string;
+  pronto: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-lg border border-line bg-surface-100 p-4 sm:p-5">
+      <legend className="sr-only">
+        {numero}. {titulo}
+      </legend>
+      <div aria-hidden className="flex items-center gap-3">
+        <span
+          className={`grid size-8 shrink-0 place-items-center rounded-full text-label ${pronto ? "bg-cerrado text-on-cerrado" : "border border-line-strong text-ink"}`}
+        >
+          {pronto ? <Check className="size-4" /> : numero}
+        </span>
+        <span className="text-h3">{titulo}</span>
+      </div>
+      {children}
+    </fieldset>
+  );
+}
+
+function ComReais({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative">
+      <span aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-body text-ink-muted">
+        R$
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/** "06112026" → "06/11/2026", enquanto a pessoa digita */
+function mascaraData(t: string) {
+  const d = t.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+/** "06/11/2026" → "2026-11-06"; "" se não for uma data de verdade */
+function dataIso(t: string) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
+  if (!m) return "";
+  const [, d, mes, a] = m.map(Number);
+  if (a < 1950 || a > 2100) return "";
+  const x = new Date(Date.UTC(a, mes - 1, d));
+  if (x.getUTCFullYear() !== a || x.getUTCMonth() !== mes - 1 || x.getUTCDate() !== d) return "";
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+const isoParaBr = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join("/") : "");
+
+/** Data digitada (dd/mm/aaaa), sem calendário: mais rápido, principalmente para datas de anos atrás. */
+function CampoData({ rotulo, valor, mudar }: { rotulo: string; valor: string; mudar: (iso: string) => void }) {
+  const id = useId();
+  const [texto, setTexto] = useState(() => isoParaBr(valor));
+  // quando o valor muda por fora (dados guardados, "Apagar meus dados"), o campo acompanha
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o valor de fora
+    if (dataIso(texto) !== valor) setTexto(isoParaBr(valor));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só quando o valor de fora muda
+  }, [valor]);
+  const completo = texto.length === 10;
+  const iso = dataIso(texto);
+  const erro = completo && !iso;
+  const porExtenso = iso
+    ? new Date(`${iso}T12:00:00`).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-label">
+        {rotulo}
+      </label>
+      <input
+        id={id}
+        className={classesEntrada}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="dd/mm/aaaa"
+        maxLength={10}
+        value={texto}
+        aria-invalid={erro || undefined}
+        aria-describedby={`${id}-ajuda`}
+        onChange={(e) => {
+          const t = mascaraData(e.target.value);
+          setTexto(t);
+          mudar(dataIso(t));
+        }}
+      />
+      <span id={`${id}-ajuda`} className={`text-body-sm ${erro ? "text-danger" : "text-ink-muted"}`}>
+        {erro ? "Essa data não existe. Confira o dia, o mês e o ano." : porExtenso || "Só os números: 06112026"}
+      </span>
     </div>
   );
 }
