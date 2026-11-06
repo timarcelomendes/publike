@@ -7,9 +7,11 @@ import { noticiasPublicadas } from "@/lib/servidor/noticias";
 import {
   caminhoDaBusca,
   caminhoDasRecentes,
+  caminhoDosProgramas,
   caminhoDoBairro,
   cidadeDoSlug,
   CIDADES_PRINCIPAIS,
+  REGIMES_PROGRAMAS,
   slugDaCidade,
 } from "@/lib/paginas-busca";
 import { cidadeDePraca, PRACAS } from "@/lib/pracas";
@@ -37,6 +39,11 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
       // as vagas novas da cidade (/vagas/goiania/ultimos-3-dias), nas cidades principais
       if (tipo === "vaga" && CIDADES_PRINCIPAIS.includes(cidade)) {
         lista.push({ url: `${SITE_URL}${caminhoDasRecentes(cidade)}`, changeFrequency: "daily", priority: 0.7 });
+      }
+      // estágio e jovem aprendiz: Goiânia sempre (o conteúdo se sustenta); as outras, com vaga assim no ar
+      const temPrograma = daCidade.some((a) => REGIMES_PROGRAMAS.includes(a.regime ?? ""));
+      if (tipo === "vaga" && (cidade === "Goiânia" || temPrograma)) {
+        lista.push({ url: `${SITE_URL}${caminhoDosProgramas(cidade)}`, changeFrequency: "daily", priority: 0.6 });
       }
       // os bairros com vaga no ar (só vagas: /vagas/goiania/bairro/setor-bueno)
       if (tipo === "vaga") {

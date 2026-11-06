@@ -46,6 +46,13 @@ export function caminhoDasRecentes(cidade: string) {
   return `/vagas/${slugDaCidade(cidade)}/${SLUG_RECENTES}`;
 }
 
+/** Estágio e jovem aprendiz da cidade (claude/plano-estagio-e-jovem-aprendiz.md): /vagas/goiania/estagio-e-... */
+export const SLUG_PROGRAMAS = "estagio-e-jovem-aprendiz";
+export const REGIMES_PROGRAMAS = ["estagio", "aprendiz", "trainee"];
+export function caminhoDosProgramas(cidade: string) {
+  return `/vagas/${slugDaCidade(cidade)}/${SLUG_PROGRAMAS}`;
+}
+
 /** "em Goiânia", "em Aparecida de Goiânia". */
 export function emCidade(cidade: string) {
   return `em ${cidade}`;
