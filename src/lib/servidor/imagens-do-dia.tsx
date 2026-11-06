@@ -923,122 +923,100 @@ export async function pacoteDoDia(
 
 const BANNER = { width: 1600, height: 900 };
 
-/** O tamanho das letras e da logo de cada cartão do banner, por quantas vagas vão nele. */
+/** As medidas dos cartões do banner, por quantas vagas vão nele (a imagem toda, 1320 px de largura útil). */
 const MEDIDAS_DO_BANNER = {
-  1: { largura: 1120, logo: 150, titulo: 92, maxTitulo: 44, linha: 40, maxLinha: 58, valor: 44, gap: 40, padding: "48px 56px" },
-  2: { largura: 660, logo: 112, titulo: 62, maxTitulo: 38, linha: 32, maxLinha: 38, valor: 36, gap: 26, padding: "40px 40px" },
-  3: { largura: 452, logo: 96, titulo: 48, maxTitulo: 34, linha: 28, maxLinha: 30, valor: 32, gap: 22, padding: "34px 30px" },
+  1: { largura: 1320, logo: 140, titulo: 112, maxTitulo: 52, linha: 50, maxLinha: 48, valor: 64, padding: "56px 64px" },
+  2: { largura: 640, logo: 120, titulo: 84, maxTitulo: 40, linha: 42, maxLinha: 24, valor: 54, padding: "48px 48px" },
+  3: { largura: 414, logo: 100, titulo: 66, maxTitulo: 32, linha: 36, maxLinha: 18, valor: 46, padding: "40px 36px" },
 } as const;
 
+/** Giros bem leves: o cartão alto, girado demais, sai da imagem. */
+const GIROS_DO_BANNER = [-1.2, 0.9, -0.7];
+
 /**
- * A imagem de um banner com 1, 2 ou 3 vagas (claude/plano-banner-com-vagas.md), em 1600 × 900: os cartões como a
- * pilha da inicial do site, levemente girados. Com uma vaga, um cartão grande deitado; com duas ou três, lado a lado.
- * O conteúdo fica no meio, longe das bordas de cima e de baixo (o destaque corta a imagem com 144 px de altura).
+ * A imagem de um banner com 1, 2 ou 3 vagas (claude/plano-banner-com-vagas.md), em 1600 × 900: só os cartões, da
+ * altura da imagem e com letras grandes (no cartão do site ela fica com uns 300 px de largura). Sem a faixa do alto
+ * (o banner já diz "Do Publike") e com 140 px de folga nos lados, que o cartão do site corta para caber.
  */
 export async function bannerDeVagas(vagas: VagaDoDia[], arquivo: string | null = null) {
   const lista = vagas.slice(0, 3);
   const quantas = Math.max(1, lista.length) as 1 | 2 | 3;
   const m = MEDIDAS_DO_BANNER[quantas];
-  const uma = quantas === 1;
-  const logo = await lerLogo();
   return imagem(
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
+        alignItems: "stretch",
         justifyContent: "center",
-        gap: 44,
+        gap: 40,
         width: "100%",
         height: "100%",
-        padding: "0 72px",
+        padding: "64px 140px",
         background: COR.fundo,
         color: COR.tinta,
         fontFamily: "Figtree",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-        <img src={logo} alt="" width={larguraDaLogo(52)} height={52} />
-        <Pilula texto={uma ? "VAGA ABERTA" : "VAGAS ABERTAS"} fonte={28} cor="ipe" />
-      </div>
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "stretch", gap: 36, width: "100%" }}>
-        {lista.map((v, i) => {
-          const { grande, embaixo } = valor(v);
-          const linha = v.quem ? `${v.quem} · ${lugar(v)}` : lugar(v);
-          return (
-            <div
-              key={v.id}
-              style={{
-                display: "flex",
-                flexDirection: uma ? "row" : "column",
-                alignItems: uma ? "center" : "flex-start",
-                gap: m.gap,
-                width: m.largura,
-                background: COR.cartao,
-                border: `3px solid ${COR.borda}`,
-                borderRadius: 40,
-                padding: m.padding,
-                boxShadow: "0 18px 40px rgba(31, 26, 20, 0.12)",
-                transform: `rotate(${GIROS_DO_TRIO[i]}deg)`,
-              }}
-            >
-              <LogoDaVaga v={v} tamanho={m.logo} />
+      {lista.map((v, i) => {
+        const { grande } = valor(v);
+        return (
+          <div
+            key={v.id}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              width: m.largura,
+              background: COR.cartao,
+              border: `3px solid ${COR.borda}`,
+              borderRadius: 44,
+              padding: m.padding,
+              boxShadow: "0 18px 40px rgba(31, 26, 20, 0.12)",
+              transform: `rotate(${GIROS_DO_BANNER[i]}deg)`,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                <LogoDaVaga v={v} tamanho={m.logo} />
+                {v.quem && (
+                  <div style={{ display: "flex", fontSize: m.linha, fontWeight: 700, color: COR.apagado, lineHeight: 1.15 }}>
+                    {curto(v.quem, quantas === 1 ? 40 : 28)}
+                  </div>
+                )}
+              </div>
               <div
                 style={{
                   display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                  minWidth: 0,
-                  ...(uma ? { flex: 1 } : { width: "100%" }),
+                  fontFamily: "Bricolage",
+                  fontSize: quantas === 1 ? tamanhoDoTitulo(v.titulo, m.titulo) : m.titulo,
+                  lineHeight: 1.02,
+                  letterSpacing: -2,
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    fontFamily: "Bricolage",
-                    fontSize: uma ? tamanhoDoTitulo(v.titulo, m.titulo) : m.titulo,
-                    lineHeight: 1.04,
-                    letterSpacing: uma ? -2 : -1,
-                  }}
-                >
-                  {curto(v.titulo, m.maxTitulo)}
-                </div>
-                {uma ? (
-                  <div style={{ display: "flex", fontSize: m.linha, color: COR.apagado, lineHeight: 1.2 }}>
-                    {curto(linha, m.maxLinha)}
-                  </div>
-                ) : (
-                  // lado a lado, quem contrata e o lugar em duas linhas (numa só, o bairro era cortado)
-                  <div style={{ display: "flex", flexDirection: "column", fontSize: m.linha, color: COR.apagado, lineHeight: 1.25 }}>
-                    {v.quem && <div style={{ display: "flex" }}>{curto(v.quem, m.maxLinha)}</div>}
-                    <div style={{ display: "flex" }}>{curto(lugar(v), m.maxLinha)}</div>
-                  </div>
-                )}
-                <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      background: COR.selo,
-                      color: COR.cerrado,
-                      borderRadius: 999,
-                      padding: `6px ${Math.round(m.valor * 0.6)}px`,
-                      fontSize: m.valor,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {curto(grande, 26)}
-                  </div>
-                  {uma && embaixo && (
-                    <div style={{ display: "flex", fontSize: Math.round(m.valor * 0.75), color: COR.apagado }}>
-                      {embaixo}
-                    </div>
-                  )}
-                </div>
+                {curto(v.titulo, m.maxTitulo)}
               </div>
             </div>
-          );
-        })}
-      </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 18 }}>
+              <div style={{ display: "flex", fontSize: m.linha, color: COR.apagado, lineHeight: 1.15 }}>
+                {curto(quantas === 1 ? lugar(v) : nomeDoBairro(v.bairro || v.cidade), quantas === 1 ? m.maxLinha : m.maxLinha + 4)}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  background: COR.selo,
+                  color: COR.cerrado,
+                  borderRadius: 999,
+                  padding: `8px ${Math.round(m.valor * 0.55)}px`,
+                  fontSize: m.valor,
+                  fontWeight: 700,
+                }}
+              >
+                {curto(grande, 22)}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>,
     BANNER,
     arquivo,
