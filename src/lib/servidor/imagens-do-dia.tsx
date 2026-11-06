@@ -621,7 +621,8 @@ const GIROS_DO_TRIO = [-2, 1.5, -1];
 /**
  * Três vagas num story só (1080 × 1920), como a pilha de vagas do alto da inicial do site: cada uma num cartão
  * levemente girado, com a logo de quem publicou, o título, quem e onde, e o valor. O adesivo de link vai embaixo,
- * com o link de todas as vagas (são três: não há uma página só). `n` e `total`: "1 de 4" no selo.
+ * com o link de todas as vagas (são três: não há uma página só). `n` e `total`: "1/4" no selo (opcional: com
+ * `numero` false, ou com um story só, o selo do período, "HOJE" ou "VAGAS NOVAS").
  */
 export async function storyTrioDoDia(
   vagas: VagaDoDia[],
@@ -630,6 +631,7 @@ export async function storyTrioDoDia(
   a: Assinatura = DO_PUBLIKE,
   arquivo: string | null = null,
   texto?: TextoDaCapa,
+  numero = true,
 ) {
   const publike = a.tipo === "publike";
   const titulo = texto?.titulo ?? "Vagas do dia";
@@ -639,7 +641,7 @@ export async function storyTrioDoDia(
         logo={await logoDa(a)}
         a={a}
         altura={publike ? 70 : 56}
-        direita={<Pilula texto={total > 1 ? `${n} DE ${total}` : (texto?.selo ?? "HOJE")} fonte={32} cor="ipe" />}
+        direita={<Pilula texto={numero && total > 1 ? `${n}/${total}` : (texto?.selo ?? "HOJE")} fonte={32} cor="ipe" />}
       />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div
@@ -874,6 +876,8 @@ export async function pacoteDoDia(
   capa?: TextoDaCapa,
   /** 3: os stories com três vagas cada (a pilha da inicial), em vez de um por vaga */
   porStory: 1 | 3 = 1,
+  /** o "1/4" no selo dos stories de três vagas (opcional) */
+  numero = true,
 ) {
   const total = vagas.length;
   // uma imagem por vez: o desenho usa o processador, e em paralelo não fica mais rápido
@@ -893,7 +897,7 @@ export async function pacoteDoDia(
     for (const [i, trio] of trios.entries()) {
       arquivos.push({
         nome: `stories/${doisDigitos(i + 1)}-tres-vagas.png`,
-        dados: await png(storyTrioDoDia(trio, i + 1, trios.length, a, null, capa)),
+        dados: await png(storyTrioDoDia(trio, i + 1, trios.length, a, null, capa, numero)),
       });
     }
   } else {

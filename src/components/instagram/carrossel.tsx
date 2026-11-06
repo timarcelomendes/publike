@@ -75,6 +75,9 @@ export function CarrosselDoInstagram({
   const extra = doPost?.consulta ?? "";
   // os stories: um por vaga ou três por story (a pilha de vagas da inicial do site); só no Admin › Vagas do dia
   const [porStory, setPorStory] = useState<1 | 3>(1);
+  // o "1/3" no selo de cada story de três vagas (opcional)
+  const [comNumero, setComNumero] = useState(true);
+  const semNumero = comNumero ? "" : "&numero=0";
   const trios = doPost && porStory === 3 ? emTrios(nasImagens) : [];
   const bio = links.bio;
 
@@ -198,7 +201,7 @@ export function CarrosselDoInstagram({
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap gap-2">
             <a
-              href={`${rotas.baixar}?ids=${ordem.join(",")}${extra}${trios.length ? "&stories=3" : ""}`}
+              href={`${rotas.baixar}?ids=${ordem.join(",")}${extra}${trios.length ? `&stories=3${semNumero}` : ""}`}
               download
               className={classesBotao("primario", "md")}
             >
@@ -285,6 +288,17 @@ export function CarrosselDoInstagram({
                     {n === 1 ? "Uma vaga por story" : "3 vagas por story"}
                   </button>
                 ))}
+                {trios.length > 1 && (
+                  <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 px-1 text-label">
+                    <input
+                      type="checkbox"
+                      checked={comNumero}
+                      onChange={(e) => setComNumero(e.target.checked)}
+                      className="size-5 accent-[var(--pk-ink)]"
+                    />
+                    Numerar (1/{trios.length}, 2/{trios.length}…)
+                  </label>
+                )}
               </div>
             )}
             <p className="text-body-sm text-ink-muted">
@@ -304,7 +318,7 @@ export function CarrosselDoInstagram({
                 ? trios.map((t, i) => (
                     <Previa
                       key={t.map((v) => v.id).join()}
-                      src={`${IMAGENS}/story-trio?ids=${t.map((v) => v.id).join(",")}&n=${i + 1}&total=${trios.length}${extra}`}
+                      src={`${IMAGENS}/story-trio?ids=${t.map((v) => v.id).join(",")}&n=${i + 1}&total=${trios.length}${extra}${semNumero}`}
                       nome={`${i + 1} · ${t.length === 1 ? "1 vaga" : `${t.length} vagas`}`}
                       proporcao="aspect-[9/16]"
                       // são três vagas: o adesivo leva a todas

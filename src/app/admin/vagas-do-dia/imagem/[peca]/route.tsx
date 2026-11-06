@@ -16,7 +16,8 @@ import { diaPorExtenso, lerIdsDoDia, textoDaCapa } from "@/lib/vagas-do-dia";
 // As imagens de Admin › Vagas do dia, uma por endereço e só para quem abre a página (admin ou moderador):
 //   capa?ids=a,b,c · vaga?id=a&n=1&total=12 · fim?total=12 · story?id=a · story-capa?ids=a,b,c · story-fim
 // As capas também leem o título (&titulo=), a praça (&cidade=) e o período (&periodo=) da página.
-//   story-trio?ids=a,b,c&n=1&total=4: três vagas num story (a pilha da inicial do site), o 1º de 4
+//   story-trio?ids=a,b,c&n=1&total=4: três vagas num story (a pilha da inicial do site), o 1º de 4 ("1/4" no selo;
+//   com &numero=0, sem o número)
 // Com &baixar=1, vem como arquivo, com o número da ordem do carrossel no nome.
 
 const naoEncontrado = () => new Response("Não encontrado", { status: 404 });
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
     if (!vagas.length) return naoEncontrado();
     const n = numero(sp.get("n"), 1);
     const total = Math.max(numero(sp.get("total"), n), n);
-    return storyTrioDoDia(vagas, n, total, undefined, baixar ? `story-${doisDigitos(n)}-tres-vagas.png` : null, capa);
+    return storyTrioDoDia(vagas, n, total, undefined, baixar ? `story-${doisDigitos(n)}-tres-vagas.png` : null, capa, sp.get("numero") !== "0");
   }
   if (peca === "capa") {
     const vagas = await vagasEscolhidas(c, lerIdsDoDia(sp.get("ids")), agoraIso);
