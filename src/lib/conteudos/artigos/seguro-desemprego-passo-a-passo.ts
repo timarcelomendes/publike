@@ -18,6 +18,13 @@ export const conteudo: Conteudo = {
       texto:
         "Neste artigo, você vê as regras gerais, como pedir e o que fazer enquanto isso. Os detalhes, como valores e quantidade de parcelas, mudam de tempos em tempos e dependem do seu caso. Por isso, confira sempre no **gov.br** ou no **Sine** da sua cidade.",
     },
+    {
+      t: "chamada",
+      titulo: "Veja se você tem direito",
+      texto: "Responda algumas perguntas e veja as parcelas e o valor pela tabela de 2026. Grátis e sem cadastro.",
+      botao: "Tenho direito?",
+      href: "/seguro-desemprego",
+    },
     { t: "h2", texto: "Quem pode ter direito" },
     {
       t: "p",
