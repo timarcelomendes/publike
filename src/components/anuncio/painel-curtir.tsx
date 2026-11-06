@@ -4,11 +4,18 @@ import { FileText, Heart, HeartCrack, MessagesSquare, PartyPopper, Star, Zap } f
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { abrirConversaDoMatch, pedirConversa } from "@/lib/abrir-conversa";
+import { abrirConversaDoMatch, abrirWhatsAppDoMatch, pedirConversa } from "@/lib/abrir-conversa";
 import { chamarAcao } from "@/lib/acao-segura";
 import { caminhoConversa } from "@/lib/conversas";
-import { curtirAnuncio, descurtirAnuncio, type AvisoLigado, type ConversaDoMatch } from "@/lib/acoes/curtidas";
+import {
+  curtirAnuncio,
+  descurtirAnuncio,
+  type AvisoLigado,
+  type ContatoDaCurtida,
+  type ConversaDoMatch,
+} from "@/lib/acoes/curtidas";
 import { motivoParaOutro, nomeMotivoDesfazer } from "@/lib/constantes";
+import { linkWhatsApp } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import type { Pergunta, Respostas } from "@/lib/vaga-extra";
 import { LinhaDoAvisoLigado } from "../aviso-ligado";
@@ -169,7 +176,10 @@ export function PainelCurtir({
         else setErro(r.erro);
       } else {
         if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
-        // deu match na hora (contato direto): a conversa com quem publicou abre sozinha
+        // deu match na hora (contato direto): o WhatsApp de quem publicou, com a mensagem pronta, e a conversa no Chat
+        // abrem sozinhos
+        const contatoNovo = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
+        if (contatoNovo?.whatsapp) abrirWhatsAppDoMatch(linkWhatsApp(contatoNovo.whatsapp, contatoNovo.mensagem));
         const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
         if (conversa)
           abrirConversaDoMatch(

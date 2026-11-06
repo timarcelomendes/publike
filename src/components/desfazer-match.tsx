@@ -4,8 +4,15 @@ import { Ban, Heart, HeartCrack, Undo2 } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
 import { useRouter } from "next/navigation";
-import { abrirConversaDoMatch } from "@/lib/abrir-conversa";
-import { bloquearPessoa, curtirDeNovo, desfazerMatch, type ConversaDoMatch } from "@/lib/acoes/curtidas";
+import { abrirConversaDoMatch, abrirWhatsAppDoMatch } from "@/lib/abrir-conversa";
+import {
+  bloquearPessoa,
+  curtirDeNovo,
+  desfazerMatch,
+  type ContatoDaCurtida,
+  type ConversaDoMatch,
+} from "@/lib/acoes/curtidas";
+import { linkWhatsApp } from "@/lib/formato";
 import { MOTIVOS_DESFAZER } from "@/lib/constantes";
 import type { EstadoForm } from "@/lib/tipos";
 import { Aviso } from "./ui/basicos";
@@ -198,7 +205,10 @@ export function CurtirDeNovo({ anuncioId, servico = false }: { anuncioId: string
               return;
             }
             setOk(r.mensagem ?? "Pronto!");
-            // deu match de novo (contato direto): a conversa com quem publicou abre sozinha
+            // deu match de novo (contato direto): o WhatsApp de quem publicou, com a mensagem pronta, e a conversa no
+            // Chat abrem sozinhos
+            const contato = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
+            if (contato?.whatsapp) abrirWhatsAppDoMatch(linkWhatsApp(contato.whatsapp, contato.mensagem));
             const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
             if (conversa) abrirConversaDoMatch(conversa, (caminho) => router.push(caminho));
           })

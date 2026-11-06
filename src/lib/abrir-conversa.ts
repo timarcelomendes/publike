@@ -35,6 +35,19 @@ export function abrirConversaDoMatch(pedido: PedidoConversa, ir: (caminho: strin
   if (!pedirConversa(pedido)) ir(`/painel/conversas/${pedido.outroId}`);
 }
 
+/**
+ * Deu match com o WhatsApp de quem publicou liberado: o WhatsApp abre sozinho numa aba nova (no celular, o app), com
+ * a mensagem pronta. O navegador só deixa abrir logo depois do toque; se barrar (o iPhone costuma barrar), o botão
+ * "Chamar no WhatsApp" continua na tela. Não conta como toque em Admin › Curtidas (lá, só quem toca no botão).
+ */
+export function abrirWhatsAppDoMatch(link: string) {
+  try {
+    window.open(link, "_blank", "noopener,noreferrer");
+  } catch {
+    // barrado: fica o botão
+  }
+}
+
 // No celular, quem tem conta abre o Chat pelo ícone do cabeçalho (o botão do canto some, para não
 // cobrir os cartões). O ícone pede para abrir e o Chat conta as mensagens não lidas para ele.
 export const EVENTO_ABRIR_CHAT = "publike:abrir-chat";

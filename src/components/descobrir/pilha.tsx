@@ -19,7 +19,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
-import { abrirConversaDoMatch } from "@/lib/abrir-conversa";
+import { abrirConversaDoMatch, abrirWhatsAppDoMatch } from "@/lib/abrir-conversa";
 import { chamarAcao } from "@/lib/acao-segura";
 import { curtirAnuncio, type ContatoDaCurtida, type ConversaDoMatch } from "@/lib/acoes/curtidas";
 import { passarVaga, salvarVaga, verPassadasDeNovo } from "@/lib/acoes/descobrir";
@@ -277,7 +277,8 @@ export function PilhaDeVagas({
         if (gesto === "curtir") {
           // contato direto: deu match na hora; sugere chamar no WhatsApp, com a mensagem pronta
           const contato = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
-          // deu match: a conversa com quem publicou abre sozinha
+          // deu match: o WhatsApp de quem publicou, com a mensagem pronta, e a conversa no Chat abrem sozinhos
+          if (contato?.whatsapp) abrirWhatsAppDoMatch(linkWhatsApp(contato.whatsapp, contato.mensagem));
           const conversa = "conversa" in r && r.conversa ? (r.conversa as ConversaDoMatch) : null;
           if (conversa)
             abrirConversaDoMatch(
