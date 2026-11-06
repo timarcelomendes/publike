@@ -9,13 +9,19 @@ import {
   marcarPerguntaDoMatchNaPagina,
   type PedidoDoMatch,
 } from "@/lib/abrir-conversa";
+import { marcarMatchPerguntado, matchParaPerguntar } from "@/lib/acoes/pergunta-do-match";
 import { linkWhatsApp } from "@/lib/formato";
 import { Botao } from "./ui/botao";
 
+// onde a pergunta ao entrar não aparece: o admin, a entrada e as conversas (lá a pessoa já está conversando)
+const SEM_PERGUNTA_AO_ENTRAR = [/^\/admin/, /^\/auth\//, /^\/entrar/, /^\/painel\/conversas/];
+
 /**
- * Deu match com o WhatsApp de quem publicou liberado (contato direto): "Quer falar agora com X?". O "Chamar no
- * WhatsApp" é um link de verdade (o toque abre o WhatsApp, no celular o app, com a mensagem pronta, também no iPhone)
- * e conta em Admin › Curtidas como toque da pessoa. Respondida a pergunta (ou fechada), a conversa abre no Chat.
+ * Deu match com o WhatsApp de quem publicou liberado: "Quer falar agora com X?". Aparece na hora da curtida com
+ * contato direto e, para os outros matches (o aceite com a pessoa fora do site, e os que já existiam), no primeiro
+ * acesso depois deles: uma vez por match, um por acesso, o mais novo primeiro. O "Chamar no WhatsApp" é um link de
+ * verdade (o toque abre o WhatsApp, no celular o app, com a mensagem pronta, também no iPhone) e conta em
+ * Admin › Curtidas como toque da pessoa. Respondida a pergunta (ou fechada), a conversa abre no Chat.
  * Um só na página (no Chat do canto, para quem tem conta): a lista que recarrega embaixo não leva a pergunta junto.
  */
 export function PerguntaDoMatch() {
@@ -35,8 +41,27 @@ export function PerguntaDoMatch() {
     };
   }, []);
 
+  // ao entrar (uma vez por carregamento do site): o match mais novo que ainda não teve a pergunta
   useEffect(() => {
-    if (pedido && !janela.current?.open) janela.current?.showModal();
+    if (SEM_PERGUNTA_AO_ENTRAR.some((r) => r.test(window.location.pathname))) return;
+    let vivo = true;
+    // um respiro depois de a página abrir; outra janela aberta (as boas-vindas, instalar o app) fica para a próxima
+    const espera = window.setTimeout(async () => {
+      const achado = await matchParaPerguntar().catch(() => null);
+      if (!vivo || !achado || document.querySelector("dialog[open]")) return;
+      setPedido((atual) => atual ?? achado);
+    }, 1500);
+    return () => {
+      vivo = false;
+      window.clearTimeout(espera);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pedido) return;
+    if (!janela.current?.open) janela.current?.showModal();
+    // a pergunta apareceu: não aparece de novo para este match (nem ao entrar)
+    marcarMatchPerguntado(pedido.anuncioId).catch(() => {});
   }, [pedido]);
 
   // fechou (respondeu, "Agora não", Esc ou toque fora): a conversa abre no Chat
@@ -87,8 +112,11 @@ export function PerguntaDoMatch() {
               Deu match! Quer falar agora com {nome}?
             </h2>
             <p id={`${id}-texto`} className="text-body text-ink-muted">
-              {pedido.conversa?.outroNome || "Quem publicou"} libera o WhatsApp para quem se{" "}
-              {pedido.servico ? "interessa" : "candidata"}. A mensagem já vai pronta
+              {pedido.direto === false
+                ? // o match veio do aceite (a pergunta ao entrar)
+                  `${pedido.conversa?.outroNome || "Quem publicou"} aceitou ${pedido.servico ? "o seu pedido" : "a sua candidatura"}${pedido.conversa?.titulo ? ` em “${pedido.conversa.titulo}”` : ""}.`
+                : `${pedido.conversa?.outroNome || "Quem publicou"} libera o WhatsApp para quem se ${pedido.servico ? "interessa" : "candidata"}.`}{" "}
+              A mensagem já vai pronta
               {resto.length ? `, com o link ${pedido.servico ? "do anúncio" : "da vaga"}` : ""}. Dá para mudar antes de
               enviar.
             </p>

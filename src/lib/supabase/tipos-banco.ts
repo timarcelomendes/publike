@@ -1904,6 +1904,9 @@ export type Database = {
         Returns: undefined;
       };
       // a consulta de salários (migração 20270218120000)
+      // a pergunta do match ao entrar (20270220120000_pergunta_do_match_ao_entrar.sql)
+      match_para_perguntar: { Args: Record<string, never>; Returns: Json };
+      marcar_match_perguntado: { Args: { p_anuncio: string }; Returns: undefined };
       salarios_da_conta: { Args: Record<string, never>; Returns: Json };
       consultar_salario: { Args: { p_cbo: string }; Returns: Json };
       consulta_de_salario: { Args: { p_cbo: string; p_cidades: string[] }; Returns: Json };

@@ -36,7 +36,8 @@ export function abrirConversaDoMatch(pedido: PedidoConversa, ir: (caminho: strin
 }
 
 // Deu match com o WhatsApp de quem publicou liberado: a pergunta "Quer falar agora?" (PerguntaDoMatch, no Chat do
-// canto) e, respondida, a conversa no Chat.
+// canto) e, respondida, a conversa no Chat. Na hora da curtida (contato direto) e, para os outros matches, no primeiro
+// acesso depois deles.
 export const EVENTO_DEU_MATCH = "publike:deu-match";
 
 export type PedidoDoMatch = {
@@ -50,6 +51,8 @@ export type PedidoDoMatch = {
   anuncioId: string;
   perfilId: string;
   servico?: boolean;
+  /** false: o match veio do aceite de quem publicou (a pergunta ao entrar); sem: o contato direto */
+  direto?: boolean;
 };
 
 let perguntaNaPagina = false;
