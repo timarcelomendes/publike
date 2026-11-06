@@ -61,6 +61,13 @@ export const conteudo: Conteudo = {
       texto:
         "Se o pedido for negado, o sistema mostra o motivo. Muitas vezes é um dado errado ou uma informação que a empresa não enviou. Nesses casos, vá ao Sine ou procure a empresa para corrigir. Se tiver dúvida sobre a rescisão, o sindicato da sua categoria também pode orientar.",
     },
+    {
+      t: "chamada",
+      titulo: "Confira o valor da sua rescisão",
+      texto: "Saldo, aviso prévio, férias, 13º, FGTS e multa, com a conta de cada valor. Grátis e sem cadastro.",
+      botao: "Calcular a rescisão",
+      href: "/calculadora-rescisao",
+    },
     { t: "h2", texto: "Seguro não é para ficar parado" },
     {
       t: "p",

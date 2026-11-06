@@ -55,6 +55,13 @@ export const conteudo: Conteudo = {
       texto:
         "Os detalhes de cada direito, como prazos e porcentagens, podem mudar com a lei. Na dúvida, confira no gov.br, no Sine ou com o sindicato da sua categoria. Para entender o seguro, leia [Seguro-desemprego: quem tem direito e como pedir](/conteudos/seguro-desemprego-passo-a-passo).",
     },
+    {
+      t: "chamada",
+      titulo: "Saiu do emprego? Calcule a rescisão",
+      texto: "Aviso prévio, férias, 13º, FGTS e multa, com o INSS e o IR de 2026 e a explicação de cada valor. Grátis.",
+      botao: "Calcular a rescisão",
+      href: "/calculadora-rescisao",
+    },
     { t: "h2", texto: "Confira tudo na Carteira de Trabalho Digital" },
     {
       t: "p",

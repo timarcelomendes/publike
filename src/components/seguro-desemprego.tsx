@@ -343,6 +343,9 @@ export function SeguroDesemprego() {
               <BotaoLink href="/curriculo-simples" variante="secundario">
                 Fazer um currículo grátis
               </BotaoLink>
+              <BotaoLink href="/calculadora-rescisao" variante="secundario">
+                Calcular a rescisão
+              </BotaoLink>
             </div>
           </div>
           <button

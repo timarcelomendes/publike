@@ -81,6 +81,9 @@ export function Rodape() {
           <Link href="/seguro-desemprego" className={link}>
             Seguro-desemprego: tenho direito?
           </Link>
+          <Link href="/calculadora-rescisao" className={link}>
+            Calculadora de rescisão
+          </Link>
           <Link href="/noticias" className={link}>
             Notícias
           </Link>
