@@ -297,7 +297,7 @@ function Conta({
 function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
   return (
     <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[52rem] text-left text-body-sm">
+      <table className="w-full min-w-[44rem] text-left text-body-sm">
         <thead className="text-label text-ink-muted">
           <tr className="border-b border-line">
             <th scope="col" className="py-2 pr-3 font-medium">
@@ -435,7 +435,7 @@ function LinhaDoTempo({ m, agora }: { m: CurtidaAdmin; agora: number }) {
   }
 
   return (
-    <ol className="flex min-w-[15rem] flex-col">
+    <ol className="flex w-[15rem] flex-col xl:w-[18rem]">
       {passos.map((p, i) => (
         <li key={i} className="relative flex gap-2 pb-2 last:pb-0">
           {/* o fio entre as bolinhas (tracejado quando o passo ainda está aberto) */}
@@ -446,7 +446,7 @@ function LinhaDoTempo({ m, agora }: { m: CurtidaAdmin; agora: number }) {
             aria-hidden
             className={`relative mt-1.5 size-2.5 shrink-0 rounded-pill ${p.aberto ? "border border-line-strong bg-surface-100" : p.cor}`}
           />
-          <span className="flex min-w-0 flex-col">
+          <span className="flex min-w-0 flex-col break-words">
             <span className="font-semibold">{p.titulo}</span>
             <span className="text-caption text-ink-muted">
               {p.em && <span title={new Date(p.em).toLocaleString("pt-BR")}>{quandoCurto(p.em)}</span>}
