@@ -46,6 +46,26 @@ export function useConversa() {
   );
 }
 
+// Quem já usou o chat neste navegador (abriu pelo botão ou mandou uma pergunta): o chat não abre mais sozinho
+// para ele (o convite de quem não entrou, em botao-assistente.tsx). Quem só fechou sem usar continua recebendo.
+const CHAVE_USOU = "publike_chat_usou";
+
+export function marcarQueUsouOChat() {
+  try {
+    window.localStorage.setItem(CHAVE_USOU, "1");
+  } catch {
+    // sem armazenamento: nada a guardar
+  }
+}
+
+export function jaUsouOChat() {
+  try {
+    return window.localStorage.getItem(CHAVE_USOU) === "1";
+  } catch {
+    return true;
+  }
+}
+
 // Perguntas que vêm de fora da conversa: a busca da página de ajuda, quando não
 // acha a resposta, manda o que a pessoa digitou para a conversa que está na tela.
 

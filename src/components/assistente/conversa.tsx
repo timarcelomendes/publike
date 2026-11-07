@@ -30,7 +30,14 @@ import {
 import { perguntarAoAssistente } from "@/lib/acoes/assistente";
 import { PEDIDOS_DO_VISITANTE, PERGUNTAS_INICIAIS, TAMANHO_MENSAGEM_CHAT, type CartaoChat } from "@/lib/assistente";
 import { Simbolo } from "../ui/basicos";
-import { conversaNaTela, mudarConversa, tirarPerguntaPedida, useConversa, type ItemConversa } from "./conversa-estado";
+import {
+  conversaNaTela,
+  marcarQueUsouOChat,
+  mudarConversa,
+  tirarPerguntaPedida,
+  useConversa,
+  type ItemConversa,
+} from "./conversa-estado";
 
 const ICONES_PERGUNTAS: LucideIcon[] = [HeartHandshake, BadgeCheck, MapPin, Building2];
 
@@ -186,6 +193,7 @@ export function Conversa({
   function perguntar(pergunta: string) {
     const limpa = pergunta.trim().slice(0, TAMANHO_MENSAGEM_CHAT);
     if (!limpa || pensando) return;
+    marcarQueUsouOChat();
     const comPergunta: ItemConversa[] = [...conversa, { de: "pessoa", texto: limpa }];
     mudarConversa(comPergunta);
     setTexto("");

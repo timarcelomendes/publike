@@ -15,14 +15,14 @@ import {
 import { esperandoBoasVindas } from "../boas-vindas-parceiro";
 import { PainelConversas, useConversasDoChat } from "../conversa/janela-mensagens";
 import { Conversa } from "./conversa";
-import { mudarConversa, useConversa } from "./conversa-estado";
+import { jaUsouOChat, marcarQueUsouOChat, mudarConversa, useConversa } from "./conversa-estado";
 
 // Onde o botão não aparece: o admin, a entrada pelo link e o Descobrir (os botões
 // de curtir ficam embaixo).
 const SEM_BOTAO = [/^\/admin/, /^\/auth\//, /^\/descobrir/];
 
 // Para quem não entrou, no computador: o chat abre sozinho, uma vez a cada 7 dias, perguntando se a pessoa procura
-// vaga ou quer publicar uma (grátis). Não abre nas páginas em que ela já sabe o que veio fazer (as mesmas das
+// vaga ou quer publicar uma (grátis). Quem já usou o chat (abriu pelo botão ou perguntou) não recebe mais. Não abre nas páginas em que ela já sabe o que veio fazer (as mesmas das
 // boas-vindas: entrar, publicar, as listas de vagas e as páginas para empresas, que são a entrada dos anúncios do
 // Google), nem por cima de outra janela, nem com a pessoa digitando.
 const CHAVE_CONVITE = "publike_chat_convite";
@@ -32,6 +32,8 @@ const SEM_CONVITE =
   /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|email|versao|vagas\/|empresas|ajuda|descobrir|sugerir|candidatura|convite|acesso)/;
 
 function podeConvidar() {
+  // quem já usou o chat (abriu pelo botão ou perguntou) já sabe que ele existe: não abre mais sozinho
+  if (jaUsouOChat()) return false;
   try {
     const ultima = Number(window.localStorage.getItem(CHAVE_CONVITE) ?? 0);
     return !ultima || Date.now() - ultima >= CONVITE_A_CADA;
@@ -136,6 +138,8 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
 
   function abrir(conversaPedida: PedidoConversa | null = null, porConta = false) {
     setSozinho(porConta);
+    // aberto pela pessoa (o botão, o ícone do cabeçalho): ela já conhece o chat
+    if (!porConta) marcarQueUsouOChat();
     setPedida(conversaPedida);
     setAba(conversaPedida || naoLidas > 0 || !ajuda ? "conversas" : "ajuda");
     // um passo a mais no histórico: o "voltar" fecha a conversa
