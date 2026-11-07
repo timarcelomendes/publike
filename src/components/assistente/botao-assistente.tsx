@@ -12,6 +12,7 @@ import {
   marcarChatNaPagina,
   type PedidoConversa,
 } from "@/lib/abrir-conversa";
+import { esperandoBoasVindas } from "../boas-vindas-parceiro";
 import { PainelConversas, useConversasDoChat } from "../conversa/janela-mensagens";
 import { Conversa } from "./conversa";
 import { mudarConversa, useConversa } from "./conversa-estado";
@@ -19,6 +20,34 @@ import { mudarConversa, useConversa } from "./conversa-estado";
 // Onde o botão não aparece: o admin, a entrada pelo link e o Descobrir (os botões
 // de curtir ficam embaixo).
 const SEM_BOTAO = [/^\/admin/, /^\/auth\//, /^\/descobrir/];
+
+// Para quem não entrou, no computador: o chat abre sozinho, uma vez a cada 7 dias, perguntando se a pessoa procura
+// vaga ou quer publicar uma (grátis). Não abre nas páginas em que ela já sabe o que veio fazer (as mesmas das
+// boas-vindas: entrar, publicar, as listas de vagas e as páginas para empresas, que são a entrada dos anúncios do
+// Google), nem por cima de outra janela, nem com a pessoa digitando.
+const CHAVE_CONVITE = "publike_chat_convite";
+const CONVITE_A_CADA = 7 * 24 * 60 * 60 * 1000;
+const ESPERA_DO_CONVITE = 12_000;
+const SEM_CONVITE =
+  /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|email|versao|vagas\/|empresas|ajuda|descobrir|sugerir|candidatura|convite|acesso)/;
+
+function podeConvidar() {
+  try {
+    const ultima = Number(window.localStorage.getItem(CHAVE_CONVITE) ?? 0);
+    return !ultima || Date.now() - ultima >= CONVITE_A_CADA;
+  } catch {
+    // sem armazenamento, abriria em toda página: melhor não abrir
+    return false;
+  }
+}
+
+function guardarConvite() {
+  try {
+    window.localStorage.setItem(CHAVE_CONVITE, String(Date.now()));
+  } catch {
+    // sem armazenamento: nada a guardar
+  }
+}
 
 /** Marca no endereço enquanto a conversa está aberta: o "voltar" do celular fecha a conversa, não o site. */
 const MARCA = "#assistente";
@@ -102,8 +131,11 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
   const [aba, setAba] = useState<"ajuda" | "conversas">("ajuda");
   // conversa pedida de fora do chat (o "Deu match!" da vaga): abre direto nela
   const [pedida, setPedida] = useState<PedidoConversa | null>(null);
+  // aberto sozinho (o convite de quem não entrou): sem pôr o cursor na caixa de texto
+  const [sozinho, setSozinho] = useState(false);
 
-  function abrir(conversaPedida: PedidoConversa | null = null) {
+  function abrir(conversaPedida: PedidoConversa | null = null, porConta = false) {
+    setSozinho(porConta);
     setPedida(conversaPedida);
     setAba(conversaPedida || naoLidas > 0 || !ajuda ? "conversas" : "ajuda");
     // um passo a mais no histórico: o "voltar" fecha a conversa
@@ -135,6 +167,30 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
       window.removeEventListener(EVENTO_ABRIR_CHAT, ouvir);
     };
   }, [usuarioId]);
+
+  // o convite de quem não entrou (ver CHAVE_CONVITE)
+  const tentarConvite = useEffectEvent((): boolean => {
+    if (aberto || conversa.length > 0) return true;
+    const ocupado =
+      document.hidden ||
+      esperandoBoasVindas(window.location.pathname) ||
+      document.querySelector('[aria-modal="true"], dialog[open]') !== null ||
+      document.activeElement instanceof HTMLInputElement ||
+      document.activeElement instanceof HTMLTextAreaElement ||
+      document.activeElement instanceof HTMLSelectElement;
+    if (ocupado) return false;
+    guardarConvite();
+    abrir(null, true);
+    return true;
+  });
+  useEffect(() => {
+    if (usuarioId || !ajuda || SEM_CONVITE.test(caminho)) return;
+    if (!window.matchMedia("(min-width: 768px)").matches || !podeConvidar()) return;
+    let espera = window.setTimeout(function tentar() {
+      if (!tentarConvite()) espera = window.setTimeout(tentar, 8_000);
+    }, ESPERA_DO_CONVITE);
+    return () => window.clearTimeout(espera);
+  }, [usuarioId, ajuda, caminho]);
 
   // o ícone do cabeçalho mostra o mesmo número
   useEffect(() => {
@@ -282,7 +338,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
             </div>
             {aba === "ajuda" ? (
               ajuda ? (
-                <Conversa autoFoco className="flex-1" />
+                <Conversa autoFoco={!sozinho} visitante={!usuarioId} className="flex-1" />
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
                   <p className="text-body-sm text-ink-muted">

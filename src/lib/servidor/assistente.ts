@@ -13,7 +13,7 @@ import { criarClientePublico, criarClienteServidor } from "@/lib/supabase/servid
 import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 // O assistente responde dúvidas com o conteúdo da página de ajuda (src/lib/ajuda.ts).
-// Com conta, ele também procura vagas, serviços e empresas no banco: a IA só
+// Ele também procura vagas e serviços (com ou sem conta) e, com conta, empresas no banco: a IA só
 // diz o que procurar; quem busca é o site, e os resultados vêm do banco (a IA
 // não inventa vaga). A conversa não fica guardada: vai e volta do navegador.
 
@@ -37,7 +37,7 @@ export async function assistenteDisponivel(): Promise<boolean> {
 
 type Plano = {
   resposta: string;
-  acao: "nenhuma" | "buscar_anuncios" | "buscar_empresas" | "pedir_login" | "sugerir";
+  acao: "nenhuma" | "buscar_anuncios" | "buscar_empresas" | "pedir_login" | "sugerir" | "publicar";
   busca: { texto: string; tipo: "vaga" | "servico" | "todos"; categoria: string };
 };
 
@@ -49,7 +49,7 @@ const ESQUEMA = {
     required: ["resposta", "acao", "busca"],
     properties: {
       resposta: { type: "string" },
-      acao: { type: "string", enum: ["nenhuma", "buscar_anuncios", "buscar_empresas", "pedir_login", "sugerir"] },
+      acao: { type: "string", enum: ["nenhuma", "buscar_anuncios", "buscar_empresas", "pedir_login", "sugerir", "publicar"] },
       busca: {
         type: "object",
         additionalProperties: false,
@@ -71,7 +71,7 @@ function instrucoes(pessoa: { logada: boolean; nome: string | null; local: Local
           ? `; ela informou que fica em ${formatarLugar(pessoa.local.bairro ?? null, pessoa.local.cidade)}`
           : ""
       }. Você pode buscar vagas, serviços e empresas para ela.`
-    : "A pessoa NÃO está logada. Você só tira dúvidas. Para buscar vagas, serviços ou empresas, ou para ajudar com a conta dela (anúncios, curtidas, matches, perfil), use a ação pedir_login.";
+    : "A pessoa NÃO está logada. Você tira dúvidas e pode buscar vagas e serviços para ela (buscar_anuncios), como na página inicial, que mostra as vagas sem conta. Para buscar empresas ou para ajudar com a conta dela (anúncios, curtidas, matches, perfil), use a ação pedir_login.";
   return `Você é o assistente do Publike, uma ferramenta do povo para gerar emprego em ${ONDE_FUNCIONA}.
 Responda em português do Brasil, com palavras simples, de forma calorosa e direta, em no máximo 4 frases curtas.
 Use só as informações sobre o Publike que estão abaixo. Se não souber, diga que não sabe e indique a página de ajuda (/ajuda) ou a página Sugestões e erros (/sugerir).
@@ -81,10 +81,12 @@ ${quem}
 
 Escolha a ação:
 - buscar_anuncios: a pessoa quer achar vagas, bicos, freelances ou um profissional/serviço, ou conta o que ela faz ("sou engenheiro", "trabalho de garçom") querendo trabalho. Busque na hora, sem perguntar antes se pode buscar. Se ela só confirma ("sim", "pode"), busque o que foi falado antes na conversa. Preencha "busca" (texto: a profissão ou a palavra principal do jeito que a pessoa falou, no singular, como "engenheiro", "padeiro" ou "diarista", ou vazio; tipo: vaga, servico ou todos; categoria: só quando tiver certeza de qual combina, senão "todas"). A resposta é uma frase curta apresentando o resultado, como "Veja o que achei:"; o site mostra a lista logo abaixo.
+  Se a pessoa só diz que procura vaga ou emprego, sem dizer o quê, não busque ainda: use "nenhuma" e pergunte, numa frase, que trabalho ela procura e em que bairro ou cidade.
+- publicar: a pessoa quer publicar ou anunciar uma vaga, divulgar uma vaga, contratar funcionário ou achar gente para trabalhar. Diga que publicar é grátis, sem limite de candidatos, que dá para colar o texto ou mandar a foto da vaga e a IA preenche, e que a conta só é pedida no fim, ao publicar. O site mostra o botão "Publicar vaga grátis" logo abaixo.
 - buscar_empresas: a pessoa quer conhecer empresas ou comércios que usam o Publike (quem está contratando). Preencha "busca.texto" com o ramo ou o nome, ou vazio.
 - pedir_login: só quando a pessoa não está logada e pede algo que precisa de conta. Explique que é só entrar ou criar a conta, de graça e sem senha.
 - sugerir: a pessoa conta um erro, dá uma ideia, um elogio ou pede uma melhoria. Agradeça e diga que ela pode mandar na página Sugestões e erros.
-- nenhuma: o resto (dúvidas em geral). Nessas ações, preencha "busca" com texto vazio, tipo "todos" e categoria "todas".
+- nenhuma: o resto (dúvidas em geral). Em nenhuma, publicar, sugerir e pedir_login, preencha "busca" com texto vazio, tipo "todos" e categoria "todas".
 
 O que você sabe sobre o Publike:
 ${textoDaAjuda()}`;
@@ -222,8 +224,9 @@ export async function responderAssistente(
 
   const quer = plano.acao;
   if (quer === "buscar_anuncios" || quer === "buscar_empresas" || quer === "pedir_login") {
-    // a busca é só para quem tem conta, mesmo que a IA tente
-    if (!pessoa.logada)
+    // sem conta, só a busca de vagas e serviços (a mesma da página inicial); empresas e a conta pedem para entrar,
+    // mesmo que a IA tente
+    if (!pessoa.logada && quer !== "buscar_anuncios")
       return {
         texto: quer === "pedir_login" ? resposta : PEDIR_CONTA,
         acao: "pedir_login",
@@ -260,5 +263,10 @@ export async function responderAssistente(
     }
     return { texto: resposta, acao: "nenhuma", cartoes: r.cartoes, verMais: null };
   }
-  return { texto: resposta, acao: quer === "sugerir" ? "sugerir" : "nenhuma", cartoes: [], verMais: null };
+  return {
+    texto: resposta,
+    acao: quer === "sugerir" || quer === "publicar" ? quer : "nenhuma",
+    cartoes: [],
+    verMais: null,
+  };
 }

@@ -11,6 +11,7 @@ import {
   LogIn,
   MapPin,
   MessageSquareText,
+  Megaphone,
   Search,
   type LucideIcon,
 } from "lucide-react";
@@ -27,7 +28,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { perguntarAoAssistente } from "@/lib/acoes/assistente";
-import { PERGUNTAS_INICIAIS, TAMANHO_MENSAGEM_CHAT, type CartaoChat } from "@/lib/assistente";
+import { PEDIDOS_DO_VISITANTE, PERGUNTAS_INICIAIS, TAMANHO_MENSAGEM_CHAT, type CartaoChat } from "@/lib/assistente";
 import { Simbolo } from "../ui/basicos";
 import { conversaNaTela, mudarConversa, tirarPerguntaPedida, useConversa, type ItemConversa } from "./conversa-estado";
 
@@ -98,8 +99,17 @@ function Mensagem({ m, caminho }: { m: ItemConversa; caminho: string }) {
             ))}
           </div>
         )}
-        {(m.acao === "pedir_login" || m.acao === "sugerir" || m.verMais) && (
+        {(m.acao === "pedir_login" || m.acao === "sugerir" || m.acao === "publicar" || m.verMais) && (
           <div className="flex flex-wrap gap-2">
+            {m.acao === "publicar" && (
+              <Link
+                href="/publicar"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-pill bg-terra px-4 text-label text-on-terra hover:bg-terra-hover"
+              >
+                <Megaphone aria-hidden className="size-4" />
+                Publicar vaga grátis
+              </Link>
+            )}
             {m.acao === "pedir_login" && (
               <Link
                 href={`/entrar?next=${encodeURIComponent(caminho)}`}
@@ -132,12 +142,15 @@ function Mensagem({ m, caminho }: { m: ItemConversa; caminho: string }) {
 export function Conversa({
   autoFoco = false,
   boasVindas = true,
+  visitante = false,
   className = "",
 }: {
   /** põe o cursor na caixa de texto ao abrir (só no computador: no celular o teclado tapa a tela) */
   autoFoco?: boolean;
   /** o "Oi!" que explica o que o assistente faz (na página de ajuda, o título da seção já explica) */
   boasVindas?: boolean;
+  /** quem não entrou: o "Oi!" pergunta se procura vaga ou quer publicar uma (grátis) */
+  visitante?: boolean;
   className?: string;
 }) {
   const conversa = useConversa();
@@ -215,18 +228,52 @@ export function Conversa({
         {boasVindas && (
           <div className="flex flex-col items-center gap-2 px-2 pb-1 text-center">
             <AvatarAssistente grande />
-            <p className="font-display text-h3">
-              {ia.apelido ? `Oi! Sou ${ia.apelido}. Qual é a sua dúvida?` : "Oi! Qual é a sua dúvida?"}
-            </p>
-            <p className="max-w-xs text-body-sm text-ink-muted">
-              Pergunte do seu jeito: respondo suas dúvidas sobre o Publike e encontro a resposta na hora. Se você
-              entrar, também procuro vagas, serviços e empresas para você.
-            </p>
+            {visitante ? (
+              <>
+                <p className="font-display text-h3">
+                  {ia.apelido ? `Oi! Sou ${ia.apelido}.` : "Oi!"} Você procura vaga ou quer publicar uma vaga grátis?
+                </p>
+                <p className="max-w-xs text-body-sm text-ink-muted">
+                  Eu acho vagas perto de você e ajudo a publicar a sua de graça. Também tiro dúvidas sobre o Publike.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-display text-h3">
+                  {ia.apelido ? `Oi! Sou ${ia.apelido}. Qual é a sua dúvida?` : "Oi! Qual é a sua dúvida?"}
+                </p>
+                <p className="max-w-xs text-body-sm text-ink-muted">
+                  Pergunte do seu jeito: respondo suas dúvidas sobre o Publike e encontro a resposta na hora. Também
+                  procuro vagas, serviços e empresas para você.
+                </p>
+              </>
+            )}
             {caminho !== "/ajuda" && (
               <Link href="/ajuda" className="text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink">
                 Ver todas as perguntas da ajuda
               </Link>
             )}
+          </div>
+        )}
+        {conversa.length === 0 && visitante && (
+          // o que veio fazer: procurar ou publicar (o resto das perguntas fica logo embaixo)
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => perguntar(PEDIDOS_DO_VISITANTE.procurar)}
+              className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-label text-surface-100 hover:opacity-90"
+            >
+              <Search aria-hidden className="size-[18px] shrink-0" />
+              Procuro vaga
+            </button>
+            <button
+              type="button"
+              onClick={() => perguntar(PEDIDOS_DO_VISITANTE.publicar)}
+              className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-terra px-3 text-label text-on-terra hover:bg-terra-hover"
+            >
+              <Megaphone aria-hidden className="size-[18px] shrink-0" />
+              Publicar grátis
+            </button>
           </div>
         )}
         {conversa.length === 0 && (
