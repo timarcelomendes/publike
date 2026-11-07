@@ -18,7 +18,7 @@ function prazo(horas: number) {
 }
 
 /**
- * No cartão: "Costuma responder em 2 dias" (quem responde 7 de cada 10 ou mais) ou
+ * No cartão: "Responde em 2 dias" (quem responde 7 de cada 10 ou mais; curto para caber ao lado do Curtir no celular) ou
  * "Responde 4 de cada 10 curtidas". `longo`, na página da vaga: as duas coisas.
  */
 export function comoResponde(r: Resposta, longo = false): { texto: string; bom: boolean } {
@@ -26,6 +26,6 @@ export function comoResponde(r: Resposta, longo = false): { texto: string; bom: 
   if (longo) {
     return { texto: `Responde ${quantas(r.taxa)}${r.horas !== null ? `, em geral ${prazo(r.horas)}` : ""}`, bom };
   }
-  if (bom && r.horas !== null) return { texto: `Costuma responder ${prazo(r.horas)}`, bom };
+  if (bom && r.horas !== null) return { texto: `Responde ${prazo(r.horas)}`, bom };
   return { texto: `Responde ${quantas(r.taxa)}`, bom };
 }
