@@ -2153,7 +2153,7 @@ export type Database = {
       /** a parte das curtidas que cada um responde (0 a 1) e a mediana em horas; só com 5 curtidas ou mais */
       resposta_de_quem_publica: {
         Args: { p_autores: string[] };
-        Returns: { autor_id: string; taxa: number; horas: number | null }[];
+        Returns: { autor_id: string; taxa: number; horas: number | null; automaticas?: number; diretas?: number }[];
       };
       seguir_bairro: { Args: { p_cidade: string; p_bairro: string }; Returns: undefined };
       recomendar: { Args: { p_profissional: string; p_relacao: string; p_texto: string }; Returns: undefined };

@@ -356,7 +356,7 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                 {m.publicou?.resposta && (
                   <span
                     className={`mt-0.5 block text-caption ${
-                      comoResponde(m.publicou.resposta).bom ? "text-cerrado-text" : "text-ink-muted"
+                      comoResponde(m.publicou.resposta, true).bom ? "text-cerrado-text" : "text-ink-muted"
                     }`}
                   >
                     {comoResponde(m.publicou.resposta, true).texto}

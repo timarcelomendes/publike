@@ -3,7 +3,7 @@ import { cacheLife } from "next/cache";
 import { after } from "next/server";
 import { cache } from "react";
 import type { CamposDaVaga } from "./aderencia";
-import type { Resposta } from "./resposta";
+import { lerResposta, type Resposta } from "./resposta";
 import { lerReputacao, type Reputacao } from "./reputacao";
 import { MODO_DEMO } from "./config";
 import { ETAPAS_CANDIDATO, etapaQueVale, VERSAO_TERMOS, type EtapaCandidato } from "./constantes";
@@ -607,7 +607,7 @@ export async function respostaDeQuemPublica(autores: string[]): Promise<Map<stri
   const { data, error } = await supabase.rpc("resposta_de_quem_publica", { p_autores: ids });
   if (error) falha("quanto cada um responde", error);
   return new Map(
-    (data ?? []).map((r) => [r.autor_id, { taxa: Number(r.taxa), horas: r.horas === null ? null : Number(r.horas) }]),
+    (data ?? []).map((r) => [r.autor_id, lerResposta(r)]),
   );
 }
 

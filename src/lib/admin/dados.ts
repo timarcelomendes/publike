@@ -8,7 +8,7 @@ import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { lerContaApagada, type ContaApagada } from "@/lib/conta-apagada";
 import { motivosParaConferir } from "@/lib/conferir-anuncio";
 import { faltaColuna } from "@/lib/servidor/comeca-ja";
-import type { Resposta } from "@/lib/resposta";
+import { lerResposta, type Resposta } from "@/lib/resposta";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -1200,7 +1200,7 @@ async function respostaDosAutores(c: ClienteBanco, autores: string[]): Promise<M
     return new Map();
   }
   return new Map(
-    (data ?? []).map((r) => [r.autor_id, { taxa: Number(r.taxa), horas: r.horas === null ? null : Number(r.horas) }]),
+    (data ?? []).map((r) => [r.autor_id, lerResposta(r)]),
   );
 }
 
