@@ -10,6 +10,7 @@ import { caminhoConversa } from "@/lib/conversas";
 import {
   curtirAnuncio,
   descurtirAnuncio,
+  salvarMeuWhatsapp,
   type AvisoLigado,
   type ContatoDaCurtida,
   type ConversaDoMatch,
@@ -143,6 +144,10 @@ export function PainelCurtir({
   const [respostas, setRespostas] = useState<Respostas>({});
   const [faltando, setFaltando] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  // o perfil que nasceu pela rede não tem WhatsApp: o número aqui mesmo, e a curtida sai junto
+  const [pedeWhatsapp, setPedeWhatsapp] = useState(false);
+  const [numero, setNumero] = useState("");
+  const campoWhatsapp = useRef<HTMLInputElement>(null);
   // a primeira curtida numa vaga liga o aviso de vaga nova da mesma área
   const [aviso, setAviso] = useState<AvisoLigado | null>(null);
   const [pendente, iniciar] = useTransition();
@@ -175,6 +180,20 @@ export function PainelCurtir({
   // vaga que pede currículo, para quem ainda não mandou: entra o passo do currículo
   const passoDoCurriculo = !servico && pedeCurriculo && temCurriculo === false;
 
+  /** guarda o WhatsApp e curte em seguida */
+  function salvarECurtir() {
+    setErro(null);
+    iniciar(async () => {
+      const r = await chamarAcao(() => salvarMeuWhatsapp(numero));
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      setPedeWhatsapp(false);
+      curtir();
+    });
+  }
+
   function curtir() {
     setErro(null);
     if (!logado) {
@@ -194,7 +213,10 @@ export function PainelCurtir({
     iniciar(async () => {
       const r = await chamarAcao(() => curtirAnuncio(anuncioId, texto, perguntas.length ? respostas : null));
       if (!r.ok) {
-        if ("ir" in r && r.ir) router.push(r.ir);
+        if ("pedirWhatsapp" in r && r.pedirWhatsapp) {
+          setPedeWhatsapp(true);
+          window.setTimeout(() => campoWhatsapp.current?.focus(), 50);
+        } else if ("ir" in r && r.ir) router.push(r.ir);
         else setErro(r.erro);
       } else {
         if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
@@ -448,7 +470,7 @@ export function PainelCurtir({
     >
       {continuar && (
         <p role="status" className="rounded-md bg-like-soft px-3 py-2 text-label text-like-text">
-          {pendente || (sozinha && !erro)
+          {pendente || (sozinha && !erro && !pedeWhatsapp)
             ? `Pronto, você entrou. Enviando ${servico ? "o seu pedido" : "a sua curtida"}…`
             : `Pronto, você entrou. Falta só tocar em “${servico ? "Quero contratar" : "Curtir a vaga"}”.`}
         </p>
@@ -538,19 +560,58 @@ export function PainelCurtir({
           <p className="text-right text-body-sm text-ink-muted">{texto.length}/280</p>
         </div>
       )}
+      {pedeWhatsapp && (
+        <div className="flex flex-col gap-1.5 rounded-md border border-like/40 bg-like-soft/50 p-3">
+          <label htmlFor={`${idCampo}-whatsapp`} className="text-label">
+            Seu WhatsApp, para a empresa chamar você
+          </label>
+          <input
+            ref={campoWhatsapp}
+            id={`${idCampo}-whatsapp`}
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
+            value={numero}
+            onChange={(e) => setNumero(mascaraDoWhatsapp(e.target.value))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                salvarECurtir();
+              }
+            }}
+            placeholder="(62) 99999-0000"
+            className={classesEntrada}
+          />
+          <p className="text-body-sm text-ink-muted">A empresa só vê o número quando der match. Fica no seu perfil.</p>
+        </div>
+      )}
       <button
         ref={botaoCurtir}
         type="button"
-        onClick={curtir}
-        disabled={pendente}
+        onClick={pedeWhatsapp ? salvarECurtir : curtir}
+        disabled={pendente || (pedeWhatsapp && numero.replace(/\D/g, "").length < 10)}
         className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-pill border border-line-strong bg-surface-200 px-5 text-label text-ink transition-colors hover:bg-like-soft hover:text-like-text disabled:opacity-60"
       >
         <Heart aria-hidden className="size-5 text-like" />
-        {pendente ? "Enviando…" : servico ? "Quero contratar" : "Curtir a vaga"}
+        {pendente
+          ? "Enviando…"
+          : pedeWhatsapp
+            ? `Salvar e ${servico ? "pedir o serviço" : "curtir a vaga"}`
+            : servico
+              ? "Quero contratar"
+              : "Curtir a vaga"}
       </button>
       {!logado && <p className="text-center text-body-sm text-ink-muted">Entrar é rápido, sem senha e grátis.</p>}
       {!servico && <NuncaPague />}
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
     </div>
   );
+}
+
+/** "62999990000" → "(62) 99999-0000", enquanto digita */
+function mascaraDoWhatsapp(valor: string) {
+  const d = valor.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
 }

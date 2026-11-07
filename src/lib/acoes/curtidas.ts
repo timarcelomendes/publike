@@ -13,7 +13,7 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { lerCandidatosNovos } from "@/lib/servidor/triagem-automatica";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
-import { lerDesfazerMatch, temContato, UUID } from "@/lib/validacao";
+import { lerDesfazerMatch, normalizarWhatsapp, temContato, UUID } from "@/lib/validacao";
 import { lerRespostas, perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 import { salvarBusca } from "./buscas";
 
@@ -30,6 +30,11 @@ export type ResultadoCurtida = Resultado & {
   contato?: ContatoDaCurtida | null;
   /** deu match (curtindo ou curtindo de novo): a conversa com quem publicou, que a tela abre sozinha no Chat */
   conversa?: ConversaDoMatch | null;
+  /**
+   * falta o WhatsApp de quem curte (o perfil nasceu sozinho pela rede, claude/plano-perfil-sem-cadastro.md): o quadro
+   * da vaga pede o número ali mesmo e curte junto; o cartão leva à vaga (`ir`)
+   */
+  pedirWhatsapp?: boolean;
 };
 
 /** Com quem é a conversa do match (o mesmo pedido do Chat do canto). */
@@ -145,7 +150,17 @@ export async function curtirAnuncio(
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre para curtir.", ir: `/entrar?next=${encodeURIComponent(voltar)}` };
   // o WhatsApp (e, de quem contrata, o e-mail) antes de curtir: a conta antiga sem ele completa agora
-  if (!perfilCompleto(await obterMeuPerfil().catch(() => null))) {
+  const meu = await obterMeuPerfil().catch(() => null);
+  // a pessoa com perfil e sem WhatsApp (nasceu sozinho pela rede): o número ali mesmo, sem o cadastro inteiro
+  if (meu && meu.tipo === "pessoa" && !meu.whatsapp) {
+    return {
+      ok: false,
+      erro: "Ponha o seu WhatsApp para a empresa chamar você.",
+      pedirWhatsapp: true,
+      ir: `/anuncio/${anuncioId}?curtir=auto`,
+    };
+  }
+  if (!perfilCompleto(meu)) {
     return {
       ok: false,
       erro: "Complete seu perfil com um WhatsApp para curtir.",
@@ -448,4 +463,22 @@ export async function salvarEtapaCandidato(
   after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Salvo." };
+}
+
+/**
+ * Só o WhatsApp, na hora de curtir (claude/plano-perfil-sem-cadastro.md): o perfil que nasceu pela rede não tem o
+ * número; o quadro da vaga pede e curte em seguida. Guarda no contato da própria conta (a mesma regra do perfil).
+ */
+export async function salvarMeuWhatsapp(numero: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const whatsapp = normalizarWhatsapp(String(numero ?? ""));
+  if (!/^55[1-9]\d\d{8,9}$/.test(whatsapp)) {
+    return { ok: false, erro: "Confira o número: DDD + número, como (62) 99999-0000." };
+  }
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.from("contatos").update({ whatsapp }).eq("perfil_id", usuario.id);
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para guardar o número agora. Tente de novo.") };
+  return { ok: true, mensagem: "WhatsApp guardado." };
 }
