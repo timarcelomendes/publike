@@ -17,6 +17,11 @@ const EVENTOS = new Set([
   "toque_entrou",
   "convite_mostrou",
   "convite_tocou",
+  // o chat que abre sozinho: o "Deixa comigo" e o da saída (migração 20270303120000)
+  "chat_mostrou",
+  "chat_tocou",
+  "saida_mostrou",
+  "saida_tocou",
 ]);
 
 export async function registrarFunilVisitante(evento: string): Promise<void> {

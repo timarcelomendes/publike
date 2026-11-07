@@ -55,12 +55,13 @@ export function AvatarAssistente({ grande = false }: { grande?: boolean }) {
   );
 }
 
-function Cartao({ c }: { c: CartaoChat }) {
+function Cartao({ c, aoTocar }: { c: CartaoChat; aoTocar?: () => void }) {
   const href = c.tipo === "anuncio" ? `/anuncio/${c.id}` : `/perfil/${c.id}`;
   const Icone = c.tipo === "anuncio" ? Briefcase : Building2;
   return (
     <Link
       href={href}
+      onClick={aoTocar}
       className="group flex items-center gap-3 rounded-lg border border-line bg-surface-200 p-3 shadow-card transition-colors hover:border-line-strong"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-terra-soft text-terra-text">
@@ -150,6 +151,9 @@ export function Conversa({
   autoFoco = false,
   boasVindas = true,
   visitante = false,
+  saida = false,
+  vistas = [],
+  aoUsar,
   className = "",
 }: {
   /** põe o cursor na caixa de texto ao abrir (só no computador: no celular o teclado tapa a tela) */
@@ -158,6 +162,12 @@ export function Conversa({
   boasVindas?: boolean;
   /** quem não entrou: o "Oi!" pergunta se procura vaga ou quer publicar uma (grátis) */
   visitante?: boolean;
+  /** aberto na saída (o mouse foi para fechar a aba): "Antes de ir…" */
+  saida?: boolean;
+  /** na saída: as vagas que a pessoa abriu e não curtiu (no máximo 3) */
+  vistas?: CartaoChat[];
+  /** a primeira vez que a pessoa usa a conversa (perguntou, tocou num botão ou numa vaga): para o funil */
+  aoUsar?: () => void;
   className?: string;
 }) {
   const conversa = useConversa();
@@ -194,6 +204,7 @@ export function Conversa({
     const limpa = pergunta.trim().slice(0, TAMANHO_MENSAGEM_CHAT);
     if (!limpa || pensando) return;
     marcarQueUsouOChat();
+    aoUsar?.();
     const comPergunta: ItemConversa[] = [...conversa, { de: "pessoa", texto: limpa }];
     mudarConversa(comPergunta);
     setTexto("");
@@ -236,7 +247,14 @@ export function Conversa({
         {boasVindas && (
           <div className="flex flex-col items-center gap-2 px-2 pb-1 text-center">
             <AvatarAssistente grande />
-            {visitante ? (
+            {visitante && saida ? (
+              <>
+                <p className="font-display text-h3">
+                  Antes de ir: quer que eu procure uma vaga para você, ou publique a sua de graça?
+                </p>
+                <p className="max-w-xs text-body-sm text-ink-muted">É grátis, e eu faço por você. Você só me conta.</p>
+              </>
+            ) : visitante ? (
               <>
                 <p className="font-display text-h3">
                   {ia.apelido ? `Oi! Sou ${ia.apelido}.` : "Oi!"} Deixa comigo: o que você precisa?
@@ -261,6 +279,15 @@ export function Conversa({
                 Ver todas as perguntas da ajuda
               </Link>
             )}
+          </div>
+        )}
+        {conversa.length === 0 && visitante && saida && vistas.length > 0 && (
+          // as vagas que a pessoa abriu e não curtiu: é só abrir e curtir
+          <div className="flex flex-col gap-2">
+            <p className="px-1 text-caption text-ink-muted uppercase">As vagas que você viu</p>
+            {vistas.map((c) => (
+              <Cartao key={c.id} c={c} aoTocar={aoUsar} />
+            ))}
           </div>
         )}
         {conversa.length === 0 && visitante && (

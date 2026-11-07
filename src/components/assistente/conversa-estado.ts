@@ -66,6 +66,25 @@ export function jaUsouOChat() {
   }
 }
 
+// Quem não entrou e já tocou em Curtir ou foi publicar (neste navegador): o chat da saída não aparece para ele.
+const CHAVE_AGIU = "publike_visitante_agiu";
+
+export function marcarQueAgiu() {
+  try {
+    window.localStorage.setItem(CHAVE_AGIU, "1");
+  } catch {
+    // sem armazenamento: nada a guardar
+  }
+}
+
+export function jaAgiu() {
+  try {
+    return window.localStorage.getItem(CHAVE_AGIU) === "1";
+  } catch {
+    return true;
+  }
+}
+
 // Perguntas que vêm de fora da conversa: a busca da página de ajuda, quando não
 // acha a resposta, manda o que a pessoa digitou para a conversa que está na tela.
 

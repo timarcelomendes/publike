@@ -17,6 +17,9 @@ const TOQUES = [
 const CONVITES = [
   { mostrou: "toque_mostrou", fez: "toque_entrou", nome: "Entrar com o Google num toque", verbo: "entraram" },
   { mostrou: "convite_mostrou", fez: "convite_tocou", nome: "Convite das vagas vistas", verbo: "tocaram" },
+  // o chat que abre sozinho (claude/plano-ajuda-chat-e-descobrir.md): "tocaram" é perguntar ou tocar num botão
+  { mostrou: "chat_mostrou", fez: "chat_tocou", nome: "Chat abriu sozinho (Deixa comigo)", verbo: "usaram" },
+  { mostrou: "saida_mostrou", fez: "saida_tocou", nome: "Chat na saída (Antes de ir)", verbo: "usaram" },
 ];
 
 const pct = (n: number, de: number) => (de > 0 ? `${Math.round((100 * n) / de)}%` : "–");

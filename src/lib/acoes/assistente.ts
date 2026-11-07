@@ -1,8 +1,9 @@
 "use server";
 
-import { LIMITES_CHAT, TAMANHO_MENSAGEM_CHAT, type MensagemChat, type RespostaChat } from "@/lib/assistente";
+import { LIMITES_CHAT, TAMANHO_MENSAGEM_CHAT, type CartaoChat, type MensagemChat, type RespostaChat } from "@/lib/assistente";
 import { MODO_DEMO } from "@/lib/config";
-import { obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { obterAnuncio, obterMeuPerfil, obterUsuario } from "@/lib/dados";
+import { formatarLugar, valorDoAnuncio } from "@/lib/formato";
 import { ErroIA } from "@/lib/ia/openai";
 import { obterLocal } from "@/lib/local";
 import { assistenteDisponivel, responderAssistente } from "@/lib/servidor/assistente";
@@ -91,4 +92,26 @@ export async function perguntarAoAssistente(historico: unknown): Promise<Respost
       erro: e instanceof ErroIA ? "O assistente não conseguiu responder agora. Tente de novo em instantes." : DESLIGADO,
     };
   }
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * O chat da saída ("Antes de ir…"): as vagas que a pessoa abriu neste aparelho e não curtiu (a lista fica no
+ * navegador, em publike_vagas_vistas). Só as que ainda estão no ar e abertas; no máximo 3.
+ */
+export async function vagasVistasParaOChat(ids: unknown): Promise<CartaoChat[]> {
+  if (MODO_DEMO || !Array.isArray(ids)) return [];
+  const validos = [...new Set(ids.filter((id): id is string => typeof id === "string" && UUID.test(id)))].slice(0, 6);
+  const anuncios = await Promise.all(validos.map((id) => obterAnuncio(id).catch(() => null)));
+  return anuncios
+    .filter((a) => a && a.tipo === "vaga" && a.status === "ativo" && !a.preenchida_em && !a.minha_curtida)
+    .slice(0, 3)
+    .map((a) => ({
+      tipo: "anuncio" as const,
+      id: a!.id,
+      titulo: a!.titulo,
+      linha: [a!.contratante ?? a!.autor_nome, formatarLugar(a!.bairro, a!.cidade)].filter(Boolean).join(" · "),
+      valor: valorDoAnuncio(a!),
+    }));
 }

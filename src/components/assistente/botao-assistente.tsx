@@ -15,7 +15,17 @@ import {
 import { esperandoBoasVindas } from "../boas-vindas-parceiro";
 import { PainelConversas, useConversasDoChat } from "../conversa/janela-mensagens";
 import { Conversa } from "./conversa";
-import { jaUsouOChat, marcarQueUsouOChat, mudarConversa, useConversa } from "./conversa-estado";
+import { vagasVistasParaOChat } from "@/lib/acoes/assistente";
+import { registrarFunilVisitante } from "@/lib/acoes/funil-visitante";
+import type { CartaoChat } from "@/lib/assistente";
+import {
+  jaAgiu,
+  jaUsouOChat,
+  marcarQueAgiu,
+  marcarQueUsouOChat,
+  mudarConversa,
+  useConversa,
+} from "./conversa-estado";
 
 // Onde o botão não aparece: o admin, a entrada pelo link e o Descobrir (os botões
 // de curtir ficam embaixo).
@@ -30,6 +40,36 @@ const CONVITE_A_CADA = 7 * 24 * 60 * 60 * 1000;
 const ESPERA_DO_CONVITE = 12_000;
 const SEM_CONVITE =
   /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|email|versao|vagas\/|empresas|ajuda|descobrir|sugerir|candidatura|convite|acesso)/;
+
+// O chat na saída ("Antes de ir…"): no computador, quando o mouse sai pelo alto da janela (o gesto de quem vai
+// fechar a aba), para quem não entrou, não curtiu nem foi publicar, está há 20 s ou mais no site e não usou o chat.
+// Conta junto com o convite dos 7 dias (um ou outro). Não aparece no meio de entrar, publicar ou da conta.
+const SEM_SAIDA = /^\/(admin|auth|avisos|entrar|perfil|painel|publicar|email|versao|ajuda|candidatura|convite|acesso)/;
+const CHAVE_CHEGOU = "publike_visita_desde";
+const TEMPO_PARA_A_SAIDA = 20_000;
+
+function chegouHa() {
+  try {
+    const desde = Number(window.sessionStorage.getItem(CHAVE_CHEGOU) ?? 0);
+    if (desde) return Date.now() - desde;
+    window.sessionStorage.setItem(CHAVE_CHEGOU, String(Date.now()));
+  } catch {
+    // sem armazenamento: conta desde esta página
+  }
+  return 0;
+}
+
+/** As vagas abertas neste aparelho (a lista de convite-das-vagas-vistas.tsx), da mais recente para a mais antiga. */
+function idsDasVagasVistas(): string[] {
+  try {
+    const lista = JSON.parse(window.localStorage.getItem("publike_vagas_vistas") ?? "[]");
+    return Array.isArray(lista)
+      ? lista.flatMap((v) => (v && typeof v.id === "string" ? [v.id] : [])).slice(0, 6)
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 function podeConvidar() {
   // quem já usou o chat (abriu pelo botão ou perguntou) já sabe que ele existe: não abre mais sozinho
@@ -135,11 +175,18 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
   const [pedida, setPedida] = useState<PedidoConversa | null>(null);
   // aberto sozinho (o convite de quem não entrou): sem pôr o cursor na caixa de texto
   const [sozinho, setSozinho] = useState(false);
+  // por que abriu sozinho: o convite dos 7 dias ou a saída (o funil conta o "mostrou" e o "usou" de cada um)
+  const [motivo, setMotivo] = useState<"convite" | "saida" | null>(null);
+  const [vistas, setVistas] = useState<CartaoChat[]>([]);
+  const usou = useRef(false);
 
   function abrir(conversaPedida: PedidoConversa | null = null, porConta = false) {
     setSozinho(porConta);
     // aberto pela pessoa (o botão, o ícone do cabeçalho): ela já conhece o chat
-    if (!porConta) marcarQueUsouOChat();
+    if (!porConta) {
+      marcarQueUsouOChat();
+      setMotivo(null);
+    }
     setPedida(conversaPedida);
     setAba(conversaPedida || naoLidas > 0 || !ajuda ? "conversas" : "ajuda");
     // um passo a mais no histórico: o "voltar" fecha a conversa
@@ -184,7 +231,10 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
       document.activeElement instanceof HTMLSelectElement;
     if (ocupado) return false;
     guardarConvite();
+    usou.current = false;
+    setMotivo("convite");
     abrir(null, true);
+    void registrarFunilVisitante("chat_mostrou").catch(() => {});
     return true;
   });
   useEffect(() => {
@@ -195,6 +245,52 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
     }, ESPERA_DO_CONVITE);
     return () => window.clearTimeout(espera);
   }, [usuarioId, ajuda, caminho]);
+
+  // quem não entrou e tocou em Curtir ou foi publicar: já agiu (o chat da saída não aparece para ele)
+  useEffect(() => {
+    if (usuarioId) return;
+    if (caminho.startsWith("/publicar")) marcarQueAgiu();
+    chegouHa();
+    const clicou = (e: MouseEvent) => {
+      if (!(e.target instanceof Element)) return;
+      if (e.target.closest('[data-funil="curtir"]')) return marcarQueAgiu();
+      const link = e.target.closest<HTMLAnchorElement>("a[href]");
+      if (link && new URL(link.href, window.location.href).pathname === "/publicar") marcarQueAgiu();
+    };
+    document.addEventListener("click", clicou, true);
+    return () => document.removeEventListener("click", clicou, true);
+  }, [usuarioId, caminho]);
+
+  // a saída: o mouse sai pelo alto da janela
+  const tentarSaida = useEffectEvent(async () => {
+    if (aberto || conversa.length > 0 || jaAgiu() || !podeConvidar() || chegouHa() < TEMPO_PARA_A_SAIDA) return;
+    if (document.querySelector('[aria-modal="true"], dialog[open]') !== null) return;
+    // marca antes de buscar as vagas: o mouse indo e voltando não abre duas vezes
+    guardarConvite();
+    const ids = idsDasVagasVistas();
+    const cartoes = ids.length ? await vagasVistasParaOChat(ids).catch(() => []) : [];
+    usou.current = false;
+    setVistas(cartoes);
+    setMotivo("saida");
+    abrir(null, true);
+    void registrarFunilVisitante("saida_mostrou").catch(() => {});
+  });
+  useEffect(() => {
+    if (usuarioId || !ajuda || SEM_SAIDA.test(caminho)) return;
+    if (!window.matchMedia("(min-width: 768px) and (pointer: fine)").matches || !podeConvidar()) return;
+    const saiu = (e: MouseEvent) => {
+      if (!e.relatedTarget && e.clientY <= 0) void tentarSaida();
+    };
+    document.documentElement.addEventListener("mouseleave", saiu);
+    return () => document.documentElement.removeEventListener("mouseleave", saiu);
+  }, [usuarioId, ajuda, caminho]);
+
+  // a primeira vez que a pessoa usa o chat que abriu sozinho: o "usou" do funil
+  function aoUsar() {
+    if (!motivo || usou.current) return;
+    usou.current = true;
+    void registrarFunilVisitante(motivo === "saida" ? "saida_tocou" : "chat_tocou").catch(() => {});
+  }
 
   // o ícone do cabeçalho mostra o mesmo número
   useEffect(() => {
@@ -363,7 +459,14 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
             </div>
             {aba === "ajuda" ? (
               ajuda ? (
-                <Conversa autoFoco={!sozinho} visitante={!usuarioId} className="flex-1" />
+                <Conversa
+                  autoFoco={!sozinho}
+                  visitante={!usuarioId}
+                  saida={motivo === "saida"}
+                  vistas={motivo === "saida" ? vistas : []}
+                  aoUsar={aoUsar}
+                  className="flex-1"
+                />
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
                   <p className="text-body-sm text-ink-muted">
