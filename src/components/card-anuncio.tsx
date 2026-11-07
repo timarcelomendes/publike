@@ -375,7 +375,8 @@ export function CardAnuncio({
               {respostaDaVaga && (
                 <>
                   <MessageCircleReply aria-hidden className="size-4 shrink-0" />
-                  <span className="truncate">{respostaDaVaga.texto}</span>
+                  {/* quebra em duas linhas ("Costuma responder / no mesmo dia") em vez de cortar com "…" */}
+                  <span className="line-clamp-2 leading-tight">{respostaDaVaga.texto}</span>
                 </>
               )}
             </span>
