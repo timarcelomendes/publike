@@ -3,6 +3,7 @@ import { obterMeuPerfil, obterUsuario, perfilParaEntrar } from "@/lib/dados";
 import { caminhoSeguro } from "@/lib/formato";
 import { COOKIE_ORIGEM } from "@/lib/origem";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
+import { criarPerfilSozinho } from "@/lib/servidor/perfil-sozinho";
 
 // Depois de entrar: quem ainda não tem perfil com WhatsApp vai completar;
 // os outros seguem para onde estavam indo.
@@ -20,8 +21,12 @@ export async function GET(request: NextRequest) {
   await registrarOrigemDaConta(origem ?? url.searchParams.get("origem"));
 
   const perfil = await obterMeuPerfil();
+  // conta nova pela rede (Google, LinkedIn), procurando trabalho: o perfil nasce sozinho, sem a tela do cadastro
+  const nasceu = !perfil && (await criarPerfilSozinho(proximo));
   const resposta = NextResponse.redirect(
-    perfilParaEntrar(perfil) ? `${base}${proximo}` : `${base}/perfil?completar=1&next=${encodeURIComponent(proximo)}`,
+    nasceu || perfilParaEntrar(perfil)
+      ? `${base}${proximo}`
+      : `${base}/perfil?completar=1&next=${encodeURIComponent(proximo)}`,
   );
   // já serviu: quem entra de novo depois não conta outra vez
   if (origem !== undefined) resposta.cookies.delete(COOKIE_ORIGEM);

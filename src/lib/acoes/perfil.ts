@@ -20,6 +20,7 @@ import { apagarArquivosDaPessoa } from "@/lib/servidor/arquivos";
 import { registrarOrigemDaConta } from "@/lib/servidor/origem";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
+import { criarPerfilSozinho } from "@/lib/servidor/perfil-sozinho";
 import { atualizarCabecalho } from "@/lib/servidor/atualizar-cabecalho";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
@@ -227,6 +228,8 @@ export async function irDepoisDoLogin(proximo: string) {
   }
   const perfil = await obterMeuPerfil();
   atualizarCabecalho();
+  // conta nova pela rede, procurando trabalho: o perfil nasce sozinho (lib/servidor/perfil-sozinho.ts)
+  if (!perfil && (await criarPerfilSozinho(destino))) redirect(destino);
   if (!perfilParaEntrar(perfil)) redirect(`/perfil?completar=1&next=${encodeURIComponent(destino)}`);
   redirect(destino);
 }
