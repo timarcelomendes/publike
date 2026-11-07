@@ -23,7 +23,8 @@ import { Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
-import { obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
+import { minhaReputacao, obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
+import { indicadores, MINIMO_DE_CURTIDAS } from "@/lib/reputacao";
 import { ateQuando, formatarMoeda, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { comoResponde } from "@/lib/resposta";
@@ -132,7 +133,7 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas, passadas }, respostas, completas, colocacoes, caminho, equipe] = await Promise.all([
+  const [{ visitas, entrevistas, passadas }, respostas, completas, colocacoes, caminho, equipe, reputacao] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -143,6 +144,7 @@ export async function PainelRecrutador({
     agencia ? colocacoesDasVagas().then((m) => [...m.values()]) : Promise.resolve([]),
     caminhoDaConta(),
     agencia ? equipeDaConta().catch(() => null) : Promise.resolve(null),
+    minhaReputacao().catch(() => null),
   ]);
   // a saúde das vagas no ar: a mesma do quadro de cada vaga
   const saudes = await saudeDasVagas(
@@ -835,33 +837,52 @@ export async function PainelRecrutador({
                 )}
               </section>
 
-              <section aria-labelledby="selo" className="flex flex-col gap-2 rounded-lg bg-surface-300 p-4 sm:p-5">
-                <h2 id="selo" className="text-h3">
-                  Seu selo na busca
-                </h2>
-                {responde ? (
+              {/* a reputação (claude/plano-reputacao-de-quem-contrata.md): o que quem procura sente, em três números */}
+              <section aria-labelledby="reputacao" className="flex flex-col gap-3 rounded-lg bg-surface-300 p-4 sm:p-5">
+                <div className="flex flex-col gap-0.5">
+                  <h2 id="reputacao" className="text-h3">
+                    Sua reputação no Publike
+                  </h2>
+                  <p className="text-body-sm text-ink-muted">Como os candidatos são tratados nas suas vagas, nos últimos 90 dias.</p>
+                </div>
+                {reputacao && reputacao.curtidas >= MINIMO_DE_CURTIDAS && indicadores(reputacao).length > 0 ? (
                   <>
-                    <p
-                      className={`flex items-center gap-2 text-label ${responde.bom ? "text-cerrado-text" : "text-ink"}`}
-                    >
-                      <MessageCircleReply aria-hidden className="size-4 shrink-0" />
-                      {responde.texto}
-                    </p>
-                    <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-line">
-                      <span
-                        className={responde.bom ? "bg-cerrado" : "bg-ipe"}
-                        style={{ width: `${Math.round(100 * (resposta?.taxa ?? 0))}%` }}
-                      />
-                    </span>
-                    <p className="text-body-sm text-ink-muted">
-                      Quem procura vê isso no cartão das suas vagas.
-                      {pendentes.length > 0 && " Responda quem espera para manter o selo."}
-                    </p>
+                    <ul className="flex flex-col gap-3">
+                      {indicadores(reputacao).map((i) => (
+                        <li key={i.chave} className="flex flex-col gap-1">
+                          <p className="flex items-baseline justify-between gap-3">
+                            <span className="text-label">{i.nome}</span>
+                            <span className={`text-label tabular-nums ${i.bom ? "text-cerrado-text" : "text-ink"}`}>
+                              {Math.round(i.taxa * 100)}%
+                            </span>
+                          </p>
+                          <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-line">
+                            <span className={i.bom ? "bg-cerrado" : "bg-ipe"} style={{ width: `${Math.round(100 * i.taxa)}%` }} />
+                          </span>
+                          <p className="text-body-sm">
+                            {i.texto}
+                            {i.comparacao && <span className="text-ink-muted">: {i.comparacao}</span>}.
+                          </p>
+                          {!i.bom && <p className="text-body-sm text-ink-muted">{i.dica}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                    {responde && (
+                      <p
+                        className={`flex items-center gap-2 border-t border-line pt-3 text-body-sm ${responde.bom ? "text-cerrado-text" : "text-ink-muted"}`}
+                      >
+                        <MessageCircleReply aria-hidden className="size-4 shrink-0" />
+                        No cartão das suas vagas, quem procura vê: “{responde.texto}”.
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p className="text-body-sm text-ink-muted">
-                    Com 5 curtidas nas suas vagas, quem procura passa a ver quanto você costuma responder. Responder em
-                    até 1 dia dá o selo verde.
+                    {reputacao && reputacao.curtidas > 0
+                      ? `Faltam ${MINIMO_DE_CURTIDAS - reputacao.curtidas} curtidas para a sua reputação aparecer. `
+                      : `Com ${MINIMO_DE_CURTIDAS} curtidas nas suas vagas, a sua reputação aparece aqui. `}
+                    Responder em até 1 dia, acompanhar quem deu match e dar retorno no fim fazem a sua vaga ser mais
+                    procurada.
                   </p>
                 )}
               </section>

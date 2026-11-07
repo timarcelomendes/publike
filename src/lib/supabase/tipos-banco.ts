@@ -1327,6 +1327,44 @@ export type Database = {
         Args: { p_intencao: string };
         Returns: undefined;
       };
+      /** a reputação da conta (migração 20270227120000) */
+      minha_reputacao: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          curtidas: number;
+          responde: number | null;
+          base_resposta: number;
+          horas: number | null;
+          acompanha: number | null;
+          base_acompanha: number;
+          retorno: number | null;
+          base_retorno: number;
+          melhor_responde: number | null;
+          melhor_rapidez: number | null;
+          melhor_acompanha: number | null;
+          melhor_retorno: number | null;
+          comparadas: number;
+        }[];
+      };
+      servidor_reputacao: {
+        Args: { p_chave: string; p_contas: string[] };
+        Returns: ({
+          conta_id: string;
+          curtidas: number;
+          responde: number | null;
+          base_resposta: number;
+          horas: number | null;
+          acompanha: number | null;
+          base_acompanha: number;
+          retorno: number | null;
+          base_retorno: number;
+          melhor_responde: number | null;
+          melhor_rapidez: number | null;
+          melhor_acompanha: number | null;
+          melhor_retorno: number | null;
+          comparadas: number;
+        })[];
+      };
       curtidas_das_vagas: {
         Args: { p_ids: string[] };
         Returns: { anuncio_id: string; curtidas: number | null; matches?: number | null; ultima: string }[];

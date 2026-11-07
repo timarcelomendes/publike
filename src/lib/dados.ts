@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { cache } from "react";
 import type { CamposDaVaga } from "./aderencia";
 import type { Resposta } from "./resposta";
+import { lerReputacao, type Reputacao } from "./reputacao";
 import { MODO_DEMO } from "./config";
 import { ETAPAS_CANDIDATO, etapaQueVale, VERSAO_TERMOS, type EtapaCandidato } from "./constantes";
 import * as demo from "./demo";
@@ -585,6 +586,18 @@ export const obterMeuCurriculo = cache(async (): Promise<Curriculo | null> => {
     ? { ...data, experiencias: lerExperiencias(data.experiencias), estudos: estudosDoBanco(data.estudos) }
     : null;
 });
+
+/** A reputação da conta de quem entrou (claude/plano-reputacao-de-quem-contrata.md). Sem a migração: null. */
+export async function minhaReputacao(): Promise<Reputacao | null> {
+  if (MODO_DEMO) return null;
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("minha_reputacao");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler a reputação: ${error.message}`);
+    return null;
+  }
+  return data?.[0] ? lerReputacao(data[0]) : null;
+}
 
 /** O jeito de responder de cada um (só quem tem 5 curtidas ou mais nos últimos 180 dias). */
 export async function respostaDeQuemPublica(autores: string[]): Promise<Map<string, Resposta>> {

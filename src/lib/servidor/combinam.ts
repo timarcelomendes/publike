@@ -1,4 +1,5 @@
 import "server-only";
+import { lerReputacao, reputacaoNoEmail } from "@/lib/reputacao";
 import { matchComAVaga, type Aderencia, type CamposDaVaga, type Candidato } from "@/lib/aderencia";
 import { formatarLugar } from "@/lib/formato";
 import { pracaDaCidade } from "@/lib/pracas";
@@ -356,6 +357,24 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
     if (eResumo && eResumo.code !== "PGRST202") falhas.push(eResumo.message);
     for (const v of eResumo ? [] : (vagasNoAr ?? [])) numeros.set(v.conta_id, [...(numeros.get(v.conta_id) ?? []), v]);
   }
+  // a reputação de cada conta (claude/plano-reputacao-de-quem-contrata.md), no fim do resumo; sem a migração
+  // 20270227120000, sai sem ela
+  const reputacoes = new Map<string, string>();
+  if (!eTalentos && empresas?.length) {
+    const { data: reps, error: eRep } = await cliente.rpc("servidor_reputacao", {
+      p_chave: chave,
+      p_contas: empresas.map((e) => e.perfil_id),
+    });
+    if (eRep && eRep.code !== "PGRST202") falhas.push(eRep.message);
+    for (const r of eRep ? [] : (reps ?? [])) {
+      const texto = reputacaoNoEmail(lerReputacao(r));
+      if (texto) reputacoes.set(r.conta_id, texto);
+    }
+  }
+  const comReputacao = (conta: string, texto: string) => {
+    const rep = reputacoes.get(conta);
+    return rep ? `${texto}${texto ? "\n\n" : ""}Sua reputação no Publike (últimos 90 dias):\n${rep}` : texto;
+  };
   const cbosDasEmpresas = await cboDasVagas(eTalentos ? [] : (empresas ?? []).map((e) => e.vagas));
   for (const e of eTalentos ? [] : (empresas ?? [])) {
     const resumo = resumoDasVagas(numeros.get(e.perfil_id) ?? []);
@@ -371,7 +390,7 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
     if (!boas.length && resumo?.movimento) {
       await registrar(e.perfil_id, "talentos_semana", [], resumo.sino, {
         so_resumo: "1",
-        resumo: resumo.texto,
+        resumo: comReputacao(e.perfil_id, resumo.texto),
         destaque: resumo.destaque,
         vaga_id: resumo.vaga.anuncio_id,
         caminho: `/painel/anuncio/${resumo.vaga.anuncio_id}/quadro`,
@@ -385,7 +404,7 @@ export async function mandarCombinamDaSemana({ simular = false } = {}): Promise<
       `${n} com as suas vagas, na aba Talentos: ${nomesCurtos(boas.map((x) => x.t.nome))}`,
       {
         quantas: n,
-        resumo: resumo?.texto ?? "",
+        resumo: comReputacao(e.perfil_id, resumo?.texto ?? ""),
         lista: boas
           .map((x) => {
             const faz = oQueFaz(x.t.cv);
