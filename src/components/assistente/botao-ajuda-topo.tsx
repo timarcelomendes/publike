@@ -16,10 +16,11 @@ export function BotaoAjudaTopo() {
       aria-haspopup="dialog"
       data-assistente="topo"
       onClick={() => pedirChat() || router.push("/ajuda")}
-      className="flex size-11 items-center justify-center rounded-pill text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink md:hidden"
+      className="flex min-h-11 items-center justify-center gap-1.5 rounded-pill px-2.5 text-label text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink md:hidden"
     >
-      <CircleHelp aria-hidden className="size-5" />
-      <span className="sr-only">Ajuda</span>
+      <CircleHelp aria-hidden className="size-5 shrink-0" />
+      {/* a palavra junto do ícone: só o "?" passava batido */}
+      Ajuda
     </button>
   );
 }

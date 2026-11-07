@@ -252,14 +252,19 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
             soIcone ? "px-3.5" : "px-4"
           } ${escondido ? "pointer-events-none translate-y-24 opacity-0" : ""}`}
         >
-          <MessagesSquare aria-hidden className="size-5 shrink-0" />
+          {/* quem não entrou não tem conversas (só nascem no match): o botão é a ajuda, "Quer ajuda?" */}
+          {usuarioId ? (
+            <MessagesSquare aria-hidden className="size-5 shrink-0" />
+          ) : (
+            <MessageCircleQuestion aria-hidden className="size-5 shrink-0" />
+          )}
           {/* recolhido, o texto some da tela mas continua sendo o nome do botão */}
           <span
             className={`overflow-hidden whitespace-nowrap transition-[max-width,margin-left,opacity] duration-200 motion-reduce:transition-none ${
               soIcone ? "ml-0 max-w-0 opacity-0" : "ml-2 max-w-36 opacity-100"
             }`}
           >
-            Chat
+            {usuarioId ? "Chat" : "Quer ajuda?"}
           </span>
           {naoLidas > 0 && (
             <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-pill bg-like px-1.5 text-caption text-surface-100 tabular-nums">
@@ -276,7 +281,15 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={ia.apelido ? `Chat do Publike, com ${ia.apelido}` : "Chat do Publike"}
+            aria-label={
+              usuarioId
+                ? ia.apelido
+                  ? `Chat do Publike, com ${ia.apelido}`
+                  : "Chat do Publike"
+                : ia.apelido
+                  ? `Ajuda do Publike, com ${ia.apelido}`
+                  : "Ajuda do Publike"
+            }
             style={estilo}
             // um link da conversa leva para outra página: a conversa fecha
             onClickCapture={(e) => {
@@ -287,6 +300,13 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
             <div className="shrink-0 border-b border-line bg-surface-200">
               <div aria-hidden className="mx-auto mt-2 h-1 w-10 rounded-pill bg-line-strong/60 md:hidden" />
               <div className="flex items-center gap-2 px-3 py-2">
+                {/* sem conta, sem a aba Conversas (vazia até o primeiro match): só o nome da ajuda */}
+                {!usuarioId ? (
+                  <p className="inline-flex min-h-10 min-w-0 flex-1 items-center gap-1.5 px-1.5 text-label">
+                    <MessageCircleQuestion aria-hidden className="size-4 shrink-0 text-terra-text" />
+                    Ajuda do Publike
+                  </p>
+                ) : (
                 <div role="tablist" aria-label="Chat" className="flex min-w-0 flex-1 gap-1">
                   {(
                     [
@@ -315,6 +335,7 @@ export function BotaoAssistente({ ajuda, usuarioId }: { ajuda: boolean; usuarioI
                     </button>
                   ))}
                 </div>
+                )}
                 {aba === "ajuda" && conversa.length > 0 && (
                   <button
                     type="button"
