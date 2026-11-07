@@ -245,9 +245,13 @@ export function CarrosselDoInstagram({
           </section>
 
           <section aria-labelledby="dia-legenda" className="flex flex-col gap-2">
-            <h3 id="dia-legenda" className="text-label">
-              Legenda
-            </h3>
+            {/* o copiar junto da legenda: no celular, o botão do alto fica longe daqui */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 id="dia-legenda" className="text-label">
+                Legenda
+              </h3>
+              <BotaoCopiar texto={legenda} rotulo="Copiar a legenda" />
+            </div>
             <label htmlFor="dia-legenda-texto" className="sr-only">
               Legenda pronta
             </label>
