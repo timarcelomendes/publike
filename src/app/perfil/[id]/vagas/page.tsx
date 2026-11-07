@@ -8,6 +8,8 @@ import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { Container, Esqueleto, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { VagasAgrupadas, type GrupoDeVagas } from "@/components/vagas-da-empresa/agrupadas";
+import { BuscaDasVagas } from "@/components/vagas-da-empresa/busca";
 import { VagasEmLinhas } from "@/components/vagas-da-empresa/linhas";
 import { TopoDaEmpresa } from "@/components/vagas-da-empresa/topo";
 import { SITE_URL } from "@/lib/config";
@@ -16,7 +18,7 @@ import { semAcento } from "@/lib/descobrir";
 import { obterPerfilPublico, obterUsuario, requisitosDasVagas, type DetalhesDaVaga } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
 import { formatarLugar, plural } from "@/lib/formato";
-import { corLegivel, corValida } from "@/lib/marca";
+import { corLegivel, corValida, textoSobre } from "@/lib/marca";
 import { extrasDe, matchDasVagas, quemProcura } from "@/lib/servidor/lista-anuncios";
 import { marcaDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -159,6 +161,15 @@ async function Conteudo({
   const emLinhas = filtros.ver ? filtros.ver === "linhas" : vagas.length > 6;
   const agencia = perfil.tipo === "agencia";
   const empresas = agencia ? new Set(vagas.map((a) => a.contratante).filter(Boolean)).size : 0;
+  const base = `/perfil/${perfil.id}/vagas`;
+  const cor = corValida(marca?.cor) ? marca.cor : null;
+  // a busca grande (parte 4): com 4 vagas ou mais, no lugar da busca pequena e da lista de bairros
+  const buscaGrande = vagas.length >= 4;
+  // as vagas em destaque (parte 4): as escolhidas que ainda estão no ar, na ordem; só sem filtro
+  const porId = new Map(comCurtida.map((a) => [a.id, a]));
+  const destaques = filtrando
+    ? []
+    : (marca?.destaques ?? []).map((d) => porId.get(d)).filter((a): a is (typeof comCurtida)[number] => Boolean(a));
   const whatsapp = `https://wa.me/?text=${encodeURIComponent(
     textoDasVagas(perfil.nome, vagas, linkDasVagas(SITE_URL, perfil.id, "whatsapp", marca?.apelido)),
   )}`;
@@ -195,9 +206,51 @@ async function Conteudo({
         />
       </div>
 
-      {vagas.length > 1 && <FiltrosDasVagas base={`/perfil/${perfil.id}/vagas`} vagas={vagas} filtros={filtros} />}
+      {buscaGrande && (
+        <BuscaDasVagas
+          base={base}
+          q={filtros.q}
+          bairro={filtros.bairro}
+          bairros={contar(vagas, (a) => a.bairro)}
+          manter={{ area: filtros.area, regime: filtros.regime, ver: filtros.ver }}
+          cor={cor}
+          textoSobreCor={cor ? textoSobre(cor) : "#ffffff"}
+        />
+      )}
 
-      <div className="mt-6">
+      {destaques.length > 0 && (
+        <section aria-labelledby="vagas-destaque" className="mt-8 flex flex-col gap-3">
+          <h2 id="vagas-destaque" className="font-display text-h3" style={cor ? { color: corLegivel(cor) } : undefined}>
+            Vagas em destaque
+          </h2>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {destaques.map((a) => (
+              <li key={a.id} className="contents">
+                <CardAnuncio
+                  anuncio={{ ...a, autor_foto: perfil.foto }}
+                  agora={agora}
+                  usuarioId={usuario?.id ?? null}
+                  extras={extrasDe(detalhes.get(a.id))}
+                  match={matches.get(a.id) ?? null}
+                  semAutor
+                  para={agencia ? paraQuem(a) : null}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {vagas.length > 1 && (
+        <FiltrosDasVagas base={base} vagas={vagas} filtros={filtros} semBuscaEBairro={buscaGrande} />
+      )}
+
+      {destaques.length > 0 && (
+        <h2 className="mt-8 font-display text-h3">
+          Todas as vagas <span className="text-ink-muted tabular-nums">{vagas.length}</span>
+        </h2>
+      )}
+      <div className={destaques.length > 0 ? "mt-3" : "mt-6"}>
         {filtrando && (
           <p role="status" className="mb-3 text-body-sm text-ink-muted">
             {mostradas.length
@@ -256,6 +309,8 @@ async function Conteudo({
         )}
       </div>
 
+      {!filtrando && vagas.length >= 6 && <VagasAgrupadas grupos={gruposDas(vagas, base, filtros)} cor={cor ? corLegivel(cor) : null} />}
+
       <p className="mt-8 text-body-sm text-ink-muted">
         Para se candidatar, abra a vaga e toque em Curtir. O Publike é grátis para quem procura trabalho.
       </p>
@@ -274,7 +329,18 @@ function linkPara(base: string, f: Filtros, campo: keyof Filtros, valor: string)
  * Os filtros numa linha (01/11/2026): a busca por palavra (com 6 vagas ou mais) e uma lista que abre para cada
  * grupo que separa alguma coisa (a área, a contratação e o bairro), com quantas vagas tem cada opção.
  */
-function FiltrosDasVagas({ base, vagas, filtros }: { base: string; vagas: AnuncioDoPerfil[]; filtros: Filtros }) {
+function FiltrosDasVagas({
+  base,
+  vagas,
+  filtros,
+  semBuscaEBairro = false,
+}: {
+  base: string;
+  vagas: AnuncioDoPerfil[];
+  filtros: Filtros;
+  /** com a busca grande no alto (a palavra e o bairro já estão lá) */
+  semBuscaEBairro?: boolean;
+}) {
   const grupos = [
     {
       campo: "area" as const,
@@ -294,8 +360,10 @@ function FiltrosDasVagas({ base, vagas, filtros }: { base: string; vagas: Anunci
       todas: "Todos os bairros",
       opcoes: contar(vagas, (a) => a.bairro).map(([v, n]) => ({ v, nome: v, n })),
     },
-  ].filter((g) => g.opcoes.length > 1 || g.opcoes.some((o) => o.v === filtros[g.campo]));
-  const busca = vagas.length >= 6 || Boolean(filtros.q);
+  ]
+    .filter((g) => !(semBuscaEBairro && g.campo === "bairro"))
+    .filter((g) => g.opcoes.length > 1 || g.opcoes.some((o) => o.v === filtros[g.campo]));
+  const busca = !semBuscaEBairro && (vagas.length >= 6 || Boolean(filtros.q));
   if (!busca && !grupos.length) return null;
   return (
     <section aria-label="Filtrar as vagas" className="mt-6 flex flex-wrap items-center gap-2">
@@ -343,6 +411,42 @@ function FiltrosDasVagas({ base, vagas, filtros }: { base: string; vagas: Anunci
       ))}
     </section>
   );
+}
+
+/** "VENDEDOR DE PEÇAS" → "Vendedor de peças": o cargo escrito todo em maiúsculas fica mais leve na lista. */
+function semGritar(t: string) {
+  return t === t.toUpperCase() && /[A-ZÀ-Ú]{3}/.test(t) ? t.charAt(0) + t.slice(1).toLowerCase() : t;
+}
+
+/** Os grupos (parte 4): por bairro, por área e por cargo, com quantas vagas tem cada um e o link já filtrado. */
+function gruposDas(vagas: AnuncioDoPerfil[], base: string, f: Filtros): GrupoDeVagas[] {
+  // o cargo: o título sem diferença de maiúsculas e espaços
+  const cargos = new Map<string, { nome: string; n: number }>();
+  for (const a of vagas) {
+    const chave = semAcento(a.titulo).replace(/\s+/g, " ").trim();
+    const atual = cargos.get(chave);
+    cargos.set(chave, { nome: atual?.nome ?? semGritar(a.titulo.trim()), n: (atual?.n ?? 0) + 1 });
+  }
+  return [
+    {
+      titulo: "Por bairro",
+      itens: contar(vagas, (a) => a.bairro).map(([v, n]) => ({ nome: v, n, href: linkPara(base, f, "bairro", v) })),
+    },
+    {
+      titulo: "Por área",
+      itens: contar(vagas, (a) => a.categoria).map(([v, n]) => ({
+        nome: categoria(v).nome,
+        n,
+        href: linkPara(base, f, "area", v),
+      })),
+    },
+    {
+      titulo: "Por cargo",
+      itens: [...cargos.values()]
+        .sort((x, y) => y.n - x.n || x.nome.localeCompare(y.nome, "pt-BR"))
+        .map((c) => ({ nome: c.nome, n: c.n, href: linkPara(base, f, "q", c.nome) })),
+    },
+  ];
 }
 
 /** Lista ou cartões: o jeito de ver as vagas (o resto do endereço fica). */

@@ -21,6 +21,39 @@ export type PaginaParaSalvar = {
   apelido: string;
 };
 
+/** O banner (a chamada e a linha de baixo) e até 3 vagas em destaque (migração 20270301120000). */
+export async function salvarBannerEDestaques(dados: {
+  chamada: string;
+  subchamada: string;
+  destaques: string[];
+}): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=%2Fpainel%2Flinks%2Fpagina" };
+  const chamada = String(dados?.chamada ?? "")
+    .trim()
+    .slice(0, 90);
+  const subchamada = String(dados?.subchamada ?? "")
+    .trim()
+    .slice(0, 160);
+  const destaques = (Array.isArray(dados?.destaques) ? dados.destaques : [])
+    .filter((d): d is string => typeof d === "string" && /^[0-9a-f-]{36}$/.test(d))
+    .slice(0, 3);
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("salvar_banner_e_destaques", {
+    p_chamada: chamada || null,
+    p_subchamada: subchamada || null,
+    p_destaques: destaques,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Falta rodar a migração 20270301120000 no banco." };
+    return { ok: false, erro: mensagemDeErro(error, "Não deu para salvar agora. Tente de novo.") };
+  }
+  updateTag(`vagas-da-empresa-${usuario.id}`);
+  refresh();
+  return { ok: true, mensagem: "Página salva." };
+}
+
 export async function salvarPaginaDeVagas(dados: PaginaParaSalvar): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const usuario = await obterUsuario();

@@ -12,6 +12,11 @@ export type Marca = {
   titulo: string | null;
   /** até 3 fotos no alto da página (migração 20270120120000) */
   fotos: string[];
+  /** a frase grande do banner, por cima das fotos, e a linha de baixo (migração 20270301120000) */
+  chamada: string | null;
+  subchamada: string | null;
+  /** até 3 vagas no alto da página, na ordem escolhida */
+  destaques: string[];
 };
 
 /** As cores para escolher (a empresa acha a mais perto da logo). Guardadas em minúsculas, como o banco pede. */

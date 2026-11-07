@@ -4,7 +4,7 @@ import { ArrowLeft, Check, ExternalLink, ImagePlus, Plus, Trash2, X } from "luci
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { salvarPaginaDeVagas } from "@/lib/acoes/pagina-de-vagas";
+import { salvarBannerEDestaques, salvarPaginaDeVagas } from "@/lib/acoes/pagina-de-vagas";
 import { BENEFICIOS } from "@/lib/constantes";
 import { urlDaFoto } from "@/lib/formato";
 import { CORES_DA_MARCA, textoSobre, type Marca } from "@/lib/marca";
@@ -16,6 +16,7 @@ import { classesEntrada } from "../ui/campo";
 
 const MAX_TEXTO = 600;
 const MAX_FOTOS = 3;
+const MAX_DESTAQUES = 3;
 
 /** "Crescere Gestão" → "crescere-gestao": o apelido sugerido, sem acento, minúsculo, com hífen. */
 function limparApelido(t: string) {
@@ -39,12 +40,15 @@ export function FormPaginaDeVagas({
   perfilId,
   nome,
   site,
+  vagasNoAr = [],
 }: {
   inicial: Marca | null;
   pessoaId: string;
   perfilId: string;
   nome: string;
   site: string;
+  /** as vagas no ar, para escolher os destaques */
+  vagasNoAr?: { id: string; titulo: string; lugar: string }[];
 }) {
   const router = useRouter();
   const [cor, setCor] = useState<string | null>(inicial?.cor ?? null);
@@ -54,6 +58,12 @@ export function FormPaginaDeVagas({
   const [beneficios, setBeneficios] = useState<string[]>(inicial?.beneficios ?? []);
   const [novo, setNovo] = useState("");
   const [apelido, setApelido] = useState(inicial?.apelido ?? "");
+  const [chamada, setChamada] = useState(inicial?.chamada ?? "");
+  const [subchamada, setSubchamada] = useState(inicial?.subchamada ?? "");
+  // os destaques que ainda estão no ar (os de vagas que saíram ficam de fora)
+  const [destaques, setDestaques] = useState<string[]>(
+    (inicial?.destaques ?? []).filter((d) => vagasNoAr.some((v) => v.id === d)),
+  );
   const [enviando, setEnviando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [retorno, setRetorno] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -102,9 +112,11 @@ export function FormPaginaDeVagas({
   async function salvar() {
     setSalvando(true);
     setRetorno(null);
-    const r = await chamarAcao(() =>
+    let r = await chamarAcao(() =>
       salvarPaginaDeVagas({ cor, titulo, fotos, texto, beneficios, apelido: apelidoLimpo }),
     );
+    // o banner e os destaques vão numa função à parte (migração 20270301120000)
+    if (r.ok) r = await chamarAcao(() => salvarBannerEDestaques({ chamada, subchamada, destaques }));
     setSalvando(false);
     if (!r.ok && "ir" in r && r.ir) router.push(r.ir);
     setRetorno(r.ok ? { ok: true, texto: r.mensagem ?? "Página salva." } : { ok: false, texto: r.erro });
@@ -217,6 +229,40 @@ export function FormPaginaDeVagas({
         )}
       </div>
 
+      <fieldset className="flex flex-col gap-3">
+        <legend className="text-label">Banner no alto</legend>
+        <p className="-mt-1 text-body-sm text-ink-muted">
+          Uma frase grande por cima das fotos (ou da cor da marca, sem fotos). Com mais de uma foto, elas passam
+          sozinhas. Em branco, a página fica sem o banner.
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="chamada" className="text-body-sm font-semibold">
+            Chamada
+          </label>
+          <input
+            id="chamada"
+            value={chamada}
+            maxLength={90}
+            onChange={(e) => setChamada(e.target.value)}
+            placeholder="Construa a sua carreira com a gente!"
+            className={classesEntrada}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="subchamada" className="text-body-sm font-semibold">
+            Linha de baixo (se quiser)
+          </label>
+          <input
+            id="subchamada"
+            value={subchamada}
+            maxLength={160}
+            onChange={(e) => setSubchamada(e.target.value)}
+            placeholder="Vagas perto de casa, com carteira assinada e espaço para crescer."
+            className={classesEntrada}
+          />
+        </div>
+      </fieldset>
+
       <div className="flex flex-col gap-1.5">
         <label htmlFor="titulo-pagina" className="text-label">
           Título
@@ -318,6 +364,51 @@ export function FormPaginaDeVagas({
           </>
         )}
       </div>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-label">Vagas em destaque</legend>
+        <p className="text-body-sm text-ink-muted">
+          Até {MAX_DESTAQUES}, no alto da página, antes de todas as outras. Quando uma sair do ar, sai do destaque.
+        </p>
+        {vagasNoAr.length ? (
+          <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-md border border-line p-1">
+            {vagasNoAr.map((v) => {
+              const marcada = destaques.includes(v.id);
+              const cheio = !marcada && destaques.length >= MAX_DESTAQUES;
+              return (
+                <li key={v.id}>
+                  <label
+                    className={`flex min-h-11 items-center gap-3 rounded-md px-3 py-1.5 ${
+                      cheio ? "opacity-50" : "cursor-pointer hover:bg-surface-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcada}
+                      disabled={cheio}
+                      onChange={() =>
+                        setDestaques((atuais) => (marcada ? atuais.filter((d) => d !== v.id) : [...atuais, v.id]))
+                      }
+                      className="size-5 shrink-0 accent-[var(--pk-ink)]"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-label">{v.titulo}</span>
+                      <span className="block truncate text-body-sm text-ink-muted">{v.lugar}</span>
+                    </span>
+                    {marcada && (
+                      <span className="shrink-0 text-body-sm font-semibold tabular-nums">
+                        {destaques.indexOf(v.id) + 1}º
+                      </span>
+                    )}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-body-sm text-ink-muted">Nenhuma vaga no ar agora.</p>
+        )}
+      </fieldset>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="apelido" className="text-label">

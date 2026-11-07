@@ -41,7 +41,16 @@ export async function marcaDaEmpresa(id: string): Promise<Marca | null> {
   if (!data) return null;
   // antes da migração 20270120120000 não vêm o título e as fotos: a capa vira a única foto
   const fotos = data.fotos ?? (data.capa ? [data.capa] : []);
-  return { ...data, beneficios: data.beneficios ?? [], titulo: data.titulo ?? null, fotos };
+  // antes da migração 20270301120000 não vêm a chamada e os destaques: sem banner e sem destaques
+  return {
+    ...data,
+    beneficios: data.beneficios ?? [],
+    titulo: data.titulo ?? null,
+    fotos,
+    chamada: data.chamada ?? null,
+    subchamada: data.subchamada ?? null,
+    destaques: data.destaques ?? [],
+  };
 }
 
 export async function vagasDaEmpresa(id: string): Promise<QuadroDeVagas | null> {

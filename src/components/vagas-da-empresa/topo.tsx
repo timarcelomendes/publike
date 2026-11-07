@@ -7,8 +7,9 @@ import { Avatar } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
 import { TIPOS_CONTA } from "@/lib/constantes";
 import { formatarLugar, plural, urlDaFoto } from "@/lib/formato";
-import { corLegivel, corValida, type Marca } from "@/lib/marca";
+import { corLegivel, corValida, textoSobre, type Marca } from "@/lib/marca";
 import type { Perfil, TipoConta } from "@/lib/tipos";
+import { BannerDaEmpresa } from "./banner";
 import { SobreDaEmpresa } from "./sobre";
 
 // O alto da página de vagas da empresa (claude/plano-pagina-de-vagas.md, parte 1): a logo grande, o nome, quantas
@@ -48,14 +49,27 @@ export function TopoDaEmpresa({
     .filter((f): f is string => Boolean(f))
     .slice(0, 3);
   const capa = fotos[0] ?? null;
+  // com a chamada (parte 4), o banner fica no lugar das fotos: a frase por cima delas, que passam sozinhas
+  const chamada = marca?.chamada?.trim() || null;
   const porQue = marca?.texto?.trim() || marca?.beneficios.length || marca?.titulo?.trim() ? marca : null;
   return (
     <>
       <header
         className="flex flex-col gap-4 overflow-hidden rounded-lg border border-line bg-surface-200 p-5 shadow-card sm:p-7"
-        style={cor && !capa ? { borderTop: `6px solid ${cor}` } : undefined}
+        style={cor && !capa && !chamada ? { borderTop: `6px solid ${cor}` } : undefined}
       >
-        {capa && (
+        {chamada && (
+          <div className="-mx-5 -mt-5 sm:-mx-7 sm:-mt-7" style={cor ? { borderBottom: `4px solid ${cor}` } : undefined}>
+            <BannerDaEmpresa
+              fotos={fotos}
+              chamada={chamada}
+              subchamada={marca?.subchamada?.trim() || null}
+              cor={cor}
+              textoSobreCor={cor ? textoSobre(cor) : "#ffffff"}
+            />
+          </div>
+        )}
+        {capa && !chamada && (
           <div
             className={`-mx-5 -mt-5 grid gap-1 sm:-mx-7 sm:-mt-7 ${
               fotos.length === 3

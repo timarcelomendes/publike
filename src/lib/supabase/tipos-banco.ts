@@ -1130,7 +1130,15 @@ export type Database = {
           /** migração 20270120120000 */
           titulo: string | null;
           fotos: string[];
+          /** migração 20270301120000 */
+          chamada?: string | null;
+          subchamada?: string | null;
+          destaques?: string[] | null;
         }[];
+      };
+      salvar_banner_e_destaques: {
+        Args: { p_chamada: string | null; p_subchamada: string | null; p_destaques: string[] };
+        Returns: undefined;
       };
       conta_do_apelido: {
         Args: { p_apelido: string };

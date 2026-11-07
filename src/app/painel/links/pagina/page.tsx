@@ -8,8 +8,8 @@ import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { obterMeuPerfil } from "@/lib/dados";
-import { plural } from "@/lib/formato";
+import { obterMeuPerfil, obterPerfilPublico } from "@/lib/dados";
+import { formatarLugar, plural } from "@/lib/formato";
 import type { Marca } from "@/lib/marca";
 import { exigirUsuario } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -37,8 +37,15 @@ async function Conteudo() {
   const usuario = await exigirUsuario("/painel/links/pagina");
   const perfil = await obterMeuPerfil();
   if (!perfil) return null;
-  const { data, error } = await (await criarClienteServidor()).rpc("minha_pagina_de_vagas");
+  const [{ data, error }, publico] = await Promise.all([
+    (await criarClienteServidor()).rpc("minha_pagina_de_vagas"),
+    // as vagas no ar, para escolher os destaques
+    obterPerfilPublico(perfil.id, 200),
+  ]);
   const situacao = (error ? null : data) as Situacao | null;
+  const vagasNoAr = (publico?.anuncios ?? [])
+    .filter((a) => a.tipo === "vaga")
+    .map((a) => ({ id: a.id, titulo: a.titulo, lugar: formatarLugar(a.bairro, a.cidade) }));
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -82,6 +89,7 @@ async function Conteudo() {
             perfilId={perfil.id}
             nome={perfil.nome}
             site={SITE_URL}
+            vagasNoAr={vagasNoAr}
           />
         </section>
       )}
