@@ -18,6 +18,7 @@ import {
 import { aplicarIntencao, hrefFiltros, lerFiltros, RAIOS, type Filtros } from "@/lib/filtros";
 import { tipoPadraoDaVisita, type Intencao } from "@/lib/intencao";
 import { obterIntencao } from "@/lib/servidor/intencao";
+import { curtidasDasVagas } from "@/lib/servidor/linha";
 import { modosMarcados } from "@/lib/servidor/modo";
 import { modeloDaPalavra } from "@/lib/modelos-anuncio";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
@@ -348,8 +349,10 @@ export async function Explorar({
   }
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuario?.id);
   const temMinhas = Boolean(usuario) && anuncios.some((a) => a.autor_id === usuario?.id);
-  const [resposta, salvasAgora, minhas, logos] = await Promise.all([
+  const [resposta, curtidas, salvasAgora, minhas, logos] = await Promise.all([
     respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map()),
+    // "12 já curtiram" no cartão, também para quem está sem conta (só o número, e só a partir de 3)
+    curtidasDasVagas(deOutros.map((a) => a.id)).catch(() => new Map()),
     usuario ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
     temMinhas ? listarMeusAnuncios().catch(() => []) : Promise.resolve([]),
     // o logo de quem publicou (a foto do perfil), no alto do cartão
@@ -493,6 +496,7 @@ export async function Explorar({
               tempoDe={tempoDe}
               match={matches.get(a.id) ?? null}
               resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
+              curtidas={a.tipo === "vaga" ? (curtidas.get(a.id)?.total ?? null) : null}
               extras={extrasDe(requisitos?.get(a.id), false)}
               salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}
               minha={soOlhar ? null : (minhaPorId.get(a.id) ?? null)}

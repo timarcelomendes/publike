@@ -1,4 +1,4 @@
-import { Bus, CalendarClock, Footprints, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
+import { Bus, CalendarClock, Footprints, Heart, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -92,6 +92,7 @@ export function CardAnuncio({
   tempoDe = null,
   match = null,
   resposta = null,
+  curtidas = null,
   extras = null,
   salva = null,
   minha = null,
@@ -109,6 +110,8 @@ export function CardAnuncio({
   match?: MatchResumo | null;
   /** Vaga: quanto quem publicou costuma responder as curtidas (só com 5 curtidas ou mais). */
   resposta?: Resposta | null;
+  /** Vaga: quantas pessoas já curtiram (só a partir de 3; quem curtiu nunca aparece). */
+  curtidas?: number | null;
   /** Vaga: benefícios, se pede currículo, quantas pessoas e até quando fica no ar. */
   extras?: ExtrasDaVaga | null;
   /** Vaga de outra pessoa, para quem tem conta: se está salva (null: sem a estrela). */
@@ -139,6 +142,8 @@ export function CardAnuncio({
   // mais de uma vaga: a faixa no alto do cartão (preenchida, não conta mais)
   const vagas = extras && !servico && !preenchida ? extras.vagas : 1;
   const respostaDaVaga = resposta && !proprio ? comoResponde(resposta) : null;
+  // só a partir de 3 (o banco já não manda menos), e não na própria vaga (lá vai o botão dos candidatos)
+  const curtidasDeOutros = curtidas !== null && curtidas >= 3 && !proprio ? curtidas : null;
   // o próprio anúncio fora da busca (no perfil, por exemplo) não tem o que mostrar no rodapé
   const temRodape = !proprio || Boolean(minha);
 
@@ -367,17 +372,22 @@ export function CardAnuncio({
                 <SeloMatch match={comMatch} />
               </span>
             )}
-            <span
-              className={`flex min-w-0 flex-1 items-center gap-1 group-data-[visao=lista]/visao:hidden ${
-                respostaDaVaga?.bom ? "text-cerrado-text" : ""
-              }`}
-            >
+            {/* os indicadores, também para quem está sem conta: como quem publicou responde e quantos já curtiram */}
+            <span className="flex min-w-0 flex-1 flex-col gap-1 group-data-[visao=lista]/visao:hidden">
               {respostaDaVaga && (
-                <>
+                <span className={`flex items-center gap-1 ${respostaDaVaga.bom ? "text-cerrado-text" : ""}`}>
                   <MessageCircleReply aria-hidden className="size-4 shrink-0" />
-                  {/* quebra em duas linhas ("Costuma responder / no mesmo dia") em vez de cortar com "…" */}
+                  {/* quebra em duas linhas em vez de cortar com "…" */}
                   <span className="line-clamp-2 leading-tight">{respostaDaVaga.texto}</span>
-                </>
+                </span>
+              )}
+              {curtidasDeOutros !== null && (
+                <span className="flex items-center gap-1">
+                  <Heart aria-hidden className="size-4 shrink-0 text-like" />
+                  <span className="leading-tight">
+                    <b className="font-semibold tabular-nums">{curtidasDeOutros}</b> já curtiram
+                  </span>
+                </span>
               )}
             </span>
             {proprio && minha && (

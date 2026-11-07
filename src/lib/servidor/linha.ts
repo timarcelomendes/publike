@@ -137,7 +137,7 @@ type CurtidasDaVaga = { total: number | null; matches: number; ultima: string };
  * As curtidas das vagas: a hora da última, o número e quantas viraram match (migração 20261205120000;
  * nunca quem curtiu). Banco sem a migração: sem curtidas.
  */
-async function curtidasDasVagas(ids: string[]): Promise<Map<string, CurtidasDaVaga>> {
+export async function curtidasDasVagas(ids: string[]): Promise<Map<string, CurtidasDaVaga>> {
   if (!ids.length) return new Map();
   const { data, error } = await (await criarClienteServidor()).rpc("curtidas_das_vagas", { p_ids: ids.slice(0, 200) });
   if (error) {
