@@ -23,7 +23,7 @@ export const HISTORICO_CHAT = 12;
 export const ID_CONVERSA_AJUDA = "conversa-ajuda";
 
 /** O começo da conversa de quem não entrou: o que ele veio fazer (procurar ou publicar). */
-export const PEDIDOS_DO_VISITANTE = { procurar: "Procuro vaga", publicar: "Quero publicar uma vaga grátis" } as const;
+export const PEDIDOS_DO_VISITANTE = { procurar: "Ache uma vaga para mim", publicar: "Publique a minha vaga grátis" } as const;
 
 export const PERGUNTAS_INICIAIS = [
   "Como funciona o match?",

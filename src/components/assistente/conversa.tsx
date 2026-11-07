@@ -231,10 +231,10 @@ export function Conversa({
             {visitante ? (
               <>
                 <p className="font-display text-h3">
-                  {ia.apelido ? `Oi! Sou ${ia.apelido}.` : "Oi!"} Você procura vaga ou quer publicar uma vaga grátis?
+                  {ia.apelido ? `Oi! Sou ${ia.apelido}.` : "Oi!"} Deixa comigo: o que você precisa?
                 </p>
                 <p className="max-w-xs text-body-sm text-ink-muted">
-                  Eu acho vagas perto de você e ajudo a publicar a sua de graça. Também tiro dúvidas sobre o Publike.
+                  Eu procuro as vagas perto de você ou preparo a sua vaga para publicar, de graça. Você só me conta.
                 </p>
               </>
             ) : (
@@ -258,21 +258,28 @@ export function Conversa({
         {conversa.length === 0 && visitante && (
           // o que veio fazer: procurar ou publicar (o resto das perguntas fica logo embaixo)
           <div className="grid grid-cols-2 gap-2">
+            {/* dito pelo que o Publike faz, não pelo que a pessoa tem de fazer */}
             <button
               type="button"
               onClick={() => perguntar(PEDIDOS_DO_VISITANTE.procurar)}
-              className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-label text-surface-100 hover:opacity-90"
+              className="flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-lg bg-ink px-3 py-2.5 text-left text-surface-100 hover:opacity-90"
             >
-              <Search aria-hidden className="size-[18px] shrink-0" />
-              Procuro vaga
+              <span className="flex items-center gap-1.5 text-label">
+                <Search aria-hidden className="size-4 shrink-0" />
+                Ache uma vaga para mim
+              </span>
+              <span className="text-caption opacity-80">Diga o que você faz: eu procuro perto</span>
             </button>
             <button
               type="button"
               onClick={() => perguntar(PEDIDOS_DO_VISITANTE.publicar)}
-              className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-terra px-3 text-label text-on-terra hover:bg-terra-hover"
+              className="flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-lg bg-terra px-3 py-2.5 text-left text-on-terra hover:bg-terra-hover"
             >
-              <Megaphone aria-hidden className="size-[18px] shrink-0" />
-              Publicar grátis
+              <span className="flex items-center gap-1.5 text-label">
+                <Megaphone aria-hidden className="size-4 shrink-0" />
+                Publique a minha vaga
+              </span>
+              <span className="text-caption opacity-90">Grátis: você conta, eu preencho</span>
             </button>
           </div>
         )}
