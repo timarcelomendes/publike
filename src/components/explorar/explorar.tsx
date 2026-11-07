@@ -853,6 +853,7 @@ export async function Explorar({
         compacto={feed}
         ordemFora={ordemFora}
         acimaDoMapa={acimaDoMapa}
+        detalhes={!feed && !usuario}
       />
     </>
   );

@@ -1,13 +1,23 @@
 "use client";
 
-import { Columns2, LayoutGrid, List, Map as IconeMapa, Rows3, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import {
+  Columns2,
+  LayoutGrid,
+  List,
+  Map as IconeMapa,
+  PanelRight,
+  Rows3,
+  SlidersHorizontal,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/filtros";
-import { CHAVE_VISAO, CHAVE_VISAO_BUSCA, VISOES_CELULAR, type Visao } from "@/lib/visao";
+import { CHAVE_VISAO, CHAVE_VISAO_BUSCA, semDetalhes, VISOES_CELULAR, type Visao } from "@/lib/visao";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 import { AreaDoMapa, type Limites } from "./area-do-mapa";
+import { ListaComDetalhe } from "./lista-com-detalhe";
 
 const TELA_GRANDE = "(min-width: 1024px)";
 
@@ -18,6 +28,7 @@ const TELA_GRANDE = "(min-width: 1024px)";
  *   blocos ....... os cartões completos, sem mapa
  *   mapa ......... só o mapa, grande
  *   blocos-mapa .. cartões e mapa lado a lado (só no computador)
+ *   lista-detalhes a lista e, ao lado, o anúncio aberto (só no computador e só para quem não entrou)
  * A escolha fica guardada neste navegador. No celular só há Blocos e Mapa: lista e grade
  * apertam demais os cartões numa tela pequena, e o mapa em cima dos blocos empurra a lista
  * para baixo. Quem escolheu outra no computador vê Blocos no celular.
@@ -30,6 +41,7 @@ const VISOES: { valor: Visao; nome: string; icone: LucideIcon }[] = [
   { valor: "blocos", nome: "Blocos", icone: Rows3 },
   { valor: "mapa", nome: "Mapa", icone: IconeMapa },
   { valor: "blocos-mapa", nome: "Blocos + mapa", icone: Columns2 },
+  { valor: "lista-detalhes", nome: "Lista + detalhes", icone: PanelRight },
 ];
 
 // No feed (Blocos + mapa), o mapa vai para uma coluna própria da página, de cima a baixo
@@ -101,7 +113,13 @@ const escolhidaAgora = new Map<string, Visao>();
  * outra para quem nunca escolheu (no feed de quem entrou, Blocos). `chave`: onde fica guardada.
  * `inicial`: a que o servidor já desenhou (a busca sabe a escolhida pelo cookie); sem ela, Blocos.
  */
-export function useVisao(padrao?: Visao, chave = CHAVE, inicial: Visao = "blocos"): Visao {
+export function useVisao(
+  padrao?: Visao,
+  chave = CHAVE,
+  inicial: Visao = "blocos",
+  /** a Lista + detalhes vale aqui (a vitrine de quem não entrou); senão, ela vira a Lista */
+  comDetalhes = false,
+): Visao {
   useEffect(() => cookieEmDia(chave), [chave]);
   return useSyncExternalStore(
     (avisar) => {
@@ -122,9 +140,9 @@ export function useVisao(padrao?: Visao, chave = CHAVE, inicial: Visao = "blocos
     () => {
       const grande = window.matchMedia(TELA_GRANDE).matches;
       const v = escolhidaAgora.get(chave) ?? lerGuardada(chave) ?? padrao ?? (grande ? "blocos-mapa" : "blocos");
-      return grande || VISOES_CELULAR.includes(v) ? v : "blocos";
+      return grande || VISOES_CELULAR.includes(v) ? semDetalhes(v, comDetalhes) : "blocos";
     },
-    () => inicial,
+    () => semDetalhes(inicial, comDetalhes),
   );
 }
 
@@ -134,10 +152,12 @@ function SeletorVisao({
   chave,
   celular = false,
   nomeDoAtivo = false,
+  comDetalhes = false,
 }: {
   visao: Visao;
   chave: string;
   celular?: boolean;
+  comDetalhes?: boolean;
   /** o nome do jeito escolhido sempre à mostra (no painel dos filtros do feed) */
   nomeDoAtivo?: boolean;
 }) {
@@ -147,7 +167,9 @@ function SeletorVisao({
       aria-label="Como ver"
       className="inline-flex shrink-0 rounded-pill border border-line-strong bg-surface-200 p-0.5"
     >
-      {VISOES.filter((v) => !celular || VISOES_CELULAR.includes(v.valor)).map(({ valor, nome, icone: Icone }) => {
+      {VISOES.filter(
+        (v) => (!celular || VISOES_CELULAR.includes(v.valor)) && (comDetalhes || v.valor !== "lista-detalhes"),
+      ).map(({ valor, nome, icone: Icone }) => {
         const ativo = valor === visao;
         return (
           <button
@@ -196,6 +218,7 @@ export function VisaoExplorar({
   inicial,
   abas = null,
   ordem = null,
+  detalhes = false,
 }: {
   titulo: ReactNode;
   subtitulo: ReactNode;
@@ -220,9 +243,11 @@ export function VisaoExplorar({
   abas?: ReactNode;
   /** na vitrine, no computador: a ordem na linha do título, junto do jeito de ver */
   ordem?: ReactNode;
+  /** a vitrine de quem não entrou: tem a Lista + detalhes */
+  detalhes?: boolean;
 }) {
   const chave = busca ? CHAVE_VISAO_BUSCA : CHAVE;
-  const visao = useVisao(padrao, chave, inicial);
+  const visao = useVisao(padrao, chave, inicial, detalhes);
   const colunaFora = useColunaDoMapa();
   // o mapa na coluna própria da página (feed, com Blocos + mapa ou com a Lista, que é estreita e deixaria a
   // coluna vazia): aqui fica só a lista
@@ -318,7 +343,7 @@ export function VisaoExplorar({
             </div>
             <div className="hidden lg:col-start-3 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center lg:gap-3">
               {ordem}
-              <SeletorVisao visao={visao} chave={chave} />
+              <SeletorVisao visao={visao} chave={chave} comDetalhes={detalhes} />
             </div>
             <div
               id={idFiltros}
@@ -333,7 +358,8 @@ export function VisaoExplorar({
       )}
 
       <div
-        data-visao={visao}
+        // na Lista + detalhes, os cartões ficam como na Lista (uma linha por anúncio)
+        data-visao={visao === "lista-detalhes" ? "lista" : visao}
         className={`group/visao ${visao === "blocos-mapa" && !mapaFora ? "flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-6" : ""}`}
       >
         {/* Blocos + mapa no computador: a coluna do mapa estica até a altura dos cartões, e o mapa
@@ -369,11 +395,15 @@ export function VisaoExplorar({
             </div>
           </div>
         )}
-        {comLista && (
+        {comLista && visao === "lista-detalhes" ? (
+          <ListaComDetalhe>
+            <AreaDoMapa value={null}>{lista}</AreaDoMapa>
+          </ListaComDetalhe>
+        ) : comLista ? (
           <div className={visao === "blocos-mapa" && !mapaFora ? "lg:order-1" : ""}>
             <AreaDoMapa value={comMapa ? area : null}>{lista}</AreaDoMapa>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

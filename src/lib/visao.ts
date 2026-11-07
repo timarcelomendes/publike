@@ -1,9 +1,9 @@
-// Os jeitos de ver a busca (lista, grade, blocos, mapa e blocos + mapa): o que o servidor e o
+// Os jeitos de ver a busca (lista, grade, blocos, mapa, blocos + mapa e lista + detalhes): o que o servidor e o
 // navegador dividem. As telas ficam em `src/components/explorar/visao-explorar.tsx`.
 
-export type Visao = "lista" | "grade" | "blocos" | "mapa" | "blocos-mapa";
+export type Visao = "lista" | "grade" | "blocos" | "mapa" | "blocos-mapa" | "lista-detalhes";
 
-export const VALORES_VISAO: Visao[] = ["lista", "grade", "blocos", "mapa", "blocos-mapa"];
+export const VALORES_VISAO: Visao[] = ["lista", "grade", "blocos", "mapa", "blocos-mapa", "lista-detalhes"];
 
 /** No celular só há Blocos e Mapa (lista e grade apertam demais os cartões numa tela pequena). */
 export const VISOES_CELULAR: Visao[] = ["blocos", "mapa"];
@@ -17,6 +17,14 @@ export const CHAVE_VISAO = "publike_visao";
  * trocar depois de abrir.
  */
 export const CHAVE_VISAO_BUSCA = "publike_visao_busca";
+
+/**
+ * Lista + detalhes (a lista à esquerda e a vaga aberta à direita, sem sair da página): só para quem
+ * ainda não entrou, no computador. Para quem entrou (ou numa tela que não tem), vira a Lista.
+ */
+export function semDetalhes(v: Visao, comDetalhes: boolean): Visao {
+  return v === "lista-detalhes" && !comDetalhes ? "lista" : v;
+}
 
 export function ehVisao(v: unknown): v is Visao {
   return VALORES_VISAO.includes(v as Visao);
