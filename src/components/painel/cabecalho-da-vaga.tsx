@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   Inbox,
   KanbanSquare,
+  Route,
   List,
   ListOrdered,
   Pencil,
@@ -373,10 +374,12 @@ function LinhaDosNumeros({
 }
 
 /** Dentro de Candidatos: o quadro (por etapa) ou a lista, a escolha de cada um. */
-export function VistaDosCandidatos({ id, atual }: { id: string; atual: "quadro" | "lista" }) {
+export function VistaDosCandidatos({ id, atual }: { id: string; atual: "quadro" | "lista" | "trilha" }) {
   const opcoes = [
     { vista: "quadro" as const, nome: "Quadro", href: `/painel/anuncio/${id}/quadro`, icone: KanbanSquare },
     { vista: "lista" as const, nome: "Lista", href: `/painel/anuncio/${id}`, icone: List },
+    // a trilha de cada candidato, etapa por etapa (claude/plano-trilha-dos-candidatos.md)
+    { vista: "trilha" as const, nome: "Trilha", href: `/painel/anuncio/${id}/trilha`, icone: Route },
   ];
   return (
     <div

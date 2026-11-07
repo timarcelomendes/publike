@@ -1327,6 +1327,11 @@ export type Database = {
         Args: { p_intencao: string };
         Returns: undefined;
       };
+      /** os passos dos candidatos da vaga (migração 20270228120000) */
+      trilha_da_vaga: {
+        Args: { p_anuncio: string };
+        Returns: { perfil_id: string; o_que: string; em: string }[];
+      };
       /** a reputação da conta (migração 20270227120000) */
       minha_reputacao: {
         Args: Record<PropertyKey, never>;
