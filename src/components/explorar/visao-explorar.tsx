@@ -17,6 +17,7 @@ import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/fi
 import { CHAVE_VISAO, CHAVE_VISAO_BUSCA, semDetalhes, VISOES_CELULAR, type Visao } from "@/lib/visao";
 import { MapaAnuncios, type OrigemMapa, type PontoMapa } from "../mapa/mapa-anuncios";
 import { AreaDoMapa, type Limites } from "./area-do-mapa";
+import { DicaVerComo } from "./dica-ver-como";
 import { ListaComDetalhe } from "./lista-com-detalhe";
 
 const TELA_GRANDE = "(min-width: 1024px)";
@@ -344,9 +345,11 @@ export function VisaoExplorar({
             <div className="hidden lg:col-start-3 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center lg:gap-3">
               {ordem}
               {/* "Ver como" e o nome do jeito escolhido: quem não conhece os ícones entende que muda a tela */}
-              <span className="flex items-center gap-2">
+              <span className="relative flex items-center gap-2">
                 <span className="text-body-sm whitespace-nowrap text-ink-muted">Ver como</span>
                 <SeletorVisao visao={visao} chave={chave} comDetalhes={detalhes} nomeDoAtivo />
+                {/* na vitrine: o lembrete de que dá para mudar (a cada 7 dias) */}
+                {detalhes && <DicaVerComo evento={EVENTO} />}
               </span>
             </div>
             <div
