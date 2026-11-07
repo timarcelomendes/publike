@@ -31,6 +31,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Não precisa de senha. Toque em Entrar e use um dos jeitos que aparecem na tela: receber um link no e-mail ou entrar com a conta do Google, do Facebook ou do LinkedIn. O link do e-mail funciona uma vez só, por pouco tempo, e pode ser aberto em qualquer navegador ou celular.",
       },
       {
+        p: "Dá para instalar o Publike no celular?",
+        r: "Dá, e sem loja de aplicativos. Toque em “Instalar app” (no alto da tela ou no menu da sua conta): o Publike vai para a tela inicial do celular ou do computador e abre como um app, com os avisos chegando no celular.",
+      },
+      {
         p: "O link de entrar não chegou. E agora?",
         r: "Confira a caixa de spam e as abas Promoções ou Atualizações. O e-mail vem de nao-responda@publike.org. Se passar alguns minutos, peça outro link na tela de entrar. Se o link disser que venceu ou já foi usado, é só pedir um novo.",
       },
@@ -42,7 +46,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "Como acho vagas perto de mim?",
-        r: "Na tela inicial, o Publike pede sua localização e mostra primeiro o que está perto, com um marcador “Você” no mapa. Também dá para tocar em “Onde você mora?” e informar o bairro ou o CEP de casa, ou em “Perto de mim”. Dá para ver em lista, grade, blocos ou no mapa, e filtrar por categoria, tipo de contratação, distância e tempo de ônibus.",
+        r: "Na tela inicial, o Publike pede sua localização e mostra primeiro o que está perto, com um marcador “Você” no mapa. Também dá para tocar em “Onde você mora?” e informar o bairro ou o CEP de casa, ou em “Perto de mim”. Dá para ver em lista, grade, blocos ou no mapa (no computador, também em “Lista + detalhes”, com a vaga aberta ao lado da lista; os botões ficam em “Ver como”) e filtrar por área, tipo de contratação, distância, tempo de ônibus e “Começa já”, para quem precisa começar logo.",
       },
       {
         p: "Para que serve o CEP de casa?",
@@ -50,11 +54,39 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é o Descobrir?",
-        r: "É um jeito rápido de ver vagas, uma de cada vez: deslize para o lado para pular ou curtir. As vagas que combinam com o que você procura, no seu bairro, e as que estão em alta aparecem primeiro.",
+        r: "É um jeito rápido de ver vagas, uma de cada vez: deslize para o lado para pular ou curtir. As vagas que combinam com o que você procura, no seu bairro, e as que estão em alta aparecem primeiro. Fica no menu de quem entrou e procura trabalho (no celular, na barra de baixo).",
       },
       {
         p: "Como me candidato a uma vaga?",
-        r: "Abra a vaga e toque em Curtir: no Publike, curtir a vaga é se candidatar. Quem publicou vê seu perfil e a sua mensagem. Se aceitar você, dá match e o WhatsApp dos dois aparece no painel.",
+        r: "Abra a vaga e toque em Curtir: no Publike, curtir a vaga é se candidatar. Quem publicou vê seu perfil e a sua mensagem. Se aceitar você, dá match e vocês conversam pelo chat do Publike ou pelo WhatsApp.",
+      },
+      {
+        p: "Como guardo uma vaga para ver depois?",
+        r: "Toque na estrela (Salvar) no cartão ou na página da vaga. As salvas ficam em “Vagas salvas”, no menu da sua conta. Salvar não é se candidatar: para se candidatar, curta a vaga.",
+      },
+      {
+        p: "Como fico sabendo das vagas novas?",
+        r: "Na lista de vagas, toque em “Me avise de vagas assim”: o Publike guarda a busca (palavra, área, contratação, turno e distância) e avisa quando entrar uma vaga nova que bate. Ao curtir uma vaga, o aviso de vagas parecidas perto de você também liga sozinho. Para ver ou parar os avisos, abra o painel, em “Avisos e seguindo”.",
+      },
+      {
+        p: "Não tenho currículo. Como faço?",
+        r: "Em Currículo (no menu da sua conta), conte em voz alta o que você faz e o Publike preenche o currículo para você, ou mande o PDF ou a foto do que já tem. Precisa de uma folha para imprimir ou mandar por e-mail? O Currículo simples (/curriculo-simples) é grátis: preencha, escolha o modelo e baixe em PDF.",
+      },
+      {
+        p: "O que é o % de match?",
+        r: "Com o currículo preenchido, cada vaga mostra o seu % de match: o quanto você combina com o que ela pede. Em “Vagas que combinam” aparecem as de 70% ou mais, da que mais combina para a que menos combina.",
+      },
+      {
+        p: "A empresa pediu um teste, um vídeo ou para escolher o horário. Como funciona?",
+        r: "Depois de curtir, o que a empresa pedir aparece na página da vaga e no seu painel. Teste Prático: um teste de uns 10 minutos pelo celular, para mostrar que você sabe o serviço. Entrevista em vídeo: você grava as respostas pelo celular, na hora que puder, até o prazo que a empresa deu. Horário da entrevista: a empresa oferece os horários livres e você escolhe o que cabe no seu dia, com lembrete na véspera.",
+      },
+      {
+        p: "Como sei em que pé está a minha candidatura?",
+        r: "No painel, em Candidaturas, cada vaga mostra a etapa (em análise, entrevista, contratado) e chega um aviso a cada mudança. Se a vaga não seguir com você, o Publike avisa e mostra vagas parecidas perto.",
+      },
+      {
+        p: "O Publike tem ferramentas grátis?",
+        r: "Tem: a calculadora de rescisão (/calculadora-rescisao), o “Tenho direito?” do seguro-desemprego, com parcelas, valor e prazo (/seguro-desemprego), e o Currículo simples em PDF (/curriculo-simples). Com o currículo preenchido, a tela do Currículo mostra também a faixa de salário da sua função na sua cidade, que só você vê.",
       },
       {
         p: "Posso enviar o currículo que já tenho?",
@@ -70,7 +102,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Dá para saber quem viu meu perfil?",
-        r: "Dá. Em Meu painel > Quem viu seu perfil aparecem as empresas e as pessoas que abriram seu perfil, seu currículo ou sua candidatura nos últimos 30 dias. Quando uma empresa vê, chega um aviso no sino; as outras visitas viram um resumo por dia. Do mesmo jeito, quem você visita fica sabendo. Prefere não aparecer? Ligue “Navegar sem aparecer” no fim da página: aí você também não vê o nome das pessoas que visitaram você (as empresas aparecem sempre).",
+        r: "Dá. No menu da sua conta, em “Quem viu seu perfil”, aparecem as empresas e as pessoas que abriram seu perfil, seu currículo ou sua candidatura nos últimos 30 dias. Quando uma empresa vê, chega um aviso no sino; as outras visitas viram um resumo por dia. Do mesmo jeito, quem você visita fica sabendo. Prefere não aparecer? Ligue “Navegar sem aparecer” no fim da página: aí você também não vê o nome das pessoas que visitaram você (as empresas aparecem sempre).",
       },
       {
         p: "O que é a aba Talentos?",
@@ -120,12 +152,45 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Preenchi a vaga. E agora?",
-        r: "Em Meus anúncios (ou na página da vaga), toque em “Vaga preenchida”. A vaga continua no site com a marcação “Vaga preenchida”, ninguém mais consegue curtir, e quem curtiu e ainda esperava recebe um aviso (quem você contratou não). Mudou de ideia? “Reabrir a vaga”.",
+        r: "No painel, em Vagas (ou na página da vaga), toque em “Vaga preenchida”. A vaga continua no site com a marcação “Vaga preenchida”, ninguém mais consegue curtir, e quem curtiu e ainda esperava recebe um aviso (quem você contratou não). Mudou de ideia? “Reabrir a vaga”.",
       },
       {
         p: "Como escolho quem contratar?",
-        r: "No painel, veja quem curtiu sua vaga, o perfil e o currículo de cada pessoa. Curta de volta quem combina: dá match e o WhatsApp dos dois aparece.",
+        r: "No painel, em Candidatos, cada pessoa que curtiu a vaga chega com o perfil, o currículo e as respostas das suas perguntas. Veja do jeito que preferir: no Quadro (por etapa), na Trilha (cada pessoa numa linha, as etapas em colunas) ou na Lista. Aceite quem combina: dá match e vocês conversam. Para decidir em grupo, compare candidatos e separe os finalistas.",
       },
+      {
+        p: "Os candidatos veem o meu WhatsApp?",
+        r: "Só depois do match, e você escolhe ao publicar, em “Depois do match, como os candidatos falam com você?”: pelo chat do Publike e pelo WhatsApp, ou só pelo chat do Publike. Antes do match, ninguém vê contato nenhum.",
+      },
+      {
+        p: "Posso mudar as etapas e marcar as entrevistas pelo Publike?",
+        r: "Pode. No painel, em “Etapas e horários”, monte as etapas do seu jeito e ofereça os seus horários livres: o candidato escolhe a entrevista e os dois recebem lembrete. Depois, mande a proposta pelo Publike e marque a vaga como preenchida quando completar.",
+      },
+      {
+        p: "O Publike responde os candidatos por mim?",
+        r: "Responde, se você ligar. As automações prontas são grátis: recado de recebido, lembrete de quem está parado e retorno a quem não seguiu (a pessoa recebe o aviso com outras vagas, e a sua empresa fica bem falada). Liga cada uma com um toque, em Automações. Para montar as suas próprias regras, há as Automações personalizadas, que são pagas.",
+      },
+      {
+        p: "Quanto devo pagar na vaga?",
+        r: "No painel, em Salários, veja a faixa salarial do Caged (os dados oficiais de contratação) para a função e a cidade. Ajuda a pôr um valor que atrai gente sem pagar acima do mercado.",
+      },
+      {
+        p: "Como divulgo as minhas vagas?",
+        r: "No painel, em “Página de vagas”, você tem uma página com todas as suas vagas no ar, com a sua marca, para pôr no Instagram, no site ou mandar no WhatsApp. Ali também fica o kit para divulgar: o texto pronto, as imagens, o cartaz e o carrossel do Instagram. E o Publike divulga as vagas no Instagram dele todo dia.",
+      },
+      {
+        p: "Como vejo os resultados e a reputação da minha empresa?",
+        r: "No painel, em Resultados: quantos se candidataram, quantos você chamou e em quantos dias contratou. No Hoje, o quadro “Sua reputação no Publike” mostra se você responde, acompanha e dá retorno aos candidatos, comparado com as outras empresas (sem citar nomes); ele chega também no e-mail da semana. Quem procura trabalho vê, no cartão da vaga, quanto tempo você costuma levar para responder.",
+      },
+      {
+        p: "Posso chamar a minha equipe para avaliar os candidatos?",
+        r: "Pode, em empresa, comércio ou agência. No painel, em Equipe, crie um convite para cada pessoa e mande o link: ela entra com o próprio celular, avalia os candidatos junto com você e o que cada um faz fica com o nome dele.",
+      },
+      {
+        p: "O que é pago no Publike?",
+        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (gravada, com resumo da IA, ou ao vivo, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar, ou todos juntos no Plano Completo. Veja em “Assinatura e faturas”, no menu da sua conta.",
+      },
+
       {
         p: "Meu endereço aparece?",
         r: "Comércio e empresa podem mostrar o endereço, como uma fachada. Vaga de pessoa física (uma família que procura diarista, por exemplo) e vaga de empresa confidencial mostram só uma área de uns 500 metros, sem endereço.",
@@ -170,7 +235,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é match?",
-        r: "É quando os dois lados topam: você curte uma vaga e quem publicou curte você de volta, ou você pede um serviço e o profissional aceita. Aí o WhatsApp dos dois aparece no painel, em Matches.",
+        r: "É quando os dois lados topam: você curte uma vaga e quem publicou curte você de volta, ou você pede um serviço e o profissional aceita. Aí o contato dos dois aparece no painel e vocês conversam pelo chat do Publike ou pelo WhatsApp (se a vaga for só pelo chat, a conversa é só lá).",
       },
       {
         p: "Por que o telefone não aparece no anúncio?",
@@ -182,7 +247,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como funciona a conversa pelo Publike?",
-        r: "Depois do match ou de uma conexão aceita, vocês conversam em Conversas, sem trocar número. É uma conversa por pessoa: se você tem duas vagas com a mesma empresa, ou uma vaga e uma conexão, fica tudo junto, e o alto da conversa mostra cada vaga com a etapa. Só vocês dois leem. Sem nenhum match nem conexão entre vocês, a conversa some para os dois.",
+        r: "Depois do match ou de uma conexão aceita, vocês conversam em Conversas, sem trocar número. É uma conversa por pessoa: se você tem duas vagas com a mesma empresa, ou uma vaga e uma conexão, fica tudo junto, e o alto da conversa mostra cada vaga com a etapa. Só vocês dois leem. Dá para ver quando a mensagem foi lida (quem não quiser mostrar desliga em Preferências). Sem nenhum match nem conexão entre vocês, a conversa some para os dois.",
       },
       {
         p: "Como funcionam as avaliações?",
@@ -212,11 +277,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como paro de receber e-mails?",
-        r: "Em Meu perfil, desmarque a opção de receber avisos por e-mail. Avisos sobre a sua conta (como suspensão) chegam mesmo assim.",
+        r: "Em Preferências (no menu da sua conta), em Avisos, escolha o que chega no e-mail e no celular. O sino do Publike continua mostrando tudo, e os avisos sobre a sua conta (como suspensão) chegam mesmo assim.",
       },
       {
         p: "Como apago minha conta?",
-        r: "Abra Meu perfil e toque em Excluir conta, no fim da página. Tudo é apagado na hora: perfil, contato, foto, anúncios, curtidas e matches.",
+        r: "No menu da sua conta, abra Editar perfil e toque em “Excluir minha conta”, no fim da página. Tudo é apagado na hora: perfil, contato, foto, anúncios, curtidas e matches.",
       },
       {
         p: "Achei um erro ou tenho uma ideia. Onde mando?",
@@ -293,17 +358,17 @@ const TALENTOS: PassoJornada = {
 const ENTREVISTA: PassoJornada = {
   titulo: "Converse e mude as etapas",
   texto:
-    "Deu match, o WhatsApp e o e-mail de vocês aparecem para os dois. Combine pelo WhatsApp ou pelo chat do Publike.",
+    "Deu match, o contato de vocês aparece para os dois. Combine pelo chat do Publike ou pelo WhatsApp (se a vaga for só pelo chat, a conversa é só lá).",
   detalhes: [
-    "Etapas de cada candidato: Novo, Em análise, Entrevista, Contratado ou Não seguiu. A pessoa vê a etapa e recebe aviso.",
+    "Etapas de cada candidato: Novo, Em análise, Entrevista, Contratado ou Não seguiu (ou as que você criar, em Etapas e horários). A pessoa vê a etapa e recebe aviso.",
     "Dá para marcar a entrevista pelo Publike e anotar o que combinou (a anotação só você vê).",
     "Não deu certo? “Desfazer match” pede o motivo e tira o contato dos dois.",
   ],
-  link: { href: "/painel/caixa", texto: "Caixa de entrada" },
+  link: { href: "/painel/caixa", texto: "Candidatos" },
 };
 const RENOVAR: PassoJornada = {
   titulo: "Preencheu? Marque a vaga",
-  texto: "Em Meus anúncios, você cuida da vaga quando quiser: preenchida, pausada, renovada ou encerrada.",
+  texto: "No painel, em Vagas, você cuida da vaga quando quiser: preenchida, pausada, renovada ou encerrada.",
   detalhes: [
     "Vaga preenchida: ela continua no site com a marcação, ninguém mais curte, e quem esperava recebe o aviso.",
     "Ao publicar, você escolhe em quantos dias a vaga sai do ar sozinha (15, 30, 60, 90 ou outro) ou “Sem prazo”. Com prazo, dá para renovar.",
@@ -312,7 +377,7 @@ const RENOVAR: PassoJornada = {
     `Cada conta tem até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publica até ${LIMITES_CONTA.comum.porDia} por dia.`,
   ],
   imagem: "meus-anuncios",
-  link: { href: "/painel/anuncios", texto: "Meus anúncios" },
+  link: { href: "/painel/anuncios?tipo=vaga", texto: "Vagas" },
 };
 const publicar = (titulo: string, texto: string, extra: string[], imagem = "publicar"): PassoJornada => ({
   titulo,
@@ -451,18 +516,18 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
           },
           {
             titulo: "Acompanhe suas curtidas",
-            texto: "Em Minhas curtidas você vê o que aconteceu com cada vaga.",
+            texto: "No painel, em Candidaturas, você vê o que aconteceu com cada vaga.",
             detalhes: [
               "Etapas: Recebido, Em análise, Entrevista, Contratado ou Encerrado. Chega um aviso a cada mudança.",
               "Se a empresa aceitou e falta o currículo, aparece o pedido: mande e o match sai na hora.",
               "Desistiu? Dá para descurtir enquanto espera resposta.",
             ],
             imagem: "curtidas",
-            link: { href: "/painel/curtidas", texto: "Minhas curtidas" },
+            link: { href: "/painel/curtidas?tipo=vaga", texto: "Candidaturas" },
           },
           {
             titulo: "Deu match: converse",
-            texto: "O WhatsApp e o e-mail de vocês aparecem para os dois. Combine a entrevista.",
+            texto: "O contato de vocês aparece para os dois. Combine a entrevista.",
             detalhes: [
               "Converse pelo WhatsApp ou pelo chat do Publike, sem sair do site.",
               "Ninguém pode cobrar nada para você conseguir trabalho: taxa, curso, uniforme ou exame pago é golpe. Denuncie.",
@@ -527,7 +592,7 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
             titulo: "Combine e acompanhe",
             texto: "Deu match, o WhatsApp de vocês aparece para os dois.",
             detalhes: [
-              "Seus pedidos ficam em Minhas curtidas, com a etapa: Orçamento enviado, Agendado, Concluído.",
+              "Seus pedidos ficam em “O que você curtiu”, no menu da sua conta, com a etapa: Orçamento enviado, Agendado, Concluído.",
               "Combine o preço e o dia antes. Não pague adiantado para quem você não conhece.",
             ],
             imagem: "curtidas",

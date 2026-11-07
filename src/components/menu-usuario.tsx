@@ -15,6 +15,7 @@ import {
   Newspaper,
   Settings,
   ShieldCheck,
+  Star,
   Sun,
   SunMoon,
   UserRound,
@@ -205,6 +206,12 @@ export function MenuUsuario({
               <Item href="/painel/curtidas" icone={Heart}>
                 O que você curtiu
               </Item>
+              {/* as vagas salvas (a estrela), que antes só se achavam dentro do Descobrir */}
+              {!empresa && (
+                <Item href="/descobrir?aba=salvas" icone={Star}>
+                  Vagas salvas
+                </Item>
+              )}
               <Item href="/painel/seguindo" icone={UsersRound}>
                 Seguindo
               </Item>

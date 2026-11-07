@@ -68,8 +68,9 @@ export function Cabecalho() {
 function NavVisitante() {
   return (
     <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
-      {/* Vagas e Serviços ficam nas abas da busca, na home (não repetimos aqui) */}
-      <LinkNav href="/descobrir">Descobrir</LinkNav>
+      {/* Vagas e Serviços ficam nas abas da busca, na home (não repetimos aqui). O Descobrir saiu daqui (07/11/2026):
+          sem conta não dá para usar, e quem contrata (a /empresas, a 3ª página mais vista) não tinha atalho */}
+      <LinkNav href="/empresas">Para empresas</LinkNav>
       <LinkNav href="/noticias">Notícias</LinkNav>
       <LinkNav href="/como-funciona">Como funciona</LinkNav>
     </nav>
