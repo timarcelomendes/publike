@@ -343,7 +343,11 @@ export function VisaoExplorar({
             </div>
             <div className="hidden lg:col-start-3 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center lg:gap-3">
               {ordem}
-              <SeletorVisao visao={visao} chave={chave} comDetalhes={detalhes} />
+              {/* "Ver como" e o nome do jeito escolhido: quem não conhece os ícones entende que muda a tela */}
+              <span className="flex items-center gap-2">
+                <span className="text-body-sm whitespace-nowrap text-ink-muted">Ver como</span>
+                <SeletorVisao visao={visao} chave={chave} comDetalhes={detalhes} nomeDoAtivo />
+              </span>
             </div>
             <div
               id={idFiltros}
