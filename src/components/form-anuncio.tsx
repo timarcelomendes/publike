@@ -1581,12 +1581,14 @@ function CabecalhoDosPassos({
             {titulo}
           </h1>
         )}
+        {/* "Sair" escrito e com borda: o X sozinho, cinza, passava batido e a pessoa achava que estava presa */}
         <Link
           href={sair}
           aria-label="Sair sem publicar"
-          className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink sm:hidden"
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-pill border border-line-strong bg-surface-200 pr-3.5 pl-2.5 text-label text-ink hover:bg-surface-300 sm:hidden"
         >
-          <X aria-hidden className="size-5" />
+          <X aria-hidden className="size-4" />
+          Sair
         </Link>
       </div>
       <ol aria-label="Passos para publicar" className="hidden min-w-0 flex-1 items-center sm:flex">
