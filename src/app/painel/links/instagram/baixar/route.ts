@@ -29,6 +29,11 @@ export async function GET(request: NextRequest) {
       linkDoStory: (id) => `${conta.story[0]}${id}${conta.story[1]}`,
     },
     new Date(agora),
+    undefined,
+    1,
+    true,
+    // o "Arraste para o lado" na capa (opcional)
+    request.nextUrl.searchParams.get("arraste") !== "0",
   );
   return new Response(new Blob([zip]), {
     headers: {

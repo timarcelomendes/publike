@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/admin/vagas-
   }
   if (peca === "capa") {
     const vagas = await vagasEscolhidas(c, lerIdsDoDia(sp.get("ids")), agoraIso);
-    return capaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "01-capa.png" : null, capa);
+    return capaDoDia(vagas, diaPorExtenso(agora), undefined, baixar ? "01-capa.png" : null, capa, sp.get("arraste") !== "0");
   }
   if (peca === "vaga" || peca === "story") {
     const [v] = await vagasEscolhidas(c, lerIdsDoDia(sp.get("id")), agoraIso);

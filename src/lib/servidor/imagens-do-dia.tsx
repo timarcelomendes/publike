@@ -344,6 +344,8 @@ export async function capaDoDia(
   arquivo: string | null = null,
   /** o título, onde e quando (Admin › Vagas do dia; sem ele, "Vagas do dia" em Goiânia e região, hoje) */
   texto?: TextoDaCapa,
+  /** o "Arraste para o lado" no pé (opcional: num post de uma imagem só, não faz sentido) */
+  arraste = true,
 ) {
   const titulo = texto?.titulo ?? "Vagas do dia";
   const onde = texto?.lugar ?? "Goiânia e região";
@@ -403,10 +405,14 @@ export async function capaDoDia(
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: destaque(a) }}>Arraste para o lado</div>
-          <img src={paraOLado(destaque(a))} alt="" width={48} height={48} />
-        </div>
+        {arraste ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: destaque(a) }}>Arraste para o lado</div>
+            <img src={paraOLado(destaque(a))} alt="" width={48} height={48} />
+          </div>
+        ) : (
+          <div style={{ display: "flex" }} />
+        )}
         <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 36 }}>{endereco(a)}</div>
       </div>
     </div>,
@@ -878,11 +884,13 @@ export async function pacoteDoDia(
   porStory: 1 | 3 = 1,
   /** o "1/4" no selo dos stories de três vagas (opcional) */
   numero = true,
+  /** o "Arraste para o lado" na capa do carrossel (opcional) */
+  arraste = true,
 ) {
   const total = vagas.length;
   // uma imagem por vez: o desenho usa o processador, e em paralelo não fica mais rápido
   const png = async (pedido: Promise<Response>) => new Uint8Array(await (await pedido).arrayBuffer());
-  const arquivos: ArquivoDoZip[] = [{ nome: "carrossel/01-capa.png", dados: await png(capaDoDia(vagas, dia, a, null, capa)) }];
+  const arquivos: ArquivoDoZip[] = [{ nome: "carrossel/01-capa.png", dados: await png(capaDoDia(vagas, dia, a, null, capa, arraste)) }];
   for (const [i, v] of vagas.entries()) {
     arquivos.push({
       nome: `carrossel/${doisDigitos(i + 2)}-${nomeDeArquivo(v.titulo)}.png`,

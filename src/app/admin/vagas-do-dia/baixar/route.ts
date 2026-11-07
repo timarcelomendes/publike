@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
     sp.get("stories") === "3" ? 3 : 1,
     // o "1/4" no selo desses stories (opcional)
     sp.get("numero") !== "0",
+    // o "Arraste para o lado" na capa (opcional)
+    sp.get("arraste") !== "0",
   );
   // "vagas-da-semana-2026-11-05.zip"
   const nome = nomeDeArquivo(capa.titulo) || "vagas-do-dia";

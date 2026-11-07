@@ -78,6 +78,9 @@ export function CarrosselDoInstagram({
   // o "1/3" no selo de cada story de três vagas (opcional)
   const [comNumero, setComNumero] = useState(true);
   const semNumero = comNumero ? "" : "&numero=0";
+  // o "Arraste para o lado" na capa do carrossel (opcional: postada sozinha, a capa não tem para onde arrastar)
+  const [comArraste, setComArraste] = useState(true);
+  const semArraste = comArraste ? "" : "&arraste=0";
   const trios = doPost && porStory === 3 ? emTrios(nasImagens) : [];
   const bio = links.bio;
 
@@ -201,7 +204,7 @@ export function CarrosselDoInstagram({
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap gap-2">
             <a
-              href={`${rotas.baixar}?ids=${ordem.join(",")}${extra}${trios.length ? `&stories=3${semNumero}` : ""}`}
+              href={`${rotas.baixar}?ids=${ordem.join(",")}${extra}${semArraste}${trios.length ? `&stories=3${semNumero}` : ""}`}
               download
               className={classesBotao("primario", "md")}
             >
@@ -222,9 +225,18 @@ export function CarrosselDoInstagram({
                 · {total + 2} imagens de 1080 × 1350
               </span>
             </h3>
+            <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 self-start text-label">
+              <input
+                type="checkbox"
+                checked={comArraste}
+                onChange={(e) => setComArraste(e.target.checked)}
+                className="size-5 accent-[var(--pk-ink)]"
+              />
+              “Arraste para o lado” na capa
+            </label>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               <Previa
-                src={`${IMAGENS}/capa?ids=${estavel.join(",")}${extra}`}
+                src={`${IMAGENS}/capa?ids=${estavel.join(",")}${extra}${semArraste}`}
                 nome="1 · Capa"
                 proporcao="aspect-[4/5]"
               />

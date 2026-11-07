@@ -40,7 +40,14 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/painel/links
   }
   if (peca === "capa") {
     const vagas = await ler(lerIdsDoDia(sp.get("ids")));
-    return capaDoDia(vagas, diaPorExtenso(agora), conta.assinatura, baixar ? `${marca}-01-capa.png` : null);
+    return capaDoDia(
+      vagas,
+      diaPorExtenso(agora),
+      conta.assinatura,
+      baixar ? `${marca}-01-capa.png` : null,
+      undefined,
+      sp.get("arraste") !== "0",
+    );
   }
   if (peca === "vaga" || peca === "story") {
     const [v] = await ler(lerIdsDoDia(sp.get("id")));
