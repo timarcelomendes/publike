@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { Filtros, linkCom, Secao } from "@/components/admin/ui";
+import { Filtros, linkCom, Numero, Secao } from "@/components/admin/ui";
 import { Vazio } from "@/components/ui/basicos";
 import {
   curtidasRecentes,
@@ -11,12 +11,15 @@ import {
   type CurtidaAdmin,
 } from "@/lib/admin/dados";
 import {
+  ateQuando,
   formatarNumero,
   plural,
   primeiro,
   rotuloConta,
+  semPrazo,
   tempoRelativo,
 } from "@/lib/formato";
+import { comoResponde } from "@/lib/resposta";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -73,6 +76,49 @@ const FILTROS = [
 ];
 
 const DIA = 24 * 60 * 60 * 1000;
+const HORA = 60 * 60 * 1000;
+
+/** "12 min", "3 h", "2 dias": o tempo entre dois passos da linha do tempo. */
+function duracao(ms: number) {
+  if (ms < HORA) return `${Math.max(1, Math.round(ms / 60_000))} min`;
+  if (ms < DIA) return `${Math.round(ms / HORA)} h`;
+  const dias = Math.round(ms / DIA);
+  return dias === 1 ? "1 dia" : `${dias} dias`;
+}
+
+/** "6 nov., 14:20", no horário de Goiânia. */
+function quandoCurto(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(iso));
+}
+
+const entre = (de: string, ate: string) => new Date(ate).getTime() - new Date(de).getTime();
+
+/** Como o anúncio saiu do ar (ou que ainda está no ar), para o fim da linha do tempo. */
+function fimDoAnuncio(a: NonNullable<CurtidaAdmin["anuncio"]>, agora: number): { texto: string; em: string | null; fechou: boolean } {
+  const nome = a.tipo === "servico" ? "Anúncio" : "Vaga";
+  if (a.preenchida_em) return { texto: `${nome} preenchida`, em: a.preenchida_em, fechou: true };
+  if (a.status === "encerrado") return { texto: `${nome} encerrada`, em: a.atualizado_em, fechou: true };
+  if (a.status === "expirado" || (!semPrazo(a.expira_em) && new Date(a.expira_em).getTime() < agora))
+    return { texto: `${nome} saiu do ar no prazo`, em: a.expira_em, fechou: true };
+  if (a.status === "removido") return { texto: `${nome} removida`, em: a.atualizado_em, fechou: true };
+  if (a.status === "pausado") return { texto: `${nome} pausada`, em: a.atualizado_em, fechou: true };
+  if (a.status === "em_analise") return { texto: `${nome} em análise`, em: null, fechou: false };
+  return { texto: `${nome} no ar, ${ateQuando(a.expira_em)}`, em: null, fechou: false };
+}
+
+/** A mediana de uma lista de números (vazia: null). */
+function mediana(v: number[]) {
+  if (!v.length) return null;
+  const o = [...v].sort((a, b) => a - b);
+  const m = Math.floor(o.length / 2);
+  return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+}
 
 export default function Curtidas({
   searchParams,
@@ -118,6 +164,12 @@ async function Conteudo({
   ).length;
   const humanas = todas.filter((x) => x.respondida_por && POR[x.respondida_por]?.humano).length;
   const automaticas = todas.filter((x) => x.respondida_por && POR[x.respondida_por] && !POR[x.respondida_por].humano).length;
+  // os números do alto: o tempo até a resposta e os anúncios que já saíram do ar
+  const tempoAteResponder = mediana(
+    todas.filter((x) => x.situacao !== "pendente" && x.respondida_em).map((x) => entre(x.quando, x.respondida_em as string)),
+  );
+  const anunciosCurtidos = new Map(todas.flatMap((x) => (x.anuncio ? [[x.anuncio.id, x.anuncio] as const] : [])));
+  const fechados = [...anunciosCurtidos.values()].filter((a) => fimDoAnuncio(a, agora).fechou).length;
   const noPeriodo =
     periodo === "tudo"
       ? ""
@@ -169,6 +221,25 @@ async function Conteudo({
             }
           />
         </div>
+        {todas.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <Numero rotulo="Curtidas" valor={todas.length} icone={Heart} detalhe={`${conta("pendente")} esperando o aceite`} />
+            <Numero
+              rotulo="Respondidas"
+              valor={respondidas}
+              detalhe={`${Math.round((100 * respondidas) / todas.length)}%${
+                tempoAteResponder !== null ? `, em geral em ${duracao(tempoAteResponder)}` : ""
+              }`}
+            />
+            <Numero rotulo="Matches" valor={conta("match")} />
+            <Numero rotulo="Com contato" valor={comContato} detalhe="WhatsApp, telefone ou e-mail tocado" icone={MessageCircle} />
+            <Numero
+              rotulo="Saíram do ar"
+              valor={fechados}
+              detalhe={`de ${plural(anunciosCurtidos.size, "anúncio curtido", "anúncios curtidos")}`}
+            />
+          </div>
+        )}
         {todas.length > 0 && (
           <p className="text-body-sm text-ink-muted">
             {plural(todas.length, "curtida", "curtidas")}
@@ -226,7 +297,7 @@ function Conta({
 function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
   return (
     <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[44rem] text-left text-body-sm">
+      <table className="w-full min-w-[52rem] text-left text-body-sm">
         <thead className="text-label text-ink-muted">
           <tr className="border-b border-line">
             <th scope="col" className="py-2 pr-3 font-medium">
@@ -242,7 +313,7 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
               Quem publicou
             </th>
             <th scope="col" className="py-2 font-medium">
-              Como ficou
+              Linha do tempo
             </th>
           </tr>
         </thead>
@@ -271,7 +342,8 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                       {m.anuncio.titulo}
                     </Link>
                     <span className="text-caption text-ink-muted">
-                      {m.anuncio.tipo === "servico" ? "Serviço" : "Vaga"}
+                      {m.anuncio.tipo === "servico" ? "Serviço" : "Vaga"} ·{" "}
+                      {plural(m.anuncio.curtidas, "curtida", "curtidas")} no total
                     </span>
                   </span>
                 ) : (
@@ -280,60 +352,111 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
               </td>
               <td className="py-2 pr-3">
                 <Conta c={m.publicou} agora={agora} />
+                {/* o mesmo indicador do cartão da vaga */}
+                {m.publicou?.resposta && (
+                  <span
+                    className={`mt-0.5 block text-caption ${
+                      comoResponde(m.publicou.resposta).bom ? "text-cerrado-text" : "text-ink-muted"
+                    }`}
+                  >
+                    {comoResponde(m.publicou.resposta, true).texto}
+                  </span>
+                )}
               </td>
               <td className="py-2">
-                <span className="flex min-w-[9rem] flex-col items-start gap-1">
-                  {/* a bolinha na cor da situação e o nome (quebra a linha; o selo não cabia na coluna) */}
-                  <span className="font-semibold">
-                    <span aria-hidden className={`mr-1.5 inline-block size-2 rounded-pill align-middle ${COR[m.situacao]}`} />
-                    {SITUACOES[m.situacao].nome}
-                  </span>
-                  {m.situacao !== "pendente" && m.respondida_em && (
-                    <span className="flex flex-col gap-0.5 text-caption font-normal text-ink-muted">
-                      {m.respondida_por && POR[m.respondida_por] && (
-                        // humano ou automático em destaque; o porquê embaixo
-                        <span className="font-semibold text-ink">
-                          {POR[m.respondida_por].humano ? "Humano" : "Automático"}
-                        </span>
-                      )}
-                      <span title={new Date(m.respondida_em).toLocaleString("pt-BR")}>
-                        {m.respondida_por && POR[m.respondida_por]
-                          ? `${POR[m.respondida_por].texto}, ${tempoRelativo(m.respondida_em, agora)}`
-                          : `respondida ${tempoRelativo(m.respondida_em, agora)}`}
-                      </span>
-                    </span>
-                  )}
-                  {/* o último toque de cada lado nos botões de contato (o que acontece no WhatsApp, o Publike não vê) */}
-                  {(["empresa", "pessoa"] as const).map((lado) => {
-                    const t = m.contatos[lado];
-                    if (!t) return null;
-                    return (
-                      <span
-                        key={lado}
-                        className="flex items-center gap-1 text-caption font-normal text-ink"
-                        title={new Date(t.em).toLocaleString("pt-BR")}
-                      >
-                        <MessageCircle aria-hidden className="size-3.5 shrink-0 text-cerrado-text" />
-                        {t.canal === "descartou" ? (
-                          <>
-                            A pessoa disse “agora não” ao WhatsApp {tempoRelativo(t.em, agora)}: o chat abriu com as
-                            perguntas
-                          </>
-                        ) : (
-                          <>
-                            {lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} {CANAL[t.canal]}{" "}
-                            {tempoRelativo(t.em, agora)}
-                          </>
-                        )}
-                      </span>
-                    );
-                  })}
-                </span>
+                <LinhaDoTempo m={m} agora={agora} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Um passo da linha do tempo: a bolinha, o que aconteceu, quando e quanto depois do passo de antes. */
+type Passo = { cor: string; titulo: string; detalhe?: string | null; em?: string | null; depois?: string | null; aberto?: boolean };
+
+/**
+ * A linha do tempo de uma curtida: curtiu → respondida (humano ou automático) → o contato → o fim do anúncio
+ * (preenchida, encerrada, saiu do ar no prazo, pausada, removida) ou "no ar". Com o tempo entre os passos.
+ */
+function LinhaDoTempo({ m, agora }: { m: CurtidaAdmin; agora: number }) {
+  const passos: Passo[] = [{ cor: "bg-like", titulo: "Curtiu", em: m.quando }];
+  let antes = m.quando;
+
+  if (m.situacao === "pendente" || !m.respondida_em) {
+    passos.push({
+      cor: COR.pendente,
+      titulo: SITUACOES[m.situacao].nome,
+      detalhe: `há ${duracao(Math.max(0, agora - new Date(m.quando).getTime()))}, sem resposta`,
+      aberto: true,
+    });
+  } else {
+    const por = m.respondida_por ? POR[m.respondida_por] : null;
+    passos.push({
+      cor: COR[m.situacao],
+      titulo: `${SITUACOES[m.situacao].nome}${por ? ` · ${por.humano ? "humano" : "automático"}` : ""}`,
+      detalhe: por?.texto ?? null,
+      em: m.respondida_em,
+      depois: duracao(Math.max(0, entre(antes, m.respondida_em))),
+    });
+    antes = m.respondida_em;
+  }
+
+  // os toques nos botões de contato, na ordem em que aconteceram
+  const toques = (["empresa", "pessoa"] as const)
+    .flatMap((lado) => (m.contatos[lado] ? [{ lado, t: m.contatos[lado] }] : []))
+    .sort((a, b) => a.t.em.localeCompare(b.t.em));
+  for (const { lado, t } of toques) {
+    passos.push({
+      cor: "bg-cerrado",
+      titulo:
+        t.canal === "descartou"
+          ? "A pessoa disse “agora não” ao WhatsApp"
+          : `${lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} ${CANAL[t.canal]}`,
+      detalhe: t.canal === "descartou" ? "o chat abriu com as perguntas" : null,
+      em: t.em,
+      depois: duracao(Math.max(0, entre(antes, t.em))),
+    });
+    antes = t.em;
+  }
+
+  if (m.anuncio) {
+    const fim = fimDoAnuncio(m.anuncio, agora);
+    passos.push({
+      cor: fim.fechou ? "bg-ink-muted" : "bg-line-strong",
+      titulo: fim.texto,
+      em: fim.em,
+      // quanto tempo a vaga ficou no ar depois da curtida
+      depois: fim.em ? `${duracao(Math.max(0, entre(m.quando, fim.em)))} depois da curtida` : null,
+      aberto: !fim.fechou,
+    });
+  }
+
+  return (
+    <ol className="flex min-w-[15rem] flex-col">
+      {passos.map((p, i) => (
+        <li key={i} className="relative flex gap-2 pb-2 last:pb-0">
+          {/* o fio entre as bolinhas (tracejado quando o passo ainda está aberto) */}
+          {i < passos.length - 1 && (
+            <span aria-hidden className={`absolute top-3 bottom-0 left-[4px] border-l ${passos[i + 1].aberto ? "border-dashed" : ""} border-line-strong`} />
+          )}
+          <span
+            aria-hidden
+            className={`relative mt-1.5 size-2.5 shrink-0 rounded-pill ${p.aberto ? "border border-line-strong bg-surface-100" : p.cor}`}
+          />
+          <span className="flex min-w-0 flex-col">
+            <span className="font-semibold">{p.titulo}</span>
+            <span className="text-caption text-ink-muted">
+              {p.em && <span title={new Date(p.em).toLocaleString("pt-BR")}>{quandoCurto(p.em)}</span>}
+              {p.em && p.depois && " · "}
+              {p.depois && (p.depois.includes("depois") ? p.depois : `${p.depois} depois`)}
+            </span>
+            {p.detalhe && <span className="text-caption text-ink-muted">{p.detalhe}</span>}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }

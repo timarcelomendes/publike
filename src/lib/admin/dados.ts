@@ -8,6 +8,7 @@ import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { lerContaApagada, type ContaApagada } from "@/lib/conta-apagada";
 import { motivosParaConferir } from "@/lib/conferir-anuncio";
 import { faltaColuna } from "@/lib/servidor/comeca-ja";
+import type { Resposta } from "@/lib/resposta";
 
 // Leituras das páginas do admin e da moderação. O cliente vem de
 // exigirAdminLocal() (chave secreta, só no computador do dono) ou de
@@ -1049,8 +1050,19 @@ export type CurtidaAdmin = {
   /** pendente; aceita (o aceite saiu, falta o currículo); match; dispensada; desfeito */
   situacao: "pendente" | "aceita" | "match" | "dispensada" | "desfeito";
   curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null } | null;
-  anuncio: { id: string; titulo: string; tipo: string } | null;
-  publicou: { id: string; nome: string; tipo: string; acesso: string | null } | null;
+  /** com o que a linha do tempo precisa para o fim da vaga e o total de curtidas dela (todas, de sempre) */
+  anuncio: {
+    id: string;
+    titulo: string;
+    tipo: string;
+    status: string;
+    preenchida_em: string | null;
+    expira_em: string;
+    atualizado_em: string;
+    curtidas: number;
+  } | null;
+  /** `resposta`: como quem publicou responde (o mesmo do cartão; só com 5 curtidas ou mais) */
+  publicou: { id: string; nome: string; tipo: string; acesso: string | null; resposta: Resposta | null } | null;
   /**
    * o último toque de cada lado nos botões de contato (WhatsApp, telefone, e-mail): a empresa chamando a pessoa e a
    * pessoa chamando quem publicou (a da pessoa só a partir da migração 20270219120000)
@@ -1087,7 +1099,10 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
   const linhas = data ?? [];
   const idsAnuncios = [...new Set(linhas.map((l) => l.anuncio_id))];
   const { data: anuncios, error: e1 } = idsAnuncios.length
-    ? await c.from("anuncios").select("id, titulo, tipo, autor_id").in("id", idsAnuncios)
+    ? await c
+        .from("anuncios")
+        .select("id, titulo, tipo, autor_id, status, preenchida_em, expira_em, atualizado_em")
+        .in("id", idsAnuncios)
     : { data: [], error: null };
   if (e1) falha("os anúncios das curtidas", e1);
   const porAnuncio = new Map((anuncios ?? []).map((a) => [a.id, a]));
@@ -1111,6 +1126,11 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
   const toqueDe = new Map<string, ToqueDeContato>();
   for (const t of toques ?? [])
     toqueDe.set(`${t.anuncio_id}:${t.perfil_id}:${t.lado}`, { canal: t.canal as ToqueDeContato["canal"], em: t.em });
+  // os indicadores dos cartões: o total de curtidas de cada anúncio e como quem publicou responde
+  const [totais, respostas] = await Promise.all([
+    curtidasPorAnuncio(c, idsAnuncios),
+    respostaDosAutores(c, [...new Set((anuncios ?? []).map((a) => a.autor_id))]),
+  ]);
   return linhas.map((l) => {
     const a = porAnuncio.get(l.anuncio_id) ?? null;
     const autor = a ? (porPerfil.get(a.autor_id) ?? null) : null;
@@ -1122,14 +1142,66 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
       respondida_por: l.respondida_por ?? null,
       situacao,
       curtiu: porPerfil.get(l.perfil_id) ?? null,
-      anuncio: a ? { id: a.id, titulo: a.titulo, tipo: a.tipo } : null,
-      publicou: autor ? { id: autor.id, nome: autor.nome, tipo: autor.tipo, acesso: autor.acesso } : null,
+      anuncio: a
+        ? {
+            id: a.id,
+            titulo: a.titulo,
+            tipo: a.tipo,
+            status: a.status,
+            preenchida_em: a.preenchida_em,
+            expira_em: a.expira_em,
+            atualizado_em: a.atualizado_em,
+            curtidas: totais.get(a.id) ?? 0,
+          }
+        : null,
+      publicou: autor
+        ? {
+            id: autor.id,
+            nome: autor.nome,
+            tipo: autor.tipo,
+            acesso: autor.acesso,
+            resposta: respostas.get(autor.id) ?? null,
+          }
+        : null,
       contatos: {
         empresa: toqueDe.get(`${l.anuncio_id}:${l.perfil_id}:empresa`) ?? null,
         pessoa: toqueDe.get(`${l.anuncio_id}:${l.perfil_id}:pessoa`) ?? null,
       },
     };
   });
+}
+
+/** Quantas curtidas cada anúncio tem (todas, de sempre), lidas em páginas de 1.000. */
+async function curtidasPorAnuncio(c: ClienteBanco, ids: string[]): Promise<Map<string, number>> {
+  const total = new Map<string, number>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const lote = ids.slice(i, i + 100);
+    for (let de = 0; de < 20_000; de += 1000) {
+      const { data, error } = await c
+        .from("curtidas")
+        .select("anuncio_id")
+        .in("anuncio_id", lote)
+        .order("anuncio_id")
+        .range(de, de + 999);
+      if (error) falha("o total de curtidas dos anúncios", error);
+      for (const r of data ?? []) total.set(r.anuncio_id, (total.get(r.anuncio_id) ?? 0) + 1);
+      if ((data ?? []).length < 1000) break;
+    }
+  }
+  return total;
+}
+
+/** Como cada um responde as curtidas (o mesmo do cartão da vaga). Sem a função no banco: nada. */
+async function respostaDosAutores(c: ClienteBanco, autores: string[]): Promise<Map<string, Resposta>> {
+  if (!autores.length) return new Map();
+  const { data, error } = await c.rpc("resposta_de_quem_publica", { p_autores: autores.slice(0, 100) });
+  if (error) {
+    console.error(`Publike: falha ao ler como cada um responde (admin): ${error.message}`);
+    return new Map();
+  }
+  return new Map(
+    (data ?? []).map((r) => [r.autor_id, { taxa: Number(r.taxa), horas: r.horas === null ? null : Number(r.horas) }]),
+  );
 }
 
 /** Uma pessoa esperando a empresa: o nome curto, a vaga e desde quando. */
