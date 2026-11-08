@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { diaADiaDasVagas } from "@/lib/servidor/jeito-de-trabalhar";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { FormAnuncio } from "@/components/form-anuncio";
@@ -36,12 +37,13 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
   // os serviços são editados juntos, no cadastro "Meus serviços"
   if (anuncio.tipo === "servico") redirect("/painel/servicos");
   const agencia = anuncio.autor_tipo === "agencia";
-  const [triagem, cliente, comecaJa, funcao, contatoPor] = await Promise.all([
+  const [triagem, cliente, comecaJa, funcao, contatoPor, diaADia] = await Promise.all([
     obterTriagem(id),
     agencia ? clienteDaVaga(id) : null,
     comecaJaDaVaga(id),
     funcaoSalvaDaVaga(id),
     contatoPorDaVaga(id),
+    diaADiaDasVagas([id]),
   ]);
   // a lista de clientes traz o desta vaga, mesmo arquivado
   const clientes = agencia ? await clientesParaVaga(cliente) : null;
@@ -69,6 +71,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/ed
               comeca_ja: comecaJa,
               funcao,
               contato_por: contatoPor,
+              dia_a_dia: diaADia.get(id) ?? [],
             }}
           />
         )}

@@ -20,13 +20,16 @@ export function faltaColuna(erro: ErroBanco, coluna: string) {
  * com o chat e o WhatsApp, como antes da migração 20270221120000).
  */
 export async function gravarVaga<
-  R extends { comeca_ja?: boolean; contato_por?: string },
+  R extends { comeca_ja?: boolean; contato_por?: string; dia_a_dia?: string[] },
   T extends { error: ErroBanco },
 >(registro: R, gravar: (r: R) => PromiseLike<T>): Promise<T> {
   let r = await gravar(registro);
   const sem = { ...registro };
-  for (let i = 0; i < 2; i++) {
-    if (sem.comeca_ja !== undefined && faltaColuna(r.error, "comeca_ja")) {
+  for (let i = 0; i < 3; i++) {
+    if (sem.dia_a_dia !== undefined && faltaColuna(r.error, "dia_a_dia")) {
+      console.warn("Publike: falta a migração 20270309 (dia_a_dia); a vaga salvou sem o dia a dia.");
+      delete sem.dia_a_dia;
+    } else if (sem.comeca_ja !== undefined && faltaColuna(r.error, "comeca_ja")) {
       console.warn("Publike: falta a migração 20261212 (comeca_ja); a vaga salvou sem o “Começa já”.");
       delete sem.comeca_ja;
     } else if (sem.contato_por !== undefined && faltaColuna(r.error, "contato_por")) {

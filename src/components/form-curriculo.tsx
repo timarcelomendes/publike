@@ -637,6 +637,7 @@ export function FormCurriculo({
   salvo = null,
   avisos = null,
   mercado = null,
+  depoisDoFormulario = null,
 }: {
   inicial: Curriculo | null;
   /** mês atual ("2026-10"), vindo do servidor: limite das datas */
@@ -675,6 +676,8 @@ export function FormCurriculo({
   avisos?: ReactNode;
   /** "Seu currículo no mercado" (a nota), na coluna do formulário */
   mercado?: ReactNode;
+  /** embaixo do formulário (o jeito de trabalhar, que salva sozinho) */
+  depoisDoFormulario?: ReactNode;
 }) {
   const router = useRouter();
   const [estado, acao, enviando] = useActionState(salvarCurriculoProtegido, ESTADO_INICIAL);
@@ -1865,6 +1868,8 @@ export function FormCurriculo({
               aoSalvar={() => formulario.current?.requestSubmit()}
             />
           </form>
+
+          {depoisDoFormulario}
 
           {inicial && !demo && !semConta && (
             <VisibilidadeCurriculo

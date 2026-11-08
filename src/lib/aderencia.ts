@@ -28,6 +28,7 @@
 import { trabalhaAqui, type Periodo as PeriodoDoTrabalho } from "./experiencia";
 import { DISPONIBILIDADES, ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
 import { escolaridadeMaisAlta } from "./estudos";
+import { compararJeito } from "./jeito-de-trabalhar";
 import type { Turno } from "./filtros";
 import { chaveBairro, distanciaEntreAreas, regiaoDoBairro } from "./regioes";
 import type { Curriculo } from "./tipos";
@@ -45,6 +46,8 @@ export type Criterio = {
   extra?: boolean;
   /** a experiência na função: vale mais que os outros itens (ver PESO_DA_FUNCAO) */
   funcao?: boolean;
+  /** só um sinal (o jeito de trabalhar): aparece na lista, mas não entra na nota nem elimina */
+  sinal?: boolean;
 };
 
 export type Aderencia = {
@@ -96,12 +99,14 @@ type Vaga = {
   horario?: HorarioDetalhe | null;
   /** com a triagem junto (juntarTriagem) */
   perguntas: Pergunta[];
+  /** como é o dia a dia (o jeito de trabalhar, migração 20270309120000), quando a página leu */
+  dia_a_dia?: string[] | null;
 };
 
 export type Candidato = {
   curriculo:
     | (Pick<Curriculo, "escolaridade" | "experiencias" | "cnh"> &
-        Partial<Pick<Curriculo, "disponibilidade" | "cursos" | "estudos" | "titulo" | "habilidades">>)
+        Partial<Pick<Curriculo, "disponibilidade" | "cursos" | "estudos" | "titulo" | "habilidades" | "jeito">>)
     | null;
   respostas: Respostas;
   cidade: string | null;
@@ -692,7 +697,24 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     }
   }
 
-  const conhecidos = criterios.filter((x) => x.ok !== null);
+  // o jeito de trabalhar: o que a vaga diz do dia a dia contra o que a pessoa contou (só um sinal: fora da nota)
+  const jeito = cv ? compararJeito(vaga.dia_a_dia, cv.jeito) : null;
+  if (jeito) {
+    criterios.push({
+      nome: "Jeito de trabalhar",
+      ok: jeito.naoCombina.length === 0,
+      detalhe: [
+        jeito.combina.length ? `Gosta ou topa: ${lista(jeito.combina.map((x) => x.toLowerCase()))}` : null,
+        jeito.naoCombina.length ? `Prefere evitar: ${lista(jeito.naoCombina.map((x) => x.toLowerCase()))}` : null,
+      ]
+        .filter(Boolean)
+        .join(". "),
+      extra: true,
+      sinal: true,
+    });
+  }
+
+  const conhecidos = criterios.filter((x) => x.ok !== null && !x.sinal);
   const atendidos = conhecidos.filter((x) => parteDe(x) >= 1).length;
   const emParte = conhecidos.filter(atendeEmParte).length;
   // o que a vaga pede e deu para conferir (os "+" vêm do candidato)
@@ -731,6 +753,8 @@ export type CamposDaVaga = {
   horario?: string | null;
   /** a função da vaga na CBO (privado.funcoes_das_vagas), quando o servidor já pôs */
   cbo?: string | null;
+  /** como é o dia a dia (migração 20270309120000), quando o servidor já pôs */
+  dia_a_dia?: string[] | null;
 };
 
 /** O que a vaga pede, para a nota (as perguntas vêm à parte: a resposta procurada é só da empresa). */
@@ -746,6 +770,7 @@ export function requisitosDaVaga(a: CamposDaVaga) {
     jornada: a.jornada,
     horario: horarioDoBanco(a.horario_detalhe),
     cbo: a.cbo ?? null,
+    dia_a_dia: a.dia_a_dia ?? null,
   };
 }
 

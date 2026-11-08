@@ -509,6 +509,7 @@ export type Database = {
           contato_direto: boolean;
           /** depois do match: 'ambos' (chat e o contato de quem publicou) ou 'chat' (só o chat do Publike) */
           contato_por: string;
+          dia_a_dia?: string[];
           /** a vaga precisa de alguém para começar logo (migração 20261212) */
           comeca_ja: boolean;
           /** migração 20270112120000: a latitude e a longitude de `local`, geradas ao gravar */
@@ -569,6 +570,7 @@ export type Database = {
           pede_curriculo?: boolean;
           contato_direto?: boolean;
           contato_por?: string;
+          dia_a_dia?: string[];
           comeca_ja?: boolean;
           prazo_dias?: number | null;
           preenchida_em?: string | null;
@@ -616,6 +618,7 @@ export type Database = {
           pede_curriculo?: boolean;
           contato_direto?: boolean;
           contato_por?: string;
+          dia_a_dia?: string[];
           comeca_ja?: boolean;
           prazo_dias?: number | null;
           preenchida_em?: string | null;
@@ -723,6 +726,8 @@ export type Database = {
           habilidades: string[];
           /** outros estudos: [{ nivel, curso }] */
           estudos: Json;
+          /** o jeito de trabalhar (migração 20270309120000) */
+          jeito?: string[];
           criado_em: string;
           atualizado_em: string;
         };
@@ -750,6 +755,7 @@ export type Database = {
           titulo?: string | null;
           habilidades?: string[];
           estudos?: Json;
+          jeito?: string[];
         };
         Relationships: [];
       };
@@ -3118,6 +3124,8 @@ export type Database = {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
       };
+      /** o jeito de trabalhar (migração 20270309120000) */
+      jeitos_de_trabalhar: { Args: { p_perfis: string[] }; Returns: { perfil_id: string; jeito: string[] }[] };
       /** buscas salvas de Talentos (migração 20270308120000) */
       salvar_busca_talentos: {
         Args: { p_nome: string; p_texto: string | null; p_cidade: string | null; p_avisar?: boolean };

@@ -1,3 +1,4 @@
+import { frasesDoJeito } from "@/lib/jeito-de-trabalhar";
 import { FileText } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/basicos";
@@ -114,6 +115,8 @@ export function CurriculoResumo({
   if (curriculo.cnh) linhas.push({ rotulo: "CNH", valor: `Categoria ${curriculo.cnh}` });
   if (curriculo.disponibilidade.length)
     linhas.push({ rotulo: "Pode trabalhar", valor: curriculo.disponibilidade.map(nomeDisponibilidade).join(", ") });
+  const jeito = frasesDoJeito(curriculo.jeito);
+  if (jeito.length) linhas.push({ rotulo: "Jeito de trabalhar", valor: jeito });
   const trabalhos = curriculo.experiencias;
   const ate = corte(trabalhos.length, NO_COMPACTO.trabalhos, compacto);
   const trabalho = (e: Experiencia, i: number) => (

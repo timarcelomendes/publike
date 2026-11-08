@@ -1,4 +1,5 @@
 import "server-only";
+import { diaADiaDasVagas, jeitosDasPessoas } from "./jeito-de-trabalhar";
 import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { abaDaEtapa, esperaCurriculo, esperaResposta } from "@/lib/constantes";
 import {
@@ -158,10 +159,17 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
   // o % pelo contexto: a função que a IA leu de cada vaga e de cada experiência (cópias só para a conta; a tela
   // recebe o currículo como está)
   const todosOsCvs = [...curriculos.values()].flatMap((m) => (m ? [...m.values()] : []));
-  const [vagasComCbo, cvsComCbo] = await Promise.all([
+  const [vagasComCbo, cvsComCbo, diaADia, jeitos] = await Promise.all([
     comFuncaoDasVagas([...anuncios.values()].filter((a): a is NonNullable<typeof a> => Boolean(a))),
     comFuncoes(todosOsCvs),
+    diaADiaDasVagas([...anuncios.keys()]),
+    jeitosDasPessoas(todosOsCvs.map((cv) => cv.perfil_id)),
   ]);
+  // o jeito de trabalhar (migração 20270309120000): no currículo da ficha e no match, como sinal
+  for (const cv of todosOsCvs) {
+    const jeito = jeitos.get(cv.perfil_id);
+    if (jeito) cv.jeito = jeito;
+  }
   const vagaComCbo = new Map(vagasComCbo.map((v) => [v.id, v]));
   const cvComCbo = new Map(todosOsCvs.map((cv, i) => [cv, cvsComCbo[i]]));
 
@@ -186,8 +194,13 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
       respostas: perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) })),
       aderencia: a
         ? calcularAderencia(
-            { ...requisitosDaVaga(vagaComCbo.get(a.id) ?? a), perguntas },
-            { curriculo: (cv && cvComCbo.get(cv)) ?? cv, respostas: r, cidade: c.cidade, bairro: c.bairro },
+            { ...requisitosDaVaga(vagaComCbo.get(a.id) ?? a), perguntas, dia_a_dia: diaADia.get(a.id) ?? null },
+            {
+              curriculo: cv ? { ...(cvComCbo.get(cv) ?? cv), jeito: cv.jeito } : null,
+              respostas: r,
+              cidade: c.cidade,
+              bairro: c.bairro,
+            },
             agora,
           )
         : null,

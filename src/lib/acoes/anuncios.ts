@@ -1,5 +1,6 @@
 "use server";
 
+import { lerDiaADia } from "@/lib/jeito-de-trabalhar";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -136,7 +137,16 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     }
     clienteNovo = garantido.id;
   }
-  const registro = { ...registroDoAnuncio(d), ...(clienteNovo ? { cliente_id: clienteNovo } : {}) };
+  // vaga: como é o dia a dia (o jeito de trabalhar, migração 20270309120000), só quando o formulário mandou
+  const diaADia =
+    d.tipo === "vaga" && formData.get("dia_a_dia_enviado") === "1"
+      ? lerDiaADia(formData.getAll("dia_a_dia"))
+      : undefined;
+  const registro = {
+    ...registroDoAnuncio(d),
+    ...(clienteNovo ? { cliente_id: clienteNovo } : {}),
+    ...(diaADia ? { dia_a_dia: diaADia } : {}),
+  };
   const cliente = clienteNovo ?? d.cliente_id ?? null;
 
   const id = formData.get("id");

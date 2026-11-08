@@ -1,4 +1,5 @@
 import { FileUser } from "lucide-react";
+import { diaADiaDasVagas } from "@/lib/servidor/jeito-de-trabalhar";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -134,13 +135,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
     !["em_analise", "removido"].includes(original.status)
       ? original
       : null;
-  const [triagem, clienteDaCopia, funcaoDaCopia, contatoPorDaCopia] = await Promise.all([
+  const [triagem, clienteDaCopia, funcaoDaCopia, contatoPorDaCopia, diaADiaDaCopia] = await Promise.all([
     copia ? obterTriagem(copia.id) : {},
     copia && clientes ? clienteDaVaga(copia.id) : null,
     // "Publicar parecida" e o "Volte a contratar": o cargo na carteira da vaga de antes também
     copia ? funcaoSalvaDaVaga(copia.id) : null,
     // e o jeito de conversar depois do match (só pelo chat, ou chat e WhatsApp)
     copia ? contatoPorDaVaga(copia.id) : null,
+    // e como é o dia a dia (o jeito de trabalhar)
+    copia ? diaADiaDasVagas([copia.id]) : null,
   ]);
   // a vaga é para este cliente: o nome, o jeito (confidencial ou não) e o lugar vêm dele
   const cliente = clientePedido ? (clientes?.find((c) => c.id === clientePedido) ?? null) : null;
@@ -150,6 +153,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
         ...valoresDoAnuncio(copia, { copiar: true, triagem }),
         funcao: funcaoDaCopia,
         ...(contatoPorDaCopia ? { contato_por: contatoPorDaCopia } : {}),
+        dia_a_dia: diaADiaDaCopia?.get(copia.id) ?? [],
       }
     : ultimo
       ? {

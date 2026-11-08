@@ -97,6 +97,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "É o convite de quem recebeu o seu currículo por fora (pelo WhatsApp, por e-mail ou em mãos) e quer chamar você pelo Publike. Abra o link, entre com o seu celular, confira o currículo que veio pronto e aceite: aí dá match e o WhatsApp dos dois aparece. Se não quiser, toque em “Não tenho interesse”: o que foi lido do seu currículo sai do convite. O Publike nunca cobra nada de quem procura trabalho.",
       },
       {
+        p: "O que é “Seu jeito de trabalhar”?",
+        r: "É uma parte opcional embaixo do currículo: para cada coisa do dia a dia (atender o público, trabalhar em pé, carregar peso, ritmo corrido ou tranquilo, em equipe ou sozinho, na rua ou num lugar fixo, viajar), você marca se gosta ou se prefere evitar, ou deixa em branco. Não é teste: não tem certo nem errado. As empresas veem junto do currículo e, quando a vaga diz como é o dia a dia, o match mostra o que combina. Isso não muda a % e não elimina ninguém. Os horários que você pode ficam em “Disponibilidade”.",
+      },
+      {
         p: "Quem vê meu currículo?",
         r: "Preencha “Meu currículo” uma vez. Ao salvar, ele aparece para as empresas da sua cidade, que podem convidar você, e um resumo aparece na aba Talentos da busca e no seu perfil: com o nome encurtado e sem telefone, e-mail nem o PDF. O contato só sai se você curtir a vaga e der match. Prefere não aparecer? No fim da página do currículo, desligue “Deixar as empresas me encontrarem” ou “Aparecer na aba Talentos”. Quem anunciou uma vaga que você curtiu vê o currículo enquanto a curtida existir. Se a vaga pede currículo, o match sai quando o seu chegar: se aceitarem você antes, chega um aviso para mandar.",
       },
@@ -132,7 +136,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Quais testes prontos o Publike tem?",
-        r: "Na aba Avaliar da vaga, em Testes, tem os testes da Publike pela função (caixa, atendimento, vendas, cozinha, estoque, administrativo, informática), as Situações de trabalho e os Testes gerais, que servem para qualquer vaga: Português, Matemática do dia a dia (troco, desconto, porcentagem, medidas), Raciocínio lógico e Inglês básico (palavras de atendimento, placas e etiquetas). O teste da função entra sozinho na vaga ao publicar, de graça. Para a vaga de caixa, por exemplo, o Publike sugere também a Matemática. São até 3 testes por vaga com o Teste Prático; sem ele, 1 teste da Publike, grátis. O resultado sai como acima, dentro ou abaixo do esperado, e ninguém é recusado pelo teste. Não é teste psicológico: mede o conhecimento, e por isso o Publike não tem teste de perfil ou de personalidade (por lei, isso é coisa de psicólogo).",
+        r: "Na aba Avaliar da vaga, em Testes, tem os testes da Publike pela função (caixa, atendimento, vendas, cozinha, estoque, administrativo, informática), as Situações de trabalho e os Testes gerais, que servem para qualquer vaga: Português, Matemática do dia a dia (troco, desconto, porcentagem, medidas), Raciocínio lógico e Inglês básico (palavras de atendimento, placas e etiquetas). O teste da função entra sozinho na vaga ao publicar, de graça. Para a vaga de caixa, por exemplo, o Publike sugere também a Matemática. São até 3 testes por vaga com o Teste Prático; sem ele, 1 teste da Publike, grátis. O resultado sai como acima, dentro ou abaixo do esperado, e ninguém é recusado pelo teste. Não é teste psicológico: mede o conhecimento, e por isso o Publike não tem teste de perfil ou de personalidade (por lei, isso é coisa de psicólogo). No lugar, quem procura conta o jeito de trabalhar no currículo, e a vaga diz como é o dia a dia (em Requisitos, no Publicar): o match mostra o que combina, sem mudar a % nem eliminar ninguém.",
       },
       {
         p: "Posso falar com alguém da aba Talentos sem ter vaga?",

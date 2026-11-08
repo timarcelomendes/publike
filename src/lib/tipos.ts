@@ -81,6 +81,8 @@ export type Curriculo = {
   habilidades?: string[];
   /** outros estudos, além do mais alto: um técnico, outra faculdade, uma pós */
   estudos?: Estudo[];
+  /** o jeito de trabalhar ("publico:sim", "peso:nao"; migração 20270309120000), quando a página leu */
+  jeito?: string[];
 };
 /** Currículo de quem curtiu a vaga, com o link temporário do PDF. */
 export type CurriculoDoInteressado = Curriculo & { perfil_id: string; link_pdf: string | null };

@@ -1,5 +1,6 @@
 "use client";
 
+import { ITENS_DO_JEITO } from "@/lib/jeito-de-trabalhar";
 import { ArrowLeft, ArrowRight, Briefcase, CalendarClock, Check, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import {
@@ -116,6 +117,8 @@ export type ValoresAnuncio = {
   /** comissão, bônus, gorjeta... junto do valor */
   ganhos_extras?: GanhoExtra[];
   beneficios_lista?: string[];
+  /** vaga: como é o dia a dia (o jeito de trabalhar, migração 20270309120000) */
+  dia_a_dia?: string[];
   escolaridade_minima?: string | null;
   experiencia?: string | null;
   cnh?: string | null;
@@ -1171,6 +1174,28 @@ export function FormAnuncio({
               ))}
             </div>
             {erros.pcd && <MensagemErro>{erros.pcd}</MensagemErro>}
+          </fieldset>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-label">Como é o dia a dia</legend>
+            <p className="-mt-1 text-body-sm text-ink-muted">
+              Marque o que faz parte do trabalho. Quem procura conta o jeito de trabalhar dele, e o match mostra o que
+              combina, sem eliminar ninguém.
+            </p>
+            <input type="hidden" name="dia_a_dia_enviado" value="1" />
+            <div className="flex flex-wrap gap-2">
+              {ITENS_DO_JEITO.map((item) => (
+                <label key={item.id} className={classesPilula}>
+                  <input
+                    type="checkbox"
+                    name="dia_a_dia"
+                    value={item.id}
+                    defaultChecked={(inicial.dia_a_dia ?? []).includes(item.id)}
+                    className="sr-only"
+                  />
+                  {item.vaga}
+                </label>
+              ))}
+            </div>
           </fieldset>
           <EditorPerguntas inicial={inicial.perguntas ?? []} erro={erros.perguntas} />
         </div>

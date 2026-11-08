@@ -1,4 +1,5 @@
 import "server-only";
+import { diaADiaDasVagas, jeitosDasPessoas } from "./jeito-de-trabalhar";
 import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { esperaCurriculo, etapaQueVale, type EtapaCandidato } from "@/lib/constantes";
 import {
@@ -124,9 +125,19 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
   const perguntas: Pergunta[] = juntarTriagem(perguntasDoBanco(anuncio.perguntas), triagem);
   // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (cópias, só para a conta)
   const doBanco = [...(curriculos as Map<string, CurriculoDoInteressado>).values()];
-  const [[vagaComCbo], comCbo] = await Promise.all([comFuncaoDasVagas([anuncio]), comFuncoes(doBanco)]);
+  const [[vagaComCbo], comCbo, diaADia, jeitos] = await Promise.all([
+    comFuncaoDasVagas([anuncio]),
+    comFuncoes(doBanco),
+    diaADiaDasVagas([id]),
+    jeitosDasPessoas(interessados.map((p) => p.perfil_id)),
+  ]);
+  // o jeito de trabalhar (migração 20270309120000): no currículo da ficha e no match, como sinal
+  for (const [perfil, cv] of curriculos as Map<string, CurriculoDoInteressado>) {
+    const jeito = jeitos.get(perfil);
+    if (jeito) cv.jeito = jeito;
+  }
   const cvComCbo = new Map(doBanco.map((cv, i) => [cv, comCbo[i]]));
-  const vaga = { ...requisitosDaVaga(vagaComCbo), perguntas };
+  const vaga = { ...requisitosDaVaga(vagaComCbo), perguntas, dia_a_dia: diaADia.get(id) ?? null };
 
   const cartoes: CartaoDoQuadro[] = interessados.map((p) => {
     const e = etapas.get(p.perfil_id);
@@ -149,7 +160,12 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       anotacao: e?.nota ?? null,
       aderencia: calcularAderencia(
         vaga,
-        { curriculo: (cv && cvComCbo.get(cv)) ?? cv, respostas: r, cidade: p.cidade, bairro: p.bairro },
+        {
+          curriculo: cv ? { ...(cvComCbo.get(cv) ?? cv), jeito: cv.jeito } : null,
+          respostas: r,
+          cidade: p.cidade,
+          bairro: p.bairro,
+        },
         agora,
       ),
       respostas: perguntas.map((q) => ({ pergunta: q.nome, resposta: textoDaResposta(q, r[q.id]) })),

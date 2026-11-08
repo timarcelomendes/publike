@@ -1,4 +1,6 @@
 import { ArrowLeft, PartyPopper } from "lucide-react";
+import { JeitoDeTrabalhar } from "@/components/jeito-de-trabalhar";
+import { meuJeitoDeTrabalhar } from "@/lib/servidor/jeito-de-trabalhar";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -127,13 +129,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
       </Aviso>
     );
   }
-  const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite] = await Promise.all([
+  const [curriculo, curtidas, visivel, vitrine, ia, dadosConvite, jeito] = await Promise.all([
     obterMeuCurriculo(),
     listarMinhasCurtidas().catch(() => []),
     meuCurriculoVisivel(),
     meuCurriculoNaVitrine(),
     ajudaDaIADisponivel().catch(() => false),
     convite ? dadosDoConvite(convite).catch(() => null) : null,
+    meuJeitoDeTrabalhar(usuario.id),
   ]);
   const lido = convite && !curriculo && dadosConvite?.meu ? await curriculoDoConvite(convite, hoje) : null;
   // acabou de salvar e ainda não tem nenhum aviso de vaga: o convite para avisar de vagas do que a pessoa faz
@@ -294,6 +297,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/perfil/cur
       quemVe={curriculo ? { visivel, vitrine } : null}
       salvo={curriculo ? tempoRelativo(curriculo.atualizado_em, agora) : null}
       avisos={avisos}
+      depoisDoFormulario={curriculo && jeito !== null ? <JeitoDeTrabalhar inicial={jeito} /> : null}
       mercado={
         // a nota, a faixa de salário e o que abre mais vagas (só a pessoa vê)
         curriculo && (

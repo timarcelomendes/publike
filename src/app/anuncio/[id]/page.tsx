@@ -1,4 +1,6 @@
 import { AvisoVideoPedido } from "@/components/video/aviso-video-pedido";
+import { diaADiaDasVagas } from "@/lib/servidor/jeito-de-trabalhar";
+import { ITENS_DO_JEITO } from "@/lib/jeito-de-trabalhar";
 import { minhaEntrevistaVideo } from "@/lib/servidor/entrevista-video";
 import {
   Accessibility,
@@ -331,6 +333,9 @@ async function DetalheAnuncio({
     anuncio.cnh ? `CNH ${anuncio.cnh}` : null,
   ].filter((r): r is string => Boolean(r));
 
+  // como é o dia a dia (o jeito de trabalhar, migração 20270309120000)
+  const diaADia = vaga ? ((await diaADiaDasVagas([anuncio.id])).get(anuncio.id) ?? []) : [];
+  const nomesDoDiaADia = ITENS_DO_JEITO.filter((i) => diaADia.includes(i.id)).map((i) => i.vaga);
   // os testes Publike da vaga (migração 20261204120000): quem curtiu faz por aqui
   const testes = vaga ? await testesDaVaga(anuncio.id) : [];
   const meusTestes =
@@ -590,6 +595,11 @@ async function DetalheAnuncio({
             {vaga && requisitos.length > 0 && (
               <Fato icone={ListChecks} rotulo="Requisitos">
                 {requisitos.join(" · ")}
+              </Fato>
+            )}
+            {nomesDoDiaADia.length > 0 && (
+              <Fato icone={ListChecks} rotulo="Como é o dia a dia">
+                {nomesDoDiaADia.join(" · ")}
               </Fato>
             )}
             {testes.length > 0 && (

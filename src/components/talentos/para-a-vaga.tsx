@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Link2, Sparkles, UserSearch } from "lucide-react";
+import { diaADiaDasVagas, jeitosDasPessoas } from "@/lib/servidor/jeito-de-trabalhar";
 import { IA } from "@/components/apelido-da-ia";
 import Link from "next/link";
 import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
@@ -78,11 +79,13 @@ export async function ParaAVaga({
     );
   }
   // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (claude/plano-match-pelo-contexto.md)
-  const [[vagaComCbo], experiencias] = await Promise.all([
+  const [[vagaComCbo], experiencias, diaADia, jeitos] = await Promise.all([
     comFuncaoDasVagas([anuncio]),
     comFuncoes(lista.map((t) => ({ experiencias: t.experiencias }))),
+    diaADiaDasVagas([vaga.id]),
+    jeitosDasPessoas(lista.map((t) => t.perfil_id)),
   ]);
-  const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [] };
+  const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [], dia_a_dia: diaADia.get(vaga.id) ?? null };
   const comAderencia = lista
     .map((t, i) => ({
       t,
@@ -98,6 +101,7 @@ export async function ParaAVaga({
             estudos: t.estudos,
             titulo: t.titulo,
             habilidades: t.habilidades,
+            jeito: jeitos.get(t.perfil_id),
           },
           respostas: {},
           cidade: t.cidade,
@@ -282,6 +286,7 @@ export async function ParaAVaga({
                       atualizado_em: t.atualizado_em,
                       titulo: t.titulo,
                       habilidades: t.habilidades,
+                      jeito: jeitos.get(t.perfil_id),
                     }}
                     linkPdf={null}
                     hoje={hoje}
