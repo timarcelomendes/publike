@@ -3,11 +3,22 @@
 
 export type OndeFalha = "vaga" | "curriculo";
 
-/** validacao: preenchimento; conexao: o salvar não chegou ao servidor. */
-export type EtapaFalha = "validacao" | "banco" | "arquivo" | "leitura" | "conexao" | "inesperado";
+/**
+ * validacao: preenchimento; conexao: o salvar não chegou ao servidor; internet: a internet da pessoa caiu no meio
+ * (não é erro do Publike: fica registrado, mas a equipe só recebe e-mail se acontecer com muita gente ao mesmo tempo).
+ */
+export type EtapaFalha = "validacao" | "banco" | "arquivo" | "leitura" | "conexao" | "internet" | "inesperado";
 
 export const ONDES_FALHA: readonly OndeFalha[] = ["vaga", "curriculo"];
-export const ETAPAS_FALHA: readonly EtapaFalha[] = ["validacao", "banco", "arquivo", "leitura", "conexao", "inesperado"];
+export const ETAPAS_FALHA: readonly EtapaFalha[] = [
+  "validacao",
+  "banco",
+  "arquivo",
+  "leitura",
+  "conexao",
+  "internet",
+  "inesperado",
+];
 
 export const NOME_DA_ETAPA: Record<EtapaFalha, string> = {
   validacao: "Preenchimento",
@@ -15,10 +26,23 @@ export const NOME_DA_ETAPA: Record<EtapaFalha, string> = {
   arquivo: "Envio do arquivo",
   leitura: "Leitura pela IA",
   conexao: "Não chegou ao servidor",
+  internet: "A internet da pessoa caiu",
   inesperado: "Erro inesperado",
 };
 
 export const NOME_DO_ONDE: Record<OndeFalha, string> = { vaga: "Vaga", curriculo: "Currículo" };
+
+/** O que a pessoa vê quando a internet dela cai no meio do envio (não é erro do Publike). */
+export const MENSAGEM_SEM_INTERNET = "A internet caiu no meio do envio. Quando o sinal voltar, é só tentar de novo.";
+
+const SINAIS_DE_INTERNET = /StorageUnknownError|failed to fetch|networkerror|load failed|network request failed|sem internet/i;
+
+/** A internet caiu ("Failed to fetch", "Load failed", aparelho sem rede): não é um erro do Publike. */
+export function ehFalhaDeInternet(e: unknown) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  const { name = "", message = "" } = (e ?? {}) as { name?: string; message?: string };
+  return SINAIS_DE_INTERNET.test(`${name} ${message} ${typeof e === "string" ? e : ""}`);
+}
 
 /**
  * Do navegador: avisa a falha que o servidor não viu (o PDF que não subiu, o salvar que não chegou).
@@ -32,7 +56,12 @@ export function relatarFalha(d: {
   detalhe?: string;
 }) {
   try {
-    const corpo = JSON.stringify({ ...d, pagina: window.location.pathname });
+    // a internet da pessoa caiu: vai como "internet" (registrada, sem e-mail para a equipe), seja qual for o lugar
+    const etapa =
+      d.etapa !== "validacao" && (navigator.onLine === false || SINAIS_DE_INTERNET.test(d.detalhe ?? ""))
+        ? "internet"
+        : d.etapa;
+    const corpo = JSON.stringify({ ...d, etapa, pagina: window.location.pathname });
     const blob = new Blob([corpo], { type: "application/json" });
     if (navigator.sendBeacon?.("/api/falhas", blob)) return;
     void fetch("/api/falhas", {

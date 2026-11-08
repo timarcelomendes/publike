@@ -4,7 +4,7 @@ import { LoaderCircle, RotateCcw, Sparkles, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { lerCurriculoEnviado, type LeituraDoArquivo } from "@/lib/acoes/curriculo";
 import { resumoDaLeitura } from "@/lib/arquivo-curriculo";
-import { detalheDoErro, relatarFalha } from "@/lib/falhas";
+import { detalheDoErro, ehFalhaDeInternet, MENSAGEM_SEM_INTERNET, relatarFalha } from "@/lib/falhas";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { irParaOCampo } from "./seu-cartao";
@@ -59,7 +59,10 @@ export function PreencherComOPdf({
       dados.set("pdf", arquivo);
       resultado = await lerCurriculoEnviado(dados);
     } catch (e) {
-      resultado = { ok: false, erro: "Não deu para ler o PDF agora. Tente de novo." };
+      resultado = {
+        ok: false,
+        erro: ehFalhaDeInternet(e) ? MENSAGEM_SEM_INTERNET : "Não deu para ler o PDF agora. Tente de novo.",
+      };
       relatarFalha({
         onde: "curriculo",
         etapa: "conexao",

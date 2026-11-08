@@ -2,6 +2,7 @@
 // para a pasta privada da conta no Storage e as fotos ficam menores. Só no navegador.
 
 import type { CurriculoLido } from "./ia/curriculo-do-arquivo";
+import { ehFalhaDeInternet } from "./falhas";
 import { criarClienteNavegador } from "./supabase/navegador";
 
 /** Até 3 fotos, uma por página. */
@@ -13,13 +14,6 @@ const LIMITE_FOTOS = 900 * 1024;
 export class ErroDaLeitura extends Error {}
 
 /** Manda o PDF para a pasta privada da conta no Storage e devolve o caminho. */
-/** A internet caiu no meio do envio ("Failed to fetch"): não é um "não" do Storage, vale tentar de novo. */
-function falhaDeConexao(e: unknown) {
-  const { name = "", message = "" } = (e ?? {}) as { name?: string; message?: string };
-  return /StorageUnknownError|failed to fetch|networkerror|load failed|network request failed/i.test(
-    `${name} ${message}`,
-  );
-}
 
 export async function enviarPdf(pdf: File, usuarioId: string) {
   // a internet do celular às vezes cai no meio do envio: tenta de novo sozinho, até 3 vezes ao todo
@@ -29,7 +23,8 @@ export async function enviarPdf(pdf: File, usuarioId: string) {
       .storage.from("curriculos")
       .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
     if (!error) return caminho;
-    if (tentativa >= 3 || !falhaDeConexao(error)) throw error;
+    // a internet caiu no meio do envio ("Failed to fetch"): não é um "não" do Storage, vale tentar de novo
+    if (tentativa >= 3 || !ehFalhaDeInternet(error)) throw error;
     await new Promise((r) => setTimeout(r, 1500 * tentativa));
   }
 }

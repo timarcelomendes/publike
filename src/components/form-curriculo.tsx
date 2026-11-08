@@ -36,7 +36,7 @@ import {
 import { apagarCurriculo, lerCurriculoEnviado, salvarCurriculo, type LeituraDoArquivo } from "@/lib/acoes/curriculo";
 import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
 import { sugerirEmpresas } from "@/lib/acoes/empresas";
-import { detalheDoErro, relatarFalha } from "@/lib/falhas";
+import { detalheDoErro, ehFalhaDeInternet, MENSAGEM_SEM_INTERNET, relatarFalha } from "@/lib/falhas";
 import {
   CNHS,
   DISPONIBILIDADES,
@@ -204,7 +204,7 @@ type Situacao =
   | { tipo: "gravando"; desde: number }
   | { tipo: "lendo"; fala?: boolean }
   | { tipo: "pronto"; texto: string; semData: number; comPdf: boolean; fala?: boolean }
-  | { tipo: "erro"; texto: string };
+  | { tipo: "erro"; texto: string; internet?: boolean };
 
 /** O navegador grava áudio (só no navegador: no servidor, não). */
 const nadaMuda = () => () => {};
@@ -282,6 +282,8 @@ function LerCurriculoPronto({
     aoMudarLendo(true);
     let resultado: LeituraDoArquivo;
     let pdf: { caminho: string; nome: string } | null = null;
+    // a internet caiu: não é erro, a tela mostra um aviso em vez do vermelho
+    let semInternet = false;
     try {
       if ("fala" in pedido) resultado = await lerGravacao(pedido.fala);
       else {
@@ -291,13 +293,16 @@ function LerCurriculoPronto({
       }
     } catch (e) {
       const pronta = e instanceof ErroDaLeitura || e instanceof ErroDaFala;
+      semInternet = !pronta && ehFalhaDeInternet(e);
       resultado = {
         ok: false,
         erro: pronta
           ? e.message
-          : fala
-            ? "Não deu para enviar a gravação. Tente de novo."
-            : "Não deu para enviar o arquivo. Tente de novo.",
+          : semInternet
+            ? MENSAGEM_SEM_INTERNET
+            : fala
+              ? "Não deu para enviar a gravação. Tente de novo."
+              : "Não deu para enviar o arquivo. Tente de novo.",
       };
       // o arquivo que não sobe (ou o pedido que não chega) a equipe precisa saber
       if (!pronta) {
@@ -310,7 +315,7 @@ function LerCurriculoPronto({
       }
     }
     aoMudarLendo(false);
-    if (!resultado.ok) return setSituacao({ tipo: "erro", texto: resultado.erro });
+    if (!resultado.ok) return setSituacao({ tipo: "erro", texto: resultado.erro, internet: semInternet });
     aoLer(resultado.curriculo, pdf);
     setSituacao({
       tipo: "pronto",
@@ -430,7 +435,7 @@ function LerCurriculoPronto({
           {situacao.comPdf && <p>O PDF também ficou anexado ao currículo.</p>}
         </Aviso>
       )}
-      {situacao.tipo === "erro" && <Aviso tipo="erro">{situacao.texto}</Aviso>}
+      {situacao.tipo === "erro" && <Aviso tipo={situacao.internet ? "alerta" : "erro"}>{situacao.texto}</Aviso>}
     </div>
   );
 
@@ -873,7 +878,7 @@ export function FormCurriculo({
       setArquivo(await enviarPdf(pdf, usuarioId));
       setNomePdf(pdf.name);
     } catch (falha) {
-      const mensagem = "Não deu para enviar o PDF. Tente de novo.";
+      const mensagem = ehFalhaDeInternet(falha) ? MENSAGEM_SEM_INTERNET : "Não deu para enviar o PDF. Tente de novo.";
       setErroPdf(mensagem);
       relatarFalha({
         onde: "curriculo",

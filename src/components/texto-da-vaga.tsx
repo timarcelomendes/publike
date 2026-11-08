@@ -4,7 +4,7 @@ import { ClipboardPaste, LoaderCircle } from "lucide-react";
 import { useId, useState } from "react";
 import { lerTextoDaVaga } from "@/lib/acoes/texto-vaga";
 import type { RascunhoConvite } from "@/lib/convites";
-import { detalheDoErro, relatarFalha } from "@/lib/falhas";
+import { detalheDoErro, ehFalhaDeInternet, MENSAGEM_SEM_INTERNET, relatarFalha } from "@/lib/falhas";
 import { classesEntrada, MensagemErro } from "./ui/campo";
 
 /**
@@ -25,7 +25,7 @@ export function TextoDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite, total: n
       if (!r.ok) return setErro(r.erro);
       aoLer(r.vaga, r.total);
     } catch (falha) {
-      const mensagem = "Não deu para ler o texto agora. Tente de novo.";
+      const mensagem = ehFalhaDeInternet(falha) ? MENSAGEM_SEM_INTERNET : "Não deu para ler o texto agora. Tente de novo.";
       setErro(mensagem);
       relatarFalha({ onde: "vaga", etapa: "conexao", mensagem, detalhe: `texto da vaga · ${detalheDoErro(falha)}` });
     } finally {
