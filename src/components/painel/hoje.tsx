@@ -46,17 +46,18 @@ export function Saudacao({
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h2 className="text-h2 sm:text-h1">
+        {/* o painel novo (08/11/2026): o cumprimento grande, em Bricolage */}
+        <h2 className="font-display text-[32px] leading-9 font-extrabold tracking-[-0.8px] sm:text-[44px] sm:leading-[48px] sm:tracking-[-1.2px]">
           {boasVindas ? "Boas-vindas" : cumprimento(agora)}
           {primeiro ? `, ${primeiro}` : ""}
         </h2>
-        <p className="mt-1 text-body text-ink-muted">
-          {hoje(agora)} ·{" "}
+        <p className="mt-1.5 text-body text-ink-muted sm:text-[17px] sm:leading-[26px]">
+          {hoje(agora)}.{" "}
           {pendencias === 0
-            ? "tudo em dia"
+            ? "Tudo em dia."
             : pendencias === 1
-              ? "1 coisa pede você"
-              : `${pendencias} coisas pedem você`}
+              ? "1 coisa pede você hoje."
+              : `${pendencias} coisas pedem você hoje.`}
         </p>
         {resumo && <p className="mt-0.5 text-body text-ink">{resumo}</p>}
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown } from "lucide-react";
+import { BadgeCheck, Building2, Check, ChevronDown, ImageUp, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
@@ -16,8 +16,9 @@ import {
   type ModoPainel,
   type Secao,
 } from "@/lib/modo-painel";
+import { SELO_CORTESIA_CURTO } from "@/lib/cortesia";
 import { PilulaFaltaCurriculo } from "../curriculo/sem-curriculo";
-import { SeloCortesia } from "../selo-cortesia";
+import { Avatar } from "../ui/basicos";
 import { ICONES_DO_PAINEL as ICONES } from "./icones-do-painel";
 import { SemLinhaDoPainel } from "./sem-linha-do-painel";
 
@@ -37,6 +38,8 @@ export function MenuPainel({
   copiloto = false,
   pilulas,
   semCurriculo = false,
+  conta = null,
+  publicar = null,
 }: {
   /** o que a conta faz (a principal primeiro): o menu mostra todas juntas, sem troca de modo */
   atividades: ModoPainel[];
@@ -56,6 +59,10 @@ export function MenuPainel({
   pilulas?: ExtrasDoMenu["pilulas"];
   /** quem procura trabalho sem currículo: "Falta" ao lado de Currículo */
   semCurriculo?: boolean;
+  /** quem contrata: a conta no alto do menu (no computador), com o tipo, o bairro, o selo e a equipe */
+  conta?: { nome: string; foto: string | null; tipo: string; bairro: string | null; verificado: boolean; equipe: number | null } | null;
+  /** quem contrata: o "Publicar vaga" no alto do menu (no computador), com "pela foto" e, na agência, "Novo cliente" */
+  publicar?: { foto: boolean; agencia: boolean } | null;
 }) {
   const caminho = usePathname() ?? "/painel";
   const busca = useSearchParams();
@@ -105,7 +112,7 @@ export function MenuPainel({
   }, [aberto]);
 
   // o número de uma seção: pílula (pede ação), "N pronto(s)" (para o cliente) ou texto discreto
-  function numero(s: Secao, atualSecao: boolean) {
+  function numero(s: Secao) {
     const n = s.contador ? (contadores[s.contador] ?? 0) : 0;
     const jeito = s.jeito ?? "pilula";
     if (jeito === "texto") {
@@ -120,17 +127,15 @@ export function MenuPainel({
     if (n <= 0) return null;
     if (jeito === "pronto") {
       return (
-        <span className="ml-auto rounded-pill bg-terra-soft px-2 text-caption leading-6 text-terra-text tabular-nums normal-case">
-          {n} {n === 1 ? "pronto" : "prontos"}
+        <span className="ml-auto min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text tabular-nums normal-case">
+          {n}
+          <span className="sr-only"> {n === 1 ? "pronto" : "prontos"}</span>
         </span>
       );
     }
+    // o que pede ação: a pílula clara terra (o painel novo, 08/11/2026)
     return (
-      <span
-        className={`ml-auto min-w-6 rounded-pill px-1.5 text-center text-caption leading-6 tabular-nums ${
-          atualSecao ? "bg-surface-100 text-ink lg:bg-ink lg:text-surface-100" : "bg-ink text-surface-100"
-        }`}
-      >
+      <span className="ml-auto min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text tabular-nums">
         {n > 99 ? "99+" : n}
         <span className="sr-only"> novos</span>
       </span>
@@ -223,6 +228,77 @@ export function MenuPainel({
         </div>
       )}
 
+      {/* quem contrata, no computador: a conta e o "Publicar vaga" no alto do menu (o painel novo, 08/11/2026) */}
+      {conta && contas.length <= 1 && papel === "dono" && (
+        <div className="hidden items-center gap-3 lg:flex">
+          {conta.foto ? (
+            <Avatar nome={conta.nome} foto={conta.foto} forma="quadrada" tamanho={44} />
+          ) : (
+            <span
+              aria-hidden
+              className="grid size-11 shrink-0 place-items-center rounded-md bg-ink font-display text-body font-extrabold text-surface-100"
+            >
+              {iniciais(conta.nome)}
+            </span>
+          )}
+          <span className="flex min-w-0 flex-col">
+            <span className="flex items-center gap-1.5 text-label">
+              <span className="truncate">{conta.nome}</span>
+              {conta.verificado && (
+                <BadgeCheck role="img" aria-label="Verificada" className="size-4 shrink-0 text-cerrado-text" />
+              )}
+            </span>
+            {conta.equipe !== null && conta.equipe > 1 ? (
+              <Link href="/painel/equipe" className="text-body-sm text-ink-muted hover:text-ink hover:underline">
+                {conta.tipo} · {conta.equipe} na equipe
+              </Link>
+            ) : (
+              <span className="truncate text-body-sm text-ink-muted">
+                {conta.tipo}
+                {conta.bairro ? ` · ${conta.bairro}` : ""}
+              </span>
+            )}
+          </span>
+        </div>
+      )}
+      {publicar && (
+        <div className="hidden flex-col gap-1 lg:flex">
+          {/* no Hoje é o botão terra da tela; nas outras páginas do painel, com contorno (um terra por tela) */}
+          <Link
+            href="/publicar"
+            className={`flex min-h-12 items-center justify-center gap-2 rounded-md text-label transition-colors [&_svg]:size-5 ${
+              caminho === "/painel"
+                ? "bg-terra text-on-terra hover:bg-terra-hover"
+                : "border border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
+            }`}
+          >
+            <Plus aria-hidden />
+            Publicar vaga
+          </Link>
+          <div className="flex gap-1">
+            {publicar.agencia && (
+              <Link
+                href="/painel/clientes/novo"
+                className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-md text-body-sm font-semibold text-ink hover:bg-surface-300"
+              >
+                <Building2 aria-hidden className="size-[18px]" />
+                Novo cliente
+              </Link>
+            )}
+            {publicar.foto && (
+              <Link
+                href="/publicar#arte"
+                title="Mande a arte da vaga (o post ou o cartaz) e o Publike preenche tudo"
+                className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-md text-body-sm font-semibold text-ink hover:bg-surface-300"
+              >
+                <ImageUp aria-hidden className="size-[18px]" />
+                {publicar.agencia ? "Pela foto" : "Publicar pela foto"}
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
       <ul className="sem-barra -mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-4 lg:overflow-visible lg:px-0">
         {grupos.map((g) => (
           <li key={`${g.atividade ?? ""}${g.nome ?? "inicio"}`} className="contents lg:block">
@@ -255,7 +331,7 @@ export function MenuPainel({
                       aria-current={atualSecao ? "page" : undefined}
                       className={`relative flex min-h-11 items-center gap-2.5 rounded-pill px-3.5 text-label whitespace-nowrap transition-colors lg:min-h-10 lg:rounded-md lg:px-3 ${
                         atualSecao
-                          ? "bg-ink text-surface-100 lg:bg-surface-300 lg:text-ink"
+                          ? "bg-ink text-surface-100"
                           : "border border-line-strong text-ink hover:bg-surface-300 lg:border-transparent"
                       }`}
                     >
@@ -278,15 +354,24 @@ export function MenuPainel({
                       ) : (
                         <Icone aria-hidden className="size-5 shrink-0" />
                       )}
-                      <span className={s.passo ? "" : "lg:flex-1"}>
-                        {s.passo && <span className="sr-only">Passo {s.passo}: </span>}
-                        {s.nome}
+                      <span className={`flex flex-col ${s.passo ? "" : "lg:flex-1"}`}>
+                        <span>
+                          {s.passo && <span className="sr-only">Passo {s.passo}: </span>}
+                          {s.nome}
+                        </span>
+                        {/* os dias grátis numa linha de texto, sem o selo amarelo (o painel novo) */}
+                        {s.cortesia && (
+                          <span
+                            className={`hidden text-[12px] leading-4 font-normal lg:block ${
+                              atualSecao ? "text-surface-100/80" : "text-ink-muted"
+                            }`}
+                          >
+                            {textoDaCortesia(s.cortesia)}
+                          </span>
+                        )}
                       </span>
-                      {s.cortesia && (
-                        <SeloCortesia curto texto={typeof s.cortesia === "string" ? s.cortesia : undefined} />
-                      )}
                       {semCurriculo && s.href === "/perfil/curriculo" && <PilulaFaltaCurriculo />}
-                      {numero(s, atualSecao)}
+                      {numero(s)}
                     </Link>
                   </li>
                 );
@@ -301,9 +386,10 @@ export function MenuPainel({
                     {mais.length > 0 && (
                       <li className="hidden lg:block">
                         <details open={maisAtiva} className="group">
-                          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-label text-ink-muted hover:bg-surface-300 hover:text-ink [&::-webkit-details-marker]:hidden">
-                            Mais ferramentas
-                            <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+                          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2.5 rounded-md px-3 text-label text-ink-muted hover:bg-surface-300 hover:text-ink [&::-webkit-details-marker]:hidden">
+                            <ChevronDown aria-hidden className="size-5 shrink-0 transition-transform group-open:rotate-180" />
+                            <span className="flex-1">Mais ferramentas</span>
+                            <span className="text-body-sm tabular-nums">{mais.length}</span>
                           </summary>
                           <ul className="mt-0.5 flex flex-col gap-0.5">{mais.map((x) => item(x))}</ul>
                         </details>
@@ -351,6 +437,19 @@ export function MenuPainel({
       </div>
     </nav>
   );
+}
+
+/** As iniciais da conta, no quadrado do alto do menu ("Panificadora Bom Gosto" → "PB"). */
+function iniciais(nome: string) {
+  const partes = nome.trim().split(/\s+/).filter((p) => p.length > 2 || /^[A-ZÀ-Ú]/.test(p));
+  const letras = (partes.length > 1 ? [partes[0], partes[partes.length - 1]] : [nome.trim()]).map((p) => p[0] ?? "");
+  return letras.join("").toUpperCase() || "?";
+}
+
+/** Os dias grátis de um recurso, como texto ("faltam 10 dias grátis", "15 dias grátis"). */
+function textoDaCortesia(c: boolean | string) {
+  if (typeof c !== "string") return SELO_CORTESIA_CURTO;
+  return c.startsWith("falta") ? `${c} grátis` : c;
 }
 
 /** O menu enquanto o servidor ainda lê a conta: o mesmo tamanho, sem números. */

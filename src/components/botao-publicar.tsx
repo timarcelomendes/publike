@@ -27,6 +27,8 @@ export function BotaoPublicar() {
 export function PublicarDaConta() {
   const caminho = usePathname();
   if (SEM_BOTAO.some((r) => r.test(caminho))) return null;
+  // no painel e em Talentos, o "Publicar vaga" fica no alto do menu (o painel novo, 08/11/2026): sem dois
+  if (/^\/painel(\/|$)/.test(caminho) || /^\/talentos/.test(caminho)) return null;
   return (
     // entre o notebook pequeno e o grande, só o ícone (o topo tem as cinco abas e a busca)
     <div className="hidden lg:block">

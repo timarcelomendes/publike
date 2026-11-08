@@ -241,17 +241,25 @@ export function gruposDoModo(
         // Entrevista e Contratados são etapas de Candidatos (parte 2 do claude/plano-painel-simples.md)
         { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder", jeito: "pilula" },
       ];
-  // o menu só navega (29/10/2026, claude/plano-painel-simples.md): sem os números de passo; o caminho da vaga
-  // fica na horizontal, na Hoje e nas páginas de candidatos
+  // o menu só navega (29/10/2026, claude/plano-painel-simples.md): sem os números de passo. Desde o painel novo
+  // (claude/plano-painel-hoje-novo-design.md): os itens principais e um grupo "Ferramentas", com o resto em
+  // "Mais ferramentas"; a equipe fica no alto do menu (na conta) e também em "Mais ferramentas"
+  const talentos: Secao = { href: "/talentos", nome: "Talentos", icone: "talentos" };
   return [
     {
       nome: null,
-      secoes: [{ href: "/painel", nome: "Hoje", icone: "hoje" }, ...caminho, { ...MENSAGENS, jeito: "pilula" }],
+      secoes: [
+        { href: "/painel", nome: "Hoje", icone: "hoje" },
+        ...caminho,
+        { ...MENSAGENS, jeito: "pilula" },
+        // na empresa, Talentos fica nos principais; na agência, o caminho já é longo e ele vai para Ferramentas
+        ...(agencia ? [] : [talentos]),
+      ],
     },
     {
-      nome: "Achar gente",
+      nome: "Ferramentas",
       secoes: [
-        { href: "/talentos", nome: "Talentos", icone: "talentos" },
+        ...(agencia ? [talentos] : []),
         // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (o selo some quando já tem)
         {
           href: "/painel/copiloto",
@@ -259,6 +267,12 @@ export function gruposDoModo(
           icone: "copiloto",
           cortesia: extras.pilulas ? (extras.pilulas.copiloto ?? false) : !extras.copiloto,
         },
+        { href: "/painel/links", nome: "Página de vagas", icone: "links" },
+        // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
+        { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
+        // o processo, o padrão das vagas, as etapas próprias, os horários e as mensagens prontas, num lugar só
+        // (claude/plano-etapas-obrigatorias-e-configuracoes.md); "Etapas e horários" virou uma parte dela
+        { href: "/painel/configuracoes", nome: "Configurações", icone: "configuracoes" },
         ...(extras.pilulas && extras.pilulas.video !== undefined
           ? [
               {
@@ -266,22 +280,13 @@ export function gruposDoModo(
                 nome: "Entrevista em vídeo",
                 icone: "video" as const,
                 cortesia: extras.pilulas.video ?? false,
+                mais: true,
               },
             ]
           : []),
-      ],
-    },
-    {
-      nome: agencia ? "Agência" : "Sua empresa",
-      secoes: [
-        { href: "/painel/links", nome: "Página de vagas", icone: "links" },
-        // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
-        { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
-        // o processo, o padrão das vagas, as etapas próprias, os horários e as mensagens prontas, num lugar só
-        // (claude/plano-etapas-obrigatorias-e-configuracoes.md); "Etapas e horários" virou uma parte dela
-        { href: "/painel/configuracoes", nome: "Configurações", icone: "configuracoes" },
-        // a equipe: agência (à vista) e, desde a avaliação em time (migração 20270107120000), empresa e comércio
-        agencia ? EQUIPE : { ...EQUIPE, mais: true },
+        { ...EQUIPE, mais: true },
+        // a lista de todos os candidatos, com a planilha (antes no "Mais" do fim do menu)
+        { href: "/painel/candidatos", nome: "Lista de candidatos e planilha", icone: "candidatos", mais: true },
         // o resto fica em "Mais ferramentas" no computador
         {
           href: "/painel/visitas",
@@ -322,7 +327,8 @@ export function gruposDoModo(
 /** O resto do painel, no fim do menu (o que não é do modo aberto). Os matches ficam nas Mensagens. */
 export const OUTRAS: Record<ModoPainel, { href: string; nome: string }[]> = {
   // "O que você curtiu" e "Seguindo" ficam no menu da conta (o avatar, no alto)
-  contratar: [{ href: "/painel/candidatos", nome: "Lista de candidatos e planilha" }],
+  // a lista de candidatos e planilha foi para "Mais ferramentas" (o painel novo, 08/11/2026)
+  contratar: [],
   trabalhar: [
     { href: "/painel/curtidas?tipo=servico", nome: "Serviços que você pediu" },
     { href: "/painel/anuncios", nome: "Meus anúncios" },

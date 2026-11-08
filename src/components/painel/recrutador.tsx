@@ -1,17 +1,11 @@
 import {
-  Building2,
-  ChevronDown,
-  Globe,
-  Inbox,
   CalendarClock,
-  ChevronRight,
   Clock,
   FileCheck2,
   Hourglass,
-  ImageUp,
+  Inbox,
   Megaphone,
   MessageCircleReply,
-  Plus,
   RefreshCw,
   Send,
   ShieldCheck,
@@ -20,35 +14,25 @@ import {
   UserRoundX,
   Wallet,
 } from "lucide-react";
-import Link from "next/link";
-import { Suspense } from "react";
-import { Selo } from "@/components/ui/basicos";
-import { BotaoLink } from "@/components/ui/botao";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
-import { minhaReputacao, obterAnuncio, respostaDeQuemPublica } from "@/lib/dados";
-import { indicadores, MINIMO_DE_CURTIDAS } from "@/lib/reputacao";
+import { respostaDeQuemPublica } from "@/lib/dados";
 import { ateQuando, formatarMoeda, plural } from "@/lib/formato";
 import { dataDaEntrevista, SITUACOES_ENTREVISTA } from "@/lib/recrutamento";
 import { comoResponde } from "@/lib/resposta";
-import type { Saude } from "@/lib/saude-vaga";
 import { colocacoesDasVagas } from "@/lib/servidor/colocacoes";
-import { saudeDasVagas } from "@/lib/servidor/saude";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { MeuAnuncio, StatusAnuncio } from "@/lib/tipos";
 import type { ConversaPessoa } from "@/lib/conversas";
 import { caminhoDaConta, type Caminho } from "@/lib/servidor/caminho";
-import { equipeDaConta } from "@/lib/servidor/equipe";
-import { ComecePorAqui, SeusClientes, type PrimeiroPasso } from "./caminho-hoje";
+import { ComecePorAqui, type PrimeiroPasso } from "./caminho-hoje";
 import { ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
 import { Agora, type ItemAgora } from "./agora";
-import { resumoDosPedidos } from "@/lib/servidor/pedidos-do-cliente";
-import { ondeAVagaAparece } from "@/lib/feed-vagas";
-import { vagasEmOutrosSites } from "@/lib/servidor/feed-vagas";
+import { pedidosDaAgencia, resumoDosPedidos } from "@/lib/servidor/pedidos-do-cliente";
 import { indicadosDasVagas } from "@/lib/servidor/indicacao";
 import { documentosPendentesDaConta } from "@/lib/servidor/documentos-admissao";
-import { TalentosDaVaga } from "./hoje-extras";
-import { NivelDaSaude } from "./saude-vaga";
+import { NumerosDoHoje, type NumeroDoHoje } from "./numeros-hoje";
+import { TabelaDasVagas, type GrupoDeVagas, type LinhaDaVaga } from "./tabela-vagas";
 
 // Hoje, no modo Contratar (comércio, empresa e agência), pelo caminho da vaga:
 //   agência ............ Clientes → Vagas → Candidatos → Para o cliente → Contratados
@@ -116,7 +100,6 @@ export async function PainelRecrutador({
   agora,
   clientes = null,
   extras = [],
-  fotoDaVaga = false,
   perfilPronto = true,
 }: {
   nome: string;
@@ -130,8 +113,6 @@ export async function PainelRecrutador({
   extras?: Cartao[];
   /** as conversas da conta (as mensagens novas entram no Agora pelos extras; a lista fica no menu Mensagens) */
   conversas?: ConversaPessoa[] | null;
-  /** a leitura da arte da vaga está ligada: o atalho "Publicar pela foto" */
-  fotoDaVaga?: boolean;
   /** o perfil já tem o que precisa (agência: o CNPJ; empresa: foto ou descrição) */
   perfilPronto?: boolean;
 }) {
@@ -139,28 +120,20 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas, passadas }, respostas, completas, colocacoes, caminho, equipe, reputacao, documentos] =
-    await Promise.all([
+  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, noPrazo] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
     ),
     respostaDeQuemPublica([autorId]).catch(() => new Map()),
-    Promise.all(noAr.map((v) => obterAnuncio(v.id).catch(() => null))),
     // agência: as colocações (garantias e taxas a receber)
     agencia ? colocacoesDasVagas().then((m) => [...m.values()]) : Promise.resolve([]),
     caminhoDaConta(),
-    agencia ? equipeDaConta().catch(() => null) : Promise.resolve(null),
-    minhaReputacao().catch(() => null),
     // os documentos da admissão de quem começa (parte 4; sem a migração, nada)
     documentosPendentesDaConta().catch(() => []),
+    // agência: os prazos dos finalistas cumpridos em 90 dias, somando os clientes (sem a migração, nada)
+    agencia ? pedidosDaAgencia().then((p) => p?.noPrazo ?? null).catch(() => null) : Promise.resolve(null),
   ]);
-  // a saúde das vagas no ar: a mesma do quadro de cada vaga
-  const saudes = await saudeDasVagas(
-    completas.filter((a): a is NonNullable<typeof a> => a !== null),
-    todos,
-    agora,
-  ).catch(() => new Map<string, Saude>());
   const resposta = respostas.get(autorId) ?? null;
   const nomeDe = new Map(todos.map((c) => [c.perfil_id, c.nome]));
   const tituloDe = new Map(vagas.map((v) => [v.id, v.titulo]));
@@ -226,6 +199,11 @@ export async function PainelRecrutador({
         .join(". ")}.${dias >= 1 ? ` O mais antigo curtiu há ${plural(dias, "dia", "dias")}.` : ""}`,
       href: "/painel/caixa/triagem",
       acao: "Decidir agora",
+      // quem espera há mais tempo primeiro: as iniciais no cartão escuro
+      pessoas: [...pendentes]
+        .sort((a, b) => Date.parse(a.curtido_em) - Date.parse(b.curtido_em))
+        .slice(0, 3)
+        .map((c) => c.nome.split(" ")[0]),
     });
   }
   // os documentos da admissão de quem começa em até 3 dias (ou já começou): o que falta, ou baixar para o contador
@@ -408,6 +386,7 @@ export async function PainelRecrutador({
         texto: `${nomes.join(" e ")}${v.prontos.length > 2 ? " e mais" : ""} ${v.prontos.length === 1 ? "deu" : "deram"} match. O cliente abre sem conta, vê o currículo e o seu parecer, e responde por ali.`,
         href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
         acao: v.link ? "Pôr na lista" : "Montar o link",
+        pessoas: v.prontos.slice(0, 3).map((c) => c.nome.split(" ")[0]),
       });
     }
     const respondeu = caminho.vagas.filter((v) =>
@@ -470,22 +449,61 @@ export async function PainelRecrutador({
       acao: "Ver os pedidos",
     });
   }
+  // a semana (antes num bloco ao lado, agora na mesma lista): as entrevistas depois dos próximos 2 dias e o
+  // primeiro dia de quem foi contratado (o que já não entrou pelos documentos)
+  const diaDaSemana = (ms: number) => {
+    const t = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric", timeZone: "America/Sao_Paulo" })
+      .format(ms)
+      .replace(".", "");
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
+  const maisAdiante = semana.filter((e) => new Date(e.quando).getTime() > agora + 2 * DIA);
+  if (maisAdiante.length) {
+    const e = maisAdiante[0];
+    cartoes.push({
+      icone: CalendarClock,
+      quando: diaDaSemana(Date.parse(e.quando)),
+      titulo:
+        maisAdiante.length === 1
+          ? `Entrevista com ${primeiroNome(e.perfil_id) || "o candidato"}`
+          : `${maisAdiante.length} entrevistas nesta semana`,
+      texto:
+        maisAdiante.length === 1
+          ? `${tituloDe.get(e.anuncio_id) ?? "Vaga"} · ${dataDaEntrevista(e.quando)}`
+          : maisAdiante
+              .slice(0, 3)
+              .map((x) => `${primeiroNome(x.perfil_id)} ${dataDaEntrevista(x.quando)}`)
+              .join(" · "),
+      href: quadroDe(
+        maisAdiante.map((x) => x.anuncio_id),
+        "/painel/caixa?aba=entrevista",
+      ),
+      acao: "Ver no quadro",
+    });
+  }
+  const jaNoAgora = new Set(docsPerto.map((d) => `${d.anuncioId}:${d.perfilId}`));
+  for (const d of documentos
+    .filter((d) => diasAte(d.inicio) >= 0 && diasAte(d.inicio) <= 7 && !jaNoAgora.has(`${d.anuncioId}:${d.perfilId}`))
+    .slice(0, 2)) {
+    cartoes.push({
+      icone: FileCheck2,
+      tom: "bom",
+      quando: diasAte(d.inicio) === 0 ? "Hoje" : diaDaSemana(Date.parse(`${d.inicio}T12:00:00Z`)),
+      titulo: `Primeiro dia de ${d.nome}`,
+      texto: d.total > 0 ? `${d.vaga} · ${d.enviados + d.levar} de ${d.total} documentos` : d.vaga,
+      href: `/painel/anuncio/${d.anuncioId}/quadro?candidato=${d.perfilId}`,
+      acao: d.total > 0 ? "Ver os documentos" : "Ver",
+    });
+  }
   cartoes.push(...extras);
-  // Esta semana: o primeiro dia de quem foi contratado (de hoje a 7 dias)
-  const primeirosDias = documentos.filter((d) => diasAte(d.inicio) >= 0 && diasAte(d.inicio) <= 7).slice(0, 4);
 
-  const responde = resposta ? comoResponde(resposta) : null;
-  // onde a vaga aparece (o arquivo de vagas, parte 2 do plano de 08/11)
+  // a vaga sem cliente (agência) ou todas (empresa); e quantos chegaram por indicação (parte 3)
   const listaDeVagas = agencia
     ? vagas.filter((v) => !caminho.vagas.find((c) => c.anuncio.id === v.id)?.clienteId)
     : vagas;
-  // e quantos chegaram por indicação (parte 3)
-  const [outrosSites, porIndicacao] = await Promise.all([
-    vagasEmOutrosSites(autorId).catch(() => null),
-    indicadosDasVagas(listaDeVagas.map((v) => v.id)).catch(() => new Map<string, { indicados: number }>()),
-  ]);
-  const emOutrosSites = outrosSites ?? true;
-  const ondeAparece = () => ondeAVagaAparece(emOutrosSites);
+  const porIndicacao = await indicadosDasVagas(vagas.map((v) => v.id)).catch(
+    () => new Map<string, { indicados: number }>(),
+  );
 
   // ------------------------------------------------------------ conta nova
   const divulgou = todos.length > 0;
@@ -546,358 +564,208 @@ export async function PainelRecrutador({
     : // quem espera você já está na faixa do caminho e no "Para fazer agora": o resumo não repete
       `${plural(noAr.length, "vaga no ar", "vagas no ar")}${agencia && caminho.clientes ? ` para ${plural(caminho.clientes, "cliente", "clientes")}` : ""}.`;
 
+  // ------------------------------------------------------------ Seus números (o painel novo, 08/11/2026)
+  const DIAS = 14;
+  const chaves = Array.from({ length: DIAS }, (_, i) => hojeEmBrasilia(agora - (DIAS - 1 - i) * DIA));
+  const porDia = new Map<string, number>();
+  for (const c of todos) {
+    const d = hojeEmBrasilia(Date.parse(c.curtido_em));
+    porDia.set(d, (porDia.get(d) ?? 0) + 1);
+  }
+  const diasAntes = new Set(Array.from({ length: DIAS }, (_, i) => hojeEmBrasilia(agora - (DIAS + i) * DIA)));
+  const antes = [...porDia].filter(([d]) => diasAntes.has(d)).reduce((t, [, n]) => t + n, 0);
+  const diaMes = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
+  const mes = hojeBr.slice(0, 7);
+  const nomeDoMes = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "America/Sao_Paulo" }).format(agora);
+  const horas = resposta?.horas ?? null;
+  const responde = resposta ? comoResponde(resposta) : null;
+  const numeroResposta: NumeroDoHoje = {
+    nome: horas !== null ? "Você responde em" : "Você responde",
+    periodo: "90 dias",
+    valor:
+      horas !== null
+        ? horas < 1
+          ? "< 1 h"
+          : horas < 48
+            ? `${Math.round(horas)} h`
+            : `${Math.round(horas / 24)} dias`
+        : resposta
+          ? `${Math.round(resposta.taxa * 100)}%`
+          : "–",
+    situacao: responde
+      ? {
+          texto: responde.bom && horas !== null && horas < 24 ? "Rápido: menos de 1 dia" : responde.texto,
+          bom: responde.bom,
+        }
+      : undefined,
+    sub: responde ? undefined : "Aparece com as primeiras respostas",
+    largo: true,
+  };
+  const contratadosNoMes = todos.filter(
+    (c) => abaDaEtapa(c) === "contratados" && c.etapa_em && hojeEmBrasilia(Date.parse(c.etapa_em)).slice(0, 7) === mes,
+  );
+  const prazos = noPrazo
+    ? [...noPrazo.values()].reduce((a, x) => ({ ok: a.ok + x.noPrazo, total: a.total + x.total }), { ok: 0, total: 0 })
+    : null;
+  const numeros: NumeroDoHoje[] = agencia
+    ? [
+        prazos && prazos.total > 0
+          ? {
+              nome: "Prazos cumpridos",
+              periodo: "90 dias",
+              valor: `${prazos.ok} de ${prazos.total}`,
+              parte: prazos.ok / prazos.total,
+              sub: "pedidos com os finalistas no prazo",
+            }
+          : { nome: "Prazos cumpridos", periodo: "90 dias", valor: "–", sub: "Aparece com o primeiro pedido com prazo" },
+        {
+          nome: "Colocações",
+          periodo: nomeDoMes,
+          valor: String(colocacoes.filter((c) => c.inicio.slice(0, 7) === mes).length),
+          sub: `em ${nomeDoMes}`,
+        },
+        numeroResposta,
+      ]
+    : [
+        {
+          nome: "Visitas nas vagas",
+          periodo: "no ar",
+          valor: noAr.reduce((t, v) => t + (visitas.get(v.id) ?? 0), 0).toLocaleString("pt-BR"),
+          sub: "nas vagas no ar",
+        },
+        {
+          nome: "Contratados",
+          periodo: nomeDoMes,
+          valor: String(contratadosNoMes.length),
+          sub: contratadosNoMes.length
+            ? contratadosNoMes
+                .slice(0, 2)
+                .map((c) => c.nome.split(" ")[0])
+                .join(" e ")
+            : `em ${nomeDoMes}`,
+        },
+        numeroResposta,
+      ];
+
+  // ------------------------------------------------------------ Suas vagas (na agência, Seus clientes)
+  const linha = (v: MeuAnuncio): LinhaDaVaga | null => {
+    const daVaga = todos.filter((c) => c.anuncio_id === v.id);
+    const naEtapa = (aba: ReturnType<typeof abaDaEtapa>) => daVaga.filter((c) => abaDaEtapa(c) === aba).length;
+    const status = v.status as StatusAnuncio;
+    const ativa = status === "ativo" && new Date(v.expira_em).getTime() > agora;
+    // a tabela mostra as vagas no ar e as que ainda têm gente em análise ou entrevista
+    if (!ativa && status !== "pausado" && naEtapa("analise") + naEtapa("entrevista") === 0) return null;
+    const noCaminho = caminho.vagas.find((c) => c.anuncio.id === v.id);
+    const vistas = visitas.get(v.id) ?? 0;
+    const indicados = porIndicacao.get(v.id)?.indicados ?? 0;
+    const diasNoArAgora = Math.floor((agora - Date.parse(v.criado_em)) / DIA);
+    const parada = ativa && daVaga.length === 0 && diasNoArAgora > 7;
+    const ate = ateQuando(v.expira_em);
+    const meta = [
+      noCaminho?.prontos.length
+        ? `${noCaminho.prontos.length} ${noCaminho.prontos.length === 1 ? "pronto" : "prontos"} para o cliente`
+        : null,
+      noCaminho?.finalistas.length ? `${noCaminho.finalistas.length} com o cliente` : null,
+      parada
+        ? `Parada há ${diasNoArAgora} dias`
+        : ativa
+          ? ate.charAt(0).toUpperCase() + ate.slice(1)
+          : (STATUS_ANUNCIO[status]?.nome ?? status),
+      ativa && !parada && vistas ? plural(vistas, "visita", "visitas") : null,
+      indicados ? `${indicados} por indicação` : null,
+    ]
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(" · ");
+    return {
+      id: v.id,
+      titulo: v.titulo,
+      href: `/painel/anuncio/${v.id}/quadro`,
+      meta,
+      novos: naEtapa("novos"),
+      esperam: daVaga.filter((c) => abaDaEtapa(c) === "novos" && esperaResposta(c)).length,
+      analise: naEtapa("analise"),
+      entrevista: naEtapa("entrevista"),
+      contratados: naEtapa("contratados"),
+    };
+  };
+  const linhas = (l: MeuAnuncio[]) => l.map(linha).filter((x): x is LinhaDaVaga => x !== null);
+  const grupos: GrupoDeVagas[] = (
+    agencia
+      ? [
+          ...caminho.listaClientes.map((c) => ({
+            cliente: { nome: c.nome, bairro: c.bairro, href: `/painel/clientes/${c.id}` },
+            vagas: linhas(caminho.vagas.filter((x) => x.clienteId === c.id).map((x) => x.anuncio)),
+          })),
+          { cliente: null, vagas: linhas(listaDeVagas) },
+        ]
+      : [{ vagas: linhas(listaDeVagas) }]
+  ).filter((g) => g.vagas.length > 0);
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 sm:gap-10">
       <Saudacao
         nome={nome}
         agora={agora}
         pendencias={cartoes.length}
-        resumo={resumo}
+        resumo={contaNova ? resumo : undefined}
         boasVindas={contaNova}
-        // conta nova: a ação é a do passo da vez no "Comece por aqui" (um botão principal por tela)
-        acao={
-          contaNova ? undefined : (
-            <div className="flex flex-col items-start gap-1.5 sm:items-end">
-              <span className="flex flex-wrap items-center gap-2">
-                {fotoDaVaga && !contaNova && (
-                  <BotaoLink href="/publicar#arte" tamanho="sm">
-                    <ImageUp aria-hidden />
-                    Publicar pela foto
-                  </BotaoLink>
-                )}
-                {agencia && (
-                  <BotaoLink href="/painel/clientes/novo" tamanho="sm">
-                    <Building2 aria-hidden />
-                    Adicionar cliente
-                  </BotaoLink>
-                )}
-                {/* no celular, a barra de baixo já tem o Publicar (um botão terra por tela) */}
-                <BotaoLink href="/publicar" variante="primario" tamanho="sm" className="max-sm:hidden">
-                  <Plus aria-hidden />
-                  Publicar vaga
-                </BotaoLink>
-              </span>
-              {/* o que é "pela foto": a vaga que já existe numa imagem vira a vaga preenchida */}
-              {fotoDaVaga && !contaNova && (
-                <p className="max-w-xs text-body-sm text-ink-muted sm:text-right">
-                  Pela foto: mande a arte da vaga (o post ou o cartaz) e o Publike preenche tudo.
-                </p>
-              )}
-            </div>
-          )
-        }
       />
 
-      {contaNova && <ComecePorAqui passos={primeiros} />}
-
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-6">
-          {contaNova ? (
-            <ParaFazerAgora
-              lista
-              titulo="Enquanto isso"
-              vazio=""
-              itens={[
-                {
-                  icone: UserSearch,
-                  titulo: "Veja quem tem currículo perto",
-                  texto: "Na aba Talentos, convide quem combina, mesmo antes de publicar.",
-                  href: "/talentos",
-                  acao: "Ver talentos",
-                },
-                ...(agencia
-                  ? [
-                      {
-                        icone: UsersRound,
-                        titulo: "Chame a sua equipe",
-                        texto: "Cada recrutador entra com o próprio celular e age pela agência.",
-                        href: "/painel/equipe",
-                        acao: "Convidar",
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          ) : (
+      {contaNova ? (
+        <>
+          <ComecePorAqui passos={primeiros} />
+          <ParaFazerAgora
+            lista
+            titulo="Enquanto isso"
+            vazio=""
+            itens={[
+              {
+                icone: UserSearch,
+                titulo: "Veja quem tem currículo perto",
+                texto: "Na aba Talentos, convide quem combina, mesmo antes de publicar.",
+                href: "/talentos",
+                acao: "Ver talentos",
+              },
+              ...(agencia
+                ? [
+                    {
+                      icone: UsersRound,
+                      titulo: "Chame a sua equipe",
+                      texto: "Cada recrutador entra com o próprio celular e age pela agência.",
+                      href: "/painel/equipe",
+                      acao: "Convidar",
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-6">
             <Agora
               itens={cartoes}
               vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
             />
+            <NumerosDoHoje
+              candidatos={{ dias: chaves.map((d) => ({ dia: diaMes(d), n: porDia.get(d) ?? 0 })), antes }}
+              numeros={numeros}
+            />
+          </div>
+          {grupos.length > 0 && (
+            <TabelaDasVagas
+              titulo={agencia ? "Seus clientes" : "Suas vagas"}
+              grupos={grupos}
+              link={
+                agencia
+                  ? { href: "/painel/clientes", texto: "Ver todos os clientes" }
+                  : { href: "/painel/anuncios?tipo=vaga", texto: "Gerenciar vagas" }
+              }
+            />
           )}
-
-          {agencia && <SeusClientes clientes={caminho.listaClientes} vagas={caminho.vagas} />}
-
-          {listaDeVagas.length > 0 && (
-            <section aria-labelledby="suas-vagas" className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id="suas-vagas" className="text-h3">
-                  {agencia ? "Vagas sem cliente" : "Suas vagas"}
-                </h2>
-                <Link
-                  href="/painel/anuncios?tipo=vaga"
-                  className="text-label text-ink-muted underline underline-offset-2 hover:text-ink"
-                >
-                  Gerenciar vagas
-                </Link>
-              </div>
-              <ul className="flex flex-col gap-3">
-                {listaDeVagas.map((v) => {
-                  const daVaga = todos.filter((c) => c.anuncio_id === v.id);
-                  const status = v.status as StatusAnuncio;
-                  // as mesmas contas das etapas de Candidatos e da vaga (abaDaEtapa)
-                  const naEtapa = (aba: ReturnType<typeof abaDaEtapa>) =>
-                    daVaga.filter((c) => abaDaEtapa(c) === aba).length;
-                  const novosDaVaga = naEtapa("novos");
-                  // quem espera você entre os Novos (quem já está Em análise conta lá)
-                  const responder = daVaga.filter((c) => abaDaEtapa(c) === "novos" && esperaResposta(c)).length;
-                  const entrevista = naEtapa("entrevista");
-                  const analise = naEtapa("analise");
-                  const contratado = naEtapa("contratados");
-                  const total = Math.max(daVaga.length, 1);
-                  const ativa = status === "ativo";
-                  const saude = ativa ? saudes.get(v.id) : undefined;
-                  const atencao = saude && saude.nivel !== "boa" ? (saude.faltando[0]?.dica ?? null) : null;
-                  return (
-                    <li key={v.id}>
-                      <article className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <Link href={`/painel/anuncio/${v.id}/quadro`} className="font-display text-h3 hover:underline">
-                            {v.titulo}
-                          </Link>
-                          <Selo variante={ativa ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
-                          <span className="text-body-sm text-ink-muted">
-                            {ativa ? `${ateQuando(v.expira_em)} · ` : ""}
-                            {plural(visitas.get(v.id) ?? 0, "visita", "visitas")} ·{" "}
-                            {plural(daVaga.length, "candidato", "candidatos")}
-                          </span>
-                          {saude && (
-                            <span className="ml-auto">
-                              <NivelDaSaude s={saude} />
-                            </span>
-                          )}
-                        </span>
-                        {daVaga.length > 0 && (
-                          <span aria-hidden className="flex h-2.5 overflow-hidden rounded-pill bg-surface-300">
-                            <span className="bg-terra" style={{ width: `${(100 * novosDaVaga) / total}%` }} />
-                            <span className="bg-ink-muted/40" style={{ width: `${(100 * analise) / total}%` }} />
-                            <span className="bg-ipe" style={{ width: `${(100 * entrevista) / total}%` }} />
-                            <span className="bg-cerrado" style={{ width: `${(100 * contratado) / total}%` }} />
-                          </span>
-                        )}
-                        <span className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-ink-muted">
-                          <span>
-                            {/* as mesmas etapas da faixa do caminho e do quadro */}
-                            <strong className={responder ? "text-terra-text" : "text-ink"}>{novosDaVaga}</strong>{" "}
-                            {novosDaVaga === 1 ? "novo" : "novos"}
-                            {responder > 0 && (
-                              <span className="text-terra-text">
-                                {" "}
-                                ({responder === 1 ? "1 espera você" : `${responder} esperam você`})
-                              </span>
-                            )}
-                          </span>
-                          <span>
-                            <strong className="text-ink">{analise}</strong> em análise
-                          </span>
-                          <span>
-                            <strong className="text-ink">{entrevista}</strong> em entrevista
-                          </span>
-                          <span>
-                            <strong className="text-ink">{contratado}</strong>{" "}
-                            {contratado === 1 ? "contratado" : "contratados"}
-                          </span>
-                          {(porIndicacao.get(v.id)?.indicados ?? 0) > 0 && (
-                            <Link
-                              href={`/painel/anuncio/${v.id}/convidar#indicacao`}
-                              className="underline-offset-2 hover:underline"
-                            >
-                              <strong className="text-ink">{porIndicacao.get(v.id)?.indicados}</strong> por indicação
-                            </Link>
-                          )}
-                        </span>
-                        {atencao && <span className="text-body-sm text-terra-text">{atencao}</span>}
-                        <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line pt-3">
-                          <span className="inline-flex items-center gap-1.5 text-body-sm text-ink-muted">
-                            <Globe aria-hidden className="size-4 shrink-0" />
-                            {ativa ? ondeAparece() : "Fora do ar"}
-                          </span>
-                          <span className="flex flex-wrap gap-2">
-                            {ativa && (
-                              <BotaoLink href={`/painel/links?vaga=${v.id}#kit`} tamanho="sm">
-                                <Megaphone aria-hidden />
-                                Divulgar
-                              </BotaoLink>
-                            )}
-                            <BotaoLink href={`/painel/anuncio/${v.id}/quadro`} tamanho="sm" variante="fantasma">
-                              Abrir a vaga
-                              <ChevronRight aria-hidden />
-                            </BotaoLink>
-                          </span>
-                        </span>
-                      </article>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-        </div>
-
-        <aside className="flex flex-col gap-4">
-          {contaNova && (
-            <section className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
-              <h2 className="text-h3">Link das suas vagas</h2>
-              <p className="text-body-sm text-ink-muted">
-                Fica pronto quando a primeira vaga for ao ar. Vaga nova entra sozinha nele.
-              </p>
-            </section>
-          )}
-          {!contaNova && (
-            <>
-              <section
-                aria-labelledby="agenda"
-                className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
-              >
-                <h2 id="agenda" className="text-h3">
-                  Esta semana
-                </h2>
-                {primeirosDias.length > 0 && (
-                  <ul className="flex flex-col gap-3">
-                    {primeirosDias.map((d) => (
-                      <li key={`${d.anuncioId}:${d.perfilId}`}>
-                        <Link
-                          href={`/painel/anuncio/${d.anuncioId}/quadro?candidato=${d.perfilId}`}
-                          className="flex flex-col gap-1 rounded-md p-1 hover:bg-surface-300"
-                        >
-                          <span className="text-label">{quandoComeca(d.inicio)}</span>
-                          <span className="text-body-sm">
-                            <span className="font-semibold">{d.nome}</span>
-                            <span className="text-ink-muted"> · {d.vaga}</span>
-                          </span>
-                          <Selo variante="match" className="self-start">
-                            Primeiro dia
-                          </Selo>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {semana.length === 0 ? (
-                  primeirosDias.length === 0 && (
-                    <p className="text-body-sm text-ink-muted">
-                      Nenhuma entrevista marcada. No quadro da vaga, leve o candidato para Entrevista e marque o dia.
-                    </p>
-                  )
-                ) : (
-                  <ul className="flex flex-col gap-3">
-                    {semana.slice(0, 6).map((e) => {
-                      const s = SITUACOES_ENTREVISTA[e.situacao] ?? SITUACOES_ENTREVISTA.marcada;
-                      return (
-                        <li key={e.id}>
-                          <Link
-                            href={`/painel/anuncio/${e.anuncio_id}/quadro`}
-                            className="flex flex-col gap-1 rounded-md p-1 hover:bg-surface-300"
-                          >
-                            <span className="text-label tabular-nums">{dataDaEntrevista(e.quando)}</span>
-                            <span className="text-body-sm">
-                              <span className="font-semibold">{nomeDe.get(e.perfil_id) ?? "Candidato"}</span>
-                              <span className="text-ink-muted"> · {tituloDe.get(e.anuncio_id)}</span>
-                            </span>
-                            <Selo variante={s.tom} className="self-start">
-                              {s.nome}
-                            </Selo>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </section>
-
-              {/* a reputação (claude/plano-reputacao-de-quem-contrata.md): o que quem procura sente, em três números */}
-              <details aria-labelledby="reputacao" className="group flex flex-col gap-3 rounded-lg bg-surface-300 p-4 sm:p-5">
-                <summary className="flex cursor-pointer list-none flex-col gap-0.5 [&::-webkit-details-marker]:hidden">
-                  <h2 id="reputacao" className="flex items-center justify-between gap-2 text-h3">
-                    Sua reputação no Publike
-                    <ChevronDown aria-hidden className="size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-180" />
-                  </h2>
-                  <p className="text-body-sm text-ink-muted">
-                    {responde ? responde.texto : "Como os candidatos são tratados nas suas vagas, nos últimos 90 dias."}
-                  </p>
-                </summary>
-                <div className="mt-3 flex flex-col gap-3">
-                {reputacao && reputacao.curtidas >= MINIMO_DE_CURTIDAS && indicadores(reputacao).length > 0 ? (
-                  <>
-                    <ul className="flex flex-col gap-3">
-                      {indicadores(reputacao).map((i) => (
-                        <li key={i.chave} className="flex flex-col gap-1">
-                          <p className="flex items-baseline justify-between gap-3">
-                            <span className="text-label">{i.nome}</span>
-                            <span className={`text-label tabular-nums ${i.bom ? "text-cerrado-text" : "text-ink"}`}>
-                              {Math.round(i.taxa * 100)}%
-                            </span>
-                          </p>
-                          <span aria-hidden className="flex h-2 overflow-hidden rounded-pill bg-line">
-                            <span className={i.bom ? "bg-cerrado" : "bg-ipe"} style={{ width: `${Math.round(100 * i.taxa)}%` }} />
-                          </span>
-                          <p className="text-body-sm">
-                            {i.texto}
-                            {i.comparacao && <span className="text-ink-muted">: {i.comparacao}</span>}.
-                          </p>
-                          {!i.bom && <p className="text-body-sm text-ink-muted">{i.dica}</p>}
-                        </li>
-                      ))}
-                    </ul>
-                    {responde && (
-                      <p
-                        className={`flex items-center gap-2 border-t border-line pt-3 text-body-sm ${responde.bom ? "text-cerrado-text" : "text-ink-muted"}`}
-                      >
-                        <MessageCircleReply aria-hidden className="size-4 shrink-0" />
-                        No cartão das suas vagas, quem procura vê: “{responde.texto}”.
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-body-sm text-ink-muted">
-                    {reputacao && reputacao.curtidas > 0
-                      ? `Faltam ${MINIMO_DE_CURTIDAS - reputacao.curtidas} curtidas para a sua reputação aparecer. `
-                      : `Com ${MINIMO_DE_CURTIDAS} curtidas nas suas vagas, a sua reputação aparece aqui. `}
-                    Responder em até 1 dia, acompanhar quem deu match e dar retorno no fim fazem a sua vaga ser mais
-                    procurada.
-                  </p>
-                )}
-                </div>
-              </details>
-            </>
-          )}
-          {agencia && equipe && !contaNova && (
-            <section
-              aria-labelledby="sua-equipe"
-              className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
-            >
-              <h2 id="sua-equipe" className="text-h3">
-                Sua equipe
-              </h2>
-              <p className="text-body-sm text-ink-muted">
-                {equipe.length <= 1
-                  ? "Só você por enquanto. Cada recrutador entra com o próprio celular e age pela agência."
-                  : `${plural(equipe.length, "pessoa", "pessoas")}: ${equipe
-                      .slice(0, 3)
-                      .map((m) => m.nome.split(" ")[0])
-                      .join(", ")}${equipe.length > 3 ? " e mais" : ""}.`}
-              </p>
-              <Link href="/painel/equipe" className="self-start text-label underline underline-offset-2">
-                {equipe.length <= 1 ? "Convidar alguém" : "Ver a equipe"}
-              </Link>
-            </section>
-          )}
-          {!contaNova && (
-            <Suspense fallback={null}>
-              <TalentosDaVaga vagas={vagas} agora={agora} />
-            </Suspense>
-          )}
-        </aside>
-      </div>
+        </>
+      )}
     </div>
   );
 }

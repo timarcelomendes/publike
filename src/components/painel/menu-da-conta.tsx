@@ -1,8 +1,17 @@
 import { MODO_DEMO } from "@/lib/config";
-import { copilotoLiberado, obterMeuCurriculo, obterMeuPerfil, obterUsuario, recursosPagos } from "@/lib/dados";
+import { TIPOS_CONTA } from "@/lib/constantes";
+import type { TipoConta } from "@/lib/tipos";
+import {
+  ajudaDaIADisponivel,
+  copilotoLiberado,
+  obterMeuCurriculo,
+  obterMeuPerfil,
+  obterUsuario,
+  recursosPagos,
+} from "@/lib/dados";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { contadoresDoPainel } from "@/lib/servidor/contadores-do-painel";
-import { minhasContas } from "@/lib/servidor/equipe";
+import { equipeDaConta, minhasContas } from "@/lib/servidor/equipe";
 import { atividadesDoMenu } from "@/lib/servidor/modo";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { MenuPainel } from "./menu-painel";
@@ -36,6 +45,15 @@ export async function MenuDaConta() {
     // undefined: não deu para ler (sem o "Falta")
     obterMeuCurriculo().catch(() => undefined),
   ]);
+  // quem contrata: a conta e o "Publicar vaga" no alto do menu (o painel novo, 08/11/2026)
+  const contrata = atividades.includes("contratar") && perfil !== null;
+  const agencia = perfil?.tipo === "agencia";
+  const [equipe, foto] = contrata
+    ? await Promise.all([
+        agencia ? equipeDaConta().then((l) => l?.length ?? null).catch(() => null) : Promise.resolve(null),
+        ajudaDaIADisponivel().catch(() => false),
+      ])
+    : [null, false];
   // a pílula segue a conta: "15 dias grátis", "faltam N dias" no teste, nada depois de liberado
   const pilulas = recursos
     ? {
@@ -59,6 +77,19 @@ export async function MenuDaConta() {
       copiloto={copiloto}
       pilulas={pilulas}
       semCurriculo={perfil?.tipo === "pessoa" && atividades.includes("trabalhar") && curriculo === null}
+      conta={
+        contrata && perfil
+          ? {
+              nome: perfil.nome,
+              foto: perfil.foto,
+              tipo: TIPOS_CONTA[perfil.tipo as TipoConta]?.nome ?? "Empresa",
+              bairro: perfil.bairro,
+              verificado: perfil.verificado,
+              equipe,
+            }
+          : null
+      }
+      publicar={contrata ? { foto, agencia } : null}
     />
   );
 }

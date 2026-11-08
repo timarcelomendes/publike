@@ -1,4 +1,4 @@
-import { ajudaDaIADisponivel, listarMeusAnuncios, listarMeusCandidatos } from "@/lib/dados";
+import { listarMeusAnuncios, listarMeusCandidatos } from "@/lib/dados";
 import type { Conexao } from "@/lib/conexoes";
 import type { ConversaPessoa } from "@/lib/conversas";
 import { listarMeusClientes } from "@/lib/servidor/clientes";
@@ -24,12 +24,11 @@ export async function HojeContratar({
   conexoes: Conexao[] | null;
   agora: number;
 }) {
-  const [anuncios, candidatos, clientes, fotoDaVaga] = await Promise.all([
+  const [anuncios, candidatos, clientes] = await Promise.all([
     talvez(listarMeusAnuncios(), "os anúncios"),
     listarMeusCandidatos(),
     // agência: quantos clientes
     perfil.tipo === "agencia" ? listarMeusClientes().then((l) => l?.filter((c) => !c.arquivado_em).length ?? 0) : null,
-    ajudaDaIADisponivel(),
   ]);
   // quem é da equipe da agência: "Boa noite, Bruno" (o nome da pessoa, não o da agência)
   const pessoa = usuario.papel !== "dono" ? (await minhasContas()).find((c) => c.papel === "dono") : null;
@@ -43,7 +42,6 @@ export async function HojeContratar({
       clientes={clientes}
       extras={[...cartoesDeConexao(conexoes), ...cartoesDeMensagens(conversas, conversaDoModo.contratar)]}
       conversas={conversas}
-      fotoDaVaga={fotoDaVaga}
       perfilPronto={perfil.tipo === "agencia" ? Boolean(perfil.cnpj) : Boolean(perfil.foto || perfil.sobre)}
     />
   );
