@@ -12,6 +12,7 @@ import { GoogleAds } from "@/components/google-ads";
 import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
+import { Voltar } from "@/components/voltar";
 import { EntrarNumToque } from "@/components/entrar-num-toque";
 import { FolhaDeEntrar } from "@/components/folha-de-entrar";
 import { ContarTempo } from "@/components/contar-tempo";
@@ -109,6 +110,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </Suspense>
           {MODO_DEMO && <AvisoDemo />}
           <main id="conteudo" className="flex-1">
+            {/* "‹ Voltar para …": a tela de onde a pessoa veio (lê o endereço: no build, num Suspense) */}
+            <Suspense fallback={null}>
+              <Voltar />
+            </Suspense>
             {children}
           </main>
           {/* lê o endereço da página e a conta (quem entrou, painel e perfil: rodapé curto; entrar: sem rodapé) */}

@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { ContarContato } from "@/components/contar-contato";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { MenuPainelEsqueleto } from "@/components/painel/menu-painel";
-import { VoltarAoPainel } from "@/components/painel/voltar-ao-painel";
 import { Container } from "@/components/ui/basicos";
 
 export const metadata: Metadata = { title: "Meu painel", robots: { index: false } };
@@ -15,11 +14,7 @@ export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
     <Container className="py-6 sm:py-8">
       <h1 className="sr-only">Meu painel</h1>
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-10">
-        {/* no celular, "‹ Painel" no alto das páginas (no Hoje, não) */}
-        {/* o endereço só existe na hora (usePathname): sem o Suspense, trava o prerender das páginas */}
-        <Suspense fallback={null}>
-          <VoltarAoPainel />
-        </Suspense>
+        {/* o "‹ Painel" do celular agora faz parte do "Voltar" do site (src/components/voltar.tsx) */}
         {/* nas Mensagens, o celular fica sem a linha do menu (elas marcam o html: SemLinhaDoPainel) */}
         <div className="lg:sticky lg:top-20 [html[data-sem-linha-painel]_&]:max-lg:hidden">
           <Suspense fallback={<MenuPainelEsqueleto />}>
