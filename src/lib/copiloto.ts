@@ -171,7 +171,7 @@ export function textoDoRegistro(r: LinhaRegistro) {
     t = `A IA montou ${n} ${n === 1 ? "critério" : "critérios"} pela vaga`;
   } else if (r.acao === "criterios") {
     const obrig = Number(r.detalhe ?? 0);
-    t = `Salvou ${n} ${n === 1 ? "critério" : "critérios"}${obrig ? ` (${obrig} ${obrig === 1 ? "obrigatório" : "obrigatórios"})` : ""}`;
+    t = `Salvou ${n} ${n === 1 ? "critério" : "critérios"}${obrig ? ` (${obrig} ${obrig === 1 ? "essencial" : "essenciais"})` : ""}`;
   } else if (r.acao === "avaliou" && r.detalhe === "automatico") {
     t = `Leu sozinha ${n} ${n === 1 ? "candidatura" : "candidaturas"}`;
   } else if (r.acao === "avaliou") {

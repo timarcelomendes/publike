@@ -9,7 +9,7 @@ export type Passo = { o_que: string; em: string };
 export type ColunaDaTrilha = { chave: string; nome: string };
 
 /** passou: já passou dali; atual: está ali agora; parou: o processo parou ali; contratado: chegou ao fim */
-export type EstadoDaCelula = "passou" | "atual" | "parou" | "contratado";
+export type EstadoDaCelula = "passou" | "atual" | "parou" | "contratado" | "pulou";
 
 export type CelulaDaTrilha = { estado: EstadoDaCelula; em: string | null; rotulo: string | null } | null;
 
@@ -67,6 +67,8 @@ export function celulasDaTrilha(c: CandidatoNaTrilha, passos: Passo[], colunas: 
   };
   marcar("curtiu", c.curtido_em);
   let parouEm: string | null = null;
+  // quem administra pulou uma etapa obrigatória (migração 20270315120000): "pulou:entrevista:<motivo>"
+  const pulos = new Map<string, { em: string; motivo: string }>();
   for (const p of passos) {
     if (p.o_que === "curtiu") marcar("curtiu", p.em);
     else if (p.o_que === "aceita" || p.o_que === "resposta:match" || p.o_que === "curtida:match") marcar("aceite", p.em);
@@ -75,6 +77,10 @@ export function celulasDaTrilha(c: CandidatoNaTrilha, passos: Passo[], colunas: 
       parouEm = p.em;
     else if (p.o_que.startsWith("etapa:")) marcar(p.o_que.slice(6), p.em);
     else if (p.o_que.startsWith("sub:")) marcar(p.o_que, p.em);
+    else if (p.o_que.startsWith("pulou:")) {
+      const [, regra, ...resto] = p.o_que.split(":");
+      if (regra === "entrevista") pulos.set("entrevista", { em: p.em, motivo: resto.join(":") });
+    }
   }
   // quem deu match antes do histórico existir: o aceite, sem a data
   const aceitou = c.status === "match" || c.status === "desfeito" || c.aceita;
@@ -103,7 +109,11 @@ export function celulasDaTrilha(c: CandidatoNaTrilha, passos: Passo[], colunas: 
   return colunas.map((col, i) => {
     if (i > ponta) return null;
     const em = primeira.get(col.chave) || null;
-    if (i < ponta) return alcancou(col.chave) ? { estado: "passou", em, rotulo: null } : null;
+    if (i < ponta) {
+      if (alcancou(col.chave)) return { estado: "passou", em, rotulo: null };
+      const pulo = pulos.get(col.chave);
+      return pulo ? { estado: "pulou", em: pulo.em, rotulo: `Pulou: ${pulo.motivo}` } : null;
+    }
     if (situacao === "parou")
       return {
         estado: "parou",

@@ -1,6 +1,7 @@
 "use client";
 
 import { ITENS_DO_JEITO } from "@/lib/jeito-de-trabalhar";
+import { OPCOES_CONTATO_POR } from "@/lib/processo";
 import { ArrowLeft, ArrowRight, Briefcase, CalendarClock, Check, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import {
@@ -69,19 +70,7 @@ import { jeitosDeEntrar } from "@/lib/login-social";
 const REGIMES_PRINCIPAIS: Regime[] = ["clt", "diaria", "freelance", "temporario", "estagio", "aprendiz"];
 
 /** Depois do match, como os candidatos falam com quem publicou a vaga. */
-const CONTATO_POR = [
-  {
-    valor: "ambos",
-    nome: "Pelo chat do Publike e pelo WhatsApp",
-    ajuda: "Quem der match vê o seu WhatsApp e pode chamar direto, além de conversar no chat.",
-  },
-  {
-    valor: "chat",
-    nome: "Só pelo chat do Publike",
-    ajuda:
-      "Seu WhatsApp, telefone e e-mail ficam guardados: a conversa é toda no chat. Você continua vendo o contato de quem curtiu.",
-  },
-] as const;
+const CONTATO_POR = OPCOES_CONTATO_POR;
 
 export type ValoresAnuncio = {
   id?: string;
@@ -97,6 +86,8 @@ export type ValoresAnuncio = {
   vagas: number;
   /** vaga: quem curtir é convidado a preencher o currículo, e você vê o currículo de cada um */
   pede_curriculo?: boolean;
+  /** o padrão da conta (Configurações): "sempre" ou "nunca" não mudam com o tipo de contratação */
+  curriculo_padrao?: "regime" | "sempre" | "nunca";
   /** quem curtir já recebe o contato (match na hora) */
   contato_direto?: boolean;
   /** depois do match: o chat e o WhatsApp ("ambos", o padrão) ou só o chat do Publike */
@@ -300,7 +291,9 @@ export function FormAnuncio({
   );
   const [pedeCurriculo, setPedeCurriculo] = useState(inicial.pede_curriculo ?? false);
   // Em vaga nova, CLT, estágio e temporário já marcam "pedir currículo" (até a pessoa mexer na caixa)
-  const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(editando);
+  const [mexeuNoCurriculo, setMexeuNoCurriculo] = useState(
+    editando || (inicial.curriculo_padrao !== undefined && inicial.curriculo_padrao !== "regime"),
+  );
   const [confidencial, setConfidencial] = useState(inicial.contratante_confidencial ?? false);
   // o lugar da vaga: escolher um cliente traz o dele (e monta o "Onde é" de novo)
   const [lugar, setLugar] = useState({

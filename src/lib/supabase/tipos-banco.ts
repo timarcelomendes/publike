@@ -3130,6 +3130,23 @@ export type Database = {
       /** o jeito de trabalhar (migração 20270309120000) */
       /** o arquivo de vagas para outros sites (migração 20270310120000) */
       vagas_para_o_feed: { Args: { p_limite?: number }; Returns: Json };
+      /** o processo da conta e o padrão das vagas novas (migração 20270315120000) */
+      processo_da_conta: { Args: Record<string, never>; Returns: Json };
+      salvar_processo: { Args: { p: Json }; Returns: undefined };
+      pular_regra: { Args: { p_anuncio: string; p_perfil: string; p_regra: string; p_motivo: string }; Returns: undefined };
+      marcar_motivo_saida: { Args: { p_anuncio: string; p_perfis: string[]; p_motivo: string | null }; Returns: number };
+      numeros_saidas: {
+        Args: { p_dias?: number | null; p_anuncio?: string | null };
+        Returns: { motivo: string; pessoas: number }[];
+      };
+      pedir_documentos: {
+        Args: { p_anuncio: string; p_perfil: string; p_inicio: string; p_documentos: string[] };
+        Returns: string;
+      };
+      padroes_da_conta: { Args: Record<string, never>; Returns: Json };
+      salvar_padroes: { Args: { p: Json }; Returns: undefined };
+      aplicar_padroes: { Args: { p_o_que: string[] }; Returns: number };
+      marcar_dispensar_eliminados: { Args: { p_anuncio: string; p_ligado: boolean }; Returns: undefined };
       /** o chat em cada match, no Admin › Curtidas (migração 20270314120000) */
       admin_chat_das_curtidas: {
         Args: { p_anuncios: string[] };

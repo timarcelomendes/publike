@@ -37,12 +37,15 @@ export function FormColocacao({
   nome,
   atual,
   agora,
+  padrao = null,
 }: {
   anuncioId: string;
   perfilId: string;
   nome: string;
   atual: Colocacao | null;
   agora: number;
+  /** a taxa e a garantia padrão da agência (Configurações › Contratação) */
+  padrao?: { taxa: number | null; garantia_dias: number | null } | null;
 }) {
   const salvarProtegido = useMemo(
     () => protegerAcao(salvarColocacao.bind(null, anuncioId, perfilId)),
@@ -56,6 +59,7 @@ export function FormColocacao({
   const id = (campo: string) => `colocacao-${perfilId}-${campo}`;
   const garantias = [0, ...GARANTIAS, 120, 180];
   if (atual && !garantias.includes(atual.garantia_dias)) garantias.push(atual.garantia_dias);
+  if (padrao?.garantia_dias != null && !garantias.includes(padrao.garantia_dias)) garantias.push(padrao.garantia_dias);
   const primeiro = nome.split(" ")[0];
   const situacao = atual ? situacaoDaColocacao(atual, hoje) : null;
   const formulario = useRef<HTMLFormElement>(null);
@@ -112,7 +116,7 @@ export function FormColocacao({
           <Seletor
             id={id("garantia")}
             name="garantia"
-            defaultValue={String(atual?.garantia_dias ?? GARANTIA_PADRAO)}
+            defaultValue={String(atual?.garantia_dias ?? padrao?.garantia_dias ?? GARANTIA_PADRAO)}
             aria-invalid={erros.garantia ? true : undefined}
             className={classesEntrada}
           >
@@ -138,7 +142,13 @@ export function FormColocacao({
               id={id("taxa")}
               name="taxa"
               inputMode="decimal"
-              defaultValue={atual?.taxa != null ? String(atual.taxa).replace(".", ",") : ""}
+              defaultValue={
+                atual?.taxa != null
+                  ? String(atual.taxa).replace(".", ",")
+                  : padrao?.taxa != null
+                    ? String(padrao.taxa).replace(".", ",")
+                    : ""
+              }
               placeholder="1.500"
               aria-invalid={erros.taxa ? true : undefined}
               className={`${classesEntrada} pl-10`}

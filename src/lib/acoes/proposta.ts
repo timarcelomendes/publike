@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import { regraDoErro } from "@/lib/processo";
 import { refresh } from "next/cache";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { mensagemDeErro } from "@/lib/erros";
@@ -57,7 +58,8 @@ export async function fazerProposta(anuncioId: string, perfilId: string, d: Dado
         .slice(0, 12),
     },
   });
-  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para mandar a proposta.") };
+  if (error)
+    return { ok: false, erro: mensagemDeErro(error, "Não deu para mandar a proposta."), regra: regraDoErro(error.hint) };
   after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Proposta enviada. O candidato recebe o aviso e responde pelo Publike." };

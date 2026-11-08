@@ -23,10 +23,11 @@ import { dailyConfigurado } from "@/lib/servidor/daily";
 import { etapasProprias, ondeEstaDesde } from "@/lib/servidor/etapas-proprias";
 import { respostasDoChatDaVaga } from "@/lib/servidor/perguntas-do-match";
 import { propostasDaVaga } from "@/lib/servidor/proposta";
+import { padroesDaConta } from "@/lib/servidor/processo";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { retornoDaConta } from "@/lib/servidor/retorno";
 import { saudeDasVagas } from "@/lib/servidor/saude";
-import { resultadosDosTestes } from "@/lib/servidor/testes";
+import { resultadosDosTestes, testesDaVaga } from "@/lib/servidor/testes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { compararParaChamar, porqueChamar } from "@/lib/quem-chamar";
@@ -59,7 +60,15 @@ async function Conteudo({
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
   // as etapas próprias e o tempo na etapa (migração 20270108120000; sem ela, null) e as propostas
-  const proprias = Promise.all([etapasProprias(), ondeEstaDesde(id), propostasDaVaga(id), respostasDoChatDaVaga(id)]);
+  const proprias = Promise.all([
+    etapasProprias(),
+    ondeEstaDesde(id),
+    propostasDaVaga(id),
+    respostasDoChatDaVaga(id),
+    // o teste "Antes da entrevista" da vaga e o padrão da proposta (migração 20270315120000)
+    testesDaVaga(id),
+    padroesDaConta(),
+  ]);
   const [{ cartoes: daVaga, modelos }, posicoes, resultados, triagem, retorno, videos, ficha, avaliacoes] =
     await Promise.all([
       montarQuadro(anuncio, agora),
@@ -73,7 +82,12 @@ async function Conteudo({
       fichaDaVaga(id),
       avaliacoesTimeDaVaga(id),
     ]);
-  const [etapas, desde, propostas, chat] = await proprias;
+  const [etapas, desde, propostas, chat, testesDaVagaLista, padroes] = await proprias;
+  // quem ainda não fez o teste que a vaga pede antes da entrevista: "Falta o teste" no cartão
+  const antesDaEntrevista = testesDaVagaLista.filter((t) => t.obrigatoria).map((t) => t.modelo_id);
+  const feitosPor = new Map<string, Set<string>>();
+  for (const r of resultados)
+    if (r.status === "feita") feitosPor.set(r.perfil_id, (feitosPor.get(r.perfil_id) ?? new Set()).add(r.modelo_id));
   // o Teste Prático de cada candidato: o resultado numa palavra no cartão e o "Ordenar pelo teste"
   const testesDe = new Map<string, { titulo: string; faixa: FaixaDoTeste; nota: number }[]>();
   for (const r of resultados) {
@@ -98,6 +112,10 @@ async function Conteudo({
     proposta: propostas ? (propostas.get(c.perfil_id) ?? null) : undefined,
     // as respostas às perguntas do match (migração 20270202120000)
     chat: chat?.get(c.perfil_id) ?? [],
+    faltaTeste:
+      antesDaEntrevista.length > 0 &&
+      (c.status === "match" || c.status === "pendente") &&
+      antesDaEntrevista.some((m) => !feitosPor.get(c.perfil_id)?.has(m)),
   }));
   if (peloChamar) cartoes.sort(compararParaChamar);
   const ordenados = cartoes.map((c, i) =>
@@ -200,7 +218,7 @@ async function Conteudo({
         <VistaDosCandidatos id={id} atual="quadro" />
         {etapas && (
           <Link
-            href="/painel/etapas"
+            href="/painel/configuracoes?aba=processo#etapas"
             className="inline-flex min-h-10 items-center gap-1.5 text-label text-ink-muted underline-offset-2 hover:text-ink hover:underline"
           >
             <Columns3 aria-hidden className="size-4" />
@@ -255,6 +273,16 @@ async function Conteudo({
           }
           time={ficha ? { ficha, sugestoes: sugestoesDeCompetencias(anuncio.titulo) } : null}
           etapas={etapas}
+          padroes={
+            padroes
+              ? {
+                  proposta: padroes.proposta,
+                  documentos: padroes.documentos,
+                  taxa: padroes.taxa,
+                  garantia_dias: padroes.garantia_dias,
+                }
+              : null
+          }
         />
       )}
     </div>

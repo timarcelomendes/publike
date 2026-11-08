@@ -17,9 +17,11 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { excluirAnuncio, marcarVagaPreenchida, mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { responderCurtida } from "@/lib/acoes/curtidas";
+import { quemPodeTerSidoContratado } from "@/lib/acoes/processo";
+import { moverCandidatos } from "@/lib/acoes/recrutamento";
 import { MOTIVOS_DO_TIPO, MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import { CaminhoDoAceite } from "../caminho-curtida";
 import { Botao, BotaoLink } from "../ui/botao";
@@ -214,12 +216,16 @@ export function AcoesAnuncio({
 }
 
 /**
- * Marcar a vaga como preenchida (pergunta antes: quem curtiu recebe o aviso) ou reabrir.
- * A vaga continua no site com a marcação "Vaga preenchida".
+ * Marcar a vaga como preenchida (pergunta antes: quem curtiu recebe o aviso) ou reabrir. A vaga continua no site com
+ * a marcação "Vaga preenchida". Sem ninguém em Contratados, pergunta quem foi contratado (opcional): o funil dos
+ * Resultados conta certo (claude/plano-etapas-obrigatorias-e-configuracoes.md).
  */
 export function BotaoVagaPreenchida({ id, preenchida }: { id: string; preenchida: boolean }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
+  const [quem, setQuem] = useState<{ contratados: number; candidatos: { id: string; nome: string }[] } | null>(null);
+  const [marcados, setMarcados] = useState<string[]>([]);
+  const [carregando, iniciarCarga] = useTransition();
   if (preenchida) {
     return (
       <span className="flex flex-wrap items-center gap-2">
@@ -236,29 +242,73 @@ export function BotaoVagaPreenchida({ id, preenchida }: { id: string; preenchida
       </span>
     );
   }
+  const perguntar = quem && quem.contratados === 0 && quem.candidatos.length > 0;
   return confirmar ? (
-    <span className="flex flex-wrap items-center gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
-      Quem curtiu e ainda espera recebe o aviso de que a vaga foi preenchida. A vaga continua no site, com a marcação.
-      <Botao
-        tamanho="sm"
-        variante="sucesso"
-        disabled={pendente}
-        onClick={() =>
-          rodar(
-            () => marcarVagaPreenchida(id, true),
-            () => setConfirmar(false),
-          )
-        }
-      >
-        Sim, foi preenchida
-      </Botao>
-      <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmar(false)}>
-        Cancelar
-      </Botao>
+    <span className="flex flex-col gap-2 rounded-md bg-surface-300 px-3 py-2 text-body-sm">
+      {perguntar && (
+        <span className="flex flex-col gap-1">
+          <span className="text-label">Quem foi contratado? (opcional)</span>
+          <span className="flex flex-wrap gap-x-4">
+            {quem.candidatos.map((c) => (
+              <label key={c.id} className="inline-flex min-h-10 cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={marcados.includes(c.id)}
+                  onChange={(e) =>
+                    setMarcados((l) => (e.target.checked ? [...l, c.id] : l.filter((x) => x !== c.id)))
+                  }
+                  className="size-5 accent-[var(--pk-ink)]"
+                />
+                {c.nome}
+              </label>
+            ))}
+          </span>
+        </span>
+      )}
+      <span>
+        Quem curtiu e ainda espera recebe o aviso de que a vaga foi preenchida. A vaga continua no site, com a marcação.
+      </span>
+      <span className="flex flex-wrap items-center gap-2">
+        <Botao
+          tamanho="sm"
+          variante="sucesso"
+          disabled={pendente || carregando}
+          onClick={() =>
+            rodar(
+              async () => {
+                if (marcados.length) {
+                  const r = await moverCandidatos(id, marcados, "contratado");
+                  if (!r.ok) return r;
+                  if (r.falhas.length)
+                    return {
+                      ok: false as const,
+                      erro: `${r.falhas.map((f) => `${f.perfil}: ${f.erro}`).join(" ")} Desmarque ou resolva na ficha.`,
+                    };
+                }
+                return marcarVagaPreenchida(id, true);
+              },
+              (r) => r.ok && setConfirmar(false),
+            )
+          }
+        >
+          Sim, foi preenchida
+        </Botao>
+        <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmar(false)}>
+          Cancelar
+        </Botao>
+      </span>
+      {mensagem}
     </span>
   ) : (
     <span className="flex flex-wrap items-center gap-2">
-      <Botao tamanho="sm" disabled={pendente} onClick={() => setConfirmar(true)}>
+      <Botao
+        tamanho="sm"
+        disabled={pendente}
+        onClick={() => {
+          setConfirmar(true);
+          iniciarCarga(async () => setQuem(await quemPodeTerSidoContratado(id).catch(() => null)));
+        }}
+      >
         <UserCheck aria-hidden />
         Vaga preenchida
       </Botao>

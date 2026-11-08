@@ -96,7 +96,7 @@ export function EditorDeCriterios({ anuncioId, iniciais }: { anuncioId: string; 
                   onChange={(e) => mudar(c.id, { obrigatorio: e.target.checked })}
                   className="size-4 accent-[var(--pk-ink)]"
                 />
-                Obrigatório
+                Essencial
               </label>
               <button
                 type="button"

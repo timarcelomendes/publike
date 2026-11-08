@@ -71,7 +71,7 @@ export function TiraDosCriterios({ criterios, leitura }: { criterios: CriterioCo
           <span key={c.id} className="inline-flex items-center gap-1">
             {i === obrigatorios && i > 0 && <span className="mx-0.5 h-4 w-px bg-line-strong" />}
             <span
-              title={`${r.nome}: ${c.texto}${c.obrigatorio ? " (obrigatório)" : ""}`}
+              title={`${r.nome}: ${c.texto}${c.obrigatorio ? " (essencial)" : ""}`}
               className={`inline-flex size-5 items-center justify-center rounded-pill ${r.marca}`}
             >
               <Icone className="size-3" strokeWidth={3} />
@@ -124,7 +124,7 @@ function BlocoDeCriterios({
           <li key={c.id} className="text-body-sm">
             <p>
               {c.texto}
-              {c.obrigatorio && <span className="text-ink-muted"> (obrigatório)</span>}
+              {c.obrigatorio && <span className="text-ink-muted"> (essencial)</span>}
             </p>
             {trecho && (
               <blockquote
@@ -287,7 +287,7 @@ export function LegendaDaTira() {
       {item("atende")}
       {item("sem_info")}
       {item("nao_atende")}
-      <span>Na tira de cada pessoa, os obrigatórios vêm primeiro.</span>
+      <span>Na tira de cada pessoa, os essenciais vêm primeiro.</span>
     </p>
   );
 }

@@ -31,6 +31,7 @@ import { conversaCom } from "@/lib/servidor/conversas";
 import { dailyConfigurado } from "@/lib/servidor/daily";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { propostasDaVaga } from "@/lib/servidor/proposta";
+import { padroesDaConta, processoDaConta } from "@/lib/servidor/processo";
 import { testesDaVaga } from "@/lib/servidor/testes";
 import { UUID } from "@/lib/validacao";
 import { feitasDasRegras } from "@/lib/servidor/regras-tela";
@@ -315,13 +316,16 @@ export async function MesaDeCandidatos({
  * contratados), a chamada pelo Publike, a entrevista gravada, os testes da vaga, a proposta e a conversa.
  */
 async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: number) {
-  const [recursos, videos, testes, propostas, conversa, regras] = await Promise.all([
+  const [recursos, videos, testes, propostas, conversa, regras, processo, padroes] = await Promise.all([
     recursosPagos(),
     videosDaVaga(aberto.anuncio_id),
     testesDaVaga(aberto.anuncio_id),
     propostasDaVaga(aberto.anuncio_id),
     aberto.status === "match" ? conversaCom(aberto.perfil_id) : Promise.resolve(null),
     feitasDasRegras(aberto.anuncio_id, aberto.perfil_id),
+    // as regras do processo e o padrão da proposta (Configurações; migração 20270315120000)
+    processoDaConta(),
+    padroesDaConta(),
   ]);
   const videoLiberado = Boolean(recursos?.video.liberado);
   const ficha: ExtrasDaFicha = {
@@ -341,6 +345,8 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
     testes: testes.map((t) => ({ id: t.modelo_id, titulo: t.titulo })),
     proposta: propostas?.get(aberto.perfil_id) ?? null,
     regras,
+    processo,
+    padroes: padroes ? { proposta: padroes.proposta, documentos: padroes.documentos } : null,
   };
   return {
     ficha,

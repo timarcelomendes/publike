@@ -164,7 +164,17 @@ export type Usuario = {
 };
 
 /** Resposta padrão das ações (server actions). */
-export type Resultado = { ok: true; mensagem?: string } | { ok: false; erro: string; ir?: string };
+export type Resultado =
+  | { ok: true; mensagem?: string }
+  | {
+      ok: false;
+      erro: string;
+      ir?: string;
+      /** a regra do processo da conta que travou (migração 20270315120000): quem administra pode pular */
+      regra?: "entrevista" | "proposta" | "teste" | "cliente" | null;
+      /** a conta pede o motivo ao tirar alguém do processo */
+      precisaMotivo?: boolean;
+    };
 
 /** Estado dos formulários com useActionState. */
 export type EstadoForm = {

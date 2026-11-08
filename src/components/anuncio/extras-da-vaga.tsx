@@ -152,7 +152,7 @@ export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?:
                       onChange={(e) => mudar(p.id, { obrigatoria: e.target.checked })}
                       className="size-5 accent-[var(--pk-ink)]"
                     />
-                    Resposta obrigatória
+                    Precisa responder para se candidatar
                   </label>
                 </div>
                 {p.tipo === "opcoes" && (
@@ -250,7 +250,7 @@ export function EditorPerguntas({ inicial, erro }: { inicial: Pergunta[]; erro?:
                     <p className="text-body-sm text-ink-muted sm:flex-1">
                       {p.esperada
                         ? p.eliminatoria
-                          ? "Quem responder diferente fica com nota 0 na triagem."
+                          ? "Quem responder diferente fica com nota 0 e marcado no quadro. Para tirar do processo sozinho, ligue nas Automações da vaga."
                           : "Conta pontos na nota de aderência."
                         : "Só você vê. Serve para a nota de aderência."}
                     </p>

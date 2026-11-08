@@ -50,13 +50,13 @@ export const maxDuration = 60;
 const MOSTRAR_NAO_LIDOS = 100;
 // o ranking por prioridade (gruposDoRanking): o nome e o que cada grupo quer dizer
 const GRUPOS: Record<GrupoDoRanking, { nome: string; texto: string; cor: string }> = {
-  0: { nome: "Atendem os obrigatórios", texto: "Comece por aqui.", cor: "bg-cerrado" },
+  0: { nome: "Atendem os essenciais", texto: "Comece por aqui.", cor: "bg-cerrado" },
   1: {
-    nome: "Falta conferir um obrigatório",
+    nome: "Falta conferir um essencial",
     texto: "O currículo não diz se a pessoa tem. Pergunte na entrevista.",
     cor: "bg-terra",
   },
-  2: { nome: "Não atendem um obrigatório", texto: "", cor: "bg-line-strong" },
+  2: { nome: "Não atendem um essencial", texto: "", cor: "bg-line-strong" },
 };
 
 export default function Copiloto({ params, searchParams }: PageProps<"/painel/anuncio/[id]/copiloto">) {
@@ -285,7 +285,7 @@ async function Conteudo({
               {grupos.map((g) => {
                 const info = temObrigatorios
                   ? GRUPOS[g.grupo]
-                  : { nome: "Pela nota", texto: "A vaga não tem critério obrigatório.", cor: "bg-line-strong" };
+                  : { nome: "Pela nota", texto: "A vaga não tem critério essencial.", cor: "bg-line-strong" };
                 const texto =
                   g.grupo === 2 && g.maisFalta
                     ? `O que mais falta: ${textoCurto(g.maisFalta.texto, 90)} (${g.maisFalta.quantos} de ${g.itens.length}).`
@@ -294,8 +294,8 @@ async function Conteudo({
                 const rever = g.grupo === 2 && g.maisFalta && g.maisFalta.quantos >= Math.max(5, 0.7 * ranking.length);
                 const dica = rever && (
                   <p className="text-body-sm">
-                    Esse obrigatório deixa de fora quase todo mundo. Se der para aprender no trabalho, desmarque o
-                    Obrigatório dele em{" "}
+                    Esse essencial deixa de fora quase todo mundo. Se der para aprender no trabalho, desmarque o
+                    Essencial dele em{" "}
                     <a href="#criterios" className="text-label underline underline-offset-2">
                       Critérios
                     </a>
@@ -364,7 +364,7 @@ async function Conteudo({
 
               {ranking.length > 0 && (
                 <p className="text-body-sm text-ink-muted">
-                  A nota vai de 0 a 100: o obrigatório vale o dobro, e o que falta conferir vale a metade.
+                  A nota vai de 0 a 100: o essencial vale o dobro, e o que falta conferir vale a metade.
                   {lidas.some((l) => l.p.origem === "candidato") && (
                     // para decidir (aceitar, mover de etapa), a ordem vai para os Candidatos da vaga
                     <>

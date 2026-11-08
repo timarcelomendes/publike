@@ -12,6 +12,8 @@ import { MODO_DEMO } from "@/lib/config";
 import { obterMeuPerfil } from "@/lib/dados";
 import { numerosDoProcesso, numerosOrigem } from "@/lib/servidor/automacoes";
 import { exigirUsuario } from "@/lib/sessao";
+import { numerosSaidas } from "@/lib/servidor/processo";
+import { nomeDoMotivo } from "@/lib/processo";
 
 export const metadata: Metadata = { title: "Resultados" };
 
@@ -32,7 +34,13 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/numeros");
   const { periodo, dias } = diasDoPeriodo(pedido);
-  const [perfil, vagas, origens] = await Promise.all([obterMeuPerfil(), numerosDoProcesso(dias), numerosOrigem(dias)]);
+  const [perfil, vagas, origens, saidas] = await Promise.all([
+    obterMeuPerfil(),
+    numerosDoProcesso(dias),
+    numerosOrigem(dias),
+    // por que as pessoas saíram (o motivo, quando a conta pede; migração 20270315120000)
+    numerosSaidas(dias),
+  ]);
   if (!perfil || perfil.tipo === "pessoa") {
     return <Aviso tipo="info" titulo="Os números são para quem contrata" />;
   }
@@ -95,6 +103,7 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
           <TemposDoProcesso linha={total} />
           <FunilDeContratacao linha={total} />
           {origens.length > 0 && <DeOndeVieram origens={origens} />}
+          {saidas && saidas.length > 0 && <PorQueSairam saidas={saidas} />}
 
           <section aria-labelledby="por-vaga" className="flex flex-col gap-3">
             <h3 id="por-vaga" className="text-h3">
@@ -140,5 +149,37 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
         </>
       )}
     </div>
+  );
+}
+
+/** Por que as pessoas saíram do processo (o motivo de Dispensar e Não seguiu, quando a conta pede). */
+function PorQueSairam({ saidas }: { saidas: { motivo: string; pessoas: number }[] }) {
+  const todas = saidas.reduce((t, x) => t + x.pessoas, 0);
+  return (
+    <section aria-labelledby="saidas" className="flex flex-col gap-3">
+      <h3 id="saidas" className="text-h3">
+        Por que saíram
+      </h3>
+      <ul className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4">
+        {saidas.map((x) => (
+          <li key={x.motivo} className="flex flex-col gap-1">
+            <span className="flex items-baseline justify-between gap-3 text-body-sm">
+              <span className="text-label">{nomeDoMotivo(x.motivo)}</span>
+              <span className="tabular-nums">{x.pessoas}</span>
+            </span>
+            <span aria-hidden className="block h-1.5 overflow-hidden rounded-pill bg-surface-300">
+              <span className="block h-full rounded-pill bg-ink-muted" style={{ width: `${(100 * x.pessoas) / todas}%` }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-body-sm text-ink-muted">
+        O motivo de quem foi dispensado ou não seguiu. Para pedir sempre, ligue em{" "}
+        <Link href="/painel/configuracoes?aba=processo" className="underline underline-offset-2">
+          Configurações
+        </Link>
+        .
+      </p>
+    </section>
   );
 }

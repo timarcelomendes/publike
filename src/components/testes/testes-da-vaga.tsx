@@ -1,6 +1,7 @@
 "use client";
 
 import { ClipboardList, Clock, Plus, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { salvarTestesDaVaga } from "@/lib/acoes/testes";
 import { AREAS_GERAIS, MAX_TESTES_NA_VAGA, minutosDoTeste, nomeCurtoDoTeste } from "@/lib/testes";
@@ -88,7 +89,7 @@ export function TestesDaVaga({
           <p className="flex flex-wrap items-center gap-x-2 text-body-sm text-ink-muted">
             <Clock aria-hidden className="size-4" />
             {itens.length === 1 ? "1 teste" : `${itens.length} testes`}: cerca de {total} min para o candidato
-            {totalObrigatorio > 0 && totalObrigatorio < total && ` (${totalObrigatorio} min obrigatórios)`}
+            {totalObrigatorio > 0 && totalObrigatorio < total && ` (${totalObrigatorio} min antes da entrevista)`}
           </p>
           <ul
             className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface-100"
@@ -114,7 +115,7 @@ export function TestesDaVaga({
                   >
                     {[
                       { valor: false, nome: "Opcional" },
-                      { valor: true, nome: "Obrigatório" },
+                      { valor: true, nome: "Antes da entrevista" },
                     ].map((o) => (
                       <button
                         key={o.nome}
@@ -148,8 +149,8 @@ export function TestesDaVaga({
           </ul>
           {totalObrigatorio > MINUTOS_DEMAIS && (
             <Aviso tipo="alerta">
-              São {totalObrigatorio} min de teste obrigatório. Teste longo faz gente desistir da vaga: deixe obrigatório
-              só o mais importante e os outros como opcionais.
+              São {totalObrigatorio} min de teste antes da entrevista. Teste longo faz gente desistir da vaga: deixe antes
+              da entrevista só o mais importante e os outros como opcionais.
             </Aviso>
           )}
         </>
@@ -278,8 +279,12 @@ export function TestesDaVaga({
         </p>
       )}
       <p className="text-body-sm text-ink-muted">
-        Quem curtir a vaga faz os testes pelo celular. Obrigatório não recusa ninguém: o candidato aparece como “falta o
-        teste” até fazer.
+        Quem curtir a vaga faz os testes pelo celular. “Antes da entrevista” não recusa ninguém: o candidato aparece com
+        “Falta o teste” até fazer. Para travar a entrevista até o teste, ligue a regra em{" "}
+        <Link href="/painel/configuracoes?aba=processo" className="underline underline-offset-2">
+          Configurações
+        </Link>
+        .
       </p>
     </div>
   );

@@ -135,6 +135,14 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Aparece no Google Vagas, que o Publike avisa na hora em que a vaga entra no ar. O Publike também tem um arquivo com as vagas no ar para outros sites de vagas lerem; cada site entra quando confirma que lê, e aí ele aparece na sua vaga, em “Aparece em”. Quem se candidata por lá cai na sua caixa de candidatos, como sempre, e os Resultados mostram de onde a pessoa veio. Não quer? Em Página de vagas, desligue “Suas vagas em outros sites”: elas ficam só no Publike e no Google.",
       },
       {
+        p: "Onde mudo o jeito da minha empresa de contratar?",
+        r: "No painel, em Configurações. Em Processo, escolha um jeito pronto (Simples, Com entrevista ou Completo) ou ligue só as regras que quiser: contratar só depois da entrevista, só com a proposta aceita, o teste da vaga antes da entrevista e pedir o motivo ao tirar alguém do processo. Ali também ficam as etapas do quadro e o retorno a quem não seguiu. Em Candidatura, como as vagas novas começam (currículo, contato direto, perguntas e teste). Em Entrevistas e mensagens, os horários livres e as mensagens prontas. Em Contratação, como a proposta começa e a lista de documentos. Só quem administra a conta muda; a equipe vê.",
+      },
+      {
+        p: "E se eu precisar pular uma etapa obrigatória?",
+        r: "Com uma regra ligada em Configurações › Processo, o botão diz o que falta, como “Falta a entrevista”. Quem administra a conta pode pular, dizendo o motivo (por exemplo, “contratei por telefone”), e a Trilha da vaga mostra o pulo. A equipe não pula: pede a quem administra.",
+      },
+      {
         p: "Como recebo os documentos de quem contratei?",
         r: "Na proposta, marque o que a pessoa precisa mandar (confira a lista com o seu contador; dá para pôr outro item). Depois que ela aceita, a página da proposta mostra “Mandar os documentos”: em cada item, ela manda a foto ou o PDF pelo celular, ou marca que vai levar no primeiro dia. Na ficha do candidato, no quadro, em Contratados e no Hoje, você vê “Documentos: 7 de 9”, baixa tudo num .zip para o contador e marca “Entregue ao contador”. Se faltar algo 2 dias antes do primeiro dia, a pessoa recebe um lembrete. Os arquivos somem do Publike 7 dias depois da entrega ou 30 dias depois do primeiro dia. Nenhuma IA lê os documentos. A lista não aceita atestado de gravidez ou de esterilização, proibidos por lei.",
       },
@@ -192,7 +200,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Posso mudar as etapas e marcar as entrevistas pelo Publike?",
-        r: "Pode. No painel, em “Etapas e horários”, monte as etapas do seu jeito e ofereça os seus horários livres: o candidato escolhe a entrevista e os dois recebem lembrete. Depois, mande a proposta pelo Publike e marque a vaga como preenchida quando completar.",
+        r: "Pode. No painel, em Configurações, monte as etapas do seu jeito (Processo) e cadastre os seus horários livres (Entrevistas e mensagens): o candidato escolhe a entrevista e os dois recebem lembrete. Depois, mande a proposta pelo Publike e marque a vaga como preenchida quando completar.",
       },
       {
         p: "O Publike responde os candidatos por mim?",
@@ -392,7 +400,7 @@ const ENTREVISTA: PassoJornada = {
   texto:
     "Deu match, o contato de vocês aparece para os dois. Combine pelo chat do Publike ou pelo WhatsApp (se a vaga for só pelo chat, a conversa é só lá).",
   detalhes: [
-    "Etapas de cada candidato: Novo, Em análise, Entrevista, Contratado ou Não seguiu (ou as que você criar, em Etapas e horários). A pessoa vê a etapa e recebe aviso.",
+    "Etapas de cada candidato: Novo, Em análise, Entrevista, Contratado ou Não seguiu (ou as que você criar, em Configurações). A pessoa vê a etapa e recebe aviso.",
     "Dá para marcar a entrevista pelo Publike e anotar o que combinou (a anotação só você vê).",
     "Não deu certo? “Desfazer match” pede o motivo e tira o contato dos dois.",
   ],

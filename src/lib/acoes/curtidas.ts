@@ -17,6 +17,7 @@ import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { lerDesfazerMatch, normalizarWhatsapp, temContato, UUID } from "@/lib/validacao";
 import { lerRespostas, perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 import { salvarBusca } from "./buscas";
+import { marcarMotivoSaida } from "./processo";
 
 const RESPONDER = (anuncioId: string) => `/anuncio/${anuncioId}?responder=1`;
 
@@ -292,6 +293,8 @@ export async function responderCurtida(
   anuncioId: string,
   perfilId: string,
   decisao: "match" | "dispensada" | "pendente",
+  /** ao dispensar: o motivo (migração 20270315120000); undefined, não mexe */
+  motivo?: string | null,
 ): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncioId) || !UUID.test(perfilId) || !["match", "dispensada", "pendente"].includes(decisao)) {
@@ -305,13 +308,17 @@ export async function responderCurtida(
     if (falta) return { ok: false, ...falta };
   }
 
+  if (decisao === "dispensada" && motivo !== undefined) {
+    const m = await marcarMotivoSaida(anuncioId, [perfilId], motivo);
+    if (!m.ok) return { ok: false, erro: m.erro };
+  }
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("responder_curtida", {
     p_anuncio: anuncioId,
     p_perfil: perfilId,
     p_decisao: decisao,
   });
-  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  if (error) return { ok: false, erro: mensagemDeErro(error), precisaMotivo: error.hint === "motivo_saida" };
 
   if (decisao === "match") after(processarFilas);
   refresh();

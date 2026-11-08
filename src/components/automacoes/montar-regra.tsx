@@ -566,8 +566,8 @@ export function MontarRegra({
           )}
           <span className="w-full text-caption text-ink-muted">
             Precisa dos seus horários livres cadastrados em{" "}
-            <Link href="/painel/etapas#horarios" className="underline underline-offset-2">
-              Etapas e horários
+            <Link href="/painel/configuracoes?aba=entrevistas#horarios" className="underline underline-offset-2">
+              Configurações
             </Link>
             . A pessoa escolhe um de 3 horários vagos.
           </span>

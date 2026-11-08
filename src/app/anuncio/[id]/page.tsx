@@ -607,7 +607,7 @@ async function DetalheAnuncio({
               <Fato icone={ClipboardCheck} rotulo="Teste Prático">
                 {testes
                   .map(
-                    (t) => `${nomeCurtoDoTeste(t.titulo)}${t.obrigatoria ? "" : " (opcional)"}`,
+                    (t) => `${nomeCurtoDoTeste(t.titulo)}${t.obrigatoria ? " (antes da entrevista)" : " (opcional)"}`,
                   )
                   .join(" · ")}
               </Fato>

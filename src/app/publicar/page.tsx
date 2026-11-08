@@ -33,6 +33,8 @@ import { obterIntencao } from "@/lib/servidor/intencao";
 import { ONDE_FUNCIONA, PRACA_PADRAO } from "@/lib/pracas";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
 import { funcaoSalvaDaVaga } from "@/lib/servidor/funcao";
+import { padroesDaConta } from "@/lib/servidor/processo";
+import { lerPerguntas } from "@/lib/vaga-extra";
 
 export const metadata: Metadata = {
   title: "Publicar grátis",
@@ -119,12 +121,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   const clientePedido = agencia ? comCliente : null;
   // agência: "Publicar a vaga" do pedido do cliente chega com ?cliente=&pedido= (a vaga sai ligada ao pedido)
   const idDoPedido = primeiro(sp.pedido);
-  const [ia, ultimo, original, clientes, pedidoLido] = await Promise.all([
+  const [ia, ultimo, original, clientes, pedidoLido, padroes] = await Promise.all([
     ajudaDaIADisponivel(),
     publico ? obterMeuUltimoEndereco() : null,
     pedidaCopia ? obterAnuncio(pedidaCopia) : null,
     agencia ? clientesParaVaga(clientePedido) : null,
     agencia && clientePedido && idDoPedido && UUID.test(idDoPedido) ? pedidoDaAgencia(idDoPedido) : null,
+    // o padrão das vagas novas (Configurações › Candidatura; migração 20270315120000)
+    publico ? padroesDaConta() : null,
   ]);
   const pedido = pedidoLido && pedidoLido.cliente_id === clientePedido && !pedidoLido.vaga ? pedidoLido : null;
   // "Publicar parecida": só de uma vaga sua (serviço se edita em "Meus serviços")
@@ -164,8 +168,23 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
           lng: ultimo.lng,
         }
       : vazio(perfil.cidade, perfil.bairro ?? "");
+  // a vaga nova (não a cópia) começa com o padrão da conta
+  const comPadrao = (v: ValoresAnuncio): ValoresAnuncio => {
+    if (copia || !padroes) return v;
+    const perguntas = lerPerguntas(padroes.perguntas);
+    return {
+      ...v,
+      curriculo_padrao: padroes.curriculo,
+      ...(padroes.curriculo !== "regime" ? { pede_curriculo: padroes.curriculo === "sempre" } : {}),
+      contato_direto: padroes.contato_direto,
+      contato_por: padroes.contato_por,
+      perguntas: perguntas.ok ? perguntas.perguntas : [],
+    };
+  };
   const inicialSemCliente =
-    convite?.rascunho && !copia ? valoresDoConvite(convite.rascunho, inicialSemConvite) : inicialSemConvite;
+    convite?.rascunho && !copia
+      ? valoresDoConvite(convite.rascunho, comPadrao(inicialSemConvite))
+      : comPadrao(inicialSemConvite);
   const inicial: ValoresAnuncio = cliente
     ? {
         ...inicialSemCliente,

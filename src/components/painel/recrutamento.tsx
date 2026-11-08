@@ -2,7 +2,7 @@
 
 import { CalendarCheck, CalendarPlus, Plus, Send, Trash, Video, X } from "lucide-react";
 import Link from "next/link";
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { proximosHorariosLivres } from "@/lib/acoes/etapas-proprias";
 import {
@@ -24,6 +24,8 @@ import {
   type ModeloMensagem,
 } from "@/lib/recrutamento";
 import { eventoDaEntrevista } from "@/lib/agenda";
+import type { Regra } from "@/lib/processo";
+import { PularRegra } from "../processo/pular-regra";
 import { BotoesAgenda } from "../agenda/botoes-agenda";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -100,6 +102,9 @@ export function FormEntrevista({
   const [escolher, setEscolher] = useState(atual?.situacao === "escolher");
   const [horarios, setHorarios] = useState<string[]>(() => horariosIniciais(atual));
   const { rodar, pendente, mensagem } = useAcao();
+  // a regra do processo que travou (o teste antes da entrevista): quem administra pula, e o formulário tenta de novo
+  const [regra, setRegra] = useState<Regra | null>(null);
+  const formulario = useRef<HTMLFormElement>(null);
   const info = FORMATOS_ENTREVISTA[formato];
   // "Usar meus horários livres": os próximos horários vagos das faixas da conta (migração 20270108120000)
   const [livres, setLivres] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -125,13 +130,15 @@ export function FormEntrevista({
 
   return (
     <form
+      ref={formulario}
       className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         const dados = { anuncioId, perfilId, formato, local, obs, duracao: Number(duracao) };
+        setRegra(null);
         rodar(
           () => (escolher ? oferecerHorarios({ ...dados, opcoes: horarios }) : marcarEntrevista({ ...dados, quando })),
-          (r) => r.ok && aoTerminar?.(),
+          (r) => (r.ok ? aoTerminar?.() : setRegra(r.regra ?? null)),
         );
       }}
     >
@@ -196,7 +203,7 @@ export function FormEntrevista({
               {buscando ? "Buscando…" : "Usar meus horários livres"}
               <Selo variante="novo">Novo</Selo>
             </Botao>
-            <Link href="/painel/etapas#horarios" className="text-body-sm text-ink-muted underline underline-offset-2">
+            <Link href="/painel/configuracoes?aba=entrevistas#horarios" className="text-body-sm text-ink-muted underline underline-offset-2">
               Meus horários livres
             </Link>
           </div>
@@ -313,6 +320,17 @@ export function FormEntrevista({
         </Botao>
       </div>
       {mensagem}
+      {regra && (
+        <PularRegra
+          anuncioId={anuncioId}
+          perfilId={perfilId}
+          regra={regra}
+          aoPular={() => {
+            setRegra(null);
+            formulario.current?.requestSubmit();
+          }}
+        />
+      )}
     </form>
   );
 }

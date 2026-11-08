@@ -48,6 +48,8 @@ export type Proposta = {
   motivo_recusa: string | null;
   enviada_em: string;
   respondida_em: string | null;
+  /** "Contratar sem proposta" com os documentos: a proposta curta, já aceita (migração 20270315120000) */
+  curta?: boolean;
   /** depois do aceite: os documentos (migração 20270312120000), sem os caminhos */
   docs?: DocumentosDaProposta | null;
 };
@@ -78,6 +80,7 @@ export function lerProposta(x: unknown): Proposta | null {
     motivo_recusa: texto(o.motivo_recusa),
     enviada_em: String(o.enviada_em),
     respondida_em: texto(o.respondida_em),
+    curta: o.curta === true,
   };
 }
 

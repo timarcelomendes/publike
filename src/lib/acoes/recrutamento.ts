@@ -6,7 +6,9 @@ import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { ETAPAS_CANDIDATO, type EtapaCandidato } from "@/lib/constantes";
 import { faltaContatoParaAceitar, obterMeuPerfil, obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
+import { regraDoErro, type Regra } from "@/lib/processo";
 import { FORMATOS_ENTREVISTA, MAX_HORARIOS, preencherModelo } from "@/lib/recrutamento";
+import { marcarMotivoSaida } from "./processo";
 import { oferecerHorariosAutomaticos } from "@/lib/servidor/automacoes";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -20,7 +22,17 @@ import { temContato, UUID } from "@/lib/validacao";
 
 const MAX_DE_UMA_VEZ = 100;
 
-type Falha = { perfil: string; erro: string };
+type Falha = { perfil: string; erro: string; regra?: Regra | null; precisaMotivo?: boolean };
+
+/** A falha de uma pessoa, com a regra do processo que travou (se foi isso). */
+function falhaDe(perfil: string, error: { hint?: string | null; message: string; code?: string }): Falha {
+  return {
+    perfil,
+    erro: mensagemDeErro(error),
+    regra: regraDoErro(error.hint),
+    precisaMotivo: error.hint === "motivo_saida",
+  };
+}
 export type ResultadoEmMassa =
   { ok: true; feitos: number; falhas: Falha[]; mensagem: string } | { ok: false; erro: string; ir?: string };
 
@@ -40,7 +52,7 @@ export async function moverCandidatos(
   perfis: string[],
   destino: string,
   // ao mover para uma etapa própria, a mensagem automática é a dela (moverNoQuadro), não a da etapa de hoje
-  opcoes: { semMensagem?: boolean } = {},
+  opcoes: { semMensagem?: boolean; motivo?: string | null } = {},
 ): Promise<ResultadoEmMassa> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const ids = idsValidos(perfis).slice(0, MAX_DE_UMA_VEZ);
@@ -62,6 +74,11 @@ export async function moverCandidatos(
   ) {
     const falta = await faltaContatoParaAceitar(`/painel/anuncio/${anuncioId}`);
     if (falta) return { ok: false, ...falta };
+  }
+  // o motivo de quem sai do processo (migração 20270315120000), antes de tirar
+  if (etapa === "nao_seguiu" && opcoes.motivo !== undefined) {
+    const m = await marcarMotivoSaida(anuncioId, ids, opcoes.motivo);
+    if (!m.ok) return { ok: false, erro: m.erro };
   }
   const notas = new Map((etapas ?? []).map((e) => [e.perfil_id, e.nota]));
   const nomes = new Map<string, string>();
@@ -94,7 +111,7 @@ export async function moverCandidatos(
         p_decisao: decisao,
       });
       if (error) {
-        falhas.push({ perfil, erro: mensagemDeErro(error) });
+        falhas.push(falhaDe(perfil, error));
         continue;
       }
       // aceito, esperando o currículo: a etapa fica para depois do match
@@ -112,7 +129,7 @@ export async function moverCandidatos(
         p_nota: notas.get(perfil) ?? null,
       });
       if (error) {
-        falhas.push({ perfil, erro: mensagemDeErro(error) });
+        falhas.push(falhaDe(perfil, error));
         continue;
       }
     }
@@ -284,7 +301,7 @@ export async function marcarEntrevista(d: DadosEntrevista): Promise<Resultado> {
     p_obs: obs || null,
     p_duracao: Math.min(480, Math.max(10, Math.round(Number(d.duracao) || 30))),
   });
-  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  if (error) return { ok: false, erro: mensagemDeErro(error), regra: regraDoErro(error.hint) };
   after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Entrevista marcada. O candidato recebeu o aviso e a mensagem na conversa." };
@@ -365,7 +382,7 @@ export async function oferecerHorarios(d: Omit<DadosEntrevista, "quando"> & { op
   if (error) {
     if (error.code === "PGRST202")
       return { ok: false, erro: "Escolher o horário ainda não está ligado. Tente mais tarde." };
-    return { ok: false, erro: mensagemDeErro(error) };
+    return { ok: false, erro: mensagemDeErro(error), regra: regraDoErro(error.hint) };
   }
   after(processarFilas);
   refresh();

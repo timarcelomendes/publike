@@ -54,12 +54,12 @@ import { Avatar, Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { CompositorMensagem, EntrevistaMarcada, FormEntrevista } from "./recrutamento";
-import { FormRetorno } from "./retorno";
 import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
 import { VideoNaFicha } from "../video/video-na-ficha";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { contaDosDocumentos, type DocumentosDaProposta } from "@/lib/documentos-admissao";
 import { SITUACOES_PROPOSTA, type Proposta } from "@/lib/proposta";
+import type { Padroes } from "@/lib/processo";
 import { AvaliacaoDoTime } from "../avaliacao/avaliacao-time";
 import { textoDaMedia, type AvaliacaoNoQuadro, type Competencia } from "@/lib/avaliacao-time";
 import { moverNoQuadro } from "@/lib/acoes/etapas-proprias";
@@ -112,6 +112,8 @@ export type CartaoQuadro = {
   copiloto?: number | null;
   /** o Teste Prático: o resultado numa palavra de cada teste feito (migração 20261225120000) */
   testes?: { titulo: string; faixa: FaixaDoTeste }[];
+  /** a vaga pede um teste antes da entrevista e a pessoa ainda não fez (migração 20270315120000) */
+  faltaTeste?: boolean;
   /** a Triagem com IA já leu o currículo com os critérios de agora (migração 20261227120000) */
   triagem?: TriagemNoCartao | null;
   /** "Quem chamar primeiro": a posição e o porquê (só com a ordem ligada) */
@@ -175,6 +177,7 @@ export function QuadroCandidatos({
   video = null,
   time = null,
   etapas = null,
+  padroes = null,
 }: {
   anuncioId: string;
   vaga: string;
@@ -197,6 +200,8 @@ export function QuadroCandidatos({
   time?: { ficha: Competencia[]; sugestoes: string[] } | null;
   /** as etapas próprias da conta (null: sem a migração 20270108120000) */
   etapas?: EtapaPropria[] | null;
+  /** o padrão da proposta e dos documentos (Configurações › Contratação) */
+  padroes?: Pick<Padroes, "proposta" | "documentos"> & Partial<Pick<Padroes, "taxa" | "garantia_dias">> | null;
 }) {
   const colunas = montarColunas(etapas);
   const [lista, mover] = useOptimistic(
@@ -213,7 +218,6 @@ export function QuadroCandidatos({
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const [esconderEliminados, setEsconderEliminados] = useState(false);
   const [sobre, setSobre] = useState<string | null>(null);
-  const [gavetaRetorno, setGavetaRetorno] = useState(false);
   const [dispensarEliminados, setDispensarEliminados] = useState(false);
 
   const visiveis = esconderEliminados ? lista.filter((c) => !c.aderencia.eliminado) : lista;
@@ -222,7 +226,7 @@ export function QuadroCandidatos({
   const paraDispensar = lista.filter((c) => c.aderencia.eliminado && c.coluna !== "nao_seguiu");
   const atual = lista.find((c) => c.perfil_id === aberto) ?? null;
 
-  function moverPara(ids: string[], chave: string) {
+  function moverPara(ids: string[], chave: string, motivo?: string) {
     const destino = colunas.find((col) => col.chave === chave);
     if (!destino) return;
     const coluna = destino.etapa;
@@ -236,11 +240,27 @@ export function QuadroCandidatos({
       mover({ ids: mudam, coluna, sub: destino.sub, desde: new Date(agora).toISOString() });
       // sem chegar ao servidor, os cartões voltam para a coluna de antes e o aviso aparece
       const r = await chamarAcao(() =>
-        etapas?.length ? moverNoQuadro(anuncioId, mudam, chave, coluna) : moverCandidatos(anuncioId, mudam, coluna),
+        motivo !== undefined
+          ? moverCandidatos(anuncioId, mudam, coluna, { motivo })
+          : etapas?.length
+            ? moverNoQuadro(anuncioId, mudam, chave, coluna)
+            : moverCandidatos(anuncioId, mudam, coluna),
       );
       if (!r.ok) setAviso({ ok: false, texto: r.erro });
       else {
-        const falhas = r.falhas.map((f) => `${f.perfil}: ${f.erro}`).join(" ");
+        // a regra do processo ou o motivo que a conta pede: o que fazer fica na ficha da pessoa
+        const falhas = r.falhas
+          .map(
+            (f) =>
+              `${f.perfil}: ${f.erro}${
+                f.precisaMotivo
+                  ? " Abra a ficha da pessoa para escolher."
+                  : f.regra
+                    ? " Abra a ficha da pessoa para ver o que falta."
+                    : ""
+              }`,
+          )
+          .join(" ");
         setAviso({ ok: !r.falhas.length, texto: [r.mensagem, falhas].filter(Boolean).join(" ") });
         setSelecionados((s) => s.filter((id) => !mudam.includes(id)));
       }
@@ -301,14 +321,13 @@ export function QuadroCandidatos({
           </Botao>
         )}
         {retorno && (
-          <button
-            type="button"
-            onClick={() => setGavetaRetorno(true)}
+          // o retorno vale para a conta toda: muda em Configurações (claude/plano-etapas-obrigatorias-e-configuracoes.md)
+          <Link
+            href="/painel/configuracoes?aba=processo#retorno"
             className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted underline underline-offset-2 hover:text-ink"
           >
             Retorno a quem não seguir: {retorno.ligado ? "ligado" : "desligado"}
-            <Selo variante="novo">Novo</Selo>
-          </button>
+          </Link>
         )}
         <AceiteWhatsapp
           origem="quadro"
@@ -425,15 +444,6 @@ export function QuadroCandidatos({
         </div>
       )}
 
-      {retorno && (
-        <Gaveta aberta={gavetaRetorno} fechar={() => setGavetaRetorno(false)} titulo="Retorno a quem não seguir">
-          <FormRetorno
-            retorno={retorno}
-            exemplo={{ nome: lista[0]?.nome ?? "Ana", vaga, empresa }}
-            aoSalvar={() => setGavetaRetorno(false)}
-          />
-        </Gaveta>
-      )}
 
       <Gaveta
         aberta={dispensarEliminados}
@@ -462,9 +472,11 @@ export function QuadroCandidatos({
               disabled={pendente}
               onClick={() => {
                 setDispensarEliminados(false);
+                // o motivo de quem não passou na eliminatória (migração 20270315120000)
                 moverPara(
                   paraDispensar.map((c) => c.perfil_id),
                   "nao_seguiu",
+                  "requisito",
                 );
               }}
             >
@@ -501,6 +513,7 @@ export function QuadroCandidatos({
             vaga={vaga}
             empresa={empresa}
             endereco={endereco}
+            padroes={padroes}
             modelos={modelos}
             agora={agora}
             moverPara={(coluna) => moverPara([atual.perfil_id], coluna)}
@@ -629,6 +642,7 @@ function Cartao({
         c.status === "desfeito" ||
         c.finalista ||
         c.indicadoPor ||
+        c.faltaTeste ||
         c.colocacao ||
         c.video ||
         c.avaliacao ||
@@ -645,6 +659,7 @@ function Cartao({
           )}
           {c.finalista && <SeloDoCliente r={c.finalista} agencia={agencia} />}
           {c.indicadoPor && <Selo variante="contorno">Indicado por {c.indicadoPor}</Selo>}
+          {c.faltaTeste && <Selo variante="aviso">Falta o teste</Selo>}
           {c.colocacao && <SeloDaColocacao c={c.colocacao} agora={agora} />}
           {c.video && (
             <Selo variante={SITUACOES_VIDEO[c.video.situacao].tom}>{SITUACOES_VIDEO[c.video.situacao].nome}</Selo>
@@ -703,7 +718,9 @@ function DetalheCandidato({
   retorno,
   video,
   time,
+  padroes = null,
 }: {
+  padroes?: Pick<Padroes, "proposta" | "documentos"> & Partial<Pick<Padroes, "taxa" | "garantia_dias">> | null;
   c: CartaoQuadro;
   /** o texto do retorno da conta (o WhatsApp de quem não seguiu) */
   retorno: string | null;
@@ -809,7 +826,14 @@ function DetalheCandidato({
 
       {agencia && c.status === "match" && (c.coluna === "contratado" || c.colocacao) && (
         <Secao titulo="Colocação">
-          <FormColocacao anuncioId={anuncioId} perfilId={c.perfil_id} nome={c.nome} atual={c.colocacao} agora={agora} />
+          <FormColocacao
+            anuncioId={anuncioId}
+            perfilId={c.perfil_id}
+            nome={c.nome}
+            atual={c.colocacao}
+            agora={agora}
+            padrao={padroes ? { taxa: padroes.taxa ?? null, garantia_dias: padroes.garantia_dias ?? null } : null}
+          />
         </Secao>
       )}
 
@@ -896,6 +920,7 @@ function DetalheCandidato({
             nome={c.nome}
             endereco={endereco}
             proposta={c.proposta}
+            padroes={padroes}
           />
         </Secao>
       )}

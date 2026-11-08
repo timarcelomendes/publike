@@ -44,7 +44,7 @@ export function TestesParaMim({
                 <span className="text-ink-muted">
                   {" "}
                   · {t.questoes} questões · cerca de {minutosDoTeste(t.questoes)} min ·{" "}
-                  {t.obrigatoria ? "a empresa pede" : "opcional"}
+                  {t.obrigatoria ? "a empresa pede antes da entrevista" : "opcional"}
                 </span>
               </span>
               {meu?.status === "feita" ? (

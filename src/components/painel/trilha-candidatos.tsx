@@ -1,4 +1,4 @@
-import { Check, Clock3, Trophy, Users, X } from "lucide-react";
+import { Check, Clock3, SkipForward, Trophy, Users, X } from "lucide-react";
 import Link from "next/link";
 import { Avatar, Vazio } from "@/components/ui/basicos";
 import { formatarLugar } from "@/lib/formato";
@@ -56,6 +56,7 @@ const FUNDO: Record<EstadoDaCelula, string> = {
   atual: "bg-ipe/18",
   parou: "bg-danger/8",
   contratado: "bg-cerrado/16",
+  pulou: "bg-surface-300",
 };
 
 const ICONE: Record<EstadoDaCelula, { classe: string; Icone: typeof Check; texto: string }> = {
@@ -63,6 +64,7 @@ const ICONE: Record<EstadoDaCelula, { classe: string; Icone: typeof Check; texto
   atual: { classe: "bg-ipe text-on-ipe", Icone: Clock3, texto: "está aqui" },
   parou: { classe: "bg-danger text-white", Icone: X, texto: "parou aqui" },
   contratado: { classe: "bg-cerrado text-on-cerrado ring-4 ring-cerrado/25", Icone: Trophy, texto: "contratado" },
+  pulou: { classe: "bg-surface-300 text-ink-muted ring-1 ring-line-strong", Icone: SkipForward, texto: "pulou" },
 };
 
 export function TrilhaCandidatos({

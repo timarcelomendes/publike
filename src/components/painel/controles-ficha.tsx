@@ -32,7 +32,10 @@ import { resumirCandidatoComIA } from "@/lib/acoes/talentos";
 import { SITE_URL } from "@/lib/config";
 import type { VideoNoQuadro } from "@/lib/entrevista-video";
 import type { ResumoCandidato } from "@/lib/ia/tarefas";
+import { MOTIVOS_SAIDA, type Padroes, type ProcessoDaConta, type Regra } from "@/lib/processo";
 import type { Proposta } from "@/lib/proposta";
+import { PularRegra } from "../processo/pular-regra";
+import { PedirDocumentos } from "../proposta/pedir-documentos";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { useAcao } from "../ui/usar-acao";
 import { VideoNaFicha } from "../video/video-na-ficha";
@@ -86,6 +89,10 @@ export type ExtrasDaFicha = {
   /** os testes da vaga, para "Pedir o teste antes" */
   testes: { id: string; titulo: string }[];
   proposta: Proposta | null;
+  /** as regras do processo da conta (Configurações › Processo; sem a migração 20270315120000, null) */
+  processo?: ProcessoDaConta | null;
+  /** o padrão da proposta e dos documentos (Configurações › Contratação) */
+  padroes?: Pick<Padroes, "proposta" | "documentos"> | null;
   /** o que as Automações personalizadas fizeram com a pessoa nesta vaga (com o Desfazer) */
   regras?: {
     id: number;
@@ -132,8 +139,19 @@ export function ControlesDaFicha({
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [ajuda, setAjuda] = useState(false);
-  // a folha aberta: "chamar" (entrevista, vídeo, teste) ou "contratado" (proposta e vaga completa)
-  const [folha, setFolha] = useState<"chamar" | "contratado" | null>(null);
+  // a folha aberta: "chamar" (entrevista, vídeo, teste), "contratar" (proposta ou sem), "contratado" (proposta,
+  // documentos e vaga completa) ou "motivo" (por que a pessoa sai do processo)
+  const [folha, setFolha] = useState<"chamar" | "contratar" | "contratado" | "motivo" | null>(null);
+  // tirar do processo com o motivo: dispensar (quem espera resposta) ou Não seguiu (depois do match)
+  const [saida, setSaida] = useState<"dispensar" | "nao_seguiu" | null>(null);
+  // a regra do processo que travou: quem administra pula e o Publike tenta de novo
+  const [travou, setTravou] = useState<{ regra: Regra; destino: "analise" | "contratado" | "nao_seguiu"; texto: string } | null>(
+    null,
+  );
+  // no Contratar: "Mandar a proposta" aberta
+  const [comProposta, setComProposta] = useState(false);
+  const processo = extras?.processo ?? null;
+  const pedeMotivo = Boolean(processo && processo.motivo_ao_tirar !== "nao");
   const [feito, setFeito] = useState<Feito>(null);
   const desfazer = useUltima();
   const primeiro = nome.split(" ")[0];
@@ -146,15 +164,25 @@ export function ControlesDaFicha({
   // a vaga completou as pessoas que pediu: a folha do contratado sugere encerrar (desligado, nada fecha sozinho)
   const completa = extras ? extras.vaga.contratados >= extras.vaga.quantas : false;
 
-  function responder(decisao: "match" | "dispensada") {
+  function responder(decisao: "match" | "dispensada", motivo?: string | null) {
     setErro(null);
+    // a conta pede o motivo: a folha dos motivos antes de dispensar
+    if (decisao === "dispensada" && motivo === undefined && pedeMotivo) {
+      setSaida("dispensar");
+      setFolha("motivo");
+      return;
+    }
     iniciar(async () => {
-      const r = await chamarAcao(() => responderCurtida(anuncioId, perfilId, decisao));
+      const r = await chamarAcao(() => responderCurtida(anuncioId, perfilId, decisao, motivo));
       if (!r.ok) {
         if ("ir" in r && r.ir) router.push(r.ir);
-        else setErro(r.erro);
+        else if ("precisaMotivo" in r && r.precisaMotivo) {
+          setSaida("dispensar");
+          setFolha("motivo");
+        } else setErro(r.erro);
         return;
       }
+      setFolha(null);
       const aceitaSemCurriculo = decisao === "match" && semCurriculo !== null;
       guardar({
         anuncioId,
@@ -183,16 +211,32 @@ export function ControlesDaFicha({
   }
 
   /** Leva para uma etapa (Ver depois, Contratar, Não seguiu), com o Desfazer de volta para a de antes. */
-  function mover(destino: "analise" | "contratado" | "nao_seguiu", texto: string) {
+  function mover(destino: "analise" | "contratado" | "nao_seguiu", texto: string, motivo?: string | null) {
     setErro(null);
+    setTravou(null);
+    if (destino === "nao_seguiu" && motivo === undefined && pedeMotivo) {
+      setSaida("nao_seguiu");
+      setFolha("motivo");
+      return;
+    }
     const antes =
       aba === "contratados" ? "contratado" : aba === "nao_seguiu" ? "nao_seguiu" : aba === "novos" ? "novo" : aba;
     iniciar(async () => {
-      const r = await chamarAcao(() => moverCandidatos(anuncioId, [perfilId], destino));
+      const r = await chamarAcao(() =>
+        moverCandidatos(anuncioId, [perfilId], destino, motivo !== undefined ? { motivo } : {}),
+      );
       // falta o contato da conta para aceitar: vai completar o perfil
       if (!r.ok && "ir" in r && r.ir) return router.push(r.ir);
       if (!r.ok) return setErro(r.erro);
-      if (!r.feitos) return setErro(r.falhas[0]?.erro ?? "Não deu para mudar agora.");
+      const falha = r.falhas[0];
+      // uma regra do processo travou: o que falta e o pular (quem administra)
+      if (!r.feitos && falha?.regra) return setTravou({ regra: falha.regra, destino, texto });
+      if (!r.feitos && falha?.precisaMotivo) {
+        setSaida("nao_seguiu");
+        return setFolha("motivo");
+      }
+      if (!r.feitos) return setErro(falha?.erro ?? "Não deu para mudar agora.");
+      if (destino !== "contratado") setFolha(null);
       setFeito({
         texto,
         voltar: async () => {
@@ -357,7 +401,10 @@ export function ControlesDaFicha({
         principal={contratarPrincipal}
         icone={PartyPopper}
         rotulo="Contratar"
-        onClick={() => mover("contratado", `${primeiro} foi contratado.`)}
+        onClick={() => {
+          setComProposta(Boolean(processo?.proposta_para_contratar));
+          setFolha(folha === "contratar" ? null : "contratar");
+        }}
         disabled={pendente}
       />
     );
@@ -447,6 +494,120 @@ export function ControlesDaFicha({
           aoFechar={() => setFolha(null)}
         />
       )}
+      {folha === "contratar" && extras && (
+        <section aria-label="Contratar" className="flex flex-col gap-3 rounded-lg border border-line bg-surface-100 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-label">Contratar {primeiro}</h3>
+            <button
+              type="button"
+              onClick={() => setFolha(null)}
+              aria-label="Fechar"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+            >
+              <X aria-hidden className="size-4" />
+            </button>
+          </div>
+          {processo?.proposta_para_contratar ? (
+            <p className="text-body-sm text-ink-muted">
+              Para contratar, mande a proposta: quando {primeiro} aceitar, vai sozinho para Contratados, já com os
+              documentos.
+            </p>
+          ) : (
+            !comProposta && (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setComProposta(true)} className={classesBotao("primario", "sm")}>
+                  Mandar a proposta
+                </button>
+                <button
+                  type="button"
+                  disabled={pendente}
+                  onClick={() => mover("contratado", `${primeiro} foi contratado.`)}
+                  className={classesBotao("secundario", "sm")}
+                >
+                  Contratar sem proposta
+                </button>
+              </div>
+            )
+          )}
+          {(comProposta || processo?.proposta_para_contratar) && (
+            <PropostaNaFicha
+              anuncioId={anuncioId}
+              perfilId={perfilId}
+              nome={nome}
+              endereco={extras.endereco}
+              proposta={extras.proposta}
+              padroes={extras.padroes ?? null}
+              abrir
+            />
+          )}
+          {processo?.proposta_para_contratar && processo.administra && (
+            <PularRegra
+              anuncioId={anuncioId}
+              perfilId={perfilId}
+              regra="proposta"
+              aoPular={() => mover("contratado", `${primeiro} foi contratado.`)}
+            />
+          )}
+        </section>
+      )}
+      {folha === "motivo" && saida && (
+        <section aria-label="O motivo" className="flex flex-col gap-3 rounded-lg border border-line bg-surface-100 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-label">Por que {primeiro} sai do processo?</h3>
+            <button
+              type="button"
+              onClick={() => setFolha(null)}
+              aria-label="Fechar"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink"
+            >
+              <X aria-hidden className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {MOTIVOS_SAIDA.map((m) => (
+              <button
+                key={m.valor}
+                type="button"
+                disabled={pendente}
+                onClick={() =>
+                  saida === "dispensar"
+                    ? responder("dispensada", m.valor)
+                    : mover("nao_seguiu", `${primeiro} não segue no processo.`, m.valor)
+                }
+                className={classesBotao("secundario", "sm")}
+              >
+                {m.nome}
+              </button>
+            ))}
+            {processo?.motivo_ao_tirar !== "obrigatorio" && (
+              <button
+                type="button"
+                disabled={pendente}
+                onClick={() =>
+                  saida === "dispensar"
+                    ? responder("dispensada", null)
+                    : mover("nao_seguiu", `${primeiro} não segue no processo.`, null)
+                }
+                className={classesBotao("fantasma", "sm")}
+              >
+                Sem motivo
+              </button>
+            )}
+          </div>
+          <p className="text-caption text-ink-muted">
+            “A vaga fechou” e “Outro candidato” vão junto no retorno para {primeiro}; os outros ficam só com você, nos
+            Resultados.
+          </p>
+        </section>
+      )}
+      {travou && (
+        <PularRegra
+          anuncioId={anuncioId}
+          perfilId={perfilId}
+          regra={travou.regra}
+          aoPular={() => mover(travou.destino, travou.texto)}
+        />
+      )}
       {folha === "contratado" && extras && (
         <section
           aria-label="Contratado"
@@ -463,16 +624,29 @@ export function ControlesDaFicha({
               <X aria-hidden className="size-4" />
             </button>
           </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-label">A proposta (opcional)</p>
-            <PropostaNaFicha
-              anuncioId={anuncioId}
-              perfilId={perfilId}
-              nome={nome}
-              endereco={extras.endereco}
-              proposta={extras.proposta}
-            />
-          </div>
+          {extras.proposta && extras.proposta.situacao !== "cancelada" ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-label">A proposta</p>
+              <PropostaNaFicha
+                anuncioId={anuncioId}
+                perfilId={perfilId}
+                nome={nome}
+                endereco={extras.endereco}
+                proposta={extras.proposta}
+                padroes={extras.padroes ?? null}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-label">Os documentos da admissão (opcional)</p>
+              <PedirDocumentos
+                anuncioId={anuncioId}
+                perfilId={perfilId}
+                nome={nome}
+                documentos={extras.padroes?.documentos ?? null}
+              />
+            </div>
+          )}
           {extras.vaga.noAr && extras.vaga.preenchida && (
             <p className="flex items-center gap-1.5 border-t border-line pt-3 text-body-sm">
               <CircleCheckBig aria-hidden className="size-4 text-cerrado-text" />A vaga está marcada como preenchida.

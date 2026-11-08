@@ -112,6 +112,7 @@ export type Secao = {
     | "numeros"
     | "automacoes"
     | "salarios"
+    | "configuracoes"
     | "assinatura";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
@@ -276,6 +277,9 @@ export function gruposDoModo(
         { href: "/painel/links", nome: "Página de vagas", icone: "links" },
         // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
         { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
+        // o processo, o padrão das vagas, as etapas próprias, os horários e as mensagens prontas, num lugar só
+        // (claude/plano-etapas-obrigatorias-e-configuracoes.md); "Etapas e horários" virou uma parte dela
+        { href: "/painel/configuracoes", nome: "Configurações", icone: "configuracoes" },
         // a equipe: agência (à vista) e, desde a avaliação em time (migração 20270107120000), empresa e comércio
         agencia ? EQUIPE : { ...EQUIPE, mais: true },
         // o resto fica em "Mais ferramentas" no computador
@@ -296,8 +300,6 @@ export function gruposDoModo(
         },
         // a consulta de salários (migração 20270218120000): as consultas grátis e a assinatura
         { href: "/painel/salarios", nome: "Salários", icone: "salarios", mais: true },
-        // as etapas próprias do quadro e os horários livres (migração 20270108120000)
-        { href: "/painel/etapas", nome: "Etapas e horários", icone: "etapas", mais: true },
         // as Automações personalizadas (migração 20270114120000): as prontas, de graça, ficam em cada vaga
         ...(extras.pilulas && extras.pilulas.automacoes !== undefined
           ? [
@@ -347,6 +349,7 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/video") ||
     caminho.startsWith("/painel/automacoes") ||
     caminho.startsWith("/painel/etapas") ||
+    caminho.startsWith("/painel/configuracoes") ||
     caminho.startsWith("/painel/numeros") ||
     caminho.startsWith("/painel/salarios") ||
     caminho.startsWith("/painel/assinatura") ||

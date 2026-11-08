@@ -72,8 +72,9 @@ async function Conteudo({ anuncio }: { anuncio: string }) {
         <div className="flex items-start gap-3 rounded-lg border border-cerrado bg-cerrado/5 p-4">
           <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-cerrado-text" />
           <p className="text-body">
-            Você aceitou em {dataEHora(p.respondida_em ?? p.enviada_em)}. Parabéns! Abaixo está o que levar e onde se
-            apresentar no primeiro dia.
+            {p.curta
+              ? `Parabéns, você foi contratado! ${p.empresa} pediu os documentos da sua admissão: mande pelo Publike ou leve no primeiro dia.`
+              : `Você aceitou em ${dataEHora(p.respondida_em ?? p.enviada_em)}. Parabéns! Abaixo está o que levar e onde se apresentar no primeiro dia.`}
           </p>
         </div>
       )}

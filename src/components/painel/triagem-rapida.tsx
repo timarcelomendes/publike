@@ -1,6 +1,8 @@
 "use client";
 
 import { Check, CircleHelp, Heart, Plus, SkipForward, TriangleAlert, Undo2, X } from "lucide-react";
+import { MOTIVOS_SAIDA } from "@/lib/processo";
+import { classesBotao } from "../ui/botao";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
@@ -50,6 +52,8 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
   const [fila, setFila] = useState(iniciais);
   const [feitas, setFeitas] = useState<Feita[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  // a conta pede o motivo ao dispensar (Configurações › Processo): os motivos para a carta de cima
+  const [motivoDe, setMotivoDe] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
   const [dx, setDx] = useState(0);
   const [saindo, setSaindo] = useState<"direita" | "esquerda" | "cima" | null>(null);
@@ -58,8 +62,9 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
   const total = iniciais.length;
   const atual = fila[0] ?? null;
 
-  function decidir(decisao: Feita["decisao"]) {
+  function decidir(decisao: Feita["decisao"], motivo?: string | null) {
     if (!atual || saindo) return;
+    setMotivoDe(null);
     setErro(null);
     setSaindo(decisao === "match" ? "direita" : decisao === "dispensada" ? "esquerda" : "cima");
     const carta = atual;
@@ -73,10 +78,11 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
       }
       setFeitas((l) => [...l, { carta, decisao, desfaz: decisao === "dispensada" || carta.semCurriculo !== null }]);
       iniciar(async () => {
-        const r = await chamarAcao(() => responderCurtida(carta.anuncioId, carta.perfilId, decisao));
+        const r = await chamarAcao(() => responderCurtida(carta.anuncioId, carta.perfilId, decisao, motivo));
         if (!r.ok) {
-          // não deu: a carta volta para o topo
-          setErro(r.erro);
+          // não deu: a carta volta para o topo (a conta pede o motivo: os motivos aparecem)
+          if ("precisaMotivo" in r && r.precisaMotivo) setMotivoDe(carta.perfilId);
+          else setErro(r.erro);
           setFeitas((l) => l.filter((f) => f.carta !== carta));
           setFila((f) => [carta, ...f]);
           return;
@@ -380,6 +386,23 @@ export function TriagemRapida({ cartas: iniciais }: { cartas: CartaTriagem[] }) 
         <p role="status" className="text-center text-body-sm text-cerrado-text">
           Deu match com {ultima.carta.nome.split(" ")[0]}! O contato está liberado em Candidatos.
         </p>
+      )}
+      {motivoDe && atual?.perfilId === motivoDe && (
+        <div role="group" aria-label="Por que dispensar" className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3">
+          <p className="text-label">Por que dispensar {atual.nome.split(" ")[0]}?</p>
+          <div className="flex flex-wrap gap-2">
+            {MOTIVOS_SAIDA.map((m) => (
+              <button
+                key={m.valor}
+                type="button"
+                onClick={() => decidir("dispensada", m.valor)}
+                className={classesBotao("secundario", "sm")}
+              >
+                {m.nome}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       {erro && (
         <p role="alert" className="text-center text-body-sm text-danger">

@@ -186,6 +186,12 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     if (cliente) await cuidarDoCliente(supabase, cliente, d, true);
     // o Teste Prático que combina com a função já entra na vaga (grátis; a página da vaga diz e deixa tirar)
     const comTeste = d.tipo === "vaga" && (await porTesteSugerido(supabase, data.id, d.titulo, d.categoria));
+    // quem responder diferente numa eliminatória sai do processo, se o padrão da conta pede (migração 20270315120000)
+    if (d.tipo === "vaga" && Object.values(d.triagem ?? {}).some((t) => t.eliminatoria)) {
+      const { data: padrao } = await supabase.rpc("padroes_da_conta");
+      if ((padrao as { tirar_eliminados?: boolean } | null)?.tirar_eliminados)
+        await supabase.rpc("marcar_dispensar_eliminados", { p_anuncio: data.id, p_ligado: true });
+    }
     // veio do link do convite: publicar é o aceite (o convite vira "Autorizou" no admin)
     const convite = formData.get("convite");
     if (typeof convite === "string" && /^[0-9a-f]{64}$/.test(convite)) {

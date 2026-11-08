@@ -391,7 +391,7 @@ export function EditorAutomacoes({
             !inicial.temHorarios && (
               <>
                 <span>Cadastre primeiro os horários da semana em que você entrevista.</span>
-                <Caminho href="/painel/etapas#horarios">Cadastrar os horários livres</Caminho>
+                <Caminho href="/painel/configuracoes?aba=entrevistas#horarios">Cadastrar os horários livres</Caminho>
               </>
             )
           }

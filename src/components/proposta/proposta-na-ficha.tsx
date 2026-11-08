@@ -13,6 +13,8 @@ import {
   textoDoDia,
   type Proposta,
 } from "@/lib/proposta";
+import type { Padroes, Regra } from "@/lib/processo";
+import { PularRegra } from "../processo/pular-regra";
 import { DocumentosNaFicha } from "./documentos-na-ficha";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
@@ -29,15 +31,23 @@ export function PropostaNaFicha({
   nome,
   endereco,
   proposta,
+  padroes = null,
+  abrir = false,
 }: {
   anuncioId: string;
   perfilId: string;
   nome: string;
   endereco: string;
   proposta: Proposta | null;
+  /** o padrão da conta (Configurações › Contratação): a proposta nova começa com ele */
+  padroes?: Pick<Padroes, "proposta" | "documentos"> | null;
+  /** já abre o formulário (o "Mandar a proposta" do Contratar) */
+  abrir?: boolean;
 }) {
   const ativa = proposta && proposta.situacao !== "cancelada" ? proposta : null;
-  const [editando, setEditando] = useState(false);
+  const [editando, setEditando] = useState(abrir);
+  // a regra do processo que travou (a entrevista antes da proposta): quem administra pula e manda de novo
+  const [regra, setRegra] = useState<{ regra: Regra; dados: DadosDaProposta } | null>(null);
   const [pendente, iniciar] = useTransition();
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const primeiro = nome.split(" ")[0];
@@ -73,15 +83,37 @@ export function PropostaNaFicha({
         endereco={endereco}
         pendente={pendente}
         cancelar={() => setEditando(false)}
+        padroes={padroes}
         enviar={(d) =>
           iniciar(async () => {
             setAviso(null);
+            setRegra(null);
             const r = await chamarAcao(() => fazerProposta(anuncioId, perfilId, d));
             if (r.ok) setEditando(false);
+            else if ("regra" in r && r.regra) setRegra({ regra: r.regra, dados: d });
             setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Enviada." } : { ok: false, texto: r.erro });
           })
         }
-        aviso={mensagem}
+        aviso={
+          <>
+            {mensagem}
+            {regra && (
+              <PularRegra
+                anuncioId={anuncioId}
+                perfilId={perfilId}
+                regra={regra.regra}
+                aoPular={() =>
+                  iniciar(async () => {
+                    const r = await chamarAcao(() => fazerProposta(anuncioId, perfilId, regra.dados));
+                    setRegra(null);
+                    if (r.ok) setEditando(false);
+                    setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Enviada." } : { ok: false, texto: r.erro });
+                  })
+                }
+              />
+            )}
+          </>
+        }
       />
     );
   }
@@ -190,7 +222,9 @@ function FormProposta({
   cancelar,
   enviar,
   aviso,
+  padroes = null,
 }: {
+  padroes?: Pick<Padroes, "proposta" | "documentos"> | null;
   inicial: Proposta | null;
   endereco: string;
   pendente: boolean;
@@ -202,12 +236,12 @@ function FormProposta({
   const [d, setD] = useState<DadosDaProposta>(() => ({
     salario: inicial?.salario ?? "",
     inicio: inicial?.inicio ?? hojeMais(7),
-    horario: inicial?.horario ?? "",
-    beneficios: inicial?.beneficios ?? "",
+    horario: inicial?.horario ?? padroes?.proposta.horario ?? "",
+    beneficios: inicial?.beneficios ?? padroes?.proposta.beneficios ?? "",
     recado: inicial?.recado ?? "",
-    apresentar_onde: inicial?.apresentar_onde ?? endereco,
-    apresentar_hora: inicial?.apresentar_hora ?? "08:00",
-    documentos: inicial?.documentos ?? DOCUMENTOS_MARCADOS,
+    apresentar_onde: inicial?.apresentar_onde ?? (padroes?.proposta.apresentar_onde || endereco),
+    apresentar_hora: inicial?.apresentar_hora ?? (padroes?.proposta.apresentar_hora || "08:00"),
+    documentos: inicial?.documentos ?? padroes?.documentos ?? DOCUMENTOS_MARCADOS,
   }));
   const mudar = (m: Partial<DadosDaProposta>) => setD((x) => ({ ...x, ...m }));
   // a lista: as sugestões e os itens que a empresa escreveu (o filtro do que não se pede, igual ao do banco)
