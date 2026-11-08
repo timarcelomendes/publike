@@ -10,6 +10,7 @@ import { FiltroVaga } from "@/components/painel/filtro-vaga";
 import { classesChip } from "@/components/painel/fluxo";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { CartaoTalento } from "@/components/talentos/cartao-talento";
+import { ConviteEmLote, MarcarConvite, MarcarTodos } from "@/components/talentos/convite-em-lote";
 import { ParaAVaga } from "@/components/talentos/para-a-vaga";
 import { Aviso, Container, Esqueleto, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -353,28 +354,34 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
                 : "Quem atualizou o currículo há menos tempo vem primeiro."}
             </p>
           </div>
-          <ul aria-label="Talentos" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ConviteEmLote vagas={empresa ? noAr.map((v) => ({ id: v.id, titulo: v.titulo })) : []}>
+          <MarcarTodos perfis={lista.map((t) => t.perfil_id)} />
+          <ul aria-label="Talentos" className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {lista.map((t) => (
               <li key={t.perfil_id}>
                 <CartaoTalento
                   t={t}
                   acao={
                     estados && (
-                      <BotaoConectar
-                        outroId={t.perfil_id}
-                        outroNome={t.nome}
-                        estado={estados.get(t.perfil_id) ?? null}
-                        logado
-                        voltar={hrefBusca(f)}
-                        para="talento"
-                        jeito="cartao"
-                      />
+                      <div className="flex flex-col gap-2">
+                        <BotaoConectar
+                          outroId={t.perfil_id}
+                          outroNome={t.nome}
+                          estado={estados.get(t.perfil_id) ?? null}
+                          logado
+                          voltar={hrefBusca(f)}
+                          para="talento"
+                          jeito="cartao"
+                        />
+                        <MarcarConvite perfilId={t.perfil_id} nome={t.nome} />
+                      </div>
                     )
                   }
                 />
               </li>
             ))}
           </ul>
+          </ConviteEmLote>
           {paginas > 1 && (
             <nav aria-label="Páginas" className="flex items-center justify-center gap-3">
               {f.pagina > 1 ? (

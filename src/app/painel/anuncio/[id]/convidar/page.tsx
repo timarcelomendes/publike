@@ -14,7 +14,7 @@ import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { DIAS_DO_CONVITE, situacaoNaLista } from "@/lib/convite-candidato";
 import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
 import { plural } from "@/lib/formato";
-import { candidatosDeAntes, convitesDaVaga } from "@/lib/servidor/convites-candidato";
+import { candidatosDeAntes, convitesDaVaga, convitesDeTalentos } from "@/lib/servidor/convites-candidato";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -39,10 +39,11 @@ async function Conteudo({ id }: { id: string }) {
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [convites, comIA, deAntes] = await Promise.all([
+  const [convites, comIA, deAntes, deTalentos] = await Promise.all([
     convitesDaVaga(id),
     ajudaDaIADisponivel().catch(() => false),
     candidatosDeAntes(id),
+    convitesDeTalentos(id),
   ]);
   const noAr = anuncio.status === "ativo" && new Date(anuncio.expira_em).getTime() > agora && !anuncio.preenchida_em;
   const esperando = convites.filter((c) => situacaoNaLista(c, agora) === "valido").length;
@@ -108,17 +109,36 @@ async function Conteudo({ id }: { id: string }) {
             </h3>
             <p className="mt-1 text-body-sm text-ink-muted">
               Quem você aceitou em outra vaga nos últimos 6 meses, não foi contratado e deixou o currículo visível em
-              Talentos. Os que foram mais longe vêm primeiro. A pessoa recebe o convite e decide se curte a vaga.
+              Talentos. Os que foram mais longe vêm primeiro. Marque vários e convide de uma vez: a pessoa recebe o
+              convite e decide se curte a vaga.
             </p>
           </div>
           {deAntes.length ? (
-            <ChamarDeNovo anuncioId={id} candidatos={deAntes} agora={agora} />
+            <ChamarDeNovo
+              anuncioId={id}
+              vaga={anuncio.titulo}
+              quem={anuncio.autor_nome}
+              link={`${SITE_URL}/anuncio/${id}`}
+              candidatos={deAntes}
+              agora={agora}
+            />
           ) : (
             <p className="text-body-sm text-ink-muted">
               Ninguém por enquanto: só aparece quem você aceitou em outra vaga e deixou o currículo visível.
             </p>
           )}
         </section>
+      )}
+
+      {deTalentos && deTalentos.enviados > 0 && (
+        <p className="flex flex-wrap items-center gap-x-2 rounded-md bg-surface-300 px-4 py-3 text-body-sm">
+          <span className="text-label">Convites de Talentos:</span>
+          {plural(deTalentos.enviados, "enviado", "enviados")}, {plural(deTalentos.curtiram, "curtiu", "curtiram")}
+          <span className="text-ink-muted">(hoje ainda dá para mandar {deTalentos.faltam_hoje})</span>
+          <Link href={`/talentos?vaga=${id}`} className="text-label underline underline-offset-2">
+            Convidar mais em Talentos
+          </Link>
+        </p>
       )}
 
       <section aria-labelledby="convites" className="flex flex-col gap-3">

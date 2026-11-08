@@ -2431,6 +2431,8 @@ export type Database = {
           ate_onde: string;
           candidatou_em: string;
           convidado: boolean;
+          /** só de quem já deu match, fora do "só pelo chat" (migração 20270305120000) */
+          whatsapp?: string | null;
         }[];
       };
       mudar_entrevista: { Args: { p_id: string; p_situacao: string }; Returns: undefined };
@@ -3099,6 +3101,16 @@ export type Database = {
       convidar_para_vaga: {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
+      };
+      /** convidar vários (migração 20270305120000): {enviados, fora: [{perfil_id, motivo}], faltam} */
+      convidar_varios: {
+        Args: { p_anuncio: string; p_perfis: string[]; p_recado?: string | null };
+        Returns: Json;
+      };
+      /** {enviados, curtiram, faltam_hoje} (migração 20270305120000) */
+      convites_da_vaga: {
+        Args: { p_anuncio: string };
+        Returns: Json;
       };
       /** os testes Publike (migração 20261204120000) */
       avaliacoes_biblioteca: {

@@ -2,6 +2,7 @@ import "server-only";
 import { lerDadosDoConvite, TOKEN_CONVITE, type ConviteDaVaga } from "@/lib/convite-candidato";
 import { limparCurriculoLido, type CurriculoLido } from "@/lib/ia/curriculo-do-arquivo";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import type { ConvitesDaVaga } from "@/lib/convites-em-lote";
 
 // Candidato de fora: os convites de uma vaga (para quem convidou) e o convite do link (para quem
 // foi chamado).
@@ -30,6 +31,8 @@ export type CandidatoDeAntes = {
   ate_onde: "finalista" | "entrevista" | "match";
   candidatou_em: string;
   convidado: boolean;
+  /** o WhatsApp de quem já deu match com a conta (fora do "só pelo chat"), para chamar um por um */
+  whatsapp: string | null;
 };
 
 /**
@@ -46,7 +49,23 @@ export async function candidatosDeAntes(anuncioId: string): Promise<CandidatoDeA
   return (data ?? []).map((c) => ({
     ...c,
     ate_onde: c.ate_onde === "finalista" || c.ate_onde === "entrevista" ? c.ate_onde : "match",
+    whatsapp: c.whatsapp ?? null,
   }));
+}
+
+/**
+ * Os convites de Talentos desta vaga (migração 20270305120000): quantos foram, quantos curtiram depois e quantos
+ * ainda dá para mandar hoje. null: o banco ainda não tem a migração.
+ */
+export async function convitesDeTalentos(anuncioId: string): Promise<ConvitesDaVaga | null> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("convites_da_vaga", { p_anuncio: anuncioId });
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+    if (error && error.code !== "PGRST202") console.error(`Publike: falha ao ler os convites da vaga: ${error.message}`);
+    return null;
+  }
+  const r = data as Record<string, unknown>;
+  return { enviados: Number(r.enviados) || 0, curtiram: Number(r.curtiram) || 0, faltam_hoje: Number(r.faltam_hoje) || 0 };
 }
 
 /** O convite do link, com o login de quem abriu (quem convidou vê a prévia). */

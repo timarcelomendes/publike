@@ -127,6 +127,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo, pede conexão (mesmo sem vaga aberta) ou convida a pessoa para uma vaga sua no ar. No convite, ela vê a vaga e decide se curte; o contato aparece no match.",
       },
       {
+        p: "Dá para convidar várias pessoas de uma vez?",
+        r: "Dá. Em Talentos (em “Para a sua vaga” ou em “Todos os talentos”) e no “Chamar de novo” da vaga, toque em “Marcar para convidar” em cada pessoa, ou em “Marcar todos desta página”. Embaixo aparece a barra: escolha a vaga, escreva um recado se quiser (sem telefone, e-mail ou link) e toque em Convidar. Cada pessoa recebe o convite no Publike e por e-mail e decide se curte; o contato aparece só no match. São até 40 convites por dia, ou 100 para a empresa, o comércio ou a agência conferida pela equipe. Para não virar spam, a mesma conta manda no máximo 3 convites para a mesma pessoa em 30 dias se ela não curtir nenhuma vaga. No “Chamar de novo”, quem já deu match com você também tem o botão do WhatsApp, com a mensagem pronta.",
+      },
+      {
         p: "Posso falar com alguém da aba Talentos sem ter vaga?",
         r: "Pode. Na aba Talentos, toque em Conectar no cartão da pessoa, ou abra a página dela e mande um recado junto. Se ela aceitar, aparecem o WhatsApp e o e-mail dos dois e vocês conversam pelo Publike, em Conversas. Antes do sim não sai contato nenhum: a pessoa decide. São até 30 pedidos por dia; se a pessoa não aceitar, dá para pedir de novo depois de 30 dias.",
       },

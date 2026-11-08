@@ -9,6 +9,7 @@ import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 import { CurriculoResumo } from "../curriculo-resumo";
 import { SeloCortesia } from "../selo-cortesia";
 import { BotaoConvidar } from "../painel/botao-convidar";
+import { ConviteEmLote, MarcarConvite, MarcarTodos } from "./convite-em-lote";
 import { CriteriosDaAderencia, NotaAderencia } from "../painel/nota-aderencia";
 import { Aviso, Avatar, Vazio } from "../ui/basicos";
 import { BotaoLink } from "../ui/botao";
@@ -219,6 +220,8 @@ export async function ParaAVaga({
           <ChevronRight aria-hidden className="size-4 shrink-0 text-terra-text" />
         </Link>
       )}
+      <ConviteEmLote vagas={[{ id: vaga.id, titulo: vaga.titulo }]}>
+      <MarcarTodos perfis={talentos.filter(({ t }) => !t.convidado).map(({ t }) => t.perfil_id)} />
       <ul aria-label={`Talentos para ${vaga.titulo}`} className="flex flex-col gap-3">
         {talentos.map(({ t, a }) => {
           const estudo = nomeEscolaridade(t.escolaridade);
@@ -251,12 +254,14 @@ export async function ParaAVaga({
                     )}
                   </p>
                 </div>
-                <div className="hidden shrink-0 sm:block">
+                <div className="hidden shrink-0 flex-col items-end gap-2 sm:flex">
                   <BotaoConvidar anuncioId={vaga.id} perfilId={t.perfil_id} convidado={t.convidado} />
+                  {!t.convidado && <MarcarConvite perfilId={t.perfil_id} nome={t.nome} />}
                 </div>
               </div>
-              <div className="mt-3 sm:hidden">
+              <div className="mt-3 flex flex-wrap gap-2 sm:hidden">
                 <BotaoConvidar anuncioId={vaga.id} perfilId={t.perfil_id} convidado={t.convidado} />
+                {!t.convidado && <MarcarConvite perfilId={t.perfil_id} nome={t.nome} />}
               </div>
               <details className="group mt-3 border-t border-line pt-2">
                 <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-label text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
@@ -288,6 +293,7 @@ export async function ParaAVaga({
           );
         })}
       </ul>
+      </ConviteEmLote>
       {paginas > 1 && (
         <nav aria-label="Páginas" className="flex items-center justify-center gap-3">
           {aqui > 1 ? (

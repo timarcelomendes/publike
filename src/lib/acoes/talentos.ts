@@ -14,7 +14,13 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { montarQuadro } from "@/lib/servidor/quadro";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
-import { UUID } from "@/lib/validacao";
+import { temContato, UUID } from "@/lib/validacao";
+import {
+  lerResultadoDosConvites,
+  MAX_CONVITES_DE_UMA_VEZ,
+  MAX_RECADO,
+  type ResultadoDosConvites,
+} from "@/lib/convites-em-lote";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 
 // Painel 2.0, entrega 3: o resumo do candidato pela IA, os convites de Talentos e a
@@ -122,6 +128,44 @@ export async function convidarParaVaga(anuncioId: string, perfilId: string): Pro
   after(processarFilas);
   refresh();
   return { ok: true, mensagem: "Convite enviado." };
+}
+
+/**
+ * Convida várias pessoas de uma vez para uma vaga minha (migração 20270305120000), com um recado opcional. Quem
+ * não pôde receber volta com o motivo; o banco confere tudo de novo.
+ */
+export async function convidarVarios(
+  anuncioId: string,
+  perfis: string[],
+  recado: string | null,
+): Promise<ResultadoDosConvites> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  const ids = [...new Set(perfis)];
+  if (!UUID.test(anuncioId) || !ids.length || ids.length > MAX_CONVITES_DE_UMA_VEZ || !ids.every((i) => UUID.test(i))) {
+    return { ok: false, erro: ids.length > MAX_CONVITES_DE_UMA_VEZ ? `Dá para convidar até ${MAX_CONVITES_DE_UMA_VEZ} pessoas de uma vez.` : "Marque quem você quer convidar." };
+  }
+  const texto = recado?.replace(/\s+/g, " ").trim() || null;
+  if (texto && texto.length > MAX_RECADO) return { ok: false, erro: `O recado pode ter até ${MAX_RECADO} caracteres.` };
+  if (texto && temContato(texto)) {
+    return { ok: false, erro: "Tire o telefone, o e-mail ou o link do recado: o contato aparece no match." };
+  }
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/talentos" };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("convidar_varios", { p_anuncio: anuncioId, p_perfis: ids, p_recado: texto });
+  if (error) {
+    return {
+      ok: false,
+      erro:
+        error.code === "PGRST202"
+          ? "Convidar vários ainda não está disponível. Convide um por um, por enquanto."
+          : mensagemDeErro(error, "Não deu para convidar agora."),
+    };
+  }
+  const r = lerResultadoDosConvites(data);
+  if (r.ok && r.enviados > 0) after(processarFilas);
+  refresh();
+  return r;
 }
 
 /** "Deixar as empresas me encontrarem": entra ou sai de Talentos. */
