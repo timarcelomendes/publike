@@ -18,6 +18,7 @@ import {
   revisarRecadosPendentes,
 } from "@/lib/servidor/filas";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
+import { lembrarDocumentos, limparDocumentosVencidos } from "@/lib/servidor/documentos-admissao";
 import { funcoesDasVagas, funcoesDosCurriculos } from "@/lib/servidor/funcao";
 import { avisarGoogleDasVagas } from "@/lib/servidor/google-vagas";
 import { avisarTalentosQueCombinam } from "@/lib/servidor/talentos-que-combinam";
@@ -89,6 +90,10 @@ export async function GET(request: Request) {
   const consultasSalario = await comTempo(() => darConsultasDeSalario());
   // quem contrata: as buscas salvas de Talentos com o aviso ligado, uma vez por semana cada
   const buscasTalentos = await comTempo(() => avisarBuscasDeTalentos());
+  // os documentos da admissão: o lembrete 2 dias antes do primeiro dia e os arquivos vencidos (7 dias depois da
+  // entrega ao contador ou 30 depois do primeiro dia), apagados do Storage
+  const documentos = await comTempo(() => lembrarDocumentos());
+  const documentosVencidos = await comTempo(() => limparDocumentosVencidos());
   // o Google: as vagas que entraram ou saíram do ar (a Indexing API, com a credencial na Vercel)
   const google = await comTempo(() => avisarGoogleDasVagas(10));
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
@@ -120,6 +125,8 @@ export async function GET(request: Request) {
     automacoes.motivo,
     regras.motivo,
     perguntas.motivo,
+    documentos.motivo,
+    documentosVencidos.motivo,
   ].filter((m): m is string => Boolean(m));
   // só o erro, sem o endereço de ninguém (a resposta aparece no registro da tarefa do GitHub)
   if (emails.falhas > 0) {
@@ -135,6 +142,7 @@ export async function GET(request: Request) {
       emails: { enviados: emails.enviados, falhas: emails.falhas },
       celular,
       contatos_liberados: parados.liberadas,
+      documentos: { lembrados: documentos.lembrados, apagados: documentosVencidos.apagados },
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
       funcoes: funcoes.achadas,
       funcoesCurriculos: funcoesCv.lidos,

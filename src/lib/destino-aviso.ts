@@ -77,6 +77,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "candidatura_recebida") return "/painel/curtidas";
   // a proposta: o candidato vai à proposta; a empresa, ao candidato no quadro (migração 20270110120000)
   if (n.tipo === "proposta" && n.anuncio_id) return `/proposta/${n.anuncio_id}`;
+  // faltam documentos da admissão (migração 20270312120000): a lista na página da proposta
+  if (n.tipo === "documentos_admissao" && n.anuncio_id) return `/proposta/${n.anuncio_id}#documentos`;
   if (n.tipo === "proposta_resposta" && n.anuncio_id)
     return `/painel/anuncio/${n.anuncio_id}/quadro${n.ator_id ? `?candidato=${n.ator_id}` : ""}`;
   // a automação "Lembrar dos parados": o quadro da vaga (migração 20270109120000)

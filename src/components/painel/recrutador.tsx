@@ -6,6 +6,7 @@ import {
   CalendarClock,
   ChevronRight,
   Clock,
+  FileCheck2,
   Hourglass,
   ImageUp,
   Megaphone,
@@ -45,6 +46,7 @@ import { resumoDosPedidos } from "@/lib/servidor/pedidos-do-cliente";
 import { ondeAVagaAparece } from "@/lib/feed-vagas";
 import { vagasEmOutrosSites } from "@/lib/servidor/feed-vagas";
 import { indicadosDasVagas } from "@/lib/servidor/indicacao";
+import { documentosPendentesDaConta } from "@/lib/servidor/documentos-admissao";
 import { TalentosDaVaga } from "./hoje-extras";
 import { NivelDaSaude } from "./saude-vaga";
 
@@ -137,7 +139,8 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas, passadas }, respostas, completas, colocacoes, caminho, equipe, reputacao] = await Promise.all([
+  const [{ visitas, entrevistas, passadas }, respostas, completas, colocacoes, caminho, equipe, reputacao, documentos] =
+    await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -149,6 +152,8 @@ export async function PainelRecrutador({
     caminhoDaConta(),
     agencia ? equipeDaConta().catch(() => null) : Promise.resolve(null),
     minhaReputacao().catch(() => null),
+    // os documentos da admissão de quem começa (parte 4; sem a migração, nada)
+    documentosPendentesDaConta().catch(() => []),
   ]);
   // a saúde das vagas no ar: a mesma do quadro de cada vaga
   const saudes = await saudeDasVagas(
@@ -221,6 +226,37 @@ export async function PainelRecrutador({
         .join(". ")}.${dias >= 1 ? ` O mais antigo curtiu há ${plural(dias, "dia", "dias")}.` : ""}`,
       href: "/painel/caixa/triagem",
       acao: "Decidir agora",
+    });
+  }
+  // os documentos da admissão de quem começa em até 3 dias (ou já começou): o que falta, ou baixar para o contador
+  const hojeBr = hojeEmBrasilia(agora);
+  const diasAte = (dia: string) => Math.round((Date.parse(`${dia}T12:00:00Z`) - Date.parse(`${hojeBr}T12:00:00Z`)) / DIA);
+  const quandoComeca = (dia: string) => {
+    const d = diasAte(dia);
+    return d < 0 ? "Já começou" : d === 0 ? "Hoje" : d === 1 ? "Amanhã" : `Em ${d} dias`;
+  };
+  const docsPerto = documentos.filter((d) => d.total > 0 && diasAte(d.inicio) <= 3);
+  if (docsPerto.length) {
+    const d = docsPerto[0];
+    const faltam = (x: (typeof documentos)[number]) => x.total - x.enviados - x.levar;
+    cartoes.push({
+      icone: FileCheck2,
+      quando: quandoComeca(d.inicio),
+      titulo:
+        docsPerto.length === 1
+          ? `Documentos de ${d.nome}: ${d.enviados + d.levar} de ${d.total}`
+          : `Documentos de ${docsPerto.length} contratados`,
+      texto:
+        docsPerto.length === 1
+          ? faltam(d) > 0
+            ? `${d.vaga} · falta ${plural(faltam(d), "item", "itens")}. ${d.nome} recebe o lembrete 2 dias antes.`
+            : `${d.vaga} · a lista está completa: baixe para o contador.`
+          : docsPerto
+              .slice(0, 3)
+              .map((x) => `${x.nome} ${x.enviados + x.levar} de ${x.total}`)
+              .join(" · "),
+      href: `/painel/anuncio/${d.anuncioId}/quadro?candidato=${d.perfilId}`,
+      acao: "Ver os documentos",
     });
   }
   if (proximas.length) {
@@ -435,6 +471,8 @@ export async function PainelRecrutador({
     });
   }
   cartoes.push(...extras);
+  // Esta semana: o primeiro dia de quem foi contratado (de hoje a 7 dias)
+  const primeirosDias = documentos.filter((d) => diasAte(d.inicio) >= 0 && diasAte(d.inicio) <= 7).slice(0, 4);
 
   const responde = resposta ? comoResponde(resposta) : null;
   // onde a vaga aparece (o arquivo de vagas, parte 2 do plano de 08/11)
@@ -723,10 +761,33 @@ export async function PainelRecrutador({
                 <h2 id="agenda" className="text-h3">
                   Esta semana
                 </h2>
+                {primeirosDias.length > 0 && (
+                  <ul className="flex flex-col gap-3">
+                    {primeirosDias.map((d) => (
+                      <li key={`${d.anuncioId}:${d.perfilId}`}>
+                        <Link
+                          href={`/painel/anuncio/${d.anuncioId}/quadro?candidato=${d.perfilId}`}
+                          className="flex flex-col gap-1 rounded-md p-1 hover:bg-surface-300"
+                        >
+                          <span className="text-label">{quandoComeca(d.inicio)}</span>
+                          <span className="text-body-sm">
+                            <span className="font-semibold">{d.nome}</span>
+                            <span className="text-ink-muted"> · {d.vaga}</span>
+                          </span>
+                          <Selo variante="match" className="self-start">
+                            Primeiro dia
+                          </Selo>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {semana.length === 0 ? (
-                  <p className="text-body-sm text-ink-muted">
-                    Nenhuma entrevista marcada. No quadro da vaga, leve o candidato para Entrevista e marque o dia.
-                  </p>
+                  primeirosDias.length === 0 && (
+                    <p className="text-body-sm text-ink-muted">
+                      Nenhuma entrevista marcada. No quadro da vaga, leve o candidato para Entrevista e marque o dia.
+                    </p>
+                  )
                 ) : (
                   <ul className="flex flex-col gap-3">
                     {semana.slice(0, 6).map((e) => {

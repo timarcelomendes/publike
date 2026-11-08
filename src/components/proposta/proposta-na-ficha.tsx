@@ -1,10 +1,19 @@
 "use client";
 
-import { FileSignature, Pencil, X } from "lucide-react";
+import { FileSignature, Pencil, Plus, X } from "lucide-react";
 import { useId, useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { cancelarProposta, fazerProposta, type DadosDaProposta } from "@/lib/acoes/proposta";
-import { dataEHora, DOCUMENTOS_SUGERIDOS, SITUACOES_PROPOSTA, textoDoDia, type Proposta } from "@/lib/proposta";
+import { documentoProibido } from "@/lib/documentos-admissao";
+import {
+  dataEHora,
+  DOCUMENTOS_MARCADOS,
+  DOCUMENTOS_SUGERIDOS,
+  SITUACOES_PROPOSTA,
+  textoDoDia,
+  type Proposta,
+} from "@/lib/proposta";
+import { DocumentosNaFicha } from "./documentos-na-ficha";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
@@ -90,6 +99,9 @@ export function PropostaNaFicha({
         <blockquote className="rounded-md bg-surface-300 p-3">“{ativa.motivo_recusa}”</blockquote>
       )}
       <ResumoDaProposta p={ativa} />
+      {ativa.situacao === "aceita" && ativa.docs && (
+        <DocumentosNaFicha anuncioId={anuncioId} perfilId={perfilId} nome={primeiro} docs={ativa.docs} />
+      )}
       {ativa.situacao !== "aceita" && (
         <div className="flex flex-wrap gap-2">
           <Botao tamanho="sm" variante="secundario" onClick={() => (setAviso(null), setEditando(true))}>
@@ -195,9 +207,23 @@ function FormProposta({
     recado: inicial?.recado ?? "",
     apresentar_onde: inicial?.apresentar_onde ?? endereco,
     apresentar_hora: inicial?.apresentar_hora ?? "08:00",
-    documentos: inicial?.documentos ?? DOCUMENTOS_SUGERIDOS.slice(0, 4),
+    documentos: inicial?.documentos ?? DOCUMENTOS_MARCADOS,
   }));
   const mudar = (m: Partial<DadosDaProposta>) => setD((x) => ({ ...x, ...m }));
+  // a lista: as sugestões e os itens que a empresa escreveu (o filtro do que não se pede, igual ao do banco)
+  const [outro, setOutro] = useState("");
+  const [erroOutro, setErroOutro] = useState<string | null>(null);
+  const lista = [...DOCUMENTOS_SUGERIDOS, ...d.documentos.filter((x) => !DOCUMENTOS_SUGERIDOS.includes(x))];
+  const adicionar = () => {
+    const item = outro.replace(/\s+/g, " ").trim().slice(0, 60);
+    if (item.length < 2) return;
+    const proibido = documentoProibido(item);
+    if (proibido) return setErroOutro(proibido);
+    if (d.documentos.length >= 12) return setErroOutro("A lista vai até 12 itens.");
+    setErroOutro(null);
+    setOutro("");
+    if (!d.documentos.includes(item)) mudar({ documentos: [...d.documentos, item] });
+  };
   const campo = (
     id: keyof DadosDaProposta,
     rotulo: string,
@@ -252,7 +278,7 @@ function FormProposta({
         <div className="flex flex-col gap-1.5">
           <p className="text-label">O que levar</p>
           <div className="grid gap-1 sm:grid-cols-2">
-            {DOCUMENTOS_SUGERIDOS.map((doc) => (
+            {lista.map((doc) => (
               <label key={doc} className="flex min-h-9 cursor-pointer items-center gap-2 text-body-sm">
                 <input
                   type="checkbox"
@@ -268,8 +294,39 @@ function FormProposta({
               </label>
             ))}
           </div>
+          <div className="flex flex-wrap gap-2">
+            <label htmlFor={`${base}-outro`} className="sr-only">
+              Outro item
+            </label>
+            <input
+              id={`${base}-outro`}
+              value={outro}
+              maxLength={60}
+              placeholder="Outro item"
+              onChange={(e) => setOutro(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  adicionar();
+                }
+              }}
+              aria-invalid={erroOutro ? true : undefined}
+              aria-describedby={erroOutro ? `${base}-outro-erro` : undefined}
+              className={`${classesEntrada} min-w-0 flex-1 basis-48`}
+            />
+            <Botao tamanho="sm" variante="secundario" onClick={adicionar} disabled={outro.trim().length < 2}>
+              <Plus aria-hidden />
+              Pôr na lista
+            </Botao>
+          </div>
+          {erroOutro && (
+            <p id={`${base}-outro-erro`} role="alert" className="text-body-sm text-danger">
+              {erroOutro}
+            </p>
+          )}
           <p className="text-caption text-ink-muted">
-            A lista diz só o que levar. O Publike não guarda números de documento nem dados de conta.
+            Confira a lista com o seu contador. Depois de aceitar, a pessoa pode mandar a foto de cada item pelo
+            Publike ou levar no primeiro dia. Os arquivos somem em até 30 dias.
           </p>
         </div>
       </fieldset>

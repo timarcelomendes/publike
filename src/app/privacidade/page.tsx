@@ -146,8 +146,17 @@ export default function Privacidade() {
         <p id="proposta" className="scroll-mt-24">
           Proposta de trabalho: quando a empresa manda uma proposta pelo Publike, guardamos o que ela escreveu (o
           salário, o início, o horário, os benefícios, o recado e o primeiro dia) e a sua resposta, com a data e a hora.
-          A resposta é um registro, não uma assinatura eletrônica. A lista do primeiro dia diz só o que levar: o Publike
-          não pede nem guarda números de CPF, RG, PIS ou conta bancária.
+          A resposta é um registro, não uma assinatura eletrônica.
+        </p>
+        <p id="documentos-admissao" className="scroll-mt-24">
+          Documentos da admissão: depois de aceitar a proposta, você pode mandar pelo Publike a foto ou o PDF dos
+          documentos que a empresa pediu, ou levar no primeiro dia. Antes do primeiro arquivo, você concorda com o envio.
+          Nesse caso, a empresa é a controladora dos seus dados (é ela quem decide o que fazer com eles, como mandar ao
+          contador para o registro) e o Publike é o operador: só guarda os arquivos para ela. Só você e a empresa da vaga
+          abrem, por links que vencem em minutos; nenhuma IA lê e nada vai para fora do Publike. Os arquivos são apagados
+          7 dias depois que a empresa marca “Entregue ao contador” ou 30 dias depois do primeiro dia, o que vier
+          primeiro. Antes da entrega, você apaga quando quiser na página da proposta. A empresa não pode pedir atestado de
+          gravidez ou de esterilização (Lei 9.029/1995), e o Publike não aceita esse item na lista.
         </p>
         <p>
           Você recebe avisos por e-mail de curtidas, matches e moderação. Para não receber mais, desmarque a opção em{" "}

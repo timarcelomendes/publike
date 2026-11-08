@@ -1,6 +1,7 @@
 import "server-only";
 import { lerProposta, lerPropostaDoCandidato, type Proposta, type PropostaDoCandidato } from "@/lib/proposta";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { documentosDaVaga } from "./documentos-admissao";
 
 // A proposta (migração 20270110120000). null: sem a migração.
 
@@ -14,6 +15,13 @@ export async function propostasDaVaga(anuncioId: string): Promise<Map<string, Pr
   for (const x of (data ?? []) as unknown[]) {
     const p = lerProposta(x);
     if (p) mapa.set(p.perfil_id, p);
+  }
+  // os documentos de quem aceitou (migração 20270312120000; sem ela, nada)
+  if ([...mapa.values()].some((p) => p.situacao === "aceita" && p.documentos.length)) {
+    for (const [perfil, d] of await documentosDaVaga(anuncioId)) {
+      const p = mapa.get(perfil);
+      if (p) p.docs = d;
+    }
   }
   return mapa;
 }

@@ -3130,6 +3130,34 @@ export type Database = {
       /** o jeito de trabalhar (migração 20270309120000) */
       /** o arquivo de vagas para outros sites (migração 20270310120000) */
       vagas_para_o_feed: { Args: { p_limite?: number }; Returns: Json };
+      /** os documentos da admissão (migração 20270312120000) */
+      meus_documentos_admissao: { Args: { p_anuncio: string }; Returns: Json };
+      aceitar_termo_documentos: { Args: { p_anuncio: string }; Returns: undefined };
+      documento_registrar: { Args: { p_anuncio: string; p_item: string; p_caminhos: string[] }; Returns: string[] };
+      documento_vou_levar: { Args: { p_anuncio: string; p_item: string; p_levar: boolean }; Returns: string[] };
+      documentos_apagar_meus: { Args: { p_anuncio: string }; Returns: string[] };
+      documentos_da_vaga: { Args: { p_anuncio: string }; Returns: Json[] };
+      documentos_do_contratado: { Args: { p_anuncio: string; p_perfil: string }; Returns: Json };
+      documentos_entregues: { Args: { p_anuncio: string; p_perfil: string }; Returns: string };
+      documentos_pendentes_da_conta: {
+        Args: Record<string, never>;
+        Returns: {
+          anuncio_id: string;
+          perfil_id: string;
+          nome: string;
+          vaga: string;
+          inicio: string;
+          total: number;
+          enviados: number;
+          levar: number;
+        }[];
+      };
+      servidor_lembrete_documentos: { Args: { p_chave: string }; Returns: number };
+      servidor_documentos_vencidos: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { proposta_id: string; caminho: string }[];
+      };
+      servidor_documentos_apagados: { Args: { p_chave: string; p_propostas: string[] }; Returns: number };
       /** a indicação (migração 20270311120000) */
       criar_link_indicacao: { Args: { p_anuncio: string; p_nome: string }; Returns: string };
       registrar_indicacao: { Args: { p_anuncio: string; p_codigo: string; p_origem: string }; Returns: boolean };

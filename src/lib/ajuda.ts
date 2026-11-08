@@ -135,6 +135,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Aparece no Google Vagas, que o Publike avisa na hora em que a vaga entra no ar. O Publike também tem um arquivo com as vagas no ar para outros sites de vagas lerem; cada site entra quando confirma que lê, e aí ele aparece na sua vaga, em “Aparece em”. Quem se candidata por lá cai na sua caixa de candidatos, como sempre, e os Resultados mostram de onde a pessoa veio. Não quer? Em Página de vagas, desligue “Suas vagas em outros sites”: elas ficam só no Publike e no Google.",
       },
       {
+        p: "Como recebo os documentos de quem contratei?",
+        r: "Na proposta, marque o que a pessoa precisa mandar (confira a lista com o seu contador; dá para pôr outro item). Depois que ela aceita, a página da proposta mostra “Mandar os documentos”: em cada item, ela manda a foto ou o PDF pelo celular, ou marca que vai levar no primeiro dia. Na ficha do candidato e no Hoje, você vê “Documentos: 7 de 9”, baixa tudo num .zip para o contador e marca “Entregue ao contador”. Se faltar algo 2 dias antes do primeiro dia, a pessoa recebe um lembrete. Os arquivos somem do Publike 7 dias depois da entrega ou 30 dias depois do primeiro dia. Nenhuma IA lê os documentos. A lista não aceita atestado de gravidez ou de esterilização, proibidos por lei.",
+      },
+      {
         p: "Como peço indicação para uma vaga?",
         r: "Em Divulgar, no kit, toque na vaga em “Peça indicação” (ou abra a vaga e vá em Chamar candidato de fora). Escreva o nome de quem vai indicar, como “João, do caixa”, e mande o link para essa pessoa. Quem se candidatar por ele aparece no quadro com “Indicado por João, do caixa”, e ali você vê quantos candidatos e quantos contratados cada link trouxe. Quem tem conta no Publike também pode indicar com o próprio link, no botão “Indicar alguém” da vaga. Quem indicou não vê nada do candidato. Prêmio para quem indica, se tiver, é combinado direto entre vocês.",
       },
@@ -289,7 +293,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "Como evito golpes?",
-        r: "Ninguém pode cobrar para você conseguir trabalho: nada de taxa de cadastro, curso, uniforme ou exame pago antes de contratar. Desconfie de salário muito acima do normal ou de pressa para fechar negócio. Não mande foto de documento, senha ou códigos que chegam por SMS. Na entrevista, prefira lugares movimentados e avise alguém de confiança.",
+        r: "Ninguém pode cobrar para você conseguir trabalho: nada de taxa de cadastro, curso, uniforme ou exame pago antes de contratar. Desconfie de salário muito acima do normal ou de pressa para fechar negócio. Não mande foto de documento antes de aceitar uma proposta de trabalho (e, depois, só pela página da proposta), nem senha ou códigos que chegam por SMS. Na entrevista, prefira lugares movimentados e avise alguém de confiança.",
       },
       {
         p: "Como denuncio um anúncio?",

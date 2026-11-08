@@ -1,16 +1,25 @@
-// Proposta e admissão (claude/plano-recursos-concorrentes.md, parte 7; migração 20270110120000). O Publike guarda
-// só a proposta e a resposta; nenhum número de documento (CPF, RG, PIS, conta bancária).
+// Proposta e admissão (claude/plano-recursos-concorrentes.md, parte 7; migração 20270110120000). Desde 08/11/2026
+// (migração 20270312120000), o candidato pode mandar a foto de cada item da lista depois de aceitar, e os arquivos
+// somem em até 30 dias (src/lib/documentos-admissao.ts). A empresa confere a lista com o contador.
+import type { DocumentosDaProposta } from "./documentos-admissao";
 
 export const DOCUMENTOS_SUGERIDOS = [
-  "Documento com foto (RG ou CNH)",
-  "CPF",
-  "Carteira de trabalho (pode ser a digital)",
+  "Documento com foto e CPF (RG ou CNH)",
   "Comprovante de endereço",
   "Título de eleitor",
   "Foto 3x4",
-  "Exame admissional (a empresa marca)",
   "Dados da conta para o salário",
+  "Comprovante de escolaridade",
+  "Certificado de reservista",
+  "Certidão de casamento",
+  "Certidão de nascimento dos filhos",
+  "Cartão de vacina dos filhos",
+  "Carteira de trabalho (a digital)",
+  "Exame admissional (a empresa marca)",
 ];
+
+/** Os que já vêm marcados numa proposta nova. */
+export const DOCUMENTOS_MARCADOS = DOCUMENTOS_SUGERIDOS.slice(0, 5);
 
 export type SituacaoProposta = "enviada" | "aceita" | "recusada" | "cancelada";
 
@@ -39,6 +48,8 @@ export type Proposta = {
   motivo_recusa: string | null;
   enviada_em: string;
   respondida_em: string | null;
+  /** depois do aceite: os documentos (migração 20270312120000), sem os caminhos */
+  docs?: DocumentosDaProposta | null;
 };
 
 export type PropostaDoCandidato = Proposta & { vaga: string; empresa: string; empresa_id: string };

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { DocumentosDoCandidato } from "@/components/proposta/documentos-do-candidato";
 import { ResponderProposta } from "@/components/proposta/responder-proposta";
 import { ResumoDaProposta } from "@/components/proposta/proposta-na-ficha";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -11,13 +12,15 @@ import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { caminhoConversa } from "@/lib/conversas";
 import { dataEHora, SITUACOES_PROPOSTA } from "@/lib/proposta";
+import { meusDocumentos } from "@/lib/servidor/documentos-admissao";
 import { minhaProposta } from "@/lib/servidor/proposta";
 import { exigirUsuario } from "@/lib/sessao";
 import { UUID } from "@/lib/validacao";
 
 export const metadata: Metadata = { title: "Proposta de trabalho", robots: { index: false } };
 
-// A proposta para o candidato (migração 20270110120000): ler, aceitar ou recusar; depois do aceite, o primeiro dia.
+// A proposta para o candidato (migração 20270110120000): ler, aceitar ou recusar; depois do aceite, o primeiro dia e
+// os documentos (migração 20270312120000).
 
 export default function PaginaDaProposta({ params }: PageProps<"/proposta/[anuncio]">) {
   return (
@@ -33,8 +36,10 @@ export default function PaginaDaProposta({ params }: PageProps<"/proposta/[anunc
 
 async function Conteudo({ anuncio }: { anuncio: string }) {
   if (MODO_DEMO) return <SoComSupabase />;
-  await exigirUsuario(`/proposta/${anuncio}`);
+  const usuario = await exigirUsuario(`/proposta/${anuncio}`);
   const p = UUID.test(anuncio) ? await minhaProposta(anuncio) : null;
+  // depois do aceite: os documentos (migração 20270312120000; sem ela, a página fica como antes)
+  const docs = p?.situacao === "aceita" && p.documentos.length ? await meusDocumentos(anuncio) : null;
   if (p === undefined) {
     return (
       <Aviso tipo="alerta" titulo="Ainda não disponível">
@@ -82,6 +87,7 @@ async function Conteudo({ anuncio }: { anuncio: string }) {
         <ResumoDaProposta p={p} />
       </section>
       {p.situacao === "enviada" && <ResponderProposta anuncioId={anuncio} empresa={p.empresa} />}
+      {docs && <DocumentosDoCandidato anuncioId={anuncio} usuarioId={usuario.id} empresa={p.empresa} docs={docs} />}
       <div className="flex flex-wrap gap-2">
         <BotaoLink href={caminhoConversa(p.empresa_id)} tamanho="sm" variante="secundario">
           Conversar com {p.empresa}
