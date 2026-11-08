@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         "/*/denunciar",
         "/talentos",
         "/finalistas/",
+        "/cliente/",
         "/candidatura/",
         "/equipe/",
       ],

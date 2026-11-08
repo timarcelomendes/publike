@@ -40,6 +40,7 @@ const QUEM: Record<string, QuemRecebe[]> = {
   convite_agencia: ["contrata"],
   liberacao: ["contrata"],
   talento_combina: ["contrata"],
+  pedido_cliente: ["contrata"],
   match: ["procura", "presta"],
   aceite_curriculo: ["procura"],
   etapa: ["procura"],

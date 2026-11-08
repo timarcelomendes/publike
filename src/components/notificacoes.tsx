@@ -39,6 +39,7 @@ import {
   Hourglass,
   MailCheck,
   Video,
+  ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
@@ -117,6 +118,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   liberacao: Gift,
   // o candidato que combina com a vaga de quem contrata
   talento_combina: UserSearch,
+  // o pedido de vaga do cliente da agência (pelo link do cliente)
+  pedido_cliente: ClipboardList,
 };
 
 type Notificacao = {

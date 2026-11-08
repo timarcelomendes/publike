@@ -202,6 +202,7 @@ export function PublicarAnuncio({
   clientes = null,
   enderecoPublico = false,
   convite = null,
+  pedido = null,
   modelo: modeloPedido = null,
   comecarConferindo = false,
   autor = null,
@@ -231,6 +232,8 @@ export function PublicarAnuncio({
   enderecoPublico?: boolean | "talvez";
   /** veio do link do convite do Publike: publicar é o aceite */
   convite?: { token: string; nome: string; pronta: boolean } | null;
+  /** agência: a vaga do pedido do cliente (sai ligada a ele; o rascunho antigo do aparelho não passa por cima) */
+  pedido?: string | null;
 }) {
   const router = useRouter();
   const raiz = useRef<HTMLDivElement>(null);
@@ -262,6 +265,8 @@ export function PublicarAnuncio({
     return () => window.clearTimeout(t);
     function abrir() {
       if (window.location.hash === "#arte") setAtalho("foto");
+      // a vaga do pedido do cliente já veio preenchida: nada de rascunho por cima
+      if (pedido && !continuar) return;
       // quem já entrou guarda à parte o que estava escrevendo (volta no passo em que parou)
       const comConta = !semConta && !continuar ? lerRascunhoGuardado(CHAVE_COM_CONTA) : null;
       if (comConta && !convite && !modeloInicial && !comecarConferindo) {
@@ -504,7 +509,11 @@ export function PublicarAnuncio({
             irAoCampo={irAoCampo}
           />
         )}
-        extras={convite ? { convite: convite.token } : undefined}
+        extras={
+          convite || pedido
+            ? { ...(convite ? { convite: convite.token } : {}), ...(pedido ? { pedido } : {}) }
+            : undefined
+        }
         jaMudou={aviso === "lido"}
         passos
         passoInicial={passoDeComeco}

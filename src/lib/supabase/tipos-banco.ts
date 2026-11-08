@@ -3102,6 +3102,38 @@ export type Database = {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
       };
+      /** o cliente da agência (migração 20270307120000): sem login, pelo token do link */
+      portal_do_cliente: { Args: { p_token: string }; Returns: Json };
+      portal_pedir_vaga: {
+        Args: {
+          p_token: string;
+          p_cargo: string;
+          p_quantidade?: number;
+          p_salario?: string | null;
+          p_horario?: string | null;
+          p_local?: string | null;
+          p_requisitos?: string | null;
+          p_para_quando?: string | null;
+          p_observacoes?: string | null;
+          p_quem?: string | null;
+        };
+        Returns: string;
+      };
+      portal_cancelar_pedido: { Args: { p_token: string; p_pedido: string }; Returns: undefined };
+      /** a agência: o link do cliente, os pedidos e o que fazer com eles */
+      link_do_cliente: { Args: { p_cliente: string; p_acao?: string | null }; Returns: Json };
+      pedidos_da_agencia: { Args: { p_cliente?: string | null }; Returns: Json };
+      responder_pedido: {
+        Args: {
+          p_pedido: string;
+          p_acao: string;
+          p_data?: string | null;
+          p_motivo?: string | null;
+          p_anuncio?: string | null;
+        };
+        Returns: Json;
+      };
+      resumo_dos_pedidos: { Args: Record<string, never>; Returns: Json };
       /** convidar vários (migração 20270305120000): {enviados, fora: [{perfil_id, motivo}], faltam} */
       convidar_varios: {
         Args: { p_anuncio: string; p_perfis: string[]; p_recado?: string | null };

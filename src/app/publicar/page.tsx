@@ -25,6 +25,8 @@ import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { valoresDoConvite } from "@/lib/valores-convite";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { clienteDaVaga, clientesParaVaga } from "@/lib/servidor/clientes";
+import { pedidoDaAgencia } from "@/lib/servidor/pedidos-do-cliente";
+import { descricaoDoPedido } from "@/lib/pedidos-do-cliente";
 import { temLugar } from "@/lib/clientes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { ONDE_FUNCIONA, PRACA_PADRAO } from "@/lib/pracas";
@@ -114,12 +116,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
   const publico = perfil.tipo !== "pessoa";
   const agencia = perfil.tipo === "agencia";
   const clientePedido = agencia ? comCliente : null;
-  const [ia, ultimo, original, clientes] = await Promise.all([
+  // agência: "Publicar a vaga" do pedido do cliente chega com ?cliente=&pedido= (a vaga sai ligada ao pedido)
+  const idDoPedido = primeiro(sp.pedido);
+  const [ia, ultimo, original, clientes, pedidoLido] = await Promise.all([
     ajudaDaIADisponivel(),
     publico ? obterMeuUltimoEndereco() : null,
     pedidaCopia ? obterAnuncio(pedidaCopia) : null,
     agencia ? clientesParaVaga(clientePedido) : null,
+    agencia && clientePedido && idDoPedido && UUID.test(idDoPedido) ? pedidoDaAgencia(idDoPedido) : null,
   ]);
+  const pedido = pedidoLido && pedidoLido.cliente_id === clientePedido && !pedidoLido.vaga ? pedidoLido : null;
   // "Publicar parecida": só de uma vaga sua (serviço se edita em "Meus serviços")
   const copia =
     original &&
@@ -177,14 +183,29 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
       clienteDaCopia && clientes?.some((c) => c.id === clienteDaCopia)
       ? { ...inicialSemCliente, cliente_id: clienteDaCopia }
       : inicialSemCliente;
+  // a vaga do pedido: o cargo, quantas pessoas e o resto na descrição (a agência confere e completa)
+  const inicialComPedido: ValoresAnuncio = pedido
+    ? {
+        ...inicial,
+        titulo: pedido.cargo,
+        vagas: pedido.quantidade,
+        descricao: descricaoDoPedido(pedido) || inicial.descricao,
+      }
+    : inicial;
   const chamada = perfil.tipo === "pessoa" && !copia && !convite && !(await meuCurriculoNaVitrine().catch(() => false));
   return (
     <PublicarAnuncio
       // no alto da coluna do formulário, embaixo do título e dos passos
       antes={
-        chamada || copia ? (
+        chamada || copia || pedido ? (
           <>
             {chamada && <ChamadaCurriculo />}
+            {pedido && (
+              <Aviso tipo="info" titulo={`Vaga do pedido de ${pedido.cliente ?? "seu cliente"}`}>
+                O cargo, a quantidade e o que o cliente contou já vieram. Confira, complete e publique: a vaga fica
+                ligada ao pedido, e o cliente acompanha pelo link dele.
+              </Aviso>
+            )}
             {copia && (
               <Aviso tipo="info" titulo="Vaga nova a partir de outra">
                 Os campos vieram de “{copia.titulo}”. Mude o que for diferente e publique: a vaga antiga continua como
@@ -194,7 +215,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/publicar">
           </>
         ) : null
       }
-      inicial={inicial}
+      inicial={inicialComPedido}
+      pedido={pedido?.id ?? null}
       continuar={continuar}
       comecarConferindo={Boolean(copia)}
       autor={perfil.nome}

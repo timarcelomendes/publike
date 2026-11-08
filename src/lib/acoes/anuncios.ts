@@ -185,6 +185,18 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
         vigia.parcial("A vaga foi publicada, mas o aceite do convite não ficou registrado.", erroConvite);
       }
     }
+    // agência: a vaga do pedido do cliente (migração 20270307120000) fica ligada a ele
+    const pedido = formData.get("pedido");
+    if (typeof pedido === "string" && UUID.test(pedido) && d.tipo === "vaga") {
+      const { error: erroPedido } = await supabase.rpc("responder_pedido", {
+        p_pedido: pedido,
+        p_acao: "ligar",
+        p_anuncio: data.id,
+      });
+      if (erroPedido && erroPedido.code !== "PGRST202") {
+        vigia.parcial("A vaga foi publicada, mas não ficou ligada ao pedido do cliente.", erroPedido);
+      }
+    }
     destino = `/anuncio/${data.id}?publicado=1${erroTriagem ? "&triagem=0" : ""}${comTeste ? "&teste=1" : ""}`;
     if (d.tipo === "vaga") await marcarConversao("vaga");
     // o funil do publicar em passos: a vaga saiu (só a contagem do dia; sem a migração, nada)

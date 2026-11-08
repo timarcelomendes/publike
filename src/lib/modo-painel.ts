@@ -71,6 +71,8 @@ export type Contadores = {
   /** quem viu o perfil desde a última vez que a conta abriu "Quem viu seu perfil" */
   visitas?: number;
   clientes?: number;
+  /** agência: os pedidos de vaga novos dos clientes (migração 20270307120000) */
+  pedidosClientes?: number;
   vagasNoAr?: number;
   prontos?: number;
   entrevistas?: number;
@@ -199,6 +201,7 @@ export function gruposDoModo(
   const caminho: Secao[] = agencia
     ? [
         { href: "/painel/clientes", nome: "Clientes", icone: "clientes", contador: "clientes", jeito: "texto" },
+        { href: "/painel/pedidos", nome: "Pedidos", icone: "pedidos", contador: "pedidosClientes", jeito: "pilula" },
         {
           href: "/painel/anuncios?tipo=vaga",
           nome: "Vagas",

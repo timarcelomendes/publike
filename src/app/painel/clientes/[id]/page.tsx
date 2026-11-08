@@ -34,6 +34,11 @@ import {
   rotuloModalidade,
 } from "@/lib/formato";
 import { clientesDasVagas, numerosDosClientes, obterMeuCliente } from "@/lib/servidor/clientes";
+import { linkDoCliente, pedidosDaAgencia } from "@/lib/servidor/pedidos-do-cliente";
+import { LinkDoClienteBox } from "@/components/pedidos/link-do-cliente";
+import { SeloSituacao } from "@/components/pedidos/cartao-pedido";
+import { textoDoPrazo } from "@/lib/pedidos-do-cliente";
+import { SITE_URL } from "@/lib/config";
 import { colocacoesDasVagas } from "@/lib/servidor/colocacoes";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -62,10 +67,12 @@ async function Conteudo({
   const usuario = await exigirUsuario(`/painel/clientes/${id}`);
   const cliente = await obterMeuCliente(id);
   if (!cliente) notFound();
-  const [anuncios, todos, clienteDe] = await Promise.all([
+  const [anuncios, todos, clienteDe, link, pedidos] = await Promise.all([
     listarMeusAnuncios(),
     listarMeusCandidatos(),
     clientesDasVagas(usuario.id),
+    cliente.arquivado_em ? null : linkDoCliente(id),
+    pedidosDaAgencia(id),
   ]);
   const agora = await agoraDaRequisicao();
   const vagas = anuncios.filter((a) => a.tipo === "vaga" && clienteDe.get(a.id) === id);
@@ -141,6 +148,66 @@ async function Conteudo({
           )}
         </div>
       </div>
+
+      {(link || (pedidos && pedidos.pedidos.length > 0)) && (
+        <section
+          aria-labelledby="link-do-cliente-titulo"
+          className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+        >
+          <div>
+            <h3 id="link-do-cliente-titulo" className="flex flex-wrap items-center gap-2 text-h3">
+              O cliente pede a vaga por aqui
+              <Selo variante="novo">Novo</Selo>
+            </h3>
+            <p className="mt-1 text-body-sm text-ink-muted">
+              Mande este link ao cliente: sem conta, ele pede a vaga, vê o prazo dos finalistas e o andamento. O pedido
+              chega para você no sino e por e-mail.
+            </p>
+          </div>
+          {link && (
+            <LinkDoClienteBox
+              cliente={id}
+              nome={cliente.nome}
+              telefone={cliente.telefone}
+              agencia={usuario.nome ?? "a agência"}
+              site={SITE_URL}
+              inicial={link}
+            />
+          )}
+          {pedidos && pedidos.pedidos.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-line pt-3">
+              <p className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-label">Pedidos deste cliente</span>
+                {(() => {
+                  const np = pedidos.noPrazo.get(id);
+                  return np && np.total > 0 ? (
+                    <span className="text-body-sm text-ink-muted">
+                      {np.noPrazo} de {np.total} com os finalistas no prazo, em 90 dias
+                    </span>
+                  ) : null;
+                })()}
+              </p>
+              <ul className="flex flex-col divide-y divide-line">
+                {pedidos.pedidos.slice(0, 5).map((p) => {
+                  const prazo = textoDoPrazo(p, pedidos.hoje);
+                  return (
+                    <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                      <Link href={`/painel/pedidos?cliente=${id}&ver=todos&pedido=${p.id}#pedido-${p.id}`} className="min-w-0 flex-1 text-label underline-offset-2 hover:underline">
+                        {p.cargo}
+                      </Link>
+                      {prazo && <span className="text-body-sm text-ink-muted">{prazo.texto}</span>}
+                      <SeloSituacao situacao={p.situacao} />
+                    </li>
+                  );
+                })}
+              </ul>
+              <Link href={`/painel/pedidos?cliente=${id}&ver=todos`} className="self-start text-label underline underline-offset-2">
+                Ver todos os pedidos deste cliente
+              </Link>
+            </div>
+          )}
+        </section>
+      )}
 
       <ol aria-label={`Contratação para ${cliente.nome}`} className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {passos.map((p) => {
