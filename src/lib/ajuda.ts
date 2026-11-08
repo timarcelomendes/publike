@@ -124,7 +124,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "Como acho gente pela aba Talentos?",
-        r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo, pede conexão (mesmo sem vaga aberta) ou convida a pessoa para uma vaga sua no ar. No convite, ela vê a vaga e decide se curte; o contato aparece no match.",
+        r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo, pede conexão (mesmo sem vaga aberta) ou convida a pessoa para uma vaga sua no ar. No convite, ela vê a vaga e decide se curte; o contato aparece no match. Na busca, dá para combinar palavras: “caixa OU atendente” acha qualquer uma das duas, a frase entre aspas (“\"auxiliar administrativo\"”) acha a frase inteira e o sinal de menos (“-motorista”) tira quem tem essa palavra; palavras soltas acham quem tem todas. Quem contrata salva a busca (“Salvar esta busca”, até 20) e pode ligar o aviso da semana, que conta os talentos novos que batem com ela.",
       },
       {
         p: "Dá para convidar várias pessoas de uma vez?",

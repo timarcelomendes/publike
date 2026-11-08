@@ -568,6 +568,22 @@ export async function darConsultasDeSalario(): Promise<{ contas: number; motivo?
   return { contas: Number(data ?? 0) };
 }
 
+/**
+ * As buscas salvas de Talentos com o aviso ligado (migração 20270308120000): uma vez por semana, quantos talentos
+ * novos batem com cada uma. Devolve quantas contas foram avisadas.
+ */
+export async function avisarBuscasDeTalentos(): Promise<{ avisadas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisadas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_buscas_talentos", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { avisadas: 0 };
+    console.error("Publike: falha ao avisar as buscas de Talentos:", error.message);
+    return { avisadas: 0, motivo: "Não foi possível avisar as buscas salvas de Talentos." };
+  }
+  return { avisadas: Number(data ?? 0) };
+}
+
 export async function processarFilas() {
   try {
     // as Automações personalizadas primeiro: o que elas fazem também vira aviso e e-mail (import aqui: o motor

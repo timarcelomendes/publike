@@ -120,6 +120,8 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   talento_combina: UserSearch,
   // o pedido de vaga do cliente da agência (pelo link do cliente)
   pedido_cliente: ClipboardList,
+  // talentos novos numa busca salva de Talentos
+  busca_talentos: UserSearch,
 };
 
 type Notificacao = {

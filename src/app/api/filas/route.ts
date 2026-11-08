@@ -9,6 +9,7 @@ import {
   enviarEmailsPendentes,
   enviarPushPendentes,
   avisarLiberacoesPorMeta,
+  avisarBuscasDeTalentos,
   darConsultasDeSalario,
   lembrarRespostas,
   liberarContatosParados,
@@ -86,6 +87,8 @@ export async function GET(request: Request) {
   const talentos = await comTempo(() => avisarTalentosQueCombinam());
   // quem contrata: 2 consultas de salário a cada 5 vagas novas (o aviso sai junto com os e-mails abaixo)
   const consultasSalario = await comTempo(() => darConsultasDeSalario());
+  // quem contrata: as buscas salvas de Talentos com o aviso ligado, uma vez por semana cada
+  const buscasTalentos = await comTempo(() => avisarBuscasDeTalentos());
   // o Google: as vagas que entraram ou saíram do ar (a Indexing API, com a credencial na Vercel)
   const google = await comTempo(() => avisarGoogleDasVagas(10));
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
@@ -106,6 +109,7 @@ export async function GET(request: Request) {
     liberacoes.motivo,
     talentos.motivo,
     consultasSalario.motivo,
+    buscasTalentos.motivo,
     google.motivo,
     noticias.motivo,
     testes.motivo,
@@ -137,6 +141,7 @@ export async function GET(request: Request) {
       liberacoes: liberacoes.avisadas,
       talentos: talentos.avisados,
       consultasSalario: consultasSalario.contas,
+      buscasTalentos: buscasTalentos.avisadas,
       google: google.avisadas,
       combinam: {
         vagas: combinam.vagas,

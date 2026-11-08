@@ -23,6 +23,8 @@ import { obterLocal } from "@/lib/local";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
 import { buscarTalentos } from "@/lib/servidor/talentos";
+import { minhasBuscasDeTalentos } from "@/lib/servidor/buscas-talentos";
+import { BuscasSalvas } from "@/components/talentos/buscas-salvas";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { MeuAnuncio } from "@/lib/tipos";
@@ -49,7 +51,7 @@ type Parametros = PageProps<"/talentos">["searchParams"];
  * `todos` ("Todos os talentos", o `ver=todos`).
  */
 function lerBusca(sp: Awaited<Parametros>) {
-  const q = (primeiro(sp.q) ?? "").trim().slice(0, 60);
+  const q = (primeiro(sp.q) ?? "").trim().slice(0, 100);
   const cidade = primeiro(sp.cidade);
   const pagina = Math.min(Math.max(Number(primeiro(sp.pagina)) || 1, 1), MAX_PAGINAS_TALENTOS);
   return {
@@ -130,6 +132,9 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
         <Busca searchParams={searchParams} />
       </Suspense>
       <Suspense fallback={null}>
+        <DicaEBuscasSalvas searchParams={searchParams} />
+      </Suspense>
+      <Suspense fallback={null}>
         <ChamadaTalento />
       </Suspense>
       <div className="mt-5">
@@ -170,6 +175,9 @@ function TalentosAberta({ searchParams }: { searchParams: Parametros }) {
           <Abas />
           <Suspense fallback={<Esqueleto className="mt-3 h-14 w-full rounded-lg" />}>
             <Busca searchParams={searchParams} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <DicaEBuscasSalvas searchParams={searchParams} />
           </Suspense>
           <p className="mt-3 text-body-sm text-ink-muted">
             Gente procurando trabalho perto de você, que escolheu aparecer aqui. Empresas, comércios e agências que
@@ -245,6 +253,26 @@ async function Busca({ searchParams }: { searchParams: Parametros }) {
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Embaixo da busca: o jeito de combinar palavras e, para quem contrata, as buscas salvas (migração 20270308120000).
+ */
+async function DicaEBuscasSalvas({ searchParams }: { searchParams: Parametros }) {
+  const [sp, perfil] = await Promise.all([searchParams, obterMeuPerfil().catch(() => null)]);
+  const f = lerBusca(sp);
+  const empresa = Boolean(perfil && perfil.tipo !== "pessoa");
+  const buscas = empresa ? await minhasBuscasDeTalentos() : null;
+  return (
+    <>
+      <p className="mt-2 text-body-sm text-ink-muted">
+        Dica: <span className="text-ink">caixa OU atendente</span> acha qualquer uma;{" "}
+        <span className="text-ink">&quot;auxiliar administrativo&quot;</span>, a frase inteira;{" "}
+        <span className="text-ink">-motorista</span> tira quem tem essa palavra.
+      </p>
+      {buscas && <BuscasSalvas buscas={buscas} atual={{ texto: f.q, cidade: f.cidade }} />}
+    </>
   );
 }
 

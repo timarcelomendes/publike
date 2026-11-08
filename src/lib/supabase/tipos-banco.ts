@@ -686,8 +686,24 @@ export type Database = {
         Update: SemTabela;
         Relationships: [];
       };
+      /** buscas salvas de Talentos (migração 20270308120000) */
+      buscas_talentos: {
+        Row: {
+          id: string;
+          conta_id: string;
+          nome: string;
+          texto: string | null;
+          cidade: string | null;
+          avisar: boolean;
+          avisado_em: string | null;
+          criado_em: string;
+        };
+        Insert: SemTabela;
+        Update: { avisar?: boolean };
+        Relationships: [];
+      };
       convites_vaga: {
-        Row: { anuncio_id: string; perfil_id: string; criado_em: string };
+        Row: { anuncio_id: string; perfil_id: string; criado_em: string; recado?: string | null };
         Insert: SemTabela;
         Update: SemTabela;
         Relationships: [];
@@ -3102,6 +3118,12 @@ export type Database = {
         Args: { p_anuncio: string; p_perfil: string };
         Returns: undefined;
       };
+      /** buscas salvas de Talentos (migração 20270308120000) */
+      salvar_busca_talentos: {
+        Args: { p_nome: string; p_texto: string | null; p_cidade: string | null; p_avisar?: boolean };
+        Returns: string;
+      };
+      servidor_avisar_buscas_talentos: { Args: { p_chave: string }; Returns: number };
       /** o cliente da agência (migração 20270307120000): sem login, pelo token do link */
       portal_do_cliente: { Args: { p_token: string }; Returns: Json };
       portal_pedir_vaga: {
