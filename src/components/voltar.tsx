@@ -39,6 +39,8 @@ function gravar(trilha: Tela[]) {
 /** O nome da página pelo título da aba ("Candidatos · Publike" → "Candidatos"). */
 function nomeDoTitulo(titulo: string, caminho: string) {
   if (caminho === "/") return "Início";
+  // a primeira página do painel tem o título "Meu painel", mas no menu ela é o "Hoje"
+  if (caminho === "/painel") return "Hoje";
   const nome = titulo.replace(/\s*·\s*Publike\s*$/, "").trim();
   return !nome || nome.startsWith("Publike") ? "" : nome;
 }
