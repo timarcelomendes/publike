@@ -3,13 +3,19 @@
 import { ClipboardList, Clock, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { salvarTestesDaVaga } from "@/lib/acoes/testes";
-import { MAX_TESTES_NA_VAGA, minutosDoTeste, nomeCurtoDoTeste } from "@/lib/testes";
+import { AREAS_GERAIS, MAX_TESTES_NA_VAGA, minutosDoTeste, nomeCurtoDoTeste } from "@/lib/testes";
 import { Aviso, Selo } from "../ui/basicos";
 import { Botao, BotaoLink } from "../ui/botao";
 import { Seletor, classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
-type Modelo = { id: string; titulo: string; questoes: number; da_casa: boolean; tipo: string };
+type Modelo = { id: string; titulo: string; questoes: number; da_casa: boolean; tipo: string; area?: string | null };
+
+/** Os grupos da escolha: os testes gerais, os da função e os da empresa. */
+function grupoDoTeste(m: Modelo) {
+  if (m.da_casa) return "Da sua empresa";
+  return m.area && AREAS_GERAIS.includes(m.area) ? "Testes gerais" : "Da função";
+}
 
 /** acima disso, somando os obrigatórios, muita gente desiste da vaga */
 const MINUTOS_DEMAIS = 20;
@@ -24,6 +30,7 @@ export function TestesDaVaga({
   iniciais,
   novo = null,
   sugerido = null,
+  combinam = [],
   gratis = false,
   feitas = {},
 }: {
@@ -34,6 +41,8 @@ export function TestesDaVaga({
   novo?: string | null;
   /** o teste da Publike que combina com a função da vaga */
   sugerido?: Modelo | null;
+  /** os testes gerais que também combinam com a vaga (Matemática para caixa, Inglês quando a vaga pede…) */
+  combinam?: Modelo[];
   /** sem o recurso: 1 teste da Publike por vaga, grátis */
   gratis?: boolean;
   /** quantos candidatos já fizeram cada teste (pelo id do teste) */
@@ -182,6 +191,28 @@ export function TestesDaVaga({
           </Botao>
         </div>
       )}
+      {itens.length > 0 && itens.length < limite && (() => {
+        const faltam = combinam.filter((m) => !itens.some((i) => i.modelo_id === m.id));
+        return faltam.length ? (
+          <div className="flex flex-wrap items-center gap-2 text-body-sm">
+            <span className="text-ink-muted">Combinam também com esta vaga:</span>
+            {faltam.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => {
+                  setItens((l) => (l.length < limite ? [...l, { modelo_id: m.id, obrigatoria: false }] : l));
+                  setMudou(true);
+                }}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-3 text-label hover:bg-surface-300"
+              >
+                <Plus aria-hidden className="size-4" />
+                {nomeCurtoDoTeste(m.titulo)}
+              </button>
+            ))}
+          </div>
+        ) : null;
+      })()}
       {!gratis && itens.length >= limite && (
         <p className="text-body-sm text-ink-muted">A vaga já tem {limite} testes, o máximo. Tire um para pôr outro.</p>
       )}
@@ -198,12 +229,18 @@ export function TestesDaVaga({
             envoltorio="min-w-0 flex-1 sm:max-w-md"
           >
             <option value="">Escolha um teste…</option>
-            {livres.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.titulo}
-                {m.da_casa ? " (da casa)" : ""}
-              </option>
-            ))}
+            {["Testes gerais", "Da função", "Da sua empresa"].map((g) => {
+              const doGrupo = livres.filter((m) => grupoDoTeste(m) === g);
+              return doGrupo.length ? (
+                <optgroup key={g} label={g}>
+                  {doGrupo.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {nomeCurtoDoTeste(m.titulo)}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null;
+            })}
           </Seletor>
           <Botao
             tamanho="sm"

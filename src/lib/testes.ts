@@ -27,6 +27,10 @@ export const TESTES_DA_PUBLIKE = {
   informatica: "a7a10000-0000-4000-8000-000000000007",
   portugues: "a7a10000-0000-4000-8000-000000000008",
   situacoes: "a7a10000-0000-4000-8000-000000000009",
+  // os testes gerais (migração 20270306120000)
+  matematica: "a7a10000-0000-4000-8000-000000000010",
+  raciocinio: "a7a10000-0000-4000-8000-000000000011",
+  ingles: "a7a10000-0000-4000-8000-000000000012",
 } as const;
 export type AreaDoTeste = keyof typeof TESTES_DA_PUBLIKE;
 
@@ -76,6 +80,23 @@ export function testeSugerido(titulo: string, categoria: string | null | undefin
   const t = semAcento(titulo);
   for (const [area, re] of PELO_TITULO) if (re.test(t)) return area;
   return (categoria && PELA_AREA[categoria]) || "situacoes";
+}
+
+/** As áreas dos testes gerais, que servem para qualquer função (o grupo "Testes gerais" na escolha da vaga). */
+export const AREAS_GERAIS: readonly string[] = ["portugues", "matematica", "raciocinio", "ingles"];
+
+/**
+ * Os testes gerais que combinam com a vaga, além do teste da função (que entra sozinho ao publicar): Matemática para
+ * caixa, estoque, vendas e administrativo; Raciocínio lógico para administrativo e informática; Inglês quando a vaga
+ * fala em inglês.
+ */
+export function testesGeraisQueCombinam(titulo: string, categoria: string | null | undefined, descricao = ""): AreaDoTeste[] {
+  const area = testeSugerido(titulo, categoria);
+  const lista: AreaDoTeste[] = [];
+  if (/ (ingles|english|bilingue)/.test(semAcento(`${titulo} ${descricao}`))) lista.push("ingles");
+  if (["caixa", "estoque", "vendas", "administrativo"].includes(area)) lista.push("matematica");
+  if (["administrativo", "informatica"].includes(area)) lista.push("raciocinio");
+  return lista;
 }
 
 /** "Teste Prático: Caixa" → "Caixa" (o nome do teste da Publike sem a marca, para listas curtas). */

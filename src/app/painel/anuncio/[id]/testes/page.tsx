@@ -27,6 +27,7 @@ import {
   nomeCurtoDoTeste,
   TESTES_DA_PUBLIKE,
   testeSugerido,
+  testesGeraisQueCombinam,
   textoDoResultado,
 } from "@/lib/testes";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
@@ -80,6 +81,9 @@ async function Conteudo({
   const obrigatorios = naVaga.filter((t) => t.obrigatoria);
   const idSugerido = TESTES_DA_PUBLIKE[testeSugerido(anuncio.titulo, anuncio.categoria)];
   const sugerido = biblioteca.find((m) => m.id === idSugerido) ?? null;
+  const combinam = testesGeraisQueCombinam(anuncio.titulo, anuncio.categoria, anuncio.descricao)
+    .map((a) => biblioteca.find((m) => m.id === TESTES_DA_PUBLIKE[a]))
+    .filter((m): m is (typeof biblioteca)[number] => Boolean(m));
   const candidatos = interessados.filter((p) => p.status !== "dispensada");
   const feitas: Record<string, number> = {};
   for (const r of resultados) if (r.status === "feita") feitas[r.modelo_id] = (feitas[r.modelo_id] ?? 0) + 1;
@@ -121,6 +125,7 @@ async function Conteudo({
           iniciais={naVaga.map((t) => ({ modelo_id: t.modelo_id, obrigatoria: t.obrigatoria }))}
           novo={typeof sp.novo === "string" ? sp.novo : null}
           sugerido={sugerido}
+          combinam={combinam}
           gratis={fechado}
           feitas={feitas}
         />
