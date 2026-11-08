@@ -1068,7 +1068,45 @@ export type CurtidaAdmin = {
    * pessoa chamando quem publicou (a da pessoa só a partir da migração 20270219120000)
    */
   contatos: { empresa: ToqueDeContato | null; pessoa: ToqueDeContato | null };
+  /**
+   * o chat do match (migração 20270314120000; sem ela ou sem mensagem, null): só conta o que alguém escreveu (as
+   * perguntas do match e as mensagens das automações são automáticas)
+   */
+  chat?: ChatDoMatch | null;
 };
+
+/** O chat de um match: a primeira mensagem de gente de cada lado e se cada um respondeu ao outro. */
+export type ChatDoMatch = {
+  empresaEscreveuEm: string | null;
+  pessoaEscreveuEm: string | null;
+  /** a pessoa escreveu depois da primeira mensagem do lado da empresa (de gente ou automática) */
+  pessoaRespondeuEm: string | null;
+  /** alguém da empresa escreveu depois da primeira mensagem da pessoa */
+  empresaRespondeuEm: string | null;
+  humanas: number;
+  automaticas: number;
+};
+
+/** O chat de cada match dos anúncios ("anuncio:perfil" → chat). Sem a migração 20270314120000: vazio. */
+async function chatDasCurtidas(c: ClienteBanco, idsAnuncios: string[]): Promise<Map<string, ChatDoMatch>> {
+  const mapa = new Map<string, ChatDoMatch>();
+  if (!idsAnuncios.length) return mapa;
+  const { data, error } = await c.rpc("admin_chat_das_curtidas", { p_anuncios: idsAnuncios.slice(0, 1000) });
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler o chat das curtidas: ${error.message}`);
+    return mapa;
+  }
+  for (const x of data ?? [])
+    mapa.set(`${x.anuncio_id}:${x.perfil_id}`, {
+      empresaEscreveuEm: x.empresa_escreveu_em,
+      pessoaEscreveuEm: x.pessoa_escreveu_em,
+      pessoaRespondeuEm: x.pessoa_respondeu_em,
+      empresaRespondeuEm: x.empresa_respondeu_em,
+      humanas: Number(x.humanas),
+      automaticas: Number(x.automaticas),
+    });
+  return mapa;
+}
 
 /** Um toque num botão de contato: o canal e quando. */
 /** descartou: a pessoa disse "agora não" ao WhatsApp do match (claude/plano-agora-nao-no-whatsapp.md) */
@@ -1127,9 +1165,10 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
   for (const t of toques ?? [])
     toqueDe.set(`${t.anuncio_id}:${t.perfil_id}:${t.lado}`, { canal: t.canal as ToqueDeContato["canal"], em: t.em });
   // os indicadores dos cartões: o total de curtidas de cada anúncio e como quem publicou responde
-  const [totais, respostas] = await Promise.all([
+  const [totais, respostas, chats] = await Promise.all([
     curtidasPorAnuncio(c, idsAnuncios),
     respostaDosAutores(c, [...new Set((anuncios ?? []).map((a) => a.autor_id))]),
+    chatDasCurtidas(c, idsAnuncios),
   ]);
   return linhas.map((l) => {
     const a = porAnuncio.get(l.anuncio_id) ?? null;
@@ -1167,6 +1206,7 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
         empresa: toqueDe.get(`${l.anuncio_id}:${l.perfil_id}:empresa`) ?? null,
         pessoa: toqueDe.get(`${l.anuncio_id}:${l.perfil_id}:pessoa`) ?? null,
       },
+      chat: chats.get(`${l.anuncio_id}:${l.perfil_id}`) ?? null,
     };
   });
 }
@@ -1196,8 +1236,9 @@ export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null)
     falha("as curtidas (moderação)", error);
   }
   const linhas = (Array.isArray(data) ? data : []) as unknown as LinhaDaModeracao[];
-  const respostas = await respostaDosAutores(c, [
-    ...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.autor_id] : []))),
+  const [respostas, chats] = await Promise.all([
+    respostaDosAutores(c, [...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.autor_id] : [])))]),
+    chatDasCurtidas(c, [...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.id] : [])))]),
   ]);
   return linhas.map((l) => ({
     quando: l.criado_em,
@@ -1220,6 +1261,7 @@ export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null)
       : null,
     publicou: l.publicou ? { ...l.publicou, resposta: respostas.get(l.publicou.id) ?? null } : null,
     contatos: { empresa: l.contato_empresa, pessoa: l.contato_pessoa },
+    chat: l.curtiu && l.anuncio ? (chats.get(`${l.anuncio.id}:${l.curtiu.id}`) ?? null) : null,
   }));
 }
 

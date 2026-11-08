@@ -3130,6 +3130,20 @@ export type Database = {
       /** o jeito de trabalhar (migração 20270309120000) */
       /** o arquivo de vagas para outros sites (migração 20270310120000) */
       vagas_para_o_feed: { Args: { p_limite?: number }; Returns: Json };
+      /** o chat em cada match, no Admin › Curtidas (migração 20270314120000) */
+      admin_chat_das_curtidas: {
+        Args: { p_anuncios: string[] };
+        Returns: {
+          anuncio_id: string;
+          perfil_id: string;
+          empresa_escreveu_em: string | null;
+          pessoa_escreveu_em: string | null;
+          pessoa_respondeu_em: string | null;
+          empresa_respondeu_em: string | null;
+          humanas: number;
+          automaticas: number;
+        }[];
+      };
       /** os documentos da admissão (migração 20270312120000) */
       meus_documentos_admissao: { Args: { p_anuncio: string }; Returns: Json };
       aceitar_termo_documentos: { Args: { p_anuncio: string }; Returns: undefined };

@@ -80,6 +80,24 @@ const FILTROS = [
   })),
 ];
 
+/** O chat dos matches (migração 20270314120000): só conta mensagem escrita por gente. */
+const FILTROS_CHAT = [
+  { valor: "todos", nome: "Todos" },
+  { valor: "conversaram", nome: "Os dois escreveram" },
+  { valor: "empresa_nao", nome: "Quem publicou não escreveu" },
+  { valor: "pessoa_nao", nome: "A pessoa não respondeu" },
+];
+type FiltroChat = "todos" | "conversaram" | "empresa_nao" | "pessoa_nao";
+const noFiltroDoChat = (x: CurtidaAdmin, f: FiltroChat) => {
+  if (f === "todos") return true;
+  if (x.situacao !== "match") return false;
+  const empresa = Boolean(x.chat?.empresaEscreveuEm);
+  const pessoa = Boolean(x.chat?.pessoaRespondeuEm || x.chat?.pessoaEscreveuEm);
+  if (f === "conversaram") return empresa && pessoa;
+  if (f === "empresa_nao") return !empresa;
+  return empresa && !x.chat?.pessoaRespondeuEm;
+};
+
 const DIA = 24 * 60 * 60 * 1000;
 const HORA = 60 * 60 * 1000;
 
@@ -168,8 +186,16 @@ async function Conteudo({
     );
   }
   const todas = lidas;
-  const lista =
-    situacao === "todas" ? todas : todas.filter((x) => x.situacao === situacao);
+  const pedidoChat = primeiro(sp.chat) ?? "todos";
+  const chat = (FILTROS_CHAT.some((f) => f.valor === pedidoChat) ? pedidoChat : "todos") as FiltroChat;
+  const lista = (situacao === "todas" ? todas : todas.filter((x) => x.situacao === situacao)).filter((x) =>
+    noFiltroDoChat(x, chat),
+  );
+  // o chat dos matches: quem escreveu de verdade (sem as mensagens automáticas)
+  const matches = todas.filter((x) => x.situacao === "match");
+  const empresaEscreveu = matches.filter((x) => x.chat?.empresaEscreveuEm).length;
+  const pessoaRespondeu = matches.filter((x) => x.chat?.empresaEscreveuEm && x.chat?.pessoaRespondeuEm).length;
+  const conversaram = matches.filter((x) => noFiltroDoChat(x, "conversaram")).length;
   const conta = (s: CurtidaAdmin["situacao"]) =>
     todas.filter((x) => x.situacao === s).length;
   const respondidas = todas.filter((x) => x.situacao !== "pendente").length;
@@ -212,6 +238,7 @@ async function Conteudo({
                 {
                   periodo: v === "7" ? null : v,
                   situacao: situacao === "todas" ? null : situacao,
+                  chat: chat === "todos" ? null : chat,
                 },
               )
             }
@@ -233,13 +260,36 @@ async function Conteudo({
                 {
                   periodo: periodo === "7" ? null : periodo,
                   situacao: v === "todas" ? null : v,
+                  chat: chat === "todos" ? null : chat,
+                },
+              )
+            }
+          />
+          <Filtros
+            rotulo="Chat do match"
+            opcoes={FILTROS_CHAT.map((f) => ({
+              ...f,
+              nome:
+                f.valor === "todos"
+                  ? f.nome
+                  : `${f.nome} ${matches.filter((x) => noFiltroDoChat(x, f.valor as FiltroChat)).length}`,
+            }))}
+            atual={chat}
+            link={(v) =>
+              linkCom(
+                "/admin/curtidas",
+                {},
+                {
+                  periodo: periodo === "7" ? null : periodo,
+                  situacao: situacao === "todas" ? null : situacao,
+                  chat: v === "todos" ? null : v,
                 },
               )
             }
           />
         </div>
         {todas.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Numero rotulo="Curtidas" valor={todas.length} icone={Heart} detalhe={`${conta("pendente")} esperando o aceite`} />
             <Numero
               rotulo="Respondidas"
@@ -249,6 +299,12 @@ async function Conteudo({
               }`}
             />
             <Numero rotulo="Matches" valor={conta("match")} />
+            <Numero
+              rotulo="Conversaram no chat"
+              valor={conversaram}
+              icone={MessageCircle}
+              detalhe={`de ${plural(matches.length, "match", "matches")}: quem publicou escreveu em ${empresaEscreveu}, a pessoa respondeu em ${pessoaRespondeu}`}
+            />
             <Numero rotulo="Com contato" valor={comContato} detalhe="WhatsApp, telefone ou e-mail tocado" icone={MessageCircle} />
             <Numero
               rotulo="Saíram do ar"
@@ -269,6 +325,8 @@ async function Conteudo({
             {formatarNumero(conta("pendente"))} esperando o aceite.
             {conta("match") > 0 &&
               ` Em ${formatarNumero(comContato)} ${comContato === 1 ? "match" : "dos matches"}, alguém tocou no WhatsApp, no telefone ou no e-mail.`}
+            {matches.length > 0 &&
+              ` No chat (só mensagem escrita por gente): quem publicou escreveu em ${formatarNumero(empresaEscreveu)} e a pessoa respondeu em ${formatarNumero(pessoaRespondeu)}.`}
           </p>
         )}
         {lista.length === 0 ? (
@@ -424,22 +482,41 @@ function LinhaDoTempo({ m, agora }: { m: CurtidaAdmin; agora: number }) {
     antes = m.respondida_em;
   }
 
-  // os toques nos botões de contato, na ordem em que aconteceram
-  const toques = (["empresa", "pessoa"] as const)
-    .flatMap((lado) => (m.contatos[lado] ? [{ lado, t: m.contatos[lado] }] : []))
-    .sort((a, b) => a.t.em.localeCompare(b.t.em));
-  for (const { lado, t } of toques) {
-    passos.push({
-      cor: "bg-cerrado",
-      titulo:
-        t.canal === "descartou"
-          ? "A pessoa disse “agora não” ao WhatsApp"
-          : `${lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} ${CANAL[t.canal]}`,
-      detalhe: t.canal === "descartou" ? "o chat abriu com as perguntas" : null,
-      em: t.em,
-      depois: duracao(Math.max(0, entre(antes, t.em))),
-    });
-    antes = t.em;
+  // os toques nos botões de contato e as mensagens de gente no chat, na ordem em que aconteceram
+  const eventos: { em: string; titulo: string; detalhe: string | null }[] = (["empresa", "pessoa"] as const).flatMap(
+    (lado) => {
+      const t = m.contatos[lado];
+      if (!t) return [];
+      return [
+        {
+          em: t.em,
+          titulo:
+            t.canal === "descartou"
+              ? "A pessoa disse “agora não” ao WhatsApp"
+              : `${lado === "empresa" ? "Quem publicou chamou" : "A pessoa chamou"} ${CANAL[t.canal]}`,
+          detalhe: t.canal === "descartou" ? "o chat abriu com as perguntas" : null,
+        },
+      ];
+    },
+  );
+  const chat = m.chat;
+  if (chat?.empresaEscreveuEm) eventos.push({ em: chat.empresaEscreveuEm, titulo: "Quem publicou escreveu no chat", detalhe: null });
+  if (chat?.pessoaEscreveuEm && chat.pessoaEscreveuEm !== chat.pessoaRespondeuEm)
+    eventos.push({ em: chat.pessoaEscreveuEm, titulo: "A pessoa escreveu no chat", detalhe: null });
+  if (chat?.pessoaRespondeuEm) eventos.push({ em: chat.pessoaRespondeuEm, titulo: "A pessoa respondeu no chat", detalhe: null });
+  if (chat?.empresaRespondeuEm && chat.empresaRespondeuEm !== chat.empresaEscreveuEm)
+    eventos.push({ em: chat.empresaRespondeuEm, titulo: "Quem publicou respondeu no chat", detalhe: null });
+  for (const e of eventos.sort((a, b) => a.em.localeCompare(b.em))) {
+    passos.push({ cor: "bg-cerrado", titulo: e.titulo, detalhe: e.detalhe, em: e.em, depois: duracao(Math.max(0, entre(antes, e.em))) });
+    antes = e.em;
+  }
+  // o match sem conversa de gente: quem ainda não escreveu (as automáticas não contam)
+  if (m.situacao === "match") {
+    const auto = chat?.automaticas ? ` (só ${plural(chat.automaticas, "mensagem automática", "mensagens automáticas")})` : "";
+    if (!chat?.empresaEscreveuEm)
+      passos.push({ cor: COR.pendente, titulo: "Quem publicou não escreveu no chat", detalhe: auto ? auto.trim().slice(1, -1) : null, aberto: true });
+    else if (!chat.pessoaRespondeuEm)
+      passos.push({ cor: COR.pendente, titulo: "A pessoa não respondeu no chat", aberto: true });
   }
 
   if (m.anuncio) {
