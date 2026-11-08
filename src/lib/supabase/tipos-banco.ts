@@ -2151,6 +2151,7 @@ export type Database = {
         Returns: number;
       };
       /** a parte das curtidas que cada um responde (0 a 1) e a mediana em horas; só com 5 curtidas ou mais */
+      moderacao_curtidas: { Args: { p_desde: string | null }; Returns: Json };
       resposta_de_quem_publica: {
         Args: { p_autores: string[] };
         Returns: { autor_id: string; taxa: number; horas: number | null; automaticas?: number; diretas?: number }[];

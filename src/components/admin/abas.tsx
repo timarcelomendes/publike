@@ -96,6 +96,8 @@ const ABAS_MODERACAO = [
   { href: "/admin/anuncios", nome: "Anúncios" },
   // os stories e o carrossel do dia, também pelo celular (só vagas no ar, que já são públicas)
   { href: "/admin/vagas-do-dia", nome: "Vagas do dia" },
+  // as curtidas também no site no ar (a função moderacao_curtidas, só para moderador)
+  { href: "/admin/curtidas", nome: "Curtidas" },
 ];
 
 function abaAtiva(caminho: string | null, abas: { href: string }[]) {

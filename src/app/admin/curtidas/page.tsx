@@ -1,11 +1,13 @@
 import { Heart, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Filtros, linkCom, Numero, Secao } from "@/components/admin/ui";
-import { Vazio } from "@/components/ui/basicos";
+import { Aviso, Vazio } from "@/components/ui/basicos";
 import {
+  curtidasDaModeracao,
   curtidasRecentes,
   inicioDeHoje,
   type CurtidaAdmin,
@@ -20,14 +22,17 @@ import {
   tempoRelativo,
 } from "@/lib/formato";
 import { comoResponde } from "@/lib/resposta";
-import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { ehModerador } from "@/lib/dados";
+import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Curtidas" };
 
 // Admin › Curtidas (05/11/2026): quem curtiu o quê, de quem, e como ficou (esperando o aceite, aceita e falta o
 // currículo, deu match, não foi dessa vez, match desfeito). Só no admin, no computador do dono. Cada nome leva à
-// ficha da conta ou do anúncio no admin.
+// ficha da conta ou do anúncio no admin. No site no ar, a moderação (com login) vê a mesma lista pela função
+// moderacao_curtidas (migração 20270304120000); ali os nomes levam ao perfil público.
 
 const PERIODOS = [
   { valor: "hoje", nome: "Hoje" },
@@ -135,7 +140,9 @@ async function Conteudo({
 }: {
   searchParams: PageProps<"/admin/curtidas">["searchParams"];
 }) {
-  const c = await exigirAdminLocal();
+  // o admin (no computador do dono) ou a moderação, com login, no site no ar
+  const admin = await ehAdminLocal();
+  if (!admin && !(await ehModerador())) notFound();
   const sp = await searchParams;
   const pedido = primeiro(sp.periodo) ?? "7";
   const periodo = PERIODOS.some((p) => p.valor === pedido) ? pedido : "7";
@@ -150,7 +157,17 @@ async function Conteudo({
       : periodo === "hoje"
         ? inicioDeHoje(agora)
         : new Date(agora - Number(periodo) * DIA).toISOString();
-  const todas = await curtidasRecentes(c, desde);
+  const lidas = admin
+    ? await curtidasRecentes(criarClienteAdmin(), desde)
+    : await curtidasDaModeracao(await criarClienteServidor(), desde);
+  if (!lidas) {
+    return (
+      <Aviso tipo="alerta" titulo="Falta a migração das curtidas para a moderação">
+        Rode no Supabase a migração 20270304120000_curtidas_para_moderador.sql para ver as curtidas no site no ar.
+      </Aviso>
+    );
+  }
+  const todas = lidas;
   const lista =
     situacao === "todas" ? todas : todas.filter((x) => x.situacao === situacao);
   const conta = (s: CurtidaAdmin["situacao"]) =>
@@ -259,7 +276,7 @@ async function Conteudo({
             Troque o período ou o filtro.
           </Vazio>
         ) : (
-          <Tabela linhas={lista} agora={agora} />
+          <Tabela linhas={lista} agora={agora} admin={admin} />
         )}
       </Secao>
     </div>
@@ -269,15 +286,18 @@ async function Conteudo({
 function Conta({
   c,
   agora,
+  admin,
 }: {
   c: { id: string; nome: string; tipo: string; acesso: string | null } | null;
   agora: number;
+  /** a ficha da conta só existe no admin; na moderação, o perfil público */
+  admin: boolean;
 }) {
   if (!c) return <span className="text-ink-muted">Conta excluída</span>;
   return (
     <span className="flex min-w-0 flex-col">
       <Link
-        href={`/admin/usuarios/${c.id}`}
+        href={admin ? `/admin/usuarios/${c.id}` : `/perfil/${c.id}`}
         className="font-medium underline-offset-2 hover:underline"
       >
         {c.nome}
@@ -294,7 +314,7 @@ function Conta({
   );
 }
 
-function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
+function Tabela({ linhas, agora, admin }: { linhas: CurtidaAdmin[]; agora: number; admin: boolean }) {
   return (
     <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
       <table className="w-full min-w-[44rem] text-left text-body-sm">
@@ -330,7 +350,7 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                 {tempoRelativo(m.quando, agora)}
               </td>
               <td className="py-2 pr-3">
-                <Conta c={m.curtiu} agora={agora} />
+                <Conta c={m.curtiu} agora={agora} admin={admin} />
               </td>
               <td className="py-2 pr-3">
                 {m.anuncio ? (
@@ -351,7 +371,7 @@ function Tabela({ linhas, agora }: { linhas: CurtidaAdmin[]; agora: number }) {
                 )}
               </td>
               <td className="py-2 pr-3">
-                <Conta c={m.publicou} agora={agora} />
+                <Conta c={m.publicou} agora={agora} admin={admin} />
                 {/* o mesmo indicador do cartão da vaga */}
                 {m.publicou?.resposta && (
                   <span

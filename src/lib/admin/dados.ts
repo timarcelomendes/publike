@@ -1171,6 +1171,58 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
   });
 }
 
+/** Uma linha de moderacao_curtidas (migração 20270304120000). */
+type LinhaDaModeracao = {
+  criado_em: string;
+  status: string;
+  aceita_em: string | null;
+  respondida_em: string | null;
+  respondida_por: string | null;
+  curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null } | null;
+  anuncio: (NonNullable<CurtidaAdmin["anuncio"]> & { autor_id: string }) | null;
+  publicou: { id: string; nome: string; tipo: string; acesso: string | null } | null;
+  contato_empresa: ToqueDeContato | null;
+  contato_pessoa: ToqueDeContato | null;
+};
+
+/**
+ * As mesmas curtidas de `curtidasRecentes`, para a moderação no site no ar (com login, sem a chave secreta): a função
+ * moderacao_curtidas só responde para quem é moderador. Sem a migração 20270304120000: null.
+ */
+export async function curtidasDaModeracao(c: ClienteBanco, desde: string | null): Promise<CurtidaAdmin[] | null> {
+  const { data, error } = await c.rpc("moderacao_curtidas", { p_desde: desde });
+  if (error) {
+    if (error.code === "PGRST202") return null;
+    falha("as curtidas (moderação)", error);
+  }
+  const linhas = (Array.isArray(data) ? data : []) as unknown as LinhaDaModeracao[];
+  const respostas = await respostaDosAutores(c, [
+    ...new Set(linhas.flatMap((l) => (l.anuncio ? [l.anuncio.autor_id] : []))),
+  ]);
+  return linhas.map((l) => ({
+    quando: l.criado_em,
+    respondida_em: l.respondida_em ?? l.aceita_em ?? null,
+    respondida_por: l.respondida_por ?? null,
+    situacao:
+      l.status === "pendente" ? (l.aceita_em ? "aceita" : "pendente") : (l.status as CurtidaAdmin["situacao"]),
+    curtiu: l.curtiu,
+    anuncio: l.anuncio
+      ? {
+          id: l.anuncio.id,
+          titulo: l.anuncio.titulo,
+          tipo: l.anuncio.tipo,
+          status: l.anuncio.status,
+          preenchida_em: l.anuncio.preenchida_em,
+          expira_em: l.anuncio.expira_em,
+          atualizado_em: l.anuncio.atualizado_em,
+          curtidas: Number(l.anuncio.curtidas),
+        }
+      : null,
+    publicou: l.publicou ? { ...l.publicou, resposta: respostas.get(l.publicou.id) ?? null } : null,
+    contatos: { empresa: l.contato_empresa, pessoa: l.contato_pessoa },
+  }));
+}
+
 /** Quantas curtidas cada anúncio tem (todas, de sempre), lidas em páginas de 1.000. */
 async function curtidasPorAnuncio(c: ClienteBanco, ids: string[]): Promise<Map<string, number>> {
   const total = new Map<string, number>();
