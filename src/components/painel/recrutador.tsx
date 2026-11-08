@@ -44,6 +44,7 @@ import { Agora, type ItemAgora } from "./agora";
 import { resumoDosPedidos } from "@/lib/servidor/pedidos-do-cliente";
 import { ondeAVagaAparece } from "@/lib/feed-vagas";
 import { vagasEmOutrosSites } from "@/lib/servidor/feed-vagas";
+import { indicadosDasVagas } from "@/lib/servidor/indicacao";
 import { TalentosDaVaga } from "./hoje-extras";
 import { NivelDaSaude } from "./saude-vaga";
 
@@ -437,11 +438,16 @@ export async function PainelRecrutador({
 
   const responde = resposta ? comoResponde(resposta) : null;
   // onde a vaga aparece (o arquivo de vagas, parte 2 do plano de 08/11)
-  const emOutrosSites = (await vagasEmOutrosSites(autorId).catch(() => null)) ?? true;
-  const ondeAparece = () => ondeAVagaAparece(emOutrosSites);
   const listaDeVagas = agencia
     ? vagas.filter((v) => !caminho.vagas.find((c) => c.anuncio.id === v.id)?.clienteId)
     : vagas;
+  // e quantos chegaram por indicação (parte 3)
+  const [outrosSites, porIndicacao] = await Promise.all([
+    vagasEmOutrosSites(autorId).catch(() => null),
+    indicadosDasVagas(listaDeVagas.map((v) => v.id)).catch(() => new Map<string, { indicados: number }>()),
+  ]);
+  const emOutrosSites = outrosSites ?? true;
+  const ondeAparece = () => ondeAVagaAparece(emOutrosSites);
 
   // ------------------------------------------------------------ conta nova
   const divulgou = todos.length > 0;
@@ -662,6 +668,14 @@ export async function PainelRecrutador({
                             <strong className="text-ink">{contratado}</strong>{" "}
                             {contratado === 1 ? "contratado" : "contratados"}
                           </span>
+                          {(porIndicacao.get(v.id)?.indicados ?? 0) > 0 && (
+                            <Link
+                              href={`/painel/anuncio/${v.id}/convidar#indicacao`}
+                              className="underline-offset-2 hover:underline"
+                            >
+                              <strong className="text-ink">{porIndicacao.get(v.id)?.indicados}</strong> por indicação
+                            </Link>
+                          )}
                         </span>
                         {atencao && <span className="text-body-sm text-terra-text">{atencao}</span>}
                         <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line pt-3">

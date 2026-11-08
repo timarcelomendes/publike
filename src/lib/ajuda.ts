@@ -135,6 +135,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Aparece no Google Vagas, que o Publike avisa na hora em que a vaga entra no ar. O Publike também tem um arquivo com as vagas no ar para outros sites de vagas lerem; cada site entra quando confirma que lê, e aí ele aparece na sua vaga, em “Aparece em”. Quem se candidata por lá cai na sua caixa de candidatos, como sempre, e os Resultados mostram de onde a pessoa veio. Não quer? Em Página de vagas, desligue “Suas vagas em outros sites”: elas ficam só no Publike e no Google.",
       },
       {
+        p: "Como peço indicação para uma vaga?",
+        r: "Em Divulgar, no kit, toque na vaga em “Peça indicação” (ou abra a vaga e vá em Chamar candidato de fora). Escreva o nome de quem vai indicar, como “João, do caixa”, e mande o link para essa pessoa. Quem se candidatar por ele aparece no quadro com “Indicado por João, do caixa”, e ali você vê quantos candidatos e quantos contratados cada link trouxe. Quem tem conta no Publike também pode indicar com o próprio link, no botão “Indicar alguém” da vaga. Quem indicou não vê nada do candidato. Prêmio para quem indica, se tiver, é combinado direto entre vocês.",
+      },
+      {
         p: "O que aparece no Hoje do painel?",
         r: "Em cima, o “Agora”: uma lista só, na ordem do que é mais urgente, com a hora na frente de cada coisa (quem espera a sua resposta, as entrevistas de hoje, quem foi entrevistado e espera a decisão, a vaga parada, os pedidos e os prazos dos clientes, na agência). Cada item tem um botão; “Decidir agora” abre os candidatos um por um. Embaixo, as suas vagas, com os números de cada etapa, onde a vaga aparece e o botão Divulgar, e ao lado “Esta semana”, com as entrevistas. A reputação fica recolhida no fim: toque para ver os três números. No menu, as ferramentas menos usadas ficam em “Mais ferramentas”.",
       },

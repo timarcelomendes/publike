@@ -40,6 +40,7 @@ import { BarraCurtirCelular } from "@/components/anuncio/barra-curtir-celular";
 import { ContarAbertura } from "@/components/anuncio/contar-abertura";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
+import { codigoDaPessoa } from "@/lib/indicacao";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
 import { VerMaisPerto } from "@/components/anuncio/ver-mais";
@@ -827,6 +828,7 @@ async function DetalheAnuncio({
               vaga={vaga}
               proprio={proprio}
               valor={valor}
+              codigo={usuario && vaga && !proprio ? codigoDaPessoa(usuario.id) : undefined}
             />
           )}
 

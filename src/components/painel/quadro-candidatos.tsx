@@ -105,6 +105,8 @@ export type CartaoQuadro = {
   finalista: RespostaCliente | null;
   /** agência: a colocação de quem foi contratado (o começo, a taxa e a garantia) */
   colocacao: Colocacao | null;
+  /** chegou pelo link de quem indicou: o nome de quem indicou */
+  indicadoPor?: string | null;
   /** "Ordenar pelo Copiloto": a posição no ranking da vaga (só quando a vaga já foi lida) */
   copiloto?: number | null;
   /** o Teste Prático: o resultado numa palavra de cada teste feito (migração 20261225120000) */
@@ -625,6 +627,7 @@ function Cartao({
         entrevistaAberta ||
         c.status === "desfeito" ||
         c.finalista ||
+        c.indicadoPor ||
         c.colocacao ||
         c.video ||
         c.avaliacao ||
@@ -640,6 +643,7 @@ function Cartao({
             </Selo>
           )}
           {c.finalista && <SeloDoCliente r={c.finalista} agencia={agencia} />}
+          {c.indicadoPor && <Selo variante="contorno">Indicado por {c.indicadoPor}</Selo>}
           {c.colocacao && <SeloDaColocacao c={c.colocacao} agora={agora} />}
           {c.video && (
             <Selo variante={SITUACOES_VIDEO[c.video.situacao].tom}>{SITUACOES_VIDEO[c.video.situacao].nome}</Selo>

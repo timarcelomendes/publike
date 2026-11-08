@@ -1,4 +1,5 @@
 import "server-only";
+import { indicacoesDaVaga } from "./indicacao";
 import { diaADiaDasVagas, jeitosDasPessoas } from "./jeito-de-trabalhar";
 import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { esperaCurriculo, etapaQueVale, type EtapaCandidato } from "@/lib/constantes";
@@ -62,6 +63,8 @@ export type CartaoDoQuadro = {
   finalista: RespostaCliente | null;
   /** agência: a colocação (o começo, a taxa e a garantia) de quem foi contratado */
   colocacao: Colocacao | null;
+  /** chegou pelo link de quem indicou (migração 20270311120000): o nome de quem indicou */
+  indicadoPor: string | null;
 };
 
 /** As entrevistas em aberto (ou a última) de cada candidato de uma vaga. */
@@ -110,7 +113,7 @@ function finalistaDe(f: RespostaCliente | undefined): RespostaCliente | null {
 
 export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
   const id = anuncio.id;
-  const [interessados, etapas, curriculos, respostas, triagem, entrevistas, modelos, finalistas, colocacoes] =
+  const [interessados, etapas, curriculos, respostas, triagem, entrevistas, modelos, finalistas, colocacoes, indicacoes] =
     await Promise.all([
       listarInteressados(id),
       listarEtapasDosCandidatos(id),
@@ -121,6 +124,7 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       modelosDaConta(),
       finalistasDaVaga(id),
       colocacoesDasVagas([id]),
+      indicacoesDaVaga(id),
     ]);
   const perguntas: Pergunta[] = juntarTriagem(perguntasDoBanco(anuncio.perguntas), triagem);
   // o % pelo contexto: a função que a IA leu da vaga e de cada experiência (cópias, só para a conta)
@@ -175,6 +179,7 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       aceita: anuncio.pede_curriculo && !cv && esperaCurriculo(p),
       finalista: finalistaDe(finalistas.get(p.perfil_id)),
       colocacao: colocacoes.get(`${id}:${p.perfil_id}`) ?? null,
+      indicadoPor: indicacoes.get(p.perfil_id) ?? null,
     };
   });
   // os mais aderentes primeiro; empate: quem curtiu antes

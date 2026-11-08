@@ -1,11 +1,13 @@
 import { Send, UsersRound } from "lucide-react";
+import { linkComIndicacao } from "@/lib/indicacao";
 import { classesBotao } from "../ui/botao";
 
 /**
  * Indicar alguém pelo WhatsApp: vaga de bairro anda no boca a boca, e o
  * boca a boca vira candidato. Link comum (funciona sem JavaScript); o
  * utm (whatsapp:indicacao, whatsapp:compartilhar) fica como origem da conta
- * nova em Admin › Campanhas.
+ * nova em Admin › Campanhas. Com o código de quem indica (?i=, quem tem conta), a
+ * curtida guarda quem indicou e a empresa vê "Indicado por" (src/lib/indicacao.ts).
  */
 export function linkDeIndicacao({
   url,
@@ -13,6 +15,7 @@ export function linkDeIndicacao({
   lugar,
   vaga,
   proprio,
+  codigo,
 }: {
   url: string;
   titulo: string;
@@ -20,8 +23,10 @@ export function linkDeIndicacao({
   vaga: boolean;
   /** quem publicou pedindo indicação */
   proprio: boolean;
+  /** o código de quem indica (quem tem conta: "p.<perfil>") */
+  codigo?: string;
 }) {
-  const link = `${url}?utm_source=whatsapp&utm_campaign=indicacao`;
+  const link = codigo ? linkComIndicacao(url, codigo) : `${url}?utm_source=whatsapp&utm_campaign=indicacao`;
   const texto = proprio
     ? vaga
       ? `Estou contratando: ${titulo} (${lugar}). Conhece alguém? Pode se candidatar de graça pelo Publike: ${link}`
@@ -65,7 +70,9 @@ export function QuadroIndicar(props: Parameters<typeof linkDeIndicacao>[0] & { v
       <p className="text-body-sm text-ink-muted">
         {proprio
           ? "Mande para amigos e grupos do bairro. Indicação de conhecido costuma trazer gente boa."
-          : "Mande pelo WhatsApp. Uma indicação sua pode ser o próximo emprego de alguém."}
+          : resto.codigo && vaga
+            ? "Mande pelo WhatsApp. Se a pessoa se candidatar pelo seu link, a empresa vê que foi indicação sua."
+            : "Mande pelo WhatsApp. Uma indicação sua pode ser o próximo emprego de alguém."}
       </p>
       <div className="flex flex-wrap gap-2">
         <a

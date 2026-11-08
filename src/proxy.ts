@@ -4,6 +4,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 import { PACOTE_ANDROID } from "@/lib/android";
 import { COOKIES_DA_SESSAO } from "@/lib/config";
 import { COOKIE_ORIGEM, DURACAO_ORIGEM, origemDoLink } from "@/lib/origem";
+import { codigoValido, COOKIE_INDICACAO, DURACAO_INDICACAO, valorDoCookie } from "@/lib/indicacao";
 import { areaDoSlug, cidadeDoSlug, SLUG_PROGRAMAS, SLUG_RECENTES } from "@/lib/paginas-busca";
 import { funcaoDaListaPeloSlug } from "@/lib/funcoes-das-paginas";
 
@@ -47,6 +48,23 @@ function marcarOrigem(request: NextRequest, resposta: NextResponse) {
   if (!origem) return;
   resposta.cookies.set(COOKIE_ORIGEM, origem, {
     maxAge: DURACAO_ORIGEM,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: COOKIES_DA_SESSAO.secure,
+    path: "/",
+  });
+}
+
+// Chegou pelo link de quem indica (/anuncio/<id>?i=<código>): guarda a vaga e o código por 30 dias; vale o último
+// link aberto. A curtida numa vaga daquela empresa grava quem indicou (src/lib/indicacao.ts).
+const PAGINA_DA_VAGA = /^\/anuncio\/([0-9a-f-]{36})\/?$/i;
+function marcarIndicacao(request: NextRequest, resposta: NextResponse) {
+  if (request.method !== "GET") return;
+  const vaga = PAGINA_DA_VAGA.exec(request.nextUrl.pathname)?.[1];
+  const codigo = request.nextUrl.searchParams.get("i");
+  if (!vaga || !codigoValido(codigo)) return;
+  resposta.cookies.set(COOKIE_INDICACAO, valorDoCookie(vaga, codigo), {
+    maxAge: DURACAO_INDICACAO,
     httpOnly: true,
     sameSite: "lax",
     secure: COOKIES_DA_SESSAO.secure,
@@ -161,6 +179,7 @@ export async function proxy(request: NextRequest, evento: NextFetchEvent) {
   const logado = Boolean(data?.claims?.sub);
 
   marcarOrigem(request, resposta);
+  marcarIndicacao(request, resposta);
   // entrou de novo (por qualquer jeito): o login automático do Google volta a valer
   if (logado && request.cookies.has(COOKIE_SAIU)) resposta.cookies.delete(COOKIE_SAIU);
 

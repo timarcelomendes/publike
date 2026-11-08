@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, GalleryHorizontal, Image as ImageIcon, MessageCircle, Printer } from "lucide-react";
+import { Download, GalleryHorizontal, HandHeart, Image as ImageIcon, MessageCircle, Printer } from "lucide-react";
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { classesBotao } from "../ui/botao";
 import { Selo } from "../ui/basicos";
@@ -101,6 +102,29 @@ export function KitDeDivulgacao({
         </div>
         <p className="text-body-sm text-ink-muted">Serve também no Facebook, no LinkedIn e no Telegram.</p>
       </div>
+
+      {vagas.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h4 className="flex items-center gap-2 text-label">
+            <HandHeart aria-hidden className="size-4 shrink-0 text-ink-muted" />
+            Peça indicação
+            <Selo variante="novo">Novo</Selo>
+          </h4>
+          <p className="text-body-sm text-ink-muted">
+            Um link para cada pessoa que vai indicar (um funcionário, um cliente): você vê quem cada um trouxe, e o
+            candidato aparece no quadro com &quot;Indicado por&quot;.
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {vagas.slice(0, 8).map((v) => (
+              <li key={v.id}>
+                <Link href={`/painel/anuncio/${v.id}/convidar#indicacao`} className={classesBotao("secundario", "sm")}>
+                  {v.titulo}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {instagram && (
         <div className="flex flex-col gap-3">

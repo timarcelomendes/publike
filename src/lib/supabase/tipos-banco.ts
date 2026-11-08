@@ -3130,6 +3130,26 @@ export type Database = {
       /** o jeito de trabalhar (migração 20270309120000) */
       /** o arquivo de vagas para outros sites (migração 20270310120000) */
       vagas_para_o_feed: { Args: { p_limite?: number }; Returns: Json };
+      /** a indicação (migração 20270311120000) */
+      criar_link_indicacao: { Args: { p_anuncio: string; p_nome: string }; Returns: string };
+      registrar_indicacao: { Args: { p_anuncio: string; p_codigo: string; p_origem: string }; Returns: boolean };
+      links_indicacao_da_vaga: {
+        Args: { p_anuncio: string };
+        Returns: {
+          id: string;
+          nome: string;
+          codigo: string;
+          de_pessoa: boolean;
+          indicados: number;
+          contratados: number;
+          criado_em: string;
+        }[];
+      };
+      indicacoes_da_vaga: { Args: { p_anuncio: string }; Returns: { perfil_id: string; indicado_por: string }[] };
+      indicados_das_vagas: {
+        Args: { p_anuncios: string[] };
+        Returns: { anuncio_id: string; indicados: number; contratados: number }[];
+      };
       jeitos_de_trabalhar: { Args: { p_perfis: string[] }; Returns: { perfil_id: string; jeito: string[] }[] };
       /** buscas salvas de Talentos (migração 20270308120000) */
       salvar_busca_talentos: {

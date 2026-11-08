@@ -1,10 +1,11 @@
-import { ArrowLeft, History, Mailbox, UserPlus } from "lucide-react";
+import { ArrowLeft, HandHeart, History, Mailbox, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ChamarCandidato, ListaDeConvites } from "@/components/convite-candidato/chamar-candidato";
 import { ChamarDeNovo } from "@/components/convite-candidato/chamar-de-novo";
+import { LinksDeIndicacao } from "@/components/indicacao/links-de-indicacao";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -15,6 +16,7 @@ import { DIAS_DO_CONVITE, situacaoNaLista } from "@/lib/convite-candidato";
 import { ajudaDaIADisponivel, obterAnuncio } from "@/lib/dados";
 import { plural } from "@/lib/formato";
 import { candidatosDeAntes, convitesDaVaga, convitesDeTalentos } from "@/lib/servidor/convites-candidato";
+import { linksDeIndicacaoDaVaga } from "@/lib/servidor/indicacao";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -39,11 +41,12 @@ async function Conteudo({ id }: { id: string }) {
   const anuncio = await obterAnuncio(id);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
-  const [convites, comIA, deAntes, deTalentos] = await Promise.all([
+  const [convites, comIA, deAntes, deTalentos, indicacoes] = await Promise.all([
     convitesDaVaga(id),
     ajudaDaIADisponivel().catch(() => false),
     candidatosDeAntes(id),
     convitesDeTalentos(id),
+    linksDeIndicacaoDaVaga(id),
   ]);
   const noAr = anuncio.status === "ativo" && new Date(anuncio.expira_em).getTime() > agora && !anuncio.preenchida_em;
   const esperando = convites.filter((c) => situacaoNaLista(c, agora) === "valido").length;
@@ -98,6 +101,28 @@ async function Conteudo({ id }: { id: string }) {
           </Aviso>
         )}
       </section>
+
+      {indicacoes && noAr && (
+        <section
+          id="indicacao"
+          aria-labelledby="peca-indicacao"
+          className="flex scroll-mt-32 flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
+        >
+          <div>
+            <h3 id="peca-indicacao" className="flex flex-wrap items-center gap-2 text-h3">
+              <HandHeart aria-hidden className="size-5 text-ink-muted" />
+              Peça indicação
+              <Selo variante="novo">Novo</Selo>
+            </h3>
+            <p className="mt-1 text-body-sm text-ink-muted">
+              Crie um link para cada pessoa que vai indicar: um funcionário, um cliente, um conhecido. Quem se candidatar
+              por ele aparece no quadro com &quot;Indicado por&quot;, e aqui você vê quantos cada um trouxe. Se quiser dar um
+              prêmio a quem indicou, combine direto com a pessoa.
+            </p>
+          </div>
+          <LinksDeIndicacao anuncioId={id} url={`${SITE_URL}/anuncio/${id}`} vaga={anuncio.titulo} links={indicacoes} />
+        </section>
+      )}
 
       {deAntes && noAr && (
         <section id="chamar-de-novo" aria-labelledby="de-antes" className="flex scroll-mt-32 flex-col gap-3">

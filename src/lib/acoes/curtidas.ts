@@ -10,6 +10,7 @@ import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
+import { registrarIndicacaoDaCurtida } from "@/lib/servidor/indicacao";
 import { lerCandidatosNovos } from "@/lib/servidor/triagem-automatica";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm, Resultado } from "@/lib/tipos";
@@ -220,6 +221,8 @@ export async function curtirAnuncio(
     return { ok: false, erro: mensagemDeErro(error) };
   }
 
+  // chegou pelo link de quem indica (cookie de 30 dias): a curtida guarda quem indicou
+  if (alvo?.tipo === "vaga") await registrarIndicacaoDaCurtida(supabase, anuncioId);
   after(processarFilas);
   // a Triagem com IA lê a candidatura logo (só na vaga de quem tem o recurso; o banco confere)
   if (alvo?.tipo === "vaga") after(() => lerCandidatosNovos(3, anuncioId));
