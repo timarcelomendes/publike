@@ -1,4 +1,7 @@
 import { Link2, Palette } from "lucide-react";
+import { VagasEmOutrosSites } from "@/components/painel/vagas-em-outros-sites";
+import { ondeAVagaAparece } from "@/lib/feed-vagas";
+import { vagasEmOutrosSites } from "@/lib/servidor/feed-vagas";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -44,6 +47,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/lin
   const [perfil, caminho, agora] = await Promise.all([obterMeuPerfil(), caminhoDaConta(), agoraDaRequisicao()]);
   if (!perfil) return null;
   const marca = perfil.tipo === "pessoa" ? null : await marcaDaEmpresa(perfil.id);
+  // as vagas no arquivo para outros sites (migração 20270310120000; sem ela, a escolha não aparece)
+  const emOutrosSites = perfil.tipo === "pessoa" ? null : await vagasEmOutrosSites(perfil.id);
   const noAr = caminho.vagas.filter((v) => v.anuncio.status === "ativo");
   const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));
   const finalistas = caminho.vagas.filter((v) => v.link && Date.parse(v.link.expira_em) >= agora);
@@ -97,6 +102,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/lin
             </span>
           </span>
         </Link>
+      )}
+
+      {perfil.tipo !== "pessoa" && emOutrosSites !== null && (
+        <VagasEmOutrosSites inicial={emOutrosSites} onde={ondeAVagaAparece(true)} />
       )}
 
       <KitDeDivulgacao

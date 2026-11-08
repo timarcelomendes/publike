@@ -306,6 +306,8 @@ export type Database = {
       };
       perfis: {
         Row: {
+          /** as vagas no arquivo para outros sites (migração 20270310120000) */
+          vagas_em_outros_sites?: boolean;
           id: string;
           nome: string;
           tipo: string;
@@ -334,6 +336,7 @@ export type Database = {
           cnpj?: string | null;
         };
         Update: {
+          vagas_em_outros_sites?: boolean;
           nome?: string;
           tipo?: string;
           foto?: string | null;
@@ -3125,6 +3128,8 @@ export type Database = {
         Returns: undefined;
       };
       /** o jeito de trabalhar (migração 20270309120000) */
+      /** o arquivo de vagas para outros sites (migração 20270310120000) */
+      vagas_para_o_feed: { Args: { p_limite?: number }; Returns: Json };
       jeitos_de_trabalhar: { Args: { p_perfis: string[] }; Returns: { perfil_id: string; jeito: string[] }[] };
       /** buscas salvas de Talentos (migração 20270308120000) */
       salvar_busca_talentos: {

@@ -43,6 +43,7 @@ import { ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
 import { Agora, type ItemAgora } from "./agora";
 import { resumoDosPedidos } from "@/lib/servidor/pedidos-do-cliente";
 import { ondeAVagaAparece } from "@/lib/feed-vagas";
+import { vagasEmOutrosSites } from "@/lib/servidor/feed-vagas";
 import { TalentosDaVaga } from "./hoje-extras";
 import { NivelDaSaude } from "./saude-vaga";
 
@@ -436,7 +437,8 @@ export async function PainelRecrutador({
 
   const responde = resposta ? comoResponde(resposta) : null;
   // onde a vaga aparece (o arquivo de vagas, parte 2 do plano de 08/11)
-  const ondeAparece = () => ondeAVagaAparece(true);
+  const emOutrosSites = (await vagasEmOutrosSites(autorId).catch(() => null)) ?? true;
+  const ondeAparece = () => ondeAVagaAparece(emOutrosSites);
   const listaDeVagas = agencia
     ? vagas.filter((v) => !caminho.vagas.find((c) => c.anuncio.id === v.id)?.clienteId)
     : vagas;
