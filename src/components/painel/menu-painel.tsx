@@ -243,11 +243,13 @@ export function MenuPainel({
                   : ""
               }`}
             >
-              {g.secoes.map((s) => {
+              {(() => {
+                // o menu com 4 itens fixos (08/11/2026): no computador, o resto do grupo fica em "Mais ferramentas"
+                const item = (s: (typeof g.secoes)[number], soNoCelular = false) => {
                 const Icone = ICONES[s.icone];
                 const atualSecao = ativa === s.href;
                 return (
-                  <li key={s.href} className="relative shrink-0">
+                  <li key={s.href} className={`relative shrink-0 ${soNoCelular ? "lg:hidden" : ""}`}>
                     <Link
                       href={s.href}
                       aria-current={atualSecao ? "page" : undefined}
@@ -288,7 +290,28 @@ export function MenuPainel({
                     </Link>
                   </li>
                 );
-              })}
+              };
+                const fixas = g.secoes.filter((x) => !x.mais);
+                const mais = g.secoes.filter((x) => x.mais);
+                const maisAtiva = mais.some((x) => x.href === ativa);
+                return (
+                  <>
+                    {fixas.map((x) => item(x))}
+                    {mais.map((x) => item(x, true))}
+                    {mais.length > 0 && (
+                      <li className="hidden lg:block">
+                        <details open={maisAtiva} className="group">
+                          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-label text-ink-muted hover:bg-surface-300 hover:text-ink [&::-webkit-details-marker]:hidden">
+                            Mais ferramentas
+                            <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+                          </summary>
+                          <ul className="mt-0.5 flex flex-col gap-0.5">{mais.map((x) => item(x))}</ul>
+                        </details>
+                      </li>
+                    )}
+                  </>
+                );
+              })()}
             </ul>
           </li>
         ))}

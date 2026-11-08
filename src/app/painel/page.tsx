@@ -1,4 +1,3 @@
-import { AlertaDePedidos } from "@/components/pedidos/alerta-pedidos";
 import {
   BellRing,
   Eye,
@@ -162,12 +161,6 @@ async function Conteudo() {
           vapid={vapidPublica()}
           {...(CONVITE_NOTIFICACOES[modo] ?? CONVITE_NOTIFICACOES.trabalhar)}
         />
-      )}
-      {/* agência: os pedidos de vaga novos dos clientes e os prazos (sem a migração, nada) */}
-      {modo === "contratar" && perfil?.tipo === "agencia" && (
-        <Suspense fallback={null}>
-          <AlertaDePedidos />
-        </Suspense>
       )}
       {pagina}
       {/* quem faz mais de uma coisa: o Hoje é o da atividade principal; as outras, num quadro curto (o

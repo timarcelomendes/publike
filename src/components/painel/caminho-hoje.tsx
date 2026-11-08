@@ -1,87 +1,12 @@
-import { Check, ChevronRight, FileSpreadsheet, Plus, Send } from "lucide-react";
+import { Check, FileSpreadsheet, Plus, Send } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/basicos";
 import { formatarTelefone, plural } from "@/lib/formato";
 import type { Cliente } from "@/lib/clientes";
 import type { VagaNoCaminho } from "@/lib/servidor/caminho";
 
-// As peças novas da Hoje de quem contrata: a faixa "O caminho das suas vagas" (um bloco por
-// passo, com o número, o que está acontecendo e a ação), "Comece por aqui" para a conta nova
-// e "Seus clientes" da agência.
-
-export type Passo = {
-  nome: string;
-  numero: number;
-  /** o que está acontecendo nesse passo, numa linha */
-  texto: string;
-  acao: string;
-  href: string;
-  /** feito: já tem algo nesse passo; agora: é o que pede a pessoa */
-  estado: "feito" | "agora" | "normal";
-};
-
-/** A faixa com os passos do caminho da vaga. No celular, vira lista. */
-export function FaixaDoCaminho({ passos }: { passos: Passo[] }) {
-  return (
-    <section aria-labelledby="caminho-titulo" className="flex flex-col gap-3">
-      <h2 id="caminho-titulo" className="text-h3">
-        O caminho das suas vagas
-      </h2>
-      <ol
-        className={`grid grid-cols-1 overflow-hidden rounded-lg border border-line bg-surface-200 ${
-          passos.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4"
-        }`}
-      >
-        {passos.map((p, i) => (
-          <li
-            key={p.nome}
-            data-passo={p.estado}
-            className={`relative border-line not-first:border-t lg:not-first:border-t-0 lg:not-first:border-l ${
-              p.estado === "agora" ? "bg-terra-soft" : ""
-            }`}
-          >
-            <Link
-              href={p.href}
-              className="group grid h-full grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-4 py-3 lg:flex lg:min-h-40 lg:flex-col lg:gap-1 lg:px-4 lg:pt-4 lg:pb-4"
-            >
-              <span className="col-start-1 flex items-center gap-2 text-label">
-                <span
-                  aria-hidden
-                  className={`grid size-[22px] shrink-0 place-items-center rounded-pill border-[1.5px] text-[12px] font-bold ${
-                    p.estado === "agora"
-                      ? "border-terra bg-terra text-on-terra"
-                      : p.estado === "feito"
-                        ? "border-cerrado bg-cerrado text-on-cerrado"
-                        : "border-line-strong text-ink-muted"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                {p.nome}
-              </span>
-              <span className="col-start-2 row-span-2 row-start-1 self-center font-display text-h2 leading-none tabular-nums lg:mt-1.5 lg:self-start lg:text-[34px]">
-                {p.numero}
-              </span>
-              <span
-                className={`col-start-1 line-clamp-2 text-body-sm ${p.estado === "agora" ? "text-terra-text" : "text-ink-muted"}`}
-              >
-                {p.texto}
-              </span>
-              <span
-                className={`col-span-2 mt-1 inline-flex items-center gap-0.5 text-label underline underline-offset-3 lg:mt-auto lg:pt-2 ${
-                  p.estado === "agora" ? "text-terra-text" : ""
-                }`}
-              >
-                {p.acao}
-                <ChevronRight aria-hidden className="size-4" />
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
+// Peças da Hoje de quem contrata: "Comece por aqui" para a conta nova e "Seus clientes" da agência.
+// (A faixa "O caminho das suas vagas" saiu em 08/11/2026: o Agora diz o que pede você.)
 
 export type PrimeiroPasso = { titulo: string; texto: string; feito: boolean; acao?: { nome: string; href: string } };
 

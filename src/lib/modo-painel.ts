@@ -82,6 +82,8 @@ export type Contadores = {
 export type Secao = {
   href: string;
   nome: string;
+  /** no computador, fica dentro de "Mais ferramentas" (o menu com 4 itens fixos, 08/11/2026) */
+  mais?: boolean;
   icone:
     | "hoje"
     | "caixa"
@@ -248,6 +250,7 @@ export function gruposDoModo(
     {
       nome: "Achar gente",
       secoes: [
+        { href: "/talentos", nome: "Talentos", icone: "talentos" },
         // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (o selo some quando já tem)
         {
           href: "/painel/copiloto",
@@ -265,32 +268,36 @@ export function gruposDoModo(
               },
             ]
           : []),
-        { href: "/talentos", nome: "Talentos", icone: "talentos" },
-        // a consulta de salários (migração 20270218120000): as consultas grátis e a assinatura
-        { href: "/painel/salarios", nome: "Salários", icone: "salarios" },
       ],
     },
     {
       nome: agencia ? "Agência" : "Sua empresa",
       secoes: [
         { href: "/painel/links", nome: "Página de vagas", icone: "links" },
+        // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
+        { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
+        // a equipe: agência (à vista) e, desde a avaliação em time (migração 20270107120000), empresa e comércio
+        agencia ? EQUIPE : { ...EQUIPE, mais: true },
+        // o resto fica em "Mais ferramentas" no computador
         {
           href: "/painel/visitas",
           nome: "Quem viu seu perfil",
           icone: "visitas",
           contador: "visitas",
           jeito: "pilula",
+          mais: true,
         },
         {
           href: "/painel/testes",
           nome: "Teste Prático",
           icone: "testes",
           cortesia: extras.pilulas ? (extras.pilulas.testes ?? false) : true,
+          mais: true,
         },
-        // a equipe: agência e, desde a avaliação em time (migração 20270107120000), empresa e comércio
-        EQUIPE,
+        // a consulta de salários (migração 20270218120000): as consultas grátis e a assinatura
+        { href: "/painel/salarios", nome: "Salários", icone: "salarios", mais: true },
         // as etapas próprias do quadro e os horários livres (migração 20270108120000)
-        { href: "/painel/etapas", nome: "Etapas e horários", icone: "etapas" },
+        { href: "/painel/etapas", nome: "Etapas e horários", icone: "etapas", mais: true },
         // as Automações personalizadas (migração 20270114120000): as prontas, de graça, ficam em cada vaga
         ...(extras.pilulas && extras.pilulas.automacoes !== undefined
           ? [
@@ -299,13 +306,12 @@ export function gruposDoModo(
                 nome: "Automações",
                 icone: "automacoes" as const,
                 cortesia: extras.pilulas.automacoes ?? false,
+                mais: true,
               },
             ]
           : []),
-        // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
-        { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
         // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
-        { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura" },
+        { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura", mais: true },
       ],
     },
   ];

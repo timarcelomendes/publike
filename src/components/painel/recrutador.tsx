@@ -1,5 +1,8 @@
 import {
   Building2,
+  ChevronDown,
+  Globe,
+  Inbox,
   CalendarClock,
   ChevronRight,
   Clock,
@@ -15,7 +18,6 @@ import {
   UsersRound,
   UserRoundX,
   Wallet,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -34,13 +36,14 @@ import { saudeDasVagas } from "@/lib/servidor/saude";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { MeuAnuncio, StatusAnuncio } from "@/lib/tipos";
 import type { ConversaPessoa } from "@/lib/conversas";
-import { SITE_URL } from "@/lib/config";
 import { caminhoDaConta, type Caminho } from "@/lib/servidor/caminho";
 import { equipeDaConta } from "@/lib/servidor/equipe";
-import { ComecePorAqui, FaixaDoCaminho, SeusClientes, type Passo, type PrimeiroPasso } from "./caminho-hoje";
+import { ComecePorAqui, SeusClientes, type PrimeiroPasso } from "./caminho-hoje";
 import { ParaFazerAgora, Saudacao, type Cartao } from "./hoje";
-import { LinksParaMandar, type LinkParaMandar } from "./links-para-mandar";
-import { MensagensRecentes, TalentosDaVaga } from "./hoje-extras";
+import { Agora, type ItemAgora } from "./agora";
+import { resumoDosPedidos } from "@/lib/servidor/pedidos-do-cliente";
+import { ondeAVagaAparece } from "@/lib/feed-vagas";
+import { TalentosDaVaga } from "./hoje-extras";
 import { NivelDaSaude } from "./saude-vaga";
 
 // Hoje, no modo Contratar (comércio, empresa e agência), pelo caminho da vaga:
@@ -109,7 +112,6 @@ export async function PainelRecrutador({
   agora,
   clientes = null,
   extras = [],
-  conversas = null,
   fotoDaVaga = false,
   perfilPronto = true,
 }: {
@@ -122,7 +124,7 @@ export async function PainelRecrutador({
   clientes?: number | null;
   /** outros "para fazer agora" da conta (as conexões: pedidos e mensagens novas) */
   extras?: Cartao[];
-  /** as conversas da conta (as mais recentes aparecem ao lado das vagas) */
+  /** as conversas da conta (as mensagens novas entram no Agora pelos extras; a lista fica no menu Mensagens) */
   conversas?: ConversaPessoa[] | null;
   /** a leitura da arte da vaga está ligada: o atalho "Publicar pela foto" */
   fotoDaVaga?: boolean;
@@ -157,8 +159,6 @@ export async function PainelRecrutador({
   const tituloDe = new Map(vagas.map((v) => [v.id, v.titulo]));
 
   const pendentes = todos.filter(esperaResposta);
-  const antigos = pendentes.filter((c) => agora - new Date(c.curtido_em).getTime() > 2 * DIA);
-  const contratados = todos.filter((c) => c.etapa === "contratado" && c.status === "match");
   const semana = entrevistas.filter((e) => new Date(e.quando).getTime() <= agora + 7 * DIA);
 
   // ------------------------------------------------------------ para fazer agora
@@ -177,11 +177,7 @@ export async function PainelRecrutador({
   };
   const primeiroNome = (id: string) => (nomeDe.get(id) ?? "").split(" ")[0];
 
-  // o dia em três números (claude/plano-fluxo-contratar.md, parte 7): cada um abre a mesa na etapa
-  const diaBR = (t: number | string) => new Date(t).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-  const entrevistasHoje = entrevistas.filter(
-    (e) => e.situacao !== "remarcar" && diaBR(e.quando) === diaBR(agora) && new Date(e.quando).getTime() >= agora,
-  ).length;
+  // quem já foi entrevistado e espera a decisão (um item do Agora)
   const naEntrevista = new Set(
     todos.filter((c) => c.etapa === "entrevista" && c.status === "match").map((c) => `${c.anuncio_id}:${c.perfil_id}`),
   );
@@ -191,18 +187,38 @@ export async function PainelRecrutador({
       .map((e) => `${e.anuncio_id}:${e.perfil_id}`),
   ).size;
 
-  const cartoes: Cartao[] = [];
+  const cartoes: ItemAgora[] = [];
+  // agência: os pedidos de vaga dos clientes (migração 20270307120000; sem ela, nada)
+  const pedidos = agencia ? await resumoDosPedidos().catch(() => null) : null;
+  if (pedidos?.novos) {
+    cartoes.push({
+      icone: Inbox,
+      tom: "urgente",
+      quando: "Agora",
+      titulo: plural(pedidos.novos, "pedido de vaga novo dos clientes", "pedidos de vaga novos dos clientes"),
+      texto: "Aceite com o prazo dos finalistas ou recuse com o motivo: o cliente vê pelo link dele.",
+      href: "/painel/pedidos",
+      acao: "Responder o pedido",
+    });
+  }
   if (pendentes.length) {
+    // por vaga: "Atendente: 4. Caixa: 2." e há quanto tempo espera o mais antigo
+    const porVaga = new Map<string, number>();
+    for (const c of pendentes) porVaga.set(c.anuncio_id, (porVaga.get(c.anuncio_id) ?? 0) + 1);
+    const maisAntigo = Math.min(...pendentes.map((c) => new Date(c.curtido_em).getTime()));
+    const dias = Math.floor((agora - maisAntigo) / DIA);
     cartoes.push({
       icone: Clock,
       tom: "urgente",
-      quando: antigos.length ? "Mais urgente" : "Esperando você",
-      titulo: `${plural(pendentes.length, "candidato esperando", "candidatos esperando")} sua resposta`,
-      texto: antigos.length
-        ? `${plural(antigos.length, "espera", "esperam")} há mais de 2 dias. Responder em até 1 dia mostra o selo verde nas suas vagas.`
-        : "Aceite quem interessa ou dispense com um toque: a pessoa recebe o aviso.",
-      href: "/painel/caixa?aba=novos",
-      acao: "Responder agora",
+      principal: true,
+      quando: "Agora",
+      titulo: `${plural(pendentes.length, "candidato espera", "candidatos esperam")} a sua resposta`,
+      texto: `${[...porVaga]
+        .slice(0, 3)
+        .map(([id, n]) => `${tituloDe.get(id) ?? "Vaga"}: ${n}`)
+        .join(". ")}.${dias >= 1 ? ` O mais antigo curtiu há ${plural(dias, "dia", "dias")}.` : ""}`,
+      href: "/painel/caixa/triagem",
+      acao: "Decidir agora",
     });
   }
   if (proximas.length) {
@@ -228,10 +244,20 @@ export async function PainelRecrutador({
       acao: "Ver no quadro",
     });
   }
+  if (paraDecidir > 0) {
+    cartoes.push({
+      icone: Hourglass,
+      quando: "Hoje",
+      titulo: `${plural(paraDecidir, "entrevistado espera", "entrevistados esperam")} a sua decisão`,
+      texto: "Leve para Contratado, faça a proposta ou dê o retorno: a pessoa fica sabendo.",
+      href: "/painel/caixa?aba=entrevista",
+      acao: "Decidir",
+    });
+  }
   if (remarcar.length) {
     cartoes.push({
       icone: RefreshCw,
-      quando: "Pedido de outro horário",
+      quando: "Agora",
       titulo: `${plural(remarcar.length, "candidato pediu", "candidatos pediram")} outro horário`,
       texto: "Abra o cartão e marque um novo dia: a pessoa recebe o aviso.",
       href: quadroDe(
@@ -244,7 +270,7 @@ export async function PainelRecrutador({
   if (semData.length) {
     cartoes.push({
       icone: CalendarClock,
-      quando: "Sem data",
+      quando: "Hoje",
       titulo: `${plural(semData.length, "candidato", "candidatos")} em Entrevista sem data marcada`,
       texto: "Marque dia e hora: o candidato recebe o aviso e confirma pelo Publike.",
       href: quadroDe(
@@ -268,9 +294,9 @@ export async function PainelRecrutador({
   if (paradas.length) {
     cartoes.push({
       icone: Megaphone,
-      quando: "Uma semana sem curtidas",
+      quando: "Na semana",
       titulo: `${plural(paradas.length, "vaga", "vagas")} sem candidatos`,
-      texto: "Divulgue o link da vaga no WhatsApp e no Instagram, ou revise o título, o salário e o horário.",
+      texto: "Mande o link no WhatsApp, peça indicação a quem já trabalha com você ou revise o título, o salário e o horário.",
       href: "/painel/links",
       acao: "Divulgar",
     });
@@ -290,7 +316,7 @@ export async function PainelRecrutador({
     cartoes.push({
       icone: UserRoundX,
       tom: "urgente",
-      quando: "Reposição",
+      quando: "Agora",
       titulo:
         reposicoes.length === 1
           ? `${primeiroNome(c.perfil_id) || "Um contratado"} saiu dentro da garantia`
@@ -320,7 +346,7 @@ export async function PainelRecrutador({
   if (aReceber.length) {
     cartoes.push({
       icone: Wallet,
-      quando: "A receber",
+      quando: "Na semana",
       titulo: `${formatarMoeda(aReceber.reduce((s, c) => s + (c.taxa ?? 0), 0))} em taxas a receber`,
       texto: `${plural(aReceber.length, "colocação", "colocações")} sem o pagamento marcado. Marque na colocação quando receber.`,
       href: "/painel/clientes",
@@ -339,7 +365,7 @@ export async function PainelRecrutador({
       const nomes = v.prontos.slice(0, 2).map((c) => c.nome.split(" ")[0]);
       cartoes.push({
         icone: Send,
-        quando: "Para o cliente",
+        quando: "Hoje",
         titulo: `Mandar ${v.prontos.length === 1 ? "o finalista" : `${v.prontos.length} finalistas`} de ${v.anuncio.titulo} para ${paraQuem(v)}`,
         texto: `${nomes.join(" e ")}${v.prontos.length > 2 ? " e mais" : ""} ${v.prontos.length === 1 ? "deu" : "deram"} match. O cliente abre sem conta, vê o currículo e o seu parecer, e responde por ali.`,
         href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
@@ -354,7 +380,7 @@ export async function PainelRecrutador({
       cartoes.push({
         icone: MessageCircleReply,
         tom: "bom",
-        quando: "O cliente respondeu",
+        quando: "Agora",
         titulo: `${paraQuem(v)} respondeu sobre ${plural(n, "finalista", "finalistas")} de ${v.anuncio.titulo}`,
         texto: "Veja quem ele quer entrevistar e leve a pessoa para Entrevista no quadro.",
         href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
@@ -372,7 +398,7 @@ export async function PainelRecrutador({
       const v = semResposta[0];
       cartoes.push({
         icone: Hourglass,
-        quando: "Esperando o cliente",
+        quando: "Hoje",
         titulo: `${paraQuem(v)} abriu os finalistas e ainda não respondeu`,
         texto: `${v.anuncio.titulo}${semResposta.length > 1 ? ` e mais ${plural(semResposta.length - 1, "vaga", "vagas")}` : ""}. Um lembrete no WhatsApp costuma resolver.`,
         href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
@@ -385,7 +411,7 @@ export async function PainelRecrutador({
   if (semSalario.length) {
     cartoes.push({
       icone: Wallet,
-      quando: "Pode melhorar",
+      quando: "Na semana",
       titulo:
         semSalario.length === 1 ? `${semSalario[0].titulo} está sem salário` : `${semSalario.length} vagas sem salário`,
       texto: "Vaga com salário recebe mais curtidas: quem procura filtra por ele.",
@@ -393,121 +419,27 @@ export async function PainelRecrutador({
       acao: "Completar",
     });
   }
+  if (pedidos && (pedidos.atrasados || pedidos.perto)) {
+    cartoes.push({
+      icone: CalendarClock,
+      tom: pedidos.atrasados ? "urgente" : "normal",
+      quando: pedidos.atrasados ? "Atrasado" : "Até 2 dias",
+      titulo: pedidos.atrasados
+        ? `${plural(pedidos.atrasados, "pedido passou", "pedidos passaram")} do prazo dos finalistas`
+        : `${plural(pedidos.perto, "prazo de finalistas vence", "prazos de finalistas vencem")} em até 2 dias`,
+      texto: "O cliente vê o prazo no link dele. Mande os finalistas ou combine uma data nova.",
+      href: "/painel/pedidos",
+      acao: "Ver os pedidos",
+    });
+  }
   cartoes.push(...extras);
 
   const responde = resposta ? comoResponde(resposta) : null;
+  // onde a vaga aparece (o arquivo de vagas, parte 2 do plano de 08/11)
+  const ondeAparece = () => ondeAVagaAparece(true);
   const listaDeVagas = agencia
     ? vagas.filter((v) => !caminho.vagas.find((c) => c.anuncio.id === v.id)?.clienteId)
     : vagas;
-
-  // ------------------------------------------------------------ o caminho
-  const nomesDe = (lista: string[]) =>
-    lista.length <= 2 ? lista.join(" e ") : `${lista.slice(0, 2).join(", ")} e mais ${lista.length - 2}`;
-  const esperando = nomesDe([...new Set(pendentes.map((c) => primeiroNome(c.perfil_id)).filter(Boolean))]);
-  const ultimoContratado = [...contratados].sort((x, y) => (y.etapa_em ?? "").localeCompare(x.etapa_em ?? ""))[0];
-  const passoClientes: Passo = {
-    nome: "Clientes",
-    numero: caminho.clientes,
-    texto: caminho.clientes
-      ? nomesDe(caminho.listaClientes.map((c) => c.nome))
-      : "Cadastre as empresas para quem você seleciona",
-    acao: "Adicionar cliente",
-    href: "/painel/clientes/novo",
-    estado: caminho.clientes ? "feito" : "agora",
-  };
-  const passoVagas: Passo = {
-    nome: "Vagas no ar",
-    numero: noAr.length,
-    texto: semSalario.length
-      ? `${semSalario[0].titulo} está sem salário`
-      : noAr.length
-        ? `${plural(todos.length, "candidato", "candidatos")} no total`
-        : "Nenhuma vaga no ar agora",
-    acao: noAr.length ? "Ver vagas" : "Publicar vaga",
-    href: noAr.length ? "/painel/anuncios?tipo=vaga" : "/publicar",
-    estado: noAr.length ? "feito" : "agora",
-  };
-  const passoCandidatos: Passo = {
-    nome: "Para responder",
-    numero: pendentes.length,
-    texto: pendentes.length
-      ? `${esperando} ${pendentes.length === 1 ? "espera" : "esperam"} você`
-      : "Ninguém esperando resposta",
-    acao: pendentes.length ? "Responder agora" : "Ver candidatos",
-    href: pendentes.length ? "/painel/caixa?aba=novos" : "/painel/caixa",
-    estado: pendentes.length ? "agora" : "normal",
-  };
-  const passoCliente: Passo = {
-    nome: "Com o cliente",
-    numero: caminho.comCliente,
-    texto: caminho.prontos
-      ? `${plural(caminho.prontos, "finalista pronto", "finalistas prontos")} para mandar`
-      : caminho.respostasNovas
-        ? `${plural(caminho.respostasNovas, "resposta nova", "respostas novas")} do cliente`
-        : caminho.comCliente
-          ? "Esperando a resposta do cliente"
-          : "Quem der match pode ir para o cliente",
-    acao: caminho.prontos ? "Montar o link" : "Ver os links",
-    href: "/painel/finalistas",
-    estado: caminho.prontos ? "agora" : "normal",
-  };
-  const passoEntrevistas: Passo = {
-    nome: "Entrevistas",
-    numero: caminho.entrevistas,
-    texto: semana.length
-      ? `Próxima: ${primeiroNome(semana[0].perfil_id) || "candidato"}, ${dataDaEntrevista(semana[0].quando)}`
-      : caminho.entrevistas
-        ? "Sem data marcada"
-        : "Leve quem combina para Entrevista no quadro",
-    acao: "Ver entrevistas",
-    href: "/painel/caixa?aba=entrevista",
-    estado: semData.length || remarcar.length ? "agora" : "normal",
-  };
-  const passoContratados: Passo = {
-    nome: "Contratados",
-    numero: contratados.length,
-    texto: ultimoContratado
-      ? `${primeiroNome(ultimoContratado.perfil_id) || "Último"}, em ${tituloDe.get(ultimoContratado.anuncio_id) ?? "uma vaga"}`
-      : "Ninguém contratado ainda",
-    acao: agencia ? "Ver colocações" : "Ver contratados",
-    href: agencia ? "/painel/contratados" : "/painel/caixa?aba=contratados",
-    estado: contratados.length ? "feito" : "normal",
-  };
-  // comércio e empresa: as etapas do candidato, com os mesmos nomes do quadro e das páginas de candidatos
-  // (Novos → Em análise → Entrevista → Contratados); as vagas no ar ficam em "Suas vagas" e no menu
-  // os mesmos números das etapas de Candidatos (abaDaEtapa); quem espera a sua resposta pode estar em Novos
-  // ou já marcado Em análise: cada bloco fala dos seus
-  const emAnalise = todos.filter((c) => abaDaEtapa(c) === "analise");
-  const novos = todos.filter((c) => abaDaEtapa(c) === "novos");
-  const esperamNos = (lista: typeof todos) => {
-    const quem = lista.filter(esperaResposta);
-    const nomes = nomesDe([...new Set(quem.map((c) => primeiroNome(c.perfil_id)).filter(Boolean))]);
-    return quem.length ? `${nomes} ${quem.length === 1 ? "espera" : "esperam"} sua resposta` : null;
-  };
-  const novosEsperam = esperamNos(novos);
-  const analiseEsperam = esperamNos(emAnalise);
-  const passoNovos: Passo = {
-    nome: "Novos",
-    numero: novos.length,
-    texto: novosEsperam ?? (novos.length ? "Aceitos: mude a etapa na ficha" : "Ninguém esperando resposta"),
-    acao: novosEsperam ? "Responder agora" : "Ver novos",
-    href: "/painel/caixa?aba=novos",
-    estado: novosEsperam ? "agora" : "normal",
-  };
-  const passoEmAnalise: Passo = {
-    nome: "Em análise",
-    numero: emAnalise.length,
-    texto: analiseEsperam ?? (emAnalise.length ? "Você está olhando" : "Leve quem interessa para Em análise"),
-    acao: analiseEsperam ? "Responder agora" : "Ver em análise",
-    href: "/painel/caixa?aba=analise",
-    estado: analiseEsperam ? "agora" : "normal",
-  };
-  const passos = agencia
-    ? [passoClientes, passoVagas, passoCandidatos, passoCliente, passoContratados]
-    : [passoNovos, passoEmAnalise, { ...passoEntrevistas, nome: "Entrevista" }, passoContratados];
-  // um passo "agora" por vez: o primeiro que pede você
-  const daVez = passos.findIndex((p) => p.estado === "agora");
-  const faixa = passos.map((p, i) => (p.estado === "agora" && i !== daVez ? { ...p, estado: "normal" as const } : p));
 
   // ------------------------------------------------------------ conta nova
   const divulgou = todos.length > 0;
@@ -561,47 +493,6 @@ export async function PainelRecrutador({
   ];
   const contaNova = vagas.length === 0;
 
-  // ------------------------------------------------------------ links para mandar
-  const links: LinkParaMandar[] = [];
-  if (noAr.length) {
-    links.push({
-      titulo: "Todas as suas vagas",
-      detalhe: `${SITE_URL.replace(/^https?:\/\//, "")}/perfil/${autorId}/vagas`,
-      url: `${SITE_URL}/perfil/${autorId}/vagas`,
-      mensagem: `Vagas abertas de ${nome} no Publike. Candidate-se de graça`,
-    });
-  }
-  if (agencia) {
-    for (const v of caminho.vagas
-      .filter((x) => x.anuncio.status === "ativo" && (x.link || x.prontos.length))
-      .slice(0, 3)) {
-      const vencido = v.link && Date.parse(v.link.expira_em) < agora;
-      links.push({
-        titulo: `Finalistas · ${v.anuncio.titulo}`,
-        detalhe: `Para ${paraQuem(v)} · ${
-          !v.link
-            ? "ainda não criado"
-            : vencido
-              ? "venceu"
-              : v.link.aberto_em
-                ? "o cliente já abriu"
-                : "ainda não aberto"
-        }`,
-        url: v.link && !vencido ? `${SITE_URL}/finalistas/${v.link.token}` : undefined,
-        mensagem: `Os finalistas para ${v.anuncio.titulo}`,
-        criar: `/painel/anuncio/${v.anuncio.id}/finalistas`,
-      });
-    }
-  }
-  for (const v of noAr.slice(0, 2)) {
-    links.push({
-      titulo: `Vaga · ${v.titulo}`,
-      detalhe: "Para divulgar em grupos",
-      url: `${SITE_URL}/anuncio/${v.id}`,
-      mensagem: `Vaga: ${v.titulo}. Candidate-se de graça no Publike`,
-    });
-  }
-
   const resumo = contaNova
     ? agencia
       ? "Seu painel segue o caminho de cada vaga: do cliente ao contratado."
@@ -634,7 +525,8 @@ export async function PainelRecrutador({
                     Adicionar cliente
                   </BotaoLink>
                 )}
-                <BotaoLink href="/publicar" variante="primario" tamanho="sm">
+                {/* no celular, a barra de baixo já tem o Publicar (um botão terra por tela) */}
+                <BotaoLink href="/publicar" variante="primario" tamanho="sm" className="max-sm:hidden">
                   <Plus aria-hidden />
                   Publicar vaga
                 </BotaoLink>
@@ -650,9 +542,7 @@ export async function PainelRecrutador({
         }
       />
 
-      {!contaNova && <ResumoDoDia pendentes={pendentes.length} hojeN={entrevistasHoje} decidir={paraDecidir} />}
-
-      {contaNova ? <ComecePorAqui passos={primeiros} /> : <FaixaDoCaminho passos={faixa} />}
+      {contaNova && <ComecePorAqui passos={primeiros} />}
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
@@ -683,8 +573,7 @@ export async function PainelRecrutador({
               ]}
             />
           ) : (
-            <ParaFazerAgora
-              lista
+            <Agora
               itens={cartoes}
               vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
             />
@@ -724,12 +613,11 @@ export async function PainelRecrutador({
                   const atencao = saude && saude.nivel !== "boa" ? (saude.faltando[0]?.dica ?? null) : null;
                   return (
                     <li key={v.id}>
-                      <Link
-                        href={`/painel/anuncio/${v.id}/quadro`}
-                        className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card transition-colors hover:border-line-strong sm:p-5"
-                      >
+                      <article className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5">
                         <span className="flex flex-wrap items-center gap-2">
-                          <span className="font-display text-h3">{v.titulo}</span>
+                          <Link href={`/painel/anuncio/${v.id}/quadro`} className="font-display text-h3 hover:underline">
+                            {v.titulo}
+                          </Link>
                           <Selo variante={ativa ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
                           <span className="text-body-sm text-ink-muted">
                             {ativa ? `${ateQuando(v.expira_em)} · ` : ""}
@@ -772,13 +660,27 @@ export async function PainelRecrutador({
                             <strong className="text-ink">{contratado}</strong>{" "}
                             {contratado === 1 ? "contratado" : "contratados"}
                           </span>
-                          <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-ink">
-                            Abrir a vaga
-                            <ChevronRight aria-hidden className="size-4" />
-                          </span>
                         </span>
                         {atencao && <span className="text-body-sm text-terra-text">{atencao}</span>}
-                      </Link>
+                        <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line pt-3">
+                          <span className="inline-flex items-center gap-1.5 text-body-sm text-ink-muted">
+                            <Globe aria-hidden className="size-4 shrink-0" />
+                            {ativa ? ondeAparece() : "Fora do ar"}
+                          </span>
+                          <span className="flex flex-wrap gap-2">
+                            {ativa && (
+                              <BotaoLink href={`/painel/links?vaga=${v.id}#kit`} tamanho="sm">
+                                <Megaphone aria-hidden />
+                                Divulgar
+                              </BotaoLink>
+                            )}
+                            <BotaoLink href={`/painel/anuncio/${v.id}/quadro`} tamanho="sm" variante="fantasma">
+                              Abrir a vaga
+                              <ChevronRight aria-hidden />
+                            </BotaoLink>
+                          </span>
+                        </span>
+                      </article>
                     </li>
                   );
                 })}
@@ -788,8 +690,6 @@ export async function PainelRecrutador({
         </div>
 
         <aside className="flex flex-col gap-4">
-          {links.length > 0 && <LinksParaMandar links={links} mais="/painel/links" />}
-          <MensagensRecentes conversas={conversas} agora={agora} />
           {contaNova && (
             <section className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:p-5">
               <h2 className="text-h3">Link das suas vagas</h2>
@@ -805,7 +705,7 @@ export async function PainelRecrutador({
                 className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 sm:p-5"
               >
                 <h2 id="agenda" className="text-h3">
-                  Agenda da semana
+                  Esta semana
                 </h2>
                 {semana.length === 0 ? (
                   <p className="text-body-sm text-ink-muted">
@@ -838,13 +738,17 @@ export async function PainelRecrutador({
               </section>
 
               {/* a reputação (claude/plano-reputacao-de-quem-contrata.md): o que quem procura sente, em três números */}
-              <section aria-labelledby="reputacao" className="flex flex-col gap-3 rounded-lg bg-surface-300 p-4 sm:p-5">
-                <div className="flex flex-col gap-0.5">
-                  <h2 id="reputacao" className="text-h3">
+              <details aria-labelledby="reputacao" className="group flex flex-col gap-3 rounded-lg bg-surface-300 p-4 sm:p-5">
+                <summary className="flex cursor-pointer list-none flex-col gap-0.5 [&::-webkit-details-marker]:hidden">
+                  <h2 id="reputacao" className="flex items-center justify-between gap-2 text-h3">
                     Sua reputação no Publike
+                    <ChevronDown aria-hidden className="size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-180" />
                   </h2>
-                  <p className="text-body-sm text-ink-muted">Como os candidatos são tratados nas suas vagas, nos últimos 90 dias.</p>
-                </div>
+                  <p className="text-body-sm text-ink-muted">
+                    {responde ? responde.texto : "Como os candidatos são tratados nas suas vagas, nos últimos 90 dias."}
+                  </p>
+                </summary>
+                <div className="mt-3 flex flex-col gap-3">
                 {reputacao && reputacao.curtidas >= MINIMO_DE_CURTIDAS && indicadores(reputacao).length > 0 ? (
                   <>
                     <ul className="flex flex-col gap-3">
@@ -885,7 +789,8 @@ export async function PainelRecrutador({
                     procurada.
                   </p>
                 )}
-              </section>
+                </div>
+              </details>
             </>
           )}
           {agencia && equipe && !contaNova && (
@@ -917,48 +822,5 @@ export async function PainelRecrutador({
         </aside>
       </div>
     </div>
-  );
-}
-
-/**
- * O dia em três números, logo abaixo do bom dia (claude/plano-fluxo-contratar.md, parte 7): para responder, as
- * entrevistas de hoje e quem já foi entrevistado e espera a decisão. Cada número abre Candidatos na etapa; o
- * "Decidir agora" abre o um por um. Sem nada para fazer, não aparece (o "Para fazer agora" já diz "tudo em dia").
- */
-function ResumoDoDia({ pendentes, hojeN, decidir }: { pendentes: number; hojeN: number; decidir: number }) {
-  const itens = [
-    pendentes > 0 && { n: pendentes, texto: "para responder", href: "/painel/caixa?aba=novos", destaque: true },
-    hojeN > 0 && {
-      n: hojeN,
-      texto: hojeN === 1 ? "entrevista hoje" : "entrevistas hoje",
-      href: "/painel/caixa?aba=entrevista",
-    },
-    decidir > 0 && { n: decidir, texto: "para decidir", href: "/painel/caixa?aba=entrevista" },
-  ].filter((x): x is { n: number; texto: string; href: string; destaque?: boolean } => Boolean(x));
-  if (!itens.length) return null;
-  return (
-    <nav
-      aria-label="O seu dia"
-      className="-mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-surface-200 px-4 py-3"
-    >
-      <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-1">
-        {itens.map((i) => (
-          <li key={i.texto}>
-            <Link href={i.href} className="group inline-flex min-h-9 items-baseline gap-1.5 text-body">
-              <span className={`text-h3 tabular-nums ${i.destaque ? "text-terra-text" : ""}`}>{i.n}</span>
-              <span className="text-ink-muted underline-offset-2 group-hover:text-ink group-hover:underline">
-                {i.texto}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      {pendentes > 0 && (
-        <BotaoLink href="/painel/caixa/triagem" variante="secundario" tamanho="sm">
-          <Zap aria-hidden />
-          Decidir agora
-        </BotaoLink>
-      )}
-    </nav>
   );
 }
