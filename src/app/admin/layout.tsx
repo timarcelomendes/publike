@@ -91,7 +91,8 @@ function Topo({ modo }: { modo: ModoAdmin }) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-h2 sm:text-h1">{modo === "moderador" ? "Moderação" : "Admin"}</h1>
+        {/* a equipe no site no ar: números e moderação no mesmo lugar */}
+        <h1 className="text-h2 sm:text-h1">Equipe do Publike</h1>
       </div>
       {modo && <AbasAdmin modo={modo} />}
     </>

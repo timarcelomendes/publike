@@ -216,8 +216,8 @@ export function MenuUsuario({
                 Seguindo
               </Item>
               {moderador && (
-                <Item href="/admin/denuncias" icone={ShieldCheck}>
-                  Moderação
+                <Item href="/admin" icone={ShieldCheck}>
+                  Equipe do Publike
                 </Item>
               )}
               {moderador && (

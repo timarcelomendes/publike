@@ -91,7 +91,9 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
 
 const ABAS_ADMIN = GRUPOS_ADMIN.flatMap((g) => g.secoes);
 
+// A equipe no site no ar, num lugar só: os números (Painel no site) e a moderação
 const ABAS_MODERACAO = [
+  { href: "/admin/numeros", nome: "Números" },
   { href: "/admin/denuncias", nome: "Denúncias" },
   { href: "/admin/anuncios", nome: "Anúncios" },
   // os stories e o carrossel do dia, também pelo celular (só vagas no ar, que já são públicas)

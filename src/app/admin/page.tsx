@@ -52,9 +52,9 @@ export default function PainelAdmin() {
 
 async function Conteudo() {
   if (!(await ehAdminLocal())) {
+    // no site publicado, a equipe começa pelos números (se liberados) e depois a moderação: tudo em Equipe do Publike
+    if (await possoVerPainelNoSite()) redirect("/admin/numeros");
     if (await ehModerador()) redirect("/admin/denuncias");
-    // no site publicado, quem a equipe liberou vê os números em /equipe
-    if (await possoVerPainelNoSite()) redirect("/equipe");
     notFound();
   }
   const c = criarClienteAdmin();
