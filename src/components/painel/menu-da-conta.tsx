@@ -10,6 +10,7 @@ import {
   recursosPagos,
 } from "@/lib/dados";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
+import { vapidPublica } from "@/lib/servidor/ambiente";
 import { contadoresDoPainel } from "@/lib/servidor/contadores-do-painel";
 import { equipeDaConta, minhasContas } from "@/lib/servidor/equipe";
 import { atividadesDoMenu } from "@/lib/servidor/modo";
@@ -90,6 +91,7 @@ export async function MenuDaConta() {
           : null
       }
       publicar={contrata ? { foto, agencia } : null}
+      vapid={contrata ? vapidPublica() : undefined}
     />
   );
 }

@@ -19,6 +19,7 @@ import {
 import { SELO_CORTESIA_CURTO } from "@/lib/cortesia";
 import { PilulaFaltaCurriculo } from "../curriculo/sem-curriculo";
 import { Avatar } from "../ui/basicos";
+import { ConviteNotificacoes } from "../convite-notificacoes";
 import { ICONES_DO_PAINEL as ICONES } from "./icones-do-painel";
 import { SemLinhaDoPainel } from "./sem-linha-do-painel";
 
@@ -40,6 +41,7 @@ export function MenuPainel({
   semCurriculo = false,
   conta = null,
   publicar = null,
+  vapid,
 }: {
   /** o que a conta faz (a principal primeiro): o menu mostra todas juntas, sem troca de modo */
   atividades: ModoPainel[];
@@ -63,6 +65,8 @@ export function MenuPainel({
   conta?: { nome: string; foto: string | null; tipo: string; bairro: string | null; verificado: boolean; equipe: number | null } | null;
   /** quem contrata: o "Publicar vaga" no alto do menu (no computador), com "pela foto" e, na agência, "Novo cliente" */
   publicar?: { foto: boolean; agencia: boolean } | null;
+  /** quem contrata: a chave das notificações, para a linha "Candidatos no celular, na hora" no fim do menu */
+  vapid?: string | null;
 }) {
   const caminho = usePathname() ?? "/painel";
   const busca = useSearchParams();
@@ -76,6 +80,9 @@ export function MenuPainel({
   const outras = outrasDaConta(atividades, grupos);
   const ativa = secaoAtiva(grupos, outras, caminho, tipo);
   const [aberto, setAberto] = useState(false);
+  // no celular, as Ferramentas ficam atrás do "Mais" (a linha curta do painel novo); abertas se a página é uma delas
+  const ferramentas = grupos.filter((g) => g.nome === "Ferramentas").flatMap((g) => g.secoes.map((x) => x.href));
+  const [verFerramentas, setVerFerramentas] = useState(() => ativa !== null && ferramentas.includes(ativa));
   const caixa = useRef<HTMLDivElement>(null);
   const idMenu = useId();
   const [trocando, iniciarTroca] = useTransition();
@@ -321,11 +328,15 @@ export function MenuPainel({
             >
               {(() => {
                 // o menu com 4 itens fixos (08/11/2026): no computador, o resto do grupo fica em "Mais ferramentas"
+                const escondeNoCelular = g.nome === "Ferramentas" && !verFerramentas;
                 const item = (s: (typeof g.secoes)[number], soNoCelular = false) => {
                 const Icone = ICONES[s.icone];
                 const atualSecao = ativa === s.href;
                 return (
-                  <li key={s.href} className={`relative shrink-0 ${soNoCelular ? "lg:hidden" : ""}`}>
+                  <li
+                    key={s.href}
+                    className={`relative shrink-0 ${soNoCelular ? "lg:hidden" : ""} ${escondeNoCelular ? "max-lg:hidden" : ""}`}
+                  >
                     <Link
                       href={s.href}
                       aria-current={atualSecao ? "page" : undefined}
@@ -401,6 +412,20 @@ export function MenuPainel({
             </ul>
           </li>
         ))}
+        {/* no celular, o "Mais" mostra e esconde as Ferramentas na mesma linha */}
+        {ferramentas.length > 0 && (
+          <li className="shrink-0 lg:hidden">
+            <button
+              type="button"
+              aria-expanded={verFerramentas}
+              onClick={() => setVerFerramentas((v) => !v)}
+              className="flex min-h-11 items-center gap-1 rounded-pill border border-line-strong px-3.5 text-label whitespace-nowrap text-ink hover:bg-surface-300"
+            >
+              {verFerramentas ? "Menos" : "Mais"}
+              <ChevronDown aria-hidden className={`size-4 transition-transform ${verFerramentas ? "rotate-180" : ""}`} />
+            </button>
+          </li>
+        )}
         {/* no celular, o resto do painel vem na mesma linha, mais discreto */}
         {outras.map((o) => (
           <li key={o.href} className="shrink-0 lg:hidden">
@@ -416,6 +441,17 @@ export function MenuPainel({
           </li>
         ))}
       </ul>
+
+      {publicar && vapid !== undefined && (
+        <div className="hidden lg:block">
+          <ConviteNotificacoes
+            vapid={vapid}
+            jeito="linha"
+            titulo="Saiba na hora quando alguém se candidatar"
+            texto="Candidatos no celular, na hora"
+          />
+        </div>
+      )}
 
       <div className={`hidden flex-col gap-1 border-t border-line pt-3 ${outras.length ? "lg:flex" : ""}`}>
         <p className="px-3 text-body-sm font-semibold text-ink-muted">Mais</p>

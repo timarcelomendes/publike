@@ -32,6 +32,8 @@ import { pedidosDaAgencia, resumoDosPedidos } from "@/lib/servidor/pedidos-do-cl
 import { indicadosDasVagas } from "@/lib/servidor/indicacao";
 import { documentosPendentesDaConta } from "@/lib/servidor/documentos-admissao";
 import { NumerosDoHoje, type NumeroDoHoje } from "./numeros-hoje";
+import { ConviteNotificacoes } from "@/components/convite-notificacoes";
+import { vapidPublica } from "@/lib/servidor/ambiente";
 import { TabelaDasVagas, type GrupoDeVagas, type LinhaDaVaga } from "./tabela-vagas";
 
 // Hoje, no modo Contratar (comércio, empresa e agência), pelo caminho da vaga:
@@ -120,7 +122,7 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, noPrazo] = await Promise.all([
+  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, pedidosAg] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -132,8 +134,17 @@ export async function PainelRecrutador({
     // os documentos da admissão de quem começa (parte 4; sem a migração, nada)
     documentosPendentesDaConta().catch(() => []),
     // agência: os prazos dos finalistas cumpridos em 90 dias, somando os clientes (sem a migração, nada)
-    agencia ? pedidosDaAgencia().then((p) => p?.noPrazo ?? null).catch(() => null) : Promise.resolve(null),
+    // e os pedidos com o prazo dos finalistas de cada vaga
+    agencia ? pedidosDaAgencia().catch(() => null) : Promise.resolve(null),
   ]);
+  const noPrazo = pedidosAg?.noPrazo ?? null;
+  // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
+  const prazoDaVaga = new Map<string, string>();
+  for (const p of pedidosAg?.pedidos ?? []) {
+    if (p.vaga && p.finalistas_ate && !p.finalistas_em && (p.situacao === "recebido" || p.situacao === "em_selecao")) {
+      prazoDaVaga.set(p.vaga.id, p.finalistas_ate);
+    }
+  }
   const resposta = respostas.get(autorId) ?? null;
   const nomeDe = new Map(todos.map((c) => [c.perfil_id, c.nome]));
   const tituloDe = new Map(vagas.map((v) => [v.id, v.titulo]));
@@ -370,6 +381,19 @@ export async function PainelRecrutador({
     });
   }
   // agência: os finalistas (prontos para mandar, o cliente abriu e não respondeu, o cliente respondeu)
+  const finalistasNoPrazo: ItemAgora[] = [];
+  const textoDoPrazo = (dia: string) => {
+    const d = diasAte(dia);
+    return d < 0
+      ? "o prazo do cliente venceu"
+      : d === 0
+        ? "o prazo do cliente vence hoje"
+        : d === 1
+          ? "o prazo do cliente vence amanhã"
+          : d <= 6
+            ? `o prazo do cliente vence em ${d} dias`
+            : `o prazo do cliente é ${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
+  };
   const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));
   const paraQuem = (v: Caminho["vagas"][number]) =>
     (v.clienteId ? nomeDoCliente.get(v.clienteId) : null) ?? "o cliente";
@@ -379,11 +403,15 @@ export async function PainelRecrutador({
     );
     for (const v of comProntos.slice(0, 2)) {
       const nomes = v.prontos.slice(0, 2).map((c) => c.nome.split(" ")[0]);
-      cartoes.push({
+      // com o prazo do cliente perto (até 2 dias), vai para o alto do "Para fazer", antes dos pedidos novos
+      const prazo = prazoDaVaga.get(v.anuncio.id);
+      const perto = prazo !== undefined && diasAte(prazo) <= 2;
+      (perto ? finalistasNoPrazo : cartoes).push({
         icone: Send,
-        quando: "Hoje",
+        tom: perto ? "urgente" : undefined,
+        quando: perto ? "Agora" : "Hoje",
         titulo: `Mandar ${v.prontos.length === 1 ? "o finalista" : `${v.prontos.length} finalistas`} de ${v.anuncio.titulo} para ${paraQuem(v)}`,
-        texto: `${nomes.join(" e ")}${v.prontos.length > 2 ? " e mais" : ""} ${v.prontos.length === 1 ? "deu" : "deram"} match. O cliente abre sem conta, vê o currículo e o seu parecer, e responde por ali.`,
+        texto: `${perto ? `${textoDoPrazo(prazo)[0].toUpperCase()}${textoDoPrazo(prazo).slice(1)}. ` : ""}${nomes.join(" e ")}${v.prontos.length > 2 ? " e mais" : ""} ${v.prontos.length === 1 ? "deu" : "deram"} match. O cliente abre sem conta, vê o currículo e o seu parecer, e responde por ali.`,
         href: `/painel/anuncio/${v.anuncio.id}/finalistas`,
         acao: v.link ? "Pôr na lista" : "Montar o link",
         pessoas: v.prontos.slice(0, 3).map((c) => c.nome.split(" ")[0]),
@@ -496,6 +524,8 @@ export async function PainelRecrutador({
     });
   }
   cartoes.push(...extras);
+  // os finalistas com o prazo do cliente perto vêm primeiro (o cartão escuro)
+  cartoes.unshift(...finalistasNoPrazo);
 
   // a vaga sem cliente (agência) ou todas (empresa); e quantos chegaram por indicação (parte 3)
   const listaDeVagas = agencia
@@ -666,6 +696,7 @@ export async function PainelRecrutador({
         ? `${noCaminho.prontos.length} ${noCaminho.prontos.length === 1 ? "pronto" : "prontos"} para o cliente`
         : null,
       noCaminho?.finalistas.length ? `${noCaminho.finalistas.length} com o cliente` : null,
+      prazoDaVaga.has(v.id) ? textoDoPrazo(prazoDaVaga.get(v.id) as string).replace("o prazo do cliente ", "prazo ") : null,
       parada
         ? `Parada há ${diasNoArAgora} dias`
         : ativa
@@ -744,10 +775,20 @@ export async function PainelRecrutador({
       ) : (
         <>
           <div className="grid grid-cols-1 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-6">
-            <Agora
-              itens={cartoes}
-              vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
-            />
+            <div className="flex min-w-0 flex-col gap-4">
+              <Agora
+                itens={cartoes}
+                vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
+              />
+              {/* no celular, o convite das notificações vem aqui; no computador, é uma linha no fim do menu */}
+              <div className="lg:hidden">
+                <ConviteNotificacoes
+                  vapid={vapidPublica()}
+                  titulo="Saiba na hora quando alguém se candidatar"
+                  texto="Candidatos, mensagens e entrevistas chegam no celular, mesmo com o Publike fechado."
+                />
+              </div>
+            </div>
             <NumerosDoHoje
               candidatos={{ dias: chaves.map((d) => ({ dia: diaMes(d), n: porDia.get(d) ?? 0 })), antes }}
               numeros={numeros}

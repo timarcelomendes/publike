@@ -156,7 +156,8 @@ async function Conteudo() {
       {/* o convite do teste fechado da Play (só no Android, fora do app instalado) */}
       {!suspensa && <ConviteTesteAndroid />}
       {/* o convite das notificações no celular (só para quem ainda não ligou neste aparelho) */}
-      {!suspensa && (
+      {/* quem contrata: no computador, uma linha no fim do menu; no celular, depois do "Para fazer" (o painel novo) */}
+      {!suspensa && modo !== "contratar" && (
         <ConviteNotificacoes
           vapid={vapidPublica()}
           {...(CONVITE_NOTIFICACOES[modo] ?? CONVITE_NOTIFICACOES.trabalhar)}

@@ -62,8 +62,9 @@ export function ConviteNotificacoes({
   vapid?: string | null;
   titulo: string;
   texto: string;
-  /** "balao": dentro do balão de depois de curtir (compacto: o texto vai no botão); "cartao": no painel */
-  jeito?: "balao" | "cartao";
+  /** "balao": dentro do balão de depois de curtir (compacto: o texto vai no botão); "cartao": no painel;
+   *  "linha": uma linha no fim do menu do painel, no computador (o painel novo, 08/11/2026) */
+  jeito?: "balao" | "cartao" | "linha";
 }) {
   const chave = useChave(vapid);
   const { estado, ocupado, aviso, ativar } = useNotificacoesCelular(chave);
@@ -85,6 +86,26 @@ export function ConviteNotificacoes({
   function agoraNao() {
     dispensar();
     setFechado(true);
+  }
+
+  if (jeito === "linha") {
+    return (
+      <div className="flex flex-col gap-1 border-t border-line px-3 pt-4">
+        <p className="flex items-center gap-2.5 text-body-sm text-ink-muted">
+          <BellRing aria-hidden className="size-[18px] shrink-0" />
+          <span className="flex-1">{texto}</span>
+          <button
+            type="button"
+            disabled={ocupado}
+            onClick={() => ativar()}
+            className="min-h-9 font-bold text-terra-text underline-offset-2 hover:underline disabled:opacity-60"
+          >
+            {ocupado ? "Ativando…" : "Ativar"}
+          </button>
+        </p>
+        {aviso && !aviso.ok && <p className="text-body-sm text-danger">{aviso.texto}</p>}
+      </div>
+    );
   }
 
   if (jeito === "balao") {
