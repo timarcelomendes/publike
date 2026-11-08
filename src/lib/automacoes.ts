@@ -259,6 +259,7 @@ export function nomeDaOrigem(origem: string) {
   if (origem === "de_fora") return "Chamados por você (de fora do Publike)";
   if (origem === "convite") return "Convidados por você no Publike";
   if (origem === "direto") return "Acharam a vaga no Publike";
+  if (origem === "indicacao") return "Indicados (pelos links de indicação)";
   const campanha = origem.startsWith("campanha:") ? origem.slice(9) : origem;
   if (campanha === "google") return "Anúncio no Google";
   if (["meta", "facebook", "instagram", "fb", "ig"].includes(campanha)) return "Instagram e Facebook";

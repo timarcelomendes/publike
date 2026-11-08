@@ -32,6 +32,7 @@ import { Conversa } from "@/components/conversa/conversa";
 import type { MensagemConversa } from "@/lib/dados";
 import { lerPerguntaDaMensagem, type PerguntaNaMensagem } from "@/lib/perguntas-do-match";
 import { DesfazerRegra } from "../automacoes/desfazer-regra";
+import { DocumentosNaFicha } from "../proposta/documentos-na-ficha";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { VideoNaFicha } from "../video/video-na-ficha";
 import {
@@ -373,6 +374,18 @@ export function FichaCandidato({
             nome={c.nome}
             endereco={c.endereco}
             proposta={extras.proposta}
+          />
+        </Secao>
+      )}
+
+      {/* em Contratados, a proposta sai da ficha; os documentos da admissão ficam (migração 20270312120000) */}
+      {extras?.aba === "contratados" && extras.proposta?.situacao === "aceita" && extras.proposta.docs && (
+        <Secao titulo="Documentos da admissão">
+          <DocumentosNaFicha
+            anuncioId={c.anuncio_id}
+            perfilId={c.perfil_id}
+            nome={c.nome.split(" ")[0]}
+            docs={extras.proposta.docs}
           />
         </Secao>
       )}

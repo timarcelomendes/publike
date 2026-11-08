@@ -7,6 +7,7 @@
 --    mesmo não conta, e a primeira indicação vale.
 -- 4. A empresa: criar_link_indicacao, links_indicacao_da_vaga (com indicados e contratados), indicacoes_da_vaga
 --    (quem indicou cada candidato) e indicados_das_vagas (para o Hoje). Quem indicou não vê nada do candidato.
+-- 5. numeros_origem: os Resultados mostram "Indicados" como origem.
 
 create table if not exists public.links_indicacao (
   id uuid primary key default gen_random_uuid(),
@@ -188,5 +189,49 @@ as $$
 $$;
 revoke execute on function public.indicados_das_vagas(uuid[]) from public, anon;
 grant execute on function public.indicados_das_vagas(uuid[]) to authenticated;
+
+-- 5. Os Resultados: "Indicados" na origem dos candidatos (a mesma função da 20270109120000, com a indicação primeiro)
+create or replace function public.numeros_origem(p_dias integer default null, p_anuncio uuid default null)
+returns table (origem text, candidatos integer, entrevista integer, contratados integer)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  eu uuid := public.conta_atual();
+begin
+  if eu is null then
+    raise exception 'Entre na sua conta.' using errcode = '42501';
+  end if;
+  return query
+  with base as (
+    select case
+             when c.indicacao_id is not null then 'indicacao'
+             when exists (select 1 from public.convites_candidato k
+                           where k.anuncio_id = c.anuncio_id and k.perfil_id = c.perfil_id) then 'de_fora'
+             when exists (select 1 from public.convites_vaga k
+                           where k.anuncio_id = c.anuncio_id and k.perfil_id = c.perfil_id) then 'convite'
+             else coalesce((select 'campanha:' || split_part(o.origem, ':', 1) from privado.origens o
+                             where o.usuario_id = c.perfil_id order by o.criado_em limit 1), 'direto')
+           end as origem,
+           coalesce(e.etapa, 'novo') as etapa,
+           exists (select 1 from public.entrevistas x where x.anuncio_id = c.anuncio_id and x.perfil_id = c.perfil_id)
+             or exists (select 1 from privado.historico_etapas h where h.anuncio_id = c.anuncio_id
+                          and h.perfil_id = c.perfil_id and h.o_que = 'etapa:entrevista') as teve_entrevista
+      from public.curtidas c
+      join public.anuncios a on a.id = c.anuncio_id
+      left join public.etapas_candidatos e on e.anuncio_id = c.anuncio_id and e.perfil_id = c.perfil_id
+     where a.autor_id = eu and a.tipo = 'vaga' and (p_anuncio is null or a.id = p_anuncio)
+       and (p_dias is null or c.criado_em >= now() - make_interval(days => p_dias))
+  )
+  select b.origem, count(*)::integer,
+         (count(*) filter (where b.teve_entrevista or b.etapa in ('entrevista', 'contratado')))::integer,
+         (count(*) filter (where b.etapa = 'contratado'))::integer
+    from base b
+   group by b.origem
+   order by count(*) desc;
+end
+$$;
 
 notify pgrst, 'reload schema';

@@ -12,6 +12,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { formatarMoeda, plural } from "@/lib/formato";
 import { caminhoDaConta } from "@/lib/servidor/caminho";
 import { colocacoesDasVagas } from "@/lib/servidor/colocacoes";
+import { documentosPendentesDaConta } from "@/lib/servidor/documentos-admissao";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
@@ -35,7 +36,12 @@ async function Conteudo() {
   const [caminho, agora] = await Promise.all([caminhoDaConta(), agoraDaRequisicao()]);
   // fora da agência (sem colocações), Contratados é uma etapa de Candidatos
   if (!caminho.agencia) redirect("/painel/caixa?aba=contratados");
-  const colocacoes = caminho.agencia ? await colocacoesDasVagas() : new Map();
+  const [colocacoes, pendentes] = await Promise.all([
+    caminho.agencia ? colocacoesDasVagas() : Promise.resolve(new Map()),
+    // os documentos da admissão ainda não entregues ao contador (migração 20270312120000; sem ela, nada)
+    documentosPendentesDaConta().catch(() => []),
+  ]);
+  const documentos = new Map(pendentes.map((d) => [`${d.anuncioId}:${d.perfilId}`, d]));
   const hoje = hojeEmBrasilia(agora);
   const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));
   const lista = caminho.vagas
@@ -45,6 +51,7 @@ async function Conteudo() {
         vaga: v.anuncio,
         cliente: v.clienteId ? (nomeDoCliente.get(v.clienteId) ?? null) : null,
         colocacao: colocacoes.get(`${v.anuncio.id}:${c.perfil_id}`) ?? null,
+        docs: documentos.get(`${v.anuncio.id}:${c.perfil_id}`) ?? null,
       })),
     )
     .sort((a, b) => (b.c.etapa_em ?? b.c.curtido_em).localeCompare(a.c.etapa_em ?? a.c.curtido_em));
@@ -79,7 +86,7 @@ async function Conteudo() {
         </Vazio>
       ) : (
         <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200 shadow-card">
-          {lista.map(({ c, vaga, cliente, colocacao }) => {
+          {lista.map(({ c, vaga, cliente, colocacao, docs }) => {
             const s = colocacao ? situacaoDaColocacao(colocacao, hoje) : null;
             return (
               <li key={`${vaga.id}:${c.perfil_id}`} data-contratado={c.nome}>
@@ -103,6 +110,11 @@ async function Conteudo() {
                       </span>
                     )}
                   </span>
+                  {docs && docs.total > 0 && (
+                    <Selo variante={docs.enviados + docs.levar < docs.total ? "aviso" : "contorno"}>
+                      Documentos: {docs.enviados + docs.levar} de {docs.total}
+                    </Selo>
+                  )}
                   {caminho.agencia &&
                     (colocacao ? (
                       colocacao.taxa ? (

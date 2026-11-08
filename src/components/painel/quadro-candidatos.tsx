@@ -58,6 +58,7 @@ import { FormRetorno } from "./retorno";
 import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
 import { VideoNaFicha } from "../video/video-na-ficha";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
+import { contaDosDocumentos, type DocumentosDaProposta } from "@/lib/documentos-admissao";
 import { SITUACOES_PROPOSTA, type Proposta } from "@/lib/proposta";
 import { AvaliacaoDoTime } from "../avaliacao/avaliacao-time";
 import { textoDaMedia, type AvaliacaoNoQuadro, type Competencia } from "@/lib/avaliacao-time";
@@ -653,6 +654,7 @@ function Cartao({
               {SITUACOES_PROPOSTA[c.proposta.situacao].nome}
             </Selo>
           )}
+          {c.proposta?.situacao === "aceita" && c.proposta.docs && <SeloDosDocumentos docs={c.proposta.docs} />}
           {c.avaliacao && c.avaliacao.total > 0 && (
             <Selo
               variante="contorno"
@@ -1215,5 +1217,16 @@ function BotaoWhatsappDoMomento({
       <MessageCircle aria-hidden className="size-4" />
       {m.rotulo}
     </a>
+  );
+}
+
+/** "Documentos: 2 de 4" no cartão de quem aceitou a proposta (migração 20270312120000). */
+function SeloDosDocumentos({ docs }: { docs: DocumentosDaProposta }) {
+  const conta = contaDosDocumentos(docs);
+  if (conta.total === 0 || docs.vencido) return null;
+  return (
+    <Selo variante={docs.entreguesEm ? "match" : conta.faltam ? "aviso" : "contorno"}>
+      {docs.entreguesEm ? "Documentos entregues" : `Documentos: ${conta.enviados + conta.levar} de ${conta.total}`}
+    </Selo>
   );
 }
