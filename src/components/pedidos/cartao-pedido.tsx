@@ -1,4 +1,4 @@
-import { CalendarClock, ClipboardList, ExternalLink, Users } from "lucide-react";
+import { CalendarClock, ChevronDown, ClipboardList, ExternalLink, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   dataCurta,
@@ -148,8 +148,9 @@ export function CartaoPedido({
 
       {detalhes.length > 0 && (
         <details className="group">
-          <summary className="flex min-h-10 cursor-pointer list-none items-center text-label text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-label text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
             O que foi pedido
+            <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
           </summary>
           <dl className="mt-1 grid gap-x-4 gap-y-2 text-body-sm sm:grid-cols-[auto_1fr]">
             {detalhes.map(([k, valor]) => (

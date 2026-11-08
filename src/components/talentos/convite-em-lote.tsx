@@ -75,7 +75,7 @@ export function ConviteEmLote({
         <div
           role="region"
           aria-label="Convidar as pessoas marcadas"
-          className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-lg border-2 border-terra bg-surface-200 p-3 shadow-raised sm:p-4"
+          className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex max-h-[70dvh] flex-col gap-3 overflow-y-auto rounded-lg border-2 border-terra bg-surface-200 p-3 shadow-raised sm:p-4 md:bottom-4"
         >
           {n > 0 && (
             <>
