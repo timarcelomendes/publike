@@ -355,9 +355,10 @@ async function Conteudo({
           <LinhaDeFiltro rotulo="Buscar">
             <div className="max-w-md">
             <Busca
+              discreto
               acao="/admin/curtidas"
               valor={escolha.q}
-              placeholder="Nome de quem curtiu, de quem publicou ou o anúncio"
+              placeholder="Nome ou anúncio, e Enter"
               ocultos={{
                 periodo: periodo === "7" ? null : periodo,
                 situacao: escolha.situacao === "todas" ? null : escolha.situacao,

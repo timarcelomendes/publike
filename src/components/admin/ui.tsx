@@ -149,11 +149,14 @@ export function Busca({
   valor,
   placeholder,
   ocultos = {},
+  discreto = false,
 }: {
   acao: string;
   valor: string;
   placeholder: string;
   ocultos?: Record<string, string | null | undefined>;
+  /** campo baixo, sem o botão (o Enter busca) */
+  discreto?: boolean;
 }) {
   return (
     <form action={acao} role="search" className="flex gap-2">
@@ -166,10 +169,14 @@ export function Busca({
           name="q"
           defaultValue={valor}
           placeholder={placeholder}
-          className={`${classesEntrada} pl-9 [&::-webkit-search-cancel-button]:appearance-none`}
+          className={
+            discreto
+              ? "min-h-9 w-full appearance-none rounded-pill border border-line bg-transparent py-1.5 pr-3 pl-9 text-body-sm text-ink placeholder:text-ink-muted/80 focus:border-line-strong [&::-webkit-search-cancel-button]:appearance-none"
+              : `${classesEntrada} pl-9 [&::-webkit-search-cancel-button]:appearance-none`
+          }
         />
       </label>
-      <button type="submit" className={classesBotao("secundario", "md")}>
+      <button type="submit" className={discreto ? "sr-only" : classesBotao("secundario", "md")}>
         Buscar
       </button>
     </form>
