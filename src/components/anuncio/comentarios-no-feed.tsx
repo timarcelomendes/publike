@@ -6,6 +6,7 @@ import { Esqueleto } from "@/components/ui/basicos";
 import { DicaDeNovidade, usarDica } from "@/components/ui/dica-de-novidade";
 import { lerComentariosDaVaga } from "@/lib/acoes/comentarios";
 import { contarComentarios, type ComentariosDaVaga as Dados, type ResumoComentarios } from "@/lib/comentarios";
+import { CLASSES_DA_ACAO } from "./acao-do-feed";
 import { ComentariosDaVaga } from "./comentarios";
 import { IndicarNaJanela } from "./indicar-por-email";
 
@@ -81,8 +82,8 @@ function rotuloDoTotal(total: number) {
 }
 
 /**
- * Embaixo da vaga na linha do tempo: o botão dos comentários, o último comentário e o "Indicar". A conversa abre
- * ali mesmo.
+ * Embaixo da vaga na linha do tempo: "Comentar" e "Indicar", lado a lado, e o último comentário. A conversa abre ali
+ * mesmo.
  */
 export function ComentariosNoFeed({
   anuncioId,
@@ -117,46 +118,27 @@ export function ComentariosNoFeed({
     setAberto((a) => !a);
   }
 
-  // no celular, o último comentário fica na linha de baixo; no computador, entre os dois botões
+  // os dois botões juntos, discretos (o Curtir, no tíquete, é o principal); embaixo, o último comentário
   const barra = (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
+    <div className="flex flex-wrap items-center gap-x-1">
       {comentarios && (
         <button
           type="button"
           onClick={alternar}
           aria-expanded={aberto}
           aria-controls={`${id}-conversa`}
-          className={`col-start-1 row-start-1 inline-flex min-h-9 items-center gap-1.5 justify-self-start rounded-pill border px-3 text-label transition-colors ${
-            aberto
-              ? "border-ink bg-ink text-surface-100"
-              : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-          }`}
+          className={`${CLASSES_DA_ACAO} ${aberto ? "bg-surface-300 text-ink" : ""}`}
         >
-          <MessageCircle aria-hidden className="size-[18px] shrink-0" />
+          <MessageCircle aria-hidden className="size-4 shrink-0" />
           {aberto ? "Fechar os comentários" : rotuloDoTotal(total)}
         </button>
       )}
-      {comentarios && !aberto && resumo.ultimo && (
-        // um toque no último comentário também abre a conversa
-        <button
-          type="button"
-          onClick={alternar}
-          className="col-span-3 row-start-2 line-clamp-2 px-1 text-left text-body-sm text-ink-muted hover:text-ink sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:line-clamp-1 sm:px-0"
-        >
-          <span className="sr-only">Último comentário: </span>
-          <b className="font-semibold text-ink">{resumo.ultimo.nome}</b> {resumo.ultimo.texto}
-        </button>
-      )}
-      {indicar && (
-        <span className="col-start-3 row-start-1 justify-self-end">
-          <IndicarNaJanela anuncioId={anuncioId} titulo={titulo} logado={logado} jeito="barra" />
-        </span>
-      )}
+      {indicar && <IndicarNaJanela anuncioId={anuncioId} titulo={titulo} logado={logado} jeito="barra" />}
     </div>
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-2 px-1">
+    <div className="flex min-w-0 flex-col gap-0.5">
       {comentarios ? (
         <DicaDeNovidade chave={proprio ? "comentarios-empresa" : "comentarios"} logado={logado}>
           {barra}
@@ -164,8 +146,19 @@ export function ComentariosNoFeed({
       ) : (
         barra
       )}
+      {comentarios && !aberto && resumo.ultimo && (
+        // um toque no último comentário também abre a conversa
+        <button
+          type="button"
+          onClick={alternar}
+          className="line-clamp-2 px-2 text-left text-[13px] leading-[18px] text-ink-muted hover:text-ink sm:line-clamp-1"
+        >
+          <span className="sr-only">Último comentário: </span>
+          <b className="font-semibold text-ink">{resumo.ultimo.nome}</b> {resumo.ultimo.texto}
+        </button>
+      )}
       {aberto && (
-        <div id={`${id}-conversa`} className="rounded-lg border border-line bg-surface-200 p-3 sm:p-4">
+        <div id={`${id}-conversa`} className="mt-1.5 rounded-lg border border-line bg-surface-200 p-3 sm:p-4">
           <Conversa anuncioId={anuncioId} conversa={conversa} />
         </div>
       )}

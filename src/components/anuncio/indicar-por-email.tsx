@@ -9,6 +9,7 @@ import { classesEntrada } from "@/components/ui/campo";
 import { useAcao } from "@/components/ui/usar-acao";
 import { indicarPorEmail } from "@/lib/acoes/indicacao-email";
 import { pedirEntrar } from "../folha-de-entrar";
+import { CLASSES_DA_ACAO } from "./acao-do-feed";
 
 // "Mandar por e-mail" no quadro "Conhece quem faria essa vaga?" (claude/plano-comentarios-e-indicar-por-email.md,
 // parte 1): o e-mail do amigo e o nome (opcional). Sem recado livre. Quem não entrou vai entrar e volta para cá.
@@ -102,14 +103,14 @@ export function IndicarNaJanela({
   anuncioId: string;
   titulo: string;
   logado: boolean;
-  /** "barra": o botão baixo com o texto, na barra dos comentários embaixo da vaga no feed */
+  /** "barra": pequeno, sem borda, ao lado do Comentar, embaixo da vaga no feed */
   jeito?: "icone" | "pequeno" | "botao" | "barra";
 }) {
   const janela = useRef<HTMLDialogElement>(null);
   const comTexto = jeito === "botao" || jeito === "barra";
   const classes =
     jeito === "barra"
-      ? "relative z-10 inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-3 text-label text-ink transition-colors hover:bg-surface-300"
+      ? CLASSES_DA_ACAO
       : jeito === "botao"
       ? "inline-flex min-h-10 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-3.5 text-label text-ink transition-colors hover:bg-surface-300"
       : `relative z-10 inline-flex shrink-0 items-center justify-center rounded-pill border border-line-strong bg-surface-200 text-ink transition-colors hover:bg-surface-300 ${
@@ -117,7 +118,7 @@ export function IndicarNaJanela({
         }`;
   const conteudo = (
     <>
-      <Send aria-hidden className="size-[18px] shrink-0" />
+      <Send aria-hidden className={`shrink-0 ${jeito === "barra" ? "size-4" : "size-[18px]"}`} />
       {jeito === "botao" && "Indicar a um amigo"}
       {jeito === "barra" && "Indicar"}
     </>
