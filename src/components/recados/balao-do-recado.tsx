@@ -87,6 +87,14 @@ function CurriculoCompartilhado({ r }: { r: Recado }) {
   );
 }
 
+/** O selo do modelo do post (o "do meu jeito" fica sem selo). */
+const SELO_DO_MODELO: Record<string, string> = {
+  procuro: "Procurando trabalho",
+  dica: "Dica para quem procura trabalho",
+  contratando: "Estamos contratando",
+  bastidores: "Bastidores",
+};
+
 /**
  * O recado: um balão no tom de recado, como numa conversa. O nome e o que a pessoa faz, o texto,
  * a foto, a vaga citada (tíquete pequeno), a Força, o Indicar, o Conectar e o menu. O próprio recado em revisão aparece
@@ -153,6 +161,11 @@ export function BalaoDoRecado({
         )}
       </header>
 
+      {r.modelo && SELO_DO_MODELO[r.modelo] && (
+        <p className="mt-2 inline-flex items-center rounded-pill bg-surface-100 px-2.5 py-0.5 text-[13px] leading-[18px] font-semibold text-ink">
+          {SELO_DO_MODELO[r.modelo]}
+        </p>
+      )}
       {r.status === "revisao" && (
         <p className="mt-2 inline-flex items-center gap-1.5 rounded-pill bg-surface-100 px-2.5 py-0.5 text-[13px] leading-[18px] font-semibold text-ink-muted">
           <Clock aria-hidden className="size-3.5" />

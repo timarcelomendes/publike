@@ -2553,8 +2553,29 @@ export type Database = {
           p_cidade?: string | null;
           p_bairro?: string | null;
           p_talento?: string | null;
+          /** migração 20270323120000 */
+          p_modelo?: string;
         };
         Returns: { id: string; status: string }[];
+      };
+      /** o modelo de cada post e o "Procurando agora" de Talentos (migração 20270323120000) */
+      modelos_dos_recados: { Args: { p_ids: string[] }; Returns: { id: string; modelo: string }[] };
+      procurando_agora: { Args: { p_ids: string[] }; Returns: { perfil_id: string }[] };
+      /** a resposta de quem publicou que vira notícia no feed (migração 20270324120000) */
+      respostas_recentes_das_vagas: {
+        Args: { p_ids: string[] };
+        Returns: {
+          anuncio_id: string;
+          titulo: string;
+          empresa_id: string;
+          empresa_nome: string;
+          empresa_foto: string | null;
+          empresa_tipo: string;
+          pergunta_nome: string;
+          pergunta_texto: string;
+          resposta_texto: string;
+          quando: string;
+        }[];
       };
       apagar_recado: { Args: { p_recado: string }; Returns: string | null };
       editar_recado: { Args: { p_recado: string; p_texto: string }; Returns: { status: string }[] };

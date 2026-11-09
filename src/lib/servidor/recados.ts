@@ -13,7 +13,23 @@ type Linha = Database["public"]["Functions"]["recados_do_perfil"]["Returns"][num
 export type Recado = Linha & {
   /** só na linha do tempo: quem escreveu é alguém que a pessoa segue */
   seguindo?: boolean;
+  /** o modelo do post ("procuro", "contratando"...; migração 20270323120000; sem ela, "livre") */
+  modelo?: string;
 };
+
+/** Junta o modelo de cada post (uma leitura a mais; sem a migração, tudo fica "livre"). */
+async function comModelos<T extends { id: string }>(recados: T[]): Promise<(T & { modelo: string })[]> {
+  if (!recados.length) return [];
+  try {
+    const { data, error } = await (await criarClienteServidor()).rpc("modelos_dos_recados", {
+      p_ids: recados.map((r) => r.id),
+    });
+    const modelos = new Map((error ? [] : (data ?? [])).map((m) => [m.id, m.modelo]));
+    return recados.map((r) => ({ ...r, modelo: modelos.get(r.id) ?? "livre" }));
+  } catch {
+    return recados.map((r) => ({ ...r, modelo: "livre" }));
+  }
+}
 
 const QUANTOS_NA_LINHA = 60;
 
@@ -32,7 +48,7 @@ export async function recadosDaLinha(filtros: Filtros): Promise<Recado[]> {
       if (error.code !== "PGRST202") console.error("Publike: falha ao ler os recados:", error.message);
       return [];
     }
-    return data ?? [];
+    return comModelos(data ?? []);
   } catch {
     return [];
   }
@@ -45,7 +61,7 @@ export async function recadosDoPerfil(perfilId: string): Promise<Recado[]> {
     const supabase = await criarClienteServidor();
     const { data, error } = await supabase.rpc("recados_do_perfil", { p_perfil: perfilId, p_limite: 30 });
     if (error) return [];
-    return data ?? [];
+    return comModelos(data ?? []);
   } catch {
     return [];
   }
@@ -57,8 +73,8 @@ export async function umRecado(id: string): Promise<Recado | null> {
   try {
     const supabase = await criarClienteServidor();
     const { data, error } = await supabase.rpc("recado", { p_id: id }).maybeSingle();
-    if (error) return null;
-    return data ?? null;
+    if (error || !data) return null;
+    return (await comModelos([data]))[0] ?? null;
   } catch {
     return null;
   }

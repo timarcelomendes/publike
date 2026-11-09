@@ -3,6 +3,7 @@
 import { PenLine, SlidersHorizontal } from "lucide-react";
 import { useEffect, useId, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react";
 import { COOKIE_CONVITE_RECADO, conviteRecadoContadoHoje, valorConviteRecadoFechado } from "@/lib/convite-recado";
+import { DicaDeNovidade } from "../../ui/dica-de-novidade";
 import { ConviteRecado, type TextoDoConvite } from "../../recados/convite-recado";
 import { EscreverRecado } from "../../recados/escrever-recado";
 import { assinarFiltrosDaLinha, EVENTO_FILTROS, filtrosDaLinhaAbertos } from "./abas-da-linha";
@@ -106,7 +107,14 @@ export function BuscaERecado({
       )}
       {recado && (
         <div id={id} className={aberto ? "" : "max-lg:hidden"}>
-          <EscreverRecado {...recado} focar={focar} aoEnviar={() => setComConvite(false)} />
+          {recado.autorTipo && recado.autorTipo !== "pessoa" ? (
+            // quem contrata: a novidade dos modelos "Estamos contratando" e "Bastidores"
+            <DicaDeNovidade chave="posts-empresa" logado>
+              <EscreverRecado {...recado} focar={focar} aoEnviar={() => setComConvite(false)} />
+            </DicaDeNovidade>
+          ) : (
+            <EscreverRecado {...recado} focar={focar} aoEnviar={() => setComConvite(false)} />
+          )}
         </div>
       )}
     </>

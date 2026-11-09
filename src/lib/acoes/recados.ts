@@ -51,6 +51,8 @@ export async function escreverRecado(formData: FormData): Promise<ResultadoRecad
       p_cidade: lugar.cidade,
       p_bairro: lugar.bairro,
       p_talento: d.talento_id,
+      // sem a migração 20270323120000, o post "do meu jeito" vai pela assinatura de antes
+      ...(d.modelo !== "livre" ? { p_modelo: d.modelo } : {}),
     })
     .maybeSingle();
   if (error) {

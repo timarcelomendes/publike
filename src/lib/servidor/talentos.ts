@@ -36,6 +36,17 @@ export async function buscarTalentos(f: {
   return { lista: linhas, total: Number(linhas[0]?.total ?? 0) };
 }
 
+/** Quem postou "Procuro trabalho" nos últimos 14 dias (o selo "Procurando agora"; sem a migração 20270323120000, ninguém). */
+export async function procurandoAgora(ids: string[]): Promise<Set<string>> {
+  if (MODO_DEMO || !ids.length) return new Set();
+  try {
+    const { data, error } = await (await criarClienteServidor()).rpc("procurando_agora", { p_ids: ids.slice(0, 200) });
+    return new Set(error ? [] : (data ?? []).map((l) => l.perfil_id));
+  } catch {
+    return new Set();
+  }
+}
+
 /** O resumo de uma pessoa da aba, com o curso (null: não está na aba). */
 export async function talentoResumo(
   perfilId: string,

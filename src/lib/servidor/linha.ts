@@ -1,7 +1,7 @@
 import "server-only";
 import type { Conquista, ConquistaPendente } from "@/lib/conquistas";
 import { conquistasDaLinha, conquistasPendentes } from "@/lib/servidor/conquistas";
-import { SEM_COMENTARIOS, type ResumoComentarios } from "@/lib/comentarios";
+import { SEM_COMENTARIOS, type RespostaNoFeed, type ResumoComentarios } from "@/lib/comentarios";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { vagaNoTurno, type Aderencia } from "@/lib/aderencia";
@@ -154,6 +154,19 @@ export async function curtidasDasVagas(ids: string[]): Promise<Map<string, Curti
   );
 }
 
+/** As respostas de quem publicou, uma por vaga, dos últimos 7 dias (migração 20270324120000; sem ela, nada). */
+export async function respostasDasVagas(ids: string[]): Promise<RespostaNoFeed[]> {
+  if (!ids.length) return [];
+  try {
+    const { data, error } = await (await criarClienteServidor()).rpc("respostas_recentes_das_vagas", {
+      p_ids: ids.slice(0, 200),
+    });
+    return error ? [] : (data ?? []);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Quantos comentários no ar cada vaga tem, se aceita comentários e o último (migração 20270319120000; sem ela,
  * nada).
@@ -178,7 +191,8 @@ export type DadoDaLinha =
   | { anuncio: AnuncioNaLinha }
   | { aceite: Match; /** contato direto: o match saiu na hora, sem aceite */ direto: boolean }
   | { recado: Recado }
-  | { conquista: Conquista };
+  | { conquista: Conquista }
+  | { resposta: RespostaNoFeed };
 
 export type DadosDaLinha = {
   agora: number;
@@ -412,6 +426,24 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   if (aba === "tudo") {
     if (relevantes) itens.unshift(...aceites);
     else itens.push(...aceites);
+  }
+  // as respostas de quem publicou aos comentários (uma por vaga do feed, dos últimos 7 dias): só em Tudo; nas
+  // recentes, na hora; nas relevantes, a mais nova entra depois do 4º item
+  if (aba === "tudo") {
+    const respostas = await respostasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+      () => [] as RespostaNoFeed[],
+    );
+    const itensDeResposta: ItemDaLinha<DadoDaLinha>[] = respostas.map((r) => ({
+      tipo: "resposta",
+      id: `resposta-${r.anuncio_id}`,
+      quando: r.quando,
+      dados: { resposta: r },
+    }));
+    if (!relevantes) itens.push(...itensDeResposta);
+    else if (itensDeResposta.length) {
+      const maisNova = [...itensDeResposta].sort((a, b) => b.quando.localeCompare(a.quando))[0];
+      itens.splice(Math.min(4, itens.length), 0, maisNova);
+    }
   }
   // os recados no ar (e os da pessoa em revisão): em Tudo e em Recados
   const itensDeRecado: ItemDaLinha<DadoDaLinha>[] = recados.map((r) => ({

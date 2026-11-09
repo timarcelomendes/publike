@@ -15,6 +15,21 @@ import { reduzirImagem } from "@/lib/reduzir-imagem";
 import { criarClienteNavegador } from "@/lib/supabase/navegador";
 
 const MAXIMO = 280;
+
+// Os modelos do post (claude/plano-posts-e-conquistas.md, parte 3): cada tipo de conta tem os seus. O texto começa
+// pronto (dá para completar); "Estamos contratando" pede uma vaga sua no ar e "Bastidores", uma foto.
+type Modelo = "livre" | "procuro" | "dica" | "contratando" | "bastidores";
+const MODELOS_PESSOA: { valor: Modelo; nome: string; comeco: string }[] = [
+  { valor: "procuro", nome: "Procuro trabalho", comeco: "Procuro trabalho de " },
+  { valor: "dica", nome: "Dica para quem procura", comeco: "Dica para quem procura trabalho: " },
+  { valor: "livre", nome: "Do meu jeito", comeco: "" },
+];
+const MODELOS_CONTRATA: { valor: Modelo; nome: string; comeco: string }[] = [
+  { valor: "contratando", nome: "Estamos contratando", comeco: "Estamos contratando! " },
+  { valor: "bastidores", nome: "Bastidores", comeco: "" },
+  { valor: "livre", nome: "Do meu jeito", comeco: "" },
+];
+const COMECOS = new Set([...MODELOS_PESSOA, ...MODELOS_CONTRATA].map((m) => m.comeco).filter(Boolean));
 const FOTO_MAX_BYTES = 8 * 1024 * 1024;
 // as carinhas do recado: as mais usadas numa conversa de trabalho, sem precisar abrir o teclado do celular
 const CARINHAS = [
@@ -97,10 +112,35 @@ export function EscreverRecado({
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   // tocou no campo (ou num dos botões): abre; saiu de tudo, vazio: fecha
   const [ativo, setAtivo] = useState(false);
+  const [modelo, setModelo] = useState<Modelo>("livre");
   const [pendente, iniciar] = useTransition();
   const campo = useRef<HTMLTextAreaElement>(null);
   const id = useId();
   const contratando = autorTipo !== null && autorTipo !== "pessoa";
+  const modelos = contratando ? MODELOS_CONTRATA : MODELOS_PESSOA;
+
+  /** Escolhe o modelo: o texto começa pronto (se o campo estiver vazio ou só com o começo de outro modelo). */
+  function escolherModelo(m: (typeof modelos)[number]) {
+    setModelo(m.valor);
+    setAviso(null);
+    if (!texto.trim() || COMECOS.has(texto)) setTexto(m.comeco);
+    if (m.valor === "contratando") {
+      // a vaga: a busca abre nas suas vagas no ar
+      setMinhas(true);
+      setCitando(!citado);
+      setCompartilhando(false);
+    } else if (m.valor === "procuro" && !curriculo) {
+      // o seu currículo: a lista abre (o seu vem primeiro)
+      setCompartilhando(true);
+      setCitando(false);
+    }
+    requestAnimationFrame(() => {
+      const t = campo.current;
+      if (!t) return;
+      t.focus();
+      t.setSelectionRange(t.value.length, t.value.length);
+    });
+  }
   const restam = MAXIMO - texto.length;
   const termo = busca.trim();
   const chaveDaBusca = `${minhas ? "minhas" : "todas"}|${termo}`;
@@ -193,11 +233,16 @@ export function EscreverRecado({
 
   function publicar() {
     if (!texto.trim()) return setAviso({ ok: false, texto: "Escreva o post." });
+    if (modelo === "contratando" && (!citado || citado.tipo !== "vaga"))
+      return setAviso({ ok: false, texto: "Escolha uma das suas vagas no ar para o “Estamos contratando”." });
+    if (modelo === "bastidores" && !foto)
+      return setAviso({ ok: false, texto: "Ponha uma foto da equipe, do lugar ou do dia a dia no “Bastidores”." });
     const dados = new FormData();
     dados.set("texto", texto);
     if (foto) dados.set("foto", foto.caminho);
     if (citado) dados.set("anuncio_id", citado.id);
     if (curriculo) dados.set("talento_id", curriculo.id);
+    dados.set("modelo", modelo);
     setAviso(null);
     iniciar(async () => {
       // sem chegar ao servidor, o recado fica no campo e o aviso aparece
@@ -216,6 +261,7 @@ export function EscreverRecado({
       setCompartilhando(false);
       setBuscaCurriculo("");
       setCarinhas(false);
+      setModelo("livre");
       setAviso({ ok: true, texto: r.mensagem ?? "Post enviado." });
       aoEnviar?.();
     });
@@ -316,6 +362,36 @@ export function EscreverRecado({
           <Dica texto="Compartilhar o currículo de alguém" lado="direita" />
         </span>
       </div>
+
+      {/* o tipo do post: o texto começa pronto; "do meu jeito" é o campo livre */}
+      {aberto && (
+        <div role="group" aria-label="Tipo do post" className="mt-1.5 flex flex-wrap gap-1.5 px-1">
+          {modelos.map((m) => (
+            <button
+              key={m.valor}
+              type="button"
+              aria-pressed={modelo === m.valor}
+              onClick={() => escolherModelo(m)}
+              className={`min-h-8 rounded-pill px-3 text-[13px] font-semibold transition-colors ${
+                modelo === m.valor ? "bg-ink text-surface-100" : "bg-surface-300 text-ink hover:bg-line"
+              }`}
+            >
+              {m.nome}
+            </button>
+          ))}
+        </div>
+      )}
+      {aberto && modelo === "bastidores" && !foto && (
+        <p className="mt-1.5 px-2 text-body-sm text-ink-muted">
+          Ponha uma foto da equipe, do lugar ou do dia a dia (no ícone da imagem). Se quiser, cite uma vaga.
+        </p>
+      )}
+      {aberto && modelo === "procuro" && !curriculo && (
+        <p className="mt-1.5 px-2 text-body-sm text-ink-muted">
+          Com o seu currículo junto, as empresas veem o que você já fez e você ganha o selo “Procurando agora” na aba
+          Talentos.
+        </p>
+      )}
 
       {/* no celular, as carinhas ficam numa linha embaixo do campo (o teclado também tem) */}
       {aberto && (
@@ -419,7 +495,9 @@ export function EscreverRecado({
 
       {compartilhando && !temCitacao && (
         <div className="mt-2.5 rounded-md border border-line bg-surface-100 p-2">
-          <p className="mb-2 text-body-sm font-semibold">Compartilhe o currículo de alguém</p>
+          <p className="mb-2 text-body-sm font-semibold">
+            {modelo === "procuro" ? "Escolha o seu currículo" : "Compartilhe o currículo de alguém"}
+          </p>
           <label className="block">
             <span className="sr-only">Procurar pelo nome, cargo ou habilidade</span>
             <input

@@ -23,6 +23,11 @@ export const DICAS = [
     ligada: true,
   },
   {
+    chave: "posts-empresa",
+    texto: "Poste “Estamos contratando” ou os bastidores da sua empresa. Quem vê pode curtir a vaga ali mesmo.",
+    ligada: true,
+  },
+  {
     chave: "indicar-email",
     texto: "Mande esta vaga para o e-mail de um amigo. Se ele não tiver conta, cria em um toque.",
     ligada: true,

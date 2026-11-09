@@ -17,12 +17,12 @@ import { deslocamentoCurto } from "@/lib/deslocamento";
 import { formatarDistancia, formatarLugar, linkWhatsApp, rotuloModalidade, urlDaFotoTrabalho } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
-import { SEM_COMENTARIOS } from "@/lib/comentarios";
+import { SEM_COMENTARIOS, type RespostaNoFeed } from "@/lib/comentarios";
 import type { Conquista } from "@/lib/conquistas";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
-import { ComentariosNoFeed } from "../../anuncio/comentarios-no-feed";
+import { ComentariosNaJanela, ComentariosNoFeed } from "../../anuncio/comentarios-no-feed";
 import { BotaoCurtir } from "../../botao-curtir";
 import { BotaoParabens } from "../../conquistas/botao-parabens";
 import { rotuloDaArea } from "../../conquistas/nomes";
@@ -329,6 +329,52 @@ export function CartaoDaConquista({ c, hora }: { c: Conquista; hora: string }) {
         >
           Ver vagas parecidas
         </Link>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * A resposta que vira notícia: quem publicou respondeu um comentário da vaga. A pergunta (com quem perguntou), a
+ * resposta e "Ver a conversa", que abre os comentários numa janela, sem sair do feed (parte 4 do plano de posts).
+ */
+export function CartaoDaResposta({ r, hora }: { r: RespostaNoFeed; hora: string }) {
+  return (
+    <article className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-surface-200 px-4 py-3.5 shadow-card sm:px-5">
+      <div className="flex items-start gap-3">
+        <Avatar
+          nome={r.empresa_nome}
+          foto={r.empresa_foto}
+          tamanho={40}
+          forma={r.empresa_tipo === "pessoa" ? "redonda" : "quadrada"}
+          colorida
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <h3 className="min-w-0 flex-1 text-body-sm leading-5">
+              <Link href={`/perfil/${r.empresa_id}`} className="font-bold text-ink hover:underline">
+                {r.empresa_nome}
+              </Link>{" "}
+              <span className="text-ink-muted">respondeu sobre a vaga</span>{" "}
+              <Link href={`/anuncio/${r.anuncio_id}`} className="font-semibold text-ink underline underline-offset-2">
+                {r.titulo}
+              </Link>
+            </h3>
+            <HoraNoCanto hora={hora} />
+          </div>
+          <blockquote className="mt-2 border-l-2 border-line-strong pl-3 text-body-sm text-ink-muted">
+            <span className="font-semibold text-ink">{r.pergunta_nome}:</span> {r.pergunta_texto}
+          </blockquote>
+          <p className="mt-2 text-body break-words text-ink">{r.resposta_texto}</p>
+        </div>
+      </div>
+      <div className="sm:pl-[52px]">
+        <ComentariosNaJanela
+          anuncioId={r.anuncio_id}
+          titulo={r.titulo}
+          resumo={SEM_COMENTARIOS}
+          texto="Ver a conversa"
+        />
       </div>
     </article>
   );

@@ -22,6 +22,7 @@ import { ListaDaLinha } from "./lista-da-linha";
 import { FimDoRaio, RaioDaLinha } from "./raio-da-linha";
 import {
   CartaoDaConquista,
+  CartaoDaResposta,
   CartaoDoAceite,
   CartaoDoServico,
   ComentariosDoTiquete,
@@ -123,6 +124,11 @@ function Item({
         <>
           <No icone={CircleCheck} tipo="aceite" />
           <CartaoDoAceite m={dados.aceite} hora={hora} usuarioId={d.usuarioId} direto={dados.direto} />
+        </>
+      ) : "resposta" in dados ? (
+        <>
+          <No icone={MessageSquareText} tipo="vaga" />
+          <CartaoDaResposta r={dados.resposta} hora={hora} />
         </>
       ) : "conquista" in dados ? (
         <>

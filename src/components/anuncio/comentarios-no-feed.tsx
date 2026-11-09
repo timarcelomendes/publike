@@ -175,11 +175,14 @@ export function ComentariosNaJanela({
   titulo,
   resumo,
   pequeno = false,
+  texto,
 }: {
   anuncioId: string;
   titulo: string;
   resumo: ResumoComentarios;
   pequeno?: boolean;
+  /** com o texto, o botão é um link escrito ("Ver a conversa"), e não o ícone com o número */
+  texto?: string;
 }) {
   const janela = useRef<HTMLDialogElement>(null);
   const conversa = useConversa(anuncioId);
@@ -195,8 +198,8 @@ export function ComentariosNaJanela({
     <>
       <button
         type="button"
-        aria-label={rotulo}
-        title={rotulo}
+        aria-label={texto ? undefined : rotulo}
+        title={texto ? undefined : rotulo}
         aria-haspopup="dialog"
         onClick={(e) => {
           e.preventDefault();
@@ -205,12 +208,16 @@ export function ComentariosNaJanela({
           abriuAConversa("comentarios");
           janela.current?.showModal();
         }}
-        className={`relative z-10 inline-flex shrink-0 items-center justify-center gap-1 rounded-pill border border-line-strong bg-surface-200 text-label text-ink transition-colors hover:bg-surface-300 ${
-          pequeno ? "min-h-9 min-w-9 px-2" : "min-h-11 min-w-11 px-2.5"
-        }`}
+        className={
+          texto
+            ? "relative z-10 inline-flex min-h-9 items-center gap-1.5 text-label text-ink underline underline-offset-2 hover:text-terra-text"
+            : `relative z-10 inline-flex shrink-0 items-center justify-center gap-1 rounded-pill border border-line-strong bg-surface-200 text-label text-ink transition-colors hover:bg-surface-300 ${
+                pequeno ? "min-h-9 min-w-9 px-2" : "min-h-11 min-w-11 px-2.5"
+              }`
+        }
       >
         <MessageCircle aria-hidden className="size-[18px] shrink-0" />
-        {total > 0 && <span className="tabular-nums">{total}</span>}
+        {texto ?? (total > 0 && <span className="tabular-nums">{total}</span>)}
       </button>
       <dialog
         ref={janela}

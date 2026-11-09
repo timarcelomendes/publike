@@ -39,6 +39,20 @@ export function contarComentarios(dados: ComentariosDaVaga) {
   return dados.itens.filter((c) => c.status === "no_ar").length;
 }
 
+/** A resposta de quem publicou que vira notícia no feed (migração 20270324120000). */
+export type RespostaNoFeed = {
+  anuncio_id: string;
+  titulo: string;
+  empresa_id: string;
+  empresa_nome: string;
+  empresa_foto: string | null;
+  empresa_tipo: string;
+  pergunta_nome: string;
+  pergunta_texto: string;
+  resposta_texto: string;
+  quando: string;
+};
+
 export const MAXIMO_COMENTARIO = 500;
 /** Editar só até 15 minutos depois (o banco confere). */
 export const MINUTOS_PARA_EDITAR = 15;

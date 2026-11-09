@@ -27,7 +27,18 @@ export function textoDisponibilidade(lista: string[]) {
  * `acao` (o botão Conectar, para empresas) fica por cima do link do cartão. `previa`: o cartão que a
  * pessoa vê na tela do currículo enquanto preenche (sem o link e sem o título na lista de títulos da página).
  */
-export function CartaoTalento({ t, acao, previa = false }: { t: TalentoResumo; acao?: ReactNode; previa?: boolean }) {
+export function CartaoTalento({
+  t,
+  acao,
+  previa = false,
+  procurando = false,
+}: {
+  t: TalentoResumo;
+  acao?: ReactNode;
+  previa?: boolean;
+  /** postou "Procuro trabalho" nos últimos 14 dias (o selo "Procurando agora") */
+  procurando?: boolean;
+}) {
   const estudo = nomeEscolaridade(t.escolaridade);
   const turnos = textoDisponibilidade(t.disponibilidade);
   const habilidades = t.habilidades.length ? t.habilidades : t.cursos;
@@ -60,6 +71,12 @@ export function CartaoTalento({ t, acao, previa = false }: { t: TalentoResumo; a
             <MapPin aria-hidden className="size-3.5 shrink-0" />
             <span className="truncate">{formatarLugar(t.bairro, t.cidade)}</span>
           </p>
+          {procurando && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-pill bg-cerrado/15 px-2.5 py-0.5 text-[13px] leading-[18px] font-semibold text-cerrado-text">
+              <span aria-hidden className="size-2 rounded-pill bg-cerrado" />
+              Procurando agora
+            </p>
+          )}
         </div>
       </div>
 

@@ -22,7 +22,7 @@ import { formatarNumero, primeiro } from "@/lib/formato";
 import { obterLocal } from "@/lib/local";
 import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { obterIntencao } from "@/lib/servidor/intencao";
-import { buscarTalentos } from "@/lib/servidor/talentos";
+import { buscarTalentos, procurandoAgora } from "@/lib/servidor/talentos";
 import { minhasBuscasDeTalentos } from "@/lib/servidor/buscas-talentos";
 import { BuscasSalvas } from "@/components/talentos/buscas-salvas";
 import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
@@ -324,7 +324,10 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
       </Aviso>
     );
   }
-  const { lista, total } = resultado;
+  const { lista: daBusca, total } = resultado;
+  // "Procurando agora": quem postou "Procuro trabalho" nos últimos 14 dias vem primeiro na página, com o selo
+  const procurando = await procurandoAgora(daBusca.map((t) => t.perfil_id));
+  const lista = [...daBusca].sort((a, b) => Number(procurando.has(b.perfil_id)) - Number(procurando.has(a.perfil_id)));
   const paginas = Math.min(Math.ceil(total / TALENTOS_POR_PAGINA), MAX_PAGINAS_TALENTOS);
   const filtrado = Boolean(f.q || f.cidade);
   // empresa: o botão Conectar em cada cartão, já com o estado (pedido enviado, conectados…)
@@ -389,6 +392,7 @@ async function Lista({ searchParams, explicar = false }: { searchParams: Paramet
               <li key={t.perfil_id}>
                 <CartaoTalento
                   t={t}
+                  procurando={procurando.has(t.perfil_id)}
                   acao={
                     estados && (
                       <div className="flex flex-col gap-2">

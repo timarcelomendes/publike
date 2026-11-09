@@ -1026,7 +1026,7 @@ export const esquemaRecado = z.object({
     .pipe(
       z
         .string()
-        .min(1, { error: "Escreva o recado." })
+        .min(1, { error: "Escreva o post." })
         .max(280, { error: "Use no máximo 280 letras." })
         .refine((t) => !temContatoNoTexto(t), {
           error: "Tire o telefone, o e-mail ou o link. O contato é pela conversa do Publike.",
@@ -1038,6 +1038,8 @@ export const esquemaRecado = z.object({
     .nullable(),
   anuncio_id: z.string().regex(UUID, { error: "Cite outra vaga." }).nullable(),
   talento_id: z.string().regex(UUID, { error: "Escolha outro currículo." }).nullable(),
+  /** o modelo do post (migração 20270323120000) */
+  modelo: z.enum(["livre", "procuro", "dica", "contratando", "bastidores"], { error: "Escolha o tipo do post." }),
 });
 
 export function lerRecado(formData: FormData) {
@@ -1046,6 +1048,7 @@ export function lerRecado(formData: FormData) {
     foto: campo(formData, "foto") || null,
     anuncio_id: campo(formData, "anuncio_id") || null,
     talento_id: campo(formData, "talento_id") || null,
+    modelo: campo(formData, "modelo") || "livre",
   });
 }
 
