@@ -431,6 +431,13 @@ function TabelaEnviados({
             <tr key={e.id} className="border-b border-line align-top last:border-0">
               <td className="px-5 py-2.5 sm:px-2">
                 {nomes.get(e.modelo) ?? NOMES_MODELOS_EMAIL[e.modelo] ?? e.modelo}
+                {/* o "Etapa atualizada": qual etapa e de qual vaga (migração 20270325120000) */}
+                {e.etapa && (
+                  <span className="mt-1 block">
+                    <Selo variante="contorno">{e.etapa}</Selo>
+                  </span>
+                )}
+                {e.vaga && <span className="mt-0.5 block text-caption text-ink-muted normal-case">{e.vaga}</span>}
               </td>
               <td className="px-2 py-2.5">
                 <span className="block break-all">{e.para}</span>

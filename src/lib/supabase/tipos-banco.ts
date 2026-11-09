@@ -4084,6 +4084,9 @@ export type Database = {
           erro: string | null;
           criado_em: string;
           enviado_em: string | null;
+          /** migração 20270325120000: a vaga e, no "Etapa atualizada", a etapa (sem a migração, não vêm) */
+          vaga?: string | null;
+          etapa?: string | null;
         }[];
       };
       admin_reenviar_email: { Args: { p_id: number }; Returns: boolean };
