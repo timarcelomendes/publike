@@ -232,19 +232,23 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     cidadeDaVisita(),
   ]);
   const lidos = lerFiltros(sp);
-  // a aba: a da URL; sem ela, pelo uso da conta: quem procura trabalho e quem contrata abrem em Vagas;
-  // as outras (quem presta serviço, quem visita), a última escolhida ou a da resposta "O que você quer
-  // fazer" (quem quer contratar um serviço abre em Serviços), ou Tudo
-  const abaDoUso = usuario && !lidos.tipo && !lidos.tudo && primeiro(sp.tipo) !== "recado" ? await perfilDeUso() : null;
+  // a aba: a da URL; sem ela, a última que a pessoa escolheu (vale para todo mundo, 09/11/2026). Quem nunca
+  // escolheu: quem procura trabalho abre em Vagas; quem quer contratar um serviço (a resposta "O que você quer
+  // fazer"), em Serviços; o resto (quem contrata, quem presta serviço, quem visita), em Tudo
+  const semEscolha = !lidos.tipo && !lidos.tudo && primeiro(sp.tipo) !== "recado" && !prefs.aba;
+  const abaDoUso = usuario && semEscolha ? await perfilDeUso() : null;
   const aba: AbaDaLinha =
     primeiro(sp.tipo) === "recado"
       ? "recado"
       : (lidos.tipo ??
         (lidos.tudo
           ? "tudo"
-          : abaDoUso === "trabalho" || abaDoUso === "contratar"
-            ? "vaga"
-            : (prefs.aba ?? ((await obterIntencao().catch(() => null)) === "contratar_servico" ? "servico" : "tudo"))));
+          : (prefs.aba ??
+            (abaDoUso === "trabalho"
+              ? "vaga"
+              : (await obterIntencao().catch(() => null)) === "contratar_servico"
+                ? "servico"
+                : "tudo"))));
   const filtrosDaBusca: Filtros = {
     ...lidos,
     tipo: aba === "vaga" || aba === "servico" ? aba : null,
