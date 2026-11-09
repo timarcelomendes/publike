@@ -1,4 +1,4 @@
-import { Heart, MessageCircle } from "lucide-react";
+import { Heart } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -385,36 +385,38 @@ async function Conteudo({
             <Numero
               rotulo="Curtidas"
               valor={todas.length}
-              icone={Heart}
-              detalhe={`${conta("pendente")} esperando o aceite`}
+              detalhe={`${conta("pendente")} esperando`}
               href={so({})}
             />
             <Numero
               rotulo="Respondidas"
               valor={respondidas}
               detalhe={`${Math.round((100 * respondidas) / todas.length)}%${
-                tempoAteResponder !== null ? `, em geral em ${duracao(tempoAteResponder)}` : ""
+                tempoAteResponder !== null ? ` · ${duracao(tempoAteResponder)}` : ""
               }`}
             />
-            <Numero rotulo="Matches" valor={conta("match")} href={so({ situacao: "match" })} />
             <Numero
-              rotulo="Conversaram no chat"
+              rotulo="Matches"
+              valor={conta("match")}
+              detalhe={`${Math.round((100 * conta("match")) / todas.length)}% das curtidas`}
+              href={so({ situacao: "match" })}
+            />
+            <Numero
+              rotulo="No chat"
               valor={conversaram}
-              icone={MessageCircle}
-              detalhe={`de ${plural(matches.length, "match", "matches")}: quem publicou escreveu em ${empresaEscreveu}, a pessoa respondeu em ${pessoaRespondeu}`}
+              detalhe="os dois escreveram"
               href={so({ situacao: "match", chat: "conversaram" })}
             />
             <Numero
               rotulo="Com contato"
               valor={comContato}
-              detalhe="WhatsApp, telefone ou e-mail tocado"
-              icone={MessageCircle}
+              detalhe="WhatsApp, telefone, e-mail"
               href={so({ situacao: "match", chat: "contato" })}
             />
             <Numero
               rotulo="Saíram do ar"
               valor={fechados}
-              detalhe={`de ${plural(anunciosCurtidos.size, "anúncio curtido", "anúncios curtidos")}`}
+              detalhe={`de ${plural(anunciosCurtidos.size, "anúncio", "anúncios")}`}
             />
           </div>
         )}
