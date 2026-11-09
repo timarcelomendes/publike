@@ -108,7 +108,7 @@ export async function moderarAvaliacao(
   ) {
     return { ok: false, erro: "Pedido inválido." };
   }
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
   if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso.", ir: "/entrar?next=/admin/denuncias" };
   const { error } = await acesso.cliente.rpc("moderar_avaliacao", {
     p_avaliacao: id,

@@ -42,7 +42,7 @@ export default function Anuncios({ searchParams }: PageProps<"/admin/anuncios">)
 }
 
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anuncios">["searchParams"] }) {
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe("/admin/anuncios");
   if (!acesso) notFound();
   const sp = await searchParams;
   // "Em Outros" (só o admin): os anúncios sem área, com a sugestão pelo título e o botão de mudar

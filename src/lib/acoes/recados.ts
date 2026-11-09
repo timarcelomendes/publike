@@ -301,7 +301,7 @@ export async function procurarCurriculoParaCitar(texto: string): Promise<Curricu
 export async function moderarRecado(id: string, decisao: "liberar" | "remover", nota?: string): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(id) || !["liberar", "remover"].includes(decisao)) return { ok: false, erro: "Pedido inválido." };
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
   if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso.", ir: "/entrar?next=/admin/denuncias" };
   const { error } = await acesso.cliente.rpc("moderar_recado", {
     p_recado: id,

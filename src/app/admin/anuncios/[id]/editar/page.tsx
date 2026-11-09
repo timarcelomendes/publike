@@ -27,7 +27,7 @@ export default function CorrigirAnuncio({ params }: PageProps<"/admin/anuncios/[
 }
 
 async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/editar">["params"] }) {
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe("/admin/anuncios");
   if (!acesso) notFound();
   const { id } = await params;
   if (!UUID.test(id)) notFound();

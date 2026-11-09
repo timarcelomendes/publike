@@ -89,7 +89,7 @@ function SubAbas({ ativa, numeros }: { ativa: Aba; numeros: Record<Aba, number> 
 }
 
 async function Conteudo({ pedida }: { pedida: Aba | null }) {
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe("/admin/denuncias");
   if (!acesso) notFound();
   const [fila, todasAvaliacoes, todosRecados, comentarios, agora] = await Promise.all([
     filaDaModeracao(acesso.cliente),

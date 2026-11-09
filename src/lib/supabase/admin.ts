@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import type { Database } from "./tipos-banco";
 import { MODO_DEMO, SUPABASE_URL } from "@/lib/config";
-import { ehModerador } from "@/lib/dados";
 import {
   adminConfigurado,
   confereChaveDoAdmin,
@@ -13,6 +12,7 @@ import {
   ENDERECO_LOCAL,
 } from "@/lib/servidor/admin-chave";
 import { chaveSecretaSupabase } from "@/lib/servidor/ambiente";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { criarClienteServidor } from "./servidor";
 
 // O admin só existe no computador do dono do site (veja src/lib/servidor/admin-chave.ts).
@@ -61,10 +61,13 @@ export async function clienteAdminOuNulo(): Promise<ClienteBanco | null> {
 
 export type AcessoEquipe = { cliente: ClienteBanco; admin: boolean };
 
-/** Anúncios e denúncias: o admin (no computador dele) ou um moderador logado. */
-export async function acessoDaEquipe(): Promise<AcessoEquipe | null> {
+/**
+ * Anúncios e denúncias: o admin (no computador dele) ou um moderador logado que vê a tela (`rotas`: uma delas basta;
+ * a marca "Somente publike.org" em Admin › Quem vê cada tela tira a tela do moderador).
+ */
+export async function acessoDaEquipe(rotas: string | string[]): Promise<AcessoEquipe | null> {
   if (await ehAdminLocal()) return { cliente: criarClienteAdmin(), admin: true };
   if (MODO_DEMO) return null;
-  if (await ehModerador()) return { cliente: await criarClienteServidor(), admin: false };
+  if (await possoVerTela(rotas)) return { cliente: await criarClienteServidor(), admin: false };
   return null;
 }

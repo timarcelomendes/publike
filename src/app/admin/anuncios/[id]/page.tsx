@@ -47,7 +47,7 @@ async function Conteudo({
   params: PageProps<"/admin/anuncios/[id]">["params"];
   searchParams: PageProps<"/admin/anuncios/[id]">["searchParams"];
 }) {
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe("/admin/anuncios");
   if (!acesso) notFound();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();

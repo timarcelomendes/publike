@@ -22,7 +22,7 @@ import {
   tempoRelativo,
 } from "@/lib/formato";
 import { comoResponde } from "@/lib/resposta";
-import { ehModerador } from "@/lib/dados";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -219,7 +219,7 @@ async function Conteudo({
 }) {
   // o admin (no computador do dono) ou a moderação, com login, no site no ar
   const admin = await ehAdminLocal();
-  if (!admin && !(await ehModerador())) notFound();
+  if (!admin && !(await possoVerTela("/admin/curtidas"))) notFound();
   const sp = await searchParams;
   const pedido = primeiro(sp.periodo) ?? "7";
   const periodo = PERIODOS.some((p) => p.valor === pedido) ? pedido : "7";

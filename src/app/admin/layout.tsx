@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AbasAdmin, MenuAdmin, SeloAdmin, type ModoAdmin } from "@/components/admin/abas";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Aviso, Container, Logo } from "@/components/ui/basicos";
-import { ehModerador } from "@/lib/dados";
+import { telasNoSite } from "@/lib/servidor/telas-do-admin";
 import { numerosDoPainel } from "@/lib/admin/dados";
 import { adminSemCookie, ehAdminLocal, exigirAdminLocal } from "@/lib/supabase/admin";
 
@@ -34,13 +34,15 @@ export default function LayoutAdmin({ children }: LayoutProps<"/admin">) {
 }
 
 async function ConteudoComModo({ children }: { children: ReactNode }) {
-  // Moderador com login entra na moderação; o admin pede o link do terminal.
-  const modo: ModoAdmin = (await ehAdminLocal()) ? "admin" : (await ehModerador()) ? "moderador" : null;
+  // A equipe com login (moderador ou publike.org) vê as telas liberadas para ela; o admin pede o link do terminal.
+  const admin = await ehAdminLocal();
+  const telas = admin ? [] : await telasNoSite();
+  const modo: ModoAdmin = admin ? "admin" : telas.length ? "moderador" : null;
   if (!modo && (await adminSemCookie())) return <AbrirPeloTerminal />;
   if (modo !== "admin") {
     return (
       <>
-        <Topo modo={modo} />
+        <Topo modo={modo} telas={telas} />
         <div className="mt-6">{children}</div>
       </>
     );
@@ -70,7 +72,7 @@ async function MenuComNumeros() {
   );
 }
 
-function Topo({ modo }: { modo: ModoAdmin }) {
+function Topo({ modo, telas = [] }: { modo: ModoAdmin; telas?: string[] }) {
   if (modo === "admin") {
     // o admin: a logo com o selo Admin (no computador ela fica no alto do menu lateral) e, à direita, discreto,
     // o lembrete de que só abre neste computador
@@ -94,7 +96,7 @@ function Topo({ modo }: { modo: ModoAdmin }) {
         {/* a equipe no site no ar: números e moderação no mesmo lugar */}
         <h1 className="text-h2 sm:text-h1">Equipe do Publike</h1>
       </div>
-      {modo && <AbasAdmin modo={modo} />}
+      {modo && <AbasAdmin modo={modo} telas={telas} />}
     </>
   );
 }

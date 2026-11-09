@@ -1427,6 +1427,12 @@ export type Database = {
         Returns: { conta_id: string; avisada_em: string; pessoas: number }[];
       };
       posso_ver_painel_no_site: { Args: Record<PropertyKey, never>; Returns: boolean };
+      minhas_telas_do_admin: { Args: Record<PropertyKey, never>; Returns: string[] };
+      admin_telas_do_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: { rota: string; somente_publike: boolean; mudado_em: string }[];
+      };
+      admin_marcar_tela: { Args: { p_rota: string; p_somente: boolean }; Returns: undefined };
       painel_no_site: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_contas_painel_no_site: {
         Args: Record<PropertyKey, never>;

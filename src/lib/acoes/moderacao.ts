@@ -45,7 +45,7 @@ export async function denunciarAnuncio(_anterior: EstadoForm, formData: FormData
 export async function moderarAnuncio(id: string, decisao: "remover" | "liberar", nota?: string): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(id) || !["remover", "liberar"].includes(decisao)) return { ok: false, erro: "Pedido inválido." };
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
   if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso.", ir: "/entrar?next=/admin/denuncias" };
 
   const motivo = (nota ?? "").trim().slice(0, 500) || null;
@@ -66,7 +66,7 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const id = formData.get("id");
   if (typeof id !== "string" || !UUID.test(id)) return { ok: false, erro: "Anúncio não encontrado." };
-  const acesso = await acessoDaEquipe();
+  const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
   if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso." };
 
   const leitura = lerAnuncio(formData);

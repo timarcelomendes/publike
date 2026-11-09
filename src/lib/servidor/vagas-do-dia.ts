@@ -1,5 +1,5 @@
 import "server-only";
-import { ehModerador } from "@/lib/dados";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { criarClienteAdmin, ehAdminLocal, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { VagaDoDia } from "@/lib/vagas-do-dia";
@@ -80,7 +80,7 @@ async function ler(montar: (colunas: string) => PromiseLike<{ data: unknown; err
  */
 export async function acessoVagasDoDia(): Promise<ClienteBanco | null> {
   if (await ehAdminLocal()) return criarClienteAdmin();
-  if (await ehModerador()) return criarClientePublico();
+  if (await possoVerTela("/admin/vagas-do-dia")) return criarClientePublico();
   return null;
 }
 

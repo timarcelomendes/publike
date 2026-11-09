@@ -1,106 +1,14 @@
 "use client";
 
-import {
-  BriefcaseBusiness,
-  ChevronDown,
-  Mail,
-  Megaphone,
-  Settings,
-  ShieldCheck,
-  Users,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/ui/basicos";
 import { usePathname } from "next/navigation";
+import { GRUPOS_ADMIN, TELAS_DO_SITE } from "@/lib/admin/telas";
 
 export type ModoAdmin = "admin" | "moderador" | null;
 
-type Secao = { href: string; nome: string };
-
-/**
- * As seções do admin, em grupos (claude/plano-avisos-de-liberacao-e-menu-admin.md, parte 2): o menu da coluna da
- * esquerda no computador e o "Seções" no celular. Os endereços são os de sempre.
- */
-export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Secao[] }[] = [
-  { nome: null, secoes: [{ href: "/admin", nome: "Painel" }] },
-  {
-    nome: "Contas",
-    icone: Users,
-    secoes: [
-      { href: "/admin/usuarios", nome: "Usuários" },
-      { href: "/admin/empresas", nome: "Empresas" },
-      { href: "/admin/convites", nome: "Convites" },
-      { href: "/admin/moderadores", nome: "Moderadores" },
-      { href: "/admin/testadores", nome: "Testadores do app" },
-    ],
-  },
-  {
-    nome: "Vagas e candidatos",
-    icone: BriefcaseBusiness,
-    secoes: [
-      { href: "/admin/anuncios", nome: "Anúncios" },
-      { href: "/admin/curtidas", nome: "Curtidas" },
-      { href: "/admin/matches", nome: "Matches" },
-      { href: "/admin/esperando", nome: "Esperando" },
-      { href: "/admin/vagas-paradas", nome: "Vagas paradas" },
-      { href: "/admin/retorno", nome: "Retorno" },
-      { href: "/admin/salarios", nome: "Salários" },
-    ],
-  },
-  {
-    nome: "Moderação",
-    icone: ShieldCheck,
-    secoes: [
-      { href: "/admin/denuncias", nome: "Denúncias" },
-      { href: "/admin/testes", nome: "Testes" },
-      { href: "/admin/falhas", nome: "Falhas" },
-      { href: "/admin/sugestoes", nome: "Sugestões" },
-    ],
-  },
-  {
-    nome: "Comunicação",
-    icone: Mail,
-    secoes: [
-      { href: "/admin/emails", nome: "E-mails" },
-      { href: "/admin/comunicados", nome: "Comunicados" },
-      { href: "/admin/novidades", nome: "Novidades" },
-      { href: "/admin/noticias", nome: "Notícias" },
-    ],
-  },
-  {
-    nome: "Divulgação",
-    icone: Megaphone,
-    secoes: [
-      { href: "/admin/vagas-do-dia", nome: "Vagas do dia" },
-      { href: "/admin/campanhas", nome: "Campanhas" },
-      { href: "/admin/banners", nome: "Banners" },
-    ],
-  },
-  { nome: "Dinheiro", icone: Wallet, secoes: [{ href: "/admin/pagamentos", nome: "Pagamentos" }] },
-  {
-    nome: "Sistema",
-    icone: Settings,
-    secoes: [
-      { href: "/admin/ia", nome: "IA" },
-      { href: "/admin/chaves", nome: "Chaves" },
-    ],
-  },
-];
-
 const ABAS_ADMIN = GRUPOS_ADMIN.flatMap((g) => g.secoes);
-
-// A equipe no site no ar, num lugar só: os números (Painel no site) e a moderação
-const ABAS_MODERACAO = [
-  { href: "/admin/numeros", nome: "Números" },
-  { href: "/admin/denuncias", nome: "Denúncias" },
-  { href: "/admin/anuncios", nome: "Anúncios" },
-  // os stories e o carrossel do dia, também pelo celular (só vagas no ar, que já são públicas)
-  { href: "/admin/vagas-do-dia", nome: "Vagas do dia" },
-  // as curtidas também no site no ar (a função moderacao_curtidas, só para moderador)
-  { href: "/admin/curtidas", nome: "Curtidas" },
-];
 
 function abaAtiva(caminho: string | null, abas: { href: string }[]) {
   if (!caminho) return null;
@@ -114,8 +22,21 @@ function abaAtiva(caminho: string | null, abas: { href: string }[]) {
   );
 }
 
-export function AbasAdminBase({ modo, ativa }: { modo: ModoAdmin; ativa: string | null }) {
-  const abas = modo === "admin" ? ABAS_ADMIN : modo === "moderador" ? ABAS_MODERACAO : [];
+/** As abas da equipe no site no ar: só as telas que esta conta pode ver (telasNoSite, no servidor). */
+function abasDaEquipe(telas: string[]) {
+  return TELAS_DO_SITE.filter((t) => telas.includes(t.href));
+}
+
+export function AbasAdminBase({
+  modo,
+  ativa,
+  telas = [],
+}: {
+  modo: ModoAdmin;
+  ativa: string | null;
+  telas?: string[];
+}) {
+  const abas = modo === "admin" ? ABAS_ADMIN : modo === "moderador" ? abasDaEquipe(telas) : [];
   if (!abas.length) return null;
   return (
     <nav
@@ -142,11 +63,11 @@ export function AbasAdminBase({ modo, ativa }: { modo: ModoAdmin; ativa: string 
   );
 }
 
-export function AbasAdmin({ modo }: { modo: ModoAdmin }) {
+export function AbasAdmin({ modo, telas }: { modo: ModoAdmin; telas: string[] }) {
   const caminho = usePathname();
-  // o admin tem o menu da lateral (MenuAdmin); a moderação, as poucas abas no alto
+  // o admin tem o menu da lateral (MenuAdmin); a equipe no site, as abas das telas que ela vê, no alto
   if (modo !== "moderador") return null;
-  return <AbasAdminBase modo={modo} ativa={abaAtiva(caminho, ABAS_MODERACAO)} />;
+  return <AbasAdminBase modo={modo} telas={telas} ativa={abaAtiva(caminho, abasDaEquipe(telas))} />;
 }
 
 /** Os números ao lado do nome (o que espera a equipe): denúncias abertas, anúncios esperando a IA. */

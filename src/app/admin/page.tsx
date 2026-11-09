@@ -33,7 +33,7 @@ import {
 } from "@/lib/admin/dados";
 import { descreverAcao } from "@/lib/admin/textos";
 import { TESTE_FECHADO } from "@/lib/android";
-import { ehModerador, possoVerPainelNoSite } from "@/lib/dados";
+import { telasNoSite } from "@/lib/servidor/telas-do-admin";
 import { plural, tempoRelativo } from "@/lib/formato";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { itensPagamentos, situacaoPagamentos, type ItemPagamento } from "@/lib/servidor/situacao-pagamentos";
@@ -53,8 +53,8 @@ export default function PainelAdmin() {
 async function Conteudo() {
   if (!(await ehAdminLocal())) {
     // no site publicado, a equipe começa pelos números (se liberados) e depois a moderação: tudo em Equipe do Publike
-    if (await possoVerPainelNoSite()) redirect("/admin/numeros");
-    if (await ehModerador()) redirect("/admin/denuncias");
+    const [primeira] = await telasNoSite();
+    if (primeira) redirect(primeira);
     notFound();
   }
   const c = criarClienteAdmin();
