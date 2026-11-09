@@ -15,6 +15,31 @@ export function ehNavegacao(e: unknown) {
   return typeof digest === "string" && (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_HTTP_ERROR"));
 }
 
+/** A página é de antes da publicação nova do site: a ação que ela chama não existe mais no servidor. */
+export function ehVersaoNova(e: unknown) {
+  const nome = (e as { name?: unknown } | null)?.name;
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  return nome === "UnrecognizedActionError" || /Server Action .* was not found|failed-to-find-server-action/i.test(msg);
+}
+
+const RECARREGOU = "publike_recarregou_versao";
+
+/**
+ * Recarrega a página para pegar a versão nova do site (o que estava preenchido já ficou guardado no aparelho), no
+ * máximo uma vez a cada 2 minutos: se a falha continuar, fica o aviso para a pessoa recarregar.
+ */
+export function recarregarParaVersaoNova() {
+  try {
+    const antes = Number(sessionStorage.getItem(RECARREGOU) ?? 0);
+    if (Date.now() - antes < 120_000) return false;
+    sessionStorage.setItem(RECARREGOU, String(Date.now()));
+  } catch {
+    return false;
+  }
+  window.setTimeout(() => window.location.reload(), 150);
+  return true;
+}
+
 /**
  * Envolve a ação do formulário (para o useActionState): a falha vira um aviso na tela. Com `onde`
  * (vaga ou currículo), a falha também chega à equipe (o servidor não a viu).
@@ -37,7 +62,7 @@ export function protegerAcao<E extends EstadoForm>(
           detalhe: `${navigator.onLine === false ? "sem internet · " : ""}${detalheDoErro(e)}`,
         });
       }
-      return { ...anterior, ok: false, erro: ERRO_SEM_SALVAR, erros: undefined, semSalvar: true };
+      return { ...anterior, ok: false, erro: ERRO_SEM_SALVAR, erros: undefined, semSalvar: true, versaoNova: ehVersaoNova(e) };
     }
   };
 }

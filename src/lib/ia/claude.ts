@@ -104,6 +104,9 @@ function explicarErro(status: number, corpo: string) {
   if (status === 429) return { msg: "O Claude recebeu pedidos demais. Tente de novo em instantes.", reserva: true };
   if (status === 529 || status >= 500)
     return { msg: "O Claude está fora do ar agora. Tente de novo em instantes.", reserva: true };
+  // a imagem que o Claude não abre (formato, tamanho): a outra IA tenta ler a mesma foto
+  if (status === 400 && texto.includes("image"))
+    return { msg: `O Claude não abriu a imagem (código 400${motivo ? `: ${motivo}` : ""}).`, reserva: true };
   return { msg: `O Claude recusou o pedido (código ${status}${motivo ? `: ${motivo}` : ""}).`, reserva: false };
 }
 

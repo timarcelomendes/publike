@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
+import { mesDoTexto } from "./mes-do-texto";
 import { MAX_HABILIDADES } from "./talentos";
 import { arrumarEstudos, experienciaEmBranco } from "./estudos";
 import { lerNumeroBR } from "./numero";
@@ -755,9 +756,9 @@ export function lerCurriculo(formData: FormData): LeituraCurriculo {
           cargo: textoDe(o.cargo),
           onde: textoDe(o.onde),
           unidade: textoDe(o.unidade),
-          inicio: textoDe(o.inicio),
+          inicio: mesDoTexto(textoDe(o.inicio)),
           atual: o.atual === true,
-          fim: textoDe(o.fim) || null,
+          fim: mesDoTexto(textoDe(o.fim)) || null,
           descricao: textoDe(o.descricao),
         };
       })

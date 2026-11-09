@@ -184,4 +184,6 @@ export type EstadoForm = {
   erros?: Record<string, string>;
   /** o salvar não chegou ao servidor (site publicado de novo com a página aberta, ou sem internet) */
   semSalvar?: boolean;
+  /** o site foi publicado de novo enquanto a pessoa preenchia (a ação antiga não existe mais): recarregar resolve */
+  versaoNova?: boolean;
 };

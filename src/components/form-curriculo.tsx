@@ -34,7 +34,8 @@ import {
   type ReactNode,
 } from "react";
 import { apagarCurriculo, lerCurriculoEnviado, salvarCurriculo, type LeituraDoArquivo } from "@/lib/acoes/curriculo";
-import { chamarAcao, protegerAcao } from "@/lib/acao-segura";
+import { chamarAcao, protegerAcao, recarregarParaVersaoNova } from "@/lib/acao-segura";
+import { mesDoTexto } from "@/lib/mes-do-texto";
 import { sugerirEmpresas } from "@/lib/acoes/empresas";
 import { detalheDoErro, ehFalhaDeInternet, MENSAGEM_SEM_INTERNET, relatarFalha } from "@/lib/falhas";
 import {
@@ -706,8 +707,9 @@ export function FormCurriculo({
           cargo: e.cargo,
           onde: e.onde,
           unidade: e.unidade ?? "",
-          inicio: e.inicio,
-          fim: e.fim ?? "",
+          // currículo guardado antes das listas de mês e ano: "03/2019" vira "2019-03"
+          inicio: mesDoTexto(e.inicio ?? ""),
+          fim: mesDoTexto(e.fim ?? ""),
           atual: trabalhaAqui(e),
           descricao: e.descricao,
         })),
@@ -975,6 +977,8 @@ export function FormCurriculo({
     };
     try {
       sessionStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(retrato));
+      // o site foi atualizado: recarrega sozinho, e o currículo volta preenchido
+      if (estado.versaoNova) recarregarParaVersaoNova();
     } catch {}
     // só quando chega a falha (o que muda depois é guardado de novo na próxima tentativa)
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -14,9 +14,10 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { protegerAcao } from "@/lib/acao-segura";
+import { protegerAcao, recarregarParaVersaoNova } from "@/lib/acao-segura";
 import { guardarRascunho } from "@/lib/rascunho-anuncio";
 import { salvarAnuncio } from "@/lib/acoes/anuncios";
+import { buscarEnderecoDoPonto } from "@/lib/acoes/cep";
 import { registrarPassoPublicar } from "@/lib/acoes/funil-publicar";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
 import { BAIRROS } from "@/lib/bairros";
@@ -323,7 +324,12 @@ export function FormAnuncio({
   // vaga nova que não chegou ao servidor: o preenchido fica no aparelho e volta ao recarregar
   // (o /publicar traz o rascunho de volta)
   useEffect(() => {
-    if (estado.semSalvar && !editando && !equipe && formulario.current) guardarRascunho(formulario.current);
+    if (!estado.semSalvar || editando || equipe || !formulario.current) return;
+    guardarRascunho(formulario.current, undefined, passo || undefined);
+    // o site foi atualizado: recarrega sozinho, e o /publicar traz de volta o que estava escrito
+    if (estado.versaoNova) recarregarParaVersaoNova();
+    // só quando chega a falha
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado, editando, equipe]);
   const erros = { ...(estado.erros ?? {}), ...errosLocais };
   const vaga = tipo === "vaga";
@@ -350,10 +356,13 @@ export function FormAnuncio({
   }, [estado]);
 
   function focarErro() {
-    const visivel = [...(formulario.current?.querySelectorAll<HTMLElement>('[aria-invalid="true"]') ?? [])].find(
-      (c) => c.offsetParent !== null || c.getClientRects().length > 0,
+    const visivel = [...(formulario.current?.querySelectorAll<HTMLElement>('[aria-invalid="true"], [data-invalido]') ?? [])].find(
+      (c) => c.offsetParent !== null || c.getClientRects().length > 0 || c.closest("label")?.getClientRects().length,
     );
-    visivel?.focus();
+    if (!visivel) return;
+    // o campo escondido (as opções do tipo de contratação): a tela vai até o grupo dele
+    (visivel.closest("fieldset") ?? visivel).scrollIntoView({ behavior: "smooth", block: "center" });
+    visivel.focus({ preventScroll: true });
   }
 
   // voltar do navegador (e do Android): volta um passo
@@ -406,8 +415,22 @@ export function FormAnuncio({
     }, 60);
   }
 
-  function continuar() {
+  // Sem bairro, mas com o pino no mapa (ou a localização): o bairro vem do ponto, em vez do erro "Escreva o bairro"
+  async function bairroPeloPino() {
+    const f = formulario.current;
+    const campo = f?.elements.namedItem("bairro");
+    if (!f || !(campo instanceof HTMLInputElement) || campo.value.trim().length >= 2) return false;
+    const lat = Number(new FormData(f).get("lat") || NaN);
+    const lng = Number(new FormData(f).get("lng") || NaN);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    const r = await buscarEnderecoDoPonto(lat, lng).catch(() => null);
+    if (!r?.ok || !r.endereco.bairro) return false;
+    return trocarBairro(campo, r.endereco.bairro);
+  }
+
+  async function continuar() {
     if (!formulario.current) return;
+    if (passo === 3) await bairroPeloPino();
     const falta = faltaNoPasso(passo, new FormData(formulario.current), { vaga, agencia });
     setErrosLocais(falta);
     if (Object.keys(falta).length) {
@@ -415,6 +438,26 @@ export function FormAnuncio({
       return;
     }
     irPara(passo + 1);
+  }
+
+  /**
+   * Antes de mandar: confere os passos de antes (a vaga que veio pronta da arte ou do pedido abre no último passo, e o
+   * tipo de contratação ou o bairro podem ter ficado de fora). Devolve o primeiro passo com falta.
+   */
+  async function faltaAntesDeEnviar() {
+    const f = formulario.current;
+    if (!passos || !f) return false;
+    await bairroPeloPino();
+    for (let n = 1; n < TOTAL_PASSOS; n++) {
+      const falta = faltaNoPasso(n, new FormData(f), { vaga, agencia });
+      if (Object.keys(falta).length) {
+        setErrosLocais(falta);
+        irPara(n);
+        window.setTimeout(() => focarErro(), 80);
+        return true;
+      }
+    }
+    return false;
   }
 
   /** O resumo do passo 5: uma linha por passo, com o que foi escrito. */
@@ -480,10 +523,12 @@ export function FormAnuncio({
     if (estado.ok && enviado.current && aposConferir) aposConferir(enviado.current);
   }, [estado, aposConferir]);
 
-  function enviar(e: FormEvent<HTMLFormElement>) {
+  async function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const dados = new FormData(e.currentTarget);
-    enviado.current = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    if (await faltaAntesDeEnviar()) return;
+    const dados = new FormData(form);
+    enviado.current = new FormData(form);
     startTransition(() => acao(dados));
   }
 
@@ -769,6 +814,8 @@ export function FormAnuncio({
                     name="regime"
                     value={v}
                     defaultChecked={inicial.regime === v}
+                    // sem o tipo escolhido, o erro leva até aqui (antes o foco não achava o campo, e a pessoa não via)
+                    data-invalido={erros.regime ? true : undefined}
                     onChange={() => {
                       if (!mexeuNoCurriculo) setPedeCurriculo(REGIMES_COM_CURRICULO.includes(v as Regime));
                     }}

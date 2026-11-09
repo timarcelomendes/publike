@@ -6,7 +6,14 @@ import { lerArteDaVaga } from "@/lib/acoes/arte-vaga";
 import { ErroDaLeitura, fotosParaLeitura } from "@/lib/arquivo-curriculo";
 import { detalheDoErro, ehFalhaDeInternet, MENSAGEM_SEM_INTERNET, relatarFalha } from "@/lib/falhas";
 import type { RascunhoConvite } from "@/lib/convites";
+import { pedirEntrar } from "./folha-de-entrar";
+import { classesBotao } from "./ui/botao";
 import { MensagemErro } from "./ui/campo";
+
+const VOLTA = "/publicar#arte";
+
+/** A leitura sem conta parou (sem a cota de visitante ou já usou as de hoje): o caminho é entrar. */
+const pedeConta = (erro: string) => /Entre na sua conta/i.test(erro);
 
 /**
  * "Tem a arte da vaga?": a foto do anúncio (a arte postada numa rede social) vira a vaga
@@ -68,8 +75,27 @@ export function ArteDaVaga({ aoLer }: { aoLer: (vaga: RascunhoConvite) => void }
           só confere antes de publicar.
         </p>
         {erro && (
-          <div className="mt-2">
+          <div className="mt-2 flex flex-col items-start gap-2">
             <MensagemErro>{erro}</MensagemErro>
+            {pedeConta(erro) && (
+              // a folha de entrar abre por cima; sem ela (demonstração), o link segue para o /entrar
+              <a
+                href={`/entrar?next=${encodeURIComponent(VOLTA)}`}
+                onClick={(e) => {
+                  if (
+                    pedirEntrar({
+                      proximo: VOLTA,
+                      titulo: "Entre para a IA ler a arte",
+                      texto: "Com a conta, a leitura da imagem continua. O que você já escreveu fica guardado neste aparelho.",
+                    })
+                  )
+                    e.preventDefault();
+                }}
+                className={classesBotao("primario")}
+              >
+                Entrar e ler a arte
+              </a>
+            )}
           </div>
         )}
       </div>
