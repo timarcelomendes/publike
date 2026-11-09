@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { mostrarConquista, responderConquista } from "@/lib/acoes/conquistas";
 import type { ConquistaPendente } from "@/lib/conquistas";
-import { nomeCurtoDaConquista, rotuloDaArea } from "./nomes";
+import { nomeCurtoDaConquista } from "./nomes";
 
 // No alto do feed, para quem deu match numa vaga há 5 dias ou mais: "Deu certo?" e, depois do "Comecei!", "Mostrar
 // no Publike?". Uma pergunta por vez (a mais recente); as outras vêm depois.
@@ -56,10 +56,11 @@ export function PerguntaDaConquista({ pendente, meuNome }: { pendente: Conquista
       {resposta === "comecei" ? (
         <>
           <p className="text-body-sm text-ink">
-            Aparece para quem está perto: <b>{nomeCurtoDaConquista(meuNome)} começou a trabalhar</b>
-            {", "}
-            {rotuloDaArea(pendente.categoria)}. O nome da empresa só aparece se ela confirmar. Dá para tirar quando
-            quiser.
+            Aparece para quem está perto:{" "}
+            <b>
+              {nomeCurtoDaConquista(meuNome)} começou a trabalhar como {pendente.titulo} na {pendente.empresa_nome}
+            </b>
+            . Quando a empresa confirmar, ganha o selo “Confirmado pela empresa”. Dá para tirar quando quiser.
           </p>
           <div className="flex flex-wrap gap-2">
             <button

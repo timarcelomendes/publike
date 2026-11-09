@@ -46,7 +46,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "O que é a conquista?",
-        r: "Uns dias depois de um match numa vaga, o Publike pergunta: “Deu certo? Você começou a trabalhar lá?”. Se você começou, toque em “Comecei!” e escolha se quer mostrar. Mostrando, aparece no feed de quem está perto o seu primeiro nome com a inicial, a área e o bairro, e as pessoas podem dar os parabéns. O nome da empresa e a vaga aparecem quando a empresa confirma. Dá para tirar quando quiser, e “Só para mim” não mostra nada. Se ainda não começou, toque em “Ainda não”: a gente pergunta de novo em uma semana.",
+        r: "Uns dias depois de um match numa vaga, o Publike pergunta: “Deu certo? Você começou a trabalhar lá?”. Se você começou, toque em “Comecei!” e escolha se quer mostrar. Mostrando, aparece no feed de quem está perto o seu primeiro nome com a inicial, a vaga e a empresa, e as pessoas podem dar os parabéns. Quando a empresa confirma, a conquista ganha o selo “Confirmado pela empresa”. Dá para tirar quando quiser, e “Só para mim” não mostra nada. Se ainda não começou, toque em “Ainda não”: a gente pergunta de novo em uma semana.",
       },
       {
         p: "Como comento numa vaga?",
@@ -144,7 +144,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     perguntas: [
       {
         p: "Um candidato disse que começou a trabalhar. O que faço?",
-        r: "Uns dias depois do match, o Publike pergunta ao candidato se ele começou. Se ele disser que sim, você recebe o aviso e vê no Hoje e no painel da vaga: “Confirmar” leva a pessoa para Contratado no quadro e põe o nome da empresa na conquista dela, se ela topar mostrar. “Não é verdade” tira a conquista do Publike. Conquista confirmada mostra para quem procura trabalho que vocês contratam pelo Publike.",
+        r: "Uns dias depois do match, o Publike pergunta ao candidato se ele começou. Se ele disser que sim, você recebe o aviso e vê no Hoje e no painel da vaga: “Confirmar” leva a pessoa para Contratado no quadro e põe o selo “Confirmado pela empresa” na conquista dela. “Não é verdade” tira a conquista do Publike. Conquista confirmada mostra para quem procura trabalho que vocês contratam pelo Publike.",
       },
       {
         p: "Como acho gente pela aba Talentos?",

@@ -25,7 +25,6 @@ import { NotaDoProfissional } from "../../avaliacoes";
 import { ComentariosNaJanela, ComentariosNoFeed } from "../../anuncio/comentarios-no-feed";
 import { BotaoCurtir } from "../../botao-curtir";
 import { BotaoParabens } from "../../conquistas/botao-parabens";
-import { rotuloDaArea } from "../../conquistas/nomes";
 import { ehOutraArea, SeloMatch } from "../../match-vaga";
 import { SeloVerificado } from "../../selo-verificado";
 import { Avatar } from "../../ui/basicos";
@@ -275,8 +274,9 @@ export function TicketDaVaga({
 }
 
 /**
- * A conquista: "Ana S. começou a trabalhar", com a área e o bairro (a empresa e a vaga só com a confirmação dela),
- * "Dar os parabéns" e "Ver vagas parecidas" (claude/plano-posts-e-conquistas.md, parte 2).
+ * A conquista: "Ana S. começou a trabalhar como Auxiliar de cozinha na Padaria", desde o "Mostrar" da pessoa, com o
+ * selo "Confirmado pela empresa" quando ela confirma, "Dar os parabéns" e "Ver vagas parecidas"
+ * (claude/plano-posts-e-conquistas.md, parte 2).
  */
 export function CartaoDaConquista({ c, hora }: { c: Conquista; hora: string }) {
   const lugar = [c.bairro, c.cidade].filter(Boolean).join(", ");
@@ -292,26 +292,22 @@ export function CartaoDaConquista({ c, hora }: { c: Conquista; hora: string }) {
             <HoraNoCanto hora={hora} />
           </div>
           <p className="mt-0.5 text-body-sm text-ink">
-            {c.empresa_nome && c.titulo ? (
-              <>
-                como{" "}
-                <Link href={`/anuncio/${c.anuncio_id}`} className="font-semibold underline underline-offset-2">
-                  {c.titulo}
-                </Link>{" "}
-                na{" "}
-                {c.empresa_id ? (
-                  <Link href={`/perfil/${c.empresa_id}`} className="font-semibold underline underline-offset-2">
-                    {c.empresa_nome}
-                  </Link>
-                ) : (
-                  c.empresa_nome
-                )}
-              </>
-            ) : (
-              rotuloDaArea(c.categoria)
-            )}
+            como{" "}
+            <Link href={`/anuncio/${c.anuncio_id}`} className="font-semibold underline underline-offset-2">
+              {c.titulo}
+            </Link>{" "}
+            na{" "}
+            <Link href={`/perfil/${c.empresa_id}`} className="font-semibold underline underline-offset-2">
+              {c.empresa_nome}
+            </Link>
             {lugar && <span className="text-ink-muted"> · {lugar}</span>}
           </p>
+          {c.confirmada && (
+            <p className="mt-1.5 inline-flex items-center gap-1 rounded-pill bg-cerrado px-2.5 py-0.5 text-[13px] leading-[18px] font-semibold text-on-cerrado">
+              <CircleCheck aria-hidden className="size-3.5" />
+              Confirmado pela empresa
+            </p>
+          )}
           <p className="mt-0.5 text-body-sm text-ink-muted">Pelo Publike. Publicou, curtiu, trabalhou.</p>
         </div>
       </div>

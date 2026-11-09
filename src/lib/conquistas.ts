@@ -1,7 +1,7 @@
 // As conquistas: o "comecei a trabalhar" que nasce do match (claude/plano-posts-e-conquistas.md, parte 2; migração
 // 20270322120000).
 
-/** Uma conquista no feed: primeiro nome e inicial, a área e o bairro; a empresa e a vaga só com a confirmação dela. */
+/** Uma conquista no feed: primeiro nome e inicial, a vaga, a empresa e o bairro; `confirmada`: a empresa confirmou. */
 export type Conquista = {
   anuncio_id: string;
   perfil_id: string;
@@ -11,10 +11,12 @@ export type Conquista = {
   categoria: string;
   bairro: string | null;
   cidade: string;
-  empresa_id: string | null;
-  empresa_nome: string | null;
+  empresa_id: string;
+  empresa_nome: string;
   empresa_foto: string | null;
-  titulo: string | null;
+  titulo: string;
+  /** a empresa confirmou (o selo "Confirmado pela empresa") */
+  confirmada: boolean;
   parabens: number;
   dei_parabens: boolean;
   minha: boolean;

@@ -2611,10 +2611,11 @@ export type Database = {
           categoria: string;
           bairro: string | null;
           cidade: string;
-          empresa_id: string | null;
-          empresa_nome: string | null;
+          empresa_id: string;
+          empresa_nome: string;
           empresa_foto: string | null;
-          titulo: string | null;
+          titulo: string;
+          confirmada: boolean;
           parabens: number;
           dei_parabens: boolean;
           minha: boolean;

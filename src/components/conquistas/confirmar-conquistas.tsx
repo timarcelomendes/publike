@@ -29,8 +29,8 @@ export function ConfirmarConquistas({ itens }: { itens: ConquistaParaConfirmar[]
         ))}
       </ul>
       <p className="text-body-sm text-ink-muted">
-        Confirmando, a pessoa vai para Contratado no quadro, e o nome da empresa aparece na conquista dela (se ela topar
-        mostrar). Isso mostra para quem procura trabalho que vocês contratam pelo Publike.
+        Confirmando, a pessoa vai para Contratado no quadro, e a conquista dela ganha o selo “Confirmado pela
+        empresa”. Isso mostra para quem procura trabalho que vocês contratam pelo Publike.
       </p>
     </section>
   );

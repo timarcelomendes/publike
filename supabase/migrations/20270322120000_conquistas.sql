@@ -4,8 +4,8 @@
 -- 5 dias depois do match numa vaga, o Publike pergunta à pessoa se deu certo ("Comecei!", "Ainda não", "Não deu
 -- certo"); "Ainda não" ou sem resposta, pergunta de novo em 7 dias (no máximo 3 vezes). Com o "Comecei!", a
 -- empresa recebe "Ana disse que começou aí. Confirma?" e a pessoa escolhe se mostra no Publike. Mostrada, a
--- conquista aparece no feed de quem está perto (primeiro nome e inicial, a área e o bairro), com "Dar os
--- parabéns". O nome da empresa e a vaga só aparecem com a confirmação dela; com "Não é verdade", a conquista sai.
+-- conquista aparece no feed de quem está perto (primeiro nome e inicial, a vaga, a empresa e o bairro), com "Dar
+-- os parabéns". Com a confirmação da empresa, ganha o selo "Confirmado pela empresa"; com "Não é verdade", sai.
 -- A etapa "Contratado" só muda com a confirmação da empresa (é o quadro dela, com as automações dela).
 
 -- 1. As tabelas -----------------------------------------------------------------------------------------------------
@@ -486,6 +486,8 @@ grant execute on function public.confirmar_conquista(uuid, uuid, boolean) to aut
 
 -- 6. No feed: as conquistas perto e os parabéns ------------------------------------------------------------------
 
+-- (a primeira versão deste arquivo devolvia outras colunas)
+drop function if exists public.conquistas_perto(double precision, double precision, double precision, integer);
 create or replace function public.conquistas_perto(
   p_lat double precision,
   p_lng double precision,
@@ -495,7 +497,7 @@ create or replace function public.conquistas_perto(
 returns table (
   anuncio_id uuid, perfil_id uuid, pessoa_nome text, pessoa_foto text, pessoa_tipo text,
   categoria text, bairro text, cidade text,
-  empresa_id uuid, empresa_nome text, empresa_foto text, titulo text,
+  empresa_id uuid, empresa_nome text, empresa_foto text, titulo text, confirmada boolean,
   parabens integer, dei_parabens boolean, minha boolean, quando timestamptz
 )
 language plpgsql
@@ -519,10 +521,7 @@ begin
   return query
     select x.anuncio_id, x.perfil_id, privado.nome_da_conquista(pp.nome), pp.foto, pp.tipo,
            a.categoria, a.bairro, a.cidade,
-           case when x.empresa = 'confirmou' then pa.id end,
-           case when x.empresa = 'confirmou' then pa.nome end,
-           case when x.empresa = 'confirmou' then pa.foto end,
-           case when x.empresa = 'confirmou' then a.titulo end,
+           pa.id, pa.nome, pa.foto, a.titulo, coalesce(x.empresa = 'confirmou', false),
            x.parabens,
            exists (select 1 from public.conquista_parabens cp
                     where cp.anuncio_id = x.anuncio_id and cp.perfil_id = x.perfil_id and cp.quem_id = conta),
@@ -538,7 +537,7 @@ begin
        and (pp.suspenso_ate is null or pp.suspenso_ate <= now())
        and (pa.suspenso_ate is null or pa.suspenso_ate <= now())
        and (extensions.st_dwithin(a.local, ponto, least(greatest(coalesce(p_raio_km, 25), 1), 100) * 1000)
-            or (x.empresa = 'confirmou' and a.autor_id = any (seguidos))
+            or a.autor_id = any (seguidos)
             or x.perfil_id = conta)
      order by x.mostrada_em desc
      limit least(greatest(coalesce(p_limite, 30), 1), 100);
@@ -627,7 +626,7 @@ select v.chave, v.grupo, v.ordem, v.nome, v.descricao, v.variaveis, v.assunto, v
      'Para quem publicou a vaga: a pessoa disse que começou a trabalhar. A empresa confirma ou diz que não é verdade.',
      array['nome', 'quem', 'titulo', 'motivo', 'link'],
      '{{quem}} disse que começou a trabalhar com vocês',
-     E'Oi, {{nome}}.\n\n{{motivo}}\n\nConfirmando, a pessoa vai para Contratado no quadro da vaga, e o nome da sua empresa aparece na conquista dela (se ela topar mostrar). Isso mostra que vocês contratam pelo Publike.',
+     E'Oi, {{nome}}.\n\n{{motivo}}\n\nConfirmando, a pessoa vai para Contratado no quadro da vaga, e a conquista dela ganha o selo “Confirmado pela empresa”. Se não for verdade, a conquista sai do Publike.',
      'Confirmar'),
     ('conquista_parabens', 'usuarios', 53, 'Parabéns pela conquista',
      'Para quem mostrou a conquista: alguém deu os parabéns. No máximo um e-mail por dia (o sino recebe todos).',
