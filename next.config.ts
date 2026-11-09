@@ -26,6 +26,9 @@ const POLITICA_DE_CONTEUDO = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
+  // os avisos do que seria bloqueado vão para /api/csp e aparecem em Admin › Falhas (claude/plano-seguranca.md, item 1)
+  "report-uri /api/csp",
+  "report-to csp",
 ].join("; ");
 
 // Versão desta publicação: muda a cada deploy na Vercel. A página guarda a dela e /versao diz a
@@ -90,7 +93,10 @@ const nextConfig: NextConfig = {
             value: `camera=(self "${DAILY}"), microphone=(self "${DAILY}"), display-capture=(self "${DAILY}"), geolocation=(self)`,
           },
           ...(process.env.NODE_ENV === "production"
-            ? [{ key: "Content-Security-Policy-Report-Only", value: POLITICA_DE_CONTEUDO }]
+            ? [
+                { key: "Content-Security-Policy-Report-Only", value: POLITICA_DE_CONTEUDO },
+                { key: "Reporting-Endpoints", value: 'csp="/api/csp"' },
+              ]
             : []),
         ],
       },

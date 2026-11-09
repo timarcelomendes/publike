@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { AvisosCsp } from "@/components/admin/avisos-csp";
 import { Secao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { NOME_DA_ETAPA, NOME_DO_ONDE, type EtapaFalha, type OndeFalha } from "@/lib/falhas";
@@ -23,8 +24,9 @@ export default function Falhas() {
 
 async function Conteudo() {
   const c = await exigirAdminLocal();
-  const [{ data, error }, agora] = await Promise.all([
+  const [{ data, error }, csp, agora] = await Promise.all([
     c.rpc("admin_listar_falhas", { p_limite: 300 }),
+    c.rpc("admin_avisos_csp", { p_limite: 200 }),
     agoraDaRequisicao(),
   ]);
   const falhas = data ?? [];
@@ -32,6 +34,7 @@ async function Conteudo() {
   const ultimas24 = falhas.filter((f) => agora - Date.parse(f.criado_em) < 24 * HORA);
 
   return (
+    <div className="flex flex-col gap-6">
     <Secao
       titulo="Falhas na vaga e no currículo"
       descricao="Tudo o que deu errado ao publicar ou editar uma vaga e ao salvar o currículo, inclusive o que só o navegador viu (PDF que não subiu, salvar que não chegou ao servidor). Erro do sistema avisa por e-mail na hora; erro de preenchimento só avisa quando a mesma conta erra 3 vezes em 30 minutos. Fica 90 dias."
@@ -106,5 +109,7 @@ async function Conteudo() {
         </div>
       )}
     </Secao>
+    <AvisosCsp avisos={csp.data ?? []} erro={csp.error ? csp.error.message : null} agora={agora} />
+    </div>
   );
 }

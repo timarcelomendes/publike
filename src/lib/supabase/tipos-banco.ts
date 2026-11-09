@@ -1428,6 +1428,12 @@ export type Database = {
       };
       posso_ver_painel_no_site: { Args: Record<PropertyKey, never>; Returns: boolean };
       minhas_telas_do_admin: { Args: Record<PropertyKey, never>; Returns: string[] };
+      registrar_aviso_csp: { Args: { p_diretiva: string; p_bloqueado: string; p_pagina: string }; Returns: undefined };
+      admin_avisos_csp: {
+        Args: { p_limite?: number };
+        Returns: { diretiva: string; bloqueado: string; pagina: string; vezes: number; primeira: string; ultima: string }[];
+      };
+      admin_limpar_avisos_csp: { Args: Record<PropertyKey, never>; Returns: undefined };
       admin_telas_do_admin: {
         Args: Record<PropertyKey, never>;
         Returns: { rota: string; somente_publike: boolean; mudado_em: string }[];

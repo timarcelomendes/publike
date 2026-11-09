@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // worker do mapa copiado de node_modules
     "public/vendor/**",
+    // Edge Functions do Supabase (Deno), fora do Next
+    "supabase/functions/**",
   ]),
 ]);
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { BUCKET_DOCUMENTOS, lerDocumentos, type DocumentosDaProposta } from "@/lib/documentos-admissao";
+import { SUPABASE_CHAVE, SUPABASE_URL } from "@/lib/config";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { acessoFila } from "./filas";
 
@@ -77,11 +78,46 @@ export async function apagarArquivosDeDocumento(caminhos: string[]) {
 
 /**
  * A tarefa das filas: apaga os arquivos que venceram (7 dias depois da entrega ao contador ou 30 depois do primeiro
- * dia). O banco marca os caminhos por 15 minutos, e o Storage aceita apagar só esses, sem login.
+ * dia). No site no ar, quem apaga é a Edge Function "limpar-documentos" (claude/plano-seguranca.md, item 2): ela
+ * usa a chave secreta que fica no próprio Supabase, e os arquivos nunca abrem para quem não entrou.
  */
 export async function limparDocumentosVencidos(): Promise<{ apagados: number; motivo?: string }> {
   const acesso = acessoFila();
   if (!acesso) return { apagados: 0 };
+  if (acesso.chave) {
+    const pelaFuncao = await limparPelaFuncao(acesso.chave);
+    if (pelaFuncao) return pelaFuncao;
+    // função ainda não publicada: o jeito antigo (só funciona enquanto o banco tiver a regra para "anon")
+  }
+  return limparPeloSite(acesso);
+}
+
+/** Pede a limpeza à Edge Function. null: a função ainda não existe no Supabase. */
+async function limparPelaFuncao(chave: string): Promise<{ apagados: number; motivo?: string } | null> {
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${SUPABASE_URL}/functions/v1/limpar-documentos`, {
+      method: "POST",
+      headers: { "x-publike-chave": chave, apikey: SUPABASE_CHAVE, "content-type": "application/json" },
+      body: "{}",
+      cache: "no-store",
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (e) {
+    console.error("Publike: a limpeza dos documentos não respondeu:", e instanceof Error ? e.message : e);
+    return { apagados: 0, motivo: "Não foi possível apagar os documentos vencidos." };
+  }
+  if (resposta.status === 404) return null;
+  const corpo = (await resposta.json().catch(() => ({}))) as { apagados?: number; erro?: string };
+  if (!resposta.ok) {
+    console.error(`Publike: a limpeza dos documentos falhou (${resposta.status}):`, corpo.erro ?? "");
+    return { apagados: 0, motivo: "Não foi possível apagar os documentos vencidos." };
+  }
+  return { apagados: Number(corpo.apagados ?? 0) };
+}
+
+/** O jeito antigo, pelo próprio site (no computador do admin, com a chave secreta, continua valendo). */
+async function limparPeloSite(acesso: NonNullable<ReturnType<typeof acessoFila>>): Promise<{ apagados: number; motivo?: string }> {
   const { data, error } = await acesso.cliente.rpc("servidor_documentos_vencidos", { p_chave: acesso.chave, p_limite: 200 });
   if (error) {
     if (error.code === "PGRST202") return { apagados: 0 };
