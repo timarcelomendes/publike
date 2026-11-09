@@ -40,7 +40,7 @@ import { BarraCurtirCelular } from "@/components/anuncio/barra-curtir-celular";
 import { ContarAbertura } from "@/components/anuncio/contar-abertura";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
-import { SecaoComentarios } from "@/components/anuncio/secao-comentarios";
+import { AtalhosDaVaga, SecaoComentarios } from "@/components/anuncio/secao-comentarios";
 import { codigoDaPessoa } from "@/lib/indicacao";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
@@ -515,6 +515,11 @@ async function DetalheAnuncio({
               <span className="text-body-sm font-semibold text-cerrado-text">Empresa conferida pelo Publike</span>
             )}
           </p>
+          {vaga && !proprio && anuncio.status === "ativo" && !anuncio.preenchida_em && (
+            <Suspense fallback={null}>
+              <AtalhosDaVaga anuncioId={anuncio.id} titulo={anuncio.titulo} logado={usuario !== null} />
+            </Suspense>
+          )}
           {nota && nota.total > 0 && (
             <p className="mt-1">
               <a href="#avaliacoes" className="hover:underline">

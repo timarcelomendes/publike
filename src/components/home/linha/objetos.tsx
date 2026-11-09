@@ -20,6 +20,7 @@ import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
+import { AcoesDaVagaNoCartao } from "../../anuncio/acoes-no-feed";
 import { BotaoCurtir } from "../../botao-curtir";
 import { ehOutraArea, SeloMatch } from "../../match-vaga";
 import { SeloVerificado } from "../../selo-verificado";
@@ -262,6 +263,17 @@ export function TicketDaVaga({
               logado={usuarioId !== null}
               quem={a.autor_nome}
             />
+            {!preenchida && (
+              <span className="flex justify-center">
+                <AcoesDaVagaNoCartao
+                  anuncioId={a.id}
+                  titulo={a.titulo}
+                  comentarios={item.comentarios ?? 0}
+                  logado={usuarioId !== null}
+                  pequeno
+                />
+              </span>
+            )}
           </span>
         )}
       </div>

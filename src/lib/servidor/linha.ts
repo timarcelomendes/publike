@@ -129,6 +129,8 @@ export type AnuncioNaLinha = {
   resumo: string | null;
   /** quantas pessoas curtiram a vaga e quantas viraram match (só os números; quem curtiu nunca aparece) */
   curtidas?: { total: number; matches: number; ultima: string } | null;
+  /** quantos comentários no ar a vaga tem */
+  comentarios?: number;
 };
 
 type CurtidasDaVaga = { total: number | null; matches: number; ultima: string };
@@ -147,6 +149,14 @@ export async function curtidasDasVagas(ids: string[]): Promise<Map<string, Curti
   return new Map(
     (data ?? []).map((l) => [l.anuncio_id, { total: l.curtidas, matches: l.matches ?? 0, ultima: l.ultima }]),
   );
+}
+
+/** Quantos comentários no ar cada vaga tem (migração 20270319120000; sem ela, nada). */
+export async function comentariosDasVagas(ids: string[]): Promise<Map<string, number>> {
+  if (!ids.length) return new Map();
+  const { data, error } = await (await criarClienteServidor()).rpc("comentarios_das_vagas", { p_ids: ids.slice(0, 200) });
+  if (error) return new Map();
+  return new Map((data ?? []).map((l) => [l.anuncio_id, Number(l.comentarios)]));
 }
 
 export type DadoDaLinha =
@@ -311,13 +321,14 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     : filtrados;
   const anuncios = naOrdem.slice(0, LIMITE);
   const deOutros = anuncios.filter((a) => a.tipo === "vaga" && a.autor_id !== usuarioId);
-  const [resposta, salvas, logos, textosDosServicos] = await Promise.all([
+  const [resposta, salvas, logos, textosDosServicos, comentarios] = await Promise.all([
     respostaDaOrdem
       ? Promise.resolve(respostaDaOrdem)
       : respostaDeQuemPublica(deOutros.map((a) => a.autor_id)).catch(() => new Map<string, Resposta>()),
     usuarioId ? vagasSalvasEntre(deOutros.map((a) => a.id)).catch(() => null) : Promise.resolve(null),
     fotosDosAutores(anuncios.map((a) => a.autor_id)),
     descricoesDosServicos(anuncios.filter((a) => a.tipo === "servico").map((a) => a.id)),
+    comentariosDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(() => new Map<string, number>()),
   ]);
 
   const itens: ItemDaLinha<DadoDaLinha>[] = anuncios.map((a) => ({
@@ -333,6 +344,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
         requisitos: requisitos?.get(a.id) ?? null,
         salva: a.tipo === "vaga" && salvas && a.autor_id !== usuarioId ? salvas.has(a.id) : null,
         resumo: resumoDe(a.tipo === "servico" ? textosDosServicos.get(a.id) : requisitos?.get(a.id)?.descricao),
+        comentarios: comentarios.get(a.id) ?? 0,
       },
     },
   }));

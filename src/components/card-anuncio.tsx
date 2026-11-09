@@ -16,6 +16,7 @@ import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { DadosCard } from "@/lib/tipos";
 import type { GanhoExtra } from "@/lib/vaga-extra";
 import { NotaDoProfissional } from "./avaliacoes";
+import { AcoesDaVagaNoCartao } from "./anuncio/acoes-no-feed";
 import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
 import { BotaoCurtir } from "./botao-curtir";
 import { ehOutraArea, SeloMatch, type MatchResumo } from "./match-vaga";
@@ -98,6 +99,7 @@ export function CardAnuncio({
   minha = null,
   semAutor = false,
   para = null,
+  comentarios = null,
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -122,6 +124,8 @@ export function CardAnuncio({
   semAutor?: boolean;
   /** Vaga de agência: para qual empresa é ("Spoleto"; confidencial: "empresa confidencial"). */
   para?: string | null;
+  /** Vaga de outra conta: quantos comentários tem (com o número, aparecem os comentários e o Indicar). */
+  comentarios?: number | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -405,6 +409,14 @@ export function CardAnuncio({
             )}
             {!proprio && (
               <span className="flex shrink-0 items-center gap-2">
+                {comentarios !== null && !servico && !preenchida && (
+                  <AcoesDaVagaNoCartao
+                    anuncioId={anuncio.id}
+                    titulo={anuncio.titulo}
+                    comentarios={comentarios}
+                    logado={usuarioId !== null}
+                  />
+                )}
                 {salva !== null && !servico && !preenchida && (
                   <BotaoSalvarVaga anuncioId={anuncio.id} salva={salva} logado compacto />
                 )}

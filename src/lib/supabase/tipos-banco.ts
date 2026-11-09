@@ -3189,6 +3189,8 @@ export type Database = {
         Returns: { proposta_id: string; caminho: string }[];
       };
       servidor_documentos_apagados: { Args: { p_chave: string; p_propostas: string[] }; Returns: number };
+      /** quantos comentários cada vaga tem, no feed (migração 20270319120000) */
+      comentarios_das_vagas: { Args: { p_ids: string[] }; Returns: { anuncio_id: string; comentarios: number }[] };
       /** os comentários nas vagas (migração 20270318120000) */
       comentarios_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
       comentarios_das_minhas_vagas: {
