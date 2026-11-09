@@ -97,8 +97,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "convite_candidato" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/convidar`;
   if (n.tipo === "equipe") return "/painel/equipe";
   // recados: a página do recado (o "não publicado" leva aos recados do perfil, onde aparece o motivo)
-  if ((n.tipo === "recado_no_ar" || n.tipo === "recado_forca") && n.recado_id) return `/recado/${n.recado_id}`;
-  if (n.tipo === "recado_retido") return `/perfil/${usuarioId}#recados`;
+  if ((n.tipo === "recado_no_ar" || n.tipo === "recado_forca") && n.recado_id) return `/post/${n.recado_id}`;
+  if (n.tipo === "recado_retido") return `/perfil/${usuarioId}#posts`;
   if (n.tipo === "conexao") return n.ator_id ? `/painel/conexoes/${n.ator_id}` : "/painel/conexoes";
   // aceito numa vaga que pede currículo: direto para o currículo, que volta para a vaga
   if (n.tipo === "aceite_curriculo" && n.anuncio_id)

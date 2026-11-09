@@ -13,8 +13,8 @@ export function BotaoIndicar({ recadoId, autor }: { recadoId: string; autor: str
   const [copiado, setCopiado] = useState(false);
   const id = useId();
   const quadro = useRef<HTMLDivElement>(null);
-  const url = `${SITE_URL}/recado/${recadoId}`;
-  const texto = `Olha esse recado de ${autor} no Publike:`;
+  const url = `${SITE_URL}/post/${recadoId}`;
+  const texto = `Olha esse post de ${autor} no Publike:`;
 
   useEffect(() => {
     if (!aberto) return;
@@ -34,7 +34,7 @@ export function BotaoIndicar({ recadoId, autor }: { recadoId: string; autor: str
     const toque = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
     if (toque && typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: "Recado no Publike", text: texto, url });
+        await navigator.share({ title: "Post no Publike", text: texto, url });
         return;
       } catch (e) {
         // cancelou: não faz nada; outro erro: abre o quadro

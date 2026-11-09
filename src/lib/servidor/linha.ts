@@ -235,7 +235,9 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
   // a aba: a da URL; sem ela, a última que a pessoa escolheu (vale para todo mundo, 09/11/2026). Quem nunca
   // escolheu: quem procura trabalho abre em Vagas; quem quer contratar um serviço (a resposta "O que você quer
   // fazer"), em Serviços; o resto (quem contrata, quem presta serviço, quem visita), em Tudo
-  const semEscolha = !lidos.tipo && !lidos.tudo && primeiro(sp.tipo) !== "recado" && !prefs.aba;
+  // a aba Posts não vira a de abertura (ainda tem poucos posts): quem tocou nela por último abre pela regra de sempre
+  const abaGuardada = prefs.aba === "recado" ? null : prefs.aba;
+  const semEscolha = !lidos.tipo && !lidos.tudo && primeiro(sp.tipo) !== "recado" && !abaGuardada;
   const abaDoUso = usuario && semEscolha ? await perfilDeUso() : null;
   const aba: AbaDaLinha =
     primeiro(sp.tipo) === "recado"
@@ -243,7 +245,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
       : (lidos.tipo ??
         (lidos.tudo
           ? "tudo"
-          : (prefs.aba ??
+          : (abaGuardada ??
             (abaDoUso === "trabalho"
               ? "vaga"
               : (await obterIntencao().catch(() => null)) === "contratar_servico"

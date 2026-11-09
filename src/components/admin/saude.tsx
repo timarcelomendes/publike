@@ -69,7 +69,7 @@ export function itensDaSaude(s: SaudeSite, agora: number): Item[] {
   const m = s.moderacao;
   const partes = [
     m.anuncios ? plural(m.anuncios, "anúncio em análise", "anúncios em análise") : "",
-    m.recados ? plural(m.recados, "recado retido", "recados retidos") : "",
+    m.recados ? plural(m.recados, "post retido", "posts retidos") : "",
     m.avaliacoes ? plural(m.avaliacoes, "avaliação retida", "avaliações retidas") : "",
     m.denuncias ? plural(m.denuncias, "denúncia aberta", "denúncias abertas") : "",
   ].filter(Boolean);

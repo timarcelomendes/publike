@@ -36,7 +36,8 @@ export async function registrarVisitaDaHome(): Promise<void> {
 
 /** Guarda a aba escolhida na linha do tempo (a home abre nela da próxima vez). */
 export async function escolherAbaDaHome(aba: string): Promise<void> {
-  if (MODO_DEMO || !["tudo", "vaga", "servico", "recado"].includes(aba)) return;
+  // a aba Posts não fica guardada: o feed não abre nela (ainda tem poucos posts)
+  if (MODO_DEMO || !["tudo", "vaga", "servico"].includes(aba)) return;
   const usuario = await obterUsuario();
   if (!usuario) return;
   const supabase = await criarClienteServidor();

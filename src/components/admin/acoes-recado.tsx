@@ -23,7 +23,7 @@ export function AcoesModeracaoRecado({ id }: { id: string }) {
         value={motivo}
         onChange={(e) => setMotivo(e.target.value)}
         maxLength={500}
-        placeholder="Ex.: o recado oferece trabalho cobrando taxa."
+        placeholder="Ex.: o post oferece trabalho cobrando taxa."
         className="min-h-10 rounded-md border border-line-strong bg-surface-200 px-3 text-body-sm"
       />
       <div className="flex flex-wrap gap-2">

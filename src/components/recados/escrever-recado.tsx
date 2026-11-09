@@ -192,7 +192,7 @@ export function EscreverRecado({
   }
 
   function publicar() {
-    if (!texto.trim()) return setAviso({ ok: false, texto: "Escreva o recado." });
+    if (!texto.trim()) return setAviso({ ok: false, texto: "Escreva o post." });
     const dados = new FormData();
     dados.set("texto", texto);
     if (foto) dados.set("foto", foto.caminho);
@@ -216,7 +216,7 @@ export function EscreverRecado({
       setCompartilhando(false);
       setBuscaCurriculo("");
       setCarinhas(false);
-      setAviso({ ok: true, texto: r.mensagem ?? "Recado enviado." });
+      setAviso({ ok: true, texto: r.mensagem ?? "Post enviado." });
       aoEnviar?.();
     });
   }
@@ -240,7 +240,7 @@ export function EscreverRecado({
   const comDica = "group relative shrink-0";
 
   // Fechado: uma linha só (a foto, "Conte o que você procura…" e os ícones de foto e de citar).
-  // Ao tocar, abre: a foto escolhida, a vaga citada e o "Enviar recado".
+  // Ao tocar, abre: a foto escolhida, a vaga citada e o "Postar".
   return (
     <div
       onFocus={() => setAtivo(true)}
@@ -254,7 +254,7 @@ export function EscreverRecado({
       <div className="flex items-center gap-1.5">
         {avatar}
         <label htmlFor={`${id}-texto`} className="sr-only">
-          Escrever um recado para quem está perto
+          Escrever um post para quem está perto
         </label>
         <textarea
           id={`${id}-texto`}
@@ -269,7 +269,7 @@ export function EscreverRecado({
         <span className={`${comDica} hidden sm:block`}>
           <button type="button" aria-expanded={carinhas} onClick={() => setCarinhas((c) => !c)} className={botaoIcone}>
             <Smile aria-hidden className="size-5" />
-            <span className="sr-only">Pôr carinhas no recado</span>
+            <span className="sr-only">Pôr carinhas no post</span>
           </button>
           <Dica texto="Carinhas" />
         </span>
@@ -278,7 +278,7 @@ export function EscreverRecado({
             className={`${botaoIcone} ${enviandoFoto ? "opacity-60" : ""} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus`}
           >
             <ImagePlus aria-hidden className="size-5" />
-            <span className="sr-only">{enviandoFoto ? "Enviando a foto" : "Pôr foto no recado"}</span>
+            <span className="sr-only">{enviandoFoto ? "Enviando a foto" : "Pôr foto no post"}</span>
             <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
           </label>
           <Dica texto="Pôr uma foto" />
@@ -557,7 +557,7 @@ export function EscreverRecado({
             disabled={pendente || enviandoFoto || !texto.trim()}
             className="inline-flex min-h-9 items-center rounded-pill bg-ink px-4 text-label font-bold text-surface-100 disabled:opacity-45"
           >
-            {pendente ? "Enviando…" : "Enviar recado"}
+            {pendente ? "Enviando…" : "Postar"}
           </button>
         </div>
       )}

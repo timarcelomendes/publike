@@ -88,8 +88,8 @@ export function BuscaERecado({
             }`}
           >
             <PenLine aria-hidden className="size-[18px]" />
-            Recado
-            <span className="sr-only">: escrever um recado para quem está perto</span>
+            Postar
+            <span className="sr-only">: escrever um post para quem está perto</span>
           </button>
         )}
       </div>

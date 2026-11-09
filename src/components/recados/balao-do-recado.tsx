@@ -182,7 +182,7 @@ export function BalaoDoRecado({
           <BotaoConectarCompacto
             outro={{ id: r.autor_id, nome: r.autor_nome, tipo: r.autor_tipo }}
             estado={conexao}
-            voltar={`/recado/${r.id}`}
+            voltar={`/post/${r.id}`}
           />
         )}
         {r.status === "no_ar" && acoes}

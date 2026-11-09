@@ -44,7 +44,7 @@ export function BotaoForca({
   }`;
   if (!logado) {
     return (
-      <Link href={`/entrar?next=${encodeURIComponent(`/recado/${recadoId}`)}`} className={classe}>
+      <Link href={`/entrar?next=${encodeURIComponent(`/post/${recadoId}`)}`} className={classe}>
         <BicepsFlexed aria-hidden className="size-[18px]" />
         Força{forcas > 0 && <span className="tabular-nums">{forcas}</span>}
       </Link>

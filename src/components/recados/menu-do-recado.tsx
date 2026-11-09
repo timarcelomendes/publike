@@ -70,7 +70,7 @@ export function MenuDoRecado({
         className="grid size-9 place-items-center rounded-pill text-ink-muted hover:bg-surface-100 hover:text-ink"
       >
         <Ellipsis aria-hidden className="size-5" />
-        <span className="sr-only">Mais opções do recado</span>
+        <span className="sr-only">Mais opções do post</span>
       </button>
       {aberto && (
         <div
@@ -94,7 +94,7 @@ export function MenuDoRecado({
                   className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label hover:bg-surface-300"
                 >
                   <Pencil aria-hidden className="size-[18px]" />
-                  Editar recado
+                  Editar post
                 </button>
                 <button
                   type="button"
@@ -102,7 +102,7 @@ export function MenuDoRecado({
                   className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label hover:bg-surface-300"
                 >
                   <Trash2 aria-hidden className="size-[18px]" />
-                  Apagar recado
+                  Apagar post
                 </button>
               </>
             ) : (
@@ -113,7 +113,7 @@ export function MenuDoRecado({
                     disabled={pendente}
                     onClick={() =>
                       iniciar(async () => {
-                        const r = await chamarAcao(() => pedirConexao(autor.id, null, `/recado/${recadoId}`));
+                        const r = await chamarAcao(() => pedirConexao(autor.id, null, `/post/${recadoId}`));
                         if (!r.ok && "ir" in r && r.ir?.startsWith("/entrar")) return router.push(r.ir);
                         setAviso(r.ok ? { ok: true, texto: r.mensagem } : { ok: false, texto: r.erro });
                       })
@@ -130,7 +130,7 @@ export function MenuDoRecado({
                   className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 text-left text-label text-danger hover:bg-surface-300"
                 >
                   <Flag aria-hidden className="size-[18px]" />
-                  Denunciar recado
+                  Denunciar post
                 </button>
               </>
             )
@@ -142,7 +142,7 @@ export function MenuDoRecado({
                 iniciar(async () => {
                   const r = await chamarAcao(() => editarRecado(recadoId, novoTexto));
                   if (!r.ok) return setAviso({ ok: false, texto: r.erro });
-                  if (r.emRevisao) return setAviso({ ok: true, texto: r.mensagem ?? "Recado editado." });
+                  if (r.emRevisao) return setAviso({ ok: true, texto: r.mensagem ?? "Post editado." });
                   setAberto(false);
                   router.refresh();
                 });
@@ -182,7 +182,7 @@ export function MenuDoRecado({
           ) : passo === "apagar" ? (
             <div className="flex flex-col gap-3 p-2">
               <p className="text-body-sm">
-                O recado some da linha do tempo, do seu perfil e do link. Não dá para desfazer.
+                O post some do feed, do seu perfil e do link. Não dá para desfazer.
               </p>
               <div className="flex justify-end gap-2">
                 <button

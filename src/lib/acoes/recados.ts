@@ -29,14 +29,14 @@ export type ResultadoRecado = Resultado & { emRevisao?: boolean };
 export async function escreverRecado(formData: FormData): Promise<ResultadoRecado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   const usuario = await obterUsuario();
-  if (!usuario) return { ok: false, erro: "Entre na sua conta para escrever um recado.", ir: "/entrar?next=/" };
+  if (!usuario) return { ok: false, erro: "Entre na sua conta para postar.", ir: "/entrar?next=/" };
   const leitura = lerRecado(formData);
-  if (!leitura.success) return { ok: false, erro: leitura.error.issues[0]?.message ?? "Confira o recado." };
+  if (!leitura.success) return { ok: false, erro: leitura.error.issues[0]?.message ?? "Confira o post." };
   const d = leitura.data;
   if (d.foto && !d.foto.startsWith(`${usuario.pessoaId}/`)) return { ok: false, erro: "Envie a foto de novo." };
 
   const perfil = await obterMeuPerfil();
-  if (!perfil) return { ok: false, erro: "Complete seu perfil antes de escrever um recado.", ir: "/perfil" };
+  if (!perfil) return { ok: false, erro: "Complete seu perfil antes de postar.", ir: "/perfil" };
   const lugar = await lugarDoRecado(perfil.cidade, perfil.bairro);
   if (!lugar) return { ok: false, erro: "Complete a cidade e o bairro no seu perfil.", ir: "/perfil" };
 
@@ -55,7 +55,7 @@ export async function escreverRecado(formData: FormData): Promise<ResultadoRecad
     .maybeSingle();
   if (error) {
     if (precisaCompletarPerfil(error)) return { ok: false, erro: mensagemDeErro(error), ir: "/perfil" };
-    return { ok: false, erro: mensagemDeErro(error, "Não foi possível publicar o recado agora.") };
+    return { ok: false, erro: mensagemDeErro(error, "Não foi possível postar agora.") };
   }
   const emRevisao = data?.status === "revisao";
   if (emRevisao) after(processarFilas);
@@ -64,30 +64,30 @@ export async function escreverRecado(formData: FormData): Promise<ResultadoRecad
     ok: true,
     emRevisao,
     mensagem: emRevisao
-      ? "Recado enviado. Ele aparece para os outros depois da revisão."
-      : "Recado enviado: já está na linha do tempo.",
+      ? "Post enviado. Ele aparece para os outros depois da revisão."
+      : "Post enviado: já está no feed.",
   };
 }
 
 /** Apaga o próprio recado (some de todo lugar) e a foto dele. */
 export async function apagarRecado(id: string): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!UUID.test(id)) return { ok: false, erro: "Recado não encontrado." };
+  if (!UUID.test(id)) return { ok: false, erro: "Post não encontrado." };
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/" };
   const supabase = await criarClienteServidor();
   const { data: foto, error } = await supabase.rpc("apagar_recado", { p_recado: id });
   if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível apagar agora.") };
   if (foto) await supabase.storage.from("recados").remove([foto]);
-  revalidatePath(`/recado/${id}`);
+  revalidatePath(`/post/${id}`);
   refresh();
-  return { ok: true, mensagem: "Recado apagado." };
+  return { ok: true, mensagem: "Post apagado." };
 }
 
 /** Troca o texto do próprio recado (com a revisão ligada, ele volta para a revisão). */
 export async function editarRecado(id: string, texto: string): Promise<ResultadoRecado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!UUID.test(id)) return { ok: false, erro: "Recado não encontrado." };
+  if (!UUID.test(id)) return { ok: false, erro: "Post não encontrado." };
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar?next=/" };
   const dados = new FormData();
@@ -101,22 +101,22 @@ export async function editarRecado(id: string, texto: string): Promise<Resultado
   const { data, error } = await supabase
     .rpc("editar_recado", { p_recado: id, p_texto: leitura.data?.texto ?? texto })
     .maybeSingle();
-  if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível editar o recado agora.") };
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não foi possível editar o post agora.") };
   const emRevisao = data?.status === "revisao";
   if (emRevisao) after(processarFilas);
-  revalidatePath(`/recado/${id}`);
+  revalidatePath(`/post/${id}`);
   refresh();
   return {
     ok: true,
     emRevisao,
-    mensagem: emRevisao ? "Recado editado. Ele volta a aparecer para os outros depois da revisão." : "Recado editado.",
+    mensagem: emRevisao ? "Post editado. Ele volta a aparecer para os outros depois da revisão." : "Post editado.",
   };
 }
 
 /** Dá (ou tira) a Força de um recado. */
 export async function darForca(id: string): Promise<{ ok: true; forcas: number; dei: boolean } | Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!UUID.test(id)) return { ok: false, erro: "Recado não encontrado." };
+  if (!UUID.test(id)) return { ok: false, erro: "Post não encontrado." };
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre na sua conta para dar Força.", ir: "/entrar?next=/" };
   const supabase = await criarClienteServidor();
@@ -130,7 +130,7 @@ const MOTIVOS: readonly string[] = MOTIVOS_DENUNCIA.map((m) => m.valor);
 /** Denuncia um recado (os mesmos motivos da denúncia de anúncio). */
 export async function denunciarRecado(id: string, motivo: string, detalhes: string): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
-  if (!UUID.test(id)) return { ok: false, erro: "Recado não encontrado." };
+  if (!UUID.test(id)) return { ok: false, erro: "Post não encontrado." };
   if (!MOTIVOS.includes(motivo)) return { ok: false, erro: "Escolha o motivo." };
   const usuario = await obterUsuario();
   if (!usuario) return { ok: false, erro: "Entre na sua conta para denunciar.", ir: "/entrar?next=/" };
@@ -310,6 +310,6 @@ export async function moderarRecado(id: string, decisao: "liberar" | "remover", 
   refresh();
   return {
     ok: true,
-    mensagem: decisao === "remover" ? "Recado removido. Quem escreveu recebe o aviso." : "Pronto: recado no ar.",
+    mensagem: decisao === "remover" ? "Post removido. Quem escreveu recebe o aviso." : "Pronto: post no ar.",
   };
 }

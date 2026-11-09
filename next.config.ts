@@ -69,6 +69,8 @@ const nextConfig: NextConfig = {
       { source: "/painel/talentos", destination: "/talentos", permanent: false },
       // "Avisos e notificações" virou Preferências (os links dos e-mails já enviados)
       { source: "/perfil/avisos", destination: "/perfil/preferencias", permanent: true },
+      // o recado da linha do tempo virou post (09/11/2026): os links já mandados no WhatsApp continuam abrindo
+      { source: "/recado/:id", destination: "/post/:id", permanent: true },
     ];
   },
   async headers() {

@@ -19,10 +19,10 @@ export async function SecaoRecados({
   const recados = await recadosDoPerfil(perfilId);
   if (!recados.length && !meu) return null;
   return (
-    <section id="recados" className="mt-10 scroll-mt-24">
+    <section id="posts" className="mt-10 scroll-mt-24">
       <h2 className="flex items-center gap-2 text-h2">
         <MessageSquareText aria-hidden className="size-6" />
-        Recados
+        Posts
       </h2>
       {recados.length ? (
         <ul className="mt-4 flex max-w-2xl flex-col gap-3">
@@ -34,9 +34,9 @@ export async function SecaoRecados({
         </ul>
       ) : (
         <p className="mt-2 text-body-sm text-ink-muted">
-          Você ainda não escreveu recados.{" "}
+          Você ainda não postou nada.{" "}
           <Link href="/?tipo=recado" className="font-semibold text-ink underline underline-offset-2">
-            Escrever na linha do tempo
+            Postar no feed
           </Link>
         </p>
       )}

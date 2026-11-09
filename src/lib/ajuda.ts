@@ -188,7 +188,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como vejo as minhas vagas do jeito que quem procura trabalho vê?",
-        r: "No painel, toque em Trocar (no alto do menu) e em “Ver como pessoa”. A home vira a de quem procura trabalho, com as vagas, os serviços e os recados perto, e as suas vagas aparecem como as pessoas veem. É só olhar: curtir, salvar, conectar e escrever ficam desligados. Para voltar, toque em “Voltar para…” na faixa do alto (ou abra o painel).",
+        r: "No painel, toque em Trocar (no alto do menu) e em “Ver como pessoa”. A home vira a de quem procura trabalho, com as vagas, os serviços e os posts perto, e as suas vagas aparecem como as pessoas veem. É só olhar: curtir, salvar, conectar e escrever ficam desligados. Para voltar, toque em “Voltar para…” na faixa do alto (ou abra o painel).",
       },
       {
         p: "Quem pode publicar vaga?",

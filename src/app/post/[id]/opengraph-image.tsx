@@ -2,10 +2,10 @@ import { ImageResponse } from "next/og";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 
-// A imagem que aparece quando alguém manda o link de um recado (WhatsApp, redes): o texto do
-// recado num balão, quem escreveu e o nome do Publike.
+// A imagem que aparece quando alguém manda o link de um post (WhatsApp, redes): o texto do
+// post num balão, quem escreveu e o nome do Publike.
 
-export const alt = "Recado no Publike";
+export const alt = "Post no Publike";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -22,7 +22,7 @@ async function lerRecado(id: string) {
 export default async function Imagem({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const r = await lerRecado(id);
-  const texto = r ? (r.texto.length > 220 ? `${r.texto.slice(0, 217).trimEnd()}…` : r.texto) : "Recado no Publike";
+  const texto = r ? (r.texto.length > 220 ? `${r.texto.slice(0, 217).trimEnd()}…` : r.texto) : "Post no Publike";
   return new ImageResponse(
     <div
       style={{

@@ -32,7 +32,7 @@ export function ConviteRecado({
       />
       <h3 id={titulo} className="flex items-center gap-2 text-label">
         <PenLine aria-hidden className="size-4 shrink-0 text-terra-text" />
-        Deixe um recado no seu bairro
+        Faça seu primeiro post
       </h3>
       <p className="mt-1 text-body-sm">
         {texto.pedido} Ex.: <i>“{texto.exemplo}”</i> {texto.quemVe}
@@ -51,7 +51,7 @@ export function ConviteRecado({
           className="inline-flex min-h-9 items-center gap-1.5 rounded-pill bg-ink px-4 text-label text-surface-100 hover:opacity-90"
         >
           <PenLine aria-hidden className="size-4" />
-          Escrever meu recado
+          Escrever meu post
         </button>
       </div>
     </section>

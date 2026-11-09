@@ -136,6 +136,19 @@ function Item({
   );
 }
 
+/** Na aba Posts, com poucos posts por enquanto: o convite para seguir rolando nas vagas perto. */
+function PoucosPosts({ d }: { d: DadosDaLinha }) {
+  if (d.itens.length >= 5) return null;
+  return (
+    <div className="flex flex-col items-start gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:ml-[102px]">
+      <p className="text-body-sm text-ink-muted">Ainda são poucos posts por aqui. Enquanto isso, veja as vagas perto de você.</p>
+      <BotaoLink href={hrefFiltros(d.filtrosDaBusca, { tipo: "vaga", tudo: false })} variante="secundario">
+        Ver as vagas perto de você
+      </BotaoLink>
+    </div>
+  );
+}
+
 /** No "só olhar", ninguém é dono de nada na linha: os cartões ficam como os de quem procura trabalho. */
 const QUEM_SO_OLHA = "so-olhar";
 
@@ -177,8 +190,16 @@ export async function LinhaDoTempo({
       <section aria-label="Linha do tempo" className="flex flex-col gap-3">
         <RaioDaLinha d={d} />
         {d.aba === "recado" ? (
-          <Vazio icone={MessageSquareText} titulo="Nenhum recado por aqui ainda">
-            Escreva o primeiro: conte o que você procura ou quem você está contratando.
+          <Vazio
+            icone={MessageSquareText}
+            titulo="Nenhum post por aqui ainda"
+            acao={
+              <BotaoLink href={hrefFiltros(d.filtrosDaBusca, { tipo: "vaga", tudo: false })} variante="secundario">
+                Ver as vagas perto de você
+              </BotaoLink>
+            }
+          >
+            Poste o primeiro: conte o que você procura ou quem você está contratando.
           </Vazio>
         ) : (
           <Vazio
@@ -284,7 +305,11 @@ export async function LinhaDoTempo({
       <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
         {/* o traço da linha, no meio da coluna dos nós */}
         <span aria-hidden className="absolute top-3 bottom-0 left-[71px] hidden w-0.5 rounded-pill bg-line sm:block" />
-        <ListaDaLinha partes={blocos} contam={contam} fim={<FimDoRaio d={d} />} />
+        <ListaDaLinha
+          partes={blocos}
+          contam={contam}
+          fim={d.aba === "recado" ? <PoucosPosts d={d} /> : <FimDoRaio d={d} />}
+        />
         <RegistrarVisita />
       </section>
     </>

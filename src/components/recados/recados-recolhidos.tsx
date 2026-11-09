@@ -25,7 +25,7 @@ export function RecadosRecolhidos({
         onClick={() => setAberto(true)}
         className="inline-flex min-h-10 w-fit items-center gap-1.5 rounded-pill bg-tom-recado px-4 text-label text-ink hover:brightness-[0.97]"
       >
-        Mais {quantos} {quantos === 1 ? "recado" : "recados"}
+        Mais {quantos} {quantos === 1 ? "post" : "posts"}
         <ChevronDown aria-hidden className="size-4" />
       </button>
     </div>

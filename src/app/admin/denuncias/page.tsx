@@ -269,7 +269,7 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
       {aba === "recados" && (
         <section id="recados" className="flex scroll-mt-24 flex-col gap-4">
           <div>
-            <h2 className="text-h3">Recados</h2>
+            <h2 className="text-h3">Posts</h2>
             <p className="mt-1 max-w-3xl text-body-sm text-ink-muted">
               Recados da linha do tempo que a IA reteve, que ela não conseguiu revisar ou que receberam denúncia. Com
               três denúncias de contas com pelo menos 3 dias, o recado sai do ar sozinho até alguém decidir. Remover
@@ -277,7 +277,7 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
             </p>
           </div>
           {recados.length === 0 ? (
-            <Vazio icone={ShieldCheck} titulo="Nenhum recado para revisar" />
+            <Vazio icone={ShieldCheck} titulo="Nenhum post para revisar" />
           ) : (
             <ListaDeRecados recados={recados} admin={acesso.admin} agora={agora} />
           )}
@@ -510,7 +510,7 @@ function ListaDeRecados({ recados, admin, agora }: { recados: ItemRecado[]; admi
             <blockquote className="rounded-md bg-surface-300 p-3 text-body whitespace-pre-line">“{r.texto}”</blockquote>
             {foto && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={foto} alt="Foto do recado" className="max-h-48 w-fit rounded-md object-cover" />
+              <img src={foto} alt="Foto do post" className="max-h-48 w-fit rounded-md object-cover" />
             )}
             {(r.ia_categorias.length > 0 || r.ia_explicacao) && (
               <div className="flex flex-col gap-2 rounded-md bg-terra-soft p-3 text-body-sm">

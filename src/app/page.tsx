@@ -288,7 +288,7 @@ function CartaoSoOlhar() {
       </span>
       <h2 className="text-label">Vendo como pessoa</h2>
       <p className="text-body-sm text-ink-muted">
-        Esta é a linha de quem procura trabalho por aqui: as vagas, os serviços e os recados. Abra uma vaga sua para ver
+        Esta é a linha de quem procura trabalho por aqui: as vagas, os serviços e os posts. Abra uma vaga sua para ver
         como as pessoas a veem.
       </p>
     </section>

@@ -8,7 +8,7 @@ export const COOKIE_SO_OLHAR = "publike_so_olhar";
 export function paginaDePessoa(caminho: string) {
   return (
     caminho === "/" ||
-    /^\/(anuncio|recado|empresas|profissionais|servicos|vagas|descobrir|talentos)(\/|$)/.test(caminho) ||
+    /^\/(anuncio|recado|post|empresas|profissionais|servicos|vagas|descobrir|talentos)(\/|$)/.test(caminho) ||
     /^\/perfil\/(?!curriculo$)[^/]+$/.test(caminho)
   );
 }

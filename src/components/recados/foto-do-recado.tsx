@@ -32,7 +32,7 @@ export function FotoDoRecado({ src, autor }: { src: string; autor: string }) {
 
       <dialog
         ref={janela}
-        aria-label={`Foto do recado de ${autor}`}
+        aria-label={`Foto do post de ${autor}`}
         // qualquer toque fecha (menos no X, que fecha sozinho)
         onClick={fechar}
         className="m-0 h-dvh max-h-none w-screen max-w-none cursor-zoom-out bg-transparent p-0 backdrop:bg-[rgb(23_19_15/0.9)]"
@@ -41,7 +41,7 @@ export function FotoDoRecado({ src, autor }: { src: string; autor: string }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
-            alt={`Foto do recado de ${autor}`}
+            alt={`Foto do post de ${autor}`}
             className="max-h-full max-w-full rounded-[12px] object-contain shadow-raised"
           />
         </div>

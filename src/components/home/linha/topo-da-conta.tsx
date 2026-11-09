@@ -195,7 +195,7 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
                 Como quem procura trabalho vê o Publike
               </h2>
               <p className="text-body-sm text-ink-muted sm:text-body">
-                As vagas, os serviços e os recados de quem está perto. Só olhar.
+                As vagas, os serviços e os posts de quem está perto. Só olhar.
               </p>
             </div>
           ) : (

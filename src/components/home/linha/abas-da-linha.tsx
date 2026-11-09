@@ -30,7 +30,7 @@ const ABAS: { valor: Aba; nome: string; icone: LucideIcon }[] = [
   { valor: "tudo", nome: "Tudo", icone: Layers },
   { valor: "vaga", nome: "Vagas", icone: Briefcase },
   { valor: "servico", nome: "Serviços", icone: Wrench },
-  { valor: "recado", nome: "Recados", icone: MessageSquareText },
+  { valor: "recado", nome: "Posts", icone: MessageSquareText },
 ];
 
 /**
