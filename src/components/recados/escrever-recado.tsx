@@ -128,6 +128,14 @@ export function EscreverRecado({
     setModelo(m.valor);
     setAviso(null);
     if (!texto.trim() || COMECOS.has(texto)) setTexto(m.comeco);
+    // o que o modelo anterior abriu ou escolheu sai: a busca da vaga, a lista dos currículos, a vaga do "contratando"
+    // e o currículo do "procuro" (no "Do meu jeito", o campo fica limpo)
+    if (modelo === "contratando" && m.valor !== "contratando") setCitado(null);
+    if (modelo === "procuro" && m.valor !== "procuro") setCurriculo(null);
+    setCitando(false);
+    setCompartilhando(false);
+    setBusca("");
+    setBuscaCurriculo("");
     if (m.valor === "contratando") {
       // a vaga: a busca abre nas suas vagas no ar
       setMinhas(true);
