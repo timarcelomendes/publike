@@ -11,7 +11,7 @@ import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
 import { ListaDaLinha } from "./lista-da-linha";
 import { FimDoRaio, RaioDaLinha } from "./raio-da-linha";
-import { CartaoDoAceite, CartaoDoServico, FaixaDeCurtidas, TicketDaVaga } from "./objetos";
+import { CartaoDoAceite, CartaoDoServico, ComentariosDoTiquete, FaixaDeCurtidas, TicketDaVaga } from "./objetos";
 import { RegistrarVisita } from "./registrar-visita";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
@@ -123,15 +123,13 @@ function Item({
       ) : (
         <>
           {dados.anuncio.curtidas ? <No icone={Heart} tipo="curtidas" /> : <No icone={Briefcase} tipo="vaga" />}
-          {dados.anuncio.curtidas ? (
-            // a vaga que as pessoas estão curtindo: quantas curtiram, em cima do tíquete
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <FaixaDeCurtidas item={dados.anuncio} usuarioId={d.usuarioId} />
-              <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
-            </div>
-          ) : (
+          {/* a vaga: quantas curtiram (em cima, quando as pessoas estão curtindo), o tíquete e, embaixo, os comentários
+              (abrem ali mesmo) e o Indicar */}
+          <div className="flex min-w-0 flex-col gap-1.5">
+            {dados.anuncio.curtidas && <FaixaDeCurtidas item={dados.anuncio} usuarioId={d.usuarioId} />}
             <TicketDaVaga item={dados.anuncio} hora={hora} usuarioId={d.usuarioId} tempoDe={d.tempoDe} />
-          )}
+            <ComentariosDoTiquete item={dados.anuncio} usuarioId={d.usuarioId} />
+          </div>
         </>
       )}
     </div>

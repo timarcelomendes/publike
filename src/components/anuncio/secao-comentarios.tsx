@@ -1,4 +1,4 @@
-import { MessageCircleQuestion } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { lerComentarios } from "@/lib/comentarios";
 import { MODO_DEMO } from "@/lib/config";
 import { comentariosDasVagas } from "@/lib/servidor/linha";
@@ -30,15 +30,15 @@ export async function AtalhosDaVaga({
   logado: boolean;
 }) {
   if (MODO_DEMO) return null;
-  const n = (await comentariosDasVagas([anuncioId]).catch(() => new Map<string, number>())).get(anuncioId) ?? 0;
+  const n = (await comentariosDasVagas([anuncioId]).catch(() => new Map())).get(anuncioId)?.total ?? 0;
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       <a
         href="#comentarios"
         className="inline-flex min-h-10 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-3.5 text-label text-ink transition-colors hover:bg-surface-300"
       >
-        <MessageCircleQuestion aria-hidden className="size-[18px] shrink-0" />
-        {n === 0 ? "Perguntar sobre a vaga" : `${n} ${n === 1 ? "comentário" : "comentários"}`}
+        <MessageCircle aria-hidden className="size-[18px] shrink-0" />
+        {n === 0 ? "Comentar" : `${n} ${n === 1 ? "comentário" : "comentários"}`}
       </a>
       <IndicarNaJanela anuncioId={anuncioId} titulo={titulo} logado={logado} jeito="botao" />
     </div>

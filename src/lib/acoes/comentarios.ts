@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
-import { MAXIMO_COMENTARIO } from "@/lib/comentarios";
+import { lerComentarios, MAXIMO_COMENTARIO, type ComentariosDaVaga } from "@/lib/comentarios";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
 import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
@@ -31,6 +31,14 @@ function conferirTexto(texto: string): string | null {
 }
 
 export type ResultadoComentario = Resultado & { emRevisao?: boolean };
+
+/** A conversa de uma vaga, para abrir no próprio feed (null: vaga sem comentários ou sem a migração). */
+export async function lerComentariosDaVaga(anuncioId: string): Promise<ComentariosDaVaga | null> {
+  if (MODO_DEMO || !UUID.test(anuncioId)) return null;
+  const { data, error } = await (await criarClienteServidor()).rpc("comentarios_da_vaga", { p_anuncio: anuncioId });
+  if (error) return null;
+  return lerComentarios(data);
+}
 
 export async function comentar(anuncioId: string, texto: string, respostaA?: string | null): Promise<ResultadoComentario> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -123,7 +131,7 @@ export async function ligarComentarios(anuncioId: string, ligado: boolean): Prom
   return {
     ok: true,
     mensagem: ligado
-      ? "Comentários ligados: quem vê a vaga pode perguntar."
+      ? "Comentários ligados: quem vê a vaga pode comentar."
       : "Comentários desligados. Os que já existem continuam na vaga.",
   };
 }

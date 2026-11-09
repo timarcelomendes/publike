@@ -13,6 +13,7 @@ import {
 import { deslocamentoCurto } from "@/lib/deslocamento";
 import { nomeBeneficio } from "@/lib/constantes";
 import { comoResponde, type Resposta } from "@/lib/resposta";
+import type { ResumoComentarios } from "@/lib/comentarios";
 import type { DadosCard } from "@/lib/tipos";
 import type { GanhoExtra } from "@/lib/vaga-extra";
 import { NotaDoProfissional } from "./avaliacoes";
@@ -124,8 +125,11 @@ export function CardAnuncio({
   semAutor?: boolean;
   /** Vaga de agência: para qual empresa é ("Spoleto"; confidencial: "empresa confidencial"). */
   para?: string | null;
-  /** Vaga de outra conta: quantos comentários tem (com o número, aparecem os comentários e o Indicar). */
-  comentarios?: number | null;
+  /**
+   * Vaga de outra conta: quantos comentários tem e o último (com o resumo, aparecem os comentários, que abrem numa
+   * janela por cima da lista, e o Indicar).
+   */
+  comentarios?: ResumoComentarios | null;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);

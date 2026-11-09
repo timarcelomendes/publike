@@ -308,6 +308,8 @@ export function BotaoCurtir({
           id={`${eu}-dica`}
           role="status"
           data-pode-olhar
+          // a dica de novidade (o balão "Novo") espera este fechar
+          data-balao-dica
           // não segura o toque: o que está embaixo continua tocável (menos o Entendi)
           className="pointer-events-none absolute right-0 bottom-full z-30 mb-3 w-72 max-w-[calc(100vw-2rem)] rounded-md bg-ink p-3.5 text-left text-body-sm text-surface-100 shadow-raised"
         >

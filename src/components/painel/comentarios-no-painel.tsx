@@ -1,4 +1,4 @@
-import { MessageCircleQuestion } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { DicaDeNovidade } from "@/components/ui/dica-de-novidade";
 import { plural } from "@/lib/formato";
@@ -17,13 +17,13 @@ export async function ComentariosNoPainel({ anuncioId }: { anuncioId: string }) 
   return (
     <DicaDeNovidade chave="comentarios-empresa" logado>
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-200 px-4 py-3">
-        <MessageCircleQuestion aria-hidden className="size-5 shrink-0 text-ink-muted" />
+        <MessageCircle aria-hidden className="size-5 shrink-0 text-ink-muted" />
         <p className="min-w-0 flex-1 text-body-sm">
           <span className="font-semibold">Comentários na vaga: </span>
           {total === 0
-            ? "ninguém perguntou ainda."
+            ? "ninguém comentou ainda."
             : semResposta > 0
-              ? `${plural(total, "comentário", "comentários")}, ${plural(semResposta, "pergunta espera", "perguntas esperam")} a sua resposta.`
+              ? `${plural(total, "comentário", "comentários")}, ${plural(semResposta, "espera", "esperam")} a sua resposta.`
               : `${plural(total, "comentário", "comentários")}, todos respondidos.`}
         </p>
         <Link

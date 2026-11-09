@@ -26,6 +26,19 @@ export type ComentariosDaVaga = {
   itens: Comentario[];
 };
 
+/**
+ * No feed: quantos comentários no ar a vaga tem, se aceita comentários (quem publicou pode desligar) e o último
+ * (quem e o começo do texto).
+ */
+export type ResumoComentarios = { total: number; ligados: boolean; ultimo: { nome: string; texto: string } | null };
+
+export const SEM_COMENTARIOS: ResumoComentarios = { total: 0, ligados: true, ultimo: null };
+
+/** Quantos comentários no ar a conversa tem. */
+export function contarComentarios(dados: ComentariosDaVaga) {
+  return dados.itens.filter((c) => c.status === "no_ar").length;
+}
+
 export const MAXIMO_COMENTARIO = 500;
 /** Editar só até 15 minutos depois (o banco confere). */
 export const MINUTOS_PARA_EDITAR = 15;

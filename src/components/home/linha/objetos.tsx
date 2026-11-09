@@ -17,10 +17,11 @@ import { deslocamentoCurto } from "@/lib/deslocamento";
 import { formatarDistancia, formatarLugar, linkWhatsApp, rotuloModalidade, urlDaFotoTrabalho } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
+import { SEM_COMENTARIOS } from "@/lib/comentarios";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
-import { AcoesDaVagaNoCartao } from "../../anuncio/acoes-no-feed";
+import { ComentariosNoFeed } from "../../anuncio/comentarios-no-feed";
 import { BotaoCurtir } from "../../botao-curtir";
 import { ehOutraArea, SeloMatch } from "../../match-vaga";
 import { SeloVerificado } from "../../selo-verificado";
@@ -263,21 +264,28 @@ export function TicketDaVaga({
               logado={usuarioId !== null}
               quem={a.autor_nome}
             />
-            {!preenchida && (
-              <span className="flex justify-center">
-                <AcoesDaVagaNoCartao
-                  anuncioId={a.id}
-                  titulo={a.titulo}
-                  comentarios={item.comentarios ?? 0}
-                  logado={usuarioId !== null}
-                  pequeno
-                />
-              </span>
-            )}
           </span>
         )}
       </div>
     </article>
+  );
+}
+
+/**
+ * Embaixo do tíquete da vaga: os comentários (abrem ali mesmo, sem sair do feed) e o "Indicar" (comentar no próprio
+ * feed, 09/11/2026).
+ */
+export function ComentariosDoTiquete({ item, usuarioId }: { item: AnuncioNaLinha; usuarioId: string | null }) {
+  const a = item.anuncio;
+  return (
+    <ComentariosNoFeed
+      anuncioId={a.id}
+      titulo={a.titulo}
+      resumo={item.comentarios ?? SEM_COMENTARIOS}
+      logado={usuarioId !== null}
+      proprio={usuarioId !== null && usuarioId === a.autor_id}
+      aberta={!item.requisitos?.preenchida_em}
+    />
   );
 }
 

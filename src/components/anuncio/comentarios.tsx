@@ -2,7 +2,7 @@
 
 import { Flag, MessageSquareText, Pencil, Trash2, EyeOff, Eye, CornerDownRight, Heart } from "lucide-react";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { createContext, useContext, useState, type FormEvent } from "react";
 import { Avatar } from "@/components/ui/basicos";
 import { Botao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
@@ -17,6 +17,7 @@ import {
   ligarComentarios,
 } from "@/lib/acoes/comentarios";
 import {
+  contarComentarios,
   MAXIMO_COMENTARIO,
   MINUTOS_PARA_EDITAR,
   organizarComentarios,
@@ -26,15 +27,35 @@ import {
 } from "@/lib/comentarios";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
 import { tempoRelativo } from "@/lib/formato";
+import { pedirEntrar } from "../folha-de-entrar";
 
 // Os comentários da vaga (claude/plano-comentarios-e-indicar-por-email.md, parte 2): perguntas sobre a vaga e a
 // resposta de quem publicou, em destaque, um nível só. Comentário não é candidatura: se o texto parecer candidatura,
 // antes de mandar o site lembra de tocar em Curtir. Sem telefone, e-mail ou link (o banco confere de novo).
 
 const MOSTRAR = 5;
+/** No feed, as primeiras conversas (o resto fica na página da vaga). */
+const MOSTRAR_NO_FEED = 3;
 
-/** Leva ao Curtir: no celular, o quadro logo abaixo do título; no computador, a coluna ao lado (fixa no topo). */
-function irParaCurtir() {
+/**
+ * Depois de comentar, editar, apagar, esconder ou denunciar: no feed, a conversa é lida de novo (na página da vaga,
+ * o refresh() das ações já redesenha tudo).
+ */
+const Recarregar = createContext<(() => void) | null>(null);
+/** No feed (a conversa aberta embaixo do cartão da vaga ou na janela do cartão) ou na página da vaga. */
+const NoFeed = createContext(false);
+/** Na janela do cartão: o "Curtir a vaga" do lembrete fecha a janela e mostra o cartão (com o Curtir). */
+const AoCurtir = createContext<(() => void) | null>(null);
+
+/**
+ * Leva ao Curtir: no feed, o cartão da vaga logo acima; na página da vaga, no celular, o quadro logo abaixo do
+ * título, e no computador, a coluna ao lado (fixa no topo).
+ */
+function irParaCurtir(anuncioId: string, noFeed: boolean) {
+  if (noFeed) {
+    document.getElementById(`anuncio-${anuncioId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   const celular = document.getElementById("quadro-celular");
   if (celular && celular.offsetParent !== null) celular.scrollIntoView({ behavior: "smooth", block: "start" });
   else window.scrollTo({ top: 0, behavior: "smooth" });
@@ -60,6 +81,9 @@ function Formulario({
   const [texto, setTexto] = useState("");
   const [lembrar, setLembrar] = useState(false);
   const { rodar, pendente, mensagem } = useAcao();
+  const recarregar = useContext(Recarregar);
+  const noFeed = useContext(NoFeed);
+  const aoCurtir = useContext(AoCurtir);
 
   function mandar(e?: FormEvent) {
     e?.preventDefault();
@@ -75,6 +99,7 @@ function Formulario({
         setTexto("");
         usarDica(dono ? "comentarios-empresa" : "comentarios");
         aoTerminar?.();
+        recarregar?.();
       },
     );
   }
@@ -90,7 +115,7 @@ function Formulario({
             setLembrar(false);
           }}
           maxLength={MAXIMO_COMENTARIO}
-          rows={respostaA ? 2 : 3}
+          rows={respostaA || noFeed ? 2 : 3}
           placeholder={placeholder}
           className={`${classesEntrada} resize-y`}
         />
@@ -102,7 +127,7 @@ function Formulario({
             Curtir na vaga.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Botao tamanho="sm" onClick={irParaCurtir}>
+            <Botao tamanho="sm" onClick={() => (aoCurtir ? aoCurtir() : irParaCurtir(anuncioId, noFeed))}>
               <Heart aria-hidden />
               Curtir a vaga
             </Botao>
@@ -133,6 +158,7 @@ function Formulario({
 function Denunciar({ id, aoFechar }: { id: string; aoFechar: () => void }) {
   const [motivo, setMotivo] = useState("");
   const { rodar, pendente, mensagem } = useAcao();
+  const recarregar = useContext(Recarregar);
   return (
     <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3">
       <p className="text-label">Por que denunciar?</p>
@@ -149,7 +175,18 @@ function Denunciar({ id, aoFechar }: { id: string; aoFechar: () => void }) {
           tamanho="sm"
           variante="perigo"
           disabled={!motivo || pendente}
-          onClick={() => rodar(() => denunciarComentario(id, motivo), (r) => r.ok && setTimeout(aoFechar, 1500))}
+          onClick={() =>
+            rodar(
+              () => denunciarComentario(id, motivo),
+              (r) => {
+                if (!r.ok) return;
+                setTimeout(() => {
+                  aoFechar();
+                  recarregar?.();
+                }, 1500);
+              },
+            )
+          }
         >
           Denunciar
         </Botao>
@@ -180,6 +217,10 @@ function Item({
   const [modo, setModo] = useState<"ver" | "editar" | "responder" | "denunciar">("ver");
   const [texto, setTexto] = useState(c.texto);
   const { rodar, pendente, mensagem } = useAcao();
+  const recarregar = useContext(Recarregar);
+  const depois = (r: { ok: boolean }) => {
+    if (r.ok) recarregar?.();
+  };
   const podeEditar = c.meu && agora - new Date(c.criado_em).getTime() < MINUTOS_PARA_EDITAR * 60_000;
   const dono = dados.dono;
 
@@ -229,7 +270,16 @@ function Item({
               <Botao
                 tamanho="sm"
                 disabled={pendente || texto.trim().length < 2}
-                onClick={() => rodar(() => editarComentario(c.id, texto), (r) => r.ok && setModo("ver"))}
+                onClick={() =>
+                  rodar(
+                    () => editarComentario(c.id, texto),
+                    (r) => {
+                      if (!r.ok) return;
+                      setModo("ver");
+                      recarregar?.();
+                    },
+                  )
+                }
               >
                 Salvar
               </Botao>
@@ -261,7 +311,7 @@ function Item({
                 type="button"
                 className="inline-flex min-h-9 items-center gap-1 hover:text-danger"
                 disabled={pendente}
-                onClick={() => rodar(() => apagarComentario(c.id))}
+                onClick={() => rodar(() => apagarComentario(c.id), depois)}
               >
                 <Trash2 aria-hidden className="size-4" />
                 Apagar
@@ -272,7 +322,7 @@ function Item({
                 type="button"
                 className="inline-flex min-h-9 items-center gap-1 hover:text-ink"
                 disabled={pendente}
-                onClick={() => rodar(() => esconderComentario(c.id, c.status === "no_ar"))}
+                onClick={() => rodar(() => esconderComentario(c.id, c.status === "no_ar"), depois)}
               >
                 {c.status === "no_ar" ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
                 {c.status === "no_ar" ? "Esconder" : "Mostrar de novo"}
@@ -310,49 +360,59 @@ export function ComentariosDaVaga({
   anuncioId,
   dados,
   agora,
+  compacto = false,
+  aoMudar,
+  aoCurtir,
 }: {
   anuncioId: string;
   dados: ComentariosDaVaga;
   agora: number;
+  /** no feed: sem o título, com as primeiras conversas e o link para ver todas na vaga */
+  compacto?: boolean;
+  /** no feed: lê a conversa de novo depois de cada ação */
+  aoMudar?: () => void;
+  /** na janela do cartão: o que o "Curtir a vaga" do lembrete faz */
+  aoCurtir?: () => void;
 }) {
   const [todos, setTodos] = useState(false);
   const { rodar, pendente, mensagem } = useAcao();
   const lista = organizarComentarios(dados.itens);
-  const visiveis = todos ? lista : lista.slice(0, MOSTRAR);
-  const total = dados.itens.filter((c) => c.status === "no_ar").length;
+  const limite = compacto ? MOSTRAR_NO_FEED : MOSTRAR;
+  const visiveis = todos ? lista : lista.slice(0, limite);
+  const total = contarComentarios(dados);
   const podeEscrever = dados.aberta && dados.ligados;
-  const voltar = encodeURIComponent(`/anuncio/${anuncioId}#comentarios`);
+  const voltar = `/anuncio/${anuncioId}#comentarios`;
+  const placeholder = dados.dono
+    ? "Escreva um comentário para quem vê a vaga: como é o dia a dia, o que mais comentam…"
+    : "Escreva um comentário: horário, transporte, se precisa de experiência…";
 
-  return (
-    <section id="comentarios" aria-labelledby="comentarios-titulo" className="mt-8 flex scroll-mt-24 flex-col gap-4">
-      <h2 id="comentarios-titulo" className="text-h2">
-        Comentários{total > 0 && <span className="ml-2 text-body font-normal text-ink-muted">{total}</span>}
-      </h2>
+  const formulario = dados.logado ? (
+    <Formulario anuncioId={anuncioId} dono={dados.dono} logado rotulo="Escreva um comentário" placeholder={placeholder} />
+  ) : (
+    <p className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface-200 p-3 text-body-sm">
+      <MessageSquareText aria-hidden className="size-4 text-ink-muted" />
+      Ficou com dúvida?
+      <Link
+        href={`/entrar?next=${encodeURIComponent(voltar)}`}
+        // a folha de entrar sobe por cima da página (sem a folha, segue para o /entrar)
+        onClick={(e) => {
+          if (pedirEntrar({ proximo: voltar })) e.preventDefault();
+        }}
+        className="font-semibold underline underline-offset-2"
+      >
+        Entre para comentar
+      </Link>
+    </p>
+  );
 
+  const conteudo = (
+    <>
       {podeEscrever &&
-        (dados.logado ? (
-          <DicaDeNovidade chave={dados.dono ? "comentarios-empresa" : "comentarios"} logado>
-            <Formulario
-              anuncioId={anuncioId}
-              dono={dados.dono}
-              logado
-              rotulo="Escreva um comentário"
-              placeholder={
-                dados.dono
-                  ? "Escreva para quem vê a vaga: o que mais perguntam, como é o dia a dia…"
-                  : "Pergunte sobre a vaga: horário, transporte, se precisa de experiência…"
-              }
-            />
-          </DicaDeNovidade>
+        (compacto ? (
+          formulario
         ) : (
-          <DicaDeNovidade chave="comentarios" logado={false}>
-            <p className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface-200 p-3 text-body-sm">
-              <MessageSquareText aria-hidden className="size-4 text-ink-muted" />
-              Tem dúvida sobre a vaga?
-              <Link href={`/entrar?next=${voltar}`} className="font-semibold underline underline-offset-2">
-                Entre para comentar
-              </Link>
-            </p>
+          <DicaDeNovidade chave={dados.dono ? "comentarios-empresa" : "comentarios"} logado={dados.logado}>
+            {formulario}
           </DicaDeNovidade>
         ))}
       {!dados.aberta && (
@@ -367,13 +427,13 @@ export function ComentariosDaVaga({
       {lista.length === 0 ? (
         podeEscrever && (
           <p className="text-body-sm text-ink-muted">
-            Ainda sem comentários. {dados.dono ? "Quando alguém perguntar, você recebe o aviso." : "Seja o primeiro a perguntar."}
+            Ainda sem comentários. {dados.dono ? "Quando alguém comentar, você recebe o aviso." : "Seja o primeiro a comentar."}
           </p>
         )
       ) : (
         <ul className="flex flex-col divide-y divide-line">
           {visiveis.map((c) => (
-            <li key={c.id} className="flex flex-col gap-3 py-4 first:pt-0">
+            <li key={c.id} className={`flex flex-col gap-3 first:pt-0 ${compacto ? "py-3" : "py-4"}`}>
               <Item c={c} agora={agora} dados={dados} anuncioId={anuncioId} podeResponder={podeEscrever && dados.logado} />
               {c.respostas.length > 0 && (
                 <ul className="ml-6 flex flex-col gap-3 border-l-2 border-line pl-4 sm:ml-12">
@@ -388,13 +448,22 @@ export function ComentariosDaVaga({
           ))}
         </ul>
       )}
-      {!todos && lista.length > MOSTRAR && (
-        <Botao variante="secundario" tamanho="sm" className="self-start" onClick={() => setTodos(true)}>
-          Ver mais comentários ({lista.length - MOSTRAR})
-        </Botao>
-      )}
+      {!todos &&
+        lista.length > limite &&
+        (compacto ? (
+          <Link
+            href={`/anuncio/${anuncioId}#comentarios`}
+            className="self-start text-label underline underline-offset-2 hover:text-terra-text"
+          >
+            Ver todos os {total} comentários na vaga
+          </Link>
+        ) : (
+          <Botao variante="secundario" tamanho="sm" className="self-start" onClick={() => setTodos(true)}>
+            Ver mais comentários ({lista.length - limite})
+          </Botao>
+        ))}
 
-      {dados.dono && dados.aberta && (
+      {!compacto && dados.dono && dados.aberta && (
         <div className="flex flex-col gap-1 border-t border-line pt-3">
           <button
             type="button"
@@ -407,6 +476,25 @@ export function ComentariosDaVaga({
           {mensagem}
         </div>
       )}
-    </section>
+    </>
+  );
+
+  return (
+    <Recarregar.Provider value={aoMudar ?? null}>
+      <AoCurtir.Provider value={aoCurtir ?? null}>
+      <NoFeed.Provider value={compacto}>
+        {compacto ? (
+          <div className="flex flex-col gap-3">{conteudo}</div>
+        ) : (
+          <section id="comentarios" aria-labelledby="comentarios-titulo" className="mt-8 flex scroll-mt-24 flex-col gap-4">
+            <h2 id="comentarios-titulo" className="text-h2">
+              Comentários{total > 0 && <span className="ml-2 text-body font-normal text-ink-muted">{total}</span>}
+            </h2>
+            {conteudo}
+          </section>
+        )}
+      </NoFeed.Provider>
+      </AoCurtir.Provider>
+    </Recarregar.Provider>
   );
 }

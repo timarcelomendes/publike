@@ -544,10 +544,10 @@ export async function PainelRecrutador({
       quando: "Hoje",
       titulo:
         total === 1
-          ? `1 pergunta sem resposta em ${tituloDe.get(vagaId) ?? "uma vaga"}`
+          ? `1 comentário sem resposta em ${tituloDe.get(vagaId) ?? "uma vaga"}`
           : perguntas.size === 1
-            ? `${total} perguntas sem resposta em ${tituloDe.get(vagaId) ?? "uma vaga"}`
-            : `${total} perguntas sem resposta nas suas vagas`,
+            ? `${total} comentários sem resposta em ${tituloDe.get(vagaId) ?? "uma vaga"}`
+            : `${total} comentários sem resposta nas suas vagas`,
       texto: `A resposta fica na vaga para todo mundo ver${perguntas.size > 1 ? `. Comece por ${tituloDe.get(vagaId) ?? "a vaga"} (${n})` : ""}.`,
       href: `/anuncio/${vagaId}#comentarios`,
       acao: "Responder",

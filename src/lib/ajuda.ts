@@ -45,12 +45,12 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     titulo: "Para quem procura trabalho",
     perguntas: [
       {
-        p: "Como faço uma pergunta sobre uma vaga?",
-        r: "Na página da vaga, embaixo da descrição, em Comentários: escreva a dúvida (horário, transporte, se precisa de experiência) e toque em Comentar. Quem publicou recebe o aviso e responde ali mesmo, para todo mundo ver, e você recebe um aviso quando responderem. Comentário não é candidatura: para a empresa receber seu currículo, toque em Curtir. Não escreva telefone, e-mail ou link: o contato aparece quando der match. Dá para editar até 15 minutos depois e apagar quando quiser.",
+        p: "Como comento numa vaga?",
+        r: "No próprio feed: embaixo de cada vaga, toque em “Comentar” (ou no número de comentários). A conversa abre ali mesmo: escreva a dúvida (horário, transporte, se precisa de experiência) e toque em Comentar. Na lista de Vagas, o botão dos comentários abre a conversa numa janela, e na página da vaga ela fica embaixo da descrição. Quem publicou recebe o aviso e responde ali mesmo, para todo mundo ver, e você recebe um aviso quando responderem. Comentário não é candidatura: para a empresa receber seu currículo, toque em Curtir. Não escreva telefone, e-mail ou link: o contato aparece quando der match. Dá para editar até 15 minutos depois e apagar quando quiser.",
       },
       {
         p: "Como indico uma vaga para o e-mail de um amigo?",
-        r: "Na página da vaga, no quadro “Conhece quem faria essa vaga?”, toque em “Mandar por e-mail”. Escreva o e-mail do seu amigo e, se quiser, o nome dele, e toque em “Mandar indicação”. O Publike manda a vaga em seu nome, sem recado. Se ele já tiver conta, a indicação chega também no sino e no celular dele. Se não tiver, o e-mail traz um link: ele cria a conta em um toque, com o Google ou com o próprio e-mail, e chega na vaga. Quando ele se candidata, a empresa vê que foi indicação sua. Você não vê se ele se candidatou. São até 10 indicações por dia, e a mesma pessoa recebe no máximo 3 indicações por mês.",
+        r: "No feed, embaixo da vaga, toque em “Indicar” (na página da vaga, no quadro “Conhece quem faria essa vaga?”, em “Mandar por e-mail”). Escreva o e-mail do seu amigo e, se quiser, o nome dele, e toque em “Mandar indicação”. O Publike manda a vaga em seu nome, sem recado. Se ele já tiver conta, a indicação chega também no sino e no celular dele. Se não tiver, o e-mail traz um link: ele cria a conta em um toque, com o Google ou com o próprio e-mail, e chega na vaga. Quando ele se candidata, a empresa vê que foi indicação sua. Você não vê se ele se candidatou. São até 10 indicações por dia, e a mesma pessoa recebe no máximo 3 indicações por mês.",
       },
       {
         p: "Recebi uma vaga indicada por e-mail. O que faço?",
@@ -160,7 +160,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como funcionam os comentários nas minhas vagas?",
-        r: "Quem vê a vaga pode perguntar nos comentários, embaixo da descrição. Você recebe o aviso no sino e no celular (por e-mail, no máximo um por dia) e as perguntas sem resposta aparecem no Hoje. Toque em Responder: a resposta fica em destaque, com o selo “Quem publicou”, e quem tinha a mesma dúvida já vê. Comentário com ofensa, cobrança ou discriminação não vai ao ar. Você pode esconder um comentário da sua vaga (a moderação continua vendo) e desligar os comentários no fim da seção. Lembre que a sua resposta também segue as regras: nada de “só para homens” ou idade máxima.",
+        r: "Quem vê a vaga pode comentar, embaixo da descrição. Você recebe o aviso no sino e no celular (por e-mail, no máximo um por dia) e os comentários sem resposta aparecem no Hoje. Toque em Responder: a resposta fica em destaque, com o selo “Quem publicou”, e quem tinha a mesma dúvida já vê. Comentário com ofensa, cobrança ou discriminação não vai ao ar. Você pode esconder um comentário da sua vaga (a moderação continua vendo) e desligar os comentários no fim da seção. Lembre que a sua resposta também segue as regras: nada de “só para homens” ou idade máxima.",
       },
       {
         p: "Como peço indicação para uma vaga?",

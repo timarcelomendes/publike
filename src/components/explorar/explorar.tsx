@@ -1,3 +1,4 @@
+import { SEM_COMENTARIOS, type ResumoComentarios } from "@/lib/comentarios";
 import { BellPlus, MapPinned, Percent, SearchX, Store } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
@@ -358,7 +359,9 @@ export async function Explorar({
     // o logo de quem publicou (a foto do perfil), no alto do cartão
     fotosDosAutores(anuncios.map((a) => a.autor_id)),
     // os comentários à vista no cartão (com o Indicar)
-    comentariosDasVagas(deOutros.map((a) => a.id)).catch(() => new Map<string, number>()),
+    comentariosDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)).catch(
+      () => new Map<string, ResumoComentarios>(),
+    ),
   ]);
   const minhaPorId = new Map(minhas.map((m) => [m.id, { curtidas: m.curtidas_total, novas: m.curtidas_novas }]));
   const buscaSalva = usuario && avisar ? acharBuscaSalva(filtros, salvas) : null;
@@ -499,7 +502,7 @@ export async function Explorar({
               match={matches.get(a.id) ?? null}
               resposta={a.tipo === "vaga" ? (resposta.get(a.autor_id) ?? null) : null}
               curtidas={a.tipo === "vaga" ? (curtidas.get(a.id)?.total ?? null) : null}
-              comentarios={a.tipo === "vaga" && a.autor_id !== usuario?.id ? (comentarios.get(a.id) ?? 0) : null}
+              comentarios={a.tipo === "vaga" ? (comentarios.get(a.id) ?? SEM_COMENTARIOS) : null}
               extras={extrasDe(requisitos?.get(a.id), false)}
               salva={a.tipo === "vaga" && salvasAgora && a.autor_id !== usuario?.id ? salvasAgora.has(a.id) : null}
               minha={soOlhar ? null : (minhaPorId.get(a.id) ?? null)}

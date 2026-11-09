@@ -8,6 +8,7 @@ import { Botao, classesBotao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
 import { useAcao } from "@/components/ui/usar-acao";
 import { indicarPorEmail } from "@/lib/acoes/indicacao-email";
+import { pedirEntrar } from "../folha-de-entrar";
 
 // "Mandar por e-mail" no quadro "Conhece quem faria essa vaga?" (claude/plano-comentarios-e-indicar-por-email.md,
 // parte 1): o e-mail do amigo e o nome (opcional). Sem recado livre. Quem não entrou vai entrar e volta para cá.
@@ -88,8 +89,9 @@ export function FormIndicarEmail({ anuncioId }: { anuncioId: string }) {
 }
 
 /**
- * "Indicar" com a janela do formulário: no cartão do feed (só o ícone, ao lado de Salvar e Curtir) e no alto da
- * página da vaga (o botão com o texto). Quem não entrou vai entrar e volta para a vaga.
+ * "Indicar" com a janela do formulário: no cartão das listas (só o ícone, ao lado de Salvar e Curtir), embaixo da
+ * vaga na linha do tempo (ao lado dos comentários) e no alto da página da vaga (o botão com o texto). Quem não
+ * entrou vê a folha de entrar e volta para a vaga.
  */
 export function IndicarNaJanela({
   anuncioId,
@@ -100,11 +102,15 @@ export function IndicarNaJanela({
   anuncioId: string;
   titulo: string;
   logado: boolean;
-  jeito?: "icone" | "pequeno" | "botao";
+  /** "barra": o botão baixo com o texto, na barra dos comentários embaixo da vaga no feed */
+  jeito?: "icone" | "pequeno" | "botao" | "barra";
 }) {
   const janela = useRef<HTMLDialogElement>(null);
+  const comTexto = jeito === "botao" || jeito === "barra";
   const classes =
-    jeito === "botao"
+    jeito === "barra"
+      ? "relative z-10 inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-3 text-label text-ink transition-colors hover:bg-surface-300"
+      : jeito === "botao"
       ? "inline-flex min-h-10 items-center gap-1.5 rounded-pill border border-line-strong bg-surface-200 px-3.5 text-label text-ink transition-colors hover:bg-surface-300"
       : `relative z-10 inline-flex shrink-0 items-center justify-center rounded-pill border border-line-strong bg-surface-200 text-ink transition-colors hover:bg-surface-300 ${
           jeito === "pequeno" ? "size-9" : "size-11"
@@ -113,15 +119,21 @@ export function IndicarNaJanela({
     <>
       <Send aria-hidden className="size-[18px] shrink-0" />
       {jeito === "botao" && "Indicar a um amigo"}
+      {jeito === "barra" && "Indicar"}
     </>
   );
   if (!logado) {
+    const proximo = `/anuncio/${anuncioId}#indicar`;
     return (
       <Link
-        href={`/entrar?next=${encodeURIComponent(`/anuncio/${anuncioId}#indicar`)}`}
+        href={`/entrar?next=${encodeURIComponent(proximo)}`}
+        // a folha de entrar sobe por cima da página (sem a folha, segue para o /entrar)
+        onClick={(e) => {
+          if (pedirEntrar({ proximo })) e.preventDefault();
+        }}
         className={classes}
-        aria-label={jeito !== "botao" ? "Indicar a vaga a um amigo por e-mail" : undefined}
-        title={jeito !== "botao" ? "Indicar a um amigo" : undefined}
+        aria-label={!comTexto || jeito === "barra" ? "Indicar a vaga a um amigo por e-mail" : undefined}
+        title={!comTexto ? "Indicar a um amigo" : undefined}
       >
         {conteudo}
       </Link>
@@ -132,8 +144,8 @@ export function IndicarNaJanela({
       <button
         type="button"
         className={classes}
-        aria-label={jeito !== "botao" ? "Indicar a vaga a um amigo por e-mail" : undefined}
-        title={jeito !== "botao" ? "Indicar a um amigo" : undefined}
+        aria-label={!comTexto || jeito === "barra" ? "Indicar a vaga a um amigo por e-mail" : undefined}
+        title={!comTexto ? "Indicar a um amigo" : undefined}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

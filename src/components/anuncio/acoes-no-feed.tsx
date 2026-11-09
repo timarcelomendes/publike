@@ -1,38 +1,10 @@
-import { MessageCircleQuestion } from "lucide-react";
-import Link from "next/link";
+import type { ResumoComentarios } from "@/lib/comentarios";
+import { ComentariosNaJanela } from "./comentarios-no-feed";
 import { IndicarNaJanela } from "./indicar-por-email";
 
-// Os comentários e o "Indicar" à vista no cartão da vaga (feed, busca e listas): quantos comentários a vaga tem,
-// levando direto à seção, e o "Indicar a um amigo" por e-mail numa janela. Antes ficavam só no fim da página da
-// vaga, e ninguém via.
-
-export function ComentariosDoCartao({
-  anuncioId,
-  comentarios,
-  pequeno = false,
-}: {
-  anuncioId: string;
-  comentarios: number;
-  pequeno?: boolean;
-}) {
-  const rotulo =
-    comentarios === 0
-      ? "Perguntar sobre a vaga nos comentários"
-      : `${comentarios} ${comentarios === 1 ? "comentário" : "comentários"}: ver e perguntar`;
-  return (
-    <Link
-      href={`/anuncio/${anuncioId}#comentarios`}
-      aria-label={rotulo}
-      title={comentarios === 0 ? "Perguntar sobre a vaga" : rotulo}
-      className={`relative z-10 inline-flex shrink-0 items-center justify-center gap-1 rounded-pill border border-line-strong bg-surface-200 text-label text-ink transition-colors hover:bg-surface-300 ${
-        pequeno ? "min-h-9 min-w-9 px-2" : "min-h-11 min-w-11 px-2.5"
-      }`}
-    >
-      <MessageCircleQuestion aria-hidden className="size-[18px] shrink-0" />
-      {comentarios > 0 && <span className="tabular-nums">{comentarios}</span>}
-    </Link>
-  );
-}
+// Os comentários e o "Indicar" à vista no cartão da vaga das listas (Vagas, busca): o botão dos comentários, com o
+// número, abre a conversa numa janela por cima da lista (sem sair dela), e o "Indicar a um amigo" abre a janela do
+// e-mail. Na linha do tempo da home, os dois ficam embaixo do tíquete (comentarios-no-feed.tsx).
 
 /** Os dois botões juntos: comentários e indicar (vaga de outra conta, no ar). */
 export function AcoesDaVagaNoCartao({
@@ -44,13 +16,15 @@ export function AcoesDaVagaNoCartao({
 }: {
   anuncioId: string;
   titulo: string;
-  comentarios: number;
+  comentarios: ResumoComentarios;
   logado: boolean;
   pequeno?: boolean;
 }) {
   return (
     <span className="relative z-10 flex items-center gap-2">
-      <ComentariosDoCartao anuncioId={anuncioId} comentarios={comentarios} pequeno={pequeno} />
+      {(comentarios.total > 0 || comentarios.ligados) && (
+        <ComentariosNaJanela anuncioId={anuncioId} titulo={titulo} resumo={comentarios} pequeno={pequeno} />
+      )}
       <IndicarNaJanela anuncioId={anuncioId} titulo={titulo} logado={logado} jeito={pequeno ? "pequeno" : "icone"} />
     </span>
   );

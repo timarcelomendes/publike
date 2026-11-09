@@ -14,12 +14,12 @@ export type Dica = {
 export const DICAS = [
   {
     chave: "comentarios",
-    texto: "Tire suas dúvidas sobre a vaga aqui. Quem publicou responde para todo mundo ver.",
+    texto: "Comente na vaga: tire uma dúvida aqui, e quem publicou responde para todo mundo ver.",
     ligada: true,
   },
   {
     chave: "comentarios-empresa",
-    texto: "Candidatos podem perguntar nos comentários das suas vagas. Responder rápido traz mais candidatos.",
+    texto: "Candidatos podem comentar nas suas vagas. Responder rápido traz mais candidatos.",
     ligada: true,
   },
   {

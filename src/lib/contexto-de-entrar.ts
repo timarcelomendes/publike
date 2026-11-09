@@ -37,6 +37,18 @@ export function contexto(proximo: string): Contexto {
       demo: "pedido",
     };
   }
+  if (proximo.startsWith("/anuncio/") && proximo.endsWith("#comentarios")) {
+    return {
+      titulo: "Entre para comentar",
+      texto: "Tire a sua dúvida sobre a vaga. Quem publicou responde ali mesmo, para todo mundo ver.",
+    };
+  }
+  if (proximo.startsWith("/anuncio/") && proximo.endsWith("#indicar")) {
+    return {
+      titulo: "Entre para indicar a vaga",
+      texto: "Mandamos a vaga para o e-mail do seu amigo, em seu nome. Se ele não tiver conta, cria em um toque.",
+    };
+  }
   if (proximo.startsWith("/anuncio/")) {
     return {
       titulo: "Entre para curtir a vaga",
