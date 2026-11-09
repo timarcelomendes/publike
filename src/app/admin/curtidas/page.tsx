@@ -410,7 +410,7 @@ async function Conteudo({
             <Numero
               rotulo="Com contato"
               valor={comContato}
-              detalhe="WhatsApp, telefone, e-mail"
+              detalhe="tocaram no botão"
               href={so({ situacao: "match", chat: "contato" })}
             />
             <Numero
