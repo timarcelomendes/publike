@@ -1,4 +1,6 @@
 import "server-only";
+import type { Conquista, ConquistaPendente } from "@/lib/conquistas";
+import { conquistasDaLinha, conquistasPendentes } from "@/lib/servidor/conquistas";
 import { SEM_COMENTARIOS, type ResumoComentarios } from "@/lib/comentarios";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -175,7 +177,8 @@ export async function comentariosDasVagas(ids: string[]): Promise<Map<string, Re
 export type DadoDaLinha =
   | { anuncio: AnuncioNaLinha }
   | { aceite: Match; /** contato direto: o match saiu na hora, sem aceite */ direto: boolean }
-  | { recado: Recado };
+  | { recado: Recado }
+  | { conquista: Conquista };
 
 export type DadosDaLinha = {
   agora: number;
@@ -206,6 +209,10 @@ export type DadosDaLinha = {
   novas: { tudo: number; vaga: number; servico: number; recado: number };
   /** a pessoa pode escrever recado (tem conta) e o que ela faz ("pessoa" escreve o que procura) */
   autorTipo: string | null;
+  /** as perguntas da conquista da pessoa ("Deu certo?", "Mostrar no Publike?"), no alto do feed */
+  conquistasPendentes: ConquistaPendente[];
+  /** o nome da pessoa (o "Mostrar no Publike?" mostra como a conquista aparece) */
+  meuNome: string | null;
   /** de onde conta a distância ("da sua casa", "do meio de Setor Bueno"), para a linha do raio */
   origemDoRaio: string;
   /** o que o raio deixou de fora: quantos há em cada distância maior e de que cidades (null: nada de fora) */
@@ -285,7 +292,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     aba !== "recado" && !filtros.tempo && filtros.raio < maiorRaio
       ? buscarAnuncios({ ...filtros, raio: maiorRaio, ordem: "perto" }, agora, local, usuarioId).catch(() => [])
       : Promise.resolve([] as AnuncioResumo[]);
-  const [encontrados, quem, matchesDaConta, recados, perfil] = await Promise.all([
+  const [encontrados, quem, matchesDaConta, recados, perfil, conquistas, conquistasPendentesDaConta] = await Promise.all([
     aba === "recado"
       ? Promise.resolve([])
       : relevantes
@@ -295,6 +302,8 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     usuario ? listarMatches().catch(() => []) : Promise.resolve([]),
     usuario ? recadosDaLinha(filtros) : Promise.resolve([]),
     usuario ? obterMeuPerfil().catch(() => null) : Promise.resolve(null),
+    usuario && (aba === "tudo" || aba === "recado") ? conquistasDaLinha(filtros) : Promise.resolve([] as Conquista[]),
+    usuario ? conquistasPendentes() : Promise.resolve([] as ConquistaPendente[]),
   ]);
   const marca = marcaDaVisita(prefs.vistaEm, prefs.marcaEm, agora);
   const visitaNova = prefs.vistaEm !== null && agora - new Date(prefs.vistaEm).getTime() > SESSAO_DA_HOME;
@@ -412,13 +421,29 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     dados: { recado: r },
   }));
   if (aba === "recado" || (aba === "tudo" && !relevantes)) itens.push(...itensDeRecado);
+  // as conquistas (quem começou a trabalhar pelo Publike): em Posts e nas recentes de Tudo, na hora; nas relevantes,
+  // as 2 mais novas da semana entram logo depois dos 2 primeiros itens (são poucas, e é o que dá vontade de curtir)
+  const itensDeConquista: ItemDaLinha<DadoDaLinha>[] = conquistas.map((c) => ({
+    tipo: "conquista",
+    id: `${c.anuncio_id}:${c.perfil_id}`,
+    quando: c.quando,
+    dados: { conquista: c },
+  }));
+  if (aba === "recado" || (aba === "tudo" && !relevantes)) itens.push(...itensDeConquista);
+  else if (aba === "tudo") {
+    const daSemana = itensDeConquista.filter((i) => agora - Date.parse(i.quando) <= 7 * 24 * 3600 * 1000).slice(0, 2);
+    itens.splice(Math.min(2, itens.length), 0, ...daSemana);
+  }
   // as notícias do Publike não entram na linha (ficam em /noticias, no menu da conta)
   // os da própria pessoa não contam como novidade
-  const recadosDeOutros = itensDeRecado.filter((i) => "recado" in i.dados && !i.dados.recado.meu);
+  const recadosDeOutros = [
+    ...itensDeRecado.filter((i) => "recado" in i.dados && !i.dados.recado.meu),
+    ...itensDeConquista.filter((i) => "conquista" in i.dados && !i.dados.conquista.minha),
+  ];
 
   // os números das abas contam tudo junto: fora de Tudo, uma busca a mais (só com marca)
   let novas = novidades(
-    aba === "tudo" ? [...itens.filter((i) => i.tipo !== "recado"), ...recadosDeOutros] : itens,
+    aba === "tudo" ? [...itens.filter((i) => i.tipo !== "recado" && i.tipo !== "conquista"), ...recadosDeOutros] : itens,
     marca,
   );
   if (aba !== "tudo" && marca !== null) {
@@ -479,6 +504,8 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     visitaNova,
     novas,
     autorTipo: perfil?.tipo ?? null,
+    conquistasPendentes: conquistasPendentesDaConta,
+    meuNome: perfil?.nome ?? null,
     origemDoRaio: textoDaOrigem(filtros, local, visita.praca.cidade),
     maisLonge,
   };

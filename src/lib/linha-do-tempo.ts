@@ -16,7 +16,7 @@ export const MARCA_MAXIMA = 30 * DIA;
 /** Quanto tempo o aceite de uma curtida fica na linha. */
 export const ACEITE_NA_LINHA = 7 * DIA;
 
-export type TipoNaLinha = "vaga" | "servico" | "recado" | "aceite";
+export type TipoNaLinha = "vaga" | "servico" | "recado" | "aceite" | "conquista";
 
 /** Um item da linha: o que é, a chave e quando entrou (ISO). */
 export type ItemDaLinha<T> = { tipo: TipoNaLinha; id: string; quando: string; dados: T };
@@ -219,6 +219,8 @@ export function novidades<T>(itens: ItemDaLinha<T>[], marca: number | null) {
     if (Date.parse(i.quando) <= marca) continue;
     n.tudo++;
     if (i.tipo === "vaga" || i.tipo === "servico" || i.tipo === "recado") n[i.tipo]++;
+    // a conquista conta na aba Posts
+    else if (i.tipo === "conquista") n.recado++;
   }
   return n;
 }

@@ -12,6 +12,7 @@ import {
   avisarBuscasDeTalentos,
   darConsultasDeSalario,
   lembrarRespostas,
+  perguntarConquistas,
   liberarContatosParados,
   revisarAnunciosPendentes,
   revisarAvaliacoesPendentes,
@@ -57,6 +58,8 @@ export async function GET(request: Request) {
   const perguntas = await comTempo(() => perguntarNosMatches(50));
   // curtida sem resposta: o lembrete para quem publicou (24 h e 72 h) e, em 5 dias, o aviso para quem curtiu
   const lembretes = await comTempo(() => lembrarRespostas());
+  // 5 dias depois do match numa vaga: "Deu certo?" (a conquista; sai junto com os e-mails abaixo)
+  const conquistas = await comTempo(() => perguntarConquistas());
   // quem foi dispensado há 15 minutos recebe o retorno (das 8h às 20h)
   const retornos = await comTempo(() => enviarRetornos());
   // das 18h às 22h: o lembrete da entrevista de amanhã, para o candidato e para quem marcou
@@ -108,6 +111,7 @@ export async function GET(request: Request) {
     recados.motivo,
     parados.motivo,
     lembretes.motivo,
+    conquistas.motivo,
     combinam.motivo,
     funcoes.motivo,
     funcoesCv.motivo,
@@ -144,6 +148,7 @@ export async function GET(request: Request) {
       contatos_liberados: parados.liberadas,
       documentos: { lembrados: documentos.lembrados, apagados: documentosVencidos.apagados },
       lembretes: { empresa: lembretes.empresa, pessoa: lembretes.pessoa },
+      conquistas: conquistas.perguntas,
       funcoes: funcoes.achadas,
       funcoesCurriculos: funcoesCv.lidos,
       liberacoes: liberacoes.avisadas,

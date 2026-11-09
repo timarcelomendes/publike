@@ -14,7 +14,9 @@ import {
   UsersRound,
   UserRoundX,
   Wallet,
+  PartyPopper,
 } from "lucide-react";
+import { conquistasParaConfirmar } from "@/lib/servidor/conquistas";
 import { hojeEmBrasilia, situacaoDaColocacao } from "@/lib/colocacoes";
 import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
 import { respostaDeQuemPublica } from "@/lib/dados";
@@ -132,7 +134,7 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, pedidosAg, perguntas] = await Promise.all([
+  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, pedidosAg, perguntas, paraConfirmar] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -148,6 +150,8 @@ export async function PainelRecrutador({
     agencia ? pedidosDaAgencia().catch(() => null) : Promise.resolve(null),
     // as perguntas nos comentários das vagas no ar ainda sem resposta (parte 2 dos comentários)
     perguntasSemResposta(noAr.map((v) => v.id)).catch(() => new Map<string, number>()),
+    // as conquistas: quem disse que começou a trabalhar, esperando a confirmação (sem a migração, nada)
+    conquistasParaConfirmar(),
   ]);
   const noPrazo = pedidosAg?.noPrazo ?? null;
   // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
@@ -551,6 +555,22 @@ export async function PainelRecrutador({
       texto: `A resposta fica na vaga para todo mundo ver${perguntas.size > 1 ? `. Comece por ${tituloDe.get(vagaId) ?? "a vaga"} (${n})` : ""}.`,
       href: `/anuncio/${vagaId}#comentarios`,
       acao: "Responder",
+    });
+  }
+  // conquistas: quem disse que começou a trabalhar numa vaga da conta
+  if (paraConfirmar.length) {
+    const c = paraConfirmar[0];
+    cartoes.push({
+      icone: PartyPopper,
+      tom: "bom",
+      quando: "Hoje",
+      titulo:
+        paraConfirmar.length === 1
+          ? `${c.nome} disse que começou a trabalhar com vocês`
+          : `${paraConfirmar.length} pessoas disseram que começaram a trabalhar com vocês`,
+      texto: `Pela vaga ${c.titulo}. Confirme para ela ir para Contratado.`,
+      href: `/painel/anuncio/${c.anuncio_id}#conquistas`,
+      acao: "Confirmar",
     });
   }
   cartoes.push(...extras);

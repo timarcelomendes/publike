@@ -2559,6 +2559,48 @@ export type Database = {
       apagar_recado: { Args: { p_recado: string }; Returns: string | null };
       editar_recado: { Args: { p_recado: string; p_texto: string }; Returns: { status: string }[] };
       dar_forca: { Args: { p_recado: string }; Returns: { forcas: number; dei: boolean }[] };
+      /** as conquistas (migração 20270322120000) */
+      servidor_perguntar_conquistas: { Args: { p_chave: string; p_limite?: number }; Returns: number };
+      minhas_conquistas_pendentes: {
+        Args: Record<string, never>;
+        Returns: { anuncio_id: string; titulo: string; empresa_nome: string; resposta: string | null; categoria: string }[];
+      };
+      responder_conquista: { Args: { p_anuncio: string; p_resposta: string }; Returns: undefined };
+      mostrar_conquista: { Args: { p_anuncio: string; p_mostrar: boolean }; Returns: undefined };
+      conquistas_para_confirmar: {
+        Args: { p_anuncio?: string | null };
+        Returns: {
+          anuncio_id: string;
+          perfil_id: string;
+          titulo: string;
+          nome: string;
+          foto: string | null;
+          respondida_em: string;
+        }[];
+      };
+      confirmar_conquista: { Args: { p_anuncio: string; p_perfil: string; p_sim: boolean }; Returns: undefined };
+      conquistas_perto: {
+        Args: { p_lat: number; p_lng: number; p_raio_km?: number; p_limite?: number };
+        Returns: {
+          anuncio_id: string;
+          perfil_id: string;
+          pessoa_nome: string;
+          pessoa_foto: string | null;
+          pessoa_tipo: string;
+          categoria: string;
+          bairro: string | null;
+          cidade: string;
+          empresa_id: string | null;
+          empresa_nome: string | null;
+          empresa_foto: string | null;
+          titulo: string | null;
+          parabens: number;
+          dei_parabens: boolean;
+          minha: boolean;
+          quando: string;
+        }[];
+      };
+      dar_parabens: { Args: { p_anuncio: string; p_perfil: string }; Returns: { parabens: number; dei: boolean }[] };
       denunciar_recado: {
         Args: { p_recado: string; p_motivo: string; p_detalhes?: string | null };
         Returns: undefined;

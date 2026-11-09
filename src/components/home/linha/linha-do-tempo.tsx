@@ -1,4 +1,13 @@
-import { Briefcase, CircleCheck, Heart, MapPinned, MessageSquareText, Wrench, type LucideIcon } from "lucide-react";
+import {
+  Briefcase,
+  CircleCheck,
+  Heart,
+  MapPinned,
+  MessageSquareText,
+  PartyPopper,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { horaNaLinha, montarLinha, quandoFoi, recolherRecados, type ItemDaLinha } from "@/lib/linha-do-tempo";
@@ -11,8 +20,16 @@ import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
 import { ListaDaLinha } from "./lista-da-linha";
 import { FimDoRaio, RaioDaLinha } from "./raio-da-linha";
-import { CartaoDoAceite, CartaoDoServico, ComentariosDoTiquete, FaixaDeCurtidas, TicketDaVaga } from "./objetos";
+import {
+  CartaoDaConquista,
+  CartaoDoAceite,
+  CartaoDoServico,
+  ComentariosDoTiquete,
+  FaixaDeCurtidas,
+  TicketDaVaga,
+} from "./objetos";
 import { RegistrarVisita } from "./registrar-visita";
+import { PerguntaDaConquista } from "../../conquistas/pergunta-da-conquista";
 
 type Parametros = Promise<Record<string, string | string[] | undefined>>;
 
@@ -25,6 +42,8 @@ const NO = {
   vaga: "bg-tom-vaga text-terra-text",
   servico: "bg-tom-servico text-cerrado-text",
   aceite: "bg-cerrado text-on-cerrado",
+  // a conquista (quem começou a trabalhar): a festa, no tom do aceite mais leve
+  conquista: "bg-cerrado/15 text-cerrado-text",
   // a vaga que as pessoas estão curtindo: o coração da curtida
   curtidas: "bg-like-soft text-like",
   // a notícia do Publike: o jornal, no tom neutro (não é anúncio nem conversa)
@@ -105,6 +124,11 @@ function Item({
           <No icone={CircleCheck} tipo="aceite" />
           <CartaoDoAceite m={dados.aceite} hora={hora} usuarioId={d.usuarioId} direto={dados.direto} />
         </>
+      ) : "conquista" in dados ? (
+        <>
+          <No icone={PartyPopper} tipo="conquista" />
+          <CartaoDaConquista c={dados.conquista} hora={hora} />
+        </>
       ) : "recado" in dados ? (
         <>
           <NoDaFoto nome={dados.recado.autor_nome} foto={dados.recado.autor_foto} tipo={dados.recado.autor_tipo} />
@@ -136,12 +160,20 @@ function Item({
   );
 }
 
-/** Na aba Posts, com poucos posts por enquanto: o convite para seguir rolando nas vagas perto. */
+/** O dia de Goiânia de um instante ("2026-11-09"). */
+const diaDeGoiania = (quando: number) => new Date(quando).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+
+/**
+ * Na aba Posts, o convite para seguir rolando nas vagas perto: some só quando o dia tiver mais de 10 posts (a pedido do
+ * Marcelo, 09/11/2026).
+ */
 function PoucosPosts({ d }: { d: DadosDaLinha }) {
-  if (d.itens.length >= 5) return null;
+  const hoje = diaDeGoiania(d.agora);
+  const deHoje = d.itens.filter((i) => diaDeGoiania(Date.parse(i.quando)) === hoje).length;
+  if (deHoje > 10) return null;
   return (
     <div className="flex flex-col items-start gap-2 rounded-lg border border-line bg-surface-200 p-4 sm:ml-[102px]">
-      <p className="text-body-sm text-ink-muted">Ainda são poucos posts por aqui. Enquanto isso, veja as vagas perto de você.</p>
+      <p className="text-body-sm text-ink-muted">Enquanto chegam mais posts, veja também as vagas perto de você.</p>
       <BotaoLink href={hrefFiltros(d.filtrosDaBusca, { tipo: "vaga", tudo: false })} variante="secundario">
         Ver as vagas perto de você
       </BotaoLink>
@@ -184,10 +216,16 @@ export async function LinhaDoTempo({
     ),
   ];
   const conexoes = logado && autores.length ? await estadosDeConexao(autores) : new Map<string, EstadoConexao>();
+  // "Deu certo?" e "Mostrar no Publike?": a pergunta da conquista, uma por vez, no alto (não no "só olhar")
+  const pendente = !soOlhar ? d.conquistasPendentes[0] : undefined;
+  const pergunta = pendente ? (
+    <PerguntaDaConquista key={`${pendente.anuncio_id}:${pendente.resposta ?? ""}`} pendente={pendente} meuNome={d.meuNome ?? ""} />
+  ) : null;
   if (!d.itens.length) {
     const maior = RAIOS[RAIOS.length - 1];
     return (
       <section aria-label="Linha do tempo" className="flex flex-col gap-3">
+        {pergunta}
         <RaioDaLinha d={d} />
         {d.aba === "recado" ? (
           <Vazio
@@ -300,6 +338,7 @@ export async function LinhaDoTempo({
 
   return (
     <>
+      {pergunta && <div className="mb-3">{pergunta}</div>}
       {/* até onde a linha busca, à vista (e o que ficou de fora) */}
       <RaioDaLinha d={d} />
       <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">

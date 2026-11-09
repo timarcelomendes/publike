@@ -130,6 +130,10 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   // um comentário na vaga e a resposta a um comentário (migração 20270318120000)
   comentario: MessageSquareText,
   comentario_resposta: MessageSquareText,
+  // as conquistas (migração 20270322120000): "Deu certo?", a confirmação da empresa e os parabéns
+  conquista_pergunta: PartyPopper,
+  conquista_confirmar: PartyPopper,
+  conquista_parabens: PartyPopper,
 };
 
 type Notificacao = {

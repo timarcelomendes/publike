@@ -45,6 +45,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     titulo: "Para quem procura trabalho",
     perguntas: [
       {
+        p: "O que é a conquista?",
+        r: "Uns dias depois de um match numa vaga, o Publike pergunta: “Deu certo? Você começou a trabalhar lá?”. Se você começou, toque em “Comecei!” e escolha se quer mostrar. Mostrando, aparece no feed de quem está perto o seu primeiro nome com a inicial, a área e o bairro, e as pessoas podem dar os parabéns. O nome da empresa e a vaga aparecem quando a empresa confirma. Dá para tirar quando quiser, e “Só para mim” não mostra nada. Se ainda não começou, toque em “Ainda não”: a gente pergunta de novo em uma semana.",
+      },
+      {
         p: "Como comento numa vaga?",
         r: "No próprio feed: embaixo de cada vaga, toque em “Comentar” (ou no número de comentários). A conversa abre ali mesmo: escreva a dúvida (horário, transporte, se precisa de experiência) e toque em Comentar. Na lista de Vagas, o botão dos comentários abre a conversa numa janela, e na página da vaga ela fica embaixo da descrição. Quem publicou recebe o aviso e responde ali mesmo, para todo mundo ver, e você recebe um aviso quando responderem. Comentário não é candidatura: para a empresa receber seu currículo, toque em Curtir. Não escreva telefone, e-mail ou link: o contato aparece quando der match. Dá para editar até 15 minutos depois e apagar quando quiser.",
       },
@@ -138,6 +142,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     id: "contratar",
     titulo: "Para quem contrata",
     perguntas: [
+      {
+        p: "Um candidato disse que começou a trabalhar. O que faço?",
+        r: "Uns dias depois do match, o Publike pergunta ao candidato se ele começou. Se ele disser que sim, você recebe o aviso e vê no Hoje e no painel da vaga: “Confirmar” leva a pessoa para Contratado no quadro e põe o nome da empresa na conquista dela, se ela topar mostrar. “Não é verdade” tira a conquista do Publike. Conquista confirmada mostra para quem procura trabalho que vocês contratam pelo Publike.",
+      },
       {
         p: "Como acho gente pela aba Talentos?",
         r: "Na busca, toque em Talentos: aparece quem procura trabalho na região e escolheu aparecer, com o que faz, a experiência e as habilidades. Filtre pelo cargo, por uma habilidade ou pela cidade. Entrando com a conta da empresa, comércio ou agência, você abre o currículo completo, pede conexão (mesmo sem vaga aberta) ou convida a pessoa para uma vaga sua no ar. No convite, ela vê a vaga e decide se curte; o contato aparece no match. Na busca, dá para combinar palavras: “caixa OU atendente” acha qualquer uma das duas, a frase entre aspas (“\"auxiliar administrativo\"”) acha a frase inteira e o sinal de menos (“-motorista”) tira quem tem essa palavra; palavras soltas acham quem tem todas. Quem contrata salva a busca (“Salvar esta busca”, até 20) e pode ligar o aviso da semana, que conta os talentos novos que batem com ela.",

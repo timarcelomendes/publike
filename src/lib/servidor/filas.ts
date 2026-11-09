@@ -511,6 +511,26 @@ export async function lembrarRespostas(): Promise<{ empresa: number; pessoa: num
 }
 
 /**
+ * As conquistas (migração 20270322120000): 5 dias depois do match numa vaga, a pergunta "Deu certo?" para a pessoa
+ * (no sino, no celular e por e-mail); sem resposta ou "Ainda não", de novo em 7 dias, no máximo 3 vezes. Sem a
+ * migração, nada (e sem `motivo`).
+ */
+export async function perguntarConquistas(limite = 100): Promise<{ perguntas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { perguntas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_perguntar_conquistas", {
+    p_chave: acesso.chave,
+    p_limite: limite,
+  });
+  if (error) {
+    if (error.code === "PGRST202") return { perguntas: 0 };
+    console.error("Publike: falha ao perguntar das conquistas:", error.message);
+    return { perguntas: 0, motivo: "Não foi possível perguntar das conquistas." };
+  }
+  return { perguntas: Number(data ?? 0) };
+}
+
+/**
  * O retorno a quem não seguiu (migração 20261230120000): as dispensas de 15 minutos atrás viram o aviso
  * `dispensada`, das 8h às 20h. Sem a migração, nada (e sem `motivo`, para a tarefa não responder 500).
  */

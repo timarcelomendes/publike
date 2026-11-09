@@ -33,6 +33,10 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
     return n.link?.startsWith(`/anuncio/${n.anuncio_id}`) ? n.link : `/anuncio/${n.anuncio_id}`;
   if ((n.tipo === "comentario" || n.tipo === "comentario_resposta") && n.anuncio_id)
     return n.link?.startsWith("/") && !n.link.startsWith("//") ? n.link : `/anuncio/${n.anuncio_id}#comentarios`;
+  // as conquistas: a pergunta no alto do feed, a confirmação no painel da vaga, os parabéns nos posts
+  if (n.tipo === "conquista_pergunta") return "/#conquista";
+  if (n.tipo === "conquista_confirmar" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}#conquistas`;
+  if (n.tipo === "conquista_parabens") return "/?tipo=recado";
   // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga
   if (n.tipo === "teste_pedido") return "/testes";
   if (n.tipo === "teste_feito" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/testes`;

@@ -18,11 +18,14 @@ import { formatarDistancia, formatarLugar, linkWhatsApp, rotuloModalidade, urlDa
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import { SEM_COMENTARIOS } from "@/lib/comentarios";
+import type { Conquista } from "@/lib/conquistas";
 import type { AnuncioNaLinha } from "@/lib/servidor/linha";
 import type { Match } from "@/lib/tipos";
 import { NotaDoProfissional } from "../../avaliacoes";
 import { ComentariosNoFeed } from "../../anuncio/comentarios-no-feed";
 import { BotaoCurtir } from "../../botao-curtir";
+import { BotaoParabens } from "../../conquistas/botao-parabens";
+import { rotuloDaArea } from "../../conquistas/nomes";
 import { ehOutraArea, SeloMatch } from "../../match-vaga";
 import { SeloVerificado } from "../../selo-verificado";
 import { Avatar } from "../../ui/basicos";
@@ -266,6 +269,66 @@ export function TicketDaVaga({
             />
           </span>
         )}
+      </div>
+    </article>
+  );
+}
+
+/**
+ * A conquista: "Ana S. começou a trabalhar", com a área e o bairro (a empresa e a vaga só com a confirmação dela),
+ * "Dar os parabéns" e "Ver vagas parecidas" (claude/plano-posts-e-conquistas.md, parte 2).
+ */
+export function CartaoDaConquista({ c, hora }: { c: Conquista; hora: string }) {
+  const lugar = [c.bairro, c.cidade].filter(Boolean).join(", ");
+  return (
+    <article className="flex flex-col gap-2.5 rounded-[18px] border border-cerrado/35 bg-cerrado/10 px-4 py-3.5 sm:px-5">
+      <div className="flex items-start gap-3">
+        <Avatar nome={c.pessoa_nome} foto={c.pessoa_foto} tamanho={40} forma="redonda" colorida />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <h3 className="min-w-0 flex-1 font-display text-[17px] leading-[22px] font-bold tracking-[-0.01em] sm:text-[19px] sm:leading-6">
+              {c.minha ? "Você começou a trabalhar" : `${c.pessoa_nome} começou a trabalhar`}
+            </h3>
+            <HoraNoCanto hora={hora} />
+          </div>
+          <p className="mt-0.5 text-body-sm text-ink">
+            {c.empresa_nome && c.titulo ? (
+              <>
+                como{" "}
+                <Link href={`/anuncio/${c.anuncio_id}`} className="font-semibold underline underline-offset-2">
+                  {c.titulo}
+                </Link>{" "}
+                na{" "}
+                {c.empresa_id ? (
+                  <Link href={`/perfil/${c.empresa_id}`} className="font-semibold underline underline-offset-2">
+                    {c.empresa_nome}
+                  </Link>
+                ) : (
+                  c.empresa_nome
+                )}
+              </>
+            ) : (
+              rotuloDaArea(c.categoria)
+            )}
+            {lugar && <span className="text-ink-muted"> · {lugar}</span>}
+          </p>
+          <p className="mt-0.5 text-body-sm text-ink-muted">Pelo Publike. Publicou, curtiu, trabalhou.</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:pl-[52px]">
+        <BotaoParabens
+          anuncioId={c.anuncio_id}
+          perfilId={c.perfil_id}
+          parabens={c.parabens}
+          dei={c.dei_parabens}
+          minha={c.minha}
+        />
+        <Link
+          href={`/?tipo=vaga&categoria=${encodeURIComponent(c.categoria)}`}
+          className="relative z-10 inline-flex min-h-9 items-center text-label text-ink underline underline-offset-2 hover:text-cerrado-text"
+        >
+          Ver vagas parecidas
+        </Link>
       </div>
     </article>
   );

@@ -6,6 +6,7 @@ import { RespostasDoCandidato } from "@/components/painel/respostas-candidato";
 import { perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
 import { ComentariosNoPainel } from "@/components/painel/comentarios-no-painel";
+import { ConquistasNoPainel } from "@/components/conquistas/conquistas-no-painel";
 import { BotaoConversar } from "@/components/botao-conversar";
 import { BotoesContato } from "@/components/contato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
@@ -291,6 +292,11 @@ async function Conteudo({
           vaga={!servico}
           proprio
         />
+      )}
+      {!servico && (
+        <Suspense fallback={null}>
+          <ConquistasNoPainel anuncioId={anuncio.id} />
+        </Suspense>
       )}
       {!servico && (
         <Suspense fallback={null}>
