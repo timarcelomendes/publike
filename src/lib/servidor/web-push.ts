@@ -1,5 +1,6 @@
 import "server-only";
 import { createCipheriv, createECDH, createHmac, createPrivateKey, randomBytes, sign } from "node:crypto";
+import { servicoDePushConhecido } from "@/lib/push-conhecido";
 
 // Notificação no celular (Web Push) sem biblioteca: a mensagem vai criptografada para o navegador
 // (RFC 8291, aes128gcm) e assinada com as chaves VAPID do Publike (RFC 8292). Quem entrega é o
@@ -111,7 +112,8 @@ export async function enviarPush(
   let url: URL;
   try {
     url = new URL(inscricao.endpoint);
-    if (url.protocol !== "https:") throw new Error();
+    // só os serviços de notificação dos navegadores: nada de POST do servidor para outro site
+    if (!servicoDePushConhecido(inscricao.endpoint)) throw new Error();
   } catch {
     return { ok: false, expirada: true, erro: "Endereço da inscrição inválido." };
   }

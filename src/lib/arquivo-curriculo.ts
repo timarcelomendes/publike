@@ -4,6 +4,7 @@
 import type { CurriculoLido } from "./ia/curriculo-do-arquivo";
 import { ehFalhaDeInternet } from "./falhas";
 import { criarClienteNavegador } from "./supabase/navegador";
+import { arquivoEhPdf, NAO_EH_PDF } from "@/lib/pdf-de-verdade";
 
 /** Até 3 fotos, uma por página. */
 export const MAX_FOTOS_CURRICULO = 3;
@@ -16,6 +17,8 @@ export class ErroDaLeitura extends Error {}
 /** Manda o PDF para a pasta privada da conta no Storage e devolve o caminho. */
 
 export async function enviarPdf(pdf: File, usuarioId: string) {
+  // o tipo vem do navegador e pode mentir: o arquivo precisa começar como PDF
+  if (!(await arquivoEhPdf(pdf))) throw new ErroDaLeitura(NAO_EH_PDF);
   // a internet do celular às vezes cai no meio do envio: tenta de novo sozinho, até 3 vezes ao todo
   for (let tentativa = 1; ; tentativa++) {
     const caminho = `${usuarioId}/${Date.now()}.pdf`;

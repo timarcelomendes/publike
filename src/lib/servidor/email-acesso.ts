@@ -4,6 +4,7 @@ import { montarEmail, type ModeloEmail } from "@/lib/email/montar";
 import type { ClienteBanco } from "@/lib/supabase/admin";
 import { configSmtp, urlDosEmails } from "./ambiente";
 import { logoDosEmails } from "./filas";
+import { emailValido } from "@/lib/email-valido";
 
 // E-mail de acesso mandado pelo admin: a conta foi criada pela equipe (ou a
 // pessoa pediu ajuda para entrar) e recebe um link de entrar. Sai na hora,
@@ -96,6 +97,8 @@ export async function mandarEmailDeAcesso(
     await logoDosEmails(c, site),
   );
 
+  // o endereço com formato estranho iria para outra pessoa (plano de segurança, item 3)
+  if (!emailValido(dados.email)) return { ok: false, erro: "Confira o e-mail." };
   const transporte = nodemailer.createTransport({
     host: smtp.servidor,
     port: smtp.porta,
@@ -110,7 +113,7 @@ export async function mandarEmailDeAcesso(
     await transporte.sendMail({
       from: { name: cfg?.remetente_nome || "Publike", address: smtp.remetente },
       to: dados.email,
-      replyTo: cfg?.responder_para || undefined,
+      replyTo: emailValido(cfg?.responder_para) ? cfg?.responder_para : undefined,
       subject: email.assunto,
       text: email.texto,
       html: email.html,

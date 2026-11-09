@@ -5,6 +5,7 @@ import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
+import { emailValido } from "@/lib/email-valido";
 
 // "Quero testar" do /testar-app (migração 20270129120000): a pessoa põe o e-mail da conta Google da Play Store e
 // entra em Admin › Testadores do app, com o WhatsApp da conta. O admin manda o link do teste.
@@ -22,7 +23,7 @@ export async function queroTestarApp(email: string): Promise<Resultado> {
     .trim()
     .toLowerCase()
     .slice(0, 200);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(valor)) return { ok: false, erro: "Confira o e-mail." };
+  if (!emailValido(valor)) return { ok: false, erro: "Confira o e-mail." };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("quero_testar_app", { p_email: valor });
   if (error) {

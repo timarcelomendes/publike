@@ -18,12 +18,12 @@ import { salvarTriagem } from "@/lib/servidor/triagem";
 import { areasSemRepetir } from "@/lib/constantes";
 import { LIMITES_MENSAGEM_EQUIPE } from "@/lib/mensagem-equipe";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
+import { emailValido } from "@/lib/email-valido";
 
 // Contas criadas pela equipe (quem pediu ajuda para entrar no Publike, como uma
 // agência que mandou a lista de vagas). Só no admin, no computador do dono.
 
 const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /** A conta que já usa este e-mail para entrar (a busca do admin também olha o e-mail de login). */
 async function contaDoEmail(c: ClienteBanco, email: string) {
@@ -44,7 +44,7 @@ export async function criarContaPeloAdmin(_anterior: EstadoForm, formData: FormD
   formData.set("receber_emails", "on");
   const leitura = lerPerfil(formData, { admin: true });
   const erros: Record<string, string> = leitura.success ? {} : errosPorCampo(leitura.error);
-  if (!EMAIL.test(login)) erros.login = "Confira o e-mail.";
+  if (!emailValido(login)) erros.login = "Confira o e-mail.";
   if (!leitura.success || Object.keys(erros).length) return { ok: false, erro: "Confira os campos marcados.", erros };
   const d = leitura.data;
 
@@ -471,7 +471,7 @@ export async function alterarLoginPeloAdmin(
     .toLowerCase();
   const telefone = telefoneDeLogin(String(formData.get("telefone_login") ?? ""));
   const erros: Record<string, string> = {};
-  if (email && !EMAIL.test(email)) erros.email_login = "Confira o e-mail.";
+  if (email && !emailValido(email)) erros.email_login = "Confira o e-mail.";
   if (telefone === "invalido") erros.telefone_login = "Use o DDD e o número, como (62) 99999-0000.";
   if (!email && !telefone) erros.email_login = "A conta precisa de um e-mail ou de um celular para entrar.";
   if (Object.keys(erros).length) return { ok: false, erro: "Confira os campos marcados.", erros };

@@ -14,6 +14,7 @@ import { contexto, type Contexto } from "@/lib/contexto-de-entrar";
 import { REDES_ATIVAS } from "@/lib/login-social";
 import { redesParaEntrar } from "@/lib/login-social-servidor";
 import { COOKIE_ORIGEM, origemValida } from "@/lib/origem";
+import { emailValido } from "@/lib/email-valido";
 
 /** Mensagens para ?erro= (vem de /auth/callback). */
 const ERROS: Record<string, string> = {
@@ -72,7 +73,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/entrar">["
   const origem = (await cookies()).get(COOKIE_ORIGEM)?.value;
   // veio do link de acesso (/acesso/<token>): o e-mail já ficou ligado à conta
   const emailPedido = primeiro(sp.email)?.trim().slice(0, 200);
-  const emailInicial = emailPedido && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailPedido) ? emailPedido : undefined;
+  const emailInicial = emailValido(emailPedido) ? emailPedido : undefined;
 
   return (
     <Colunas ctx={ctx}>

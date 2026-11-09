@@ -3,6 +3,7 @@
 import { LoaderCircle, Mail, Video } from "lucide-react";
 import { useEffect, useId, useState, useTransition } from "react";
 import { criarReuniaoDaConversa } from "@/lib/acoes/zoom";
+import { emailValido } from "@/lib/email-valido";
 import { BotaoCopiar } from "@/components/painel/pagina-de-vagas";
 import { classesBotao } from "@/components/ui/botao";
 import { Botao } from "@/components/ui/botao";
@@ -78,7 +79,6 @@ function linhasDaReuniao(r: ReturnType<typeof lerReuniao>) {
 }
 
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? "";
-const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
 
 export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
   const id = useId();

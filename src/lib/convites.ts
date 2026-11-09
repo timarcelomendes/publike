@@ -3,6 +3,7 @@
 import { LISTA_REGIMES, LISTA_UNIDADES, SLUGS_CATEGORIAS, SLUGS_OFICIOS, VALORES_BENEFICIO } from "./constantes";
 import { escaparHtml } from "./email/montar";
 import { ONDE_FUNCIONA } from "@/lib/pracas";
+import { emailValido } from "@/lib/email-valido";
 
 export const ESTADOS_CONVITE = [
   { id: "a_enviar", nome: "A enviar", filtro: "A enviar" },
@@ -253,7 +254,7 @@ export function linhasParaConvites(linhas: string[][]): {
     const email = col(l, "email").toLowerCase();
     const whatsapp = listaDeTelefones(col(l, "whatsapp"));
     const telefones = listaDeTelefones(col(l, "telefones")).filter((t) => !whatsapp.includes(t));
-    const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email.slice(0, 200) : null;
+    const emailOk = emailValido(email) ? email.trim().slice(0, 200) : null;
     if (!whatsapp.length && !telefones.length && !emailOk)
       return ignoradas.push({ linha: n, motivo: `${nome} sem WhatsApp, telefone ou e-mail que sirva` });
     convites.push({

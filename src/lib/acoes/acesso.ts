@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
+import { emailValido } from "@/lib/email-valido";
 
 // O link de acesso que o admin mandou pelo WhatsApp (/acesso/<token>): a empresa coloca o e-mail,
 // ele vira o login da conta e ela segue para entrar com ele (o Publike entra só pelo e-mail).
@@ -25,7 +26,7 @@ export async function vincularEmailDoAcesso(
   const email = String(formData.get("email_empresa") ?? "")
     .trim()
     .toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 200) {
+  if (!emailValido(email)) {
     return { ok: false, erro: "Confira os campos marcados.", erros: { email_empresa: MOTIVOS.email_invalido } };
   }
   const { data, error } = await criarClientePublico().rpc("vincular_email_do_link", { p_token: token, p_email: email });

@@ -5,6 +5,7 @@ import { obterUsuario } from "@/lib/dados";
 import { mensagemDeErro } from "@/lib/erros";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
+import { servicoDePushConhecido } from "@/lib/push-conhecido";
 
 /** Liga as notificações no celular neste aparelho (a inscrição que o navegador criou). */
 export async function salvarInscricaoPush(dados: {
@@ -15,6 +16,9 @@ export async function salvarInscricaoPush(dados: {
 }): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!(await obterUsuario())) return { ok: false, erro: "Entre na sua conta.", ir: "/entrar" };
+  if (!servicoDePushConhecido(String(dados.endpoint ?? ""))) {
+    return { ok: false, erro: "Este navegador não tem um serviço de notificação que o Publike reconheça." };
+  }
   const supabase = await criarClienteServidor();
   const { error } = await supabase.rpc("salvar_inscricao_push", {
     p_endpoint: String(dados.endpoint ?? "").slice(0, 1000),

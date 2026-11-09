@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MODO_DEMO } from "@/lib/config";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
+import { arquivoEhPdf, NAO_EH_PDF } from "@/lib/pdf-de-verdade";
 
 // O PDF do currículo pelo próprio site (09/11/2026). O navegador manda direto para o Storage; quando isso falha
 // sempre para a mesma pessoa ("Failed to fetch" dias seguidos, com o resto do site funcionando), o endereço do
@@ -26,6 +27,8 @@ export async function POST(pedido: Request) {
     return NextResponse.json({ erro: "Envie um arquivo PDF." }, { status: 400 });
   }
   if (pdf.size > MAXIMO) return NextResponse.json({ erro: "O PDF passa de 4 MB." }, { status: 413 });
+  // o tipo vem do navegador e pode mentir: o arquivo precisa começar como PDF
+  if (!(await arquivoEhPdf(pdf))) return NextResponse.json({ erro: NAO_EH_PDF }, { status: 415 });
   const caminho = `${id}/${Date.now()}.pdf`;
   const { error } = await supabase.storage
     .from("curriculos")

@@ -30,12 +30,12 @@ import { tituloLegivel } from "@/lib/conferir-anuncio";
 import { modeloPara } from "@/lib/ia/funcionalidades";
 import { FUNCIONALIDADES_IA, limparApelido } from "@/lib/ia-nomes";
 import { TAG_APELIDO_IA } from "@/lib/servidor/apelido-ia";
+import { emailValido } from "@/lib/email-valido";
 
 // Ações do admin. Todas conferem antes se o admin está aberto no computador
 // do dono (modo dev, PUBLIKE_ADMIN=1, chave secreta e endereço local).
 
 const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function texto(formData: FormData, nome: string) {
   const v = formData.get(nome);
@@ -212,7 +212,7 @@ export async function adicionarModerador(_anterior: EstadoForm, formData: FormDa
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
   const email = texto(formData, "email").toLowerCase();
-  if (!EMAIL.test(email)) return { ok: false, erro: "Confira o e-mail.", erros: { email: "Confira o e-mail." } };
+  if (!emailValido(email)) return { ok: false, erro: "Confira o e-mail.", erros: { email: "Confira o e-mail." } };
   const { error } = await c.rpc("admin_adicionar_moderador", { p_email: email });
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   refresh();
@@ -420,12 +420,12 @@ export async function salvarConfigEmails(_anterior: EstadoForm, formData: FormDa
     .split(/[\s,;]+/)
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-  const invalidos = avisos.filter((e) => !EMAIL.test(e));
+  const invalidos = avisos.filter((e) => !emailValido(e));
   if (invalidos.length) {
     return { ok: false, erro: "Confira os e-mails.", erros: { avisos_para: `Confira: ${invalidos.join(", ")}` } };
   }
   const responder = texto(formData, "responder_para").toLowerCase();
-  if (responder && !EMAIL.test(responder)) {
+  if (responder && !emailValido(responder)) {
     return { ok: false, erro: "Confira o e-mail de resposta.", erros: { responder_para: "Confira o e-mail." } };
   }
   const nome = texto(formData, "remetente_nome");
@@ -778,7 +778,7 @@ export async function enviarEmailDeTeste(_anterior: EstadoForm, formData: FormDa
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
   const para = texto(formData, "para").toLowerCase();
-  if (!EMAIL.test(para)) return { ok: false, erro: "Confira o e-mail.", erros: { para: "Confira o e-mail." } };
+  if (!emailValido(para)) return { ok: false, erro: "Confira o e-mail.", erros: { para: "Confira o e-mail." } };
   const { data: id, error } = await c.rpc("admin_email_teste", { p_para: para });
   if (error || id == null) return { ok: false, erro: mensagemDeErro(error) };
 
@@ -858,7 +858,7 @@ export async function testarConviteEmail(_anterior: EstadoForm, formData: FormDa
   const modelo = texto(formData, "modelo");
   const para = texto(formData, "para").toLowerCase();
   if (!CONVITES.includes(modelo)) return { ok: false, erro: "Convite desconhecido." };
-  if (!EMAIL.test(para)) return { ok: false, erro: "Confira o e-mail.", erros: { para: "Confira o e-mail." } };
+  if (!emailValido(para)) return { ok: false, erro: "Confira o e-mail.", erros: { para: "Confira o e-mail." } };
   const { data: id, error } = await c.rpc("admin_convite_email_teste", { p_modelo: modelo, p_email: para });
   if (error || id == null) return { ok: false, erro: mensagemDeErro(error) };
   const envio = await enviarEmailsPendentes(50);

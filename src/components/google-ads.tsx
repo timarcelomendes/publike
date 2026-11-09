@@ -6,6 +6,7 @@ import {
   CHAVE_PROPAGANDA,
   COOKIE_CONVERSAO,
   CONVERSOES,
+  enderecoParaOGoogle,
   EVENTO_PROPAGANDA,
   GOOGLE_ADS_ID,
   lerConversoes,
@@ -51,11 +52,25 @@ function carregarGoogle() {
     window.dataLayer!.push(arguments);
   };
   window.gtag("js", new Date());
-  window.gtag("config", GOOGLE_ADS_ID, { page_location: PRIMEIRO_ENDERECO || window.location.href });
+  // sem os segredos dos links (/convite/:token) e sem buscas que não são da campanha: valem para todos os envios
+  marcarEndereco(PRIMEIRO_ENDERECO || window.location.href);
+  window.gtag("config", GOOGLE_ADS_ID, {
+    page_location: enderecoParaOGoogle(PRIMEIRO_ENDERECO || window.location.href, window.location.origin),
+  });
   const s = document.createElement("script");
   s.async = true;
   s.src = `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`;
   document.head.appendChild(s);
+}
+
+/** O endereço e o de onde a pessoa veio, limpos, para tudo o que for ao Google daqui em diante. */
+function marcarEndereco(endereco: string) {
+  if (!window.gtag) return;
+  const origem = window.location.origin;
+  window.gtag("set", {
+    page_location: enderecoParaOGoogle(endereco, origem),
+    page_referrer: document.referrer ? enderecoParaOGoogle(document.referrer, origem) : undefined,
+  });
 }
 
 function lerCookie() {
@@ -99,6 +114,8 @@ export function GoogleAds() {
 
   // cada página nova (as ações que publicam ou salvam levam para outra página)
   useEffect(() => {
+    // a cada página: o endereço limpo vale para as conversões que saírem daqui
+    marcarEndereco(window.location.href);
     conferirConversoes();
   }, [caminho]);
 

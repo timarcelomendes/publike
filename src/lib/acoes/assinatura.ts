@@ -32,6 +32,7 @@ import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { enderecoDeQualquerCep } from "@/lib/servidor/cep";
 import { enviarPushPendentes } from "@/lib/servidor/filas";
 import { acessoPagamentos, sincronizarAssinatura } from "@/lib/servidor/pagamentos";
+import { emailValido } from "@/lib/email-valido";
 
 // Assinar a Triagem com IA, o Teste Prático ou o combo dos dois (claude/plano-checkout-asaas.md). O cartão é pago na página do
 // parceiro (o número nunca passa pelo Publike); o Pix é mostrado aqui. O banco confere de novo quem pode.
@@ -117,7 +118,7 @@ export async function assinar(dados: {
   const nome = dados.nome.replace(/\s+/g, " ").trim().slice(0, 120);
   if (nome.length < 2) return { ok: false, erro: "Escreva o nome que vai na nota fiscal." };
   const email = dados.email.trim().slice(0, 200);
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, erro: "Confira o e-mail." };
+  if (email && !emailValido(email)) return { ok: false, erro: "Confira o e-mail." };
   let endereco: EnderecoCobranca | null = null;
   if (dados.forma === "cartao") {
     const e = dados.endereco;

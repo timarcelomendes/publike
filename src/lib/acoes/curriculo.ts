@@ -17,6 +17,7 @@ import { lerArquivoDoCurriculo, type LeituraDoArquivo } from "@/lib/servidor/ler
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
 import { lerCurriculo } from "@/lib/validacao";
+import { arquivoEhPdf, NAO_EH_PDF } from "@/lib/pdf-de-verdade";
 
 /**
  * Salva o currículo. Só a própria pessoa e quem anunciou uma vaga que ela
@@ -59,6 +60,23 @@ async function salvar(formData: FormData, vigia: Vigia): Promise<EstadoForm> {
   }
 
   const supabase = await criarClienteServidor();
+  // PDF novo: o arquivo guardado precisa começar como PDF (o tipo vem do navegador e pode mentir; plano de
+  // segurança, item 12). O que não é PDF sai do Storage e o currículo não salva com ele.
+  if (d.arquivo) {
+    const { data: salvo } = await supabase.from("curriculos").select("arquivo").eq("perfil_id", usuario.id).maybeSingle();
+    if (salvo?.arquivo !== d.arquivo) {
+      const { data: arquivo, error: erroArquivo } = await supabase.storage.from("curriculos").download(d.arquivo);
+      if (erroArquivo || !arquivo) {
+        vigia.marcar("arquivo", `não deu para conferir o PDF: ${erroArquivo?.message ?? "sem arquivo"}`);
+        return { ok: false, erro: "Não deu para conferir o PDF agora. Envie o PDF de novo." };
+      }
+      if (!(await arquivoEhPdf(arquivo))) {
+        vigia.marcar("arquivo", "o arquivo enviado como PDF não é PDF");
+        await supabase.storage.from("curriculos").remove([d.arquivo]);
+        return { ok: false, erro: NAO_EH_PDF };
+      }
+    }
+  }
   // as vagas que já aceitaram e esperavam este currículo (sem a migração do aceite, nenhuma)
   const { data: aceitas } = await supabase
     .from("curtidas")

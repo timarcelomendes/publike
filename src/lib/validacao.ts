@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cepValido, limparCep } from "./cep";
 import { cnpjValido, limparCnpj } from "./cnpj";
+import { emailValido } from "./email-valido";
 import { mesDoTexto } from "./mes-do-texto";
 import { MAX_HABILIDADES } from "./talentos";
 import { arrumarEstudos, experienciaEmBranco } from "./estudos";
@@ -864,7 +865,7 @@ const esquemaPerfilAdmin = z
       .string()
       .trim()
       .toLowerCase()
-      .refine((t) => !t || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t), { error: "Confira o e-mail." })
+      .refine((t) => !t || emailValido(t), { error: "Confira o e-mail." })
       .transform((t) => t || null),
     receber_emails: z.boolean(),
     /** agência: obrigatório; comércio e empresa: opcional; pessoa: não guarda (o banco confere de novo) */
@@ -965,7 +966,7 @@ export const esquemaCliente = z.object({
     .trim()
     .toLowerCase()
     .max(120, { error: "Use no máximo 120 letras." })
-    .refine((t) => !t || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t), { error: "Confira o e-mail." })
+    .refine((t) => !t || emailValido(t), { error: "Confira o e-mail." })
     .transform((t) => t || null),
   nota: z
     .string()

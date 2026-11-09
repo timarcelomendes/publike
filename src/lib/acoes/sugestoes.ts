@@ -7,8 +7,8 @@ import { dentroDoLimite, embaralhar, enderecoDeQuemPediu } from "@/lib/servidor/
 import { ehTipoSugestao } from "@/lib/sugestoes";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { EstadoForm } from "@/lib/tipos";
+import { emailValido } from "@/lib/email-valido";
 
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function texto(formData: FormData, nome: string) {
   const v = formData.get(nome);
@@ -28,7 +28,7 @@ export async function enviarSugestao(_anterior: EstadoForm, formData: FormData):
     return { ok: false, erro: "Conte um pouco mais.", erros: { texto: "Escreva pelo menos 10 letras." } };
   }
   if (mensagem.length > 2000) return { ok: false, erro: "Resuma um pouco.", erros: { texto: "Até 2.000 letras." } };
-  if (email && !EMAIL.test(email))
+  if (email && !emailValido(email))
     return { ok: false, erro: "Confira o e-mail.", erros: { email: "Confira o e-mail." } };
   if (MODO_DEMO) return { ok: true, mensagem: "Recebido! (No modo demonstração nada é guardado.)" };
 

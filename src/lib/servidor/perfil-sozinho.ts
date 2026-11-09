@@ -8,6 +8,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { temContato } from "@/lib/validacao";
 import { marcarConversao } from "./conversao";
 import { processarFilas } from "./filas";
+import { emailValido } from "@/lib/email-valido";
 
 // O perfil que nasce sozinho (07/11/2026, pedido do Marcelo depois de medir: em 30 dias, 34 contas do Google e do
 // LinkedIn entraram e pararam no "completar cadastro"; quem completa leva 1 minuto, quem desiste sai na hora e quase
@@ -65,7 +66,7 @@ export async function criarPerfilSozinho(destino: string): Promise<boolean> {
     ? nomeDaRede(user.user_metadata ?? {})
     : nomeParaPerfil(lerNome(pote.get(COOKIE_NOME_INDICACAO)?.value));
   const email = user.email?.trim().toLowerCase() ?? "";
-  if (!nome || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return false;
+  if (!nome || !emailValido(email)) return false;
 
   const { error } = await supabase.rpc("salvar_perfil", {
     p_nome: nome,

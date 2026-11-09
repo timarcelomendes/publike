@@ -19,6 +19,7 @@ import { criarClientePublico } from "@/lib/supabase/servidor";
 import { destinoDoAviso } from "@/lib/destino-aviso";
 import { chaveDoServidor, chavesVapid, chaveSecretaSupabase, configSmtp, urlDosEmails } from "./ambiente";
 import { enviarPush, type InscricaoPush } from "./web-push";
+import { emailValido } from "@/lib/email-valido";
 
 // O banco põe os e-mails e as revisões da IA em filas. O servidor do site
 // esvazia as filas logo depois de cada ação (com after(), sem atrasar a
@@ -138,6 +139,13 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
 
   try {
     for (const item of itens) {
+      // o endereço com formato estranho ("a;b@site.com") iria para outra pessoa: não sai (plano de segurança, item 3)
+      if (!emailValido(item.para)) {
+        await marcar(item.id, false, "Endereço de e-mail inválido.");
+        resultado.falhas++;
+        resultado.erros.push({ id: item.id, para: item.para, erro: "Endereço de e-mail inválido." });
+        continue;
+      }
       try {
         // entrevista marcada, confirmada ou cancelada: o convite de agenda vai junto
         const convite = conviteDoEmail(item.dados, site, new Date());
@@ -156,7 +164,12 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
           from: { name: item.remetente_nome, address: smtp.remetente },
           to: item.para,
           // a mensagem da equipe: quem responde fala com a equipe
-          replyTo: item.modelo === "mensagem_equipe" ? EMAIL_DA_EQUIPE : item.responder_para || undefined,
+          replyTo:
+            item.modelo === "mensagem_equipe"
+              ? EMAIL_DA_EQUIPE
+              : emailValido(item.responder_para)
+                ? item.responder_para
+                : undefined,
           subject: email.assunto,
           text: email.texto,
           html: email.html,

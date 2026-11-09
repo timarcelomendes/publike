@@ -880,6 +880,12 @@ export function FormCurriculo({
       setArquivo(await enviarPdf(pdf, usuarioId));
       setNomePdf(pdf.name);
     } catch (falha) {
+      // o arquivo que não é PDF: o aviso é para a pessoa, não para a equipe
+      if (falha instanceof ErroDaLeitura) {
+        setErroPdf(falha.message);
+        setEnviandoPdf(false);
+        return;
+      }
       const mensagem = ehFalhaDeInternet(falha) ? MENSAGEM_SEM_INTERNET : "Não deu para enviar o PDF. Tente de novo.";
       setErroPdf(mensagem);
       relatarFalha({

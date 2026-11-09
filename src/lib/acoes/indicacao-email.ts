@@ -8,11 +8,11 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { emailValido } from "@/lib/email-valido";
 
 // Indicar a vaga por e-mail (claude/plano-comentarios-e-indicar-por-email.md, parte 1; migração 20270317120000).
 // A resposta é sempre a mesma quando dá certo: quem indica não descobre se o amigo tem conta.
 
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
 /** "an•••@gmail.com" */
 function escondido(email: string) {
@@ -24,7 +24,7 @@ export async function indicarPorEmail(anuncioId: string, email: string, nome: st
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
   if (!UUID.test(anuncioId)) return { ok: false, erro: "Vaga não encontrada." };
   const limpo = email.trim().toLowerCase();
-  if (!EMAIL.test(limpo) || limpo.length > 200) return { ok: false, erro: "Confira o e-mail do seu amigo." };
+  if (!emailValido(limpo)) return { ok: false, erro: "Confira o e-mail do seu amigo." };
   if (!(await obterUsuario()))
     return { ok: false, erro: "Entre na sua conta para indicar.", ir: `/entrar?next=/anuncio/${anuncioId}%23indicar` };
   const { error } = await (await criarClienteServidor()).rpc("indicar_por_email", {

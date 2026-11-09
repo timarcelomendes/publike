@@ -29,6 +29,7 @@ import { areasSemRepetir } from "@/lib/constantes";
 import { PRACA_PADRAO } from "@/lib/pracas";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
 import { modeloPara } from "@/lib/ia/funcionalidades";
+import { emailValido } from "@/lib/email-valido";
 
 // Convites às empresas: importar a lista, marcar a situação e anotar. Só no admin.
 
@@ -48,7 +49,7 @@ function conferir(n: NovoConvite): NovoConvite | null {
   const whatsapp = lista(n.whatsapp, 5, 11).filter((t) => TEL.test(t));
   const telefones = lista(n.telefones, 5, 11).filter((t) => TEL.test(t));
   const email =
-    typeof n.email === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(n.email) ? n.email.slice(0, 200) : null;
+    emailValido(n.email) ? n.email.trim().slice(0, 200) : null;
   return {
     nome,
     tipo: n.tipo === "agencia" || n.tipo === "prestador" ? n.tipo : "empresa",
@@ -164,7 +165,7 @@ export async function lerConviteDaImagem(
     ].slice(0, 5);
   const whatsapp = fones(lida.whatsapp);
   const telefones = fones(lida.telefones).filter((t) => !whatsapp.includes(t));
-  const email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lida.email ?? "") ? lida.email.toLowerCase().slice(0, 200) : null;
+  const email = emailValido(lida.email) ? lida.email.trim().toLowerCase().slice(0, 200) : null;
   if (!whatsapp.length && !telefones.length && !email)
     return { ok: false, erro: `${nome}: a imagem não tem WhatsApp, telefone ou e-mail.` };
   const rascunho = rascunhoValido(lida.vaga);
@@ -210,6 +211,7 @@ export async function enviarConviteEmail(id: string, assinatura: string): Promis
   const convite = conv as unknown as Convite;
   const para = convite.email;
   if (!para) return { ok: false, erro: "Este convite não tem e-mail." };
+  if (!emailValido(para)) return { ok: false, erro: "O e-mail deste convite tem um formato que não dá para usar." };
   const { assunto, texto, html } = emailDoConvite(
     convite,
     String(assinatura ?? ""),
