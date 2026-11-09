@@ -3,6 +3,7 @@
 import { CircleCheckBig, Sparkles, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 import { processarFilasAgora } from "@/lib/acoes/admin";
+import { moderarComentario } from "@/lib/acoes/comentarios";
 import { moderarRecado } from "@/lib/acoes/recados";
 import { Botao } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
@@ -40,6 +41,49 @@ export function AcoesModeracaoRecado({ id }: { id: string }) {
           variante="perigo"
           disabled={pendente || motivo.trim().length < 3}
           onClick={() => rodar(() => moderarRecado(id, "remover", motivo))}
+        >
+          <Trash2 aria-hidden />
+          Remover
+        </Botao>
+      </div>
+      {mensagem}
+    </div>
+  );
+}
+
+/** O mesmo para os comentários das vagas (Admin › Denúncias › Comentários). */
+export function AcoesModeracaoComentario({ id }: { id: string }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  const [motivo, setMotivo] = useState("");
+  const campo = useId();
+  return (
+    <div className="flex w-full max-w-xl flex-col gap-2">
+      <label htmlFor={campo} className="text-label">
+        Motivo (para remover)
+      </label>
+      <input
+        id={campo}
+        value={motivo}
+        onChange={(e) => setMotivo(e.target.value)}
+        maxLength={500}
+        placeholder="Ex.: o comentário cobra taxa para indicar a vaga."
+        className="min-h-10 rounded-md border border-line-strong bg-surface-200 px-3 text-body-sm"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Botao
+          tamanho="sm"
+          variante="sucesso"
+          disabled={pendente}
+          onClick={() => rodar(() => moderarComentario(id, "liberar"))}
+        >
+          <CircleCheckBig aria-hidden />
+          Liberar
+        </Botao>
+        <Botao
+          tamanho="sm"
+          variante="perigo"
+          disabled={pendente || motivo.trim().length < 3}
+          onClick={() => rodar(() => moderarComentario(id, "remover", motivo))}
         >
           <Trash2 aria-hidden />
           Remover

@@ -40,6 +40,7 @@ import { BarraCurtirCelular } from "@/components/anuncio/barra-curtir-celular";
 import { ContarAbertura } from "@/components/anuncio/contar-abertura";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
+import { SecaoComentarios } from "@/components/anuncio/secao-comentarios";
 import { codigoDaPessoa } from "@/lib/indicacao";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { BotaoSalvarVaga } from "@/components/anuncio/salvar-vaga";
@@ -657,6 +658,12 @@ async function DetalheAnuncio({
 
           <h2 className="mt-8 text-h2">{vaga ? "Sobre a vaga" : "Sobre o serviço"}</h2>
           <div className="mt-3 text-body whitespace-pre-line text-ink">{anuncio.descricao}</div>
+
+          {vaga && (
+            <Suspense fallback={null}>
+              <SecaoComentarios anuncioId={anuncio.id} agora={agora} />
+            </Suspense>
+          )}
 
           {fotos.length > 0 && (
             <>

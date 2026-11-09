@@ -736,6 +736,16 @@ export async function filaDeRecados(c: ClienteBanco) {
   return data ?? [];
 }
 
+/** Comentários das vagas retidos, escondidos, denunciados ou que a IA não revisou (sem a migração, lista vazia). */
+export async function filaDeComentarios(c: ClienteBanco) {
+  const { data, error } = await c.rpc("fila_comentarios");
+  if (error) {
+    if (error.code === "PGRST202") return [];
+    falha("a fila de comentários", error);
+  }
+  return data ?? [];
+}
+
 export async function filaDaModeracao(c: ClienteBanco) {
   const { data, error } = await c.rpc("fila_moderacao");
   if (error) falha("a fila da moderação", error);

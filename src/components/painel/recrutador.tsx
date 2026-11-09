@@ -5,6 +5,7 @@ import {
   Hourglass,
   Inbox,
   Megaphone,
+  MessageCircleQuestion,
   MessageCircleReply,
   RefreshCw,
   Send,
@@ -35,6 +36,15 @@ import { NumerosDoHoje, type NumeroDoHoje } from "./numeros-hoje";
 import { ConviteNotificacoes } from "@/components/convite-notificacoes";
 import { vapidPublica } from "@/lib/servidor/ambiente";
 import { TabelaDasVagas, type GrupoDeVagas, type LinhaDaVaga } from "./tabela-vagas";
+import { DicaDeNovidade } from "@/components/ui/dica-de-novidade";
+
+/** As perguntas sem resposta de quem publicou, por vaga (migração 20270318120000; sem ela, nada). */
+async function perguntasSemResposta(ids: string[]) {
+  if (!ids.length) return new Map<string, number>();
+  const { data, error } = await (await criarClienteServidor()).rpc("comentarios_das_minhas_vagas", { p_anuncios: ids });
+  if (error) return new Map<string, number>();
+  return new Map((data ?? []).filter((x) => x.sem_resposta > 0).map((x) => [x.anuncio_id, Number(x.sem_resposta)]));
+}
 
 // Hoje, no modo Contratar (comércio, empresa e agência), pelo caminho da vaga:
 //   agência ............ Clientes → Vagas → Candidatos → Para o cliente → Contratados
@@ -122,7 +132,7 @@ export async function PainelRecrutador({
   const vagas = (anuncios ?? []).filter((a) => a.tipo === "vaga");
   const todos = candidatos ?? [];
   const noAr = vagas.filter((a) => a.status === "ativo" && new Date(a.expira_em).getTime() > agora);
-  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, pedidosAg] = await Promise.all([
+  const [{ visitas, entrevistas, passadas }, respostas, colocacoes, caminho, documentos, pedidosAg, perguntas] = await Promise.all([
     dadosExtras(
       vagas.map((v) => v.id),
       agora,
@@ -136,6 +146,8 @@ export async function PainelRecrutador({
     // agência: os prazos dos finalistas cumpridos em 90 dias, somando os clientes (sem a migração, nada)
     // e os pedidos com o prazo dos finalistas de cada vaga
     agencia ? pedidosDaAgencia().catch(() => null) : Promise.resolve(null),
+    // as perguntas nos comentários das vagas no ar ainda sem resposta (parte 2 dos comentários)
+    perguntasSemResposta(noAr.map((v) => v.id)).catch(() => new Map<string, number>()),
   ]);
   const noPrazo = pedidosAg?.noPrazo ?? null;
   // agência: o prazo dos finalistas de cada vaga ligada a um pedido ainda sem finalistas ("Finalistas até")
@@ -523,6 +535,24 @@ export async function PainelRecrutador({
       acao: d.total > 0 ? "Ver os documentos" : "Ver",
     });
   }
+  // perguntas nos comentários das vagas, sem a resposta de quem publicou
+  if (perguntas.size) {
+    const [vagaId, n] = [...perguntas.entries()].sort((a, b) => b[1] - a[1])[0];
+    const total = [...perguntas.values()].reduce((s, x) => s + x, 0);
+    cartoes.push({
+      icone: MessageCircleQuestion,
+      quando: "Hoje",
+      titulo:
+        total === 1
+          ? `1 pergunta sem resposta em ${tituloDe.get(vagaId) ?? "uma vaga"}`
+          : perguntas.size === 1
+            ? `${total} perguntas sem resposta em ${tituloDe.get(vagaId) ?? "uma vaga"}`
+            : `${total} perguntas sem resposta nas suas vagas`,
+      texto: `A resposta fica na vaga para todo mundo ver${perguntas.size > 1 ? `. Comece por ${tituloDe.get(vagaId) ?? "a vaga"} (${n})` : ""}.`,
+      href: `/anuncio/${vagaId}#comentarios`,
+      acao: "Responder",
+    });
+  }
   cartoes.push(...extras);
   // os finalistas com o prazo do cliente perto vêm primeiro (o cartão escuro)
   cartoes.unshift(...finalistasNoPrazo);
@@ -795,15 +825,17 @@ export async function PainelRecrutador({
             />
           </div>
           {grupos.length > 0 && (
-            <TabelaDasVagas
-              titulo={agencia ? "Seus clientes" : "Suas vagas"}
-              grupos={grupos}
-              link={
-                agencia
-                  ? { href: "/painel/clientes", texto: "Ver todos os clientes" }
-                  : { href: "/painel/anuncios?tipo=vaga", texto: "Gerenciar vagas" }
-              }
-            />
+            <DicaDeNovidade chave="comentarios-empresa" logado>
+              <TabelaDasVagas
+                titulo={agencia ? "Seus clientes" : "Suas vagas"}
+                grupos={grupos}
+                link={
+                  agencia
+                    ? { href: "/painel/clientes", texto: "Ver todos os clientes" }
+                    : { href: "/painel/anuncios?tipo=vaga", texto: "Gerenciar vagas" }
+                }
+              />
+            </DicaDeNovidade>
           )}
         </>
       )}

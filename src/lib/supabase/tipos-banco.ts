@@ -3189,6 +3189,71 @@ export type Database = {
         Returns: { proposta_id: string; caminho: string }[];
       };
       servidor_documentos_apagados: { Args: { p_chave: string; p_propostas: string[] }; Returns: number };
+      /** os comentários nas vagas (migração 20270318120000) */
+      comentarios_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
+      comentarios_das_minhas_vagas: {
+        Args: { p_anuncios: string[] };
+        Returns: { anuncio_id: string; comentarios: number; sem_resposta: number }[];
+      };
+      comentar: {
+        Args: { p_anuncio: string; p_texto: string; p_resposta_a?: string | null };
+        Returns: { id: string; status: string }[];
+      };
+      editar_comentario: { Args: { p_comentario: string; p_texto: string }; Returns: string };
+      apagar_comentario: { Args: { p_comentario: string }; Returns: undefined };
+      esconder_comentario: { Args: { p_comentario: string; p_esconder?: boolean }; Returns: undefined };
+      ligar_comentarios: { Args: { p_anuncio: string; p_ligado: boolean }; Returns: undefined };
+      denunciar_comentario: {
+        Args: { p_comentario: string; p_motivo: string; p_detalhes?: string | null };
+        Returns: undefined;
+      };
+      servidor_pegar_comentarios_ia: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: {
+          comentario_id: string;
+          versao: string;
+          texto: string;
+          vaga: string;
+          respondendo: string | null;
+          de_quem_publicou: boolean;
+          modelo: string;
+        }[];
+      };
+      servidor_resultado_comentario: {
+        Args: {
+          p_chave: string;
+          p_comentario: string;
+          p_versao: string;
+          p_decisao: string;
+          p_categorias?: string[];
+          p_explicacao?: string | null;
+          p_modelo?: string | null;
+        };
+        Returns: string;
+      };
+      fila_comentarios: {
+        Args: Record<string, never>;
+        Returns: {
+          comentario_id: string;
+          situacao: string;
+          texto: string;
+          status: string;
+          motivo: string | null;
+          autor_id: string;
+          autor_nome: string;
+          anuncio_id: string;
+          anuncio_titulo: string;
+          denuncias_abertas: number;
+          motivos: string[];
+          ia_categorias: string[];
+          ia_explicacao: string | null;
+          criado_em: string;
+        }[];
+      };
+      moderar_comentario: {
+        Args: { p_comentario: string; p_decisao: string; p_nota?: string | null };
+        Returns: undefined;
+      };
       /** a indicação por e-mail e as dicas de novidade (migração 20270317120000) */
       indicar_por_email: { Args: { p_anuncio: string; p_email: string; p_nome?: string | null }; Returns: string };
       ver_indicacao_email: {

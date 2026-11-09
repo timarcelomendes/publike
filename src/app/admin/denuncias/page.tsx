@@ -1,16 +1,16 @@
-import { Clock, MessageSquareText, ShieldCheck, Sparkles, Star, Tag } from "lucide-react";
+import { Clock, MessageCircleQuestion, MessageSquareText, ShieldCheck, Sparkles, Star, Tag } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AcoesModeracaoAnuncio } from "@/components/admin/acoes-anuncio";
 import { AcoesModeracaoAvaliacao } from "@/components/admin/acoes-avaliacao";
-import { AcoesModeracaoRecado, RevisarFilaAgora } from "@/components/admin/acoes-recado";
+import { AcoesModeracaoComentario, AcoesModeracaoRecado, RevisarFilaAgora } from "@/components/admin/acoes-recado";
 import { Estrelas } from "@/components/avaliacoes";
 import { SeloStatus } from "@/components/admin/ui";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { Selo, Vazio } from "@/components/ui/basicos";
-import { filaDaModeracao, filaDeAvaliacoes, filaDeRecados } from "@/lib/admin/dados";
+import { filaDaModeracao, filaDeAvaliacoes, filaDeComentarios, filaDeRecados } from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { MOTIVOS_DENUNCIA } from "@/lib/constantes";
 import { formatarLugar, primeiro, tempoRelativo, urlDaFotoRecado } from "@/lib/formato";
@@ -26,6 +26,7 @@ const ABAS = [
   { id: "anuncios", nome: "Anúncios", icone: Tag },
   { id: "avaliacoes", nome: "Avaliações", icone: Star },
   { id: "recados", nome: "Recados", icone: MessageSquareText },
+  { id: "comentarios", nome: "Comentários", icone: MessageCircleQuestion },
   { id: "esperando", nome: "Esperando a IA", icone: Clock },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
@@ -90,10 +91,11 @@ function SubAbas({ ativa, numeros }: { ativa: Aba; numeros: Record<Aba, number> 
 async function Conteudo({ pedida }: { pedida: Aba | null }) {
   const acesso = await acessoDaEquipe();
   if (!acesso) notFound();
-  const [fila, todasAvaliacoes, todosRecados, agora] = await Promise.all([
+  const [fila, todasAvaliacoes, todosRecados, comentarios, agora] = await Promise.all([
     filaDaModeracao(acesso.cliente),
     filaDeAvaliacoes(acesso.cliente),
     filaDeRecados(acesso.cliente),
+    filaDeComentarios(acesso.cliente),
     agoraDaRequisicao(),
   ]);
   const esperando = (s: string) => s === "esperando_ia";
@@ -105,6 +107,7 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
     anuncios: fila.length,
     avaliacoes: avaliacoes.length,
     recados: recados.length,
+    comentarios: comentarios.length,
     esperando: avaliacoesEsperando.length + recadosEsperando.length,
   };
   // sem aba no endereço: a primeira com alguma coisa (o que espera a IA primeiro, porque está escondido)
@@ -112,7 +115,7 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
     pedida ??
     (numeros.esperando
       ? "esperando"
-      : ((["anuncios", "avaliacoes", "recados"] as const).find((a) => numeros[a] > 0) ?? "anuncios"));
+      : ((["anuncios", "avaliacoes", "recados", "comentarios"] as const).find((a) => numeros[a] > 0) ?? "anuncios"));
 
   return (
     <div className="flex flex-col gap-6">
@@ -280,7 +283,105 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
           )}
         </section>
       )}
+
+      {aba === "comentarios" && (
+        <section id="comentarios" className="flex scroll-mt-24 flex-col gap-4">
+          <div>
+            <h2 className="text-h3">Comentários das vagas</h2>
+            <p className="mt-1 max-w-3xl text-body-sm text-ink-muted">
+              Comentários que a IA reteve, que ela não conseguiu revisar, que receberam denúncia ou que quem publicou
+              escondeu. Com três denúncias, o comentário sai do ar até alguém decidir. Liberar põe no ar (e as
+              denúncias ficam improcedentes); remover tira de vez.
+            </p>
+          </div>
+          {comentarios.length === 0 ? (
+            <Vazio icone={ShieldCheck} titulo="Nenhum comentário para revisar" />
+          ) : (
+            <ListaDeComentarios comentarios={comentarios} admin={acesso.admin} agora={agora} />
+          )}
+        </section>
+      )}
     </div>
+  );
+}
+
+type ItemComentario = Awaited<ReturnType<typeof filaDeComentarios>>[number];
+
+function ListaDeComentarios({
+  comentarios,
+  admin,
+  agora,
+}: {
+  comentarios: ItemComentario[];
+  admin: boolean;
+  agora: number;
+}) {
+  return (
+    <ul className="flex flex-col gap-4">
+      {comentarios.map((c) => (
+        <li
+          key={c.comentario_id}
+          className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Selo variante={c.situacao === "retido" ? "aviso" : "contorno"}>
+              {c.situacao === "retido"
+                ? "Fora do ar"
+                : c.situacao === "escondido"
+                  ? "Escondido por quem publicou"
+                  : c.situacao === "denunciado"
+                    ? "No ar, com denúncia"
+                    : "A IA não conseguiu revisar"}
+            </Selo>
+            {c.denuncias_abertas > 0 && (
+              <Selo variante="aviso">
+                {c.denuncias_abertas} {c.denuncias_abertas === 1 ? "denúncia" : "denúncias"}
+              </Selo>
+            )}
+          </div>
+          <p className="text-body-sm text-ink-muted">
+            De{" "}
+            {admin ? (
+              <Link href={`/admin/usuarios/${c.autor_id}`} className="underline">
+                {c.autor_nome}
+              </Link>
+            ) : (
+              c.autor_nome
+            )}{" "}
+            · na vaga{" "}
+            <Link href={`/anuncio/${c.anuncio_id}#comentario-${c.comentario_id}`} className="underline">
+              {c.anuncio_titulo}
+            </Link>{" "}
+            · {tempoRelativo(c.criado_em, agora)}
+          </p>
+          <blockquote className="rounded-md bg-surface-300 p-3 text-body whitespace-pre-line">“{c.texto}”</blockquote>
+          {(c.ia_categorias.length > 0 || c.ia_explicacao) && (
+            <div className="flex flex-col gap-2 rounded-md bg-terra-soft p-3 text-body-sm">
+              <div className="flex flex-wrap gap-2">
+                {c.ia_categorias.map((x) => (
+                  <Selo key={x} variante="contorno">
+                    {CATEGORIAS_IA[x] ?? x}
+                  </Selo>
+                ))}
+              </div>
+              {c.ia_explicacao && <p>IA: {c.ia_explicacao}</p>}
+            </div>
+          )}
+          {c.motivos.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {c.motivos.map((m) => (
+                <Selo key={m} variante="contorno">
+                  {NOME_MOTIVO[m] ?? m}
+                </Selo>
+              ))}
+            </div>
+          )}
+          <div className="border-t border-line pt-3">
+            <AcoesModeracaoComentario id={c.comentario_id} />
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -13,7 +13,7 @@ import {
 } from "@/lib/email/montar";
 import { EMAIL_DA_EQUIPE } from "@/lib/mensagem-equipe";
 import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
-import { revisarAnuncio, revisarAvaliacao, revisarRecado, type DecisaoIA } from "@/lib/ia/tarefas";
+import { revisarAnuncio, revisarAvaliacao, revisarComentario, revisarRecado, type DecisaoIA } from "@/lib/ia/tarefas";
 import { criarClienteAdmin, type ClienteBanco } from "@/lib/supabase/admin";
 import { criarClientePublico } from "@/lib/supabase/servidor";
 import { destinoDoAviso } from "@/lib/destino-aviso";
@@ -364,6 +364,54 @@ export async function revisarRecadosPendentes(limite = 5): Promise<ResultadoIA> 
   return resultado;
 }
 
+/** Os comentários das vagas esperando a IA (migração 20270318120000; sem ela, não há fila). */
+export async function revisarComentariosPendentes(limite = 5): Promise<ResultadoIA> {
+  const resultado: ResultadoIA = { revisados: 0, retidos: 0, erros: 0 };
+  const acesso = acessoFila();
+  if (!acesso) return { ...resultado, motivo: "Falta a chave do servidor (PUBLIKE_CHAVE_SERVIDOR)." };
+  if (!iaConfigurada()) {
+    return { ...resultado, motivo: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
+  }
+  const { cliente, chave } = acesso;
+  const revisao = await modeloDaRevisao(cliente);
+  const { data: itens, error } = await cliente.rpc("servidor_pegar_comentarios_ia", { p_chave: chave, p_limite: limite });
+  if (error) {
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler a fila de comentários da IA:", error.message);
+    return { ...resultado, motivo: "Não foi possível ler a fila de comentários." };
+  }
+  await Promise.all(
+    (itens ?? []).map(async (item) => {
+      let decisao: DecisaoIA | null = null;
+      let falha = "Erro ao falar com a IA.";
+      try {
+        decisao = await revisarComentario(item, revisao ?? item.modelo);
+      } catch (e) {
+        if (e instanceof ErroIA) falha = e.message;
+        console.error(`Publike: a IA não revisou o comentário ${item.comentario_id}:`, textoDoErro(e));
+      }
+      const { data, error: erroBanco } = await cliente.rpc("servidor_resultado_comentario", {
+        p_chave: chave,
+        p_comentario: item.comentario_id,
+        p_versao: item.versao,
+        p_decisao: decisao ? decisao.decisao : "erro",
+        p_categorias: decisao ? decisao.categorias : [],
+        p_explicacao: decisao ? decisao.explicacao : falha,
+        p_modelo: decisao ? decisao.modelo : modeloDaIA(revisao ?? item.modelo).id,
+      });
+      if (erroBanco) {
+        console.error(`Publike: não deu para gravar a revisão do comentário ${item.comentario_id}:`, erroBanco.message);
+      }
+      if (!decisao || erroBanco) {
+        resultado.erros++;
+        return;
+      }
+      resultado.revisados++;
+      if (data === "retido") resultado.retidos++;
+    }),
+  );
+  return resultado;
+}
+
 // ------------------------------------------------------------------ notificações no celular
 
 export type ResultadoPush = { enviadas: number; falhas: number; expiradas: number; motivo?: string };
@@ -607,11 +655,13 @@ export async function processarFilas() {
     // as perguntas do match: a conversa começa logo depois do aceite (import aqui pelo mesmo motivo)
     const perguntas = await import("./perguntas-do-match").then((m) => m.perguntarNosMatches()).catch(() => null);
     if (perguntas?.motivo) console.warn(`Publike: ${perguntas.motivo}`);
-    const [ia, avaliacoes, recados] = await Promise.all([
+    const [ia, avaliacoes, recados, comentarios] = await Promise.all([
       revisarAnunciosPendentes(),
       revisarAvaliacoesPendentes(),
       revisarRecadosPendentes(),
+      revisarComentariosPendentes(),
     ]);
+    if (comentarios.erros) console.warn(`Publike: ${comentarios.erros} comentário(s) vão ser revisados de novo.`);
     if (avaliacoes.erros) console.warn(`Publike: ${avaliacoes.erros} avaliação(ões) vão ser revisadas de novo.`);
     if (recados.erros) console.warn(`Publike: ${recados.erros} recado(s) vão ser revisados de novo.`);
     // a IA pode ter tirado um anúncio do ar: esses avisos também saem agora

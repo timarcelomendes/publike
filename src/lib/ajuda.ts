@@ -45,6 +45,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     titulo: "Para quem procura trabalho",
     perguntas: [
       {
+        p: "Como faço uma pergunta sobre uma vaga?",
+        r: "Na página da vaga, embaixo da descrição, em Comentários: escreva a dúvida (horário, transporte, se precisa de experiência) e toque em Comentar. Quem publicou recebe o aviso e responde ali mesmo, para todo mundo ver, e você recebe um aviso quando responderem. Comentário não é candidatura: para a empresa receber seu currículo, toque em Curtir. Não escreva telefone, e-mail ou link: o contato aparece quando der match. Dá para editar até 15 minutos depois e apagar quando quiser.",
+      },
+      {
         p: "Como indico uma vaga para o e-mail de um amigo?",
         r: "Na página da vaga, no quadro “Conhece quem faria essa vaga?”, toque em “Mandar por e-mail”. Escreva o e-mail do seu amigo e, se quiser, o nome dele, e toque em “Mandar indicação”. O Publike manda a vaga em seu nome, sem recado. Se ele já tiver conta, a indicação chega também no sino e no celular dele. Se não tiver, o e-mail traz um link: ele cria a conta em um toque, com o Google ou com o próprio e-mail, e chega na vaga. Quando ele se candidata, a empresa vê que foi indicação sua. Você não vê se ele se candidatou. São até 10 indicações por dia, e a mesma pessoa recebe no máximo 3 indicações por mês.",
       },
@@ -153,6 +157,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       {
         p: "Como recebo os documentos de quem contratei?",
         r: "Na proposta, marque o que a pessoa precisa mandar (confira a lista com o seu contador; dá para pôr outro item). Depois que ela aceita, a página da proposta mostra “Mandar os documentos”: em cada item, ela manda a foto ou o PDF pelo celular, ou marca que vai levar no primeiro dia. Na ficha do candidato, no quadro, em Contratados e no Hoje, você vê “Documentos: 7 de 9”, baixa tudo num .zip para o contador e marca “Entregue ao contador”. Se faltar algo 2 dias antes do primeiro dia, a pessoa recebe um lembrete. Os arquivos somem do Publike 7 dias depois da entrega ou 30 dias depois do primeiro dia. Nenhuma IA lê os documentos. A lista não aceita atestado de gravidez ou de esterilização, proibidos por lei.",
+      },
+      {
+        p: "Como funcionam os comentários nas minhas vagas?",
+        r: "Quem vê a vaga pode perguntar nos comentários, embaixo da descrição. Você recebe o aviso no sino e no celular (por e-mail, no máximo um por dia) e as perguntas sem resposta aparecem no Hoje. Toque em Responder: a resposta fica em destaque, com o selo “Quem publicou”, e quem tinha a mesma dúvida já vê. Comentário com ofensa, cobrança ou discriminação não vai ao ar. Você pode esconder um comentário da sua vaga (a moderação continua vendo) e desligar os comentários no fim da seção. Lembre que a sua resposta também segue as regras: nada de “só para homens” ou idade máxima.",
       },
       {
         p: "Como peço indicação para uma vaga?",
