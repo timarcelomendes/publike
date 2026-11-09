@@ -3,7 +3,14 @@ import { modelosEscolhidos } from "@/lib/ia/funcionalidades";
 import nodemailer from "nodemailer";
 import { conviteDoEmail } from "@/lib/agenda";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
-import { linkParaSair, logoPadraoDoEmail, montarEmail, paraSair } from "@/lib/email/montar";
+import {
+  linkParaSair,
+  linkParaSairDaIndicacao,
+  logoPadraoDoEmail,
+  montarEmail,
+  paraSair,
+  paraSairDaIndicacao,
+} from "@/lib/email/montar";
 import { EMAIL_DA_EQUIPE } from "@/lib/mensagem-equipe";
 import { ErroIA, iaConfigurada, modeloDaIA } from "@/lib/ia/openai";
 import { revisarAnuncio, revisarAvaliacao, revisarRecado, type DecisaoIA } from "@/lib/ia/tarefas";
@@ -136,6 +143,8 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
         const convite = conviteDoEmail(item.dados, site, new Date());
         // o "parar de receber" de um toque (Gmail e Yahoo): só nos avisos que a pessoa pode desligar
         const sair = paraSair(item.dados);
+        // a vaga indicada para quem não tem conta: o "parar de receber indicações"
+        const sairIndicacao = paraSairDaIndicacao(item.dados);
         const email = montarEmail(
           { modelo: item.modelo, grupo: item.grupo, assunto: item.assunto, corpo: item.corpo, botao: item.botao },
           item.dados,
@@ -158,7 +167,12 @@ export async function enviarEmailsPendentes(limite = 10): Promise<ResultadoEmail
                   "List-Unsubscribe": `<${linkParaSair(site, sair, "um_toque")}>`,
                   "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
                 }
-              : {}),
+              : sairIndicacao
+                ? {
+                    "List-Unsubscribe": `<${linkParaSairDaIndicacao(site, sairIndicacao, "um_toque")}>`,
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                  }
+                : {}),
           },
           ...(convite
             ? { icalEvent: { method: convite.metodo, filename: "entrevista.ics", content: convite.ics } }

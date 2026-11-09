@@ -125,6 +125,11 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   busca_talentos: UserSearch,
   // faltam documentos da admissão, 2 dias antes do primeiro dia
   documentos_admissao: FileCheck2,
+  // uma vaga indicada por e-mail para quem já tem conta (migração 20270317120000)
+  indicacao: Send,
+  // um comentário na vaga e a resposta a um comentário (migração 20270318120000)
+  comentario: MessageSquareText,
+  comentario_resposta: MessageSquareText,
 };
 
 type Notificacao = {

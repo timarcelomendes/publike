@@ -45,6 +45,14 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     titulo: "Para quem procura trabalho",
     perguntas: [
       {
+        p: "Como indico uma vaga para o e-mail de um amigo?",
+        r: "Na página da vaga, no quadro “Conhece quem faria essa vaga?”, toque em “Mandar por e-mail”. Escreva o e-mail do seu amigo e, se quiser, o nome dele, e toque em “Mandar indicação”. O Publike manda a vaga em seu nome, sem recado. Se ele já tiver conta, a indicação chega também no sino e no celular dele. Se não tiver, o e-mail traz um link: ele cria a conta em um toque, com o Google ou com o próprio e-mail, e chega na vaga. Quando ele se candidata, a empresa vê que foi indicação sua. Você não vê se ele se candidatou. São até 10 indicações por dia, e a mesma pessoa recebe no máximo 3 indicações por mês.",
+      },
+      {
+        p: "Recebi uma vaga indicada por e-mail. O que faço?",
+        r: "Abra o link do e-mail. Se você ainda não tem conta, crie em um toque: com o Google, a conta fica pronta na hora; com o e-mail, chega um link de entrar, e você entra sozinho, já na vaga. Depois, toque em Curtir para se candidatar: é grátis, e a empresa vê que foi indicação. Não conhece quem indicou ou não quer receber indicações? Toque em “Parar de receber” no fim do e-mail: ninguém consegue indicar vagas para o seu e-mail de novo.",
+      },
+      {
         p: "Como acho vagas perto de mim?",
         r: "Na tela inicial, o Publike pede sua localização e mostra primeiro o que está perto, com um marcador “Você” no mapa. Também dá para tocar em “Onde você mora?” e informar o bairro ou o CEP de casa, ou em “Perto de mim”. Dá para ver em lista, grade, blocos ou no mapa (no computador, também em “Lista + detalhes”, com a vaga aberta ao lado da lista; os botões ficam em “Ver como”) e filtrar por área, tipo de contratação, distância, tempo de ônibus e “Começa já”, para quem precisa começar logo.",
       },

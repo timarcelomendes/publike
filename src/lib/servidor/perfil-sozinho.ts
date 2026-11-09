@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { after } from "next/server";
 import { VERSAO_TERMOS } from "@/lib/constantes";
+import { COOKIE_NOME_INDICACAO, nomeParaPerfil } from "@/lib/indicacao-email";
 import { COOKIE_INTENCAO, lerIntencao } from "@/lib/intencao";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { temContato } from "@/lib/validacao";
@@ -16,6 +17,9 @@ import { processarFilas } from "./filas";
 // Marcelo) e fica registrado como sempre. Quem vai contratar (publicar vaga, a página de empresas, a resposta
 // "Procuro funcionário") e os caminhos com jornada própria (equipe, convites, serviços) seguem para o cadastro de
 // sempre.
+// Também nasce sozinho o perfil de quem entrou pelo link de uma vaga indicada por e-mail (/indicacao/<código>,
+// 09/11/2026): com o link de entrar no e-mail, vale o nome que a pessoa escreveu na página da indicação (o aceite é
+// o "Ao entrar, você aceita…" da mesma página).
 
 const REDES = new Set(["google", "linkedin_oidc", "facebook"]);
 
@@ -30,21 +34,36 @@ function nomeDaRede(meta: Record<string, unknown>) {
   return limpo.length >= 2 && !temContato(limpo) ? limpo : null;
 }
 
+/** O nome guardado na página da indicação (o cookie vem codificado). */
+function lerNome(valor: string | undefined) {
+  try {
+    return valor ? decodeURIComponent(valor) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Cria o perfil de quem acabou de entrar pela rede e ainda não tem um. true: criou (a pessoa segue direto para onde
  * ia); false: não deu ou não é o caso (segue para o "completar cadastro", como antes).
  */
 export async function criarPerfilSozinho(destino: string): Promise<boolean> {
   if (COM_CADASTRO.some((c) => destino === c || destino.startsWith(`${c}/`) || destino.startsWith(`${c}?`))) return false;
-  const intencao = lerIntencao((await cookies()).get(COOKIE_INTENCAO)?.value);
+  const pote = await cookies();
+  const intencao = lerIntencao(pote.get(COOKIE_INTENCAO)?.value);
   if (intencao === "contratar_pessoa") return false;
 
   const supabase = await criarClienteServidor();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || !REDES.has(String(user.app_metadata?.provider ?? ""))) return false;
-  const nome = nomeDaRede(user.user_metadata ?? {});
+  if (!user) return false;
+  const provedor = String(user.app_metadata?.provider ?? "");
+  const pelaIndicacao = provedor === "email" && destino.startsWith("/indicacao/");
+  if (!REDES.has(provedor) && !pelaIndicacao) return false;
+  const nome = REDES.has(provedor)
+    ? nomeDaRede(user.user_metadata ?? {})
+    : nomeParaPerfil(lerNome(pote.get(COOKIE_NOME_INDICACAO)?.value));
   const email = user.email?.trim().toLowerCase() ?? "";
   if (!nome || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return false;
 

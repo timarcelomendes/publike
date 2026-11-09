@@ -1,6 +1,7 @@
 import { Send, UsersRound } from "lucide-react";
 import { linkComIndicacao } from "@/lib/indicacao";
 import { classesBotao } from "../ui/botao";
+import { IndicarPorEmail } from "./indicar-por-email";
 
 /**
  * Indicar alguém pelo WhatsApp: vaga de bairro anda no boca a boca, e o
@@ -56,10 +57,17 @@ export function linkDoGrupo({
 }
 
 /** O quadro "Conhece quem faria essa vaga?" da página do anúncio. */
-export function QuadroIndicar(props: Parameters<typeof linkDeIndicacao>[0] & { valor?: string | null }) {
-  const { vaga, proprio, valor = null, ...resto } = props;
+export function QuadroIndicar(
+  props: Parameters<typeof linkDeIndicacao>[0] & {
+    valor?: string | null;
+    /** com a vaga e o login, aparece o "Mandar por e-mail" (migração 20270317120000) */
+    anuncioId?: string;
+    logado?: boolean;
+  },
+) {
+  const { vaga, proprio, valor = null, anuncioId, logado = false, ...resto } = props;
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4">
+    <div id="indicar" className="flex scroll-mt-24 flex-col gap-2 rounded-lg border border-line bg-surface-200 p-4">
       <p className="text-label">
         {proprio
           ? "Peça indicações"
@@ -96,6 +104,7 @@ export function QuadroIndicar(props: Parameters<typeof linkDeIndicacao>[0] & { v
           </a>
         )}
       </div>
+      {vaga && !proprio && anuncioId && <IndicarPorEmail anuncioId={anuncioId} logado={logado} />}
     </div>
   );
 }

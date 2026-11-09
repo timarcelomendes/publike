@@ -3189,6 +3189,32 @@ export type Database = {
         Returns: { proposta_id: string; caminho: string }[];
       };
       servidor_documentos_apagados: { Args: { p_chave: string; p_propostas: string[] }; Returns: number };
+      /** a indicação por e-mail e as dicas de novidade (migração 20270317120000) */
+      indicar_por_email: { Args: { p_anuncio: string; p_email: string; p_nome?: string | null }; Returns: string };
+      ver_indicacao_email: {
+        Args: { p_codigo: string };
+        Returns: {
+          anuncio_id: string;
+          titulo: string;
+          no_ar: boolean;
+          lugar: string;
+          valor: string | null;
+          empresa: string;
+          quem: string;
+          indicador_id: string;
+          nome: string | null;
+          email: string | null;
+          valida: boolean;
+        }[];
+      };
+      usar_indicacao_email: { Args: { p_codigo: string }; Returns: { anuncio_id: string; codigo: string }[] };
+      sair_das_indicacoes: { Args: { p_codigo: string }; Returns: boolean };
+      minhas_dicas_vistas: { Args: Record<string, never>; Returns: string[] };
+      marcar_dica_vista: { Args: { p_chave: string; p_usou?: boolean }; Returns: undefined };
+      admin_numeros_dicas: {
+        Args: Record<string, never>;
+        Returns: { chave: string; vistas: number; usaram: number; primeira: string }[];
+      };
       /** a indicação (migração 20270311120000) */
       criar_link_indicacao: { Args: { p_anuncio: string; p_nome: string }; Returns: string };
       registrar_indicacao: { Args: { p_anuncio: string; p_codigo: string; p_origem: string }; Returns: boolean };

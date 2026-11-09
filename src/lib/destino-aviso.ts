@@ -28,6 +28,11 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "busca_talentos") return n.link?.startsWith("/talentos") ? n.link : "/talentos?ver=todos";
   if (n.tipo === "pedido_cliente") return n.link?.startsWith("/painel/") ? n.link : "/painel/pedidos";
   if (n.tipo === "liberacao") return n.link?.startsWith("/painel/") ? n.link : "/painel";
+  // a vaga indicada por e-mail (com o código de quem indicou) e os comentários da vaga
+  if (n.tipo === "indicacao" && n.anuncio_id)
+    return n.link?.startsWith(`/anuncio/${n.anuncio_id}`) ? n.link : `/anuncio/${n.anuncio_id}`;
+  if ((n.tipo === "comentario" || n.tipo === "comentario_resposta") && n.anuncio_id)
+    return n.link?.startsWith("/") && !n.link.startsWith("//") ? n.link : `/anuncio/${n.anuncio_id}#comentarios`;
   // os testes Publike: quem curtiu abre os seus testes; quem publicou, os testes da vaga
   if (n.tipo === "teste_pedido") return "/testes";
   if (n.tipo === "teste_feito" && n.anuncio_id) return `/painel/anuncio/${n.anuncio_id}/testes`;

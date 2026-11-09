@@ -126,10 +126,40 @@ export function linkParaSair(siteUrl: string, sair: ParaSair, jeito: "pagina" | 
   return `${site}${jeito === "um_toque" ? "/api/avisos/sair" : "/avisos/sair"}?${busca}`;
 }
 
+/** O código do "parar de receber indicações" (o e-mail da vaga indicada para quem não tem conta). */
+export function paraSairDaIndicacao(dados: unknown): string | null {
+  if (!dados || typeof dados !== "object") return null;
+  const { sair_indicacao: codigo } = dados as Record<string, unknown>;
+  return typeof codigo === "string" && /^[0-9a-f]{64}$/.test(codigo) ? codigo : null;
+}
+
+/** O endereço do "parar de receber indicações": a página (rodapé) ou a rota de um toque (List-Unsubscribe). */
+export function linkParaSairDaIndicacao(siteUrl: string, codigo: string, jeito: "pagina" | "um_toque" = "pagina") {
+  const site = siteUrl.replace(/\/+$/, "");
+  return `${site}${jeito === "um_toque" ? "/api/indicacao/sair" : "/indicacao/sair"}?c=${codigo}`;
+}
+
 /** O rodapé do e-mail, em texto e em HTML (com os links do "parar de receber" quando o aviso tem grupo). */
-function rodape(modelo: ModeloEmail, siteUrl: string, sair: ParaSair | null): { texto: string; html: string } {
+function rodape(
+  modelo: ModeloEmail,
+  siteUrl: string,
+  sair: ParaSair | null,
+  indicacao: { codigo: string; quem: string } | null = null,
+): { texto: string; html: string } {
   const site = siteUrl.replace(/\/+$/, "");
   const so = (texto: string) => ({ texto, html: escaparHtml(texto) });
+  // a vaga indicada para quem não tem conta: por que recebeu e como parar
+  if (modelo.modelo === "indicacao_vaga") {
+    const motivo = `Você recebeu este e-mail porque ${indicacao?.quem || "alguém com conta no Publike"} indicou uma vaga para você. O Publike não guarda o seu e-mail depois de 14 dias.`;
+    if (!indicacao) return so(motivo);
+    const parar = linkParaSairDaIndicacao(site, indicacao.codigo);
+    return {
+      texto: `${motivo}\nNão conhece quem indicou ou não quer receber indicações? Parar de receber: ${parar}`,
+      html:
+        `${escaparHtml(motivo)} ${escaparHtml("Não conhece quem indicou ou não quer receber indicações? ")}` +
+        `<a href="${escaparHtml(parar)}" style="color:${CORES.apagado};text-decoration:underline;">Parar de receber</a>.`,
+    };
+  }
   if (modelo.grupo === "equipe")
     return so("Aviso para a equipe do Publike. Quem recebe estes avisos é escolhido no admin.");
   if (modelo.grupo === "sistema") return so("Mensagem de teste enviada pelo admin do Publike.");
@@ -181,7 +211,13 @@ export function montarEmail(
   const link = valores.link;
   // o admin é local: o botão só abre no computador com o Publike rodando
   const dicaDoAdmin = botao && linkDoAdminLocal(link) ? DICA_ADMIN_LOCAL : null;
-  const textoRodape = rodape(modelo, siteUrl, paraSair(dados));
+  const codigoIndicacao = paraSairDaIndicacao(dados);
+  const textoRodape = rodape(
+    modelo,
+    siteUrl,
+    paraSair(dados),
+    codigoIndicacao ? { codigo: codigoIndicacao, quem: valores.quem ?? "" } : null,
+  );
 
   const links = extras.filter((x) => x.rotulo.trim() && /^https:\/\/[^\s"'<>\\]+$/.test(x.link));
   const texto = [

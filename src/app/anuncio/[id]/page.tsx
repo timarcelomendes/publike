@@ -647,6 +647,12 @@ async function DetalheAnuncio({
             />
           )}
 
+          {vaga && !proprio && primeiro(sp.indicado) === "1" && anuncio.minha_curtida == null && (
+            <Aviso tipo="sucesso" titulo="Você chegou por uma indicação" className="mt-6">
+              Se a vaga combinar com você, toque em Curtir para se candidatar. A empresa vê que foi indicação.
+            </Aviso>
+          )}
+
           {match && <MatchDaVaga a={match} className="mt-6" />}
 
           <h2 className="mt-8 text-h2">{vaga ? "Sobre a vaga" : "Sobre o serviço"}</h2>
@@ -829,6 +835,8 @@ async function DetalheAnuncio({
               proprio={proprio}
               valor={valor}
               codigo={usuario && vaga && !proprio ? codigoDaPessoa(usuario.id) : undefined}
+              anuncioId={anuncio.id}
+              logado={usuario !== null}
             />
           )}
 

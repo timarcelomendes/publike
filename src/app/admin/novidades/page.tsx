@@ -8,6 +8,7 @@ import { Secao } from "@/components/admin/ui";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
 import { formatarData, primeiro } from "@/lib/formato";
+import { DICAS } from "@/lib/dicas";
 import { PARA_NOVIDADE, paraDaNovidade } from "@/lib/novidades";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -43,9 +44,11 @@ function hojeEmBrasilia(agora: number) {
 
 async function Conteudo({ aba, editar, salvo }: { aba: string | null; editar: string | null; salvo: string | null }) {
   const c = await exigirAdminLocal();
-  const [{ data, error }, agora] = await Promise.all([
+  const [{ data, error }, agora, { data: numerosDicas }] = await Promise.all([
     c.from("novidades").select("*").order("dia", { ascending: false }).order("criada_em", { ascending: false }),
     agoraDaRequisicao(),
+    // as dicas de novidade (migração 20270317120000; sem ela, a seção não aparece)
+    c.rpc("admin_numeros_dicas"),
   ]);
   if (error) {
     return (
@@ -164,6 +167,31 @@ async function Conteudo({ aba, editar, salvo }: { aba: string | null; editar: st
               ))}
             </ul>
           )}
+        </Secao>
+      )}
+      {numerosDicas && (
+        <Secao
+          titulo="Dicas de novidade"
+          descricao="O balão “Novo” junto do botão ou do campo novo: cada pessoa vê uma vez (quem já tinha conta, no primeiro acesso depois da melhoria; quem chega depois, também). Os textos ficam em src/lib/dicas.ts."
+        >
+          <ul className="flex flex-col divide-y divide-line">
+            {DICAS.map((d) => {
+              const n = numerosDicas.find((x) => x.chave === d.chave);
+              return (
+                <li key={d.chave} className="flex flex-col gap-1 py-3">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Selo variante={d.ligada ? "match" : "contorno"}>{d.ligada ? "Ligada" : "Desligada"}</Selo>
+                    <span className="text-label">{d.texto}</span>
+                  </span>
+                  <span className="text-body-sm text-ink-muted">
+                    {n
+                      ? `${n.vistas} ${n.vistas === 1 ? "pessoa viu" : "pessoas viram"}, ${n.usaram} ${n.usaram === 1 ? "usou" : "usaram"} a novidade depois`
+                      : "Ninguém com conta viu ainda"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </Secao>
       )}
     </div>
