@@ -98,15 +98,21 @@ export function Filtros({
   opcoes,
   atual,
   link,
+  discreto = false,
 }: {
   rotulo: string;
   /** `numero`: quantos há nessa opção, mais claro que o nome */
   opcoes: { valor: string; nome: string; numero?: number }[];
   atual: string;
   link: (valor: string) => string;
+  /** menor e sem borda: só a escolhida fica marcada */
+  discreto?: boolean;
 }) {
   return (
-    <nav aria-label={rotulo} className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+    <nav
+      aria-label={rotulo}
+      className={`sem-barra -mx-4 flex overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0 ${discreto ? "gap-1" : "gap-2"}`}
+    >
       {opcoes.map((o) => {
         const ativo = o.valor === atual;
         return (
@@ -115,9 +121,15 @@ export function Filtros({
             href={link(o.valor)}
             scroll={false}
             aria-current={ativo ? "page" : undefined}
-            className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
-              ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200 text-ink hover:bg-surface-300"
-            }`}
+            className={
+              discreto
+                ? `inline-flex min-h-8 shrink-0 items-center gap-1 rounded-pill px-2.5 text-body-sm transition-colors ${
+                    ativo ? "bg-ink font-semibold text-surface-100" : "text-ink hover:bg-surface-300"
+                  }`
+                : `inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
+                    ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200 text-ink hover:bg-surface-300"
+                  }`
+            }
           >
             {o.nome}
             {o.numero !== undefined && (

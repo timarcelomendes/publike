@@ -150,8 +150,8 @@ function passa(x: CurtidaAdmin, e: Escolha) {
 /** Uma linha de filtros com o nome na frente (no celular, em cima). */
 function LinhaDeFiltro({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-4">
-      <span className="text-label text-ink-muted sm:w-36 sm:shrink-0 sm:pt-2.5">{rotulo}</span>
+    <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+      <span className="text-body-sm text-ink-muted sm:w-32 sm:shrink-0 sm:pt-1.5">{rotulo}</span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
@@ -310,12 +310,13 @@ async function Conteudo({
         titulo="Curtidas"
         descricao="Quem curtiu, o anúncio, quem publicou e como ficou, da mais nova para a mais antiga. Curtir uma vaga é se candidatar; o match é quando quem publicou aceita (ou na hora, no contato direto)."
       >
-        <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4">
+        <div className="flex flex-col gap-1.5 border-y border-line py-3">
           <LinhaDeFiltro rotulo="Período">
-            <Filtros rotulo="Período" opcoes={PERIODOS} atual={periodo} link={(v) => link({ periodo: v })} />
+            <Filtros discreto rotulo="Período" opcoes={PERIODOS} atual={periodo} link={(v) => link({ periodo: v })} />
           </LinhaDeFiltro>
           <LinhaDeFiltro rotulo="Como ficou">
             <Filtros
+              discreto
               rotulo="Como ficou"
               opcoes={opcoes("situacao", FILTROS, "todas")}
               atual={escolha.situacao}
@@ -325,6 +326,7 @@ async function Conteudo({
           {mostraChat && matches.length > 0 && (
             <LinhaDeFiltro rotulo="Depois do match">
               <Filtros
+              discreto
                 rotulo="Depois do match"
                 opcoes={opcoes("chat", FILTROS_CHAT, "todos").map((o) => (o.valor === "todos" ? { ...o, numero: undefined } : o))}
                 atual={escolha.chat}
@@ -334,6 +336,7 @@ async function Conteudo({
           )}
           <LinhaDeFiltro rotulo="Quem respondeu">
             <Filtros
+              discreto
               rotulo="Quem respondeu"
               opcoes={opcoes("resposta", FILTROS_RESPOSTA, "todas")}
               atual={escolha.resposta}
@@ -342,6 +345,7 @@ async function Conteudo({
           </LinhaDeFiltro>
           <LinhaDeFiltro rotulo="Anúncio">
             <Filtros
+              discreto
               rotulo="Anúncio"
               opcoes={opcoes("tipo", FILTROS_TIPO, "todos")}
               atual={escolha.tipo}
@@ -349,6 +353,7 @@ async function Conteudo({
             />
           </LinhaDeFiltro>
           <LinhaDeFiltro rotulo="Buscar">
+            <div className="max-w-md">
             <Busca
               acao="/admin/curtidas"
               valor={escolha.q}
@@ -361,9 +366,10 @@ async function Conteudo({
                 tipo: escolha.tipo === "todos" ? null : escolha.tipo,
               }}
             />
+            </div>
           </LinhaDeFiltro>
           {filtrando && (
-            <p className="flex flex-wrap items-baseline gap-x-3 border-t border-line pt-3 text-body-sm">
+            <p className="flex flex-wrap items-baseline gap-x-3 pt-1.5 text-body-sm">
               <span className="font-semibold">
                 Mostrando {formatarNumero(lista.length)} de {plural(todas.length, "curtida", "curtidas")}
               </span>
