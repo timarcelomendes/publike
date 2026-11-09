@@ -41,7 +41,8 @@ function nomeDoTitulo(titulo: string, caminho: string) {
   if (caminho === "/") return "Início";
   // a primeira página do painel tem o título "Meu painel", mas no menu ela é o "Hoje"
   if (caminho === "/painel") return "Hoje";
-  const nome = titulo.replace(/\s*·\s*Publike\s*$/, "").trim();
+  // "Pagamentos · Admin · Publike" → "Pagamentos": só o nome da página, sem o site nem o "Admin"
+  const nome = titulo.replace(/\s*·\s*Publike\s*$/, "").replace(/\s*·\s*Admin\s*$/, "").trim();
   return !nome || nome.startsWith("Publike") ? "" : nome;
 }
 

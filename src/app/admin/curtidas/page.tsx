@@ -150,8 +150,8 @@ function passa(x: CurtidaAdmin, e: Escolha) {
 /** Uma linha de filtros com o nome na frente (no celular, em cima). */
 function LinhaDeFiltro({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
-      <span className="text-label text-ink-muted sm:w-36 sm:shrink-0">{rotulo}</span>
+    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-4">
+      <span className="text-label text-ink-muted sm:w-36 sm:shrink-0 sm:pt-2.5">{rotulo}</span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
@@ -362,6 +362,16 @@ async function Conteudo({
               }}
             />
           </LinhaDeFiltro>
+          {filtrando && (
+            <p className="flex flex-wrap items-baseline gap-x-3 border-t border-line pt-3 text-body-sm">
+              <span className="font-semibold">
+                Mostrando {formatarNumero(lista.length)} de {plural(todas.length, "curtida", "curtidas")}
+              </span>
+              <Link href={so({})} scroll={false} className="underline underline-offset-2 hover:text-terra-text">
+                Limpar filtros
+              </Link>
+            </p>
+          )}
         </div>
         {todas.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -415,16 +425,6 @@ async function Conteudo({
               ` Em ${formatarNumero(comContato)} ${comContato === 1 ? "match" : "dos matches"}, alguém tocou no WhatsApp, no telefone ou no e-mail.`}
             {matches.length > 0 &&
               ` No chat (só mensagem escrita por gente): quem publicou escreveu em ${formatarNumero(empresaEscreveu)} e a pessoa respondeu em ${formatarNumero(pessoaRespondeu)}.`}
-          </p>
-        )}
-        {filtrando && (
-          <p className="flex flex-wrap items-baseline gap-x-3 text-body-sm">
-            <span className="font-semibold">
-              Mostrando {formatarNumero(lista.length)} de {plural(todas.length, "curtida", "curtidas")}
-            </span>
-            <Link href={so({})} scroll={false} className="underline underline-offset-2 hover:text-terra-text">
-              Limpar filtros
-            </Link>
           </p>
         )}
         {lista.length === 0 ? (
