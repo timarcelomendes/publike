@@ -1,4 +1,4 @@
-import { FileText, Gauge, ListChecks, MailCheck, MailWarning, Send, Settings, Sparkles } from "lucide-react";
+import { CalendarPlus, FileText, Gauge, ListChecks, MailCheck, MailWarning, Send, Settings, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -15,6 +15,7 @@ import {
   TextosDosEmails,
 } from "@/components/admin/emails";
 import { LigarCombinam } from "@/components/admin/combinam";
+import { ConviteDeConversa } from "@/components/admin/convite-de-conversa";
 import { FormParametrosEmail, IntervaloEmail, LigarEmail } from "@/components/admin/emails-catalogo";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Secao, Situacao } from "@/components/admin/ui";
@@ -57,6 +58,7 @@ const ABAS = [
   { id: "todos", nome: "Todos os e-mails", icone: ListChecks },
   { id: "enviados", nome: "Enviados", icone: MailCheck },
   { id: "convites", nome: "Convites", icone: Send },
+  { id: "conversa", nome: "Agendar conversa", icone: CalendarPlus },
   { id: "semana", nome: "Da semana", icone: Sparkles },
   { id: "textos", nome: "Textos", icone: FileText },
   { id: "configuracoes", nome: "Configurações", icone: Settings },
@@ -300,6 +302,15 @@ async function Conteudo({ aba, filtros }: { aba: Aba; filtros: FiltrosEnviados }
 
           <ForaDaFila catalogo={catalogo} agora={agora} />
         </>
+      )}
+
+      {aba === "conversa" && (
+        <Secao
+          titulo="Agendar conversa com um prospect"
+          descricao="Monta o convite para a agenda do seu e-mail profissional (Titan). Preencha o nome, o e-mail e o horário, copie o título e a descrição para o evento e convide o prospect por lá: ele recebe o convite com Aceitar e Recusar, e a resposta volta para você."
+        >
+          <ConviteDeConversa />
+        </Secao>
       )}
 
       {aba === "textos" && (
