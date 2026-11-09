@@ -1,5 +1,7 @@
 "use server";
 
+import { rotuloConta } from "@/lib/formato";
+
 import { createHash, randomBytes } from "node:crypto";
 import { refresh, revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -149,6 +151,38 @@ export async function corrigirNome(_anterior: EstadoForm, formData: FormData): P
   }
   refresh();
   return { ok: true, mensagem: `Pronto: o nome agora é “${data ?? nome}”.` };
+}
+
+/**
+ * Muda o tipo da conta (comércio, empresa ou agência) e corrige ou tira o CNPJ (migração 20270320120000). O selo
+ * de verificado sai quando muda; fica no registro da equipe.
+ */
+export async function mudarTipoECnpj(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const usuarioId = texto(formData, "usuario_id");
+  if (!UUID.test(usuarioId)) return { ok: false, erro: "Pedido inválido." };
+  const tipo = texto(formData, "tipo");
+  if (!["comercio", "empresa", "agencia"].includes(tipo)) {
+    return { ok: false, erro: "Confira o tipo.", erros: { tipo: "Escolha comércio, empresa ou agência." } };
+  }
+  const cnpj = texto(formData, "cnpj").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  if (tipo === "agencia" && !cnpj) {
+    return { ok: false, erro: "Confira o CNPJ.", erros: { cnpj: "Agência precisa de CNPJ." } };
+  }
+  const { error } = await c.rpc("admin_mudar_tipo_e_cnpj", { p_usuario: usuarioId, p_tipo: tipo, p_cnpj: cnpj || null });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270320120000_admin_tipo_e_cnpj.sql primeiro." };
+    const msg = mensagemDeErro(error);
+    const campo = error.hint === "cnpj" ? "cnpj" : error.hint === "tipo" ? "tipo" : null;
+    return { ok: false, erro: msg, erros: campo ? { [campo]: msg } : undefined };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: `Pronto: a conta agora é ${rotuloConta(tipo)}${cnpj ? "" : ", sem CNPJ"}. Se tinha o selo de verificado, ele saiu: ligue de novo abaixo se for o caso.`,
+  };
 }
 
 export async function excluirContaPeloAdmin(usuarioId: string, motivo: string): Promise<Resultado> {

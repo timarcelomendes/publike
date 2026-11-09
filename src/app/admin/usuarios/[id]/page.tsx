@@ -2,6 +2,7 @@ import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
 import { BotaoAutomacoes, BotaoCopiloto, BotaoPaginaDeVagas, BotaoTestes, BotaoVideo } from "@/components/admin/copiloto";
 import { NOME_RECURSO } from "@/lib/recursos-pagos";
+import { FormTipoDaConta } from "@/components/admin/tipo-da-conta";
 import { FormNomeDaConta } from "@/components/admin/nome-da-conta";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -343,6 +344,14 @@ async function Conteudo({
           }
         >
           <FormNomeDaConta usuarioId={u.id} nome={u.perfil.nome} />
+          {u.perfil.tipo !== "pessoa" && (
+            <FormTipoDaConta
+              key={`${u.perfil.tipo}:${u.perfil.cnpj ?? ""}`}
+              usuarioId={u.id}
+              tipo={u.perfil.tipo}
+              cnpj={u.perfil.cnpj}
+            />
+          )}
           <dl className="flex flex-col gap-3">
             <Dado rotulo="Onde">{formatarLugar(u.perfil.bairro, u.perfil.cidade)}</Dado>
             <Dado rotulo="No Publike desde">{formatarDataCurta(u.perfil.criado_em)}</Dado>

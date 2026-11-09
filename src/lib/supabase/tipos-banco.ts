@@ -1611,6 +1611,8 @@ export type Database = {
         }[];
       };
       admin_corrigir_nome: { Args: { p_usuario: string; p_nome: string }; Returns: string };
+      /** o admin muda o tipo da conta e o CNPJ (migração 20270320120000) */
+      admin_mudar_tipo_e_cnpj: { Args: { p_usuario: string; p_tipo: string; p_cnpj: string | null }; Returns: Json };
       admin_avaliacoes_modelos: {
         Args: Record<string, never>;
         Returns: {
