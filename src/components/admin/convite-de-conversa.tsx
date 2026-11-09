@@ -1,10 +1,12 @@
 "use client";
 
-import { Mail } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { LoaderCircle, Mail, Video } from "lucide-react";
+import { useEffect, useId, useState, useTransition } from "react";
+import { criarReuniaoDaConversa } from "@/lib/acoes/zoom";
 import { BotaoCopiar } from "@/components/painel/pagina-de-vagas";
 import { classesBotao } from "@/components/ui/botao";
-import { Campo, classesEntrada, Seletor } from "@/components/ui/campo";
+import { Botao } from "@/components/ui/botao";
+import { Campo, classesEntrada, MensagemErro, Seletor } from "@/components/ui/campo";
 
 // Agendar uma conversa com um prospect (Admin › E-mails › Agendar conversa). O convite sai pela agenda do e-mail
 // profissional (Titan): aqui só se montam os textos. A pessoa preenche nome, e-mail, dia e hora; copia o título e a
@@ -43,38 +45,77 @@ function horaCurta(hora: string) {
   return m && m !== "00" ? `${Number(h)}h${m}` : `${Number(h)}h`;
 }
 
+/**
+ * O link da reunião, mesmo quando a pessoa cola o convite inteiro que o Zoom gera ("Marcelo está convidando você…
+ * Ingressar na reunião Zoom https://… ID da reunião: 734 999 8883 Senha: gCs0ip"): o link, o ID e a senha, cada um no
+ * seu lugar.
+ */
+export function lerReuniao(texto: string) {
+  const url = texto.match(/https?:\/\/[^\s<>"']+/)?.[0]?.replace(/[.,;)]+$/, "") ?? "";
+  const zoom = /zoom\.us\//i.test(url);
+  const doLink = url.match(/\/j\/(\d{9,11})/)?.[1] ?? "";
+  const idEscrito = texto.match(/(?:ID da reuni[aã]o|Meeting ID)\s*:?\s*([\d ]{9,14}\d)/i)?.[1] ?? "";
+  const numero = (idEscrito || doLink).replace(/\D/g, "");
+  const id =
+    numero.length === 10
+      ? `${numero.slice(0, 3)} ${numero.slice(3, 6)} ${numero.slice(6)}`
+      : numero.length === 11
+        ? `${numero.slice(0, 3)} ${numero.slice(3, 7)} ${numero.slice(7)}`
+        : numero;
+  const senha = texto.match(/(?:Senha|Passcode|Password)\s*:?\s*(\S+)/i)?.[1] ?? "";
+  return { url, zoom, id: zoom ? id : "", senha: zoom ? senha : "" };
+}
+
+/** As linhas da reunião no convite e no e-mail. */
+function linhasDaReuniao(r: ReturnType<typeof lerReuniao>) {
+  if (!r.url) return [];
+  if (!r.zoom) return [`Entrar na conversa: ${r.url}`];
+  return [
+    `Entrar pelo Zoom: ${r.url}`,
+    ...(r.id ? [`ID da reunião: ${r.id}`] : []),
+    ...(r.senha ? [`Senha: ${r.senha}`] : []),
+  ];
+}
+
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? "";
 const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
 
-export function ConviteDeConversa() {
+export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
   const id = useId();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [empresa, setEmpresa] = useState("");
-  const [{ data, hora }, setQuando] = useState(amanhaAs10);
+  // o dia de amanhã só depois de abrir (a data do servidor não vale para a tela)
+  const [{ data, hora }, setQuando] = useState({ data: "", hora: "10:00" });
   const [duracao, setDuracao] = useState("20");
   const [link, setLink] = useState("");
   const [pauta, setPauta] = useState(PAUTA_PADRAO);
   const [assina, setAssina] = useState("Marcelo, do Publike");
+  // a reunião criada agora no Zoom: só desta conversa (não fica guardada para o próximo convite)
+  const [criada, setCriada] = useState<{ url: string; id: string; senha: string; para: string } | null>(null);
+  const [erroZoom, setErroZoom] = useState<string | null>(null);
+  const [criando, iniciar] = useTransition();
 
   // o link da sala, a pauta, a duração e a assinatura ficam neste aparelho para o próximo convite
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a data de hoje, no navegador
+    setQuando((q) => (q.data ? q : amanhaAs10()));
     try {
       const g = JSON.parse(localStorage.getItem(GUARDADO) ?? "null") as Partial<Guardado> | null;
       if (!g) return;
-      /* eslint-disable react-hooks/set-state-in-effect -- lido do navegador depois de montar */
       if (g.link) setLink(g.link);
       if (g.pauta) setPauta(g.pauta);
       if (g.assina) setAssina(g.assina);
       if (g.duracao && DURACOES.includes(g.duracao)) setDuracao(g.duracao);
-      /* eslint-enable react-hooks/set-state-in-effect */
     } catch {}
   }, []);
   useEffect(() => {
     try {
-      localStorage.setItem(GUARDADO, JSON.stringify({ link, pauta, assina, duracao } satisfies Guardado));
+      // a sala fixa (a pessoal do Zoom ou do Meet) fica guardada; a reunião criada para esta conversa, não
+      const salvo = criada ? (JSON.parse(localStorage.getItem(GUARDADO) ?? "{}") as Partial<Guardado>).link ?? "" : link;
+      localStorage.setItem(GUARDADO, JSON.stringify({ link: salvo, pauta, assina, duracao } satisfies Guardado));
     } catch {}
-  }, [link, pauta, assina, duracao]);
+  }, [link, pauta, assina, duracao, criada]);
 
   const pronto = nome.trim().length >= 2 && emailValido(email) && Boolean(data && hora);
   const quem = empresa.trim() || nome.trim();
@@ -84,16 +125,18 @@ export function ConviteDeConversa() {
     .split("\n")
     .map((l) => l.replace(/^[-•*\s]+/, "").trim())
     .filter(Boolean);
-  const linhaDoLink = link.trim() ? `Link da conversa: ${link.trim()}` : "O link da conversa vai neste convite.";
+  const horario = `${data}T${hora}/${duracao}`;
+  const reuniao = criada ? { url: criada.url, id: criada.id, senha: criada.senha, zoom: true } : lerReuniao(link);
+  const daReuniao = linhasDaReuniao(reuniao);
 
   const titulo = `Publike + ${quem}: conversa de ${duracao} min`;
   const descricao = [
     `Oi, ${primeiroNome(nome)}!`,
     "",
-    `Uma conversa rápida para ver como o Publike ajuda ${empresa.trim() ? `a ${empresa.trim()}` : "você"} a contratar.`,
+    // sem o nome da empresa na frase: "a Grupo…" ou "o Loja…" saem errados (o nome já está no título)
+    "Uma conversa rápida para ver como o Publike pode ajudar vocês a contratar.",
     ...(itens.length ? ["", "O que vamos ver:", ...itens.map((i) => `- ${i}`)] : []),
-    "",
-    linhaDoLink,
+    ...(daReuniao.length ? ["", ...daReuniao] : []),
     "",
     "Se o horário não der, é só responder este convite com outro.",
     "",
@@ -105,13 +148,28 @@ export function ConviteDeConversa() {
     `Oi, ${primeiroNome(nome)}, tudo bem?`,
     "",
     `Obrigado pelo interesse no Publike. Mandei o convite para a nossa conversa de ${duracao} minutos na ${dia}, às ${as} (horário de Brasília).`,
-    ...(link.trim() ? ["", `Link da conversa: ${link.trim()}`] : []),
+    ...(daReuniao.length ? ["", ...daReuniao] : []),
     "",
     "Se outro horário for melhor, me responda com duas opções que eu ajusto.",
     "",
     "Abraço,",
     assina.trim(),
   ].join("\n");
+
+  function criarNoZoom() {
+    setErroZoom(null);
+    iniciar(async () => {
+      const r = await criarReuniaoDaConversa({
+        titulo,
+        inicio: `${data}T${hora}`,
+        minutos: Number(duracao),
+        pauta: itens.join("\n"),
+      });
+      if (!r.ok) return setErroZoom(r.erro);
+      setCriada({ ...r.reuniao, para: horario });
+      setLink(r.reuniao.url);
+    });
+  }
 
   const mailto = `mailto:${encodeURIComponent(email.trim())}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
 
@@ -181,21 +239,68 @@ export function ConviteDeConversa() {
             </Seletor>
           </Campo>
         </div>
-        <Campo
-          rotulo="Link da conversa"
-          nome={`${id}-link`}
-          opcional
-          ajuda="O link do Google Meet ou do Zoom. A agenda da Titan não cria a sala; fica guardado para o próximo convite."
-        >
-          <input
-            id={`${id}-link`}
-            type="url"
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-            placeholder="https://meet.google.com/…"
-            className={classesEntrada}
-          />
-        </Campo>
+        {criada ? (
+          <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3">
+            <p className="flex items-center gap-2 text-label">
+              <Video aria-hidden className="size-4 shrink-0 text-cerrado" />
+              Reunião criada no Zoom
+            </p>
+            <p className="text-body-sm break-all text-ink-muted">
+              ID {criada.id}
+              {criada.senha && <> · senha {criada.senha}</>}
+            </p>
+            {criada.para !== horario && (
+              <MensagemErro>Você mudou o dia, a hora ou a duração: crie a reunião de novo para o novo horário.</MensagemErro>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {criada.para !== horario && (
+                <Botao tamanho="sm" variante="secundario" onClick={criarNoZoom} disabled={criando}>
+                  {criando ? <LoaderCircle aria-hidden className="animate-spin" /> : <Video aria-hidden />}
+                  Criar de novo
+                </Botao>
+              )}
+              <Botao
+                tamanho="sm"
+                variante="fantasma"
+                onClick={() => {
+                  setCriada(null);
+                  setLink("");
+                }}
+              >
+                Usar outro link
+              </Botao>
+            </div>
+          </div>
+        ) : (
+          <>
+            {zoom && (
+              <div className="flex flex-col gap-1.5">
+                <Botao variante="secundario" onClick={criarNoZoom} disabled={criando || !data || !hora}>
+                  {criando ? <LoaderCircle aria-hidden className="animate-spin" /> : <Video aria-hidden />}
+                  {criando ? "Criando no Zoom…" : "Criar reunião no Zoom"}
+                </Botao>
+                <p className="text-body-sm text-ink-muted">
+                  Uma reunião só desta conversa, no dia e na hora escolhidos, com sala de espera.
+                </p>
+                {erroZoom && <MensagemErro>{erroZoom}</MensagemErro>}
+              </div>
+            )}
+            <Campo
+              rotulo={zoom ? "Ou cole o link da sala" : "Link da conversa"}
+              nome={`${id}-link`}
+              opcional
+              ajuda="O link do Meet ou do Zoom, ou o convite inteiro que o Zoom gera: o link, o ID e a senha vão para o lugar certo. A sala fica guardada para o próximo convite."
+            >
+              <input
+                id={`${id}-link`}
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="https://us05web.zoom.us/j/…"
+                className={classesEntrada}
+              />
+            </Campo>
+          </>
+        )}
         <details className="rounded-md border border-line bg-surface-100 px-3 py-2">
           <summary className="min-h-9 cursor-pointer content-center text-label">Pauta e assinatura</summary>
           <div className="mt-2 flex flex-col gap-3 pb-1">
