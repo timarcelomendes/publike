@@ -100,7 +100,8 @@ export function Filtros({
   link,
 }: {
   rotulo: string;
-  opcoes: { valor: string; nome: string }[];
+  /** `numero`: quantos há nessa opção, mais claro que o nome */
+  opcoes: { valor: string; nome: string; numero?: number }[];
   atual: string;
   link: (valor: string) => string;
 }) {
@@ -114,11 +115,16 @@ export function Filtros({
             href={link(o.valor)}
             scroll={false}
             aria-current={ativo ? "page" : undefined}
-            className={`inline-flex min-h-10 shrink-0 items-center rounded-pill border px-3.5 text-label transition-colors ${
+            className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-label transition-colors ${
               ativo ? "border-ink bg-ink text-surface-100" : "border-line bg-surface-200 text-ink hover:bg-surface-300"
             }`}
           >
             {o.nome}
+            {o.numero !== undefined && (
+              <span className={`font-normal tabular-nums ${ativo ? "text-surface-100/75" : "text-ink-muted"}`}>
+                {formatarNumero(o.numero)}
+              </span>
+            )}
           </Link>
         );
       })}

@@ -2,9 +2,9 @@ import { Heart, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { Filtros, linkCom, Numero, Secao } from "@/components/admin/ui";
+import { Busca, Filtros, linkCom, Numero, Secao } from "@/components/admin/ui";
 import { Aviso, Vazio } from "@/components/ui/basicos";
 import {
   curtidasDaModeracao,
@@ -72,6 +72,9 @@ const COR: Record<CurtidaAdmin["situacao"], string> = {
   dispensada: "bg-line-strong",
   desfeito: "bg-line-strong",
 };
+// Os filtros (08/11/2026): cada linha com o nome dela; o número de cada opção já conta os outros filtros escolhidos
+// (o que aparece ao clicar); opção com 0 some; a linha "Depois do match" só aparece quando faz sentido; busca por
+// nome ou anúncio; e "Limpar filtros" com o "Mostrando X de Y".
 const FILTROS = [
   { valor: "todas", nome: "Todas" },
   ...(Object.keys(SITUACOES) as CurtidaAdmin["situacao"][]).map((s) => ({
@@ -80,23 +83,79 @@ const FILTROS = [
   })),
 ];
 
-/** O chat dos matches (migração 20270314120000): só conta mensagem escrita por gente. */
+/** Depois do match: o chat (migração 20270314120000; só conta mensagem escrita por gente) e os botões de contato. */
 const FILTROS_CHAT = [
   { valor: "todos", nome: "Todos" },
   { valor: "conversaram", nome: "Os dois escreveram" },
   { valor: "empresa_nao", nome: "Quem publicou não escreveu" },
   { valor: "pessoa_nao", nome: "A pessoa não respondeu" },
+  { valor: "contato", nome: "Tocaram no contato" },
 ];
-type FiltroChat = "todos" | "conversaram" | "empresa_nao" | "pessoa_nao";
+type FiltroChat = "todos" | "conversaram" | "empresa_nao" | "pessoa_nao" | "contato";
+
+// o "agora não" da pessoa não é contato
+const chamou = (t: CurtidaAdmin["contatos"]["pessoa"]) => Boolean(t && t.canal !== "descartou");
+const tocouNoContato = (x: CurtidaAdmin) => chamou(x.contatos.empresa) || chamou(x.contatos.pessoa);
+
 const noFiltroDoChat = (x: CurtidaAdmin, f: FiltroChat) => {
   if (f === "todos") return true;
   if (x.situacao !== "match") return false;
+  if (f === "contato") return tocouNoContato(x);
   const empresa = Boolean(x.chat?.empresaEscreveuEm);
   const pessoa = Boolean(x.chat?.pessoaRespondeuEm || x.chat?.pessoaEscreveuEm);
   if (f === "conversaram") return empresa && pessoa;
   if (f === "empresa_nao") return !empresa;
   return empresa && !x.chat?.pessoaRespondeuEm;
 };
+
+const FILTROS_RESPOSTA = [
+  { valor: "todas", nome: "Todas" },
+  { valor: "pessoa", nome: "Por uma pessoa" },
+  { valor: "automatica", nome: "Automática" },
+];
+const FILTROS_TIPO = [
+  { valor: "todos", nome: "Todos" },
+  { valor: "vaga", nome: "Vagas" },
+  { valor: "servico", nome: "Serviços" },
+];
+
+/** O que está escolhido (o período não entra: ele decide o que é lido do banco). */
+type Escolha = { situacao: string; chat: FiltroChat; resposta: string; tipo: string; q: string };
+
+const semAcento = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+
+/** Se a curtida passa nos filtros escolhidos. */
+function passa(x: CurtidaAdmin, e: Escolha) {
+  if (e.situacao !== "todas" && x.situacao !== e.situacao) return false;
+  if (!noFiltroDoChat(x, e.chat)) return false;
+  if (e.resposta !== "todas") {
+    const por = x.respondida_por ? POR[x.respondida_por] : null;
+    if (!por || por.humano !== (e.resposta === "pessoa")) return false;
+  }
+  if (e.tipo !== "todos") {
+    if (!x.anuncio || (x.anuncio.tipo === "servico") !== (e.tipo === "servico")) return false;
+  }
+  if (e.q) {
+    const onde = semAcento([x.curtiu?.nome, x.anuncio?.titulo, x.publicou?.nome].filter(Boolean).join(" "));
+    if (!semAcento(e.q).split(/\s+/).every((p) => onde.includes(p))) return false;
+  }
+  return true;
+}
+
+/** Uma linha de filtros com o nome na frente (no celular, em cima). */
+function LinhaDeFiltro({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+      <span className="text-label text-ink-muted sm:w-36 sm:shrink-0">{rotulo}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
 
 const DIA = 24 * 60 * 60 * 1000;
 const HORA = 60 * 60 * 1000;
@@ -164,10 +223,15 @@ async function Conteudo({
   const sp = await searchParams;
   const pedido = primeiro(sp.periodo) ?? "7";
   const periodo = PERIODOS.some((p) => p.valor === pedido) ? pedido : "7";
-  const pedidaSituacao = primeiro(sp.situacao) ?? "todas";
-  const situacao = FILTROS.some((f) => f.valor === pedidaSituacao)
-    ? pedidaSituacao
-    : "todas";
+  const valido = (lista: { valor: string }[], v: string | undefined, padrao: string) =>
+    v && lista.some((o) => o.valor === v) ? v : padrao;
+  const escolha: Escolha = {
+    situacao: valido(FILTROS, primeiro(sp.situacao), "todas"),
+    chat: valido(FILTROS_CHAT, primeiro(sp.chat), "todos") as FiltroChat,
+    resposta: valido(FILTROS_RESPOSTA, primeiro(sp.resposta), "todas"),
+    tipo: valido(FILTROS_TIPO, primeiro(sp.tipo), "todos"),
+    q: (primeiro(sp.q) ?? "").trim().slice(0, 80),
+  };
   const agora = await agoraDaRequisicao();
   const desde =
     periodo === "tudo"
@@ -186,25 +250,42 @@ async function Conteudo({
     );
   }
   const todas = lidas;
-  const pedidoChat = primeiro(sp.chat) ?? "todos";
-  const chat = (FILTROS_CHAT.some((f) => f.valor === pedidoChat) ? pedidoChat : "todos") as FiltroChat;
-  const lista = (situacao === "todas" ? todas : todas.filter((x) => x.situacao === situacao)).filter((x) =>
-    noFiltroDoChat(x, chat),
-  );
+  const lista = todas.filter((x) => passa(x, escolha));
+
+  // o link com uma mudança (os padrões não vão para o endereço)
+  const PADRAO: Record<string, string> = { periodo: "7", situacao: "todas", chat: "todos", resposta: "todas", tipo: "todos", q: "" };
+  const link = (mudanca: Partial<Record<keyof Escolha | "periodo", string>>) => {
+    const tudo: Record<string, string> = { periodo, ...escolha, ...mudanca };
+    // escolher outra situação que não o match tira o filtro do depois do match
+    if (mudanca.situacao && mudanca.situacao !== "match" && mudanca.situacao !== "todas") tudo.chat = "todos";
+    return linkCom(
+      "/admin/curtidas",
+      {},
+      Object.fromEntries(Object.entries(tudo).map(([k, v]) => [k, v === PADRAO[k] ? null : v])),
+    );
+  };
+  /** As opções de um filtro com o número de cada uma (contando os outros filtros); a com 0 some, menos a escolhida. */
+  const opcoes = (chave: keyof Escolha, todasAsOpcoes: { valor: string; nome: string }[], padrao: string) =>
+    todasAsOpcoes
+      .map((o) => ({ ...o, numero: todas.filter((x) => passa(x, { ...escolha, [chave]: o.valor })).length }))
+      .filter((o) => o.valor === padrao || o.numero > 0 || o.valor === escolha[chave]);
+  const filtrando =
+    escolha.situacao !== "todas" ||
+    escolha.chat !== "todos" ||
+    escolha.resposta !== "todas" ||
+    escolha.tipo !== "todos" ||
+    Boolean(escolha.q);
+  const mostraChat = escolha.situacao === "todas" || escolha.situacao === "match";
+
   // o chat dos matches: quem escreveu de verdade (sem as mensagens automáticas)
   const matches = todas.filter((x) => x.situacao === "match");
   const empresaEscreveu = matches.filter((x) => x.chat?.empresaEscreveuEm).length;
   const pessoaRespondeu = matches.filter((x) => x.chat?.empresaEscreveuEm && x.chat?.pessoaRespondeuEm).length;
   const conversaram = matches.filter((x) => noFiltroDoChat(x, "conversaram")).length;
-  const conta = (s: CurtidaAdmin["situacao"]) =>
-    todas.filter((x) => x.situacao === s).length;
+  const conta = (s: CurtidaAdmin["situacao"]) => todas.filter((x) => x.situacao === s).length;
   const respondidas = todas.filter((x) => x.situacao !== "pendente").length;
   // os matches em que alguém tocou no WhatsApp, no telefone ou no e-mail
-  // (o "agora não" da pessoa não é contato)
-  const chamou = (t: CurtidaAdmin["contatos"]["pessoa"]) => Boolean(t && t.canal !== "descartou");
-  const comContato = todas.filter(
-    (x) => x.situacao === "match" && (chamou(x.contatos.empresa) || chamou(x.contatos.pessoa)),
-  ).length;
+  const comContato = matches.filter(tocouNoContato).length;
   const humanas = todas.filter((x) => x.respondida_por && POR[x.respondida_por]?.humano).length;
   const automaticas = todas.filter((x) => x.respondida_por && POR[x.respondida_por] && !POR[x.respondida_por].humano).length;
   // os números do alto: o tempo até a resposta e os anúncios que já saíram do ar
@@ -219,6 +300,9 @@ async function Conteudo({
       : periodo === "hoje"
         ? " hoje"
         : ` em ${periodo} dias`;
+  // os números do alto também filtram (só o período fica)
+  const so = (m: Partial<Escolha>) =>
+    link({ situacao: "todas", chat: "todos", resposta: "todas", tipo: "todos", q: "", ...m });
 
   return (
     <div className="flex flex-col gap-6">
@@ -226,71 +310,68 @@ async function Conteudo({
         titulo="Curtidas"
         descricao="Quem curtiu, o anúncio, quem publicou e como ficou, da mais nova para a mais antiga. Curtir uma vaga é se candidatar; o match é quando quem publicou aceita (ou na hora, no contato direto)."
       >
-        <div className="flex flex-col gap-3">
-          <Filtros
-            rotulo="Período"
-            opcoes={PERIODOS}
-            atual={periodo}
-            link={(v) =>
-              linkCom(
-                "/admin/curtidas",
-                {},
-                {
-                  periodo: v === "7" ? null : v,
-                  situacao: situacao === "todas" ? null : situacao,
-                  chat: chat === "todos" ? null : chat,
-                },
-              )
-            }
-          />
-          <Filtros
-            rotulo="Como ficou"
-            opcoes={FILTROS.map((f) => ({
-              ...f,
-              nome:
-                f.valor === "todas"
-                  ? `Todas ${todas.length}`
-                  : `${f.nome} ${conta(f.valor as CurtidaAdmin["situacao"])}`,
-            }))}
-            atual={situacao}
-            link={(v) =>
-              linkCom(
-                "/admin/curtidas",
-                {},
-                {
-                  periodo: periodo === "7" ? null : periodo,
-                  situacao: v === "todas" ? null : v,
-                  chat: chat === "todos" ? null : chat,
-                },
-              )
-            }
-          />
-          <Filtros
-            rotulo="Chat do match"
-            opcoes={FILTROS_CHAT.map((f) => ({
-              ...f,
-              nome:
-                f.valor === "todos"
-                  ? f.nome
-                  : `${f.nome} ${matches.filter((x) => noFiltroDoChat(x, f.valor as FiltroChat)).length}`,
-            }))}
-            atual={chat}
-            link={(v) =>
-              linkCom(
-                "/admin/curtidas",
-                {},
-                {
-                  periodo: periodo === "7" ? null : periodo,
-                  situacao: situacao === "todas" ? null : situacao,
-                  chat: v === "todos" ? null : v,
-                },
-              )
-            }
-          />
+        <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4">
+          <LinhaDeFiltro rotulo="Período">
+            <Filtros rotulo="Período" opcoes={PERIODOS} atual={periodo} link={(v) => link({ periodo: v })} />
+          </LinhaDeFiltro>
+          <LinhaDeFiltro rotulo="Como ficou">
+            <Filtros
+              rotulo="Como ficou"
+              opcoes={opcoes("situacao", FILTROS, "todas")}
+              atual={escolha.situacao}
+              link={(v) => link({ situacao: v })}
+            />
+          </LinhaDeFiltro>
+          {mostraChat && matches.length > 0 && (
+            <LinhaDeFiltro rotulo="Depois do match">
+              <Filtros
+                rotulo="Depois do match"
+                opcoes={opcoes("chat", FILTROS_CHAT, "todos").map((o) => (o.valor === "todos" ? { ...o, numero: undefined } : o))}
+                atual={escolha.chat}
+                link={(v) => link({ chat: v })}
+              />
+            </LinhaDeFiltro>
+          )}
+          <LinhaDeFiltro rotulo="Quem respondeu">
+            <Filtros
+              rotulo="Quem respondeu"
+              opcoes={opcoes("resposta", FILTROS_RESPOSTA, "todas")}
+              atual={escolha.resposta}
+              link={(v) => link({ resposta: v })}
+            />
+          </LinhaDeFiltro>
+          <LinhaDeFiltro rotulo="Anúncio">
+            <Filtros
+              rotulo="Anúncio"
+              opcoes={opcoes("tipo", FILTROS_TIPO, "todos")}
+              atual={escolha.tipo}
+              link={(v) => link({ tipo: v })}
+            />
+          </LinhaDeFiltro>
+          <LinhaDeFiltro rotulo="Buscar">
+            <Busca
+              acao="/admin/curtidas"
+              valor={escolha.q}
+              placeholder="Nome de quem curtiu, de quem publicou ou o anúncio"
+              ocultos={{
+                periodo: periodo === "7" ? null : periodo,
+                situacao: escolha.situacao === "todas" ? null : escolha.situacao,
+                chat: escolha.chat === "todos" ? null : escolha.chat,
+                resposta: escolha.resposta === "todas" ? null : escolha.resposta,
+                tipo: escolha.tipo === "todos" ? null : escolha.tipo,
+              }}
+            />
+          </LinhaDeFiltro>
         </div>
         {todas.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Numero rotulo="Curtidas" valor={todas.length} icone={Heart} detalhe={`${conta("pendente")} esperando o aceite`} />
+            <Numero
+              rotulo="Curtidas"
+              valor={todas.length}
+              icone={Heart}
+              detalhe={`${conta("pendente")} esperando o aceite`}
+              href={so({})}
+            />
             <Numero
               rotulo="Respondidas"
               valor={respondidas}
@@ -298,14 +379,21 @@ async function Conteudo({
                 tempoAteResponder !== null ? `, em geral em ${duracao(tempoAteResponder)}` : ""
               }`}
             />
-            <Numero rotulo="Matches" valor={conta("match")} />
+            <Numero rotulo="Matches" valor={conta("match")} href={so({ situacao: "match" })} />
             <Numero
               rotulo="Conversaram no chat"
               valor={conversaram}
               icone={MessageCircle}
               detalhe={`de ${plural(matches.length, "match", "matches")}: quem publicou escreveu em ${empresaEscreveu}, a pessoa respondeu em ${pessoaRespondeu}`}
+              href={so({ situacao: "match", chat: "conversaram" })}
             />
-            <Numero rotulo="Com contato" valor={comContato} detalhe="WhatsApp, telefone ou e-mail tocado" icone={MessageCircle} />
+            <Numero
+              rotulo="Com contato"
+              valor={comContato}
+              detalhe="WhatsApp, telefone ou e-mail tocado"
+              icone={MessageCircle}
+              href={so({ situacao: "match", chat: "contato" })}
+            />
             <Numero
               rotulo="Saíram do ar"
               valor={fechados}
@@ -329,9 +417,19 @@ async function Conteudo({
               ` No chat (só mensagem escrita por gente): quem publicou escreveu em ${formatarNumero(empresaEscreveu)} e a pessoa respondeu em ${formatarNumero(pessoaRespondeu)}.`}
           </p>
         )}
+        {filtrando && (
+          <p className="flex flex-wrap items-baseline gap-x-3 text-body-sm">
+            <span className="font-semibold">
+              Mostrando {formatarNumero(lista.length)} de {plural(todas.length, "curtida", "curtidas")}
+            </span>
+            <Link href={so({})} scroll={false} className="underline underline-offset-2 hover:text-terra-text">
+              Limpar filtros
+            </Link>
+          </p>
+        )}
         {lista.length === 0 ? (
           <Vazio icone={Heart} titulo="Nenhuma curtida aqui">
-            Troque o período ou o filtro.
+            {filtrando ? "Nenhuma curtida com esses filtros. Tire um deles ou troque o período." : "Troque o período."}
           </Vazio>
         ) : (
           <Tabela linhas={lista} agora={agora} admin={admin} />
