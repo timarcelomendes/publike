@@ -23,10 +23,26 @@ export async function enviarPdf(pdf: File, usuarioId: string) {
       .storage.from("curriculos")
       .upload(caminho, pdf, { contentType: "application/pdf", upsert: false });
     if (!error) return caminho;
-    // a internet caiu no meio do envio ("Failed to fetch"): não é um "não" do Storage, vale tentar de novo
-    if (tentativa >= 3 || !ehFalhaDeInternet(error)) throw error;
+    if (!ehFalhaDeInternet(error)) throw error;
+    // "Failed to fetch" logo de cara: o Storage pode estar bloqueado na rede da pessoa (o resto do site funciona).
+    // Passa pelo próprio site antes de tentar de novo (09/11/2026)
+    const peloSite = await enviarPdfPeloSite(pdf).catch(() => null);
+    if (peloSite) return peloSite;
+    // a internet caiu no meio do envio: não é um "não" do Storage, vale tentar de novo
+    if (tentativa >= 3) throw error;
     await new Promise((r) => setTimeout(r, 1500 * tentativa));
   }
+}
+
+/** O PDF pelo publike.org (/api/curriculo/pdf), quando o Storage não responde no navegador. null: não deu. */
+async function enviarPdfPeloSite(pdf: File): Promise<string | null> {
+  if (pdf.size > 4 * 1024 * 1024) return null;
+  const dados = new FormData();
+  dados.set("pdf", pdf);
+  const resposta = await fetch("/api/curriculo/pdf", { method: "POST", body: dados });
+  if (!resposta.ok) return null;
+  const { caminho } = (await resposta.json()) as { caminho?: string };
+  return typeof caminho === "string" && caminho ? caminho : null;
 }
 
 /** A foto do celular, menor (JPG de até `lado` px): a leitura aceita até 1 MB ao todo. */

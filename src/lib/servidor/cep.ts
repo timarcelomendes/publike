@@ -441,8 +441,30 @@ export async function enderecoDeQualquerCep(valor: string): Promise<EnderecoDoCe
 export async function centroDoBairro(bairro: string, cidade: string): Promise<Ponto | null> {
   const b = texto(bairro);
   if (!b || !cidadeDaLista(cidade)) return null;
-  const r = await procurarNoMapa({ q: `${b}, ${cidade}, Goiás, Brasil` });
-  return r ? { lat: Math.round(r.ponto.lat * 1e4) / 1e4, lng: Math.round(r.ponto.lng * 1e4) / 1e4 } : null;
+  // o nome como a pessoa escreveu e, sem achar, os jeitos mais simples dele (09/11/2026: "Jardim das Américas 2ª
+  // Etapa" e "Alto da Glória e Setor Bueno" travavam a vaga, que não saía)
+  for (const nome of variantesDoBairro(b)) {
+    const r = await procurarNoMapa({ q: `${nome}, ${cidade}, Goiás, Brasil` });
+    if (r) return { lat: Math.round(r.ponto.lat * 1e4) / 1e4, lng: Math.round(r.ponto.lng * 1e4) / 1e4 };
+  }
+  return null;
+}
+
+/**
+ * Os jeitos de procurar um bairro no mapa, do mais fiel ao mais simples: o nome escrito; sem a etapa, a fase ou a
+ * extensão ("Jardim das Américas 2ª Etapa" → "Jardim das Américas"); com dois bairros ("Alto da Glória e Setor
+ * Bueno", "Centro / Setor Oeste"), o primeiro. No máximo 3 consultas.
+ */
+export function variantesDoBairro(bairro: string): string[] {
+  const limpo = bairro.replace(/\s+/g, " ").trim();
+  const semEtapa = limpo
+    .replace(/[,(-]?\s*\b\d+\s*(ª|a|º|o)?\s*(etapa|fase|parte|extens[aã]o|setor)\b\.?\)?/gi, "")
+    .replace(/[,(-]?\s*\b(etapa|fase|parte)\s*\d+\b\)?/gi, "")
+    .replace(/[,(-]?\s*\b(extens[aã]o|continua[cç][aã]o|complemento)\b\)?/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const primeiro = (semEtapa || limpo).split(/\s+e\s+|\s*[\/,;]\s*/i)[0]?.trim() ?? "";
+  return [...new Set([limpo, semEtapa, primeiro].filter((x) => x.length >= 3))].slice(0, 3);
 }
 
 // ------------------------------------------------------------------ do ponto ao endereço

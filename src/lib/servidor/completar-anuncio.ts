@@ -63,14 +63,11 @@ export async function completarAnuncio(formData: FormData, provisorio = false): 
     const centro = provisorio
       ? centroDaCidade(cidadeDoPublike(texto("cidade")) ?? PRACA_PADRAO.cidade)
       : await centroDoBairro(texto("bairro"), texto("cidade") || PRACA_PADRAO.cidade).catch(() => null);
-    if (centro) {
-      formData.set("lat", String(centro.lat));
-      formData.set("lng", String(centro.lng));
-    } else {
-      const aviso = `Não achamos “${texto("bairro")}” no mapa. Confira o nome do bairro ou marque o lugar no mapa.`;
-      trocas.lat = aviso;
-      trocas.lng = aviso;
-    }
+    // sem achar o bairro no mapa (nem pelos jeitos mais simples do nome), a vaga sai no centro da cidade, com o
+    // bairro escrito como está: antes, o aviso travava a publicação, e a pessoa tentava 3, 4 vezes e desistia
+    const ponto = centro ?? centroDaCidade(cidadeDoPublike(texto("cidade")) ?? PRACA_PADRAO.cidade);
+    formData.set("lat", String(ponto.lat));
+    formData.set("lng", String(ponto.lng));
   } else if (!texto("lat") || !texto("lng")) {
     trocas.lat = null;
     trocas.lng = null;
