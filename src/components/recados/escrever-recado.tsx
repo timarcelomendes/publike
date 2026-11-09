@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Briefcase, FileUser, ImagePlus, Quote, Smile, Wrench, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
@@ -21,6 +23,8 @@ const MAXIMO = 280;
 type Modelo = "livre" | "procuro" | "dica" | "contratando" | "bastidores";
 const MODELOS_PESSOA: { valor: Modelo; nome: string; comeco: string }[] = [
   { valor: "procuro", nome: "Procuro trabalho", comeco: "Procuro trabalho de " },
+  // pessoa também contrata (diarista, ajudante): o post leva a vaga que ela já publicou
+  { valor: "contratando", nome: "Quero contratar", comeco: "Estou contratando! " },
   { valor: "dica", nome: "Dica para quem procura", comeco: "Dica para quem procura trabalho: " },
   { valor: "livre", nome: "Do meu jeito", comeco: "" },
 ];
@@ -234,7 +238,10 @@ export function EscreverRecado({
   function publicar() {
     if (!texto.trim()) return setAviso({ ok: false, texto: "Escreva o post." });
     if (modelo === "contratando" && (!citado || citado.tipo !== "vaga"))
-      return setAviso({ ok: false, texto: "Escolha uma das suas vagas no ar para o “Estamos contratando”." });
+      return setAviso({
+        ok: false,
+        texto: "Escolha a vaga que você já publicou (em “Citar uma vaga”, nas suas vagas). Ainda não publicou? Toque em Publicar.",
+      });
     if (modelo === "bastidores" && !foto)
       return setAviso({ ok: false, texto: "Ponha uma foto da equipe, do lugar ou do dia a dia no “Bastidores”." });
     const dados = new FormData();
@@ -280,8 +287,9 @@ export function EscreverRecado({
     enviandoFoto;
   // já tem vaga ou currículo no recado: os dois botões ficam apagados (um de cada vez)
   const temCitacao = Boolean(citado) || Boolean(curriculo);
-  const botaoIcone =
-    "grid size-10 shrink-0 cursor-pointer place-items-center rounded-pill text-ink-muted hover:bg-surface-300 hover:text-ink";
+  // as ações do post: pequenas, com ícone e nome
+  const ACAO =
+    "inline-flex min-h-9 items-center gap-1.5 rounded-pill px-2.5 text-[13px] leading-[18px] font-semibold text-ink-muted transition-colors hover:bg-surface-300 hover:text-ink";
   // o botão com a dica em cima (a dica fica fora do botão para não ser cortada)
   const comDica = "group relative shrink-0";
 
@@ -312,78 +320,33 @@ export function EscreverRecado({
           placeholder={contratando ? "Conte quem você está contratando…" : "Conte o que você procura…"}
           className="block min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2.5 py-2 text-[16px] leading-6 text-ink outline-none placeholder:text-ink-muted"
         />
-        <span className={`${comDica} hidden sm:block`}>
-          <button type="button" aria-expanded={carinhas} onClick={() => setCarinhas((c) => !c)} className={botaoIcone}>
-            <Smile aria-hidden className="size-5" />
-            <span className="sr-only">Pôr carinhas no post</span>
-          </button>
-          <Dica texto="Carinhas" />
-        </span>
-        <span className={comDica}>
-          <label
-            className={`${botaoIcone} ${enviandoFoto ? "opacity-60" : ""} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus`}
-          >
-            <ImagePlus aria-hidden className="size-5" />
-            <span className="sr-only">{enviandoFoto ? "Enviando a foto" : "Pôr foto no post"}</span>
-            <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
-          </label>
-          <Dica texto="Pôr uma foto" />
-        </span>
-        <span className={comDica}>
-          <button
-            type="button"
-            aria-expanded={citando}
-            onClick={() => {
-              setCitando((c) => !c);
-              setCompartilhando(false);
-            }}
-            disabled={temCitacao}
-            className={`${botaoIcone} disabled:opacity-50`}
-          >
-            <Quote aria-hidden className="size-5" />
-            <span className="sr-only">Citar uma vaga ou serviço</span>
-          </button>
-          <Dica texto="Citar uma vaga ou serviço" />
-        </span>
-        <span className={comDica}>
-          <button
-            type="button"
-            aria-expanded={compartilhando}
-            onClick={() => {
-              setCompartilhando((c) => !c);
-              setCitando(false);
-            }}
-            disabled={temCitacao}
-            className={`${botaoIcone} disabled:opacity-50`}
-          >
-            <FileUser aria-hidden className="size-5" />
-            <span className="sr-only">Compartilhar o currículo de alguém</span>
-          </button>
-          <Dica texto="Compartilhar o currículo de alguém" lado="direita" />
-        </span>
       </div>
 
-      {/* o tipo do post: o texto começa pronto; "do meu jeito" é o campo livre */}
-      {aberto && (
-        <div role="group" aria-label="Tipo do post" className="mt-1.5 flex flex-wrap gap-1.5 px-1">
-          {modelos.map((m) => (
-            <button
-              key={m.valor}
-              type="button"
-              aria-pressed={modelo === m.valor}
-              onClick={() => escolherModelo(m)}
-              className={`min-h-8 rounded-pill px-3 text-[13px] font-semibold transition-colors ${
-                modelo === m.valor ? "bg-ink text-surface-100" : "bg-surface-300 text-ink hover:bg-line"
-              }`}
-            >
-              {m.nome}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* o tipo do post, sempre à vista (a novidade de 09/11/2026): o texto começa pronto; "do meu jeito" é o livre */}
+      <div role="group" aria-label="Tipo do post" className="mt-1.5 flex flex-wrap gap-1.5 px-1">
+        {modelos.map((m) => (
+          <button
+            key={m.valor}
+            type="button"
+            aria-pressed={modelo === m.valor}
+            onClick={() => escolherModelo(m)}
+            className={`min-h-8 rounded-pill px-3 text-[13px] font-semibold transition-colors ${
+              modelo === m.valor ? "bg-ink text-surface-100" : "bg-surface-300 text-ink hover:bg-line"
+            }`}
+          >
+            {m.nome}
+          </button>
+        ))}
+      </div>
       {aberto && modelo === "bastidores" && !foto && (
         <p className="mt-1.5 px-2 text-body-sm text-ink-muted">
-          Ponha uma foto da equipe, do lugar ou do dia a dia (no ícone da imagem). Se quiser, cite uma vaga.
+          Ponha uma foto da equipe, do lugar ou do dia a dia (em Foto). Se quiser, cite uma vaga.
+        </p>
+      )}
+      {modelo === "contratando" && !citado && (
+        <p className="mt-1.5 px-2 text-body-sm text-ink-muted">
+          Escolha a vaga que você já publicou: ela aparece no post com o Curtir, e quem se interessar se candidata ali
+          mesmo.
         </p>
       )}
       {aberto && modelo === "procuro" && !curriculo && (
@@ -393,20 +356,44 @@ export function EscreverRecado({
         </p>
       )}
 
-      {/* no celular, as carinhas ficam numa linha embaixo do campo (o teclado também tem) */}
-      {aberto && (
-        <div className="mt-1 flex justify-end sm:hidden">
-          <button
-            type="button"
-            aria-expanded={carinhas}
-            onClick={() => setCarinhas((c) => !c)}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-pill px-2.5 text-label text-ink-muted hover:bg-surface-300"
-          >
-            <Smile aria-hidden className="size-4" />
-            Carinhas
-          </button>
-        </div>
-      )}
+      {/* o que dá para pôr no post, com o nome à vista (antes eram só ícones) */}
+      <div role="group" aria-label="Pôr no post" className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 px-0.5">
+        <button type="button" aria-expanded={carinhas} onClick={() => setCarinhas((c) => !c)} className={ACAO}>
+          <Smile aria-hidden className="size-4" />
+          Carinhas
+        </button>
+        <label className={`${ACAO} cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${enviandoFoto ? "opacity-60" : ""}`}>
+          <ImagePlus aria-hidden className="size-4" />
+          {enviandoFoto ? "Enviando a foto…" : "Foto"}
+          <input type="file" accept="image/*" onChange={escolherFoto} disabled={enviandoFoto} className="sr-only" />
+        </label>
+        <button
+          type="button"
+          aria-expanded={citando}
+          onClick={() => {
+            setCitando((c) => !c);
+            setCompartilhando(false);
+          }}
+          disabled={temCitacao}
+          className={`${ACAO} disabled:opacity-50`}
+        >
+          <Quote aria-hidden className="size-4" />
+          Citar uma vaga
+        </button>
+        <button
+          type="button"
+          aria-expanded={compartilhando}
+          onClick={() => {
+            setCompartilhando((c) => !c);
+            setCitando(false);
+          }}
+          disabled={temCitacao}
+          className={`${ACAO} disabled:opacity-50`}
+        >
+          <FileUser aria-hidden className="size-4" />
+          Currículo
+        </button>
+      </div>
 
       {carinhas && (
         <div
@@ -611,10 +598,15 @@ export function EscreverRecado({
           )}
           {pronto && lista.length === 0 && (
             <p className="mt-1.5 px-1 text-body-sm text-ink-muted">
-              {minhas && !termo
-                ? "Você não tem vaga nem serviço no ar agora."
-                : minhas
-                  ? "Nenhuma vaga sua com esse nome."
+              {minhas && !termo ? (
+                <>
+                  Você não tem vaga nem serviço no ar agora.{" "}
+                  <Link href="/publicar" className="font-semibold text-ink underline underline-offset-2">
+                    Publicar uma vaga
+                  </Link>
+                </>
+              ) : minhas
+                ? "Nenhuma vaga sua com esse nome."
                   : "Nada no ar com esse cargo ou empresa."}
             </p>
           )}

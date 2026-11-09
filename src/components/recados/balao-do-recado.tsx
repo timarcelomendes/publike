@@ -163,7 +163,7 @@ export function BalaoDoRecado({
 
       {r.modelo && SELO_DO_MODELO[r.modelo] && (
         <p className="mt-2 inline-flex items-center rounded-pill bg-surface-100 px-2.5 py-0.5 text-[13px] leading-[18px] font-semibold text-ink">
-          {SELO_DO_MODELO[r.modelo]}
+          {r.modelo === "contratando" && r.autor_tipo === "pessoa" ? "Contratando" : SELO_DO_MODELO[r.modelo]}
         </p>
       )}
       {r.status === "revisao" && (
