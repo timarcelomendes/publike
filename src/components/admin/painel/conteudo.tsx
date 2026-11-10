@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { AbaDoPainel } from "./abas";
-import { FormGasto } from "./form-gasto";
+import { FormGasto, TabelaGastos } from "./form-gasto";
 import { VisaoGeral } from "./visao-geral";
 import { FunilDoPublicar } from "@/components/admin/funil-publicar";
 import { FunilDoVisitante, PortasDeEntrada } from "@/components/admin/funil-visitante";
@@ -379,48 +379,19 @@ function AbaDinheiro({ d }: { d: DadosDoPainel }) {
       </Secao>
       <Secao
         titulo="Gasto com anúncios"
-        descricao="Digite o gasto de cada mês e canal. Com o nome igual ao da origem das contas (Admin › Campanhas), o Painel mostra o custo por conta nova. Zero apaga."
+        descricao="Digite o gasto de cada mês e canal. Com o nome igual ao da origem das contas (Admin › Campanhas), o Painel mostra o custo por conta nova. Cada linha tem Editar e Remover."
       >
         <FormGasto mesAtual={mesAtual} canais={d.canais ?? []} />
-        {x && x.gastos.length > 0 && (
-          <div className="-mx-1 overflow-x-auto px-1">
-            <table className="w-full min-w-[28rem] text-body-sm tabular-nums">
-              <thead>
-                <tr className="border-b border-line text-left text-ink-muted">
-                  <th scope="col" className="py-2 pr-2 font-normal">
-                    Mês
-                  </th>
-                  <th scope="col" className="py-2 pr-2 font-normal">
-                    Canal
-                  </th>
-                  <th scope="col" className="py-2 text-right font-normal">
-                    Gasto
-                  </th>
-                  <th scope="col" className="py-2 text-right font-normal">
-                    Contas novas
-                  </th>
-                  <th scope="col" className="py-2 text-right font-normal">
-                    Por conta
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {x.gastos.map((g) => {
-                  const mes = g.mes.slice(0, 7);
-                  const contas = d.custos?.contasPorOrigemNoMes[`${mes}|${g.canal}`] ?? 0;
-                  return (
-                    <tr key={`${g.mes}-${g.canal}`} className="border-b border-line last:border-0">
-                      <td className="py-2 pr-2">{`${mes.slice(5)}/${mes.slice(0, 4)}`}</td>
-                      <td className="py-2 pr-2">{g.canal}</td>
-                      <td className="py-2 text-right">{brl(g.valor)}</td>
-                      <td className="py-2 text-right">{formatarNumero(contas)}</td>
-                      <td className="py-2 text-right">{contas ? brl(Number(g.valor) / contas) : "—"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        {/* sempre montada: o Desfazer do último que saiu continua na tela */}
+        {x && (
+          <TabelaGastos
+            linhas={x.gastos.map((g) => ({
+              mes: g.mes.slice(0, 10),
+              canal: g.canal,
+              valor: Number(g.valor),
+              contas: d.custos?.contasPorOrigemNoMes[`${g.mes.slice(0, 7)}|${g.canal}`] ?? 0,
+            }))}
+          />
         )}
       </Secao>
     </>

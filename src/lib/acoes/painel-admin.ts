@@ -72,3 +72,35 @@ export async function ligarNumerosDaSemana(_anterior: EstadoForm, formData: Form
   refresh();
   return { ok: true, mensagem: ligado ? "Ligado: sai na próxima segunda, às 8h." : "Desligado." };
 }
+
+/**
+ * Edita uma linha do gasto com anúncios (Painel › Dinheiro): o valor e o nome do canal. Com o canal trocado, grava o
+ * novo e apaga o antigo. Valor zero remove.
+ */
+export async function editarGastoDivulgacao(dados: {
+  mes: string;
+  canalAntigo: string;
+  canal: string;
+  valor: number;
+}): Promise<EstadoForm> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const canal = dados.canal.trim();
+  if (!/^\d{4}-\d{2}-01$/.test(dados.mes)) return { ok: false, erro: "Pedido inválido." };
+  if (canal.length < 2 || canal.length > 40) return { ok: false, erro: "Escreva o canal (de 2 a 40 letras)." };
+  if (!Number.isFinite(dados.valor) || dados.valor < 0 || dados.valor > 1_000_000) {
+    return { ok: false, erro: "Confira o valor." };
+  }
+  const { error } = await c.rpc("admin_salvar_gasto", { p_mes: dados.mes, p_canal: canal, p_valor: dados.valor });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  if (dados.canalAntigo !== canal && dados.valor > 0) {
+    const { error: e2 } = await c.rpc("admin_salvar_gasto", {
+      p_mes: dados.mes,
+      p_canal: dados.canalAntigo,
+      p_valor: 0,
+    });
+    if (e2) return { ok: false, erro: mensagemDeErro(e2) };
+  }
+  refresh();
+  return { ok: true, mensagem: dados.valor ? "Gasto salvo." : "Gasto removido." };
+}
