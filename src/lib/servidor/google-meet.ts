@@ -33,12 +33,21 @@ async function tokenDoGoogle() {
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
   });
-  if (!r.ok)
+  if (!r.ok) {
+    // o motivo do Google (nunca as chaves): invalid_client = a chave secreta não confere com o ID; invalid_grant = o
+    // refresh token não vale (gerado com outra chave, revogado ou o código no lugar dele)
+    const motivo = await r
+      .json()
+      .then((d: { error?: unknown }) => String(d?.error ?? ""))
+      .catch(() => "");
     throw new Error(
-      r.status === 400 || r.status === 401
-        ? "O Google não aceitou o acesso à agenda. Gere o token de novo (ele vence se o app do Google estiver em teste)."
-        : `O Google não respondeu (código ${r.status}).`,
+      motivo === "invalid_client"
+        ? "O Google recusou a chave secreta (invalid_client): confira se GOOGLE_MEET_CLIENT_SECRET é a chave atual do cliente, a mesma do ID."
+        : motivo === "invalid_grant"
+          ? "O Google recusou o refresh token (invalid_grant): gere outro no OAuth Playground com a chave secreta atual e ponha em GOOGLE_MEET_REFRESH_TOKEN."
+          : `O Google não aceitou o acesso à agenda (código ${r.status}${motivo ? `: ${motivo}` : ""}).`,
     );
+  }
   const d = (await r.json()) as { access_token?: string; expires_in?: number };
   if (!d.access_token) throw new Error("O Google não devolveu o acesso.");
   token = { valor: d.access_token, ate: Date.now() + (d.expires_in ?? 3600) * 1000 };
