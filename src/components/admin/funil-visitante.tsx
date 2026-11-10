@@ -24,13 +24,13 @@ const CONVITES = [
 
 const pct = (n: number, de: number) => (de > 0 ? `${Math.round((100 * n) / de)}%` : "–");
 
-export function FunilDoVisitante({ funil }: { funil: Map<string, number> }) {
+export function FunilDoVisitante({ funil, dias = 7 }: { funil: Map<string, number>; dias?: number }) {
   const n = (k: string) => funil.get(k) ?? 0;
   const home = n("home");
   const contas = n("contas");
   return (
     <Secao
-      titulo="Quem chega sem conta (7 dias)"
+      titulo={`Quem chega sem conta (${dias} dias)`}
       descricao="A home de quem não entrou: quantas vezes abriu e os toques nela (só a contagem, sem saber quem). E as contas criadas nesses dias, com quantas já curtiram ou publicaram."
     >
       <div className="grid gap-6 sm:grid-cols-2">
@@ -104,11 +104,11 @@ const NOMES_DAS_PORTAS: Record<string, string> = {
  * Por onde chegam (claude/plano-visitante-que-entra.md): a primeira página do dia de quem chegou sem conta, por
  * grupo, com quantos ficaram (navegaram mais de 2 minutos ou abriram outra página) e quantos entraram na conta.
  */
-export function PortasDeEntrada({ portas }: { portas: PortaDeEntrada[] }) {
+export function PortasDeEntrada({ portas, dias = 7 }: { portas: PortaDeEntrada[]; dias?: number }) {
   const total = portas.reduce((s, p) => s + p.visitantes, 0);
   return (
     <Secao
-      titulo="Por onde chegam (7 dias)"
+      titulo={`Por onde chegam (${dias} dias)`}
       descricao="A primeira página de quem chegou sem conta. Ficaram: navegaram mais de 2 minutos ou abriram outra página. Entraram: abriram a conta (nova ou antiga) no mesmo dia. Só a contagem, sem saber quem."
     >
       {total === 0 ? (

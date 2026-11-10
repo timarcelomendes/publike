@@ -858,6 +858,9 @@ export type Database = {
           chat_ativo: boolean;
           atualizado_em: string;
           atualizado_por: string | null;
+          /** 20270403120000: as metas do Painel do admin e o e-mail de segunda (sem a migração, não vêm) */
+          metas?: Json;
+          numeros_semana?: boolean;
         };
         Insert: SemTabela;
         Update: { ia_noticias?: boolean };
@@ -3657,6 +3660,21 @@ export type Database = {
         Returns: Json;
       };
       admin_pagamentos: { Args: Record<string, never>; Returns: Json };
+      admin_indicadores: { Args: { p_dias?: number; p_com_equipe?: boolean }; Returns: Json };
+      admin_oferta_procura: { Args: { p_dias?: number; p_com_equipe?: boolean }; Returns: Json };
+      admin_numeros_do_menu: { Args: Record<string, never>; Returns: Json };
+      admin_historico_indicadores: { Args: { p_semanas?: number }; Returns: Json };
+      admin_dinheiro: { Args: { p_dias?: number }; Returns: Json };
+      admin_salvar_gasto: { Args: { p_mes: string; p_canal: string; p_valor: number }; Returns: undefined };
+      admin_salvar_meta: { Args: { p_indicador: string; p_valor: number | null }; Returns: undefined };
+      admin_ligar_numeros_semana: { Args: { p_ligado: boolean }; Returns: undefined };
+      servidor_numeros_da_semana: { Args: { p_chave: string }; Returns: Json };
+      servidor_mandar_numeros_da_semana: {
+        Args: { p_chave: string; p_semana: string; p_dados: Json };
+        Returns: number;
+      };
+      servidor_guardar_indicadores: { Args: { p_chave: string }; Returns: number };
+      painel_no_site_indicadores: { Args: { p_dias?: number }; Returns: Json };
       admin_pagamentos_situacao: { Args: Record<string, never>; Returns: Json };
       meu_endereco_de_cobranca: { Args: Record<string, never>; Returns: Json };
       servidor_pagamento_endereco: {

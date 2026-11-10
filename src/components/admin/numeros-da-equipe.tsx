@@ -1,12 +1,10 @@
 import { Eye } from "lucide-react";
 import { notFound } from "next/navigation";
-import {
-  deHoje,
-  NumerosDoPainel,
-  NumerosDoPainelEmbaixo,
-  type Encerramento,
-} from "./numeros-do-painel";
-import { MetricasDeProduto } from "./metricas-produto";
+import { deHoje, type Encerramento } from "./numeros-do-painel";
+import { AbasDoPainel, type AbaDoPainel } from "./painel/abas";
+import { ConteudoDaAba } from "./painel/conteudo";
+import { Periodo, paramsDoFiltro } from "./painel/periodo";
+import type { FiltroDoPainel, Historico, Indicadores, OfertaProcura } from "@/lib/admin/painel";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import type { AcessosSite, MetricasProduto, NumerosPainel, PresencaSite, TempoNasPaginas } from "@/lib/admin/dados";
 import { MODO_DEMO } from "@/lib/config";
@@ -35,12 +33,28 @@ type PainelNoSite = {
  * Os números do Publike para a equipe. `moderador`: quem modera e ainda não tem o Painel liberado vê o aviso de como
  * pedir (na aba Números da equipe); os outros sem acesso recebem a página "não encontrada".
  */
-export async function NumerosDaEquipe({ moderador = false }: { moderador?: boolean }) {
+export async function NumerosDaEquipe({
+  moderador = false,
+  aba = "visao",
+  filtro = { dias: 7, comEquipe: false },
+}: {
+  moderador?: boolean;
+  aba?: AbaDoPainel;
+  filtro?: FiltroDoPainel;
+}) {
   if (MODO_DEMO) notFound();
   // sem login (ou sem liberação), a página "não existe": ninguém de fora fica sabendo dela
   if (!(await obterUsuario())) notFound();
   const supabase = await criarClienteServidor();
-  const [{ data, error }, agora] = await Promise.all([supabase.rpc("painel_no_site"), agoraDaRequisicao()]);
+  const [{ data, error }, extra, agora] = await Promise.all([
+    supabase.rpc("painel_no_site"),
+    // os indicadores do período (migração 20270331120000; sem ela, a Visão geral segue com as métricas)
+    supabase.rpc("painel_no_site_indicadores", { p_dias: filtro.dias }),
+    agoraDaRequisicao(),
+  ]);
+  const novos = extra.error
+    ? null
+    : (extra.data as unknown as { indicadores: Indicadores; oferta: OfertaProcura; historico?: Historico });
   if (error || !data) {
     if (!moderador) notFound();
     return (
@@ -64,9 +78,33 @@ export async function NumerosDaEquipe({ moderador = false }: { moderador?: boole
       <p className="-mt-3 text-body-sm text-ink-muted">
         Os mesmos números do Painel do admin, sem nomes e sem botões. Atualizam cada vez que você abre a página.
       </p>
-      <NumerosDoPainel n={p.resumo} hoje={hoje} acessos={p.acessos} presenca={p.presenca ?? null} links={false} />
-      {p.metricas && <MetricasDeProduto m={p.metricas} tempo={p.tempo ?? null} />}
-      <NumerosDoPainelEmbaixo n={p.resumo} encerramentos={p.encerramentos} />
+      <AbasDoPainel ativa={aba} base="/admin/numeros" admin={false} manter={paramsDoFiltro(filtro)} />
+      {(aba === "visao" || aba === "vagas") && (
+        <Periodo
+          base="/admin/numeros"
+          aba={aba}
+          filtro={filtro}
+          indicadores={novos?.indicadores}
+          mostrarEquipe={false}
+        />
+      )}
+      <ConteudoDaAba
+        aba={aba}
+        admin={false}
+        d={{
+          n: p.resumo,
+          hoje,
+          acessos: p.acessos,
+          presenca: p.presenca ?? null,
+          metricas: p.metricas ?? null,
+          tempo: p.tempo ?? null,
+          encerramentos: p.encerramentos,
+          filtro,
+          indicadores: novos?.indicadores ?? null,
+          oferta: novos?.oferta ?? null,
+          historico: novos?.historico ?? null,
+        }}
+      />
     </div>
   );
 }

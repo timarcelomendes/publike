@@ -3,7 +3,8 @@ import { NOME_RECURSO, type RecursoPago } from "@/lib/recursos-pagos";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { FormConfigIA, type UsoDaFuncionalidade } from "@/components/admin/ia";
+import { FormConfigIA } from "@/components/admin/ia";
+import { usoPorFuncionalidade } from "@/lib/admin/custo-ia";
 import { Secao, Situacao } from "@/components/admin/ui";
 import { Selo } from "@/components/ui/basicos";
 import {
@@ -16,8 +17,7 @@ import {
 } from "@/lib/admin/dados";
 import { CATEGORIAS_IA } from "@/lib/admin/textos";
 import { tempoRelativo } from "@/lib/formato";
-import { MODELOS_IA, modeloDaIA, PRECO_BUSCA, temChave } from "@/lib/ia/openai";
-import { MODELO_TRANSCRICAO, PRECO_TRANSCRICAO } from "@/lib/ia/transcrever";
+import { MODELOS_IA, modeloDaIA, temChave } from "@/lib/ia/openai";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -32,28 +32,6 @@ const CUSTOS = [
   { tarefa: "Melhorar um texto", luna: "US$ 0,35 a cada mil pedidos", sol: "cerca de US$ 10 a cada mil pedidos" },
   { tarefa: "Resumo do painel", luna: "menos de US$ 0,001 cada", sol: "cerca de US$ 0,01 cada" },
 ];
-
-/**
- * As chamadas e o custo estimado de cada funcionalidade nos últimos 30 dias (null: sem a migração): os tokens pelo
- * preço do modelo e as buscas na internet, cobradas à parte.
- */
-function usoPorFuncionalidade(uso: Awaited<ReturnType<typeof usoDaIA>>): UsoDaFuncionalidade | null {
-  if (!uso) return null;
-  const porFuncionalidade: UsoDaFuncionalidade = {};
-  for (const u of uso) {
-    const preco =
-      u.modelo === MODELO_TRANSCRICAO ? PRECO_TRANSCRICAO : (MODELOS_IA.find((m) => m.id === u.modelo)?.preco ?? null);
-    const atual = porFuncionalidade[u.funcionalidade] ?? { chamadas: 0, falhas: 0, buscas: 0, dolares: 0, semPreco: false };
-    atual.chamadas += Number(u.chamadas);
-    atual.falhas += Number(u.falhas);
-    atual.buscas += Number(u.buscas ?? 0);
-    atual.dolares += Number(u.buscas ?? 0) * PRECO_BUSCA;
-    if (preco) atual.dolares += (Number(u.tokens_entrada) * preco.entrada + Number(u.tokens_saida) * preco.saida) / 1e6;
-    else if (Number(u.chamadas)) atual.semPreco = true;
-    porFuncionalidade[u.funcionalidade] = atual;
-  }
-  return porFuncionalidade;
-}
 
 export default function IA() {
   return (

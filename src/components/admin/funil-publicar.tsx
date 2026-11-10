@@ -5,7 +5,7 @@ import { Secao } from "./ui";
  * O funil do /publicar em passos, no painel do admin: quantas vezes cada passo abriu nos últimos 30 dias e
  * quantas vagas saíram (o passo 6). A barra é a parte do passo 1; a queda mostra onde desistem.
  */
-export function FunilDoPublicar({ funil }: { funil: Map<number, number> }) {
+export function FunilDoPublicar({ funil, dias = 30 }: { funil: Map<number, number>; dias?: number }) {
   const linhas = [
     ...PASSOS_PUBLICAR.map((p) => ({ passo: p.numero as number, nome: `${p.numero}. ${p.nome}` })),
     { passo: 6, nome: "Publicou" },
@@ -14,7 +14,7 @@ export function FunilDoPublicar({ funil }: { funil: Map<number, number> }) {
   return (
     <Secao
       titulo="Publicar vaga, passo a passo"
-      descricao="Nos últimos 30 dias: quantas vezes cada passo abriu e quantas vagas saíram. Só a contagem do dia, sem saber quem."
+      descricao={`Nos últimos ${dias} dias: quantas vezes cada passo abriu e quantas vagas saíram. Só a contagem do dia, sem saber quem.`}
     >
       {inicio === 0 ? (
         <p className="text-body-sm text-ink-muted">Ninguém abriu o Publicar nesse tempo.</p>

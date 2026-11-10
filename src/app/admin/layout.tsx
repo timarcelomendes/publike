@@ -6,7 +6,7 @@ import { AbasAdmin, MenuAdmin, SeloAdmin, type ModoAdmin } from "@/components/ad
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Aviso, Container, Logo } from "@/components/ui/basicos";
 import { telasNoSite } from "@/lib/servidor/telas-do-admin";
-import { numerosDoPainel } from "@/lib/admin/dados";
+import { numerosDoMenu } from "@/lib/admin/painel";
 import { adminSemCookie, ehAdminLocal, exigirAdminLocal } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = {
@@ -63,13 +63,10 @@ async function ConteudoComModo({ children }: { children: ReactNode }) {
 
 /** O menu com os números do que espera a equipe (sem eles se o resumo falhar). */
 async function MenuComNumeros() {
+  // só os 2 números que o menu mostra (admin_numeros_do_menu; sem a migração, do resumo do Painel)
   const c = await exigirAdminLocal().catch(() => null);
-  const n = c ? await numerosDoPainel(c).catch(() => null) : null;
-  return (
-    <MenuAdmin
-      numeros={n ? { "/admin/denuncias": n.denuncias_abertas, "/admin/anuncios": n.ia?.na_fila ?? 0 } : {}}
-    />
-  );
+  const n = c ? await numerosDoMenu(c).catch(() => null) : null;
+  return <MenuAdmin numeros={n ? { "/admin/denuncias": n.denuncias, "/admin/anuncios": n.filaIA } : {}} />;
 }
 
 function Topo({ modo, telas = [] }: { modo: ModoAdmin; telas?: string[] }) {

@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import {
   avisarNoticiasDoDia,
   enviarRetornos,
+  guardarIndicadores,
   lembrarEntrevistas,
   prazosDaEntrevistaVideo,
   lembrarParados,
@@ -26,6 +27,7 @@ import { avisarTalentosQueCombinam } from "@/lib/servidor/talentos-que-combinam"
 import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { regrasComOTempo } from "@/lib/servidor/regras";
 import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
+import { mandarNumerosDaSemana } from "@/lib/servidor/numeros-da-semana";
 
 // A garantia das filas: a tarefa agendada do GitHub (.github/workflows/filas.yml) chama a cada 5 minutos,
 // com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém
@@ -79,6 +81,10 @@ export async function GET(request: Request) {
   const combinam = await comTempo(() => mandarCombinamDaSemana());
   // a partir das 18h: as notícias do dia num aviso só (sino e celular), uma vez por dia
   const noticias = await comTempo(() => avisarNoticiasDoDia());
+  // o Painel do admin: os números de ontem, uma vez por dia (depois das 00:15)
+  const indicadores = await comTempo(() => guardarIndicadores());
+  // segunda, a partir das 8h: os números da semana por e-mail para a equipe (ligado no Painel), uma vez
+  const numerosSemana = await comTempo(() => mandarNumerosDaSemana());
   // os resultados dos testes de vagas fora do ar há 12 meses
   const testes = await comTempo(() => limparTestesAntigos());
   // a função (CBO) das vagas que ainda não têm: as regras do título e, com a IA ligada, a IA (para a faixa de salário)
@@ -122,6 +128,8 @@ export async function GET(request: Request) {
     google.motivo,
     noticias.motivo,
     testes.motivo,
+    indicadores.motivo,
+    numerosSemana.motivo,
     triagem.motivo,
     retornos.motivo,
     vespera.motivo,

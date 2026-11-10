@@ -9,9 +9,9 @@ import { nomeDaPagina } from "@/lib/nomes-das-paginas";
 // e o tempo nas páginas (migração 20261208120000_tempo_na_pagina.sql). Só números. Os gráficos são SVG
 // simples, como os outros do admin, e cada um tem a tabela ao lado (ou escondida para o leitor de tela).
 
-const pct = (n: number, d: number) => (d > 0 ? `${Math.round((100 * n) / d)}%` : "—");
+export const pct = (n: number, d: number) => (d > 0 ? `${Math.round((100 * n) / d)}%` : "—");
 
-function horas(h: number | null | undefined) {
+export function horas(h: number | null | undefined) {
   if (h == null) return "—";
   if (h < 1) return "menos de 1 h";
   if (h < 48) return `${Math.round(h)} h`;
@@ -19,7 +19,7 @@ function horas(h: number | null | undefined) {
 }
 
 /** "12% a mais que a semana anterior"; sem nada nas duas, nada. */
-function variacao(atual: number, antes: number, quando: "semana" | "mes") {
+export function variacao(atual: number, antes: number, quando: "semana" | "mes") {
   const de = quando === "semana" ? "a semana anterior" : "os 30 dias antes";
   if (antes <= 0) return atual > 0 ? (quando === "semana" ? "na semana anterior: 0" : "nos 30 dias antes: 0") : null;
   const v = Math.round(((atual - antes) / antes) * 100);
@@ -27,13 +27,13 @@ function variacao(atual: number, antes: number, quando: "semana" | "mes") {
   return `${Math.abs(v)}% a ${v > 0 ? "mais" : "menos"} que ${de}`;
 }
 
-function diaMes(iso: string) {
+export function diaMes(iso: string) {
   const [, m, d] = iso.split("-");
   return `${d}/${m}`;
 }
 
 /** Um cartão de número: o nome, o valor e uma linha embaixo (o mesmo jeito dos cartões do Painel). */
-function Indicador({
+export function Indicador({
   rotulo,
   valor,
   detalhe,
@@ -55,7 +55,7 @@ function Indicador({
 }
 
 /** Barras das 8 semanas (a última é a semana até hoje), com a tabela para o leitor de tela. */
-function BarrasDaSemana({
+export function BarrasDaSemana({
   titulo,
   semanas,
   valor,
@@ -117,7 +117,7 @@ function BarrasDaSemana({
 }
 
 /** Uma etapa do funil: o número, a parte da primeira etapa e a barra do mesmo tamanho. */
-function Funil({ titulo, etapas }: { titulo: string; etapas: { nome: string; n: number }[] }) {
+export function Funil({ titulo, etapas }: { titulo: string; etapas: { nome: string; n: number }[] }) {
   const base = etapas[0]?.n ?? 0;
   return (
     <div className="flex flex-col gap-3">
@@ -152,7 +152,7 @@ function Funil({ titulo, etapas }: { titulo: string; etapas: { nome: string; n: 
 const tomDaCelula = (p: number) => `color-mix(in oklab, var(--pk-ink) ${Math.round(4 + (34 * p) / 100)}%, transparent)`;
 
 /** A tabela de retenção: cada linha é uma semana de cadastro; o tom acompanha o %. */
-function TabelaDeRetencao({ linhas }: { linhas: MetricasProduto["retencao"] }) {
+export function TabelaDeRetencao({ linhas }: { linhas: MetricasProduto["retencao"] }) {
   const comContas = linhas.filter((l) => l.tamanho > 0);
   if (!comContas.length) return <p className="text-body-sm text-ink-muted">Sem contas novas nas últimas 8 semanas.</p>;
   return (
@@ -241,7 +241,7 @@ function duracao(segundos: number | null) {
 const diasEntre = (de: string, ate: string) => Math.round((Date.parse(ate) - Date.parse(de)) / 86_400_000);
 
 /** O tempo nas páginas nos últimos 7 dias: a média, o tempo por pessoa, as saídas rápidas e as páginas. */
-function TempoDasPaginas({ t, hoje }: { t: TempoNasPaginas; hoje: string }) {
+export function TempoDasPaginas({ t, hoje }: { t: TempoNasPaginas; hoje: string }) {
   const s = t.semana;
   const media = s.visitas > 0 ? s.segundos / s.visitas : null;
   const mediaAntes = t.antes.visitas > 0 ? t.antes.segundos / t.antes.visitas : null;
@@ -349,36 +349,22 @@ function TempoDasPaginas({ t, hoje }: { t: TempoNasPaginas; hoje: string }) {
   );
 }
 
-export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: TempoNasPaginas | null }) {
-  const s = m.semanas;
-  const estaSemana = s.at(-1);
-  const semanaAntes = s.at(-2);
-  const a = m.ativos;
-  const at = m.ativacao;
-  const v = m.voltaram;
-  const f = m.funil;
-  const l = m.liquidez;
-  const aderencia = a.mau > 0 && a.dau_media != null ? `${Math.round((100 * a.dau_media) / a.mau)}%` : "—";
-  const pessoasPorVaga = l.vagas_no_ar > 0 ? (a.mau_pessoas / l.vagas_no_ar).toFixed(1).replace(".", ",") : "—";
+/** "Contando desde 27/10": desde quando entrar no site conta como uso (antes, só as ações). */
+function desdeQuando(m: MetricasProduto) {
+  return m.desde ? ` Entrar no site conta desde ${diaMes(m.desde)}; antes, só as ações.` : "";
+}
 
+/** Aba Quem volta: os ativos, a aderência, quem voltou, o churn e a retenção por turma. */
+export function UsoDasContas({ m }: { m: MetricasProduto }) {
+  const a = m.ativos;
+  const v = m.voltaram;
+  const aderencia = a.mau > 0 && a.dau_media != null ? `${Math.round((100 * a.dau_media) / a.mau)}%` : "—";
   return (
     <Secao
-      titulo="Métricas de produto"
-      descricao={
-        <>
-          As mais usadas em produto digital. Conta ativa é a que entrou no site ou fez alguma coisa no dia (curtir,
-          publicar, responder, mandar mensagem, salvar o currículo).
-          {m.desde && ` Entrar no site conta desde ${diaMes(m.desde)}; antes, só as ações.`}
-        </>
-      }
+      titulo="Quem usa e quem volta"
+      descricao={`Conta ativa é a que entrou no site ou fez alguma coisa no dia (curtir, publicar, responder, mandar mensagem, salvar o currículo).${desdeQuando(m)}`}
     >
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Indicador
-          rotulo="Estrela-guia: matches na semana"
-          valor={formatarNumero(estaSemana?.matches ?? 0)}
-          detalhe={variacao(estaSemana?.matches ?? 0, semanaAntes?.matches ?? 0, "semana") ?? undefined}
-          nota="Quem procura e quem contrata se acharam"
-        />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Indicador
           rotulo="Ativos no mês (MAU)"
           valor={formatarNumero(a.mau)}
@@ -400,12 +386,6 @@ export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: Te
           nota="Quanto do mês as contas ativas voltam"
         />
         <Indicador
-          rotulo="Ativação em 7 dias"
-          valor={pct(at.ativadas, at.contas)}
-          detalhe={`Pessoas ${pct(at.pessoas_ativadas, at.pessoas)} · empresas ${pct(at.empresas_ativadas, at.empresas)}`}
-          nota={`Contas de 8 a 37 dias: ${formatarNumero(at.contas)} · mediana de ${horas(at.mediana_horas)}`}
-        />
-        <Indicador
           rotulo="Voltaram em até 7 dias"
           valor={pct(v["7"].voltaram, v["7"].base)}
           detalhe={`No dia seguinte ${pct(v["1"].voltaram, v["1"].base)} · em 30 dias ${pct(v["30"].voltaram, v["30"].base)}`}
@@ -417,20 +397,8 @@ export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: Te
           detalhe={`${formatarNumero(m.churn.sairam)} de ${plural(m.churn.base, "conta", "contas")} pararam`}
           nota="Usavam nos 30 dias antes e não voltaram nestes 30"
         />
-        <Indicador
-          rotulo="Vagas com candidato em 7 dias"
-          valor={pct(l.com_candidato_7d, l.vagas)}
-          detalhe={`O primeiro chega em ${horas(l.mediana_horas_primeiro)} (mediana)`}
-          nota={`Vagas de 8 a 37 dias: ${formatarNumero(l.vagas)}`}
-        />
       </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <BarrasDaSemana titulo="Matches por semana" semanas={s} valor={(x) => x.matches} />
-        <BarrasDaSemana titulo="Contas novas por semana" semanas={s} valor={(x) => x.contas} />
-        <BarrasDaSemana titulo="Ativos por semana" semanas={s} valor={(x) => x.ativos} />
-      </div>
-
+      <BarrasDaSemana titulo="Ativos por semana" semanas={m.semanas} valor={(x) => x.ativos} />
       <div className="flex flex-col gap-2">
         <h3 className="text-label">Retenção por semana de cadastro</h3>
         <p className="text-body-sm text-ink-muted">
@@ -438,11 +406,32 @@ export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: Te
         </p>
         <TabelaDeRetencao linhas={m.retencao} />
       </div>
+    </Secao>
+  );
+}
 
+/** Aba Cadastro: as contas novas por semana, a ativação em 7 dias e os funis das contas novas. */
+export function CadastroEAtivacao({ m }: { m: MetricasProduto }) {
+  const at = m.ativacao;
+  const f = m.funil;
+  return (
+    <Secao
+      titulo="Contas novas e primeiros passos"
+      descricao="Os funis seguem a mesma turma: as contas criadas nos últimos 30 dias e até onde cada uma chegou."
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <BarrasDaSemana titulo="Contas novas por semana" semanas={m.semanas} valor={(x) => x.contas} />
+        <Indicador
+          rotulo="Ativação em 7 dias"
+          valor={pct(at.ativadas, at.contas)}
+          detalhe={`Pessoas ${pct(at.pessoas_ativadas, at.pessoas)} · empresas ${pct(at.empresas_ativadas, at.empresas)}`}
+          nota={`Contas de 8 a 37 dias: ${formatarNumero(at.contas)} · mediana de ${horas(at.mediana_horas)}`}
+        />
+      </div>
       <div className="flex flex-col gap-3">
         <p className="text-body-sm text-ink-muted">
-          Funis das contas criadas nos últimos 30 dias: {formatarNumero(f.contas)} contas,{" "}
-          {formatarNumero(f.contas - f.com_perfil)} sem perfil.{" "}
+          Contas criadas nos últimos 30 dias: {formatarNumero(f.contas)}, {formatarNumero(f.contas - f.com_perfil)} sem
+          perfil.{" "}
           {f.visitas > 0 &&
             `${formatarNumero(f.visitas)} visitas de quem não entrou na conta: ${formatarNumero(
               Math.round((1000 * f.contas) / f.visitas) / 10,
@@ -469,109 +458,122 @@ export function MetricasDeProduto({ m, tempo }: { m: MetricasProduto; tempo?: Te
           />
         </div>
       </div>
-
-      <div className="flex flex-col gap-2">
-        <h3 className="text-label">Liquidez das vagas</h3>
-        <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-3 lg:grid-cols-4">
-          {[
-            ["Candidatos por vaga", l.candidatos_media == null ? "—" : formatarNumero(l.candidatos_media)],
-            ["Curtidas respondidas em 7 dias", pct(l.respondidas_7d, l.curtidas)],
-            ["Tempo de resposta (mediana)", horas(l.mediana_horas_resposta)],
-            ["Curtidas que viraram match", pct(l.matches, l.curtidas)],
-            [
-              "Preenchidas pelo Publike (30 dias)",
-              `${formatarNumero(l.preenchidas_publike)} de ${formatarNumero(l.encerradas_com_motivo)}`,
-            ],
-            ["Vagas no ar", formatarNumero(l.vagas_no_ar)],
-            ["Pessoas ativas por vaga no ar", pessoasPorVaga],
-            ["Mensagens em 7 dias", formatarNumero(m.engajamento.mensagens_7d)],
-            ...(m.crescimento
-              ? [
-                  ["Vagas com 3+ candidatos em 48 h", pct(m.crescimento.com_3_48h, m.crescimento.vagas_48h)],
-                  ["Publicaram de novo (60 dias)", pct(m.crescimento.publicaram_de_novo, m.crescimento.contas_base)],
-                  [
-                    "Voltaram depois do Volte a contratar",
-                    m.crescimento.reativar_avisos
-                      ? `${formatarNumero(m.crescimento.reativar_voltaram)} de ${formatarNumero(m.crescimento.reativar_avisos)}`
-                      : "—",
-                  ],
-                ]
-              : []),
-          ].map(([rotulo, valor]) => (
-            <div key={rotulo} className="flex flex-col">
-              <dt className="text-ink-muted">{rotulo}</dt>
-              <dd className="font-display text-h3">{valor}</dd>
-            </div>
-          ))}
-        </dl>
-        <p className="text-body-sm text-ink-muted">
-          As vagas publicadas e as curtidas feitas de 8 a 37 dias atrás (os 7 dias delas já passaram). Preenchidas: quem
-          encerrou a vaga dizendo &ldquo;Contratei alguém pelo Publike&rdquo;, de todas que disseram o motivo.
-        </p>
-        {m.crescimento && (
-          <p className="text-body-sm text-ink-muted">
-            3+ em 48 h: as vagas publicadas de 3 a 32 dias atrás ({formatarNumero(m.crescimento.com_1_48h)} de{" "}
-            {formatarNumero(m.crescimento.vagas_48h)} tiveram pelo menos 1). Publicaram de novo: das empresas que
-            publicaram de 60 a 150 dias atrás, as que publicaram outra vaga em até 60 dias. Volte a contratar: os avisos
-            dos últimos 90 dias e depois de quantos a empresa publicou em até 14 dias (o aviso recente ainda pode
-            virar).
-          </p>
-        )}
-      </div>
-
-      {tempo && <TempoDasPaginas t={tempo} hoje={m.hoje} />}
-
-      <details className="rounded-md bg-surface-300 p-4 text-body-sm">
-        <summary className="cursor-pointer text-label">O que é cada número</summary>
-        <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-5">
-          <li>
-            <strong>Estrela-guia</strong>: o número que mostra se o Publike entrega o que promete. Aqui, os matches:
-            quem procura e quem contrata se acharam.
-          </li>
-          <li>
-            <strong>DAU, WAU e MAU</strong>: contas ativas no dia, nos últimos 7 dias e nos últimos 30 dias.
-          </li>
-          <li>
-            <strong>Aderência</strong>: o DAU médio dividido pelo MAU. Perto de 20% já é bom para um site que a pessoa
-            usa quando procura ou oferece trabalho.
-          </li>
-          <li>
-            <strong>Ativação</strong>: a conta nova que fez a primeira coisa de valor em até 7 dias. Para quem procura,
-            o currículo ou a primeira curtida; para quem contrata ou presta serviço, o primeiro anúncio.
-          </li>
-          <li>
-            <strong>Retenção</strong>: de quem criou a conta numa semana, a parte que voltou nas semanas seguintes. Os
-            &ldquo;voltaram em até 7 dias&rdquo; contam qualquer uso do dia seguinte ao 7º.
-          </li>
-          <li>
-            <strong>Churn</strong>: de quem usou nos 30 dias antes destes, a parte que não usou mais.
-          </li>
-          <li>
-            <strong>Liquidez</strong>: o quanto o encontro acontece rápido. Vaga sem candidato e curtida sem resposta
-            fazem as duas pontas desistirem.
-          </li>
-          <li>
-            <strong>Mediana</strong>: o valor do meio. Metade levou menos que isso e metade mais, sem ser puxada por um
-            caso muito demorado.
-          </li>
-          <li>
-            <strong>De 8 a 37 dias</strong>: as contas, as vagas e as curtidas que já tiveram os 7 dias para acontecer
-            (a ativação, o primeiro candidato, a resposta).
-          </li>
-          {tempo && (
-            <li>
-              <strong>Tempo nas páginas</strong>: só o tempo com a página na tela e alguém mexendo nela (2 minutos sem
-              tocar, rolar, digitar nem mover o mouse param a conta), até 30 minutos por vez. A média divide o tempo
-              pelas vezes que as páginas foram vistas; o tempo por pessoa divide o tempo de cada dia pelas pessoas que
-              abriram o site no dia. Sem saber quem: o banco guarda só a soma por dia e por página.
-            </li>
-          )}
-          <li>
-            Ficam de fora porque o site não guarda: {tempo ? "sessões" : "tempo no site e sessões"}, NPS (a nota de
-            satisfação, que ainda não perguntamos), receita, CAC e LTV (sem cobrança ainda).
-          </li>
-        </ul>
-      </details>
     </Secao>
+  );
+}
+
+/** Aba Vagas e candidatos: a liquidez (as vagas e as curtidas de 8 a 37 dias atrás) e os matches por semana. */
+export function LiquidezDasVagas({ m }: { m: MetricasProduto }) {
+  const l = m.liquidez;
+  const a = m.ativos;
+  const pessoasPorVaga = l.vagas_no_ar > 0 ? (a.mau_pessoas / l.vagas_no_ar).toFixed(1).replace(".", ",") : "—";
+  return (
+    <Secao
+      titulo="Liquidez das vagas"
+      descricao="O quanto o encontro acontece rápido. Vaga sem candidato e curtida sem resposta fazem as duas pontas desistirem."
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <Indicador
+          rotulo="Vagas com candidato em 7 dias"
+          valor={pct(l.com_candidato_7d, l.vagas)}
+          detalhe={`O primeiro chega em ${horas(l.mediana_horas_primeiro)} (mediana)`}
+          nota={`Vagas de 8 a 37 dias: ${formatarNumero(l.vagas)}`}
+        />
+        <BarrasDaSemana titulo="Matches por semana" semanas={m.semanas} valor={(x) => x.matches} />
+      </div>
+      <dl className="grid grid-cols-2 gap-3 text-body-sm sm:grid-cols-3 lg:grid-cols-4">
+        {[
+          ["Candidatos por vaga", l.candidatos_media == null ? "—" : formatarNumero(l.candidatos_media)],
+          ["Curtidas respondidas em 7 dias", pct(l.respondidas_7d, l.curtidas)],
+          ["Tempo de resposta (mediana)", horas(l.mediana_horas_resposta)],
+          ["Curtidas que viraram match", pct(l.matches, l.curtidas)],
+          [
+            "Preenchidas pelo Publike (30 dias)",
+            `${formatarNumero(l.preenchidas_publike)} de ${formatarNumero(l.encerradas_com_motivo)}`,
+          ],
+          ["Vagas no ar", formatarNumero(l.vagas_no_ar)],
+          ["Pessoas ativas por vaga no ar", pessoasPorVaga],
+          ["Mensagens em 7 dias", formatarNumero(m.engajamento.mensagens_7d)],
+          ...(m.crescimento
+            ? [
+                ["Vagas com 3+ candidatos em 48 h", pct(m.crescimento.com_3_48h, m.crescimento.vagas_48h)],
+                ["Publicaram de novo (60 dias)", pct(m.crescimento.publicaram_de_novo, m.crescimento.contas_base)],
+                [
+                  "Voltaram depois do Volte a contratar",
+                  m.crescimento.reativar_avisos
+                    ? `${formatarNumero(m.crescimento.reativar_voltaram)} de ${formatarNumero(m.crescimento.reativar_avisos)}`
+                    : "—",
+                ],
+              ]
+            : []),
+        ].map(([rotulo, valor]) => (
+          <div key={rotulo} className="flex flex-col">
+            <dt className="text-ink-muted">{rotulo}</dt>
+            <dd className="font-display text-h3">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-body-sm text-ink-muted">
+        As vagas publicadas e as curtidas feitas de 8 a 37 dias atrás (os 7 dias delas já passaram). Preenchidas: quem
+        encerrou a vaga dizendo &ldquo;Contratei alguém pelo Publike&rdquo;, de todas que disseram o motivo.
+      </p>
+      {m.crescimento && (
+        <p className="text-body-sm text-ink-muted">
+          3+ em 48 h: as vagas publicadas de 3 a 32 dias atrás ({formatarNumero(m.crescimento.com_1_48h)} de{" "}
+          {formatarNumero(m.crescimento.vagas_48h)} tiveram pelo menos 1). Publicaram de novo: das empresas que
+          publicaram de 60 a 150 dias atrás, as que publicaram outra vaga em até 60 dias. Volte a contratar: os avisos
+          dos últimos 90 dias e depois de quantos a empresa publicou em até 14 dias (o aviso recente ainda pode virar).
+        </p>
+      )}
+    </Secao>
+  );
+}
+
+/** Aba Uso do site: o tempo nas páginas (últimos 7 dias). */
+export function TempoNoSite({ tempo, hoje }: { tempo: TempoNasPaginas; hoje: string }) {
+  return (
+    <Secao
+      titulo="Tempo nas páginas"
+      descricao="Só o tempo com a página na tela e alguém mexendo nela (2 minutos parado param a conta), até 30 minutos por vez. Sem saber quem."
+    >
+      <TempoDasPaginas t={tempo} hoje={hoje} />
+    </Secao>
+  );
+}
+
+/** O glossário, no fim das abas: cada número em palavras. */
+export function ComoContamos() {
+  return (
+    <details className="rounded-md bg-surface-300 p-4 text-body-sm">
+      <summary className="cursor-pointer text-label">Como os números são contados</summary>
+      <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-5">
+        <li>
+          <strong>DAU, WAU e MAU</strong>: contas ativas no dia, nos últimos 7 dias e nos últimos 30 dias.
+        </li>
+        <li>
+          <strong>Aderência</strong>: o DAU médio dividido pelo MAU. Perto de 20% já é bom para um site que a pessoa usa
+          quando procura ou oferece trabalho.
+        </li>
+        <li>
+          <strong>Ativação</strong>: a conta nova que fez a primeira coisa de valor em até 7 dias. Para quem procura, o
+          currículo ou a primeira curtida; para quem contrata ou presta serviço, o primeiro anúncio.
+        </li>
+        <li>
+          <strong>Retenção</strong>: de quem criou a conta numa semana, a parte que voltou nas semanas seguintes.
+        </li>
+        <li>
+          <strong>Churn</strong>: de quem usou nos 30 dias antes destes, a parte que não usou mais.
+        </li>
+        <li>
+          <strong>Liquidez</strong>: o quanto o encontro acontece rápido.
+        </li>
+        <li>
+          <strong>Mediana</strong>: o valor do meio. Metade levou menos que isso e metade mais.
+        </li>
+        <li>
+          <strong>De 8 a 37 dias</strong>: as contas, as vagas e as curtidas que já tiveram os 7 dias para acontecer.
+        </li>
+      </ul>
+    </details>
   );
 }

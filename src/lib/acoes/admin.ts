@@ -1059,13 +1059,16 @@ export async function gerarResumoIA(): Promise<Resultado> {
   if (!iaConfigurada()) {
     return { ok: false, erro: "Falta a chave da IA no servidor (OPENAI_API_KEY ou ANTHROPIC_API_KEY)." };
   }
-  const [{ data: dados, error }, { data: config }] = await Promise.all([
+  const [{ data: dados, error }, { data: config }, { data: indicadores }] = await Promise.all([
     c.rpc("admin_dados_para_resumo", { p_dias: 7 }),
     c.rpc("admin_config"),
+    // os números da Visão geral (migração 20270331120000; sem ela, o resumo segue só com os de antes)
+    c.rpc("admin_indicadores", { p_dias: 7, p_com_equipe: false }),
   ]);
   if (error) return { ok: false, erro: mensagemDeErro(error) };
   try {
-    const resumo = await escreverResumo(dados, modeloPara(config?.[0], "admin"));
+    const comIndicadores = indicadores ? { ...(dados as object), indicadores_da_semana: indicadores } : dados;
+    const resumo = await escreverResumo(comIndicadores, modeloPara(config?.[0], "admin"));
     const { error: erroSalvar } = await c.rpc("admin_salvar_resumo", {
       p_texto: resumo.texto,
       p_dias: 7,

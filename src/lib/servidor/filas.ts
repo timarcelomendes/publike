@@ -560,6 +560,22 @@ export async function enviarRetornos(): Promise<{ enviados: number; motivo?: str
 }
 
 /**
+ * O Painel do admin: guarda os números de ontem (e os dias que faltarem nas últimas 2 semanas), depois das 00:15
+ * (migração 20270401120000). Sem a migração, nada (e sem `motivo`).
+ */
+export async function guardarIndicadores(): Promise<{ guardados: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { guardados: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_guardar_indicadores", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { guardados: 0 };
+    console.error("Publike: falha ao guardar os números do Painel:", error.message);
+    return { guardados: 0, motivo: "Não foi possível guardar os números de ontem do Painel." };
+  }
+  return { guardados: Number(data ?? 0) };
+}
+
+/**
  * O lembrete na véspera da entrevista, das 18h às 22h (Brasília), para o candidato e para quem marcou (migração
  * 20270102120000). Sem a migração, nada (e sem `motivo`).
  */
