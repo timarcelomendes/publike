@@ -2,6 +2,7 @@ import { Check, CreditCard } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { AvisoDaFaixa } from "@/components/pagamentos/aviso-da-faixa";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo } from "@/components/ui/basicos";
@@ -150,6 +151,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
         )}
       </div>
 
+      <AvisoDaFaixa faixa={faixa} comLink={false} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-body">
           Você tem <strong>{vagas(noAr)} no ar</strong> agora.
@@ -236,7 +239,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
         </h3>
         <ul className="grid gap-x-8 gap-y-2 text-body-sm text-ink-muted md:grid-cols-2">
           <li>Preço de lançamento: quem assina agora mantém o valor enquanto continuar assinando.</li>
-          <li>Publicar nunca trava. Passou da faixa, você recebe o aviso e o plano muda no próximo ciclo.</li>
+          <li>Publicar nunca trava. Passou da faixa, você recebe o aviso e tem 30 dias para mudar de plano.</li>
           <li>Cartão ou Pix. Cancele quando quiser: o que já foi pago vale até o fim.</li>
           <li>Nada pago muda a ordem das vagas ou dos candidatos, e o candidato nunca paga.</li>
         </ul>

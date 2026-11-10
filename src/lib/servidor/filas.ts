@@ -681,8 +681,8 @@ export async function perguntarGarantias(): Promise<{ perguntas: number; motivo?
 }
 
 /**
- * Os planos por faixa (migração 20270407120000): quem passou das vagas no ar da faixa recebe o aviso no sino, uma vez
- * a cada 30 dias por assinatura. Nada trava. Devolve quantas contas foram avisadas.
+ * Os planos por faixa (migrações 20270407120000 e 20270412120000): quem passou das vagas no ar da faixa ganha 30 dias
+ * para mudar de plano, com o aviso no sino ao passar e de novo a 7 dias do fim. Nada trava. Devolve quantos avisos.
  */
 export async function avisarFaixasDosPlanos(): Promise<{ avisadas: number; motivo?: string }> {
   const acesso = acessoFila();

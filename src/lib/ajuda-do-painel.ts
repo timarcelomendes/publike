@@ -334,7 +334,7 @@ const REGRAS: Regra[] = [
     ajuda: {
       titulo: "Assinatura e faturas",
       texto: "O que você assina, a forma de pagamento, as próximas cobranças e as faturas.",
-      dicas: ["Passou da faixa de vagas do plano? O aviso aparece aqui, e nada para de funcionar."],
+      dicas: ["Passou da faixa de vagas do plano? O aviso aparece aqui, com 30 dias para mudar de plano, e nada para de funcionar."],
     },
   },
   {

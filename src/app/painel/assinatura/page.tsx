@@ -2,6 +2,7 @@ import { CreditCard, QrCode, ReceiptText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { AvisoDaFaixa } from "@/components/pagamentos/aviso-da-faixa";
 import { CancelarAssinatura } from "@/components/pagamentos/cancelar-assinatura";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -156,6 +157,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           </Aviso>
         )
       )}
+
+      <AvisoDaFaixa faixa={faixa} />
 
       {valendo.length === 0 ? (
         <Vazio
