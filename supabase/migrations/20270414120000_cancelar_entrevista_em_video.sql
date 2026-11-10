@@ -9,8 +9,10 @@
 alter table public.entrevistas_video drop constraint if exists entrevistas_video_situacao_check;
 alter table public.entrevistas_video add constraint entrevistas_video_situacao_check
   check (situacao in ('pedida', 'respondendo', 'enviada', 'vencida', 'apagada', 'cancelada'));
+-- quando foi cancelado (a ficha mostra a data); pedir de novo limpa
+alter table public.entrevistas_video add column if not exists cancelada_em timestamptz;
 
--- 2. Pedir de novo também o cancelado
+-- 2. Pedir de novo também o cancelado (e o pedido novo limpa a data do cancelamento)
 do $$
 declare
   def text := pg_get_functiondef('privado.video_pedir_um(uuid,uuid,uuid)'::regprocedure);
@@ -19,10 +21,43 @@ begin
     if position($a$v_atual <> 'vencida'$a$ in def) = 0 then
       raise exception 'Não achei o trecho a trocar em privado.video_pedir_um.';
     end if;
-    execute replace(def, $a$v_atual <> 'vencida'$a$, $a$v_atual not in ('vencida', 'cancelada')$a$);
+    def := replace(def, $a$v_atual <> 'vencida'$a$, $a$v_atual not in ('vencida', 'cancelada')$a$);
   end if;
+  if position('cancelada_em = null' in def) = 0 then
+    if position('lembrado_em = null, enviada_em = null' in def) = 0 then
+      raise exception 'Não achei o trecho a trocar em privado.video_pedir_um (cancelada_em).';
+    end if;
+    def := replace(def, 'lembrado_em = null, enviada_em = null', 'lembrado_em = null, cancelada_em = null, enviada_em = null');
+  end if;
+  execute def;
 end
 $$;
+
+-- 2b. A ficha da vaga também lê quando foi cancelado (o retorno muda: a função é recriada)
+drop function if exists public.video_da_vaga(uuid);
+create function public.video_da_vaga(p_anuncio uuid)
+returns table (id uuid, perfil_id uuid, situacao text, pedida_em timestamptz, prazo timestamptz,
+               enviada_em timestamptz, resumo jsonb, videos_apagados boolean, cancelada_em timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  a public.anuncios := privado.minha_vaga_para_video(p_anuncio);
+begin
+  return query
+  select e.id, e.perfil_id,
+         case when e.situacao in ('pedida', 'respondendo') and e.prazo <= now() then 'vencida' else e.situacao end,
+         e.pedida_em, e.prazo, e.enviada_em, e.resumo,
+         e.videos_apagados_em is not null or now() >= privado.video_vence_em(e.id),
+         e.cancelada_em
+    from public.entrevistas_video e
+   where e.anuncio_id = a.id;
+end
+$$;
+revoke execute on function public.video_da_vaga(uuid) from public, anon;
+grant execute on function public.video_da_vaga(uuid) to authenticated, service_role;
 
 -- 3. Cancelar: só quem publicou a vaga, e só o que ainda não foi enviado. Devolve os arquivos gravados até ali
 -- (o servidor apaga do Storage).
@@ -50,7 +85,7 @@ begin
   v_caminhos := array(select r.caminho from public.entrevistas_video_respostas r
                        where r.entrevista_id = e.id and r.caminho is not null);
   delete from public.entrevistas_video_respostas where entrevista_id = e.id;
-  update public.entrevistas_video set situacao = 'cancelada', lembrado_em = null where id = e.id;
+  update public.entrevistas_video set situacao = 'cancelada', cancelada_em = now(), lembrado_em = null where id = e.id;
   select p.nome into v_quem from public.perfis p where p.id = a.autor_id;
   insert into public.notificacoes (destinatario_id, tipo, anuncio_id, ator_id, texto)
   values (e.perfil_id, 'video_pedido', a.id, a.autor_id,

@@ -1588,6 +1588,7 @@ export type Database = {
           enviada_em: string | null;
           resumo: Json | null;
           videos_apagados: boolean;
+          cancelada_em?: string | null;
         }[];
       };
       video_da_entrevista: { Args: { p_id: string }; Returns: Json };

@@ -7,7 +7,7 @@ import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { abrirEntrevistaVideo, cancelarVideo, pedirVideo, refazerIAVideo } from "@/lib/acoes/entrevista-video";
 import { SITUACOES_VIDEO, textoDoTempo, type EntrevistaParaAssistir, type VideoNoQuadro } from "@/lib/entrevista-video";
-import { tempoRelativo } from "@/lib/formato";
+import { formatarDataHora, tempoRelativo } from "@/lib/formato";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 
@@ -131,7 +131,7 @@ export function VideoNaFicha({
             : video.situacao === "vencida"
               ? "o prazo acabou"
               : video.situacao === "cancelada"
-                ? "você cancelou o pedido"
+                ? `você cancelou o pedido${video.cancelada_em ? ` em ${formatarDataHora(video.cancelada_em)}` : ""}`
               : `pedido ${tempoRelativo(video.pedida_em, agora)}`}
         </span>
       </p>

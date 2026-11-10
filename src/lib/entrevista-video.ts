@@ -50,6 +50,8 @@ export type VideoNoQuadro = {
   enviada_em: string | null;
   resumo: ResumoVideo | null;
   videos_apagados: boolean;
+  /** quando quem contrata cancelou o pedido (migração 20270414120000) */
+  cancelada_em: string | null;
 };
 
 export type ResumoVideo = { resumo: string; fortes: string[]; conferir: string[] };

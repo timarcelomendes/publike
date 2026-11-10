@@ -68,6 +68,7 @@ export async function videosDaVaga(anuncioId: string): Promise<Map<string, Video
         enviada_em: v.enviada_em,
         resumo: lerResumoVideo(v.resumo),
         videos_apagados: v.videos_apagados,
+        cancelada_em: v.cancelada_em ?? null,
       },
     ]),
   );
