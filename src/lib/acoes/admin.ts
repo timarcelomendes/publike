@@ -304,6 +304,29 @@ export async function liberarPaginaDeVagas(contaId: string, liberar: boolean): P
   };
 }
 
+/**
+ * O Plano Agência por cortesia (migração 20270408120000): a agência testa o que só ele tem (os finalistas com a
+ * marca, para começar) sem pagar, sem prazo. Tirar não mexe na assinatura paga.
+ */
+export async function liberarPlanoAgencia(contaId: string, liberar: boolean): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(contaId)) return { ok: false, erro: "Pedido inválido." };
+  const { error } = await c.rpc("admin_cortesia_plano_agencia", { p_conta: contaId, p_liberar: liberar });
+  if (error) {
+    if (error.code === "PGRST202")
+      return { ok: false, erro: "Rode a migração 20270408120000_finalistas_com_a_marca.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  refresh();
+  return {
+    ok: true,
+    mensagem: liberar
+      ? "Pronto: essa agência tem o Plano Agência por cortesia, sem prazo. O link dos finalistas já sai com a marca dela."
+      : "A cortesia saiu (a assinatura paga, se houver, continua valendo).",
+  };
+}
+
 /** Libera a Entrevista em vídeo sem prazo (ou tira). Os 15 dias grátis a conta pede sozinha. */
 export async function liberarVideo(contaId: string, liberar: boolean): Promise<Resultado> {
   const c = await clienteAdminOuNulo();

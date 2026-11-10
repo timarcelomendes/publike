@@ -880,6 +880,13 @@ export async function paginaDeVagasDaConta(c: ClienteBanco, contaId: string) {
   return data as { liberada: boolean; pela_equipe: boolean; vagas_publicadas: number; apelido: string | null };
 }
 
+/** O Plano Agência da conta (migração 20270408120000): tem (pago ou cortesia) e a cortesia. Antes da migração, null. */
+export async function planoAgenciaDaConta(c: ClienteBanco, contaId: string) {
+  const { data, error } = await c.rpc("admin_plano_agencia", { p_conta: contaId });
+  if (error || !data) return null;
+  return data as { tem: boolean; cortesia: boolean };
+}
+
 /** Quem pediu os 15 dias grátis (quem quer continuar primeiro). Antes da migração, null. */
 export async function experimentosDosRecursos(c: ClienteBanco) {
   const { data, error } = await c.rpc("admin_experimentos");

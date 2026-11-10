@@ -1,7 +1,14 @@
 "use client";
 
-import { ClipboardCheck, Palette, Sparkles, Video, Workflow } from "lucide-react";
-import { liberarAutomacoes, liberarCopiloto, liberarPaginaDeVagas, liberarTestes, liberarVideo } from "@/lib/acoes/admin";
+import { Building2, ClipboardCheck, Palette, Sparkles, Video, Workflow } from "lucide-react";
+import {
+  liberarAutomacoes,
+  liberarCopiloto,
+  liberarPaginaDeVagas,
+  liberarPlanoAgencia,
+  liberarTestes,
+  liberarVideo,
+} from "@/lib/acoes/admin";
 import { Botao } from "../ui/botao";
 import { useAcao } from "../ui/usar-acao";
 
@@ -94,6 +101,25 @@ export function BotaoPaginaDeVagas({ contaId, liberado }: { contaId: string; lib
       >
         <Palette aria-hidden />
         {liberado ? "Tirar a página de carreiras" : "Liberar a página de carreiras"}
+      </Botao>
+      {mensagem}
+    </div>
+  );
+}
+
+/** O Plano Agência por cortesia (migração 20270408120000), para a primeira agência testar. */
+export function BotaoPlanoAgencia({ contaId, liberado }: { contaId: string; liberado: boolean }) {
+  const { rodar, pendente, mensagem } = useAcao();
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Botao
+        tamanho="sm"
+        variante={liberado ? "secundario" : "primario"}
+        disabled={pendente}
+        onClick={() => rodar(() => liberarPlanoAgencia(contaId, !liberado))}
+      >
+        <Building2 aria-hidden />
+        {liberado ? "Tirar a cortesia do Plano Agência" : "Liberar o Plano Agência (cortesia)"}
       </Botao>
       {mensagem}
     </div>

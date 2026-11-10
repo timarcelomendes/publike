@@ -10,7 +10,8 @@ import { Aviso, Avatar, Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { REGIMES } from "@/lib/constantes";
 import { DECISOES_CLIENTE, lerDadosDoLink, type DadosDoLink, type FinalistaDoLink } from "@/lib/finalistas";
-import { formatarLugar } from "@/lib/formato";
+import { formatarLugar, urlDaFoto } from "@/lib/formato";
+import { corLegivel, corValida } from "@/lib/marca";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { Regime } from "@/lib/tipos";
@@ -36,7 +37,12 @@ export default function FinalistasDoCliente({ params }: PageProps<"/finalistas/[
 async function Conteudo({ token }: { token: string }) {
   if (MODO_DEMO || !/^[0-9a-f]{64}$/.test(token)) return <LinkQueNaoVale />;
   // com o login de quem abriu: a própria agência vê a prévia (sem contar como o cliente abrindo)
-  const { data, error } = await (await criarClienteServidor()).rpc("finalistas_do_link", { p_token: token });
+  const supabase = await criarClienteServidor();
+  const [{ data, error }, { data: marcaDoBanco }] = await Promise.all([
+    supabase.rpc("finalistas_do_link", { p_token: token }),
+    // com o Plano Agência (migração 20270408120000): a cor e a foto da Página de carreiras da agência
+    supabase.rpc("marca_dos_finalistas", { p_token: token }),
+  ]);
   if (error) {
     return (
       <Aviso tipo="alerta" titulo="Não deu para abrir a lista agora">
@@ -64,7 +70,16 @@ async function Conteudo({ token }: { token: string }) {
   const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" })
     .format(new Date(agora))
     .slice(0, 7);
-  return <Lista d={d} token={token} hoje={hoje} />;
+  return <Lista d={d} token={token} hoje={hoje} marca={lerMarca(marcaDoBanco)} />;
+}
+
+/** A marca da agência no link (só com o Plano Agência); o que vier torto, sem marca. */
+function lerMarca(x: unknown): { cor: string | null; foto: string | null } | null {
+  if (!x || typeof x !== "object") return null;
+  const o = x as { cor?: unknown; foto?: unknown };
+  const cor = corValida(o.cor) ? o.cor : null;
+  const foto = typeof o.foto === "string" ? urlDaFoto(o.foto) : null;
+  return cor || foto ? { cor, foto } : null;
 }
 
 function LinkQueNaoVale() {
@@ -75,7 +90,17 @@ function LinkQueNaoVale() {
   );
 }
 
-function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string }) {
+function Lista({
+  d,
+  token,
+  hoje,
+  marca,
+}: {
+  d: DadosDoLink;
+  token: string;
+  hoje: string;
+  marca: { cor: string | null; foto: string | null } | null;
+}) {
   const vaga = d.vaga!;
   const regime = vaga.regime && vaga.regime in REGIMES ? REGIMES[vaga.regime as Regime].nome : null;
   const n = d.finalistas.length;
@@ -90,7 +115,20 @@ function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string
             : "Você está vendo como o gestor vê. Só quem recebe o link responde; as respostas aparecem no seu painel."}
         </p>
       )}
-      <header className="flex flex-col gap-4 border-b border-line pb-5">
+      <header
+        className={`flex flex-col gap-4 border-b border-line pb-5 ${marca ? "overflow-hidden rounded-lg border bg-surface-200 p-5 sm:p-6" : ""}`}
+        style={marca?.cor && !marca.foto ? { borderTop: `6px solid ${marca.cor}` } : undefined}
+      >
+        {marca?.foto && (
+          // a foto é da Página de carreiras da agência (Storage público), sem o otimizador de imagens
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={marca.foto}
+            alt=""
+            className="-mx-5 -mt-5 aspect-[4/1] w-[calc(100%+2.5rem)] max-w-none object-cover sm:-mx-6 sm:-mt-6 sm:w-[calc(100%+3rem)]"
+            style={marca.cor ? { borderBottom: `4px solid ${marca.cor}` } : undefined}
+          />
+        )}
         <div className="flex items-center gap-3">
           <Avatar nome={d.agencia.nome} foto={d.agencia.foto} tamanho={48} />
           <div className="min-w-0">
@@ -107,7 +145,12 @@ function Lista({ d, token, hoje }: { d: DadosDoLink; token: string; hoje: string
           <p className="text-caption text-ink-muted uppercase">
             Finalistas{vaga.cliente ? ` para ${vaga.cliente}` : ""}
           </p>
-          <h1 className="mt-1 text-h1 break-words">{vaga.titulo}</h1>
+          <h1
+            className="mt-1 text-h1 break-words"
+            style={marca?.cor ? { color: corLegivel(marca.cor) } : undefined}
+          >
+            {vaga.titulo}
+          </h1>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-ink-muted">
             <span className="inline-flex items-center gap-1">
               <MapPin aria-hidden className="size-4" />

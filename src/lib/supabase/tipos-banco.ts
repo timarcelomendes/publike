@@ -3963,6 +3963,22 @@ export type Database = {
         Args: { p_chave: string };
         Returns: number;
       };
+      marca_dos_finalistas: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      meu_plano_agencia: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      admin_cortesia_plano_agencia: {
+        Args: { p_conta: string; p_liberar: boolean };
+        Returns: undefined;
+      };
+      admin_plano_agencia: {
+        Args: { p_conta: string };
+        Returns: Json;
+      };
       minha_faixa: {
         Args: Record<string, never>;
         Returns: Json;

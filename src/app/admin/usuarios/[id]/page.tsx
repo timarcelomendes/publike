@@ -1,6 +1,13 @@
 import { ArrowLeft, ExternalLink, Megaphone, Wrench } from "lucide-react";
 import { AcessoDaConta, AcessoPorWhatsapp } from "@/components/admin/acesso-conta";
-import { BotaoAutomacoes, BotaoCopiloto, BotaoPaginaDeVagas, BotaoTestes, BotaoVideo } from "@/components/admin/copiloto";
+import {
+  BotaoAutomacoes,
+  BotaoCopiloto,
+  BotaoPaginaDeVagas,
+  BotaoPlanoAgencia,
+  BotaoTestes,
+  BotaoVideo,
+} from "@/components/admin/copiloto";
 import { NOME_RECURSO } from "@/lib/recursos-pagos";
 import { FormTipoDaConta } from "@/components/admin/tipo-da-conta";
 import { FormNomeDaConta } from "@/components/admin/nome-da-conta";
@@ -33,6 +40,7 @@ import {
   contasDoCopiloto,
   emailsDoUsuario,
   paginaDeVagasDaConta,
+  planoAgenciaDaConta,
   recursosDaConta,
   fichaUsuario,
   listarAnuncios,
@@ -103,6 +111,8 @@ async function Conteudo({
   const ultimoLogin = u.ultimo_login !== undefined ? u.ultimo_login : u.ultimo_acesso;
   // a página de carreiras (migração 20270117120000): só para quem contrata
   const paginaDeVagas = u.perfil && u.perfil.tipo !== "pessoa" ? await paginaDeVagasDaConta(c, id) : null;
+  // o Plano Agência (migração 20270408120000): só para agência
+  const planoAgencia = u.perfil?.tipo === "agencia" ? await planoAgenciaDaConta(c, id) : null;
 
   const nome = u.perfil?.nome ?? u.email ?? u.telefone ?? "Conta sem nome";
   const s = u.suspensao;
@@ -447,6 +457,24 @@ async function Conteudo({
               {paginaDeVagas.apelido ? ` Endereço curto: /v/${paginaDeVagas.apelido}.` : ""}
             </p>
             <BotaoPaginaDeVagas contaId={u.id} liberado={paginaDeVagas.pela_equipe} />
+          </div>
+        </Secao>
+      )}
+
+      {planoAgencia && (
+        <Secao
+          titulo="Plano Agência"
+          descricao="O que só o Plano Agência tem (por enquanto, o link dos finalistas com a marca da agência). Aqui você libera por cortesia, sem prazo, para testar."
+        >
+          <div className="flex flex-col gap-2">
+            <p className="text-body-sm text-ink-muted">
+              {planoAgencia.cortesia
+                ? "Liberado pela equipe, sem prazo."
+                : planoAgencia.tem
+                  ? "Liberado pela assinatura."
+                  : "Sem o Plano Agência."}
+            </p>
+            <BotaoPlanoAgencia contaId={u.id} liberado={planoAgencia.cortesia} />
           </div>
         </Secao>
       )}
