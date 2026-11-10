@@ -3930,6 +3930,29 @@ export type Database = {
         Args: { p_id: string };
         Returns: Json;
       };
+      admin_anuncios_repetidos: {
+        Args: Record<string, never>;
+        Returns: {
+          copia_id: string;
+          original_id: string;
+          tipo: string;
+          titulo: string;
+          cidade: string;
+          bairro: string | null;
+          autor_id: string;
+          autor_nome: string | null;
+          copia_status: string;
+          original_status: string;
+          copia_criada: string;
+          original_criada: string;
+          copia_curtidas: number;
+          original_curtidas: number;
+        }[];
+      };
+      admin_encerrar_repetido: {
+        Args: { p_copia: string };
+        Returns: Json;
+      };
       admin_excluir_anuncio: {
         Args: { p_id: string; p_motivo?: string | null };
         Returns: undefined;

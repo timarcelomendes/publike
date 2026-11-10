@@ -7,7 +7,7 @@ import { after } from "next/server";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { MOTIVOS_ENCERRAMENTO, type MotivoEncerramento } from "@/lib/encerramento";
 import { obterUsuario } from "@/lib/dados";
-import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
+import { anuncioRepetido, mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -177,6 +177,9 @@ async function publicarOuSalvar(formData: FormData, vigia: Vigia): Promise<Estad
     );
     if (error) {
       if (precisaCompletarPerfil(error)) redirect("/perfil?completar=1&next=/publicar");
+      // tocou em Publicar de novo com o mesmo anúncio: vai para o que já está publicado (não é falha)
+      const repetido = anuncioRepetido(error);
+      if (repetido) redirect(`/anuncio/${repetido}?repetido=1`);
       vigia.banco(error);
       return erroDoBanco(error);
     }
@@ -300,7 +303,7 @@ async function publicarOutrosCargos(
         .single(),
     );
     if (error || !data) {
-      if (error) vigia.parcial(`A vaga "${titulo}" não saiu.`, error);
+      if (error && !anuncioRepetido(error)) vigia.parcial(`A vaga "${titulo}" não saiu.`, error);
       falhas.push({ titulo, erro: mensagemDeErro(error) });
       continue;
     }

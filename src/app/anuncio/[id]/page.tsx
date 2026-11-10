@@ -444,6 +444,13 @@ async function DetalheAnuncio({
       {primeiro(sp.publicado) === "1" && primeiro(sp.teste) === "1" && proprio && (
         <AvisoTesteNaVaga anuncioId={anuncio.id} titulo={testes[0]?.titulo ?? null} />
       )}
+      {/* tocou em Publicar de novo com o mesmo anúncio: o banco não deixa sair repetido e traz para cá */}
+      {primeiro(sp.repetido) === "1" && proprio && (
+        <Aviso tipo="info" className="mt-4" titulo="Este anúncio já estava publicado">
+          Você tocou em Publicar de novo com o mesmo texto. Para não sair repetido, trouxemos você ao que já está no
+          Publike. Quer mudar algo? Toque em Editar.
+        </Aviso>
+      )}
       {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" className="mt-4" titulo="Alterações salvas." />}
       {primeiro(sp.triagem) === "0" && proprio && (
         <Aviso tipo="alerta" className="mt-4" titulo="As respostas da triagem não salvaram">

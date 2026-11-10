@@ -1,4 +1,4 @@
-type ErroBanco = { code?: string; message?: string; hint?: string | null } | null | undefined;
+type ErroBanco = { code?: string; message?: string; hint?: string | null; details?: string | null } | null | undefined;
 
 /** Transforma erros do banco em frases para quem está usando o site. */
 export function mensagemDeErro(erro: ErroBanco, padrao = "Não deu certo agora. Tente de novo em instantes.") {
@@ -20,4 +20,13 @@ export function mensagemDeErro(erro: ErroBanco, padrao = "Não deu certo agora. 
 /** Quando o banco pede para completar o perfil, mandamos a pessoa para lá. */
 export function precisaCompletarPerfil(erro: ErroBanco) {
   return erro?.hint === "perfil_incompleto";
+}
+
+/**
+ * O mesmo anúncio de novo (migração 20270404120000): o banco recusa e diz qual já está publicado. Devolve o código
+ * dele, para levar a pessoa até lá em vez de mostrar erro.
+ */
+export function anuncioRepetido(erro: ErroBanco) {
+  const id = erro?.hint === "repetido" ? (erro.details ?? "").trim() : "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : null;
 }

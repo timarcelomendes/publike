@@ -618,3 +618,31 @@ export async function gerarAcessoPorWhatsapp(
   ).join("\n\n");
   return { ok: true, link, whatsapp: contato.whatsapp, mensagem };
 }
+
+/**
+ * Admin › Anúncios › Repetidos (migração 20270404120000): encerra a cópia (fica a que tem mais curtidas) e avisa a
+ * conta pela mensagem da equipe, no sino e no e-mail (só no sino, se a conta não tiver e-mail).
+ */
+export async function encerrarAnuncioRepetido(copiaId: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(copiaId)) return { ok: false, erro: "Pedido inválido." };
+  const { data, error } = await c.rpc("admin_encerrar_repetido", { p_copia: copiaId });
+  if (error?.code === "PGRST202") return { ok: false, erro: "Rode antes a migração 20270404120000_anuncio_repetido.sql." };
+  if (error || !data) return { ok: false, erro: mensagemDeErro(error) };
+  const r = data as { encerrado: string; fica: string; autor: string; titulo: string; minutos: number };
+  const intervalo = r.minutos <= 1 ? "1 minuto" : r.minutos < 120 ? `${r.minutos} minutos` : "poucas horas";
+  const texto = [
+    `A vaga “${r.titulo}” foi publicada duas vezes, com o mesmo texto, com ${intervalo} de diferença.`,
+    "Deixamos uma no ar e encerramos a cópia, para quem procura emprego não ver a mesma vaga repetida e os candidatos não se dividirem entre as duas.",
+    `A vaga continua no ar: ${urlDosEmails() ?? "https://publike.org"}/anuncio/${r.fica}`,
+    "Nada muda para você. Se a ideia era publicar uma segunda vaga, como em outro bairro ou para outra empresa, publique de novo com essa diferença no anúncio.",
+  ].join("\n\n");
+  const assunto = "Sua vaga estava repetida";
+  let aviso = await mandarMensagemDaEquipe(r.autor, assunto, texto, true);
+  if (!aviso.ok && /não tem e-mail/i.test(aviso.erro ?? "")) aviso = await mandarMensagemDaEquipe(r.autor, assunto, texto, false);
+  refresh();
+  return aviso.ok
+    ? { ok: true, mensagem: `Cópia encerrada. ${aviso.mensagem ?? ""}`.trim() }
+    : { ok: false, erro: `A cópia foi encerrada, mas o aviso não saiu: ${aviso.erro}` };
+}

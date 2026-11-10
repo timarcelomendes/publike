@@ -699,6 +699,14 @@ export async function anunciosParaConferir(c: ClienteBanco) {
   return (data ?? []).map((a) => ({ ...a, motivos: motivosParaConferir(a) })).filter((a) => a.motivos.length > 0);
 }
 
+/** Admin › Anúncios › Repetidos (migração 20270404120000): a mesma vaga publicada duas vezes pela mesma conta. */
+export async function anunciosRepetidos(c: ClienteBanco) {
+  const { data, error } = await c.rpc("admin_anuncios_repetidos");
+  if (error?.code === "PGRST202") return null;
+  if (error) falha("os anúncios repetidos", error);
+  return data ?? [];
+}
+
 export async function fichaAnuncio(c: ClienteBanco, id: string) {
   const { data, error } = await c.rpc("admin_anuncio", { p_id: id });
   if (error) falha("o anúncio", error);

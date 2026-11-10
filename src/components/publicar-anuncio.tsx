@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useRef, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ERRO_SEM_SALVAR, ehNavegacao } from "@/lib/acao-segura";
 import { conferirAnuncio, salvarAnuncio } from "@/lib/acoes/anuncios";
 import { detalheDoErro, relatarFalha } from "@/lib/falhas";
@@ -341,8 +341,32 @@ export function PublicarAnuncio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Tocou em Publicar (com conta). O Next.js guarda esta página escondida, com o que estava escrito, quando a vaga
+  // abre: pelo "voltar", o formulário voltava pronto no Conferir e outro toque publicava a mesma vaga de novo
+  // (10/11/2026, migração 20270404120000). Ao esconder a página depois de publicar, o formulário volta ao começo.
+  const publicou = useRef(false);
+  useLayoutEffect(() => {
+    return () => {
+      if (!publicou.current) return;
+      publicou.current = false;
+      if (tempo.current) window.clearTimeout(tempo.current);
+      apagarRascunho(CHAVE_COM_CONTA);
+      setInicial(base);
+      setModelo(null);
+      setPassoDeComeco(1);
+      passoAtual.current = 1;
+      setAviso(null);
+      setErro(null);
+      setChave((c) => c + 1);
+    };
+    // só ao esconder ou sair da página
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // a prévia acompanha o que a pessoa escreve; sem conta, o rascunho também
   function aoMexer() {
+    // mexeu depois de tocar em Publicar (voltou com erro e está corrigindo): o que está escrito fica
+    publicou.current = false;
     if (tempo.current) window.clearTimeout(tempo.current);
     tempo.current = window.setTimeout(() => {
       const f = formulario();
@@ -480,7 +504,11 @@ export function PublicarAnuncio({
       }}
       // ao publicar, o rascunho de quem tem conta sai (se der errado, o formulário continua preenchido)
       onSubmitCapture={() => {
-        if (!semConta) apagarRascunho(CHAVE_COM_CONTA);
+        if (semConta) return;
+        // o rascunho guardado 250 ms depois da última letra não volta a ser gravado depois de publicar
+        if (tempo.current) window.clearTimeout(tempo.current);
+        apagarRascunho(CHAVE_COM_CONTA);
+        publicou.current = true;
       }}
     >
       <FormAnuncio

@@ -2,13 +2,14 @@ import { Megaphone } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ListaRepetidos } from "@/components/admin/anuncios-repetidos";
 import { ListaEmOutros } from "@/components/admin/em-outros";
 import { ListaParaConferir } from "@/components/admin/para-conferir";
 import { LinhaAnuncio } from "@/components/admin/linha-anuncio";
 import { Busca, Filtros, linkCom, Paginacao } from "@/components/admin/ui";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { Aviso, Vazio } from "@/components/ui/basicos";
-import { anunciosEmOutros, anunciosParaConferir, listarAnuncios, POR_PAGINA } from "@/lib/admin/dados";
+import { anunciosEmOutros, anunciosParaConferir, anunciosRepetidos, listarAnuncios, POR_PAGINA } from "@/lib/admin/dados";
 import { formatarNumero, primeiro } from "@/lib/formato";
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -62,6 +63,35 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anun
           </Vazio>
         ) : (
           <ListaParaConferir anuncios={lista} />
+        )}
+      </div>
+    );
+  }
+  // "Repetidos" (só o admin): a mesma conta publicou o mesmo anúncio duas vezes
+  if (acesso.admin && primeiro(sp.area) === "repetidos") {
+    const pares = await anunciosRepetidos(acesso.cliente);
+    return (
+      <div className="flex flex-col gap-4">
+        <FiltroArea atual="repetidos" />
+        {pares === null ? (
+          <Aviso tipo="alerta" titulo="Falta a migração">
+            Rode supabase/migrations/20270404120000_anuncio_repetido.sql no Supabase para ver os repetidos.
+          </Aviso>
+        ) : (
+          <>
+            <p className="text-body-sm text-ink-muted" aria-live="polite">
+              {pares.length === 1 ? "1 anúncio repetido" : `${formatarNumero(pares.length)} anúncios repetidos`}. Desde
+              10/11/2026, o banco não deixa a mesma conta publicar o mesmo anúncio de novo em 24 horas; estes vieram
+              antes.
+            </p>
+            {pares.length === 0 ? (
+              <Vazio icone={Megaphone} titulo="Nenhum anúncio repetido">
+                Nenhuma conta tem o mesmo anúncio duas vezes no ar.
+              </Vazio>
+            ) : (
+              <ListaRepetidos pares={pares} />
+            )}
+          </>
         )}
       </div>
     );
@@ -145,7 +175,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/anun
   );
 }
 
-function FiltroArea({ atual }: { atual: "todas" | "outros" | "conferir" }) {
+function FiltroArea({ atual }: { atual: "todas" | "outros" | "conferir" | "repetidos" }) {
   return (
     <Filtros
       rotulo="Área do anúncio"
@@ -153,6 +183,7 @@ function FiltroArea({ atual }: { atual: "todas" | "outros" | "conferir" }) {
         { valor: "todas", nome: "Todas as áreas" },
         { valor: "outros", nome: "Em Outros" },
         { valor: "conferir", nome: "Para conferir" },
+        { valor: "repetidos", nome: "Repetidos" },
       ]}
       atual={atual}
       link={(v) => (v === "todas" ? "/admin/anuncios" : `/admin/anuncios?area=${v}`)}
