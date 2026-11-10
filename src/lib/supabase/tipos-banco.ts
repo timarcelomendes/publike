@@ -1600,6 +1600,7 @@ export type Database = {
       video_responder_texto: { Args: { p_id: string; p_pergunta: string; p_texto: string }; Returns: string | null };
       video_enviar: { Args: { p_id: string }; Returns: string[] };
       video_apagar: { Args: { p_id: string }; Returns: string[] };
+      video_cancelar: { Args: { p_id: string }; Returns: string[] };
       video_vencidos: { Args: { p_limite?: number }; Returns: { entrevista_id: string; caminho: string }[] };
       video_marcar_apagados: { Args: { p_ids: string[] }; Returns: undefined };
       servidor_video_guardar_ia: {

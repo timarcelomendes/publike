@@ -15,7 +15,7 @@ export const BUCKET_VIDEO = "entrevistas-video";
 export const BITS_VIDEO = 450_000;
 export const BITS_AUDIO = 64_000;
 
-export type SituacaoVideo = "pedida" | "respondendo" | "enviada" | "vencida" | "apagada";
+export type SituacaoVideo = "pedida" | "respondendo" | "enviada" | "vencida" | "apagada" | "cancelada";
 
 export const SITUACOES_VIDEO: Record<SituacaoVideo, { nome: string; tom: "aviso" | "match" | "contorno" | "perigo" }> =
   {
@@ -24,6 +24,8 @@ export const SITUACOES_VIDEO: Record<SituacaoVideo, { nome: string; tom: "aviso"
     enviada: { nome: "Vídeo: enviou", tom: "match" },
     vencida: { nome: "Vídeo: não respondeu", tom: "contorno" },
     apagada: { nome: "Vídeo apagado pela pessoa", tom: "contorno" },
+    // quem contrata cancelou o pedido (migração 20270414120000)
+    cancelada: { nome: "Vídeo cancelado", tom: "contorno" },
   };
 
 export type ConfigVideo = {

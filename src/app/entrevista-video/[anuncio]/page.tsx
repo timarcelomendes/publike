@@ -37,6 +37,18 @@ async function Conteudo({ params }: { params: PageProps<"/entrevista-video/[anun
   ]);
   const logo = vaga?.autor_foto ?? null;
   if (!entrevista) {
+    // quem publicou abriu o link do candidato (logado como a empresa): a página é de quem foi chamado
+    if (vaga && vaga.autor_id === usuario.id) {
+      return (
+        <Aviso tipo="info" titulo="Esta página é de quem foi chamado">
+          Você está entrando como quem publicou a vaga. O candidato abre este link com a conta dele, e você acompanha o
+          pedido na ficha de cada pessoa.{" "}
+          <Link href={`/painel/anuncio/${anuncio}/quadro`} className="text-label underline">
+            Ver os candidatos
+          </Link>
+        </Aviso>
+      );
+    }
     return (
       <Aviso tipo="info" titulo="Nenhuma entrevista em vídeo para esta vaga">
         Quando a empresa pedir, o aviso chega no sino e por e-mail.{" "}

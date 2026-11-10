@@ -20,7 +20,7 @@ import { acessoFila } from "./filas";
 // A entrevista gravada (migração 20270105120000): o que as telas leem, os links dos vídeos (valem poucos minutos)
 // e a IA (transcreve e resume pelo servidor, com a chave do servidor).
 
-const SITUACOES: SituacaoVideo[] = ["pedida", "respondendo", "enviada", "vencida", "apagada"];
+const SITUACOES: SituacaoVideo[] = ["pedida", "respondendo", "enviada", "vencida", "apagada", "cancelada"];
 const situacao = (x: unknown): SituacaoVideo =>
   SITUACOES.includes(x as SituacaoVideo) ? (x as SituacaoVideo) : "pedida";
 

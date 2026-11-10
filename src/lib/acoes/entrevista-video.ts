@@ -187,6 +187,25 @@ export async function apagarMinhaEntrevistaVideo(id: string): Promise<Resultado>
   return { ok: true, mensagem: "Pronto: seus vídeos e as respostas desta entrevista foram apagados." };
 }
 
+/**
+ * Quem contrata cancela o pedido que ainda não foi enviado (migração 20270414120000): sai da página do candidato, o que
+ * ele gravou até ali é apagado e ele recebe o aviso. Depois, dá para pedir de novo.
+ */
+export async function cancelarVideo(id: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  const supabase = await criarClienteServidor();
+  const { data: caminhos, error } = await supabase.rpc("video_cancelar", { p_id: id });
+  if (error) return { ok: false, erro: mensagemDeErro(error, "Não deu para cancelar agora.") };
+  if (caminhos?.length) {
+    const { error: erroArquivos } = await supabase.storage.from(BUCKET_VIDEO).remove(caminhos);
+    if (erroArquivos) console.error("Publike: falha ao apagar os vídeos do pedido cancelado:", erroArquivos.message);
+  }
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Pedido cancelado. A pessoa recebeu o aviso, e você pode pedir de novo quando quiser." };
+}
+
 /** A empresa abre a entrevista para assistir (os links valem 10 minutos). Apaga antes o que já venceu. */
 export async function abrirEntrevistaVideo(
   id: string,

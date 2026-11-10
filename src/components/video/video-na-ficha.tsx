@@ -1,11 +1,11 @@
 "use client";
 
 import { IA } from "@/components/apelido-da-ia";
-import { Play, RefreshCw, Sparkles, Video } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Video, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { abrirEntrevistaVideo, pedirVideo, refazerIAVideo } from "@/lib/acoes/entrevista-video";
+import { abrirEntrevistaVideo, cancelarVideo, pedirVideo, refazerIAVideo } from "@/lib/acoes/entrevista-video";
 import { SITUACOES_VIDEO, textoDoTempo, type EntrevistaParaAssistir, type VideoNoQuadro } from "@/lib/entrevista-video";
 import { tempoRelativo } from "@/lib/formato";
 import { Selo } from "../ui/basicos";
@@ -31,6 +31,8 @@ export function VideoNaFicha({
   const [pendente, iniciar] = useTransition();
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string; ir?: string } | null>(null);
   const [assistir, setAssistir] = useState<EntrevistaParaAssistir | null>(null);
+  // cancelar pede um segundo toque, para não sair sem querer
+  const [confirmar, setConfirmar] = useState(false);
   const primeiro = nome.split(" ")[0];
 
   function pedir() {
@@ -42,6 +44,17 @@ export function VideoNaFicha({
           ? { ok: true, texto: r.mensagem ?? "Pedido enviado." }
           : { ok: false, texto: r.erro, ir: "ir" in r ? r.ir : undefined },
       );
+    });
+  }
+
+  function cancelar() {
+    if (!video) return;
+    if (!confirmar) return setConfirmar(true);
+    setAviso(null);
+    iniciar(async () => {
+      const r = await chamarAcao(() => cancelarVideo(video.id));
+      setConfirmar(false);
+      setAviso(r.ok ? { ok: true, texto: r.mensagem ?? "Pedido cancelado." } : { ok: false, texto: r.erro });
     });
   }
 
@@ -117,10 +130,25 @@ export function VideoNaFicha({
             ? `respondeu ${tempoRelativo(video.enviada_em, agora)}`
             : video.situacao === "vencida"
               ? "o prazo acabou"
+              : video.situacao === "cancelada"
+                ? "você cancelou o pedido"
               : `pedido ${tempoRelativo(video.pedida_em, agora)}`}
         </span>
       </p>
-      {video.situacao === "vencida" && liberado && (
+      {(video.situacao === "pedida" || video.situacao === "respondendo") && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Botao tamanho="sm" variante={confirmar ? "perigo" : "fantasma"} disabled={pendente} onClick={cancelar}>
+            <X aria-hidden />
+            {pendente ? "Cancelando…" : confirmar ? "Sim, cancelar o pedido" : "Cancelar o pedido"}
+          </Botao>
+          {confirmar && !pendente && (
+            <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmar(false)}>
+              Não cancelar
+            </Botao>
+          )}
+        </div>
+      )}
+      {(video.situacao === "vencida" || video.situacao === "cancelada") && liberado && (
         <Botao tamanho="sm" variante="secundario" disabled={pendente} onClick={pedir} className="self-start">
           <RefreshCw aria-hidden />
           Pedir de novo
