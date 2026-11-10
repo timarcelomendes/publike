@@ -900,8 +900,12 @@ function DetalheCandidato({
         </Secao>
       )}
 
-      {/* sem pedido ainda, a gravada é pedida em "Como vai ser", na Entrevista */}
-      {video && (c.video || (!video.liberado && (c.status === "pendente" || c.status === "match"))) && (
+      {/* com o recurso, a gravada fica em "Como vai ser", na Entrevista; aqui, o convite para conhecer e, com a
+          entrevista já marcada (sem o formulário à vista), o pedido de vídeo que existir */}
+      {video &&
+        (video.liberado
+          ? Boolean(c.video && e && !marcando)
+          : Boolean(c.video || c.status === "pendente" || c.status === "match")) && (
         <Secao titulo="Entrevista em vídeo">
           <VideoNaFicha
             anuncioId={anuncioId}
@@ -971,7 +975,7 @@ function DetalheCandidato({
             atual={e && ENTREVISTA_ABERTA.includes(e.situacao) ? e : null}
             endereco={endereco}
             aoVivo={Boolean(video?.liberado && video.aoVivo)}
-            gravada={Boolean(video?.liberado && !c.video)}
+            gravada={video?.liberado ? { video: c.video ?? null, agora } : null}
             meet={Boolean(video?.meet)}
             aoTerminar={() => {
               setMarcando(false);

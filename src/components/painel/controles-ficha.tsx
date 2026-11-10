@@ -38,7 +38,6 @@ import { PularRegra } from "../processo/pular-regra";
 import { PedirDocumentos } from "../proposta/pedir-documentos";
 import { PropostaNaFicha } from "../proposta/proposta-na-ficha";
 import { useAcao } from "../ui/usar-acao";
-import { VideoNaFicha } from "../video/video-na-ficha";
 import { classesBotao } from "../ui/botao";
 import { EntrevistaMarcada, FormEntrevista } from "./recrutamento";
 
@@ -806,23 +805,13 @@ function FolhaChamar({
         atual={extras.entrevista}
         endereco={extras.endereco}
         aoVivo={extras.aoVivo}
-        gravada={extras.video.liberado && !extras.video.atual}
+        gravada={extras.video.liberado ? { video: extras.video.atual, agora: extras.agora } : null}
         meet={Boolean(extras.meet)}
         aoTerminar={aoFechar}
       />
-      {((extras.video.liberado && extras.video.atual) || extras.testes.length > 0) && (
+      {extras.testes.length > 0 && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <p className="text-label">Antes da conversa, se quiser</p>
-          {extras.video.liberado && extras.video.atual && (
-            <VideoNaFicha
-              anuncioId={anuncioId}
-              perfilId={perfilId}
-              nome={nome}
-              video={extras.video.atual}
-              liberado
-              agora={extras.agora}
-            />
-          )}
           {extras.testes.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-body-sm text-ink-muted">Pedir o Teste Prático:</span>

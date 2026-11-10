@@ -29,6 +29,7 @@ import { PularRegra } from "../processo/pular-regra";
 import { BotoesAgenda } from "../agenda/botoes-agenda";
 import { Selo } from "../ui/basicos";
 import { VideoNaFicha } from "../video/video-na-ficha";
+import type { VideoNoQuadro } from "@/lib/entrevista-video";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -82,7 +83,7 @@ export function FormEntrevista({
   endereco,
   aoTerminar,
   aoVivo = false,
-  gravada = false,
+  gravada = null,
   meet = false,
 }: {
   anuncioId: string;
@@ -93,15 +94,21 @@ export function FormEntrevista({
   endereco: string;
   /** a chamada pelo Publike está disponível (Entrevista em vídeo e a Daily configurada) */
   aoVivo?: boolean;
-  /** a Entrevista em vídeo gravada está liberada: entra como mais um jeito em "Como vai ser" */
-  gravada?: boolean;
+  /**
+   * a Entrevista em vídeo gravada está liberada: entra como mais um jeito em "Como vai ser", com o pedido de agora
+   * (pedir, acompanhar, cancelar, pedir de novo e assistir). null: sem o recurso.
+   */
+  gravada?: { video: VideoNoQuadro | null; agora: number } | null;
   /** o Google Meet está ligado no servidor: "Google Meet" cria a sala na hora */
   meet?: boolean;
   aoTerminar?: () => void;
 }) {
   const base = useId();
   // "Gravada pelo celular": no lugar de marcar, pede as respostas gravadas (a Entrevista em vídeo)
-  const [gravar, setGravar] = useState(false);
+  // já tem um pedido em andamento ou respondido: abre nele
+  const [gravar, setGravar] = useState(
+    () => Boolean(gravada?.video && !["cancelada", "vencida", "apagada"].includes(gravada.video.situacao)),
+  );
   const [formato, setFormato] = useState<FormatoEntrevista>((atual?.formato as FormatoEntrevista) ?? "presencial");
   const [quando, setQuando] = useState(paraCampo(atual?.quando ?? null));
   const [local, setLocal] = useState(atual?.local ?? (formato === "presencial" ? endereco : ""));
@@ -173,7 +180,7 @@ export function FormEntrevista({
                 onChange={() => setGravar(true)}
                 className="sr-only"
               />
-              Gravada pelo celular
+              Entrevista em vídeo (gravada)
             </label>
           )}
         </div>
@@ -184,7 +191,14 @@ export function FormEntrevista({
     return (
       <div className="flex flex-col gap-3">
         {comoVaiSer}
-        <VideoNaFicha anuncioId={anuncioId} perfilId={perfilId} nome={nome} video={null} liberado agora={0} />
+        <VideoNaFicha
+          anuncioId={anuncioId}
+          perfilId={perfilId}
+          nome={nome}
+          video={gravada?.video ?? null}
+          liberado
+          agora={gravada?.agora ?? 0}
+        />
       </div>
     );
   }
