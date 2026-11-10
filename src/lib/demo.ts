@@ -425,11 +425,11 @@ export function buscarDemo(f: Filtros, agora: number, local: Local | null = null
       const b = BASE.find((x) => x.id === a.id);
       return semAcento(`${a.titulo} ${b?.descricao ?? ""} ${a.bairro}`).includes(termo);
     });
+  // "Mais recentes": só a data, como no banco (20270413120000_mais_recentes_pela_data.sql)
   lista.sort((x, y) =>
-    x.prioridade - y.prioridade ||
-    (f.ordem === "recentes"
+    f.ordem === "recentes"
       ? y.criado_em.localeCompare(x.criado_em)
-      : x.distancia_km - y.distancia_km || y.criado_em.localeCompare(x.criado_em)),
+      : x.prioridade - y.prioridade || x.distancia_km - y.distancia_km || y.criado_em.localeCompare(x.criado_em),
   );
   return lista.slice(0, 60);
 }
