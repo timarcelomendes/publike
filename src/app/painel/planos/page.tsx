@@ -172,7 +172,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
               cabe={cabe === p || (p === "completo" && !cabe)}
               meu={meuPlano}
               agencia={agencia}
-              cruza={valendo.find((a) => a.recurso !== p && seCruzam(a.recurso, p)) ?? null}
+              cruza={
+                [...valendo]
+                  .sort((a, b) => Number(b.situacao === "ativa") - Number(a.situacao === "ativa"))
+                  .find((a) => a.recurso !== p && seCruzam(a.recurso, p)) ?? null
+              }
             />
           </li>
         ))}
@@ -349,15 +353,20 @@ function CartaoPlano({
           <Selo variante="aviso">Cabe nas suas vagas</Selo>
         ) : null}
       </div>
-      <p>
-        <span className="text-h1 tabular-nums">{formatarMoeda(porMes)}</span>
-        <span className="text-body-sm text-ink-muted"> por mês</span>
-        <span className="block text-body-sm text-ink-muted">
-          {escolhido.ciclo === "QUARTERLY"
-            ? `${formatarMoeda(escolhido.valor)} a cada 3 meses${desconto > 0 ? `, ${desconto}% a menos` : ""}`
-            : "no cartão ou no Pix"}
-        </span>
-      </p>
+      {escolhido.ciclo === "QUARTERLY" ? (
+        <p>
+          <span className="text-h1 tabular-nums">{formatarMoeda(escolhido.valor)}</span>
+          <span className="block text-body-sm text-ink-muted">
+            a cada 3 meses: {formatarMoeda(Math.round(porMes * 100) / 100)} por mês
+            {desconto > 0 ? `, ${desconto}% a menos` : ""}
+          </span>
+        </p>
+      ) : (
+        <p>
+          <span className="text-h1 tabular-nums">{formatarMoeda(porMes)}</span>
+          <span className="block text-body-sm text-ink-muted">por mês, no cartão ou no Pix</span>
+        </p>
+      )}
       <div className="flex flex-col gap-4">
         <Lista
           titulo="Tudo do Grátis, mais:"
