@@ -67,6 +67,9 @@ export const FORMATOS_ENTREVISTA = {
   telefone: { nome: "Por telefone", campo: "", exemplo: "" },
   // a chamada dentro do Publike (migração 20270106120000; recurso Entrevista em vídeo)
   publike: { nome: "Pelo Publike (vídeo)", campo: "", exemplo: "" },
+  // o Publike cria a sala do Meet na hora (10/11/2026; src/lib/servidor/google-meet.ts). No banco vira "video", com o
+  // link no local: a mensagem, o lembrete e a agenda já mostram o link
+  meet: { nome: "Google Meet", campo: "", exemplo: "" },
 } as const;
 export type FormatoEntrevista = keyof typeof FORMATOS_ENTREVISTA;
 

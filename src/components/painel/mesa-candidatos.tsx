@@ -29,6 +29,7 @@ import type { ExtrasDaFicha } from "@/components/painel/controles-ficha";
 import { recursosPagos } from "@/lib/dados";
 import { conversaCom } from "@/lib/servidor/conversas";
 import { dailyConfigurado } from "@/lib/servidor/daily";
+import { meetLigado } from "@/lib/servidor/google-meet";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { propostasDaVaga } from "@/lib/servidor/proposta";
 import { padroesDaConta, processoDaConta } from "@/lib/servidor/processo";
@@ -341,6 +342,7 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
     },
     endereco: aberto.endereco,
     aoVivo: videoLiberado && dailyConfigurado(),
+    meet: meetLigado(),
     video: { liberado: videoLiberado, atual: videos?.get(aberto.perfil_id) ?? null },
     testes: testes.map((t) => ({ id: t.modelo_id, titulo: t.titulo })),
     proposta: propostas?.get(aberto.perfil_id) ?? null,

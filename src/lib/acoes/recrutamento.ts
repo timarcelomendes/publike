@@ -8,6 +8,7 @@ import { faltaContatoParaAceitar, obterMeuPerfil, obterUsuario } from "@/lib/dad
 import { mensagemDeErro } from "@/lib/erros";
 import { regraDoErro, type Regra } from "@/lib/processo";
 import { FORMATOS_ENTREVISTA, MAX_HORARIOS, preencherModelo } from "@/lib/recrutamento";
+import { criarSalaMeet, meetLigado } from "@/lib/servidor/google-meet";
 import { marcarMotivoSaida } from "./processo";
 import { oferecerHorariosAutomaticos } from "@/lib/servidor/automacoes";
 import { processarFilas } from "@/lib/servidor/filas";
@@ -251,6 +252,22 @@ export type DadosEntrevista = {
   duracao: number;
 };
 
+/**
+ * "Google Meet": o Publike cria a sala na hora e a entrevista é gravada como "Por vídeo", com o link no lugar. Sem o
+ * Meet ligado no servidor, devolve o erro para a pessoa colar o link ela mesma.
+ */
+async function formatoELocal(formato: string, local: string): Promise<{ formato: string; local: string | null } | { erro: string }> {
+  if (formato === "meet") {
+    if (!meetLigado()) return { erro: "O Google Meet não está ligado. Escolha \"Por vídeo\" e cole o link da sala." };
+    try {
+      return { formato: "video", local: (await criarSalaMeet()).url };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não deu para criar a sala do Meet agora." };
+    }
+  }
+  return { formato, local: formato === "telefone" || formato === "publike" ? null : local };
+}
+
 /** Marca (ou remarca) a entrevista. Quem ainda não tem match ganha o match antes. */
 export async function marcarEntrevista(d: DadosEntrevista): Promise<Resultado> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -292,12 +309,14 @@ export async function marcarEntrevista(d: DadosEntrevista): Promise<Resultado> {
       };
     }
   }
+  const jeito = await formatoELocal(d.formato, local);
+  if ("erro" in jeito) return { ok: false, erro: jeito.erro };
   const { error } = await supabase.rpc("marcar_entrevista", {
     p_anuncio: d.anuncioId,
     p_perfil: d.perfilId,
     p_quando: quando.toISOString(),
-    p_formato: d.formato,
-    p_local: d.formato === "telefone" || d.formato === "publike" ? null : local,
+    p_formato: jeito.formato,
+    p_local: jeito.local,
     p_obs: obs || null,
     p_duracao: Math.min(480, Math.max(10, Math.round(Number(d.duracao) || 30))),
   });
@@ -370,12 +389,14 @@ export async function oferecerHorarios(d: Omit<DadosEntrevista, "quando"> & { op
       };
     }
   }
+  const jeito = await formatoELocal(d.formato, local);
+  if ("erro" in jeito) return { ok: false, erro: jeito.erro };
   const { error } = await supabase.rpc("oferecer_horarios", {
     p_anuncio: d.anuncioId,
     p_perfil: d.perfilId,
     p_opcoes: unicos,
-    p_formato: d.formato,
-    p_local: d.formato === "telefone" || d.formato === "publike" ? null : local,
+    p_formato: jeito.formato,
+    p_local: jeito.local,
     p_obs: obs || null,
     p_duracao: Math.min(480, Math.max(10, Math.round(Number(d.duracao) || 30))),
   });

@@ -5,7 +5,8 @@ import { randomUUID } from "node:crypto";
 // Google Meet (Admin › E-mails › Agendar conversa): cria o evento da conversa com um prospect na Google Agenda de quem
 // atende, já com a sala do Meet, pela API da Agenda (com o Google mandando o convite, se pedido). Acesso por OAuth da
 // própria conta Google (uma vez, pelo OAuth Playground): GOOGLE_MEET_CLIENT_ID, GOOGLE_MEET_CLIENT_SECRET e
-// GOOGLE_MEET_REFRESH_TOKEN, com o escopo https://www.googleapis.com/auth/calendar.events. Opcional: GOOGLE_MEET_AGENDA
+// GOOGLE_MEET_REFRESH_TOKEN, com os escopos https://www.googleapis.com/auth/calendar.events (o evento da conversa) e
+// https://www.googleapis.com/auth/meetings.space.created (as salas das entrevistas). Opcional: GOOGLE_MEET_AGENDA
 // (o ID da agenda; sem ele, a principal). As chaves ficam só no servidor.
 
 const env = (nome: string) => (process.env[nome] || "").trim();
@@ -107,4 +108,35 @@ export async function criarReuniaoMeet(p: {
   const url = d.hangoutLink ?? d.conferenceData?.entryPoints?.find((e) => e.entryPointType === "video")?.uri ?? "";
   if (!url) throw new Error("O Google criou o evento, mas sem a sala do Meet. Confira se o Meet está ativo na conta.");
   return { url, codigo: d.conferenceData?.conferenceId ?? "", evento: d.htmlLink ?? "", convidou: convidar };
+}
+
+/**
+ * Uma sala do Meet para a entrevista de quem contrata (10/11/2026), pela Meet REST API, em nome da conta Google do
+ * Publike: aberta (quem tem o link entra direto, sem esperar ninguém admitir), sem evento na agenda. Na conta Google
+ * grátis, a chamada com 3 ou mais pessoas vai até 60 minutos; com 2, até 24 horas.
+ */
+export async function criarSalaMeet(): Promise<{ url: string; codigo: string }> {
+  const acesso = await tokenDoGoogle();
+  const r = await fetch("https://meet.googleapis.com/v2/spaces", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${acesso}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ config: { accessType: "OPEN", entryPointAccess: "ALL" } }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!r.ok) {
+    if (r.status === 401) token = null;
+    const motivo = await r
+      .json()
+      .then((d: { error?: { status?: unknown; message?: unknown } }) => String(d?.error?.status ?? ""))
+      .catch(() => "");
+    throw new Error(
+      r.status === 403
+        ? "O Google não deixou criar a sala do Meet: gere o refresh token com a permissão meetings.space.created (e a API do Meet ativa)."
+        : `O Google não criou a sala do Meet (código ${r.status}${motivo ? `: ${motivo}` : ""}).`,
+    );
+  }
+  const d = (await r.json()) as { meetingUri?: string; meetingCode?: string };
+  if (!d.meetingUri) throw new Error("O Google não devolveu o link da sala do Meet.");
+  return { url: d.meetingUri, codigo: d.meetingCode ?? "" };
 }

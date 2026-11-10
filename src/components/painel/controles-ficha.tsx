@@ -85,6 +85,8 @@ export type ExtrasDaFicha = {
   endereco: string;
   /** a chamada pelo Publike (Entrevista em vídeo liberada e a Daily configurada) */
   aoVivo: boolean;
+  /** o Google Meet ligado no servidor: "Google Meet" cria a sala na hora */
+  meet?: boolean;
   video: { liberado: boolean; atual: VideoNoQuadro | null };
   /** os testes da vaga, para "Pedir o teste antes" */
   testes: { id: string; titulo: string }[];
@@ -805,6 +807,7 @@ function FolhaChamar({
         endereco={extras.endereco}
         aoVivo={extras.aoVivo}
         gravada={extras.video.liberado && !extras.video.atual}
+        meet={Boolean(extras.meet)}
         aoTerminar={aoFechar}
       />
       {((extras.video.liberado && extras.video.atual) || extras.testes.length > 0) && (

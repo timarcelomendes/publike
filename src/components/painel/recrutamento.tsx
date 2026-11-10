@@ -83,6 +83,7 @@ export function FormEntrevista({
   aoTerminar,
   aoVivo = false,
   gravada = false,
+  meet = false,
 }: {
   anuncioId: string;
   perfilId: string;
@@ -94,6 +95,8 @@ export function FormEntrevista({
   aoVivo?: boolean;
   /** a Entrevista em vídeo gravada está liberada: entra como mais um jeito em "Como vai ser" */
   gravada?: boolean;
+  /** o Google Meet está ligado no servidor: "Google Meet" cria a sala na hora */
+  meet?: boolean;
   aoTerminar?: () => void;
 }) {
   const base = useId();
@@ -140,7 +143,7 @@ export function FormEntrevista({
         <legend className="mb-1 text-label">Como vai ser</legend>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(FORMATOS_ENTREVISTA) as FormatoEntrevista[])
-            .filter((f) => f !== "publike" || aoVivo || formato === "publike")
+            .filter((f) => (f !== "publike" || aoVivo || formato === "publike") && (f !== "meet" || meet))
             .map((f) => (
               <label
                 key={f}
@@ -154,7 +157,7 @@ export function FormEntrevista({
                   className="sr-only"
                 />
                 {FORMATOS_ENTREVISTA[f].nome}
-                {f === "publike" && (
+                {(f === "publike" || f === "meet") && (
                   <Selo variante="novo" className="ml-1.5">
                     Novo
                   </Selo>
@@ -310,6 +313,13 @@ export function FormEntrevista({
           </Seletor>
         </div>
       </div>
+      {formato === "meet" && !gravar && (
+        <p className="rounded-md bg-surface-300 p-3 text-body-sm">
+          O Publike cria a sala do Google Meet na hora e manda o link para {nome.split(" ")[0]}, com o aviso e o
+          lembrete. Quem tem o link entra direto. <strong>Com 3 ou mais pessoas na chamada, ela vai até 60 minutos</strong>
+          ; entre duas pessoas, sem esse limite.
+        </p>
+      )}
       {info.campo && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${base}-local`} className="text-label">

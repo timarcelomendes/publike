@@ -20,6 +20,7 @@ import { montarQuadro } from "@/lib/servidor/quadro";
 import { sugestoesDeCompetencias } from "@/lib/avaliacao-time";
 import { avaliacoesTimeDaVaga, fichaDaVaga } from "@/lib/servidor/avaliacao-time";
 import { dailyConfigurado } from "@/lib/servidor/daily";
+import { meetLigado } from "@/lib/servidor/google-meet";
 import { etapasProprias, ondeEstaDesde } from "@/lib/servidor/etapas-proprias";
 import { respostasDoChatDaVaga } from "@/lib/servidor/perguntas-do-match";
 import { propostasDaVaga } from "@/lib/servidor/proposta";
@@ -268,7 +269,7 @@ async function Conteudo({
           retorno={retorno}
           video={
             videos && recursos && !recursos.video.indisponivel
-              ? { liberado: recursos.video.liberado, aoVivo: dailyConfigurado() }
+              ? { liberado: recursos.video.liberado, aoVivo: dailyConfigurado(), meet: meetLigado() }
               : null
           }
           time={ficha ? { ficha, sugestoes: sugestoesDeCompetencias(anuncio.titulo) } : null}
