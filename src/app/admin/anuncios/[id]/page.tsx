@@ -6,6 +6,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AcoesModeracaoAnuncio, ApagarAnuncioDeVez } from "@/components/admin/acoes-anuncio";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
+import { ConversaModeracao } from "@/components/conversa-moderacao";
+import { conversasDaModeracao } from "@/lib/servidor/conversa-moderacao";
 import { Dado, Secao, SeloStatus } from "@/components/admin/ui";
 import { Aviso, Avatar, Selo } from "@/components/ui/basicos";
 import { fichaAnuncio } from "@/lib/admin/dados";
@@ -51,10 +53,11 @@ async function Conteudo({
   if (!acesso) notFound();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  const [{ data: anuncio }, ficha, agora] = await Promise.all([
+  const [{ data: anuncio }, ficha, agora, conversas] = await Promise.all([
     acesso.cliente.rpc("obter_anuncio", { p_id: id }).maybeSingle(),
     fichaAnuncio(acesso.cliente, id),
     agoraDaRequisicao(),
+    conversasDaModeracao(acesso.cliente, [id]),
   ]);
   if (!anuncio || !ficha) notFound();
   const abertas = ficha.denuncias.filter((d) => d.status === "aberta").length;
@@ -106,6 +109,8 @@ async function Conteudo({
         {iaFalhou && (
           <p className="text-body-sm">A IA não conseguiu revisar este anúncio. Leia e, se estiver tudo certo, marque como revisado.</p>
         )}
+        {/* a conversa com quem publicou (migração 20270405120000) */}
+        <ConversaModeracao anuncioId={id} mensagens={conversas.get(id) ?? []} lado="equipe" status={ficha.status} />
         <AcoesModeracaoAnuncio anuncioId={id} status={ficha.status} denunciasAbertas={abertas} iaFalhou={iaFalhou} />
       </Secao>
 

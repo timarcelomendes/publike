@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AcoesModeracaoAnuncio } from "@/components/admin/acoes-anuncio";
+import { ConversaModeracao } from "@/components/conversa-moderacao";
+import { conversasDaModeracao, explicacoesPendentes } from "@/lib/servidor/conversa-moderacao";
 import { AcoesModeracaoAvaliacao } from "@/components/admin/acoes-avaliacao";
 import { AcoesModeracaoComentario, AcoesModeracaoRecado, RevisarFilaAgora } from "@/components/admin/acoes-recado";
 import { Estrelas } from "@/components/avaliacoes";
@@ -98,13 +100,22 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
     filaDeComentarios(acesso.cliente),
     agoraDaRequisicao(),
   ]);
+  // a conversa com quem publicou (migração 20270405120000): a dos anúncios da fila e os removidos que pedem resposta
+  const [conversas, pendentes] = await Promise.all([
+    conversasDaModeracao(acesso.cliente, fila.map((f) => f.anuncio_id)),
+    explicacoesPendentes(acesso.cliente),
+  ]);
+  const conversasPendentes = await conversasDaModeracao(
+    acesso.cliente,
+    pendentes.map((p) => p.anuncio_id),
+  );
   const esperando = (s: string) => s === "esperando_ia";
   const avaliacoes = todasAvaliacoes.filter((a) => !esperando(a.situacao));
   const recados = todosRecados.filter((r) => !esperando(r.situacao));
   const avaliacoesEsperando = todasAvaliacoes.filter((a) => esperando(a.situacao));
   const recadosEsperando = todosRecados.filter((r) => esperando(r.situacao));
   const numeros: Record<Aba, number> = {
-    anuncios: fila.length,
+    anuncios: fila.length + pendentes.length,
     avaliacoes: avaliacoes.length,
     recados: recados.length,
     comentarios: comentarios.length,
@@ -123,7 +134,56 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
       {aba === "anuncios" && (
         <section className="flex flex-col gap-4">
           <h2 className="text-h3">Anúncios</h2>
-          {fila.length === 0 ? (
+          {pendentes.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <h3 className="text-label">Removidos com explicação de quem publicou</h3>
+              <ul className="flex flex-col gap-4">
+                {pendentes.map((p) => (
+                  <li
+                    key={p.anuncio_id}
+                    className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <SeloStatus status="removido" />
+                      <Selo variante="aviso">
+                        <MessageSquareText aria-hidden />
+                        Quem publicou explicou
+                      </Selo>
+                    </div>
+                    <h2 className="text-h3">
+                      <Link href={`/admin/anuncios/${p.anuncio_id}`} className="underline-offset-2 hover:underline">
+                        {p.titulo}
+                      </Link>
+                    </h2>
+                    <p className="text-body-sm text-ink-muted">
+                      Por{" "}
+                      {acesso.admin ? (
+                        <Link href={`/admin/usuarios/${p.autor_id}`} className="underline">
+                          {p.autor_nome}
+                        </Link>
+                      ) : (
+                        p.autor_nome
+                      )}{" "}
+                      · {formatarLugar(p.bairro, p.cidade)} · escreveu {tempoRelativo(p.ultima, agora)}
+                    </p>
+                    {p.nota_moderacao && (
+                      <p className="rounded-md bg-surface-300 p-3 text-body-sm">Motivo da remoção: {p.nota_moderacao}</p>
+                    )}
+                    <ConversaModeracao
+                      anuncioId={p.anuncio_id}
+                      mensagens={conversasPendentes.get(p.anuncio_id) ?? []}
+                      lado="equipe"
+                      status="removido"
+                    />
+                    <div className="border-t border-line pt-3">
+                      <AcoesModeracaoAnuncio anuncioId={p.anuncio_id} status="removido" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {fila.length === 0 && pendentes.length > 0 ? null : fila.length === 0 ? (
             <Vazio icone={ShieldCheck} titulo="Nenhuma denúncia aberta">
               Tudo em ordem por aqui.
             </Vazio>
@@ -150,6 +210,12 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
                     {item.ia_falhou && (
                       <Selo variante="contorno">
                         <Sparkles aria-hidden />A IA não conseguiu revisar
+                      </Selo>
+                    )}
+                    {conversas.get(item.anuncio_id)?.at(-1)?.de === "autor" && (
+                      <Selo variante="aviso">
+                        <MessageSquareText aria-hidden />
+                        Quem publicou explicou
                       </Selo>
                     )}
                   </div>
@@ -205,6 +271,12 @@ async function Conteudo({ pedida }: { pedida: Aba | null }) {
                       ))}
                     </ul>
                   )}
+                  <ConversaModeracao
+                    anuncioId={item.anuncio_id}
+                    mensagens={conversas.get(item.anuncio_id) ?? []}
+                    lado="equipe"
+                    status={item.status}
+                  />
                   <div className="border-t border-line pt-3">
                     <AcoesModeracaoAnuncio
                       anuncioId={item.anuncio_id}

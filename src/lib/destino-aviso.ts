@@ -15,7 +15,8 @@ export type AvisoComDestino = {
  * abre esta página). `usuarioId` é a conta que recebeu o aviso.
  */
 export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
-  if (n.tipo === "mensagem_equipe") return "/painel/mensagens-da-equipe";
+  // a pergunta da moderação sobre um anúncio: a conversa, na página dele (migração 20270405120000)
+  if (n.tipo === "mensagem_equipe") return n.anuncio_id ? `/anuncio/${n.anuncio_id}#moderacao` : "/painel/mensagens-da-equipe";
   if (n.tipo === "comunicado") return n.link ?? "/";
   // pagamentos: a fatura, a assinatura (o link vem do banco, só caminho do site)
   if (n.tipo === "pagamento") return n.link?.startsWith("/painel/") ? n.link : "/painel/faturas";
@@ -74,6 +75,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
   if (n.tipo === "avaliacao_retida" || n.tipo === "avaliacao_removida") return "/regras";
   if (n.tipo === "avaliacao_liberada" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;
   // moderação do anúncio: Meus anúncios mostra se está em análise, no ar ou como pôr de volta
+  // em análise ou removido: a página do anúncio, onde dá para explicar para a moderação (migração 20270405120000)
+  if ((n.tipo === "em_analise" || n.tipo === "removido") && n.anuncio_id) return `/anuncio/${n.anuncio_id}#moderacao`;
   if (n.tipo === "em_analise" || n.tipo === "liberado") return "/painel/anuncios";
   if (n.tipo === "etapa") return "/painel/curtidas";
   if (n.tipo === "entrevista" && n.anuncio_id) return `/anuncio/${n.anuncio_id}`;

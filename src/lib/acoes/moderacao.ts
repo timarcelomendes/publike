@@ -13,6 +13,7 @@ import type { EstadoForm, Resultado } from "@/lib/tipos";
 import { errosPorCampo, lerAnuncio, lerDenuncia, registroDoAnuncio, UUID } from "@/lib/validacao";
 import { salvarTriagem } from "@/lib/servidor/triagem";
 import { gravarVaga } from "@/lib/servidor/comeca-ja";
+import { LIMITE_CONVERSA_MODERACAO } from "@/lib/conversa-moderacao";
 
 export async function denunciarAnuncio(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
   if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
@@ -81,4 +82,40 @@ export async function salvarAnuncioDaEquipe(_anterior: EstadoForm, formData: For
 
   revalidatePath("/");
   redirect(`/admin/anuncios/${id}?salvo=1`);
+}
+
+/** Conversa com a moderação (migração 20270405120000): quem publicou explica o anúncio em análise ou removido. */
+export async function explicarParaModeracao(anuncioId: string, texto: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
+  const limpo = texto.trim();
+  if (!limpo) return { ok: false, erro: "Escreva a explicação." };
+  if (limpo.length > LIMITE_CONVERSA_MODERACAO) return { ok: false, erro: `Use até ${LIMITE_CONVERSA_MODERACAO} letras.` };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta.", ir: `/entrar?next=/anuncio/${anuncioId}` };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("explicar_para_moderacao", { p_anuncio: anuncioId, p_texto: limpo });
+  if (error?.code === "PGRST202") return { ok: false, erro: "A conversa com a moderação ainda não está pronta. Tente mais tarde." };
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Enviado. A moderação lê antes de decidir, e você recebe um aviso quando ela responder." };
+}
+
+/** A moderação pergunta a quem publicou (chega no sino, no celular e no e-mail). */
+export async function perguntarAoAnunciante(anuncioId: string, texto: string): Promise<Resultado> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
+  const limpo = texto.trim();
+  if (limpo.length < 3) return { ok: false, erro: "Escreva a pergunta." };
+  if (limpo.length > LIMITE_CONVERSA_MODERACAO) return { ok: false, erro: `Use até ${LIMITE_CONVERSA_MODERACAO} letras.` };
+  const acesso = await acessoDaEquipe(["/admin/denuncias", "/admin/anuncios"]);
+  if (!acesso) return { ok: false, erro: "Só a moderação pode fazer isso.", ir: "/entrar?next=/admin/denuncias" };
+  const { error } = await acesso.cliente.rpc("perguntar_ao_anunciante", { p_anuncio: anuncioId, p_texto: limpo });
+  if (error?.code === "PGRST202")
+    return { ok: false, erro: "Rode antes a migração 20270405120000_conversa_da_moderacao.sql." };
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  after(processarFilas);
+  refresh();
+  return { ok: true, mensagem: "Pergunta enviada para o sino e o e-mail de quem publicou." };
 }

@@ -3930,6 +3930,43 @@ export type Database = {
         Args: { p_id: string };
         Returns: Json;
       };
+      equipe_conversas_moderacao: {
+        Args: { p_anuncios: string[] };
+        Returns: {
+          id: number;
+          anuncio_id: string;
+          de: string;
+          texto: string;
+          criado_em: string;
+          quem_nome: string | null;
+        }[];
+      };
+      equipe_explicacoes_pendentes: {
+        Args: Record<string, never>;
+        Returns: {
+          anuncio_id: string;
+          titulo: string;
+          tipo: string;
+          cidade: string;
+          bairro: string | null;
+          autor_id: string;
+          autor_nome: string | null;
+          nota_moderacao: string | null;
+          ultima: string;
+        }[];
+      };
+      explicar_para_moderacao: {
+        Args: { p_anuncio: string; p_texto: string };
+        Returns: number;
+      };
+      minha_conversa_moderacao: {
+        Args: { p_anuncio: string };
+        Returns: { id: number; de: string; texto: string; criado_em: string }[];
+      };
+      perguntar_ao_anunciante: {
+        Args: { p_anuncio: string; p_texto: string };
+        Returns: number;
+      };
       admin_anuncios_repetidos: {
         Args: Record<string, never>;
         Returns: {

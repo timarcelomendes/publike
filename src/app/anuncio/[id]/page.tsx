@@ -1,4 +1,6 @@
 import { AvisoVideoPedido } from "@/components/video/aviso-video-pedido";
+import { ConversaModeracao } from "@/components/conversa-moderacao";
+import { minhaConversaModeracao } from "@/lib/servidor/conversa-moderacao";
 import { diaADiaDasVagas } from "@/lib/servidor/jeito-de-trabalhar";
 import { ITENS_DO_JEITO } from "@/lib/jeito-de-trabalhar";
 import { minhaEntrevistaVideo } from "@/lib/servidor/entrevista-video";
@@ -297,6 +299,9 @@ async function DetalheAnuncio({
   const vaga = anuncio.tipo === "vaga";
   const novo = agora - new Date(anuncio.criado_em).getTime() < 48 * 3600 * 1000;
   const status = anuncio.status as StatusAnuncio;
+  // com a moderação (em análise ou removido): quem publicou conversa com a equipe aqui (migração 20270405120000)
+  const comModeracao = status === "em_analise" || status === "removido";
+  const conversaModeracao = proprio && comModeracao ? await minhaConversaModeracao(anuncio.id) : [];
   const fotos = anuncio.fotos.map((f) => urlDaFotoTrabalho(f)).filter((u): u is string => Boolean(u));
   const [nota, avaliacoes] = vaga
     ? [null, []]
@@ -462,6 +467,11 @@ async function DetalheAnuncio({
         <Aviso tipo="alerta" className="mt-4" titulo={`Este anúncio está: ${STATUS_ANUNCIO[status]?.nome ?? status}`}>
           {STATUS_ANUNCIO[status]?.ajuda}. Só você consegue ver esta página agora.
         </Aviso>
+      )}
+      {proprio && comModeracao && (
+        <div className="mt-4">
+          <ConversaModeracao anuncioId={anuncio.id} mensagens={conversaModeracao} lado="autor" status={status} />
+        </div>
       )}
 
       <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
