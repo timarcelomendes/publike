@@ -17,6 +17,9 @@ import { processarFilas } from "@/lib/servidor/filas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
+import { modeloPara } from "@/lib/ia/funcionalidades";
+import { ErroIA, iaConfigurada } from "@/lib/ia/openai";
+import { sugerirPerguntasVideo } from "@/lib/ia/tarefas";
 
 // Entrevista gravada com IA (migração 20270105120000). As regras ficam no banco; aqui, as mensagens e a IA.
 
@@ -214,4 +217,43 @@ export async function refazerIAVideo(id: string, anuncioId: string): Promise<Res
   if (!r.ok) return { ok: false, erro: r.erro ?? "A IA não conseguiu agora. Tente de novo." };
   refresh();
   return { ok: true, mensagem: "Pronto: a transcrição e o resumo saíram." };
+}
+
+/**
+ * As perguntas da entrevista sugeridas pela IA a partir da vaga (o título, a descrição e a área). Nada é salvo: as
+ * sugestões voltam para a tela, e quem publicou escolhe. Conta na cota da IA de quem contrata (usar_ia_resumo).
+ */
+export async function sugerirPerguntasComIA(
+  anuncioId: string,
+): Promise<{ ok: true; perguntas: string[] } | { ok: false; erro: string }> {
+  if (MODO_DEMO) return { ok: false, erro: MENSAGEM_DEMO };
+  if (!UUID.test(anuncioId)) return { ok: false, erro: "Pedido inválido." };
+  if (!iaConfigurada()) return { ok: false, erro: "A ajuda da IA não está disponível agora." };
+  const usuario = await obterUsuario();
+  if (!usuario) return { ok: false, erro: "Entre na sua conta." };
+  const anuncio = await obterAnuncio(anuncioId);
+  if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") {
+    return { ok: false, erro: "Vaga não encontrada." };
+  }
+  const supabase = await criarClienteServidor();
+  const { error: limite } = await supabase.rpc("usar_ia_resumo");
+  if (limite) return { ok: false, erro: mensagemDeErro(limite) };
+  const { data: config } = await supabase.rpc("config_publica");
+  const modelo = modeloPara(config?.[0], "empresa");
+  const dados = [
+    "<vaga>",
+    `Título: ${anuncio.titulo}`,
+    anuncio.categoria ? `Área: ${anuncio.categoria}` : "",
+    `Descrição: ${(anuncio.descricao ?? "").slice(0, 2000)}`,
+    "</vaga>",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  try {
+    const { perguntas } = await sugerirPerguntasVideo(dados, modelo);
+    return { ok: true, perguntas };
+  } catch (e) {
+    console.error("Publike: as perguntas da IA falharam:", e instanceof Error ? e.message : e);
+    return { ok: false, erro: e instanceof ErroIA ? e.message : "A IA não conseguiu sugerir agora. Tente de novo." };
+  }
 }

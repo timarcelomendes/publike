@@ -500,3 +500,44 @@ export async function resumirEntrevistaVideo(
   if (resumo.length < 20 || temContato(resumo)) throw new ErroIA("O resumo da IA não saiu certo. Tente de novo.");
   return { resumo, fortes: lista(r.fortes), conferir: lista(r.conferir), modelo: r0.modelo };
 }
+
+/** As perguntas da entrevista em vídeo sugeridas pela IA a partir da vaga (pedido do Marcelo, 10/11/2026). */
+const SISTEMA_PERGUNTAS_VIDEO = `Você ajuda quem publicou uma vaga no Publike (${ONDE_FUNCIONA}, ${UFS}) a montar uma entrevista em vídeo: o candidato grava cada resposta pelo celular, em 1 a 3 minutos.
+Recebe a vaga. Escreva em português do Brasil, simples e direto, 5 perguntas:
+- sobre o dia a dia DESTA vaga: situações reais do trabalho ("Um cliente chegou irritado..."), como a pessoa faria uma tarefa da função, a experiência que a vaga pede;
+- uma pergunta por vez, curta (até 160 letras), que dê para responder falando, sem papel;
+- da mais fácil para a mais difícil; a primeira pode ser "conte sobre você e o seu último trabalho".
+Regras que não podem ser quebradas:
+- Nunca pergunte idade, gênero, cor, origem, religião, estado civil, gravidez, filhos, deficiência, saúde, aparência, orientação, onde mora exatamente, dívidas, nome limpo ou antecedentes.
+- Nada de pegadinha nem de pergunta que só quem já trabalhou na função responde, se a vaga aceita sem experiência.
+- Sem telefone, e-mail ou link.`;
+
+const ESQUEMA_PERGUNTAS_VIDEO = {
+  type: "object",
+  properties: { perguntas: { type: "array", items: { type: "string" } } },
+  required: ["perguntas"],
+  additionalProperties: false,
+};
+
+const PROIBIDO_NA_PERGUNTA =
+  /\b(idade|anos você tem|casad|solteir|filho|grávid|gravidez|religi|igreja|cor da pele|raça|deficiên|doença|saúde|nome limpo|serasa|spc|antecedente|orienta[çc][ãa]o sexual)/i;
+
+export async function sugerirPerguntasVideo(dados: string, modelo: string): Promise<{ perguntas: string[]; modelo: string }> {
+  const r0 = await chamarIA({
+    funcionalidade: "empresa",
+    modelo,
+    sistema: SISTEMA_PERGUNTAS_VIDEO,
+    mensagem: dados,
+    maxTokens: 600,
+    esquema: { nome: "perguntas_video", schema: ESQUEMA_PERGUNTAS_VIDEO },
+  });
+  if (r0.parada === "recusa") throw new ErroIA("A IA não quis sugerir perguntas para esta vaga.");
+  if (r0.parada === "limite") throw new ErroIA("As sugestões ficaram compridas demais. Tente de novo.");
+  const r = lerJson<{ perguntas?: unknown }>(r0.texto);
+  const perguntas = (Array.isArray(r.perguntas) ? r.perguntas : [])
+    .map((x) => (typeof x === "string" ? x.replace(/\s+/g, " ").trim() : ""))
+    .filter((x) => x.length >= 10 && x.length <= 300 && !temContato(x) && !PROIBIDO_NA_PERGUNTA.test(x))
+    .slice(0, 5);
+  if (perguntas.length < 2) throw new ErroIA("As sugestões da IA não saíram certas. Tente de novo.");
+  return { perguntas, modelo: r0.modelo };
+}

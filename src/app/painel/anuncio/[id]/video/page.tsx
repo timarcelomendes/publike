@@ -15,6 +15,7 @@ import { MODO_DEMO } from "@/lib/config";
 import { listarInteressados, obterAnuncio, recursosPagos } from "@/lib/dados";
 import { SITUACOES_VIDEO, sugestoesDePerguntas, textoDoTempo } from "@/lib/entrevista-video";
 import { tempoRelativo } from "@/lib/formato";
+import { iaConfigurada } from "@/lib/ia/openai";
 import { marcaDoRecurso } from "@/lib/recursos-pagos";
 import { configVideo, videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { exigirUsuario } from "@/lib/sessao";
@@ -90,7 +91,12 @@ async function Conteudo({ id }: { id: string }) {
                 resume o que ele disse, sem avaliar o rosto, a voz ou o jeito de falar. Quem decide é você.
               </p>
             </div>
-            <FormPerguntasVideo anuncioId={id} config={config} sugestoes={sugestoesDePerguntas(anuncio.titulo)} />
+            <FormPerguntasVideo
+              anuncioId={id}
+              config={config}
+              sugestoes={sugestoesDePerguntas(anuncio.titulo)}
+              ia={iaConfigurada()}
+            />
           </section>
         </>
       )}

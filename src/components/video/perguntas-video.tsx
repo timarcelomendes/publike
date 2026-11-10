@@ -1,9 +1,9 @@
 "use client";
 
-import { Plus, Save, X } from "lucide-react";
+import { Plus, Save, Sparkles, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { salvarConfigVideo } from "@/lib/acoes/entrevista-video";
+import { salvarConfigVideo, sugerirPerguntasComIA } from "@/lib/acoes/entrevista-video";
 import {
   MAX_PERGUNTAS,
   MIN_PERGUNTAS,
@@ -20,10 +20,13 @@ export function FormPerguntasVideo({
   anuncioId,
   config,
   sugestoes,
+  ia = false,
 }: {
   anuncioId: string;
   config: ConfigVideo;
   sugestoes: string[];
+  /** a IA está ligada no site: aparece "Sugerir com a IA" */
+  ia?: boolean;
 }) {
   const [perguntas, setPerguntas] = useState<string[]>(() =>
     config.perguntas.length ? config.perguntas.map((p) => p.texto) : sugestoes.slice(0, 3),
@@ -35,7 +38,11 @@ export function FormPerguntasVideo({
   const [pedirATodos, setPedirATodos] = useState(config.pedir_a_todos);
   const [pendente, iniciar] = useTransition();
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
-  const restantes = sugestoes.filter((s) => !perguntas.includes(s));
+  // as sugestões da IA para esta vaga, quando pedidas (nada é salvo até tocar em Salvar)
+  const [daIA, setDaIA] = useState<string[] | null>(null);
+  const [erroIA, setErroIA] = useState<string | null>(null);
+  const [pensando, pensar] = useTransition();
+  const restantes = (daIA ?? sugestoes).filter((s) => !perguntas.includes(s));
   const novo = !config.perguntas.length;
 
   return (
@@ -96,21 +103,48 @@ export function FormPerguntasVideo({
         </ol>
         {perguntas.length < MAX_PERGUNTAS && (
           <div className="flex flex-col gap-2">
-            <Botao
-              type="button"
-              tamanho="sm"
-              variante="fantasma"
-              className="self-start"
-              onClick={() => setPerguntas((l) => [...l, ""])}
-            >
-              <Plus aria-hidden />
-              Escrever outra pergunta
-            </Botao>
+            <div className="flex flex-wrap gap-2">
+              <Botao
+                type="button"
+                tamanho="sm"
+                variante="fantasma"
+                onClick={() => setPerguntas((l) => [...l, ""])}
+              >
+                <Plus aria-hidden />
+                Escrever outra pergunta
+              </Botao>
+              {ia && (
+                <Botao
+                  type="button"
+                  tamanho="sm"
+                  variante="secundario"
+                  disabled={pensando}
+                  onClick={() => {
+                    setErroIA(null);
+                    pensar(async () => {
+                      const r = await chamarAcao(() => sugerirPerguntasComIA(anuncioId));
+                      if (r.ok && "perguntas" in r) setDaIA(r.perguntas);
+                      else if (!r.ok) setErroIA(r.erro);
+                    });
+                  }}
+                >
+                  <Sparkles aria-hidden />
+                  {pensando ? "Pensando nas perguntas…" : daIA ? "Sugerir outras com a IA" : "Sugerir com a IA, pela vaga"}
+                </Botao>
+              )}
+            </div>
+            {erroIA && (
+              <p role="status" className="text-body-sm text-danger">
+                {erroIA}
+              </p>
+            )}
             {restantes.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <p className="text-body-sm text-ink-muted">Ou toque numa sugestão:</p>
+                <p className="text-body-sm text-ink-muted">
+                  {daIA ? "Sugestões da IA para esta vaga (toque para pôr na entrevista):" : "Ou toque numa sugestão:"}
+                </p>
                 <ul className="flex flex-wrap gap-2">
-                  {restantes.slice(0, 4).map((s) => (
+                  {restantes.slice(0, daIA ? 5 : 4).map((s) => (
                     <li key={s}>
                       <button
                         type="button"
