@@ -1,4 +1,4 @@
--- Cancelar o pedido de entrevista em vídeo (10/11/2026). Rode depois de 20270413120000_vinte_vagas_gratis_e_plano_acima.sql.
+-- Cancelar o pedido de entrevista em vídeo (10/11/2026). Rode depois de 20270413130000_vinte_vagas_gratis_e_plano_acima.sql.
 -- Pode rodar de novo.
 --
 -- Quem contrata cancela um pedido que ainda não foi enviado (pedida ou respondendo): o pedido sai da página do

@@ -330,7 +330,7 @@ export const LIMITES_CONTA = {
   /** agência de emprego / RH com o CNPJ conferido pela equipe: publica mais por dia (o no ar segue o de todos) */
   agenciaVerificada: { porDia: 50 },
   /**
-   * Acima das 20 vagas grátis, só com um plano por faixa (decisão de 10/11/2026, migração 20270413120000): o Plano
+   * Acima das 20 vagas grátis, só com um plano por faixa (decisão de 10/11/2026, migração 20270413130000): o Plano
    * Empresa vai até 50 no ar e o Plano Agência até 200.
    */
   comPlano: { empresa: 50, agencia: 200 },
