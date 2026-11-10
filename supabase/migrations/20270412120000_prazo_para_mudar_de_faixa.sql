@@ -114,4 +114,9 @@ update privado.planos set valor = 201, atualizado_em = now() where recurso = 'em
 update privado.planos set valor = 199, atualizado_em = now() where recurso = 'empresa_20' and ciclo = 'MONTHLY' and valor = 149;
 update privado.planos set valor = 507, atualizado_em = now() where recurso = 'empresa_20' and ciclo = 'QUARTERLY' and valor = 380;
 
+-- 5. A Triagem com IA sozinha desce para R$ 59 por mês e R$ 150 a cada 3 meses (decisão do Marcelo, 10/11/2026). Só
+-- troca o preço que ainda é o antigo; quem já assinou mantém o valor da assinatura.
+update privado.planos set valor = 59, atualizado_em = now() where recurso = 'copiloto' and ciclo = 'MONTHLY' and valor = 79;
+update privado.planos set valor = 150, atualizado_em = now() where recurso = 'copiloto' and ciclo = 'QUARTERLY' and valor = 199;
+
 notify pgrst, 'reload schema';

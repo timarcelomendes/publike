@@ -33,7 +33,8 @@ const ORDEM: Produto[] = [
 
 /** A sugestão do plano de lançamento: o mensal e os 3 meses com uns 15% de desconto. */
 const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
-  copiloto: { MONTHLY: 79, QUARTERLY: 199 },
+  // a Triagem com IA desceu para R$ 59 (10/11/2026), com 15% no trimestre
+  copiloto: { MONTHLY: 59, QUARTERLY: 150 },
   testes: { MONTHLY: 29, QUARTERLY: 74 },
   video: { MONTHLY: 49, QUARTERLY: 125 },
   automacoes: { MONTHLY: 39, QUARTERLY: 99 },
