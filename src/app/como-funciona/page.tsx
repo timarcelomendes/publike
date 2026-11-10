@@ -72,7 +72,7 @@ const PERGUNTAS = [
   },
   {
     p: "Sou agência de emprego ou RH. Posso usar?",
-    r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ: ele aparece no seu perfil e nas suas vagas, para os candidatos conferirem na Receita. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. Depois que a equipe do Publike confere o CNPJ, a agência pode ter até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
+    r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ: ele aparece no seu perfil e nas suas vagas, para os candidatos conferirem na Receita. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. São até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça; para mais, até ${LIMITES_CONTA.comPlano.agencia}, com o Plano Agência. Depois que a equipe do Publike confere o CNPJ, a agência publica até ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
   },
   {
     p: "Quanto tempo o anúncio fica no ar?",

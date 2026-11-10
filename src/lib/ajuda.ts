@@ -20,7 +20,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "É grátis mesmo?",
-        r: "Sim. Publicar, curtir e conversar é de graça para quem procura trabalho, para quem presta serviço e para empresas de qualquer tamanho. Ninguém pode cobrar para você conseguir trabalho, nem pelo Publike nem fora dele. A página “É grátis”, no rodapé, explica os limites contra spam e como o Publike se mantém.",
+        r: "Sim. Publicar, curtir e conversar é de graça para quem procura trabalho, para quem presta serviço e para empresas de qualquer tamanho. Ninguém pode cobrar para você conseguir trabalho, nem pelo Publike nem fora dele. A página “É grátis”, no rodapé, explica os limites e como o Publike se mantém.",
       },
       {
         p: "Funciona em quais cidades?",
@@ -204,7 +204,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como publico uma vaga?",
-        r: `Toque em “Publicar grátis”, escreva o título, a descrição, o tipo de contratação (carteira, temporária, diária ou freelance), o valor e o local. Comissão, bônus, gorjeta e outros ganhos vão em “Ganhos a mais”, logo abaixo do valor, com como funciona cada um. Comércio e empresa podem informar o CEP e o número: o pino fica na porta e quem mora perto vê primeiro, com o tempo de ônibus até aí. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publicar ${LIMITES_CONTA.comum.porDia} por dia.`,
+        r: `Toque em “Publicar grátis”, escreva o título, a descrição, o tipo de contratação (carteira, temporária, diária ou freelance), o valor e o local. Comissão, bônus, gorjeta e outros ganhos vão em “Ganhos a mais”, logo abaixo do valor, com como funciona cada um. Comércio e empresa podem informar o CEP e o número: o pino fica na porta e quem mora perto vê primeiro, com o tempo de ônibus até aí. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} anúncios no ar de graça (mais, com um plano) e publicar ${LIMITES_CONTA.comum.porDia} por dia.`,
       },
       {
         p: "Quanto tempo a vaga fica no ar?",
@@ -257,7 +257,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Sou agência de emprego ou RH. Posso usar?",
-        r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. Depois que a equipe confere o CNPJ, a agência pode ter até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
+        r: `Pode, e de graça. Crie a conta como “Agência / RH” e informe o CNPJ. Em cada vaga, diga para qual empresa ela é ou marque “Empresa confidencial”. São até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça; para mais, até ${LIMITES_CONTA.comPlano.agencia}, com o Plano Agência. Depois que a equipe confere o CNPJ, a agência publica até ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. A agência não pode cobrar nada de quem se candidata.`,
       },
       {
         p: "Sou agência: como organizo as vagas por cliente?",
@@ -438,7 +438,7 @@ const RENOVAR: PassoJornada = {
     "Ao publicar, você escolhe em quantos dias a vaga sai do ar sozinha (15, 30, 60, 90 ou outro) ou “Sem prazo”. Com prazo, dá para renovar.",
     "Pausar: some da busca sem perder os candidatos. Encerrar: tira a vaga do ar.",
     "Publicar parecida: copia uma vaga sua para não começar do zero.",
-    `Cada conta tem até ${LIMITES_CONTA.comum.noAr} anúncios no ar e publica até ${LIMITES_CONTA.comum.porDia} por dia.`,
+    `Cada conta tem até ${LIMITES_CONTA.comum.noAr} anúncios no ar de graça (mais, com um plano: até ${LIMITES_CONTA.comPlano.empresa} no Plano Empresa e ${LIMITES_CONTA.comPlano.agencia} no Plano Agência) e publica até ${LIMITES_CONTA.comum.porDia} por dia.`,
   ],
   imagem: "meus-anuncios",
   link: { href: "/painel/anuncios?tipo=vaga", texto: "Vagas" },
@@ -750,7 +750,7 @@ export const PERFIS_AJUDA: PerfilAjuda[] = [
             titulo: "Espere a conferência do CNPJ",
             texto: "A equipe do Publike confere o CNPJ e dá o selo de agência verificada.",
             detalhes: [
-              `Verificada, a agência pode ter até ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar ${LIMITES_CONTA.agenciaVerificada.porDia} por dia (antes: ${LIMITES_CONTA.comum.noAr} e ${LIMITES_CONTA.comum.porDia}).`,
+              `Verificada, a agência publica até ${LIMITES_CONTA.agenciaVerificada.porDia} vagas por dia (antes: ${LIMITES_CONTA.comum.porDia}) e pode assinar o Plano Agência, com até ${LIMITES_CONTA.comPlano.agencia} no ar (sem plano, ${LIMITES_CONTA.comum.noAr}).`,
               "Quem procura vaga pode conferir o CNPJ na Receita: ele aparece no perfil da agência.",
               "Trocar o CNPJ tira o selo até a nova conferência.",
             ],

@@ -19,6 +19,7 @@ export type PlanoDoAdmin = { id: string; recurso: Produto; ciclo: Ciclo; valor: 
 const ORDEM: Produto[] = [
   "empresa_5",
   "empresa_20",
+  "empresa_50",
   "agencia_15",
   "agencia_200",
   "copiloto",
@@ -45,6 +46,8 @@ const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
   // os planos por faixa (lançamento, 10/11/2026; o Plano Empresa subiu para R$ 79 e R$ 199, com 15% no trimestre)
   empresa_5: { MONTHLY: 79, QUARTERLY: 201 },
   empresa_20: { MONTHLY: 199, QUARTERLY: 507 },
+  // acima das 20 vagas grátis (10/11/2026)
+  empresa_50: { MONTHLY: 299, QUARTERLY: 762 },
   agencia_15: { MONTHLY: 99, QUARTERLY: 252 },
   agencia_200: { MONTHLY: 399, QUARTERLY: 1017 },
   combo: { MONTHLY: 89, QUARTERLY: 227 },

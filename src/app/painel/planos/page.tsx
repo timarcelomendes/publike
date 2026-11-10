@@ -44,7 +44,7 @@ export default function PaginaPlanos({ searchParams }: PageProps<"/painel/planos
 }
 
 const GRATIS = [
-  "Publicar vagas, sem limite",
+  "Até 20 vagas no ar ao mesmo tempo",
   "Candidatos, quadro e mensagens",
   "Equipe sem limite de pessoas",
   "Página de carreiras com 10 vagas publicadas",
@@ -140,7 +140,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
         <div className="max-w-2xl">
           <h2 className="text-h2">Planos</h2>
           <p className="mt-1 text-body text-ink-muted">
-            Publicar vagas e receber candidatos é grátis, sem limite. O plano junta as ferramentas que adiantam a seleção,
+            Publicar vagas e receber candidatos é grátis, até 20 vagas no ar. O plano junta as ferramentas que adiantam a seleção,
             pelo número de vagas que você tem no ar.
           </p>
         </div>
@@ -239,7 +239,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
         </h3>
         <ul className="grid gap-x-8 gap-y-2 text-body-sm text-ink-muted md:grid-cols-2">
           <li>Preço de lançamento: quem assina agora mantém o valor enquanto continuar assinando.</li>
-          <li>Publicar nunca trava. Passou da faixa, você recebe o aviso e tem 30 dias para mudar de plano.</li>
+          <li>Até 20 vagas no ar, é grátis. Para mais, só com um plano. Passou da faixa do plano, você tem 30 dias para mudar.</li>
           <li>Cartão ou Pix. Cancele quando quiser: o que já foi pago vale até o fim.</li>
           <li>Nada pago muda a ordem das vagas ou dos candidatos, e o candidato nunca paga.</li>
         </ul>

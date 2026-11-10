@@ -37,7 +37,7 @@ const REGRAS: Regra[] = [
       dicas: [
         "Contratou? Marque “Vaga preenchida”: quem curtiu recebe o aviso e a vaga sai das buscas.",
         "Vaga com o endereço e o salário certos recebe mais candidatos de perto.",
-        "Cada conta pode ter até 20 vagas no ar. O limite é contra spam, não é cobrança.",
+        "Até 20 vagas no ar de graça. Para mais, com um plano: veja em Planos.",
       ],
       agencia: {
         dicas: [

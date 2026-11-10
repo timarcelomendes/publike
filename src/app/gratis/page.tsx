@@ -18,7 +18,7 @@ import { LIMITES_CONTA } from "@/lib/constantes";
 export const metadata: Metadata = {
   title: "O Publike é grátis",
   description:
-    "Procurar trabalho, publicar vaga ou serviço, curtir e conversar não custam nada no Publike. Veja o que é grátis, os limites contra spam e como o Publike se mantém.",
+    "Procurar trabalho, publicar vaga ou serviço, curtir e conversar não custam nada no Publike. Veja o que é grátis, os limites e como o Publike se mantém.",
   alternates: { canonical: "/gratis" },
 };
 
@@ -69,11 +69,11 @@ const NUNCA = [
 const PROMESSA =
   "O básico do Publike vai continuar grátis, sempre: procurar, publicar, curtir, dar match e conversar. Se um dia existir alguma coisa paga, ela vai ser opcional, vamos avisar antes e ela nunca vai ser cobrada de quem procura trabalho.";
 
-const { comum, agenciaVerificada, recadosPorDia } = LIMITES_CONTA;
+const { comum, agenciaVerificada, comPlano, recadosPorDia } = LIMITES_CONTA;
 const LIMITE =
-  `Tem, mas não é cobrança: é contra spam, para as vagas de verdade não sumirem no meio de anúncio repetido. ` +
-  `Cada conta pode ter até ${comum.noAr} anúncios no ar ao mesmo tempo e publicar até ${comum.porDia} por dia. ` +
-  `Agência de emprego ou RH com o CNPJ conferido pela equipe pode ter até ${agenciaVerificada.noAr} vagas no ar e publicar ${agenciaVerificada.porDia} por dia. ` +
+  `Tem. De graça, cada conta pode ter até ${comum.noAr} anúncios no ar ao mesmo tempo e publicar até ${comum.porDia} por dia, o que cobre quase todo comércio e empresa. ` +
+  `Para mais de ${comum.noAr} no ar, é com um plano: o Plano Empresa vai até ${comPlano.empresa}, e o Plano Agência, até ${comPlano.agencia}. ` +
+  `Agência de emprego ou RH com o CNPJ conferido pela equipe publica até ${agenciaVerificada.porDia} por dia. ` +
   `No feed, cada conta faz até ${recadosPorDia} posts por dia.`;
 
 const SUSTENTO =

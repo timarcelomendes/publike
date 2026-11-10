@@ -69,6 +69,7 @@ const CURTO: Record<Produto, string> = {
   carreiras: "Página de carreiras",
   empresa_5: "Plano Empresa 5",
   empresa_20: "Plano Empresa 20",
+  empresa_50: "Plano Empresa 50",
   agencia_15: "Plano Agência 15",
   agencia_200: "Plano Agência 200",
 };

@@ -623,10 +623,9 @@ export function FormPerfil({
         )}
         {agencia && (
           <p className="text-body-sm text-ink-muted">
-            Publicar vagas é grátis. Depois que a equipe do Publike confere o CNPJ, a agência ganha o selo de verificada
-            e pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar{" "}
-            {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Antes disso, vale o limite de todas as contas:{" "}
-            {LIMITES_CONTA.comum.noAr} no ar e {LIMITES_CONTA.comum.porDia} por dia.
+            Publicar vagas é grátis, até {LIMITES_CONTA.comum.noAr} no ar ao mesmo tempo; acima disso, com um plano.
+            Depois que a equipe do Publike confere o CNPJ, a agência ganha o selo de verificada e pode publicar{" "}
+            {LIMITES_CONTA.agenciaVerificada.porDia} vagas por dia (antes, {LIMITES_CONTA.comum.porDia}).
           </p>
         )}
         {perdeSelo && (

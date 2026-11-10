@@ -7,16 +7,16 @@ import type { Liberavel, RecursoPago, RecursosPagos } from "./recursos-pagos";
  * quatro recursos numa assinatura só; migração 20270116120000).
  */
 /** Os planos por faixa de vagas no ar (migração 20270407120000): liberam tudo, como o Plano Completo. */
-export type PlanoPorFaixa = "empresa_5" | "empresa_20" | "agencia_15" | "agencia_200";
-export const PLANOS_POR_FAIXA: PlanoPorFaixa[] = ["empresa_5", "empresa_20", "agencia_15", "agencia_200"];
+export type PlanoPorFaixa = "empresa_5" | "empresa_20" | "empresa_50" | "agencia_15" | "agencia_200";
+export const PLANOS_POR_FAIXA: PlanoPorFaixa[] = ["empresa_5", "empresa_20", "empresa_50", "agencia_15", "agencia_200"];
 export function ehPlanoPorFaixa(x: unknown): x is PlanoPorFaixa {
-  return x === "empresa_5" || x === "empresa_20" || x === "agencia_15" || x === "agencia_200";
+  return (PLANOS_POR_FAIXA as unknown[]).includes(x);
 }
 
 export type Produto = RecursoPago | "combo" | "completo" | "salarios" | "carreiras" | PlanoPorFaixa;
 
 /** Os pacotes: liberam mais de um recurso. */
-export const PACOTES = ["completo", "combo", "empresa_5", "empresa_20", "agencia_15", "agencia_200"] as const;
+export const PACOTES = ["completo", "combo", "empresa_5", "empresa_20", "empresa_50", "agencia_15", "agencia_200"] as const;
 
 export const NOME_PRODUTO: Record<Produto, string> = {
   copiloto: "Triagem com IA",
@@ -29,6 +29,7 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   carreiras: "Página de carreiras",
   empresa_5: "Plano Empresa até 5 vagas",
   empresa_20: "Plano Empresa até 20 vagas",
+  empresa_50: "Plano Empresa até 50 vagas",
   agencia_15: "Plano Agência até 15 vagas",
   agencia_200: "Plano Agência até 200 vagas",
 };
@@ -45,6 +46,7 @@ export const O_PRODUTO: Record<Produto, string> = {
   carreiras: "a Página de carreiras",
   empresa_5: "o Plano Empresa até 5 vagas",
   empresa_20: "o Plano Empresa até 20 vagas",
+  empresa_50: "o Plano Empresa até 50 vagas",
   agencia_15: "o Plano Agência até 15 vagas",
   agencia_200: "o Plano Agência até 200 vagas",
 };
@@ -61,6 +63,7 @@ export const DO_PRODUTO: Record<Produto, string> = {
   carreiras: "da Página de carreiras",
   empresa_5: "do Plano Empresa até 5 vagas",
   empresa_20: "do Plano Empresa até 20 vagas",
+  empresa_50: "do Plano Empresa até 50 vagas",
   agencia_15: "do Plano Agência até 15 vagas",
   agencia_200: "do Plano Agência até 200 vagas",
 };

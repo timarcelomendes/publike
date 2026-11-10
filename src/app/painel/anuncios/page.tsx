@@ -496,15 +496,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
       {perfil?.tipo === "agencia" &&
         (perfil.verificado ? (
           <Aviso tipo="info" titulo="Agência verificada">
-            Você pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar até{" "}
-            {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora: {noAr} no ar.
+            Você publica até {LIMITES_CONTA.agenciaVerificada.porDia} vagas por dia. No ar, são até{" "}
+            {LIMITES_CONTA.comum.noAr} de graça; para mais, até {LIMITES_CONTA.comPlano.agencia}, com um{" "}
+            <Link href="/painel/planos" className="font-semibold underline underline-offset-2">
+              plano
+            </Link>
+            . Agora: {noAr} no ar.
           </Aviso>
         ) : (
           <Aviso tipo="info" titulo="Agência aguardando verificação">
-            A equipe do Publike está conferindo o CNPJ. Até lá, vale o limite de todas as contas:{" "}
-            {LIMITES_CONTA.comum.noAr} vagas no ar e {LIMITES_CONTA.comum.porDia} por dia. Depois, até{" "}
-            {LIMITES_CONTA.agenciaVerificada.noAr} no ar e {LIMITES_CONTA.agenciaVerificada.porDia} por dia. Agora:{" "}
-            {noAr} no ar.
+            A equipe do Publike está conferindo o CNPJ. Até lá, são {LIMITES_CONTA.comum.porDia} vagas novas por dia;
+            depois, {LIMITES_CONTA.agenciaVerificada.porDia}. No ar, até {LIMITES_CONTA.comum.noAr} de graça; para
+            mais, com um plano. Agora: {noAr} no ar.
           </Aviso>
         ))}
     </div>

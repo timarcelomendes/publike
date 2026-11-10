@@ -397,8 +397,8 @@ async function Conteudo({
             <Aviso tipo="info" titulo="Agência esperando verificação">
               Confira na Receita se o CNPJ está ativo, se o nome bate com o do perfil e se a atividade é de seleção,
               agenciamento ou locação de mão de obra (CNAE do grupo 78) ou de consultoria em RH. Verificada, a agência
-              pode ter até {LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e publicar{" "}
-              {LIMITES_CONTA.agenciaVerificada.porDia} por dia.
+              publica até {LIMITES_CONTA.agenciaVerificada.porDia} vagas por dia e pode assinar o Plano Agência (até{" "}
+              {LIMITES_CONTA.comPlano.agencia} no ar).
             </Aviso>
           )}
           <SeloVerificado usuarioId={u.id} verificado={u.perfil.verificado} agencia={u.perfil.tipo === "agencia"} />

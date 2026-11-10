@@ -58,6 +58,7 @@ const ICONE: Record<Produto, typeof Sparkles> = {
   carreiras: Palette,
   empresa_5: PackageCheck,
   empresa_20: PackageCheck,
+  empresa_50: PackageCheck,
   agencia_15: PackageCheck,
   agencia_200: PackageCheck,
 };
@@ -79,6 +80,7 @@ const FAZ: Record<Produto, string> = {
     "A sua página de vagas com a cara da empresa: a cor da marca, a capa, por que trabalhar aí, os benefícios e um endereço curto. Libera sozinha com 10 vagas publicadas.",
   empresa_5: `Tudo numa assinatura só, para até 5 vagas no ar: ${TUDO}.`,
   empresa_20: `Tudo numa assinatura só, para até 20 vagas no ar: ${TUDO}.`,
+  empresa_50: `Tudo numa assinatura só, para até 50 vagas no ar: ${TUDO}.`,
   agencia_15: `Tudo numa assinatura só, para até 15 vagas no ar e 3 recrutadores: ${TUDO}.`,
   agencia_200: `Tudo numa assinatura só, para até 200 vagas no ar e 10 recrutadores: ${TUDO}.`,
 };
@@ -316,6 +318,7 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
   },
   empresa_5: { titulo: "Plano Empresa até 5 vagas", texto: `Tudo junto: ${TUDO}.`, botao: "Conhecer o Plano Empresa" },
   empresa_20: { titulo: "Plano Empresa até 20 vagas", texto: `Tudo junto: ${TUDO}.`, botao: "Conhecer o Plano Empresa" },
+  empresa_50: { titulo: "Plano Empresa até 50 vagas", texto: `Tudo junto: ${TUDO}.`, botao: "Conhecer o Plano Empresa" },
   agencia_15: { titulo: "Plano Agência até 15 vagas", texto: `Tudo junto, com 3 recrutadores: ${TUDO}.`, botao: "Conhecer o Plano Agência" },
   agencia_200: {
     titulo: "Plano Agência até 200 vagas",
@@ -330,7 +333,8 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
  */
 const OUTRAS: Record<Produto, Produto[]> = {
   empresa_5: ["empresa_20", "copiloto", "testes", "video", "automacoes", "carreiras"],
-  empresa_20: ["copiloto", "testes", "video", "automacoes", "carreiras"],
+  empresa_20: ["empresa_50", "copiloto", "testes", "video", "automacoes", "carreiras"],
+  empresa_50: ["copiloto", "testes", "video", "automacoes", "carreiras"],
   agencia_15: ["agencia_200", "copiloto", "testes", "video", "automacoes"],
   agencia_200: ["copiloto", "testes", "video", "automacoes"],
   completo: ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras"],

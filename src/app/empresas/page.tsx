@@ -87,7 +87,7 @@ const MOTIVOS: Item[] = [
   {
     icone: HandCoins,
     titulo: "Grátis, sem limite de candidatos",
-    texto: `Publicar, ver todos os candidatos e conversar no WhatsApp não custam nada: sem plano e sem pagar por currículo. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} vagas no ar.`,
+    texto: `Publicar, ver todos os candidatos e conversar no WhatsApp não custam nada: sem plano e sem pagar por currículo. Cada conta pode ter até ${LIMITES_CONTA.comum.noAr} vagas no ar de graça.`,
   },
 ];
 
@@ -208,7 +208,7 @@ const PERGUNTAS = [
   },
   {
     p: "Quantas vagas posso publicar?",
-    r: `Cada conta pode ter até ${comum.noAr} vagas no ar ao mesmo tempo e publicar até ${comum.porDia} por dia. Agência de emprego ou RH com o CNPJ conferido pela equipe vai a ${LIMITES_CONTA.agenciaVerificada.noAr} vagas no ar e ${LIMITES_CONTA.agenciaVerificada.porDia} por dia. O limite é contra spam, não é cobrança.`,
+    r: `De graça, cada conta pode ter até ${comum.noAr} vagas no ar ao mesmo tempo e publicar até ${comum.porDia} por dia. Para mais de ${comum.noAr} no ar, é com um plano: o Plano Empresa vai até ${LIMITES_CONTA.comPlano.empresa}, e o Plano Agência, para agência com o CNPJ conferido pela equipe, até ${LIMITES_CONTA.comPlano.agencia}. Agência verificada também publica até ${LIMITES_CONTA.agenciaVerificada.porDia} por dia.`,
   },
   {
     p: "Quanto tempo a vaga fica no ar?",
