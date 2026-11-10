@@ -14,6 +14,7 @@ import { caminhoDaConta } from "@/lib/servidor/caminho";
 import { colocacoesDasVagas } from "@/lib/servidor/colocacoes";
 import { documentosPendentesDaConta } from "@/lib/servidor/documentos-admissao";
 import { exigirUsuario } from "@/lib/sessao";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Contratados" };
@@ -36,11 +37,16 @@ async function Conteudo() {
   const [caminho, agora] = await Promise.all([caminhoDaConta(), agoraDaRequisicao()]);
   // fora da agência (sem colocações), Contratados é uma etapa de Candidatos
   if (!caminho.agencia) redirect("/painel/caixa?aba=contratados");
-  const [colocacoes, pendentes] = await Promise.all([
+  const supabase = await criarClienteServidor();
+  const [colocacoes, pendentes, { data: perguntas }, { data: comPlano }] = await Promise.all([
     caminho.agencia ? colocacoesDasVagas() : Promise.resolve(new Map()),
     // os documentos da admissão ainda não entregues ao contador (migração 20270312120000; sem ela, nada)
     documentosPendentesDaConta().catch(() => []),
+    // a garantia acompanhada com o cliente e o Plano Agência (migrações 20270410120000 e 20270408120000)
+    supabase.rpc("garantias_da_conta"),
+    supabase.rpc("meu_plano_agencia"),
   ]);
+  const garantias = new Map((perguntas ?? []).map((g) => [`${g.anuncio_id}:${g.perfil_id}`, g]));
   const documentos = new Map(pendentes.map((d) => [`${d.anuncioId}:${d.perfilId}`, d]));
   const hoje = hojeEmBrasilia(agora);
   const nomeDoCliente = new Map(caminho.listaClientes.map((c) => [c.id, c.nome]));
@@ -52,6 +58,7 @@ async function Conteudo() {
         cliente: v.clienteId ? (nomeDoCliente.get(v.clienteId) ?? null) : null,
         colocacao: colocacoes.get(`${v.anuncio.id}:${c.perfil_id}`) ?? null,
         docs: documentos.get(`${v.anuncio.id}:${c.perfil_id}`) ?? null,
+        garantia: garantias.get(`${v.anuncio.id}:${c.perfil_id}`) ?? null,
       })),
     )
     .sort((a, b) => (b.c.etapa_em ?? b.c.curtido_em).localeCompare(a.c.etapa_em ?? a.c.curtido_em));
@@ -86,7 +93,7 @@ async function Conteudo() {
         </Vazio>
       ) : (
         <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200 shadow-card">
-          {lista.map(({ c, vaga, cliente, colocacao, docs }) => {
+          {lista.map(({ c, vaga, cliente, colocacao, docs, garantia }) => {
             const s = colocacao ? situacaoDaColocacao(colocacao, hoje) : null;
             return (
               <li key={`${vaga.id}:${c.perfil_id}`} data-contratado={c.nome}>
@@ -107,6 +114,17 @@ async function Conteudo() {
                         className={`mt-0.5 block text-body-sm ${s.tipo === "reposicao" ? "text-terra-text" : "text-ink-muted"}`}
                       >
                         {s.texto}
+                      </span>
+                    )}
+                    {garantia && (
+                      <span className="mt-0.5 block text-body-sm text-ink-muted">
+                        {garantia.resposta === "saiu"
+                          ? "O cliente avisou que a pessoa saiu."
+                          : garantia.resposta === "continua"
+                            ? "O cliente confirmou que a pessoa continua."
+                            : garantia.por_email
+                              ? `Perguntamos ao cliente se continua (${dataBR(garantia.enviado_em.slice(0, 10))}).`
+                              : "O cliente não tem e-mail: pergunte você se está tudo certo."}
                       </span>
                     )}
                   </span>
@@ -136,6 +154,10 @@ async function Conteudo() {
         <p className="text-body-sm text-ink-muted">
           {plural(lista.length, "pessoa contratada", "pessoas contratadas")}.
           {caminho.agencia && " A taxa e a garantia de cada uma ficam no cartão dela, no quadro da vaga."}
+          {caminho.agencia &&
+            (comPlano === true
+              ? " Sete dias antes do fim da garantia, o Publike pergunta ao cliente, por e-mail, se a pessoa continua."
+              : " Com o Plano Agência, o Publike pergunta ao cliente, antes do fim da garantia, se a pessoa continua.")}
         </p>
       )}
     </div>

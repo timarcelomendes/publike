@@ -103,7 +103,7 @@ const nextConfig: NextConfig = {
       // links com segredo (claude/plano-seguranca.md, item 6): nada do endereço sai para outro site nem para a próxima
       // página (vem depois da regra geral, que também manda Referrer-Policy: esta vence)
       {
-        source: "/:rota(acesso|cliente|candidatura|convite|equipe|finalistas|relatorio)/:segredo*",
+        source: "/:rota(acesso|cliente|candidatura|convite|equipe|finalistas|relatorio|garantia)/:segredo*",
         headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },
       {

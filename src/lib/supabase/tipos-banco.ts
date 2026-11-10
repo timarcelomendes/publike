@@ -3963,6 +3963,30 @@ export type Database = {
         Args: { p_chave: string };
         Returns: number;
       };
+      servidor_perguntar_garantias: {
+        Args: { p_chave: string };
+        Returns: number;
+      };
+      garantia_por_link: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      responder_garantia: {
+        Args: { p_token: string; p_resposta: string };
+        Returns: Json;
+      };
+      garantias_da_conta: {
+        Args: Record<string, never>;
+        Returns: {
+          anuncio_id: string;
+          perfil_id: string;
+          fim: string;
+          enviado_em: string;
+          por_email: boolean;
+          resposta: string | null;
+          respondida_em: string | null;
+        }[];
+      };
       relatorio_do_cliente: {
         Args: { p_cliente: string; p_de: string; p_ate: string };
         Returns: Json;

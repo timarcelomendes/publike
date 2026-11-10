@@ -664,6 +664,23 @@ export async function avisarLiberacoesPorMeta(): Promise<{ avisadas: number; mot
 }
 
 /**
+ * A garantia acompanhada com o cliente (migração 20270410120000): 7 dias antes do fim da garantia de cada colocação
+ * de agência com o Plano Agência, o cliente recebe a pergunta "continua?" (ou a agência, o lembrete, sem o e-mail do
+ * cliente). Devolve quantas perguntas saíram.
+ */
+export async function perguntarGarantias(): Promise<{ perguntas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { perguntas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_perguntar_garantias", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { perguntas: 0 };
+    console.error("Publike: falha ao perguntar as garantias:", error.message);
+    return { perguntas: 0, motivo: "Não foi possível perguntar as garantias aos clientes." };
+  }
+  return { perguntas: Number(data ?? 0) };
+}
+
+/**
  * Os planos por faixa (migração 20270407120000): quem passou das vagas no ar da faixa recebe o aviso no sino, uma vez
  * a cada 30 dias por assinatura. Nada trava. Devolve quantas contas foram avisadas.
  */
