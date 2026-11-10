@@ -13,8 +13,10 @@ import {
   ehPlanoPorFaixa,
   MESES,
   NOME_PRODUTO,
+  O_PRODUTO,
   planoQueCabe,
   podeAssinarPacote,
+  seCruzam,
   type Assinatura,
   type Ciclo,
   type PagamentosDaConta,
@@ -170,6 +172,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
               cabe={cabe === p || (p === "completo" && !cabe)}
               meu={meuPlano}
               agencia={agencia}
+              cruza={valendo.find((a) => a.recurso !== p && seCruzam(a.recurso, p)) ?? null}
             />
           </li>
         ))}
@@ -191,6 +194,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
                   ? recursos?.[p]
                   : undefined;
               const tem = situacao(estado, agora) ?? (valendo.some((a) => a.recurso === p) ? "Assinado" : null);
+              // o combo de quem já assina a Triagem ou o Teste (não valem juntos): sem o "Assinar"
+              const cruza = valendo.find((a) => a.recurso !== p && seCruzam(a.recurso, p));
               return (
                 <li key={p} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5">
                   <div className="min-w-0 flex-1 basis-56">
@@ -200,9 +205,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
                   <p className="text-body-sm tabular-nums">
                     <strong className="text-label">{formatarMoeda(valor)}</strong> por mês
                   </p>
-                  <div className="flex w-32 justify-end">
+                  <div className="flex w-36 justify-end text-right">
                     {tem ? (
                       <span className="text-body-sm text-cerrado-text">{tem}</span>
+                    ) : cruza ? (
+                      <span className="text-body-sm text-ink-muted">Inclui {O_PRODUTO[cruza.recurso]}</span>
                     ) : (
                       <Link
                         href={`/painel/assinar?recurso=${p}`}
@@ -300,6 +307,7 @@ function CartaoPlano({
   cabe,
   meu,
   agencia,
+  cruza,
 }: {
   p: Produto;
   pag: PagamentosDaConta;
@@ -309,6 +317,8 @@ function CartaoPlano({
   cabe: boolean;
   meu: Assinatura | null;
   agencia: boolean;
+  /** uma assinatura de recurso que o plano inclui (não valem juntos) */
+  cruza: Assinatura | null;
 }) {
   const mensal = preco(pag, p, "MONTHLY");
   const escolhido = preco(pag, p, ciclo) ?? mensal;
@@ -375,13 +385,17 @@ function CartaoPlano({
             </Link>
             : o que já foi pago continua valendo.
           </p>
-        ) : (
+        ) : cruza ? (
           <p className="text-body-sm text-ink-muted">
-            Você já assina um recurso que o plano inclui. Veja em{" "}
+            O plano inclui {O_PRODUTO[cruza.recurso]}, que você já assina. Para trocar, cancele em{" "}
             <Link href="/painel/assinatura" className="underline underline-offset-2">
               Assinatura
-            </Link>
-            .
+            </Link>{" "}
+            e volte aqui: o que já foi pago continua valendo, e o plano só cobra quando ele acabar.
+          </p>
+        ) : (
+          <p className="text-body-sm text-ink-muted">
+            Os recursos do plano já estão liberados na sua conta, sem prazo.
           </p>
         )}
       </div>
