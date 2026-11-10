@@ -59,6 +59,25 @@ $$;
 revoke execute on function public.video_da_vaga(uuid) from public, anon;
 grant execute on function public.video_da_vaga(uuid) to authenticated, service_role;
 
+-- 2c. O aviso do cancelamento tem o tipo próprio: com o tipo do pedido ("video_pedido"), ele saía por e-mail com o
+-- assunto do pedido e ainda contava no intervalo desse e-mail, segurando o aviso do pedido seguinte
+do $$
+declare
+  def text;
+begin
+  select pg_get_constraintdef(c.oid) into def from pg_constraint c
+   where c.conrelid = 'public.notificacoes'::regclass and c.conname = 'notificacoes_tipo_check';
+  if def is not null and position('video_cancelado' in def) = 0 then
+    execute 'alter table public.notificacoes drop constraint notificacoes_tipo_check';
+    execute 'alter table public.notificacoes add constraint notificacoes_tipo_check '
+            || replace(def, $a$'video_pedido'::text$a$, $a$'video_pedido'::text, 'video_cancelado'::text$a$);
+  end if;
+end
+$$;
+-- os avisos de cancelamento já dados passam para o tipo novo
+update public.notificacoes set tipo = 'video_cancelado'
+ where tipo = 'video_pedido' and texto like '%cancelou o pedido de entrevista em vídeo%';
+
 -- 3. Cancelar: só quem publicou a vaga, e só o que ainda não foi enviado. Devolve os arquivos gravados até ali
 -- (o servidor apaga do Storage).
 create or replace function public.video_cancelar(p_id uuid)
@@ -88,7 +107,7 @@ begin
   update public.entrevistas_video set situacao = 'cancelada', cancelada_em = now(), lembrado_em = null where id = e.id;
   select p.nome into v_quem from public.perfis p where p.id = a.autor_id;
   insert into public.notificacoes (destinatario_id, tipo, anuncio_id, ator_id, texto)
-  values (e.perfil_id, 'video_pedido', a.id, a.autor_id,
+  values (e.perfil_id, 'video_cancelado', a.id, a.autor_id,
           left(coalesce(v_quem, 'A empresa') || ' cancelou o pedido de entrevista em vídeo para a vaga “' || a.titulo
                || '”. Não precisa gravar.', 300));
   return v_caminhos;

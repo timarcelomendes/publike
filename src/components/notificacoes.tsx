@@ -64,6 +64,7 @@ const ICONES: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   entrevista_resposta: CalendarClock,
   entrevista_lembrete: CalendarClock,
   video_pedido: Video,
+  video_cancelado: Video,
   video_enviado: Video,
   parados: Hourglass,
   proposta: FileSignature,
