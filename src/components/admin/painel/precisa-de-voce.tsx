@@ -39,6 +39,36 @@ export async function PrecisaDeVoce({ agora }: { agora: number }) {
   const itens: Item[] = [];
   const saudeItens = saude ? itensDaSaude(saude, agora) : [];
   for (const s of saudeItens.filter((i) => !i.ok)) {
+    // a moderação vira um item por fila, cada um abrindo a lista já filtrada (com as abas para ver o resto)
+    if (s.tema === "Moderação" && saude) {
+      const m = saude.moderacao;
+      const desde = m.desde ? `O mais antigo chegou ${tempoRelativo(m.desde, agora)}` : "Esperando você";
+      const filas: [string, number, string, string][] = [
+        [
+          "anuncios",
+          m.anuncios,
+          plural(m.anuncios, "anúncio em análise", "anúncios em análise"),
+          "/admin/anuncios?status=em_analise",
+        ],
+        ["recados", m.recados, plural(m.recados, "post retido", "posts retidos"), "/admin/denuncias?aba=recados"],
+        [
+          "avaliacoes",
+          m.avaliacoes,
+          plural(m.avaliacoes, "avaliação retida", "avaliações retidas"),
+          "/admin/denuncias?aba=avaliacoes",
+        ],
+        [
+          "denuncias",
+          m.denuncias,
+          plural(m.denuncias, "denúncia aberta", "denúncias abertas"),
+          "/admin/denuncias?aba=anuncios",
+        ],
+      ];
+      for (const [chave, n, titulo, href] of filas.filter((f) => f[1] > 0)) {
+        itens.push({ chave: `moderacao-${chave}`, numero: n, titulo, apoio: `Moderação · ${desde}`, href });
+      }
+      continue;
+    }
     itens.push({ chave: s.tema, numero: null, titulo: s.tema, apoio: s.texto, href: s.href });
   }
   if (esperando) {
@@ -51,7 +81,7 @@ export async function PrecisaDeVoce({ agora }: { agora: number }) {
         numero: pessoas,
         titulo: `${plural(pessoas, "curtida esperando", "curtidas esperando")} há mais de ${HORAS_ESPERA} h`,
         apoio: `Em ${plural(empresas.length, "empresa", "empresas")}`,
-        href: "/admin/esperando",
+        href: `/admin/esperando?mais_de=${HORAS_ESPERA}`,
       });
     }
   }

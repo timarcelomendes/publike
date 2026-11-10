@@ -37,6 +37,11 @@ async function Conteudo() {
     <Secao
       titulo="Vagas paradas"
       descricao={`Vagas no ar há mais de ${HORAS_PARADA} horas sem nenhuma candidatura, a mais antiga primeiro. A empresa que não recebe ninguém não volta: ponha a vaga nas Vagas do dia e mande a dica pelo seu WhatsApp. A primeira curtida tira a vaga daqui.`}
+      acoes={
+        <Link href="/admin/anuncios?status=ativo&tipo=vaga" className="text-label underline underline-offset-2">
+          Ver todas as vagas no ar
+        </Link>
+      }
     >
       {vagas.length === 0 ? (
         <Vazio icone={Sparkles} titulo="Nenhuma vaga parada">
