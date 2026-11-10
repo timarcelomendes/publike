@@ -1,15 +1,4 @@
-import {
-  ArrowLeft,
-  Building2,
-  Download,
-  KanbanSquare,
-  Lock,
-  Mail,
-  MapPin,
-  MessageCircle,
-  Plus,
-  UserRound,
-} from "lucide-react";
+import { ArrowLeft, BarChart3, Building2, Download, KanbanSquare, Lock, Mail, MapPin, MessageCircle, Plus, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -140,6 +129,10 @@ async function Conteudo({
               Publicar vaga para este cliente
             </BotaoLink>
           )}
+          <BotaoLink href={`/painel/clientes/${id}/relatorio`} variante="secundario">
+            <BarChart3 aria-hidden />
+            Relatório para o cliente
+          </BotaoLink>
           {candidatos.length > 0 && (
             <a href={`/painel/candidatos/planilha?cliente=${id}`} className={classesBotao("secundario", "md")}>
               <Download aria-hidden />

@@ -3963,6 +3963,18 @@ export type Database = {
         Args: { p_chave: string };
         Returns: number;
       };
+      relatorio_do_cliente: {
+        Args: { p_cliente: string; p_de: string; p_ate: string };
+        Returns: Json;
+      };
+      link_do_relatorio: {
+        Args: { p_cliente: string; p_trocar?: boolean };
+        Returns: string;
+      };
+      relatorio_por_link: {
+        Args: { p_token: string; p_de?: string; p_ate?: string };
+        Returns: Json;
+      };
       marca_dos_finalistas: {
         Args: { p_token: string };
         Returns: Json;

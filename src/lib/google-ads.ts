@@ -34,7 +34,7 @@ export function lerConversoes(valor: string | undefined | null): Conversao[] {
  * As páginas abertas por um link com segredo (claude/plano-seguranca.md, item 6): o pedaço depois de /acesso/,
  * /cliente/, /convite/… é a chave de quem recebeu o link (entrar na conta, ver currículos, aceitar um convite).
  */
-export const ROTAS_COM_SEGREDO = /^\/(acesso|cliente|candidatura|convite|equipe|finalistas|indicacao)\/[^/?#]+/;
+export const ROTAS_COM_SEGREDO = /^\/(acesso|cliente|candidatura|convite|equipe|finalistas|indicacao|relatorio)\/[^/?#]+/;
 
 /** Do endereço, só o que a campanha precisa saber de onde a pessoa veio. */
 const PARAMETROS_DA_CAMPANHA = new Set([
