@@ -374,19 +374,23 @@ export function CardAnuncio({
         )}
 
         {temRodape && (
-          <div className="mt-auto flex items-center gap-2 border-t border-line pt-2.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
+          <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-2.5 border-t border-line pt-2.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
             {comMatch && (
               <span className="shrink-0 group-data-[visao=lista]/visao:hidden">
                 <SeloMatch match={comMatch} />
               </span>
             )}
             {/* os indicadores, também para quem está sem conta: como quem publicou responde e quantos já curtiram */}
-            <span className="flex min-w-0 flex-1 flex-col gap-1 group-data-[visao=lista]/visao:hidden">
+            {/* sem espaço ao lado dos botões, vão para uma linha só deles, em cima (antes, espremiam e cortavam) */}
+            <span
+              className={`flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 group-data-[visao=lista]/visao:hidden ${
+                respostaDaVaga || curtidasDeOutros !== null ? "min-w-[13rem]" : "min-w-0"
+              }`}
+            >
               {respostaDaVaga && (
                 <span className={`flex items-center gap-1 ${respostaDaVaga.bom ? "text-cerrado-text" : ""}`}>
                   <MessageCircleReply aria-hidden className="size-4 shrink-0" />
-                  {/* quebra em duas linhas em vez de cortar com "…" */}
-                  <span className="line-clamp-2 leading-tight">{respostaDaVaga.texto}</span>
+                  <span className="leading-tight">{respostaDaVaga.texto}</span>
                 </span>
               )}
               {curtidasDeOutros !== null && (
@@ -412,7 +416,7 @@ export function CardAnuncio({
               </Link>
             )}
             {!proprio && (
-              <span className="flex shrink-0 items-center gap-2">
+              <span className="ml-auto flex shrink-0 items-center gap-2">
                 {comentarios !== null && !servico && !preenchida && (
                   <AcoesDaVagaNoCartao
                     anuncioId={anuncio.id}
