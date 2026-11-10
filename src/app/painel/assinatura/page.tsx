@@ -73,7 +73,7 @@ function estadoDa(a: Assinatura, hoje: string): { selo: string; variante: "match
   if (a.situacao === "ativa") return { selo: "Ativa", variante: "match" };
   if (a.proxima_cobranca && a.proxima_cobranca.slice(0, 10) > hoje) {
     return {
-      selo: `Começa em ${dataCurta(a.proxima_cobranca)}`,
+      selo: `Começa em ${dataDoDia(a.proxima_cobranca, false)}`,
       variante: "contorno",
       nota:
         a.forma === "pix"
