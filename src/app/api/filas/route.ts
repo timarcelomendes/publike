@@ -91,7 +91,7 @@ export async function GET(request: Request) {
   const funcoes = await comTempo(() => funcoesDasVagas(15));
   // a função de cada experiência dos currículos que mudaram, com a IA ligada (o % pelo contexto)
   const funcoesCv = await comTempo(() => funcoesDosCurriculos(8));
-  // a página de carreiras liberada pela meta (mais de 10 vagas): o aviso, uma vez (sai junto com os e-mails abaixo)
+  // a página de carreiras liberada pela meta (10 vagas publicadas): o aviso, uma vez (sai junto com os e-mails abaixo)
   const liberacoes = await comTempo(() => avisarLiberacoesPorMeta());
   // quem contrata: o candidato que combina com a vaga (dos currículos que mudaram desde a última rodada)
   const talentos = await comTempo(() => avisarTalentosQueCombinam());

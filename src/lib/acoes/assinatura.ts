@@ -64,6 +64,7 @@ const CURTO: Record<Produto, string> = {
   video: "Entrevista em vídeo",
   automacoes: "Automações personalizadas",
   salarios: "Consulta de salários",
+  carreiras: "Página de carreiras",
 };
 
 // no computador (npm run dev), o motivo vai junto na tela, para achar o problema sem abrir o terminal

@@ -6,7 +6,7 @@ import type { Liberavel, RecursoPago, RecursosPagos } from "./recursos-pagos";
  * O que se assina: um recurso, o combo (a Triagem e o Teste Prático numa assinatura só) ou o Plano Completo (os
  * quatro recursos numa assinatura só; migração 20270116120000).
  */
-export type Produto = RecursoPago | "combo" | "completo" | "salarios";
+export type Produto = RecursoPago | "combo" | "completo" | "salarios" | "carreiras";
 
 /** Os pacotes: liberam mais de um recurso. */
 export const PACOTES = ["completo", "combo"] as const;
@@ -19,6 +19,7 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   video: "Entrevista em vídeo",
   automacoes: "Automações personalizadas",
   salarios: "Consulta de salários",
+  carreiras: "Página de carreiras",
 };
 
 /** Com o artigo, para as frases ("Assinar a Triagem com IA", "Você já assina o Teste Prático"). */
@@ -30,6 +31,7 @@ export const O_PRODUTO: Record<Produto, string> = {
   video: "a Entrevista em vídeo",
   automacoes: "as Automações personalizadas",
   salarios: "a Consulta de salários",
+  carreiras: "a Página de carreiras",
 };
 
 /** Com "de" ("o cartão da Triagem com IA"). */
@@ -41,6 +43,7 @@ export const DO_PRODUTO: Record<Produto, string> = {
   video: "da Entrevista em vídeo",
   automacoes: "das Automações personalizadas",
   salarios: "da Consulta de salários",
+  carreiras: "da Página de carreiras",
 };
 
 export function ehProduto(x: unknown): x is Produto {
@@ -51,13 +54,15 @@ export function ehProduto(x: unknown): x is Produto {
     x === "completo" ||
     x === "video" ||
     x === "automacoes" ||
-    x === "salarios"
+    x === "salarios" ||
+    x === "carreiras"
   );
 }
 
 /** Os recursos que o produto libera. */
 export function recursosDo(p: Produto): Liberavel[] {
-  if (p === "completo") return ["copiloto", "testes", "video", "automacoes", "salarios"];
+  // o Plano Completo libera a Página de carreiras também (qualquer assinatura libera; migração 20270406120000)
+  if (p === "completo") return ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras"];
   return p === "combo" ? ["copiloto", "testes"] : [p];
 }
 
@@ -198,7 +203,8 @@ export function podeAssinarPacote(
 ) {
   if (!pag?.pode || !pag.planos.some((p) => p.recurso === pacote)) return false;
   if (pag.assinaturas.some((a) => a.situacao !== "cancelada" && seCruzam(a.recurso, pacote))) return false;
-  const semPrazo = (r: Liberavel) => Boolean(recursos?.[r]?.liberado && !recursos[r].ate);
+  // a Página de carreiras não tem estado em RecursosPagos: conta como não liberada (o servidor confere de novo)
+  const semPrazo = (r: Liberavel) => r !== "carreiras" && Boolean(recursos?.[r]?.liberado && !recursos[r].ate);
   return !recursosDo(pacote).every(semPrazo);
 }
 

@@ -98,7 +98,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/lin
             <span className="block text-body-sm text-ink-muted">
               {marca
                 ? "A cor da marca, a capa, por que trabalhar aí e o endereço curto."
-                : "Com a cara da empresa: cor da marca, capa, benefícios e endereço curto. Libera com mais de 10 vagas publicadas ou com uma assinatura."}
+                : "Com a cara da empresa: cor da marca, capa, benefícios e endereço curto. Libera com 10 vagas publicadas ou com uma assinatura."}
             </span>
           </span>
         </Link>

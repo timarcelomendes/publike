@@ -9,18 +9,20 @@ import { Aviso, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO, SITE_URL } from "@/lib/config";
 import { obterMeuPerfil, obterPerfilPublico } from "@/lib/dados";
-import { formatarLugar, plural } from "@/lib/formato";
+import { formatarLugar, formatarMoeda, plural } from "@/lib/formato";
 import type { Marca } from "@/lib/marca";
 import { exigirUsuario } from "@/lib/sessao";
+import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = { title: "Página de carreiras" };
 
-// A página de carreiras personalizada (claude/plano-pagina-de-vagas.md, parte 3): libera com mais de 10 vagas
-// publicadas (as encerradas contam) ou com uma assinatura paga valendo. Quem ainda não tem vê a prévia com o
-// cadeado, quanto falta e o caminho das assinaturas.
+// A página de carreiras personalizada (claude/plano-pagina-de-vagas.md, parte 3): libera com 10 vagas publicadas
+// (as encerradas contam; antes da migração 20270406120000, com mais de 10) ou com uma assinatura paga valendo,
+// inclusive a da própria página (R$ 19,90 por mês, decisão de 10/11/2026). Quem ainda não tem vê a prévia com o
+// cadeado, quanto falta e o botão de assinar.
 
-const LIBERA_COM = 11;
+const LIBERA_COM = 10;
 
 export default function PaginaDeCarreiras() {
   return (
@@ -37,11 +39,16 @@ async function Conteudo() {
   const usuario = await exigirUsuario("/painel/links/pagina");
   const perfil = await obterMeuPerfil();
   if (!perfil) return null;
-  const [{ data, error }, publico] = await Promise.all([
+  const [{ data, error }, publico, pag] = await Promise.all([
     (await criarClienteServidor()).rpc("minha_pagina_de_vagas"),
     // as vagas no ar, para escolher os destaques
     obterPerfilPublico(perfil.id, 200),
+    // o preço da página sozinha, quando o pagamento está aberto para a conta
+    pagamentosDaConta().catch(() => null),
   ]);
+  const mensal = pag?.pode
+    ? (pag.planos.find((p) => p.recurso === "carreiras" && p.ciclo === "MONTHLY")?.valor ?? null)
+    : null;
   const situacao = (error ? null : data) as Situacao | null;
   const vagasNoAr = (publico?.anuncios ?? [])
     .filter((a) => a.tipo === "vaga")
@@ -76,7 +83,7 @@ async function Conteudo() {
           <p>A página de carreiras ainda não está disponível. Tente de novo mais tarde.</p>
         </Aviso>
       ) : !situacao.liberada ? (
-        <Bloqueada vagas={situacao.vagas_publicadas} />
+        <Bloqueada vagas={situacao.vagas_publicadas} mensal={mensal} />
       ) : !situacao.pode_editar ? (
         <Aviso>
           <p>Só quem administra a conta muda a página de carreiras.</p>
@@ -98,7 +105,7 @@ async function Conteudo() {
 }
 
 /** A prévia com o cadeado: como fica, o que libera e quanto falta. */
-function Bloqueada({ vagas }: { vagas: number }) {
+function Bloqueada({ vagas, mensal }: { vagas: number; mensal: number | null }) {
   const faltam = Math.max(0, LIBERA_COM - vagas);
   return (
     <section aria-labelledby="bloqueada" className="flex flex-col gap-5">
@@ -135,11 +142,13 @@ function Bloqueada({ vagas }: { vagas: number }) {
       </div>
       <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
         <h3 id="bloqueada" className="text-h3">
-          Libera com mais de 10 vagas publicadas ou com qualquer assinatura
+          Libera com 10 vagas publicadas ou com uma assinatura
         </h3>
         <p className="text-body text-ink-muted">
           Você já publicou {plural(vagas, "vaga", "vagas")} (as encerradas contam).{" "}
-          {faltam > 0 ? `Faltam ${plural(faltam, "vaga", "vagas")}.` : ""} Os dias grátis dos recursos não contam.
+          {faltam > 0 ? `Faltam ${plural(faltam, "vaga", "vagas")}.` : ""} Não quer esperar? Assine a Página de
+          carreiras sozinha{mensal != null ? ` por ${formatarMoeda(mensal)} por mês` : ""}, ou qualquer outro recurso do
+          Publike. Os dias grátis dos recursos não contam.
         </p>
         <div
           role="progressbar"
@@ -158,8 +167,8 @@ function Bloqueada({ vagas }: { vagas: number }) {
           <BotaoLink href="/publicar" variante="primario">
             Publicar vaga
           </BotaoLink>
-          <BotaoLink href="/painel/assinar" variante="secundario">
-            Ver as assinaturas
+          <BotaoLink href="/painel/assinar?recurso=carreiras" variante="secundario">
+            {mensal != null ? `Assinar por ${formatarMoeda(mensal)} por mês` : "Assinar a Página de carreiras"}
           </BotaoLink>
         </div>
         <p className="text-body-sm text-ink-muted">

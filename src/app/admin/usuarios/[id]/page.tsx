@@ -434,7 +434,7 @@ async function Conteudo({
       {u.perfil && u.perfil.tipo !== "pessoa" && paginaDeVagas && (
         <Secao
           titulo="Página de carreiras"
-          descricao="Libera sozinha com mais de 10 vagas publicadas ou com uma assinatura paga. Aqui você libera sem prazo (cortesia, teste) ou tira."
+          descricao="Libera sozinha com 10 vagas publicadas ou com uma assinatura paga (a da própria página ou qualquer outra). Aqui você libera sem prazo (cortesia, teste) ou tira."
         >
           <div className="flex flex-col gap-2">
             <p className="text-body-sm text-ink-muted">

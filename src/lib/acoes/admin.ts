@@ -300,7 +300,7 @@ export async function liberarPaginaDeVagas(contaId: string, liberar: boolean): P
     ok: true,
     mensagem: liberar
       ? "Pronto: essa conta tem a página de carreiras, sem prazo." + (avisou ? " Ela recebeu o aviso." : "")
-      : "A liberação da equipe saiu (a conta continua liberada se tiver mais de 10 vagas ou assinatura).",
+      : "A liberação da equipe saiu (a conta continua liberada se tiver 10 vagas publicadas ou assinatura).",
   };
 }
 

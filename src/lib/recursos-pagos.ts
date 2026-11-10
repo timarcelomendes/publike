@@ -38,9 +38,11 @@ export type EstadoRecurso = {
 
 /**
  * O que uma assinatura libera: os recursos com dias grátis e a Consulta de salários (`salarios`, migração
- * 20270218120000), que não tem dias grátis (tem as consultas grátis) e por isso fica fora de `RecursoPago`.
+ * 20270218120000), que não tem dias grátis (tem as consultas grátis) e por isso fica fora de `RecursoPago`, e a
+ * Página de carreiras (`carreiras`, migração 20270406120000), que também libera com 10 vagas publicadas e não tem
+ * estado em `RecursosPagos` (a página pergunta a `minha_pagina_de_vagas`).
  */
-export type Liberavel = RecursoPago | "salarios";
+export type Liberavel = RecursoPago | "salarios" | "carreiras";
 
 export type RecursosPagos = Record<RecursoPago, EstadoRecurso> & {
   /** a Consulta de salários (sem a migração 20270218120000, fechada) */

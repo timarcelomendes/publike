@@ -16,7 +16,7 @@ import { classesEntrada } from "../ui/campo";
 
 export type PlanoDoAdmin = { id: string; recurso: Produto; ciclo: Ciclo; valor: number | null; ligado: boolean };
 
-const ORDEM: Produto[] = ["copiloto", "testes", "video", "automacoes", "salarios", "combo", "completo"];
+const ORDEM: Produto[] = ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras", "combo", "completo"];
 
 /** A sugestão do plano de lançamento: o mensal e os 3 meses com uns 15% de desconto. */
 const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
@@ -26,6 +26,8 @@ const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
   automacoes: { MONTHLY: 39, QUARTERLY: 99 },
   // a Consulta de salários (decisão de 05/11/2026: R$ 29,90 por mês)
   salarios: { MONTHLY: 29.9, QUARTERLY: 76.24 },
+  // a Página de carreiras sozinha (decisão de 10/11/2026: R$ 19,90 por mês)
+  carreiras: { MONTHLY: 19.9, QUARTERLY: 50.74 },
   combo: { MONTHLY: 89, QUARTERLY: 227 },
   completo: { MONTHLY: 129, QUARTERLY: 329 },
 };
