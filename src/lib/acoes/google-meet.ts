@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { emailValido } from "@/lib/email-valido";
 import { criarReuniaoMeet, meetLigado, type ReuniaoMeet } from "@/lib/servidor/google-meet";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
@@ -29,7 +30,10 @@ export async function criarReuniaoDaConversa(p: {
   )
     return { ok: false, erro: "Confira o dia, a hora, a duração e o e-mail." };
   try {
-    return { ok: true, reuniao: await criarReuniaoMeet({ ...p, convidado: p.convidado?.trim() || null }) };
+    const reuniao = await criarReuniaoMeet({ ...p, convidado: p.convidado?.trim() || null });
+    // a lista "Conversas na agenda" já mostra a nova
+    refresh();
+    return { ok: true, reuniao };
   } catch (e) {
     return { ok: false, erro: e instanceof Error ? e.message : "Não deu para criar a reunião no Google agora." };
   }

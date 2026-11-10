@@ -140,3 +140,76 @@ export async function criarSalaMeet(): Promise<{ url: string; codigo: string }> 
   if (!d.meetingUri) throw new Error("O Google não devolveu o link da sala do Meet.");
   return { url: d.meetingUri, codigo: d.meetingCode ?? "" };
 }
+
+export type ConversaNaAgenda = {
+  id: string;
+  titulo: string;
+  inicio: string;
+  fim: string;
+  meet: string | null;
+  evento: string | null;
+  convidados: { email: string; resposta: "aceitou" | "recusou" | "talvez" | "sem_resposta" }[];
+};
+
+const RESPOSTA: Record<string, ConversaNaAgenda["convidados"][number]["resposta"]> = {
+  accepted: "aceitou",
+  declined: "recusou",
+  tentative: "talvez",
+  needsAction: "sem_resposta",
+};
+
+/**
+ * As conversas com prospects na Google Agenda (as que o Agendar conversa cria: o título começa com "Publike + "), dos
+ * últimos 60 dias em diante, com quem foi convidado e a resposta. null: o Meet não está ligado ou o Google não respondeu.
+ */
+export async function conversasNaAgenda(agora: number): Promise<ConversaNaAgenda[] | null> {
+  if (!meetLigado()) return null;
+  try {
+    const acesso = await tokenDoGoogle();
+    const agenda = encodeURIComponent(env("GOOGLE_MEET_AGENDA") || "primary");
+    const params = new URLSearchParams({
+      q: "Publike +",
+      timeMin: new Date(agora - 60 * 24 * 3600 * 1000).toISOString(),
+      singleEvents: "true",
+      orderBy: "startTime",
+      maxResults: "200",
+    });
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${agenda}/events?${params}`, {
+      headers: { Authorization: `Bearer ${acesso}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) {
+      if (r.status === 401) token = null;
+      console.error(`Publike: a Google Agenda não listou as conversas (código ${r.status}).`);
+      return null;
+    }
+    const d = (await r.json()) as {
+      items?: {
+        id?: string;
+        summary?: string;
+        start?: { dateTime?: string; date?: string };
+        end?: { dateTime?: string; date?: string };
+        hangoutLink?: string;
+        htmlLink?: string;
+        attendees?: { email?: string; responseStatus?: string; self?: boolean; organizer?: boolean }[];
+      }[];
+    };
+    return (d.items ?? [])
+      .filter((e) => e.id && (e.summary ?? "").startsWith("Publike + ") && (e.start?.dateTime || e.start?.date))
+      .map((e) => ({
+        id: e.id!,
+        titulo: (e.summary ?? "").replace(/^Publike \+ /, ""),
+        inicio: e.start?.dateTime ?? e.start?.date ?? "",
+        fim: e.end?.dateTime ?? e.end?.date ?? e.start?.dateTime ?? "",
+        meet: e.hangoutLink ?? null,
+        evento: e.htmlLink ?? null,
+        convidados: (e.attendees ?? [])
+          .filter((a) => a.email && !a.self && !a.organizer)
+          .map((a) => ({ email: a.email!, resposta: RESPOSTA[a.responseStatus ?? ""] ?? "sem_resposta" })),
+      }));
+  } catch (e) {
+    console.error("Publike: falha ao listar as conversas na Google Agenda:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}

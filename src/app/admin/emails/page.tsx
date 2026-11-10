@@ -45,6 +45,7 @@ import { GRUPOS_DO_CATALOGO, quemRecebe, regrasDoEmail, SAEM_NA_HORA } from "@/l
 import { plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { situacaoSmtp } from "@/lib/servidor/ambiente";
 import { meetLigado } from "@/lib/servidor/google-meet";
+import { ConversasNaAgenda } from "@/components/admin/conversas-na-agenda";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
@@ -311,6 +312,13 @@ async function Conteudo({ aba, filtros }: { aba: Aba; filtros: FiltrosEnviados }
           descricao="Preencha o nome, o e-mail e o horário. Com o Google Meet, um toque cria o evento na sua Google Agenda com a sala e o Google manda o convite, com Aceitar e Recusar. Sem ele, copie o título e a descrição para o evento da sua agenda."
         >
           <ConviteDeConversa meet={meetLigado()} />
+        </Secao>
+      )}
+      {aba === "conversa" && meetLigado() && (
+        <Secao titulo="Conversas na agenda" descricao="As conversas com prospects que estão na sua Google Agenda: as próximas e as dos últimos 60 dias, com a resposta de cada convidado.">
+          <Suspense fallback={<p className="text-body-sm text-ink-muted">Lendo a agenda…</p>}>
+            <ConversasNaAgenda />
+          </Suspense>
         </Secao>
       )}
 
