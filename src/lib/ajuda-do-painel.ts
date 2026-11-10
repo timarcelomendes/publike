@@ -307,6 +307,18 @@ const REGRAS: Regra[] = [
     },
   },
   {
+    caminho: /^\/painel\/planos/,
+    ajuda: {
+      titulo: "Planos",
+      texto: "Os planos lado a lado, com o preço e o que cada um traz. Publicar, ver candidatos e conversar continuam grátis.",
+      dicas: [
+        "O plano é pela faixa de vagas no ar: o que cabe nas suas vagas vem marcado.",
+        "Por mês ou a cada 3 meses, que sai mais em conta. Troque em cima da lista.",
+        "Só quer um recurso? Ele aparece sozinho embaixo dos planos.",
+      ],
+    },
+  },
+  {
     caminho: /^\/painel\/assinar/,
     ajuda: {
       titulo: "Assinar",

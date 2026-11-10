@@ -113,7 +113,8 @@ export type Secao = {
     | "automacoes"
     | "salarios"
     | "configuracoes"
-    | "assinatura";
+    | "assinatura"
+    | "planos";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
   jeito?: "pilula" | "pronto" | "texto";
@@ -318,6 +319,8 @@ export function gruposDoModo(
             ]
           : []),
         // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
+        // os planos à venda, lado a lado (10/11/2026)
+        { href: "/painel/planos", nome: "Planos", icone: "planos", mais: true },
         { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura", mais: true },
       ],
     },
@@ -359,6 +362,7 @@ export function modoDaRota(caminho: string, tipo: string | null): ModoPainel | n
     caminho.startsWith("/painel/numeros") ||
     caminho.startsWith("/painel/salarios") ||
     caminho.startsWith("/painel/assinatura") ||
+    caminho.startsWith("/painel/planos") ||
     caminho.startsWith("/painel/assinar") ||
     caminho.startsWith("/painel/faturas")
   )

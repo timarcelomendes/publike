@@ -191,9 +191,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           <h2 className="text-h2">Assinatura</h2>
           <p className="mt-1 text-body text-ink-muted">O que você assina, como paga e quando vem a próxima cobrança.</p>
         </div>
-        <Link href="/painel/faturas" className="text-label text-terra-text underline underline-offset-2">
-          Ver faturas
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link href="/painel/planos" className="text-label text-terra-text underline underline-offset-2">
+            Ver os planos
+          </Link>
+          <Link href="/painel/faturas" className="text-label text-terra-text underline underline-offset-2">
+            Ver faturas
+          </Link>
+        </div>
       </div>
 
       {recursos && (
@@ -235,15 +240,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           icone={CreditCard}
           titulo="Você ainda não assina nada"
           acao={
-            aVenda.length > 0
-              ? aVenda.map((r, i) => (
-                  <BotaoAssinar key={r} recurso={r} variante={i === 0 ? "primario" : "secundario"} />
-                ))
-              : undefined
+            aVenda.length > 0 ? (
+              <BotaoLink href="/painel/planos">
+                <CreditCard aria-hidden />
+                Ver os planos
+              </BotaoLink>
+            ) : undefined
           }
         >
-          Assine um recurso, o combo Triagem + Teste Prático ou o Plano Completo, com todos, por mês ou a cada 3
-          meses.
+          Compare os planos e os recursos sozinhos, com o preço de cada um, por mês ou a cada 3 meses.
         </Vazio>
       ) : (
         <>

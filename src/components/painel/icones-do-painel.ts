@@ -10,6 +10,7 @@ import {
   Columns3,
   CreditCard,
   Eye,
+  Gem,
   FileText,
   Handshake,
   Heart,
@@ -63,4 +64,5 @@ export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   etapas: Columns3,
   numeros: BarChart3,
   assinatura: CreditCard,
+  planos: Gem,
 };
