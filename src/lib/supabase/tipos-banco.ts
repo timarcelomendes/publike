@@ -3959,6 +3959,14 @@ export type Database = {
         Args: { p_anuncio: string; p_texto: string };
         Returns: number;
       };
+      servidor_avisar_faixas: {
+        Args: { p_chave: string };
+        Returns: number;
+      };
+      minha_faixa: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       minha_conversa_moderacao: {
         Args: { p_anuncio: string };
         Returns: { id: number; de: string; texto: string; criado_em: string }[];

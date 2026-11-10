@@ -664,6 +664,22 @@ export async function avisarLiberacoesPorMeta(): Promise<{ avisadas: number; mot
 }
 
 /**
+ * Os planos por faixa (migração 20270407120000): quem passou das vagas no ar da faixa recebe o aviso no sino, uma vez
+ * a cada 30 dias por assinatura. Nada trava. Devolve quantas contas foram avisadas.
+ */
+export async function avisarFaixasDosPlanos(): Promise<{ avisadas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisadas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_faixas", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { avisadas: 0 };
+    console.error("Publike: falha ao avisar as faixas dos planos:", error.message);
+    return { avisadas: 0, motivo: "Não foi possível avisar quem passou da faixa do plano." };
+  }
+  return { avisadas: Number(data ?? 0) };
+}
+
+/**
  * As consultas de salário pelas vagas (claude/plano-consulta-de-salarios.md; migração 20270218120000): 2 a cada 5
  * vagas novas de quem contrata, com o aviso no sino. Devolve quantas contas ganharam.
  */

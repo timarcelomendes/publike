@@ -19,6 +19,7 @@ import {
   NOME_CICLO,
   NOME_PRODUTO,
   O_PRODUTO,
+  planoQueCabe,
   podeAssinarPacote,
   POR_CICLO,
   seCruzam,
@@ -29,6 +30,7 @@ import { dataCurta, NOME_RECURSO, PAGINA_DO_RECURSO, RECURSOS_PAGOS, type Estado
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { sincronizarCliente } from "@/lib/servidor/pagamentos";
 import { exigirUsuario } from "@/lib/sessao";
+import { minhaFaixa } from "@/lib/servidor/pagina-de-carreiras";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Assinatura", robots: { index: false } };
@@ -155,11 +157,19 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     const usuario = await obterUsuario();
     if (usuario) await sincronizarCliente(usuario.id).catch(() => undefined);
   }
-  const [pag, recursos, agora] = await Promise.all([pagamentosDaConta(), recursosPagos(), agoraDaRequisicao()]);
+  const [pag, recursos, agora, faixa] = await Promise.all([
+    pagamentosDaConta(),
+    recursosPagos(),
+    agoraDaRequisicao(),
+    minhaFaixa(),
+  ]);
+  // o plano por faixa que cabe na conta (migração 20270407120000): no lugar do Plano Completo
+  const plano = planoQueCabe(pag, faixa);
   const valendo = (pag?.assinaturas ?? []).filter((a) => a.situacao !== "cancelada");
   const canceladas = (pag?.assinaturas ?? []).filter((a) => a.situacao === "cancelada");
   // o Plano Completo primeiro (os quatro juntos saem mais em conta), depois o combo e cada recurso
   const aVenda: Produto[] = [
+    ...(plano && podeAssinarPacote(pag, recursos, plano) ? [plano] : []),
     ...(podeAssinarPacote(pag, recursos, "completo") ? (["completo"] as const) : []),
     ...(podeAssinarPacote(pag, recursos, "combo") ? (["combo"] as const) : []),
     ...RECURSOS_PAGOS.filter((r) => recursos?.[r]?.pode_assinar),

@@ -44,7 +44,9 @@ type Contexto = {
   cliente: { asaas_id: string; cpf_cnpj: string; nome: string; email: string | null; sandbox?: boolean } | null;
   /** a conta de teste paga na conta sandbox do Asaas (Admin › Pagamentos) */
   sandbox?: boolean;
-  planos: { id: string; recurso: Produto; ciclo: "MONTHLY" | "QUARTERLY"; valor: number }[];
+  planos: { id: string; recurso: Produto; ciclo: "MONTHLY" | "QUARTERLY"; valor: number; limite_vagas?: number | null }[];
+  /** as vagas no ar da conta (migração 20270407120000), para conferir a faixa do plano */
+  vagas_no_ar?: number;
   /** as assinaturas valendo (ou o Pix esperando a 1ª fatura), pelo produto */
   ativas: Produto[];
   sem_prazo: Partial<Record<Liberavel, boolean>>;
@@ -65,6 +67,10 @@ const CURTO: Record<Produto, string> = {
   automacoes: "Automações personalizadas",
   salarios: "Consulta de salários",
   carreiras: "Página de carreiras",
+  empresa_5: "Plano Empresa 5",
+  empresa_20: "Plano Empresa 20",
+  agencia_15: "Plano Agência 15",
+  agencia_200: "Plano Agência 200",
 };
 
 // no computador (npm run dev), o motivo vai junto na tela, para achar o problema sem abrir o terminal
@@ -158,6 +164,12 @@ export async function assinar(dados: {
       };
     const plano = ctx.planos.find((p) => p.id === dados.plano);
     if (!plano) return { ok: false, erro: "Esse plano não está mais à venda. Atualize a página." };
+    // o plano por faixa: só a faixa em que as vagas no ar cabem (publicar nunca trava; a faixa é a do plano)
+    if (plano.limite_vagas != null && (ctx.vagas_no_ar ?? 0) > plano.limite_vagas)
+      return {
+        ok: false,
+        erro: `Você tem ${ctx.vagas_no_ar} vagas no ar, e este plano vai até ${plano.limite_vagas}. Escolha a faixa de cima.`,
+      };
     if (recursosDo(plano.recurso).every((r) => ctx.sem_prazo[r]))
       return { ok: false, erro: "Esse recurso já está liberado para a sua conta." };
     const troca = dados.troca === true && dados.forma === "cartao";

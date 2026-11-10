@@ -16,7 +16,20 @@ import { classesEntrada } from "../ui/campo";
 
 export type PlanoDoAdmin = { id: string; recurso: Produto; ciclo: Ciclo; valor: number | null; ligado: boolean };
 
-const ORDEM: Produto[] = ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras", "combo", "completo"];
+const ORDEM: Produto[] = [
+  "empresa_5",
+  "empresa_20",
+  "agencia_15",
+  "agencia_200",
+  "copiloto",
+  "testes",
+  "video",
+  "automacoes",
+  "salarios",
+  "carreiras",
+  "combo",
+  "completo",
+];
 
 /** A sugestão do plano de lançamento: o mensal e os 3 meses com uns 15% de desconto. */
 const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
@@ -28,6 +41,11 @@ const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
   salarios: { MONTHLY: 29.9, QUARTERLY: 76.24 },
   // a Página de carreiras sozinha (decisão de 10/11/2026: R$ 19,90 por mês)
   carreiras: { MONTHLY: 19.9, QUARTERLY: 50.74 },
+  // os planos por faixa (preços agressivos de lançamento, 10/11/2026; claude/plano-planos-empresa-e-agencia.md)
+  empresa_5: { MONTHLY: 59, QUARTERLY: 150 },
+  empresa_20: { MONTHLY: 149, QUARTERLY: 380 },
+  agencia_15: { MONTHLY: 99, QUARTERLY: 252 },
+  agencia_200: { MONTHLY: 399, QUARTERLY: 1017 },
   combo: { MONTHLY: 89, QUARTERLY: 227 },
   completo: { MONTHLY: 129, QUARTERLY: 329 },
 };

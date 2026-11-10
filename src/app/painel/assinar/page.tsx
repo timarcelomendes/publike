@@ -24,18 +24,22 @@ import {
   diaDaPrimeiraCobranca,
   DO_PRODUTO,
   economiaDoPacote,
+  ehPlanoPorFaixa,
   ehProduto,
   jaInclui,
   NOME_PRODUTO,
   O_PRODUTO,
+  PACOTES,
+  planoQueCabe,
   podeAssinarPacote,
   recursosDo,
   seCruzam,
   type PagamentosDaConta,
+  type PlanoPorFaixa,
   type Produto,
 } from "@/lib/pagamentos";
 import { meuEnderecoDeCobranca, pagamentosDaConta, pagoNoSandbox } from "@/lib/servidor/faturas";
-import { paginaDeCarreirasLiberada } from "@/lib/servidor/pagina-de-carreiras";
+import { minhaFaixa, paginaDeCarreirasLiberada } from "@/lib/servidor/pagina-de-carreiras";
 import { exigirUsuario } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Assinar", robots: { index: false } };
@@ -52,7 +56,14 @@ const ICONE: Record<Produto, typeof Sparkles> = {
   automacoes: Workflow,
   salarios: HandCoins,
   carreiras: Palette,
+  empresa_5: PackageCheck,
+  empresa_20: PackageCheck,
+  agencia_15: PackageCheck,
+  agencia_200: PackageCheck,
 };
+
+const TUDO =
+  "Triagem com IA, Teste Prático, Entrevista em vídeo, Automações personalizadas, Consulta de salários e Página de carreiras";
 const FAZ: Record<Produto, string> = {
   copiloto: "A IA que lê os currículos contra o que a vaga pede e mostra quem combina.",
   testes: "Testes na vaga, feitos pelo celular, com o resultado no quadro.",
@@ -66,6 +77,10 @@ const FAZ: Record<Produto, string> = {
     "Consultas sem limite: quanto o mercado paga para cada função, o que as vagas do Publike oferecem e quantos talentos combinam.",
   carreiras:
     "A sua página de vagas com a cara da empresa: a cor da marca, a capa, por que trabalhar aí, os benefícios e um endereço curto. Libera sozinha com 10 vagas publicadas.",
+  empresa_5: `Tudo numa assinatura só, para até 5 vagas no ar: ${TUDO}.`,
+  empresa_20: `Tudo numa assinatura só, para até 20 vagas no ar: ${TUDO}.`,
+  agencia_15: `Tudo numa assinatura só, para até 15 vagas no ar e 3 recrutadores: ${TUDO}.`,
+  agencia_200: `Tudo numa assinatura só, para até 200 vagas no ar e 10 recrutadores: ${TUDO}.`,
 };
 
 export default function Assinar({ searchParams }: PageProps<"/painel/assinar">) {
@@ -83,13 +98,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const produto: Produto = ehProduto(pedido) ? pedido : "copiloto";
   const troca = primeiro(sp.troca) === "1";
   await exigirUsuario(`/painel/assinar?recurso=${produto}`);
-  const [pag, recursos, perfil, cobranca, sandbox] = await Promise.all([
+  const [pag, recursos, perfil, cobranca, sandbox, faixa] = await Promise.all([
     pagamentosDaConta(),
     recursosPagos(),
     obterMeuPerfil().catch(() => null),
     meuEnderecoDeCobranca(),
     pagoNoSandbox(),
+    minhaFaixa(),
   ]);
+  // o plano por faixa que cabe na conta (Empresa ou Agência, pela faixa das vagas no ar)
+  const plano = planoQueCabe(pag, faixa);
+  const limite = ehPlanoPorFaixa(produto)
+    ? (pag?.planos.find((p) => p.recurso === produto)?.limite_vagas ?? null)
+    : null;
+  const passou = limite != null && (faixa?.vagas_no_ar ?? 0) > limite;
   const Icone = ICONE[produto];
   const planos = (pag?.planos ?? []).filter((p) => p.recurso === produto);
   const valendo = (pag?.assinaturas ?? []).filter((a) => a.situacao !== "cancelada");
@@ -114,6 +136,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
       </span>
       <h2 className="text-h2">{troca ? `Trocar o cartão ${DO_PRODUTO[produto]}` : `Assinar ${O_PRODUTO[produto]}`}</h2>
       <p className="text-body text-ink-muted">{FAZ[produto]}</p>
+      {limite != null && faixa && (
+        <p className="text-body-sm text-ink-muted">
+          Você tem {faixa.vagas_no_ar === 1 ? "1 vaga" : `${faixa.vagas_no_ar} vagas`} no ar agora. Preço de lançamento:
+          quem assina agora mantém este valor enquanto mantiver a assinatura.
+        </p>
+      )}
     </div>
   );
 
@@ -184,6 +212,22 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         Logo você vai poder assinar por aqui.
       </Aviso>
     );
+  } else if (passou && !troca) {
+    corpo = (
+      <Aviso tipo="info" titulo={`Você tem ${faixa?.vagas_no_ar ?? 0} vagas no ar`}>
+        <span className="flex flex-col items-start gap-2">
+          <span>
+            {maiuscula(O_PRODUTO[produto])} vai até {limite} vagas no ar. Publicar nunca trava, mas a assinatura é pela
+            faixa em que as suas vagas cabem.
+          </span>
+          {plano && plano !== produto && (
+            <BotaoLink href={`/painel/assinar?recurso=${plano}`} tamanho="sm">
+              Ver {NOME_PRODUTO[plano]}
+            </BotaoLink>
+          )}
+        </span>
+      </Aviso>
+    );
   } else {
     const trocaPlanos = troca && ativa ? planos.filter((p) => p.ciclo === ativa.ciclo) : planos;
     corpo = (
@@ -220,10 +264,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         <OutraOpcao
           produto={produto}
           pag={pag}
-          abertos={{
-            completo: podeAssinarPacote(pag, recursos, "completo"),
-            combo: podeAssinarPacote(pag, recursos, "combo"),
-          }}
+          abertos={Object.fromEntries(PACOTES.map((p) => [p, podeAssinarPacote(pag, recursos, p)]))}
+          plano={plano}
         />
       )}
     </div>
@@ -272,10 +314,25 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
     texto: "As suas vagas num endereço curto, com a cor, a capa e os benefícios da empresa.",
     botao: "Conhecer a Página de carreiras",
   },
+  empresa_5: { titulo: "Plano Empresa até 5 vagas", texto: `Tudo junto: ${TUDO}.`, botao: "Conhecer o Plano Empresa" },
+  empresa_20: { titulo: "Plano Empresa até 20 vagas", texto: `Tudo junto: ${TUDO}.`, botao: "Conhecer o Plano Empresa" },
+  agencia_15: { titulo: "Plano Agência até 15 vagas", texto: `Tudo junto, com 3 recrutadores: ${TUDO}.`, botao: "Conhecer o Plano Agência" },
+  agencia_200: {
+    titulo: "Plano Agência até 200 vagas",
+    texto: `Tudo junto, com 10 recrutadores: ${TUDO}.`,
+    botao: "Conhecer o Plano Agência",
+  },
 };
 
-/** As outras opções de cada tela: no Plano Completo, os recursos separados; nas outras, o Plano Completo e mais duas. */
+/**
+ * As outras opções de cada tela: nos planos, os recursos separados; nas outras, o plano e mais duas. "completo" aqui é
+ * o lugar do plano: vira o plano por faixa que cabe na conta (o Plano Completo saiu de venda, migração 20270407120000).
+ */
 const OUTRAS: Record<Produto, Produto[]> = {
+  empresa_5: ["empresa_20", "copiloto", "testes", "video", "automacoes", "carreiras"],
+  empresa_20: ["copiloto", "testes", "video", "automacoes", "carreiras"],
+  agencia_15: ["agencia_200", "copiloto", "testes", "video", "automacoes"],
+  agencia_200: ["copiloto", "testes", "video", "automacoes"],
   completo: ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras"],
   copiloto: ["completo", "testes", "combo"],
   testes: ["completo", "copiloto", "combo"],
@@ -297,28 +354,31 @@ function OutraOpcao({
   produto,
   pag,
   abertos,
+  plano,
 }: {
   produto: Produto;
   pag: PagamentosDaConta | null;
-  abertos: { completo: boolean; combo: boolean };
+  abertos: Partial<Record<Produto, boolean>>;
+  plano: PlanoPorFaixa | null;
 }) {
   const mensal = (p: Produto) => pag?.planos.find((x) => x.recurso === p && x.ciclo === "MONTHLY")?.valor ?? null;
-  const opcoes = OUTRAS[produto].filter(
-    (p) => pag?.planos.some((x) => x.recurso === p) && (p === "completo" || p === "combo" ? abertos[p] : true),
+  const pacote_ = (p: Produto) => (PACOTES as readonly string[]).includes(p);
+  const opcoes = [...new Set(OUTRAS[produto].map((p) => (p === "completo" && plano ? plano : p)))].filter(
+    (p) => p !== produto && pag?.planos.some((x) => x.recurso === p) && (pacote_(p) ? abertos[p] === true : true),
   );
   if (!opcoes.length) return null;
   return (
     <section aria-labelledby="outra-opcao" className="flex flex-col gap-3">
       <h3 id="outra-opcao" className="text-h3">
-        {produto === "completo" ? "Prefere começar com um só?" : "Outras opções"}
+        {produto === "completo" || ehPlanoPorFaixa(produto) ? "Prefere começar com um só?" : "Outras opções"}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">
         {opcoes.map((p) => {
           const o = OFERTA_CURTA[p];
           const Icone = ICONE[p];
           const valor = mensal(p);
-          const destaque = p === "completo";
-          const pacote = p === "completo" || p === "combo" ? economiaDoPacote(pag, p) : null;
+          const destaque = p === "completo" || ehPlanoPorFaixa(p);
+          const pacote = p === "completo" || p === "combo" || ehPlanoPorFaixa(p) ? economiaDoPacote(pag, p) : null;
           return (
             <div
               key={p}

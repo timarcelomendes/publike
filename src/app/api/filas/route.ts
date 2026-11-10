@@ -9,6 +9,7 @@ import {
   limparTestesAntigos,
   enviarEmailsPendentes,
   enviarPushPendentes,
+  avisarFaixasDosPlanos,
   avisarLiberacoesPorMeta,
   avisarBuscasDeTalentos,
   darConsultasDeSalario,
@@ -93,6 +94,8 @@ export async function GET(request: Request) {
   const funcoesCv = await comTempo(() => funcoesDosCurriculos(8));
   // a página de carreiras liberada pela meta (10 vagas publicadas): o aviso, uma vez (sai junto com os e-mails abaixo)
   const liberacoes = await comTempo(() => avisarLiberacoesPorMeta());
+  // os planos por faixa: quem passou das vagas no ar da faixa recebe o aviso (nada trava)
+  const faixas = await comTempo(() => avisarFaixasDosPlanos());
   // quem contrata: o candidato que combina com a vaga (dos currículos que mudaram desde a última rodada)
   const talentos = await comTempo(() => avisarTalentosQueCombinam());
   // quem contrata: 2 consultas de salário a cada 5 vagas novas (o aviso sai junto com os e-mails abaixo)
@@ -122,6 +125,7 @@ export async function GET(request: Request) {
     funcoes.motivo,
     funcoesCv.motivo,
     liberacoes.motivo,
+    faixas.motivo,
     talentos.motivo,
     consultasSalario.motivo,
     buscasTalentos.motivo,
@@ -160,6 +164,7 @@ export async function GET(request: Request) {
       funcoes: funcoes.achadas,
       funcoesCurriculos: funcoesCv.lidos,
       liberacoes: liberacoes.avisadas,
+      faixas: faixas.avisadas,
       talentos: talentos.avisados,
       consultasSalario: consultasSalario.contas,
       buscasTalentos: buscasTalentos.avisadas,

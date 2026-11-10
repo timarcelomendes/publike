@@ -6,10 +6,17 @@ import type { Liberavel, RecursoPago, RecursosPagos } from "./recursos-pagos";
  * O que se assina: um recurso, o combo (a Triagem e o Teste Prático numa assinatura só) ou o Plano Completo (os
  * quatro recursos numa assinatura só; migração 20270116120000).
  */
-export type Produto = RecursoPago | "combo" | "completo" | "salarios" | "carreiras";
+/** Os planos por faixa de vagas no ar (migração 20270407120000): liberam tudo, como o Plano Completo. */
+export type PlanoPorFaixa = "empresa_5" | "empresa_20" | "agencia_15" | "agencia_200";
+export const PLANOS_POR_FAIXA: PlanoPorFaixa[] = ["empresa_5", "empresa_20", "agencia_15", "agencia_200"];
+export function ehPlanoPorFaixa(x: unknown): x is PlanoPorFaixa {
+  return x === "empresa_5" || x === "empresa_20" || x === "agencia_15" || x === "agencia_200";
+}
+
+export type Produto = RecursoPago | "combo" | "completo" | "salarios" | "carreiras" | PlanoPorFaixa;
 
 /** Os pacotes: liberam mais de um recurso. */
-export const PACOTES = ["completo", "combo"] as const;
+export const PACOTES = ["completo", "combo", "empresa_5", "empresa_20", "agencia_15", "agencia_200"] as const;
 
 export const NOME_PRODUTO: Record<Produto, string> = {
   copiloto: "Triagem com IA",
@@ -20,6 +27,10 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   automacoes: "Automações personalizadas",
   salarios: "Consulta de salários",
   carreiras: "Página de carreiras",
+  empresa_5: "Plano Empresa até 5 vagas",
+  empresa_20: "Plano Empresa até 20 vagas",
+  agencia_15: "Plano Agência até 15 vagas",
+  agencia_200: "Plano Agência até 200 vagas",
 };
 
 /** Com o artigo, para as frases ("Assinar a Triagem com IA", "Você já assina o Teste Prático"). */
@@ -32,6 +43,10 @@ export const O_PRODUTO: Record<Produto, string> = {
   automacoes: "as Automações personalizadas",
   salarios: "a Consulta de salários",
   carreiras: "a Página de carreiras",
+  empresa_5: "o Plano Empresa até 5 vagas",
+  empresa_20: "o Plano Empresa até 20 vagas",
+  agencia_15: "o Plano Agência até 15 vagas",
+  agencia_200: "o Plano Agência até 200 vagas",
 };
 
 /** Com "de" ("o cartão da Triagem com IA"). */
@@ -44,6 +59,10 @@ export const DO_PRODUTO: Record<Produto, string> = {
   automacoes: "das Automações personalizadas",
   salarios: "da Consulta de salários",
   carreiras: "da Página de carreiras",
+  empresa_5: "do Plano Empresa até 5 vagas",
+  empresa_20: "do Plano Empresa até 20 vagas",
+  agencia_15: "do Plano Agência até 15 vagas",
+  agencia_200: "do Plano Agência até 200 vagas",
 };
 
 export function ehProduto(x: unknown): x is Produto {
@@ -55,14 +74,15 @@ export function ehProduto(x: unknown): x is Produto {
     x === "video" ||
     x === "automacoes" ||
     x === "salarios" ||
-    x === "carreiras"
+    x === "carreiras" ||
+    ehPlanoPorFaixa(x)
   );
 }
 
 /** Os recursos que o produto libera. */
 export function recursosDo(p: Produto): Liberavel[] {
   // o Plano Completo libera a Página de carreiras também (qualquer assinatura libera; migração 20270406120000)
-  if (p === "completo") return ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras"];
+  if (p === "completo" || ehPlanoPorFaixa(p)) return ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras"];
   return p === "combo" ? ["copiloto", "testes"] : [p];
 }
 
@@ -80,7 +100,14 @@ export function jaInclui(pacote: Produto, p: Produto) {
 
 export type Ciclo = "MONTHLY" | "QUARTERLY";
 
-export type Plano = { id: string; recurso: Produto; ciclo: Ciclo; valor: number };
+export type Plano = {
+  id: string;
+  recurso: Produto;
+  ciclo: Ciclo;
+  valor: number;
+  /** os planos por faixa: até quantas vagas no ar (migração 20270407120000) */
+  limite_vagas?: number | null;
+};
 
 export type Assinatura = {
   id: string;
@@ -241,4 +268,23 @@ export function diaDaPrimeiraCobranca(
     .filter((d): d is string => Boolean(d))
     .map((d) => diaBr(new Date(d)));
   return datas.reduce((m, d) => (d > m ? d : m), hoje);
+}
+
+/**
+ * O plano por faixa que cabe na conta: agência verificada (com o Plano Agência à venda) → Agência; senão, Empresa. A
+ * faixa é a menor em que as vagas no ar cabem; passou de todas, a maior (publicar nunca trava).
+ */
+export function planoQueCabe(
+  pag: PagamentosDaConta | null,
+  faixa: { vagas_no_ar: number; agencia: boolean } | null,
+): PlanoPorFaixa | null {
+  const aVenda = (pag?.planos ?? []).filter((p) => ehPlanoPorFaixa(p.recurso) && p.ciclo === "MONTHLY");
+  const daAgencia = aVenda.filter((p) => String(p.recurso).startsWith("agencia"));
+  const lista = (faixa?.agencia && daAgencia.length ? daAgencia : aVenda.filter((p) => String(p.recurso).startsWith("empresa")))
+    .slice()
+    .sort((a, b) => (a.limite_vagas ?? 0) - (b.limite_vagas ?? 0));
+  if (!lista.length) return null;
+  const vagas = faixa?.vagas_no_ar ?? 0;
+  const cabe = lista.find((p) => (p.limite_vagas ?? 0) >= vagas) ?? lista.at(-1);
+  return cabe && ehPlanoPorFaixa(cabe.recurso) ? cabe.recurso : null;
 }

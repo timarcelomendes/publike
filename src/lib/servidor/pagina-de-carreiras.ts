@@ -10,3 +10,11 @@ export async function paginaDeCarreirasLiberada(): Promise<boolean> {
   if (error || !data || typeof data !== "object") return false;
   return (data as { liberada?: unknown }).liberada === true;
 }
+
+/** As vagas no ar da conta e se é agência verificada (migração 20270407120000); sem a migração, null. */
+export async function minhaFaixa(): Promise<{ vagas_no_ar: number; agencia: boolean } | null> {
+  const { data, error } = await (await criarClienteServidor()).rpc("minha_faixa");
+  if (error || !data || typeof data !== "object") return null;
+  const o = data as { vagas_no_ar?: unknown; agencia?: unknown };
+  return { vagas_no_ar: Number(o.vagas_no_ar) || 0, agencia: o.agencia === true };
+}
