@@ -15,8 +15,8 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 // Os números do Painel do admin no site publicado, só leitura, para quem a equipe liberou (e-mail
-// @publike.org, em Admin › Moderadores › Painel no site). O banco confere a cada leitura
-// (`painel_no_site`). Fica em Equipe › Números (/admin/numeros), junto da moderação; o /equipe antigo leva para lá.
+// @publike.org, em Admin › Moderadores › Painel no site) e para o moderador quando Números está sem a marca
+// "Somente publike.org" (migração 20270330120000). O banco confere a cada leitura (`painel_no_site`). Fica em Equipe › Números (/admin/numeros), junto da moderação; o /equipe antigo leva para lá.
 
 type PainelNoSite = {
   resumo: NumerosPainel;
@@ -44,8 +44,9 @@ export async function NumerosDaEquipe({ moderador = false }: { moderador?: boole
   if (error || !data) {
     if (!moderador) notFound();
     return (
-      <Aviso tipo="info" titulo="Os números são só para a equipe com e-mail @publike.org">
-        Peça ao admin para liberar o Painel no site para a sua conta, em Admin › Moderadores.
+      <Aviso tipo="info" titulo="Os números ainda não abrem para a sua conta">
+        Eles abrem para a equipe com e-mail @publike.org liberada em Admin › Moderadores e, quando Números está sem a
+        marca &ldquo;Somente publike.org&rdquo; em Admin › Quem vê cada tela, também para quem modera.
       </Aviso>
     );
   }
