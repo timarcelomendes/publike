@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { AjudaDoPainelDaConta } from "@/components/painel/ajuda-do-painel-servidor";
 import { ContarContato } from "@/components/contar-contato";
 import { MenuDaConta } from "@/components/painel/menu-da-conta";
 import { MenuPainelEsqueleto } from "@/components/painel/menu-painel";
@@ -26,10 +25,6 @@ export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
           </Suspense>
         </div>
         <div className="min-w-0">
-          {/* o "Como funciona esta página" de quem contrata (src/lib/ajuda-do-painel.ts) */}
-          <Suspense fallback={null}>
-            <AjudaDoPainelDaConta />
-          </Suspense>
           {children}
         </div>
         {/* o toque no WhatsApp, telefone ou e-mail de um candidato (Admin › Retorno) */}

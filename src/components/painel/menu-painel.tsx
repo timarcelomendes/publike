@@ -21,6 +21,7 @@ import { PilulaFaltaCurriculo } from "../curriculo/sem-curriculo";
 import { Avatar } from "../ui/basicos";
 import { ConviteNotificacoes } from "../convite-notificacoes";
 import { ICONES_DO_PAINEL as ICONES } from "./icones-do-painel";
+import { AjudaDoPainel } from "./ajuda-do-painel";
 import { RecolherMenu } from "./recolher-menu";
 import { SemLinhaDoPainel } from "./sem-linha-do-painel";
 
@@ -495,8 +496,11 @@ export function MenuPainel({
           ))}
         </ul>
       </div>
-      {/* no computador: recolher o menu, ficando só os ícones */}
-      <RecolherMenu />
+      {/* o pé do menu: a ajuda da página (só quem contrata) e, no computador, recolher o menu (só os ícones) */}
+      <div className="flex flex-col gap-0.5 lg:border-t lg:border-line lg:pt-3">
+        {tipoConta && tipoConta !== "pessoa" && <AjudaDoPainel agencia={tipoConta === "agencia"} />}
+        <RecolherMenu />
+      </div>
     </nav>
   );
 }

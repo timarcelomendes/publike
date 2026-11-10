@@ -7,8 +7,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ajudaDaPagina } from "@/lib/ajuda-do-painel";
 
 /**
- * O "?" (só o ícone, "Como funciona esta página") no alto de cada página do painel de quem contrata (empresa, comércio e agência): abre o que a página faz e
- * as dicas, sem sair dela (src/lib/ajuda-do-painel.ts). Fecha no X, no Esc, num toque fora ou ao trocar de página.
+ * O "Como funciona esta página" no pé do menu do painel de quem contrata (empresa, comércio e agência), junto do
+ * "Recolher o menu" (com o menu recolhido, só o "?"): abre o que a página faz e as dicas, sem sair dela
+ * (src/lib/ajuda-do-painel.ts). No computador abre ao lado do menu; no celular, embaixo. Fecha no X, no Esc, num
+ * toque fora ou ao trocar de página.
  */
 export function AjudaDoPainel({ agencia }: { agencia: boolean }) {
   const caminho = usePathname();
@@ -41,25 +43,26 @@ export function AjudaDoPainel({ agencia }: { agencia: boolean }) {
 
   if (!ajuda) return null;
   return (
-    <div ref={caixa} className="relative mb-2 flex justify-end" data-nao-imprimir>
+    <div ref={caixa} className="relative" data-nao-imprimir>
       <button
         type="button"
         onClick={() => setAberta((a) => !a)}
         aria-expanded={aberta}
         aria-controls={id}
-        aria-label="Como funciona esta página"
         title="Como funciona esta página"
-        className={`inline-flex size-10 items-center justify-center rounded-pill border bg-surface-200 hover:border-line-strong hover:text-ink ${
-          aberta ? "border-line-strong text-ink" : "border-line text-ink-muted"
+        data-menu-link
+        className={`flex min-h-10 w-full items-center gap-2.5 rounded-md px-3 text-body-sm font-semibold hover:bg-surface-300 hover:text-ink ${
+          aberta ? "bg-surface-300 text-ink" : "text-ink-muted"
         }`}
       >
-        <CircleHelp aria-hidden className="size-5" />
+        <CircleHelp aria-hidden className="size-5 shrink-0" />
+        <span data-menu-texto>Como funciona esta página</span>
       </button>
       {aberta && (
         <section
           id={id}
           aria-label={`Ajuda: ${ajuda.titulo}`}
-          className="absolute top-12 right-0 z-30 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card"
+          className="absolute top-full left-0 z-30 mt-2 flex w-[min(24rem,calc(100vw-2rem))] lg:top-auto lg:bottom-0 lg:left-full lg:mt-0 lg:ml-3 flex-col gap-3 rounded-lg border border-line-strong bg-surface-200 p-4 shadow-card"
         >
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-h3">{ajuda.titulo}</h2>
