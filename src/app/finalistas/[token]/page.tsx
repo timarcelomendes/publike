@@ -1,4 +1,5 @@
-import { Eye, MapPin } from "lucide-react";
+import { Eye, FileText, MapPin } from "lucide-react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
@@ -9,9 +10,9 @@ import { SeloVerificado } from "@/components/selo-verificado";
 import { Aviso, Avatar, Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { REGIMES } from "@/lib/constantes";
-import { DECISOES_CLIENTE, lerDadosDoLink, type DadosDoLink, type FinalistaDoLink } from "@/lib/finalistas";
-import { formatarLugar, urlDaFoto } from "@/lib/formato";
-import { corLegivel, corValida } from "@/lib/marca";
+import { DECISOES_CLIENTE, lerDadosDoLink, lerMarca, type DadosDoLink, type FinalistaDoLink } from "@/lib/finalistas";
+import { formatarLugar } from "@/lib/formato";
+import { corLegivel } from "@/lib/marca";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { Regime } from "@/lib/tipos";
@@ -73,15 +74,6 @@ async function Conteudo({ token }: { token: string }) {
   return <Lista d={d} token={token} hoje={hoje} marca={lerMarca(marcaDoBanco)} />;
 }
 
-/** A marca da agência no link (só com o Plano Agência); o que vier torto, sem marca. */
-function lerMarca(x: unknown): { cor: string | null; foto: string | null } | null {
-  if (!x || typeof x !== "object") return null;
-  const o = x as { cor?: unknown; foto?: unknown };
-  const cor = corValida(o.cor) ? o.cor : null;
-  const foto = typeof o.foto === "string" ? urlDaFoto(o.foto) : null;
-  return cor || foto ? { cor, foto } : null;
-}
-
 function LinkQueNaoVale() {
   return (
     <Aviso tipo="alerta" titulo="Este link não vale">
@@ -99,7 +91,7 @@ function Lista({
   d: DadosDoLink;
   token: string;
   hoje: string;
-  marca: { cor: string | null; foto: string | null } | null;
+  marca: { cor: string | null; foto: string | null; plano: boolean } | null;
 }) {
   const vaga = d.vaga!;
   const regime = vaga.regime && vaga.regime in REGIMES ? REGIMES[vaga.regime as Regime].nome : null;
@@ -116,7 +108,7 @@ function Lista({
         </p>
       )}
       <header
-        className={`flex flex-col gap-4 border-b border-line pb-5 ${marca ? "overflow-hidden rounded-lg border bg-surface-200 p-5 sm:p-6" : ""}`}
+        className={`flex flex-col gap-4 border-b border-line pb-5 ${marca?.cor || marca?.foto ? "overflow-hidden rounded-lg border bg-surface-200 p-5 sm:p-6" : ""}`}
         style={marca?.cor && !marca.foto ? { borderTop: `6px solid ${marca.cor}` } : undefined}
       >
         {marca?.foto && (
@@ -185,6 +177,7 @@ function Lista({
               previa={d.previa}
               remetente={ehAgencia ? "a agência" : d.agencia.nome}
               competencias={d.competencias}
+              dossie={marca?.plano === true}
             />
           ))}
         </ol>
@@ -209,8 +202,11 @@ function Finalista({
   previa,
   remetente,
   competencias,
+  dossie,
 }: {
   f: FinalistaDoLink;
+  /** com o Plano Agência: o link para o dossiê do finalista (migração 20270411120000) */
+  dossie: boolean;
   competencias: Competencia[];
   numero: number;
   token: string;
@@ -230,6 +226,16 @@ function Finalista({
           <p className="text-body-sm text-ink-muted">{formatarLugar(f.bairro, f.cidade)}</p>
           {f.curriculo?.titulo && <p className="mt-1 text-body-sm">{f.curriculo.titulo}</p>}
         </div>
+        {dossie && (
+          <Link
+            href={`/finalistas/${token}/${f.id}`}
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-label underline underline-offset-2"
+            data-nao-imprimir
+          >
+            <FileText aria-hidden className="size-4" />
+            Ver o dossiê
+          </Link>
+        )}
       </div>
 
       {f.parecer && (

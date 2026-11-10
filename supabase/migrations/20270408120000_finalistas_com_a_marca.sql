@@ -33,7 +33,7 @@ $$;
 revoke execute on function privado.agencia_com_plano(uuid) from public, anon, authenticated;
 
 -- 3. A marca no link dos finalistas (o cliente abre sem conta): a cor e a primeira foto da Página de carreiras de
--- quem publicou a vaga, só com o Plano Agência. Sem plano ou link inválido, null.
+-- quem publicou a vaga, só com o Plano Agência (sem a página montada, só o 'plano'). Sem plano ou link inválido, null.
 create or replace function public.marca_dos_finalistas(p_token text)
 returns jsonb
 language sql
@@ -41,15 +41,16 @@ stable
 security definer
 set search_path = ''
 as $$
+  -- 'plano' diz que a agência tem o Plano Agência (o link mostra o dossiê de cada finalista, 20270411120000)
   select jsonb_build_object(
+           'plano', true,
            'cor', p.cor,
            'foto', coalesce((to_jsonb(p) -> 'fotos' ->> 0), p.capa))
     from public.links_finalistas l
     join public.anuncios a on a.id = l.anuncio_id
-    join public.paginas_de_vagas p on p.conta_id = a.autor_id
+    left join public.paginas_de_vagas p on p.conta_id = a.autor_id
    where coalesce(p_token, '') ~ '^[0-9a-f]{64}$' and l.token = p_token
      and privado.agencia_com_plano(a.autor_id)
-     and (p.cor is not null or p.capa is not null or jsonb_array_length(coalesce(to_jsonb(p) -> 'fotos', '[]')) > 0)
    limit 1
 $$;
 revoke execute on function public.marca_dos_finalistas(text) from public;

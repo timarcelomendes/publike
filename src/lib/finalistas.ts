@@ -2,6 +2,8 @@
 // ao cliente, que vê os currículos (sem contato), o parecer da agência e responde.
 // Peças usadas no navegador e no servidor.
 
+import { urlDaFoto } from "@/lib/formato";
+import { corValida } from "@/lib/marca";
 import { lerCompetencias, type Competencia } from "./avaliacao-time";
 import { estudosDoBanco } from "./estudos";
 import type { Curriculo, Experiencia } from "./tipos";
@@ -189,4 +191,17 @@ export function resumoDasRespostas(lista: { decisao: DecisaoCliente | null }[]) 
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/**
+ * A marca da agência no link dos finalistas (migração 20270408120000): a cor e a primeira foto da Página de carreiras,
+ * e `plano` quando a agência tem o Plano Agência (o dossiê de cada finalista). O que vier torto, sem marca.
+ */
+export function lerMarca(x: unknown): { cor: string | null; foto: string | null; plano: boolean } | null {
+  if (!x || typeof x !== "object") return null;
+  const o = x as { cor?: unknown; foto?: unknown; plano?: unknown };
+  const cor = corValida(o.cor) ? o.cor : null;
+  const foto = typeof o.foto === "string" ? urlDaFoto(o.foto) : null;
+  const plano = o.plano === true;
+  return cor || foto || plano ? { cor, foto, plano } : null;
 }

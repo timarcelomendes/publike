@@ -3963,6 +3963,10 @@ export type Database = {
         Args: { p_chave: string };
         Returns: number;
       };
+      dossie_do_finalista: {
+        Args: { p_token: string; p_finalista: string };
+        Returns: Json;
+      };
       servidor_perguntar_garantias: {
         Args: { p_chave: string };
         Returns: number;
