@@ -44,7 +44,7 @@ import { logoPadraoDoEmail } from "@/lib/email/montar";
 import { GRUPOS_DO_CATALOGO, quemRecebe, regrasDoEmail, SAEM_NA_HORA } from "@/lib/emails/catalogo";
 import { plural, primeiro, tempoRelativo } from "@/lib/formato";
 import { situacaoSmtp } from "@/lib/servidor/ambiente";
-import { zoomLigado } from "@/lib/servidor/zoom";
+import { meetLigado } from "@/lib/servidor/google-meet";
 import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { situacaoFilas } from "@/lib/servidor/filas";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
@@ -308,9 +308,9 @@ async function Conteudo({ aba, filtros }: { aba: Aba; filtros: FiltrosEnviados }
       {aba === "conversa" && (
         <Secao
           titulo="Agendar conversa com um prospect"
-          descricao="Monta o convite para a agenda do seu e-mail profissional (Titan). Preencha o nome, o e-mail e o horário, copie o título e a descrição para o evento e convide o prospect por lá: ele recebe o convite com Aceitar e Recusar, e a resposta volta para você."
+          descricao="Preencha o nome, o e-mail e o horário. Com o Google Meet, um toque cria o evento na sua Google Agenda com a sala e o Google manda o convite, com Aceitar e Recusar. Sem ele, copie o título e a descrição para o evento da sua agenda."
         >
-          <ConviteDeConversa zoom={zoomLigado()} />
+          <ConviteDeConversa meet={meetLigado()} />
         </Secao>
       )}
 

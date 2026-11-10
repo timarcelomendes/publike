@@ -2,16 +2,16 @@
 
 import { LoaderCircle, Mail, Video } from "lucide-react";
 import { useEffect, useId, useState, useTransition } from "react";
-import { criarReuniaoDaConversa } from "@/lib/acoes/zoom";
+import { criarReuniaoDaConversa } from "@/lib/acoes/google-meet";
 import { emailValido } from "@/lib/email-valido";
 import { BotaoCopiar } from "@/components/painel/pagina-de-vagas";
 import { classesBotao } from "@/components/ui/botao";
 import { Botao } from "@/components/ui/botao";
 import { Campo, classesEntrada, MensagemErro, Seletor } from "@/components/ui/campo";
 
-// Agendar uma conversa com um prospect (Admin › E-mails › Agendar conversa). O convite sai pela agenda do e-mail
-// profissional (Titan): aqui só se montam os textos. A pessoa preenche nome, e-mail, dia e hora; copia o título e a
-// descrição para o evento da agenda (com o prospect como convidado) e, se quiser, o e-mail de acompanhamento.
+// Agendar uma conversa com um prospect (Admin › E-mails › Agendar conversa). Com o Google Meet ligado no servidor, um
+// toque cria o evento na Google Agenda com a sala do Meet e o Google manda o convite ao prospect. Sem ele (ou para usar
+// outra agenda), os textos ficam prontos para copiar no evento, e o e-mail de acompanhamento também.
 
 const GUARDADO = "publike_admin_convite_conversa";
 
@@ -46,41 +46,21 @@ function horaCurta(hora: string) {
   return m && m !== "00" ? `${Number(h)}h${m}` : `${Number(h)}h`;
 }
 
-/**
- * O link da reunião, mesmo quando a pessoa cola o convite inteiro que o Zoom gera ("Marcelo está convidando você…
- * Ingressar na reunião Zoom https://… ID da reunião: 734 999 8883 Senha: gCs0ip"): o link, o ID e a senha, cada um no
- * seu lugar.
- */
+/** O link da reunião, mesmo quando a pessoa cola o convite inteiro (o primeiro link que aparecer). */
 export function lerReuniao(texto: string) {
   const url = texto.match(/https?:\/\/[^\s<>"']+/)?.[0]?.replace(/[.,;)]+$/, "") ?? "";
-  const zoom = /zoom\.us\//i.test(url);
-  const doLink = url.match(/\/j\/(\d{9,11})/)?.[1] ?? "";
-  const idEscrito = texto.match(/(?:ID da reuni[aã]o|Meeting ID)\s*:?\s*([\d ]{9,14}\d)/i)?.[1] ?? "";
-  const numero = (idEscrito || doLink).replace(/\D/g, "");
-  const id =
-    numero.length === 10
-      ? `${numero.slice(0, 3)} ${numero.slice(3, 6)} ${numero.slice(6)}`
-      : numero.length === 11
-        ? `${numero.slice(0, 3)} ${numero.slice(3, 7)} ${numero.slice(7)}`
-        : numero;
-  const senha = texto.match(/(?:Senha|Passcode|Password)\s*:?\s*(\S+)/i)?.[1] ?? "";
-  return { url, zoom, id: zoom ? id : "", senha: zoom ? senha : "" };
+  return { url, meet: /meet\.google\.com\//i.test(url) };
 }
 
 /** As linhas da reunião no convite e no e-mail. */
 function linhasDaReuniao(r: ReturnType<typeof lerReuniao>) {
   if (!r.url) return [];
-  if (!r.zoom) return [`Entrar na conversa: ${r.url}`];
-  return [
-    `Entrar pelo Zoom: ${r.url}`,
-    ...(r.id ? [`ID da reunião: ${r.id}`] : []),
-    ...(r.senha ? [`Senha: ${r.senha}`] : []),
-  ];
+  return [r.meet ? `Entrar pelo Google Meet: ${r.url}` : `Entrar na conversa: ${r.url}`];
 }
 
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? "";
 
-export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
+export function ConviteDeConversa({ meet = false }: { meet?: boolean }) {
   const id = useId();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -91,9 +71,11 @@ export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
   const [link, setLink] = useState("");
   const [pauta, setPauta] = useState(PAUTA_PADRAO);
   const [assina, setAssina] = useState("Marcelo, do Publike");
-  // a reunião criada agora no Zoom: só desta conversa (não fica guardada para o próximo convite)
-  const [criada, setCriada] = useState<{ url: string; id: string; senha: string; para: string } | null>(null);
-  const [erroZoom, setErroZoom] = useState<string | null>(null);
+  // a reunião criada agora no Google: só desta conversa (não fica guardada para o próximo convite)
+  const [criada, setCriada] = useState<{ url: string; evento: string; convidou: boolean; para: string } | null>(null);
+  const [erroMeet, setErroMeet] = useState<string | null>(null);
+  // o Google manda o convite ao prospect (do e-mail da conta Google de quem atende)
+  const [convidar, setConvidar] = useState(true);
   const [criando, iniciar] = useTransition();
 
   // o link da sala, a pauta, a duração e a assinatura ficam neste aparelho para o próximo convite
@@ -111,7 +93,7 @@ export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
   }, []);
   useEffect(() => {
     try {
-      // a sala fixa (a pessoal do Zoom ou do Meet) fica guardada; a reunião criada para esta conversa, não
+      // a sala fixa (a de sempre) fica guardada; a reunião criada para esta conversa, não
       const salvo = criada ? (JSON.parse(localStorage.getItem(GUARDADO) ?? "{}") as Partial<Guardado>).link ?? "" : link;
       localStorage.setItem(GUARDADO, JSON.stringify({ link: salvo, pauta, assina, duracao } satisfies Guardado));
     } catch {}
@@ -126,22 +108,23 @@ export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
     .map((l) => l.replace(/^[-•*\s]+/, "").trim())
     .filter(Boolean);
   const horario = `${data}T${hora}/${duracao}`;
-  const reuniao = criada ? { url: criada.url, id: criada.id, senha: criada.senha, zoom: true } : lerReuniao(link);
+  const reuniao = criada ? { url: criada.url, meet: true } : lerReuniao(link);
   const daReuniao = linhasDaReuniao(reuniao);
 
   const titulo = `Publike + ${quem}: conversa de ${duracao} min`;
-  const descricao = [
+  const descricaoDe = (salas: string[]) => [
     `Oi, ${primeiroNome(nome)}!`,
     "",
     // sem o nome da empresa na frase: "a Grupo…" ou "o Loja…" saem errados (o nome já está no título)
     "Uma conversa rápida para ver como o Publike pode ajudar vocês a contratar.",
     ...(itens.length ? ["", "O que vamos ver:", ...itens.map((i) => `- ${i}`)] : []),
-    ...(daReuniao.length ? ["", ...daReuniao] : []),
+    ...(salas.length ? ["", ...salas] : []),
     "",
     "Se o horário não der, é só responder este convite com outro.",
     "",
     assina.trim(),
   ].join("\n");
+  const descricao = descricaoDe(daReuniao);
 
   const assunto = `Nossa conversa sobre o Publike: ${dia}, às ${as}`;
   const corpo = [
@@ -156,17 +139,19 @@ export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
     assina.trim(),
   ].join("\n");
 
-  function criarNoZoom() {
-    setErroZoom(null);
+  function criarNoMeet() {
+    setErroMeet(null);
     iniciar(async () => {
       const r = await criarReuniaoDaConversa({
         titulo,
         inicio: `${data}T${hora}`,
         minutos: Number(duracao),
-        pauta: itens.join("\n"),
+        // a sala do Meet o próprio Google põe no evento
+        descricao: descricaoDe([]),
+        convidado: convidar && emailValido(email) ? email.trim() : null,
       });
-      if (!r.ok) return setErroZoom(r.erro);
-      setCriada({ ...r.reuniao, para: horario });
+      if (!r.ok) return setErroMeet(r.erro);
+      setCriada({ url: r.reuniao.url, evento: r.reuniao.evento, convidou: r.reuniao.convidou, para: horario });
       setLink(r.reuniao.url);
     });
   }
@@ -243,20 +228,24 @@ export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
           <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-100 p-3">
             <p className="flex items-center gap-2 text-label">
               <Video aria-hidden className="size-4 shrink-0 text-cerrado" />
-              Reunião criada no Zoom
+              {criada.convidou ? "Evento criado e convite enviado pelo Google" : "Evento criado na Google Agenda"}
             </p>
-            <p className="text-body-sm break-all text-ink-muted">
-              ID {criada.id}
-              {criada.senha && <> · senha {criada.senha}</>}
-            </p>
+            <p className="text-body-sm break-all text-ink-muted">{criada.url}</p>
             {criada.para !== horario && (
-              <MensagemErro>Você mudou o dia, a hora ou a duração: crie a reunião de novo para o novo horário.</MensagemErro>
+              <MensagemErro>
+                Você mudou o dia, a hora ou a duração: mude também o evento na Google Agenda, ou crie outro.
+              </MensagemErro>
             )}
             <div className="flex flex-wrap gap-2">
+              {criada.evento && (
+                <a href={criada.evento} target="_blank" rel="noopener noreferrer" className={classesBotao("secundario", "sm")}>
+                  Abrir na Google Agenda
+                </a>
+              )}
               {criada.para !== horario && (
-                <Botao tamanho="sm" variante="secundario" onClick={criarNoZoom} disabled={criando}>
+                <Botao tamanho="sm" variante="secundario" onClick={criarNoMeet} disabled={criando}>
                   {criando ? <LoaderCircle aria-hidden className="animate-spin" /> : <Video aria-hidden />}
-                  Criar de novo
+                  Criar outro
                 </Botao>
               )}
               <Botao
@@ -273,29 +262,38 @@ export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
           </div>
         ) : (
           <>
-            {zoom && (
-              <div className="flex flex-col gap-1.5">
-                <Botao variante="secundario" onClick={criarNoZoom} disabled={criando || !data || !hora}>
+            {meet && (
+              <div className="flex flex-col gap-2">
+                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-body-sm">
+                  <input
+                    type="checkbox"
+                    checked={convidar}
+                    onChange={(e) => setConvidar(e.target.checked)}
+                    className="size-5 accent-[var(--pk-ink)]"
+                  />
+                  O Google manda o convite para {emailValido(email) ? email.trim() : "o e-mail do prospect"}
+                </label>
+                <Botao variante="secundario" onClick={criarNoMeet} disabled={criando || !pronto}>
                   {criando ? <LoaderCircle aria-hidden className="animate-spin" /> : <Video aria-hidden />}
-                  {criando ? "Criando no Zoom…" : "Criar reunião no Zoom"}
+                  {criando ? "Criando no Google…" : "Criar com o Google Meet"}
                 </Botao>
                 <p className="text-body-sm text-ink-muted">
-                  Uma reunião só desta conversa, no dia e na hora escolhidos, com sala de espera.
+                  O evento entra na sua Google Agenda no dia e na hora escolhidos, com a sala do Meet e a pauta.
                 </p>
-                {erroZoom && <MensagemErro>{erroZoom}</MensagemErro>}
+                {erroMeet && <MensagemErro>{erroMeet}</MensagemErro>}
               </div>
             )}
             <Campo
-              rotulo={zoom ? "Ou cole o link da sala" : "Link da conversa"}
+              rotulo={meet ? "Ou cole o link da sala" : "Link da conversa"}
               nome={`${id}-link`}
               opcional
-              ajuda="O link do Meet ou do Zoom, ou o convite inteiro que o Zoom gera: o link, o ID e a senha vão para o lugar certo. A sala fica guardada para o próximo convite."
+              ajuda="O link do Meet (ou o convite inteiro, que o link vai para o lugar certo). A sala fica guardada para o próximo convite."
             >
               <input
                 id={`${id}-link`}
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="https://us05web.zoom.us/j/…"
+                placeholder="https://meet.google.com/abc-defg-hij"
                 className={classesEntrada}
               />
             </Campo>
@@ -329,19 +327,29 @@ export function ConviteDeConversa({ zoom = false }: { zoom?: boolean }) {
         {!pronto ? (
           <p className="rounded-md border border-dashed border-line-strong p-4 text-body-sm text-ink-muted">
             Escreva o nome e o e-mail do prospect. O título e a descrição do convite aparecem aqui, prontos para colar
-            no evento da agenda.
+            no evento da agenda, se não usar o Google Meet.
           </p>
         ) : (
           <>
+            {criada?.convidou ? (
+              <p className="text-body-sm text-ink-muted">
+                O convite já foi pelo Google. Se quiser, mande também o e-mail de acompanhamento.
+              </p>
+            ) : (
             <ol className="flex list-decimal flex-col gap-1 pl-5 text-body-sm text-ink-muted">
-              <li>Na agenda da Titan, crie o evento na {dia}, às {as}, com {duracao} minutos.</li>
+              <li>Na sua agenda, crie o evento na {dia}, às {as}, com {duracao} minutos.</li>
               <li>Cole o título e a descrição abaixo.</li>
               <li>
                 Em Convidados, ponha <b className="font-semibold text-ink">{email.trim()}</b> e salve enviando o convite.
               </li>
             </ol>
+            )}
+            {!criada?.convidou && (
+              <>
             <Bloco rotulo="Título do evento" texto={titulo} copiar="Copiar título" principal />
             <Bloco rotulo="Descrição do evento" texto={descricao} copiar="Copiar descrição" principal />
+              </>
+            )}
             <Bloco rotulo="E-mail de acompanhamento (opcional)" texto={`Assunto: ${assunto}\n\n${corpo}`} copiar="Copiar e-mail">
               <a href={mailto} className={classesBotao("secundario", "sm")}>
                 <Mail aria-hidden />
