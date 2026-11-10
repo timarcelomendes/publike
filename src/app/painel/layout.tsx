@@ -17,9 +17,10 @@ export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
         data-painel-grade
         className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-10"
       >
+        {/* o menu fica acima da página (lg:z-20): a ajuda abre por cima dela */}
         {/* o "‹ Painel" do celular agora faz parte do "Voltar" do site (src/components/voltar.tsx) */}
         {/* nas Mensagens, o celular fica sem a linha do menu (elas marcam o html: SemLinhaDoPainel) */}
-        <div className="lg:sticky lg:top-20 [html[data-sem-linha-painel]_&]:max-lg:hidden">
+        <div className="lg:sticky lg:top-20 lg:z-20 [html[data-sem-linha-painel]_&]:max-lg:hidden">
           <Suspense fallback={<MenuPainelEsqueleto />}>
             <MenuDaConta />
           </Suspense>
