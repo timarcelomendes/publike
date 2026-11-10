@@ -28,6 +28,7 @@ import type { Regra } from "@/lib/processo";
 import { PularRegra } from "../processo/pular-regra";
 import { BotoesAgenda } from "../agenda/botoes-agenda";
 import { Selo } from "../ui/basicos";
+import { VideoNaFicha } from "../video/video-na-ficha";
 import { Botao } from "../ui/botao";
 import { classesEntrada, Seletor } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
@@ -81,6 +82,7 @@ export function FormEntrevista({
   endereco,
   aoTerminar,
   aoVivo = false,
+  gravada = false,
 }: {
   anuncioId: string;
   perfilId: string;
@@ -90,9 +92,13 @@ export function FormEntrevista({
   endereco: string;
   /** a chamada pelo Publike está disponível (Entrevista em vídeo e a Daily configurada) */
   aoVivo?: boolean;
+  /** a Entrevista em vídeo gravada está liberada: entra como mais um jeito em "Como vai ser" */
+  gravada?: boolean;
   aoTerminar?: () => void;
 }) {
   const base = useId();
+  // "Gravada pelo celular": no lugar de marcar, pede as respostas gravadas (a Entrevista em vídeo)
+  const [gravar, setGravar] = useState(false);
   const [formato, setFormato] = useState<FormatoEntrevista>((atual?.formato as FormatoEntrevista) ?? "presencial");
   const [quando, setQuando] = useState(paraCampo(atual?.quando ?? null));
   const [local, setLocal] = useState(atual?.local ?? (formato === "presencial" ? endereco : ""));
@@ -124,8 +130,60 @@ export function FormEntrevista({
   }
 
   function trocarFormato(f: FormatoEntrevista) {
+    setGravar(false);
     setFormato(f);
     setLocal(f === "presencial" ? endereco : f === "video" ? "" : "");
+  }
+
+  const comoVaiSer = (
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-label">Como vai ser</legend>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(FORMATOS_ENTREVISTA) as FormatoEntrevista[])
+            .filter((f) => f !== "publike" || aoVivo || formato === "publike")
+            .map((f) => (
+              <label
+                key={f}
+                className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
+              >
+                <input
+                  type="radio"
+                  name={`${base}-formato`}
+                  checked={!gravar && formato === f}
+                  onChange={() => trocarFormato(f)}
+                  className="sr-only"
+                />
+                {FORMATOS_ENTREVISTA[f].nome}
+                {f === "publike" && (
+                  <Selo variante="novo" className="ml-1.5">
+                    Novo
+                  </Selo>
+                )}
+              </label>
+            ))}
+          {gravada && (
+            <label className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus">
+              <input
+                type="radio"
+                name={`${base}-formato`}
+                checked={gravar}
+                onChange={() => setGravar(true)}
+                className="sr-only"
+              />
+              Gravada pelo celular
+            </label>
+          )}
+        </div>
+      </fieldset>
+  );
+
+  if (gravar) {
+    return (
+      <div className="flex flex-col gap-3">
+        {comoVaiSer}
+        <VideoNaFicha anuncioId={anuncioId} perfilId={perfilId} nome={nome} video={null} liberado agora={0} />
+      </div>
+    );
   }
 
   return (
@@ -142,6 +200,7 @@ export function FormEntrevista({
         );
       }}
     >
+      {comoVaiSer}
       <p className="text-body-sm text-ink-muted">
         {escolher
           ? `${nome.split(" ")[0]} recebe os horários, escolhe um pelo Publike e você recebe o aviso. Na véspera, os dois recebem um lembrete.`
@@ -251,33 +310,6 @@ export function FormEntrevista({
           </Seletor>
         </div>
       </div>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-label">Como vai ser</legend>
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(FORMATOS_ENTREVISTA) as FormatoEntrevista[])
-            .filter((f) => f !== "publike" || aoVivo || formato === "publike")
-            .map((f) => (
-              <label
-                key={f}
-                className="inline-flex min-h-10 cursor-pointer items-center rounded-pill border border-line bg-surface-300 px-3.5 text-label has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-surface-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
-              >
-                <input
-                  type="radio"
-                  name={`${base}-formato`}
-                  checked={formato === f}
-                  onChange={() => trocarFormato(f)}
-                  className="sr-only"
-                />
-                {FORMATOS_ENTREVISTA[f].nome}
-                {f === "publike" && (
-                  <Selo variante="novo" className="ml-1.5">
-                    Novo
-                  </Selo>
-                )}
-              </label>
-            ))}
-        </div>
-      </fieldset>
       {info.campo && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${base}-local`} className="text-label">

@@ -804,12 +804,13 @@ function FolhaChamar({
         atual={extras.entrevista}
         endereco={extras.endereco}
         aoVivo={extras.aoVivo}
+        gravada={extras.video.liberado && !extras.video.atual}
         aoTerminar={aoFechar}
       />
-      {(extras.video.liberado || extras.testes.length > 0) && (
+      {((extras.video.liberado && extras.video.atual) || extras.testes.length > 0) && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <p className="text-label">Antes da conversa, se quiser</p>
-          {extras.video.liberado && (
+          {extras.video.liberado && extras.video.atual && (
             <VideoNaFicha
               anuncioId={anuncioId}
               perfilId={perfilId}

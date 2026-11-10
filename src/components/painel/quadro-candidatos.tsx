@@ -900,7 +900,8 @@ function DetalheCandidato({
         </Secao>
       )}
 
-      {video && (c.status === "pendente" || c.status === "match" || c.video) && (
+      {/* sem pedido ainda, a gravada é pedida em "Como vai ser", na Entrevista */}
+      {video && (c.video || (!video.liberado && (c.status === "pendente" || c.status === "match"))) && (
         <Secao titulo="Entrevista em vídeo">
           <VideoNaFicha
             anuncioId={anuncioId}
@@ -970,6 +971,7 @@ function DetalheCandidato({
             atual={e && ENTREVISTA_ABERTA.includes(e.situacao) ? e : null}
             endereco={endereco}
             aoVivo={Boolean(video?.liberado && video.aoVivo)}
+            gravada={Boolean(video?.liberado && !c.video)}
             aoTerminar={() => {
               setMarcando(false);
               setMarcou(true);
