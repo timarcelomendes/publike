@@ -21,6 +21,7 @@ import { PilulaFaltaCurriculo } from "../curriculo/sem-curriculo";
 import { Avatar } from "../ui/basicos";
 import { ConviteNotificacoes } from "../convite-notificacoes";
 import { ICONES_DO_PAINEL as ICONES } from "./icones-do-painel";
+import { RecolherMenu } from "./recolher-menu";
 import { SemLinhaDoPainel } from "./sem-linha-do-painel";
 
 /**
@@ -125,7 +126,7 @@ export function MenuPainel({
     if (jeito === "texto") {
       if (!s.contador || (n === 0 && !s.passo)) return null;
       return (
-        <span className="ml-auto text-body-sm font-semibold text-ink-muted tabular-nums">
+        <span data-menu-some className="ml-auto text-body-sm font-semibold text-ink-muted tabular-nums">
           {n}
           {s.sufixo && n > 0 ? ` ${s.sufixo}` : ""}
         </span>
@@ -134,7 +135,10 @@ export function MenuPainel({
     if (n <= 0) return null;
     if (jeito === "pronto") {
       return (
-        <span className="ml-auto min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text tabular-nums normal-case">
+        <span
+          data-menu-pilula
+          className="ml-auto min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text tabular-nums normal-case"
+        >
           {n}
           <span className="sr-only"> {n === 1 ? "pronto" : "prontos"}</span>
         </span>
@@ -142,7 +146,10 @@ export function MenuPainel({
     }
     // o que pede ação: a pílula clara terra (o painel novo, 08/11/2026)
     return (
-      <span className="ml-auto min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text tabular-nums">
+      <span
+        data-menu-pilula
+        className="ml-auto min-w-6 rounded-pill bg-terra-soft px-1.5 text-center text-caption leading-6 text-terra-text tabular-nums"
+      >
         {n > 99 ? "99+" : n}
         <span className="sr-only"> novos</span>
       </span>
@@ -157,7 +164,7 @@ export function MenuPainel({
       {/* quem é de uma equipe vê de quem é o painel e troca a conta aqui; a conta de uma pessoa só não precisa
           do quadro (o que a conta faz muda no perfil): o menu começa logo (29/10/2026) */}
       {(contas.length > 1 || papel !== "dono") && (
-        <div ref={caixa} className="relative">
+        <div ref={caixa} className="relative" data-menu-some>
           <div className="flex min-h-14 w-full items-center gap-3 rounded-md border border-line-strong bg-surface-200 px-3 py-2">
             <span className="min-w-0 flex-1">
               <span className="block text-caption text-ink-muted">
@@ -248,7 +255,7 @@ export function MenuPainel({
               {iniciais(conta.nome)}
             </span>
           )}
-          <span className="flex min-w-0 flex-col">
+          <span className="flex min-w-0 flex-col" data-menu-some>
             <span className="flex items-center gap-1.5 text-label">
               <span className="truncate">{conta.nome}</span>
               {conta.verificado && (
@@ -273,6 +280,8 @@ export function MenuPainel({
           {/* no Hoje é o botão terra da tela; nas outras páginas do painel, com contorno (um terra por tela) */}
           <Link
             href="/publicar"
+            title="Publicar vaga"
+            data-menu-link
             className={`flex min-h-12 items-center justify-center gap-2 rounded-md text-label transition-colors [&_svg]:size-5 ${
               caminho === "/painel"
                 ? "bg-terra text-on-terra hover:bg-terra-hover"
@@ -280,9 +289,9 @@ export function MenuPainel({
             }`}
           >
             <Plus aria-hidden />
-            Publicar vaga
+            <span data-menu-texto>Publicar vaga</span>
           </Link>
-          <div className="flex gap-1">
+          <div className="flex gap-1" data-menu-some>
             {publicar.agencia && (
               <Link
                 href="/painel/clientes/novo"
@@ -311,14 +320,20 @@ export function MenuPainel({
           <li key={`${g.atividade ?? ""}${g.nome ?? "inicio"}`} className="contents lg:block">
             {g.atividade && (
               // com mais de uma atividade: o nome dela ("Contratar"), também na faixa do celular
-              <p className="shrink-0 self-center px-1 text-caption font-semibold text-ink-muted lg:px-3 lg:pt-1 lg:pb-1 lg:text-label lg:text-ink">
+              <p
+                data-menu-some
+                className="shrink-0 self-center px-1 text-caption font-semibold text-ink-muted lg:px-3 lg:pt-1 lg:pb-1 lg:text-label lg:text-ink"
+              >
                 {g.atividade}
               </p>
             )}
             {g.nome && (
-              <p className="hidden px-3 pb-1.5 text-body-sm font-semibold text-ink-muted lg:block">{g.nome}</p>
+              <p data-menu-some className="hidden px-3 pb-1.5 text-body-sm font-semibold text-ink-muted lg:block">
+                {g.nome}
+              </p>
             )}
             <ul
+              data-menu-caminho={g.caminho ? "" : undefined}
               className={`contents lg:relative lg:flex lg:flex-col lg:gap-0.5 ${
                 // o traço que liga os passos do caminho
                 g.caminho
@@ -340,6 +355,8 @@ export function MenuPainel({
                     <Link
                       href={s.href}
                       aria-current={atualSecao ? "page" : undefined}
+                      title={s.nome}
+                      data-menu-link
                       className={`relative flex min-h-11 items-center gap-2.5 rounded-pill px-3.5 text-label whitespace-nowrap transition-colors lg:min-h-10 lg:rounded-md lg:px-3 ${
                         atualSecao
                           ? "bg-ink text-surface-100"
@@ -365,7 +382,7 @@ export function MenuPainel({
                       ) : (
                         <Icone aria-hidden className="size-5 shrink-0" />
                       )}
-                      <span className={`flex flex-col ${s.passo ? "" : "lg:flex-1"}`}>
+                      <span data-menu-texto className={`flex flex-col ${s.passo ? "" : "lg:flex-1"}`}>
                         <span>
                           {s.passo && <span className="sr-only">Passo {s.passo}: </span>}
                           {s.nome}
@@ -397,10 +414,17 @@ export function MenuPainel({
                     {mais.length > 0 && (
                       <li className="hidden lg:block">
                         <details open={maisAtiva} className="group">
-                          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2.5 rounded-md px-3 text-label text-ink-muted hover:bg-surface-300 hover:text-ink [&::-webkit-details-marker]:hidden">
+                          <summary
+                            data-menu-link
+                            title="Mais ferramentas"
+                            className="flex min-h-10 cursor-pointer list-none items-center gap-2.5 rounded-md px-3 text-label text-ink-muted hover:bg-surface-300 hover:text-ink [&::-webkit-details-marker]:hidden">
                             <ChevronDown aria-hidden className="size-5 shrink-0 transition-transform group-open:rotate-180" />
-                            <span className="flex-1">Mais ferramentas</span>
-                            <span className="text-body-sm tabular-nums">{mais.length}</span>
+                            <span data-menu-texto className="flex-1">
+                              Mais ferramentas
+                            </span>
+                            <span data-menu-some className="text-body-sm tabular-nums">
+                              {mais.length}
+                            </span>
                           </summary>
                           <ul className="mt-0.5 flex flex-col gap-0.5">{mais.map((x) => item(x))}</ul>
                         </details>
@@ -443,7 +467,7 @@ export function MenuPainel({
       </ul>
 
       {publicar && vapid !== undefined && (
-        <div className="hidden lg:block">
+        <div className="hidden lg:block" data-menu-some>
           <ConviteNotificacoes
             vapid={vapid}
             jeito="linha"
@@ -453,7 +477,7 @@ export function MenuPainel({
         </div>
       )}
 
-      <div className={`hidden flex-col gap-1 border-t border-line pt-3 ${outras.length ? "lg:flex" : ""}`}>
+      <div data-menu-some className={`hidden flex-col gap-1 border-t border-line pt-3 ${outras.length ? "lg:flex" : ""}`}>
         <p className="px-3 text-body-sm font-semibold text-ink-muted">Mais</p>
         <ul className="flex flex-col">
           {outras.map((o) => (
@@ -471,6 +495,8 @@ export function MenuPainel({
           ))}
         </ul>
       </div>
+      {/* no computador: recolher o menu, ficando só os ícones */}
+      <RecolherMenu />
     </nav>
   );
 }

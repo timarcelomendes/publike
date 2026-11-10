@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { RolagemDeLado } from "./rolagem-de-lado";
 import {
   useEffect,
   useMemo,
@@ -343,8 +344,8 @@ export function QuadroCandidatos({
       )}
 
       {/* no celular as colunas rolam de lado, uma de cada vez */}
-      <div
-        aria-busy={pendente}
+      <RolagemDeLado
+        ocupado={pendente}
         className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0"
       >
         {colunas.map((col) => {
@@ -392,7 +393,7 @@ export function QuadroCandidatos({
             </section>
           );
         })}
-      </div>
+      </RolagemDeLado>
 
       {selecionados.length > 0 && (
         <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center gap-2 rounded-lg border border-line-strong bg-surface-200 p-3 shadow-raised md:bottom-4">

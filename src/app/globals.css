@@ -586,3 +586,43 @@ html[data-so-olhar]
     filter: invert(0.92) hue-rotate(180deg) saturate(0.6) brightness(0.95);
   }
 }
+
+/* O menu do painel recolhido, só com os ícones (src/components/painel/recolher-menu.tsx; 10/11/2026). Só no
+   computador: no celular o menu é a linha de cima. Os nomes continuam para o leitor de tela. */
+@media (min-width: 64rem) {
+  html[data-menu-recolhido] [data-painel-grade] {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    column-gap: 1.5rem;
+  }
+  html[data-menu-recolhido] [data-menu-some] {
+    display: none !important;
+  }
+  html[data-menu-recolhido] [data-menu-texto] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  html[data-menu-recolhido] [data-menu-link] {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  html[data-menu-recolhido] [data-menu-caminho]::before {
+    display: none;
+  }
+  /* o que pede ação vira um ponto no canto do ícone */
+  html[data-menu-recolhido] [data-menu-pilula] {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    min-width: 0;
+    width: 0.625rem;
+    height: 0.625rem;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+    background: var(--pk-terra);
+  }
+}

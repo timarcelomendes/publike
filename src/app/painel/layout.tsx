@@ -14,7 +14,10 @@ export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
   return (
     <Container className="py-6 sm:py-8">
       <h1 className="sr-only">Meu painel</h1>
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+      <div
+        data-painel-grade
+        className="flex flex-col gap-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-10"
+      >
         {/* o "‹ Painel" do celular agora faz parte do "Voltar" do site (src/components/voltar.tsx) */}
         {/* nas Mensagens, o celular fica sem a linha do menu (elas marcam o html: SemLinhaDoPainel) */}
         <div className="lg:sticky lg:top-20 [html[data-sem-linha-painel]_&]:max-lg:hidden">
