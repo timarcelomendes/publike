@@ -3,7 +3,7 @@
 --
 -- O Plano Completo (R$ 129) sai de venda (quem assina continua). No lugar, dois planos que liberam tudo, como ele,
 -- com o preço pela faixa de vagas no ar ao mesmo tempo:
---   * Plano Empresa: até 5 vagas (R$ 59 por mês, R$ 150 a cada 3 meses) e até 20 (R$ 149, R$ 380);
+--   * Plano Empresa: até 5 vagas (R$ 79 por mês, R$ 201 a cada 3 meses) e até 20 (R$ 199, R$ 507);
 --   * Plano Agência, só para agência com o CNPJ verificado: até 15 vagas e 3 recrutadores (R$ 99, R$ 252) e até
 --     200 vagas e 10 recrutadores (R$ 399, R$ 1.017). Preços agressivos de lançamento (pedido do Marcelo, 10/11).
 --     Fica desligado até os recursos da agência ficarem prontos (etapa 2). Os recrutadores do plano são quem usa
@@ -29,8 +29,8 @@ alter table privado.planos add column if not exists limite_recrutadores integer
   check (limite_recrutadores is null or limite_recrutadores > 0);
 
 insert into privado.planos (recurso, ciclo, valor, ligado, limite_vagas, limite_recrutadores) values
-  ('empresa_5', 'MONTHLY', 59, true, 5, null), ('empresa_5', 'QUARTERLY', 150, true, 5, null),
-  ('empresa_20', 'MONTHLY', 149, true, 20, null), ('empresa_20', 'QUARTERLY', 380, true, 20, null),
+  ('empresa_5', 'MONTHLY', 79, true, 5, null), ('empresa_5', 'QUARTERLY', 201, true, 5, null),
+  ('empresa_20', 'MONTHLY', 199, true, 20, null), ('empresa_20', 'QUARTERLY', 507, true, 20, null),
   ('agencia_15', 'MONTHLY', 99, false, 15, 3), ('agencia_15', 'QUARTERLY', 252, false, 15, 3),
   ('agencia_200', 'MONTHLY', 399, false, 200, 10), ('agencia_200', 'QUARTERLY', 1017, false, 200, 10)
 on conflict (recurso, ciclo) do nothing;

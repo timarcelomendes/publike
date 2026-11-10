@@ -106,4 +106,12 @@ $$;
 revoke execute on function public.minha_faixa() from public, anon;
 grant execute on function public.minha_faixa() to authenticated;
 
+-- 4. O Plano Empresa sobe para R$ 79 (até 5 vagas) e R$ 199 (até 20), com cerca de 15% a menos no trimestre (decisão
+-- do Marcelo, 10/11/2026). Só troca o preço que ainda é o da 20270407120000 (o que o admin editou fica). Quem já assinou
+-- mantém o valor da assinatura (preço de lançamento garantido).
+update privado.planos set valor = 79, atualizado_em = now() where recurso = 'empresa_5' and ciclo = 'MONTHLY' and valor = 59;
+update privado.planos set valor = 201, atualizado_em = now() where recurso = 'empresa_5' and ciclo = 'QUARTERLY' and valor = 150;
+update privado.planos set valor = 199, atualizado_em = now() where recurso = 'empresa_20' and ciclo = 'MONTHLY' and valor = 149;
+update privado.planos set valor = 507, atualizado_em = now() where recurso = 'empresa_20' and ciclo = 'QUARTERLY' and valor = 380;
+
 notify pgrst, 'reload schema';

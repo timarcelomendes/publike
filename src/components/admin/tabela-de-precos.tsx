@@ -41,9 +41,9 @@ const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
   salarios: { MONTHLY: 29.9, QUARTERLY: 76.24 },
   // a Página de carreiras sozinha (decisão de 10/11/2026: R$ 19,90 por mês)
   carreiras: { MONTHLY: 19.9, QUARTERLY: 50.74 },
-  // os planos por faixa (preços agressivos de lançamento, 10/11/2026; claude/plano-planos-empresa-e-agencia.md)
-  empresa_5: { MONTHLY: 59, QUARTERLY: 150 },
-  empresa_20: { MONTHLY: 149, QUARTERLY: 380 },
+  // os planos por faixa (lançamento, 10/11/2026; o Plano Empresa subiu para R$ 79 e R$ 199, com 15% no trimestre)
+  empresa_5: { MONTHLY: 79, QUARTERLY: 201 },
+  empresa_20: { MONTHLY: 199, QUARTERLY: 507 },
   agencia_15: { MONTHLY: 99, QUARTERLY: 252 },
   agencia_200: { MONTHLY: 399, QUARTERLY: 1017 },
   combo: { MONTHLY: 89, QUARTERLY: 227 },
