@@ -15,6 +15,7 @@ export const SCRIPT_LARGURA = `(function(){var c=location.pathname;if(c==="/pain
 export function LarguraDaPagina() {
   const caminho = usePathname();
   useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-hidratado", "");
     if (caminho === "/painel" || caminho.startsWith("/painel/")) {
       document.documentElement.setAttribute("data-largura", "painel");
     } else document.documentElement.removeAttribute("data-largura");
@@ -23,17 +24,14 @@ export function LarguraDaPagina() {
 }
 
 /**
- * Dentro da página larga: marca o html enquanto ela está na tela (o efeito sai quando o Next a esconde). O script
- * marca já no HTML do servidor, antes de o React chegar.
+ * Dentro da página larga: marca o html enquanto ela está na tela (o efeito sai quando o Next a esconde). Antes de o
+ * React chegar, o topo usa o body:has([data-pagina-larga]) (html sem data-hidratado): no HTML do servidor só há a
+ * página da vez. Sem <script> aqui: o React reclama de script desenhado num componente.
  */
 export function MarcarPaginaLarga() {
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-pagina-larga", "");
     return () => document.documentElement.removeAttribute("data-pagina-larga");
   }, []);
-  return (
-    <script
-      dangerouslySetInnerHTML={{ __html: `document.documentElement.setAttribute("data-pagina-larga","")` }}
-    />
-  );
+  return null;
 }

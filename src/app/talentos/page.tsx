@@ -118,7 +118,7 @@ async function Pagina({ searchParams }: { searchParams: Parametros }) {
             <CartaoDaConta />
           </Suspense>
           <Suspense fallback={<Esqueleto className="h-64 rounded-lg" />}>
-            <MenuDaConta />
+            <MenuDaConta semAConta />
           </Suspense>
         </>
       }

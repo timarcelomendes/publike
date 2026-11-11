@@ -22,7 +22,7 @@ import { MenuPainel } from "./menu-painel";
  * de conexão, que as Mensagens somam) de todas as atividades da conta. Fica no painel e na página
  * Talentos.
  */
-export async function MenuDaConta() {
+export async function MenuDaConta({ semAConta = false }: { semAConta?: boolean } = {}) {
   if (MODO_DEMO) {
     return (
       <MenuPainel
@@ -78,8 +78,9 @@ export async function MenuDaConta() {
       copiloto={copiloto}
       pilulas={pilulas}
       semCurriculo={perfil?.tipo === "pessoa" && atividades.includes("trabalhar") && curriculo === null}
+      // em Talentos, o cartão da conta já fica em cima do menu: a conta não se repete
       conta={
-        contrata && perfil
+        contrata && perfil && !semAConta
           ? {
               nome: perfil.nome,
               foto: perfil.foto,
