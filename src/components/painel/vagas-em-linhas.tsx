@@ -87,7 +87,7 @@ export function ControlesDasVagas({
                 {NOME_DA_VISAO[v]}
                 {trancada && (
                   <>
-                    <Lock aria-hidden className="text-ink-muted" />
+                    <Lock aria-hidden className="opacity-60" />
                     <span className="sr-only"> (nos planos)</span>
                   </>
                 )}

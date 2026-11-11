@@ -65,7 +65,7 @@ export function TrocaDeVisaoDosCandidatos({
             {NOME_DA_VISAO_CANDIDATOS[v]}
             {trancada && (
               <>
-                <Lock aria-hidden className="text-ink-muted" />
+                <Lock aria-hidden className="opacity-60" />
                 <span className="sr-only"> (nos planos)</span>
               </>
             )}
