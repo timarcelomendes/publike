@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 import { nomeBeneficio } from "@/lib/constantes";
 import { caminhoConversa } from "@/lib/conversas";
 import { deslocamentoCurto } from "@/lib/deslocamento";
-import { formatarDistancia, formatarLugar, linkWhatsApp, rotuloModalidade, urlDaFotoTrabalho } from "@/lib/formato";
+import { formatarDistancia, formatarLugar, formatarNumero, linkWhatsApp, rotuloModalidade, urlDaFotoTrabalho } from "@/lib/formato";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import { SEM_COMENTARIOS, type RespostaNoFeed } from "@/lib/comentarios";
@@ -135,6 +135,7 @@ export function TicketDaVaga({
   const a = item.anuncio;
   const proprio = usuarioId !== null && usuarioId === a.autor_id;
   const preenchida = Boolean(item.requisitos?.preenchida_em);
+  const quantas = item.requisitos?.vagas ?? 1;
   const modalidade = a.regime === "outro" ? null : rotuloModalidade(a.tipo, a.regime);
   // as etiquetas numa linha só: a modalidade, o primeiro benefício e "+N" com o resto (a vaga mostra todos)
   const todosBeneficios = item.requisitos?.beneficios_lista ?? [];
@@ -216,6 +217,12 @@ export function TicketDaVaga({
                 {a.titulo}
               </Link>
             </h3>
+            {/* mais de uma vaga: quantas, no canto (discreto; quem procura vê que tem chance) */}
+            {quantas > 1 && !preenchida && (
+              <span className="mt-0.5 inline-flex shrink-0 items-center rounded-pill border border-line px-2 text-[12px] leading-[20px] font-semibold whitespace-nowrap text-ink-muted tabular-nums">
+                {formatarNumero(quantas)} vagas
+              </span>
+            )}
             <HoraNoCanto hora={hora} />
           </div>
           <p className="flex items-center gap-1 text-body-sm font-semibold">
