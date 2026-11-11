@@ -169,13 +169,14 @@ const RECURSOS_PAGOS: Item[] = [
   {
     icone: ClipboardCheck,
     titulo: "Teste Prático",
-    texto: "O candidato responde um teste curto da função, e você já recebe a nota de cada um.",
+    texto:
+      "Currículo bonito não diz se a pessoa sabe fazer. O teste diz: o candidato responde um teste curto da função, e você vê se ficou acima, dentro ou abaixo do esperado.",
   },
   {
     icone: Video,
     titulo: "Entrevista em vídeo",
     texto:
-      "Gravada: o candidato responde pelo celular no prazo que você escolher, e a IA transcreve e resume. Ou ao vivo, dentro do Publike, sem Zoom nem Meet.",
+      "Confirme que a pessoa sabe fazer. Gravada: o candidato responde pelo celular no prazo que você escolher, e a IA transcreve e resume. Ou ao vivo, dentro do Publike, sem Zoom nem Meet.",
   },
   {
     icone: Workflow,

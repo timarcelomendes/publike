@@ -22,9 +22,9 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
     ],
   },
   testes: {
-    titulo: "Teste Prático: saiba quem sabe o serviço antes da entrevista",
+    titulo: "Teste Prático: confirme que a pessoa sabe fazer",
     texto:
-      "O teste da Publike que combina com a vaga já é grátis. Com o Teste Prático completo, você escolhe os testes e cria os seus.",
+      "Currículo bonito não diz se a pessoa sabe fazer. O teste diz. O teste da Publike que combina com a vaga já é grátis; com o Teste Prático completo, você escolhe os testes e cria os seus.",
     itens: [
       "Até 3 testes por vaga: caixa, atendimento, vendas, cozinha, estoque e mais",
       "Testes da sua empresa, com as perguntas que só vocês sabem fazer",
@@ -33,9 +33,9 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
     ],
   },
   video: {
-    titulo: "Entrevista em vídeo: ouça todos sem marcar horário",
+    titulo: "Entrevista em vídeo: confirme que a pessoa sabe fazer",
     texto:
-      "O candidato grava as respostas pelo celular, quando puder, e a IA transcreve e resume o que ele disse. Quem decide é você.",
+      "Currículo bonito não diz se a pessoa sabe fazer. A entrevista gravada diz: o candidato responde pelo celular, quando puder, sem marcar horário, e a IA transcreve e resume. Quem decide é você.",
     itens: [
       "Você escolhe de 2 a 6 perguntas, com sugestões pela vaga",
       "O candidato grava pelo celular, sem instalar nada",

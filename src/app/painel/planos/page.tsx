@@ -69,9 +69,9 @@ const SO_DA_AGENCIA = [
 /** Cada recurso sozinho, na ordem em que aparece embaixo, com o que ele faz numa linha. */
 const AVULSOS: { p: Produto; faz: string }[] = [
   { p: "copiloto", faz: "A IA lê os currículos contra o que a vaga pede." },
-  { p: "testes", faz: "Testes na vaga, feitos pelo celular." },
+  { p: "testes", faz: "Confirme que a pessoa sabe fazer, com um teste pelo celular." },
   { p: "combo", faz: "A Triagem e o Teste Prático juntos, por menos." },
-  { p: "video", faz: "Respostas gravadas, com o resumo da IA." },
+  { p: "video", faz: "Confirme que a pessoa sabe fazer, com respostas gravadas e o resumo da IA." },
   { p: "automacoes", faz: "As suas regras, o Publike faz sozinho." },
   { p: "salarios", faz: "Quanto o mercado paga para cada função." },
   { p: "carreiras", faz: "A sua página de vagas com a cara da empresa." },
