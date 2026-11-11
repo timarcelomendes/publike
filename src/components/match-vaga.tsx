@@ -44,7 +44,8 @@ function explicarMatch(match: MatchResumo) {
  */
 export function AnelDeMatch({ match }: { match: MatchResumo }) {
   const nota = Math.max(0, Math.min(100, match.nota ?? 0));
-  const raio = 19;
+  // o mesmo diâmetro dos botões redondos do rodapé (44 px, o arco por fora quase na borda)
+  const raio = 20;
   const volta = 2 * Math.PI * raio;
   const [arco, miolo] =
     nota >= 80
@@ -55,7 +56,7 @@ export function AnelDeMatch({ match }: { match: MatchResumo }) {
   return (
     <span className="relative inline-flex size-11 shrink-0" title={explicarMatch(match)}>
       <svg viewBox="0 0 44 44" className="size-11" aria-hidden>
-        <circle cx="22" cy="22" r="15.5" className={miolo} />
+        <circle cx="22" cy="22" r="16.5" className={miolo} />
         <circle cx="22" cy="22" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="3" />
         <circle
           cx="22"
@@ -63,7 +64,7 @@ export function AnelDeMatch({ match }: { match: MatchResumo }) {
           r={raio}
           fill="none"
           stroke={arco}
-          strokeWidth="3.5"
+          strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={volta}
           strokeDashoffset={volta * (1 - nota / 100)}

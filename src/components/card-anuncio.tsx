@@ -236,7 +236,7 @@ export function CardAnuncio({
   return (
     <article
       id={`anuncio-${anuncio.id}`}
-      className="@container relative flex min-w-0 flex-col rounded-lg border border-line bg-surface-200 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4"
+      className="group/cartao @container relative flex min-w-0 flex-col rounded-lg border border-line bg-surface-200 shadow-card transition-shadow hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus group-data-[visao=lista]/visao:grid group-data-[visao=lista]/visao:grid-cols-[minmax(0,1fr)_auto] group-data-[visao=lista]/visao:items-center group-data-[visao=lista]/visao:gap-x-4 group-data-[visao=lista]/visao:gap-y-1 group-data-[visao=lista]/visao:p-3 group-data-[visao=lista]/visao:sm:px-4"
     >
       {vagas > 1 && (
         // o raio de dentro do cartão (o de fora menos a borda)
@@ -380,9 +380,10 @@ export function CardAnuncio({
         {temRodape && (
           <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-2.5 border-t border-line pt-2.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
             {anel && (
-              // em Blocos, o % de match num anel à esquerda dos botões, na mesma linha (11/11/2026: o selo largo
-              // empurrava os botões para outra linha); sem conta, o anel com "?%" chama para entrar
-              <span className="shrink-0 group-data-[visao=lista]/visao:hidden">
+              // em Blocos, o % de match num anel à esquerda dos botões, na mesma linha e do tamanho deles (11/11/2026:
+              // o selo largo empurrava os botões para outra linha); sem conta, o anel chama para entrar. flex: sem a
+              // linha de texto em volta, o anel fica no meio da altura dos botões
+              <span className="flex shrink-0 group-data-[visao=lista]/visao:hidden">
                 {comMatch ? <AnelDeMatch match={comMatch} /> : <AnelMatchFechado />}
               </span>
             )}
