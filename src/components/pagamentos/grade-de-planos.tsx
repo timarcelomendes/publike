@@ -41,6 +41,7 @@ export const DOS_PLANOS = [
   "Mutirão de contratação: um dia de entrevistas com horários",
   "Convite automático para quem combina com a vaga",
   "Mapa de talentos: quantas pessoas de cada função moram perto",
+  "Vagas em Mosaico e na Linha do tempo: a tendência e os prazos de cada vaga",
 ];
 
 export const SO_DA_AGENCIA = [

@@ -1,32 +1,20 @@
-import { LayoutGrid, List, Search } from "lucide-react";
+import { ChartGantt, LayoutGrid, List, ListTodo, Lock, Search } from "lucide-react";
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { abaDaEtapa, esperaResposta, STATUS_ANUNCIO } from "@/lib/constantes";
-import type { StatusAnuncio } from "@/lib/tipos";
+import { NOME_DA_VISAO, VISOES, VISOES_PAGAS, type VisaoDasVagas } from "@/lib/visoes-das-vagas";
 import { classesEntrada } from "../ui/campo";
 import { LembrarVisaoDasVagas } from "./lembrar-visao-vagas";
 import { SeletorDeLinks } from "./seletor-de-links";
 
-// As Vagas para quem tem muitas (claude/plano-fluxo-contratar.md, parte 2): a busca pelo nome, a ordem "com gente
-// esperando primeiro" e a visão em linhas (uma vaga por linha, com os números que abrem a vaga já na etapa).
+// Os filtros de Vagas para quem tem muitas (claude/plano-fluxo-contratar.md, parte 2): a busca pelo nome, a ordem
+// "pede você primeiro" e a troca de visão (11/11/2026, claude/plano-visoes-das-vagas.md: Lista, Pelo que pede você,
+// Mosaico e Linha do tempo; as duas últimas nos planos, com o cadeado para quem ainda não tem).
 
-export type VisaoDasVagas = "cartoes" | "linhas";
 export type OrdemDasVagas = "recentes" | "esperando";
 export const COOKIE_VISAO_VAGAS = "publike_visao_vagas";
 
-type Candidato = { anuncio_id: string; status: string; etapa?: string | null; aceita_em?: string | null };
+const ICONE: Record<VisaoDasVagas, typeof List> = { lista: List, prioridade: ListTodo, mosaico: LayoutGrid, tempo: ChartGantt };
 
-/** Os números de uma vaga: quem espera a resposta, em entrevista e contratados (as contas de `abaDaEtapa`). */
-export function numerosDaVaga(id: string, candidatos: Candidato[]) {
-  const daVaga = candidatos.filter((c) => c.anuncio_id === id);
-  return {
-    esperam: daVaga.filter((c) => esperaResposta({ status: c.status, aceita_em: c.aceita_em ?? null })).length,
-    entrevista: daVaga.filter((c) => abaDaEtapa(c) === "entrevista").length,
-    contratados: daVaga.filter((c) => abaDaEtapa(c) === "contratados").length,
-  };
-}
-
-const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const semAcento = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 /** A vaga entra na busca pelo título (sem ligar para acento nem maiúscula). */
 export function achaNaBusca(titulo: string, q: string) {
@@ -34,8 +22,8 @@ export function achaNaBusca(titulo: string, q: string) {
 }
 
 /**
- * Os filtros de Vagas numa linha leve: à esquerda a situação (`antes`), à direita o cliente (`extra`), a ordem e a
- * troca Cartões | Linhas em ícones; a busca, com muitas vagas, embaixo.
+ * Os filtros de Vagas numa linha leve: à esquerda a situação (`antes`), à direita o cliente (`extra`) e a ordem;
+ * embaixo a troca de visão e, com muitas vagas, a busca.
  */
 export function ControlesDasVagas({
   q,
@@ -45,6 +33,8 @@ export function ControlesDasVagas({
   manter,
   comBusca,
   comOrdem = true,
+  comVisao = comOrdem,
+  pagas = null,
   antes,
   extra,
 }: {
@@ -56,8 +46,12 @@ export function ControlesDasVagas({
   /** os filtros que vão junto na busca */
   manter: Record<string, string | null>;
   comBusca: boolean;
-  /** a ordem e a troca de visão (com mais de uma vaga) */
+  /** a ordem (com mais de uma vaga; em "Pelo que pede você", a ordem já é a dela) */
   comOrdem?: boolean;
+  /** a troca de visão (só vagas) */
+  comVisao?: boolean;
+  /** o Mosaico e a Linha do tempo: "livres" (plano ou dias grátis), "trancadas" (cadeado) ou fora (sem a migração) */
+  pagas?: "livres" | "trancadas" | null;
   antes?: ReactNode;
   extra?: ReactNode;
 }) {
@@ -68,36 +62,40 @@ export function ControlesDasVagas({
         <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
           {extra}
           {comOrdem && (
-            <>
-              <SeletorDeLinks
-                rotulo="Ordem das vagas"
-                atual={href({ ordem })}
-                opcoes={[
-                  { nome: "Ordem: mais recentes", href: href({ ordem: "recentes" }) },
-                  { nome: "Ordem: gente esperando primeiro", href: href({ ordem: "esperando" }) },
-                ]}
-              />
-              <nav aria-label="Ver as vagas em" className="inline-flex rounded-pill bg-surface-300 p-0.5">
-                {(["cartoes", "linhas"] as const).map((v) => (
-                  <LembrarVisaoDasVagas
-                    key={v}
-                    visao={v}
-                    href={href({ visao: v })}
-                    ativa={visao === v}
-                    nome={v === "cartoes" ? "Cartões" : "Linhas"}
-                  >
-                    {v === "cartoes" ? (
-                      <LayoutGrid aria-hidden className="size-4" />
-                    ) : (
-                      <List aria-hidden className="size-4" />
-                    )}
-                  </LembrarVisaoDasVagas>
-                ))}
-              </nav>
-            </>
+            <SeletorDeLinks
+              rotulo="Ordem das vagas"
+              atual={href({ ordem })}
+              opcoes={[
+                { nome: "Ordem: mais recentes", href: href({ ordem: "recentes" }) },
+                { nome: "Ordem: pede você primeiro", href: href({ ordem: "esperando" }) },
+              ]}
+            />
           )}
         </div>
       </div>
+      {comVisao && (
+        <nav
+          aria-label="Ver as vagas em"
+          className="sem-barra -mx-4 flex gap-0.5 overflow-x-auto px-4 sm:mx-0 sm:self-start sm:rounded-pill sm:bg-surface-300 sm:p-0.5"
+        >
+          {VISOES.filter((v) => pagas || !VISOES_PAGAS.includes(v)).map((v) => {
+            const Icone = ICONE[v];
+            const trancada = pagas === "trancadas" && VISOES_PAGAS.includes(v);
+            return (
+              <LembrarVisaoDasVagas key={v} visao={v} href={href({ visao: v })} ativa={visao === v}>
+                <Icone aria-hidden />
+                {NOME_DA_VISAO[v]}
+                {trancada && (
+                  <>
+                    <Lock aria-hidden className="text-ink-muted" />
+                    <span className="sr-only"> (nos planos)</span>
+                  </>
+                )}
+              </LembrarVisaoDasVagas>
+            );
+          })}
+        </nav>
+      )}
       {comBusca && (
         <form action="/painel/anuncios" role="search" className="relative max-w-md">
           {Object.entries(manter).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
@@ -115,76 +113,6 @@ export function ControlesDasVagas({
           />
         </form>
       )}
-    </div>
-  );
-}
-
-/** Uma vaga por linha: o nome (abre a vaga), o cliente (agência), a situação e os números. */
-export function VagasEmLinhas({
-  vagas,
-  candidatos,
-  clienteDe,
-}: {
-  vagas: { id: string; titulo: string; status: string; quantas: number }[];
-  candidatos: Candidato[];
-  /** agência: o nome do cliente de cada vaga */
-  clienteDe?: (id: string) => string | null;
-}) {
-  const comCliente = Boolean(clienteDe);
-  const numero = (n: number, href: string, destaque = false) =>
-    n > 0 ? (
-      <Link
-        href={href}
-        className={`underline-offset-2 hover:underline ${destaque ? "font-semibold text-terra-text" : "text-label"}`}
-      >
-        {n}
-      </Link>
-    ) : (
-      <span className="text-ink-muted">0</span>
-    );
-  return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-surface-200">
-      <table className="w-full min-w-[40rem] text-left text-body-sm">
-        <thead className="text-caption text-ink-muted">
-          <tr className="border-b border-line">
-            <th className="px-4 py-2.5 font-normal">Vaga</th>
-            {comCliente && <th className="px-4 py-2.5 font-normal">Cliente</th>}
-            <th className="px-4 py-2.5 text-right font-normal">Esperam a resposta</th>
-            <th className="px-4 py-2.5 text-right font-normal">Em entrevista</th>
-            <th className="px-4 py-2.5 text-right font-normal">Contratados</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line tabular-nums">
-          {vagas.map((v) => {
-            const n = numerosDaVaga(v.id, candidatos);
-            const base = `/painel/anuncio/${v.id}`;
-            return (
-              <tr key={v.id}>
-                <th scope="row" className="px-4 py-2.5 font-normal">
-                  <Link href={`${base}/quadro`} className="text-label underline-offset-2 hover:underline">
-                    {v.titulo}
-                  </Link>
-                  {v.status !== "ativo" && (
-                    <span className="text-caption text-ink-muted">
-                      {" "}
-                      · {STATUS_ANUNCIO[v.status as StatusAnuncio]?.nome.toLowerCase() ?? v.status}
-                    </span>
-                  )}
-                </th>
-                {comCliente && <td className="px-4 py-2.5">{clienteDe?.(v.id) ?? "—"}</td>}
-                <td className="px-4 py-2.5 text-right">
-                  {numero(n.esperam, `/painel/caixa?aba=novos&vaga=${v.id}`, true)}
-                </td>
-                <td className="px-4 py-2.5 text-right">{numero(n.entrevista, `${base}?etapa=entrevista`)}</td>
-                <td className="px-4 py-2.5 text-right">
-                  {numero(n.contratados, `${base}?etapa=contratados`)}
-                  <span className="text-ink-muted"> de {v.quantas}</span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }

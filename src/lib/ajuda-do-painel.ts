@@ -33,14 +33,17 @@ const REGRAS: Regra[] = [
     caminho: /^\/painel\/anuncios/,
     ajuda: {
       titulo: "Vagas",
-      texto: "Todas as suas vagas: no ar, pausadas e encerradas. Daqui você edita, pausa, renova e marca como preenchida.",
+      texto:
+        "Todas as suas vagas: no ar, pausadas e encerradas. Cada uma tem um botão com o que ela pede agora (responder, renovar, encerrar); o resto fica nos três pontos.",
       dicas: [
+        "Lista e “Pelo que pede você” são grátis. Mosaico e Linha do tempo vêm nos planos, com 15 dias grátis para testar.",
         "Contratou? Marque “Vaga preenchida”: quem curtiu recebe o aviso e a vaga sai das buscas.",
         "Vaga com o endereço e o salário certos recebe mais candidatos de perto.",
         "Até 20 vagas no ar de graça. Para mais, com um plano: veja em Planos.",
       ],
       agencia: {
         dicas: [
+          "Lista e “Pelo que pede você” são grátis; Mosaico e Linha do tempo vêm nos planos, com 15 dias grátis.",
           "Publique cada vaga no nome do cliente ou como “Empresa confidencial”.",
           "Contratou? Marque “Vaga preenchida”: quem curtiu recebe o aviso e a vaga sai das buscas.",
           "Agência com o CNPJ conferido pela equipe pode ter até 200 vagas no ar.",

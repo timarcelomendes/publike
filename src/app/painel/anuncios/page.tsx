@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
+import { Building2, Heart, Megaphone, MessageCircleHeart, Plus, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -6,30 +6,32 @@ import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
 import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
-import { CartaoRecolhivel } from "@/components/painel/cartao-recolhivel";
 import { AbasLeves } from "@/components/painel/segmentos";
+import { achaNaBusca, ControlesDasVagas, COOKIE_VISAO_VAGAS, type OrdemDasVagas } from "@/components/painel/vagas-em-linhas";
 import {
-  achaNaBusca,
-  ControlesDasVagas,
-  COOKIE_VISAO_VAGAS,
-  numerosDaVaga,
-  VagasEmLinhas,
-  type OrdemDasVagas,
-  type VisaoDasVagas,
-} from "@/components/painel/vagas-em-linhas";
+  LinhaDoTempo,
+  ListaDeVagas,
+  MosaicoDeVagas,
+  PreviaPaga,
+  VagasPorPrioridade,
+  type VagaNaTela,
+} from "@/components/painel/vagas/visoes";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
-import { abaDaEtapa, esperaResposta, LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
+import { LIMITES_CONTA, STATUS_ANUNCIO } from "@/lib/constantes";
 import { listarMeusAnuncios, listarMeusCandidatos, obterMeuPerfil } from "@/lib/dados";
 import { ateQuando, formatarLugar, primeiro, rotuloModalidade, semPrazo, tempoRelativo } from "@/lib/formato";
 import { empresasDasVagas, listarMeusClientes, type EmpresaNaVaga } from "@/lib/servidor/clientes";
 import { minhasVagasSoPeloChat } from "@/lib/servidor/contato-por";
+import { entrevistasDasVagas } from "@/lib/servidor/quadro";
+import { acessoAsVisoes } from "@/lib/servidor/visoes";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { StatusAnuncio, TipoAnuncio } from "@/lib/tipos";
+import { lerVisao, ordemPedeVoce, resumirVaga, VISOES_PAGAS, type VisaoDasVagas } from "@/lib/visoes-das-vagas";
 
 export const metadata: Metadata = { title: "Meus anúncios" };
 
@@ -58,8 +60,6 @@ const SITUACOES = {
 } as const;
 type Situacao = keyof typeof SITUACOES;
 
-type Candidatos = NonNullable<Awaited<ReturnType<typeof listarMeusCandidatos>>>;
-
 export default function MeusAnuncios({ searchParams }: PageProps<"/painel/anuncios">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
@@ -78,7 +78,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
     listarMeusCandidatos(),
     // o prazo escolhido e a marcação de preenchida de cada vaga
     criarClienteServidor().then((c) =>
-      c.from("anuncios").select("id, prazo_dias, preenchida_em, vagas").eq("autor_id", usuario.id).eq("tipo", "vaga"),
+      c
+        .from("anuncios")
+        .select("id, prazo_dias, preenchida_em, vagas, atualizado_em")
+        .eq("autor_id", usuario.id)
+        .eq("tipo", "vaga"),
     ),
     // agência: os clientes e para quem é cada vaga
     obterMeuPerfil().then((p) =>
@@ -120,12 +124,79 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   // a busca pelo nome, a ordem e o jeito de ver (claude/plano-fluxo-contratar.md, parte 2); a visão fica guardada
   const q = (primeiro(sp.q) ?? "").slice(0, 80);
   const ordem: OrdemDasVagas = primeiro(sp.ordem) === "esperando" ? "esperando" : "recentes";
-  const pedidaVisao = primeiro(sp.visao) ?? (await cookies()).get(COOKIE_VISAO_VAGAS)?.value;
-  const visao: VisaoDasVagas = pedidaVisao === "linhas" ? "linhas" : "cartoes";
-  const esperamNa = (id: string) => (candidatos ? numerosDaVaga(id, candidatos).esperam : 0);
-  const lista = (situacao ? doTipo.filter((a) => naSituacao(a, situacao)) : doTipo)
-    .filter((a) => achaNaBusca(a.titulo, q))
-    .sort((a, b) => (ordem === "esperando" ? esperamNa(b.id) - esperamNa(a.id) : 0));
+  // a visão (11/11/2026, claude/plano-visoes-das-vagas.md): a Lista e "Pelo que pede você" grátis; o Mosaico e a
+  // Linha do tempo nos planos, com 15 dias grátis (sem plano, a prévia com as vagas da conta). Cartões e Linhas,
+  // as de antes, viram a Lista
+  const [entrevistas, acesso] = await Promise.all([
+    entrevistasDasVagas(anuncios.filter((a) => a.tipo === "vaga").map((a) => a.id)),
+    acessoAsVisoes(),
+  ]);
+  const pedidaVisao = lerVisao(primeiro(sp.visao) ?? (await cookies()).get(COOKIE_VISAO_VAGAS)?.value);
+  const visao: VisaoDasVagas = !acesso.disponivel && VISOES_PAGAS.includes(pedidaVisao) ? "lista" : pedidaVisao;
+  const listaDeEntrevistas = [...entrevistas.values()];
+  const resumoDe = new Map(
+    candidatos
+      ? anuncios
+          .filter((a) => a.tipo === "vaga")
+          .map((a) => {
+            const e = extraDe.get(a.id);
+            return [
+              a.id,
+              resumirVaga(
+                {
+                  id: a.id,
+                  titulo: a.titulo,
+                  status: a.status,
+                  criado_em: a.criado_em,
+                  expira_em: a.expira_em,
+                  atualizado_em: e?.atualizado_em ?? null,
+                  preenchida_em: e?.preenchida_em ?? null,
+                  prazo_dias: e ? e.prazo_dias : 30,
+                  vagas: e?.vagas ?? 1,
+                },
+                candidatos,
+                listaDeEntrevistas,
+                agora,
+              ),
+            ] as const;
+          })
+      : [],
+  );
+  const lista = (situacao ? doTipo.filter((a) => naSituacao(a, situacao)) : doTipo).filter((a) =>
+    achaNaBusca(a.titulo, q),
+  );
+  if (ordem === "esperando") {
+    lista.sort((a, b) => {
+      const ra = resumoDe.get(a.id);
+      const rb = resumoDe.get(b.id);
+      return ra && rb ? ordemPedeVoce(ra, rb) : 0;
+    });
+  }
+  // as vagas nas visões; os serviços (e as vagas, sem a leitura dos candidatos) nos cartões de antes
+  const vagasNaTela: VagaNaTela[] = lista.flatMap((a) => {
+    const r = resumoDe.get(a.id);
+    if (!r) return [];
+    const e = extraDe.get(a.id);
+    const empresa = empresas?.get(a.id);
+    const doCliente = empresa?.cliente ? (nomeDoCliente.get(empresa.cliente) ?? null) : (empresa?.contratante ?? null);
+    const venceLogo = r.venceEm !== null && r.venceEm <= 5;
+    return [
+      {
+        ...r,
+        meta: [
+          doCliente,
+          rotuloModalidade(a.tipo, a.regime),
+          formatarLugar(a.bairro, a.cidade),
+          (e?.vagas ?? 1) > 1 ? `${e?.vagas} vagas` : null,
+          soPeloChat.has(a.id) ? "só pelo chat" : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        podeRenovar: r.status === "expirado" || r.status === "encerrado" || venceLogo,
+      },
+    ];
+  });
+  const cartoes = lista.filter((a) => !resumoDe.has(a.id));
   // quem só publicou vagas (o comum em empresa, comércio e agência) vê "Minhas vagas", como na aba
   const { titulo, texto } = TITULOS[tipo ?? (servicos === 0 ? "vaga" : "todos")];
   // o link de cada chip troca só o seu filtro e mantém o outro
@@ -217,15 +288,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
             (vagas > 0 && servicos > 0) ||
             clientesComVagas.length > 1 ||
             cliente ||
-            (tipo !== "servico" && vagas > 1)) && (
+            (tipo !== "servico" && vagas > 0 && Boolean(candidatos))) && (
             <ControlesDasVagas
               q={q}
               ordem={ordem}
               visao={visao}
               href={filtro}
-              manter={{ tipo, situacao, cliente, ordem: ordem === "recentes" ? null : ordem }}
+              manter={{ tipo, situacao, cliente, ordem: ordem === "recentes" ? null : ordem, visao }}
               comBusca={tipo !== "servico" && (vagas >= 6 || Boolean(q))}
-              comOrdem={tipo !== "servico" && vagas > 1}
+              comOrdem={tipo !== "servico" && vagas > 1 && visao !== "prioridade"}
+              comVisao={tipo !== "servico" && vagas > 0 && Boolean(candidatos)}
+              pagas={acesso.disponivel ? (acesso.liberado ? "livres" : "trancadas") : null}
               antes={
                 <>
                   {(doTipo.length > 1 || situacao) && (
@@ -314,39 +387,34 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                 ? "Diga o que você faz e onde atende. Quem precisa vê seus serviços perto de casa e chama você."
                 : "Publique a vaga de graça e veja quem curte. Você escolhe com quem conversar."}
             </Vazio>
-          ) : visao === "linhas" && tipo !== "servico" && candidatos ? (
-            <>
-              <VagasEmLinhas
-                vagas={lista
-                  .filter((a) => a.tipo === "vaga")
-                  .map((a) => ({
-                    id: a.id,
-                    titulo: a.titulo,
-                    status: a.status,
-                    quantas: extraDe.get(a.id)?.vagas ?? 1,
-                  }))}
-                candidatos={candidatos}
-                clienteDe={
-                  empresas
-                    ? (id) => {
-                        const e = empresas.get(id);
-                        return e?.cliente ? (nomeDoCliente.get(e.cliente) ?? null) : (e?.contratante ?? null);
-                      }
-                    : undefined
-                }
-              />
-              {lista.some((a) => a.tipo === "servico") && (
-                <p className="text-body-sm text-ink-muted">
-                  Os serviços aparecem nos cartões.{" "}
-                  <Link href={filtro({ visao: "cartoes" })} className="underline underline-offset-2">
-                    Ver em cartões
-                  </Link>
-                </p>
-              )}
-            </>
           ) : (
-            <ul aria-label="Lista de anúncios" className="flex flex-col gap-4">
-              {lista.map((a) => {
+            <>
+              {vagasNaTela.length > 0 &&
+                (visao === "prioridade" ? (
+                  <VagasPorPrioridade vagas={vagasNaTela} />
+                ) : visao === "mosaico" ? (
+                  <PreviaPaga
+                    nome="Mosaico"
+                    texto="Um cartão por vaga com quantos chegaram por dia nos últimos 14 dias: dá para ver na hora qual vaga atrai e qual parou."
+                    acesso={acesso}
+                  >
+                    <MosaicoDeVagas vagas={acesso.liberado ? vagasNaTela : vagasNaTela.slice(0, 3)} />
+                  </PreviaPaga>
+                ) : visao === "tempo" ? (
+                  <PreviaPaga
+                    nome="Linha do tempo"
+                    artigo="a"
+                    texto="Cada vaga numa barra, de quando entrou até quando sai do ar, com hoje marcado e as entrevistas no caminho: dá para planejar o que renovar."
+                    acesso={acesso}
+                  >
+                    <LinhaDoTempo vagas={acesso.liberado ? vagasNaTela : vagasNaTela.slice(0, 4)} agora={agora} />
+                  </PreviaPaga>
+                ) : (
+                  <ListaDeVagas vagas={vagasNaTela} />
+                ))}
+              {cartoes.length > 0 && (
+            <ul aria-label={vagasNaTela.length ? "Serviços" : "Lista de anúncios"} className="flex flex-col gap-4">
+              {cartoes.map((a) => {
                 const status = a.status as StatusAnuncio;
                 const venceLogo =
                   status === "ativo" && !semPrazo(a.expira_em) && new Date(a.expira_em).getTime() - agora < CINCO_DIAS;
@@ -397,41 +465,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                           </p>
                         </>
                       );
-                      if (a.tipo === "vaga" && candidatos) {
-                        const daVaga = candidatos.filter((c) => c.anuncio_id === a.id);
-                        // contraído por padrão: as 4 etapas numa linha e a seta abre as caixas; os botões da vaga ficam
-                        // todos à vista, numa linha só (sem o "Mais")
-                        return (
-                          <>
-                            <CartaoRecolhivel
-                              titulo={a.titulo}
-                              resumo={
-                                <div className="flex flex-col gap-3">
-                                  {cabecalho}
-                                  <EtapasNaLinha id={a.id} candidatos={daVaga} />
-                                </div>
-                              }
-                            >
-                              <FunilDaVaga id={a.id} candidatos={daVaga} />
-                            </CartaoRecolhivel>
-                            <AcoesAnuncio
-                              compacto
-                              inicio={
-                                <BotaoLink href={`/painel/anuncio/${a.id}/quadro`} tamanho="sm">
-                                  Abrir a vaga
-                                  <ChevronRight aria-hidden />
-                                </BotaoLink>
-                              }
-                              id={a.id}
-                              tipo={a.tipo}
-                              status={status}
-                              podeRenovar={podeRenovar}
-                              prazoDias={extra ? extra.prazo_dias : 30}
-                              preenchida={Boolean(extra?.preenchida_em)}
-                            />
-                          </>
-                        );
-                      }
                       return (
                         <>
                           {cabecalho}
@@ -480,6 +513,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
                 );
               })}
             </ul>
+              )}
+            </>
           )}
           {/* a página de vagas (o link, o kit e o quadro para o site) fica em Página de vagas */}
           {mostrarPagina && vagasNoAr > 0 && (
@@ -529,106 +564,5 @@ function EmpresaDaVagaNaLista({ empresa, nome }: { empresa: EmpresaNaVaga; nome:
       )}
       {cliente && empresa.confidencial && <span className="text-ink-muted">(confidencial na vaga)</span>}
     </p>
-  );
-}
-
-/**
- * As 4 etapas da vaga numa linha, no cartão contraído: o número de cada uma abre a etapa na vaga, e quem espera a
- * sua resposta aparece em laranja ao lado da etapa em que está.
- */
-function EtapasNaLinha({ id, candidatos }: { id: string; candidatos: Candidatos }) {
-  const etapas: [ReturnType<typeof abaDaEtapa>, string, string][] = [
-    ["novos", "novo", "novos"],
-    ["analise", "em análise", "em análise"],
-    ["entrevista", "em entrevista", "em entrevista"],
-    ["contratados", "contratado", "contratados"],
-  ];
-  return (
-    <p aria-label="Etapas desta vaga" className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-ink-muted">
-      {etapas.map(([aba, um, varios]) => {
-        const da = candidatos.filter((c) => abaDaEtapa(c) === aba);
-        const esperam = da.filter(esperaResposta).length;
-        return (
-          <Link
-            key={aba}
-            href={`/painel/anuncio/${id}?etapa=${aba}`}
-            className="inline-flex min-h-8 items-center gap-1 underline-offset-2 hover:text-ink hover:underline"
-          >
-            <strong className={`font-semibold ${da.length ? "text-ink" : ""}`}>{da.length}</strong>
-            {da.length === 1 ? um : varios}
-            {esperam > 0 && (
-              <span className="font-semibold text-terra-text">
-                ({esperam === 1 ? "1 espera você" : `${esperam} esperam você`})
-              </span>
-            )}
-          </Link>
-        );
-      })}
-    </p>
-  );
-}
-
-/**
- * A contratação de uma vaga nas 4 etapas, com os nomes e as contas de Candidatos (`abaDaEtapa`). Cada número
- * abre a etapa na vaga; em Novos, quem espera a sua resposta ganha a marca.
- */
-function FunilDaVaga({ id, candidatos }: { id: string; candidatos: Candidatos }) {
-  const da = (aba: ReturnType<typeof abaDaEtapa>) => candidatos.filter((c) => abaDaEtapa(c) === aba);
-  const passo = (aba: ReturnType<typeof abaDaEtapa>, nome: string, final = false) => {
-    const lista = da(aba);
-    const esperam = lista.filter(esperaResposta).length;
-    return {
-      nome,
-      numero: lista.length,
-      href: `/painel/anuncio/${id}?etapa=${aba}`,
-      destaque: esperam > 0,
-      esperam,
-      final,
-    };
-  };
-  const passos = [
-    passo("novos", "Novos"),
-    passo("analise", "Em análise"),
-    passo("entrevista", "Entrevista"),
-    passo("contratados", "Contratados", true),
-  ];
-  return (
-    <ol aria-label="Contratação desta vaga" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {passos.map((p) => {
-        const tem = p.numero > 0;
-        const cor = !tem
-          ? "text-ink-muted"
-          : p.destaque
-            ? "text-terra-text"
-            : p.final
-              ? "text-cerrado-text"
-              : "text-ink";
-        const caixa = `flex h-full min-h-16 flex-col justify-center rounded-md border px-3 py-2 ${
-          tem && p.destaque ? "border-transparent bg-terra-soft" : "border-line bg-surface-100"
-        }`;
-        const miolo = (
-          <>
-            <span className={`flex items-center gap-1.5 font-display text-h3 leading-none ${cor}`}>
-              {p.numero}
-              {p.esperam ? (
-                <Selo variante="aviso">{p.esperam === 1 ? "1 espera você" : `${p.esperam} esperam você`}</Selo>
-              ) : null}
-            </span>
-            <span className={`mt-1 text-body-sm leading-tight ${tem ? "text-ink" : "text-ink-muted"}`}>{p.nome}</span>
-          </>
-        );
-        return (
-          <li key={p.nome}>
-            {tem ? (
-              <Link href={p.href} className={`${caixa} transition-colors hover:border-line-strong`}>
-                {miolo}
-              </Link>
-            ) : (
-              <div className={caixa}>{miolo}</div>
-            )}
-          </li>
-        );
-      })}
-    </ol>
   );
 }

@@ -37,6 +37,7 @@ export function AcoesAnuncio({
   preenchida = false,
   compacto = false,
   inicio = null,
+  menu = false,
 }: {
   id: string;
   tipo: string;
@@ -53,6 +54,11 @@ export function AcoesAnuncio({
   compacto?: boolean;
   /** no começo da linha (o "Abrir a vaga") */
   inicio?: ReactNode;
+  /**
+   * no menu "⋯" da vaga (as visões de Vagas, 11/11/2026): um embaixo do outro, sem borda, só o que muda a situação
+   * (pausar, renovar, preenchida, encerrar, excluir); abrir, editar, publicar parecida e ver ficam no próprio menu
+   */
+  menu?: boolean;
 }) {
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
@@ -64,31 +70,32 @@ export function AcoesAnuncio({
   const comModeracao = status === "em_analise" || status === "removido";
   const nome = (texto: string) => (compacto ? { "aria-label": texto, title: texto } : {});
   const rotulo = (texto: string) => (compacto ? <span className="hidden @[54rem]/acoes:inline">{texto}</span> : texto);
+  const item = menu ? { variante: "fantasma" as const, className: "w-full justify-start" } : {};
 
   return (
     <div className={`flex flex-col gap-2 ${compacto ? "@container/acoes" : ""}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        {inicio}
+      <div className={menu ? "flex flex-col gap-0.5" : "flex flex-wrap items-center gap-2"}>
+        {!menu && inicio}
         {status === "ativo" && (
-          <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => mudarStatusAnuncio(id, "pausado"))}>
+          <Botao tamanho="sm" {...item} disabled={pendente} onClick={() => rodar(() => mudarStatusAnuncio(id, "pausado"))}>
             <Pause aria-hidden />
             Pausar
           </Botao>
         )}
         {status === "pausado" && (
-          <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => mudarStatusAnuncio(id, "ativo"))}>
+          <Botao tamanho="sm" {...item} disabled={pendente} onClick={() => rodar(() => mudarStatusAnuncio(id, "ativo"))}>
             <Play aria-hidden />
             Reativar
           </Botao>
         )}
         {podeRenovar && (
-          <Botao tamanho="sm" disabled={pendente} onClick={() => rodar(() => renovarAnuncio(id))}>
+          <Botao tamanho="sm" {...item} disabled={pendente} onClick={() => rodar(() => renovarAnuncio(id))}>
             <RefreshCw aria-hidden />
             Renovar por {tipo === "servico" ? 90 : (prazoDias ?? 30)} dias
           </Botao>
         )}
         {tipo === "vaga" && (status === "ativo" || status === "pausado") && (
-          <BotaoVagaPreenchida id={id} preenchida={preenchida} />
+          <BotaoVagaPreenchida id={id} preenchida={preenchida} menu={menu} />
         )}
         {(status === "ativo" || status === "pausado") &&
           (confirmarEncerrar ? (
@@ -165,12 +172,13 @@ export function AcoesAnuncio({
               disabled={pendente}
               onClick={() => setConfirmarEncerrar(true)}
               {...nome("Encerrar")}
+              {...item}
             >
               <CircleStop aria-hidden />
               {rotulo("Encerrar")}
             </Botao>
           ))}
-        {!comModeracao && (
+        {!comModeracao && !menu && (
           <BotaoLink
             tamanho="sm"
             variante="fantasma"
@@ -181,7 +189,7 @@ export function AcoesAnuncio({
             {rotulo("Editar")}
           </BotaoLink>
         )}
-        {!comModeracao && tipo === "vaga" && (
+        {!comModeracao && !menu && tipo === "vaga" && (
           <BotaoLink tamanho="sm" variante="fantasma" href={`/publicar?copiar=${id}`} {...nome("Publicar parecida")}>
             <CopyPlus aria-hidden />
             {rotulo("Publicar parecida")}
@@ -204,7 +212,13 @@ export function AcoesAnuncio({
             </Botao>
           </span>
         ) : (
-          <Botao tamanho="sm" variante="fantasma" onClick={() => setConfirmar(true)} {...nome("Excluir")}>
+          <Botao
+            tamanho="sm"
+            variante="fantasma"
+            onClick={() => setConfirmar(true)}
+            {...nome("Excluir")}
+            {...(menu ? { className: "w-full justify-start text-danger" } : {})}
+          >
             <Trash aria-hidden />
             {rotulo("Excluir")}
           </Botao>
@@ -220,7 +234,8 @@ export function AcoesAnuncio({
  * a marcação "Vaga preenchida". Sem ninguém em Contratados, pergunta quem foi contratado (opcional): o funil dos
  * Resultados conta certo (claude/plano-etapas-obrigatorias-e-configuracoes.md).
  */
-export function BotaoVagaPreenchida({ id, preenchida }: { id: string; preenchida: boolean }) {
+export function BotaoVagaPreenchida({ id, preenchida, menu = false }: { id: string; preenchida: boolean; menu?: boolean }) {
+  const item = menu ? { className: "w-full justify-start" } : {};
   const { rodar, pendente, mensagem } = useAcao();
   const [confirmar, setConfirmar] = useState(false);
   const [quem, setQuem] = useState<{ contratados: number; candidatos: { id: string; nome: string }[] } | null>(null);
@@ -234,6 +249,7 @@ export function BotaoVagaPreenchida({ id, preenchida }: { id: string; preenchida
           variante="fantasma"
           disabled={pendente}
           onClick={() => rodar(() => marcarVagaPreenchida(id, false))}
+          {...item}
         >
           <DoorOpen aria-hidden />
           Reabrir a vaga
@@ -304,6 +320,7 @@ export function BotaoVagaPreenchida({ id, preenchida }: { id: string; preenchida
       <Botao
         tamanho="sm"
         disabled={pendente}
+        {...(menu ? { variante: "fantasma" as const, ...item } : {})}
         onClick={() => {
           setConfirmar(true);
           iniciarCarga(async () => setQuem(await quemPodeTerSidoContratado(id).catch(() => null)));

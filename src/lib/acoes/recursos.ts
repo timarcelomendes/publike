@@ -40,3 +40,21 @@ export async function queroContinuar(recurso: RecursoPago): Promise<Resultado> {
   refresh();
   return { ok: true, mensagem: "Recebemos. A gente fala com você em breve." };
 }
+
+/**
+ * Os 15 dias grátis do Mosaico e da Linha do tempo em Vagas (migração 20270422120000): uma vez por conta; depois,
+ * nos planos.
+ */
+export async function testarVisoesDasVagas(): Promise<Resultado> {
+  const sem = await comConta();
+  if (sem) return { ok: false, erro: sem };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("testar_visoes_das_vagas");
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "As visões ainda não estão no ar. Tente mais tarde." };
+    return { ok: false, erro: mensagemDeErro(error, "Não deu para liberar agora. Tente de novo.") };
+  }
+  refresh();
+  const ate = typeof data === "string" ? ` até ${dataCurta(data)}` : ` por ${DIAS_GRATIS} dias`;
+  return { ok: true, mensagem: `Pronto: o Mosaico e a Linha do tempo estão liberados${ate}.` };
+}

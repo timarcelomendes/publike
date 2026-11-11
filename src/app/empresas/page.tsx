@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   HandCoins,
   Heart,
+  LayoutGrid,
   ListChecks,
   Lock,
   MapPin,
@@ -13,11 +14,11 @@ import {
   Scale,
   Sparkles,
   Store,
+  type LucideIcon,
   UserSearch,
   Video,
   Workflow,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -211,6 +212,12 @@ const SO_NOS_PLANOS: Item[] = [
     titulo: "Mapa de talentos",
     texto:
       "Quantas pessoas de cada função moram a até 15, 30 e 45 minutos de ônibus da vaga, e em que bairros. Ninguém tem a casa mostrada.",
+  },
+  {
+    icone: LayoutGrid,
+    titulo: "Mosaico e Linha do tempo",
+    texto:
+      "Duas outras visões das suas vagas: quantos chegam por dia em cada uma e, numa linha, quando cada vaga entrou, sai do ar e tem entrevista. 15 dias grátis para testar.",
   },
 ];
 
