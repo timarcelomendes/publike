@@ -5,6 +5,7 @@ import { BotaoConectar } from "@/components/conexoes/botao-conectar";
 import { FichaCandidato } from "@/components/painel/ficha-candidato";
 import { ItemDaLista } from "@/components/painel/item-caixa";
 import { OrdemDaCaixa } from "@/components/painel/ordem-caixa";
+import { RecolherLista } from "@/components/painel/recolher-lista";
 import { AbasLeves } from "@/components/painel/segmentos";
 import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
 import { RegistrarVisitaPerfil } from "@/components/visitas/registrar-visita";
@@ -200,7 +201,12 @@ export async function MesaDeCandidatos({
         esconderNoCelular={escolhido}
       />
 
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      {/* a lista fica estreita (de 17rem a 22rem, pela largura que sobra) e a ficha leva o resto; "Recolher a lista",
+          no pé dela, deixa só as fotos e a ficha quase na largura toda (recolher-lista.tsx) */}
+      <div
+        data-mesa-grade
+        className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[clamp(17rem,27%,22rem)_minmax(0,1fr)]"
+      >
         <div className={escolhido ? "hidden lg:block" : ""}>
           <div
             aria-label={`Candidatos em ${ABAS.find((a) => a.valor === atual)?.nome ?? atual}`}
@@ -208,14 +214,17 @@ export async function MesaDeCandidatos({
             className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-200 lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto"
           >
             {emOrdem.length === 0 ? (
-              <p className="px-4 py-6 text-body-sm text-ink-muted">{ABAS.find((a) => a.valor === atual)?.vazio}</p>
+              <p data-mesa-texto className="px-4 py-6 text-body-sm text-ink-muted">
+                {ABAS.find((a) => a.valor === atual)?.vazio}
+              </p>
             ) : atual === "entrevista" ? (
               GRUPOS_DA_ENTREVISTA.map((g) => {
                 const doGrupo = emOrdem.filter((c) => grupoDaEntrevista(c, agora) === g.valor);
                 if (!doGrupo.length) return null;
                 return (
-                  <div key={g.valor} className="border-b border-line last:border-b-0">
+                  <div key={g.valor} className="relative border-b border-line last:border-b-0">
                     <p
+                      data-mesa-texto
                       className={`px-4 pt-2.5 pb-1 text-caption ${
                         g.valor === "passou" ? "font-semibold text-terra-text" : "text-ink-muted"
                       }`}
@@ -251,6 +260,10 @@ export async function MesaDeCandidatos({
                 ))}
               </ul>
             )}
+            {/* no pé da lista (como o "Recolher o menu"), sempre à vista quando a lista rola */}
+            <div className="sticky bottom-0 mt-auto hidden border-t border-line bg-surface-200 lg:block">
+              <RecolherLista />
+            </div>
           </div>
         </div>
 

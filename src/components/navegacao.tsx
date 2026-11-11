@@ -7,7 +7,7 @@ import { BotaoInstalarApp } from "./instalar-app";
 import { RedesDoPublike } from "./redes-do-publike";
 import { caminhoDaBusca, CIDADES_PRINCIPAIS } from "@/lib/paginas-busca";
 import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloSlug } from "@/lib/funcoes-das-paginas";
-import { Container, Logo } from "./ui/basicos";
+import { Container, LARGO_NO_PAINEL, Logo } from "./ui/basicos";
 import { navegacaoDaConta } from "@/lib/servidor/navegacao";
 
 export function BarraInferior() {
@@ -166,7 +166,7 @@ export function RodapeCurto() {
   const link = "text-ink-muted hover:text-ink hover:underline";
   return (
     <footer className="mt-12 border-t border-line">
-      <Container className="flex flex-wrap items-center gap-x-4 gap-y-1 py-4 text-body-sm">
+      <Container className={`flex flex-wrap items-center gap-x-4 gap-y-1 py-4 text-body-sm ${LARGO_NO_PAINEL}`}>
         <span className="text-ink-muted">Publike · grátis</span>
         <Link href="/ajuda" className={link}>
           Ajuda

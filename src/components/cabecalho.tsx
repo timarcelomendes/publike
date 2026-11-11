@@ -24,7 +24,7 @@ import { MenuUsuario } from "./menu-usuario";
 import { Notificacoes } from "./notificacoes";
 import { BotaoAjudaTopo } from "./assistente/botao-ajuda-topo";
 import { BotaoTema } from "./tema";
-import { Container, Logo } from "./ui/basicos";
+import { Container, LARGO_NO_PAINEL, Logo } from "./ui/basicos";
 
 function LinkNav({ href, children }: { href: string; children: ReactNode }) {
   return (
@@ -39,7 +39,9 @@ export function Cabecalho() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface-200/95 backdrop-blur-md">
       {/* na home de quem entrou (mais larga no computador grande), o topo acompanha a largura dela */}
-      <Container className="flex h-16 items-center gap-2 xl:[body:has([data-pagina-larga])_&]:max-w-7xl">
+      <Container
+        className={`flex h-16 items-center gap-2 xl:[body:has([data-pagina-larga])_&]:max-w-7xl ${LARGO_NO_PAINEL}`}
+      >
         <Link href="/" aria-label="Publike, página inicial" className="mr-3 shrink-0 rounded-sm">
           <Logo altura={34} />
         </Link>

@@ -109,7 +109,8 @@ export function Voltar() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pt-3 sm:px-6">
+    // no painel, a largura dele (LARGO_NO_PAINEL, em ui/basicos)
+    <div className="mx-auto w-full max-w-6xl px-4 pt-3 sm:px-6 lg:[body:has([data-painel-grade])_&]:max-w-[96rem]">
       <a
         href={tela.url}
         onClick={(e) => {

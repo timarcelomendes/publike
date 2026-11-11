@@ -212,11 +212,17 @@ export function FichaCandidato({
   // com o WhatsApp na linha de ações e a conversa aqui embaixo, as mensagens novas avisam no alto
   const avisarMensagens = conversaNaFicha && Boolean(c.whatsapp) && (c.naoLidas ?? 0) > 0;
   const hoje = new Date(agora).toISOString().slice(0, 7);
+  // o que vai na coluna do lado, quando a ficha é larga
+  const temLado =
+    c.respostas.length > 0 ||
+    Boolean(c.aderencia) ||
+    (match && Boolean(c.whatsapp || c.email)) ||
+    (!encerrado && estado !== "moderacao");
 
   return (
     <article
       aria-label={`Ficha de ${c.nome}`}
-      className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-6"
+      className="@container/ficha flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-6"
     >
       {/* o anterior e o próximo ficam ao lado do nome; o que vem embaixo dele usa a largura toda */}
       <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 sm:gap-x-4">
@@ -314,197 +320,213 @@ export function FichaCandidato({
         />
       )}
 
-      {c.mensagem && (
-        <Secao titulo={`Recado de ${primeiro}`}>
-          <p className="rounded-md bg-surface-300 px-3 py-2 text-body">“{c.mensagem}”</p>
-        </Secao>
-      )}
+      {/* com a ficha larga (a lista recolhida, a tela grande), o que se lê fica à esquerda (a conversa, o currículo) e o
+          que se confere ao lado (as respostas, a aderência, o contato, a etapa); estreita, uma coisa embaixo da outra,
+          na mesma ordem de sempre */}
+      <div
+        className={
+          temLado
+            ? "grid grid-cols-[minmax(0,1fr)] gap-4 @[54rem]/ficha:grid-cols-[minmax(0,1fr)_18rem] @[54rem]/ficha:gap-x-8 @[70rem]/ficha:grid-cols-[minmax(0,1fr)_21rem]"
+            : "flex flex-col gap-4"
+        }
+      >
+        <div className="flex min-w-0 flex-col gap-4">
+          {c.mensagem && (
+            <Secao titulo={`Recado de ${primeiro}`}>
+              <p className="rounded-md bg-surface-300 px-3 py-2 text-body">“{c.mensagem}”</p>
+            </Secao>
+          )}
 
-      {match && (!extras || c.entrevista) && (
-        <Secao titulo="Entrevista" id="entrevista">
-          <EntrevistaDaFicha
-            anuncioId={c.anuncio_id}
-            perfilId={c.perfil_id}
-            nome={c.nome}
-            vaga={c.anuncio_titulo}
-            entrevista={c.entrevista}
-            endereco={c.endereco}
-          />
-        </Secao>
-      )}
+          {match && (!extras || c.entrevista) && (
+            <Secao titulo="Entrevista" id="entrevista">
+              <EntrevistaDaFicha
+                anuncioId={c.anuncio_id}
+                perfilId={c.perfil_id}
+                nome={c.nome}
+                vaga={c.anuncio_titulo}
+                entrevista={c.entrevista}
+                endereco={c.endereco}
+              />
+            </Secao>
+          )}
 
-      {match && conversaDaFicha && euId && (
-        <RespostasDoChat mensagens={conversaDaFicha.mensagens} anuncioId={c.anuncio_id} />
-      )}
+          {match && conversaDaFicha && euId && (
+            <RespostasDoChat mensagens={conversaDaFicha.mensagens} anuncioId={c.anuncio_id} />
+          )}
 
-      {match && conversaDaFicha && euId && (
-        <Secao titulo={`Conversa com ${primeiro}`} id="conversa">
-          <div className="flex h-96 flex-col overflow-hidden rounded-md border border-line">
-            <Conversa
-              outroId={c.perfil_id}
-              conversaId={conversaDaFicha.conversaId}
-              euId={euId}
-              outroNome={c.nome}
-              iniciais={conversaDaFicha.mensagens}
-              compacto
-              verLida={conversaDaFicha.verLida}
-            />
-          </div>
-        </Secao>
-      )}
-
-      {extras?.video.atual && (
-        <Secao titulo="Entrevista em vídeo">
-          <VideoNaFicha
-            anuncioId={c.anuncio_id}
-            perfilId={c.perfil_id}
-            nome={c.nome}
-            video={extras.video.atual}
-            liberado={extras.video.liberado}
-            agora={agora}
-          />
-        </Secao>
-      )}
-
-      {extras?.proposta && extras.aba !== "contratados" && (
-        <Secao titulo="Proposta">
-          <PropostaNaFicha
-            anuncioId={c.anuncio_id}
-            perfilId={c.perfil_id}
-            nome={c.nome}
-            endereco={c.endereco}
-            proposta={extras.proposta}
-          />
-        </Secao>
-      )}
-
-      {/* em Contratados, a proposta sai da ficha; os documentos da admissão ficam (migração 20270312120000) */}
-      {extras?.aba === "contratados" && extras.proposta?.situacao === "aceita" && extras.proposta.docs && (
-        <Secao titulo="Documentos da admissão">
-          <DocumentosNaFicha
-            anuncioId={c.anuncio_id}
-            perfilId={c.perfil_id}
-            nome={c.nome.split(" ")[0]}
-            docs={extras.proposta.docs}
-          />
-        </Secao>
-      )}
-
-      {extras?.regras && extras.regras.length > 0 && (
-        <Secao titulo="O que as suas regras fizeram">
-          <ul className="flex flex-col gap-2">
-            {extras.regras.map((f) => (
-              <li key={f.id} className="flex items-start justify-between gap-3 text-body-sm">
-                <p className="min-w-0">
-                  <span className="text-label">“{f.regra}”</span>: {primeiro} {textoDoQueFez(f.feitas)}
-                  <span className="text-ink-muted">
-                    {" "}
-                    · {tempoRelativo(f.feito_em, extras.agora)}
-                    {f.desfeito_em ? " · desfeito" : ""}
-                  </span>
-                </p>
-                {!f.desfeito_em && <DesfazerRegra feita={f.id} nome={primeiro} />}
-              </li>
-            ))}
-          </ul>
-        </Secao>
-      )}
-
-      {c.curriculo && (comIA || c.resumo) && (
-        <Secao titulo="Resumo da IA">
-          <ResumoDaIA anuncioId={c.anuncio_id} perfilId={c.perfil_id} inicial={c.resumo} />
-        </Secao>
-      )}
-
-      <Secao titulo="Currículo">
-        {c.curriculo ? (
-          <div className="flex flex-col gap-3">
-            <ResumoDoCurriculo curriculo={c.curriculo} />
-            <JanelaDoCurriculo nome={primeiro}>
-              <CurriculoResumo curriculo={c.curriculo} linkPdf={c.curriculo.link_pdf} hoje={hoje} empresas={empresas} />
-            </JanelaDoCurriculo>
-          </div>
-        ) : c.curriculoFalhou ? (
-          <p className="text-body-sm text-ink-muted">
-            Não deu para abrir o currículo agora. Tente de novo em instantes.
-          </p>
-        ) : (
-          <p className="flex items-start gap-2 text-body-sm text-ink-muted">
-            <FileText aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {primeiro} ainda não mandou currículo{c.pedeCurriculo ? ", que esta vaga pede." : "."}
-          </p>
-        )}
-      </Secao>
-
-      {c.respostas.length > 0 && (
-        <Secao titulo="Respostas às perguntas da vaga">
-          <dl className="flex flex-col gap-2 text-body-sm">
-            {c.respostas.map((r) => (
-              <div key={r.pergunta}>
-                <dt className="text-ink-muted">{r.pergunta}</dt>
-                <dd className={r.resposta ? "font-semibold" : "text-ink-muted italic"}>
-                  {r.resposta || "Não respondeu"}
-                </dd>
+          {match && conversaDaFicha && euId && (
+            <Secao titulo={`Conversa com ${primeiro}`} id="conversa">
+              <div className="flex h-96 flex-col overflow-hidden rounded-md border border-line">
+                <Conversa
+                  outroId={c.perfil_id}
+                  conversaId={conversaDaFicha.conversaId}
+                  euId={euId}
+                  outroNome={c.nome}
+                  iniciais={conversaDaFicha.mensagens}
+                  compacto
+                  verLida={conversaDaFicha.verLida}
+                />
               </div>
-            ))}
-          </dl>
-        </Secao>
-      )}
+            </Secao>
+          )}
 
-      {c.aderencia && (
-        <SecaoFechada
-          titulo={
-            c.aderencia.eliminado
-              ? "Aderência à vaga: eliminado"
-              : c.aderencia.nota !== null
-                ? `Aderência à vaga: ${c.aderencia.nota}%`
-                : "Aderência à vaga"
-          }
-          linha={linhaDaAderencia(c.aderencia)}
-        >
-          <DetalheDaAderencia a={c.aderencia} editarVaga={`/painel/anuncio/${c.anuncio_id}/editar`} />
-        </SecaoFechada>
-      )}
+          {extras?.video.atual && (
+            <Secao titulo="Entrevista em vídeo">
+              <VideoNaFicha
+                anuncioId={c.anuncio_id}
+                perfilId={c.perfil_id}
+                nome={c.nome}
+                video={extras.video.atual}
+                liberado={extras.video.liberado}
+                agora={agora}
+              />
+            </Secao>
+          )}
 
-      {match && (c.whatsapp || c.email) && (
-        <Secao titulo="Contato">
-          <div className="flex flex-wrap gap-x-5 gap-y-1 text-body-sm">
-            {c.whatsapp && (
-              <a
-                href={`tel:+${c.whatsapp}`}
-                className="inline-flex min-h-10 items-center gap-1.5 underline-offset-2 hover:underline"
-                {...marcaDeContato(c.anuncio_id, c.perfil_id, "telefone")}
-              >
-                <Phone aria-hidden className="size-4 text-ink-muted" />
-                {formatarTelefone(c.whatsapp)}
-              </a>
+          {extras?.proposta && extras.aba !== "contratados" && (
+            <Secao titulo="Proposta">
+              <PropostaNaFicha
+                anuncioId={c.anuncio_id}
+                perfilId={c.perfil_id}
+                nome={c.nome}
+                endereco={c.endereco}
+                proposta={extras.proposta}
+              />
+            </Secao>
+          )}
+
+          {/* em Contratados, a proposta sai da ficha; os documentos da admissão ficam (migração 20270312120000) */}
+          {extras?.aba === "contratados" && extras.proposta?.situacao === "aceita" && extras.proposta.docs && (
+            <Secao titulo="Documentos da admissão">
+              <DocumentosNaFicha
+                anuncioId={c.anuncio_id}
+                perfilId={c.perfil_id}
+                nome={c.nome.split(" ")[0]}
+                docs={extras.proposta.docs}
+              />
+            </Secao>
+          )}
+
+          {extras?.regras && extras.regras.length > 0 && (
+            <Secao titulo="O que as suas regras fizeram">
+              <ul className="flex flex-col gap-2">
+                {extras.regras.map((f) => (
+                  <li key={f.id} className="flex items-start justify-between gap-3 text-body-sm">
+                    <p className="min-w-0">
+                      <span className="text-label">“{f.regra}”</span>: {primeiro} {textoDoQueFez(f.feitas)}
+                      <span className="text-ink-muted">
+                        {" "}
+                        · {tempoRelativo(f.feito_em, extras.agora)}
+                        {f.desfeito_em ? " · desfeito" : ""}
+                      </span>
+                    </p>
+                    {!f.desfeito_em && <DesfazerRegra feita={f.id} nome={primeiro} />}
+                  </li>
+                ))}
+              </ul>
+            </Secao>
+          )}
+
+          {c.curriculo && (comIA || c.resumo) && (
+            <Secao titulo="Resumo da IA">
+              <ResumoDaIA anuncioId={c.anuncio_id} perfilId={c.perfil_id} inicial={c.resumo} />
+            </Secao>
+          )}
+
+          <Secao titulo="Currículo">
+            {c.curriculo ? (
+              <div className="flex flex-col gap-3">
+                <ResumoDoCurriculo curriculo={c.curriculo} />
+                <JanelaDoCurriculo nome={primeiro}>
+                  <CurriculoResumo curriculo={c.curriculo} linkPdf={c.curriculo.link_pdf} hoje={hoje} empresas={empresas} />
+                </JanelaDoCurriculo>
+              </div>
+            ) : c.curriculoFalhou ? (
+              <p className="text-body-sm text-ink-muted">
+                Não deu para abrir o currículo agora. Tente de novo em instantes.
+              </p>
+            ) : (
+              <p className="flex items-start gap-2 text-body-sm text-ink-muted">
+                <FileText aria-hidden className="mt-0.5 size-4 shrink-0" />
+                {primeiro} ainda não mandou currículo{c.pedeCurriculo ? ", que esta vaga pede." : "."}
+              </p>
             )}
-            {c.email && (
-              <a
-                href={`mailto:${c.email}`}
-                className="inline-flex min-h-10 items-center gap-1.5 break-all underline-offset-2 hover:underline"
-                {...marcaDeContato(c.anuncio_id, c.perfil_id, "email")}
-              >
-                <Mail aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                {c.email}
-              </a>
-            )}
+          </Secao>
+        </div>
+        {temLado && (
+          <div className="flex min-w-0 flex-col gap-4">
+              {c.respostas.length > 0 && (
+                <Secao titulo="Respostas às perguntas da vaga">
+                  <dl className="flex flex-col gap-2 text-body-sm">
+                    {c.respostas.map((r) => (
+                      <div key={r.pergunta}>
+                        <dt className="text-ink-muted">{r.pergunta}</dt>
+                        <dd className={r.resposta ? "font-semibold" : "text-ink-muted italic"}>
+                          {r.resposta || "Não respondeu"}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Secao>
+              )}
+
+              {c.aderencia && (
+                <SecaoFechada
+                  titulo={
+                    c.aderencia.eliminado
+                      ? "Aderência à vaga: eliminado"
+                      : c.aderencia.nota !== null
+                        ? `Aderência à vaga: ${c.aderencia.nota}%`
+                        : "Aderência à vaga"
+                  }
+                  linha={linhaDaAderencia(c.aderencia)}
+                >
+                  <DetalheDaAderencia a={c.aderencia} editarVaga={`/painel/anuncio/${c.anuncio_id}/editar`} />
+                </SecaoFechada>
+              )}
+
+              {match && (c.whatsapp || c.email) && (
+                <Secao titulo="Contato">
+                  <div className="flex flex-wrap gap-x-5 gap-y-1 text-body-sm">
+                    {c.whatsapp && (
+                      <a
+                        href={`tel:+${c.whatsapp}`}
+                        className="inline-flex min-h-10 items-center gap-1.5 underline-offset-2 hover:underline"
+                        {...marcaDeContato(c.anuncio_id, c.perfil_id, "telefone")}
+                      >
+                        <Phone aria-hidden className="size-4 text-ink-muted" />
+                        {formatarTelefone(c.whatsapp)}
+                      </a>
+                    )}
+                    {c.email && (
+                      <a
+                        href={`mailto:${c.email}`}
+                        className="inline-flex min-h-10 items-center gap-1.5 break-all underline-offset-2 hover:underline"
+                        {...marcaDeContato(c.anuncio_id, c.perfil_id, "email")}
+                      >
+                        <Mail aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                        {c.email}
+                      </a>
+                    )}
+                  </div>
+                </Secao>
+              )}
+
+              {!encerrado && estado !== "moderacao" && (
+                <Secao titulo="Etapa e anotação">
+                  <EtapaDoCandidato
+                    tipo="vaga"
+                    status={c.status}
+                    anuncioId={c.anuncio_id}
+                    perfilId={c.perfil_id}
+                    etapa={c.etapa}
+                    nota={c.nota}
+                  />
+                </Secao>
+              )}
           </div>
-        </Secao>
-      )}
-
-      {!encerrado && estado !== "moderacao" && (
-        <Secao titulo="Etapa e anotação">
-          <EtapaDoCandidato
-            tipo="vaga"
-            status={c.status}
-            anuncioId={c.anuncio_id}
-            perfilId={c.perfil_id}
-            etapa={c.etapa}
-            nota={c.nota}
-          />
-        </Secao>
-      )}
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-4">
         <Link

@@ -5,6 +5,12 @@ import { iniciais, nomeDaConta, urlDaFoto } from "@/lib/formato";
 import { FotoQuadrada } from "./foto-quadrada";
 import { LOGO, LOGO_LARGURA } from "./logo-caminhos";
 
+/**
+ * O painel usa a largura da janela até 96rem (11/11/2026: a ficha dos candidatos ficava espremida no meio de uma tela
+ * larga); o topo, o "Voltar" e o rodapé de quem está no painel acompanham, para alinhar com o menu.
+ */
+export const LARGO_NO_PAINEL = "lg:[body:has([data-painel-grade])_&]:max-w-[96rem]";
+
 export function Container({ className = "", ...props }: ComponentProps<"div">) {
   return <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 ${className}`} {...props} />;
 }

@@ -49,16 +49,30 @@ export function ItemDaLista({
   const estado = estadoEmPalavras(c, agora);
   return (
     <li>
+      {/* data-mesa-*: com a lista recolhida (recolher-lista.tsx), fica só a foto, com o ponto de quem pede você */}
       <Link
         href={href}
         scroll={false}
         aria-current={aberto ? "true" : undefined}
-        className={`flex gap-3 px-4 py-3 transition-colors ${
+        title={`${c.nome}: ${estado.texto}`}
+        data-mesa-item
+        className={`relative flex gap-3 px-4 py-3 transition-colors ${
           aberto ? "bg-surface-300 shadow-[inset_3px_0_0_var(--color-ink)]" : "hover:bg-surface-300"
         }`}
       >
-        <Avatar nome={c.nome} foto={c.foto} tamanho={40} />
-        <span className="min-w-0 flex-1">
+        <span className="relative shrink-0 self-start">
+          <Avatar nome={c.nome} foto={c.foto} tamanho={40} />
+          {(estado.destaque || c.naoLidas > 0) && !encerrado && (
+            <span
+              aria-hidden
+              data-mesa-ponto
+              className={`absolute -top-0.5 -right-0.5 hidden size-3 rounded-pill ring-2 ring-surface-200 ${
+                estado.destaque ? "bg-terra" : "bg-ink"
+              }`}
+            />
+          )}
+        </span>
+        <span data-mesa-texto className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-label">{c.nome}</span>
             {c.aderencia && !encerrado && <NotaAderencia a={c.aderencia} />}

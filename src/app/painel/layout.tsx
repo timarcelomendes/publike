@@ -11,7 +11,8 @@ export const metadata: Metadata = { title: "Meu painel", robots: { index: false 
 // página ao lado. No celular, o menu vira uma linha em cima da página (menos nas Mensagens).
 export default function LayoutPainel({ children }: LayoutProps<"/painel">) {
   return (
-    <Container className="py-6 sm:py-8">
+    // mais largo que o resto do site (LARGO_NO_PAINEL): as telas de trabalho usam a janela
+    <Container className="py-6 sm:py-8 lg:max-w-[96rem]">
       <h1 className="sr-only">Meu painel</h1>
       <div
         data-painel-grade
