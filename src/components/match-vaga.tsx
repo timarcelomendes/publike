@@ -38,35 +38,44 @@ function explicarMatch(match: MatchResumo) {
 }
 
 /**
- * O % de match num anel, no canto do cartão da vaga (11/11/2026: no rodapé, o selo empurrava os botões para
- * outra linha). O mesmo desenho do Descobrir, menor: o arco verde de 80% para cima, amarelo de 50% a 79%, cinza abaixo.
+ * O % de match num anel, no rodapé do cartão da vaga, ao lado dos botões e do tamanho deles (11/11/2026: o selo
+ * largo empurrava os botões para outra linha). O arco diz o quanto combina (verde de 80% para cima, amarelo de 50% a
+ * 79%, cinza abaixo), com o miolo no mesmo tom, claro.
  */
 export function AnelDeMatch({ match }: { match: MatchResumo }) {
-  const nota = match.nota ?? 0;
-  const raio = 20;
+  const nota = Math.max(0, Math.min(100, match.nota ?? 0));
+  const raio = 19;
   const volta = 2 * Math.PI * raio;
-  const cor = nota >= 80 ? "var(--pk-cerrado)" : nota >= 50 ? "var(--pk-ipe)" : "var(--pk-ink-muted)";
+  const [arco, miolo] =
+    nota >= 80
+      ? ["var(--pk-cerrado)", "fill-cerrado/10"]
+      : nota >= 50
+        ? ["var(--pk-ipe)", "fill-ipe/15"]
+        : ["var(--pk-ink-muted)", "fill-surface-300/70"];
   return (
-    <span className="relative inline-flex size-12 shrink-0" title={explicarMatch(match)}>
-      <svg viewBox="0 0 48 48" className="size-12 -rotate-90" aria-hidden>
-        <circle cx="24" cy="24" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="4.5" />
+    <span className="relative inline-flex size-11 shrink-0" title={explicarMatch(match)}>
+      <svg viewBox="0 0 44 44" className="size-11" aria-hidden>
+        <circle cx="22" cy="22" r="15.5" className={miolo} />
+        <circle cx="22" cy="22" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="3" />
         <circle
-          cx="24"
-          cy="24"
+          cx="22"
+          cy="22"
           r={raio}
           fill="none"
-          stroke={cor}
-          strokeWidth="4.5"
+          stroke={arco}
+          strokeWidth="3.5"
           strokeLinecap="round"
           strokeDasharray={volta}
           strokeDashoffset={volta * (1 - nota / 100)}
+          transform="rotate(-90 22 22)"
         />
       </svg>
       <span aria-hidden className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className={`font-display font-bold text-ink tabular-nums ${nota >= 100 ? "text-[12px]" : "text-[14px]"}`}>
-          {nota}%
+        <span className="font-display text-[13px] font-bold tracking-tight text-ink tabular-nums">
+          {nota}
+          <span className="text-[9px]">%</span>
         </span>
-        <span className="mt-0.5 text-[8px] font-semibold text-ink-muted uppercase">match</span>
+        <span className="text-[8px] font-semibold text-ink-muted">match</span>
       </span>
       <span className="sr-only">{nota}% de match com o seu currículo</span>
     </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useId } from "react";
 import { pedirEntrar } from "./folha-de-entrar";
 
 // Para quem está sem conta, no cartão da vaga, no lugar do % de match (11/11/2026: chamar para entrar, "quer ver se
@@ -40,12 +41,14 @@ export function SeloMatchFechado({ className = "" }: { className?: string }) {
 }
 
 /**
- * Em Blocos, no anel do canto do cartão: o arco embaçado e "?%" no meio. Ao passar o mouse, o arco fica nítido; o
- * toque abre a folha de entrar.
+ * Em Blocos, no anel do rodapé, ao lado dos botões: o arco do amarelo ao verde (as cores do match) e "?%" no miolo.
+ * Ao passar o mouse, o miolo fica mais verde; o toque abre a folha de entrar.
  */
 export function AnelMatchFechado() {
   const entrar = useEntrarParaVer();
-  const raio = 20;
+  // o id do degradê, só com letras e números (o do React pode trazer sinais que o url(#...) não aceita)
+  const degrade = `anel-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const raio = 19;
   const volta = 2 * Math.PI * raio;
   return (
     <button
@@ -53,32 +56,40 @@ export function AnelMatchFechado() {
       data-funil="match"
       title={DICA}
       onClick={entrar}
-      className="group/anel relative z-10 inline-flex size-12 shrink-0 rounded-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      className="group/anel relative z-10 inline-flex size-11 shrink-0 rounded-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
-      <svg viewBox="0 0 48 48" className="absolute inset-0 size-12" aria-hidden>
-        <circle cx="24" cy="24" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="4.5" />
-      </svg>
-      {/* o arco de um número que não é de ninguém, embaçado: só o desenho (o filtro no <svg>, que o Safari aceita) */}
-      <svg
-        viewBox="0 0 48 48"
-        className="absolute inset-0 size-12 -rotate-90 opacity-60 blur-[1.5px] transition-[filter,opacity] duration-200 group-hover/anel:opacity-90 group-hover/anel:blur-none motion-reduce:transition-none"
-        aria-hidden
-      >
+      <svg viewBox="0 0 44 44" className="size-11" aria-hidden>
+        <defs>
+          <linearGradient id={degrade} x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" style={{ stopColor: "var(--pk-ipe)" }} />
+            <stop offset="1" style={{ stopColor: "var(--pk-cerrado)" }} />
+          </linearGradient>
+        </defs>
         <circle
-          cx="24"
-          cy="24"
+          cx="22"
+          cy="22"
+          r="15.5"
+          className="fill-cerrado/10 transition-colors group-hover/anel:fill-cerrado/20 motion-reduce:transition-none"
+        />
+        <circle cx="22" cy="22" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="3" />
+        <circle
+          cx="22"
+          cy="22"
           r={raio}
           fill="none"
-          stroke="var(--pk-cerrado)"
-          strokeWidth="4.5"
+          stroke={`url(#${degrade})`}
+          strokeWidth="3.5"
           strokeLinecap="round"
           strokeDasharray={volta}
-          strokeDashoffset={volta * 0.3}
+          strokeDashoffset={volta * 0.25}
+          transform="rotate(-90 22 22)"
         />
       </svg>
       <span aria-hidden className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="font-display text-[15px] font-bold text-ink">?%</span>
-        <span className="mt-0.5 text-[8px] font-semibold text-ink-muted uppercase">match</span>
+        <span className="font-display text-[15px] font-bold text-cerrado-text">
+          ?<span className="text-[9px]">%</span>
+        </span>
+        <span className="text-[8px] font-semibold text-ink-muted">match</span>
       </span>
       <span className="sr-only">{DICA}</span>
     </button>

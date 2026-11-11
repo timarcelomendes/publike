@@ -83,8 +83,8 @@ function Etiqueta({ children, className = "bg-surface-300 text-ink" }: { childre
 /**
  * CardVaga do Design System: serve para vaga e para serviço (com a primeira foto de trabalho).
  * Em Blocos: a faixa "Contratando N pessoas" (vaga com mais de uma vaga), quem publicou (o logo
- * ou as iniciais) com o % de match num anel no canto, o título, o valor com o lugar e o tempo de ônibus, as
- * etiquetas e o rodapé com o tempo de resposta e os botões. Lista e Grade (VisaoExplorar, grupo
+ * ou as iniciais), o título, o valor com o lugar e o tempo de ônibus, as etiquetas e o rodapé com o % de match
+ * num anel, o tempo de resposta e os botões. Lista e Grade (VisaoExplorar, grupo
  * `visao`) reaproveitam as mesmas partes, compactas.
  */
 export function CardAnuncio({
@@ -278,36 +278,14 @@ export function CardAnuncio({
                   <span className="truncate">{anuncio.autor_nome}</span>
                   {anuncio.autor_verificado && <SeloVerificado agencia={anuncio.autor_tipo === "agencia"} />}
                 </p>
-                <p className="flex min-w-0 items-center gap-1.5 text-body-sm text-ink-muted group-data-[visao=lista]/visao:hidden">
-                  <span className="truncate">
-                    {tipoCurto(anuncio.autor_tipo, servico)} · {tempoRelativo(anuncio.criado_em, agora)}
-                  </span>
-                  {anel && novo && !preenchida && anuncio.minha_curtida !== "match" && (
-                    // o canto é do anel: o "Novo" vem aqui, pequeno (sem cortar: o tempo é que encurta)
-                    <span className="shrink-0 rounded-pill bg-ipe px-1.5 text-[10px] leading-4 font-bold text-on-ipe uppercase">
-                      Novo
-                    </span>
-                  )}
+                <p className="truncate text-body-sm text-ink-muted group-data-[visao=lista]/visao:hidden">
+                  <span>{tipoCurto(anuncio.autor_tipo, servico)}</span> · {tempoRelativo(anuncio.criado_em, agora)}
                 </p>
               </div>
             </>
           )}
           {seloPrincipal && (
-            // com o anel, o selo do canto só fica na grade (em Blocos, o "Novo" vai na linha de quem publicou)
-            <span
-              className={`shrink-0 self-start group-data-[visao=lista]/visao:hidden ${
-                anel ? "hidden group-data-[visao=grade]/visao:inline-flex" : ""
-              }`}
-            >
-              {seloPrincipal}
-            </span>
-          )}
-          {anel && (
-            // em Blocos, o % de match num anel no canto do cartão (11/11/2026: no rodapé, o selo empurrava os botões
-            // para outra linha); sem conta, o anel embaçado chama para entrar
-            <span className="shrink-0 self-start group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
-              {comMatch ? <AnelDeMatch match={comMatch} /> : <AnelMatchFechado />}
-            </span>
+            <span className="shrink-0 self-start group-data-[visao=lista]/visao:hidden">{seloPrincipal}</span>
           )}
           {(comMatch || fechado) && (
             // na grade, o % fica junto dos selos (o rodapé some)
@@ -401,6 +379,13 @@ export function CardAnuncio({
 
         {temRodape && (
           <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-2.5 border-t border-line pt-2.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
+            {anel && (
+              // em Blocos, o % de match num anel à esquerda dos botões, na mesma linha (11/11/2026: o selo largo
+              // empurrava os botões para outra linha); sem conta, o anel com "?%" chama para entrar
+              <span className="shrink-0 group-data-[visao=lista]/visao:hidden">
+                {comMatch ? <AnelDeMatch match={comMatch} /> : <AnelMatchFechado />}
+              </span>
+            )}
             {/* os indicadores, também para quem está sem conta: como quem publicou responde e quantos já curtiram */}
             {/* sem espaço ao lado dos botões, vão para uma linha só deles, em cima (antes, espremiam e cortavam) */}
             <span
