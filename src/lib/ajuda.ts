@@ -263,6 +263,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "O aviso de quem combina com a sua vaga é grátis, com até 3 por dia. Com um plano, você liga o convite automático em cada vaga (Ferramentas › Convite automático): quando chega um currículo que combina, o convite vai na hora, com o seu recado, e os avisos vão até 30 por dia. Cada pessoa recebe no máximo 2 convites automáticos por semana, e quem não quer desliga em Preferências.",
       },
       {
+        p: "O que é o mapa de talentos?",
+        r: "Em Ferramentas › Mapa de talentos, escolha uma vaga e veja quantas pessoas que procuram trabalho moram a até 15, 30 e 45 minutos de ônibus, o que elas já fizeram e em que bairros moram. Ninguém tem a casa mostrada: só aparecem grupos de 5 pessoas ou mais. O total a até 30 minutos é grátis; o resto vem com a Consulta de salários ou um plano.",
+      },
+      {
         p: "Assino um plano e preciso de mais vagas no ar. Como mudo de faixa?",
         r: "Em Assinatura, toque em “Mudar para a faixa de cima”. Você paga agora só a diferença dos dias que faltam no período já pago, e a faixa muda assim que o pagamento é confirmado. Daí em diante, a renovação vem com o valor da faixa nova.",
       },

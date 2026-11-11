@@ -116,7 +116,8 @@ export type Secao = {
     | "assinatura"
     | "planos"
     | "mutirao"
-    | "convites";
+    | "convites"
+    | "mapa";
   contador?: keyof Contadores;
   /** como o número aparece: "pilula" (pede ação, em ink), "pronto" (para o cliente, em terra) ou texto discreto */
   jeito?: "pilula" | "pronto" | "texto";
@@ -277,6 +278,8 @@ export function gruposDoModo(
         { href: "/painel/mutiroes", nome: "Mutirão", icone: "mutirao", cortesia: "Novo" },
         // o convite automático (migração 20270418120000): o aviso de quem combina é grátis; o convite sozinho, nos planos
         { href: "/painel/convites", nome: "Convite automático", icone: "convites", mais: true },
+        // o mapa de talentos (migração 20270419120000): quantas pessoas moram perto de cada vaga
+        { href: "/painel/mapa-de-talentos", nome: "Mapa de talentos", icone: "mapa", mais: true },
         // o processo, o padrão das vagas, as etapas próprias, os horários e as mensagens prontas, num lugar só
         // (claude/plano-etapas-obrigatorias-e-configuracoes.md); "Etapas e horários" virou uma parte dela
         { href: "/painel/configuracoes", nome: "Configurações", icone: "configuracoes" },

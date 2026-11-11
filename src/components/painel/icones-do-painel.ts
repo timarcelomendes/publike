@@ -18,6 +18,7 @@ import {
   House,
   Inbox,
   Link2,
+  MapPinned,
   MessagesSquare,
   Send,
   Settings,
@@ -38,6 +39,7 @@ import type { Secao } from "@/lib/modo-painel";
 export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   mutirao: CalendarRange,
   convites: Send,
+  mapa: MapPinned,
   hoje: House,
   caixa: Inbox,
   talentos: UserSearch,

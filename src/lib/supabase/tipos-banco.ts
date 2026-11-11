@@ -3695,6 +3695,12 @@ export type Database = {
       recebo_convites_automaticos: { Args: Record<string, never>; Returns: boolean };
       receber_convites_automaticos: { Args: { p_sim: boolean }; Returns: undefined };
       servidor_convite_auto_contas: { Args: { p_chave: string }; Returns: Json };
+      // o mapa de talentos (migração 20270419120000)
+      mapa_de_talentos_liberado: { Args: Record<string, never>; Returns: boolean };
+      servidor_mapa_de_talentos: {
+        Args: { p_chave: string; p_conta: string; p_anuncio: string; p_km: number };
+        Returns: { bairro: string; cidade: string; km: number; experiencias: Json; titulo: string | null }[];
+      };
       servidor_convidar_sozinho: {
         Args: { p_chave: string; p_conta: string; p_anuncio: string; p_perfil: string };
         Returns: boolean;
