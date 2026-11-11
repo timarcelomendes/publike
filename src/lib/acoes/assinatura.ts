@@ -13,7 +13,9 @@ import {
   O_PRODUTO,
   recursosDo,
   ehPlanoPorFaixa,
+  pagoAteSem,
   seCruzam,
+  substituiSozinho,
   type Ciclo,
   type Produto,
 } from "@/lib/pagamentos";
@@ -246,7 +248,10 @@ export async function assinar(dados: DadosDoPagador & {
         return `Você já assina ${O_PRODUTO[plano.recurso]}. Veja em Assinatura.`;
       // dois produtos que liberam um mesmo recurso (o combo ou o Plano Completo e os recursos separados) não valem
       // juntos: cancela um para assinar o outro; entre planos por faixa, a troca é por "Mudar de faixa"
-      const outra = ctx.ativas.find((x) => x !== plano!.recurso && ehProduto(x) && seCruzam(x, plano!.recurso));
+      // o recurso sozinho ou o combo que o plano inclui não trava: o plano toma o lugar (substituiSozinho)
+      const outra = ctx.ativas.find(
+        (x) => x !== plano!.recurso && ehProduto(x) && seCruzam(x, plano!.recurso) && !substituiSozinho(plano!.recurso, x),
+      );
       if (!troca && outra) {
         if (ehPlanoPorFaixa(outra) && ehPlanoPorFaixa(plano.recurso))
           return `Você assina ${O_PRODUTO[outra]}. Para ir para ${O_PRODUTO[plano.recurso]}, use "Mudar de faixa" em Assinatura: você paga só a diferença.`;
@@ -262,7 +267,9 @@ export async function assinar(dados: DadosDoPagador & {
     const ciclo = plano.ciclo;
 
     // a 1ª cobrança: no fim do teste grátis ou do que já está pago (assinar de novo, trocar o cartão); senão, hoje
-    const primeiro = diaDaPrimeiraCobranca(plano.recurso, ctx.testes_ate, ctx.pago_ate);
+    // (o que o plano substitui não adia: o plano cobra hoje, e o de antes para de cobrar quando ele valer)
+    const trocadas = troca ? [] : ctx.ativas.filter((x) => ehProduto(x) && substituiSozinho(plano!.recurso, x));
+    const primeiro = diaDaPrimeiraCobranca(plano.recurso, ctx.testes_ate, pagoAteSem(ctx.pago_ate, trocadas));
     void troca;
     // o nome do item é como o banco liga a assinatura do checkout ("completo", "combo", "triagem" ou "teste" no texto)
     const nomeItem = `Publike · ${NOME_PRODUTO[plano.recurso]} (${CICLO[plano.ciclo]})`;

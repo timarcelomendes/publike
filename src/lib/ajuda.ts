@@ -263,6 +263,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (as duas opções: gravada, com resumo da IA, e ao vivo, dentro do Publike, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático e o mapa de talentos. Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
       },
       {
+        p: "Já assino um recurso. Preciso cancelar para assinar um plano?",
+        r: "Não. O plano já inclui todos os recursos: assine direto em Planos. O plano cobra no dia em que você assina e, quando começa a valer (no cartão, ao confirmar; no Pix, ao pagar), a assinatura do recurso que você tinha é cancelada sozinha, sem cobrar de novo. O mesmo vale para o combo, que inclui a Triagem e o Teste Prático. Para trocar de um plano para outro maior, use “Mudar de faixa”, em Assinatura: você paga só a diferença.",
+      },
+      {
         p: "Dá para pagar o plano por ano ou só por 30 dias?",
         r: "Quando estão à venda, aparecem em Planos. No anual, você paga 9 meses e usa 12. Por 30 dias, você paga uma vez, vale 30 dias a partir do pagamento e não renova sozinho: três dias antes do fim, chega o aviso para comprar mais 30 dias ou assinar. Nos dois, desistiu em até 7 dias do pagamento, o dinheiro volta: o botão “Desistir e receber de volta” fica em Assinatura. No anual, a devolução vale para a primeira compra; a diferença paga para mudar de faixa não tem devolução.",
       },

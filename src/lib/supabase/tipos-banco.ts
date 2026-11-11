@@ -3728,6 +3728,7 @@ export type Database = {
         Returns: Json;
       };
       servidor_pagamento_cancelada: { Args: { p_chave: string; p_asaas_id: string }; Returns: undefined };
+      servidor_assinaturas_da_conta: { Args: { p_chave: string; p_conta: string }; Returns: Json };
       servidor_pagamento_cobranca_da_conta: {
         Args: { p_chave: string; p_conta: string; p_cobranca: string };
         Returns: Json;

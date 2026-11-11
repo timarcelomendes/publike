@@ -9,7 +9,8 @@ import {
   NOME_PRODUTO,
   O_PRODUTO,
   podeAssinarPacote,
-  seCruzam,
+  substituidas,
+  travamAssinar,
   type Assinatura,
   type Ciclo,
   type PagamentosDaConta,
@@ -81,6 +82,19 @@ function Lista({ itens, titulo, colunas = false }: { itens: string[]; titulo?: s
   );
 }
 
+/** "o Teste Prático e a Consulta de salários" */
+function juntar(nomes: string[]) {
+  return nomes.length > 1 ? `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}` : (nomes[0] ?? "");
+}
+
+/** O aviso de quem assina um recurso que o plano já inclui: não precisa cancelar antes. */
+export function quandoValer(substitui: Assinatura[], fim = true) {
+  const muitas = substitui.length > 1;
+  return `Já inclui ${juntar(substitui.map((x) => O_PRODUTO[x.recurso]))}, que você assina: quando o plano começar a valer, ${
+    muitas ? "essas assinaturas são canceladas sozinhas" : "essa assinatura é cancelada sozinha"
+  }.${fim ? " Não precisa cancelar antes." : ""}`;
+}
+
 /** A linha do selo, com a mesma altura em todos os cartões: assim os nomes e os preços ficam alinhados. */
 function LinhaDoSelo({ children }: { children?: React.ReactNode }) {
   // no celular, um embaixo do outro, a linha vazia só abriria um buraco
@@ -114,6 +128,7 @@ function CartaoPlano({
   meu,
   agencia,
   cruza,
+  substitui,
   compacto,
 }: {
   p: Produto;
@@ -124,8 +139,10 @@ function CartaoPlano({
   cabe: boolean;
   meu: Assinatura | null;
   agencia: boolean;
-  /** uma assinatura de recurso que o plano inclui (não valem juntos) */
+  /** uma assinatura que trava este plano (travamAssinar: cancela antes) */
   cruza: Assinatura | null;
+  /** as assinaturas que o plano substitui sozinho: param de cobrar quando ele começar a valer */
+  substitui: Assinatura[];
   /** quatro cartões na linha: letra do preço menor, para caber */
   compacto: boolean;
 }) {
@@ -210,7 +227,12 @@ function CartaoPlano({
               <CreditCard aria-hidden />
               Assinar
             </BotaoLink>
-            {trinta && (
+            {substitui.length > 0 && (
+              <p className="text-body-sm text-ink-muted">
+                {quandoValer(substitui)}
+              </p>
+            )}
+            {trinta && !substitui.length && (
               <Link
                 href={`/painel/assinar?recurso=${p}&trinta=1`}
                 className="text-body-sm text-terra-text underline underline-offset-2"
@@ -233,11 +255,11 @@ function CartaoPlano({
           </p>
         ) : cruza ? (
           <p className="text-body-sm text-ink-muted">
-            O plano inclui {O_PRODUTO[cruza.recurso]}, que você já assina. Para trocar, cancele em{" "}
+            Você assina {O_PRODUTO[cruza.recurso]}, que não vale junto com este plano. Para trocar, cancele em{" "}
             <Link href="/painel/assinatura" className="underline underline-offset-2">
               Assinatura
             </Link>{" "}
-            e volte aqui: o que já foi pago continua valendo, e o plano só cobra quando ele acabar.
+            e volte aqui: o que já foi pago continua valendo.
           </p>
         ) : (
           <p className="text-body-sm text-ink-muted">Os recursos do plano já estão liberados na sua conta, sem prazo.</p>
@@ -296,10 +318,11 @@ export function GradeDePlanos({
               agencia={agencia}
               compacto={compacto}
               cruza={
-                [...valendo]
-                  .sort((a, b) => Number(b.situacao === "ativa") - Number(a.situacao === "ativa"))
-                  .find((a) => a.recurso !== p && seCruzam(a.recurso, p)) ?? null
+                [...travamAssinar(valendo, p)].sort(
+                  (a, b) => Number(b.situacao === "ativa") - Number(a.situacao === "ativa"),
+                )[0] ?? null
               }
+              substitui={substituidas(valendo, p)}
             />
           </li>
         ))}

@@ -12,6 +12,7 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
+import { quandoValer } from "@/components/pagamentos/grade-de-planos";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
@@ -35,7 +36,9 @@ import {
   planoQueCabe,
   podeAssinarPacote,
   recursosDo,
-  seCruzam,
+  pagoAteSem,
+  substituidas,
+  travamAssinar,
   type PagamentosDaConta,
   type PlanoPorFaixa,
   type Produto,
@@ -127,7 +130,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const valendo = (pag?.assinaturas ?? []).filter((a) => a.situacao !== "cancelada");
   const ativa = valendo.find((a) => a.recurso === produto && a.situacao === "ativa");
   // dois produtos que liberam um mesmo recurso (o combo ou o Plano Completo e os separados) não valem juntos
-  const conflito = valendo.find((a) => a.recurso !== produto && seCruzam(a.recurso, produto));
+  // (o recurso sozinho ou o combo que o plano inclui não trava: o plano toma o lugar, substituiSozinho)
+  const conflito = travamAssinar(valendo, produto)[0];
+  const trocadas = troca ? [] : substituidas(valendo, produto);
   // a Página de carreiras: liberada pelas vagas, por cortesia ou por outra assinatura, não precisa assinar
   const semPrazo =
     produto === "carreiras"
@@ -136,7 +141,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
 
   // a 1ª cobrança: o fim do teste grátis ou do período já pago (o servidor calcula de novo)
   const hoje = diaBr(new Date());
-  const dia = diaDaPrimeiraCobranca(produto, pag?.testes_ate, pag?.pago_ate);
+  // (o que o plano substitui não adia: o plano cobra hoje)
+  const dia = diaDaPrimeiraCobranca(produto, pag?.testes_ate, pagoAteSem(pag?.pago_ate, trocadas.map((a) => a.recurso)));
   const primeiraCobranca = dia > hoje ? dia : null;
   // a troca de faixa: a assinatura de plano por faixa que vale e quanto falta pagar até a faixa pedida
   const deCima = faixasDeCima(pag);
@@ -364,6 +370,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         <Aviso tipo="alerta" titulo="Conta de teste: pagamento no sandbox">
           Nada é cobrado de verdade. No cartão, use um cartão de teste do Asaas; o Pix é de teste e não paga com o app
           do banco.
+        </Aviso>
+      )}
+      {trocadas.length > 0 && !conflito && !mudar && !trinta && (
+        <Aviso tipo="info" titulo="Não precisa cancelar antes">
+          {quandoValer(trocadas, false)}
         </Aviso>
       )}
       {corpo}

@@ -102,6 +102,36 @@ export function jaInclui(pacote: Produto, p: Produto) {
 }
 
 /**
+ * O pacote novo toma o lugar da assinatura de antes sozinho (11/11/2026): o plano por faixa ou o Plano Completo
+ * no lugar de um recurso sozinho ou do combo, e o combo no lugar da Triagem ou do Teste. Pode assinar sem cancelar
+ * antes: quando o novo começa a valer, o de antes para de cobrar (src/lib/servidor/pagamentos.ts). Entre planos,
+ * não: a faixa muda por "Mudar de faixa".
+ */
+export function substituiSozinho(novo: Produto, antes: Produto) {
+  if (novo === antes || ehPlanoPorFaixa(antes) || antes === "completo") return false;
+  if (!(ehPlanoPorFaixa(novo) || novo === "completo" || novo === "combo")) return false;
+  return jaInclui(novo, antes);
+}
+
+/** As assinaturas valendo que travam assinar o produto: cruzam com ele e ele não toma o lugar delas. */
+export function travamAssinar(assinaturas: Assinatura[], produto: Produto) {
+  return assinaturas.filter(
+    (a) => a.situacao !== "cancelada" && a.recurso !== produto && seCruzam(a.recurso, produto) && !substituiSozinho(produto, a.recurso),
+  );
+}
+
+/** As assinaturas valendo que o produto substitui sozinho (param de cobrar quando ele começar a valer). */
+export function substituidas(assinaturas: Assinatura[], produto: Produto) {
+  return assinaturas.filter((a) => a.situacao !== "cancelada" && substituiSozinho(produto, a.recurso));
+}
+
+/** O "pago até" sem o das assinaturas substituídas: o plano novo cobra hoje, não no fim do que ele substitui. */
+export function pagoAteSem<T extends string>(pagoAte: Partial<Record<T, string>> | null | undefined, sem: string[]) {
+  if (!pagoAte || !sem.length) return pagoAte ?? null;
+  return Object.fromEntries(Object.entries(pagoAte).filter(([k]) => !sem.includes(k))) as Partial<Record<T, string>>;
+}
+
+/**
  * O ciclo do plano: mensal, a cada 3 meses, anual (YEARLY, só nos planos por faixa) ou AVULSO, o plano por 30 dias
  * sem renovar (uma cobrança só; migração 20270416120000). A assinatura nunca é AVULSO.
  */
@@ -285,8 +315,7 @@ export function lerFaturas(data: unknown): Fatura[] {
 
 /**
  * Pode assinar o pacote (o combo ou o Plano Completo): os pagamentos abertos para a conta, o pacote à venda e
- * nenhuma assinatura valendo que se cruze com ele (quem assina um recurso cancela antes; o que já foi pago continua
- * valendo). Liberado sem prazo em todos os recursos do pacote: não paga.
+ * nenhuma assinatura valendo que trave (travamAssinar). Liberado sem prazo em todos os recursos do pacote: não paga.
  */
 export function podeAssinarPacote(
   pag: PagamentosDaConta | null,
@@ -294,7 +323,8 @@ export function podeAssinarPacote(
   pacote: (typeof PACOTES)[number],
 ) {
   if (!pag?.pode || !pag.planos.some((p) => p.recurso === pacote)) return false;
-  if (pag.assinaturas.some((a) => a.situacao !== "cancelada" && seCruzam(a.recurso, pacote))) return false;
+  // o recurso sozinho ou o combo que o pacote inclui não trava: o pacote toma o lugar dele (substituiSozinho)
+  if (travamAssinar(pag.assinaturas, pacote).length) return false;
   // a Página de carreiras não tem estado em RecursosPagos: conta como não liberada (o servidor confere de novo)
   const semPrazo = (r: Liberavel) => r !== "carreiras" && Boolean(recursos?.[r]?.liberado && !recursos[r].ate);
   return !recursosDo(pacote).every(semPrazo);

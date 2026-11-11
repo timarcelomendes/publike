@@ -1,6 +1,6 @@
 import "server-only";
 import type { Json } from "@/lib/supabase/tipos-banco";
-import { NOME_PRODUTO, ehProduto } from "@/lib/pagamentos";
+import { NOME_PRODUTO, PACOTES, ehProduto, substituiSozinho } from "@/lib/pagamentos";
 import {
   assinaturasDoCliente,
   atualizarAssinatura,
@@ -72,7 +72,49 @@ async function vincular(a: Acesso, sandbox: boolean, sub: AssinaturaAsaas): Prom
       console.error("Publike: não deu para cancelar a assinatura trocada:", textoDoErro(e));
     }
   }
+  // o plano que começou a valer (o cartão ligado) tira o que ele substitui
+  if (v?.situacao === "ativa" && (PACOTES as readonly string[]).includes(v.recurso)) {
+    await pararAsSubstituidas(a, v.conta, v.asaas_id);
+  }
   return v;
+}
+
+type DaConta = { id: string; recurso: string; asaas_id: string | null; situacao: string; sandbox?: boolean };
+
+/**
+ * O pacote que começou a valer (o plano por faixa, o Plano Completo ou o combo) cancela sozinho as assinaturas que
+ * ele substitui (o Teste Prático sozinho, o combo...; substituiSozinho em src/lib/pagamentos.ts): assinar o plano não
+ * pede para cancelar antes e não cobra duas vezes. O que já foi pago delas continua valendo até o fim. Nunca trava o
+ * pagamento: deu erro, fica para o próximo aviso (migração 20270421120000).
+ */
+async function pararAsSubstituidas(a: Acesso, conta: string, asaasDoNovo: string) {
+  try {
+    const { data, error } = await a.cliente.rpc("servidor_assinaturas_da_conta", { p_chave: a.chave, p_conta: conta });
+    if (error) {
+      // sem a migração: segue como antes (quem assina cancela à mão)
+      if (error.code !== "PGRST202") console.error("Publike: não deu para ler as assinaturas da conta:", error.message);
+      return;
+    }
+    const lista = (data ?? []) as DaConta[];
+    const novo = lista.find((x) => x.asaas_id === asaasDoNovo && x.situacao === "ativa");
+    if (!novo || !ehProduto(novo.recurso)) return;
+    for (const x of lista) {
+      if (x.id === novo.id || !x.asaas_id || x.situacao === "cancelada") continue;
+      if (!ehProduto(x.recurso) || !substituiSozinho(novo.recurso, x.recurso)) continue;
+      try {
+        await cancelarAssinaturaAsaas(x.sandbox === true, x.asaas_id);
+      } catch (e) {
+        // já não existe no Asaas: só falta marcar aqui; senão, tenta de novo no próximo aviso
+        if (!(e instanceof ErroAsaas && e.status === 404)) {
+          console.error("Publike: não deu para cancelar a assinatura substituída:", textoDoErro(e));
+          continue;
+        }
+      }
+      await a.cliente.rpc("servidor_pagamento_cancelada", { p_chave: a.chave, p_asaas_id: x.asaas_id });
+    }
+  } catch (e) {
+    console.error("Publike: não deu para cancelar as assinaturas substituídas:", textoDoErro(e));
+  }
 }
 
 /** A nota fiscal da assinatura, uma vez (o serviço vem do Admin; sem ele, fica para depois). */
@@ -209,6 +251,10 @@ export async function gravarCobranca(
   }
   if (!g.nota_configurada && g.assinatura_asaas) {
     await garantirNota(a, sandbox, { conta: g.conta, assinatura_id: g.assinatura_id, asaas_id: g.assinatura_asaas });
+  }
+  // o Pix do plano pago (a assinatura passou a valer): tira o que ele substitui
+  if (g.situacao === "paga" && g.assinatura_situacao === "ativa" && g.assinatura_asaas) {
+    await pararAsSubstituidas(a, g.conta, g.assinatura_asaas);
   }
   // o Pix que nunca foi pago (a assinatura ainda não valeu) e venceu: a assinatura sai do Asaas
   if (g.situacao === "atrasada" && g.assinatura_situacao === "pendente" && g.assinatura_asaas) {
