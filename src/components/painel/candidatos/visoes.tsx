@@ -54,7 +54,7 @@ export function TrocaDeVisaoDosCandidatos({
   return (
     <nav
       aria-label="Ver os candidatos em"
-      className="sem-barra -mx-4 flex gap-0.5 overflow-x-auto px-4 sm:mx-0 sm:self-start sm:rounded-pill sm:bg-surface-300 sm:p-0.5"
+      className="sem-barra -mx-4 flex gap-0.5 overflow-x-auto px-4 sm:mx-0 sm:w-fit sm:max-w-full sm:self-start sm:rounded-pill sm:bg-surface-300 sm:p-0.5"
     >
       {VISOES_CANDIDATOS.filter((v) => pagas || !VISOES_PAGAS_CANDIDATOS.includes(v)).map((v) => {
         const Icone = ICONE[v];

@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { OfertaRecurso } from "@/components/recurso-pago";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -38,35 +39,50 @@ async function Conteudo({
   const usuario = await exigirUsuario(`/painel/testes/${id}`);
   const [vaga, recursos] = await Promise.all([vagaDaVolta(sp.vaga, usuario.id), recursosPagos()]);
   // recurso pago (migração 20261215120000): sem ele, a oferta no lugar do teste
-  if (recursos && !recursos.testes.liberado) return <OfertaRecurso recurso="testes" estado={recursos.testes} />;
+  const voltar = vaga
+    ? { href: `/painel/anuncio/${vaga.id}/testes`, nome: `Testes da vaga: ${vaga.titulo}` }
+    : { href: "/painel/testes", nome: "Teste Prático" };
+  if (recursos && !recursos.testes.liberado)
+    return (
+      <div className="flex flex-col gap-6">
+        <CabecalhoDaPagina voltar={voltar} titulo="Teste Prático" />
+        <OfertaRecurso recurso="testes" estado={recursos.testes} />
+      </div>
+    );
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.rpc("avaliacao_modelo", { p_modelo: id });
   if (error || !data) notFound();
   const m = data as { titulo: string; descricao: string | null; tipo: string; da_casa: boolean; questoes: unknown };
   const questoes = questoesDoBanco(m.questoes);
   return (
-    <div className="flex flex-col gap-4">
-      <Voltar vaga={vaga} />
+    <div className="flex flex-col gap-6">
       {m.da_casa ? (
         <>
-          <h2 className="text-h2">Editar teste</h2>
-          <EditorDeTeste
-            id={id}
-            inicial={{ titulo: m.titulo, descricao: m.descricao, questoes }}
-            vaga={vaga?.id ?? null}
-          />
+          <CabecalhoDaPagina voltar={voltar} titulo="Editar teste" />
+          <div className="max-w-3xl">
+            <EditorDeTeste
+              id={id}
+              inicial={{ titulo: m.titulo, descricao: m.descricao, questoes }}
+              vaga={vaga?.id ?? null}
+            />
+          </div>
         </>
       ) : (
         <>
-          <div>
-            <h2 className="text-h2">{m.titulo}</h2>
-            {m.descricao && <p className="mt-1 text-body text-ink-muted">{m.descricao}</p>}
-            <p className="mt-2 text-body-sm text-ink-muted">
-              Assim o candidato vê, com a ordem das questões e das respostas sorteada. O ✓ marca a melhor resposta; ele
-              não aparece para o candidato.
-            </p>
-          </div>
-          <ol className="flex flex-col gap-3">
+          <CabecalhoDaPagina
+            voltar={voltar}
+            titulo={m.titulo}
+            descricao={
+              <>
+                {m.descricao && <p>{m.descricao}</p>}
+                <p className="mt-1 text-body-sm">
+                  Assim o candidato vê, com a ordem das questões e das respostas sorteada. O ✓ marca a melhor
+                  resposta; ele não aparece para o candidato.
+                </p>
+              </>
+            }
+          />
+          <ol className="flex max-w-3xl flex-col gap-3">
             {questoes.map((q, i) => {
               const melhor = Math.max(...q.opcoes.map((o) => o.pontos));
               return (

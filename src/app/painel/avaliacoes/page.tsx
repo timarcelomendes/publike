@@ -1,8 +1,8 @@
-import { ArrowLeft, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { Estrelas, NotaDoProfissional } from "@/components/avaliacoes";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ResponderAvaliacao } from "@/components/painel/responder-avaliacao";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -17,19 +17,12 @@ export const metadata: Metadata = { title: "Avaliações recebidas" };
 
 export default function AvaliacoesRecebidas() {
   return (
-    <div className="max-w-3xl">
-      <Link
-        href="/painel/servicos"
-        className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Meus serviços
-      </Link>
-      <h2 className="mt-1 text-h2">Avaliações recebidas</h2>
-      <p className="mt-2 mb-6 text-body text-ink-muted">
-        Quem contratou você pelo Publike pode avaliar depois do match. Você pode responder cada avaliação uma vez; a
-        resposta aparece junto, no seu perfil.
-      </p>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: "/painel/servicos", nome: "Meus serviços" }}
+        titulo="Avaliações recebidas"
+        descricao="Quem contratou você pelo Publike pode avaliar depois do match. Você pode responder cada avaliação uma vez; a resposta aparece junto, no seu perfil."
+      />
       <Suspense fallback={<EsqueletoLista />}>
         <Conteudo />
       </Suspense>

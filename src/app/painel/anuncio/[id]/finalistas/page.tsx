@@ -1,6 +1,5 @@
-import { ArrowLeft, KanbanSquare, Send, UserRoundX, Users } from "lucide-react";
+import { KanbanSquare, Send, UserRoundX, Users } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
@@ -9,6 +8,7 @@ import {
   ParecerDoFinalista,
   TirarFinalista,
 } from "@/components/finalistas/finalistas-agencia";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { NotaAderencia } from "@/components/painel/nota-aderencia";
@@ -72,21 +72,14 @@ async function Conteudo({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href={`/painel/anuncio/${id}/quadro`}
-          className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          Quadro de candidatos
-        </Link>
-        <h2 className="mt-1 flex flex-wrap items-center gap-2 text-h2">
-          {w.titulo}
-          {!agencia && <Selo variante="novo">Novo</Selo>}
-        </h2>
-        <p className="mt-1 text-body text-ink-muted">{anuncio.titulo}</p>
+      <CabecalhoDaPagina
+        voltar={{ href: `/painel/anuncio/${id}/quadro`, nome: "Quadro de candidatos" }}
+        titulo={w.titulo}
+        selo={!agencia ? <Selo variante="novo">Novo</Selo> : undefined}
+        descricao={anuncio.titulo}
+      >
         {agencia && <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />}
-      </div>
+      </CabecalhoDaPagina>
 
       <section
         aria-labelledby="link-cliente"

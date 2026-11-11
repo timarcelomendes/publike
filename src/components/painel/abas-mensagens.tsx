@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { pendenciasDeConexao } from "@/lib/conexoes";
 import { plural } from "@/lib/formato";
 import { minhasConexoes } from "@/lib/servidor/conexoes";
 import { conversasPorPessoa } from "@/lib/servidor/conversas";
+import { CabecalhoDaPagina } from "./cabecalho-da-pagina";
+import { Segmentos } from "./segmentos";
 import { SemLinhaDoPainel } from "./sem-linha-do-painel";
 
 export type AbaMensagens = "conversas" | "matches" | "conexoes";
@@ -24,38 +25,25 @@ export function AbasMensagensBase({
   numeros?: Partial<Record<AbaMensagens, Numero>>;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <>
       <SemLinhaDoPainel />
-      <h2 className="sr-only">Mensagens</h2>
-      {/* relative: o texto do leitor de tela fica dentro da rolagem (sem alargar a página) */}
-      <nav aria-label="Mensagens" className="sem-barra relative -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        {ABAS.map((a) => {
-          const marcada = a.valor === atual;
-          const numero = numeros[a.valor];
-          return (
-            <Link
-              key={a.valor}
-              href={a.href}
-              scroll={false}
-              aria-current={marcada ? "page" : undefined}
-              className={`relative inline-flex min-h-11 shrink-0 items-center gap-2 rounded-pill border px-4 text-label whitespace-nowrap transition-colors ${
-                marcada
-                  ? "border-ink bg-ink text-surface-100"
-                  : "border-line-strong bg-surface-200 text-ink hover:bg-surface-300"
-              }`}
-            >
-              {a.nome}
-              {numero && numero.n > 0 ? (
-                <span className="min-w-5 rounded-pill bg-like px-1.5 text-center text-caption leading-5 text-on-like tabular-nums">
-                  <span aria-hidden>{numero.n > 99 ? "99+" : numero.n}</span>
-                  <span className="sr-only">, {numero.leitor}</span>
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
+      {/* o alto de todas as telas do painel (11/11/2026); no celular, as Mensagens são uma tela de app: só as abas */}
+      <CabecalhoDaPagina
+        titulo="Mensagens"
+        descricao="As conversas com quem deu match, os matches e as conexões, num lugar só."
+        soNoComputador
+      >
+        <Segmentos
+          rotulo="Mensagens"
+          opcoes={ABAS.map((a) => ({
+            nome: a.nome,
+            href: a.href,
+            ativo: a.valor === atual,
+            alerta: numeros[a.valor],
+          }))}
+        />
+      </CabecalhoDaPagina>
+    </>
   );
 }
 

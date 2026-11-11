@@ -32,9 +32,14 @@ export async function HojeContratar({
   ]);
   // quem é da equipe da agência: "Boa noite, Bruno" (o nome da pessoa, não o da agência)
   const pessoa = usuario.papel !== "dono" ? (await minhasContas()).find((c) => c.papel === "dono") : null;
+  // quem é dono: o nome de quem entrou (Google, LinkedIn); sem ele, ou se é o mesmo da empresa, o nome da empresa
+  // inteiro ("Boa tarde, Mais RH", não "Boa tarde, Mais")
+  const quem = pessoa?.nome ?? usuario.nome;
+  const daPessoa = quem && quem.trim().toLowerCase() !== perfil.nome.trim().toLowerCase() ? quem : null;
   return (
     <PainelRecrutador
-      nome={pessoa?.nome ?? perfil.nome}
+      nome={daPessoa ?? perfil.nome}
+      nomeInteiro={!daPessoa}
       autorId={perfil.id}
       anuncios={anuncios}
       candidatos={candidatos}

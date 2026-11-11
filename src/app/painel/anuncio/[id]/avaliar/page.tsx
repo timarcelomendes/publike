@@ -1,8 +1,9 @@
-import { ChevronRight, CircleAlert, CircleCheck, CircleDashed, ScanSearch, type LucideIcon } from "lucide-react";
+import { ChevronRight, CircleAlert, CircleCheck, CircleDashed, type LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { IntroDaAba } from "@/components/painel/cabecalho-da-pagina";
 import { CabecalhoDaVaga, ICONE_DA_FERRAMENTA } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SeloCortesia } from "@/components/selo-cortesia";
@@ -108,17 +109,14 @@ async function Conteudo({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-6">
       <CabecalhoDaVaga anuncio={anuncio} aba="avaliar" />
-      <div className="flex max-w-3xl flex-col gap-1">
-        <h2 className="flex flex-wrap items-center gap-2 text-h2">
-          <ScanSearch aria-hidden className="size-6 text-ink-muted" />
-          Avaliar os candidatos
-        </h2>
-        <p className="text-body text-ink-muted">
+      <IntroDaAba>
+        <p>
           Três jeitos de conhecer melhor quem se candidatou, antes de chamar para conversar. O resultado de cada um
           aparece no cartão do candidato, no quadro.
         </p>
-      </div>
-      <ul className="flex max-w-3xl flex-col divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface-200">
+      </IntroDaAba>
+      {/* um cartão por jeito, lado a lado no computador */}
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2 xl:grid-cols-3">
         {ferramentas.map((r) => {
           const Icone = ICONE_DA_FERRAMENTA[r];
           const s = situacao[r];
@@ -128,7 +126,7 @@ async function Conteudo({ id }: { id: string }) {
               <Link
                 href={`/painel/anuncio/${id}/${r}`}
                 scroll={false}
-                className="group flex items-start gap-4 p-4 transition-colors hover:bg-surface-300 sm:p-5"
+                className="group flex h-full items-start gap-4 rounded-lg border border-line bg-surface-200 p-4 shadow-card transition-colors hover:bg-surface-300 sm:p-5"
               >
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-pill bg-surface-300 group-hover:bg-surface-200">
                   <Icone aria-hidden className="size-5" />

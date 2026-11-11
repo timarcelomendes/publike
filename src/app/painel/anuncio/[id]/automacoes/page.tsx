@@ -19,6 +19,7 @@ import { Suspense } from "react";
 import { DesfazerRegra } from "@/components/automacoes/desfazer-regra";
 import { EditorAutomacoes } from "@/components/automacoes/editor-automacoes";
 import { SuasRegras } from "@/components/automacoes/suas-regras";
+import { IntroDaAba } from "@/components/painel/cabecalho-da-pagina";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { BotaoAssinar, FaixaExperimento } from "@/components/recurso-pago";
@@ -114,17 +115,12 @@ async function Conteudo({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
-      <div className="flex max-w-3xl flex-col gap-1">
-        <h2 className="flex flex-wrap items-center gap-2 text-h2">
-          <Workflow aria-hidden className="size-6 text-ink-muted" />
-          Automações da vaga
-          <Selo variante="novo">Novo</Selo>
-        </h2>
-        <p className="text-body text-ink-muted">
+      <IntroDaAba>
+        <p>
           O Publike faz sozinho o que você faria à mão. Cada regra age uma vez só por candidato, salva assim que você
           liga, e fica anotada no registro aqui embaixo.
         </p>
-      </div>
+      </IntroDaAba>
       <div className="max-w-3xl">
         {regras.sobMedida ? (
           <FaixaExperimento recurso="automacoes" estado={sobMedida} agora={agora} />

@@ -1,7 +1,7 @@
-import { ArrowLeft, Check, Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FormPaginaDeVagas } from "@/components/painel/form-pagina-de-vagas";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -55,51 +55,42 @@ async function Conteudo() {
     .map((a) => ({ id: a.id, titulo: a.titulo, lugar: formatarLugar(a.bairro, a.cidade) }));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <Link
-        href="/painel/links"
-        className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Página de vagas
-      </Link>
-      <div>
-        <h2 className="flex flex-wrap items-center gap-2 text-h2">
-          Página de carreiras
-          <Selo variante="novo">Novo</Selo>
-        </h2>
-        <p className="mt-1 text-body text-ink-muted">
-          A sua página de vagas com a cara da empresa: a cor da marca, uma capa, por que trabalhar aí, os benefícios e
-          um endereço curto.
-        </p>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: "/painel/links", nome: "Página de vagas" }}
+        titulo="Página de carreiras"
+        selo={<Selo variante="novo">Novo</Selo>}
+        descricao="A sua página de vagas com a cara da empresa: a cor da marca, uma capa, por que trabalhar aí, os benefícios e um endereço curto."
+      />
+      {/* um formulário: numa coluna de ler bem */}
+      <div className="flex max-w-3xl flex-col gap-6">
+        {perfil.tipo === "pessoa" ? (
+          <Aviso titulo="Para empresa, comércio e agência">
+            <p>A página de carreiras é das contas que contratam. Mude o tipo da conta no perfil, se for o caso.</p>
+          </Aviso>
+        ) : !situacao ? (
+          <Aviso tipo="alerta">
+            <p>A página de carreiras ainda não está disponível. Tente de novo mais tarde.</p>
+          </Aviso>
+        ) : !situacao.liberada ? (
+          <Bloqueada vagas={situacao.vagas_publicadas} mensal={mensal} />
+        ) : !situacao.pode_editar ? (
+          <Aviso>
+            <p>Só quem administra a conta muda a página de carreiras.</p>
+          </Aviso>
+        ) : (
+          <section className="rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-6">
+            <FormPaginaDeVagas
+              inicial={situacao.pagina}
+              pessoaId={usuario.pessoaId}
+              perfilId={perfil.id}
+              nome={perfil.nome}
+              site={SITE_URL}
+              vagasNoAr={vagasNoAr}
+            />
+          </section>
+        )}
       </div>
-
-      {perfil.tipo === "pessoa" ? (
-        <Aviso titulo="Para empresa, comércio e agência">
-          <p>A página de carreiras é das contas que contratam. Mude o tipo da conta no perfil, se for o caso.</p>
-        </Aviso>
-      ) : !situacao ? (
-        <Aviso tipo="alerta">
-          <p>A página de carreiras ainda não está disponível. Tente de novo mais tarde.</p>
-        </Aviso>
-      ) : !situacao.liberada ? (
-        <Bloqueada vagas={situacao.vagas_publicadas} mensal={mensal} />
-      ) : !situacao.pode_editar ? (
-        <Aviso>
-          <p>Só quem administra a conta muda a página de carreiras.</p>
-        </Aviso>
-      ) : (
-        <section className="rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-6">
-          <FormPaginaDeVagas
-            inicial={situacao.pagina}
-            pessoaId={usuario.pessoaId}
-            perfilId={perfil.id}
-            nome={perfil.nome}
-            site={SITE_URL}
-            vagasNoAr={vagasNoAr}
-          />
-        </section>
-      )}
     </div>
   );
 }

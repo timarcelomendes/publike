@@ -2,6 +2,7 @@ import { ChevronRight, ListChecks, Plus, Search, Sparkles, UserCheck } from "luc
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
@@ -38,23 +39,25 @@ async function Conteudo() {
   await exigirUsuario("/painel/copiloto");
   const [liberado, recursos, agora] = await Promise.all([copilotoLiberado(), recursosPagos(), agoraDaRequisicao()]);
   // recurso pago: sem ele, a oferta dos 15 dias grátis (migração 20261215120000)
-  if (!liberado) return <OfertaRecurso recurso="copiloto" estado={recursos?.copiloto ?? null} />;
+  const cabecalho = (
+    <CabecalhoDaPagina
+      titulo="Triagem com IA"
+      selo={liberado ? <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} /> : undefined}
+      descricao="Encontra os profissionais que combinam com a sua vaga e mostra o porquê. Quem decide é você."
+    />
+  );
+  if (!liberado)
+    return (
+      <div className="flex flex-col gap-6">
+        {cabecalho}
+        <OfertaRecurso recurso="copiloto" estado={recursos?.copiloto ?? null} />
+      </div>
+    );
   const vagas = (await listarMeusAnuncios().catch(() => [])).filter((a) => a.tipo === "vaga" && a.status === "ativo");
   return (
     <div className="flex flex-col gap-6">
+      {cabecalho}
       <FaixaExperimento recurso="copiloto" estado={recursos?.copiloto} agora={agora} />
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="flex items-center gap-2 text-h2">
-            <Sparkles aria-hidden className="size-6 text-terra-text" />
-            Triagem com IA
-          </h2>
-          <SeloCortesia texto={marcaDoRecurso(recursos?.copiloto, agora).longo} />
-        </div>
-        <p className="text-body text-ink-muted">
-          Encontra os profissionais que combinam com a sua vaga e mostra o porquê. Quem decide é você.
-        </p>
-      </div>
       <ol className="grid gap-3 sm:grid-cols-3">
         {PASSOS.map((p, i) => (
           <li key={p.titulo} className="flex gap-3 rounded-lg bg-surface-300 p-4">

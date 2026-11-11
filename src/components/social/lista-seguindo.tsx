@@ -42,9 +42,9 @@ export async function ListaSeguindo({
       {buscas.length > 0 && (
         <section aria-labelledby="buscas" className="flex flex-col gap-4">
           <div>
-            <h2 id="buscas" className="text-h2">
+            <h3 id="buscas" className="text-h3">
               Buscas que avisam você
-            </h2>
+            </h3>
             <p className="mt-1 text-body text-ink-muted">
               Quando entra no ar uma vaga nova que bate com a busca, chega um aviso (no máximo 5 por dia).
             </p>
@@ -71,7 +71,7 @@ export async function ListaSeguindo({
       {lista.length > 0 && (
         <div className="flex flex-col gap-4">
           <div>
-            <h2 className="text-h2">O que você segue</h2>
+            <h3 className="text-h3">O que você segue</h3>
             <p className="mt-1 text-body text-ink-muted">
               Quando sair anúncio novo, chega um aviso (no máximo 5 por dia). Para parar, toque em “Deixar de seguir”.
             </p>

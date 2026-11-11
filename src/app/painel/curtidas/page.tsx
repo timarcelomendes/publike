@@ -8,6 +8,7 @@ import { AvisoSemCurriculo } from "@/components/curriculo/sem-curriculo";
 import { BotaoCurtir } from "@/components/botao-curtir";
 import { BotoesContato } from "@/components/contato";
 import { BotaoBloquear, CurtirDeNovo, DesfazerMatch } from "@/components/desfazer-match";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { andamento, etapaDaCurtida, paraFazerDeQuemProcura } from "@/components/painel/cartoes-de-quem-procura";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
@@ -130,9 +131,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     curtidas.some((c) => c.status === "dispensada") ? retornosRecebidos() : new Map<string, string>(),
   ]);
 
+  const cabecalho = (
+    <CabecalhoDaPagina
+      titulo={TITULOS[tipo ?? "todos"]}
+      descricao={
+        tipo === "servico"
+          ? "Você pede e o profissional decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."
+          : "Quem publicou decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."
+      }
+    />
+  );
   if (curtidas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
+        {cabecalho}
         {semCurriculo}
         {fazerAgora}
         <Vazio
@@ -218,22 +230,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="max-w-2xl">
-        <h2 className="text-h2">{TITULOS[tipo ?? "todos"]}</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          {tipo === "servico"
-            ? "Você pede e o profissional decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."
-            : "Quem publicou decide se aceita. Se aceitar, vocês se conectam: a conversa e o WhatsApp aparecem aqui."}
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      {cabecalho}
       {semCurriculo}
       {numeros}
       {fazerAgora && (
         <>
           <div className="mb-1">{fazerAgora}</div>
           {/* depois do "Para fazer agora", a lista de sempre, com o título dela */}
-          <h2 className="text-h3">{tipo === "vaga" ? "Todas as candidaturas" : "Tudo o que você curtiu"}</h2>
+          <h3 className="text-h3">{tipo === "vaga" ? "Todas as candidaturas" : "Tudo o que você curtiu"}</h3>
         </>
       )}
 

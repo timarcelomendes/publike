@@ -1,14 +1,15 @@
-import { BarChart3, Megaphone } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
+import { IntroDaAba } from "@/components/painel/cabecalho-da-pagina";
 import { CabecalhoDaVaga } from "@/components/painel/cabecalho-da-vaga";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { GraficoDeCandidaturas, type ColunaDoGrafico } from "@/components/painel/grafico-candidaturas";
 import { FunilDeContratacao, DeOndeVieram, TemposDoProcesso } from "@/components/painel/numeros-do-processo";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Selo, Vazio } from "@/components/ui/basicos";
+import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { obterAnuncio } from "@/lib/dados";
@@ -149,37 +150,34 @@ async function Conteudo({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-6">
       <CabecalhoDaVaga anuncio={anuncio} aba="numeros" />
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-        <div className="flex max-w-2xl flex-col gap-2">
-          <h2 className="flex flex-wrap items-center gap-2 text-h2">
-            <BarChart3 aria-hidden className="size-6 text-ink-muted" />
-            Resultados da vaga
-            <Selo variante="novo">Novo</Selo>
-          </h2>
-          <p className="text-body-lg text-ink-muted">
-            {partes.map((p, i) => (
-              <span key={i}>
-                {i > 0 && " "}
-                {p}
-              </span>
-            ))}
+      {/* a aba Resultados da vaga: o nome já está nas abas, aqui o resumo */}
+      <IntroDaAba
+        acoes={
+          <Link
+            href="/painel/numeros"
+            className="inline-flex min-h-10 items-center text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
+          >
+            Resultados de todas as vagas
+          </Link>
+        }
+      >
+        <p className="text-body-lg">
+          {partes.map((p, i) => (
+            <span key={i}>
+              {i > 0 && " "}
+              {p}
+            </span>
+          ))}
+        </p>
+        {travada && (
+          <p className="text-body-sm text-ink">
+            Muita gente abre e pouca se candidata: confira se o salário, o horário e o título estão claros.{" "}
+            <Link href={`/painel/anuncio/${id}/editar`} className="font-semibold underline underline-offset-2">
+              Editar a vaga
+            </Link>
           </p>
-          {travada && (
-            <p className="text-body-sm">
-              Muita gente abre e pouca se candidata: confira se o salário, o horário e o título estão claros.{" "}
-              <Link href={`/painel/anuncio/${id}/editar`} className="font-semibold underline underline-offset-2">
-                Editar a vaga
-              </Link>
-            </p>
-          )}
-        </div>
-        <Link
-          href="/painel/numeros"
-          className="inline-flex min-h-10 items-center text-body-sm text-ink-muted underline underline-offset-2 hover:text-ink"
-        >
-          Resultados de todas as vagas
-        </Link>
-      </div>
+        )}
+      </IntroDaAba>
 
       {total === 0 ? (
         <Vazio

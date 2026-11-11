@@ -1,9 +1,10 @@
 import { Bus, Lock, MapPinned } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { BotaoImprimir } from "@/components/mapa-de-talentos/imprimir";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -37,32 +38,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/map
   const trinta = mapa?.porTempo.find((t) => t.minutos === 30);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h2 className="text-h2">Mapa de talentos</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Quantas pessoas que procuram trabalho moram perto da sua vaga, pelo tempo de ônibus. Ajuda a escolher o
-          salário e o lugar do mutirão, e a agência a mostrar ao cliente. Ninguém tem a casa mostrada: só aparecem
-          grupos de 5 pessoas ou mais.
-        </p>
-      </div>
-
-      {vagas.length > 1 && (
-        <nav aria-label="Vaga" className="flex flex-wrap gap-2 print:hidden">
-          {vagas.map((v) => (
-            <Link
-              key={v.id}
-              href={`/painel/mapa-de-talentos?vaga=${v.id}`}
-              aria-current={v.id === vaga?.id ? "page" : undefined}
-              className={`inline-flex min-h-9 items-center rounded-pill border px-3.5 text-body-sm font-semibold ${
-                v.id === vaga?.id ? "border-ink bg-ink text-surface-100" : "border-line-strong text-ink"
-              }`}
-            >
-              {v.titulo}
-            </Link>
-          ))}
-        </nav>
-      )}
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Mapa de talentos"
+        descricao="Quantas pessoas que procuram trabalho moram perto da sua vaga, pelo tempo de ônibus. Ajuda a escolher o salário e o lugar do mutirão, e a agência a mostrar ao cliente. Ninguém tem a casa mostrada: só aparecem grupos de 5 pessoas ou mais."
+      >
+        {vagas.length > 1 && (
+          <div className="print:hidden">
+            <Segmentos
+              rotulo="Vaga"
+              opcoes={vagas.map((v) => ({
+                nome: v.titulo,
+                href: `/painel/mapa-de-talentos?vaga=${v.id}`,
+                ativo: v.id === vaga?.id,
+              }))}
+            />
+          </div>
+        )}
+      </CabecalhoDaPagina>
 
       {!vaga ? (
         <Aviso tipo="info" titulo="Publique uma vaga primeiro">
@@ -104,83 +97,88 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/map
                 </div>
               ))}
             </dl>
-            <p className="text-body-sm text-ink-muted">
+            <p className="max-w-2xl text-body-sm text-ink-muted">
               O tempo é uma estimativa pela distância, como na vaga. Só conta quem deixou as empresas acharem o
               currículo e informou o CEP de casa.
             </p>
           </section>
 
           {!mapa.liberado ? (
-            <Aviso tipo="info" titulo="Veja por função e por bairro">
-              <span className="flex flex-col items-start gap-2">
-                <span>
-                  {trinta && trinta.todos >= 5
-                    ? `São ${trinta.todos} pessoas a até 30 minutos. `
-                    : ""}
-                  Com a Consulta de salários ou um plano, você vê quantas já trabalharam em cada função, os bairros
-                  onde moram e os tempos de 15 e 45 minutos.
+            <div className="max-w-3xl">
+              <Aviso tipo="info" titulo="Veja por função e por bairro">
+                <span className="flex flex-col items-start gap-2">
+                  <span>
+                    {trinta && trinta.todos >= 5
+                      ? `São ${trinta.todos} pessoas a até 30 minutos. `
+                      : ""}
+                    Com a Consulta de salários ou um plano, você vê quantas já trabalharam em cada função, os bairros
+                    onde moram e os tempos de 15 e 45 minutos.
+                  </span>
+                  <BotaoLink href="/painel/planos" tamanho="sm">
+                    Ver os planos
+                  </BotaoLink>
                 </span>
-                <BotaoLink href="/painel/planos" tamanho="sm">
-                  Ver os planos
-                </BotaoLink>
-              </span>
-            </Aviso>
+              </Aviso>
+            </div>
           ) : (
             <>
-              <section aria-labelledby="funcoes" className="flex flex-col gap-3">
-                <h3 id="funcoes" className="text-h3">
-                  O que já fizeram, a até 30 minutos
-                </h3>
-                {mapa.funcoes.length === 0 ? (
-                  <p className="text-body-sm text-ink-muted">Ainda não há 5 pessoas da mesma função por perto.</p>
-                ) : (
-                  <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
-                    {mapa.funcoes.map((f) => (
-                      <li key={f.nome} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <span className="flex flex-wrap items-center gap-2 text-body">
-                          {f.nome}
-                          {f.daVaga && <Selo variante="match">A da vaga</Selo>}
-                        </span>
-                        <span className="text-label tabular-nums">{f.pessoas}</span>
-                      </li>
-                    ))}
-                    {mapa.outrasFuncoes > 0 && (
-                      <li className="flex items-center justify-between gap-3 px-4 py-2.5 text-ink-muted">
-                        <span className="text-body">Outras funções</span>
-                        <span className="text-label tabular-nums">{numeroProtegido(mapa.outrasFuncoes)}</span>
-                      </li>
-                    )}
-                  </ul>
-                )}
-              </section>
+              {/* as funções e os bairros lado a lado, na largura do painel */}
+              <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-2">
+                <section aria-labelledby="funcoes" className="flex flex-col gap-3">
+                  <h3 id="funcoes" className="text-h3">
+                    O que já fizeram, a até 30 minutos
+                  </h3>
+                  {mapa.funcoes.length === 0 ? (
+                    <p className="text-body-sm text-ink-muted">Ainda não há 5 pessoas da mesma função por perto.</p>
+                  ) : (
+                    <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+                      {mapa.funcoes.map((f) => (
+                        <li key={f.nome} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                          <span className="flex flex-wrap items-center gap-2 text-body">
+                            {f.nome}
+                            {f.daVaga && <Selo variante="match">A da vaga</Selo>}
+                          </span>
+                          <span className="text-label tabular-nums">{f.pessoas}</span>
+                        </li>
+                      ))}
+                      {mapa.outrasFuncoes > 0 && (
+                        <li className="flex items-center justify-between gap-3 px-4 py-2.5 text-ink-muted">
+                          <span className="text-body">Outras funções</span>
+                          <span className="text-label tabular-nums">{numeroProtegido(mapa.outrasFuncoes)}</span>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </section>
 
-              <section aria-labelledby="bairros" className="flex flex-col gap-3">
-                <h3 id="bairros" className="flex items-center gap-2 text-h3">
-                  <MapPinned aria-hidden className="size-5 text-ink-muted" />
-                  Onde moram, a até 30 minutos
-                </h3>
-                {mapa.bairros.length === 0 ? (
-                  <p className="text-body-sm text-ink-muted">Ainda não há 5 pessoas no mesmo bairro.</p>
-                ) : (
-                  <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
-                    {mapa.bairros.map((b) => (
-                      <li key={b.nome} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2.5">
-                        <span className="text-body">{b.nome}</span>
-                        <span className="text-body-sm tabular-nums">
-                          <strong className="text-label">{b.todos}</strong> pessoas
-                          {b.naFuncao != null && <>, {numeroProtegido(b.naFuncao)} na função</>}
-                        </span>
-                      </li>
-                    ))}
-                    {mapa.outrosBairros > 0 && (
-                      <li className="flex items-center justify-between gap-3 px-4 py-2.5 text-ink-muted">
-                        <span className="text-body">Outros bairros</span>
-                        <span className="text-body-sm tabular-nums">{numeroProtegido(mapa.outrosBairros)}</span>
-                      </li>
-                    )}
-                  </ul>
-                )}
-              </section>
+                <section aria-labelledby="bairros" className="flex flex-col gap-3">
+                  <h3 id="bairros" className="flex items-center gap-2 text-h3">
+                    <MapPinned aria-hidden className="size-5 text-ink-muted" />
+                    Onde moram, a até 30 minutos
+                  </h3>
+                  {mapa.bairros.length === 0 ? (
+                    <p className="text-body-sm text-ink-muted">Ainda não há 5 pessoas no mesmo bairro.</p>
+                  ) : (
+                    <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+                      {mapa.bairros.map((b) => (
+                        <li key={b.nome} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2.5">
+                          <span className="text-body">{b.nome}</span>
+                          <span className="text-body-sm tabular-nums">
+                            <strong className="text-label">{b.todos}</strong> pessoas
+                            {b.naFuncao != null && <>, {numeroProtegido(b.naFuncao)} na função</>}
+                          </span>
+                        </li>
+                      ))}
+                      {mapa.outrosBairros > 0 && (
+                        <li className="flex items-center justify-between gap-3 px-4 py-2.5 text-ink-muted">
+                          <span className="text-body">Outros bairros</span>
+                          <span className="text-body-sm tabular-nums">{numeroProtegido(mapa.outrosBairros)}</span>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </section>
+              </div>
               <BotaoImprimir />
             </>
           )}

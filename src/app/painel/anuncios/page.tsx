@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { AcoesAnuncio } from "@/components/painel/acoes";
 import { SeletorDeLinks } from "@/components/painel/seletor-de-links";
@@ -230,7 +231,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
   const mostrarPagina = perfil && tipo !== "servico" && (contaPublica || vagas > 0);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {suspensa && (
         <Aviso tipo="alerta" titulo="Sua conta está suspensa">
           Seus anúncios estão fora do ar e não dá para publicar, curtir ou editar. Veja o motivo no e-mail que enviamos.
@@ -253,6 +254,97 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
           </Aviso>
         );
       })()}
+      <CabecalhoDaPagina
+        titulo={titulo}
+        descricao={texto}
+        acoes={
+          tipo === "servico" ? (
+            <BotaoLink href="/painel/servicos" tamanho="sm">
+              <Store aria-hidden />
+              Editar vitrine
+            </BotaoLink>
+          ) : (
+            <BotaoLink href={cliente ? `/publicar?cliente=${cliente}` : "/publicar"} tamanho="sm">
+              <Plus aria-hidden />
+              Publicar vaga
+            </BotaoLink>
+          )
+        }
+      >
+        {anuncios.length > 0 && (
+          <>
+            {/* os filtros numa linha leve (01/11/2026): a situação em abas de texto (sem as vazias), o tipo (só para
+                quem tem vagas e serviços); à direita, na agência, o cliente numa lista, a ordem e a visão em ícones */}
+            {(doTipo.length > 1 ||
+              situacao ||
+              (vagas > 0 && servicos > 0) ||
+              clientesComVagas.length > 1 ||
+              cliente ||
+              (tipo !== "servico" && vagas > 0 && Boolean(candidatos))) && (
+              <ControlesDasVagas
+                q={q}
+                ordem={ordem}
+                visao={visao}
+                href={filtro}
+                manter={{ tipo, situacao, cliente, ordem: ordem === "recentes" ? null : ordem, visao }}
+                comBusca={tipo !== "servico" && (vagas >= 6 || Boolean(q))}
+                comOrdem={tipo !== "servico" && vagas > 1 && visao !== "prioridade"}
+                comVisao={tipo !== "servico" && vagas > 0 && Boolean(candidatos)}
+                pagas={acesso.disponivel ? (acesso.liberado ? "livres" : "trancadas") : null}
+                antes={
+                  <>
+                    {(doTipo.length > 1 || situacao) && (
+                      <AbasLeves
+                        rotulo="Filtrar pela situação"
+                        opcoes={[
+                          { nome: "Todas", numero: doTipo.length, href: filtro({ situacao: null }), ativo: !situacao },
+                          ...(Object.keys(SITUACOES) as Situacao[]).map((s) => ({
+                            nome: SITUACOES[s].nome,
+                            numero: doTipo.filter((a) => naSituacao(a, s)).length,
+                            href: filtro({ situacao: s }),
+                            ativo: situacao === s,
+                          })),
+                        ]}
+                      />
+                    )}
+                    {vagas > 0 && servicos > 0 && (
+                      <AbasLeves
+                        rotulo="Filtrar anúncios"
+                        opcoes={[
+                          { nome: "Vagas e serviços", href: filtro({ tipo: null }), ativo: !tipo },
+                          { nome: "Vagas", numero: vagas, href: filtro({ tipo: "vaga" }), ativo: tipo === "vaga" },
+                          {
+                            nome: "Serviços",
+                            numero: servicos,
+                            href: filtro({ tipo: "servico" }),
+                            ativo: tipo === "servico",
+                          },
+                        ]}
+                      />
+                    )}
+                  </>
+                }
+                extra={
+                  (clientesComVagas.length > 1 || cliente) &&
+                  tipo !== "servico" && (
+                    <SeletorDeLinks
+                      rotulo="Filtrar pelo cliente"
+                      atual={filtro({ cliente })}
+                      opcoes={[
+                        { nome: "Todos os clientes", href: filtro({ cliente: null }) },
+                        ...clientesComVagas.map((c) => ({
+                          nome: `${c.nome} (${c.total})`,
+                          href: filtro({ cliente: c.id }),
+                        })),
+                      ]}
+                    />
+                  )
+                }
+              />
+            )}
+          </>
+        )}
+      </CabecalhoDaPagina>
       {anuncios.length === 0 ? (
         <Vazio
           icone={Megaphone}
@@ -264,92 +356,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/anu
         </Vazio>
       ) : (
         <>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="max-w-2xl">
-              <h2 className="text-h2">{titulo}</h2>
-              <p className="mt-1 text-body text-ink-muted">{texto}</p>
-            </div>
-            {tipo === "servico" ? (
-              <BotaoLink href="/painel/servicos" tamanho="sm">
-                <Store aria-hidden />
-                Editar vitrine
-              </BotaoLink>
-            ) : (
-              <BotaoLink href={cliente ? `/publicar?cliente=${cliente}` : "/publicar"} tamanho="sm">
-                <Plus aria-hidden />
-                Publicar vaga
-              </BotaoLink>
-            )}
-          </div>
-          {/* os filtros numa linha leve (01/11/2026): a situação em abas de texto (sem as vazias), o tipo (só para
-              quem tem vagas e serviços); à direita, na agência, o cliente numa lista, a ordem e a visão em ícones */}
-          {(doTipo.length > 1 ||
-            situacao ||
-            (vagas > 0 && servicos > 0) ||
-            clientesComVagas.length > 1 ||
-            cliente ||
-            (tipo !== "servico" && vagas > 0 && Boolean(candidatos))) && (
-            <ControlesDasVagas
-              q={q}
-              ordem={ordem}
-              visao={visao}
-              href={filtro}
-              manter={{ tipo, situacao, cliente, ordem: ordem === "recentes" ? null : ordem, visao }}
-              comBusca={tipo !== "servico" && (vagas >= 6 || Boolean(q))}
-              comOrdem={tipo !== "servico" && vagas > 1 && visao !== "prioridade"}
-              comVisao={tipo !== "servico" && vagas > 0 && Boolean(candidatos)}
-              pagas={acesso.disponivel ? (acesso.liberado ? "livres" : "trancadas") : null}
-              antes={
-                <>
-                  {(doTipo.length > 1 || situacao) && (
-                    <AbasLeves
-                      rotulo="Filtrar pela situação"
-                      opcoes={[
-                        { nome: "Todas", numero: doTipo.length, href: filtro({ situacao: null }), ativo: !situacao },
-                        ...(Object.keys(SITUACOES) as Situacao[]).map((s) => ({
-                          nome: SITUACOES[s].nome,
-                          numero: doTipo.filter((a) => naSituacao(a, s)).length,
-                          href: filtro({ situacao: s }),
-                          ativo: situacao === s,
-                        })),
-                      ]}
-                    />
-                  )}
-                  {vagas > 0 && servicos > 0 && (
-                    <AbasLeves
-                      rotulo="Filtrar anúncios"
-                      opcoes={[
-                        { nome: "Vagas e serviços", href: filtro({ tipo: null }), ativo: !tipo },
-                        { nome: "Vagas", numero: vagas, href: filtro({ tipo: "vaga" }), ativo: tipo === "vaga" },
-                        {
-                          nome: "Serviços",
-                          numero: servicos,
-                          href: filtro({ tipo: "servico" }),
-                          ativo: tipo === "servico",
-                        },
-                      ]}
-                    />
-                  )}
-                </>
-              }
-              extra={
-                (clientesComVagas.length > 1 || cliente) &&
-                tipo !== "servico" && (
-                  <SeletorDeLinks
-                    rotulo="Filtrar pelo cliente"
-                    atual={filtro({ cliente })}
-                    opcoes={[
-                      { nome: "Todos os clientes", href: filtro({ cliente: null }) },
-                      ...clientesComVagas.map((c) => ({
-                        nome: `${c.nome} (${c.total})`,
-                        href: filtro({ cliente: c.id }),
-                      })),
-                    ]}
-                  />
-                )
-              }
-            />
-          )}
+
           {lista.length === 0 && q ? (
             <p className="rounded-md bg-surface-300 px-4 py-3 text-body-sm text-ink">
               Nenhuma vaga com “{q}” no nome.{" "}

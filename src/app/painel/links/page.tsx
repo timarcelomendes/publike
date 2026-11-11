@@ -1,4 +1,5 @@
 import { Link2, Palette } from "lucide-react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { VagasEmOutrosSites } from "@/components/painel/vagas-em-outros-sites";
 import { ondeAVagaAparece } from "@/lib/feed-vagas";
 import { vagasEmOutrosSites } from "@/lib/servidor/feed-vagas";
@@ -67,14 +68,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/lin
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="max-w-2xl">
-        <h2 className="text-h2">Página de vagas</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Um endereço com todas as suas vagas abertas, sempre em dia, e tudo para divulgar: o texto para os grupos, as
-          imagens para o Status e o Instagram, o cartaz para imprimir e o quadro para o seu site. Quem curtir uma vaga
-          aparece em Candidatos.
-        </p>
-      </div>
+      <CabecalhoDaPagina
+        titulo="Página de vagas"
+        descricao="Um endereço com todas as suas vagas abertas, sempre em dia, e tudo para divulgar: o texto para os grupos, as imagens para o Status e o Instagram, o cartaz para imprimir e o quadro para o seu site. Quem curtir uma vaga aparece em Candidatos."
+      />
 
       <PaginaDeVagas
         perfilId={perfil.id}

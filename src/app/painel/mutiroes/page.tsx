@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { FormCriarMutirao } from "@/components/mutirao/form-criar";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
@@ -41,14 +42,11 @@ async function Conteudo() {
   const antigos = (mutiroes ?? []).filter((m) => !(m.dia >= hoje && m.situacao === "aberto"));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h2 className="text-h2">Mutirão de contratação</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Um dia de entrevistas em sequência, para contratar várias pessoas de uma vez. Você chama quem curtiu as vagas,
-          cada pessoa escolhe um horário com lugar e recebe o lembrete na véspera. No dia, marque quem chegou.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Mutirão de contratação"
+        descricao="Um dia de entrevistas em sequência, para contratar várias pessoas de uma vez. Você chama quem curtiu as vagas, cada pessoa escolhe um horário com lugar e recebe o lembrete na véspera. No dia, marque quem chegou."
+      />
 
       {!situacao || mutiroes === null ? (
         <Aviso tipo="info" titulo="O mutirão ainda não está ligado">
@@ -59,7 +57,8 @@ async function Conteudo() {
       ) : (
         <>
           {proximos.length > 0 && <Lista titulo="Próximos" mutiroes={proximos} />}
-          <section aria-labelledby="criar" className="flex flex-col gap-3">
+          {/* o formulário numa coluna de ler bem; as listas usam a largura toda */}
+          <section aria-labelledby="criar" className="flex max-w-3xl flex-col gap-3">
             <h3 id="criar" className="text-h3">
               Criar um mutirão
             </h3>

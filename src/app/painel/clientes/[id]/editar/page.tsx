@@ -1,8 +1,7 @@
-import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { FormCliente } from "@/components/painel/form-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Esqueleto } from "@/components/ui/basicos";
@@ -16,11 +15,9 @@ export const metadata: Metadata = { title: "Editar cliente" };
 
 export default function EditarCliente({ params }: PageProps<"/painel/clientes/[id]/editar">) {
   return (
-    <div className="max-w-3xl">
-      <Suspense fallback={<Esqueleto className="h-[40rem] w-full rounded-lg" />}>
-        <Conteudo params={params} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<Esqueleto className="h-[40rem] w-full max-w-3xl rounded-lg" />}>
+      <Conteudo params={params} />
+    </Suspense>
   );
 }
 
@@ -31,19 +28,16 @@ async function Conteudo({ params }: { params: PageProps<"/painel/clientes/[id]/e
   const [cliente, perfil] = await Promise.all([obterMeuCliente(id), obterMeuPerfil()]);
   if (!cliente) notFound();
   return (
-    <>
-      <Link
-        href={`/painel/clientes/${id}`}
-        className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        {cliente.nome}
-      </Link>
-      <h2 className="mt-1 text-h2">Editar cliente</h2>
-      <p className="mt-1 mb-6 text-body text-ink-muted">
-        Trocar o nome troca também nas vagas deste cliente que mostram o nome.
-      </p>
-      <FormCliente cliente={cliente} cidadePadrao={perfil?.cidade ?? PRACA_PADRAO.cidade} />
-    </>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: `/painel/clientes/${id}`, nome: cliente.nome }}
+        titulo="Editar cliente"
+        descricao="Trocar o nome troca também nas vagas deste cliente que mostram o nome."
+      />
+      {/* um formulário: numa coluna de ler bem */}
+      <div className="max-w-3xl">
+        <FormCliente cliente={cliente} cidadePadrao={perfil?.cidade ?? PRACA_PADRAO.cidade} />
+      </div>
+    </div>
   );
 }

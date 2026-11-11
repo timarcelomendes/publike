@@ -1,16 +1,8 @@
-import {
-  ArrowLeft,
-  Building2,
-  HandCoins,
-  Lock,
-  MapPinned,
-  Search,
-  Target,
-  UsersRound,
-} from "lucide-react";
+import { Building2, HandCoins, Lock, MapPinned, Search, Target, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { CabecalhoDaPagina, LinkVoltar } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { BotaoConsultar } from "@/components/salarios/botao-consultar";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -87,14 +79,21 @@ async function Conteudo({
       </Aviso>
     );
   }
+  const cabecalho = (
+    <CabecalhoDaPagina
+      titulo="Salários do mercado"
+      selo={<Selo variante="novo">Novo</Selo>}
+      descricao="Quanto se paga para cada função com carteira assinada, pelo Novo Caged do Ministério do Trabalho, e o que as vagas do Publike oferecem."
+    />
+  );
   if (!conta) {
     return (
-      <Aviso
-        tipo="alerta"
-        titulo="A consulta de salários ainda não está pronta"
-      >
-        Tente de novo em instantes.
-      </Aviso>
+      <div className="flex flex-col gap-6">
+        {cabecalho}
+        <Aviso tipo="alerta" titulo="A consulta de salários ainda não está pronta">
+          Tente de novo em instantes.
+        </Aviso>
+      </div>
     );
   }
   // a praça da conta (fora delas, Goiânia e região)
@@ -106,66 +105,60 @@ async function Conteudo({
   const podeAssinar = Boolean(recursos?.salarios.pode_assinar);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h2 className="flex flex-wrap items-center gap-2 text-h2">
-          Salários do mercado
-          <Selo variante="novo">Novo</Selo>
-        </h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Quanto se paga para cada função com carteira assinada, pelo Novo Caged
-          do Ministério do Trabalho, e o que as vagas do Publike oferecem.
-        </p>
-      </div>
-      <Saldo
-        conta={conta}
-        precoMensal={precoMensal}
-        podeAssinar={podeAssinar}
-      />
-      <form
-        action="/painel/salarios"
-        className="flex flex-col gap-2"
-        role="search"
-      >
-        <label htmlFor="funcao" className="text-label">
-          Qual função?
-        </label>
-        <span className="flex gap-2">
-          <input
-            id="funcao"
-            name="q"
-            defaultValue={q}
-            maxLength={80}
-            placeholder="Auxiliar de cozinha, vendedor, recepcionista…"
-            className={`${classesEntrada} flex-1`}
-          />
-          <button
-            type="submit"
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-line-strong px-4 text-label hover:bg-surface-300"
-          >
-            <Search aria-hidden className="size-4" />
-            Buscar
-          </button>
-        </span>
-      </form>
-      {cbo ? (
-        <Funcao
-          cbo={cbo}
-          q={q}
-          regiao={regiao}
-          cidades={praca.cidades}
+    <div className="flex flex-col gap-6">
+      {cabecalho}
+      {/* uma consulta de ler: numa coluna de até 48rem */}
+      <div className="flex max-w-3xl flex-col gap-6">
+        <Saldo
           conta={conta}
           precoMensal={precoMensal}
           podeAssinar={podeAssinar}
         />
-      ) : q ? (
-        <Achadas q={q} regiao={regiao} consultadas={conta.consultadas} />
-      ) : (
-        <ComoFunciona />
-      )}
-      {!cbo && !conta.assinante && (
-        <SuasConsultas consultadas={conta.consultadas} />
-      )}
+        <form
+          action="/painel/salarios"
+          className="flex flex-col gap-2"
+          role="search"
+        >
+          <label htmlFor="funcao" className="text-label">
+            Qual função?
+          </label>
+          <span className="flex gap-2">
+            <input
+              id="funcao"
+              name="q"
+              defaultValue={q}
+              maxLength={80}
+              placeholder="Auxiliar de cozinha, vendedor, recepcionista…"
+              className={`${classesEntrada} flex-1`}
+            />
+            <button
+              type="submit"
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-line-strong px-4 text-label hover:bg-surface-300"
+            >
+              <Search aria-hidden className="size-4" />
+              Buscar
+            </button>
+          </span>
+        </form>
+        {cbo ? (
+          <Funcao
+            cbo={cbo}
+            q={q}
+            regiao={regiao}
+            cidades={praca.cidades}
+            conta={conta}
+            precoMensal={precoMensal}
+            podeAssinar={podeAssinar}
+          />
+        ) : q ? (
+          <Achadas q={q} regiao={regiao} consultadas={conta.consultadas} />
+        ) : (
+          <ComoFunciona />
+        )}
+        {!cbo && !conta.assinante && (
+          <SuasConsultas consultadas={conta.consultadas} />
+        )}
+      </div>
     </div>
   );
 }
@@ -417,13 +410,7 @@ async function Funcao({
   return (
     <section aria-labelledby="funcao" className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <Link
-          href={voltar}
-          className="inline-flex items-center gap-1.5 self-start text-body-sm text-ink-muted hover:underline"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          Outra função
-        </Link>
+        <LinkVoltar href={voltar}>Outra função</LinkVoltar>
         <h3 id="funcao" className="text-h3 text-balance">
           {o.nome}
         </h3>

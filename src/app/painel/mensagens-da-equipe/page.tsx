@@ -1,6 +1,7 @@
 import { Mail, Megaphone } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { LerMensagensDaEquipe } from "@/components/painel/ler-mensagens-equipe";
 import { ResponderMensagemDaEquipe } from "@/components/painel/responder-mensagem-equipe";
@@ -31,12 +32,9 @@ async function Conteudo() {
   const mensagens = (await minhasMensagensDaEquipe()) ?? [];
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {mensagens.some((m) => !m.lida_em) && <LerMensagensDaEquipe />}
-      <div>
-        <h2 className="text-h2">Mensagens da equipe</h2>
-        <p className="mt-1 text-body text-ink-muted">O que a equipe do Publike escreveu para você.</p>
-      </div>
+      <CabecalhoDaPagina titulo="Mensagens da equipe" descricao="O que a equipe do Publike escreveu para você." />
 
       {mensagens.length === 0 ? (
         <Vazio icone={Megaphone} titulo="Nenhuma mensagem da equipe">
@@ -59,7 +57,7 @@ async function Conteudo() {
                   {formatarDataHora(m.criado_em)}
                 </time>
               </div>
-              <p className="whitespace-pre-line text-body">{m.texto}</p>
+              <p className="max-w-3xl text-body whitespace-pre-line">{m.texto}</p>
               {m.respostas.length > 0 && (
                 <ul className="flex flex-col gap-2 border-t border-line pt-3">
                   {m.respostas.map((r) => (

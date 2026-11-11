@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { QuadroDeTodas } from "@/components/painel/candidatos/quadro-de-todas";
 import {
   AgendaDasEntrevistas,
@@ -74,21 +75,27 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
 
   if (!itens) {
     return (
-      <Aviso tipo="alerta" titulo="Não deu para carregar a caixa de entrada agora">
-        Tente de novo em instantes. Enquanto isso, cada vaga mostra quem curtiu em “Minhas vagas”.
-      </Aviso>
+      <div className="flex flex-col gap-6">
+        <CabecalhoDaPagina titulo="Candidatos" />
+        <Aviso tipo="alerta" titulo="Não deu para carregar os candidatos agora">
+          Tente de novo em instantes. Enquanto isso, cada vaga mostra quem curtiu em Vagas.
+        </Aviso>
+      </div>
     );
   }
   if (itens.length === 0) {
     return (
-      <Vazio
-        icone={Users}
-        titulo="Ninguém curtiu suas vagas ainda"
-        acao={<BotaoLink href="/publicar">Publicar vaga grátis</BotaoLink>}
-      >
-        Quem curtir qualquer vaga sua chega aqui, numa caixa de entrada só: você aceita ou dispensa com um toque, marca
-        a entrevista e conversa, tudo na ficha da pessoa.
-      </Vazio>
+      <div className="flex flex-col gap-6">
+        <CabecalhoDaPagina titulo="Candidatos" descricao="Quem curtir as suas vagas, de todas as vagas, numa tela só." />
+        <Vazio
+          icone={Users}
+          titulo="Ninguém curtiu suas vagas ainda"
+          acao={<BotaoLink href="/publicar">Publicar vaga grátis</BotaoLink>}
+        >
+          Quem curtir qualquer vaga sua chega aqui, numa caixa de entrada só: você aceita ou dispensa com um toque, marca
+          a entrevista e conversa, tudo na ficha da pessoa.
+        </Vazio>
+      </div>
     );
   }
 
@@ -154,13 +161,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* as ações da página na linha do título, à direita e menores (no celular, "Triagem" e o ícone da planilha):
-          o caminho das etapas sobe e a lista aparece mais cedo */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-h2">Candidatos</h2>
-          <div className="flex shrink-0 items-center gap-2">
+    <div className="flex flex-col gap-6">
+      {/* as ações da página na linha do título, à direita e menores (no celular, "Um por um" e os ícones): o caminho
+          das etapas sobe e a lista aparece mais cedo */}
+      <CabecalhoDaPagina
+        titulo="Candidatos"
+        descricao={DESCRICAO[visao]}
+        esconderTextoNoCelular={Boolean(primeiro(sp.c))}
+        acoes={
+          <>
             {paraResponder > 0 && (
               <BotaoLink
                 href={`/painel/caixa/triagem${vaga ? `?vaga=${vaga}` : ""}`}
@@ -197,11 +206,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
                 Planilha
               </span>
             </a>
-          </div>
-        </div>
-        <p className={`max-w-2xl text-body text-ink-muted ${primeiro(sp.c) ? "max-lg:hidden" : ""}`}>
-          {DESCRICAO[visao]}
-        </p>
+          </>
+        }
+      >
         <div className={primeiro(sp.c) ? "max-lg:hidden" : ""}>
           <TrocaDeVisaoDosCandidatos
             visao={visao}
@@ -209,7 +216,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
             pagas={!acesso.disponivel ? null : acesso.liberado ? "livres" : "trancadas"}
           />
         </div>
-      </div>
+      </CabecalhoDaPagina>
 
       {visao === "mesa" ? (
         <MesaDeCandidatos itens={itens} sp={sp} agora={agora} comIA={comIA} base="/painel/caixa" euId={usuario.id} />

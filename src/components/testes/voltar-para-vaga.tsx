@@ -1,8 +1,7 @@
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { obterAnuncio } from "@/lib/dados";
 import { UUID } from "@/lib/validacao";
-import { BotaoLink } from "../ui/botao";
 
 /**
  * A vaga de onde a pessoa veio (`?vaga=` na biblioteca de testes), se for dela: para voltar aos testes da
@@ -19,27 +18,26 @@ export async function vagaDaVolta(vaga: unknown, usuarioId: string) {
 export const comVaga = (href: string, vaga: { id: string } | null) =>
   vaga ? `${href}${href.includes("?") ? "&" : "?"}vaga=${vaga.id}` : href;
 
-/** "← Voltar para os testes": a biblioteca, com a vaga junto quando a pessoa veio de uma. */
+// As voltas das telas de teste, no jeito do "voltar" do alto das telas do painel (CabecalhoDaPagina).
+const CLASSE_VOLTA =
+  "inline-flex min-h-10 items-center gap-1 self-start text-label text-ink-muted hover:text-ink print:hidden";
+
+/** "‹ Teste Prático": a biblioteca, com a vaga junto quando a pessoa veio de uma. */
 export function VoltarParaOsTestes({ vaga }: { vaga: { id: string } | null }) {
   return (
-    <BotaoLink href={comVaga("/painel/testes", vaga)} tamanho="sm" className="self-start">
-      <ArrowLeft aria-hidden />
-      Voltar para os testes
-    </BotaoLink>
+    <Link href={comVaga("/painel/testes", vaga)} className={CLASSE_VOLTA}>
+      <ChevronLeft aria-hidden className="size-4" />
+      Teste Prático
+    </Link>
   );
 }
 
-/** "← Voltar para a vaga: Auxiliar de cozinha" (os testes da vaga). */
+/** "‹ Testes da vaga: Auxiliar de cozinha" (os testes da vaga). */
 export function VoltarParaVaga({ vaga }: { vaga: { id: string; titulo: string } }) {
   return (
-    <Link
-      href={`/painel/anuncio/${vaga.id}/testes`}
-      className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
-    >
-      <ArrowLeft aria-hidden className="size-4" />
-      <span>
-        Voltar para a vaga: <span className="text-ink">{vaga.titulo}</span>
-      </span>
+    <Link href={`/painel/anuncio/${vaga.id}/testes`} className={CLASSE_VOLTA}>
+      <ChevronLeft aria-hidden className="size-4" />
+      Testes da vaga: {vaga.titulo}
     </Link>
   );
 }

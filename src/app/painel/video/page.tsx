@@ -2,6 +2,7 @@ import { ChevronRight, Video } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
@@ -33,8 +34,26 @@ async function Conteudo() {
   const usuario = await exigirUsuario("/painel/video");
   const [recursos, agora, supabase] = await Promise.all([recursosPagos(), agoraDaRequisicao(), criarClienteServidor()]);
   const estado = recursos?.video ?? null;
+  const liberado = Boolean(estado && !estado.indisponivel && estado.liberado);
+  const cabecalho = (
+    <CabecalhoDaPagina
+      titulo="Entrevista em vídeo"
+      selo={
+        <>
+          <Selo variante="novo">Novo</Selo>
+          {liberado && <SeloCortesia texto={marcaDoRecurso(estado, agora).longo} />}
+        </>
+      }
+      descricao="Monte de 2 a 6 perguntas na vaga. O candidato grava as respostas pelo celular, quando puder, e a IA transcreve e resume. Você assiste no quadro da vaga, na ficha de cada um."
+    />
+  );
   if (!estado || estado.indisponivel || !estado.liberado) {
-    return <OfertaRecurso recurso="video" estado={estado && !estado.indisponivel ? estado : null} />;
+    return (
+      <div className="flex flex-col gap-6">
+        {cabecalho}
+        <OfertaRecurso recurso="video" estado={estado && !estado.indisponivel ? estado : null} />
+      </div>
+    );
   }
   const { data: vagas } = await supabase
     .from("anuncios")
@@ -47,18 +66,8 @@ async function Conteudo() {
   const noAr = (vagas ?? []).filter((v) => new Date(v.expira_em).getTime() > agora);
   return (
     <div className="flex flex-col gap-6">
+      {cabecalho}
       <FaixaExperimento recurso="video" estado={estado} agora={agora} />
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-h2">Entrevista em vídeo</h2>
-          <Selo variante="novo">Novo</Selo>
-          <SeloCortesia texto={marcaDoRecurso(estado, agora).longo} />
-        </div>
-        <p className="max-w-2xl text-body text-ink-muted">
-          Monte de 2 a 6 perguntas na vaga. O candidato grava as respostas pelo celular, quando puder, e a IA transcreve
-          e resume. Você assiste no quadro da vaga, na ficha de cada um.
-        </p>
-      </div>
       {noAr.length === 0 ? (
         <Vazio
           icone={Video}

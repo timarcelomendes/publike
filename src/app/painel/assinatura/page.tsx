@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AvisoDaFaixa } from "@/components/pagamentos/aviso-da-faixa";
 import { CancelarAssinatura } from "@/components/pagamentos/cancelar-assinatura";
 import { DevolverPagamento } from "@/components/pagamentos/devolver-pagamento";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
@@ -139,22 +140,22 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const cartaoPendente = volta === "ok" && !valendo.some((a) => a.forma === "cartao") && !compras.length;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-h2">Assinatura</h2>
-          <p className="mt-1 text-body text-ink-muted">O que você assina, como paga e o que vem a seguir.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <BotaoLink href="/painel/faturas" variante="fantasma" tamanho="sm">
-            <ReceiptText aria-hidden />
-            Faturas
-          </BotaoLink>
-          <BotaoLink href="/painel/planos" variante="secundario" tamanho="sm">
-            Ver os planos
-          </BotaoLink>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Assinatura"
+        descricao="O que você assina, como paga e o que vem a seguir."
+        acoes={
+          <>
+            <BotaoLink href="/painel/faturas" variante="fantasma" tamanho="sm">
+              <ReceiptText aria-hidden />
+              Faturas
+            </BotaoLink>
+            <BotaoLink href="/painel/planos" variante="secundario" tamanho="sm">
+              Ver os planos
+            </BotaoLink>
+          </>
+        }
+      />
 
       {cartaoPendente ? (
         <Aviso tipo="info" titulo="Confirmando o cartão">

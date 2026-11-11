@@ -26,7 +26,7 @@ export function LembrarVisaoDasVagas({
       onClick={() => {
         document.cookie = `${cookie}=${visao}; path=/; max-age=31536000; samesite=lax`;
       }}
-      className={`relative inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-pill px-3 text-label whitespace-nowrap [&_svg]:size-4 [&_svg]:shrink-0 ${
+      className={`relative inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-pill px-3 text-label whitespace-nowrap sm:min-h-9 [&_svg]:size-4 [&_svg]:shrink-0 ${
         ativa ? "bg-ink text-surface-100 shadow-card" : "text-ink-muted hover:bg-surface-100/60 hover:text-ink"
       }`}
     >

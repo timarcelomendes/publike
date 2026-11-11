@@ -1,11 +1,11 @@
-import { ArrowLeft, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CancelarMutirao } from "@/components/mutirao/cancelar";
 import { ChamarParaMutirao } from "@/components/mutirao/chamar";
 import { DiaDoMutirao } from "@/components/mutirao/dia";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
@@ -41,25 +41,24 @@ async function Conteudo({ params }: { params: PageProps<"/painel/mutiroes/[id]">
   const livres = dia.horarios.reduce((t, h) => t + Math.max(0, h.lugares - h.ocupados), 0);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <Link href="/painel/mutiroes" className="flex items-center gap-1.5 self-start text-body-sm text-ink-muted hover:text-ink print:hidden">
-        <ArrowLeft aria-hidden className="size-4" />
-        Mutirões
-      </Link>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-h2">
-          Mutirão: {nomeDoDia(m.dia)}, das {horaCurta(m.inicio)} às {horaCurta(m.fim)}
-        </h2>
-        <p className="flex items-center gap-1.5 text-body text-ink-muted">
-          <MapPin aria-hidden className="size-4 shrink-0" />
-          {m.local}
-        </p>
-        <p className="text-body-sm text-ink-muted">
-          {m.vagas.map((v) => v.titulo).join(", ")} · uma entrevista a cada {m.intervalo} minutos,{" "}
-          {m.por_horario === 1 ? "1 pessoa" : `${m.por_horario} pessoas`} por horário
-          {m.trazer ? ` · trazer: ${m.trazer}` : ""}
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: "/painel/mutiroes", nome: "Mutirão de contratação" }}
+        titulo={`Mutirão: ${nomeDoDia(m.dia)}, das ${horaCurta(m.inicio)} às ${horaCurta(m.fim)}`}
+        descricao={
+          <>
+            <p className="flex items-center gap-1.5">
+              <MapPin aria-hidden className="size-4 shrink-0" />
+              {m.local}
+            </p>
+            <p className="text-body-sm">
+              {m.vagas.map((v) => v.titulo).join(", ")} · uma entrevista a cada {m.intervalo} minutos,{" "}
+              {m.por_horario === 1 ? "1 pessoa" : `${m.por_horario} pessoas`} por horário
+              {m.trazer ? ` · trazer: ${m.trazer}` : ""}
+            </p>
+          </>
+        }
+      />
 
       {m.situacao === "cancelado" && <Aviso tipo="info" titulo="Este mutirão foi cancelado" />}
 

@@ -1,4 +1,4 @@
-import { ArrowLeft, CircleCheck, CreditCard, FileText } from "lucide-react";
+import { CircleCheck, CreditCard, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { BotaoImprimir } from "@/components/pagamentos/imprimir";
 import { PixDaFatura } from "@/components/pagamentos/pix-da-fatura";
 import { SeloDaFatura } from "@/components/pagamentos/selo-da-fatura";
+import { LinkVoltar } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Logo } from "@/components/ui/basicos";
@@ -50,13 +51,8 @@ async function Conteudo({ params }: { params: PageProps<"/painel/faturas/[id]">[
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
-      <Link
-        href="/painel/faturas"
-        className="flex items-center gap-1 self-start text-label text-terra-text print:hidden"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Faturas
-      </Link>
+      {/* um documento (o recibo e a nota): numa coluna; a volta no jeito de todas as telas */}
+      <LinkVoltar href="/painel/faturas">Faturas</LinkVoltar>
 
       {aberta && f.forma === "pix" && (
         <section

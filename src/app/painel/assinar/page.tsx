@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FormAssinar } from "@/components/pagamentos/form-assinar";
 import { quandoValer } from "@/components/pagamentos/grade-de-planos";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
@@ -125,7 +126,6 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
     ? (pag?.planos.find((p) => p.recurso === produto)?.limite_vagas ?? null)
     : null;
   const passou = limite != null && (faixa?.vagas_no_ar ?? 0) > limite;
-  const Icone = ICONE[produto];
   const planos = (pag?.planos ?? []).filter((p) => p.recurso === produto);
   const valendo = (pag?.assinaturas ?? []).filter((a) => a.situacao !== "cancelada");
   const ativa = valendo.find((a) => a.recurso === produto && a.situacao === "ativa");
@@ -152,27 +152,29 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
       : null;
 
   const cabecalho = (
-    <div className="flex flex-col gap-2">
-      <span className="flex size-10 items-center justify-center rounded-pill bg-terra-soft">
-        <Icone aria-hidden className="size-5 text-terra-text" />
-      </span>
-      <h2 className="text-h2">
-        {troca
+    <CabecalhoDaPagina
+      voltar={troca ? { href: "/painel/assinatura", nome: "Assinatura" } : { href: "/painel/planos", nome: "Planos" }}
+      titulo={
+        troca
           ? `Trocar o cartão ${DO_PRODUTO[produto]}`
           : mudar
             ? `Mudar para ${O_PRODUTO[produto]}`
             : trinta
               ? `${maiuscula(O_PRODUTO[produto])} por 30 dias`
-              : `Assinar ${O_PRODUTO[produto]}`}
-      </h2>
-      <p className="text-body text-ink-muted">{FAZ[produto]}</p>
-      {limite != null && faixa && (
-        <p className="text-body-sm text-ink-muted">
-          Você tem {faixa.vagas_no_ar === 1 ? "1 vaga" : `${faixa.vagas_no_ar} vagas`} no ar agora. Preço de lançamento:
-          quem assina agora mantém este valor enquanto mantiver a assinatura.
-        </p>
-      )}
-    </div>
+              : `Assinar ${O_PRODUTO[produto]}`
+      }
+      descricao={
+        <>
+          <p>{FAZ[produto]}</p>
+          {limite != null && faixa && (
+            <p className="mt-1 text-body-sm">
+              Você tem {faixa.vagas_no_ar === 1 ? "1 vaga" : `${faixa.vagas_no_ar} vagas`} no ar agora. Preço de
+              lançamento: quem assina agora mantém este valor enquanto mantiver a assinatura.
+            </p>
+          )}
+        </>
+      }
+    />
   );
 
   let corpo;
@@ -363,29 +365,32 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    // o pagamento: o cabeçalho de sempre e o formulário numa coluna
+    <div className="flex flex-col gap-6">
       {cabecalho}
-      {sandbox && pag?.pode && (
-        // a conta de teste no sandbox (Admin › Pagamentos): o checkout e o Pix são os de teste do Asaas
-        <Aviso tipo="alerta" titulo="Conta de teste: pagamento no sandbox">
-          Nada é cobrado de verdade. No cartão, use um cartão de teste do Asaas; o Pix é de teste e não paga com o app
-          do banco.
-        </Aviso>
-      )}
-      {trocadas.length > 0 && !conflito && !mudar && !trinta && (
-        <Aviso tipo="info" titulo="Não precisa cancelar antes">
-          {quandoValer(trocadas, false)}
-        </Aviso>
-      )}
-      {corpo}
-      {!troca && !mudar && !trinta && (
-        <OutraOpcao
-          produto={produto}
-          pag={pag}
-          abertos={Object.fromEntries(PACOTES.map((p) => [p, podeAssinarPacote(pag, recursos, p)]))}
-          plano={plano}
-        />
-      )}
+      <div className="flex max-w-2xl flex-col gap-6">
+        {sandbox && pag?.pode && (
+          // a conta de teste no sandbox (Admin › Pagamentos): o checkout e o Pix são os de teste do Asaas
+          <Aviso tipo="alerta" titulo="Conta de teste: pagamento no sandbox">
+            Nada é cobrado de verdade. No cartão, use um cartão de teste do Asaas; o Pix é de teste e não paga com o app
+            do banco.
+          </Aviso>
+        )}
+        {trocadas.length > 0 && !conflito && !mudar && !trinta && (
+          <Aviso tipo="info" titulo="Não precisa cancelar antes">
+            {quandoValer(trocadas, false)}
+          </Aviso>
+        )}
+        {corpo}
+        {!troca && !mudar && !trinta && (
+          <OutraOpcao
+            produto={produto}
+            pag={pag}
+            abertos={Object.fromEntries(PACOTES.map((p) => [p, podeAssinarPacote(pag, recursos, p)]))}
+            plano={plano}
+          />
+        )}
+      </div>
     </div>
   );
 }

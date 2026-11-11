@@ -21,6 +21,7 @@ import { BotaoConversar } from "@/components/botao-conversar";
 import { CurriculoResumo } from "@/components/curriculo-resumo";
 import { DesfazerMatch } from "@/components/desfazer-match";
 import { AcoesInteressado } from "@/components/painel/acoes";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { EtapaDoCandidato } from "@/components/painel/etapa-candidato";
 import { FiltroCliente } from "@/components/painel/filtro-cliente";
@@ -359,20 +360,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="max-w-2xl">
-          <h2 className="text-h2">Lista de candidatos e planilha</h2>
-          <p className="mt-1 text-body text-ink-muted">
-            Todos que se candidataram às suas vagas. Responda quem está esperando, converse com quem foi aceito e acompanhe as
-            entrevistas.
-          </p>
-        </div>
-        <a href={planilha} className={classesBotao("secundario", "sm")}>
-          <Download aria-hidden />
-          Baixar planilha
-        </a>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: "/painel/caixa", nome: "Candidatos" }}
+        titulo="Lista de candidatos e planilha"
+        descricao="Todos que se candidataram às suas vagas. Responda quem está esperando, converse com quem foi aceito e acompanhe as entrevistas."
+        acoes={
+          <a href={planilha} className={classesBotao("secundario", "sm")}>
+            <Download aria-hidden />
+            Baixar planilha
+          </a>
+        }
+      />
 
       <div className="flex flex-col gap-3">
         {(vagas.size > 1 || todos.length > 8 || clientesComCandidatos.length > 1 || cliente) && (

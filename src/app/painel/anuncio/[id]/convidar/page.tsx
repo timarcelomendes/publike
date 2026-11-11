@@ -1,4 +1,4 @@
-import { ArrowLeft, HandHeart, History, Mailbox, UserPlus } from "lucide-react";
+import { HandHeart, History, Mailbox, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { ChamarCandidato, ListaDeConvites } from "@/components/convite-candidato/chamar-candidato";
 import { ChamarDeNovo } from "@/components/convite-candidato/chamar-de-novo";
 import { LinksDeIndicacao } from "@/components/indicacao/links-de-indicacao";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { LinhaDoCliente } from "@/components/painel/linha-do-cliente";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -53,20 +54,15 @@ async function Conteudo({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href={`/painel/anuncio/${id}/quadro`}
-          className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          Quadro de candidatos
-        </Link>
-        <h2 className="mt-1 text-h2">Chamar candidato de fora</h2>
-        <p className="mt-1 text-body text-ink-muted">{anuncio.titulo}</p>
+      <CabecalhoDaPagina
+        voltar={{ href: `/painel/anuncio/${id}/quadro`, nome: "Quadro de candidatos" }}
+        titulo="Chamar candidato de fora"
+        descricao={anuncio.titulo}
+      >
         {anuncio.autor_tipo === "agencia" && (
           <LinhaDoCliente anuncioId={anuncio.id} confidencial={anuncio.contratante_confidencial} />
         )}
-      </div>
+      </CabecalhoDaPagina>
 
       <section
         aria-labelledby="chamar"

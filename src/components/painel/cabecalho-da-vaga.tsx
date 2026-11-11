@@ -1,6 +1,6 @@
 import {
-  ArrowLeft,
   BarChart3,
+  ChevronLeft,
   ChevronRight,
   CircleCheck,
   ClipboardCheck,
@@ -149,8 +149,8 @@ export async function CabecalhoDaVaga({
   return (
     <div className="flex flex-col gap-3">
       <nav aria-label="Trilha" className="flex flex-wrap items-center gap-1 text-label text-ink-muted">
-        <Link href="/painel/anuncios?tipo=vaga" className="inline-flex min-h-11 items-center gap-1.5 hover:text-ink">
-          <ArrowLeft aria-hidden className="size-4" />
+        <Link href="/painel/anuncios?tipo=vaga" className="inline-flex min-h-11 items-center gap-1 hover:text-ink">
+          <ChevronLeft aria-hidden className="size-4" />
           Vagas
         </Link>
         {cliente && (

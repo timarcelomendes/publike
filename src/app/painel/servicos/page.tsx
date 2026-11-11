@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AvisoConvite } from "@/components/aviso-convite";
 import { FormServicos, type ValoresServicos } from "@/components/form-servicos";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
 import { VitrineComRascunho } from "@/components/vitrine-com-rascunho";
 import { BotaoLink } from "@/components/ui/botao";
@@ -24,15 +25,17 @@ export const metadata: Metadata = { title: "Meus serviços" };
 
 export default function MeusServicos({ searchParams }: PageProps<"/painel/servicos">) {
   return (
-    <div className="max-w-3xl">
-      <h2 className="text-h2">Mostre o que você faz</h2>
-      <p className="mt-2 mb-6 text-body text-ink-muted">
-        Pedreiro, diarista, manicure, eletricista… Quem precisa vê seus serviços perto de casa e chama você. Seu
-        WhatsApp aparece no match: na hora, com o contato direto, ou quando você aceitar.
-      </p>
-      <Suspense fallback={<Esqueleto className="h-[60rem] w-full rounded-lg" />}>
-        <Conteudo searchParams={searchParams} />
-      </Suspense>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Mostre o que você faz"
+        descricao="Pedreiro, diarista, manicure, eletricista… Quem precisa vê seus serviços perto de casa e chama você. Seu WhatsApp aparece no match: na hora, com o contato direto, ou quando você aceitar."
+      />
+      {/* um formulário: numa coluna de ler bem */}
+      <div className="max-w-3xl">
+        <Suspense fallback={<Esqueleto className="h-[60rem] w-full rounded-lg" />}>
+          <Conteudo searchParams={searchParams} />
+        </Suspense>
+      </div>
     </div>
   );
 }

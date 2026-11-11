@@ -1,9 +1,10 @@
-import { ArrowLeft, BarChart3, Building2, Download, KanbanSquare, Lock, Mail, MapPin, MessageCircle, Plus, UserRound } from "lucide-react";
+import { BarChart3, Building2, Download, KanbanSquare, Lock, Mail, MapPin, MessageCircle, Plus, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AcoesCliente } from "@/components/painel/acoes-cliente";
+import { LinkVoltar } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
@@ -87,13 +88,7 @@ async function Conteudo({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href="/painel/clientes"
-        className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Clientes
-      </Link>
+      <LinkVoltar href="/painel/clientes">Clientes</LinkVoltar>
       {primeiro(sp.salvo) === "1" && <Aviso tipo="sucesso" titulo="Cliente salvo." />}
       {arquivado && (
         <Aviso tipo="info" titulo="Cliente arquivado">

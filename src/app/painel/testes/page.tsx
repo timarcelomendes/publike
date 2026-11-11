@@ -2,11 +2,12 @@ import { ClipboardCheck, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SeloCortesia } from "@/components/selo-cortesia";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { comVaga, vagaDaVolta, VoltarParaVaga } from "@/components/testes/voltar-para-vaga";
+import { comVaga, vagaDaVolta } from "@/components/testes/voltar-para-vaga";
 import { Aviso } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
@@ -71,37 +72,38 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/tes
     agoraDaRequisicao(),
   ]);
   // recurso pago: sem ele, a oferta dos 15 dias grátis (migração 20261215120000)
+  const cabecalho = (
+    <CabecalhoDaPagina
+      voltar={vaga ? { href: `/painel/anuncio/${vaga.id}/testes`, nome: `Testes da vaga: ${vaga.titulo}` } : undefined}
+      titulo="Teste Prático"
+      selo={recursos?.testes.liberado ? <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} /> : undefined}
+      descricao="Ponha um teste na vaga e quem curtir faz pelo celular. Você vê o resultado no quadro de cada vaga, em Teste Prático."
+    />
+  );
   if (recursos && !recursos.testes.liberado) {
     return (
       <div className="flex flex-col gap-6">
-        {vaga && <VoltarParaVaga vaga={vaga} />}
+        {cabecalho}
         <OfertaRecurso recurso="testes" estado={recursos.testes} />
       </div>
     );
   }
   if (biblioteca === null) {
     return (
-      <Aviso tipo="alerta" titulo="Os testes ainda não estão disponíveis">
-        Tente de novo em instantes.
-      </Aviso>
+      <div className="flex flex-col gap-6">
+        {cabecalho}
+        <Aviso tipo="alerta" titulo="Os testes ainda não estão disponíveis">
+          Tente de novo em instantes.
+        </Aviso>
+      </div>
     );
   }
   const publike = biblioteca.filter((m) => !m.da_casa);
   const casa = biblioteca.filter((m) => m.da_casa);
   return (
     <div className="flex flex-col gap-6">
-      {vaga && <VoltarParaVaga vaga={vaga} />}
+      {cabecalho}
       <FaixaExperimento recurso="testes" estado={recursos?.testes} agora={agora} />
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-h2">Teste Prático</h2>
-          <SeloCortesia texto={marcaDoRecurso(recursos?.testes, agora).longo} />
-        </div>
-        <p className="text-body text-ink-muted">
-          Ponha um teste na vaga e quem curtir faz pelo celular. Você vê o resultado no quadro de cada vaga, em Teste
-          Prático.
-        </p>
-      </div>
 
       <section aria-labelledby="titulo-publike" className="flex flex-col gap-3">
         <h3 id="titulo-publike" className="flex items-center gap-2 text-h3">

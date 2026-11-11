@@ -2,8 +2,10 @@ import { BarChart3, Download } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FunilDeContratacao, DeOndeVieram, TemposDoProcesso } from "@/components/painel/numeros-do-processo";
+import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
@@ -46,9 +48,12 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
   }
   if (!vagas || !origens) {
     return (
-      <Aviso tipo="alerta" titulo="Ainda não disponível">
-        Tente de novo em instantes.
-      </Aviso>
+      <div className="flex flex-col gap-6">
+        <CabecalhoDaPagina titulo="Resultados" />
+        <Aviso tipo="alerta" titulo="Ainda não disponível">
+          Tente de novo em instantes.
+        </Aviso>
+      </div>
     );
   }
   const total = vagas.find((v) => !v.anuncio_id);
@@ -56,35 +61,26 @@ async function Conteudo({ periodo: pedido }: { periodo?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="flex flex-wrap items-center gap-2 text-h2">
-            Resultados
-            <Selo variante="novo">Novo</Selo>
-          </h2>
-          <p className="mt-1 text-body text-ink-muted">
-            Quanto tempo leva para contratar e onde as pessoas ficam pelo caminho.
-          </p>
-        </div>
-        <BotaoLink href={`/painel/numeros/planilha?periodo=${periodo}`} tamanho="sm" prefetch={false}>
-          <Download aria-hidden />
-          Baixar planilha
-        </BotaoLink>
-      </div>
-      <nav aria-label="Período" className="flex flex-wrap gap-2">
-        {(Object.keys(PERIODOS_NUMEROS) as (keyof typeof PERIODOS_NUMEROS)[]).map((p) => (
-          <Link
-            key={p}
-            href={`/painel/numeros?periodo=${p}`}
-            aria-current={p === periodo ? "page" : undefined}
-            className={`inline-flex min-h-10 items-center rounded-pill border px-3.5 text-label ${
-              p === periodo ? "border-ink bg-ink text-surface-100" : "border-line-strong hover:bg-surface-300"
-            }`}
-          >
-            {PERIODOS_NUMEROS[p]}
-          </Link>
-        ))}
-      </nav>
+      <CabecalhoDaPagina
+        titulo="Resultados"
+        selo={<Selo variante="novo">Novo</Selo>}
+        descricao="Quanto tempo leva para contratar e onde as pessoas ficam pelo caminho."
+        acoes={
+          <BotaoLink href={`/painel/numeros/planilha?periodo=${periodo}`} tamanho="sm" prefetch={false}>
+            <Download aria-hidden />
+            Baixar planilha
+          </BotaoLink>
+        }
+      >
+        <Segmentos
+          rotulo="Período"
+          opcoes={(Object.keys(PERIODOS_NUMEROS) as (keyof typeof PERIODOS_NUMEROS)[]).map((p) => ({
+            nome: PERIODOS_NUMEROS[p],
+            href: `/painel/numeros?periodo=${p}`,
+            ativo: p === periodo,
+          }))}
+        />
+      </CabecalhoDaPagina>
 
       {!total || total.candidatos === 0 ? (
         <Vazio

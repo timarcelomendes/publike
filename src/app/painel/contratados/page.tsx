@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -65,15 +66,15 @@ async function Conteudo() {
   const resumo = caminho.agencia ? resumoDasColocacoes([...colocacoes.values()], hoje) : null;
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="max-w-2xl">
-        <h2 className="text-h2">Contratados</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          {caminho.agencia
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Contratados"
+        descricao={
+          caminho.agencia
             ? "Quem você colocou nos clientes, com a taxa, a garantia e o que falta receber."
-            : "Quem você contratou pelo Publike, de todas as vagas."}
-        </p>
-      </div>
+            : "Quem você contratou pelo Publike, de todas as vagas."
+        }
+      />
       {resumo && resumo.total > 0 && (
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Numero nome="Colocações" valor={String(resumo.total)} />

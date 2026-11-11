@@ -2,6 +2,7 @@ import { Eye, EyeOff, Globe } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
 import { SeloVerificado } from "@/components/selo-verificado";
@@ -78,16 +79,16 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/vis
   const filtros = FILTROS.filter((x) => f === x.valor || (numeros[x.valor] > 0 && numeros[x.valor] < comNome.length));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <MarcarVisitasVistas />
-      <div>
-        <h2 className="text-h2">Quem viu seu perfil</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          {pessoa
+      <CabecalhoDaPagina
+        titulo="Quem viu seu perfil"
+        descricao={
+          pessoa
             ? "Empresas e pessoas que abriram seu perfil, seu currículo ou sua candidatura nos últimos 30 dias."
-            : "Pessoas e empresas que abriram a página da sua conta nos últimos 30 dias."}
-        </p>
-      </div>
+            : "Pessoas e empresas que abriram a página da sua conta nos últimos 30 dias."
+        }
+      />
       {semCurriculo && <AvisoSemCurriculo onde="visitas" />}
 
       {visitantes.length > 0 || resumo.anonimas > 0 ? (

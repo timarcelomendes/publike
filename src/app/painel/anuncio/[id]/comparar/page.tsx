@@ -1,8 +1,8 @@
-import { ArrowLeft, Check, CircleHelp, Minus, X } from "lucide-react";
+import { Check, CircleHelp, Minus, X } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { AcoesDoComparar } from "@/components/painel/comparar-acoes";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { NotaAderencia } from "@/components/painel/nota-aderencia";
@@ -65,24 +65,16 @@ async function Conteudo({ id, p }: { id: string; p: string }) {
   const pedidos = [...new Set(p.split(","))].slice(0, 4);
   const pessoas = pedidos.flatMap((pid) => cartoes.filter((c) => c.perfil_id === pid));
 
-  const volta = (
-    <Link
-      href={`/painel/anuncio/${id}/quadro`}
-      className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-    >
-      <ArrowLeft aria-hidden className="size-4" />
-      Quadro de candidatos
-    </Link>
-  );
+  const volta = { href: `/painel/anuncio/${id}/quadro`, nome: "Quadro de candidatos" };
 
   if (pessoas.length < 2) {
     return (
-      <div className="flex flex-col gap-4">
-        {volta}
-        <h2 className="text-h2">Comparar candidatos</h2>
-        <p className="max-w-xl text-body text-ink-muted">
-          No quadro, marque de 2 a 4 candidatos e toque em “Comparar”.
-        </p>
+      <div className="flex flex-col gap-6">
+        <CabecalhoDaPagina
+          voltar={volta}
+          titulo="Comparar candidatos"
+          descricao="No quadro, marque de 2 a 4 candidatos e toque em “Comparar”."
+        />
         <BotaoLink href={`/painel/anuncio/${id}/quadro`} className="self-start">
           Abrir o quadro
         </BotaoLink>
@@ -91,15 +83,13 @@ async function Conteudo({ id, p }: { id: string; p: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        {volta}
-        <h2 className="mt-1 flex flex-wrap items-center gap-2 text-h2">
-          Comparar {pessoas.length} candidatos
-          <Selo variante="novo">Novo</Selo>
-        </h2>
-        <p className="mt-1 text-body text-ink-muted">{anuncio.titulo}</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={volta}
+        titulo={`Comparar ${pessoas.length} candidatos`}
+        selo={<Selo variante="novo">Novo</Selo>}
+        descricao={anuncio.titulo}
+      />
 
       <div
         className="-mx-4 grid snap-x snap-mandatory auto-cols-[86%] grid-flow-col gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:auto-cols-[minmax(15rem,1fr)] sm:px-0"

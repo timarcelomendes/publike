@@ -2,6 +2,7 @@ import { Building2, Link2, ListChecks, Send, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { BotoesDoLink } from "@/components/painel/links-para-mandar";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -62,14 +63,11 @@ async function Conteudo() {
     );
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="max-w-2xl">
-        <h2 className="text-h2">Para o cliente</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Os finalistas de cada vaga num link sem conta: o cliente vê o currículo e o seu parecer e responde “Quero
-          entrevistar” ou “Não seguir”. O contato dos candidatos continua só com você.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Para o cliente"
+        descricao="Os finalistas de cada vaga num link sem conta: o cliente vê o currículo e o seu parecer e responde “Quero entrevistar” ou “Não seguir”. O contato dos candidatos continua só com você."
+      />
       {vagas.length === 0 ? (
         <Vazio icone={Send} titulo="Nenhuma vaga no ar" acao={<BotaoLink href="/publicar">Publicar vaga</BotaoLink>}>
           Publique a vaga do cliente. Quando alguém der match, você monta a lista de finalistas aqui.

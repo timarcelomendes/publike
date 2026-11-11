@@ -44,7 +44,8 @@ export function ConviteDaVaga({ v, liberado }: { v: VagaComConvite; liberado: bo
         </label>
       </div>
       {(v.ligado || liberado) && (
-        <div className="flex flex-col gap-2">
+        // o recado numa largura de ler bem (a lista usa a largura toda do painel)
+        <div className="flex max-w-2xl flex-col gap-2">
           <label htmlFor={`recado-${v.id}`} className="text-body-sm text-ink-muted">
             Recado que vai junto (opcional, sem telefone nem link)
           </label>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { SuasRegras } from "@/components/automacoes/suas-regras";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FaixaExperimento, OfertaRecurso } from "@/components/recurso-pago";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -52,18 +53,12 @@ async function Conteudo() {
   const todas = vagas ?? [];
   const noAr = todas.filter((v) => v.status === "ativo" && new Date(v.expira_em).getTime() > agora);
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-h2">Automações</h2>
-          <Selo variante="novo">Novo</Selo>
-        </div>
-        <p className="text-body text-ink-muted">
-          O Publike faz sozinho o que você faria à mão. As 5 prontas são grátis e ficam em cada vaga. Com as Automações
-          personalizadas, você monta as suas regras: quando algo acontece, se a pessoa atende o que você escolher, o
-          Publike faz o que você mandar. Tudo começa desligado.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Automações"
+        selo={<Selo variante="novo">Novo</Selo>}
+        descricao="O Publike faz sozinho o que você faria à mão. As 5 prontas são grátis e ficam em cada vaga. Com as Automações personalizadas, você monta as suas regras: quando algo acontece, se a pessoa atende o que você escolher, o Publike faz o que você mandar. Tudo começa desligado."
+      />
       {estado?.liberado ? (
         <FaixaExperimento recurso="automacoes" estado={estado} agora={agora} />
       ) : (

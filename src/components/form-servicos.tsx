@@ -164,12 +164,13 @@ function Secao({
   return (
     <section className="flex flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
       <div>
-        <h2 className="flex items-center gap-3 text-h3">
+        {/* as partes do formulário ficam embaixo do título da tela (h2) */}
+        <h3 className="flex items-center gap-3 text-h3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-pill bg-surface-300 text-label">
             {numero}
           </span>
           {titulo}
-        </h2>
+        </h3>
         {descricao && <p className="mt-2 text-body-sm text-ink-muted">{descricao}</p>}
       </div>
       {children}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AvisoDaFaixa } from "@/components/pagamentos/aviso-da-faixa";
 import { GradeDePlanos, preco, vagas } from "@/components/pagamentos/grade-de-planos";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { MODO_DEMO } from "@/lib/config";
@@ -22,6 +23,7 @@ import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { minhaFaixa } from "@/lib/servidor/pagina-de-carreiras";
 import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { BotaoLink } from "@/components/ui/botao";
 
 export const metadata: Metadata = { title: "Planos", robots: { index: false } };
 
@@ -77,12 +79,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
 
   if (!pag?.pode) {
     return (
-      <div className="flex max-w-3xl flex-col gap-3">
-        <h2 className="text-h2">Planos</h2>
-        <p className="text-body text-ink-muted">
-          Os planos são para quem contrata. Quem procura trabalho usa o Publike de graça, sempre.
-        </p>
-      </div>
+      <CabecalhoDaPagina
+        titulo="Planos"
+        descricao="Os planos são para quem contrata. Quem procura trabalho usa o Publike de graça, sempre."
+      />
     );
   }
 
@@ -108,20 +108,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="max-w-2xl">
-          <h2 className="text-h2">Planos</h2>
-          <p className="mt-1 text-body text-ink-muted">
-            Publicar vagas e receber candidatos é grátis, até 20 vagas no ar. O plano junta as ferramentas que adiantam a seleção,
-            pelo número de vagas que você tem no ar.
-          </p>
-        </div>
-        {valendo.length > 0 && (
-          <Link href="/painel/assinatura" className="text-label text-terra-text underline underline-offset-2">
-            Sua assinatura
-          </Link>
-        )}
-      </div>
+      <CabecalhoDaPagina
+        titulo="Planos"
+        descricao="Publicar vagas e receber candidatos é grátis, até 20 vagas no ar. O plano junta as ferramentas que adiantam a seleção, pelo número de vagas que você tem no ar."
+        acoes={
+          valendo.length > 0 ? (
+            <BotaoLink href="/painel/assinatura" variante="secundario" tamanho="sm">
+              Sua assinatura
+            </BotaoLink>
+          ) : undefined
+        }
+      />
 
       <AvisoDaFaixa faixa={faixa} comLink={false} />
 

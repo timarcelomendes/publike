@@ -1,8 +1,8 @@
-import { ArrowLeft, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { MODO_DEMO } from "@/lib/config";
@@ -59,27 +59,23 @@ async function Conteudo({ params }: { params: PageProps<"/painel/anuncio/[id]/te
     })),
   );
   return (
-    <div className="flex flex-col gap-5">
-      <Link
-        href={`/painel/anuncio/${id}/testes`}
-        className="inline-flex min-h-11 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Testes da vaga
-      </Link>
-      <div>
-        <h2 className="text-h2">{r.titulo}</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          {r.status === "feita"
-            ? [textoDoResultado(r.tipo, r.pontos, r.maximo), faixa ? NOME_FAIXA[faixa] : null]
-                .filter(Boolean)
-                .join(" · ")
-            : "Ainda não foi feito."}
-        </p>
-        {r.status === "feita" && detalhesDoTeste(r) && (
-          <p className="text-body-sm text-ink-muted">{detalhesDoTeste(r)}</p>
-        )}
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: `/painel/anuncio/${id}/testes`, nome: "Testes da vaga" }}
+        titulo={r.titulo}
+        descricao={
+          <>
+            <p>
+              {r.status === "feita"
+                ? [textoDoResultado(r.tipo, r.pontos, r.maximo), faixa ? NOME_FAIXA[faixa] : null]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "Ainda não foi feito."}
+            </p>
+            {r.status === "feita" && detalhesDoTeste(r) && <p className="text-body-sm">{detalhesDoTeste(r)}</p>}
+          </>
+        }
+      />
       {competenciasDoResultado(r.por_competencia).length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2">
           {competenciasDoResultado(r.por_competencia).map((c) => (

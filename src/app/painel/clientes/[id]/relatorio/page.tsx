@@ -1,10 +1,10 @@
-import { ArrowLeft, BarChart3 } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BotaoImprimir } from "@/components/finalistas/resposta-cliente";
+import { CabecalhoDaPagina, LinkVoltar } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
+import { Segmentos } from "@/components/painel/segmentos";
 import { LinkDoRelatorio } from "@/components/relatorio/link-do-relatorio";
 import { RelatorioDoCliente } from "@/components/relatorio/relatorio-do-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -49,16 +49,7 @@ async function Conteudo({
     p_ate: ate,
   });
   if (error?.code === "P0002") notFound();
-  const voltar = (
-    <Link
-      href={`/painel/clientes/${id}`}
-      className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
-      data-nao-imprimir
-    >
-      <ArrowLeft aria-hidden className="size-4" />
-      Cliente
-    </Link>
-  );
+  const voltar = <LinkVoltar href={`/painel/clientes/${id}`}>Cliente</LinkVoltar>;
   if (error) {
     return (
       <div className="flex flex-col gap-4">
@@ -72,21 +63,15 @@ async function Conteudo({
   const r = lerRelatorio(data);
   if (!r?.liberado) {
     return (
-      <div className="flex max-w-2xl flex-col gap-4">
-        {voltar}
-        <section className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
-          <span className="flex size-10 items-center justify-center rounded-pill bg-terra-soft">
-            <BarChart3 aria-hidden className="size-5 text-terra-text" />
-          </span>
-          <h2 className="text-h2">Relatório para o cliente</h2>
-          <p className="text-body text-ink-muted">
-            Uma página por cliente com as vagas do período, os candidatos, os finalistas, o tempo até eles e os
-            contratados, com a marca da sua agência. Você manda por link ou em PDF para mostrar o trabalho feito.
-          </p>
-          <p className="text-body">
-            É do Plano Agência, que chega em breve. Quer testar antes? Fale com a equipe do Publike.
-          </p>
-        </section>
+      <div className="flex flex-col gap-6">
+        <CabecalhoDaPagina
+          voltar={{ href: `/painel/clientes/${id}`, nome: "Cliente" }}
+          titulo="Relatório para o cliente"
+          descricao="Uma página por cliente com as vagas do período, os candidatos, os finalistas, o tempo até eles e os contratados, com a marca da sua agência. Você manda por link ou em PDF para mostrar o trabalho feito."
+        />
+        <Aviso tipo="info" titulo="É do Plano Agência, que chega em breve">
+          Quer testar antes? Fale com a equipe do Publike.
+        </Aviso>
       </div>
     );
   }
@@ -94,20 +79,14 @@ async function Conteudo({
     <div className="flex flex-col gap-5" data-imprimir>
       {voltar}
       <div className="flex flex-wrap items-center justify-between gap-3" data-nao-imprimir>
-        <nav aria-label="Período" className="flex flex-wrap gap-2">
-          {PERIODOS.map((p) => (
-            <Link
-              key={p.valor}
-              href={`/painel/clientes/${id}/relatorio${p.valor === "90" ? "" : `?periodo=${p.valor}`}`}
-              aria-current={p.valor === periodo.valor ? "page" : undefined}
-              className={`inline-flex min-h-10 items-center rounded-pill border px-4 text-label ${
-                p.valor === periodo.valor ? "border-ink bg-ink text-surface-100" : "border-line hover:border-line-strong"
-              }`}
-            >
-              {p.nome}
-            </Link>
-          ))}
-        </nav>
+        <Segmentos
+          rotulo="Período"
+          opcoes={PERIODOS.map((p) => ({
+            nome: p.nome,
+            href: `/painel/clientes/${id}/relatorio${p.valor === "90" ? "" : `?periodo=${p.valor}`}`,
+            ativo: p.valor === periodo.valor,
+          }))}
+        />
         <BotaoImprimir />
       </div>
       <RelatorioDoCliente r={r} />

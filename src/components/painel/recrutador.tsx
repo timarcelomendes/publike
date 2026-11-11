@@ -108,6 +108,7 @@ type EntrevistaPainel = { id: string; anuncio_id: string; perfil_id: string; qua
 
 export async function PainelRecrutador({
   nome,
+  nomeInteiro = false,
   autorId,
   anuncios,
   candidatos,
@@ -117,6 +118,8 @@ export async function PainelRecrutador({
   perfilPronto = true,
 }: {
   nome: string;
+  /** o nome é o da empresa (a saudação usa ele inteiro) */
+  nomeInteiro?: boolean;
   autorId: string;
   anuncios: MeuAnuncio[] | null;
   candidatos: Candidato[] | null;
@@ -787,6 +790,7 @@ export async function PainelRecrutador({
     <div className="flex flex-col gap-8 sm:gap-10">
       <Saudacao
         nome={nome}
+        nomeInteiro={nomeInteiro}
         agora={agora}
         pendencias={cartoes.length}
         resumo={contaNova ? resumo : undefined}
@@ -824,39 +828,48 @@ export async function PainelRecrutador({
         </>
       ) : (
         <>
-          <div className="grid grid-cols-1 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-6">
-            <div className="flex min-w-0 flex-col gap-4">
-              <Agora
-                itens={cartoes}
-                vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
-              />
-              {/* no celular, o convite das notificações vem aqui; no computador, é uma linha no fim do menu */}
-              <div className="lg:hidden">
-                <ConviteNotificacoes
-                  vapid={vapidPublica()}
-                  titulo="Saiba na hora quando alguém se candidatar"
-                  texto="Candidatos, mensagens e entrevistas chegam no celular, mesmo com o Publike fechado."
+          {/* no computador, Para fazer e Suas vagas na coluna da esquerda e Seus números ao lado (11/11/2026: com só um
+              item para fazer, a tabela ficava longe, embaixo do fim dos números); no celular, um embaixo do outro, na
+              ordem Para fazer, Seus números, Suas vagas */}
+          <div className="flex flex-col gap-8 xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-6">
+            <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-10">
+              <div className="order-1 flex min-w-0 flex-col gap-4">
+                <Agora
+                  itens={cartoes}
+                  vazio="Tudo em dia: ninguém esperando por você agora. Quando alguém curtir uma vaga, aparece aqui."
                 />
+                {/* no celular, o convite das notificações vem aqui; no computador, é uma linha no fim do menu */}
+                <div className="lg:hidden">
+                  <ConviteNotificacoes
+                    vapid={vapidPublica()}
+                    titulo="Saiba na hora quando alguém se candidatar"
+                    texto="Candidatos, mensagens e entrevistas chegam no celular, mesmo com o Publike fechado."
+                  />
+                </div>
               </div>
+              {grupos.length > 0 && (
+                <div className="order-3 min-w-0">
+                  <DicaDeNovidade chave="comentarios-empresa" logado>
+                    <TabelaDasVagas
+                      titulo={agencia ? "Seus clientes" : "Suas vagas"}
+                      grupos={grupos}
+                      link={
+                        agencia
+                          ? { href: "/painel/clientes", texto: "Ver todos os clientes" }
+                          : { href: "/painel/anuncios?tipo=vaga", texto: "Gerenciar vagas" }
+                      }
+                    />
+                  </DicaDeNovidade>
+                </div>
+              )}
             </div>
-            <NumerosDoHoje
-              candidatos={{ dias: chaves.map((d) => ({ dia: diaMes(d), n: porDia.get(d) ?? 0 })), antes }}
-              numeros={numeros}
-            />
-          </div>
-          {grupos.length > 0 && (
-            <DicaDeNovidade chave="comentarios-empresa" logado>
-              <TabelaDasVagas
-                titulo={agencia ? "Seus clientes" : "Suas vagas"}
-                grupos={grupos}
-                link={
-                  agencia
-                    ? { href: "/painel/clientes", texto: "Ver todos os clientes" }
-                    : { href: "/painel/anuncios?tipo=vaga", texto: "Gerenciar vagas" }
-                }
+            <div className="order-2 min-w-0 xl:sticky xl:top-24">
+              <NumerosDoHoje
+                candidatos={{ dias: chaves.map((d) => ({ dia: diaMes(d), n: porDia.get(d) ?? 0 })), antes }}
+                numeros={numeros}
               />
-            </DicaDeNovidade>
-          )}
+            </div>
+          </div>
         </>
       )}
     </div>

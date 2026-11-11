@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Mensagens" };
 
 export default function Conversas() {
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <Suspense fallback={<AbasMensagensBase atual="conversas" />}>
         <AbasMensagens atual="conversas" />
       </Suspense>

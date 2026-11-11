@@ -2,6 +2,7 @@ import { ChevronRight, FileCheck2, ReceiptText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { SeloDaFatura } from "@/components/pagamentos/selo-da-fatura";
@@ -32,16 +33,12 @@ async function Conteudo() {
   const abertas = faturas.filter((f) => emAberto(f.situacao));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-h2">Faturas</h2>
-          <p className="mt-1 text-body text-ink-muted">Cada cobrança, com o recibo e a nota fiscal.</p>
-        </div>
-        <Link href="/painel/assinatura" className="text-label text-terra-text underline underline-offset-2">
-          Ver assinatura
-        </Link>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: "/painel/assinatura", nome: "Assinatura" }}
+        titulo="Faturas"
+        descricao="Cada cobrança, com o recibo e a nota fiscal."
+      />
 
       {faturas.length === 0 ? (
         <Vazio

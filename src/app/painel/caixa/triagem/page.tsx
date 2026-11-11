@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { trabalhaAqui } from "@/lib/experiencia";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -14,7 +15,7 @@ import { exigirUsuario } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
 
-export const metadata: Metadata = { title: "Triagem rápida" };
+export const metadata: Metadata = { title: "Decidir um por um" };
 
 // Triagem rápida: quem espera resposta, um cartão por vez (os que mais combinam
 // primeiro). Pensada para o celular: arrastar decide.
@@ -79,13 +80,13 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   });
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-h2">Triagem rápida</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Quem mais combina com a vaga vem primeiro. Para a direita aceita, para a esquerda dispensa.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      {/* o mesmo nome do botão que traz para cá, em Candidatos */}
+      <CabecalhoDaPagina
+        voltar={{ href: "/painel/caixa", nome: "Candidatos" }}
+        titulo="Decidir um por um"
+        descricao="Quem mais combina com a vaga vem primeiro. Para a direita aceita, para a esquerda dispensa."
+      />
       <TriagemRapida cartas={cartas} />
     </div>
   );

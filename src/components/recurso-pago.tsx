@@ -88,7 +88,10 @@ export function BotaoAssinar({
   );
 }
 
-/** Para quem ainda não tem o recurso. `estado` null: antes da migração (sem botão). */
+/**
+ * Para quem ainda não tem o recurso. `estado` null: antes da migração (sem botão). Vai embaixo do cabeçalho da tela
+ * (o título da tela é o h2; o da oferta, h3), numa largura de ler bem.
+ */
 export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estado: EstadoRecurso | null }) {
   const o = OFERTA[recurso];
   const Icone = ICONE_RECURSO[recurso];
@@ -96,7 +99,7 @@ export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estad
   return (
     <section
       aria-labelledby={`oferta-${recurso}`}
-      className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface-200 p-5 shadow-card sm:p-6"
+      className="flex max-w-3xl flex-col gap-4 rounded-lg border border-line-strong bg-surface-200 p-5 shadow-card sm:p-6"
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex size-10 items-center justify-center rounded-pill bg-terra-soft">
@@ -104,9 +107,9 @@ export function OfertaRecurso({ recurso, estado }: { recurso: RecursoPago; estad
         </span>
         <SeloCortesia />
       </div>
-      <h2 id={`oferta-${recurso}`} className="text-h2">
+      <h3 id={`oferta-${recurso}`} className="text-h3">
         {o.titulo}
-      </h2>
+      </h3>
       <p className="text-body text-ink-muted">{o.texto}</p>
       <ul className="flex flex-col gap-2">
         {o.itens.map((t) => (

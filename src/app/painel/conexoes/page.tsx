@@ -20,6 +20,7 @@ import { BotaoConectarCompacto } from "@/components/conexoes/botao-conectar-comp
 import { AbasMensagens, AbasMensagensBase } from "@/components/painel/abas-mensagens";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
+import { AbasLeves } from "@/components/painel/segmentos";
 import { SeloVerificado } from "@/components/selo-verificado";
 import { BotaoSeguir } from "@/components/social/botoes";
 import { ListaSeguindo } from "@/components/social/lista-seguindo";
@@ -264,7 +265,7 @@ function NadaComFiltro({ aba, f, q }: { aba: Aba; f: string | null; q: string })
 // Uma aba das Mensagens (com as Conversas e os Matches).
 export default function Conexoes({ searchParams }: PageProps<"/painel/conexoes">) {
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <Suspense fallback={<AbasMensagensBase atual="conexoes" />}>
         <AbasMensagens atual="conexoes" />
       </Suspense>
@@ -316,48 +317,31 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/con
   const numeros: Partial<Record<Aba, number>> = { seguindo: seguidos.length, conectadas };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
-      <div>
-        <h2 className="text-h2">Conexões</h2>
-        <p className="mt-1 text-body text-ink-muted">
+    <div className="flex flex-col gap-5">
+      {/* uma aba das Mensagens: o título é o delas; aqui, o que a aba faz e as partes dela (AbasLeves) */}
+      <div className="flex flex-col gap-3">
+        <p className="max-w-2xl text-body text-ink-muted">
           Pessoas e empresas perto de você. Conecte-se para conversar, mesmo sem vaga aberta (quando o outro lado
           aceita, aparecem o WhatsApp e o e-mail dos dois), e siga as empresas para saber das vagas novas.
         </p>
-      </div>
-      <nav aria-label="Conexões" className="sem-barra -mx-4 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
-        <ul className="flex gap-5">
-          {ABAS.map((a) => {
-            const atual = a.valor === aba;
-            const n = numeros[a.valor];
+        <AbasLeves
+          rotulo="Conexões"
+          opcoes={ABAS.map((a) => {
             const pedidos = a.valor === "conectadas" ? paraResponder : 0;
-            return (
-              // no celular as abas rolam de lado e a última fica escondida: a que tem pedido para responder vem
-              // primeiro (no computador cabem todas, na ordem de sempre)
-              <li key={a.valor} className={`shrink-0 ${pedidos > 0 ? "max-sm:order-first" : ""}`}>
-                <Link
-                  href={`/painel/conexoes?aba=${a.valor}`}
-                  aria-current={atual ? "page" : undefined}
-                  className={`-mb-px inline-flex min-h-11 items-center gap-1.5 border-b-[3px] text-label whitespace-nowrap ${
-                    atual ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  {a.nome}
-                  {n ? <span className="text-body-sm text-ink-muted tabular-nums">{n}</span> : null}
-                  {pedidos > 0 && (
-                    <span className="min-w-5 rounded-pill bg-like px-1.5 text-center text-caption leading-5 text-on-like">
-                      {pedidos}
-                      <span className="sr-only">
-                        {" "}
-                        {pedidos === 1 ? "pedido para responder" : "pedidos para responder"}
-                      </span>
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
+            return {
+              nome: a.nome,
+              href: `/painel/conexoes?aba=${a.valor}`,
+              ativo: a.valor === aba,
+              numero: numeros[a.valor] || undefined,
+              alerta: pedidos
+                ? { n: pedidos, leitor: pedidos === 1 ? "pedido para responder" : "pedidos para responder" }
+                : undefined,
+              // no celular a linha rola de lado e a última fica escondida: a que tem pedido para responder vem primeiro
+              primeiroNoCelular: pedidos > 0,
+            };
           })}
-        </ul>
-      </nav>
+        />
+      </div>
       {aba === "pessoas" ? (
         <AbaPessoas empresa={empresa} f={f} q={q} pagina={pagina} />
       ) : aba === "empresas" ? (

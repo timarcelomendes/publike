@@ -76,7 +76,7 @@ export function ControlesDasVagas({
       {comVisao && (
         <nav
           aria-label="Ver as vagas em"
-          className="sem-barra -mx-4 flex gap-0.5 overflow-x-auto px-4 sm:mx-0 sm:self-start sm:rounded-pill sm:bg-surface-300 sm:p-0.5"
+          className="sem-barra -mx-4 flex gap-0.5 overflow-x-auto px-4 sm:mx-0 sm:w-fit sm:max-w-full sm:self-start sm:rounded-pill sm:bg-surface-300 sm:p-0.5"
         >
           {VISOES.filter((v) => pagas || !VISOES_PAGAS.includes(v)).map((v) => {
             const Icone = ICONE[v];

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ConviteDaVaga, type VagaComConvite } from "@/components/convite-automatico/vaga";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso } from "@/components/ui/basicos";
@@ -30,14 +31,11 @@ async function Conteudo() {
   const d = (data ?? null) as { liberado: boolean; vagas: VagaComConvite[] } | null;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h2 className="text-h2">Convite automático</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Quando chega um currículo que combina com uma vaga (70% ou mais, na mesma área), o convite vai na hora, com o
-          seu recado. É o convite de sempre: sem o seu contato, e a pessoa decide se curte a vaga.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Convite automático"
+        descricao="Quando chega um currículo que combina com uma vaga (70% ou mais, na mesma área), o convite vai na hora, com o seu recado. É o convite de sempre: sem o seu contato, e a pessoa decide se curte a vaga."
+      />
       {error || !d ? (
         <Aviso tipo="info" titulo="O convite automático ainda não está ligado">
           Logo você vai poder usar por aqui.

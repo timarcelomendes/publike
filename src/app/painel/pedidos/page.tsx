@@ -2,6 +2,7 @@ import { Building2, Inbox } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { AcoesDoPedido } from "@/components/pedidos/acoes-pedido";
 import { CartaoPedido } from "@/components/pedidos/cartao-pedido";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -88,21 +89,21 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ped
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="max-w-2xl">
-        <h2 className="flex flex-wrap items-center gap-2 text-h2">
-          Pedidos dos clientes
-          <Selo variante="novo">Novo</Selo>
-        </h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Cada cliente tem um link, sem conta, para pedir vagas e acompanhar o prazo. Copie o link na ficha do cliente,
-          em{" "}
-          <Link href="/painel/clientes" className="underline underline-offset-2">
-            Clientes
-          </Link>
-          .
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Pedidos dos clientes"
+        selo={<Selo variante="novo">Novo</Selo>}
+        descricao={
+          <>
+            Cada cliente tem um link, sem conta, para pedir vagas e acompanhar o prazo. Copie o link na ficha do
+            cliente, em{" "}
+            <Link href="/painel/clientes" className="underline underline-offset-2">
+              Clientes
+            </Link>
+            .
+          </>
+        }
+      />
       <div className="flex flex-wrap items-center gap-2">
         {FILTROS.map((f) => (
           <Link key={f.id} href={href({ ver: f.id })} aria-current={ver === f.id ? "page" : undefined} className={classesChip(ver === f.id)}>

@@ -1,8 +1,9 @@
-import { ArrowLeft, Handshake, ShieldAlert } from "lucide-react";
+import { Handshake, ShieldAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Conversa } from "@/components/conversa/conversa";
+import { LinkVoltar } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SemLinhaDoPainel } from "@/components/painel/sem-linha-do-painel";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -93,13 +94,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conversas/[outr
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
-      <Link
-        href="/painel/conversas"
-        className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Conversas
-      </Link>
+      <LinkVoltar href="/painel/conversas">Conversas</LinkVoltar>
       <div className="flex items-start gap-3">
         <Avatar nome={c.outro_nome} foto={c.outro_foto} tamanho={48} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">

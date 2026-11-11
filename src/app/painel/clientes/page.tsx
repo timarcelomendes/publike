@@ -2,6 +2,7 @@ import { Building2, Lock, Plus, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { ChipFiltro } from "@/components/painel/fluxo";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -88,23 +89,20 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cli
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {primeiro(sp.excluido) === "1" && <Aviso tipo="sucesso" titulo="Cliente excluído." />}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="max-w-2xl">
-          <h2 className="text-h2">Clientes</h2>
-          <p className="mt-1 text-body text-ink-muted">
-            As empresas para quem você seleciona. Ao publicar, é só escolher o cliente: o nome e o endereço já vêm na
-            vaga. CNPJ, contato e anotações ficam só com você.
-          </p>
-        </div>
-        {clientes.length > 0 && (
-          <BotaoLink href="/painel/clientes/novo" tamanho="sm">
-            <Plus aria-hidden />
-            Adicionar cliente
-          </BotaoLink>
-        )}
-      </div>
+      <CabecalhoDaPagina
+        titulo="Clientes"
+        descricao="As empresas para quem você seleciona. Ao publicar, é só escolher o cliente: o nome e o endereço já vêm na vaga. CNPJ, contato e anotações ficam só com você."
+        acoes={
+          clientes.length > 0 ? (
+            <BotaoLink href="/painel/clientes/novo" tamanho="sm">
+              <Plus aria-hidden />
+              Adicionar cliente
+            </BotaoLink>
+          ) : undefined
+        }
+      />
 
       {clientes.length === 0 ? (
         <Vazio

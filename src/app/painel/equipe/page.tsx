@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ConviteDaEquipe, ConvidarParaEquipe, MembroDaEquipe } from "@/components/equipe/gerenciar-equipe";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
@@ -60,14 +61,16 @@ async function Conteudo() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-h2">Equipe</h2>
-        <p className="mt-1 text-body text-ink-muted">
-          Cada pessoa entra com o próprio celular e age pela {agencia}: vagas, candidatos, entrevistas, conversas
-          {ehAgencia ? " e clientes" : " e a avaliação de cada candidato"}. O que cada uma faz fica anotado aqui
-          embaixo.
-        </p>
-      </div>
+      <CabecalhoDaPagina
+        titulo="Equipe"
+        descricao={
+          <>
+            Cada pessoa entra com o próprio celular e age pela {agencia}: vagas, candidatos, entrevistas, conversas
+            {ehAgencia ? " e clientes" : " e a avaliação de cada candidato"}. O que cada uma faz fica anotado aqui
+            embaixo.
+          </>
+        }
+      />
 
       {usuario.papel === "recrutador" && (
         <Aviso tipo="info" titulo="Você é recrutador nesta equipe">
@@ -75,52 +78,55 @@ async function Conteudo() {
         </Aviso>
       )}
 
-      {pode && (
-        <section
-          aria-labelledby="convidar"
-          className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
-        >
-          <h3 id="convidar" className="flex items-center gap-2 text-h3">
-            <UserPlus aria-hidden className="size-5 text-ink-muted" />
-            Convidar para a equipe
-          </h3>
-          <ConvidarParaEquipe site={SITE_URL} agencia={agencia} />
-        </section>
-      )}
-
-      <section aria-labelledby="quem" className="flex flex-col gap-3">
-        <h3 id="quem" className="text-h3">
-          Quem está na equipe
-        </h3>
-        <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
-          <li className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
-            <Avatar nome={agencia} foto={perfil.foto} tamanho={40} />
-            <div className="min-w-0 flex-1">
-              <p className="flex flex-wrap items-center gap-2">
-                <span className="text-label break-words">
-                  {agencia}
-                  {usuario.papel === "dono" && <span className="font-normal text-ink-muted"> (você)</span>}
-                </span>
-                <Selo variante="neutro">
-                  <Building2 aria-hidden />
-                  Conta da agência
-                </Selo>
-              </p>
-              <p className="text-body-sm text-ink-muted">O login da própria agência. Faz tudo.</p>
-            </div>
-          </li>
-          {membros.map((m) => (
-            <MembroDaEquipe key={m.membro_id} m={m} podeAdministrar={pode} agenciaId={usuario.id} agora={agora} />
-          ))}
-        </ul>
-        {membros.length === 0 && (
-          <p className="text-body-sm text-ink-muted">
-            {pode
-              ? "Ninguém na equipe ainda. Crie um convite acima e mande o link para cada pessoa."
-              : "Ninguém mais na equipe."}
-          </p>
+      {/* no computador largo, o convite e quem está na equipe lado a lado */}
+      <div className={`grid grid-cols-[minmax(0,1fr)] items-start gap-6 ${pode ? "xl:grid-cols-2" : ""}`}>
+        {pode && (
+          <section
+            aria-labelledby="convidar"
+            className="flex flex-col gap-4 rounded-lg border border-line bg-surface-200 p-5 sm:p-6"
+          >
+            <h3 id="convidar" className="flex items-center gap-2 text-h3">
+              <UserPlus aria-hidden className="size-5 text-ink-muted" />
+              Convidar para a equipe
+            </h3>
+            <ConvidarParaEquipe site={SITE_URL} agencia={agencia} />
+          </section>
         )}
-      </section>
+
+        <section aria-labelledby="quem" className="flex flex-col gap-3">
+          <h3 id="quem" className="text-h3">
+            Quem está na equipe
+          </h3>
+          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+            <li className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
+              <Avatar nome={agencia} foto={perfil.foto} tamanho={40} />
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="text-label break-words">
+                    {agencia}
+                    {usuario.papel === "dono" && <span className="font-normal text-ink-muted"> (você)</span>}
+                  </span>
+                  <Selo variante="neutro">
+                    <Building2 aria-hidden />
+                    {ehAgencia ? "Conta da agência" : "Conta da empresa"}
+                  </Selo>
+                </p>
+                <p className="text-body-sm text-ink-muted">O login da própria {ehAgencia ? "agência" : "empresa"}. Faz tudo.</p>
+              </div>
+            </li>
+            {membros.map((m) => (
+              <MembroDaEquipe key={m.membro_id} m={m} podeAdministrar={pode} agenciaId={usuario.id} agora={agora} />
+            ))}
+          </ul>
+          {membros.length === 0 && (
+            <p className="text-body-sm text-ink-muted">
+              {pode
+                ? "Ninguém na equipe ainda. Crie um convite acima e mande o link para cada pessoa."
+                : "Ninguém mais na equipe."}
+            </p>
+          )}
+        </section>
+      </div>
 
       {pode && convites.length > 0 && (
         <section aria-labelledby="convites-equipe" className="flex flex-col gap-3">

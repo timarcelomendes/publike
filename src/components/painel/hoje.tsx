@@ -31,8 +31,11 @@ export function Saudacao({
   acao,
   resumo,
   boasVindas = false,
+  nomeInteiro = false,
 }: {
   nome: string | null;
+  /** o nome da empresa (sem o nome de quem entrou): inteiro, e não só a primeira palavra ("Mais RH", não "Mais") */
+  nomeInteiro?: boolean;
   agora: number;
   pendencias: number;
   /** uma frase do que está acontecendo, embaixo da data ("3 vagas no ar para 2 clientes.") */
@@ -42,7 +45,8 @@ export function Saudacao({
   /** o botão principal do modo (Publicar vaga, por exemplo) */
   acao?: ReactNode;
 }) {
-  const primeiro = nome?.trim().split(/\s+/)[0];
+  const limpo = nome?.trim().replace(/\s+/g, " ") ?? "";
+  const primeiro = nomeInteiro ? (limpo.length > 32 ? `${limpo.slice(0, 31).trimEnd()}…` : limpo) : limpo.split(" ")[0];
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">

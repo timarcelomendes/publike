@@ -21,8 +21,10 @@ import { FormularioContratacao } from "@/components/configuracoes/formulario-con
 import { FormularioProcesso } from "@/components/configuracoes/formulario-processo";
 import { ModelosDeMensagem } from "@/components/configuracoes/modelos-de-mensagem";
 import { EditorEtapas, EditorHorarios } from "@/components/etapas/editores";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { FormRetorno } from "@/components/painel/retorno";
+import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
@@ -78,67 +80,67 @@ async function Conteudo({ aba }: { aba: Aba }) {
   const administra = usuario.papel === "dono" || usuario.papel === "admin";
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
-      <div>
-        <h2 className="flex flex-wrap items-center gap-2 text-h2">
-          Configurações
-          <Selo variante="novo">Novo</Selo>
-        </h2>
-        <p className="mt-1 text-body text-ink-muted">
-          O jeito da sua {agencia ? "agência" : "empresa"} de contratar, em todas as vagas.
-          {!administra && " Só quem administra a conta muda; você vê como está."}
-        </p>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        titulo="Configurações"
+        selo={<Selo variante="novo">Novo</Selo>}
+        descricao={
+          <>
+            O jeito da sua {agencia ? "agência" : "empresa"} de contratar, em todas as vagas.
+            {!administra && " Só quem administra a conta muda; você vê como está."}
+          </>
+        }
+      >
+        <Segmentos
+          rotulo="Partes das configurações"
+          opcoes={ABAS.map((a) => ({
+            nome: a.nome,
+            href: `/painel/configuracoes?aba=${a.valor}`,
+            ativo: aba === a.valor,
+          }))}
+        />
+      </CabecalhoDaPagina>
+
+      {/* o formulário numa coluna de ler bem; no computador largo, os atalhos da conta ao lado */}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,48rem)_minmax(0,20rem)] xl:gap-10">
+        <div className="flex min-w-0 flex-col gap-5">
+          {aba === "processo" && <AbaProcesso agencia={agencia} administra={administra} empresa={perfil.nome} />}
+          {aba === "candidatura" && <AbaCandidatura />}
+          {aba === "entrevistas" && <AbaEntrevistas />}
+          {aba === "contratacao" && <AbaContratacao agencia={agencia} />}
+        </div>
+
+        <section
+          aria-labelledby="atalhos"
+          className="flex flex-col gap-2 border-t border-line pt-5 xl:sticky xl:top-24 xl:border-t-0 xl:pt-0"
+        >
+          <h3 id="atalhos" className="text-label text-ink-muted">
+            Também da conta
+          </h3>
+          <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+            {[
+              { href: "/painel/equipe", nome: "Equipe", texto: "Quem ajuda a contratar", icone: UsersRound },
+              { href: "/painel/automacoes", nome: "Automações", texto: "Regras que agem sozinhas", icone: Workflow },
+              { href: "/painel/links", nome: "Página de vagas", texto: "A página e os outros sites", icone: Globe },
+              { href: "/perfil/preferencias", nome: "Avisos", texto: "E-mail e celular", icone: Bell },
+              { href: "/painel/assinatura", nome: "Assinatura", texto: "Recursos e faturas", icone: CreditCard },
+            ].map((l) => (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  className="flex min-h-14 items-center gap-3 rounded-md border border-line bg-surface-200 px-4 py-3 hover:bg-surface-300"
+                >
+                  <l.icone aria-hidden className="size-5 shrink-0 text-ink-muted" />
+                  <span>
+                    <span className="block text-label">{l.nome}</span>
+                    <span className="block text-body-sm text-ink-muted">{l.texto}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
-      <nav aria-label="Partes das configurações" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <ul className="flex min-w-max gap-1 border-b border-line">
-          {ABAS.map((a) => (
-            <li key={a.valor}>
-              <Link
-                href={`/painel/configuracoes?aba=${a.valor}`}
-                aria-current={aba === a.valor ? "page" : undefined}
-                className={`inline-flex min-h-11 items-center border-b-2 px-3 text-label transition-colors ${
-                  aba === a.valor ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
-                }`}
-              >
-                {a.nome}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {aba === "processo" && <AbaProcesso agencia={agencia} administra={administra} empresa={perfil.nome} />}
-      {aba === "candidatura" && <AbaCandidatura />}
-      {aba === "entrevistas" && <AbaEntrevistas />}
-      {aba === "contratacao" && <AbaContratacao agencia={agencia} />}
-
-      <section aria-labelledby="atalhos" className="flex flex-col gap-2 border-t border-line pt-5">
-        <h3 id="atalhos" className="text-label text-ink-muted">
-          Também da conta
-        </h3>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {[
-            { href: "/painel/equipe", nome: "Equipe", texto: "Quem ajuda a contratar", icone: UsersRound },
-            { href: "/painel/automacoes", nome: "Automações", texto: "Regras que agem sozinhas", icone: Workflow },
-            { href: "/painel/links", nome: "Página de vagas", texto: "A página e os outros sites", icone: Globe },
-            { href: "/perfil/preferencias", nome: "Avisos", texto: "E-mail e celular", icone: Bell },
-            { href: "/painel/assinatura", nome: "Assinatura", texto: "Recursos e faturas", icone: CreditCard },
-          ].map((l) => (
-            <li key={l.href}>
-              <Link
-                href={l.href}
-                className="flex min-h-14 items-center gap-3 rounded-md border border-line bg-surface-200 px-4 py-3 hover:bg-surface-300"
-              >
-                <l.icone aria-hidden className="size-5 shrink-0 text-ink-muted" />
-                <span>
-                  <span className="block text-label">{l.nome}</span>
-                  <span className="block text-body-sm text-ink-muted">{l.texto}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }

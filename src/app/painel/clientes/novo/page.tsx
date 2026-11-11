@@ -1,7 +1,6 @@
-import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { FormCliente } from "@/components/painel/form-cliente";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Esqueleto } from "@/components/ui/basicos";
@@ -14,21 +13,18 @@ export const metadata: Metadata = { title: "Adicionar cliente" };
 
 export default function NovoCliente() {
   return (
-    <div className="max-w-3xl">
-      <Link
-        href="/painel/clientes"
-        className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Clientes
-      </Link>
-      <h2 className="mt-1 text-h2">Adicionar cliente</h2>
-      <p className="mt-1 mb-6 text-body text-ink-muted">
-        Só o nome é obrigatório. Na vaga aparece só o nome (ou “Empresa confidencial”); o resto fica só com você.
-      </p>
-      <Suspense fallback={<Esqueleto className="h-[40rem] w-full rounded-lg" />}>
-        <Conteudo />
-      </Suspense>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: "/painel/clientes", nome: "Clientes" }}
+        titulo="Adicionar cliente"
+        descricao="Só o nome é obrigatório. Na vaga aparece só o nome (ou “Empresa confidencial”); o resto fica só com você."
+      />
+      {/* um formulário: numa coluna de ler bem */}
+      <div className="max-w-3xl">
+        <Suspense fallback={<Esqueleto className="h-[40rem] w-full rounded-lg" />}>
+          <Conteudo />
+        </Suspense>
+      </div>
     </div>
   );
 }

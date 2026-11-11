@@ -1,10 +1,11 @@
-import { ArrowLeft, Handshake, MessagesSquare } from "lucide-react";
+import { Handshake, MessagesSquare } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { DesfazerConexao, ResponderConexao } from "@/components/conexoes/acoes-conexao";
 import { linkDoOutro, QuemConexao } from "@/components/conexoes/quem";
 import { BotoesContato } from "@/components/contato";
+import { LinkVoltar } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SemLinhaDoPainel } from "@/components/painel/sem-linha-do-painel";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -65,13 +66,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conexoes/[outro
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
-      <Link
-        href="/painel/conexoes"
-        className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Conexões
-      </Link>
+      <LinkVoltar href="/painel/conexoes">Conexões</LinkVoltar>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <QuemConexao c={c} titulo />
         <Selo variante={c.status === "aceita" ? "match" : c.status === "recusada" ? "contorno" : "aviso"}>

@@ -1,9 +1,9 @@
-import { ArrowLeft, Workflow } from "lucide-react";
+import { Workflow } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { MontarRegra } from "@/components/automacoes/montar-regra";
+import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Selo, Vazio } from "@/components/ui/basicos";
@@ -81,25 +81,17 @@ async function Conteudo({ sp }: { sp: Record<string, string | string[] | undefin
   }
   const voltar = vaga ? `/painel/anuncio/${vaga}/automacoes` : "/painel/automacoes";
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
-      <Link
-        href={voltar}
-        className="inline-flex min-h-10 items-center gap-1.5 self-start text-label text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        {vaga ? "Voltar para as automações da vaga" : "Voltar para as automações"}
-      </Link>
-      <div className="flex flex-col gap-1">
-        <h2 className="flex flex-wrap items-center gap-2 text-h2">
-          {id ? "Mudar a regra" : "Nova regra"}
-          <Selo variante="novo">Novo</Selo>
-        </h2>
-        <p className="text-body text-ink-muted">
-          Escolha quando ela age, para quem e o que o Publike faz. Cada regra age uma vez por pessoa, e tudo fica
-          anotado, com Desfazer.
-        </p>
+    <div className="flex flex-col gap-6">
+      <CabecalhoDaPagina
+        voltar={{ href: voltar, nome: vaga ? "Automações da vaga" : "Automações" }}
+        titulo={id ? "Mudar a regra" : "Nova regra"}
+        selo={<Selo variante="novo">Novo</Selo>}
+        descricao="Escolha quando ela age, para quem e o que o Publike faz. Cada regra age uma vez por pessoa, e tudo fica anotado, com Desfazer."
+      />
+      {/* um formulário: numa coluna de ler bem */}
+      <div className="max-w-3xl">
+        <MontarRegra id={id} inicial={inicial} ctx={ctx} voltar={voltar} />
       </div>
-      <MontarRegra id={id} inicial={inicial} ctx={ctx} voltar={voltar} />
     </div>
   );
 }

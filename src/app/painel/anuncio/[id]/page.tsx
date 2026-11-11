@@ -1,7 +1,8 @@
-import { ArrowLeft, ChevronDown, Download, FileText, Heart, Sparkles } from "lucide-react";
+import { ChevronDown, Download, FileText, Heart, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { LinkVoltar } from "@/components/painel/cabecalho-da-pagina";
 import { RespostasDoCandidato } from "@/components/painel/respostas-candidato";
 import { perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
@@ -162,13 +163,7 @@ async function Conteudo({
     <div className="flex flex-col gap-6">
       {servico ? (
         <div>
-          <Link
-            href="/painel/anuncios"
-            className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
-          >
-            <ArrowLeft aria-hidden className="size-4" />
-            Meus anúncios
-          </Link>
+          <LinkVoltar href="/painel/anuncios">Meus anúncios</LinkVoltar>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <Selo variante={status === "ativo" ? "match" : "contorno"}>{STATUS_ANUNCIO[status]?.nome ?? status}</Selo>
           </div>
