@@ -20,8 +20,8 @@ import { NotaDoProfissional } from "./avaliacoes";
 import { AcoesDaVagaNoCartao } from "./anuncio/acoes-no-feed";
 import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
 import { BotaoCurtir } from "./botao-curtir";
-import { ehOutraArea, SeloMatch, type MatchResumo } from "./match-vaga";
-import { SeloMatchFechado } from "./selo-match-fechado";
+import { AnelDeMatch, ehOutraArea, SeloMatch, type MatchResumo } from "./match-vaga";
+import { AnelMatchFechado, SeloMatchFechado } from "./selo-match-fechado";
 import { Avatar, Selo } from "./ui/basicos";
 import { SeloVerificado } from "@/components/selo-verificado";
 
@@ -83,8 +83,8 @@ function Etiqueta({ children, className = "bg-surface-300 text-ink" }: { childre
 /**
  * CardVaga do Design System: serve para vaga e para serviço (com a primeira foto de trabalho).
  * Em Blocos: a faixa "Contratando N pessoas" (vaga com mais de uma vaga), quem publicou (o logo
- * ou as iniciais), o título, o valor com o lugar e o tempo de ônibus, as etiquetas e o rodapé
- * com o % de match, o tempo de resposta e os botões. Lista e Grade (VisaoExplorar, grupo
+ * ou as iniciais) com o % de match num anel no canto, o título, o valor com o lugar e o tempo de ônibus, as
+ * etiquetas e o rodapé com o tempo de resposta e os botões. Lista e Grade (VisaoExplorar, grupo
  * `visao`) reaproveitam as mesmas partes, compactas.
  */
 export function CardAnuncio({
@@ -149,6 +149,7 @@ export function CardAnuncio({
   const preenchida = Boolean(extras?.preenchida);
   // sem conta: o % embaçado chama para entrar e ver o quanto a vaga combina (11/11/2026)
   const fechado = usuarioId === null && anuncio.tipo === "vaga" && !preenchida && !match;
+  const anel = Boolean(comMatch) || fechado;
   const prazo = extras && !proprio && !preenchida ? encerra(extras.expiraEm, agora) : null;
   // mais de uma vaga: a faixa no alto do cartão (preenchida, não conta mais)
   const vagas = extras && !servico && !preenchida ? extras.vagas : 1;
@@ -253,7 +254,7 @@ export function CardAnuncio({
         {/* Quem publicou. Na grade, só os selos; na lista, só o nome. */}
         <div
           className={`flex items-center gap-3 group-data-[visao=lista]/visao:col-start-1 ${
-            seloPrincipal || comMatch || fechado ? "" : "group-data-[visao=grade]/visao:hidden"
+            seloPrincipal || anel ? "" : "group-data-[visao=grade]/visao:hidden"
           }`}
         >
           {semAutor ? (
@@ -277,14 +278,36 @@ export function CardAnuncio({
                   <span className="truncate">{anuncio.autor_nome}</span>
                   {anuncio.autor_verificado && <SeloVerificado agencia={anuncio.autor_tipo === "agencia"} />}
                 </p>
-                <p className="truncate text-body-sm text-ink-muted group-data-[visao=lista]/visao:hidden">
-                  <span>{tipoCurto(anuncio.autor_tipo, servico)}</span> · {tempoRelativo(anuncio.criado_em, agora)}
+                <p className="flex min-w-0 items-center gap-1.5 text-body-sm text-ink-muted group-data-[visao=lista]/visao:hidden">
+                  <span className="truncate">
+                    {tipoCurto(anuncio.autor_tipo, servico)} · {tempoRelativo(anuncio.criado_em, agora)}
+                  </span>
+                  {anel && novo && !preenchida && anuncio.minha_curtida !== "match" && (
+                    // o canto é do anel: o "Novo" vem aqui, pequeno (sem cortar: o tempo é que encurta)
+                    <span className="shrink-0 rounded-pill bg-ipe px-1.5 text-[10px] leading-4 font-bold text-on-ipe uppercase">
+                      Novo
+                    </span>
+                  )}
                 </p>
               </div>
             </>
           )}
           {seloPrincipal && (
-            <span className="shrink-0 self-start group-data-[visao=lista]/visao:hidden">{seloPrincipal}</span>
+            // com o anel, o selo do canto só fica na grade (em Blocos, o "Novo" vai na linha de quem publicou)
+            <span
+              className={`shrink-0 self-start group-data-[visao=lista]/visao:hidden ${
+                anel ? "hidden group-data-[visao=grade]/visao:inline-flex" : ""
+              }`}
+            >
+              {seloPrincipal}
+            </span>
+          )}
+          {anel && (
+            // em Blocos, o % de match num anel no canto do cartão (11/11/2026: no rodapé, o selo empurrava os botões
+            // para outra linha); sem conta, o anel embaçado chama para entrar
+            <span className="shrink-0 self-start group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:hidden">
+              {comMatch ? <AnelDeMatch match={comMatch} /> : <AnelMatchFechado />}
+            </span>
           )}
           {(comMatch || fechado) && (
             // na grade, o % fica junto dos selos (o rodapé some)
@@ -378,11 +401,6 @@ export function CardAnuncio({
 
         {temRodape && (
           <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-2.5 border-t border-line pt-2.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
-            {(comMatch || fechado) && (
-              <span className="shrink-0 group-data-[visao=lista]/visao:hidden">
-                {comMatch ? <SeloMatch match={comMatch} /> : <SeloMatchFechado />}
-              </span>
-            )}
             {/* os indicadores, também para quem está sem conta: como quem publicou responde e quantos já curtiram */}
             {/* sem espaço ao lado dos botões, vão para uma linha só deles, em cima (antes, espremiam e cortavam) */}
             <span

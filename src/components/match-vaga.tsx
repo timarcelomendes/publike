@@ -31,6 +31,48 @@ export function ehOutraArea(m: MatchResumo) {
 
 const itens = (n: number) => `${n} ${n === 1 ? "item" : "itens"}`;
 
+/** "Seu currículo atende 4 de 5 itens que a vaga pede.": o porquê do número, ao parar o mouse em cima. */
+function explicarMatch(match: MatchResumo) {
+  const teto = motivoDoTeto(match);
+  return `Seu currículo atende ${match.atendidos} de ${itens(match.conferidos)} que a vaga pede${maisEmParte(match.emParte)}.${teto ? ` ${teto}` : ""}`;
+}
+
+/**
+ * O % de match num anel, no canto do cartão da vaga (11/11/2026: no rodapé, o selo empurrava os botões para
+ * outra linha). O mesmo desenho do Descobrir, menor: o arco verde de 80% para cima, amarelo de 50% a 79%, cinza abaixo.
+ */
+export function AnelDeMatch({ match }: { match: MatchResumo }) {
+  const nota = match.nota ?? 0;
+  const raio = 20;
+  const volta = 2 * Math.PI * raio;
+  const cor = nota >= 80 ? "var(--pk-cerrado)" : nota >= 50 ? "var(--pk-ipe)" : "var(--pk-ink-muted)";
+  return (
+    <span className="relative inline-flex size-12 shrink-0" title={explicarMatch(match)}>
+      <svg viewBox="0 0 48 48" className="size-12 -rotate-90" aria-hidden>
+        <circle cx="24" cy="24" r={raio} fill="none" stroke="var(--pk-surface-300)" strokeWidth="4.5" />
+        <circle
+          cx="24"
+          cy="24"
+          r={raio}
+          fill="none"
+          stroke={cor}
+          strokeWidth="4.5"
+          strokeLinecap="round"
+          strokeDasharray={volta}
+          strokeDashoffset={volta * (1 - nota / 100)}
+        />
+      </svg>
+      <span aria-hidden className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+        <span className={`font-display font-bold text-ink tabular-nums ${nota >= 100 ? "text-[12px]" : "text-[14px]"}`}>
+          {nota}%
+        </span>
+        <span className="mt-0.5 text-[8px] font-semibold text-ink-muted uppercase">match</span>
+      </span>
+      <span className="sr-only">{nota}% de match com o seu currículo</span>
+    </span>
+  );
+}
+
 /**
  * "80% de match": o quanto o currículo de quem procura bate com o que a vaga pede.
  * Verde cheio de 80% para cima, contorno verde de 50% a 79%, cinza abaixo disso.
@@ -51,7 +93,7 @@ export function SeloMatch({ match, className = "" }: { match: MatchResumo; class
   return (
     <Selo
       variante={match.nota >= 80 ? "match" : match.nota >= 50 ? "matchContorno" : "contorno"}
-      title={`Seu currículo atende ${match.atendidos} de ${itens(match.conferidos)} que a vaga pede${maisEmParte(match.emParte)}.${motivoDoTeto(match) ? ` ${motivoDoTeto(match)}` : ""}`}
+      title={explicarMatch(match)}
       className={className}
     >
       {match.nota}% de match
