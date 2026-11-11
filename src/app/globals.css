@@ -464,6 +464,25 @@
   right: calc(var(--canhoto) - 1px);
   border-left: 2px dashed var(--pk-line);
 }
+/* O selo de quantas vagas, no canto do tíquete: um tíquete pequeno, com os furos dos lados e o picote entre o
+   número e a palavra. */
+.selo-tiquete {
+  --furo-selo: 4px;
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 5px;
+  background: var(--pk-tom-vaga);
+  color: var(--pk-terra-text);
+  -webkit-mask:
+    radial-gradient(circle var(--furo-selo) at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--furo-selo) at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--furo-selo) at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--furo-selo) at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat;
+}
+.selo-tiquete > span + span {
+  border-left: 1.5px dashed color-mix(in srgb, currentColor 35%, transparent);
+}
 .tiquete-pequeno {
   --canhoto: 136px;
   --furo: 8px;

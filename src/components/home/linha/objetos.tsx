@@ -219,8 +219,9 @@ export function TicketDaVaga({
             </h3>
             {/* mais de uma vaga: quantas, no canto (discreto; quem procura vê que tem chance) */}
             {quantas > 1 && !preenchida && (
-              <span className="mt-0.5 inline-flex shrink-0 items-center rounded-pill border border-line px-2 text-[12px] leading-[20px] font-semibold whitespace-nowrap text-ink-muted tabular-nums">
-                {formatarNumero(quantas)} vagas
+              <span className="selo-tiquete mt-0.5 shrink-0 text-[12px] leading-[22px] whitespace-nowrap">
+                <span className="pr-1.5 pl-2 font-display font-bold tabular-nums">{formatarNumero(quantas)}</span>
+                <span className="pr-2 pl-1.5 font-semibold">vagas</span>
               </span>
             )}
             <HoraNoCanto hora={hora} />
