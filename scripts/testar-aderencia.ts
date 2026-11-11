@@ -75,6 +75,11 @@ const V7 = vaga("Jovem aprendiz administrativo", { cbo: "411005", horario: h("08
 const V8 = vaga("Auxiliar de enfermagem", { horario: h("07:00", "13:00") });
 const V9 = vaga("Vendedor externo", { cnh: "B", descricao: "Visitar clientes." });
 const V10 = vaga("Estágio em Direito", { experiencia: "sem", descricao: "Não é necessário ter experiência." });
+// os falsos positivos do relatório do Admin (11/11/2026)
+const V11 = vaga("Estágio em ciências contábeis", { titulo: "Estagio na área de ciências contábeis" });
+const V12 = vaga("Departamento Contábil", {});
+const V13 = vaga("Auxiliar Fiscal", {});
+const V14 = vaga("Auxiliar administrativo", {});
 
 const primeiro = P();
 const cursoDeDados = P({ cursos: ["Análise de dados com Python"] });
@@ -89,6 +94,10 @@ const motoristaD = P({ cnh: "D", experiencias: [exp("Motorista de caminhão", "2
 const tecnicaEnfermagem = P({ escolaridade: "tecnico", curso: "Técnico em enfermagem", disponibilidade: ["escala"] });
 const deLonge = P({ disponibilidade: ["noite"] }, { cidade: "Trindade" });
 const estudanteDeDireito = P({ escolaridade: "superior_incompleto", curso: "Direito" });
+const biologia = P({ escolaridade: "superior_incompleto", curso: "Ciências biológicas" });
+const contabeis = P({ escolaridade: "superior_incompleto", curso: "Ciências contábeis" });
+const cursoDeDP = P({ cursos: ["Departamento pessoal"] });
+const auxiliarDeDP = P({ experiencias: [exp("Auxiliar de departamento pessoal", "2023-01", "2025-01")] });
 const atendenteSemMedio = P({ escolaridade: "medio_incompleto", experiencias: [exp("Atendente", "2023-06", "2025-06")] });
 
 // [vaga, pessoa, nome, a nota da empresa, o % de quem procura (null: sem %), entra em Talentos › Para a sua vaga]
@@ -122,6 +131,13 @@ const casos: [V, ReturnType<typeof P>, string, number | null, number | null, boo
   [V10, estudanteDeDireito, "estudante de Direito", 76, 76, true],
   [V10, primeiro, "primeiro emprego sem Direito", 40, null, false],
   [V10, atendente, "atendente", 40, 40, false],
+  [V11, biologia, "Ciências biológicas", 40, null, false],
+  [V11, contabeis, "Ciências contábeis", 76, 76, true],
+  [V12, cursoDeDP, "curso de departamento pessoal", 40, null, false],
+  [V12, auxiliarDeDP, "auxiliar de departamento pessoal (área parecida)", 76, 76, true],
+  [V13, pedreiro, "pedreiro", 40, 40, false],
+  [V13, primeiro, "primeiro emprego", 40, null, false],
+  [V14, primeiro, "primeiro emprego", 79, 79, false],
 ];
 
 let falhas = 0;
@@ -150,6 +166,8 @@ const perfis: [V, string][] = [
   [V8, "experiencia"],
   [V9, "experiencia"],
   [V10, "experiencia"],
+  [V13, "experiencia"],
+  [V14, "entrada"],
 ];
 for (const [v, esperado] of perfis) {
   const perfil = perfilDaVaga(v as never);

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { Numero, Secao } from "@/components/admin/ui";
-import { CORES, relatorioDaAderencia, type Cor } from "@/lib/admin/aderencia-antes-e-depois";
+import { CORES, relatorioDaAderencia, type Contagem, type Cor } from "@/lib/admin/aderencia-antes-e-depois";
 import { plural } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -19,6 +19,34 @@ const NOME_DA_COR: Record<Cor, string> = {
   cinza: "Cinza (abaixo de 50%)",
   sem: "Sem nota",
 };
+
+/** "Por que entram" e "Por que saem", lado a lado. */
+function Motivos({ entram, saem }: { entram: Contagem[]; saem: Contagem[] }) {
+  if (!entram.length && !saem.length) return null;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {[
+        { titulo: "Por que entram", lista: entram },
+        { titulo: "Por que saem", lista: saem },
+      ].map((g) => (
+        <div key={g.titulo} className="flex flex-col gap-1">
+          <p className="text-label">{g.titulo}</p>
+          {g.lista.length ? (
+            <ul className="flex flex-col gap-1 text-body-sm">
+              {g.lista.map((x) => (
+                <li key={x.nome}>
+                  {x.nome}: <strong className="tabular-nums">{x.quantas}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-body-sm text-ink-muted">Ninguém.</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function NotaDeAderencia() {
   return (
@@ -146,6 +174,7 @@ async function Conteudo() {
           <Numero rotulo="Entram" valor={t.entram} />
           <Numero rotulo="Saem" valor={t.saem} />
         </div>
+        <Motivos entram={t.porQueEntram} saem={t.porQueSaem} />
         {t.vagas.length > 0 && (
           <ul className="flex flex-col gap-1 text-body-sm">
             {t.vagas.map((v) => (
@@ -170,6 +199,7 @@ async function Conteudo() {
           <Numero rotulo="Entram" valor={m.entram} />
           <Numero rotulo="Saem" valor={m.saem} />
         </div>
+        <Motivos entram={m.porQueEntram} saem={m.porQueSaem} />
       </Secao>
     </div>
   );

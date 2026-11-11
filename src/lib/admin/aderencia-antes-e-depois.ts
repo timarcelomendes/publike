@@ -48,13 +48,58 @@ export type RelatorioAderencia = {
     motivos: { nome: string; quantas: number }[];
     maiores: MudancaDeNota[];
   };
-  talentos: { pessoas: number; antes: number; depois: number; entram: number; saem: number; vagas: VagaDeTalentos[] };
-  combinam: { antes: number; depois: number; entram: number; saem: number };
+  talentos: {
+    pessoas: number;
+    antes: number;
+    depois: number;
+    entram: number;
+    saem: number;
+    vagas: VagaDeTalentos[];
+    porQueEntram: Contagem[];
+    porQueSaem: Contagem[];
+  };
+  combinam: { antes: number; depois: number; entram: number; saem: number; porQueEntram: Contagem[]; porQueSaem: Contagem[] };
   /** a lista de talentos foi cortada (as mais novas primeiro) */
   cortado: boolean;
 };
 
 export type VagaDeTalentos = { vagaId: string; vaga: string; antes: number; depois: number };
+export type Contagem = { nome: string; quantas: number };
+
+/** O detalhe da função na conta nova diz que contou o estudo (a evidência nova). */
+const contouOEstudo = (a: Aderencia) => Boolean(a.criterios.find((k) => k.funcao)?.detalhe.startsWith("Estudou "));
+
+/** Por que alguém sai de Talentos › Para a sua vaga (o primeiro motivo que vale). */
+function porQueSai(a0: antes.Aderencia, a1: Aderencia) {
+  if (a1.faltam.length) return "Falta algo que a vaga pede (escolaridade, CNH ou horário)";
+  if (a1.primeiroEmprego && !a0.criterios.some((k) => k.funcao)) return "Primeiro emprego sem nada da função";
+  if (a1.funcao !== null && a1.funcao < 0.5) return "A função não bate pela conta nova (palavras de nível, área)";
+  return "Outros";
+}
+
+/** Por que alguém entra em Talentos › Para a sua vaga. */
+function porQueEntra(a1: Aderencia) {
+  return contouOEstudo(a1) ? "Estudou na área (o estudo passou a contar)" : "Outros (palavras e pesos)";
+}
+
+/** Por que um par passa a combinar. */
+function porQueCombina(m: Aderencia | null) {
+  if (!m) return "Outros";
+  if (m.primeiroEmprego && m.perfil === "entrada") return "Primeiro emprego em vaga de entrada";
+  if (contouOEstudo(m)) return "Estudou na área";
+  return "Outros (pesos e perfil da vaga)";
+}
+
+/** Por que um par deixa de combinar. */
+function porQueDeixa(m: Aderencia | null) {
+  if (!m) return "Sem % pela conta nova (primeiro emprego sem nada da função)";
+  if (m.faltam.length) return "Falta algo que a vaga pede (até 45%)";
+  if (outraArea(m)) return "Outra área pela conta nova";
+  return "Ficou abaixo de 70% (pesos e perfil da vaga)";
+}
+
+/** Soma um motivo. */
+const somar = (m: Map<string, number>, nome: string) => m.set(nome, (m.get(nome) ?? 0) + 1);
 
 const COLUNAS_DA_VAGA =
   "id, titulo, descricao, cidade, bairro, escolaridade_minima, experiencia, cnh, jornada, horario, horario_detalhe";
@@ -213,6 +258,10 @@ export async function relatorioDaAderencia(c: ClienteBanco, agora: number): Prom
   let cDepois = 0;
   let cEntram = 0;
   let cSaem = 0;
+  const tEntramPor = new Map<string, number>();
+  const tSaemPor = new Map<string, number>();
+  const cEntramPor = new Map<string, number>();
+  const cSaemPor = new Map<string, number>();
   for (const v of vagas) {
     const req0 = { ...antes.requisitosDaVaga(v), perguntas: [] };
     const req1 = { ...requisitosDaVaga(v), perguntas: [] };
@@ -222,21 +271,36 @@ export async function relatorioDaAderencia(c: ClienteBanco, agora: number): Prom
     for (const p of pool) {
       const pessoa = { curriculo: p.curriculo, respostas: {}, cidade: p.cidade, bairro: p.bairro };
       if (!curtiu.has(`${v.id}:${p.id}`)) {
-        const e0 = entravaAntes(antes.calcularAderencia(req0, pessoa, agora));
-        const e1 = entraEmParaAVaga(calcularAderencia(req1, pessoa, agora));
+        const a0 = antes.calcularAderencia(req0, pessoa, agora);
+        const a1 = calcularAderencia(req1, pessoa, agora);
+        const e0 = entravaAntes(a0);
+        const e1 = entraEmParaAVaga(a1);
         if (e0) vAntes++;
         if (e1) vDepois++;
-        if (e1 && !e0) entram++;
-        if (e0 && !e1) saem++;
+        if (e1 && !e0) {
+          entram++;
+          somar(tEntramPor, porQueEntra(a1));
+        }
+        if (e0 && !e1) {
+          saem++;
+          somar(tSaemPor, porQueSai(a0, a1));
+        }
       }
       // "Vagas que combinam": só as vagas da região da pessoa, como no aviso de segunda
       if (perto.includes(p.cidade ?? "")) {
+        const novo = matchComAVaga(v, pessoa, agora);
         const m0 = combinavaAntes(antes.matchComAVaga(v, pessoa, agora));
-        const m1 = combinaAgora(matchComAVaga(v, pessoa, agora));
+        const m1 = combinaAgora(novo);
         if (m0) cAntes++;
         if (m1) cDepois++;
-        if (m1 && !m0) cEntram++;
-        if (m0 && !m1) cSaem++;
+        if (m1 && !m0) {
+          cEntram++;
+          somar(cEntramPor, porQueCombina(novo));
+        }
+        if (m0 && !m1) {
+          cSaem++;
+          somar(cSaemPor, porQueDeixa(novo));
+        }
       }
     }
     tAntes += vAntes;
@@ -253,8 +317,24 @@ export async function relatorioDaAderencia(c: ClienteBanco, agora: number): Prom
   return {
     vagas: { total: vagas.length, perfis: ordenar(perfis_) },
     candidaturas: { total, matriz, subiram, desceram, motivos: ordenar(motivos), maiores: mudancas.slice(0, 20) },
-    talentos: { pessoas: pool.length, antes: tAntes, depois: tDepois, entram, saem, vagas: porVaga.slice(0, 15) },
-    combinam: { antes: cAntes, depois: cDepois, entram: cEntram, saem: cSaem },
+    talentos: {
+      pessoas: pool.length,
+      antes: tAntes,
+      depois: tDepois,
+      entram,
+      saem,
+      vagas: porVaga.slice(0, 15),
+      porQueEntram: ordenar(tEntramPor),
+      porQueSaem: ordenar(tSaemPor),
+    },
+    combinam: {
+      antes: cAntes,
+      depois: cDepois,
+      entram: cEntram,
+      saem: cSaem,
+      porQueEntram: ordenar(cEntramPor),
+      porQueSaem: ordenar(cSaemPor),
+    },
     cortado,
   };
 }

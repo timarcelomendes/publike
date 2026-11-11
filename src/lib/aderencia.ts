@@ -243,7 +243,10 @@ const GENERICAS = new Set(
     // a equipe, não a função: "Product Chapter Lead" dava "área parecida" com chapeiro (as 4 letras de "chap")
     "chapter squad tribe " +
     // o tipo do cargo, não a função: "Engenheiro de dados" não é "Engenheiro civil"
-    "engenheiro engenheira engenharia"
+    "engenheiro engenheira engenharia " +
+    // o tipo do estudo ou do setor, não a função (o relatório do Admin, 11/11/2026): "Ciências biológicas" não é
+    // "Ciências contábeis", "Departamento pessoal" não é "Departamento contábil", "Gestão comercial" não é "Gestão de pessoas"
+    "ciencia ciencias gestao departamento"
   ).split(" "),
 );
 
@@ -312,7 +315,7 @@ const AREAS_DE_TRABALHO: Record<string, string> = {
     "motorista entregador motoboy motoqueiro caminhao carreteiro estoquista estoque almoxarife almoxarifado " +
     "conferente separador carregador logistica expedicao armazem empilhadeira repositor empacotador embalador",
   escritório:
-    "administrativo administracao secretaria escritorio faturamento financeiro contabil contabilidade digitador " +
+    "administrativo administracao secretaria escritorio faturamento financeiro contabil contabilidade digitador pessoal " +
     "arquivista cobranca faturista recepcionista telefonista",
   beleza:
     "cabeleireiro barbeiro barbearia manicure pedicure esteticista estetica maquiadora maquiagem depiladora " +
@@ -476,8 +479,12 @@ const ESTAGIO_OU_TRAINEE = /\b(estagi\w*|trainee)\b/;
 /** Funções que costumam aceitar o primeiro emprego, quando a empresa não diz nada da experiência. */
 const FUNCOES_DE_ENTRADA =
   /\b(atendente|auxiliar|ajudante|repositora?|empacotadora?|embaladora?|balconista|caixa|recepcionista|telemarketing|teleatendente|teleoperadora?|servente|copeira?|lavadora?|carregador|separadora?|frentista|promotora?|panfletista|cumim|estoquista)\b/;
-/** Mesmo com a palavra de entrada, pedem a formação da área ("Auxiliar de enfermagem"). */
-const FUNCOES_COM_FORMACAO = /\b(enfermagem|enfermeir\w*|odonto\w*|saude bucal|radiolog\w*|laboratori\w*|veterinari\w*|nutricion\w*|fisioterap\w*)\b/;
+/**
+ * Mesmo com a palavra de entrada, pedem o estudo ou o conhecimento da área ("Auxiliar de enfermagem", "Auxiliar fiscal",
+ * "Auxiliar contábil", "Auxiliar de departamento pessoal", "Auxiliar de TI").
+ */
+const FUNCOES_COM_FORMACAO =
+  /\b(enfermagem|enfermeir\w*|odonto\w*|saude bucal|radiolog\w*|laboratori\w*|veterinari\w*|nutricion\w*|fisioterap\w*|contab\w*|fiscal|departamento pessoal|juridic\w*|engenharia|financeir\w*|informatica|ti)\b/;
 
 /**
  * Vaga de entrada: aceita quem está no primeiro emprego, e a experiência na função só soma. É de entrada quando a vaga
