@@ -453,7 +453,7 @@ function Conta({
   agora,
   admin,
 }: {
-  c: { id: string; nome: string; tipo: string; acesso: string | null } | null;
+  c: { id: string; nome: string; tipo: string; acesso: string | null; criado_em?: string | null } | null;
   agora: number;
   /** a ficha da conta só existe no admin; na moderação, o perfil público */
   admin: boolean;
@@ -468,12 +468,17 @@ function Conta({
         {c.nome}
       </Link>
       <span className="text-caption text-ink-muted">{rotuloConta(c.tipo)}</span>
-      {/* o último acesso: o login ou a última página aberta */}
+      {/* quando a conta entrou no Publike e o último acesso (o login ou a última página aberta) */}
+      {c.criado_em && (
+        <span className="text-caption text-ink-muted" title={new Date(c.criado_em).toLocaleString("pt-BR")}>
+          entrou {tempoRelativo(c.criado_em, agora)}
+        </span>
+      )}
       <span
         className="text-caption text-ink-muted"
         title={c.acesso ? new Date(c.acesso).toLocaleString("pt-BR") : undefined}
       >
-        {c.acesso ? `entrou ${tempoRelativo(c.acesso, agora)}` : "nunca entrou"}
+        {c.acesso ? `último acesso ${tempoRelativo(c.acesso, agora)}` : "nunca acessou"}
       </span>
     </span>
   );

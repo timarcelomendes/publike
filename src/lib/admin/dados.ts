@@ -1050,7 +1050,7 @@ export async function matchesRecentes(c: ClienteBanco, desde: string | null): Pr
   const porAnuncio = new Map((anuncios ?? []).map((a) => [a.id, a]));
   const idsPerfis = [...new Set([...linhas.map((l) => l.perfil_id), ...(anuncios ?? []).map((a) => a.autor_id)])];
   const { data: perfis, error: e2 } = idsPerfis.length
-    ? await c.from("perfis").select("id, nome, tipo, bairro").in("id", idsPerfis)
+    ? await c.from("perfis").select("id, nome, tipo, bairro, criado_em").in("id", idsPerfis)
     : { data: [], error: null };
   if (e2) falha("as contas dos matches", e2);
   const porPerfil = new Map((perfis ?? []).map((p) => [p.id, p]));
@@ -1074,7 +1074,8 @@ export type CurtidaAdmin = {
   respondida_por: string | null;
   /** pendente; aceita (o aceite saiu, falta o currículo); match; dispensada; desfeito */
   situacao: "pendente" | "aceita" | "match" | "dispensada" | "desfeito";
-  curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null } | null;
+  /** `criado_em`: quando a conta entrou no Publike; `acesso`: o último acesso */
+  curtiu: { id: string; nome: string; tipo: string; bairro: string | null; acesso: string | null; criado_em?: string | null } | null;
   /** com o que a linha do tempo precisa para o fim da vaga e o total de curtidas dela (todas, de sempre) */
   anuncio: {
     id: string;
@@ -1087,7 +1088,14 @@ export type CurtidaAdmin = {
     curtidas: number;
   } | null;
   /** `resposta`: como quem publicou responde (o mesmo do cartão; só com 5 curtidas ou mais) */
-  publicou: { id: string; nome: string; tipo: string; acesso: string | null; resposta: Resposta | null } | null;
+  publicou: {
+    id: string;
+    nome: string;
+    tipo: string;
+    acesso: string | null;
+    criado_em?: string | null;
+    resposta: Resposta | null;
+  } | null;
   /**
    * o último toque de cada lado nos botões de contato (WhatsApp, telefone, e-mail): a empresa chamando a pessoa e a
    * pessoa chamando quem publicou (a da pessoa só a partir da migração 20270219120000)
@@ -1171,7 +1179,7 @@ export async function curtidasRecentes(c: ClienteBanco, desde: string | null): P
   const porAnuncio = new Map((anuncios ?? []).map((a) => [a.id, a]));
   const idsPerfis = [...new Set([...linhas.map((l) => l.perfil_id), ...(anuncios ?? []).map((a) => a.autor_id)])];
   const { data: perfis, error: e2 } = idsPerfis.length
-    ? await c.from("perfis").select("id, nome, tipo, bairro").in("id", idsPerfis)
+    ? await c.from("perfis").select("id, nome, tipo, bairro, criado_em").in("id", idsPerfis)
     : { data: [], error: null };
   if (e2) falha("as contas das curtidas", e2);
   // o último acesso de cada conta (o login ou a última página aberta; sem a migração 20270213120000, nada)
