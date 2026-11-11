@@ -8,6 +8,7 @@ import { Segmentos } from "@/components/painel/segmentos";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
+import { PedirPlano } from "@/components/ui/pedir-plano";
 import { MODO_DEMO } from "@/lib/config";
 import { primeiro } from "@/lib/formato";
 import { montarMapaDeTalentos, numeroProtegido } from "@/lib/servidor/mapa-de-talentos";
@@ -91,7 +92,14 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/map
                         )}
                       </>
                     ) : (
-                      <Lock aria-label="Nos planos" className="size-5 text-ink-muted" />
+                      <PedirPlano
+                        rotulo={`Até ${t.minutos} min de ônibus: nos planos`}
+                        titulo="Veja mais do mapa"
+                        texto="Com a Consulta de salários ou um plano, você vê quem mora a até 15 e a até 45 minutos, quantos já trabalharam na função e os bairros onde moram."
+                      >
+                        <Lock aria-hidden className="size-5" />
+                        Ver nos planos
+                      </PedirPlano>
                     )}
                   </dd>
                 </div>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ligarConviteAutomatico } from "@/lib/acoes/convite-automatico";
-import { Botao, BotaoLink } from "../ui/botao";
+import { Botao } from "../ui/botao";
+import { JanelaPedirPlano } from "../ui/pedir-plano";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
@@ -38,7 +39,6 @@ export function ConviteDaVaga({ v, liberado }: { v: VagaComConvite; liberado: bo
             type="checkbox"
             role="switch"
             checked={v.ligado}
-            aria-describedby={pedirPlano ? `plano-${v.id}` : undefined}
             disabled={pendente}
             onChange={(e) => {
               if (!liberado && e.target.checked) {
@@ -52,26 +52,12 @@ export function ConviteDaVaga({ v, liberado }: { v: VagaComConvite; liberado: bo
           {v.ligado ? "Ligado" : "Desligado"}
         </label>
       </div>
-      {pedirPlano && (
-        <div
-          id={`plano-${v.id}`}
-          role="status"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-surface-300 px-4 py-3"
-        >
-          <p className="max-w-2xl text-body-sm">
-            <strong>Para ligar, assine um plano.</strong> Com ele, quem combina com esta vaga recebe o convite na hora,
-            com o seu recado.
-          </p>
-          <span className="flex flex-wrap items-center gap-2">
-            <BotaoLink href="/painel/planos" variante="primario" tamanho="sm">
-              Assinar um plano
-            </BotaoLink>
-            <Botao tamanho="sm" variante="secundario" onClick={() => setPedirPlano(false)}>
-              Agora não
-            </Botao>
-          </span>
-        </div>
-      )}
+      <JanelaPedirPlano
+        aberta={pedirPlano}
+        fechar={() => setPedirPlano(false)}
+        titulo="Para ligar, assine um plano"
+        texto="Com o convite automático, quem combina com esta vaga recebe o convite na hora, com o seu recado. Sem plano, você continua vendo quem combina e convida com um toque em Talentos."
+      />
       {(v.ligado || liberado) && (
         // o recado numa largura de ler bem (a lista usa a largura toda do painel)
         <div className="flex max-w-2xl flex-col gap-2">

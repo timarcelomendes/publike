@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 import { apagarRegra, ligarRegra } from "@/lib/acoes/regras";
 import { fraseDaRegra, MODELOS, type Regra } from "@/lib/regras";
 import { BotaoLink } from "../ui/botao";
+import { JanelaPedirPlano } from "../ui/pedir-plano";
 import { useAcao } from "../ui/usar-acao";
 
 // "Suas regras" (Automações personalizadas): cada regra numa frase, com o liga-desliga, quantas vezes agiu, mudar e
@@ -37,6 +38,8 @@ function CartaoDaRegra({
   const [apagando, setApagando] = useState(false);
   const [ligada, setLigada] = useState(regra.ligada);
   const pausada = ligada && !liberado;
+  // sem as Automações personalizadas, ligar pede para assinar (11/11/2026)
+  const [pedirPlano, setPedirPlano] = useState(false);
   return (
     <li className="flex flex-col gap-2 px-4 py-4 sm:px-5">
       <div className="flex items-start justify-between gap-3">
@@ -48,8 +51,12 @@ function CartaoDaRegra({
           role="switch"
           aria-checked={ligada}
           aria-labelledby={`${id}-nome`}
-          disabled={pendente || (!liberado && !ligada)}
+          disabled={pendente}
           onClick={() => {
+            if (!liberado && !ligada) {
+              setPedirPlano(true);
+              return;
+            }
             const v = !ligada;
             setLigada(v);
             rodar(
@@ -121,6 +128,14 @@ function CartaoDaRegra({
         )}
       </div>
       {mensagem}
+      <JanelaPedirPlano
+        aberta={pedirPlano}
+        fechar={() => setPedirPlano(false)}
+        titulo="Para ligar, assine as Automações personalizadas"
+        texto="Com elas, as suas regras agem sozinhas em cada candidato. As 5 automações prontas continuam grátis."
+        href="/painel/assinar?recurso=automacoes"
+        acao="Assinar as automações"
+      />
     </li>
   );
 }
