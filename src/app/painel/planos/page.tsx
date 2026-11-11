@@ -1,29 +1,23 @@
-import { Check, CreditCard } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AvisoDaFaixa } from "@/components/pagamentos/aviso-da-faixa";
+import { GradeDePlanos, preco, vagas } from "@/components/pagamentos/grade-de-planos";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
-import { Selo } from "@/components/ui/basicos";
-import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { recursosPagos } from "@/lib/dados";
 import { formatarMoeda, primeiro } from "@/lib/formato";
 import {
   ehPlanoPorFaixa,
-  MESES,
   NOME_PRODUTO,
   O_PRODUTO,
   planoQueCabe,
-  podeAssinarPacote,
   seCruzam,
-  type Assinatura,
   type Ciclo,
-  type PagamentosDaConta,
   type Produto,
 } from "@/lib/pagamentos";
-import { dataCurta, type EstadoRecurso, type RecursosPagos } from "@/lib/recursos-pagos";
+import { dataCurta, type EstadoRecurso } from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
 import { minhaFaixa } from "@/lib/servidor/pagina-de-carreiras";
 import { exigirUsuario } from "@/lib/sessao";
@@ -43,32 +37,6 @@ export default function PaginaPlanos({ searchParams }: PageProps<"/painel/planos
   );
 }
 
-const GRATIS = [
-  "Até 20 vagas no ar ao mesmo tempo",
-  "Candidatos, quadro e mensagens",
-  "Equipe sem limite de pessoas",
-  "Página de carreiras com 10 vagas publicadas",
-];
-
-const DOS_PLANOS = [
-  "Triagem com IA",
-  "Teste Prático",
-  "Entrevista em vídeo: a gravada sem limite e a ao vivo pelo Publike (10, 20 ou 30 por mês, pela faixa)",
-  "Automações personalizadas",
-  "Consulta de salários",
-  "Página de carreiras, sem esperar as 10 vagas",
-  "Mutirão de contratação: um dia de entrevistas com horários",
-  "Convite automático para quem combina com a vaga",
-  "Mapa de talentos: quantas pessoas de cada função moram perto",
-];
-
-const SO_DA_AGENCIA = [
-  "Finalistas com a marca da agência",
-  "Relatório por cliente",
-  "Garantia acompanhada com o cliente",
-  "Dossiê de cada finalista",
-];
-
 /** Cada recurso sozinho, na ordem em que aparece embaixo, com o que ele faz numa linha. */
 const AVULSOS: { p: Produto; faz: string }[] = [
   { p: "copiloto", faz: "A IA lê os currículos contra o que a vaga pede." },
@@ -82,12 +50,6 @@ const AVULSOS: { p: Produto; faz: string }[] = [
   { p: "salarios", faz: "Quanto o mercado paga para cada função." },
   { p: "carreiras", faz: "A sua página de vagas com a cara da empresa." },
 ];
-
-const vagas = (n: number) => (n === 1 ? "1 vaga" : `${n} vagas`);
-
-function preco(pag: PagamentosDaConta | null, p: Produto, ciclo: Ciclo) {
-  return pag?.planos.find((x) => x.recurso === p && x.ciclo === ciclo) ?? null;
-}
 
 /** Como um recurso sozinho está na conta: assinado, liberado ou nos dias grátis; senão, nada. */
 function situacao(e: EstadoRecurso | undefined, agora: number): string | null {
@@ -170,30 +132,18 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
         <TrocaCiclo ciclo={ciclo} anual={temAnual} />
       </div>
 
-      <ul className={`grid gap-4 ${faixas.length >= 2 ? "lg:grid-cols-3" : faixas.length === 1 ? "md:grid-cols-2" : ""}`}>
-        <li>
-          <CartaoGratis atual={!meuPlano} agencia={agencia || faixa?.agencia === true} />
-        </li>
-        {faixas.map((p) => (
-          <li key={p}>
-            <CartaoPlano
-              p={p}
-              pag={pag}
-              recursos={recursos}
-              ciclo={ciclo}
-              noAr={noAr}
-              cabe={cabe === p || (p === "completo" && !cabe)}
-              meu={meuPlano}
-              agencia={agencia}
-              cruza={
-                [...valendo]
-                  .sort((a, b) => Number(b.situacao === "ativa") - Number(a.situacao === "ativa"))
-                  .find((a) => a.recurso !== p && seCruzam(a.recurso, p)) ?? null
-              }
-            />
-          </li>
-        ))}
-      </ul>
+      <GradeDePlanos
+        faixas={faixas}
+        pag={pag}
+        recursos={recursos}
+        ciclo={ciclo}
+        noAr={noAr}
+        cabe={cabe}
+        meuPlano={meuPlano}
+        agencia={agencia}
+        agenciaNoGratis={agencia || faixa?.agencia === true}
+        valendo={valendo}
+      />
 
       {avulsos.length > 0 && (
         <section aria-labelledby="avulsos" className="flex flex-col gap-3">
@@ -287,173 +237,5 @@ function TrocaCiclo({ ciclo, anual }: { ciclo: Ciclo; anual: boolean }) {
         </Link>
       ))}
     </nav>
-  );
-}
-
-function Lista({ itens, titulo }: { itens: string[]; titulo?: string }) {
-  return (
-    <div className="flex flex-col gap-2">
-      {titulo && <p className="text-body-sm font-semibold">{titulo}</p>}
-      <ul className="flex flex-col gap-1.5 text-body-sm">
-        {itens.map((t) => (
-          <li key={t} className="flex gap-2">
-            <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-cerrado-text" />
-            {t}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function CartaoGratis({ atual, agencia }: { atual: boolean; agencia: boolean }) {
-  return (
-    <article className="flex h-full flex-col gap-5 rounded-lg border border-line bg-surface-200 p-5 sm:p-6">
-      <div className="flex min-h-7 items-center justify-between gap-2">
-        <h3 className="text-h3">Grátis</h3>
-        {atual && <Selo variante="contorno">Seu plano</Selo>}
-      </div>
-      <p>
-        <span className="text-h1 tabular-nums">R$ 0</span>
-        <span className="block text-body-sm text-ink-muted">para sempre</span>
-      </p>
-      <Lista itens={agencia ? [...GRATIS, "Clientes, pedidos e finalistas por link"] : GRATIS} />
-    </article>
-  );
-}
-
-function CartaoPlano({
-  p,
-  pag,
-  recursos,
-  ciclo,
-  noAr,
-  cabe,
-  meu,
-  agencia,
-  cruza,
-}: {
-  p: Produto;
-  pag: PagamentosDaConta;
-  recursos: RecursosPagos | null;
-  ciclo: Ciclo;
-  noAr: number;
-  cabe: boolean;
-  meu: Assinatura | null;
-  agencia: boolean;
-  /** uma assinatura de recurso que o plano inclui (não valem juntos) */
-  cruza: Assinatura | null;
-}) {
-  const mensal = preco(pag, p, "MONTHLY");
-  const escolhido = preco(pag, p, ciclo) ?? mensal;
-  if (!mensal || !escolhido) return null;
-  const limite = mensal.limite_vagas ?? null;
-  const pequeno = limite != null && noAr > limite;
-  const ehMeu = meu?.recurso === p;
-  const porMes = escolhido.valor / MESES[escolhido.ciclo];
-  const desconto = escolhido.ciclo !== "MONTHLY" ? Math.round((1 - porMes / mensal.valor) * 100) : 0;
-  const trinta = preco(pag, p, "AVULSO");
-  // a assinatura de plano por faixa de hoje, numa faixa menor da mesma família: muda pagando a diferença
-  const subir =
-    meu && ehPlanoPorFaixa(meu.recurso) && meu.situacao === "ativa" && limite != null &&
-    String(meu.recurso).split("_")[0] === String(p).split("_")[0] &&
-    (Number(String(meu.recurso).split("_")[1]) || 0) < limite;
-  const linkCiclo = escolhido.ciclo === "QUARTERLY" ? "&ciclo=3" : escolhido.ciclo === "YEARLY" ? "&ciclo=12" : "";
-  const recrutadores = p === "agencia_15" ? 3 : p === "agencia_200" ? 10 : null;
-  const podeAssinar = !meu && !pequeno && podeAssinarPacote(pag, recursos, p as Parameters<typeof podeAssinarPacote>[2]);
-  const nome = p === "completo" ? "Plano Completo" : agencia ? "Plano Agência" : "Plano Empresa";
-
-  return (
-    <article
-      className={`flex h-full flex-col gap-5 rounded-lg border bg-surface-200 p-5 sm:p-6 ${
-        ehMeu || (cabe && !meu) ? "border-2 border-ink shadow-card" : "border-line"
-      } ${pequeno ? "opacity-70" : ""}`}
-    >
-      <div className="flex min-h-7 flex-wrap items-center justify-between gap-2">
-        <h3 className="text-h3">
-          {nome}
-          {limite != null && <span className="block text-body-sm font-normal text-ink-muted">até {vagas(limite)} no ar</span>}
-        </h3>
-        {ehMeu ? (
-          <Selo variante="match">Seu plano</Selo>
-        ) : cabe && !meu ? (
-          <Selo variante="aviso">Cabe nas suas vagas</Selo>
-        ) : null}
-      </div>
-      {escolhido.ciclo === "QUARTERLY" || escolhido.ciclo === "YEARLY" ? (
-        <p>
-          <span className="text-h1 tabular-nums">{formatarMoeda(escolhido.valor)}</span>
-          <span className="block text-body-sm text-ink-muted">
-            {escolhido.ciclo === "YEARLY" ? "por ano" : "a cada 3 meses"}:{" "}
-            {formatarMoeda(Math.round(porMes * 100) / 100)} por mês
-            {desconto > 0 ? `, ${desconto}% a menos` : ""}
-          </span>
-        </p>
-      ) : (
-        <p>
-          <span className="text-h1 tabular-nums">{formatarMoeda(porMes)}</span>
-          <span className="block text-body-sm text-ink-muted">por mês, no cartão ou no Pix</span>
-        </p>
-      )}
-      <div className="flex flex-col gap-4">
-        <Lista
-          titulo="Tudo do Grátis, mais:"
-          itens={recrutadores ? [...DOS_PLANOS, `Até ${recrutadores} recrutadores usando`] : DOS_PLANOS}
-        />
-        {agencia && p !== "completo" && <Lista titulo="Só no Plano Agência:" itens={SO_DA_AGENCIA} />}
-      </div>
-      <div className="mt-auto border-t border-line pt-4">
-        {ehMeu ? (
-          <BotaoLink href="/painel/assinatura" variante="secundario" tamanho="sm">
-            Ver a assinatura
-          </BotaoLink>
-        ) : pequeno ? (
-          <p className="text-body-sm text-ink-muted">Você tem {vagas(noAr)} no ar: a faixa de cima cabe melhor.</p>
-        ) : podeAssinar ? (
-          <div className="flex flex-col items-start gap-2">
-            <BotaoLink
-              href={`/painel/assinar?recurso=${p}${linkCiclo}`}
-              variante={cabe ? "primario" : "secundario"}
-              tamanho="sm"
-            >
-              <CreditCard aria-hidden />
-              Assinar
-            </BotaoLink>
-            {trinta && (
-              <Link
-                href={`/painel/assinar?recurso=${p}&trinta=1`}
-                className="text-body-sm text-terra-text underline underline-offset-2"
-              >
-                Ou só por 30 dias, sem renovar: {formatarMoeda(trinta.valor)}
-              </Link>
-            )}
-          </div>
-        ) : subir ? (
-          <BotaoLink href={`/painel/assinar?recurso=${p}&mudar=1`} variante="secundario" tamanho="sm">
-            Mudar para esta faixa
-          </BotaoLink>
-        ) : meu ? (
-          <p className="text-body-sm text-ink-muted">
-            Para trocar de plano, cancele {NOME_PRODUTO[meu.recurso]} em{" "}
-            <Link href="/painel/assinatura" className="underline underline-offset-2">
-              Assinatura
-            </Link>
-            : o que já foi pago continua valendo.
-          </p>
-        ) : cruza ? (
-          <p className="text-body-sm text-ink-muted">
-            O plano inclui {O_PRODUTO[cruza.recurso]}, que você já assina. Para trocar, cancele em{" "}
-            <Link href="/painel/assinatura" className="underline underline-offset-2">
-              Assinatura
-            </Link>{" "}
-            e volte aqui: o que já foi pago continua valendo, e o plano só cobra quando ele acabar.
-          </p>
-        ) : (
-          <p className="text-body-sm text-ink-muted">
-            Os recursos do plano já estão liberados na sua conta, sem prazo.
-          </p>
-        )}
-      </div>
-    </article>
   );
 }
