@@ -149,7 +149,7 @@ export function eventoDaEntrevista(
     duracaoMin: e.duracao_min || DURACAO_PADRAO,
     titulo,
     descricao,
-    // pelo Publike: o link da página da entrevista (a sala abre 15 minutos antes)
+    // pelo Publike: o link da página da entrevista (a sala abre 10 minutos antes)
     local:
       e.formato === "telefone" ? "Por telefone" : e.formato === "publike" ? `${SITE_URL}/entrevista/${e.id}` : e.local,
     url,

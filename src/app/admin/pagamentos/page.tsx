@@ -15,6 +15,7 @@ import { Aviso, Selo } from "@/components/ui/basicos";
 import { formatarMoeda, tempoRelativo } from "@/lib/formato";
 import { NOME_CICLO, NOME_PRODUTO, type Ciclo, type Produto } from "@/lib/pagamentos";
 import { tokenParaCopiar } from "@/lib/servidor/asaas";
+import { aoVivoDoMesNoAdmin, AVISO_DAILY, DOLAR_POR_MINUTO, FRANQUIA_DAILY } from "@/lib/admin/ao-vivo";
 import { itensPagamentos, situacaoPagamentos } from "@/lib/servidor/situacao-pagamentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
@@ -71,6 +72,7 @@ async function Conteudo() {
   }
   const d = data as unknown as Dados;
   const [sit, agora] = await Promise.all([situacaoPagamentos(c), agoraDaRequisicao()]);
+  const aoVivo = await aoVivoDoMesNoAdmin(c, agora);
   const noAr = sit.noAr;
   const token = tokenParaCopiar();
   const tokenSandbox = tokenParaCopiar(true);
@@ -240,6 +242,30 @@ async function Conteudo() {
           </p>
         )}
       </Secao>
+
+      {aoVivo && (
+        <Secao
+          titulo="Entrevistas ao vivo do mês"
+          descricao={`A chamada pelo Publike usa a Daily: ${FRANQUIA_DAILY.toLocaleString("pt-BR")} minutos de participante grátis por mês para o site todo; depois, US$ ${DOLAR_POR_MINUTO.toLocaleString("pt-BR")} por minuto de cada pessoa. Cada plano tem o seu limite de entrevistas no mês (10, 20 ou 30; 3 nos dias grátis). A conta aqui é uma estimativa (a duração marcada × 2 pessoas): o número certo está no painel da Daily.`}
+        >
+          <p className="text-body">
+            <strong className="tabular-nums">{aoVivo.entrevistas}</strong>{" "}
+            {aoVivo.entrevistas === 1 ? "entrevista marcada" : "entrevistas marcadas"} neste mês, em{" "}
+            {aoVivo.contas} {aoVivo.contas === 1 ? "vaga" : "vagas"}: uns{" "}
+            <strong className="tabular-nums">{aoVivo.minutos.toLocaleString("pt-BR")}</strong> de{" "}
+            {FRANQUIA_DAILY.toLocaleString("pt-BR")} minutos grátis
+            {aoVivo.minutos > FRANQUIA_DAILY &&
+              ` (passou: uns US$ ${((aoVivo.minutos - FRANQUIA_DAILY) * DOLAR_POR_MINUTO).toFixed(2).replace(".", ",")} a pagar)`}
+            .
+          </p>
+          {aoVivo.minutos >= AVISO_DAILY && (
+            <Aviso tipo="alerta" titulo="A franquia grátis da Daily está acabando">
+              Já são mais de 80% dos minutos grátis do mês. Confira o uso no painel da Daily e, se precisar, baixe o
+              limite de entrevistas dos planos.
+            </Aviso>
+          )}
+        </Secao>
+      )}
 
       <Secao
         titulo="Preços"

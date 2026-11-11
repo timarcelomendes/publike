@@ -40,7 +40,7 @@ export async function entrarNaEntrevista(id: string): Promise<{ ok: true; url: s
   const agora = Date.now();
   const abre = new Date(e.abre_em);
   const fecha = new Date(e.fecha_em);
-  if (agora < abre.getTime()) return { ok: false, erro: "A sala ainda não abriu: ela abre 15 minutos antes." };
+  if (agora < abre.getTime()) return { ok: false, erro: "A sala ainda não abriu: ela abre 10 minutos antes." };
   if (agora > fecha.getTime()) return { ok: false, erro: "A entrevista já passou." };
   try {
     let sala = e.sala;

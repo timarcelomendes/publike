@@ -83,6 +83,7 @@ export function FormEntrevista({
   endereco,
   aoTerminar,
   aoVivo = false,
+  aoVivoNoMes = null,
   gravada = null,
   meet = false,
 }: {
@@ -92,8 +93,10 @@ export function FormEntrevista({
   atual: EntrevistaResumo | null;
   /** o endereço da vaga, para já vir preenchido no presencial */
   endereco: string;
-  /** a chamada pelo Publike está disponível (Entrevista em vídeo e a Daily configurada) */
+  /** a chamada pelo Publike está disponível (Entrevista em vídeo, a Daily configurada e sobra entrevista no mês) */
   aoVivo?: boolean;
+  /** as entrevistas ao vivo do mês e o limite do plano (migração 20270420120000); null: sem o número */
+  aoVivoNoMes?: { usadas: number; limite: number } | null;
   /**
    * a Entrevista em vídeo gravada está liberada: entra como mais um jeito em "Como vai ser", com o pedido de agora
    * (pedir, acompanhar, cancelar, pedir de novo e assistir). null: sem o recurso.
@@ -184,6 +187,16 @@ export function FormEntrevista({
             </label>
           )}
         </div>
+        {aoVivoNoMes && aoVivoNoMes.limite > 0 && aoVivoNoMes.usadas >= aoVivoNoMes.limite && formato !== "publike" ? (
+          <p className="text-body-sm text-ink-muted">
+            As {aoVivoNoMes.limite} entrevistas ao vivo pelo Publike deste mês já foram usadas: elas voltam no dia 1º.
+            Marque por link de vídeo, telefone ou presencial.
+          </p>
+        ) : aoVivoNoMes && aoVivoNoMes.limite > 0 && !gravar && formato === "publike" ? (
+          <p className="text-body-sm text-ink-muted">
+            Ao vivo pelo Publike: {aoVivoNoMes.usadas} de {aoVivoNoMes.limite} neste mês.
+          </p>
+        ) : null}
       </fieldset>
   );
 

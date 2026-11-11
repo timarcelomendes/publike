@@ -44,7 +44,8 @@ export async function salaDaEntrevista(d: { id: string; abre: Date; fecha: Date 
       properties: {
         nbf: Math.floor(d.abre.getTime() / 1000),
         exp: Math.floor(d.fecha.getTime() / 1000),
-        max_participants: 4,
+        // o candidato, quem entrevista e mais um da equipe (cada pessoa conta minutos na Daily)
+        max_participants: 3,
         eject_at_room_exp: true,
         enable_prejoin_ui: true,
         enable_chat: true,

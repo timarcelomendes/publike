@@ -82,8 +82,10 @@ export type ExtrasDaFicha = {
   agora: number;
   vaga: { titulo: string; noAr: boolean; preenchida: boolean; quantas: number; contratados: number };
   endereco: string;
-  /** a chamada pelo Publike (Entrevista em vídeo liberada e a Daily configurada) */
+  /** a chamada pelo Publike (Entrevista em vídeo liberada, a Daily configurada e sobra entrevista no mês) */
   aoVivo: boolean;
+  /** as entrevistas ao vivo do mês e o limite do plano (migração 20270420120000) */
+  aoVivoNoMes?: { usadas: number; limite: number } | null;
   /** o Google Meet ligado no servidor: "Google Meet" cria a sala na hora */
   meet?: boolean;
   video: { liberado: boolean; atual: VideoNoQuadro | null };
@@ -805,6 +807,7 @@ function FolhaChamar({
         atual={extras.entrevista}
         endereco={extras.endereco}
         aoVivo={extras.aoVivo}
+        aoVivoNoMes={extras.aoVivoNoMes ?? null}
         gravada={extras.video.liberado ? { video: extras.video.atual, agora: extras.agora } : null}
         meet={Boolean(extras.meet)}
         aoTerminar={aoFechar}

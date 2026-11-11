@@ -3695,6 +3695,8 @@ export type Database = {
       recebo_convites_automaticos: { Args: Record<string, never>; Returns: boolean };
       receber_convites_automaticos: { Args: { p_sim: boolean }; Returns: undefined };
       servidor_convite_auto_contas: { Args: { p_chave: string }; Returns: Json };
+      // o limite das entrevistas ao vivo (migração 20270420120000)
+      minhas_entrevistas_ao_vivo: { Args: Record<string, never>; Returns: Json };
       // o mapa de talentos (migração 20270419120000)
       mapa_de_talentos_liberado: { Args: Record<string, never>; Returns: boolean };
       servidor_mapa_de_talentos: {

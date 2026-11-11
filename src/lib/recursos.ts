@@ -292,7 +292,7 @@ export const PERFIS: Perfil[] = [
         {
           icone: "video",
           titulo: "Entrevista em vídeo",
-          texto: "O candidato grava as respostas e a IA resume. Ou a entrevista ao vivo, sem instalar nada.",
+          texto: "Duas opções: gravada, com o resumo da IA, ou ao vivo, dentro do Publike, sem instalar nada.",
           novo: true,
         },
         {

@@ -182,7 +182,7 @@ const RECURSOS_PAGOS: Item[] = [
     icone: Video,
     titulo: "Entrevista em vídeo",
     texto:
-      "Confirme que a pessoa sabe fazer. Gravada: o candidato responde pelo celular no prazo que você escolher, e a IA transcreve e resume. Ou ao vivo, dentro do Publike, sem Zoom nem Meet.",
+      "Confirme que a pessoa sabe fazer, com as duas opções no mesmo recurso. Gravada: o candidato responde pelo celular no prazo que você escolher, e a IA transcreve e resume. Ao vivo: a chamada dentro do Publike, sem Zoom nem Meet, de 10 a 30 por mês, pelo plano.",
   },
   {
     icone: Workflow,

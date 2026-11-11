@@ -196,7 +196,12 @@ export function QuadroCandidatos({
   /** o retorno a quem não seguiu (null: sem a migração 20261230120000) */
   retorno?: RetornoDaConta | null;
   /** a Entrevista em vídeo: a conta tem o recurso (null: o banco ainda sem a migração) */
-  video?: { liberado: boolean; aoVivo?: boolean; meet?: boolean } | null;
+  video?: {
+    liberado: boolean;
+    aoVivo?: boolean;
+    meet?: boolean;
+    aoVivoNoMes?: { usadas: number; limite: number } | null;
+  } | null;
   /** a avaliação do time: a ficha da vaga e as sugestões (null: sem a migração 20270107120000) */
   time?: { ficha: Competencia[]; sugestoes: string[] } | null;
   /** as etapas próprias da conta (null: sem a migração 20270108120000) */
@@ -725,7 +730,12 @@ function DetalheCandidato({
   c: CartaoQuadro;
   /** o texto do retorno da conta (o WhatsApp de quem não seguiu) */
   retorno: string | null;
-  video: { liberado: boolean; aoVivo?: boolean; meet?: boolean } | null;
+  video: {
+    liberado: boolean;
+    aoVivo?: boolean;
+    meet?: boolean;
+    aoVivoNoMes?: { usadas: number; limite: number } | null;
+  } | null;
   time: { ficha: Competencia[]; sugestoes: string[] } | null;
   /** contato direto: o match saiu na hora, sem aceite */
   direto: boolean;
@@ -975,6 +985,7 @@ function DetalheCandidato({
             atual={e && ENTREVISTA_ABERTA.includes(e.situacao) ? e : null}
             endereco={endereco}
             aoVivo={Boolean(video?.liberado && video.aoVivo)}
+            aoVivoNoMes={video?.liberado ? (video.aoVivoNoMes ?? null) : null}
             gravada={video?.liberado ? { video: c.video ?? null, agora } : null}
             meet={Boolean(video?.meet)}
             aoTerminar={() => {

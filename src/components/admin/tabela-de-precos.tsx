@@ -44,7 +44,8 @@ const SUGESTAO: Record<Produto, Partial<Record<Ciclo, number>>> = {
   // a Triagem com IA desceu para R$ 59 (10/11/2026), com 15% no trimestre
   copiloto: { MONTHLY: 59, QUARTERLY: 150 },
   testes: { MONTHLY: 29, QUARTERLY: 74 },
-  video: { MONTHLY: 49, QUARTERLY: 125 },
+  // a Entrevista em vídeo, gravada e ao vivo no mesmo recurso, subiu para R$ 59 (11/11/2026), com 15% no trimestre
+  video: { MONTHLY: 59, QUARTERLY: 150 },
   automacoes: { MONTHLY: 39, QUARTERLY: 99 },
   // a Consulta de salários (decisão de 05/11/2026: R$ 29,90 por mês)
   salarios: { MONTHLY: 29.9, QUARTERLY: 76.24 },

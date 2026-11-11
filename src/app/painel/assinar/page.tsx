@@ -403,7 +403,7 @@ const OFERTA_CURTA: Record<Produto, { titulo: string; texto: string; botao: stri
   },
   video: {
     titulo: "Entrevista em vídeo",
-    texto: "Ouça todos os candidatos sem marcar horário: eles gravam as respostas e a IA resume.",
+    texto: "Duas opções: gravada, em que o candidato grava as respostas e a IA resume, ou ao vivo, dentro do Publike.",
     botao: "Conhecer a Entrevista em vídeo",
   },
   automacoes: {

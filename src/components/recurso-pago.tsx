@@ -35,12 +35,12 @@ const OFERTA: Record<RecursoPago, { titulo: string; texto: string; itens: string
   video: {
     titulo: "Entrevista em vídeo: confirme que a pessoa sabe fazer",
     texto:
-      "Currículo bonito não diz se a pessoa sabe fazer. A entrevista gravada diz: o candidato responde pelo celular, quando puder, sem marcar horário, e a IA transcreve e resume. Quem decide é você.",
+      "Currículo bonito não diz se a pessoa sabe fazer. A Entrevista em vídeo traz as duas opções, no mesmo recurso: gravada, em que o candidato responde pelo celular quando puder e a IA transcreve e resume, e ao vivo, numa chamada dentro do Publike. Quem decide é você.",
     itens: [
-      "Você escolhe de 2 a 6 perguntas, com sugestões pela vaga",
-      "O candidato grava pelo celular, sem instalar nada",
-      "A IA transcreve e resume cada resposta",
-      "E a entrevista ao vivo pelo Publike, com um toque",
+      "Gravada: você escolhe de 2 a 6 perguntas, com sugestões pela vaga",
+      "Gravada: o candidato grava pelo celular, e a IA transcreve e resume cada resposta",
+      "Ao vivo: a chamada dentro do Publike, com um toque, sem Zoom, Meet nem instalar nada",
+      "A gravada sem limite; ao vivo, até 10 por mês (nos planos, 10, 20 ou 30, pela faixa)",
     ],
   },
   automacoes: {

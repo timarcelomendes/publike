@@ -28,7 +28,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { ExtrasDaFicha } from "@/components/painel/controles-ficha";
 import { recursosPagos } from "@/lib/dados";
 import { conversaCom } from "@/lib/servidor/conversas";
-import { dailyConfigurado } from "@/lib/servidor/daily";
+import { aoVivoAberto, aoVivoDoMes } from "@/lib/servidor/ao-vivo";
 import { meetLigado } from "@/lib/servidor/google-meet";
 import { videosDaVaga } from "@/lib/servidor/entrevista-video";
 import { propostasDaVaga } from "@/lib/servidor/proposta";
@@ -317,7 +317,7 @@ export async function MesaDeCandidatos({
  * contratados), a chamada pelo Publike, a entrevista gravada, os testes da vaga, a proposta e a conversa.
  */
 async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: number) {
-  const [recursos, videos, testes, propostas, conversa, regras, processo, padroes] = await Promise.all([
+  const [recursos, videos, testes, propostas, conversa, regras, processo, padroes, aoVivoNoMes] = await Promise.all([
     recursosPagos(),
     videosDaVaga(aberto.anuncio_id),
     testesDaVaga(aberto.anuncio_id),
@@ -327,6 +327,8 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
     // as regras do processo e o padrão da proposta (Configurações; migração 20270315120000)
     processoDaConta(),
     padroesDaConta(),
+    // as entrevistas ao vivo do mês (migração 20270420120000)
+    aoVivoDoMes(),
   ]);
   const videoLiberado = Boolean(recursos?.video.liberado);
   const ficha: ExtrasDaFicha = {
@@ -341,7 +343,8 @@ async function extrasDaFicha(aberto: ItemCaixa, itens: ItemCaixa[], agora: numbe
       contratados: itens.filter((c) => c.anuncio_id === aberto.anuncio_id && abaDe(c) === "contratados").length,
     },
     endereco: aberto.endereco,
-    aoVivo: videoLiberado && dailyConfigurado(),
+    aoVivo: videoLiberado && aoVivoAberto(aoVivoNoMes),
+    aoVivoNoMes: videoLiberado ? aoVivoNoMes : null,
     meet: meetLigado(),
     video: { liberado: videoLiberado, atual: videos?.get(aberto.perfil_id) ?? null },
     testes: testes.map((t) => ({ id: t.modelo_id, titulo: t.titulo })),

@@ -88,7 +88,7 @@ async function Conteudo({ params }: { params: PageProps<"/entrevista/[id]">["par
         </Aviso>
       ) : antes ? (
         <Aviso tipo="info" titulo={`A sala abre às ${hora(e.abre_em)}`}>
-          Volte 15 minutos antes do horário. Use o celular ou o computador, com a câmera e o microfone liberados.
+          Volte até 10 minutos antes do horário: a sala abre nessa hora e fecha 15 minutos depois do fim marcado. Use o celular ou o computador, com a câmera e o microfone liberados.
         </Aviso>
       ) : (
         <SalaDaEntrevista id={e.id} />

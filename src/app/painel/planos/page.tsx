@@ -53,11 +53,13 @@ const GRATIS = [
 const DOS_PLANOS = [
   "Triagem com IA",
   "Teste Prático",
-  "Entrevista em vídeo",
+  "Entrevista em vídeo: a gravada sem limite e a ao vivo pelo Publike (10, 20 ou 30 por mês, pela faixa)",
   "Automações personalizadas",
   "Consulta de salários",
   "Página de carreiras, sem esperar as 10 vagas",
   "Mutirão de contratação: um dia de entrevistas com horários",
+  "Convite automático para quem combina com a vaga",
+  "Mapa de talentos: quantas pessoas de cada função moram perto",
 ];
 
 const SO_DA_AGENCIA = [
@@ -72,7 +74,10 @@ const AVULSOS: { p: Produto; faz: string }[] = [
   { p: "copiloto", faz: "A IA lê os currículos contra o que a vaga pede." },
   { p: "testes", faz: "Confirme que a pessoa sabe fazer, com um teste pelo celular." },
   { p: "combo", faz: "A Triagem e o Teste Prático juntos, por menos." },
-  { p: "video", faz: "Confirme que a pessoa sabe fazer, com respostas gravadas e o resumo da IA." },
+  {
+    p: "video",
+    faz: "Confirme que a pessoa sabe fazer: respostas gravadas com o resumo da IA, sem limite, e até 10 entrevistas ao vivo pelo Publike por mês.",
+  },
   { p: "automacoes", faz: "As suas regras, o Publike faz sozinho." },
   { p: "salarios", faz: "Quanto o mercado paga para cada função." },
   { p: "carreiras", faz: "A sua página de vagas com a cara da empresa." },

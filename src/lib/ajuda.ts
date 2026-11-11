@@ -260,7 +260,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é pago no Publike?",
-        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (gravada, com resumo da IA, ou ao vivo, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático e o mapa de talentos. Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
+        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (as duas opções: gravada, com resumo da IA, e ao vivo, dentro do Publike, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático e o mapa de talentos. Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
       },
       {
         p: "Dá para pagar o plano por ano ou só por 30 dias?",
@@ -269,6 +269,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       {
         p: "O que é o mutirão de contratação?",
         r: "Um dia (ou uma tarde) de entrevistas em sequência, para contratar várias pessoas de uma vez. Em Ferramentas › Mutirão, escolha o dia, o horário, de quanto em quanto tempo, quantas pessoas por horário e as vagas. Depois, chame quem curtiu as vagas: cada pessoa escolhe um horário que ainda tem lugar e recebe o lembrete na véspera. No dia, marque quem chegou e quem faltou, e abra a ficha para contratar. O mutirão vem nos planos; o primeiro é grátis, para experimentar.",
+      },
+      {
+        p: "Quantas entrevistas ao vivo pelo Publike posso fazer?",
+        r: "A entrevista gravada não tem limite. A ao vivo, a chamada dentro do Publike, conta por mês, pelo dia da entrevista: até 10 com a Entrevista em vídeo sozinha; no Plano Empresa, 10 na faixa até 5 vagas, 20 na até 20 e 30 na até 50; no Plano Agência, 20 na até 15 e 30 na até 200; nos 15 dias grátis, 3. Cancelada não conta. Acabou, a opção “pelo Publike” some até o mês virar, e dá para marcar por link de vídeo, telefone ou presencial. A sala abre 10 minutos antes e fecha 15 minutos depois do fim marcado.",
       },
       {
         p: "O que é o convite automático?",

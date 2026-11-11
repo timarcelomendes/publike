@@ -260,8 +260,12 @@ const REGRAS: Regra[] = [
     caminho: /^\/painel\/video/,
     ajuda: {
       titulo: "Entrevista em vídeo",
-      texto: "Para ver a pessoa contando como faz o serviço antes de chamar: ela grava as respostas pelo celular, no prazo que você escolher, e a IA transcreve e resume. Ou a entrevista ao vivo, dentro do Publike.",
-      dicas: ["Três perguntas curtas bastam.", "A IA julga só o que a pessoa disse, nunca a aparência ou o jeito de falar."],
+      texto: "Duas opções no mesmo recurso, para ver a pessoa contando como faz o serviço. Gravada: ela grava as respostas pelo celular, no prazo que você escolher, e a IA transcreve e resume. Ao vivo: a chamada dentro do Publike, no horário marcado.",
+      dicas: [
+        "Três perguntas curtas bastam.",
+        "A IA julga só o que a pessoa disse, nunca a aparência ou o jeito de falar.",
+        "A gravada não tem limite. Ao vivo pelo Publike: até 10 por mês com a Entrevista em vídeo sozinha; nos planos, 10, 20 ou 30, pela faixa (3 nos dias grátis).",
+      ],
     },
   },
   {

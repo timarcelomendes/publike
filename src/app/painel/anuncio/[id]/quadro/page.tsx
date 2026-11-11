@@ -19,7 +19,7 @@ import { ordemDoCopiloto, triagemDosCandidatos } from "@/lib/servidor/copiloto";
 import { montarQuadro } from "@/lib/servidor/quadro";
 import { sugestoesDeCompetencias } from "@/lib/avaliacao-time";
 import { avaliacoesTimeDaVaga, fichaDaVaga } from "@/lib/servidor/avaliacao-time";
-import { dailyConfigurado } from "@/lib/servidor/daily";
+import { aoVivoAberto, aoVivoDoMes } from "@/lib/servidor/ao-vivo";
 import { meetLigado } from "@/lib/servidor/google-meet";
 import { etapasProprias, ondeEstaDesde } from "@/lib/servidor/etapas-proprias";
 import { respostasDoChatDaVaga } from "@/lib/servidor/perguntas-do-match";
@@ -57,7 +57,12 @@ async function Conteudo({
   // ?candidato=<id>: abre já o cartão dessa pessoa (link da tela Candidatos)
   const abrir = typeof sp.candidato === "string" ? sp.candidato : null;
   const usuario = await exigirUsuario(`/painel/anuncio/${id}/quadro`);
-  const [anuncio, perfil, recursos] = await Promise.all([obterAnuncio(id), obterMeuPerfil(), recursosPagos()]);
+  const [anuncio, perfil, recursos, aoVivoNoMes] = await Promise.all([
+    obterAnuncio(id),
+    obterMeuPerfil(),
+    recursosPagos(),
+    aoVivoDoMes(),
+  ]);
   if (!anuncio || anuncio.autor_id !== usuario.id || anuncio.tipo !== "vaga") notFound();
   const agora = await agoraDaRequisicao();
   // as etapas próprias e o tempo na etapa (migração 20270108120000; sem ela, null) e as propostas
@@ -269,7 +274,12 @@ async function Conteudo({
           retorno={retorno}
           video={
             videos && recursos && !recursos.video.indisponivel
-              ? { liberado: recursos.video.liberado, aoVivo: dailyConfigurado(), meet: meetLigado() }
+              ? {
+                  liberado: recursos.video.liberado,
+                  aoVivo: aoVivoAberto(aoVivoNoMes),
+                  aoVivoNoMes,
+                  meet: meetLigado(),
+                }
               : null
           }
           time={ficha ? { ficha, sugestoes: sugestoesDeCompetencias(anuncio.titulo) } : null}
