@@ -90,7 +90,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é o % de match?",
-        r: "Com o currículo preenchido, cada vaga mostra o seu % de match: o quanto você combina com o que ela pede. A experiência na função vale mais: conta o trabalho, uma área parecida, o que você estudou, um curso ou uma habilidade dela. Nas vagas de entrada, que aceitam quem está começando, quem não tem experiência não perde pontos. Se falta a escolaridade, a CNH ou o horário que a vaga pede, o % vai até 45%. Em “Vagas que combinam” aparecem as de 70% ou mais, da que mais combina para a que menos combina.",
+        r: "Com o currículo preenchido, cada vaga mostra o seu % de match: o quanto você combina com o que ela pede. A experiência na função vale mais: conta o trabalho, uma área parecida, o que você estudou, um curso ou uma habilidade dela. Nas vagas de entrada, que aceitam quem está começando, quem não tem experiência fica em até 79%. Se falta a escolaridade, a CNH ou o horário que a vaga pede, o % vai até 45%. Em “Vagas que combinam” aparecem as de 70% ou mais, da que mais combina para a que menos combina.",
       },
       {
         p: "A empresa pediu um teste, um vídeo ou para escolher o horário. Como funciona?",
@@ -228,7 +228,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "Como é feita a nota de aderência dos candidatos?",
-        r: "A nota compara o que a vaga pede com o currículo, o perfil e as respostas de cada pessoa, e mostra o porquê item por item. Na vaga de experiência, a experiência na função vale 60% da nota: conta o trabalho na função, uma área parecida, o estudo na área, um curso ou uma habilidade dela. Sem nada disso, inclusive no primeiro emprego, a nota vai até 40%. Na vaga de entrada, a função vale 30% e quem está começando não perde pontos. É de entrada a vaga que marca “Aceita sem experiência”, a de aprendiz, estágio ou trainee e, com a experiência em “Não informar”, a de funções como atendente, auxiliar, repositor e caixa. Perto da vaga, o horário e o tempo de experiência pesam o dobro da escolaridade, da CNH e de cada pergunta. Se falta a escolaridade, a CNH ou o horário que a vaga pede, a nota vai até 45%. Com poucos itens para conferir, vai até 85% ou 92%. A nota só ordena a lista: quem decide é você.",
+        r: "A nota compara o que a vaga pede com o currículo, o perfil e as respostas de cada pessoa, e mostra o porquê item por item. Na vaga de experiência, a experiência na função vale 60% da nota: conta o trabalho na função, uma área parecida, o estudo na área, um curso ou uma habilidade dela. Sem nada disso, inclusive no primeiro emprego, a nota vai até 40%. Na vaga de entrada, a função vale 30%, e quem não tem experiência, estudo ou curso dela fica em até 79% (amarelo): não perde a vaga, mas o verde fica para quem mostra algo da função. É de entrada a vaga que marca “Aceita sem experiência”, a de aprendiz e, com a experiência em “Não informar”, a de funções como atendente, auxiliar, repositor e caixa. Estágio e trainee contam o curso da área. Perto da vaga, o horário e o tempo de experiência pesam o dobro da escolaridade, da CNH e de cada pergunta. Se falta a escolaridade, a CNH ou o horário que a vaga pede, a nota vai até 45%. Com poucos itens para conferir, vai até 85% ou 92%. A nota só ordena a lista: quem decide é você.",
       },
       {
         p: "Os candidatos veem o meu WhatsApp?",
@@ -434,7 +434,7 @@ const INTERESSADOS: PassoJornada = {
     "Para cada pessoa: perfil, mensagem, currículo, respostas às perguntas e o % de match com a vaga.",
     "Curtir de volta (aceitar) dá match e libera o contato dos dois.",
     "Em Candidatos você vê os interessados de todas as vagas juntos, filtra e baixa a lista numa planilha.",
-    "Na aba Talentos, em “Para a sua vaga”, aparecem as pessoas que deixaram o currículo à vista das empresas e têm experiência, área parecida, estudo ou curso na função (na vaga de entrada, também quem mora perto e pode no horário), de quem mais combina com a vaga para quem menos combina: dá para convidar, e a pessoa decide se curte.",
+    "Na aba Talentos, em “Para a sua vaga”, aparecem as pessoas que deixaram o currículo à vista das empresas e têm experiência, área parecida, estudo ou curso na função, de quem mais combina com a vaga para quem menos combina: dá para convidar, e a pessoa decide se curte.",
   ],
   imagem: "interessados",
   link: { href: "/painel/candidatos", texto: "Candidatos" },

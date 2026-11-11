@@ -74,6 +74,7 @@ const V6 = vaga("Técnico de enfermagem", {
 const V7 = vaga("Jovem aprendiz administrativo", { cbo: "411005", horario: h("08:00", "12:00") });
 const V8 = vaga("Auxiliar de enfermagem", { horario: h("07:00", "13:00") });
 const V9 = vaga("Vendedor externo", { cnh: "B", descricao: "Visitar clientes." });
+const V10 = vaga("Estágio em Direito", { experiencia: "sem", descricao: "Não é necessário ter experiência." });
 
 const primeiro = P();
 const cursoDeDados = P({ cursos: ["Análise de dados com Python"] });
@@ -87,6 +88,7 @@ const motoristaB = P({ cnh: "B", experiencias: [exp("Motorista", "2022-01", "202
 const motoristaD = P({ cnh: "D", experiencias: [exp("Motorista de caminhão", "2022-01", "2025-01")] });
 const tecnicaEnfermagem = P({ escolaridade: "tecnico", curso: "Técnico em enfermagem", disponibilidade: ["escala"] });
 const deLonge = P({ disponibilidade: ["noite"] }, { cidade: "Trindade" });
+const estudanteDeDireito = P({ escolaridade: "superior_incompleto", curso: "Direito" });
 const atendenteSemMedio = P({ escolaridade: "medio_incompleto", experiencias: [exp("Atendente", "2023-06", "2025-06")] });
 
 // [vaga, pessoa, nome, a nota da empresa, o % de quem procura (null: sem %), entra em Talentos › Para a sua vaga]
@@ -99,24 +101,27 @@ const casos: [V, ReturnType<typeof P>, string, number | null, number | null, boo
   [V1, atendente, "atendente", 40, 40, false],
   [V2, atendente, "atendente", 100, 100, true],
   [V2, vendedora, "vendedora (área parecida)", 94, 94, true],
-  [V2, primeiro, "primeiro emprego", 85, 85, true],
+  [V2, primeiro, "primeiro emprego", 79, 79, false],
   [V2, pedreiro, "pedreiro sem o médio", 45, 45, false],
   [V2, deLonge, "longe e só à noite", 33, 33, false],
   [V2, atendenteSemMedio, "atendente sem o médio", 45, 45, false],
-  [V3, primeiro, "primeiro emprego", 85, 85, true],
+  [V3, primeiro, "primeiro emprego", 79, 79, false],
   [V3, vendedora, "vendedora", 94, 94, true],
-  [V4, primeiro, "primeiro emprego", 85, 85, true],
+  [V4, primeiro, "primeiro emprego", 79, 79, false],
   [V5, motoristaD, "motorista com CNH D", 100, 100, true],
   [V5, motoristaB, "motorista com CNH B", 45, 45, false],
   [V5, primeiro, "primeiro emprego", 23, 23, false],
   [V6, tecnicaEnfermagem, "técnico em enfermagem", 64, 64, true],
   [V6, primeiro, "primeiro emprego", 24, null, false],
-  [V7, atendente, "atendente", 85, 85, true],
-  [V7, primeiro, "primeiro emprego", 85, 85, true],
+  [V7, atendente, "atendente (outra área)", 79, 79, false],
+  [V7, primeiro, "primeiro emprego", 79, 79, false],
   [V8, tecnicaEnfermagem, "técnico em enfermagem, só escala", 45, 45, false],
   [V8, primeiro, "primeiro emprego", 40, null, false],
   [V9, vendedora, "vendedora sem CNH", 45, 45, false],
   [V9, primeiro, "primeiro emprego", 27, null, false],
+  [V10, estudanteDeDireito, "estudante de Direito", 76, 76, true],
+  [V10, primeiro, "primeiro emprego sem Direito", 40, null, false],
+  [V10, atendente, "atendente", 40, 40, false],
 ];
 
 let falhas = 0;
@@ -144,6 +149,7 @@ const perfis: [V, string][] = [
   [V7, "entrada"],
   [V8, "experiencia"],
   [V9, "experiencia"],
+  [V10, "experiencia"],
 ];
 for (const [v, esperado] of perfis) {
   const perfil = perfilDaVaga(v as never);
@@ -206,6 +212,8 @@ for (let i = 0; i < 4000; i++) {
   for (const a of notas)
     if (a.faltam.length && (a.nota ?? 0) > TETO_SEM_OBRIGATORIO)
       falhou(`faltando ${a.faltam.join(", ")}, a nota passou de ${TETO_SEM_OBRIGATORIO}% (${a.nota})`);
+  if (notas[0].perfil === "entrada" && Math.max(notas[4].nota ?? 0, notas[5].nota ?? 0, notas[6].nota ?? 0) > 79)
+    falhou(`na vaga de entrada, quem só tem habilidade ou nada da função passou de 79%`);
   if (notas[0].perfil === "entrada" && notas[5].bruta !== notas[6].bruta)
     falhou(`na vaga de entrada, primeiro emprego (${notas[5].bruta}) e outra área (${notas[6].bruta}) ficaram diferentes`);
 }

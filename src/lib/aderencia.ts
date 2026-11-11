@@ -13,7 +13,8 @@
 // A função vale pelo que o currículo mostra: a mesma (1), de área parecida (0,6: vendedora numa vaga de
 // atendente), estudou na área (0,6), só um curso (0,5) ou uma habilidade (0,4), nada (0, também no primeiro
 // emprego). Na vaga de entrada, começa na metade (0,5 + a metade disso): quem não tem nada da função, no
-// primeiro emprego ou vindo de outra área, não perde pontos. Os outros itens valem em parte quando batem em parte:
+// primeiro emprego ou vindo de outra área, não perde a vaga, mas fica no amarelo (até 79%). Estágio e trainee são
+// vagas de experiência: pedem o curso da área. Os outros itens valem em parte quando batem em parte:
 //   o tempo ....... os meses na função (os de área parecida contam a metade) ÷ os pedidos
 //   o horário ..... a parte dos períodos da vaga em que a pessoa pode
 //   perto ......... o mesmo bairro, a mesma região ou a cidade sem regiões (1), outra região
@@ -21,7 +22,8 @@
 // O que não dá para saber (sem currículo, sem resposta) fica de fora da conta e aparece com "?".
 // As habilidades e os cursos que a vaga cita só somam ("+"): aparecem quando a pessoa tem.
 // Tetos: faltou o que a vaga pede (a escolaridade, a CNH ou nenhum dos horários em que a pessoa pode), a nota
-// vai até 45%; com poucos itens para conferir, até 85% (1 ou 2 itens) ou 92% (3): bater a cidade e a função diz
+// vai até 45%; na vaga de entrada, sem nada da função, até 79%; com poucos itens para conferir, até 85% (1 ou 2
+// itens) ou 92% (3): bater a cidade e a função diz
 // menos que bater tudo o que uma vaga completa pede. A nota sem os tetos (`bruta`) desempata.
 // Pergunta eliminatória respondida diferente: nota 0. Nada para comparar: sem nota.
 // A descrição livre da vaga só é lida para achar as habilidades e os cursos que ela cita e se ela aceita sem
@@ -91,6 +93,9 @@ export function outraArea(a: Pick<Aderencia, "criterios" | "perfil" | "funcao" |
 /** Por que a nota parou no teto: "Falta a CNH D: a nota vai até 45%." ou o dos poucos itens; null: não parou. */
 export function motivoDoTeto(a: { teto?: number | null; faltam?: string[] }) {
   if (!a.teto) return null;
+  if (a.teto === TETO_ENTRADA_SEM_FUNCAO) {
+    return `Sem experiência, estudo ou curso da função, a nota desta vaga de entrada vai até ${a.teto}%.`;
+  }
   if (a.teto === TETO_SEM_OBRIGATORIO) {
     return `Falta ${a.faltam?.length ? listaDeItens(a.faltam) : "algo que a vaga pede"}: a nota vai até ${a.teto}%.`;
   }
@@ -465,6 +470,9 @@ const NAO_ACEITA_SEM = /\bnao aceit\w*( candidat\w*)? sem experiencia\b/;
 
 export type PerfilDaVaga = "entrada" | "experiencia";
 
+/** Estágio e trainee: o título que pede o curso da área (11/11/2026, o relatório do Admin). */
+const ESTAGIO_OU_TRAINEE = /\b(estagi\w*|trainee)\b/;
+
 /** Funções que costumam aceitar o primeiro emprego, quando a empresa não diz nada da experiência. */
 const FUNCOES_DE_ENTRADA =
   /\b(atendente|auxiliar|ajudante|repositora?|empacotadora?|embaladora?|balconista|caixa|recepcionista|telemarketing|teleatendente|teleoperadora?|servente|copeira?|lavadora?|carregador|separadora?|frentista|promotora?|panfletista|cumim|estoquista)\b/;
@@ -473,10 +481,10 @@ const FUNCOES_COM_FORMACAO = /\b(enfermagem|enfermeir\w*|odonto\w*|saude bucal|r
 
 /**
  * Vaga de entrada: aceita quem está no primeiro emprego, e a experiência na função só soma. É de entrada quando a vaga
- * marca "Aceita sem experiência", quando é de aprendiz, estágio ou trainee, quando o texto diz que não precisa de
- * experiência ou, se a empresa não disse nada, quando o título é de uma função de entrada (FUNCOES_DE_ENTRADA), fora as
- * de saúde e as de gestão, nível superior e técnico na CBO. Pedir 6 meses, 1 ano ou 2 anos faz a vaga ser de
- * experiência; o resto também é.
+ * marca "Aceita sem experiência", quando é de aprendiz, quando o texto diz que não precisa de experiência ou, se a
+ * empresa não disse nada, quando o título é de uma função de entrada (FUNCOES_DE_ENTRADA), fora as de saúde e as de
+ * gestão, nível superior e técnico na CBO. Estágio e trainee são sempre de experiência, porque pedem o curso da área
+ * (o estudo conta 0,6). Pedir 6 meses, 1 ano ou 2 anos faz a vaga ser de experiência; o resto também é.
  */
 export function perfilDaVaga(v: {
   experiencia: string | null;
@@ -485,9 +493,11 @@ export function perfilDaVaga(v: {
   cbo?: string | null;
 }): PerfilDaVaga {
   if (v.experiencia && MESES_PEDIDOS[v.experiencia]) return "experiencia";
-  if (v.experiencia === "sem") return "entrada";
   const titulo = simples(v.titulo ?? "");
-  if (PROGRAMAS.test(titulo)) return "entrada";
+  // estágio e trainee pedem o curso da área ("Estágio em Direito" é para quem estuda Direito): a função conta o estudo
+  if (ESTAGIO_OU_TRAINEE.test(titulo)) return "experiencia";
+  if (v.experiencia === "sem") return "entrada";
+  if (/\baprendiz\b/.test(titulo)) return "entrada";
   const texto = simples(v.descricao ?? "");
   if (NAO_ACEITA_SEM.test(texto)) return "experiencia";
   if (ACEITA_SEM.test(texto)) return "entrada";
@@ -516,6 +526,12 @@ export const PESO_DA_FUNCAO = 0.6;
 export const PESO_DA_FUNCAO_ENTRADA = 0.3;
 /** Falta algo que a vaga pede (CNH, escolaridade, nenhum horário que a pessoa pode): a nota não passa disto. */
 export const TETO_SEM_OBRIGATORIO = 45;
+/**
+ * Na vaga de entrada, quem não tem experiência, estudo nem curso da função (no máximo uma habilidade escrita) vai até 79%,
+ * o amarelo: não perde a vaga e ainda "combina" (70%), mas o verde fica para quem mostra a função (o relatório do Admin,
+ * 11/11/2026).
+ */
+export const TETO_ENTRADA_SEM_FUNCAO = 79;
 
 /** Os meses dos trabalhos do currículo: na função da vaga, em área parecida e nas outras. */
 function mesesNaFuncao(vaga: FuncaoDaVaga, experiencias: Curriculo["experiencias"], agora: number) {
@@ -739,8 +755,8 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
           ? f.detalhe
           : perfil === "entrada"
             ? primeiro
-              ? "Primeiro emprego (vaga de entrada: não perde pontos)"
-              : `${f.detalhe} (vaga de entrada: não perde pontos)`
+              ? "Primeiro emprego (vaga de entrada: vai até 79%)"
+              : `${f.detalhe} (vaga de entrada: vai até 79%)`
             : primeiro
               ? `Primeiro emprego: nada de “${funcaoDaVaga.titulo}” no currículo (trabalho, estudo, curso ou habilidade)`
               : f.detalhe;
@@ -862,7 +878,13 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
   // com poucos itens para conferir, a nota não chega a 100%; faltando algo que a vaga pede, não passa de 45%
   const faltam = conhecidos.filter((x) => x.obrigatorio && x.ok === false).map((x) => x.nome);
   const falta = faltam.length > 0;
-  const maximo = Math.min(pedidos <= 2 ? 85 : pedidos === 3 ? 92 : 100, falta ? TETO_SEM_OBRIGATORIO : 100);
+  // na vaga de entrada, o verde pede um curso, o estudo ou o trabalho na função (só a habilidade escrita não basta)
+  const semNadaNaEntrada = perfil === "entrada" && evidencia !== null && evidencia < 0.5;
+  const maximo = Math.min(
+    pedidos <= 2 ? 85 : pedidos === 3 ? 92 : 100,
+    falta ? TETO_SEM_OBRIGATORIO : 100,
+    semNadaNaEntrada ? TETO_ENTRADA_SEM_FUNCAO : 100,
+  );
   const semTeto = pedidos && conta !== null ? Math.round(100 * conta) : null;
   const nota = eliminado ? 0 : semTeto === null ? null : Math.min(maximo, semTeto);
   const teto = !eliminado && semTeto !== null && semTeto > maximo ? maximo : null;

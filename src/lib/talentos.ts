@@ -75,14 +75,15 @@ export function tituloDoTalento(t: Pick<TalentoResumo, "titulo" | "cargos">) {
  *   mais). Só as habilidades escritas não bastam, e bater a cidade, o horário e a escolaridade sem nada da função
  *   também não ("Atendente de Copom" para "Analista de sistemas"; o primeiro emprego sem nada da função, 03/11 e
  *   11/11/2026).
- * - vaga de entrada: isso, ou 70% ou mais de nota (quem mora perto e pode no horário: a função só soma).
+ * - vaga de entrada: o mesmo (o relatório do Admin de 11/11/2026 mostrou quase todos os talentos na lista com "70% de
+ *   nota"); quem está no primeiro emprego sem nada da função chega pelo aviso de segunda e pelo convite automático.
  * - vaga sem função reconhecida no título: 50% ou mais de nota.
  * Fica de fora quem foi eliminado por uma pergunta e quem não tem algo que a vaga pede (escolaridade, CNH, horário).
  */
 export function entraEmParaAVaga(a: Aderencia) {
   if (a.eliminado || a.faltam?.length) return false;
   if (a.funcao == null) return (a.nota ?? 0) >= 50;
-  return a.funcao >= 0.5 || (a.perfil === "entrada" && (a.nota ?? 0) >= 70);
+  return a.funcao >= 0.5;
 }
 
 /**

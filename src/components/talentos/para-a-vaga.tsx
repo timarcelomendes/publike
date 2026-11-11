@@ -73,7 +73,7 @@ export async function ParaAVaga({
     jeitosDasPessoas(lista.map((t) => t.perfil_id)),
   ]);
   const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [], dia_a_dia: diaADia.get(vaga.id) ?? null };
-  // a vaga de entrada (aceita quem está começando) que diz a função: a lista é de quem mora perto e pode no horário
+  // a vaga de entrada (aceita quem está começando) que diz a função: no "Atende a vaga", a função não precisa ser a mesma
   const entrada = perfilDaVaga(requisitos) === "entrada" && dizAFuncao(requisitos);
   const comAderencia = lista
     .map((t, i) => ({
@@ -141,7 +141,7 @@ export async function ParaAVaga({
           }
         >
           {entrada
-            ? "Aqui só entra quem atende cada item da vaga (escolaridade, CNH, horário e distância)."
+            ? "Aqui só entra quem tem experiência, estudo ou curso na função e atende cada item da vaga (escolaridade, CNH, horário e distância)."
             : "Aqui só entra quem já trabalhou na mesma função e atende cada item da vaga (escolaridade, tempo de experiência, CNH, horário e distância)."}
         </Vazio>
       </div>
@@ -152,21 +152,15 @@ export async function ParaAVaga({
     return (
       <Vazio
         icone={UserSearch}
-        titulo={
-          entrada
-            ? `Ninguém em Talentos perto e no horário de “${vaga.titulo}” ainda`
-            : `Ninguém em Talentos com experiência para “${vaga.titulo}” ainda`
-        }
+        titulo={`Ninguém em Talentos com experiência para “${vaga.titulo}” ainda`}
         acao={
           <BotaoLink href="/talentos?ver=todos" tamanho="sm" variante="secundario">
             Ver todos os talentos
           </BotaoLink>
         }
       >
-        {entrada
-          ? "Aqui aparece quem mora perto e pode no horário da vaga, ou já tem experiência, estudo ou curso na função."
-          : "Aqui só aparece quem já trabalhou na função, numa área parecida, estudou ou fez um curso dela."}{" "}
-        Divulgue o link da vaga ou procure em todos os talentos.
+        Aqui só aparece quem já trabalhou na função, numa área parecida, estudou ou fez um curso dela. Divulgue o link
+        da vaga ou procure em todos os talentos.
       </Vazio>
     );
   }
@@ -203,11 +197,9 @@ export async function ParaAVaga({
         <p className="mt-1 text-body-sm text-ink-muted">
           {nivel === "rigida"
             ? entrada
-              ? "Só quem atende cada item da vaga."
+              ? "Só quem tem experiência, estudo ou curso na função e atende cada item da vaga."
               : "Só quem já trabalhou na mesma função e atende cada item da vaga."
-            : entrada
-              ? "Vaga de entrada: quem mora perto e pode no horário, e quem tem experiência, estudo ou curso na função. Quem mais combina primeiro."
-              : "Quem tem experiência, área parecida, estudo ou curso na função, quem mais combina primeiro."}{" "}
+            : "Quem tem experiência, área parecida, estudo ou curso na função, quem mais combina primeiro."}{" "}
           Convide: a pessoa vê a vaga e, se curtir, chega na sua caixa de entrada.
         </p>
       </div>

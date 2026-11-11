@@ -57,7 +57,7 @@ const REGRAS: Regra[] = [
       dicas: [
         "Curtiu de volta, deu match: o chat do Publike já faz as primeiras perguntas e o WhatsApp aparece para os dois.",
         "Leve cada pessoa para a etapa certa: assim nada fica esquecido e o candidato sabe em que pé está.",
-        "A nota de aderência mostra o porquê de cada item. Aceita quem está começando? Marque “Aceita sem experiência” na vaga: o primeiro emprego não perde pontos.",
+        "A nota de aderência mostra o porquê de cada item. Aceita quem está começando? Marque “Aceita sem experiência” na vaga: o primeiro emprego vai a até 79%, em vez de 40%.",
         "As anotações da ficha são só suas: o candidato não vê.",
       ],
     },

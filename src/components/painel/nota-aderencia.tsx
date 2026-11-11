@@ -132,7 +132,7 @@ export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; edi
           Entra o que a vaga pede comparado com o currículo, o perfil e as respostas: escolaridade, experiência (o tempo
           e a função), CNH, horário, onde mora e as perguntas com a resposta que você procura.{" "}
           {a.perfil === "entrada"
-            ? "Esta é uma vaga de entrada (aceita quem está começando): a função vale 30% da nota e quem não tem experiência nela não perde pontos."
+            ? "Esta é uma vaga de entrada (aceita quem está começando): a função vale 30% da nota, e quem não tem experiência, estudo ou curso dela fica em até 79% (amarelo)."
             : "Esta é uma vaga de experiência: a função vale 60% da nota e conta pelo que o currículo mostra (o trabalho na função, uma área parecida, o estudo, um curso ou uma habilidade dela)."}{" "}
           O que bate em parte conta em parte: parte do tempo ou do horário, morar um pouco mais longe. Faltou a
           escolaridade, a CNH ou o horário que a vaga pede, a nota vai até {TETO_SEM_OBRIGATORIO}%. Os itens com “+”
