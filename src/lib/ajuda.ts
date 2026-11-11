@@ -259,6 +259,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Um dia (ou uma tarde) de entrevistas em sequência, para contratar várias pessoas de uma vez. Em Ferramentas › Mutirão, escolha o dia, o horário, de quanto em quanto tempo, quantas pessoas por horário e as vagas. Depois, chame quem curtiu as vagas: cada pessoa escolhe um horário que ainda tem lugar e recebe o lembrete na véspera. No dia, marque quem chegou e quem faltou, e abra a ficha para contratar. O mutirão vem nos planos; o primeiro é grátis, para experimentar.",
       },
       {
+        p: "O que é o convite automático?",
+        r: "O aviso de quem combina com a sua vaga é grátis, com até 3 por dia. Com um plano, você liga o convite automático em cada vaga (Ferramentas › Convite automático): quando chega um currículo que combina, o convite vai na hora, com o seu recado, e os avisos vão até 30 por dia. Cada pessoa recebe no máximo 2 convites automáticos por semana, e quem não quer desliga em Preferências.",
+      },
+      {
         p: "Assino um plano e preciso de mais vagas no ar. Como mudo de faixa?",
         r: "Em Assinatura, toque em “Mudar para a faixa de cima”. Você paga agora só a diferença dos dias que faltam no período já pago, e a faixa muda assim que o pagamento é confirmado. Daí em diante, a renovação vem com o valor da faixa nova.",
       },

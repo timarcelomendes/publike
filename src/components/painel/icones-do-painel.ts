@@ -37,6 +37,7 @@ import type { Secao } from "@/lib/modo-painel";
 /** O ícone de cada seção do painel: o mesmo no menu e na grade do painel. */
 export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
   mutirao: CalendarRange,
+  convites: Send,
   hoje: House,
   caixa: Inbox,
   talentos: UserSearch,

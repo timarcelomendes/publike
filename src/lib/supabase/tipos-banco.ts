@@ -3686,6 +3686,19 @@ export type Database = {
       nao_posso_ir_mutirao: { Args: { p_entrevista: string }; Returns: undefined };
       meus_mutiroes: { Args: Record<string, never>; Returns: Json };
       mutirao_do_dia: { Args: { p_mutirao: string }; Returns: Json };
+      // o convite automático (migração 20270418120000)
+      meus_convites_automaticos: { Args: Record<string, never>; Returns: Json };
+      ligar_convite_automatico: {
+        Args: { p_anuncio: string; p_ligado: boolean; p_recado: string | null };
+        Returns: undefined;
+      };
+      recebo_convites_automaticos: { Args: Record<string, never>; Returns: boolean };
+      receber_convites_automaticos: { Args: { p_sim: boolean }; Returns: undefined };
+      servidor_convite_auto_contas: { Args: { p_chave: string }; Returns: Json };
+      servidor_convidar_sozinho: {
+        Args: { p_chave: string; p_conta: string; p_anuncio: string; p_perfil: string };
+        Returns: boolean;
+      };
       servidor_faixa_sem_pagar: {
         Args: { p_chave: string; p_conta: string; p_assinatura: string; p_plano: string };
         Returns: Json;
