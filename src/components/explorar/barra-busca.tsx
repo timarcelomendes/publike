@@ -330,7 +330,7 @@ export function BarraBusca({
       role="group"
       aria-label="Onde"
       // na vitrine: com a pergunta "Onde você mora?" em cima da lista, os botões esperam (um convite só)
-      className={`items-center gap-2 ${faixa ? "[body:has([data-pergunta-onde-mora])_&]:hidden" : ""} ${classes}`}
+      className={`items-center gap-2 ${faixa ? "[body:has([data-pergunta-onde-mora]:not([style*='display:_none'],[style*='display:_none']_*))_&]:hidden" : ""} ${classes}`}
     >
       <BotaoOndeMora local={local} aberto={ondeMora} onClick={() => setOndeMora((a) => !a)} controla={painel} />
       <BotaoPerto ativo={perto} onClick={alternarPerto} curto={soLugar} />
@@ -457,7 +457,7 @@ export function BarraBusca({
 
         {/* celular: os botões de lugar numa faixa (no computador, ficam ao lado da busca) */}
         <div
-          className={`order-3 min-w-0 sm:hidden ${soLugar ? "hidden" : ""} ${faixa ? "[body:has([data-pergunta-onde-mora])_&]:hidden" : ""}`}
+          className={`order-3 min-w-0 sm:hidden ${soLugar ? "hidden" : ""} ${faixa ? "[body:has([data-pergunta-onde-mora]:not([style*='display:_none'],[style*='display:_none']_*))_&]:hidden" : ""}`}
         >
           <FaixaRolavel rotulo="Lugar">{botoesDeLugar("flex shrink-0")}</FaixaRolavel>
         </div>
