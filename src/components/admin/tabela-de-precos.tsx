@@ -4,33 +4,37 @@ import { AlertTriangle, Check, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
 import { salvarPlano } from "@/lib/acoes/admin-pagamentos";
-import { NOME_PRODUTO, recursosDo, type Ciclo, type Produto } from "@/lib/pagamentos";
+import { ehPlanoPorFaixa as ehPlano, NOME_PRODUTO, recursosDo, type Ciclo, type Produto } from "@/lib/pagamentos";
 import { Aviso } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 
-// Admin › Pagamentos › Preços (02/11/2026): os planos numa tabela só, um produto por linha, com o mensal e o de
-// 3 meses lado a lado. Mostra na hora o desconto do trimestral e, nos pacotes, quanto sairiam os recursos separados,
-// com um aviso quando a conta não fecha (pacote mais caro que as partes, trimestral sem desconto). "Usar a sugestão"
-// preenche os preços do plano (claude/plano-lancamento-pagos.md) sem salvar; "Salvar os preços" grava só o que mudou.
+// Admin › Pagamentos › Preços (02/11/2026; em grupos desde 11/11/2026): os planos por faixa (mensal, 3 meses, anual e
+// 30 dias), os recursos sozinhos e o combo (mensal e 3 meses) e, fechado, o que saiu de venda (o Plano Completo: quem
+// assina continua). Cada produto mostra a frase que o cliente vê com os preços à venda e, ao lado, a conta: o desconto
+// do trimestral e do anual, os 30 dias acima do mensal e, nos pacotes, quanto sairiam os recursos separados, com um
+// aviso quando a conta não fecha. "Usar a sugestão" preenche só os valores (claude/plano-lancamento-pagos.md), sem
+// mexer no "À venda" e sem salvar; "Salvar os preços" grava só o que mudou.
 
 export type PlanoDoAdmin = { id: string; recurso: Produto; ciclo: Ciclo; valor: number | null; ligado: boolean };
 
-const ORDEM: Produto[] = [
-  "empresa_5",
-  "empresa_20",
-  "empresa_50",
-  "agencia_15",
-  "agencia_200",
-  "copiloto",
-  "testes",
-  "video",
-  "automacoes",
-  "salarios",
-  "carreiras",
-  "combo",
-  "completo",
+/** Os grupos da tela, com as formas de pagar que cada um tem. */
+const GRUPOS: { titulo: string; texto: string; produtos: Produto[]; ciclos: Ciclo[] }[] = [
+  {
+    titulo: "Planos",
+    texto: "Pelo número de vagas no ar, com todos os recursos. O anual e os 30 dias só vendem com “À venda” marcado.",
+    produtos: ["empresa_5", "empresa_20", "empresa_50", "agencia_15", "agencia_200"],
+    ciclos: ["MONTHLY", "QUARTERLY", "YEARLY", "AVULSO"],
+  },
+  {
+    titulo: "Recursos sozinhos",
+    texto: "Para quem quer só um recurso, e o combo de dois.",
+    produtos: ["copiloto", "testes", "video", "automacoes", "salarios", "carreiras", "combo"],
+    ciclos: ["MONTHLY", "QUARTERLY"],
+  },
 ];
+/** Fora de venda: quem assina continua pagando o que assinou (migração 20270407120000). */
+const FORA_DE_VENDA: Produto[] = ["completo"];
 
 /**
  * A sugestão do plano de lançamento: o mensal e os 3 meses com uns 15% de desconto; nos planos por faixa, também o
@@ -70,6 +74,12 @@ function lerValor(t: string): number | null {
 }
 
 const CICLOS: Ciclo[] = ["MONTHLY", "QUARTERLY", "YEARLY", "AVULSO"];
+const CABECALHO: Record<Ciclo, string> = {
+  MONTHLY: "Mensal",
+  QUARTERLY: "A cada 3 meses",
+  YEARLY: "Anual",
+  AVULSO: "30 dias, sem renovar",
+};
 const NOME: Record<Ciclo, string> = {
   MONTHLY: "mensal",
   QUARTERLY: "a cada 3 meses",
@@ -78,6 +88,12 @@ const NOME: Record<Ciclo, string> = {
 };
 
 const reais = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const COMO_O_CLIENTE_VE: Record<Ciclo, string> = {
+  MONTHLY: "por mês",
+  QUARTERLY: "a cada 3 meses",
+  YEARLY: "por ano",
+  AVULSO: "por 30 dias",
+};
 
 type Linha = { valor: string; ligado: boolean };
 
@@ -104,19 +120,29 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
     return a && b && (lerValor(a.valor) !== lerValor(b.valor) || a.ligado !== b.ligado);
   });
 
+  // só os valores: o "À venda" fica como está (antes ligava tudo, até o Plano Completo, que saiu de venda)
   function usarSugestao() {
     setLinhas((atual) => {
       const novo = new Map(atual);
       for (const p of planos) {
         const v = SUGESTAO[p.recurso][p.ciclo];
-        if (v == null) continue;
-        // o anual e os 30 dias só vão à venda quando o Admin marca (depois do teste no sandbox)
-        const novos = p.ciclo === "YEARLY" || p.ciclo === "AVULSO";
-        novo.set(p.id, { valor: paraTexto(v), ligado: novos ? (atual.get(p.id)?.ligado ?? false) : true });
+        if (v == null || FORA_DE_VENDA.includes(p.recurso)) continue;
+        novo.set(p.id, { valor: paraTexto(v), ligado: atual.get(p.id)?.ligado ?? false });
       }
       return novo;
     });
     setRetorno(null);
+  }
+
+  /** "R$ 199 por mês, R$ 507 a cada 3 meses…": o que o cliente vê, só com o que está à venda. */
+  function fraseDoCliente(r: Produto) {
+    const partes = CICLOS.flatMap((c) => {
+      const p = plano(r, c);
+      const l = p ? linhas.get(p.id) : undefined;
+      const v = p ? valorDe(r, c) : null;
+      return l?.ligado && v ? [`${reais(v)} ${COMO_O_CLIENTE_VE[c]}`] : [];
+    });
+    return partes.length ? partes.join(" · ") : "Nada à venda";
   }
 
   async function salvar() {
@@ -136,117 +162,169 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
     );
   }
 
+  /** A conta de um produto: os descontos e, nos pacotes, os recursos separados, com o aviso quando não fecha. */
+  function conta(r: Produto) {
+    const mensal = valorDe(r, "MONTHLY");
+    const tri = valorDe(r, "QUARTERLY");
+    const desconto = mensal && tri ? Math.round((1 - tri / (mensal * 3)) * 100) : null;
+    const anual = valorDe(r, "YEARLY");
+    const trinta = valorDe(r, "AVULSO");
+    const descontoAnual = mensal && anual ? Math.round((1 - anual / (mensal * 12)) * 100) : null;
+    const acima = mensal && trinta ? Math.round((trinta / mensal - 1) * 100) : null;
+    const partes = recursosDo(r).length > 1 ? recursosDo(r).map((x) => valorDe(x, "MONTHLY")) : null;
+    const separados = partes && partes.every((x) => x != null) ? partes.reduce<number>((t, x) => t + x!, 0) : null;
+    const economia = separados && mensal ? Math.round((1 - mensal / separados) * 100) : null;
+    const avisos = [
+      desconto !== null && desconto <= 0 ? "os 3 meses saem mais caros que 3 mensais" : null,
+      descontoAnual !== null && descontoAnual <= 0 ? "o anual sai mais caro que 12 mensais" : null,
+      acima !== null && acima <= 0 ? "os 30 dias saem mais baratos que o mensal" : null,
+      economia !== null && economia <= 0 ? "o pacote sai mais caro que os recursos separados" : null,
+    ].filter((a): a is string => Boolean(a));
+    return (
+      <ul className="flex flex-col gap-1">
+        {desconto !== null && <li>3 meses: {desconto}% de desconto</li>}
+        {descontoAnual !== null && <li>Anual: {descontoAnual}% de desconto</li>}
+        {acima !== null && <li>30 dias: {acima}% acima do mensal</li>}
+        {separados !== null && mensal && (
+          <li>
+            Separados: {reais(separados)} por mês · economia de {economia}%
+          </li>
+        )}
+        {avisos.map((a) => (
+          <li key={a} className="flex items-start gap-1.5 font-semibold text-danger">
+            <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {a}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  /** O nome do produto, o que ele junta e a frase que o cliente vê. */
+  function nomeDo(r: Produto, comFrase = true) {
+    return (
+      <>
+        {NOME_PRODUTO[r]}
+        {recursosDo(r).length > 1 && !ehPlano(r) && (
+          <span className="block font-normal text-ink-muted">
+            {r === "completo" ? "os cinco recursos" : "Triagem + Teste Prático"}
+          </span>
+        )}
+        {comFrase && <span className="mt-1 block font-normal text-ink-muted">{fraseDoCliente(r)}</span>}
+      </>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] text-body-sm">
-          <thead>
-            <tr className="text-left text-ink-muted">
-              <th className="py-2 pr-3 font-semibold">Produto</th>
-              <th className="py-2 pr-3 font-semibold">Mensal</th>
-              <th className="py-2 pr-3 font-semibold">A cada 3 meses</th>
-              <th className="py-2 pr-3 font-semibold">Anual</th>
-              <th className="py-2 pr-3 font-semibold">30 dias</th>
-              <th className="py-2 font-semibold">A conta</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {ORDEM.filter((r) => plano(r, "MONTHLY") || plano(r, "QUARTERLY")).map((r) => {
-              const mensal = valorDe(r, "MONTHLY");
-              const tri = valorDe(r, "QUARTERLY");
-              const desconto = mensal && tri ? Math.round((1 - tri / (mensal * 3)) * 100) : null;
-              const anual = valorDe(r, "YEARLY");
-              const trinta = valorDe(r, "AVULSO");
-              const descontoAnual = mensal && anual ? Math.round((1 - anual / (mensal * 12)) * 100) : null;
-              const acima = mensal && trinta ? Math.round((trinta / mensal - 1) * 100) : null;
-              const partes = recursosDo(r).length > 1 ? recursosDo(r).map((x) => valorDe(x, "MONTHLY")) : null;
-              const separados =
-                partes && partes.every((x) => x != null) ? partes.reduce<number>((t, x) => t + x!, 0) : null;
-              const economia = separados && mensal ? Math.round((1 - mensal / separados) * 100) : null;
-              const avisos = [
-                desconto !== null && desconto <= 0 ? "os 3 meses saem mais caros que 3 mensais" : null,
-                descontoAnual !== null && descontoAnual <= 0 ? "o anual sai mais caro que 12 mensais" : null,
-                acima !== null && acima <= 0 ? "os 30 dias saem mais baratos que o mensal" : null,
-                economia !== null && economia <= 0 ? "o pacote sai mais caro que os recursos separados" : null,
-                r === "completo" &&
-                mensal &&
-                valorDe("combo", "MONTHLY") &&
-                valorDe("video", "MONTHLY") &&
-                valorDe("automacoes", "MONTHLY") &&
-                mensal >=
-                  valorDe("combo", "MONTHLY")! + valorDe("video", "MONTHLY")! + valorDe("automacoes", "MONTHLY")!
-                  ? "combo + vídeo + automações sai mais em conta"
-                  : null,
-              ].filter(Boolean);
-              return (
-                <tr key={r} className="align-top">
-                  <th scope="row" className="py-3 pr-3 text-left text-label">
-                    {NOME_PRODUTO[r]}
-                    {recursosDo(r).length > 1 && (
-                      <span className="block font-normal text-ink-muted">
-                        {r === "completo" ? "os cinco recursos" : "Triagem + Teste Prático"}
-                      </span>
-                    )}
-                  </th>
-                  {CICLOS.map((c) => {
-                    const p = plano(r, c);
-                    if (!p)
-                      return (
-                        <td key={c} className="py-3 pr-3 text-ink-muted">
-                          {c === "YEARLY" || c === "AVULSO" ? "—" : "sem plano"}
-                        </td>
-                      );
-                    const l = linhas.get(p.id) ?? { valor: "", ligado: false };
-                    return (
-                      <td key={c} className="py-3 pr-3">
-                        <span className="flex items-center gap-1.5">
-                          <span className="text-ink-muted">R$</span>
-                          <input
-                            value={l.valor}
-                            onChange={(e) => mudar(p.id, { valor: e.target.value })}
-                            inputMode="decimal"
-                            placeholder="sem preço"
-                            aria-label={`Preço de ${NOME_PRODUTO[r]}, ${NOME[c]}`}
-                            className={`${classesEntrada} w-28 tabular-nums`}
-                          />
-                        </span>
-                        <label className="mt-1.5 flex min-h-9 items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={l.ligado}
-                            onChange={(e) => mudar(p.id, { ligado: e.target.checked })}
-                            className="size-4"
-                            aria-label={`${NOME_PRODUTO[r]}, ${NOME[c]}, à venda`}
-                          />
-                          À venda
-                        </label>
-                      </td>
-                    );
-                  })}
-                  <td className="py-3">
-                    <ul className="flex flex-col gap-1">
-                      {desconto !== null && <li>3 meses: {desconto}% de desconto</li>}
-                      {descontoAnual !== null && <li>Anual: {descontoAnual}% de desconto</li>}
-                      {acima !== null && <li>30 dias: {acima}% acima do mensal</li>}
-                      {separados !== null && mensal && (
-                        <li>
-                          Separados: {reais(separados)} por mês · economia de {economia}%
-                        </li>
-                      )}
-                      {avisos.map((a) => (
-                        <li key={a} className="flex items-start gap-1.5 font-semibold text-danger">
-                          <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
-                          {a}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
+    <div className="flex flex-col gap-6">
+      {GRUPOS.map((g) => (
+        <div key={g.titulo} className="flex flex-col gap-2">
+          <h3 className="text-label">{g.titulo}</h3>
+          <p className="text-body-sm text-ink-muted">{g.texto}</p>
+          <div className="overflow-x-auto">
+            <table className={`w-full text-body-sm ${g.ciclos.length > 2 ? "min-w-[960px]" : "min-w-[640px]"}`}>
+              <thead>
+                <tr className="text-left text-ink-muted">
+                  <th className="py-2 pr-3 font-semibold">Produto</th>
+                  {g.ciclos.map((c) => (
+                    <th key={c} className="py-2 pr-3 font-semibold">
+                      {CABECALHO[c]}
+                    </th>
+                  ))}
+                  <th className="py-2 font-semibold">A conta</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {g.produtos
+                  .filter((r) => g.ciclos.some((c) => plano(r, c)))
+                  .map((r) => (
+                    <tr key={r} className="align-top">
+                      <th scope="row" className="py-3 pr-3 text-left text-label">
+                        {nomeDo(r)}
+                      </th>
+                      {g.ciclos.map((c) => {
+                        const p = plano(r, c);
+                        if (!p)
+                          return (
+                            <td key={c} className="py-3 pr-3 text-ink-muted">
+                              sem plano
+                            </td>
+                          );
+                        const l = linhas.get(p.id) ?? { valor: "", ligado: false };
+                        return (
+                          <td key={c} className="py-3 pr-3">
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-ink-muted">R$</span>
+                              <input
+                                value={l.valor}
+                                onChange={(e) => mudar(p.id, { valor: e.target.value })}
+                                inputMode="decimal"
+                                placeholder="sem preço"
+                                aria-label={`Preço de ${NOME_PRODUTO[r]}, ${NOME[c]}`}
+                                className={`${classesEntrada} w-28 tabular-nums`}
+                              />
+                            </span>
+                            <label className="mt-1.5 flex min-h-9 items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={l.ligado}
+                                onChange={(e) => mudar(p.id, { ligado: e.target.checked })}
+                                className="size-4"
+                                aria-label={`${NOME_PRODUTO[r]}, ${NOME[c]}, à venda`}
+                              />
+                              À venda
+                            </label>
+                          </td>
+                        );
+                      })}
+                      <td className="py-3">{conta(r)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+      {FORA_DE_VENDA.some((r) => plano(r, "MONTHLY") || plano(r, "QUARTERLY")) && (
+        <details className="rounded-lg border border-line p-3">
+          <summary className="cursor-pointer text-label">Fora de venda (quem assina continua)</summary>
+          <ul className="mt-2 flex flex-col gap-1 text-body-sm">
+            {FORA_DE_VENDA.map((r) => (
+              <li key={r}>
+                <span className="font-semibold">{nomeDo(r, false)}</span>:{" "}
+                {(["MONTHLY", "QUARTERLY"] as Ciclo[])
+                  .map((c) => {
+                    const v = valorDe(r, c);
+                    return v ? `${reais(v)} ${COMO_O_CLIENTE_VE[c]}` : null;
+                  })
+                  .filter(Boolean)
+                  .join(" · ") || "sem preço"}
+                {/* se ficou à venda por engano (o "Usar a sugestão" de antes ligava), dá para tirar daqui */}
+                {CICLOS.map((c) => {
+                  const p = plano(r, c);
+                  const l = p ? linhas.get(p.id) : undefined;
+                  if (!p || !l?.ligado) return null;
+                  return (
+                    <label key={c} className="mt-1 flex min-h-9 items-center gap-2 font-semibold text-danger">
+                      <input
+                        type="checkbox"
+                        checked={l.ligado}
+                        onChange={(e) => mudar(p.id, { ligado: e.target.checked })}
+                        className="size-4"
+                      />
+                      <AlertTriangle aria-hidden className="size-4" />
+                      O {NOME[c]} está à venda: desmarque e salve
+                    </label>
+                  );
+                })}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-body-sm text-ink-muted">
+            Não aparece para quem vai assinar. Quem já assina continua pagando o valor da assinatura dele.
+          </p>
+        </details>
+      )}
       <p className="text-body-sm text-ink-muted">
         Mudar o preço vale para quem assinar depois; quem já assina continua com o valor da assinatura dele.
       </p>

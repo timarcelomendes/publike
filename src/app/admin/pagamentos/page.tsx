@@ -243,7 +243,7 @@ async function Conteudo() {
 
       <Secao
         titulo="Preços"
-        descricao="Cada recurso, o combo (Triagem + Teste Prático) e o Plano Completo (os cinco). O de 3 meses cobra os 3 meses juntos. A coluna da conta mostra o desconto e avisa quando um pacote sai mais caro que as partes."
+        descricao="Os planos por faixa, os recursos sozinhos e o combo. Embaixo de cada nome, o que o cliente vê com o que está à venda. O de 3 meses cobra os 3 meses juntos, o anual o ano todo e o de 30 dias não renova. A coluna da conta mostra os descontos e avisa quando um preço não fecha."
       >
         <TabelaDePrecos planos={d.planos.map((p) => ({ ...p, valor: p.valor == null ? null : Number(p.valor) }))} />
       </Secao>
