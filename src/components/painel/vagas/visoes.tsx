@@ -577,6 +577,7 @@ export function LinhaDoTempo({ vagas, agora }: { vagas: VagaNaTela[]; agora: num
 export function PreviaPaga({
   nome,
   artigo = "o",
+  titulo,
   texto,
   acesso,
   children,
@@ -584,6 +585,8 @@ export function PreviaPaga({
   nome: string;
   /** "o Mosaico", "a Linha do tempo" */
   artigo?: "o" | "a";
+  /** o título do cartão (sem ele: "Mosaico, com as suas vagas") */
+  titulo?: string;
   texto: string;
   acesso: AcessoAsVisoes;
   children: ReactNode;
@@ -593,7 +596,7 @@ export function PreviaPaga({
       <div className="flex flex-col gap-3">
         {acesso.ate && !acesso.plano && (
           <p className="text-body-sm text-ink-muted">
-            Grátis até {dataCurta(acesso.ate)}. Depois, o Mosaico e a Linha do tempo vêm nos{" "}
+            Grátis até {dataCurta(acesso.ate)}. Depois, as visões de Vagas e de Candidatos com cadeado vêm nos{" "}
             <Link href="/painel/planos" className="font-semibold text-ink underline underline-offset-2">
               planos
             </Link>
@@ -618,7 +621,7 @@ export function PreviaPaga({
           <Selo variante="aviso" className="self-start">
             Nos planos
           </Selo>
-          <h3 className="text-h3">{nome}, com as suas vagas</h3>
+          <h3 className="text-h3">{titulo ?? `${nome}, com as suas vagas`}</h3>
           <p className="text-body-sm text-ink-muted">{texto}</p>
           {acesso.testou ? (
             <p className="text-body-sm">Os seus 15 dias grátis já acabaram. {artigo === "a" ? "A" : "O"} {nome} continua em todos os planos.</p>

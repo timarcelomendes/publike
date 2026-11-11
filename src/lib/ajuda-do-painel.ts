@@ -56,8 +56,9 @@ const REGRAS: Regra[] = [
     ajuda: {
       titulo: "Candidatos",
       texto:
-        "Quem curtiu as suas vagas, por etapa: novos, em análise, entrevista e contratados. À esquerda a lista; à direita a ficha de quem está aberto.",
+        "Quem curtiu as suas vagas, por etapa: novos, em análise, entrevista e contratados. Na Mesa, a lista à esquerda e a ficha de quem está aberto à direita.",
       dicas: [
+        "Mesa e “Pelo que pede você” são grátis. Quadro de todas as vagas, Mapa de onde moram e Agenda das entrevistas vêm nos planos, com 15 dias grátis para testar.",
         "Curtiu de volta, deu match: o chat do Publike já faz as primeiras perguntas e o WhatsApp aparece para os dois.",
         "Leve cada pessoa para a etapa certa: assim nada fica esquecido e o candidato sabe em que pé está.",
         "A nota de aderência mostra o porquê de cada item. Aceita quem está começando? Marque “Aceita sem experiência” na vaga: o primeiro emprego vai a até 79%, em vez de 40%.",

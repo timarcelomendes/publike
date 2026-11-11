@@ -2,7 +2,7 @@ import "server-only";
 import { MODO_DEMO } from "@/lib/config";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 
-/** O acesso ao Mosaico e à Linha do tempo em Vagas: o plano ou os 15 dias grátis (migração 20270422120000). */
+/** O acesso às visões dos planos (Mosaico e Linha do tempo em Vagas; Quadro, Mapa e Agenda em Candidatos): o plano ou os 15 dias grátis (migração 20270422120000). */
 export type AcessoAsVisoes = {
   /** a migração está no ar (sem ela, as visões pagas não aparecem) */
   disponivel: boolean;

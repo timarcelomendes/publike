@@ -215,9 +215,9 @@ const SO_NOS_PLANOS: Item[] = [
   },
   {
     icone: LayoutGrid,
-    titulo: "Mosaico e Linha do tempo",
+    titulo: "Outras visões de vagas e candidatos",
     texto:
-      "Duas outras visões das suas vagas: quantos chegam por dia em cada uma e, numa linha, quando cada vaga entrou, sai do ar e tem entrevista. 15 dias grátis para testar.",
+      "Vagas em Mosaico e na Linha do tempo; candidatos no Quadro de todas as vagas, no Mapa de onde moram (por região, nunca a casa) e na Agenda das entrevistas. 15 dias grátis para testar.",
   },
 ];
 

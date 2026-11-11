@@ -46,6 +46,9 @@ export type ItemCaixa = Candidato & {
   vagaNoAr: boolean;
   /** a vaga já foi marcada como preenchida */
   vagaPreenchida: boolean;
+  /** onde é a vaga (o Mapa dos candidatos mede daqui) */
+  vagaCidade: string | null;
+  vagaBairro: string | null;
 };
 
 /** Os resumos da IA guardados das minhas vagas, por "anúncio:perfil". */
@@ -210,6 +213,8 @@ export async function montarCaixa(agora: number): Promise<ItemCaixa[] | null> {
       vagaQuantas: Math.max(1, a?.vagas ?? 1),
       vagaNoAr: a?.status === "ativo",
       vagaPreenchida: Boolean(a?.preenchida_em),
+      vagaCidade: a?.cidade ?? null,
+      vagaBairro: a?.bairro ?? null,
       resumo:
         resumo && cv && new Date(resumo.curriculo_em).getTime() === new Date(cv.atualizado_em).getTime()
           ? resumo.conteudo

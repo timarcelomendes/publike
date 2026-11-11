@@ -176,7 +176,7 @@ export function MenuDaVaga({
   );
 }
 
-/** "Testar 15 dias grátis" do Mosaico e da Linha do tempo. */
+/** "Testar 15 dias grátis" das visões dos planos (Vagas e Candidatos, o mesmo teste). */
 export function BotaoTestarVisoes() {
   const { rodar, pendente, mensagem } = useAcao();
   return (

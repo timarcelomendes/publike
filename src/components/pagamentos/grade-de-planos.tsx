@@ -42,6 +42,7 @@ export const DOS_PLANOS = [
   "Convite automático para quem combina com a vaga",
   "Mapa de talentos: quantas pessoas de cada função moram perto",
   "Vagas em Mosaico e na Linha do tempo: a tendência e os prazos de cada vaga",
+  "Candidatos no Quadro de todas as vagas, no Mapa de onde moram e na Agenda das entrevistas",
 ];
 
 export const SO_DA_AGENCIA = [

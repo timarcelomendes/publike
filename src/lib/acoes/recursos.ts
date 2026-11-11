@@ -42,7 +42,7 @@ export async function queroContinuar(recurso: RecursoPago): Promise<Resultado> {
 }
 
 /**
- * Os 15 dias grátis do Mosaico e da Linha do tempo em Vagas (migração 20270422120000): uma vez por conta; depois,
+ * Os 15 dias grátis das visões dos planos (Mosaico e Linha do tempo em Vagas; Quadro, Mapa e Agenda em Candidatos) (migração 20270422120000): uma vez por conta; depois,
  * nos planos.
  */
 export async function testarVisoesDasVagas(): Promise<Resultado> {
@@ -56,5 +56,8 @@ export async function testarVisoesDasVagas(): Promise<Resultado> {
   }
   refresh();
   const ate = typeof data === "string" ? ` até ${dataCurta(data)}` : ` por ${DIAS_GRATIS} dias`;
-  return { ok: true, mensagem: `Pronto: o Mosaico e a Linha do tempo estão liberados${ate}.` };
+  return {
+    ok: true,
+    mensagem: `Pronto: o Mosaico e a Linha do tempo (em Vagas) e o Quadro, o Mapa e a Agenda (em Candidatos) estão liberados${ate}.`,
+  };
 }

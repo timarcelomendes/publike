@@ -112,6 +112,39 @@ export function centroDaCidade(cidade: Cidade) {
   return CENTRO_CIDADE[cidade];
 }
 
+/** O centro de uma área: o da região (nas cidades com regiões, pelo bairro) ou o da cidade. */
+function centroDaArea(x: { cidade: string; bairro?: string | null }) {
+  const regiao = x.bairro ? regiaoDoBairro(x.cidade, x.bairro) : null;
+  return regiao ? CENTRO_REGIAO[regiao] : (CENTRO_CIDADE[x.cidade as Cidade] ?? null);
+}
+
+/**
+ * Para onde fica `b` olhando de `a`, em km: ao norte, a leste e em linha reta, entre os centros das áreas (região
+ * ou cidade). É o mapa dos candidatos (por região, nunca a casa); null quando a cidade não é do Publike.
+ */
+export function deslocamentoEntreAreas(
+  a: { cidade: string; bairro?: string | null },
+  b: { cidade: string; bairro?: string | null },
+) {
+  const pa = centroDaArea(a);
+  const pb = centroDaArea(b);
+  if (!pa || !pb) return null;
+  // perto assim, a Terra é plana o bastante
+  const norte = (pb.lat - pa.lat) * 111.32;
+  const leste = (pb.lng - pa.lng) * 111.32 * Math.cos((((pa.lat + pb.lat) / 2) * Math.PI) / 180);
+  return { norte, leste, km: Math.hypot(norte, leste) };
+}
+
+/** A área de alguém, para agrupar no mapa: "Região Sul" (com a cidade, fora de `cidadeBase`) ou a cidade. */
+export function areaDe(x: { cidade: string; bairro?: string | null }, cidadeBase?: string) {
+  const regiao = x.bairro ? regiaoDoBairro(x.cidade, x.bairro) : null;
+  if (!regiao) return { chave: x.cidade, nome: x.cidade };
+  return {
+    chave: `${x.cidade}:${regiao}`,
+    nome: cidadeBase && cidadeBase !== x.cidade ? `${x.cidade}, Região ${regiao}` : `Região ${regiao}`,
+  };
+}
+
 /**
  * Mais ou menos quantos km, em linha reta, entre duas áreas: o centro da região (nas cidades com
  * regiões, pelo bairro) ou o da cidade. É o "perto da vaga" da nota de aderência; null quando a
@@ -121,17 +154,7 @@ export function distanciaEntreAreas(
   a: { cidade: string; bairro?: string | null },
   b: { cidade: string; bairro?: string | null },
 ) {
-  const centro = (x: { cidade: string; bairro?: string | null }) => {
-    const regiao = x.bairro ? regiaoDoBairro(x.cidade, x.bairro) : null;
-    return regiao ? CENTRO_REGIAO[regiao] : (CENTRO_CIDADE[x.cidade as Cidade] ?? null);
-  };
-  const pa = centro(a);
-  const pb = centro(b);
-  if (!pa || !pb) return null;
-  // perto assim, a Terra é plana o bastante
-  const norte = (pb.lat - pa.lat) * 111.32;
-  const leste = (pb.lng - pa.lng) * 111.32 * Math.cos((((pa.lat + pb.lat) / 2) * Math.PI) / 180);
-  return Math.hypot(norte, leste);
+  return deslocamentoEntreAreas(a, b)?.km ?? null;
 }
 
 /**

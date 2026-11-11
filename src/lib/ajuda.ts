@@ -267,6 +267,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Em Vagas, no painel, você escolhe a visão. Lista: uma linha por vaga, com uma barra de quantas pessoas estão em cada etapa e um botão com o que a vaga pede agora (responder, ver a entrevista, renovar, divulgar, encerrar); o resto fica nos três pontos. Pelo que pede você: as vagas separadas em pedem você agora, saem do ar esta semana, paradas (ninguém novo há 5 dias), preenchidas ainda no ar e andam sozinhas. Essas duas são grátis. Mosaico (quantos chegam por dia em cada vaga) e Linha do tempo (quando cada vaga entrou, quando sai do ar e as entrevistas) vêm nos planos, com 15 dias grátis para testar, uma vez por conta.",
       },
       {
+        p: "Quais são os jeitos de ver os meus candidatos?",
+        r: "Em Candidatos, no painel, você escolhe a visão. Mesa: as etapas no alto, a lista e a ficha de quem está aberto. Pelo que pede você: todos de todas as vagas separados em esperam a sua resposta (com Aceitar e Dispensar ali mesmo), entrevistas de hoje e amanhã, entrevistados que falta decidir, parados sem o próximo passo e andam sozinhos. Essas duas são grátis. Quadro (as etapas em colunas, com todas as vagas juntas, para arrastar), Mapa (onde moram os candidatos de uma vaga, por região, com a distância até a vaga; nunca a casa da pessoa) e Agenda (as entrevistas da semana, de todas as vagas) vêm nos planos. Os 15 dias grátis para testar são os mesmos das visões de Vagas, uma vez por conta. O quadro de cada vaga continua grátis.",
+      },
+      {
         p: "Já assino um recurso. Preciso cancelar para assinar um plano?",
         r: "Não. O plano já inclui todos os recursos: assine direto em Planos. O plano cobra no dia em que você assina e, quando começa a valer (no cartão, ao confirmar; no Pix, ao pagar), a assinatura do recurso que você tinha é cancelada sozinha, sem cobrar de novo. O mesmo vale para o combo, que inclui a Triagem e o Teste Prático. Para trocar de um plano para outro maior, use “Mudar de faixa”, em Assinatura: você paga só a diferença.",
       },
