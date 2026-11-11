@@ -32,8 +32,11 @@ const ORDEM: Produto[] = [
   "completo",
 ];
 
-/** A sugestão do plano de lançamento: o mensal e os 3 meses com uns 15% de desconto. */
-const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
+/**
+ * A sugestão do plano de lançamento: o mensal e os 3 meses com uns 15% de desconto; nos planos por faixa, também o
+ * anual (9 meses pelo ano) e os 30 dias sem renovar (uns 25% acima do mensal; migração 20270416120000).
+ */
+const SUGESTAO: Record<Produto, Partial<Record<Ciclo, number>>> = {
   // a Triagem com IA desceu para R$ 59 (10/11/2026), com 15% no trimestre
   copiloto: { MONTHLY: 59, QUARTERLY: 150 },
   testes: { MONTHLY: 29, QUARTERLY: 74 },
@@ -44,12 +47,12 @@ const SUGESTAO: Record<Produto, { MONTHLY: number; QUARTERLY: number }> = {
   // a Página de carreiras sozinha (decisão de 10/11/2026: R$ 19,90 por mês)
   carreiras: { MONTHLY: 19.9, QUARTERLY: 50.74 },
   // os planos por faixa (lançamento, 10/11/2026; o Plano Empresa subiu para R$ 79 e R$ 199, com 15% no trimestre)
-  empresa_5: { MONTHLY: 79, QUARTERLY: 201 },
-  empresa_20: { MONTHLY: 199, QUARTERLY: 507 },
+  empresa_5: { MONTHLY: 79, QUARTERLY: 201, YEARLY: 711, AVULSO: 99 },
+  empresa_20: { MONTHLY: 199, QUARTERLY: 507, YEARLY: 1791, AVULSO: 249 },
   // acima das 20 vagas grátis (10/11/2026)
-  empresa_50: { MONTHLY: 299, QUARTERLY: 762 },
-  agencia_15: { MONTHLY: 99, QUARTERLY: 252 },
-  agencia_200: { MONTHLY: 399, QUARTERLY: 1017 },
+  empresa_50: { MONTHLY: 299, QUARTERLY: 762, YEARLY: 2691, AVULSO: 369 },
+  agencia_15: { MONTHLY: 99, QUARTERLY: 252, YEARLY: 891, AVULSO: 125 },
+  agencia_200: { MONTHLY: 399, QUARTERLY: 1017, YEARLY: 3591, AVULSO: 499 },
   combo: { MONTHLY: 89, QUARTERLY: 227 },
   completo: { MONTHLY: 129, QUARTERLY: 329 },
 };
@@ -65,6 +68,14 @@ function lerValor(t: string): number | null {
   const n = Math.round(Number(limpo) * 100) / 100;
   return Number.isFinite(n) ? n : null;
 }
+
+const CICLOS: Ciclo[] = ["MONTHLY", "QUARTERLY", "YEARLY", "AVULSO"];
+const NOME: Record<Ciclo, string> = {
+  MONTHLY: "mensal",
+  QUARTERLY: "a cada 3 meses",
+  YEARLY: "anual",
+  AVULSO: "30 dias, sem renovar",
+};
 
 const reais = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -96,7 +107,13 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
   function usarSugestao() {
     setLinhas((atual) => {
       const novo = new Map(atual);
-      for (const p of planos) novo.set(p.id, { valor: paraTexto(SUGESTAO[p.recurso][p.ciclo]), ligado: true });
+      for (const p of planos) {
+        const v = SUGESTAO[p.recurso][p.ciclo];
+        if (v == null) continue;
+        // o anual e os 30 dias só vão à venda quando o Admin marca (depois do teste no sandbox)
+        const novos = p.ciclo === "YEARLY" || p.ciclo === "AVULSO";
+        novo.set(p.id, { valor: paraTexto(v), ligado: novos ? (atual.get(p.id)?.ligado ?? false) : true });
+      }
       return novo;
     });
     setRetorno(null);
@@ -109,7 +126,7 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
     for (const p of mudados) {
       const l = linhas.get(p.id)!;
       const r = await chamarAcao(() => salvarPlano(p.id, l.valor, l.ligado));
-      if (!r.ok) falhas.push(`${NOME_PRODUTO[p.recurso]} (${p.ciclo === "MONTHLY" ? "mensal" : "3 meses"}): ${r.erro}`);
+      if (!r.ok) falhas.push(`${NOME_PRODUTO[p.recurso]} (${NOME[p.ciclo]}): ${r.erro}`);
     }
     setSalvando(false);
     setRetorno(
@@ -122,12 +139,14 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-body-sm">
+        <table className="w-full min-w-[960px] text-body-sm">
           <thead>
             <tr className="text-left text-ink-muted">
               <th className="py-2 pr-3 font-semibold">Produto</th>
               <th className="py-2 pr-3 font-semibold">Mensal</th>
               <th className="py-2 pr-3 font-semibold">A cada 3 meses</th>
+              <th className="py-2 pr-3 font-semibold">Anual</th>
+              <th className="py-2 pr-3 font-semibold">30 dias</th>
               <th className="py-2 font-semibold">A conta</th>
             </tr>
           </thead>
@@ -136,12 +155,18 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
               const mensal = valorDe(r, "MONTHLY");
               const tri = valorDe(r, "QUARTERLY");
               const desconto = mensal && tri ? Math.round((1 - tri / (mensal * 3)) * 100) : null;
+              const anual = valorDe(r, "YEARLY");
+              const trinta = valorDe(r, "AVULSO");
+              const descontoAnual = mensal && anual ? Math.round((1 - anual / (mensal * 12)) * 100) : null;
+              const acima = mensal && trinta ? Math.round((trinta / mensal - 1) * 100) : null;
               const partes = recursosDo(r).length > 1 ? recursosDo(r).map((x) => valorDe(x, "MONTHLY")) : null;
               const separados =
                 partes && partes.every((x) => x != null) ? partes.reduce<number>((t, x) => t + x!, 0) : null;
               const economia = separados && mensal ? Math.round((1 - mensal / separados) * 100) : null;
               const avisos = [
                 desconto !== null && desconto <= 0 ? "os 3 meses saem mais caros que 3 mensais" : null,
+                descontoAnual !== null && descontoAnual <= 0 ? "o anual sai mais caro que 12 mensais" : null,
+                acima !== null && acima <= 0 ? "os 30 dias saem mais baratos que o mensal" : null,
                 economia !== null && economia <= 0 ? "o pacote sai mais caro que os recursos separados" : null,
                 r === "completo" &&
                 mensal &&
@@ -163,12 +188,12 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
                       </span>
                     )}
                   </th>
-                  {(["MONTHLY", "QUARTERLY"] as const).map((c) => {
+                  {CICLOS.map((c) => {
                     const p = plano(r, c);
                     if (!p)
                       return (
                         <td key={c} className="py-3 pr-3 text-ink-muted">
-                          sem plano
+                          {c === "YEARLY" || c === "AVULSO" ? "—" : "sem plano"}
                         </td>
                       );
                     const l = linhas.get(p.id) ?? { valor: "", ligado: false };
@@ -181,7 +206,7 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
                             onChange={(e) => mudar(p.id, { valor: e.target.value })}
                             inputMode="decimal"
                             placeholder="sem preço"
-                            aria-label={`Preço de ${NOME_PRODUTO[r]}, ${c === "MONTHLY" ? "mensal" : "a cada 3 meses"}`}
+                            aria-label={`Preço de ${NOME_PRODUTO[r]}, ${NOME[c]}`}
                             className={`${classesEntrada} w-28 tabular-nums`}
                           />
                         </span>
@@ -191,7 +216,7 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
                             checked={l.ligado}
                             onChange={(e) => mudar(p.id, { ligado: e.target.checked })}
                             className="size-4"
-                            aria-label={`${NOME_PRODUTO[r]}, ${c === "MONTHLY" ? "mensal" : "a cada 3 meses"}, à venda`}
+                            aria-label={`${NOME_PRODUTO[r]}, ${NOME[c]}, à venda`}
                           />
                           À venda
                         </label>
@@ -201,6 +226,8 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
                   <td className="py-3">
                     <ul className="flex flex-col gap-1">
                       {desconto !== null && <li>3 meses: {desconto}% de desconto</li>}
+                      {descontoAnual !== null && <li>Anual: {descontoAnual}% de desconto</li>}
+                      {acima !== null && <li>30 dias: {acima}% acima do mensal</li>}
                       {separados !== null && mensal && (
                         <li>
                           Separados: {reais(separados)} por mês · economia de {economia}%

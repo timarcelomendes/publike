@@ -101,7 +101,12 @@ export function jaInclui(pacote: Produto, p: Produto) {
   return recursosDo(p).every((r) => de.includes(r));
 }
 
-export type Ciclo = "MONTHLY" | "QUARTERLY";
+/**
+ * O ciclo do plano: mensal, a cada 3 meses, anual (YEARLY, só nos planos por faixa) ou AVULSO, o plano por 30 dias
+ * sem renovar (uma cobrança só; migração 20270416120000). A assinatura nunca é AVULSO.
+ */
+export type Ciclo = "MONTHLY" | "QUARTERLY" | "YEARLY" | "AVULSO";
+export type CicloDeAssinatura = Exclude<Ciclo, "AVULSO">;
 
 export type Plano = {
   id: string;
@@ -115,7 +120,7 @@ export type Plano = {
 export type Assinatura = {
   id: string;
   recurso: Produto;
-  ciclo: Ciclo;
+  ciclo: CicloDeAssinatura;
   valor: number;
   forma: "cartao" | "pix";
   situacao: "pendente" | "ativa" | "cancelada";
@@ -125,6 +130,25 @@ export type Assinatura = {
   criada_em: string;
   cancelada_em: string | null;
   pago_ate: string | null;
+  /** o arrependimento do anual: a 1ª cobrança paga há até 7 dias (até quando dá para pedir de volta) */
+  devolver?: { cobranca: string; ate: string; valor: number } | null;
+};
+
+/** O plano por 30 dias (que vale ou espera o pagamento) ou a troca de faixa esperando o pagamento. */
+export type Compra = {
+  id: string;
+  tipo: "trinta_dias" | "faixa";
+  recurso: Produto;
+  valor: number;
+  forma: "cartao" | "pix";
+  situacao: "pendente" | "paga" | "cancelada" | "estornada";
+  ate: string | null;
+  paga_em: string | null;
+  criada_em: string;
+  /** a cobrança da compra (a fatura) */
+  cobranca: string | null;
+  /** ainda dá para desistir e receber de volta (até 7 dias do pagamento) */
+  devolver: boolean;
 };
 
 export type PagamentosDaConta = {
@@ -132,6 +156,7 @@ export type PagamentosDaConta = {
   tipo: string | null;
   planos: Plano[];
   assinaturas: Assinatura[];
+  compras: Compra[];
   cliente: { cpf_cnpj: string; nome: string; email: string | null } | null;
   testes_ate: Partial<Record<RecursoPago, string>> | null;
   /** até quando já está pago, por recurso (assinar de novo começa a cobrar daí) */
@@ -150,6 +175,8 @@ export type Fatura = {
   forma: "cartao" | "pix";
   pago_em: string | null;
   link_pagar: string | null;
+  /** a cobrança avulsa: o plano por 30 dias ou a diferença da troca de faixa */
+  compra?: "trinta_dias" | "faixa" | null;
   nota: { situacao: "agendada" | "autorizada" | "erro" | "cancelada"; numero: string | null } | null;
 };
 
@@ -161,9 +188,43 @@ export type FaturaCompleta = Fatura & {
   conta: { nome: string | null; cpf_cnpj: string | null };
 };
 
-export const NOME_CICLO: Record<Ciclo, string> = { MONTHLY: "Mensal", QUARTERLY: "A cada 3 meses" };
-export const POR_CICLO: Record<Ciclo, string> = { MONTHLY: "por mês", QUARTERLY: "a cada 3 meses" };
-export const MESES: Record<Ciclo, number> = { MONTHLY: 1, QUARTERLY: 3 };
+export const NOME_CICLO: Record<Ciclo, string> = {
+  MONTHLY: "Mensal",
+  QUARTERLY: "A cada 3 meses",
+  YEARLY: "Anual",
+  AVULSO: "30 dias, sem renovar",
+};
+export const POR_CICLO: Record<Ciclo, string> = {
+  MONTHLY: "por mês",
+  QUARTERLY: "a cada 3 meses",
+  YEARLY: "por ano",
+  AVULSO: "por 30 dias",
+};
+export const MESES: Record<Ciclo, number> = { MONTHLY: 1, QUARTERLY: 3, YEARLY: 12, AVULSO: 1 };
+
+/** O plano de 30 dias de um produto, à venda. */
+export function planoDeTrintaDias(pag: PagamentosDaConta | null, produto: Produto) {
+  return pag?.planos.find((p) => p.recurso === produto && p.ciclo === "AVULSO") ?? null;
+}
+
+/** "Mudar de faixa": a assinatura de plano por faixa que vale e as faixas de cima da mesma família (Empresa ou Agência). */
+export function faixasDeCima(pag: PagamentosDaConta | null) {
+  const a = pag?.assinaturas.find((x) => x.situacao === "ativa" && ehPlanoPorFaixa(x.recurso));
+  if (!a) return { assinatura: null, faixas: [] as Plano[] };
+  const familia = String(a.recurso).split("_")[0];
+  // a faixa está no nome ("empresa_20"): vale mesmo com o plano de hoje fora de venda
+  const atual = Number(String(a.recurso).split("_")[1]) || 0;
+  const faixas = (pag?.planos ?? [])
+    .filter(
+      (p) =>
+        p.ciclo === a.ciclo &&
+        ehPlanoPorFaixa(p.recurso) &&
+        String(p.recurso).startsWith(familia) &&
+        (p.limite_vagas ?? 0) > atual,
+    )
+    .sort((x, y) => (x.limite_vagas ?? 0) - (y.limite_vagas ?? 0));
+  return { assinatura: a, faixas };
+}
 
 export const NOME_SITUACAO: Record<SituacaoFatura, string> = {
   pendente: "Em aberto",
@@ -211,6 +272,7 @@ export function lerPagamentos(data: unknown): PagamentosDaConta | null {
     tipo: typeof o.tipo === "string" ? o.tipo : null,
     planos: Array.isArray(o.planos) ? o.planos.map((p) => ({ ...p, valor: Number(p.valor) })) : [],
     assinaturas: Array.isArray(o.assinaturas) ? o.assinaturas.map((a) => ({ ...a, valor: Number(a.valor) })) : [],
+    compras: Array.isArray(o.compras) ? o.compras.map((k) => ({ ...k, valor: Number(k.valor) })) : [],
     cliente: o.cliente ?? null,
     testes_ate: o.testes_ate ?? null,
     pago_ate: o.pago_ate ?? null,

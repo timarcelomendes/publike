@@ -3641,6 +3641,32 @@ export type Database = {
       servidor_pagamento_no_sandbox: { Args: { p_chave: string; p_conta: string }; Returns: boolean };
       servidor_pagamento_vincular: { Args: { p_chave: string; p_sub: Json }; Returns: Json };
       servidor_pagamento_cobranca: { Args: { p_chave: string; p_pag: Json }; Returns: Json };
+      // a compra avulsa: os 30 dias, a troca de faixa e o arrependimento (migração 20270416120000)
+      servidor_pagamento_avulsa: { Args: { p_chave: string; p_pag: Json }; Returns: Json };
+      servidor_compra_nova: {
+        Args: {
+          p_chave: string;
+          p_conta: string;
+          p_tipo: string;
+          p_plano: string;
+          p_assinatura: string | null;
+          p_forma: string;
+          p_sandbox: boolean;
+        };
+        Returns: Json;
+      };
+      servidor_compra_asaas: {
+        Args: { p_chave: string; p_compra: string; p_asaas_id: string; p_checkout_id: string };
+        Returns: undefined;
+      };
+      servidor_pode_devolver: { Args: { p_chave: string; p_conta: string; p_cobranca: string }; Returns: Json };
+      servidor_devolvida: { Args: { p_chave: string; p_cobranca: string }; Returns: undefined };
+      servidor_avisar_fim_avulsas: { Args: { p_chave: string }; Returns: number };
+      servidor_faixa_sem_pagar: {
+        Args: { p_chave: string; p_conta: string; p_assinatura: string; p_plano: string };
+        Returns: Json;
+      };
+      minha_diferenca_de_faixa: { Args: { p_assinatura: string; p_recurso: string }; Returns: Json };
       servidor_pagamento_pix: {
         Args: { p_chave: string; p_asaas_id: string; p_payload: string; p_expira: string | null };
         Returns: undefined;

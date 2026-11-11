@@ -12,7 +12,9 @@ import {
   NOME_PRODUTO,
   O_PRODUTO,
   recursosDo,
+  ehPlanoPorFaixa,
   seCruzam,
+  type Ciclo,
   type Produto,
 } from "@/lib/pagamentos";
 import type { Liberavel, RecursoPago } from "@/lib/recursos-pagos";
@@ -23,7 +25,11 @@ import {
   cancelarAssinaturaAsaas,
   criarAssinaturaPix,
   criarCheckout,
+  criarCheckoutAvulso,
   criarCliente,
+  criarCobrancaPix,
+  atualizarAssinatura,
+  estornarCobranca,
   ErroAsaas,
   linkDoCheckout,
   type EnderecoCobranca,
@@ -31,7 +37,7 @@ import {
 import { urlDosEmails } from "@/lib/servidor/ambiente";
 import { enderecoDeQualquerCep } from "@/lib/servidor/cep";
 import { enviarPushPendentes } from "@/lib/servidor/filas";
-import { acessoPagamentos, sincronizarAssinatura } from "@/lib/servidor/pagamentos";
+import { acessoPagamentos, gravarAvulsa, sincronizarAssinatura } from "@/lib/servidor/pagamentos";
 import { emailValido } from "@/lib/email-valido";
 
 // Assinar a Triagem com IA, o Teste Prático ou o combo dos dois (claude/plano-checkout-asaas.md). O cartão é pago na página do
@@ -44,7 +50,7 @@ type Contexto = {
   cliente: { asaas_id: string; cpf_cnpj: string; nome: string; email: string | null; sandbox?: boolean } | null;
   /** a conta de teste paga na conta sandbox do Asaas (Admin › Pagamentos) */
   sandbox?: boolean;
-  planos: { id: string; recurso: Produto; ciclo: "MONTHLY" | "QUARTERLY"; valor: number; limite_vagas?: number | null }[];
+  planos: { id: string; recurso: Produto; ciclo: Ciclo; valor: number; limite_vagas?: number | null }[];
   /** as vagas no ar da conta (migração 20270407120000), para conferir a faixa do plano */
   vagas_no_ar?: number;
   /** as assinaturas valendo (ou o Pix esperando a 1ª fatura), pelo produto */
@@ -56,7 +62,7 @@ type Contexto = {
 
 export type ResultadoAssinar = { ok: true; ir: string; externo?: boolean } | { ok: false; erro: string };
 
-const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral" };
+const CICLO: Record<string, string> = { MONTHLY: "mensal", QUARTERLY: "trimestral", YEARLY: "anual" };
 const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const CURTO: Record<Produto, string> = {
   copiloto: "Triagem",
@@ -106,17 +112,25 @@ async function quemAssina(): Promise<{ erro: string } | { conta: string }> {
   return { conta: usuario.id };
 }
 
-export async function assinar(dados: {
-  plano: string;
+type DadosDoPagador = {
   forma: "cartao" | "pix";
   documento: string;
   nome: string;
   email: string;
-  /** trocar o cartão (ou passar do Pix para o cartão) da assinatura que já vale */
-  troca?: boolean;
   /** no cartão: o celular e o endereço de cobrança (o checkout do parceiro pede) */
   endereco?: { telefone: string; cep: string; rua: string; numero: string; complemento: string; bairro: string };
-}): Promise<ResultadoAssinar> {
+};
+
+type Preparado = { a: ReturnType<typeof acessoPagamentos>; conta: string; ctx: Contexto; sandbox: boolean; cliente: string };
+
+/**
+ * O que assinar e comprar têm em comum: confere quem paga, os dados da nota e o endereço do cartão, e garante o
+ * cliente no parceiro (um por conta). `antes` confere o pedido com o contexto antes de mexer no parceiro.
+ */
+async function prepararPagador(
+  dados: DadosDoPagador,
+  antes: (ctx: Contexto) => string | null,
+): Promise<{ ok: false; erro: string } | ({ ok: true } & Preparado)> {
   const q = await quemAssina();
   if ("erro" in q) return { ok: false, erro: q.erro };
   const conta = q.conta;
@@ -148,93 +162,108 @@ export async function assinar(dados: {
     if (endereco.bairro.length < 2) return { ok: false, erro: "Escreva o bairro do endereço de cobrança." };
   }
 
+  const a = acessoPagamentos();
+  const { data: pode } = await a.cliente.rpc("servidor_pagamento_tentativa", { p_chave: a.chave, p_conta: conta });
+  if (pode !== true) return { ok: false, erro: "Muitas tentativas. Espere uma hora e tente de novo." };
+  const { data, error } = await a.cliente.rpc("servidor_pagamento_contexto", { p_chave: a.chave, p_conta: conta });
+  if (error || !data) throw new Error(error?.message ?? "sem contexto");
+  const ctx = data as unknown as Contexto;
+  if (!ctx.pode) return { ok: false, erro: "A assinatura ainda não está aberta para a sua conta." };
+  // a conta de teste no sandbox paga na conta sandbox do Asaas (com o site em produção; senão, tudo já é sandbox)
+  const sandbox = ctx.sandbox === true && asaasProducao();
+  if (!asaasConfigurado(sandbox))
+    return {
+      ok: false,
+      erro: "Esta conta de teste paga no sandbox, mas a chave do sandbox (ASAAS_SANDBOX_API_KEY) não está posta.",
+    };
+  const motivo = antes(ctx);
+  if (motivo) return { ok: false, erro: motivo };
+
+  // o cliente no parceiro (um por conta): nome, CPF ou CNPJ e e-mail da nota fiscal. O cliente guardado é de
+  // uma conta do Asaas só: quando a conta de teste passa do sandbox para a produção (ou volta), nasce outro
+  const doOutroLado = Boolean(ctx.cliente) && (ctx.cliente?.sandbox === true) !== sandbox;
+  let cliente = doOutroLado ? null : (ctx.cliente?.asaas_id ?? null);
+  const mudou =
+    !ctx.cliente ||
+    doOutroLado ||
+    ctx.cliente.cpf_cnpj !== documento ||
+    ctx.cliente.nome !== nome ||
+    (ctx.cliente.email ?? "") !== email;
+  if (!cliente) {
+    cliente = (await criarCliente(sandbox, { nome, cpfCnpj: documento, email: email || null, ref: conta })).id;
+  } else if (mudou && !endereco) {
+    await atualizarCliente(sandbox, cliente, { nome, cpfCnpj: documento, email: email || null });
+  }
+  // no cartão: o celular e o endereço vão para o cliente no parceiro (e ficam para a próxima vez)
+  if (endereco) {
+    await atualizarCliente(sandbox, cliente, { nome, cpfCnpj: documento, email: email || null, endereco });
+  }
+  if (mudou) {
+    const { error: e2 } = await a.cliente.rpc("servidor_pagamento_cliente", {
+      p_chave: a.chave,
+      p_conta: conta,
+      p_asaas_id: cliente,
+      p_cpf_cnpj: documento,
+      p_nome: nome,
+      p_email: email,
+      p_sandbox: sandbox,
+    });
+    if (e2) throw new Error(e2.message);
+  }
+  if (endereco) {
+    const { telefone, ...resto } = endereco;
+    const { error: e5 } = await a.cliente.rpc("servidor_pagamento_endereco", {
+      p_chave: a.chave,
+      p_conta: conta,
+      p_telefone: telefone,
+      p_endereco: resto,
+    });
+    // sem a migração do endereço: segue (só não vem preenchido na próxima vez)
+    if (e5 && e5.code !== "PGRST202")
+      console.error("Publike: não deu para guardar o endereço de cobrança:", e5.message);
+  }
+  return { ok: true, a, conta, ctx, sandbox, cliente };
+}
+
+export async function assinar(dados: DadosDoPagador & {
+  plano: string;
+  /** trocar o cartão (ou passar do Pix para o cartão) da assinatura que já vale */
+  troca?: boolean;
+}): Promise<ResultadoAssinar> {
   try {
-    const a = acessoPagamentos();
-    const { data: pode } = await a.cliente.rpc("servidor_pagamento_tentativa", { p_chave: a.chave, p_conta: conta });
-    if (pode !== true) return { ok: false, erro: "Muitas tentativas. Espere uma hora e tente de novo." };
-    const { data, error } = await a.cliente.rpc("servidor_pagamento_contexto", { p_chave: a.chave, p_conta: conta });
-    if (error || !data) throw new Error(error?.message ?? "sem contexto");
-    const ctx = data as unknown as Contexto;
-    if (!ctx.pode) return { ok: false, erro: "A assinatura ainda não está aberta para a sua conta." };
-    // a conta de teste no sandbox paga na conta sandbox do Asaas (com o site em produção; senão, tudo já é sandbox)
-    const sandbox = ctx.sandbox === true && asaasProducao();
-    if (!asaasConfigurado(sandbox))
-      return {
-        ok: false,
-        erro: "Esta conta de teste paga no sandbox, mas a chave do sandbox (ASAAS_SANDBOX_API_KEY) não está posta.",
-      };
-    const plano = ctx.planos.find((p) => p.id === dados.plano);
-    if (!plano) return { ok: false, erro: "Esse plano não está mais à venda. Atualize a página." };
-    // o plano por faixa: só a faixa em que as vagas no ar cabem (publicar nunca trava; a faixa é a do plano)
-    if (plano.limite_vagas != null && (ctx.vagas_no_ar ?? 0) > plano.limite_vagas)
-      return {
-        ok: false,
-        erro: `Você tem ${ctx.vagas_no_ar} vagas no ar, e este plano vai até ${plano.limite_vagas}. Escolha a faixa de cima.`,
-      };
-    if (recursosDo(plano.recurso).every((r) => ctx.sem_prazo[r]))
-      return { ok: false, erro: "Esse recurso já está liberado para a sua conta." };
     const troca = dados.troca === true && dados.forma === "cartao";
     if (dados.troca && !troca) return { ok: false, erro: "A troca é só para o cartão." };
-    if (troca && !ctx.ativas.includes(plano.recurso)) return { ok: false, erro: "Não há assinatura para trocar." };
-    if (!troca && ctx.ativas.includes(plano.recurso))
-      return { ok: false, erro: `Você já assina ${O_PRODUTO[plano.recurso]}. Veja em Assinatura.` };
-    // dois produtos que liberam um mesmo recurso (o combo ou o Plano Completo e os recursos separados) não valem
-    // juntos: cancela um para assinar o outro
-    const outra = ctx.ativas.find((x) => x !== plano.recurso && ehProduto(x) && seCruzam(x, plano.recurso));
-    if (!troca && outra)
-      return {
-        ok: false,
-        erro: jaInclui(outra, plano.recurso)
+    let plano: Contexto["planos"][number] | undefined;
+    const p = await prepararPagador(dados, (ctx) => {
+      plano = ctx.planos.find((x) => x.id === dados.plano);
+      if (!plano || plano.ciclo === "AVULSO") return "Esse plano não está mais à venda. Atualize a página.";
+      // o plano por faixa: só a faixa em que as vagas no ar cabem (publicar nunca trava; a faixa é a do plano)
+      if (plano.limite_vagas != null && (ctx.vagas_no_ar ?? 0) > plano.limite_vagas)
+        return `Você tem ${ctx.vagas_no_ar} vagas no ar, e este plano vai até ${plano.limite_vagas}. Escolha a faixa de cima.`;
+      if (recursosDo(plano.recurso).every((r) => ctx.sem_prazo[r])) return "Esse recurso já está liberado para a sua conta.";
+      if (troca && !ctx.ativas.includes(plano.recurso)) return "Não há assinatura para trocar.";
+      if (!troca && ctx.ativas.includes(plano.recurso))
+        return `Você já assina ${O_PRODUTO[plano.recurso]}. Veja em Assinatura.`;
+      // dois produtos que liberam um mesmo recurso (o combo ou o Plano Completo e os recursos separados) não valem
+      // juntos: cancela um para assinar o outro; entre planos por faixa, a troca é por "Mudar de faixa"
+      const outra = ctx.ativas.find((x) => x !== plano!.recurso && ehProduto(x) && seCruzam(x, plano!.recurso));
+      if (!troca && outra) {
+        if (ehPlanoPorFaixa(outra) && ehPlanoPorFaixa(plano.recurso))
+          return `Você assina ${O_PRODUTO[outra]}. Para ir para ${O_PRODUTO[plano.recurso]}, use "Mudar de faixa" em Assinatura: você paga só a diferença.`;
+        return jaInclui(outra, plano.recurso)
           ? `${maiuscula(O_PRODUTO[outra])} que você assina já inclui ${O_PRODUTO[plano.recurso]}.`
-          : `Você assina ${O_PRODUTO[outra]}. Cancele em Assinatura para passar para ${O_PRODUTO[plano.recurso]} (o que já foi pago continua valendo).`,
-      };
-
-    // o cliente no parceiro (um por conta): nome, CPF ou CNPJ e e-mail da nota fiscal. O cliente guardado é de
-    // uma conta do Asaas só: quando a conta de teste passa do sandbox para a produção (ou volta), nasce outro
-    const doOutroLado = Boolean(ctx.cliente) && (ctx.cliente?.sandbox === true) !== sandbox;
-    let cliente = doOutroLado ? null : (ctx.cliente?.asaas_id ?? null);
-    const mudou =
-      !ctx.cliente ||
-      doOutroLado ||
-      ctx.cliente.cpf_cnpj !== documento ||
-      ctx.cliente.nome !== nome ||
-      (ctx.cliente.email ?? "") !== email;
-    if (!cliente) {
-      cliente = (await criarCliente(sandbox, { nome, cpfCnpj: documento, email: email || null, ref: conta })).id;
-    } else if (mudou && !endereco) {
-      await atualizarCliente(sandbox, cliente, { nome, cpfCnpj: documento, email: email || null });
-    }
-    // no cartão: o celular e o endereço vão para o cliente no parceiro (e ficam para a próxima vez)
-    if (endereco) {
-      await atualizarCliente(sandbox, cliente, { nome, cpfCnpj: documento, email: email || null, endereco });
-    }
-    if (mudou) {
-      const { error: e2 } = await a.cliente.rpc("servidor_pagamento_cliente", {
-        p_chave: a.chave,
-        p_conta: conta,
-        p_asaas_id: cliente,
-        p_cpf_cnpj: documento,
-        p_nome: nome,
-        p_email: email,
-        p_sandbox: sandbox,
-      });
-      if (e2) throw new Error(e2.message);
-    }
-    if (endereco) {
-      const { telefone, ...resto } = endereco;
-      const { error: e5 } = await a.cliente.rpc("servidor_pagamento_endereco", {
-        p_chave: a.chave,
-        p_conta: conta,
-        p_telefone: telefone,
-        p_endereco: resto,
-      });
-      // sem a migração do endereço: segue (só não vem preenchido na próxima vez)
-      if (e5 && e5.code !== "PGRST202")
-        console.error("Publike: não deu para guardar o endereço de cobrança:", e5.message);
-    }
+          : `Você assina ${O_PRODUTO[outra]}. Cancele em Assinatura para passar para ${O_PRODUTO[plano.recurso]} (o que já foi pago continua valendo).`;
+      }
+      return null;
+    });
+    if (!p.ok) return p;
+    if (!plano || plano.ciclo === "AVULSO") return { ok: false, erro: "Esse plano não está mais à venda." };
+    const { a, conta, ctx, sandbox, cliente } = p;
+    const ciclo = plano.ciclo;
 
     // a 1ª cobrança: no fim do teste grátis ou do que já está pago (assinar de novo, trocar o cartão); senão, hoje
     const primeiro = diaDaPrimeiraCobranca(plano.recurso, ctx.testes_ate, ctx.pago_ate);
+    void troca;
     // o nome do item é como o banco liga a assinatura do checkout ("completo", "combo", "triagem" ou "teste" no texto)
     const nomeItem = `Publike · ${NOME_PRODUTO[plano.recurso]} (${CICLO[plano.ciclo]})`;
     // no checkout, o nome do item tem no máximo 30 letras (o Asaas recusa o resto): "Publike Combo (trimestral)";
@@ -242,9 +271,11 @@ export async function assinar(dados: {
     const comCiclo = `Publike ${CURTO[plano.recurso]} (${CICLO[plano.ciclo]})`;
     const nomeCurto = comCiclo.length <= 30 ? comCiclo : `Publike ${CURTO[plano.recurso]}`;
     const descricao =
-      plano.ciclo === "QUARTERLY"
-        ? `${NOME_PRODUTO[plano.recurso]} por 3 meses, renovado a cada 3 meses`
-        : `${NOME_PRODUTO[plano.recurso]} por 1 mês, renovado todo mês`;
+      ciclo === "YEARLY"
+        ? `${NOME_PRODUTO[plano.recurso]} por 12 meses, renovado todo ano`
+        : ciclo === "QUARTERLY"
+          ? `${NOME_PRODUTO[plano.recurso]} por 3 meses, renovado a cada 3 meses`
+          : `${NOME_PRODUTO[plano.recurso]} por 1 mês, renovado todo mês`;
 
     if (dados.forma === "cartao") {
       // a volta do checkout: o Asaas só aceita endereço público (no computador, vale o do site no ar,
@@ -259,7 +290,7 @@ export async function assinar(dados: {
       const ck = await criarCheckout(sandbox, {
         cliente,
         valor: Number(plano.valor),
-        ciclo: plano.ciclo,
+        ciclo,
         primeiro,
         nome: nomeCurto,
         descricao,
@@ -282,7 +313,7 @@ export async function assinar(dados: {
     const sub = await criarAssinaturaPix(sandbox, {
       cliente,
       valor: Number(plano.valor),
-      ciclo: plano.ciclo,
+      ciclo,
       primeiro,
       descricao: nomeItem,
       ref: conta,
@@ -302,6 +333,189 @@ export async function assinar(dados: {
     after(() => enviarPushPendentes());
     const aberta = gravadas?.cobrancas.find((c) => c.situacao === "pendente");
     return { ok: true, ir: aberta ? `/painel/faturas/${aberta.cobranca_id}?pix=1` : "/painel/assinatura?pix=ok" };
+  } catch (e) {
+    return { ok: false, erro: erroParaTela(e) };
+  }
+}
+
+/**
+ * A compra avulsa (migração 20270416120000): o plano por 30 dias ou a diferença da troca de faixa. Uma cobrança
+ * só: no Pix, a fatura aparece aqui; no cartão, a página do parceiro, sem renovar.
+ */
+async function comprar(
+  dados: DadosDoPagador,
+  pedido: { tipo: "trinta_dias" | "faixa"; plano: string; assinatura: string | null },
+): Promise<ResultadoAssinar> {
+  try {
+    const p = await prepararPagador(dados, (ctx) => {
+      if (pedido.tipo !== "trinta_dias") return null;
+      const plano = ctx.planos.find((x) => x.id === pedido.plano);
+      if (!plano || plano.ciclo !== "AVULSO") return "Esse plano não está mais à venda. Atualize a página.";
+      if (ctx.ativas.length) return "Você já tem uma assinatura, e ela já cobre isso. Veja em Assinatura.";
+      return null;
+    });
+    if (!p.ok) return p;
+    const { a, conta, sandbox, cliente } = p;
+    const { data, error } = await a.cliente.rpc("servidor_compra_nova", {
+      p_chave: a.chave,
+      p_conta: conta,
+      p_tipo: pedido.tipo,
+      p_plano: pedido.plano,
+      p_assinatura: pedido.assinatura,
+      p_forma: dados.forma,
+      p_sandbox: sandbox,
+    });
+    if (error) throw new Error(error.message);
+    const r = (data ?? {}) as { erro?: string; id?: string; valor?: number; recurso?: string; feito?: boolean };
+    if (r.erro) return { ok: false, erro: r.erro };
+    if (r.feito) {
+      // nada a pagar (a assinatura ainda não tinha período pago): a faixa já mudou; o valor muda no parceiro
+      await valorNovoNoParceiro(r as Parameters<typeof valorNovoNoParceiro>[0]);
+      refresh();
+      return { ok: true, ir: "/painel/assinatura?faixa=ok" };
+    }
+    if (!r.id || !r.valor || !r.recurso || !ehProduto(r.recurso)) throw new Error("compra sem id");
+    const nome = NOME_PRODUTO[r.recurso];
+    const descricao =
+      pedido.tipo === "faixa" ? `${nome}: a diferença até o fim do período pago` : `${nome} por 30 dias, sem renovar`;
+
+    if (dados.forma === "cartao") {
+      const site = urlDosEmails();
+      if (!site)
+        return {
+          ok: false,
+          erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para o cartão voltar ao Publike.",
+        };
+      const volta = `${site}/painel/assinatura`;
+      const curto = `Publike ${CURTO[r.recurso]} ${pedido.tipo === "faixa" ? "(faixa)" : "(30 dias)"}`;
+      const ck = await criarCheckoutAvulso(sandbox, {
+        cliente,
+        valor: Number(r.valor),
+        nome: curto.length <= 30 ? curto : `Publike ${CURTO[r.recurso]}`,
+        descricao,
+        ref: r.id,
+        voltar: { ok: `${volta}?cartao=ok`, cancelou: `${volta}?cartao=cancelou`, expirou: `${volta}?cartao=expirou` },
+      });
+      const { error: e2 } = await a.cliente.rpc("servidor_compra_asaas", {
+        p_chave: a.chave,
+        p_compra: r.id,
+        p_asaas_id: "",
+        p_checkout_id: ck.id,
+      });
+      if (e2) throw new Error(e2.message);
+      return { ok: true, ir: linkDoCheckout(sandbox, ck.id), externo: true };
+    }
+
+    const pag = await criarCobrancaPix(sandbox, {
+      cliente,
+      valor: Number(r.valor),
+      vencimento: new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
+      descricao: `Publike · ${descricao}`,
+      ref: r.id,
+    });
+    const { error: e3 } = await a.cliente.rpc("servidor_compra_asaas", {
+      p_chave: a.chave,
+      p_compra: r.id,
+      p_asaas_id: pag.id,
+      p_checkout_id: "",
+    });
+    if (e3) throw new Error(e3.message);
+    const fatura = await gravarAvulsa(a, sandbox, pag, false);
+    after(() => enviarPushPendentes());
+    const id = fatura?.cobranca_id;
+    return { ok: true, ir: id ? `/painel/faturas/${id}?pix=1` : "/painel/faturas" };
+  } catch (e) {
+    return { ok: false, erro: erroParaTela(e) };
+  }
+}
+
+/** O plano por 30 dias, sem renovar: libera tudo da faixa por 30 dias a partir do pagamento. */
+export async function comprarPorTrintaDias(dados: DadosDoPagador & { plano: string }): Promise<ResultadoAssinar> {
+  return comprar(dados, { tipo: "trinta_dias", plano: dados.plano, assinatura: null });
+}
+
+/** O valor novo da renovação no parceiro, depois da troca de faixa (a faixa já mudou no Publike). */
+async function valorNovoNoParceiro(r: { asaas_id?: string | null; sandbox?: boolean; valor_novo?: number; para?: string }) {
+  if (!r.asaas_id || r.valor_novo == null) return;
+  const nome = r.para && ehProduto(r.para) ? NOME_PRODUTO[r.para] : "Plano";
+  try {
+    await atualizarAssinatura(r.sandbox === true, r.asaas_id, {
+      valor: Number(r.valor_novo),
+      descricao: `Publike · ${nome}`,
+    });
+  } catch (e) {
+    console.error("Publike: não deu para mudar o valor da assinatura no parceiro:", erroParaTela(e));
+  }
+}
+
+/**
+ * Subir de faixa pagando a diferença dos dias que faltam do período já pago. `semPagar`: a assinatura ainda não
+ * tem período pago (dias grátis ou o 1º Pix esperando), e a faixa muda na hora, sem cobrança.
+ */
+export async function mudarDeFaixa(
+  dados: DadosDoPagador & { plano: string; assinatura: string; semPagar?: boolean },
+): Promise<ResultadoAssinar> {
+  if (!/^[0-9a-f-]{36}$/.test(dados.assinatura) || !/^[0-9a-f-]{36}$/.test(dados.plano))
+    return { ok: false, erro: "Pedido inválido." };
+  if (dados.semPagar) {
+    const q = await quemAssina();
+    if ("erro" in q) return { ok: false, erro: q.erro };
+    try {
+      const a = acessoPagamentos();
+      const { data, error } = await a.cliente.rpc("servidor_faixa_sem_pagar", {
+        p_chave: a.chave,
+        p_conta: q.conta,
+        p_assinatura: dados.assinatura,
+        p_plano: dados.plano,
+      });
+      if (error) throw new Error(error.message);
+      const r = (data ?? {}) as { erro?: string; asaas_id?: string; sandbox?: boolean; valor_novo?: number; para?: string };
+      if (r.erro) return { ok: false, erro: r.erro };
+      await valorNovoNoParceiro(r);
+      after(() => enviarPushPendentes());
+      refresh();
+      return { ok: true, ir: "/painel/assinatura?faixa=ok" };
+    } catch (e) {
+      return { ok: false, erro: erroParaTela(e) };
+    }
+  }
+  return comprar(dados, { tipo: "faixa", plano: dados.plano, assinatura: dados.assinatura });
+}
+
+/**
+ * O arrependimento em 7 dias (CDC, art. 49) no plano por 30 dias e na 1ª compra do anual: estorna no parceiro (o
+ * dinheiro volta pela mesma forma) e, no anual, cancela a assinatura. Os recursos fecham.
+ */
+export async function devolverPagamento(
+  cobranca: string,
+): Promise<{ ok: true; mensagem: string } | { ok: false; erro: string }> {
+  const q = await quemAssina();
+  if ("erro" in q) return { ok: false, erro: q.erro };
+  if (!/^[0-9a-f-]{36}$/.test(cobranca)) return { ok: false, erro: "Pedido inválido." };
+  try {
+    const a = acessoPagamentos();
+    const { data, error } = await a.cliente.rpc("servidor_pode_devolver", {
+      p_chave: a.chave,
+      p_conta: q.conta,
+      p_cobranca: cobranca,
+    });
+    if (error) throw new Error(error.message);
+    const r = (data ?? {}) as { erro?: string; asaas_id?: string; sandbox?: boolean; assinatura?: string | null };
+    if (r.erro || !r.asaas_id) return { ok: false, erro: r.erro ?? "Não deu para pedir de volta." };
+    const sandbox = r.sandbox === true;
+    await estornarCobranca(sandbox, r.asaas_id, "Desistência em até 7 dias (CDC, art. 49)");
+    if (r.assinatura) {
+      await cancelarAssinaturaAsaas(sandbox, r.assinatura);
+      await a.cliente.rpc("servidor_pagamento_cancelada", { p_chave: a.chave, p_asaas_id: r.assinatura });
+    }
+    const { error: e2 } = await a.cliente.rpc("servidor_devolvida", { p_chave: a.chave, p_cobranca: cobranca });
+    if (e2) throw new Error(e2.message);
+    after(() => enviarPushPendentes());
+    refresh();
+    return {
+      ok: true,
+      mensagem: "Pedido de devolução feito. O valor volta pela mesma forma de pagamento, e os recursos fecham.",
+    };
   } catch (e) {
     return { ok: false, erro: erroParaTela(e) };
   }

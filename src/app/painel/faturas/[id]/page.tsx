@@ -141,7 +141,13 @@ async function Conteudo({ params }: { params: PageProps<"/painel/faturas/[id]">[
           </Linha>
           <Linha rotulo="O que é">
             {NOME_PRODUTO[f.recurso]}
-            {f.ciclo ? ` · ${NOME_CICLO[f.ciclo].toLowerCase()}` : ""}
+            {f.ciclo
+              ? ` · ${NOME_CICLO[f.ciclo].toLowerCase()}`
+              : f.compra === "trinta_dias"
+                ? " · 30 dias, sem renovar"
+                : f.compra === "faixa"
+                  ? " · a diferença da troca de faixa"
+                  : ""}
           </Linha>
           <Linha rotulo="Período">
             {dataDoDia(f.vencimento)} a {dataEHora(f.periodo_ate)}

@@ -697,6 +697,22 @@ export async function avisarFaixasDosPlanos(): Promise<{ avisadas: number; motiv
 }
 
 /**
+ * O plano por 30 dias, sem renovar (migração 20270416120000): o aviso 3 dias antes do fim e no dia, com o link para
+ * comprar mais 30 dias ou assinar. Devolve quantas contas foram avisadas.
+ */
+export async function avisarFimDosPlanosDe30Dias(): Promise<{ avisadas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { avisadas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_avisar_fim_avulsas", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { avisadas: 0 };
+    console.error("Publike: falha ao avisar o fim dos planos de 30 dias:", error.message);
+    return { avisadas: 0, motivo: "Não foi possível avisar o fim dos planos de 30 dias." };
+  }
+  return { avisadas: Number(data ?? 0) };
+}
+
+/**
  * As consultas de salário pelas vagas (claude/plano-consulta-de-salarios.md; migração 20270218120000): 2 a cada 5
  * vagas novas de quem contrata, com o aviso no sino. Devolve quantas contas ganharam.
  */

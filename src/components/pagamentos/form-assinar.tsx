@@ -4,11 +4,26 @@ import { CreditCard, LoaderCircle, LockKeyhole, QrCode } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { chamarAcao } from "@/lib/acao-segura";
-import { assinar, buscarCepDeCobranca, type ResultadoAssinar } from "@/lib/acoes/assinatura";
+import {
+  assinar,
+  buscarCepDeCobranca,
+  comprarPorTrintaDias,
+  mudarDeFaixa,
+  type ResultadoAssinar,
+} from "@/lib/acoes/assinatura";
 import { documentoValido, formatarDocumento } from "@/lib/documento";
 import { formatarMoeda, formatarTelefone } from "@/lib/formato";
 import { formatarCep } from "@/lib/cep";
-import { dataDoDia, MESES, NOME_CICLO, NOME_PRODUTO, POR_CICLO, type Plano, type Produto } from "@/lib/pagamentos";
+import {
+  dataDoDia,
+  MESES,
+  NOME_CICLO,
+  NOME_PRODUTO,
+  POR_CICLO,
+  type Ciclo,
+  type Plano,
+  type Produto,
+} from "@/lib/pagamentos";
 import { Campo, classesEntrada } from "../ui/campo";
 import { Botao } from "../ui/botao";
 
@@ -20,15 +35,26 @@ const OPCAO =
 const MARCADA = "border-ink bg-surface-300";
 const SOLTA = "border-line-strong bg-surface-200 hover:bg-surface-300";
 
+/**
+ * O modo do formulário (migração 20270416120000): assinar (mensal, 3 meses ou anual), comprar os 30 dias sem
+ * renovar, ou pagar a diferença da troca de faixa (`faixa`: a assinatura e quanto falta pagar).
+ */
+type Modo =
+  | { tipo: "assinar"; ciclo?: Ciclo | null }
+  | { tipo: "trinta" }
+  | { tipo: "faixa"; assinatura: string; diferenca: number; dias: number; ate: string | null; renovacao: number };
+
 export function FormAssinar({
   recurso,
-  planos,
+  planos: todos,
   primeiro,
   inicial,
   troca = false,
+  modo = { tipo: "assinar" },
 }: {
   recurso: Produto;
   planos: Plano[];
+  modo?: Modo;
   /** a data da 1ª cobrança, quando não é hoje (o fim do teste grátis ou do que já está pago) */
   primeiro: string | null;
   inicial: {
@@ -42,8 +68,13 @@ export function FormAssinar({
   troca?: boolean;
 }) {
   const router = useRouter();
+  // os 30 dias são uma compra à parte: no assinar, só os ciclos que renovam
+  const planos = todos.filter((p) => (modo.tipo === "trinta" ? p.ciclo === "AVULSO" : p.ciclo !== "AVULSO"));
   const ordenados = [...planos].sort((a, b) => MESES[a.ciclo] - MESES[b.ciclo]);
-  const [plano, setPlano] = useState(ordenados[0]?.id ?? "");
+  const cicloInicial = modo.tipo === "assinar" ? modo.ciclo : null;
+  const [plano, setPlano] = useState(
+    (ordenados.find((p) => p.ciclo === cicloInicial) ?? ordenados[0])?.id ?? "",
+  );
   const [forma, setForma] = useState<"cartao" | "pix">("cartao");
   const [documento, setDocumento] = useState(formatarDocumento(inicial.documento));
   const [nome, setNome] = useState(inicial.nome);
@@ -92,16 +123,13 @@ export function FormAssinar({
     }
     setErroDoc(null);
     iniciar(async () => {
+      const pagador = { forma: f, documento, nome, email, endereco: f === "cartao" ? { telefone, ...end } : undefined };
       const r: ResultadoAssinar = await chamarAcao(() =>
-        assinar({
-          plano,
-          forma: f,
-          documento,
-          nome,
-          email,
-          troca,
-          endereco: f === "cartao" ? { telefone, ...end } : undefined,
-        }),
+        modo.tipo === "trinta"
+          ? comprarPorTrintaDias({ ...pagador, plano })
+          : modo.tipo === "faixa"
+            ? mudarDeFaixa({ ...pagador, plano, assinatura: modo.assinatura })
+            : assinar({ ...pagador, plano, troca }),
       );
       if (!r.ok) {
         setErro(r.erro);
@@ -115,13 +143,16 @@ export function FormAssinar({
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-6" noValidate>
-      {!troca && (
+      {!troca && modo.tipo !== "faixa" && (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-label">Plano</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {ordenados.map((p) => {
               const porMes = p.valor / MESES[p.ciclo];
-              const economia = p.ciclo === "QUARTERLY" && mensal ? Math.round((1 - porMes / mensal.valor) * 100) : 0;
+              const economia =
+                (p.ciclo === "QUARTERLY" || p.ciclo === "YEARLY") && mensal
+                  ? Math.round((1 - porMes / mensal.valor) * 100)
+                  : 0;
               return (
                 <label key={p.id} className={`${OPCAO} ${plano === p.id ? MARCADA : SOLTA}`}>
                   <input
@@ -138,7 +169,10 @@ export function FormAssinar({
                       {formatarMoeda(p.valor)}{" "}
                       <span className="text-body-sm font-normal text-ink-muted">{POR_CICLO[p.ciclo]}</span>
                     </span>
-                    {p.ciclo === "QUARTERLY" && (
+                    {p.ciclo === "YEARLY" && (
+                      <span className="text-body-sm text-ink-muted">12 meses pelo preço de 9</span>
+                    )}
+                    {(p.ciclo === "QUARTERLY" || p.ciclo === "YEARLY") && (
                       <span className="text-body-sm text-ink-muted">
                         Sai {formatarMoeda(Math.round(porMes * 100) / 100)} por mês
                         {economia > 0 && <span className="text-cerrado-text"> · {economia}% a menos</span>}
@@ -170,7 +204,9 @@ export function FormAssinar({
                   <CreditCard aria-hidden className="size-[18px]" />
                   Cartão de crédito
                 </span>
-                <span className="text-body-sm text-ink-muted">Renova sozinho. Você não precisa fazer nada.</span>
+                <span className="text-body-sm text-ink-muted">
+                  {modo.tipo === "assinar" ? "Renova sozinho. Você não precisa fazer nada." : "Cobrado uma vez só."}
+                </span>
               </span>
             </label>
             <label className={`${OPCAO} ${forma === "pix" ? MARCADA : SOLTA}`}>
@@ -187,7 +223,11 @@ export function FormAssinar({
                   <QrCode aria-hidden className="size-[18px]" />
                   Pix
                 </span>
-                <span className="text-body-sm text-ink-muted">A cada fatura, você paga o Pix aqui no Publike.</span>
+                <span className="text-body-sm text-ink-muted">
+                  {modo.tipo === "assinar"
+                    ? "A cada fatura, você paga o Pix aqui no Publike."
+                    : "Você paga o Pix aqui no Publike, uma vez só."}
+                </span>
               </span>
             </label>
           </div>
@@ -317,19 +357,34 @@ export function FormAssinar({
         </fieldset>
       )}
 
-      {escolhido && (
+      {(escolhido || modo.tipo === "faixa") && (
         <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
           <p className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-body">
-              {NOME_PRODUTO[recurso]} · {NOME_CICLO[escolhido.ciclo].toLowerCase()}
+              {modo.tipo === "faixa"
+                ? `${NOME_PRODUTO[recurso]}: a diferença`
+                : `${NOME_PRODUTO[recurso]} · ${escolhido ? NOME_CICLO[escolhido.ciclo].toLowerCase() : ""}`}
             </span>
-            <span className="text-h3 tabular-nums">{formatarMoeda(escolhido.valor)}</span>
+            <span className="text-h3 tabular-nums">
+              {formatarMoeda(modo.tipo === "faixa" ? modo.diferenca : (escolhido?.valor ?? 0))}
+            </span>
           </p>
           <p className="text-body-sm text-ink-muted">
-            {primeiro
-              ? `Nada é cobrado hoje. A primeira cobrança vem em ${dataDoDia(primeiro)}, e depois ${POR_CICLO[escolhido.ciclo]}.`
-              : `Cobrado hoje, e depois ${POR_CICLO[escolhido.ciclo]}.`}{" "}
-            Cancele quando quiser: o que já foi pago vale até o fim do período.
+            {modo.tipo === "faixa"
+              ? `Cobrado hoje: a diferença dos ${modo.dias} ${modo.dias === 1 ? "dia" : "dias"} que faltam${
+                  modo.ate ? ` até ${dataDoDia(modo.ate)}` : ""
+                }. A faixa muda assim que o pagamento for confirmado, e a renovação passa a ser ${formatarMoeda(modo.renovacao)}.`
+              : modo.tipo === "trinta"
+                ? "Cobrado hoje, uma vez só. Vale 30 dias a partir do pagamento e não renova sozinho: três dias antes do fim, você recebe o aviso. Desistiu em até 7 dias, o dinheiro volta."
+                : escolhido && (
+                    <>
+                      {primeiro
+                        ? `Nada é cobrado hoje. A primeira cobrança vem em ${dataDoDia(primeiro)}, e depois ${POR_CICLO[escolhido.ciclo]}.`
+                        : `Cobrado hoje, e depois ${POR_CICLO[escolhido.ciclo]}.`}{" "}
+                      Cancele quando quiser: o que já foi pago vale até o fim do período.
+                      {escolhido.ciclo === "YEARLY" && " Desistiu em até 7 dias do primeiro pagamento, o dinheiro volta."}
+                    </>
+                  )}
           </p>
           {erro && (
             <p role="alert" className="text-body-sm text-danger">
@@ -344,7 +399,13 @@ export function FormAssinar({
             ) : (
               <QrCode aria-hidden />
             )}
-            {troca ? "Pôr o cartão novo" : f === "cartao" ? "Continuar para o cartão" : "Assinar e gerar o Pix"}
+            {troca
+              ? "Pôr o cartão novo"
+              : f === "cartao"
+                ? "Continuar para o cartão"
+                : modo.tipo === "assinar"
+                  ? "Assinar e gerar o Pix"
+                  : "Gerar o Pix"}
           </Botao>
           {f === "cartao" && (
             <p className="text-body-sm text-ink-muted">

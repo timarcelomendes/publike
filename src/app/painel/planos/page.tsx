@@ -98,7 +98,8 @@ function situacao(e: EstadoRecurso | undefined, agora: number): string | null {
 async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/planos">["searchParams"] }) {
   if (MODO_DEMO) return <SoComSupabase />;
   await exigirUsuario("/painel/planos");
-  const ciclo: Ciclo = primeiro((await searchParams).ciclo) === "3" ? "QUARTERLY" : "MONTHLY";
+  const pedido = primeiro((await searchParams).ciclo);
+  const ciclo: Ciclo = pedido === "3" ? "QUARTERLY" : pedido === "12" ? "YEARLY" : "MONTHLY";
   const [pag, recursos, faixa, agora] = await Promise.all([
     pagamentosDaConta(),
     recursosPagos(),
@@ -133,6 +134,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
   // o plano que a conta já assina (um por faixa ou o Completo antigo)
   const meuPlano = valendo.find((a) => ehPlanoPorFaixa(a.recurso) || a.recurso === "completo") ?? null;
   const avulsos = AVULSOS.filter((a) => preco(pag, a.p, "MONTHLY"));
+  // o anual e os 30 dias (migração 20270416120000): só aparecem quando o Admin põe à venda
+  const temAnual = faixas.some((f) => preco(pag, f, "YEARLY"));
+  const temTrinta = faixas.some((f) => preco(pag, f, "AVULSO"));
 
   return (
     <div className="flex flex-col gap-8">
@@ -157,7 +161,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
         <p className="text-body">
           Você tem <strong>{vagas(noAr)} no ar</strong> agora.
         </p>
-        <TrocaCiclo ciclo={ciclo} />
+        <TrocaCiclo ciclo={ciclo} anual={temAnual} />
       </div>
 
       <ul className={`grid gap-4 ${faixas.length >= 2 ? "lg:grid-cols-3" : faixas.length === 1 ? "md:grid-cols-2" : ""}`}>
@@ -242,17 +246,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/pla
           <li>Até 20 vagas no ar, é grátis. Para mais, só com um plano. Passou da faixa do plano, você tem 30 dias para mudar.</li>
           <li>Cartão ou Pix. Cancele quando quiser: o que já foi pago vale até o fim.</li>
           <li>Nada pago muda a ordem das vagas ou dos candidatos, e o candidato nunca paga.</li>
+          {temAnual && <li>No anual, você paga 9 meses e usa 12.</li>}
+          {temTrinta && <li>Por 30 dias: paga uma vez, vale 30 dias a partir do pagamento e não renova sozinho.</li>}
+          {(temAnual || temTrinta) && (
+            <li>No anual e nos 30 dias, desistiu em até 7 dias do pagamento, o dinheiro volta.</li>
+          )}
+          <li>Já assina e precisa de mais vagas? Mude para a faixa de cima pagando só a diferença dos dias que faltam.</li>
         </ul>
       </section>
     </div>
   );
 }
 
-/** Mensal ou a cada 3 meses, por link (sem JavaScript). */
-function TrocaCiclo({ ciclo }: { ciclo: Ciclo }) {
+/** Mensal, a cada 3 meses ou anual (quando está à venda), por link (sem JavaScript). */
+function TrocaCiclo({ ciclo, anual }: { ciclo: Ciclo; anual: boolean }) {
   const opcoes: { c: Ciclo; nome: string; href: string }[] = [
     { c: "MONTHLY", nome: "Por mês", href: "/painel/planos" },
     { c: "QUARTERLY", nome: "A cada 3 meses", href: "/painel/planos?ciclo=3" },
+    ...(anual ? [{ c: "YEARLY" as const, nome: "Anual", href: "/painel/planos?ciclo=12" }] : []),
   ];
   return (
     <nav aria-label="Como pagar" className="inline-flex rounded-pill border border-line bg-surface-200 p-1">
@@ -334,7 +345,14 @@ function CartaoPlano({
   const pequeno = limite != null && noAr > limite;
   const ehMeu = meu?.recurso === p;
   const porMes = escolhido.valor / MESES[escolhido.ciclo];
-  const desconto = escolhido.ciclo === "QUARTERLY" ? Math.round((1 - porMes / mensal.valor) * 100) : 0;
+  const desconto = escolhido.ciclo !== "MONTHLY" ? Math.round((1 - porMes / mensal.valor) * 100) : 0;
+  const trinta = preco(pag, p, "AVULSO");
+  // a assinatura de plano por faixa de hoje, numa faixa menor da mesma família: muda pagando a diferença
+  const subir =
+    meu && ehPlanoPorFaixa(meu.recurso) && meu.situacao === "ativa" && limite != null &&
+    String(meu.recurso).split("_")[0] === String(p).split("_")[0] &&
+    (Number(String(meu.recurso).split("_")[1]) || 0) < limite;
+  const linkCiclo = escolhido.ciclo === "QUARTERLY" ? "&ciclo=3" : escolhido.ciclo === "YEARLY" ? "&ciclo=12" : "";
   const recrutadores = p === "agencia_15" ? 3 : p === "agencia_200" ? 10 : null;
   const podeAssinar = !meu && !pequeno && podeAssinarPacote(pag, recursos, p as Parameters<typeof podeAssinarPacote>[2]);
   const nome = p === "completo" ? "Plano Completo" : agencia ? "Plano Agência" : "Plano Empresa";
@@ -356,11 +374,12 @@ function CartaoPlano({
           <Selo variante="aviso">Cabe nas suas vagas</Selo>
         ) : null}
       </div>
-      {escolhido.ciclo === "QUARTERLY" ? (
+      {escolhido.ciclo === "QUARTERLY" || escolhido.ciclo === "YEARLY" ? (
         <p>
           <span className="text-h1 tabular-nums">{formatarMoeda(escolhido.valor)}</span>
           <span className="block text-body-sm text-ink-muted">
-            a cada 3 meses: {formatarMoeda(Math.round(porMes * 100) / 100)} por mês
+            {escolhido.ciclo === "YEARLY" ? "por ano" : "a cada 3 meses"}:{" "}
+            {formatarMoeda(Math.round(porMes * 100) / 100)} por mês
             {desconto > 0 ? `, ${desconto}% a menos` : ""}
           </span>
         </p>
@@ -385,9 +404,27 @@ function CartaoPlano({
         ) : pequeno ? (
           <p className="text-body-sm text-ink-muted">Você tem {vagas(noAr)} no ar: a faixa de cima cabe melhor.</p>
         ) : podeAssinar ? (
-          <BotaoLink href={`/painel/assinar?recurso=${p}`} variante={cabe ? "primario" : "secundario"} tamanho="sm">
-            <CreditCard aria-hidden />
-            Assinar
+          <div className="flex flex-col items-start gap-2">
+            <BotaoLink
+              href={`/painel/assinar?recurso=${p}${linkCiclo}`}
+              variante={cabe ? "primario" : "secundario"}
+              tamanho="sm"
+            >
+              <CreditCard aria-hidden />
+              Assinar
+            </BotaoLink>
+            {trinta && (
+              <Link
+                href={`/painel/assinar?recurso=${p}&trinta=1`}
+                className="text-body-sm text-terra-text underline underline-offset-2"
+              >
+                Ou só por 30 dias, sem renovar: {formatarMoeda(trinta.valor)}
+              </Link>
+            )}
+          </div>
+        ) : subir ? (
+          <BotaoLink href={`/painel/assinar?recurso=${p}&mudar=1`} variante="secundario" tamanho="sm">
+            Mudar para esta faixa
           </BotaoLink>
         ) : meu ? (
           <p className="text-body-sm text-ink-muted">

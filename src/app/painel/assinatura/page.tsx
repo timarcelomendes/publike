@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AvisoDaFaixa } from "@/components/pagamentos/aviso-da-faixa";
 import { CancelarAssinatura } from "@/components/pagamentos/cancelar-assinatura";
+import { DevolverPagamento } from "@/components/pagamentos/devolver-pagamento";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { SoComSupabase } from "@/components/so-com-supabase";
 import { Aviso, Selo, Vazio } from "@/components/ui/basicos";
@@ -21,8 +22,11 @@ import {
   planoQueCabe,
   POR_CICLO,
   recursosDo,
+  faixasDeCima,
   type Assinatura,
+  type Compra,
   type PagamentosDaConta,
+  type Produto,
 } from "@/lib/pagamentos";
 import { dataCurta, NOME_RECURSO, PAGINA_DO_RECURSO, RECURSOS_PAGOS, type EstadoRecurso } from "@/lib/recursos-pagos";
 import { pagamentosDaConta } from "@/lib/servidor/faturas";
@@ -124,8 +128,15 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
       ? [{ nome: NOME_PRODUTO.salarios, href: "/painel/salarios", e: recursos.salarios }]
       : []),
   ];
-  const aviso = volta ? VOLTA[volta] : null;
-  const cartaoPendente = volta === "ok" && !valendo.some((a) => a.forma === "cartao");
+  const aviso = volta
+    ? VOLTA[volta]
+    : primeiro(sp.faixa) === "ok"
+      ? { tipo: "sucesso" as const, titulo: "Pronto: a faixa mudou", texto: "A próxima cobrança já vem com o valor novo." }
+      : null;
+  // o plano por 30 dias (que vale ou espera o pagamento) e a troca de faixa esperando (migração 20270416120000)
+  const compras = pag?.compras ?? [];
+  const deCima = faixasDeCima(pag);
+  const cartaoPendente = volta === "ok" && !valendo.some((a) => a.forma === "cartao") && !compras.length;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -160,7 +171,9 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
 
       <AvisoDaFaixa faixa={faixa} />
 
-      {valendo.length === 0 ? (
+      {compras.length > 0 && <Compras compras={compras} pag={pag} />}
+
+      {valendo.length === 0 && compras.length > 0 ? null : valendo.length === 0 ? (
         <Vazio
           icone={CreditCard}
           titulo="Você ainda não assina nada"
@@ -214,7 +227,12 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
             </h3>
             <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
               {valendo.map((a) => (
-                <LinhaAssinatura key={a.id} a={a} hoje={hoje} />
+                <LinhaAssinatura
+                  key={a.id}
+                  a={a}
+                  hoje={hoje}
+                  subir={deCima.assinatura?.id === a.id ? (deCima.faixas[0]?.recurso ?? null) : null}
+                />
               ))}
             </ul>
           </section>
@@ -268,7 +286,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
 }
 
 /** Uma assinatura: o nome, o valor, como está, como paga e o que dá para fazer nela. */
-function LinhaAssinatura({ a, hoje }: { a: Assinatura; hoje: string }) {
+function LinhaAssinatura({ a, hoje, subir }: { a: Assinatura; hoje: string; subir: Produto | null }) {
   const estado = estadoDa(a, hoje);
   const pagoAte = a.pago_ate ? dataEHora(a.pago_ate) : null;
   return (
@@ -303,9 +321,85 @@ function LinhaAssinatura({ a, hoje }: { a: Assinatura; hoje: string }) {
             {a.forma === "cartao" ? "Trocar o cartão" : "Passar para o cartão"}
           </BotaoLink>
         )}
-        <CancelarAssinatura id={a.id} ate={pagoAte} />
+        {subir && (
+          <BotaoLink href={`/painel/assinar?recurso=${subir}&mudar=1`} variante="secundario" tamanho="sm">
+            Mudar para a faixa de cima
+          </BotaoLink>
+        )}
+        {a.devolver ? (
+          <DevolverPagamento cobranca={a.devolver.cobranca} valor={a.devolver.valor} ate={a.devolver.ate} />
+        ) : (
+          <CancelarAssinatura id={a.id} ate={pagoAte} />
+        )}
       </div>
     </li>
+  );
+}
+
+/** O plano por 30 dias (vale até quando, comprar mais, desistir em 7 dias) e as compras esperando o pagamento. */
+function Compras({ compras, pag }: { compras: Compra[]; pag: PagamentosDaConta | null }) {
+  return (
+    <section aria-labelledby="compras" className="flex flex-col gap-3">
+      <h3 id="compras" className="text-h3">
+        Por 30 dias, sem renovar
+      </h3>
+      <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
+        {compras.map((k) => {
+          const paga = k.situacao === "paga";
+          const mensal = pag?.planos.find((p) => p.recurso === k.recurso && p.ciclo === "MONTHLY");
+          return (
+            <li key={k.id} className="flex flex-col gap-3 p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <p className="text-label">
+                    {NOME_PRODUTO[k.recurso]}
+                    {k.tipo === "faixa" ? ": a diferença da troca de faixa" : ""}
+                  </p>
+                  <p className="text-body-sm text-ink-muted">
+                    {formatarMoeda(k.valor)}
+                    {k.tipo === "trinta_dias" ? ", uma vez só" : ""}
+                  </p>
+                </div>
+                <Selo variante={paga ? "match" : "aviso"}>
+                  {paga && k.ate ? `Vale até ${dataEHora(k.ate)}` : "Esperando o pagamento"}
+                </Selo>
+              </div>
+              {paga && k.tipo === "trinta_dias" && (
+                <p className="text-body-sm text-ink-muted">
+                  Não renova sozinho. Comprar mais 30 dias soma ao fim; assinar começa a cobrar quando estes acabarem.
+                </p>
+              )}
+              <div className="flex flex-wrap items-start gap-2">
+                {!paga && k.cobranca && (
+                  <BotaoLink href={`/painel/faturas/${k.cobranca}`} variante="secundario" tamanho="sm">
+                    Ver a fatura
+                  </BotaoLink>
+                )}
+                {paga && k.tipo === "trinta_dias" && (
+                  <>
+                    <BotaoLink href={`/painel/assinar?recurso=${k.recurso}&trinta=1`} variante="secundario" tamanho="sm">
+                      Comprar mais 30 dias
+                    </BotaoLink>
+                    {mensal && (
+                      <BotaoLink href={`/painel/assinar?recurso=${k.recurso}`} variante="fantasma" tamanho="sm">
+                        Assinar por {formatarMoeda(mensal.valor)} por mês
+                      </BotaoLink>
+                    )}
+                    {k.devolver && k.cobranca && (
+                      <DevolverPagamento
+                        cobranca={k.cobranca}
+                        valor={k.valor}
+                        ate={k.paga_em ? new Date(new Date(k.paga_em).getTime() + 7 * 86_400_000).toISOString() : null}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

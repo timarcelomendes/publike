@@ -158,7 +158,7 @@ export class ErroAsaas extends Error {
 
 async function pedir<T>(
   sandbox: boolean,
-  metodo: "GET" | "POST" | "DELETE",
+  metodo: "GET" | "POST" | "PUT" | "DELETE",
   caminho: string,
   corpo?: unknown,
 ): Promise<T> {
@@ -235,6 +235,10 @@ export type CobrancaAsaas = {
   confirmedDate?: string | null;
   deleted?: boolean;
   creditCard?: { creditCardNumber?: string | null; creditCardBrand?: string | null } | null;
+  /** a compra avulsa: o id da compra no Publike */
+  externalReference?: string | null;
+  /** a cobrança que nasceu de um checkout */
+  checkoutSession?: string | null;
 };
 
 export type PixAsaas = { encodedImage: string; payload: string; expirationDate?: string | null };
@@ -306,7 +310,7 @@ export function criarAssinaturaPix(
   d: {
     cliente: string;
     valor: number;
-    ciclo: "MONTHLY" | "QUARTERLY";
+    ciclo: "MONTHLY" | "QUARTERLY" | "YEARLY";
     primeiro: string;
     descricao: string;
     ref: string;
@@ -386,7 +390,7 @@ export function criarCheckout(
   d: {
     cliente: string;
     valor: number;
-    ciclo: "MONTHLY" | "QUARTERLY";
+    ciclo: "MONTHLY" | "QUARTERLY" | "YEARLY";
     primeiro: string;
     nome: string;
     descricao: string;
@@ -401,5 +405,92 @@ export function criarCheckout(
     callback: { successUrl: d.voltar.ok, cancelUrl: d.voltar.cancelou, expiredUrl: d.voltar.expirou },
     items: [{ name: d.nome, description: d.descricao, quantity: 1, value: d.valor }],
     subscription: { cycle: d.ciclo, nextDueDate: `${d.primeiro} 00:00:00` },
+  });
+}
+
+// ------------------------------------------------------------------ a compra avulsa (migração 20270416120000)
+// O plano por 30 dias e a diferença da troca de faixa são uma cobrança só, sem assinatura. Conferir no sandbox: o
+// checkout avulso (chargeTypes DETACHED) e a nota fiscal da cobrança avulsa.
+
+/** A cobrança no Pix, vencendo hoje; `ref` é o id da compra no Publike (é por ele que o aviso acha a compra). */
+export function criarCobrancaPix(
+  sandbox: boolean,
+  d: { cliente: string; valor: number; vencimento: string; descricao: string; ref: string },
+) {
+  return pedir<CobrancaAsaas>(sandbox, "POST", "/payments", {
+    customer: d.cliente,
+    billingType: "PIX",
+    value: d.valor,
+    dueDate: d.vencimento,
+    description: d.descricao,
+    externalReference: d.ref,
+  });
+}
+
+/** O checkout do cartão para uma cobrança só (não renova). */
+export function criarCheckoutAvulso(
+  sandbox: boolean,
+  d: {
+    cliente: string;
+    valor: number;
+    nome: string;
+    descricao: string;
+    ref: string;
+    voltar: { ok: string; cancelou: string; expirou: string };
+  },
+) {
+  return pedir<{ id: string }>(sandbox, "POST", "/checkouts", {
+    billingTypes: ["CREDIT_CARD"],
+    chargeTypes: ["DETACHED"],
+    minutesToExpire: 60,
+    customer: d.cliente,
+    externalReference: d.ref,
+    callback: { successUrl: d.voltar.ok, cancelUrl: d.voltar.cancelou, expiredUrl: d.voltar.expirou },
+    items: [{ name: d.nome, description: d.descricao, quantity: 1, value: d.valor }],
+  });
+}
+
+/** O valor novo da renovação (a troca de faixa); as faturas em aberto passam a ter o valor novo. */
+export function atualizarAssinatura(sandbox: boolean, id: string, d: { valor: number; descricao: string }) {
+  return pedir<AssinaturaAsaas>(sandbox, "PUT", `/subscriptions/${encodeURIComponent(id)}`, {
+    value: d.valor,
+    description: d.descricao,
+    updatePendingPayments: true,
+  });
+}
+
+/** O estorno da cobrança inteira (o arrependimento em 7 dias). */
+export function estornarCobranca(sandbox: boolean, id: string, motivo: string) {
+  return pedir<CobrancaAsaas>(sandbox, "POST", `/payments/${encodeURIComponent(id)}/refund`, {
+    description: motivo.slice(0, 200),
+  });
+}
+
+/** As cobranças do cliente (as avulsas não estão em nenhuma assinatura), para a volta do checkout. */
+export async function cobrancasDoCliente(sandbox: boolean, cliente: string) {
+  const r = await pedir<Lista<CobrancaAsaas>>(
+    sandbox,
+    "GET",
+    `/payments?customer=${encodeURIComponent(cliente)}&limit=20`,
+  );
+  return r?.data ?? [];
+}
+
+/** A nota fiscal de uma cobrança avulsa paga (o mesmo serviço do Admin que as assinaturas usam). */
+export function criarNotaDaCobranca(
+  sandbox: boolean,
+  d: { cobranca: string; valor: number; servico: string; ehCodigo: boolean; descricao: string; observacao: string | null },
+) {
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  return pedir<NotaAsaas>(sandbox, "POST", "/invoices", {
+    payment: d.cobranca,
+    serviceDescription: d.descricao,
+    observations: d.observacao || d.descricao,
+    value: d.valor,
+    deductions: 0,
+    effectiveDate: hoje,
+    ...(d.ehCodigo ? { municipalServiceCode: d.servico } : { municipalServiceId: d.servico }),
+    municipalServiceName: d.descricao,
+    taxes: { retainIss: false, iss: 0, cofins: 0, csll: 0, inss: 0, ir: 0, pis: 0 },
   });
 }

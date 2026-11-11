@@ -18,6 +18,38 @@ export const pagamentosDaConta = cache(async () => {
   return lerPagamentos(data);
 });
 
+export type DiferencaDeFaixa =
+  | { erro: string }
+  | {
+      assinatura_id: string;
+      de: string;
+      para: string;
+      plano_id: string;
+      valor_hoje: number;
+      valor_novo: number;
+      dias: number;
+      pago_ate: string | null;
+      diferenca: number;
+    };
+
+/** Quanto falta pagar para a assinatura ir para a faixa pedida (migração 20270416120000). Sem a migração: null. */
+export async function minhaDiferencaDeFaixa(assinatura: string, recurso: string): Promise<DiferencaDeFaixa | null> {
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("minha_diferenca_de_faixa", {
+    p_assinatura: assinatura,
+    p_recurso: recurso,
+  });
+  if (error || !data) return null;
+  const d = data as Record<string, unknown>;
+  if (typeof d.erro === "string") return { erro: d.erro };
+  return {
+    ...(d as Omit<Extract<DiferencaDeFaixa, { diferenca: number }>, "valor_hoje" | "valor_novo" | "diferenca">),
+    valor_hoje: Number(d.valor_hoje),
+    valor_novo: Number(d.valor_novo),
+    diferenca: Number(d.diferenca),
+  };
+}
+
 /** O celular e o endereço de cobrança já informados (para o cartão vir preenchido). Sem a migração: null. */
 export async function meuEnderecoDeCobranca(): Promise<{
   telefone: string | null;

@@ -1,10 +1,14 @@
 import "server-only";
 import type { Json } from "@/lib/supabase/tipos-banco";
+import { NOME_PRODUTO, ehProduto } from "@/lib/pagamentos";
 import {
   assinaturasDoCliente,
+  atualizarAssinatura,
   cancelarAssinaturaAsaas,
   cobrancasDaAssinatura,
+  cobrancasDoCliente,
   configurarNota,
+  criarNotaDaCobranca,
   ErroAsaas,
   lerAssinatura,
   lerCobranca,
@@ -94,6 +98,84 @@ async function garantirNota(
   }
 }
 
+type GravadaAvulsa = {
+  cobranca_id: string;
+  conta: string;
+  recurso: string;
+  situacao: string;
+  forma: string;
+  compra_id: string;
+  tipo: "trinta_dias" | "faixa";
+  tem_pix: boolean;
+  paga_agora: boolean;
+  nota: boolean;
+  trocar_assinatura: { asaas_id: string | null; valor: number; recurso: string; ciclo: string } | null;
+};
+
+/** O Pix da cobrança em aberto, para pagar dentro do Publike. */
+async function guardarPix(a: Acesso, sandbox: boolean, id: string) {
+  try {
+    const pix = await pixDaCobranca(sandbox, id);
+    await a.cliente.rpc("servidor_pagamento_pix", {
+      p_chave: a.chave,
+      p_asaas_id: id,
+      p_payload: pix.payload,
+      p_expira: pix.expirationDate ? new Date(pix.expirationDate.replace(" ", "T") + "-03:00").toISOString() : null,
+    });
+  } catch (e) {
+    console.error("Publike: não deu para ler o Pix da cobrança:", textoDoErro(e));
+  }
+}
+
+/**
+ * A cobrança avulsa (o plano por 30 dias ou a diferença da troca de faixa; migração 20270416120000): grava; quando
+ * a troca de faixa é paga, muda o valor da renovação no Asaas; quando é paga, pede a nota fiscal.
+ */
+export async function gravarAvulsa(a: Acesso, sandbox: boolean, pag: CobrancaAsaas, recusada: boolean) {
+  const { data, error } = await a.cliente.rpc("servidor_pagamento_avulsa", {
+    p_chave: a.chave,
+    p_pag: { ...pag, publike_recusada: recusada ? "true" : "false" } as unknown as Json,
+  });
+  if (error) throw new Error(error.message);
+  const g = (data as GravadaAvulsa | null) ?? null;
+  if (!g) return null;
+  if (g.forma === "pix" && !g.tem_pix && (g.situacao === "pendente" || g.situacao === "atrasada")) {
+    await guardarPix(a, sandbox, pag.id);
+  }
+  const t = g.trocar_assinatura;
+  if (t?.asaas_id) {
+    const nome = ehProduto(t.recurso) ? NOME_PRODUTO[t.recurso] : "Plano";
+    try {
+      await atualizarAssinatura(sandbox, t.asaas_id, { valor: Number(t.valor), descricao: `Publike · ${nome}` });
+    } catch (e) {
+      // a faixa já mudou no Publike; o valor da renovação fica para o Admin conferir
+      console.error("Publike: não deu para mudar o valor da assinatura no parceiro:", textoDoErro(e));
+    }
+  }
+  if (g.situacao === "paga" && !g.nota) {
+    const { data: ctx } = await a.cliente.rpc("servidor_pagamento_contexto", { p_chave: a.chave, p_conta: g.conta });
+    const nota = (ctx as { nota?: { servico: string; e_codigo: boolean; descricao: string | null } | null } | null)
+      ?.nota;
+    if (nota?.servico) {
+      const nome = ehProduto(g.recurso) ? NOME_PRODUTO[g.recurso] : "Publike";
+      try {
+        await criarNotaDaCobranca(sandbox, {
+          cobranca: pag.id,
+          valor: Number(pag.value),
+          servico: nota.servico,
+          ehCodigo: nota.e_codigo,
+          descricao: g.tipo === "faixa" ? `${nome}: diferença da troca de faixa` : `${nome}: 30 dias`,
+          observacao: nota.descricao,
+        });
+      } catch (e) {
+        // a nota tenta de novo no próximo aviso da cobrança
+        console.error("Publike: não deu para pedir a nota da cobrança avulsa:", textoDoErro(e));
+      }
+    }
+  }
+  return g;
+}
+
 /** Grava a cobrança (como o Asaas devolveu) e, no Pix em aberto, o código para pagar. */
 export async function gravarCobranca(
   a: Acesso,
@@ -101,7 +183,10 @@ export async function gravarCobranca(
   pag: CobrancaAsaas,
   recusada = false,
 ): Promise<Gravada | null> {
-  if (!pag.subscription) return null;
+  if (!pag.subscription) {
+    await gravarAvulsa(a, sandbox, pag, recusada);
+    return null;
+  }
   let { data, error } = await a.cliente.rpc("servidor_pagamento_cobranca", {
     p_chave: a.chave,
     p_pag: { ...pag, publike_recusada: recusada ? "true" : "false" } as unknown as Json,
@@ -120,17 +205,7 @@ export async function gravarCobranca(
   }
   const g = data as Gravada;
   if (g.forma === "pix" && !g.tem_pix && (g.situacao === "pendente" || g.situacao === "atrasada")) {
-    try {
-      const pix = await pixDaCobranca(sandbox, pag.id);
-      await a.cliente.rpc("servidor_pagamento_pix", {
-        p_chave: a.chave,
-        p_asaas_id: pag.id,
-        p_payload: pix.payload,
-        p_expira: pix.expirationDate ? new Date(pix.expirationDate.replace(" ", "T") + "-03:00").toISOString() : null,
-      });
-    } catch (e) {
-      console.error("Publike: não deu para ler o Pix da cobrança:", textoDoErro(e));
-    }
+    await guardarPix(a, sandbox, pag.id);
   }
   if (!g.nota_configurada && g.assinatura_asaas) {
     await garantirNota(a, sandbox, { conta: g.conta, assinatura_id: g.assinatura_id, asaas_id: g.assinatura_asaas });
@@ -179,6 +254,15 @@ export async function sincronizarCliente(conta: string) {
     } catch (e) {
       console.error("Publike: não deu para conferir a assinatura na volta do checkout:", textoDoErro(e));
     }
+  }
+  // as cobranças avulsas (o plano por 30 dias e a troca de faixa) não estão em nenhuma assinatura
+  try {
+    for (const pag of await cobrancasDoCliente(sandbox, c.asaas_id)) {
+      if (pag.subscription || pag.deleted) continue;
+      await gravarAvulsa(a, sandbox, pag, false);
+    }
+  } catch (e) {
+    console.error("Publike: não deu para conferir as compras na volta do checkout:", textoDoErro(e));
   }
 }
 

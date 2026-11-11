@@ -68,7 +68,10 @@ async function Conteudo() {
                 >
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-label">{NOME_PRODUTO[f.recurso]}</span>
+                      <span className="text-label">
+                        {NOME_PRODUTO[f.recurso]}
+                        {f.compra === "trinta_dias" ? ", 30 dias" : f.compra === "faixa" ? ", troca de faixa" : ""}
+                      </span>
                       <SeloDaFatura situacao={f.situacao} />
                     </span>
                     <span className="text-body-sm text-ink-muted">

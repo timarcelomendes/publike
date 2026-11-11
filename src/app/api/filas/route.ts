@@ -10,6 +10,7 @@ import {
   enviarEmailsPendentes,
   enviarPushPendentes,
   avisarFaixasDosPlanos,
+  avisarFimDosPlanosDe30Dias,
   perguntarGarantias,
   avisarLiberacoesPorMeta,
   avisarBuscasDeTalentos,
@@ -97,6 +98,8 @@ export async function GET(request: Request) {
   const liberacoes = await comTempo(() => avisarLiberacoesPorMeta());
   // os planos por faixa: quem passou das vagas no ar da faixa recebe o aviso (nada trava)
   const faixas = await comTempo(() => avisarFaixasDosPlanos());
+  // o plano por 30 dias, sem renovar: o aviso 3 dias antes do fim e no dia
+  const fimDos30 = await comTempo(() => avisarFimDosPlanosDe30Dias());
   // o Plano Agência: a garantia acompanhada com o cliente (7 dias antes do fim)
   const garantias = await comTempo(() => perguntarGarantias());
   // quem contrata: o candidato que combina com a vaga (dos currículos que mudaram desde a última rodada)
@@ -129,6 +132,7 @@ export async function GET(request: Request) {
     funcoesCv.motivo,
     liberacoes.motivo,
     faixas.motivo,
+    fimDos30.motivo,
     garantias.motivo,
     talentos.motivo,
     consultasSalario.motivo,
@@ -169,6 +173,7 @@ export async function GET(request: Request) {
       funcoesCurriculos: funcoesCv.lidos,
       liberacoes: liberacoes.avisadas,
       faixas: faixas.avisadas,
+      fim_dos_30_dias: fimDos30.avisadas,
       garantias: garantias.perguntas,
       talentos: talentos.avisados,
       consultasSalario: consultasSalario.contas,

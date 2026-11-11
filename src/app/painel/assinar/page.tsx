@@ -26,10 +26,12 @@ import {
   economiaDoPacote,
   ehPlanoPorFaixa,
   ehProduto,
+  faixasDeCima,
   jaInclui,
   NOME_PRODUTO,
   O_PRODUTO,
   PACOTES,
+  planoDeTrintaDias,
   planoQueCabe,
   podeAssinarPacote,
   recursosDo,
@@ -38,7 +40,8 @@ import {
   type PlanoPorFaixa,
   type Produto,
 } from "@/lib/pagamentos";
-import { meuEnderecoDeCobranca, pagamentosDaConta, pagoNoSandbox } from "@/lib/servidor/faturas";
+import { meuEnderecoDeCobranca, minhaDiferencaDeFaixa, pagamentosDaConta, pagoNoSandbox } from "@/lib/servidor/faturas";
+import { FormMudarSemPagar } from "@/components/pagamentos/mudar-sem-pagar";
 import { minhaFaixa, paginaDeCarreirasLiberada } from "@/lib/servidor/pagina-de-carreiras";
 import { exigirUsuario } from "@/lib/sessao";
 
@@ -99,6 +102,11 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const pedido = primeiro(sp.recurso);
   const produto: Produto = ehProduto(pedido) ? pedido : "copiloto";
   const troca = primeiro(sp.troca) === "1";
+  // o plano por 30 dias, a troca de faixa e o ciclo já escolhido em Planos (migração 20270416120000)
+  const trinta = primeiro(sp.trinta) === "1" && ehPlanoPorFaixa(produto);
+  const mudar = primeiro(sp.mudar) === "1" && ehPlanoPorFaixa(produto);
+  const cicloPedido = primeiro(sp.ciclo);
+  const cicloInicial = cicloPedido === "12" ? "YEARLY" : cicloPedido === "3" ? "QUARTERLY" : null;
   await exigirUsuario(`/painel/assinar?recurso=${produto}`);
   const [pag, recursos, perfil, cobranca, sandbox, faixa] = await Promise.all([
     pagamentosDaConta(),
@@ -130,13 +138,27 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   const hoje = diaBr(new Date());
   const dia = diaDaPrimeiraCobranca(produto, pag?.testes_ate, pag?.pago_ate);
   const primeiraCobranca = dia > hoje ? dia : null;
+  // a troca de faixa: a assinatura de plano por faixa que vale e quanto falta pagar até a faixa pedida
+  const deCima = faixasDeCima(pag);
+  const diferenca =
+    mudar && deCima.assinatura && deCima.faixas.some((f) => f.recurso === produto)
+      ? await minhaDiferencaDeFaixa(deCima.assinatura.id, produto)
+      : null;
 
   const cabecalho = (
     <div className="flex flex-col gap-2">
       <span className="flex size-10 items-center justify-center rounded-pill bg-terra-soft">
         <Icone aria-hidden className="size-5 text-terra-text" />
       </span>
-      <h2 className="text-h2">{troca ? `Trocar o cartão ${DO_PRODUTO[produto]}` : `Assinar ${O_PRODUTO[produto]}`}</h2>
+      <h2 className="text-h2">
+        {troca
+          ? `Trocar o cartão ${DO_PRODUTO[produto]}`
+          : mudar
+            ? `Mudar para ${O_PRODUTO[produto]}`
+            : trinta
+              ? `${maiuscula(O_PRODUTO[produto])} por 30 dias`
+              : `Assinar ${O_PRODUTO[produto]}`}
+      </h2>
       <p className="text-body text-ink-muted">{FAZ[produto]}</p>
       {limite != null && faixa && (
         <p className="text-body-sm text-ink-muted">
@@ -148,7 +170,77 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
   );
 
   let corpo;
-  if (!pag?.pode) {
+  const formDados = {
+    documento: pag?.cliente?.cpf_cnpj ?? perfil?.cnpj ?? "",
+    nome: pag?.cliente?.nome ?? perfil?.nome ?? "",
+    email: pag?.cliente?.email ?? perfil?.email ?? "",
+    telefone: cobranca?.telefone ?? perfil?.whatsapp ?? "",
+    endereco: cobranca?.endereco ?? null,
+  };
+  if (pag?.pode && mudar) {
+    corpo =
+      !deCima.assinatura || !diferenca ? (
+        <Aviso tipo="info" titulo="Não há faixa para mudar">
+          <span className="flex flex-col items-start gap-2">
+            <span>A troca de faixa é para quem assina um plano Empresa ou Agência numa faixa menor que esta.</span>
+            <BotaoLink href="/painel/planos" tamanho="sm">
+              Ver os planos
+            </BotaoLink>
+          </span>
+        </Aviso>
+      ) : "erro" in diferenca ? (
+        <Aviso tipo="info" titulo="Não deu para mudar de faixa">
+          {diferenca.erro}
+        </Aviso>
+      ) : diferenca.diferenca === 0 ? (
+        <FormMudarSemPagar assinatura={deCima.assinatura.id} plano={diferenca.plano_id} produto={produto} />
+      ) : (
+        <FormAssinar
+          key={`faixa-${produto}`}
+          recurso={produto}
+          planos={(pag.planos ?? []).filter((p) => p.id === diferenca.plano_id)}
+          primeiro={null}
+          modo={{
+            tipo: "faixa",
+            assinatura: deCima.assinatura.id,
+            diferenca: diferenca.diferenca,
+            dias: diferenca.dias,
+            ate: diferenca.pago_ate,
+            renovacao: diferenca.valor_novo,
+          }}
+          inicial={formDados}
+        />
+      );
+  } else if (pag?.pode && trinta) {
+    const plano30 = planoDeTrintaDias(pag, produto);
+    corpo = valendo.length ? (
+      <Aviso tipo="info" titulo="A sua assinatura já cobre isso">
+        <span className="flex flex-col items-start gap-2">
+          <span>Os 30 dias são para quem não assina. Para ter mais vagas no ar, mude de faixa em Assinatura.</span>
+          <BotaoLink href="/painel/assinatura" tamanho="sm">
+            Ver assinatura
+          </BotaoLink>
+        </span>
+      </Aviso>
+    ) : !plano30 ? (
+      <Aviso tipo="info" titulo="Os 30 dias ainda não estão à venda">
+        Logo você vai poder comprar por aqui.
+      </Aviso>
+    ) : passou ? (
+      <Aviso tipo="info" titulo={`Você tem ${faixa?.vagas_no_ar ?? 0} vagas no ar`}>
+        {maiuscula(O_PRODUTO[produto])} vai até {limite} vagas no ar. Escolha a faixa de cima.
+      </Aviso>
+    ) : (
+      <FormAssinar
+        key={`trinta-${produto}`}
+        recurso={produto}
+        planos={[plano30]}
+        primeiro={null}
+        modo={{ tipo: "trinta" }}
+        inicial={formDados}
+      />
+    );
+  } else if (!pag?.pode) {
     corpo = (
       <Aviso tipo="info" titulo="A assinatura ainda não está aberta">
         {pag?.tipo === "pessoa"
@@ -187,6 +279,24 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
           <span>Veja a forma de pagamento, as próximas cobranças e as faturas em Assinatura.</span>
           <BotaoLink href="/painel/assinatura" tamanho="sm">
             Ver assinatura
+          </BotaoLink>
+        </span>
+      </Aviso>
+    );
+  } else if (
+    conflito &&
+    !troca &&
+    ehPlanoPorFaixa(conflito.recurso) &&
+    conflito.situacao === "ativa" &&
+    faixasDeCima(pag).faixas.some((f) => f.recurso === produto)
+  ) {
+    // assinar uma faixa maior quando já assina outra: a troca paga só a diferença
+    corpo = (
+      <Aviso tipo="info" titulo={`Você assina ${O_PRODUTO[conflito.recurso]}`}>
+        <span className="flex flex-col items-start gap-2">
+          <span>Mude para esta faixa pagando só a diferença dos dias que faltam no período já pago.</span>
+          <BotaoLink href={`/painel/assinar?recurso=${produto}&mudar=1`} tamanho="sm">
+            Mudar para esta faixa
           </BotaoLink>
         </span>
       </Aviso>
@@ -240,13 +350,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         planos={trocaPlanos.length ? trocaPlanos : planos}
         primeiro={primeiraCobranca}
         troca={troca}
-        inicial={{
-          documento: pag.cliente?.cpf_cnpj ?? perfil?.cnpj ?? "",
-          nome: pag.cliente?.nome ?? perfil?.nome ?? "",
-          email: pag.cliente?.email ?? perfil?.email ?? "",
-          telefone: cobranca?.telefone ?? perfil?.whatsapp ?? "",
-          endereco: cobranca?.endereco ?? null,
-        }}
+        modo={{ tipo: "assinar", ciclo: cicloInicial }}
+        inicial={formDados}
       />
     );
   }
@@ -262,7 +367,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
         </Aviso>
       )}
       {corpo}
-      {!troca && (
+      {!troca && !mudar && !trinta && (
         <OutraOpcao
           produto={produto}
           pag={pag}

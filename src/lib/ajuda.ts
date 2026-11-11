@@ -250,6 +250,14 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         p: "O que é pago no Publike?",
         r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (gravada, com resumo da IA, ou ao vivo, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar, ou todos juntos no Plano Completo. Veja em “Assinatura e faturas”, no menu da sua conta.",
       },
+      {
+        p: "Dá para pagar o plano por ano ou só por 30 dias?",
+        r: "Quando estão à venda, aparecem em Planos. No anual, você paga 9 meses e usa 12. Por 30 dias, você paga uma vez, vale 30 dias a partir do pagamento e não renova sozinho: três dias antes do fim, chega o aviso para comprar mais 30 dias ou assinar. Nos dois, desistiu em até 7 dias do pagamento, o dinheiro volta: o botão “Desistir e receber de volta” fica em Assinatura.",
+      },
+      {
+        p: "Assino um plano e preciso de mais vagas no ar. Como mudo de faixa?",
+        r: "Em Assinatura, toque em “Mudar para a faixa de cima”. Você paga agora só a diferença dos dias que faltam no período já pago, e a faixa muda assim que o pagamento é confirmado. Daí em diante, a renovação vem com o valor da faixa nova.",
+      },
 
       {
         p: "Meu endereço aparece?",
