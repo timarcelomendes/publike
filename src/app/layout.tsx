@@ -12,6 +12,7 @@ import { GoogleAds } from "@/components/google-ads";
 import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
 import { Cabecalho } from "@/components/cabecalho";
+import { LarguraDaPagina, SCRIPT_LARGURA } from "@/components/largura-da-pagina";
 import { Voltar } from "@/components/voltar";
 import { EntrarNumToque } from "@/components/entrar-num-toque";
 import { FolhaDeEntrar } from "@/components/folha-de-entrar";
@@ -90,6 +91,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         {/* claro, automático ou escuro: aplica a escolha antes de pintar a página */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_LARGURA }} />
         {/* guarda o "pode instalar" do navegador, que chega antes do React (instalar-app.tsx) */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_PEDIDO }} />
         {/* o toque num botão antes de a página ficar pronta não se perde (lib/toque-cedo.ts) */}
@@ -103,6 +105,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           >
             Pular para o conteúdo
           </a>
+          <Suspense fallback={null}>
+            <LarguraDaPagina />
+          </Suspense>
           <Cabecalho />
           {/* empresa, comércio ou agência vendo como pessoa: a faixa do "só olhar" (lê o cookie e a conta) */}
           <Suspense fallback={null}>

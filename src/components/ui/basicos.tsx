@@ -8,11 +8,10 @@ import { LOGO, LOGO_LARGURA } from "./logo-caminhos";
 /**
  * O painel usa a largura da janela até 96rem (11/11/2026: a ficha dos candidatos ficava espremida no meio de uma tela
  * larga); o topo, o "Voltar" e o rodapé de quem está no painel acompanham, para alinhar com o menu.
- *
- * Só o painel que está na tela: o Next guarda a página de onde se saiu escondida (display: none, para a volta ser
- * rápida), e o topo do Início ficava largo depois de passar pelo painel (11/11/2026).
+ * Vem do endereço (html[data-largura], src/components/largura-da-pagina.tsx), não da página: o Next guarda escondida
+ * a página de onde se saiu, e o topo ficava com a largura dela.
  */
-export const LARGO_NO_PAINEL = "lg:[body:has([data-painel-grade]:not([style*='display:_none'],[style*='display:_none']_*))_&]:max-w-[96rem]";
+export const LARGO_NO_PAINEL = "lg:[html[data-largura=painel]_&]:max-w-[96rem]";
 
 export function Container({ className = "", ...props }: ComponentProps<"div">) {
   return <div className={`mx-auto w-full max-w-6xl px-4 sm:px-6 ${className}`} {...props} />;

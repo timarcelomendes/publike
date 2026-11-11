@@ -40,7 +40,7 @@ export function Cabecalho() {
     <header className="sticky top-0 z-40 border-b border-line bg-surface-200/95 backdrop-blur-md">
       {/* na home de quem entrou (mais larga no computador grande), o topo acompanha a largura dela */}
       <Container
-        className={`flex h-16 items-center gap-2 xl:[body:has([data-pagina-larga]:not([style*='display:_none'],[style*='display:_none']_*))_&]:max-w-7xl ${LARGO_NO_PAINEL}`}
+        className={`flex h-16 items-center gap-2 xl:[html[data-largura=larga]_&]:max-w-7xl ${LARGO_NO_PAINEL}`}
       >
         <Link href="/" aria-label="Publike, página inicial" className="mr-3 shrink-0 rounded-sm">
           <Logo altura={34} />
