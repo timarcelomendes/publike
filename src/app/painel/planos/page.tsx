@@ -57,6 +57,7 @@ const DOS_PLANOS = [
   "Automações personalizadas",
   "Consulta de salários",
   "Página de carreiras, sem esperar as 10 vagas",
+  "Mutirão de contratação: um dia de entrevistas com horários",
 ];
 
 const SO_DA_AGENCIA = [

@@ -29,6 +29,8 @@ export type EntrevistaDoCandidato = {
   atualizado_em?: string | null;
   /** os horários para escolher (situação `escolher`) */
   opcoes?: string[] | null;
+  /** a entrevista de um mutirão (migração 20270417120000): o horário é escolhido em /mutirao/[id] */
+  mutirao_id?: string | null;
 };
 
 /**
@@ -56,6 +58,25 @@ export function EntrevistaDoCandidato({
   const situacao = SITUACOES_ENTREVISTA[e.situacao] ?? SITUACOES_ENTREVISTA.marcada;
   const formato = FORMATOS_ENTREVISTA[e.formato as FormatoEntrevista];
   const video = e.formato === "video" && e.local?.startsWith("https://");
+  // o mutirão: escolher ou trocar o horário fica na página do dia de entrevistas
+  if (e.mutirao_id && (escolher || aberta)) {
+    return (
+      <div className="flex flex-col gap-2 rounded-md bg-surface-200 p-3 text-ink">
+        <p className="flex flex-wrap items-center gap-2 text-label">
+          <CalendarClock aria-hidden className="size-4 shrink-0 text-ink-muted" />
+          {escolher ? "Dia de entrevistas: escolha o horário" : `Dia de entrevistas: ${dataDaEntrevista(e.quando)}`}
+        </p>
+        {e.local && <p className="text-body-sm">{e.local}</p>}
+        <Link
+          href={`/mutirao/${e.id}`}
+          className="inline-flex min-h-10 items-center gap-2 self-start rounded-md bg-terra px-3.5 text-label text-on-terra hover:brightness-110"
+        >
+          <CalendarCheck aria-hidden className="size-[18px]" />
+          {escolher ? "Escolher o horário" : "Ver ou trocar o horário"}
+        </Link>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-2 rounded-md bg-surface-200 p-3 text-ink">
       <p className="flex flex-wrap items-center gap-2 text-label">

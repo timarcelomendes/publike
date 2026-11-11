@@ -6,6 +6,7 @@ import {
   Briefcase,
   Building2,
   CalendarDays,
+  CalendarRange,
   ClipboardCheck,
   Columns3,
   CreditCard,
@@ -35,6 +36,7 @@ import type { Secao } from "@/lib/modo-painel";
 
 /** O ícone de cada seção do painel: o mesmo no menu e na grade do painel. */
 export const ICONES_DO_PAINEL: Record<Secao["icone"], LucideIcon> = {
+  mutirao: CalendarRange,
   hoje: House,
   caixa: Inbox,
   talentos: UserSearch,

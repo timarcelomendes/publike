@@ -22,6 +22,8 @@ export type Database = {
           situacao: string;
           /** migração 20270102120000: os horários para o candidato escolher (situação `escolher`) */
           opcoes?: string[] | null;
+          /** migração 20270417120000: a entrevista de um mutirão (a pessoa escolhe o horário em /mutirao/[id]) */
+          mutirao_id?: string | null;
           criado_em: string;
           atualizado_em: string;
         };
@@ -3662,6 +3664,28 @@ export type Database = {
       servidor_pode_devolver: { Args: { p_chave: string; p_conta: string; p_cobranca: string }; Returns: Json };
       servidor_devolvida: { Args: { p_chave: string; p_cobranca: string }; Returns: undefined };
       servidor_avisar_fim_avulsas: { Args: { p_chave: string }; Returns: number };
+      // o mutirão de contratação (migração 20270417120000)
+      mutirao_situacao: { Args: Record<string, never>; Returns: Json };
+      criar_mutirao: {
+        Args: {
+          p_dia: string;
+          p_inicio: string;
+          p_fim: string;
+          p_intervalo: number;
+          p_por_horario: number;
+          p_local: string;
+          p_trazer: string | null;
+          p_vagas: string[];
+        };
+        Returns: string;
+      };
+      chamar_para_mutirao: { Args: { p_mutirao: string; p_anuncio: string; p_pessoas: string[] }; Returns: number };
+      cancelar_mutirao: { Args: { p_mutirao: string }; Returns: number };
+      meu_mutirao: { Args: { p_entrevista: string }; Returns: Json };
+      escolher_horario_mutirao: { Args: { p_entrevista: string; p_quando: string }; Returns: undefined };
+      nao_posso_ir_mutirao: { Args: { p_entrevista: string }; Returns: undefined };
+      meus_mutiroes: { Args: Record<string, never>; Returns: Json };
+      mutirao_do_dia: { Args: { p_mutirao: string }; Returns: Json };
       servidor_faixa_sem_pagar: {
         Args: { p_chave: string; p_conta: string; p_assinatura: string; p_plano: string };
         Returns: Json;

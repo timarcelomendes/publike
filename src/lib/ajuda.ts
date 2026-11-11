@@ -255,6 +255,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Quando estão à venda, aparecem em Planos. No anual, você paga 9 meses e usa 12. Por 30 dias, você paga uma vez, vale 30 dias a partir do pagamento e não renova sozinho: três dias antes do fim, chega o aviso para comprar mais 30 dias ou assinar. Nos dois, desistiu em até 7 dias do pagamento, o dinheiro volta: o botão “Desistir e receber de volta” fica em Assinatura.",
       },
       {
+        p: "O que é o mutirão de contratação?",
+        r: "Um dia (ou uma tarde) de entrevistas em sequência, para contratar várias pessoas de uma vez. Em Ferramentas › Mutirão, escolha o dia, o horário, de quanto em quanto tempo, quantas pessoas por horário e as vagas. Depois, chame quem curtiu as vagas: cada pessoa escolhe um horário que ainda tem lugar e recebe o lembrete na véspera. No dia, marque quem chegou e quem faltou, e abra a ficha para contratar. O mutirão vem nos planos; o primeiro é grátis, para experimentar.",
+      },
+      {
         p: "Assino um plano e preciso de mais vagas no ar. Como mudo de faixa?",
         r: "Em Assinatura, toque em “Mudar para a faixa de cima”. Você paga agora só a diferença dos dias que faltam no período já pago, e a faixa muda assim que o pagamento é confirmado. Daí em diante, a renovação vem com o valor da faixa nova.",
       },
