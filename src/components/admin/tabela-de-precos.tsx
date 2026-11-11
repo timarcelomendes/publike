@@ -58,7 +58,8 @@ const SUGESTAO: Record<Produto, Partial<Record<Ciclo, number>>> = {
   empresa_50: { MONTHLY: 299, QUARTERLY: 762, YEARLY: 2691, AVULSO: 369 },
   agencia_15: { MONTHLY: 99, QUARTERLY: 252, YEARLY: 891, AVULSO: 125 },
   agencia_200: { MONTHLY: 399, QUARTERLY: 1017, YEARLY: 3591, AVULSO: 499 },
-  combo: { MONTHLY: 89, QUARTERLY: 227 },
+  // o combo com uns 15% abaixo da Triagem (R$ 59) + Teste Prático (R$ 29) separados (11/11/2026)
+  combo: { MONTHLY: 75, QUARTERLY: 191 },
   completo: { MONTHLY: 129, QUARTERLY: 329 },
 };
 
@@ -179,7 +180,8 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
       desconto !== null && desconto <= 0 ? "os 3 meses saem mais caros que 3 mensais" : null,
       descontoAnual !== null && descontoAnual <= 0 ? "o anual sai mais caro que 12 mensais" : null,
       acima !== null && acima <= 0 ? "os 30 dias saem mais baratos que o mensal" : null,
-      economia !== null && economia <= 0 ? "o pacote sai mais caro que os recursos separados" : null,
+      // nos planos por faixa, o preço paga também as vagas no ar e o que só os planos têm: a soma dos recursos não basta
+      !ehPlano(r) && economia !== null && economia <= 0 ? "o pacote sai mais caro que os recursos separados" : null,
     ].filter((a): a is string => Boolean(a));
     return (
       <ul className="flex flex-col gap-1">
@@ -188,7 +190,9 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
         {acima !== null && <li>30 dias: {acima}% acima do mensal</li>}
         {separados !== null && mensal && (
           <li>
-            Separados: {reais(separados)} por mês · economia de {economia}%
+            {ehPlano(r)
+              ? `Os seis recursos separados: ${reais(separados)} por mês (o plano paga também as vagas no ar e o mutirão, o convite automático e o mapa de talentos)`
+              : `Separados: ${reais(separados)} por mês · economia de ${economia}%`}
           </li>
         )}
         {avisos.map((a) => (
