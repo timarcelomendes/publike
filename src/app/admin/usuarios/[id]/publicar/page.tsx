@@ -16,6 +16,7 @@ import { primeiro } from "@/lib/formato";
 import { obterTriagem } from "@/lib/servidor/triagem";
 import { UUID } from "@/lib/validacao";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Publicar em nome da conta" };
 
@@ -51,6 +52,7 @@ async function Conteudo({ params, searchParams }: { params: Props["params"]; sea
       className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
     >
       <ArrowLeft aria-hidden className="size-4" />
+      <TemVoltarProprio />
       Voltar à conta
     </Link>
   );

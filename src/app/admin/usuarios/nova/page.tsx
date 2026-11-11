@@ -9,6 +9,7 @@ import { formatarFone } from "@/lib/convites";
 import { primeiro } from "@/lib/formato";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Criar conta" };
 
@@ -50,6 +51,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
         className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Usuários
       </Link>
       <Secao

@@ -3,7 +3,7 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 
 /**
  * "‹ Voltar para Candidatos": de qualquer página, volta à tela de onde a pessoa veio, com o nome dela.
@@ -57,6 +57,24 @@ function assinar(avisar: () => void) {
   return () => window.removeEventListener(EVENTO, avisar);
 }
 
+/**
+ * Dentro do voltar da própria página ("‹ Candidatos", "← Meu perfil"): enquanto ele está na tela, o "Voltar para..."
+ * de cima some, para ficar um voltar só (11/11/2026). O efeito sai quando o Next esconde a página.
+ */
+export function TemVoltarProprio() {
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const n = Number(html.dataset.voltarProprio ?? 0) + 1;
+    html.dataset.voltarProprio = String(n);
+    return () => {
+      const m = Number(html.dataset.voltarProprio ?? 1) - 1;
+      if (m > 0) html.dataset.voltarProprio = String(m);
+      else delete html.dataset.voltarProprio;
+    };
+  }, []);
+  return null;
+}
+
 export function Voltar() {
   const caminho = usePathname() ?? "/";
   const busca = useSearchParams()?.toString() ?? "";
@@ -99,7 +117,7 @@ export function Voltar() {
     // entrou direto numa página do painel: o "‹ Painel" de antes, no celular (no computador, o menu faz isso)
     if (!caminho.startsWith("/painel/")) return null;
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 pt-3 sm:px-6 lg:hidden">
+      <div className="mx-auto w-full max-w-6xl px-4 pt-3 sm:px-6 lg:hidden [html[data-voltar-proprio]_&]:hidden">
         <Link href="/painel" className="inline-flex min-h-10 items-center gap-1 text-label text-ink-muted hover:text-ink">
           <ChevronLeft aria-hidden className="size-5" />
           Painel
@@ -110,7 +128,7 @@ export function Voltar() {
 
   return (
     // no painel, a largura dele (LARGO_NO_PAINEL, em ui/basicos)
-    <div className="mx-auto w-full max-w-6xl px-4 pt-3 sm:px-6 lg:[html[data-largura=painel]_&]:max-w-[96rem]">
+    <div className="mx-auto w-full max-w-6xl px-4 pt-3 sm:px-6 lg:[html[data-largura=painel]_&]:max-w-[96rem] [html[data-voltar-proprio]_&]:hidden">
       <a
         href={tela.url}
         onClick={(e) => {

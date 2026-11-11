@@ -12,6 +12,7 @@ import { corLegivel } from "@/lib/marca";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Dossiê do finalista", robots: { index: false, follow: false } };
 
@@ -66,6 +67,7 @@ async function Conteudo({ token, id }: { token: string; id: string }) {
       data-nao-imprimir
     >
       <ArrowLeft aria-hidden className="size-4" />
+      <TemVoltarProprio />
       Todos os finalistas
     </Link>
   );

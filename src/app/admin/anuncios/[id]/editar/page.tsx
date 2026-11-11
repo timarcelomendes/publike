@@ -13,6 +13,7 @@ import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
 import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { valoresDoAnuncio } from "@/lib/valores-anuncio";
 import { obterTriagem } from "@/lib/servidor/triagem";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Corrigir anúncio" };
 
@@ -46,6 +47,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/anuncios/[id]/ed
         className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Voltar ao anúncio
       </Link>
       <h2 className="mt-1 text-h2">Corrigir anúncio</h2>

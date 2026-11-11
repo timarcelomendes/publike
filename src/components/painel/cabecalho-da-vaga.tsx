@@ -32,6 +32,7 @@ import { Selo } from "../ui/basicos";
 import { CopiarLinkDaVaga } from "./links-para-mandar";
 import { MaisDaVaga } from "./mais-da-vaga";
 import { EtiquetaDaSaude } from "./saude-vaga";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export type AbaDaVaga =
   "candidatos" | "avaliar" | "copiloto" | "testes" | "video" | "automacoes" | "numeros" | "editar";
@@ -151,6 +152,7 @@ export async function CabecalhoDaVaga({
       <nav aria-label="Trilha" className="flex flex-wrap items-center gap-1 text-label text-ink-muted">
         <Link href="/painel/anuncios?tipo=vaga" className="inline-flex min-h-11 items-center gap-1 hover:text-ink">
           <ChevronLeft aria-hidden className="size-4" />
+          <TemVoltarProprio />
           Vagas
         </Link>
         {cliente && (

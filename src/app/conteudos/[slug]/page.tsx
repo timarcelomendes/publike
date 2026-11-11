@@ -9,6 +9,7 @@ import { CartaoConteudo } from "@/components/conteudo/cartao";
 import { Container, Selo } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { CONTEUDOS, conteudoDoSlug, minutosDeLeitura, relacionados, TEMAS_CONTEUDO } from "@/lib/conteudos";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export function generateStaticParams() {
   return CONTEUDOS.map((c) => ({ slug: c.slug }));
@@ -61,6 +62,7 @@ function Artigo({ slug }: { slug: string }) {
       <article className="mx-auto max-w-2xl">
         <Link href="/conteudos" className="inline-flex items-center gap-2 text-body-sm text-ink-muted hover:text-ink">
           <ArrowLeft aria-hidden className="size-4" />
+          <TemVoltarProprio />
           Conteúdos
         </Link>
         <div className="mt-6">

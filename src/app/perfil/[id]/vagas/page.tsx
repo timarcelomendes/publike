@@ -25,6 +25,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioDoPerfil, AnuncioResumo, Regime } from "@/lib/tipos";
 import { linkDasVagas, textoDasVagas, valorCurto } from "@/lib/vagas-da-empresa";
+import { TemVoltarProprio } from "@/components/voltar";
 
 // "Todas as vagas" de uma empresa, comércio ou agência: o link que ela põe na bio do Instagram, no status do
 // WhatsApp ou no site (claude/plano-pagina-de-vagas.md, parte 1). No alto, a marca: a logo grande, o nome, quantas
@@ -181,6 +182,7 @@ async function Conteudo({
         className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Perfil de {perfil.nome}
       </Link>
       <div className="mt-2">

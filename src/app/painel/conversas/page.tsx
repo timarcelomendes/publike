@@ -60,8 +60,8 @@ async function Conteudo() {
   }
 
   return (
-    <div className="flex max-w-3xl flex-col gap-3">
-      <p className="text-body text-ink-muted">
+    <div className="flex flex-col gap-3">
+      <p className="max-w-2xl text-body text-ink-muted">
         Uma conversa por pessoa, sem trocar número: o que veio das vagas e da conexão fica junto. Só vocês dois leem.
       </p>
       <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200 shadow-card">

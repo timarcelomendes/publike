@@ -15,6 +15,7 @@ import { estadosDeConexao } from "@/lib/servidor/conexoes";
 import { talentoCompleto, talentoResumo, vagasParaConvidar } from "@/lib/servidor/talentos";
 import { tituloDoTalento } from "@/lib/talentos";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { TemVoltarProprio } from "@/components/voltar";
 
 // A página de uma pessoa da aba Talentos. Todo mundo vê o resumo; empresa, comércio e
 // agência que entraram veem o currículo completo (as empresas, as datas e o que fazia),
@@ -31,6 +32,7 @@ export default function PaginaTalento({ params }: PageProps<"/talentos/[id]">) {
         className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Talentos
       </Link>
       <Suspense fallback={<Esqueleto className="mt-2 h-[36rem] w-full rounded-lg" />}>

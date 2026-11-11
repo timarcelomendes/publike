@@ -1,6 +1,7 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { TemVoltarProprio } from "@/components/voltar";
 
 // O alto de cada tela do painel, o mesmo em todas (11/11/2026, claude/plano-padrao-das-telas.md): o "voltar" (a tela de
 // cima, quando há), o título com o selo ao lado, as ações à direita na linha do título, o texto embaixo (até 42rem,
@@ -72,6 +73,7 @@ export function LinkVoltar({ href, children }: { href: string; children: ReactNo
       className="-mb-1 inline-flex min-h-10 items-center gap-1 self-start text-label text-ink-muted hover:text-ink print:hidden"
     >
       <ChevronLeft aria-hidden className="size-4" />
+      <TemVoltarProprio />
       {children}
     </Link>
   );

@@ -121,14 +121,14 @@ async function Conteudo({ id }: { id: string }) {
           liga, e fica anotada no registro aqui embaixo.
         </p>
       </IntroDaAba>
-      <div className="max-w-3xl">
+      <div>
         {regras.sobMedida ? (
           <FaixaExperimento recurso="automacoes" estado={sobMedida} agora={agora} />
         ) : (
           sobMedida && <OfertaSobMedida estado={sobMedida} />
         )}
       </div>
-      <div className="flex max-w-3xl flex-col gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-0.5">
           <h3 className="text-h3">Prontas · grátis</h3>
           <p className="text-body-sm text-ink-muted">Liga e desliga, com o texto e os prazos do Publike.</p>
@@ -145,7 +145,7 @@ async function Conteudo({ id }: { id: string }) {
       </div>
 
       {daConta && (
-        <div className="max-w-3xl">
+        <div>
           <SuasRegras
             regras={suas}
             liberado={Boolean(sobMedida?.liberado)}
@@ -157,7 +157,7 @@ async function Conteudo({ id }: { id: string }) {
         </div>
       )}
 
-      <section aria-labelledby="registro" className="flex max-w-3xl flex-col gap-3">
+      <section aria-labelledby="registro" className="flex flex-col gap-3">
         <h3 id="registro" className="text-h3">
           O que as automações fizeram
         </h3>

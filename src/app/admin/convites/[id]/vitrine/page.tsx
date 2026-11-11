@@ -15,6 +15,7 @@ import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 import { PRACA_PADRAO } from "@/lib/pracas";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Vitrine com o sim do prestador" };
 
@@ -92,6 +93,7 @@ async function Conteudo({ id }: { id: string }) {
         className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Convites
       </Link>
       <h2 className="text-h2">Vitrine de serviços de {convite.nome}</h2>

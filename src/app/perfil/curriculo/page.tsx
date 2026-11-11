@@ -31,6 +31,7 @@ import { meuPdfNaoSalvo } from "@/lib/servidor/curriculo-pendente";
 import type { MinhaCurtida } from "@/lib/tipos";
 import { exigirPerfilCompleto } from "@/lib/sessao";
 import { agoraDaRequisicao } from "@/lib/tempo";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = {
   title: "Meu currículo",
@@ -43,9 +44,10 @@ export const metadata: Metadata = {
 
 export default function PaginaCurriculo({ searchParams }: PageProps<"/perfil/curriculo">) {
   return (
-    <Container className="max-w-2xl py-8 lg:max-w-5xl">
+    <Container className="max-w-2xl py-8 lg:max-w-6xl">
       <Link href="/perfil" className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Meu perfil
       </Link>
       <h1 className="mt-1 text-h2 sm:text-h1">Meu currículo</h1>

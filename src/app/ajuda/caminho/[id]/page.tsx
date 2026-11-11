@@ -10,6 +10,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { todosOsCaminhos } from "@/lib/ajuda";
 import { SITE_URL } from "@/lib/config";
 import { TIPOS_CONTA } from "@/lib/constantes";
+import { TemVoltarProprio } from "@/components/voltar";
 
 // O passo a passo de um caminho, com as telas: a página para mandar a quem ainda não usa o Publike.
 
@@ -64,6 +65,7 @@ function Conteudo({ id }: { id: string }) {
             className="inline-flex min-h-10 items-center gap-2 text-label text-ink-muted hover:text-ink"
           >
             <ArrowLeft aria-hidden className="size-4" />
+            <TemVoltarProprio />
             Ajuda
           </Link>
           <p className="mt-4 text-label text-terra-text">

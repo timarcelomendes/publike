@@ -8,6 +8,7 @@ import { Container, Esqueleto } from "@/components/ui/basicos";
 import { MODO_DEMO } from "@/lib/config";
 import { obterAnuncio } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = {
   title: "Denunciar anúncio",
@@ -34,6 +35,7 @@ async function Conteudo({ params }: { params: PageProps<"/anuncio/[id]/denunciar
     <>
       <Link href={`/anuncio/${id}`} className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Voltar para o anúncio
       </Link>
       <h1 className="mt-2 text-h2 sm:text-h1">Denunciar anúncio</h1>

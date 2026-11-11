@@ -9,6 +9,7 @@ import { BotaoLink } from "@/components/ui/botao";
 import { SITE_URL } from "@/lib/config";
 import { dataCurta, TEMAS_NOTICIA } from "@/lib/noticias";
 import { noticiaDoSlug } from "@/lib/servidor/noticias";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export async function generateMetadata({ params }: PageProps<"/noticias/[slug]">): Promise<Metadata> {
   const n = await noticiaDoSlug((await params).slug);
@@ -62,6 +63,7 @@ async function Noticia({ slug }: { slug: string }) {
       <article className="mx-auto max-w-2xl">
         <Link href="/noticias" className="inline-flex items-center gap-2 text-body-sm text-ink-muted hover:text-ink">
           <ArrowLeft aria-hidden className="size-4" />
+          <TemVoltarProprio />
           Notícias
         </Link>
         <p className="mt-6 text-caption text-terra-text uppercase">{TEMAS_NOTICIA[n.tema]?.nome ?? n.tema}</p>

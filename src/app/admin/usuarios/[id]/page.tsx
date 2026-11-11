@@ -68,6 +68,7 @@ import { quantoDurou, type ContaApagada } from "@/lib/conta-apagada";
 import { dataHora } from "@/lib/planilha";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Conta" };
 
@@ -126,6 +127,7 @@ async function Conteudo({
     <div className="flex flex-col gap-6">
       <Link href="/admin/usuarios" className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Usuários
       </Link>
 
@@ -620,6 +622,7 @@ function ContaQueNaoExisteMais({ apagada }: { apagada: ContaApagada | null }) {
         className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Usuários
       </Link>
       <h2 className="text-h2">Esta conta não existe mais</h2>

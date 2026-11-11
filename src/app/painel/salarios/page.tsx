@@ -107,8 +107,7 @@ async function Conteudo({
   return (
     <div className="flex flex-col gap-6">
       {cabecalho}
-      {/* uma consulta de ler: numa coluna de até 48rem */}
-      <div className="flex max-w-3xl flex-col gap-6">
+      <div className="flex flex-col gap-6">
         <Saldo
           conta={conta}
           precoMensal={precoMensal}

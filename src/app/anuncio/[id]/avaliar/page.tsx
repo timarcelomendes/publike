@@ -8,6 +8,7 @@ import { Aviso, Container, Esqueleto } from "@/components/ui/basicos";
 import { MENSAGEM_DEMO, MODO_DEMO } from "@/lib/config";
 import { listarMeusDesfeitos, obterAnuncio, obterMinhaAvaliacao } from "@/lib/dados";
 import { exigirUsuario } from "@/lib/sessao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = {
   title: "Avaliar serviço",
@@ -81,6 +82,7 @@ async function Conteudo({ params }: { params: PageProps<"/anuncio/[id]/avaliar">
         className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Voltar para o serviço
       </Link>
       <h1 className="mt-2 text-h2 sm:text-h1">{minha ? "Sua avaliação" : `Avaliar ${primeiroNome}`}</h1>

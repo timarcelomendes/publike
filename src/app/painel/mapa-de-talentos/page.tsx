@@ -104,7 +104,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/map
           </section>
 
           {!mapa.liberado ? (
-            <div className="max-w-3xl">
+            <div>
               <Aviso tipo="info" titulo="Veja por função e por bairro">
                 <span className="flex flex-col items-start gap-2">
                   <span>

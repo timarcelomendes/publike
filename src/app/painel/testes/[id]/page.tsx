@@ -82,7 +82,7 @@ async function Conteudo({
               </>
             }
           />
-          <ol className="flex max-w-3xl flex-col gap-3">
+          <ol className="flex flex-col gap-3">
             {questoes.map((q, i) => {
               const melhor = Math.max(...q.opcoes.map((o) => o.pontos));
               return (

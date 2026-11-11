@@ -13,6 +13,7 @@ import { contatoDiretoDosServicos } from "@/lib/servidor/contato-direto";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { UUID } from "@/lib/validacao";
 import { areaDaRegiao } from "@/lib/constantes";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Vitrine de serviços da conta" };
 
@@ -37,6 +38,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/usuarios/[id]/se
       className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
     >
       <ArrowLeft aria-hidden className="size-4" />
+      <TemVoltarProprio />
       Voltar à conta
     </Link>
   );

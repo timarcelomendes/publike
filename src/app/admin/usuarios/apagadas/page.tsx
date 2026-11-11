@@ -9,6 +9,7 @@ import { MOTIVOS_SAIDA, quantoDurou } from "@/lib/conta-apagada";
 import { formatarNumero, rotuloConta } from "@/lib/formato";
 import { dataHora } from "@/lib/planilha";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Contas apagadas" };
 
@@ -32,6 +33,7 @@ async function Conteudo() {
       className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
     >
       <ArrowLeft aria-hidden className="size-4" />
+      <TemVoltarProprio />
       Usuários
     </Link>
   );

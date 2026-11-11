@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { obterAnuncio } from "@/lib/dados";
 import { UUID } from "@/lib/validacao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 /**
  * A vaga de onde a pessoa veio (`?vaga=` na biblioteca de testes), se for dela: para voltar aos testes da
@@ -27,6 +28,7 @@ export function VoltarParaOsTestes({ vaga }: { vaga: { id: string } | null }) {
   return (
     <Link href={comVaga("/painel/testes", vaga)} className={CLASSE_VOLTA}>
       <ChevronLeft aria-hidden className="size-4" />
+      <TemVoltarProprio />
       Teste Prático
     </Link>
   );
@@ -37,6 +39,7 @@ export function VoltarParaVaga({ vaga }: { vaga: { id: string; titulo: string } 
   return (
     <Link href={`/painel/anuncio/${vaga.id}/testes`} className={CLASSE_VOLTA}>
       <ChevronLeft aria-hidden className="size-4" />
+      <TemVoltarProprio />
       Testes da vaga: {vaga.titulo}
     </Link>
   );

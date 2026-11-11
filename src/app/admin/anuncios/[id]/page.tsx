@@ -28,6 +28,7 @@ import {
 import { acessoDaEquipe } from "@/lib/supabase/admin";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { UUID } from "@/lib/validacao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Anúncio" };
 
@@ -69,6 +70,7 @@ async function Conteudo({
     <div className="flex flex-col gap-6">
       <Link href="/admin/anuncios" className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Anúncios
       </Link>
 

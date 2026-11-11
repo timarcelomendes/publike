@@ -65,7 +65,7 @@ async function Conteudo({ params }: { params: PageProps<"/painel/conexoes/[outro
   const pedirDeNovo = c.status === "recusada" ? pedirDeNovoEm(c.respondida_em) : null;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <LinkVoltar href="/painel/conexoes">Conexões</LinkVoltar>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <QuemConexao c={c} titulo />

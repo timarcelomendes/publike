@@ -8,6 +8,7 @@ import { BotaoPublicarTeste } from "@/components/admin/testes";
 import { exigirAdminLocal } from "@/lib/supabase/admin";
 import { COMPETENCIAS, questoesDoBanco } from "@/lib/testes";
 import { UUID } from "@/lib/validacao";
+import { TemVoltarProprio } from "@/components/voltar";
 
 export const metadata: Metadata = { title: "Revisar teste" };
 
@@ -33,6 +34,7 @@ async function Conteudo({ params }: { params: PageProps<"/admin/testes/[id]">["p
         className="inline-flex min-h-11 items-center gap-2 self-start text-label text-ink-muted hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
+        <TemVoltarProprio />
         Testes
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
