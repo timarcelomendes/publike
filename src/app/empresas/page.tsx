@@ -80,6 +80,12 @@ const MOTIVOS: Item[] = [
       "O contato só aparece quando dá match, e só para as duas pessoas. Se preferir, a vaga pode ser só pelo chat do Publike.",
   },
   {
+    icone: Check,
+    titulo: "Quem mais combina vem primeiro",
+    texto:
+      "Cada candidato chega com a nota de aderência e o porquê, item por item: a experiência na função, o estudo, a distância, o horário. Falta a CNH ou a escolaridade que você pediu? A nota avisa.",
+  },
+  {
     icone: ListChecks,
     titulo: "Candidatos organizados",
     texto: "Acompanhe cada pessoa por etapa: novo, em análise, entrevista e contratado. A anotação fica só com você.",
@@ -186,6 +192,28 @@ const RECURSOS_PAGOS: Item[] = [
   },
 ];
 
+// O que vem só dentro do Plano Empresa e do Plano Agência (claude/plano-convite-automatico-30-dias-e-anual.md)
+const SO_NOS_PLANOS: Item[] = [
+  {
+    icone: CalendarClock,
+    titulo: "Mutirão de contratação",
+    texto:
+      "Um dia de entrevistas para contratar várias pessoas de uma vez: quem curtiu escolhe o horário, recebe o lembrete na véspera, e você marca quem chegou. O primeiro é grátis.",
+  },
+  {
+    icone: Megaphone,
+    titulo: "Convite automático",
+    texto:
+      "Chegou um currículo que combina com a vaga, o convite sai sozinho com o seu recado. Cada pessoa recebe no máximo 2 por semana.",
+  },
+  {
+    icone: MapPin,
+    titulo: "Mapa de talentos",
+    texto:
+      "Quantas pessoas de cada função moram a até 15, 30 e 45 minutos de ônibus da vaga, e em que bairros. Ninguém tem a casa mostrada.",
+  },
+];
+
 // os tipos de vaga que dá para publicar (menos "outro")
 const TIPOS_DE_VAGA = Object.entries(REGIMES)
   .filter(([chave]) => chave !== "outro")
@@ -217,7 +245,11 @@ const PERGUNTAS = [
   },
   {
     p: "O que é pago no Publike?",
-    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários), e o Plano Completo junta todos.",
+    r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários). O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático e o mapa de talentos.",
+  },
+  {
+    p: "Como funciona a nota de aderência dos candidatos?",
+    r: "Ela compara o que a vaga pede com o currículo, o perfil e as respostas, e mostra o porquê item por item. Na vaga que pede experiência, a experiência na função pesa mais: conta o trabalho, uma área parecida, o estudo ou um curso dela. Na vaga que aceita quem está começando, quem não tem experiência não fica de fora. Se falta a escolaridade, a CNH ou o horário que você pediu, a nota avisa. A nota só ordena a lista: quem decide é você.",
   },
   {
     p: "Onde o Publike funciona?",
@@ -399,7 +431,7 @@ export default function Empresas() {
           </h2>
           <p className="mt-2 max-w-2xl text-body text-ink-muted">
             Publicar continua grátis. Para RH, agência e empresa com muitas vagas, estes recursos tiram o trabalho
-            repetido. Cada um dá para experimentar de graça, e o Plano Completo junta todos.
+            repetido. Cada um dá para experimentar de graça, e o Plano Empresa junta todos, pelo número de vagas no ar.
           </p>
           <ul className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {RECURSOS_PAGOS.map(({ icone: Icone, titulo, texto }) => (
@@ -416,7 +448,25 @@ export default function Empresas() {
           </ul>
           <p className="mt-4 text-body-sm text-ink-muted">
             15 dias grátis na Triagem, no Teste, na Entrevista em vídeo e nas Automações; na Consulta de salários, as
-            consultas grátis. Depois, assine só o que usar.
+            consultas grátis. Depois, assine só o que usar ou o plano.
+          </p>
+          <h3 className="mt-8 text-h3">Só nos planos</h3>
+          <ul className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {SO_NOS_PLANOS.map(({ icone: Icone, titulo, texto }) => (
+              <li key={titulo} className="flex gap-4 rounded-lg border border-line bg-surface-200 p-5">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-pill bg-surface-300">
+                  <Icone aria-hidden className="size-5 text-terra-text" />
+                </span>
+                <div>
+                  <h4 className="text-label">{titulo}</h4>
+                  <p className="mt-1 text-body-sm text-ink-muted">{texto}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-body-sm text-ink-muted">
+            Pix ou cartão, sem fidelidade: dá para cancelar quando quiser, e o que já foi pago vale até o fim. Precisa
+            de mais vagas no ar? Mude de faixa pagando só a diferença dos dias que faltam.
           </p>
         </section>
 
