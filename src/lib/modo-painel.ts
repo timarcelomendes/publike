@@ -82,8 +82,8 @@ export type Contadores = {
 export type Secao = {
   href: string;
   nome: string;
-  /** no computador, fica dentro de "Mais ferramentas" (o menu com 4 itens fixos, 08/11/2026) */
-  mais?: boolean;
+  /** a ferramenta nova: "Novo" ao lado do nome, até sair */
+  novo?: boolean;
   icone:
     | "hoje"
     | "caixa"
@@ -132,10 +132,15 @@ export type Secao = {
   cortesia?: boolean | string;
 };
 
-/** Um grupo de seções no menu (sem nome: o primeiro, com Hoje). `caminho`: os passos numerados. */
+/**
+ * Um grupo de seções no menu (sem nome: o primeiro, com Hoje; no celular, a linha de cima). Os com nome (Atrair,
+ * Selecionar, Números, Conta) ficam embaixo, no computador, e no "Mais" do celular. `caminho`: os passos numerados.
+ */
 export type GrupoMenu = {
   nome: string | null;
   caminho?: boolean;
+  /** o grupo do fim (Conta): em cinza, mais discreto */
+  discreto?: boolean;
   secoes: Secao[];
   /** com mais de uma atividade: o nome dela em cima do primeiro grupo dela ("Contratar") */
   atividade?: string;
@@ -245,9 +250,10 @@ export function gruposDoModo(
         // Entrevista e Contratados são etapas de Candidatos (parte 2 do claude/plano-painel-simples.md)
         { href: "/painel/caixa", nome: "Candidatos", icone: "caixa", contador: "responder", jeito: "pilula" },
       ];
-  // o menu só navega (29/10/2026, claude/plano-painel-simples.md): sem os números de passo. Desde o painel novo
-  // (claude/plano-painel-hoje-novo-design.md): os itens principais e um grupo "Ferramentas", com o resto em
-  // "Mais ferramentas"; a equipe fica no alto do menu (na conta) e também em "Mais ferramentas"
+  // o menu só navega (29/10/2026, claude/plano-painel-simples.md): sem os números de passo. Desde 11/11/2026 (pedido
+  // do Marcelo, "melhore esse menu"): no lugar de "Ferramentas" e do "Mais ferramentas" com 11 itens, as ferramentas
+  // ficam pelo que a empresa quer fazer, todas à vista: Atrair, Selecionar, Números e, por último, Conta. A "Lista de
+  // candidatos e planilha" sai do menu: fica no botão Lista, em Candidatos
   const talentos: Secao = { href: "/talentos", nome: "Talentos", icone: "talentos" };
   return [
     {
@@ -256,65 +262,45 @@ export function gruposDoModo(
         { href: "/painel", nome: "Hoje", icone: "hoje" },
         ...caminho,
         { ...MENSAGENS, jeito: "pilula" },
-        // na empresa, Talentos fica nos principais; na agência, o caminho já é longo e ele vai para Ferramentas
+        // na empresa, Talentos fica nos principais; na agência, o caminho já é longo e ele abre o Atrair
         ...(agencia ? [] : [talentos]),
       ],
     },
     {
-      nome: "Ferramentas",
+      // chamar gente: a vaga divulgada, o convite a quem combina, quantos moram perto e quem viu a empresa
+      nome: "Atrair",
       secoes: [
         ...(agencia ? [talentos] : []),
-        // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (o selo some quando já tem)
+        { href: "/painel/links", nome: "Página de vagas", icone: "links" },
+        // o convite automático (migração 20270418120000): o aviso de quem combina é grátis; o convite sozinho, nos planos
+        { href: "/painel/convites", nome: "Convite automático", icone: "convites" },
+        // o mapa de talentos (migração 20270419120000): quantas pessoas moram perto de cada vaga
+        { href: "/painel/mapa-de-talentos", nome: "Mapa de talentos", icone: "mapa" },
+        { href: "/painel/visitas", nome: "Quem viu seu perfil", icone: "visitas", contador: "visitas", jeito: "pilula" },
+      ],
+    },
+    {
+      // escolher quem contratar: os recursos pagos (com os dias grátis à vista), o mutirão e as regras
+      nome: "Selecionar",
+      secoes: [
+        // sempre no menu: sem o recurso, a página mostra a oferta dos 15 dias grátis (a linha some quando já tem)
         {
           href: "/painel/copiloto",
           nome: "Triagem com IA",
           icone: "copiloto",
           cortesia: extras.pilulas ? (extras.pilulas.copiloto ?? false) : !extras.copiloto,
         },
-        { href: "/painel/links", nome: "Página de vagas", icone: "links" },
-        // o funil, os tempos e a origem dos candidatos (migração 20270109120000)
-        { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
-        // o mutirão de contratação (migração 20270417120000): nos planos, o primeiro é grátis
-        { href: "/painel/mutiroes", nome: "Mutirão", icone: "mutirao", cortesia: "Novo" },
-        // o convite automático (migração 20270418120000): o aviso de quem combina é grátis; o convite sozinho, nos planos
-        { href: "/painel/convites", nome: "Convite automático", icone: "convites", mais: true },
-        // o mapa de talentos (migração 20270419120000): quantas pessoas moram perto de cada vaga
-        { href: "/painel/mapa-de-talentos", nome: "Mapa de talentos", icone: "mapa", mais: true },
-        // o processo, o padrão das vagas, as etapas próprias, os horários e as mensagens prontas, num lugar só
-        // (claude/plano-etapas-obrigatorias-e-configuracoes.md); "Etapas e horários" virou uma parte dela
-        { href: "/painel/configuracoes", nome: "Configurações", icone: "configuracoes" },
-        ...(extras.pilulas && extras.pilulas.video !== undefined
-          ? [
-              {
-                href: "/painel/video",
-                nome: "Entrevista em vídeo",
-                icone: "video" as const,
-                cortesia: extras.pilulas.video ?? false,
-                mais: true,
-              },
-            ]
-          : []),
-        { ...EQUIPE, mais: true },
-        // a lista de todos os candidatos, com a planilha (antes no "Mais" do fim do menu)
-        { href: "/painel/candidatos", nome: "Lista de candidatos e planilha", icone: "candidatos", mais: true },
-        // o resto fica em "Mais ferramentas" no computador
-        {
-          href: "/painel/visitas",
-          nome: "Quem viu seu perfil",
-          icone: "visitas",
-          contador: "visitas",
-          jeito: "pilula",
-          mais: true,
-        },
         {
           href: "/painel/testes",
           nome: "Teste Prático",
           icone: "testes",
           cortesia: extras.pilulas ? (extras.pilulas.testes ?? false) : true,
-          mais: true,
         },
-        // a consulta de salários (migração 20270218120000): as consultas grátis e a assinatura
-        { href: "/painel/salarios", nome: "Salários", icone: "salarios", mais: true },
+        ...(extras.pilulas && extras.pilulas.video !== undefined
+          ? [{ href: "/painel/video", nome: "Entrevista em vídeo", icone: "video" as const, cortesia: extras.pilulas.video ?? false }]
+          : []),
+        // o mutirão de contratação (migração 20270417120000): nos planos, o primeiro é grátis
+        { href: "/painel/mutiroes", nome: "Mutirão", icone: "mutirao", novo: true },
         // as Automações personalizadas (migração 20270114120000): as prontas, de graça, ficam em cada vaga
         ...(extras.pilulas && extras.pilulas.automacoes !== undefined
           ? [
@@ -323,14 +309,30 @@ export function gruposDoModo(
                 nome: "Automações",
                 icone: "automacoes" as const,
                 cortesia: extras.pilulas.automacoes ?? false,
-                mais: true,
               },
             ]
           : []),
-        // a assinatura e as faturas também ficam no painel (antes, só no menu da conta, no alto)
-        // os planos à venda, lado a lado (10/11/2026)
-        { href: "/painel/planos", nome: "Planos", icone: "planos", mais: true },
-        { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura", mais: true },
+      ],
+    },
+    {
+      // os números da empresa (o funil, os tempos e a origem; migração 20270109120000) e os do mercado
+      nome: "Números",
+      secoes: [
+        { href: "/painel/numeros", nome: "Resultados", icone: "numeros" },
+        // a consulta de salários (migração 20270218120000): as consultas grátis e a assinatura
+        { href: "/painel/salarios", nome: "Salários", icone: "salarios" },
+      ],
+    },
+    {
+      // o que é da conta, no fim e mais discreto: a equipe (também no alto, na agência), o processo e o padrão das
+      // vagas (claude/plano-etapas-obrigatorias-e-configuracoes.md), os planos (10/11/2026) e a assinatura
+      nome: "Conta",
+      discreto: true,
+      secoes: [
+        EQUIPE,
+        { href: "/painel/configuracoes", nome: "Configurações", icone: "configuracoes" },
+        { href: "/painel/planos", nome: "Planos", icone: "planos" },
+        { href: "/painel/assinatura", nome: "Assinatura", icone: "assinatura" },
       ],
     },
   ];
@@ -339,7 +341,7 @@ export function gruposDoModo(
 /** O resto do painel, no fim do menu (o que não é do modo aberto). Os matches ficam nas Mensagens. */
 export const OUTRAS: Record<ModoPainel, { href: string; nome: string }[]> = {
   // "O que você curtiu" e "Seguindo" ficam no menu da conta (o avatar, no alto)
-  // a lista de candidatos e planilha foi para "Mais ferramentas" (o painel novo, 08/11/2026)
+  // a lista de candidatos e planilha fica no botão Lista, em Candidatos (11/11/2026)
   contratar: [],
   trabalhar: [
     { href: "/painel/curtidas?tipo=servico", nome: "Serviços que você pediu" },
@@ -445,6 +447,10 @@ export function secaoAtiva(
   // assinar e as faturas são da Assinatura
   if (caminho.startsWith("/painel/assinar") || caminho.startsWith("/painel/faturas")) {
     return secoes.find((s) => s.href === "/painel/assinatura")?.href ?? null;
+  }
+  // a lista de candidatos e planilha (fora do menu desde 11/11/2026) é parte de Candidatos: o botão Lista, lá
+  if (caminho.startsWith("/painel/candidatos") && !secoes.some((s) => s.href.startsWith("/painel/candidatos"))) {
+    return secoes.find((s) => s.href === "/painel/caixa")?.href ?? null;
   }
   // a página de um anúncio (quem curtiu, quadro, editar) fica na lista de anúncios do modo
   if (caminho.startsWith("/painel/anuncio/")) {

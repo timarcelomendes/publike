@@ -184,7 +184,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que aparece no Hoje do painel?",
-        r: "Em cima, o “Agora”: uma lista só, na ordem do que é mais urgente, com a hora na frente de cada coisa (quem espera a sua resposta, as entrevistas de hoje, quem foi entrevistado e espera a decisão, a vaga parada, os pedidos e os prazos dos clientes, na agência). Cada item tem um botão; “Decidir agora” abre os candidatos um por um. Embaixo, as suas vagas, com os números de cada etapa, onde a vaga aparece e o botão Divulgar, e ao lado “Esta semana”, com as entrevistas. A reputação fica recolhida no fim: toque para ver os três números. No menu, as ferramentas menos usadas ficam em “Mais ferramentas”.",
+        r: "Em cima, o “Agora”: uma lista só, na ordem do que é mais urgente, com a hora na frente de cada coisa (quem espera a sua resposta, as entrevistas de hoje, quem foi entrevistado e espera a decisão, a vaga parada, os pedidos e os prazos dos clientes, na agência). Cada item tem um botão; “Decidir agora” abre os candidatos um por um. Embaixo, as suas vagas, com os números de cada etapa, onde a vaga aparece e o botão Divulgar, e ao lado “Esta semana”, com as entrevistas. A reputação fica recolhida no fim: toque para ver os três números. No menu, as ferramentas ficam pelo que você quer fazer: Atrair (Página de vagas, Convite automático, Mapa de talentos e Quem viu seu perfil), Selecionar (Triagem com IA, Teste Prático, Entrevista em vídeo, Mutirão e Automações), Números (Resultados e Salários) e Conta (Equipe, Configurações, Planos e Assinatura). No computador, toque no nome de um grupo para fechar o que você não usa (o Publike lembra); no celular, elas ficam em “Mais”. A lista de todos os candidatos fica em Candidatos, no botão Lista.",
       },
       {
         p: "Dá para convidar várias pessoas de uma vez?",
@@ -272,7 +272,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é o mutirão de contratação?",
-        r: "Um dia (ou uma tarde) de entrevistas em sequência, para contratar várias pessoas de uma vez. Em Ferramentas › Mutirão, escolha o dia, o horário, de quanto em quanto tempo, quantas pessoas por horário e as vagas. Depois, chame quem curtiu as vagas: cada pessoa escolhe um horário que ainda tem lugar e recebe o lembrete na véspera. No dia, marque quem chegou e quem faltou, e abra a ficha para contratar. O mutirão vem nos planos; o primeiro é grátis, para experimentar.",
+        r: "Um dia (ou uma tarde) de entrevistas em sequência, para contratar várias pessoas de uma vez. No menu, em Selecionar › Mutirão, escolha o dia, o horário, de quanto em quanto tempo, quantas pessoas por horário e as vagas. Depois, chame quem curtiu as vagas: cada pessoa escolhe um horário que ainda tem lugar e recebe o lembrete na véspera. No dia, marque quem chegou e quem faltou, e abra a ficha para contratar. O mutirão vem nos planos; o primeiro é grátis, para experimentar.",
       },
       {
         p: "Quantas entrevistas ao vivo pelo Publike posso fazer?",
@@ -280,11 +280,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é o convite automático?",
-        r: "O aviso de quem combina com a sua vaga é grátis, com até 3 por dia. Com um plano, você liga o convite automático em cada vaga (Ferramentas › Convite automático): quando chega um currículo que combina, o convite vai na hora, com o seu recado, e os avisos vão até 30 por dia. Cada pessoa recebe no máximo 2 convites automáticos por semana, e quem não quer desliga em Preferências.",
+        r: "O aviso de quem combina com a sua vaga é grátis, com até 3 por dia. Com um plano, você liga o convite automático em cada vaga (no menu, Atrair › Convite automático): quando chega um currículo que combina, o convite vai na hora, com o seu recado, e os avisos vão até 30 por dia. Cada pessoa recebe no máximo 2 convites automáticos por semana, e quem não quer desliga em Preferências.",
       },
       {
         p: "O que é o mapa de talentos?",
-        r: "Em Ferramentas › Mapa de talentos, escolha uma vaga e veja quantas pessoas que procuram trabalho moram a até 15, 30 e 45 minutos de ônibus, o que elas já fizeram e em que bairros moram. Ninguém tem a casa mostrada: só aparecem grupos de 5 pessoas ou mais. O total a até 30 minutos é grátis; o resto vem com a Consulta de salários ou um plano.",
+        r: "No menu, em Atrair › Mapa de talentos, escolha uma vaga e veja quantas pessoas que procuram trabalho moram a até 15, 30 e 45 minutos de ônibus, o que elas já fizeram e em que bairros moram. Ninguém tem a casa mostrada: só aparecem grupos de 5 pessoas ou mais. O total a até 30 minutos é grátis; o resto vem com a Consulta de salários ou um plano.",
       },
       {
         p: "Assino um plano e preciso de mais vagas no ar. Como mudo de faixa?",

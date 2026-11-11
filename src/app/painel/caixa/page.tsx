@@ -1,5 +1,6 @@
-import { Download, Users, Zap } from "lucide-react";
+import { Download, List, Users, Zap } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
@@ -20,7 +21,7 @@ export const metadata: Metadata = { title: "Candidatos" };
 
 // Candidatos, numa página só (claude/plano-painel-simples.md, parte 2): as etapas no alto (Novos, Em análise,
 // Entrevista, Contratados, Não seguiu), a lista à esquerda e a ficha de quem está aberto à direita, com a
-// decisão e os atalhos de teclado. Vaga, Ordem, Planilha e Triagem rápida em cima. No celular, a lista e a
+// decisão e os atalhos de teclado. Vaga, Ordem, Lista, Planilha e Triagem rápida em cima. No celular, a lista e a
 // ficha viram duas telas. As mensagens novas ficam nas Mensagens; a antiga "Lista e planilha" e a página de
 // Contratados (fora da agência) trazem para cá.
 
@@ -75,6 +76,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
   const vaga =
     pedidaVaga && UUID.test(pedidaVaga) && itens.some((c) => c.anuncio_id === pedidaVaga) ? pedidaVaga : null;
   const planilha = `/painel/candidatos/planilha${vaga ? `?vaga=${vaga}` : ""}`;
+  // a lista de todos, com os detalhes de cada um (saiu do menu em 11/11/2026: fica aqui, ao lado da planilha)
+  const lista = `/painel/candidatos${vaga ? `?vaga=${vaga}` : ""}`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -98,6 +101,17 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cai
                 </span>
               </BotaoLink>
             )}
+            <Link
+              href={lista}
+              aria-label="Ver todos em lista"
+              title="Todos os candidatos numa lista, com os detalhes de cada um"
+              className={classesBotao("secundario", "sm", "min-w-10 px-2.5 sm:px-3.5")}
+            >
+              <List aria-hidden />
+              <span aria-hidden className="hidden sm:inline">
+                Lista
+              </span>
+            </Link>
             <a
               href={planilha}
               aria-label="Baixar planilha"

@@ -59,6 +59,7 @@ const REGRAS: Regra[] = [
         "Leve cada pessoa para a etapa certa: assim nada fica esquecido e o candidato sabe em que pé está.",
         "A nota de aderência mostra o porquê de cada item. Aceita quem está começando? Marque “Aceita sem experiência” na vaga: o primeiro emprego vai a até 79%, em vez de 40%.",
         "As anotações da ficha são só suas: o candidato não vê.",
+        "Lista mostra todos numa lista só, com os detalhes; Planilha baixa para o Excel.",
       ],
     },
   },

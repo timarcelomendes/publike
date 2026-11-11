@@ -11,7 +11,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = { title: "Convite automático", robots: { index: false } };
 
-// Ferramentas › Convite automático (migração 20270418120000; claude/plano-convite-automatico-30-dias-e-anual.md,
+// Atrair › Convite automático (migração 20270418120000; claude/plano-convite-automatico-30-dias-e-anual.md,
 // parte 4): as vagas no ar, cada uma com o liga e desliga e o recado. O aviso de quem combina continua grátis.
 
 export default function PaginaConviteAutomatico() {

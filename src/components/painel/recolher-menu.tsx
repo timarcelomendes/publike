@@ -7,8 +7,9 @@ const CHAVE = "publike_menu_recolhido";
 const nuncaMuda = () => () => {};
 
 // O CSS do menu recolhido, aqui junto (não no globals.css): vai com o menu, em qualquer página que o mostre. Só no
-// computador; os nomes continuam para o leitor de tela; o que pede ação vira um ponto no canto do ícone.
-const CSS = "@media (min-width:64rem){html[data-menu-recolhido] [data-painel-grade]{grid-template-columns:3.5rem minmax(0,1fr);column-gap:1.5rem}html[data-menu-recolhido] [data-menu-some]{display:none !important}html[data-menu-recolhido] [data-menu-texto]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}html[data-menu-recolhido] [data-menu-link]{justify-content:center;padding-inline:0}html[data-menu-recolhido] [data-menu-caminho]::before{display:none}html[data-menu-recolhido] [data-menu-pilula]{position:absolute;top:0.25rem;right:0.25rem;min-width:0;width:0.625rem;height:0.625rem;padding:0;font-size:0;line-height:0;background:var(--pk-terra)}}";
+// computador; os nomes continuam para o leitor de tela; o que pede ação vira um ponto no canto do ícone; o nome de cada
+// grupo (Atrair, Selecionar...) vira um traço, e os grupos fechados se abrem (sem o nome, não daria para abrir).
+const CSS = "@media (min-width:64rem){html[data-menu-recolhido] [data-painel-grade]{grid-template-columns:3.5rem minmax(0,1fr);column-gap:1.5rem}html[data-menu-recolhido] [data-menu-some]{display:none !important}html[data-menu-recolhido] [data-menu-texto]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}html[data-menu-recolhido] [data-menu-link]{justify-content:center;padding-inline:0}html[data-menu-recolhido] [data-menu-caminho]::before{display:none}html[data-menu-recolhido] [data-menu-traco]{display:block}html[data-menu-recolhido] [data-grupo-itens]>li{display:block !important}html[data-menu-recolhido] [data-menu-pilula]{position:absolute;top:0.25rem;right:0.25rem;min-width:0;width:0.625rem;height:0.625rem;padding:0;font-size:0;line-height:0;background:var(--pk-terra)}}";
 
 /**
  * Recolher o menu do painel no computador, ficando só os ícones (pedido do Marcelo, 10/11/2026). A escolha fica neste
