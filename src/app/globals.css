@@ -410,11 +410,10 @@
    só o conteúdo, sem o topo, o rodapé, a barra de baixo e os avisos do site. Em qualquer página,
    o que tem data-nao-imprimir (botões, formulários) fica de fora do papel. */
 @media print {
-  /* só a página na tela: a de onde se saiu fica escondida (display: none) pelo Next */
-  body:has([data-imprimir]:not([style*="display: none"], [style*="display: none"] *)) > :not(main) {
+  body:has([data-imprimir]) > :not(main) {
     display: none !important;
   }
-  body:has([data-imprimir]:not([style*="display: none"], [style*="display: none"] *)) {
+  body:has([data-imprimir]) {
     padding-bottom: 0 !important;
   }
   [data-nao-imprimir] {

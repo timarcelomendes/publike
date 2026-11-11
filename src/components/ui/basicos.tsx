@@ -8,7 +8,7 @@ import { LOGO, LOGO_LARGURA } from "./logo-caminhos";
 /**
  * O painel usa a largura da janela até 96rem (11/11/2026: a ficha dos candidatos ficava espremida no meio de uma tela
  * larga); o topo, o "Voltar" e o rodapé de quem está no painel acompanham, para alinhar com o menu.
- * Vem do endereço (html[data-largura], src/components/largura-da-pagina.tsx), não da página: o Next guarda escondida
+ * Vem do html[data-largura] (src/components/largura-da-pagina.tsx), marcado pelo endereço, não pela página: o Next guarda escondida
  * a página de onde se saiu, e o topo ficava com a largura dela.
  */
 export const LARGO_NO_PAINEL = "lg:[html[data-largura=painel]_&]:max-w-[96rem]";

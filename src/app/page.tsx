@@ -1,6 +1,7 @@
 import { Eye } from "lucide-react";
 import { Suspense, type ReactNode } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
+import { MarcarPaginaLarga } from "@/components/largura-da-pagina";
 import { BuscaEsqueleto, BuscaExplorar, Explorar, ExplorarEsqueleto } from "@/components/explorar/explorar";
 import { EmpresasContratando } from "@/components/home/empresas-contratando";
 import { FaixaArte } from "@/components/home/faixa-arte";
@@ -180,6 +181,7 @@ function LinhaDaConta({ searchParams, soOlhar = false }: { searchParams: Paramet
   return (
     // no computador grande, até 1280 px: o meio fica com espaço para o tíquete inteiro
     <Container data-pagina-larga="" className="pt-4 pb-4 sm:pt-6 xl:max-w-7xl">
+      <MarcarPaginaLarga />
       <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[232px_minmax(0,1fr)_280px]">
         {/* as colunas dos lados ficam presas ao rolar (a grade é alta; a coluna, do tamanho dela) */}
         <aside className="hidden flex-col gap-4 lg:sticky lg:top-[88px] lg:flex">
