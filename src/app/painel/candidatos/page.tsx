@@ -34,7 +34,7 @@ import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { BotaoLink, classesBotao } from "@/components/ui/botao";
 import { classesEntrada } from "@/components/ui/campo";
 import { marcaDeContato } from "@/lib/contato-candidato";
-import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
+import { calcularAderencia, ordemDaNota, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { MODO_DEMO } from "@/lib/config";
 import {
   ETAPAS_CANDIDATO,
@@ -299,7 +299,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/can
   // entrevista mais próxima primeiro; encerrados, os mais novos
   const peso = (c: Candidato) => {
     const a = aderencias.get(chave(c));
-    return !a ? -1 : a.eliminado ? -2 : (a.nota ?? -1);
+    return !a ? -1 : a.eliminado ? -2 : ordemDaNota(a);
   };
   const recente = (a: Candidato, b: Candidato) => new Date(b.curtido_em).getTime() - new Date(a.curtido_em).getTime();
   const grupos: Record<Grupo, Candidato[]> = { responder: [], andamento: [], encerrados: [] };

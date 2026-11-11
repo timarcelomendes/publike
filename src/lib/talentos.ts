@@ -2,6 +2,8 @@
 // empresa, comércio e agência que entraram veem o currículo completo e convidam para uma
 // vaga. O contato só aparece no match.
 
+import type { Aderencia } from "./aderencia";
+
 /** No máximo, quantas habilidades no currículo (o banco confere de novo). */
 export const MAX_HABILIDADES = 15;
 
@@ -62,4 +64,41 @@ export function textoDaExperiencia(meses: number, temCargos = false) {
 /** O que aparece em cima do cartão: o que a pessoa faz ou, sem isso, o último cargo. */
 export function tituloDoTalento(t: Pick<TalentoResumo, "titulo" | "cargos">) {
   return t.titulo || t.cargos[0] || "Procura trabalho";
+}
+
+// ------------------------------------------------------------------ Para a sua vaga
+
+/**
+ * Tem aderência à vaga (11/11/2026, claude/plano-pesos-da-aderencia.md), pelo que o currículo mostra da função
+ * (`a.funcao`, antes do perfil da vaga):
+ * - vaga de experiência: já trabalhou na função, numa área parecida, estudou na área ou fez um curso dela (0,5 ou
+ *   mais). Só as habilidades escritas não bastam, e bater a cidade, o horário e a escolaridade sem nada da função
+ *   também não ("Atendente de Copom" para "Analista de sistemas"; o primeiro emprego sem nada da função, 03/11 e
+ *   11/11/2026).
+ * - vaga de entrada: isso, ou 70% ou mais de nota (quem mora perto e pode no horário: a função só soma).
+ * - vaga sem função reconhecida no título: 50% ou mais de nota.
+ * Fica de fora quem foi eliminado por uma pergunta e quem não tem algo que a vaga pede (escolaridade, CNH, horário).
+ */
+export function entraEmParaAVaga(a: Aderencia) {
+  if (a.eliminado || a.faltam?.length) return false;
+  if (a.funcao == null) return (a.nota ?? 0) >= 50;
+  return a.funcao >= 0.5 || (a.perfil === "entrada" && (a.nota ?? 0) >= 70);
+}
+
+/**
+ * O nível rígido ("Atende a vaga"): nenhum item da vaga que dá para conferir fica de fora (escolaridade, tempo de
+ * experiência, CNH, horário, distância: cada um inteiro, nada "em parte") e a nota em 70% ou mais. Na vaga de
+ * experiência, também trabalhou na mesma função (não só área parecida, estudo ou curso); na de entrada, a função não
+ * precisa bater. O que o currículo não diz ("?") não conta contra.
+ */
+export function atendeAVaga(a: Aderencia) {
+  if (!entraEmParaAVaga(a)) return false;
+  if (a.perfil === "experiencia" && a.funcao !== null && a.funcao < 1) return false;
+  const falta = a.criterios.some(
+    (k) =>
+      !k.extra &&
+      !(k.funcao && a.perfil === "entrada") &&
+      (k.ok === false || (k.ok === true && (k.parte ?? 1) < 1)),
+  );
+  return !falta && (a.nota ?? 0) >= 70;
 }

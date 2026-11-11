@@ -20,6 +20,7 @@ import { salvarAnuncio } from "@/lib/acoes/anuncios";
 import { buscarEnderecoDoPonto } from "@/lib/acoes/cep";
 import { registrarPassoPublicar } from "@/lib/acoes/funil-publicar";
 import type { RascunhoAnuncio } from "@/lib/acoes/ia";
+import { perfilDaVaga } from "@/lib/aderencia";
 import { BAIRROS } from "@/lib/bairros";
 import { categoriaSugerida } from "@/lib/categoria-sugerida";
 import { temLugar, type ClienteParaVaga } from "@/lib/clientes";
@@ -281,6 +282,8 @@ export function FormAnuncio({
   const [descricao, setDescricao] = useState(inicial.descricao);
   // o título e a categoria, para sugerir a área quando fica em "Outros" (categoria-sugerida.ts)
   const [tituloAtual, setTituloAtual] = useState(inicial.titulo);
+  // a experiência que a vaga pede: com "Não informar", a dica diz se a nota trata a vaga como de entrada
+  const [experiencia, setExperiencia] = useState(inicial.experiencia ?? "");
   // o cargo na carteira (CBO): sugerido pelo título ou escolhido; a faixa do mercado (passo 2) usa
   const [funcao, setFuncao] = useState<FuncaoParaForm | null>(inicial.funcao ?? null);
   const [categoriaAtual, setCategoriaAtual] = useState(inicial.categoria);
@@ -1172,6 +1175,7 @@ export function FormAnuncio({
               <Seletor
                 {...ligarCampo("experiencia", erros.experiencia)}
                 defaultValue={inicial.experiencia ?? ""}
+                onChange={(e) => setExperiencia(e.target.value)}
                 className={classesEntrada}
               >
                 <option value="">Não informar</option>
@@ -1193,6 +1197,13 @@ export function FormAnuncio({
               </Seletor>
             </Campo>
           </div>
+          {!experiencia && (
+            <p className="-mt-2 text-body-sm text-ink-muted">
+              {perfilDaVaga({ experiencia: null, titulo: tituloAtual, descricao, cbo: funcao?.cbo ?? null }) === "entrada"
+                ? "Pelo título, a vaga conta como de entrada: quem está no primeiro emprego não perde pontos na nota de aderência. Pede experiência? Escolha o tempo em Experiência."
+                : "Aceita quem está no primeiro emprego? Escolha “Aceita sem experiência” em Experiência: sem isso, a nota de aderência conta o que o currículo mostra da função."}
+            </p>
+          )}
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-label">Pessoas com deficiência (PCD)</legend>
             <div className="flex flex-wrap gap-2">

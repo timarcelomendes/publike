@@ -1,7 +1,7 @@
 import "server-only";
 import { indicacoesDaVaga } from "./indicacao";
 import { diaADiaDasVagas, jeitosDasPessoas } from "./jeito-de-trabalhar";
-import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
+import { calcularAderencia, ordemDaNota, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { esperaCurriculo, etapaQueVale, type EtapaCandidato } from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
@@ -182,10 +182,10 @@ export async function montarQuadro(anuncio: AnuncioCompleto, agora: number) {
       indicadoPor: indicacoes.get(p.perfil_id) ?? null,
     };
   });
-  // os mais aderentes primeiro; empate: quem curtiu antes
+  // os mais aderentes primeiro (no mesmo teto, a nota sem teto desempata); empate: quem curtiu antes
   cartoes.sort(
     (a, b) =>
-      (b.aderencia.nota ?? -1) - (a.aderencia.nota ?? -1) ||
+      ordemDaNota(b.aderencia) - ordemDaNota(a.aderencia) ||
       new Date(a.curtido_em).getTime() - new Date(b.curtido_em).getTime(),
   );
   return { cartoes, modelos, temTriagem: perguntas.some((q) => q.esperada), curriculos };

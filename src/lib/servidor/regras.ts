@@ -64,6 +64,7 @@ function contextoDe(p: Pendente, agora: number): ContextoDaPessoa {
   const cv = p.curriculo
     ? {
         escolaridade: (p.curriculo.escolaridade as string | null) ?? null,
+        curso: (p.curriculo.curso as string | null) ?? null,
         // com o `cbo` que comContexto pôs (lerExperiencias jogaria fora)
         experiencias: lerExperiencias(p.curriculo.experiencias).map((e, i) => {
           const cbo = (p.curriculo?.experiencias as { cbo?: string }[] | undefined)?.[i]?.cbo;

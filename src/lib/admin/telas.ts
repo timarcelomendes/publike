@@ -39,6 +39,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/matches", nome: "Matches" },
       { href: "/admin/esperando", nome: "Esperando" },
       { href: "/admin/vagas-paradas", nome: "Vagas paradas" },
+      { href: "/admin/aderencia", nome: "Nota de aderência" },
       { href: "/admin/retorno", nome: "Retorno" },
       { href: "/admin/salarios", nome: "Salários" },
     ],

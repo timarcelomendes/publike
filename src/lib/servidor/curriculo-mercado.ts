@@ -247,12 +247,12 @@ const salariosPorMes = (vagas: VagaDoMercado[]) =>
 const media = (l: number[]) => l.reduce((t, x) => t + x, 0) / l.length;
 
 /**
- * A vaga é da área da pessoa: a função dela ou uma parecida (só um curso ou uma habilidade não bastam). Sem a função
- * para conferir (o primeiro emprego), vale.
+ * A vaga é da área da pessoa: a função dela, uma parecida ou o que ela estudou (só um curso ou uma habilidade não
+ * bastam). Conta o que o currículo mostra da função antes do perfil da vaga (na vaga de entrada, a nota da função
+ * começa na metade). Sem a função para conferir, ou no primeiro emprego, vale.
  */
 function daArea(a: Aderencia) {
-  const f = a.criterios.find((k) => k.funcao);
-  return !f || (f.parte ?? (f.ok ? 1 : 0)) >= 0.6;
+  return a.funcao == null || a.primeiroEmprego || a.funcao >= 0.6;
 }
 
 /**

@@ -1,6 +1,6 @@
 import "server-only";
 import { diaADiaDasVagas, jeitosDasPessoas } from "./jeito-de-trabalhar";
-import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
+import { calcularAderencia, ordemDaNota, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
 import { abaDaEtapa, esperaCurriculo, esperaResposta } from "@/lib/constantes";
 import {
   listarCurriculosDosInteressados,
@@ -114,7 +114,7 @@ export const naAba: Record<Aba, (c: ItemCaixa) => boolean> = {
 /** Mais aderente primeiro; eliminado no fim; empate: quem curtiu antes espera mais. */
 function peso(c: ItemCaixa) {
   const a = c.aderencia;
-  return !a ? -1 : a.eliminado ? -2 : (a.nota ?? -1);
+  return !a ? -1 : a.eliminado ? -2 : ordemDaNota(a);
 }
 const recente = (a: ItemCaixa, b: ItemCaixa) => new Date(b.curtido_em).getTime() - new Date(a.curtido_em).getTime();
 const quandoEntrevista = (a: ItemCaixa, b: ItemCaixa) => {

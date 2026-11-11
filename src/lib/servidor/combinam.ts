@@ -1,6 +1,6 @@
 import "server-only";
 import { lerReputacao, reputacaoNoEmail } from "@/lib/reputacao";
-import { matchComAVaga, type Aderencia, type CamposDaVaga, type Candidato } from "@/lib/aderencia";
+import { matchComAVaga, outraArea, type Aderencia, type CamposDaVaga, type Candidato } from "@/lib/aderencia";
 import { formatarLugar } from "@/lib/formato";
 import { pracaDaCidade } from "@/lib/pracas";
 import { comFuncaoDasVagas, comFuncoes } from "./funcoes-pelo-contexto";
@@ -101,10 +101,8 @@ const CONTA_DO_TIPO = { vagas_semana: "vagas", talentos_semana: "talentos", tale
 
 type Curriculo = NonNullable<Candidato["curriculo"]>;
 
-/** A experiência é de outra área: o número baixo não diz nada (o mesmo "Outra área" do site). */
-export function outraArea(a: Aderencia) {
-  return a.criterios.some((c) => c.funcao && c.ok === false);
-}
+/** A experiência é de outra área (o mesmo "Outra área" do site, em src/lib/aderencia.ts). */
+export { outraArea };
 
 /** As cidades da praça de quem vê (Goiânia e a região); fora das praças, só a própria cidade. */
 export function cidadesPerto(cidade: string | null): readonly string[] {
@@ -128,6 +126,7 @@ export function comoCurriculo(dado: unknown): Curriculo | null {
   const c = dado as Record<string, unknown>;
   return {
     escolaridade: (c.escolaridade as string | null) ?? null,
+    curso: (c.curso as string | null) ?? null,
     experiencias: Array.isArray(c.experiencias) ? (c.experiencias as Curriculo["experiencias"]) : [],
     cnh: (c.cnh as string | null) ?? null,
     disponibilidade: Array.isArray(c.disponibilidade) ? (c.disponibilidade as string[]) : [],

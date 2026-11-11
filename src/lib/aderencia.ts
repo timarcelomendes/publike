@@ -1,4 +1,4 @@
-// Nota de aderência: o quanto o candidato bate com a vaga, item por item.
+// Nota de aderência: o quanto o candidato bate com a vaga, item por item (claude/plano-pesos-da-aderencia.md).
 //
 // Compara tudo o que a vaga define e que dá para conferir no currículo, no perfil e
 // nas respostas:
@@ -7,23 +7,25 @@
 //   não conta) · CNH · horário (turnos, dias e escala da vaga × quando a pessoa pode
 //   trabalhar) · perto da vaga (o bairro, a região e a cidade) · as perguntas com a
 //   resposta que a empresa procura · as habilidades e os cursos que a própria vaga cita.
-// Cada item vale de 0 a 1 (`parte`). Quatro valem em parte quando batem em parte:
-//   a função ...... a mesma (1), de área parecida (0,6: vendedora numa vaga de atendente),
-//                   só num curso (0,5) ou nas habilidades (0,4), outra área (0)
+// A vaga é de entrada (aceita o primeiro emprego) ou de experiência: perfilDaVaga.
+// Nota = a função × o peso dela (60% na vaga de experiência, 30% na de entrada) + o resto × a média dos
+// outros itens, cada um com o seu peso (perto, horário e tempo 2; escolaridade, CNH, cada pergunta e os "+" 1).
+// A função vale pelo que o currículo mostra: a mesma (1), de área parecida (0,6: vendedora numa vaga de
+// atendente), estudou na área (0,6), só um curso (0,5) ou uma habilidade (0,4), nada (0, também no primeiro
+// emprego). Na vaga de entrada, começa na metade (0,5 + a metade disso): quem não tem nada da função, no
+// primeiro emprego ou vindo de outra área, não perde pontos. Os outros itens valem em parte quando batem em parte:
 //   o tempo ....... os meses na função (os de área parecida contam a metade) ÷ os pedidos
 //   o horário ..... a parte dos períodos da vaga em que a pessoa pode
 //   perto ......... o mesmo bairro, a mesma região ou a cidade sem regiões (1), outra região
 //                   (0,75 ou 0,6, pela distância), outra cidade (0,5 a 0,15, pela distância), longe (0)
-// Nota = 60% a função (PESO_DA_FUNCAO: a escolaridade, a cidade e o horário não fazem alguém
-// de TI servir para mecânico) + 40% a média dos outros itens. O que não dá para saber (sem
-// currículo, sem resposta) fica de fora da conta e aparece com "?". A experiência na função
-// conta quando a vaga pede experiência ou quando a pessoa tem algum trabalho (ou um título)
-// no currículo; sem nenhum, numa vaga que aceita sem, fica de fora. As habilidades e os
-// cursos que a vaga cita só somam ("+"): aparecem quando a pessoa tem.
-// Com poucos itens para conferir, a nota vai até 85% (1 ou 2 itens) ou 92% (3): bater a
-// cidade e a função diz menos que bater tudo o que uma vaga completa pede.
+// O que não dá para saber (sem currículo, sem resposta) fica de fora da conta e aparece com "?".
+// As habilidades e os cursos que a vaga cita só somam ("+"): aparecem quando a pessoa tem.
+// Tetos: faltou o que a vaga pede (a escolaridade, a CNH ou nenhum dos horários em que a pessoa pode), a nota
+// vai até 45%; com poucos itens para conferir, até 85% (1 ou 2 itens) ou 92% (3): bater a cidade e a função diz
+// menos que bater tudo o que uma vaga completa pede. A nota sem os tetos (`bruta`) desempata.
 // Pergunta eliminatória respondida diferente: nota 0. Nada para comparar: sem nota.
-// A descrição livre da vaga só é lida para achar as habilidades e os cursos que ela cita.
+// A descrição livre da vaga só é lida para achar as habilidades e os cursos que ela cita e se ela aceita sem
+// experiência.
 
 import { trabalhaAqui, type Periodo as PeriodoDoTrabalho } from "./experiencia";
 import { DISPONIBILIDADES, ESCOLARIDADES, EXPERIENCIAS, nomeEscolaridade } from "./constantes";
@@ -48,6 +50,10 @@ export type Criterio = {
   funcao?: boolean;
   /** só um sinal (o jeito de trabalhar): aparece na lista, mas não entra na nota nem elimina */
   sinal?: boolean;
+  /** o quanto pesa entre os outros itens (sem ele: 1) */
+  peso?: number;
+  /** o que a vaga pede e a pessoa não tem: a nota não passa de TETO_SEM_OBRIGATORIO */
+  obrigatorio?: boolean;
 };
 
 export type Aderencia = {
@@ -60,7 +66,56 @@ export type Aderencia = {
   emParte: number;
   /** a nota parou neste teto (85 ou 92) porque deu para conferir poucos itens; null: não parou */
   teto: number | null;
+  /** a nota sem os tetos: desempata quem ficou no mesmo teto */
+  bruta: number | null;
+  /** entrada (aceita o primeiro emprego) ou experiência */
+  perfil: PerfilDaVaga;
+  /** o quanto o currículo mostra da função da vaga (0 a 1), antes do perfil; null: a vaga não diz a função ou sem currículo */
+  funcao: number | null;
+  /** o currículo não tem trabalho nem profissão */
+  primeiroEmprego: boolean;
+  /** o que a vaga pede e a pessoa não tem (os itens obrigatórios que não bateram) */
+  faltam: string[];
 };
+
+/**
+ * "Outra área": nada da função da vaga no currículo de quem já trabalhou ou tem profissão (na vaga de entrada também,
+ * onde isso não tira pontos). Fica fora de "Vagas que combinam", do aviso de segunda e do convite automático. Quem está
+ * no primeiro emprego não é de outra área.
+ */
+export function outraArea(a: Pick<Aderencia, "criterios" | "perfil" | "funcao" | "primeiroEmprego">) {
+  if (a.criterios.some((c) => c.funcao && c.ok === false)) return true;
+  return a.perfil === "entrada" && a.funcao === 0 && !a.primeiroEmprego;
+}
+
+/** Por que a nota parou no teto: "Falta a CNH D: a nota vai até 45%." ou o dos poucos itens; null: não parou. */
+export function motivoDoTeto(a: { teto?: number | null; faltam?: string[] }) {
+  if (!a.teto) return null;
+  if (a.teto === TETO_SEM_OBRIGATORIO) {
+    return `Falta ${a.faltam?.length ? listaDeItens(a.faltam) : "algo que a vaga pede"}: a nota vai até ${a.teto}%.`;
+  }
+  return `Com poucos itens para conferir, a nota vai até ${a.teto}%.`;
+}
+
+/** Para ordenar: a nota e, no empate (o mesmo teto), a nota sem teto; sem nota, -1. */
+export function ordemDaNota(a: Pick<Aderencia, "nota" | "bruta"> | null | undefined) {
+  if (!a || a.nota === null) return -1;
+  return a.nota + (a.bruta ?? a.nota) / 1000;
+}
+
+/** "a CNH D", "a escolaridade (Ensino médio completo) e o horário". */
+function listaDeItens(nomes: string[]) {
+  const comArtigo = nomes.map((n) =>
+    n.startsWith("CNH")
+      ? `a ${n}`
+      : n.startsWith("Escolaridade")
+        ? `a escolaridade (${n.replace(/^Escolaridade:\s*/, "")})`
+        : n.startsWith("Horário")
+          ? "o horário"
+          : n.toLowerCase(),
+  );
+  return comArtigo.length > 1 ? `${comArtigo.slice(0, -1).join(", ")} e ${comArtigo[comArtigo.length - 1]}` : comArtigo[0];
+}
 
 /** O item bate só em parte: a função de área parecida, parte do tempo ou do horário, um pouco longe. */
 export function atendeEmParte(k: Criterio) {
@@ -106,7 +161,7 @@ type Vaga = {
 export type Candidato = {
   curriculo:
     | (Pick<Curriculo, "escolaridade" | "experiencias" | "cnh"> &
-        Partial<Pick<Curriculo, "disponibilidade" | "cursos" | "estudos" | "titulo" | "habilidades" | "jeito">>)
+        Partial<Pick<Curriculo, "disponibilidade" | "cursos" | "estudos" | "titulo" | "habilidades" | "jeito" | "curso">>)
     | null;
   respostas: Respostas;
   cidade: string | null;
@@ -181,7 +236,9 @@ const GENERICAS = new Set(
     // Implantação de Sistemas" dava 100% em "Consultor de vendas" só pela palavra
     "consultor consultora especialista diretor diretora manager lead head owner specialist " +
     // a equipe, não a função: "Product Chapter Lead" dava "área parecida" com chapeiro (as 4 letras de "chap")
-    "chapter squad tribe"
+    "chapter squad tribe " +
+    // o tipo do cargo, não a função: "Engenheiro de dados" não é "Engenheiro civil"
+    "engenheiro engenheira engenharia"
   ).split(" "),
 );
 
@@ -285,9 +342,10 @@ function textoDoTrabalho(e: Curriculo["experiencias"][number]) {
 
 /**
  * A experiência na função, de 0 a 1: um cargo do currículo ou o título com a mesma raiz do título da
- * vaga (1); da mesma área de trabalho (0,6); só um curso (0,5) ou uma habilidade (0,4) com a mesma
- * raiz; nada disso (0, "Outra área"). `usado`: o curso ou a habilidade que contou (não soma de novo
- * no "+").
+ * vaga (1); da mesma área de trabalho (0,6); estudou na área, no curso do técnico, da faculdade ou da
+ * pós (0,6); só um curso (0,5) ou uma habilidade (0,4) com a mesma raiz; nada disso (0, "Outra área"
+ * ou o primeiro emprego sem nada da função). `usado`: o curso ou a habilidade que contou (não soma de
+ * novo no "+").
  */
 /** A função da vaga: o título e, quando a IA leu o texto todo, a ocupação da CBO. */
 type FuncaoDaVaga = { titulo: string; cbo: string | null };
@@ -358,6 +416,8 @@ function funcaoNoCurriculo(
   }
   const area = cv.titulo && daVaga.length ? areaEmComum(daVaga, palavrasDaFuncao(cv.titulo)) : null;
   if (area) return { parte: 0.6, detalhe: `No currículo: ${cv.titulo} (área parecida: ${area})` };
+  const formacao = [cv.curso, ...(cv.estudos ?? []).map((e) => e.curso)].find((x): x is string => Boolean(x && bate(x)));
+  if (formacao) return { parte: 0.6, detalhe: `Estudou ${formacao} (sem trabalho na função)` };
   const curso = (cv.cursos ?? []).find(bate);
   if (curso) return { parte: 0.5, detalhe: `Fez o curso: ${curso} (sem trabalho na função)`, usado: curso };
   const habilidade = (cv.habilidades ?? []).find(bate);
@@ -398,17 +458,64 @@ export function funcaoParecida(
   return areaEmComum(a, b) ? 0.6 : 0;
 }
 
-/** O currículo diz o que a pessoa faz: algum trabalho ou a profissão (no primeiro emprego, a função não conta). */
+/** O texto da vaga diz que aceita quem não tem experiência ("Não é necessário ter experiência", "primeiro emprego"). */
+const ACEITA_SEM =
+  /\b(sem experiencia|nao (e |eh )?(necessari[oa]|preciso|precisa|exigid[oa]|obrigatori[oa])( ter)? experiencia|nao (exigimos|exige|pedimos|precisamos de|precisa de) experiencia|primeiro emprego)\b/;
+const NAO_ACEITA_SEM = /\bnao aceit\w*( candidat\w*)? sem experiencia\b/;
+
+export type PerfilDaVaga = "entrada" | "experiencia";
+
+/** Funções que costumam aceitar o primeiro emprego, quando a empresa não diz nada da experiência. */
+const FUNCOES_DE_ENTRADA =
+  /\b(atendente|auxiliar|ajudante|repositora?|empacotadora?|embaladora?|balconista|caixa|recepcionista|telemarketing|teleatendente|teleoperadora?|servente|copeira?|lavadora?|carregador|separadora?|frentista|promotora?|panfletista|cumim|estoquista)\b/;
+/** Mesmo com a palavra de entrada, pedem a formação da área ("Auxiliar de enfermagem"). */
+const FUNCOES_COM_FORMACAO = /\b(enfermagem|enfermeir\w*|odonto\w*|saude bucal|radiolog\w*|laboratori\w*|veterinari\w*|nutricion\w*|fisioterap\w*)\b/;
+
+/**
+ * Vaga de entrada: aceita quem está no primeiro emprego, e a experiência na função só soma. É de entrada quando a vaga
+ * marca "Aceita sem experiência", quando é de aprendiz, estágio ou trainee, quando o texto diz que não precisa de
+ * experiência ou, se a empresa não disse nada, quando o título é de uma função de entrada (FUNCOES_DE_ENTRADA), fora as
+ * de saúde e as de gestão, nível superior e técnico na CBO. Pedir 6 meses, 1 ano ou 2 anos faz a vaga ser de
+ * experiência; o resto também é.
+ */
+export function perfilDaVaga(v: {
+  experiencia: string | null;
+  titulo?: string;
+  descricao?: string;
+  cbo?: string | null;
+}): PerfilDaVaga {
+  if (v.experiencia && MESES_PEDIDOS[v.experiencia]) return "experiencia";
+  if (v.experiencia === "sem") return "entrada";
+  const titulo = simples(v.titulo ?? "");
+  if (PROGRAMAS.test(titulo)) return "entrada";
+  const texto = simples(v.descricao ?? "");
+  if (NAO_ACEITA_SEM.test(texto)) return "experiencia";
+  if (ACEITA_SEM.test(texto)) return "entrada";
+  // a empresa não disse: as funções de entrada, fora as de gestão, nível superior e técnico (a CBO começa com 1, 2 ou 3)
+  const qualificada = Boolean(v.cbo && /^[123]/.test(v.cbo)) || FUNCOES_COM_FORMACAO.test(titulo);
+  return FUNCOES_DE_ENTRADA.test(titulo) && !qualificada ? "entrada" : "experiencia";
+}
+
+/** A vaga diz a função: a ocupação da CBO lida do texto ou uma palavra da função no título ("Auxiliar II" não diz). */
+export function dizAFuncao(v: { titulo?: string | null; cbo?: string | null }) {
+  return Boolean(v.cbo) || palavrasDaFuncao(v.titulo ?? "").length > 0;
+}
+
+/** O currículo diz o que a pessoa faz: algum trabalho ou a profissão (sem nada disso, é o primeiro emprego). */
 function temHistorico(cv: CurriculoDoCandidato | null | undefined) {
   return Boolean(cv && (cv.experiencias.length || cv.titulo));
 }
 
 /**
- * Quanto a experiência na função pesa na nota (os outros itens dividem o que sobra). Sem ela, a nota
- * não passa de 40%: bater a escolaridade, a cidade e o horário não faz alguém de TI servir para
- * mecânico.
+ * Quanto a experiência na função pesa na nota da vaga de experiência (os outros itens dividem o que
+ * sobra). Sem ela, a nota não passa de 40%: bater a escolaridade, a cidade e o horário não faz alguém
+ * de TI servir para mecânico.
  */
 export const PESO_DA_FUNCAO = 0.6;
+/** Na vaga de entrada, a função pesa menos: perto, horário e o resto decidem mais. */
+export const PESO_DA_FUNCAO_ENTRADA = 0.3;
+/** Falta algo que a vaga pede (CNH, escolaridade, nenhum horário que a pessoa pode): a nota não passa disto. */
+export const TETO_SEM_OBRIGATORIO = 45;
 
 /** Os meses dos trabalhos do currículo: na função da vaga, em área parecida e nas outras. */
 function mesesNaFuncao(vaga: FuncaoDaVaga, experiencias: Curriculo["experiencias"], agora: number) {
@@ -577,6 +684,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     criterios.push({
       nome: `Escolaridade: ${nomeEscolaridade(vaga.escolaridade_minima)}`,
       ok: tem < 0 ? null : tem >= pede,
+      obrigatorio: true,
       detalhe: !cv
         ? "Sem currículo"
         : tem < 0
@@ -604,25 +712,43 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
         nome,
         ...comParte(tem / meses),
         detalhe: tem === 0 ? "Sem experiência no currículo" : `${tempo(tem)} somando os trabalhos`,
+        peso: 2,
       });
     } else {
       const m = mesesNaFuncao(funcaoDaVaga, cv.experiencias, agora);
-      criterios.push({ nome, ...comParte((m.mesma + m.parecida / 2) / meses), detalhe: textoDoTempo(m) });
+      criterios.push({ nome, ...comParte((m.mesma + m.parecida / 2) / meses), detalhe: textoDoTempo(m), peso: 2 });
     }
   }
 
   // Experiência na função: conta (e pesa mais) quando a vaga pede experiência ou quando a pessoa
   // tem alguma experiência ou um título no currículo. Sem experiência nenhuma, numa vaga que aceita
   // sem: fica de fora (o primeiro emprego não é contado contra).
+  const perfil = perfilDaVaga(vaga);
   let usadoNaFuncao: string | undefined;
+  let evidencia: number | null = null;
   if (funcaoDaVaga) {
-    if (meses || temHistorico(cv)) {
-      const f = cv ? funcaoNoCurriculo(funcaoDaVaga, cv) : null;
-      usadoNaFuncao = f?.usado;
+    if (!cv) {
+      if (meses) criterios.push({ nome: "Experiência na função", ok: null, detalhe: "Sem currículo", funcao: true });
+    } else {
+      const f = funcaoNoCurriculo(funcaoDaVaga, cv);
+      usadoNaFuncao = f.usado;
+      evidencia = f.parte;
+      const primeiro = !temHistorico(cv);
+      const detalhe =
+        f.parte > 0
+          ? f.detalhe
+          : perfil === "entrada"
+            ? primeiro
+              ? "Primeiro emprego (vaga de entrada: não perde pontos)"
+              : `${f.detalhe} (vaga de entrada: não perde pontos)`
+            : primeiro
+              ? `Primeiro emprego: nada de “${funcaoDaVaga.titulo}” no currículo (trabalho, estudo, curso ou habilidade)`
+              : f.detalhe;
+      // na vaga de entrada, quem não tem nada da função começa na metade: o que tiver só soma
       criterios.push({
         nome: "Experiência na função",
-        ...(f ? comParte(f.parte) : { ok: null }),
-        detalhe: f?.detalhe ?? "Sem currículo",
+        ...comParte(perfil === "entrada" ? 0.5 + f.parte / 2 : f.parte),
+        detalhe,
         funcao: true,
       });
     }
@@ -633,6 +759,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     criterios.push({
       nome: `CNH ${vaga.cnh}`,
       ok: tem === null ? (cv ? false : null) : [...categorias(vaga.cnh)].every((x) => tem.has(x)),
+      obrigatorio: true,
       detalhe: cv?.cnh ? `Tem CNH ${cv.cnh}` : cv ? "Sem CNH no currículo" : "Sem currículo",
     });
   }
@@ -647,6 +774,8 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
     criterios.push({
       nome: `Horário: ${nomes(precisa)}`,
       ...(!cv || pode.size === 0 ? { ok: null } : comParte(podeNa.length / precisa.length)),
+      peso: 2,
+      obrigatorio: true,
       detalhe: !cv
         ? "Sem currículo"
         : pode.size === 0
@@ -662,7 +791,7 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
   // Perto da vaga: o bairro, a região e a cidade de onde a pessoa mora
   if (c.cidade) {
     const perto = pertoDaVaga(vaga, { cidade: c.cidade, bairro: c.bairro ?? null });
-    criterios.push({ nome: "Perto da vaga", ...comParte(perto.parte), detalhe: perto.detalhe });
+    criterios.push({ nome: "Perto da vaga", ...comParte(perto.parte), detalhe: perto.detalhe, peso: 2 });
   }
 
   let eliminado = false;
@@ -722,18 +851,35 @@ export function calcularAderencia(vaga: Vaga, c: Candidato, agora: number): Ader
   // a função pesa PESO_DA_FUNCAO; os outros itens dividem o resto pela média (sem outros, só ela conta)
   const funcao = conhecidos.find((x) => x.funcao);
   const outros = conhecidos.filter((x) => !x.funcao);
-  const media = outros.length ? outros.reduce((t, x) => t + parteDe(x), 0) / outros.length : null;
+  const pesos = outros.reduce((t, x) => t + (x.peso ?? 1), 0);
+  const media = outros.length ? outros.reduce((t, x) => t + (x.peso ?? 1) * parteDe(x), 0) / pesos : null;
+  const pesoDaFuncao = perfil === "entrada" ? PESO_DA_FUNCAO_ENTRADA : PESO_DA_FUNCAO;
   const conta = funcao
     ? media === null
       ? parteDe(funcao)
-      : PESO_DA_FUNCAO * parteDe(funcao) + (1 - PESO_DA_FUNCAO) * media
+      : pesoDaFuncao * parteDe(funcao) + (1 - pesoDaFuncao) * media
     : media;
-  // com poucos itens para conferir, a nota não chega a 100%
-  const maximo = pedidos <= 2 ? 85 : pedidos === 3 ? 92 : 100;
+  // com poucos itens para conferir, a nota não chega a 100%; faltando algo que a vaga pede, não passa de 45%
+  const faltam = conhecidos.filter((x) => x.obrigatorio && x.ok === false).map((x) => x.nome);
+  const falta = faltam.length > 0;
+  const maximo = Math.min(pedidos <= 2 ? 85 : pedidos === 3 ? 92 : 100, falta ? TETO_SEM_OBRIGATORIO : 100);
   const semTeto = pedidos && conta !== null ? Math.round(100 * conta) : null;
   const nota = eliminado ? 0 : semTeto === null ? null : Math.min(maximo, semTeto);
   const teto = !eliminado && semTeto !== null && semTeto > maximo ? maximo : null;
-  return { nota, eliminado, criterios, conferidos: conhecidos.length, atendidos, emParte, teto };
+  return {
+    nota,
+    eliminado,
+    criterios,
+    conferidos: conhecidos.length,
+    atendidos,
+    emParte,
+    teto,
+    bruta: eliminado ? 0 : semTeto,
+    perfil,
+    funcao: evidencia,
+    primeiroEmprego: Boolean(cv) && !temHistorico(cv),
+    faltam,
+  };
 }
 
 // ---------------------------------------------------------------- dos dois lados
@@ -778,20 +924,25 @@ export function requisitosDaVaga(a: CamposDaVaga) {
  * O % de match de quem procura com a vaga: a mesma conta que a empresa vê, sem as
  * perguntas (a resposta que a empresa procura é só dela, e antes de curtir não há
  * resposta). Só quando dá para conferir onde a pessoa mora e mais alguma coisa que a vaga
- * pede: com a distância só (e os "+"), o número diria pouco. E, se a vaga diz a função, só quando
- * deu para conferir a função: o currículo sem trabalho nem título não diz se a pessoa é da área
- * (sem isso, o horário e a cidade davam 85% de cozinheiro para quem é de TI). Se o título não diz a
- * função ("Auxiliar", "Jovem aprendiz"), só para quem procura o primeiro emprego: para quem já trabalhou
- * ou tem uma profissão no currículo, não dá para dizer que a vaga é da área dela (05/11/2026: dava 100%
- * de "Auxiliar" a quem é de TI). Sem o %, a linha do tempo usa a área do que a pessoa faz e procura.
+ * pede: com a distância só (e os "+"), o número diria pouco. Na vaga de experiência que diz a função e
+ * não pede tempo, quem está no primeiro emprego sem nada da função (estudo, curso ou habilidade) fica
+ * sem %: o currículo não diz se a pessoa é da área. Na vaga de entrada, o primeiro emprego tem o %
+ * (11/11/2026, claude/plano-pesos-da-aderencia.md). Se o título não diz a função ("Auxiliar", "Jovem
+ * aprendiz"), só para quem procura o primeiro emprego: para quem já trabalhou ou tem uma profissão no
+ * currículo, não dá para dizer que a vaga é da área dela (05/11/2026: dava 100% de "Auxiliar" a quem é
+ * de TI). Sem o %, a linha do tempo usa a área do que a pessoa faz e procura.
  */
 export function matchComAVaga(vaga: CamposDaVaga, pessoa: Omit<Candidato, "respostas">, agora: number) {
   const a = calcularAderencia({ ...requisitosDaVaga(vaga), perguntas: [] }, { ...pessoa, respostas: {} }, agora);
   const daVaga = a.criterios.filter((k) => !k.extra && k.ok !== null).length;
-  const dizAFuncao = Boolean(vaga.cbo) || palavrasDaFuncao(vaga.titulo ?? "").length > 0;
-  const semFuncao = dizAFuncao && !a.criterios.some((k) => k.funcao && k.ok !== null);
-  const tituloVago = !dizAFuncao && temHistorico(pessoa.curriculo);
-  return a.nota !== null && daVaga >= 2 && !semFuncao && !tituloVago ? a : null;
+  const comFuncao = dizAFuncao(vaga);
+  const semFuncao = comFuncao && !a.criterios.some((k) => k.funcao && k.ok !== null);
+  const tituloVago = !comFuncao && temHistorico(pessoa.curriculo);
+  // o primeiro emprego sem nada da função, numa vaga de experiência que não pede tempo: sem % (como antes)
+  const pedeTempo = Boolean(vaga.experiencia && MESES_PEDIDOS[vaga.experiencia]);
+  const primeiroSemNada =
+    comFuncao && a.perfil === "experiencia" && !pedeTempo && !temHistorico(pessoa.curriculo) && !a.funcao;
+  return a.nota !== null && daVaga >= 2 && !semFuncao && !tituloVago && !primeiroSemNada ? a : null;
 }
 
 /** O turno no texto da vaga, para as vagas sem horário montado (as mais antigas). */

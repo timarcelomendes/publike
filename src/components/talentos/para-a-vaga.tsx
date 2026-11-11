@@ -2,11 +2,18 @@ import { ChevronDown, ChevronLeft, ChevronRight, Link2, Sparkles, UserSearch } f
 import { diaADiaDasVagas, jeitosDasPessoas } from "@/lib/servidor/jeito-de-trabalhar";
 import { IA } from "@/components/apelido-da-ia";
 import Link from "next/link";
-import { calcularAderencia, requisitosDaVaga, type Aderencia } from "@/lib/aderencia";
+import {
+  calcularAderencia,
+  dizAFuncao,
+  ordemDaNota,
+  perfilDaVaga,
+  requisitosDaVaga,
+  type Aderencia,
+} from "@/lib/aderencia";
 import { nomeDisponibilidade, nomeEscolaridade } from "@/lib/constantes";
 import { copilotoLiberado, obterAnuncio, talentosParaVaga } from "@/lib/dados";
 import { formatarLugar, plural, tempoRelativo } from "@/lib/formato";
-import { MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
+import { atendeAVaga, entraEmParaAVaga, MAX_PAGINAS_TALENTOS, TALENTOS_POR_PAGINA } from "@/lib/talentos";
 import { CurriculoResumo } from "../curriculo-resumo";
 import { SeloCortesia } from "../selo-cortesia";
 import { BotaoConvidar } from "../painel/botao-convidar";
@@ -23,30 +30,10 @@ import { comFuncaoDasVagas, comFuncoes } from "@/lib/servidor/funcoes-pelo-conte
  * ao abrir, o currículo e o porquê da nota. Quem já curtiu a vaga não aparece (está nos candidatos). Sem o
  * contato e com o nome encurtado: o contato sai só no match.
  */
-/**
- * Tem aderência à vaga (03/11/2026): já trabalhou na função, numa área parecida ou fez um curso dela (a
- * experiência na função em 50% ou mais). Só as habilidades escritas não bastam, e bater a cidade, o horário e a
- * escolaridade sem nada da função também não ("Atendente de Copom" para "Analista de sistemas"). Vaga sem
- * função reconhecida no título: 50% ou mais de nota. Quem foi eliminado por um requisito fica de fora.
- */
-function temAderencia(a: Aderencia) {
-  if (a.eliminado) return false;
-  const funcao = a.criterios.find((k) => k.funcao);
-  if (!funcao) return (a.nota ?? 0) >= 50;
-  return funcao.ok === true && (funcao.parte ?? 1) >= 0.5;
-}
-
-/**
- * O nível rígido ("Atende a vaga"): trabalhou na mesma função (não só área parecida ou curso), nenhum item da vaga
- * que dá para conferir fica de fora (escolaridade, tempo de experiência, CNH, horário, distância: cada um inteiro,
- * nada "em parte") e a nota em 70% ou mais. O que o currículo não diz ("?") não conta contra.
- */
-function atendeAVaga(a: Aderencia) {
-  if (!temAderencia(a)) return false;
-  const funcao = a.criterios.find((k) => k.funcao);
-  if (funcao && !(funcao.ok === true && (funcao.parte ?? 1) >= 1)) return false;
-  const falta = a.criterios.some((k) => !k.extra && (k.ok === false || (k.ok === true && (k.parte ?? 1) < 1)));
-  return !falta && (a.nota ?? 0) >= 70;
+/** No primeiro emprego, o que contou da função ("Estudou Ciência de dados"), para a linha do cartão. */
+function oQueContou(a: Aderencia) {
+  if (!a.primeiroEmprego || !a.funcao) return null;
+  return a.criterios.find((k) => k.funcao)?.detalhe.replace(/ \(sem trabalho na função\)$/, "") ?? null;
 }
 
 export type NivelDaSugestao = "leve" | "rigida";
@@ -86,6 +73,8 @@ export async function ParaAVaga({
     jeitosDasPessoas(lista.map((t) => t.perfil_id)),
   ]);
   const requisitos = { ...requisitosDaVaga(vagaComCbo), perguntas: [], dia_a_dia: diaADia.get(vaga.id) ?? null };
+  // a vaga de entrada (aceita quem está começando) que diz a função: a lista é de quem mora perto e pode no horário
+  const entrada = perfilDaVaga(requisitos) === "entrada" && dizAFuncao(requisitos);
   const comAderencia = lista
     .map((t, i) => ({
       t,
@@ -94,6 +83,7 @@ export async function ParaAVaga({
         {
           curriculo: {
             escolaridade: t.escolaridade,
+            curso: t.curso,
             experiencias: experiencias[i].experiencias ?? t.experiencias,
             cursos: t.cursos,
             cnh: t.cnh,
@@ -110,8 +100,8 @@ export async function ParaAVaga({
         agora,
       ),
     }))
-    .filter(({ a }) => temAderencia(a))
-    .sort((x, y) => (y.a.nota ?? -1) - (x.a.nota ?? -1));
+    .filter(({ a }) => entraEmParaAVaga(a))
+    .sort((x, y) => ordemDaNota(y.a) - ordemDaNota(x.a));
   const rigidos = comAderencia.filter(({ a }) => atendeAVaga(a));
   const todos = nivel === "rigida" ? rigidos : comAderencia;
   const niveis = (
@@ -150,8 +140,9 @@ export async function ParaAVaga({
             </BotaoLink>
           }
         >
-          Aqui só entra quem já trabalhou na mesma função e atende cada item da vaga (escolaridade, tempo de experiência,
-          CNH, horário e distância).
+          {entrada
+            ? "Aqui só entra quem atende cada item da vaga (escolaridade, CNH, horário e distância)."
+            : "Aqui só entra quem já trabalhou na mesma função e atende cada item da vaga (escolaridade, tempo de experiência, CNH, horário e distância)."}
         </Vazio>
       </div>
     );
@@ -161,15 +152,21 @@ export async function ParaAVaga({
     return (
       <Vazio
         icone={UserSearch}
-        titulo={`Ninguém em Talentos com experiência para “${vaga.titulo}” ainda`}
+        titulo={
+          entrada
+            ? `Ninguém em Talentos perto e no horário de “${vaga.titulo}” ainda`
+            : `Ninguém em Talentos com experiência para “${vaga.titulo}” ainda`
+        }
         acao={
           <BotaoLink href="/talentos?ver=todos" tamanho="sm" variante="secundario">
             Ver todos os talentos
           </BotaoLink>
         }
       >
-        Aqui só aparece quem já trabalhou na função, numa área parecida ou fez um curso dela. Divulgue o link da vaga
-        ou procure em todos os talentos.
+        {entrada
+          ? "Aqui aparece quem mora perto e pode no horário da vaga, ou já tem experiência, estudo ou curso na função."
+          : "Aqui só aparece quem já trabalhou na função, numa área parecida, estudou ou fez um curso dela."}{" "}
+        Divulgue o link da vaga ou procure em todos os talentos.
       </Vazio>
     );
   }
@@ -205,8 +202,12 @@ export async function ParaAVaga({
         </h2>
         <p className="mt-1 text-body-sm text-ink-muted">
           {nivel === "rigida"
-            ? "Só quem já trabalhou na mesma função e atende cada item da vaga."
-            : "Quem tem experiência, área parecida ou curso na função, quem mais combina primeiro."}{" "}
+            ? entrada
+              ? "Só quem atende cada item da vaga."
+              : "Só quem já trabalhou na mesma função e atende cada item da vaga."
+            : entrada
+              ? "Vaga de entrada: quem mora perto e pode no horário, e quem tem experiência, estudo ou curso na função. Quem mais combina primeiro."
+              : "Quem tem experiência, área parecida, estudo ou curso na função, quem mais combina primeiro."}{" "}
           Convide: a pessoa vê a vaga e, se curtir, chega na sua caixa de entrada.
         </p>
       </div>
@@ -229,6 +230,7 @@ export async function ParaAVaga({
       <ul aria-label={`Talentos para ${vaga.titulo}`} className="flex flex-col gap-3">
         {talentos.map(({ t, a }) => {
           const estudo = nomeEscolaridade(t.escolaridade);
+          const contou = oQueContou(a);
           return (
             <li key={t.perfil_id} className="rounded-lg border border-line bg-surface-200 p-4 shadow-card sm:p-5">
               <div className="flex gap-3">
@@ -248,7 +250,9 @@ export async function ParaAVaga({
                           .slice(0, 2)
                           .map((e) => [e.cargo, e.onde].filter(Boolean).join(" · "))
                           .join(" / ")
-                      : "Primeiro emprego"}
+                      : contou
+                        ? `Primeiro emprego · ${contou}`
+                        : "Primeiro emprego"}
                     {estudo && <span className="text-ink-muted"> · {estudo}</span>}
                     {t.disponibilidade.length > 0 && (
                       <span className="text-ink-muted">

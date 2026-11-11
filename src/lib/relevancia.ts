@@ -1,4 +1,4 @@
-import type { Aderencia } from "./aderencia";
+import { outraArea, type Aderencia } from "./aderencia";
 import { pontosDaArea, semAcento, type QuemProcura } from "./descobrir";
 import { chaveBairro } from "./regioes";
 
@@ -121,7 +121,7 @@ export function pontosDeResposta(r: { taxa: number; horas: number | null } | nul
 
 /** A experiência é de outra área (o mesmo "Outra área" do site). */
 function deOutraArea(m: Aderencia) {
-  return m.criterios.some((c) => c.funcao && c.ok === false);
+  return outraArea(m);
 }
 
 /**

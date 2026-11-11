@@ -1,24 +1,32 @@
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { maisEmParte, type Aderencia, type Criterio } from "@/lib/aderencia";
+import { maisEmParte, motivoDoTeto, outraArea, type Aderencia, type Criterio } from "@/lib/aderencia";
 import { CriteriosDaAderencia } from "./painel/nota-aderencia";
 import { Selo } from "./ui/basicos";
 
 /** O que o selo precisa: a nota e a conta (atende 4 de 5 itens); com os critérios, sabe se é outra área. */
-export type MatchResumo = Pick<Aderencia, "nota" | "atendidos" | "conferidos"> & {
-  emParte?: number;
-  teto?: number | null;
-  criterios?: Criterio[];
-  outraArea?: boolean;
-};
+export type MatchResumo = Pick<Aderencia, "nota" | "atendidos" | "conferidos"> &
+  Partial<Pick<Aderencia, "perfil" | "funcao" | "primeiroEmprego" | "faltam">> & {
+    emParte?: number;
+    teto?: number | null;
+    criterios?: Criterio[];
+    outraArea?: boolean;
+  };
 
 /**
  * A experiência do currículo é em outra área (o item "Experiência na função" não bate nem em parte:
- * nem área parecida, nem curso, nem habilidade). Esse item vale 60% da nota, então o número fica
- * baixo e não diz nada: o selo mostra "Outra área".
+ * nem área parecida, nem estudo, nem curso, nem habilidade; na vaga de entrada, também quem já trabalhou
+ * em outra coisa). O número não diz nada sobre a função: o selo mostra "Outra área".
  */
 export function ehOutraArea(m: MatchResumo) {
-  return m.outraArea ?? Boolean(m.criterios?.some((c) => c.funcao && c.ok === false));
+  if (m.outraArea !== undefined) return m.outraArea;
+  if (!m.criterios) return false;
+  return outraArea({
+    criterios: m.criterios,
+    perfil: m.perfil ?? "experiencia",
+    funcao: m.funcao ?? null,
+    primeiroEmprego: m.primeiroEmprego ?? false,
+  });
 }
 
 const itens = (n: number) => `${n} ${n === 1 ? "item" : "itens"}`;
@@ -43,7 +51,7 @@ export function SeloMatch({ match, className = "" }: { match: MatchResumo; class
   return (
     <Selo
       variante={match.nota >= 80 ? "match" : match.nota >= 50 ? "matchContorno" : "contorno"}
-      title={`Seu currículo atende ${match.atendidos} de ${itens(match.conferidos)} que a vaga pede${maisEmParte(match.emParte)}${match.teto ? ` (com poucos itens para conferir, a nota vai até ${match.teto}%)` : ""}`}
+      title={`Seu currículo atende ${match.atendidos} de ${itens(match.conferidos)} que a vaga pede${maisEmParte(match.emParte)}.${motivoDoTeto(match) ? ` ${motivoDoTeto(match)}` : ""}`}
       className={className}
     >
       {match.nota}% de match
@@ -77,10 +85,11 @@ export function MatchDaVaga({ a, className = "" }: { a: Aderencia; className?: s
       <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:px-5">
         <CriteriosDaAderencia a={a} />
         <p className="text-body-sm text-ink-muted">
-          {a.teto && `Com poucos itens para conferir, a nota vai até ${a.teto}%. `}A conta compara o que a vaga pede com
-          o seu currículo e o bairro do seu perfil
-          {semConta > 0 && ` (${itens(semConta)} sem informação no currículo ficam de fora)`}. A função vale mais, o que
-          bate em parte conta em parte e os itens com “+” só somam.{" "}
+          {motivoDoTeto(a) && `${motivoDoTeto(a)} `}A conta compara o que a vaga pede com o seu currículo e o bairro
+          do seu perfil
+          {semConta > 0 && ` (${itens(semConta)} sem informação no currículo ficam de fora)`}. A função vale mais
+          {a.perfil === "entrada" && " (nesta vaga, que aceita quem está começando, quem não tem experiência não perde pontos)"}
+          , o que bate em parte conta em parte e os itens com “+” só somam.{" "}
           <Link href="/perfil/curriculo" className="font-semibold text-terra-text underline underline-offset-2">
             Atualizar meu currículo
           </Link>

@@ -1,6 +1,6 @@
 import { Check, CircleHelp, Plus, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
-import { atendeEmParte, maisEmParte, type Aderencia } from "@/lib/aderencia";
+import { atendeEmParte, maisEmParte, motivoDoTeto, TETO_SEM_OBRIGATORIO, type Aderencia } from "@/lib/aderencia";
 
 const itens = (n: number) => `${n} ${n === 1 ? "item" : "itens"}`;
 
@@ -22,7 +22,7 @@ export function NotaAderencia({ a, longo = false }: { a: Aderencia; longo?: bool
     a.nota >= 80 ? "bg-cerrado text-on-cerrado" : a.nota >= 50 ? "bg-ipe text-on-ipe" : "bg-surface-300 text-ink";
   return (
     <span
-      title={`Nota de aderência: atende ${a.atendidos} de ${itens(a.conferidos)} da vaga que deu para conferir${maisEmParte(a.emParte)}${a.teto ? ` (com poucos itens, a nota vai até ${a.teto}%)` : ""}`}
+      title={`Nota de aderência: atende ${a.atendidos} de ${itens(a.conferidos)} da vaga que deu para conferir${maisEmParte(a.emParte)}.${motivoDoTeto(a) ? ` ${motivoDoTeto(a)}` : ""}`}
       className={`inline-flex shrink-0 items-center rounded-pill px-2 py-0.5 text-caption font-semibold tabular-nums ${cor}`}
     >
       {a.nota}%{longo && <span className="ml-1 font-normal">de aderência</span>}
@@ -115,7 +115,7 @@ export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; edi
               </>
             )}
             {semConta > 0 && ` (${itens(semConta)} sem informação ficam fora da conta)`}.
-            {a.teto && ` Com poucos itens para conferir, a nota vai até ${a.teto}%.`}
+            {motivoDoTeto(a) && ` ${motivoDoTeto(a)}`}
           </>
         ) : (
           "Nada que dê para conferir ainda: falta currículo ou resposta."
@@ -130,9 +130,13 @@ export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; edi
         </summary>
         <p>
           Entra o que a vaga pede comparado com o currículo, o perfil e as respostas: escolaridade, experiência (o tempo
-          e a função, que vale mais), CNH, horário, onde mora e as perguntas com a resposta que você procura. O que bate
-          em parte conta em parte: uma área parecida, parte do tempo ou do horário, morar um pouco mais longe. Os itens
-          com “+” só somam: as habilidades e os cursos que a vaga cita.
+          e a função), CNH, horário, onde mora e as perguntas com a resposta que você procura.{" "}
+          {a.perfil === "entrada"
+            ? "Esta é uma vaga de entrada (aceita quem está começando): a função vale 30% da nota e quem não tem experiência nela não perde pontos."
+            : "Esta é uma vaga de experiência: a função vale 60% da nota e conta pelo que o currículo mostra (o trabalho na função, uma área parecida, o estudo, um curso ou uma habilidade dela)."}{" "}
+          O que bate em parte conta em parte: parte do tempo ou do horário, morar um pouco mais longe. Faltou a
+          escolaridade, a CNH ou o horário que a vaga pede, a nota vai até {TETO_SEM_OBRIGATORIO}%. Os itens com “+”
+          só somam: as habilidades e os cursos que a vaga cita.
         </p>
       </details>
       {pedidos <= 2 && editarVaga && (
@@ -141,7 +145,8 @@ export function DetalheDaAderencia({ a, editarVaga = null }: { a: Aderencia; edi
           <Link href={editarVaga} className="font-semibold underline underline-offset-2">
             No editar da vaga
           </Link>
-          , diga a experiência, a CNH, o horário e a resposta que você procura nas perguntas: a nota fica mais certeira.
+          , diga a experiência (ou marque “Aceita sem experiência”), a CNH, o horário e a resposta que você procura nas
+          perguntas: a nota fica mais certeira.
         </p>
       )}
     </div>
