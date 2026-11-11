@@ -48,9 +48,9 @@ const SUGESTAO: Record<Produto, Partial<Record<Ciclo, number>>> = {
   video: { MONTHLY: 59, QUARTERLY: 150 },
   automacoes: { MONTHLY: 39, QUARTERLY: 99 },
   // a Consulta de salários (decisão de 05/11/2026: R$ 29,90 por mês)
-  salarios: { MONTHLY: 29.9, QUARTERLY: 76.24 },
+  salarios: { MONTHLY: 29.9, QUARTERLY: 76 },
   // a Página de carreiras sozinha (decisão de 10/11/2026: R$ 19,90 por mês)
-  carreiras: { MONTHLY: 19.9, QUARTERLY: 50.74 },
+  carreiras: { MONTHLY: 19.9, QUARTERLY: 51 },
   // os planos por faixa (lançamento, 10/11/2026; o Plano Empresa subiu para R$ 79 e R$ 199, com 15% no trimestre)
   empresa_5: { MONTHLY: 79, QUARTERLY: 201, YEARLY: 711, AVULSO: 99 },
   empresa_20: { MONTHLY: 199, QUARTERLY: 507, YEARLY: 1791, AVULSO: 249 },
@@ -76,6 +76,8 @@ function lerValor(t: string): number | null {
 }
 
 const CICLOS: Ciclo[] = ["MONTHLY", "QUARTERLY", "YEARLY", "AVULSO"];
+/** Os 3 meses e o anual vão sempre em reais inteiros (11/11/2026). */
+const SEM_CENTAVOS: Ciclo[] = ["QUARTERLY", "YEARLY"];
 const CABECALHO: Record<Ciclo, string> = {
   MONTHLY: "Mensal",
   QUARTERLY: "A cada 3 meses",
@@ -153,7 +155,7 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
     const falhas: string[] = [];
     for (const p of mudados) {
       const l = linhas.get(p.id)!;
-      const r = await chamarAcao(() => salvarPlano(p.id, l.valor, l.ligado));
+      const r = await chamarAcao(() => salvarPlano(p.id, l.valor, l.ligado, p.ciclo));
       if (!r.ok) falhas.push(`${NOME_PRODUTO[p.recurso]} (${NOME[p.ciclo]}): ${r.erro}`);
     }
     setSalvando(false);
@@ -263,6 +265,12 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
                               <input
                                 value={l.valor}
                                 onChange={(e) => mudar(p.id, { valor: e.target.value })}
+                                // os 3 meses e o anual sempre em reais inteiros
+                                onBlur={() => {
+                                  if (!SEM_CENTAVOS.includes(c)) return;
+                                  const v = lerValor(l.valor);
+                                  if (v != null && v !== Math.round(v)) mudar(p.id, { valor: paraTexto(Math.round(v)) });
+                                }}
                                 inputMode="decimal"
                                 placeholder="sem preço"
                                 aria-label={`Preço de ${NOME_PRODUTO[r]}, ${NOME[c]}`}
@@ -331,7 +339,7 @@ export function TabelaDePrecos({ planos }: { planos: PlanoDoAdmin[] }) {
         </details>
       )}
       <p className="text-body-sm text-ink-muted">
-        Mudar o preço vale para quem assinar depois; quem já assina continua com o valor da assinatura dele.
+        Mudar o preço vale para quem assinar depois; quem já assina continua com o valor da assinatura dele. Os 3 meses e o anual ficam sempre em reais inteiros, sem centavos.
       </p>
       {retorno && (
         <Aviso tipo={retorno.ok ? "sucesso" : "erro"}>

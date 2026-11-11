@@ -16,7 +16,10 @@ function falha(error: { code?: string; message: string }): Resultado {
 }
 
 /** O preço e se está à venda. `valor` em reais ("49,90"); vazio: sem preço. */
-export async function salvarPlano(id: string, valor: string, ligado: boolean): Promise<Resultado> {
+/** Os 3 meses e o anual vão sempre em reais inteiros, sem centavos (pedido do Marcelo, 11/11/2026). */
+const SEM_CENTAVOS = new Set(["QUARTERLY", "YEARLY"]);
+
+export async function salvarPlano(id: string, valor: string, ligado: boolean, ciclo?: string): Promise<Resultado> {
   const c = await clienteAdminOuNulo();
   if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
@@ -24,7 +27,11 @@ export async function salvarPlano(id: string, valor: string, ligado: boolean): P
     .replace(/[^\d,.]/g, "")
     .replace(/\.(?=\d{3}(\D|$))/g, "")
     .replace(",", ".");
-  const numero = limpo ? Math.round(Number(limpo) * 100) / 100 : null;
+  const numero = !limpo
+    ? null
+    : ciclo && SEM_CENTAVOS.has(ciclo)
+      ? Math.round(Number(limpo))
+      : Math.round(Number(limpo) * 100) / 100;
   if (numero != null && (!Number.isFinite(numero) || numero < 5 || numero > 100000))
     return { ok: false, erro: "Ponha um preço entre R$ 5 e R$ 100.000." };
   const { error } = await c.rpc("admin_salvar_plano", { p_id: id, p_valor: numero, p_ligado: ligado });
