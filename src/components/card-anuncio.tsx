@@ -21,6 +21,7 @@ import { AcoesDaVagaNoCartao } from "./anuncio/acoes-no-feed";
 import { BotaoSalvarVaga } from "./anuncio/salvar-vaga";
 import { BotaoCurtir } from "./botao-curtir";
 import { ehOutraArea, SeloMatch, type MatchResumo } from "./match-vaga";
+import { SeloMatchFechado } from "./selo-match-fechado";
 import { Avatar, Selo } from "./ui/basicos";
 import { SeloVerificado } from "@/components/selo-verificado";
 
@@ -146,6 +147,8 @@ export function CardAnuncio({
   const modalidade =
     anuncio.tipo === "vaga" && anuncio.regime === "outro" ? null : rotuloModalidade(anuncio.tipo, anuncio.regime);
   const preenchida = Boolean(extras?.preenchida);
+  // sem conta: o % embaçado chama para entrar e ver o quanto a vaga combina (11/11/2026)
+  const fechado = usuarioId === null && anuncio.tipo === "vaga" && !preenchida && !match;
   const prazo = extras && !proprio && !preenchida ? encerra(extras.expiraEm, agora) : null;
   // mais de uma vaga: a faixa no alto do cartão (preenchida, não conta mais)
   const vagas = extras && !servico && !preenchida ? extras.vagas : 1;
@@ -250,7 +253,7 @@ export function CardAnuncio({
         {/* Quem publicou. Na grade, só os selos; na lista, só o nome. */}
         <div
           className={`flex items-center gap-3 group-data-[visao=lista]/visao:col-start-1 ${
-            seloPrincipal || comMatch ? "" : "group-data-[visao=grade]/visao:hidden"
+            seloPrincipal || comMatch || fechado ? "" : "group-data-[visao=grade]/visao:hidden"
           }`}
         >
           {semAutor ? (
@@ -283,10 +286,10 @@ export function CardAnuncio({
           {seloPrincipal && (
             <span className="shrink-0 self-start group-data-[visao=lista]/visao:hidden">{seloPrincipal}</span>
           )}
-          {comMatch && (
+          {(comMatch || fechado) && (
             // na grade, o % fica junto dos selos (o rodapé some)
             <span className="hidden shrink-0 group-data-[visao=grade]/visao:inline-flex">
-              <SeloMatch match={comMatch} />
+              {comMatch ? <SeloMatch match={comMatch} /> : <SeloMatchFechado />}
             </span>
           )}
         </div>
@@ -303,10 +306,10 @@ export function CardAnuncio({
             </h3>
             {servico && <NotaDoProfissional media={anuncio.autor_nota} total={anuncio.autor_avaliacoes} compacto />}
           </div>
-          {comMatch && (
+          {(comMatch || fechado) && (
             // na lista, os selos de cima somem: o % fica ao lado do título
             <span className="hidden shrink-0 group-data-[visao=lista]/visao:block">
-              <SeloMatch match={comMatch} />
+              {comMatch ? <SeloMatch match={comMatch} /> : <SeloMatchFechado />}
             </span>
           )}
           {foto && (
@@ -375,9 +378,9 @@ export function CardAnuncio({
 
         {temRodape && (
           <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-2.5 border-t border-line pt-2.5 text-body-sm text-ink-muted group-data-[visao=grade]/visao:hidden group-data-[visao=lista]/visao:col-start-2 group-data-[visao=lista]/visao:row-span-2 group-data-[visao=lista]/visao:row-start-2 group-data-[visao=lista]/visao:mt-0 group-data-[visao=lista]/visao:justify-end group-data-[visao=lista]/visao:self-start group-data-[visao=lista]/visao:border-0 group-data-[visao=lista]/visao:pt-0">
-            {comMatch && (
+            {(comMatch || fechado) && (
               <span className="shrink-0 group-data-[visao=lista]/visao:hidden">
-                <SeloMatch match={comMatch} />
+                {comMatch ? <SeloMatch match={comMatch} /> : <SeloMatchFechado />}
               </span>
             )}
             {/* os indicadores, também para quem está sem conta: como quem publicou responde e quantos já curtiram */}
