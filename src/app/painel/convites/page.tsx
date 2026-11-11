@@ -56,7 +56,9 @@ async function Conteudo() {
             </Aviso>
           )}
           {d.vagas.length === 0 ? (
-            <p className="text-body text-ink-muted">Você não tem vaga no ar agora.</p>
+            <p className="text-body text-ink-muted">
+              Você não tem vaga aberta agora. As vagas marcadas como preenchidas não mandam convite.
+            </p>
           ) : (
             <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface-200">
               {d.vagas.map((v) => (

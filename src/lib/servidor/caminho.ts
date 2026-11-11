@@ -65,7 +65,7 @@ export const caminhoDaConta = cache(async (): Promise<Caminho> => {
   const vagas = anuncios.filter((a) => a.tipo === "vaga");
   const ids = vagas.map((a) => a.id);
   const supabase = await criarClienteServidor();
-  const [clientes, doCliente, finalistas, links] = await Promise.all([
+  const [clientes, doCliente, finalistas, links, preenchidas] = await Promise.all([
     agencia ? listarMeusClientes().catch(() => null) : Promise.resolve(null),
     agencia && perfil ? clientesDasVagas(perfil.id).catch(() => new Map<string, string>()) : Promise.resolve(new Map()),
     agencia && ids.length
@@ -82,6 +82,16 @@ export const caminhoDaConta = cache(async (): Promise<Caminho> => {
           .in("anuncio_id", ids)
           .then(({ data }) => data ?? [])
       : Promise.resolve([]),
+    // as vagas marcadas como preenchidas seguem "ativo", mas não estão mais no ar (11/11/2026: o menu dizia "1 no
+    // ar" e o Convite automático, nenhuma)
+    ids.length
+      ? supabase
+          .from("anuncios")
+          .select("id")
+          .in("id", ids)
+          .not("preenchida_em", "is", null)
+          .then(({ data }) => new Set((data ?? []).map((a) => a.id as string)))
+      : Promise.resolve(new Set<string>()),
   ]);
 
   const porVaga: VagaNoCaminho[] = vagas.map((a) => {
@@ -113,7 +123,7 @@ export const caminhoDaConta = cache(async (): Promise<Caminho> => {
     agencia,
     clientes: ativos.length,
     listaClientes: ativos,
-    vagasNoAr: vagas.filter((a) => a.status === "ativo").length,
+    vagasNoAr: vagas.filter((a) => a.status === "ativo" && !preenchidas.has(a.id)).length,
     responder: soma((v) => v.responder),
     entrevistas: soma((v) => v.entrevistas),
     prontos: soma((v) => (v.anuncio.status === "ativo" || v.anuncio.status === "pausado" ? v.prontos.length : 0)),
