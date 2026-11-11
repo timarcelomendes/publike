@@ -97,6 +97,14 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
         r: "Depois de curtir, o que a empresa pedir aparece na página da vaga e no seu painel. Teste Prático: um teste de uns 10 minutos pelo celular, para mostrar que você sabe o serviço. Entrevista em vídeo: você grava as respostas pelo celular, na hora que puder, até o prazo que a empresa deu. Horário da entrevista: a empresa oferece os horários livres e você escolhe o que cabe no seu dia, com lembrete na véspera.",
       },
       {
+        p: "Fui chamado para um mutirão de entrevistas. Como funciona?",
+        r: "Mutirão é um dia de entrevistas em que a empresa contrata várias pessoas de uma vez. O convite chega no sino e por e-mail: abra, veja o dia, o endereço e as vagas, e escolha um horário que ainda tem lugar. A entrevista já fica confirmada, e o lembrete chega na véspera. Para trocar, é só tocar em outro horário; se não puder ir, toque em “Não posso ir”, e o lugar fica para outra pessoa. Ir é grátis: ninguém pode cobrar nada de você para participar.",
+      },
+      {
+        p: "Recebi um convite automático para uma vaga. O que é?",
+        r: "Algumas empresas ligam o convite automático: quando o seu currículo combina com a vaga, o convite chega sozinho, com o recado da empresa. Você vê a vaga e decide se curte; o seu contato só aparece no match. Você recebe no máximo 2 convites automáticos por semana. Não quer receber? Em Preferências, desligue “Convites automáticos de empresas”. Os convites que a empresa manda à mão continuam chegando.",
+      },
+      {
         p: "Como sei em que pé está a minha candidatura?",
         r: "No painel, em Candidaturas, cada vaga mostra a etapa (em análise, entrevista, contratado) e chega um aviso a cada mudança. Se a vaga não seguir com você, o Publike avisa e mostra vagas parecidas perto.",
       },
@@ -248,11 +256,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       },
       {
         p: "O que é pago no Publike?",
-        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (gravada, com resumo da IA, ou ao vivo, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar, ou todos juntos no Plano Completo. Veja em “Assinatura e faturas”, no menu da sua conta.",
+        r: "Publicar, receber candidatos sem limite, conversar e contratar são grátis, e quem procura trabalho nunca paga nada. Para quem contrata muito, há recursos pagos: Triagem com IA (lê os currículos contra o que a vaga pede e mostra quem chamar primeiro), Teste Prático (até 3 testes por vaga e os testes da sua empresa; o teste sugerido na vaga é grátis), Entrevista em vídeo (gravada, com resumo da IA, ou ao vivo, sem instalar nada) e Automações personalizadas. Cada um tem 15 dias grátis para experimentar. O Plano Empresa e o Plano Agência juntam todos, pelo número de vagas no ar, e trazem também o mutirão, o convite automático e o mapa de talentos. Dá para pagar por mês, a cada 3 meses, por ano ou só por 30 dias. Veja em Planos, no painel, e em “Assinatura e faturas”, no menu da sua conta.",
       },
       {
         p: "Dá para pagar o plano por ano ou só por 30 dias?",
-        r: "Quando estão à venda, aparecem em Planos. No anual, você paga 9 meses e usa 12. Por 30 dias, você paga uma vez, vale 30 dias a partir do pagamento e não renova sozinho: três dias antes do fim, chega o aviso para comprar mais 30 dias ou assinar. Nos dois, desistiu em até 7 dias do pagamento, o dinheiro volta: o botão “Desistir e receber de volta” fica em Assinatura.",
+        r: "Quando estão à venda, aparecem em Planos. No anual, você paga 9 meses e usa 12. Por 30 dias, você paga uma vez, vale 30 dias a partir do pagamento e não renova sozinho: três dias antes do fim, chega o aviso para comprar mais 30 dias ou assinar. Nos dois, desistiu em até 7 dias do pagamento, o dinheiro volta: o botão “Desistir e receber de volta” fica em Assinatura. No anual, a devolução vale para a primeira compra; a diferença paga para mudar de faixa não tem devolução.",
       },
       {
         p: "O que é o mutirão de contratação?",

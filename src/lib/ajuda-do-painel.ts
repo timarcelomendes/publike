@@ -251,7 +251,7 @@ const REGRAS: Regra[] = [
     caminho: /^\/painel\/testes/,
     ajuda: {
       titulo: "Teste Prático",
-      texto: "Um teste curto da função que o candidato faz pelo celular. A nota chega no quadro da vaga.",
+      texto: "Um teste curto da função que o candidato faz pelo celular, para confirmar que a pessoa sabe fazer. O resultado chega no quadro da vaga: acima, dentro ou abaixo do esperado.",
       dicas: ["Peça o teste depois do match, para quem já tem interesse.", "Dá para experimentar 15 dias grátis."],
     },
   },
@@ -259,7 +259,7 @@ const REGRAS: Regra[] = [
     caminho: /^\/painel\/video/,
     ajuda: {
       titulo: "Entrevista em vídeo",
-      texto: "O candidato grava as respostas pelo celular, no prazo que você escolher, e a IA transcreve e resume. Ou a entrevista ao vivo, dentro do Publike.",
+      texto: "Para ver a pessoa contando como faz o serviço antes de chamar: ela grava as respostas pelo celular, no prazo que você escolher, e a IA transcreve e resume. Ou a entrevista ao vivo, dentro do Publike.",
       dicas: ["Três perguntas curtas bastam.", "A IA julga só o que a pessoa disse, nunca a aparência ou o jeito de falar."],
     },
   },
@@ -277,6 +277,45 @@ const REGRAS: Regra[] = [
       titulo: "Consulta de salários",
       texto: "Quanto o mercado paga para cada função na sua região (Novo Caged), o que as vagas do Publike oferecem e quanto oferecer para fechar rápido.",
       dicas: ["Você começa com 5 consultas grátis e ganha mais 2 a cada 5 vagas novas."],
+    },
+  },
+  {
+    caminho: /^\/painel\/mutiroes/,
+    ajuda: {
+      titulo: "Mutirão",
+      texto:
+        "Um dia de entrevistas em sequência para contratar várias pessoas de uma vez: você escolhe o dia, os horários e as vagas, e cada pessoa marca o seu horário.",
+      dicas: [
+        "Chame quem curtiu as vagas: só aparecem os horários que ainda têm lugar, e o lembrete sai na véspera.",
+        "No dia, marque quem chegou e quem faltou, e abra a ficha para contratar.",
+        "Vem nos planos. O primeiro mutirão é grátis, para experimentar.",
+      ],
+    },
+  },
+  {
+    caminho: /^\/painel\/convites/,
+    ajuda: {
+      titulo: "Convite automático",
+      texto:
+        "Ligado numa vaga, o convite sai sozinho, com o seu recado, para quem tem o currículo que combina com ela.",
+      dicas: [
+        "Sem plano, você recebe o aviso de até 3 pessoas que combinam por dia e convida à mão.",
+        "Com um plano, os avisos vão até 30 por dia, e o convite automático pode ser ligado em cada vaga.",
+        "Cada pessoa recebe no máximo 2 convites automáticos por semana, e quem não quer desliga.",
+      ],
+    },
+  },
+  {
+    caminho: /^\/painel\/mapa-de-talentos/,
+    ajuda: {
+      titulo: "Mapa de talentos",
+      texto:
+        "Quantas pessoas que procuram trabalho moram a até 15, 30 e 45 minutos de ônibus da vaga, o que já fizeram e em que bairros.",
+      dicas: [
+        "Use para escolher o salário, o lugar do mutirão ou mostrar ao cliente quanta gente há perto.",
+        "Ninguém tem a casa mostrada: só aparecem grupos de 5 pessoas ou mais.",
+        "O total a até 30 minutos é grátis. O resto vem com a Consulta de salários ou um plano.",
+      ],
     },
   },
   {
@@ -313,7 +352,8 @@ const REGRAS: Regra[] = [
       texto: "Os planos lado a lado, com o preço e o que cada um traz. Publicar, ver candidatos e conversar continuam grátis.",
       dicas: [
         "O plano é pela faixa de vagas no ar: o que cabe nas suas vagas vem marcado.",
-        "Por mês ou a cada 3 meses, que sai mais em conta. Troque em cima da lista.",
+        "Por mês, a cada 3 meses ou por ano (9 meses pelo ano). Troque em cima da lista.",
+        "Só precisa por um tempo? O plano por 30 dias não renova sozinho.",
         "Só quer um recurso? Ele aparece sozinho embaixo dos planos.",
       ],
     },
@@ -326,6 +366,7 @@ const REGRAS: Regra[] = [
       dicas: [
         "O plano é pela faixa de vagas no ar: a tela mostra a que cabe na sua conta.",
         "Cartão ou Pix. Dá para cancelar quando quiser, e o que já foi pago continua valendo.",
+        "No anual e no plano por 30 dias, desistiu em até 7 dias do pagamento, o dinheiro volta.",
       ],
     },
   },
@@ -334,7 +375,11 @@ const REGRAS: Regra[] = [
     ajuda: {
       titulo: "Assinatura e faturas",
       texto: "O que você assina, a forma de pagamento, as próximas cobranças e as faturas.",
-      dicas: ["Passou da faixa de vagas do plano? O aviso aparece aqui, com 30 dias para mudar de plano, e nada para de funcionar."],
+      dicas: [
+        "Passou da faixa de vagas do plano? O aviso aparece aqui, com 30 dias para mudar de plano, e nada para de funcionar.",
+        "“Mudar para a faixa de cima”: você paga só a diferença dos dias que faltam.",
+        "No anual (1ª compra) e no plano por 30 dias, “Desistir e receber de volta” aparece até 7 dias depois do pagamento.",
+      ],
     },
   },
   {
