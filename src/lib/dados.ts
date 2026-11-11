@@ -599,7 +599,7 @@ export async function minhaReputacao(): Promise<Reputacao | null> {
   return data?.[0] ? lerReputacao(data[0]) : null;
 }
 
-/** O jeito de responder de cada um (só quem tem 5 curtidas ou mais nos últimos 180 dias). */
+/** O jeito de responder de cada um (só quem tem 5 curtidas ou mais nos últimos 30 dias). */
 export async function respostaDeQuemPublica(autores: string[]): Promise<Map<string, Resposta>> {
   const ids = [...new Set(autores)].filter((id) => UUID.test(id)).slice(0, 100);
   if (MODO_DEMO || !ids.length) return new Map();
