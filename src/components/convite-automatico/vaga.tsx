@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ligarConviteAutomatico } from "@/lib/acoes/convite-automatico";
-import { Botao } from "../ui/botao";
+import { Botao, BotaoLink } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { useAcao } from "../ui/usar-acao";
 
@@ -20,6 +20,8 @@ export function ConviteDaVaga({ v, liberado }: { v: VagaComConvite; liberado: bo
   const { rodar, pendente, mensagem } = useAcao();
   const [recado, setRecado] = useState(v.recado ?? "");
   const mudouRecado = (v.recado ?? "") !== recado.trim();
+  // sem plano, o liga fica à mão: o toque pede para assinar, em vez de não fazer nada (11/11/2026)
+  const [pedirPlano, setPedirPlano] = useState(false);
   return (
     <li className="flex flex-col gap-3 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
@@ -36,13 +38,40 @@ export function ConviteDaVaga({ v, liberado }: { v: VagaComConvite; liberado: bo
             type="checkbox"
             role="switch"
             checked={v.ligado}
-            disabled={pendente || (!liberado && !v.ligado)}
-            onChange={(e) => rodar(() => ligarConviteAutomatico(v.id, e.target.checked, recado))}
+            aria-describedby={pedirPlano ? `plano-${v.id}` : undefined}
+            disabled={pendente}
+            onChange={(e) => {
+              if (!liberado && e.target.checked) {
+                setPedirPlano(true);
+                return;
+              }
+              rodar(() => ligarConviteAutomatico(v.id, e.target.checked, recado));
+            }}
             className="size-5 accent-terra"
           />
           {v.ligado ? "Ligado" : "Desligado"}
         </label>
       </div>
+      {pedirPlano && (
+        <div
+          id={`plano-${v.id}`}
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-surface-300 px-4 py-3"
+        >
+          <p className="max-w-2xl text-body-sm">
+            <strong>Para ligar, assine um plano.</strong> Com ele, quem combina com esta vaga recebe o convite na hora,
+            com o seu recado.
+          </p>
+          <span className="flex flex-wrap items-center gap-2">
+            <BotaoLink href="/painel/planos" variante="primario" tamanho="sm">
+              Assinar um plano
+            </BotaoLink>
+            <Botao tamanho="sm" variante="secundario" onClick={() => setPedirPlano(false)}>
+              Agora não
+            </Botao>
+          </span>
+        </div>
+      )}
       {(v.ligado || liberado) && (
         // o recado numa largura de ler bem (a lista usa a largura toda do painel)
         <div className="flex max-w-2xl flex-col gap-2">
