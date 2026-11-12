@@ -52,8 +52,8 @@ export function RaioDaLinha({ d }: { d: DadosDaLinha }) {
 }
 
 /**
- * A linha do raio (a da linha do tempo e a da busca). Com `deOnde`, os botões de "De onde" vêm na mesma linha dos
- * raios (quebram para baixo quando não cabem), e a linha diz "de onde você está agora" quando conta da localização
+ * A linha do raio (a da linha do tempo e a da busca). Com `deOnde`, os botões de "De onde" vêm antes dos raios, na
+ * mesma linha (quebram para baixo quando não cabem), e a linha diz "de onde você está agora" quando conta da localização
  * (o "Você" dos cartões e do mapa). O `id` "ate-onde" é o que o "Trocar" do mapa abre. `depois`: o que vem na
  * mesma linha do "Mudar" (ou do "Exibir mais"): na busca, o "Me avise" e o % de match.
  */
@@ -101,10 +101,11 @@ export function RaioDaBusca({ r: d, depois = null }: { r: DadosDoRaio; depois?: 
       {!deOnde && <span className="text-body-sm text-ink-muted">{origem}</span>}
     </nav>
   );
+  // de onde primeiro, depois até onde: a distância conta a partir da origem (12/11/2026)
   const botoes = deOnde ? (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-      {raios}
       {deOnde}
+      {raios}
     </div>
   ) : (
     raios
