@@ -18,6 +18,7 @@ import { lerDesfazerMatch, normalizarWhatsapp, temContato, UUID } from "@/lib/va
 import { lerRespostas, perguntasDoBanco, type Respostas } from "@/lib/vaga-extra";
 import { salvarBusca } from "./buscas";
 import { marcarMotivoSaida } from "./processo";
+import { contarCurtidaDoImpulso } from "./impulso";
 
 const RESPONDER = (anuncioId: string) => `/anuncio/${anuncioId}?responder=1`;
 
@@ -229,6 +230,8 @@ export async function curtirAnuncio(
   if (alvo?.tipo === "vaga") after(() => lerCandidatosNovos(3, anuncioId));
   // candidatura a vaga vale para a campanha (Google Ads)
   if (alvo?.tipo === "vaga") await marcarConversao("candidatura");
+  // chegou pelo anúncio do impulso desta vaga: a curtida entra no relatório de quem pagou
+  if (alvo?.tipo === "vaga") after(() => contarCurtidaDoImpulso(anuncioId).catch(() => {}));
   refresh();
   // contato direto: a curtida já virou match
   const { data: feita } = await supabase

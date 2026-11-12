@@ -167,7 +167,7 @@ export type Assinatura = {
 /** O plano por 30 dias (que vale ou espera o pagamento) ou a troca de faixa esperando o pagamento. */
 export type Compra = {
   id: string;
-  tipo: "trinta_dias" | "faixa";
+  tipo: "trinta_dias" | "faixa" | "impulso";
   recurso: Produto;
   valor: number;
   forma: "cartao" | "pix";
@@ -195,18 +195,26 @@ export type PagamentosDaConta = {
 
 export type SituacaoFatura = "pendente" | "paga" | "atrasada" | "estornada" | "recusada" | "cancelada";
 
+/** O que uma cobrança paga: um produto, ou o impulso da vaga no Google (migração 20270423120000). */
+export type RecursoDaCobranca = Produto | "impulso";
+
+/** O nome na fatura e no recibo. */
+export function nomeDaCobranca(recurso: RecursoDaCobranca) {
+  return recurso === "impulso" ? "Impulso da vaga no Google" : NOME_PRODUTO[recurso];
+}
+
 export type Fatura = {
   id: string;
   numero: number;
-  recurso: Produto;
+  recurso: RecursoDaCobranca;
   valor: number;
   vencimento: string;
   situacao: SituacaoFatura;
   forma: "cartao" | "pix";
   pago_em: string | null;
   link_pagar: string | null;
-  /** a cobrança avulsa: o plano por 30 dias ou a diferença da troca de faixa */
-  compra?: "trinta_dias" | "faixa" | null;
+  /** a cobrança avulsa: o plano por 30 dias, a diferença da troca de faixa ou o impulso da vaga */
+  compra?: "trinta_dias" | "faixa" | "impulso" | null;
   nota: { situacao: "agendada" | "autorizada" | "erro" | "cancelada"; numero: string | null } | null;
 };
 

@@ -40,6 +40,7 @@ import { ConviteDasVagasVistas, PARAMETRO_DA_VOLTA } from "@/components/convite-
 import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
 import { BarraCurtirCelular } from "@/components/anuncio/barra-curtir-celular";
 import { ContarAbertura } from "@/components/anuncio/contar-abertura";
+import { ContarImpulso } from "@/components/anuncio/contar-impulso";
 import { BotaoCompartilhar } from "@/components/anuncio/compartilhar";
 import { QuadroIndicar } from "@/components/anuncio/indicar";
 import { AtalhosDaVaga, SecaoComentarios } from "@/components/anuncio/secao-comentarios";
@@ -425,6 +426,7 @@ async function DetalheAnuncio({
     <Container className="py-6 sm:py-8">
       {/* conta a abertura para "Mais relevantes" (não conta quem publicou: o banco confere) */}
       {anuncio.status === "ativo" && <ContarAbertura anuncioId={anuncio.id} />}
+      {anuncio.tipo === "vaga" && <ContarImpulso anuncioId={anuncio.id} />}
       {/* vaga preenchida sai do Google para Vagas (o Google pede para tirar as vagas fechadas) */}
       {vaga && anuncio.status === "ativo" && !anuncio.preenchida_em && (
         <script

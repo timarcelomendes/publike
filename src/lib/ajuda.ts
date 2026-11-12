@@ -151,6 +151,10 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     titulo: "Para quem contrata",
     perguntas: [
       {
+        p: "O que é impulsionar a vaga?",
+        r: "Sua vaga vira um anúncio na busca do Google, para quem procura esse trabalho perto do bairro dela. Na vaga, toque em Impulsionar, escolha 7 ou 15 dias e pague por Pix ou cartão. O Publike monta o anúncio com a função, o lugar e o salário, e o Google revisa (costuma levar algumas horas). Os dias só começam a contar quando o anúncio entra no ar. Na mesma tela você acompanha quantas vezes ele apareceu, quantas pessoas clicaram e quantas curtiram a vaga. Se você pausar ou preencher a vaga antes, os dias que sobraram viram crédito para outra vaga, por 90 dias. Se o Google não aprovar, o valor volta inteiro. O anúncio aparece por lugar e pela busca, nunca por idade, sexo ou aparência, como pede a lei.",
+      },
+      {
         p: "Um candidato disse que começou a trabalhar. O que faço?",
         r: "Uns dias depois do match, o Publike pergunta ao candidato se ele começou. Se ele disser que sim, você recebe o aviso e vê no Hoje e no painel da vaga: “Confirmar” leva a pessoa para Contratado no quadro e põe o selo “Confirmado pela empresa” na conquista dela. “Não é verdade” tira a conquista do Publike. Conquista confirmada mostra para quem procura trabalho que vocês contratam pelo Publike.",
       },

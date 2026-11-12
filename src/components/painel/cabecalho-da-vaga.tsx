@@ -10,6 +10,7 @@ import {
   List,
   ListOrdered,
   Pencil,
+  Rocket,
   ScanSearch,
   Sparkles,
   Video,
@@ -191,6 +192,17 @@ export async function CabecalhoDaVaga({
             {/* no celular, só o lápis: os três botões cabem numa linha */}
             <span className="max-sm:sr-only">Editar a vaga</span>
           </Link>
+          {noAr && (
+            // o impulso da vaga no Google (claude/plano-impulsionar-vaga.md): pago, fora do Publike
+            <Link
+              href={`/painel/impulsionar/${id}`}
+              title="Anunciar a vaga no Google"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-strong bg-surface-200 px-3.5 text-label hover:bg-surface-300"
+            >
+              <Rocket aria-hidden className="size-[18px] text-terra-text" />
+              <span className="max-sm:sr-only">Impulsionar</span>
+            </Link>
+          )}
           {noAr && <CopiarLinkDaVaga url={`${SITE_URL}/anuncio/${id}`} />}
           <MaisDaVaga id={id} noAr={noAr} />
         </div>

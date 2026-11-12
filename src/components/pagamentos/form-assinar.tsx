@@ -7,6 +7,7 @@ import { chamarAcao } from "@/lib/acao-segura";
 import {
   assinar,
   buscarCepDeCobranca,
+  comprarImpulso,
   comprarPorTrintaDias,
   mudarDeFaixa,
   type ResultadoAssinar,
@@ -42,7 +43,9 @@ const SOLTA = "border-line-strong bg-surface-200 hover:bg-surface-300";
 type Modo =
   | { tipo: "assinar"; ciclo?: Ciclo | null }
   | { tipo: "trinta" }
-  | { tipo: "faixa"; assinatura: string; diferenca: number; dias: number; ate: string | null; renovacao: number };
+  | { tipo: "faixa"; assinatura: string; diferenca: number; dias: number; ate: string | null; renovacao: number }
+  /** o impulso da vaga no Google (migração 20270423120000): os dias e o preço de cada opção */
+  | { tipo: "impulso"; anuncio: string; opcoes: { dias: number; valor: number; verba: number }[] };
 
 export function FormAssinar({
   recurso,
@@ -76,6 +79,8 @@ export function FormAssinar({
     (ordenados.find((p) => p.ciclo === cicloInicial) ?? ordenados[0])?.id ?? "",
   );
   const [forma, setForma] = useState<"cartao" | "pix">("cartao");
+  const [dias, setDias] = useState(modo.tipo === "impulso" ? (modo.opcoes[0]?.dias ?? 0) : 0);
+  const opcaoImpulso = modo.tipo === "impulso" ? modo.opcoes.find((o) => o.dias === dias) : undefined;
   const [documento, setDocumento] = useState(formatarDocumento(inicial.documento));
   const [nome, setNome] = useState(inicial.nome);
   const [email, setEmail] = useState(inicial.email);
@@ -125,7 +130,9 @@ export function FormAssinar({
     iniciar(async () => {
       const pagador = { forma: f, documento, nome, email, endereco: f === "cartao" ? { telefone, ...end } : undefined };
       const r: ResultadoAssinar = await chamarAcao(() =>
-        modo.tipo === "trinta"
+        modo.tipo === "impulso"
+          ? comprarImpulso({ ...pagador, anuncio: modo.anuncio, dias })
+          : modo.tipo === "trinta"
           ? comprarPorTrintaDias({ ...pagador, plano })
           : modo.tipo === "faixa"
             ? mudarDeFaixa({ ...pagador, plano, assinatura: modo.assinatura })
@@ -143,7 +150,35 @@ export function FormAssinar({
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-6" noValidate>
-      {!troca && modo.tipo !== "faixa" && (
+      {modo.tipo === "impulso" && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-2 text-label">Por quanto tempo</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {modo.opcoes.map((o) => (
+              <label key={o.dias} className={`${OPCAO} ${dias === o.dias ? MARCADA : SOLTA}`}>
+                <input
+                  type="radio"
+                  name="dias"
+                  value={o.dias}
+                  checked={dias === o.dias}
+                  onChange={() => setDias(o.dias)}
+                  className="mt-1 size-4 accent-terra"
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-label">{o.dias} dias no Google</span>
+                  <span className="text-h3 tabular-nums">{formatarMoeda(o.valor)}</span>
+                  <span className="text-body-sm text-ink-muted">
+                    {formatarMoeda(o.verba)} vão para o anúncio, cerca de {formatarMoeda(Math.round((o.verba / o.dias) * 100) / 100)}{" "}
+                    por dia
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {!troca && modo.tipo !== "faixa" && modo.tipo !== "impulso" && (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-label">Plano</legend>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -357,20 +392,30 @@ export function FormAssinar({
         </fieldset>
       )}
 
-      {(escolhido || modo.tipo === "faixa") && (
+      {(escolhido || modo.tipo === "faixa" || opcaoImpulso) && (
         <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-200 p-5 shadow-card">
           <p className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-body">
-              {modo.tipo === "faixa"
-                ? `${NOME_PRODUTO[recurso]}: a diferença`
-                : `${NOME_PRODUTO[recurso]} · ${escolhido ? NOME_CICLO[escolhido.ciclo].toLowerCase() : ""}`}
+              {modo.tipo === "impulso"
+                ? `Impulso no Google · ${dias} dias`
+                : modo.tipo === "faixa"
+                  ? `${NOME_PRODUTO[recurso]}: a diferença`
+                  : `${NOME_PRODUTO[recurso]} · ${escolhido ? NOME_CICLO[escolhido.ciclo].toLowerCase() : ""}`}
             </span>
             <span className="text-h3 tabular-nums">
-              {formatarMoeda(modo.tipo === "faixa" ? modo.diferenca : (escolhido?.valor ?? 0))}
+              {formatarMoeda(
+                modo.tipo === "impulso"
+                  ? (opcaoImpulso?.valor ?? 0)
+                  : modo.tipo === "faixa"
+                    ? modo.diferenca
+                    : (escolhido?.valor ?? 0),
+              )}
             </span>
           </p>
           <p className="text-body-sm text-ink-muted">
-            {modo.tipo === "faixa"
+            {modo.tipo === "impulso"
+              ? "Cobrado hoje, uma vez só. Os dias contam quando o Google aprovar o anúncio, em até 1 dia útil; até lá, dá para cancelar e o dinheiro volta. Se a vaga fechar antes do fim, os dias que faltam viram crédito para outra vaga."
+              : modo.tipo === "faixa"
               ? `Cobrado hoje: a diferença dos ${modo.dias} ${modo.dias === 1 ? "dia" : "dias"} que faltam${
                   modo.ate ? ` até ${dataDoDia(modo.ate)}` : ""
                 }. A faixa muda assim que o pagamento for confirmado, e a renovação passa a ser ${formatarMoeda(modo.renovacao)}.`

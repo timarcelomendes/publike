@@ -71,6 +71,7 @@ export const GRUPOS_ADMIN: { nome: string | null; icone?: LucideIcon; secoes: Se
       { href: "/admin/vagas-do-dia", nome: "Vagas do dia" },
       { href: "/admin/campanhas", nome: "Campanhas" },
       { href: "/admin/banners", nome: "Banners" },
+      { href: "/admin/impulsos", nome: "Impulsos" },
     ],
   },
   { nome: "Dinheiro", icone: Wallet, secoes: [{ href: "/admin/pagamentos", nome: "Pagamentos" }] },

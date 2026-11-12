@@ -441,6 +441,80 @@ export async function comprarPorTrintaDias(dados: DadosDoPagador & { plano: stri
   return comprar(dados, { tipo: "trinta_dias", plano: dados.plano, assinatura: null });
 }
 
+/**
+ * O impulso da vaga no Google (claude/plano-impulsionar-vaga.md; migração 20270423120000): uma cobrança só, como os 30
+ * dias. Pago, o robô cria o anúncio no Google sozinho; o cartão volta para a página do impulso da vaga.
+ */
+export async function comprarImpulso(dados: DadosDoPagador & { anuncio: string; dias: number }): Promise<ResultadoAssinar> {
+  if (!/^[0-9a-f-]{36}$/.test(String(dados.anuncio)) || !Number.isInteger(dados.dias) || dados.dias < 1 || dados.dias > 60)
+    return { ok: false, erro: "Pedido inválido." };
+  try {
+    const p = await prepararPagador(dados, () => null);
+    if (!p.ok) return p;
+    const { a, conta, sandbox, cliente } = p;
+    const { data, error } = await a.cliente.rpc("servidor_compra_impulso", {
+      p_chave: a.chave,
+      p_conta: conta,
+      p_anuncio: dados.anuncio,
+      p_dias: dados.dias,
+      p_forma: dados.forma,
+      p_sandbox: sandbox,
+    });
+    if (error) throw new Error(error.message);
+    const r = (data ?? {}) as { erro?: string; id?: string; valor?: number; dias?: number; titulo?: string };
+    if (r.erro) return { ok: false, erro: r.erro };
+    if (!r.id || !r.valor || !r.dias) throw new Error("compra sem id");
+    const descricao = `Impulso no Google por ${r.dias} dias: ${(r.titulo ?? "vaga").slice(0, 80)}`;
+
+    if (dados.forma === "cartao") {
+      const site = urlDosEmails();
+      if (!site)
+        return {
+          ok: false,
+          erro: "Falta o endereço do site no ar (PUBLIKE_URL_PUBLICA) para o cartão voltar ao Publike.",
+        };
+      const volta = `${site}/painel/impulsionar/${dados.anuncio}`;
+      const ck = await criarCheckoutAvulso(sandbox, {
+        cliente,
+        valor: Number(r.valor),
+        nome: `Publike Impulso ${r.dias} dias`,
+        descricao,
+        ref: r.id,
+        voltar: { ok: `${volta}?cartao=ok`, cancelou: `${volta}?cartao=cancelou`, expirou: `${volta}?cartao=expirou` },
+      });
+      const { error: e2 } = await a.cliente.rpc("servidor_compra_asaas", {
+        p_chave: a.chave,
+        p_compra: r.id,
+        p_asaas_id: "",
+        p_checkout_id: ck.id,
+      });
+      if (e2) throw new Error(e2.message);
+      return { ok: true, ir: linkDoCheckout(sandbox, ck.id), externo: true };
+    }
+
+    const pag = await criarCobrancaPix(sandbox, {
+      cliente,
+      valor: Number(r.valor),
+      vencimento: new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
+      descricao: `Publike · ${descricao}`,
+      ref: r.id,
+    });
+    const { error: e3 } = await a.cliente.rpc("servidor_compra_asaas", {
+      p_chave: a.chave,
+      p_compra: r.id,
+      p_asaas_id: pag.id,
+      p_checkout_id: "",
+    });
+    if (e3) throw new Error(e3.message);
+    const fatura = await gravarAvulsa(a, sandbox, pag, false);
+    after(() => enviarPushPendentes());
+    const id = fatura?.cobranca_id;
+    return { ok: true, ir: id ? `/painel/faturas/${id}?pix=1` : `/painel/impulsionar/${dados.anuncio}` };
+  } catch (e) {
+    return { ok: false, erro: erroParaTela(e) };
+  }
+}
+
 /** O valor novo da renovação no parceiro, depois da troca de faixa (a faixa já mudou no Publike). */
 async function valorNovoNoParceiro(r: { asaas_id?: string | null; sandbox?: boolean; valor_novo?: number; para?: string }) {
   if (!r.asaas_id || r.valor_novo == null) return;

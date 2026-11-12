@@ -3645,6 +3645,32 @@ export type Database = {
       servidor_pagamento_cobranca: { Args: { p_chave: string; p_pag: Json }; Returns: Json };
       // a compra avulsa: os 30 dias, a troca de faixa e o arrependimento (migração 20270416120000)
       servidor_pagamento_avulsa: { Args: { p_chave: string; p_pag: Json }; Returns: Json };
+      impulso_da_vaga: { Args: { p_anuncio: string }; Returns: Json };
+      meus_impulsos: { Args: Record<PropertyKey, never>; Returns: Json };
+      impulsionar_sem_pagar: { Args: { p_anuncio: string; p_jeito: string }; Returns: Json };
+      contar_visita_do_impulso: { Args: { p_codigo: string; p_anuncio: string; p_visitante: string }; Returns: boolean };
+      contar_curtida_do_impulso: { Args: { p_codigo: string; p_visitante: string; p_anuncio: string }; Returns: boolean };
+      servidor_compra_impulso: {
+        Args: { p_chave: string; p_conta: string; p_anuncio: string; p_dias: number; p_forma: string; p_sandbox: boolean };
+        Returns: Json;
+      };
+      servidor_impulso_cancelar: { Args: { p_chave: string; p_conta: string; p_id: string }; Returns: Json };
+      servidor_impulsos_para_cuidar: { Args: { p_chave: string }; Returns: Json };
+      servidor_impulso_criado: { Args: { p_chave: string; p_id: string; p_ids: Json }; Returns: Json };
+      servidor_impulso_erro: { Args: { p_chave: string; p_id: string; p_erro: string }; Returns: Json };
+      servidor_impulso_olhado: {
+        Args: { p_chave: string; p_id: string; p_aprovacao: string; p_motivo: string | null };
+        Returns: Json;
+      };
+      servidor_impulso_recusado: { Args: { p_chave: string; p_id: string; p_motivo: string }; Returns: Json };
+      servidor_impulso_anuncio_trocado: { Args: { p_chave: string; p_id: string; p_anuncio: string }; Returns: undefined };
+      servidor_impulso_pausado: { Args: { p_chave: string; p_id: string }; Returns: undefined };
+      servidor_impulso_encerrado: { Args: { p_chave: string; p_id: string }; Returns: undefined };
+      servidor_impulso_removido: { Args: { p_chave: string; p_id: string }; Returns: undefined };
+      servidor_impulso_estorno_pedido: { Args: { p_chave: string; p_id: string }; Returns: undefined };
+      servidor_impulso_numeros: { Args: { p_chave: string; p_id: string; p_linhas: Json }; Returns: undefined };
+      admin_impulsos: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_salvar_impulso: { Args: { p_precos: Json; p_config: Json | null }; Returns: undefined };
       servidor_compra_nova: {
         Args: {
           p_chave: string;

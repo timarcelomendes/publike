@@ -135,7 +135,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/ass
       ? { tipo: "sucesso" as const, titulo: "Pronto: a faixa mudou", texto: "A próxima cobrança já vem com o valor novo." }
       : null;
   // o plano por 30 dias (que vale ou espera o pagamento) e a troca de faixa esperando (migração 20270416120000)
-  const compras = pag?.compras ?? [];
+  // o impulso da vaga tem a própria página (Impulsionar, na vaga): aqui, só os planos
+  const compras = (pag?.compras ?? []).filter((k) => k.tipo !== "impulso");
   const deCima = faixasDeCima(pag);
   const cartaoPendente = volta === "ok" && !valendo.some((a) => a.forma === "cartao") && !compras.length;
 

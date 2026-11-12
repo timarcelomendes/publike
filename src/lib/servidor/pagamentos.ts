@@ -18,6 +18,8 @@ import {
   type CobrancaAsaas,
 } from "./asaas";
 import { acessoFila } from "./filas";
+import { cuidarDosImpulsos } from "./impulsos";
+import { after } from "next/server";
 
 // O que chega do Asaas vira cobrança no Publike, sempre conferido na API do Asaas (o aviso só diz o que olhar).
 // Quem libera o recurso é o banco (servidor_pagamento_cobranca), pelo que foi pago.
@@ -147,7 +149,7 @@ type GravadaAvulsa = {
   situacao: string;
   forma: string;
   compra_id: string;
-  tipo: "trinta_dias" | "faixa";
+  tipo: "trinta_dias" | "faixa" | "impulso";
   tem_pix: boolean;
   paga_agora: boolean;
   nota: boolean;
@@ -194,6 +196,8 @@ export async function gravarAvulsa(a: Acesso, sandbox: boolean, pag: CobrancaAsa
       console.error("Publike: não deu para mudar o valor da assinatura no parceiro:", textoDoErro(e));
     }
   }
+  // o impulso pago: o robô cria o anúncio no Google já, sem esperar a próxima rodada das filas
+  if (g.tipo === "impulso" && g.paga_agora) after(() => cuidarDosImpulsos());
   if (g.situacao === "paga" && !g.nota) {
     const { data: ctx } = await a.cliente.rpc("servidor_pagamento_contexto", { p_chave: a.chave, p_conta: g.conta });
     const nota = (ctx as { nota?: { servico: string; e_codigo: boolean; descricao: string | null } | null } | null)
@@ -206,7 +210,12 @@ export async function gravarAvulsa(a: Acesso, sandbox: boolean, pag: CobrancaAsa
           valor: Number(pag.value),
           servico: nota.servico,
           ehCodigo: nota.e_codigo,
-          descricao: g.tipo === "faixa" ? `${nome}: diferença da troca de faixa` : `${nome}: 30 dias`,
+          descricao:
+            g.tipo === "impulso"
+              ? "Impulso da vaga no Google (anúncio)"
+              : g.tipo === "faixa"
+                ? `${nome}: diferença da troca de faixa`
+                : `${nome}: 30 dias`,
           observacao: nota.descricao,
         });
       } catch (e) {

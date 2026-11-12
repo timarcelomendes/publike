@@ -10,7 +10,7 @@ import { Vazio } from "@/components/ui/basicos";
 import { BotaoLink } from "@/components/ui/botao";
 import { MODO_DEMO } from "@/lib/config";
 import { formatarMoeda } from "@/lib/formato";
-import { dataDoDia, emAberto, NOME_PRODUTO, numeroDaFatura } from "@/lib/pagamentos";
+import { dataDoDia, emAberto, nomeDaCobranca, numeroDaFatura } from "@/lib/pagamentos";
 import { minhasFaturas } from "@/lib/servidor/faturas";
 import { exigirUsuario } from "@/lib/sessao";
 
@@ -66,7 +66,7 @@ async function Conteudo() {
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="text-label">
-                        {NOME_PRODUTO[f.recurso]}
+                        {nomeDaCobranca(f.recurso)}
                         {f.compra === "trinta_dias" ? ", 30 dias" : f.compra === "faixa" ? ", troca de faixa" : ""}
                       </span>
                       <SeloDaFatura situacao={f.situacao} />

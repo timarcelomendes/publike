@@ -31,6 +31,7 @@ import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { regrasComOTempo } from "@/lib/servidor/regras";
 import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
 import { mandarNumerosDaSemana } from "@/lib/servidor/numeros-da-semana";
+import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 
 // A garantia das filas: a tarefa agendada do GitHub (.github/workflows/filas.yml) chama a cada 5 minutos,
 // com "Authorization: Bearer <CRON_SECRET>". Esvazia os e-mails e as revisões da IA mesmo sem ninguém
@@ -114,6 +115,9 @@ export async function GET(request: Request) {
   const documentosVencidos = await comTempo(() => limparDocumentosVencidos());
   // o Google: as vagas que entraram ou saíram do ar (a Indexing API, com a credencial na Vercel)
   const google = await comTempo(() => avisarGoogleDasVagas(10));
+  // o impulso da vaga no Google Ads: criar, olhar a aprovação, medir, tirar quando a vaga fecha e encerrar (o aviso
+  // de "no ar" e o relatório saem junto com os e-mails abaixo)
+  const impulsos = await comTempo(() => cuidarDosImpulsos());
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
   const emails = await enviarEmailsPendentes(20);
   const celular = await enviarPushPendentes(50);
@@ -138,6 +142,7 @@ export async function GET(request: Request) {
     consultasSalario.motivo,
     buscasTalentos.motivo,
     google.motivo,
+    impulsos.motivo,
     noticias.motivo,
     testes.motivo,
     indicadores.motivo,
@@ -179,6 +184,7 @@ export async function GET(request: Request) {
       consultasSalario: consultasSalario.contas,
       buscasTalentos: buscasTalentos.avisadas,
       google: google.avisadas,
+      impulsos: impulsos.feitos,
       combinam: {
         vagas: combinam.vagas,
         talentos: combinam.talentos,
