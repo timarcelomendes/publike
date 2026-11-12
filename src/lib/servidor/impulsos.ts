@@ -147,6 +147,42 @@ function lugarDaVaga(v: NonNullable<Tarefa["vaga"]>): Lugar {
   throw new Error(`A vaga "${v.titulo}" não tem o lugar no mapa: sem ele, o anúncio apareceria no Brasil inteiro.`);
 }
 
+/**
+ * O lance das campanhas: aparecer no alto da página em 80% das buscas, pagando até R$ 2 por clique. Com o "máximo de
+ * cliques", a verba pequena (R$ 4 por dia) fazia o Google dar lances baixos, e a campanha geral do Publike (o mesmo
+ * site, verba maior) ficava com os leilões: só um anúncio por site aparece em cada busca. Resultado: 0 impressões no
+ * primeiro dia, enquanto a geral tinha mais de mil (12/11/2026). Gastada a verba do dia, a geral volta a aparecer.
+ */
+const TETO_DO_CLIQUE = 2;
+const LANCE = {
+  targetImpressionShare: {
+    location: "TOP_OF_PAGE",
+    locationFractionMicros: "800000",
+    cpcBidCeilingMicros: String(TETO_DO_CLIQUE * 1_000_000),
+  },
+};
+
+/** As campanhas de antes (no "máximo de cliques") passam para o lance de agora (`LANCE`). Na medição; uma vez só. */
+async function acertarLance(campanhaId: string, conta: string) {
+  const [linha] = await consultar<{ campaign?: { biddingStrategyType?: string } }>(
+    `SELECT campaign.bidding_strategy_type FROM campaign WHERE campaign.id = ${Number(campanhaId)}`,
+    conta,
+  );
+  if (linha?.campaign?.biddingStrategyType !== "TARGET_SPEND") return;
+  await mutar(
+    [
+      {
+        campaignOperation: {
+          updateMask:
+            "targetImpressionShare.location,targetImpressionShare.locationFractionMicros,targetImpressionShare.cpcBidCeilingMicros",
+          update: { resourceName: recurso("campaigns", campanhaId, conta), ...LANCE },
+        },
+      },
+    ],
+    conta,
+  );
+}
+
 /** Buscas que não são de quem procura emprego (palavras negativas da campanha). */
 const FORA_DA_BUSCA = ["curso", "cursos", "receita", "receitas", "concurso", "apostila", "o que faz"];
 
@@ -175,8 +211,8 @@ function operacoesDaBaseDaCampanha(o: { codigo: string; nome: string; porDia: nu
           status: "ENABLED",
           advertisingChannelType: "SEARCH",
           campaignBudget: orcamento,
-          // o máximo de cliques com a verba do dia
-          targetSpend: {},
+          // no alto da página, até R$ 2 por clique (LANCE: com o máximo de cliques, não aparecia)
+          ...LANCE,
           networkSettings: {
             targetGoogleSearch: true,
             targetSearchNetwork: false,
@@ -668,8 +704,21 @@ type LinhaDosNumeros = {
   metrics?: { impressions?: string | number; clicks?: string | number; costMicros?: string | number };
 };
 
-async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = false) {
+/**
+ * Os números do Google, por dia, do dia em que entrou no ar até hoje (o de hoje vai mudando a cada medida: a cada 2
+ * horas, pela migração 20270501120000; antes, só o de ontem, e o Admin mostrava R$ 0 o dia inteiro). Com a vaga no
+ * ar, acerta antes o lance das campanhas de antes (`acertarLance`).
+ */
+async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
   if (!t.campanha_id || !t.medir_desde) return;
+  if (t.acao === "medir" && t.situacao === "no_ar") {
+    try {
+      await acertarLance(t.campanha_id, conta);
+    } catch (e) {
+      // o lance fica para a próxima medida; os números não esperam por ele
+      console.error(`Publike: o lance do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
+    }
+  }
   const hoje = hojeEmBrasilia();
   const ontem = new Date(Date.parse(`${hoje}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
   const ate = ateHoje ? hoje : ontem;
