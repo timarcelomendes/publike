@@ -28,7 +28,7 @@ type Tarefa = {
   id: string;
   codigo: string;
   situacao: string;
-  origem: "compra" | "credito" | "cortesia";
+  origem: "compra" | "credito" | "cortesia" | "admin";
   acao: "criar" | "olhar" | "pausar" | "encerrar" | "remover" | "estornar" | "medir";
   dias: number;
   verba: number;

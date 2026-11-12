@@ -44,7 +44,7 @@ export function ImpulsionarSemPagar({
 }
 
 /** Desistir antes de o anúncio entrar no ar (com a confirmação no próprio lugar). */
-export function CancelarImpulso({ id, origem }: { id: string; origem: "compra" | "credito" | "cortesia" }) {
+export function CancelarImpulso({ id, origem }: { id: string; origem: "compra" | "credito" | "cortesia" | "admin" }) {
   const [certeza, setCerteza] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
@@ -53,7 +53,9 @@ export function CancelarImpulso({ id, origem }: { id: string; origem: "compra" |
       ? "O valor volta para você pelo mesmo jeito que pagou."
       : origem === "credito"
         ? "Os dias voltam como crédito."
-        : "O impulso grátis fica disponível de novo.";
+        : origem === "admin"
+          ? "É um impulso de cortesia do Publike: nada foi cobrado."
+          : "O impulso grátis fica disponível de novo.";
   if (!certeza)
     return (
       <Botao tamanho="sm" onClick={() => setCerteza(true)}>

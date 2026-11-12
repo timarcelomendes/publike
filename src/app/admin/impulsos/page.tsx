@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
-import { ConfigImpulsos, TestarGoogleAds } from "@/components/admin/impulsos";
+import { ConfigImpulsos, ImpulsionarPeloAdmin, PararImpulso, TestarGoogleAds } from "@/components/admin/impulsos";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
 import { Aviso, Selo } from "@/components/ui/basicos";
 import type { ConfigImpulso, PrecoImpulso } from "@/lib/acoes/admin-impulsos";
@@ -23,7 +23,7 @@ type Impulso = {
   anuncio_id: string;
   titulo: string;
   situacao: string;
-  origem: "compra" | "credito" | "cortesia";
+  origem: "compra" | "credito" | "cortesia" | "admin";
   dias: number;
   valor: number;
   verba: number;
@@ -56,7 +56,12 @@ const SITUACAO: Record<string, string> = {
   devolvido: "Devolvido",
 };
 
-const ORIGEM: Record<Impulso["origem"], string> = { compra: "Pago", credito: "Crédito", cortesia: "Grátis" };
+const ORIGEM: Record<Impulso["origem"], string> = {
+  compra: "Pago",
+  credito: "Crédito",
+  cortesia: "Grátis",
+  admin: "Pelo admin",
+};
 
 export default function Impulsos() {
   return (
@@ -128,6 +133,17 @@ async function Conteudo() {
         />
       </div>
 
+      <Secao
+        titulo="Impulsionar grátis para um cliente"
+        descricao="Para ver o retorno: escolha a vaga de qualquer cliente e o Publike paga o anúncio. Não gasta o impulso grátis do cliente e, se a vaga sair do ar, os dias que faltam não viram crédito."
+      >
+        {g.ligado ? (
+          <ImpulsionarPeloAdmin verbaPadrao={d.precos.find((p) => p.dias === 7)?.verba ?? 30} />
+        ) : (
+          <p className="text-body-sm text-ink-muted">Ligue o Google Ads primeiro (veja acima).</p>
+        )}
+      </Secao>
+
       <Secao titulo="Preços e regras" descricao="Os preços valem para as próximas compras; quem já pagou fica como comprou.">
         <ConfigImpulsos precos={d.precos} config={d.config} />
       </Secao>
@@ -137,7 +153,7 @@ async function Conteudo() {
           <p className="text-body-sm text-ink-muted">Nenhum impulso ainda.</p>
         ) : (
           <div className="-mx-5 overflow-x-auto sm:-mx-6">
-            <table className="w-full min-w-[60rem] text-left text-body-sm">
+            <table className="w-full min-w-[66rem] text-left text-body-sm">
               <thead className="text-ink-muted">
                 <tr className="border-b border-line">
                   <th className="px-5 py-2 font-normal sm:pl-6">Vaga</th>
@@ -147,7 +163,10 @@ async function Conteudo() {
                   <th className="px-3 py-2 text-right font-normal">Vistas</th>
                   <th className="px-3 py-2 text-right font-normal">Cliques</th>
                   <th className="px-3 py-2 text-right font-normal">Curtidas</th>
-                  <th className="px-5 py-2 font-normal sm:pr-6">Quando</th>
+                  <th className="px-3 py-2 font-normal">Quando</th>
+                  <th className="relative px-5 py-2 font-normal sm:pr-6">
+                    <span className="sr-only">Ações</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -177,17 +196,22 @@ async function Conteudo() {
                     <td className="whitespace-nowrap px-3 py-3">
                       {ORIGEM[i.origem]}, {i.dias} dias
                       <span className="block text-ink-muted">
-                        {i.origem === "compra" ? `${formatarMoeda(i.valor)} · ` : ""}teto {formatarMoeda(i.verba)}
+                        {i.origem === "compra" ? `${formatarMoeda(i.valor)}, ` : ""}até {formatarMoeda(i.verba)} no Google
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{formatarMoeda(Number(i.gasto ?? 0))}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{i.totais.impressoes}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{i.totais.cliques}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{i.totais.curtidas}</td>
-                    <td className="whitespace-nowrap px-5 py-3 text-ink-muted sm:pr-6">
+                    <td className="whitespace-nowrap px-3 py-3 text-ink-muted">
                       {tempoRelativo(i.criado_em, agora)}
                       {i.ate && i.situacao === "no_ar" && (
                         <span className="block">até {new Date(i.ate).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 sm:pr-6">
+                      {["pago", "em_revisao", "no_ar"].includes(i.situacao) && !i.pausar && (
+                        <PararImpulso id={i.id} noAr={i.situacao === "no_ar"} />
                       )}
                     </td>
                   </tr>

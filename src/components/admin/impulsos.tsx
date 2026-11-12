@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { Rocket, Search } from "lucide-react";
+import { useState, useTransition } from "react";
 import {
+  impulsionarPeloAdmin,
+  pararImpulsoPeloAdmin,
   salvarImpulsoAdmin,
   testarGoogleAds,
+  vagasParaImpulso,
   type ConfigImpulso,
   type PrecoImpulso,
+  type VagaParaImpulso,
 } from "@/lib/acoes/admin-impulsos";
 import { Botao } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
@@ -153,5 +158,172 @@ export function TestarGoogleAds() {
       </Botao>
       {mensagem}
     </div>
+  );
+}
+
+/**
+ * Impulsionar a vaga de um cliente sem cobrar, para medir o retorno: procura a vaga (as paradas primeiro), escolhe os
+ * dias e quanto vai para o Google. O robô cria o anúncio como num impulso pago.
+ */
+export function ImpulsionarPeloAdmin({ verbaPadrao }: { verbaPadrao: number }) {
+  const [busca, setBusca] = useState("");
+  const [vagas, setVagas] = useState<VagaParaImpulso[] | null>(null);
+  const [erroBusca, setErroBusca] = useState<string | null>(null);
+  const [procurando, iniciar] = useTransition();
+  const [escolhida, setEscolhida] = useState<VagaParaImpulso | null>(null);
+  const [dias, setDias] = useState(7);
+  const [verba, setVerba] = useState(verbaPadrao);
+  const [avisar, setAvisar] = useState(true);
+  const { rodar, pendente, mensagem } = useAcao();
+
+  function procurar() {
+    setErroBusca(null);
+    iniciar(async () => {
+      const r = await vagasParaImpulso(busca);
+      if (r.ok) setVagas(r.vagas);
+      else setErroBusca(r.erro);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <form
+        role="search"
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          procurar();
+        }}
+      >
+        <label className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="text-label">Vaga ou cliente</span>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Auxiliar de cozinha, Mais RH…"
+            maxLength={80}
+            className={`${classesEntrada} w-full max-w-md`}
+          />
+        </label>
+        <Botao type="submit" tamanho="sm" disabled={procurando}>
+          <Search aria-hidden className="size-4" />
+          {procurando ? "Procurando…" : busca.trim() ? "Procurar" : "Ver as vagas paradas"}
+        </Botao>
+      </form>
+      {erroBusca && <p className="text-body-sm text-danger">{erroBusca}</p>}
+
+      {vagas && vagas.length === 0 && (
+        <p className="text-body-sm text-ink-muted">Nenhuma vaga no ar com esse nome. Tente parte do título ou o nome do cliente.</p>
+      )}
+      {vagas && vagas.length > 0 && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="sr-only">Escolha a vaga</legend>
+          <ul className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-md border border-line p-1">
+            {vagas.map((v) => (
+              <li key={v.id}>
+                <label
+                  className={`flex cursor-pointer items-start gap-3 rounded-md px-3 py-2 hover:bg-surface-300 ${
+                    v.impulsionada ? "cursor-not-allowed opacity-60" : ""
+                  } ${escolhida?.id === v.id ? "bg-surface-300" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="vaga"
+                    className="mt-1 size-4"
+                    disabled={v.impulsionada}
+                    checked={escolhida?.id === v.id}
+                    onChange={() => setEscolhida(v)}
+                  />
+                  <span className="min-w-0">
+                    <span className="text-label">{v.titulo}</span>
+                    <span className="block text-body-sm text-ink-muted">
+                      {v.conta}, {v.bairro}, {v.cidade}. {v.curtidas} {v.curtidas === 1 ? "curtida" : "curtidas"}
+                      {v.parada ? ", parada há 5 dias ou mais" : ""}
+                      {v.impulsionada ? ". Já está sendo impulsionada" : ""}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+      )}
+
+      {escolhida && (
+        <form
+          className="flex flex-col gap-4 rounded-md border border-line p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            rodar(
+              () => impulsionarPeloAdmin({ anuncio: escolhida.id, dias, verba, avisar }),
+              (r) => {
+                if (r.ok) {
+                  setEscolhida(null);
+                  setVagas(null);
+                }
+              },
+            );
+          }}
+        >
+          <p className="text-body">
+            Impulsionar <span className="text-label">“{escolhida.titulo}”</span>, de {escolhida.conta}, sem cobrar.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <Inteiro rotulo="Dias" valor={dias} mudar={setDias} max={30} />
+            <Reais rotulo="Vai para o Google (total)" valor={verba} mudar={setVerba} />
+          </div>
+          <p className="text-body-sm text-ink-muted">
+            Cerca de R$ {(verba / Math.max(dias, 1)).toFixed(2).replace(".", ",")} por dia, do cartão da conta do Google
+            Ads. Os dias contam quando o Google aprovar.
+          </p>
+          <label className="flex items-start gap-2 text-body">
+            <input type="checkbox" checked={avisar} onChange={(e) => setAvisar(e.target.checked)} className="mt-1 size-4" />
+            <span>
+              Avisar o cliente
+              <span className="block text-body-sm text-ink-muted">
+                Ele recebe no sino e acompanha os números na vaga. Desligado, ele só fica sabendo quando o anúncio entrar
+                no ar.
+              </span>
+            </span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Botao type="submit" variante="primario" tamanho="sm" disabled={pendente}>
+              <Rocket aria-hidden className="size-4" />
+              {pendente ? "Impulsionando…" : `Impulsionar ${dias} ${dias === 1 ? "dia" : "dias"} grátis`}
+            </Botao>
+            <Botao tamanho="sm" onClick={() => setEscolhida(null)}>
+              Escolher outra
+            </Botao>
+          </div>
+        </form>
+      )}
+      {mensagem}
+    </div>
+  );
+}
+
+/** Para um impulso pela tabela do admin (com a confirmação no próprio lugar). */
+export function PararImpulso({ id, noAr }: { id: string; noAr: boolean }) {
+  const [certeza, setCerteza] = useState(false);
+  const { rodar, pendente, mensagem } = useAcao();
+  if (!certeza)
+    return (
+      <Botao tamanho="sm" onClick={() => setCerteza(true)}>
+        Parar
+      </Botao>
+    );
+  return (
+    <span className="flex flex-col items-start gap-1">
+      <span className="text-body-sm">{noAr ? "Tirar do Google agora?" : "Cancelar antes de entrar no ar?"}</span>
+      <span className="flex gap-1">
+        <Botao tamanho="sm" variante="primario" disabled={pendente} onClick={() => rodar(() => pararImpulsoPeloAdmin(id))}>
+          Parar
+        </Botao>
+        <Botao tamanho="sm" onClick={() => setCerteza(false)}>
+          Não
+        </Botao>
+      </span>
+      {mensagem}
+    </span>
   );
 }

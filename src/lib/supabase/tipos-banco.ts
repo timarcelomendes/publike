@@ -3671,6 +3671,10 @@ export type Database = {
       servidor_impulso_numeros: { Args: { p_chave: string; p_id: string; p_linhas: Json }; Returns: undefined };
       admin_impulsos: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_salvar_impulso: { Args: { p_precos: Json; p_config: Json | null }; Returns: undefined };
+      // o impulso pelo admin (migração 20270424120000)
+      admin_vagas_para_impulso: { Args: { p_busca: string }; Returns: Json };
+      admin_impulsionar: { Args: { p_anuncio: string; p_dias: number; p_verba: number; p_avisar: boolean }; Returns: Json };
+      admin_parar_impulso: { Args: { p_id: string }; Returns: Json };
       servidor_compra_nova: {
         Args: {
           p_chave: string;

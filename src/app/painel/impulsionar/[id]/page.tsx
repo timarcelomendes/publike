@@ -30,7 +30,7 @@ export const metadata: Metadata = { title: "Impulsionar no Google", robots: { in
 type Impulso = {
   id: string;
   situacao: "pago" | "em_revisao" | "no_ar" | "encerrado" | "credito" | "devolvido";
-  origem: "compra" | "credito" | "cortesia";
+  origem: "compra" | "credito" | "cortesia" | "admin";
   dias: number;
   valor: number;
   verba: number;
@@ -250,7 +250,9 @@ function ImpulsoValendo({ i }: { i: Impulso }) {
               ? `os ${formatarMoeda(i.valor)} voltam para você.`
               : i.origem === "credito"
                 ? "os dias voltam como crédito."
-                : "o impulso grátis fica disponível de novo."}
+                : i.origem === "admin"
+                  ? "este impulso é cortesia do Publike, sem custo para você."
+                  : "o impulso grátis fica disponível de novo."}
           </p>
           <div>
             <CancelarImpulso id={i.id} origem={i.origem} />

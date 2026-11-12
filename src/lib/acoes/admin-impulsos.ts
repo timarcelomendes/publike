@@ -1,11 +1,14 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
 import { contasAcessiveis, contaDeAnuncios, situacaoGoogleAds } from "@/lib/servidor/google-ads-api";
+import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { clienteAdminOuNulo } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { Resultado } from "@/lib/tipos";
+import { UUID } from "@/lib/validacao";
 
 // Admin › Impulsos (migração 20270423120000): os preços, o impulso grátis, o raio e a ligação com o Google Ads.
 
@@ -61,4 +64,69 @@ export async function testarGoogleAds(): Promise<Resultado> {
   } catch (e) {
     return { ok: false, erro: e instanceof Error ? e.message : "Não deu para falar com o Google Ads." };
   }
+}
+
+export type VagaParaImpulso = {
+  id: string;
+  titulo: string;
+  bairro: string;
+  cidade: string;
+  conta: string;
+  curtidas: number;
+  parada: boolean;
+  impulsionada: boolean;
+};
+
+/** As vagas no ar de qualquer cliente, pelo título ou pelo nome de quem publicou (as paradas primeiro). */
+export async function vagasParaImpulso(busca: string): Promise<{ ok: true; vagas: VagaParaImpulso[] } | { ok: false; erro: string }> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  const { data, error } = await c.rpc("admin_vagas_para_impulso", { p_busca: busca.slice(0, 80) });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270424120000_impulso_pelo_admin.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  return { ok: true, vagas: (data ?? []) as unknown as VagaParaImpulso[] };
+}
+
+/** Impulsiona a vaga de um cliente sem cobrar (origem 'admin'): o robô cria o anúncio na próxima volta. */
+export async function impulsionarPeloAdmin(dados: {
+  anuncio: string;
+  dias: number;
+  verba: number;
+  avisar: boolean;
+}): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(dados.anuncio)) return { ok: false, erro: "Escolha a vaga." };
+  if (!Number.isInteger(dados.dias) || dados.dias < 1 || dados.dias > 30)
+    return { ok: false, erro: "O impulso vai de 1 a 30 dias." };
+  if (!(dados.verba >= 1 && dados.verba <= 1000)) return { ok: false, erro: "A verba vai de R$ 1 a R$ 1.000." };
+  if (!situacaoGoogleAds().ligado) return { ok: false, erro: "Ligue o Google Ads antes (veja Está tudo ok?)." };
+  const { data, error } = await c.rpc("admin_impulsionar", {
+    p_anuncio: dados.anuncio,
+    p_dias: dados.dias,
+    p_verba: dados.verba,
+    p_avisar: dados.avisar,
+  });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  const r = data as { ok?: boolean; erro?: string } | null;
+  if (!r?.ok) return { ok: false, erro: r?.erro ?? "Não deu para impulsionar." };
+  after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  return { ok: true, mensagem: "Impulso criado. O anúncio vai para o Google em instantes e entra no ar quando for aprovado." };
+}
+
+/** Para um impulso: antes de entrar no ar, cancela; no ar, o robô tira do Google. */
+export async function pararImpulsoPeloAdmin(id: string): Promise<Resultado> {
+  const c = await clienteAdminOuNulo();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  const { data, error } = await c.rpc("admin_parar_impulso", { p_id: id });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  const r = data as { ok?: boolean; erro?: string } | null;
+  if (!r?.ok) return { ok: false, erro: r?.erro ?? "Não deu para parar." };
+  after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  return { ok: true, mensagem: "Parado." };
 }
