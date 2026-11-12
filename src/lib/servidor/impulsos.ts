@@ -147,6 +147,9 @@ function lugarDaVaga(v: NonNullable<Tarefa["vaga"]>): Lugar {
   throw new Error(`A vaga "${v.titulo}" não tem o lugar no mapa: sem ele, o anúncio apareceria no Brasil inteiro.`);
 }
 
+/** Buscas que não são de quem procura emprego (palavras negativas da campanha). */
+const FORA_DA_BUSCA = ["curso", "cursos", "receita", "receitas", "concurso", "apostila", "o que faz"];
+
 /** O orçamento, a campanha, a língua e os lugares (com os nomes provisórios -1 e -2, para o mesmo mutate). */
 function operacoesDaBaseDaCampanha(o: { codigo: string; nome: string; porDia: number; lugares: Lugar[]; conta: string }) {
   if (!o.lugares.length) throw new Error("Nenhum lugar para a campanha: sem ele, o anúncio apareceria no Brasil inteiro.");
@@ -189,6 +192,10 @@ function operacoesDaBaseDaCampanha(o: { codigo: string; nome: string; porDia: nu
     },
     { campaignCriterionOperation: { create: { campaign: campanha, language: { languageConstant: PORTUGUES } } } },
     ...o.lugares.map((l) => operacaoDoLugar(campanha, l)),
+    // com a palavra ampla, fora quem procura curso, receita ou concurso (não é vaga)
+    ...FORA_DA_BUSCA.map((text) => ({
+      campaignCriterionOperation: { create: { campaign: campanha, negative: true, keyword: { text, matchType: "BROAD" } } },
+    })),
   ];
   return { ops, campanha };
 }
@@ -221,7 +228,9 @@ function operacoesDoGrupo(o: {
   ];
   for (const text of o.texto.palavras) {
     ops.push({
-      adGroupCriterionOperation: { create: { adGroup: o.grupo, status: "ENABLED", keyword: { text, matchType: "PHRASE" } } },
+      // ampla: com a frase exata, 2 de cada 3 palavras ficavam "baixo volume de pesquisas" e as campanhas não apareciam
+      // (12/11/2026: 0 impressões em 4 horas). A campanha geral da Publike, que funciona, usa a ampla.
+      adGroupCriterionOperation: { create: { adGroup: o.grupo, status: "ENABLED", keyword: { text, matchType: "BROAD" } } },
     });
   }
   ops.push(operacoesDoAnuncio(o.grupo, o.url, o.texto));
