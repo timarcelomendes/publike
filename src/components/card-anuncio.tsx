@@ -1,4 +1,4 @@
-import { Bus, CalendarClock, Footprints, Heart, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
+import { CalendarClock, Heart, MapPin, MessageCircleReply, UserCheck, Users, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -10,7 +10,6 @@ import {
   urlDaFotoTrabalho,
   valorDoAnuncio,
 } from "@/lib/formato";
-import { deslocamentoCurto } from "@/lib/deslocamento";
 import { nomeBeneficio } from "@/lib/constantes";
 import { comoResponde, type Resposta } from "@/lib/resposta";
 import type { ResumoComentarios } from "@/lib/comentarios";
@@ -24,6 +23,7 @@ import { AnelDeMatch, ehOutraArea, SeloMatch, type MatchResumo } from "./match-v
 import { AnelMatchFechado, SeloMatchFechado } from "./selo-match-fechado";
 import { Avatar, Selo } from "./ui/basicos";
 import { SeloVerificado } from "@/components/selo-verificado";
+import { TrajetoAteAVaga } from "./trajeto";
 
 const DOIS_DIAS = 48 * 3600 * 1000;
 /** Quantas etiquetas o cartão mostra antes do "+N". */
@@ -134,7 +134,8 @@ export function CardAnuncio({
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
-  const tempo = tempoDe && anuncio.tipo === "vaga" ? deslocamentoCurto(anuncio.distancia_km) : null;
+  // da casa (CEP) ou de onde a pessoa está até a vaga: o caminho, como no mapa
+  const km = tempoDe && anuncio.tipo === "vaga" ? anuncio.distancia_km : null;
   const proprio = usuarioId !== null && usuarioId === anuncio.autor_id;
   const servico = anuncio.tipo === "servico";
   const foto = servico ? urlDaFotoTrabalho(anuncio.foto) : null;
@@ -338,17 +339,8 @@ export function CardAnuncio({
               {distancia && ` · ${distancia}`}
             </span>
           </p>
-          {tempo && (
-            <p className="flex items-center gap-1 text-body-sm text-ink-muted group-data-[visao=lista]/visao:col-start-1">
-              {tempo.includes("a pé") ? (
-                <Footprints aria-hidden className="size-4 shrink-0" />
-              ) : (
-                <Bus aria-hidden className="size-4 shrink-0" />
-              )}
-              <span>
-                {tempo} {tempoDe === "casa" ? "da sua casa" : "de onde você está"}
-              </span>
-            </p>
+          {tempoDe && km != null && (
+            <TrajetoAteAVaga de={tempoDe} km={km} className="group-data-[visao=lista]/visao:col-start-1" />
           )}
         </div>
 

@@ -50,7 +50,7 @@ import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioResumo, Match, MeuPerfil } from "@/lib/tipos";
 import type { Resposta } from "@/lib/resposta";
 import type { OrigemMapa, PontoMapa } from "@/components/mapa/mapa-anuncios";
-import { deslocamentoCurto } from "@/lib/deslocamento";
+import { deslocamentoProvavel } from "@/lib/deslocamento";
 import {
   formatarDistancia,
   formatarLugar,
@@ -660,7 +660,7 @@ export function mapaDaLinha(d: DadosDaLinha): { pontos: PontoMapa[]; origem: Ori
 
 /** Um anúncio no mapa da linha: a etiqueta (valor, distância e tempo) e o cartão. */
 function pontoDoMapa(a: AnuncioResumo, match: number | null, tempoDe: DadosDaLinha["tempoDe"]): PontoMapa {
-  const tempo = tempoDe && a.tipo === "vaga" ? deslocamentoCurto(a.distancia_km) : null;
+  const trajeto = tempoDe && a.tipo === "vaga" && a.distancia_km != null ? deslocamentoProvavel(a.distancia_km) : null;
   return {
     id: a.id,
     lat: a.lat,
@@ -675,7 +675,9 @@ function pontoDoMapa(a: AnuncioResumo, match: number | null, tempoDe: DadosDaLin
         : valorCurto(a.pagamento_valor, a.pagamento_unidade),
     modalidade: rotuloModalidade(a.tipo, a.regime),
     distancia: formatarDistancia(a.distancia_km),
-    tempo: tempo ? `${tempo} ${tempoDe === "casa" ? "da sua casa" : "de onde você está"}` : null,
+    tempo: trajeto ? `${trajeto.texto} ${tempoDe === "casa" ? "da sua casa" : "de onde você está"}` : null,
+    minutos: trajeto?.minutos ?? null,
+    aPe: trajeto?.jeito === "pe",
     autor: `${a.autor_nome} · ${rotuloConta(a.autor_tipo)}`,
     match,
   };

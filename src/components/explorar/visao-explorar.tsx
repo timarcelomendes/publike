@@ -11,7 +11,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useState,
+  useSyncExternalStore,
+  type FocusEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { filtrosMudados, hrefFiltros, SEM_FILTROS, type Filtros } from "@/lib/filtros";
 import { CHAVE_VISAO, CHAVE_VISAO_BUSCA, semDetalhes, VISOES_CELULAR, type Visao } from "@/lib/visao";
@@ -260,6 +268,22 @@ export function VisaoExplorar({
   const alternarFiltros = () => setFiltrosAbertos((a) => !a);
   // a parte do mapa na tela (com o mapa à mostra): a lista mostra só o que está nela
   const [area, setArea] = useState<Limites | null>(null);
+  // o cartão com o mouse em cima (ou com o Tab): o mapa ao lado marca o anúncio e mostra o caminho até ele
+  const [foco, setFoco] = useState<string | null>(null);
+  const doCartao = (alvo: EventTarget | null) =>
+    alvo instanceof Element
+      ? (alvo.closest<HTMLElement>('article[id^="anuncio-"]')?.id.slice("anuncio-".length) ?? null)
+      : null;
+  const focoNaLista = comMapa
+    ? {
+        onPointerOver: (e: PointerEvent<HTMLDivElement>) => e.pointerType === "mouse" && setFoco(doCartao(e.target)),
+        onPointerLeave: () => setFoco(null),
+        onFocus: (e: FocusEvent<HTMLDivElement>) => setFoco(doCartao(e.target)),
+        onBlur: (e: FocusEvent<HTMLDivElement>) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setFoco(null);
+        },
+      }
+    : {};
   const idFiltros = useId();
   const botaoFiltros = (classes: string) => (
     <button
@@ -380,7 +404,7 @@ export function VisaoExplorar({
             <>
               {acimaDoMapa}
               <div className="sticky top-20 h-[calc(100dvh-7rem)] min-h-80">
-                <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} aoMudarArea={setArea} />
+                <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} foco={foco} aoMudarArea={setArea} />
               </div>
             </>,
             mapaFora,
@@ -398,7 +422,7 @@ export function VisaoExplorar({
                     : "h-80 lg:sticky lg:top-20 lg:h-full lg:max-h-[calc(100dvh-7rem)] lg:min-h-80"
               }
             >
-              <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} aoMudarArea={setArea} />
+              <MapaAnuncios pontos={pontos} filtros={filtros} origem={origem} foco={foco} aoMudarArea={setArea} />
             </div>
           </div>
         )}
@@ -407,7 +431,7 @@ export function VisaoExplorar({
             <AreaDoMapa value={null}>{lista}</AreaDoMapa>
           </ListaComDetalhe>
         ) : comLista ? (
-          <div className={visao === "blocos-mapa" && !mapaFora ? "lg:order-1" : ""}>
+          <div className={visao === "blocos-mapa" && !mapaFora ? "lg:order-1" : ""} {...focoNaLista}>
             <AreaDoMapa value={comMapa ? area : null}>{lista}</AreaDoMapa>
           </div>
         ) : null}

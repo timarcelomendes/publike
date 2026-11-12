@@ -384,6 +384,10 @@
   font-family: var(--font-sans);
 }
 /* .maplibregl-map na frente: o CSS do MapLibre carrega depois e venceria */
+/* o cartão do anúncio por cima das etiquetas (que têm z-index 2 e 3): sem isso, as vizinhas o cobriam */
+.maplibregl-map .maplibregl-popup {
+  z-index: 5;
+}
 .maplibregl-map .maplibregl-popup-content {
   border-radius: var(--radius-md);
   padding: 14px 16px;

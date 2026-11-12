@@ -24,7 +24,7 @@ import { modosMarcados } from "@/lib/servidor/modo";
 import { modeloDaPalavra } from "@/lib/modelos-anuncio";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { visaoInicialDaBusca, visaoInicialDaLista } from "@/lib/servidor/visao";
-import { deslocamentoCurto } from "@/lib/deslocamento";
+import { deslocamentoProvavel } from "@/lib/deslocamento";
 import {
   formatarDistancia,
   formatarLugar,
@@ -368,7 +368,8 @@ export async function Explorar({
 
   const tempoDe = origemDoTempo(filtros, local);
   const pontos: PontoMapa[] = anuncios.map((a) => {
-    const tempo = tempoDe && a.tipo === "vaga" ? deslocamentoCurto(a.distancia_km) : null;
+    const trajeto =
+      tempoDe && a.tipo === "vaga" && a.distancia_km != null ? deslocamentoProvavel(a.distancia_km) : null;
     return {
       id: a.id,
       lat: a.lat,
@@ -383,7 +384,9 @@ export async function Explorar({
           : valorCurto(a.pagamento_valor, a.pagamento_unidade),
       modalidade: rotuloModalidade(a.tipo, a.regime),
       distancia: formatarDistancia(a.distancia_km),
-      tempo: tempo ? `${tempo} ${tempoDe === "casa" ? "da sua casa" : "de onde você está"}` : null,
+      tempo: trajeto ? `${trajeto.texto} ${tempoDe === "casa" ? "da sua casa" : "de onde você está"}` : null,
+      minutos: trajeto?.minutos ?? null,
+      aPe: trajeto?.jeito === "pe",
       autor: `${a.autor_nome} · ${rotuloConta(a.autor_tipo)}`,
       match: a.minha_curtida === "match" ? null : (matches.get(a.id)?.nota ?? null),
     };

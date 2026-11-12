@@ -38,13 +38,19 @@ export function formatarMinutos(min: number) {
 }
 
 /**
- * O jeito mais simples de dizer o tempo: até 1,5 km, a pé; senão, de ônibus
- * (a maioria de quem procura emprego vai de ônibus).
+ * O jeito mais provável de ir e quanto leva: até 1,5 km, a pé; senão, de ônibus (a maioria de quem procura
+ * emprego vai de ônibus). `texto`: "~25 min de ônibus".
  */
+export function deslocamentoProvavel(km: number) {
+  const jeito: JeitoDeIr = km <= 1.5 ? "pe" : "onibus";
+  const minutos = minutosAte(km, jeito);
+  return { jeito, minutos, texto: `${formatarMinutos(minutos)} ${JEITOS[jeito].nome}` };
+}
+
+/** O jeito mais simples de dizer o tempo ("~25 min de ônibus", "~10 min a pé"). */
 export function deslocamentoCurto(km: number | null | undefined) {
   if (km == null) return null;
-  if (km <= 1.5) return `${formatarMinutos(minutosAte(km, "pe"))} a pé`;
-  return `${formatarMinutos(minutosAte(km, "onibus"))} de ônibus`;
+  return deslocamentoProvavel(km).texto;
 }
 
 /** Todos os jeitos, para a página da vaga. A pé só até 3 km. */
