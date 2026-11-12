@@ -524,6 +524,9 @@ export function MapaAnuncios({
                       .setDOMContent(conteudo)
                       .addTo(m);
                     cartao.on("close", desmarcar);
+                    // por cima das etiquetas e dos grupos (z-index 2 e 3), também aqui: só o CSS do globals.css não
+                    // bastou, com o CSS antigo no cache do Next os grupos ficavam por cima do cartão (12/11/2026)
+                    cartao.getElement().style.zIndex = "5";
                     refazerTrajeto.current();
                     // no mapa estreito (o celular), o cartão saía pela borda e escondia o fim: o mapa anda o que falta
                     const aberto = cartao;
