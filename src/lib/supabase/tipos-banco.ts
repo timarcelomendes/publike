@@ -2037,6 +2037,12 @@ export type Database = {
       servidor_impulsos_automaticos: { Args: { p_chave: string }; Returns: number };
       // a conta do Google Ads de um impulso de antes (migração 20270429120000)
       servidor_impulso_conta: { Args: { p_chave: string; p_id: string; p_conta: string }; Returns: undefined };
+      // a campanha do cliente: várias vagas numa campanha só (migração 20270430120000)
+      servidor_campanhas_para_cuidar: { Args: { p_chave: string }; Returns: Json };
+      servidor_campanha_criada: { Args: { p_chave: string; p_id: string; p_ids: Json }; Returns: undefined };
+      servidor_campanha_orcamento: { Args: { p_chave: string; p_id: string; p_verba: number }; Returns: undefined };
+      servidor_campanha_encerrada: { Args: { p_chave: string; p_id: string }; Returns: undefined };
+      servidor_campanha_erro: { Args: { p_chave: string; p_id: string; p_erro: string }; Returns: Json };
       salario_da_funcao: {
         Args: { p_cbo: string; p_regiao?: string };
         Returns: {
@@ -3687,7 +3693,15 @@ export type Database = {
       admin_impulsos: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_salvar_impulso: { Args: { p_precos: Json; p_config: Json | null }; Returns: undefined };
       // o impulso pelo admin (migração 20270424120000)
-      admin_vagas_para_impulso: { Args: { p_busca: string }; Returns: Json };
+      admin_vagas_para_impulso: { Args: { p_busca?: string | null; p_tipo?: string | null; p_conta?: string | null }; Returns: Json };
+      // o impulso por cliente e os tipos de vaga (migração 20270430120000)
+      admin_impulsionar_cliente: {
+        Args: { p_conta: string; p_anuncios: string[]; p_dias: number | null; p_verba: number; p_avisar: boolean };
+        Returns: Json;
+      };
+      admin_parar_campanha: { Args: { p_id: string }; Returns: Json };
+      admin_tipos_de_vaga: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_salvar_tipos: { Args: { p_tipos: Json }; Returns: Json };
       admin_impulsionar: { Args: { p_anuncio: string; p_dias: number; p_verba: number; p_avisar: boolean }; Returns: Json };
       admin_parar_impulso: { Args: { p_id: string }; Returns: Json };
       servidor_compra_nova: {

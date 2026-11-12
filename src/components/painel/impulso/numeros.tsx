@@ -16,11 +16,14 @@ export function NumerosDoImpulso({
   porDia,
   verba,
   gasto,
+  rotuloDaVerba = "Verba do anúncio",
 }: {
   totais: TotaisDoImpulso;
   porDia: DiaDoImpulso[];
   verba: number;
   gasto: number;
+  /** na campanha de várias vagas do cliente, a verba é uma só para todas */
+  rotuloDaVerba?: string;
 }) {
   const maior = Math.max(1, ...porDia.map((d) => d.cliques));
   const usado = Math.min(100, Math.round((gasto / Math.max(verba, 0.01)) * 100));
@@ -37,14 +40,14 @@ export function NumerosDoImpulso({
       </dl>
       <div className="flex flex-col gap-1.5">
         <p className="flex flex-wrap justify-between gap-2 text-body-sm">
-          <span>Verba do anúncio</span>
+          <span>{rotuloDaVerba}</span>
           <span className="tabular-nums text-ink-muted">
             {formatarMoeda(gasto)} de {formatarMoeda(verba)}
           </span>
         </p>
         <div
           role="meter"
-          aria-label="Verba do anúncio usada"
+          aria-label={`${rotuloDaVerba}: quanto foi usado`}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={usado}

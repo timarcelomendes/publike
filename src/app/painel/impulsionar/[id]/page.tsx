@@ -35,6 +35,8 @@ type Impulso = {
   valor: number;
   verba: number;
   gasto: number;
+  /** na campanha de várias vagas do cliente (pelo admin), quantas vagas dividem a verba */
+  campanha_vagas?: number | null;
   motivo: string | null;
   criado_em: string;
   aprovado_em: string | null;
@@ -44,6 +46,11 @@ type Impulso = {
   totais: TotaisDoImpulso;
   por_dia: DiaDoImpulso[];
 };
+
+/** A verba que o cliente vê: a da vaga ou, na campanha de várias vagas dele, a de todas juntas. */
+function rotuloDaVerba(i: Impulso) {
+  return i.campanha_vagas && i.campanha_vagas > 1 ? `Verba das suas ${i.campanha_vagas} vagas no Google` : undefined;
+}
 
 type DoImpulso = {
   vaga: VagaDoImpulso & { status: string; preenchida: boolean };
@@ -153,7 +160,13 @@ async function Conteudo({
                     </p>
                     {i.motivo && i.situacao !== "encerrado" && <p className="text-body-sm text-ink-muted">{i.motivo}</p>}
                     {i.aprovado_em && (
-                      <NumerosDoImpulso totais={i.totais} porDia={i.por_dia} verba={i.verba} gasto={i.gasto} />
+                      <NumerosDoImpulso
+                        totais={i.totais}
+                        porDia={i.por_dia}
+                        verba={i.verba}
+                        gasto={i.gasto}
+                        rotuloDaVerba={rotuloDaVerba(i)}
+                      />
                     )}
                   </li>
                 ))}
@@ -241,7 +254,13 @@ function ImpulsoValendo({ i }: { i: Impulso }) {
         <SeloDaSituacao i={i} />
       </div>
       {i.situacao === "no_ar" ? (
-        <NumerosDoImpulso totais={i.totais} porDia={i.por_dia} verba={i.verba} gasto={i.gasto} />
+        <NumerosDoImpulso
+          totais={i.totais}
+          porDia={i.por_dia}
+          verba={i.verba}
+          gasto={i.gasto}
+          rotuloDaVerba={rotuloDaVerba(i)}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-body-sm text-ink-muted">

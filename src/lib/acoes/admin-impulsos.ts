@@ -48,6 +48,65 @@ export type ConfigImpulso = {
   auto_avisar: boolean;
 };
 
+/** Um impulso na lista do admin (admin_impulsos). */
+export type ImpulsoDoAdmin = {
+  id: string;
+  conta: string;
+  conta_id: string;
+  anuncio_id: string | null;
+  titulo: string;
+  situacao: string;
+  origem: "compra" | "credito" | "cortesia" | "admin";
+  dias: number;
+  valor: number;
+  verba: number;
+  gasto: number | null;
+  campanha_id: string | null;
+  criado_em: string;
+  aprovado_em: string | null;
+  ate: string | null;
+  pausar: boolean;
+  erro: string | null;
+  erro_desde: string | null;
+  motivo: string | null;
+  sandbox: boolean;
+  automatico?: boolean;
+  /** a campanha do cliente da vaga (migração 20270430120000) */
+  campanha_cliente_id?: string | null;
+  /** o tipo da vaga pelo título (null: Outros) */
+  tipo?: string | null;
+  totais: { impressoes: number; cliques: number; visitas: number; curtidas: number };
+};
+
+/** A campanha de um cliente (várias vagas numa campanha só no Google). */
+export type CampanhaDoAdmin = {
+  id: string;
+  conta_id: string;
+  nome: string;
+  situacao: string;
+  dias: number;
+  verba: number;
+  criado_em: string;
+  aprovado_em: string | null;
+  ate: string | null;
+  encerrado_em: string | null;
+  motivo: string | null;
+  erro: string | null;
+  erro_desde: string | null;
+  campanha_id: string | null;
+};
+
+/** O que cada tipo de vaga rendeu nos últimos 90 dias. */
+export type ResultadoPorTipo = {
+  tipo: string;
+  impulsos: number;
+  gasto: number;
+  impressoes: number;
+  cliques: number;
+  visitas: number;
+  curtidas: number;
+};
+
 export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigImpulso): Promise<Resultado> {
   const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
@@ -164,55 +223,163 @@ export async function testarGoogleAds(): Promise<Resultado> {
   }
 }
 
+/** A campanha do cliente que está correndo (as vagas novas dele entram nela). */
+export type CampanhaCorrendo = { id: string; situacao: string; ate: string | null; dias: number; verba: number };
+
 export type VagaParaImpulso = {
   id: string;
   titulo: string;
   bairro: string;
   cidade: string;
+  criado_em: string;
+  expira_em: string | null;
   conta: string;
+  conta_id: string;
+  conta_tipo: string;
+  com_salario: boolean;
   curtidas: number;
   parada: boolean;
   impulsionada: boolean;
+  /** o tipo da vaga pelo título (null: Outros) e a sugestão dele (dias, verba por vaga, raio) */
+  tipo_id: string | null;
+  tipo: string | null;
+  sugestao: { dias: number; verba: number; raio: number };
+  campanha: CampanhaCorrendo | null;
 };
 
-/** As vagas no ar de qualquer cliente, pelo título ou pelo nome de quem publicou (as paradas primeiro). */
-export async function vagasParaImpulso(busca: string): Promise<{ ok: true; vagas: VagaParaImpulso[] } | { ok: false; erro: string }> {
+/**
+ * As vagas no ar de qualquer cliente: pelo título ou pelo nome de quem publicou, pelo tipo (o id ou "outros") ou todas
+ * as de um cliente (as paradas primeiro).
+ */
+export async function vagasParaImpulso(
+  busca: string,
+  filtro: { tipo?: string | null; conta?: string | null } = {},
+): Promise<{ ok: true; vagas: VagaParaImpulso[] } | { ok: false; erro: string }> {
   const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
-  const { data, error } = await c.rpc("admin_vagas_para_impulso", { p_busca: busca.slice(0, 80) });
+  const tipo = filtro.tipo && (filtro.tipo === "outros" || UUID.test(filtro.tipo)) ? filtro.tipo : null;
+  const conta = filtro.conta && UUID.test(filtro.conta) ? filtro.conta : null;
+  const { data, error } = await c.rpc("admin_vagas_para_impulso", {
+    p_busca: busca.slice(0, 80),
+    p_tipo: tipo,
+    p_conta: conta,
+  });
   if (error) {
-    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270424120000_impulso_pelo_admin.sql primeiro." };
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270430120000_impulso_por_cliente.sql primeiro." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
   return { ok: true, vagas: (data ?? []) as unknown as VagaParaImpulso[] };
 }
 
-/** Impulsiona a vaga de um cliente sem cobrar (origem 'admin'): o robô cria o anúncio na próxima volta. */
-export async function impulsionarPeloAdmin(dados: {
-  anuncio: string;
-  dias: number;
+/**
+ * Impulsiona vagas de um cliente numa campanha só no Google, sem cobrar (a verba é do Publike). Se ele já tem uma
+ * campanha correndo, as vagas entram nela e a verba soma.
+ */
+export async function impulsionarCliente(dados: {
+  conta: string;
+  anuncios: string[];
+  dias: number | null;
   verba: number;
   avisar: boolean;
 }): Promise<Resultado> {
   const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
-  if (!UUID.test(dados.anuncio)) return { ok: false, erro: "Escolha a vaga." };
-  if (!Number.isInteger(dados.dias) || dados.dias < 1 || dados.dias > 30)
+  if (!UUID.test(dados.conta)) return { ok: false, erro: "Escolha o cliente." };
+  const anuncios = [...new Set(dados.anuncios)].filter((id) => UUID.test(id));
+  if (!anuncios.length || anuncios.length > 50) return { ok: false, erro: "Escolha de 1 a 50 vagas." };
+  if (dados.dias !== null && (!Number.isInteger(dados.dias) || dados.dias < 1 || dados.dias > 30))
     return { ok: false, erro: "O impulso vai de 1 a 30 dias." };
-  if (!(dados.verba >= 1 && dados.verba <= 1000)) return { ok: false, erro: "A verba vai de R$ 1 a R$ 1.000." };
-  if (!situacaoGoogleAds().ligado) return { ok: false, erro: "Ligue o Google Ads antes (veja Está tudo ok?)." };
-  const { data, error } = await c.rpc("admin_impulsionar", {
-    p_anuncio: dados.anuncio,
+  if (!(dados.verba >= anuncios.length && dados.verba <= 5000))
+    return { ok: false, erro: "A verba vai de R$ 1 por vaga a R$ 5.000." };
+  if (!situacaoGoogleAds().ligado) return { ok: false, erro: "Ligue o Google Ads antes (veja o alto da página)." };
+  const { data, error } = await c.rpc("admin_impulsionar_cliente", {
+    p_conta: dados.conta,
+    p_anuncios: anuncios,
     p_dias: dados.dias,
-    p_verba: dados.verba,
+    p_verba: Math.round(dados.verba * 100) / 100,
     p_avisar: dados.avisar,
   });
-  if (error) return { ok: false, erro: mensagemDeErro(error) };
-  const r = data as { ok?: boolean; erro?: string } | null;
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270430120000_impulso_por_cliente.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  const r = data as { ok?: boolean; erro?: string; juntou?: boolean; vagas?: number } | null;
   if (!r?.ok) return { ok: false, erro: r?.erro ?? "Não deu para impulsionar." };
   after(() => cuidarDosImpulsos().catch(() => {}));
   refresh();
-  return { ok: true, mensagem: "Impulso criado. O anúncio vai para o Google em instantes e entra no ar quando for aprovado." };
+  const uma = r.vagas === 1;
+  return {
+    ok: true,
+    mensagem: r.juntou
+      ? uma
+        ? "A vaga entrou na campanha que já corre para este cliente."
+        : `As ${r.vagas} vagas entraram na campanha que já corre para este cliente.`
+      : uma
+        ? "Campanha criada. A vaga vai para o Google em instantes e entra no ar quando o Google aprovar."
+        : `Campanha criada com ${r.vagas} vagas. Elas vão para o Google em instantes e entram no ar quando o Google aprovar.`,
+  };
+}
+
+/** Para a campanha do cliente inteira: as vagas antes do ar voltam; as no ar saem do Google na próxima volta. */
+export async function pararCampanhaDoCliente(id: string): Promise<Resultado> {
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
+  const { data, error } = await c.rpc("admin_parar_campanha", { p_id: id });
+  if (error) return { ok: false, erro: mensagemDeErro(error) };
+  const r = data as { ok?: boolean; erro?: string } | null;
+  if (!r?.ok) return { ok: false, erro: r?.erro ?? "Não deu para parar." };
+  after(() => cuidarDosImpulsos().catch(() => {}));
+  refresh();
+  return { ok: true, mensagem: "Parando. As vagas saem do Google em instantes." };
+}
+
+/** Um tipo de vaga: as palavras do título que o definem e as regras dele (vazio segue a regra geral). */
+export type TipoDeVaga = {
+  id: string | null;
+  nome: string;
+  palavras: string[];
+  menos: string[];
+  dias: number | null;
+  verba: number | null;
+  raio: number | null;
+  /** quantas vagas no ar o tipo pega agora (só para ler) */
+  vagas?: number;
+};
+
+/** Grava a lista inteira de tipos, na ordem dela (o que não veio sai). */
+export async function salvarTiposDeVaga(tipos: TipoDeVaga[]): Promise<Resultado> {
+  const c = await clienteDosImpulsos();
+  if (!c) return { ok: false, erro: FORA };
+  if (tipos.length > 40) return { ok: false, erro: "Até 40 tipos." };
+  const limpos = tipos.map((t) => ({
+    id: t.id && UUID.test(t.id) ? t.id : null,
+    nome: t.nome.trim().slice(0, 40),
+    palavras: t.palavras.map((p) => p.trim()).filter(Boolean).slice(0, 40),
+    menos: t.menos.map((p) => p.trim()).filter(Boolean).slice(0, 40),
+    dias: t.dias ?? null,
+    verba: t.verba ?? null,
+    raio: t.raio ?? null,
+  }));
+  for (const t of limpos) {
+    if (t.nome.length < 2) return { ok: false, erro: "Todo tipo precisa de um nome." };
+    if (!t.palavras.length) return { ok: false, erro: `"${t.nome}" precisa de pelo menos uma palavra.` };
+    if (t.dias !== null && !(Number.isInteger(t.dias) && t.dias >= 1 && t.dias <= 30))
+      return { ok: false, erro: `"${t.nome}": os dias vão de 1 a 30.` };
+    if (t.verba !== null && !(t.verba >= 1 && t.verba <= 1000))
+      return { ok: false, erro: `"${t.nome}": a verba por vaga vai de R$ 1 a R$ 1.000.` };
+    if (t.raio !== null && !(Number.isInteger(t.raio) && t.raio >= 1 && t.raio <= 65))
+      return { ok: false, erro: `"${t.nome}": o raio vai de 1 a 65 km.` };
+  }
+  const { data, error } = await c.rpc("admin_salvar_tipos", { p_tipos: limpos as unknown as Json });
+  if (error) {
+    if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270430120000_impulso_por_cliente.sql primeiro." };
+    return { ok: false, erro: mensagemDeErro(error) };
+  }
+  const r = data as { ok?: boolean; erro?: string } | null;
+  if (!r?.ok) return { ok: false, erro: r?.erro ?? "Não deu para salvar." };
+  refresh();
+  return { ok: true, mensagem: "Tipos salvos." };
 }
 
 /** Para um impulso: antes de entrar no ar, cancela; no ar, o robô tira do Google. */
