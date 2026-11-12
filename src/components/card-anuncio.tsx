@@ -297,7 +297,7 @@ export function CardAnuncio({
 
         <div className="flex items-start gap-3 group-data-[visao=lista]/visao:col-start-1 group-data-[visao=lista]/visao:row-start-1">
           <div className="min-w-0 flex-1">
-            <h3 className="text-h3 group-data-[visao=grade]/visao:line-clamp-2 group-data-[visao=grade]/visao:text-label group-data-[visao=lista]/visao:truncate group-data-[visao=lista]/visao:text-label group-data-[visao=lista]/visao:sm:text-body-lg">
+            <h3 className="text-h3 group-data-[visao=grade]/visao:line-clamp-2 group-data-[visao=grade]/visao:text-label group-data-[visao=lista]/visao:line-clamp-2 group-data-[visao=lista]/visao:text-label group-data-[visao=lista]/visao:sm:text-body-lg">
               <Link
                 href={`/anuncio/${anuncio.id}`}
                 className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
@@ -307,12 +307,6 @@ export function CardAnuncio({
             </h3>
             {servico && <NotaDoProfissional media={anuncio.autor_nota} total={anuncio.autor_avaliacoes} compacto />}
           </div>
-          {(comMatch || fechado) && (
-            // na lista, os selos de cima somem: o % fica ao lado do título
-            <span className="hidden shrink-0 group-data-[visao=lista]/visao:block">
-              {comMatch ? <SeloMatch match={comMatch} /> : <SeloMatchFechado />}
-            </span>
-          )}
           {foto && (
             <Image
               src={foto}
@@ -364,17 +358,26 @@ export function CardAnuncio({
           </p>
         )}
 
-        {etiquetas.length > 0 && (
+        {(etiquetas.length > 0 || comMatch || fechado) && (
           // na lista, embaixo do lugar (benefícios, currículo, prazo): o que ajuda a escolher. Na largura toda do
           // cartão, lado a lado: só na coluna do título, ao lado dos botões, elas se empilhavam (12/11/2026, Lista +
           // detalhes)
           <ul
             className={`flex flex-wrap gap-1.5 group-data-[visao=grade]/visao:hidden ${
-              etiquetas.length === (modalidade ? 1 : 0)
+              etiquetas.length === (modalidade ? 1 : 0) && !comMatch && !fechado
                 ? "group-data-[visao=lista]/visao:hidden"
-                : "group-data-[visao=lista]/visao:col-span-full group-data-[visao=lista]/visao:gap-1"
+                : `group-data-[visao=lista]/visao:col-span-full group-data-[visao=lista]/visao:gap-1 ${
+                    // só o % de match: a linha existe só na lista
+                    etiquetas.length === 0 ? "hidden group-data-[visao=lista]/visao:flex" : ""
+                  }`
             }`}
           >
+            {(comMatch || fechado) && (
+              // na lista, o % de match vem com as etiquetas: ao lado do título, ele cortava o cargo ("Vend…")
+              <li className="hidden shrink-0 group-data-[visao=lista]/visao:inline-flex">
+                {comMatch ? <SeloMatch match={comMatch} /> : <SeloMatchFechado />}
+              </li>
+            )}
             {etiquetas}
           </ul>
         )}
