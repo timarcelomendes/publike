@@ -31,6 +31,7 @@ import { AvisarBusca } from "./explorar/avisar-busca";
 import { DadosEstruturados } from "./dados-estruturados";
 import { BotaoLink } from "./ui/botao";
 import { Container } from "./ui/basicos";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 type Busca = { tipo: TipoAnuncio; cidade: string; area: (typeof CATEGORIAS)[number] | null };
 
@@ -57,7 +58,13 @@ export async function metadadosDaBusca({ tipo, cidade, area }: Busca): Promise<M
     title: titulo,
     description: descricao,
     alternates: { canonical: caminho },
-    openGraph: { title: `${titulo} · Publike`, description: descricao, url: caminho, type: "website" },
+    openGraph: {
+      images: [IMAGEM_DO_SITE],
+      title: `${titulo} · Publike`,
+      description: descricao,
+      url: caminho,
+      type: "website",
+    },
     robots: vazia ? { index: false, follow: true } : undefined,
   };
 }

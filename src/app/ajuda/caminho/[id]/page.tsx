@@ -11,6 +11,7 @@ import { todosOsCaminhos } from "@/lib/ajuda";
 import { SITE_URL } from "@/lib/config";
 import { TIPOS_CONTA } from "@/lib/constantes";
 import { TemVoltarProprio } from "@/components/voltar";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // O passo a passo de um caminho, com as telas: a página para mandar a quem ainda não usa o Publike.
 
@@ -35,7 +36,11 @@ export async function generateMetadata({ params }: PageProps<"/ajuda/caminho/[id
     title: tituloDo(c),
     description: c.jornada.resumo,
     alternates: { canonical: `/ajuda/caminho/${c.id}` },
-    openGraph: { title: `${tituloDo(c)} | Publike`, description: c.jornada.resumo },
+    openGraph: {
+      images: [IMAGEM_DO_SITE],
+      title: `${tituloDo(c)} | Publike`,
+      description: c.jornada.resumo,
+    },
   };
 }
 

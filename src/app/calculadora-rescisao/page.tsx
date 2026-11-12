@@ -8,6 +8,7 @@ import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { CASOS_RESCISAO } from "@/lib/rescisao-casos";
 import { ANO_DAS_TABELAS } from "@/lib/tabelas-trabalhistas";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // A calculadora de rescisão completa (claude/plano-calculadora-rescisao.md): o básico (saldo, aviso, 13º, férias, multa)
 // e o que costuma mudar o valor (aviso proporcional e a projeção, médias, adicionais, férias em dobro, faltas,
@@ -21,7 +22,13 @@ export const metadata: Metadata = {
   title: TITULO,
   description: DESCRICAO,
   alternates: { canonical: "/calculadora-rescisao" },
-  openGraph: { title: `${TITULO} · Publike`, description: DESCRICAO, url: "/calculadora-rescisao", type: "website" },
+  openGraph: {
+    images: [IMAGEM_DO_SITE],
+    title: `${TITULO} · Publike`,
+    description: DESCRICAO,
+    url: "/calculadora-rescisao",
+    type: "website",
+  },
 };
 
 const PERGUNTAS = [

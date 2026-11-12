@@ -99,6 +99,7 @@ import {
   rotuloConta,
   rotuloModalidade,
   tempoRelativo,
+  urlDaFoto,
   urlDaFotoTrabalho,
   valorDoAnuncio,
 } from "@/lib/formato";
@@ -128,7 +129,8 @@ import { vagaUsaTriagem } from "@/lib/servidor/copiloto";
 export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): Promise<Metadata> {
   const { id } = await params;
   const anuncio = await obterAnuncio(id);
-  if (!anuncio) return { title: "Anúncio não encontrado", robots: { index: false } };
+  // sem o anúncio, 404 de verdade (para os robôs, o metadado vem antes da página e a resposta sai com o código certo)
+  if (!anuncio) notFound();
   const descricao = `${rotuloModalidade(anuncio.tipo, anuncio.regime)} em ${formatarLugar(anuncio.bairro, anuncio.cidade)}. ${valorDoAnuncio(anuncio)}. ${anuncio.descricao.slice(0, 120)}`;
   return {
     title: anuncio.titulo,
@@ -198,6 +200,10 @@ function dadosVaga(a: AnuncioCompleto) {
       name: a.contratante ?? (a.contratante_confidencial ? "Confidencial" : a.autor_nome),
       // quem publicou é quem contrata: o perfil público dele no Publike
       ...(!a.contratante && !a.contratante_confidencial ? { sameAs: `${SITE_URL}/perfil/${a.autor_id}` } : {}),
+      // o logo ao lado da vaga no Google Vagas: a foto de quem publicou, quando é quem contrata
+      ...(!a.contratante && !a.contratante_confidencial && a.autor_foto && a.autor_tipo !== "pessoa"
+        ? { logo: urlDaFoto(a.autor_foto) }
+        : {}),
     },
     identifier: { "@type": "PropertyValue", name: "Publike", value: a.id },
     occupationalCategory: categoria(a.categoria).nome,

@@ -6,6 +6,7 @@ import { CompartilharPagina } from "@/components/compartilhar-pagina";
 import { MaisDoPublike } from "@/components/mais-do-publike";
 import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // Currículo simples grátis (claude/plano-curriculo-simples-gratis.md): quem busca "currículo simples" no Google quer
 // um modelo para preencher e baixar. Aberto, sem conta; o convite para salvar no Publike vem depois de baixar.
@@ -18,7 +19,13 @@ export const metadata: Metadata = {
   title: TITULO,
   description: DESCRICAO,
   alternates: { canonical: "/curriculo-simples" },
-  openGraph: { title: `${TITULO} · Publike`, description: DESCRICAO, url: "/curriculo-simples", type: "website" },
+  openGraph: {
+    images: [IMAGEM_DO_SITE],
+    title: `${TITULO} · Publike`,
+    description: DESCRICAO,
+    url: "/curriculo-simples",
+    type: "website",
+  },
 };
 
 const PERGUNTAS = [

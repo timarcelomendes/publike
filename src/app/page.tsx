@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Eye } from "lucide-react";
 import { Suspense, type ReactNode } from "react";
 import { DadosEstruturados } from "@/components/dados-estruturados";
@@ -53,6 +54,9 @@ const DADOS_SITE = [
 ];
 
 type Parametros = PageProps<"/">["searchParams"];
+
+// a página inicial tem um endereço só para o Google: os filtros (?q=, ?cidade=…) são a mesma página
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function Inicio({ searchParams }: PageProps<"/">) {
   return (

@@ -17,7 +17,7 @@ import { categoria, REGIMES } from "@/lib/constantes";
 import { semAcento } from "@/lib/descobrir";
 import { obterPerfilPublico, obterUsuario, requisitosDasVagas, type DetalhesDaVaga } from "@/lib/dados";
 import { meusSeguidos } from "@/lib/dados-social";
-import { formatarLugar, plural } from "@/lib/formato";
+import { formatarLugar, plural, urlDaFoto } from "@/lib/formato";
 import { corLegivel, corValida, textoSobre } from "@/lib/marca";
 import { extrasDe, matchDasVagas, quemProcura } from "@/lib/servidor/lista-anuncios";
 import { marcaDaEmpresa } from "@/lib/servidor/vagas-da-empresa";
@@ -25,6 +25,7 @@ import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import type { AnuncioDoPerfil, AnuncioResumo, Regime } from "@/lib/tipos";
 import { linkDasVagas, textoDasVagas, valorCurto } from "@/lib/vagas-da-empresa";
+import { DadosEstruturados } from "@/components/dados-estruturados";
 import { TemVoltarProprio } from "@/components/voltar";
 
 // "Todas as vagas" de uma empresa, comércio ou agência: o link que ela põe na bio do Instagram, no status do
@@ -80,7 +81,7 @@ function paraQuem(a: AnuncioDoPerfil) {
 export async function generateMetadata({ params }: PageProps<"/perfil/[id]/vagas">): Promise<Metadata> {
   const { id } = await params;
   const dados = await obterPerfilPublico(id, LIMITE);
-  if (!dados) return { title: "Vagas não encontradas", robots: { index: false } };
+  if (!dados) notFound();
   const total = dados.anuncios.filter((a) => a.tipo === "vaga").length;
   const lugar = formatarLugar(dados.perfil.bairro, dados.perfil.cidade);
   const titulo = total
@@ -175,8 +176,44 @@ async function Conteudo({
     textoDasVagas(perfil.nome, vagas, linkDasVagas(SITE_URL, perfil.id, "whatsapp", marca?.apelido)),
   )}`;
 
+  // para o Google: quem contrata e a lista das vagas abertas (só a página pública, sem filtro)
+  const dadosEstruturados =
+    perfil.tipo === "pessoa"
+      ? []
+      : [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: perfil.nome,
+            url: `${SITE_URL}/perfil/${perfil.id}`,
+            ...(urlDaFoto(perfil.foto) ? { logo: urlDaFoto(perfil.foto) } : {}),
+            ...(perfil.cidade
+              ? {
+                  address: {
+                    "@type": "PostalAddress",
+                    addressLocality: perfil.cidade,
+                    addressRegion: "GO",
+                    addressCountry: "BR",
+                  },
+                }
+              : {}),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            name: `Vagas de ${perfil.nome}`,
+            itemListElement: vagas.slice(0, 50).map((a, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              url: `${SITE_URL}/anuncio/${a.id}`,
+              name: a.titulo,
+            })),
+          },
+        ];
+
   return (
     <>
+      {!filtrando && dadosEstruturados.length > 0 && <DadosEstruturados dados={dadosEstruturados} />}
       <Link
         href={`/perfil/${perfil.id}`}
         className="inline-flex min-h-11 items-center gap-2 text-label text-ink-muted hover:text-ink"

@@ -69,6 +69,37 @@ async function paginasDeBusca(): Promise<MetadataRoute.Sitemap> {
   return lista;
 }
 
+/**
+ * As páginas de quem contrata (empresa ou comércio, nunca pessoa física) com vaga no ar: o perfil e "Vagas de …", que
+ * respondem a quem procura "vagas na <empresa>". O perfil de pessoa fica fora do sitemap.
+ */
+async function paginasDasEmpresas(
+  anuncios: { autor_id: string; tipo: string; atualizado_em: string }[],
+): Promise<MetadataRoute.Sitemap> {
+  const ultima = new Map<string, string>();
+  for (const a of anuncios) {
+    if (a.tipo !== "vaga") continue;
+    if (!ultima.has(a.autor_id) || (ultima.get(a.autor_id) as string) < a.atualizado_em) ultima.set(a.autor_id, a.atualizado_em);
+  }
+  const ids = [...ultima.keys()];
+  const empresas = new Set<string>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await criarClientePublico()
+      .from("perfis")
+      .select("id, tipo")
+      .in("id", ids.slice(i, i + 200))
+      .neq("tipo", "pessoa");
+    for (const p of data ?? []) empresas.add(p.id);
+  }
+  return [...empresas].flatMap((id) => {
+    const lastModified = new Date(ultima.get(id) as string).toISOString();
+    return [
+      { url: `${SITE_URL}/perfil/${id}/vagas`, lastModified, changeFrequency: "daily" as const, priority: 0.6 },
+      { url: `${SITE_URL}/perfil/${id}`, lastModified, changeFrequency: "weekly" as const, priority: 0.4 },
+    ];
+  });
+}
+
 // Lista as páginas para o Google, incluindo os anúncios no ar.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();
@@ -95,6 +126,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     { url: `${SITE_URL}/noticias`, changeFrequency: "daily", priority: 0.6 },
     { url: `${SITE_URL}/novidades`, changeFrequency: "weekly", priority: 0.4 },
+    { url: `${SITE_URL}/ajuda`, changeFrequency: "monthly", priority: 0.4 },
     ...CONTEUDOS.map((c) => ({
       url: `${SITE_URL}/conteudos/${c.slug}`,
       lastModified: c.publicado,
@@ -106,7 +138,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const { data } = await criarClientePublico()
     .from("anuncios")
-    .select("id, atualizado_em")
+    .select("id, atualizado_em, autor_id, tipo")
     .eq("status", "ativo")
     .gt("expira_em", new Date().toISOString())
     .order("criado_em", { ascending: false })
@@ -115,6 +147,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...paginas,
     ...(await paginasDeBusca()),
+    ...(await paginasDasEmpresas(data ?? [])),
     // as vagas por função e cidade: com vaga no ar, ou só com o salário nas cidades de praça
     ...(await paginasDeFuncao().catch(() => [])).map((f) => ({
       url: `${SITE_URL}${caminhoDaFuncao(f.cidade, f.funcao.slug)}`,

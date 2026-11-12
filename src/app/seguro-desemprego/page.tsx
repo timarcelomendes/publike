@@ -8,6 +8,7 @@ import { Container } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { formatarMoeda } from "@/lib/formato";
 import { ANO_DA_TABELA, FAIXAS, SALARIO_MINIMO, VIGENCIA } from "@/lib/seguro-desemprego";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // "Tenho direito ao seguro-desemprego?" (claude/plano-seguro-desemprego.md): quem busca as regras no Google quer a
 // resposta para o seu caso. Aberta, sem conta; no fim, as vagas e o currículo grátis.
@@ -19,7 +20,13 @@ export const metadata: Metadata = {
   title: TITULO,
   description: DESCRICAO,
   alternates: { canonical: "/seguro-desemprego" },
-  openGraph: { title: `${TITULO} · Publike`, description: DESCRICAO, url: "/seguro-desemprego", type: "website" },
+  openGraph: {
+    images: [IMAGEM_DO_SITE],
+    title: `${TITULO} · Publike`,
+    description: DESCRICAO,
+    url: "/seguro-desemprego",
+    type: "website",
+  },
 };
 
 const m = formatarMoeda;

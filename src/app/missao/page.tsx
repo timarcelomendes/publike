@@ -26,6 +26,7 @@ import { CIDADES_DAS_PRACAS, ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
   title: "Nossa missão",
+  alternates: { canonical: "/missao" },
   description: `O Publike é uma ferramenta do povo para gerar emprego em ${ONDE_FUNCIONA}: vagas, freelances e serviços perto de casa, com o tempo de ônibus de cada vaga, contato só depois do match e tudo de graça.`,
 };
 

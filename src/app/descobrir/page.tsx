@@ -31,6 +31,7 @@ import { jeitosDeEntrar } from "@/lib/login-social";
 
 export const metadata: Metadata = {
   title: "Descobrir vagas",
+  alternates: { canonical: "/descobrir" },
   description: `Deslize para o lado e ache trabalho perto de casa: vagas que combinam com você, no seu bairro e em alta em ${ONDE_FUNCIONA}.`,
 };
 

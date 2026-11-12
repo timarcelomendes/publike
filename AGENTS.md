@@ -259,3 +259,11 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 - **Impulso pelo admin** (migração `20270424120000_impulso_pelo_admin.sql`): Admin › Impulsos › "Impulsionar grátis para um cliente" (`admin_vagas_para_impulso`, `admin_impulsionar`, `admin_parar_impulso`). Origem `admin`: valor 0, não gasta a cortesia do cliente e, se a vaga sair do ar, os dias que faltam não viram crédito (`servidor_impulso_pausado` encerra).
 - **Admin › Impulsos no site no ar** (migração `20270425120000_impulsos_no_site.sql`): só a equipe publike.org (`privado.exigir_impulsos_admin` = admin ou `equipe_publike()`), com a própria conta e sem a chave secreta (`clienteDosImpulsos` em `admin-impulsos.ts`); cada impulso, parada e mudança de preço vai para `registro_equipe`. A tela está em `TELAS_DO_SITE`.
 - **Ligar:** env `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET` (sem eles, os do Meet), `GOOGLE_ADS_REFRESH_TOKEN` (escopo adwords), `GOOGLE_ADS_CONTA`; preços e impulso grátis em Admin › Impulsos (`admin_salvar_impulso`), que nascem desligados. Telas: `/painel/impulsionar/[id]` (botão Impulsionar no cabeçalho da vaga) e `/admin/impulsos`.
+
+## Buscadores (12/11/2026)
+
+- **Metadados no `<head>` para os robôs:** `htmlLimitedBots` no `next.config.ts` inclui o Googlebot e os robôs das buscas com IA (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot…). Eles recebem título, descrição e canônica no HTML inicial, e o `notFound()` no `generateMetadata` vira 404 de verdade (sem "404 suave"). Robô novo que importa: acrescente na lista.
+- **Toda página pública tem canônica** (`alternates.canonical`). Página que define `openGraph` repete `images: [IMAGEM_DO_SITE]` (`src/lib/seo.ts`), senão o link sai sem foto, a não ser que tenha o próprio `opengraph-image`.
+- **Sitemap:** além das vagas e das buscas, o perfil e "Vagas de …" de quem contrata (empresa ou comércio com vaga no ar; perfil de pessoa nunca).
+- **IndexNow** (migração `20270426120000_indexnow.sql`, `src/lib/servidor/indexnow.ts`): pela fila, avisa Bing, Yandex, Naver e Seznam dos anúncios que entraram, mudaram ou saíram. A chave sai da chave do servidor e fica em `/indexnow.txt`. O Google continua pela Indexing API (`google-vagas.ts`).
+

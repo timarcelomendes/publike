@@ -17,6 +17,7 @@ import { CardAnuncio } from "./card-anuncio";
 import { DadosEstruturados } from "./dados-estruturados";
 import { AvisarBusca } from "./explorar/avisar-busca";
 import { Container } from "./ui/basicos";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // As vagas novas da cidade (claude/plano-vagas-dos-ultimos-3-dias.md): "vagas de emprego em Senador Canedo nos
 // últimos 3 dias". Mesmo endereço das páginas de área e de função (/vagas/goiania/ultimos-3-dias); a lista é a da
@@ -42,7 +43,13 @@ export function metadadosDasRecentes(cidade: string): Metadata {
     title: titulo(cidade),
     description: descricao,
     alternates: { canonical: caminho },
-    openGraph: { title: `${titulo(cidade)} · Publike`, description: descricao, url: caminho, type: "website" },
+    openGraph: {
+      images: [IMAGEM_DO_SITE],
+      title: `${titulo(cidade)} · Publike`,
+      description: descricao,
+      url: caminho,
+      type: "website",
+    },
   };
 }
 

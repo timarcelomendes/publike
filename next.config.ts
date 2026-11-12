@@ -38,6 +38,12 @@ const VERSAO = process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT
 const nextConfig: NextConfig = {
   // não conta para quem visita qual é o servidor
   poweredByHeader: false,
+  // Os robôs que leem a página sem rodar JavaScript (ou que ficam só com o primeiro HTML) recebem o título, a descrição
+  // e a canônica dentro do <head>, em vez de chegarem depois, no meio da página (o "streaming" do Next). A lista padrão
+  // do Next deixa de fora o Googlebot e os robôs das buscas com IA (ChatGPT, Claude, Perplexity, Gemini): eles entram
+  // aqui. Quem é gente continua recebendo a página no streaming, sem esperar.
+  htmlLimitedBots:
+    /Googlebot|Google-InspectionTool|Storebot-Google|[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|bingbot|BingPreview|msnbot|Slurp|DuckDuckBot|DuckAssistBot|baiduspider|yandex|sogou|Applebot|PetalBot|SeznamBot|Qwantbot|GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-SearchBot|Claude-User|PerplexityBot|Perplexity-User|CCBot|Amazonbot|meta-externalagent|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|WhatsApp|SkypeUriPreview|Pinterest|Yeti|googleweblight/i,
   env: { NEXT_PUBLIC_VERSAO: VERSAO },
   cacheComponents: true,
   partialPrefetching: true,

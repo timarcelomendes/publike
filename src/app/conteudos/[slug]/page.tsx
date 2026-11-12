@@ -10,6 +10,7 @@ import { Container, Selo } from "@/components/ui/basicos";
 import { SITE_URL } from "@/lib/config";
 import { CONTEUDOS, conteudoDoSlug, minutosDeLeitura, relacionados, TEMAS_CONTEUDO } from "@/lib/conteudos";
 import { TemVoltarProprio } from "@/components/voltar";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 export function generateStaticParams() {
   return CONTEUDOS.map((c) => ({ slug: c.slug }));
@@ -22,7 +23,13 @@ export async function generateMetadata({ params }: PageProps<"/conteudos/[slug]"
     title: c.titulo,
     description: c.descricao,
     alternates: { canonical: `/conteudos/${c.slug}` },
-    openGraph: { type: "article", title: c.titulo, description: c.descricao, publishedTime: c.publicado },
+    openGraph: {
+      type: "article",
+      title: c.titulo,
+      description: c.descricao,
+      publishedTime: c.publicado,
+      images: [IMAGEM_DO_SITE],
+    },
   };
 }
 

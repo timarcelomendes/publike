@@ -28,6 +28,7 @@ import { DadosEstruturados } from "./dados-estruturados";
 import { AvisarBusca } from "./explorar/avisar-busca";
 import { BotaoLink } from "./ui/botao";
 import { Container } from "./ui/basicos";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // A página de vaga por função e cidade (claude/plano-vagas-por-funcao.md): "Vagas de frentista em Goiânia", com as
 // vagas no ar, quanto se paga na região (Novo Caged), os bairros, as funções parecidas e o "me avise". Mesmo endereço
@@ -72,7 +73,13 @@ export async function metadadosDaFuncao({ cidade, funcao }: PaginaFuncao): Promi
     title: titulo,
     description: descricao,
     alternates: { canonical: caminho },
-    openGraph: { title: `${titulo} · Publike`, description: descricao, url: caminho, type: "website" },
+    openGraph: {
+      images: [IMAGEM_DO_SITE],
+      title: `${titulo} · Publike`,
+      description: descricao,
+      url: caminho,
+      type: "website",
+    },
     // sem vaga e sem salário (ou só salário numa cidade vizinha): abre, mas o Google não precisa listar
     robots: paginaDaFuncaoIndexavel(funcao, cidade, vagas.length, faixa) ? undefined : { index: false, follow: true },
   };

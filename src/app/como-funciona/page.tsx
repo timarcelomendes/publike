@@ -9,6 +9,7 @@ import { ONDE_FUNCIONA } from "@/lib/pracas";
 
 export const metadata: Metadata = {
   title: "Como funciona",
+  alternates: { canonical: "/como-funciona" },
   description:
     "Quem contrata publica a vaga, quem trabalha mostra os serviços. Quando dá match, o WhatsApp aparece. Veja como usar o Publike e as dicas de segurança.",
 };

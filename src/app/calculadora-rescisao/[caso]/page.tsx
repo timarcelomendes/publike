@@ -11,6 +11,7 @@ import { SITE_URL } from "@/lib/config";
 import { calcularRescisao, dataBr } from "@/lib/rescisao";
 import { CASOS_RESCISAO, casoDaRescisao, type CasoRescisao } from "@/lib/rescisao-casos";
 import { ANO_DAS_TABELAS } from "@/lib/tabelas-trabalhistas";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // A rescisão de um caso (claude/plano-rescisao-por-caso.md): a calculadora completa já marcada no caso, com o
 // resumo do que entra e do que não entra, um exemplo resolvido pelas regras de verdade e perguntas próprias.
@@ -28,7 +29,13 @@ export async function generateMetadata({ params }: PageProps<"/calculadora-resci
     title: c.titulo,
     description: c.descricao,
     alternates: { canonical: url },
-    openGraph: { title: `${c.titulo} · Publike`, description: c.descricao, url, type: "website" },
+    openGraph: {
+      images: [IMAGEM_DO_SITE],
+      title: `${c.titulo} · Publike`,
+      description: c.descricao,
+      url,
+      type: "website",
+    },
   };
 }
 

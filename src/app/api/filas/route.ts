@@ -26,6 +26,7 @@ import { mandarCombinamDaSemana } from "@/lib/servidor/combinam";
 import { lembrarDocumentos, limparDocumentosVencidos } from "@/lib/servidor/documentos-admissao";
 import { funcoesDasVagas, funcoesDosCurriculos } from "@/lib/servidor/funcao";
 import { avisarGoogleDasVagas } from "@/lib/servidor/google-vagas";
+import { avisarIndexNowDosAnuncios } from "@/lib/servidor/indexnow";
 import { avisarTalentosQueCombinam } from "@/lib/servidor/talentos-que-combinam";
 import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { regrasComOTempo } from "@/lib/servidor/regras";
@@ -115,6 +116,8 @@ export async function GET(request: Request) {
   const documentosVencidos = await comTempo(() => limparDocumentosVencidos());
   // o Google: as vagas que entraram ou saíram do ar (a Indexing API, com a credencial na Vercel)
   const google = await comTempo(() => avisarGoogleDasVagas(10));
+  // o Bing, o Yandex e os outros do IndexNow: vagas e serviços que entraram, mudaram ou saíram (um aviso só)
+  const indexnow = await comTempo(() => avisarIndexNowDosAnuncios(500));
   // o impulso da vaga no Google Ads: criar, olhar a aprovação, medir, tirar quando a vaga fecha e encerrar (o aviso
   // de "no ar" e o relatório saem junto com os e-mails abaixo)
   const impulsos = await comTempo(() => cuidarDosImpulsos());
@@ -142,6 +145,7 @@ export async function GET(request: Request) {
     consultasSalario.motivo,
     buscasTalentos.motivo,
     google.motivo,
+    indexnow.motivo,
     impulsos.motivo,
     noticias.motivo,
     testes.motivo,
@@ -184,6 +188,7 @@ export async function GET(request: Request) {
       consultasSalario: consultasSalario.contas,
       buscasTalentos: buscasTalentos.avisadas,
       google: google.avisadas,
+      indexnow: indexnow.avisados,
       impulsos: impulsos.feitos,
       combinam: {
         vagas: combinam.vagas,

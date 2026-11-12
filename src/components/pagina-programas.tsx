@@ -11,6 +11,7 @@ import { DadosEstruturados } from "./dados-estruturados";
 import { AvisarBusca } from "./explorar/avisar-busca";
 import { BotaoLink } from "./ui/botao";
 import { Container } from "./ui/basicos";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // Estágio e jovem aprendiz na cidade (claude/plano-estagio-e-jovem-aprendiz.md): as vagas no ar de estágio, aprendiz
 // e trainee, o que é cada um para quem procura, e o caminho para quem contrata. Goiânia vai sempre para o Google; as
@@ -54,7 +55,13 @@ export async function metadadosDosProgramas(cidade: string): Promise<Metadata> {
     title: `${titulo(cidade)}: vagas abertas`,
     description: descricao,
     alternates: { canonical: caminho },
-    openGraph: { title: `${titulo(cidade)} · Publike`, description: descricao, url: caminho, type: "website" },
+    openGraph: {
+      images: [IMAGEM_DO_SITE],
+      title: `${titulo(cidade)} · Publike`,
+      description: descricao,
+      url: caminho,
+      type: "website",
+    },
     // fora de Goiânia, sem vaga assim no ar, a página abre mas o Google não precisa listar
     robots: cidade === "Goiânia" || vagas.length > 0 ? undefined : { index: false, follow: true },
   };

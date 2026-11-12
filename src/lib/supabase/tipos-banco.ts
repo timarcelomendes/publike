@@ -2022,6 +2022,12 @@ export type Database = {
         Args: { p_chave: string; p_anuncio: string; p_no_ar: boolean };
         Returns: undefined;
       };
+      // o IndexNow (migração 20270426120000)
+      servidor_anuncios_para_indexnow: {
+        Args: { p_chave: string; p_limite?: number };
+        Returns: { anuncio_id: string; no_ar: boolean }[];
+      };
+      servidor_anuncios_avisados_ao_indexnow: { Args: { p_chave: string; p_itens: Json }; Returns: undefined };
       salario_da_funcao: {
         Args: { p_cbo: string; p_regiao?: string };
         Returns: {

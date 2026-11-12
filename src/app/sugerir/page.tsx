@@ -9,6 +9,7 @@ import { ehTipoSugestao } from "@/lib/sugestoes";
 
 export const metadata: Metadata = {
   title: "Sugestões e erros",
+  alternates: { canonical: "/sugerir" },
   description: "Achou um erro, tem uma ideia ou quer elogiar? Mande para a equipe do Publike. Não precisa ter conta.",
 };
 

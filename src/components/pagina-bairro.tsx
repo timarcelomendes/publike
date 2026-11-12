@@ -15,6 +15,7 @@ import { CardAnuncio } from "./card-anuncio";
 import { DadosEstruturados } from "./dados-estruturados";
 import { BotaoLink } from "./ui/botao";
 import { Container } from "./ui/basicos";
+import { IMAGEM_DO_SITE } from "@/lib/seo";
 
 // Página para o Google e as IAs: as vagas de um bairro (/vagas/goiania/bairro/setor-bueno), com as dos bairros
 // perto (até 4 km) quando o bairro tem poucas. O bairro sai das vagas no ar ou da lista de bairros da cidade.
@@ -66,7 +67,13 @@ export async function metadadosDoBairro(slugCidade: string, slugBairro: string):
     title: titulo,
     description: descricao,
     alternates: { canonical: caminho },
-    openGraph: { title: `${titulo} · Publike`, description: descricao, url: caminho, type: "website" },
+    openGraph: {
+      images: [IMAGEM_DO_SITE],
+      title: `${titulo} · Publike`,
+      description: descricao,
+      url: caminho,
+      type: "website",
+    },
     // bairro sem vaga: o Google não precisa listar
     robots: total === 0 ? { index: false, follow: true } : undefined,
   };

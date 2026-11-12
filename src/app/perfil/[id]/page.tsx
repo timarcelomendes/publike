@@ -41,9 +41,10 @@ import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 export async function generateMetadata({ params }: PageProps<"/perfil/[id]">): Promise<Metadata> {
   const { id } = await params;
   const dados = await obterPerfilPublico(id);
-  if (!dados) return { title: "Perfil não encontrado", robots: { index: false } };
+  if (!dados) notFound();
   return {
     title: dados.perfil.nome,
+    alternates: { canonical: `/perfil/${id}` },
     description: `${dados.perfil.nome} no Publike: ${formatarLugar(dados.perfil.bairro, dados.perfil.cidade)}.`,
   };
 }

@@ -19,6 +19,7 @@ import type { TipoConta } from "@/lib/tipos";
 
 export const metadata: Metadata = {
   title: "Ajuda",
+  alternates: { canonical: "/ajuda" },
   description:
     "Dúvidas sobre o Publike: como achar vagas perto de casa, publicar grátis, curtir, dar match, evitar golpes e cuidar da conta.",
 };
