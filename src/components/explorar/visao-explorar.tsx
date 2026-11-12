@@ -362,7 +362,8 @@ export function VisaoExplorar({
             <div className="col-start-2 row-start-2 lg:hidden">
               <SeletorVisao visao={visao} chave={chave} celular />
             </div>
-            <div className="col-span-2 row-start-3 flex items-center justify-between gap-3">
+            {/* com o "Mudar" aberto (os raios e o "De onde"), o "Filtros" fica no alto, não no meio deles */}
+            <div className="col-span-2 row-start-3 flex items-center justify-between gap-3 has-[details[open]]:items-start">
               <div className="min-w-0 flex-1">{subtitulo}</div>
               {botaoFiltros("min-h-9 rounded-md px-3 lg:hidden")}
             </div>

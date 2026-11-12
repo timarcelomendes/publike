@@ -518,6 +518,19 @@ export function MapaAnuncios({
                       .addTo(m);
                     cartao.on("close", desmarcar);
                     refazerTrajeto.current();
+                    // no mapa estreito (o celular), o cartão saía pela borda e escondia o fim: o mapa anda o que falta
+                    const aberto = cartao;
+                    requestAnimationFrame(() => {
+                      if (cartao !== aberto) return;
+                      const r = aberto.getElement().getBoundingClientRect();
+                      const c = m.getContainer().getBoundingClientRect();
+                      const folga = 8;
+                      const fora = (antes: number, depois: number, ini: number, fim: number) =>
+                        antes < ini + folga ? antes - ini - folga : depois > fim - folga ? depois - fim + folga : 0;
+                      const dx = fora(r.left, r.right, c.left, c.right);
+                      const dy = fora(r.top, r.bottom, c.top, c.bottom);
+                      if (dx || dy) m.panBy([dx, dy], { duration: 250 });
+                    });
                   },
                   (dentro) => {
                     sobre = dentro ? p.id : sobre === p.id ? null : sobre;
@@ -775,7 +788,7 @@ export function MapaAnuncios({
   }
 
   return (
-    <div className="group/mapa relative h-full min-h-[320px] overflow-hidden rounded-lg border border-line bg-surface-300">
+    <div className="group/mapa @container relative h-full min-h-[320px] overflow-hidden rounded-lg border border-line bg-surface-300">
       {/* O MapLibre põe position: relative no próprio container (e o CSS dele vence o do Tailwind):
           por isso o container fica dentro de uma caixa absoluta e só ocupa 100% dela. */}
       <div className="absolute inset-0">
@@ -793,8 +806,12 @@ export function MapaAnuncios({
               <span className="size-3 rounded-pill border-2 border-surface-200 bg-ink" />
             </span>
           )}
+          {/* no mapa estreito (o celular, a coluna do feed), sem o "Calculado": cabe sem cortar */}
           <span className="min-w-0 truncate">
-            Calculado {origem.tipo === "casa" ? "da sua casa" : "de onde você está"}
+            <span className="@md:hidden">{origem.tipo === "casa" ? "Da sua casa" : "De onde você está"}</span>
+            <span className="hidden @md:inline">
+              Calculado {origem.tipo === "casa" ? "da sua casa" : "de onde você está"}
+            </span>
           </span>
           {temDeOnde && (
             <button
