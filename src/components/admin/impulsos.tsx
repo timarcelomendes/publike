@@ -182,8 +182,9 @@ export function ConfigImpulsos({ precos, config }: { precos: PrecoImpulso[]; con
           <Inteiro rotulo="Raio nas outras cidades (km)" valor={c.raio_outras} mudar={(v) => setC({ ...c, raio_outras: v })} max={65} />
         </div>
         <p className="text-body-sm text-ink-muted">
-          Em volta do bairro da vaga. Só por lugar e pela busca: idade, sexo e outros recortes de pessoa ficam de fora
-          (CLT, art. 373-A).
+          Em volta do bairro da vaga. Vale também para os impulsos que já estão no ar: o Google recebe o raio novo
+          logo depois de salvar. Só por lugar e pela busca: idade, sexo e outros recortes de pessoa ficam de fora (CLT,
+          art. 373-A).
         </p>
       </fieldset>
 

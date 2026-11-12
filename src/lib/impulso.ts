@@ -113,6 +113,66 @@ function umDeCada(grupos: (string | null | undefined)[][], max: number, quantos:
   return saida;
 }
 
+/** A palavra que sozinha diz só o cargo, não a função ("auxiliar" de quê?). */
+const SO_O_CARGO =
+  /^(auxiliar|assistente|operador|operadora|ajudante|atendente|técnico|técnica|analista|agente|encarregado|encarregada|supervisor|supervisora|gerente|coordenador|coordenadora)$/i;
+
+/**
+ * Os nomes da função para as palavras-chave do anúncio: a do título, curta e em minúsculas, e os outros nomes dela
+ * (da CBO), até 4.
+ */
+function basesDaFuncao(titulo: string, sinonimos: string[] = []) {
+  const f = funcaoCurta(funcaoDoTitulo(titulo)).toLowerCase();
+  return [...new Set([f, ...sinonimos.map((s) => funcaoCurta(s).toLowerCase())])].slice(0, 4);
+}
+
+const semAcento = (t: string) => t.normalize("NFD").replace(/\p{Mn}/gu, "");
+
+/**
+ * A palavra (sem acento) que nunca vai sozinha para a lista da campanha geral: o cargo sem a função e a busca de
+ * qualquer vaga ("auxiliar", "vaga de emprego", "jovem aprendiz").
+ */
+const SO_ISSO_NAO =
+  /^(auxiliar|assistente|operadora?|ajudante|atendente|tecnic[oa]|analista|agente|encarregad[oa]|supervisora?|gerente|coordenadora?|vagas?|empregos?|trabalhos?|oportunidades?|estagios?|estagiari[oa]s?|jovem|aprendiz|geral|de|da|do|das|dos|e|em|para|com|a|o)$/;
+
+/**
+ * O nome da função como se busca: inteiro; o comprido, até o " e ", o " para " ou a vírgula ("Operador de
+ * empilhadeira e movimentação de cargas" → "Operador de empilhadeira"). Sem cortar no meio da função, como no título
+ * do anúncio: "auxiliar nos serviços" (de alimentação) tiraria a campanha geral de outras buscas.
+ */
+function funcaoInteira(nome: string) {
+  if (nome.length <= 28) return nome;
+  const corte = nome.split(/\s(?:e|para|com|-|–)\s|,|\//)[0]?.trim() ?? "";
+  return corte.length >= 3 && corte.length <= 45 ? corte : null;
+}
+
+/**
+ * As buscas da função que a campanha geral do Publike deixa de disputar com o impulso da vaga (as palavras negativas
+ * de frase da lista "Publike · funções com impulso no ar", em impulsos.ts): a função do título e os outros nomes dela
+ * (os mesmos das palavras-chave do anúncio), cada um também sem o "de" ("auxiliar cozinha") e sem acento ("garcom"),
+ * porque a negativa não pega as variações como a palavra-chave pega. Fica de fora o que, sozinho, é a busca de
+ * qualquer vaga ("auxiliar", "jovem aprendiz", "vaga de emprego"): tiraria a geral de buscas de outras vagas.
+ */
+export function frasesSemDisputa(titulo: string, sinonimos: string[] = []) {
+  const nomes = [funcaoDoTitulo(titulo), ...sinonimos]
+    .map((n) => funcaoInteira(n.trim())?.toLowerCase())
+    .filter((n): n is string => Boolean(n));
+  const frases = new Set<string>();
+  for (const b of [...new Set(nomes)].slice(0, 4)) {
+    const semLigacao = b
+      .split(" ")
+      .filter((p) => !LIGACOES.has(p))
+      .join(" ");
+    for (const x of [b, semLigacao]) {
+      for (const y of [x, semAcento(x)]) {
+        const p = palavraLimpa(y);
+        if (p && !p.split(" ").every((w) => SO_ISSO_NAO.test(semAcento(w)))) frases.add(p);
+      }
+    }
+  }
+  return [...frases];
+}
+
 /** A palavra-chave como o Google aceita: minúsculas, letras, números e espaço, até 80 letras e 10 palavras. */
 function palavraLimpa(t: string) {
   const p = t
@@ -160,9 +220,7 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
   // função (inteira e encurtada, "Movimentador"), depois o salário e o regime, por fim os convites.
   const curtaCrua = funcaoCurta(funcao, 17);
   // "Auxiliar" sozinho não diz a função: aí fica a inteira
-  const curta = /^(auxiliar|assistente|operador|operadora|ajudante|atendente|técnico|técnica|analista|agente|encarregado|encarregada|supervisor|supervisora|gerente|coordenador|coordenadora)$/i.test(curtaCrua)
-    ? funcao
-    : curtaCrua;
+  const curta = SO_O_CARGO.test(curtaCrua) ? funcao : curtaCrua;
   const c = curta.toLowerCase();
   const titulos = opcoes.simples
     ? semRepetir([funcao, `Vaga em ${cidade}`, "Vaga de emprego", "Candidatura grátis", "Veja a vaga"], 30, 5)
@@ -244,7 +302,7 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
         4,
       );
 
-  const bases = [f, ...(opcoes.sinonimos ?? []).map((s) => funcaoCurta(s).toLowerCase())].slice(0, 4);
+  const bases = basesDaFuncao(v.titulo, opcoes.sinonimos);
   const palavras: string[] = [];
   const vistas = new Set<string>();
   for (const b of bases) {

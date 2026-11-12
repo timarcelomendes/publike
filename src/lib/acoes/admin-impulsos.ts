@@ -134,6 +134,8 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
     if (error.code === "PGRST202") return { ok: false, erro: "Rode a migração 20270423120000_impulsionar.sql primeiro." };
     return { ok: false, erro: mensagemDeErro(error) };
   }
+  // o raio mudou: o banco manda medir os impulsos no ar (migração 20270504120000), e o robô troca o raio no Google já
+  after(() => cuidarDosImpulsos().catch(() => {}));
   refresh();
   return { ok: true, mensagem: "Salvo." };
 }
@@ -378,6 +380,8 @@ export async function salvarTiposDeVaga(tipos: TipoDeVaga[]): Promise<Resultado>
   }
   const r = data as { ok?: boolean; erro?: string } | null;
   if (!r?.ok) return { ok: false, erro: r?.erro ?? "Não deu para salvar." };
+  // o raio de um tipo vale também para os impulsos no ar dele: o robô troca no Google já (migração 20270504120000)
+  after(() => cuidarDosImpulsos().catch(() => {}));
   refresh();
   return { ok: true, mensagem: "Tipos salvos." };
 }

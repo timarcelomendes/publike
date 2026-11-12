@@ -6,7 +6,7 @@ import { nomeDoBairro } from "@/lib/formato";
 import { caminhoDaFuncao, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
 import { caminhoDaBusca, caminhoDasRecentes, caminhoDoBairro, cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
 import { pracaDaCidade } from "@/lib/pracas";
-import { sufixoDoImpulso, textoDoAnuncio, type TextoDoAnuncio, type VagaDoImpulso } from "@/lib/impulso";
+import { frasesSemDisputa, sufixoDoImpulso, textoDoAnuncio, type TextoDoAnuncio, type VagaDoImpulso } from "@/lib/impulso";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { urlDosEmails } from "./ambiente";
 import { estornarCobranca } from "./asaas";
@@ -31,6 +31,8 @@ import {
 // cliente, com uma verba só; cada vaga é um grupo de anúncios dentro dela (o anúncio, as palavras e o código que conta
 // as visitas). O robô cria a campanha, depois cada vaga cria o grupo dela; a vaga que fecha tira só o grupo dela, e a
 // campanha acaba quando não sobra vaga.
+// Desde 12/11/2026 (migração 20270504120000): o raio que muda no admin vale também para os impulsos no ar
+// (`acertarLugar`), e a campanha geral do Publike sai das buscas das funções com impulso no ar (`semDisputaComAGeral`).
 
 type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
 
@@ -62,6 +64,11 @@ type Tarefa = {
   campanha_cliente: { id: string; codigo: string; campanha_id: string | null; conta_google: string | null } | null;
   /** o lugar da vaga que a campanha do cliente ainda não tem: o grupo acrescenta */
   novo_lugar: Lugar | null;
+  /**
+   * na campanha do cliente, o ponto da vaga no ar e o raio que ele deve ter (o maior das vagas nele; migração
+   * 20270504120000). Na campanha de uma vaga, o lugar sai da vaga (`lugarDaVaga`).
+   */
+  lugar?: Lugar | null;
 };
 
 /** O que fazer com a campanha de um cliente (servidor_campanhas_para_cuidar). */
@@ -181,6 +188,155 @@ async function acertarLance(campanhaId: string, conta: string) {
     ],
     conta,
   );
+}
+
+type LinhaDoLugar = {
+  campaignCriterion?: {
+    resourceName?: string;
+    status?: string;
+    proximity?: {
+      geoPoint?: { latitudeInMicroDegrees?: number | string; longitudeInMicroDegrees?: number | string };
+      radius?: number | string;
+      radiusUnits?: string;
+    };
+  };
+};
+
+/** Dois pontos no mesmo lugar: até 0,0001 grau (uns 11 m), a diferença do arredondamento da campanha do cliente. */
+const MESMO_PONTO = 100;
+
+/**
+ * O lugar da campanha no Google igual ao de hoje (12/11/2026): o raio mudou no Admin › Impulsos depois que o impulso
+ * nasceu (o geral ou o do tipo da vaga), ou a vaga mudou de lugar. Na medida do impulso no ar, como o lance. A
+ * campanha de uma vaga tem um lugar só: troca o ponto e o raio. Na do cliente, cada ponto serve às vagas que estão
+ * nele: troca só o raio do ponto desta vaga (o maior das vagas nele, `t.lugar`). Um critério do Google não muda: sai o
+ * velho e entra o novo, no mesmo mutate (tudo ou nada).
+ */
+async function acertarLugar(t: Tarefa, conta: string) {
+  if (!t.campanha_id || !t.vaga) return;
+  const alvo = t.campanha_cliente ? (t.lugar ?? null) : lugarDaVaga(t.vaga);
+  if (!alvo) return;
+  const linhas = await consultar<LinhaDoLugar>(
+    `SELECT campaign_criterion.resource_name, campaign_criterion.status, ` +
+      `campaign_criterion.proximity.geo_point.latitude_in_micro_degrees, ` +
+      `campaign_criterion.proximity.geo_point.longitude_in_micro_degrees, ` +
+      `campaign_criterion.proximity.radius, campaign_criterion.proximity.radius_units ` +
+      `FROM campaign_criterion WHERE campaign.id = ${Number(t.campanha_id)} AND campaign_criterion.type = 'PROXIMITY'`,
+    conta,
+  );
+  const lat = Math.round(alvo.lat * 1_000_000);
+  const lng = Math.round(alvo.lng * 1_000_000);
+  const pontos = linhas
+    .map((l) => l.campaignCriterion)
+    .filter((c) => c?.resourceName && c.status !== "REMOVED" && c.proximity?.geoPoint)
+    .map((c) => ({
+      nome: c!.resourceName!,
+      lat: Number(c!.proximity!.geoPoint!.latitudeInMicroDegrees ?? 0),
+      lng: Number(c!.proximity!.geoPoint!.longitudeInMicroDegrees ?? 0),
+      // o Google guarda na unidade em que o raio entrou (o robô sempre usa km)
+      raio: Number(c!.proximity!.radius ?? 0) * (c!.proximity!.radiusUnits === "MILES" ? 1.609344 : 1),
+    }));
+  const perto = (p: { lat: number; lng: number }) => Math.abs(p.lat - lat) <= MESMO_PONTO && Math.abs(p.lng - lng) <= MESMO_PONTO;
+  // na campanha de uma vaga, o lugar único pode estar em outro ponto (a vaga mudou de endereço)
+  const velho = pontos.find(perto) ?? (!t.campanha_cliente && pontos.length === 1 ? pontos[0] : undefined);
+  if (!velho || (perto(velho) && Math.abs(velho.raio - alvo.raio) < 0.05)) return;
+  await mutar(
+    [
+      { campaignCriterionOperation: { remove: velho.nome } },
+      operacaoDoLugar(recurso("campaigns", t.campanha_id, conta), alvo),
+    ],
+    conta,
+  );
+  console.info(
+    perto(velho)
+      ? `Publike: o impulso ${t.codigo} passou de ${Math.round(velho.raio)} para ${alvo.raio} km em volta da vaga.`
+      : `Publike: o impulso ${t.codigo} foi para o lugar novo da vaga (${alvo.raio} km em volta).`,
+  );
+}
+
+/**
+ * A lista de palavras negativas que tira a campanha geral do Publike das buscas das funções com impulso no ar
+ * (12/11/2026, migração 20270504120000). No Google, só um anúncio de cada site aparece em cada busca: a geral (o mesmo
+ * site, mais histórico, em outra conta) ganhava as buscas da função da vaga impulsionada, e o impulso ficava com 0
+ * vistas. A lista fica na conta da geral, ligada a ela no Google Ads (uma vez, à mão); o robô só cuida das palavras,
+ * em qualquer conta que o acesso enxerga. Sem a lista, nada muda. As palavras são do robô: a que entra à mão sai.
+ */
+export const LISTA_SEM_DISPUTA = "Publike · funções com impulso no ar";
+
+type DadosSemDisputa = {
+  vagas: { titulo: string; cbo: string | null }[];
+  assinatura: string;
+  feita: string | null;
+  feita_em: string | null;
+};
+
+/**
+ * Acerta a lista: entram as buscas da função de cada vaga no ar (`frasesSemDisputa`, de frase) e sai o que não é mais
+ * de nenhuma (o impulso acabou: a geral volta para a função). Quando as vagas no ar mudam ou a última vez passou de 1
+ * hora (a lista criada depois, ou mexida à mão). O erro não segura o robô: fica no registro e volta a tentar em 1 hora.
+ */
+async function semDisputaComAGeral(a: Acesso) {
+  const { data, error } = await a.cliente.rpc("servidor_impulsos_sem_disputa", { p_chave: a.chave });
+  if (error) {
+    // sem a migração ainda: nada a fazer
+    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as vagas com impulso no ar:", error.message);
+    return;
+  }
+  const d = data as unknown as DadosSemDisputa | null;
+  if (!d) return;
+  if (d.feita === d.assinatura && d.feita_em && Date.parse(d.feita_em) > Date.now() - 3_600_000) return;
+  try {
+    const queremos = new Set(d.vagas.flatMap((v) => frasesSemDisputa(v.titulo, sinonimosDaCbo(v.cbo))));
+    const gestora = (process.env.GOOGLE_ADS_CONTA_GESTORA || "").replace(/\D/g, "");
+    const contas = (await contasAcessiveis()).filter((c) => c !== gestora);
+    for (const conta of contas) {
+      let listas: { sharedSet?: { resourceName?: string; id?: string | number } }[];
+      try {
+        listas = await consultar(
+          `SELECT shared_set.resource_name, shared_set.id FROM shared_set WHERE shared_set.type = 'NEGATIVE_KEYWORDS' ` +
+            `AND shared_set.status = 'ENABLED' AND shared_set.name = '${LISTA_SEM_DISPUTA}'`,
+          conta,
+        );
+      } catch {
+        // conta fechada, de administrador ou sem acesso: a próxima
+        continue;
+      }
+      for (const l of listas) {
+        if (!l.sharedSet?.resourceName || l.sharedSet.id == null) continue;
+        const atuais = await consultar<{ sharedCriterion?: { resourceName?: string; keyword?: { text?: string } } }>(
+          `SELECT shared_criterion.resource_name, shared_criterion.keyword.text FROM shared_criterion ` +
+            `WHERE shared_set.id = ${Number(l.sharedSet.id)}`,
+          conta,
+        );
+        const temos = new Map<string, string>();
+        const sair: string[] = [];
+        for (const c of atuais) {
+          const nome = c.sharedCriterion?.resourceName;
+          if (!nome) continue;
+          const texto = (c.sharedCriterion?.keyword?.text ?? "").toLowerCase();
+          if (queremos.has(texto) && !temos.has(texto)) temos.set(texto, nome);
+          else sair.push(nome);
+        }
+        const entrar = [...queremos].filter((p) => !temos.has(p));
+        if (!entrar.length && !sair.length) continue;
+        await mutar(
+          [
+            ...sair.map((nome) => ({ sharedCriterionOperation: { remove: nome } })),
+            ...entrar.map((text) => ({
+              sharedCriterionOperation: {
+                create: { sharedSet: l.sharedSet!.resourceName, keyword: { text, matchType: "PHRASE" } },
+              },
+            })),
+          ],
+          conta,
+        );
+        console.info(`Publike: a lista "${LISTA_SEM_DISPUTA}" (conta ${conta}): ${entrar.length} entraram, ${sair.length} saíram.`);
+      }
+    }
+  } catch (e) {
+    console.error(`Publike: a lista "${LISTA_SEM_DISPUTA}" não mudou:`, e instanceof Error ? e.message : e);
+  }
+  await a.cliente.rpc("servidor_impulsos_sem_disputa_feita", { p_chave: a.chave, p_assinatura: d.assinatura });
 }
 
 /** Buscas que não são de quem procura emprego (palavras negativas da campanha). */
@@ -477,9 +633,14 @@ function idsDoMutate(r: RespostaDoMutate) {
   return ids;
 }
 
+/** Os outros nomes da função da vaga, pela CBO (o nome oficial e os sinônimos), até 3. */
+function sinonimosDaCbo(cbo: string | null | undefined) {
+  const o = cbo ? ocupacao(cbo) : null;
+  return (o ? [o.nome, ...(o.sinonimos ?? [])] : []).filter((s): s is string => Boolean(s)).slice(0, 3);
+}
+
 function texto(t: Tarefa, simples: boolean) {
-  const sinonimos = t.vaga?.cbo ? [ocupacao(t.vaga.cbo)?.nome, ...(ocupacao(t.vaga.cbo)?.sinonimos ?? [])] : [];
-  return textoDoAnuncio(t.vaga!, { simples, sinonimos: sinonimos.filter((s): s is string => Boolean(s)).slice(0, 3) });
+  return textoDoAnuncio(t.vaga!, { simples, sinonimos: sinonimosDaCbo(t.vaga?.cbo) });
 }
 
 /**
@@ -707,7 +868,7 @@ type LinhaDosNumeros = {
 /**
  * Os números do Google, por dia, do dia em que entrou no ar até hoje (o de hoje vai mudando a cada medida: a cada 2
  * horas, pela migração 20270501120000; antes, só o de ontem, e o Admin mostrava R$ 0 o dia inteiro). Com a vaga no
- * ar, acerta antes o lance das campanhas de antes (`acertarLance`).
+ * ar, acerta antes o lance das campanhas de antes (`acertarLance`) e o raio que mudou no admin (`acertarLugar`).
  */
 async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
   if (!t.campanha_id || !t.medir_desde) return;
@@ -717,6 +878,12 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
     } catch (e) {
       // o lance fica para a próxima medida; os números não esperam por ele
       console.error(`Publike: o lance do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
+    }
+    try {
+      await acertarLugar(t, conta);
+    } catch (e) {
+      // o raio também fica para a próxima medida
+      console.error(`Publike: o raio do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
     }
   }
   const hoje = hojeEmBrasilia();
@@ -923,6 +1090,8 @@ export async function cuidarDosImpulsos(): Promise<{ feitos: number; motivo?: st
       if ((r as { alertar?: boolean } | null)?.alertar) alertas.push(`${t.codigo} (${t.acao}): ${msg}`.slice(0, 200));
     }
   }
+  // depois das vagas (a que entrou no ar ou acabou nesta volta já conta): a campanha geral fora das funções delas
+  if (googleAdsLigado() && Date.now() - inicio < 35_000) await semDisputaComAGeral(a);
   return alertas.length
     ? { feitos, motivo: `O impulso no Google Ads não anda há mais de 6 horas: ${alertas.join("; ")}` }
     : { feitos };

@@ -565,7 +565,7 @@ async function Regras({ d }: { d: Dados }) {
     <>
       <Secao
         titulo="Tipos de vaga"
-        descricao="Cada vaga entra no primeiro tipo da lista que tiver uma das palavras no título (pelo começo da palavra e sem acento: “contab” pega contábil e contabilidade). Os dias e a verba do tipo são o ponto de partida do impulso pelo admin e do automático; o raio vale para todo impulso daquele tipo. Vazio segue a regra geral, logo abaixo."
+        descricao="Cada vaga entra no primeiro tipo da lista que tiver uma das palavras no título (pelo começo da palavra e sem acento: “contab” pega contábil e contabilidade). Os dias e a verba do tipo são o ponto de partida do impulso pelo admin e do automático; o raio vale para todo impulso daquele tipo, também os que já estão no ar. Vazio segue a regra geral, logo abaixo."
       >
         {t ? (
           <TiposDeVaga tipos={t.tipos} outros={Number(t.outros)} />

@@ -3686,6 +3686,9 @@ export type Database = {
       };
       servidor_impulso_cancelar: { Args: { p_chave: string; p_conta: string; p_id: string }; Returns: Json };
       servidor_impulsos_para_cuidar: { Args: { p_chave: string }; Returns: Json };
+      // a campanha geral fora das buscas das funções com impulso no ar (migração 20270504120000)
+      servidor_impulsos_sem_disputa: { Args: { p_chave: string }; Returns: Json };
+      servidor_impulsos_sem_disputa_feita: { Args: { p_chave: string; p_assinatura: string }; Returns: undefined };
       servidor_impulso_criado: { Args: { p_chave: string; p_id: string; p_ids: Json }; Returns: Json };
       servidor_impulso_erro: { Args: { p_chave: string; p_id: string; p_erro: string }; Returns: Json };
       servidor_impulso_olhado: {
