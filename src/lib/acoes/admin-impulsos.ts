@@ -5,14 +5,26 @@ import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
 import { contasAcessiveis, contaDeAnuncios, situacaoGoogleAds } from "@/lib/servidor/google-ads-api";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
-import { clienteAdminOuNulo } from "@/lib/supabase/admin";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import type { Resultado } from "@/lib/tipos";
 import { UUID } from "@/lib/validacao";
 
 // Admin › Impulsos (migração 20270423120000): os preços, o impulso grátis, o raio e a ligação com o Google Ads.
 
-const FORA = "O admin só funciona no seu computador, com o site rodando em modo de desenvolvimento.";
+const FORA = "Só a equipe do Publike mexe nos impulsos.";
+
+/**
+ * O admin do computador do dono (a chave secreta) ou, no site no ar, a equipe publike.org com a própria conta (sem a
+ * chave secreta; o banco confere de novo em cada função e registra quem fez).
+ */
+async function clienteDosImpulsos(): Promise<ClienteBanco | null> {
+  const admin = await clienteAdminOuNulo();
+  if (admin) return admin;
+  return (await possoVerTela("/admin/impulsos")) ? await criarClienteServidor() : null;
+}
 
 export type PrecoImpulso = { dias: number; valor: number; verba: number; ligado: boolean };
 export type ConfigImpulso = {
@@ -24,7 +36,7 @@ export type ConfigImpulso = {
 };
 
 export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigImpulso): Promise<Resultado> {
-  const c = await clienteAdminOuNulo();
+  const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   for (const p of precos) {
     if (!(p.valor >= 5 && p.valor <= 10000) || !(p.verba >= 1 && p.verba < p.valor))
@@ -48,7 +60,7 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
 
 /** Confere a ligação com o Google Ads: o acesso e se a conta de anúncios está entre as que ele enxerga. */
 export async function testarGoogleAds(): Promise<Resultado> {
-  const c = await clienteAdminOuNulo();
+  const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   const s = situacaoGoogleAds();
   if (!s.ligado) return { ok: false, erro: `Falta no servidor: ${s.falta.join(", ")}.` };
@@ -79,7 +91,7 @@ export type VagaParaImpulso = {
 
 /** As vagas no ar de qualquer cliente, pelo título ou pelo nome de quem publicou (as paradas primeiro). */
 export async function vagasParaImpulso(busca: string): Promise<{ ok: true; vagas: VagaParaImpulso[] } | { ok: false; erro: string }> {
-  const c = await clienteAdminOuNulo();
+  const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   const { data, error } = await c.rpc("admin_vagas_para_impulso", { p_busca: busca.slice(0, 80) });
   if (error) {
@@ -96,7 +108,7 @@ export async function impulsionarPeloAdmin(dados: {
   verba: number;
   avisar: boolean;
 }): Promise<Resultado> {
-  const c = await clienteAdminOuNulo();
+  const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(dados.anuncio)) return { ok: false, erro: "Escolha a vaga." };
   if (!Number.isInteger(dados.dias) || dados.dias < 1 || dados.dias > 30)
@@ -119,7 +131,7 @@ export async function impulsionarPeloAdmin(dados: {
 
 /** Para um impulso: antes de entrar no ar, cancela; no ar, o robô tira do Google. */
 export async function pararImpulsoPeloAdmin(id: string): Promise<Resultado> {
-  const c = await clienteAdminOuNulo();
+  const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   if (!UUID.test(id)) return { ok: false, erro: "Pedido inválido." };
   const { data, error } = await c.rpc("admin_parar_impulso", { p_id: id });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { ConfigImpulsos, ImpulsionarPeloAdmin, PararImpulso, TestarGoogleAds } from "@/components/admin/impulsos";
@@ -8,7 +9,9 @@ import { Aviso, Selo } from "@/components/ui/basicos";
 import type { ConfigImpulso, PrecoImpulso } from "@/lib/acoes/admin-impulsos";
 import { formatarMoeda, tempoRelativo } from "@/lib/formato";
 import { contaDeAnuncios, situacaoGoogleAds } from "@/lib/servidor/google-ads-api";
-import { exigirAdminLocal } from "@/lib/supabase/admin";
+import { possoVerTela } from "@/lib/servidor/telas-do-admin";
+import { criarClienteAdmin, ehAdminLocal } from "@/lib/supabase/admin";
+import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { agoraDaRequisicao } from "@/lib/tempo";
 
 export const metadata: Metadata = { title: "Impulsos" };
@@ -72,12 +75,15 @@ export default function Impulsos() {
 }
 
 async function Conteudo() {
-  const c = await exigirAdminLocal();
+  // o admin do computador do dono ou, no site no ar, a equipe publike.org (Admin › Quem vê cada tela)
+  const admin = await ehAdminLocal();
+  if (!admin && !(await possoVerTela("/admin/impulsos"))) notFound();
+  const c = admin ? criarClienteAdmin() : await criarClienteServidor();
   const { data, error } = await c.rpc("admin_impulsos");
   if (error || !data) {
     return (
       <Aviso tipo="alerta" titulo="Rode a migração do impulso">
-        Falta a migração 20270423120000_impulsionar.sql neste banco.
+        Falta rodar no Supabase as migrações do impulso (20270423120000, 20270424120000 e 20270425120000).
       </Aviso>
     );
   }

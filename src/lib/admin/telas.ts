@@ -102,6 +102,8 @@ export const TELAS_DO_SITE: { href: string; nome: string; precisa: "moderador" |
   // as curtidas também no site no ar (a função moderacao_curtidas, só para moderador)
   { href: "/admin/curtidas", nome: "Curtidas", precisa: "moderador" },
   { href: "/admin/telas", nome: "Quem vê cada tela", precisa: "equipe" },
+  // o impulso da vaga, também pelo site (migração 20270425120000; só a equipe publike.org)
+  { href: "/admin/impulsos", nome: "Impulsos", precisa: "equipe" },
 ];
 
 /** Todas as telas da lista, com o nome (as do menu e as que só existem no site, como Números). */
