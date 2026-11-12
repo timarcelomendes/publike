@@ -23,6 +23,8 @@ grant anon, authenticated, service_role to authenticator;
 
 create schema if not exists extensions;
 grant usage on schema extensions to anon, authenticated, service_role;
+-- o Supabase já traz o pgcrypto em extensions (gen_random_bytes, nos tokens e códigos)
+create extension if not exists pgcrypto with schema extensions;
 create schema if not exists auth;
 grant usage on schema auth to anon, authenticated, service_role;
 
