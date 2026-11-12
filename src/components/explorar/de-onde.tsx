@@ -8,15 +8,15 @@ import type { Local } from "@/lib/regioes";
 import { AVISOS_GPS, pedirPosicao, useIrPara } from "./barra-busca";
 import { PainelOndeMora } from "./onde-mora";
 
-/** O ponto de quem procura, como no mapa e no cartão ("Você"). `claro`: no botão escolhido (escuro). */
+/** O ponto de quem procura ("Você"), no verde da localização. `claro`: no botão escolhido (verde). */
 function PontoVoce({ claro }: { claro: boolean }) {
   return (
     <span
       aria-hidden
-      className={`flex size-4 items-center justify-center rounded-pill ${claro ? "bg-surface-100/30" : "bg-ink/15"}`}
+      className={`flex size-4 items-center justify-center rounded-pill ${claro ? "bg-on-cerrado/30" : "bg-cerrado/20"}`}
     >
       <span
-        className={`size-2.5 rounded-pill border-2 ${claro ? "border-ink bg-surface-100" : "border-surface-200 bg-ink"}`}
+        className={`size-2.5 rounded-pill border-2 ${claro ? "border-cerrado bg-on-cerrado" : "border-surface-200 bg-cerrado"}`}
       />
     </span>
   );
@@ -88,12 +88,18 @@ export function DeOnde({
           De onde
         </span>
         <span className="flex flex-wrap gap-1">
-          <Opcao atual={atual === "voce"} onClick={daqui} ocupado={procurando || pendente}>
+          <Opcao atual={atual === "voce"} cor="voce" onClick={daqui} ocupado={procurando || pendente}>
             <PontoVoce claro={atual === "voce"} />
             {procurando ? "Procurando você…" : "Onde estou agora"}
           </Opcao>
-          <Opcao atual={atual === "casa"} onClick={deCasa} aberto={casa ? undefined : pedindoCep} controla={painel}>
-            <House aria-hidden className="size-4 shrink-0" />
+          <Opcao
+            atual={atual === "casa"}
+            cor="casa"
+            onClick={deCasa}
+            aberto={casa ? undefined : pedindoCep}
+            controla={painel}
+          >
+            <House aria-hidden className={`size-4 shrink-0 ${atual === "casa" ? "" : "text-terra-text"}`} />
             {casa ? "Minha casa" : "Minha casa (CEP)"}
           </Opcao>
           {!casa && (
@@ -122,9 +128,20 @@ export function DeOnde({
   );
 }
 
-/** Uma opção, com a cara dos botões dos raios (a escolhida, escura). */
+/**
+ * As cores de cada origem, para não confundir (12/11/2026): onde estou agora, verde (o ponto da localização); minha
+ * casa, terra (a casa do "Onde você mora?"); o resto, escuro, como os raios.
+ */
+const CORES = {
+  voce: { atual: "border-cerrado bg-cerrado font-semibold text-on-cerrado", livre: "border-cerrado/50 text-cerrado-text" },
+  casa: { atual: "border-terra bg-terra font-semibold text-on-terra", livre: "border-terra/50 text-terra-text" },
+  outra: { atual: "border-ink bg-ink font-semibold text-surface-100", livre: "border-line-strong text-ink" },
+} as const;
+
+/** Uma opção, com a cara dos botões dos raios (a escolhida, cheia, na cor dela). */
 function Opcao({
   atual,
+  cor = "outra",
   onClick,
   ocupado = false,
   aberto,
@@ -132,6 +149,7 @@ function Opcao({
   children,
 }: {
   atual: boolean;
+  cor?: keyof typeof CORES;
   onClick?: () => void;
   ocupado?: boolean;
   aberto?: boolean;
@@ -147,9 +165,7 @@ function Opcao({
       aria-controls={aberto === undefined ? undefined : controla}
       disabled={ocupado}
       className={`inline-flex min-h-9 items-center gap-1.5 rounded-pill border px-3 text-body-sm disabled:cursor-wait ${
-        atual
-          ? "border-ink bg-ink font-semibold text-surface-100"
-          : "border-line-strong bg-surface-100 text-ink hover:bg-surface-300"
+        atual ? CORES[cor].atual : `bg-surface-100 hover:bg-surface-300 ${CORES[cor].livre}`
       }`}
     >
       {children}
