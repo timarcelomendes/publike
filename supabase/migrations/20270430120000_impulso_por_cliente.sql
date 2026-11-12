@@ -337,6 +337,8 @@ begin
   return coalesce((select jsonb_agg(t) from (
     select jsonb_build_object(
       'id', i.id, 'codigo', i.codigo, 'situacao', i.situacao, 'origem', i.origem, 'dias', i.dias, 'verba', i.verba,
+      -- o automático do Publike (o nome da campanha no Google diz de onde o impulso veio)
+      'automatico', i.automatico,
       'campanha_id', i.campanha_id, 'grupo_id', i.grupo_id, 'anuncio_google_id', i.anuncio_google_id,
       'conta_google', i.conta_google,
       'texto_simples', i.texto_simples, 'sandbox', i.sandbox, 'ate', i.ate, 'aprovado_em', i.aprovado_em,

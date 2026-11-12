@@ -6,7 +6,13 @@ import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { ConfigImpulsos, PararCampanha, PararImpulso, TestarGoogleAds } from "@/components/admin/impulsos";
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
-import { NOME_DA_ORIGEM, NOME_DA_SITUACAO, VARIANTE_DA_SITUACAO, ehCorrendo } from "@/components/admin/impulsos-nomes";
+import {
+  NOME_DA_ORIGEM,
+  NOME_DA_SITUACAO,
+  VARIANTE_DA_SITUACAO,
+  ehCorrendo,
+  quemPediu,
+} from "@/components/admin/impulsos-nomes";
 import { NovoImpulso } from "@/components/admin/impulsos-novo";
 import { TiposDeVaga } from "@/components/admin/impulsos-tipos";
 import { Numero, Secao, Situacao } from "@/components/admin/ui";
@@ -288,7 +294,11 @@ function Agora({ d, agora, ligado }: { d: Dados; agora: number; ligado: boolean 
         <Numero
           rotulo="Correndo agora"
           valor={correndo.length}
-          detalhe={clientes.length ? plural(clientes.length, "cliente", "clientes") : "Nenhum impulso correndo"}
+          detalhe={
+            clientes.length
+              ? `${quemPediu(correndo)}, de ${plural(clientes.length, "cliente", "clientes")}`
+              : "Nenhum impulso correndo"
+          }
         />
         <Numero
           rotulo="Gasto no mês (R$)"
@@ -376,7 +386,9 @@ function CartaoDoCliente({ c, agora }: { c: Cliente; agora: number }) {
           <p className="text-body-sm text-ink-muted">
             {k
               ? `Campanha do cliente, ${plural(vagasCorrendo.length, "vaga", "vagas")}, ${situacaoDaCampanha(k)}`
-              : plural(c.avulsos.length, "vaga impulsionada sozinha", "vagas impulsionadas sozinhas")}
+              : c.avulsos.every((i) => i.automatico)
+                ? plural(c.avulsos.length, "vaga no impulso automático", "vagas no impulso automático")
+                : plural(c.avulsos.length, "vaga impulsionada sozinha", "vagas impulsionadas sozinhas")}
             {k && c.avulsos.length > 0 && `. Mais ${plural(c.avulsos.length, "vaga sozinha", "vagas sozinhas")}`}
           </p>
         </div>
@@ -433,6 +445,7 @@ function CartaoDoCliente({ c, agora }: { c: Cliente; agora: number }) {
                     <span className="text-label">{i.titulo}</span>
                   )}
                   <Selo variante={VARIANTE_DA_SITUACAO[i.situacao] ?? "neutro"}>{NOME_DA_SITUACAO[i.situacao] ?? i.situacao}</Selo>
+                  {i.automatico && <Selo variante="novo">Automático</Selo>}
                   <Selo variante="contorno">{i.tipo ?? "Outros"}</Selo>
                   {i.pausar && <Selo variante="novo">Parando</Selo>}
                 </p>

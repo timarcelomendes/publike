@@ -42,6 +42,8 @@ type Tarefa = {
   codigo: string;
   situacao: string;
   origem: "compra" | "credito" | "cortesia" | "admin";
+  /** o automático do Publike (migração 20270430120000; antes dela, não vem) */
+  automatico?: boolean;
   acao: "criar" | "olhar" | "pausar" | "encerrar" | "remover" | "estornar" | "medir";
   dias: number;
   verba: number;
@@ -226,13 +228,30 @@ function operacoesDoGrupo(o: {
   return ops;
 }
 
+const NOME_DA_ORIGEM: Record<Tarefa["origem"], string> = {
+  compra: "Impulso pago",
+  cortesia: "Impulso grátis",
+  credito: "Impulso com crédito",
+  admin: "Impulso pelo admin",
+};
+
+/**
+ * O começo do nome da campanha no Google: de onde o impulso veio ("Impulso automático", "Impulso pago"…), para separar
+ * no Google Ads o que o robô escolheu do que alguém pediu. Sem saber se é automático (a função do banco de antes), só
+ * "Impulso".
+ */
+function nomeDaOrigem(t: Tarefa) {
+  if (t.automatico === undefined) return "Impulso";
+  return t.automatico ? "Impulso automático" : NOME_DA_ORIGEM[t.origem];
+}
+
 /** A campanha inteira de uma vez (tudo ou nada): o orçamento, a campanha, o lugar, a língua, o grupo, as palavras e o anúncio. */
 function operacoesDaCampanha(t: Tarefa, texto: TextoDoAnuncio) {
   const v = t.vaga!;
   const conta = contaDeAnuncios();
   const base = operacoesDaBaseDaCampanha({
     codigo: t.codigo,
-    nome: `Impulso · ${v.titulo.slice(0, 60)} · ${t.codigo}`,
+    nome: `${nomeDaOrigem(t)} · ${v.titulo.slice(0, 60)} · ${t.codigo}`,
     porDia: Math.round((t.verba / t.dias) * 100) / 100,
     lugares: [lugarDaVaga(v)],
     conta,
@@ -735,7 +754,7 @@ async function criarCampanhaDoCliente(a: Acesso, k: TarefaDaCampanha) {
   const conta = contaDeAnuncios();
   const base = operacoesDaBaseDaCampanha({
     codigo: k.codigo,
-    nome: `Impulso · ${k.nome.slice(0, 60)} · ${k.codigo}`,
+    nome: `Impulso do cliente · ${k.nome.slice(0, 60)} · ${k.codigo}`,
     porDia: k.verba_dia,
     lugares: k.lugares,
     conta,

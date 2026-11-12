@@ -7,7 +7,7 @@ import { classesEntrada } from "@/components/ui/campo";
 import type { ImpulsoDoAdmin } from "@/lib/acoes/admin-impulsos";
 import { formatarMoeda, formatarNumero, plural, tempoRelativo } from "@/lib/formato";
 import { PararImpulso } from "./impulsos";
-import { NOME_DA_ORIGEM, NOME_DA_SITUACAO, VARIANTE_DA_SITUACAO, ehCorrendo } from "./impulsos-nomes";
+import { NOME_DA_ORIGEM, NOME_DA_SITUACAO, VARIANTE_DA_SITUACAO, ehCorrendo, origemDo } from "./impulsos-nomes";
 
 // Admin › Impulsos › Histórico: os impulsos dos últimos tempos (os 200 mais novos e todos os que correm), com filtros
 // por situação, origem, tipo de vaga e cliente, sem ir ao servidor de novo.
@@ -19,21 +19,16 @@ const SITUACOES = [
   { valor: "parou", nome: "Paradas ou devolvidas" },
 ] as const;
 
+// "Manuais": o que a equipe pediu (a campanha do cliente e o impulso pelo admin de antes); "Automático": o que o robô
+// escolheu sozinho; o resto, o que o cliente pagou ou ganhou
 const ORIGENS = [
   { valor: "todas", nome: "Todas" },
-  { valor: "cliente", nome: "Campanha do cliente" },
-  { valor: "admin", nome: "Pelo admin" },
   { valor: "automatico", nome: "Automático" },
+  { valor: "manual", nome: "Manuais" },
   { valor: "compra", nome: "Pago" },
   { valor: "cortesia", nome: "Grátis" },
   { valor: "credito", nome: "Crédito" },
 ] as const;
-
-function origemDo(i: ImpulsoDoAdmin) {
-  if (i.campanha_cliente_id) return "cliente";
-  if (i.automatico) return "automatico";
-  return i.origem;
-}
 
 function Filtro<T extends string>({
   rotulo,
@@ -103,7 +98,8 @@ export function HistoricoDeImpulsos({
       if (situacao === "correndo" && !ehCorrendo(i.situacao)) return false;
       if (situacao === "acabou" && i.situacao !== "encerrado") return false;
       if (situacao === "parou" && !["credito", "devolvido"].includes(i.situacao)) return false;
-      if (origem !== "todas" && origemDo(i) !== origem) return false;
+      const de = origemDo(i);
+      if (origem === "manual" ? de !== "cliente" && de !== "admin" : origem !== "todas" && de !== origem) return false;
       if (tipo !== "todos" && (i.tipo ?? "Outros") !== tipo) return false;
       if (termo && !semAcento(`${i.titulo} ${i.conta}`).includes(termo)) return false;
       return true;
