@@ -106,13 +106,25 @@ type FalhaDoGoogle = {
  * impulsos de hoje; uma conta de antes (o impulso que nasceu lá) é chamada direto, com o acesso do dono.
  */
 async function chamar<T>(caminho: string, corpo?: unknown, conta = contaDeAnuncios()): Promise<T> {
+  const gestora = soNumeros(env("GOOGLE_ADS_CONTA_GESTORA"));
+  const pelaGestora = Boolean(gestora) && conta === contaDeAnuncios();
+  try {
+    return await chamarUmaVez<T>(caminho, corpo, pelaGestora ? gestora : null);
+  } catch (e) {
+    // a conta ainda não está ligada à gestora (o convite não foi aceito): o dono também tem acesso direto
+    if (pelaGestora && e instanceof ErroGoogleAds && e.codigos.some((c) => /USER_PERMISSION_DENIED/.test(c)))
+      return chamarUmaVez<T>(caminho, corpo, null);
+    throw e;
+  }
+}
+
+async function chamarUmaVez<T>(caminho: string, corpo: unknown, gestora: string | null): Promise<T> {
   const acesso = await tokenDoGoogle();
   const cabecalhos: Record<string, string> = {
     Authorization: `Bearer ${acesso}`,
     "Content-Type": "application/json",
   };
-  const gestora = soNumeros(env("GOOGLE_ADS_CONTA_GESTORA"));
-  if (gestora && conta === contaDeAnuncios()) cabecalhos["login-customer-id"] = gestora;
+  if (gestora) cabecalhos["login-customer-id"] = gestora;
   const dev = env("GOOGLE_ADS_DEVELOPER_TOKEN");
   if (dev) cabecalhos["developer-token"] = dev;
   const r = await fetch(`${BASE()}/${VERSAO()}/${caminho}`, {

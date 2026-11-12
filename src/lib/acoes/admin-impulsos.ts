@@ -3,7 +3,13 @@
 import { refresh } from "next/cache";
 import { after } from "next/server";
 import { mensagemDeErro } from "@/lib/erros";
-import { contasAcessiveis, contaDeAnuncios, situacaoGoogleAds } from "@/lib/servidor/google-ads-api";
+import {
+  consultar,
+  contasAcessiveis,
+  contaDeAnuncios,
+  ErroGoogleAds,
+  situacaoGoogleAds,
+} from "@/lib/servidor/google-ads-api";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 import { possoVerTela } from "@/lib/servidor/telas-do-admin";
 import { clienteAdminOuNulo, type ClienteBanco } from "@/lib/supabase/admin";
@@ -73,23 +79,88 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
   return { ok: true, mensagem: "Salvo." };
 }
 
-/** Confere a ligação com o Google Ads: o acesso e se a conta de anúncios está entre as que ele enxerga. */
+const comTracos = (c: string) => c.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+
+/**
+ * Confere a ligação com o Google Ads de ponta a ponta, do jeito que o robô usa: lê a própria conta dos impulsos (com
+ * a gestora no cabeçalho, quando há) e a forma de pagamento. Diz o que falta: o vínculo com a gestora, a configuração
+ * da conta ou o cartão.
+ */
 export async function testarGoogleAds(): Promise<Resultado> {
   const c = await clienteDosImpulsos();
   if (!c) return { ok: false, erro: FORA };
   const s = situacaoGoogleAds();
   if (!s.ligado) return { ok: false, erro: `Falta no servidor: ${s.falta.join(", ")}.` };
+  const minha = contaDeAnuncios();
+  const gestora = (process.env.GOOGLE_ADS_CONTA_GESTORA || "").replace(/\D/g, "");
+  let contas: string[];
   try {
-    const contas = await contasAcessiveis();
-    const minha = contaDeAnuncios();
-    if (!contas.includes(minha) && !process.env.GOOGLE_ADS_CONTA_GESTORA)
-      return {
-        ok: false,
-        erro: `O acesso funciona, mas não enxerga a conta ${minha}. Ele vê: ${contas.join(", ") || "nenhuma"}.`,
-      };
-    return { ok: true, mensagem: `Ligado. O acesso enxerga ${contas.length} ${contas.length === 1 ? "conta" : "contas"}.` };
+    contas = await contasAcessiveis();
   } catch (e) {
     return { ok: false, erro: e instanceof Error ? e.message : "Não deu para falar com o Google Ads." };
+  }
+  if (!contas.includes(minha) && !gestora)
+    return {
+      ok: false,
+      erro: `O acesso funciona, mas não enxerga a conta ${comTracos(minha)}. Ele vê: ${contas.map(comTracos).join(", ") || "nenhuma"}.`,
+    };
+  try {
+    const [linha] = await consultar<{ customer?: { descriptiveName?: string; status?: string; manager?: boolean } }>(
+      "SELECT customer.id, customer.descriptive_name, customer.status, customer.manager FROM customer LIMIT 1",
+    );
+    const conta = linha?.customer;
+    if (conta?.manager)
+      return {
+        ok: false,
+        erro: `A ${comTracos(minha)} é uma conta de administrador. Em GOOGLE_ADS_CONTA vai a conta de anúncios (a Publike Impulsos), e a de administrador vai em GOOGLE_ADS_CONTA_GESTORA.`,
+      };
+    if (conta?.status && conta.status !== "ENABLED")
+      return {
+        ok: false,
+        erro: `A conta ${comTracos(minha)} ainda não está ativa no Google Ads (${conta.status}). Termine a configuração dela.`,
+      };
+    const pagamento = await consultar<{ billingSetup?: { status?: string } }>(
+      "SELECT billing_setup.id, billing_setup.status FROM billing_setup",
+    ).catch(() => null);
+    const comPagamento = pagamento?.some((b) => b.billingSetup?.status === "APPROVED");
+    const nome = conta?.descriptiveName ? `${conta.descriptiveName} (${comTracos(minha)})` : comTracos(minha);
+    if (pagamento && !comPagamento)
+      return {
+        ok: false,
+        erro: `O acesso à ${nome} funciona, mas a conta está sem forma de pagamento aprovada: os anúncios não rodam. Cadastre o cartão em Faturamento.`,
+      };
+    // a conta está mesmo abaixo da administradora? (sem o vínculo, o robô entra direto, com o acesso do dono)
+    const vinculada = gestora
+      ? await consultar<{ customerClient?: { id?: string } }>(
+          `SELECT customer_client.id FROM customer_client WHERE customer_client.id = ${Number(minha)}`,
+          gestora,
+        )
+          .then((l) => l.length > 0)
+          .catch(() => null)
+      : null;
+    const via =
+      vinculada === true
+        ? `, pela conta de administrador ${comTracos(gestora)}`
+        : vinculada === false
+          ? `, direto: ela ainda não está ligada à conta de administrador ${comTracos(gestora)} (aceite o convite de vínculo para ver tudo junto)`
+          : "";
+    return {
+      ok: true,
+      mensagem: `Ligado na ${nome}${via}${comPagamento ? ", com pagamento aprovado" : ""}.`,
+    };
+  } catch (e) {
+    const codigos = e instanceof ErroGoogleAds ? e.codigos.join(" ") : "";
+    if (/USER_PERMISSION_DENIED/.test(codigos) && gestora)
+      return {
+        ok: false,
+        erro: `A conta ${comTracos(minha)} ainda não está ligada à conta de administrador ${comTracos(gestora)}. Aceite o convite de vínculo na ${comTracos(minha)} (Administrador › Acesso e segurança › Administradores) ou, enquanto isso, tire GOOGLE_ADS_CONTA_GESTORA da Vercel.`,
+      };
+    if (/CUSTOMER_NOT_ENABLED/.test(codigos))
+      return {
+        ok: false,
+        erro: `A conta ${comTracos(minha)} ainda não está ativa no Google Ads. Termine a configuração dela (e o pagamento).`,
+      };
+    return { ok: false, erro: e instanceof Error ? e.message : "Não deu para ler a conta no Google Ads." };
   }
 }
 
