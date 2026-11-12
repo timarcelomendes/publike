@@ -365,12 +365,14 @@ export function CardAnuncio({
         )}
 
         {etiquetas.length > 0 && (
-          // na lista, numa linha embaixo do lugar (benefícios, currículo, prazo): o que ajuda a escolher
+          // na lista, embaixo do lugar (benefícios, currículo, prazo): o que ajuda a escolher. Na largura toda do
+          // cartão, lado a lado: só na coluna do título, ao lado dos botões, elas se empilhavam (12/11/2026, Lista +
+          // detalhes)
           <ul
             className={`flex flex-wrap gap-1.5 group-data-[visao=grade]/visao:hidden ${
               etiquetas.length === (modalidade ? 1 : 0)
                 ? "group-data-[visao=lista]/visao:hidden"
-                : "group-data-[visao=lista]/visao:col-start-1 group-data-[visao=lista]/visao:gap-1"
+                : "group-data-[visao=lista]/visao:col-span-full group-data-[visao=lista]/visao:gap-1"
             }`}
           >
             {etiquetas}
