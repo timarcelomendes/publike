@@ -189,11 +189,11 @@ function criarTrajeto(de: "casa" | "voce", minutos: number, aPe: boolean, frase:
   const icone = document.createElement("span");
   if (de === "casa") {
     icone.className =
-      "flex size-4 items-center justify-center rounded-pill bg-ink text-surface-100 [&>svg]:size-2.5 [&>svg]:stroke-3";
+      "flex size-4 items-center justify-center rounded-pill bg-terra text-on-terra [&>svg]:size-2.5 [&>svg]:stroke-3";
     icone.innerHTML = ICONE.casa;
   } else {
-    icone.className = "flex size-4 items-center justify-center rounded-pill bg-ink/15";
-    icone.innerHTML = '<span class="size-2.5 rounded-pill border-2 border-surface-200 bg-ink"></span>';
+    icone.className = "flex size-4 items-center justify-center rounded-pill bg-cerrado/20";
+    icone.innerHTML = '<span class="size-2.5 rounded-pill border-2 border-surface-200 bg-cerrado"></span>';
   }
   origem.append(icone, document.createTextNode(de === "casa" ? "Sua casa" : "Você"));
   const tracos = () => {
@@ -220,12 +220,17 @@ function criarRotuloDoTrajeto() {
   const el = document.createElement("div");
   el.setAttribute("aria-hidden", "true");
   el.className =
-    "pointer-events-none flex items-center gap-1 rounded-pill border-2 border-surface-200 bg-ink py-0.5 pr-2 pl-1.5 text-caption font-semibold whitespace-nowrap text-surface-100 shadow-raised [&>svg]:size-3.5";
+    "pointer-events-none flex items-center gap-1 rounded-pill border-2 border-surface-200 py-0.5 pr-2 pl-1.5 text-caption font-semibold whitespace-nowrap shadow-raised [&>svg]:size-3.5";
   el.style.zIndex = "3";
   return el;
 }
 
-function preencherRotulo(el: HTMLElement, minutos: number, aPe: boolean) {
+/** O ônibus (ou o pé) e os minutos, na cor da origem: a casa, terra; onde a pessoa está, verde (como no "De onde"). */
+function preencherRotulo(el: HTMLElement, minutos: number, aPe: boolean, de: "casa" | "voce") {
+  el.classList.toggle("bg-terra", de === "casa");
+  el.classList.toggle("text-on-terra", de === "casa");
+  el.classList.toggle("bg-cerrado", de === "voce");
+  el.classList.toggle("text-on-cerrado", de === "voce");
   el.innerHTML = aPe ? ICONE.pe : ICONE.onibus;
   el.append(document.createTextNode(formatarMinutos(minutos)));
 }
@@ -261,12 +266,12 @@ function criarOrigem(origem: NonNullable<OrigemMapa>) {
     // o ponto, com uma onda em volta (parada para quem pede menos movimento); fica embaixo dos anúncios
     el.className = "pointer-events-none relative flex size-3.5 items-center justify-center";
     el.innerHTML =
-      '<span class="absolute inset-[-7px] rounded-pill bg-ink/25 animate-ping motion-reduce:animate-none"></span>' +
-      '<span class="relative size-3.5 rounded-pill border-2 border-surface-200 bg-ink shadow-raised"></span>';
+      '<span class="absolute inset-[-7px] rounded-pill bg-cerrado/25 animate-ping motion-reduce:animate-none"></span>' +
+      '<span class="relative size-3.5 rounded-pill border-2 border-surface-200 bg-cerrado shadow-raised"></span>';
     return el;
   }
   el.className =
-    "pointer-events-none flex size-8 items-center justify-center rounded-pill border-[3px] border-surface-200 bg-ink text-surface-100 shadow-raised [&>svg]:size-4";
+    "pointer-events-none flex size-8 items-center justify-center rounded-pill border-[3px] border-surface-200 bg-terra text-on-terra shadow-raised [&>svg]:size-4";
   el.innerHTML = ICONE.casa;
   return el;
 }
@@ -278,8 +283,8 @@ function criarEtiquetaVoce() {
   el.style.zIndex = "3";
   el.setAttribute("aria-hidden", "true");
   el.innerHTML =
-    '<span class="rounded-pill bg-ink px-2 py-0.5 text-caption font-semibold text-surface-100 shadow-raised">Você</span>' +
-    '<span class="-mt-px size-0 border-x-[5px] border-t-[6px] border-x-transparent border-t-ink"></span>';
+    '<span class="rounded-pill bg-cerrado px-2 py-0.5 text-caption font-semibold text-on-cerrado shadow-raised">Você</span>' +
+    '<span class="-mt-px size-0 border-x-[5px] border-t-[6px] border-x-transparent border-t-cerrado"></span>';
   return el;
 }
 
@@ -457,7 +462,9 @@ export function MapaAnuncios({
           ];
           fonte.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: pontas } });
           rotulo ??= new ml.Marker({ element: criarRotuloDoTrajeto(), anchor: "center" });
-          preencherRotulo(rotulo.getElement(), alvo.minutos, Boolean(alvo.aPe));
+          preencherRotulo(rotulo.getElement(), alvo.minutos, Boolean(alvo.aPe), o.tipo);
+          // a linha na cor da origem (a casa, terra; onde a pessoa está, verde)
+          m.setPaintProperty("trajeto-linha", "line-color", o.tipo === "casa" ? CORES_MAPA.terra : CORES_MAPA.cerrado);
           rotulo.setLngLat([(o.lng + alvo.lng) / 2, (o.lat + alvo.lat) / 2]).addTo(m);
           mostrarRotulo();
         };
@@ -798,12 +805,12 @@ export function MapaAnuncios({
         // de onde contam o tempo, a distância e a linha até a vaga (o "Você" dos cartões), para não ficar escondido
         <p className="absolute top-3 left-3 z-10 inline-flex max-w-[calc(100%-4.5rem)] min-h-10 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 py-1 pr-1.5 pl-3 text-body-sm text-ink shadow-raised">
           {origem.tipo === "casa" ? (
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-pill bg-ink text-surface-100">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-pill bg-terra text-on-terra">
               <House aria-hidden className="size-3" strokeWidth={2.75} />
             </span>
           ) : (
-            <span aria-hidden className="flex size-5 shrink-0 items-center justify-center rounded-pill bg-ink/15">
-              <span className="size-3 rounded-pill border-2 border-surface-200 bg-ink" />
+            <span aria-hidden className="flex size-5 shrink-0 items-center justify-center rounded-pill bg-cerrado/20">
+              <span className="size-3 rounded-pill border-2 border-surface-200 bg-cerrado" />
             </span>
           )}
           {/* no mapa estreito (o celular, a coluna do feed), sem o "Calculado": cabe sem cortar */}
@@ -877,12 +884,12 @@ export function MapaAnuncios({
         {origem && (
           <span className="flex items-center gap-1.5">
             {origem.tipo === "voce" ? (
-              <span className="flex size-4 items-center justify-center rounded-pill bg-ink/20">
-                <span className="size-2.5 rounded-pill border-2 border-surface-200 bg-ink" />
+              <span className="flex size-4 items-center justify-center rounded-pill bg-cerrado/20">
+                <span className="size-2.5 rounded-pill border-2 border-surface-200 bg-cerrado" />
               </span>
             ) : (
               <span
-                className="flex size-4 items-center justify-center rounded-pill bg-ink text-surface-100 [&>svg]:size-2.5"
+                className="flex size-4 items-center justify-center rounded-pill bg-terra text-on-terra [&>svg]:size-2.5"
                 dangerouslySetInnerHTML={{ __html: ICONE.casa }}
               />
             )}

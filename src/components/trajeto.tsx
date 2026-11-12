@@ -21,12 +21,12 @@ export function TrajetoAteAVaga({ de, km, className = "" }: { de: "casa" | "voce
       <span aria-hidden className="flex min-w-0 items-center gap-1">
         <span className="inline-flex shrink-0 items-center gap-1 group-data-[visao=grade]/visao:hidden">
           {de === "casa" ? (
-            <span className="flex size-4 items-center justify-center rounded-pill bg-ink text-surface-100">
+            <span className="flex size-4 items-center justify-center rounded-pill bg-terra text-on-terra">
               <House className="size-2.5" strokeWidth={3} />
             </span>
           ) : (
-            <span className="flex size-4 items-center justify-center rounded-pill bg-ink/15">
-              <span className="size-2.5 rounded-pill border-2 border-surface-200 bg-ink" />
+            <span className="flex size-4 items-center justify-center rounded-pill bg-cerrado/20">
+              <span className="size-2.5 rounded-pill border-2 border-surface-200 bg-cerrado" />
             </span>
           )}
           {de === "casa" ? "Sua casa" : "Você"}
