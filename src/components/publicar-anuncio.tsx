@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { ERRO_SEM_SALVAR, ehNavegacao } from "@/lib/acao-segura";
+import { ERRO_SEM_SALVAR, destinoDoRedirect, ehNavegacao } from "@/lib/acao-segura";
 import { conferirAnuncio, salvarAnuncio } from "@/lib/acoes/anuncios";
 import { detalheDoErro, relatarFalha } from "@/lib/falhas";
 import type { ClienteParaVaga } from "@/lib/clientes";
@@ -41,6 +41,7 @@ import {
 import { ganhosDoBanco } from "@/lib/vaga-extra";
 import { BENEFICIO_CURTO, valorEmDuas } from "@/lib/valor-do-tiquete";
 import { valoresDoConvite } from "@/lib/valores-convite";
+import { AvisoDaSaida, useSaidaDoSalvar, vagaGravada } from "./anuncio/saida-do-salvar";
 import { ArteDaVaga } from "./arte-da-vaga";
 import { TextoDaVaga } from "./texto-da-vaga";
 import { AvisoConvite } from "./aviso-convite";
@@ -255,6 +256,13 @@ export function PublicarAnuncio({
   // "Colar o texto da vaga": quantas vagas a IA achou no texto (publica-se uma por vez)
   const [doTexto, setDoTexto] = useState<number | null>(null);
   const chaveDoRascunho = semConta ? undefined : CHAVE_COM_CONTA;
+  // o rascunho publicado sozinho depois de entrar: se a tela não sair do "Publicando…", diz que deu certo e abre a vaga
+  const {
+    saida: saidaDoRascunho,
+    comecar: comecarRascunho,
+    seguir: seguirRascunho,
+    parar: pararRascunho,
+  } = useSaidaDoSalvar();
 
   const formulario = () => raiz.current?.querySelector("form") ?? null;
 
@@ -302,20 +310,30 @@ export function PublicarAnuncio({
           }, 300);
           return;
         }
-        apagarRascunho();
+        // o rascunho só sai quando o servidor grava a vaga: se a tela travar e a pessoa recarregar, ele vai de novo, e
+        // o banco, vendo a vaga igual, leva à que já saiu (antes, ele saía aqui, e quem recarregava perdia tudo)
         setAviso("publicando");
+        comecarRascunho();
         startTransition(async () => {
           // deu certo: a ação leva para a vaga publicada; voltou: mostra o formulário com o erro
           let resultado: Awaited<ReturnType<typeof salvarAnuncio>>;
           try {
             resultado = await salvarAnuncio({ ok: false }, formDataDoRascunho(r));
           } catch (e) {
-            if (ehNavegacao(e)) throw e;
+            if (ehNavegacao(e)) {
+              const destino = destinoDoRedirect(e);
+              if (destino) {
+                if (vagaGravada(destino)) apagarRascunho();
+                seguirRascunho(destino);
+              }
+              throw e;
+            }
             // não chegou ao servidor: o rascunho volta e a pessoa vê o motivo (e a equipe fica sabendo)
             console.error("Publike: a vaga guardada não chegou ao servidor:", e);
             relatarFalha({ onde: "vaga", etapa: "conexao", mensagem: ERRO_SEM_SALVAR, detalhe: detalheDoErro(e) });
             resultado = { ok: false, erro: ERRO_SEM_SALVAR };
           }
+          pararRascunho();
           if (!resultado || resultado.ok) return;
           try {
             localStorage.setItem("publike_rascunho_vaga", JSON.stringify(r));
@@ -428,6 +446,7 @@ export function PublicarAnuncio({
         <LoaderCircle aria-hidden className="size-8 animate-spin text-ink-muted" />
         <p className="font-display text-h3">Publicando sua vaga…</p>
         <p className="text-body-sm text-ink-muted">É o anúncio que você preencheu antes de entrar.</p>
+        <AvisoDaSaida saida={saidaDoRascunho} vagaNova className="mt-2 w-full max-w-md text-left" />
       </div>
     );
   }
@@ -502,12 +521,15 @@ export function PublicarAnuncio({
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFoco(null);
       }}
-      // ao publicar, o rascunho de quem tem conta sai (se der errado, o formulário continua preenchido)
+      // ao publicar, o rascunho de quem tem conta fica, com tudo, até o servidor gravar a vaga (aoSalvar, abaixo): se a
+      // tela travar ou a internet cair, recarregar não perde o que foi escrito (e publicar de novo não repete a vaga: o
+      // banco leva à que já saiu)
       onSubmitCapture={() => {
         if (semConta) return;
-        // o rascunho guardado 250 ms depois da última letra não volta a ser gravado depois de publicar
+        // o rascunho que seria guardado 250 ms depois da última letra vai agora
         if (tempo.current) window.clearTimeout(tempo.current);
-        apagarRascunho(CHAVE_COM_CONTA);
+        const f = formulario();
+        if (f) guardarRascunho(f, CHAVE_COM_CONTA, passoAtual.current);
         publicou.current = true;
       }}
     >
@@ -517,6 +539,16 @@ export function PublicarAnuncio({
         acaoSalvar={semConta ? conferirAnuncio : salvarAnuncio}
         semConta={semConta}
         aposConferir={semConta ? seguirParaEntrar : undefined}
+        // a vaga saiu: os dois rascunhos (o de quem tem conta e o de antes de entrar, que volta quando a publicação
+        // sozinha deu erro) já estão nela
+        aoSalvar={
+          semConta
+            ? undefined
+            : () => {
+                apagarRascunho(CHAVE_COM_CONTA);
+                apagarRascunho();
+              }
+        }
         ia={comIA}
         agencia={agencia}
         contatoAgencia={contatoAgencia}

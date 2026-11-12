@@ -15,6 +15,15 @@ export function ehNavegacao(e: unknown) {
   return typeof digest === "string" && (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_HTTP_ERROR"));
 }
 
+/** Para onde o redirect do servidor manda (só endereços do próprio site), ou null. */
+export function destinoDoRedirect(e: unknown): string | null {
+  const digest = (e as { digest?: unknown } | null)?.digest;
+  if (typeof digest !== "string" || !digest.startsWith("NEXT_REDIRECT;")) return null;
+  // "NEXT_REDIRECT;push;/anuncio/…?publicado=1;307;"
+  const url = digest.split(";").slice(2, -2).join(";");
+  return url.startsWith("/") && !url.startsWith("//") ? url : null;
+}
+
 /** A página é de antes da publicação nova do site: a ação que ela chama não existe mais no servidor. */
 export function ehVersaoNova(e: unknown) {
   const nome = (e as { name?: unknown } | null)?.name;
@@ -42,17 +51,23 @@ export function recarregarParaVersaoNova() {
 
 /**
  * Envolve a ação do formulário (para o useActionState): a falha vira um aviso na tela. Com `onde`
- * (vaga ou currículo), a falha também chega à equipe (o servidor não a viu).
+ * (vaga ou currículo), a falha também chega à equipe (o servidor não a viu). `aoSeguir`: o servidor salvou e
+ * mandou para outra página (antes de a navegação até lá terminar).
  */
 export function protegerAcao<E extends EstadoForm>(
   acao: (anterior: E, dados: FormData) => Promise<E>,
   onde?: OndeFalha,
+  aoSeguir?: (destino: string) => void,
 ) {
   return async (anterior: E, dados: FormData): Promise<E> => {
     try {
       return await acao(anterior, dados);
     } catch (e) {
-      if (ehNavegacao(e)) throw e;
+      if (ehNavegacao(e)) {
+        const destino = destinoDoRedirect(e);
+        if (destino) aoSeguir?.(destino);
+        throw e;
+      }
       console.error("Publike: o salvar não chegou ao servidor:", e);
       if (onde) {
         relatarFalha({

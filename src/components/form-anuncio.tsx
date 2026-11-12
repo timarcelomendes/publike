@@ -55,6 +55,7 @@ import {
 } from "@/lib/vaga-extra";
 import { CargoNaCarteira } from "./anuncio/cargo-na-carteira";
 import { EmpresaDaVaga } from "./anuncio/empresa-da-vaga";
+import { AvisoDaSaida, rotuloSalvando, useSaidaDoSalvar, vagaGravada } from "./anuncio/saida-do-salvar";
 import { SalarioDoMercado } from "./anuncio/salario-do-mercado";
 import { BeneficiosExtras, EditorPerguntas, GanhosExtras, MontarHorario } from "./anuncio/extras-da-vaga";
 import { MelhorarTexto } from "./anuncio/melhorar-texto";
@@ -218,7 +219,10 @@ export function FormAnuncio({
   titulo = null,
   avisos = null,
   palco,
+  aoSalvar,
 }: {
+  /** O servidor gravou a vaga (antes de a página dela abrir): o /publicar apaga o rascunho guardado. */
+  aoSalvar?: (destino: string) => void;
   inicial: ValoresAnuncio;
   /** Ação que salva (padrão: publicar ou editar o próprio anúncio). */
   acaoSalvar?: (anterior: EstadoForm, formData: FormData) => Promise<EstadoForm>;
@@ -266,9 +270,26 @@ export function FormAnuncio({
   palco?: (p: { maxPasso: number; irAoCampo: (campo: string) => void }) => ReactNode;
 }) {
   const editando = Boolean(inicial.id);
+  // depois de tocar em salvar: se a tela não sair do "Salvando…", diz que deu certo e abre a vaga (saida-do-salvar.tsx)
+  const { saida, comecar: comecarSalvar, seguir, parar: pararDemora } = useSaidaDoSalvar();
+  const aoSalvarAgora = useRef(aoSalvar);
+  useEffect(() => {
+    aoSalvarAgora.current = aoSalvar;
+  });
   // a falha sem chegar ao servidor (site publicado de novo com a página aberta) vira aviso na tela
-  const acaoProtegida = useMemo(() => protegerAcao(acaoSalvar, "vaga"), [acaoSalvar]);
+  const acaoProtegida = useMemo(
+    () =>
+      protegerAcao(acaoSalvar, "vaga", (destino) => {
+        if (vagaGravada(destino)) aoSalvarAgora.current?.(destino);
+        seguir(destino);
+      }),
+    [acaoSalvar, seguir],
+  );
   const [estado, acao, enviando] = useActionState(acaoProtegida, ESTADO_INICIAL);
+  // voltou com erro (ou sem chegar ao servidor): a demora não conta mais
+  useEffect(() => {
+    if (!enviando) pararDemora();
+  }, [enviando, pararDemora]);
   // anúncio novo é sempre vaga; serviço tem cadastro próprio ("Meus serviços")
   const tipo: TipoAnuncio = editando ? inicial.tipo : "vaga";
   const [combinar, setCombinar] = useState(inicial.combinar ?? (editando ? inicial.pagamento_valor == null : false));
@@ -532,6 +553,7 @@ export function FormAnuncio({
     if (await faltaAntesDeEnviar()) return;
     const dados = new FormData(form);
     enviado.current = new FormData(form);
+    if (!semConta) comecarSalvar();
     startTransition(() => acao(dados));
   }
 
@@ -1517,20 +1539,26 @@ export function FormAnuncio({
                 Conferir e publicar
               </h2>
               {conteudoDaPublicacao}
-              {/* presa embaixo numa linha só (voltar à esquerda, publicar à direita); o texto fica embaixo, fora da barra */}
-              <div className="sticky bottom-0 z-30 -mx-4 flex items-center gap-3 border-t border-line bg-surface-100/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6 sm:py-4 lg:mx-0 lg:px-0">
-                <Botao type="button" variante="secundario" onClick={() => irPara(passo - 1)} aria-label="Voltar">
-                  <ArrowLeft aria-hidden />
-                  <span className="hidden sm:inline">Voltar</span>
-                </Botao>
-                <Botao
-                  type="submit"
-                  variante="primario"
-                  disabled={enviando}
-                  className="flex-1 sm:ml-auto sm:flex-none sm:min-w-56"
-                >
-                  {enviando ? (semConta ? "Conferindo…" : "Salvando…") : rotuloSalvar}
-                </Botao>
+              {/* presa embaixo numa linha só (voltar à esquerda, publicar à direita); o texto fica embaixo, fora da
+                  barra. O aviso de quando o salvar demora ou a vaga não abre fica na barra, à vista */}
+              <div className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-surface-100/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6 sm:py-4 lg:mx-0 lg:px-0">
+                {enviando && !semConta && (
+                  <AvisoDaSaida saida={saida} vagaNova={!editando && !equipe && !emNomeDe} className="mb-3" />
+                )}
+                <div className="flex items-center gap-3">
+                  <Botao type="button" variante="secundario" onClick={() => irPara(passo - 1)} aria-label="Voltar">
+                    <ArrowLeft aria-hidden />
+                    <span className="hidden sm:inline">Voltar</span>
+                  </Botao>
+                  <Botao
+                    type="submit"
+                    variante="primario"
+                    disabled={enviando}
+                    className="flex-1 sm:ml-auto sm:flex-none sm:min-w-56"
+                  >
+                    {enviando ? (semConta ? "Conferindo…" : rotuloSalvando(saida)) : rotuloSalvar}
+                  </Botao>
+                </div>
               </div>
               {emNomeDe ? (
                 <p className="text-body-sm text-ink-muted">
@@ -1556,6 +1584,7 @@ export function FormAnuncio({
           ) : (
             <div id="secao-5" className="flex scroll-mt-24 flex-col gap-6">
               {conteudoDaPublicacao}
+              {enviando && !semConta && <AvisoDaSaida saida={saida} vagaNova={!editando && !equipe && !emNomeDe} />}
               <div
                 className={`flex flex-col gap-3 sm:flex-row sm:items-center ${passos ? "sticky bottom-0 z-30 -mx-4 border-t border-line bg-surface-100/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none" : ""}`}
               >
@@ -1571,7 +1600,7 @@ export function FormAnuncio({
                   </Botao>
                 )}
                 <Botao type="submit" variante="primario" disabled={enviando} className="sm:min-w-56">
-                  {enviando ? (semConta ? "Conferindo…" : "Salvando…") : rotuloSalvar}
+                  {enviando ? (semConta ? "Conferindo…" : rotuloSalvando(saida)) : rotuloSalvar}
                 </Botao>
                 {emNomeDe ? (
                   <p className="text-body-sm text-ink-muted">
@@ -1606,9 +1635,11 @@ export function FormAnuncio({
         )}
       </div>
 
-      {/* a vaga nova que não chegou ao servidor já ficou guardada: recarregar não pergunta */}
+      {/* a vaga nova que não chegou ao servidor já ficou guardada: recarregar não pergunta. Salvando, também não: a
+          saída é a da vaga salva (o Next.js às vezes abre com recarga completa, e a pergunta, cancelada, deixava o
+          botão em "Salvando…" para sempre; 12/11/2026) */}
       <AvisoAoSair
-        ativo={!(estado.semSalvar && !editando && !equipe)}
+        ativo={!enviando && !(estado.semSalvar && !editando && !equipe)}
         mudou={() => jaMudou || mudouDesdeQueAbriu()}
         // sem conta, o que a pessoa escreve já fica no aparelho: fechar a aba não perde nada
         perguntarAoFechar={!semConta}
