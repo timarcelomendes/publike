@@ -18,6 +18,7 @@ import type { TextoDoConvite } from "../../recados/convite-recado";
 import { BarraBusca, FiltrosLista } from "../../explorar/barra-busca";
 import { FotoDaConta } from "../foto-da-conta";
 import { AbasDaLinha, OrdemDaLinha } from "./abas-da-linha";
+import { RaioDaLinha } from "./raio-da-linha";
 import { FaixaDeQuemContrata } from "./faixa-de-quem-contrata";
 import { BuscaERecado } from "./busca-e-recado";
 import { cidadeDaVisita } from "@/lib/servidor/cidade";
@@ -333,11 +334,16 @@ export async function TopoDaConta({ searchParams, soOlhar = false }: { searchPar
         }
         ordem={
           d.aba === "recado" ? null : (
-            <OrdemDaLinha
-              relevantes={d.relevantes}
-              ultimas={hrefFiltros(base, { ordem: "ultimas" })}
-              maisRelevantes={hrefFiltros(base, { ordem: "relevantes" })}
-            />
+            // a ordem e até onde a linha busca numa linha só (12/11/2026, pedido do Marcelo); com o "Mudar" aberto
+            // (ou com mais longe), o raio desce para a linha de baixo
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <OrdemDaLinha
+                relevantes={d.relevantes}
+                ultimas={hrefFiltros(base, { ordem: "ultimas" })}
+                maisRelevantes={hrefFiltros(base, { ordem: "relevantes" })}
+              />
+              <RaioDaLinha d={d} />
+            </div>
           )
         }
       />

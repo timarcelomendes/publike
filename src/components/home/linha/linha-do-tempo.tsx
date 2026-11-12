@@ -19,7 +19,7 @@ import { RecadosRecolhidos } from "../../recados/recados-recolhidos";
 import { Avatar, Vazio } from "../../ui/basicos";
 import { BotaoLink } from "../../ui/botao";
 import { ListaDaLinha } from "./lista-da-linha";
-import { FimDoRaio, RaioDaLinha } from "./raio-da-linha";
+import { FimDoRaio } from "./raio-da-linha";
 import {
   CartaoDaConquista,
   CartaoDaResposta,
@@ -232,7 +232,6 @@ export async function LinhaDoTempo({
     return (
       <section aria-label="Linha do tempo" className="flex flex-col gap-3">
         {pergunta}
-        <RaioDaLinha d={d} />
         {d.aba === "recado" ? (
           <Vazio
             icone={MessageSquareText}
@@ -345,8 +344,7 @@ export async function LinhaDoTempo({
   return (
     <>
       {pergunta && <div className="mb-3">{pergunta}</div>}
-      {/* até onde a linha busca, à vista (e o que ficou de fora) */}
-      <RaioDaLinha d={d} />
+      {/* até onde a linha busca fica no topo, na linha da ordem (RaioDaLinha, em topo-da-conta.tsx) */}
       <section aria-label="Linha do tempo" className="relative flex flex-col gap-2.5 pb-8 sm:gap-3">
         {/* o traço da linha, no meio da coluna dos nós */}
         <span aria-hidden className="absolute top-3 bottom-0 left-[71px] hidden w-0.5 rounded-pill bg-line sm:block" />

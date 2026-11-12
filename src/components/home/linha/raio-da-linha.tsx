@@ -28,13 +28,13 @@ export type DadosDoRaio = {
   deOnde?: { casa: boolean; local: Local | null; cidade: string; semOrigem: string };
 };
 
-const daLinha = (d: DadosDaLinha): DadosDoRaio => ({
+const daLinha = (d: DadosDaLinha, recuo = true): DadosDoRaio => ({
   filtros: d.filtros,
   base: d.filtrosDaBusca,
   origem: d.origemDoRaio,
   maisLonge: d.maisLonge,
   tipo: d.aba,
-  recuo: true,
+  recuo,
   deOnde: d.deOnde,
 });
 
@@ -45,19 +45,30 @@ function cidades(c: string[], total: number) {
 /**
  * Até onde a linha busca, à vista (03/11/2026): o raio ficava escondido em Filtros e a pessoa achava que via tudo.
  * Se ficou algo de fora: os raios em botões (o atual marcado), de onde conta, quantos ficaram e de onde. Se não,
- * só "Até 25 km da sua casa · Mudar" (o Mudar abre os botões).
+ * só "Até 25 km da sua casa · Mudar" (o Mudar abre os botões). Fica na linha da ordem (Relevantes ou Recentes), no
+ * topo da linha do tempo (12/11/2026, pedido do Marcelo), sem o recuo da coluna da hora.
  */
 export function RaioDaLinha({ d }: { d: DadosDaLinha }) {
-  return d.aba === "recado" ? null : <RaioDaBusca r={daLinha(d)} />;
+  return d.aba === "recado" ? null : <RaioDaBusca r={daLinha(d, false)} aoLado />;
 }
 
 /**
  * A linha do raio (a da linha do tempo e a da busca). Com `deOnde`, os botões de "De onde" vêm antes dos raios, na
  * mesma linha (quebram para baixo quando não cabem), e a linha diz "de onde você está agora" quando conta da localização
  * (o "Você" dos cartões e do mapa). O `id` "ate-onde" é o que o "Trocar" do mapa abre. `depois`: o que vem na
- * mesma linha do "Mudar" (ou do "Exibir mais"): na busca, o "Me avise" e o % de match.
+ * mesma linha do "Mudar" (ou do "Exibir mais"): na busca, o "Me avise" e o % de match. `aoLado`: numa linha com outra
+ * coisa antes (a ordem da linha do tempo): fechado, fica ao lado dela; aberto (ou com os botões à mostra, quando há
+ * mais longe), desce para a linha de baixo, na largura toda.
  */
-export function RaioDaBusca({ r: d, depois = null }: { r: DadosDoRaio; depois?: ReactNode }) {
+export function RaioDaBusca({
+  r: d,
+  depois = null,
+  aoLado = false,
+}: {
+  r: DadosDoRaio;
+  depois?: ReactNode;
+  aoLado?: boolean;
+}) {
   const f = d.filtros;
   const [um, varios] = nomeDoItem(d.tipo);
   const longe = d.maisLonge;
@@ -115,7 +126,11 @@ export function RaioDaBusca({ r: d, depois = null }: { r: DadosDoRaio; depois?: 
   // toda, e o `depois` desce
   if (!longe || !proximo)
     return (
-      <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
+      <div
+        className={`flex flex-wrap items-center gap-x-4 gap-y-1 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""} ${
+          aoLado ? "has-[details[open]]:basis-full" : ""
+        }`}
+      >
         <details id="ate-onde" className="group scroll-mt-24 open:basis-full">
         <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 text-body-sm text-ink-muted [&::-webkit-details-marker]:hidden">
           <MapPinned aria-hidden className="size-4 shrink-0" />
@@ -131,7 +146,10 @@ export function RaioDaBusca({ r: d, depois = null }: { r: DadosDoRaio; depois?: 
       </div>
     );
   return (
-    <div id="ate-onde" className={`flex scroll-mt-24 flex-col gap-1.5 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
+    <div
+      id="ate-onde"
+      className={`flex scroll-mt-24 flex-col gap-1.5 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""} ${aoLado ? "basis-full" : ""}`}
+    >
       {botoes}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <p className="text-body-sm text-ink-muted">
