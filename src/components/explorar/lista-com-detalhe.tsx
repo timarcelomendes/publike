@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarClock,
   Clock,
+  Coins,
   ExternalLink,
   Gift,
   ListChecks,
@@ -161,12 +162,26 @@ function DetalheDoAnuncio({ id }: { id: string }) {
         </Fato>
         <Fato icone={Banknote} rotulo={d.vaga ? "Valor" : "Preço"}>
           {d.valor}
-          {d.ganhos.map((g) => (
-            <span key={g} className="mt-0.5 block text-body-sm font-normal">
-              + {g}
-            </span>
-          ))}
         </Fato>
+        {/* os ganhos a mais lado a lado, na largura toda, logo abaixo do valor: um por linha dentro do valor, o
+            quadro dele ficava comprido e o do lado, vazio */}
+        {d.ganhos.length > 0 && (
+          <Fato icone={Coins} rotulo="Ganhos a mais" largo>
+            <ul className="mt-1 flex flex-wrap gap-1.5">
+              {d.ganhos.map((g) => {
+                // "Comissão: até 4%": o nome e, mais apagado, como funciona
+                const [nome, ...resto] = g.split(": ");
+                const detalhe = resto.join(": ");
+                return (
+                  <li key={g} className="rounded-pill bg-surface-300 px-2.5 py-0.5 text-body-sm font-normal">
+                    {nome}
+                    {detalhe && <span className="text-ink-muted">: {detalhe}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </Fato>
+        )}
         {d.contratante && (
           <Fato icone={Building2} rotulo="Empresa contratante">
             {d.contratante}
@@ -223,9 +238,20 @@ function DetalheDoAnuncio({ id }: { id: string }) {
   );
 }
 
-function Fato({ icone: Icone, rotulo, children }: { icone: LucideIcon; rotulo: string; children: ReactNode }) {
+/** Um par da lista de fatos. `largo`: nas duas colunas (os ganhos a mais, lado a lado). */
+function Fato({
+  icone: Icone,
+  rotulo,
+  largo = false,
+  children,
+}: {
+  icone: LucideIcon;
+  rotulo: string;
+  largo?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="relative min-h-10 pl-[52px]">
+    <div className={`relative min-h-10 pl-[52px] ${largo ? "xl:col-span-2" : ""}`}>
       <dt className="text-body-sm text-ink-muted">
         <span
           aria-hidden
