@@ -2035,6 +2035,8 @@ export type Database = {
       servidor_anuncios_avisados_ao_indexnow: { Args: { p_chave: string; p_itens: Json }; Returns: undefined };
       // o impulso automático do Publike (migração 20270428120000)
       servidor_impulsos_automaticos: { Args: { p_chave: string }; Returns: number };
+      // a conta do Google Ads de um impulso de antes (migração 20270429120000)
+      servidor_impulso_conta: { Args: { p_chave: string; p_id: string; p_conta: string }; Returns: undefined };
       salario_da_funcao: {
         Args: { p_cbo: string; p_regiao?: string };
         Returns: {

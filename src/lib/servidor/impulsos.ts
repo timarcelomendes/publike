@@ -9,6 +9,8 @@ import { estornarCobranca } from "./asaas";
 import { acessoFila } from "./filas";
 import {
   consultar,
+  contaDeAnuncios,
+  contasAcessiveis,
   ErroGoogleAds,
   googleAdsLigado,
   idDoRecurso,
@@ -33,6 +35,8 @@ type Tarefa = {
   dias: number;
   verba: number;
   campanha_id: string | null;
+  /** a conta do Google Ads em que a campanha nasceu (migração 20270429120000); null nos impulsos de antes */
+  conta_google: string | null;
   grupo_id: string | null;
   anuncio_google_id: string | null;
   texto_simples: boolean;
@@ -168,9 +172,32 @@ function texto(t: Tarefa, simples: boolean) {
   return textoDoAnuncio(t.vaga!, { simples, sinonimos: sinonimos.filter((s): s is string => Boolean(s)).slice(0, 3) });
 }
 
-async function removerCampanha(id: string) {
+/**
+ * A conta do Google Ads da campanha do impulso. A gravada na criação; no impulso de antes (sem ela), o robô procura a
+ * campanha nas contas que o acesso enxerga, a de hoje primeiro, e grava a que achou. Não achou: a de hoje.
+ */
+async function contaDoImpulso(a: Acesso, t: Tarefa): Promise<string> {
+  const atual = contaDeAnuncios();
+  if (t.conta_google) return t.conta_google;
+  if (!t.campanha_id) return atual;
+  const gestora = (process.env.GOOGLE_ADS_CONTA_GESTORA || "").replace(/\D/g, "");
+  const outras = (await contasAcessiveis().catch(() => [] as string[])).filter((c) => c !== atual && c !== gestora);
+  for (const conta of [atual, ...outras]) {
+    try {
+      const linhas = await consultar(`SELECT campaign.id FROM campaign WHERE campaign.id = ${Number(t.campanha_id)}`, conta);
+      if (!linhas.length) continue;
+      await a.cliente.rpc("servidor_impulso_conta", { p_chave: a.chave, p_id: t.id, p_conta: conta });
+      return conta;
+    } catch {
+      // conta fechada ou sem acesso: a próxima
+    }
+  }
+  return atual;
+}
+
+async function removerCampanha(id: string, conta: string) {
   try {
-    await mutar([{ campaignOperation: { remove: recurso("campaigns", id) } }]);
+    await mutar([{ campaignOperation: { remove: recurso("campaigns", id, conta) } }], conta);
   } catch (e) {
     // já removida: está feito
     if (!(e instanceof ErroGoogleAds && e.naoExiste)) throw e;
@@ -200,7 +227,9 @@ async function criar(a: Acesso, t: Tarefa) {
       return;
     }
   }
-  const ids = idsDoMutate(r);
+  // a conta em que a campanha nasceu fica gravada: se a variável mudar depois, o robô ainda acha a campanha
+  const conta = contaDeAnuncios();
+  const ids: Record<string, string | null> = { ...idsDoMutate(r), conta };
   const { data, error } = await a.cliente.rpc("servidor_impulso_criado", {
     p_chave: a.chave,
     p_id: t.id,
@@ -208,7 +237,7 @@ async function criar(a: Acesso, t: Tarefa) {
   });
   if (error) throw new Error(error.message);
   // cancelado ou com a vaga fechada enquanto o Google criava: tira de novo
-  if ((data as { remover?: boolean } | null)?.remover && ids.campanha) await removerCampanha(ids.campanha);
+  if ((data as { remover?: boolean } | null)?.remover && ids.campanha) await removerCampanha(ids.campanha, conta);
 }
 
 type LinhaDoAnuncio = {
@@ -221,12 +250,13 @@ type LinhaDoAnuncio = {
   };
 };
 
-async function olhar(a: Acesso, t: Tarefa) {
+async function olhar(a: Acesso, t: Tarefa, conta: string) {
   if (!t.anuncio_google_id || !t.campanha_id) return;
   const linhas = await consultar<LinhaDoAnuncio>(
     `SELECT ad_group_ad.ad.id, ad_group_ad.policy_summary.approval_status, ad_group_ad.policy_summary.review_status, ` +
       `ad_group_ad.policy_summary.policy_topic_entries FROM ad_group_ad ` +
       `WHERE campaign.id = ${Number(t.campanha_id)} AND ad_group_ad.ad.id = ${Number(t.anuncio_google_id)}`,
+    conta,
   );
   const p = linhas[0]?.adGroupAd?.policySummary;
   const aprovacao = p?.approvalStatus ?? "UNKNOWN";
@@ -250,29 +280,35 @@ async function olhar(a: Acesso, t: Tarefa) {
   const d = (data ?? {}) as { aprovado?: boolean; fim?: string; texto_simples?: boolean };
   if (d.aprovado && d.fim) {
     // o Google para sozinho no fim (e o robô encerra de qualquer jeito)
-    await mutar([
-      {
-        campaignOperation: {
-          updateMask: "endDateTime",
-          update: { resourceName: recurso("campaigns", t.campanha_id), endDateTime: d.fim },
+    await mutar(
+      [
+        {
+          campaignOperation: {
+            updateMask: "endDateTime",
+            update: { resourceName: recurso("campaigns", t.campanha_id, conta), endDateTime: d.fim },
+          },
         },
-      },
-    ]);
+      ],
+      conta,
+    );
   } else if (d.texto_simples) {
     // o anúncio novo, com o texto simples, no lugar do recusado
-    await trocarPeloSimples(a, t);
+    await trocarPeloSimples(a, t, conta);
   }
 }
 
-async function trocarPeloSimples(a: Acesso, t: Tarefa) {
+async function trocarPeloSimples(a: Acesso, t: Tarefa, conta: string) {
   if (!t.vaga || !t.grupo_id) return;
-  const grupo = recurso("adGroups", t.grupo_id);
-  const r = await mutar([
-    operacoesDoAnuncio(grupo, paginaDaVaga(t.vaga.id), texto(t, true)),
-    ...(t.anuncio_google_id
-      ? [{ adGroupAdOperation: { remove: recurso("adGroupAds", `${t.grupo_id}~${t.anuncio_google_id}`) } }]
-      : []),
-  ]);
+  const grupo = recurso("adGroups", t.grupo_id, conta);
+  const r = await mutar(
+    [
+      operacoesDoAnuncio(grupo, paginaDaVaga(t.vaga.id), texto(t, true)),
+      ...(t.anuncio_google_id
+        ? [{ adGroupAdOperation: { remove: recurso("adGroupAds", `${t.grupo_id}~${t.anuncio_google_id}`, conta) } }]
+        : []),
+    ],
+    conta,
+  );
   const novo = idsDoMutate(r).anuncio;
   if (novo) await a.cliente.rpc("servidor_impulso_anuncio_trocado", { p_chave: a.chave, p_id: t.id, p_anuncio: novo });
 }
@@ -282,7 +318,7 @@ type LinhaDosNumeros = {
   metrics?: { impressions?: string | number; clicks?: string | number; costMicros?: string | number };
 };
 
-async function medir(a: Acesso, t: Tarefa, ateHoje = false) {
+async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = false) {
   if (!t.campanha_id || !t.medir_desde) return;
   const hoje = hojeEmBrasilia();
   const ontem = new Date(Date.parse(`${hoje}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
@@ -294,6 +330,7 @@ async function medir(a: Acesso, t: Tarefa, ateHoje = false) {
   const linhas = await consultar<LinhaDosNumeros>(
     `SELECT segments.date, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign ` +
       `WHERE campaign.id = ${Number(t.campanha_id)} AND segments.date BETWEEN '${t.medir_desde}' AND '${ate}'`,
+    conta,
   );
   const dias = linhas
     .filter((l) => l.segments?.date)
@@ -314,37 +351,42 @@ async function medir(a: Acesso, t: Tarefa, ateHoje = false) {
 async function fazer(a: Acesso, t: Tarefa) {
   const precisaDoGoogle = t.acao !== "estornar" && !(t.acao === "pausar" && !t.campanha_id);
   if (precisaDoGoogle && !googleAdsLigado()) return false;
+  // a conta da campanha (a de quando nasceu); o "criar" usa sempre a de hoje
+  const conta = precisaDoGoogle && t.acao !== "criar" ? await contaDoImpulso(a, t) : contaDeAnuncios();
   switch (t.acao) {
     case "criar":
       await criar(a, t);
       break;
     case "olhar":
-      await olhar(a, t);
+      await olhar(a, t, conta);
       break;
     case "pausar":
-      if (t.campanha_id) await removerCampanha(t.campanha_id);
+      if (t.campanha_id) await removerCampanha(t.campanha_id, conta);
       await a.cliente.rpc("servidor_impulso_pausado", { p_chave: a.chave, p_id: t.id });
       if (t.campanha_id) await a.cliente.rpc("servidor_impulso_removido", { p_chave: a.chave, p_id: t.id });
       break;
     case "remover":
-      if (t.campanha_id) await removerCampanha(t.campanha_id);
+      if (t.campanha_id) await removerCampanha(t.campanha_id, conta);
       await a.cliente.rpc("servidor_impulso_removido", { p_chave: a.chave, p_id: t.id });
       break;
     case "encerrar":
       if (t.campanha_id) {
         try {
-          await mutar([
-            {
-              campaignOperation: {
-                updateMask: "status",
-                update: { resourceName: recurso("campaigns", t.campanha_id), status: "PAUSED" },
+          await mutar(
+            [
+              {
+                campaignOperation: {
+                  updateMask: "status",
+                  update: { resourceName: recurso("campaigns", t.campanha_id, conta), status: "PAUSED" },
+                },
               },
-            },
-          ]);
+            ],
+            conta,
+          );
         } catch (e) {
           if (!(e instanceof ErroGoogleAds && e.naoExiste)) throw e;
         }
-        await medir(a, t, true);
+        await medir(a, t, conta, true);
       }
       await a.cliente.rpc("servidor_impulso_encerrado", { p_chave: a.chave, p_id: t.id });
       break;
@@ -355,7 +397,7 @@ async function fazer(a: Acesso, t: Tarefa) {
       await a.cliente.rpc("servidor_impulso_estorno_pedido", { p_chave: a.chave, p_id: t.id });
       break;
     case "medir":
-      await medir(a, t);
+      await medir(a, t, conta);
       break;
   }
   return true;

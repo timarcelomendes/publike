@@ -101,14 +101,18 @@ type FalhaDoGoogle = {
   };
 };
 
-async function chamar<T>(caminho: string, corpo?: unknown): Promise<T> {
+/**
+ * `conta`: a conta de anúncios da chamada. A gestora (GOOGLE_ADS_CONTA_GESTORA) vai no cabeçalho só para a conta dos
+ * impulsos de hoje; uma conta de antes (o impulso que nasceu lá) é chamada direto, com o acesso do dono.
+ */
+async function chamar<T>(caminho: string, corpo?: unknown, conta = contaDeAnuncios()): Promise<T> {
   const acesso = await tokenDoGoogle();
   const cabecalhos: Record<string, string> = {
     Authorization: `Bearer ${acesso}`,
     "Content-Type": "application/json",
   };
   const gestora = soNumeros(env("GOOGLE_ADS_CONTA_GESTORA"));
-  if (gestora) cabecalhos["login-customer-id"] = gestora;
+  if (gestora && conta === contaDeAnuncios()) cabecalhos["login-customer-id"] = gestora;
   const dev = env("GOOGLE_ADS_DEVELOPER_TOKEN");
   if (dev) cabecalhos["developer-token"] = dev;
   const r = await fetch(`${BASE()}/${VERSAO()}/${caminho}`, {
@@ -136,26 +140,27 @@ async function chamar<T>(caminho: string, corpo?: unknown): Promise<T> {
   return (texto ? JSON.parse(texto) : {}) as T;
 }
 
-/** O caminho de um recurso da conta ("customers/123/campaigns/-2"). */
-export function recurso(tipo: string, id: string | number) {
-  return `customers/${contaDeAnuncios()}/${tipo}/${id}`;
+/** O caminho de um recurso da conta ("customers/123/campaigns/-2"); sem `conta`, a dos impulsos de hoje. */
+export function recurso(tipo: string, id: string | number, conta = contaDeAnuncios()) {
+  return `customers/${conta}/${tipo}/${id}`;
 }
 
 export type RespostaDoMutate = { mutateOperationResponses?: Record<string, { resourceName?: string }>[] };
 
 /** Várias mudanças de uma vez, tudo ou nada (os ids temporários negativos ligam umas às outras). */
-export function mutar(operacoes: unknown[]) {
-  return chamar<RespostaDoMutate>(`customers/${contaDeAnuncios()}/googleAds:mutate`, { mutateOperations: operacoes });
+export function mutar(operacoes: unknown[], conta = contaDeAnuncios()) {
+  return chamar<RespostaDoMutate>(`customers/${conta}/googleAds:mutate`, { mutateOperations: operacoes }, conta);
 }
 
 /** Uma consulta GAQL, com as páginas. */
-export async function consultar<T = Record<string, unknown>>(gaql: string): Promise<T[]> {
+export async function consultar<T = Record<string, unknown>>(gaql: string, conta = contaDeAnuncios()): Promise<T[]> {
   const linhas: T[] = [];
   let pagina: string | undefined;
   for (let i = 0; i < 20; i++) {
     const r = await chamar<{ results?: T[]; nextPageToken?: string }>(
-      `customers/${contaDeAnuncios()}/googleAds:search`,
+      `customers/${conta}/googleAds:search`,
       pagina ? { query: gaql, pageToken: pagina } : { query: gaql },
+      conta,
     );
     linhas.push(...(r.results ?? []));
     pagina = r.nextPageToken;
