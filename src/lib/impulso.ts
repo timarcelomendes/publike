@@ -102,6 +102,17 @@ function semRepetir(lista: (string | null | undefined)[], max: number, quantos: 
   return saida;
 }
 
+/** De cada grupo, a primeira frase que cabe (sem repetir), até `quantos`. */
+function umDeCada(grupos: (string | null | undefined)[][], max: number, quantos: number) {
+  const saida: string[] = [];
+  for (const g of grupos) {
+    const [t] = semRepetir(g, max, 1).filter((x) => !saida.some((y) => y.toLowerCase() === x.toLowerCase()));
+    if (t) saida.push(t);
+    if (saida.length === quantos) break;
+  }
+  return saida;
+}
+
 /** A palavra-chave como o Google aceita: minúsculas, letras, números e espaço, até 80 letras e 10 palavras. */
 function palavraLimpa(t: string) {
   const p = t
@@ -145,6 +156,14 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
   const cidade = v.cidade.trim();
   const bairro = v.bairro.trim();
 
+  // A "qualidade do anúncio" do Google pede títulos variados e com as palavras da busca: primeiro os que trazem a
+  // função (inteira e encurtada, "Movimentador"), depois o salário e o regime, por fim os convites.
+  const curtaCrua = funcaoCurta(funcao, 17);
+  // "Auxiliar" sozinho não diz a função: aí fica a inteira
+  const curta = /^(auxiliar|assistente|operador|operadora|ajudante|atendente|técnico|técnica|analista|agente|encarregado|encarregada|supervisor|supervisora|gerente|coordenador|coordenadora)$/i.test(curtaCrua)
+    ? funcao
+    : curtaCrua;
+  const c = curta.toLowerCase();
   const titulos = opcoes.simples
     ? semRepetir([funcao, `Vaga em ${cidade}`, "Vaga de emprego", "Candidatura grátis", "Veja a vaga"], 30, 5)
     : semRepetir(
@@ -153,8 +172,15 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
           `Vaga de ${f}`,
           `${funcao} em ${bairro}`,
           `${funcao} em ${cidade}`,
-          `Vaga em ${bairro}`,
+          `Vaga de ${c} em ${cidade}`,
           sal ? (cabe(por ? `${sal} ${por}` : sal, 30) ?? sal) : null,
+          `Vaga de ${c}`,
+          `Trabalhe como ${f}`,
+          `Trabalhe como ${c}`,
+          `Emprego de ${f}`,
+          `Emprego de ${c}`,
+          `${curta} em ${bairro}`,
+          `Vaga em ${bairro}`,
           v.regime === "clt"
             ? "Carteira assinada"
             : regime && v.regime !== "outro"
@@ -186,18 +212,33 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
         90,
         2,
       )
-    : semRepetir(
+    : // quatro descrições diferentes entre si, cada uma com a função (o Google mede a variedade e as palavras): de
+      // cada grupo, a primeira que cabe em 90 letras
+      umDeCada(
         [
-          `${funcao} em ${lugar}.${sal ? ` ${sal}${por ? ` ${por}` : ""}.` : ""} Veja a vaga e candidate-se.`,
-          sal ? `${funcao} em ${bairro}. ${sal}${por ? ` ${por}` : ""}. Veja a vaga e candidate-se.` : null,
-          sal ? `${funcao} em ${bairro}. ${sal}${por ? ` ${por}` : ""}. Candidate-se.` : null,
-          `${funcao} em ${lugar}. Veja a vaga e candidate-se.`,
-          `Vaga de ${f} em ${cidade}. Veja a vaga e candidate-se.`,
-          "Curtiu a vaga e deu match: você conversa direto com quem contrata. É grátis.",
+          [
+            `${funcao} em ${lugar}.${sal ? ` ${sal}${por ? ` ${por}` : ""}.` : ""} Veja a vaga e candidate-se.`,
+            sal ? `${funcao} em ${bairro}. ${sal}${por ? ` ${por}` : ""}. Veja a vaga e candidate-se.` : null,
+            sal ? `${funcao}. ${sal}${por ? ` ${por}` : ""}. Veja a vaga e candidate-se.` : null,
+            `${funcao} em ${lugar}. Veja a vaga e candidate-se.`,
+            `Vaga de ${f} em ${cidade}. Veja a vaga e candidate-se.`,
+          ],
           regime || jornada
-            ? `${[regime?.nome, jornada].filter(Boolean).join(", ")}. Veja os requisitos, os benefícios e o lugar.`
-            : null,
-          "Candidate-se em poucos toques, pelo celular, sem pagar nada.",
+            ? [
+                `Vaga de ${f}: ${[regime?.nome, jornada?.toLowerCase()].filter(Boolean).join(", ")}. Veja requisitos e benefícios.`,
+                `Vaga de ${c}: ${[regime?.nome, jornada?.toLowerCase()].filter(Boolean).join(", ")}. Veja requisitos e benefícios.`,
+              ]
+            : [],
+          [
+            `Quer trabalhar como ${f} em ${cidade}? Curta a vaga e fale com quem contrata.`,
+            `Quer trabalhar como ${f}? Curta a vaga e fale direto com quem contrata.`,
+            `Quer trabalhar como ${c}? Curta a vaga e fale direto com quem contrata.`,
+          ],
+          [
+            `Candidate-se à vaga de ${f} pelo celular, em poucos toques e sem pagar nada.`,
+            `Candidate-se à vaga de ${c} pelo celular, sem pagar nada.`,
+          ],
+          ["Curtiu a vaga e deu match: você conversa direto com quem contrata. É grátis."],
         ],
         90,
         4,

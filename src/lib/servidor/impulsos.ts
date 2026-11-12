@@ -2,6 +2,9 @@ import "server-only";
 
 import { ocupacao } from "@/lib/cbo";
 import { SITE_URL } from "@/lib/config";
+import { nomeDoBairro } from "@/lib/formato";
+import { caminhoDaFuncao, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
+import { caminhoDaBusca, caminhoDasRecentes, caminhoDoBairro, cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
 import { sufixoDoImpulso, textoDoAnuncio, type TextoDoAnuncio, type VagaDoImpulso } from "@/lib/impulso";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { urlDosEmails } from "./ambiente";
@@ -156,6 +159,105 @@ function operacoesDaCampanha(t: Tarefa, texto: TextoDoAnuncio) {
   return ops;
 }
 
+type Sitelink = { texto: string; linha1: string; linha2: string; url: string };
+
+/**
+ * Os sitelinks do anúncio: os links extras embaixo dele (a "qualidade do anúncio" do Google pede ao menos 4). Levam às
+ * páginas que duram (a função na cidade, o bairro, a cidade, as vagas novas) e ao currículo grátis. Até 25 letras no
+ * link e 35 em cada linha.
+ */
+function sitelinksDaVaga(v: NonNullable<Tarefa["vaga"]>): Sitelink[] {
+  const base = urlDosEmails() || SITE_URL;
+  const cidade = v.cidade.trim();
+  const temPaginas = Boolean(cidadeDoSlug(slugDaCidade(cidade)));
+  const funcao = funcaoDaListaPeloCbo(v.cbo);
+  const bairro = nomeDoBairro(v.bairro.trim());
+  const lista: (Sitelink | null)[] = [
+    temPaginas && funcao
+      ? {
+          texto: `Vagas de ${funcao.nome}`,
+          linha1: `Mais vagas de ${funcao.nome}`,
+          linha2: `Abertas agora em ${cidade}`,
+          url: `${base}${caminhoDaFuncao(cidade, funcao.slug)}`,
+        }
+      : null,
+    temPaginas && bairro && slugDaCidade(bairro) !== slugDaCidade(cidade)
+      ? {
+          texto: `Vagas no ${bairro}`,
+          linha1: `As vagas no ${bairro}`,
+          linha2: "E nos bairros perto dele",
+          url: `${base}${caminhoDoBairro(cidade, bairro)}`,
+        }
+      : null,
+    temPaginas
+      ? {
+          texto: `Vagas em ${cidade}`,
+          linha1: `Todas as vagas em ${cidade}`,
+          linha2: "Candidate-se sem pagar nada",
+          url: `${base}${caminhoDaBusca("vaga", cidade)}`,
+        }
+      : null,
+    temPaginas
+      ? {
+          texto: "Vagas dos últimos 3 dias",
+          linha1: "As vagas mais novas",
+          linha2: `Publicadas em ${cidade}`,
+          url: `${base}${caminhoDasRecentes(cidade)}`,
+        }
+      : null,
+    {
+      texto: "Currículo grátis",
+      linha1: "Monte seu currículo pelo celular",
+      linha2: "Pronto em poucos minutos",
+      url: `${base}/curriculo-simples`,
+    },
+    {
+      texto: "Como funciona",
+      linha1: "Curta a vaga e dê match",
+      linha2: "Fale direto com quem contrata",
+      url: `${base}/como-funciona`,
+    },
+  ];
+  const vistos = new Set<string>();
+  return lista
+    .filter((x): x is Sitelink => {
+      if (!x || x.texto.length > 25 || x.linha1.length > 35 || x.linha2.length > 35) return false;
+      if (vistos.has(x.url)) return false;
+      vistos.add(x.url);
+      return true;
+    })
+    .slice(0, 6);
+}
+
+/**
+ * Põe os sitelinks na campanha, depois de ela nascer e à parte: se o Google recusar algum, o impulso segue sem eles
+ * (o anúncio roda do mesmo jeito; só a "qualidade" fica mais baixa).
+ */
+async function porSitelinks(t: Tarefa, campanhaId: string, conta: string) {
+  const links = sitelinksDaVaga(t.vaga!);
+  if (!links.length) return;
+  const campanha = recurso("campaigns", campanhaId, conta);
+  const ops: unknown[] = [];
+  links.forEach((l, i) => {
+    const asset = recurso("assets", -(i + 1), conta);
+    ops.push({
+      assetOperation: {
+        create: {
+          resourceName: asset,
+          finalUrls: [l.url],
+          sitelinkAsset: { linkText: l.texto, description1: l.linha1, description2: l.linha2 },
+        },
+      },
+    });
+    ops.push({ campaignAssetOperation: { create: { campaign: campanha, asset, fieldType: "SITELINK" } } });
+  });
+  try {
+    await mutar(ops, conta);
+  } catch (e) {
+    console.error(`Publike: impulso ${t.codigo} sem sitelinks:`, e instanceof Error ? e.message : e);
+  }
+}
+
 function idsDoMutate(r: RespostaDoMutate) {
   const ids: Record<string, string | null> = { orcamento: null, campanha: null, grupo: null, anuncio: null };
   for (const x of r.mutateOperationResponses ?? []) {
@@ -237,7 +339,11 @@ async function criar(a: Acesso, t: Tarefa) {
   });
   if (error) throw new Error(error.message);
   // cancelado ou com a vaga fechada enquanto o Google criava: tira de novo
-  if ((data as { remover?: boolean } | null)?.remover && ids.campanha) await removerCampanha(ids.campanha, conta);
+  if ((data as { remover?: boolean } | null)?.remover && ids.campanha) {
+    await removerCampanha(ids.campanha, conta);
+    return;
+  }
+  if (ids.campanha) await porSitelinks(t, ids.campanha, conta);
 }
 
 type LinhaDoAnuncio = {
