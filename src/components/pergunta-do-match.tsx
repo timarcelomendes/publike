@@ -11,6 +11,8 @@ import {
 } from "@/lib/abrir-conversa";
 import { marcarMatchPerguntado, matchParaPerguntar } from "@/lib/acoes/pergunta-do-match";
 import { linkWhatsApp } from "@/lib/formato";
+import { LINHA_DO_CURRICULO } from "@/lib/link-do-match";
+import { PassoDoCurriculo } from "./curriculo/passo-do-curriculo";
 import { Botao } from "./ui/botao";
 
 // onde a pergunta ao entrar não aparece: o admin, a entrada e as conversas (lá a pessoa já está conversando)
@@ -33,6 +35,8 @@ export function PerguntaDoMatch() {
   const abrirAoFechar = useRef(false);
   // tocou no "Chamar no WhatsApp" (sem o toque, fechar é o "agora não", que fica registrado)
   const tocouNoWhatsApp = useRef(false);
+  // foi fazer o currículo: fechar não é o "agora não", e a conversa não abre por cima da página do currículo
+  const foiAoCurriculo = useRef(false);
 
   // os matches desta visita que já tiveram a resposta da tela (a pergunta ao entrar não repete nenhum deles)
   const tratados = useRef(new Set<string>());
@@ -86,10 +90,12 @@ export function PerguntaDoMatch() {
   // Na vaga só pelo chat, a conversa abre só quando a pessoa pediu ("Abrir a conversa"); o "Agora não" fica valendo.
   function fechou() {
     const conversa = pedido?.conversa;
-    const abrir = pedido?.whatsapp ? true : abrirAoFechar.current;
-    if (pedido?.whatsapp && !pedido.soChat && !tocouNoWhatsApp.current) contar("descartou");
+    const curriculo = foiAoCurriculo.current;
+    const abrir = !curriculo && (pedido?.whatsapp ? true : abrirAoFechar.current);
+    if (pedido?.whatsapp && !pedido.soChat && !tocouNoWhatsApp.current && !curriculo) contar("descartou");
     abrirAoFechar.current = false;
     tocouNoWhatsApp.current = false;
+    foiAoCurriculo.current = false;
     setPedido(null);
     if (conversa && abrir) abrirConversaDoMatch(conversa, (caminho) => router.push(caminho));
   }
@@ -120,6 +126,10 @@ export function PerguntaDoMatch() {
 
   const nome = pedido?.conversa?.outroNome || "quem publicou";
   const [primeira, ...resto] = (pedido?.mensagem ?? "").split("\n");
+  // o link do currículo na mensagem (contato direto, com o currículo à mostra)
+  const comCurriculo = resto.some((l) => l.startsWith(LINHA_DO_CURRICULO));
+  // sem currículo, numa vaga: depois do WhatsApp (que vem primeiro), o convite para fazer
+  const pedirCurriculo = Boolean(pedido?.semCurriculo && !pedido.servico);
 
   return (
     <dialog
@@ -157,8 +167,10 @@ export function PerguntaDoMatch() {
               ) : (
                 <>
                   A mensagem já vai pronta
-                  {resto.length ? `, com o link ${pedido.servico ? "do anúncio" : "da vaga"}` : ""}. Dá para mudar antes
-                  de enviar.
+                  {resto.length
+                    ? `, com o link ${pedido.servico ? "do anúncio" : "da vaga"}${comCurriculo ? " e o do seu currículo" : ""}`
+                    : ""}
+                  . Dá para mudar antes de enviar.
                 </>
               )}
             </p>
@@ -198,6 +210,20 @@ export function PerguntaDoMatch() {
                 <MessageCircle aria-hidden className="size-5" />
                 Chamar no WhatsApp
               </a>
+            )}
+            {pedirCurriculo && (
+              // o WhatsApp vem primeiro (o encontro não espera); o currículo, logo embaixo (claude/plano-mais-curriculos.md)
+              <PassoDoCurriculo
+                anuncioId={pedido.anuncioId}
+                quem={pedido.conversa?.outroNome}
+                // com o WhatsApp do contato direto, o link do currículo vai na mensagem; no resto, quem publicou vê no painel
+                jeito={pedido.whatsapp && !pedido.soChat && pedido.direto !== false ? "match" : "quadro"}
+                secundario
+                aoIr={() => {
+                  foiAoCurriculo.current = true;
+                  janela.current?.close();
+                }}
+              />
             )}
             <Botao variante="fantasma" onClick={() => janela.current?.close()} className="w-full">
               Agora não

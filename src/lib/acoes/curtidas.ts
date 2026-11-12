@@ -10,6 +10,7 @@ import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
 import { mensagemDeErro, precisaCompletarPerfil } from "@/lib/erros";
 import { marcarConversao } from "@/lib/servidor/conversao";
 import { processarFilas } from "@/lib/servidor/filas";
+import { curriculoDeQuemCurte } from "@/lib/servidor/curriculo-de-quem-curte";
 import { registrarIndicacaoDaCurtida } from "@/lib/servidor/indicacao";
 import { lerCandidatosNovos } from "@/lib/servidor/triagem-automatica";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
@@ -38,6 +39,11 @@ export type ResultadoCurtida = Resultado & {
    * da vaga pede o número ali mesmo e curte junto; o cartão leva à vaga (`ir`)
    */
   pedirWhatsapp?: boolean;
+  /**
+   * quem curtiu a vaga é pessoa e não tem currículo: a tela pede logo depois da curtida (12/11/2026,
+   * claude/plano-mais-curriculos.md)
+   */
+  semCurriculo?: boolean;
 };
 
 /** Com quem é a conversa do match (o mesmo pedido do Chat do canto). */
@@ -96,12 +102,14 @@ function mensagemDoMatch(contato: ContatoDaCurtida | null) {
 /**
  * Deu match na hora (contato direto, curtindo ou curtindo de novo): o contato de quem publicou com a mensagem pronta
  * e a conversa que a tela abre sozinha no Chat. A conversa não depende do contato: sem ele (ou se a leitura falhar),
- * a conversa abre do mesmo jeito.
+ * a conversa abre do mesmo jeito. `comCurriculo`: o currículo de quem curtiu está à mostra, e o link dele vai na
+ * mensagem (só na vaga).
  */
 async function oQueAbreNoMatch(
   anuncioId: string,
   perfilId: string,
   alvo: AlvoDaCurtida,
+  comCurriculo = false,
 ): Promise<{ contato: ContatoDaCurtida | null; conversa: ConversaDoMatch | null }> {
   const supabase = await criarClienteServidor();
   const anuncio =
@@ -129,6 +137,7 @@ async function oQueAbreNoMatch(
             ? `Olá! Pedi o seu serviço “${titulo}” pelo Publike. Podemos combinar?`
             : `Olá! Me candidatei à vaga “${titulo}” pelo Publike. Podemos conversar?`,
           linkDoMatch({ anuncioId, perfilId, para: "quem_publicou", direto: true, servico }),
+          !servico && comCurriculo ? perfilId : null,
         ),
       }
     : null;
@@ -212,11 +221,12 @@ export async function curtirAnuncio(
         .eq("anuncio_id", anuncioId)
         .eq("perfil_id", usuario.id)
         .maybeSingle();
+      const cv = await curriculoDeQuemCurte(alvo?.tipo);
       if (ja?.status === "match") {
-        const abre = await oQueAbreNoMatch(anuncioId, usuario.id, alvo);
-        return { ok: true, mensagem: mensagemDoMatch(abre.contato), ...abre };
+        const abre = await oQueAbreNoMatch(anuncioId, usuario.id, alvo, cv.naVitrine);
+        return { ok: true, mensagem: mensagemDoMatch(abre.contato), semCurriculo: cv.sem, ...abre };
       }
-      return { ok: true };
+      return { ok: true, semCurriculo: cv.sem };
     }
     if (error.code === "42501")
       return { ok: false, erro: "Este anúncio não pode ser curtido (é seu ou já saiu do ar)." };
@@ -242,15 +252,18 @@ export async function curtirAnuncio(
     .maybeSingle();
   // primeira curtida de vaga: o aviso de vaga nova da mesma área já vem ligado
   const aviso = alvo?.tipo === "vaga" ? await avisoDaPrimeiraCurtida(supabase, alvo.categoria).catch(() => null) : null;
+  // sem currículo, a tela pede logo depois da curtida; com ele à mostra, o link vai na mensagem do WhatsApp
+  const cv = await curriculoDeQuemCurte(alvo?.tipo);
   if (feita?.status === "match") {
     // o contato já liberado: a tela sugere mandar a mensagem agora, com o texto pronto, e abre a conversa
-    const abre = await oQueAbreNoMatch(anuncioId, usuario.id, alvo);
-    return { ok: true, mensagem: mensagemDoMatch(abre.contato), aviso, ...abre };
+    const abre = await oQueAbreNoMatch(anuncioId, usuario.id, alvo, cv.naVitrine);
+    return { ok: true, mensagem: mensagemDoMatch(abre.contato), aviso, semCurriculo: cv.sem, ...abre };
   }
   return {
     ok: true,
     mensagem: "Pronto! Agora quem publicou decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu painel.",
     aviso,
+    semCurriculo: cv.sem,
   };
 }
 
@@ -404,18 +417,25 @@ export async function curtirDeNovo(anuncioId: string, mensagem: string | null = 
     .eq("anuncio_id", anuncioId)
     .eq("perfil_id", usuario.id)
     .maybeSingle();
+  const { data: alvo } = await supabase
+    .from("anuncios")
+    .select("tipo, titulo, autor_id")
+    .eq("id", anuncioId)
+    .maybeSingle();
+  const cv = await curriculoDeQuemCurte(alvo?.tipo);
   // contato direto: o match volta na hora, com o contato e a conversa (que a tela abre sozinha)
   if (feita?.status === "match") {
-    const abre = await oQueAbreNoMatch(anuncioId, usuario.id, null);
+    const abre = await oQueAbreNoMatch(anuncioId, usuario.id, alvo, cv.naVitrine);
     return {
       ok: true,
       mensagem: abre.contato?.soChat
         ? "Deu match de novo! A conversa é pelo chat do Publike."
         : "Deu match de novo! O contato já está liberado.",
+      semCurriculo: cv.sem,
       ...abre,
     };
   }
-  return { ok: true, mensagem: "Pronto! Se a outra pessoa topar, dá match de novo." };
+  return { ok: true, mensagem: "Pronto! Se a outra pessoa topar, dá match de novo.", semCurriculo: cv.sem };
 }
 
 /** Quem publicou a vaga muda a etapa e a anotação de um interessado (só ele vê). */

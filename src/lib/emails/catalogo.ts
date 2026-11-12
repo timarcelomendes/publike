@@ -66,6 +66,7 @@ const QUEM: Record<string, QuemRecebe[]> = {
   vagas_semana: ["procura"],
   boas_vindas_pessoa: ["procura"],
   convite_curriculo: ["procura"],
+  lembrete_curriculo: ["procura"],
   seguindo: ["procura"],
   boas_vindas_prestador: ["presta"],
   convite_servicos: ["presta"],

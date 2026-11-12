@@ -81,6 +81,7 @@ import {
   listarAvaliacoesPublicas,
   listarMeusBloqueios,
   listarMeusDesfeitos,
+  meuCurriculoNaVitrine,
   obterAnuncio,
   obterMeuCurriculo,
   obterMeuPerfil,
@@ -307,6 +308,8 @@ async function DetalheAnuncio({
   const paraQuemProcura = usuario && !proprio && anuncio.tipo === "vaga";
   const curriculo = paraQuemProcura ? await obterMeuCurriculo() : null;
   const temCurriculo = paraQuemProcura ? curriculo !== null : null;
+  // à mostra na aba Talentos: no contato direto, o link do currículo vai na mensagem do WhatsApp
+  const curriculoNaVitrine = curriculo ? await meuCurriculoNaVitrine().catch(() => false) : false;
   // o % de match com o currículo (com pouco para comparar, não aparece)
   const perfil = curriculo ? await obterMeuPerfil().catch(() => null) : null;
   // só conta de pessoa (como a lista, em quemProcura): empresa não tem % de match
@@ -429,6 +432,7 @@ async function DetalheAnuncio({
         contato={contato}
         pedeCurriculo={anuncio.pede_curriculo}
         temCurriculo={temCurriculo}
+        curriculoNaVitrine={curriculoNaVitrine}
         aceita={aceita}
         usuarioId={usuario?.id ?? null}
         autorNome={anuncio.autor_nome}

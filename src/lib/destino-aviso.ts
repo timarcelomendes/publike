@@ -53,7 +53,8 @@ export function destinoDoAviso(n: AvisoComDestino, usuarioId: string) {
       ? `/painel/anuncio/${n.anuncio_id}/quadro?candidato=${n.ator_id}`
       : "/painel/matches";
   if (n.tipo === "matches_sem_contato") return "/painel/matches";
-  if (n.tipo === "convite_curriculo") return "/perfil/curriculo";
+  // o lembrete do currículo (claude/plano-mais-curriculos.md) volta para a vaga curtida depois de salvar
+  if (n.tipo === "convite_curriculo") return n.link?.startsWith("/perfil/curriculo") ? n.link : "/perfil/curriculo";
   if (n.tipo === "curriculo_publico") return "/perfil/curriculo#quem-acha";
   if (n.tipo === "visitas_novidade") return "/painel/visitas#opcoes";
   if (n.tipo === "visita" || n.tipo === "visitas_do_dia") return "/painel/visitas";

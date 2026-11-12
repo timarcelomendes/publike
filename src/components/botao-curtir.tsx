@@ -20,6 +20,7 @@ import { NuncaPague } from "./anuncio/nunca-pague";
 import { LinhaDoAvisoLigado } from "./aviso-ligado";
 import { EVENTO_BOAS_VINDAS, esperandoBoasVindas } from "./boas-vindas-parceiro";
 import { ConviteNotificacoes } from "./convite-notificacoes";
+import { PassoDoCurriculo } from "./curriculo/passo-do-curriculo";
 import { pedirEntrar } from "./folha-de-entrar";
 
 // A dica "Curtir é se candidatar" (curtir aqui não é reagir, como numa rede social): aparece uma
@@ -86,6 +87,8 @@ export function BotaoCurtir({
   const [aviso, setAviso] = useState<AvisoLigado | null>(null);
   // contato direto: deu match na hora; o balão sugere chamar quem publicou no WhatsApp, com a mensagem pronta
   const [contato, setContato] = useState<ContatoDaCurtida | null>(null);
+  // quem curtiu não tem currículo: o balão pede, e fica aberto até a pessoa fechar (claude/plano-mais-curriculos.md)
+  const [semCurriculo, setSemCurriculo] = useState(false);
   const eu = useId();
   const caixa = useRef<HTMLDivElement>(null);
   const balao = useRef<HTMLDivElement>(null);
@@ -139,11 +142,11 @@ export function BotaoCurtir({
   }, [explicar]);
 
   useEffect(() => {
-    // com o contato liberado, o balão fica até a pessoa chamar ou fechar
-    if (!explicar || segurar || contato) return;
+    // com o contato liberado (ou o pedido do currículo), o balão fica até a pessoa chamar ou fechar
+    if (!explicar || segurar || contato || semCurriculo) return;
     const t = setTimeout(() => setExplicar(false), 9000);
     return () => clearTimeout(t);
-  }, [explicar, segurar, contato]);
+  }, [explicar, segurar, contato, semCurriculo]);
 
   // match desfeito: dá para curtir de novo (o servidor recusa se a outra pessoa bloqueou)
   const desfeito = atual === "desfeito";
@@ -200,6 +203,8 @@ export function BotaoCurtir({
         if ("aviso" in r && r.aviso) setAviso(r.aviso as AvisoLigado);
         const novo = "contato" in r && r.contato ? (r.contato as ContatoDaCurtida) : null;
         setContato(novo);
+        const semCv = !servico && "semCurriculo" in r && r.semCurriculo === true;
+        setSemCurriculo(semCv);
         setExplicar(true);
         // deu match (curtindo ou curtindo de novo): "Quer falar agora?" com o WhatsApp de quem publicou e, depois, a
         // conversa no Chat
@@ -212,6 +217,7 @@ export function BotaoCurtir({
             anuncioId,
             perfilId: novo?.perfilId ?? "",
             servico,
+            semCurriculo: semCv,
           },
           (caminho) => router.push(caminho),
         );
@@ -283,6 +289,14 @@ export function BotaoCurtir({
                 {quem || "quem publicou"} decide se aceita. Se aceitar, vocês se conectam e o contato aparece no seu
                 painel.
               </p>
+            )}
+            {semCurriculo && (
+              <PassoDoCurriculo
+                anuncioId={anuncioId}
+                quem={quem}
+                jeito="balao"
+                className="border-t border-line pt-2.5"
+              />
             )}
             {aviso && <LinhaDoAvisoLigado aviso={aviso} className="border-t border-line pt-2.5" />}
             {!servico && <NuncaPague />}

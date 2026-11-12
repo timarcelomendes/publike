@@ -97,6 +97,7 @@ export const NOMES_MODELOS_EMAIL: Record<string, string> = {
   boas_vindas_agencia: "Boas-vindas (agência)",
   convite_perfil: "Convite: concluir o perfil",
   convite_curriculo: "Convite: currículo",
+  lembrete_curriculo: "Lembrete: fazer o currículo",
   convite_empresa: "Convite: gestão de candidatos (empresa)",
   convite_agencia: "Convite: gestão de candidatos (agência)",
   convite_servicos: "Convite: divulgar a vitrine",

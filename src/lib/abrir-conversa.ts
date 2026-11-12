@@ -55,6 +55,8 @@ export type PedidoDoMatch = {
   direto?: boolean;
   /** a vaga é só pelo chat do Publike (sem o WhatsApp): a pergunta oferece abrir a conversa */
   soChat?: boolean;
+  /** quem curtiu não tem currículo: depois do WhatsApp, a pergunta oferece fazer (claude/plano-mais-curriculos.md) */
+  semCurriculo?: boolean;
 };
 
 let perguntaNaPagina = false;

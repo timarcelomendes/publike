@@ -31,6 +31,7 @@ import { Aviso } from "../ui/basicos";
 import { Botao, BotaoLink } from "../ui/botao";
 import { classesEntrada } from "../ui/campo";
 import { AceiteWhatsapp } from "../whatsapp/aceite-whatsapp";
+import { linkDoCurriculoDaVaga, PassoDoCurriculo } from "../curriculo/passo-do-curriculo";
 
 type Props = {
   idCampo: string;
@@ -45,6 +46,8 @@ type Props = {
   pedeCurriculo?: boolean;
   /** a pessoa logada já preencheu o currículo (null: não logada) */
   temCurriculo?: boolean | null;
+  /** o currículo dela está à mostra na aba Talentos: no contato direto, o link vai na mensagem do WhatsApp */
+  curriculoNaVitrine?: boolean;
   /** quem publicou já aceitou, e falta só o currículo (a vaga pede) */
   aceita?: boolean;
   /** quem está vendo (para desfazer o match) */
@@ -77,41 +80,7 @@ type Props = {
 const curtidasSozinhas = new Set<string>();
 
 /** O currículo, que volta para a vaga depois de salvar. */
-const linkDoCurriculo = (anuncioId: string) => `/perfil/curriculo?next=${encodeURIComponent(`/anuncio/${anuncioId}`)}`;
-
-/** Convite para preencher o currículo, que volta para a vaga depois de salvar. */
-function ConviteCurriculo({ anuncioId, forte, quem }: { anuncioId: string; forte: boolean; quem: string }) {
-  const href = linkDoCurriculo(anuncioId);
-  if (!forte) {
-    return (
-      <p className="text-body-sm">
-        Dica: com{" "}
-        <Link href={href} className="underline">
-          currículo preenchido
-        </Link>{" "}
-        você chama mais atenção.
-      </p>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-2 rounded-md bg-surface-200 p-3">
-      <p className="flex items-center gap-2 text-label">
-        <FileText aria-hidden className="size-4 shrink-0" />
-        Esta vaga pede currículo
-      </p>
-      <p className="text-body-sm">
-        Mandando agora, o match sai na hora do aceite. Se deixar para depois, você recebe um aviso quando {quem}{" "}
-        aceitar. Leva uns 3 minutos.
-      </p>
-      <Link
-        href={href}
-        className="inline-flex min-h-11 items-center justify-center rounded-md bg-terra px-4 text-label text-on-terra hover:bg-terra-hover"
-      >
-        Preencher meu currículo
-      </Link>
-    </div>
-  );
-}
+const linkDoCurriculo = linkDoCurriculoDaVaga;
 
 /** O quadro "Curtir" da página do anúncio, com mensagem opcional. */
 export function PainelCurtir({
@@ -125,6 +94,7 @@ export function PainelCurtir({
   contato,
   pedeCurriculo = false,
   temCurriculo = null,
+  curriculoNaVitrine = false,
   aceita = false,
   usuarioId = null,
   autorNome = "",
@@ -236,6 +206,7 @@ export function PainelCurtir({
             anuncioId,
             perfilId: contatoNovo?.perfilId ?? "",
             servico,
+            semCurriculo: "semCurriculo" in r && r.semCurriculo === true,
           },
           (caminho) => router.push(caminho),
         );
@@ -300,10 +271,22 @@ export function PainelCurtir({
                   direto: contatoDireto,
                   servico,
                 }),
+                // no contato direto, quem publicou pode nunca ter entrado: o link do currículo vai junto
+                !servico && contatoDireto && curriculoNaVitrine ? usuarioId : null,
               )}
               candidatura={usuarioId ? { anuncioId, perfilId: usuarioId } : undefined}
             />
           </div>
+        )}
+        {/* sem currículo: o WhatsApp vem primeiro (o encontro não espera); o currículo, logo embaixo */}
+        {!servico && temCurriculo === false && (
+          // no contato direto pelo WhatsApp, o link do currículo vai na mensagem; nos outros, quem publicou vê no painel
+          <PassoDoCurriculo
+            anuncioId={anuncioId}
+            quem={autorNome}
+            jeito={contatoDireto && !soChat ? "match" : "quadro"}
+            secundario
+          />
         )}
         {servico && (
           <Link
@@ -438,6 +421,11 @@ export function PainelCurtir({
             ? `Quando ${quem} responder, você recebe um aviso.`
             : `Quando ${quem} responder, você recebe um aviso e o contato aparece aqui e no seu painel.`}
         </p>
+        {/* sem currículo: o próximo passo, logo depois da curtida (claude/plano-mais-curriculos.md) */}
+        {!servico && temCurriculo === false && (
+          <PassoDoCurriculo anuncioId={anuncioId} quem={autorNome} jeito="quadro" pede={pedeCurriculo} />
+        )}
+        {!servico && temCurriculo && <p className="text-body-sm">Seu currículo foi junto com a curtida.</p>}
         {aviso && <LinhaDoAvisoLigado aviso={aviso} />}
         {!servico && <NuncaPague />}
         {!servico && (
@@ -447,10 +435,6 @@ export function PainelCurtir({
         {perguntas.length > 0 && (
           <SuasRespostas anuncioId={anuncioId} perguntas={perguntas} iniciais={minhasRespostas} />
         )}
-        {!servico && temCurriculo === false && (
-          <ConviteCurriculo anuncioId={anuncioId} forte={pedeCurriculo} quem={quem} />
-        )}
-        {!servico && temCurriculo && <p className="text-body-sm">Seu currículo foi junto com a curtida.</p>}
         <div>
           <Botao variante="fantasma" tamanho="sm" onClick={desfazer} disabled={pendente}>
             {servico ? "Desfazer pedido" : "Desfazer curtida"}

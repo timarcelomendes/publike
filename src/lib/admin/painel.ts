@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import {
   acessosDoSite,
+  curriculosPorSemana,
   funilDoPublicar,
   funilDoVisitante,
   metricasDeProduto,
@@ -19,6 +20,7 @@ import {
   type OrigemContas,
   type PortaDeEntrada,
   type PresencaSite,
+  type SemanaDoCurriculo,
   type TempoNasPaginas,
   usoDaIA,
   configDoSite,
@@ -233,6 +235,8 @@ export type DadosDoPainel = {
   funilVisitante?: Map<string, number> | null;
   portas?: PortaDeEntrada[] | null;
   funilPublicar?: Map<number, number> | null;
+  /** de cada semana de contas novas de quem procura, quantas fizeram o currículo (migração 20270503120000) */
+  curriculos?: SemanaDoCurriculo[] | null;
   origens?: OrigemContas[] | null;
   receita?: Receita | null;
   testeApp?: Awaited<ReturnType<typeof numerosDoTesteApp>> | null;
@@ -297,12 +301,13 @@ export async function dadosDaAba(aba: AbaDoPainel, agora: number, filtro: Filtro
       return { filtro, acessos, presenca, portas, funilVisitante, origens };
     }
     case "cadastro": {
-      const [n, metricas, funilPublicar] = await Promise.all([
+      const [n, metricas, funilPublicar, curriculos] = await Promise.all([
         resumoDoAdmin(),
         metricasDeProduto(c),
         funilDoPublicar(c, dias),
+        curriculosPorSemana(c),
       ]);
-      return { filtro, n, metricas, funilPublicar };
+      return { filtro, n, metricas, funilPublicar, curriculos };
     }
     case "vagas": {
       const [n, metricas, encerramentos, indicadores, oferta] = await Promise.all([

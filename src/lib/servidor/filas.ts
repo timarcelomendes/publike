@@ -524,6 +524,23 @@ export async function lembrarRespostas(): Promise<{ empresa: number; pessoa: num
 }
 
 /**
+ * O lembrete do currículo (migração 20270503120000, claude/plano-mais-curriculos.md): quem procura trabalho e está
+ * sem currículo recebe o e-mail e o aviso no sino 2 horas depois de criar a conta e, se continuar sem, 3 dias depois
+ * (no máximo 2, das 8h às 20h; cita a vaga curtida). Sem a migração, nada (e sem `motivo`).
+ */
+export async function lembrarCurriculos(): Promise<{ lembradas: number; motivo?: string }> {
+  const acesso = acessoFila();
+  if (!acesso) return { lembradas: 0 };
+  const { data, error } = await acesso.cliente.rpc("servidor_lembrar_curriculos", { p_chave: acesso.chave });
+  if (error) {
+    if (error.code === "PGRST202") return { lembradas: 0 };
+    console.error("Publike: falha no lembrete do currículo:", error.message);
+    return { lembradas: 0, motivo: "Não foi possível lembrar do currículo." };
+  }
+  return { lembradas: Number(data ?? 0) };
+}
+
+/**
  * As conquistas (migração 20270322120000): 5 dias depois do match numa vaga, a pergunta "Deu certo?" para a pessoa
  * (no sino, no celular e por e-mail); sem resposta ou "Ainda não", de novo em 7 dias, no máximo 3 vezes. Sem a
  * migração, nada (e sem `motivo`).

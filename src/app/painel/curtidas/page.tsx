@@ -36,6 +36,7 @@ import {
   listarMeusDesfeitos,
   listarMinhasCurtidas,
   listarMinhasEtapas,
+  meuCurriculoNaVitrine,
   minhasProximasEntrevistas,
   obterMeuCurriculo,
   vagasQuePedemCurriculo,
@@ -105,6 +106,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
     atividadesDoMenu(),
   ]);
   const agora = await agoraDaRequisicao();
+  // à mostra na aba Talentos: no contato direto, o link do currículo vai na mensagem do WhatsApp
+  const curriculoNaVitrine = curriculo ? await meuCurriculoNaVitrine().catch(() => false) : false;
   // as entrevistas marcadas, para o andamento de cada candidatura ("Entrevista qui, 12/11 às 14h")
   const entrevistaDe = new Map(
     (await minhasProximasEntrevistas(agora).catch(() => [])).map((e) => [e.anuncio_id, e] as const),
@@ -491,6 +494,8 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/painel/cur
                           direto: diretos.has(c.anuncio_id),
                           servico: c.tipo === "servico",
                         }),
+                        // no contato direto, quem publicou pode nunca ter entrado: o link do currículo vai junto
+                        c.tipo !== "servico" && diretos.has(c.anuncio_id) && curriculoNaVitrine ? usuario.id : null,
                       )}
                       // o toque da pessoa no contato de quem publicou (Admin › Curtidas; migração 20270219120000)
                       candidatura={{ anuncioId: c.anuncio_id, perfilId: usuario.id }}

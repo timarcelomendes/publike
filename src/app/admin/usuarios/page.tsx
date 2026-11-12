@@ -6,7 +6,7 @@ import { Busca, Filtros, linkCom, Paginacao } from "@/components/admin/ui";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { Aviso, Avatar, Selo, Vazio } from "@/components/ui/basicos";
 import { classesBotao } from "@/components/ui/botao";
-import { listarUsuarios, POR_PAGINA } from "@/lib/admin/dados";
+import { listarUsuarios, POR_PAGINA, type AndamentoSemCurriculo } from "@/lib/admin/dados";
 import {
   ehParaSempre,
   formatarDataCurta,
@@ -34,6 +34,23 @@ const FILTROS = [
   { valor: "sem_perfil", nome: "Sem perfil" },
 ];
 
+/** "Curtiu 2 vagas (1 deu match) · lembrete do currículo há 3 horas" (quem está sem currículo). */
+function textoDoAndamento(a: AndamentoSemCurriculo, agora: number) {
+  const curtidas =
+    a.curtidas === 0
+      ? "Não curtiu nenhuma vaga"
+      : `Curtiu ${a.curtidas === 1 ? "1 vaga" : `${formatarNumero(a.curtidas)} vagas`}${
+          a.matches > 0 ? ` (${a.matches === 1 ? "1 deu match" : `${formatarNumero(a.matches)} deram match`})` : ""
+        }`;
+  const lembrete =
+    a.lembretes > 0 && a.lembreteEm
+      ? a.lembretes === 1
+        ? `lembrete do currículo ${tempoRelativo(a.lembreteEm, agora)}`
+        : `${a.lembretes} lembretes do currículo, o último ${tempoRelativo(a.lembreteEm, agora)}`
+      : null;
+  return [curtidas, lembrete].filter(Boolean).join(" · ");
+}
+
 export default function Usuarios({ searchParams }: PageProps<"/admin/usuarios">) {
   return (
     <Suspense fallback={<EsqueletoLista />}>
@@ -49,7 +66,7 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
   const pedido = primeiro(sp.filtro) ?? "todos";
   const filtro = FILTROS.some((f) => f.valor === pedido) ? pedido : "todos";
   const pagina = Math.max(1, Math.floor(Number(primeiro(sp.pagina))) || 1);
-  const [{ itens, total, curriculos }, agora] = await Promise.all([
+  const [{ itens, total, curriculos, andamento }, agora] = await Promise.all([
     listarUsuarios(c, q || null, filtro, pagina),
     agoraDaRequisicao(),
   ]);
@@ -140,6 +157,10 @@ async function Conteudo({ searchParams }: { searchParams: PageProps<"/admin/usua
                         </span>
                       )}
                     </p>
+                    {/* sem currículo: onde a pessoa parou e se o lembrete já saiu (claude/plano-mais-curriculos.md) */}
+                    {andamento[u.id] && (
+                      <p className="text-body-sm text-ink-muted">{textoDoAndamento(andamento[u.id], agora)}</p>
+                    )}
                   </div>
                 </Link>
               </li>

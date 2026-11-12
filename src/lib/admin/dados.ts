@@ -595,7 +595,62 @@ export async function listarUsuarios(c: ClienteBanco, busca: string | null, filt
   });
   if (error) falha("as contas", error);
   const itens = await comUltimoAcesso(c, data ?? []);
-  return { itens, total: Number(itens[0]?.total ?? 0), curriculos: await curriculoDasContas(c, itens) };
+  const curriculos = await curriculoDasContas(c, itens);
+  // quem está sem currículo (ou mandou o PDF e não salvou): o que fez e se o lembrete já saiu
+  const semCurriculo = Object.keys(curriculos).filter((id) => curriculos[id] !== "salvo");
+  return {
+    itens,
+    total: Number(itens[0]?.total ?? 0),
+    curriculos,
+    andamento: await andamentoSemCurriculo(c, semCurriculo),
+  };
+}
+
+/** O que a pessoa sem currículo fez: as vagas que curtiu, os matches e os lembretes do currículo. */
+export type AndamentoSemCurriculo = { curtidas: number; matches: number; lembretes: number; lembreteEm: string | null };
+
+/** Sem a migração 20270503120000 (ou com erro), nada: a lista fica como era. */
+async function andamentoSemCurriculo(
+  c: ClienteBanco,
+  ids: string[],
+): Promise<Record<string, AndamentoSemCurriculo>> {
+  if (!ids.length) return {};
+  const { data, error } = await c.rpc("admin_curriculo_das_contas", { p_ids: ids });
+  if (error) {
+    if (error.code !== "PGRST202") console.warn(`Publike: sem o andamento de quem não tem currículo: ${error.message}`);
+    return {};
+  }
+  return Object.fromEntries(
+    (data ?? []).map((x) => [
+      x.perfil_id,
+      { curtidas: x.curtidas, matches: x.matches, lembretes: x.lembretes, lembreteEm: x.lembrete_em },
+    ]),
+  );
+}
+
+/** Painel › Cadastro: de cada semana de contas novas de quem procura trabalho, quantas fizeram o currículo. */
+export type SemanaDoCurriculo = {
+  /** a segunda-feira da semana (AAAA-MM-DD) */
+  semana: string;
+  pessoas: number;
+  /** fizeram o currículo em até 7 dias depois de criar a conta */
+  em_7_dias: number;
+  /** têm currículo hoje */
+  com_curriculo: number;
+  /** receberam o lembrete do currículo */
+  lembradas: number;
+  /** os 7 dias de todas as contas da semana já passaram: o número não muda mais */
+  fechada: boolean;
+};
+
+/** null: falta a migração 20270503120000. A semana mais nova primeiro. */
+export async function curriculosPorSemana(c: ClienteBanco, semanas = 8): Promise<SemanaDoCurriculo[] | null> {
+  const { data, error } = await c.rpc("admin_curriculos_por_semana", { p_semanas: semanas });
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha no currículo por semana: ${error.message}`);
+    return null;
+  }
+  return Array.isArray(data) ? (data as unknown as SemanaDoCurriculo[]) : null;
 }
 
 /**

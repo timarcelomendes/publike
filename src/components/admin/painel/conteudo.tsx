@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { AbaDoPainel } from "./abas";
+import { CurriculosPorSemana } from "../curriculos-por-semana";
 import { FormGasto, TabelaGastos } from "./form-gasto";
 import { VisaoGeral } from "./visao-geral";
 import { FunilDoPublicar } from "@/components/admin/funil-publicar";
@@ -114,6 +115,7 @@ export function ConteudoDaAba({
       return (
         <>
           {d.metricas && <CadastroEAtivacao m={d.metricas} />}
+          {d.curriculos && <CurriculosPorSemana semanas={d.curriculos} />}
           {d.funilPublicar && <FunilDoPublicar funil={d.funilPublicar} dias={dias} />}
           {d.n && <ContasPorTipo n={d.n} />}
           <ComoContamos />

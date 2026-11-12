@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type PointerEvent as EventoPonteiro } from "react";
 import { avisarDeuMatch } from "@/lib/abrir-conversa";
+import { linkDoCurriculoDaVaga } from "../curriculo/passo-do-curriculo";
 import { chamarAcao } from "@/lib/acao-segura";
 import { curtirAnuncio, type ContatoDaCurtida, type ConversaDoMatch } from "@/lib/acoes/curtidas";
 import { passarVaga, salvarVaga, verPassadasDeNovo } from "@/lib/acoes/descobrir";
@@ -290,6 +291,7 @@ export function PilhaDeVagas({
               mensagem: contato?.mensagem ?? "",
               anuncioId: carta.id,
               perfilId: contato?.perfilId ?? "",
+              semCurriculo: "semCurriculo" in r && r.semCurriculo === true,
             },
             (caminho) => router.push(caminho),
           );
@@ -311,11 +313,17 @@ export function PilhaDeVagas({
             carta.pedeCurriculo && !temCurriculo
               ? {
                   texto: `Você curtiu “${carta.titulo}” e se candidatou. Esta vaga pede currículo: mande o seu e o match sai na hora em que ${carta.quem} aceitar. Se deixar para depois, chega um aviso quando aceitar.`,
-                  link: { href: "/perfil/curriculo", nome: "Preencher currículo" },
+                  link: { href: linkDoCurriculoDaVaga(carta.id), nome: "Fazer meu currículo" },
                 }
-              : {
-                  texto: `Você curtiu “${carta.titulo}” e se candidatou. Agora ${carta.quem} decide se aceita. Se aceitar, vocês se conectam e o WhatsApp aparece no seu painel.`,
-                },
+              : !temCurriculo
+                ? // sem currículo, quem publicou vê só o nome (claude/plano-mais-curriculos.md)
+                  {
+                    texto: `Você curtiu “${carta.titulo}” e se candidatou. Sem currículo, ${carta.quem} vê só o seu nome: conte falando, mande a foto do currículo de papel ou o PDF. Leva uns 3 minutos.`,
+                    link: { href: linkDoCurriculoDaVaga(carta.id), nome: "Fazer meu currículo" },
+                  }
+                : {
+                    texto: `Você curtiu “${carta.titulo}” e se candidatou. Agora ${carta.quem} decide se aceita. Se aceitar, vocês se conectam e o WhatsApp aparece no seu painel.`,
+                  },
           );
         } else if (gesto === "salvar") {
           setAviso({ texto: `“${carta.titulo}” está nas suas salvas.`, link: { href: "/descobrir?aba=salvas", nome: "Ver salvas" } });

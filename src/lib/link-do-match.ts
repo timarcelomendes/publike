@@ -30,7 +30,19 @@ export function linkDoMatch({
   return `${SITE_URL}/painel/curtidas?${servico ? "tipo=servico&" : ""}situacao=match`;
 }
 
-/** A mensagem com o link numa linha embaixo (o WhatsApp mostra a prévia do Publike). */
-export function mensagemComLink(texto: string, link: string) {
-  return `${texto}\n${link}`;
+/** O começo da linha do currículo na mensagem (a pergunta do match procura por ele). */
+export const LINHA_DO_CURRICULO = "Meu currículo:";
+
+/** O resumo do currículo de quem se candidata, aberto a quem não entrou (a página da pessoa na aba Talentos). */
+export function linkDoCurriculo(perfilId: string) {
+  return `${SITE_URL}/talentos/${perfilId}`;
+}
+
+/**
+ * A mensagem com o link numa linha embaixo (o WhatsApp mostra a prévia do Publike). `curriculo`: o id de quem se
+ * candidata, com o currículo à mostra na aba Talentos; a última linha leva o link dele (12/11/2026,
+ * claude/plano-mais-curriculos.md: no contato direto, quem publicou pode nunca ter entrado no Publike e via só o nome).
+ */
+export function mensagemComLink(texto: string, link: string, curriculo?: string | null) {
+  return `${texto}\n${link}${curriculo ? `\n${LINHA_DO_CURRICULO} ${linkDoCurriculo(curriculo)}` : ""}`;
 }

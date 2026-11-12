@@ -1989,6 +1989,13 @@ export type Database = {
         Args: { p_ids: string[] };
         Returns: { id: string; ultimo_acesso: string | null }[];
       };
+      /** o currículo das pessoas sem currículo em Admin › Usuários (migração 20270503120000) */
+      admin_curriculo_das_contas: {
+        Args: { p_ids: string[] };
+        Returns: { perfil_id: string; curtidas: number; matches: number; lembretes: number; lembrete_em: string | null }[];
+      };
+      /** de cada semana de contas novas de quem procura, quantas fizeram o currículo (migração 20270503120000) */
+      admin_curriculos_por_semana: { Args: { p_semanas?: number }; Returns: Json };
       admin_uso_da_ia: {
         Args: { p_dias?: number };
         Returns: {
@@ -2622,6 +2629,8 @@ export type Database = {
       dar_forca: { Args: { p_recado: string }; Returns: { forcas: number; dei: boolean }[] };
       /** as conquistas (migração 20270322120000) */
       servidor_perguntar_conquistas: { Args: { p_chave: string; p_limite?: number }; Returns: number };
+      /** o lembrete do currículo (migração 20270503120000) */
+      servidor_lembrar_curriculos: { Args: { p_chave: string }; Returns: number };
       minhas_conquistas_pendentes: {
         Args: Record<string, never>;
         Returns: { anuncio_id: string; titulo: string; empresa_nome: string; resposta: string | null; categoria: string }[];

@@ -4,6 +4,7 @@ import type { PedidoDoMatch } from "@/lib/abrir-conversa";
 import { MODO_DEMO } from "@/lib/config";
 import { obterUsuario } from "@/lib/dados";
 import { linkDoMatch, mensagemComLink } from "@/lib/link-do-match";
+import { curriculoDeQuemCurte } from "@/lib/servidor/curriculo-de-quem-curte";
 import { criarClienteServidor } from "@/lib/supabase/servidor";
 import { UUID } from "@/lib/validacao";
 
@@ -38,6 +39,8 @@ export async function matchParaPerguntar(): Promise<PedidoDoMatch | null> {
   const titulo = m.titulo ?? "";
   const servico = m.tipo === "servico";
   const direto = Boolean(m.direto);
+  // sem currículo, a pergunta oferece fazer; com ele à mostra, o link vai na mensagem do contato direto
+  const cv = await curriculoDeQuemCurte(m.tipo);
   const texto = direto
     ? servico
       ? `Olá! Pedi o seu serviço “${titulo}” pelo Publike. Podemos combinar?`
@@ -55,12 +58,14 @@ export async function matchParaPerguntar(): Promise<PedidoDoMatch | null> {
         direto,
         servico,
       }),
+      direto && cv.naVitrine ? usuario.id : null,
     ),
     anuncioId: m.anuncio_id,
     perfilId: usuario.id,
     servico,
     direto,
     soChat,
+    semCurriculo: cv.sem,
   };
 }
 
