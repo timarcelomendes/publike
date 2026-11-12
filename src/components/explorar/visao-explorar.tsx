@@ -354,20 +354,24 @@ export function VisaoExplorar({
         <>
           {/* Celular: as abas; o título e o jeito de ver; a origem e o botão "Filtros"; os filtros, se
           abertos. Computador: as abas e os filtros numa linha só (sem espaço, os filtros rolam de lado,
-          com as setas; nada desce para outra linha); embaixo, o título e a origem, com o jeito de ver à
-          direita. Uma grade só, sem repetir nada: cada parte muda de lugar no computador. */}
+          com as setas; nada desce para outra linha); embaixo, o título com a ordem e o jeito de ver à
+          direita, e a origem na largura toda. Uma grade só, sem repetir nada: cada parte muda de lugar no
+          computador. */}
           <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-x-4 lg:gap-y-1">
             {abas && <div className="col-span-2 row-start-1 mb-4 min-w-0 lg:col-span-1 lg:mb-3">{abas}</div>}
             <div className="col-start-1 row-start-2 lg:col-span-2">{titulo}</div>
             <div className="col-start-2 row-start-2 lg:hidden">
               <SeletorVisao visao={visao} chave={chave} celular />
             </div>
-            {/* com o "Mudar" aberto (os raios e o "De onde"), o "Filtros" fica no alto, não no meio deles */}
-            <div className="col-span-2 row-start-3 flex items-center justify-between gap-3 has-[details[open]]:items-start">
+            {/* com os raios e o "De onde" à mostra (o "Mudar" aberto, ou com vagas mais longe), o "Filtros" fica no
+                alto, não no meio deles. No
+                computador, a linha toda: a ordem e o jeito de ver ficam na linha do título (12/11/2026: ao lado deles,
+                os raios e o "De onde" não cabiam numa linha só) */}
+            <div className="col-span-2 row-start-3 flex items-center justify-between gap-3 has-[details[open]]:items-start has-[div#ate-onde]:items-start lg:col-span-3">
               <div className="min-w-0 flex-1">{subtitulo}</div>
               {botaoFiltros("min-h-9 rounded-md px-3 lg:hidden")}
             </div>
-            <div className="hidden lg:col-start-3 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center lg:gap-3">
+            <div className="hidden lg:col-start-3 lg:row-start-2 lg:flex lg:items-center lg:gap-3">
               {ordem}
               {/* "Ver como" e o nome do jeito escolhido: quem não conhece os ícones entende que muda a tela */}
               <span className="relative flex items-center gap-2">

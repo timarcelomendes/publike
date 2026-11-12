@@ -80,7 +80,8 @@ export function DeOnde({
   }
 
   return (
-    <div data-de-onde className="flex flex-col gap-2">
+    // com o "Onde você mora?" aberto, a linha toda (ao lado dos raios, ele ficaria espremido)
+    <div data-de-onde className={`flex flex-col gap-2 ${pedindoCep ? "basis-full" : ""}`}>
       <div role="group" aria-label="De onde contar" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <span className="inline-flex items-center gap-1 text-body-sm font-semibold text-ink">
           <Route aria-hidden className="size-4 shrink-0 text-ink-muted" />

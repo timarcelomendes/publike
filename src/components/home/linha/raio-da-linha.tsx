@@ -1,5 +1,6 @@
 import { ChevronDown, MapPinned } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { nomeDoTempo } from "@/lib/deslocamento";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { plural } from "@/lib/formato";
@@ -51,11 +52,12 @@ export function RaioDaLinha({ d }: { d: DadosDaLinha }) {
 }
 
 /**
- * A linha do raio (a da linha do tempo e a da busca). Com `deOnde`, os botões de "De onde" vêm embaixo dos raios, e
- * a linha diz "de onde você está agora" quando conta da localização (o "Você" dos cartões e do mapa). O `id`
- * "ate-onde" é o que o "Trocar" do mapa abre.
+ * A linha do raio (a da linha do tempo e a da busca). Com `deOnde`, os botões de "De onde" vêm na mesma linha dos
+ * raios (quebram para baixo quando não cabem), e a linha diz "de onde você está agora" quando conta da localização
+ * (o "Você" dos cartões e do mapa). O `id` "ate-onde" é o que o "Trocar" do mapa abre. `depois`: o que vem na
+ * mesma linha do "Mudar" (ou do "Exibir mais"): na busca, o "Me avise" e o % de match.
  */
-export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
+export function RaioDaBusca({ r: d, depois = null }: { r: DadosDoRaio; depois?: ReactNode }) {
   const f = d.filtros;
   const [um, varios] = nomeDoItem(d.tipo);
   const longe = d.maisLonge;
@@ -100,7 +102,7 @@ export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
     </nav>
   );
   const botoes = deOnde ? (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
       {raios}
       {deOnde}
     </div>
@@ -108,10 +110,12 @@ export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
     raios
   );
   const distancia = f.tempo ? nomeDoTempo(f.tempo) : `Até ${f.raio} km`;
-  // nada de fora: só uma linha curta, e o Mudar abre os raios (sem script: <details>)
+  // nada de fora: só uma linha curta, e o Mudar abre os raios (sem script: <details>). Aberto, ele ocupa a linha
+  // toda, e o `depois` desce
   if (!longe || !proximo)
     return (
-      <details id="ate-onde" className={`group scroll-mt-24 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
+        <details id="ate-onde" className="group scroll-mt-24 open:basis-full">
         <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 text-body-sm text-ink-muted [&::-webkit-details-marker]:hidden">
           <MapPinned aria-hidden className="size-4 shrink-0" />
           <span>
@@ -121,22 +125,28 @@ export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
           </span>
         </summary>
         <div className="pt-1.5">{botoes}</div>
-      </details>
+        </details>
+        {depois}
+      </div>
     );
   return (
     <div id="ate-onde" className={`flex scroll-mt-24 flex-col gap-1.5 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
       {botoes}
-      <p className="text-body-sm text-ink-muted">
-        Mostrando só até {f.raio} km{deOnde ? ` ${origem}` : ""}. Há mais {plural(longe.total, um, varios)} mais longe
-        {cidades(longe.cidades, longe.total)}.{" "}
-        <Link
-          href={hrefFiltros(d.base, { raio: proximo.raio })}
-          scroll={false}
-          className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
-        >
-          Exibir mais
-        </Link>
-      </p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <p className="text-body-sm text-ink-muted">
+          {/* com o "De onde", o raio e a origem já estão marcados nos botões: a frase fica curta */}
+          {deOnde ? "Há" : `Mostrando só até ${f.raio} km. Há`} mais {plural(longe.total, um, varios)} mais longe
+          {cidades(longe.cidades, longe.total)}.{" "}
+          <Link
+            href={hrefFiltros(d.base, { raio: proximo.raio })}
+            scroll={false}
+            className="font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+          >
+            Exibir mais
+          </Link>
+        </p>
+        {depois}
+      </div>
     </div>
   );
 }

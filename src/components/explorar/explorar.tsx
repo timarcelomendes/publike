@@ -461,7 +461,9 @@ export async function Explorar({
   // na busca por palavra, nada entre o título e os resultados
   const perguntas =
     filtros.meus || (comoBusca && feed) ? null : (
-      <div className={respondidas ? "lg:hidden" : "contents"}>
+      // vazia (respondida, adiada ou sem nada a perguntar), some: um bloco de 0 px ainda ganhava o espaço entre os
+      // blocos (16 px), e os cartões começavam abaixo do mapa ao lado (12/11/2026)
+      <div className={`empty:hidden ${respondidas ? "lg:hidden" : ""}`}>
         <PerguntasNaLista
           filtros={filtros}
           intencao={intencao}
@@ -701,18 +703,52 @@ export async function Explorar({
     ) : null;
 
   // sem anúncios, as perguntas vêm depois do aviso (dizer onde mora pode trazer o que é perto)
+  // na linha do raio, depois do "Mudar" (sem a linha, soltos no subtítulo)
+  const depoisDoRaio = (
+    <>
+      {busca && (
+        <Link
+          href={hrefFiltros(filtros, { q: "" })}
+          scroll={false}
+          className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
+        >
+          Limpar busca
+        </Link>
+      )}
+      {/* com poucas vagas, o aviso fica no fim da lista (no bloco "Poucas vagas por aqui") */}
+      {/* no "Combina mais", não: o aviso guarda a busca, e avisaria de toda vaga nova perto, não só das que combinam */}
+      {avisar && !poucas && !combina && (
+        <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
+      )}
+      {/* o % de match chama para a conta e o currículo (quem procura trabalho já tem o atalho na lista) */}
+      {avisar && n > 0 && !quem && procuraTrabalho && (!usuario || intencao === null) && (
+        <Link
+          href={
+            usuario
+              ? `/perfil/curriculo?next=${encodeURIComponent(hrefFiltros(filtros))}`
+              : `/entrar?next=${encodeURIComponent(hrefFiltros(filtros))}`
+          }
+          className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-cerrado-text underline-offset-2 hover:underline"
+        >
+          <Percent aria-hidden className="size-4 shrink-0" />
+          {usuario ? "Preencha o currículo e veja seu % de match" : "Entre e veja seu % de match em cada vaga"}
+        </Link>
+      )}
+    </>
+  );
+
   const listaComPerguntas =
     n === 0 && perguntas ? (
       <div className="flex flex-col gap-4">
         {avisoDoCurriculo}
         {lista}
-        <div className="empty:hidden">{perguntas}</div>
+        {perguntas}
       </div>
     ) : perguntas || linhaDoMatch || avisoDoCurriculo ? (
       <div className="flex flex-col gap-4">
         {avisoDoCurriculo}
         {linhaDoMatch}
-        {perguntas && <div className="empty:hidden">{perguntas}</div>}
+        {perguntas}
         {lista}
       </div>
     ) : (
@@ -804,39 +840,14 @@ export async function Explorar({
                   .join(" · ")}
               </p>
             )}
-            {/* até onde a busca vai (os raios em botões) e, se o raio escondeu anúncios, quantos e de onde */}
-            {mostraRaio && (
+            {/* até onde a busca vai (os raios em botões) e, se o raio escondeu anúncios, quantos e de onde; os links
+                vêm na mesma linha do "Mudar" (ou do "Exibir mais"), e não numa linha a mais */}
+            {mostraRaio ? (
               <div className="mt-2 w-full">
-                <RaioDaBusca r={raio} />
+                <RaioDaBusca r={raio} depois={depoisDoRaio} />
               </div>
-            )}
-            {busca && (
-              <Link
-                href={hrefFiltros(filtros, { q: "" })}
-                scroll={false}
-                className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-ink underline underline-offset-2 hover:text-terra-text"
-              >
-                Limpar busca
-              </Link>
-            )}
-            {/* com poucas vagas, o aviso fica no fim da lista (no bloco "Poucas vagas por aqui") */}
-            {/* no "Combina mais", não: o aviso guarda a busca, e avisaria de toda vaga nova perto, não só das que combinam */}
-            {avisar && !poucas && !combina && (
-              <AvisarBusca caminho={hrefFiltros(filtros)} salvaId={buscaSalva?.id ?? null} logado={Boolean(usuario)} />
-            )}
-            {/* o % de match chama para a conta e o currículo (quem procura trabalho já tem o atalho na lista) */}
-            {avisar && n > 0 && !quem && procuraTrabalho && (!usuario || intencao === null) && (
-              <Link
-                href={
-                  usuario
-                    ? `/perfil/curriculo?next=${encodeURIComponent(hrefFiltros(filtros))}`
-                    : `/entrar?next=${encodeURIComponent(hrefFiltros(filtros))}`
-                }
-                className="inline-flex min-h-9 items-center gap-1 text-body-sm font-semibold text-cerrado-text underline-offset-2 hover:underline"
-              >
-                <Percent aria-hidden className="size-4 shrink-0" />
-                {usuario ? "Preencha o currículo e veja seu % de match" : "Entre e veja seu % de match em cada vaga"}
-              </Link>
+            ) : (
+              depoisDoRaio
             )}
           </div>
         }
