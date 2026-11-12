@@ -46,6 +46,8 @@ export function funcaoDoTitulo(titulo: string) {
     .replace(/\(.*?\)|\[.*?\]/g, " ")
     .replace(/\b(urgente|contrata-se|contratamos|precisa-se|oportunidade)\b/gi, " ")
     .replace(/^\s*(vagas?|emprego)\s+(de|para|p\/)\s+/i, "")
+    // "Auxiliar fiscal p/ escritório": o "p/" é "para" (senão a função curta vira "Auxiliar fiscal p")
+    .replace(/(^|\s)p\/\s*/gi, "$1para ")
     .replace(/[!?*#|]+/g, " ")
     .replace(/\s[-–—:]\s.*$/, "")
     .replace(/\s+/g, " ")
@@ -143,7 +145,8 @@ const SO_ISSO_NAO =
 function funcaoInteira(nome: string) {
   if (nome.length <= 28) return nome;
   const corte = nome.split(/\s(?:e|para|com|-|–)\s|,|\//)[0]?.trim() ?? "";
-  return corte.length >= 3 && corte.length <= 45 ? corte : null;
+  // o corte que sobra numa palavra só fica largo demais ("Instalador e reparador de…" → "instalador")
+  return corte.length >= 3 && corte.length <= 45 && corte.includes(" ") ? corte : null;
 }
 
 /**
