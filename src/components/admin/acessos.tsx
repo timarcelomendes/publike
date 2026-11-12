@@ -96,8 +96,10 @@ export function AcessosDoSite({ acessos }: { acessos: AcessosSite | null }) {
             "o dia ainda não fechou"
           )}
         </Cartao>
-        <Cartao rotulo="Com conta hoje" valor={formatarNumero(acessos.com_conta_hoje)}>
-          {acessos.hoje ? `${pctConta}% de quem abriu entrou na conta` : "entraram na conta"}
+        {/* navegadores, não pessoas: a mesma conta no celular e no computador conta 2 (as pessoas estão em "Contas
+            que entraram hoje"); sem a equipe, pela migração 20270502120000 */}
+        <Cartao rotulo="Navegadores com conta hoje" valor={formatarNumero(acessos.com_conta_hoje)}>
+          {acessos.hoje ? `${pctConta}% dos navegadores de hoje, sem a equipe` : "sem a equipe"}
         </Cartao>
         <Cartao rotulo="Ontem" valor={formatarNumero(acessos.ontem)}>
           {media > 0 && diasNaMedia > 1 ? (
