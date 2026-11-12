@@ -2,9 +2,9 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeoJSONSource, Map as MapaML, Marker, Popup } from "maplibre-gl";
-import { LocateFixed, Search } from "lucide-react";
+import { House, LocateFixed, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { formatarMinutos } from "@/lib/deslocamento";
 import { hrefFiltros, raioDaBusca, type Filtros } from "@/lib/filtros";
 import { AVISOS_GPS, pedirPosicao } from "../explorar/barra-busca";
@@ -77,6 +77,9 @@ const ICONE = {
 };
 
 const SEM_TRAJETO: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+/** O "De onde" da página não muda depois de aberta: nada a assinar (useSyncExternalStore). */
+const semAssinar = () => () => {};
 
 // O cartão do anúncio fica acima da etiqueta (34 px de altura) ou logo abaixo da ponta dela
 const ACIMA: [number, number] = [0, -34];
@@ -756,6 +759,20 @@ export function MapaAnuncios({
     );
   }
   const pedeOrigem = !origem && !falhou && !movido && pontos.some((p) => p.tipo === "vaga");
+  // com a origem, ela fica à vista no canto, com o "Trocar": abre o "De onde" da linha do raio, no alto da lista
+  const temDeOnde = useSyncExternalStore(
+    semAssinar,
+    () => Boolean(document.getElementById("ate-onde")),
+    () => false,
+  );
+  function trocarOrigem() {
+    const alvo = document.getElementById("ate-onde");
+    if (!alvo) return;
+    if (alvo instanceof HTMLDetailsElement) alvo.open = true;
+    const devagar = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    alvo.scrollIntoView({ behavior: devagar ? "smooth" : "auto", block: "start" });
+    alvo.querySelector<HTMLElement>("[data-de-onde] button")?.focus({ preventScroll: true });
+  }
 
   return (
     <div className="group/mapa relative h-full min-h-[320px] overflow-hidden rounded-lg border border-line bg-surface-300">
@@ -764,6 +781,32 @@ export function MapaAnuncios({
       <div className="absolute inset-0">
         <div ref={caixa} className="h-full w-full" aria-label="Mapa dos anúncios" role="region" />
       </div>
+      {origem && !falhou && !movido && (
+        // de onde contam o tempo, a distância e a linha até a vaga (o "Você" dos cartões), para não ficar escondido
+        <p className="absolute top-3 left-3 z-10 inline-flex max-w-[calc(100%-4.5rem)] min-h-10 items-center gap-2 rounded-pill border border-line-strong bg-surface-200 py-1 pr-1.5 pl-3 text-body-sm text-ink shadow-raised">
+          {origem.tipo === "casa" ? (
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-pill bg-ink text-surface-100">
+              <House aria-hidden className="size-3" strokeWidth={2.75} />
+            </span>
+          ) : (
+            <span aria-hidden className="flex size-5 shrink-0 items-center justify-center rounded-pill bg-ink/15">
+              <span className="size-3 rounded-pill border-2 border-surface-200 bg-ink" />
+            </span>
+          )}
+          <span className="min-w-0 truncate">
+            Calculado {origem.tipo === "casa" ? "da sua casa" : "de onde você está"}
+          </span>
+          {temDeOnde && (
+            <button
+              type="button"
+              onClick={trocarOrigem}
+              className="shrink-0 rounded-pill px-2.5 py-1 font-semibold underline underline-offset-2 hover:bg-surface-300"
+            >
+              Trocar
+            </button>
+          )}
+        </p>
+      )}
       {pedeOrigem && (
         // no canto de cima (o "Buscar nesta área", no meio, aparece quando a pessoa mexe no mapa: aí este some)
         <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-4.5rem)] flex-col items-start gap-2">

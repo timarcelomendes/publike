@@ -25,6 +25,21 @@ export function textoDaOrigem(filtros: Filtros, local: Local | null, cidade?: Ci
   return local.regiao ? `da Região ${local.regiao} de ${local.cidade}` : `do centro de ${local.cidade}`;
 }
 
+/**
+ * De onde a busca conta sem a casa nem a localização, como nome de opção ("Centro de Goiânia", "Meio de Setor
+ * Bueno", "Região Sul de Goiânia"): a terceira opção do "De onde" (`DeOnde`) para quem não deu o CEP.
+ */
+export function nomeSemOrigem(filtros: Filtros, local: Local | null, cidade?: Cidade | null) {
+  const texto = textoDaOrigem({ ...filtros, origem: "centro" }, local && { ...local, ponto: null }, cidade);
+  const nome = texto.replace(/^(do|da|de)\s+/, "");
+  return nome.charAt(0).toUpperCase() + nome.slice(1);
+}
+
+/** O que o "De onde" da linha do raio precisa (`DeOnde`). */
+export function dadosDoDeOnde(filtros: Filtros, local: Local | null, cidade: Cidade) {
+  return { casa: Boolean(local?.ponto), local, cidade, semOrigem: nomeSemOrigem(filtros, local, cidade) };
+}
+
 /** “caixa” · Comércio e vendas · CLT · à tarde · até 10 km da sua casa */
 export function rotuloDaBusca(f: Filtros, local: Local | null, cidade?: Cidade | null) {
   const distancia = f.tempo ? nomeDoTempo(f.tempo).replace(/^Até/, "até") : `até ${f.raio} km`;

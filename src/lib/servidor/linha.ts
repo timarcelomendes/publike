@@ -38,7 +38,7 @@ import {
 } from "@/lib/relevancia";
 import { obterLocal } from "@/lib/local";
 import type { Local } from "@/lib/regioes";
-import { partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
+import { dadosDoDeOnde, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
 import { anunciosComContatoDireto } from "@/lib/servidor/contato-direto";
 import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { matchDasVagas, origemDoTempo, quemProcura, requisitosDaLista } from "@/lib/servidor/lista-anuncios";
@@ -229,6 +229,8 @@ export type DadosDaLinha = {
   meuNome: string | null;
   /** de onde conta a distância ("da sua casa", "do meio de Setor Bueno"), para a linha do raio */
   origemDoRaio: string;
+  /** para trocar de onde conta, na linha do raio (`DeOnde`) */
+  deOnde: ReturnType<typeof dadosDoDeOnde>;
   /** o que o raio deixou de fora: quantos há em cada distância maior e de que cidades (null: nada de fora) */
   maisLonge: MaisLonge | null;
 };
@@ -539,6 +541,7 @@ export const dadosDaLinha = cache(async (chave: string): Promise<DadosDaLinha> =
     conquistasPendentes: conquistasPendentesDaConta,
     meuNome: perfil?.nome ?? null,
     origemDoRaio: textoDaOrigem(filtros, local, visita.praca.cidade),
+    deOnde: dadosDoDeOnde(filtros, local, visita.praca.cidade),
     maisLonge,
   };
 });

@@ -4,7 +4,9 @@ import { nomeDoTempo } from "@/lib/deslocamento";
 import { hrefFiltros, RAIOS } from "@/lib/filtros";
 import { plural } from "@/lib/formato";
 import type { Filtros } from "@/lib/filtros";
+import type { Local } from "@/lib/regioes";
 import type { DadosDaLinha, MaisLonge } from "@/lib/servidor/linha";
+import { DeOnde } from "../../explorar/de-onde";
 import { BotaoLink } from "../../ui/botao";
 
 /** "vaga"/"vagas" na aba Vagas, "serviço" em Serviços, "anúncio" em Tudo. */
@@ -21,6 +23,8 @@ export type DadosDoRaio = {
   tipo: string | null;
   /** na linha do tempo, o recuo da coluna da hora e dos nós (no computador) */
   recuo?: boolean;
+  /** para trocar de onde conta (`DeOnde`, de `dadosDoDeOnde`): o CEP de casa, o lugar, a cidade e a opção sem casa */
+  deOnde?: { casa: boolean; local: Local | null; cidade: string; semOrigem: string };
 };
 
 const daLinha = (d: DadosDaLinha): DadosDoRaio => ({
@@ -30,6 +34,7 @@ const daLinha = (d: DadosDaLinha): DadosDoRaio => ({
   maisLonge: d.maisLonge,
   tipo: d.aba,
   recuo: true,
+  deOnde: d.deOnde,
 });
 
 function cidades(c: string[], total: number) {
@@ -45,13 +50,19 @@ export function RaioDaLinha({ d }: { d: DadosDaLinha }) {
   return d.aba === "recado" ? null : <RaioDaBusca r={daLinha(d)} />;
 }
 
-/** A linha do raio (a da linha do tempo e a da busca). */
+/**
+ * A linha do raio (a da linha do tempo e a da busca). Com `deOnde`, os botões de "De onde" vêm embaixo dos raios, e
+ * a linha diz "de onde você está agora" quando conta da localização (o "Você" dos cartões e do mapa). O `id`
+ * "ate-onde" é o que o "Trocar" do mapa abre.
+ */
 export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
   const f = d.filtros;
   const [um, varios] = nomeDoItem(d.tipo);
   const longe = d.maisLonge;
   const proximo = longe?.faixas[0];
-  const botoes = (
+  const origem = f.origem === "gps" ? "de onde você está agora" : d.origem;
+  const deOnde = d.deOnde && <DeOnde filtros={d.base} {...d.deOnde} />;
+  const raios = (
     <nav aria-label="Até onde buscar" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
       <span className="inline-flex items-center gap-1 text-body-sm font-semibold text-ink">
         <MapPinned aria-hidden className="size-4 shrink-0 text-ink-muted" />
@@ -85,18 +96,26 @@ export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
           );
         })}
       </span>
-      <span className="text-body-sm text-ink-muted">{d.origem}</span>
+      {!deOnde && <span className="text-body-sm text-ink-muted">{origem}</span>}
     </nav>
+  );
+  const botoes = deOnde ? (
+    <div className="flex flex-col gap-2">
+      {raios}
+      {deOnde}
+    </div>
+  ) : (
+    raios
   );
   const distancia = f.tempo ? nomeDoTempo(f.tempo) : `Até ${f.raio} km`;
   // nada de fora: só uma linha curta, e o Mudar abre os raios (sem script: <details>)
   if (!longe || !proximo)
     return (
-      <details className={`group pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
+      <details id="ate-onde" className={`group scroll-mt-24 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
         <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 text-body-sm text-ink-muted [&::-webkit-details-marker]:hidden">
           <MapPinned aria-hidden className="size-4 shrink-0" />
           <span>
-            <span className="font-semibold text-ink">{distancia}</span> {d.origem} ·{" "}
+            <span className="font-semibold text-ink">{distancia}</span> {origem} ·{" "}
             <span className="font-semibold text-ink underline underline-offset-2 group-open:hidden">Mudar</span>
             <span className="hidden font-semibold text-ink underline underline-offset-2 group-open:inline">Fechar</span>
           </span>
@@ -105,10 +124,10 @@ export function RaioDaBusca({ r: d }: { r: DadosDoRaio }) {
       </details>
     );
   return (
-    <div className={`flex flex-col gap-1.5 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
+    <div id="ate-onde" className={`flex scroll-mt-24 flex-col gap-1.5 pb-1 ${d.recuo ? "sm:pl-[112px]" : ""}`}>
       {botoes}
       <p className="text-body-sm text-ink-muted">
-        Mostrando só até {f.raio} km. Há mais {plural(longe.total, um, varios)} mais longe
+        Mostrando só até {f.raio} km{deOnde ? ` ${origem}` : ""}. Há mais {plural(longe.total, um, varios)} mais longe
         {cidades(longe.cidades, longe.total)}.{" "}
         <Link
           href={hrefFiltros(d.base, { raio: proximo.raio })}

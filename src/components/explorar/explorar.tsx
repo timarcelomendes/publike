@@ -38,7 +38,7 @@ import type { OrigemMapa, PontoMapa } from "../mapa/mapa-anuncios";
 import { semAcento } from "@/lib/descobrir";
 import { obterLocal } from "@/lib/local";
 import { passosDaPrioridade } from "@/lib/regioes";
-import { acharBuscaSalva, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
+import { acharBuscaSalva, dadosDoDeOnde, partirDoLocal, textoDaOrigem } from "@/lib/servidor/busca-salva";
 import { fotosDosAutores } from "@/lib/servidor/fotos-autores";
 import { agoraDaRequisicao } from "@/lib/tempo";
 import { CardAnuncio, EsqueletoCards } from "../card-anuncio";
@@ -293,6 +293,7 @@ export async function Explorar({
     filtros,
     base: filtros,
     origem: textoDaOrigem(filtros, local, visita.praca.cidade),
+    deOnde: dadosDoDeOnde(filtros, local, visita.praca.cidade),
     maisLonge: deLonge.length
       ? {
           total: deLonge.length,
