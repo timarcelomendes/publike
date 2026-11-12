@@ -265,10 +265,20 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
     }
   }
 
+  // as buscas largas de quem procura emprego perto (as que mais trazem gente na campanha geral da Publike: "vagas de
+  // emprego em goiânia", "empregos perto de mim"); o anúncio mostra esta vaga, e o lugar da campanha já é o perto dela
+  const largas = [
+    ...new Set(
+      [`vagas de emprego ${cidade}`, `vagas de emprego ${bairro}`, "empregos perto de mim"]
+        .map(palavraLimpa)
+        .filter((p): p is string => Boolean(p) && !vistas.has(p as string)),
+    ),
+  ];
+
   return {
     titulos: minimos.length >= 3 ? minimos : [...minimos, "Vaga de emprego", "Candidatura grátis", "Veja a vaga"].slice(0, 3),
     descricoes: descricoes.length >= 2 ? descricoes : [...descricoes, "Veja a vaga e candidate-se pelo Publike."].slice(0, 2),
-    palavras: palavras.slice(0, 15),
+    palavras: [...palavras.slice(0, 15 - largas.length), ...largas],
     caminho1: "vagas",
     caminho2: caminho(funcao) || "emprego",
   };
