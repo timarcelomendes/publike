@@ -40,13 +40,22 @@ type Impulso = {
   erro_desde: string | null;
   motivo: string | null;
   sandbox: boolean;
+  automatico?: boolean;
   totais: { impressoes: number; cliques: number; visitas: number; curtidas: number };
 };
 
 type Dados = {
   precos: PrecoImpulso[];
   config: ConfigImpulso;
-  mes: { entrou: number; verba: number; gasto: number; impulsos: number };
+  mes: {
+    entrou: number;
+    verba: number;
+    gasto: number;
+    impulsos: number;
+    automatico_verba?: number;
+    automaticos?: number;
+    automaticos_no_ar?: number;
+  };
   impulsos: Impulso[];
 };
 
@@ -108,6 +117,13 @@ async function Conteudo() {
           </Situacao>
           <Situacao ok={algumAVenda}>
             {algumAVenda ? "Há impulso à venda." : "Nenhum impulso à venda: ligue um preço abaixo."}
+          </Situacao>
+          <Situacao ok={Boolean(d.config.auto_ligado)}>
+            {d.config.auto_ligado
+              ? `Impulso automático ligado: ${formatarMoeda(Number(d.mes.automatico_verba ?? 0))} de ${formatarMoeda(
+                  Number(d.config.auto_verba_mes),
+                )} no mês, ${d.mes.automaticos_no_ar ?? 0} correndo agora.`
+              : "Impulso automático desligado: ligue abaixo para o Publike impulsionar sozinho as vagas paradas."}
           </Situacao>
           <Situacao ok={comErro.length === 0}>
             {comErro.length === 0
@@ -200,7 +216,7 @@ async function Conteudo() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-3 py-3">
-                      {ORIGEM[i.origem]}, {i.dias} dias
+                      {i.automatico ? "Automático" : ORIGEM[i.origem]}, {i.dias} dias
                       <span className="block text-ink-muted">
                         {i.origem === "compra" ? `${formatarMoeda(i.valor)}, ` : ""}até {formatarMoeda(i.verba)} no Google
                       </span>

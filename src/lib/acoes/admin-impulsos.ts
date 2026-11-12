@@ -33,6 +33,13 @@ export type ConfigImpulso = {
   cortesia_verba: number;
   raio_capital: number;
   raio_outras: number;
+  // o impulso automático do Publike nas vagas paradas (migração 20270428120000)
+  auto_ligado: boolean;
+  auto_verba_mes: number;
+  auto_dias: number;
+  auto_verba: number;
+  auto_simultaneos: number;
+  auto_avisar: boolean;
 };
 
 export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigImpulso): Promise<Resultado> {
@@ -46,6 +53,14 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
     return { ok: false, erro: "O impulso grátis vai de 1 a 15 dias, com R$ 1 a R$ 200 de anúncio." };
   if (![config.raio_capital, config.raio_outras].every((r) => Number.isInteger(r) && r >= 1 && r <= 65))
     return { ok: false, erro: "O raio vai de 1 a 65 km." };
+  if (!(config.auto_verba_mes >= 0 && config.auto_verba_mes <= 20000))
+    return { ok: false, erro: "O teto do mês do automático vai de R$ 0 a R$ 20.000." };
+  if (!(Number.isInteger(config.auto_dias) && config.auto_dias >= 1 && config.auto_dias <= 15))
+    return { ok: false, erro: "O impulso automático vai de 1 a 15 dias." };
+  if (!(config.auto_verba >= 1 && config.auto_verba <= 500))
+    return { ok: false, erro: "Cada impulso automático leva de R$ 1 a R$ 500." };
+  if (!(Number.isInteger(config.auto_simultaneos) && config.auto_simultaneos >= 1 && config.auto_simultaneos <= 50))
+    return { ok: false, erro: "Ao mesmo tempo, de 1 a 50 vagas." };
   const { error } = await c.rpc("admin_salvar_impulso", {
     p_precos: precos as unknown as Json,
     p_config: config as unknown as Json,

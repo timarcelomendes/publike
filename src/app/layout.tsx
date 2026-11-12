@@ -11,6 +11,7 @@ import { BannerDaVisita } from "@/components/banner-da-visita";
 import { GoogleAds } from "@/components/google-ads";
 import { BoasVindasParceiro } from "@/components/boas-vindas-parceiro";
 import { AvisoAtualizacao } from "@/components/aviso-atualizacao";
+import { AvisoVagaEncerrada } from "@/components/aviso-vaga-encerrada";
 import { Cabecalho } from "@/components/cabecalho";
 import { LarguraDaPagina, SCRIPT_LARGURA } from "@/components/largura-da-pagina";
 import { Voltar } from "@/components/voltar";
@@ -118,6 +119,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             {/* "‹ Voltar para …": a tela de onde a pessoa veio (lê o endereço: no build, num Suspense) */}
             <Suspense fallback={null}>
               <Voltar />
+            </Suspense>
+            {/* veio de uma vaga que saiu do ar (?vaga=encerrada): o aviso em cima das parecidas */}
+            <Suspense fallback={null}>
+              <AvisoVagaEncerrada />
             </Suspense>
             {children}
           </main>

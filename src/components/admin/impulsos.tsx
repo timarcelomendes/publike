@@ -130,6 +130,54 @@ export function ConfigImpulsos({ precos, config }: { precos: PrecoImpulso[]; con
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
+        <legend className="text-label">Impulso automático do Publike</legend>
+        <label className="flex items-start gap-2 text-body">
+          <input
+            type="checkbox"
+            checked={c.auto_ligado}
+            onChange={(e) => setC({ ...c, auto_ligado: e.target.checked })}
+            className="mt-1 size-4"
+          />
+          <span>
+            Impulsionar sozinho as vagas paradas, com a verba do Publike
+            <span className="block text-body-sm text-ink-muted">
+              Vaga de empresa, comércio ou agência no ar há 5 dias ou mais, sem curtida nos últimos 5: é onde falta
+              gente. Primeiro as que mostram o salário. Cada vaga ganha um só, e o cliente recebe o relatório no fim.
+            </span>
+          </span>
+        </label>
+        <div className="flex flex-wrap gap-4">
+          <Reais
+            rotulo="Teto no mês"
+            valor={c.auto_verba_mes}
+            mudar={(v) => setC({ ...c, auto_verba_mes: v })}
+            min={0}
+          />
+          <Reais rotulo="Por vaga" valor={c.auto_verba} mudar={(v) => setC({ ...c, auto_verba: v })} />
+          <Inteiro rotulo="Dias" valor={c.auto_dias} mudar={(v) => setC({ ...c, auto_dias: v })} max={15} />
+          <Inteiro
+            rotulo="Ao mesmo tempo"
+            valor={c.auto_simultaneos}
+            mudar={(v) => setC({ ...c, auto_simultaneos: v })}
+            max={50}
+          />
+        </div>
+        <p className="text-body-sm text-ink-muted">
+          Até {Math.max(0, Math.floor((c.auto_verba_mes || 0) / Math.max(c.auto_verba || 1, 1)))} vagas por mês, cerca
+          de R$ {((c.auto_verba || 0) / Math.max(c.auto_dias || 1, 1)).toFixed(2).replace(".", ",")} por dia em cada uma.
+        </p>
+        <label className="flex items-start gap-2 text-body">
+          <input
+            type="checkbox"
+            checked={c.auto_avisar}
+            onChange={(e) => setC({ ...c, auto_avisar: e.target.checked })}
+            className="mt-1 size-4"
+          />
+          <span>Avisar o cliente quando começar</span>
+        </label>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-4">
         <legend className="text-label">Até onde o anúncio aparece</legend>
         <div className="flex flex-wrap gap-4">
           <Inteiro rotulo="Raio na capital (km)" valor={c.raio_capital} mudar={(v) => setC({ ...c, raio_capital: v })} max={65} />

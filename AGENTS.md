@@ -267,3 +267,10 @@ Plano em `claude/plano-central-de-emails.md` (projeto). Migração `202702011200
 - **Sitemap:** além das vagas e das buscas, o perfil e "Vagas de …" de quem contrata (empresa ou comércio com vaga no ar; perfil de pessoa nunca).
 - **IndexNow** (migração `20270426120000_indexnow.sql`, `src/lib/servidor/indexnow.ts`): pela fila, avisa Bing, Yandex, Naver e Seznam dos anúncios que entraram, mudaram ou saíram. A chave sai da chave do servidor e fica em `/indexnow.txt`. O Google continua pela Indexing API (`google-vagas.ts`).
 
+## Alcance e cadastros (12/11/2026, `claude/plano-alcance-e-cadastros.md`)
+
+- **Título da vaga no Google:** `tituloNaBusca` e `descricaoNaBusca` (`src/lib/titulo-na-busca.ts`): "Vaga de frentista em Setor Bueno, Goiânia · R$ 2.300", até 60 letras. O h1 e o JobPosting continuam o título da vaga. Vaga preenchida: `noindex, follow`.
+- **Vaga fora do ar → as parecidas:** anúncio que o visitante não vê e que já esteve no ar (pausado, encerrado, vencido) redireciona para a função, a área ou a cidade com `?vaga=encerrada` (`destino_do_anuncio_fora_do_ar`, migração `20270427120000`; `src/lib/servidor/vaga-fora-do-ar.ts`; o aviso é `AvisoVagaEncerrada`, no layout). Em análise, removido ou inexistente: 404.
+- **Links da vaga:** função, bairro e cidade, com BreadcrumbList (`LinksDaVaga` em `anuncio/[id]/page.tsx`).
+- **Impulso automático do Publike** (migração `20270428120000`): `privado.criar_impulsos_automaticos`, chamado pelo robô (`servidor_impulsos_automaticos`, antes de `servidor_impulsos_para_cuidar`) com o Google Ads ligado. Vagas paradas de empresa, comércio ou agência; teto do mês, verba, dias e simultâneos em `config_impulso.auto_*` (Admin › Impulsos); `impulsos.automatico`; um por vaga. Nasce desligado.
+

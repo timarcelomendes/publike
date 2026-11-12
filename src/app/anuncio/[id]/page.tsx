@@ -33,7 +33,8 @@ import { ganhosDoBanco, perguntasDoBanco, respostasDoBanco, textoDoGanho } from 
 import Image from "next/image";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { DadosEstruturados } from "@/components/dados-estruturados";
 import { headers } from "next/headers";
 import { Suspense, type ReactNode } from "react";
 import { ConviteDasVagasVistas, PARAMETRO_DA_VOLTA } from "@/components/convite-das-vagas-vistas";
@@ -99,6 +100,7 @@ import {
   rotuloConta,
   rotuloModalidade,
   tempoRelativo,
+  nomeDoBairro,
   urlDaFoto,
   urlDaFotoTrabalho,
   valorDoAnuncio,
@@ -116,8 +118,10 @@ import { SeloVerificado } from "@/components/selo-verificado";
 import { comecaJaDaVaga } from "@/lib/servidor/comeca-ja";
 import { contatoPorDaVaga } from "@/lib/servidor/contato-por";
 import { funcaoDaVaga } from "@/lib/servidor/paginas-funcao";
-import { caminhoDaFuncao } from "@/lib/funcoes-das-paginas";
-import { cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
+import { caminhoDaFuncao, tituloDaFuncao } from "@/lib/funcoes-das-paginas";
+import { descricaoNaBusca, tituloNaBusca } from "@/lib/titulo-na-busca";
+import { destinoDoAnuncioForaDoAr } from "@/lib/servidor/vaga-fora-do-ar";
+import { caminhoDaBusca, caminhoDoBairro, cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
 import { soOlharComoPessoa } from "@/lib/servidor/so-olhar";
 import { meusTestesDaVaga, testesDaVaga } from "@/lib/servidor/testes";
 import { nomeCurtoDoTeste } from "@/lib/testes";
@@ -129,16 +133,30 @@ import { vagaUsaTriagem } from "@/lib/servidor/copiloto";
 export async function generateMetadata({ params }: PageProps<"/anuncio/[id]">): Promise<Metadata> {
   const { id } = await params;
   const anuncio = await obterAnuncio(id);
-  // sem o anúncio, 404 de verdade (para os robôs, o metadado vem antes da página e a resposta sai com o código certo)
-  if (!anuncio) notFound();
-  const descricao = `${rotuloModalidade(anuncio.tipo, anuncio.regime)} em ${formatarLugar(anuncio.bairro, anuncio.cidade)}. ${valorDoAnuncio(anuncio)}. ${anuncio.descricao.slice(0, 120)}`;
+  // vaga que saiu do ar: para as parecidas; sem o anúncio, 404 de verdade (para os robôs, o metadado vem antes da
+  // página e a resposta sai com o código certo)
+  if (!anuncio) return paraAsParecidasOu404(id);
+  // no Google: "Vaga de frentista em Setor Bueno, Goiânia · R$ 2.300" e o convite (claude/plano-alcance-e-cadastros.md)
+  const titulo = tituloNaBusca(anuncio);
+  const descricao = descricaoNaBusca(anuncio);
   return {
-    title: anuncio.titulo,
+    title: titulo,
     description: descricao,
     alternates: { canonical: `/anuncio/${id}` },
-    openGraph: { title: anuncio.titulo, description: descricao, type: "article" },
-    robots: anuncio.status === "ativo" ? undefined : { index: false },
+    openGraph: { title: titulo, description: descricao, type: "article" },
+    // fora do ar ou preenchida: sai da busca, mas os links (as vagas parecidas) continuam valendo
+    robots: anuncio.status === "ativo" && !anuncio.preenchida_em ? undefined : { index: false, follow: true },
   };
+}
+
+/**
+ * Anúncio que o visitante não pode ver: se ele já esteve no ar (pausado, encerrado, vencido), vai para as vagas
+ * parecidas, com o aviso; se não existe ou nunca foi público, o 404.
+ */
+async function paraAsParecidasOu404(id: string): Promise<never> {
+  const destino = await destinoDoAnuncioForaDoAr(id);
+  if (destino) redirect(destino);
+  notFound();
 }
 
 export default function PaginaAnuncio({ params, searchParams }: PageProps<"/anuncio/[id]">) {
@@ -267,7 +285,7 @@ async function DetalheAnuncio({
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const [anuncio, usuario, seguidos] = await Promise.all([obterAnuncio(id), obterUsuario(), meusSeguidos()]);
-  if (!anuncio) notFound();
+  if (!anuncio) return paraAsParecidasOu404(id);
 
   const agora = await agoraDaRequisicao();
   const dono = usuario?.id === anuncio.autor_id;
@@ -927,7 +945,7 @@ async function DetalheAnuncio({
       {/* a página da função na cidade ("Mais vagas de frentista em Goiânia": claude/plano-vagas-por-funcao.md) */}
       {vaga && anuncio.status === "ativo" && (
         <Suspense fallback={null}>
-          <LinkDaFuncao id={anuncio.id} cidade={anuncio.cidade} />
+          <LinksDaVaga id={anuncio.id} titulo={anuncio.titulo} cidade={anuncio.cidade} bairro={anuncio.bairro} />
         </Suspense>
       )}
       {/* sem conta: na segunda vaga da mesma área, o convite para receber as novas; com conta, voltando do convite,
@@ -963,21 +981,66 @@ async function DetalheAnuncio({
   );
 }
 
-/** "Mais vagas de frentista em Goiânia" e o salário da região, na página da função (só quando a vaga tem função). */
-async function LinkDaFuncao({ id, cidade }: { id: string; cidade: string }) {
+/**
+ * "Mais vagas de frentista em Goiânia" (com o salário da região, na página da função, quando a vaga tem função) e
+ * "Vagas no Setor Bueno". Os links e o caminho para o Google (BreadcrumbList) fazem as páginas de função e de bairro
+ * subirem na busca: elas duram, a vaga sai do ar (claude/plano-alcance-e-cadastros.md).
+ */
+async function LinksDaVaga({ id, titulo, cidade, bairro }: { id: string; titulo: string; cidade: string; bairro: string }) {
   if (!cidadeDoSlug(slugDaCidade(cidade))) return null;
   const funcao = await funcaoDaVaga(id, cidade);
-  if (!funcao) return null;
+  const nomeBairro = nomeDoBairro(bairro.trim());
+  const temBairro = Boolean(nomeBairro) && slugDaCidade(nomeBairro) !== slugDaCidade(cidade);
+  const caminho = [
+    { nome: "Publike", url: SITE_URL },
+    { nome: `Vagas em ${cidade}`, url: `${SITE_URL}${caminhoDaBusca("vaga", cidade)}` },
+    ...(funcao
+      ? [{ nome: tituloDaFuncao(funcao.nome, cidade), url: `${SITE_URL}${caminhoDaFuncao(cidade, funcao.slug)}` }]
+      : []),
+    { nome: titulo, url: `${SITE_URL}/anuncio/${id}` },
+  ];
   return (
-    <p className="mt-8 text-body">
-      <Link
-        href={caminhoDaFuncao(cidade, funcao.slug)}
-        className="font-semibold text-terra-text underline-offset-2 hover:underline"
-      >
-        Mais vagas de {funcao.nome} em {cidade}
-      </Link>
-      <span className="text-ink-muted"> e quanto se paga na região</span>
-    </p>
+    <>
+      <DadosEstruturados
+        dados={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: caminho.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.nome, item: c.url })),
+        }}
+      />
+      <ul className="mt-8 flex flex-col gap-2 text-body">
+        {funcao && (
+          <li>
+            <Link
+              href={caminhoDaFuncao(cidade, funcao.slug)}
+              className="font-semibold text-terra-text underline-offset-2 hover:underline"
+            >
+              Mais vagas de {funcao.nome} em {cidade}
+            </Link>
+            <span className="text-ink-muted"> e quanto se paga na região</span>
+          </li>
+        )}
+        {temBairro && (
+          <li>
+            <Link
+              href={caminhoDoBairro(cidade, nomeBairro)}
+              className="font-semibold text-terra-text underline-offset-2 hover:underline"
+            >
+              Vagas no {nomeBairro}
+            </Link>
+            <span className="text-ink-muted"> e perto dele</span>
+          </li>
+        )}
+        <li>
+          <Link
+            href={caminhoDaBusca("vaga", cidade)}
+            className="font-semibold text-terra-text underline-offset-2 hover:underline"
+          >
+            Todas as vagas em {cidade}
+          </Link>
+        </li>
+      </ul>
+    </>
   );
 }
 

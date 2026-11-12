@@ -1908,6 +1908,11 @@ export type Database = {
         Args: { p_ids: string[] };
         Returns: { anuncio_id: string; cbo: string; origem: string }[];
       };
+      // a vaga que saiu do ar leva para as parecidas (migração 20270427120000)
+      destino_do_anuncio_fora_do_ar: {
+        Args: { p_id: string };
+        Returns: { tipo: string; cidade: string; categoria: string | null; cbo: string | null }[];
+      };
       servidor_vagas_sem_funcao: {
         Args: { p_chave: string; p_limite?: number; p_com_contexto?: boolean };
         Returns: { id: string; titulo: string; descricao: string | null }[];
@@ -2028,6 +2033,8 @@ export type Database = {
         Returns: { anuncio_id: string; no_ar: boolean }[];
       };
       servidor_anuncios_avisados_ao_indexnow: { Args: { p_chave: string; p_itens: Json }; Returns: undefined };
+      // o impulso automático do Publike (migração 20270428120000)
+      servidor_impulsos_automaticos: { Args: { p_chave: string }; Returns: number };
       salario_da_funcao: {
         Args: { p_cbo: string; p_regiao?: string };
         Returns: {

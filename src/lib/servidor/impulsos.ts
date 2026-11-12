@@ -365,6 +365,12 @@ async function fazer(a: Acesso, t: Tarefa) {
 export async function cuidarDosImpulsos(): Promise<{ feitos: number; motivo?: string }> {
   const a = acessoFila();
   if (!a) return { feitos: 0 };
+  // o impulso automático do Publike (migração 20270428120000): com o Google Ads ligado, o banco escolhe as vagas
+  // paradas dentro do teto do mês e cria os impulsos; logo abaixo, eles entram na fila como os outros
+  if (googleAdsLigado()) {
+    const { error: e } = await a.cliente.rpc("servidor_impulsos_automaticos", { p_chave: a.chave });
+    if (e && e.code !== "PGRST202") console.error("Publike: falha no impulso automático:", e.message);
+  }
   const { data, error } = await a.cliente.rpc("servidor_impulsos_para_cuidar", { p_chave: a.chave });
   if (error) {
     // sem a migração ainda: nada a fazer
