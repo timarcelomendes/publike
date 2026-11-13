@@ -12,6 +12,7 @@ import { SITE_URL } from "@/lib/config";
 import { TIPOS_CONTA } from "@/lib/constantes";
 import { TemVoltarProprio } from "@/components/voltar";
 import { IMAGEM_DO_SITE } from "@/lib/seo";
+import { comOrigem } from "@/lib/origem";
 
 // O passo a passo de um caminho, com as telas: a página para mandar a quem ainda não usa o Publike.
 
@@ -82,7 +83,7 @@ function Conteudo({ id }: { id: string }) {
           </h1>
           <p className="mt-3 max-w-2xl text-body-lg text-ink-muted">{c.jornada.resumo}</p>
           <div className="mt-5">
-            <CompartilharCaminho url={url} texto={`Publike, ${tituloDo(c).toLowerCase()}: ${c.jornada.resumo}`} />
+            <CompartilharCaminho url={comOrigem(url, "compartilhar", "caminho")} texto={`Publike, ${tituloDo(c).toLowerCase()}: ${c.jornada.resumo}`} />
           </div>
         </Container>
       </section>

@@ -3,6 +3,7 @@
 import { Check, Link2, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { SITE_URL } from "@/lib/config";
+import { comOrigem } from "@/lib/origem";
 
 /**
  * Indicar: manda o link do recado. No celular, abre o compartilhar do aparelho; no computador,
@@ -13,7 +14,7 @@ export function BotaoIndicar({ recadoId, autor }: { recadoId: string; autor: str
   const [copiado, setCopiado] = useState(false);
   const id = useId();
   const quadro = useRef<HTMLDivElement>(null);
-  const url = `${SITE_URL}/post/${recadoId}`;
+  const url = comOrigem(`${SITE_URL}/post/${recadoId}`, "compartilhar", "post");
   const texto = `Olha esse post de ${autor} no Publike:`;
 
   useEffect(() => {

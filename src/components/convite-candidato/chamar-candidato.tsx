@@ -30,6 +30,7 @@ import { formatarDataCurta } from "@/lib/formato";
 import { Selo } from "../ui/basicos";
 import { Botao } from "../ui/botao";
 import { classesEntrada, MensagemErro } from "../ui/campo";
+import { comOrigem } from "@/lib/origem";
 
 // Candidato de fora, do lado de quem publicou a vaga: chamar a pessoa (o nome e, se tiver, o PDF
 // ou a foto do currículo) e mandar o link; a lista dos convites da vaga.
@@ -37,6 +38,11 @@ import { classesEntrada, MensagemErro } from "../ui/campo";
 type Arquivo = { tipo: "pdf"; pdf: File } | { tipo: "fotos"; fotos: File[] } | null;
 
 type Criado = { nome: string; token: string; expira_em: string; lido: string | null };
+
+/** O link do convite, com a origem para o Admin › Campanhas: quem cria a conta por ele entra como "convite:candidato". */
+function linkDoConvite(site: string, token: string) {
+  return comOrigem(`${site}/candidatura/${token}`, "convite", "candidato");
+}
 
 /** O telefone que a agência digitou, só para abrir o WhatsApp certo (não vai para o servidor). */
 function numeroDoWhats(t: string) {
@@ -277,7 +283,7 @@ function ConvitePronto({
   outro: () => void;
 }) {
   const [telefone, setTelefone] = useState("");
-  const url = `${site}/candidatura/${criado.token}`;
+  const url = linkDoConvite(site, criado.token);
   const numero = numeroDoWhats(telefone);
   const texto = mensagemDoConvite({ nome: criado.nome, quem, vaga, url, comCurriculo: criado.lido !== null });
   const primeiro = criado.nome.split(" ")[0];
@@ -410,7 +416,7 @@ function ItemConvite({
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const situacao = situacaoNaLista(c, agora);
   const info = SITUACOES_CONVITE[situacao];
-  const url = `${site}/candidatura/${c.token}`;
+  const url = linkDoConvite(site, c.token);
   const quando =
     situacao === "aceito" && c.aceito_em
       ? `aceitou em ${formatarDataCurta(c.aceito_em)}`

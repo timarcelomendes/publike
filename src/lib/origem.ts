@@ -42,3 +42,21 @@ export function origemDoLink(params: URLSearchParams): string | null {
 export function origemValida(origem: string | null | undefined): origem is string {
   return typeof origem === "string" && FORMATO.test(origem);
 }
+
+/**
+ * O link com a origem para o Admin › Campanhas ("compartilhar:pagina"): põe utm_source e utm_campaign se o link ainda
+ * não tem. Os botões de compartilhar usam utm_source=compartilhar e, em utm_campaign, o que foi compartilhado (anuncio,
+ * banner, pagina, post), como os de antes.
+ */
+export function comOrigem(link: string, fonte: string, campanha: string) {
+  try {
+    const u = new URL(link);
+    if (!u.searchParams.has("utm_source")) {
+      u.searchParams.set("utm_source", fonte);
+      u.searchParams.set("utm_campaign", campanha);
+    }
+    return u.toString();
+  } catch {
+    return link;
+  }
+}

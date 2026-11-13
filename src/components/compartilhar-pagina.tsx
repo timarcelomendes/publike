@@ -3,6 +3,7 @@
 import { Check, Link2, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { SITE_URL } from "@/lib/config";
+import { comOrigem } from "@/lib/origem";
 
 /**
  * Compartilhar uma ferramenta grátis (claude/plano-ferramentas-compartilhar-e-vagas.md): manda o link da página com
@@ -14,7 +15,7 @@ export function CompartilharPagina({ caminho, texto }: { caminho: string; texto:
   const [copiado, setCopiado] = useState(false);
   const id = useId();
   const quadro = useRef<HTMLDivElement>(null);
-  const url = `${SITE_URL}${caminho}`;
+  const url = comOrigem(`${SITE_URL}${caminho}`, "compartilhar", "pagina");
 
   useEffect(() => {
     if (!aberto) return;
