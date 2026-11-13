@@ -694,6 +694,24 @@ function texto(t: Tarefa, simples: boolean) {
   return textoDoAnuncio(t.vaga!, { simples, sinonimos: nomesDaCbo(t.vaga?.cbo) });
 }
 
+/**
+ * Se é hora de conferir as palavras do grupo: nunca conferidas, ou a última vez foi há mais de 22 horas (migração
+ * 20270507120000: uma vez por dia, não a cada medida de 2 horas, porque cada consulta conta no limite diário da
+ * Google Ads API). Sem a migração (ou sem resposta do banco), a cada medida, como antes.
+ */
+async function horaDasPalavras(a: Acesso, t: Tarefa) {
+  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_em", { p_chave: a.chave, p_id: t.id });
+  if (error) return true;
+  return !data || Date.parse(data) < Date.now() - 22 * 3_600_000;
+}
+
+/** As palavras do grupo acabaram de ser conferidas: a próxima conferência fica para daqui a um dia. */
+async function palavrasFeitas(a: Acesso, t: Tarefa) {
+  const { error } = await a.cliente.rpc("servidor_impulso_palavras_feitas", { p_chave: a.chave, p_id: t.id });
+  // sem a migração 20270507120000: confere de novo na medida seguinte, como antes
+  if (error && error.code !== "PGRST202") console.error(`Publike: impulso ${t.codigo}, a data das palavras não ficou:`, error.message);
+}
+
 type LinhaDaPalavra = {
   adGroupCriterion?: { resourceName?: string; keyword?: { text?: string; matchType?: string } };
 };
@@ -863,7 +881,7 @@ async function criarGrupo(a: Acesso, t: Tarefa) {
     await removerGrupo(criados.grupo, conta);
     return;
   }
-  await palavrasDepoisDeCriar(t, conta, { grupo: criados.grupo, campanha: k.campanha_id });
+  await palavrasDepoisDeCriar(a, t, conta, { grupo: criados.grupo, campanha: k.campanha_id });
 }
 
 async function criar(a: Acesso, t: Tarefa) {
@@ -905,13 +923,22 @@ async function criar(a: Acesso, t: Tarefa) {
     return;
   }
   if (ids.campanha) await porSitelinks(sitelinksDaVaga(t.vaga!), t.codigo, ids.campanha, conta);
-  await palavrasDepoisDeCriar(t, conta, { grupo: ids.grupo, campanha: ids.campanha });
+  await palavrasDepoisDeCriar(a, t, conta, { grupo: ids.grupo, campanha: ids.campanha });
 }
 
-/** A criação leva só as primeiras palavras (`PALAVRAS_AO_NASCER`); as outras entram já, sem esperar a medida. */
-async function palavrasDepoisDeCriar(t: Tarefa, conta: string, ids: { grupo?: string | null; campanha?: string | null }) {
+/**
+ * A criação leva só as primeiras palavras (`PALAVRAS_AO_NASCER`); as outras entram já, sem esperar a medida, e a
+ * próxima conferência fica para daqui a um dia.
+ */
+async function palavrasDepoisDeCriar(
+  a: Acesso,
+  t: Tarefa,
+  conta: string,
+  ids: { grupo?: string | null; campanha?: string | null },
+) {
   try {
     await acertarPalavras(t, conta, ids);
+    await palavrasFeitas(a, t);
   } catch (e) {
     console.error(`Publike: impulso ${t.codigo} nasceu só com as primeiras palavras:`, e instanceof Error ? e.message : e);
   }
@@ -1016,7 +1043,11 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
       console.error(`Publike: o raio do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
     }
     try {
-      await acertarPalavras(t, conta);
+      // uma vez por dia (`horaDasPalavras`); deu certo, a data fica marcada
+      if (await horaDasPalavras(a, t)) {
+        await acertarPalavras(t, conta);
+        await palavrasFeitas(a, t);
+      }
     } catch (e) {
       // as palavras também ficam para a próxima medida
       console.error(`Publike: as palavras do impulso ${t.codigo} não mudaram:`, e instanceof Error ? e.message : e);
