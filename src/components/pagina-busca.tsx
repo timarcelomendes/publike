@@ -21,7 +21,7 @@ import {
 } from "@/lib/paginas-busca";
 import { nomeDoBairro } from "@/lib/formato";
 import { pracaDaCidade } from "@/lib/pracas";
-import { anunciosNoAr } from "@/lib/servidor/paginas-busca";
+import { anunciosNoAr, vagasImpulsionadas } from "@/lib/servidor/paginas-busca";
 import { funcoesDasVagasDaPraca } from "@/lib/servidor/paginas-funcao";
 import { caminhoDaFuncao, comMaiuscula, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
 import { agoraDaRequisicao } from "@/lib/tempo";
@@ -151,14 +151,23 @@ export function PaginaDeBusca(busca: Busca) {
 
 async function Conteudo({ tipo, cidade, area }: Busca) {
   // os da praça desta cidade
-  const [todos, agora, funcoesDasVagas] = await Promise.all([
+  const [todos, agora, funcoesDasVagas, impulsionadas] = await Promise.all([
     anunciosNoAr(tipo, cidade),
     agoraDaRequisicao(),
     tipo === "vaga" ? funcoesDasVagasDaPraca(cidade) : Promise.resolve({} as Record<string, string>),
+    tipo === "vaga" ? vagasImpulsionadas() : Promise.resolve({} as Record<string, string>),
   ]);
   const daCidade = todos.filter((a) => a.cidade === cidade);
   const itens = area ? daCidade.filter((a) => a.categoria === area.slug) : daCidade;
   const vaga = tipo === "vaga";
+  // as vagas impulsionadas da região (a praça toda: em Goiânia, também as de Aparecida), num quadro à parte, acima da
+  // lista de sempre, que não muda de ordem (migração 20270506120000, 13/11/2026); as do impulso mais novo primeiro
+  const destaques = vaga
+    ? todos
+        .filter((a) => impulsionadas[a.id] && (!area || a.categoria === area.slug))
+        .sort((x, y) => impulsionadas[y.id].localeCompare(impulsionadas[x.id]))
+        .slice(0, 6)
+    : [];
   const caminho = caminhoDaBusca(tipo, cidade, area?.slug);
 
   // áreas com anúncio nesta cidade, e cidades com anúncio (para os links)
@@ -271,8 +280,33 @@ async function Conteudo({ tipo, cidade, area }: Busca) {
         </>
       )}
 
+      {destaques.length > 0 && (
+        <section aria-labelledby="vagas-impulsionadas" className={listaPrimeiro ? "mt-4" : "mt-8"}>
+          <h2 id="vagas-impulsionadas" className="text-h3">
+            Vagas impulsionadas na região
+          </h2>
+          <p className="mt-1 max-w-3xl text-body-sm text-ink-muted">
+            Quem contrata pagou para mostrar estas vagas aqui. Todas as vagas vêm logo abaixo, na ordem de sempre.
+          </p>
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {destaques.map((a) => (
+              <li key={a.id} className="grid">
+                <CardAnuncio anuncio={a} agora={agora} usuarioId={null} impulsionada />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {destaques.length > 0 && itens.length > 0 && (
+        <h2 className="mt-10 text-h3">
+          Todas as vagas{area ? ` de ${area.nome.toLowerCase()}` : ""} em {cidade}
+        </h2>
+      )}
+
       {itens.length > 0 ? (
-        <ul className={`${listaPrimeiro ? "mt-4" : "mt-8"} grid gap-4 sm:grid-cols-2 lg:grid-cols-3`}>
+        <ul
+          className={`${destaques.length > 0 ? "mt-4" : listaPrimeiro ? "mt-4" : "mt-8"} grid gap-4 sm:grid-cols-2 lg:grid-cols-3`}
+        >
           {itens.map((a) => (
             <li key={a.id} className="grid">
               <CardAnuncio anuncio={a} agora={agora} usuarioId={null} />

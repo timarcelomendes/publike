@@ -47,3 +47,20 @@ async function anunciosDaPraca(tipo: TipoAnuncio, cidadeDaPraca: string): Promis
   const logos = await fotosDosAutores(lista.map((a) => a.autor_id));
   return lista.map((a) => ({ ...a, autor_foto: logos[a.autor_id] ?? null }));
 }
+
+/**
+ * As vagas impulsionadas agora (o id e desde quando vale o impulso), para o quadro "Vagas impulsionadas na região" no
+ * alto das páginas de vagas da cidade (migração 20270506120000, 13/11/2026). Sem a migração, nenhuma. O mesmo para
+ * todo mundo, guardado por alguns minutos, como as vagas da praça.
+ */
+export async function vagasImpulsionadas(): Promise<Record<string, string>> {
+  "use cache";
+  cacheLife("default");
+  if (MODO_DEMO) return {};
+  const { data, error } = await criarClientePublico().rpc("vagas_impulsionadas");
+  if (error) {
+    if (error.code !== "PGRST202") console.error(`Publike: falha ao ler as vagas impulsionadas: ${error.message}`);
+    return {};
+  }
+  return Object.fromEntries((data ?? []).map((l) => [l.anuncio_id, l.desde]));
+}

@@ -3680,6 +3680,7 @@ export type Database = {
       impulsionar_sem_pagar: { Args: { p_anuncio: string; p_jeito: string }; Returns: Json };
       contar_visita_do_impulso: { Args: { p_codigo: string; p_anuncio: string; p_visitante: string }; Returns: boolean };
       contar_curtida_do_impulso: { Args: { p_codigo: string; p_visitante: string; p_anuncio: string }; Returns: boolean };
+      vagas_impulsionadas: { Args: Record<PropertyKey, never>; Returns: { anuncio_id: string; desde: string }[] };
       contar_passo_do_impulso: {
         Args: { p_codigo: string; p_visitante: string; p_anuncio: string; p_passo: string };
         Returns: boolean;

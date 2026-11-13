@@ -102,6 +102,7 @@ export function CardAnuncio({
   semAutor = false,
   para = null,
   comentarios = null,
+  impulsionada = false,
 }: {
   anuncio: DadosCard;
   agora: number;
@@ -131,6 +132,8 @@ export function CardAnuncio({
    * janela por cima da lista, e o Indicar).
    */
   comentarios?: ResumoComentarios | null;
+  /** No quadro das vagas impulsionadas (páginas de vagas da cidade): o selo "Impulsionada" no alto. */
+  impulsionada?: boolean;
 }) {
   const novo = agora - new Date(anuncio.criado_em).getTime() < DOIS_DIAS;
   const distancia = formatarDistancia(anuncio.distancia_km);
@@ -170,6 +173,11 @@ export function CardAnuncio({
     <Selo variante="match">Deu match</Selo>
   ) : proprio ? (
     <Selo variante="contorno">Seu anúncio</Selo>
+  ) : impulsionada ? (
+    <Selo variante="aviso" title="Quem contrata pagou para mostrar esta vaga em destaque">
+      <Zap aria-hidden />
+      Impulsionada
+    </Selo>
   ) : novo ? (
     <Selo variante="novo">Novo</Selo>
   ) : null;
