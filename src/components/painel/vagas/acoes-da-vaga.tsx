@@ -3,7 +3,7 @@
 import { Ellipsis, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { mudarStatusAnuncio, renovarAnuncio } from "@/lib/acoes/anuncios";
 import { testarVisoesDasVagas } from "@/lib/acoes/recursos";
 import type { Acao } from "@/lib/visoes-das-vagas";
@@ -97,6 +97,7 @@ export function MenuDaVaga({
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
+  const painel = useRef<HTMLDivElement>(null);
   const idMenu = useId();
   const caminho = usePathname();
   const [deQual, setDeQual] = useState(caminho);
@@ -117,8 +118,53 @@ export function MenuDaVaga({
       document.removeEventListener("keydown", tecla);
     };
   }, [aberto]);
+  // o menu sempre inteiro na tela (13/11/2026): na Lista do celular, o "⋯" fica no começo da linha, e o menu, alinhado
+  // pela direita do botão, saía pela esquerda da tela; embaixo, ficava atrás da barra de navegação
+  useLayoutEffect(() => {
+    const menu = painel.current;
+    if (!aberto || !menu) return;
+    const acertar = () => {
+      const botao = caixa.current?.getBoundingClientRect();
+      if (!botao) return;
+      const margem = 16;
+      const espaco = 6;
+      // de lado: a direita do menu na do botão; sem lugar à esquerda, a esquerda na do botão; nunca fora da tela
+      const largura = menu.offsetWidth;
+      const tela = document.documentElement.clientWidth;
+      let x = botao.right - largura;
+      if (x < margem) x = botao.left;
+      x = Math.max(margem, Math.min(x, tela - margem - largura));
+      menu.style.left = `${Math.round(x - botao.left)}px`;
+      menu.style.right = "auto";
+      // de cima a baixo: entre o cabeçalho e a barra de navegação do celular (ou o fim da tela). Embaixo do botão; sem
+      // lugar, em cima; sem lugar nos dois, o mais perto do botão que cabe inteiro; maior que a tela, rola dentro
+      const barra = document.querySelector('nav[aria-label="Navegação"]')?.getBoundingClientRect();
+      const fim = (barra && barra.height > 0 ? barra.top : window.innerHeight) - 8;
+      const topo = Math.max(document.querySelector("header")?.getBoundingClientRect().bottom ?? 0, 0) + 8;
+      const util = Math.max(fim - topo, 160);
+      const altura = Math.min(menu.scrollHeight, util);
+      const y =
+        botao.bottom + espaco + altura <= fim
+          ? botao.bottom + espaco
+          : botao.top - espaco - altura >= topo
+            ? botao.top - espaco - altura
+            : Math.max(topo, Math.min(botao.bottom + espaco, fim - altura));
+      menu.style.top = `${Math.round(y - botao.top)}px`;
+      menu.style.marginTop = "0";
+      menu.style.maxHeight = menu.scrollHeight > util ? `${Math.floor(util)}px` : "";
+    };
+    // o que muda o tamanho (o "Sim, encerrar" que aparece no menu) acerta de novo, depois de a tela mudar
+    const depois = () => requestAnimationFrame(acertar);
+    acertar();
+    window.addEventListener("resize", acertar);
+    menu.addEventListener("click", depois);
+    return () => {
+      window.removeEventListener("resize", acertar);
+      menu.removeEventListener("click", depois);
+    };
+  }, [aberto]);
   const comModeracao = status === "em_analise" || status === "removido";
-  const link = "flex min-h-10 items-center rounded-md px-3.5 text-label text-ink hover:bg-surface-300";
+  const link = "flex min-h-10 shrink-0 items-center rounded-md px-3.5 text-label text-ink hover:bg-surface-300";
   return (
     <div ref={caixa} className="relative shrink-0">
       <button
@@ -136,8 +182,9 @@ export function MenuDaVaga({
       </button>
       {aberto && (
         <div
+          ref={painel}
           id={idMenu}
-          className="absolute top-full right-0 z-30 mt-1.5 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-md border border-line-strong bg-surface-200 p-1.5 shadow-raised"
+          className="absolute top-full right-0 z-30 mt-1.5 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-0.5 overflow-y-auto overscroll-contain rounded-md border border-line-strong bg-surface-200 p-1.5 shadow-raised"
         >
           <Link href={`/painel/anuncio/${id}/quadro`} className={`${link} font-bold`}>
             Abrir a vaga
@@ -160,7 +207,7 @@ export function MenuDaVaga({
               Divulgar
             </Link>
           )}
-          <div aria-hidden className="mx-2 my-1 h-px bg-line" />
+          <div aria-hidden className="mx-2 my-1 h-px shrink-0 bg-line" />
           <AcoesAnuncio
             id={id}
             tipo="vaga"
