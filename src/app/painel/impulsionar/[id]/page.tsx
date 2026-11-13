@@ -6,6 +6,7 @@ import { FormAssinar } from "@/components/pagamentos/form-assinar";
 import { CabecalhoDaPagina } from "@/components/painel/cabecalho-da-pagina";
 import { EsqueletoLista } from "@/components/painel/esqueleto";
 import { CancelarImpulso, ImpulsionarSemPagar } from "@/components/painel/impulso/acoes";
+import { AjustesDoImpulso, type DiaDoAjuste } from "@/components/painel/impulso/ajustes";
 import { NumerosDoImpulso, type DiaDoImpulso, type TotaisDoImpulso } from "@/components/painel/impulso/numeros";
 import { PreviaDoAnuncio } from "@/components/painel/impulso/previa";
 import { SoComSupabase } from "@/components/so-com-supabase";
@@ -45,6 +46,8 @@ type Impulso = {
   pausar: boolean;
   totais: TotaisDoImpulso;
   por_dia: DiaDoImpulso[];
+  /** o ajuste diário, em beta (migração 20270509120000; antes dela, não vem) */
+  ajustes?: DiaDoAjuste[];
 };
 
 /** A verba que o cliente vê: a da vaga ou, na campanha de várias vagas dele, a de todas juntas. */
@@ -62,6 +65,8 @@ type DoImpulso = {
   raio: number | null;
   impulsos: Impulso[];
   compra_pendente: { id: string; situacao: string; dias: number; cobranca: string | null } | null;
+  /** o ajuste diário ligado (migração 20270509120000) */
+  ajuste_ligado?: boolean;
 };
 
 const VALENDO = new Set(["pago", "em_revisao", "no_ar"]);
@@ -126,7 +131,7 @@ async function Conteudo({
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         <div className="flex min-w-0 flex-col gap-6">
           {valendo ? (
-            <ImpulsoValendo i={valendo} />
+            <ImpulsoValendo i={valendo} ajuste={Boolean(d.ajuste_ligado)} />
           ) : d.compra_pendente ? (
             <Aviso tipo="info" titulo="Esperando o pagamento">
               <span className="flex flex-col items-start gap-2">
@@ -168,6 +173,7 @@ async function Conteudo({
                         rotuloDaVerba={rotuloDaVerba(i)}
                       />
                     )}
+                    <AjustesDoImpulso ajustes={i.ajustes ?? []} noAr={false} />
                   </li>
                 ))}
               </ul>
@@ -191,6 +197,9 @@ async function Conteudo({
                 "O Publike cria o anúncio no Google, com a função, o salário e o bairro da vaga.",
                 "O Google revisa em até 1 dia útil. Aprovou, os dias começam a contar.",
                 "Quem pesquisa a função perto da vaga vê o anúncio e abre a vaga no Publike.",
+                ...(d.ajuste_ligado
+                  ? ["Toda manhã, o ajuste diário (beta) acerta a verba, o lance, as buscas e o raio pelos números do dia anterior."]
+                  : []),
                 "No fim, chega o relatório: quantos viram, clicaram e curtiram.",
               ].map((passo, n) => (
                 <li key={passo} className="flex gap-3">
@@ -231,7 +240,7 @@ function SeloDaSituacao({ i }: { i: Impulso }) {
   return <Selo variante={variante}>{nome}</Selo>;
 }
 
-function ImpulsoValendo({ i }: { i: Impulso }) {
+function ImpulsoValendo({ i, ajuste }: { i: Impulso; ajuste: boolean }) {
   const texto =
     i.situacao === "no_ar" && i.ate
       ? `A vaga aparece no Google para quem procura perto até ${dataCurta(i.ate)}. Os números do dia chegam na manhã seguinte.`
@@ -254,13 +263,16 @@ function ImpulsoValendo({ i }: { i: Impulso }) {
         <SeloDaSituacao i={i} />
       </div>
       {i.situacao === "no_ar" ? (
-        <NumerosDoImpulso
-          totais={i.totais}
-          porDia={i.por_dia}
-          verba={i.verba}
-          gasto={i.gasto}
-          rotuloDaVerba={rotuloDaVerba(i)}
-        />
+        <>
+          <NumerosDoImpulso
+            totais={i.totais}
+            porDia={i.por_dia}
+            verba={i.verba}
+            gasto={i.gasto}
+            rotuloDaVerba={rotuloDaVerba(i)}
+          />
+          {(ajuste || (i.ajustes?.length ?? 0) > 0) && <AjustesDoImpulso ajustes={i.ajustes ?? []} noAr />}
+        </>
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-body-sm text-ink-muted">

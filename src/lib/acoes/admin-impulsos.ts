@@ -46,6 +46,10 @@ export type ConfigImpulso = {
   auto_verba: number;
   auto_simultaneos: number;
   auto_avisar: boolean;
+  // o ajuste diário, em beta (migração 20270509120000; antes dela, não vem)
+  motor_ligado?: boolean;
+  motor_teto_clique?: number;
+  motor_raio_max?: number;
 };
 
 /** Um impulso na lista do admin (admin_impulsos). */
@@ -126,6 +130,13 @@ export async function salvarImpulsoAdmin(precos: PrecoImpulso[], config: ConfigI
     return { ok: false, erro: "Cada impulso automático leva de R$ 1 a R$ 500." };
   if (!(Number.isInteger(config.auto_simultaneos) && config.auto_simultaneos >= 1 && config.auto_simultaneos <= 50))
     return { ok: false, erro: "Ao mesmo tempo, de 1 a 50 vagas." };
+  if (config.motor_teto_clique !== undefined && !(config.motor_teto_clique >= 1 && config.motor_teto_clique <= 10))
+    return { ok: false, erro: "O teto do clique do ajuste diário vai de R$ 1 a R$ 10." };
+  if (
+    config.motor_raio_max !== undefined &&
+    !(Number.isInteger(config.motor_raio_max) && config.motor_raio_max >= 0 && config.motor_raio_max <= 30)
+  )
+    return { ok: false, erro: "O raio a mais do ajuste diário vai de 0 a 30 km." };
   const { error } = await c.rpc("admin_salvar_impulso", {
     p_precos: precos as unknown as Json,
     p_config: config as unknown as Json,

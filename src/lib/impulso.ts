@@ -487,7 +487,7 @@ function buscasDaFamilia(funcao: string, nomeDaCbo?: string) {
 }
 
 /** As cidades em volta de Goiânia: quem mora nelas também busca "vagas em Goiânia". */
-const PERTO_DE_GOIANIA = new Set([
+export const PERTO_DE_GOIANIA = new Set([
   "aparecida de goiania",
   "senador canedo",
   "trindade",

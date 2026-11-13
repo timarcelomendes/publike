@@ -9,6 +9,7 @@ import type { acessoFila } from "./filas";
 // A IA no ato de impulsionar (13/11/2026, pedido do Marcelo: "a IA olhar e ver se tem oportunidade de melhorar... isso é
 // padrão"): uma vez por impulso, ela lê a vaga e as buscas que o Publike montou (`buscasDaVaga`) e devolve o que
 // falta, o que traz gente errada e as palavras negativas do grupo. O robô (impulsos.ts) guarda e aplica.
+// No ajuste diário (impulso-ajuste.ts), ela lê as buscas de verdade de quem viu o anúncio e diz quais tirar.
 
 type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
 
@@ -72,6 +73,87 @@ function descrever(v: VagaDoImpulso, descricao: string) {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+// ------------------------------------------------------------------ o ajuste diário: as buscas de verdade
+
+const SISTEMA_BUSCAS = `Você cuida dos anúncios de vagas de emprego do Publike, um site de vagas de Goiânia e região (Goiás, Brasil), na pesquisa do Google. O anúncio aparece só para quem está perto da vaga.
+
+Para cada vaga, você recebe o que ela é e as buscas de verdade de quem viu o anúncio (quantas vezes ele apareceu e quantos clicaram). Diga quais buscas tirar: elas viram palavra negativa exata, e só aquela busca deixa de mostrar o anúncio desta vaga.
+
+Tire a busca quando quem buscou não procura esta vaga:
+- não procura emprego: curso, apostila, concurso, edital, produto, peça, preço, compra, aluguel, endereço ou telefone de empresa, notícia, significado, como fazer, programa de governo;
+- procura um trabalho bem diferente, que não toparia: outra profissão (para uma vaga de movimentador, "vaga de enfermeira"), outro nível (gerente, para uma vaga de auxiliar), outra área;
+- procura em outra cidade, longe de Goiânia e região.
+
+Não tire:
+- buscas de emprego em geral ("vagas de emprego", "emprego perto de mim", "estou procurando emprego"), com ou sem a cidade ou o bairro;
+- a função da vaga, os nomes parecidos e as funções que a pessoa toparia (para movimentador: "chapa", "carregador", "ajudante de carga");
+- jovem aprendiz, estágio, meio período, sem experiência ou primeiro emprego, se a vaga aceita.
+
+Na dúvida, não tire. Copie a busca exatamente como veio e diga o porquê em até 12 palavras. Se nenhuma precisa sair, devolva a lista vazia.`;
+
+const ESQUEMA_BUSCAS = {
+  type: "object",
+  properties: {
+    fora: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { vaga: { type: "integer" }, busca: { type: "string" }, porque: { type: "string" } },
+        required: ["vaga", "busca", "porque"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["fora"],
+  additionalProperties: false,
+};
+
+export type VagaParaJulgar = {
+  vaga: VagaDoImpulso;
+  descricao: string;
+  buscas: { busca: string; impressoes: number; cliques: number }[];
+};
+
+/**
+ * O ajuste diário: a IA lê as buscas de verdade de cada vaga da campanha (uma chamada para todas) e diz quais tirar.
+ * Devolve o que ela disse (`vaga` é a posição na lista, de 1 em diante); quem chama confere cada busca. Com erro, o
+ * erro (as buscas ficam para o dia seguinte).
+ */
+export async function julgarBuscasComIA(
+  modelo: string,
+  vagas: VagaParaJulgar[],
+): Promise<{ fora: { vaga: number; busca: string; porque: string }[]; erro?: string }> {
+  const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+  const mensagem = vagas
+    .map(
+      (x, n) =>
+        `<vaga n="${n + 1}">\n${descrever(x.vaga, x.descricao)}\nBuscas:\n${x.buscas
+          .map((b) => `- ${b.busca} (${plural(b.impressoes, "vista", "vistas")}, ${plural(b.cliques, "clique", "cliques")})`)
+          .join("\n")}\n</vaga>`,
+    )
+    .join("\n\n");
+  try {
+    const { texto, parada } = await chamarIA({
+      funcionalidade: "impulso",
+      modelo,
+      sistema: SISTEMA_BUSCAS,
+      mensagem,
+      maxTokens: 3000,
+      esquema: { nome: "buscas_do_impulso", schema: ESQUEMA_BUSCAS },
+      tempoLimite: 15_000,
+    });
+    if (parada) return { fora: [], erro: `A IA parou (${parada}).` };
+    const bruta = lerJson<{ fora?: unknown }>(texto);
+    const fora = (Array.isArray(bruta.fora) ? bruta.fora : [])
+      .map((i) => (i && typeof i === "object" ? (i as Record<string, unknown>) : {}))
+      .filter((i) => Number.isInteger(i.vaga) && typeof i.busca === "string" && typeof i.porque === "string")
+      .map((i) => ({ vaga: Number(i.vaga), busca: String(i.busca), porque: String(i.porque).slice(0, 120) }));
+    return { fora };
+  } catch (e) {
+    return { fora: [], erro: (e instanceof Error ? e.message : String(e)).slice(0, 300) };
+  }
 }
 
 /**

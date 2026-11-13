@@ -21,11 +21,14 @@ export function Reais({
   valor,
   mudar,
   min = 1,
+  passo = "1",
 }: {
   rotulo: string;
   valor: number;
   mudar: (v: number) => void;
   min?: number;
+  /** de quanto em quanto (o teto do clique anda de 10 em 10 centavos) */
+  passo?: string;
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -36,7 +39,7 @@ export function Reais({
           type="number"
           inputMode="decimal"
           min={min}
-          step="1"
+          step={passo}
           value={Number.isFinite(valor) ? valor : ""}
           onChange={(e) => mudar(Number(e.target.value))}
           className={`${classesEntrada} w-24`}
@@ -46,14 +49,26 @@ export function Reais({
   );
 }
 
-export function Inteiro({ rotulo, valor, mudar, max }: { rotulo: string; valor: number; mudar: (v: number) => void; max: number }) {
+export function Inteiro({
+  rotulo,
+  valor,
+  mudar,
+  max,
+  min = 1,
+}: {
+  rotulo: string;
+  valor: number;
+  mudar: (v: number) => void;
+  max: number;
+  min?: number;
+}) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-body-sm text-ink-muted">{rotulo}</span>
       <input
         type="number"
         inputMode="numeric"
-        min={1}
+        min={min}
         max={max}
         step="1"
         value={Number.isFinite(valor) ? valor : ""}
@@ -187,6 +202,49 @@ export function ConfigImpulsos({ precos, config }: { precos: PrecoImpulso[]; con
           art. 373-A).
         </p>
       </fieldset>
+
+      {c.motor_ligado !== undefined && (
+        <fieldset className="flex flex-col gap-4">
+          <legend className="text-label">Ajuste diário (beta)</legend>
+          <label className="flex items-start gap-2 text-body">
+            <input
+              type="checkbox"
+              checked={c.motor_ligado}
+              onChange={(e) => setC({ ...c, motor_ligado: e.target.checked })}
+              className="mt-1 size-4"
+            />
+            <span>
+              Ajustar sozinho os impulsos no ar, uma vez por dia
+              <span className="block text-body-sm text-ink-muted">
+                Toda manhã, pelos números do dia anterior: o que sobrou da verba vai para os dias que faltam, o lance
+                sobe quando perde buscas por preço e desce quando a verba acaba cedo, a IA tira as buscas que não são da
+                vaga e, com pouca busca perto, o raio cresce. O cliente vê cada mudança na página do impulso. No beta,
+                sem custo; depois vira um adicional pago.
+              </span>
+            </span>
+          </label>
+          <div className="flex flex-wrap gap-4">
+            <Reais
+              rotulo="Teto do clique"
+              valor={c.motor_teto_clique ?? 3.5}
+              mudar={(v) => setC({ ...c, motor_teto_clique: v })}
+              min={1}
+              passo="0.1"
+            />
+            <Inteiro
+              rotulo="Raio a mais, no máximo (km)"
+              valor={c.motor_raio_max ?? 10}
+              mudar={(v) => setC({ ...c, motor_raio_max: v })}
+              max={30}
+              min={0}
+            />
+          </div>
+          <p className="text-body-sm text-ink-muted">
+            O lance começa em R$ 2 por clique e nunca passa do teto. O raio cresce de 5 em 5 km, quando há menos de 30
+            vistas por dia e a verba sobra.
+          </p>
+        </fieldset>
+      )}
 
       <Botao type="submit" tamanho="sm" disabled={pendente} className="self-start">
         Salvar

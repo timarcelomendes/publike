@@ -3695,6 +3695,23 @@ export type Database = {
       };
       servidor_impulso_cancelar: { Args: { p_chave: string; p_conta: string; p_id: string }; Returns: Json };
       servidor_impulsos_para_cuidar: { Args: { p_chave: string }; Returns: Json };
+      // o ajuste diário do impulso, em beta (migração 20270509120000)
+      servidor_ajustes_para_fazer: { Args: { p_chave: string }; Returns: Json };
+      servidor_ajuste_comecou: { Args: { p_chave: string; p_tipo: string; p_id: string }; Returns: boolean };
+      servidor_ajuste_feito: {
+        Args: {
+          p_chave: string;
+          p_tipo: string;
+          p_id: string;
+          p_numeros: Json;
+          p_mudancas: Json;
+          p_raio_extra: number | null;
+          p_buscas: Json;
+          p_erro: string | null;
+        };
+        Returns: undefined;
+      };
+      admin_impulso_ajustes: { Args: Record<PropertyKey, never>; Returns: Json };
       // a campanha geral fora das buscas das funções com impulso no ar (migração 20270504120000)
       servidor_impulsos_sem_disputa: { Args: { p_chave: string }; Returns: Json };
       servidor_impulsos_sem_disputa_feita: { Args: { p_chave: string; p_assinatura: string }; Returns: undefined };

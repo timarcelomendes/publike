@@ -45,6 +45,7 @@ import {
 // (`acertarLugar`), e a campanha geral do Publike sai das buscas das funções com impulso no ar (`semDisputaComAGeral`).
 
 type Acesso = NonNullable<ReturnType<typeof acessoFila>>;
+export type AcessoDoRobo = Acesso;
 
 /** Um ponto em volta do qual o anúncio aparece (o raio em km). */
 type Lugar = { lat: number; lng: number; raio: number };
@@ -79,6 +80,11 @@ type Tarefa = {
    * 20270504120000). Na campanha de uma vaga, o lugar sai da vaga (`lugarDaVaga`).
    */
   lugar?: Lugar | null;
+  /**
+   * as buscas de verdade que o ajuste diário tirou do grupo da vaga (negativas exatas; migração 20270509120000).
+   * Sem a migração, não vem, e as negativas exatas do grupo ficam como estão.
+   */
+  excluidas?: string[] | null;
 };
 
 /** O que fazer com a campanha de um cliente (servidor_campanhas_para_cuidar). */
@@ -110,7 +116,7 @@ function paginaDaVaga(id: string) {
 }
 
 /** O dia de hoje no relógio de Brasília ("2026-11-12"). */
-function hojeEmBrasilia() {
+export function hojeEmBrasilia() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 }
 
@@ -719,7 +725,7 @@ async function palavrasFeitas(a: Acesso, t: Tarefa) {
 const volta = { inicio: 0, revisoes: 0 };
 
 /** A descrição da vaga (pública), para a IA entender o trabalho. */
-async function descricaoDaVaga(a: Acesso, id: string) {
+export async function descricaoDaVaga(a: Acesso, id: string) {
   const { data } = await a.cliente.from("anuncios").select("descricao").eq("id", id).maybeSingle();
   return typeof data?.descricao === "string" ? data.descricao : "";
 }
@@ -761,6 +767,23 @@ async function revisaoDasPalavras(a: Acesso, t: Tarefa): Promise<{ revisao: Revi
   return { revisao: nova, pronta: true };
 }
 
+/**
+ * As buscas que o grupo da vaga quer hoje (as da vaga com a revisão guardada da IA por cima), sem chamar a IA: o
+ * ajuste diário não tira nenhuma delas (a negativa exata tiraria a vaga da própria busca).
+ */
+export async function buscasDoGrupo(
+  a: Acesso,
+  t: { id: string; vaga: Tarefa["vaga"]; texto_simples: boolean },
+): Promise<string[]> {
+  if (!t.vaga) return [];
+  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_ia", { p_chave: a.chave, p_id: t.id });
+  const g = (error ? null : (data ?? null)) as Partial<RevisaoGuardada> | null;
+  const revisao: RevisaoDasPalavras | null =
+    g && !g.erro ? { acrescentar: soTextos(g.acrescentar), tirar: soTextos(g.tirar), negativas: soTextos(g.negativas) } : null;
+  const base = textoDoAnuncio(t.vaga, { simples: t.texto_simples, sinonimos: nomesDaCbo(t.vaga.cbo) }).todas;
+  return buscasComARevisao(base, revisao);
+}
+
 type LinhaDaPalavra = {
   adGroupCriterion?: {
     resourceName?: string;
@@ -777,6 +800,9 @@ type LinhaDaNegativa = { campaignCriterion?: { keyword?: { text?: string } } };
  * a palavra que o Google barrar fica de fora sem barrar as outras. Logo depois de criar (a criação leva só as
  * primeiras) e a cada medida do impulso no ar: o impulso de antes (com os nomes da CBO, quase todos "baixo volume de
  * pesquisas", e sem as buscas largas) passa a ter as de hoje.
+ * As negativas exatas são as buscas de verdade que o ajuste diário tirou (`t.excluidas`, migração 20270509120000):
+ * ficam as da lista, entram as que faltam e sai o resto (nunca uma busca que o grupo quer). Sem a lista (o banco de
+ * antes), as exatas ficam como estão.
  */
 async function acertarPalavras(
   t: Tarefa,
@@ -791,6 +817,9 @@ async function acertarPalavras(
   // tiram as buscas das outras vagas)
   const queremos = new Set(buscasComARevisao(texto(t, t.texto_simples).todas, revisao));
   const negativasDoGrupo = new Set(revisao?.negativas ?? []);
+  const excluidas = Array.isArray(t.excluidas)
+    ? new Set(t.excluidas.map((x) => x.toLowerCase().trim()).filter((x) => x && !queremos.has(x)))
+    : null;
   const [atuais, negativas] = await Promise.all([
     consultar<LinhaDaPalavra>(
       `SELECT ad_group_criterion.resource_name, ad_group_criterion.negative, ad_group_criterion.keyword.text, ` +
@@ -807,13 +836,19 @@ async function acertarPalavras(
   ]);
   const temos = new Set<string>();
   const temosNegativas = new Set<string>();
+  const temosExcluidas = new Set<string>();
   const sair: string[] = [];
   for (const l of atuais) {
     const c = l.adGroupCriterion;
     if (!c?.resourceName) continue;
     const texto = (c.keyword?.text ?? "").toLowerCase();
     const certa = c.keyword?.matchType === "BROAD";
-    if (c.negative) {
+    if (c.negative && c.keyword?.matchType === "EXACT") {
+      // a busca de verdade que o ajuste tirou: sem a lista do banco, fica como está
+      if (!excluidas) continue;
+      if (excluidas.has(texto) && !temosExcluidas.has(texto)) temosExcluidas.add(texto);
+      else sair.push(c.resourceName);
+    } else if (c.negative) {
       if (negativasDoGrupo.has(texto) && certa && !temosNegativas.has(texto)) temosNegativas.add(texto);
       else sair.push(c.resourceName);
     } else if (queremos.has(texto) && certa && !temos.has(texto)) temos.add(texto);
@@ -821,9 +856,11 @@ async function acertarPalavras(
   }
   const entrar = [...queremos].filter((p) => !temos.has(p));
   const negativasDoGrupoNovas = [...negativasDoGrupo].filter((p) => !temosNegativas.has(p));
+  const excluidasNovas = excluidas ? [...excluidas].filter((p) => !temosExcluidas.has(p)) : [];
   const temNegativa = new Set(negativas.map((n) => (n.campaignCriterion?.keyword?.text ?? "").toLowerCase()));
   const negativasNovas = FORA_DA_BUSCA.filter((n) => !temNegativa.has(n));
-  if (!entrar.length && !sair.length && !negativasNovas.length && !negativasDoGrupoNovas.length) return;
+  if (!entrar.length && !sair.length && !negativasNovas.length && !negativasDoGrupoNovas.length && !excluidasNovas.length)
+    return;
   const grupo = recurso("adGroups", grupoId, conta);
   const campanha = recurso("campaigns", campanhaId, conta);
   const r = await mutar(
@@ -834,6 +871,9 @@ async function acertarPalavras(
       })),
       ...negativasDoGrupoNovas.map((text) => ({
         adGroupCriterionOperation: { create: { adGroup: grupo, negative: true, keyword: { text, matchType: "BROAD" } } },
+      })),
+      ...excluidasNovas.map((text) => ({
+        adGroupCriterionOperation: { create: { adGroup: grupo, negative: true, keyword: { text, matchType: "EXACT" } } },
       })),
       ...negativasNovas.map((text) => ({
         campaignCriterionOperation: { create: { campaign: campanha, negative: true, keyword: { text, matchType: "BROAD" } } },

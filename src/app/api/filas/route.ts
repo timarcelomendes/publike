@@ -33,6 +33,7 @@ import { perguntarNosMatches } from "@/lib/servidor/perguntas-do-match";
 import { regrasComOTempo } from "@/lib/servidor/regras";
 import { triagemAutomatica } from "@/lib/servidor/triagem-automatica";
 import { mandarNumerosDaSemana } from "@/lib/servidor/numeros-da-semana";
+import { ajustarImpulsos } from "@/lib/servidor/impulso-ajuste";
 import { cuidarDosImpulsos } from "@/lib/servidor/impulsos";
 
 // A garantia das filas: a tarefa agendada do GitHub (.github/workflows/filas.yml) chama a cada 5 minutos,
@@ -124,6 +125,9 @@ export async function GET(request: Request) {
   // o impulso da vaga no Google Ads: criar, olhar a aprovação, medir, tirar quando a vaga fecha e encerrar (o aviso
   // de "no ar" e o relatório saem junto com os e-mails abaixo)
   const impulsos = await comTempo(() => cuidarDosImpulsos());
+  // o ajuste diário do impulso (beta): de manhã, uma vez por dia cada campanha, só no começo da volta (a IA leva
+  // segundos)
+  const ajustes = await comTempo(() => ajustarImpulsos(inicio));
   // depois da IA: ela pode ter tirado um anúncio do ar, e esse aviso sai junto. Os e-mails rodam sempre.
   const emails = await enviarEmailsPendentes(20);
   const celular = await enviarPushPendentes(50);
@@ -195,6 +199,7 @@ export async function GET(request: Request) {
       google: google.avisadas,
       indexnow: indexnow.avisados,
       impulsos: impulsos.feitos,
+      ajustes_dos_impulsos: ajustes.feitos,
       combinam: {
         vagas: combinam.vagas,
         talentos: combinam.talentos,

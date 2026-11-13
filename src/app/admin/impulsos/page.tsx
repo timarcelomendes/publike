@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EsqueletoAdmin } from "@/components/admin/esqueleto";
 import { ConfigImpulsos, PararCampanha, PararImpulso, TestarGoogleAds } from "@/components/admin/impulsos";
+import { ListaDeAjustes, type AjusteDoAdmin } from "@/components/admin/impulsos-ajustes";
 import { HistoricoDeImpulsos } from "@/components/admin/impulsos-historico";
 import {
   NOME_DA_ORIGEM,
@@ -217,6 +218,7 @@ async function Conteudo({ aba, conta }: { aba: Aba; conta: string | null }) {
       {aba === "agora" && (
         <>
           <Agora d={d} agora={agora} ligado={g.ligado} />
+          <AjustesDiarios ligado={d.config.motor_ligado} />
           <CaminhoDoAnuncio cliques={new Map(d.impulsos.map((i) => [i.id, i.totais.cliques]))} />
         </>
       )}
@@ -556,6 +558,32 @@ function ResultadoPorTipoDeVaga({ linhas }: { linhas: ResultadoPorTipo[] }) {
             </tbody>
           </table>
         </div>
+      )}
+    </Secao>
+  );
+}
+
+// o ajuste diário, em beta (src/lib/servidor/impulso-ajuste.ts): o que o robô mudou em cada manhã, campanha por campanha
+async function AjustesDiarios({ ligado }: { ligado?: boolean }) {
+  if (ligado === undefined) return null;
+  const admin = await ehAdminLocal();
+  const c = admin ? criarClienteAdmin() : await criarClienteServidor();
+  const { data, error } = await c.rpc("admin_impulso_ajustes");
+  const linhas = ((data ?? []) as unknown as AjusteDoAdmin[]).slice(0, 40);
+  const mudaram = linhas.filter((l) => l.mudancas.some((m) => m.tipo !== "nada")).length;
+  return (
+    <Secao
+      titulo="O ajuste diário (beta)"
+      descricao={
+        ligado
+          ? `Toda manhã, para cada campanha no ar, pelos números do dia anterior: a verba do dia, o lance, as buscas que não são da vaga (com a IA) e o raio. O cliente vê o mesmo na página do impulso. Nos últimos 14 dias, ${plural(mudaram, "manhã mudou", "manhãs mudaram")} alguma coisa. Liga, desliga e muda os limites em Regras.`
+          : "Desligado em Regras: os impulsos seguem com a verba, o lance, as buscas e o raio com que nasceram."
+      }
+    >
+      {error ? (
+        <p className="text-body-sm text-ink-muted">Rode a migração 20270509120000_impulso_ajuste_diario.sql para ver o ajuste.</p>
+      ) : (
+        <ListaDeAjustes linhas={linhas} />
       )}
     </Secao>
   );
