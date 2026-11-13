@@ -10,6 +10,11 @@ export const FUNCIONALIDADES_IA = [
   { id: "empresa", nome: "Triagem e copiloto", ajuda: "A triagem com IA, o copiloto e o resumo do candidato." },
   { id: "descobrir", nome: "Descobrir", ajuda: "As notas das vagas indicadas para quem procura." },
   { id: "admin", nome: "Admin", ajuda: "O resumo do painel e o agrupar empresas." },
+  {
+    id: "impulso",
+    nome: "Impulso",
+    ajuda: "Revisa as palavras-chave do anúncio de cada vaga impulsionada no Google (uma vez por impulso).",
+  },
 ] as const;
 
 export type FuncionalidadeIA = (typeof FUNCIONALIDADES_IA)[number]["id"];

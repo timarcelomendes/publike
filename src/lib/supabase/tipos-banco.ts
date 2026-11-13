@@ -3680,6 +3680,8 @@ export type Database = {
       impulsionar_sem_pagar: { Args: { p_anuncio: string; p_jeito: string }; Returns: Json };
       contar_visita_do_impulso: { Args: { p_codigo: string; p_anuncio: string; p_visitante: string }; Returns: boolean };
       contar_curtida_do_impulso: { Args: { p_codigo: string; p_visitante: string; p_anuncio: string }; Returns: boolean };
+      servidor_impulso_palavras_ia: { Args: { p_chave: string; p_id: string }; Returns: Json };
+      servidor_impulso_salvar_palavras_ia: { Args: { p_chave: string; p_id: string; p_ia: Json }; Returns: undefined };
       servidor_impulso_palavras_em: { Args: { p_chave: string; p_id: string }; Returns: string | null };
       servidor_impulso_palavras_feitas: { Args: { p_chave: string; p_id: string }; Returns: undefined };
       vagas_impulsionadas: { Args: Record<PropertyKey, never>; Returns: { anuncio_id: string; desde: string }[] };

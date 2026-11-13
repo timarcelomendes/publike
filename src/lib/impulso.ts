@@ -846,3 +846,91 @@ export function textoDoAnuncio(v: VagaDoImpulso, opcoes: { simples?: boolean; si
     caminho2: caminho(funcao) || "emprego",
   };
 }
+
+// ------------------------------------------------------------------ a revisão da IA (13/11/2026)
+
+/**
+ * O que a IA mudou nas buscas da vaga, já conferido (`limparRevisao`): as que entram, as que saem e as palavras
+ * negativas do grupo da vaga. Guardado no impulso (`privado.impulsos.palavras_ia`, migração 20270508120000): o robô
+ * aplica em cima de `buscasDaVaga` a cada conferência, sem chamar a IA de novo.
+ */
+export type RevisaoDasPalavras = { acrescentar: string[]; tirar: string[]; negativas: string[] };
+
+/** As palavras que dizem que a busca é de emprego (sem acento). */
+const INTENCAO_DE_EMPREGO =
+  /\b(vagas?|empregos?|trabalh(o|os|ar)|contrata|contratando|contratacao|oportunidades?|aprendiz|estagios?|estagiari[oa]s?|freela|freelancer|diarias?|curriculo|selecao)\b/;
+
+/**
+ * O que nunca entra numa busca do anúncio de vaga (sem acento): idade, sexo, cor, estado civil, gravidez, deficiência e
+ * aparência (Lei 9.029/1995 e CLT, art. 373-A); "jovem" só como "jovem aprendiz" (o contrato); e o nome de outros
+ * sites de vaga e de órgão público (a marca é deles).
+ */
+const NUNCA_NA_BUSCA =
+  /\b(mulher(es)?|homem|homens|masculin[oa]s?|feminin[oa]s?|mocas?|rapaz(es)?|senhoras?|maior de|menor de|\d+ anos|idade|aparencia|solteir[oa]s?|casad[oa]s?|gestantes?|gravidas?|brancos?|brancas?|negros?|negras?|pardos?|pardas?|pcd|deficiente|deficiencia|jovens|indeed|catho|infojobs|linkedin|gupy|sine|olx|bne|trabalha brasil|vagas com br|empregos com br)\b|\bjovem\b(?! aprendiz)/;
+
+/** A busca limpa como o Google aceita (a mesma regra das buscas da vaga), ou null. */
+export function limparBusca(t: string) {
+  return palavraLimpa(t);
+}
+
+/**
+ * Confere o que a IA devolveu antes de ir para o Google:
+ * - **acrescentar:** limpa; sem a palavra de emprego, é o nome de uma função e vira "vaga de …"; fora o que já está
+ *   na lista e o que a regra não deixa (`NUNCA_NA_BUSCA`); até 40.
+ * - **tirar:** só o que está na lista, e nunca as `protegidas` (a função do título); até 40.
+ * - **negativas:** de 1 a 3 palavras, sem a palavra de emprego e sem nada que esteja numa busca que fica (senão a vaga
+ *   sairia da própria busca); até 20.
+ */
+export function limparRevisao(
+  bruta: { acrescentar?: unknown; tirar?: unknown; negativas?: unknown },
+  lista: string[],
+  protegidas: string[],
+): RevisaoDasPalavras {
+  const textos = (x: unknown, campo: string) =>
+    (Array.isArray(x) ? x : [])
+      .map((i) => (typeof i === "string" ? i : i && typeof i === "object" ? (i as Record<string, unknown>)[campo] : null))
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
+  const naLista = new Map(lista.map((p) => [comparavel(p), p]));
+  const guardadas = new Set(protegidas.map(comparavel));
+
+  const tirar: string[] = [];
+  for (const t of textos(bruta.tirar, "busca")) {
+    const p = naLista.get(comparavel(t));
+    if (p && !guardadas.has(comparavel(p)) && !tirar.includes(p)) tirar.push(p);
+    if (tirar.length === 40) break;
+  }
+  const ficam = new Set(lista.filter((p) => !tirar.includes(p)).map(comparavel));
+
+  const acrescentar: string[] = [];
+  for (const t of textos(bruta.acrescentar, "busca")) {
+    const limpa = palavraLimpa(t);
+    if (!limpa || NUNCA_NA_BUSCA.test(comparavel(limpa))) continue;
+    const busca = INTENCAO_DE_EMPREGO.test(comparavel(limpa)) ? limpa : palavraLimpa(`vaga de ${limpa}`);
+    if (!busca || ficam.has(comparavel(busca)) || acrescentar.includes(busca)) continue;
+    acrescentar.push(busca);
+    ficam.add(comparavel(busca));
+    if (acrescentar.length === 40) break;
+  }
+
+  // as palavras de todas as buscas que ficam: a negativa não pode ter nenhuma delas
+  const palavrasQueFicam = new Set([...ficam].flatMap((p) => p.split(" ")));
+  const negativas: string[] = [];
+  for (const t of textos(bruta.negativas, "palavra")) {
+    const limpa = palavraLimpa(t);
+    if (!limpa) continue;
+    const c = comparavel(limpa);
+    const partes = c.split(" ");
+    if (partes.length > 3 || INTENCAO_DE_EMPREGO.test(c) || NUNCA_NA_BUSCA.test(c)) continue;
+    if (partes.some((w) => palavrasQueFicam.has(w) && !LIGACOES.has(w))) continue;
+    if (!negativas.includes(limpa)) negativas.push(limpa);
+    if (negativas.length === 20) break;
+  }
+  return { acrescentar, tirar, negativas };
+}
+
+/** As buscas da vaga com a revisão da IA por cima: sai o que ela tirou, entra o que ela pôs (até 260). */
+export function buscasComARevisao(todas: string[], revisao: RevisaoDasPalavras | null) {
+  if (!revisao) return todas;
+  const sai = new Set(revisao.tirar);
+  return [...new Set([...todas.filter((p) => !sai.has(p)), ...revisao.acrescentar])].slice(0, 260);
+}

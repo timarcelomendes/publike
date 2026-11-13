@@ -7,15 +7,18 @@ import { caminhoDaFuncao, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas
 import { caminhoDaBusca, caminhoDasRecentes, caminhoDoBairro, cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
 import { pracaDaCidade } from "@/lib/pracas";
 import {
+  buscasComARevisao,
   frasesSemDisputa,
   limparNomeDaCbo,
   sufixoDoImpulso,
   textoDoAnuncio,
+  type RevisaoDasPalavras,
   type TextoDoAnuncio,
   type VagaDoImpulso,
 } from "@/lib/impulso";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { urlDosEmails } from "./ambiente";
+import { modeloDoImpulso, revisarComIA, type RevisaoGuardada } from "./impulso-ia";
 import { estornarCobranca } from "./asaas";
 import { acessoFila } from "./filas";
 import {
@@ -712,8 +715,58 @@ async function palavrasFeitas(a: Acesso, t: Tarefa) {
   if (error && error.code !== "PGRST202") console.error(`Publike: impulso ${t.codigo}, a data das palavras não ficou:`, error.message);
 }
 
+/** A volta do robô: quando começou e quantas revisões da IA já fez (uma por volta, no começo: a IA leva segundos). */
+const volta = { inicio: 0, revisoes: 0 };
+
+/** A descrição da vaga (pública), para a IA entender o trabalho. */
+async function descricaoDaVaga(a: Acesso, id: string) {
+  const { data } = await a.cliente.from("anuncios").select("descricao").eq("id", id).maybeSingle();
+  return typeof data?.descricao === "string" ? data.descricao : "";
+}
+
+const soTextos = (x: unknown) => (Array.isArray(x) ? x.filter((s): s is string => typeof s === "string") : []);
+
+/**
+ * A revisão da IA das buscas da vaga, uma vez por impulso (migração 20270508120000; `impulso-ia.ts`):
+ * - guardada: vale a guardada (a que deu erro vale por 1 dia; depois, a IA tenta de novo);
+ * - sem guardada, com a IA ligada: a IA revisa agora (uma por volta, nos primeiros 12 segundos) e fica guardada;
+ * - sem a migração ou sem a IA: as buscas de sempre.
+ * `pronta: false`: a revisão ainda vai sair, e a próxima medida tenta de novo (sem marcar a data das palavras).
+ */
+async function revisaoDasPalavras(a: Acesso, t: Tarefa): Promise<{ revisao: RevisaoDasPalavras | null; pronta: boolean }> {
+  if (!t.vaga) return { revisao: null, pronta: true };
+  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_ia", { p_chave: a.chave, p_id: t.id });
+  if (error) return { revisao: null, pronta: true };
+  const g = (data ?? null) as Partial<RevisaoGuardada> | null;
+  const guardada: RevisaoDasPalavras | null =
+    g && !g.erro ? { acrescentar: soTextos(g.acrescentar), tirar: soTextos(g.tirar), negativas: soTextos(g.negativas) } : null;
+  const tentarDeNovo = !g || (g.erro && Date.parse(g.em ?? "") < Date.now() - 86_400_000);
+  if (!tentarDeNovo) return { revisao: guardada, pronta: true };
+  const modelo = await modeloDoImpulso(a);
+  if (!modelo) return { revisao: guardada, pronta: true };
+  if (volta.revisoes >= 1 || Date.now() - volta.inicio > 12_000) return { revisao: guardada, pronta: false };
+  volta.revisoes++;
+  const base = texto(t, t.texto_simples).todas;
+  const nova = await revisarComIA(modelo, t.vaga, await descricaoDaVaga(a, t.vaga.id), base, base.slice(0, 3));
+  const { error: e } = await a.cliente.rpc("servidor_impulso_salvar_palavras_ia", {
+    p_chave: a.chave,
+    p_id: t.id,
+    p_ia: nova as unknown as Json,
+  });
+  if (e) console.error(`Publike: impulso ${t.codigo}, a revisão da IA não ficou guardada:`, e.message);
+  if (nova.erro) {
+    console.error(`Publike: impulso ${t.codigo}, a IA não revisou as palavras:`, nova.erro);
+    return { revisao: null, pronta: true };
+  }
+  return { revisao: nova, pronta: true };
+}
+
 type LinhaDaPalavra = {
-  adGroupCriterion?: { resourceName?: string; keyword?: { text?: string; matchType?: string } };
+  adGroupCriterion?: {
+    resourceName?: string;
+    negative?: boolean;
+    keyword?: { text?: string; matchType?: string };
+  };
 };
 type LinhaDaNegativa = { campaignCriterion?: { keyword?: { text?: string } } };
 
@@ -725,16 +778,24 @@ type LinhaDaNegativa = { campaignCriterion?: { keyword?: { text?: string } } };
  * primeiras) e a cada medida do impulso no ar: o impulso de antes (com os nomes da CBO, quase todos "baixo volume de
  * pesquisas", e sem as buscas largas) passa a ter as de hoje.
  */
-async function acertarPalavras(t: Tarefa, conta: string, ids: { grupo?: string | null; campanha?: string | null } = {}) {
+async function acertarPalavras(
+  t: Tarefa,
+  conta: string,
+  ids: { grupo?: string | null; campanha?: string | null } = {},
+  revisao: RevisaoDasPalavras | null = null,
+) {
   const grupoId = ids.grupo ?? t.grupo_id;
   const campanhaId = ids.campanha ?? t.campanha_id;
   if (!t.vaga || !grupoId || !campanhaId) return;
-  const queremos = new Set(texto(t, t.texto_simples).todas);
+  // as buscas de hoje com a revisão da IA por cima; as negativas da IA ficam no grupo (na campanha do cliente, não
+  // tiram as buscas das outras vagas)
+  const queremos = new Set(buscasComARevisao(texto(t, t.texto_simples).todas, revisao));
+  const negativasDoGrupo = new Set(revisao?.negativas ?? []);
   const [atuais, negativas] = await Promise.all([
     consultar<LinhaDaPalavra>(
-      `SELECT ad_group_criterion.resource_name, ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type ` +
-        `FROM ad_group_criterion WHERE ad_group.id = ${Number(grupoId)} AND ad_group_criterion.type = 'KEYWORD' ` +
-        `AND ad_group_criterion.negative = FALSE AND ad_group_criterion.status != 'REMOVED'`,
+      `SELECT ad_group_criterion.resource_name, ad_group_criterion.negative, ad_group_criterion.keyword.text, ` +
+        `ad_group_criterion.keyword.match_type FROM ad_group_criterion WHERE ad_group.id = ${Number(grupoId)} ` +
+        `AND ad_group_criterion.type = 'KEYWORD' AND ad_group_criterion.status != 'REMOVED'`,
       conta,
     ),
     consultar<LinhaDaNegativa>(
@@ -745,18 +806,24 @@ async function acertarPalavras(t: Tarefa, conta: string, ids: { grupo?: string |
     ),
   ]);
   const temos = new Set<string>();
+  const temosNegativas = new Set<string>();
   const sair: string[] = [];
   for (const l of atuais) {
     const c = l.adGroupCriterion;
     if (!c?.resourceName) continue;
     const texto = (c.keyword?.text ?? "").toLowerCase();
-    if (queremos.has(texto) && c.keyword?.matchType === "BROAD" && !temos.has(texto)) temos.add(texto);
+    const certa = c.keyword?.matchType === "BROAD";
+    if (c.negative) {
+      if (negativasDoGrupo.has(texto) && certa && !temosNegativas.has(texto)) temosNegativas.add(texto);
+      else sair.push(c.resourceName);
+    } else if (queremos.has(texto) && certa && !temos.has(texto)) temos.add(texto);
     else sair.push(c.resourceName);
   }
   const entrar = [...queremos].filter((p) => !temos.has(p));
+  const negativasDoGrupoNovas = [...negativasDoGrupo].filter((p) => !temosNegativas.has(p));
   const temNegativa = new Set(negativas.map((n) => (n.campaignCriterion?.keyword?.text ?? "").toLowerCase()));
   const negativasNovas = FORA_DA_BUSCA.filter((n) => !temNegativa.has(n));
-  if (!entrar.length && !sair.length && !negativasNovas.length) return;
+  if (!entrar.length && !sair.length && !negativasNovas.length && !negativasDoGrupoNovas.length) return;
   const grupo = recurso("adGroups", grupoId, conta);
   const campanha = recurso("campaigns", campanhaId, conta);
   const r = await mutar(
@@ -764,6 +831,9 @@ async function acertarPalavras(t: Tarefa, conta: string, ids: { grupo?: string |
       ...sair.map((nome) => ({ adGroupCriterionOperation: { remove: nome } })),
       ...entrar.map((text) => ({
         adGroupCriterionOperation: { create: { adGroup: grupo, status: "ENABLED", keyword: { text, matchType: "BROAD" } } },
+      })),
+      ...negativasDoGrupoNovas.map((text) => ({
+        adGroupCriterionOperation: { create: { adGroup: grupo, negative: true, keyword: { text, matchType: "BROAD" } } },
       })),
       ...negativasNovas.map((text) => ({
         campaignCriterionOperation: { create: { campaign: campanha, negative: true, keyword: { text, matchType: "BROAD" } } },
@@ -937,8 +1007,9 @@ async function palavrasDepoisDeCriar(
   ids: { grupo?: string | null; campanha?: string | null },
 ) {
   try {
-    await acertarPalavras(t, conta, ids);
-    await palavrasFeitas(a, t);
+    const r = await revisaoDasPalavras(a, t);
+    await acertarPalavras(t, conta, ids, r.revisao);
+    if (r.pronta) await palavrasFeitas(a, t);
   } catch (e) {
     console.error(`Publike: impulso ${t.codigo} nasceu só com as primeiras palavras:`, e instanceof Error ? e.message : e);
   }
@@ -1045,8 +1116,9 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
     try {
       // uma vez por dia (`horaDasPalavras`); deu certo, a data fica marcada
       if (await horaDasPalavras(a, t)) {
-        await acertarPalavras(t, conta);
-        await palavrasFeitas(a, t);
+        const r = await revisaoDasPalavras(a, t);
+        await acertarPalavras(t, conta, {}, r.revisao);
+        if (r.pronta) await palavrasFeitas(a, t);
       }
     } catch (e) {
       // as palavras também ficam para a próxima medida
@@ -1237,6 +1309,8 @@ export async function cuidarDosImpulsos(): Promise<{ feitos: number; motivo?: st
   }
   const alertas: string[] = [];
   const inicio = Date.now();
+  volta.inicio = inicio;
+  volta.revisoes = 0;
   let feitos = googleAdsLigado() ? await cuidarDasCampanhas(a, alertas) : 0;
   const { data, error } = await a.cliente.rpc("servidor_impulsos_para_cuidar", { p_chave: a.chave });
   if (error) {
