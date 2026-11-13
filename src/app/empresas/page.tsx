@@ -251,6 +251,14 @@ const PERGUNTAS = [
     r: "Você escolhe ao publicar: 15, 30, 60, 90 dias, outro prazo ou sem prazo (fica até você encerrar). Contratou? Marque “Vaga preenchida”: a vaga continua no site com a marcação e quem curtiu recebe o aviso.",
   },
   {
+    p: "Já recebo os candidatos na Gupy. Posso divulgar as vagas no Publike?",
+    r: "Pode, sem trocar de sistema. Ao publicar, em “Como receber os candidatos”, escolha “No site da empresa” e cole o link da vaga na Gupy, na Inhire, na Sólides ou em outro site de vagas. A vaga aparece na busca, no mapa e nos avisos de quem mora perto, e o botão “Candidatar no site da empresa” leva cada pessoa à vaga no seu site. Uma vez por dia o Publike confere o link: se a vaga fechar lá, ela sai daqui.",
+  },
+  {
+    p: "Dá para trazer todas as vagas da Gupy de uma vez?",
+    r: `Dá. Em Painel › Vagas › “Importar da Gupy”, cole o link da página de vagas da empresa (como https://suaempresa.gupy.io), escolha as vagas e publique todas juntas, até ${comum.porDia} por dia. Cada uma sai com o botão “Candidatar no site da empresa”, e dá para editar depois.`,
+  },
+  {
     p: "O que é pago no Publike?",
     r: "Publicar, receber candidatos e conversar continuam grátis. São pagos só os recursos para quem contrata muito: Consulta de salários, Triagem com IA, Teste Prático, Entrevista em vídeo e Automações personalizadas. Cada um dá para experimentar de graça (15 dias, ou as consultas grátis no caso dos salários). O Plano Empresa junta todos, pelo número de vagas no ar, e traz também o mutirão de contratação, o convite automático e o mapa de talentos.",
   },
