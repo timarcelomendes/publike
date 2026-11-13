@@ -2,8 +2,11 @@
 -- acompanhado de que é um brinde para novos usuários.. e mostrar a funcionalidade de algum modo"). Antes: "O Publike
 -- vai impulsionar a vaga ... no Google", com o link para a lista de vagas quando eram várias. Agora o aviso diz que é
 -- presente e leva sempre à página do impulso da vaga (/painel/impulsionar/<vaga>), que mostra o anúncio como sai no
--- Google, o "Como funciona" e os números. Continua só no sino. Só muda o texto e o link do aviso em
--- admin_impulsionar_cliente (o resto é o de 20270430120000). Pode rodar de novo.
+-- Google, o "Como funciona" e os números. Continua só no sino.
+-- E a menor verba por dia (Marcelo: "menos de R$ 10,00 por dia não vale a pena"; com R$ 4 por dia, as campanhas
+-- ficaram com 0 vistas): a campanha nova do cliente precisa de ao menos R$ 10 por dia (o formulário do admin já põe os
+-- dias que cabem na verba; src/lib/impulso.ts, VERBA_MINIMA_POR_DIA). A vaga que entra na campanha que já corre soma à
+-- verba dela e não passa por isso. O resto de admin_impulsionar_cliente é o de 20270430120000. Pode rodar de novo.
 
 create or replace function public.admin_impulsionar_cliente(p_conta uuid, p_anuncios uuid[], p_dias integer,
                                                             p_verba numeric, p_avisar boolean)
@@ -55,6 +58,14 @@ begin
   else
     if p_dias is null or p_dias < 1 or p_dias > 30 then
       return jsonb_build_object('erro', 'O impulso vai de 1 a 30 dias.');
+    end if;
+    -- menos de R$ 10 por dia não vale a pena: o anúncio quase não aparece no Google
+    if round(p_verba, 2) < 10 * p_dias then
+      return jsonb_build_object('erro',
+        'Menos de R$ 10 por dia não vale a pena: o anúncio quase não aparece no Google. '
+        || case when p_verba < 10 then 'Ponha ao menos R$ 10 de verba.'
+                when p_verba < 20 then 'Com esta verba, só 1 dia.'
+                else 'Com esta verba, até ' || least(floor(p_verba / 10), 30)::integer || ' dias.' end);
     end if;
     insert into privado.impulso_campanhas (conta_id, nome, dias, verba, avisar)
     values (p_conta, left(coalesce(nullif(trim(p.nome), ''), 'Cliente'), 120), p_dias, round(p_verba, 2),

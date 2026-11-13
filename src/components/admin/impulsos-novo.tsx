@@ -8,6 +8,7 @@ import { classesEntrada } from "@/components/ui/campo";
 import { useAcao } from "@/components/ui/usar-acao";
 import { impulsionarCliente, vagasParaImpulso, type VagaParaImpulso } from "@/lib/acoes/admin-impulsos";
 import { formatarData, formatarMoeda, plural } from "@/lib/formato";
+import { diasQueCabem, VERBA_MINIMA_POR_DIA } from "@/lib/impulso";
 import { Inteiro, Reais } from "./impulsos";
 
 // Admin › Impulsos › Novo impulso (migração 20270430120000): o admin escolhe vagas de um cliente (pelo nome, pelo
@@ -144,7 +145,10 @@ export function NovoImpulso({
   const raios = [...new Set(marcadas.map((v) => v.sugestao.raio))].sort((a, b) => a - b);
   const sugestao = Math.round(sugestaoVerba * 100) / 100;
   const verba = verbaEscolhida ?? sugestao;
-  const dias = diasEscolhidos ?? (marcadas.length ? sugestaoDias : 7);
+  // os dias de partida cabem na verba com ao menos R$ 10 por dia (menos que isso não vale a pena)
+  const cabem = diasQueCabem(verba);
+  const dias = diasEscolhidos ?? Math.max(1, Math.min(marcadas.length ? sugestaoDias : 7, cabem));
+  const poucoPorDia = Boolean(cliente && !cliente.campanha) && verba < VERBA_MINIMA_POR_DIA * dias - 0.005;
 
   /** Marca ou desmarca vagas; vaga de outro cliente recomeça a escolha com ele (um cliente por vez). */
   function marcarVarias(lista: VagaParaImpulso[], sim: boolean) {
@@ -450,6 +454,26 @@ export function NovoImpulso({
                 : `Aparece na cidade de cada vaga e nas vizinhas (o raio de cada tipo vai de ${raios[0]} a ${raios.at(-1)} km).`}{" "}
               Os dias contam quando o Google aprovar o primeiro anúncio.
             </p>
+            {poucoPorDia && (
+              <p role="alert" className="text-body-sm text-danger">
+                Menos de {formatarMoeda(VERBA_MINIMA_POR_DIA)} por dia não vale a pena: o anúncio quase não aparece no
+                Google.{" "}
+                {cabem >= 1 ? (
+                  <>
+                    Com {formatarMoeda(verba)}, até {plural(cabem, "dia", "dias")}.{" "}
+                    <button
+                      type="button"
+                      className="text-terra-text underline underline-offset-2"
+                      onClick={() => setDias(cabem)}
+                    >
+                      Usar {plural(cabem, "dia", "dias")}
+                    </button>
+                  </>
+                ) : (
+                  `Ponha ao menos ${formatarMoeda(VERBA_MINIMA_POR_DIA)} de verba.`
+                )}
+              </p>
+            )}
 
             <label className="flex items-start gap-2 text-body">
               <input type="checkbox" checked={avisar} onChange={(e) => setAvisar(e.target.checked)} className="mt-1 size-4" />
@@ -463,7 +487,7 @@ export function NovoImpulso({
             </label>
 
             <div className="flex flex-wrap gap-2">
-              <Botao type="submit" variante="primario" tamanho="sm" disabled={pendente || verba < n}>
+              <Botao type="submit" variante="primario" tamanho="sm" disabled={pendente || verba < n || poucoPorDia}>
                 <Rocket aria-hidden />
                 {pendente
                   ? "Impulsionando…"

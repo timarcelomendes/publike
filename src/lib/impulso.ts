@@ -10,6 +10,17 @@ import type { Regime } from "./tipos";
 /** O utm_campaign do anúncio: a página da vaga reconhece quem chegou por ele. */
 export const CAMPANHA_DO_IMPULSO = "impulso";
 
+/**
+ * A menor verba por dia do impulso pelo admin (13/11/2026, Marcelo: "menos de R$ 10,00 por dia não vale a pena"): com
+ * R$ 4 por dia, as campanhas ficaram com 0 vistas. O banco confere de novo (admin_impulsionar_cliente).
+ */
+export const VERBA_MINIMA_POR_DIA = 10;
+
+/** Quantos dias cabem na verba com a menor verba por dia (de 1 a 30; 0 quando não dá nem 1 dia). */
+export function diasQueCabem(verba: number) {
+  return Math.min(30, Math.floor((verba + 0.005) / VERBA_MINIMA_POR_DIA));
+}
+
 /** O fim do endereço de cada anúncio (o Google põe depois da página da vaga). */
 export function sufixoDoImpulso(codigo: string) {
   return `utm_source=google&utm_medium=cpc&utm_campaign=${CAMPANHA_DO_IMPULSO}&utm_content=${codigo}`;
