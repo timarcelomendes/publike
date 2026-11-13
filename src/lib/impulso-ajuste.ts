@@ -1,11 +1,13 @@
 import { formatarMoeda } from "./formato";
 import { limparBusca, PERTO_DE_GOIANIA } from "./impulso";
+import { lanceDoRobo } from "./impulso-lance";
 
 // O ajuste diário do impulso, em beta (13/11/2026, claude/plano-impulsionar-vaga.md): as regras, sem banco e sem
 // Google, para o robô (servidor/impulso-ajuste.ts) e para o teste. Toda manhã, com o dia anterior inteiro: a verba do
 // dia, o lance, o raio e as buscas que não são da vaga. Cada mudança vem com o texto que o cliente lê.
 
-export type TipoDaMudanca = "verba" | "lance" | "raio" | "buscas" | "pausa" | "nada";
+export type TipoDaMudanca =
+  "verba" | "lance" | "raio" | "buscas" | "pausa" | "nada";
 
 export type Mudanca = {
   tipo: TipoDaMudanca;
@@ -44,7 +46,7 @@ export type Situacao = {
   perdeLance: number | null;
   /** as buscas perdidas porque a verba do dia acabou (0 a 1) */
   perdeVerba: number | null;
-  /** o jeito do lance no Google (o de hoje é TARGET_IMPRESSION_SHARE) */
+  /** o jeito do lance no Google (o do robô é TARGET_IMPRESSION_SHARE; outro foi mudado à mão) */
   estrategia: string | null;
   /** o máximo por clique agora (R$) */
   teto: number | null;
@@ -76,7 +78,9 @@ export const PASSO_DO_RAIO = 5;
 
 /** Quanto da verba do dia a campanha usou na janela (0 a 1, ou mais). */
 export function usoDaVerba(s: Situacao) {
-  return s.diasNaJanela > 0 ? s.custo / Math.max(s.orcamento * s.diasNaJanela, 0.01) : null;
+  return s.diasNaJanela > 0
+    ? s.custo / Math.max(s.orcamento * s.diasNaJanela, 0.01)
+    : null;
 }
 
 /**
@@ -97,8 +101,14 @@ export function decidirVerba(s: Situacao, podeParar: boolean): Mudanca | null {
     };
   }
   const plano = s.verba / s.dias;
-  const novo = centavos(Math.min(Math.max(restante / Math.max(s.faltam, 1), MENOR_VERBA_DO_DIA), Math.max(plano * 3, 1)));
-  if (Math.abs(novo - s.orcamento) < Math.max(0.5, s.orcamento * 0.1)) return null;
+  const novo = centavos(
+    Math.min(
+      Math.max(restante / Math.max(s.faltam, 1), MENOR_VERBA_DO_DIA),
+      Math.max(plano * 3, 1),
+    ),
+  );
+  if (Math.abs(novo - s.orcamento) < Math.max(0.5, s.orcamento * 0.1))
+    return null;
   const dias = Math.max(1, Math.round(s.faltam));
   const quando = dias === 1 ? "o último dia" : `os ${dias} dias que faltam`;
   if (novo > s.orcamento) {
@@ -129,9 +139,21 @@ export function decidirVerba(s: Situacao, podeParar: boolean): Mudanca | null {
  *   até R$ 1. Com o clique mais barato, a mesma verba rende mais cliques.
  */
 export function decidirLance(s: Situacao, r: Regras): Mudanca | null {
-  if (s.estrategia !== "TARGET_IMPRESSION_SHARE" || s.teto == null || s.diasNaJanela < 1 || s.impressoes < 20) return null;
+  // só no jeito de lance do robô: o lance mudado à mão no Google Ads fica como está
+  if (
+    !lanceDoRobo(s.estrategia) ||
+    s.teto == null ||
+    s.diasNaJanela < 1 ||
+    s.impressoes < 20
+  )
+    return null;
   const usou = usoDaVerba(s) ?? 1;
-  if (s.perdeLance != null && s.perdeLance >= 0.3 && usou < 0.8 && s.teto < r.tetoMax - 0.05) {
+  if (
+    s.perdeLance != null &&
+    s.perdeLance >= 0.3 &&
+    usou < 0.8 &&
+    s.teto < r.tetoMax - 0.05
+  ) {
     const novo = Math.min(dezCentavos(s.teto * 1.25), r.tetoMax);
     return {
       tipo: "lance",
@@ -142,7 +164,12 @@ export function decidirLance(s: Situacao, r: Regras): Mudanca | null {
     };
   }
   const cpc = s.cliques > 0 ? s.custo / s.cliques : 0;
-  if (s.perdeVerba != null && s.perdeVerba >= 0.3 && cpc >= 0.6 * s.teto && s.teto > MENOR_TETO + 0.05) {
+  if (
+    s.perdeVerba != null &&
+    s.perdeVerba >= 0.3 &&
+    cpc >= 0.6 * s.teto &&
+    s.teto > MENOR_TETO + 0.05
+  ) {
     const novo = Math.max(dezCentavos(s.teto * 0.8), MENOR_TETO);
     return {
       tipo: "lance",
@@ -159,15 +186,28 @@ export function decidirLance(s: Situacao, r: Regras): Mudanca | null {
  * O raio: com 2 dias inteiros de pouca busca perto da vaga (menos de 30 vistas por dia) e a verba sobrando (menos da
  * metade usada), sem perder por lance (aí o caso é o lance), 5 km a mais, até o máximo das Regras e 65 km.
  */
-export function decidirRaio(s: Situacao, r: Regras, varios = false): Mudanca | null {
-  if (s.diasNaJanela < 2 || s.raioExtra + PASSO_DO_RAIO > r.raioMax) return null;
+export function decidirRaio(
+  s: Situacao,
+  r: Regras,
+  varios = false,
+): Mudanca | null {
+  if (s.diasNaJanela < 2 || s.raioExtra + PASSO_DO_RAIO > r.raioMax)
+    return null;
   const porDia = s.impressoes / s.diasNaJanela;
   const usou = usoDaVerba(s) ?? 1;
-  if (porDia >= 30 || usou >= 0.5 || (s.perdeLance != null && s.perdeLance >= 0.3)) return null;
+  if (
+    porDia >= 30 ||
+    usou >= 0.5 ||
+    (s.perdeLance != null && s.perdeLance >= 0.3)
+  )
+    return null;
   const de = Math.min(s.raio + s.raioExtra, 65);
   const para = Math.min(s.raio + s.raioExtra + PASSO_DO_RAIO, 65);
   if (para <= de) return null;
-  const vistas = porDia < 1 ? "menos de 1 vista por dia" : `${Math.round(porDia)} ${Math.round(porDia) === 1 ? "vista" : "vistas"} por dia`;
+  const vistas =
+    porDia < 1
+      ? "menos de 1 vista por dia"
+      : `${Math.round(porDia)} ${Math.round(porDia) === 1 ? "vista" : "vistas"} por dia`;
   return {
     tipo: "raio",
     antes: de,
@@ -185,10 +225,12 @@ export function nadaAMudar(s: Situacao): Mudanca {
     return {
       tipo: "nada",
       texto: "Nada a mudar hoje.",
-      porque: "O anúncio entrou no ar ontem: o primeiro dia ainda é curto para mexer no lance e no raio.",
+      porque:
+        "O anúncio entrou no ar ontem: o primeiro dia ainda é curto para mexer no lance e no raio.",
     };
   }
-  const dias = s.diasNaJanela === 1 ? "ontem" : `nos últimos ${s.diasNaJanela} dias`;
+  const dias =
+    s.diasNaJanela === 1 ? "ontem" : `nos últimos ${s.diasNaJanela} dias`;
   const numeros = `${s.impressoes} ${s.impressoes === 1 ? "vista" : "vistas"} e ${s.cliques} ${s.cliques === 1 ? "clique" : "cliques"} ${dias}`;
   return {
     tipo: "nada",
@@ -225,7 +267,9 @@ const DE_QUALQUER_EMPREGO = new Set(
  */
 export function buscaDeQualquerEmprego(busca: string, lugares: string[]) {
   const doLugar = new Set(
-    [...lugares, ...PERTO_DE_GOIANIA, "goiania"].flatMap((l) => comparar(l).split(" ")).filter((p) => p.length > 1),
+    [...lugares, ...PERTO_DE_GOIANIA, "goiania"]
+      .flatMap((l) => comparar(l).split(" "))
+      .filter((p) => p.length > 1),
   );
   const resto = comparar(busca)
     .split(" ")
@@ -252,16 +296,24 @@ export type BuscaReal = { busca: string; impressoes: number; cliques: number };
  */
 export function buscasParaJulgar(
   buscas: BuscaReal[],
-  o: { julgadas: string[]; daVaga: Iterable<string>; lugares: string[]; limite?: number },
+  o: {
+    julgadas: string[];
+    daVaga: Iterable<string>;
+    lugares: string[];
+    limite?: number;
+  },
 ): BuscaReal[] {
   const ja = new Set([...o.julgadas, ...o.daVaga].map(comparar));
   const vistas = new Set<string>();
   const out: BuscaReal[] = [];
-  for (const b of [...buscas].sort((x, y) => y.impressoes - x.impressoes || y.cliques - x.cliques)) {
+  for (const b of [...buscas].sort(
+    (x, y) => y.impressoes - x.impressoes || y.cliques - x.cliques,
+  )) {
     const limpa = buscaComoNegativa(b.busca);
     if (!limpa) continue;
     const c = comparar(limpa);
-    if (ja.has(c) || vistas.has(c) || buscaDeQualquerEmprego(limpa, o.lugares)) continue;
+    if (ja.has(c) || vistas.has(c) || buscaDeQualquerEmprego(limpa, o.lugares))
+      continue;
     vistas.add(c);
     out.push({ ...b, busca: limpa });
     if (out.length >= (o.limite ?? 40)) break;
@@ -270,10 +322,13 @@ export function buscasParaJulgar(
 }
 
 /** O texto das buscas tiradas de uma vaga: as 2 primeiras entre aspas e quantas mais. */
-export function textoDasBuscas(tiradas: { busca: string; porque: string }[]): Mudanca["texto"] {
+export function textoDasBuscas(
+  tiradas: { busca: string; porque: string }[],
+): Mudanca["texto"] {
   const n = tiradas.length;
   const nomes = tiradas.slice(0, 2).map((t) => `“${t.busca}”`);
-  const lista = n <= 2 ? nomes.join(" e ") : `${nomes.join(", ")} e mais ${n - 2}`;
+  const lista =
+    n <= 2 ? nomes.join(" e ") : `${nomes.join(", ")} e mais ${n - 2}`;
   return n === 1
     ? `Tirou 1 busca que não é desta vaga: ${lista}.`
     : `Tirou ${n} buscas que não são desta vaga: ${lista}.`;

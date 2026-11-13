@@ -4,8 +4,17 @@ import { randomUUID } from "node:crypto";
 import { ocupacao } from "@/lib/cbo";
 import { SITE_URL } from "@/lib/config";
 import { nomeDoBairro } from "@/lib/formato";
-import { caminhoDaFuncao, funcaoDaListaPeloCbo } from "@/lib/funcoes-das-paginas";
-import { caminhoDaBusca, caminhoDasRecentes, caminhoDoBairro, cidadeDoSlug, slugDaCidade } from "@/lib/paginas-busca";
+import {
+  caminhoDaFuncao,
+  funcaoDaListaPeloCbo,
+} from "@/lib/funcoes-das-paginas";
+import {
+  caminhoDaBusca,
+  caminhoDasRecentes,
+  caminhoDoBairro,
+  cidadeDoSlug,
+  slugDaCidade,
+} from "@/lib/paginas-busca";
 import { pracaDaCidade } from "@/lib/pracas";
 import {
   buscasComARevisao,
@@ -17,9 +26,19 @@ import {
   type TextoDoAnuncio,
   type VagaDoImpulso,
 } from "@/lib/impulso";
+import {
+  gruposSemLance,
+  tetoEmMicros,
+  lanceDoRobo,
+  usaLanceDoGrupo,
+} from "@/lib/impulso-lance";
 import type { Json } from "@/lib/supabase/tipos-banco";
 import { urlDosEmails } from "./ambiente";
-import { modeloDoImpulso, revisarComIA, type RevisaoGuardada } from "./impulso-ia";
+import {
+  modeloDoImpulso,
+  revisarComIA,
+  type RevisaoGuardada,
+} from "./impulso-ia";
 import { estornarCobranca } from "./asaas";
 import { acessoFila } from "./filas";
 import {
@@ -58,7 +77,14 @@ type Tarefa = {
   origem: "compra" | "credito" | "cortesia" | "admin";
   /** o automático do Publike (migração 20270430120000; antes dela, não vem) */
   automatico?: boolean;
-  acao: "criar" | "olhar" | "pausar" | "encerrar" | "remover" | "estornar" | "medir";
+  acao:
+    | "criar"
+    | "olhar"
+    | "pausar"
+    | "encerrar"
+    | "remover"
+    | "estornar"
+    | "medir";
   dias: number;
   verba: number;
   campanha_id: string | null;
@@ -70,10 +96,22 @@ type Tarefa = {
   sandbox: boolean;
   ate: string | null;
   medir_desde: string | null;
-  vaga: (VagaDoImpulso & { lat: number | null; lng: number | null; cbo: string | null; raio: number }) | null;
+  vaga:
+    | (VagaDoImpulso & {
+        lat: number | null;
+        lng: number | null;
+        cbo: string | null;
+        raio: number;
+      })
+    | null;
   compra: { asaas_id: string | null; sandbox: boolean; valor: number } | null;
   /** a campanha do cliente em que a vaga é um grupo (migração 20270430120000); null no impulso de uma vaga só */
-  campanha_cliente: { id: string; codigo: string; campanha_id: string | null; conta_google: string | null } | null;
+  campanha_cliente: {
+    id: string;
+    codigo: string;
+    campanha_id: string | null;
+    conta_google: string | null;
+  } | null;
   /** o lugar da vaga que a campanha do cliente ainda não tem: o grupo acrescenta */
   novo_lugar: Lugar | null;
   /**
@@ -118,7 +156,9 @@ function paginaDaVaga(id: string) {
 
 /** O dia de hoje no relógio de Brasília ("2026-11-12"). */
 export function hojeEmBrasilia() {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  });
 }
 
 function operacoesDoAnuncio(grupo: string, url: string, t: TextoDoAnuncio) {
@@ -165,10 +205,18 @@ function operacaoDoLugar(campanha: string, l: Lugar) {
  * erro: a campanha sem lugar apareceria no Brasil inteiro.
  */
 function lugarDaVaga(v: NonNullable<Tarefa["vaga"]>): Lugar {
-  if (v.lat != null && v.lng != null) return { lat: v.lat, lng: v.lng, raio: v.raio };
+  if (v.lat != null && v.lng != null)
+    return { lat: v.lat, lng: v.lng, raio: v.raio };
   const praca = pracaDaCidade(v.cidade);
-  if (praca) return { lat: praca.centro.lat, lng: praca.centro.lng, raio: Math.max(v.raio, 30) };
-  throw new Error(`A vaga "${v.titulo}" não tem o lugar no mapa: sem ele, o anúncio apareceria no Brasil inteiro.`);
+  if (praca)
+    return {
+      lat: praca.centro.lat,
+      lng: praca.centro.lng,
+      raio: Math.max(v.raio, 30),
+    };
+  throw new Error(
+    `A vaga "${v.titulo}" não tem o lugar no mapa: sem ele, o anúncio apareceria no Brasil inteiro.`,
+  );
 }
 
 /**
@@ -194,51 +242,113 @@ function fimNoGoogle(ate: string) {
   return `${new Date(ate).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })} 23:59:59`;
 }
 
+type LinhaDoGrupo = {
+  campaign?: { endDateTime?: string; biddingStrategyType?: string };
+  adGroup?: { resourceName?: string; cpcBidMicros?: string | number };
+};
+
 /**
- * Na medição, a campanha igual ao banco: a de antes (no "máximo de cliques") passa para o lance de agora (`lance`), e
- * o fim no Google fica o do banco (13/11/2026: o prazo estendido no banco não chegava ao Google, e a campanha parava
- * no fim velho). Um mutate só, e só quando algo mudou.
+ * Na medição, a campanha igual ao banco: o fim no Google fica o do banco (13/11/2026: o prazo estendido no banco não
+ * chegava ao Google, e a campanha parava no fim velho). O jeito do lance fica como está no Google: quem muda à mão no
+ * Google Ads ("Maximizar cliques", CPC manual) não é desfeito (13/11/2026: a medida trocava "Maximizar cliques" de
+ * volta para a parcela de impressões). No CPC manual, o grupo sem lance ganha o teto do clique das Regras (o Google
+ * põe R$ 0,01 no grupo criado sem lance, e no CPC manual é esse o lance de cada clique). Uma consulta só; o mutate, só
+ * quando algo mudou.
  */
-async function acertarCampanha(campanhaId: string, conta: string, ate: string | null) {
-  const [linha] = await consultar<{ campaign?: { biddingStrategyType?: string; endDateTime?: string } }>(
-    `SELECT campaign.bidding_strategy_type, campaign.end_date_time FROM campaign WHERE campaign.id = ${Number(campanhaId)}`,
+async function acertarCampanha(
+  campanhaId: string,
+  conta: string,
+  ate: string | null,
+) {
+  const id = Number(campanhaId);
+  const linhas = await consultar<LinhaDoGrupo>(
+    `SELECT campaign.end_date_time, campaign.bidding_strategy_type, ad_group.resource_name, ad_group.cpc_bid_micros ` +
+      `FROM ad_group WHERE campaign.id = ${id} AND ad_group.status != 'REMOVED'`,
     conta,
   );
-  const mascara: string[] = [];
-  const update: Record<string, unknown> = { resourceName: recurso("campaigns", campanhaId, conta) };
-  if (linha?.campaign?.biddingStrategyType === "TARGET_SPEND") {
-    mascara.push(
-      "targetImpressionShare.location",
-      "targetImpressionShare.locationFractionMicros",
-      "targetImpressionShare.cpcBidCeilingMicros",
-    );
-    Object.assign(update, lance());
-  }
+  // sem grupo (todos fora), o fim vem da campanha
+  const campanha = linhas.length
+    ? linhas[0].campaign
+    : (
+        await consultar<{
+          campaign?: { endDateTime?: string; biddingStrategyType?: string };
+        }>(
+          `SELECT campaign.end_date_time, campaign.bidding_strategy_type FROM campaign WHERE campaign.id = ${id}`,
+          conta,
+        )
+      )[0]?.campaign;
+  const fimAtual = campanha?.endDateTime;
   if (ate && Date.parse(ate) > Date.now()) {
     const fim = fimNoGoogle(ate);
-    if (linha?.campaign && linha.campaign.endDateTime !== fim) {
-      mascara.push("endDateTime");
-      update.endDateTime = fim;
+    if (fimAtual !== undefined && fimAtual !== fim) {
+      await mutar(
+        [
+          {
+            campaignOperation: {
+              updateMask: "endDateTime",
+              update: {
+                resourceName: recurso("campaigns", campanhaId, conta),
+                endDateTime: fim,
+              },
+            },
+          },
+        ],
+        conta,
+      );
     }
   }
-  if (!mascara.length) return;
-  await mutar([{ campaignOperation: { updateMask: mascara.join(","), update } }], conta);
+  if (!usaLanceDoGrupo(campanha?.biddingStrategyType)) return;
+  const semLance = gruposSemLance(
+    linhas
+      .filter((l) => l.adGroup?.resourceName)
+      .map((l) => ({
+        nome: l.adGroup!.resourceName!,
+        micros:
+          l.adGroup!.cpcBidMicros == null
+            ? null
+            : Number(l.adGroup!.cpcBidMicros),
+      })),
+    volta.teto,
+  );
+  if (!semLance.length) return;
+  await mutar(
+    semLance.map((g) => ({
+      adGroupOperation: {
+        updateMask: "cpcBidMicros",
+        update: { resourceName: g.nome, cpcBidMicros: String(g.novo) },
+      },
+    })),
+    conta,
+  );
+  console.info(
+    `Publike: ${semLance.length} grupo(s) da campanha ${campanhaId} passaram a ter R$ ${volta.teto.toFixed(2)} de lance (estavam sem lance).`,
+  );
 }
 
 type TetoDoImpulso = {
   teto?: number;
-  campanhas?: { tipo: "impulso" | "cliente"; id: string; codigo: string; campanha_id: string; conta_google: string | null }[];
+  campanhas?: {
+    tipo: "impulso" | "cliente";
+    id: string;
+    codigo: string;
+    campanha_id: string;
+    conta_google: string | null;
+  }[];
 };
 
 /**
  * O teto do clique das Regras (migração 20270512120000): fica guardado para o impulso que nasce nesta volta e, quando
- * mudou, vai para as campanhas no ar que ainda não o receberam (até 20 por volta). O erro não segura o robô: a
- * campanha fica para a volta seguinte. Sem a migração, R$ 2.
+ * mudou, vai para as campanhas no ar que ainda não o receberam (até 20 por volta). Só a campanha no jeito de lance do
+ * robô recebe; a que teve o lance mudado à mão no Google Ads fica como está (e conta como feita, para não voltar a cada
+ * volta). O erro não segura o robô: a campanha fica para a volta seguinte. Sem a migração, R$ 2.
  */
 async function tetoDasRegras(a: Acesso) {
-  const { data, error } = await a.cliente.rpc("servidor_teto_do_impulso", { p_chave: a.chave });
+  const { data, error } = await a.cliente.rpc("servidor_teto_do_impulso", {
+    p_chave: a.chave,
+  });
   if (error) {
-    if (error.code !== "PGRST202") console.error("Publike: falha ao ler o teto do clique:", error.message);
+    if (error.code !== "PGRST202")
+      console.error("Publike: falha ao ler o teto do clique:", error.message);
     volta.teto = TETO_DO_CLIQUE;
     return;
   }
@@ -247,24 +357,48 @@ async function tetoDasRegras(a: Acesso) {
   for (const k of d.campanhas ?? []) {
     const conta = k.conta_google || contaDeAnuncios();
     try {
-      await mutar(
-        [
-          {
-            campaignOperation: {
-              updateMask: "targetImpressionShare.cpcBidCeilingMicros",
-              update: {
-                resourceName: recurso("campaigns", k.campanha_id, conta),
-                targetImpressionShare: { cpcBidCeilingMicros: String(Math.round(volta.teto * 1_000_000)) },
-              },
-            },
-          },
-        ],
+      const [linha] = await consultar<{
+        campaign?: { biddingStrategyType?: string };
+      }>(
+        `SELECT campaign.bidding_strategy_type FROM campaign WHERE campaign.id = ${Number(k.campanha_id)}`,
         conta,
       );
-      await a.cliente.rpc("servidor_teto_aplicado", { p_chave: a.chave, p_tipo: k.tipo, p_id: k.id });
-      console.info(`Publike: o impulso ${k.codigo} passou a pagar até R$ ${volta.teto.toFixed(2)} por clique.`);
+      const estrategia = linha?.campaign?.biddingStrategyType;
+      if (lanceDoRobo(estrategia)) {
+        await mutar(
+          [
+            {
+              campaignOperation: {
+                updateMask: "targetImpressionShare.cpcBidCeilingMicros",
+                update: {
+                  resourceName: recurso("campaigns", k.campanha_id, conta),
+                  targetImpressionShare: {
+                    cpcBidCeilingMicros: String(tetoEmMicros(volta.teto)),
+                  },
+                },
+              },
+            },
+          ],
+          conta,
+        );
+        console.info(
+          `Publike: o impulso ${k.codigo} passou a pagar até R$ ${volta.teto.toFixed(2)} por clique.`,
+        );
+      } else {
+        console.info(
+          `Publike: o lance do impulso ${k.codigo} foi mudado à mão (${estrategia ?? "sem campanha"}); o teto das Regras não mexe nele.`,
+        );
+      }
+      await a.cliente.rpc("servidor_teto_aplicado", {
+        p_chave: a.chave,
+        p_tipo: k.tipo,
+        p_id: k.id,
+      });
     } catch (e) {
-      console.error(`Publike: o teto do impulso ${k.codigo} não mudou:`, e instanceof Error ? e.message : e);
+      console.error(
+        `Publike: o teto do impulso ${k.codigo} não mudou:`,
+        e instanceof Error ? e.message : e,
+      );
     }
   }
 }
@@ -274,7 +408,10 @@ type LinhaDoLugar = {
     resourceName?: string;
     status?: string;
     proximity?: {
-      geoPoint?: { latitudeInMicroDegrees?: number | string; longitudeInMicroDegrees?: number | string };
+      geoPoint?: {
+        latitudeInMicroDegrees?: number | string;
+        longitudeInMicroDegrees?: number | string;
+      };
       radius?: number | string;
       radiusUnits?: string;
     };
@@ -307,18 +444,27 @@ async function acertarLugar(t: Tarefa, conta: string) {
   const lng = Math.round(alvo.lng * 1_000_000);
   const pontos = linhas
     .map((l) => l.campaignCriterion)
-    .filter((c) => c?.resourceName && c.status !== "REMOVED" && c.proximity?.geoPoint)
+    .filter(
+      (c) => c?.resourceName && c.status !== "REMOVED" && c.proximity?.geoPoint,
+    )
     .map((c) => ({
       nome: c!.resourceName!,
       lat: Number(c!.proximity!.geoPoint!.latitudeInMicroDegrees ?? 0),
       lng: Number(c!.proximity!.geoPoint!.longitudeInMicroDegrees ?? 0),
       // o Google guarda na unidade em que o raio entrou (o robô sempre usa km)
-      raio: Number(c!.proximity!.radius ?? 0) * (c!.proximity!.radiusUnits === "MILES" ? 1.609344 : 1),
+      raio:
+        Number(c!.proximity!.radius ?? 0) *
+        (c!.proximity!.radiusUnits === "MILES" ? 1.609344 : 1),
     }));
-  const perto = (p: { lat: number; lng: number }) => Math.abs(p.lat - lat) <= MESMO_PONTO && Math.abs(p.lng - lng) <= MESMO_PONTO;
+  const perto = (p: { lat: number; lng: number }) =>
+    Math.abs(p.lat - lat) <= MESMO_PONTO &&
+    Math.abs(p.lng - lng) <= MESMO_PONTO;
   // na campanha de uma vaga, o lugar único pode estar em outro ponto (a vaga mudou de endereço)
-  const velho = pontos.find(perto) ?? (!t.campanha_cliente && pontos.length === 1 ? pontos[0] : undefined);
-  if (!velho || (perto(velho) && Math.abs(velho.raio - alvo.raio) < 0.05)) return;
+  const velho =
+    pontos.find(perto) ??
+    (!t.campanha_cliente && pontos.length === 1 ? pontos[0] : undefined);
+  if (!velho || (perto(velho) && Math.abs(velho.raio - alvo.raio) < 0.05))
+    return;
   await mutar(
     [
       { campaignCriterionOperation: { remove: velho.nome } },
@@ -355,21 +501,39 @@ type DadosSemDisputa = {
  * hora (a lista criada depois, ou mexida à mão). O erro não segura o robô: fica no registro e volta a tentar em 1 hora.
  */
 async function semDisputaComAGeral(a: Acesso) {
-  const { data, error } = await a.cliente.rpc("servidor_impulsos_sem_disputa", { p_chave: a.chave });
+  const { data, error } = await a.cliente.rpc("servidor_impulsos_sem_disputa", {
+    p_chave: a.chave,
+  });
   if (error) {
     // sem a migração ainda: nada a fazer
-    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as vagas com impulso no ar:", error.message);
+    if (error.code !== "PGRST202")
+      console.error(
+        "Publike: falha ao ler as vagas com impulso no ar:",
+        error.message,
+      );
     return;
   }
   const d = data as unknown as DadosSemDisputa | null;
   if (!d) return;
-  if (d.feita === d.assinatura && d.feita_em && Date.parse(d.feita_em) > Date.now() - 3_600_000) return;
+  if (
+    d.feita === d.assinatura &&
+    d.feita_em &&
+    Date.parse(d.feita_em) > Date.now() - 3_600_000
+  )
+    return;
   try {
-    const queremos = new Set(d.vagas.flatMap((v) => frasesSemDisputa(v.titulo, sinonimosDaCbo(v.cbo))));
-    const gestora = (process.env.GOOGLE_ADS_CONTA_GESTORA || "").replace(/\D/g, "");
+    const queremos = new Set(
+      d.vagas.flatMap((v) => frasesSemDisputa(v.titulo, sinonimosDaCbo(v.cbo))),
+    );
+    const gestora = (process.env.GOOGLE_ADS_CONTA_GESTORA || "").replace(
+      /\D/g,
+      "",
+    );
     const contas = (await contasAcessiveis()).filter((c) => c !== gestora);
     for (const conta of contas) {
-      let listas: { sharedSet?: { resourceName?: string; id?: string | number } }[];
+      let listas: {
+        sharedSet?: { resourceName?: string; id?: string | number };
+      }[];
       try {
         listas = await consultar(
           `SELECT shared_set.resource_name, shared_set.id FROM shared_set WHERE shared_set.type = 'NEGATIVE_KEYWORDS' ` +
@@ -382,7 +546,12 @@ async function semDisputaComAGeral(a: Acesso) {
       }
       for (const l of listas) {
         if (!l.sharedSet?.resourceName || l.sharedSet.id == null) continue;
-        const atuais = await consultar<{ sharedCriterion?: { resourceName?: string; keyword?: { text?: string } } }>(
+        const atuais = await consultar<{
+          sharedCriterion?: {
+            resourceName?: string;
+            keyword?: { text?: string };
+          };
+        }>(
           `SELECT shared_criterion.resource_name, shared_criterion.keyword.text FROM shared_criterion ` +
             `WHERE shared_set.id = ${Number(l.sharedSet.id)}`,
           conta,
@@ -400,22 +569,35 @@ async function semDisputaComAGeral(a: Acesso) {
         if (!entrar.length && !sair.length) continue;
         await mutar(
           [
-            ...sair.map((nome) => ({ sharedCriterionOperation: { remove: nome } })),
+            ...sair.map((nome) => ({
+              sharedCriterionOperation: { remove: nome },
+            })),
             ...entrar.map((text) => ({
               sharedCriterionOperation: {
-                create: { sharedSet: l.sharedSet!.resourceName, keyword: { text, matchType: "PHRASE" } },
+                create: {
+                  sharedSet: l.sharedSet!.resourceName,
+                  keyword: { text, matchType: "PHRASE" },
+                },
               },
             })),
           ],
           conta,
         );
-        console.info(`Publike: a lista "${LISTA_SEM_DISPUTA}" (conta ${conta}): ${entrar.length} entraram, ${sair.length} saíram.`);
+        console.info(
+          `Publike: a lista "${LISTA_SEM_DISPUTA}" (conta ${conta}): ${entrar.length} entraram, ${sair.length} saíram.`,
+        );
       }
     }
   } catch (e) {
-    console.error(`Publike: a lista "${LISTA_SEM_DISPUTA}" não mudou:`, e instanceof Error ? e.message : e);
+    console.error(
+      `Publike: a lista "${LISTA_SEM_DISPUTA}" não mudou:`,
+      e instanceof Error ? e.message : e,
+    );
   }
-  await a.cliente.rpc("servidor_impulsos_sem_disputa_feita", { p_chave: a.chave, p_assinatura: d.assinatura });
+  await a.cliente.rpc("servidor_impulsos_sem_disputa_feita", {
+    p_chave: a.chave,
+    p_assinatura: d.assinatura,
+  });
 }
 
 /**
@@ -456,8 +638,17 @@ const FORA_DA_BUSCA = [
 ];
 
 /** O orçamento, a campanha, a língua e os lugares (com os nomes provisórios -1 e -2, para o mesmo mutate). */
-function operacoesDaBaseDaCampanha(o: { codigo: string; nome: string; porDia: number; lugares: Lugar[]; conta: string }) {
-  if (!o.lugares.length) throw new Error("Nenhum lugar para a campanha: sem ele, o anúncio apareceria no Brasil inteiro.");
+function operacoesDaBaseDaCampanha(o: {
+  codigo: string;
+  nome: string;
+  porDia: number;
+  lugares: Lugar[];
+  conta: string;
+}) {
+  if (!o.lugares.length)
+    throw new Error(
+      "Nenhum lugar para a campanha: sem ele, o anúncio apareceria no Brasil inteiro.",
+    );
   const orcamento = recurso("campaignBudgets", -1, o.conta);
   const campanha = recurso("campaigns", -2, o.conta);
   const ops: unknown[] = [
@@ -489,17 +680,34 @@ function operacoesDaBaseDaCampanha(o: { codigo: string; nome: string; porDia: nu
             targetPartnerSearchNetwork: false,
           },
           // só quem está no lugar (não quem só se interessa por ele)
-          geoTargetTypeSetting: { positiveGeoTargetType: "PRESENCE", negativeGeoTargetType: "PRESENCE" },
+          geoTargetTypeSetting: {
+            positiveGeoTargetType: "PRESENCE",
+            negativeGeoTargetType: "PRESENCE",
+          },
           finalUrlSuffix: sufixoDoImpulso(o.codigo),
-          containsEuPoliticalAdvertising: "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+          containsEuPoliticalAdvertising:
+            "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
         },
       },
     },
-    { campaignCriterionOperation: { create: { campaign: campanha, language: { languageConstant: PORTUGUES } } } },
+    {
+      campaignCriterionOperation: {
+        create: {
+          campaign: campanha,
+          language: { languageConstant: PORTUGUES },
+        },
+      },
+    },
     ...o.lugares.map((l) => operacaoDoLugar(campanha, l)),
     // com a palavra ampla, fora quem procura curso, receita ou concurso (não é vaga)
     ...FORA_DA_BUSCA.map((text) => ({
-      campaignCriterionOperation: { create: { campaign: campanha, negative: true, keyword: { text, matchType: "BROAD" } } },
+      campaignCriterionOperation: {
+        create: {
+          campaign: campanha,
+          negative: true,
+          keyword: { text, matchType: "BROAD" },
+        },
+      },
     })),
   ];
   return { ops, campanha };
@@ -535,7 +743,13 @@ function operacoesDoGrupo(o: {
     ops.push({
       // ampla: com a frase exata, 2 de cada 3 palavras ficavam "baixo volume de pesquisas" e as campanhas não apareciam
       // (12/11/2026: 0 impressões em 4 horas). A campanha geral da Publike, que funciona, usa a ampla.
-      adGroupCriterionOperation: { create: { adGroup: o.grupo, status: "ENABLED", keyword: { text, matchType: "BROAD" } } },
+      adGroupCriterionOperation: {
+        create: {
+          adGroup: o.grupo,
+          status: "ENABLED",
+          keyword: { text, matchType: "BROAD" },
+        },
+      },
     });
   }
   ops.push(operacoesDoAnuncio(o.grupo, o.url, o.texto));
@@ -649,7 +863,13 @@ function sitelinksQueCabem(lista: (Sitelink | null)[]) {
   const vistos = new Set<string>();
   return lista
     .filter((x): x is Sitelink => {
-      if (!x || x.texto.length > 25 || x.linha1.length > 35 || x.linha2.length > 35) return false;
+      if (
+        !x ||
+        x.texto.length > 25 ||
+        x.linha1.length > 35 ||
+        x.linha2.length > 35
+      )
+        return false;
       if (vistos.has(x.url)) return false;
       vistos.add(x.url);
       return true;
@@ -670,7 +890,8 @@ function sitelinksDaCampanha(k: TarefaDaCampanha): Sitelink[] {
   return sitelinksQueCabem([
     k.conta_tipo !== "pessoa"
       ? {
-          texto: daEmpresa.length <= 25 ? daEmpresa : "Mais vagas desta empresa",
+          texto:
+            daEmpresa.length <= 25 ? daEmpresa : "Mais vagas desta empresa",
           linha1: "Todas as vagas abertas dela",
           linha2: "Fale direto com quem contrata",
           url: `${base}/perfil/${k.conta_id}/vagas`,
@@ -711,7 +932,12 @@ function sitelinksDaCampanha(k: TarefaDaCampanha): Sitelink[] {
  * Põe os sitelinks na campanha, depois de ela nascer e à parte: se o Google recusar algum, o impulso segue sem eles
  * (o anúncio roda do mesmo jeito; só a "qualidade" fica mais baixa).
  */
-async function porSitelinks(links: Sitelink[], codigo: string, campanhaId: string, conta: string) {
+async function porSitelinks(
+  links: Sitelink[],
+  codigo: string,
+  campanhaId: string,
+  conta: string,
+) {
   if (!links.length) return;
   const campanha = recurso("campaigns", campanhaId, conta);
   const ops: unknown[] = [];
@@ -722,26 +948,45 @@ async function porSitelinks(links: Sitelink[], codigo: string, campanhaId: strin
         create: {
           resourceName: asset,
           finalUrls: [l.url],
-          sitelinkAsset: { linkText: l.texto, description1: l.linha1, description2: l.linha2 },
+          sitelinkAsset: {
+            linkText: l.texto,
+            description1: l.linha1,
+            description2: l.linha2,
+          },
         },
       },
     });
-    ops.push({ campaignAssetOperation: { create: { campaign: campanha, asset, fieldType: "SITELINK" } } });
+    ops.push({
+      campaignAssetOperation: {
+        create: { campaign: campanha, asset, fieldType: "SITELINK" },
+      },
+    });
   });
   try {
     await mutar(ops, conta);
   } catch (e) {
-    console.error(`Publike: impulso ${codigo} sem sitelinks:`, e instanceof Error ? e.message : e);
+    console.error(
+      `Publike: impulso ${codigo} sem sitelinks:`,
+      e instanceof Error ? e.message : e,
+    );
   }
 }
 
 function idsDoMutate(r: RespostaDoMutate) {
-  const ids: Record<string, string | null> = { orcamento: null, campanha: null, grupo: null, anuncio: null };
+  const ids: Record<string, string | null> = {
+    orcamento: null,
+    campanha: null,
+    grupo: null,
+    anuncio: null,
+  };
   for (const x of r.mutateOperationResponses ?? []) {
-    if (x.campaignBudgetResult) ids.orcamento = idDoRecurso(x.campaignBudgetResult.resourceName);
-    if (x.campaignResult) ids.campanha = idDoRecurso(x.campaignResult.resourceName);
+    if (x.campaignBudgetResult)
+      ids.orcamento = idDoRecurso(x.campaignBudgetResult.resourceName);
+    if (x.campaignResult)
+      ids.campanha = idDoRecurso(x.campaignResult.resourceName);
     if (x.adGroupResult) ids.grupo = idDoRecurso(x.adGroupResult.resourceName);
-    if (x.adGroupAdResult) ids.anuncio = idDoRecurso(x.adGroupAdResult.resourceName);
+    if (x.adGroupAdResult)
+      ids.anuncio = idDoRecurso(x.adGroupAdResult.resourceName);
   }
   return ids;
 }
@@ -749,7 +994,9 @@ function idsDoMutate(r: RespostaDoMutate) {
 /** Os outros nomes da função da vaga, pela CBO (o nome oficial e os sinônimos), até 3: para a lista sem disputa. */
 function sinonimosDaCbo(cbo: string | null | undefined) {
   const o = cbo ? ocupacao(cbo) : null;
-  return (o ? [o.nome, ...(o.sinonimos ?? [])] : []).filter((s): s is string => Boolean(s)).slice(0, 3);
+  return (o ? [o.nome, ...(o.sinonimos ?? [])] : [])
+    .filter((s): s is string => Boolean(s))
+    .slice(0, 3);
 }
 
 /**
@@ -759,11 +1006,22 @@ function sinonimosDaCbo(cbo: string | null | undefined) {
  */
 function nomesDaCbo(cbo: string | null | undefined) {
   const o = cbo ? ocupacao(cbo) : null;
-  return o ? [...new Set([o.nome, ...(o.sinonimos ?? [])].filter(Boolean).flatMap(limparNomeDaCbo))] : [];
+  return o
+    ? [
+        ...new Set(
+          [o.nome, ...(o.sinonimos ?? [])]
+            .filter(Boolean)
+            .flatMap(limparNomeDaCbo),
+        ),
+      ]
+    : [];
 }
 
 function texto(t: Tarefa, simples: boolean) {
-  return textoDoAnuncio(t.vaga!, { simples, sinonimos: nomesDaCbo(t.vaga?.cbo) });
+  return textoDoAnuncio(t.vaga!, {
+    simples,
+    sinonimos: nomesDaCbo(t.vaga?.cbo),
+  });
 }
 
 /**
@@ -772,16 +1030,26 @@ function texto(t: Tarefa, simples: boolean) {
  * Google Ads API). Sem a migração (ou sem resposta do banco), a cada medida, como antes.
  */
 async function horaDasPalavras(a: Acesso, t: Tarefa) {
-  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_em", { p_chave: a.chave, p_id: t.id });
+  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_em", {
+    p_chave: a.chave,
+    p_id: t.id,
+  });
   if (error) return true;
   return !data || Date.parse(data) < Date.now() - 22 * 3_600_000;
 }
 
 /** As palavras do grupo acabaram de ser conferidas: a próxima conferência fica para daqui a um dia. */
 async function palavrasFeitas(a: Acesso, t: Tarefa) {
-  const { error } = await a.cliente.rpc("servidor_impulso_palavras_feitas", { p_chave: a.chave, p_id: t.id });
+  const { error } = await a.cliente.rpc("servidor_impulso_palavras_feitas", {
+    p_chave: a.chave,
+    p_id: t.id,
+  });
   // sem a migração 20270507120000: confere de novo na medida seguinte, como antes
-  if (error && error.code !== "PGRST202") console.error(`Publike: impulso ${t.codigo}, a data das palavras não ficou:`, error.message);
+  if (error && error.code !== "PGRST202")
+    console.error(
+      `Publike: impulso ${t.codigo}, a data das palavras não ficou:`,
+      error.message,
+    );
 }
 
 /** A volta do robô: quando começou e quantas revisões da IA já fez (uma por volta, no começo: a IA leva segundos). */
@@ -789,11 +1057,16 @@ const volta = { inicio: 0, revisoes: 0, teto: TETO_DO_CLIQUE };
 
 /** A descrição da vaga (pública), para a IA entender o trabalho. */
 export async function descricaoDaVaga(a: Acesso, id: string) {
-  const { data } = await a.cliente.from("anuncios").select("descricao").eq("id", id).maybeSingle();
+  const { data } = await a.cliente
+    .from("anuncios")
+    .select("descricao")
+    .eq("id", id)
+    .maybeSingle();
   return typeof data?.descricao === "string" ? data.descricao : "";
 }
 
-const soTextos = (x: unknown) => (Array.isArray(x) ? x.filter((s): s is string => typeof s === "string") : []);
+const soTextos = (x: unknown) =>
+  Array.isArray(x) ? x.filter((s): s is string => typeof s === "string") : [];
 
 /**
  * A revisão da IA das buscas da vaga, uma vez por impulso (migração 20270508120000; `impulso-ia.ts`):
@@ -802,29 +1075,59 @@ const soTextos = (x: unknown) => (Array.isArray(x) ? x.filter((s): s is string =
  * - sem a migração ou sem a IA: as buscas de sempre.
  * `pronta: false`: a revisão ainda vai sair, e a próxima medida tenta de novo (sem marcar a data das palavras).
  */
-async function revisaoDasPalavras(a: Acesso, t: Tarefa): Promise<{ revisao: RevisaoDasPalavras | null; pronta: boolean }> {
+async function revisaoDasPalavras(
+  a: Acesso,
+  t: Tarefa,
+): Promise<{ revisao: RevisaoDasPalavras | null; pronta: boolean }> {
   if (!t.vaga) return { revisao: null, pronta: true };
-  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_ia", { p_chave: a.chave, p_id: t.id });
+  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_ia", {
+    p_chave: a.chave,
+    p_id: t.id,
+  });
   if (error) return { revisao: null, pronta: true };
   const g = (data ?? null) as Partial<RevisaoGuardada> | null;
   const guardada: RevisaoDasPalavras | null =
-    g && !g.erro ? { acrescentar: soTextos(g.acrescentar), tirar: soTextos(g.tirar), negativas: soTextos(g.negativas) } : null;
-  const tentarDeNovo = !g || (g.erro && Date.parse(g.em ?? "") < Date.now() - 86_400_000);
+    g && !g.erro
+      ? {
+          acrescentar: soTextos(g.acrescentar),
+          tirar: soTextos(g.tirar),
+          negativas: soTextos(g.negativas),
+        }
+      : null;
+  const tentarDeNovo =
+    !g || (g.erro && Date.parse(g.em ?? "") < Date.now() - 86_400_000);
   if (!tentarDeNovo) return { revisao: guardada, pronta: true };
   const modelo = await modeloDoImpulso(a);
   if (!modelo) return { revisao: guardada, pronta: true };
-  if (volta.revisoes >= 1 || Date.now() - volta.inicio > 12_000) return { revisao: guardada, pronta: false };
+  if (volta.revisoes >= 1 || Date.now() - volta.inicio > 12_000)
+    return { revisao: guardada, pronta: false };
   volta.revisoes++;
   const base = texto(t, t.texto_simples).todas;
-  const nova = await revisarComIA(modelo, t.vaga, await descricaoDaVaga(a, t.vaga.id), base, base.slice(0, 3));
-  const { error: e } = await a.cliente.rpc("servidor_impulso_salvar_palavras_ia", {
-    p_chave: a.chave,
-    p_id: t.id,
-    p_ia: nova as unknown as Json,
-  });
-  if (e) console.error(`Publike: impulso ${t.codigo}, a revisão da IA não ficou guardada:`, e.message);
+  const nova = await revisarComIA(
+    modelo,
+    t.vaga,
+    await descricaoDaVaga(a, t.vaga.id),
+    base,
+    base.slice(0, 3),
+  );
+  const { error: e } = await a.cliente.rpc(
+    "servidor_impulso_salvar_palavras_ia",
+    {
+      p_chave: a.chave,
+      p_id: t.id,
+      p_ia: nova as unknown as Json,
+    },
+  );
+  if (e)
+    console.error(
+      `Publike: impulso ${t.codigo}, a revisão da IA não ficou guardada:`,
+      e.message,
+    );
   if (nova.erro) {
-    console.error(`Publike: impulso ${t.codigo}, a IA não revisou as palavras:`, nova.erro);
+    console.error(
+      `Publike: impulso ${t.codigo}, a IA não revisou as palavras:`,
+      nova.erro,
+    );
     return { revisao: null, pronta: true };
   }
   return { revisao: nova, pronta: true };
@@ -839,11 +1142,23 @@ export async function buscasDoGrupo(
   t: { id: string; vaga: Tarefa["vaga"]; texto_simples: boolean },
 ): Promise<string[]> {
   if (!t.vaga) return [];
-  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_ia", { p_chave: a.chave, p_id: t.id });
+  const { data, error } = await a.cliente.rpc("servidor_impulso_palavras_ia", {
+    p_chave: a.chave,
+    p_id: t.id,
+  });
   const g = (error ? null : (data ?? null)) as Partial<RevisaoGuardada> | null;
   const revisao: RevisaoDasPalavras | null =
-    g && !g.erro ? { acrescentar: soTextos(g.acrescentar), tirar: soTextos(g.tirar), negativas: soTextos(g.negativas) } : null;
-  const base = textoDoAnuncio(t.vaga, { simples: t.texto_simples, sinonimos: nomesDaCbo(t.vaga.cbo) }).todas;
+    g && !g.erro
+      ? {
+          acrescentar: soTextos(g.acrescentar),
+          tirar: soTextos(g.tirar),
+          negativas: soTextos(g.negativas),
+        }
+      : null;
+  const base = textoDoAnuncio(t.vaga, {
+    simples: t.texto_simples,
+    sinonimos: nomesDaCbo(t.vaga.cbo),
+  }).todas;
   return buscasComARevisao(base, revisao);
 }
 
@@ -878,10 +1193,16 @@ async function acertarPalavras(
   if (!t.vaga || !grupoId || !campanhaId) return;
   // as buscas de hoje com a revisão da IA por cima; as negativas da IA ficam no grupo (na campanha do cliente, não
   // tiram as buscas das outras vagas)
-  const queremos = new Set(buscasComARevisao(texto(t, t.texto_simples).todas, revisao));
+  const queremos = new Set(
+    buscasComARevisao(texto(t, t.texto_simples).todas, revisao),
+  );
   const negativasDoGrupo = new Set(revisao?.negativas ?? []);
   const excluidas = Array.isArray(t.excluidas)
-    ? new Set(t.excluidas.map((x) => x.toLowerCase().trim()).filter((x) => x && !queremos.has(x)))
+    ? new Set(
+        t.excluidas
+          .map((x) => x.toLowerCase().trim())
+          .filter((x) => x && !queremos.has(x)),
+      )
     : null;
   const [atuais, negativas] = await Promise.all([
     consultar<LinhaDaPalavra>(
@@ -909,20 +1230,37 @@ async function acertarPalavras(
     if (c.negative && c.keyword?.matchType === "EXACT") {
       // a busca de verdade que o ajuste tirou: sem a lista do banco, fica como está
       if (!excluidas) continue;
-      if (excluidas.has(texto) && !temosExcluidas.has(texto)) temosExcluidas.add(texto);
+      if (excluidas.has(texto) && !temosExcluidas.has(texto))
+        temosExcluidas.add(texto);
       else sair.push(c.resourceName);
     } else if (c.negative) {
-      if (negativasDoGrupo.has(texto) && certa && !temosNegativas.has(texto)) temosNegativas.add(texto);
+      if (negativasDoGrupo.has(texto) && certa && !temosNegativas.has(texto))
+        temosNegativas.add(texto);
       else sair.push(c.resourceName);
-    } else if (queremos.has(texto) && certa && !temos.has(texto)) temos.add(texto);
+    } else if (queremos.has(texto) && certa && !temos.has(texto))
+      temos.add(texto);
     else sair.push(c.resourceName);
   }
   const entrar = [...queremos].filter((p) => !temos.has(p));
-  const negativasDoGrupoNovas = [...negativasDoGrupo].filter((p) => !temosNegativas.has(p));
-  const excluidasNovas = excluidas ? [...excluidas].filter((p) => !temosExcluidas.has(p)) : [];
-  const temNegativa = new Set(negativas.map((n) => (n.campaignCriterion?.keyword?.text ?? "").toLowerCase()));
+  const negativasDoGrupoNovas = [...negativasDoGrupo].filter(
+    (p) => !temosNegativas.has(p),
+  );
+  const excluidasNovas = excluidas
+    ? [...excluidas].filter((p) => !temosExcluidas.has(p))
+    : [];
+  const temNegativa = new Set(
+    negativas.map((n) =>
+      (n.campaignCriterion?.keyword?.text ?? "").toLowerCase(),
+    ),
+  );
   const negativasNovas = FORA_DA_BUSCA.filter((n) => !temNegativa.has(n));
-  if (!entrar.length && !sair.length && !negativasNovas.length && !negativasDoGrupoNovas.length && !excluidasNovas.length)
+  if (
+    !entrar.length &&
+    !sair.length &&
+    !negativasNovas.length &&
+    !negativasDoGrupoNovas.length &&
+    !excluidasNovas.length
+  )
     return;
   const grupo = recurso("adGroups", grupoId, conta);
   const campanha = recurso("campaigns", campanhaId, conta);
@@ -930,23 +1268,50 @@ async function acertarPalavras(
     [
       ...sair.map((nome) => ({ adGroupCriterionOperation: { remove: nome } })),
       ...entrar.map((text) => ({
-        adGroupCriterionOperation: { create: { adGroup: grupo, status: "ENABLED", keyword: { text, matchType: "BROAD" } } },
+        adGroupCriterionOperation: {
+          create: {
+            adGroup: grupo,
+            status: "ENABLED",
+            keyword: { text, matchType: "BROAD" },
+          },
+        },
       })),
       ...negativasDoGrupoNovas.map((text) => ({
-        adGroupCriterionOperation: { create: { adGroup: grupo, negative: true, keyword: { text, matchType: "BROAD" } } },
+        adGroupCriterionOperation: {
+          create: {
+            adGroup: grupo,
+            negative: true,
+            keyword: { text, matchType: "BROAD" },
+          },
+        },
       })),
       ...excluidasNovas.map((text) => ({
-        adGroupCriterionOperation: { create: { adGroup: grupo, negative: true, keyword: { text, matchType: "EXACT" } } },
+        adGroupCriterionOperation: {
+          create: {
+            adGroup: grupo,
+            negative: true,
+            keyword: { text, matchType: "EXACT" },
+          },
+        },
       })),
       ...negativasNovas.map((text) => ({
-        campaignCriterionOperation: { create: { campaign: campanha, negative: true, keyword: { text, matchType: "BROAD" } } },
+        campaignCriterionOperation: {
+          create: {
+            campaign: campanha,
+            negative: true,
+            keyword: { text, matchType: "BROAD" },
+          },
+        },
       })),
     ],
     conta,
     { parcial: true },
   );
   if (r.partialFailureError?.message) {
-    console.error(`Publike: impulso ${t.codigo}, palavras que o Google não aceitou:`, r.partialFailureError.message.slice(0, 400));
+    console.error(
+      `Publike: impulso ${t.codigo}, palavras que o Google não aceitou:`,
+      r.partialFailureError.message.slice(0, 400),
+    );
   }
 }
 
@@ -958,13 +1323,25 @@ async function contaDoImpulso(a: Acesso, t: Tarefa): Promise<string> {
   const atual = contaDeAnuncios();
   if (t.conta_google) return t.conta_google;
   if (!t.campanha_id) return atual;
-  const gestora = (process.env.GOOGLE_ADS_CONTA_GESTORA || "").replace(/\D/g, "");
-  const outras = (await contasAcessiveis().catch(() => [] as string[])).filter((c) => c !== atual && c !== gestora);
+  const gestora = (process.env.GOOGLE_ADS_CONTA_GESTORA || "").replace(
+    /\D/g,
+    "",
+  );
+  const outras = (await contasAcessiveis().catch(() => [] as string[])).filter(
+    (c) => c !== atual && c !== gestora,
+  );
   for (const conta of [atual, ...outras]) {
     try {
-      const linhas = await consultar(`SELECT campaign.id FROM campaign WHERE campaign.id = ${Number(t.campanha_id)}`, conta);
+      const linhas = await consultar(
+        `SELECT campaign.id FROM campaign WHERE campaign.id = ${Number(t.campanha_id)}`,
+        conta,
+      );
       if (!linhas.length) continue;
-      await a.cliente.rpc("servidor_impulso_conta", { p_chave: a.chave, p_id: t.id, p_conta: conta });
+      await a.cliente.rpc("servidor_impulso_conta", {
+        p_chave: a.chave,
+        p_id: t.id,
+        p_conta: conta,
+      });
       return conta;
     } catch {
       // conta fechada ou sem acesso: a próxima
@@ -975,7 +1352,10 @@ async function contaDoImpulso(a: Acesso, t: Tarefa): Promise<string> {
 
 async function removerCampanha(id: string, conta: string) {
   try {
-    await mutar([{ campaignOperation: { remove: recurso("campaigns", id, conta) } }], conta);
+    await mutar(
+      [{ campaignOperation: { remove: recurso("campaigns", id, conta) } }],
+      conta,
+    );
   } catch (e) {
     // já removida: está feito
     if (!(e instanceof ErroGoogleAds && e.naoExiste)) throw e;
@@ -985,16 +1365,37 @@ async function removerCampanha(id: string, conta: string) {
 /** Tira o grupo da vaga da campanha do cliente (a campanha segue com as outras vagas). */
 async function removerGrupo(id: string, conta: string) {
   try {
-    await mutar([{ adGroupOperation: { remove: recurso("adGroups", id, conta) } }], conta);
+    await mutar(
+      [{ adGroupOperation: { remove: recurso("adGroups", id, conta) } }],
+      conta,
+    );
   } catch (e) {
     if (!(e instanceof ErroGoogleAds && e.naoExiste)) throw e;
   }
 }
 
-async function pausarNoGoogle(tipo: "campaigns" | "adGroups", id: string, conta: string) {
-  const operacao = tipo === "campaigns" ? "campaignOperation" : "adGroupOperation";
+async function pausarNoGoogle(
+  tipo: "campaigns" | "adGroups",
+  id: string,
+  conta: string,
+) {
+  const operacao =
+    tipo === "campaigns" ? "campaignOperation" : "adGroupOperation";
   try {
-    await mutar([{ [operacao]: { updateMask: "status", update: { resourceName: recurso(tipo, id, conta), status: "PAUSED" } } }], conta);
+    await mutar(
+      [
+        {
+          [operacao]: {
+            updateMask: "status",
+            update: {
+              resourceName: recurso(tipo, id, conta),
+              status: "PAUSED",
+            },
+          },
+        },
+      ],
+      conta,
+    );
   } catch (e) {
     if (!(e instanceof ErroGoogleAds && e.naoExiste)) throw e;
   }
@@ -1025,13 +1426,21 @@ async function criarGrupo(a: Acesso, t: Tarefa) {
     r = await mutar(montar(t.texto_simples), conta);
   } catch (e) {
     if (!(e instanceof ErroGoogleAds && e.politica)) throw e;
-    const { data } = await a.cliente.rpc("servidor_impulso_recusado", { p_chave: a.chave, p_id: t.id, p_motivo: e.message });
+    const { data } = await a.cliente.rpc("servidor_impulso_recusado", {
+      p_chave: a.chave,
+      p_id: t.id,
+      p_motivo: e.message,
+    });
     if (!(data as { texto_simples?: boolean } | null)?.texto_simples) return;
     try {
       r = await mutar(montar(true), conta);
     } catch (e2) {
       if (!(e2 instanceof ErroGoogleAds && e2.politica)) throw e2;
-      await a.cliente.rpc("servidor_impulso_recusado", { p_chave: a.chave, p_id: t.id, p_motivo: e2.message });
+      await a.cliente.rpc("servidor_impulso_recusado", {
+        p_chave: a.chave,
+        p_id: t.id,
+        p_motivo: e2.message,
+      });
       return;
     }
   }
@@ -1054,7 +1463,10 @@ async function criarGrupo(a: Acesso, t: Tarefa) {
     await removerGrupo(criados.grupo, conta);
     return;
   }
-  await palavrasDepoisDeCriar(a, t, conta, { grupo: criados.grupo, campanha: k.campanha_id });
+  await palavrasDepoisDeCriar(a, t, conta, {
+    grupo: criados.grupo,
+    campanha: k.campanha_id,
+  });
 }
 
 async function criar(a: Acesso, t: Tarefa) {
@@ -1070,14 +1482,22 @@ async function criar(a: Acesso, t: Tarefa) {
   } catch (e) {
     if (!(e instanceof ErroGoogleAds && e.politica)) throw e;
     // a política do Google barrou o texto: a segunda chance com o texto simples; a segunda recusa devolve
-    const { data } = await a.cliente.rpc("servidor_impulso_recusado", { p_chave: a.chave, p_id: t.id, p_motivo: e.message });
+    const { data } = await a.cliente.rpc("servidor_impulso_recusado", {
+      p_chave: a.chave,
+      p_id: t.id,
+      p_motivo: e.message,
+    });
     if (!(data as { texto_simples?: boolean } | null)?.texto_simples) return;
     simples = true;
     try {
       r = await mutar(operacoesDaCampanha(t, texto(t, simples)));
     } catch (e2) {
       if (!(e2 instanceof ErroGoogleAds && e2.politica)) throw e2;
-      await a.cliente.rpc("servidor_impulso_recusado", { p_chave: a.chave, p_id: t.id, p_motivo: e2.message });
+      await a.cliente.rpc("servidor_impulso_recusado", {
+        p_chave: a.chave,
+        p_id: t.id,
+        p_motivo: e2.message,
+      });
       return;
     }
   }
@@ -1095,8 +1515,12 @@ async function criar(a: Acesso, t: Tarefa) {
     await removerCampanha(ids.campanha, conta);
     return;
   }
-  if (ids.campanha) await porSitelinks(sitelinksDaVaga(t.vaga!), t.codigo, ids.campanha, conta);
-  await palavrasDepoisDeCriar(a, t, conta, { grupo: ids.grupo, campanha: ids.campanha });
+  if (ids.campanha)
+    await porSitelinks(sitelinksDaVaga(t.vaga!), t.codigo, ids.campanha, conta);
+  await palavrasDepoisDeCriar(a, t, conta, {
+    grupo: ids.grupo,
+    campanha: ids.campanha,
+  });
 }
 
 /**
@@ -1114,7 +1538,10 @@ async function palavrasDepoisDeCriar(
     await acertarPalavras(t, conta, ids, r.revisao);
     if (r.pronta) await palavrasFeitas(a, t);
   } catch (e) {
-    console.error(`Publike: impulso ${t.codigo} nasceu só com as primeiras palavras:`, e instanceof Error ? e.message : e);
+    console.error(
+      `Publike: impulso ${t.codigo} nasceu só com as primeiras palavras:`,
+      e instanceof Error ? e.message : e,
+    );
   }
 }
 
@@ -1139,7 +1566,9 @@ async function olhar(a: Acesso, t: Tarefa, conta: string) {
   const p = linhas[0]?.adGroupAd?.policySummary;
   const aprovacao = p?.approvalStatus ?? "UNKNOWN";
   const situacao =
-    aprovacao === "APPROVED" || aprovacao === "APPROVED_LIMITED" || aprovacao === "AREA_OF_INTEREST_ONLY"
+    aprovacao === "APPROVED" ||
+    aprovacao === "APPROVED_LIMITED" ||
+    aprovacao === "AREA_OF_INTEREST_ONLY"
       ? "aprovado"
       : aprovacao === "DISAPPROVED"
         ? "reprovado"
@@ -1155,7 +1584,11 @@ async function olhar(a: Acesso, t: Tarefa, conta: string) {
     p_motivo: motivo || null,
   });
   if (error) throw new Error(error.message);
-  const d = (data ?? {}) as { aprovado?: boolean; fim?: string; texto_simples?: boolean };
+  const d = (data ?? {}) as {
+    aprovado?: boolean;
+    fim?: string;
+    texto_simples?: boolean;
+  };
   if (d.aprovado && d.fim) {
     // o Google para sozinho no fim (e o robô encerra de qualquer jeito)
     await mutar(
@@ -1163,7 +1596,10 @@ async function olhar(a: Acesso, t: Tarefa, conta: string) {
         {
           campaignOperation: {
             updateMask: "endDateTime",
-            update: { resourceName: recurso("campaigns", t.campanha_id, conta), endDateTime: d.fim },
+            update: {
+              resourceName: recurso("campaigns", t.campanha_id, conta),
+              endDateTime: d.fim,
+            },
           },
         },
       ],
@@ -1182,24 +1618,44 @@ async function trocarPeloSimples(a: Acesso, t: Tarefa, conta: string) {
     [
       operacoesDoAnuncio(grupo, paginaDaVaga(t.vaga.id), texto(t, true)),
       ...(t.anuncio_google_id
-        ? [{ adGroupAdOperation: { remove: recurso("adGroupAds", `${t.grupo_id}~${t.anuncio_google_id}`, conta) } }]
+        ? [
+            {
+              adGroupAdOperation: {
+                remove: recurso(
+                  "adGroupAds",
+                  `${t.grupo_id}~${t.anuncio_google_id}`,
+                  conta,
+                ),
+              },
+            },
+          ]
         : []),
     ],
     conta,
   );
   const novo = idsDoMutate(r).anuncio;
-  if (novo) await a.cliente.rpc("servidor_impulso_anuncio_trocado", { p_chave: a.chave, p_id: t.id, p_anuncio: novo });
+  if (novo)
+    await a.cliente.rpc("servidor_impulso_anuncio_trocado", {
+      p_chave: a.chave,
+      p_id: t.id,
+      p_anuncio: novo,
+    });
 }
 
 type LinhaDosNumeros = {
   segments?: { date?: string };
-  metrics?: { impressions?: string | number; clicks?: string | number; costMicros?: string | number };
+  metrics?: {
+    impressions?: string | number;
+    clicks?: string | number;
+    costMicros?: string | number;
+  };
 };
 
 /**
  * Os números do Google, por dia, do dia em que entrou no ar até hoje (o de hoje vai mudando a cada medida: a cada 2
  * horas, pela migração 20270501120000; antes, só o de ontem, e o Admin mostrava R$ 0 o dia inteiro). Com a vaga no
- * ar, acerta antes o lance das campanhas de antes e o fim no Google (`acertarCampanha`) e o raio que mudou no admin (`acertarLugar`).
+ * ar, acerta antes o fim no Google e o grupo sem lance (`acertarCampanha`) e o raio que mudou no admin (`acertarLugar`).
+ * O jeito do lance não é mexido: o que for mudado à mão no Google Ads fica.
  */
 async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
   if (!t.campanha_id || !t.medir_desde) return;
@@ -1208,13 +1664,19 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
       await acertarCampanha(t.campanha_id, conta, t.ate);
     } catch (e) {
       // o lance fica para a próxima medida; os números não esperam por ele
-      console.error(`Publike: o lance do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
+      console.error(
+        `Publike: o lance do impulso ${t.codigo} não mudou:`,
+        e instanceof Error ? e.message : e,
+      );
     }
     try {
       await acertarLugar(t, conta);
     } catch (e) {
       // o raio também fica para a próxima medida
-      console.error(`Publike: o raio do impulso ${t.codigo} não mudou:`, e instanceof Error ? e.message : e);
+      console.error(
+        `Publike: o raio do impulso ${t.codigo} não mudou:`,
+        e instanceof Error ? e.message : e,
+      );
     }
     try {
       // uma vez por dia (`horaDasPalavras`); deu certo, a data fica marcada
@@ -1225,14 +1687,23 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
       }
     } catch (e) {
       // as palavras também ficam para a próxima medida
-      console.error(`Publike: as palavras do impulso ${t.codigo} não mudaram:`, e instanceof Error ? e.message : e);
+      console.error(
+        `Publike: as palavras do impulso ${t.codigo} não mudaram:`,
+        e instanceof Error ? e.message : e,
+      );
     }
   }
   const hoje = hojeEmBrasilia();
-  const ontem = new Date(Date.parse(`${hoje}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  const ontem = new Date(Date.parse(`${hoje}T12:00:00Z`) - 86_400_000)
+    .toISOString()
+    .slice(0, 10);
   const ate = ateHoje ? hoje : ontem;
   if (ate < t.medir_desde) {
-    await a.cliente.rpc("servidor_impulso_numeros", { p_chave: a.chave, p_id: t.id, p_linhas: [] });
+    await a.cliente.rpc("servidor_impulso_numeros", {
+      p_chave: a.chave,
+      p_id: t.id,
+      p_linhas: [],
+    });
     return;
   }
   // na campanha do cliente, os números de cada vaga são os do grupo dela
@@ -1261,7 +1732,8 @@ async function medir(a: Acesso, t: Tarefa, conta: string, ateHoje = true) {
 }
 
 async function fazer(a: Acesso, t: Tarefa) {
-  const precisaDoGoogle = t.acao !== "estornar" && !(t.acao === "pausar" && !t.campanha_id);
+  const precisaDoGoogle =
+    t.acao !== "estornar" && !(t.acao === "pausar" && !t.campanha_id);
   if (precisaDoGoogle && !googleAdsLigado()) return false;
   // a conta da campanha (a de quando nasceu); o "criar" usa a de hoje, e a vaga da campanha do cliente, a dela
   const conta =
@@ -1286,12 +1758,22 @@ async function fazer(a: Acesso, t: Tarefa) {
       break;
     case "pausar":
       await tirar();
-      await a.cliente.rpc("servidor_impulso_pausado", { p_chave: a.chave, p_id: t.id });
-      if (t.campanha_id) await a.cliente.rpc("servidor_impulso_removido", { p_chave: a.chave, p_id: t.id });
+      await a.cliente.rpc("servidor_impulso_pausado", {
+        p_chave: a.chave,
+        p_id: t.id,
+      });
+      if (t.campanha_id)
+        await a.cliente.rpc("servidor_impulso_removido", {
+          p_chave: a.chave,
+          p_id: t.id,
+        });
       break;
     case "remover":
       await tirar();
-      await a.cliente.rpc("servidor_impulso_removido", { p_chave: a.chave, p_id: t.id });
+      await a.cliente.rpc("servidor_impulso_removido", {
+        p_chave: a.chave,
+        p_id: t.id,
+      });
       break;
     case "encerrar":
       if (doCliente && t.grupo_id) {
@@ -1301,13 +1783,23 @@ async function fazer(a: Acesso, t: Tarefa) {
         await pausarNoGoogle("campaigns", t.campanha_id, conta);
         await medir(a, t, conta, true);
       }
-      await a.cliente.rpc("servidor_impulso_encerrado", { p_chave: a.chave, p_id: t.id });
+      await a.cliente.rpc("servidor_impulso_encerrado", {
+        p_chave: a.chave,
+        p_id: t.id,
+      });
       break;
     case "estornar":
       if (t.compra?.asaas_id) {
-        await estornarCobranca(t.compra.sandbox, t.compra.asaas_id, "Impulso no Google cancelado antes de rodar.");
+        await estornarCobranca(
+          t.compra.sandbox,
+          t.compra.asaas_id,
+          "Impulso no Google cancelado antes de rodar.",
+        );
       }
-      await a.cliente.rpc("servidor_impulso_estorno_pedido", { p_chave: a.chave, p_id: t.id });
+      await a.cliente.rpc("servidor_impulso_estorno_pedido", {
+        p_chave: a.chave,
+        p_id: t.id,
+      });
       break;
     case "medir":
       await medir(a, t, conta);
@@ -1331,10 +1823,16 @@ async function criarCampanhaDoCliente(a: Acesso, k: TarefaDaCampanha) {
   const { error } = await a.cliente.rpc("servidor_campanha_criada", {
     p_chave: a.chave,
     p_id: k.id,
-    p_ids: { campanha: ids.campanha, orcamento: ids.orcamento, conta, lugares: k.lugares } as unknown as Json,
+    p_ids: {
+      campanha: ids.campanha,
+      orcamento: ids.orcamento,
+      conta,
+      lugares: k.lugares,
+    } as unknown as Json,
   });
   if (error) throw new Error(error.message);
-  if (ids.campanha) await porSitelinks(sitelinksDaCampanha(k), k.codigo, ids.campanha, conta);
+  if (ids.campanha)
+    await porSitelinks(sitelinksDaCampanha(k), k.codigo, ids.campanha, conta);
 }
 
 async function fazerNaCampanha(a: Acesso, k: TarefaDaCampanha) {
@@ -1355,8 +1853,14 @@ async function fazerNaCampanha(a: Acesso, k: TarefaDaCampanha) {
               campaignBudgetOperation: {
                 updateMask: "amountMicros",
                 update: {
-                  resourceName: recurso("campaignBudgets", k.orcamento_id, conta),
-                  amountMicros: String(Math.round(Math.max(1, k.verba_dia) * 1_000_000)),
+                  resourceName: recurso(
+                    "campaignBudgets",
+                    k.orcamento_id,
+                    conta,
+                  ),
+                  amountMicros: String(
+                    Math.round(Math.max(1, k.verba_dia) * 1_000_000),
+                  ),
                 },
               },
             },
@@ -1364,15 +1868,23 @@ async function fazerNaCampanha(a: Acesso, k: TarefaDaCampanha) {
           conta,
         );
       }
-      await a.cliente.rpc("servidor_campanha_orcamento", { p_chave: a.chave, p_id: k.id, p_verba: k.verba });
+      await a.cliente.rpc("servidor_campanha_orcamento", {
+        p_chave: a.chave,
+        p_id: k.id,
+        p_verba: k.verba,
+      });
       break;
     case "encerrar":
       // nenhuma vaga correndo: a que entrou no ar fica parada no Google (com os números); a que nunca entrou sai
       if (k.campanha_id) {
-        if (k.aprovado_em) await pausarNoGoogle("campaigns", k.campanha_id, conta);
+        if (k.aprovado_em)
+          await pausarNoGoogle("campaigns", k.campanha_id, conta);
         else await removerCampanha(k.campanha_id, conta);
       }
-      await a.cliente.rpc("servidor_campanha_encerrada", { p_chave: a.chave, p_id: k.id });
+      await a.cliente.rpc("servidor_campanha_encerrada", {
+        p_chave: a.chave,
+        p_id: k.id,
+      });
       break;
   }
   return true;
@@ -1380,10 +1892,17 @@ async function fazerNaCampanha(a: Acesso, k: TarefaDaCampanha) {
 
 /** As campanhas dos clientes desta volta (antes das vagas: a vaga só cria o grupo depois que a campanha existe). */
 async function cuidarDasCampanhas(a: Acesso, alertas: string[]) {
-  const { data, error } = await a.cliente.rpc("servidor_campanhas_para_cuidar", { p_chave: a.chave });
+  const { data, error } = await a.cliente.rpc(
+    "servidor_campanhas_para_cuidar",
+    { p_chave: a.chave },
+  );
   if (error) {
     // sem a migração ainda: nada a fazer
-    if (error.code !== "PGRST202") console.error("Publike: falha ao ler as campanhas dos clientes:", error.message);
+    if (error.code !== "PGRST202")
+      console.error(
+        "Publike: falha ao ler as campanhas dos clientes:",
+        error.message,
+      );
     return 0;
   }
   let feitas = 0;
@@ -1392,9 +1911,17 @@ async function cuidarDasCampanhas(a: Acesso, alertas: string[]) {
       if (await fazerNaCampanha(a, k)) feitas++;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error(`Publike: a campanha do cliente ${k.codigo} (${k.acao}) falhou:`, msg);
-      const { data: r } = await a.cliente.rpc("servidor_campanha_erro", { p_chave: a.chave, p_id: k.id, p_erro: msg });
-      if ((r as { alertar?: boolean } | null)?.alertar) alertas.push(`campanha ${k.codigo} (${k.acao}): ${msg}`.slice(0, 200));
+      console.error(
+        `Publike: a campanha do cliente ${k.codigo} (${k.acao}) falhou:`,
+        msg,
+      );
+      const { data: r } = await a.cliente.rpc("servidor_campanha_erro", {
+        p_chave: a.chave,
+        p_id: k.id,
+        p_erro: msg,
+      });
+      if ((r as { alertar?: boolean } | null)?.alertar)
+        alertas.push(`campanha ${k.codigo} (${k.acao}): ${msg}`.slice(0, 200));
     }
   }
   return feitas;
@@ -1405,13 +1932,22 @@ async function cuidarDasCampanhas(a: Acesso, alertas: string[]) {
  * site (o after() depois de pagar ou de aprovar) chamam o robô, e duas voltas juntas podiam criar a mesma campanha duas
  * vezes no Google. A volta que não pega a vez pula, e o trabalho fica para a próxima. Sem a migração, roda como antes.
  */
-export async function cuidarDosImpulsos(): Promise<{ feitos: number; motivo?: string }> {
+export async function cuidarDosImpulsos(): Promise<{
+  feitos: number;
+  motivo?: string;
+}> {
   const a = acessoFila();
   if (!a) return { feitos: 0 };
   const vez = randomUUID();
-  const { data: peguei, error: e } = await a.cliente.rpc("servidor_impulsos_pegar_vez", { p_chave: a.chave, p_vez: vez });
+  const { data: peguei, error: e } = await a.cliente.rpc(
+    "servidor_impulsos_pegar_vez",
+    { p_chave: a.chave, p_vez: vez },
+  );
   if (e && e.code !== "PGRST202") {
-    console.error("Publike: falha ao pegar a vez do robô do impulso:", e.message);
+    console.error(
+      "Publike: falha ao pegar a vez do robô do impulso:",
+      e.message,
+    );
     return { feitos: 0 };
   }
   if (!e && !peguei) return { feitos: 0 };
@@ -1419,20 +1955,32 @@ export async function cuidarDosImpulsos(): Promise<{ feitos: number; motivo?: st
     return await umaVoltaDoRobo(a);
   } finally {
     if (!e) {
-      const { error: s } = await a.cliente.rpc("servidor_impulsos_soltar_vez", { p_chave: a.chave, p_vez: vez });
+      const { error: s } = await a.cliente.rpc("servidor_impulsos_soltar_vez", {
+        p_chave: a.chave,
+        p_vez: vez,
+      });
       // sem soltar, a vez vence sozinha em 2 minutos
-      if (s) console.error("Publike: falha ao soltar a vez do robô do impulso:", s.message);
+      if (s)
+        console.error(
+          "Publike: falha ao soltar a vez do robô do impulso:",
+          s.message,
+        );
     }
   }
 }
 
 /** Uma rodada do robô. Devolve quantos impulsos andaram e, quando um erro dura mais de 6 horas, o motivo. */
-async function umaVoltaDoRobo(a: Acesso): Promise<{ feitos: number; motivo?: string }> {
+async function umaVoltaDoRobo(
+  a: Acesso,
+): Promise<{ feitos: number; motivo?: string }> {
   // o impulso automático do Publike (migração 20270428120000): com o Google Ads ligado, o banco escolhe as vagas
   // paradas dentro do teto do mês e cria os impulsos; logo abaixo, eles entram na fila como os outros
   if (googleAdsLigado()) {
-    const { error: e } = await a.cliente.rpc("servidor_impulsos_automaticos", { p_chave: a.chave });
-    if (e && e.code !== "PGRST202") console.error("Publike: falha no impulso automático:", e.message);
+    const { error: e } = await a.cliente.rpc("servidor_impulsos_automaticos", {
+      p_chave: a.chave,
+    });
+    if (e && e.code !== "PGRST202")
+      console.error("Publike: falha no impulso automático:", e.message);
   }
   const alertas: string[] = [];
   const inicio = Date.now();
@@ -1440,7 +1988,9 @@ async function umaVoltaDoRobo(a: Acesso): Promise<{ feitos: number; motivo?: str
   volta.revisoes = 0;
   if (googleAdsLigado()) await tetoDasRegras(a);
   let feitos = googleAdsLigado() ? await cuidarDasCampanhas(a, alertas) : 0;
-  const { data, error } = await a.cliente.rpc("servidor_impulsos_para_cuidar", { p_chave: a.chave });
+  const { data, error } = await a.cliente.rpc("servidor_impulsos_para_cuidar", {
+    p_chave: a.chave,
+  });
   if (error) {
     // sem a migração ainda: nada a fazer
     if (error.code === "PGRST202") return { feitos };
@@ -1455,13 +2005,22 @@ async function umaVoltaDoRobo(a: Acesso): Promise<{ feitos: number; motivo?: str
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`Publike: o impulso ${t.codigo} (${t.acao}) falhou:`, msg);
-      const { data: r } = await a.cliente.rpc("servidor_impulso_erro", { p_chave: a.chave, p_id: t.id, p_erro: msg });
-      if ((r as { alertar?: boolean } | null)?.alertar) alertas.push(`${t.codigo} (${t.acao}): ${msg}`.slice(0, 200));
+      const { data: r } = await a.cliente.rpc("servidor_impulso_erro", {
+        p_chave: a.chave,
+        p_id: t.id,
+        p_erro: msg,
+      });
+      if ((r as { alertar?: boolean } | null)?.alertar)
+        alertas.push(`${t.codigo} (${t.acao}): ${msg}`.slice(0, 200));
     }
   }
   // depois das vagas (a que entrou no ar ou acabou nesta volta já conta): a campanha geral fora das funções delas
-  if (googleAdsLigado() && Date.now() - inicio < 35_000) await semDisputaComAGeral(a);
+  if (googleAdsLigado() && Date.now() - inicio < 35_000)
+    await semDisputaComAGeral(a);
   return alertas.length
-    ? { feitos, motivo: `O impulso no Google Ads não anda há mais de 6 horas: ${alertas.join("; ")}` }
+    ? {
+        feitos,
+        motivo: `O impulso no Google Ads não anda há mais de 6 horas: ${alertas.join("; ")}`,
+      }
     : { feitos };
 }
