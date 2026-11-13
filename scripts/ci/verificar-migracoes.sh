@@ -34,4 +34,13 @@ select count(*) from public.buscar_anuncios(-16.6806, -49.2563, 25, 'vaga', null
 select count(*) from public.curtidas_das_vagas(array[]::uuid[]);
 reset role;
 SQL
+# as funções do servidor nunca STABLE nem IMMUTABLE: a conferência da chave (privado.exigir_servidor) grava, e o
+# PostgREST roda essas numa transação só de leitura, até no POST (migração 20270510120000)
+ruins=$(psql -X -At -v ON_ERROR_STOP=1 -c "select string_agg(p.proname, ', ' order by p.proname) from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.provolatile in ('s', 'i') and p.prosrc ilike '%exigir_servidor%'")
+if [ -n "$ruins" ]; then
+  echo "::error title=Função do servidor STABLE::$ruins chama privado.exigir_servidor (que grava) e está STABLE ou IMMUTABLE: pelo PostgREST, ela sempre dá erro. Tire o stable."
+  exit 1
+fi
 echo "migrações conferidas: $(ls supabase/migrations/*.sql | wc -l)"
